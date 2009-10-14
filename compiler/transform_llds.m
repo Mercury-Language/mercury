@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001,2003-2007 The University of Melbourne.
+% Copyright (C) 1998-2001,2003-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,12 +23,12 @@
 :- module ll_backend.transform_llds.
 :- interface.
 
+:- import_module libs.globals.
 :- import_module ll_backend.llds.
-:- import_module io.
 
 %-----------------------------------------------------------------------------%
 
-:- pred transform_llds(c_file::in, c_file::out, io::di, io::uo) is det.
+:- pred transform_llds(globals::in, c_file::in, c_file::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -39,7 +39,6 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.code_model.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 
@@ -53,15 +52,7 @@
 
 %-----------------------------------------------------------------------------%
 
-transform_llds(!LLDS, !IO) :-
-    globals.io_get_globals(Globals, !IO),
-    transform_c_file(!LLDS, Globals).
-
-%-----------------------------------------------------------------------------%
-
-:- pred transform_c_file(c_file::in, c_file::out, globals::in) is det.
-
-transform_c_file(CFile0, CFile, Globals) :-
+transform_llds(Globals, CFile0, CFile) :-
     ModuleName = CFile0 ^ cfile_modulename,
     Modules0 = CFile0 ^ cfile_code,
     % Split up large computed gotos.

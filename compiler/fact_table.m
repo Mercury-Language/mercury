@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2008 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -195,18 +195,20 @@
                 bool        % Is an output argument for some mode.
             ).
 
-    % Maximum size of each array in the fact data table. GCC doesn't cope
-    % very well with huge arrays so we break the fact data table into a number
-    % of smaller arrays, each with a maximum size given by this predicate,
-    % and create an array of pointers to these arrays to access the data.
-    % The size should be a power of 2 to make the generated code more
-    % efficient.
+    % fact_table_size(Globals, FactTableSize):
     %
-:- pred fact_table_size(int::out, io::di, io::uo) is det.
+    % FactTableSize is the maximum size of each array in the fact data table.
+    % GCC doesn't cope very well with huge arrays, so we break the fact data
+    % table into a number of smaller arrays, each with a maximum size given
+    % by FactTableSize, and create an array of pointers to these arrays
+    % to access the data. The size should be a power of 2 to make the
+    % generated code more efficient.
+    %
+:- pred fact_table_size(globals::in, int::out) is det.
 
-fact_table_size(FactTableSize, !IO) :-
-    globals.io_lookup_int_option(fact_table_max_array_size, FactTableSize,
-        !IO).
+fact_table_size(Globals, FactTableSize) :-
+    globals.lookup_int_option(Globals, fact_table_max_array_size,
+        FactTableSize).
 
 %---------------------------------------------------------------------------%
 
@@ -215,9 +217,10 @@ fact_table_compile_facts(PredName, Arity, FileName, !PredInfo, Context,
     see_input_handle_error(yes(Context), FileName, SeeResult, !IO),
     (
         SeeResult = ok,
+        module_info_get_globals(ModuleInfo, Globals),
         module_info_get_name(ModuleInfo, ModuleName),
-        fact_table_file_name(ModuleName, FileName, ".c", do_create_dirs,
-            OutputFileName, !IO),
+        fact_table_file_name(Globals, ModuleName, FileName, ".c",
+            do_create_dirs, OutputFileName, !IO),
         open_output_handle_error(yes(Context), OutputFileName, OpenResult,
             !IO),
         (
@@ -251,6 +254,7 @@ fact_table_compile_facts_2(PredName, Arity, FileName, !PredInfo, Context,
         FactArgInfos0, FactArgInfos, [], Pass1Errors),
     create_fact_table_header(PredName, !.PredInfo, FactArgInfos,
         C_HeaderCode0, StructName, Pass1Errors, Pass1HeaderErrors),
+    module_info_get_globals(ModuleInfo, Globals),
     (
         Pass1HeaderErrors = [],
         io.write_string(OutputStream, fact_table_file_header(FileName), !IO),
@@ -281,19 +285,20 @@ fact_table_compile_facts_2(PredName, Arity, FileName, !PredInfo, Context,
             MaybeOutput = yes(_),
             % Outputs closing brace for last fact array.
             write_closing_brace(OutputStream, !IO),
-            write_fact_table_pointer_array(NumFacts, StructName,
-                OutputStream, C_HeaderCode2, !IO)
+            fact_table_size(Globals, FactTableSize),
+            write_fact_table_pointer_array(NumFacts, FactTableSize,
+                StructName, OutputStream, C_HeaderCode2, !IO)
         ;
             MaybeOutput = no,
             C_HeaderCode2 = ""
 
         ),
         close_sort_files(ProcStreams, ProcFiles, !IO),
-        list.append(OpenErrors, CompileErrors, OpenCompileErrors),
+        OpenCompileErrors = OpenErrors ++ CompileErrors,
         (
             OpenCompileErrors = [],
             pred_info_get_procedures(!.PredInfo, ProcTable0),
-            infer_determinism_pass_2(ProcFiles, ExistsAllInMode,
+            infer_determinism_pass_2(ProcFiles, Globals, ExistsAllInMode,
                 ProcTable0, ProcTable, !IO),
             pred_info_set_procedures(ProcTable, !PredInfo),
             io.make_temp(DataFileName, !IO),
@@ -325,7 +330,7 @@ fact_table_compile_facts_2(PredName, Arity, FileName, !PredInfo, Context,
         DataFileName = ""
     ),
     io.close_output(OutputStream, !IO),
-    maybe_append_data_table(WriteDataAfterSorting, OutputFileName,
+    maybe_append_data_table(Globals, WriteDataAfterSorting, OutputFileName,
         DataFileName, !IO).
 
 %---------------------------------------------------------------------------%
@@ -349,9 +354,10 @@ compile_facts(PredName, Arity, PredInfo, ModuleInfo, FactArgInfos, ProcStreams,
         add_error_report(Context, [words(Message)], !Errors)
     ;
         Result0 = term(_VarSet, Term),
-        fact_table_size(FactTableSize, !IO),
+        module_info_get_globals(ModuleInfo, Globals),
+        fact_table_size(Globals, FactTableSize),
         ( 0 = !.NumFacts mod FactTableSize ->
-            globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+            globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
             (
                 VeryVerbose = yes,
                 io.format("%% Read fact %d\n", [i(!.NumFacts)], !IO)
@@ -458,7 +464,11 @@ check_fact_term_2(PredOrFunc, Arity, PredInfo, ModuleInfo, Terms, Context,
             ),
             list.map(TermToArg, Terms, FactArgs)
         ->
-            write_fact_data(FactNum, FactArgs, StructName, OutputStream, !IO)
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+            fact_table_size(Globals, FactTableSize),
+            write_fact_data(VeryVerbose, FactNum, FactTableSize, FactArgs,
+                StructName, OutputStream, !IO)
         ;
             % If list.map above fails, don't do anything here. The error will
             % have already been reported in check_fact_type_and_mode.
@@ -1102,24 +1112,25 @@ key_from_chars_2([C | Cs], ECs0, ECs) :-
 
 %---------------------------------------------------------------------------%
 
-    % infer_determinism_pass_2(ProcFiles, !ProcTable):
+    % infer_determinism_pass_2(ProcFiles, Globals, ExistsAllInMode,
+    %   !ProcTable, !IO):
     %
     % Run `sort' on each sort file to see if the keys are unique.
     % If they are, the procedure is semidet, otherwise it is nondet.
     % Return the updated proc_table.
     %
-:- pred infer_determinism_pass_2(assoc_list(proc_id, string)::in, bool::in,
-    proc_table::in, proc_table::out, io::di, io::uo) is det.
+:- pred infer_determinism_pass_2(assoc_list(proc_id, string)::in, globals::in,
+    bool::in, proc_table::in, proc_table::out, io::di, io::uo) is det.
 
-infer_determinism_pass_2([], _, !ProcTable, !IO).
-infer_determinism_pass_2([ProcID - FileName | ProcFiles], ExistsAllInMode,
-        !ProcTable, !IO) :-
+infer_determinism_pass_2([], _, _, !ProcTable, !IO).
+infer_determinism_pass_2([ProcID - FileName | ProcFiles], Globals,
+        ExistsAllInMode, !ProcTable, !IO) :-
     map.lookup(!.ProcTable, ProcID, ProcInfo0),
     make_command_string(string.format(
         "LC_ALL=C sort -o %s %s && " ++
         "cut -d'~' -f1 %s | LC_ALL=C sort -cu >/dev/null 2>&1",
         [s(FileName), s(FileName), s(FileName)]), double, Command),
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Invoking system command `", !IO),
     maybe_write_string(Verbose, Command, !IO),
     maybe_write_string(Verbose, "'...", !IO),
@@ -1174,7 +1185,8 @@ infer_determinism_pass_2([ProcID - FileName | ProcFiles], ExistsAllInMode,
     ),
     proc_info_set_inferred_determinism(Determinism, ProcInfo0, ProcInfo),
     map.det_update(!.ProcTable, ProcID, ProcInfo, !:ProcTable),
-    infer_determinism_pass_2(ProcFiles, ExistsAllInMode, !ProcTable, !IO).
+    infer_determinism_pass_2(ProcFiles, Globals, ExistsAllInMode,
+        !ProcTable, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1231,25 +1243,27 @@ write_fact_table_arrays(ProcFiles0, DataFileName, StructName, ProcTable,
 
     % Write out the data for the fact table.
     %
-:- pred write_fact_table_data(int::in, list(list(fact_arg))::in, string::in,
-    io.output_stream::in, io::di, io::uo) is det.
+:- pred write_fact_table_data(bool::in, int::in, int::in,
+    list(list(fact_arg))::in, string::in, io.output_stream::in,
+    io::di, io::uo) is det.
 
-write_fact_table_data(_, [], _, _, !IO).
-write_fact_table_data(FactNum, [Args | ArgsList], StructName, OutputStream,
-        !IO) :-
-    write_fact_data(FactNum, Args, StructName, OutputStream, !IO),
-    write_fact_table_data(FactNum + 1, ArgsList, StructName, OutputStream,
-        !IO).
+write_fact_table_data(_, _, _, [], _, _, !IO).
+write_fact_table_data(VeryVerbose, FactNum, FactTableSize, [Fact | Facts],
+        StructName, OutputStream, !IO) :-
+    write_fact_data(VeryVerbose, FactNum, FactTableSize, Fact,
+        StructName, OutputStream, !IO),
+    write_fact_table_data(VeryVerbose, FactNum + 1, FactTableSize, Facts,
+        StructName, OutputStream, !IO).
 
     % Write out the data for a single fact, starting a new array if necessary.
     % Note: this predicate will not write the declaration or opening brace
     % for the first array or the closing brace of the last array.
     %
-:- pred write_fact_data(int::in, list(fact_arg)::in, string::in,
-    io.output_stream::in, io::di, io::uo) is det.
+:- pred write_fact_data(bool::in, int::in, int::in, list(fact_arg)::in,
+    string::in, io.output_stream::in, io::di, io::uo) is det.
 
-write_fact_data(FactNum, Args, StructName, OutputStream, !IO) :-
-    fact_table_size(FactTableSize, !IO),
+write_fact_data(VeryVerbose, FactNum, FactTableSize, Args,
+        StructName, OutputStream, !IO) :-
     ( 0 = FactNum mod FactTableSize ->
         ( FactNum = 0 ->
             true
@@ -1257,7 +1271,6 @@ write_fact_data(FactNum, Args, StructName, OutputStream, !IO) :-
             write_closing_brace(OutputStream, !IO),
             write_new_data_array(OutputStream, StructName, FactNum, !IO)
         ),
-        globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
         (
             VeryVerbose = yes,
             io.format("%% Writing fact %d\n", [i(FactNum)], !IO)
@@ -1320,14 +1333,14 @@ write_fact_args([Arg | Args], OutputStream, !IO) :-
     % If a data table has been created in a separate file, append it to the
     % end of the main output file and then delete it.
     %
-:- pred maybe_append_data_table(bool::in, string::in, string::in,
+:- pred maybe_append_data_table(globals::in, bool::in, string::in, string::in,
     io::di, io::uo) is det.
 
-maybe_append_data_table(no, _, _, !IO).
-maybe_append_data_table(yes, OutputFileName, DataFileName, !IO) :-
+maybe_append_data_table(_Globals, no, _, _, !IO).
+maybe_append_data_table(Globals, yes, OutputFileName, DataFileName, !IO) :-
     make_command_string(string.format("cat %s >>%s",
         [s(DataFileName), s(OutputFileName)]), forward, Command),
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Invoking system command `", !IO),
     maybe_write_string(Verbose, Command, !IO),
     maybe_write_string(Verbose, ", ...", !IO),
@@ -1419,8 +1432,10 @@ write_primary_hash_table(ProcID, FileName, DataFileName, StructName, ProcTable,
             MaybeDataStream = yes(DataStream1),
             % Closing brace for last fact data array.
             write_closing_brace(DataStream1, !IO),
-            write_fact_table_pointer_array(NumFacts, StructName,
-                DataStream1, C_HeaderCode1, !IO),
+            module_info_get_globals(ModuleInfo, Globals),
+            fact_table_size(Globals, FactTableSize),
+            write_fact_table_pointer_array(NumFacts, FactTableSize,
+                StructName, DataStream1, C_HeaderCode1, !IO),
             io.close_output(DataStream1, !IO),
             C_HeaderCode = C_HeaderCode0 ++ C_HeaderCode1
         ;
@@ -1510,21 +1525,21 @@ read_sort_file_line(FactArgInfos, ArgModes, ModuleInfo, MaybeSortFileLine,
     % Build and write out a top level hash table and all the lower level
     % tables connected to it.
     %
-:- pred build_hash_table(int::in, int::in, string::in, string::in, int::in,
-    list(mer_mode)::in, module_info::in, list(fact_arg_info)::in, bool::in,
-    io.output_stream::in, sort_file_line::in,
+:- pred build_hash_table(int::in, int::in, string::in, string::in,
+    int::in, list(mer_mode)::in, module_info::in, list(fact_arg_info)::in,
+    bool::in, io.output_stream::in, sort_file_line::in,
     maybe(io.output_stream)::in, bool::in,
     map(int, int)::in, map(int, int)::out, io::di, io::uo) is det.
 
-build_hash_table(FactNum, InputArgNum, HashTableName, StructName, TableNum,
-        ArgModes, ModuleInfo, Infos, IsPrimaryTable, OutputStream,
+build_hash_table(FactNum, InputArgNum, HashTableName, StructName,
+        TableNum, ArgModes, ModuleInfo, Infos, IsPrimaryTable, OutputStream,
         FirstFact, MaybeDataStream, CreateFactMap, !FactMap, !IO) :-
     build_hash_table_2(FactNum, InputArgNum, HashTableName, StructName,
         TableNum, ArgModes, ModuleInfo, Infos, IsPrimaryTable,
         OutputStream, yes(FirstFact), MaybeDataStream, CreateFactMap,
         !FactMap, [], HashList, !IO),
     list.length(HashList, Len),
-    globals.io_get_globals(Globals, !IO),
+    module_info_get_globals(ModuleInfo, Globals),
     calculate_hash_table_size(Globals, Len, HashSize),
     hash_table_init(HashSize, HashTable0),
     hash_table_from_list(HashList, HashSize, HashTable0, HashTable),
@@ -1551,18 +1566,22 @@ build_hash_table_2(FactNum, InputArgNum, HashTableName, StructName, !.TableNum,
     ;
         CreateFactMap = no
     ),
+    module_info_get_globals(ModuleInfo, Globals),
     (
         MaybeDataStream = yes(DataStream),
         list.map((pred(X::in, Y::out) is det :-
             X = sort_file_line(_, _, Y)
         ), MatchingFacts, OutputData),
-        write_fact_table_data(FactNum, OutputData, StructName, DataStream, !IO)
+        globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+        fact_table_size(Globals, FactTableSize),
+        write_fact_table_data(VeryVerbose, FactNum, FactTableSize,
+            OutputData, StructName, DataStream, !IO)
     ;
         MaybeDataStream = no
     ),
-    do_build_hash_table(FactNum, InputArgNum, HashTableName, !TableNum,
-        IsPrimaryTable, OutputStream, MatchingFacts, !.FactMap, !HashList,
-        !IO),
+    do_build_hash_table(Globals, FactNum, InputArgNum, HashTableName,
+        !TableNum, IsPrimaryTable, OutputStream, MatchingFacts, !.FactMap,
+        !HashList, !IO),
     list.length(MatchingFacts, Len),
     NextFactNum = FactNum + Len,
     build_hash_table_2(NextFactNum, InputArgNum, HashTableName, StructName,
@@ -1574,52 +1593,52 @@ build_hash_table_2(FactNum, InputArgNum, HashTableName, StructName, !.TableNum,
     % (above) is that ``sort file lines'' are read from a list rather than
     % from the actual sort file.
     %
-:- pred build_hash_table_lower_levels(int::in, int::in, string::in,
-    int::in, int::out, bool::in, io.output_stream::in,
+:- pred build_hash_table_lower_levels(globals::in, int::in, int::in,
+    string::in, int::in, int::out, bool::in, io.output_stream::in,
     list(sort_file_line)::in, map(int, int)::in, io::di, io::uo) is det.
 
-build_hash_table_lower_levels(FactNum, InputArgNum, HashTableName,
+build_hash_table_lower_levels(Globals, FactNum, InputArgNum, HashTableName,
         TableNum0, TableNum, IsPrimaryTable, OutputStream, Facts, FactMap,
         !IO) :-
-    build_hash_table_lower_levels_2(FactNum, InputArgNum, HashTableName,
-        TableNum0, TableNum, IsPrimaryTable, OutputStream, Facts, FactMap,
-        [], HashList, !IO),
+    build_hash_table_lower_levels_2(Globals, FactNum, InputArgNum,
+        HashTableName, TableNum0, TableNum, IsPrimaryTable, OutputStream,
+        Facts, FactMap, [], HashList, !IO),
     list.length(HashList, Len),
-    globals.io_get_globals(Globals, !IO),
     calculate_hash_table_size(Globals, Len, HashSize),
     hash_table_init(HashSize, HashTable0),
     hash_table_from_list(HashList, HashSize, HashTable0, HashTable),
     write_hash_table(HashTableName, TableNum0, HashTable, OutputStream, !IO).
 
-:- pred build_hash_table_lower_levels_2(int::in, int::in, string::in,
-    int::in, int::out, bool::in, io.output_stream::in,
+:- pred build_hash_table_lower_levels_2(globals::in, int::in, int::in,
+    string::in, int::in, int::out, bool::in, io.output_stream::in,
     list(sort_file_line)::in, map(int, int)::in,
     list(hash_entry)::in, list(hash_entry)::out, io::di, io::uo) is det.
 
-build_hash_table_lower_levels_2(_, _, _, !TableNum, _, _, [],
+build_hash_table_lower_levels_2(_, _, _, _, !TableNum, _, _, [],
         _, !HashList, !IO).
-build_hash_table_lower_levels_2(FactNum, InputArgNum, HashTableName,
+build_hash_table_lower_levels_2(Globals, FactNum, InputArgNum, HashTableName,
         !TableNum, IsPrimaryTable, OutputStream,
         [Fact | Facts0], FactMap, !HashList, !IO) :-
     lower_level_collect_matching_facts(Fact, Facts0, MatchingFacts,
         Facts1, InputArgNum),
-    do_build_hash_table(FactNum, InputArgNum, HashTableName, !TableNum,
-        IsPrimaryTable, OutputStream, MatchingFacts, FactMap, !HashList, !IO),
+    do_build_hash_table(Globals, FactNum, InputArgNum, HashTableName,
+        !TableNum, IsPrimaryTable, OutputStream, MatchingFacts, FactMap,
+        !HashList, !IO),
     list.length(MatchingFacts, Len),
     NextFactNum = FactNum + Len,
-    build_hash_table_lower_levels_2(NextFactNum, InputArgNum, HashTableName,
-        !TableNum, IsPrimaryTable, OutputStream, Facts1, FactMap, !HashList,
-        !IO).
+    build_hash_table_lower_levels_2(Globals, NextFactNum, InputArgNum,
+        HashTableName, !TableNum, IsPrimaryTable, OutputStream,
+        Facts1, FactMap, !HashList, !IO).
 
     % This is where most of the actual work is done in building up the
     % hash table.
     %
-:- pred do_build_hash_table(int::in, int::in, string::in, int::in, int::out,
-    bool::in, io.output_stream::in, list(sort_file_line)::in,
-    map(int, int)::in, list(hash_entry)::in, list(hash_entry)::out,
-    io::di, io::uo) is det.
+:- pred do_build_hash_table(globals::in, int::in, int::in, string::in,
+    int::in, int::out, bool::in, io.output_stream::in,
+    list(sort_file_line)::in, map(int, int)::in,
+    list(hash_entry)::in, list(hash_entry)::out, io::di, io::uo) is det.
 
-do_build_hash_table(FactNum, InputArgNum, HashTableName, !TableNum,
+do_build_hash_table(Globals, FactNum, InputArgNum, HashTableName, !TableNum,
         IsPrimaryTable, OutputStream, Facts, FactMap, !HashList, !IO) :-
     (
         Facts = [],
@@ -1649,7 +1668,7 @@ do_build_hash_table(FactNum, InputArgNum, HashTableName, !TableNum,
         ->
             !:TableNum = !.TableNum + 1,
             ThisTableNum = !.TableNum,
-            build_hash_table_lower_levels(FactNum, NextInputArgNum,
+            build_hash_table_lower_levels(Globals, FactNum, NextInputArgNum,
                 HashTableName, !TableNum, IsPrimaryTable, OutputStream,
                 Facts, FactMap, !IO),
             !:HashList = [hash_entry(Arg,
@@ -2213,33 +2232,32 @@ get_hash_table_type_2(Map, Index, TableType) :-
 
     % Write out the array of pointers to the fact table arrays.
     %
-:- pred write_fact_table_pointer_array(int::in, string::in,
+:- pred write_fact_table_pointer_array(int::in, int::in, string::in,
     io.output_stream::in, string::out, io::di, io::uo) is det.
 
-write_fact_table_pointer_array(NumFacts, StructName, OutputStream,
-        C_HeaderCode, !IO) :-
+write_fact_table_pointer_array(NumFacts, FactTableSize,
+        StructName, OutputStream, C_HeaderCode, !IO) :-
     PointerArrayName = "const struct " ++ StructName ++ "_struct *"
         ++ StructName ++ "[]",
     C_HeaderCode = "extern " ++ PointerArrayName ++ ";\n",
     io.write_strings(OutputStream, [PointerArrayName, " = {\n"], !IO),
-    write_fact_table_pointer_array_2(0, NumFacts, StructName, OutputStream,
-        !IO),
+    write_fact_table_pointer_array_2(0, NumFacts, FactTableSize,
+        StructName, OutputStream, !IO),
     io.write_string(OutputStream, "};\n", !IO).
 
-:- pred write_fact_table_pointer_array_2(int::in, int::in, string::in,
+:- pred write_fact_table_pointer_array_2(int::in, int::in, int::in, string::in,
     io.output_stream::in, io::di, io::uo) is det.
 
-write_fact_table_pointer_array_2(CurrFact, NumFacts, StructName, OutputStream,
-        !IO) :-
+write_fact_table_pointer_array_2(CurrFact, NumFacts, FactTableSize,
+        StructName, OutputStream, !IO) :-
     ( CurrFact >= NumFacts ->
         true
     ;
         io.format(OutputStream, "\t%s%d,\n",
             [s(StructName), i(CurrFact)], !IO),
-        fact_table_size(FactTableSize, !IO),
         NextFact = CurrFact + FactTableSize,
-        write_fact_table_pointer_array_2(NextFact, NumFacts, StructName,
-            OutputStream, !IO)
+        write_fact_table_pointer_array_2(NextFact, NumFacts, FactTableSize,
+            StructName, OutputStream, !IO)
     ).
 
 :- pred write_fact_table_numfacts(sym_name::in, int::in, io.output_stream::in,
@@ -2270,7 +2288,9 @@ make_fact_table_identifier(SymName, Identifier) :-
 
 fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
         ProcInfo, ArgTypes, ModuleInfo, ProcCode, ExtraCode, !IO) :-
-    fact_table_size(FactTableSize, !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    fact_table_size(Globals, FactTableSize),
+
     proc_info_get_argmodes(ProcInfo, ArgModes),
     proc_info_interface_determinism(ProcInfo, Determinism),
     fact_table_mode_type(ArgModes, ModuleInfo, ModeType),

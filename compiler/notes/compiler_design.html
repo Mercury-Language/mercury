@@ -55,14 +55,25 @@ as step 2, the last stage of parsing actually includes some semantic checks.
 And although optimization is listed as steps 3 and 5, it also occurs in
 steps 2, 4, and 6.  For example, elimination of assignments to dead
 variables is done in mode analysis; middle-recursion optimization and
-the use of static constants for ground terms is done in code
-generation; and a few low-level optimizations are done in llds_out.m
+the use of static constants for ground terms is done during code generation;
+and a few low-level optimizations are done in llds_out.m
 as we are spitting out the C code.
 
 <p>
 
 In addition, the compiler is actually a multi-targeted compiler
 with several different back-ends.
+
+<p>
+
+mercury_compile.m itself supervises the parsing  (step 1),
+but it subcontracts the supervision of the later steps to other modules.
+Semantics analysis (step 2) is looked after by mercury_compile_front_end.m;
+high level transformations (step 3) by mercury_compile_middle_passes.m;
+and code generation, optimization and output (steps 4, 5 and 6)
+by mercury_compile_llds_backend.m, mercury_compile_mlds_backend.m
+and mercury_compile_erl_backend.m
+for the LLDS, MLDS and Erlang backends respectively.
 
 <p>
 
@@ -80,8 +91,8 @@ Taking all this into account, the structure looks like this:
 
 <ul type=disc>
 <li> At the top of the dependency graph is the top_level.m package,
-     which currently contains only the one module mercury_compile.m
-     which invokes all the different passes in the compiler.
+     which currently contains only the mercury_compile*.m modules,
+     which invoke all the different passes in the compiler.
 <li> The next level down is all of the different passes of the compiler.
      In general, we try to stick by the principle that later passes can
      depend on data structures defined in earlier passes, but not vice
@@ -174,9 +185,11 @@ Option handling is part of the libs.m package.
 The command-line options are defined in the module options.m.
 mercury_compile.m calls library/getopt.m, passing the predicates
 defined in options.m as arguments, to parse them.  It then invokes
-handle_options.m to postprocess the option set.  The results are
-stored in the io.state, using the type globals defined in globals.m.
-
+handle_options.m to postprocess the option set. The results are
+represented using the type globals, defined in globals.m.
+The globals structure is available in the HLDS representation,
+buy it is passed around as a separate argument both before the HLDS is built
+and after it is no longer needed.
 
 <h3> Build system </h3>
 
@@ -1278,7 +1291,8 @@ or perform LLDS-specific transformations on the HLDS:
 			will be needed in next.  This allows us to generate
 			more efficient code by putting variables in the right
 			spot directly.  This module is not called from
-			mercury_compile.m; it is called from store_alloc.m.
+			mercury_compile_llds_back_end.m; it is called from
+			store_alloc.m.
 		<dt> allocating the store map (store_alloc.m)
 			<dd>
 			Annotates each branched goal with variable location
@@ -1375,10 +1389,9 @@ or perform LLDS-specific transformations on the HLDS:
 
 <dt> code generation for `pragma export' declarations (export.m)
 <dd> This is handled separately from the other parts of code generation.
-     mercury_compile.m calls the procedures `export.produce_header_file'
-     and `export.get_pragma_exported_procs' to produce C code fragments
-     which declare/define the C functions which are the interface stubs
-     for procedures exported to C.
+     mercury_compile*.m calls `export.produce_header_file' to produce
+     C code fragments which declare/define the C functions which are the
+     interface stubs for procedures exported to C.
 
 <dt> generation of constants for RTTI data structures
 <dd> This could also be considered a part of code generation,
@@ -1407,7 +1420,7 @@ They are:
 <li> elimination of duplicate code sequences within procedures (dupelim.m)
 
 <li> elimination of duplicate procedure bodies (dupproc.m,
-invoked directly from mercury_compile.m)
+invoked directly from mercury_compile_llds_back_end.m)
 
 <li> optimization of stack frame allocation/deallocation (frameopt.m)
 
@@ -1533,9 +1546,9 @@ Before code generation there is a pass which annotates the HLDS with
 information used for code generation:
 
 <ul>
-<li> mark_static_terms.m marks construction unifications
-     which can be implemented using static constants rather
-     than heap allocation.
+<li> mark_static_terms.m (in the hlds.m package) marks
+     construction unifications which can be implemented using static constants
+     rather than heap allocation.
 </ul>
 
 <p>
@@ -1869,6 +1882,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2009-10-02 03:55:35 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2009-10-14 05:28:53 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

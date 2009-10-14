@@ -109,8 +109,8 @@
     % N.B.  This reads a module given the file name. If you want to read a
     % module given the module name, use `read_mod'.
     %
-:- pred read_module_from_file(file_name::in, string::in, string::in,
-    maybe_search::in, maybe_return_timestamp::in, list(item)::out,
+:- pred read_module_from_file(globals::in, file_name::in, string::in,
+    string::in, maybe_search::in, maybe_return_timestamp::in, list(item)::out,
     list(error_spec)::out, module_error::out, module_name::out,
     maybe(timestamp)::out, io::di, io::uo) is det.
 
@@ -181,19 +181,20 @@ do_read_module(Globals, IgnoreErrors, ModuleName, Extension, Descr, Search,
         MaybeTimestamp, !IO) :-
     (
         Search = do_search,
-        module_name_to_search_file_name(ModuleName, Extension, FileName0, !IO)
+        module_name_to_search_file_name(Globals, ModuleName, Extension,
+            FileName0, !IO)
     ;
         Search = do_not_search,
-        module_name_to_file_name(ModuleName, Extension, do_not_create_dirs,
-            FileName0, !IO)
+        module_name_to_file_name(Globals, ModuleName, Extension,
+            do_not_create_dirs, FileName0, !IO)
     ),
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     Msg = "% " ++ Descr ++ " `" ++ FileName0 ++ "'... ",
     maybe_write_string(VeryVerbose, Msg, !IO),
     maybe_flush_output(VeryVerbose, !IO),
 
-    globals.io_lookup_accumulating_option(search_directories,
-        InterfaceSearchDirs, !IO),
+    globals.lookup_accumulating_option(Globals, search_directories,
+        InterfaceSearchDirs),
     (
         Search = do_search,
         SearchDirs = InterfaceSearchDirs
@@ -207,20 +208,20 @@ do_read_module(Globals, IgnoreErrors, ModuleName, Extension, Descr, Search,
         % in the current directory but the full match occurs in a
         % search directory.
 
-        OpenFile = search_for_module_source(SearchDirs,
+        OpenFile = search_for_module_source(Globals, SearchDirs,
             InterfaceSearchDirs, ModuleName)
     ;
         OpenFile = search_for_file(open_file, SearchDirs, FileName0)
     ),
     (
         MaybeOldTimestamp = yes(OldTimestamp),
-        actually_read_module_if_changed(OpenFile, ModuleName, OldTimestamp,
-            MaybeFileName, ActualModuleName, Items, Specs0, Error,
-            MaybeTimestamp0, !IO)
+        actually_read_module_if_changed(Globals, OpenFile, ModuleName,
+            OldTimestamp, MaybeFileName, ActualModuleName,
+            Items, ModuleSpecs, Error, MaybeTimestamp0, !IO)
     ;
         MaybeOldTimestamp = no,
-        actually_read_module(OpenFile, ModuleName, ReturnTimestamp,
-            MaybeFileName, ActualModuleName, Items, Specs0, Error,
+        actually_read_module(Globals, OpenFile, ModuleName, ReturnTimestamp,
+            MaybeFileName, ActualModuleName, Items, ModuleSpecs, Error,
             MaybeTimestamp0, !IO)
     ),
 
@@ -231,12 +232,12 @@ do_read_module(Globals, IgnoreErrors, ModuleName, Extension, Descr, Search,
         FileName = FileName0
     ),
     check_module_has_expected_name(FileName, ModuleName, ActualModuleName,
-        !IO),
+        NameSpecs),
 
-    check_timestamp(FileName0, MaybeTimestamp0, MaybeTimestamp, !IO),
+    check_timestamp(Globals, FileName0, MaybeTimestamp0, MaybeTimestamp, !IO),
     (
         IgnoreErrors = ignore_errors,
-        Specs = [],     % override Specs0
+        Specs = NameSpecs,      % Do not include ModuleSpecs.
         (
             Error = fatal_module_errors,
             Items = []
@@ -247,28 +248,29 @@ do_read_module(Globals, IgnoreErrors, ModuleName, Extension, Descr, Search,
         )
     ;
         IgnoreErrors = do_not_ignore_errors,
+        ModuleNameSpecs = NameSpecs ++ ModuleSpecs,
         (
             Error = fatal_module_errors,
             maybe_write_string(VeryVerbose, "fatal error(s).\n", !IO),
             maybe_write_out_errors_no_module(VeryVerbose, Globals,
-                Specs0, Specs, !IO),
+                ModuleNameSpecs, Specs, !IO),
             io.set_exit_status(1, !IO)
         ;
             Error = some_module_errors,
             maybe_write_string(VeryVerbose, "parse error(s).\n", !IO),
             maybe_write_out_errors_no_module(VeryVerbose, Globals,
-                Specs0, Specs, !IO),
+                ModuleNameSpecs, Specs, !IO),
             io.set_exit_status(1, !IO)
         ;
             Error = no_module_errors,
             maybe_write_string(VeryVerbose, "successful parse.\n", !IO),
-            Specs = Specs0
+            Specs = ModuleNameSpecs
         )
     ).
 
-read_module_from_file(FileName, Extension, Descr, Search, ReturnTimestamp,
-        Items, Specs, Error, ModuleName, MaybeTimestamp, !IO) :-
-    globals.io_get_globals(Globals, !IO),
+read_module_from_file(Globals, FileName, Extension, Descr, Search,
+        ReturnTimestamp, Items, Specs, Error, ModuleName, MaybeTimestamp,
+        !IO) :-
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     maybe_write_string(VeryVerbose, "% ", !IO),
     maybe_write_string(VeryVerbose, Descr, !IO),
@@ -292,9 +294,10 @@ read_module_from_file(FileName, Extension, Descr, Search, ReturnTimestamp,
         SearchDirs = [dir.this_directory]
     ),
     OpenFile = search_for_file(open_file, SearchDirs, FullFileName),
-    actually_read_module(OpenFile, DefaultModuleName, ReturnTimestamp,
+    actually_read_module(Globals, OpenFile, DefaultModuleName, ReturnTimestamp,
         _, ModuleName, Items, Specs0, Error, MaybeTimestamp0, !IO),
-    check_timestamp(FullFileName, MaybeTimestamp0, MaybeTimestamp, !IO),
+    check_timestamp(Globals, FullFileName, MaybeTimestamp0, MaybeTimestamp,
+        !IO),
     (
         Error = fatal_module_errors,
         maybe_write_string(VeryVerbose, "fatal error(s).\n", !IO),
@@ -311,29 +314,6 @@ read_module_from_file(FileName, Extension, Descr, Search, ReturnTimestamp,
         Error = no_module_errors,
         maybe_write_string(VeryVerbose, "successful parse.\n", !IO),
         Specs = Specs0
-    ).
-
-:- pred check_timestamp(file_name::in, maybe(io.res(timestamp))::in,
-    maybe(timestamp)::out, io::di, io::uo) is det.
-
-check_timestamp(FileName, MaybeTimestamp0, MaybeTimestamp, !IO) :-
-    (
-        MaybeTimestamp0 = yes(ok(Timestamp)),
-        MaybeTimestamp = yes(Timestamp)
-    ;
-        MaybeTimestamp0 = yes(error(IOError)),
-        MaybeTimestamp = no,
-        globals.io_lookup_bool_option(smart_recompilation, SmartRecompilation,
-            !IO),
-        (
-            SmartRecompilation = yes,
-            report_modification_time_warning(FileName, IOError, !IO)
-        ;
-            SmartRecompilation = no
-        )
-    ;
-        MaybeTimestamp0 = no,
-        MaybeTimestamp = no
     ).
 
 %-----------------------------------------------------------------------------%
@@ -373,13 +353,39 @@ find_read_module(HaveReadModuleMap, ModuleName, Suffix, ReturnTimestamp,
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_modification_time_warning(file_name::in, io.error::in,
+:- pred check_timestamp(globals::in, file_name::in,
+    maybe(io.res(timestamp))::in, maybe(timestamp)::out,
     io::di, io::uo) is det.
 
-report_modification_time_warning(SourceFileName, Error, !IO) :-
-    globals.io_set_option(smart_recompilation, bool(no), !IO),
-    globals.io_set_option(generate_item_version_numbers, bool(no), !IO),
-    globals.io_lookup_bool_option(warn_smart_recompilation, Warn, !IO),
+check_timestamp(Globals, FileName, MaybeTimestamp0, MaybeTimestamp, !IO) :-
+    (
+        MaybeTimestamp0 = yes(ok(Timestamp)),
+        MaybeTimestamp = yes(Timestamp)
+    ;
+        MaybeTimestamp0 = yes(error(IOError)),
+        MaybeTimestamp = no,
+        globals.lookup_bool_option(Globals, smart_recompilation,
+            SmartRecompilation),
+        % Should we print the warning if smart recompilation has already been
+        % disabled by an earlier error? At the moment, we do.
+        (
+            SmartRecompilation = yes,
+            report_modification_time_warning(Globals, FileName, IOError, !IO)
+        ;
+            SmartRecompilation = no
+        )
+    ;
+        MaybeTimestamp0 = no,
+        MaybeTimestamp = no
+    ).
+
+:- pred report_modification_time_warning(globals::in, file_name::in,
+    io.error::in, io::di, io::uo) is det.
+
+report_modification_time_warning(Globals, SourceFileName, Error, !IO) :-
+    io_set_disable_smart_recompilation(yes, !IO),
+    io_set_disable_generate_item_version_numbers(yes, !IO),
+    globals.lookup_bool_option(Globals, warn_smart_recompilation, Warn),
     (
         Warn = yes,
         io.write_string("Warning: cannot find modification time for ", !IO),
@@ -390,7 +396,7 @@ report_modification_time_warning(SourceFileName, Error, !IO) :-
         io.write_string(Msg, !IO),
         io.write_string(".\n", !IO),
         io.write_string("  Smart recompilation will not work.\n", !IO),
-        globals.io_lookup_bool_option(halt_at_warn, HaltAtWarn, !IO),
+        globals.lookup_bool_option(Globals, halt_at_warn, HaltAtWarn),
         (
             HaltAtWarn = yes,
             io.set_exit_status(1, !IO)

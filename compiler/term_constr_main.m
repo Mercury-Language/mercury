@@ -287,10 +287,11 @@ term_constr_main.pass(!ModuleInfo, !IO) :-
     % These are:
     %   - which norm we are using.
     %   - whether we are propagating failure constraints.
-    globals.io_get_termination2_norm(Norm, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.get_termination2_norm(Globals, Norm),
     FunctorInfo = set_functor_info(!.ModuleInfo, Norm),
-    globals.io_lookup_bool_option(propagate_failure_constrs, Fail, !IO),
-    globals.io_lookup_bool_option(arg_size_analysis_only, ArgSizeOnly, !IO),
+    globals.lookup_bool_option(Globals, propagate_failure_constrs, Fail),
+    globals.lookup_bool_option(Globals, arg_size_analysis_only, ArgSizeOnly),
     BuildOptions = term_build_options_init(FunctorInfo, Fail, ArgSizeOnly),
 
     % Get options required by the fixpoint pass.
@@ -298,8 +299,8 @@ term_constr_main.pass(!ModuleInfo, !IO) :-
     %   - what cutoff value we are using
     %   - the maximum allowable matrix size
     %     (this is also used in pass 2).
-    globals.io_lookup_int_option(term2_maximum_matrix_size, MaxSize, !IO),
-    globals.io_lookup_int_option(widening_limit, CutOff, !IO),
+    globals.lookup_int_option(Globals, term2_maximum_matrix_size, MaxSize),
+    globals.lookup_int_option(Globals, widening_limit, CutOff),
 
     % NOTE: We may eventually allow other types of widening.
     Widening = after_fixed_cutoff(CutOff),
@@ -388,7 +389,7 @@ analyse_scc(DepOrder, BuildOpts, FixpointOpts, Pass2Opts, SCC, !ModuleInfo,
     % - the argument size relationships depend upon higher-order calls.
     NeedsArgSize = list.filter(isnt(has_arg_size_info(!.ModuleInfo)), NeedsAR),
     term_constr_fixpoint.do_fixpoint_calculation(FixpointOpts,
-        NeedsArgSize, 1, FixpointErrors, !ModuleInfo, !IO),
+        NeedsArgSize, 1, FixpointErrors, !ModuleInfo),
 
     % Errors detected during pass 1 always result in the rest of the analysis
     % being aborted for the SCC under consideration.
@@ -400,7 +401,8 @@ analyse_scc(DepOrder, BuildOpts, FixpointOpts, Pass2Opts, SCC, !ModuleInfo,
         Pass1Errors = [_ | _],
         MaybeEarlyPass2Result = yes(can_loop(Pass1Errors))
     ),
-    globals.io_lookup_bool_option(arg_size_analysis_only, ArgSizeOnly, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, arg_size_analysis_only, ArgSizeOnly),
     (
         ArgSizeOnly = no,
         NeedsTerm = list.filter(isnt(has_term_info(!.ModuleInfo)), NeedsAR),
@@ -461,8 +463,9 @@ set_termination_info_for_proc(TerminationInfo, PPId, !ModuleInfo) :-
 
 maybe_make_optimization_interface(ModuleInfo, !IO) :-
     % XXX update this once this analysis supports `--intermodule-analysis'
-    globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt,
-        !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, make_optimization_interface,
+        MakeOptInt),
     (
         MakeOptInt = yes,
         module_info_predids(PredIds, ModuleInfo, _ModuleInfo),
@@ -474,38 +477,40 @@ maybe_make_optimization_interface(ModuleInfo, !IO) :-
 :- pred make_opt_int(list(pred_id)::in, module_info::in, io::di, io::uo) is det.
 
 make_opt_int(PredIds, ModuleInfo, !IO) :-
-  module_info_get_name(ModuleInfo, ModuleName),
-  module_name_to_file_name(ModuleName, ".opt.tmp", do_not_create_dirs,
-    OptFileName, !IO),
-  globals.io_lookup_bool_option(verbose, Verbose, !IO),
-  maybe_write_string(Verbose,
-      "% Appending termination2_info pragmas to `", !IO),
-  maybe_write_string(Verbose, OptFileName, !IO),
-  maybe_write_string(Verbose, "'...", !IO),
-  maybe_flush_output(Verbose, !IO),
-  io.open_append(OptFileName, OptFileRes, !IO),
-  (
-      OptFileRes = ok(OptFile),
-      io.set_output_stream(OptFile, OldStream, !IO),
-      list.foldl(output_pred_termination2_info(ModuleInfo), PredIds, !IO),
-      io.set_output_stream(OldStream, _, !IO),
-      io.close_output(OptFile, !IO),
-      maybe_write_string(Verbose, " done.\n", !IO)
-  ;
-      OptFileRes = error(IOError),
-      maybe_write_string(Verbose, " failed!\n", !IO),
-      io.error_message(IOError, IOErrorMessage),
-      io.write_strings(["Error opening file `",
-          OptFileName, "' for output: ", IOErrorMessage], !IO),
-      io.set_exit_status(1, !IO)
-  ).
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_name(ModuleInfo, ModuleName),
+    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
+        do_not_create_dirs, OptFileName, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    maybe_write_string(Verbose,
+        "% Appending termination2_info pragmas to `", !IO),
+    maybe_write_string(Verbose, OptFileName, !IO),
+    maybe_write_string(Verbose, "'...", !IO),
+    maybe_flush_output(Verbose, !IO),
+    io.open_append(OptFileName, OptFileRes, !IO),
+    (
+        OptFileRes = ok(OptFile),
+        io.set_output_stream(OptFile, OldStream, !IO),
+        list.foldl(output_pred_termination2_info(ModuleInfo), PredIds, !IO),
+        io.set_output_stream(OldStream, _, !IO),
+        io.close_output(OptFile, !IO),
+        maybe_write_string(Verbose, " done.\n", !IO)
+    ;
+        OptFileRes = error(IOError),
+        maybe_write_string(Verbose, " failed!\n", !IO),
+        io.error_message(IOError, IOErrorMessage),
+        io.write_strings(["Error opening file `",
+            OptFileName, "' for output: ", IOErrorMessage], !IO),
+        io.set_exit_status(1, !IO)
+    ).
 
 output_pred_termination2_info(ModuleInfo, PredId, !IO) :-
     % Don't try to output termination2_info pragmas unless the analysis
     % was actually run.  Doing otherwise won't work because the necessary
     % information will not have been set up.
 
-    globals.io_lookup_bool_option(termination2, RunningTerm2, !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, termination2, RunningTerm2),
     (
         RunningTerm2 = yes,
         module_info_pred_info(ModuleInfo, PredId, PredInfo),

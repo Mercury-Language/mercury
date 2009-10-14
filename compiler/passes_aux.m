@@ -156,6 +156,30 @@
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+
+:- func stage_num_str(int) = string.
+
+    % should_dump_stage(StageNum, StageNumStr, StageName, DumpStages):
+    %
+    % If StageName or the string form of StateNum appears in DumpStages,
+    % either directly, or as part of a range, then succeed; otherwise, fail.
+    %
+:- pred should_dump_stage(int::in, string::in, string::in, list(string)::in)
+    is semidet.
+
+:- type dump_info
+    --->    no_prev_dump
+    ;       prev_dumped_hlds(string, module_info).
+
+    % maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO):
+    %
+    % If the options in HLDS call for it, dump the (selected parts of)
+    % the HLDS, unless they would be the same as the previous dump.
+    %
+:- pred maybe_dump_hlds(module_info::in, int::in, string::in,
+    dump_info::in, dump_info::out, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -172,6 +196,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
+:- import_module benchmarking.
 :- import_module bool.
 :- import_module int.
 :- import_module map.
@@ -326,7 +351,8 @@ process_nonimported_procs([ProcId | ProcIds], PredId, !Task, !ModuleInfo,
     process_nonimported_procs(ProcIds, PredId, !Task, !ModuleInfo, !IO).
 
 write_pred_progress_message(Message, PredId, ModuleInfo, !IO) :-
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
         io.write_string(Message, !IO),
@@ -340,7 +366,8 @@ write_proc_progress_message(Message, proc(PredId, ProcId), ModuleInfo, !IO) :-
     write_proc_progress_message(Message, PredId, ProcId, ModuleInfo, !IO).
 
 write_proc_progress_message(Message, PredId, ProcId, ModuleInfo, !IO) :-
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
         io.write_string(Message, !IO),
@@ -354,7 +381,8 @@ write_proc_progress_message(Message, PredId, ProcId, ModuleInfo, !IO) :-
     io::di, io::uo) is det.
 
 handle_errors(WarnCnt, ErrCnt, !ModuleInfo, !IO) :-
-    globals.io_lookup_bool_option(halt_at_warn, HaltAtWarn, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, halt_at_warn, HaltAtWarn),
     (
         (
             ErrCnt > 0
@@ -370,7 +398,8 @@ handle_errors(WarnCnt, ErrCnt, !ModuleInfo, !IO) :-
     ).
 
 maybe_report_sizes(HLDS, !IO) :-
-    globals.io_lookup_bool_option(statistics, Statistics, !IO),
+    module_info_get_globals(HLDS, Globals),
+    globals.lookup_bool_option(Globals, statistics, Statistics),
     (
         Statistics = yes,
         report_sizes(HLDS, !IO)
@@ -451,6 +480,144 @@ report_pred_name_mode(pf_function, FuncName, ArgModes, !IO) :-
     io.write_string(" = ", !IO),
     mercury_output_mode(FuncRetMode, InstVarSet, !IO).
 
+%-----------------------------------------------------------------------------%
+
+should_dump_stage(StageNum, StageNumStr, StageName, DumpStages) :-
+    some [DumpStage] (
+        list.member(DumpStage, DumpStages),
+        (
+            StageName = DumpStage
+        ;
+            "all" = DumpStage
+        ;
+            (
+                DumpStage = StageNumStr
+            ;
+                string.append("0", DumpStage, StageNumStr)
+            ;
+                string.append("00", DumpStage, StageNumStr)
+            )
+        ;
+            string.append(From, "+", DumpStage),
+            string.to_int(From, FromInt),
+            StageNum >= FromInt
+        )
+    ).
+
+stage_num_str(StageNum) = StageNumStr :-
+    int_to_string(StageNum, StageNumStr0),
+    ( string.length(StageNumStr0, 1) ->
+        StageNumStr = "00" ++ StageNumStr0
+    ; string.length(StageNumStr0, 2) ->
+        StageNumStr = "0" ++ StageNumStr0
+    ;
+        StageNumStr = StageNumStr0
+    ).
+
+maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
+    module_info_get_globals(HLDS, Globals),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_accumulating_option(Globals, dump_hlds, DumpHLDSStages),
+    globals.lookup_accumulating_option(Globals, dump_trace_counts,
+        DumpTraceStages),
+    globals.lookup_string_option(Globals, dump_hlds_file_suffix,
+        UserFileSuffix),
+    StageNumStr = stage_num_str(StageNum),
+    ( should_dump_stage(StageNum, StageNumStr, StageName, DumpHLDSStages) ->
+        module_info_get_dump_hlds_base_file_name(HLDS, BaseFileName),
+        DumpFileName = BaseFileName ++ "." ++ StageNumStr ++ "-" ++ StageName
+            ++ UserFileSuffix,
+        (
+            !.DumpInfo = prev_dumped_hlds(PrevDumpFileName, PrevHLDS),
+            HLDS = PrevHLDS
+        ->
+            globals.lookup_bool_option(Globals, dump_same_hlds, DumpSameHLDS),
+            (
+                DumpSameHLDS = no,
+                % Don't create a dump file for this stage, and keep the records
+                % about previously dumped stages as they are. We do print a
+                % message (if asked to) about *why* we don't create this file.
+                maybe_write_string(Verbose, "% HLDS dump `", !IO),
+                maybe_write_string(Verbose, DumpFileName, !IO),
+                maybe_write_string(Verbose, "' would be identical ", !IO),
+                maybe_write_string(Verbose, "to previous dump.\n", !IO),
+
+                % If a previous dump exists with this name, leaving it around
+                % would be quite misleading. However, there is nothing useful
+                % we can do if the removal fails.
+                io.remove_file(DumpFileName, _Result, !IO)
+            ;
+                DumpSameHLDS = yes,
+                CurDumpFileName = PrevDumpFileName,
+                io.open_output(DumpFileName, Res, !IO),
+                (
+                    Res = ok(FileStream),
+                    io.write_string(FileStream, "This stage is identical " ++
+                        "to the stage in " ++ PrevDumpFileName ++ ".\n", !IO),
+                    io.close_output(FileStream, !IO)
+                ;
+                    Res = error(IOError),
+                    maybe_write_string(Verbose, "\n", !IO),
+                    Msg = "can't open file `" ++ DumpFileName ++
+                        "' for output: " ++ io.error_message(IOError),
+                    report_error(Msg, !IO)
+                ),
+                !:DumpInfo = prev_dumped_hlds(CurDumpFileName, HLDS)
+            )
+        ;
+            dump_hlds(DumpFileName, HLDS, !IO),
+            CurDumpFileName = DumpFileName,
+            !:DumpInfo = prev_dumped_hlds(CurDumpFileName, HLDS)
+        )
+    ; should_dump_stage(StageNum, StageNumStr, StageName, DumpTraceStages) ->
+        module_info_get_dump_hlds_base_file_name(HLDS, BaseFileName),
+        DumpFileName = string.remove_suffix_det(BaseFileName, ".hlds_dump") ++
+            ".trace_counts." ++ StageNumStr ++ "-" ++ StageName ++
+            UserFileSuffix,
+        write_out_trace_counts(DumpFileName, MaybeTraceCountsError, !IO),
+        (
+            MaybeTraceCountsError = no,
+            maybe_write_string(Verbose, "% Dumped trace counts to `", !IO),
+            maybe_write_string(Verbose, DumpFileName, !IO),
+            maybe_write_string(Verbose, "'\n", !IO),
+            maybe_flush_output(Verbose, !IO)
+        ;
+            MaybeTraceCountsError = yes(TraceCountsError),
+            io.write_string("% ", !IO),
+            io.write_string(TraceCountsError, !IO),
+            io.nl(!IO),
+            io.flush_output(!IO)
+        )
+    ;
+        true
+    ).
+
+:- pred dump_hlds(string::in, module_info::in, io::di, io::uo) is det.
+
+dump_hlds(DumpFile, HLDS, !IO) :-
+    module_info_get_globals(HLDS, Globals),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
+    maybe_write_string(Verbose, "% Dumping out HLDS to `", !IO),
+    maybe_write_string(Verbose, DumpFile, !IO),
+    maybe_write_string(Verbose, "'...", !IO),
+    maybe_flush_output(Verbose, !IO),
+    io.open_output(DumpFile, Res, !IO),
+    (
+        Res = ok(FileStream),
+        io.set_output_stream(FileStream, OutputStream, !IO),
+        hlds_out.write_hlds(0, HLDS, !IO),
+        io.set_output_stream(OutputStream, _, !IO),
+        io.close_output(FileStream, !IO),
+        maybe_write_string(Verbose, " done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
+    ;
+        Res = error(IOError),
+        maybe_write_string(Verbose, "\n", !IO),
+        Msg = "can't open file `" ++ DumpFile ++ "' for output: " ++
+            io.error_message(IOError),
+        report_error(Msg, !IO)
+    ).
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.

@@ -10,15 +10,16 @@
 % Main author: fjh.
 %
 % This module traverses the HLDS, updating the `how_to_construct' field of
-% construction unifications.  For each construction which can be done
+% construction unifications. For each construction which can be done
 % statically, i.e. whose arguments are all static, it replaces this field with
-% `construct_statically'.  This field is then used by the MLDS back-end to
-% determine when it can generate static initialized constants rather than
-% using new_object() MLDS statements.
+% `construct_statically'. The main use of information is in the MLDS back-end,
+% to determine when we can generate static initialized constants instead of
+% calling new_object(). However, other parts of the compiler also use this
+% information.
 %
 %-----------------------------------------------------------------------------%
 
-:- module ml_backend.mark_static_terms.
+:- module hlds.mark_static_terms.
 :- interface.
 
 :- import_module hlds.hlds_module.

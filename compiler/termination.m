@@ -34,15 +34,17 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.error_util.
 
 :- import_module io.
+:- import_module list.
 
 %-----------------------------------------------------------------------------%
 
     % Perform termination analysis on the module.
     %
 :- pred analyse_termination_in_module(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    list(error_spec)::out, io::di, io::uo) is det.
 
     % Write out a termination_info pragma for the predicate if it is exported,
     % it is not a builtin and it is not a predicate used to force type
@@ -64,7 +66,6 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
@@ -77,7 +78,6 @@
 :- import_module transform_hlds.term_util.
 
 :- import_module bool.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -89,11 +89,12 @@
 
 %-----------------------------------------------------------------------------%
 
-analyse_termination_in_module(!ModuleInfo, !IO) :-
-    globals.io_get_termination_norm(TermNorm, !IO),
+analyse_termination_in_module(!ModuleInfo, Specs, !IO) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.get_termination_norm(Globals, TermNorm),
     FunctorInfo = set_functor_info(!.ModuleInfo, TermNorm),
-    globals.io_lookup_int_option(termination_error_limit, MaxErrors, !IO),
-    globals.io_lookup_int_option(termination_path_limit, MaxPaths, !IO),
+    globals.lookup_int_option(Globals, termination_error_limit, MaxErrors),
+    globals.lookup_int_option(Globals, termination_path_limit, MaxPaths),
     PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths),
 
     % Process builtin and compiler-generated predicates, and user-supplied
@@ -108,17 +109,17 @@ analyse_termination_in_module(!ModuleInfo, !IO) :-
 
     % Set the termination status of foreign_procs based on the foreign code
     % attributes.
-    check_foreign_code_attributes(SCCs, !ModuleInfo, !IO),
+    check_foreign_code_attributes(SCCs, !ModuleInfo, [], Specs1),
 
     % Ensure that termination pragmas for a procedure do not conflict with
     % termination pragmas for other procedures in the SCC.
-    check_pragmas_are_consistent(SCCs, !ModuleInfo, !IO),
+    check_pragmas_are_consistent(SCCs, !ModuleInfo, Specs1, Specs),
 
     list.foldl2(analyse_termination_in_scc(PassInfo), SCCs, !ModuleInfo, !IO),
 
     % XXX update this once this analysis supports `--intermodule-analysis'
-    globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt,
-        !IO),
+    globals.lookup_bool_option(Globals, make_optimization_interface,
+        MakeOptInt),
     (
         MakeOptInt = yes,
         make_termination_opt_int(PredIds, !.ModuleInfo, !IO)
@@ -129,7 +130,7 @@ analyse_termination_in_module(!ModuleInfo, !IO) :-
 
 %----------------------------------------------------------------------------%
 %
-% Handle foreign code attributes
+% Handle foreign code attributes.
 %
 
 % Set the termination status for any procedures implemented using the foreign
@@ -142,17 +143,19 @@ analyse_termination_in_module(!ModuleInfo, !IO) :-
 % termination pragmas that have been supplied for the procedure.
 
 :- pred check_foreign_code_attributes(list(list(pred_proc_id))::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-check_foreign_code_attributes(SCCs, !ModuleInfo, !IO) :-
-    list.foldl2(check_foreign_code_attributes_2, SCCs, !ModuleInfo, !IO).
+check_foreign_code_attributes(SCCs, !ModuleInfo, !Specs) :-
+    list.foldl2(check_foreign_code_attributes_2, SCCs, !ModuleInfo, !Specs).
 
-:- pred check_foreign_code_attributes_2(list(pred_proc_id)::in, module_info::in,
-    module_info::out, io::di, io::uo) is det.
+:- pred check_foreign_code_attributes_2(list(pred_proc_id)::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-check_foreign_code_attributes_2([], _, _, _, _) :-
-    unexpected(this_file, "check_foreign_code_attributes_2/5: empty SCC.").
-check_foreign_code_attributes_2([PPId], !ModuleInfo, !IO) :-
+check_foreign_code_attributes_2([], !ModuleInfo, !Specs) :-
+    unexpected(this_file, "check_foreign_code_attributes_2: empty SCC.").
+check_foreign_code_attributes_2([PPId], !ModuleInfo, !Specs) :-
     some [!ProcInfo] (
         module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, !:ProcInfo),
         (
@@ -184,18 +187,19 @@ check_foreign_code_attributes_2([PPId], !ModuleInfo, !IO) :-
                         inconsistent_annotations, Context),
                     TermStatus = yes(can_loop([TermErr])),
                     % XXX intermod
-                    proc_info_set_maybe_termination_info(TermStatus, !ProcInfo),
+                    proc_info_set_maybe_termination_info(TermStatus,
+                        !ProcInfo),
                     ProcNamePieces = describe_one_proc_name(!.ModuleInfo,
                         should_module_qualify, PPId),
-                    Components =
-                        [ words("Warning:") | ProcNamePieces ] ++
-                        [
-                            words("has a `pragma terminates'"),
-                            words("declaration but also has the"),
-                            words("`does_not_terminate' foreign"),
-                            words("code attribute set.")
-                        ],
-                    report_warning(Context, 0, Components, !IO)
+                    Pieces =
+                        [words("Warning:") | ProcNamePieces] ++
+                        [words("has a `pragma terminates' declaration"),
+                        words("but also has the `does_not_terminate'"),
+                        words("foreign code attribute set.")],
+                    Msg = simple_msg(Context, [always(Pieces)]),
+                    Spec = error_spec(severity_warning, phase_read_files,
+                        [Msg]),
+                    !:Specs = [Spec | !.Specs]
                 ;
                     true
                 )
@@ -207,22 +211,23 @@ check_foreign_code_attributes_2([PPId], !ModuleInfo, !IO) :-
                 ( get_terminates(Attributes) = proc_terminates ->
                     TermErr = termination_error_context(
                         inconsistent_annotations, Context),
-                    TermErrs = [TermErr | TermErrs0 ],
+                    TermErrs = [TermErr | TermErrs0],
                     TermStatus =  yes(can_loop(TermErrs)),
                     % XXX intermod
                     proc_info_set_maybe_termination_info(TermStatus,
                         !ProcInfo),
                     ProcNamePieces = describe_one_proc_name(!.ModuleInfo,
                         should_module_qualify, PPId),
-                    Components =
-                        [ words("Warning:") | ProcNamePieces ] ++
-                        [
-                            words("has a `pragma does_not_terminate'"),
-                            words("declaration but also has the"),
-                            words("`terminates' foreign code"),
-                            words("attribute set.")
-                        ],
-                    report_warning(Context, 0, Components, !IO)
+                    Pieces =
+                        [words("Warning:") | ProcNamePieces] ++
+                        [words("has a `pragma does_not_terminate'"),
+                        words("declaration but also has the"),
+                        words("`terminates' foreign code"),
+                        words("attribute set.")],
+                    Msg = simple_msg(Context, [always(Pieces)]),
+                    Spec = error_spec(severity_warning, phase_read_files,
+                        [Msg]),
+                    !:Specs = [Spec | !.Specs]
                 ;
                     true
                 )
@@ -237,7 +242,7 @@ check_foreign_code_attributes_2([_, _ | _], !ModuleInfo, !IO).
 
 %----------------------------------------------------------------------------%
 %
-% Check termination pragmas for consistency
+% Check termination pragmas for consistency.
 %
 
 % Check that any user-supplied termination information (from pragma
@@ -257,15 +262,17 @@ check_foreign_code_attributes_2([_, _ | _], !ModuleInfo, !IO).
 % termination status is known.
 
 :- pred check_pragmas_are_consistent(list(list(pred_proc_id))::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-check_pragmas_are_consistent(SCCs, !ModuleInfo, !IO) :-
-    list.foldl2(check_scc_pragmas_are_consistent, SCCs, !ModuleInfo, !IO).
+check_pragmas_are_consistent(SCCs, !ModuleInfo, !Specs) :-
+    list.foldl2(check_scc_pragmas_are_consistent, SCCs, !ModuleInfo, !Specs).
 
 :- pred check_scc_pragmas_are_consistent(list(pred_proc_id)::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-check_scc_pragmas_are_consistent(SCC, !ModuleInfo, !IO) :-
+check_scc_pragmas_are_consistent(SCC, !ModuleInfo, !Specs) :-
     list.filter(is_termination_known(!.ModuleInfo), SCC, SCCTerminationKnown,
         SCCTerminationUnknown),
     (
@@ -303,13 +310,13 @@ check_scc_pragmas_are_consistent(SCC, !ModuleInfo, !IO) :-
                 SCCTerminationKnown),
             PredNamePieces = describe_several_pred_names(!.ModuleInfo,
                 should_module_qualify, PredIds),
-            Components =
-                [ words("Warning:") | PredNamePieces ] ++
-                [
-                    words("are mutually recursive but some of their"),
-                    words( "termination pragmas are inconsistent.")
-                ],
-            report_warning(Context, 0, Components, !IO)
+            Pieces =
+                [words("Warning:") | PredNamePieces ] ++
+                [words("are mutually recursive but some of their"),
+                words( "termination pragmas are inconsistent.")],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_warning, phase_read_files, [Msg]),
+            !:Specs = [Spec | !.Specs]
         )
     ).
 
@@ -340,7 +347,7 @@ check_procs_known_term(Status, [PPId | PPIds], ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Run termination analysis on a single SCC
+% Run termination analysis on a single SCC.
 %
 
     % For each SCC, we first find out the relationships among the sizes of the
@@ -400,8 +407,9 @@ analyse_termination_in_scc(PassInfo, SCC, !ModuleInfo, !IO) :-
             TerminationResult = can_loop(ReportedErrors)
         ;
             BothErrors = [],
-            globals.io_lookup_int_option(termination_single_args,
-                SingleArgs, !IO),
+            module_info_get_globals(!.ModuleInfo, Globals),
+            globals.lookup_int_option(Globals, termination_single_args,
+                SingleArgs),
             prove_termination_in_scc(SCCTerminationUnknown,
                 PassInfo, SingleArgs, TerminationResult, !ModuleInfo, !IO)
         ),
@@ -486,9 +494,10 @@ set_termination_infos([PPId | PPIds], TerminationInfo, !ModuleInfo) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 report_termination_errors(SCC, Errors, !ModuleInfo, !IO) :-
-    globals.io_lookup_bool_option(termination_check, NormalErrors, !IO),
-    globals.io_lookup_bool_option(verbose_check_termination,
-        VerboseErrors, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, termination_check, NormalErrors),
+    globals.lookup_bool_option(Globals, verbose_check_termination,
+        VerboseErrors),
     (
         IsCheckTerm = (pred(PPId::in) is semidet :-
             module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, _),
@@ -596,7 +605,9 @@ check_preds([], !ModuleInfo, !IO).
 check_preds([PredId | PredIds], !ModuleInfo, !IO) :-
     write_pred_progress_message("% Checking termination of ", PredId,
         !.ModuleInfo, !IO),
-    globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, make_optimization_interface,
+        MakeOptInt),
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_import_status(PredInfo0, ImportStatus),
@@ -671,14 +682,14 @@ check_preds([PredId | PredIds], !ModuleInfo, !IO) :-
 
 %----------------------------------------------------------------------------%
 
-% This predicate checks each ProcId in the list to see if it is a compiler
-% generated predicate, or a predicate from builtin.m or private_builtin.m.  If
-% it is, then the compiler sets the termination property of the ProcIds
-% accordingly.
-
-% We assume that user-defined special predicates terminate.  This assumption
-% is checked later during the post_term_analysis pass.
-
+    % This predicate checks each ProcId in the list to see if it is a compiler
+    % generated predicate, or a predicate from builtin.m or private_builtin.m.
+    % If it is, then the compiler sets the termination property of the ProcIds
+    % accordingly.
+    %
+    % We assume that user-defined special predicates terminate. This assumption
+    % is checked later during the post_term_analysis pass.
+    %
 :- pred set_compiler_gen_terminates(pred_info::in, list(proc_id)::in,
     pred_id::in, module_info::in, proc_table::in, proc_table::out)
     is semidet.
@@ -741,24 +752,28 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, !ProcTable) :-
 :- pred special_pred_id_to_termination(special_pred_id::in,
     prog_vars::in, arg_size_info::out, termination_info::out) is det.
 
-special_pred_id_to_termination(spec_pred_compare, HeadVars, ArgSize,
+special_pred_id_to_termination(SpecialPredId, HeadVars, ArgSize,
         Termination) :-
-    term_util.make_bool_list(HeadVars, [no, no, no], OutList),
-    ArgSize = finite(0, OutList),
-    Termination = cannot_loop(unit).
-special_pred_id_to_termination(spec_pred_unify, HeadVars, ArgSize,
-        Termination) :-
-    term_util.make_bool_list(HeadVars, [yes, yes], OutList),
-    ArgSize = finite(0, OutList),
-    Termination = cannot_loop(unit).
-special_pred_id_to_termination(spec_pred_index, HeadVars, ArgSize,
-        Termination) :-
-    term_util.make_bool_list(HeadVars, [no, no], OutList),
-    ArgSize = finite(0, OutList),
-    Termination = cannot_loop(unit).
-special_pred_id_to_termination(spec_pred_init, _, _, _) :-
-    unexpected(this_file, "special_pred_id_to_termination/4 " ++
-        "initialise predicate").
+    (
+        SpecialPredId = spec_pred_compare,
+        term_util.make_bool_list(HeadVars, [no, no, no], OutList),
+        ArgSize = finite(0, OutList),
+        Termination = cannot_loop(unit)
+    ;
+        SpecialPredId = spec_pred_unify,
+        term_util.make_bool_list(HeadVars, [yes, yes], OutList),
+        ArgSize = finite(0, OutList),
+        Termination = cannot_loop(unit)
+    ;
+        SpecialPredId = spec_pred_index,
+        term_util.make_bool_list(HeadVars, [no, no], OutList),
+        ArgSize = finite(0, OutList),
+        Termination = cannot_loop(unit)
+    ;
+        SpecialPredId = spec_pred_init,
+        unexpected(this_file, "special_pred_id_to_termination/4 " ++
+            "initialise predicate")
+    ).
 
     % The list of proc_ids must refer to builtin predicates. This predicate
     % sets the termination information of builtin predicates.
@@ -807,7 +822,8 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
     arg_size_info::in, proc_table::in, proc_table::out) is det.
 
 change_procs_arg_size_info([], _, _, !ProcTable).
-change_procs_arg_size_info([ProcId | ProcIds], Override, ArgSize, !ProcTable) :-
+change_procs_arg_size_info([ProcId | ProcIds], Override, ArgSize,
+        !ProcTable) :-
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
     (
         (
@@ -866,10 +882,11 @@ change_procs_termination_info([ProcId | ProcIds], Override, Termination,
     io::di, io::uo) is det.
 
 make_termination_opt_int(PredIds, ModuleInfo, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(ModuleName, ".opt.tmp", do_not_create_dirs,
-        OptFileName, !IO),
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
+        do_not_create_dirs, OptFileName, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Appending termination_info pragmas to `",
         !IO),
     maybe_write_string(Verbose, OptFileName, !IO),
@@ -930,7 +947,7 @@ write_pred_termination_info(ModuleInfo, PredId, !IO) :-
     io::di, io::uo) is det.
 
 write_proc_termination_info(_, [], _, _, _, _, !IO).
-write_proc_termination_info(PredId, [ ProcId | ProcIds ], ProcTable,
+write_proc_termination_info(PredId, [ProcId | ProcIds], ProcTable,
         PredOrFunc, SymName, Context, !IO) :-
     map.lookup(ProcTable, ProcId, ProcInfo),
     proc_info_get_maybe_arg_size_info(ProcInfo, ArgSize),

@@ -14,6 +14,7 @@
 :- interface.
 
 :- import_module libs.file_util.
+:- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.deps_map.
 :- import_module parse_tree.module_imports.
@@ -24,7 +25,7 @@
 :- import_module maybe.
 :- import_module set.
 
-    % write_dependency_file(Module, AllDeps, MaybeTransOptDeps):
+    % write_dependency_file(Globals, Module, AllDeps, MaybeTransOptDeps):
     %
     % Write out the per-module makefile dependencies (`.d') file for the
     % specified module. AllDeps is the set of all module names which the
@@ -35,20 +36,20 @@
     % `.trans_opt' file may depend on.  This is set to `no' if the
     % dependency list is not available.
     %
-:- pred write_dependency_file(module_and_imports::in, set(module_name)::in,
-    maybe(list(module_name))::in, io::di, io::uo) is det.
+:- pred write_dependency_file(globals::in, module_and_imports::in,
+    set(module_name)::in, maybe(list(module_name))::in, io::di, io::uo) is det.
 
     % Write out the `.dv' file, using the information collected in the
     % deps_map data structure.
     %
-:- pred generate_dependencies_write_dv_file(file_name::in, module_name::in,
-    deps_map::in, io::di, io::uo) is det.
+:- pred generate_dependencies_write_dv_file(globals::in, file_name::in,
+    module_name::in, deps_map::in, io::di, io::uo) is det.
 
     % Write out the `.dep' file, using the information collected in the
     % deps_map data structure.
     %
-:- pred generate_dependencies_write_dep_file(file_name::in, module_name::in,
-    deps_map::in, io::di, io::uo) is det.
+:- pred generate_dependencies_write_dep_file(globals::in, file_name::in,
+    module_name::in, deps_map::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -71,8 +72,9 @@
     % XXX This won't find nested sub-modules.
     % XXX Use `mmc --make' if that matters.
     %
-:- pred get_opt_deps(bool::in, list(module_name)::in, list(string)::in,
-    string::in, list(module_name)::out, io::di, io::uo) is det.
+:- pred get_opt_deps(globals::in, bool::in, list(module_name)::in,
+    list(string)::in, string::in, list(module_name)::out, io::di, io::uo)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -80,7 +82,6 @@
 :- implementation.
 
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module make.                      % undesirable dependency
 :- import_module parse_tree.file_names.
@@ -101,19 +102,19 @@
 
 %-----------------------------------------------------------------------------%
 
-write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
+write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
     Module = module_and_imports(SourceFileName, SourceFileModuleName,
         ModuleName, ParentDeps, IntDeps, ImplDeps, IndirectDeps,
         _Children, InclDeps, NestedDeps, FactDeps0,
         ContainsForeignCode, ForeignImports0, _ContainsForeignExport,
         Items, _Specs, _Error, _Timestamps, _HasMain, _Dir),
 
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     module_name_to_make_var_name(ModuleName, MakeVarName),
-    module_name_to_file_name(ModuleName, ".d", do_create_dirs,
-        DependencyFileName, !IO),
-    module_name_to_file_name(ModuleName, ".trans_opt_date", do_not_create_dirs,
-        TransOptDateFileName, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".d",
+        do_create_dirs, DependencyFileName, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".trans_opt_date",
+        do_not_create_dirs, TransOptDateFileName, !IO),
 
     % To avoid problems with concurrent updates of `.d' files during
     % parallel makes, we first create the file with a temporary name,
@@ -158,8 +159,8 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             % Note that maybe_read_dependency_file searches for
             % this exact pattern.
             io.write_strings(DepStream, [TransOptDateFileName, " :"], !IO),
-            write_dependencies_list(TransOptDateDeps, ".trans_opt", DepStream,
-                !IO)
+            write_dependencies_list(Globals, TransOptDateDeps, ".trans_opt",
+                DepStream, !IO)
         ;
             MaybeTransOptDeps = no
         ),
@@ -170,7 +171,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                 ["\n\n", MakeVarName, ".fact_tables ="], !IO),
             write_file_dependencies_list(FactDeps, "", DepStream, !IO),
             io.nl(DepStream, !IO),
-            globals.io_lookup_bool_option(assume_gmake, AssumeGmake, !IO),
+            globals.lookup_bool_option(Globals, assume_gmake, AssumeGmake),
             (
                 AssumeGmake = yes,
                 io.write_strings(DepStream, [
@@ -185,11 +186,11 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                 AssumeGmake = no,
                 io.write_strings(DepStream,
                     [MakeVarName, ".fact_tables.cs ="], !IO),
-                write_fact_table_dependencies_list(ModuleName,
+                write_fact_table_dependencies_list(Globals, ModuleName,
                     FactDeps, ".c", DepStream, !IO),
-                io.write_strings(DepStream, ["\n\n",
-                    MakeVarName, ".fact_tables.os ="], !IO),
-                write_fact_table_dependencies_list(ModuleName,
+                io.write_strings(DepStream, ["\n\n", MakeVarName,
+                    ".fact_tables.os ="], !IO),
+                write_fact_table_dependencies_list(Globals, ModuleName,
                     FactDeps, ".$O", DepStream, !IO),
                 io.nl(DepStream, !IO)
             )
@@ -202,26 +203,26 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         ;
             unexpected(this_file, "source file doesn't end in `.m'")
         ),
-        module_name_to_file_name(ModuleName, ".optdate", do_not_create_dirs,
-            OptDateFileName, !IO),
-        module_name_to_file_name(ModuleName, ".c_date", do_not_create_dirs,
-            CDateFileName, !IO),
-        module_name_to_file_name(ModuleName, ".s_date", do_not_create_dirs,
-            AsmDateFileName, !IO),
-        module_name_to_file_name(ModuleName, ".pic_s_date", do_not_create_dirs,
-            PicAsmDateFileName, !IO),
-        module_name_to_file_name(ModuleName, ".$O", do_not_create_dirs,
-            ObjFileName, !IO),
-        module_name_to_file_name(ModuleName, ".il_date", do_not_create_dirs,
-            ILDateFileName, !IO),
-        module_name_to_file_name(ModuleName, ".java_date", do_not_create_dirs,
-            JavaDateFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".optdate",
+            do_not_create_dirs, OptDateFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".c_date",
+            do_not_create_dirs, CDateFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".s_date",
+            do_not_create_dirs, AsmDateFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".pic_s_date",
+            do_not_create_dirs, PicAsmDateFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".$O",
+            do_not_create_dirs, ObjFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".il_date",
+            do_not_create_dirs, ILDateFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".java_date",
+            do_not_create_dirs, JavaDateFileName, !IO),
         % XXX Why is the extension hardcoded to .pic_o here?  That looks
         % wrong.  It should probably be .$(EXT_FOR_PIC_OBJECT) - juliensf.
-        module_name_to_file_name(ModuleName, ".pic_o", do_not_create_dirs,
-            PicObjFileName, !IO),
-        module_name_to_file_name(ModuleName, ".int0", do_not_create_dirs,
-            Int0FileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".pic_o",
+            do_not_create_dirs, PicObjFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".int0",
+            do_not_create_dirs, Int0FileName, !IO),
         io.write_strings(DepStream, ["\n\n",
             OptDateFileName, " ",
             TransOptDateFileName, " ",
@@ -241,9 +242,9 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         ;
             InclDeps = []
         ),
-        write_dependencies_list(ParentDeps, ".int0", DepStream, !IO),
-        write_dependencies_list(LongDeps, ".int", DepStream, !IO),
-        write_dependencies_list(ShortDeps, ".int2", DepStream, !IO),
+        write_dependencies_list(Globals, ParentDeps, ".int0", DepStream, !IO),
+        write_dependencies_list(Globals, LongDeps, ".int", DepStream, !IO),
+        write_dependencies_list(Globals, ShortDeps, ".int2", DepStream, !IO),
 
         NestedExts = [
             ".optdate",
@@ -262,10 +263,11 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         ;
             NestedDeps = [_ | _],
             Write = (pred(Ext::in, !.LIO::di, !:LIO::uo) is det :-
-                module_name_to_file_name(ModuleName, Ext, do_not_create_dirs,
-                    ExtName, !LIO),
+                module_name_to_file_name(Globals, ModuleName, Ext,
+                    do_not_create_dirs, ExtName, !LIO),
                 io.write_strings(DepStream, ["\n\n", ExtName, " : "], !LIO),
-                write_dependencies_list(NestedDeps, Ext, DepStream, !LIO)
+                write_dependencies_list(Globals, NestedDeps, Ext, DepStream,
+                    !LIO)
             ),
             list.foldl(Write, NestedExts, !IO)
         ),
@@ -283,10 +285,11 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             FactDeps = []
         ),
 
-        globals.io_lookup_bool_option(use_opt_files, UseOptFiles, !IO),
-        globals.io_lookup_bool_option(intermodule_optimization, Intermod, !IO),
-        globals.io_lookup_accumulating_option(intermod_directories,
-            IntermodDirs, !IO),
+        globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
+        globals.lookup_bool_option(Globals, intermodule_optimization,
+            Intermod),
+        globals.lookup_accumulating_option(Globals, intermod_directories,
+            IntermodDirs),
 
         % If intermodule_optimization is enabled then all the .mh files
         % must exist because it is possible that the .c file imports them
@@ -294,7 +297,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         (
             Intermod = yes,
             io.write_strings(DepStream, ["\n\n", ObjFileName, " : "], !IO),
-            write_dependencies_list(AllDeps, ".mh", DepStream, !IO)
+            write_dependencies_list(Globals, AllDeps, ".mh", DepStream, !IO)
         ;
             Intermod = no
         ),
@@ -324,10 +327,10 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             %
             % XXX The code here doesn't correctly handle dependencies
             % on `.int' and `.int2' files needed by the `.opt' files.
-            globals.io_lookup_bool_option(transitive_optimization, TransOpt,
-                !IO),
-            globals.io_lookup_bool_option(use_trans_opt_files, UseTransOpt,
-                !IO),
+            globals.lookup_bool_option(Globals, transitive_optimization,
+                TransOpt),
+            globals.lookup_bool_option(Globals, use_trans_opt_files,
+                UseTransOpt),
 
             (
                 ( TransOpt = yes
@@ -335,12 +338,15 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                 )
             ->
                 bool.not(UseTransOpt, BuildOptFiles),
-                get_both_opt_deps(BuildOptFiles, [ModuleName | LongDeps],
-                    IntermodDirs, OptDeps, TransOptDeps, !IO),
+                get_both_opt_deps(Globals, BuildOptFiles,
+                    [ModuleName | LongDeps], IntermodDirs,
+                    OptDeps, TransOptDeps, !IO),
                 OptInt0Deps = sort_and_remove_dups(
                     condense(list.map(get_ancestors, OptDeps))),
-                write_dependencies_list(OptDeps, ".opt", DepStream, !IO),
-                write_dependencies_list(OptInt0Deps, ".int0", DepStream, !IO),
+                write_dependencies_list(Globals, OptDeps,
+                    ".opt", DepStream, !IO),
+                write_dependencies_list(Globals, OptInt0Deps,
+                    ".int0", DepStream, !IO),
 
                 io.write_strings(DepStream, [
                     "\n\n",
@@ -351,23 +357,25 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                     ILDateFileName, " ",
                     JavaDateFileName, " : "
                 ], !IO),
-                write_dependencies_list(TransOptDeps, ".trans_opt", DepStream,
-                    !IO)
+                write_dependencies_list(Globals, TransOptDeps,
+                    ".trans_opt", DepStream, !IO)
             ;
                 bool.not(UseOptFiles, BuildOptFiles),
-                get_opt_deps(BuildOptFiles, [ModuleName | LongDeps],
+                get_opt_deps(Globals, BuildOptFiles, [ModuleName | LongDeps],
                     IntermodDirs, ".opt", OptDeps, !IO),
                 OptInt0Deps = sort_and_remove_dups(
                     condense(list.map(get_ancestors, OptDeps))),
-                write_dependencies_list(OptDeps, ".opt", DepStream, !IO),
-                write_dependencies_list(OptInt0Deps, ".int0", DepStream, !IO)
+                write_dependencies_list(Globals, OptDeps,
+                    ".opt", DepStream, !IO),
+                write_dependencies_list(Globals, OptInt0Deps,
+                    ".int0", DepStream, !IO)
             )
         ;
             true
         ),
 
-        globals.io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
-        globals.io_get_target(CompilationTarget, !IO),
+        globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+        globals.get_target(Globals, CompilationTarget),
         (
             HighLevelCode = yes,
             CompilationTarget = target_c
@@ -382,7 +390,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                 PicObjFileName, " ",
                 ObjFileName, " :"
             ], !IO),
-            write_dependencies_list(AllDeps, ".mih", DepStream, !IO)
+            write_dependencies_list(Globals, AllDeps, ".mih", DepStream, !IO)
         ;
             true
         ),
@@ -396,14 +404,14 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         % (e.g. LLDS grades for modules not containing `:- pragma export'
         % declarations), but this rule won't do any harm.
 
-        module_name_to_file_name(ModuleName, ".c", do_not_create_dirs,
-            CFileName, !IO),
-        module_name_to_file_name(ModuleName, ".s", do_not_create_dirs,
-            AsmFileName, !IO),
-        module_name_to_file_name(ModuleName, ".mh", do_not_create_dirs,
-            HeaderFileName, !IO),
-        module_name_to_file_name(ModuleName, ".mih", do_not_create_dirs,
-            HeaderFileName2, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".c",
+            do_not_create_dirs, CFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".s",
+            do_not_create_dirs, AsmFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".mh",
+            do_not_create_dirs, HeaderFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".mih",
+            do_not_create_dirs, HeaderFileName2, !IO),
         io.write_strings(DepStream, [
             "\n\n",
             "ifeq ($(TARGET_ASM),yes)\n",
@@ -416,12 +424,13 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         % The `.module_dep' file is made as a side effect of
         % creating the `.c', `.s', `.il', or `.java'.
 
-        module_name_to_file_name(ModuleName, ".il", do_not_create_dirs,
-            ILFileName, !IO),
-        module_name_to_file_name(ModuleName, ".java", do_not_create_dirs,
-            JavaFileName, !IO),
-        module_name_to_file_name(ModuleName, make_module_dep_file_extension,
-            do_not_create_dirs, ModuleDepFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".il",
+            do_not_create_dirs, ILFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".java",
+            do_not_create_dirs, JavaFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName,
+            make_module_dep_file_extension, do_not_create_dirs,
+            ModuleDepFileName, !IO),
         io.write_strings(DepStream, [
             "\n\n",
             "ifeq ($(TARGET_ASM),yes)\n",
@@ -451,24 +460,24 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         % the modules in outermost to innermost order so as to produce each
         % `.int0' file before it is needed.
 
-        module_name_to_file_name(ModuleName, ".date", do_not_create_dirs,
-            DateFileName, !IO),
-        module_name_to_file_name(ModuleName, ".date0", do_not_create_dirs,
-            Date0FileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".date",
+            do_not_create_dirs, DateFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".date0",
+            do_not_create_dirs, Date0FileName, !IO),
         io.write_strings(DepStream, [
             "\n\n", DateFileName, " ", Date0FileName
         ], !IO),
-        write_dependencies_list(ParentDeps, ".date", DepStream, !IO),
+        write_dependencies_list(Globals, ParentDeps, ".date", DepStream, !IO),
         io.write_strings(DepStream, [" : ", SourceFileName], !IO),
-        write_dependencies_list(ParentDeps, ".int0", DepStream, !IO),
-        write_dependencies_list(LongDeps, ".int3", DepStream, !IO),
-        write_dependencies_list(ShortDeps, ".int3", DepStream, !IO),
+        write_dependencies_list(Globals, ParentDeps, ".int0", DepStream, !IO),
+        write_dependencies_list(Globals, LongDeps, ".int3", DepStream, !IO),
+        write_dependencies_list(Globals, ShortDeps, ".int3", DepStream, !IO),
 
         io.write_strings(DepStream, ["\n\n", Date0FileName], !IO),
-        write_dependencies_list(ParentDeps, ".date0", DepStream, !IO),
+        write_dependencies_list(Globals, ParentDeps, ".date0", DepStream, !IO),
         io.write_strings(DepStream, [" : ", SourceFileName], !IO),
-        write_dependencies_list(LongDeps, ".int3", DepStream, !IO),
-        write_dependencies_list(ShortDeps, ".int3", DepStream, !IO),
+        write_dependencies_list(Globals, LongDeps, ".int3", DepStream, !IO),
+        write_dependencies_list(Globals, ShortDeps, ".int3", DepStream, !IO),
         io.write_string(DepStream, "\n\n", !IO),
 
         % If we can pass the module name rather than the file name, then do so.
@@ -478,15 +487,14 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         have_source_file_map(HaveMap, !IO),
         (
             HaveMap = yes,
-            module_name_to_file_name(SourceFileModuleName, ModuleArg)
+            module_name_to_file_name_stem(SourceFileModuleName, ModuleArg)
         ;
             HaveMap = no,
             ModuleArg = SourceFileName
         ),
 
-        globals.io_get_target(Target, !IO),
-        globals.io_lookup_bool_option(sign_assembly, SignAssembly, !IO),
-        globals.io_get_globals(Globals, !IO),
+        globals.get_target(Globals, Target),
+        globals.lookup_bool_option(Globals, sign_assembly, SignAssembly),
 
         % If we are on the IL backend, add the dependency that the
         % top level dll of a nested module hierachy depends on all
@@ -494,19 +502,20 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         % inside the top level dll.
         % XXX Do we need to do the same for Java?
 
-        module_name_to_file_name(ModuleName, ".dll", do_not_create_dirs,
-            DllFileName, !IO),
-        module_name_to_file_name(ModuleName, ".class", do_not_create_dirs,
-            ClassFileName, !IO),
-        module_name_to_file_name(ModuleName, ".beam", do_not_create_dirs,
-            BeamFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".dll",
+            do_not_create_dirs, DllFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".class",
+            do_not_create_dirs, ClassFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".beam",
+            do_not_create_dirs, BeamFileName, !IO),
         SubModules = submodules(ModuleName, AllDeps),
         (
             Target = target_il,
             SubModules = [_ | _]
         ->
             io.write_strings(DepStream, [DllFileName, " : "], !IO),
-            write_dll_dependencies_list(SubModules, "", DepStream, !IO),
+            write_dll_dependencies_list(Globals, SubModules, "", DepStream,
+                !IO),
             io.nl(DepStream, !IO)
         ;
             true
@@ -586,7 +595,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                 io.write_string(DepStream, "\n\n", !IO),
                 io.write_string(DepStream, ForeignImportTarget, !IO),
                 io.write_string(DepStream, " : ", !IO),
-                write_dependencies_list(ForeignImportedModules,
+                write_dependencies_list(Globals, ForeignImportedModules,
                     ForeignImportExt, DepStream, !IO),
                 io.write_string(DepStream, "\n\n", !IO)
             ),
@@ -598,7 +607,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             not set.empty(LangSet)
         ->
             Langs = set.to_sorted_list(LangSet),
-            list.foldl(write_foreign_dependency_for_il(DepStream,
+            list.foldl(write_foreign_dependency_for_il(Globals, DepStream,
                 ModuleName, AllDeps, ForeignImports), Langs, !IO)
         ;
             true
@@ -614,8 +623,8 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             SignAssembly = yes
         ->
             module_name_to_make_var_name(ModuleName, ModuleNameString),
-            module_name_to_file_name(ModuleName, ".il", do_not_create_dirs,
-                IlFileName, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".il",
+                do_not_create_dirs, IlFileName, !IO),
 
             io.write_strings(DepStream, [
                 "ILASM_KEYFLAG-", ModuleNameString,
@@ -625,18 +634,18 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             true
         ),
 
-        module_name_to_file_name(ModuleName, ".int", do_not_create_dirs,
-            IntFileName, !IO),
-        module_name_to_file_name(ModuleName, ".int2", do_not_create_dirs,
-            Int2FileName, !IO),
-        module_name_to_file_name(ModuleName, ".int3", do_not_create_dirs,
-            Int3FileName, !IO),
-        module_name_to_file_name(ModuleName, ".opt", do_not_create_dirs,
-            OptFileName, !IO),
-        module_name_to_file_name(ModuleName, ".trans_opt", do_not_create_dirs,
-            TransOptFileName, !IO),
-        module_name_to_file_name(ModuleName, ".date3", do_not_create_dirs,
-            Date3FileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".int",
+            do_not_create_dirs, IntFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".int2",
+            do_not_create_dirs, Int2FileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".int3",
+            do_not_create_dirs, Int3FileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".opt",
+            do_not_create_dirs, OptFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".trans_opt",
+            do_not_create_dirs, TransOptFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".date3",
+            do_not_create_dirs, Date3FileName, !IO),
 
         % We add some extra dependencies to the generated `.d' files, so that
         % local `.int', `.opt', etc. files shadow the installed versions
@@ -670,11 +679,12 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             "\t@:\n"
         ], !IO),
 
-        globals.io_lookup_bool_option(use_subdirs, UseSubdirs, !IO),
+        globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
         (
             UseSubdirs = yes,
             io.nl(DepStream, !IO),
-            list.foldl(write_subdirs_shorthand_rule(DepStream, ModuleName),
+            list.foldl(
+                write_subdirs_shorthand_rule(Globals, DepStream, ModuleName),
                 [".c", ".$O", ".pic_o", ".s", ".pic_s",
                 ".java", ".class", ".il", ".dll"], !IO)
         ;
@@ -807,23 +817,23 @@ submodules(Module, Modules0) = Modules :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_dependencies_list(list(module_name)::in, string::in,
+:- pred write_dependencies_list(globals::in, list(module_name)::in, string::in,
     io.output_stream::in, io::di, io::uo) is det.
 
-write_dependencies_list([], _, _, !IO).
-write_dependencies_list([Module | Modules], Suffix, DepStream, !IO) :-
-    module_name_to_file_name(Module, Suffix, do_not_create_dirs,
+write_dependencies_list(_, [], _, _, !IO).
+write_dependencies_list(Globals, [Module | Modules], Suffix, DepStream, !IO) :-
+    module_name_to_file_name(Globals, Module, Suffix, do_not_create_dirs,
         FileName, !IO),
     io.write_string(DepStream, " \\\n\t", !IO),
     io.write_string(DepStream, FileName, !IO),
-    write_dependencies_list(Modules, Suffix, DepStream, !IO).
+    write_dependencies_list(Globals, Modules, Suffix, DepStream, !IO).
 
-:- pred write_compact_dependencies_list(list(module_name)::in, string::in,
-    string::in, maybe(pair(string))::in, io.output_stream::in,
+:- pred write_compact_dependencies_list(globals::in, list(module_name)::in,
+    string::in, string::in, maybe(pair(string))::in, io.output_stream::in,
     io::di, io::uo) is det.
 
-write_compact_dependencies_list(Modules, Prefix, Suffix, Basis, DepStream,
-        !IO) :-
+write_compact_dependencies_list(Globals, Modules, Prefix, Suffix, Basis,
+        DepStream, !IO) :-
     (
         Basis = yes(VarName - OldSuffix),
         io.write_string(DepStream, "$(", !IO),
@@ -837,7 +847,7 @@ write_compact_dependencies_list(Modules, Prefix, Suffix, Basis, DepStream,
         io.write_string(DepStream, ")", !IO)
     ;
         Basis = no,
-        write_dependencies_list(Modules, Suffix, DepStream, !IO)
+        write_dependencies_list(Globals, Modules, Suffix, DepStream, !IO)
     ).
 
 :- pred write_compact_dependencies_separator(maybe(pair(string))::in,
@@ -847,48 +857,52 @@ write_compact_dependencies_separator(no, _DepStream, !IO).
 write_compact_dependencies_separator(yes(_), DepStream, !IO) :-
     io.write_string(DepStream, " ", !IO).
 
-:- pred write_dll_dependencies_list(list(module_name)::in,
+:- pred write_dll_dependencies_list(globals::in, list(module_name)::in,
     string::in, io.output_stream::in, io::di, io::uo) is det.
 
-write_dll_dependencies_list(Modules, Prefix, DepStream, !IO) :-
-    list.foldl(write_dll_dependency(DepStream, Prefix), Modules, !IO).
+write_dll_dependencies_list(_Globals, [], _Prefix, _DepStream, !IO).
+write_dll_dependencies_list(Globals, [Module | Modules], Prefix, DepStream,
+        !IO) :-
+    write_dll_dependency(Globals, Module, Prefix, DepStream, !IO),
+    write_dll_dependencies_list(Globals, Modules, Prefix, DepStream, !IO).
 
-:- pred write_dll_dependency(io.output_stream::in, string::in,
-    module_name::in, io::di, io::uo) is det.
+:- pred write_dll_dependency(globals::in, module_name::in, string::in,
+    io.output_stream::in, io::di, io::uo) is det.
 
-write_dll_dependency(DepStream, Prefix, Module, !IO) :-
-    module_name_to_file_name(Module, ".dll", do_not_create_dirs,
+write_dll_dependency(Globals, Module, Prefix, DepStream, !IO) :-
+    module_name_to_file_name(Globals, Module, ".dll", do_not_create_dirs,
         FileName, !IO),
     io.write_string(DepStream, " \\\n\t", !IO),
     io.write_string(DepStream, Prefix, !IO),
     io.write_string(DepStream, FileName, !IO).
 
-:- pred write_fact_table_dependencies_list(module_name::in,
+:- pred write_fact_table_dependencies_list(globals::in, module_name::in,
     list(file_name)::in, string::in, io.output_stream::in,
     io::di, io::uo) is det.
 
-write_fact_table_dependencies_list(_, [], _, _, !IO).
-write_fact_table_dependencies_list(Module, [FactTable | FactTables], Suffix,
-        DepStream, !IO) :-
-    fact_table_file_name(Module, FactTable, Suffix, do_not_create_dirs,
-        FileName, !IO),
+write_fact_table_dependencies_list(_, _, [], _, _, !IO).
+write_fact_table_dependencies_list(Globals, Module, [FactTable | FactTables],
+        Suffix, DepStream, !IO) :-
+    fact_table_file_name(Globals, Module, FactTable, Suffix,
+        do_not_create_dirs, FileName, !IO),
     io.write_string(DepStream, " \\\n\t", !IO),
     io.write_string(DepStream, FileName, !IO),
-    write_fact_table_dependencies_list(Module, FactTables, Suffix,
+    write_fact_table_dependencies_list(Globals, Module, FactTables, Suffix,
         DepStream, !IO).
 
-:- pred write_extra_link_dependencies_list(
+:- pred write_extra_link_dependencies_list(globals::in,
     assoc_list(file_name, module_name)::in, string::in,
     io.output_stream::in, io::di, io::uo) is det.
 
-write_extra_link_dependencies_list([], _, _, !IO).
-write_extra_link_dependencies_list([ExtraLink - Module | ExtraLinks], Suffix,
-        DepStream, !IO) :-
-    extra_link_obj_file_name(Module, ExtraLink, Suffix, do_not_create_dirs,
-        FileName, !IO),
+write_extra_link_dependencies_list(_, [], _, _, !IO).
+write_extra_link_dependencies_list(Globals, [ExtraLink - Module | ExtraLinks],
+        Suffix, DepStream, !IO) :-
+    extra_link_obj_file_name(Globals, Module, ExtraLink, Suffix,
+        do_not_create_dirs, FileName, !IO),
     io.write_string(DepStream, " \\\n\t", !IO),
     io.write_string(DepStream, FileName, !IO),
-    write_extra_link_dependencies_list(ExtraLinks, Suffix, DepStream, !IO).
+    write_extra_link_dependencies_list(Globals, ExtraLinks, Suffix, DepStream,
+        !IO).
 
 :- pred write_file_dependencies_list(list(string)::in, string::in,
     io.output_stream::in, io::di, io::uo) is det.
@@ -916,11 +930,11 @@ write_file_dependencies_list([FileName | FileNames], Suffix, DepStream, !IO) :-
     % (the rule to generate .dll from .cpp is a pattern rule in
     % scripts/Mmake.rules).
     %
-:- pred write_foreign_dependency_for_il(io.output_stream::in, sym_name::in,
-    list(module_name)::in, foreign_import_module_info_list::in,
+:- pred write_foreign_dependency_for_il(globals::in, io.output_stream::in,
+    sym_name::in, list(module_name)::in, foreign_import_module_info_list::in,
     foreign_language::in, io::di, io::uo) is det.
 
-write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps,
+write_foreign_dependency_for_il(Globals, DepStream, ModuleName, AllDeps,
         ForeignImports, ForeignLang, !IO) :-
     (
         ForeignModuleName = foreign_language_module_name(ModuleName,
@@ -929,14 +943,14 @@ write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps,
     ->
         module_name_to_make_var_name(ForeignModuleName,
             ForeignModuleNameString),
-        module_name_to_file_name(ForeignModuleName, ForeignExt,
+        module_name_to_file_name(Globals, ForeignModuleName, ForeignExt,
             do_not_create_dirs, ForeignFileName, !IO),
-        module_name_to_file_name(ModuleName, ".il", do_not_create_dirs,
-            IlFileName, !IO),
-        module_name_to_file_name(ModuleName, ".dll", do_not_create_dirs,
-            DllFileName, !IO),
-        module_name_to_file_name(ForeignModuleName, ".dll", do_not_create_dirs,
-            ForeignDllFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".il",
+            do_not_create_dirs, IlFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".dll",
+            do_not_create_dirs, DllFileName, !IO),
+        module_name_to_file_name(Globals, ForeignModuleName, ".dll",
+            do_not_create_dirs, ForeignDllFileName, !IO),
 
         io.write_strings(DepStream,
             [ForeignDllFileName, " : ", DllFileName], !IO),
@@ -965,8 +979,8 @@ write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps,
                     ModuleName)),
                 ForeignImports),
             Deps = AllDeps ++ ForeignDeps,
-            write_dll_dependencies_list(referenced_dlls(ModuleName, Deps),
-                Prefix, DepStream, !IO),
+            write_dll_dependencies_list(Globals,
+                referenced_dlls(ModuleName, Deps), Prefix, DepStream, !IO),
             io.nl(DepStream, !IO)
         ;
             ( ForeignLang = lang_c
@@ -984,12 +998,13 @@ write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps,
     % With `--use-subdirs', allow users to type `mmake module.c'
     % rather than `mmake Mercury/cs/module.c'.
     %
-:- pred write_subdirs_shorthand_rule(io.output_stream::in,
+:- pred write_subdirs_shorthand_rule(globals::in, io.output_stream::in,
     module_name::in, string::in, io::di, io::uo) is det.
 
-write_subdirs_shorthand_rule(DepStream, ModuleName, Ext, !IO) :-
-    module_name_to_file_name(ModuleName, ModuleStr),
-    module_name_to_file_name(ModuleName, Ext, do_not_create_dirs, Target, !IO),
+write_subdirs_shorthand_rule(Globals, DepStream, ModuleName, Ext, !IO) :-
+    module_name_to_file_name_stem(ModuleName, ModuleStr),
+    module_name_to_file_name(Globals, ModuleName, Ext, do_not_create_dirs,
+        Target, !IO),
     ShorthandTarget = ModuleStr ++ Ext,
     io.write_string(DepStream, ".PHONY: ", !IO),
     io.write_string(DepStream, ShorthandTarget, !IO),
@@ -1001,10 +1016,10 @@ write_subdirs_shorthand_rule(DepStream, ModuleName, Ext, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-generate_dependencies_write_dv_file(SourceFileName, ModuleName, DepsMap,
-        !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    module_name_to_file_name(ModuleName, ".dv", do_create_dirs,
+generate_dependencies_write_dv_file(Globals, SourceFileName, ModuleName,
+        DepsMap, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    module_name_to_file_name(Globals, ModuleName, ".dv", do_create_dirs,
         DvFileName, !IO),
     maybe_write_string(Verbose, "% Creating auto-dependency file `", !IO),
     maybe_write_string(Verbose, DvFileName, !IO),
@@ -1012,7 +1027,8 @@ generate_dependencies_write_dv_file(SourceFileName, ModuleName, DepsMap,
     io.open_output(DvFileName, DvResult, !IO),
     (
         DvResult = ok(DvStream),
-        generate_dv_file(SourceFileName, ModuleName, DepsMap, DvStream, !IO),
+        generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
+            DvStream, !IO),
         io.close_output(DvStream, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
@@ -1027,10 +1043,10 @@ generate_dependencies_write_dv_file(SourceFileName, ModuleName, DepsMap,
 
 %-----------------------------------------------------------------------------%
 
-generate_dependencies_write_dep_file(SourceFileName, ModuleName, DepsMap,
-        !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    module_name_to_file_name(ModuleName, ".dep", do_create_dirs,
+generate_dependencies_write_dep_file(Globals, SourceFileName, ModuleName,
+        DepsMap, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    module_name_to_file_name(Globals, ModuleName, ".dep", do_create_dirs,
         DepFileName, !IO),
     maybe_write_string(Verbose, "% Creating auto-dependency file `", !IO),
     maybe_write_string(Verbose, DepFileName, !IO),
@@ -1038,7 +1054,8 @@ generate_dependencies_write_dep_file(SourceFileName, ModuleName, DepsMap,
     io.open_output(DepFileName, DepResult, !IO),
     (
         DepResult = ok(DepStream),
-        generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO),
+        generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
+            DepStream, !IO),
         io.close_output(DepStream, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
@@ -1053,10 +1070,11 @@ generate_dependencies_write_dep_file(SourceFileName, ModuleName, DepsMap,
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_dv_file(file_name::in, module_name::in, deps_map::in,
-    io.output_stream::in, io::di, io::uo) is det.
+:- pred generate_dv_file(globals::in, file_name::in, module_name::in,
+    deps_map::in, io.output_stream::in, io::di, io::uo) is det.
 
-generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
+generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
+        !IO) :-
     io.write_string(DepStream,
         "# Automatically generated dependency variables for module `", !IO),
     ModuleNameString = sym_name_to_string(ModuleName),
@@ -1092,7 +1110,7 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".mods =", !IO),
-    write_dependencies_list(Modules, "", DepStream, !IO),
+    write_dependencies_list(Globals, Modules, "", DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     % The modules for which we need to generate .int0 files.
@@ -1103,10 +1121,11 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
       ), Modules),
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".parent_mods =", !IO),
-    write_dependencies_list(ModulesWithSubModules, "", DepStream, !IO),
+    write_dependencies_list(Globals, ModulesWithSubModules, "", DepStream,
+        !IO),
     io.write_string(DepStream, "\n", !IO),
 
-    globals.io_get_target(Target, !IO),
+    globals.get_target(Globals, Target),
     (
         Target = target_il,
         ForeignModulesAndExts = foreign_modules(Modules, DepsMap)
@@ -1122,10 +1141,10 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     ForeignModules = assoc_list.keys(ForeignModulesAndExts),
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".foreign =", !IO),
-    write_dependencies_list(ForeignModules, "", DepStream, !IO),
+    write_dependencies_list(Globals, ForeignModules, "", DepStream, !IO),
     io.write_string(DepStream, "\n\n", !IO),
 
-    globals.io_lookup_bool_option(assume_gmake, Gmake, !IO),
+    globals.lookup_bool_option(Globals, assume_gmake, Gmake),
     (
         Gmake = yes,
         string.append(MakeVarName, ".mods", ModsVarName),
@@ -1146,7 +1165,7 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     get_extra_link_objects(Modules, DepsMap, Target, ExtraLinkObjs),
 
     MakeFileName = (pred(M - E::in, F::out, IO0::di, IO::uo) is det :-
-        module_name_to_file_name(M, E, do_create_dirs, F0, IO0, IO),
+        module_name_to_file_name(Globals, M, E, do_create_dirs, F0, IO0, IO),
         F = "$(os_subdir)" ++ F0
     ),
 
@@ -1162,65 +1181,67 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     % The dlls that contain the foreign_code.
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".foreign_dlls = ", !IO),
-    write_compact_dependencies_list(ForeignModules, "$(dlls_subdir)",
-        ".dll", ForeignBasis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, ForeignModules,
+        "$(dlls_subdir)", ".dll", ForeignBasis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".init_cs = ", !IO),
-    write_compact_dependencies_list(Modules, "$(cs_subdir)", ".c",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(cs_subdir)", ".c", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".cs = $(", !IO),
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".init_cs) ", !IO),
-    write_extra_link_dependencies_list(ExtraLinkObjs, ".c", DepStream, !IO),
+    write_extra_link_dependencies_list(Globals, ExtraLinkObjs,
+        ".c", DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".dlls = ", !IO),
-    write_compact_dependencies_list(Modules, "$(dlls_subdir)", ".dll",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(dlls_subdir)", ".dll", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".all_ss = ", !IO),
-    write_compact_dependencies_list(Modules, "$(ss_subdir)", ".s",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(ss_subdir)", ".s", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".all_pic_ss = ", !IO),
-    write_compact_dependencies_list(Modules, "$(pic_ss_subdir)", ".pic_s",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(pic_ss_subdir)", ".pic_s", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".all_s_dates = ", !IO),
-    write_compact_dependencies_list(Modules, "$(s_dates_subdir)",
-        ".s_date", Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(s_dates_subdir)", ".s_date", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".all_pic_s_dates = ", !IO),
-    write_compact_dependencies_list(Modules, "$(pic_s_dates_subdir)",
-        ".pic_s_date", Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(pic_s_dates_subdir)", ".pic_s_date", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".all_os = ", !IO),
-    write_compact_dependencies_list(Modules, "$(os_subdir)", ".$O",
-        Basis, DepStream, !IO),
-    write_extra_link_dependencies_list(ExtraLinkObjs, ".$O", DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(os_subdir)", ".$O", Basis, DepStream, !IO),
+    write_extra_link_dependencies_list(Globals, ExtraLinkObjs,
+        ".$O", DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".all_pic_os = ", !IO),
-    write_compact_dependencies_list(Modules, "$(os_subdir)",
-        ".$(EXT_FOR_PIC_OBJECTS)", Basis, DepStream, !IO),
-    write_extra_link_dependencies_list(ExtraLinkObjs,
+    write_compact_dependencies_list(Globals, Modules,
+        "$(os_subdir)", ".$(EXT_FOR_PIC_OBJECTS)", Basis, DepStream, !IO),
+    write_extra_link_dependencies_list(Globals, ExtraLinkObjs,
         ".$(EXT_FOR_PIC_OBJECTS)", DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
@@ -1237,36 +1258,39 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     ->
         io.write_string(DepStream, MakeVarName, !IO),
         io.write_string(DepStream, ".ss = ", !IO),
-        write_dependencies_list(MainModules, ".s", DepStream, !IO),
+        write_dependencies_list(Globals, MainModules, ".s", DepStream, !IO),
         io.write_string(DepStream, "\n", !IO),
 
         io.write_string(DepStream, MakeVarName, !IO),
         io.write_string(DepStream, ".pic_ss = ", !IO),
-        write_dependencies_list(MainModules, ".pic_s", DepStream, !IO),
+        write_dependencies_list(Globals, MainModules,
+            ".pic_s", DepStream, !IO),
         io.write_string(DepStream, "\n", !IO),
 
         io.write_string(DepStream, MakeVarName, !IO),
         io.write_string(DepStream, ".s_dates = ", !IO),
-        write_dependencies_list(MainModules, ".s_date", DepStream, !IO),
+        write_dependencies_list(Globals, MainModules,
+            ".s_date", DepStream, !IO),
         io.write_string(DepStream, "\n", !IO),
 
         io.write_string(DepStream, MakeVarName, !IO),
         io.write_string(DepStream, ".pic_s_dates = ", !IO),
-        write_dependencies_list(MainModules, ".pic_s_date", DepStream, !IO),
+        write_dependencies_list(Globals, MainModules,
+            ".pic_s_date", DepStream, !IO),
         io.write_string(DepStream, "\n", !IO),
 
         io.write_string(DepStream, MakeVarName, !IO),
         io.write_string(DepStream, ".os = ", !IO),
-        write_dependencies_list(MainModules, ".$O", DepStream, !IO),
-        write_extra_link_dependencies_list(ExtraLinkObjs, ".$O", DepStream,
-            !IO),
+        write_dependencies_list(Globals, MainModules, ".$O", DepStream, !IO),
+        write_extra_link_dependencies_list(Globals, ExtraLinkObjs,
+            ".$O", DepStream, !IO),
         io.write_string(DepStream, "\n", !IO),
 
         io.write_string(DepStream, MakeVarName, !IO),
         io.write_string(DepStream, ".pic_os = ", !IO),
-        write_dependencies_list(MainModules, ".$(EXT_FOR_PIC_OBJECTS)",
-            DepStream, !IO),
-        write_extra_link_dependencies_list(ExtraLinkObjs,
+        write_dependencies_list(Globals, MainModules,
+            ".$(EXT_FOR_PIC_OBJECTS)", DepStream, !IO),
+        write_extra_link_dependencies_list(Globals, ExtraLinkObjs,
             ".$(EXT_FOR_PIC_OBJECTS)", DepStream, !IO),
         io.write_string(DepStream, "\n", !IO)
     ;
@@ -1319,26 +1343,26 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".useds = ", !IO),
-    write_compact_dependencies_list(Modules, "$(useds_subdir)", ".used",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(useds_subdir)", ".used", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".ils = ", !IO),
-    write_compact_dependencies_list(Modules, "$(ils_subdir)", ".il",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(ils_subdir)", ".il", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".javas = ", !IO),
-    write_compact_dependencies_list(Modules, "$(javas_subdir)", ".java",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(javas_subdir)", ".java", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".classes = ", !IO),
-    write_compact_dependencies_list(Modules, "$(classes_subdir)", ".class",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(classes_subdir)", ".class", Basis, DepStream, !IO),
     io.write_string(DepStream, " ", !IO),
     % The Java compiler creates a .class file for each class
     % within the original .java file.  The filenames of all
@@ -1348,85 +1372,86 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     % so we enclose the pattern in a `wildcard' function to prevent this.
     % XXX This relies on GNU Make.
     io.write_string(DepStream, "$(wildcard ", !IO),
-    write_compact_dependencies_list(Modules, "$(classes_subdir)",
-        "\\$$*.class", Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(classes_subdir)", "\\$$*.class", Basis, DepStream, !IO),
     io.write_string(DepStream, ")\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".dirs = ", !IO),
-    write_compact_dependencies_list(Modules, "$(dirs_subdir)", ".dir",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(dirs_subdir)", ".dir", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".dir_os = ", !IO),
-    write_compact_dependencies_list(Modules, "$(dirs_subdir)", ".dir/*.$O",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(dirs_subdir)", ".dir/*.$O", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".dates = ", !IO),
-    write_compact_dependencies_list(Modules, "$(dates_subdir)", ".date",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(dates_subdir)", ".date", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".date0s = ", !IO),
-    write_compact_dependencies_list(Modules, "$(date0s_subdir)", ".date0",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(date0s_subdir)", ".date0", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".date3s = ", !IO),
-    write_compact_dependencies_list(Modules, "$(date3s_subdir)", ".date3",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(date3s_subdir)", ".date3", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".optdates = ", !IO),
-    write_compact_dependencies_list(Modules, "$(optdates_subdir)",
-        ".optdate", Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(optdates_subdir)", ".optdate", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".trans_opt_dates = ", !IO),
-    write_compact_dependencies_list(Modules, "$(trans_opt_dates_subdir)",
-        ".trans_opt_date", Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(trans_opt_dates_subdir)", ".trans_opt_date", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".c_dates = ", !IO),
-    write_compact_dependencies_list(Modules, "$(c_dates_subdir)",
-        ".c_date", Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(c_dates_subdir)", ".c_date", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".il_dates = ", !IO),
-    write_compact_dependencies_list(Modules, "$(il_dates_subdir)",
-        ".il_date", Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(il_dates_subdir)", ".il_date", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".java_dates = ", !IO),
-    write_compact_dependencies_list(Modules, "$(java_dates_subdir)",
-        ".java_date", Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(java_dates_subdir)", ".java_date", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".ds = ", !IO),
-    write_compact_dependencies_list(Modules, "$(ds_subdir)", ".d",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(ds_subdir)", ".d", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".module_deps = ", !IO),
-    write_compact_dependencies_list(Modules, "$(module_deps_subdir)",
-        make_module_dep_file_extension, Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(module_deps_subdir)", make_module_dep_file_extension,
+        Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".mihs = ", !IO),
-    globals.io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     (
         HighLevelCode = yes,
         (
@@ -1440,7 +1465,7 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
             % trouble when trying to interoperate between compiled with
             % `--target c' and code compiled with `--target asm', so now we
             % generate them unconditionally.)
-            write_compact_dependencies_list(Modules,
+            write_compact_dependencies_list(Globals, Modules,
                 "$(mihs_subdir)", ".mih", Basis, DepStream, !IO)
         ;
             % For the IL and Java targets, currently we don't generate
@@ -1466,7 +1491,7 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         ; Target = target_asm
         ; Target = target_x86_64
         ),
-        write_compact_dependencies_list(Modules, "", ".mh", Basis,
+        write_compact_dependencies_list(Globals, Modules, "", ".mh", Basis,
             DepStream, !IO)
     ;
         ( Target = target_il
@@ -1484,8 +1509,8 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     % has changed.
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".all_mihs = ", !IO),
-    write_compact_dependencies_list(Modules, "$(mihs_subdir)", ".mih",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(mihs_subdir)", ".mih", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     % The `<module>.all_mhs' variable is like `<module>.mhs' except
@@ -1493,16 +1518,17 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     % `<module>.all_mihs' above.
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".all_mhs = ", !IO),
-    write_compact_dependencies_list(Modules, "", ".mh", Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "", ".mh", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".ints = ", !IO),
-    write_compact_dependencies_list(Modules, "$(ints_subdir)", ".int",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(ints_subdir)", ".int", Basis, DepStream, !IO),
     write_compact_dependencies_separator(Basis, DepStream, !IO),
-    write_compact_dependencies_list(Modules, "$(int2s_subdir)", ".int2",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(int2s_subdir)", ".int2", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     % `.int0' files are only generated for modules with sub-modules.
@@ -1512,8 +1538,8 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".int0s = ", !IO),
-    write_compact_dependencies_list(ModulesWithSubModules, "$(int0s_subdir)",
-         ".int0", ParentBasis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, ModulesWithSubModules,
+        "$(int0s_subdir)", ".int0", ParentBasis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     % XXX The `<module>.all_int0s' variables is like `<module>.int0s' except
@@ -1525,50 +1551,50 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".all_int0s = ", !IO),
-    write_compact_dependencies_list(Modules, "$(int0s_subdir)", ".int0",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(int0s_subdir)", ".int0", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".int3s = ", !IO),
-    write_compact_dependencies_list(Modules, "$(int3s_subdir)", ".int3",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(int3s_subdir)", ".int3", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".opts = ", !IO),
-    write_compact_dependencies_list(Modules, "$(opts_subdir)", ".opt",
-        Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(opts_subdir)", ".opt", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".trans_opts = ", !IO),
-    write_compact_dependencies_list(Modules, "$(trans_opts_subdir)",
-        ".trans_opt", Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(trans_opts_subdir)", ".trans_opt", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".analysiss = ", !IO),
-    write_compact_dependencies_list(Modules, "$(analysiss_subdir)",
-        ".analysis", Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(analysiss_subdir)", ".analysis", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".requests = ", !IO),
-    write_compact_dependencies_list(Modules, "$(requests_subdir)",
-        ".request", Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(requests_subdir)", ".request", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".imdgs = ", !IO),
-    write_compact_dependencies_list(Modules, "$(imdgs_subdir)",
-        ".imdg", Basis, DepStream, !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "$(imdgs_subdir)", ".imdg", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".profs = ", !IO),
-    write_compact_dependencies_list(Modules, "", ".prof", Basis, DepStream,
-        !IO),
+    write_compact_dependencies_list(Globals, Modules,
+        "", ".prof", Basis, DepStream, !IO),
     io.write_string(DepStream, "\n\n", !IO).
 
 %-----------------------------------------------------------------------------%
@@ -1601,11 +1627,12 @@ select_ok_modules([Module | Modules0], DepsMap, Modules) :-
 
 foreign_modules(Modules, DepsMap) = ForeignModules :-
     P = (pred(M::in, FMs::out) is semidet :-
-        module_has_foreign(DepsMap, M, LangList),
-        FMs = list.filter_map((func(L) = (NewM - Ext) is semidet :-
-            NewM = foreign_language_module_name(M, L),
-            Ext = foreign_language_file_extension(L)
-        ), LangList)
+            module_has_foreign(DepsMap, M, LangList),
+            FMs = list.filter_map((func(L) = (NewM - Ext) is semidet :-
+                NewM = foreign_language_module_name(M, L),
+                Ext = foreign_language_file_extension(L)
+            ), LangList
+        )
     ),
     list.filter_map(P, Modules, ForeignModulesList),
     ForeignModules = list.condense(ForeignModulesList).
@@ -1669,10 +1696,11 @@ get_extra_link_objects_2([Module | Modules], DepsMap, Target,
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_dep_file(file_name::in, module_name::in, deps_map::in,
-    io.output_stream::in, io::di, io::uo) is det.
+:- pred generate_dep_file(globals::in, file_name::in, module_name::in,
+    deps_map::in, io.output_stream::in, io::di, io::uo) is det.
 
-generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
+generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
+        !IO) :-
     io.write_string(DepStream,
         "# Automatically generated dependencies for module `", !IO),
     ModuleNameString = sym_name_to_string(ModuleName),
@@ -1691,23 +1719,23 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
 
     module_name_to_make_var_name(ModuleName, MakeVarName),
 
-    module_name_to_file_name(ModuleName, ".init", do_create_dirs,
-        InitFileName, !IO),
-    module_name_to_file_name(ModuleName, "_init.c", do_create_dirs,
-        InitCFileName, !IO),
-    module_name_to_file_name(ModuleName, "_init.s", do_not_create_dirs,
-        InitAsmFileName, !IO),
-    module_name_to_file_name(ModuleName, "_init.$O", do_create_dirs,
-        InitObjFileName, !IO),
-    module_name_to_file_name(ModuleName, "_init.pic_o", do_create_dirs,
-        InitPicObjFileName, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".init",
+        do_create_dirs, InitFileName, !IO),
+    module_name_to_file_name(Globals, ModuleName, "_init.c",
+        do_create_dirs, InitCFileName, !IO),
+    module_name_to_file_name(Globals, ModuleName, "_init.s",
+        do_not_create_dirs, InitAsmFileName, !IO),
+    module_name_to_file_name(Globals, ModuleName, "_init.$O",
+        do_create_dirs, InitObjFileName, !IO),
+    module_name_to_file_name(Globals, ModuleName, "_init.pic_o",
+        do_create_dirs, InitPicObjFileName, !IO),
 
     % Note we have to do some ``interesting'' hacks to get
     % `$(ALL_MLLIBS_DEP)' to work in the dependency list
     % (and not complain about undefined variables).
     % These hacks rely on features of GNU Make, so should not be used
     % if we cannot assume we are using GNU Make.
-    globals.io_lookup_bool_option(assume_gmake, Gmake, !IO),
+    globals.lookup_bool_option(Globals, assume_gmake, Gmake),
     (
         Gmake = yes,
         append_list(["\\\n\t\t$(foreach @,", MakeVarName,
@@ -1738,8 +1766,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     % When compiling to assembler, we want to do the same kind of thing,
     % for the same reason, but with the `.s' files rather than the `.c' files.
 
-    module_name_to_file_name(ModuleName, "", do_not_create_dirs,
-        ExeFileName, !IO),
+    module_name_to_file_name(Globals, ModuleName, "",
+        do_not_create_dirs, ExeFileName, !IO),
 
     IfIL = ["ifeq ($(findstring il,$(GRADE)),il)\n"],
     ILMainRule = [ExeFileName, " : ", ExeFileName, ".exe\n",
@@ -1768,7 +1796,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         "\t\t$(", MakeVarName, ".os) ", All_MLObjsString, " $(ALL_MLLIBS)\n"],
     EndIf = ["endif\n"],
 
-    globals.io_get_target(Target, !IO),
+    globals.get_target(Globals, Target),
     (
         Gmake = yes,
         Rules = IfIL ++ ILMainRule ++ Else ++
@@ -1796,7 +1824,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     ),
     io.write_strings(DepStream, Rules, !IO),
 
-    globals.io_lookup_bool_option(intermodule_optimization, Intermod, !IO),
+    globals.lookup_bool_option(Globals, intermodule_optimization, Intermod),
     (
         Intermod = yes,
         string.append_list(["$(", MakeVarName, ".opts) "], MaybeOptsVar)
@@ -1804,7 +1832,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         Intermod = no,
         MaybeOptsVar = ""
     ),
-    globals.io_lookup_bool_option(transitive_optimization, TransOpt, !IO),
+    globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
     (
         TransOpt = yes,
         string.append_list(["$(", MakeVarName, ".trans_opts) "],
@@ -1813,8 +1841,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         TransOpt = no,
         MaybeTransOptsVar = ""
     ),
-    globals.io_lookup_bool_option(generate_mmc_make_module_dependencies,
-        MmcMakeDeps, !IO),
+    globals.lookup_bool_option(Globals, generate_mmc_make_module_dependencies,
+        MmcMakeDeps),
     (
         MmcMakeDeps = yes,
         string.append_list(["$(", MakeVarName, ".module_deps) "],
@@ -1824,24 +1852,25 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         MaybeModuleDepsVar = ""
     ),
 
-    module_name_to_lib_file_name("lib", ModuleName, "", do_not_create_dirs,
-        LibTargetName, !IO),
-    module_name_to_lib_file_name("lib", ModuleName, ".$A", do_create_dirs,
-        LibFileName, !IO),
-    module_name_to_lib_file_name("lib", ModuleName, ".$(EXT_FOR_SHARED_LIB)",
-        do_create_dirs, SharedLibFileName, !IO),
-    module_name_to_lib_file_name("lib", ModuleName, ".$(EXT_FOR_SHARED_LIB)",
-        do_not_create_dirs, MaybeSharedLibFileName, !IO),
-    module_name_to_file_name(ModuleName, ".jar", do_not_create_dirs,
-        JarFileName, !IO),
+    module_name_to_lib_file_name(Globals, "lib", ModuleName, "",
+        do_not_create_dirs, LibTargetName, !IO),
+    module_name_to_lib_file_name(Globals, "lib", ModuleName, ".$A",
+        do_create_dirs, LibFileName, !IO),
+    module_name_to_lib_file_name(Globals, "lib", ModuleName,
+        ".$(EXT_FOR_SHARED_LIB)", do_create_dirs, SharedLibFileName, !IO),
+    module_name_to_lib_file_name(Globals, "lib", ModuleName,
+        ".$(EXT_FOR_SHARED_LIB)", do_not_create_dirs, MaybeSharedLibFileName,
+        !IO),
+    module_name_to_file_name(Globals, ModuleName, ".jar",
+        do_not_create_dirs, JarFileName, !IO),
 
     % Set up the installed name for shared libraries.
 
-    globals.io_lookup_bool_option(shlib_linker_use_install_name,
-        UseInstallName, !IO),
+    globals.lookup_bool_option(Globals, shlib_linker_use_install_name,
+        UseInstallName),
     (
         UseInstallName = yes,
-        get_install_name_option(SharedLibFileName, InstallNameOpt, !IO)
+        get_install_name_option(Globals, SharedLibFileName, InstallNameOpt)
     ;
         UseInstallName = no,
         InstallNameOpt = ""
@@ -1920,17 +1949,17 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     ], !IO),
 
     ClassFiles = "$(" ++ MakeVarName ++ ".classes)",
-    list_class_files_for_jar_mmake(ClassFiles, ListClassFiles, !IO),
+    list_class_files_for_jar_mmake(Globals, ClassFiles, ListClassFiles),
     io.write_strings(DepStream, [
         JarFileName, " : ", "$(", MakeVarName, ".classes)\n",
         "\t$(JAR) $(JAR_CREATE_FLAGS) ", JarFileName, " ",
         ListClassFiles, "\n\n"
     ], !IO),
 
-    module_name_to_file_name(ModuleName, ".dep", do_not_create_dirs,
-        DepFileName, !IO),
-    module_name_to_file_name(ModuleName, ".dv", do_not_create_dirs,
-        DvFileName, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".dep",
+        do_not_create_dirs, DepFileName, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".dv",
+        do_not_create_dirs, DvFileName, !IO),
 
     io.write_strings(DepStream, [
         InitFileName, " : ", DepFileName, " $(", MakeVarName, ".cs)\n",
@@ -1963,7 +1992,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         "\t@mercury_update_interface ", InitCFileName, "\n\n"
     ], !IO),
 
-    module_name_to_lib_file_name("lib", ModuleName, ".install_ints",
+    module_name_to_lib_file_name(Globals, "lib", ModuleName, ".install_ints",
         do_not_create_dirs, LibInstallIntsTargetName, !IO),
     (
         Intermod = yes,
@@ -2039,7 +2068,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     % that mmc will find them, and also in the `ints' directory,
     % so that Mmake will find them.  That's not ideal, but it works.
 
-    module_name_to_lib_file_name("lib", ModuleName, ".install_opts",
+    module_name_to_lib_file_name(Globals, "lib", ModuleName, ".install_opts",
         do_not_create_dirs, LibInstallOptsTargetName, !IO),
     io.write_strings(DepStream,
         [".PHONY : ", LibInstallOptsTargetName, "\n",
@@ -2090,7 +2119,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     % `lib/$(GRADE)/$(FULLARCH)/inc' directory, but doing that properly
     % is non-trivial.)
 
-    module_name_to_lib_file_name("lib", ModuleName, ".install_hdrs",
+    module_name_to_lib_file_name(Globals, "lib", ModuleName, ".install_hdrs",
         do_not_create_dirs, LibInstallHdrsTargetName, !IO),
     io.write_strings(DepStream, [
         ".PHONY : ", LibInstallHdrsTargetName, "\n",
@@ -2106,8 +2135,9 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         "\tdone\n",
         "endif\n\n"], !IO),
 
-    module_name_to_lib_file_name("lib", ModuleName, ".install_grade_hdrs",
-        do_not_create_dirs, LibInstallGradeHdrsTargetName, !IO),
+    module_name_to_lib_file_name(Globals, "lib", ModuleName,
+        ".install_grade_hdrs", do_not_create_dirs,
+        LibInstallGradeHdrsTargetName, !IO),
     io.write_strings(DepStream, [
         ".PHONY : ", LibInstallGradeHdrsTargetName, "\n",
         LibInstallGradeHdrsTargetName, " : ",
@@ -2142,26 +2172,26 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     "\t} || exit 1\n",
     "endif\n\n"], !IO),
 
-    module_name_to_file_name(ModuleName, ".check", do_not_create_dirs,
-        CheckTargetName, !IO),
-    module_name_to_file_name(ModuleName, ".ints", do_not_create_dirs,
-        IntsTargetName, !IO),
-    module_name_to_file_name(ModuleName, ".int3s", do_not_create_dirs,
-        Int3sTargetName, !IO),
-    module_name_to_file_name(ModuleName, ".opts", do_not_create_dirs,
-        OptsTargetName, !IO),
-    module_name_to_file_name(ModuleName, ".trans_opts", do_not_create_dirs,
-        TransOptsTargetName, !IO),
-    module_name_to_file_name(ModuleName, ".ss", do_not_create_dirs,
-        SsTargetName, !IO),
-    module_name_to_file_name(ModuleName, ".pic_ss", do_not_create_dirs,
-        PicSsTargetName, !IO),
-    module_name_to_file_name(ModuleName, ".ils", do_not_create_dirs,
-        ILsTargetName, !IO),
-    module_name_to_file_name(ModuleName, ".javas", do_not_create_dirs,
-        JavasTargetName, !IO),
-    module_name_to_file_name(ModuleName, ".classes", do_not_create_dirs,
-        ClassesTargetName, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".check",
+        do_not_create_dirs, CheckTargetName, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".ints",
+        do_not_create_dirs, IntsTargetName, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".int3s",
+        do_not_create_dirs, Int3sTargetName, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".opts",
+        do_not_create_dirs, OptsTargetName, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".trans_opts",
+        do_not_create_dirs, TransOptsTargetName, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".ss",
+        do_not_create_dirs, SsTargetName, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".pic_ss",
+        do_not_create_dirs, PicSsTargetName, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".ils",
+        do_not_create_dirs, ILsTargetName, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".javas",
+        do_not_create_dirs, JavasTargetName, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".classes",
+        do_not_create_dirs, ClassesTargetName, !IO),
 
     % We need to explicitly mention
     % $(foo.pic_ss) somewhere in the Mmakefile, otherwise it
@@ -2202,8 +2232,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     % in practice as we never generate names containing special characters,
     % any fix for this problem will also require a fix in `mmake.in'.
 
-    module_name_to_file_name(ModuleName, ".clean", do_not_create_dirs,
-        CleanTargetName, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".clean",
+        do_not_create_dirs, CleanTargetName, !IO),
     io.write_strings(DepStream, [
         "clean_local : ", CleanTargetName, "\n"
     ], !IO),
@@ -2237,8 +2267,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
 
     io.write_string(DepStream, "\n", !IO),
 
-    module_name_to_file_name(ModuleName, ".realclean", do_not_create_dirs,
-        RealCleanTargetName, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".realclean",
+        do_not_create_dirs, RealCleanTargetName, !IO),
     io.write_strings(DepStream, [
         "realclean_local : ", RealCleanTargetName, "\n"
     ], !IO),
@@ -2320,7 +2350,8 @@ referenced_dlls(Module, DepModules0) = Modules :-
 
 %-----------------------------------------------------------------------------%
 
-    % get_both_opt_deps(Deps, Directories, OptDeps, TransOptDeps):
+    % get_both_opt_deps(Globals, BuildOptFiles, Deps, IntermodDirs,
+    %   OptDeps, TransOptDeps, !IO):
     %
     % For each dependency, search intermod_directories for a .m file.
     % If it exists, add it to both output lists. Otherwise, if a .opt
@@ -2331,17 +2362,18 @@ referenced_dlls(Module, DepModules0) = Modules :-
     % XXX This won't find nested sub-modules.
     % XXX Use `mmc --make' if that matters.
     %
-:- pred get_both_opt_deps(bool::in, list(module_name)::in, list(string)::in,
-    list(module_name)::out, list(module_name)::out, io::di, io::uo) is det.
+:- pred get_both_opt_deps(globals::in, bool::in, list(module_name)::in,
+    list(string)::in, list(module_name)::out, list(module_name)::out,
+    io::di, io::uo) is det.
 
-get_both_opt_deps(_, [], _, [], [], !IO).
-get_both_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs,
+get_both_opt_deps(_, _, [], _, [], [], !IO).
+get_both_opt_deps(Globals, BuildOptFiles, [Dep | Deps], IntermodDirs,
         !:OptDeps, !:TransOptDeps, !IO) :-
-    get_both_opt_deps(BuildOptFiles, Deps, IntermodDirs,
+    get_both_opt_deps(Globals, BuildOptFiles, Deps, IntermodDirs,
         !:OptDeps, !:TransOptDeps, !IO),
     (
         BuildOptFiles = yes,
-        search_for_module_source(IntermodDirs, IntermodDirs,
+        search_for_module_source(Globals, IntermodDirs, IntermodDirs,
             Dep, Result1, !IO),
         (
             Result1 = ok(_),
@@ -2359,8 +2391,8 @@ get_both_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs,
     ),
     (
         Found = no,
-        module_name_to_file_name(Dep, ".opt", do_not_create_dirs,
-            OptName, !IO),
+        module_name_to_file_name(Globals, Dep, ".opt",
+            do_not_create_dirs, OptName, !IO),
         search_for_file_returning_dir(do_not_open_file, IntermodDirs,
             OptName, Result2, !IO),
         (
@@ -2369,8 +2401,8 @@ get_both_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs,
         ;
             Result2 = error(_)
         ),
-        module_name_to_file_name(Dep, ".trans_opt", do_not_create_dirs,
-            TransOptName, !IO),
+        module_name_to_file_name(Globals, Dep, ".trans_opt",
+            do_not_create_dirs, TransOptName, !IO),
         search_for_file_returning_dir(do_not_open_file, IntermodDirs,
             TransOptName, Result3, !IO),
         (
@@ -2383,13 +2415,14 @@ get_both_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs,
         Found = yes
     ).
 
-get_opt_deps(_, [], _, _, [], !IO).
-get_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs, Suffix, !:OptDeps,
-        !IO) :-
-    get_opt_deps(BuildOptFiles, Deps, IntermodDirs, Suffix, !:OptDeps, !IO),
+get_opt_deps(_, _, [], _, _, [], !IO).
+get_opt_deps(Globals, BuildOptFiles, [Dep | Deps], IntermodDirs, Suffix,
+        !:OptDeps, !IO) :-
+    get_opt_deps(Globals, BuildOptFiles, Deps, IntermodDirs, Suffix,
+        !:OptDeps, !IO),
     (
         BuildOptFiles = yes,
-        search_for_module_source(IntermodDirs, IntermodDirs,
+        search_for_module_source(Globals, IntermodDirs, IntermodDirs,
             Dep, Result1, !IO),
         (
             Result1 = ok(_),
@@ -2406,7 +2439,7 @@ get_opt_deps(BuildOptFiles, [Dep | Deps], IntermodDirs, Suffix, !:OptDeps,
     ),
     (
         Found = no,
-        module_name_to_search_file_name(Dep, Suffix, OptName, !IO),
+        module_name_to_search_file_name(Globals, Dep, Suffix, OptName, !IO),
         search_for_file(do_not_open_file, IntermodDirs, OptName, Result2, !IO),
         (
             Result2 = ok(_),

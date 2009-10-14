@@ -222,7 +222,8 @@ unneeded_process_proc_msg(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
     % Therefore we preprocess the procedure body to ensure that the nonlocals
     % sets are accurate reflections of the true needs of goals.
 
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
         io.write_string("% Removing dead code in ", !IO),
@@ -337,7 +338,8 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
                     io.format("%% Starting unneededed code pass %d\n",
                         [i(Pass)], !IO),
                     AppendVarNums = yes,
-                    hlds_out.write_goal(Goal0, !.ModuleInfo, VarSet0,
+                    OutInfo = init_hlds_out_info(Globals),
+                    hlds_out.write_goal(OutInfo, Goal0, !.ModuleInfo, VarSet0,
                         AppendVarNums, 0, ".\n", !IO)
                 ;
                     true

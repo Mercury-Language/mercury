@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2007 University of Melbourne.
+% Copyright (C) 1998-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -21,13 +21,14 @@
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.pd_info.
 
+:- import_module bool.
 :- import_module io.
 :- import_module list.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
 
-:- pred pd_debug_do_io(pred(io, io)::pred(di, uo) is det,
+:- pred pd_debug_do_io(bool::in, pred(io, io)::pred(di, uo) is det,
     io::di, io::uo) is det.
 
 :- pred pd_debug_output_goal(pd_info::in, string::in, hlds_goal::in,
@@ -41,13 +42,13 @@
 
 :- pred pd_debug_write_instmap(pd_info::in, io::di, io::uo) is det.
 
-:- pred pd_debug_message(string::in, list(string.poly_type)::in,
-    io::di, io::uo) is det.
-
-:- pred pd_debug_message(prog_context::in, string::in,
+:- pred pd_debug_message(bool::in, string::in,
     list(string.poly_type)::in, io::di, io::uo) is det.
 
-:- pred pd_debug_write(T::in, io::di, io::uo) is det.
+:- pred pd_debug_message_context(bool::in, prog_context::in, string::in,
+    list(string.poly_type)::in, io::di, io::uo) is det.
+
+:- pred pd_debug_write(bool::in, T::in, io::di, io::uo) is det.
 
 :- pred pd_debug_write_pred_proc_id_list(pd_info::in, list(pred_proc_id)::in,
     io::di, io::uo) is det.
@@ -67,28 +68,28 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_out.
 
-:- import_module bool.
 :- import_module pair.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
 
-pd_debug_do_io(Pred, !IO) :-
-    globals.io_lookup_bool_option(debug_pd, DoDebug, !IO),
+pd_debug_do_io(DebugPD, Pred, !IO) :-
     (
-        DoDebug = yes,
+        DebugPD = yes,
         call(Pred, !IO),
         io.flush_output(!IO)
     ;
-        DoDebug = no
+        DebugPD = no
     ).
 
 %-----------------------------------------------------------------------------%
 
 pd_debug_search_version_result(PDInfo, MaybeVersion, !IO) :-
     pd_info_get_module_info(PDInfo, ModuleInfo),
-    pd_debug_do_io(pd_debug_search_version_result_2(ModuleInfo, MaybeVersion),
-        !IO).
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
+    pd_debug_do_io(DebugPD,
+        pd_debug_search_version_result_2(ModuleInfo, MaybeVersion), !IO).
 
 :- pred pd_debug_search_version_result_2(module_info::in, maybe_version::in,
     io::di, io::uo) is det.
@@ -101,8 +102,7 @@ pd_debug_search_version_result_2(ModuleInfo, MaybeVersion, !IO) :-
         MaybeVersion = version(exact, _, _, _, _),
         io.write_string("Exact match found.\n", !IO)
     ;
-        MaybeVersion = version(more_general, PredProcId, Version,
-            _, _),
+        MaybeVersion = version(more_general, PredProcId, Version, _, _),
         io.write_string("More general version.\n", !IO),
         pd_debug_output_version(ModuleInfo, PredProcId, Version, no, !IO)
     ).
@@ -111,7 +111,9 @@ pd_debug_search_version_result_2(ModuleInfo, MaybeVersion, !IO) :-
 
 pd_debug_register_version(PDInfo, PredProcId, Version, !IO) :-
     pd_info_get_module_info(PDInfo, ModuleInfo),
-    pd_debug_do_io(
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
+    pd_debug_do_io(DebugPD,
         pd_debug_register_version_2(ModuleInfo, PredProcId, Version), !IO).
 
 :- pred pd_debug_register_version_2(module_info::in, pred_proc_id::in,
@@ -128,8 +130,9 @@ pd_debug_register_version_2(ModuleInfo, PredProcId, Version, !IO) :-
 
 pd_debug_output_version(ModuleInfo, PredProcId, Version, WriteUnfoldedGoal,
         !IO) :-
-    Version = version_info(hlds_goal(GoalExpr, GoalInfo), _, Args, _, InstMap,
+    Version = version_info(Goal, _, Args, _, InstMap,
         InitialCost, CostDelta, Parents, _),
+    Goal = hlds_goal(_GoalExpr, GoalInfo),
     PredName = predicate_name(ModuleInfo, PredId),
     io.write_string(PredName, !IO),
     io.write_string(": (PredProcId :", !IO),
@@ -156,8 +159,9 @@ pd_debug_output_version(ModuleInfo, PredProcId, Version, WriteUnfoldedGoal,
     io.nl(!IO),
     hlds_out.write_instmap(InstMap1, VarSet, yes, 1, !IO),
     io.nl(!IO),
-    hlds_out.write_goal(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet,
-        yes, 1, "\n", !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    OutInfo = init_hlds_out_info(Globals),
+    hlds_out.write_goal(OutInfo, Goal, ModuleInfo, VarSet, yes, 1, "\n", !IO),
     io.nl(!IO),
     io.write_string("Parents: ", !IO),
     set.to_sorted_list(Parents, ParentsList),
@@ -167,7 +171,8 @@ pd_debug_output_version(ModuleInfo, PredProcId, Version, WriteUnfoldedGoal,
         WriteUnfoldedGoal = yes,
         proc_info_get_goal(ProcInfo, ProcGoal),
         io.write_string("Unfolded goal\n", !IO),
-        hlds_out.write_goal(ProcGoal, ModuleInfo, VarSet, yes, 1, "\n", !IO),
+        hlds_out.write_goal(OutInfo, ProcGoal, ModuleInfo, VarSet, yes, 1,
+            "\n", !IO),
         io.nl(!IO)
     ;
         WriteUnfoldedGoal = no
@@ -179,13 +184,19 @@ pd_debug_write_instmap(PDInfo, !IO) :-
     pd_info_get_instmap(PDInfo, InstMap),
     pd_info_get_proc_info(PDInfo, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
-    pd_debug_do_io(hlds_out.write_instmap(InstMap, VarSet, yes, 1), !IO).
+    pd_info_get_module_info(PDInfo, ModuleInfo),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
+    pd_debug_do_io(DebugPD, hlds_out.write_instmap(InstMap, VarSet, yes, 1),
+        !IO).
 
 %-----------------------------------------------------------------------------%
 
 pd_debug_write_pred_proc_id_list(PDInfo, PredProcIds, !IO) :-
     pd_info_get_module_info(PDInfo, ModuleInfo),
-    pd_debug_do_io(
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
+    pd_debug_do_io(DebugPD,
         pd_debug_write_pred_proc_id_list_2(ModuleInfo, PredProcIds),
         !IO).
 
@@ -198,12 +209,16 @@ pd_debug_write_pred_proc_id_list_2(ModuleInfo, PredProcIds, !IO) :-
 %-----------------------------------------------------------------------------%
 
 pd_debug_output_goal(PDInfo, Msg, Goal, !IO) :-
-    pd_debug_do_io(pd_debug_output_goal_2(PDInfo, Msg, Goal), !IO).
+    pd_info_get_module_info(PDInfo, ModuleInfo),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
+    pd_debug_do_io(DebugPD, pd_debug_output_goal_2(PDInfo, Msg, Goal), !IO).
 
 :- pred pd_debug_output_goal_2(pd_info::in, string::in, hlds_goal::in,
     io::di, io::uo) is det.
 
-pd_debug_output_goal_2(PDInfo, Msg, hlds_goal(GoalExpr, GoalInfo), !IO) :-
+pd_debug_output_goal_2(PDInfo, Msg, Goal, !IO) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     pd_info_get_proc_info(PDInfo, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
     pd_info_get_instmap(PDInfo, InstMap),
@@ -213,24 +228,25 @@ pd_debug_output_goal_2(PDInfo, Msg, hlds_goal(GoalExpr, GoalInfo), !IO) :-
     instmap_restrict(Vars, InstMap, InstMap1),
     hlds_out.write_instmap(InstMap1, VarSet, yes, 1, !IO),
     io.nl(!IO),
-    hlds_out.write_goal(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet,
-        yes, 1, "\n", !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    OutInfo = init_hlds_out_info(Globals),
+    hlds_out.write_goal(OutInfo, Goal, ModuleInfo, VarSet, yes, 1, "\n", !IO),
     io.nl(!IO),
     io.flush_output(!IO).
 
 %-----------------------------------------------------------------------------%
 
-pd_debug_message(Fmt, Args, !IO) :-
-    pd_debug_do_io(io.format(Fmt, Args), !IO).
+pd_debug_message(DebugPD, Fmt, Args, !IO) :-
+    pd_debug_do_io(DebugPD, io.format(Fmt, Args), !IO).
 
-pd_debug_message(Context, Fmt, Args, !IO) :-
-    pd_debug_do_io(prog_out.write_context(Context), !IO),
-    pd_debug_do_io(io.format(Fmt, Args), !IO).
+pd_debug_message_context(DebugPD, Context, Fmt, Args, !IO) :-
+    pd_debug_do_io(DebugPD, prog_out.write_context(Context), !IO),
+    pd_debug_do_io(DebugPD, io.format(Fmt, Args), !IO).
 
 %-----------------------------------------------------------------------------%
 
-pd_debug_write(Thing, !IO) :-
-    pd_debug_do_io(io.write(Thing), !IO).
+pd_debug_write(DebugPD, Thing, !IO) :-
+    pd_debug_do_io(DebugPD, io.write(Thing), !IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

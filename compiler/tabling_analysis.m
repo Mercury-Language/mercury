@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2008 The University of Melbourne.
+% Copyright (C) 2006-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -116,25 +116,26 @@
 %
 
 analyse_mm_tabling_in_module(!ModuleInfo, !IO) :-
-    globals.io_lookup_bool_option(use_minimal_model_stack_copy,
-        UseMinimalModel, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, use_minimal_model_stack_copy,
+        UseMinimalModel),
     (
         % Only run the analysis in .mm grades.
         UseMinimalModel = yes,
-        globals.io_lookup_bool_option(make_optimization_interface,
-            MakeOptInt, !IO),
-        globals.io_lookup_bool_option(make_transitive_opt_interface,
-            MakeTransOptInt, !IO),
-        globals.io_lookup_bool_option(intermodule_analysis,
-            IntermodAnalysis, !IO),
-        globals.io_lookup_bool_option(make_analysis_registry,
-            MakeAnalysisReg, !IO),
+        globals.lookup_bool_option(Globals, make_optimization_interface,
+            MakeOptInt),
+        globals.lookup_bool_option(Globals, make_transitive_opt_interface,
+            MakeTransOptInt),
+        globals.lookup_bool_option(Globals, intermodule_analysis,
+            IntermodAnalysis),
+        globals.lookup_bool_option(Globals, make_analysis_registry,
+            MakeAnalysisReg),
         Pass1Only = MakeOptInt `bool.or` MakeTransOptInt
             `bool.or` MakeAnalysisReg,
         module_info_ensure_dependency_info(!ModuleInfo),
         module_info_dependency_info(!.ModuleInfo, DepInfo),
         hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
-        globals.io_lookup_bool_option(debug_mm_tabling_analysis, Debug, !IO),
+        globals.lookup_bool_option(Globals, debug_mm_tabling_analysis, Debug),
         list.foldl(analyse_mm_tabling_in_scc(Debug, Pass1Only), SCCs,
             !ModuleInfo),
 
@@ -785,16 +786,17 @@ annotate_call(CalleePPId, CallArgs, VarTypes, Status, !ModuleInfo) :-
 
 %----------------------------------------------------------------------------%
 %
-% Stuff for intermodule optimization
+% Stuff for intermodule optimization.
 %
 
 :- pred make_opt_int(module_info::in, io::di, io::uo) is det.
 
 make_opt_int(ModuleInfo, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(ModuleName, ".opt.tmp", do_not_create_dirs,
-        OptFileName, !IO),
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
+        do_not_create_dirs, OptFileName, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Appending mm_tabling_info pragmas to `",
         !IO),
     maybe_write_string(Verbose, OptFileName, !IO),
@@ -891,7 +893,7 @@ should_write_mm_tabling_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff for the intermodule analysis framework
+% Stuff for the intermodule analysis framework.
 %
 
 :- type mm_tabling_analysis_answer
@@ -1048,7 +1050,7 @@ lookup_proc_mm_tabling_info(TablingInfo, PPId, Status, ResultStatus) :-
 
 %----------------------------------------------------------------------------%
 %
-% Code for printing out debugging traces
+% Code for printing out debugging traces.
 %
 
 :- pred dump_mm_tabling_analysis_debug_info(module_info::in, scc::in,

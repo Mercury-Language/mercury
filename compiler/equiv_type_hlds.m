@@ -891,25 +891,24 @@ hash_cons_inst(Inst0, Inst, !Cache) :-
 
 :- type replace_info
     --->    replace_info(
-                module_info :: module_info,
-                pred_info   :: pred_info,
-                proc_info   :: proc_info,
-                tvarset     :: tvarset,
-                inst_cache  :: inst_cache,
-                recompute   :: bool
+                ethri_module_info   :: module_info,
+                ethri_pred_info     :: pred_info,
+                ethri_proc_info     :: proc_info,
+                ethri_tvarset       :: tvarset,
+                ethri_inst_cache    :: inst_cache,
+                ethri_recompute     :: bool
             ).
 
-:- pred replace_in_goal(eqv_map::in)
-    `with_type` replacer(hlds_goal, replace_info)
-    `with_inst` replacer.
+:- pred replace_in_goal(eqv_map::in, hlds_goal::in, hlds_goal::out, bool::out,
+    replace_info::in, replace_info::out) is det.
 
 replace_in_goal(EqvMap, Goal0, Goal, Changed, !Info) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed0, !Info),
 
     InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
-    TVarSet0 = !.Info ^ tvarset,
-    Cache0 = !.Info ^ inst_cache,
+    TVarSet0 = !.Info ^ ethri_tvarset,
+    Cache0 = !.Info ^ ethri_inst_cache,
     instmap_delta_map_foldl(
         (pred(_::in, Inst0::in, Inst::out,
                 {Changed1, TVarSet1, Cache1}::in,
@@ -920,8 +919,8 @@ replace_in_goal(EqvMap, Goal0, Goal, Changed, !Info) :-
         {Changed0, TVarSet0, Cache0}, {Changed, TVarSet, Cache}),
     (
         Changed = yes,
-        !:Info = !.Info ^ tvarset := TVarSet,
-        !:Info = !.Info ^ inst_cache := Cache,
+        !Info ^ ethri_tvarset := TVarSet,
+        !Info ^ ethri_inst_cache := Cache,
         goal_info_set_instmap_delta(InstMapDelta, GoalInfo0, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
@@ -929,40 +928,39 @@ replace_in_goal(EqvMap, Goal0, Goal, Changed, !Info) :-
         Goal = Goal0
     ).
 
-:- pred replace_in_case(eqv_map::in)
-    `with_type` replacer(case, replace_info)
-    `with_inst` replacer.
+:- pred replace_in_goals(eqv_map::in,
+    list(hlds_goal)::in, list(hlds_goal)::out, bool::out,
+    replace_info::in, replace_info::out) is det.
 
-replace_in_case(EqvMap, Case0, Case, Changed, !Info) :-
-    Case0 = case(MainConsId, OtherConsIds, CaseGoal0),
-    replace_in_goal(EqvMap, CaseGoal0, CaseGoal, Changed, !Info),
-    ( Changed = yes, Case = case(MainConsId, OtherConsIds, CaseGoal)
-    ; Changed = no, Case = Case0
+replace_in_goals(_EqvMap, [], [], no, !Acc).
+replace_in_goals(EqvMap, List0 @ [H0 | T0], List, Changed, !Acc) :-
+    replace_in_goals(EqvMap, T0, T, Changed0, !Acc),
+    replace_in_goal(EqvMap, H0, H, Changed1, !Acc),
+    Changed = Changed0 `or` Changed1,
+    ( Changed = yes, List = [H | T]
+    ; Changed = no, List = List0
     ).
 
-:- pred replace_in_goal_expr(eqv_map::in)
-    `with_type` replacer(hlds_goal_expr, replace_info)
-    `with_inst` replacer.
+:- pred replace_in_goal_expr(eqv_map::in,
+    hlds_goal_expr::in, hlds_goal_expr::out, bool::out,
+    replace_info::in, replace_info::out) is det.
 
 replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
     (
         GoalExpr0 = conj(ConjType, Goals0),
-        replace_in_list(replace_in_goal(EqvMap), Goals0, Goals,
-            Changed, !Info),
+        replace_in_goals(EqvMap, Goals0, Goals, Changed, !Info),
         ( Changed = yes, GoalExpr = conj(ConjType, Goals)
         ; Changed = no, GoalExpr = GoalExpr0
         )
     ;
         GoalExpr0 = disj(Goals0),
-        replace_in_list(replace_in_goal(EqvMap), Goals0, Goals,
-            Changed, !Info),
+        replace_in_goals(EqvMap, Goals0, Goals, Changed, !Info),
         ( Changed = yes, GoalExpr = disj(Goals)
         ; Changed = no, GoalExpr = GoalExpr0
         )
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        replace_in_list(replace_in_case(EqvMap), Cases0, Cases,
-            Changed, !Info),
+        replace_in_cases(EqvMap, Cases0, Cases, Changed, !Info),
         ( Changed = yes, GoalExpr = switch(Var, CanFail, Cases)
         ; Changed = no, GoalExpr = GoalExpr0
         )
@@ -1000,7 +998,7 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
         Changed = no
     ;
         GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
-        TVarSet0 = !.Info ^ tvarset,
+        TVarSet0 = !.Info ^ ethri_tvarset,
         replace_in_foreign_arg_list(EqvMap, GoalExpr0 ^ foreign_args,
             Args, ChangedArgs, TVarSet0, TVarSet1, no, _),
         replace_in_foreign_arg_list(EqvMap, GoalExpr0 ^ foreign_extra_args,
@@ -1008,7 +1006,7 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
         Changed = ChangedArgs `or` ChangedExtraArgs,
         (
             Changed = yes,
-            !:Info = !.Info ^ tvarset := TVarSet,
+            !Info ^ ethri_tvarset := TVarSet,
             GoalExpr = (GoalExpr0 ^ foreign_args := Args)
                 ^ foreign_extra_args := ExtraArgs
         ;
@@ -1017,14 +1015,14 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
         )
     ;
         GoalExpr0 = generic_call(Details, Args, Modes0, Detism),
-        TVarSet0 = !.Info ^ tvarset,
-        Cache0 = !.Info ^ inst_cache,
+        TVarSet0 = !.Info ^ ethri_tvarset,
+        Cache0 = !.Info ^ ethri_inst_cache,
         replace_in_modes(EqvMap, Modes0, Modes, Changed, TVarSet0, TVarSet,
             Cache0, Cache),
         (
             Changed = yes,
-            !:Info = !.Info ^ tvarset := TVarSet,
-            !:Info = !.Info ^ inst_cache := Cache,
+            !Info ^ ethri_tvarset := TVarSet,
+            !Info ^ ethri_inst_cache := Cache,
             GoalExpr = generic_call(Details, Args, Modes, Detism)
         ;
             Changed = no,
@@ -1032,11 +1030,11 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
         )
     ;
         GoalExpr0 = unify(Var, _, _, _, _),
-        module_info_get_type_table(!.Info ^ module_info, TypeTable),
-        proc_info_get_vartypes(!.Info ^ proc_info, VarTypes),
-        proc_info_get_rtti_varmaps(!.Info ^ proc_info, RttiVarMaps),
+        module_info_get_type_table(!.Info ^ ethri_module_info, TypeTable),
+        proc_info_get_vartypes(!.Info ^ ethri_proc_info, VarTypes),
+        proc_info_get_rtti_varmaps(!.Info ^ ethri_proc_info, RttiVarMaps),
         map.lookup(VarTypes, Var, VarType),
-        TypeCtorCat = classify_type(!.Info ^ module_info, VarType),
+        TypeCtorCat = classify_type(!.Info ^ ethri_module_info, VarType),
         (
             % If this goal constructs a type_info for an equivalence type,
             % we need to expand that to make the type_info for the expanded
@@ -1050,10 +1048,12 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
             Body = hlds_eqv_type(_)
         ->
             Changed = yes,
-            pred_info_set_typevarset(!.Info ^ tvarset, !.Info ^ pred_info,
-                PredInfo0),
-            create_poly_info(!.Info ^ module_info,
-                PredInfo0, !.Info ^ proc_info, PolyInfo0),
+            ModuleInfo0 = !.Info ^ ethri_module_info,
+            PredInfo0 = !.Info ^ ethri_pred_info,
+            ProcInfo0 = !.Info ^ ethri_proc_info,
+            TVarSet0 = !.Info ^ ethri_tvarset,
+            pred_info_set_typevarset(TVarSet0, PredInfo0, PredInfo1),
+            create_poly_info(ModuleInfo0, PredInfo1, ProcInfo0, PolyInfo0),
             rtti_varmaps_var_info(RttiVarMaps, Var, VarInfo),
             (
                 VarInfo = type_info_var(TypeInfoType0),
@@ -1066,13 +1066,13 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
             ),
             polymorphism_make_type_info_var(TypeInfoType,
                 term.context_init, TypeInfoVar, Goals0, PolyInfo0, PolyInfo),
-            poly_info_extract(PolyInfo, PredInfo0, PredInfo,
-                !.Info ^ proc_info, ProcInfo, ModuleInfo),
+            poly_info_extract(PolyInfo, PredInfo1, PredInfo,
+                ProcInfo0, ProcInfo, ModuleInfo),
             pred_info_get_typevarset(PredInfo, TVarSet),
-            !:Info = !.Info ^ pred_info := PredInfo,
-            !:Info = !.Info ^ proc_info := ProcInfo,
-            !:Info = !.Info ^ module_info := ModuleInfo,
-            !:Info = !.Info ^ tvarset := TVarSet,
+            !Info ^ ethri_module_info := ModuleInfo,
+            !Info ^ ethri_pred_info := PredInfo,
+            !Info ^ ethri_proc_info := ProcInfo,
+            !Info ^ ethri_tvarset := TVarSet,
 
             rename_vars_in_goals(need_not_rename,
                 map.from_assoc_list([TypeInfoVar - Var]), Goals0, Goals),
@@ -1081,7 +1081,7 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
             ;
                 GoalExpr = conj(plain_conj, Goals)
             ),
-            !:Info = !.Info ^ recompute := yes
+            !Info ^ ethri_recompute := yes
         ;
             % Check for a type_ctor_info for an equivalence type. We can just
             % remove these because after the code above to fix up type_infos
@@ -1096,17 +1096,17 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
         ->
             Changed = yes,
             GoalExpr = conj(plain_conj, []),
-            !:Info = !.Info ^ recompute := yes
+            !Info ^ ethri_recompute := yes
         ;
             GoalExpr0 ^ unify_mode = LMode0 - RMode0,
-            TVarSet0 = !.Info ^ tvarset,
-            Cache0 = !.Info ^ inst_cache,
+            TVarSet0 = !.Info ^ ethri_tvarset,
+            Cache0 = !.Info ^ ethri_inst_cache,
             replace_in_mode(EqvMap, LMode0, LMode, Changed1,
                 TVarSet0, TVarSet1, Cache0, Cache1),
             replace_in_mode(EqvMap, RMode0, RMode, Changed2,
                 TVarSet1, TVarSet, Cache1, Cache),
-            !:Info = !.Info ^ tvarset := TVarSet,
-            !:Info = !.Info ^ inst_cache := Cache,
+            !Info ^ ethri_tvarset := TVarSet,
+            !Info ^ ethri_inst_cache := Cache,
             replace_in_unification(EqvMap, GoalExpr0 ^ unify_kind, Unification,
                 Changed3, !Info),
             Changed = Changed1 `or` Changed2 `or` Changed3,
@@ -1119,71 +1119,97 @@ replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
                 GoalExpr = GoalExpr0
             )
         )
-    ).
-replace_in_goal_expr(EqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
-    GoalExpr0 = shorthand(ShortHand0),
-    (
-        ShortHand0 = atomic_goal(GoalType, Outer, Inner,
-            MaybeOutputVars, MainGoal0, OrElseGoals0, OrElseInners),
-        replace_in_goal(EqvMap, MainGoal0, MainGoal, Changed1, !Info),
-        replace_in_list(replace_in_goal(EqvMap), OrElseGoals0,
-            OrElseGoals, Changed2, !Info),
-        Changed = Changed1 `or` Changed2,
+    ;
+        GoalExpr0 = shorthand(ShortHand0),
         (
-            Changed = yes,
-            ShortHand = atomic_goal(GoalType, Outer, Inner,
-                MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners),
+            ShortHand0 = atomic_goal(GoalType, Outer, Inner,
+                MaybeOutputVars, MainGoal0, OrElseGoals0, OrElseInners),
+            replace_in_goal(EqvMap, MainGoal0, MainGoal, Changed1, !Info),
+            replace_in_goals(EqvMap, OrElseGoals0, OrElseGoals, Changed2,
+                !Info),
+            Changed = Changed1 `or` Changed2,
+            (
+                Changed = yes,
+                ShortHand = atomic_goal(GoalType, Outer, Inner,
+                    MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners),
+                GoalExpr = shorthand(ShortHand)
+            ;
+                Changed = no,
+                GoalExpr = GoalExpr0
+            )
+        ;
+            ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
+            replace_in_goal(EqvMap, SubGoal0, SubGoal, Changed, !Info),
+            ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
             GoalExpr = shorthand(ShortHand)
         ;
-            Changed = no,
-            GoalExpr = GoalExpr0
+            ShortHand0 = bi_implication(_, _),
+            unexpected(this_file, "replace_in_goal_expr: bi_implication")
+        )
+    ).
+
+:- pred replace_in_case(eqv_map::in, case::in, case::out, bool::out,
+    replace_info::in, replace_info::out) is det.
+
+replace_in_case(EqvMap, Case0, Case, Changed, !Info) :-
+    Case0 = case(MainConsId, OtherConsIds, CaseGoal0),
+    replace_in_goal(EqvMap, CaseGoal0, CaseGoal, Changed, !Info),
+    ( Changed = yes, Case = case(MainConsId, OtherConsIds, CaseGoal)
+    ; Changed = no, Case = Case0
+    ).
+
+:- pred replace_in_cases(eqv_map::in, list(case)::in, list(case)::out,
+    bool::out, replace_info::in, replace_info::out) is det.
+
+replace_in_cases(_EqvMap, [], [], no, !Acc).
+replace_in_cases(EqvMap, List0 @ [H0 | T0], List, Changed, !Acc) :-
+    replace_in_cases(EqvMap, T0, T, Changed0, !Acc),
+    replace_in_case(EqvMap, H0, H, Changed1, !Acc),
+    Changed = Changed0 `or` Changed1,
+    ( Changed = yes, List = [H | T]
+    ; Changed = no, List = List0
+    ).
+
+:- pred replace_in_unification(eqv_map::in, unification::in, unification::out,
+    bool::out, replace_info::in, replace_info::out) is det.
+
+replace_in_unification(EqvMap, Uni0, Uni, Changed, !Info) :-
+    (
+        ( Uni0 = assign(_, _)
+        ; Uni0 = simple_test(_, _)
+        ),
+        Uni = Uni0,
+        Changed = no
+    ;
+        Uni0 = complicated_unify(UniMode0, B, C),
+        replace_in_uni_mode(EqvMap, UniMode0, UniMode, Changed, !Info),
+        ( Changed = yes, Uni = complicated_unify(UniMode, B, C)
+        ; Changed = no, Uni = Uni0
         )
     ;
-        ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
-        replace_in_goal(EqvMap, SubGoal0, SubGoal, Changed, !Info),
-        ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
-        GoalExpr = shorthand(ShortHand)
+        Uni0 = construct(_, _, _, _, _, _, _),
+        UniModes0 = Uni0 ^ construct_arg_modes,
+        replace_in_uni_modes(EqvMap, UniModes0, UniModes, Changed, !Info),
+        ( Changed = yes, Uni = Uni0 ^ construct_arg_modes := UniModes
+        ; Changed = no, Uni = Uni0
+        )
     ;
-        ShortHand0 = bi_implication(_, _),
-        unexpected(this_file, "replace_in_goal_expr: bi_implication")
+        Uni0 = deconstruct(_, _, _, _, _, _),
+        UniModes0 = Uni0 ^ deconstruct_arg_modes,
+        replace_in_uni_modes(EqvMap, UniModes0, UniModes, Changed, !Info),
+        ( Changed = yes, Uni = Uni0 ^ deconstruct_arg_modes := UniModes
+        ; Changed = no, Uni = Uni0
+        )
     ).
 
-:- pred replace_in_unification(eqv_map::in)
-    `with_type` replacer(unification, replace_info)
-    `with_inst` replacer.
-
-replace_in_unification(_, assign(_, _) @ Uni, Uni, no, !Info).
-replace_in_unification(_, simple_test(_, _) @ Uni, Uni, no, !Info).
-replace_in_unification(EqvMap, Uni0 @ complicated_unify(UniMode0, B, C), Uni,
-        Changed, !Info) :-
-    replace_in_uni_mode(EqvMap, UniMode0, UniMode, Changed, !Info),
-    ( Changed = yes, Uni = complicated_unify(UniMode, B, C)
-    ; Changed = no, Uni = Uni0
-    ).
-replace_in_unification(EqvMap, construct(_, _, _, _, _, _, _) @ Uni0, Uni,
-        Changed, !Info) :-
-    replace_in_list(replace_in_uni_mode(EqvMap),
-        Uni0 ^ construct_arg_modes, UniModes, Changed, !Info),
-    ( Changed = yes, Uni = Uni0 ^ construct_arg_modes := UniModes
-    ; Changed = no, Uni = Uni0
-    ).
-replace_in_unification(EqvMap, deconstruct(_, _, _, _, _, _) @ Uni0, Uni,
-        Changed, !Info) :-
-    replace_in_list(replace_in_uni_mode(EqvMap),
-        Uni0 ^ deconstruct_arg_modes, UniModes, Changed, !Info),
-    ( Changed = yes, Uni = Uni0 ^ deconstruct_arg_modes := UniModes
-    ; Changed = no, Uni = Uni0
-    ).
-
-:- pred replace_in_uni_mode(eqv_map::in)
-    `with_type` replacer(uni_mode, replace_info)
-    `with_inst` replacer.
+:- pred replace_in_uni_mode(eqv_map::in, uni_mode::in, uni_mode::out,
+    bool::out, replace_info::in, replace_info::out) is det.
 
 replace_in_uni_mode(EqvMap, ((InstA0 - InstB0) -> (InstC0 - InstD0)),
         ((InstA - InstB) -> (InstC - InstD)), Changed, !Info) :-
     some [!TVarSet, !Cache] (
-        !:TVarSet = !.Info ^ tvarset,
-        !:Cache = !.Info ^ inst_cache,
+        !:TVarSet = !.Info ^ ethri_tvarset,
+        !:Cache = !.Info ^ ethri_inst_cache,
         replace_in_inst(EqvMap, InstA0, InstA, Changed1, !TVarSet, !Cache),
         replace_in_inst(EqvMap, InstB0, InstB, Changed2, !TVarSet, !Cache),
         replace_in_inst(EqvMap, InstC0, InstC, Changed3, !TVarSet, !Cache),
@@ -1191,23 +1217,21 @@ replace_in_uni_mode(EqvMap, ((InstA0 - InstB0) -> (InstC0 - InstD0)),
         Changed = Changed1 `or` Changed2 `or` Changed3 `or` Changed4,
         (
             Changed = yes,
-            !:Info = (!.Info ^ tvarset := !.TVarSet)
-                ^ inst_cache := !.Cache
+            !Info ^ ethri_tvarset := !.TVarSet,
+            !Info ^ ethri_inst_cache := !.Cache
         ;
             Changed = no
         )
     ).
 
-:- type replacer(T, Acc) == pred(T, T, bool, Acc, Acc).
-:- inst replacer == (pred(in, out, out, in, out) is det).
+:- pred replace_in_uni_modes(eqv_map::in,
+    list(uni_mode)::in, list(uni_mode)::out, bool::out,
+    replace_info::in, replace_info::out) is det.
 
-:- pred replace_in_list(replacer(T, Acc)::in(replacer))
-    `with_type` replacer(list(T), Acc) `with_inst` replacer.
-
-replace_in_list(_, [], [], no, !Acc).
-replace_in_list(Repl, List0 @ [H0 | T0], List, Changed, !Acc) :-
-    replace_in_list(Repl, T0, T, Changed0, !Acc),
-    Repl(H0, H, Changed1, !Acc),
+replace_in_uni_modes(_EqvMap, [], [], no, !Acc).
+replace_in_uni_modes(EqvMap, List0 @ [H0 | T0], List, Changed, !Acc) :-
+    replace_in_uni_modes(EqvMap, T0, T, Changed0, !Acc),
+    replace_in_uni_mode(EqvMap, H0, H, Changed1, !Acc),
     Changed = Changed0 `or` Changed1,
     ( Changed = yes, List = [H | T]
     ; Changed = no, List = List0

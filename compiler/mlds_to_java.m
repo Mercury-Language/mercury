@@ -130,11 +130,12 @@ output_java_mlds(ModuleInfo, MLDS, !IO) :-
     % Note that the Java file name that we use for modules in the
     % Mercury standard library do not include a "mercury." prefix;
     % that's why we don't call mercury_module_name_to_mlds here.
+    module_info_get_globals(ModuleInfo, Globals),
     ModuleName = mlds_get_module_name(MLDS),
-    module_name_to_file_name(ModuleName, ".java", do_create_dirs,
+    module_name_to_file_name(Globals, ModuleName, ".java", do_create_dirs,
         JavaSourceFile, !IO),
     Indent = 0,
-    output_to_file(JavaSourceFile,
+    output_to_file(Globals, JavaSourceFile,
         output_java_src_file(ModuleInfo, Indent, MLDS), !IO).
 
 %-----------------------------------------------------------------------------%
@@ -370,22 +371,26 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     % We start with the Java foreign code declarations, since for
     % library/private_builtin.m they contain static constants
     % that will get used in the RTTI definitions.
-    output_src_start(Indent, ModuleName, Imports, ForeignDecls, Defns, !IO),
-    io.write_list(ForeignBodyCode, "\n", output_java_body_code(Indent), !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    Info = init_java_out_info(Globals),
+    output_src_start(Globals, Info, Indent, ModuleName, Imports, ForeignDecls,
+        Defns, !IO),
+    io.write_list(ForeignBodyCode, "\n", output_java_body_code(Info, Indent),
+        !IO),
     list.filter(defn_is_rtti_data, Defns, RttiDefns, NonRttiDefns),
     io.write_string("\n// RttiDefns\n", !IO),
-    output_defns(Indent + 1, ModuleInfo, MLDS_ModuleName, alloc_only,
+    output_defns(Info, Indent + 1, ModuleInfo, MLDS_ModuleName, alloc_only,
         RttiDefns, !IO),
-    output_rtti_assignments(Indent + 1, ModuleInfo, MLDS_ModuleName,
+    output_rtti_assignments(Info, Indent + 1, ModuleInfo, MLDS_ModuleName,
         RttiDefns, !IO),
     io.write_string("\n// NonRttiDefns\n", !IO),
-    output_defns(Indent + 1, ModuleInfo, MLDS_ModuleName, none,
+    output_defns(Info, Indent + 1, ModuleInfo, MLDS_ModuleName, none,
         NonRttiDefns, !IO),
     io.write_string("\n// ExportDefns\n", !IO),
-    output_exports(Indent + 1, ModuleInfo, MLDS_ModuleName, none,
+    output_exports(Info, Indent + 1, ModuleInfo, MLDS_ModuleName, none,
         ExportDefns, !IO),
     io.write_string("\n// ExportedEnums\n", !IO),
-    output_exported_enums(Indent + 1, ModuleInfo, ExportedEnums, !IO),
+    output_exported_enums(Info, Indent + 1, ModuleInfo, ExportedEnums, !IO),
     io.write_string("\n// InitPreds\n", !IO),
     output_inits(Indent + 1, ModuleInfo, InitPreds, !IO),
     io.write_string("\n// FinalPreds\n", !IO),
@@ -400,14 +405,14 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
 % Code for working with Java `foreign_code'.
 %
 
-:- pred output_java_decl(indent::in, foreign_decl_code::in, io::di, io::uo)
-    is det.
+:- pred output_java_decl(java_out_info::in, indent::in, foreign_decl_code::in,
+    io::di, io::uo) is det.
 
-output_java_decl(Indent, DeclCode, !IO) :-
+output_java_decl(Info, Indent, DeclCode, !IO) :-
     DeclCode = foreign_decl_code(Lang, _IsLocal, Code, Context),
     (
         Lang = lang_java,
-        indent_line(mlds_make_context(Context), Indent, !IO),
+        indent_line(Info, mlds_make_context(Context), Indent, !IO),
         io.write_string(Code, !IO),
         io.nl(!IO)
     ;
@@ -419,14 +424,15 @@ output_java_decl(Indent, DeclCode, !IO) :-
         sorry(this_file, "foreign decl other than Java")
     ).
 
-:- pred output_java_body_code(indent::in, user_foreign_code::in, io::di,
-    io.state::uo) is det.
+:- pred output_java_body_code(java_out_info::in, indent::in,
+    user_foreign_code::in, io::di, io.state::uo) is det.
 
-output_java_body_code(Indent, user_foreign_code(Lang, Code, Context), !IO) :-
+output_java_body_code(Info, Indent, UserForeignCode, !IO) :-
+    UserForeignCode = user_foreign_code(Lang, Code, Context),
     % Only output Java code.
     (
         Lang = lang_java,
-        indent_line(mlds_make_context(Context), Indent, !IO),
+        indent_line(Info, mlds_make_context(Context), Indent, !IO),
         io.write_string(Code, !IO),
         io.nl(!IO)
     ;
@@ -452,7 +458,7 @@ mlds_get_java_foreign_code(AllForeignCode) = ForeignCode :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code for handling `pragma foreign_export' for Java
+% Code for handling `pragma foreign_export' for Java.
 %
 
     % Exports are converted into forwarding methods that are given the
@@ -462,11 +468,12 @@ mlds_get_java_foreign_code(AllForeignCode) = ForeignCode :-
     % be referred to within foreign_procs that are inlined across module
     % boundaries.
     %
-:- pred output_exports(indent::in, module_info::in, mlds_module_name::in,
-    output_aux::in, list(mlds_pragma_export)::in, io::di, io::uo) is det.
+:- pred output_exports(java_out_info::in, indent::in, module_info::in,
+    mlds_module_name::in, output_aux::in, list(mlds_pragma_export)::in,
+    io::di, io::uo) is det.
 
-output_exports(_, _, _, _, [], !IO).
-output_exports(Indent, ModuleInfo, MLDS_ModuleName, OutputAux,
+output_exports(_, _, _, _, _, [], !IO).
+output_exports(Info, Indent, ModuleInfo, MLDS_ModuleName, OutputAux,
         [Export | Exports], !IO) :-
     Export = ml_pragma_export(Lang, ExportName, MLDS_Name, MLDS_Signature,
         MLDS_Context),
@@ -480,14 +487,15 @@ output_exports(Indent, ModuleInfo, MLDS_ModuleName, OutputAux,
         io.write_string("void", !IO)
     ;
         ReturnTypes = [RetType],
-        output_type(normal_style, RetType, !IO)
+        output_type(Info, normal_style, RetType, !IO)
     ;
         ReturnTypes = [_, _ | _],
         % For multiple outputs, we return an array of objects.
         io.write_string("java.lang.Object []", !IO)
     ),
     io.write_string(" " ++ ExportName, !IO),
-    output_params(Indent + 1, MLDS_ModuleName, MLDS_Context, Parameters, !IO),
+    output_params(Info, Indent + 1, MLDS_ModuleName, MLDS_Context, Parameters,
+        !IO),
     io.nl(!IO),
     indent_line(Indent, !IO),
     io.write_string("{\n", !IO),
@@ -508,27 +516,28 @@ output_exports(Indent, ModuleInfo, MLDS_ModuleName, OutputAux,
     io.write_string(");\n", !IO),
     indent_line(Indent, !IO),
     io.write_string("}\n", !IO),
-    output_exports(Indent, ModuleInfo, MLDS_ModuleName, OutputAux, Exports,
-        !IO).
+    output_exports(Info, Indent, ModuleInfo, MLDS_ModuleName, OutputAux,
+        Exports, !IO).
 
 %-----------------------------------------------------------------------------%
 %
-% Code for handling `pragma foreign_export_enum' for Java
+% Code for handling `pragma foreign_export_enum' for Java.
 %
 
-:- pred output_exported_enums(indent::in, module_info::in,
+:- pred output_exported_enums(java_out_info::in, indent::in, module_info::in,
     list(mlds_exported_enum)::in, io::di, io::uo) is det.
 
-output_exported_enums(Indent, ModuleInfo, ExportedEnums, !IO) :-
+output_exported_enums(Info, Indent, ModuleInfo, ExportedEnums, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    list.foldl(output_exported_enum(Indent, ModuleInfo, MLDS_ModuleName),
+    list.foldl(output_exported_enum(Info, Indent, ModuleInfo, MLDS_ModuleName),
         ExportedEnums, !IO).
 
-:- pred output_exported_enum(indent::in, module_info::in, mlds_module_name::in,
-    mlds_exported_enum::in, io::di, io::uo) is det.
+:- pred output_exported_enum(java_out_info::in, indent::in, module_info::in,
+    mlds_module_name::in, mlds_exported_enum::in, io::di, io::uo) is det.
 
-output_exported_enum(Indent, ModuleInfo, MLDS_ModuleName, ExportedEnum, !IO) :-
+output_exported_enum(Info, Indent, ModuleInfo, MLDS_ModuleName, ExportedEnum,
+        !IO) :-
     ExportedEnum = mlds_exported_enum(Lang, _, TypeCtor, ExportedConstants0),
     (
         Lang = lang_java,
@@ -536,7 +545,7 @@ output_exported_enum(Indent, ModuleInfo, MLDS_ModuleName, ExportedEnum, !IO) :-
         MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_enum),
         % We reverse the list so the constants are printed out in order.
         list.reverse(ExportedConstants0, ExportedConstants),
-        list.foldl(output_exported_enum_constant(Indent, ModuleInfo,
+        list.foldl(output_exported_enum_constant(Info, Indent, ModuleInfo,
             MLDS_ModuleName, MLDS_Type), ExportedConstants, !IO)
     ;
         ( Lang = lang_c
@@ -546,20 +555,21 @@ output_exported_enum(Indent, ModuleInfo, MLDS_ModuleName, ExportedEnum, !IO) :-
         )
     ).
 
-:- pred output_exported_enum_constant(indent::in, module_info::in,
-    mlds_module_name::in, mlds_type::in, mlds_exported_enum_constant::in,
-    io::di, io::uo) is det.
+:- pred output_exported_enum_constant(java_out_info::in, indent::in,
+    module_info::in, mlds_module_name::in, mlds_type::in,
+    mlds_exported_enum_constant::in, io::di, io::uo) is det.
 
-output_exported_enum_constant(Indent, ModuleInfo, MLDS_ModuleName, MLDS_Type,
-        ExportedConstant, !IO) :-
+output_exported_enum_constant(Info, Indent, ModuleInfo, MLDS_ModuleName,
+        MLDS_Type, ExportedConstant, !IO) :-
     ExportedConstant = mlds_exported_enum_constant(Name, Initializer),
     indent_line(Indent, !IO),
     io.write_string("public static final ", !IO),
-    output_type(normal_style, MLDS_Type, !IO),
+    output_type(Info, normal_style, MLDS_Type, !IO),
     io.write_string(" ", !IO),
     io.write_string(Name, !IO),
     io.write_string(" = ", !IO),
-    output_initializer_body(ModuleInfo, Initializer, no, MLDS_ModuleName, !IO),
+    output_initializer_body(Info, ModuleInfo, Initializer, no,
+        MLDS_ModuleName, !IO),
     io.write_string(";\n", !IO).
 
 %-----------------------------------------------------------------------------%
@@ -754,8 +764,8 @@ method_ptrs_in_rval(ml_const(RvalConst), !CodeAddrs) :-
         ( RvalConst = mlconst_true
         ; RvalConst = mlconst_false
         ; RvalConst = mlconst_int(_)
-        ; RvalConst = mlconst_enum(_, _)
         ; RvalConst = mlconst_char(_)
+        ; RvalConst = mlconst_enum(_, _)
         ; RvalConst = mlconst_foreign(_, _, _)
         ; RvalConst = mlconst_float(_)
         ; RvalConst = mlconst_string(_)
@@ -1030,43 +1040,47 @@ make_pred_name_string(PredLabel, ProcId, MaybeSeqNum) = NameStr :-
 
 :- func pred_label_string(mlds_pred_label) = string.
 
-pred_label_string(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
-        PredArity, _CodeModel, _NonOutputFunc)) = PredLabelStr :-
+pred_label_string(PredLabel) = PredLabelStr :-
     (
-        PredOrFunc = pf_predicate,
-        Suffix = "p",
-        OrigArity = PredArity
+        PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
+            PredArity, _CodeModel, _NonOutputFunc),
+        (
+            PredOrFunc = pf_predicate,
+            Suffix = "p",
+            OrigArity = PredArity
+        ;
+            PredOrFunc = pf_function,
+            Suffix = "f",
+            OrigArity = PredArity - 1
+        ),
+        MangledName = name_mangle_no_leading_digit(Name),
+        PredLabelStr0 = MangledName ++ "_" ++ string.int_to_string(OrigArity)
+            ++ "_" ++ Suffix,
+        (
+            MaybeDefiningModule = yes(DefiningModule),
+            MangledModuleName = sym_name_mangle(DefiningModule),
+            PredLabelStr = PredLabelStr0 ++ "_in__" ++ MangledModuleName
+        ;
+            MaybeDefiningModule = no,
+            PredLabelStr = PredLabelStr0
+        )
     ;
-        PredOrFunc = pf_function,
-        Suffix = "f",
-        OrigArity = PredArity - 1
-    ),
-    MangledName = name_mangle_no_leading_digit(Name),
-    PredLabelStr0 = MangledName ++ "_" ++ string.int_to_string(OrigArity)
-        ++ "_" ++ Suffix,
-    (
-        MaybeDefiningModule = yes(DefiningModule),
-        MangledModuleName = sym_name_mangle(DefiningModule),
-        PredLabelStr = PredLabelStr0 ++ "_in__" ++ MangledModuleName
-    ;
-        MaybeDefiningModule = no,
-        PredLabelStr = PredLabelStr0
+        PredLabel = mlds_special_pred_label(PredName, MaybeTypeModule,
+            TypeName, TypeArity),
+        MangledPredName = name_mangle_no_leading_digit(PredName),
+        MangledTypeName = name_mangle(TypeName),
+        PredLabelStr0 = MangledPredName ++ "__",
+        (
+            MaybeTypeModule = yes(TypeModule),
+            MangledModuleName = sym_name_mangle(TypeModule),
+            PredLabelStr1 = PredLabelStr0 ++ "__" ++ MangledModuleName
+        ;
+            MaybeTypeModule = no,
+            PredLabelStr1 = PredLabelStr0
+        ),
+        PredLabelStr = PredLabelStr1 ++ MangledTypeName ++ "_" ++
+            string.int_to_string(TypeArity)
     ).
-pred_label_string(mlds_special_pred_label(PredName, MaybeTypeModule, TypeName,
-        TypeArity)) = PredLabelStr :-
-    MangledPredName = name_mangle_no_leading_digit(PredName),
-    MangledTypeName = name_mangle(TypeName),
-    PredLabelStr0 = MangledPredName ++ "__",
-    (
-        MaybeTypeModule = yes(TypeModule),
-        MangledModuleName = sym_name_mangle(TypeModule),
-        PredLabelStr1 = PredLabelStr0 ++ "__" ++ MangledModuleName
-    ;
-        MaybeTypeModule = no,
-        PredLabelStr1 = PredLabelStr0
-    ),
-    PredLabelStr = PredLabelStr1 ++ MangledTypeName ++ "_" ++
-        string.int_to_string(TypeArity).
 
 :- func addr_wrapper_decl_flags = mlds_decl_flags.
 
@@ -1539,8 +1553,8 @@ rename_class_names_rval_const(Renaming, !Const) :-
         ( !.Const = mlconst_true
         ; !.Const = mlconst_false
         ; !.Const = mlconst_int(_)
-        ; !.Const = mlconst_enum(_, _)
         ; !.Const = mlconst_char(_)
+        ; !.Const = mlconst_enum(_, _)
         ; !.Const = mlconst_float(_)
         ; !.Const = mlconst_string(_)
         ; !.Const = mlconst_multi_string(_)
@@ -1691,13 +1705,13 @@ output_env_var_definition(Indent, EnvVarName, !IO) :-
 % Code to output the start and end of a source file.
 %
 
-:- pred output_src_start(indent::in, mercury_module_name::in,
-    mlds_imports::in, list(foreign_decl_code)::in, list(mlds_defn)::in,
-    io::di, io::uo) is det.
+:- pred output_src_start(globals::in, java_out_info::in, indent::in,
+    mercury_module_name::in, mlds_imports::in, list(foreign_decl_code)::in,
+    list(mlds_defn)::in, io::di, io::uo) is det.
 
-output_src_start(Indent, MercuryModuleName, Imports, ForeignDecls, Defns,
-        !IO) :-
-    output_auto_gen_comment(MercuryModuleName, !IO),
+output_src_start(Globals, Info, Indent, MercuryModuleName, Imports,
+        ForeignDecls, Defns, !IO) :-
+    output_auto_gen_comment(Globals, MercuryModuleName, !IO),
     indent_line(Indent, !IO),
     io.write_string("/* :- module ", !IO),
     prog_out.write_sym_name(MercuryModuleName, !IO),
@@ -1706,7 +1720,7 @@ output_src_start(Indent, MercuryModuleName, Imports, ForeignDecls, Defns,
     io.write_string("package jmercury;\n", !IO),
 
     output_imports(Imports, !IO),
-    io.write_list(ForeignDecls, "\n", output_java_decl(Indent), !IO),
+    io.write_list(ForeignDecls, "\n", output_java_decl(Info, Indent), !IO),
     io.write_string("public class ", !IO),
     mangle_sym_name_for_java(MercuryModuleName, module_qual, "__", ClassName),
     io.write_string(ClassName, !IO),
@@ -1794,12 +1808,12 @@ output_debug_class_init(ModuleName, State, !IO) :-
     % Output a Java comment saying that the file was automatically
     % generated and give details such as the compiler version.
     %
-:- pred output_auto_gen_comment(mercury_module_name::in, io::di, io::uo)
-    is det.
+:- pred output_auto_gen_comment(globals::in, mercury_module_name::in,
+    io::di, io::uo) is det.
 
-output_auto_gen_comment(ModuleName, !IO)  :-
+output_auto_gen_comment(Globals, ModuleName, !IO)  :-
     library.version(Version),
-    module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
+    module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
         SourceFileName, !IO),
     io.write_string("//\n//\n// Automatically generated from ", !IO),
     io.write_string(SourceFileName, !IO),
@@ -1832,19 +1846,22 @@ output_auto_gen_comment(ModuleName, !IO)  :-
             % with allocated top-level structures but don't fill in the fields
             % yet.
 
-:- pred output_defns(indent::in, module_info::in, mlds_module_name::in,
-    output_aux::in, list(mlds_defn)::in, io::di, io::uo) is det.
+:- pred output_defns(java_out_info::in, indent::in, module_info::in,
+    mlds_module_name::in, output_aux::in, list(mlds_defn)::in,
+    io::di, io::uo) is det.
 
-output_defns(Indent, ModuleInfo, ModuleName, OutputAux, Defns, !IO) :-
-    OutputDefn = output_defn(Indent, ModuleInfo, ModuleName, OutputAux),
+output_defns(Info, Indent, ModuleInfo, ModuleName, OutputAux, Defns, !IO) :-
+    OutputDefn = output_defn(Info, Indent, ModuleInfo, ModuleName, OutputAux),
     list.foldl(OutputDefn, Defns, !IO).
 
-:- pred output_defn(indent::in, module_info::in, mlds_module_name::in,
-    output_aux::in, mlds_defn::in, io::di, io::uo) is det.
+:- pred output_defn(java_out_info::in, indent::in, module_info::in,
+    mlds_module_name::in, output_aux::in, mlds_defn::in,
+    io::di, io::uo) is det.
 
-output_defn(Indent, ModuleInfo, ModuleName, OutputAux, Defn, !IO) :-
+output_defn(Info, Indent, ModuleInfo, ModuleName, OutputAux, Defn, !IO) :-
     Defn = mlds_defn(Name, Context, Flags, DefnBody),
-    indent_line(Context, Indent, !IO),
+    QualName = qual(ModuleName, module_qual, Name),
+    indent_line(Info, Context, Indent, !IO),
     ( DefnBody = mlds_function(_, _, body_external, _, _) ->
         % This is just a function declaration, with no body.
         % Java doesn't support separate declarations and definitions,
@@ -1852,45 +1869,47 @@ output_defn(Indent, ModuleInfo, ModuleName, OutputAux, Defn, !IO) :-
         % (Note that the actual definition of an external procedure
         % must be given in `pragma java_code' in the same module.)
         io.write_string("/* external:\n", !IO),
-        output_decl_flags(Flags, !IO),
-        output_defn_body(Indent, ModuleInfo,
-            qual(ModuleName, module_qual, Name), OutputAux, Context, DefnBody,
-            !IO),
+        output_decl_flags(Info, Flags, !IO),
+        output_defn_body(Info, Indent, ModuleInfo, QualName, OutputAux,
+            Context, DefnBody, !IO),
         io.write_string("*/\n", !IO)
     ;
-        output_decl_flags(Flags, !IO),
-        output_defn_body(Indent, ModuleInfo,
-            qual(ModuleName, module_qual, Name), OutputAux, Context, DefnBody,
-            !IO)
+        output_decl_flags(Info, Flags, !IO),
+        output_defn_body(Info, Indent, ModuleInfo, QualName, OutputAux,
+            Context, DefnBody, !IO)
     ).
 
-:- pred output_defn_body(indent::in, module_info::in,
+:- pred output_defn_body(java_out_info::in, indent::in, module_info::in,
     mlds_qualified_entity_name::in, output_aux::in,
     mlds_context::in, mlds_entity_defn::in, io::di, io::uo) is det.
 
-output_defn_body(_, ModuleInfo, Name, OutputAux, _,
-        mlds_data(Type, Initializer, _), !IO) :-
-    output_data_defn(ModuleInfo, Name, OutputAux, Type, Initializer, !IO).
-output_defn_body(Indent, ModuleInfo, Name, OutputAux, Context,
-        mlds_function(MaybePredProcId, Signature, MaybeBody,
-            _Attributes, _EnvVarNames), !IO) :-
-    output_maybe(MaybePredProcId, output_pred_proc_id, !IO),
-    output_func(Indent, ModuleInfo, Name, OutputAux, Context,
-        Signature, MaybeBody, !IO).
-output_defn_body(Indent, ModuleInfo, Name, _, Context,
-        mlds_class(ClassDefn), !IO) :-
-    output_class(Indent, ModuleInfo, Name, Context, ClassDefn, !IO).
+output_defn_body(Info, Indent, ModuleInfo, Name, OutputAux, Context, Entity,
+        !IO) :-
+    (
+        Entity = mlds_data(Type, Initializer, _),
+        output_data_defn(Info, ModuleInfo, Name, OutputAux, Type, Initializer,
+            !IO)
+    ;
+        Entity = mlds_function(MaybePredProcId, Signature, MaybeBody,
+            _Attributes, _EnvVarNames),
+        output_maybe(MaybePredProcId, output_pred_proc_id(Info), !IO),
+        output_func(Info, Indent, ModuleInfo, Name, OutputAux, Context,
+            Signature, MaybeBody, !IO)
+    ;
+        Entity = mlds_class(ClassDefn),
+        output_class(Info, Indent, ModuleInfo, Name, Context, ClassDefn, !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 %
 % Code to output classes.
 %
 
-:- pred output_class(indent::in, module_info::in,
+:- pred output_class(java_out_info::in, indent::in, module_info::in,
     mlds_qualified_entity_name::in, mlds_context::in, mlds_class_defn::in,
     io::di, io::uo) is det.
 
-output_class(Indent, ModuleInfo, Name, _Context, ClassDefn, !IO) :-
+output_class(Info, Indent, ModuleInfo, Name, _Context, ClassDefn, !IO) :-
     Name = qual(ModuleName, _QualKind, UnqualName),
     (
         UnqualName = entity_type(ClassNamePrime, ArityPrime),
@@ -1918,31 +1937,31 @@ output_class(Indent, ModuleInfo, Name, _Context, ClassDefn, !IO) :-
     ),
     output_class_name_and_arity(ClassName, Arity, !IO),
     io.nl(!IO),
-    output_extends_list(Indent + 1, BaseClasses, !IO),
+    output_extends_list(Info, Indent + 1, BaseClasses, !IO),
     output_implements_list(Indent + 1, Implements, !IO),
     indent_line(Indent, !IO),
     io.write_string("{\n", !IO),
-    output_class_body(Indent + 1, ModuleInfo, Kind, Name, AllMembers,
+    output_class_body(Info, Indent + 1, ModuleInfo, Kind, Name, AllMembers,
         ModuleName, !IO),
     io.nl(!IO),
-    output_defns(Indent + 1, ModuleInfo, ModuleName, cname(UnqualName), Ctors,
-        !IO),
+    output_defns(Info, Indent + 1, ModuleInfo, ModuleName, cname(UnqualName),
+        Ctors, !IO),
     indent_line(Indent, !IO),
     io.write_string("}\n\n", !IO).
 
     % Output superclass that this class extends. Java does not support
     % multiple inheritance, so more than one superclass is an error.
     %
-:- pred output_extends_list(indent::in, list(mlds_class_id)::in,
-    io::di, io::uo) is det.
+:- pred output_extends_list(java_out_info::in, indent::in,
+    list(mlds_class_id)::in, io::di, io::uo) is det.
 
-output_extends_list(_, [], !IO).
-output_extends_list(Indent, [SuperClass], !IO) :-
+output_extends_list(_, _, [], !IO).
+output_extends_list(Info, Indent, [SuperClass], !IO) :-
     indent_line(Indent, !IO),
     io.write_string("extends ", !IO),
-    output_type(normal_style, SuperClass, !IO),
+    output_type(Info, normal_style, SuperClass, !IO),
     io.nl(!IO).
-output_extends_list(_, [_, _ | _], _, _) :-
+output_extends_list(_, _, [_, _ | _], _, _) :-
     unexpected(this_file,
         "output_extends_list: multiple inheritance not supported in Java").
 
@@ -1986,34 +2005,39 @@ output_interface(Interface, !IO) :-
         unexpected(this_file, "output_interface: interface was not a class.")
     ).
 
-:- pred output_class_body(indent::in, module_info::in, mlds_class_kind::in,
-    mlds_qualified_entity_name::in, list(mlds_defn)::in,
+:- pred output_class_body(java_out_info::in, indent::in, module_info::in,
+    mlds_class_kind::in, mlds_qualified_entity_name::in, list(mlds_defn)::in,
     mlds_module_name::in, io::di, io::uo) is det.
 
-output_class_body(Indent, ModuleInfo, mlds_class, _, AllMembers, ModuleName,
+output_class_body(Info, Indent, ModuleInfo, Kind, Name, AllMembers, ModuleName,
         !IO) :-
-    output_defns(Indent, ModuleInfo, ModuleName, none, AllMembers, !IO).
-
-output_class_body(_Indent, _, mlds_package, _Name, _AllMembers, _, _, _) :-
-    unexpected(this_file, "cannot use package as a type.").
-
-output_class_body(Indent, ModuleInfo, mlds_interface, _, AllMembers,
-        ModuleName, !IO) :-
-    output_defns(Indent, ModuleInfo, ModuleName, none, AllMembers, !IO).
-
-output_class_body(_Indent, _, mlds_struct, _, _AllMembers, _, _, _) :-
-    unexpected(this_file, "output_class_body: structs not supported in Java.").
-
-output_class_body(Indent, _ModuleInfo, mlds_enum, Name, AllMembers, _, !IO) :-
-    list.filter(defn_is_const, AllMembers, EnumConsts),
-    Name = qual(_ModuleName, _QualKind, UnqualName),
-    output_enum_constants(Indent + 1, UnqualName, EnumConsts, !IO),
-    io.nl(!IO),
-    output_enum_ctor(Indent + 1, UnqualName, !IO).
+    (
+        Kind = mlds_class,
+        output_defns(Info, Indent, ModuleInfo, ModuleName, none, AllMembers,
+            !IO)
+    ;
+        Kind = mlds_package,
+        unexpected(this_file, "cannot use package as a type.")
+    ;
+        Kind = mlds_interface,
+        output_defns(Info, Indent, ModuleInfo, ModuleName, none, AllMembers,
+            !IO)
+    ;
+        Kind = mlds_struct,
+        unexpected(this_file,
+            "output_class_body: structs not supported in Java.")
+    ;
+        Kind = mlds_enum,
+        list.filter(defn_is_const, AllMembers, EnumConsts),
+        Name = qual(_NameModuleName, _QualKind, UnqualName),
+        output_enum_constants(Info, Indent + 1, UnqualName, EnumConsts, !IO),
+        io.nl(!IO),
+        output_enum_ctor(Indent + 1, UnqualName, !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 %
-% Additional code for generating enumerations
+% Additional code for generating enumerations.
 %
 % Enumerations are a bit different from normal classes because although the
 % ml code generator generates them as classes, it treats them as integers.
@@ -2042,24 +2066,22 @@ output_enum_ctor(Indent, UnqualName, !IO) :-
     indent_line(Indent, !IO),
     io.write_string("}\n", !IO).
 
-:- pred output_enum_constants(indent::in, mlds_entity_name::in,
-    list(mlds_defn)::in, io::di, io::uo) is det.
+:- pred output_enum_constants(java_out_info::in, indent::in,
+    mlds_entity_name::in, list(mlds_defn)::in, io::di, io::uo) is det.
 
-output_enum_constants(Indent, EnumName, EnumConsts, !IO) :-
-    io.write_list(EnumConsts, "\n", output_enum_constant(Indent, EnumName),
-        !IO),
+output_enum_constants(Info, Indent, EnumName, EnumConsts, !IO) :-
+    io.write_list(EnumConsts, "\n",
+        output_enum_constant(Info, Indent, EnumName), !IO),
     io.nl(!IO).
 
-:- pred output_enum_constant(indent::in, mlds_entity_name::in, mlds_defn::in,
-    io::di, io::uo) is det.
+:- pred output_enum_constant(java_out_info::in, indent::in,
+    mlds_entity_name::in, mlds_defn::in, io::di, io::uo) is det.
 
-output_enum_constant(Indent, EnumName, Defn, !IO) :-
+output_enum_constant(_Info, Indent, EnumName, Defn, !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
-    (
-        DefnBody = mlds_data(_Type, Initializer, _GCStatement)
-    ->
-        % Make a static instance of the constant.  The MLDS doesn't retain enum
-        % constructor names (that shouldn't be hard to change now) so it's
+    ( DefnBody = mlds_data(_Type, Initializer, _GCStatement) ->
+        % Make a static instance of the constant. The MLDS doesn't retain enum
+        % constructor names (that shouldn't be hard to change now) so it is
         % easier to derive the name of the constant later by naming them after
         % the integer values.
         (
@@ -2092,23 +2114,24 @@ output_enum_constant(Indent, EnumName, Defn, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code to output data declarations/definitions
+% Code to output data declarations/definitions.
 %
 
-:- pred output_data_decl(mlds_qualified_entity_name::in, mlds_type::in,
-    io::di, io::uo) is det.
+:- pred output_data_decl(java_out_info::in, mlds_qualified_entity_name::in,
+    mlds_type::in, io::di, io::uo) is det.
 
-output_data_decl(qual(_, _, Name), Type, !IO) :-
-    output_type(normal_style, Type, !IO),
+output_data_decl(Info, qual(_, _, Name), Type, !IO) :-
+    output_type(Info, normal_style, Type, !IO),
     io.write_char(' ', !IO),
     output_name(Name, !IO).
 
-:- pred output_data_defn(module_info::in, mlds_qualified_entity_name::in,
-    output_aux::in, mlds_type::in, mlds_initializer::in, io::di, io::uo) is det.
+:- pred output_data_defn(java_out_info::in, module_info::in,
+    mlds_qualified_entity_name::in, output_aux::in, mlds_type::in,
+    mlds_initializer::in, io::di, io::uo) is det.
 
-output_data_defn(ModuleInfo, Name, OutputAux, Type, Initializer, !IO) :-
-    output_data_decl(Name, Type, !IO),
-    output_initializer(ModuleInfo, Name ^ mod_name, OutputAux, Type,
+output_data_defn(Info, ModuleInfo, Name, OutputAux, Type, Initializer, !IO) :-
+    output_data_decl(Info, Name, Type, !IO),
+    output_initializer(Info, ModuleInfo, Name ^ mod_name, OutputAux, Type,
         Initializer, !IO),
     io.write_string(";\n", !IO).
 
@@ -2187,11 +2210,12 @@ output_maybe(MaybeValue, OutputAction, !IO) :-
         MaybeValue = no
     ).
 
-:- pred output_initializer(module_info::in, mlds_module_name::in,
-    output_aux::in, mlds_type::in, mlds_initializer::in, io::di, io::uo)
-    is det.
+:- pred output_initializer(java_out_info::in, module_info::in,
+    mlds_module_name::in, output_aux::in, mlds_type::in, mlds_initializer::in,
+    io::di, io::uo) is det.
 
-output_initializer(ModuleInfo, ModuleName, OutputAux, Type, Initializer, !IO) :-
+output_initializer(Info, ModuleInfo, ModuleName, OutputAux, Type, Initializer,
+        !IO) :-
     io.write_string(" = ", !IO),
     NeedsInit = needs_initialization(Initializer),
     (
@@ -2204,12 +2228,12 @@ output_initializer(ModuleInfo, ModuleName, OutputAux, Type, Initializer, !IO) :-
             ( OutputAux = none
             ; OutputAux = cname(_)
             ),
-            output_initializer_body(ModuleInfo, Initializer, yes(Type),
+            output_initializer_body(Info, ModuleInfo, Initializer, yes(Type),
                 ModuleName, !IO)
         ;
             OutputAux = alloc_only,
-            output_initializer_alloc_only(ModuleInfo, Initializer, yes(Type),
-                ModuleName, !IO)
+            output_initializer_alloc_only(Info, ModuleInfo, Initializer,
+                yes(Type), ModuleName, !IO)
         )
     ;
         NeedsInit = no,
@@ -2227,11 +2251,12 @@ needs_initialization(init_obj(_)) = yes.
 needs_initialization(init_struct(_, _)) = yes.
 needs_initialization(init_array(_)) = yes.
 
-:- pred output_initializer_alloc_only(module_info::in, mlds_initializer::in,
-    maybe(mlds_type)::in, mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_initializer_alloc_only(java_out_info::in, module_info::in,
+    mlds_initializer::in, maybe(mlds_type)::in, mlds_module_name::in,
+    io::di, io::uo) is det.
 
-output_initializer_alloc_only(_ModuleInfo, Initializer, MaybeType, _ModuleName,
-        !IO) :-
+output_initializer_alloc_only(Info, _ModuleInfo, Initializer, MaybeType,
+        _ModuleName, !IO) :-
     (
         Initializer = no_initializer,
         unexpected(this_file, "output_initializer_alloc_only: no_initializer")
@@ -2241,7 +2266,7 @@ output_initializer_alloc_only(_ModuleInfo, Initializer, MaybeType, _ModuleName,
     ;
         Initializer = init_struct(StructType, _FieldInits),
         io.write_string("new ", !IO),
-        output_type(normal_style, StructType, !IO),
+        output_type(Info, normal_style, StructType, !IO),
         io.write_string("()", !IO)
     ;
         Initializer = init_array(ElementInits),
@@ -2249,7 +2274,7 @@ output_initializer_alloc_only(_ModuleInfo, Initializer, MaybeType, _ModuleName,
         io.write_string("new ", !IO),
         (
             MaybeType = yes(Type),
-            output_type(sized_array(Size), Type, !IO)
+            output_type(Info, sized_array(Size), Type, !IO)
         ;
             MaybeType = no,
             % XXX we need to know the type here
@@ -2258,56 +2283,63 @@ output_initializer_alloc_only(_ModuleInfo, Initializer, MaybeType, _ModuleName,
         )
     ).
 
-:- pred output_initializer_body(module_info::in, mlds_initializer::in,
-    maybe(mlds_type)::in, mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_initializer_body(java_out_info::in, module_info::in,
+    mlds_initializer::in, maybe(mlds_type)::in, mlds_module_name::in,
+    io::di, io::uo) is det.
 
-output_initializer_body(_ModuleInfo, no_initializer, _, _, _, _) :-
-    unexpected(this_file, "output_initializer_body: no_initializer").
-output_initializer_body(ModuleInfo, init_obj(Rval), _MaybeType, ModuleName,
+output_initializer_body(Info, ModuleInfo, Initializer, MaybeType, ModuleName,
         !IO) :-
-    output_rval(ModuleInfo, Rval, ModuleName, !IO).
-
-output_initializer_body(ModuleInfo, init_struct(StructType, FieldInits),
-        _MaybeType, ModuleName, !IO) :-
-    io.write_string("new ", !IO),
-    output_type(normal_style, StructType, !IO),
-    IsArray = type_is_array(StructType),
-    io.write_string(if IsArray = is_array then " {" else "(", !IO),
-    output_initializer_body_list(ModuleInfo, ModuleName, FieldInits, !IO),
-    io.write_char(if IsArray = is_array then '}' else ')', !IO).
-output_initializer_body(ModuleInfo, init_array(ElementInits), MaybeType,
-        ModuleName, !IO) :-
-    io.write_string("new ", !IO),
     (
-        MaybeType = yes(Type),
-        output_type(normal_style, Type, !IO)
+        Initializer = no_initializer,
+        unexpected(this_file, "output_initializer_body: no_initializer")
     ;
-        MaybeType = no,
-        % XXX we need to know the type here
-        io.write_string("/* XXX init_array */ Object[]", !IO)
-    ),
-    io.write_string(" {\n\t\t", !IO),
-    output_initializer_body_list(ModuleInfo, ModuleName, ElementInits, !IO),
-    io.write_string("}", !IO).
+        Initializer = init_obj(Rval),
+        output_rval(Info, ModuleInfo, Rval, ModuleName, !IO)
+    ;
+        Initializer = init_struct(StructType, FieldInits),
+        io.write_string("new ", !IO),
+        output_type(Info, normal_style, StructType, !IO),
+        IsArray = type_is_array(StructType),
+        io.write_string(if IsArray = is_array then " {" else "(", !IO),
+        output_initializer_body_list(Info, ModuleInfo, ModuleName,
+            FieldInits, !IO),
+        io.write_char(if IsArray = is_array then '}' else ')', !IO)
+    ;
+        Initializer = init_array(ElementInits),
+        io.write_string("new ", !IO),
+        (
+            MaybeType = yes(Type),
+            output_type(Info, normal_style, Type, !IO)
+        ;
+            MaybeType = no,
+            % XXX we need to know the type here
+            io.write_string("/* XXX init_array */ Object[]", !IO)
+        ),
+        io.write_string(" {\n\t\t", !IO),
+        output_initializer_body_list(Info, ModuleInfo, ModuleName,
+            ElementInits, !IO),
+        io.write_string("}", !IO)
+    ).
 
-:- pred output_initializer_body_list(module_info::in, mlds_module_name::in,
-    list(mlds_initializer)::in, io::di, io::uo) is det.
+:- pred output_initializer_body_list(java_out_info::in, module_info::in,
+    mlds_module_name::in, list(mlds_initializer)::in, io::di, io::uo) is det.
 
-output_initializer_body_list(ModuleInfo, ModuleName, Inits, !IO) :-
+output_initializer_body_list(Info, ModuleInfo, ModuleName, Inits, !IO) :-
     io.write_list(Inits, ",\n\t\t",
         (pred(Init::in, !.IO::di, !:IO::uo) is det :-
-            output_initializer_body(ModuleInfo, Init, no, ModuleName, !IO)),
+            output_initializer_body(Info, ModuleInfo, Init, no, ModuleName,
+                !IO)),
         !IO).
 
 %-----------------------------------------------------------------------------%
 %
-% Code to output RTTI data assignments
+% Code to output RTTI data assignments.
 %
 
-:- pred output_rtti_assignments(indent::in, module_info::in,
+:- pred output_rtti_assignments(java_out_info::in, indent::in, module_info::in,
     mlds_module_name::in, list(mlds_defn)::in, io::di, io::uo) is det.
 
-output_rtti_assignments(Indent, ModuleInfo, ModuleName, Defns, !IO) :-
+output_rtti_assignments(Info, Indent, ModuleInfo, ModuleName, Defns, !IO) :-
     (
         Defns = []
     ;
@@ -2316,32 +2348,37 @@ output_rtti_assignments(Indent, ModuleInfo, ModuleName, Defns, !IO) :-
         indent_line(Indent, !IO),
         io.write_string("static {\n", !IO),
         list.foldl(
-            output_rtti_defns_assignments(Indent + 1, ModuleInfo, ModuleName),
+            output_rtti_defns_assignments(Info, Indent + 1, ModuleInfo,
+                ModuleName),
             OrderedDefns, !IO),
         indent_line(Indent, !IO),
         io.write_string("}\n", !IO)
     ).
 
-:- pred output_rtti_defns_assignments(indent::in, module_info::in,
-    mlds_module_name::in, list(mlds_defn)::in, io::di, io::uo) is det.
+:- pred output_rtti_defns_assignments(java_out_info::in, indent::in,
+    module_info::in, mlds_module_name::in, list(mlds_defn)::in,
+    io::di, io::uo) is det.
 
-output_rtti_defns_assignments(Indent, ModuleInfo, ModuleName, Defns, !IO) :-
+output_rtti_defns_assignments(Info, Indent, ModuleInfo, ModuleName, Defns,
+        !IO) :-
     % Separate cliques.
     indent_line(Indent, !IO),
     io.write_string("//\n", !IO),
     list.foldl(
-        output_rtti_defn_assignments(Indent, ModuleInfo, ModuleName),
+        output_rtti_defn_assignments(Info, Indent, ModuleInfo, ModuleName),
         Defns, !IO).
 
-:- pred output_rtti_defn_assignments(indent::in, module_info::in,
-    mlds_module_name::in, mlds_defn::in, io::di, io::uo) is det.
+:- pred output_rtti_defn_assignments(java_out_info::in, indent::in,
+    module_info::in, mlds_module_name::in, mlds_defn::in,
+    io::di, io::uo) is det.
 
-output_rtti_defn_assignments(Indent, ModuleInfo, ModuleName, Defn, !IO) :-
+output_rtti_defn_assignments(Info, Indent, ModuleInfo, ModuleName, Defn,
+        !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
     (
         DefnBody = mlds_data(Type, Initializer, _),
-        output_rtti_defn_assignments_2(Indent, ModuleInfo, ModuleName, Name,
-            Type, Initializer, !IO)
+        output_rtti_defn_assignments_2(Info, Indent, ModuleInfo, ModuleName,
+            Name, Type, Initializer, !IO)
     ;
         ( DefnBody = mlds_function(_, _, _, _, _)
         ; DefnBody = mlds_class(_)
@@ -2350,12 +2387,12 @@ output_rtti_defn_assignments(Indent, ModuleInfo, ModuleName, Defn, !IO) :-
             "output_rtti_defn_assignments: expected mlds_data")
     ).
 
-:- pred output_rtti_defn_assignments_2(indent::in, module_info::in,
-    mlds_module_name::in, mlds_entity_name::in, mlds_type::in,
+:- pred output_rtti_defn_assignments_2(java_out_info::in, indent::in,
+    module_info::in, mlds_module_name::in, mlds_entity_name::in, mlds_type::in,
     mlds_initializer::in, io::di, io::uo) is det.
 
-output_rtti_defn_assignments_2(Indent, ModuleInfo, ModuleName, Name, _Type,
-        Initializer, !IO) :-
+output_rtti_defn_assignments_2(Info, Indent, ModuleInfo, ModuleName, Name,
+        _Type, Initializer, !IO) :-
     (
         Initializer = no_initializer
     ;
@@ -2370,8 +2407,8 @@ output_rtti_defn_assignments_2(Indent, ModuleInfo, ModuleName, Name, _Type,
             indent_line(Indent, !IO),
             output_name(Name, !IO),
             io.write_string(".init(", !IO),
-            output_initializer_body_list(ModuleInfo, ModuleName, FieldInits,
-                !IO),
+            output_initializer_body_list(Info, ModuleInfo, ModuleName,
+                FieldInits, !IO),
             io.write_string(");\n", !IO)
         ;
             IsArray = is_array,
@@ -2380,35 +2417,37 @@ output_rtti_defn_assignments_2(Indent, ModuleInfo, ModuleName, Name, _Type,
         )
     ;
         Initializer = init_array(ElementInits),
-        list.foldl2(output_rtti_array_assignments(Indent, ModuleInfo,
+        list.foldl2(output_rtti_array_assignments(Info, Indent, ModuleInfo,
             ModuleName, Name), ElementInits, 0, _Index, !IO)
     ).
 
-:- pred output_rtti_array_assignments(indent::in, module_info::in,
-    mlds_module_name::in, mlds_entity_name::in,
+:- pred output_rtti_array_assignments(java_out_info::in, indent::in,
+    module_info::in, mlds_module_name::in, mlds_entity_name::in,
     mlds_initializer::in, int::in, int::out, io::di, io::uo) is det.
 
-output_rtti_array_assignments(Indent, ModuleInfo, ModuleName, Name,
+output_rtti_array_assignments(Info, Indent, ModuleInfo, ModuleName, Name,
         ElementInit, Index, Index + 1, !IO) :-
     indent_line(Indent, !IO),
     output_name(Name, !IO),
     io.write_string("[", !IO),
     io.write_int(Index, !IO),
     io.write_string("] = ", !IO),
-    output_initializer_body(ModuleInfo, ElementInit, no, ModuleName, !IO),
+    output_initializer_body(Info, ModuleInfo, ElementInit, no, ModuleName,
+        !IO),
     io.write_string(";\n", !IO).
 
 %-----------------------------------------------------------------------------%
 %
-% Code to output function declarations/definitions
+% Code to output function declarations/definitions.
 %
 
-:- pred output_pred_proc_id(pred_proc_id::in, io::di, io::uo) is det.
+:- pred output_pred_proc_id(java_out_info::in, pred_proc_id::in,
+    io::di, io::uo) is det.
 
-output_pred_proc_id(proc(PredId, ProcId), !IO) :-
-    globals.io_lookup_bool_option(auto_comments, AddComments, !IO),
+output_pred_proc_id(Info, proc(PredId, ProcId), !IO) :-
+    AutoComments = Info ^ joi_auto_comments,
     (
-        AddComments = yes,
+        AutoComments = yes,
         io.write_string("// pred_id: ", !IO),
         pred_id_to_int(PredId, PredIdNum),
         io.write_int(PredIdNum, !IO),
@@ -2417,65 +2456,69 @@ output_pred_proc_id(proc(PredId, ProcId), !IO) :-
         io.write_int(ProcIdNum, !IO),
         io.nl(!IO)
     ;
-        AddComments = no
+        AutoComments = no
     ).
 
-:- pred output_func(indent::in, module_info::in,
+:- pred output_func(java_out_info::in, indent::in, module_info::in,
     mlds_qualified_entity_name::in, output_aux::in, mlds_context::in,
     mlds_func_params::in, mlds_function_body::in, io::di, io::uo) is det.
 
-output_func(Indent, ModuleInfo, Name, OutputAux, Context, Signature, MaybeBody,
-        !IO) :-
+output_func(Info, Indent, ModuleInfo, Name, OutputAux, Context, Signature,
+        MaybeBody, !IO) :-
     (
         MaybeBody = body_defined_here(Body),
-        output_func_decl(Indent, Name, OutputAux, Context, Signature, !IO),
+        output_func_decl(Info, Indent, Name, OutputAux, Context, Signature,
+            !IO),
         io.write_string("\n", !IO),
-        indent_line(Context, Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("{\n", !IO),
         FuncInfo = func_info(Name, Signature),
-        output_statement(Indent + 1, ModuleInfo, FuncInfo, Body, _ExitMethods,
-            !IO),
-        indent_line(Context, Indent, !IO),
+        output_statement(Info, Indent + 1, ModuleInfo, FuncInfo, Body,
+            _ExitMethods, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("}\n", !IO)    % end the function
     ;
         MaybeBody = body_external
     ).
 
-:- pred output_func_decl(indent::in, mlds_qualified_entity_name::in,
-    output_aux::in, mlds_context::in, mlds_func_params::in, io::di, io::uo)
-    is det.
+:- pred output_func_decl(java_out_info::in, indent::in,
+    mlds_qualified_entity_name::in, output_aux::in, mlds_context::in,
+    mlds_func_params::in, io::di, io::uo) is det.
 
-output_func_decl(Indent, QualifiedName, cname(CtorName), Context, Signature,
+output_func_decl(Info, Indent, QualifiedName, OutputAux, Context, Signature,
         !IO) :-
-    Signature = mlds_func_params(Parameters, _RetTypes),
-    output_name(CtorName, !IO),
-    output_params(Indent, QualifiedName ^ mod_name, Context, Parameters, !IO).
-
-output_func_decl(Indent, QualifiedName, OutputAux, Context, Signature, !IO) :-
-    ( OutputAux = none
-    ; OutputAux = alloc_only
-    ),
-    Signature = mlds_func_params(Parameters, RetTypes),
     (
-        RetTypes = [],
-        io.write_string("void", !IO)
+        OutputAux = cname(CtorName),
+        Signature = mlds_func_params(Parameters, _RetTypes),
+        output_name(CtorName, !IO),
+        output_params(Info, Indent, QualifiedName ^ mod_name, Context,
+            Parameters, !IO)
     ;
-        RetTypes = [RetType],
-        output_type(normal_style, RetType, !IO)
-    ;
-        RetTypes = [_, _ | _],
-        % For multiple outputs, we return an array of objects.
-        io.write_string("java.lang.Object []", !IO)
-    ),
-    io.write_char(' ', !IO),
-    QualifiedName = qual(ModuleName, _QualKind, Name),
-    output_name(Name, !IO),
-    output_params(Indent, ModuleName, Context, Parameters, !IO).
+        ( OutputAux = none
+        ; OutputAux = alloc_only
+        ),
+        Signature = mlds_func_params(Parameters, RetTypes),
+        (
+            RetTypes = [],
+            io.write_string("void", !IO)
+        ;
+            RetTypes = [RetType],
+            output_type(Info, normal_style, RetType, !IO)
+        ;
+            RetTypes = [_, _ | _],
+            % For multiple outputs, we return an array of objects.
+            io.write_string("java.lang.Object []", !IO)
+        ),
+        io.write_char(' ', !IO),
+        QualifiedName = qual(ModuleName, _QualKind, Name),
+        output_name(Name, !IO),
+        output_params(Info, Indent, ModuleName, Context, Parameters, !IO)
+    ).
 
-:- pred output_params(indent::in, mlds_module_name::in, mlds_context::in,
-    mlds_arguments::in, io::di, io::uo) is det.
+:- pred output_params(java_out_info::in, indent::in, mlds_module_name::in,
+    mlds_context::in, mlds_arguments::in, io::di, io::uo) is det.
 
-output_params(Indent, ModuleName, Context, Parameters, !IO) :-
+output_params(Info, Indent, ModuleName, Context, Parameters, !IO) :-
     io.write_char('(', !IO),
     (
         Parameters = []
@@ -2483,25 +2526,27 @@ output_params(Indent, ModuleName, Context, Parameters, !IO) :-
         Parameters = [_ | _],
         io.nl(!IO),
         io.write_list(Parameters, ",\n",
-            output_param(Indent + 1, ModuleName, Context), !IO)
+            output_param(Info, Indent + 1, ModuleName, Context), !IO)
     ),
     io.write_char(')', !IO).
 
-:- pred output_param(indent::in, mlds_module_name::in, mlds_context::in,
-    mlds_argument::in, io::di, io::uo) is det.
+:- pred output_param(java_out_info::in, indent::in, mlds_module_name::in,
+    mlds_context::in, mlds_argument::in, io::di, io::uo) is det.
 
-output_param(Indent, _ModuleName, Context, Arg, !IO) :-
+output_param(Info, Indent, _ModuleName, Context, Arg, !IO) :-
     Arg = mlds_argument(Name, Type, _GCStatement),
-    indent_line(Context, Indent, !IO),
-    output_type(normal_style, Type, !IO),
+    indent_line(Info, Context, Indent, !IO),
+    output_type(Info, normal_style, Type, !IO),
     io.write_char(' ', !IO),
     output_name(Name, !IO).
 
 %-----------------------------------------------------------------------------%
 %
-% Code to output names of various entities
+% Code to output names of various entities.
+%
 % XXX Much of the code in this section will not work when we start enforcing
 % names properly.
+%
 
 :- pred output_maybe_qualified_name(mlds_qualified_entity_name::in,
     mlds_module_name::in, io::di, io::uo) is det.
@@ -2686,7 +2731,7 @@ output_mlds_var_name(mlds_var_name(Name, yes(Num)), !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code to output types
+% Code to output types.
 %
 
 :- type output_style
@@ -2695,139 +2740,165 @@ output_mlds_var_name(mlds_var_name(Name, yes(Num)), !IO) :-
             % If writing an array type, include the integer within the
             % square brackets.
 
-:- pred output_type(output_style::in, mlds_type::in, io::di, io::uo) is det.
+:- pred output_type(java_out_info::in, output_style::in, mlds_type::in,
+    io::di, io::uo) is det.
 
-output_type(Style, mercury_type(Type, CtorCat, _), !IO) :-
+output_type(Info, Style, MLDS_Type, !IO) :-
     (
-        % We need to handle type_info (etc.) types specially -- they get mapped
-        % to types in the runtime rather than in private_builtin.
-        hand_defined_type(CtorCat, SubstituteName)
-    ->
-        io.write_string(SubstituteName, !IO)
-    ;
-        % io.state and store.store
-        CtorCat = ctor_cat_builtin_dummy
-    ->
-        io.write_string("/* builtin_dummy */ java.lang.Object", !IO)
-    ;
-        Type = c_pointer_type
-    ->
-        % The c_pointer type is used in the c back-end as a generic way
-        % to pass foreign types to automatically generated Compare and Unify
-        % code. When compiling to Java we must instead use java.lang.Object.
-        io.write_string("/* c_pointer */ java.lang.Object", !IO)
-    ;
-        output_mercury_type(Style, Type, CtorCat, !IO)
-    ).
-
-output_type(Style, mlds_mercury_array_type(ElementType), !IO) :-
-    ( ElementType = mercury_type(_, ctor_cat_variable, _) ->
-        % We can't use `java.lang.Object []', since we want a generic type
-        % that is capable of holding any kind of array, including e.g.
-        % `int []'. Java doesn't have any equivalent of .NET's System.Array
-        % class, so we just use the universal base `java.lang.Object'.
-        io.write_string("/* Array */ java.lang.Object", !IO)
-    ;
-        % For primitive element types we use arrays of the primitive type.
-        % For non-primitive element types, we just use `java.lang.Object []'.
-        % We used to use more specific types, but then to create an array of
-        % the right type we need to use reflection to determine the class of a
-        % representative element.  That doesn't work if the representative
-        % element is of a foreign type, and has the value null.
-        ( java_builtin_type(ElementType, _, _, _) ->
-            output_type(Style, ElementType, !IO)
+        MLDS_Type = mercury_type(Type, CtorCat, _),
+        (
+            % We need to handle type_info (etc.) types specially --
+            % they get mapped to types in the runtime rather than
+            % in private_builtin.
+            hand_defined_type(CtorCat, SubstituteName)
+        ->
+            io.write_string(SubstituteName, !IO)
         ;
-            io.write_string("/* ", !IO),
-            output_type(Style, ElementType, !IO),
-            io.write_string("[] */ java.lang.Object", !IO)
-        ),
+            % io.state and store.store
+            CtorCat = ctor_cat_builtin_dummy
+        ->
+            io.write_string("/* builtin_dummy */ java.lang.Object", !IO)
+        ;
+            Type = c_pointer_type
+        ->
+            % The c_pointer type is used in the c back-end as a generic way
+            % to pass foreign types to automatically generated Compare and
+            % Unify code. When compiling to Java we must instead use
+            % java.lang.Object.
+            io.write_string("/* c_pointer */ java.lang.Object", !IO)
+        ;
+            output_mercury_type(Info, Style, Type, CtorCat, !IO)
+        )
+    ;
+        MLDS_Type = mlds_mercury_array_type(ElementType),
+        ( ElementType = mercury_type(_, ctor_cat_variable, _) ->
+            % We can't use `java.lang.Object []', since we want a generic type
+            % that is capable of holding any kind of array, including e.g.
+            % `int []'. Java doesn't have any equivalent of .NET's System.Array
+            % class, so we just use the universal base `java.lang.Object'.
+            io.write_string("/* Array */ java.lang.Object", !IO)
+        ;
+            % For primitive element types we use arrays of the primitive type.
+            % For non-primitive element types, we just use
+            % `java.lang.Object []'. We used to use more specific types,
+            % but then to create an array of the right type we need to use
+            % reflection to determine the class of a representative element.
+            % That doesn't work if the representative element is of a foreign
+            % type, and has the value null.
+            ( java_builtin_type(ElementType, _, _, _) ->
+                output_type(Info, Style, ElementType, !IO)
+            ;
+                io.write_string("/* ", !IO),
+                output_type(Info, Style, ElementType, !IO),
+                io.write_string("[] */ java.lang.Object", !IO)
+            ),
+            output_array_brackets(Style, !IO)
+        )
+    ;
+        MLDS_Type = mlds_native_int_type,
+        io.write_string("int", !IO)
+    ;
+        MLDS_Type = mlds_native_float_type,
+        io.write_string("double", !IO)
+    ;
+        MLDS_Type = mlds_native_bool_type,
+        io.write_string("boolean", !IO)
+    ;
+        MLDS_Type = mlds_native_char_type,
+        io.write_string("char", !IO)
+    ;
+        MLDS_Type = mlds_foreign_type(ForeignType),
+        (
+            ForeignType = java(java_type(Name)),
+            maybe_output_comment(Info, "foreign_type", !IO),
+            io.write_string(Name, !IO)
+        ;
+            ForeignType = c(_),
+            unexpected(this_file, "output_type: c foreign_type")
+        ;
+            ForeignType = il(_),
+            unexpected(this_file, "output_type: il foreign_type")
+        ;
+            ForeignType = erlang(_),
+            unexpected(this_file, "output_type: erlang foreign_type")
+        )
+    ;
+        MLDS_Type = mlds_class_type(Name, Arity, _ClassKind),
+        (
+            Name = qual(ModuleName, _, ClassName),
+            SymName = mlds_module_name_to_sym_name(ModuleName),
+            SymName = mercury_runtime_package_name
+        ->
+            % Don't mangle runtime class names.
+            io.write_string("jmercury.runtime.", !IO),
+            io.write_string(ClassName, !IO)
+        ;
+            % We used to treat enumerations specially here, outputting
+            % them as "int", but now we do the same for all classes.
+            output_fully_qualified_thing(Name, output_class_name, !IO),
+            io.format("_%d", [i(Arity)], !IO)
+        )
+    ;
+        MLDS_Type = mlds_ptr_type(Type),
+        % XXX Should we report an error here, if the type pointed to
+        % is not a class type?
+        output_type(Info, Style, Type, !IO)
+    ;
+        MLDS_Type = mlds_array_type(Type),
+        output_type(Info, Style, Type, !IO),
         output_array_brackets(Style, !IO)
+    ;
+        MLDS_Type = mlds_func_type(_FuncParams),
+        io.write_string("jmercury.runtime.MethodPtr", !IO)
+    ;
+        MLDS_Type = mlds_generic_type,
+        io.write_string("java.lang.Object", !IO)
+    ;
+        MLDS_Type = mlds_generic_env_ptr_type,
+        io.write_string("/* env_ptr */ java.lang.Object", !IO)
+    ;
+        MLDS_Type = mlds_type_info_type,
+        io.write_string("jmercury.runtime.TypeInfo", !IO)
+    ;
+        MLDS_Type = mlds_pseudo_type_info_type,
+        io.write_string("jmercury.runtime.PseudoTypeInfo", !IO)
+    ;
+        MLDS_Type = mlds_cont_type(_),
+        % XXX Should this actually be a class that extends MethodPtr?
+        io.write_string("jmercury.runtime.MethodPtr", !IO)
+    ;
+        MLDS_Type = mlds_commit_type,
+        io.write_string("jmercury.runtime.Commit", !IO)
+    ;
+        MLDS_Type = mlds_rtti_type(RttiIdMaybeElement),
+        rtti_id_maybe_element_java_type(RttiIdMaybeElement, JavaTypeName,
+            IsArray),
+        io.write_string(JavaTypeName, !IO),
+        (
+            IsArray = is_array,
+            output_array_brackets(Style, !IO)
+        ;
+            IsArray = not_array
+        )
+    ;
+        MLDS_Type = mlds_tabling_type(TablingId),
+        tabling_id_java_type(TablingId, JavaTypeName, IsArray),
+        io.write_string(JavaTypeName, !IO),
+        (
+            IsArray = is_array,
+            output_array_brackets(Style, !IO)
+        ;
+            IsArray = not_array
+        )
+    ;
+        MLDS_Type = mlds_unknown_type,
+        unexpected(this_file, "output_type: unknown type")
     ).
-output_type(_, mlds_native_int_type, !IO) :-
-    io.write_string("int", !IO).
-output_type(_, mlds_native_float_type, !IO) :-
-    io.write_string("double", !IO).
-output_type(_, mlds_native_bool_type, !IO) :-
-    io.write_string("boolean", !IO).
-output_type(_, mlds_native_char_type, !IO)  :-
-    io.write_string("char", !IO).
-output_type(_, mlds_foreign_type(ForeignType), !IO) :-
-    (
-        ForeignType = java(java_type(Name)),
-        maybe_output_comment("foreign_type", !IO),
-        io.write_string(Name, !IO)
-    ;
-        ForeignType = c(_),
-        unexpected(this_file, "output_type: c foreign_type")
-    ;
-        ForeignType = il(_),
-        unexpected(this_file, "output_type: il foreign_type")
-    ;
-        ForeignType = erlang(_),
-        unexpected(this_file, "output_type: erlang foreign_type")
-    ).
-output_type(_, mlds_class_type(Name, Arity, _ClassKind), !IO) :-
-    (
-        Name = qual(ModuleName, _, ClassName),
-        SymName = mlds_module_name_to_sym_name(ModuleName),
-        SymName = mercury_runtime_package_name
-    ->
-        % Don't mangle runtime class names.
-        io.write_string("jmercury.runtime.", !IO),
-        io.write_string(ClassName, !IO)
-    ;
-        % We used to treat enumerations specially here, outputting
-        % them as "int", but now we do the same for all classes.
-        output_fully_qualified_thing(Name, output_class_name, !IO),
-        io.format("_%d", [i(Arity)], !IO)
-    ).
-output_type(Style, mlds_ptr_type(Type), !IO) :-
-    % XXX should we report an error here, if the type pointed to
-    % is not a class type?
-    output_type(Style, Type, !IO).
-output_type(Style, mlds_array_type(Type), !IO) :-
-    output_type(Style, Type, !IO),
-    output_array_brackets(Style, !IO).
-output_type(_, mlds_func_type(_FuncParams), !IO) :-
-    io.write_string("jmercury.runtime.MethodPtr", !IO).
-output_type(_, mlds_generic_type, !IO) :-
-    io.write_string("java.lang.Object", !IO).
-output_type(_, mlds_generic_env_ptr_type, !IO) :-
-    io.write_string("/* env_ptr */ java.lang.Object", !IO).
-output_type(_, mlds_type_info_type, !IO) :-
-    io.write_string("jmercury.runtime.TypeInfo", !IO).
-output_type(_, mlds_pseudo_type_info_type, !IO) :-
-    io.write_string("jmercury.runtime.PseudoTypeInfo", !IO).
-output_type(_, mlds_cont_type(_), !IO) :-
-    % XXX Should this actually be a class that extends MethodPtr?
-    io.write_string("jmercury.runtime.MethodPtr", !IO).
-output_type(_, mlds_commit_type, !IO) :-
-    io.write_string("jmercury.runtime.Commit", !IO).
-output_type(Style, mlds_rtti_type(RttiIdMaybeElement), !IO) :-
-    rtti_id_maybe_element_java_type(RttiIdMaybeElement, JavaTypeName, IsArray),
-    io.write_string(JavaTypeName, !IO),
-    (
-        IsArray = is_array,
-        output_array_brackets(Style, !IO)
-    ;
-        IsArray = not_array
-    ).
-output_type(Style, mlds_tabling_type(TablingId), !IO) :-
-    tabling_id_java_type(TablingId, JavaTypeName, IsArray),
-    io.write_string(JavaTypeName, !IO),
-    (
-        IsArray = is_array,
-        output_array_brackets(Style, !IO)
-    ;
-        IsArray = not_array
-    ).
-output_type(_, mlds_unknown_type, !IO) :-
-    unexpected(this_file, "output_type: unknown type").
 
-:- pred output_mercury_type(output_style::in, mer_type::in,
+:- pred output_mercury_type(java_out_info::in, output_style::in, mer_type::in,
     type_ctor_category::in, io::di, io::uo) is det.
 
-output_mercury_type(Style, Type, CtorCat, !IO) :-
+output_mercury_type(Info, Style, Type, CtorCat, !IO) :-
     (
         CtorCat = ctor_cat_builtin(cat_builtin_char),
         io.write_string("char", !IO)
@@ -2856,20 +2927,20 @@ output_mercury_type(Style, Type, CtorCat, !IO) :-
         output_array_brackets(Style, !IO)
     ;
         CtorCat = ctor_cat_system(_),
-        output_mercury_user_type(Style, Type, ctor_cat_user(cat_user_general),
-            !IO)
+        output_mercury_user_type(Info, Style, Type,
+            ctor_cat_user(cat_user_general), !IO)
     ;
         ( CtorCat = ctor_cat_enum(_)
         ; CtorCat = ctor_cat_user(_)
         ; CtorCat = ctor_cat_builtin_dummy
         ),
-        output_mercury_user_type(Style, Type, CtorCat, !IO)
+        output_mercury_user_type(Info, Style, Type, CtorCat, !IO)
     ).
 
-:- pred output_mercury_user_type(output_style::in, mer_type::in,
-    type_ctor_category::in, io::di, io::uo) is det.
+:- pred output_mercury_user_type(java_out_info::in, output_style::in,
+    mer_type::in, type_ctor_category::in, io::di, io::uo) is det.
 
-output_mercury_user_type(Style, Type, CtorCat, !IO) :-
+output_mercury_user_type(Info, Style, Type, CtorCat, !IO) :-
     ( type_to_ctor_and_args(Type, TypeCtor, _ArgsTypes) ->
         ml_gen_type_name(TypeCtor, ClassName, ClassArity),
         ( CtorCat = ctor_cat_enum(_) ->
@@ -2877,7 +2948,7 @@ output_mercury_user_type(Style, Type, CtorCat, !IO) :-
         ;
             MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_class)
         ),
-        output_type(Style, MLDS_Type, !IO)
+        output_type(Info, Style, MLDS_Type, !IO)
     ;
         unexpected(this_file, "output_mercury_user_type: not a user type")
     ).
@@ -2961,72 +3032,108 @@ hand_defined_type(ctor_cat_system(Kind), SubstituteName) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code to output declaration specifiers
+% Code to output declaration specifiers.
 %
 
-:- pred output_decl_flags(mlds_decl_flags::in, io::di, io::uo) is det.
+:- pred output_decl_flags(java_out_info::in, mlds_decl_flags::in,
+    io::di, io::uo) is det.
 
-output_decl_flags(Flags, !IO) :-
-    output_access(access(Flags), !IO),
+output_decl_flags(Info, Flags, !IO) :-
+    output_access(Info, access(Flags), !IO),
     output_per_instance(per_instance(Flags), !IO),
-    output_virtuality(virtuality(Flags), !IO),
+    output_virtuality(Info, virtuality(Flags), !IO),
     output_finality(finality(Flags), !IO),
-    output_constness(constness(Flags), !IO),
+    output_constness(Info, constness(Flags), !IO),
     output_abstractness(abstractness(Flags), !IO).
 
-:- pred output_access(access::in, io::di, io::uo) is det.
+:- pred output_access(java_out_info::in, access::in, io::di, io::uo) is det.
 
-output_access(acc_public, !IO) :-
-    io.write_string("public ", !IO).
-output_access(acc_private, !IO) :-
-    io.write_string("private ", !IO).
-output_access(acc_protected, !IO) :-
-    io.write_string("protected ", !IO).
-output_access(acc_default, !IO) :-
-    maybe_output_comment("default", !IO).
-output_access(acc_local, !IO).
+output_access(Info, Access, !IO) :-
+    (
+        Access = acc_public,
+        io.write_string("public ", !IO)
+    ;
+        Access = acc_private,
+        io.write_string("private ", !IO)
+    ;
+        Access = acc_protected,
+        io.write_string("protected ", !IO)
+    ;
+        Access = acc_default,
+        maybe_output_comment(Info, "default", !IO)
+    ;
+        Access = acc_local
+    ).
 
 :- pred output_per_instance(per_instance::in, io::di, io::uo) is det.
 
-output_per_instance(per_instance, !IO).
-output_per_instance(one_copy, !IO) :- io.write_string("static ", !IO).
+output_per_instance(PerInstance, !IO) :-
+    (
+        PerInstance = per_instance
+    ;
+        PerInstance = one_copy,
+        io.write_string("static ", !IO)
+    ).
 
-:- pred output_virtuality(virtuality::in, io::di, io::uo) is det.
+:- pred output_virtuality(java_out_info::in, virtuality::in,
+    io::di, io::uo) is det.
 
-output_virtuality(virtual, !IO) :- maybe_output_comment("virtual", !IO).
-output_virtuality(non_virtual, !IO).
+output_virtuality(Info, Virtual, !IO) :-
+    (
+        Virtual = virtual,
+        maybe_output_comment(Info, "virtual", !IO)
+    ;
+        Virtual = non_virtual
+    ).
 
 :- pred output_finality(finality::in, io::di, io::uo) is det.
 
-output_finality(final, !IO) :- io.write_string("final ", !IO).
-output_finality(overridable, !IO).
+output_finality(Finality, !IO) :-
+    (
+        Finality = final,
+        io.write_string("final ", !IO)
+    ;
+        Finality = overridable
+    ).
 
-:- pred output_constness(constness::in, io::di, io::uo) is det.
+:- pred output_constness(java_out_info::in, constness::in,
+    io::di, io::uo) is det.
 
-output_constness(const, !IO) :- maybe_output_comment("const", !IO).
-output_constness(modifiable, !IO).
+output_constness(Info, Constness, !IO) :-
+    (
+        Constness = const,
+        maybe_output_comment(Info, "const", !IO)
+    ;
+        Constness = modifiable
+    ).
 
 :- pred output_abstractness(abstractness::in, io::di, io::uo) is det.
 
-output_abstractness(abstract, !IO) :- io.write_string("abstract ", !IO).
-output_abstractness(concrete, !IO).
-
-:- pred maybe_output_comment(string::in, io::di, io::uo) is det.
-
-maybe_output_comment(Comment, !IO) :-
-    globals.io_lookup_bool_option(auto_comments, AddComments, !IO),
+output_abstractness(Abstractness, !IO) :-
     (
-        AddComments = yes,
+        Abstractness = abstract,
+        io.write_string("abstract ", !IO)
+    ;
+        Abstractness = concrete
+    ).
+
+:- pred maybe_output_comment(java_out_info::in, string::in,
+    io::di, io::uo) is det.
+
+maybe_output_comment(Info, Comment, !IO) :-
+    AutoComments = Info ^ joi_auto_comments,
+    (
+        AutoComments = yes,
         io.write_string("/* ", !IO),
         io.write_string(Comment, !IO),
         io.write_string(" */", !IO)
     ;
-        AddComments = no
+        AutoComments = no
     ).
 
 %-----------------------------------------------------------------------------%
 %
-% Code to output statements
+% Code to output statements.
 %
 
     % These types are used by many of the output_stmt style predicates to
@@ -3057,16 +3164,18 @@ maybe_output_comment(Comment, !IO) :-
 
 mod_name(qual(ModuleName, _, _)) = ModuleName.
 
-:- pred output_statements(indent::in, module_info::in, func_info::in,
-    list(statement)::in, exit_methods::out, io::di, io::uo) is det.
+:- pred output_statements(java_out_info::in, indent::in, module_info::in,
+    func_info::in, list(statement)::in, exit_methods::out,
+    io::di, io::uo) is det.
 
-output_statements(_, _, _, [], set.make_singleton_set(can_fall_through), !IO).
-output_statements(Indent, ModuleInfo, FuncInfo, [Statement | Statements],
+output_statements(_, _, _, _, [], ExitMethods, !IO) :-
+    ExitMethods = set.make_singleton_set(can_fall_through).
+output_statements(Info, Indent, ModuleInfo, FuncInfo, [Statement | Statements],
         ExitMethods, !IO) :-
-    output_statement(Indent, ModuleInfo, FuncInfo, Statement, StmtExitMethods,
-        !IO),
+    output_statement(Info, Indent, ModuleInfo, FuncInfo, Statement,
+        StmtExitMethods, !IO),
     ( set.member(can_fall_through, StmtExitMethods) ->
-        output_statements(Indent, ModuleInfo, FuncInfo, Statements,
+        output_statements(Info, Indent, ModuleInfo, FuncInfo, Statements,
             StmtsExitMethods, !IO),
         ExitMethods0 = StmtExitMethods `set.union` StmtsExitMethods,
         ( set.member(can_fall_through, StmtsExitMethods) ->
@@ -3082,20 +3191,21 @@ output_statements(Indent, ModuleInfo, FuncInfo, [Statement | Statements],
         ExitMethods = StmtExitMethods
     ).
 
-:- pred output_statement(indent::in, module_info::in, func_info::in,
-    statement::in, exit_methods::out, io::di, io::uo) is det.
+:- pred output_statement(java_out_info::in, indent::in, module_info::in,
+    func_info::in, statement::in, exit_methods::out, io::di, io::uo) is det.
 
-output_statement(Indent, ModuleInfo, FuncInfo,
+output_statement(Info, Indent, ModuleInfo, FuncInfo,
         statement(Statement, Context), ExitMethods, !IO) :-
-    output_context(Context, !IO),
-    output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
-        !IO).
+    output_context(Info, Context, !IO),
+    output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
+        ExitMethods, !IO).
 
-:- pred output_stmt(indent::in, module_info::in, func_info::in, mlds_stmt::in,
-    mlds_context::in, exit_methods::out, io::di, io::uo) is det.
+:- pred output_stmt(java_out_info::in, indent::in, module_info::in,
+    func_info::in, mlds_stmt::in, mlds_context::in, exit_methods::out,
+    io::di, io::uo) is det.
 
-output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
-        !IO) :-
+output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
+        ExitMethods, !IO) :-
     (
         Statement = ml_stmt_block(Defns, Statements),
         indent_line(Indent, !IO),
@@ -3103,14 +3213,15 @@ output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
         (
             Defns = [_ | _],
             ModuleName = FuncInfo ^ func_info_name ^ mod_name,
-            output_defns(Indent + 1, ModuleInfo, ModuleName, none, Defns, !IO),
+            output_defns(Info, Indent + 1, ModuleInfo, ModuleName, none,
+                Defns, !IO),
             io.write_string("\n", !IO)
         ;
             Defns = []
         ),
-        output_statements(Indent + 1, ModuleInfo, FuncInfo, Statements,
+        output_statements(Info, Indent + 1, ModuleInfo, FuncInfo, Statements,
             ExitMethods, !IO),
-        indent_line(Context, Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("}\n", !IO)
     ;
         Statement = ml_stmt_while(Kind, Cond, BodyStatement),
@@ -3118,7 +3229,7 @@ output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
         indent_line(Indent, !IO),
         io.write_string("while (", !IO),
         ModuleName = FuncInfo ^ func_info_name ^ mod_name,
-        output_rval(ModuleInfo, Cond, ModuleName, !IO),
+        output_rval(Info, ModuleInfo, Cond, ModuleName, !IO),
         io.write_string(")\n", !IO),
         % The contained statement is reachable iff the while statement is
         % reachable and the condition expression is not a constant expression
@@ -3128,8 +3239,8 @@ output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
             io.write_string("{  /* Unreachable code */  }\n", !IO),
             ExitMethods = set.make_singleton_set(can_fall_through)
         ;
-            output_statement(Indent + 1, ModuleInfo, FuncInfo, BodyStatement,
-                StmtExitMethods, !IO),
+            output_statement(Info, Indent + 1, ModuleInfo, FuncInfo,
+                BodyStatement, StmtExitMethods, !IO),
             ExitMethods = while_exit_methods(Cond, StmtExitMethods)
         )
     ;
@@ -3137,12 +3248,12 @@ output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
         Kind = loop_at_least_once,
         indent_line(Indent, !IO),
         io.write_string("do\n", !IO),
-        output_statement(Indent + 1, ModuleInfo, FuncInfo, BodyStatement,
+        output_statement(Info, Indent + 1, ModuleInfo, FuncInfo, BodyStatement,
             StmtExitMethods, !IO),
-        indent_line(Context, Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("while (", !IO),
         ModuleName = FuncInfo ^ func_info_name ^ mod_name,
-        output_rval(ModuleInfo, Cond, ModuleName, !IO),
+        output_rval(Info, ModuleInfo, Cond, ModuleName, !IO),
         io.write_string(");\n", !IO),
         ExitMethods = while_exit_methods(Cond, StmtExitMethods)
     ;
@@ -3173,15 +3284,15 @@ output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
         indent_line(Indent, !IO),
         io.write_string("if (", !IO),
         ModuleName = FuncInfo ^ func_info_name ^ mod_name,
-        output_rval(ModuleInfo, Cond, ModuleName, !IO),
+        output_rval(Info, ModuleInfo, Cond, ModuleName, !IO),
         io.write_string(")\n", !IO),
-        output_statement(Indent + 1, ModuleInfo, FuncInfo, Then,
+        output_statement(Info, Indent + 1, ModuleInfo, FuncInfo, Then,
             ThenExitMethods, !IO),
         (
             MaybeElse = yes(Else),
-            indent_line(Context, Indent, !IO),
+            indent_line(Info, Context, Indent, !IO),
             io.write_string("else\n", !IO),
-            output_statement(Indent + 1, ModuleInfo, FuncInfo, Else,
+            output_statement(Info, Indent + 1, ModuleInfo, FuncInfo, Else,
                 ElseExitMethods, !IO),
             % An if-then-else statement can complete normally iff the
             % then-statement can complete normally or the else-statement
@@ -3195,14 +3306,14 @@ output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
         )
     ;
         Statement = ml_stmt_switch(_Type, Val, _Range, Cases, Default),
-        indent_line(Context, Indent, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("switch (", !IO),
-        output_rval_maybe_with_enum(ModuleInfo, Val,
+        output_rval_maybe_with_enum(Info, ModuleInfo, Val,
             FuncInfo ^ func_info_name ^ mod_name, !IO),
         io.write_string(") {\n", !IO),
-        output_switch_cases(Indent + 1, ModuleInfo, FuncInfo, Context, Cases,
-            Default, ExitMethods, !IO),
-        indent_line(Context, Indent, !IO),
+        output_switch_cases(Info, Indent + 1, ModuleInfo, FuncInfo, Context,
+            Cases, Default, ExitMethods, !IO),
+        indent_line(Info, Context, Indent, !IO),
         io.write_string("}\n", !IO)
     ;
         Statement = ml_stmt_label(_),
@@ -3231,12 +3342,12 @@ output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
         ModuleName = FuncInfo ^ func_info_name ^ mod_name,
         indent_line(Indent, !IO),
         io.write_string("{\n", !IO),
-        indent_line(Context, Indent + 1, !IO),
+        indent_line(Info, Context, Indent + 1, !IO),
         (
             Results = []
         ;
             Results = [Lval],
-            output_lval(ModuleInfo, Lval, ModuleName, !IO),
+            output_lval(Info, ModuleInfo, Lval, ModuleName, !IO),
             io.write_string(" = ", !IO)
         ;
             Results = [_, _ | _],
@@ -3254,17 +3365,19 @@ output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
             % This is a standard method call.
             (
                 MaybeObject = yes(Object),
-                output_bracketed_rval(ModuleInfo, Object, ModuleName, !IO),
+                output_bracketed_rval(Info, ModuleInfo, Object, ModuleName,
+                    !IO),
                 io.write_string(".", !IO)
             ;
                 MaybeObject = no
             ),
             % This is a standard function call.
-            output_call_rval(ModuleInfo, FuncRval, ModuleName, !IO),
+            output_call_rval(Info, ModuleInfo, FuncRval, ModuleName, !IO),
             io.write_string("(", !IO),
-            io.write_list(CallArgs, ", ",
+            PrintArgs =
                 (pred(CallArg::in, !.IO::di, !:IO::uo) is det :-
-                    output_rval(ModuleInfo, CallArg, ModuleName, !IO)), !IO),
+                    output_rval(Info, ModuleInfo, CallArg, ModuleName, !IO)),
+            io.write_list(CallArgs, ", ", PrintArgs, !IO),
             io.write_string(")", !IO)
         ;
             % This is a call using a method pointer.
@@ -3287,7 +3400,7 @@ output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
                     io.write_string(") ", !IO)
                 ;
                     io.write_string("((", !IO),
-                    output_type(normal_style, RetType, !IO),
+                    output_type(Info, normal_style, RetType, !IO),
                     io.write_string(") ", !IO)
                 )
             ;
@@ -3296,7 +3409,8 @@ output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
             ),
             (
                 MaybeObject = yes(Object),
-                output_bracketed_rval(ModuleInfo, Object, ModuleName, !IO),
+                output_bracketed_rval(Info, ModuleInfo, Object, ModuleName,
+                    !IO),
                 io.write_string(".", !IO)
             ;
                 MaybeObject = no
@@ -3307,15 +3421,17 @@ output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
                 io.write_string("((jmercury.runtime.MethodPtr", !IO),
                 io.write_int(Arity, !IO),
                 io.write_string(") ", !IO),
-                output_bracketed_rval(ModuleInfo, FuncRval, ModuleName, !IO),
+                output_bracketed_rval(Info, ModuleInfo, FuncRval, ModuleName,
+                    !IO),
                 io.write_string(").call___0_0(", !IO),
-                output_boxed_args(ModuleInfo, CallArgs, ArgTypes,
+                output_boxed_args(Info, ModuleInfo, CallArgs, ArgTypes,
                     ModuleName, !IO)
             ;
                 io.write_string("((jmercury.runtime.MethodPtrN) ", !IO),
-                output_bracketed_rval(ModuleInfo, FuncRval, ModuleName, !IO),
+                output_bracketed_rval(Info, ModuleInfo, FuncRval, ModuleName,
+                    !IO),
                 io.write_string(").call___0_0(", !IO),
-                output_args_as_array(ModuleInfo, CallArgs, ArgTypes,
+                output_args_as_array(Info, ModuleInfo, CallArgs, ArgTypes,
                     ModuleName, !IO)
             ),
 
@@ -3343,8 +3459,8 @@ output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
         ( Results = [_, _ | _] ->
             % Copy the results from the "result" array into the Result
             % lvals (unboxing them as we go).
-            output_assign_results(ModuleInfo, Results, RetTypes, 0, ModuleName,
-                Indent + 1, Context, !IO)
+            output_assign_results(Info, ModuleInfo, Results, RetTypes, 0,
+                ModuleName, Indent + 1, Context, !IO)
         ;
             true
         ),
@@ -3371,8 +3487,8 @@ output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
             Results = [Rval],
             indent_line(Indent, !IO),
             io.write_string("return ", !IO),
-            output_rval(ModuleInfo, Rval, FuncInfo ^ func_info_name ^ mod_name,
-                !IO),
+            output_rval(Info, ModuleInfo, Rval,
+                FuncInfo ^ func_info_name ^ mod_name, !IO),
             io.write_string(";\n", !IO)
         ;
             Results = [_, _ | _],
@@ -3385,7 +3501,7 @@ output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
             Separator = ",\n" ++ duplicate_char(' ', (Indent + 1) * 2),
             io.write_list(TypesAndResults, Separator,
                 (pred((Type - Result)::in, !.IO::di, !:IO::uo) is det :-
-                    output_boxed_rval(ModuleInfo, Type, Result,
+                    output_boxed_rval(Info, ModuleInfo, Type, Result,
                         FuncName ^ mod_name, !IO)),
                 !IO),
             io.write_string("\n", !IO),
@@ -3397,11 +3513,11 @@ output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
         Statement = ml_stmt_do_commit(Ref),
         indent_line(Indent, !IO),
         ModuleName = FuncInfo ^ func_info_name ^ mod_name,
-        output_rval(ModuleInfo, Ref, ModuleName, !IO),
+        output_rval(Info, ModuleInfo, Ref, ModuleName, !IO),
         io.write_string(" = new jmercury.runtime.Commit();\n", !IO),
         indent_line(Indent, !IO),
         io.write_string("throw ", !IO),
-        output_rval(ModuleInfo, Ref, ModuleName, !IO),
+        output_rval(Info, ModuleInfo, Ref, ModuleName, !IO),
         io.write_string(";\n", !IO),
         ExitMethods = set.make_singleton_set(can_throw)
     ;
@@ -3410,7 +3526,7 @@ output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
         io.write_string("try\n", !IO),
         indent_line(Indent, !IO),
         io.write_string("{\n", !IO),
-        output_statement(Indent + 1, ModuleInfo, FuncInfo, Stmt,
+        output_statement(Info, Indent + 1, ModuleInfo, FuncInfo, Stmt,
             TryExitMethods0, !IO),
         indent_line(Indent, !IO),
         io.write_string("}\n", !IO),
@@ -3420,7 +3536,7 @@ output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
         indent_line(Indent, !IO),
         io.write_string("{\n", !IO),
         indent_line(Indent + 1, !IO),
-        output_statement(Indent + 1, ModuleInfo, FuncInfo, Handler,
+        output_statement(Info, Indent + 1, ModuleInfo, FuncInfo, Handler,
             CatchExitMethods, !IO),
         indent_line(Indent, !IO),
         io.write_string("}\n", !IO),
@@ -3428,7 +3544,7 @@ output_stmt(Indent, ModuleInfo, FuncInfo, Statement, Context, ExitMethods,
             `set.union`  CatchExitMethods
     ;
         Statement = ml_stmt_atomic(AtomicStatement),
-        output_atomic_stmt(Indent, ModuleInfo, FuncInfo, AtomicStatement,
+        output_atomic_stmt(Info, Indent, ModuleInfo, FuncInfo, AtomicStatement,
             Context, !IO),
         ExitMethods = set.make_singleton_set(can_fall_through)
     ).
@@ -3465,31 +3581,36 @@ while_exit_methods(Cond, BlockExitMethods) = ExitMethods :-
 % Extra code for handling function calls/returns.
 %
 
-:- pred output_args_as_array(module_info::in, list(mlds_rval)::in,
-    list(mlds_type)::in, mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_args_as_array(java_out_info::in, module_info::in,
+    list(mlds_rval)::in, list(mlds_type)::in, mlds_module_name::in,
+    io::di, io::uo) is det.
 
-output_args_as_array(ModuleInfo, CallArgs, CallArgTypes, ModuleName, !IO) :-
+output_args_as_array(Info, ModuleInfo, CallArgs, CallArgTypes, ModuleName,
+        !IO) :-
     io.write_string("new java.lang.Object[] { ", !IO),
-    output_boxed_args(ModuleInfo, CallArgs, CallArgTypes, ModuleName, !IO),
+    output_boxed_args(Info, ModuleInfo, CallArgs, CallArgTypes, ModuleName,
+        !IO),
     io.write_string("} ", !IO).
 
-:- pred output_boxed_args(module_info::in, list(mlds_rval)::in,
-    list(mlds_type)::in, mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_boxed_args(java_out_info::in, module_info::in,
+    list(mlds_rval)::in, list(mlds_type)::in, mlds_module_name::in,
+    io::di, io::uo) is det.
 
-output_boxed_args(_, [], [], _, !IO).
-output_boxed_args(_, [_ | _], [], _, _, _) :-
+output_boxed_args(_, _, [], [], _, !IO).
+output_boxed_args(_, _, [_ | _], [], _, _, _) :-
     unexpected(this_file, "output_boxed_args: length mismatch.").
-output_boxed_args(_, [], [_ | _], _, _, _) :-
+output_boxed_args(_, _, [], [_ | _], _, _, _) :-
     unexpected(this_file, "output_boxed_args: length mismatch.").
-output_boxed_args(ModuleInfo, [CallArg | CallArgs],
+output_boxed_args(Info, ModuleInfo, [CallArg | CallArgs],
         [CallArgType | CallArgTypes], ModuleName, !IO) :-
-    output_boxed_rval(ModuleInfo, CallArgType, CallArg, ModuleName, !IO),
+    output_boxed_rval(Info, ModuleInfo, CallArgType, CallArg, ModuleName, !IO),
     (
         CallArgs = []
     ;
         CallArgs = [_ | _],
         io.write_string(", ", !IO),
-        output_boxed_args(ModuleInfo, CallArgs, CallArgTypes, ModuleName, !IO)
+        output_boxed_args(Info, ModuleInfo, CallArgs, CallArgTypes, ModuleName,
+            !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3508,28 +3629,29 @@ output_boxed_args(ModuleInfo, [CallArg | CallArgs],
 
     % This procedure generates the assignments to the outputs.
     %
-:- pred output_assign_results(module_info::in, list(mlds_lval)::in,
-    list(mlds_type)::in, int::in, mlds_module_name::in, indent::in,
-    mlds_context::in, io::di, io::uo) is det.
+:- pred output_assign_results(java_out_info::in, module_info::in,
+    list(mlds_lval)::in, list(mlds_type)::in, int::in, mlds_module_name::in,
+    indent::in, mlds_context::in, io::di, io::uo) is det.
 
-output_assign_results(_, [], [], _, _, _, _, !IO).
-output_assign_results(ModuleInfo, [Lval | Lvals], [Type | Types], ResultIndex,
-        ModuleName, Indent, Context, !IO) :-
-    indent_line(Context, Indent, !IO),
-    output_lval(ModuleInfo, Lval, ModuleName, !IO),
+output_assign_results(_, _, [], [], _, _, _, _, !IO).
+output_assign_results(Info, ModuleInfo, [Lval | Lvals], [Type | Types],
+        ResultIndex, ModuleName, Indent, Context, !IO) :-
+    indent_line(Info, Context, Indent, !IO),
+    output_lval(Info, ModuleInfo, Lval, ModuleName, !IO),
     io.write_string(" = ", !IO),
-    output_unboxed_result(Type, ResultIndex, !IO),
+    output_unboxed_result(Info, Type, ResultIndex, !IO),
     io.write_string(";\n", !IO),
-    output_assign_results(ModuleInfo, Lvals, Types, ResultIndex + 1,
+    output_assign_results(Info, ModuleInfo, Lvals, Types, ResultIndex + 1,
         ModuleName, Indent, Context, !IO).
-output_assign_results(_, [_ | _], [], _, _, _, _, _, _) :-
+output_assign_results(_, _, [_ | _], [], _, _, _, _, _, _) :-
     unexpected(this_file, "output_assign_results: list length mismatch.").
-output_assign_results(_, [], [_ | _], _, _, _, _, _, _) :-
+output_assign_results(_, _, [], [_ | _], _, _, _, _, _, _) :-
     unexpected(this_file, "output_assign_results: list lenght mismatch.").
 
-:- pred output_unboxed_result(mlds_type::in, int::in, io::di, io::uo) is det.
+:- pred output_unboxed_result(java_out_info::in, mlds_type::in, int::in,
+    io::di, io::uo) is det.
 
-output_unboxed_result(Type, ResultIndex, !IO) :-
+output_unboxed_result(Info, Type, ResultIndex, !IO) :-
     ( java_builtin_type(Type, _, JavaBoxedName, UnboxMethod) ->
         io.write_string("((", !IO),
         io.write_string(JavaBoxedName, !IO),
@@ -3537,30 +3659,30 @@ output_unboxed_result(Type, ResultIndex, !IO) :-
         io.format("result[%d]).%s()", [i(ResultIndex), s(UnboxMethod)], !IO)
     ;
         io.write_string("(", !IO),
-        output_type(normal_style, Type, !IO),
+        output_type(Info, normal_style, Type, !IO),
         io.write_string(") ", !IO),
         io.format("result[%d]", [i(ResultIndex)], !IO)
     ).
 
 %-----------------------------------------------------------------------------%
 %
-% Extra code for outputting switch statements
+% Extra code for outputting switch statements.
 %
 
-:- pred output_switch_cases(indent::in, module_info::in, func_info::in,
-    mlds_context::in, list(mlds_switch_case)::in, mlds_switch_default::in,
-    exit_methods::out, io::di, io::uo) is det.
+:- pred output_switch_cases(java_out_info::in, indent::in, module_info::in,
+    func_info::in, mlds_context::in, list(mlds_switch_case)::in,
+    mlds_switch_default::in, exit_methods::out, io::di, io::uo) is det.
 
-output_switch_cases(Indent, ModuleInfo, FuncInfo, Context, [], Default,
-        ExitMethods, !IO) :-
-    output_switch_default(Indent, ModuleInfo, FuncInfo, Context, Default,
+output_switch_cases(Info, Indent, ModuleInfo, FuncInfo, Context,
+        [], Default, ExitMethods, !IO) :-
+    output_switch_default(Info, Indent, ModuleInfo, FuncInfo, Context, Default,
         ExitMethods, !IO).
-output_switch_cases(Indent, ModuleInfo, FuncInfo, Context, [Case | Cases],
-        Default, ExitMethods, !IO) :-
-    output_switch_case(Indent, ModuleInfo, FuncInfo, Context, Case,
+output_switch_cases(Info, Indent, ModuleInfo, FuncInfo, Context,
+        [Case | Cases], Default, ExitMethods, !IO) :-
+    output_switch_case(Info, Indent, ModuleInfo, FuncInfo, Context, Case,
         CaseExitMethods0, !IO),
-    output_switch_cases(Indent, ModuleInfo, FuncInfo, Context, Cases, Default,
-        CasesExitMethods, !IO),
+    output_switch_cases(Info, Indent, ModuleInfo, FuncInfo, Context, Cases,
+        Default, CasesExitMethods, !IO),
     ( set.member(can_break, CaseExitMethods0) ->
         CaseExitMethods = (CaseExitMethods0 `set.delete` can_break)
             `set.insert` can_fall_through
@@ -3569,21 +3691,22 @@ output_switch_cases(Indent, ModuleInfo, FuncInfo, Context, [Case | Cases],
     ),
     ExitMethods = CaseExitMethods `set.union` CasesExitMethods.
 
-:- pred output_switch_case(indent::in, module_info::in, func_info::in,
-    mlds_context::in, mlds_switch_case::in, exit_methods::out,
+:- pred output_switch_case(java_out_info::in, indent::in, module_info::in,
+    func_info::in, mlds_context::in, mlds_switch_case::in, exit_methods::out,
     io::di, io::uo) is det.
 
-output_switch_case(Indent, ModuleInfo, FuncInfo, Context, Case, ExitMethods,
-        !IO) :-
+output_switch_case(Info, Indent, ModuleInfo, FuncInfo, Context, Case,
+        ExitMethods, !IO) :-
     Case = mlds_switch_case(FirstCond, LaterConds, Statement),
     ModuleName = FuncInfo ^ func_info_name ^ mod_name,
-    output_case_cond(Indent, ModuleInfo, ModuleName, Context, FirstCond, !IO),
-    list.foldl(output_case_cond(Indent, ModuleInfo, ModuleName, Context),
+    output_case_cond(Info, Indent, ModuleInfo, ModuleName, Context, FirstCond,
+        !IO),
+    list.foldl(output_case_cond(Info, Indent, ModuleInfo, ModuleName, Context),
         LaterConds, !IO),
-    output_statement(Indent + 1, ModuleInfo, FuncInfo, Statement,
+    output_statement(Info, Indent + 1, ModuleInfo, FuncInfo, Statement,
         StmtExitMethods, !IO),
     ( set.member(can_fall_through, StmtExitMethods) ->
-        indent_line(Context, Indent + 1, !IO),
+        indent_line(Info, Context, Indent + 1, !IO),
         io.write_string("break;\n", !IO),
         ExitMethods = (StmtExitMethods `set.insert` can_break)
             `set.delete` can_fall_through
@@ -3592,179 +3715,182 @@ output_switch_case(Indent, ModuleInfo, FuncInfo, Context, Case, ExitMethods,
         ExitMethods = StmtExitMethods
     ).
 
-:- pred output_case_cond(indent::in, module_info::in, mlds_module_name::in,
-    mlds_context::in, mlds_case_match_cond::in, io::di, io::uo) is det.
-
-output_case_cond(Indent, ModuleInfo, ModuleName, Context, match_value(Val),
-        !IO) :-
-    indent_line(Context, Indent, !IO),
-    io.write_string("case ", !IO),
-    output_rval(ModuleInfo, Val, ModuleName, !IO),
-    io.write_string(":\n", !IO).
-output_case_cond(_Indent, _ModuleInfo, _ModuleName, _Context,
-        match_range(_, _), _, _) :-
-    unexpected(this_file,
-        "output_case_cond: cannot match ranges in Java cases").
-
-:- pred output_switch_default(indent::in, module_info::in, func_info::in,
-    mlds_context::in, mlds_switch_default::in, exit_methods::out,
+:- pred output_case_cond(java_out_info::in, indent::in, module_info::in,
+    mlds_module_name::in, mlds_context::in, mlds_case_match_cond::in,
     io::di, io::uo) is det.
 
-output_switch_default(_Indent, _ModuleInfo, _FuncInfo, _Context,
-        default_do_nothing, ExitMethods, !IO) :-
-    ExitMethods = set.make_singleton_set(can_fall_through).
-output_switch_default(Indent, ModuleInfo, FuncInfo, Context,
-        default_case(Statement), ExitMethods, !IO) :-
-    indent_line(Context, Indent, !IO),
-    io.write_string("default:\n", !IO),
-    output_statement(Indent + 1, ModuleInfo, FuncInfo, Statement, ExitMethods,
-        !IO).
-output_switch_default(Indent, _ModuleInfo, _FuncInfo, Context,
-        default_is_unreachable, ExitMethods, !IO) :-
-    indent_line(Context, Indent, !IO),
-    io.write_string("default: /*NOTREACHED*/\n", !IO),
-    indent_line(Context, Indent + 1, !IO),
-    io.write_string("throw new jmercury.runtime.UnreachableDefault();\n", !IO),
-    ExitMethods = set.make_singleton_set(can_throw).
+output_case_cond(Info, Indent, ModuleInfo, ModuleName, Context, Match, !IO) :-
+    (
+        Match = match_value(Val),
+        indent_line(Info, Context, Indent, !IO),
+        io.write_string("case ", !IO),
+        output_rval(Info, ModuleInfo, Val, ModuleName, !IO),
+        io.write_string(":\n", !IO)
+    ;
+        Match = match_range(_, _),
+        unexpected(this_file,
+            "output_case_cond: cannot match ranges in Java cases")
+    ).
+
+:- pred output_switch_default(java_out_info::in, indent::in, module_info::in,
+    func_info::in, mlds_context::in, mlds_switch_default::in,
+    exit_methods::out, io::di, io::uo) is det.
+
+output_switch_default(Info, Indent, ModuleInfo, FuncInfo, Context, Default,
+        ExitMethods, !IO) :-
+    (
+        Default = default_do_nothing,
+        ExitMethods = set.make_singleton_set(can_fall_through)
+    ;
+        Default = default_case(Statement),
+        indent_line(Info, Context, Indent, !IO),
+        io.write_string("default:\n", !IO),
+        output_statement(Info, Indent + 1, ModuleInfo, FuncInfo, Statement,
+            ExitMethods, !IO)
+    ;
+        Default = default_is_unreachable,
+        indent_line(Info, Context, Indent, !IO),
+        io.write_string("default: /*NOTREACHED*/\n", !IO),
+        indent_line(Info, Context, Indent + 1, !IO),
+        io.write_string("throw new jmercury.runtime.UnreachableDefault();\n",
+            !IO),
+        ExitMethods = set.make_singleton_set(can_throw)
+    ).
 
 %-----------------------------------------------------------------------------%
 %
 % Code for outputting atomic statements.
 %
 
-:- pred output_atomic_stmt(indent::in, module_info::in, func_info::in,
-    mlds_atomic_statement::in, mlds_context::in, io::di, io::uo) is det.
+:- pred output_atomic_stmt(java_out_info::in, indent::in, module_info::in,
+    func_info::in, mlds_atomic_statement::in, mlds_context::in,
+    io::di, io::uo) is det.
 
-    % comments
-    %
-output_atomic_stmt(Indent, _ModuleInfo, _FuncInfo, comment(Comment), _, !IO) :-
-    % XXX We should escape any "*/"'s in the Comment. We should also split
-    % the comment into lines and indent each line appropriately.
-    indent_line(Indent, !IO),
-    io.write_string("/* ", !IO),
-    io.write_string(Comment, !IO),
-    io.write_string(" */\n", !IO).
-
-    % assignment
-    %
-output_atomic_stmt(Indent, ModuleInfo, FuncInfo, assign(Lval, Rval), _, !IO) :-
-    ModuleName = FuncInfo ^ func_info_name ^ mod_name,
-    indent_line(Indent, !IO),
-    output_lval(ModuleInfo, Lval, ModuleName, !IO),
-    io.write_string(" = ", !IO),
-    output_rval(ModuleInfo, Rval, ModuleName, !IO),
-    io.write_string(";\n", !IO).
-
-output_atomic_stmt(_, _, _, assign_if_in_heap(_, _), _, !IO) :-
-    sorry(this_file, "output_atomic_stmt: assign_if_in_heap").
-
-    % heap management
-    %
-output_atomic_stmt(_Indent, _, _FuncInfo, delete_object(_Lval), _, _, _) :-
-    unexpected(this_file, "delete_object not supported in Java.").
-
-output_atomic_stmt(Indent, ModuleInfo, FuncInfo, NewObject, Context, !IO) :-
-    NewObject = new_object(Target, _MaybeTag, ExplicitSecTag, Type,
-        _MaybeSize, MaybeCtorName, Args, ArgTypes, _MayUseAtomic),
+output_atomic_stmt(Info, Indent, ModuleInfo, FuncInfo, AtomicStmt, Context,
+        !IO) :-
     (
-        ExplicitSecTag = yes,
-        unexpected(this_file, "output_atomic_stmt: explicit secondary tag")
-    ;
-        ExplicitSecTag = no
-    ),
-
-    ModuleName = FuncInfo ^ func_info_name ^ mod_name,
-    indent_line(Indent, !IO),
-    io.write_string("{\n", !IO),
-    indent_line(Context, Indent + 1, !IO),
-    output_lval(ModuleInfo, Target, ModuleName, !IO),
-    io.write_string(" = new ", !IO),
-
-    % Generate class constructor name.
-    (
-        MaybeCtorName = yes(QualifiedCtorId),
-        \+ (
-            Type = mercury_type(_, CtorCat, _),
-            hand_defined_type(CtorCat, _)
-        )
-    ->
-        output_type(normal_style, Type, !IO),
-        io.write_char('.', !IO),
-        QualifiedCtorId = qual(_ModuleName, _QualKind, CtorDefn),
-        CtorDefn = ctor_id(CtorName, CtorArity),
-        output_class_name_and_arity(CtorName, CtorArity, !IO)
-    ;
-        output_type(normal_style, Type, !IO)
-    ),
-    IsArray = type_is_array(Type),
-    (
-        IsArray = is_array,
-        % The new object will be an array, so we need to initialise it
-        % using array literals syntax.
-        io.write_string(" {", !IO),
-        output_init_args(ModuleInfo, Args, ArgTypes, ModuleName, !IO),
-        io.write_string("};\n", !IO)
-    ;
-        IsArray = not_array,
-        % Generate constructor arguments.
-        io.write_string("(", !IO),
-        output_init_args(ModuleInfo, Args, ArgTypes, ModuleName, !IO),
-        io.write_string(");\n", !IO)
-    ),
-    indent_line(Indent, !IO),
-    io.write_string("}\n", !IO).
-
-output_atomic_stmt(_Indent, _, _FuncInfo, gc_check, _, _, _) :-
-    unexpected(this_file, "gc_check not implemented.").
-
-output_atomic_stmt(_Indent, _, _FuncInfo, mark_hp(_Lval), _, _, _) :-
-    unexpected(this_file, "mark_hp not implemented.").
-
-output_atomic_stmt(_Indent, _, _FuncInfo, restore_hp(_Rval), _, _, _) :-
-    unexpected(this_file, "restore_hp not implemented.").
-
-    % Trail management.
-    %
-output_atomic_stmt(_Indent, _, _FuncInfo, trail_op(_TrailOp), _, _, _) :-
-    unexpected(this_file, "trail_ops not implemented.").
-
-    % Foreign language interfacing.
-    %
-output_atomic_stmt(Indent, ModuleInfo, FuncInfo,
-        inline_target_code(TargetLang, Components), Context, !IO) :-
-    (
-        TargetLang = ml_target_java,
+        AtomicStmt = comment(Comment),
+        % XXX We should escape any "*/"'s in the Comment. We should also split
+        % the comment into lines and indent each line appropriately.
         indent_line(Indent, !IO),
-        ModuleName = FuncInfo ^ func_info_name ^ mod_name,
-        list.foldl(
-            output_target_code_component(ModuleInfo, ModuleName, Context),
-            Components, !IO)
+        io.write_string("/* ", !IO),
+        io.write_string(Comment, !IO),
+        io.write_string(" */\n", !IO)
     ;
-        ( TargetLang = ml_target_c
-        ; TargetLang = ml_target_gnu_c
-        ; TargetLang = ml_target_asm
-        ; TargetLang = ml_target_il
+        AtomicStmt = assign(Lval, Rval),
+        ModuleName = FuncInfo ^ func_info_name ^ mod_name,
+        indent_line(Indent, !IO),
+        output_lval(Info, ModuleInfo, Lval, ModuleName, !IO),
+        io.write_string(" = ", !IO),
+        output_rval(Info, ModuleInfo, Rval, ModuleName, !IO),
+        io.write_string(";\n", !IO)
+    ;
+        AtomicStmt = assign_if_in_heap(_, _),
+        sorry(this_file, "output_atomic_stmt: assign_if_in_heap")
+    ;
+        AtomicStmt = delete_object(_Lval),
+        unexpected(this_file, "delete_object not supported in Java.")
+    ;
+        AtomicStmt = new_object(Target, _MaybeTag, ExplicitSecTag, Type,
+            _MaybeSize, MaybeCtorName, Args, ArgTypes, _MayUseAtomic),
+        (
+            ExplicitSecTag = yes,
+            unexpected(this_file, "output_atomic_stmt: explicit secondary tag")
+        ;
+            ExplicitSecTag = no
         ),
-        unexpected(this_file, "inline_target_code only works for lang_java")
-    ).
 
-output_atomic_stmt(_Indent, _, _FuncInfo,
-        outline_foreign_proc(_TargetLang, _Vs, _Lvals, _Code),
-        _Context, _, _)  :-
-    unexpected(this_file, "foreign language interfacing not implemented").
+        ModuleName = FuncInfo ^ func_info_name ^ mod_name,
+        indent_line(Indent, !IO),
+        io.write_string("{\n", !IO),
+        indent_line(Info, Context, Indent + 1, !IO),
+        output_lval(Info, ModuleInfo, Target, ModuleName, !IO),
+        io.write_string(" = new ", !IO),
+
+        % Generate class constructor name.
+        (
+            MaybeCtorName = yes(QualifiedCtorId),
+            \+ (
+                Type = mercury_type(_, CtorCat, _),
+                hand_defined_type(CtorCat, _)
+            )
+        ->
+            output_type(Info, normal_style, Type, !IO),
+            io.write_char('.', !IO),
+            QualifiedCtorId = qual(_ModuleName, _QualKind, CtorDefn),
+            CtorDefn = ctor_id(CtorName, CtorArity),
+            output_class_name_and_arity(CtorName, CtorArity, !IO)
+        ;
+            output_type(Info, normal_style, Type, !IO)
+        ),
+        IsArray = type_is_array(Type),
+        (
+            IsArray = is_array,
+            % The new object will be an array, so we need to initialise it
+            % using array literals syntax.
+            io.write_string(" {", !IO),
+            output_init_args(Info, ModuleInfo, Args, ArgTypes, ModuleName,
+                !IO),
+            io.write_string("};\n", !IO)
+        ;
+            IsArray = not_array,
+            % Generate constructor arguments.
+            io.write_string("(", !IO),
+            output_init_args(Info, ModuleInfo, Args, ArgTypes, ModuleName,
+                !IO),
+            io.write_string(");\n", !IO)
+        ),
+        indent_line(Indent, !IO),
+        io.write_string("}\n", !IO)
+    ;
+        AtomicStmt = gc_check,
+        unexpected(this_file, "gc_check not implemented.")
+    ;
+        AtomicStmt = mark_hp(_Lval),
+        unexpected(this_file, "mark_hp not implemented.")
+    ;
+        AtomicStmt = restore_hp(_Rval),
+        unexpected(this_file, "restore_hp not implemented.")
+    ;
+        AtomicStmt = trail_op(_TrailOp),
+        unexpected(this_file, "trail_ops not implemented.")
+    ;
+        AtomicStmt = inline_target_code(TargetLang, Components),
+        (
+            TargetLang = ml_target_java,
+            indent_line(Indent, !IO),
+            ModuleName = FuncInfo ^ func_info_name ^ mod_name,
+            list.foldl(
+                output_target_code_component(Info, ModuleInfo, ModuleName,
+                    Context),
+                Components, !IO)
+        ;
+            ( TargetLang = ml_target_c
+            ; TargetLang = ml_target_gnu_c
+            ; TargetLang = ml_target_asm
+            ; TargetLang = ml_target_il
+            ),
+            unexpected(this_file,
+                "inline_target_code only works for lang_java")
+        )
+    ;
+        AtomicStmt = outline_foreign_proc(_TargetLang, _Vs, _Lvals, _Code),
+        unexpected(this_file, "foreign language interfacing not implemented")
+    ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_target_code_component(module_info::in, mlds_module_name::in,
-    mlds_context::in, target_code_component::in, io::di, io::uo) is det.
+:- pred output_target_code_component(java_out_info::in, module_info::in,
+    mlds_module_name::in, mlds_context::in, target_code_component::in,
+    io::di, io::uo) is det.
 
-output_target_code_component(ModuleInfo, ModuleName, _Context, TargetCode,
-        !IO) :-
+output_target_code_component(Info, ModuleInfo, ModuleName, _Context,
+        TargetCode, !IO) :-
     (
         TargetCode = user_target_code(CodeString, MaybeUserContext, _Attrs),
         (
             MaybeUserContext = yes(ProgContext),
-            output_context(mlds_make_context(ProgContext), !IO)
+            output_context(Info, mlds_make_context(ProgContext), !IO)
         ;
             MaybeUserContext = no
         ),
@@ -3774,13 +3900,13 @@ output_target_code_component(ModuleInfo, ModuleName, _Context, TargetCode,
         io.write_string(CodeString, !IO)
     ;
         TargetCode = target_code_input(Rval),
-        output_rval(ModuleInfo, Rval, ModuleName, !IO)
+        output_rval(Info, ModuleInfo, Rval, ModuleName, !IO)
     ;
         TargetCode = target_code_output(Lval),
-        output_lval(ModuleInfo, Lval, ModuleName, !IO)
+        output_lval(Info, ModuleInfo, Lval, ModuleName, !IO)
     ;
         TargetCode = target_code_type(Type),
-        output_type(normal_style, Type, !IO)
+        output_type(Info, normal_style, Type, !IO)
     ;
         TargetCode = target_code_name(Name),
         output_maybe_qualified_name(Name, ModuleName, !IO)
@@ -3791,34 +3917,35 @@ output_target_code_component(ModuleInfo, ModuleName, _Context, TargetCode,
     % Output initial values of an object's fields as arguments for the
     % object's class constructor.
     %
-:- pred output_init_args(module_info::in, list(mlds_rval)::in,
-    list(mlds_type)::in, mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_init_args(java_out_info::in, module_info::in,
+    list(mlds_rval)::in, list(mlds_type)::in, mlds_module_name::in,
+    io::di, io::uo) is det.
 
-output_init_args(_, [], [], _, !IO).
-output_init_args(_, [_ | _], [], _, _, _) :-
+output_init_args(_, _, [], [], _, !IO).
+output_init_args(_, _, [_ | _], [], _, _, _) :-
     unexpected(this_file, "output_init_args: length mismatch.").
-output_init_args(_, [], [_ | _], _, _, _) :-
+output_init_args(_, _, [], [_ | _], _, _, _) :-
     unexpected(this_file, "output_init_args: length mismatch.").
-output_init_args(ModuleInfo, [Arg | Args], [_ArgType | ArgTypes], ModuleName,
-        !IO) :-
-    output_rval(ModuleInfo, Arg, ModuleName, !IO),
+output_init_args(Info, ModuleInfo, [Arg | Args], [_ArgType | ArgTypes],
+        ModuleName, !IO) :-
+    output_rval(Info, ModuleInfo, Arg, ModuleName, !IO),
     (
         Args = []
     ;
         Args = [_ | _],
         io.write_string(", ", !IO)
     ),
-    output_init_args(ModuleInfo, Args, ArgTypes, ModuleName, !IO).
+    output_init_args(Info, ModuleInfo, Args, ArgTypes, ModuleName, !IO).
 
 %-----------------------------------------------------------------------------%
 %
-% Code to output expressions
+% Code to output expressions.
 %
 
-:- pred output_lval(module_info::in, mlds_lval::in, mlds_module_name::in,
-    io::di, io::uo) is det.
+:- pred output_lval(java_out_info::in, module_info::in, mlds_lval::in,
+    mlds_module_name::in, io::di, io::uo) is det.
 
-output_lval(ModuleInfo, Lval, ModuleName, !IO) :-
+output_lval(Info, ModuleInfo, Lval, ModuleName, !IO) :-
     (
         Lval = ml_field(_MaybeTag, PtrRval, FieldId, FieldType, _),
         (
@@ -3837,9 +3964,9 @@ output_lval(ModuleInfo, Lval, ModuleName, !IO) :-
             % XXX We shouldn't need this cast here, but there are cases where
             % it is needed and the MLDS doesn't seem to generate it.
             io.write_string("((java.lang.Object[]) ", !IO),
-            output_rval(ModuleInfo, PtrRval, ModuleName, !IO),
+            output_rval(Info, ModuleInfo, PtrRval, ModuleName, !IO),
             io.write_string(")[", !IO),
-            output_rval(ModuleInfo, OffsetRval, ModuleName, !IO),
+            output_rval(Info, ModuleInfo, OffsetRval, ModuleName, !IO),
             io.write_string("]", !IO)
         ;
             FieldId = ml_field_named(FieldName, CtorType),
@@ -3849,7 +3976,8 @@ output_lval(ModuleInfo, Lval, ModuleName, !IO) :-
             ->
                 % If the field we are trying to access is just a `data_tag'
                 % then it is a member of the base class.
-                output_bracketed_rval(ModuleInfo, PtrRval, ModuleName, !IO),
+                output_bracketed_rval(Info, ModuleInfo, PtrRval, ModuleName,
+                    !IO),
                 io.write_string(".", !IO)
             ;
                 % Otherwise the field we are trying to access may be
@@ -3858,9 +3986,10 @@ output_lval(ModuleInfo, Lval, ModuleName, !IO) :-
                 % class to access some fields.
 
                 io.write_string("((", !IO),
-                output_type(normal_style, CtorType, !IO),
+                output_type(Info, normal_style, CtorType, !IO),
                 io.write_string(") ", !IO),
-                output_bracketed_rval(ModuleInfo, PtrRval, ModuleName, !IO),
+                output_bracketed_rval(Info, ModuleInfo, PtrRval, ModuleName,
+                    !IO),
                 % The actual variable.
                 io.write_string(").", !IO)
             ),
@@ -3869,7 +3998,7 @@ output_lval(ModuleInfo, Lval, ModuleName, !IO) :-
         )
     ;
         Lval = ml_mem_ref(Rval, _Type),
-        output_bracketed_rval(ModuleInfo, Rval, ModuleName, !IO)
+        output_bracketed_rval(Info, ModuleInfo, Rval, ModuleName, !IO)
     ;
         Lval = ml_global_var_ref(GlobalVarRef),
         GlobalVarRef = env_var_ref(EnvVarName),
@@ -3894,10 +4023,10 @@ output_valid_mangled_name(Name, !IO) :-
     JavaSafeName = valid_java_symbol_name(MangledName),
     io.write_string(JavaSafeName, !IO).
 
-:- pred output_call_rval(module_info::in, mlds_rval::in, mlds_module_name::in,
-    io::di, io::uo) is det.
+:- pred output_call_rval(java_out_info::in, module_info::in, mlds_rval::in,
+    mlds_module_name::in, io::di, io::uo) is det.
 
-output_call_rval(ModuleInfo, Rval, ModuleName, !IO) :-
+output_call_rval(Info, ModuleInfo, Rval, ModuleName, !IO) :-
     (
         Rval = ml_const(Const),
         Const = mlconst_code_addr(CodeAddr)
@@ -3905,33 +4034,33 @@ output_call_rval(ModuleInfo, Rval, ModuleName, !IO) :-
         IsCall = yes,
         mlds_output_code_addr(CodeAddr, IsCall, !IO)
     ;
-        output_bracketed_rval(ModuleInfo, Rval, ModuleName, !IO)
+        output_bracketed_rval(Info, ModuleInfo, Rval, ModuleName, !IO)
     ).
 
-:- pred output_bracketed_rval(module_info::in, mlds_rval::in,
-    mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_bracketed_rval(java_out_info::in, module_info::in,
+    mlds_rval::in, mlds_module_name::in, io::di, io::uo) is det.
 
-output_bracketed_rval(ModuleInfo, Rval, ModuleName, !IO) :-
+output_bracketed_rval(Info, ModuleInfo, Rval, ModuleName, !IO) :-
     (
         % If it's just a variable name, then we don't need parentheses.
         ( Rval = ml_lval(ml_var(_,_))
         ; Rval = ml_const(mlconst_code_addr(_))
         )
     ->
-        output_rval(ModuleInfo, Rval, ModuleName, !IO)
+        output_rval(Info, ModuleInfo, Rval, ModuleName, !IO)
     ;
         io.write_char('(', !IO),
-        output_rval(ModuleInfo, Rval, ModuleName, !IO),
+        output_rval(Info, ModuleInfo, Rval, ModuleName, !IO),
         io.write_char(')', !IO)
     ).
 
-:- pred output_rval(module_info::in, mlds_rval::in, mlds_module_name::in,
-    io::di, io::uo) is det.
+:- pred output_rval(java_out_info::in, module_info::in, mlds_rval::in,
+    mlds_module_name::in, io::di, io::uo) is det.
 
-output_rval(ModuleInfo, Rval, ModuleName, !IO) :-
+output_rval(Info, ModuleInfo, Rval, ModuleName, !IO) :-
     (
         Rval = ml_lval(Lval),
-        output_lval(ModuleInfo, Lval, ModuleName, !IO)
+        output_lval(Info, ModuleInfo, Lval, ModuleName, !IO)
     ;
         Rval = ml_scalar_common(_),
         unexpected(this_file, "output_rval: ml_scalar_common")
@@ -3943,13 +4072,13 @@ output_rval(ModuleInfo, Rval, ModuleName, !IO) :-
         unexpected(this_file, "output_rval: tags not supported in Java")
     ;
         Rval = ml_const(Const),
-        output_rval_const(Const, !IO)
+        output_rval_const(Info, Const, !IO)
     ;
         Rval = ml_unop(Op, RvalA),
-        output_unop(ModuleInfo, Op, RvalA, ModuleName, !IO)
+        output_unop(Info, ModuleInfo, Op, RvalA, ModuleName, !IO)
     ;
         Rval = ml_binop(Op, RvalA, RvalB),
-        output_binop(ModuleInfo, Op, RvalA, RvalB, ModuleName, !IO)
+        output_binop(Info, ModuleInfo, Op, RvalA, RvalB, ModuleName, !IO)
     ;
         Rval = ml_mem_addr(_Lval),
         unexpected(this_file, "output_rval: mem_addr(_) not supported")
@@ -3958,28 +4087,28 @@ output_rval(ModuleInfo, Rval, ModuleName, !IO) :-
         io.write_string("this", !IO)
     ).
 
-:- pred output_unop(module_info::in, mlds_unary_op::in, mlds_rval::in,
-    mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_unop(java_out_info::in, module_info::in, mlds_unary_op::in,
+    mlds_rval::in, mlds_module_name::in, io::di, io::uo) is det.
 
-output_unop(ModuleInfo, Unop, Expr, ModuleName, !IO) :-
+output_unop(Info, ModuleInfo, Unop, Expr, ModuleName, !IO) :-
     (
         Unop = cast(Type),
-        output_cast_rval(ModuleInfo, Type, Expr, ModuleName, !IO)
+        output_cast_rval(Info, ModuleInfo, Type, Expr, ModuleName, !IO)
     ;
         Unop = box(Type),
-        output_boxed_rval(ModuleInfo, Type, Expr, ModuleName, !IO)
+        output_boxed_rval(Info, ModuleInfo, Type, Expr, ModuleName, !IO)
     ;
         Unop = unbox(Type),
-        output_unboxed_rval(ModuleInfo, Type, Expr, ModuleName, !IO)
+        output_unboxed_rval(Info, ModuleInfo, Type, Expr, ModuleName, !IO)
     ;
         Unop = std_unop(StdUnop),
-        output_std_unop(ModuleInfo, StdUnop, Expr, ModuleName, !IO)
+        output_std_unop(Info, ModuleInfo, StdUnop, Expr, ModuleName, !IO)
     ).
 
-:- pred output_cast_rval(module_info::in, mlds_type::in, mlds_rval::in,
-    mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_cast_rval(java_out_info::in, module_info::in, mlds_type::in,
+    mlds_rval::in, mlds_module_name::in, io::di, io::uo) is det.
 
-output_cast_rval(ModuleInfo, Type, Expr, ModuleName, !IO) :-
+output_cast_rval(Info, ModuleInfo, Type, Expr, ModuleName, !IO) :-
     % rtti_to_mlds.m generates casts from int to
     % jmercury.runtime.PseudoTypeInfo, but for Java
     % we need to treat these as constructions, not casts.
@@ -3988,13 +4117,13 @@ output_cast_rval(ModuleInfo, Type, Expr, ModuleName, !IO) :-
         Type = mlds_pseudo_type_info_type,
         Expr = ml_const(mlconst_int(N))
     ->
-        maybe_output_comment("cast", !IO),
+        maybe_output_comment(Info, "cast", !IO),
         ( have_preallocated_pseudo_type_var(N) ->
             io.write_string("jmercury.runtime.PseudoTypeInfo.K", !IO),
             io.write_int(N, !IO)
         ;
             io.write_string("new jmercury.runtime.PseudoTypeInfo(", !IO),
-            output_rval(ModuleInfo, Expr, ModuleName, !IO),
+            output_rval(Info, ModuleInfo, Expr, ModuleName, !IO),
             io.write_string(")", !IO)
         )
     ;
@@ -4006,19 +4135,20 @@ output_cast_rval(ModuleInfo, Type, Expr, ModuleName, !IO) :-
         % TypeCtorInfo or a TypeInfo. Julien says that's probably going to
         % be rather difficult as the compiler doesn't keep track of where
         % type_ctor_infos are acting as type_infos properly.
-        maybe_output_comment("cast", !IO),
-        io.write_string("jmercury.runtime.TypeInfo_Struct.maybe_new(",
-            !IO),
-        output_rval(ModuleInfo, Expr, ModuleName, !IO),
+        maybe_output_comment(Info, "cast", !IO),
+        io.write_string("jmercury.runtime.TypeInfo_Struct.maybe_new(", !IO),
+        output_rval(Info, ModuleInfo, Expr, ModuleName, !IO),
         io.write_string(")", !IO)
-    ; java_builtin_type(Type, "int", _, _) ->
+    ;
+        java_builtin_type(Type, "int", _, _)
+    ->
         io.write_string("(int) ", !IO),
-        output_rval_maybe_with_enum(ModuleInfo, Expr, ModuleName, !IO)
+        output_rval_maybe_with_enum(Info, ModuleInfo, Expr, ModuleName, !IO)
     ;
         io.write_string("(", !IO),
-        output_type(normal_style, Type, !IO),
+        output_type(Info, normal_style, Type, !IO),
         io.write_string(") ", !IO),
-        output_rval(ModuleInfo, Expr, ModuleName, !IO)
+        output_rval(Info, ModuleInfo, Expr, ModuleName, !IO)
     ).
 
 :- pred have_preallocated_pseudo_type_var(int::in) is semidet.
@@ -4028,39 +4158,39 @@ have_preallocated_pseudo_type_var(N) :-
     N >= 1,
     N =< 5.
 
-:- pred output_boxed_rval(module_info::in, mlds_type::in, mlds_rval::in,
-     mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_boxed_rval(java_out_info::in, module_info::in, mlds_type::in,
+    mlds_rval::in, mlds_module_name::in, io::di, io::uo) is det.
 
-output_boxed_rval(ModuleInfo, Type, Expr, ModuleName, !IO) :-
+output_boxed_rval(Info, ModuleInfo, Type, Expr, ModuleName, !IO) :-
     ( java_builtin_type(Type, _JavaName, JavaBoxedName, _) ->
         io.write_string("new ", !IO),
         io.write_string(JavaBoxedName, !IO),
         io.write_string("(", !IO),
-        output_rval(ModuleInfo, Expr, ModuleName, !IO),
+        output_rval(Info, ModuleInfo, Expr, ModuleName, !IO),
         io.write_string(")", !IO)
     ;
         io.write_string("((java.lang.Object) (", !IO),
-        output_rval(ModuleInfo, Expr, ModuleName, !IO),
+        output_rval(Info, ModuleInfo, Expr, ModuleName, !IO),
         io.write_string("))", !IO)
     ).
 
-:- pred output_unboxed_rval(module_info::in, mlds_type::in, mlds_rval::in,
-    mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_unboxed_rval(java_out_info::in, module_info::in, mlds_type::in,
+    mlds_rval::in, mlds_module_name::in, io::di, io::uo) is det.
 
-output_unboxed_rval(ModuleInfo, Type, Expr, ModuleName, !IO) :-
+output_unboxed_rval(Info, ModuleInfo, Type, Expr, ModuleName, !IO) :-
     ( java_builtin_type(Type, _, JavaBoxedName, UnboxMethod) ->
         io.write_string("((", !IO),
         io.write_string(JavaBoxedName, !IO),
         io.write_string(") ", !IO),
-        output_bracketed_rval(ModuleInfo, Expr, ModuleName, !IO),
+        output_bracketed_rval(Info, ModuleInfo, Expr, ModuleName, !IO),
         io.write_string(").", !IO),
         io.write_string(UnboxMethod, !IO),
         io.write_string("()", !IO)
     ;
         io.write_string("((", !IO),
-        output_type(normal_style, Type, !IO),
+        output_type(Info, normal_style, Type, !IO),
         io.write_string(") ", !IO),
-        output_rval(ModuleInfo, Expr, ModuleName, !IO),
+        output_rval(Info, ModuleInfo, Expr, ModuleName, !IO),
         io.write_string(")", !IO)
     ).
 
@@ -4100,56 +4230,57 @@ java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
     Type = mercury_type(defined_type(_, _, _), TypeCtorCat, _),
     TypeCtorCat = ctor_cat_builtin_dummy.
 
-:- pred output_std_unop(module_info::in, builtin_ops.unary_op::in,
-    mlds_rval::in, mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_std_unop(java_out_info::in, module_info::in,
+    builtin_ops.unary_op::in, mlds_rval::in, mlds_module_name::in,
+    io::di, io::uo) is det.
 
     % For the Java back-end, there are no tags, so all the tagging operators
     % are no-ops, except for `tag', which always returns zero (a tag of zero
     % means there's no tag).
     %
-output_std_unop(ModuleInfo, UnaryOp, Expr, ModuleName, !IO) :-
+output_std_unop(Info, ModuleInfo, UnaryOp, Expr, ModuleName, !IO) :-
     ( UnaryOp = tag ->
         io.write_string("/* tag */  0", !IO)
     ;
         java_unary_prefix_op(UnaryOp, UnaryOpString),
         io.write_string(UnaryOpString, !IO),
         io.write_string("(", !IO),
-        output_rval(ModuleInfo, Expr, ModuleName, !IO),
+        output_rval(Info, ModuleInfo, Expr, ModuleName, !IO),
         io.write_string(")", !IO)
     ).
 
-:- pred output_binop(module_info::in, binary_op::in, mlds_rval::in,
-    mlds_rval::in, mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_binop(java_out_info::in, module_info::in, binary_op::in,
+    mlds_rval::in, mlds_rval::in, mlds_module_name::in, io::di, io::uo) is det.
 
-output_binop(ModuleInfo, Op, X, Y, ModuleName, !IO) :-
+output_binop(Info, ModuleInfo, Op, X, Y, ModuleName, !IO) :-
     ( Op = array_index(_Type) ->
-        output_bracketed_rval(ModuleInfo, X, ModuleName, !IO),
+        output_bracketed_rval(Info, ModuleInfo, X, ModuleName, !IO),
         io.write_string("[", !IO),
-        output_rval(ModuleInfo, Y, ModuleName, !IO),
+        output_rval(Info, ModuleInfo, Y, ModuleName, !IO),
         io.write_string("]", !IO)
     ; java_string_compare_op(Op, OpStr) ->
         io.write_string("(", !IO),
-        output_rval(ModuleInfo, X, ModuleName, !IO),
+        output_rval(Info, ModuleInfo, X, ModuleName, !IO),
         io.write_string(".compareTo(", !IO),
-        output_rval(ModuleInfo, Y, ModuleName, !IO),
+        output_rval(Info, ModuleInfo, Y, ModuleName, !IO),
         io.write_string(") ", !IO),
         io.write_string(OpStr, !IO),
         io.write_string(" 0)", !IO)
     ; rval_is_enum_object(X) ->
         io.write_string("(", !IO),
-        output_rval(ModuleInfo, X, ModuleName, !IO),
+        output_rval(Info, ModuleInfo, X, ModuleName, !IO),
         io.write_string(".MR_value ", !IO),
         output_binary_op(Op, !IO),
         io.write_string(" ", !IO),
-        output_rval(ModuleInfo, Y, ModuleName, !IO),
+        output_rval(Info, ModuleInfo, Y, ModuleName, !IO),
         io.write_string(".MR_value)", !IO)
     ;
         io.write_string("(", !IO),
-        output_rval(ModuleInfo, X, ModuleName, !IO),
+        output_rval(Info, ModuleInfo, X, ModuleName, !IO),
         io.write_string(" ", !IO),
         output_binary_op(Op, !IO),
         io.write_string(" ", !IO),
-        output_rval(ModuleInfo, Y, ModuleName, !IO),
+        output_rval(Info, ModuleInfo, Y, ModuleName, !IO),
         io.write_string(")", !IO)
     ).
 
@@ -4164,11 +4295,11 @@ output_binop(ModuleInfo, Op, X, Y, ModuleName, !IO) :-
     % output_rval_maybe_with_enum are called and make sure the correct one
     % is being used.
     %
-:- pred output_rval_maybe_with_enum(module_info::in, mlds_rval::in,
-    mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_rval_maybe_with_enum(java_out_info::in, module_info::in,
+    mlds_rval::in, mlds_module_name::in, io::di, io::uo) is det.
 
-output_rval_maybe_with_enum(ModuleInfo, Rval, ModuleName, !IO) :-
-    output_rval(ModuleInfo, Rval, ModuleName, !IO),
+output_rval_maybe_with_enum(Info, ModuleInfo, Rval, ModuleName, !IO) :-
+    output_rval(Info, ModuleInfo, Rval, ModuleName, !IO),
     ( rval_is_enum_object(Rval) ->
         io.write_string(".MR_value", !IO)
     ;
@@ -4189,9 +4320,10 @@ output_binary_op(Op, !IO) :-
         unexpected(this_file, "output_binary_op: invalid binary operator")
     ).
 
-:- pred output_rval_const(mlds_rval_const::in, io::di, io::uo) is det.
+:- pred output_rval_const(java_out_info::in, mlds_rval_const::in,
+    io::di, io::uo) is det.
 
-output_rval_const(Const, !IO) :-
+output_rval_const(Info, Const, !IO) :-
     (
         Const = mlconst_true,
         io.write_string("true", !IO)
@@ -4202,15 +4334,15 @@ output_rval_const(Const, !IO) :-
         Const = mlconst_int(N),
         output_int_const(N, !IO)
     ;
-        Const = mlconst_enum(N, EnumType),
-        output_type(normal_style, EnumType, !IO),
-        io.write_string(".K", !IO),
-        io.write_int(N, !IO)
-    ;
         Const = mlconst_char(N),
         io.write_string("((char) ", !IO),
-        io.write_int(N, !IO),
+        output_int_const(N, !IO),
         io.write_string(")", !IO)
+    ;
+        Const = mlconst_enum(N, EnumType),
+        output_type(Info, normal_style, EnumType, !IO),
+        io.write_string(".K", !IO),
+        output_int_const(N, !IO)
     ;
         Const = mlconst_foreign(Lang, Value, _Type),
         expect(unify(Lang, lang_java), this_file,
@@ -4321,10 +4453,11 @@ mlds_output_data_addr(data_addr(ModuleQualifier, DataName), !IO) :-
 :- mutable(last_context, prog_context, context_init, ground,
     [untrailed, attach_to_io_state]).
 
-:- pred output_context(mlds_context::in, io::di, io::uo) is det.
+:- pred output_context(java_out_info::in, mlds_context::in,
+    io::di, io::uo) is det.
 
-output_context(Context, !IO) :-
-    globals.io_lookup_bool_option(line_numbers, LineNumbers, !IO),
+output_context(Info, Context, !IO) :-
+    LineNumbers = Info ^ joi_line_numbers,
     (
         LineNumbers = yes,
         ProgContext = mlds_get_prog_context(Context),
@@ -4350,10 +4483,11 @@ output_context(Context, !IO) :-
         LineNumbers = no
     ).
 
-:- pred indent_line(mlds_context::in, indent::in, io::di, io::uo) is det.
+:- pred indent_line(java_out_info::in, mlds_context::in, indent::in,
+    io::di, io::uo) is det.
 
-indent_line(Context, N, !IO) :-
-    output_context(Context, !IO),
+indent_line(Info, Context, N, !IO) :-
+    output_context(Info, Context, !IO),
     indent_line(N, !IO).
 
     % A value of type `indent' records the number of levels of indentation
@@ -4371,6 +4505,23 @@ indent_line(N, !IO) :-
         io.write_string("  ", !IO),
         indent_line(N - 1, !IO)
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- type java_out_info
+    --->    java_out_info(
+                joi_auto_comments       :: bool,
+                joi_line_numbers        :: bool
+            ).
+
+:- func init_java_out_info(globals) = java_out_info.
+
+init_java_out_info(Globals) = Info :-
+    globals.lookup_bool_option(Globals, auto_comments, AutoComments),
+    globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
+    Info = java_out_info(AutoComments, LineNumbers).
+
+%-----------------------------------------------------------------------------%
 
 :- func this_file = string.
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,6 +16,7 @@
 :- module ll_backend.optimize.
 :- interface.
 
+:- import_module libs.globals.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
 
@@ -24,11 +25,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred optimize_procs(global_data::in,
+:- pred optimize_procs(globals::in, global_data::in,
     list(c_procedure)::in, list(c_procedure)::out, io::di, io::uo) is det.
 
-:- pred optimize_proc(global_data::in, c_procedure::in, c_procedure::out,
-    io::di, io::uo) is det.
+:- pred optimize_proc(globals::in, global_data::in,
+    c_procedure::in, c_procedure::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -39,7 +40,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.file_util.
-:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.delay_slot.
@@ -68,16 +68,17 @@
 
 %-----------------------------------------------------------------------------%
 
-optimize_procs(GlobalData, !Procs, !IO) :-
-    list.map_foldl(optimize_proc(GlobalData), !Procs, !IO).
+optimize_procs(Globals, GlobalData, !Procs, !IO) :-
+    list.map_foldl(optimize_proc(Globals, GlobalData), !Procs, !IO).
 
-optimize_proc(GlobalData, CProc0, CProc, !IO) :-
+optimize_proc(Globals, GlobalData, CProc0, CProc, !IO) :-
+    Info = init_llds_opt_info(Globals),
     some [!OptDebugInfo, !C, !Instrs] (
         CProc0 = c_procedure(Name, Arity, PredProcId, CodeModel, !:Instrs,
             ProcLabel, !:C, MayAlterRtti, CGlobalVars),
-        init_opt_debug_info(Name, Arity, PredProcId, ProcLabel,
+        init_opt_debug_info(Info, Name, Arity, PredProcId, ProcLabel,
             !.Instrs, !.C, !:OptDebugInfo, !IO),
-        globals.io_lookup_int_option(optimize_repeat, Repeat, !IO),
+        Repeat = Info ^ lopt_opt_repeat,
         (
             global_data_maybe_get_proc_layout(GlobalData,
                 PredProcId, ProcLayout)
@@ -91,14 +92,14 @@ optimize_proc(GlobalData, CProc0, CProc, !IO) :-
         ;
             set.init(LayoutLabelSet)
         ),
-        optimize_initial(LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti,
-            !C, !OptDebugInfo, !Instrs, !IO),
-        optimize_repeat(Repeat, LayoutLabelSet, ProcLabel, MayAlterRtti, !C,
-            !OptDebugInfo, !Instrs, !IO),
-        optimize_middle(yes, LayoutLabelSet, ProcLabel, CodeModel,
+        optimize_initial(Info, LayoutLabelSet, ProcLabel, CodeModel,
             MayAlterRtti, !C, !OptDebugInfo, !Instrs, !IO),
-        optimize_last(LayoutLabelSet, ProcLabel, !C, !.OptDebugInfo, !Instrs,
-            !IO),
+        optimize_repeat(Info, Repeat, LayoutLabelSet, ProcLabel,
+            MayAlterRtti, !C, !OptDebugInfo, !Instrs, !IO),
+        optimize_middle(Info, yes, LayoutLabelSet, ProcLabel, CodeModel,
+            MayAlterRtti, !C, !OptDebugInfo, !Instrs, !IO),
+        optimize_last(Info, LayoutLabelSet, ProcLabel, !C, !.OptDebugInfo,
+            !Instrs, !IO),
         CProc = c_procedure(Name, Arity, PredProcId, CodeModel, !.Instrs,
             ProcLabel, !.C, MayAlterRtti, CGlobalVars)
     ).
@@ -124,18 +125,15 @@ make_internal_label_for_proc_label(ProcLabel, LabelNum)
             )
     ;       no_opt_debug_info.
 
-:- pred init_opt_debug_info(string::in, int::in, pred_proc_id::in,
-    proc_label::in, list(instruction)::in, counter::in, opt_debug_info::out,
-    io::di, io::uo) is det.
+:- pred init_opt_debug_info(llds_opt_info::in, string::in, int::in,
+    pred_proc_id::in, proc_label::in, list(instruction)::in, counter::in,
+    opt_debug_info::out, io::di, io::uo) is det.
 
-init_opt_debug_info(Name, Arity, PredProcId, ProcLabel, Instrs0, Counter,
-        OptDebugInfo, !IO) :-
-    globals.io_get_globals(Globals, !IO),
-    globals.lookup_bool_option(Globals, debug_opt, DebugOpt),
-    globals.lookup_accumulating_option(Globals, debug_opt_pred_id,
-        DebugOptPredIdStrs),
-    globals.lookup_accumulating_option(Globals, debug_opt_pred_name,
-        DebugOptPredNames),
+init_opt_debug_info(Info, Name, Arity, PredProcId, ProcLabel, Instrs0,
+        Counter, OptDebugInfo, !IO) :-
+    DebugOpt = Info ^ lopt_debug_opt,
+    DebugOptPredIdStrs = Info ^ lopt_debug_opt_pred_ids,
+    DebugOptPredNames = Info ^ lopt_debug_opt_pred_names,
     PredProcId = proc(PredId, ProcId),
     pred_id_to_int(PredId, PredIdInt),
     proc_id_to_int(ProcId, ProcIdInt),
@@ -188,7 +186,9 @@ init_opt_debug_info(Name, Arity, PredProcId, ProcLabel, Instrs0, Counter,
             io.set_output_stream(FileStream, OutputStream, !IO),
             counter.allocate(NextLabel, Counter, _),
             opt_debug.msg(yes, NextLabel, "before optimization", !IO),
-            opt_debug.maybe_write_instrs(yes, yes(ProcLabel), Instrs0, !IO),
+            AutoComments = Info ^ lopt_auto_comments,
+            opt_debug.maybe_write_instrs(yes, AutoComments, yes(ProcLabel),
+                Instrs0, !IO),
             io.set_output_stream(OutputStream, _, !IO),
             io.close_output(FileStream, !IO)
         ;
@@ -214,11 +214,12 @@ num_to_str(N) =
         string.int_to_string(N)
     ).
 
-:- pred maybe_opt_debug(list(instruction)::in, counter::in,
+:- pred maybe_opt_debug(llds_opt_info::in, list(instruction)::in, counter::in,
     string::in, string::in, proc_label::in,
     opt_debug_info::in, opt_debug_info::out, io::di, io::uo) is det.
 
-maybe_opt_debug(Instrs, Counter, Suffix, Msg, ProcLabel, !OptDebugInfo, !IO) :-
+maybe_opt_debug(Info, Instrs, Counter, Suffix, Msg, ProcLabel,
+        !OptDebugInfo, !IO) :-
     (
         !.OptDebugInfo = opt_debug_info(BaseName, OptNum0, _OptFileName0,
             PrevNum, PrevFileName, PrevInstrs),
@@ -243,7 +244,9 @@ maybe_opt_debug(Instrs, Counter, Suffix, Msg, ProcLabel, !OptDebugInfo, !IO) :-
                 io.write_string("same as previous version\n", !IO)
             ;
                 Same = no,
-                opt_debug.maybe_write_instrs(yes, yes(ProcLabel), Instrs, !IO)
+                AutoComments = Info ^ lopt_auto_comments,
+                opt_debug.maybe_write_instrs(yes, AutoComments, yes(ProcLabel),
+                    Instrs, !IO)
             ),
             io.set_output_stream(OutputStream, _, !IO),
             io.close_output(FileStream, !IO)
@@ -273,22 +276,21 @@ maybe_opt_debug(Instrs, Counter, Suffix, Msg, ProcLabel, !OptDebugInfo, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred optimize_initial(set(label)::in, proc_label::in, code_model::in,
-    may_alter_rtti::in, counter::in, counter::out,
+:- pred optimize_initial(llds_opt_info::in, set(label)::in, proc_label::in,
+    code_model::in, may_alter_rtti::in, counter::in, counter::out,
     opt_debug_info::in, opt_debug_info::out,
     list(instruction)::in, list(instruction)::out, io::di, io::uo) is det.
 
-optimize_initial(LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti,
+optimize_initial(Info, LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti,
         !C, !OptDebugInfo, !Instrs, !IO) :-
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     LabelStr = opt_util.format_proc_label(ProcLabel),
-
-    globals.io_lookup_bool_option(optimize_frames, FrameOpt, !IO),
+    OptFrames = Info ^ lopt_opt_frames,
     (
-        FrameOpt = yes,
+        OptFrames = yes,
         MayAlterRtti = may_alter_rtti,
         CodeModel = model_non
     ->
+        VeryVerbose = Info ^ lopt_very_verbose,
         (
             VeryVerbose = yes,
             io.write_string("% Optimizing nondet frames for ", !IO),
@@ -299,21 +301,21 @@ optimize_initial(LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti,
         ),
         frameopt_keep_nondet_frame(ProcLabel, LayoutLabelSet,
             !C, !Instrs, _Mod),
-        maybe_opt_debug(!.Instrs, !.C, "ndframeopt", "after nondet frame opt",
-            ProcLabel, !OptDebugInfo, !IO)
+        maybe_opt_debug(Info, !.Instrs, !.C, "ndframeopt",
+            "after nondet frame opt", ProcLabel, !OptDebugInfo, !IO)
     ;
         true
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred optimize_repeat(int::in, set(label)::in, proc_label::in,
-    may_alter_rtti::in, counter::in, counter::out,
+:- pred optimize_repeat(llds_opt_info::in, int::in, set(label)::in,
+    proc_label::in, may_alter_rtti::in, counter::in, counter::out,
     opt_debug_info::in, opt_debug_info::out,
     list(instruction)::in, list(instruction)::out, io::di, io::uo) is det.
 
-optimize_repeat(CurIter, LayoutLabelSet, ProcLabel, MayAlterRtti,
-        !C, !OptDebugInfo, !Instrs, !IO) :-
+optimize_repeat(Info, CurIter, LayoutLabelSet, ProcLabel,
+        MayAlterRtti, !C, !OptDebugInfo, !Instrs, !IO) :-
     ( CurIter > 0 ->
         NextIter = CurIter - 1,
         ( NextIter = 0 ->
@@ -321,12 +323,12 @@ optimize_repeat(CurIter, LayoutLabelSet, ProcLabel, MayAlterRtti,
         ;
             Final = no
         ),
-        optimize_repeated(Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
+        optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
             !C, !OptDebugInfo, !Instrs, Mod, !IO),
         (
             Mod = yes,
-            optimize_repeat(NextIter, LayoutLabelSet, ProcLabel, MayAlterRtti,
-                !C, !OptDebugInfo, !Instrs, !IO)
+            optimize_repeat(Info, NextIter, LayoutLabelSet, ProcLabel,
+                MayAlterRtti, !C, !OptDebugInfo, !Instrs, !IO)
         ;
             Mod = no
         )
@@ -337,25 +339,23 @@ optimize_repeat(CurIter, LayoutLabelSet, ProcLabel, MayAlterRtti,
     % We short-circuit jump sequences before normal peepholing
     % to create more opportunities for use of the tailcall macro.
     %
-:- pred optimize_repeated(bool::in, set(label)::in, proc_label::in,
-    may_alter_rtti::in, counter::in, counter::out,
+:- pred optimize_repeated(llds_opt_info::in, bool::in, set(label)::in,
+    proc_label::in, may_alter_rtti::in, counter::in, counter::out,
     opt_debug_info::in, opt_debug_info::out,
     list(instruction)::in, list(instruction)::out, bool::out,
     io::di, io::uo) is det.
 
-optimize_repeated(Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
+optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         !C, !OptDebugInfo, !Instrs, Mod, !IO) :-
     InstrsAtStart = !.Instrs,
     LabelStr = opt_util.format_proc_label(ProcLabel),
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
-    globals.io_lookup_bool_option(optimize_jumps, Jumpopt, !IO),
-    globals.io_lookup_bool_option(optimize_fulljumps, FullJumpopt, !IO),
-    globals.io_lookup_bool_option(pessimize_tailcalls,
-        PessimizeTailCalls, !IO),
-    globals.io_lookup_bool_option(checked_nondet_tailcalls,
-        CheckedNondetTailCalls, !IO),
+    VeryVerbose = Info ^ lopt_very_verbose,
+    OptJump = Info ^ lopt_opt_jumps,
+    OptFullJump = Info ^ lopt_opt_fulljumps,
+    PessimizeTailCalls = Info ^ lopt_pes_tailcalls,
+    CheckedNondetTailCalls = Info ^ lopt_checked_nondet_tailcalls,
     (
-        Jumpopt = yes,
+        OptJump = yes,
         (
             VeryVerbose = yes,
             io.write_string("% Optimizing jumps for ", !IO),
@@ -365,15 +365,15 @@ optimize_repeated(Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
             VeryVerbose = no
         ),
         optimize_jumps_in_proc(LayoutLabelSet, MayAlterRtti, ProcLabel,
-            FullJumpopt, Final, PessimizeTailCalls, CheckedNondetTailCalls,
+            OptFullJump, Final, PessimizeTailCalls, CheckedNondetTailCalls,
             !C, !Instrs, Mod1),
-        maybe_opt_debug(!.Instrs, !.C, "jump", "after jump opt",
+        maybe_opt_debug(Info, !.Instrs, !.C, "jump", "after jump opt",
             ProcLabel, !OptDebugInfo, !IO)
     ;
-        Jumpopt = no,
+        OptJump = no,
         Mod1 = no
     ),
-    globals.io_lookup_bool_option(optimize_peep, Peephole, !IO),
+    Peephole = Info ^ lopt_opt_peep,
     (
         Peephole = yes,
         (
@@ -384,17 +384,17 @@ optimize_repeated(Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         ;
             VeryVerbose = no
         ),
-        globals.io_get_gc_method(GC_Method, !IO),
+        GC_Method = Info ^ lopt_gc_method,
         peephole_optimize(GC_Method, !Instrs, Mod2),
-        maybe_opt_debug(!.Instrs, !.C, "peep", "after peephole",
+        maybe_opt_debug(Info, !.Instrs, !.C, "peep", "after peephole",
             ProcLabel, !OptDebugInfo, !IO)
     ;
         Peephole = no,
         Mod2 = no
     ),
-    globals.io_lookup_bool_option(optimize_labels, LabelElim, !IO),
+    OptLabels = Info ^ lopt_opt_labels,
     (
-        LabelElim = yes,
+        OptLabels = yes,
         (
             VeryVerbose = yes,
             io.write_string("% Optimizing labels for ", !IO),
@@ -404,13 +404,13 @@ optimize_repeated(Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
             VeryVerbose = no
         ),
         labelopt_main(Final, LayoutLabelSet, !Instrs, Mod3),
-        maybe_opt_debug(!.Instrs, !.C, "label", "after label opt",
+        maybe_opt_debug(Info, !.Instrs, !.C, "label", "after label opt",
             ProcLabel, !OptDebugInfo, !IO)
     ;
-        LabelElim = no,
+        OptLabels = no,
         Mod3 = no
     ),
-    globals.io_lookup_bool_option(optimize_dups, DupElim, !IO),
+    DupElim = Info ^ lopt_opt_dups,
     (
         DupElim = yes,
         (
@@ -422,7 +422,7 @@ optimize_repeated(Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
             VeryVerbose = no
         ),
         dupelim_main(ProcLabel, !C, !Instrs),
-        maybe_opt_debug(!.Instrs, !.C, "dup", "after duplicates",
+        maybe_opt_debug(Info, !.Instrs, !.C, "dup", "after duplicates",
             ProcLabel, !OptDebugInfo, !IO)
     ;
         DupElim = no
@@ -432,22 +432,22 @@ optimize_repeated(Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
     ;
         Mod = yes
     ),
-    globals.io_lookup_bool_option(detailed_statistics, Statistics, !IO),
+    Statistics = Info ^ lopt_detailed_statistics,
     maybe_report_stats(Statistics, !IO).
 
-:- pred optimize_middle(bool::in, set(label)::in, proc_label::in,
-    code_model::in, may_alter_rtti::in, counter::in, counter::out,
-    opt_debug_info::in, opt_debug_info::out,
+:- pred optimize_middle(llds_opt_info::in, bool::in, set(label)::in,
+    proc_label::in, code_model::in, may_alter_rtti::in,
+    counter::in, counter::out, opt_debug_info::in, opt_debug_info::out,
     list(instruction)::in, list(instruction)::out, io::di, io::uo) is det.
 
-optimize_middle(Final, LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti, !C,
-        !OptDebugInfo, !Instrs, !IO) :-
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
+        MayAlterRtti, !C, !OptDebugInfo, !Instrs, !IO) :-
+    VeryVerbose = Info ^ lopt_very_verbose,
     LabelStr = opt_util.format_proc_label(ProcLabel),
 
-    globals.io_lookup_bool_option(optimize_frames, FrameOpt, !IO),
+    OptFrames = Info ^ lopt_opt_frames,
     (
-        FrameOpt = yes,
+        OptFrames = yes,
         (
             VeryVerbose = yes,
             io.write_string("% Optimizing frames for ", !IO),
@@ -456,25 +456,25 @@ optimize_middle(Final, LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti, !C,
         ;
             VeryVerbose = no
         ),
-        globals.io_get_globals(Globals, !IO),
+        FrameOptComments = Info ^ lopt_frameopt_comments,
         (
             ( CodeModel = model_det
             ; CodeModel = model_semi
             ),
-            frameopt_main_det_stack(ProcLabel, !C, !Instrs, Globals, Mod1)
+            frameopt_main_det_stack(ProcLabel, !C, !Instrs,
+                FrameOptComments, Mod1)
         ;
             CodeModel = model_non,
-            frameopt_main_nondet_stack(ProcLabel, !C, !Instrs, Globals, Mod1)
+            frameopt_main_nondet_stack(ProcLabel, !C, !Instrs,
+                FrameOptComments, Mod1)
         ),
-        maybe_opt_debug(!.Instrs, !.C, "frame", "after frame opt",
+        maybe_opt_debug(Info, !.Instrs, !.C, "frame", "after frame opt",
             ProcLabel, !OptDebugInfo, !IO),
-        globals.io_lookup_bool_option(optimize_fulljumps, FullJumpopt, !IO),
-        globals.io_lookup_bool_option(pessimize_tailcalls,
-            PessimizeTailCalls, !IO),
-        globals.io_lookup_bool_option(checked_nondet_tailcalls,
-            CheckedNondetTailCalls, !IO),
+        OptFullJump = Info ^ lopt_opt_fulljumps,
+        PessimizeTailCalls = Info ^ lopt_pes_tailcalls,
+        CheckedNondetTailCalls = Info ^ lopt_checked_nondet_tailcalls,
         (
-            ( FullJumpopt = yes
+            ( OptFullJump = yes
             ; Mod1 = yes
             )
         ->
@@ -487,9 +487,9 @@ optimize_middle(Final, LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti, !C,
                 VeryVerbose = no
             ),
             optimize_jumps_in_proc(LayoutLabelSet, MayAlterRtti, ProcLabel,
-                FullJumpopt, Final, PessimizeTailCalls, CheckedNondetTailCalls,
+                OptFullJump, Final, PessimizeTailCalls, CheckedNondetTailCalls,
                 !C, !Instrs, _Mod2),
-            maybe_opt_debug(!.Instrs, !.C, "jump", "after jumps",
+            maybe_opt_debug(Info, !.Instrs, !.C, "jump", "after jumps",
                 ProcLabel, !OptDebugInfo, !IO)
         ;
             true
@@ -505,7 +505,7 @@ optimize_middle(Final, LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti, !C,
                 VeryVerbose = no
             ),
             labelopt_main(Final, LayoutLabelSet, !Instrs, _Mod3),
-            maybe_opt_debug(!.Instrs, !.C, "label", "after labels",
+            maybe_opt_debug(Info, !.Instrs, !.C, "label", "after labels",
                 ProcLabel, !OptDebugInfo, !IO)
         ;
             Mod1 = no
@@ -520,17 +520,17 @@ optimize_middle(Final, LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti, !C,
             ;
                 VeryVerbose = no
             ),
-            globals.io_get_gc_method(GC_Method, !IO),
+            GC_Method = Info ^ lopt_gc_method,
             peephole_optimize(GC_Method, !Instrs, _Mod),
-            maybe_opt_debug(!.Instrs, !.C, "peep", "after peephole",
+            maybe_opt_debug(Info, !.Instrs, !.C, "peep", "after peephole",
                 ProcLabel, !OptDebugInfo, !IO)
         ;
             Mod1 = no
         )
     ;
-        FrameOpt = no
+        OptFrames = no
     ),
-    globals.io_lookup_bool_option(use_local_vars, UseLocalVars, !IO),
+    UseLocalVars = Info ^ lopt_use_local_vars,
     (
         UseLocalVars = yes,
         (
@@ -541,30 +541,30 @@ optimize_middle(Final, LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti, !C,
         ;
             VeryVerbose = no
         ),
-        globals.io_lookup_int_option(num_real_r_regs, NumRealRRegs, !IO),
-        globals.io_lookup_int_option(local_var_access_threshold,
-            AccessThreshold, !IO),
-        globals.io_lookup_bool_option(auto_comments, AutoComments, !IO),
+        NumRealRRegs = Info ^ lopt_num_real_r_regs,
+        AccessThreshold = Info ^ lopt_local_vars_access_threshold,
+        AutoComments = Info ^ lopt_auto_comments,
         use_local_vars_proc(!Instrs, NumRealRRegs, AccessThreshold,
             AutoComments, ProcLabel, !C),
-        maybe_opt_debug(!.Instrs, !.C, "use_local", "after use_local_vars",
-            ProcLabel, !OptDebugInfo, !IO)
+        maybe_opt_debug(Info, !.Instrs, !.C, "use_local",
+            "after use_local_vars", ProcLabel, !OptDebugInfo, !IO)
     ;
         UseLocalVars = no
     ).
 
-:- pred optimize_last(set(label)::in, proc_label::in,
+:- pred optimize_last(llds_opt_info::in, set(label)::in, proc_label::in,
     counter::in, counter::out, opt_debug_info::in,
     list(instruction)::in, list(instruction)::out, io::di, io::uo) is det.
 
-optimize_last(LayoutLabelSet, ProcLabel, !C, !.OptDebugInfo, !Instrs, !IO) :-
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+optimize_last(Info, LayoutLabelSet, ProcLabel, !C, !.OptDebugInfo,
+        !Instrs, !IO) :-
+    VeryVerbose = Info ^ lopt_very_verbose,
     LabelStr = opt_util.format_proc_label(ProcLabel),
 
-    globals.io_lookup_bool_option(optimize_reassign, Reassign, !IO),
-    globals.io_lookup_bool_option(optimize_delay_slot, DelaySlot, !IO),
-    globals.io_lookup_bool_option(use_local_vars, UseLocalVars, !IO),
-    globals.io_lookup_bool_option(standardize_labels, StdLabels, !IO),
+    Reassign = Info ^ lopt_opt_reassign,
+    DelaySlot = Info ^ lopt_opt_delay_slots,
+    UseLocalVars = Info ^ lopt_use_local_vars,
+    StdLabels = Info ^ lopt_std_labels,
     (
         ( Reassign = yes
         ; DelaySlot = yes
@@ -583,7 +583,7 @@ optimize_last(LayoutLabelSet, ProcLabel, !C, !.OptDebugInfo, !Instrs, !IO) :-
             VeryVerbose = no
         ),
         labelopt_main(no, LayoutLabelSet, !Instrs, _Mod1),
-        maybe_opt_debug(!.Instrs, !.C, "label", "after label opt",
+        maybe_opt_debug(Info, !.Instrs, !.C, "label", "after label opt",
             ProcLabel, !OptDebugInfo, !IO)
     ;
         true
@@ -599,7 +599,7 @@ optimize_last(LayoutLabelSet, ProcLabel, !C, !.OptDebugInfo, !Instrs, !IO) :-
             VeryVerbose = no
         ),
         remove_reassign(!Instrs),
-        maybe_opt_debug(!.Instrs, !.C, "reassign", "after reassign",
+        maybe_opt_debug(Info, !.Instrs, !.C, "reassign", "after reassign",
             ProcLabel, !OptDebugInfo, !IO)
     ;
         Reassign = no
@@ -615,7 +615,7 @@ optimize_last(LayoutLabelSet, ProcLabel, !C, !.OptDebugInfo, !Instrs, !IO) :-
             VeryVerbose = no
         ),
         fill_branch_delay_slot(!Instrs),
-        maybe_opt_debug(!.Instrs, !.C, "delay_slot", "after delay slots",
+        maybe_opt_debug(Info, !.Instrs, !.C, "delay_slot", "after delay slots",
             ProcLabel, !OptDebugInfo, !IO)
     ;
         DelaySlot = no
@@ -629,7 +629,7 @@ optimize_last(LayoutLabelSet, ProcLabel, !C, !.OptDebugInfo, !Instrs, !IO) :-
         VeryVerbose = no
     ),
     combine_decr_sp(!Instrs),
-    maybe_opt_debug(!.Instrs, !.C, "decr_sp", "after combine decr_sp",
+    maybe_opt_debug(Info, !.Instrs, !.C, "decr_sp", "after combine decr_sp",
         ProcLabel, !OptDebugInfo, !IO),
     (
         StdLabels = yes,
@@ -642,8 +642,8 @@ optimize_last(LayoutLabelSet, ProcLabel, !C, !.OptDebugInfo, !Instrs, !IO) :-
             VeryVerbose = no
         ),
         standardize_labels(!Instrs, !C),
-        maybe_opt_debug(!.Instrs, !.C, "stdlabel", "after standard labels",
-            ProcLabel, !OptDebugInfo, !IO)
+        maybe_opt_debug(Info, !.Instrs, !.C, "stdlabel",
+            "after standard labels", ProcLabel, !OptDebugInfo, !IO)
     ;
         StdLabels = no
     ),
@@ -658,7 +658,7 @@ optimize_last(LayoutLabelSet, ProcLabel, !C, !.OptDebugInfo, !Instrs, !IO) :-
             VeryVerbose = no
         ),
         wrap_blocks(!Instrs),
-        maybe_opt_debug(!.Instrs, !.C, "wrapblocks", "after wrap blocks",
+        maybe_opt_debug(Info, !.Instrs, !.C, "wrapblocks", "after wrap blocks",
             ProcLabel, !.OptDebugInfo, _OptDebugInfo, !IO)
     ;
         UseLocalVars = no
@@ -682,6 +682,82 @@ escape_dir_char(Char, !Str) :-
     ;
         !:Str = !.Str ++ char_to_string(Char)
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- type llds_opt_info
+    --->    llds_opt_info(
+                lopt_auto_comments                  :: bool,
+                lopt_detailed_statistics            :: bool,
+                lopt_very_verbose                   :: bool,
+
+                lopt_checked_nondet_tailcalls       :: bool,
+                lopt_num_real_r_regs                :: int,
+                lopt_gc_method                      :: gc_method,
+
+                lopt_opt_delay_slots                :: bool,
+                lopt_opt_dups                       :: bool,
+                lopt_opt_frames                     :: bool,
+                lopt_frameopt_comments              :: bool,
+                lopt_opt_jumps                      :: bool,
+                lopt_opt_fulljumps                  :: bool,
+                lopt_opt_labels                     :: bool,
+                lopt_opt_peep                       :: bool,
+                lopt_opt_reassign                   :: bool,
+                lopt_pes_tailcalls                  :: bool,
+                lopt_std_labels                     :: bool,
+                lopt_use_local_vars                 :: bool,
+
+                lopt_local_vars_access_threshold    :: int,
+                lopt_opt_repeat                     :: int,
+
+                lopt_debug_opt                      :: bool,
+                lopt_debug_opt_pred_ids             :: list(string),
+                lopt_debug_opt_pred_names           :: list(string)
+            ).
+
+:- func init_llds_opt_info(globals) = llds_opt_info.
+
+init_llds_opt_info(Globals) = Info :-
+    globals.lookup_bool_option(Globals, auto_comments, AutoComments),
+    globals.lookup_bool_option(Globals, detailed_statistics,
+        DetailedStatistics),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+
+    globals.lookup_bool_option(Globals, checked_nondet_tailcalls,
+        CheckedNondetTailCalls),
+    globals.lookup_int_option(Globals, num_real_r_regs, NumRealRRegs),
+    globals.get_gc_method(Globals, GCMethod),
+
+    globals.lookup_bool_option(Globals, optimize_delay_slot, OptDelaySlots),
+    globals.lookup_bool_option(Globals, optimize_dups, OptDups),
+    globals.lookup_bool_option(Globals, optimize_frames, OptFrames),
+    globals.lookup_bool_option(Globals, frameopt_comments, FrameOptComments),
+    globals.lookup_bool_option(Globals, optimize_jumps, OptJumps),
+    globals.lookup_bool_option(Globals, optimize_fulljumps, OptFullJumps),
+    globals.lookup_bool_option(Globals, optimize_labels, OptLabels),
+    globals.lookup_bool_option(Globals, optimize_peep, OptPeep),
+    globals.lookup_bool_option(Globals, optimize_reassign, OptReassign),
+    globals.lookup_bool_option(Globals, pessimize_tailcalls,
+        PessimizeTailCalls),
+    globals.lookup_bool_option(Globals, standardize_labels, StdLabels),
+    globals.lookup_bool_option(Globals, use_local_vars, UseLocalVars),
+    globals.lookup_int_option(Globals, local_var_access_threshold,
+        LocalVarAccessThreshold),
+    globals.lookup_int_option(Globals, optimize_repeat, OptRepeat),
+
+    globals.lookup_bool_option(Globals, debug_opt, DebugOpt),
+    globals.lookup_accumulating_option(Globals, debug_opt_pred_id,
+        DebugOptPredIdStrs),
+    globals.lookup_accumulating_option(Globals, debug_opt_pred_name,
+        DebugOptPredNames),
+
+    Info = llds_opt_info(AutoComments, DetailedStatistics, VeryVerbose,
+        CheckedNondetTailCalls, NumRealRRegs, GCMethod,
+        OptDelaySlots, OptDups, OptFrames, FrameOptComments,
+        OptJumps, OptFullJumps, OptLabels, OptPeep, OptReassign,
+        PessimizeTailCalls, StdLabels, UseLocalVars, LocalVarAccessThreshold,
+        OptRepeat, DebugOpt, DebugOptPredIdStrs, DebugOptPredNames).
 
 %-----------------------------------------------------------------------------%
 

@@ -126,28 +126,20 @@
 
 %------------------------------------------------------------------------------%
 %
-% Predicates for printing out debugging traces.
+% Predicates for printing out debugging traces. The first boolean argument
+% of these predicates should be the value of the --debug-term option.
 %
-% In order to use these the option `--debug-term' must be set.
 
     % Call the specified predicate.
     %
-:- pred maybe_write_trace(pred(io, io), io, io).
-:- mode maybe_write_trace(pred(di, uo) is det, di, uo) is det.
+:- pred maybe_write_trace(bool::in, pred(io, io)::in(pred(di, uo) is det),
+    io::di, io::uo) is det.
 
     % As above but if the boolean argument is `yes', print a newline
     % to stdout before flushing the output.
     %
-:- pred maybe_write_trace(pred(io, io), bool, io, io).
-:- mode maybe_write_trace(pred(di, uo) is det, in, di, uo) is det.
-
-    % Write the given string to stdout.
-    %
-:- pred maybe_write_string(string::in, io::di, io::uo) is det.
-
-    % Write a newline to stdout.
-    %
-:- pred maybe_write_nl(io::di, io::uo) is det.
+:- pred maybe_write_trace_nl(bool::in, pred(io, io)::in(pred(di, uo) is det),
+    bool::in, io::di, io::uo) is det.
 
 :- pred maybe_write_scc_procs(list(pred_proc_id)::in, module_info::in,
     int::in, io::di, io::uo) is det.
@@ -355,13 +347,12 @@ is_zero_size_var(Zeros, SizeVar) :- set.member(SizeVar, Zeros).
 % Predicates for printing out debugging traces ...
 %
 
-maybe_write_trace(TracePred, !IO) :-
-    maybe_write_trace(TracePred, no, !IO).
+maybe_write_trace(DebugTerm, TracePred, !IO) :-
+    maybe_write_trace_nl(DebugTerm, TracePred, no, !IO).
 
-maybe_write_trace(TracePred, NewLine, !IO) :-
-    globals.io_lookup_bool_option(debug_term, Trace, !IO),
+maybe_write_trace_nl(DebugTerm, TracePred, NewLine, !IO) :-
     (
-        Trace = yes,
+        DebugTerm = yes,
         TracePred(!IO),
         (
             NewLine = yes,
@@ -371,19 +362,7 @@ maybe_write_trace(TracePred, NewLine, !IO) :-
         ),
         io.flush_output(!IO)
     ;
-        Trace = no
-    ).
-
-maybe_write_nl(!IO) :- maybe_write_string("\n", !IO).
-
-maybe_write_string(String, !IO) :-
-    globals.io_lookup_bool_option(debug_term, Debug, !IO),
-    (
-        Debug = yes,
-        io.write_string(String, !IO),
-        io.flush_output(!IO)
-    ;
-        Debug = no
+        DebugTerm = no
     ).
 
 maybe_write_scc_procs(SCC, ModuleInfo, _, !IO) :-

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002, 2005-2007 The University of Melbourne.
+% Copyright (C) 2002, 2005-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -87,9 +87,10 @@
 %-----------------------------------------------------------------------------%
 
 report_termination2_errors(SCC, Errors, !ModuleInfo, !IO) :-
-    globals.io_lookup_bool_option(check_termination2, NormalErrors, !IO),
-    globals.io_lookup_bool_option(verbose_check_termination2,
-        VerboseErrors, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, check_termination2, NormalErrors),
+    globals.lookup_bool_option(Globals, verbose_check_termination2,
+        VerboseErrors),
     (
         IsCheckTerm = (pred(PPId::in) is semidet :-
             module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, _),

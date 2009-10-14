@@ -46,8 +46,8 @@
 
 :- type make_hlds_qual_info.
 
-    % parse_tree_to_hlds(Globals, ParseTree, MQInfo, EqvMap, UsedModules,
-    %   QualInfo, InvalidTypes, InvalidModes, HLDS, Specs):
+    % parse_tree_to_hlds(Globals, DumpBaseFileName, ParseTree, MQInfo, EqvMap,
+    %   UsedModules, QualInfo, InvalidTypes, InvalidModes, HLDS, Specs):
     %
     % Given MQInfo (returned by module_qual.m) and EqvMap and UsedModules
     % (both returned by equiv_type.m), converts ParseTree to HLDS.
@@ -57,8 +57,8 @@
     % QualInfo is an abstract type that is then passed back to
     % produce_instance_method_clauses (see below).
     %
-:- pred parse_tree_to_hlds(globals::in, compilation_unit::in, mq_info::in,
-    eqv_map::in, used_modules::in, make_hlds_qual_info::out,
+:- pred parse_tree_to_hlds(globals::in, string::in, compilation_unit::in,
+    mq_info::in, eqv_map::in, used_modules::in, make_hlds_qual_info::out,
     bool::out, bool::out, module_info::out, list(error_spec)::out) is det.
 
 :- pred add_new_proc(inst_varset::in, arity::in, list(mer_mode)::in,
@@ -139,10 +139,12 @@
 
 :- type make_hlds_qual_info == hlds.make_hlds.qual_info.qual_info.
 
-parse_tree_to_hlds(Globals, ParseTree, MQInfo0, EqvMap, UsedModules,
-        QualInfo, InvalidTypes, InvalidModes, ModuleInfo, Specs) :-
-    do_parse_tree_to_hlds(Globals, ParseTree, MQInfo0, EqvMap, UsedModules,
-        QualInfo, InvalidTypes, InvalidModes, ModuleInfo, Specs).
+parse_tree_to_hlds(Globals, DumpBaseFileName, ParseTree, MQInfo0, EqvMap,
+        UsedModules, QualInfo, InvalidTypes, InvalidModes, ModuleInfo,
+        Specs) :-
+    do_parse_tree_to_hlds(Globals, DumpBaseFileName, ParseTree, MQInfo0,
+        EqvMap, UsedModules, QualInfo, InvalidTypes, InvalidModes, ModuleInfo,
+        Specs).
 
 add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
         MaybeArgLives, MaybeDet, Context, IsAddressTaken, PredInfo0, PredInfo,

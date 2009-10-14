@@ -17,6 +17,7 @@
 :- module make.module_dep_file.
 :- interface.
 
+:- import_module libs.globals.
 :- import_module parse_tree.module_imports.
 
 :- import_module io.
@@ -29,18 +30,18 @@
     % command, so this predicate may need to read the source for
     % the module.
     %
-:- pred get_module_dependencies(module_name::in,
+:- pred get_module_dependencies(globals::in, module_name::in,
     maybe(module_and_imports)::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-:- pred write_module_dep_file(module_and_imports::in, io::di, io::uo) is det.
+:- pred write_module_dep_file(globals::in, module_and_imports::in,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module libs.globals.
 :- import_module libs.file_util.
 :- import_module libs.process_util.
 :- import_module parse_tree.error_util.
@@ -64,11 +65,11 @@
 
 %-----------------------------------------------------------------------------%
 
-get_module_dependencies(ModuleName, MaybeImports, !Info, !IO) :-
+get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO) :-
     RebuildModuleDeps = !.Info ^ rebuild_module_deps,
     (
         ModuleName = unqualified(_),
-        maybe_get_module_dependencies(RebuildModuleDeps, ModuleName,
+        maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
             MaybeImports, !Info, !IO)
     ;
         ModuleName = qualified(_, _),
@@ -86,7 +87,8 @@ get_module_dependencies(ModuleName, MaybeImports, !Info, !IO) :-
             % dependencies.
 
             Ancestors = get_ancestors(ModuleName),
-            list.foldl3(generate_ancestor_dependencies(RebuildModuleDeps),
+            list.foldl3(
+                generate_ancestor_dependencies(Globals, RebuildModuleDeps),
                 Ancestors, no, Error, !Info, !IO),
             (
                 Error = yes,
@@ -97,22 +99,22 @@ get_module_dependencies(ModuleName, MaybeImports, !Info, !IO) :-
                 !Info ^ module_dependencies := ModuleDepMap
             ;
                 Error = no,
-                maybe_get_module_dependencies(RebuildModuleDeps,
+                maybe_get_module_dependencies(Globals, RebuildModuleDeps,
                     ModuleName, MaybeImports, !Info, !IO)
             )
         )
     ).
 
-:- pred generate_ancestor_dependencies(rebuild_module_deps::in,
+:- pred generate_ancestor_dependencies(globals::in, rebuild_module_deps::in,
     module_name::in, bool::in, bool::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-generate_ancestor_dependencies(_, ModuleName, yes, yes, Info,
+generate_ancestor_dependencies(_, _, ModuleName, yes, yes, Info,
         Info ^ module_dependencies ^ elem(ModuleName) := no, !IO).
-generate_ancestor_dependencies(RebuildModuleDeps, ModuleName, no, Error,
-        !Info, !IO) :-
-    maybe_get_module_dependencies(RebuildModuleDeps, ModuleName, MaybeImports,
-        !Info, !IO),
+generate_ancestor_dependencies(Globals, RebuildModuleDeps, ModuleName,
+        no, Error, !Info, !IO) :-
+    maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
+        MaybeImports, !Info, !IO),
     (
         MaybeImports = yes(_),
         Error = no
@@ -121,39 +123,40 @@ generate_ancestor_dependencies(RebuildModuleDeps, ModuleName, no, Error,
         Error = yes
     ).
 
-:- pred maybe_get_module_dependencies(rebuild_module_deps::in,
+:- pred maybe_get_module_dependencies(globals::in, rebuild_module_deps::in,
     module_name::in, maybe(module_and_imports)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-maybe_get_module_dependencies(RebuildModuleDeps, ModuleName, MaybeImports,
-        !Info, !IO) :-
+maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
+        MaybeImports, !Info, !IO) :-
     ( map.search(!.Info ^ module_dependencies, ModuleName, MaybeImports0) ->
         MaybeImports = MaybeImports0
     ;
-        do_get_module_dependencies(RebuildModuleDeps, ModuleName,
+        do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
             MaybeImports, !Info, !IO)
     ).
 
-:- pred do_get_module_dependencies(rebuild_module_deps::in, module_name::in,
-    maybe(module_and_imports)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred do_get_module_dependencies(globals::in, rebuild_module_deps::in,
+    module_name::in, maybe(module_and_imports)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
-do_get_module_dependencies(RebuildModuleDeps, ModuleName, !:MaybeImports,
-        !Info, !IO) :-
+do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
+        !:MaybeImports, !Info, !IO) :-
     % We can't just use
     %   `get_target_timestamp(ModuleName - source, ..)'
     % because that could recursively call get_module_dependencies,
     % leading to an infinite loop. Just using module_name_to_file_name
     % will fail if the module name doesn't match the file name, but
     % that case is handled below.
-    module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
+    module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
         SourceFileName, !IO),
     get_file_timestamp([dir.this_directory], SourceFileName,
         MaybeSourceFileTimestamp, !Info, !IO),
 
-    module_name_to_file_name(ModuleName, make_module_dep_file_extension,
-        do_not_create_dirs, DepFileName, !IO),
-    globals.io_lookup_accumulating_option(search_directories, SearchDirs, !IO),
+    module_name_to_file_name(Globals, ModuleName,
+        make_module_dep_file_extension, do_not_create_dirs, DepFileName, !IO),
+    globals.lookup_accumulating_option(Globals, search_directories,
+        SearchDirs),
     get_file_timestamp(SearchDirs, DepFileName, MaybeDepFileTimestamp,
         !Info, !IO),
     (
@@ -167,23 +170,22 @@ do_get_module_dependencies(RebuildModuleDeps, ModuleName, !:MaybeImports,
             % Since the source file was found in this directory, don't
             % use module_dep files which might be for installed copies
             % of the module.
-            read_module_dependencies_no_search(RebuildModuleDeps, ModuleName,
-                !Info, !IO)
+            read_module_dependencies_no_search(Globals, RebuildModuleDeps,
+                ModuleName, !Info, !IO)
         ;
-            make_module_dependencies(ModuleName, !Info, !IO)
+            make_module_dependencies(Globals, ModuleName, !Info, !IO)
         )
     ;
         MaybeSourceFileTimestamp = error(_),
         MaybeDepFileTimestamp = ok(DepFileTimestamp),
-        read_module_dependencies_search(RebuildModuleDeps, ModuleName, !Info,
-            !IO),
+        read_module_dependencies_search(Globals, RebuildModuleDeps,
+            ModuleName, !Info, !IO),
 
-        %
         % Check for the case where the module name doesn't match the
         % source file name (e.g. parse.m contains module mdb.parse). Get
         % the correct source file name from the module dependency file,
         % then check whether the module dependency file is up to date.
-        %
+
         map.lookup(!.Info ^ module_dependencies, ModuleName, !:MaybeImports),
         (
             !.MaybeImports = yes(Imports0),
@@ -201,7 +203,7 @@ do_get_module_dependencies(RebuildModuleDeps, ModuleName, !:MaybeImports,
                 ->
                     true
                 ;
-                    make_module_dependencies(ModuleName, !Info, !IO)
+                    make_module_dependencies(Globals, ModuleName, !Info, !IO)
                 )
             ;
                 MaybeSourceFileTimestamp1 = error(Message),
@@ -225,7 +227,7 @@ do_get_module_dependencies(RebuildModuleDeps, ModuleName, !:MaybeImports,
         % is in another directory.
         (
             RebuildModuleDeps = do_rebuild_module_deps,
-            make_module_dependencies(ModuleName, !Info, !IO)
+            make_module_dependencies(Globals, ModuleName, !Info, !IO)
         ;
             RebuildModuleDeps = do_not_rebuild_module_deps,
             ModuleDepMap0 = !.Info ^ module_dependencies,
@@ -249,9 +251,8 @@ do_get_module_dependencies(RebuildModuleDeps, ModuleName, !:MaybeImports,
 
 module_dependencies_version_number = 1.
 
-write_module_dep_file(Imports0, !IO) :-
+write_module_dep_file(Globals, Imports0, !IO) :-
     % Make sure all the required fields are filled in.
-    globals.io_get_globals(Globals, !IO),
     module_and_imports_get_results(Imports0, Items0, _Specs, _Errors),
     strip_imported_items(Items0, Items),
     init_dependencies(Imports0 ^ mai_source_file_name,
@@ -259,15 +260,15 @@ write_module_dep_file(Imports0, !IO) :-
         Imports0 ^ mai_nested_children,
         Imports0 ^ mai_specs, no_module_errors, Globals,
         Imports0 ^ mai_module_name - Items, Imports),
-    do_write_module_dep_file(Imports, !IO).
+    do_write_module_dep_file(Globals, Imports, !IO).
 
-:- pred do_write_module_dep_file(module_and_imports::in, io::di, io::uo)
-    is det.
+:- pred do_write_module_dep_file(globals::in, module_and_imports::in,
+    io::di, io::uo) is det.
 
-do_write_module_dep_file(Imports, !IO) :-
+do_write_module_dep_file(Globals, Imports, !IO) :-
     ModuleName = Imports ^ mai_module_name,
-    module_name_to_file_name(ModuleName, make_module_dep_file_extension,
-        do_create_dirs, ProgDepFile, !IO),
+    module_name_to_file_name(Globals, ModuleName,
+        make_module_dep_file_extension, do_create_dirs, ProgDepFile, !IO),
     io.open_output(ProgDepFile, ProgDepResult, !IO),
     (
         ProgDepResult = ok(ProgDepStream),
@@ -364,30 +365,33 @@ has_main_to_string(HasMain, HasMainStr) :-
         HasMainStr = "no_main"
     ).
 
-:- pred read_module_dependencies_search(rebuild_module_deps::in,
+:- pred read_module_dependencies_search(globals::in, rebuild_module_deps::in,
     module_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
-read_module_dependencies_search(RebuildModuleDeps, ModuleName, !Info, !IO) :-
-    globals.io_lookup_accumulating_option(search_directories, SearchDirs, !IO),
-    read_module_dependencies_2(RebuildModuleDeps, SearchDirs, ModuleName,
-        !Info, !IO).
-
-:- pred read_module_dependencies_no_search(rebuild_module_deps::in,
-    module_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
-
-read_module_dependencies_no_search(RebuildModuleDeps, ModuleName, !Info,
-        !IO) :-
-    read_module_dependencies_2(RebuildModuleDeps, [dir.this_directory],
+read_module_dependencies_search(Globals, RebuildModuleDeps, ModuleName,
+        !Info, !IO) :-
+    globals.lookup_accumulating_option(Globals, search_directories,
+        SearchDirs),
+    read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs,
         ModuleName, !Info, !IO).
 
-:- pred read_module_dependencies_2(rebuild_module_deps::in,
+:- pred read_module_dependencies_no_search(globals::in,
+    rebuild_module_deps::in, module_name::in, make_info::in, make_info::out,
+    io::di, io::uo) is det.
+
+read_module_dependencies_no_search(Globals, RebuildModuleDeps, ModuleName,
+        !Info, !IO) :-
+    read_module_dependencies_2(Globals, RebuildModuleDeps,
+        [dir.this_directory], ModuleName, !Info, !IO).
+
+:- pred read_module_dependencies_2(globals::in, rebuild_module_deps::in,
     list(dir_name)::in, module_name::in, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-read_module_dependencies_2(RebuildModuleDeps, SearchDirs, ModuleName, !Info,
-        !IO) :-
-    module_name_to_search_file_name(ModuleName, make_module_dep_file_extension,
-        ModuleDepFile, !IO),
+read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
+        !Info, !IO) :-
+    module_name_to_search_file_name(Globals, ModuleName,
+        make_module_dep_file_extension, ModuleDepFile, !IO),
     io.input_stream(OldInputStream, !IO),
     search_for_file_returning_dir(open_file, SearchDirs, ModuleDepFile,
         SearchResult, !IO),
@@ -497,7 +501,8 @@ read_module_dependencies_2(RebuildModuleDeps, SearchDirs, ModuleName, !Info,
 
             SubRebuildModuleDeps = do_not_rebuild_module_deps,
             list.foldl2(
-                read_module_dependencies_2(SubRebuildModuleDeps, SearchDirs),
+                read_module_dependencies_2(Globals, SubRebuildModuleDeps,
+                    SearchDirs),
                 NestedChildren, !Info, !IO),
             (
                 list.member(NestedChild, NestedChildren),
@@ -510,43 +515,47 @@ read_module_dependencies_2(RebuildModuleDeps, SearchDirs, ModuleName, !Info,
                     true
                 )
             ->
-                read_module_dependencies_remake(RebuildModuleDeps, ModuleName,
-                    "error in nested sub-modules", !Info, !IO)
+                read_module_dependencies_remake(Globals, RebuildModuleDeps,
+                    ModuleName, "error in nested sub-modules", !Info, !IO)
             ;
                 true
             )
         ;
-            read_module_dependencies_remake(RebuildModuleDeps, ModuleName,
-                "parse error", !Info, !IO)
+            read_module_dependencies_remake(Globals, RebuildModuleDeps,
+                ModuleName, "parse error", !Info, !IO)
         )
     ;
         SearchResult = error(_),
         % XXX should use the error message.
-        read_module_dependencies_remake(RebuildModuleDeps, ModuleName,
+        read_module_dependencies_remake(Globals, RebuildModuleDeps, ModuleName,
             "couldn't find `.module_dep' file", !Info, !IO)
     ).
 
     % Something went wrong reading the dependencies, so just rebuild them.
-:- pred read_module_dependencies_remake(rebuild_module_deps::in,
+    %
+:- pred read_module_dependencies_remake(globals::in, rebuild_module_deps::in,
     module_name::in, string::in, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-read_module_dependencies_remake(RebuildModuleDeps, ModuleName, Msg, !Info,
-        !IO) :-
+read_module_dependencies_remake(Globals, RebuildModuleDeps, ModuleName, Msg,
+        !Info, !IO) :-
     (
         RebuildModuleDeps = do_rebuild_module_deps,
-        debug_msg(read_module_dependencies_remake_msg(ModuleName, Msg), !IO),
-        make_module_dependencies(ModuleName, !Info, !IO)
+        debug_msg(Globals,
+            read_module_dependencies_remake_msg(Globals, ModuleName, Msg),
+            !IO),
+        make_module_dependencies(Globals, ModuleName, !Info, !IO)
     ;
         RebuildModuleDeps = do_not_rebuild_module_deps
     ).
 
-:- pred read_module_dependencies_remake_msg(module_name::in, string::in,
-    io::di, io::uo) is det.
+:- pred read_module_dependencies_remake_msg(globals::in, module_name::in,
+    string::in, io::di, io::uo) is det.
 
-read_module_dependencies_remake_msg(ModuleName, Msg, !IO) :-
-    module_name_to_file_name(ModuleName, make_module_dep_file_extension,
-        do_not_create_dirs, ModuleDepsFile, !IO),
+read_module_dependencies_remake_msg(Globals, ModuleName, Msg, !IO) :-
+    module_name_to_file_name(Globals, ModuleName,
+        make_module_dep_file_extension, do_not_create_dirs, ModuleDepsFile,
+        !IO),
     io.write_string("Error reading file `", !IO),
     io.write_string(ModuleDepsFile, !IO),
     io.write_string("', rebuilding: ", !IO),
@@ -562,14 +571,13 @@ parse_sym_name_list(term.functor(term.atom("{}"), Args, _), SymNames) :-
     % get_module_dependencies ensures this by making the dependencies
     % for all parent modules of the requested module first.
     %
-:- pred make_module_dependencies(module_name::in,
+:- pred make_module_dependencies(globals::in, module_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_module_dependencies(ModuleName, !Info, !IO) :-
+make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
     redirect_output(ModuleName, MaybeErrorStream, !Info, !IO),
     (
         MaybeErrorStream = yes(ErrorStream),
-        globals.io_get_globals(Globals, !IO),
         io.set_output_stream(ErrorStream, OldOutputStream, !IO),
         % XXX Why ask for the timestamp if we then ignore it?
         read_module(Globals, ModuleName, ".m",
@@ -591,14 +599,12 @@ make_module_dependencies(ModuleName, !Info, !IO) :-
             % Display the contents of the `.err' file, then remove it
             % so we don't leave `.err' files lying around for nonexistent
             % modules.
-            globals.io_lookup_int_option(output_compile_error_lines, Lines,
-                !IO),
-            globals.io_set_option(output_compile_error_lines, int(10000),
-                !IO),
-            unredirect_output(ModuleName, ErrorStream, !Info, !IO),
-            globals.io_set_option(output_compile_error_lines, int(Lines), !IO),
-            module_name_to_file_name(ModuleName, ".err", do_not_create_dirs,
-                ErrFileName, !IO),
+            globals.set_option(output_compile_error_lines, int(10000),
+                Globals, UnredirectGlobals),
+            unredirect_output(UnredirectGlobals, ModuleName, ErrorStream,
+                !Info, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".err",
+                do_not_create_dirs, ErrFileName, !IO),
             io.remove_file(ErrFileName, _, !IO),
             ModuleDepMap0 = !.Info ^ module_dependencies,
             % XXX Could this be map.det_update?
@@ -630,50 +636,52 @@ make_module_dependencies(ModuleName, !Info, !IO) :-
             % If there were no errors, write out the `.int3' file
             % while we have the contents of the module. The `int3' file
             % does not depend on anything else.
+            globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
             (
                 Error = no_module_errors,
                 Target = target_file(ModuleName,
                     module_target_unqualified_short_interface),
-                maybe_make_target_message_to_stream(OldOutputStream, Target,
-                    !IO),
-                build_with_check_for_interrupt(
-                    build_with_module_options(ModuleName,
+                maybe_make_target_message_to_stream(Globals, OldOutputStream,
+                    Target, !IO),
+                build_with_check_for_interrupt(VeryVerbose,
+                    build_with_module_options(Globals, ModuleName,
                         ["--make-short-interface"],
                         make_short_interfaces(ErrorStream,
                             SourceFileName, SubModuleList)
                     ),
-                    cleanup_short_interfaces(SubModuleNames),
+                    cleanup_short_interfaces(Globals, SubModuleNames),
                     Succeeded, !Info, !IO)
             ;
                 Error = some_module_errors,
                 Succeeded = no
             ),
 
-            build_with_check_for_interrupt(
+            build_with_check_for_interrupt(VeryVerbose,
                 (pred(yes::out, MakeInfo::in, MakeInfo::out, di, uo) is det -->
-                    list.foldl(do_write_module_dep_file,
+                    list.foldl(do_write_module_dep_file(Globals),
                         ModuleImportList)
-                ), cleanup_module_dep_files(SubModuleNames), _, !Info, !IO),
+                ),
+                cleanup_module_dep_files(Globals, SubModuleNames), _,
+                !Info, !IO),
 
             MadeTarget = target_file(ModuleName,
                 module_target_unqualified_short_interface),
-            record_made_target(MadeTarget,
+            record_made_target(Globals, MadeTarget,
                 process_module(task_make_short_interface), Succeeded,
                 !Info, !IO),
-            unredirect_output(ModuleName, ErrorStream, !Info, !IO)
+            unredirect_output(Globals, ModuleName, ErrorStream, !Info, !IO)
         )
     ;
         MaybeErrorStream = no
     ).
 
 :- pred make_short_interfaces(io.output_stream::in, file_name::in,
-    assoc_list(module_name, list(item))::in, list(string)::in, bool::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    assoc_list(module_name, list(item))::in, globals::in, list(string)::in,
+    bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_short_interfaces(ErrorStream, SourceFileName, SubModuleList, _, Succeeded,
-        !Info, !IO) :-
+make_short_interfaces(ErrorStream, SourceFileName, SubModuleList, Globals,
+        _, Succeeded, !Info, !IO) :-
     io.set_output_stream(ErrorStream, OutputStream, !IO),
-    globals.io_get_globals(Globals, !IO),
     list.foldl(
         (pred(SubModule::in, !.IO::di, !:IO::uo) is det :-
             SubModule = SubModuleName - SubModuleItems,
@@ -684,25 +692,26 @@ make_short_interfaces(ErrorStream, SourceFileName, SubModuleList, _, Succeeded,
     io.get_exit_status(ExitStatus, !IO),
     Succeeded = ( ExitStatus = 0 -> yes ; no ).
 
-:- pred cleanup_short_interfaces(list(module_name)::in,
+:- pred cleanup_short_interfaces(globals::in, list(module_name)::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-cleanup_short_interfaces(SubModuleNames, !Info, !IO) :-
+cleanup_short_interfaces(Globals, SubModuleNames, !Info, !IO) :-
     list.foldl2(
         (pred(SubModuleName::in, !.Info::in, !:Info::out, !.IO::di, !:IO::uo)
                 is det :-
-            make_remove_target_file(very_verbose, SubModuleName,
-                module_target_unqualified_short_interface, !Info, !IO)
+            make_remove_target_file_by_name(Globals, very_verbose,
+                SubModuleName, module_target_unqualified_short_interface,
+                !Info, !IO)
         ), SubModuleNames, !Info, !IO).
 
-:- pred cleanup_module_dep_files(list(module_name)::in,
+:- pred cleanup_module_dep_files(globals::in, list(module_name)::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-cleanup_module_dep_files(SubModuleNames, !Info, !IO) :-
+cleanup_module_dep_files(Globals, SubModuleNames, !Info, !IO) :-
     list.foldl2(
         (pred(SubModuleName::in, !.Info::in, !:Info::out, !.IO::di, !:IO::uo)
                 is det :-
-            make_remove_file(verbose_make, SubModuleName,
+            make_remove_module_file(Globals, verbose_make, SubModuleName,
                 make_module_dep_file_extension, !Info, !IO)
         ), SubModuleNames, !Info, !IO).
 

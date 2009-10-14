@@ -80,7 +80,7 @@
     %
     % This is where all the action is for the IL backend.
     %
-:- pred generate_il(globals::in, mlds::in, list(ilasm.decl)::out,
+:- pred generate_il(globals::in, mlds::in, list(il_decl)::out,
     set(foreign_language)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -252,7 +252,7 @@ generate_il(Globals, MLDS, ILAsm, ForeignLangs) :-
 %-----------------------------------------------------------------------------%
 
 :- pred generate_il(globals::in, mlds::in, assembly_decl::in,
-    list(ilasm.decl)::out, set(foreign_language)::out) is det.
+    list(il_decl)::out, set(foreign_language)::out) is det.
 
 generate_il(Globals, MLDS0, Version, ILAsm, ForeignLangs) :-
     % XXX initialise declarations NYI for IL backend
@@ -312,7 +312,7 @@ generate_il(Globals, MLDS0, Version, ILAsm, ForeignLangs) :-
         ->
             ThisAssembly = []
         ;
-            ThisAssembly = [assembly(AssemblyName)]
+            ThisAssembly = [ildecl_assembly(AssemblyName)]
         ),
 
         % XXX At a later date we should make foreign code behave like
@@ -331,8 +331,8 @@ generate_il(Globals, MLDS0, Version, ILAsm, ForeignLangs) :-
     ),
     generate_extern_assembly(AssemblyName, Version, SignAssembly,
         SeparateAssemblies, AssemblerRefs, ExternAssemblies),
-    Namespace = [namespace(NamespaceName, ILDecls)],
-    ILAsm = list.condense([ThisAssembly, ExternAssemblies, Namespace]).
+    Namespace = ildecl_namespace(NamespaceName, ILDecls),
+    ILAsm = ThisAssembly ++ ExternAssemblies ++ [Namespace].
 
 get_il_data_rep(Globals, ILDataRep) :-
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
@@ -645,14 +645,14 @@ rename_var(qual(ModuleName, _QualKind, Name), _Type)
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred mlds_defn_to_ilasm_decl(mlds_defn::in, ilasm.decl::out,
+:- pred mlds_defn_to_ilasm_decl(mlds_defn::in, il_decl::out,
     il_info::in, il_info::out) is det.
 
+mlds_defn_to_ilasm_decl(mlds_defn(Name, Context, Flags0, Data), Decl, !Info) :-
     % IL supports top-level (i.e. "global") function definitions and
     % data definitions, but they're not part of the CLS.
     % Since they are not part of the CLS, we don't generate them,
     % and so there's no need to handle them here.
-mlds_defn_to_ilasm_decl(mlds_defn(Name, Context, Flags0, Data), Decl, !Info) :-
     (
         Data = mlds_data(_Type, _Init, _GC),
         sorry(this_file, "top level data definition!")
@@ -697,8 +697,8 @@ mlds_defn_to_ilasm_decl(mlds_defn(Name, Context, Flags0, Data), Decl, !Info) :-
         ;
             Flags = Flags0
         ),
-        Decl = class(decl_flags_to_classattrs(Flags), EntityName, Extends,
-            Interfaces, MethodDecls)
+        Decl = ildecl_class(decl_flags_to_classattrs(Flags), EntityName,
+            Extends, Interfaces, MethodDecls)
     ).
 
 :- pred generate_class_body(mlds_entity_name::in, mlds_context::in,
@@ -1060,7 +1060,8 @@ generate_method(ClassName, _, mlds_defn(Name, Context, Flags, Entity),
     MaybeOffset = no,
     Initializer = none,
 
-    ClassMember = field(Attrs, ILType, FieldName, MaybeOffset, Initializer).
+    ClassMember = member_field(Attrs, ILType, FieldName, MaybeOffset,
+        Initializer).
 
 generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
         ClassMember, !Info) :-
@@ -1331,7 +1332,7 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
     list.condense([EntryPoint, CustomAttributes, MethodBody],
         MethodContents),
 
-    ClassMember = ilasm.method(methodhead(Attrs, MemberName,
+    ClassMember = member_method(methodhead(Attrs, MemberName,
         ILSignature, []), MethodContents).
 
 generate_method(_, _, mlds_defn(Name, Context, Flags, Entity), ClassMember,
@@ -1339,7 +1340,7 @@ generate_method(_, _, mlds_defn(Name, Context, Flags, Entity), ClassMember,
     Entity = mlds_class(ClassDefn),
     generate_class_body(Name, Context, ClassDefn, _ClassName, EntityName,
         Extends, Interfaces, ClassMembers, !Info),
-    ClassMember = nested_class(decl_flags_to_nestedclassattrs(Flags),
+    ClassMember = member_nested_class(decl_flags_to_nestedclassattrs(Flags),
         EntityName, Extends, Interfaces, ClassMembers).
 
 %-----------------------------------------------------------------------------%
@@ -2954,7 +2955,7 @@ const_rval_to_function(Const, MemberName) :-
 
 make_class_constructor_class_member(DoneFieldRef, Imports, AllocInstrs,
         InitInstrs, Method, !Info) :-
-    Method = method(methodhead([public, static], cctor,
+    Method = member_method(methodhead([public, static], cctor,
         signature(call_conv(no, default), void, []), []), MethodDecls),
     ResponsibleInitRuntimeInstrs = responsible_for_init_runtime_instrs,
     RuntimeInitInstrs = runtime_initialization_instrs,
@@ -2991,7 +2992,7 @@ set_rtti_initialization_field(FieldRef, Instrs, !Info) :-
 generate_rtti_initialization_field(ClassName, AllocDoneFieldRef,
         AllocDoneField) :-
     AllocDoneFieldName = "rtti_initialized",
-    AllocDoneField = field([public, static], il_type([], bool),
+    AllocDoneField = member_field([public, static], il_type([], bool),
         AllocDoneFieldName, no, none),
     AllocDoneFieldRef = make_fieldref(il_type([], bool),
         ClassName, AllocDoneFieldName).
@@ -4231,11 +4232,11 @@ il_system_namespace_name = "System".
     % Generate extern decls for any assembly we reference.
     %
 :- pred generate_extern_assembly(string::in, assembly_decl::in,
-    bool::in, bool::in, mlds_imports::in, list(decl)::out) is det.
+    bool::in, bool::in, mlds_imports::in, list(il_decl)::out) is det.
 
 generate_extern_assembly(CurrentAssembly, Version, SignAssembly,
         SeparateAssemblies, Imports, AllDecls) :-
-    Gen = (pred(Import::in, Decl::out) is semidet :-
+    Gen = (pred(Import::in, GenDecls::out) is semidet :-
         (
             Import = mercury_import(compiler_visible_interface, ImportName),
             (
@@ -4260,35 +4261,36 @@ generate_extern_assembly(CurrentAssembly, Version, SignAssembly,
         (
             AsmName = assembly(Assembly),
             Assembly \= "mercury",
-            Decl = [extern_assembly(Assembly, AsmDecls)]
+            GenDecls = [ildecl_extern_assembly(Assembly, AsmDecls)]
         ;
             AsmName = module(ModuleName, Assembly),
             (
                 SeparateAssemblies = no,
                 ( Assembly = CurrentAssembly ->
                     ModuleStr = ModuleName ++ ".dll",
-                    Decl = [file(ModuleStr), extern_module(ModuleStr)]
+                    GenDecls = [ildecl_file(ModuleStr),
+                        ildecl_extern_module(ModuleStr)]
                 ;
                     Assembly \= "mercury",
-                    Decl = [extern_assembly(Assembly, AsmDecls)]
+                    GenDecls = [ildecl_extern_assembly(Assembly, AsmDecls)]
                 )
             ;
                 SeparateAssemblies = yes,
-                Decl = [extern_assembly(ModuleName, AsmDecls)]
+                GenDecls = [ildecl_extern_assembly(ModuleName, AsmDecls)]
             )
         )
     ),
     list.filter_map(Gen, Imports, Decls0),
     list.sort_and_remove_dups(list.condense(Decls0), Decls),
     AllDecls = [
-        extern_assembly("mercury", [
+        ildecl_extern_assembly("mercury", [
             version(0, 0, 0, 0),
             public_key_token([
                 int8(0x22), int8(0x8C), int8(0x16), int8(0x7D),
                 int8(0x12), int8(0xAA), int8(0x0B), int8(0x0B)
             ])
         ]),
-        extern_assembly("mscorlib",
+        ildecl_extern_assembly("mscorlib",
             dotnet_system_assembly_decls(Version)) | Decls].
 
 :- func dotnet_system_assembly_decls(assembly_decl) = list(assembly_decl).
@@ -4395,9 +4397,10 @@ get_static_methodref(ClassName, MethodName, RetType, TypeParams) =
 
 :- func make_constructor_class_member(method_defn) = class_member.
 
-make_constructor_class_member(MethodDecls) = method(
-    methodhead([], ctor, signature(call_conv(no, default),
-        void, []), []), MethodDecls).
+make_constructor_class_member(MethodDecls) = Member :-
+    MethodHead = methodhead([], ctor, signature(call_conv(no, default),
+        void, []), []),
+    Member = member_method(MethodHead, MethodDecls).
 
 :- func make_fieldref(il_type, ilds.class_name, ilds.id) = fieldref.
 

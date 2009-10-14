@@ -16,6 +16,8 @@
 :- module libs.file_util.
 :- interface.
 
+:- import_module libs.globals.
+
 :- import_module bool.
 :- import_module io.
 :- import_module list.
@@ -72,13 +74,13 @@
     % Write to a given filename, giving appropriate status messages
     % and error messages if the file cannot be opened.
     %
-:- pred output_to_file(string::in, pred(io, io)::in(pred(di, uo) is det),
-    io::di, io::uo) is det.
+:- pred output_to_file(globals::in, string::in,
+    pred(io, io)::in(pred(di, uo) is det), io::di, io::uo) is det.
 
-    % Same as output_to_file/4 above, but allow the writing predicate
+    % Same as output_to_file above, but allow the writing predicate
     % to generate something, and if it succeeds, return its result.
     %
-:- pred output_to_file_return_result(string::in,
+:- pred output_to_file_return_result(globals::in, string::in,
     pred(T, io, io)::in(pred(out, di, uo) is det),
     maybe(T)::out, io::di, io::uo) is det.
 
@@ -90,8 +92,7 @@
     % FileName. This is only used for systems which support the install-name
     % option for shared libraries (such as Darwin).
     %
-:- pred get_install_name_option(string::in, string::out, io::di, io::uo)
-    is det.
+:- pred get_install_name_option(globals::in, string::in, string::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -109,7 +110,6 @@
 :- implementation.
 
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
 :- import_module libs.handle_options.
 :- import_module libs.options.
 
@@ -218,13 +218,13 @@ make_path_name_noncanon(Dir, FileName, PathName) :-
 
 %-----------------------------------------------------------------------------%
 
-output_to_file(FileName, Action, !IO) :-
+output_to_file(Globals, FileName, Action, !IO) :-
     NewAction = (pred(0::out, di, uo) is det --> Action),
-    output_to_file_return_result(FileName, NewAction, _Result, !IO).
+    output_to_file_return_result(Globals, FileName, NewAction, _Result, !IO).
 
-output_to_file_return_result(FileName, Action, Result, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
+output_to_file_return_result(Globals, FileName, Action, Result, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
     maybe_write_string(Verbose, "% Writing to file `", !IO),
     maybe_write_string(Verbose, FileName, !IO),
     maybe_write_string(Verbose, "'...\n", !IO),
@@ -253,8 +253,7 @@ output_to_file_return_result(FileName, Action, Result, !IO) :-
 % Changes to the following predicate may require similar changes to
 % make.program_target.install_library_grade_files/9.
 
-get_install_name_option(OutputFileName, InstallNameOpt, !IO) :-
-    globals.io_get_globals(Globals, !IO),
+get_install_name_option(Globals, OutputFileName, InstallNameOpt) :-
     globals.lookup_string_option(Globals, shlib_linker_install_name_flag,
         InstallNameFlag),
     globals.lookup_string_option(Globals, shlib_linker_install_name_path,

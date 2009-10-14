@@ -69,8 +69,7 @@
     % Make sure that local preds which have been exported in the .opt
     % file get an exported(_) label.
     %
-:- pred adjust_pred_import_status(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred adjust_pred_import_status(module_info::in, module_info::out) is det.
 
 :- type opt_file_type
     --->    opt_file
@@ -143,14 +142,9 @@
 %-----------------------------------------------------------------------------%
 
 write_opt_file(!ModuleInfo, !IO) :-
-    % We don't want to output line numbers in the .opt files,
-    % since that causes spurious changes to the .opt files
-    % when you make trivial changes (e.g. add comments) to the source files.
-    globals.io_lookup_bool_option(line_numbers, LineNumbers, !IO),
-    globals.io_set_option(line_numbers, bool(no), !IO),
-
+    module_info_get_globals(!.ModuleInfo, Globals),
     module_info_get_name(!.ModuleInfo, ModuleName),
-    module_name_to_file_name(ModuleName, ".opt.tmp", do_create_dirs,
+    module_name_to_file_name(Globals, ModuleName, ".opt.tmp", do_create_dirs,
         TmpName, !IO),
     io.open_output(TmpName, Result, !IO),
     (
@@ -164,12 +158,12 @@ write_opt_file(!ModuleInfo, !IO) :-
         module_info_predids(RealPredIds, !ModuleInfo),
         module_info_get_assertion_table(!.ModuleInfo, AssertionTable),
         assertion_table_pred_ids(AssertionTable, AssertPredIds),
-        list.append(AssertPredIds, RealPredIds, PredIds),
-        globals.io_lookup_int_option(intermod_inline_simple_threshold,
-            Threshold, !IO),
-        globals.io_lookup_bool_option(deforestation, Deforestation, !IO),
-        globals.io_lookup_int_option(higher_order_size_limit,
-            HigherOrderSizeLimit, !IO),
+        PredIds = AssertPredIds ++ RealPredIds,
+        globals.lookup_int_option(Globals, intermod_inline_simple_threshold,
+            Threshold),
+        globals.lookup_bool_option(Globals, deforestation, Deforestation),
+        globals.lookup_int_option(Globals, higher_order_size_limit,
+            HigherOrderSizeLimit),
         some [!IntermodInfo] (
             init_intermod_info(!.ModuleInfo, !:IntermodInfo),
             gather_preds(PredIds, yes, Threshold, HigherOrderSizeLimit,
@@ -182,10 +176,7 @@ write_opt_file(!ModuleInfo, !IO) :-
             io.close_output(FileStream, !IO),
             do_adjust_pred_import_status(!.IntermodInfo, !ModuleInfo)
         )
-    ),
-
-    % Restore the option setting that we overrode above.
-    globals.io_set_option(line_numbers, bool(LineNumbers), !IO).
+    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1282,15 +1273,24 @@ write_intermod_info_body(IntermodInfo, !IO) :-
         Modules = []
     ),
 
-    write_types(Types, !IO),
-    write_insts(ModuleInfo, !IO),
-    write_modes(ModuleInfo, !IO),
-    write_classes(ModuleInfo, !IO),
-    write_instances(Instances, !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    OutInfo0 = init_hlds_out_info(Globals),
+
+    % We don't want to output line numbers in the .opt files,
+    % since that causes spurious changes to the .opt files
+    % when you make trivial changes (e.g. add comments) to the source files.
+    MercInfo0 = OutInfo0 ^ hoi_mercury_to_mercury,
+    MercInfo = merc_out_info_disable_line_numbers(MercInfo0),
+    OutInfo = OutInfo0 ^ hoi_mercury_to_mercury := MercInfo,
+
+    write_types(OutInfo, Types, !IO),
+    write_insts(OutInfo, ModuleInfo, !IO),
+    write_modes(OutInfo, ModuleInfo, !IO),
+    write_classes(OutInfo, ModuleInfo, !IO),
+    write_instances(OutInfo, Instances, !IO),
 
     % Disable verbose dumping of clauses.
-    globals.io_lookup_string_option(dump_hlds_options, VerboseDump, !IO),
-    globals.io_set_option(dump_hlds_options, string(""), !IO),
+    OutInfoForPreds = OutInfo ^ hoi_dump_hlds_options := "",
     (
         WriteHeader = yes,
         module_info_get_foreign_import_module(ModuleInfo, RevForeignImports),
@@ -1306,8 +1306,7 @@ write_intermod_info_body(IntermodInfo, !IO) :-
         WriteHeader = no
     ),
     write_pred_decls(ModuleInfo, PredDecls, !IO),
-    write_preds(ModuleInfo, Preds, !IO),
-    globals.io_set_option(dump_hlds_options, string(VerboseDump), !IO).
+    write_preds(OutInfoForPreds, ModuleInfo, Preds, !IO).
 
 :- pred write_modules(list(module_name)::in, io::di, io::uo) is det.
 
@@ -1323,15 +1322,16 @@ write_modules([Module | Rest], !IO) :-
         write_modules(Rest, !IO)
     ).
 
-:- pred write_types(assoc_list(type_ctor, hlds_type_defn)::in, io::di, io::uo)
-    is det.
+:- pred write_types(hlds_out_info::in,
+    assoc_list(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
 
-write_types(Types, !IO) :-
-    list.foldl(write_type, Types, !IO).
+write_types(OutInfo, Types, !IO) :-
+    list.foldl(write_type(OutInfo), Types, !IO).
 
-:- pred write_type(pair(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
+:- pred write_type(hlds_out_info::in, pair(type_ctor, hlds_type_defn)::in,
+    io::di, io::uo) is det.
 
-write_type(TypeCtor - TypeDefn, !IO) :-
+write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
     hlds_data.get_type_defn_tvarset(TypeDefn, VarSet),
     hlds_data.get_type_defn_tparams(TypeDefn, Args),
     hlds_data.get_type_defn_body(TypeDefn, Body),
@@ -1356,7 +1356,8 @@ write_type(TypeCtor - TypeDefn, !IO) :-
     MainItemTypeDefn = item_type_defn_info(VarSet, Name, Args, TypeBody,
         cond_true, Context, -1),
     MainItem = item_type_defn(MainItemTypeDefn),
-    mercury_output_item(MainItem, !IO),
+    MercInfo = OutInfo ^ hoi_mercury_to_mercury,
+    mercury_output_item(MercInfo, MainItem, !IO),
     (
         ( Body = hlds_foreign_type(ForeignTypeBody)
         ; Body ^ du_type_is_foreign_type = yes(ForeignTypeBody)
@@ -1373,7 +1374,7 @@ write_type(TypeCtor - TypeDefn, !IO) :-
                     ILMaybeUserEqComp, AssertionsIL),
                 cond_true, Context, -1),
             ILItem = item_type_defn(ILItemTypeDefn),
-            mercury_output_item(ILItem, !IO)
+            mercury_output_item(MercInfo, ILItem, !IO)
         ;
             MaybeIL = no
         ),
@@ -1386,7 +1387,7 @@ write_type(TypeCtor - TypeDefn, !IO) :-
                     CMaybeUserEqComp, AssertionsC),
                 cond_true, Context, -1),
             CItem = item_type_defn(CItemTypeDefn),
-            mercury_output_item(CItem, !IO)
+            mercury_output_item(MercInfo, CItem, !IO)
         ;
             MaybeC = no
         ),
@@ -1399,7 +1400,7 @@ write_type(TypeCtor - TypeDefn, !IO) :-
                     JavaMaybeUserEqComp, AssertionsJava),
                 cond_true, Context, -1),
             JavaItem = item_type_defn(JavaItemTypeDefn),
-            mercury_output_item(JavaItem, !IO)
+            mercury_output_item(MercInfo, JavaItem, !IO)
         ;
             MaybeJava = no
         ),
@@ -1412,7 +1413,7 @@ write_type(TypeCtor - TypeDefn, !IO) :-
                     ErlangMaybeUserEqComp, AssertionsErlang),
                 cond_true, Context, -1),
             ErlangItem = item_type_defn(ErlangItemTypeDefn),
-            mercury_output_item(ErlangItem, !IO)
+            mercury_output_item(MercInfo, ErlangItem, !IO)
         ;
             MaybeErlang = no
         )
@@ -1427,7 +1428,7 @@ write_type(TypeCtor - TypeDefn, !IO) :-
         ReserveItemPragma = item_pragma_info(user,
             pragma_reserve_tag(Name, Arity), Context, -1),
         ReserveItem = item_pragma(ReserveItemPragma),
-        mercury_output_item(ReserveItem, !IO)
+        mercury_output_item(MercInfo, ReserveItem, !IO)
     ;
         true
     ),
@@ -1440,7 +1441,7 @@ write_type(TypeCtor - TypeDefn, !IO) :-
         Pragma = pragma_foreign_enum(Lang, Name, Arity, ForeignEnumVals),
         ForeignItemPragma = item_pragma_info(user, Pragma, Context, -1),
         ForeignItem = item_pragma(ForeignItemPragma),
-        mercury_output_item(ForeignItem, !IO)
+        mercury_output_item(MercInfo, ForeignItem, !IO)
     ;
         true
     ).
@@ -1462,18 +1463,18 @@ gather_foreign_enum_value_pair(ConsId, ConsTag, !Values) :-
     ),
     !:Values = [SymName - ForeignTag | !.Values].
 
-:- pred write_modes(module_info::in, io::di, io::uo) is det.
+:- pred write_modes(hlds_out_info::in, module_info::in, io::di, io::uo) is det.
 
-write_modes(ModuleInfo, !IO) :-
+write_modes(OutInfo, ModuleInfo, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
     module_info_get_mode_table(ModuleInfo, Modes),
     mode_table_get_mode_defns(Modes, ModeDefns),
-    map.foldl(write_mode(ModuleName), ModeDefns, !IO).
+    map.foldl(write_mode(OutInfo, ModuleName), ModeDefns, !IO).
 
-:- pred write_mode(module_name::in, mode_id::in, hlds_mode_defn::in,
-    io::di, io::uo) is det.
+:- pred write_mode(hlds_out_info::in, module_name::in, mode_id::in,
+    hlds_mode_defn::in, io::di, io::uo) is det.
 
-write_mode(ModuleName, ModeId, ModeDefn, !IO) :-
+write_mode(OutInfo, ModuleName, ModeId, ModeDefn, !IO) :-
     ModeId = mode_id(SymName, _Arity),
     ModeDefn = hlds_mode_defn(Varset, Args, eqv_mode(Mode), Context,
         ImportStatus),
@@ -1484,24 +1485,25 @@ write_mode(ModuleName, ModeId, ModeDefn, !IO) :-
         ItemModeDefn = item_mode_defn_info(Varset, SymName, Args,
             eqv_mode(Mode), cond_true, Context, -1),
         Item = item_mode_defn(ItemModeDefn),
-        mercury_output_item(Item, !IO)
+        MercInfo = OutInfo ^ hoi_mercury_to_mercury,
+        mercury_output_item(MercInfo, Item, !IO)
     ;
         true
     ).
 
-:- pred write_insts(module_info::in, io::di, io::uo) is det.
+:- pred write_insts(hlds_out_info::in, module_info::in, io::di, io::uo) is det.
 
-write_insts(ModuleInfo, !IO) :-
+write_insts(OutInfo, ModuleInfo, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
     module_info_get_inst_table(ModuleInfo, Insts),
     inst_table_get_user_insts(Insts, UserInsts),
     user_inst_table_get_inst_defns(UserInsts, InstDefns),
-    map.foldl(write_inst(ModuleName), InstDefns, !IO).
+    map.foldl(write_inst(OutInfo, ModuleName), InstDefns, !IO).
 
-:- pred write_inst(module_name::in, inst_id::in, hlds_inst_defn::in,
-    io::di, io::uo) is det.
+:- pred write_inst(hlds_out_info::in, module_name::in, inst_id::in,
+    hlds_inst_defn::in, io::di, io::uo) is det.
 
-write_inst(ModuleName, InstId, InstDefn, !IO) :-
+write_inst(OutInfo, ModuleName, InstId, InstDefn, !IO) :-
     InstId = inst_id(SymName, _Arity),
     InstDefn = hlds_inst_defn(Varset, Args, Body, Context, ImportStatus),
     (
@@ -1518,22 +1520,24 @@ write_inst(ModuleName, InstId, InstDefn, !IO) :-
         ItemInstDefn = item_inst_defn_info(Varset, SymName, Args, InstBody,
             cond_true, Context, -1),
         Item = item_inst_defn(ItemInstDefn),
-        mercury_output_item(Item, !IO)
+        MercInfo = OutInfo ^ hoi_mercury_to_mercury,
+        mercury_output_item(MercInfo, Item, !IO)
     ;
         true
     ).
 
-:- pred write_classes(module_info::in, io::di, io::uo) is det.
+:- pred write_classes(hlds_out_info::in, module_info::in,
+    io::di, io::uo) is det.
 
-write_classes(ModuleInfo, !IO) :-
+write_classes(OutInfo, ModuleInfo, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
     module_info_get_class_table(ModuleInfo, Classes),
-    map.foldl(write_class(ModuleName), Classes, !IO).
+    map.foldl(write_class(OutInfo, ModuleName), Classes, !IO).
 
-:- pred write_class(module_name::in, class_id::in,
+:- pred write_class(hlds_out_info::in, module_name::in, class_id::in,
     hlds_class_defn::in, io::di, io::uo) is det.
 
-write_class(ModuleName, ClassId, ClassDefn, !IO) :-
+write_class(OutInfo, ModuleName, ClassId, ClassDefn, !IO) :-
     ClassDefn = hlds_class_defn(ImportStatus, Constraints, HLDSFunDeps,
         _Ancestors, TVars, _Kinds, Interface, _HLDSClassInterface, TVarSet,
         Context),
@@ -1546,7 +1550,8 @@ write_class(ModuleName, ClassId, ClassDefn, !IO) :-
         ItemTypeClass = item_typeclass_info(Constraints, FunDeps,
             QualifiedClassName, TVars, Interface, TVarSet, Context, -1),
         Item = item_typeclass(ItemTypeClass),
-        mercury_output_item(Item, !IO)
+        MercInfo = OutInfo ^ hoi_mercury_to_mercury,
+        mercury_output_item(MercInfo, Item, !IO)
     ;
         true
     ).
@@ -1567,23 +1572,24 @@ unmake_hlds_class_fundep_2(TVars, Set) = solutions.solutions(P) :-
         TVar = list.index1_det(TVars, N)
     ).
 
-:- pred write_instances(assoc_list(class_id, hlds_instance_defn)::in,
-    io::di, io::uo) is det.
+:- pred write_instances(hlds_out_info::in,
+    assoc_list(class_id, hlds_instance_defn)::in, io::di, io::uo) is det.
 
-write_instances(Instances, !IO) :-
-    list.foldl(write_instance, Instances, !IO).
+write_instances(OutInfo, Instances, !IO) :-
+    list.foldl(write_instance(OutInfo), Instances, !IO).
 
-:- pred write_instance(pair(class_id, hlds_instance_defn)::in,
-    io::di, io::uo) is det.
+:- pred write_instance(hlds_out_info::in,
+    pair(class_id, hlds_instance_defn)::in, io::di, io::uo) is det.
 
-write_instance(ClassId - InstanceDefn, !IO) :-
+write_instance(OutInfo, ClassId - InstanceDefn, !IO) :-
     InstanceDefn = hlds_instance_defn(ModuleName, _, Context, Constraints,
         Types, Body, _, TVarSet, _),
     ClassId = class_id(ClassName, _),
     ItemInstance = item_instance_info(Constraints, ClassName, Types, Body,
         TVarSet, ModuleName, Context, -1),
     Item = item_instance(ItemInstance),
-    mercury_output_item(Item, !IO).
+    MercInfo = OutInfo ^ hoi_mercury_to_mercury,
+    mercury_output_item(MercInfo, Item, !IO).
 
     % We need to write all the declarations for local predicates so
     % the procedure labels for the C code are calculated correctly.
@@ -1685,11 +1691,11 @@ write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds], !IO) :-
     ),
     write_pred_modes(Procs, SymName, PredOrFunc, ProcIds, !IO).
 
-:- pred write_preds(module_info::in, list(pred_id)::in,
+:- pred write_preds(hlds_out_info::in, module_info::in, list(pred_id)::in,
     io::di, io::uo) is det.
 
-write_preds(_, [], !IO).
-write_preds(ModuleInfo, [PredId | PredIds], !IO) :-
+write_preds(_, _, [], !IO).
+write_preds(OutInfo, ModuleInfo, [PredId | PredIds], !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     Module = pred_info_module(PredInfo),
     Name = pred_info_name(PredInfo),
@@ -1708,8 +1714,9 @@ write_preds(ModuleInfo, [PredId | PredIds], !IO) :-
 
     ( pred_info_get_goal_type(PredInfo, goal_type_promise(PromiseType)) ->
         ( Clauses = [Clause] ->
-            hlds_out.write_promise(PromiseType, 0, ModuleInfo, PredId, VarSet,
-                no, HeadVars, PredOrFunc, Clause, no_varset_vartypes, !IO)
+            hlds_out.write_promise(OutInfo, PromiseType, 0, ModuleInfo,
+                PredId, VarSet, no, HeadVars, PredOrFunc, Clause,
+                no_varset_vartypes, !IO)
         ;
             unexpected(this_file,
                 "write_preds: assertion not a single clause.")
@@ -1717,16 +1724,16 @@ write_preds(ModuleInfo, [PredId | PredIds], !IO) :-
     ;
         pred_info_get_typevarset(PredInfo, TypeVarset),
         MaybeVarTypes = varset_vartypes(TypeVarset, VarTypes),
-        list.foldl(intermod_write_clause(ModuleInfo, PredId, VarSet,
+        list.foldl(intermod_write_clause(OutInfo, ModuleInfo, PredId, VarSet,
             HeadVars, PredOrFunc, SymName, MaybeVarTypes), Clauses, !IO)
     ),
-    write_preds(ModuleInfo, PredIds, !IO).
+    write_preds(OutInfo, ModuleInfo, PredIds, !IO).
 
-:- pred intermod_write_clause(module_info::in, pred_id::in, prog_varset::in,
-    list(prog_var)::in, pred_or_func::in, sym_name::in,
+:- pred intermod_write_clause(hlds_out_info::in, module_info::in, pred_id::in,
+    prog_varset::in, list(prog_var)::in, pred_or_func::in, sym_name::in,
     maybe_vartypes::in, clause::in, io::di, io::uo) is det.
 
-intermod_write_clause(ModuleInfo, PredId, VarSet, HeadVars, PredOrFunc,
+intermod_write_clause(OutInfo, ModuleInfo, PredId, VarSet, HeadVars, PredOrFunc,
         SymName, MaybeVarTypes, Clause0, !IO) :-
     Clause0 = clause(ApplicableProcIds, Goal, ImplLang, _),
     (
@@ -1737,7 +1744,7 @@ intermod_write_clause(ModuleInfo, PredId, VarSet, HeadVars, PredOrFunc,
         % are named the same as variables in the enclosing clause.
         AppendVarNums = yes,
         UseDeclaredModes = yes,
-        write_clause(1, ModuleInfo, PredId, VarSet, AppendVarNums,
+        write_clause(OutInfo, 1, ModuleInfo, PredId, VarSet, AppendVarNums,
             ClauseHeadVars, PredOrFunc, Clause, UseDeclaredModes,
             MaybeVarTypes, !IO)
     ;
@@ -2120,13 +2127,16 @@ intermod_info_set_tvarset(TVarSet, Info, Info ^ im_tvarset := TVarSet).
     % the .opt file are exported, and inhibit dead proc elimination
     % on those preds.
     %
-adjust_pred_import_status(!ModuleInfo, !IO) :-
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
-    maybe_write_string(VeryVerbose,
-        "% Adjusting import status of predicates in the `.opt' file...", !IO),
+adjust_pred_import_status(!ModuleInfo) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+    trace [io(!IO)] (
+        maybe_write_string(VeryVerbose,
+            "% Adjusting import status of predicates in the `.opt' file...",
+            !IO)
+    ),
 
     module_info_predids(PredIds, !ModuleInfo),
-    module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_int_option(Globals, intermod_inline_simple_threshold,
         Threshold),
     globals.lookup_bool_option(Globals, deforestation, Deforestation),
@@ -2140,7 +2150,9 @@ adjust_pred_import_status(!ModuleInfo, !IO) :-
         gather_types(!Info),
         do_adjust_pred_import_status(!.Info, !ModuleInfo)
     ),
-    maybe_write_string(VeryVerbose, " done\n", !IO).
+    trace [io(!IO)] (
+        maybe_write_string(VeryVerbose, " done\n", !IO)
+    ).
 
 :- pred do_adjust_pred_import_status(intermod_info::in,
     module_info::in, module_info::out) is det.
@@ -2455,8 +2467,9 @@ read_optimization_interfaces(Globals, Transitive, ModuleName,
     maybe_write_string(VeryVerbose, "'...\n", !IO),
     maybe_flush_output(VeryVerbose, !IO),
 
-    module_name_to_search_file_name(ModuleToRead, ".opt", FileName, !IO),
-    actually_read_opt_file(FileName, ModuleToRead, OptItems, OptSpecs,
+    module_name_to_search_file_name(Globals, ModuleToRead, ".opt", FileName,
+        !IO),
+    actually_read_opt_file(Globals, FileName, ModuleToRead, OptItems, OptSpecs,
         OptError, !IO),
     update_error_status(Globals, opt_file, FileName,
         OptSpecs, !Specs, OptError, !Error),

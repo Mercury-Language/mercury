@@ -21,6 +21,8 @@
 :- interface.
 
 :- import_module backend_libs.builtin_ops.
+:- import_module libs.
+:- import_module libs.globals.
 
 :- import_module char.
 :- import_module io.
@@ -28,15 +30,16 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Line numbering
+% Line numbering.
 %
-    % set_line_num(FileName, LineNum, !IO):
+
+    % set_line_num(Globals, FileName, LineNum, !IO):
     %
     % If the line_numbers option is set, emit a #line directive to set the
     % specified filename and linenumber so that C compiler error messages
     % will refer to the correct location in the original source file location.
     %
-:- pred set_line_num(string::in, int::in, io::di, io::uo) is det.
+:- pred set_line_num(globals::in, string::in, int::in, io::di, io::uo) is det.
 
     % always_set_line_num(FileName, LineNum):
     %
@@ -49,7 +52,7 @@
     % the effect of any previous #line directives, so that C compiler error
     % messages will refer to the appropriate location in the generated .c file.
     %
-:- pred reset_line_num(io::di, io::uo) is det.
+:- pred reset_line_num(globals::in, io::di, io::uo) is det.
 
     % As reset_line_num, but always generate a #line directive, regardless of
     % the setting of the line_numbers option.
@@ -159,7 +162,7 @@
     % name of the file from which the C is generated, while Version is the
     % version name of the mercury compiler.
     %
-:- pred output_c_file_intro_and_grade(string::in, string::in,
+:- pred output_c_file_intro_and_grade(globals::in, string::in, string::in,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -175,8 +178,6 @@
 
 :- implementation.
 
-:- import_module libs.
-:- import_module libs.globals.
 :- import_module libs.options.
 
 :- import_module bool.
@@ -189,8 +190,8 @@
 % Line numbering.
 %
 
-set_line_num(File, Line, !IO) :-
-    globals.io_lookup_bool_option(line_numbers, LineNumbers, !IO),
+set_line_num(Globals, File, Line, !IO) :-
+    globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
     (
         LineNumbers = yes,
         always_set_line_num(File, Line, !IO)
@@ -216,11 +217,11 @@ always_set_line_num(File, Line, !IO) :-
         ),
         io.write_string("""\n", !IO)
     ;
-        reset_line_num(!IO)
+        always_reset_line_num(!IO)
     ).
 
-reset_line_num(!IO) :-
-    globals.io_lookup_bool_option(line_numbers, LineNumbers, !IO),
+reset_line_num(Globals, !IO) :-
+    globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
     (
         LineNumbers = yes,
         always_reset_line_num(!IO)
@@ -580,10 +581,10 @@ binop_category_string(body, macro_binop, "MR_body").
 
 %-----------------------------------------------------------------------------%
 
-output_c_file_intro_and_grade(SourceFileName, Version, !IO) :-
-    globals.io_lookup_int_option(num_tag_bits, NumTagBits, !IO),
+output_c_file_intro_and_grade(Globals, SourceFileName, Version, !IO) :-
+    globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
     string.int_to_string(NumTagBits, NumTagBitsStr),
-    globals.io_lookup_bool_option(unboxed_float, UnboxedFloat, !IO),
+    globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
     UnboxedFloatStr = convert_bool_to_string(UnboxedFloat),
 
     io.write_strings([

@@ -92,7 +92,7 @@
     % requests remaining.
     %
 specialize_higher_order(!ModuleInfo, !IO) :-
-    globals.io_get_globals(Globals, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, optimize_higher_order, HigherOrder),
     globals.lookup_bool_option(Globals, type_specialization, TypeSpec),
     globals.lookup_bool_option(Globals, user_guided_type_specialization,
@@ -2460,7 +2460,8 @@ filter_requests_2(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
         _, _, _, IsUserTypeSpec, Context),
     CalledPredProcId = proc(CalledPredId, _),
     module_info_pred_info(ModuleInfo, CalledPredId, PredInfo),
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
@@ -2604,7 +2605,8 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
     Arity = pred_info_orig_arity(PredInfo0),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
     PredModule = pred_info_module(PredInfo0),
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    module_info_get_globals(ModuleInfo0, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     pred_info_get_arg_types(PredInfo0, ArgTVarSet, ExistQVars, Types),
 
     (

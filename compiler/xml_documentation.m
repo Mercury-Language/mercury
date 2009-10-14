@@ -83,9 +83,10 @@
 %-----------------------------------------------------------------------------%
 
 xml_documentation(ModuleInfo, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(ModuleName, ".xml", do_create_dirs, FileName,
-        !IO),
+    module_name_to_file_name(Globals, ModuleName, ".xml", do_create_dirs,
+        FileName, !IO),
 
     lookup_module_source_file(ModuleName, SrcFileName, !IO),
     io.open_input(SrcFileName, SrcResult, !IO),

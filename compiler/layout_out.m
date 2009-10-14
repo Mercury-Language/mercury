@@ -36,8 +36,8 @@
     % Given a Mercury representation of a layout structure, output its
     % definition in the appropriate C global variable.
     %
-:- pred output_layout_data_defn(layout_data::in, decl_set::in, decl_set::out,
-    io::di, io::uo) is det.
+:- pred output_layout_data_defn(llds_out_info::in, layout_data::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
 
     % Given the name of a layout structure, output the declaration
     % of the C global variable which will hold it.
@@ -127,17 +127,17 @@
 
 %-----------------------------------------------------------------------------%
 
-output_layout_data_defn(Data, !DeclSet, !IO) :-
+output_layout_data_defn(Info, Data, !DeclSet, !IO) :-
     (
         Data = label_layout_data(ProcLabel, LabelNum, ProcLayoutAddr,
             MaybePort, MaybeIsHidden, LabelNumber, MaybeGoalPath,
             MaybeUserData, MaybeVarInfo),
-        output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr,
-            MaybePort, MaybeIsHidden, LabelNumber, MaybeGoalPath,
-            MaybeUserData, MaybeVarInfo, !DeclSet, !IO)
+        output_label_layout_data_defn(Info, ProcLabel, LabelNum,
+            ProcLayoutAddr, MaybePort, MaybeIsHidden, LabelNumber,
+            MaybeGoalPath, MaybeUserData, MaybeVarInfo, !DeclSet, !IO)
     ;
         Data = proc_layout_data(ProcLabel, Traversal, MaybeRest),
-        output_proc_layout_data_defn(ProcLabel, Traversal, MaybeRest,
+        output_proc_layout_data_defn(Info, ProcLabel, Traversal, MaybeRest,
             !DeclSet, !IO)
     ;
         Data = closure_proc_id_data(CallerProcLabel, SeqNo, ProcLabel,
@@ -154,13 +154,13 @@ output_layout_data_defn(Data, !DeclSet, !IO) :-
         Data = module_layout_data(ModuleName, ModuleCommonLayoutName,
             ProcLayoutNames, FileLayouts, TraceLevel,
             SuppressedEvents, NumLabels, MaybeEventSet),
-        output_module_layout_data_defn(ModuleName, ModuleCommonLayoutName,
-            ProcLayoutNames, FileLayouts, TraceLevel,
+        output_module_layout_data_defn(Info, ModuleName,
+            ModuleCommonLayoutName, ProcLayoutNames, FileLayouts, TraceLevel,
             SuppressedEvents, NumLabels, MaybeEventSet, !DeclSet, !IO)
     ;
         Data = table_io_decl_data(RttiProcLabel, Kind, NumPTIs,
             PTIVectorRval, TypeParamsRval),
-        output_table_io_decl(RttiProcLabel, Kind, NumPTIs,
+        output_table_io_decl(Info, RttiProcLabel, Kind, NumPTIs,
             PTIVectorRval, TypeParamsRval, !DeclSet, !IO)
     ).
 
@@ -693,27 +693,32 @@ proc_layout_kind_to_type(proc_layout_proc_id(uci)) = "MR_ProcLayoutUCI".
     ;       kind_num_pair(type_num, int)
     ;       kind_none.
 
-:- pred output_rval_or_numpair_or_none(rval_or_numpair_or_none::in,
-    io::di, io::uo) is det.
+:- pred output_rval_or_numpair_or_none(llds_out_info::in,
+    rval_or_numpair_or_none::in, io::di, io::uo) is det.
 
-output_rval_or_numpair_or_none(kind_rval(Rval), !IO) :-
-    io.write_string(", ", !IO),
-    output_rval_as_addr(Rval, !IO).
-output_rval_or_numpair_or_none(kind_num_pair(type_num(Num1), Num2), !IO) :-
-    io.write_string(", ", !IO),
-    io.write_int(Num1, !IO),
-    io.write_string(", ", !IO),
-    io.write_int(Num2, !IO).
-output_rval_or_numpair_or_none(kind_none, !IO).
+output_rval_or_numpair_or_none(Info, RvalOrNumPairOrNone, !IO) :-
+    (
+        RvalOrNumPairOrNone = kind_rval(Rval),
+        io.write_string(", ", !IO),
+        output_rval_as_addr(Info, Rval, !IO)
+    ;
+        RvalOrNumPairOrNone = kind_num_pair(type_num(Num1), Num2),
+        io.write_string(", ", !IO),
+        io.write_int(Num1, !IO),
+        io.write_string(", ", !IO),
+        io.write_int(Num2, !IO)
+    ;
+        RvalOrNumPairOrNone = kind_none
+    ).
 
-:- pred output_label_layout_data_defn(proc_label::in, int::in, layout_name::in,
-    maybe(trace_port)::in, maybe(bool)::in, int::in, maybe(int)::in,
-    maybe(user_event_data)::in, maybe(label_var_info)::in,
+:- pred output_label_layout_data_defn(llds_out_info::in, proc_label::in,
+    int::in, layout_name::in, maybe(trace_port)::in, maybe(bool)::in, int::in,
+    maybe(int)::in, maybe(user_event_data)::in, maybe(label_var_info)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
-        MaybeIsHidden, LabelNumberInModule, MaybeGoalPath, MaybeUserData,
-        MaybeVarInfo, !DeclSet, !IO) :-
+output_label_layout_data_defn(Info, ProcLabel, LabelNum, ProcLayoutAddr,
+        MaybePort, MaybeIsHidden, LabelNumberInModule, MaybeGoalPath,
+        MaybeUserData, MaybeVarInfo, !DeclSet, !IO) :-
     output_layout_decl(ProcLayoutAddr, !DeclSet, !IO),
     (
         MaybeUserData = no,
@@ -739,7 +744,7 @@ output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
         io.write_string(" = {\n", !IO),
         io.write_int(UserEventNumber, !IO),
         io.write_string(",\n(MR_LongLval *) ", !IO),
-        output_rval_as_addr(UserLocnsRval, !IO),
+        output_rval_as_addr(Info, UserLocnsRval, !IO),
         io.write_string(",\n", !IO),
         output_layout_name(AttrVarNumsLayoutName, !IO),
         io.write_string("\n};\n\n", !IO)
@@ -759,9 +764,9 @@ output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
         MaybeVarInfo = yes(VarInfo0),
         VarInfo0 = label_var_info(EncodedVarCount1, LocnsTypes0, VarNums0,
             TypeParams0),
-        output_rval_decls(LocnsTypes0, !DeclSet, !IO),
-        output_rval_decls(VarNums0, !DeclSet, !IO),
-        output_rval_decls(TypeParams0, !DeclSet, !IO),
+        output_record_rval_decls(Info, LocnsTypes0, !DeclSet, !IO),
+        output_record_rval_decls(Info, VarNums0, !DeclSet, !IO),
+        output_record_rval_decls(Info, TypeParams0, !DeclSet, !IO),
         LabelVars = label_has_var_info,
         (
             LocnsTypes0 = const(llconst_data_addr(LTDataAddr, no)),
@@ -837,9 +842,9 @@ output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
             LocnsTypes, VarNums, TypeParams}),
         io.write_string(", ", !IO),
         io.write_int(EncodedVarCount, !IO),
-        output_rval_or_numpair_or_none(LocnsTypes, !IO),
-        output_rval_or_numpair_or_none(VarNums, !IO),
-        output_rval_or_numpair_or_none(TypeParams, !IO)
+        output_rval_or_numpair_or_none(Info, LocnsTypes, !IO),
+        output_rval_or_numpair_or_none(Info, VarNums, !IO),
+        output_rval_or_numpair_or_none(Info, TypeParams, !IO)
     ;
         MaybeVarInfoTuple = no
     ),
@@ -857,9 +862,10 @@ output_maybe_var_num(yes(VarNum), !IO) :-
     % Output the rval in a context in which it is immediately cast to an
     % address.
     %
-:- pred output_rval_as_addr(rval::in, io::di, io::uo) is det.
+:- pred output_rval_as_addr(llds_out_info::in, rval::in,
+    io::di, io::uo) is det.
 
-output_rval_as_addr(Rval, !IO) :-
+output_rval_as_addr(Info, Rval, !IO) :-
     ( Rval = const(llconst_int(0)) ->
         io.write_string(" 0", !IO)
     ; Rval = const(llconst_data_addr(DataAddr, no)) ->
@@ -871,7 +877,7 @@ output_rval_as_addr(Rval, !IO) :-
         )
     ;
         io.write_string("\n", !IO),
-        output_rval(Rval, !IO)
+        output_rval(Info, Rval, !IO)
     ).
 
 trace_port_to_string(port_call) =                "CALL".
@@ -895,13 +901,13 @@ trace_port_to_string(port_user) =                "USER".
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_proc_layout_data_defn(rtti_proc_label::in,
+:- pred output_proc_layout_data_defn(llds_out_info::in, rtti_proc_label::in,
     proc_layout_stack_traversal::in, maybe_proc_id_and_more::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_proc_layout_data_defn(RttiProcLabel, Traversal, MaybeRest,
+output_proc_layout_data_defn(Info, RttiProcLabel, Traversal, MaybeRest,
         !DeclSet, !IO) :-
-    output_layout_traversal_decls(Traversal, !DeclSet, !IO),
+    output_layout_traversal_decls(Info, Traversal, !DeclSet, !IO),
     ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
     Kind = maybe_proc_layout_and_more_kind(MaybeRest, ProcLabel),
     (
@@ -929,7 +935,7 @@ output_proc_layout_data_defn(RttiProcLabel, Traversal, MaybeRest,
             MaxVarNum = ExecTrace ^ max_var_num,
             output_proc_layout_var_names(RttiProcLabel, VarNames, MaxVarNum,
                 !DeclSet, !IO),
-            output_layout_exec_trace_decls(RttiProcLabel, ExecTrace,
+            output_layout_exec_trace_decls(Info, RttiProcLabel, ExecTrace,
                 !DeclSet, !IO),
             output_layout_exec_trace(RttiProcLabel, ExecTrace, !DeclSet, !IO)
         ;
@@ -1017,15 +1023,17 @@ output_proc_layout_data_defn_start(RttiProcLabel, Kind, Traversal, !IO) :-
 output_proc_layout_data_defn_end(!IO) :-
     io.write_string("};\n", !IO).
 
-:- pred output_layout_traversal_decls(proc_layout_stack_traversal::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
+:- pred output_layout_traversal_decls(llds_out_info::in,
+    proc_layout_stack_traversal::in, decl_set::in, decl_set::out,
+    io::di, io::uo) is det.
 
-output_layout_traversal_decls(Traversal, !DeclSet, !IO) :-
+output_layout_traversal_decls(Info, Traversal, !DeclSet, !IO) :-
     Traversal = proc_layout_stack_traversal(MaybeEntryLabel, _MaybeSuccipSlot,
         _StackSlotCount, _Detism),
     (
         MaybeEntryLabel = yes(EntryLabel),
-        output_code_addr_decls(code_label(EntryLabel), !DeclSet, !IO)
+        output_record_code_addr_decls(Info, code_label(EntryLabel),
+            !DeclSet, !IO)
     ;
         MaybeEntryLabel = no
     ).
@@ -1084,11 +1092,11 @@ output_layout_proc_id_group(ProcLabel, Origin, !IO) :-
 output_layout_no_proc_id_group(!IO) :-
     io.write_string("-1\n", !IO).
 
-:- pred output_layout_exec_trace_decls(rtti_proc_label::in,
+:- pred output_layout_exec_trace_decls(llds_out_info::in, rtti_proc_label::in,
     proc_layout_exec_trace::in, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
 
-output_layout_exec_trace_decls(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
+output_layout_exec_trace_decls(Info, RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
     ExecTrace = proc_layout_exec_trace(MaybeCallLabelLayout,
         EventDataAddrs, MaybeTableInfo, _HeadVarNums, _VarNames, _MaxVarNum,
         _MaxRegNum, _MaybeFromFullSlot, _MaybeIoSeqSlot,
@@ -1112,7 +1120,7 @@ output_layout_exec_trace_decls(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
     output_layout_decl(module_layout(ModuleName), !DeclSet, !IO),
     (
         MaybeTableInfo = yes(TableInfo),
-        output_data_addr_decls(TableInfo, !DeclSet, !IO)
+        output_record_data_addr_decls(Info, TableInfo, !DeclSet, !IO)
     ;
         MaybeTableInfo = no
     ).
@@ -1541,18 +1549,18 @@ output_module_common_layout_data_defn(ModuleName, StringTableSize, StringTable,
     decl_set_insert(decl_data_addr(layout_addr(ModuleCommonLayoutName)),
         !DeclSet).
 
-:- pred output_module_layout_data_defn(module_name::in, layout_name::in,
-    list(layout_name)::in, list(file_layout_data)::in,
+:- pred output_module_layout_data_defn(llds_out_info::in, module_name::in,
+    layout_name::in, list(layout_name)::in, list(file_layout_data)::in,
     trace_level::in, int::in, int::in, maybe(event_set_layout_data)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_module_layout_data_defn(ModuleName, ModuleCommonLayoutName,
+output_module_layout_data_defn(Info, ModuleName, ModuleCommonLayoutName,
         ProcLayoutNames, FileLayouts, TraceLevel, SuppressedEvents,
         NumLabels, MaybeEventSetLayout, !DeclSet, !IO) :-
     output_layout_decl(module_common_layout(ModuleName), !DeclSet, !IO),
     output_module_layout_proc_vector_defn(ModuleName, ProcLayoutNames,
         ProcVectorName, !DeclSet, !IO),
-    output_file_layout_data_defns(ModuleName, 0, FileLayouts,
+    output_file_layout_data_defns(Info, ModuleName, 0, FileLayouts,
         FileLayoutNames, !DeclSet, !IO),
     output_file_layout_vector_data_defn(ModuleName, FileLayoutNames,
         FileVectorName, !DeclSet, !IO),
@@ -1573,7 +1581,7 @@ output_module_layout_data_defn(ModuleName, ModuleCommonLayoutName,
         EventSetDataA = event_set_data(_EventSetName, EventSetDesc,
             EventSpecsA, _MaxNumAttr),
         output_event_set_desc_defn(ModuleName, EventSetDesc, !DeclSet, !IO),
-        output_event_specs_and_components(EventSpecsA, ModuleName,
+        output_event_specs_and_components(Info, EventSpecsA, ModuleName,
             TypesRvalMap, !DeclSet, !IO)
     ),
 
@@ -1630,11 +1638,11 @@ output_module_layout_data_defn(ModuleName, ModuleCommonLayoutName,
     io.write_string("\n};\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(ModuleLayoutName)), !DeclSet).
 
-:- pred output_event_specs_and_components(list(event_spec)::in,
-    module_name::in, map(int, rval)::in,
+:- pred output_event_specs_and_components(llds_out_info::in,
+    list(event_spec)::in, module_name::in, map(int, rval)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_event_specs_and_components(EventSpecs, ModuleName, TypesRvalMap,
+output_event_specs_and_components(Info, EventSpecs, ModuleName, TypesRvalMap,
         !DeclSet, !IO) :-
     list.foldl2(output_event_spec_components(ModuleName), EventSpecs,
         !DeclSet, !IO),
@@ -1645,7 +1653,7 @@ output_event_specs_and_components(EventSpecs, ModuleName, TypesRvalMap,
     output_layout_name_storage_type_name(LayoutName, yes, !IO),
     io.write_string(" = {\n", !IO),
     io.write_list(EventSpecs, ",\n",
-        output_event_spec(ModuleName, TypesRvalMap), !IO),
+        output_event_spec(Info, ModuleName, TypesRvalMap), !IO),
     io.write_string("\n};\n\n", !IO).
 
 :- pred output_event_spec_components(module_name::in, event_spec::in,
@@ -1763,10 +1771,10 @@ output_synth_attr(ModuleName, EventNumber, Attr, !IO) :-
     ),
     io.write_string(" }", !IO).
 
-:- pred output_event_spec(module_name::in, map(int, rval)::in, event_spec::in,
-    io::di, io::uo) is det.
+:- pred output_event_spec(llds_out_info::in, module_name::in,
+    map(int, rval)::in, event_spec::in, io::di, io::uo) is det.
 
-output_event_spec(ModuleName, TypesRvalMap, EventSpec, !IO) :-
+output_event_spec(Info, ModuleName, TypesRvalMap, EventSpec, !IO) :-
     EventSpec = event_spec(EventNumber, EventName, _EventLineNumber, Attrs,
         SynthOrder),
     map.lookup(TypesRvalMap, EventNumber, TypesRval),
@@ -1781,7 +1789,7 @@ output_event_spec(ModuleName, TypesRvalMap, EventSpec, !IO) :-
         module_layout_event_arg_names(ModuleName, EventNumber),
     output_layout_name(AttrNamesLayoutName, !IO),
     io.write_string(",\n\t(MR_TypeInfo *) ", !IO),
-    output_rval_as_addr(TypesRval, !IO),
+    output_rval_as_addr(Info, TypesRval, !IO),
     io.write_string(",\n\t", !IO),
 
     (
@@ -1929,28 +1937,30 @@ output_file_layout_vector_data_defn(ModuleName, FileLayoutNames, VectorName,
     io.write_string("};\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(VectorName)), !DeclSet).
 
-:- pred output_file_layout_data_defns(module_name::in, int::in,
-    list(file_layout_data)::in, list(layout_name)::out,
+:- pred output_file_layout_data_defns(llds_out_info::in, module_name::in,
+    int::in, list(file_layout_data)::in, list(layout_name)::out,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_file_layout_data_defns(_, _, [], [], !DeclSet, !IO).
-output_file_layout_data_defns(ModuleName, FileNum, [FileLayout | FileLayouts],
-        [FileLayoutName | FileLayoutNames], !DeclSet, !IO) :-
-    output_file_layout_data_defn(ModuleName, FileNum, FileLayout,
+output_file_layout_data_defns(_, _, _, [], [], !DeclSet, !IO).
+output_file_layout_data_defns(Info, ModuleName, FileNum,
+        [FileLayout | FileLayouts], [FileLayoutName | FileLayoutNames],
+        !DeclSet, !IO) :-
+    output_file_layout_data_defn(Info, ModuleName, FileNum, FileLayout,
         FileLayoutName, !DeclSet, !IO),
-    output_file_layout_data_defns(ModuleName, FileNum + 1, FileLayouts,
+    output_file_layout_data_defns(Info, ModuleName, FileNum + 1, FileLayouts,
         FileLayoutNames, !DeclSet, !IO).
 
-:- pred output_file_layout_data_defn(module_name::in, int::in,
-    file_layout_data::in, layout_name::out,
+:- pred output_file_layout_data_defn(llds_out_info::in, module_name::in,
+    int::in, file_layout_data::in, layout_name::out,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_file_layout_data_defn(ModuleName, FileNum, FileLayout, FileLayoutName,
-        !DeclSet, !IO) :-
+output_file_layout_data_defn(Info, ModuleName, FileNum, FileLayout,
+        FileLayoutName, !DeclSet, !IO) :-
     FileLayout = file_layout_data(FileName, LineNoLabelList),
     list.map2(line_no_label_to_label_layout_addr, LineNoLabelList,
         LineNos, LabelLayoutAddrs),
-    list.foldl2(output_data_addr_decls, LabelLayoutAddrs, !DeclSet, !IO),
+    list.foldl2(output_record_data_addr_decls(Info), LabelLayoutAddrs,
+        !DeclSet, !IO),
 
     list.length(LineNoLabelList, VectorLengths),
     output_file_layout_line_number_vector_defn(ModuleName, FileNum,
@@ -2259,7 +2269,8 @@ output_call_site_static_decl(CallSiteStatic, !DeclSet, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-% Write out a C representation of the coverage point static data.
+    % Write out a C representation of the coverage point static data.
+    %
 :- pred output_coverage_point_static_array(rtti_proc_label::in,
     list(coverage_point_info)::in, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
@@ -2302,13 +2313,13 @@ output_coverage_point_dynamic_array(RttiProcLabel, NumCoveragePoints,
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_table_io_decl(rtti_proc_label::in, proc_layout_kind::in,
-    int::in, rval::in, rval::in, decl_set::in, decl_set::out,
-    io::di, io::uo) is det.
+:- pred output_table_io_decl(llds_out_info::in, rtti_proc_label::in,
+    proc_layout_kind::in, int::in, rval::in, rval::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_table_io_decl(RttiProcLabel, ProcLayoutKind, NumPTIs,
+output_table_io_decl(Info, RttiProcLabel, ProcLayoutKind, NumPTIs,
         PTIVectorRval, TypeParamsRval, !DeclSet, !IO) :-
-    output_rval_decls(PTIVectorRval, !DeclSet, !IO),
+    output_record_rval_decls(Info, PTIVectorRval, !DeclSet, !IO),
     LayoutName = table_io_decl(RttiProcLabel),
     ProcLayoutName = proc_layout(RttiProcLabel, ProcLayoutKind),
     output_layout_decl(ProcLayoutName, !DeclSet, !IO),
@@ -2320,9 +2331,9 @@ output_table_io_decl(RttiProcLabel, ProcLayoutKind, NumPTIs,
     io.write_string(",\n", !IO),
     io.write_int(NumPTIs, !IO),
     io.write_string(",\n(const MR_PseudoTypeInfo *) ", !IO),
-    output_rval(PTIVectorRval, !IO),
+    output_rval(Info, PTIVectorRval, !IO),
     io.write_string(",\n(const MR_TypeParamLocns *) ", !IO),
-    output_rval(TypeParamsRval, !IO),
+    output_rval(Info, TypeParamsRval, !IO),
     io.write_string("\n};\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).
 

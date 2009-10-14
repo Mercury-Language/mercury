@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2008 The University of Melbourne.
+% Copyright (C) 2007-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -49,6 +49,7 @@
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.file_util.
+:- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
@@ -73,17 +74,18 @@
 
 output_elds(ModuleInfo, ELDS, !IO) :-
     Name = ELDS ^ elds_name,
-    module_name_to_file_name(Name, ".erl", do_create_dirs, SourceFileName,
-        !IO),
-    module_name_to_file_name(Name, ".hrl", do_create_dirs, HeaderFileName,
-        !IO),
-    output_to_file(SourceFileName, output_erl_file(ModuleInfo, ELDS,
+    module_info_get_globals(ModuleInfo, Globals),
+    module_name_to_file_name(Globals, Name, ".erl", do_create_dirs,
+        SourceFileName, !IO),
+    module_name_to_file_name(Globals, Name, ".hrl", do_create_dirs,
+        HeaderFileName, !IO),
+    output_to_file(Globals, SourceFileName, output_erl_file(ModuleInfo, ELDS,
         SourceFileName), !IO),
     % Avoid updating the timestamp on the `.hrl' file if it hasn't changed.
     TmpHeaderFileName = HeaderFileName ++ ".tmp",
-    output_to_file(TmpHeaderFileName, output_hrl_file(Name, ELDS,
+    output_to_file(Globals, TmpHeaderFileName, output_hrl_file(Name, ELDS,
         SourceFileName), !IO),
-    update_interface(HeaderFileName, !IO).
+    update_interface(Globals, HeaderFileName, !IO).
 
 :- pred output_erl_file(module_info::in, elds::in, string::in,
     io::di, io::uo) is det.
@@ -114,7 +116,8 @@ output_erl_file(ModuleInfo, ELDS, SourceFileName, !IO) :-
     % Useful for debugging.
     io.write_string("% -compile(export_all).\n", !IO),
 
-    set.fold(output_include_header_ann, Imports, !IO), 
+    module_info_get_globals(ModuleInfo, Globals),
+    set.fold(output_include_header_ann(Globals), Imports, !IO), 
 
     % Output foreign declarations.
     list.foldl(output_foreign_decl_code, ForeignDecls, !IO),
@@ -376,10 +379,11 @@ output_env_var_directive(EnvVarName, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_include_header_ann(module_name::in, io::di, io::uo) is det.
+:- pred output_include_header_ann(globals::in, module_name::in,
+    io::di, io::uo) is det.
 
-output_include_header_ann(Import, !IO) :-
-    module_name_to_search_file_name(Import, ".hrl", HeaderFile, !IO),
+output_include_header_ann(Globals, Import, !IO) :-
+    module_name_to_search_file_name(Globals, Import, ".hrl", HeaderFile, !IO),
     io.write_string("-include(""", !IO),
     write_with_escaping(in_string, HeaderFile, !IO),
     io.write_string(""").\n", !IO).

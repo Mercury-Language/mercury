@@ -45,7 +45,7 @@
 
     % Only answer patterns actually require structure_sharing_func_info for
     % comparisons.
-    % 
+    %
 :- instance analysis(structure_sharing_func_info,
     structure_sharing_call, structure_sharing_answer).
 
@@ -54,7 +54,7 @@
     structure_sharing_call).
 :- instance to_term(structure_sharing_call).
 
-:- instance answer_pattern(structure_sharing_func_info, 
+:- instance answer_pattern(structure_sharing_func_info,
     structure_sharing_answer).
 :- instance partial_order(structure_sharing_func_info,
     structure_sharing_answer).
@@ -110,10 +110,11 @@
 %-----------------------------------------------------------------------------%
 
 structure_sharing_analysis(!ModuleInfo, !IO) :-
-    %
+    module_info_get_globals(!.ModuleInfo, Globals),
+
     % Process all the imported sharing information.
-    %
-    globals.io_lookup_bool_option(intermodule_analysis, IntermodAnalysis, !IO),
+    globals.lookup_bool_option(Globals, intermodule_analysis,
+        IntermodAnalysis),
     (
         IntermodAnalysis = yes,
         process_intermod_analysis_imported_sharing(!ModuleInfo)
@@ -121,24 +122,20 @@ structure_sharing_analysis(!ModuleInfo, !IO) :-
         IntermodAnalysis = no,
         process_imported_sharing(!ModuleInfo)
     ),
-    %
+
     % Annotate the HLDS with liveness information.
-    %
     annotate_liveness(!ModuleInfo, !IO),
-    %
+
     % Load all structure sharing information present in the HLDS.
-    %
     LoadedSharingTable = load_structure_sharing_table(!.ModuleInfo),
-    %
+
     % Analyse structure sharing for the module.
-    %
     sharing_analysis(!ModuleInfo, LoadedSharingTable, !IO),
-    %
+
     % Only write structure sharing pragmas to `.opt' files for
     % `--intermodule-optimization' not `--intermodule-analysis'.
-    %
-    globals.io_lookup_bool_option(make_optimization_interface,
-        MakeOptInt, !IO),
+    globals.lookup_bool_option(Globals, make_optimization_interface,
+        MakeOptInt),
     (
         MakeOptInt = yes,
         IntermodAnalysis = no
@@ -152,7 +149,7 @@ structure_sharing_analysis(!ModuleInfo, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Preliminary steps
+% Preliminary steps.
 %
 
     % Process the imported sharing information from .opt files
@@ -351,14 +348,14 @@ annotate_liveness(!ModuleInfo, !IO) :-
         !ModuleInfo, !IO).
 
 :- pred simplify_and_detect_liveness_proc(pred_id::in, proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out, 
+    proc_info::in, proc_info::out, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
 simplify_and_detect_liveness_proc(PredId, ProcId, !ProcInfo, !ModuleInfo,
         !IO) :-
     % Liveness annotation expects the procedure to have been simplified.  For
     % example, an if-then-else with an `erroneous' condition will cause an
-    % assertion failure if it is not simplified away. 
+    % assertion failure if it is not simplified away.
     Simplifications = list_to_simplifications([]),
     simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !ProcInfo),
     detect_liveness_proc(PredId, ProcId, !.ModuleInfo, !ProcInfo, !IO).
@@ -369,10 +366,8 @@ simplify_and_detect_liveness_proc(PredId, ProcId, !ProcInfo, !ModuleInfo,
     sharing_as_table::in, io::di, io::uo) is det.
 
 sharing_analysis(!ModuleInfo, !.SharingTable, !IO) :-
-    %
     % Perform a bottom-up traversal of the SCCs in the program,
     % analysing structure sharing in each one as we go.
-    %
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_get_maybe_dependency_info(!.ModuleInfo, MaybeDepInfo),
     (
@@ -384,16 +379,15 @@ sharing_analysis(!ModuleInfo, !.SharingTable, !IO) :-
         MaybeDepInfo = no,
         unexpected(this_file, "No dependency information.")
     ),
-    %
+
     % Record the sharing results in the HLDS.
-    %
     map.foldl(save_sharing_in_module_info, !.SharingTable, !ModuleInfo),
-    %
+
     % If making a `.analysis' file, record structure sharing results, analysis
     % dependencies, assumed answers and requests in the analysis framework.
-    %
-    globals.io_lookup_bool_option(make_analysis_registry,
-        MakeAnalysisRegistry, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, make_analysis_registry,
+        MakeAnalysisRegistry),
     (
         MakeAnalysisRegistry = yes,
         some [!AnalysisInfo] (
@@ -480,7 +474,7 @@ max_runs = 100.
 
 %-----------------------------------------------------------------------------%
 %
-% Perform structure sharing analysis on a procedure
+% Perform structure sharing analysis on a procedure.
 %
 
 :- pred analyse_pred_proc(module_info::in, sharing_as_table::in,
@@ -490,17 +484,16 @@ max_runs = 100.
 analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !DepProcs,
         !IO) :-
     % Collect relevant compiler options.
-    globals.io_lookup_bool_option(very_verbose, Verbose, !IO),
-    globals.io_lookup_int_option(structure_sharing_widening, WideningLimit,
-        !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, Verbose),
+    globals.lookup_int_option(Globals, structure_sharing_widening,
+        WideningLimit),
 
     % Collect relevant procedure information.
-    %
     module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, ProcInfo),
     proc_info_get_headvars(ProcInfo, HeadVars),
 
     % Write progress message for the start of analysing current procedure.
-    %
     Run = ss_fixpoint_table_which_run(!.FixpointTable),
     TabledAsDescr = ss_fixpoint_table_get_short_description(PPId,
         !.FixpointTable),
@@ -555,7 +548,7 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !DepProcs,
 
 %-----------------------------------------------------------------------------%
 %
-% Structure sharing analysis of goals
+% Structure sharing analysis of goals.
 %
 
 :- pred analyse_goal(module_info::in, pred_info::in, proc_info::in,
@@ -630,7 +623,7 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
         list.foldl4(
             analyse_disj(ModuleInfo, PredInfo, ProcInfo,
                 SharingTable, !.SharingAs, Verbose),
-            Goals, !FixpointTable, !DepProcs, 
+            Goals, !FixpointTable, !DepProcs,
             sharing_as_init, !:SharingAs, !Status)
     ;
         GoalExpr = switch(_, _, Cases),
@@ -701,7 +694,7 @@ analyse_goal_with_progress(ModuleInfo, PredInfo, ProcInfo, SharingTable,
 
 %-----------------------------------------------------------------------------%
 %
-% Additional code for analysing disjuctions
+% Additional code for analysing disjuctions.
 %
 
 :- pred analyse_disj(module_info::in, pred_info::in, proc_info::in,
@@ -720,7 +713,7 @@ analyse_disj(ModuleInfo, PredInfo, ProcInfo, SharingTable, SharingBeforeDisj,
 
 %-----------------------------------------------------------------------------%
 %
-% Additional code for analysing switches
+% Additional code for analysing switches.
 %
 
 :- pred analyse_case(module_info::in, pred_info::in, proc_info::in,
@@ -739,7 +732,7 @@ analyse_case(ModuleInfo, PredInfo, ProcInfo, SharingTable, Sharing0,
 
 %-----------------------------------------------------------------------------%
 %
-% Code for handling calls
+% Code for handling calls.
 %
 
     % Lookup the sharing information of a procedure identified by its
@@ -752,7 +745,7 @@ analyse_case(ModuleInfo, PredInfo, ProcInfo, SharingTable, Sharing0,
 lookup_sharing(ModuleInfo, SharingTable, PPId, !FixpointTable, SharingAs,
         Status, IsPredicted) :-
     (
-        % check fixpoint table
+        % Check fixpoint table.
         ss_fixpoint_table_get_as(PPId, SharingAs_Status, !FixpointTable)
     ->
         SharingAs_Status = sharing_as_and_status(SharingAs, Status),
@@ -813,7 +806,7 @@ update_sharing_in_table(FixpointTable, PPId, !SharingTable) :-
 % Structure sharing fixpoint table.
 %
 
-:- type ss_fixpoint_table == 
+:- type ss_fixpoint_table ==
     fixpoint_table(pred_proc_id, sharing_as_and_status).
 
     % Initialise the fixpoint table for the given set of pred_proc_id's.
@@ -875,7 +868,7 @@ update_sharing_in_table(FixpointTable, PPId, !SharingTable) :-
     % Same as ss_fixpoint_table_get_final_as, but fails instead of aborting
     % if the procedure is not in the table.
     %
-:- pred ss_fixpoint_table_get_final_as_semidet(pred_proc_id::in, 
+:- pred ss_fixpoint_table_get_final_as_semidet(pred_proc_id::in,
     ss_fixpoint_table::in, sharing_as_and_status::out) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -926,10 +919,11 @@ ss_fixpoint_table_get_final_as_semidet(PPId, T, SharingAs_Status) :-
 :- pred make_opt_int(module_info::in, io::di, io::uo) is det.
 
 make_opt_int(ModuleInfo, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(ModuleName, ".opt.tmp", do_not_create_dirs,
-        OptFileName, !IO),
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
+        do_not_create_dirs, OptFileName, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Appending structure_sharing pragmas to ",
         !IO),
     maybe_write_string(Verbose, add_quotes(OptFileName), !IO),
@@ -1005,9 +999,8 @@ write_proc_sharing_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
     ).
 
 %-----------------------------------------------------------------------------%
-
 %
-% Types and instances for the intermodule analysis framework
+% Types and instances for the intermodule analysis framework.
 %
 
 :- type structure_sharing_call
@@ -1165,7 +1158,7 @@ sharing_answer_from_term(Term, Answer) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Additional predicates used for intermodule analysis
+% Additional predicates used for intermodule analysis.
 %
 
 :- pred maybe_record_sharing_analysis_result(module_info::in,

@@ -201,11 +201,22 @@
 
     % Auxiliary output options
     ;       smart_recompilation
+            % Even if this option is set to `yes', smart recompilation may
+            % have been disabled with io_set_disable_smart_recompilation.
+            % Before using the value of this option, call
+            % io_get_disable_smart_recompilation to see whether this
+            % has been done.
 
     ;       generate_item_version_numbers
             % This option is used to control output of version numbers
             % in interface files. It is implied by --smart-recompilation,
             % and cannot be set explicitly by the user.
+
+            % Even if this option is set to `yes', version numbers may have
+            % been disabled with io_set_disable_generate_item_version_numbers.
+            % Before using the value of this option, call
+            % io_get_disable_generate_item_version_numbers to see whether this
+            % has been done.
 
     ;       generate_mmc_make_module_dependencies
     ;       assume_gmake

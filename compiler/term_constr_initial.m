@@ -260,8 +260,9 @@ process_builtin_preds([], !ModuleInfo, !IO).
 process_builtin_preds([PredId | PredIds], !ModuleInfo, !IO) :-
     write_pred_progress_message("% Termination checking ", PredId,
         !.ModuleInfo, !IO),
-    globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt,
-        !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, make_optimization_interface,
+        MakeOptInt),
     some [!PredTable] (
         module_info_preds(!.ModuleInfo, !:PredTable),
         PredInfo0 = !.PredTable ^ det_elem(PredId),
@@ -272,9 +273,9 @@ process_builtin_preds([PredId | PredIds], !ModuleInfo, !IO) :-
     ),
     process_builtin_preds(PredIds, !ModuleInfo, !IO).
 
-    % It is possible for compiler generated/mercury builtin
-    % predicates to be imported or locally defined, so they
-    % must be covered here separately.
+    % It is possible for compiler generated/mercury builtin predicates
+    % to be imported or locally defined, so they must be covered here
+    % separately.
     %
 :- pred process_builtin_procs(bool::in, pred_id::in, module_info::in,
     pred_info::in, pred_info::out) is det.

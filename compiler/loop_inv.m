@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et tw=0 wm=0
+% vim: ts=4 sw=4 et ft=mercury
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
@@ -7,7 +7,7 @@
 %-----------------------------------------------------------------------------%
 %
 % File: loop_inv.m.
-% Main author: rafe,
+% Main author: rafe.
 %
 % This module implements conservative loop invariant hoisting.
 % The basic idea can be outlined as a transformation on functions.
@@ -793,10 +793,10 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
 
 :- type gen_aux_proc_info
     --->    gen_aux_proc_info(
-                module_info             :: module_info,
-                inv_goals               :: hlds_goals,
-                pred_proc_id            :: pred_proc_id,
-                call_aux_goal           :: hlds_goal
+                gapi_module_info            :: module_info,
+                gapi_inv_goals              :: hlds_goals,
+                gapi_pred_proc_id           :: pred_proc_id,
+                gapi_call_aux_goal          :: hlds_goal
             ).
 
     % Replace the invariant goals in the original Body
@@ -831,8 +831,8 @@ gen_aux_proc_goal(Info, Goal) = AuxGoal :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = plain_call(PredId, ProcId, _,_,_,_),
-        ( proc(PredId, ProcId) = Info ^ pred_proc_id ->
-            AuxGoal = gen_aux_call(Info ^ call_aux_goal, Goal)
+        ( proc(PredId, ProcId) = Info ^ gapi_pred_proc_id ->
+            AuxGoal = gen_aux_call(Info ^ gapi_call_aux_goal, Goal)
         ;
             AuxGoal = gen_aux_proc_handle_non_recursive_call(Info, Goal)
         )
@@ -894,7 +894,7 @@ gen_aux_proc_case(Info, Case) = AuxCase :-
     hlds_goal.
 
 gen_aux_proc_handle_non_recursive_call(Info, Goal0) =
-    ( invariant_goal(Info ^ inv_goals, Goal0) ->
+    ( invariant_goal(Info ^ gapi_inv_goals, Goal0) ->
         true_goal
     ;
         Goal0
@@ -1082,7 +1082,7 @@ used_vars(ModuleInfo, Goal) = UsedVars :-
         UsedExtraArgVars = list.map(foreign_arg_var, ExtraForeignArgs),
         UsedVars = UsedArgVars ++ UsedExtraArgVars
     ;
-        GoalExpr = unify(_LHS, _RHS, _UMode, _UKind, _), 
+        GoalExpr = unify(_LHS, _RHS, _UMode, _UKind, _),
         % XXX This is very conservative!
         UsedVars = []
     ;

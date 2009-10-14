@@ -259,13 +259,13 @@
 
 %-----------------------------------------------------------------------------%
 
-    % maybe_read_dependency_file(ModuleName, MaybeTransOptDeps):
+    % maybe_read_dependency_file(Globals, ModuleName, MaybeTransOptDeps, !IO):
     %
     % If transitive intermodule optimization has been enabled, then read
     % <ModuleName>.d to find the modules which <ModuleName>.trans_opt may
     % depend on.  Otherwise return `no'.
     %
-:- pred maybe_read_dependency_file(module_name::in,
+:- pred maybe_read_dependency_file(globals::in, module_name::in,
     maybe(list(module_name))::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -425,8 +425,8 @@ make_private_interface(Globals, SourceFileName, SourceFileModuleName,
     module_and_imports_get_results(Module, Items1, Specs0, Error),
     (
         Error = some_module_errors,
-        module_name_to_file_name(ModuleName, ".int0", do_not_create_dirs,
-            FileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".int0",
+            do_not_create_dirs, FileName, !IO),
         % XXX _NumErrors
         write_error_specs(Specs0, Globals, 0, _NumWarnings, 0, _NumErrors,
             !IO),
@@ -437,8 +437,8 @@ make_private_interface(Globals, SourceFileName, SourceFileModuleName,
         ; Error = fatal_module_errors
         ),
         % Module-qualify all items.
-        module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
-            FileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".m",
+            do_not_create_dirs, FileName, !IO),
         module_qualify_items(Items1, Items2, map.init, _, Globals, ModuleName,
             yes(FileName), "", _, _, _, Specs0, Specs),
         (
@@ -468,7 +468,7 @@ make_private_interface(Globals, SourceFileName, SourceFileModuleName,
             write_interface_file(Globals, SourceFileName, ModuleName,
                 ".int0", MaybeTimestamp,
                 [make_pseudo_decl(md_interface) | Items], !IO),
-            touch_interface_datestamp(ModuleName, ".date0", !IO)
+            touch_interface_datestamp(Globals, ModuleName, ".date0", !IO)
         )
     ).
 
@@ -559,10 +559,10 @@ make_interface(Globals, SourceFileName, SourceFileModuleName, ModuleName,
             % XXX _NumErrors
             write_error_specs(Specs0, Globals, 0, _NumWarnings, 0, _NumErrors,
                 !IO),
-            module_name_to_file_name(ModuleName, ".int", do_not_create_dirs,
-                IntFileName, !IO),
-            module_name_to_file_name(ModuleName, ".int2", do_not_create_dirs,
-                Int2FileName, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".int",
+                do_not_create_dirs, IntFileName, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".int2",
+                do_not_create_dirs, Int2FileName, !IO),
             io.write_strings(["Error reading short interface files.\n",
                 "`", IntFileName, "' and ",
                 "`", Int2FileName, "' not written.\n"], !IO)
@@ -571,18 +571,19 @@ make_interface(Globals, SourceFileName, SourceFileModuleName, ModuleName,
             ; Error = fatal_module_errors
             ),
             % Module-qualify all items.
-            module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
-                FileName, !IO),
+            module_name_to_file_name(Globals, ModuleName, ".m",
+                do_not_create_dirs, FileName, !IO),
             module_qualify_items(!InterfaceItems, map.init, _, Globals,
                 ModuleName, yes(FileName), "", _, _, _, Specs0, Specs),
 
             % We want to finish writing the interface file (and keep
             % the exit status at zero) if we found some warnings.
-            globals.io_set_option(halt_at_warn, bool(no), !IO),
-            write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors,
-                !IO),
+            globals.set_option(halt_at_warn, bool(no),
+                Globals, NoHaltAtWarnGlobals),
+            write_error_specs(Specs, NoHaltAtWarnGlobals,
+                0, _NumWarnings, 0, NumErrors, !IO),
             ( NumErrors > 0 ->
-                module_name_to_file_name(ModuleName, ".int",
+                module_name_to_file_name(Globals, ModuleName, ".int",
                     do_not_create_dirs, IntFileName, !IO),
                 io.write_strings(["`", IntFileName, "' ", "not written.\n"],
                     !IO)
@@ -597,11 +598,11 @@ make_interface(Globals, SourceFileName, SourceFileModuleName, ModuleName,
                 strip_unnecessary_impl_defns(!InterfaceItems),
                 check_for_clauses_in_interface(!InterfaceItems, [],
                     InterfaceSpecs0),
-                % XXX _NumErrors
-                check_int_for_no_exports(!.InterfaceItems, ModuleName,
+                check_int_for_no_exports(Globals, !.InterfaceItems, ModuleName,
                     InterfaceSpecs0, InterfaceSpecs, !IO),
                 write_error_specs(InterfaceSpecs, Globals,
                     0, _NumWarnings2, 0, _NumErrors2, !IO),
+                % XXX _NumErrors
                 order_items(!InterfaceItems),
                 write_interface_file(Globals, SourceFileName, ModuleName,
                     ".int", MaybeTimestamp, !.InterfaceItems, !IO),
@@ -609,7 +610,7 @@ make_interface(Globals, SourceFileName, SourceFileModuleName, ModuleName,
                     ShortInterfaceItems),
                 write_interface_file(Globals, SourceFileName, ModuleName,
                     ".int2", MaybeTimestamp, ShortInterfaceItems, !IO),
-                touch_interface_datestamp(ModuleName, ".date", !IO)
+                touch_interface_datestamp(Globals, ModuleName, ".date", !IO)
             )
         )
     ).
@@ -635,7 +636,7 @@ make_short_interface(Globals, SourceFileName, ModuleName, Items0, !IO) :-
         % XXX why do we do this even if there are some errors?
         write_interface_file(Globals, SourceFileName, ModuleName, ".int3",
             no, ShortInterfaceItems, !IO),
-        touch_interface_datestamp(ModuleName, ".date3", !IO)
+        touch_interface_datestamp(Globals, ModuleName, ".date3", !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1581,20 +1582,21 @@ check_for_no_exports(Globals, Items, ModuleName, !Specs, !IO) :-
     ;
         ExportWarning = yes,
         get_interface(ModuleName, no, Items, InterfaceItems),
-        check_int_for_no_exports(InterfaceItems, ModuleName, !Specs, !IO)
+        check_int_for_no_exports(Globals, InterfaceItems, ModuleName,
+            !Specs, !IO)
     ).
 
     % Given a module name and a list of the items in that module's interface,
     % this procedure checks if the module doesn't export anything, and if so,
     % and --warn-nothing-exported is set, it returns a warning.
     %
-:- pred check_int_for_no_exports(list(item)::in, module_name::in,
+:- pred check_int_for_no_exports(globals::in, list(item)::in, module_name::in,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-check_int_for_no_exports([], ModuleName, !Specs, !IO) :-
-    generate_no_exports_warning(ModuleName, WarnSpec, !IO),
+check_int_for_no_exports(Globals, [], ModuleName, !Specs, !IO) :-
+    generate_no_exports_warning(Globals, ModuleName, WarnSpec, !IO),
     !:Specs = [WarnSpec | !.Specs].
-check_int_for_no_exports([Item | Items], ModuleName, !Specs, !IO) :-
+check_int_for_no_exports(Globals, [Item | Items], ModuleName, !Specs, !IO) :-
     (
         (
             Item = item_nothing(_)
@@ -1605,19 +1607,19 @@ check_int_for_no_exports([Item | Items], ModuleName, !Specs, !IO) :-
         )
     ->
         % Nothing useful - keep searching.
-        check_int_for_no_exports(Items, ModuleName, !Specs, !IO)
+        check_int_for_no_exports(Globals, Items, ModuleName, !Specs, !IO)
     ;
         % We found something useful - don't issue the warning.
         true
     ).
 
-:- pred generate_no_exports_warning(module_name::in, error_spec::out,
-    io::di, io::uo) is det.
+:- pred generate_no_exports_warning(globals::in, module_name::in,
+    error_spec::out, io::di, io::uo) is det.
 
-generate_no_exports_warning(ModuleName, Spec, !IO) :-
+generate_no_exports_warning(Globals, ModuleName, Spec, !IO) :-
     % XXX The FileName should be passed down to here; we shouldn't have to
     % compute it again.
-    module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
+    module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
         FileName, !IO),
     % XXX We should use the module declaration's context, not the arbitrary
     % line number 1.
@@ -1645,28 +1647,29 @@ generate_no_exports_warning(ModuleName, Spec, !IO) :-
 :- pred write_interface_file(globals::in, file_name::in, module_name::in,
     string::in, maybe(timestamp)::in, list(item)::in, io::di, io::uo) is det.
 
-write_interface_file(Globals0, _SourceFileName, ModuleName, Suffix,
+write_interface_file(Globals, _SourceFileName, ModuleName, Suffix,
         MaybeTimestamp, InterfaceItems0, !IO) :-
     % Create (e.g.) `foo.int.tmp'.
     string.append(Suffix, ".tmp", TmpSuffix),
-    module_name_to_file_name(ModuleName, Suffix, do_create_dirs,
-        OutputFileName, !IO),
-    module_name_to_file_name(ModuleName, TmpSuffix, do_not_create_dirs,
-        TmpOutputFileName, !IO),
+    module_name_to_file_name(Globals, ModuleName, Suffix,
+        do_create_dirs, OutputFileName, !IO),
+    module_name_to_file_name(Globals, ModuleName, TmpSuffix,
+        do_not_create_dirs, TmpOutputFileName, !IO),
 
-    globals.set_option(line_numbers, bool(no), Globals0, Globals),
-    globals.io_set_globals(Globals, !IO),
-
-    globals.lookup_bool_option(Globals, generate_item_version_numbers,
+    globals.set_option(line_numbers, bool(no), Globals, NoLineNumGlobals),
+    globals.lookup_bool_option(NoLineNumGlobals, generate_item_version_numbers,
         GenerateVersionNumbers),
+    io_get_disable_generate_item_version_numbers(DisableVersionNumbers, !IO),
     (
         GenerateVersionNumbers = yes,
+        DisableVersionNumbers = no
+    ->
         % Find the timestamp of the current module.
         (
             MaybeTimestamp = yes(Timestamp),
 
             % Read in the previous version of the file.
-            read_module_ignore_errors(Globals, ModuleName, Suffix,
+            read_module_ignore_errors(NoLineNumGlobals, ModuleName, Suffix,
                 "Reading old interface for module",
                 do_search, do_not_return_timestamp, OldItems, OldError,
                 _OldIntFileName, _OldTimestamp, !IO),
@@ -1706,13 +1709,12 @@ write_interface_file(Globals0, _SourceFileName, ModuleName, Suffix,
                 "`--smart-recompilation', timestamp not read")
         )
     ;
-        GenerateVersionNumbers = no,
         InterfaceItems = InterfaceItems0
     ),
-    convert_to_mercury(ModuleName, TmpOutputFileName, InterfaceItems, !IO),
-    % Reset the options to what they were.
-    globals.io_set_globals(Globals0, !IO),
-    update_interface(OutputFileName, !IO).
+    convert_to_mercury(NoLineNumGlobals, ModuleName, TmpOutputFileName,
+        InterfaceItems, !IO),
+    % Start using the original globals again.
+    update_interface(Globals, OutputFileName, !IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1731,7 +1733,7 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
     some [!Specs] (
         !:Specs = [],
 
-        module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
+        module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
             FileName, !IO),
         warn_if_import_self_or_ancestor(ModuleName, FileName, AncestorModules,
             ImportedModules0, UsedModules0, !Specs),
@@ -1772,7 +1774,7 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         ;
             Children = [_ | _],
             split_clauses_and_decls(ImplItems, Clauses, ImplDecls),
-            Items1 = 
+            Items1 =
                 [make_pseudo_decl(md_interface) | InterfaceItems] ++
                 [make_pseudo_decl(md_private_interface) | ImplDecls] ++
                 [make_pseudo_decl(md_implementation) | Clauses],
@@ -2100,12 +2102,12 @@ wrap_symname(ModuleName) = sym_name(ModuleName).
 
 %-----------------------------------------------------------------------------%
 
-maybe_read_dependency_file(ModuleName, MaybeTransOptDeps, !IO) :-
-    globals.io_lookup_bool_option(transitive_optimization, TransOpt, !IO),
+maybe_read_dependency_file(Globals, ModuleName, MaybeTransOptDeps, !IO) :-
+    globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
     (
         TransOpt = yes,
-        globals.io_lookup_bool_option(verbose, Verbose, !IO),
-        module_name_to_file_name(ModuleName, ".d", do_not_create_dirs,
+        globals.lookup_bool_option(Globals, verbose, Verbose),
+        module_name_to_file_name(Globals, ModuleName, ".d", do_not_create_dirs,
             DependencyFileName, !IO),
         maybe_write_string(Verbose, "% Reading auto-dependency file `", !IO),
         maybe_write_string(Verbose, DependencyFileName, !IO),
@@ -2115,11 +2117,10 @@ maybe_read_dependency_file(ModuleName, MaybeTransOptDeps, !IO) :-
         (
             OpenResult = ok(Stream),
             io.set_input_stream(Stream, OldStream, !IO),
-            module_name_to_file_name(ModuleName, ".trans_opt_date",
+            module_name_to_file_name(Globals, ModuleName, ".trans_opt_date",
                 do_not_create_dirs, TransOptDateFileName0, !IO),
-            string.to_char_list(TransOptDateFileName0,
-                TransOptDateFileName),
-            list.append(TransOptDateFileName, [' ', ':'], SearchPattern),
+            string.to_char_list(TransOptDateFileName0, TransOptDateFileName),
+            SearchPattern = TransOptDateFileName ++ [' ', ':'],
             read_dependency_file_find_start(SearchPattern, FindResult, !IO),
             (
                 FindResult = yes,
@@ -2138,9 +2139,8 @@ maybe_read_dependency_file(ModuleName, MaybeTransOptDeps, !IO) :-
             maybe_write_string(Verbose, " failed.\n", !IO),
             maybe_flush_output(Verbose, !IO),
             io.error_message(IOError, IOErrorMessage),
-            string.append_list(["error opening file `",
-                DependencyFileName, "' for input: ",
-                IOErrorMessage], Message),
+            string.append_list(["error opening file `", DependencyFileName,
+                "' for input: ", IOErrorMessage], Message),
             report_error(Message, !IO),
             MaybeTransOptDeps = no
         )
@@ -2229,8 +2229,9 @@ generate_file_dependency_file(Globals, FileName, !IO) :-
 
 build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO) :-
     % Read in the top-level file (to figure out its module name).
-    read_module_from_file(FileName, ".m", "Reading file", do_not_search,
-        do_not_return_timestamp, Items, Specs0, Error, ModuleName, _, !IO),
+    read_module_from_file(Globals, FileName, ".m", "Reading file",
+        do_not_search, do_not_return_timestamp, Items, Specs0, Error,
+        ModuleName, _, !IO),
     SourceFileName = FileName ++ ".m",
     split_into_submodules(ModuleName, Items, SubModuleList, Specs0, Specs),
     % XXX _NumErrors
@@ -2273,10 +2274,10 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
             Mode = output_all_dependencies,
             module_and_imports_get_source_file_name(ModuleImports,
                 SourceFileName),
-            generate_dependencies_write_dv_file(SourceFileName, ModuleName,
-                DepsMap, !IO),
-            generate_dependencies_write_dep_file(SourceFileName, ModuleName,
-                DepsMap, !IO)
+            generate_dependencies_write_dv_file(Globals, SourceFileName,
+                ModuleName, DepsMap, !IO),
+            generate_dependencies_write_dep_file(Globals, SourceFileName,
+                ModuleName, DepsMap, !IO)
         ),
 
         % Compute the interface deps graph and the implementation deps
@@ -2287,8 +2288,8 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
         map.values(DepsMap, DepsList),
         deps_list_to_deps_graph(DepsList, DepsMap, IntDepsGraph0, IntDepsGraph,
             ImplDepsGraph0, ImplDepsGraph),
-        maybe_output_imports_graph(ModuleName, IntDepsGraph, ImplDepsGraph,
-            !IO),
+        maybe_output_imports_graph(Globals, ModuleName,
+            IntDepsGraph, ImplDepsGraph, !IO),
 
         % Compute the trans-opt deps ordering, by doing an approximate
         % topological sort of the implementation deps, and then finding
@@ -2296,16 +2297,16 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
         % trans-opt files.
 
         digraph.atsort(ImplDepsGraph, ImplDepsOrdering0),
-        maybe_output_module_order(ModuleName, ImplDepsOrdering0, !IO),
+        maybe_output_module_order(Globals, ModuleName, ImplDepsOrdering0, !IO),
         list.map(set.to_sorted_list, ImplDepsOrdering0, ImplDepsOrdering),
         list.condense(ImplDepsOrdering, TransOptDepsOrdering0),
-        globals.io_lookup_accumulating_option(intermod_directories,
-            IntermodDirs, !IO),
-        get_opt_deps(yes, TransOptDepsOrdering0, IntermodDirs, ".trans_opt",
-            TransOptDepsOrdering, !IO),
+        globals.lookup_accumulating_option(Globals, intermod_directories,
+            IntermodDirs),
+        get_opt_deps(Globals, yes, TransOptDepsOrdering0, IntermodDirs,
+            ".trans_opt", TransOptDepsOrdering, !IO),
 
         trace [compiletime(flag("deps_graph")), runtime(env("DEPS_GRAPH")),
-                io(!IO)]
+            io(!IO)]
         (
             digraph.to_assoc_list(ImplDepsGraph, ImplDepsAL),
             print("ImplDepsAL:\n", !IO),
@@ -2339,8 +2340,9 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
             Mode = output_all_dependencies,
             DFilesToWrite = DepsList
         ),
-        generate_dependencies_write_d_files(DFilesToWrite, IntDepsGraph,
-            ImplDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
+        generate_dependencies_write_d_files(Globals, DFilesToWrite,
+            IntDepsGraph, ImplDepsGraph,
+            IndirectDepsGraph, IndirectOptDepsGraph,
             TransOptDepsOrdering, DepsMap, !IO)
     ),
 
@@ -2350,27 +2352,27 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
     % file when it is needed, we just generate this file "mmake depend"
     % time, since that is simpler and probably more efficient anyway.
 
-    globals.io_get_target(Target, !IO),
+    globals.get_target(Globals, Target),
     (
         Target = target_java,
         Mode = output_all_dependencies
     ->
-        create_java_shell_script(ModuleName, _Succeeded, !IO)
+        create_java_shell_script(Globals, ModuleName, _Succeeded, !IO)
     ;
         true
     ).
 
-:- pred maybe_output_imports_graph(module_name::in,
+:- pred maybe_output_imports_graph(globals::in, module_name::in,
     digraph(sym_name)::in, digraph(sym_name)::in,
     io::di, io::uo) is det.
 
-maybe_output_imports_graph(Module, IntDepsGraph, ImplDepsGraph, !IO) :-
-    globals.io_lookup_bool_option(imports_graph, ImportsGraph, !IO),
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+maybe_output_imports_graph(Globals, Module, IntDepsGraph, ImplDepsGraph, !IO) :-
+    globals.lookup_bool_option(Globals, imports_graph, ImportsGraph),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     (
         ImportsGraph = yes,
-        module_name_to_file_name(Module, ".imports_graph", do_create_dirs,
-            FileName, !IO),
+        module_name_to_file_name(Globals, Module, ".imports_graph",
+            do_create_dirs, FileName, !IO),
         maybe_write_string(Verbose, "% Creating imports graph file `", !IO),
         maybe_write_string(Verbose, FileName, !IO),
         maybe_write_string(Verbose, "'...", !IO),
@@ -2456,16 +2458,16 @@ write_edge(Stream, GenNodeName, A, B, !IO) :-
 sym_name_to_node_id(Name) =
     "\"" ++ sym_name_to_string(Name) ++ "\"".
 
-:- pred maybe_output_module_order(module_name::in, list(set(module_name))::in,
-    io::di, io::uo) is det.
+:- pred maybe_output_module_order(globals::in, module_name::in,
+    list(set(module_name))::in, io::di, io::uo) is det.
 
-maybe_output_module_order(Module, DepsOrdering, !IO) :-
-    globals.io_lookup_bool_option(generate_module_order, Order, !IO),
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+maybe_output_module_order(Globals, Module, DepsOrdering, !IO) :-
+    globals.lookup_bool_option(Globals, generate_module_order, Order),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     (
         Order = yes,
-        module_name_to_file_name(Module, ".order", do_create_dirs,
-            OrdFileName, !IO),
+        module_name_to_file_name(Globals, Module, ".order",
+            do_create_dirs, OrdFileName, !IO),
         maybe_write_string(Verbose, "% Creating module order file `", !IO),
         maybe_write_string(Verbose, OrdFileName, !IO),
         maybe_write_string(Verbose, "'...", !IO),
@@ -2496,8 +2498,9 @@ write_module_scc(Stream, SCC0, !IO) :-
     set.to_sorted_list(SCC0, SCC),
     io.write_list(Stream, SCC, "\n", prog_out.write_sym_name, !IO).
 
-    % generate_dependencies_write_d_files(Modules, IntDepsRel, ImplDepsRel,
-    %   IndirectDepsRel, IndirectOptDepsRel, TransOptOrder, DepsMap, !IO):
+    % generate_dependencies_write_d_files(Globals, Modules,
+    %   IntDepsRel, ImplDepsRel, IndirectDepsRel, IndirectOptDepsRel,
+    %   TransOptOrder, DepsMap, !IO):
     %
     % This predicate writes out the .d files for all the modules in the
     % Modules list.
@@ -2511,12 +2514,12 @@ write_module_scc(Stream, SCC0, !IO) :-
     % TransOptOrder gives the ordering that is used to determine
     % which other modules the .trans_opt files may depend on.
     %
-:- pred generate_dependencies_write_d_files(list(deps)::in,
+:- pred generate_dependencies_write_d_files(globals::in, list(deps)::in,
     deps_graph::in, deps_graph::in, deps_graph::in, deps_graph::in,
     list(module_name)::in, deps_map::in, io::di, io::uo) is det.
 
-generate_dependencies_write_d_files([], _, _, _, _, _, _, !IO).
-generate_dependencies_write_d_files([Dep | Deps],
+generate_dependencies_write_d_files(_, [], _, _, _, _, _, _, !IO).
+generate_dependencies_write_d_files(Globals, [Dep | Deps],
         IntDepsGraph, ImplDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
         TransOptOrder, DepsMap, !IO) :-
     some [!Module] (
@@ -2529,8 +2532,8 @@ generate_dependencies_write_d_files([Dep | Deps],
         module_and_imports_get_module_name(!.Module, ModuleName),
         get_dependencies_from_graph(IndirectOptDepsGraph, ModuleName,
             IndirectOptDeps),
-        globals.io_lookup_bool_option(intermodule_optimization, Intermod,
-            !IO),
+        globals.lookup_bool_option(Globals, intermodule_optimization,
+            Intermod),
         (
             Intermod = yes,
             % Be conservative with inter-module optimization -- assume a
@@ -2547,7 +2550,7 @@ generate_dependencies_write_d_files([Dep | Deps],
                 IndirectDeps)
         ),
 
-        globals.io_get_target(Target, !IO),
+        globals.get_target(Globals, Target),
         ( Target = target_c, Lang = lang_c
         ; Target = target_asm, Lang = lang_c
         ; Target = target_java, Lang = lang_java
@@ -2590,14 +2593,15 @@ generate_dependencies_write_d_files([Dep | Deps],
             ( Error = no_module_errors
             ; Error = some_module_errors
             ),
-            write_dependency_file(!.Module, set.list_to_set(IndirectOptDeps),
-                yes(TransOptDeps), !IO)
+            write_dependency_file(Globals, !.Module,
+                set.list_to_set(IndirectOptDeps), yes(TransOptDeps), !IO)
         ;
             Error = fatal_module_errors
         ),
-        generate_dependencies_write_d_files(Deps, IntDepsGraph, ImplDepsGraph,
-            IndirectDepsGraph, IndirectOptDepsGraph, TransOptOrder, DepsMap,
-            !IO)
+        generate_dependencies_write_d_files(Globals, Deps,
+            IntDepsGraph, ImplDepsGraph,
+            IndirectDepsGraph, IndirectOptDepsGraph,
+            TransOptOrder, DepsMap, !IO)
     ).
 
 :- pred get_dependencies_from_graph(deps_graph::in, module_name::in,
@@ -2808,7 +2812,7 @@ process_module_private_interfaces(Globals, HaveReadModuleMap,
         module_and_imports_add_specs(PrivateIntSpecs, !Module),
         module_and_imports_add_interface_error(PrivateIntError, !Module),
 
-        globals.io_lookup_bool_option(detailed_statistics, Statistics, !IO),
+        globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
         maybe_report_stats(Statistics, !IO),
 
         (
@@ -2868,7 +2872,7 @@ process_module_long_interfaces(Globals, HaveReadModuleMap, NeedQualifier,
         module_and_imports_add_specs(LongIntSpecs, !Module),
         module_and_imports_add_interface_error(LongIntError, !Module),
 
-        globals.io_lookup_bool_option(detailed_statistics, Statistics, !IO),
+        globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
         maybe_report_stats(Statistics, !IO),
 
         (
@@ -3057,7 +3061,7 @@ process_module_short_interfaces(Globals, HaveReadModuleMap, [Import | Imports],
         module_and_imports_add_specs(ShortIntSpecs, !Module),
         module_and_imports_add_interface_error(ShortIntError, !Module),
 
-        globals.io_lookup_bool_option(detailed_statistics, Statistics, !IO),
+        globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
         maybe_report_stats(Statistics, !IO),
 
         ModIndirectImports = [Import | ModIndirectImports0],

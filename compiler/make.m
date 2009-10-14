@@ -23,6 +23,7 @@
 :- include_module make.util.
 
 :- import_module libs.file_util.
+:- import_module libs.globals.
 :- import_module make.options_file.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -36,11 +37,11 @@
 
     % make.process_args(OptionArgs, NonOptionArgs).
     %
-:- pred make_process_args(options_variables::in, list(string)::in,
+:- pred make_process_args(globals::in, options_variables::in, list(string)::in,
     list(file_name)::in, io::di, io::uo) is det.
 
-:- pred make_write_module_dep_file(module_and_imports::in, io::di, io::uo)
-    is det.
+:- pred make_write_module_dep_file(globals::in, module_and_imports::in,
+    io::di, io::uo) is det.
 
 :- func make_module_dep_file_extension = string.
 
@@ -65,7 +66,6 @@
 :- import_module hlds.
 :- import_module libs.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
 :- import_module libs.handle_options.
 :- import_module libs.md4.
 :- import_module libs.options.
@@ -271,15 +271,15 @@
 
 %-----------------------------------------------------------------------------%
 
-make_write_module_dep_file(Imports, !IO) :-
-    make.module_dep_file.write_module_dep_file(Imports, !IO).
+make_write_module_dep_file(Globals, Imports, !IO) :-
+    make.module_dep_file.write_module_dep_file(Globals, Imports, !IO).
 
 make_module_dep_file_extension = ".module_dep".
 
-make_process_args(Variables, OptionArgs, Targets0, !IO) :-
+make_process_args(Globals, Variables, OptionArgs, Targets0, !IO) :-
     (
         Targets0 = [],
-        lookup_main_target(Variables, MaybeMAIN_TARGET, !IO),
+        lookup_main_target(Globals, Variables, MaybeMAIN_TARGET, !IO),
         (
             MaybeMAIN_TARGET = yes(Targets),
             (
@@ -301,10 +301,10 @@ make_process_args(Variables, OptionArgs, Targets0, !IO) :-
         Continue0 = yes,
         Targets = Targets0
     ),
-    %
-    % Ensure none of the targets contains the directory_separator. This is not
-    % supported by the rest of the code.
-    %
+
+    % Ensure none of the targets contains the directory_separator. Such targets
+    % are not supported by the rest of the code.
+
     list.filter(
         (pred(Target::in) is semidet :-
             string.contains_char(Target, dir.directory_separator)
@@ -326,8 +326,7 @@ make_process_args(Variables, OptionArgs, Targets0, !IO) :-
         io.set_exit_status(1, !IO)
     ;
         Continue = yes,
-        globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
-        globals.io_get_globals(Globals, !IO),
+        globals.lookup_bool_option(Globals, keep_going, KeepGoing),
 
         ModuleIndexMap = module_index_map(
             version_hash_table.new_default(module_name_hash),
@@ -337,24 +336,20 @@ make_process_args(Variables, OptionArgs, Targets0, !IO) :-
             version_array.empty, 0),
         DepStatusMap = version_hash_table.new_default(dependency_file_hash),
 
-        %
-        % Accept and ignore `.depend' targets.  `mmc --make' does not
-        % need a separate make depend step. The dependencies for each
-        % module are regenerated on demand.
-        %
+        % Accept and ignore `.depend' targets. `mmc --make' does not need
+        % a separate make depend step. The dependencies for each module
+        % are regenerated on demand.
         NonDependTargets = list.filter(
             (pred(Target::in) is semidet :-
                 \+ string.suffix(Target, ".depend")
             ), Targets),
 
-        %
         % Classify the remaining targets.
-        %
         list.map(classify_target(Globals), NonDependTargets,
             ClassifiedTargets),
 
         ShouldRebuildModuleDeps = do_rebuild_module_deps,
-        globals.io_lookup_int_option(analysis_repeat, AnalysisRepeat, !IO),
+        globals.lookup_int_option(Globals, analysis_repeat, AnalysisRepeat),
 
         MakeInfo0 = make_info(map.init, map.init, map.init,
             OptionArgs, Variables,
@@ -369,11 +364,10 @@ make_process_args(Variables, OptionArgs, Targets0, !IO) :-
             set.init, no, set.list_to_set(ClassifiedTargets),
             AnalysisRepeat),
 
-        %
-        % Build the targets, stopping on any errors if
-        % `--keep-going' was not set.
-        %
-        foldl2_maybe_stop_at_error(KeepGoing, make_target,
+        % Build the targets, stopping on any errors if `--keep-going'
+        % was not set.
+
+        foldl2_maybe_stop_at_error(KeepGoing, make_target, Globals,
             ClassifiedTargets, Success, MakeInfo0, _MakeInfo, !IO),
 
         (
@@ -384,33 +378,36 @@ make_process_args(Variables, OptionArgs, Targets0, !IO) :-
         )
     ).
 
-:- pred make_target(pair(module_name, target_type)::in, bool::out,
+:- pred make_target(globals::in, pair(module_name, target_type)::in, bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_target(Target, Success, !Info, !IO) :-
+make_target(Globals, Target, Success, !Info, !IO) :-
     Target = ModuleName - TargetType,
-    globals.io_lookup_bool_option(track_flags, TrackFlags, !IO),
+    globals.lookup_bool_option(Globals, track_flags, TrackFlags),
     (
         TrackFlags = no,
         TrackFlagsSuccess = yes
     ;
         TrackFlags = yes,
-        make_track_flags_files(ModuleName, TrackFlagsSuccess, !Info, !IO)
+        make_track_flags_files(Globals, ModuleName, TrackFlagsSuccess, !Info,
+            !IO)
     ),
     (
         TrackFlagsSuccess = yes,
         (
             TargetType = module_target(ModuleTargetType),
             TargetFile = target_file(ModuleName, ModuleTargetType),
-            make_module_target(dep_target(TargetFile), Success, !Info, !IO)
+            make_module_target(Globals, dep_target(TargetFile), Success,
+                !Info, !IO)
         ;
             TargetType = linked_target(ProgramTargetType),
             LinkedTargetFile = linked_target_file(ModuleName,
                 ProgramTargetType),
-            make_linked_target(LinkedTargetFile, Success, !Info, !IO)
+            make_linked_target(Globals, LinkedTargetFile, Success, !Info, !IO)
         ;
             TargetType = misc_target(MiscTargetType),
-            make_misc_target(ModuleName - MiscTargetType, Success, !Info, !IO)
+            make_misc_target(Globals, ModuleName - MiscTargetType, Success,
+                !Info, !IO)
         )
     ;
         TrackFlagsSuccess = no,
@@ -550,29 +547,31 @@ search_backwards_for_dot(String, Index, DotIndex) :-
     % updated if they have changed since the last --make run.  We use hashes as
     % the full option tables are quite large.
     %
-:- pred make_track_flags_files(module_name::in, bool::out,
+:- pred make_track_flags_files(globals::in, module_name::in, bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_track_flags_files(ModuleName, Success, !Info, !IO) :-
-    find_reachable_local_modules(ModuleName, Success0, Modules, !Info, !IO),
+make_track_flags_files(Globals, ModuleName, Success, !Info, !IO) :-
+    find_reachable_local_modules(Globals, ModuleName, Success0, Modules,
+        !Info, !IO),
     (
         Success0 = yes,
         KeepGoing = no,
         DummyLastHash = last_hash([], ""),
         foldl3_maybe_stop_at_error(KeepGoing, make_track_flags_files_2,
-            set.to_sorted_list(Modules), Success, DummyLastHash, _LastHash,
-            !Info, !IO)
+            Globals, set.to_sorted_list(Modules), Success,
+            DummyLastHash, _LastHash, !Info, !IO)
     ;
         Success0 = no,
         Success = no
     ).
 
-:- pred make_track_flags_files_2(module_name::in, bool::out,
+:- pred make_track_flags_files_2(globals::in, module_name::in, bool::out,
     last_hash::in, last_hash::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-make_track_flags_files_2(ModuleName, Success, !LastHash, !Info, !IO) :-
-    lookup_mmc_module_options(!.Info ^ options_variables, ModuleName,
+make_track_flags_files_2(Globals, ModuleName, Success, !LastHash, !Info,
+        !IO) :-
+    lookup_mmc_module_options(Globals, !.Info ^ options_variables, ModuleName,
         OptionsResult, !IO),
     (
         OptionsResult = yes(ModuleOptionArgs),
@@ -590,9 +589,9 @@ make_track_flags_files_2(ModuleName, Success, !LastHash, !Info, !IO) :-
             !:LastHash = last_hash(AllOptionArgs, Hash)
         ),
 
-        module_name_to_file_name(ModuleName, ".track_flags", do_create_dirs,
-            HashFileName, !IO),
-        compare_hash_file(HashFileName, Hash, Same, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".track_flags",
+            do_create_dirs, HashFileName, !IO),
+        compare_hash_file(Globals, HashFileName, Hash, Same, !IO),
         (
             Same = yes,
             Success = yes
@@ -609,8 +608,9 @@ make_track_flags_files_2(ModuleName, Success, !LastHash, !Info, !IO) :-
     io::di, io::uo) is det.
 
 option_table_hash(AllOptionArgs, Hash, !IO) :-
-    globals.io_get_globals(Globals, !IO),
-    handle_options(AllOptionArgs, OptionsErrors, _, _, _, !IO),
+    handle_given_options(AllOptionArgs, _, _, _,
+        OptionsErrors, UpdatedGlobals, !IO),
+    % XXX We throw away UpdatedGlobals after computing its hash. Why? -zs
     (
         OptionsErrors = []
     ;
@@ -618,14 +618,12 @@ option_table_hash(AllOptionArgs, Hash, !IO) :-
         unexpected($file, $pred ++ ": " ++
             "handle_options returned with errors")
     ),
-    globals.io_get_globals(UpdatedGlobals, !IO),
     globals.get_options(UpdatedGlobals, OptionTable),
     map.to_sorted_assoc_list(OptionTable, OptionList),
     inconsequential_options(InconsequentialOptions),
     list.filter(is_consequential_option(InconsequentialOptions),
         OptionList, ConsequentialOptionList),
-    Hash = md4sum(string(ConsequentialOptionList)),
-    globals.io_set_globals(Globals, !IO).
+    Hash = md4sum(string(ConsequentialOptionList)).
 
 :- pred is_consequential_option(set(option)::in,
     pair(option, option_data)::in) is semidet.
@@ -633,10 +631,10 @@ option_table_hash(AllOptionArgs, Hash, !IO) :-
 is_consequential_option(InconsequentialOptions, Option - _) :-
     not set.contains(InconsequentialOptions, Option).
 
-:- pred compare_hash_file(string::in, string::in, bool::out,
+:- pred compare_hash_file(globals::in, string::in, string::in, bool::out,
     io::di, io::uo) is det.
 
-compare_hash_file(FileName, Hash, Same, !IO) :-
+compare_hash_file(Globals, FileName, Hash, Same, !IO) :-
     io.open_input(FileName, OpenResult, !IO),
     (
         OpenResult = ok(Stream),
@@ -661,7 +659,7 @@ compare_hash_file(FileName, Hash, Same, !IO) :-
         % Probably missing file.
         Same = no
     ),
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     (
         Verbose = yes,
         io.write_string("% ", !IO),

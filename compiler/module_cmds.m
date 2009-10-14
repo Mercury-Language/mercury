@@ -18,6 +18,7 @@
 
 :- import_module mdbcomp.prim_data.
 :- import_module libs.file_util.
+:- import_module libs.globals.
 
 :- import_module bool.
 :- import_module list.
@@ -31,59 +32,59 @@
     ;       interface_unchanged
     ;       interface_error.
 
-    % update_interface_return_changed(FileName, Result):
+    % update_interface_return_changed(Globals, FileName, Result):
     %
     % Update the interface file FileName from FileName.tmp if it has changed.
     %
-:- pred update_interface_return_changed(file_name::in,
+:- pred update_interface_return_changed(globals::in, file_name::in,
     update_interface_result::out, io::di, io::uo) is det.
 
-:- pred update_interface_return_succeeded(file_name::in, bool::out,
-    io::di, io::uo) is det.
+:- pred update_interface_return_succeeded(globals::in, file_name::in,
+    bool::out, io::di, io::uo) is det.
 
-:- pred update_interface(file_name::in, io::di, io::uo) is det.
+:- pred update_interface(globals::in, file_name::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
-    % copy_file(Source, Destination, Succeeded).
+    % copy_file(Globals, Source, Destination, Succeeded, !IO).
     %
-    % XXX This belongs in the standard library.
+    % XXX A version of this predicate belongs in the standard library.
     %
-:- pred copy_file(file_name::in, file_name::in, io.res::out,
+:- pred copy_file(globals::in, file_name::in, file_name::in, io.res::out,
     io::di, io::uo) is det.
 
-    % maybe_make_symlink(TargetFile, LinkName, Result):
+    % maybe_make_symlink(Globals, TargetFile, LinkName, Result, !IO):
     %
     % If `--use-symlinks' is set, attempt to make LinkName a symlink
     % pointing to LinkTarget.
     %
-:- pred maybe_make_symlink(file_name::in, file_name::in, bool::out,
-    io::di, io::uo) is det.
+:- pred maybe_make_symlink(globals::in, file_name::in, file_name::in,
+    bool::out, io::di, io::uo) is det.
 
-    % make_symlink_or_copy_file(LinkTarget, LinkName, Succeeded):
+    % make_symlink_or_copy_file(Globals, LinkTarget, LinkName, Succeeded, !IO):
     %
     % Attempt to make LinkName a symlink pointing to LinkTarget, copying
     % LinkTarget to LinkName if that fails (or if `--use-symlinks' is not set).
     %
-:- pred make_symlink_or_copy_file(file_name::in, file_name::in, bool::out,
-    io::di, io::uo) is det.
+:- pred make_symlink_or_copy_file(globals::in, file_name::in, file_name::in,
+    bool::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
-    % touch_interface_datestamp(ModuleName, Ext):
+    % touch_interface_datestamp(Globals, ModuleName, Ext, !IO):
     %
     % Touch the datestamp file `ModuleName.Ext'. Datestamp files are used
     % to record when each of the interface files was last updated.
     %
-:- pred touch_interface_datestamp(module_name::in, string::in,
+:- pred touch_interface_datestamp(globals::in, module_name::in, string::in,
     io::di, io::uo) is det.
 
-    % touch_datestamp(FileName):
+    % touch_datestamp(Globals, FileName, !IO):
     %
     % Update the modification time for the given file,
     % clobbering the contents of the file.
     %
-:- pred touch_datestamp(file_name::in, io::di, io::uo) is det.
+:- pred touch_datestamp(globals::in, file_name::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -105,24 +106,24 @@
             % Output the command line with `--verbose-commands'. This should be
             % used for commands that may be of interest to the user.
 
-    % invoke_system_command(ErrorStream, Verbosity, Command, Succeeded)
+    % invoke_system_command(Globals, ErrorStream, Verbosity, Command, Succeeded)
     %
     % Invoke an executable. Both standard and error output will go to the
     % specified output stream.
     %
-:- pred invoke_system_command(io.output_stream::in,
+:- pred invoke_system_command(globals::in, io.output_stream::in,
     command_verbosity::in, string::in, bool::out, io::di, io::uo) is det.
 
-    % invoke_system_command_maybe_filter_output(ErrorStream, Verbosity,
-    %   Command, MaybeProcessOutput, Succeeded)
+    % invoke_system_command_maybe_filter_output(Globals, ErrorStream,
+    %   Verbosity, Command, MaybeProcessOutput, Succeeded)
     %
     % Invoke an executable. Both standard and error output will go to the
     % specified output stream after being piped through `ProcessOutput'
     % if MaybeProcessOutput is yes(ProcessOutput).
     %
-:- pred invoke_system_command_maybe_filter_output(io.output_stream::in,
-    command_verbosity::in, string::in, maybe(string)::in, bool::out,
-    io::di, io::uo) is det.
+:- pred invoke_system_command_maybe_filter_output(globals::in,
+    io.output_stream::in, command_verbosity::in, string::in, maybe(string)::in,
+    bool::out, io::di, io::uo) is det.
 
     % Make a command string, which needs to be invoked in a shell environment.
     %
@@ -130,13 +131,13 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Java command-line tools utilities
+% Java command-line tools utilities.
 %
 
     % Create a shell script with the same name as the given module to invoke
     % Java with the appropriate options on the class of the same name.
     %
-:- pred create_java_shell_script(module_name::in, bool::out,
+:- pred create_java_shell_script(globals::in, module_name::in, bool::out,
     io::di, io::uo) is det.
 
     % Given a list .class files, return the list of .class files that should be
@@ -144,14 +145,14 @@
     % files which we don't know about, so we have to scan the directory to
     % figure out which files were produced by `javac'.
     %
-:- pred list_class_files_for_jar(list(string)::in, string::out,
+:- pred list_class_files_for_jar(globals::in, list(string)::in, string::out,
     list(string)::out, io::di, io::uo) is det.
 
     % Given a `mmake' variable reference to a list of .class files, return an
     % expression that generates the list of arguments for `jar' to reference
     % those class files.
     %
-:- pred list_class_files_for_jar_mmake(string::in, string::out, io::di, io::uo)
+:- pred list_class_files_for_jar_mmake(globals::in, string::in, string::out)
     is det.
 
     % Get the value of the Java class path from the environment. (Normally
@@ -164,15 +165,15 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Erlang utilities
+% Erlang utilities.
 %
 
     % Create a shell script with the same name as the given module to invoke
     % the Erlang runtime system and execute the main/2 predicate in that
     % module.
     %
-:- pred create_erlang_shell_script(module_name::in, bool::out, io::di, io::uo)
-    is det.
+:- pred create_erlang_shell_script(globals::in, module_name::in, bool::out,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -181,7 +182,6 @@
 
 :- import_module libs.compiler_util.
 :- import_module libs.process_util.
-:- import_module libs.globals.
 :- import_module libs.handle_options.   % for grade_directory_component
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
@@ -197,8 +197,8 @@
 
 %-----------------------------------------------------------------------------%
 
-update_interface(OutputFileName, !IO) :-
-    update_interface_return_succeeded(OutputFileName, Succeeded, !IO),
+update_interface(Globals, OutputFileName, !IO) :-
+    update_interface_return_succeeded(Globals, OutputFileName, Succeeded, !IO),
     (
         Succeeded = no,
         report_error("problem updating interface files.", !IO)
@@ -206,8 +206,8 @@ update_interface(OutputFileName, !IO) :-
         Succeeded = yes
     ).
 
-update_interface_return_succeeded(OutputFileName, Succeeded, !IO) :-
-    update_interface_return_changed(OutputFileName, Result, !IO),
+update_interface_return_succeeded(Globals, OutputFileName, Succeeded, !IO) :-
+    update_interface_return_changed(Globals, OutputFileName, Result, !IO),
     (
         ( Result = interface_new_or_changed
         ; Result = interface_unchanged
@@ -218,8 +218,8 @@ update_interface_return_succeeded(OutputFileName, Succeeded, !IO) :-
         Succeeded = no
     ).
 
-update_interface_return_changed(OutputFileName, Result, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+update_interface_return_changed(Globals, OutputFileName, Result, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Updating interface:\n", !IO),
     TmpOutputFileName = OutputFileName ++ ".tmp",
     io.open_binary_input(OutputFileName, OutputFileRes, !IO),
@@ -241,8 +241,8 @@ update_interface_return_changed(OutputFileName, Result, !IO) :-
                 io.remove_file(TmpOutputFileName, _, !IO)
             ;
                 FilesDiffer = ok(ok(yes)),
-                update_interface_create_file("CHANGED", OutputFileName,
-                    TmpOutputFileName, Result, !IO)
+                update_interface_create_file(Globals, "CHANGED",
+                    OutputFileName, TmpOutputFileName, Result, !IO)
             ;
                 FilesDiffer = ok(error(TmpFileError)),
                 Result = interface_error,
@@ -253,8 +253,8 @@ update_interface_return_changed(OutputFileName, Result, !IO) :-
                 io.nl(!IO)
             ;
                 FilesDiffer = error(_, _),
-                update_interface_create_file("been CREATED", OutputFileName,
-                    TmpOutputFileName, Result, !IO)
+                update_interface_create_file(Globals, "been CREATED",
+                    OutputFileName, TmpOutputFileName, Result, !IO)
             )
         ;
 
@@ -269,19 +269,19 @@ update_interface_return_changed(OutputFileName, Result, !IO) :-
         )
     ;
         OutputFileRes = error(_),
-        update_interface_create_file("been CREATED", OutputFileName,
-            TmpOutputFileName, Result, !IO)
+        update_interface_create_file(Globals, "been CREATED",
+            OutputFileName, TmpOutputFileName, Result, !IO)
     ).
 
-:- pred update_interface_create_file(string::in, string::in, string::in,
-    update_interface_result::out, io::di, io::uo) is det.
+:- pred update_interface_create_file(globals::in, string::in, string::in,
+    string::in, update_interface_result::out, io::di, io::uo) is det.
 
-update_interface_create_file(Msg, OutputFileName, TmpOutputFileName, Result,
-        !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+update_interface_create_file(Globals, Msg, OutputFileName, TmpOutputFileName,
+        Result, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose,
         "% `" ++ OutputFileName ++ "' has " ++ Msg ++ ".\n", !IO),
-    copy_file(TmpOutputFileName, OutputFileName, MoveRes, !IO),
+    copy_file(Globals, TmpOutputFileName, OutputFileName, MoveRes, !IO),
     (
         MoveRes = ok,
         Result = interface_new_or_changed
@@ -349,13 +349,14 @@ binary_input_stream_cmp_2(TmpOutputFileStream, Byte, Continue, _, Differ,
 
 %-----------------------------------------------------------------------------%
 
-copy_file(Source, Destination, Res, !IO) :-
+copy_file(Globals, Source, Destination, Res, !IO) :-
     % Try to use the system's cp command in order to preserve metadata.
-    globals.io_lookup_string_option(install_command, InstallCommand, !IO),
+    globals.lookup_string_option(Globals, install_command, InstallCommand),
     Command = string.join_list("   ", list.map(quote_arg,
         [InstallCommand, Source, Destination])),
     io.output_stream(OutputStream, !IO),
-    invoke_system_command(OutputStream, cmd_verbose, Command, Succeeded, !IO),
+    invoke_system_command(Globals, OutputStream, cmd_verbose, Command,
+        Succeeded, !IO),
     (
         Succeeded = yes,
         Res = ok
@@ -382,8 +383,8 @@ copy_file(Source, Destination, Res, !IO) :-
         )
     ).
 
-maybe_make_symlink(LinkTarget, LinkName, Result, !IO) :-
-    globals.io_lookup_bool_option(use_symlinks, UseSymLinks, !IO),
+maybe_make_symlink(Globals, LinkTarget, LinkName, Result, !IO) :-
+    globals.lookup_bool_option(Globals, use_symlinks, UseSymLinks),
     (
         UseSymLinks = yes,
         io.remove_file_recursively(LinkName, _, !IO),
@@ -394,9 +395,9 @@ maybe_make_symlink(LinkTarget, LinkName, Result, !IO) :-
         Result = no
     ).
 
-make_symlink_or_copy_file(SourceFileName, DestinationFileName, Succeeded,
-        !IO) :-
-    globals.io_lookup_bool_option(use_symlinks, UseSymLinks, !IO),
+make_symlink_or_copy_file(Globals, SourceFileName, DestinationFileName,
+        Succeeded, !IO) :-
+    globals.lookup_bool_option(Globals, use_symlinks, UseSymLinks),
     (
         UseSymLinks = yes,
         LinkOrCopy = "linking",
@@ -404,7 +405,7 @@ make_symlink_or_copy_file(SourceFileName, DestinationFileName, Succeeded,
     ;
         UseSymLinks = no,
         LinkOrCopy = "copying",
-        copy_file(SourceFileName, DestinationFileName, Result, !IO)
+        copy_file(Globals, SourceFileName, DestinationFileName, Result, !IO)
     ),
     (
         Result = ok,
@@ -428,13 +429,13 @@ make_symlink_or_copy_file(SourceFileName, DestinationFileName, Succeeded,
 
 %-----------------------------------------------------------------------------%
 
-touch_interface_datestamp(ModuleName, Ext, !IO) :-
-    module_name_to_file_name(ModuleName, Ext, do_create_dirs,
+touch_interface_datestamp(Globals, ModuleName, Ext, !IO) :-
+    module_name_to_file_name(Globals, ModuleName, Ext, do_create_dirs,
         OutputFileName, !IO),
-    touch_datestamp(OutputFileName, !IO).
+    touch_datestamp(Globals, OutputFileName, !IO).
 
-touch_datestamp(OutputFileName, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+touch_datestamp(Globals, OutputFileName, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose,
         "% Touching `" ++ OutputFileName ++ "'... ", !IO),
     maybe_flush_output(Verbose, !IO),
@@ -459,21 +460,22 @@ maybe_set_exit_status(no, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-invoke_system_command(ErrorStream, Verbosity, Command, Succeeded, !IO) :-
-    invoke_system_command_maybe_filter_output(ErrorStream, Verbosity, Command,
-        no, Succeeded, !IO).
+invoke_system_command(Globals, ErrorStream, Verbosity,
+        Command, Succeeded, !IO) :-
+    invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
+        Command, no, Succeeded, !IO).
 
-invoke_system_command_maybe_filter_output(ErrorStream, Verbosity, Command,
-        MaybeProcessOutput, Succeeded, !IO) :-
+invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
+        Command, MaybeProcessOutput, Succeeded, !IO) :-
     % This predicate shouldn't alter the exit status of mercury_compile.
     io.get_exit_status(OldStatus, !IO),
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     (
         Verbosity = cmd_verbose,
         PrintCommand = Verbose
     ;
         Verbosity = cmd_verbose_commands,
-        globals.io_lookup_bool_option(verbose_commands, PrintCommand, !IO)
+        globals.lookup_bool_option(Globals, verbose_commands, PrintCommand)
     ),
     (
         PrintCommand = yes,
@@ -662,29 +664,29 @@ use_win32 :-
 % Java command-line utilities.
 %
 
+create_java_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
     % XXX We should also create a ".bat" on Windows.
-    %
-create_java_shell_script(MainModuleName, Succeeded, !IO) :-
-    Extension = "",
-    module_name_to_file_name(MainModuleName, Extension, do_not_create_dirs,
-        FileName, !IO),
 
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    Extension = "",
+    module_name_to_file_name(Globals, MainModuleName, Extension,
+        do_not_create_dirs, FileName, !IO),
+
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Generating shell script `" ++
         FileName ++ "'...\n", !IO),
 
     % In shell scripts always use / separators, even on Windows.
-    get_class_dir_name(ClassDirName, !IO),
+    get_class_dir_name(Globals, ClassDirName),
     string.replace_all(ClassDirName, "\\", "/", ClassDirNameUnix),
 
-    globals.io_lookup_accumulating_option(java_classpath, Java_Incl_Dirs0,
-        !IO),
+    globals.lookup_accumulating_option(Globals, java_classpath,
+        Java_Incl_Dirs0),
     % We prepend the .class files' directory and the current CLASSPATH.
     Java_Incl_Dirs = ["$DIR/" ++ ClassDirNameUnix,
         "$CLASSPATH" | Java_Incl_Dirs0],
     ClassPath = string.join_list("${SEP}", Java_Incl_Dirs),
 
-    globals.io_lookup_string_option(java_interpreter, Java, !IO),
+    globals.lookup_string_option(Globals, java_interpreter, Java),
     mangle_sym_name_for_java(MainModuleName, module_qual, ".", ClassName),
 
     % Remove symlink in the way, if any.
@@ -726,13 +728,14 @@ create_java_shell_script(MainModuleName, Succeeded, !IO) :-
         Succeeded = no
     ).
 
-list_class_files_for_jar(MainClassFiles, ClassSubDir, ListClassFiles, !IO) :-
-    globals.io_lookup_bool_option(use_subdirs, UseSubdirs, !IO),
-    globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
+list_class_files_for_jar(Globals, MainClassFiles, ClassSubDir,
+        ListClassFiles, !IO) :-
+    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
     AnySubdirs = UseSubdirs `or` UseGradeSubdirs,
     (
         AnySubdirs = yes,
-        get_class_dir_name(ClassSubDir, !IO)
+        get_class_dir_name(Globals, ClassSubDir)
     ;
         AnySubdirs = no,
         ClassSubDir = dir.this_directory
@@ -765,6 +768,28 @@ list_class_files_for_jar(MainClassFiles, ClassSubDir, ListClassFiles, !IO) :-
         unexpected(this_file, io.error_message(Error))
     ).
 
+list_class_files_for_jar_mmake(Globals, ClassFiles, ListClassFiles) :-
+    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
+    AnySubdirs = UseSubdirs `or` UseGradeSubdirs,
+    (
+        AnySubdirs = yes,
+        get_class_dir_name(Globals, ClassSubdir),
+        % Here we use the `-C' option of jar to change directory during
+        % execution, then use sed to strip away the Mercury/classs/
+        % prefix to the class files.
+        % Otherwise, the class files would be stored as
+        %   Mercury/classs/*.class
+        % within the jar file, which is not what we want.
+        % XXX It would be nice to avoid this dependency on sed.
+        ListClassFiles = "-C " ++ ClassSubdir ++ " \\\n" ++
+            "\t\t`echo "" " ++ ClassFiles ++ """" ++
+            " | sed 's| '" ++ ClassSubdir ++ "/| |'`"
+    ;
+        AnySubdirs = no,
+        ListClassFiles = ClassFiles
+    ).
+
 :- pred make_nested_class_prefix(string::in, string::out) is semidet.
 
 make_nested_class_prefix(ClassFileName, ClassPrefix) :-
@@ -789,28 +814,6 @@ accumulate_nested_class_files(NestedClassPrefixes, DirName, BaseName,
     ),
     Continue = yes.
 
-list_class_files_for_jar_mmake(ClassFiles, ListClassFiles, !IO) :-
-    globals.io_lookup_bool_option(use_subdirs, UseSubdirs, !IO),
-    globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
-    AnySubdirs = UseSubdirs `or` UseGradeSubdirs,
-    (
-        AnySubdirs = yes,
-        get_class_dir_name(ClassSubdir, !IO),
-        % Here we use the `-C' option of jar to change directory during
-        % execution, then use sed to strip away the Mercury/classs/
-        % prefix to the class files.
-        % Otherwise, the class files would be stored as
-        %   Mercury/classs/*.class
-        % within the jar file, which is not what we want.
-        % XXX It would be nice to avoid this dependency on sed.
-        ListClassFiles = "-C " ++ ClassSubdir ++ " \\\n" ++
-            "\t\t`echo "" " ++ ClassFiles ++ """" ++
-            " | sed 's| '" ++ ClassSubdir ++ "/| |'`"
-    ;
-        AnySubdirs = no,
-        ListClassFiles = ClassFiles
-    ).
-
 get_env_classpath(Classpath, !IO) :-
     io.get_environment_var("CLASSPATH", MaybeCP, !IO),
     (
@@ -831,29 +834,28 @@ get_env_classpath(Classpath, !IO) :-
 % Erlang utilities
 %
 
-create_erlang_shell_script(MainModuleName, Succeeded, !IO) :-
+create_erlang_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
     Extension = "",
-    module_name_to_file_name(MainModuleName, Extension, do_not_create_dirs,
-        ScriptFileName, !IO),
-    globals.io_get_globals(Globals, !IO),
+    module_name_to_file_name(Globals, MainModuleName, Extension,
+        do_not_create_dirs, ScriptFileName, !IO),
     grade_directory_component(Globals, GradeDir),
 
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Generating shell script `" ++
         ScriptFileName ++ "'...\n", !IO),
 
-    globals.io_lookup_string_option(erlang_object_file_extension, BeamExt,
-        !IO),
-    module_name_to_file_name(MainModuleName, BeamExt, do_not_create_dirs,
-        BeamFileName, !IO),
+    globals.lookup_string_option(Globals, erlang_object_file_extension,
+        BeamExt),
+    module_name_to_file_name(Globals, MainModuleName, BeamExt,
+        do_not_create_dirs, BeamFileName, !IO),
     BeamDirName = dir.dirname(BeamFileName),
-    module_name_to_file_name(MainModuleName, BeamBaseNameNoExt),
+    module_name_to_file_name_stem(MainModuleName, BeamBaseNameNoExt),
 
     % Add `-pa <dir>' option to find the standard library.
     % (-pa adds the directory to the beginning of the list of paths to search
     % for .beam files)
-    globals.io_lookup_maybe_string_option(
-        mercury_standard_library_directory, MaybeStdLibDir, !IO),
+    globals.lookup_maybe_string_option(Globals,
+        mercury_standard_library_directory, MaybeStdLibDir),
     (
         MaybeStdLibDir = yes(StdLibDir),
         StdLibBeamsPath = StdLibDir/"lib"/GradeDir/"libmer_std.beams",
@@ -867,13 +869,13 @@ create_erlang_shell_script(MainModuleName, Succeeded, !IO) :-
     ),
 
     % Add `-pa <dir>' options to find any other libraries specified by the user.
-    globals.io_lookup_accumulating_option(
-        mercury_library_directories, MercuryLibDirs0, !IO),
+    globals.lookup_accumulating_option(Globals, mercury_library_directories,
+        MercuryLibDirs0),
     MercuryLibDirs = list.map((func(LibDir) = LibDir/"lib"/GradeDir),
         MercuryLibDirs0),
-    globals.io_lookup_accumulating_option(link_libraries,
-        LinkLibrariesList0, !IO),
-    list.map_foldl2(find_erlang_library_path(MercuryLibDirs),
+    globals.lookup_accumulating_option(Globals, link_libraries,
+        LinkLibrariesList0),
+    list.map_foldl2(find_erlang_library_path(Globals, MercuryLibDirs),
         LinkLibrariesList0, LinkLibrariesList, yes, LibrariesSucceeded,
         !IO),
     (
@@ -884,7 +886,7 @@ create_erlang_shell_script(MainModuleName, Succeeded, !IO) :-
         (
             OpenResult = ok(ShellScript),
 
-            globals.io_lookup_string_option(erlang_interpreter, Erlang, !IO),
+            globals.lookup_string_option(Globals, erlang_interpreter, Erlang),
             SearchLibs = string.append_list(list.map(pa_option(yes),
                 list.sort_and_remove_dups(LinkLibrariesList))),
 
@@ -932,16 +934,15 @@ create_erlang_shell_script(MainModuleName, Succeeded, !IO) :-
         Succeeded = no
     ).
 
-:- pred find_erlang_library_path(list(dir_name)::in, string::in, string::out,
-    bool::in, bool::out, io::di, io::uo) is det.
+:- pred find_erlang_library_path(globals::in, list(dir_name)::in, string::in,
+    string::out, bool::in, bool::out, io::di, io::uo) is det.
 
-find_erlang_library_path(MercuryLibDirs, LibName, LibPath, !Succeeded, !IO) :-
-    globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
+find_erlang_library_path(Globals, MercuryLibDirs, LibName, LibPath,
+        !Succeeded, !IO) :-
     file_name_to_module_name(LibName, LibModuleName),
-    globals.io_set_option(use_grade_subdirs, bool(no), !IO),
-    module_name_to_lib_file_name("lib", LibModuleName, ".beams",
-        do_not_create_dirs, LibFileName, !IO),
-    globals.io_set_option(use_grade_subdirs, bool(UseGradeSubdirs), !IO),
+    globals.set_option(use_grade_subdirs, bool(no), Globals, NoSubdirsGlobals),
+    module_name_to_lib_file_name(NoSubdirsGlobals, "lib", LibModuleName,
+        ".beams", do_not_create_dirs, LibFileName, !IO),
 
     search_for_file_returning_dir(do_not_open_file, MercuryLibDirs,
         LibFileName, SearchResult, !IO),

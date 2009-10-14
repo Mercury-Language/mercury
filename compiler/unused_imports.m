@@ -70,9 +70,10 @@
 
 unused_imports(ModuleInfo, !:Specs, !IO) :-
     !:Specs = [],
+    module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(ModuleName, ".m", do_not_create_dirs, FileName,
-        !IO),
+    module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
+        FileName, !IO),
 
     % Each parent module of the current module imports are inherited by
     % this module so we have to add the used modules of the parents to

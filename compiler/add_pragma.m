@@ -1493,6 +1493,7 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
         globals.lookup_bool_option(Globals, user_guided_type_specialization,
             DoTypeSpec),
         globals.lookup_bool_option(Globals, smart_recompilation, Smart),
+        % XXX Should check whether smart recompilation has been disabled?
         (
             MaybeProcIds = yes(ProcIds),
             % Even if we aren't doing type specialization, we need to create

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
@@ -103,6 +103,12 @@
     % this is semidet whereas string.append(out, in, in) is nondet.
     %
 :- pred string.remove_suffix(string::in, string::in, string::out) is semidet.
+
+    % string.remove_suffix_det(String, Suffix) returns the same value
+    % as string.remove_suffix, except it aborts if String does not end
+    % with Suffix.
+    %
+:- func string.remove_suffix_det(string, string) = string.
 
     % string.remove_suffix_if_present(Suffix, String) returns `String' minus
     % `Suffix' if `String' ends with `Suffix', `String' otherwise.
@@ -1087,9 +1093,16 @@ string.right(String, RightCount, RightString) :-
     LeftCount = Length - RightCount,
     string.split(String, LeftCount, _LeftString, RightString).
 
-string.remove_suffix(A, B, C) :-
-    string.suffix(A, B),
-    string.left(A, length(A) - length(B), C).
+string.remove_suffix(String, Suffix, StringWithoutSuffix) :-
+    string.suffix(String, Suffix),
+    string.left(String, length(String) - length(Suffix), StringWithoutSuffix).
+
+string.remove_suffix_det(String, Suffix) = StringWithoutSuffix :-
+    ( string.remove_suffix(String, Suffix, StringWithoutSuffixPrime) ->
+        StringWithoutSuffix = StringWithoutSuffixPrime
+    ;
+        error("string.remove_suffix_det: string does not have given suffix")
+    ).
 
 string.remove_suffix_if_present(Suffix, String) = Out :-
     LeftCount = length(String) - length(Suffix),

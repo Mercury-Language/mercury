@@ -17,81 +17,83 @@
 :- module analysis.file.
 :- interface.
 
-    % read_module_overall_status(Compiler, ModuleName, MaybeModuleStatus, !IO)
+    % read_module_overall_status(Compiler, Globals, ModuleName,
+    %   MaybeModuleStatus, !IO)
     %
     % Read the overall status of a module from its `.analysis_status' file.
     % If the module has outstanding requests, then an overall status of
     % `optimal' is downgraded to `suboptimal'.
     %
-:- pred read_module_overall_status(Compiler::in, module_name::in,
+:- pred read_module_overall_status(Compiler::in, globals::in, module_name::in,
     analysis_status::out, io::di, io::uo) is det <= compiler(Compiler).
 
-    % write_module_overall_status(AnalysisInfo, ModuleName, ModuleStatus, !IO)
+    % write_module_overall_status(AnalysisInfo, Globals, ModuleName,
+    %   ModuleStatus, !IO)
     %
     % Write the status of a module to its `.analysis_status' file.
     %
-:- pred write_module_overall_status(analysis_info::in, module_name::in,
-    analysis_status::in, io::di, io::uo) is det.
+:- pred write_module_overall_status(analysis_info::in, globals::in,
+    module_name::in, analysis_status::in, io::di, io::uo) is det.
 
-    % read_module_analysis_results(AnalysisInfo, ModuleName, AnalysisResults,
-    %   !IO)
+    % read_module_analysis_results(AnalysisInfo, Globals, ModuleName,
+    %   AnalysisResults, !IO)
     %
     % Read the analysis results from a `.analysis' file,
     % or from the analysis file cache (if enabled, and the cache file is
     % up-to-date).
     %
-:- pred read_module_analysis_results(analysis_info::in, module_name::in,
-    module_analysis_map(some_analysis_result)::out, io::di, io::uo) is det.
+:- pred read_module_analysis_results(analysis_info::in, globals::in,
+    module_name::in, module_analysis_map(some_analysis_result)::out,
+    io::di, io::uo) is det.
 
-    % write_module_analysis_results(AnalysisInfo, ModuleName, AnalysisResults,
-    %   !IO)
+    % write_module_analysis_results(AnalysisInfo, Globals, ModuleName,
+    %   AnalysisResults, !IO)
     %
     % Write the analysis results for a module to its `.analysis' file.
     % Optionally, also write the cache copy of the analysis file.
     %
-:- pred write_module_analysis_results(analysis_info::in,
+:- pred write_module_analysis_results(analysis_info::in, globals::in,
     module_name::in, module_analysis_map(some_analysis_result)::in,
     io::di, io::uo) is det.
 
-    % read_module_analysis_requests(AnalysisInfo, ModuleName, ModuleRequests,
-    %   !IO)
+    % read_module_analysis_requests(AnalysisInfo, Globals, ModuleName,
+    %   ModuleRequests, !IO)
     %
     % Read outstanding analysis requests to a module from disk.
     %
-:- pred read_module_analysis_requests(analysis_info::in,
+:- pred read_module_analysis_requests(analysis_info::in, globals::in,
     module_name::in, module_analysis_map(analysis_request)::out,
     io::di, io::uo) is det.
 
-    % write_module_analysis_requests(AnalysisInfo, ModuleName, ModuleRequests,
-    %   !IO)
+    % write_module_analysis_requests(AnalysisInfo, Globals, ModuleName,
+    %   ModuleRequests, !IO)
     %
     % Write outstanding analysis requests for a module to disk.
     %
-:- pred write_module_analysis_requests(analysis_info::in,
+:- pred write_module_analysis_requests(analysis_info::in, globals::in,
     module_name::in, module_analysis_map(analysis_request)::in,
     io::di, io::uo) is det.
 
-    % read_module_imdg(AnalysisInfo, ModuleName, ModuleEntries, !IO)
+    % read_module_imdg(AnalysisInfo, Globals, ModuleName, ModuleEntries, !IO)
     %
     % Read the intermodule dependencies graph entries for a module from disk.
     %
-:- pred read_module_imdg(analysis_info::in, module_name::in,
+:- pred read_module_imdg(analysis_info::in, globals::in, module_name::in,
     module_analysis_map(imdg_arc)::out, io::di, io::uo) is det.
 
-    % write_module_imdg(AnalysisInfo, ModuleName, ModuleEntries, !IO)
+    % write_module_imdg(AnalysisInfo, Globals, ModuleName, ModuleEntries, !IO)
     %
-    % Write the intermodule dependencies graph entries for a module
-    % to disk.
+    % Write the intermodule dependencies graph entries for a module to disk.
     %
-:- pred write_module_imdg(analysis_info::in, module_name::in,
+:- pred write_module_imdg(analysis_info::in, globals::in, module_name::in,
     module_analysis_map(imdg_arc)::in, io::di, io::uo) is det.
 
-    % empty_request_file(AnalysisInfo, ModuleName, !IO)
+    % empty_request_file(AnalysisInfo, Globals, ModuleName, !IO)
     %
     % Delete the file containing outstanding analysis requests for a module.
     % This means all the analysis requests should have been satisfied already.
     %
-:- pred empty_request_file(analysis_info::in, module_name::in,
+:- pred empty_request_file(analysis_info::in, globals::in, module_name::in,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -183,11 +185,14 @@ analysis_status_to_string(optimal, "optimal").
 
 %-----------------------------------------------------------------------------%
 %
-% Reading
+% Reading.
 %
 
-read_module_overall_status(Compiler, ModuleName, ModuleStatus, !IO) :-
-    module_name_to_read_file_name(Compiler, ModuleName,
+:- type parse_entry(T) == pred(term, T, T).
+:- inst parse_entry == (pred(in, in, out) is det).
+
+read_module_overall_status(Compiler, Globals, ModuleName, ModuleStatus, !IO) :-
+    module_name_to_read_file_name(Compiler, Globals, ModuleName,
         analysis_registry_status_suffix, MaybeFileName, !IO),
     (
         MaybeFileName = ok(FileName),
@@ -200,8 +205,8 @@ read_module_overall_status(Compiler, ModuleName, ModuleStatus, !IO) :-
     ),
     (
         ModuleStatus0 = optimal,
-        module_name_to_read_file_name(Compiler, ModuleName, request_suffix,
-            MaybeRequestFileName, !IO),
+        module_name_to_read_file_name(Compiler, Globals, ModuleName,
+            request_suffix, MaybeRequestFileName, !IO),
         (
             % There are outstanding requests for this module.
             MaybeRequestFileName = ok(_),
@@ -255,21 +260,24 @@ read_module_overall_status_2(FileName, ModuleStatus, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-read_module_analysis_results(Info, ModuleName, ModuleResults, !IO) :-
+read_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
     % If the module's overall status is `invalid' then at least one of its
     % results is invalid.  However, we can't just discard the results as we
     % want to know which results change after we reanalyse the module.
     Compiler = Info ^ compiler,
-    module_name_to_read_file_name(Compiler, ModuleName,
+    module_name_to_read_file_name(Compiler, Globals, ModuleName,
         analysis_registry_suffix, MaybeAnalysisFileName, !IO),
     (
         MaybeAnalysisFileName = ok(AnalysisFileName),
 
         % If analysis file caching is enabled, and the cache file exists and is
         % up-to-date, then read from the cache instead.
-        globals.io_lookup_string_option(analysis_file_cache_dir, CacheDir,
-            !IO),
-        ( CacheDir \= "" ->
+        globals.lookup_string_option(Globals, analysis_file_cache_dir,
+            CacheDir),
+        ( CacheDir = "" ->
+            read_module_analysis_results_2(Compiler, AnalysisFileName,
+                ModuleResults, !IO)
+        ;
             CacheFileName = make_cache_filename(CacheDir, AnalysisFileName),
             io.file_modification_time(AnalysisFileName, AnalysisTimeResult,
                 !IO),
@@ -300,9 +308,6 @@ read_module_analysis_results(Info, ModuleName, ModuleResults, !IO) :-
                     ModuleResults, !IO),
                 write_analysis_cache_file(CacheFileName, ModuleResults, !IO)
             )
-        ;
-            read_module_analysis_results_2(Compiler, AnalysisFileName,
-                ModuleResults, !IO)
         )
     ;
         MaybeAnalysisFileName = error(_),
@@ -349,9 +354,10 @@ read_module_analysis_results_2(Compiler, AnalysisFileName, ModuleResults,
         ModuleResults = ModuleResults0
     ).
 
-:- pred parse_result_entry(Compiler::in)
-    `with_type` parse_entry(module_analysis_map(some_analysis_result))
-    `with_inst` parse_entry <= compiler(Compiler).
+:- pred parse_result_entry(Compiler::in, term::in,
+    module_analysis_map(some_analysis_result)::in,
+    module_analysis_map(some_analysis_result)::out) is det
+    <= compiler(Compiler).
 
 parse_result_entry(Compiler, Term, Results0, Results) :-
     (
@@ -397,14 +403,16 @@ parse_result_entry(Compiler, Term, Results0, Results) :-
 
 %-----------------------------------------------------------------------------%
 
-read_module_analysis_requests(Info, ModuleName, ModuleRequests, !IO) :-
-    read_analysis_file(Info ^ compiler, ModuleName, request_suffix,
+read_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
+        !IO) :-
+    read_analysis_file(Info ^ compiler, Globals, ModuleName, request_suffix,
         parse_request_entry(Info ^ compiler),
         map.init, ModuleRequests, !IO).
 
-:- pred parse_request_entry(Compiler::in)
-    `with_type` parse_entry(module_analysis_map(analysis_request))
-    `with_inst` parse_entry <= compiler(Compiler).
+:- pred parse_request_entry(Compiler::in, term::in,
+    module_analysis_map(analysis_request)::in,
+    module_analysis_map(analysis_request)::out) is det
+    <= compiler(Compiler).
 
 parse_request_entry(Compiler, Term, Requests0, Requests) :-
     (
@@ -447,14 +455,13 @@ parse_request_entry(Compiler, Term, Requests0, Requests) :-
 
 %-----------------------------------------------------------------------------%
 
-read_module_imdg(Info, ModuleName, ModuleEntries, !IO) :-
-    read_analysis_file(Info ^ compiler, ModuleName, imdg_suffix,
-        parse_imdg_arc(Info ^ compiler),
-        map.init, ModuleEntries, !IO).
+read_module_imdg(Info, Globals, ModuleName, ModuleEntries, !IO) :-
+    read_analysis_file(Info ^ compiler, Globals, ModuleName, imdg_suffix,
+        parse_imdg_arc(Info ^ compiler), map.init, ModuleEntries, !IO).
 
-:- pred parse_imdg_arc(Compiler::in)
-    `with_type` parse_entry(module_analysis_map(imdg_arc))
-    `with_inst` parse_entry <= compiler(Compiler).
+:- pred parse_imdg_arc(Compiler::in, term::in,
+    module_analysis_map(imdg_arc)::in, module_analysis_map(imdg_arc)::out)
+    is det <= compiler(Compiler).
 
 parse_imdg_arc(Compiler, Term, Arcs0, Arcs) :-
     (
@@ -523,16 +530,13 @@ try_parse_module_name(Term, ModuleName) :-
 
 %-----------------------------------------------------------------------------%
 
-:- type parse_entry(T) == pred(term, T, T).
-:- inst parse_entry == (pred(in, in, out) is det).
+:- pred read_analysis_file(Compiler::in, globals::in, module_name::in,
+    string::in, parse_entry(T)::in(parse_entry), T::in, T::out,
+    io::di, io::uo) is det <= compiler(Compiler).
 
-:- pred read_analysis_file(Compiler::in, module_name::in, string::in,
-    parse_entry(T)::in(parse_entry), T::in, T::out, io::di, io::uo) is det
-    <= compiler(Compiler).
-
-read_analysis_file(Compiler, ModuleName, Suffix, ParseEntry,
+read_analysis_file(Compiler, Globals, ModuleName, Suffix, ParseEntry,
         ModuleResults0, ModuleResults, !IO) :-
-    module_name_to_read_file_name(Compiler, ModuleName, Suffix,
+    module_name_to_read_file_name(Compiler, Globals, ModuleName, Suffix,
         MaybeAnalysisFileName, !IO),
     (
         MaybeAnalysisFileName = ok(AnalysisFileName),
@@ -625,11 +629,14 @@ read_analysis_file_2(ParseEntry, Results0, Results, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Writing
+% Writing.
 %
 
-write_module_overall_status(Info, ModuleName, Status, !IO) :-
-    module_name_to_write_file_name(Info ^ compiler, ModuleName,
+:- type write_entry(T) == pred(analysis_name, func_id, T, io, io).
+:- inst write_entry == (pred(in, in, in, di, uo) is det).
+
+write_module_overall_status(Info, Globals, ModuleName, Status, !IO) :-
+    module_name_to_write_file_name(Info ^ compiler, Globals, ModuleName,
         analysis_registry_status_suffix, FileName, !IO),
     io.open_output(FileName, OpenResult, !IO),
     (
@@ -653,20 +660,21 @@ write_module_overall_status(Info, ModuleName, Status, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-write_module_analysis_results(Info, ModuleName, ModuleResults, !IO) :-
+write_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
     debug_msg((pred(!.IO::di, !:IO::uo) is det :-
         io.write_string("% Writing module analysis results for ", !IO),
         io.write(ModuleName, !IO),
         io.nl(!IO)
     ), !IO),
     ToTmp = yes,
-    write_analysis_file(Info ^ compiler, ModuleName, analysis_registry_suffix,
-        ToTmp, write_result_entry, ModuleResults, FileName, !IO),
-    update_interface_return_changed(FileName, Result, !IO),
+    write_analysis_file(Info ^ compiler, Globals, ModuleName,
+        analysis_registry_suffix, ToTmp, write_result_entry,
+        ModuleResults, FileName, !IO),
+    update_interface_return_changed(Globals, FileName, Result, !IO),
 
     % If analysis file caching is turned on, write the internal represention of
     % the module results to disk right now.
-    globals.io_lookup_string_option(analysis_file_cache_dir, CacheDir, !IO),
+    globals.lookup_string_option(Globals, analysis_file_cache_dir, CacheDir),
     (
         CacheDir \= "",
         Result = interface_new_or_changed
@@ -677,9 +685,8 @@ write_module_analysis_results(Info, ModuleName, ModuleResults, !IO) :-
         true
     ).
 
-:- pred write_result_entry
-    `with_type` write_entry(some_analysis_result)
-    `with_inst` write_entry.
+:- pred write_result_entry(analysis_name::in, func_id::in,
+    some_analysis_result::in, io::di, io::uo) is det.
 
 write_result_entry(AnalysisName, FuncId, Result, !IO) :-
     Result = some_analysis_result(Call, Answer, Status),
@@ -701,10 +708,11 @@ write_result_entry(AnalysisName, FuncId, Result, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-write_module_analysis_requests(Info, ModuleName, ModuleRequests, !IO) :-
+write_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
+        !IO) :-
     Compiler = Info ^ compiler,
-    module_name_to_write_file_name(Compiler, ModuleName, request_suffix,
-        AnalysisFileName, !IO),
+    module_name_to_write_file_name(Compiler, Globals, ModuleName,
+        request_suffix, AnalysisFileName, !IO),
     debug_msg((pred(!.IO::di, !:IO::uo) is det :-
         io.write_string("% Writing module analysis requests to ", !IO),
         io.write_string(AnalysisFileName, !IO),
@@ -752,9 +760,8 @@ write_module_analysis_requests(Info, ModuleName, ModuleRequests, !IO) :-
         Appended = yes
     ).
 
-:- pred write_request_entry(Compiler::in)
-    `with_type` write_entry(analysis_request)
-    `with_inst` write_entry <= compiler(Compiler).
+:- pred write_request_entry(Compiler::in, analysis_name::in, func_id::in,
+    analysis_request::in, io::di, io::uo) is det <= compiler(Compiler).
 
 write_request_entry(Compiler, AnalysisName, FuncId, Request, !IO) :-
     Request = analysis_request(Call, CallerModule),
@@ -781,14 +788,13 @@ write_request_entry(Compiler, AnalysisName, FuncId, Request, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-write_module_imdg(Info, ModuleName, ModuleEntries, !IO) :-
+write_module_imdg(Info, Globals, ModuleName, ModuleEntries, !IO) :-
     ToTmp = no,
-    write_analysis_file(Info ^ compiler, ModuleName, imdg_suffix, ToTmp,
-        write_imdg_arc(Info ^ compiler), ModuleEntries, _FileName, !IO).
+    write_analysis_file(Info ^ compiler, Globals, ModuleName, imdg_suffix,
+        ToTmp, write_imdg_arc(Info ^ compiler), ModuleEntries, _FileName, !IO).
 
-:- pred write_imdg_arc(Compiler::in)
-    `with_type` write_entry(imdg_arc)
-    `with_inst` write_entry <= compiler(Compiler).
+:- pred write_imdg_arc(Compiler::in, analysis_name::in, func_id::in,
+    imdg_arc::in, io::di, io::uo) is det <= compiler(Compiler).
 
 write_imdg_arc(Compiler, AnalysisName, FuncId, Arc, !IO) :-
     Arc = imdg_arc(Call, DependentModule),
@@ -838,17 +844,15 @@ write_module_name(ModuleName, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- type write_entry(T) == pred(analysis_name, func_id, T, io, io).
-:- inst write_entry == (pred(in, in, in, di, uo) is det).
+:- pred write_analysis_file(Compiler::in, globals::in, module_name::in,
+    string::in, bool::in, write_entry(T)::in(write_entry),
+    module_analysis_map(T)::in, string::out, io::di, io::uo) is det
+    <= compiler(Compiler).
 
-:- pred write_analysis_file(Compiler::in, module_name::in, string::in,
-    bool::in, write_entry(T)::in(write_entry), module_analysis_map(T)::in,
-    string::out, io::di, io::uo) is det <= compiler(Compiler).
-
-write_analysis_file(Compiler, ModuleName, Suffix, ToTmp, WriteEntry,
+write_analysis_file(Compiler, Globals, ModuleName, Suffix, ToTmp, WriteEntry,
         ModuleResults, FileName, !IO) :-
-    module_name_to_write_file_name(Compiler, ModuleName, Suffix, FileName,
-        !IO),
+    module_name_to_write_file_name(Compiler, Globals, ModuleName,
+        Suffix, FileName, !IO),
     (
         ToTmp = yes,
         WriteFileName = FileName ++ ".tmp"
@@ -903,9 +907,9 @@ write_analysis_file_4(WriteEntry, AnalysisName, FuncId, FuncResultList, !IO) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-empty_request_file(Info, ModuleName, !IO) :-
-    module_name_to_write_file_name(Info ^ compiler, ModuleName, request_suffix,
-        RequestFileName, !IO),
+empty_request_file(Info, Globals, ModuleName, !IO) :-
+    module_name_to_write_file_name(Info ^ compiler, Globals, ModuleName,
+        request_suffix, RequestFileName, !IO),
     debug_msg((pred(!.IO::di, !:IO::uo) is det :-
         io.write_string("% Removing request file ", !IO),
         io.write_string(RequestFileName, !IO),
@@ -916,7 +920,7 @@ empty_request_file(Info, ModuleName, !IO) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
-% Analysis file caching
+% Analysis file caching.
 %
 % An analysis cache file stores a binary representation of the parsed
 % information in the corresponding .analysis file.  In some cases, the binary

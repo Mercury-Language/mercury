@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001,2003-2008 The University of Melbourne.
+% Copyright (C) 1994-2001,2003-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -93,7 +93,6 @@
 :- module ll_backend.frameopt.
 :- interface.
 
-:- import_module libs.globals.
 :- import_module ll_backend.llds.
 :- import_module mdbcomp.prim_data.
 
@@ -104,7 +103,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % frameopt_main_det_stack(ProcLabel, !LabelCounter, !Instrs, Globals,
+    % frameopt_main_det_stack(ProcLabel, !LabelCounter, !Instrs, AddComments,
     %   AnyChange):
     %
     % Attempt to update !Instrs using the one of the transformations
@@ -120,18 +119,18 @@
     % short-circuited.
     %
 :- pred frameopt_main_det_stack(proc_label::in, counter::in, counter::out,
-    list(instruction)::in, list(instruction)::out, globals::in, bool::out)
+    list(instruction)::in, list(instruction)::out, bool::in, bool::out)
     is det.
 
-    % frameopt_main_nondet_stack(ProcLabel, !LabelCounter, !Instrs, Globals,
-    %   AnyChange):
+    % frameopt_main_nondet_stack(ProcLabel, !LabelCounter, !Instrs,
+    %   AddComments, AnyChange):
     %
     % The equivalent of frameopt_main_det_stack for procedures that live on
     % the nondet stack, but attempting only the transformation that delays
     % the creation of stack frames.
     %
 :- pred frameopt_main_nondet_stack(proc_label::in, counter::in, counter::out,
-    list(instruction)::in, list(instruction)::out, globals::in, bool::out)
+    list(instruction)::in, list(instruction)::out, bool::in, bool::out)
     is det.
 
     % frameopt_keep_nondet_frame(ProcLabel, LayoutLabels,
@@ -175,7 +174,7 @@
 
 %-----------------------------------------------------------------------------%
 
-frameopt_main_det_stack(ProcLabel, !C, Instrs0, Instrs, Globals, Mod) :-
+frameopt_main_det_stack(ProcLabel, !C, Instrs0, Instrs, AddComments, Mod) :-
     opt_util.get_prologue(Instrs0, LabelInstr, Comments0, Instrs1),
     ( detect_det_entry(Instrs1, _, _, EntryInfo) ->
         some [!BlockMap] (
@@ -202,7 +201,7 @@ frameopt_main_det_stack(ProcLabel, !C, Instrs0, Instrs, Globals, Mod) :-
                 KeepFrame = no,
                 ( can_delay_frame(LabelSeq0, !.BlockMap) ->
                     delay_frame_transform(LabelSeq0, LabelSeq, EntryInfo,
-                        ProcLabel, PredMap, !C, !BlockMap, Globals,
+                        ProcLabel, PredMap, !C, !BlockMap, AddComments,
                         TransformComments, DescComments, CanTransform),
                     (
                         CanTransform = can_transform,
@@ -213,7 +212,7 @@ frameopt_main_det_stack(ProcLabel, !C, Instrs0, Instrs, Globals, Mod) :-
                         Mod = yes
                     ;
                         CanTransform = cannot_transform,
-                        maybe_add_comments(Globals, DescComments,
+                        maybe_add_comments(AddComments, DescComments,
                             Instrs0, Instrs, Mod)
                     )
                 ;
@@ -227,7 +226,7 @@ frameopt_main_det_stack(ProcLabel, !C, Instrs0, Instrs, Globals, Mod) :-
         Mod = no
     ).
 
-frameopt_main_nondet_stack(ProcLabel, !C, Instrs0, Instrs, Globals, Mod) :-
+frameopt_main_nondet_stack(ProcLabel, !C, Instrs0, Instrs, AddComments, Mod) :-
     opt_util.get_prologue(Instrs0, LabelInstr, Comments0, Instrs1),
     ( detect_nondet_entry(Instrs1, _, _, EntryInfo) ->
         some [!BlockMap] (
@@ -241,7 +240,7 @@ frameopt_main_nondet_stack(ProcLabel, !C, Instrs0, Instrs, Globals, Mod) :-
                 _KeepFrame),
             ( can_delay_frame(LabelSeq0, !.BlockMap) ->
                 delay_frame_transform(LabelSeq0, LabelSeq, EntryInfo,
-                    ProcLabel, PredMap, !C, !BlockMap, Globals,
+                    ProcLabel, PredMap, !C, !BlockMap, AddComments,
                     TransformComments, DescComments, CanTransform),
                 (
                     CanTransform = can_transform,
@@ -251,7 +250,7 @@ frameopt_main_nondet_stack(ProcLabel, !C, Instrs0, Instrs, Globals, Mod) :-
                     Mod = yes
                 ;
                     CanTransform = cannot_transform,
-                    maybe_add_comments(Globals, DescComments,
+                    maybe_add_comments(AddComments, DescComments,
                         Instrs0, Instrs, Mod)
                 )
             ;
@@ -264,17 +263,16 @@ frameopt_main_nondet_stack(ProcLabel, !C, Instrs0, Instrs, Globals, Mod) :-
         Mod = no
     ).
 
-:- pred maybe_add_comments(globals::in, list(instruction)::in,
+:- pred maybe_add_comments(bool::in, list(instruction)::in,
     list(instruction)::in, list(instruction)::out, bool::out) is det.
 
-maybe_add_comments(Globals, DescComments, Instrs0, Instrs, Mod) :-
-    globals.lookup_bool_option(Globals, frameopt_comments, FrameoptComments),
+maybe_add_comments(Comments, DescComments, Instrs0, Instrs, Mod) :-
     (
-        FrameoptComments = no,
+        Comments = no,
         Instrs = Instrs0,
         Mod = no
     ;
-        FrameoptComments = yes,
+        Comments = yes,
         Instrs =
             [llds_instr(comment("could not delay frame creation"), "")]
             ++ DescComments ++ Instrs0,
@@ -1545,12 +1543,12 @@ can_delay_frame([Label | _Labels], BlockMap) :-
     %
 :- pred delay_frame_transform(list(label)::in, list(label)::out,
     En::in, proc_label::in, pred_map::in, counter::in, counter::out,
-    frame_block_map(En, Ex)::in, frame_block_map(En, Ex)::out, globals::in,
+    frame_block_map(En, Ex)::in, frame_block_map(En, Ex)::out, bool::in,
     list(instruction)::out, list(instruction)::out, can_transform::out) is det
     <= block_entry_exit(En, Ex).
 
-delay_frame_transform(!LabelSeq, EntryInfo, ProcLabel, PredMap, !C,
-        !BlockMap, Globals, TransformComments, DescComments, CanTransform) :-
+delay_frame_transform(!LabelSeq, EntryInfo, ProcLabel, PredMap, !C, !BlockMap,
+        AddComments, TransformComments, DescComments, CanTransform) :-
     some [!OrdNeedsFrame, !CanTransform, !PropagationStepsLeft] (
         !:OrdNeedsFrame = map.init,
         !:CanTransform = can_transform,
@@ -1576,14 +1574,12 @@ delay_frame_transform(!LabelSeq, EntryInfo, ProcLabel, PredMap, !C,
             create_parallels(!LabelSeq, EntryInfo, ProcLabel, !C,
                 !.OrdNeedsFrame, SetupParMap, ExitParMap, PredMap, !BlockMap)
         ),
-        globals.lookup_bool_option(Globals, frameopt_comments,
-            FrameoptComments),
         (
-            FrameoptComments = no,
+            AddComments = no,
             TransformComments = [],
             DescComments = []
         ;
-            FrameoptComments = yes,
+            AddComments = yes,
             TransformComments =
                 [llds_instr(comment("delaying stack frame"), "")],
             list.map(describe_block(!.BlockMap, !.OrdNeedsFrame,

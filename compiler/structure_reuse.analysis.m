@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2008 The University of Melbourne.
+% Copyright (C) 2006-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,12 +14,12 @@
 % of the terms it manipulates become garbage thus making it possible
 % to reuse that garbage straight away for creating new terms.
 %
-% Structure reuse is broken up into three phases: 
-%   * the direct reuse analysis (structure_reuse.direct.m) 
+% Structure reuse is broken up into three phases:
+%   * the direct reuse analysis (structure_reuse.direct.m)
 %   * the indirect analysis (structure_reuse.indirect.m)
 %   * and the generation of the optimised procedures.
-% 
-% The following example shows instances of direct and indirect reuse: 
+%
+% The following example shows instances of direct and indirect reuse:
 %
 % list.append(H1, H2, H3) :-
 %   (
@@ -30,11 +30,11 @@
 %           % structure sharing of H1 is true.  A deconstruction
 %           % generating a dead cell, followed by a
 %           % construction reusing that cell, is called a direct
-%           % reuse. 
+%           % reuse.
 %       H1 => [X | Xs],
 %
 %           % If the condition about the structure sharing of H1
-%           % is true then we can call the version of list.append 
+%           % is true then we can call the version of list.append
 %           % which does reuse. Calling the optimised version here leads
 %           % to a new condition to be met by the headvars of any
 %           % call to the resulting optimised version of append.
@@ -56,20 +56,20 @@
 :- import_module transform_hlds.ctgc.structure_reuse.domain.
 
 :- import_module bool.
-:- import_module io. 
+:- import_module io.
 
 %-----------------------------------------------------------------------------%
 
     % Perform structure reuse analysis on the procedures defined in the
-    % current module. 
+    % current module.
     %
-:- pred structure_reuse_analysis(module_info::in, module_info::out, 
+:- pred structure_reuse_analysis(module_info::in, module_info::out,
     io::di, io::uo) is det.
 
     % Write all the reuse information concerning the specified predicate as
     % reuse pragmas.
     %
-:- pred write_pred_reuse_info(module_info::in, pred_id::in, 
+:- pred write_pred_reuse_info(module_info::in, pred_id::in,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -78,7 +78,7 @@
 :- type structure_reuse_answer.
 :- type structure_reuse_func_info.
 
-:- instance analysis(structure_reuse_func_info, structure_reuse_call,   
+:- instance analysis(structure_reuse_func_info, structure_reuse_call,
     structure_reuse_answer).
 
 :- instance call_pattern(structure_reuse_func_info, structure_reuse_call).
@@ -135,14 +135,16 @@
 
 %-----------------------------------------------------------------------------%
 
-structure_reuse_analysis(!ModuleInfo, !IO):- 
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+structure_reuse_analysis(!ModuleInfo, !IO):-
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
 
     % Load all available structure sharing information into a sharing table.
     SharingTable = load_structure_sharing_table(!.ModuleInfo),
 
     % Process all imported reuse information.
-    globals.io_lookup_bool_option(intermodule_analysis, IntermodAnalysis, !IO),
+    globals.lookup_bool_option(Globals, intermodule_analysis,
+        IntermodAnalysis),
     (
         IntermodAnalysis = yes,
         % Load structure reuse answers from the analysis registry into a reuse
@@ -170,13 +172,17 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
 
         % Pre-annotate each of the goals with "Local Forward Use" and
         % "Local Backward Use" information, and fill in all the goal_path slots
-        % as well. 
-        maybe_write_string(VeryVerbose, "% Annotating in use information...",
-            !IO), 
+        % as well.
+        trace [io(!IO)] (
+            maybe_write_string(VeryVerbose,
+                "% Annotating in use information...", !IO)
+        ),
         process_all_nonimported_procs(
-            update_proc_io(annotate_in_use_information),
+            update_proc(annotate_in_use_information),
             !ModuleInfo, !IO),
-        maybe_write_string(VeryVerbose, "done.\n", !IO),
+        trace [io(!IO)] (
+            maybe_write_string(VeryVerbose, "done.\n", !IO)
+        ),
 
         % Create copies of externally requested procedures.  This must be done
         % after the in-use annotations have been added to the procedures being
@@ -185,26 +191,34 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
             _NewPPIds, !ReuseTable, !ModuleInfo),
 
         % Determine information about possible direct reuses.
-        maybe_write_string(VeryVerbose, "% Direct reuse...\n", !IO), 
-        direct_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, !IO),
-        maybe_write_string(VeryVerbose, "% Direct reuse: done.\n", !IO),
-        reuse_as_table_maybe_dump(VeryVerbose, !.ModuleInfo, !.ReuseTable,
-            !IO),
+        trace [io(!IO)] (
+            maybe_write_string(VeryVerbose, "% Direct reuse...\n", !IO)
+        ),
+        direct_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable),
+        trace [io(!IO)] (
+            maybe_write_string(VeryVerbose, "% Direct reuse: done.\n", !IO),
+            reuse_as_table_maybe_dump(VeryVerbose, !.ModuleInfo, !.ReuseTable,
+                !IO)
+        ),
 
         % Determine information about possible indirect reuses.
-        maybe_write_string(VeryVerbose, "% Indirect reuse...\n", !IO), 
+        trace [io(!IO)] (
+            maybe_write_string(VeryVerbose, "% Indirect reuse...\n", !IO)
+        ),
         indirect_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, DepProcs0,
             InternalRequests, IntermodRequests0),
-        maybe_write_string(VeryVerbose, "% Indirect reuse: done.\n", !IO),
-        reuse_as_table_maybe_dump(VeryVerbose, !.ModuleInfo, !.ReuseTable,
-            !IO),
+        trace [io(!IO)] (
+            maybe_write_string(VeryVerbose, "% Indirect reuse: done.\n", !IO),
+            reuse_as_table_maybe_dump(VeryVerbose, !.ModuleInfo, !.ReuseTable,
+                !IO)
+        ),
 
         % Handle requests for "intermediate" reuse versions of procedures
         % and repeat the analyses.
-        globals.io_lookup_int_option(structure_reuse_repeat, Repeats, !IO),
+        globals.lookup_int_option(Globals, structure_reuse_repeat, Repeats),
         handle_structure_reuse_requests(Repeats, SharingTable, InternalRequests,
             !ReuseTable, !ModuleInfo, DepProcs0, DepProcs,
-            IntermodRequests0, IntermodRequests, !IO),
+            IntermodRequests0, IntermodRequests),
 
         % Create reuse versions of procedures.  Update goals to reuse cells and
         % call reuse versions of procedures.
@@ -242,8 +256,8 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
 
     % Only write structure reuse pragmas to `.opt' files for
     % `--intermodule-optimization' not `--intermodule-analysis'.
-    globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt,
-        !IO),
+    globals.lookup_bool_option(Globals, make_optimization_interface,
+        MakeOptInt),
     (
         MakeOptInt = yes,
         IntermodAnalysis = no
@@ -255,8 +269,8 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
 
     % If making a `.analysis' file, record structure reuse results, analysis
     % dependencies, assumed answers and requests in the analysis framework.
-    globals.io_lookup_bool_option(make_analysis_registry, MakeAnalysisRegistry,
-        !IO),
+    globals.lookup_bool_option(Globals, make_analysis_registry,
+        MakeAnalysisRegistry),
     (
         MakeAnalysisRegistry = yes,
         some [!AnalysisInfo] (
@@ -277,7 +291,7 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
     % Delete the reuse versions of procedures which turn out to have no reuse.
     % Nothing should be calling them but dead procedure elimination won't
     % remove them if they were created from exported procedures (so would be
-    % exported themselves). 
+    % exported themselves).
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     bimap.foldl(
         remove_useless_reuse_proc(!.ModuleInfo, VeryVerbose, ReuseInfoMap),
@@ -300,13 +314,13 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
     set(sr_request)::in, reuse_as_table::in, reuse_as_table::out,
     module_info::in, module_info::out,
     set(ppid_no_clobbers)::in, set(ppid_no_clobbers)::out,
-    set(sr_request)::in, set(sr_request)::out, io::di, io::uo) is det.
+    set(sr_request)::in, set(sr_request)::out) is det.
 
 handle_structure_reuse_requests(Repeats, SharingTable, Requests,
-        !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests, !IO) :-
+        !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests) :-
     ( Repeats > 0 ->
         handle_structure_reuse_requests_2(Repeats, SharingTable, Requests,
-            !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests, !IO)
+            !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests)
     ;
         true
     ).
@@ -315,11 +329,12 @@ handle_structure_reuse_requests(Repeats, SharingTable, Requests,
     set(sr_request)::in, reuse_as_table::in, reuse_as_table::out,
     module_info::in, module_info::out,
     set(ppid_no_clobbers)::in, set(ppid_no_clobbers)::out,
-    set(sr_request)::in, set(sr_request)::out, io::di, io::uo) is det.
+    set(sr_request)::in, set(sr_request)::out) is det.
 
 handle_structure_reuse_requests_2(Repeats, SharingTable, Requests,
-        !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests, !IO) :-
-    io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+        !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
 
     % Create copies of the requested procedures.
     RequestList = set.to_sorted_list(Requests),
@@ -327,10 +342,14 @@ handle_structure_reuse_requests_2(Repeats, SharingTable, Requests,
         !ReuseTable, !ModuleInfo),
 
     % Perform direct reuse analysis on the new procedures.
-    maybe_write_string(VeryVerbose, "% Repeating direct reuse...\n", !IO),
+    trace [io(!IO)] (
+        maybe_write_string(VeryVerbose, "% Repeating direct reuse...\n", !IO)
+    ),
     direct_reuse_process_specific_procs(SharingTable, NewPPIds,
-        !ModuleInfo, !ReuseTable, !IO),
-    maybe_write_string(VeryVerbose, "% done.\n", !IO),
+        !ModuleInfo, !ReuseTable),
+    trace [io(!IO)] (
+        maybe_write_string(VeryVerbose, "% done.\n", !IO)
+    ),
 
     % Rerun indirect reuse analysis on all procedures.
     %
@@ -338,20 +357,28 @@ handle_structure_reuse_requests_2(Repeats, SharingTable, Requests,
     % reanalysed.  For old procedures (not the ones just created) we actually
     % only need to check that calls which previously had no reuse opportunity
     % might be able to call the new procedures.
-    maybe_write_string(VeryVerbose, "% Repeating indirect reuse...\n", !IO),
+    trace [io(!IO)] (
+        maybe_write_string(VeryVerbose, "% Repeating indirect reuse...\n", !IO)
+    ),
     indirect_reuse_rerun(SharingTable, !ModuleInfo, !ReuseTable,
         NewDepProcs, NewRequests, !IntermodRequests),
     !:DepProcs = set.union(NewDepProcs, !.DepProcs),
-    maybe_write_string(VeryVerbose, "% done.\n", !IO),
+    trace [io(!IO)] (
+        maybe_write_string(VeryVerbose, "% done.\n", !IO)
+    ),
 
     ( set.empty(NewRequests) ->
-        maybe_write_string(VeryVerbose,
-            "% No more structure reuse requests.\n", !IO)
+        trace [io(!IO)] (
+            maybe_write_string(VeryVerbose,
+                "% No more structure reuse requests.\n", !IO)
+        )
     ;
-        maybe_write_string(VeryVerbose,
-            "% Outstanding structure reuse requests exist.\n", !IO),
+        trace [io(!IO)] (
+            maybe_write_string(VeryVerbose,
+                "% Outstanding structure reuse requests exist.\n", !IO)
+        ),
         handle_structure_reuse_requests(Repeats - 1, SharingTable, NewRequests,
-            !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests, !IO)
+            !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests)
     ).
 
     % Create a new copy of a procedure to satisfy an intermediate reuse
@@ -455,48 +482,48 @@ maybe_create_forwarding_procedures_intermod_analysis(ReuseTable, PredProcId,
 :- pred process_imported_reuse(module_info::in, module_info::out) is det.
 
 process_imported_reuse(!ModuleInfo):-
-    module_info_predids(PredIds, !ModuleInfo), 
+    module_info_predids(PredIds, !ModuleInfo),
     list.foldl(process_imported_reuse_in_pred, PredIds, !ModuleInfo).
 
 :- pred process_imported_reuse_in_pred(pred_id::in, module_info::in,
     module_info::out) is det.
 
-process_imported_reuse_in_pred(PredId, !ModuleInfo) :- 
+process_imported_reuse_in_pred(PredId, !ModuleInfo) :-
     some [!PredTable] (
-        module_info_preds(!.ModuleInfo, !:PredTable), 
-        PredInfo0 = !.PredTable ^ det_elem(PredId), 
+        module_info_preds(!.ModuleInfo, !:PredTable),
+        PredInfo0 = !.PredTable ^ det_elem(PredId),
         process_imported_reuse_in_procs(PredInfo0, PredInfo),
         svmap.det_update(PredId, PredInfo, !PredTable),
         module_info_set_preds(!.PredTable, !ModuleInfo)
     ).
 
-:- pred process_imported_reuse_in_procs(pred_info::in, 
+:- pred process_imported_reuse_in_procs(pred_info::in,
     pred_info::out) is det.
 
-process_imported_reuse_in_procs(!PredInfo) :- 
+process_imported_reuse_in_procs(!PredInfo) :-
     some [!ProcTable] (
-        pred_info_get_procedures(!.PredInfo, !:ProcTable), 
-        ProcIds = pred_info_procids(!.PredInfo), 
-        list.foldl(process_imported_reuse_in_proc(!.PredInfo), 
+        pred_info_get_procedures(!.PredInfo, !:ProcTable),
+        ProcIds = pred_info_procids(!.PredInfo),
+        list.foldl(process_imported_reuse_in_proc(!.PredInfo),
             ProcIds, !ProcTable),
         pred_info_set_procedures(!.ProcTable, !PredInfo)
     ).
 
-:- pred process_imported_reuse_in_proc(pred_info::in, proc_id::in, 
+:- pred process_imported_reuse_in_proc(pred_info::in, proc_id::in,
     proc_table::in, proc_table::out) is det.
 
-process_imported_reuse_in_proc(PredInfo, ProcId, !ProcTable) :- 
+process_imported_reuse_in_proc(PredInfo, ProcId, !ProcTable) :-
     some [!ProcInfo] (
-        !:ProcInfo = !.ProcTable ^ det_elem(ProcId), 
+        !:ProcInfo = !.ProcTable ^ det_elem(ProcId),
         (
-            proc_info_get_imported_structure_reuse(!.ProcInfo, 
+            proc_info_get_imported_structure_reuse(!.ProcInfo,
                 ImpHeadVars, ImpTypes, ImpReuse)
         ->
             proc_info_get_headvars(!.ProcInfo, HeadVars),
             pred_info_get_arg_types(PredInfo, HeadVarTypes),
-            map.from_corresponding_lists(ImpHeadVars, HeadVars, VarRenaming), 
+            map.from_corresponding_lists(ImpHeadVars, HeadVars, VarRenaming),
             some [!TypeSubst] (
-                !:TypeSubst = map.init, 
+                !:TypeSubst = map.init,
                 (
                     type_unify_list(ImpTypes, HeadVarTypes, [], !.TypeSubst,
                         TypeSubstNew)
@@ -511,7 +538,7 @@ process_imported_reuse_in_proc(PredInfo, ProcId, !ProcTable) :-
             % Optimality does not apply to `--intermodule-optimisation'
             % system, only `--intermodule-analysis'.
             proc_info_set_structure_reuse(
-                structure_reuse_domain_and_status(Reuse, optimal), !ProcInfo), 
+                structure_reuse_domain_and_status(Reuse, optimal), !ProcInfo),
             proc_info_reset_imported_structure_reuse(!ProcInfo),
             svmap.det_update(ProcId, !.ProcInfo, !ProcTable)
         ;
@@ -530,7 +557,7 @@ process_imported_reuse_in_proc(PredInfo, ProcId, !ProcTable) :-
 
 process_intermod_analysis_reuse(!ModuleInfo, ReuseTable, ExternalRequests,
         MustHaveReuseVersions) :-
-    module_info_predids(PredIds, !ModuleInfo), 
+    module_info_predids(PredIds, !ModuleInfo),
     list.foldl4(process_intermod_analysis_reuse_pred, PredIds,
         !ModuleInfo, reuse_as_table_init, ReuseTable, [], ExternalRequests0,
         [], MustHaveReuseVersions),
@@ -545,7 +572,7 @@ process_intermod_analysis_reuse_pred(PredId, !ModuleInfo, !ReuseTable,
         !ExternalRequests, !MustHaveReuseVersions) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     pred_info_get_import_status(PredInfo, ImportStatus),
-    ProcIds = pred_info_procids(PredInfo), 
+    ProcIds = pred_info_procids(PredInfo),
     (
         ImportStatus = status_imported(_)
     ->
@@ -704,7 +731,7 @@ add_reuse_request(PPId, structure_reuse_call(NoClobbers), !Requests) :-
 :- pred save_reuse_in_module_info(pred_proc_id::in, reuse_as_and_status::in,
     module_info::in, module_info::out) is det.
 
-save_reuse_in_module_info(PPId, ReuseAs_Status, !ModuleInfo) :- 
+save_reuse_in_module_info(PPId, ReuseAs_Status, !ModuleInfo) :-
     ReuseAs_Status = reuse_as_and_status(ReuseAs, Status),
     ReuseDomain = to_structure_reuse_domain(ReuseAs),
     Domain_Status = structure_reuse_domain_and_status(ReuseDomain, Status),
@@ -713,11 +740,11 @@ save_reuse_in_module_info(PPId, ReuseAs_Status, !ModuleInfo) :-
     proc_info_set_structure_reuse(Domain_Status, ProcInfo0, ProcInfo),
     module_info_set_pred_proc_info(PPId, PredInfo, ProcInfo, !ModuleInfo).
 
-:- pred annotate_in_use_information(pred_id::in, proc_id::in,
-    module_info::in, proc_info::in, proc_info::out, io::di, io::uo) is det.
+:- pred annotate_in_use_information(module_info::in,
+    proc_info::in, proc_info::out) is det.
 
-annotate_in_use_information(_PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :- 
-    forward_use_information(!ProcInfo), 
+annotate_in_use_information(ModuleInfo, !ProcInfo) :-
+    forward_use_information(!ProcInfo),
     backward_use_information(ModuleInfo, !ProcInfo),
     fill_goal_path_slots(ModuleInfo, !ProcInfo).
 
@@ -729,10 +756,11 @@ annotate_in_use_information(_PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
 :- pred make_opt_int(module_info::in, module_info::out, io::di, io::uo) is det.
 
 make_opt_int(!ModuleInfo, !IO) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
     module_info_get_name(!.ModuleInfo, ModuleName),
-    module_name_to_file_name(ModuleName, ".opt.tmp", do_not_create_dirs,
-        OptFileName, !IO),
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
+        do_not_create_dirs, OptFileName, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Appending structure_reuse pragmas to ",
         !IO),
     maybe_write_string(Verbose, add_quotes(OptFileName), !IO),
@@ -742,7 +770,7 @@ make_opt_int(!ModuleInfo, !IO) :-
     (
         OptFileRes = ok(OptFile),
         io.set_output_stream(OptFile, OldStream, !IO),
-        module_info_predids(PredIds, !ModuleInfo),   
+        module_info_predids(PredIds, !ModuleInfo),
         list.foldl(write_pred_reuse_info(!.ModuleInfo), PredIds, !IO),
         io.set_output_stream(OldStream, _, !IO),
         io.close_output(OptFile, !IO),
@@ -754,11 +782,11 @@ make_opt_int(!ModuleInfo, !IO) :-
         io.write_strings(["Error opening file `",
             OptFileName, "' for output: ", IOErrorMessage], !IO),
         io.set_exit_status(1, !IO)
-    ).  
+    ).
 
 %-----------------------------------------------------------------------------%
 %
-% Code for writing out structure_reuse pragmas
+% Code for writing out structure_reuse pragmas.
 %
 
 write_pred_reuse_info(ModuleInfo, PredId, !IO) :-
@@ -807,7 +835,7 @@ write_proc_reuse_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
 
 %-----------------------------------------------------------------------------%
 %
-% Types and instances for the intermodule analysis framework
+% Types and instances for the intermodule analysis framework.
 %
 
 :- type structure_reuse_call
@@ -1116,7 +1144,7 @@ should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
 
 structure_reuse_answer_harsher_than_in_analysis_registry(ModuleInfo,
         ReuseTable, ReusePPId, Harsher) :-
-    module_info_get_analysis_info(ModuleInfo, AnalysisInfo), 
+    module_info_get_analysis_info(ModuleInfo, AnalysisInfo),
 
     % Find the original pred_proc_id and no-clobber list that this reuse
     % procedure was made for.

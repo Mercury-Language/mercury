@@ -40,14 +40,28 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module io.
 :- import_module list.
 :- import_module term.
+
+%-----------------------------------------------------------------------------%
+
+:- type hlds_out_info
+    --->    hlds_out_info(
+                hoi_dump_hlds_options       :: string,
+                hoi_dump_hlds_pred_ids      :: list(string),
+                hoi_dump_hlds_pred_names    :: list(string),
+                hoi_mercury_to_mercury      :: merc_out_info
+            ).
+
+:- func init_hlds_out_info(globals) = hlds_out_info.
 
 %-----------------------------------------------------------------------------%
 
@@ -130,30 +144,34 @@
     %
 :- pred write_hlds(int::in, module_info::in, io::di, io::uo) is det.
 
-    % write_clauses(Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
-    %   HeadVars, PredOrFunc, Clauses, MaybeVarTypes).
+    % write_clauses(Info, Indent, ModuleInfo, PredId, VarSet,
+    %   AppendVarNums, HeadVars, PredOrFunc, Clauses, MaybeVarTypes, !IO).
     %
-:- pred write_clauses(int::in, module_info::in, pred_id::in,
-    prog_varset::in, bool::in, proc_arg_vector(prog_var)::in,
+:- pred write_clauses(hlds_out_info::in, int::in, module_info::in,
+    pred_id::in, prog_varset::in, bool::in, proc_arg_vector(prog_var)::in,
     pred_or_func::in, list(clause)::in, maybe_vartypes::in,
     io::di, io::uo) is det.
 
-    % write_clause(Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
-    %   HeadTerms, PredOrFunc, Clause, UseDeclaredModes, MaybeVarTypes).
+    % write_clause(Info, Indent, ModuleInfo, PredId, VarSet,
+    %   AppendVarNums, HeadTerms, PredOrFunc, Clause, UseDeclaredModes,
+    %   MaybeVarTypes, !IO).
     %
-:- pred write_clause(int::in, module_info::in, pred_id::in,
-    prog_varset::in, bool::in, list(prog_term)::in, pred_or_func::in,
-    clause::in, bool::in, maybe_vartypes::in, io::di, io::uo) is det.
+:- pred write_clause(hlds_out_info::in, int::in, module_info::in,
+    pred_id::in, prog_varset::in, bool::in, list(prog_term)::in,
+    pred_or_func::in, clause::in, bool::in, maybe_vartypes::in,
+    io::di, io::uo) is det.
 
-:- pred write_promise(promise_type::in, int::in, module_info::in, pred_id::in,
-    prog_varset::in, bool::in, list(prog_var)::in, pred_or_func::in,
-    clause::in, maybe_vartypes::in, io::di, io::uo) is det.
+:- pred write_promise(hlds_out_info::in, promise_type::in, int::in,
+    module_info::in, pred_id::in, prog_varset::in, bool::in,
+    list(prog_var)::in, pred_or_func::in, clause::in, maybe_vartypes::in,
+    io::di, io::uo) is det.
 
-    % write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
+    % write_proc(Info, Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     %    ImportStatus, Proc, !IO).
     %
-:- pred write_proc(int::in, bool::in, module_info::in, pred_id::in,
-    proc_id::in, import_status::in, proc_info::in, io::di, io::uo) is det.
+:- pred write_proc(hlds_out_info::in, int::in, bool::in, module_info::in,
+    pred_id::in, proc_id::in, import_status::in, proc_info::in,
+    io::di, io::uo) is det.
 
     % Print out an HLDS goal. The module_info and prog_varset give
     % the context of the goal. The boolean says whether variables should
@@ -162,8 +180,8 @@
     % should end the line containing the goal; it should include a newline
     % character, but may also contain other characters before that.
     %
-:- pred write_goal(hlds_goal::in, module_info::in, prog_varset::in, bool::in,
-    int::in, string::in, io::di, io::uo) is det.
+:- pred write_goal(hlds_out_info::in, hlds_goal::in, module_info::in,
+    prog_varset::in, bool::in, int::in, string::in, io::di, io::uo) is det.
 
     % write_goal_list is used to write both disjunctions
     % and parallel conjunctions. The module_info, prog_varset and
@@ -174,8 +192,9 @@
     % between each goal; it should include a newline character,
     % but may also contain other characters before that.
     %
-:- pred write_goal_list(list(hlds_goal)::in, module_info::in, prog_varset::in,
-    bool::in, int::in, string::in, maybe_vartypes::in, io::di, io::uo) is det.
+:- pred write_goal_list(hlds_out_info::in, list(hlds_goal)::in,
+    module_info::in, prog_varset::in, bool::in, int::in, string::in,
+    maybe_vartypes::in, io::di, io::uo) is det.
 
     % Print out a functor and its arguments. The prog_varset gives
     % the context. The boolean says whether variables should have their
@@ -199,8 +218,9 @@
     % variables should have their numbers appended to them. The integer
     % gives the level of indentation to be used within the rhs.
     %
-:- pred write_unify_rhs(unify_rhs::in, module_info::in, prog_varset::in,
-    inst_varset::in, bool::in, int::in, io::di, io::uo) is det.
+:- pred write_unify_rhs(hlds_out_info::in, unify_rhs::in, module_info::in,
+    prog_varset::in, inst_varset::in, bool::in, int::in,
+    io::di, io::uo) is det.
 
     % Converts the right-hand-side of a unification to a string, similarly to
     % write_unify_rhs, but doesn't print any details for lambda goals.
@@ -289,10 +309,8 @@
 :- import_module hlds.instmap.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.program_representation.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_mode.
@@ -710,21 +728,22 @@ start_in_message_to_pieces(First, !Pieces) :-
 
 %-----------------------------------------------------------------------------%
 
-write_hlds(Indent, Module, !IO) :-
-    module_info_get_imported_module_specifiers(Module, Imports),
-    module_info_preds(Module, PredTable),
-    module_info_get_type_table(Module, TypeTable),
-    module_info_get_inst_table(Module, InstTable),
-    module_info_get_mode_table(Module, ModeTable),
-    module_info_get_class_table(Module, ClassTable),
-    module_info_get_instance_table(Module, InstanceTable),
-    module_info_get_table_struct_map(Module, TableStructMap),
-    module_info_get_globals(Module, Globals),
+write_hlds(Indent, ModuleInfo, !IO) :-
+    module_info_get_imported_module_specifiers(ModuleInfo, Imports),
+    module_info_preds(ModuleInfo, PredTable),
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    module_info_get_inst_table(ModuleInfo, InstTable),
+    module_info_get_mode_table(ModuleInfo, ModeTable),
+    module_info_get_class_table(ModuleInfo, ClassTable),
+    module_info_get_instance_table(ModuleInfo, InstanceTable),
+    module_info_get_table_struct_map(ModuleInfo, TableStructMap),
+    module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_accumulating_option(Globals, dump_hlds_pred_id,
         DumpPredIdStrs),
     globals.lookup_accumulating_option(Globals, dump_hlds_pred_name,
         DumpPredNames),
-    write_header(Indent, Module, !IO),
+    write_header(Indent, ModuleInfo, !IO),
+    Info = init_hlds_out_info(Globals),
     (
         % If the user specifically requested one or more predicates and/or
         % functions to be dumped, they won't be interested in the types,
@@ -735,23 +754,23 @@ write_hlds(Indent, Module, !IO) :-
     ->
         true
     ;
-        globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-        ( string.contains_char(Verbose, 'I') ->
+        DumpOptions = Info ^ hoi_dump_hlds_options,
+        ( string.contains_char(DumpOptions, 'I') ->
             write_imports(Indent, Imports, !IO)
         ;
             true
         ),
-        ( string.contains_char(Verbose, 'T') ->
-            write_types(Indent, TypeTable, !IO),
+        ( string.contains_char(DumpOptions, 'T') ->
+            write_types(Info, Indent, TypeTable, !IO),
             io.write_string("\n", !IO),
-            write_classes(Indent, ClassTable, !IO),
+            write_classes(Info, Indent, ClassTable, !IO),
             io.write_string("\n", !IO),
-            write_instances(Indent, InstanceTable, !IO),
+            write_instances(Info, Indent, InstanceTable, !IO),
             io.write_string("\n", !IO)
         ;
             true
         ),
-        ( string.contains_char(Verbose, 'M') ->
+        ( string.contains_char(DumpOptions, 'M') ->
             write_insts(Indent, InstTable, !IO),
             io.write_string("\n", !IO),
             write_modes(Indent, ModeTable, !IO),
@@ -759,15 +778,15 @@ write_hlds(Indent, Module, !IO) :-
         ;
             true
         ),
-        ( string.contains_char(Verbose, 'Z') ->
-            write_table_structs(Module, TableStructMap, !IO),
+        ( string.contains_char(DumpOptions, 'Z') ->
+            write_table_structs(ModuleInfo, TableStructMap, !IO),
             io.write_string("\n", !IO)
         ;
             true
         )
     ),
-    write_preds(Indent, Module, PredTable, !IO),
-    write_footer(Indent, Module, !IO).
+    write_preds(Info, Indent, ModuleInfo, PredTable, !IO),
+    write_footer(Indent, ModuleInfo, !IO).
 
 :- pred write_header(int::in, module_info::in, io::di, io::uo) is det.
 
@@ -798,25 +817,23 @@ write_footer(Indent, Module, !IO) :-
     prog_out.write_sym_name(Name, !IO),
     io.write_string(".\n", !IO).
 
-:- pred write_preds(int::in, module_info::in, pred_table::in,
-    io::di, io::uo) is det.
+:- pred write_preds(hlds_out_info::in, int::in, module_info::in,
+    pred_table::in, io::di, io::uo) is det.
 
-write_preds(Indent, ModuleInfo, PredTable, !IO) :-
+write_preds(Info, Indent, ModuleInfo, PredTable, !IO) :-
     io.write_string("%-------- Predicates --------\n\n", !IO),
     write_indent(Indent, !IO),
     map.keys(PredTable, PredIds),
-    list.foldl(maybe_write_pred(Indent, ModuleInfo, PredTable), PredIds, !IO).
+    list.foldl(maybe_write_pred(Info, Indent, ModuleInfo, PredTable), PredIds,
+        !IO).
 
-:- pred maybe_write_pred(int::in, module_info::in, pred_table::in,
-    pred_id::in, io::di, io::uo) is det.
+:- pred maybe_write_pred(hlds_out_info::in, int::in, module_info::in,
+    pred_table::in, pred_id::in, io::di, io::uo) is det.
 
-maybe_write_pred(Indent, ModuleInfo, PredTable, PredId, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_string_option(Globals, dump_hlds_options, Verbose),
-    globals.lookup_accumulating_option(Globals, dump_hlds_pred_id,
-        DumpPredIdStrs),
-    globals.lookup_accumulating_option(Globals, dump_hlds_pred_name,
-        DumpPredNames),
+maybe_write_pred(Info, Indent, ModuleInfo, PredTable, PredId, !IO) :-
+    DumpOptions = Info ^ hoi_dump_hlds_options,
+    DumpPredIdStrs = Info ^ hoi_dump_hlds_pred_ids,
+    DumpPredNames = Info ^ hoi_dump_hlds_pred_names,
     pred_id_to_int(PredId, PredIdInt),
     map.lookup(PredTable, PredId, PredInfo),
     (
@@ -839,19 +856,19 @@ maybe_write_pred(Indent, ModuleInfo, PredTable, PredId, !IO) :-
                 list.member(PredName, DumpPredNames)
             )
         ->
-            write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO)
+            write_pred(Info, Indent, ModuleInfo, PredId, PredInfo, !IO)
         ;
             true
         )
     ;
         (
             (
-                \+ string.contains_char(Verbose, 'I'),
+                \+ string.contains_char(DumpOptions, 'I'),
                 pred_info_is_imported(PredInfo)
             ;
                 % For pseudo-imported predicates (i.e. unification preds),
                 % only print them if we are using a local mode for them.
-                \+ string.contains_char(Verbose, 'I'),
+                \+ string.contains_char(DumpOptions, 'I'),
                 pred_info_is_pseudo_imported(PredInfo),
                 ProcIds = pred_info_procids(PredInfo),
                 hlds_pred.in_in_unification_proc_id(ProcId),
@@ -861,20 +878,20 @@ maybe_write_pred(Indent, ModuleInfo, PredTable, PredId, !IO) :-
                 % predicates if suboption 'U' is on. We don't need that
                 % information to understand how the program has been
                 % transformed.
-                \+ string.contains_char(Verbose, 'U'),
+                \+ string.contains_char(DumpOptions, 'U'),
                 is_unify_or_compare_pred(PredInfo)
             )
         ->
             true
         ;
-            write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO)
+            write_pred(Info, Indent, ModuleInfo, PredId, PredInfo, !IO)
         )
     ).
 
-:- pred write_pred(int::in, module_info::in, pred_id::in, pred_info::in,
-    io::di, io::uo) is det.
+:- pred write_pred(hlds_out_info::in, int::in, module_info::in,
+    pred_id::in, pred_info::in, io::di, io::uo) is det.
 
-write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
+write_pred(Info, Indent, ModuleInfo, PredId, PredInfo, !IO) :-
     Module = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -891,13 +908,13 @@ write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
     pred_info_get_purity(PredInfo, Purity),
     pred_info_get_head_type_params(PredInfo, HeadTypeParams),
     pred_info_get_var_name_remap(PredInfo, VarNameRemap),
-    globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-    ( string.contains_char(Verbose, 'v') ->
+    DumpOptions = Info ^ hoi_dump_hlds_options,
+    ( string.contains_char(DumpOptions, 'v') ->
         AppendVarNums = yes
     ;
         AppendVarNums = no
     ),
-    ( string.contains_char(Verbose, 'C') ->
+    ( string.contains_char(DumpOptions, 'C') ->
         % Information about predicates is dumped if 'C' suboption is on.
         (
             PredOrFunc = pf_predicate,
@@ -916,7 +933,7 @@ write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
     ),
     ClausesInfo = clauses_info(VarSet, _, _, VarTypes, HeadVars, ClausesRep,
         _ItemNumbers, RttiVarMaps, _HaveForeignClauses),
-    ( string.contains_char(Verbose, 'C') ->
+    ( string.contains_char(DumpOptions, 'C') ->
         write_indent(Indent, !IO),
         io.write_string("% pred id: ", !IO),
         pred_id_to_int(PredId, PredInt),
@@ -981,11 +998,10 @@ write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
         get_clause_list(ClausesRep, Clauses),
         (
             Clauses = [_ | _],
-            set_dump_opts_for_clauses(SavedDumpString, !IO),
-            write_clauses(Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
-                HeadVars, PredOrFunc, Clauses, no_varset_vartypes, !IO),
-            globals.io_set_option(dump_hlds_options, string(SavedDumpString),
-                !IO)
+            set_dump_opts_for_clauses(Info, InfoForClauses),
+            write_clauses(InfoForClauses, Indent, ModuleInfo, PredId, VarSet,
+                AppendVarNums, HeadVars, PredOrFunc, Clauses,
+                no_varset_vartypes, !IO)
         ;
             Clauses = []
         ),
@@ -1045,39 +1061,40 @@ write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
     ;
         true
     ),
-    write_procs(Indent, AppendVarNums, ModuleInfo, PredId, ImportStatus,
+    write_procs(Info, Indent, AppendVarNums, ModuleInfo, PredId, ImportStatus,
         PredInfo, !IO),
     io.write_string("\n", !IO).
 
-:- pred set_dump_opts_for_clauses(string::out, io::di, io::uo) is det.
+:- pred set_dump_opts_for_clauses(hlds_out_info::in, hlds_out_info::out)
+    is det.
 
-set_dump_opts_for_clauses(SavedDumpStr, !IO) :-
-    globals.io_lookup_string_option(dump_hlds_options, SavedDumpStr, !IO),
+set_dump_opts_for_clauses(Info, ClausesInfo) :-
+    OptionsStr = Info ^ hoi_dump_hlds_options,
     some [!DumpStr] (
         !:DumpStr = "",
-        ( string.contains_char(SavedDumpStr, 'c') ->
+        ( string.contains_char(OptionsStr, 'c') ->
             !:DumpStr = !.DumpStr ++ "c"
         ;
             true
         ),
-        ( string.contains_char(SavedDumpStr, 'n') ->
+        ( string.contains_char(OptionsStr, 'n') ->
             !:DumpStr = !.DumpStr ++ "n"
         ;
             true
         ),
-        ( string.contains_char(SavedDumpStr, 'v') ->
+        ( string.contains_char(OptionsStr, 'v') ->
             !:DumpStr = !.DumpStr ++ "v"
         ;
             true
         ),
-        ( string.contains_char(SavedDumpStr, 'g') ->
+        ( string.contains_char(OptionsStr, 'g') ->
             !:DumpStr = !.DumpStr ++ "g"
         ;
             true
         ),
         DumpStr = !.DumpStr
     ),
-    globals.io_set_option(dump_hlds_options, string(DumpStr), !IO).
+    ClausesInfo = Info ^ hoi_dump_hlds_options := DumpStr.
 
 :- pred write_marker_list(list(marker)::in, io::di, io::uo) is det.
 
@@ -1112,7 +1129,7 @@ write_marker(Marker, !IO) :-
     marker_name(Marker, Name),
     io.write_string(Name, !IO).
 
-write_promise(PromiseType, Indent, ModuleInfo, _PredId, VarSet,
+write_promise(Info, PromiseType, Indent, ModuleInfo, _PredId, VarSet,
         AppendVarNums, HeadVars, _PredOrFunc, Clause, TypeQual, !IO) :-
     % Curry the varset for term_io.write_variable/4.
     PrintVar = (pred(VarName::in, IOState0::di, IOState::uo) is det :-
@@ -1142,20 +1159,21 @@ write_promise(PromiseType, Indent, ModuleInfo, _PredId, VarSet,
     ),
 
     Clause = clause(_Modes, Goal, _Lang, _Context),
-    write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent+1, ").\n",
-        TypeQual, !IO).
+    write_goal_a(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
+        Indent+1, ").\n", TypeQual, !IO).
 
-write_clauses(Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
+write_clauses(Info, Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
         HeadVars, PredOrFunc, Clauses0, TypeQual, !IO) :-
     HeadVarList = proc_arg_vector_to_list(HeadVars),
-    write_clauses_2(Indent, ModuleInfo, PredId, VarSet,
+    write_clauses_2(Info, Indent, ModuleInfo, PredId, VarSet,
         AppendVarNums, HeadVarList, PredOrFunc, Clauses0, TypeQual, 1, !IO).
 
-:- pred write_clauses_2(int::in, module_info::in, pred_id::in,
-    prog_varset::in, bool::in, list(prog_var)::in, pred_or_func::in,
-    list(clause)::in, maybe_vartypes::in, int::in, io::di, io::uo) is det.
+:- pred write_clauses_2(hlds_out_info::in, int::in,
+    module_info::in, pred_id::in, prog_varset::in, bool::in,
+    list(prog_var)::in, pred_or_func::in, list(clause)::in, maybe_vartypes::in,
+    int::in, io::di, io::uo) is det.
 
-write_clauses_2(Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
+write_clauses_2(Info, Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
         HeadVars, PredOrFunc, Clauses0, TypeQual, ClauseNum, !IO) :-
     (
         Clauses0 = [Clause | Clauses],
@@ -1164,24 +1182,26 @@ write_clauses_2(Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
         io.write_string("% clause ", !IO),
         io.write_int(ClauseNum, !IO),
         io.write_string("\n", !IO),
-        write_clause(Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
-            HeadTerms, PredOrFunc, Clause, UseDeclaredModes, TypeQual, !IO),
-        write_clauses_2(Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
-            HeadVars, PredOrFunc, Clauses, TypeQual, ClauseNum + 1, !IO)
+        write_clause(Info, Indent, ModuleInfo, PredId, VarSet,
+            AppendVarNums, HeadTerms, PredOrFunc, Clause,
+            UseDeclaredModes, TypeQual, !IO),
+        write_clauses_2(Info, Indent, ModuleInfo, PredId, VarSet,
+            AppendVarNums, HeadVars, PredOrFunc, Clauses, TypeQual,
+            ClauseNum + 1, !IO)
     ;
         Clauses0 = []
     ).
 
-write_clause(Indent, ModuleInfo, PredId, VarSet, AppendVarNums, HeadTerms,
-        PredOrFunc, Clause, UseDeclaredModes, TypeQual, !IO) :-
+write_clause(Info, Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
+        HeadTerms, PredOrFunc, Clause, UseDeclaredModes, TypeQual, !IO) :-
     Clause = clause(ApplicableModes, Goal, Lang, Context),
     Indent1 = Indent + 1,
-    globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
+    DumpOptions = Info ^ hoi_dump_hlds_options,
     (
         ApplicableModes = all_modes
     ;
         ApplicableModes = selected_modes(Modes),
-        ( string.contains_char(Verbose, 'm') ->
+        ( string.contains_char(DumpOptions, 'm') ->
             write_indent(Indent, !IO),
             io.write_string("% Modes for which this clause applies: ", !IO),
             ModeInts = list.map(proc_id_to_int, Modes),
@@ -1220,8 +1240,8 @@ write_clause(Indent, ModuleInfo, PredId, VarSet, AppendVarNums, HeadTerms,
         io.write_string(".\n", !IO)
     ;
         io.write_string(" :-\n", !IO),
-        write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent1, ".\n",
-            TypeQual, !IO)
+        write_goal_a(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
+            Indent1, ".\n", TypeQual, !IO)
     ).
 
 :- pred write_annotated_clause_heads(module_info::in, term.context::in,
@@ -1299,21 +1319,24 @@ write_clause_head(ModuleInfo, PredId, VarSet, AppendVarNums, HeadTerms,
             term.atom(PredName), HeadTerms, VarSet, AppendVarNums, !IO)
     ).
 
-write_goal(Goal, ModuleInfo, VarSet, AppendVarNums, Indent, Follow, !IO) :-
+write_goal(Info, Goal, ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
+        !IO) :-
     % Don't type qualify everything.
-    write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
+    write_goal_a(Info, Goal, ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
         no_varset_vartypes, !IO).
 
     % TypeQual is yes(TVarset, VarTypes) if all constructors should be
     % module qualified.
     %
-:- pred write_goal_a(hlds_goal::in, module_info::in, prog_varset::in,
-    bool::in, int::in, string::in, maybe_vartypes::in, io::di, io::uo) is det.
+:- pred write_goal_a(hlds_out_info::in, hlds_goal::in, module_info::in,
+    prog_varset::in, bool::in, int::in, string::in, maybe_vartypes::in,
+    io::di, io::uo) is det.
 
-write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
-        Indent, Follow, TypeQual, !IO) :-
-    globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-    ( string.contains_char(Verbose, 'c') ->
+write_goal_a(Info, Goal, ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
+        TypeQual, !IO) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo), 
+    DumpOptions = Info ^ hoi_dump_hlds_options,
+    ( string.contains_char(DumpOptions, 'c') ->
         Context = goal_info_get_context(GoalInfo),
         term.context_file(Context, FileName),
         term.context_line(Context, LineNumber),
@@ -1330,7 +1353,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ;
         true
     ),
-    ( string.contains_char(Verbose, 'P') ->
+    ( string.contains_char(DumpOptions, 'P') ->
         Path = goal_info_get_goal_path(GoalInfo),
         ( Path = empty_goal_path ->
             true
@@ -1343,7 +1366,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ;
         true
     ),
-    ( string.contains_char(Verbose, 'n') ->
+    ( string.contains_char(DumpOptions, 'n') ->
         NonLocalsSet = goal_info_get_nonlocals(GoalInfo),
         set.to_sorted_list(NonLocalsSet, NonLocalsList),
         (
@@ -1358,7 +1381,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ;
         true
     ),
-    ( string.contains_char(Verbose, 'p') ->
+    ( string.contains_char(DumpOptions, 'p') ->
         (
             goal_info_maybe_get_pre_deaths(GoalInfo, PreDeaths),
             set.to_sorted_list(PreDeaths, PreDeathList),
@@ -1386,7 +1409,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ;
         true
     ),
-    ( string.contains_char(Verbose, 'B') ->
+    ( string.contains_char(DumpOptions, 'B') ->
         ProducingVars = GoalInfo ^ producing_vars,
         ( set.non_empty(ProducingVars) ->
             set.to_sorted_list(ProducingVars, ProducingVarsList),
@@ -1435,7 +1458,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ;
         true
     ),
-    ( string.contains_char(Verbose, 'd') ->
+    ( string.contains_char(DumpOptions, 'd') ->
         write_indent(Indent, !IO),
         io.write_string("% determinism: ", !IO),
         Determinism = goal_info_get_determinism(GoalInfo),
@@ -1444,7 +1467,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ;
         true
     ),
-    ( string.contains_char(Verbose, 'e') ->
+    ( string.contains_char(DumpOptions, 'e') ->
         MaybeRbmmInfo = goal_info_get_maybe_rbmm(GoalInfo),
         (
             MaybeRbmmInfo = yes(RbmmInfo),
@@ -1475,7 +1498,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ;
         true
     ),
-    ( string.contains_char(Verbose, 'z') ->
+    ( string.contains_char(DumpOptions, 'z') ->
         Purity = goal_info_get_purity(GoalInfo),
         (
             Purity = purity_pure
@@ -1491,7 +1514,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ;
         true
     ),
-    ( string.contains_char(Verbose, 'E') ->
+    ( string.contains_char(DumpOptions, 'E') ->
         MaybeDPInfo = goal_info_get_maybe_dp_info(GoalInfo),
         (
             MaybeDPInfo = yes(dp_goal_info(MdprofInst, MaybeDPCoverageInfo)),
@@ -1534,9 +1557,9 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ;
         true
     ),
-    write_goal_2(GoalExpr, ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
-        TypeQual, !IO),
-    ( string.contains_char(Verbose, 'i') ->
+    write_goal_2(Info, GoalExpr, ModuleInfo, VarSet, AppendVarNums, Indent,
+        Follow, TypeQual, !IO),
+    ( string.contains_char(DumpOptions, 'i') ->
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         (
             instmap_delta_is_reachable(InstMapDelta),
@@ -1546,7 +1569,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
             true
         ;
             write_indent(Indent, !IO),
-            ( string.contains_char(Verbose, 'D') ->
+            ( string.contains_char(DumpOptions, 'D') ->
                 io.write_string("% new insts: ", !IO),
                 write_instmap_delta(InstMapDelta, VarSet, AppendVarNums,
                     Indent, !IO),
@@ -1561,7 +1584,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ;
         true
     ),
-    ( string.contains_char(Verbose, 'p') ->
+    ( string.contains_char(DumpOptions, 'p') ->
         (
             goal_info_maybe_get_post_deaths(GoalInfo, PostDeaths),
             set.to_sorted_list(PostDeaths, PostDeathList),
@@ -1589,7 +1612,7 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
     ;
         true
     ),
-    ( string.contains_char(Verbose, 'R') ->
+    ( string.contains_char(DumpOptions, 'R') ->
         (
             yes(LFU) = goal_info_get_maybe_lfu(GoalInfo),
             yes(LBU) = goal_info_get_maybe_lbu(GoalInfo),
@@ -1644,10 +1667,10 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
         CodeGenInfo = no_code_gen_info
     ;
         CodeGenInfo = llds_code_gen_info(_CodeGenDetails),
-        write_llds_code_gen_info(GoalInfo, VarSet, AppendVarNums, Indent,
-            Verbose, !IO)
+        write_llds_code_gen_info(Info, GoalInfo, VarSet, AppendVarNums, Indent,
+            !IO)
     ),
-    ( string.contains_char(Verbose, 'g') ->
+    ( string.contains_char(DumpOptions, 'g') ->
         Features = goal_info_get_features(GoalInfo),
         set.to_sorted_list(Features, FeatureList),
         (
@@ -1663,590 +1686,563 @@ write_goal_a(hlds_goal(GoalExpr, GoalInfo), ModuleInfo, VarSet, AppendVarNums,
         true
     ).
 
-:- pred write_goal_2(hlds_goal_expr::in, module_info::in,
+:- pred write_goal_2(hlds_out_info::in, hlds_goal_expr::in, module_info::in,
     prog_varset::in, bool::in, int::in, string::in, maybe_vartypes::in,
     io::di, io::uo) is det.
 
-write_goal_2(switch(Var, CanFail, CasesList), ModuleInfo, VarSet,
-        AppendVarNums, Indent, Follow, TypeQual, !IO) :-
-    write_indent(Indent, !IO),
-    io.write_string("( % ", !IO),
-    io.write_string(can_fail_to_string(CanFail), !IO),
-    io.write_string(" switch on `", !IO),
-    mercury_output_var(VarSet, AppendVarNums, Var, !IO),
-    io.write_string("'\n", !IO),
-    Indent1 = Indent + 1,
-    (
-        CasesList = [Case | Cases],
-        write_case(Case, Var, ModuleInfo, VarSet, AppendVarNums, Indent1,
-            TypeQual, !IO),
-        write_cases(Cases, Var, ModuleInfo, VarSet, AppendVarNums, Indent,
-            TypeQual, !IO)
-    ;
-        CasesList = [],
-        write_indent(Indent1, !IO),
-        io.write_string("fail\n", !IO)
-    ),
-    write_indent(Indent, !IO),
-    io.write_string(")", !IO),
-    io.write_string(Follow, !IO).
-
-write_goal_2(scope(Reason, Goal), ModuleInfo, VarSet, AppendVarNums, Indent,
-        Follow, TypeQual, !IO) :-
-    write_indent(Indent, !IO),
-    (
-        Reason = exist_quant(Vars),
-        io.write_string("some [", !IO),
-        mercury_output_vars(VarSet, AppendVarNums, Vars, !IO),
-        io.write_string("] (\n", !IO)
-    ;
-        Reason = promise_purity(Purity),
-        (
-            Purity = purity_pure,
-            io.write_string("promise_pure (", !IO)
-        ;
-            Purity = purity_semipure,
-            io.write_string("promise_semipure (", !IO)
-        ;
-            Purity = purity_impure,
-            io.write_string("promise_impure (", !IO)
-        ),
-        io.write_string("\n", !IO)
-    ;
-        Reason = promise_solutions(Vars, Kind),
-        (
-            Kind = equivalent_solutions,
-            io.write_string("promise_equivalent_solutions", !IO)
-        ;
-            Kind = equivalent_solution_sets,
-            io.write_string("promise_equivalent_solution_sets", !IO)
-        ;
-            Kind = equivalent_solution_sets_arbitrary,
-            io.write_string("arbitrary", !IO)
-        ),
-        io.write_string(" [", !IO),
-        mercury_output_vars(VarSet, AppendVarNums, Vars, !IO),
-        io.write_string("] (\n", !IO)
-    ;
-        Reason = barrier(removable),
-        io.write_string("(\n", !IO),
-        write_indent(Indent, !IO),
-        io.write_string("% barrier(removable)\n", !IO)
-    ;
-        Reason = barrier(not_removable),
-        io.write_string("(\n", !IO),
-        write_indent(Indent, !IO),
-        io.write_string("% barrier(not_removable)\n", !IO)
-    ;
-        Reason = commit(force_pruning),
-        io.write_string("(\n", !IO),
-        write_indent(Indent, !IO),
-        io.write_string("% commit(force_pruning)\n", !IO)
-    ;
-        Reason = commit(dont_force_pruning),
-        io.write_string("(\n", !IO),
-        write_indent(Indent, !IO),
-        io.write_string("% commit(dont_force_pruning)\n", !IO)
-    ;
-        Reason = from_ground_term(Var, Kind),
-        io.write_string("(\n", !IO),
-        write_indent(Indent, !IO),
-        io.write_string("% from_ground_term [", !IO),
-        mercury_output_var(VarSet, AppendVarNums, Var, !IO),
-        io.write_string(", ", !IO),
-        (
-            Kind = from_ground_term_construct,
-            io.write_string("construct", !IO)
-        ;
-            Kind = from_ground_term_deconstruct,
-            io.write_string("deconstruct", !IO)
-        ;
-            Kind = from_ground_term_other,
-            io.write_string("other", !IO)
-        ),
-        io.write_string("]\n", !IO)
-    ;
-        Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIO,
-            MutableVars, QuantVars),
-        io.write_string("(\n", !IO),
-        write_indent(Indent + 1, !IO),
-        io.write_string("% trace\n", !IO),
-        (
-            MaybeCompileTime = yes(CompileTime),
-            write_indent(Indent + 1, !IO),
-            io.write_string("% compiletime(", !IO),
-            mercury_output_trace_expr(mercury_output_trace_compiletime,
-                CompileTime, !IO),
-            io.write_string(")\n", !IO)
-        ;
-            MaybeCompileTime = no
-        ),
-        (
-            MaybeRunTime = yes(RunTime),
-            write_indent(Indent + 1, !IO),
-            io.write_string("% runtime(", !IO),
-            mercury_output_trace_expr(mercury_output_trace_runtime,
-                RunTime, !IO),
-            io.write_string(")\n", !IO)
-        ;
-            MaybeRunTime = no
-        ),
-        (
-            MaybeIO = yes(IOStateVarName),
-            write_indent(Indent + 1, !IO),
-            io.write_string("% io(!" ++ IOStateVarName ++ ")\n", !IO)
-        ;
-            MaybeIO = no
-        ),
-        list.foldl(write_trace_mutable_var_hlds(Indent + 1), MutableVars, !IO),
-        write_indent(Indent + 1, !IO),
-        io.write_string("% quantified vars ", !IO),
-        mercury_output_vars(VarSet, AppendVarNums, QuantVars, !IO),
-        io.nl(!IO)
-    ),
-    write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent + 1, "\n",
-        TypeQual, !IO),
-    write_indent(Indent, !IO),
-    io.write_string(")", !IO),
-    io.write_string(Follow, !IO).
-
-write_goal_2(if_then_else(Vars, Cond, Then, Else), ModuleInfo, VarSet,
-        AppendVarNums, Indent, Follow, TypeQual, !IO) :-
-    write_indent(Indent, !IO),
-    io.write_string("(if", !IO),
-    write_some(Vars, VarSet, !IO),
-    io.write_string("\n", !IO),
-    Indent1 = Indent + 1,
-    write_goal_a(Cond, ModuleInfo, VarSet, AppendVarNums, Indent1, "\n",
-        TypeQual, !IO),
-    write_indent(Indent, !IO),
-    io.write_string("then\n", !IO),
-    write_goal_a(Then, ModuleInfo, VarSet, AppendVarNums, Indent1, "\n",
-        TypeQual, !IO),
-    write_indent(Indent, !IO),
-    io.write_string("else\n", !IO),
-    globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-    (
-        Verbose \= "",
-        Else = hlds_goal(if_then_else(_, _, _, _), _)
-    ->
-        write_goal_a(Else, ModuleInfo, VarSet, AppendVarNums, Indent, "\n",
-            TypeQual, !IO)
-    ;
-        write_goal_a(Else, ModuleInfo, VarSet, AppendVarNums, Indent1, "\n",
-            TypeQual, !IO)
-    ),
-    write_indent(Indent, !IO),
-    io.write_string(")", !IO),
-    io.write_string(Follow, !IO).
-
-write_goal_2(negation(Goal), ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
-        TypeQual, !IO) :-
-    write_indent(Indent, !IO),
-    io.write_string("\\+ (\n", !IO),
-    write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent + 1, "\n",
-        TypeQual, !IO),
-    write_indent(Indent, !IO),
-    io.write_string(")", !IO),
-    io.write_string(Follow, !IO).
-
-write_goal_2(conj(ConjType, List), ModuleInfo, VarSet, AppendVarNums, Indent,
-        Follow, TypeQual, !IO) :-
-    (
-        List = [Goal | Goals],
-        (
-            ConjType = plain_conj,
-            globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-            ( Verbose \= "" ->
-                write_indent(Indent, !IO),
-                io.write_string("( % conjunction\n", !IO),
-                write_conj(Goal, Goals, ModuleInfo, VarSet, AppendVarNums,
-                    Indent + 1, "\n", Verbose, ",\n", TypeQual, !IO),
-                write_indent(Indent, !IO),
-                io.write_string(")", !IO),
-                io.write_string(Follow, !IO)
-            ;
-                write_conj(Goal, Goals, ModuleInfo, VarSet, AppendVarNums,
-                    Indent, Follow, Verbose, ",\n", TypeQual, !IO)
-            )
-        ;
-            ConjType = parallel_conj,
-            write_indent(Indent, !IO),
-            io.write_string("( % parallel conjunction\n", !IO),
-            write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent + 1,
-                "\n", TypeQual, !IO),
-            % See comments at write_goal_list.
-            write_goal_list(Goals, ModuleInfo, VarSet, AppendVarNums, Indent,
-                "&\n", TypeQual, !IO),
-            write_indent(Indent, !IO),
-            io.write_string(")", !IO),
-            io.write_string(Follow, !IO)
-        )
-    ;
-        List = [],
-        write_indent(Indent, !IO),
-        (
-            ConjType = plain_conj,
-            io.write_string("true", !IO)
-        ;
-            ConjType = parallel_conj,
-            io.write_string("/* parallel */ true", !IO)
-        ),
-        io.write_string(Follow, !IO)
-    ).
-
-write_goal_2(disj(List), ModuleInfo, VarSet, AppendVarNums,
+write_goal_2(Info, GoalExpr, ModuleInfo, VarSet, AppendVarNums,
         Indent, Follow, TypeQual, !IO) :-
-    write_indent(Indent, !IO),
     (
-        List = [Goal | Goals],
-        io.write_string("( % disjunction\n", !IO),
-        write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent + 1, "\n",
-            TypeQual, !IO),
-        write_goal_list(Goals, ModuleInfo, VarSet, AppendVarNums, Indent,
-            ";\n", TypeQual, !IO),
+        GoalExpr = switch(Var, CanFail, CasesList),
+        write_indent(Indent, !IO),
+        io.write_string("( % ", !IO),
+        io.write_string(can_fail_to_string(CanFail), !IO),
+        io.write_string(" switch on `", !IO),
+        mercury_output_var(VarSet, AppendVarNums, Var, !IO),
+        io.write_string("'\n", !IO),
+        Indent1 = Indent + 1,
+        (
+            CasesList = [Case | Cases],
+            write_case(Info, Case, Var, ModuleInfo, VarSet, AppendVarNums,
+                Indent1, TypeQual, !IO),
+            write_cases(Info, Cases, Var, ModuleInfo, VarSet, AppendVarNums,
+                Indent, TypeQual, !IO)
+        ;
+            CasesList = [],
+            write_indent(Indent1, !IO),
+            io.write_string("fail\n", !IO)
+        ),
         write_indent(Indent, !IO),
         io.write_string(")", !IO),
         io.write_string(Follow, !IO)
     ;
-        List = [],
-        io.write_string("fail", !IO),
+        GoalExpr = scope(Reason, Goal),
+        write_indent(Indent, !IO),
+        (
+            Reason = exist_quant(Vars),
+            io.write_string("some [", !IO),
+            mercury_output_vars(VarSet, AppendVarNums, Vars, !IO),
+            io.write_string("] (\n", !IO)
+        ;
+            Reason = promise_purity(Purity),
+            (
+                Purity = purity_pure,
+                io.write_string("promise_pure (", !IO)
+            ;
+                Purity = purity_semipure,
+                io.write_string("promise_semipure (", !IO)
+            ;
+                Purity = purity_impure,
+                io.write_string("promise_impure (", !IO)
+            ),
+            io.write_string("\n", !IO)
+        ;
+            Reason = promise_solutions(Vars, Kind),
+            (
+                Kind = equivalent_solutions,
+                io.write_string("promise_equivalent_solutions", !IO)
+            ;
+                Kind = equivalent_solution_sets,
+                io.write_string("promise_equivalent_solution_sets", !IO)
+            ;
+                Kind = equivalent_solution_sets_arbitrary,
+                io.write_string("arbitrary", !IO)
+            ),
+            io.write_string(" [", !IO),
+            mercury_output_vars(VarSet, AppendVarNums, Vars, !IO),
+            io.write_string("] (\n", !IO)
+        ;
+            Reason = barrier(removable),
+            io.write_string("(\n", !IO),
+            write_indent(Indent, !IO),
+            io.write_string("% barrier(removable)\n", !IO)
+        ;
+            Reason = barrier(not_removable),
+            io.write_string("(\n", !IO),
+            write_indent(Indent, !IO),
+            io.write_string("% barrier(not_removable)\n", !IO)
+        ;
+            Reason = commit(force_pruning),
+            io.write_string("(\n", !IO),
+            write_indent(Indent, !IO),
+            io.write_string("% commit(force_pruning)\n", !IO)
+        ;
+            Reason = commit(dont_force_pruning),
+            io.write_string("(\n", !IO),
+            write_indent(Indent, !IO),
+            io.write_string("% commit(dont_force_pruning)\n", !IO)
+        ;
+            Reason = from_ground_term(Var, Kind),
+            io.write_string("(\n", !IO),
+            write_indent(Indent, !IO),
+            io.write_string("% from_ground_term [", !IO),
+            mercury_output_var(VarSet, AppendVarNums, Var, !IO),
+            io.write_string(", ", !IO),
+            (
+                Kind = from_ground_term_construct,
+                io.write_string("construct", !IO)
+            ;
+                Kind = from_ground_term_deconstruct,
+                io.write_string("deconstruct", !IO)
+            ;
+                Kind = from_ground_term_other,
+                io.write_string("other", !IO)
+            ),
+            io.write_string("]\n", !IO)
+        ;
+            Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIO,
+                MutableVars, QuantVars),
+            io.write_string("(\n", !IO),
+            write_indent(Indent + 1, !IO),
+            io.write_string("% trace\n", !IO),
+            (
+                MaybeCompileTime = yes(CompileTime),
+                write_indent(Indent + 1, !IO),
+                io.write_string("% compiletime(", !IO),
+                mercury_output_trace_expr(mercury_output_trace_compiletime,
+                    CompileTime, !IO),
+                io.write_string(")\n", !IO)
+            ;
+                MaybeCompileTime = no
+            ),
+            (
+                MaybeRunTime = yes(RunTime),
+                write_indent(Indent + 1, !IO),
+                io.write_string("% runtime(", !IO),
+                mercury_output_trace_expr(mercury_output_trace_runtime,
+                    RunTime, !IO),
+                io.write_string(")\n", !IO)
+            ;
+                MaybeRunTime = no
+            ),
+            (
+                MaybeIO = yes(IOStateVarName),
+                write_indent(Indent + 1, !IO),
+                io.write_string("% io(!" ++ IOStateVarName ++ ")\n", !IO)
+            ;
+                MaybeIO = no
+            ),
+            list.foldl(write_trace_mutable_var_hlds(Indent + 1), MutableVars,
+                !IO),
+            write_indent(Indent + 1, !IO),
+            io.write_string("% quantified vars ", !IO),
+            mercury_output_vars(VarSet, AppendVarNums, QuantVars, !IO),
+            io.nl(!IO)
+        ),
+        write_goal_a(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
+            Indent + 1, "\n", TypeQual, !IO),
+        write_indent(Indent, !IO),
+        io.write_string(")", !IO),
         io.write_string(Follow, !IO)
-    ).
-
-write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
-        _ModuleInfo, VarSet, AppendVarNums, Indent, Follow, _, !IO) :-
-    % XXX we should print more info here
-    (
-        GenericCall = higher_order(PredVar, Purity, PredOrFunc, _),
-        globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
+    ;
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        write_indent(Indent, !IO),
+        io.write_string("(if", !IO),
+        write_some(Vars, VarSet, !IO),
+        io.write_string("\n", !IO),
+        Indent1 = Indent + 1,
+        write_goal_a(Info, Cond, ModuleInfo, VarSet, AppendVarNums,
+            Indent1, "\n", TypeQual, !IO),
+        write_indent(Indent, !IO),
+        io.write_string("then\n", !IO),
+        write_goal_a(Info, Then, ModuleInfo, VarSet, AppendVarNums,
+            Indent1, "\n", TypeQual, !IO),
+        write_indent(Indent, !IO),
+        io.write_string("else\n", !IO),
+        DumpOptions = Info ^ hoi_dump_hlds_options,
+        (
+            DumpOptions \= "",
+            Else = hlds_goal(if_then_else(_, _, _, _), _)
+        ->
+            write_goal_a(Info, Else, ModuleInfo, VarSet, AppendVarNums,
+                Indent, "\n", TypeQual, !IO)
+        ;
+            write_goal_a(Info, Else, ModuleInfo, VarSet, AppendVarNums,
+                Indent1, "\n", TypeQual, !IO)
+        ),
+        write_indent(Indent, !IO),
+        io.write_string(")", !IO),
+        io.write_string(Follow, !IO)
+    ;
+        GoalExpr = negation(Goal),
+        write_indent(Indent, !IO),
+        io.write_string("\\+ (\n", !IO),
+        write_goal_a(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
+            Indent + 1, "\n", TypeQual, !IO),
+        write_indent(Indent, !IO),
+        io.write_string(")", !IO),
+        io.write_string(Follow, !IO)
+    ;
+        GoalExpr = conj(ConjType, List),
+        (
+            List = [Goal | Goals],
+            (
+                ConjType = plain_conj,
+                DumpOptions = Info ^ hoi_dump_hlds_options,
+                ( DumpOptions \= "" ->
+                    write_indent(Indent, !IO),
+                    io.write_string("( % conjunction\n", !IO),
+                    write_conj(Info, Goal, Goals, ModuleInfo, VarSet,
+                        AppendVarNums, Indent + 1, "\n", ",\n", TypeQual, !IO),
+                    write_indent(Indent, !IO),
+                    io.write_string(")", !IO),
+                    io.write_string(Follow, !IO)
+                ;
+                    write_conj(Info, Goal, Goals, ModuleInfo, VarSet,
+                        AppendVarNums, Indent, Follow, ",\n", TypeQual, !IO)
+                )
+            ;
+                ConjType = parallel_conj,
+                write_indent(Indent, !IO),
+                io.write_string("( % parallel conjunction\n", !IO),
+                write_goal_a(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
+                    Indent + 1, "\n", TypeQual, !IO),
+                % See comments at write_goal_list.
+                write_goal_list(Info, Goals, ModuleInfo, VarSet, AppendVarNums,
+                    Indent, "&\n", TypeQual, !IO),
+                write_indent(Indent, !IO),
+                io.write_string(")", !IO),
+                io.write_string(Follow, !IO)
+            )
+        ;
+            List = [],
+            write_indent(Indent, !IO),
+            (
+                ConjType = plain_conj,
+                io.write_string("true", !IO)
+            ;
+                ConjType = parallel_conj,
+                io.write_string("/* parallel */ true", !IO)
+            ),
+            io.write_string(Follow, !IO)
+        )
+    ;
+        GoalExpr = disj(List),
+        write_indent(Indent, !IO),
+        (
+            List = [Goal | Goals],
+            io.write_string("( % disjunction\n", !IO),
+            write_goal_a(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
+                Indent + 1, "\n", TypeQual, !IO),
+            write_goal_list(Info, Goals, ModuleInfo, VarSet, AppendVarNums,
+                Indent, ";\n", TypeQual, !IO),
+            write_indent(Indent, !IO),
+            io.write_string(")", !IO),
+            io.write_string(Follow, !IO)
+        ;
+            List = [],
+            io.write_string("fail", !IO),
+            io.write_string(Follow, !IO)
+        )
+    ;
+        GoalExpr = generic_call(GenericCall, ArgVars, Modes, _),
+        DumpOptions = Info ^ hoi_dump_hlds_options,
+        % XXX we should print more info here
+        (
+            GenericCall = higher_order(PredVar, Purity, PredOrFunc, _),
+            (
+                PredOrFunc = pf_predicate,
+                ( string.contains_char(DumpOptions, 'l') ->
+                    write_indent(Indent, !IO),
+                    io.write_string("% higher-order predicate call\n", !IO)
+                ;
+                    true
+                ),
+                write_indent(Indent, !IO),
+                write_purity_prefix(Purity, !IO),
+                write_functor(term.atom("call"), [PredVar | ArgVars], VarSet,
+                    AppendVarNums, !IO)
+            ;
+                PredOrFunc = pf_function,
+                ( string.contains_char(DumpOptions, 'l') ->
+                    write_indent(Indent, !IO),
+                    io.write_string("% higher-order function application\n",
+                        !IO)
+                ;
+                    true
+                ),
+                pred_args_to_func_args([PredVar | ArgVars],
+                    FuncArgVars, FuncRetVar),
+                write_indent(Indent, !IO),
+                write_purity_prefix(Purity, !IO),
+                mercury_output_var(VarSet, AppendVarNums, FuncRetVar, !IO),
+                io.write_string(" = ", !IO),
+                write_functor(term.atom("apply"), FuncArgVars, VarSet,
+                    AppendVarNums, !IO)
+            ),
+            io.write_string(Follow, !IO)
+        ;
+            GenericCall = class_method(TCInfoVar, MethodNum, _ClassId,
+                _MethodId),
+            ( string.contains_char(DumpOptions, 'l') ->
+                write_indent(Indent, !IO),
+                io.write_string("% class method call\n", !IO)
+            ;
+                true
+            ),
+            term.context_init(Context),
+            Functor = term.atom("class_method_call"),
+            TCInfoTerm = term.variable(TCInfoVar, Context),
+            MethodNumTerm = term.functor(term.integer(MethodNum), [], Context),
+            term.var_list_to_term_list(ArgVars, ArgTerms),
+            Term = term.functor(Functor, [TCInfoTerm, MethodNumTerm | ArgTerms],
+                Context),
+            write_indent(Indent, !IO),
+            mercury_output_term(VarSet, AppendVarNums, Term, !IO),
+            io.write_string(Follow, !IO)
+        ;
+            GenericCall = event_call(EventName),
+            ( string.contains_char(DumpOptions, 'l') ->
+                write_indent(Indent, !IO),
+                io.write_string("% event call\n", !IO)
+            ;
+                true
+            ),
+            write_indent(Indent, !IO),
+            io.write_string("event ", !IO),
+            term.context_init(Context),
+            Functor = term.atom(EventName),
+            term.var_list_to_term_list(ArgVars, ArgTerms),
+            Term = term.functor(Functor, ArgTerms, Context),
+            mercury_output_term(VarSet, AppendVarNums, Term, !IO),
+            io.write_string(Follow, !IO)
+        ;
+            GenericCall = cast(CastType),
+            CastTypeString = cast_type_to_string(CastType),
+            ( string.contains_char(DumpOptions, 'l') ->
+                write_indent(Indent, !IO),
+                io.write_strings(["% ", CastTypeString, "\n"], !IO)
+            ;
+                true
+            ),
+            ( string.contains_char(DumpOptions, 'D') ->
+                write_indent(Indent, !IO),
+                io.write_string("% modes: ", !IO),
+                varset.init(InstVarSet),
+                mercury_output_mode_list(Modes, InstVarSet, !IO),
+                io.nl(!IO)
+            ;
+                true
+            ),
+            Functor = term.atom(CastTypeString),
+            term.var_list_to_term_list(ArgVars, ArgTerms),
+            term.context_init(Context),
+            Term = term.functor(Functor, ArgTerms, Context),
+            write_indent(Indent, !IO),
+            mercury_output_term(VarSet, AppendVarNums, Term, !IO),
+            io.write_string(Follow, !IO)
+        )
+    ;
+        GoalExpr = plain_call(PredId, ProcId, ArgVars, Builtin,
+            MaybeUnifyContext, PredName),
+        DumpOptions = Info ^ hoi_dump_hlds_options,
+        ( string.contains_char(DumpOptions, 'b') ->
+            (
+                Builtin = inline_builtin,
+                write_indent(Indent, !IO),
+                io.write_string("% inline builtin\n", !IO)
+            ;
+                Builtin = out_of_line_builtin,
+                write_indent(Indent, !IO),
+                io.write_string("% out of line builtin\n", !IO)
+            ;
+                Builtin = not_builtin
+            )
+        ;
+            true
+        ),
+        write_indent(Indent, !IO),
+        ( PredId = invalid_pred_id ->
+            % If we don't know then the call must be treated as a predicate.
+            PredOrFunc = pf_predicate
+        ;
+            module_info_pred_info(ModuleInfo, PredId, PredInfo),
+            pred_info_get_purity(PredInfo, Purity),
+            PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+            write_purity_prefix(Purity, !IO)
+        ),
         (
             PredOrFunc = pf_predicate,
-            ( string.contains_char(Verbose, 'l') ->
-                write_indent(Indent, !IO),
-                io.write_string("% higher-order predicate call\n", !IO)
-            ;
-                true
-            ),
-            write_indent(Indent, !IO),
-            write_purity_prefix(Purity, !IO),
-            write_functor(term.atom("call"), [PredVar | ArgVars], VarSet,
-                AppendVarNums, !IO)
+            NewArgVars = ArgVars
         ;
             PredOrFunc = pf_function,
-            ( string.contains_char(Verbose, 'l') ->
-                write_indent(Indent, !IO),
-                io.write_string("% higher-order function application\n", !IO)
-            ;
-                true
-            ),
-            pred_args_to_func_args([PredVar | ArgVars],
-                FuncArgVars, FuncRetVar),
-            write_indent(Indent, !IO),
-            write_purity_prefix(Purity, !IO),
-            mercury_output_var(VarSet, AppendVarNums, FuncRetVar, !IO),
-            io.write_string(" = ", !IO),
-            write_functor(term.atom("apply"), FuncArgVars, VarSet,
-                AppendVarNums, !IO)
+            pred_args_to_func_args(ArgVars, NewArgVars, LHSVar),
+            mercury_output_var(VarSet, AppendVarNums, LHSVar, !IO),
+            io.write_string(" = ", !IO)
         ),
-        io.write_string(Follow, !IO)
-    ;
-        GenericCall = class_method(TCInfoVar, MethodNum, _ClassId, _MethodId),
-        globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-        ( string.contains_char(Verbose, 'l') ->
-            write_indent(Indent, !IO),
-            io.write_string("% class method call\n", !IO)
-        ;
-            true
-        ),
-        term.context_init(Context),
-        Functor = term.atom("class_method_call"),
-        TCInfoTerm = term.variable(TCInfoVar, Context),
-        MethodNumTerm = term.functor(term.integer(MethodNum), [], Context),
-        term.var_list_to_term_list(ArgVars, ArgTerms),
-        Term = term.functor(Functor, [TCInfoTerm, MethodNumTerm | ArgTerms],
-            Context),
-        write_indent(Indent, !IO),
-        mercury_output_term(VarSet, AppendVarNums, Term, !IO),
-        io.write_string(Follow, !IO)
-    ;
-        GenericCall = event_call(EventName),
-        globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-        ( string.contains_char(Verbose, 'l') ->
-            write_indent(Indent, !IO),
-            io.write_string("% event call\n", !IO)
-        ;
-            true
-        ),
-        write_indent(Indent, !IO),
-        io.write_string("event ", !IO),
-        term.context_init(Context),
-        Functor = term.atom(EventName),
-        term.var_list_to_term_list(ArgVars, ArgTerms),
-        Term = term.functor(Functor, ArgTerms, Context),
-        mercury_output_term(VarSet, AppendVarNums, Term, !IO),
-        io.write_string(Follow, !IO)
-    ;
-        GenericCall = cast(CastType),
-        CastTypeString = cast_type_to_string(CastType),
-        globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-        ( string.contains_char(Verbose, 'l') ->
-            write_indent(Indent, !IO),
-            io.write_strings(["% ", CastTypeString, "\n"], !IO)
-        ;
-            true
-        ),
-        ( string.contains_char(Verbose, 'D') ->
-            write_indent(Indent, !IO),
-            io.write_string("% modes: ", !IO),
-            varset.init(InstVarSet),
-            mercury_output_mode_list(Modes, InstVarSet, !IO),
-            io.nl(!IO)
-        ;
-            true
-        ),
-        Functor = term.atom(CastTypeString),
-        term.var_list_to_term_list(ArgVars, ArgTerms),
-        term.context_init(Context),
-        Term = term.functor(Functor, ArgTerms, Context),
-        write_indent(Indent, !IO),
-        mercury_output_term(VarSet, AppendVarNums, Term, !IO),
-        io.write_string(Follow, !IO)
-    ).
-
-write_goal_2(plain_call(PredId, ProcId, ArgVars, Builtin, MaybeUnifyContext,
-        PredName), ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
-        TypeQual, !IO) :-
-    globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-    ( string.contains_char(Verbose, 'b') ->
-        (
-            Builtin = inline_builtin,
-            write_indent(Indent, !IO),
-            io.write_string("% inline builtin\n", !IO)
-        ;
-            Builtin = out_of_line_builtin,
-            write_indent(Indent, !IO),
-            io.write_string("% out of line builtin\n", !IO)
-        ;
-            Builtin = not_builtin
-        )
-    ;
-        true
-    ),
-    write_indent(Indent, !IO),
-    ( PredId = invalid_pred_id ->
-        % If we don't know then the call must be treated as a predicate.
-        PredOrFunc = pf_predicate
-    ;
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_get_purity(PredInfo, Purity),
-        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-        write_purity_prefix(Purity, !IO)
-    ),
-    (
-        PredOrFunc = pf_predicate,
-        NewArgVars = ArgVars
-    ;
-        PredOrFunc = pf_function,
-        pred_args_to_func_args(ArgVars, NewArgVars, LHSVar),
-        mercury_output_var(VarSet, AppendVarNums, LHSVar, !IO),
-        io.write_string(" = ", !IO)
-    ),
-    write_sym_name_and_args(PredName, NewArgVars, VarSet, AppendVarNums, !IO),
-    io.write_string(Follow, !IO),
-    ( string.contains_char(Verbose, 'l') ->
-        pred_id_to_int(PredId, PredNum),
-        proc_id_to_int(ProcId, ProcNum),
-        write_indent(Indent, !IO),
-        io.write_string("% pred id: ", !IO),
-        io.write_int(PredNum, !IO),
-        io.write_string(", proc id: ", !IO),
-        io.write_int(ProcNum, !IO),
+        write_sym_name_and_args(PredName, NewArgVars, VarSet, AppendVarNums,
+            !IO),
         io.write_string(Follow, !IO),
-        (
-            MaybeUnifyContext = yes(CallUnifyContext),
-            (
-                TypeQual = varset_vartypes(_, VarTypes),
-                map.lookup(VarTypes, Var, UniType),
-                VarType = yes(UniType)
-            ;
-                TypeQual = no_varset_vartypes,
-                VarType = no
-            ),
-            CallUnifyContext = call_unify_context(Var, RHS, _UnifyContext),
+        ( string.contains_char(DumpOptions, 'l') ->
+            pred_id_to_int(PredId, PredNum),
+            proc_id_to_int(ProcId, ProcNum),
             write_indent(Indent, !IO),
-            io.write_string("% unify context: ", !IO),
-            mercury_output_var(VarSet, AppendVarNums, Var, !IO),
-            io.write_string(" = ", !IO),
-            % XXX Fake the inst varset.
-            varset.init(InstVarSet),
-            write_unify_rhs_2(RHS, ModuleInfo, VarSet, InstVarSet,
-                AppendVarNums, Indent, Follow, VarType, TypeQual, !IO)
+            io.write_string("% pred id: ", !IO),
+            io.write_int(PredNum, !IO),
+            io.write_string(", proc id: ", !IO),
+            io.write_int(ProcNum, !IO),
+            io.write_string(Follow, !IO),
+            (
+                MaybeUnifyContext = yes(CallUnifyContext),
+                (
+                    TypeQual = varset_vartypes(_, VarTypes),
+                    map.lookup(VarTypes, Var, UniType),
+                    VarType = yes(UniType)
+                ;
+                    TypeQual = no_varset_vartypes,
+                    VarType = no
+                ),
+                CallUnifyContext = call_unify_context(Var, RHS, _UnifyContext),
+                write_indent(Indent, !IO),
+                io.write_string("% unify context: ", !IO),
+                mercury_output_var(VarSet, AppendVarNums, Var, !IO),
+                io.write_string(" = ", !IO),
+                % XXX Fake the inst varset.
+                varset.init(InstVarSet),
+                write_unify_rhs_2(Info, RHS, ModuleInfo, VarSet, InstVarSet,
+                    AppendVarNums, Indent, Follow, VarType, TypeQual, !IO)
+            ;
+                MaybeUnifyContext = no
+            )
         ;
-            MaybeUnifyContext = no
-        )
-    ;
-        true
-    ).
-
-write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet, AppendVarNums,
-        Indent, Follow, TypeQual, !IO) :-
-    write_indent(Indent, !IO),
-    mercury_output_var(VarSet, AppendVarNums, A, !IO),
-    io.write_string(" = ", !IO),
-    (
-        TypeQual = varset_vartypes(_, VarTypes),
-        map.lookup(VarTypes, A, UniType),
-        VarType = yes(UniType)
-    ;
-        TypeQual = no_varset_vartypes,
-        VarType = no
-    ),
-    % XXX Fake the inst varset.
-    varset.init(InstVarSet),
-    write_unify_rhs_2(B, ModuleInfo, VarSet, InstVarSet,
-        AppendVarNums, Indent, Follow, VarType, TypeQual, !IO),
-    globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-    (
-        (
-            string.contains_char(Verbose, 'u')
-        ;
-            string.contains_char(Verbose, 'p')
-        )
-    ->
-        (
-            % Don't output bogus info if we haven't been through
-            % mode analysis yet.
-            Unification = complicated_unify(Mode, CanFail, TypeInfoVars),
-            CanFail = can_fail,
-            Mode = (free - free -> free - free),
-            TypeInfoVars = []
-        ->
             true
-        ;
-            write_unification(Unification, ModuleInfo, VarSet, InstVarSet,
-                AppendVarNums, Indent, !IO)
         )
     ;
-        true
+        GoalExpr = unify(LHS, RHS, _, Unification, _),
+        DumpOptions = Info ^ hoi_dump_hlds_options,
+        write_indent(Indent, !IO),
+        mercury_output_var(VarSet, AppendVarNums, LHS, !IO),
+        io.write_string(" = ", !IO),
+        (
+            TypeQual = varset_vartypes(_, VarTypes),
+            map.lookup(VarTypes, LHS, UniType),
+            VarType = yes(UniType)
+        ;
+            TypeQual = no_varset_vartypes,
+            VarType = no
+        ),
+        % XXX Fake the inst varset.
+        varset.init(InstVarSet),
+        write_unify_rhs_2(Info, RHS, ModuleInfo, VarSet, InstVarSet,
+            AppendVarNums, Indent, Follow, VarType, TypeQual, !IO),
+        (
+            (
+                string.contains_char(DumpOptions, 'u')
+            ;
+                string.contains_char(DumpOptions, 'p')
+            )
+        ->
+            (
+                % Don't output bogus info if we haven't been through
+                % mode analysis yet.
+                Unification = complicated_unify(Mode, CanFail, TypeInfoVars),
+                CanFail = can_fail,
+                Mode = (free - free -> free - free),
+                TypeInfoVars = []
+            ->
+                true
+            ;
+                write_unification(Info, Unification, ModuleInfo,
+                    VarSet, InstVarSet, AppendVarNums, Indent, !IO)
+            )
+        ;
+            true
+        )
+    ;
+        GoalExpr = call_foreign_proc(Attributes, PredId, ProcId,
+            Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode),
+        ForeignLang = get_foreign_language(Attributes),
+        write_indent(Indent, !IO),
+        io.write_string("$pragma_foreign_proc(/* ", !IO),
+        io.write_string(foreign_language_string(ForeignLang), !IO),
+        io.write_string(" */, ", !IO),
+        write_pred_id(ModuleInfo, PredId, !IO),
+        io.write_string(" pred ", !IO),
+        pred_id_to_int(PredId, PredIdInt),
+        io.write_int(PredIdInt, !IO),
+        io.write_string(" proc ", !IO),
+        proc_id_to_int(ProcId, ProcIdInt),
+        io.write_int(ProcIdInt, !IO),
+        io.write_string(",\n", !IO),
+        (
+            MaybeTraceRuntimeCond = no
+        ;
+            MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
+            write_indent(Indent, !IO),
+            io.write_string("% trace_runtime_cond(", !IO),
+            mercury_output_trace_expr(mercury_output_trace_runtime,
+                TraceRuntimeCond, !IO),
+            io.write_string(")\n", !IO)
+        ),
+        write_indent(Indent, !IO),
+        % XXX We don't have the TypeVarSet available here, but it is only used
+        % for printing out the names of the type variables, which isn't
+        % essential.
+        varset.init(TypeVarSet),
+        io.write_string("[", !IO),
+        write_foreign_args(Args, VarSet, TypeVarSet, AppendVarNums, !IO),
+        io.write_string("],\n", !IO),
+        (
+            ExtraArgs = []
+        ;
+            ExtraArgs = [_ | _],
+            write_indent(Indent, !IO),
+            io.write_string("{", !IO),
+            write_foreign_args(ExtraArgs, VarSet, TypeVarSet, AppendVarNums,
+                !IO),
+            io.write_string("},\n", !IO)
+        ),
+        (
+            PragmaCode = fc_impl_ordinary(C_Code, _),
+            io.write_string("""", !IO),
+            io.write_string(C_Code, !IO),
+            io.write_string("""", !IO)
+        ;
+            PragmaCode = fc_impl_model_non(Fields, _FieldsContext,
+                First, _FirstContext, Later, _LaterContext,
+                Treat, Shared, _SharedContext),
+            io.write_string("local_vars(""", !IO),
+            io.write_string(Fields, !IO),
+            io.write_string("""), ", !IO),
+            io.write_string("first_code(""", !IO),
+            io.write_string(First, !IO),
+            io.write_string("""), ", !IO),
+            io.write_string("retry_code(""", !IO),
+            io.write_string(Later, !IO),
+            io.write_string("""), ", !IO),
+            (
+                Treat = shared_code_share,
+                io.write_string("shared_code(""", !IO)
+            ;
+                Treat = shared_code_duplicate,
+                io.write_string("duplicated_code(""", !IO)
+            ;
+                Treat = shared_code_automatic,
+                io.write_string("common_code(""", !IO)
+            ),
+            io.write_string(Shared, !IO),
+            io.write_string(""")", !IO)
+        ;
+            PragmaCode = fc_impl_import(Name, _, _, _Context),
+            io.write_string("""", !IO),
+            io.write_string(Name, !IO),
+            io.write_string("""", !IO)
+        ),
+        io.write_string(")", !IO),
+        io.write_string(Follow, !IO)
+    ;
+        GoalExpr = shorthand(ShortHandGoal),
+        write_goal_2_shorthand(Info, ShortHandGoal, ModuleInfo, VarSet,
+            AppendVarNums, Indent, Follow, TypeQual, !IO)
     ).
 
-write_goal_2(call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
-        MaybeTraceRuntimeCond, PragmaCode), ModuleInfo, VarSet, AppendVarNums,
-        Indent, Follow, _, !IO) :-
-    ForeignLang = get_foreign_language(Attributes),
-    write_indent(Indent, !IO),
-    io.write_string("$pragma_foreign_proc(/* ", !IO),
-    io.write_string(foreign_language_string(ForeignLang), !IO),
-    io.write_string(" */, ", !IO),
-    write_pred_id(ModuleInfo, PredId, !IO),
-    io.write_string(" pred ", !IO),
-    pred_id_to_int(PredId, PredIdInt),
-    io.write_int(PredIdInt, !IO),
-    io.write_string(" proc ", !IO),
-    proc_id_to_int(ProcId, ProcIdInt),
-    io.write_int(ProcIdInt, !IO),
-    io.write_string(",\n", !IO),
-    (
-        MaybeTraceRuntimeCond = no
-    ;
-        MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
-        write_indent(Indent, !IO),
-        io.write_string("% trace_runtime_cond(", !IO),
-        mercury_output_trace_expr(mercury_output_trace_runtime,
-            TraceRuntimeCond, !IO),
-        io.write_string(")\n", !IO)
-    ),
-    write_indent(Indent, !IO),
-    % XXX We don't have the TypeVarSet available here, but it is only used
-    % for printing out the names of the type variables, which isn't essential.
-    varset.init(TypeVarSet),
-    io.write_string("[", !IO),
-    write_foreign_args(Args, VarSet, TypeVarSet, AppendVarNums, !IO),
-    io.write_string("],\n", !IO),
-    (
-        ExtraArgs = []
-    ;
-        ExtraArgs = [_ | _],
-        write_indent(Indent, !IO),
-        io.write_string("{", !IO),
-        write_foreign_args(ExtraArgs, VarSet, TypeVarSet, AppendVarNums, !IO),
-        io.write_string("},\n", !IO)
-    ),
-    (
-        PragmaCode = fc_impl_ordinary(C_Code, _),
-        io.write_string("""", !IO),
-        io.write_string(C_Code, !IO),
-        io.write_string("""", !IO)
-    ;
-        PragmaCode = fc_impl_model_non(Fields, _FieldsContext,
-            First, _FirstContext, Later, _LaterContext,
-            Treat, Shared, _SharedContext),
-        io.write_string("local_vars(""", !IO),
-        io.write_string(Fields, !IO),
-        io.write_string("""), ", !IO),
-        io.write_string("first_code(""", !IO),
-        io.write_string(First, !IO),
-        io.write_string("""), ", !IO),
-        io.write_string("retry_code(""", !IO),
-        io.write_string(Later, !IO),
-        io.write_string("""), ", !IO),
-        (
-            Treat = shared_code_share,
-            io.write_string("shared_code(""", !IO)
-        ;
-            Treat = shared_code_duplicate,
-            io.write_string("duplicated_code(""", !IO)
-        ;
-            Treat = shared_code_automatic,
-            io.write_string("common_code(""", !IO)
-        ),
-        io.write_string(Shared, !IO),
-        io.write_string(""")", !IO)
-    ;
-        PragmaCode = fc_impl_import(Name, _, _, _Context),
-        io.write_string("""", !IO),
-        io.write_string(Name, !IO),
-        io.write_string("""", !IO)
-    ),
-    io.write_string(")", !IO),
-    io.write_string(Follow, !IO).
+%-----------------------------------------------------------------------------%
 
-write_goal_2(shorthand(ShortHandGoal), ModuleInfo, VarSet, AppendVarNums,
-        Indent, Follow, TypeQual, !IO) :-
-    write_goal_2_shorthand(ShortHandGoal, ModuleInfo, VarSet, AppendVarNums,
-        Indent, Follow, TypeQual, !IO).
+:- pred write_goal_2_shorthand(hlds_out_info::in, shorthand_goal_expr::in,
+    module_info::in, prog_varset::in, bool::in, int::in, string::in,
+    maybe_vartypes::in, io::di, io::uo) is det.
 
-:- pred write_atomic_interface_vars(string::in, atomic_interface_vars::in,
-    prog_varset::in, bool::in, io::di, io::uo) is det.
-
-write_atomic_interface_vars(CompName, CompState, VarSet, AppendVarNums, !IO) :-
-    io.write_string(CompName, !IO),
-    io.write_string("(", !IO),
-    CompState = atomic_interface_vars(Var1, Var2),
-    mercury_output_var(VarSet, AppendVarNums, Var1, !IO),
-    io.write_string(", ", !IO),
-    mercury_output_var(VarSet, AppendVarNums, Var2, !IO),
-    io.write_string(")", !IO).
-
-:- pred write_or_else_list(hlds_goals::in, module_info::in, prog_varset::in,
-    bool::in, int::in, string::in, maybe_vartypes::in, io::di, io::uo) is det.
-
-write_or_else_list([], _, _, _, _, _, _, !IO).
-write_or_else_list([Goal | Goals], ModuleInfo, VarSet, AppendVarNums, Indent,
-        Follow, TypeQual, !IO) :-
-    write_indent(Indent, !IO),
-    io.write_string("or_else\n", !IO),
-    write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent+1, Follow,
-        TypeQual, !IO),
-    write_or_else_list(Goals, ModuleInfo, VarSet, AppendVarNums, Indent+1,
-        Follow, TypeQual, !IO).
-
-:- pred write_goal_2_shorthand(shorthand_goal_expr::in, module_info::in,
-    prog_varset::in, bool::in, int::in, string::in, maybe_vartypes::in,
-    io::di, io::uo) is det.
-
-write_goal_2_shorthand(ShortHand, ModuleInfo, VarSet, AppendVarNums,
+write_goal_2_shorthand(Info, ShortHand, ModuleInfo, VarSet, AppendVarNums,
         Indent, Follow, TypeQual, !IO) :-
     (
         ShortHand = atomic_goal(_GoalType, Outer, Inner, MaybeOutputVars,
@@ -2269,9 +2265,9 @@ write_goal_2_shorthand(ShortHand, ModuleInfo, VarSet, AppendVarNums,
         ),
         io.write_string("] (\n",!IO),
 
-        write_goal_a(MainGoal, ModuleInfo, VarSet, AppendVarNums,
+        write_goal_a(Info, MainGoal, ModuleInfo, VarSet, AppendVarNums,
             Indent + 1, "\n", TypeQual, !IO),
-        write_goal_list(OrElseGoals, ModuleInfo, VarSet, AppendVarNums,
+        write_goal_list(Info, OrElseGoals, ModuleInfo, VarSet, AppendVarNums,
             Indent, "or_else\n", TypeQual, !IO),
         write_indent(Indent, !IO),
         io.write_string(")", !IO),
@@ -2289,7 +2285,7 @@ write_goal_2_shorthand(ShortHand, ModuleInfo, VarSet, AppendVarNums,
         ;
             MaybeIO = no
         ),
-        write_goal_a(SubGoal, ModuleInfo, VarSet, AppendVarNums,
+        write_goal_a(Info, SubGoal, ModuleInfo, VarSet, AppendVarNums,
             Indent + 1, "\n", TypeQual, !IO),
         write_indent(Indent, !IO),
         io.write_string(")", !IO),
@@ -2299,12 +2295,12 @@ write_goal_2_shorthand(ShortHand, ModuleInfo, VarSet, AppendVarNums,
         write_indent(Indent, !IO),
         io.write_string("( % bi-implication\n", !IO),
         Indent1 = Indent + 1,
-        write_goal_a(GoalA, ModuleInfo, VarSet, AppendVarNums, Indent1, "\n",
-            TypeQual, !IO),
+        write_goal_a(Info, GoalA, ModuleInfo, VarSet, AppendVarNums, Indent1,
+            "\n", TypeQual, !IO),
         write_indent(Indent, !IO),
         io.write_string("<=>\n", !IO),
-        write_goal_a(GoalB, ModuleInfo, VarSet, AppendVarNums, Indent1, "\n",
-            TypeQual, !IO),
+        write_goal_a(Info, GoalB, ModuleInfo, VarSet, AppendVarNums, Indent1,
+            "\n", TypeQual, !IO),
         write_indent(Indent, !IO),
         io.write_string(")", !IO),
         io.write_string(Follow, !IO)
@@ -2318,6 +2314,32 @@ write_trace_mutable_var_hlds(Indent, MutableVar, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("% mutable " ++ MutableName ++ ": ", !IO),
     io.write_string("!" ++ StateVarName ++ "\n", !IO).
+
+:- pred write_atomic_interface_vars(string::in, atomic_interface_vars::in,
+    prog_varset::in, bool::in, io::di, io::uo) is det.
+
+write_atomic_interface_vars(CompName, CompState, VarSet, AppendVarNums, !IO) :-
+    io.write_string(CompName, !IO),
+    io.write_string("(", !IO),
+    CompState = atomic_interface_vars(Var1, Var2),
+    mercury_output_var(VarSet, AppendVarNums, Var1, !IO),
+    io.write_string(", ", !IO),
+    mercury_output_var(VarSet, AppendVarNums, Var2, !IO),
+    io.write_string(")", !IO).
+
+:- pred write_or_else_list(hlds_out_info::in, list(hlds_goal)::in,
+    module_info::in, prog_varset::in, bool::in, int::in, string::in,
+    maybe_vartypes::in, io::di, io::uo) is det.
+
+write_or_else_list(_, [], _, _, _, _, _, _, !IO).
+write_or_else_list(Info, [Goal | Goals], ModuleInfo, VarSet, AppendVarNums,
+        Indent, Follow, TypeQual, !IO) :-
+    write_indent(Indent, !IO),
+    io.write_string("or_else\n", !IO),
+    write_goal_a(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
+        Indent+1, Follow, TypeQual, !IO),
+    write_or_else_list(Info, Goals, ModuleInfo, VarSet, AppendVarNums,
+        Indent+1, Follow, TypeQual, !IO).
 
 :- pred write_foreign_args(list(foreign_arg)::in, prog_varset::in,
     tvarset::in, bool::in, io::di, io::uo) is det.
@@ -2356,12 +2378,12 @@ write_foreign_args([Arg | Args], VarSet, TVarSet, AppendVarNums, !IO) :-
         write_foreign_args(Args, VarSet, TVarSet, AppendVarNums, !IO)
     ).
 
-:- pred write_llds_code_gen_info(hlds_goal_info::in, prog_varset::in,
-    bool::in, int::in, string::in, io::di, io::uo) is det.
+:- pred write_llds_code_gen_info(hlds_out_info::in, hlds_goal_info::in,
+    prog_varset::in, bool::in, int::in, io::di, io::uo) is det.
 
-write_llds_code_gen_info(GoalInfo, VarSet, AppendVarNums,
-        Indent, Verbose, !IO) :-
-    ( string.contains_char(Verbose, 'f') ->
+write_llds_code_gen_info(Info, GoalInfo, VarSet, AppendVarNums, Indent, !IO) :-
+    DumpOptions = Info ^ hoi_dump_hlds_options,
+    ( string.contains_char(DumpOptions, 'f') ->
         goal_info_get_follow_vars(GoalInfo, MaybeFollowVars),
         (
             MaybeFollowVars = yes(FollowVars),
@@ -2378,7 +2400,7 @@ write_llds_code_gen_info(GoalInfo, VarSet, AppendVarNums,
     ;
         true
     ),
-    ( string.contains_char(Verbose, 'r') ->
+    ( string.contains_char(DumpOptions, 'r') ->
         goal_info_get_resume_point(GoalInfo, Resume),
         (
             Resume = no_resume_point
@@ -2407,7 +2429,7 @@ write_llds_code_gen_info(GoalInfo, VarSet, AppendVarNums,
         true
     ),
     (
-        string.contains_char(Verbose, 's'),
+        string.contains_char(DumpOptions, 's'),
         goal_info_get_store_map(GoalInfo, StoreMap),
         map.to_assoc_list(StoreMap, StoreMapList),
         StoreMapList = [_ | _]
@@ -2420,7 +2442,7 @@ write_llds_code_gen_info(GoalInfo, VarSet, AppendVarNums,
         true
     ),
     (
-        string.contains_char(Verbose, 's'),
+        string.contains_char(DumpOptions, 's'),
         goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAcrossCall),
         MaybeNeedAcrossCall = yes(NeedAcrossCall)
     ->
@@ -2465,7 +2487,7 @@ write_llds_code_gen_info(GoalInfo, VarSet, AppendVarNums,
         true
     ),
     (
-        string.contains_char(Verbose, 's'),
+        string.contains_char(DumpOptions, 's'),
         goal_info_get_maybe_need_in_resume(GoalInfo, MaybeNeedInResume),
         MaybeNeedInResume = yes(NeedInResume)
     ->
@@ -2507,7 +2529,7 @@ write_llds_code_gen_info(GoalInfo, VarSet, AppendVarNums,
         true
     ),
     (
-        string.contains_char(Verbose, 's'),
+        string.contains_char(DumpOptions, 's'),
         goal_info_get_maybe_need_in_par_conj(GoalInfo, MaybeNeedInParConj),
         MaybeNeedInParConj = yes(NeedInParConj)
     ->
@@ -2564,160 +2586,164 @@ write_var_name_list([Var1 - Name1, VarName2 | Vars], !IO) :-
     io.write_string(", ", !IO),
     write_var_name_list([VarName2 | Vars], !IO).
 
-:- pred write_unification(unification::in, module_info::in, prog_varset::in,
-    inst_varset::in, bool::in, int::in, io::di, io::uo) is det.
+:- pred write_unification(hlds_out_info::in, unification::in, module_info::in,
+    prog_varset::in, inst_varset::in, bool::in, int::in,
+    io::di, io::uo) is det.
 
-write_unification(assign(X, Y), _, ProgVarSet, _InstVarSet, AppendVarNums,
-        Indent, !IO) :-
-    write_indent(Indent, !IO),
-    io.write_string("% ", !IO),
-    mercury_output_var(ProgVarSet, AppendVarNums, X, !IO),
-    io.write_string(" := ", !IO),
-    mercury_output_var(ProgVarSet, AppendVarNums, Y, !IO),
-    io.write_string("\n", !IO).
-
-write_unification(simple_test(X, Y), _, ProgVarSet, _, AppendVarNums, Indent,
-        !IO) :-
-    write_indent(Indent, !IO),
-    io.write_string("% ", !IO),
-    mercury_output_var(ProgVarSet, AppendVarNums, X, !IO),
-    io.write_string(" == ", !IO),
-    mercury_output_var(ProgVarSet, AppendVarNums, Y, !IO),
-    io.write_string("\n", !IO).
-
-write_unification(construct(Var, ConsId, ArgVars, ArgModes, ConstructHow,
-        Uniqueness, SubInfo), ModuleInfo, ProgVarSet, InstVarSet,
+write_unification(Info, Unification, ModuleInfo, ProgVarSet, InstVarSet,
         AppendVarNums, Indent, !IO) :-
-    write_indent(Indent, !IO),
-    io.write_string("% ", !IO),
-    mercury_output_var(ProgVarSet, AppendVarNums, Var, !IO),
-    io.write_string(" := ", !IO),
-    write_functor_and_submodes(ConsId, ArgVars, ArgModes, ModuleInfo,
-        ProgVarSet, InstVarSet, AppendVarNums, Indent, !IO),
+    (
+        Unification = assign(X, Y),
+        write_indent(Indent, !IO),
+        io.write_string("% ", !IO),
+        mercury_output_var(ProgVarSet, AppendVarNums, X, !IO),
+        io.write_string(" := ", !IO),
+        mercury_output_var(ProgVarSet, AppendVarNums, Y, !IO),
+        io.write_string("\n", !IO)
+    ;
+        Unification = simple_test(X, Y),
+        write_indent(Indent, !IO),
+        io.write_string("% ", !IO),
+        mercury_output_var(ProgVarSet, AppendVarNums, X, !IO),
+        io.write_string(" == ", !IO),
+        mercury_output_var(ProgVarSet, AppendVarNums, Y, !IO),
+        io.write_string("\n", !IO)
+    ;
+        Unification = construct(Var, ConsId, ArgVars, ArgModes, ConstructHow,
+            Uniqueness, SubInfo),
+        write_indent(Indent, !IO),
+        io.write_string("% ", !IO),
+        mercury_output_var(ProgVarSet, AppendVarNums, Var, !IO),
+        io.write_string(" := ", !IO),
+        write_functor_and_submodes(Info, ConsId, ArgVars, ArgModes, ModuleInfo,
+            ProgVarSet, InstVarSet, AppendVarNums, Indent, !IO),
 
-    globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-    ( string.contains_char(Verbose, 'u') ->
-        ( ConsId = cons(_, _, TypeCtor) ->
-            TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
+        DumpOptions = Info ^ hoi_dump_hlds_options,
+        ( string.contains_char(DumpOptions, 'u') ->
+            ( ConsId = cons(_, _, TypeCtor) ->
+                TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
+                write_indent(Indent, !IO),
+                TypeCtorSymNameStr = sym_name_to_string(TypeCtorSymName),
+                io.format("%% cons_id type_ctor: %s/%d",
+                    [s(TypeCtorSymNameStr), i(TypeCtorArity)], !IO)
+            ;
+                true
+            ),
+            (
+                Uniqueness = cell_is_unique,
+                write_indent(Indent, !IO),
+                io.write_string("% cell_is_unique\n", !IO)
+            ;
+                Uniqueness = cell_is_shared
+            ),
+            (
+                SubInfo = no_construct_sub_info
+            ;
+                SubInfo = construct_sub_info(MaybeTakeAddr, MaybeSize),
+                (
+                    MaybeTakeAddr = yes(TakeAddressFields),
+                    write_indent(Indent, !IO),
+                    io.write_string("% take address fields: ", !IO),
+                    write_intlist(TakeAddressFields, !IO),
+                    io.write_string("\n", !IO)
+                ;
+                    MaybeTakeAddr = no
+                ),
+                (
+                    MaybeSize = yes(SizeSource),
+                    write_indent(Indent, !IO),
+                    io.write_string("% term size ", !IO),
+                    (
+                        SizeSource = known_size(KnownSize),
+                        io.write_string("const ", !IO),
+                        io.write_int(KnownSize, !IO),
+                        io.write_string("\n", !IO)
+                    ;
+                        SizeSource = dynamic_size(SizeVar),
+                        io.write_string("var ", !IO),
+                        mercury_output_var(ProgVarSet, AppendVarNums, SizeVar,
+                            !IO),
+                        io.write_string("\n", !IO)
+                    )
+                ;
+                    MaybeSize = no
+                )
+            ),
+            (
+                ConstructHow = construct_dynamically
+            ;
+                ConstructHow = construct_statically,
+                write_indent(Indent, !IO),
+                io.write_string("% construct statically\n", !IO)
+            ;
+                ConstructHow = reuse_cell(CellToReuse),
+                CellToReuse = cell_to_reuse(ReuseVar, _ReuseConsIds,
+                    _FieldAssigns),
+                write_indent(Indent, !IO),
+                io.write_string("% reuse cell: ", !IO),
+                mercury_output_var(ProgVarSet, AppendVarNums, ReuseVar, !IO),
+                io.write_string("\n", !IO)
+            ;
+                ConstructHow = construct_in_region(RegVar),
+                write_indent(Indent, !IO),
+                io.write_string("% construct in region: ", !IO),
+                mercury_output_var(ProgVarSet, AppendVarNums, RegVar, !IO),
+                io.write_string("\n", !IO)
+            )
+        ;
+            true
+        )
+    ;
+        Unification = deconstruct(Var, ConsId, ArgVars, ArgModes, CanFail,
+            CanCGC),
+        DumpOptions = Info ^ hoi_dump_hlds_options,
+        ( string.contains_char(DumpOptions, 'G') ->
             write_indent(Indent, !IO),
-            TypeCtorSymNameStr = sym_name_to_string(TypeCtorSymName),
-            io.format("%% cons_id type_ctor: %s/%d",
-                [s(TypeCtorSymNameStr), i(TypeCtorArity)], !IO)
+            io.write_string("% Compile time garbage collect: ", !IO),
+            io.write(CanCGC, !IO),
+            io.nl(!IO)
         ;
             true
         ),
+        write_indent(Indent, !IO),
+        io.write_string("% ", !IO),
+        mercury_output_var(ProgVarSet, AppendVarNums, Var, !IO),
         (
-            Uniqueness = cell_is_unique,
-            write_indent(Indent, !IO),
-            io.write_string("% cell_is_unique\n", !IO)
+            CanFail = can_fail,
+            io.write_string(" ?= ", !IO)
         ;
-            Uniqueness = cell_is_shared
+            CanFail = cannot_fail,
+            io.write_string(" => ", !IO)
         ),
-        (
-            SubInfo = no_construct_sub_info
-        ;
-            SubInfo = construct_sub_info(MaybeTakeAddr, MaybeSize),
-            (
-                MaybeTakeAddr = yes(TakeAddressFields),
-                write_indent(Indent, !IO),
-                io.write_string("% take address fields: ", !IO),
-                write_intlist(TakeAddressFields, !IO),
-                io.write_string("\n", !IO)
-            ;
-                MaybeTakeAddr = no
-            ),
-            (
-                MaybeSize = yes(SizeSource),
-                write_indent(Indent, !IO),
-                io.write_string("% term size ", !IO),
-                (
-                    SizeSource = known_size(KnownSize),
-                    io.write_string("const ", !IO),
-                    io.write_int(KnownSize, !IO),
-                    io.write_string("\n", !IO)
-                ;
-                    SizeSource = dynamic_size(SizeVar),
-                    io.write_string("var ", !IO),
-                    mercury_output_var(ProgVarSet, AppendVarNums, SizeVar, !IO),
-                    io.write_string("\n", !IO)
-                )
-            ;
-                MaybeSize = no
-            )
-        ),
-        (
-            ConstructHow = construct_dynamically
-        ;
-            ConstructHow = construct_statically,
-            write_indent(Indent, !IO),
-            io.write_string("% construct statically\n", !IO)
-        ;
-            ConstructHow = reuse_cell(CellToReuse),
-            CellToReuse = cell_to_reuse(ReuseVar, _ReuseConsIds, _FieldAssigns),
-            write_indent(Indent, !IO),
-            io.write_string("% reuse cell: ", !IO),
-            mercury_output_var(ProgVarSet, AppendVarNums, ReuseVar, !IO),
-            io.write_string("\n", !IO)
-        ;
-            ConstructHow = construct_in_region(RegVar),
-            write_indent(Indent, !IO),
-            io.write_string("% construct in region: ", !IO),
-            mercury_output_var(ProgVarSet, AppendVarNums, RegVar, !IO),
-            io.write_string("\n", !IO)
-        )
+        write_functor_and_submodes(Info, ConsId, ArgVars, ArgModes, ModuleInfo,
+            ProgVarSet, InstVarSet, AppendVarNums, Indent, !IO)
     ;
-        true
+        Unification = complicated_unify(Mode, CanFail, TypeInfoVars),
+        write_indent(Indent, !IO),
+        io.write_string("% ", !IO),
+        (
+            CanFail = can_fail,
+            io.write_string("can_fail, ", !IO)
+        ;
+            CanFail = cannot_fail,
+            io.write_string("cannot_fail, ", !IO)
+        ),
+        io.write_string("mode: ", !IO),
+        mercury_output_uni_mode(Mode, InstVarSet, !IO),
+        io.write_string("\n", !IO),
+        write_indent(Indent, !IO),
+        io.write_string("% type-info vars: ", !IO),
+        mercury_output_vars(ProgVarSet, AppendVarNums, TypeInfoVars, !IO),
+        io.write_string("\n", !IO)
     ).
 
-write_unification(deconstruct(Var, ConsId, ArgVars, ArgModes, CanFail, CanCGC),
-        ModuleInfo, ProgVarSet, InstVarSet, AppendVarNums, Indent, !IO) :-
-    globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-    ( string.contains_char(Verbose, 'G') ->
-        write_indent(Indent, !IO),
-        io.write_string("% Compile time garbage collect: ", !IO),
-        io.write(CanCGC, !IO),
-        io.nl(!IO)
-    ;
-        true
-    ),
-    write_indent(Indent, !IO),
-    io.write_string("% ", !IO),
-    mercury_output_var(ProgVarSet, AppendVarNums, Var, !IO),
-    (
-        CanFail = can_fail,
-        io.write_string(" ?= ", !IO)
-    ;
-        CanFail = cannot_fail,
-        io.write_string(" => ", !IO)
-    ),
-    write_functor_and_submodes(ConsId, ArgVars, ArgModes, ModuleInfo,
-        ProgVarSet, InstVarSet, AppendVarNums, Indent, !IO).
+:- pred write_functor_and_submodes(hlds_out_info::in, cons_id::in,
+    list(prog_var)::in, list(uni_mode)::in, module_info::in,
+    prog_varset::in, inst_varset::in, bool::in, int::in,
+    io::di, io::uo) is det.
 
-write_unification(complicated_unify(Mode, CanFail, TypeInfoVars), _ModuleInfo,
+write_functor_and_submodes(Info, ConsId, ArgVars, ArgModes, _ModuleInfo,
         ProgVarSet, InstVarSet, AppendVarNums, Indent, !IO) :-
-    write_indent(Indent, !IO),
-    io.write_string("% ", !IO),
-    (
-        CanFail = can_fail,
-        io.write_string("can_fail, ", !IO)
-    ;
-        CanFail = cannot_fail,
-        io.write_string("cannot_fail, ", !IO)
-    ),
-    io.write_string("mode: ", !IO),
-    mercury_output_uni_mode(Mode, InstVarSet, !IO),
-    io.write_string("\n", !IO),
-    write_indent(Indent, !IO),
-    io.write_string("% type-info vars: ", !IO),
-    mercury_output_vars(ProgVarSet, AppendVarNums, TypeInfoVars, !IO),
-    io.write_string("\n", !IO).
-
-:- pred write_functor_and_submodes(cons_id::in, list(prog_var)::in,
-    list(uni_mode)::in, module_info::in, prog_varset::in, inst_varset::in,
-    bool::in, int::in, io::di, io::uo) is det.
-
-write_functor_and_submodes(ConsId, ArgVars, ArgModes, _ModuleInfo, ProgVarSet,
-        InstVarSet, AppendVarNums, Indent, !IO) :-
     write_cons_id_and_arity(ConsId, !IO),
     (
         ArgVars = [],
@@ -2727,8 +2753,8 @@ write_functor_and_submodes(ConsId, ArgVars, ArgModes, _ModuleInfo, ProgVarSet,
         io.write_string(" (", !IO),
         mercury_output_vars(ProgVarSet, AppendVarNums, ArgVars, !IO),
         io.write_string(")\n", !IO),
-        globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-        ( string.contains_char(Verbose, 'a') ->
+        DumpOptions = Info ^ hoi_dump_hlds_options,
+        ( string.contains_char(DumpOptions, 'a') ->
             write_indent(Indent, !IO),
             io.write_string("% arg-modes ", !IO),
             mercury_output_uni_mode_list(ArgModes, InstVarSet, !IO),
@@ -2738,135 +2764,139 @@ write_functor_and_submodes(ConsId, ArgVars, ArgModes, _ModuleInfo, ProgVarSet,
         )
     ).
 
-write_unify_rhs(RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums, Indent,
-        !IO) :-
-    write_unify_rhs_3(RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums,
+write_unify_rhs(Info, RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums,
+        Indent, !IO) :-
+    write_unify_rhs_3(Info, RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums,
         Indent, no, no_varset_vartypes, !IO).
 
-:- pred write_unify_rhs_2(unify_rhs::in, module_info::in,
+:- pred write_unify_rhs_2(hlds_out_info::in, unify_rhs::in, module_info::in,
     prog_varset::in, inst_varset::in, bool::in, int::in, string::in,
     maybe(mer_type)::in, maybe_vartypes::in, io::di, io::uo) is det.
 
-write_unify_rhs_2(RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums, Indent,
-        Follow, MaybeType, TypeQual, !IO) :-
-    write_unify_rhs_3(RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums,
+write_unify_rhs_2(Info, RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums,
+        Indent, Follow, MaybeType, TypeQual, !IO) :-
+    write_unify_rhs_3(Info, RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums,
         Indent, MaybeType, TypeQual, !IO),
     io.write_string(Follow, !IO).
 
-:- pred write_unify_rhs_3(unify_rhs::in, module_info::in,
+:- pred write_unify_rhs_3(hlds_out_info::in, unify_rhs::in, module_info::in,
     prog_varset::in, inst_varset::in, bool::in, int::in, maybe(mer_type)::in,
     maybe_vartypes::in, io::di, io::uo) is det.
 
-write_unify_rhs_3(rhs_var(Var), _, VarSet, _, AppendVarNums, _, _, _, !IO) :-
-    mercury_output_var(VarSet, AppendVarNums, Var, !IO).
-write_unify_rhs_3(rhs_functor(ConsId0, IsExistConstruct, ArgVars), ModuleInfo,
-        VarSet, _, AppendVarNums, _Indent, MaybeType, TypeQual, !IO) :-
+write_unify_rhs_3(Info, RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums,
+        Indent, MaybeType, TypeQual, !IO) :-
     (
-        IsExistConstruct = yes,
-        ConsId0 = cons(SymName0, Arity, TypeCtor)
-    ->
-        remove_new_prefix(SymName, SymName0),
-        ConsId = cons(SymName, Arity, TypeCtor)
+        RHS = rhs_var(Var),
+        mercury_output_var(VarSet, AppendVarNums, Var, !IO)
     ;
-        ConsId = ConsId0
-    ),
-    write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo, AppendVarNums,
-        !IO),
-    (
-        MaybeType = yes(Type),
-        TypeQual = varset_vartypes(TVarSet, _)
-    ->
-        io.write_string(" : ", !IO),
-        mercury_output_type(TVarSet, AppendVarNums, Type, !IO)
-    ;
-        true
-    ).
-write_unify_rhs_3(rhs_lambda_goal(Purity, Groundness, PredOrFunc, _EvalMethod,
-        NonLocals, Vars, Modes, Det, Goal), ModuleInfo, VarSet, InstVarSet,
-        AppendVarNums, Indent, MaybeType, TypeQual, !IO) :-
-    Indent1 = Indent + 1,
-    write_purity_prefix(Purity, !IO),
-    (
-        PredOrFunc = pf_predicate,
+        RHS = rhs_functor(ConsId0, IsExistConstruct, ArgVars),
         (
-            Groundness = ho_ground,
-            Functor = "pred"
+            IsExistConstruct = yes,
+            ConsId0 = cons(SymName0, Arity, TypeCtor)
+        ->
+            remove_new_prefix(SymName, SymName0),
+            ConsId = cons(SymName, Arity, TypeCtor)
         ;
-            Groundness = ho_any,
-            Functor = "any_pred"
+            ConsId = ConsId0
         ),
-        io.write_string("(", !IO),
+        write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
+            AppendVarNums, !IO),
         (
-            Vars = [],
-            io.write_strings(["(", Functor, ")"], !IO)
+            MaybeType = yes(Type),
+            TypeQual = varset_vartypes(TVarSet, _)
+        ->
+            io.write_string(" : ", !IO),
+            mercury_output_type(TVarSet, AppendVarNums, Type, !IO)
         ;
-            Vars = [_ | _],
-            io.write_strings([Functor, "("], !IO),
-            write_var_modes(Vars, Modes, VarSet, InstVarSet, AppendVarNums,
-                !IO),
-            io.write_string(")", !IO)
-        ),
-        io.write_string(" is ", !IO),
-        mercury_output_det(Det, !IO),
-        io.write_string(" :-\n", !IO),
-        write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent1, "\n",
-            TypeQual, !IO),
-        write_indent(Indent, !IO),
-        io.write_string(")", !IO)
-    ;
-        PredOrFunc = pf_function,
-        (
-            Groundness = ho_ground,
-            Functor = "func"
-        ;
-            Groundness = ho_any,
-            Functor = "any_func"
-        ),
-        pred_args_to_func_args(Modes, ArgModes, RetMode),
-        pred_args_to_func_args(Vars, ArgVars, RetVar),
-        io.write_string("(", !IO),
-        (
-            ArgVars = [],
-            io.write_strings(["(", Functor, ")"], !IO)
-        ;
-            ArgVars = [_ | _],
-            io.write_strings([Functor, "("], !IO),
-            write_var_modes(ArgVars, ArgModes, VarSet, InstVarSet,
-                AppendVarNums, !IO),
-            io.write_string(")", !IO)
-        ),
-        io.write_string(" = (", !IO),
-        write_var_mode(VarSet, InstVarSet, AppendVarNums,
-            RetVar - RetMode, !IO),
-        io.write_string(") is ", !IO),
-        mercury_output_det(Det, !IO),
-        io.write_string(" :-\n", !IO),
-        write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent1, "\n",
-            TypeQual, !IO),
-        write_indent(Indent, !IO),
-        io.write_string(")", !IO)
-    ),
-    (
-        MaybeType = yes(Type),
-        TypeQual = varset_vartypes(TVarSet, _)
-    ->
-        io.write_string(" : ", !IO),
-        mercury_output_type(TVarSet, AppendVarNums, Type, !IO)
-    ;
-        true
-    ),
-    globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-    ( string.contains_char(Verbose, 'n') ->
-        (
-            NonLocals = [_ | _],
-            write_indent(Indent1, !IO),
-            io.write_string("% lambda nonlocals: ", !IO),
-            mercury_output_vars(VarSet, AppendVarNums, NonLocals, !IO)
-        ;
-            NonLocals = []
+            true
         )
     ;
-        true
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, _EvalMethod,
+            NonLocals, Vars, Modes, Det, Goal),
+        Indent1 = Indent + 1,
+        write_purity_prefix(Purity, !IO),
+        (
+            PredOrFunc = pf_predicate,
+            (
+                Groundness = ho_ground,
+                Functor = "pred"
+            ;
+                Groundness = ho_any,
+                Functor = "any_pred"
+            ),
+            io.write_string("(", !IO),
+            (
+                Vars = [],
+                io.write_strings(["(", Functor, ")"], !IO)
+            ;
+                Vars = [_ | _],
+                io.write_strings([Functor, "("], !IO),
+                write_var_modes(Vars, Modes, VarSet, InstVarSet, AppendVarNums,
+                    !IO),
+                io.write_string(")", !IO)
+            ),
+            io.write_string(" is ", !IO),
+            mercury_output_det(Det, !IO),
+            io.write_string(" :-\n", !IO),
+            write_goal_a(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
+                Indent1, "\n", TypeQual, !IO),
+            write_indent(Indent, !IO),
+            io.write_string(")", !IO)
+        ;
+            PredOrFunc = pf_function,
+            (
+                Groundness = ho_ground,
+                Functor = "func"
+            ;
+                Groundness = ho_any,
+                Functor = "any_func"
+            ),
+            pred_args_to_func_args(Modes, ArgModes, RetMode),
+            pred_args_to_func_args(Vars, ArgVars, RetVar),
+            io.write_string("(", !IO),
+            (
+                ArgVars = [],
+                io.write_strings(["(", Functor, ")"], !IO)
+            ;
+                ArgVars = [_ | _],
+                io.write_strings([Functor, "("], !IO),
+                write_var_modes(ArgVars, ArgModes, VarSet, InstVarSet,
+                    AppendVarNums, !IO),
+                io.write_string(")", !IO)
+            ),
+            io.write_string(" = (", !IO),
+            write_var_mode(VarSet, InstVarSet, AppendVarNums,
+                RetVar - RetMode, !IO),
+            io.write_string(") is ", !IO),
+            mercury_output_det(Det, !IO),
+            io.write_string(" :-\n", !IO),
+            write_goal_a(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
+                Indent1, "\n", TypeQual, !IO),
+            write_indent(Indent, !IO),
+            io.write_string(")", !IO)
+        ),
+        (
+            MaybeType = yes(Type),
+            TypeQual = varset_vartypes(TVarSet, _)
+        ->
+            io.write_string(" : ", !IO),
+            mercury_output_type(TVarSet, AppendVarNums, Type, !IO)
+        ;
+            true
+        ),
+        DumpOptions = Info ^ hoi_dump_hlds_options,
+        ( string.contains_char(DumpOptions, 'n') ->
+            (
+                NonLocals = [_ | _],
+                write_indent(Indent1, !IO),
+                io.write_string("% lambda nonlocals: ", !IO),
+                mercury_output_vars(VarSet, AppendVarNums, NonLocals, !IO)
+            ;
+                NonLocals = []
+            )
+        ;
+            true
+        )
     ).
 
 unify_rhs_to_string(rhs_var(Var), _ModuleInfo, VarSet, AppendVarNums)
@@ -3092,53 +3122,56 @@ var_mode_to_string(VarSet, InstVarSet, AppendVarNums, Var - Mode) =
     mercury_var_to_string(VarSet, AppendVarNums, Var)
         ++ "::" ++ mercury_mode_to_string(Mode, InstVarSet).
 
-:- pred write_conj(hlds_goal::in, list(hlds_goal)::in,
+:- pred write_conj(hlds_out_info::in, hlds_goal::in, list(hlds_goal)::in,
     module_info::in, prog_varset::in, bool::in, int::in, string::in,
-    string::in, string::in, maybe_vartypes::in, io::di, io::uo) is det.
+    string::in, maybe_vartypes::in, io::di, io::uo) is det.
 
-write_conj(Goal1, Goals1, ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
-        Verbose, Separator, TypeQual, !IO) :-
+write_conj(Info, Goal1, Goals1, ModuleInfo, VarSet, AppendVarNums, Indent,
+        Follow, Separator, TypeQual, !IO) :-
     (
         Goals1 = [Goal2 | Goals2],
-        ( Verbose \= "" ->
+        DumpOptions = Info ^ hoi_dump_hlds_options,
+        ( DumpOptions \= "" ->
             % When generating verbose dumps, we want the comma on its own line,
             % since that way it visually separates the lines after one goal
             % and the lines before the next.
-            write_goal_a(Goal1, ModuleInfo, VarSet, AppendVarNums, Indent,
-                "\n", TypeQual, !IO),
+            write_goal_a(Info, Goal1, ModuleInfo, VarSet, AppendVarNums,
+                Indent, "\n", TypeQual, !IO),
             write_indent(Indent, !IO),
             io.write_string(Separator, !IO)
         ;
-            write_goal_a(Goal1, ModuleInfo, VarSet, AppendVarNums, Indent,
-                Separator, TypeQual, !IO)
+            write_goal_a(Info, Goal1, ModuleInfo, VarSet, AppendVarNums,
+                Indent, Separator, TypeQual, !IO)
         ),
-        write_conj(Goal2, Goals2, ModuleInfo, VarSet, AppendVarNums,
-            Indent, Follow, Verbose, Separator, TypeQual, !IO)
+        write_conj(Info, Goal2, Goals2, ModuleInfo, VarSet, AppendVarNums,
+            Indent, Follow, Separator, TypeQual, !IO)
     ;
         Goals1 = [],
-        write_goal_a(Goal1, ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
-            TypeQual, !IO)
+        write_goal_a(Info, Goal1, ModuleInfo, VarSet, AppendVarNums, Indent,
+            Follow, TypeQual, !IO)
     ).
 
-write_goal_list(GoalList, ModuleInfo, VarSet, AppendVarNums, Indent, Separator,
-        TypeQual, !IO) :-
+write_goal_list(Info, GoalList, ModuleInfo, VarSet, AppendVarNums, Indent,
+        Separator, TypeQual, !IO) :-
     (
         GoalList = [Goal | Goals],
         write_indent(Indent, !IO),
         io.write_string(Separator, !IO),
-        write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent + 1, "\n",
-            TypeQual, !IO),
-        write_goal_list(Goals, ModuleInfo, VarSet, AppendVarNums, Indent,
+        write_goal_a(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
+            Indent + 1, "\n", TypeQual, !IO),
+        write_goal_list(Info, Goals, ModuleInfo, VarSet, AppendVarNums, Indent,
             Separator, TypeQual, !IO)
     ;
         GoalList = []
     ).
 
-:- pred write_case(case::in, prog_var::in, module_info::in, prog_varset::in,
-    bool::in, int::in, maybe_vartypes::in, io::di, io::uo) is det.
+:- pred write_case(hlds_out_info::in, case::in, prog_var::in, module_info::in,
+    prog_varset::in, bool::in, int::in, maybe_vartypes::in,
+    io::di, io::uo) is det.
 
-write_case(case(MainConsId, OtherConsIds, Goal), Var, ModuleInfo,
-        VarSet, AppendVarNums, Indent, VarTypes, !IO) :-
+write_case(Info, Case, Var, ModuleInfo, VarSet, AppendVarNums, Indent,
+        VarTypes, !IO) :-
+    Case = case(MainConsId, OtherConsIds, Goal),
     write_indent(Indent, !IO),
     io.write_string("% ", !IO),
     mercury_output_var(VarSet, AppendVarNums, Var, !IO),
@@ -3151,7 +3184,7 @@ write_case(case(MainConsId, OtherConsIds, Goal), Var, ModuleInfo,
     % Var to the functor, since simplify.m and unused_args.m remove
     % the unification. At the moment this is not a problem, since
     % intermod.m works on the unoptimized clauses.
-    write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent, "\n",
+    write_goal_a(Info, Goal, ModuleInfo, VarSet, AppendVarNums, Indent, "\n",
         VarTypes, !IO).
 
 :- pred write_alternative_cons_id(cons_id::in, io::di, io::uo) is det.
@@ -3160,28 +3193,29 @@ write_alternative_cons_id(ConsId, !IO) :-
     io.write_string(" or ", !IO),
     write_cons_id_and_arity(ConsId, !IO).
 
-:- pred write_cases(list(case)::in, prog_var::in, module_info::in,
-    prog_varset::in, bool::in, int::in, maybe_vartypes::in, io::di, io::uo)
+:- pred write_cases(hlds_out_info::in, list(case)::in, prog_var::in,
+    module_info::in, prog_varset::in, bool::in, int::in, maybe_vartypes::in,
+    io::di, io::uo)
     is det.
 
-write_cases(CasesList, Var, ModuleInfo, VarSet, AppendVarNums, Indent,
+write_cases(Info, CasesList, Var, ModuleInfo, VarSet, AppendVarNums, Indent,
         VarTypes, !IO) :-
     (
         CasesList = [Case | Cases],
         write_indent(Indent, !IO),
         io.write_string(";\n", !IO),
-        write_case(Case, Var, ModuleInfo, VarSet, AppendVarNums, Indent + 1,
-            VarTypes, !IO),
-        write_cases(Cases, Var, ModuleInfo, VarSet, AppendVarNums, Indent,
-            VarTypes, !IO)
+        write_case(Info, Case, Var, ModuleInfo, VarSet, AppendVarNums,
+            Indent + 1, VarTypes, !IO),
+        write_cases(Info, Cases, Var, ModuleInfo, VarSet, AppendVarNums,
+            Indent, VarTypes, !IO)
     ;
         CasesList = []
     ).
 
 :- pred write_some(list(prog_var)::in, prog_varset::in, io::di, io::uo) is det.
 
-    % Quantification is all implicit by the time we get to the HLDS.
 write_some(_Vars, _VarSet, !IO).
+    % Quantification is all implicit by the time we get to the HLDS.
 
 write_instmap(InstMap, VarSet, AppendVarNums, Indent, !IO) :-
     ( instmap_is_unreachable(InstMap) ->
@@ -3466,19 +3500,20 @@ write_var_name_remap(Head, Tail, VarSet, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_types(int::in, type_table::in, io::di, io::uo) is det.
+:- pred write_types(hlds_out_info::in, int::in, type_table::in,
+    io::di, io::uo) is det.
 
-write_types(Indent, TypeTable, !IO) :-
+write_types(Info, Indent, TypeTable, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("%-------- Types --------\n", !IO),
     get_all_type_ctor_defns(TypeTable, TypeAssocList),
-    write_types_2(Indent, TypeAssocList, !IO).
+    write_types_2(Info, Indent, TypeAssocList, !IO).
 
-:- pred write_types_2(int::in, assoc_list(type_ctor, hlds_type_defn)::in,
-    io::di, io::uo) is det.
+:- pred write_types_2(hlds_out_info::in, int::in,
+    assoc_list(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
 
-write_types_2(_Indent, [], !IO).
-write_types_2(Indent, [TypeCtor - TypeDefn | Types], !IO) :-
+write_types_2(_, _, [], !IO).
+write_types_2(Info, Indent, [TypeCtor - TypeDefn | Types], !IO) :-
     hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet),
     hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
@@ -3487,8 +3522,8 @@ write_types_2(Indent, [TypeCtor - TypeDefn | Types], !IO) :-
 
     % Write the context.
     io.write_char('\n', !IO),
-    globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-    ( string.contains_char(Verbose, 'c') ->
+    DumpOptions = Info ^ hoi_dump_hlds_options,
+    ( string.contains_char(DumpOptions, 'c') ->
         term.context_file(Context, FileName),
         term.context_line(Context, LineNumber),
         ( FileName \= "" ->
@@ -3519,8 +3554,8 @@ write_types_2(Indent, [TypeCtor - TypeDefn | Types], !IO) :-
     ),
     write_type_name(TypeCtor, !IO),
     write_type_params(TVarSet, TypeParams, !IO),
-    write_type_body(TypeCtor, TypeBody, Indent + 1, TVarSet, !IO),
-    write_types_2(Indent, Types, !IO).
+    write_type_body(Info, TypeCtor, TypeBody, Indent + 1, TVarSet, !IO),
+    write_types_2(Info, Indent, Types, !IO).
 
 :- pred write_type_name(type_ctor::in, io::di, io::uo) is det.
 
@@ -3556,10 +3591,10 @@ write_type_params_2(TVarSet, [P | Ps], !IO) :-
     mercury_output_var(TVarSet, no, P, !IO),
     write_type_params_2(TVarSet, Ps, !IO).
 
-:- pred write_type_body(type_ctor::in, hlds_type_body::in,
+:- pred write_type_body(hlds_out_info::in, type_ctor::in, hlds_type_body::in,
     int::in, tvarset::in, io::di, io::uo) is det.
 
-write_type_body(TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
+write_type_body(Info, TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
     (
         TypeBody = hlds_du_type(Ctors, ConsTagMap, CheaperTagTest, DuTypeKind,
             MaybeUserEqComp, ReservedTag, ReservedAddr, Foreign),
@@ -3629,7 +3664,9 @@ write_type_body(TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
             ReservedAddr = does_not_use_reserved_address
         ),
         write_constructors(TypeCtor, Indent, TVarSet, Ctors, ConsTagMap, !IO),
-        mercury_output_where_attributes(TVarSet, no, MaybeUserEqComp, !IO),
+        MercInfo = Info ^ hoi_mercury_to_mercury,
+        mercury_output_where_attributes(MercInfo, TVarSet, no, MaybeUserEqComp,
+            !IO),
         (
             Foreign = yes(_),
             write_indent(Indent, !IO),
@@ -3652,8 +3689,9 @@ write_type_body(TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
         io.write_string(" == $foreign_type.\n", !IO)
     ;
         TypeBody = hlds_solver_type(SolverTypeDetails, MaybeUserEqComp),
-        mercury_output_where_attributes(TVarSet, yes(SolverTypeDetails),
-            MaybeUserEqComp, !IO),
+        MercInfo = Info ^ hoi_mercury_to_mercury,
+        mercury_output_where_attributes(MercInfo, TVarSet,
+            yes(SolverTypeDetails), MaybeUserEqComp, !IO),
         io.write_string(".\n", !IO)
     ).
 
@@ -3708,19 +3746,20 @@ write_ctor(TypeCtor, Ctor, TVarSet, TagValues, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_classes(int::in, class_table::in, io::di, io::uo) is det.
+:- pred write_classes(hlds_out_info::in, int::in, class_table::in,
+    io::di, io::uo) is det.
 
-write_classes(Indent, ClassTable, !IO) :-
+write_classes(Info, Indent, ClassTable, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("%-------- Classes --------\n", !IO),
     map.to_assoc_list(ClassTable, ClassTableList),
-    io.write_list(ClassTableList, "\n", write_class_defn(Indent), !IO),
+    io.write_list(ClassTableList, "\n", write_class_defn(Info, Indent), !IO),
     io.nl(!IO).
 
-:- pred write_class_defn(int::in,
+:- pred write_class_defn(hlds_out_info::in, int::in,
     pair(class_id, hlds_class_defn)::in, io::di, io::uo) is det.
 
-write_class_defn(Indent, ClassId - ClassDefn, !IO) :-
+write_class_defn(Info, Indent, ClassId - ClassDefn, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("% ", !IO),
 
@@ -3743,8 +3782,8 @@ write_class_defn(Indent, ClassId - ClassDefn, !IO) :-
         true
     ),
 
-    globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-    ( string.contains_char(Verbose, 'v') ->
+    DumpOptions = Info ^ hoi_dump_hlds_options,
+    ( string.contains_char(DumpOptions, 'v') ->
         AppendVarNums = yes
     ;
         AppendVarNums = no
@@ -3799,30 +3838,32 @@ write_class_proc(hlds_class_proc(PredId, ProcId), !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_instances(int::in, instance_table::in, io::di, io::uo) is det.
+:- pred write_instances(hlds_out_info::in, int::in, instance_table::in,
+    io::di, io::uo) is det.
 
-write_instances(Indent, InstanceTable, !IO) :-
+write_instances(Info, Indent, InstanceTable, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("%-------- Instances --------\n", !IO),
     map.to_assoc_list(InstanceTable, InstanceTableList),
     io.write_list(InstanceTableList, "\n\n",
-        write_instance_defns(Indent), !IO),
+        write_instance_defns(Info, Indent), !IO),
     io.nl(!IO).
 
-:- pred write_instance_defns(int::in,
+:- pred write_instance_defns(hlds_out_info::in, int::in,
     pair(class_id, list(hlds_instance_defn))::in, io::di, io::uo) is det.
 
-write_instance_defns(Indent, ClassId - InstanceDefns, !IO) :-
+write_instance_defns(Info, Indent, ClassId - InstanceDefns, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("% ", !IO),
     write_class_id(ClassId, !IO),
     io.write_string(":\n", !IO),
-    io.write_list(InstanceDefns, "\n", write_instance_defn(Indent), !IO).
+    io.write_list(InstanceDefns, "\n", write_instance_defn(Info, Indent),
+        !IO).
 
-:- pred write_instance_defn(int::in, hlds_instance_defn::in,
+:- pred write_instance_defn(hlds_out_info::in, int::in, hlds_instance_defn::in,
     io::di, io::uo) is det.
 
-write_instance_defn(Indent, InstanceDefn, !IO) :-
+write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
     InstanceDefn = hlds_instance_defn(_InstanceModule, _Status,
         Context, Constraints, Types, Body, MaybePredProcIds, VarSet, Proofs),
 
@@ -3839,8 +3880,8 @@ write_instance_defn(Indent, InstanceDefn, !IO) :-
         true
     ),
 
-    globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-    ( string.contains_char(Verbose, 'v') ->
+    DumpOptions = Info ^ hoi_dump_hlds_options,
+    ( string.contains_char(DumpOptions, 'v') ->
         AppendVarNums = yes
     ;
         AppendVarNums = no
@@ -4017,29 +4058,30 @@ write_arg_tabling_methods(Prefix, [MaybeMethod | MaybeMethods], !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_procs(int::in, bool::in, module_info::in, pred_id::in,
-    import_status::in, pred_info::in, io::di, io::uo) is det.
+:- pred write_procs(hlds_out_info::in, int::in, bool::in, module_info::in,
+    pred_id::in, import_status::in, pred_info::in, io::di, io::uo) is det.
 
-write_procs(Indent, AppendVarNums, ModuleInfo, PredId, ImportStatus, PredInfo,
-        !IO) :-
+write_procs(Info, Indent, AppendVarNums, ModuleInfo, PredId, ImportStatus,
+        PredInfo, !IO) :-
     pred_info_get_procedures(PredInfo, ProcTable),
     ProcIds = pred_info_procids(PredInfo),
-    write_procs_2(ProcIds, AppendVarNums, ModuleInfo, Indent, PredId,
+    write_procs_2(Info, ProcIds, AppendVarNums, ModuleInfo, Indent, PredId,
         ImportStatus, ProcTable, !IO).
 
-:- pred write_procs_2(list(proc_id)::in, bool::in, module_info::in, int::in,
-    pred_id::in, import_status::in, proc_table::in, io::di, io::uo) is det.
+:- pred write_procs_2(hlds_out_info::in, list(proc_id)::in, bool::in,
+    module_info::in, int::in, pred_id::in, import_status::in, proc_table::in,
+    io::di, io::uo) is det.
 
-write_procs_2([], _, _, _, _, _, _, !IO).
-write_procs_2([ProcId | ProcIds], AppendVarNums, ModuleInfo, Indent,
+write_procs_2(_, [], _, _, _, _, _, _, !IO).
+write_procs_2(Info, [ProcId | ProcIds], AppendVarNums, ModuleInfo, Indent,
         PredId, ImportStatus, ProcTable, !IO) :-
     map.lookup(ProcTable, ProcId, ProcInfo),
-    write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
+    write_proc(Info, Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
         ImportStatus, ProcInfo, !IO),
-    write_procs_2(ProcIds, AppendVarNums, ModuleInfo, Indent,
+    write_procs_2(Info, ProcIds, AppendVarNums, ModuleInfo, Indent,
         PredId, ImportStatus, ProcTable, !IO).
 
-write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
+write_proc(Info, Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
         ImportStatus, Proc, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_typevarset(PredInfo, TVarSet),
@@ -4084,8 +4126,8 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     io.write_string(determinism_to_string(InferredDeterminism), !IO),
     io.write_string("):\n", !IO),
 
-    globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
-    ( string.contains_char(Verbose, 't') ->
+    DumpOptions = Info ^ hoi_dump_hlds_options,
+    ( string.contains_char(DumpOptions, 't') ->
         write_indent(Indent, !IO),
         io.write_string("% Arg size properties: ", !IO),
         write_maybe_arg_size_info(MaybeArgSize, yes, !IO),
@@ -4099,14 +4141,15 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     ),
 
     % Dump structure sharing information.
-    ( string.contains_char(Verbose, 'S') ->
+    ( string.contains_char(DumpOptions, 'S') ->
         write_indent(Indent, !IO),
         io.write_string("% Structure sharing: \n", !IO),
         (
-            MaybeStructureSharing = yes(
-                structure_sharing_domain_and_status(SharingAs, _Status)),
-            dump_maybe_structure_sharing_domain(VarSet, TVarSet, yes(SharingAs),
-                !IO)
+            MaybeStructureSharing = yes(StructureSharing),
+            StructureSharing =
+                structure_sharing_domain_and_status(SharingAs, _Status),
+            dump_maybe_structure_sharing_domain(VarSet, TVarSet,
+                yes(SharingAs), !IO)
         ;
             MaybeStructureSharing = no,
             dump_maybe_structure_sharing_domain(VarSet, TVarSet, no, !IO)
@@ -4116,12 +4159,13 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     ),
 
     % Dump structure reuse information.
-    ( string.contains_char(Verbose, 'R') ->
+    ( string.contains_char(DumpOptions, 'R') ->
         write_indent(Indent, !IO),
         io.write_string("% Structure reuse: \n", !IO),
         (
-            MaybeStructureReuse = yes(
-                structure_reuse_domain_and_status(ReuseAs, _ReuseStatus)),
+            MaybeStructureReuse = yes(StructureReuse),
+            StructureReuse =
+                structure_reuse_domain_and_status(ReuseAs, _ReuseStatus),
             dump_maybe_structure_reuse_domain(VarSet, TVarSet, yes(ReuseAs),
                 !IO)
         ;
@@ -4286,7 +4330,7 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     ),
 
     (
-        string.contains_char(Verbose, 'A'),
+        string.contains_char(DumpOptions, 'A'),
         MaybeArgInfos = yes(ArgInfos)
     ->
         write_indent(Indent, !IO),
@@ -4311,8 +4355,8 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
         write_clause_head(ModuleInfo, PredId, VarSet, AppendVarNums,
             HeadTerms, PredOrFunc, !IO),
         io.write_string(" :-\n", !IO),
-        write_goal(Goal, ModuleInfo, VarSet, AppendVarNums, Indent1, ".\n",
-            !IO)
+        write_goal(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
+            Indent1, ".\n", !IO)
     ).
 
 :- pred write_hlds_proc_static(hlds_proc_static::in, io::di, io::uo) is det.
@@ -4975,6 +5019,15 @@ case_comment(VarName, MainConsName, OtherConsNames) = Comment :-
         Comment = VarName ++ " has one of the functors " ++
             string.join_list(", ", [MainConsName | OtherConsNames])
     ).
+
+%-----------------------------------------------------------------------------%
+
+init_hlds_out_info(Globals) = Init :-
+    globals.lookup_string_option(Globals, dump_hlds_options, DumpOptions),
+    globals.lookup_accumulating_option(Globals, dump_hlds_pred_id, Ids),
+    globals.lookup_accumulating_option(Globals, dump_hlds_pred_name, Names),
+    MercInfo = init_merc_out_info_for_hlds_dump(Globals),
+    Init = hlds_out_info(DumpOptions, Ids, Names, MercInfo).
 
 %-----------------------------------------------------------------------------%
 

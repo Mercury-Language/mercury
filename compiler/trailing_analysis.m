@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2008 The University of Melbourne.
+% Copyright (C) 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -127,24 +127,25 @@
 % interfaces.
 
 analyse_trail_usage(!ModuleInfo, !IO) :-
-    globals.io_lookup_bool_option(use_trail, UseTrail, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, use_trail, UseTrail),
     (
         % Only run the analysis in trailing grades.
         UseTrail = yes,
-        globals.io_lookup_bool_option(make_optimization_interface,
-            MakeOptInt, !IO),
-        globals.io_lookup_bool_option(make_transitive_opt_interface,
-            MakeTransOptInt, !IO),
-        globals.io_lookup_bool_option(intermodule_analysis,
-            IntermodAnalysis, !IO),
-        globals.io_lookup_bool_option(make_analysis_registry,
-            MakeAnalysisReg, !IO),
+        globals.lookup_bool_option(Globals, make_optimization_interface,
+            MakeOptInt),
+        globals.lookup_bool_option(Globals, make_transitive_opt_interface,
+            MakeTransOptInt),
+        globals.lookup_bool_option(Globals, intermodule_analysis,
+            IntermodAnalysis),
+        globals.lookup_bool_option(Globals, make_analysis_registry,
+            MakeAnalysisReg),
         Pass1Only = MakeOptInt `bool.or` MakeTransOptInt
             `bool.or` MakeAnalysisReg,
         module_info_ensure_dependency_info(!ModuleInfo),
         module_info_dependency_info(!.ModuleInfo, DepInfo),
         hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
-        globals.io_lookup_bool_option(debug_trail_usage, Debug, !IO),
+        globals.lookup_bool_option(Globals, debug_trail_usage, Debug),
         list.foldl(process_scc(Debug, Pass1Only), SCCs, !ModuleInfo),
 
         % Only write trailing analysis pragmas to `.opt' files for
@@ -178,7 +179,7 @@ analyse_trail_usage(!ModuleInfo, !IO) :-
 
 %----------------------------------------------------------------------------%
 %
-% Perform trail usage analysis on a SCC
+% Perform trail usage analysis on a SCC.
 %
 
 :- type scc == list(pred_proc_id).
@@ -291,7 +292,7 @@ maybe_analysis_status(ProcResult, ProcResult ^ maybe_analysis_status).
 
 %----------------------------------------------------------------------------%
 %
-% Perform trail usage analysis on a procedure
+% Perform trail usage analysis on a procedure.
 %
 
 :- pred check_proc_for_trail_mods(scc::in,
@@ -308,7 +309,7 @@ check_proc_for_trail_mods(SCC, PPId, !Results, !ModuleInfo) :-
 
 %----------------------------------------------------------------------------%
 %
-% Perform trail usage analysis of a goal
+% Perform trail usage analysis of a goal.
 %
 
 :- pred check_goal_for_trail_mods(scc::in, vartypes::in, hlds_goal::in,
@@ -536,7 +537,7 @@ check_goals_for_trail_mods(SCC, VarTypes, Goals,
 
 %----------------------------------------------------------------------------%
 %
-% Utility procedure for processing goals
+% Utility procedure for processing goals.
 %
 
 :- func attributes_imply_trail_mod(pragma_foreign_proc_attributes) =
@@ -566,11 +567,12 @@ scope_implies_trail_mod(InnerCodeModel, OuterCodeModel, InnerStatus) =
 
 %----------------------------------------------------------------------------%
 %
-% "Known" library procedures
+% "Known" library procedures.
 %
+
     % Succeeds if the given pred_info is for a predicate or function
-    % whose trailing status can be looked up in the known procedures
-    % table.  Returns the trailing status corresponding to that procedure.
+    % whose trailing status can be looked up in the known procedures table.
+    % Returns the trailing status corresponding to that procedure.
     % Fails if there was no corresponding entry in the table.
     %
 :- pred pred_info_has_known_status(pred_info::in, trailing_status::out)
@@ -601,7 +603,7 @@ known_procedure(_, "exception", "rethrow", 1, trail_will_not_modify).
 
 %----------------------------------------------------------------------------%
 %
-% Further code to handle higher-order variables
+% Code to handle higher-order variables.
 %
 
     % Extract those procedures whose trailing_status has been set to
@@ -661,7 +663,7 @@ combine_maybe_analysis_status(MaybeStatusA, MaybeStatusB, MaybeStatus) :-
 
 %----------------------------------------------------------------------------%
 %
-% Extra procedures for handling calls
+% Extra procedures for handling calls.
 %
 
     % Check the trailing status of a call.
@@ -716,7 +718,7 @@ check_vars(ModuleInfo, VarTypes, Vars) = Result :-
 
 %----------------------------------------------------------------------------%
 %
-% Stuff for processing types
+% Stuff for processing types.
 %
 
 % This is used in the analysis of calls to polymorphic procedures.
@@ -813,7 +815,7 @@ check_type_2(ModuleInfo, Type, TypeCtorCat) = Status :-
 
 %----------------------------------------------------------------------------%
 %
-% Code for attaching trail usage information to goals
+% Code for attaching trail usage information to goals.
 %
 
     % Traverse the body of the procedure and attach will_not_modify trail
@@ -898,7 +900,7 @@ annotate_goal_2(VarTypes, GoalInfo, !GoalExpr, Status, !ModuleInfo) :-
         ->
             Status = Status0
         ;
-            module_info_get_globals(!.ModuleInfo, Globals), 
+            module_info_get_globals(!.ModuleInfo, Globals),
             globals.lookup_bool_option(Globals, intermodule_analysis,
                 IntermodAnalysis),
             (
@@ -1031,16 +1033,17 @@ annotate_case(VarTypes, !Case, Status, !ModuleInfo) :-
 
 %----------------------------------------------------------------------------%
 %
-% Stuff for intermodule optimization
+% Stuff for intermodule optimization.
 %
 
 :- pred make_opt_int(module_info::in, io::di, io::uo) is det.
 
 make_opt_int(ModuleInfo, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(ModuleName, ".opt.tmp", do_not_create_dirs,
-        OptFileName, !IO),
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
+        do_not_create_dirs, OptFileName, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Appending trailing_info pragmas to `", !IO),
     maybe_write_string(Verbose, OptFileName, !IO),
     maybe_write_string(Verbose, "'...", !IO),
@@ -1070,7 +1073,7 @@ write_pragma_trailing_info(ModuleInfo, TrailingInfo, PredId, !IO) :-
     ProcIds = pred_info_procids(PredInfo),
     list.foldl(
         write_pragma_trailing_info_2(ModuleInfo, TrailingInfo, PredId,
-            PredInfo), 
+            PredInfo),
         ProcIds, !IO).
 
 :- pred write_pragma_trailing_info_2(module_info::in, trailing_info::in,
@@ -1136,7 +1139,7 @@ should_write_trailing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff for the intermodule analysis framework
+% Stuff for the intermodule analysis framework.
 %
 
 :- type trailing_analysis_answer
@@ -1282,7 +1285,7 @@ lookup_proc_trailing_info(TrailingInfo, PPId, Status, ResultStatus) :-
 
 %----------------------------------------------------------------------------%
 %
-% Code for printing out debugging traces
+% Code for printing out debugging traces.
 %
 
 :- pred dump_trail_usage_debug_info(module_info::in, scc::in,

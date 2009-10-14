@@ -30,8 +30,9 @@
 :- type item_status
     --->    item_status(import_status, need_qualifier).
 
-    % do_parse_tree_to_hlds(Globals, ParseTree, MQInfo, EqvMap, UsedModules,
-    %   QualInfo, InvalidTypes, InvalidModes, HLDS, Specs):
+    % do_parse_tree_to_hlds(Globals, DumpBaseFileName, ParseTree, MQInfo,
+    %   EqvMap, UsedModules, QualInfo, InvalidTypes, InvalidModes, HLDS,
+    %   Specs):
     %
     % Given MQInfo (returned by module_qual.m) and EqvMap and UsedModules
     % (both returned by equiv_type.m), converts ParseTree to HLDS.
@@ -41,8 +42,8 @@
     % QualInfo is an abstract type that is then passed back to
     % produce_instance_method_clauses (see below).
     %
-:- pred do_parse_tree_to_hlds(globals::in, compilation_unit::in, mq_info::in,
-    eqv_map::in, used_modules::in, qual_info::out,
+:- pred do_parse_tree_to_hlds(globals::in, string::in, compilation_unit::in,
+    mq_info::in, eqv_map::in, used_modules::in, qual_info::out,
     bool::out, bool::out, module_info::out, list(error_spec)::out) is det.
 
     % The bool records whether any cyclic insts or modes were detected.
@@ -133,11 +134,12 @@
 
 %-----------------------------------------------------------------------------%
 
-do_parse_tree_to_hlds(Globals, unit_module(Name, Items), MQInfo0, EqvMap,
-        UsedModules, QualInfo, InvalidTypes, InvalidModes,
+do_parse_tree_to_hlds(Globals, DumpBaseFileName, unit_module(Name, Items),
+        MQInfo0, EqvMap, UsedModules, QualInfo, InvalidTypes, InvalidModes,
         !:ModuleInfo, !:Specs) :-
     mq_info_get_partial_qualifier_info(MQInfo0, PQInfo),
-    module_info_init(Name, Items, Globals, PQInfo, no, !:ModuleInfo),
+    module_info_init(Name, DumpBaseFileName, Items, Globals, PQInfo, no,
+        !:ModuleInfo),
     module_info_set_used_modules(UsedModules, !ModuleInfo),
     !:Specs = [],
     add_item_list_decls_pass_1(Items,

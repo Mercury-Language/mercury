@@ -86,8 +86,6 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
-:- import_module io.
-
 %-----------------------------------------------------------------------------%
 
     % Specifies how term sizes are to be measured.
@@ -99,9 +97,8 @@
     % Perform the transformation on the specified predicate.
     %
 :- pred size_prof_process_proc_msg(construct_transform::in,
-    pred_id::in, proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    pred_id::in, proc_id::in, pred_info::in,
+    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -133,6 +130,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -217,17 +215,23 @@
                 spi_module_info             :: module_info
             ).
 
-size_prof_process_proc_msg(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
-        !ModuleInfo, !IO) :-
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+size_prof_process_proc_msg(Transform, PredId, ProcId, _PredInfo,
+        ProcInfo0, ProcInfo, !ModuleInfo) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
-        io.write_string("% Adding typeinfos in ", !IO),
-        hlds_out.write_pred_proc_id_pair(!.ModuleInfo, PredId, ProcId, !IO),
-        io.write_string(": ", !IO),
+        trace [io(!IO)] (
+            io.write_string("% Adding typeinfos in ", !IO),
+            hlds_out.write_pred_proc_id_pair(!.ModuleInfo, PredId, ProcId,
+                !IO),
+            io.write_string(": ", !IO)
+        ),
         size_prof_process_proc(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
             !ModuleInfo),
-        io.write_string("done.\n", !IO)
+        trace [io(!IO)] (
+            io.write_string("done.\n", !IO)
+        )
     ;
         VeryVerbose = no,
         size_prof_process_proc(Transform, PredId, ProcId, ProcInfo0, ProcInfo,

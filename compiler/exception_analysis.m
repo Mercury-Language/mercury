@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2008 The University of Melbourne.
+% Copyright (C) 2004-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -160,12 +160,13 @@ analyse_exceptions_in_module(!ModuleInfo, !IO) :-
     hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
     list.foldl(check_scc_for_exceptions, SCCs, !ModuleInfo),
 
-    globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt,
-        !IO),
-    globals.io_lookup_bool_option(intermodule_analysis, IntermodAnalysis,
-        !IO),
-    globals.io_lookup_bool_option(make_analysis_registry, MakeAnalysisReg,
-        !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, make_optimization_interface,
+        MakeOptInt),
+    globals.lookup_bool_option(Globals, intermodule_analysis,
+        IntermodAnalysis),
+    globals.lookup_bool_option(Globals, make_analysis_registry,
+        MakeAnalysisReg),
 
     % Only write exception analysis pragmas to `.opt' files for
     % `--intermodule-optimization', not `--intermodule-analysis'.
@@ -1215,10 +1216,11 @@ maybe_optimal(yes) = yes(optimal).
     is det.
 
 make_optimization_interface(ModuleInfo, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(ModuleName, ".opt.tmp", do_not_create_dirs,
-        OptFileName, !IO),
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
+        do_not_create_dirs, OptFileName, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Appending exceptions pragmas to `", !IO),
     maybe_write_string(Verbose, OptFileName, !IO),
     maybe_write_string(Verbose, "'...", !IO),

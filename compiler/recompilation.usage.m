@@ -109,22 +109,21 @@
 :- import_module string.
 :- import_module svmap.
 
-write_usage_file(ModuleInfo, NestedSubModules,
-        MaybeTimestamps, !IO) :-
-    module_info_get_maybe_recompilation_info(ModuleInfo,
-        MaybeRecompInfo),
+write_usage_file(ModuleInfo, NestedSubModules, MaybeTimestamps, !IO) :-
+    module_info_get_maybe_recompilation_info(ModuleInfo, MaybeRecompInfo),
     (
         MaybeRecompInfo = yes(RecompInfo),
         MaybeTimestamps = yes(Timestamps)
     ->
-        globals.io_lookup_bool_option(verbose, Verbose, !IO),
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, verbose, Verbose),
         maybe_write_string(Verbose,
             "% Writing recompilation compilation dependency information\n",
             !IO),
 
         module_info_get_name(ModuleInfo, ModuleName),
-        module_name_to_file_name(ModuleName, ".used", do_create_dirs,
-            FileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".used",
+            do_create_dirs, FileName, !IO),
         io.open_output(FileName, FileResult, !IO),
         (
             FileResult = ok(Stream0),

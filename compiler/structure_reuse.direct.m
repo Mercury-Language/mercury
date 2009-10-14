@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2008 The University of Melbourne.
+% Copyright (C) 2006-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,9 +14,9 @@
 % combination of the location of a deconstruction unification (where a
 % datastructure may become garbage under certain conditions) and a set of
 % locations of construction unifications where the garbage datastructure can
-% be reused locally. 
+% be reused locally.
 %
-% Direct reuse analysis requires two steps: 
+% Direct reuse analysis requires two steps:
 %   - Detecting where datastructures may become garbage.
 %   - Finding where these garbage datastructures can be reused.
 %
@@ -37,20 +37,20 @@
 
     % The first pass, where we process all procedures defined in the module.
     %
-:- pred direct_reuse_pass(sharing_as_table::in, module_info::in,
-    module_info::out, reuse_as_table::in, reuse_as_table::out, 
-    io::di, io::uo) is det.
+:- pred direct_reuse_pass(sharing_as_table::in,
+    module_info::in, module_info::out,
+    reuse_as_table::in, reuse_as_table::out) is det.
 
     % Subsequent passes, where we process only the listed procedures.
     %
 :- pred direct_reuse_process_specific_procs(sharing_as_table::in,
     list(pred_proc_id)::in, module_info::in, module_info::out,
-    reuse_as_table::in, reuse_as_table::out, io::di, io::uo) is det.
+    reuse_as_table::in, reuse_as_table::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- implementation. 
+:- implementation.
 
 :- import_module analysis.
 :- import_module hlds.passes_aux.
@@ -72,59 +72,22 @@
 
 %-----------------------------------------------------------------------------%
 
-    % The strategy for determining the reuse possibilities, i.e., either
-    % reuse is only allowed between terms that have exactly the same cons_id, 
-    % or reuse is also allowed between terms that have different cons_id, yet
-    % where the difference in arity is not bigger than a given threshold. 
-    %
-:- type reuse_strategy
-    --->    same_cons_id
-    ;       within_n_cells_difference(int).
-
-    % Determine the strategy that was set by the user. 
-    %
-:- pred get_strategy(reuse_strategy::out, module_info::in, module_info::out, 
-    io::di, io::uo) is det.
-
-get_strategy(Strategy, !ModuleInfo, !IO):- 
-    io_lookup_string_option(structure_reuse_constraint, ConstraintStr, !IO),
-    ( 
-        ConstraintStr = "same_cons_id"  
-    ->
-        Strategy = same_cons_id
-    ; 
-        ConstraintStr = "within_n_cells_difference"  
-    ->
-        io_lookup_int_option(structure_reuse_constraint_arg, NCells, !IO),
-        Strategy = within_n_cells_difference(NCells)
-    ;
-        Strategy = same_cons_id,
-        Pieces = [words("error: Invalid argument to "), 
-            words("`--structure-reuse-constraint.'")],
-        write_error_pieces_plain(Pieces, !IO),
-        module_info_incr_errors(!ModuleInfo)
-    ).
-
-direct_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, !IO):- 
-    % Determine the reuse strategy: 
-    get_strategy(Strategy, !ModuleInfo, !IO), 
-
+direct_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable) :-
     % Gather the pred-ids of the preds that need to be analysed.
-    module_info_predids(AllPredIds, !ModuleInfo), 
-    list.filter(pred_requires_analysis(!.ModuleInfo), AllPredIds, 
-        ToBeAnalysedPredIds), 
+    module_info_predids(AllPredIds, !ModuleInfo),
+    list.filter(pred_requires_analysis(!.ModuleInfo), AllPredIds,
+        ToBeAnalysedPredIds),
 
-    % Analyse and annotate each of the predicates. 
-    list.foldl3(direct_reuse_process_pred(Strategy, SharingTable),
-        ToBeAnalysedPredIds, !ModuleInfo, !ReuseTable, !IO).
+    % Analyse and annotate each of the predicates.
+    list.foldl2(direct_reuse_process_pred(SharingTable), ToBeAnalysedPredIds,
+        !ModuleInfo, !ReuseTable).
 
-:- pred direct_reuse_process_pred(reuse_strategy::in, sharing_as_table::in,
-    pred_id::in, module_info::in, module_info::out, reuse_as_table::in,
-    reuse_as_table::out, io::di, io::uo) is det.
+:- pred direct_reuse_process_pred(sharing_as_table::in, pred_id::in,
+    module_info::in, module_info::out,
+    reuse_as_table::in, reuse_as_table::out) is det.
 
-direct_reuse_process_pred(Strategy, SharingTable, PredId, !ModuleInfo, 
-        !ReuseTable, !IO):-
-    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0), 
+direct_reuse_process_pred(SharingTable, PredId, !ModuleInfo, !ReuseTable) :-
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     (
         pred_info_get_origin(PredInfo0, Origin),
         Origin = origin_special_pred(_)
@@ -142,8 +105,8 @@ direct_reuse_process_pred(Strategy, SharingTable, PredId, !ModuleInfo,
             pred_info_procids(PredInfo0), !ReuseTable)
     ;
         ProcIds = pred_info_non_imported_procids(PredInfo0),
-        list.foldl3(direct_reuse_process_proc(Strategy, SharingTable, PredId),
-            ProcIds, !ModuleInfo, !ReuseTable, !IO)
+        list.foldl2(direct_reuse_process_proc(SharingTable, PredId),
+            ProcIds, !ModuleInfo, !ReuseTable)
     ).
 
 :- pred set_external_pred_reuse_as(pred_id::in, reuse_as::in,
@@ -152,38 +115,37 @@ direct_reuse_process_pred(Strategy, SharingTable, PredId, !ModuleInfo,
 
 set_external_pred_reuse_as(PredId, ReuseAs, Status, ProcId, !ReuseTable) :-
     reuse_as_table_set(proc(PredId, ProcId),
-        reuse_as_and_status(ReuseAs, Status), !ReuseTable).
+    reuse_as_and_status(ReuseAs, Status), !ReuseTable).
 
 direct_reuse_process_specific_procs(SharingTable, PPIds,
-        !ModuleInfo, !ReuseTable, !IO) :-
-    get_strategy(Strategy, !ModuleInfo, !IO), 
-    list.foldl3(direct_reuse_process_ppid(Strategy, SharingTable),
-        PPIds, !ModuleInfo, !ReuseTable, !IO).
+        !ModuleInfo, !ReuseTable) :-
+    list.foldl2(direct_reuse_process_ppid(SharingTable), PPIds,
+        !ModuleInfo, !ReuseTable).
 
-:- pred direct_reuse_process_ppid(reuse_strategy::in, sharing_as_table::in, 
-    pred_proc_id::in, module_info::in, module_info::out,
-    reuse_as_table::in, reuse_as_table::out, io::di, io::uo) is det.
+:- pred direct_reuse_process_ppid(sharing_as_table::in, pred_proc_id::in,
+    module_info::in, module_info::out,
+    reuse_as_table::in, reuse_as_table::out) is det.
 
-direct_reuse_process_ppid(Strategy, SharingTable, proc(PredId, ProcId),
-        !ModuleInfo, !ReuseTable, !IO) :- 
-    direct_reuse_process_proc(Strategy, SharingTable, PredId, ProcId,
-        !ModuleInfo, !ReuseTable, !IO).
+direct_reuse_process_ppid(SharingTable, proc(PredId, ProcId),
+        !ModuleInfo, !ReuseTable) :-
+    direct_reuse_process_proc(SharingTable, PredId, ProcId,
+        !ModuleInfo, !ReuseTable).
 
-    % Process one individual procedure. 
+    % Process one individual procedure.
     %
-:- pred direct_reuse_process_proc(reuse_strategy::in, sharing_as_table::in, 
+:- pred direct_reuse_process_proc(sharing_as_table::in,
     pred_id::in, proc_id::in, module_info::in, module_info::out,
-    reuse_as_table::in, reuse_as_table::out, io::di, io::uo) is det.
+    reuse_as_table::in, reuse_as_table::out) is det.
 
-direct_reuse_process_proc(Strategy, SharingTable, PredId, ProcId,
-        !ModuleInfo, !ReuseTable, !IO) :- 
-    module_info_preds(!.ModuleInfo, Preds0), 
-    map.lookup(Preds0, PredId, Pred0), 
-    pred_info_get_procedures(Pred0, Procs0), 
-    map.lookup(Procs0, ProcId, Proc0), 
+direct_reuse_process_proc(SharingTable, PredId, ProcId,
+        !ModuleInfo, !ReuseTable) :-
+    module_info_preds(!.ModuleInfo, Preds0),
+    map.lookup(Preds0, PredId, Pred0),
+    pred_info_get_procedures(Pred0, Procs0),
+    map.lookup(Procs0, ProcId, Proc0),
 
-    direct_reuse_process_proc_2(Strategy, SharingTable, PredId, ProcId, 
-        !.ModuleInfo, Pred0, Proc0, Proc, ReuseAs, !IO), 
+    direct_reuse_process_proc_2(SharingTable, PredId, ProcId,
+        !.ModuleInfo, Pred0, Proc0, Proc, ReuseAs),
     % XXX is this right?
     Status = optimal,
     reuse_as_table_set(proc(PredId, ProcId),
@@ -194,111 +156,117 @@ direct_reuse_process_proc(Strategy, SharingTable, PredId, ProcId,
     map.det_update(Preds0, PredId, Pred, Preds),
     module_info_set_preds(Preds, !ModuleInfo).
 
-:- pred direct_reuse_process_proc_2(reuse_strategy::in, 
-    sharing_as_table::in, pred_id::in, proc_id::in, module_info::in, 
-    pred_info::in, proc_info::in, proc_info::out, reuse_as::out, 
-    io::di, io::uo) is det.
+:- pred direct_reuse_process_proc_2(sharing_as_table::in,
+    pred_id::in, proc_id::in, module_info::in,
+    pred_info::in, proc_info::in, proc_info::out, reuse_as::out) is det.
 
-direct_reuse_process_proc_2(Strategy, SharingTable, PredId, ProcId,
-        ModuleInfo, PredInfo, !ProcInfo, ReuseAs, !IO):- 
-    io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+direct_reuse_process_proc_2(SharingTable, PredId, ProcId,
+        ModuleInfo, PredInfo, !ProcInfo, ReuseAs) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
 
-    write_proc_progress_message("% Direct reuse analysis of ",
-        PredId, ProcId, ModuleInfo, !IO),
+    trace [io(!IO)] (
+        write_proc_progress_message("% Direct reuse analysis of ",
+            PredId, ProcId, ModuleInfo, !IO)
+    ),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
 
     % Determine the deconstructions in which data may potentially become
     % garbage.
-    %
-    determine_dead_deconstructions(ModuleInfo, PredInfo, !.ProcInfo, 
+
+    determine_dead_deconstructions(ModuleInfo, PredInfo, !.ProcInfo,
         SharingTable, Goal0, DeadCellTable),
-    dead_cell_table_maybe_dump(VeryVerbose, DeadCellTable, !IO),
+    trace [io(!IO)] (
+        dead_cell_table_maybe_dump(VeryVerbose, DeadCellTable, !IO)
+    ),
 
-    % Determine how the detected dead datastructures can be reused. 
+    % Determine how the detected dead datastructures can be reused.
     % This annotates the goal with potential reuses.
-    %
-    determine_reuse(Strategy, ModuleInfo, !.ProcInfo, DeadCellTable,
-        Goal0, Goal, ReuseAs, !IO),
 
-    proc_info_set_goal(Goal, !ProcInfo), 
-    maybe_write_string(VeryVerbose, "% reuse analysis done.\n", !IO).
+    determine_reuse(ModuleInfo, !.ProcInfo, DeadCellTable, Goal0, Goal,
+        ReuseAs),
+
+    proc_info_set_goal(Goal, !ProcInfo),
+
+    trace [io(!IO)] (
+        maybe_write_string(VeryVerbose, "% reuse analysis done.\n", !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
+%
 % We use the type dead_cell_table to collect all deconstructions that possibly
 % leave garbage behind.
 %
-%
 
-    % A dead_cell_table maps program points onto reuse conditions. 
+    % A dead_cell_table maps program points onto reuse conditions.
     %
 :- type dead_cell_table == map(program_point, reuse_condition).
 
-    % Initialise a dead_cell_table. 
+    % Initialise a dead_cell_table.
     %
-:- func dead_cell_table_init = dead_cell_table. 
-
-    % Check whether the table is empty. 
-    %
-:- pred dead_cell_table_is_empty(dead_cell_table::in) is semidet.
-
-    % Succeeds if the given program point is listed in the table. Return
-    % the associated reuse_condition. 
-    %
-:- func dead_cell_table_search(program_point, dead_cell_table) 
-    = reuse_condition is semidet.
-
-    % Add a program point and its associated reuse_condition to the table.
-    %
-:- pred dead_cell_table_set(program_point::in, reuse_condition::in, 
-    dead_cell_table::in, dead_cell_table::out) is det.
-
-    % Remove a program point from the table. 
-    %
-:- pred dead_cell_table_remove(program_point::in, 
-    dead_cell_table::in, dead_cell_table::out) is det.
-
-    % Remove all program points from the table for which the reuse_conditions
-    % are "conditional". 
-    %
-:- pred dead_cell_table_remove_conditionals(dead_cell_table::in, 
-    dead_cell_table::out) is det. 
-
-    % Dump the contents of the table. 
-    %
-:- pred dead_cell_table_maybe_dump(bool::in, dead_cell_table::in, 
-    io::di, io::uo) is det.
+:- func dead_cell_table_init = dead_cell_table.
 
 dead_cell_table_init = map.init.
+
+    % Check whether the table is empty.
+    %
+:- pred dead_cell_table_is_empty(dead_cell_table::in) is semidet.
 
 dead_cell_table_is_empty(Table) :-
     map.is_empty(Table).
 
-dead_cell_table_search(PP, Table) = Table ^ elem(PP). 
+    % Succeeds if the given program point is listed in the table. Return
+    % the associated reuse_condition.
+    %
+:- func dead_cell_table_search(program_point, dead_cell_table)
+    = reuse_condition is semidet.
 
-dead_cell_table_set(PP, RC, !Table) :- 
-    svmap.set(PP, RC, !Table). 
+dead_cell_table_search(PP, Table) = ReuseCond :-
+    map.search(Table, PP, ReuseCond).
 
-dead_cell_table_remove(PP, !Table) :- 
-    svmap.det_remove(PP, _, !Table). 
+    % Add a program point and its associated reuse_condition to the table.
+    %
+:- pred dead_cell_table_set(program_point::in, reuse_condition::in,
+    dead_cell_table::in, dead_cell_table::out) is det.
 
-dead_cell_table_remove_conditionals(!Table) :- 
-    map.foldl(dead_cell_table_add_unconditional, !.Table, 
-        dead_cell_table_init, !:Table). 
+dead_cell_table_set(PP, RC, !Table) :-
+    svmap.set(PP, RC, !Table).
 
-:- pred dead_cell_table_add_unconditional(program_point::in, 
+    % Remove a program point from the table.
+    %
+:- pred dead_cell_table_remove(program_point::in,
+    dead_cell_table::in, dead_cell_table::out) is det.
+
+dead_cell_table_remove(PP, !Table) :-
+    svmap.det_remove(PP, _, !Table).
+
+    % Remove all program points from the table for which the reuse_conditions
+    % are "conditional".
+    %
+:- pred dead_cell_table_remove_conditionals(dead_cell_table::in,
+    dead_cell_table::out) is det.
+
+dead_cell_table_remove_conditionals(!Table) :-
+    map.foldl(dead_cell_table_add_unconditional, !.Table,
+        dead_cell_table_init, !:Table).
+
+:- pred dead_cell_table_add_unconditional(program_point::in,
     reuse_condition::in, dead_cell_table::in, dead_cell_table::out) is det.
 
-dead_cell_table_add_unconditional(PP, C, !Table) :- 
-    (
-        reuse_condition_is_conditional(C)
-    ->  
+dead_cell_table_add_unconditional(PP, C, !Table) :-
+    ( reuse_condition_is_conditional(C) ->
         true
-    ; 
+    ;
         dead_cell_table_set(PP, C, !Table)
     ).
 
-dead_cell_table_maybe_dump(MaybeDump, Table, !IO) :- 
+    % Dump the contents of the table.
+    %
+:- pred dead_cell_table_maybe_dump(bool::in, dead_cell_table::in,
+    io::di, io::uo) is det.
+
+dead_cell_table_maybe_dump(MaybeDump, Table, !IO) :-
     (
         MaybeDump = no
     ;
@@ -308,19 +276,17 @@ dead_cell_table_maybe_dump(MaybeDump, Table, !IO) :-
         io.write_string("\t\t|--------|\n", !IO)
     ).
 
-:- pred dead_cell_entry_dump(program_point::in, reuse_condition::in, 
+:- pred dead_cell_entry_dump(program_point::in, reuse_condition::in,
     io::di, io::uo) is det.
 
-dead_cell_entry_dump(PP, Cond, !IO) :- 
-    (
-        reuse_condition_is_conditional(Cond)
-    -> 
+dead_cell_entry_dump(PP, Cond, !IO) :-
+    ( reuse_condition_is_conditional(Cond) ->
         io.write_string("\t\t|  cond  |\t", !IO)
     ;
         io.write_string("\t\t| always |\t", !IO)
-    ), 
-    dump_program_point(PP, !IO), 
-    io.write_string("\n", !IO). 
+    ),
+    dump_program_point(PP, !IO),
+    io.write_string("\n", !IO).
 
 %-----------------------------------------------------------------------------%
 

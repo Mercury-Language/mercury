@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001, 2003-2008 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -36,17 +36,17 @@
 
 :- type pd_info
     --->    pd_info(
-                module_info         :: module_info,
-                maybe_unfold_info   :: maybe(unfold_info),
-                goal_version_index  :: goal_version_index,
-                versions            :: version_index,
-                proc_arg_info       :: pd_arg_info,
-                counter             :: counter,
-                global_term_info    :: global_term_info,
-                parent_versions     :: set(pred_proc_id),
-                depth               :: int,
-                created_versions    :: set(pred_proc_id),
-                useless_versions    :: useless_versions
+                pdi_module_info         :: module_info,
+                pdi_maybe_unfold_info   :: maybe(unfold_info),
+                pdi_goal_version_index  :: goal_version_index,
+                pdi_versions            :: version_index,
+                pdi_proc_arg_info       :: pd_arg_info,
+                pdi_counter             :: counter,
+                pdi_global_term_info    :: global_term_info,
+                pdi_parent_versions     :: set(pred_proc_id),
+                pdi_depth               :: int,
+                pdi_created_versions    :: set(pred_proc_id),
+                pdi_useless_versions    :: useless_versions
             ).
 
     % Map from list of called preds in the conjunctions
@@ -154,48 +154,49 @@ pd_info_init_unfold_info(PredProcId, PredInfo, ProcInfo, !PDInfo) :-
         PredInfo, Parents, PredProcId, no, 0, no),
     pd_info_set_unfold_info(UnfoldInfo, !PDInfo).
 
-pd_info_get_module_info(PDInfo, PDInfo ^ module_info).
+pd_info_get_module_info(PDInfo, PDInfo ^ pdi_module_info).
 pd_info_get_unfold_info(PDInfo, UnfoldInfo) :-
-    MaybeUnfoldInfo = PDInfo ^ maybe_unfold_info,
+    MaybeUnfoldInfo = PDInfo ^ pdi_maybe_unfold_info,
     (
         MaybeUnfoldInfo = yes(UnfoldInfo)
     ;
         MaybeUnfoldInfo = no,
         unexpected(this_file, "pd_info_get_unfold_info: unfold_info not set.")
     ).
-pd_info_get_goal_version_index(PDInfo, PDInfo ^ goal_version_index).
-pd_info_get_versions(PDInfo, PDInfo ^ versions).
-pd_info_get_proc_arg_info(PDInfo, PDInfo ^ proc_arg_info).
-pd_info_get_counter(PDInfo, PDInfo ^ counter).
-pd_info_get_global_term_info(PDInfo, PDInfo ^ global_term_info).
-pd_info_get_parent_versions(PDInfo, PDInfo ^ parent_versions).
-pd_info_get_depth(PDInfo, PDInfo ^ depth).
-pd_info_get_created_versions(PDInfo, PDInfo ^ created_versions).
-pd_info_get_useless_versions(PDInfo, PDInfo ^ useless_versions).
+pd_info_get_goal_version_index(PDInfo, PDInfo ^ pdi_goal_version_index).
+pd_info_get_versions(PDInfo, PDInfo ^ pdi_versions).
+pd_info_get_proc_arg_info(PDInfo, PDInfo ^ pdi_proc_arg_info).
+pd_info_get_counter(PDInfo, PDInfo ^ pdi_counter).
+pd_info_get_global_term_info(PDInfo, PDInfo ^ pdi_global_term_info).
+pd_info_get_parent_versions(PDInfo, PDInfo ^ pdi_parent_versions).
+pd_info_get_depth(PDInfo, PDInfo ^ pdi_depth).
+pd_info_get_created_versions(PDInfo, PDInfo ^ pdi_created_versions).
+pd_info_get_useless_versions(PDInfo, PDInfo ^ pdi_useless_versions).
 
-pd_info_set_module_info(ModuleInfo, PDInfo,
-    PDInfo ^ module_info := ModuleInfo).
-pd_info_set_unfold_info(UnfoldInfo, PDInfo,
-    PDInfo ^ maybe_unfold_info := yes(UnfoldInfo)).
-pd_info_unset_unfold_info(PDInfo,
-    PDInfo ^ maybe_unfold_info := no).
-pd_info_set_goal_version_index(Index, PDInfo,
-    PDInfo ^ goal_version_index := Index).
-pd_info_set_versions(Versions, PDInfo,
-    PDInfo ^ versions := Versions).
-pd_info_set_proc_arg_info(ProcArgInfo, PDInfo,
-    PDInfo ^ proc_arg_info := ProcArgInfo).
-pd_info_set_counter(Counter, PDInfo,
-    PDInfo ^ counter := Counter).
-pd_info_set_global_term_info(TermInfo, PDInfo,
-    PDInfo ^ global_term_info := TermInfo).
-pd_info_set_parent_versions(Parents, PDInfo,
-    PDInfo ^ parent_versions := Parents).
-pd_info_set_depth(Depth, PDInfo, PDInfo ^ depth := Depth).
-pd_info_set_created_versions(Versions, PDInfo,
-    PDInfo ^ created_versions := Versions).
-pd_info_set_useless_versions(Versions, PDInfo,
-    PDInfo ^ useless_versions := Versions).
+pd_info_set_module_info(ModuleInfo, !PDInfo) :-
+    !PDInfo ^ pdi_module_info := ModuleInfo.
+pd_info_set_unfold_info(UnfoldInfo, !PDInfo) :-
+    !PDInfo ^ pdi_maybe_unfold_info := yes(UnfoldInfo).
+pd_info_unset_unfold_info(!PDInfo) :-
+    !PDInfo ^ pdi_maybe_unfold_info := no.
+pd_info_set_goal_version_index(Index, !PDInfo) :-
+    !PDInfo ^ pdi_goal_version_index := Index.
+pd_info_set_versions(Versions, !PDInfo) :-
+    !PDInfo ^ pdi_versions := Versions.
+pd_info_set_proc_arg_info(ProcArgInfo, !PDInfo) :-
+    !PDInfo ^ pdi_proc_arg_info := ProcArgInfo.
+pd_info_set_counter(Counter, !PDInfo) :-
+    !PDInfo ^ pdi_counter := Counter.
+pd_info_set_global_term_info(TermInfo, !PDInfo) :-
+    !PDInfo ^ pdi_global_term_info := TermInfo.
+pd_info_set_parent_versions(Parents, !PDInfo) :-
+    !PDInfo ^ pdi_parent_versions := Parents.
+pd_info_set_depth(Depth, !PDInfo) :-
+    !PDInfo ^ pdi_depth := Depth.
+pd_info_set_created_versions(Versions, !PDInfo) :-
+    !PDInfo ^ pdi_created_versions := Versions.
+pd_info_set_useless_versions(Versions, !PDInfo) :-
+    !PDInfo ^ pdi_useless_versions := Versions.
 
 pd_info_update_goal(hlds_goal(_, GoalInfo), !PDInfo) :-
     pd_info_get_instmap(!.PDInfo, InstMap0),
@@ -660,11 +661,11 @@ pd_info.register_version(PredProcId, Version, !PDInfo, !IO) :-
     Goal = Version ^ version_orig_goal,
     pd_util.goal_get_calls(Goal, Calls),
     ( map.search(GoalVersionIndex0, Calls, VersionList0) ->
-        map.det_update(GoalVersionIndex0, Calls,
-            [PredProcId | VersionList0], GoalVersionIndex)
+        VersionList = [PredProcId | VersionList0],
+        map.det_update(GoalVersionIndex0, Calls, VersionList, GoalVersionIndex)
     ;
-        map.set(GoalVersionIndex0, Calls, [PredProcId],
-            GoalVersionIndex)
+        VersionList = [PredProcId],
+        map.det_insert(GoalVersionIndex0, Calls, VersionList, GoalVersionIndex)
     ),
     pd_info_set_goal_version_index(GoalVersionIndex, !PDInfo),
     pd_info_get_versions(!.PDInfo, Versions0),

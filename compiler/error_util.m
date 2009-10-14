@@ -452,8 +452,8 @@
     % Report a warning, and set the exit status to error if the
     % --halt-at-warn option is set.
     %
-:- pred report_warning(prog_context::in, int::in, list(format_component)::in,
-    io::di, io::uo) is det.
+:- pred report_warning(globals::in, prog_context::in, int::in,
+    list(format_component)::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -760,7 +760,7 @@ do_write_error_spec(Globals, Spec, !NumWarnings, !NumErrors, !IO) :-
             ;
                 Actual = actual_severity_warning,
                 !:NumWarnings = !.NumWarnings + 1,
-                record_warning(!IO)
+                record_warning(Globals, !IO)
             ;
                 Actual = actual_severity_informational
             )
@@ -1507,8 +1507,8 @@ capitalize(Str0) = Str :-
 
 %-----------------------------------------------------------------------------%
 
-report_warning(Context, Indent, Components, !IO) :-
-    record_warning(!IO),
+report_warning(Globals, Context, Indent, Components, !IO) :-
+    record_warning(Globals, !IO),
     write_error_pieces(Context, Indent, Components, !IO).
 
 %-----------------------------------------------------------------------------%

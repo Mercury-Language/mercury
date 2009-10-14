@@ -118,10 +118,11 @@
 
 %-----------------------------------------------------------------------------%
 
-write_trans_opt_file(Module, !IO) :-
-    module_info_get_name(Module, ModuleName),
-    module_name_to_file_name(ModuleName, ".trans_opt.tmp", do_create_dirs,
-        TmpOptName, !IO),
+write_trans_opt_file(ModuleInfo, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_name(ModuleInfo, ModuleName),
+    module_name_to_file_name(Globals, ModuleName, ".trans_opt.tmp",
+        do_create_dirs, TmpOptName, !IO),
     io.open_output(TmpOptName, Result, !IO),
     (
         Result = error(Error),
@@ -139,55 +140,56 @@ write_trans_opt_file(Module, !IO) :-
     ;
         Result = ok(Stream),
         io.set_output_stream(Stream, OldStream, !IO),
-        module_info_get_name(Module, ModName),
         io.write_string(":- module ", !IO),
-        mercury_output_bracketed_sym_name(ModName, !IO),
+        mercury_output_bracketed_sym_name(ModuleName, !IO),
         io.write_string(".\n", !IO),
 
         % All predicates to write global items into the .trans_opt
         % file should go here.
 
         % Select all the predicates for which something should be written
-        % into the .trans_opt file. 
-        %
-        module_info_predids(PredIds, Module, _Module),
+        % into the .trans_opt file.
+
+        module_info_predids(PredIds, ModuleInfo, _UpdatedModuleInfo),
         PredIdsSet = set.from_list(PredIds),
-        module_info_get_structure_reuse_preds(Module, ReusePredsSet),
+        module_info_get_structure_reuse_preds(ModuleInfo, ReusePredsSet),
         PredIdsNoReusePredsSet = set.difference(PredIdsSet, ReusePredsSet),
         PredIdsNoReuseVersions = set.to_sorted_list(PredIdsNoReusePredsSet),
 
-        list.foldl(termination.write_pred_termination_info(Module),
+        list.foldl(termination.write_pred_termination_info(ModuleInfo),
             PredIdsNoReuseVersions, !IO),
-        list.foldl(term_constr_main.output_pred_termination2_info(Module),
+        list.foldl(term_constr_main.output_pred_termination2_info(ModuleInfo),
             PredIdsNoReuseVersions, !IO),
 
-        list.foldl(structure_sharing.analysis.write_pred_sharing_info(Module),
-            PredIdsNoReuseVersions, !IO), 
-        list.foldl(structure_reuse.analysis.write_pred_reuse_info(Module), 
-            PredIdsNoReuseVersions, !IO), 
-
-        module_info_get_exception_info(Module, ExceptionInfo),
         list.foldl(
-            exception_analysis.write_pragma_exceptions(Module, ExceptionInfo),
+            structure_sharing.analysis.write_pred_sharing_info(ModuleInfo),
+            PredIdsNoReuseVersions, !IO),
+        list.foldl(structure_reuse.analysis.write_pred_reuse_info(ModuleInfo),
             PredIdsNoReuseVersions, !IO),
 
-        module_info_get_trailing_info(Module, TrailingInfo),
+        module_info_get_exception_info(ModuleInfo, ExceptionInfo),
         list.foldl(
-            write_pragma_trailing_info(Module, TrailingInfo), 
+            exception_analysis.write_pragma_exceptions(ModuleInfo,
+                ExceptionInfo),
             PredIdsNoReuseVersions, !IO),
 
-        module_info_get_mm_tabling_info(Module, TablingInfo),
+        module_info_get_trailing_info(ModuleInfo, TrailingInfo),
         list.foldl(
-            write_pragma_mm_tabling_info(Module, TablingInfo),
+            write_pragma_trailing_info(ModuleInfo, TrailingInfo),
+            PredIdsNoReuseVersions, !IO),
+
+        module_info_get_mm_tabling_info(ModuleInfo, TablingInfo),
+        list.foldl(
+            write_pragma_mm_tabling_info(ModuleInfo, TablingInfo),
             PredIdsNoReuseVersions, !IO),
 
         io.set_output_stream(OldStream, _, !IO),
         io.close_output(Stream, !IO),
 
-        module_name_to_file_name(ModuleName, ".trans_opt", do_not_create_dirs,
-            OptName, !IO),
-        update_interface(OptName, !IO),
-        touch_interface_datestamp(ModuleName, ".trans_opt_date", !IO)
+        module_name_to_file_name(Globals, ModuleName, ".trans_opt",
+            do_not_create_dirs, OptName, !IO),
+        update_interface(Globals, OptName, !IO),
+        touch_interface_datestamp(Globals, ModuleName, ".trans_opt_date", !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -228,9 +230,10 @@ read_trans_opt_files(Globals, [Import | Imports], !Items, !Specs, !Error,
     maybe_write_string(VeryVerbose, "'... ", !IO),
     maybe_flush_output(VeryVerbose, !IO),
 
-    module_name_to_search_file_name(Import, ".trans_opt", FileName, !IO),
-    actually_read_opt_file(FileName, Import, NewItems, NewSpecs, NewError,
+    module_name_to_search_file_name(Globals, Import, ".trans_opt", FileName,
         !IO),
+    actually_read_opt_file(Globals, FileName, Import, NewItems, NewSpecs,
+        NewError, !IO),
     maybe_write_string(VeryVerbose, " done.\n", !IO),
     !:Specs = NewSpecs ++ !.Specs,
     intermod.update_error_status(Globals, trans_opt_file, FileName,

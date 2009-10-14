@@ -164,13 +164,14 @@ process_proc_msg(NumProcs, ProcMap, PredId, ProcId, !ProcInfo, !ModuleInfo,
     (
         IsInMap = yes(ProcNum),
         FullName = complexity_proc_name(!.ModuleInfo, PredId, ProcId),
-        globals.io_lookup_bool_option(verbose, Verbose, !IO),
+        module_info_get_globals(!.ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, verbose, Verbose),
         (
             Verbose = yes,
             pred_id_to_int(PredId, PredIdInt),
             proc_id_to_int(ProcId, ProcIdInt),
-            Pieces = [words("% Applying complexity experiment " ++
-                    "transformation to "),
+            Pieces =
+                [words("% Applying complexity experiment transformation to "),
                 fixed(FullName ++ ":"),
                 fixed(int_to_string(PredIdInt) ++ "/" ++
                     int_to_string(ProcIdInt))],

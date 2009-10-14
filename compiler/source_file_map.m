@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 The University of Melbourne.
+% Copyright (C) 2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,6 +22,7 @@
 
 :- import_module mdbcomp.prim_data.
 :- import_module libs.file_util.
+:- import_module libs.globals.
 
 :- import_module bool.
 :- import_module io.
@@ -44,14 +45,14 @@
 
     % Given a list of file names, produce the Mercury.modules file.
     %
-:- pred write_source_file_map(list(string)::in, io::di, io::uo) is det.
+:- pred write_source_file_map(globals::in, list(string)::in,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module libs.globals.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
@@ -75,16 +76,11 @@ lookup_module_source_file(ModuleName, FileName, !IO) :-
 default_source_file(ModuleName) = sym_name_to_string(ModuleName) ++ ".m".
 
 have_source_file_map(HaveMap, !IO) :-
-    get_source_file_map(_, !IO),
-    globals.io_get_globals(Globals, !IO),
-    globals.get_source_file_map(Globals, MaybeSourceFileMap),
-    (
-        MaybeSourceFileMap = yes(Map),
-        \+ map.is_empty(Map)
-    ->
-        HaveMap = yes
-    ;
+    get_source_file_map(SourceFileMap, !IO),
+    ( map.is_empty(SourceFileMap) ->
         HaveMap = no
+    ;
+        HaveMap = yes
     ).
 
     % Read the Mercury.modules file (if it exists) to find the mapping
@@ -93,8 +89,7 @@ have_source_file_map(HaveMap, !IO) :-
 :- pred get_source_file_map(source_file_map::out, io::di, io::uo) is det.
 
 get_source_file_map(SourceFileMap, !IO) :-
-    globals.io_get_globals(Globals0, !IO),
-    globals.get_source_file_map(Globals0, MaybeSourceFileMap0),
+    globals.io_get_maybe_source_file_map(MaybeSourceFileMap0, !IO),
     (
         MaybeSourceFileMap0 = yes(SourceFileMap0),
         SourceFileMap = SourceFileMap0
@@ -112,9 +107,7 @@ get_source_file_map(SourceFileMap, !IO) :-
             % If the file doesn't exist, then the mapping is empty.
             SourceFileMap = map.init
         ),
-        globals.io_get_globals(Globals1, !IO),
-        globals.set_source_file_map(yes(SourceFileMap), Globals1, Globals),
-        globals.io_set_globals(Globals, !IO)
+        globals.io_set_maybe_source_file_map(yes(SourceFileMap), !IO)
     ).
 
 :- pred read_source_file_map(list(char)::in,
@@ -182,12 +175,12 @@ read_until_char(EndChar, Chars0, Result, !IO) :-
         Result = error(Error)
     ).
 
-write_source_file_map(FileNames, !IO) :-
+write_source_file_map(Globals, FileNames, !IO) :-
     ModulesFileName = modules_file_name,
     io.open_output(ModulesFileName, OpenRes, !IO),
     (
         OpenRes = ok(Stream),
-        list.foldl2(write_source_file_map_2(Stream), FileNames,
+        list.foldl2(write_source_file_map_2(Globals, Stream), FileNames,
             map.init, _, !IO),
         io.close_output(Stream, !IO)
     ;
@@ -199,12 +192,14 @@ write_source_file_map(FileNames, !IO) :-
         io.write_string(io.error_message(Error), !IO)
     ).
 
-:- pred write_source_file_map_2(io.output_stream::in, file_name::in,
+:- pred write_source_file_map_2(globals::in, io.output_stream::in,
+    file_name::in,
     map(module_name, file_name)::in, map(module_name, file_name)::out,
     io::di, io::uo) is det.
 
-write_source_file_map_2(MapStream, FileName, SeenModules0, SeenModules, !IO) :-
-    find_module_name(FileName, MaybeModuleName, !IO),
+write_source_file_map_2(Globals, MapStream, FileName,
+        SeenModules0, SeenModules, !IO) :-
+    find_module_name(Globals, FileName, MaybeModuleName, !IO),
     (
         MaybeModuleName = yes(ModuleName),
         (

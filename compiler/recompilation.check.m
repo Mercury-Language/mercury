@@ -101,8 +101,8 @@
 should_recompile(Globals, ModuleName, FindTargetFiles, FindTimestampFiles,
         Info ^ rci_modules_to_recompile, Info ^ rci_have_read_module_map,
         !IO) :-
-    globals.io_lookup_bool_option(find_all_recompilation_reasons,
-        FindAll, !IO),
+    globals.lookup_bool_option(Globals, find_all_recompilation_reasons,
+        FindAll),
     Info0 = recompilation_check_info(ModuleName, no, [], map.init,
         init_item_id_set(map.init, map.init, map.init),
         set.init, some_modules([]), FindAll, []),
@@ -119,8 +119,8 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
         ModuleName, !Info, !IO) :-
     !Info ^ rci_module_name := ModuleName,
     !Info ^ rci_sub_modules := [],
-    module_name_to_file_name(ModuleName, ".used", do_not_create_dirs,
-        UsageFileName, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".used",
+        do_not_create_dirs, UsageFileName, !IO),
     io.open_input(UsageFileName, MaybeVersionStream, !IO),
     (
         MaybeVersionStream = ok(VersionStream0),
@@ -149,14 +149,16 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
         (
             Reasons = [],
             FindTimestampFiles(ModuleName, TimestampFiles, !IO),
-            write_recompilation_message(
+            write_recompilation_message(Globals,
                 write_not_recompiling_message(ModuleName), !IO),
-            list.foldl(touch_datestamp, TimestampFiles, !IO)
+            list.foldl(touch_datestamp(Globals), TimestampFiles, !IO)
         ;
             Reasons = [_ | _],
             add_module_to_recompile(ModuleName, !Info),
-            write_recompilation_message(write_reasons_message(ModuleName,
-                list.reverse(Reasons)), !IO)
+            write_recompilation_message(Globals,
+                write_reasons_message(Globals, ModuleName,
+                    list.reverse(Reasons)),
+                !IO)
         ),
         io.set_input_stream(OldInputStream, VersionStream, !IO),
         io.close_input(VersionStream, !IO),
@@ -174,8 +176,10 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
         )
     ;
         MaybeVersionStream = error(_),
-        write_recompilation_message(
-            write_not_found_reasons_message(UsageFileName, ModuleName), !IO),
+        write_recompilation_message(Globals,
+            write_not_found_reasons_message(Globals, UsageFileName,
+                ModuleName),
+            !IO),
         !Info ^ rci_modules_to_recompile := all_modules
     ).
 
@@ -186,19 +190,19 @@ write_not_recompiling_message(ModuleName, !IO) :-
     prog_out.write_sym_name(ModuleName, !IO),
     io.write_string(".\n", !IO).
 
-:- pred write_reasons_message(module_name::in, list(recompile_reason)::in,
-    io::di, io::uo) is det.
+:- pred write_reasons_message(globals::in, module_name::in,
+    list(recompile_reason)::in, io::di, io::uo) is det.
 
-write_reasons_message(ModuleName, Reasons, !IO) :-
-    list.foldl(write_recompile_reason(ModuleName), Reasons, !IO).
+write_reasons_message(Globals, ModuleName, Reasons, !IO) :-
+    list.foldl(write_recompile_reason(Globals, ModuleName), Reasons, !IO).
 
-:- pred write_not_found_reasons_message(string::in, module_name::in,
-    io::di, io::uo) is det.
+:- pred write_not_found_reasons_message(globals::in, string::in,
+    module_name::in, io::di, io::uo) is det.
 
-write_not_found_reasons_message(UsageFileName, ModuleName, !IO) :-
+write_not_found_reasons_message(Globals, UsageFileName, ModuleName, !IO) :-
     Reason = recompile_for_file_error(UsageFileName,
         [words("file"), quote(UsageFileName), words("not found."), nl]),
-    write_recompile_reason(ModuleName, Reason, !IO).
+    write_recompile_reason(Globals, ModuleName, Reason, !IO).
 
 :- pred should_recompile_3_try(globals::in, bool::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
@@ -1399,11 +1403,11 @@ record_read_file(ModuleName, ModuleTimestamp, Items, Specs, Error, FileName,
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_recompilation_message(pred(io, io)::in(pred(di, uo) is det),
-    io::di, io::uo) is det.
+:- pred write_recompilation_message(globals::in,
+    pred(io, io)::in(pred(di, uo) is det), io::di, io::uo) is det.
 
-write_recompilation_message(P, !IO) :-
-    globals.io_lookup_bool_option(verbose_recompilation, Verbose, !IO),
+write_recompilation_message(Globals, P, !IO) :-
+    globals.lookup_bool_option(Globals, verbose_recompilation, Verbose),
     (
         Verbose = yes,
         P(!IO)
@@ -1411,14 +1415,13 @@ write_recompilation_message(P, !IO) :-
         Verbose = no
     ).
 
-:- pred write_recompile_reason(module_name::in, recompile_reason::in,
-    io::di, io::uo) is det.
+:- pred write_recompile_reason(globals::in, module_name::in,
+    recompile_reason::in, io::di, io::uo) is det.
 
-write_recompile_reason(ModuleName, Reason, !IO) :-
+write_recompile_reason(Globals, ModuleName, Reason, !IO) :-
     PrefixPieces = [words("Recompiling module"), sym_name(ModuleName),
         suffix(":"), nl],
     recompile_reason_message(PrefixPieces, Reason, Spec),
-    globals.io_get_globals(Globals, !IO),
     % Since these messages are informational, there should be no warnings
     % or errors.
     write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors, !IO).

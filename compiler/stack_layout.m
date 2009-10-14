@@ -148,21 +148,21 @@ generate_llds(ModuleInfo, !GlobalData, Layouts, LayoutLabels) :-
         LayoutInfo1, LayoutInfo2),
     list.foldl(construct_layouts(DeepProfiling), ProcLayoutList,
         LayoutInfo2, LayoutInfo),
-    LabelsCounter = LayoutInfo ^ label_counter,
+    LabelsCounter = LayoutInfo ^ sli_label_counter,
     counter.allocate(NumLabels, LabelsCounter, _),
-    TableIoDecls = LayoutInfo ^ table_infos,
-    ProcLayouts = LayoutInfo ^ proc_layouts,
-    InternalLayouts = LayoutInfo ^ internal_layouts,
-    LayoutLabels = LayoutInfo ^ label_set,
-    ProcLayoutNames = LayoutInfo ^ proc_layout_name_list,
-    StringTable = LayoutInfo ^ string_table,
-    LabelTables = LayoutInfo ^ label_tables,
-    StaticCellInfo1 = LayoutInfo ^ static_cell_info,
+    TableIoDecls = LayoutInfo ^ sli_table_infos,
+    ProcLayouts = LayoutInfo ^ sli_proc_layouts,
+    InternalLayouts = LayoutInfo ^ sli_internal_layouts,
+    LayoutLabels = LayoutInfo ^ sli_label_set,
+    ProcLayoutNames = LayoutInfo ^ sli_proc_layout_name_list,
+    StringTable = LayoutInfo ^ sli_string_table,
+    LabelTables = LayoutInfo ^ sli_label_tables,
+    StaticCellInfo1 = LayoutInfo ^ sli_static_cell_info,
     StringTable = string_table(_, RevStringList, StringOffset),
     list.reverse(RevStringList, StringList),
     ConcatStrings = string_with_0s(StringList),
 
-    list.condense([TableIoDecls, ProcLayouts, InternalLayouts], Layouts0),
+    Layouts0 = TableIoDecls ++ ProcLayouts ++ InternalLayouts,
     (
         TraceLayout = yes,
         module_info_get_name(ModuleInfo, ModuleName),
@@ -176,7 +176,7 @@ generate_llds(ModuleInfo, !GlobalData, Layouts, LayoutLabels) :-
         ),
         format_label_tables(EffLabelTables, SourceFileLayouts),
         SuppressedEvents = encode_suppressed_events(TraceSuppress),
-        HasUserEvent = LayoutInfo ^ has_user_event,
+        HasUserEvent = LayoutInfo ^ sli_has_user_event,
         (
             HasUserEvent = no,
             MaybeEventSet = no,
@@ -344,8 +344,8 @@ construct_layouts(DeepProfiling, ProcLayoutInfo, !Info) :-
     ),
     ProcLayoutName = proc_layout(RttiProcLabel, Kind),
     (
-        ( !.Info ^ agc_stack_layout = yes
-        ; !.Info ^ trace_stack_layout = yes
+        ( !.Info ^ sli_agc_stack_layout = yes
+        ; !.Info ^ sli_trace_stack_layout = yes
         ),
         valid_proc_layout(ProcLayoutInfo)
     ->
@@ -559,7 +559,7 @@ construct_proc_layout(ProcLayoutInfo, InternalLabelInfos, Kind, VarNumMap,
         ;
             MaybeExecTrace = no
         ),
-        ModuleInfo = !.Info ^ module_info,
+        ModuleInfo = !.Info ^ sli_module_info,
         (
             ( NeedGoalRep = trace_needs_body_rep
             ; DeepProfiling = yes
@@ -649,7 +649,7 @@ construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
     list.map(convert_var_to_int(VarNumMap), HeadVars, HeadVarNumVector),
     TraceSlotInfo = trace_slot_info(MaybeFromFullSlot, MaybeIoSeqSlot,
         MaybeTrailSlots, MaybeMaxfrSlot, MaybeCallTableSlot, MaybeTailRecSlot),
-    ModuleInfo = !.Info ^ module_info,
+    ModuleInfo = !.Info ^ sli_module_info,
     (
         MaybeCallLabel = yes(CallLabel),
         % The label associated with an event must have variable info.
@@ -1106,10 +1106,10 @@ construct_livelval_rvals(LiveLvalSet, VarNumMap, TVarLocnMap,
     sort_livevals(LiveLvals, SortedLiveLvals),
     construct_liveval_arrays(SortedLiveLvals, VarNumMap,
         EncodedLength, LiveValRval, NamesRval, !Info),
-    StaticCellInfo0 = !.Info ^ static_cell_info,
+    StaticCellInfo0 = !.Info ^ sli_static_cell_info,
     construct_tvar_vector(TVarLocnMap, TypeParamRval,
         StaticCellInfo0, StaticCellInfo),
-    !:Info = !.Info ^ static_cell_info := StaticCellInfo.
+    !Info ^ sli_static_cell_info := StaticCellInfo.
 
 :- pred construct_tvar_vector(map(tvar, set(layout_locn))::in,
     rval::out, static_cell_info::in, static_cell_info::out) is det.
@@ -1825,30 +1825,40 @@ represent_determinism_rval(Detism,
 
 :- type stack_layout_info
     --->    stack_layout_info(
-                module_info             :: module_info,
-                agc_stack_layout        :: bool, % generate agc info?
-                trace_stack_layout      :: bool, % generate tracing info?
-                procid_stack_layout     :: bool, % generate proc id info?
-                static_code_addresses   :: bool, % have static code addresses?
-                unboxed_floats          :: have_unboxed_floats,
-                label_counter           :: counter,
-                table_infos             :: list(layout_data),
-                proc_layouts            :: list(layout_data),
-                internal_layouts        :: list(layout_data),
-                label_set               :: map(label, data_addr),
-                                        % The set of labels (both entry
-                                        % and internal) with layouts.
-                proc_layout_name_list   :: list(layout_name),
-                                        % The list of proc_layouts in
-                                        % the module.
-                string_table            :: string_table,
-                label_tables            :: map(string, label_table),
-                                        % Maps each filename that
-                                        % contributes labels to this module
-                                        % to a table describing those
-                                        % labels.
-                static_cell_info        :: static_cell_info,
-                has_user_event          :: bool
+                sli_module_info             :: module_info,
+
+                % Should we generate agc info?
+                sli_agc_stack_layout        :: bool,
+
+                % Should we generate tracing info?
+                sli_trace_stack_layout      :: bool,
+
+                % Should we generate proc id info?
+                sli_procid_stack_layout     :: bool,
+
+                % Do we have static code addresses?
+                sli_static_code_addresses   :: bool,
+
+                sli_unboxed_floats          :: have_unboxed_floats,
+                sli_label_counter           :: counter,
+                sli_table_infos             :: list(layout_data),
+                sli_proc_layouts            :: list(layout_data),
+                sli_internal_layouts        :: list(layout_data),
+
+                % The set of labels (both entry and internal) with layouts.
+                sli_label_set               :: map(label, data_addr),
+
+                % The list of proc_layouts in the module.
+                sli_proc_layout_name_list   :: list(layout_name),
+
+                sli_string_table            :: string_table,
+
+                % Maps each filename that contributes labels to this module
+                % to a table describing those labels.
+                sli_label_tables            :: map(string, label_table),
+
+                sli_static_cell_info        :: static_cell_info,
+                sli_has_user_event          :: bool
             ).
 
 :- pred get_module_info(stack_layout_info::in, module_info::out) is det.
@@ -1872,28 +1882,28 @@ represent_determinism_rval(Detism,
     static_cell_info::out) is det.
 :- pred get_has_user_event(stack_layout_info::in, bool::out) is det.
 
-get_module_info(LI, LI ^ module_info).
-get_agc_stack_layout(LI, LI ^ agc_stack_layout).
-get_trace_stack_layout(LI, LI ^ trace_stack_layout).
-get_procid_stack_layout(LI, LI ^ procid_stack_layout).
-get_static_code_addresses(LI, LI ^ static_code_addresses).
-get_unboxed_floats(LI, LI ^ unboxed_floats).
-get_table_infos(LI, LI ^ table_infos).
-get_proc_layout_data(LI, LI ^ proc_layouts).
-get_internal_layout_data(LI, LI ^ internal_layouts).
-get_label_set(LI, LI ^ label_set).
-get_string_table(LI, LI ^ string_table).
-get_label_tables(LI, LI ^ label_tables).
-get_layout_static_cell_info(LI, LI ^ static_cell_info).
-get_has_user_event(LI, LI ^ has_user_event).
+get_module_info(LI, LI ^ sli_module_info).
+get_agc_stack_layout(LI, LI ^ sli_agc_stack_layout).
+get_trace_stack_layout(LI, LI ^ sli_trace_stack_layout).
+get_procid_stack_layout(LI, LI ^ sli_procid_stack_layout).
+get_static_code_addresses(LI, LI ^ sli_static_code_addresses).
+get_unboxed_floats(LI, LI ^ sli_unboxed_floats).
+get_table_infos(LI, LI ^ sli_table_infos).
+get_proc_layout_data(LI, LI ^ sli_proc_layouts).
+get_internal_layout_data(LI, LI ^ sli_internal_layouts).
+get_label_set(LI, LI ^ sli_label_set).
+get_string_table(LI, LI ^ sli_string_table).
+get_label_tables(LI, LI ^ sli_label_tables).
+get_layout_static_cell_info(LI, LI ^ sli_static_cell_info).
+get_has_user_event(LI, LI ^ sli_has_user_event).
 
 :- pred allocate_label_number(int::out,
     stack_layout_info::in, stack_layout_info::out) is det.
 
 allocate_label_number(LabelNum, !LI) :-
-    Counter0 = !.LI ^ label_counter,
+    Counter0 = !.LI ^ sli_label_counter,
     counter.allocate(LabelNum, Counter0, Counter),
-    !:LI = !.LI ^ label_counter := Counter.
+    !LI ^ sli_label_counter := Counter.
 
 :- pred add_table_data(maybe(layout_data)::in,
     stack_layout_info::in, stack_layout_info::out) is det.
@@ -1901,9 +1911,9 @@ allocate_label_number(LabelNum, !LI) :-
 add_table_data(MaybeTableIoDeclData, !LI) :-
     (
         MaybeTableIoDeclData = yes(TableIoDeclData),
-        TableIoDecls0 = !.LI ^ table_infos,
+        TableIoDecls0 = !.LI ^ sli_table_infos,
         TableIoDecls = [TableIoDeclData | TableIoDecls0],
-        !:LI = !.LI ^ table_infos := TableIoDecls
+        !LI ^ sli_table_infos := TableIoDecls
     ;
         MaybeTableIoDeclData = no
     ).
@@ -1912,27 +1922,27 @@ add_table_data(MaybeTableIoDeclData, !LI) :-
     stack_layout_info::in, stack_layout_info::out) is det.
 
 add_proc_layout_data(ProcLayout, ProcLayoutName, Label, !LI) :-
-    ProcLayouts0 = !.LI ^ proc_layouts,
+    ProcLayouts0 = !.LI ^ sli_proc_layouts,
     ProcLayouts = [ProcLayout | ProcLayouts0],
-    LabelSet0 = !.LI ^ label_set,
+    LabelSet0 = !.LI ^ sli_label_set,
     map.det_insert(LabelSet0, Label, layout_addr(ProcLayoutName), LabelSet),
-    ProcLayoutNames0 = !.LI ^ proc_layout_name_list,
+    ProcLayoutNames0 = !.LI ^ sli_proc_layout_name_list,
     ProcLayoutNames = [ProcLayoutName | ProcLayoutNames0],
-    !:LI = !.LI ^ proc_layouts := ProcLayouts,
-    !:LI = !.LI ^ label_set := LabelSet,
-    !:LI = !.LI ^ proc_layout_name_list := ProcLayoutNames.
+    !LI ^ sli_proc_layouts := ProcLayouts,
+    !LI ^ sli_label_set := LabelSet,
+    !LI ^ sli_proc_layout_name_list := ProcLayoutNames.
 
 :- pred add_internal_layout_data(layout_data::in,
     label::in, layout_name::in, stack_layout_info::in,
     stack_layout_info::out) is det.
 
 add_internal_layout_data(InternalLayout, Label, LayoutName, !LI) :-
-    InternalLayouts0 = !.LI ^ internal_layouts,
+    InternalLayouts0 = !.LI ^ sli_internal_layouts,
     InternalLayouts = [InternalLayout | InternalLayouts0],
-    LabelSet0 = !.LI ^ label_set,
+    LabelSet0 = !.LI ^ sli_label_set,
     map.det_insert(LabelSet0, Label, layout_addr(LayoutName), LabelSet),
-    !:LI = !.LI ^ internal_layouts := InternalLayouts,
-    !:LI = !.LI ^ label_set := LabelSet.
+    !LI ^ sli_internal_layouts := InternalLayouts,
+    !LI ^ sli_label_set := LabelSet.
 
 :- pred set_string_table(string_table::in,
     stack_layout_info::in, stack_layout_info::out) is det.
@@ -1946,10 +1956,14 @@ add_internal_layout_data(InternalLayout, Label, LayoutName, !LI) :-
 :- pred set_has_user_event(bool::in,
     stack_layout_info::in, stack_layout_info::out) is det.
 
-set_string_table(ST, LI, LI ^ string_table := ST).
-set_label_tables(LT, LI, LI ^ label_tables := LT).
-set_layout_static_cell_info(SCI, LI, LI ^ static_cell_info := SCI).
-set_has_user_event(HUE, LI, LI ^ has_user_event := HUE).
+set_string_table(ST, !LI) :-
+    !LI ^ sli_string_table := ST.
+set_label_tables(LT, !LI) :-
+    !LI ^ sli_label_tables := LT.
+set_layout_static_cell_info(SCI, !LI) :-
+    !LI ^ sli_static_cell_info := SCI.
+set_has_user_event(HUE, !LI) :-
+    !LI ^ sli_has_user_event := HUE.
 
 %---------------------------------------------------------------------------%
 %
@@ -1958,14 +1972,18 @@ set_has_user_event(HUE, LI, LI ^ has_user_event := HUE).
 
 :- type string_table
     --->    string_table(
-                map(string, int),   % Maps strings to their offsets.
-                list(string),       % List of strings so far,
-                                    % in reverse order.
-                int                 % Next available offset
+                % Maps strings to their offsets.
+                map(string, int),
+
+                % The list of strings so far, in reverse order.
+                list(string),
+
+                % The next available offset.
+                int
             ).
 
 lookup_string_in_table(String, Offset, !Info) :-
-    StringTable0 = !.Info ^ string_table,
+    StringTable0 = !.Info ^ sli_string_table,
     StringTable0 = string_table(TableMap0, TableList0, TableOffset0),
     ( map.search(TableMap0, String, OldOffset) ->
         Offset = OldOffset

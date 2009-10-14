@@ -119,7 +119,7 @@
 :- import_module hlds.make_hlds.field_access.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module libs.compiler_util.
-:- import_module libs.handle_options.   % for get_from_ground_term_threshold
+:- import_module libs.globals.  % for get_maybe_from_ground_term_threshold
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_io_sym_name.
@@ -143,7 +143,7 @@
 insert_arg_unifications(HeadVars, Args0, Context, ArgContext, !Goal, NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     do_insert_arg_unifications(HeadVars, Args0, Context, ArgContext, !Goal,
-        get_from_ground_term_threshold, NumAdded,
+        get_maybe_from_ground_term_threshold, NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs).
 
 insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms0,
@@ -151,19 +151,19 @@ insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms0,
         !SInfo, !Specs) :-
     do_insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms0,
         ArgContexts, Context, !Goal,
-        get_from_ground_term_threshold, NumAdded,
+        get_maybe_from_ground_term_threshold, NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs).
 
 append_arg_unifications(HeadVars, Args0, Context, ArgContext,
         !Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     do_append_arg_unifications(HeadVars, Args0, Context, ArgContext, !Goal,
-        get_from_ground_term_threshold, NumAdded,
+        get_maybe_from_ground_term_threshold, NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs).
 
 unravel_unification(LHS0, RHS0, Context, MainContext, SubContext, Purity,
         Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     do_unravel_unification(LHS0, RHS0, Context, MainContext, SubContext,
-        Purity, Goal, get_from_ground_term_threshold, NumAdded,
+        Purity, Goal, get_maybe_from_ground_term_threshold, NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs).
 
 %-----------------------------------------------------------------------------%

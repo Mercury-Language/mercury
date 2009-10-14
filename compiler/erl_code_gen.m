@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2008 The University of Melbourne.
+% Copyright (C) 2007-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -107,7 +107,8 @@ erl_gen_imports(ModuleInfo, AllImports) :-
 
 filter_erlang_foreigns(ModuleInfo, ForeignDecls, ForeignBodies, PragmaExports,
         !IO) :-
-    globals.io_get_backend_foreign_languages(BackendForeignLanguages, !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_backend_foreign_languages(Globals, BackendForeignLanguages),
     ( BackendForeignLanguages = [lang_erlang] ->
         true
     ;

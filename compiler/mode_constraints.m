@@ -116,8 +116,9 @@
 
 process_module(!ModuleInfo, !IO) :-
     module_info_predids(PredIds, !ModuleInfo),
-    globals.io_lookup_bool_option(simple_mode_constraints, Simple, !IO),
-    globals.io_lookup_bool_option(prop_mode_constraints, New, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, simple_mode_constraints, Simple),
+    globals.lookup_bool_option(Globals, prop_mode_constraints, New),
 
     (
         New = no,
@@ -164,7 +165,7 @@ process_module(!ModuleInfo, !IO) :-
             SCCs, !ModuleInfo, var_info_init, VarInfo,
             map.init, AbstractModeConstraints),
 
-        globals.io_lookup_bool_option(debug_mode_constraints, Debug, !IO),
+        globals.lookup_bool_option(Globals, debug_mode_constraints, Debug),
         (
             Debug = yes,
             ConstraintVarset = mc_varset(VarInfo),
@@ -191,9 +192,10 @@ process_module(!ModuleInfo, !IO) :-
 
 dump_abstract_constraints(ModuleInfo, ConstraintVarset, ModeConstraints,
         !IO) :-
-    hlds_module.module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(ModuleName, ".mode_constraints", do_create_dirs,
-        FileName, !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_name(ModuleInfo, ModuleName),
+    module_name_to_file_name(Globals, ModuleName, ".mode_constraints",
+        do_create_dirs, FileName, !IO),
     OutputFile = FileName,
 
     io.open_output(OutputFile, IOResult, !IO),
@@ -1036,7 +1038,8 @@ do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
 process_clauses_info(ModuleInfo, SCC, !ClausesInfo,
         InstGraph, HOModes0, !Constraint, !ConstraintInfo, !IO) :-
     clauses_info_get_varset(!.ClausesInfo, VarSet0),
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
         inst_graph.dump(InstGraph, VarSet0, !IO)

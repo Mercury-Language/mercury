@@ -35,7 +35,6 @@
 % Phase 4-ml: MLDS-specific HLDS to HLDS transformations and annotations.
 :- include_module add_heap_ops.         % transformation
 :- include_module add_trail_ops.        % transformation
-:- include_module mark_static_terms.    % annotation
 
 % Phase 5-ml: compile HLDS to MLDS
 :- include_module ml_proc_gen.

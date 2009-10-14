@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2008 The University of Melbourne.
+% Copyright (C) 2006-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -102,9 +102,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred determine_reuse(reuse_strategy::in, module_info::in, proc_info::in,
-    dead_cell_table::in, hlds_goal::in, hlds_goal::out, reuse_as::out,
-    io::di, io::uo) is det.
+:- pred determine_reuse(module_info::in, proc_info::in, dead_cell_table::in,
+    hlds_goal::in, hlds_goal::out, reuse_as::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -128,17 +127,19 @@
 
 %-----------------------------------------------------------------------------%
 
-determine_reuse(Strategy, ModuleInfo, ProcInfo, DeadCellTable, !Goal,
-        ReuseAs, !IO):-
+determine_reuse(ModuleInfo, ProcInfo, DeadCellTable, !Goal, ReuseAs) :-
     % Check for local reuse:
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_reuse_strategy(Globals, Strategy),
     BackGroundInfo = background_info_init(Strategy, ModuleInfo, ProcInfo),
-    process_goal(BackGroundInfo, DeadCellTable, RemainingDeadCellTable,
-        !Goal, reuse_as_init, ReuseAs, !IO),
+    choose_reuse_in_goal(BackGroundInfo, DeadCellTable, RemainingDeadCellTable,
+        !Goal, reuse_as_init, ReuseAs),
 
-    globals.io_lookup_bool_option(structure_reuse_free_cells, FreeCells, !IO),
+    globals.lookup_bool_option(Globals, structure_reuse_free_cells, FreeCells),
     (
         FreeCells = yes,
-        check_for_cell_caching(RemainingDeadCellTable, !Goal, !IO)
+        globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+        check_for_cell_caching(VeryVerbose, RemainingDeadCellTable, !Goal)
     ;
         FreeCells = no
     ).
@@ -217,17 +218,19 @@ background_info_init(Strategy, ModuleInfo, ProcInfo) = Background :-
 :- type reuse_type
     --->    reuse_type(
                 same_cons       :: bool,
+
+                % States whether the corresponding argument in the list of
+                % arguments of the reused cons needs to be updated when
+                % reused or not.
+                % Note that list.length(reuse_fields) is the arity of the
+                % reused term.
                 reuse_fields    :: list(needs_update),
-                    % States whether the corresponding argument in the list of
-                    % arguments of the reused cons needs to be updated when
-                    % reused or not.
-                    % Note that list.length(reuse_fields) is the arity of the
-                    % reused term.
+
+                % A metric measuring the value of the reuse. A high value
+                % should represent a 'good' reuse (yielding possibly good
+                % results on the general memory behaviour of the procedure)
+                % compared to a reuse with a lower value.
                 reuse_value     :: float
-                    % A metric measuring the value of the reuse. A high value
-                    % should represent a 'good' reuse (yielding possibly good
-                    % results on the general memory behaviour of the procedure)
-                    % compared to a reuse with a lower value.
             ).
 
         % A match is a description of a list of deconstructions and a list of
@@ -427,7 +430,7 @@ highest_match_in_list(Matches, Match0, Match) :-
     %
 :- pred average_match(list(match)::in, match::out) is det.
 
-average_match(List, AverageMatch):-
+average_match(List, AverageMatch) :-
     (
         List = [First | Rest],
         list.length(List, Length),
@@ -448,33 +451,34 @@ average_match(List, AverageMatch):-
 
 %-----------------------------------------------------------------------------%
 %
-% Process a single goal
+% Process a single goal:
 %
 %   * determine a match table
 %   * find the best match
 %   * annotate the goal with the reuse described by that match
 %   * and reprocess the goal until no matches are found.
 
-:- pred process_goal(background_info::in, dead_cell_table::in,
+:- pred choose_reuse_in_goal(background_info::in, dead_cell_table::in,
     dead_cell_table::out, hlds_goal::in, hlds_goal::out, reuse_as::in,
-    reuse_as::out, io::di, io::uo) is det.
+    reuse_as::out) is det.
 
-process_goal(Background, !DeadCellTable, !Goal, !ReuseAs, !IO):-
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
-    %
+choose_reuse_in_goal(Background, !DeadCellTable, !Goal, !ReuseAs) :-
+    ModuleInfo = Background ^ back_module_info,
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+
     % Compute a match table.
-    %
-    compute_match_table(Background, !.DeadCellTable, !.Goal, MatchTable, !IO),
+    compute_match_table(Background, !.DeadCellTable, !.Goal, MatchTable),
 
     % As long as the match table is not empty, pick out the match with the
     % highest value, annotate the goal accordingly, and repeat the procedure.
     % If the match table is empty, the work is finished.
-    %
+
     ( multi_map.is_empty(MatchTable) ->
         true
     ;
         % Select the deconstructions-constructions with highest value.
-        %
+
         Match = highest_match_degree_ratio(MatchTable),
         (
             Match ^ con_specs = []
@@ -483,9 +487,10 @@ process_goal(Background, !DeadCellTable, !Goal, !ReuseAs, !IO):-
 
             % Maybe dump all the matches recorded in the table, highlight the
             % match with the highest value.
-            %
-            maybe_write_string(VeryVerbose, "% Reuse results: \n", !IO),
-            maybe_dump_match_table(VeryVerbose, MatchTable, Match, !IO),
+            trace [io(!IO)] (
+                maybe_write_string(VeryVerbose, "% Reuse results: \n", !IO),
+                maybe_dump_match_table(VeryVerbose, MatchTable, Match, !IO)
+            ),
 
             OldGoal = !.Goal,
             OldReuseAs = !.ReuseAs,
@@ -498,15 +503,14 @@ process_goal(Background, !DeadCellTable, !Goal, !ReuseAs, !IO):-
 
             % Add the conditions involved in the reuses to the existing
             % conditions.
-            ModuleInfo = Background ^ back_module_info,
             ProcInfo   = Background ^ back_proc_info,
             reuse_as_least_upper_bound(ModuleInfo, ProcInfo,
                 match_get_condition(Background, Match), !ReuseAs),
 
             % If there would be too many reuse conditions on this procedure
             % by taking the reuse opportunity, just drop it.
-            globals.io_lookup_int_option(structure_reuse_max_conditions,
-                MaxConditions, !IO),
+            globals.lookup_int_option(Globals, structure_reuse_max_conditions,
+                MaxConditions),
             ( reuse_as_count_conditions(!.ReuseAs) > MaxConditions ->
                 !:Goal = OldGoal,
                 !:ReuseAs = OldReuseAs
@@ -515,14 +519,14 @@ process_goal(Background, !DeadCellTable, !Goal, !ReuseAs, !IO):-
             ),
 
             % Process the goal for further reuse-matches.
-            process_goal(Background, !DeadCellTable, !Goal, !ReuseAs, !IO)
+            choose_reuse_in_goal(Background, !DeadCellTable, !Goal, !ReuseAs)
         )
     ).
 
 :- pred remove_deconstructions_from_dead_cell_table(match::in,
     dead_cell_table::in, dead_cell_table::out) is det.
 
-remove_deconstructions_from_dead_cell_table(Match, !DeadCellTable):-
+remove_deconstructions_from_dead_cell_table(Match, !DeadCellTable) :-
     DeconSpecs = Match ^ decon_specs,
     list.foldl(remove_deconstruction_from_dead_cell_table, DeconSpecs,
         !DeadCellTable).
@@ -530,7 +534,7 @@ remove_deconstructions_from_dead_cell_table(Match, !DeadCellTable):-
 :- pred remove_deconstruction_from_dead_cell_table(deconstruction_spec::in,
     dead_cell_table::in, dead_cell_table::out) is det.
 
-remove_deconstruction_from_dead_cell_table(DeconSpec, !DeadCellTable):-
+remove_deconstruction_from_dead_cell_table(DeconSpec, !DeadCellTable) :-
     dead_cell_table_remove(DeconSpec ^ decon_pp, !DeadCellTable).
 
 %-----------------------------------------------------------------------------%
@@ -543,38 +547,35 @@ remove_deconstruction_from_dead_cell_table(DeconSpec, !DeadCellTable):-
 %
 
 :- pred compute_match_table(background_info::in, dead_cell_table::in,
-    hlds_goal::in, match_table::out, io::di, io::uo) is det.
+    hlds_goal::in, match_table::out) is det.
 
-compute_match_table(Background, DeadCellTable, Goal, MatchTable, !IO) :-
+compute_match_table(Background, DeadCellTable, Goal, MatchTable) :-
     ContinuationGoals = [],
     compute_match_table_with_continuation(Background, DeadCellTable,
-        Goal, ContinuationGoals, multi_map.init, MatchTable, !IO).
+        Goal, ContinuationGoals, multi_map.init, MatchTable).
 
 :- pred compute_match_table_goal_list(background_info::in, dead_cell_table::in,
-    hlds_goals::in, match_table::in, match_table::out, io::di, io::uo) is det.
+    hlds_goals::in, match_table::in, match_table::out) is det.
 
-compute_match_table_goal_list(Background, DeadCellTable, Goals, !Table,
-        !IO) :-
+compute_match_table_goal_list(Background, DeadCellTable, Goals, !Table) :-
     (
         Goals = []
     ;
         Goals = [CurrentGoal | Cont],
         compute_match_table_with_continuation(Background, DeadCellTable,
-            CurrentGoal, Cont, !Table, !IO)
+            CurrentGoal, Cont, !Table)
     ).
 
 :- pred compute_match_table_with_continuation(background_info::in,
     dead_cell_table::in, hlds_goal::in, hlds_goals::in,
-    match_table::in, match_table::out, io::di, io::uo) is det.
+    match_table::in, match_table::out) is det.
 
 compute_match_table_with_continuation(Background, DeadCellTable,
-        CurrentGoal, Cont, !Table, !IO) :-
+        CurrentGoal, Cont, !Table) :-
     CurrentGoal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = unify(_, _, _, Unification, _),
-        (
-            Unification = deconstruct(Var, ConsId, Args, _, _, _)
-        ->
+        ( Unification = deconstruct(Var, ConsId, Args, _, _, _) ->
 
             ProgramPoint = program_point_init(GoalInfo),
             (
@@ -584,7 +585,8 @@ compute_match_table_with_continuation(Background, DeadCellTable,
                 DeconstructionSpec = deconstruction_spec_init(Var,
                     ProgramPoint, ConsId, Args, ReuseAs),
                 Match0 = match_init([DeconstructionSpec]),
-                find_best_match_in_conjunction(Background, Cont, Match0, Match),
+                find_best_match_in_conjunction(Background, Cont,
+                    Match0, Match),
                 svmulti_map.set(Var, Match, !Table)
             ;
                 true
@@ -592,67 +594,64 @@ compute_match_table_with_continuation(Background, DeadCellTable,
         ;
             true
         ),
-        compute_match_table_goal_list(Background, DeadCellTable, Cont, !Table,
-            !IO)
+        compute_match_table_goal_list(Background, DeadCellTable, Cont, !Table)
     ;
         GoalExpr = plain_call(_, _, _, _, _, _),
         compute_match_table_goal_list(Background, DeadCellTable,
-            Cont, !Table, !IO)
+            Cont, !Table)
     ;
         GoalExpr = generic_call( _, _, _, _),
         compute_match_table_goal_list(Background, DeadCellTable,
-            Cont, !Table, !IO)
+            Cont, !Table)
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
         compute_match_table_goal_list(Background, DeadCellTable,
-            Cont, !Table, !IO)
+            Cont, !Table)
     ;
         GoalExpr = conj(_, Goals),
         list.append(Goals, Cont, NewCont),
         compute_match_table_goal_list(Background, DeadCellTable,
-            NewCont, !Table, !IO)
+            NewCont, !Table)
     ;
         GoalExpr = disj(Goals),
         compute_match_table_in_disjunction(Background, DeadCellTable, Goals,
-            Cont, !Table, !IO),
-        compute_match_table_goal_list(Background, DeadCellTable, Cont, !Table,
-            !IO)
+            Cont, !Table),
+        compute_match_table_goal_list(Background, DeadCellTable, Cont, !Table)
     ;
         GoalExpr = switch(_, _, Cases),
         Goals = list.map((func(C) = C ^ case_goal), Cases),
         compute_match_table_in_disjunction(Background, DeadCellTable,
-            Goals, Cont, !Table, !IO),
-        compute_match_table_goal_list(Background, DeadCellTable, Cont, !Table,
-            !IO)
+            Goals, Cont, !Table),
+        compute_match_table_goal_list(Background, DeadCellTable, Cont, !Table)
     ;
         GoalExpr = negation(Goal),
         % If Goal contains deconstructions, they should not be reused within
         % Cont.
         compute_match_table_with_continuation(Background, DeadCellTable,
-            Goal, [], !Table, !IO),
+            Goal, [], !Table),
         compute_match_table_goal_list(Background, DeadCellTable, Cont,
-            !Table, !IO)
+            !Table)
     ;
         GoalExpr = scope(_, Goal),
         % XXX We should special-case the handling of from_ground_term_construct
         % scopes. Since they construct ground terms statically, there is no
         % uniqueness we can exploit,
         compute_match_table_with_continuation(Background, DeadCellTable,
-            Goal, Cont, !Table, !IO)
+            Goal, Cont, !Table)
     ;
         GoalExpr = if_then_else(_, CondGoal, ThenGoal, ElseGoal),
         multi_map.init(Table0),
         compute_match_table_with_continuation(Background, DeadCellTable,
-            CondGoal, [ThenGoal], Table0, TableThen, !IO),
+            CondGoal, [ThenGoal], Table0, TableThen),
         compute_match_table_with_continuation(Background, DeadCellTable,
-            ElseGoal, [], Table0, TableElse, !IO),
+            ElseGoal, [], Table0, TableElse),
         multi_map.merge(TableThen, !Table),
         multi_map.merge(TableElse, !Table),
         process_possible_common_dead_vars(Background, Cont,
-            [TableThen, TableElse], CommonDeadVarsTables, !IO),
+            [TableThen, TableElse], CommonDeadVarsTables),
         list.foldl(multi_map.merge, CommonDeadVarsTables, !Table),
         compute_match_table_goal_list(Background, DeadCellTable, Cont,
-            !Table, !IO)
+            !Table)
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
@@ -661,25 +660,24 @@ compute_match_table_with_continuation(Background, DeadCellTable,
     ).
 
 :- pred compute_match_table_in_disjs(background_info::in, dead_cell_table::in,
-    hlds_goals::in, list(match_table)::out, io::di, io::uo) is det.
+    hlds_goals::in, list(match_table)::out) is det.
 
-compute_match_table_in_disjs(Background, DeadCellTable, Branches, Tables,
-        !IO) :-
-    list.map_foldl(compute_match_table(Background, DeadCellTable),
-        Branches, Tables, !IO).
+compute_match_table_in_disjs(Background, DeadCellTable, Branches, Tables) :-
+    list.map(compute_match_table(Background, DeadCellTable),
+        Branches, Tables).
 
 :- pred compute_match_table_in_disjunction(background_info::in,
     dead_cell_table::in, hlds_goals::in, hlds_goals::in,
-    match_table::in, match_table::out, io::di, io::uo) is det.
+    match_table::in, match_table::out) is det.
 
 compute_match_table_in_disjunction(Background, DeadCellTable, DisjGoals, Cont,
-        !Table, !IO) :-
+        !Table) :-
     % Compute a match table for each of the branches of the disjunction.
     % Each of these tables will contain information about local reuses
     % w.r.t. the disjunction, i.e. a data structure is reused within the
     % same branch in which it dies.
     compute_match_table_in_disjs(Background, DeadCellTable, DisjGoals,
-        DisjTables, !IO),
+        DisjTables),
     list.foldl(multi_map.merge, DisjTables, !Table),
 
     % It is possible that each of the branches of the disjunctions
@@ -687,14 +685,14 @@ compute_match_table_in_disjunction(Background, DeadCellTable, DisjGoals, Cont,
     % need to check if that dead variable can be reused outside of the
     % disjunction.
     process_possible_common_dead_vars(Background, Cont, DisjTables,
-        CommonDeadVarsDisjTables, !IO),
+        CommonDeadVarsDisjTables),
     list.foldl(multi_map.merge, CommonDeadVarsDisjTables, !Table).
 
 :- pred process_possible_common_dead_vars(background_info::in, hlds_goals::in,
-    list(match_table)::in, list(match_table)::out, io::di, io::uo) is det.
+    list(match_table)::in, list(match_table)::out) is det.
 
 process_possible_common_dead_vars(Background, Cont, DisjTables,
-        ExtraTables, !IO) :-
+        ExtraTables) :-
     CommonDeadVars = common_vars(DisjTables),
     (
         CommonDeadVars = [_ | _],
@@ -1202,7 +1200,7 @@ annotate_reuses_in_case(Background, Match, !Case) :-
 :- pred annotate_reuse_for_unification(background_info::in, match::in,
     unification::in, hlds_goal_info::in, hlds_goal_info::out) is det.
 
-annotate_reuse_for_unification(Background, Match, Unification, !GoalInfo):-
+annotate_reuse_for_unification(Background, Match, Unification, !GoalInfo) :-
     CurrentProgramPoint = program_point_init(!.GoalInfo),
     (
         Unification = deconstruct(_, _, _, _, _, _),
@@ -1286,7 +1284,7 @@ construction_spec_with_program_point(ConstructionSpec ^ con_pp,
 
 %-----------------------------------------------------------------------------%
 %
-% Predicates to print intermediate results as stored in a match_table
+% Predicates to print intermediate results as stored in a match_table.
 %
 
 :- func line_length = int.
@@ -1320,7 +1318,7 @@ maybe_dump_match_table(VeryVerbose, MatchTable, HighestMatch, !IO) :-
 
 :- pred dump_match(string::in, match::in, io::di, io::uo) is det.
 
-dump_match(Prefix, Match, !IO):-
+dump_match(Prefix, Match, !IO) :-
     io.write_string(Prefix, !IO),
     io.write_string("\t|\t", !IO),
     io.write_int(term.var_to_int(match_get_dead_var(Match)), !IO),
@@ -1388,25 +1386,28 @@ maybe_dump_full_table(yes, M, !IO) :-
     % XXX cell caching is not actually implemented, but we use the same
     % information to free dead cells that have no reuse opportunity
     %
-:- pred check_for_cell_caching(dead_cell_table::in, hlds_goal::in,
-    hlds_goal::out, io::di, io::uo) is det.
+:- pred check_for_cell_caching(bool::in, dead_cell_table::in,
+    hlds_goal::in, hlds_goal::out) is det.
 
-check_for_cell_caching(DeadCellTable0, !Goal, !IO) :-
+check_for_cell_caching(VeryVerbose, DeadCellTable0, !Goal) :-
     dead_cell_table_remove_conditionals(DeadCellTable0, DeadCellTable),
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     ( dead_cell_table_is_empty(DeadCellTable) ->
-        maybe_write_string(VeryVerbose,
-            "% No cells to be cached/freed.\n", !IO)
+        trace [io(!IO)] (
+            maybe_write_string(VeryVerbose,
+                "% No cells to be cached/freed.\n", !IO)
+        )
     ;
-        maybe_write_string(VeryVerbose,
-            "% Marking cacheable/freeable cells.\n", !IO),
+        trace [io(!IO)] (
+            maybe_write_string(VeryVerbose,
+                "% Marking cacheable/freeable cells.\n", !IO)
+        ),
         check_for_cell_caching_2(DeadCellTable, !Goal)
     ).
 
 :- pred check_for_cell_caching_2(dead_cell_table::in,
     hlds_goal::in, hlds_goal::out) is det.
 
-check_for_cell_caching_2(DeadCellTable, !Goal):-
+check_for_cell_caching_2(DeadCellTable, !Goal) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = unify(A, B, C, Unification0, D),
@@ -1478,14 +1479,16 @@ check_for_cell_caching_in_case(DeadCellTable, !Case) :-
     unification::in, unification::out,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
-check_for_cell_caching_in_unification(DeadCellTable, !Unification, !GoalInfo):-
+check_for_cell_caching_in_unification(DeadCellTable, !Unification,
+        !GoalInfo) :-
     (
-        !.Unification = deconstruct(A, B, C, D, E, _),
+        !.Unification = deconstruct(Var, ConsId, Args, ArgModes, CanFail, _),
         Condition = dead_cell_table_search(program_point_init(!.GoalInfo),
             DeadCellTable),
         \+ reuse_condition_is_conditional(Condition)
     ->
-        !:Unification = deconstruct(A, B, C, D, E, can_cgc),
+        !:Unification = deconstruct(Var, ConsId, Args, ArgModes, CanFail,
+            can_cgc),
         % XXX Why potential_reuse and not simply "reuse" ?
         ReuseInfo = potential_reuse(cell_died),
         goal_info_set_reuse(ReuseInfo, !GoalInfo)

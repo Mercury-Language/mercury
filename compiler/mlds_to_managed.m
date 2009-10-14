@@ -85,7 +85,7 @@ output_csharp_code(Globals, MLDS, !IO) :-
 
     % Get the foreign code for the required language.
     ForeignCode = map.lookup(AllForeignCode, lang_csharp),
-    generate_foreign_header_code(ForeignCode, !IO),
+    generate_foreign_header_code(Globals, ForeignCode, !IO),
 
     % Output the namespace.
     generate_namespace_details(ClassName, NameSpaceFmtStr, Namespace),
@@ -97,14 +97,14 @@ output_csharp_code(Globals, MLDS, !IO) :-
     io.write_strings(["\npublic class " ++ wrapper_class_name, "{\n"], !IO),
 
     % Output the contents of pragma foreign_code declarations.
-    generate_foreign_code(ForeignCode, !IO),
+    generate_foreign_code(Globals, ForeignCode, !IO),
 
     io.nl(!IO),
 
     % Output the contents of foreign_proc declarations.
     % Put each one inside a method.
     get_il_data_rep(Globals, DataRep),
-    list.foldl(generate_method_code(DataRep), Defns, !IO),
+    list.foldl(generate_method_code(Globals, DataRep), Defns, !IO),
 
     io.write_string("};\n", !IO),
 
@@ -162,10 +162,10 @@ output_csharp_header_code(Globals, !IO) :-
         SignAssembly = no
     ).
 
-:- pred generate_foreign_header_code(mlds_foreign_code::in,
+:- pred generate_foreign_header_code(globals::in, mlds_foreign_code::in,
     io::di, io::uo) is det.
 
-generate_foreign_header_code(ForeignCode, !IO) :-
+generate_foreign_header_code(Globals, ForeignCode, !IO) :-
     ForeignCode = mlds_foreign_code(RevHeaderCode, _RevImports,
         _RevBodyCode, _ExportDefns),
 
@@ -174,14 +174,14 @@ generate_foreign_header_code(ForeignCode, !IO) :-
         % XXX Ignoring _IsLocal may not be the right thing to do.
         (pred(foreign_decl_code(CodeLang, _IsLocal, Code, Context)::in,
                 !.IO::di, !:IO::uo) is det :-
-            output_context(Context, !IO),
+            output_context(Globals, Context, !IO),
             ( CodeLang = lang_csharp ->
                 io.write_string(Code, !IO),
                 io.nl(!IO)
             ;
                 sorry(this_file, "wrong foreign code")
             ),
-            output_reset_context(!IO)
+            output_reset_context(Globals, !IO)
         ), !IO).
 
 :- pred generate_namespace_details(ilds.class_name::in, string::out,
@@ -202,29 +202,30 @@ generate_namespace_details(ClassName, NameSpaceFmtStr, Namespace) :-
         Namespace = Namespace0
     ).
 
-:- pred generate_foreign_code(mlds_foreign_code::in, io::di, io::uo) is det.
+:- pred generate_foreign_code(globals::in, mlds_foreign_code::in,
+    io::di, io::uo) is det.
 
-generate_foreign_code(ForeignCode, !IO) :-
+generate_foreign_code(Globals, ForeignCode, !IO) :-
     ForeignCode = mlds_foreign_code(_RevHeaderCode, _RevImports,
         RevBodyCode, _ExportDefns),
     BodyCode = list.reverse(RevBodyCode),
     io.write_list(BodyCode, "\n",
         (pred(user_foreign_code(CodeLang, Code, Context)::in,
                 !.IO::di, !:IO::uo) is det :-
-            output_context(Context, !IO),
+            output_context(Globals, Context, !IO),
             ( CodeLang = lang_csharp ->
                 io.write_string(Code, !IO),
                 io.nl(!IO)
             ;
                 sorry(this_file, "wrong foreign code")
             ),
-            output_reset_context(!IO)
+            output_reset_context(Globals, !IO)
     ), !IO).
 
-:- pred generate_method_code(il_data_rep::in, mlds_defn::in, io::di, io::uo)
-    is det.
+:- pred generate_method_code(globals::in, il_data_rep::in, mlds_defn::in,
+    io::di, io::uo) is det.
 
-generate_method_code(DataRep, Defn, !IO) :-
+generate_method_code(Globals, DataRep, Defn, !IO) :-
     Defn = mlds_defn(EntityName, _Context, _DeclFlags, Entity),
     (
         ( EntityName = entity_export(_)
@@ -271,34 +272,35 @@ generate_method_code(DataRep, Defn, !IO) :-
             io.nl(!IO),
 
             io.write_string("{\n", !IO),
-            write_statement(DataRep, Inputs, Statement, !IO),
+            write_statement(Globals, DataRep, Inputs, Statement, !IO),
             io.write_string("}\n", !IO)
         ;
             true
         )
     ).
 
-:- pred write_statement(il_data_rep::in, mlds_arguments::in, statement::in,
-    io::di, io::uo) is det.
+:- pred write_statement(globals::in, il_data_rep::in, mlds_arguments::in,
+    statement::in, io::di, io::uo) is det.
 
-write_statement(DataRep, Args, statement(Statement, Context), !IO) :-
+write_statement(Globals, DataRep, Args, statement(Statement, Context), !IO) :-
     (
         % XXX petdr
         Statement = ml_stmt_atomic(ForeignProc),
         ForeignProc = outline_foreign_proc(lang_csharp, OutlineArgs, _, Code)
     ->
         list.foldl(write_outline_arg_init(DataRep), OutlineArgs, !IO),
-        output_context(mlds_get_prog_context(Context), !IO),
+        output_context(Globals, mlds_get_prog_context(Context), !IO),
         io.write_string(Code, !IO),
         io.nl(!IO),
-        output_reset_context(!IO),
+        output_reset_context(Globals, !IO),
         list.foldl(write_outline_arg_final(DataRep), OutlineArgs, !IO)
     ;
         Statement = ml_stmt_block(Defns, Statements)
     ->
         io.write_list(Defns, "", write_defn_decl(DataRep), !IO),
         io.write_string("{\n", !IO),
-        io.write_list(Statements, "", write_statement(DataRep, Args), !IO),
+        io.write_list(Statements, "", write_statement(Globals, DataRep, Args),
+            !IO),
         io.write_string("\n}\n", !IO)
     ;
         Statement = ml_stmt_return(Rvals)
@@ -392,17 +394,17 @@ is_anonymous_variable(mlds_var_name(Name, _)) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_context(prog_context::in, io::di, io::uo) is det.
+:- pred output_context(globals::in, prog_context::in, io::di, io::uo) is det.
 
-output_context(Context, !IO) :-
+output_context(Globals, Context, !IO) :-
     term.context_file(Context, File),
     term.context_line(Context, Line),
-    c_util.set_line_num(File, Line, !IO).
+    c_util.set_line_num(Globals, File, Line, !IO).
 
-:- pred output_reset_context(io::di, io::uo) is det.
+:- pred output_reset_context(globals::in, io::di, io::uo) is det.
 
-output_reset_context(!IO) :-
-    c_util.reset_line_num(!IO).
+output_reset_context(Globals, !IO) :-
+    c_util.reset_line_num(Globals, !IO).
 
 :- pred write_rval(il_data_rep::in, mlds_rval::in, io::di, io::uo) is det.
 

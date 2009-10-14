@@ -63,31 +63,32 @@ run_post_term_analysis(ModuleInfo, !IO) :-
 
 %----------------------------------------------------------------------------%
 %
-% Warn about user-defined special predicates that do not terminate
+% Warn about user-defined special predicates that do not terminate.
 %
 
-% We check the termination status of user-defined special predicates by taking
-% the body goal of the compiler generated wrapper predicate and checking if
-% that terminates.  We cannot check the termination status of the compiler
-% generated wrappers directly, because termination analysis always assumes
-% that they terminate.
-%
-% Since all of the special predicates of interest here have to be defined in
-% the same module as the type that uses them, we only check locally defined
-% types.  The ones for imported types will be checked when the relevant module
-% is compiled and analysed. 
-
+    % We check the termination status of user-defined special predicates
+    % by taking the body goal of the compiler generated wrapper predicate
+    % and checking if that terminates. We cannot check the termination status
+    % of the compiler generated wrappers directly, because termination analysis
+    % always assumes that they terminate.
+    %
+    % Since all of the special predicates of interest here have to be defined
+    % in the same module as the type that uses them, we only check locally
+    % defined types. The ones for imported types will be checked when
+    % the relevant module is compiled and analysed. 
+    %
 :- pred warn_non_term_user_special_preds(module_info::in, io::di, io::uo)
     is det.
 
 warn_non_term_user_special_preds(ModuleInfo, !IO) :-
-    globals.io_lookup_bool_option(termination, Termination, !IO),
-    globals.io_lookup_bool_option(warn_non_term_special_preds,
-        WarnSpecialPreds, !IO),
-    globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt,
-        !IO),
-    globals.io_lookup_bool_option(transitive_optimization, TransIntermodOpt,
-        !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, termination, Termination),
+    globals.lookup_bool_option(Globals, warn_non_term_special_preds,
+        WarnSpecialPreds),
+    globals.lookup_bool_option(Globals, make_optimization_interface,
+        MakeOptInt),
+    globals.lookup_bool_option(Globals, transitive_optimization,
+        TransIntermodOpt),
     ( 
         Termination = yes, WarnSpecialPreds = yes,
         %
@@ -163,7 +164,8 @@ process_special_pred_for_type(ModuleInfo, SpecialPredId, TypeCtor,
 
         ( not goal_cannot_loop(ModuleInfo, BodyGoal) ->
             get_type_defn_context(TypeDefn, Context),
-            emit_non_term_user_special_warning(Context, SpecialPredId,
+            module_info_get_globals(ModuleInfo, Globals),
+            emit_non_term_user_special_warning(Globals, Context, SpecialPredId,
                 TypeCtor, !IO)   
         ;
             true
@@ -218,10 +220,11 @@ get_user_unify_compare(ModuleInfo, TypeBody, UnifyCompare) :-
 get_user_unify_compare(_ModuleInfo, TypeBody, UnifyCompare) :-
     TypeBody = hlds_solver_type(_, yes(UnifyCompare)).
 
-:- pred emit_non_term_user_special_warning(prog_context::in,
+:- pred emit_non_term_user_special_warning(globals::in, prog_context::in,
     special_pred_id::in, type_ctor::in, io::di, io::uo) is det.
 
-emit_non_term_user_special_warning(Context, SpecialPred, TypeCtor, !IO) :-
+emit_non_term_user_special_warning(Globals, Context, SpecialPred, TypeCtor,
+        !IO) :-
     TypeCtorString = hlds_out.type_ctor_to_string(TypeCtor),
     ( 
         SpecialPred = spec_pred_unify,
@@ -237,14 +240,11 @@ emit_non_term_user_special_warning(Context, SpecialPred, TypeCtor, !IO) :-
         unexpected(this_file, "emit_non_term_user_special_" ++
             "warning/5 index predicate.")
     ),
-    Pieces = [
-        words("Warning: the user-defined "),
+    Pieces = [words("Warning: the user-defined "),
         fixed(SpecialPredStr ++ " predicate"),
-        words("for the type "),
-        fixed(TypeCtorString),
-        words("cannot be proven to terminate.")
-    ],
-    report_warning(Context, 0, Pieces, !IO).    
+        words("for the type "), fixed(TypeCtorString),
+        words("cannot be proven to terminate.")],
+    report_warning(Globals, Context, 0, Pieces, !IO).    
 
 %----------------------------------------------------------------------------%
 

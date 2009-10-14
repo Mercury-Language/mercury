@@ -350,7 +350,10 @@ io_maybe_debug_liveness(Message, DebugLiveness, PredIdInt,
     ( DebugLiveness = PredIdInt ->
         io.write_string(Message, !IO),
         io.write_string(":\n", !IO),
-        hlds_out.write_goal(Goal, ModuleInfo, VarSet, yes, 0, "\n", !IO)
+        module_info_get_globals(ModuleInfo, Globals),
+        OutInfo = init_hlds_out_info(Globals),
+        hlds_out.write_goal(OutInfo, Goal, ModuleInfo, VarSet, yes, 0, "\n",
+            !IO)
     ;
         true
     ).

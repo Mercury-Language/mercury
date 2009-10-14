@@ -41,74 +41,79 @@
     ;       link_with_pic
     ;       non_pic.
 
-    % compile_c_file(ErrorStream, PIC, CFile, ObjFile, Succeeded)
-    %
-:- pred compile_c_file(io.output_stream::in, pic::in, string::in, string::in,
-    bool::out, io::di, io::uo) is det.
-
-    % compile_c_file(ErrorStream, PIC, ModuleName, Succeeded)
+    % compile_c_file(ErrorStream, PIC, ModuleName, Globals, Succeeded, !IO)
     %
 :- pred compile_c_file(io.output_stream::in, pic::in, module_name::in,
-    bool::out, io::di, io::uo) is det.
+    globals::in, bool::out, io::di, io::uo) is det.
 
-    % assemble(ErrorStream, PIC, ModuleName, Succeeded)
+    % do_compile_c_file(Globals, ErrorStream, PIC, CFile, ObjFile, Succeeded,
+    %   !IO)
+    %
+:- pred do_compile_c_file(io.output_stream::in, pic::in,
+    string::in, string::in, globals::in, bool::out, io::di, io::uo) is det.
+
+    % assemble(ErrorStream, PIC, ModuleName, Globals, Succeeded, !IO)
     %
 :- pred assemble(io.output_stream::in, pic::in, module_name::in,
-    bool::out, io::di, io::uo) is det.
+    globals::in, bool::out, io::di, io::uo) is det.
 
-    % compile_java_files(ErrorStream, JavaFiles, Succeeded)
+    % compile_java_files(ErrorStream, JavaFiles, Succeeded, Globals, !IO)
     %
-:- pred compile_java_files(io.output_stream::in, list(string)::in, bool::out,
-    io::di, io::uo) is det.
+:- pred compile_java_files(io.output_stream::in, list(string)::in,
+    globals::in, bool::out, io::di, io::uo) is det.
 
-    % il_assemble(ErrorStream, ModuleName, HasMain, Succeeded)
+    % il_assemble(ErrorStream, ModuleName, HasMain, Globals, Succeeded, !IO)
     %
 :- pred il_assemble(io.output_stream::in, module_name::in, has_main::in,
-    bool::out, io::di, io::uo) is det.
+    globals::in, bool::out, io::di, io::uo) is det.
 
-    % il_assemble(ErrorStream, ILFile, DLLFile, HasMain, Succeeded)
+    % do_il_assemble(ErrorStream, ILFile, DLLFile, HasMain, Globals, Succeeded,
+    %   !IO)
     %
-:- pred il_assemble(io.output_stream::in, file_name::in, file_name::in,
-    has_main::in, bool::out, io::di, io::uo) is det.
+:- pred do_il_assemble(io.output_stream::in, file_name::in, file_name::in,
+    has_main::in, globals::in, bool::out, io::di, io::uo) is det.
 
-    % compile_csharp_file(ErrorStream, C#File, DLLFile, Succeeded)
+    % compile_csharp_file(ErrorStream, C#File, DLLFile, Globals, Succeeded,
+    %   !IO)
     %
 :- pred compile_csharp_file(io.output_stream::in, module_and_imports::in,
-    file_name::in, file_name::in, bool::out, io::di, io::uo) is det.
+    file_name::in, file_name::in, globals::in, bool::out, io::di, io::uo)
+    is det.
 
-    % compile_erlang_file(ErrorStream, ErlangFile, Succeeded)
+    % compile_erlang_file(ErrorStream, ErlangFile, Globals, Succeeded, !IO)
     %
 :- pred compile_erlang_file(io.output_stream::in, file_name::in,
-    bool::out, io::di, io::uo) is det.
+    globals::in, bool::out, io::di, io::uo) is det.
 
-    % make_library_init_file(ErrorStream, MainModuleName, ModuleNames,
-    %   Succeeded):
+    % make_library_init_file(Globals, ErrorStream, MainModuleName, ModuleNames,
+    %   Succeeded, !IO):
     %
     % Make the `.init' file for a library containing the given modules.
     %
-:- pred make_library_init_file(io.output_stream::in, module_name::in,
-    list(module_name)::in, bool::out, io::di, io::uo) is det.
+:- pred make_library_init_file(globals::in, io.output_stream::in,
+    module_name::in, list(module_name)::in, bool::out, io::di, io::uo) is det.
 
-    % make_init_erlang_library(ErrorStream, MainModuleName, ModuleNames,
-    %   Succeeded):
+    % make_erlang_init_library(Globals, ErrorStream, MainModuleName,
+    %   ModuleNames, Succeeded, !IO):
     %
     % Make the `.init' file for an Erlang library containing the given
     % modules.
     %
-:- pred make_erlang_library_init_file(io.output_stream::in, module_name::in,
-    list(module_name)::in, bool::out, io::di, io::uo) is det.
+:- pred make_erlang_library_init_file(globals::in, io.output_stream::in,
+    module_name::in, list(module_name)::in, bool::out, io::di, io::uo) is det.
 
-    % make_init_obj_file(ErrorStream, MainModuleName, AllModuleNames,
+    % make_init_obj_file(Globals, ErrorStream, MainModuleName, AllModuleNames,
     %   MaybeInitObjFileName)
     %
-:- pred make_init_obj_file(io.output_stream::in, module_name::in,
+:- pred make_init_obj_file(globals::in, io.output_stream::in, module_name::in,
     list(module_name)::in, maybe(file_name)::out, io::di, io::uo) is det.
 
-    % make_erlang_program_init_file(ErrorStream, MainModuleName,
-    %   AllModuleNames, MaybeInitObjFileName)
+    % make_erlang_program_init_file(Globals, ErrorStream, MainModuleName,
+    %   AllModuleNames, MaybeInitObjFileName, !IO)
     %
-:- pred make_erlang_program_init_file(io.output_stream::in, module_name::in,
-    list(module_name)::in, maybe(file_name)::out, io::di, io::uo) is det.
+:- pred make_erlang_program_init_file(globals::in, io.output_stream::in,
+    module_name::in, list(module_name)::in, maybe(file_name)::out,
+    io::di, io::uo) is det.
 
 :- type linked_target_type
     --->    executable
@@ -117,55 +122,64 @@
     ;       java_archive
     ;       erlang_archive.
 
-    % link(TargetType, MainModuleName, ObjectFileNames, Succeeded)
+    % link(TargetType, MainModuleName, ObjectFileNames, Globals, Succeeded,
+    %   !IO)
     %
 :- pred link(io.output_stream::in, linked_target_type::in, module_name::in,
-    list(string)::in, bool::out, io::di, io::uo) is det.
+    list(string)::in, globals::in, bool::out, io::di, io::uo) is det.
 
-    % post_link_make_symlink_or_copy(TargetType, MainModuleName, Succeeded,
-    %   MadeSymlinkOrCopy)
+    % post_link_make_symlink_or_copy(TargetType, MainModuleName,
+    %   Globals, Succeeded, MadeSymlinkOrCopy, !IO)
     %
     % If `--use-grade-subdirs' is enabled, link or copy the executable or
     % library into the user's directory after having successfully built it,
     % if the target does not exist or is not up-to-date.
     %
 :- pred post_link_make_symlink_or_copy(io.output_stream::in,
-    linked_target_type::in, module_name::in, bool::out, bool::out,
+    linked_target_type::in, module_name::in, globals::in, bool::out, bool::out,
     io::di, io::uo) is det.
 
-    % link_module_list(ModulesToLink, FactTableObjFiles, Succeeded):
+    % link_module_list(ModulesToLink, ExtraObjFiles, Globals, Succeeded,
+    %   !IO):
     %
     % The elements of ModulesToLink are the output of
     % `module_name_to_filename(ModuleName, "", no, ModuleToLink)'
     % for each module in the program.
     %
-:- pred link_module_list(list(string)::in, list(string)::in, bool::out,
-    io::di, io::uo) is det.
+:- pred link_module_list(list(string)::in, list(string)::in,
+    globals::in, bool::out, io::di, io::uo) is det.
 
-    % shared_libraries_supported(SharedLibsSupported, !IO)
+    % shared_libraries_supported(Globals, SharedLibsSupported)
     %
     % Return whether or not shared libraries are supported on the current
     % platform.
     % 
-:- pred shared_libraries_supported(bool::out, io::di, io::uo) is det.
+:- pred shared_libraries_supported(globals::in, bool::out) is det.
 
-    % get_object_code_type(TargetType, PIC):
+    % get_object_code_type(Globals, TargetType, PIC):
     %
     % Work out whether we should be generating position-independent
     % object code.
     %
-:- pred get_object_code_type(linked_target_type::in, pic::out, io::di, io::uo)
+:- pred get_object_code_type(globals::in, linked_target_type::in, pic::out)
     is det.
+
+    % get_linked_target_type(Globals, LinkedTargetType):
+    %
+    % Work out whether we should be generating an executable or a shared
+    % object.
+    %
+:- pred get_linked_target_type(globals::in, linked_target_type::out) is det.
 
 %-----------------------------------------------------------------------------%
 
-    % make_all_module_command(CommandName, MainModule, AllModuleNames,
-    %   CommandString):
+    % make_all_module_command(Globals, CommandName, MainModule, AllModuleNames,
+    %   CommandString, !IO):
     %
     % Create a command string which passes the source file names
     % for AllModuleNames to CommandName, with MainModule given first.
     %
-:- pred make_all_module_command(string::in, module_name::in,
+:- pred make_all_module_command(globals::in, string::in, module_name::in,
     list(module_name)::in, string::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -182,26 +196,23 @@
 :- mode maybe_pic_object_file_extension(in, in, out) is det.
 :- mode maybe_pic_object_file_extension(in, out, in) is semidet.
 
-    % Same as above except the globals are obtained from the io.state.
-    %
-:- pred maybe_pic_object_file_extension(pic::in, string::out, io::di, io::uo)
-    is det.
-
 %-----------------------------------------------------------------------------%
 %
-% Stuff used for standalone interfaces
+% Stuff used for standalone interfaces.
 % 
     
-    % make_standalone_interface(Basename, !IO):
+    % make_standalone_interface(Globals, Basename, !IO):
     %
     % Create a standalone interface in the current directory.
     % 
-:- pred make_standalone_interface(string::in, io::di, io::uo) is det.
+:- pred make_standalone_interface(globals::in, string::in, io::di, io::uo)
+    is det.
 
     % Output the C compiler flags to the given stream.
     % This predicate is used to implement the `--output-cflags' option.
     %
-:- pred output_c_compiler_flags(io.output_stream::in, io::di, io::uo) is det.
+:- pred output_c_compiler_flags(globals::in, io.output_stream::in,
+    io::di, io::uo) is det.
 
     % Output the list of flags required to link against the selected set
     % of Mercury libraries (the standard libraries, plus any other specified
@@ -209,7 +220,8 @@
     % This predicate is used to implement the `--output-library-link-flags'
     % option.
     %
-:- pred output_library_link_flags(io.output_stream::in, io::di, io::uo) is det.
+:- pred output_library_link_flags(globals::in, io.output_stream::in,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -238,35 +250,39 @@
 
 %-----------------------------------------------------------------------------%
 
-il_assemble(ErrorStream, ModuleName, HasMain, Succeeded, !IO) :-
-    module_name_to_file_name(ModuleName, ".il", do_not_create_dirs, IL_File,
-        !IO),
-    module_name_to_file_name(ModuleName, ".dll", do_create_dirs, DllFile, !IO),
+il_assemble(ErrorStream, ModuleName, HasMain, Globals, Succeeded, !IO) :-
+    module_name_to_file_name(Globals, ModuleName, ".il",
+        do_not_create_dirs, IL_File, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".dll",
+        do_create_dirs, DllFile, !IO),
 
     % If the module contains main/2 then we it should be built as an
     % executable. Unfortunately C# code may refer to the dll
     % so we always need to build the dll.
-    %
-    il_assemble(ErrorStream, IL_File, DllFile, no_main, DllSucceeded, !IO),
+
+    do_il_assemble(ErrorStream, IL_File, DllFile, no_main,
+        Globals, DllSucceeded, !IO),
     ( 
         HasMain = has_main,
-        module_name_to_file_name(ModuleName, ".exe", do_create_dirs, ExeFile,
-            !IO),
-        il_assemble(ErrorStream, IL_File, ExeFile, HasMain, ExeSucceeded, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".exe",
+            do_create_dirs, ExeFile, !IO),
+        do_il_assemble(ErrorStream, IL_File, ExeFile, HasMain,
+            Globals, ExeSucceeded, !IO),
         Succeeded = DllSucceeded `and` ExeSucceeded
     ;
         HasMain = no_main,
         Succeeded = DllSucceeded
     ).
 
-il_assemble(ErrorStream, IL_File, TargetFile, HasMain, Succeeded, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(sign_assembly, SignAssembly, !IO),
+do_il_assemble(ErrorStream, IL_File, TargetFile, HasMain, Globals, Succeeded,
+        !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, sign_assembly, SignAssembly),
     maybe_write_string(Verbose, "% Assembling `", !IO),
     maybe_write_string(Verbose, IL_File, !IO),
     maybe_write_string(Verbose, "':\n", !IO),
-    globals.io_lookup_string_option(il_assembler, ILASM, !IO),
-    globals.io_lookup_accumulating_option(ilasm_flags, ILASMFlagsList, !IO),
+    globals.lookup_string_option(Globals, il_assembler, ILASM),
+    globals.lookup_accumulating_option(Globals, ilasm_flags, ILASMFlagsList),
     join_string_list(ILASMFlagsList, "", "", " ", ILASMFlags),
     (
         SignAssembly = yes,
@@ -282,7 +298,7 @@ il_assemble(ErrorStream, IL_File, TargetFile, HasMain, Succeeded, !IO) :-
         Verbose = no,
         VerboseOpt = "/quiet "
     ),
-    globals.io_lookup_bool_option(target_debug, Debug, !IO),
+    globals.lookup_bool_option(Globals, target_debug, Debug),
     (
         Debug = yes,
         DebugOpt = "/debug "
@@ -299,24 +315,24 @@ il_assemble(ErrorStream, IL_File, TargetFile, HasMain, Succeeded, !IO) :-
     ),
     string.append_list([ILASM, " ", SignOpt, VerboseOpt, DebugOpt,
         TargetOpt, ILASMFlags, " /out=", TargetFile, " ", IL_File], Command),
-    invoke_system_command(ErrorStream, cmd_verbose_commands, Command,
+    invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Command,
         Succeeded, !IO).
 
 compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
-        Succeeded, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+        Globals, Succeeded, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Compiling `", !IO),
     maybe_write_string(Verbose, CSharpFileName, !IO),
     maybe_write_string(Verbose, "':\n", !IO),
-    globals.io_lookup_string_option(csharp_compiler, CSC, !IO),
-    globals.io_lookup_accumulating_option(csharp_flags, CSCFlagsList, !IO),
+    globals.lookup_string_option(Globals, csharp_compiler, CSC),
+    globals.lookup_accumulating_option(Globals, csharp_flags, CSCFlagsList),
     join_string_list(CSCFlagsList, "", "", " ", CSCFlags),
 
     % XXX This is because the MS C# compiler doesn't understand
     % / as a directory separator.
     CSharpFileName = string.replace_all(CSharpFileName0, "/", "\\\\"),
 
-    globals.io_lookup_bool_option(target_debug, Debug, !IO),
+    globals.lookup_bool_option(Globals, target_debug, Debug),
     (
         Debug = yes,
         % XXX This needs testing before it can be enabled (see the comments
@@ -330,8 +346,8 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
     ),
 
     % XXX Should we use a separate dll_directories options?
-    globals.io_lookup_accumulating_option(link_library_directories, DLLDirs,
-        !IO),
+    globals.lookup_accumulating_option(Globals, link_library_directories,
+        DLLDirs),
     DLLDirOpts = "/lib:Mercury/dlls " ++
         string.append_list(list.condense(list.map(
             (func(DLLDir) = ["/lib:", DLLDir, " "]), DLLDirs))),
@@ -350,8 +366,8 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
         Imports ^ mai_int_deps ++ Imports ^ mai_impl_deps ++ ForeignDeps),
     list.map_foldl(
         (pred(Mod::in, Result::out, IO0::di, IO::uo) is det :-
-            module_name_to_file_name(Mod, ".dll", do_not_create_dirs,
-                FileName, IO0, IO),
+            module_name_to_file_name(Globals, Mod, ".dll",
+                do_not_create_dirs, FileName, IO0, IO),
             Result = [Prefix, FileName, " "]
         ), ReferencedDlls, ReferencedDllsList, !IO),
     ReferencedDllsStr = string.append_list(
@@ -360,7 +376,7 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
     string.append_list([CSC, DebugOpt,
         " /t:library ", DLLDirOpts, CSCFlags, ReferencedDllsStr,
         " /out:", DLLFileName, " ", CSharpFileName], Command),
-    invoke_system_command(ErrorStream, cmd_verbose_commands, Command,
+    invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Command,
         Succeeded, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -368,36 +384,39 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
 % WARNING: The code here duplicates the functionality of scripts/mgnuc.in.
 % Any changes there may also require changes here, and vice versa.
 
-compile_c_file(ErrorStream, PIC, ModuleName, Succeeded, !IO) :-
-    module_name_to_file_name(ModuleName, ".c", do_create_dirs, C_File, !IO),
-    maybe_pic_object_file_extension(PIC, ObjExt, !IO),
-    module_name_to_file_name(ModuleName, ObjExt, do_create_dirs, O_File, !IO),
-    compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO).
+compile_c_file(ErrorStream, PIC, ModuleName, Globals, Succeeded, !IO) :-
+    module_name_to_file_name(Globals, ModuleName, ".c",
+        do_create_dirs, C_File, !IO),
+    maybe_pic_object_file_extension(Globals, PIC, ObjExt),
+    module_name_to_file_name(Globals, ModuleName, ObjExt,
+        do_create_dirs, O_File, !IO),
+    do_compile_c_file(ErrorStream, PIC, C_File, O_File, Globals, Succeeded,
+        !IO).
 
-compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_string_option(c_flag_to_name_object_file,
-        NameObjectFile, !IO),
+do_compile_c_file(ErrorStream, PIC, C_File, O_File, Globals, Succeeded, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_string_option(Globals, c_flag_to_name_object_file,
+        NameObjectFile),
     maybe_write_string(Verbose, "% Compiling `", !IO),
     maybe_write_string(Verbose, C_File, !IO),
     maybe_write_string(Verbose, "':\n", !IO),
-    globals.io_lookup_string_option(cc, CC, !IO),
-    gather_c_compiler_flags(PIC, AllCFlags, !IO),
+    globals.lookup_string_option(Globals, cc, CC),
+    gather_c_compiler_flags(Globals, PIC, AllCFlags),
     string.append_list([
         CC, " ", 
         AllCFlags,
         " -c ", C_File, " ",
         NameObjectFile, O_File], Command),
-    invoke_system_command(ErrorStream, cmd_verbose_commands,
+    invoke_system_command(Globals, ErrorStream, cmd_verbose_commands,
         Command, Succeeded, !IO).
 
-:- pred gather_c_compiler_flags(pic::in, string::out, io::di, io::uo) is det.
+:- pred gather_c_compiler_flags(globals::in, pic::in, string::out) is det.
 
-gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
-    globals.io_lookup_accumulating_option(cflags, C_Flags_List, !IO),
+gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
+    globals.lookup_accumulating_option(Globals, cflags, C_Flags_List),
     join_string_list(C_Flags_List, "", "", " ", CFLAGS),
 
-    globals.io_lookup_bool_option(use_subdirs, UseSubdirs, !IO),
+    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
     (
         UseSubdirs = yes,
         % The source file (foo.c) will be compiled in a subdirectory
@@ -409,11 +428,11 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         UseSubdirs = no,
         SubDirInclOpt = ""
     ),
-    globals.io_lookup_accumulating_option(c_include_directory,
-        C_Incl_Dirs, !IO),
+    globals.lookup_accumulating_option(Globals, c_include_directory,
+        C_Incl_Dirs),
     InclOpt = string.append_list(list.condense(list.map(
         (func(C_INCL) = ["-I", quote_arg(C_INCL), " "]), C_Incl_Dirs))),
-    globals.io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     (
         HighLevelCode = yes,
         HighLevelCodeOpt = "-DMR_HIGHLEVEL_CODE "
@@ -421,8 +440,8 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         HighLevelCode = no,
         HighLevelCodeOpt = ""
     ),
-    globals.io_lookup_bool_option(gcc_nested_functions,
-        GCC_NestedFunctions, !IO),
+    globals.lookup_bool_option(Globals, gcc_nested_functions,
+        GCC_NestedFunctions),
     (
         GCC_NestedFunctions = yes,
         NestedFunctionsOpt = "-DMR_USE_GCC_NESTED_FUNCTIONS "
@@ -430,7 +449,7 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         GCC_NestedFunctions = no,
         NestedFunctionsOpt = ""
     ),
-    globals.io_lookup_bool_option(highlevel_data, HighLevelData, !IO),
+    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     (
         HighLevelData = yes,
         HighLevelDataOpt = "-DMR_HIGHLEVEL_DATA "
@@ -438,29 +457,29 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         HighLevelData = no,
         HighLevelDataOpt = ""
     ),
-    globals.io_lookup_bool_option(gcc_global_registers, GCC_Regs, !IO),
+    globals.lookup_bool_option(Globals, gcc_global_registers, GCC_Regs),
     (
         GCC_Regs = yes,
-        globals.io_lookup_string_option(cflags_for_regs, CFLAGS_FOR_REGS,
-            !IO),
+        globals.lookup_string_option(Globals, cflags_for_regs,
+            CFLAGS_FOR_REGS),
         RegOpt = "-DMR_USE_GCC_GLOBAL_REGISTERS "
     ;
         GCC_Regs = no,
         CFLAGS_FOR_REGS = "",
         RegOpt = ""
     ),
-    globals.io_lookup_bool_option(gcc_non_local_gotos, GCC_Gotos, !IO),
+    globals.lookup_bool_option(Globals, gcc_non_local_gotos, GCC_Gotos),
     (
         GCC_Gotos = yes,
         GotoOpt = "-DMR_USE_GCC_NONLOCAL_GOTOS ",
-        globals.io_lookup_string_option(cflags_for_gotos,
-            CFLAGS_FOR_GOTOS, !IO)
+        globals.lookup_string_option(Globals, cflags_for_gotos,
+            CFLAGS_FOR_GOTOS)
     ;
         GCC_Gotos = no,
         GotoOpt = "",
         CFLAGS_FOR_GOTOS = ""
     ),
-    globals.io_lookup_bool_option(asm_labels, ASM_Labels, !IO),
+    globals.lookup_bool_option(Globals, asm_labels, ASM_Labels),
     (
         ASM_Labels = yes,
         AsmOpt = "-DMR_USE_ASM_LABELS "
@@ -468,16 +487,16 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         ASM_Labels = no,
         AsmOpt = ""
     ),
-    globals.io_lookup_bool_option(parallel, Parallel, !IO),
+    globals.lookup_bool_option(Globals, parallel, Parallel),
     (
         Parallel = yes,
-        globals.io_lookup_string_option(cflags_for_threads,
-            CFLAGS_FOR_THREADS, !IO)
+        globals.lookup_string_option(Globals, cflags_for_threads,
+            CFLAGS_FOR_THREADS)
     ;
         Parallel = no,
         CFLAGS_FOR_THREADS = ""
     ),
-    globals.io_get_gc_method(GC_Method, !IO),
+    globals.get_gc_method(Globals, GC_Method),
     BoehmGC_Opt = "-DMR_CONSERVATIVE_GC -DMR_BOEHM_GC ",
     (
         GC_Method = gc_automatic,
@@ -490,7 +509,8 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         GC_Opt = BoehmGC_Opt
     ;
         GC_Method = gc_boehm_debug,
-        GC_Opt = BoehmGC_Opt ++ "-DMR_BOEHM_GC_DEBUG -DGC_DEBUG -DKEEP_BACKPTRS "
+        GC_Opt = BoehmGC_Opt ++
+            "-DMR_BOEHM_GC_DEBUG -DGC_DEBUG -DKEEP_BACKPTRS "
     ;
         GC_Method = gc_mps,
         GC_Opt = "-DMR_CONSERVATIVE_GC -DMR_MPS_GC "
@@ -498,7 +518,7 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         GC_Method = gc_accurate,
         GC_Opt = "-DMR_NATIVE_GC "
     ),
-    globals.io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
+    globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
     (
         ProfileCalls = yes,
         ProfileCallsOpt = "-DMR_MPROF_PROFILE_CALLS "
@@ -506,7 +526,7 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         ProfileCalls = no,
         ProfileCallsOpt = ""
     ),
-    globals.io_lookup_bool_option(profile_time, ProfileTime, !IO),
+    globals.lookup_bool_option(Globals, profile_time, ProfileTime),
     (
         ProfileTime = yes,
         ProfileTimeOpt = "-DMR_MPROF_PROFILE_TIME "
@@ -514,7 +534,7 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         ProfileTime = no,
         ProfileTimeOpt = ""
     ),
-    globals.io_lookup_bool_option(profile_memory, ProfileMemory, !IO),
+    globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
     (
         ProfileMemory = yes,
         ProfileMemoryOpt = "-DMR_MPROF_PROFILE_MEMORY "
@@ -522,7 +542,7 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         ProfileMemory = no,
         ProfileMemoryOpt = ""
     ),
-    globals.io_lookup_bool_option(profile_deep, ProfileDeep, !IO),
+    globals.lookup_bool_option(Globals, profile_deep, ProfileDeep),
     (
         ProfileDeep = yes,
         ProfileDeepOpt = "-DMR_DEEP_PROFILING "
@@ -530,10 +550,10 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         ProfileDeep = no,
         ProfileDeepOpt = ""
     ),
-    globals.io_lookup_bool_option(record_term_sizes_as_words,
-        RecordTermSizesAsWords, !IO),
-    globals.io_lookup_bool_option(record_term_sizes_as_cells,
-        RecordTermSizesAsCells, !IO),
+    globals.lookup_bool_option(Globals, record_term_sizes_as_words,
+        RecordTermSizesAsWords),
+    globals.lookup_bool_option(Globals, record_term_sizes_as_cells,
+        RecordTermSizesAsCells),
     (
         RecordTermSizesAsWords = yes,
         RecordTermSizesAsCells = yes,
@@ -556,7 +576,7 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
     ),
     (
         PIC = pic,
-        globals.io_lookup_string_option(cflags_for_pic, CFLAGS_FOR_PIC, !IO),
+        globals.lookup_string_option(Globals, cflags_for_pic, CFLAGS_FOR_PIC),
         PIC_Reg = yes
     ;
         PIC = link_with_pic,
@@ -565,7 +585,7 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
     ;
         PIC = non_pic,
         CFLAGS_FOR_PIC = "",
-        globals.io_lookup_bool_option(pic_reg, PIC_Reg, !IO)
+        globals.lookup_bool_option(Globals, pic_reg, PIC_Reg)
     ),
     (
         PIC_Reg = yes,
@@ -577,7 +597,7 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         PIC_Reg_Opt = ""
     ),
 
-    globals.io_get_tags_method(Tags_Method, !IO),
+    globals.get_tags_method(Globals, Tags_Method),
     (
         Tags_Method = tags_high,
         TagsOpt = "-DMR_HIGHTAGS "
@@ -587,10 +607,10 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         ),
         TagsOpt = ""
     ),
-    globals.io_lookup_int_option(num_tag_bits, NumTagBits, !IO),
+    globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
     string.int_to_string(NumTagBits, NumTagBitsString),
     NumTagBitsOpt = "-DMR_TAGBITS=" ++ NumTagBitsString ++ " ",
-    globals.io_lookup_bool_option(decl_debug, DeclDebug, !IO),
+    globals.lookup_bool_option(Globals, decl_debug, DeclDebug),
     (
         DeclDebug = yes,
         DeclDebugOpt = "-DMR_DECL_DEBUG "
@@ -598,7 +618,7 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         DeclDebug = no,
         DeclDebugOpt = ""
     ),
-    globals.io_lookup_bool_option(source_to_source_debug, SourceDebug, !IO),
+    globals.lookup_bool_option(Globals, source_to_source_debug, SourceDebug),
     (
         SourceDebug = yes,
         SourceDebugOpt = "-DMR_SS_DEBUG "
@@ -606,7 +626,7 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         SourceDebug = no,
         SourceDebugOpt = ""
     ),
-    globals.io_lookup_bool_option(exec_trace, ExecTrace, !IO),
+    globals.lookup_bool_option(Globals, exec_trace, ExecTrace),
     (
         ExecTrace = yes,
         ExecTraceOpt = "-DMR_EXEC_TRACE "
@@ -614,8 +634,8 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         ExecTrace = no,
         ExecTraceOpt = ""
     ),
-    globals.io_lookup_bool_option(extend_stacks_when_needed, Extend, !IO),
-    globals.io_lookup_bool_option(stack_segments, StackSegments, !IO),
+    globals.lookup_bool_option(Globals, extend_stacks_when_needed, Extend),
+    globals.lookup_bool_option(Globals, stack_segments, StackSegments),
     (
         Extend = yes,
         StackSegments = no,
@@ -634,17 +654,17 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         ExtendOpt = unexpected(this_file,
             "compile_c_file: --extend-stacks-when-needed and --stack-segments")
     ),
-    globals.io_lookup_bool_option(target_debug, Target_Debug, !IO),
+    globals.lookup_bool_option(Globals, target_debug, Target_Debug),
     (
         Target_Debug = yes,
-        globals.io_lookup_string_option(cflags_for_debug, Target_DebugOpt0,
-            !IO),
-        string.append(Target_DebugOpt0, " ", Target_DebugOpt)
+        globals.lookup_string_option(Globals, cflags_for_debug,
+            Target_DebugOpt0),
+        Target_DebugOpt = Target_DebugOpt0 ++ " "
     ;
         Target_Debug = no,
         Target_DebugOpt = ""
     ),
-    globals.io_lookup_bool_option(low_level_debug, LL_Debug, !IO),
+    globals.lookup_bool_option(Globals, low_level_debug, LL_Debug),
     (
         LL_Debug = yes,
         LL_DebugOpt = "-DMR_LL_DEBUG "
@@ -652,7 +672,7 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         LL_Debug = no,
         LL_DebugOpt = ""
     ),
-    globals.io_lookup_bool_option(use_trail, UseTrail, !IO),
+    globals.lookup_bool_option(Globals, use_trail, UseTrail),
     (
         UseTrail = yes,
         UseTrailOpt = "-DMR_USE_TRAIL ",
@@ -666,10 +686,10 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         % Note that this will also affect the untagged version of the trail,
         % but that shouldn't matter.
         %
-        io_get_c_compiler_type(C_CompilerType, !IO),
+        globals.get_c_compiler_type(Globals, C_CompilerType),
         (
             C_CompilerType = cc_gcc(_, _, _),
-            globals.io_lookup_int_option(bytes_per_word, BytesPerWord, !IO),
+            globals.lookup_int_option(Globals, bytes_per_word, BytesPerWord),
             C_FnAlignOpt = string.format("-falign-functions=%d ",
                 [i(BytesPerWord)])
         ;
@@ -682,7 +702,7 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
             C_CompilerType = cc_unknown,
             C_FnAlignOpt = ""
         ),
-        globals.io_lookup_bool_option(trail_segments, TrailSegments, !IO),
+        globals.lookup_bool_option(Globals, trail_segments, TrailSegments),
         (
             TrailSegments = yes,
             TrailSegOpt = "-DMR_TRAIL_SEGMENTS "
@@ -696,10 +716,10 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         C_FnAlignOpt = "",
         TrailSegOpt = ""
     ),
-    globals.io_lookup_bool_option(use_minimal_model_stack_copy,
-        MinimalModelStackCopy, !IO),
-    globals.io_lookup_bool_option(use_minimal_model_own_stacks,
-        MinimalModelOwnStacks, !IO),
+    globals.lookup_bool_option(Globals, use_minimal_model_stack_copy,
+        MinimalModelStackCopy),
+    globals.lookup_bool_option(Globals, use_minimal_model_own_stacks,
+        MinimalModelOwnStacks),
     (
         MinimalModelStackCopy = yes,
         MinimalModelOwnStacks = yes,
@@ -719,8 +739,8 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         MinimalModelOwnStacks = no,
         MinimalModelBaseOpt = ""
     ),
-    globals.io_lookup_bool_option(minimal_model_debug, MinimalModelDebug,
-        !IO),
+    globals.lookup_bool_option(Globals, minimal_model_debug,
+        MinimalModelDebug),
     (
         MinimalModelDebug = yes,
         ( MinimalModelBaseOpt = "" ->
@@ -734,7 +754,7 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         MinimalModelDebug = no,
         MinimalModelOpt = MinimalModelBaseOpt
     ),
-    globals.io_lookup_bool_option(single_prec_float, SinglePrecFloat, !IO),
+    globals.lookup_bool_option(Globals, single_prec_float, SinglePrecFloat),
     (
         SinglePrecFloat = yes,
         SinglePrecFloatOpt = "-DMR_USE_SINGLE_PREC_FLOAT "
@@ -742,11 +762,12 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         SinglePrecFloat = no,
         SinglePrecFloatOpt = ""
     ),
-    globals.io_lookup_bool_option(use_regions, UseRegions, !IO),
+    globals.lookup_bool_option(Globals, use_regions, UseRegions),
     (
         UseRegions = yes,
         UseRegionsOpt0 = "-DMR_USE_REGIONS ",
-        globals.io_lookup_bool_option(use_regions_debug, UseRegionsDebug, !IO),
+        globals.lookup_bool_option(Globals, use_regions_debug,
+            UseRegionsDebug),
         (
             UseRegionsDebug = yes,
             UseRegionsOpt1 = UseRegionsOpt0 ++ "-DMR_RBMM_DEBUG "
@@ -754,8 +775,8 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
             UseRegionsDebug = no,
             UseRegionsOpt1 = UseRegionsOpt0
         ),
-        globals.io_lookup_bool_option(use_regions_profiling,
-            UseRegionsProfiling, !IO),
+        globals.lookup_bool_option(Globals, use_regions_profiling,
+            UseRegionsProfiling),
         (
             UseRegionsProfiling = yes,
             UseRegionsOpt = UseRegionsOpt1 ++ "-DMR_RBMM_PROFILING "
@@ -767,7 +788,7 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         UseRegions = no,
         UseRegionsOpt = ""
     ),
-    globals.io_lookup_bool_option(type_layout, TypeLayoutOption, !IO),
+    globals.lookup_bool_option(Globals, type_layout, TypeLayoutOption),
     (
         TypeLayoutOption = no,
         TypeLayoutOpt = "-DMR_NO_TYPE_LAYOUT "
@@ -775,24 +796,24 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         TypeLayoutOption = yes,
         TypeLayoutOpt = ""
     ),
-    globals.io_lookup_bool_option(c_optimize, C_optimize, !IO),
+    globals.lookup_bool_option(Globals, c_optimize, C_optimize),
     (
         C_optimize = yes,
-        globals.io_lookup_string_option(cflags_for_optimization, OptimizeOpt,
-            !IO)
+        globals.lookup_string_option(Globals, cflags_for_optimization,
+            OptimizeOpt)
     ;
         C_optimize = no,
         OptimizeOpt = ""
     ),
-    globals.io_lookup_bool_option(ansi_c, Ansi, !IO),
+    globals.lookup_bool_option(Globals, ansi_c, Ansi),
     (
         Ansi = yes,
-        globals.io_lookup_string_option(cflags_for_ansi, AnsiOpt, !IO)
+        globals.lookup_string_option(Globals, cflags_for_ansi, AnsiOpt)
     ;
         Ansi = no,
         AnsiOpt = ""
     ),
-    globals.io_lookup_bool_option(inline_alloc, InlineAlloc, !IO),
+    globals.lookup_bool_option(Globals, inline_alloc, InlineAlloc),
     (
         InlineAlloc = yes,
         % XXX disabled because inline allocation is broken in gc7.0 alpha6.
@@ -802,11 +823,10 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
         InlineAlloc = no,
         InlineAllocOpt = ""
     ),
-    globals.io_lookup_bool_option(warn_target_code, Warn, !IO),
+    globals.lookup_bool_option(Globals, warn_target_code, Warn),
     (
         Warn = yes,
-        globals.io_lookup_string_option(cflags_for_warnings,
-            WarningOpt, !IO)
+        globals.lookup_string_option(Globals, cflags_for_warnings, WarningOpt)
     ;
         Warn = no,
         WarningOpt = ""
@@ -817,7 +837,7 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
     % See the hard_coded/ppc_bug test case for an example
     % program which fails with this optimization.
 
-    globals.io_lookup_string_option(fullarch, FullArch, !IO),
+    globals.lookup_string_option(Globals, fullarch, FullArch),
     (
         HighLevelCode = no,
         GCC_Regs = yes,
@@ -866,8 +886,8 @@ gather_c_compiler_flags(PIC, AllCFlags, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-compile_java_files(ErrorStream, JavaFiles, Succeeded, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+compile_java_files(ErrorStream, JavaFiles, Globals, Succeeded, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     (
         JavaFiles = [JavaFile | MoreFiles],
         (
@@ -889,12 +909,12 @@ compile_java_files(ErrorStream, JavaFiles, Succeeded, !IO) :-
         unexpected(this_file, "compile_java_files: empty list")
     ),
 
-    globals.io_lookup_string_option(java_compiler, JavaCompiler, !IO),
-    globals.io_lookup_accumulating_option(java_flags, JavaFlagsList, !IO),
+    globals.lookup_string_option(Globals, java_compiler, JavaCompiler),
+    globals.lookup_accumulating_option(Globals, java_flags, JavaFlagsList),
     join_string_list(JavaFlagsList, "", "", " ", JAVAFLAGS),
 
-    globals.io_lookup_accumulating_option(java_classpath, Java_Incl_Dirs,
-        !IO),
+    globals.lookup_accumulating_option(Globals, java_classpath,
+        Java_Incl_Dirs),
     ( dir.use_windows_paths ->
         PathSeparator = ";"
     ;
@@ -916,7 +936,7 @@ compile_java_files(ErrorStream, JavaFiles, Succeeded, !IO) :-
             "-classpath ", quote_arg(ClassPath), " "])
     ),
 
-    globals.io_lookup_bool_option(target_debug, Target_Debug, !IO),
+    globals.lookup_bool_option(Globals, target_debug, Target_Debug),
     (
         Target_Debug = yes,
         Target_DebugOpt = "-g "
@@ -925,10 +945,9 @@ compile_java_files(ErrorStream, JavaFiles, Succeeded, !IO) :-
         Target_DebugOpt = ""
     ),
 
-    globals.io_lookup_bool_option(use_subdirs, UseSubdirs, !IO),
-    globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
-    globals.io_lookup_string_option(fullarch, FullArch, !IO),
-    globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
+    globals.lookup_string_option(Globals, fullarch, FullArch),
     (
         UseSubdirs = yes,
         (
@@ -959,12 +978,12 @@ compile_java_files(ErrorStream, JavaFiles, Succeeded, !IO) :-
     JoinedJavaFiles = string.join_list(" ", JavaFiles),
     string.append_list([JavaCompiler, " ", InclOpt, DirOpts,
         Target_DebugOpt, JAVAFLAGS, " ", JoinedJavaFiles], Command),
-    invoke_system_command(ErrorStream, cmd_verbose_commands, Command,
+    invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Command,
         Succeeded, !IO).
 
 %-----------------------------------------------------------------------------%
 
-assemble(ErrorStream, PIC, ModuleName, Succeeded, !IO) :-
+assemble(ErrorStream, PIC, ModuleName, Globals, Succeeded, !IO) :-
     (
         PIC = pic,
         AsmExt = ".pic_s",
@@ -981,42 +1000,44 @@ assemble(ErrorStream, PIC, ModuleName, Succeeded, !IO) :-
         GCCFLAGS_FOR_ASM = "",
         GCCFLAGS_FOR_PIC = ""
     ),
-    module_name_to_file_name(ModuleName, AsmExt, do_not_create_dirs, AsmFile,
-        !IO),
-    maybe_pic_object_file_extension(PIC, ObjExt, !IO),
-    module_name_to_file_name(ModuleName, ObjExt, do_create_dirs, ObjFile, !IO),
+    module_name_to_file_name(Globals, ModuleName, AsmExt,
+        do_not_create_dirs, AsmFile, !IO),
+    maybe_pic_object_file_extension(Globals, PIC, ObjExt),
+    module_name_to_file_name(Globals, ModuleName, ObjExt,
+        do_create_dirs, ObjFile, !IO),
 
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Assembling `", !IO),
     maybe_write_string(Verbose, AsmFile, !IO),
     maybe_write_string(Verbose, "':\n", !IO),
     % XXX should we use new asm_* options rather than
     % reusing cc, cflags, c_flag_to_name_object_file?
-    globals.io_lookup_string_option(cc, CC, !IO),
-    globals.io_lookup_string_option(c_flag_to_name_object_file,
-        NameObjectFile, !IO),
-    globals.io_lookup_accumulating_option(cflags, C_Flags_List, !IO),
+    globals.lookup_string_option(Globals, cc, CC),
+    globals.lookup_string_option(Globals, c_flag_to_name_object_file,
+        NameObjectFile),
+    globals.lookup_accumulating_option(Globals, cflags, C_Flags_List),
     join_string_list(C_Flags_List, "", "", " ", CFLAGS),
     % Be careful with the order here.
     % Also be careful that each option is separated by spaces.
     string.append_list([CC, " ", CFLAGS, " ", GCCFLAGS_FOR_PIC,
         GCCFLAGS_FOR_ASM, "-c ", AsmFile, " ", NameObjectFile, ObjFile],
         Command),
-    invoke_system_command(ErrorStream, cmd_verbose_commands, Command,
+    invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Command,
         Succeeded, !IO).
 
 %-----------------------------------------------------------------------------%
 
-compile_erlang_file(ErrorStream, ErlangFile, Succeeded, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+compile_erlang_file(ErrorStream, ErlangFile, Globals, Succeeded, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Compiling `", !IO),
     maybe_write_string(Verbose, ErlangFile, !IO),
     maybe_write_string(Verbose, "':\n", !IO),
-    globals.io_lookup_string_option(erlang_compiler, ErlangCompiler, !IO),
-    globals.io_lookup_accumulating_option(erlang_flags, ErlangFlagsList0, !IO),
-    globals.io_lookup_bool_option(erlang_native_code, ErlangNativeCode, !IO),
-    globals.io_lookup_bool_option(erlang_inhibit_trivial_warnings,
-        ErlangInhibitTrivialWarnings, !IO),
+    globals.lookup_string_option(Globals, erlang_compiler, ErlangCompiler),
+    globals.lookup_accumulating_option(Globals, erlang_flags,
+        ErlangFlagsList0),
+    globals.lookup_bool_option(Globals, erlang_native_code, ErlangNativeCode),
+    globals.lookup_bool_option(Globals, erlang_inhibit_trivial_warnings,
+        ErlangInhibitTrivialWarnings),
     (
         ErlangNativeCode = yes,
         ErlangFlagsList1 = ["+native" | ErlangFlagsList0]
@@ -1034,15 +1055,14 @@ compile_erlang_file(ErrorStream, ErlangFile, Succeeded, !IO) :-
     ),
     ERLANGFLAGS = string.join_list(" ", ErlangFlagsList),
 
-    globals.io_lookup_accumulating_option(erlang_include_directory,
-        Erlang_Incl_Dirs, !IO),
+    globals.lookup_accumulating_option(Globals, erlang_include_directory,
+        Erlang_Incl_Dirs),
     InclOpt = string.append_list(list.condense(list.map(
         (func(E_INCL) = ["-I", quote_arg(E_INCL), " "]), Erlang_Incl_Dirs))),
 
-    globals.io_lookup_bool_option(use_subdirs, UseSubdirs, !IO),
-    globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
-    globals.io_lookup_string_option(fullarch, FullArch, !IO),
-    globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
+    globals.lookup_string_option(Globals, fullarch, FullArch),
     (
         UseSubdirs = yes,
         (
@@ -1064,51 +1084,52 @@ compile_erlang_file(ErrorStream, ErlangFile, Succeeded, !IO) :-
 
     string.append_list([ErlangCompiler, " ", InclOpt, DestDir, ERLANGFLAGS,
         " ", ErlangFile], Command),
-    invoke_system_command(ErrorStream, cmd_verbose_commands, Command,
+    invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Command,
         Succeeded, !IO).
 
 %-----------------------------------------------------------------------------%
 
-make_library_init_file(ErrorStream, MainModuleName, AllModules, Succeeded,
-        !IO) :-
-    globals.io_lookup_string_option(mkinit_command, MkInit, !IO),
-    make_library_init_file_2(ErrorStream, MainModuleName, AllModules, ".c",
-        MkInit, Succeeded, !IO).
-
-make_erlang_library_init_file(ErrorStream, MainModuleName, AllModules,
+make_library_init_file(Globals, ErrorStream, MainModuleName, AllModules,
         Succeeded, !IO) :-
-    globals.io_lookup_string_option(mkinit_erl_command, MkInit, !IO),
-    make_library_init_file_2(ErrorStream, MainModuleName, AllModules, ".erl",
-        MkInit, Succeeded, !IO).
+    globals.lookup_string_option(Globals, mkinit_command, MkInit),
+    make_library_init_file_2(Globals, ErrorStream, MainModuleName, AllModules,
+        ".c", MkInit, Succeeded, !IO).
 
-:- pred make_library_init_file_2(io.output_stream::in, module_name::in,
-    list(module_name)::in, string::in, string::in,
+make_erlang_library_init_file(Globals, ErrorStream, MainModuleName, AllModules,
+        Succeeded, !IO) :-
+    globals.lookup_string_option(Globals, mkinit_erl_command, MkInit),
+    make_library_init_file_2(Globals, ErrorStream, MainModuleName, AllModules,
+        ".erl", MkInit, Succeeded, !IO).
+
+:- pred make_library_init_file_2(globals::in, io.output_stream::in,
+    module_name::in, list(module_name)::in, string::in, string::in,
     bool::out, io::di, io::uo) is det.
 
-make_library_init_file_2(ErrorStream, MainModuleName, AllModules, TargetExt,
-        MkInit, Succeeded, !IO) :-
-    module_name_to_file_name(MainModuleName, ".init.tmp", do_create_dirs,
-        TmpInitFileName, !IO),
+make_library_init_file_2(Globals, ErrorStream, MainModuleName, AllModules,
+        TargetExt, MkInit, Succeeded, !IO) :-
+    module_name_to_file_name(Globals, MainModuleName, ".init.tmp",
+        do_create_dirs, TmpInitFileName, !IO),
     io.open_output(TmpInitFileName, InitFileRes, !IO),
     (
         InitFileRes = ok(InitFileStream),
         list.map_foldl(
-            module_name_to_file_name_ext(TargetExt, do_not_create_dirs),
+            module_name_to_file_name_ext(Globals, TargetExt,
+                do_not_create_dirs),
             AllModules, AllTargetFilesList, !IO),
 
-        invoke_mkinit(InitFileStream, cmd_verbose_commands,
+        invoke_mkinit(Globals, InitFileStream, cmd_verbose_commands,
             MkInit, " -k ", AllTargetFilesList, MkInitOK, !IO),
 
         ( 
             MkInitOK =  yes,
-            globals.io_lookup_maybe_string_option(extra_init_command,
-                MaybeInitFileCommand, !IO),
+            globals.lookup_maybe_string_option(Globals, extra_init_command,
+                MaybeInitFileCommand),
             (
                 MaybeInitFileCommand = yes(InitFileCommand),
-                make_all_module_command(InitFileCommand, MainModuleName,
-                    AllModules, CommandString, !IO),
-                invoke_system_command(InitFileStream, cmd_verbose_commands,
-                    CommandString, Succeeded0, !IO)
+                make_all_module_command(Globals, InitFileCommand,
+                    MainModuleName, AllModules, CommandString, !IO),
+                invoke_system_command(Globals, InitFileStream,
+                    cmd_verbose_commands, CommandString, Succeeded0, !IO)
             ;
                 MaybeInitFileCommand = no,
                 Succeeded0 = yes
@@ -1119,30 +1140,31 @@ make_library_init_file_2(ErrorStream, MainModuleName, AllModules, TargetExt,
         ),
 
         io.close_output(InitFileStream, !IO),
-        module_name_to_file_name(MainModuleName, ".init", do_create_dirs,
-            InitFileName, !IO),
-        update_interface_return_succeeded(InitFileName, Succeeded1, !IO),
+        module_name_to_file_name(Globals, MainModuleName, ".init",
+            do_create_dirs, InitFileName, !IO),
+        update_interface_return_succeeded(Globals, InitFileName, Succeeded1,
+            !IO),
         Succeeded2 = Succeeded0 `and` Succeeded1,
         (
             Succeeded2 = yes,
             % Symlink or copy the .init files to the user's directory
             % if --use-grade-subdirs is enabled.
-            globals.io_lookup_bool_option(use_grade_subdirs,
-                UseGradeSubDirs, !IO),
+            globals.lookup_bool_option(Globals, use_grade_subdirs,
+                UseGradeSubDirs),
             (
                 UseGradeSubDirs = yes,
                 io.set_output_stream(ErrorStream, OutputStream, !IO),
-                globals.io_set_option(use_subdirs, bool(no), !IO),
-                globals.io_set_option(use_grade_subdirs, bool(no), !IO),
-                module_name_to_file_name(MainModuleName, ".init",
-                    do_not_create_dirs, UserDirFileName, !IO),
-                globals.io_set_option(use_subdirs, bool(yes), !IO),
-                globals.io_set_option(use_grade_subdirs, bool(yes), !IO),
+                globals.set_option(use_subdirs, bool(no),
+                    Globals, NoSubdirGlobals0),
+                globals.set_option(use_grade_subdirs, bool(no),
+                    NoSubdirGlobals0, NoSubdirGlobals),
+                module_name_to_file_name(NoSubdirGlobals, MainModuleName,
+                    ".init", do_not_create_dirs, UserDirFileName, !IO),
                 % Remove the target of the symlink/copy in case it already
                 % exists.
                 io.remove_file(UserDirFileName, _, !IO),
-                make_symlink_or_copy_file(InitFileName, UserDirFileName,
-                    Succeeded, !IO),
+                make_symlink_or_copy_file(Globals, InitFileName,
+                    UserDirFileName, Succeeded, !IO),
                 io.set_output_stream(OutputStream, _, !IO)
             ;
                 UseGradeSubDirs = no,
@@ -1165,17 +1187,18 @@ make_library_init_file_2(ErrorStream, MainModuleName, AllModules, TargetExt,
         Succeeded = no
     ).
 
-:- pred module_name_to_file_name_ext(string::in, maybe_create_dirs::in,
-    module_name::in, file_name::out, io::di, io::uo) is det.
+:- pred module_name_to_file_name_ext(globals::in, string::in,
+    maybe_create_dirs::in, module_name::in, file_name::out,
+    io::di, io::uo) is det.
 
-module_name_to_file_name_ext(Ext, MkDir, ModuleName, FileName, !IO) :-
-    module_name_to_file_name(ModuleName, Ext, MkDir, FileName, !IO).
+module_name_to_file_name_ext(Globals, Ext, MkDir, ModuleName, FileName, !IO) :-
+    module_name_to_file_name(Globals, ModuleName, Ext, MkDir, FileName, !IO).
 
-:- pred invoke_mkinit(io.output_stream::in, command_verbosity::in,
+:- pred invoke_mkinit(globals::in, io.output_stream::in, command_verbosity::in,
     string::in, string::in, list(file_name)::in, bool::out,
     io::di, io::uo) is det.
 
-invoke_mkinit(InitFileStream, Verbosity,
+invoke_mkinit(Globals, InitFileStream, Verbosity,
         MkInit, Args, FileNames, MkInitOK, !IO) :-
     join_quoted_string_list(FileNames, "", "\n", "", TargetFileNames),
 
@@ -1187,7 +1210,7 @@ invoke_mkinit(InitFileStream, Verbosity,
         io.close_output(TmpStream, !IO),
 
         MkInitCmd = string.append_list([MkInit, " ", Args, " -f ", TmpFile]),
-        invoke_system_command(InitFileStream, Verbosity,
+        invoke_system_command(Globals, InitFileStream, Verbosity,
             MkInitCmd, MkInitOK0, !IO),
 
         io.remove_file(TmpFile, RemoveResult, !IO),
@@ -1205,8 +1228,8 @@ invoke_mkinit(InitFileStream, Verbosity,
 
 %-----------------------------------------------------------------------------%
 
-link_module_list(Modules, FactTableObjFiles, Succeeded, !IO) :-
-    globals.io_lookup_string_option(output_file_name, OutputFileName0, !IO),
+link_module_list(Modules, ExtraObjFiles, Globals, Succeeded, !IO) :-
+    globals.lookup_string_option(Globals, output_file_name, OutputFileName0),
     ( OutputFileName0 = "" ->
         (
             Modules = [Module | _],
@@ -1221,8 +1244,8 @@ link_module_list(Modules, FactTableObjFiles, Succeeded, !IO) :-
 
     file_name_to_module_name(OutputFileName, MainModuleName),
 
-    globals.io_lookup_bool_option(compile_to_shared_lib, CompileToSharedLib,
-        !IO),
+    globals.lookup_bool_option(Globals, compile_to_shared_lib,
+        CompileToSharedLib),
     (
         CompileToSharedLib = yes,
         TargetType = shared_library
@@ -1230,17 +1253,17 @@ link_module_list(Modules, FactTableObjFiles, Succeeded, !IO) :-
         CompileToSharedLib = no,
         TargetType = executable
     ),
-    get_object_code_type(TargetType, PIC, !IO),
-    maybe_pic_object_file_extension(PIC, Obj, !IO),
+    get_object_code_type(Globals, TargetType, PIC),
+    maybe_pic_object_file_extension(Globals, PIC, Obj),
 
-    globals.io_get_target(Target, !IO),
+    globals.get_target(Globals, Target),
     io.output_stream(OutputStream, !IO),
     ( 
         Target = target_asm,
         % For --target asm, we generate everything into a single object file.
         (
             Modules = [FirstModule | _],
-            join_module_list([FirstModule], Obj, ObjectsList, !IO)
+            join_module_list(Globals, [FirstModule], Obj, ObjectsList, !IO)
         ;
             Modules = [],
             unexpected(this_file, "link_module_list: no modules")
@@ -1252,7 +1275,7 @@ link_module_list(Modules, FactTableObjFiles, Succeeded, !IO) :-
         ; Target = target_x86_64
         ; Target = target_erlang
         ),
-        join_module_list(Modules, Obj, ObjectsList, !IO)
+        join_module_list(Globals, Modules, Obj, ObjectsList, !IO)
     ),
     ( 
         TargetType = executable,
@@ -1262,26 +1285,24 @@ link_module_list(Modules, FactTableObjFiles, Succeeded, !IO) :-
                     ModuleName)
             ), Modules, ModuleNames),
         MustCompile = yes,
-        make_init_obj_file(OutputStream, MustCompile, MainModuleName,
-            ModuleNames, InitObjResult, !IO)
+        do_make_init_obj_file(Globals, OutputStream, MustCompile,
+            MainModuleName, ModuleNames, InitObjResult, !IO)
     ;
         TargetType = shared_library,
         InitObjResult = yes("")
     ),
     (
         InitObjResult = yes(InitObjFileName),
-        globals.io_lookup_accumulating_option(link_objects,
-            ExtraLinkObjectsList, !IO),
-        AllObjects0 = ObjectsList ++ ExtraLinkObjectsList
-            ++ FactTableObjFiles,
-        AllObjects =
-            ( InitObjFileName = "" ->
-                AllObjects0
-            ;
-                [InitObjFileName | AllObjects0]
-            ),
+        globals.lookup_accumulating_option(Globals, link_objects,
+            ExtraLinkObjectsList),
+        AllObjects0 = ObjectsList ++ ExtraLinkObjectsList ++ ExtraObjFiles,
+        ( InitObjFileName = "" ->
+            AllObjects = AllObjects0
+        ;
+            AllObjects = [InitObjFileName | AllObjects0]
+        ),
         link(OutputStream, TargetType, MainModuleName, AllObjects,
-            Succeeded, !IO)
+            Globals, Succeeded, !IO)
     ;
         InitObjResult = no,
         Succeeded = no
@@ -1289,24 +1310,24 @@ link_module_list(Modules, FactTableObjFiles, Succeeded, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-make_init_obj_file(ErrorStream, ModuleName, ModuleNames, Result, !IO) :-
-    globals.io_lookup_bool_option(rebuild, MustCompile, !IO),
-    make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames,
-        Result, !IO).
+make_init_obj_file(Globals, ErrorStream, ModuleName, ModuleNames, Result,
+        !IO) :-
+    globals.lookup_bool_option(Globals, rebuild, MustCompile),
+    do_make_init_obj_file(Globals, ErrorStream, MustCompile, ModuleName,
+        ModuleNames, Result, !IO).
 
 % WARNING: The code here duplicates the functionality of scripts/c2init.in.
 % Any changes there may also require changes here, and vice versa.
 % The code of make_standalone_interface/3 may also require updating.
 
-:- pred make_init_obj_file(io.output_stream::in, bool::in,
+:- pred do_make_init_obj_file(globals::in, io.output_stream::in, bool::in,
     module_name::in, list(module_name)::in, maybe(file_name)::out,
     io::di, io::uo) is det.
 
-make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames, Result,
-        !IO) :-
-    globals.io_lookup_maybe_string_option(
-        mercury_standard_library_directory, MaybeStdLibDir, !IO),
-    globals.io_get_globals(Globals, !IO),
+do_make_init_obj_file(Globals, ErrorStream, MustCompile, ModuleName,
+        ModuleNames, Result, !IO) :-
+    globals.lookup_maybe_string_option(Globals,
+        mercury_standard_library_directory, MaybeStdLibDir),
     grade_directory_component(Globals, GradeDir),
     (
         MaybeStdLibDir = yes(StdLibDir),
@@ -1329,31 +1350,30 @@ make_init_obj_file(ErrorStream, MustCompile, ModuleName, ModuleNames, Result,
         SourceDebugInitFileNames = []
     ),
 
-    globals.io_lookup_string_option(mkinit_command, MkInit, !IO),
-    make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, ".c",
-        StdInitFileNames, StdTraceInitFileNames, SourceDebugInitFileNames,
-        "", MaybeInitTargetFile, !IO),
+    globals.lookup_string_option(Globals, mkinit_command, MkInit),
+    make_init_target_file(Globals, ErrorStream, MkInit, ModuleName,
+        ModuleNames, ".c", StdInitFileNames, StdTraceInitFileNames,
+        SourceDebugInitFileNames, "", MaybeInitTargetFile, !IO),
 
-    get_object_code_type(executable, PIC, !IO),
-    maybe_pic_object_file_extension(PIC, ObjExt, !IO),
+    get_object_code_type(Globals, executable, PIC),
+    maybe_pic_object_file_extension(Globals, PIC, ObjExt),
 
-    module_name_to_file_name(ModuleName, "_init" ++ ObjExt, do_create_dirs,
-        InitObjFileName, !IO),
+    module_name_to_file_name(Globals, ModuleName, "_init" ++ ObjExt,
+        do_create_dirs, InitObjFileName, !IO),
     CompileCInitFile =
         (pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
-            compile_c_file(ErrorStream, PIC, InitTargetFileName,
-                InitObjFileName, Res, IO0, IO)
+            do_compile_c_file(ErrorStream, PIC, InitTargetFileName,
+                InitObjFileName, Globals, Res, IO0, IO)
         ),
-    maybe_compile_init_obj_file(MaybeInitTargetFile, MustCompile,
+    maybe_compile_init_obj_file(Globals, MaybeInitTargetFile, MustCompile,
         CompileCInitFile, InitObjFileName, Result, !IO).
 
-make_erlang_program_init_file(ErrorStream, ModuleName, ModuleNames, Result,
-        !IO) :-
-    globals.io_lookup_bool_option(rebuild, MustCompile, !IO),
+make_erlang_program_init_file(Globals, ErrorStream, ModuleName, ModuleNames,
+        Result, !IO) :-
+    globals.lookup_bool_option(Globals, rebuild, MustCompile),
 
-    globals.io_lookup_maybe_string_option(
-        mercury_standard_library_directory, MaybeStdLibDir, !IO),
-    globals.io_get_globals(Globals, !IO),
+    globals.lookup_maybe_string_option(Globals,
+        mercury_standard_library_directory, MaybeStdLibDir),
     grade_directory_component(Globals, GradeDir),
     (
         MaybeStdLibDir = yes(StdLibDir),
@@ -1376,59 +1396,61 @@ make_erlang_program_init_file(ErrorStream, ModuleName, ModuleNames, Result,
     ModuleNameStr = sym_name_to_string_sep(ErlangModuleName, "__") ++ "_init",
     ModuleNameOption = " -m " ++ quote_arg(ModuleNameStr),
 
-    globals.io_lookup_string_option(mkinit_erl_command, MkInitErl, !IO),
-    make_init_target_file(ErrorStream, MkInitErl, ModuleName, ModuleNames,
-        ".erl", StdInitFileNames, StdTraceInitFileNames,
+    globals.lookup_string_option(Globals, mkinit_erl_command, MkInitErl),
+    make_init_target_file(Globals, ErrorStream, MkInitErl, ModuleName,
+        ModuleNames, ".erl", StdInitFileNames, StdTraceInitFileNames,
         SourceDebugInitFileNames, ModuleNameOption, MaybeInitTargetFile, !IO),
 
-    module_name_to_file_name(ModuleName, "_init.beam", do_create_dirs,
-        InitObjFileName, !IO),
+    module_name_to_file_name(Globals, ModuleName, "_init.beam",
+        do_create_dirs, InitObjFileName, !IO),
     CompileErlangInitFile =
         (pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
-            compile_erlang_file(ErrorStream, InitTargetFileName, Res, IO0, IO)
+            compile_erlang_file(ErrorStream, InitTargetFileName, Globals, Res,
+                IO0, IO)
         ),
-    maybe_compile_init_obj_file(MaybeInitTargetFile, MustCompile,
+    maybe_compile_init_obj_file(Globals, MaybeInitTargetFile, MustCompile,
         CompileErlangInitFile, InitObjFileName, Result, !IO).
 
-:- pred make_init_target_file(io.output_stream::in, string::in,
+:- pred make_init_target_file(globals::in, io.output_stream::in, string::in,
     module_name::in, list(module_name)::in, string::in,
     list(file_name)::in, list(file_name)::in, list(file_name)::in,
     string::in, maybe(file_name)::out, io::di, io::uo) is det.
 
-make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, TargetExt,
-        StdInitFileNames, StdTraceInitFileNames, SourceDebugInitFileNames,
-        ModuleNameOption, MaybeInitTargetFile, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
+make_init_target_file(Globals, ErrorStream, MkInit, ModuleName, ModuleNames,
+        TargetExt, StdInitFileNames, StdTraceInitFileNames,
+        SourceDebugInitFileNames, ModuleNameOption, MaybeInitTargetFile,
+        !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
     maybe_write_string(Verbose, "% Creating initialization file...\n", !IO),
 
-    globals.io_get_globals(Globals, !IO),
     compute_grade(Globals, Grade),
 
-    module_name_to_file_name(ModuleName, "_init" ++ TargetExt, do_create_dirs,
-        InitTargetFileName, !IO),
+    module_name_to_file_name(Globals, ModuleName, "_init" ++ TargetExt,
+        do_create_dirs, InitTargetFileName, !IO),
 
-    list.map_foldl(module_name_to_file_name_ext(TargetExt, do_not_create_dirs),
+    list.map_foldl(
+        module_name_to_file_name_ext(Globals, TargetExt, do_not_create_dirs),
         ModuleNames, TargetFileNameList, !IO),
 
-    globals.io_lookup_accumulating_option(init_file_directories,
-        InitFileDirsList, !IO),
+    globals.lookup_accumulating_option(Globals, init_file_directories,
+        InitFileDirsList),
     join_quoted_string_list(InitFileDirsList, "-I ", "", " ", InitFileDirs),
 
-    globals.io_lookup_accumulating_option(init_files, InitFileNamesList0,
-        !IO),
+    globals.lookup_accumulating_option(Globals, init_files,
+        InitFileNamesList0),
     % If we pass the same .init file to mkinit multiple times we will end
     % up with multiple calls to the functions that write out proc statics
     % in deep profiling grades.  This will cause the runtime code that writes
     % out the profile to abort.
     list.remove_dups(InitFileNamesList0, InitFileNamesList1),
 
-    globals.io_lookup_accumulating_option(trace_init_files,
-        TraceInitFileNamesList0, !IO),
+    globals.lookup_accumulating_option(Globals, trace_init_files,
+        TraceInitFileNamesList0),
     InitFileNamesList2 = StdInitFileNames ++ InitFileNamesList1,
     TraceInitFileNamesList = StdTraceInitFileNames ++ TraceInitFileNamesList0,
 
-    globals.io_get_trace_level(TraceLevel, !IO),
+    globals.get_trace_level(Globals, TraceLevel),
     ( given_trace_level_is_none(TraceLevel) = no ->
         TraceOpt = "-t",
         InitFileNamesList3 = InitFileNamesList2 ++ TraceInitFileNamesList
@@ -1437,7 +1459,7 @@ make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, TargetExt,
         InitFileNamesList3 = InitFileNamesList2
     ),
 
-    globals.io_lookup_bool_option(source_to_source_debug, SourceDebug, !IO),
+    globals.lookup_bool_option(Globals, source_to_source_debug, SourceDebug),
     (
         SourceDebug = yes,
         InitFileNamesList = InitFileNamesList3 ++ SourceDebugInitFileNames
@@ -1446,12 +1468,12 @@ make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, TargetExt,
         InitFileNamesList = InitFileNamesList3
     ),
 
-    globals.io_lookup_accumulating_option(runtime_flags, RuntimeFlagsList,
-        !IO),
+    globals.lookup_accumulating_option(Globals, runtime_flags,
+        RuntimeFlagsList),
     join_quoted_string_list(RuntimeFlagsList, "-r ", "", " ", RuntimeFlags),
 
-    globals.io_lookup_bool_option(extra_initialization_functions, ExtraInits,
-        !IO),
+    globals.lookup_bool_option(Globals, extra_initialization_functions,
+        ExtraInits),
     (
         ExtraInits = yes,
         ExtraInitsOpt = "-x"
@@ -1460,7 +1482,7 @@ make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, TargetExt,
         ExtraInitsOpt = ""
     ),
 
-    globals.io_lookup_bool_option(main, Main, !IO),
+    globals.lookup_bool_option(Globals, main, Main),
     (
         Main = no,
         NoMainOpt = "-l"
@@ -1469,8 +1491,8 @@ make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, TargetExt,
         NoMainOpt = ""
     ),
 
-    globals.io_lookup_string_option(experimental_complexity,
-        ExperimentalComplexity, !IO),
+    globals.lookup_string_option(Globals, experimental_complexity,
+        ExperimentalComplexity),
     ( ExperimentalComplexity = "" ->
         ExperimentalComplexityOpt = ""
     ;
@@ -1490,14 +1512,15 @@ make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, TargetExt,
             ModuleNameOption
         ]),
 
-    invoke_mkinit(ErrorStream, cmd_verbose_commands,
+    invoke_mkinit(Globals, ErrorStream, cmd_verbose_commands,
         MkInit, MkInitArgs, TargetFileNameList ++ InitFileNamesList,
         MkInitOk, !IO),
 
     maybe_report_stats(Stats, !IO),
     (
         MkInitOk = yes,
-        update_interface_return_succeeded(InitTargetFileName, UpdateOk, !IO),
+        update_interface_return_succeeded(Globals, InitTargetFileName,
+            UpdateOk, !IO),
         (
             UpdateOk = yes,
             MaybeInitTargetFile = yes(InitTargetFileName)
@@ -1510,17 +1533,17 @@ make_init_target_file(ErrorStream, MkInit, ModuleName, ModuleNames, TargetExt,
         MaybeInitTargetFile = no
     ).
 
-:- pred maybe_compile_init_obj_file(maybe(file_name)::in, bool::in,
-    compile_init_file_pred::in(compile_init_file_pred),
+:- pred maybe_compile_init_obj_file(globals::in, maybe(file_name)::in,
+    bool::in, compile_init_file_pred::in(compile_init_file_pred),
     file_name::in, maybe(file_name)::out, io::di, io::uo) is det.
 
 :- type compile_init_file_pred == pred(file_name, bool, io, io).
 :- inst compile_init_file_pred == (pred(in, out, di, uo) is det).
 
-maybe_compile_init_obj_file(MaybeInitTargetFile, MustCompile, Compile,
+maybe_compile_init_obj_file(Globals, MaybeInitTargetFile, MustCompile, Compile,
         InitObjFileName, Result, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
     (
         MaybeInitTargetFile = yes(InitTargetFileName),
         file_as_new_as(InitObjFileName, Rel, InitTargetFileName, !IO),
@@ -1599,84 +1622,87 @@ compare_file_timestamps(FileNameA, FileNameB, MaybeCompare, !IO) :-
 % WARNING: The code here duplicates the functionality of scripts/ml.in.
 % Any changes there may also require changes here, and vice versa.
 
-link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
-    globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    globals.io_lookup_bool_option(statistics, Stats, !IO),
-    globals.io_get_target(Target, !IO),
+link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Globals, Succeeded,
+        !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
+    globals.get_target(Globals, Target),
 
     maybe_write_string(Verbose, "% Linking...\n", !IO),
-    link_output_filename(LinkTargetType, ModuleName, _Ext, OutputFileName, !IO),
+    link_output_filename(Globals, LinkTargetType, ModuleName, _Ext,
+        OutputFileName, !IO),
     (
         LinkTargetType = static_library,
-        create_archive(ErrorStream, OutputFileName, yes, ObjectsList,
+        create_archive(Globals, ErrorStream, OutputFileName, yes, ObjectsList,
             LinkSucceeded, !IO)
     ;
         LinkTargetType = java_archive,
-        create_java_archive(ErrorStream, OutputFileName, ObjectsList,
+        create_java_archive(Globals, ErrorStream, OutputFileName, ObjectsList,
             LinkSucceeded, !IO)
     ;
         LinkTargetType = erlang_archive,
-        create_erlang_archive(ErrorStream, ModuleName, OutputFileName,
+        create_erlang_archive(Globals, ErrorStream, ModuleName, OutputFileName,
             ObjectsList, LinkSucceeded, !IO)
     ;
         LinkTargetType = executable,
         (
             Target = target_erlang,
-            create_erlang_shell_script(ModuleName, LinkSucceeded, !IO)
+            create_erlang_shell_script(Globals, ModuleName, LinkSucceeded, !IO)
         ;
             Target = target_java,
-            create_java_shell_script(ModuleName, LinkSucceeded, !IO)
+            create_java_shell_script(Globals, ModuleName, LinkSucceeded, !IO)
         ;
             ( Target = target_c
             ; Target = target_il
             ; Target = target_asm
             ; Target = target_x86_64
             ),
-            link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
-                OutputFileName, ObjectsList, LinkSucceeded, !IO)
+            link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType,
+                ModuleName, OutputFileName, ObjectsList, LinkSucceeded, !IO)
         )
     ;
         LinkTargetType = shared_library,
-        link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
-            OutputFileName, ObjectsList, LinkSucceeded, !IO)
+        link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType,
+            ModuleName, OutputFileName, ObjectsList, LinkSucceeded, !IO)
     ),
     maybe_report_stats(Stats, !IO),
     (
         LinkSucceeded = yes,
         post_link_make_symlink_or_copy(ErrorStream, LinkTargetType,
-            ModuleName, Succeeded, _MadeSymlinkOrCopy, !IO)
+            ModuleName, Globals, Succeeded, _MadeSymlinkOrCopy, !IO)
     ;
         LinkSucceeded = no,
         Succeeded = no
     ).
 
-:- pred link_output_filename(linked_target_type::in, module_name::in,
-    string::out, string::out, io::di, io::uo) is det.
+:- pred link_output_filename(globals::in, linked_target_type::in,
+    module_name::in, string::out, string::out, io::di, io::uo) is det.
 
-link_output_filename(LinkTargetType, ModuleName, Ext, OutputFileName, !IO) :-
+link_output_filename(Globals, LinkTargetType, ModuleName, Ext, OutputFileName,
+        !IO) :-
     (
         LinkTargetType = static_library,
-        globals.io_lookup_string_option(library_extension, Ext, !IO),
-        module_name_to_lib_file_name("lib", ModuleName, Ext, do_create_dirs,
-            OutputFileName, !IO)
+        globals.lookup_string_option(Globals, library_extension, Ext),
+        module_name_to_lib_file_name(Globals, "lib", ModuleName, Ext,
+            do_create_dirs, OutputFileName, !IO)
     ;
         LinkTargetType = shared_library,
-        globals.io_lookup_string_option(shared_library_extension, Ext, !IO),
-        module_name_to_lib_file_name("lib", ModuleName, Ext, do_create_dirs,
-            OutputFileName, !IO)
+        globals.lookup_string_option(Globals, shared_library_extension, Ext),
+        module_name_to_lib_file_name(Globals, "lib", ModuleName, Ext,
+            do_create_dirs, OutputFileName, !IO)
     ;
         LinkTargetType = java_archive,
         Ext = ".jar",
-        module_name_to_file_name(ModuleName, Ext, do_create_dirs,
-            OutputFileName, !IO)
+        module_name_to_file_name(Globals, ModuleName, Ext,
+            do_create_dirs, OutputFileName, !IO)
     ;
         LinkTargetType = erlang_archive,
         Ext = ".beams",
-        module_name_to_lib_file_name("lib", ModuleName, Ext, do_create_dirs,
-            OutputFileName, !IO)
+        module_name_to_lib_file_name(Globals, "lib", ModuleName, Ext,
+            do_create_dirs, OutputFileName, !IO)
     ;
         LinkTargetType = executable,
-        globals.io_get_target(Target, !IO),
+        globals.get_target(Globals, Target),
         (
             ( Target = target_erlang
             ; Target = target_java
@@ -1689,18 +1715,19 @@ link_output_filename(LinkTargetType, ModuleName, Ext, OutputFileName, !IO) :-
             ; Target = target_asm
             ; Target = target_x86_64
             ),
-            globals.io_lookup_string_option(executable_file_extension, Ext, !IO)
+            globals.lookup_string_option(Globals, executable_file_extension,
+                Ext)
         ),
-        module_name_to_file_name(ModuleName, Ext, do_create_dirs,
+        module_name_to_file_name(Globals, ModuleName, Ext, do_create_dirs,
             OutputFileName, !IO)
     ).
 
-:- pred link_exe_or_shared_lib(io.output_stream::in,
+:- pred link_exe_or_shared_lib(globals::in, io.output_stream::in,
     linked_target_type::in(bound(executable ; shared_library)),
     module_name::in, file_name::in, list(string)::in, bool::out,
     io::di, io::uo) is det.
 
-link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
+link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
         OutputFileName, ObjectsList, LinkSucceeded, !IO) :-
     (
         LinkTargetType = shared_library,
@@ -1711,15 +1738,15 @@ link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
         ThreadFlagsOpt = shlib_linker_thread_flags,
         DebugFlagsOpt = shlib_linker_debug_flags,
         TraceFlagsOpt = shlib_linker_trace_flags,
-        globals.io_lookup_bool_option(allow_undefined, AllowUndef, !IO),
+        globals.lookup_bool_option(Globals, allow_undefined, AllowUndef),
         (
             AllowUndef = yes,
-            globals.io_lookup_string_option(
-                linker_allow_undefined_flag, UndefOpt, !IO)
+            globals.lookup_string_option(Globals, linker_allow_undefined_flag,
+                UndefOpt)
         ;
             AllowUndef = no,
-            globals.io_lookup_string_option(
-                linker_error_undefined_flag, UndefOpt, !IO)
+            globals.lookup_string_option(Globals,
+                linker_error_undefined_flag, UndefOpt)
         )
     ;
         LinkTargetType = executable,
@@ -1734,68 +1761,67 @@ link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
     ),
 
     % Should the executable be stripped?
-    globals.io_lookup_bool_option(strip, Strip, !IO),
+    globals.lookup_bool_option(Globals, strip, Strip),
     (
         LinkTargetType = executable,
         Strip = yes
     ->
-        globals.io_lookup_string_option(linker_strip_flag, StripOpt, !IO)
+        globals.lookup_string_option(Globals, linker_strip_flag, StripOpt)
     ;
         StripOpt = ""
     ),
 
-    globals.io_lookup_bool_option(target_debug, TargetDebug, !IO),
+    globals.lookup_bool_option(Globals, target_debug, TargetDebug),
     (
         TargetDebug = yes,
-        globals.io_lookup_string_option(DebugFlagsOpt, DebugOpts, !IO)
+        globals.lookup_string_option(Globals, DebugFlagsOpt, DebugOpts)
     ;
         TargetDebug = no,
         DebugOpts = ""
     ),
 
     % Should the executable be statically linked?
-    globals.io_lookup_string_option(linkage, Linkage, !IO),
+    globals.lookup_string_option(Globals, linkage, Linkage),
     (
         LinkTargetType = executable,
         Linkage = "static"
     ->
-        globals.io_lookup_string_option(linker_static_flags, StaticOpts, !IO)
+        globals.lookup_string_option(Globals, linker_static_flags, StaticOpts)
     ;
         StaticOpts = ""
     ),
 
     % Are the thread libraries needed?
-    use_thread_libs(UseThreadLibs, !IO),
+    use_thread_libs(Globals, UseThreadLibs),
     (
         UseThreadLibs = yes,
-        globals.io_lookup_string_option(ThreadFlagsOpt, ThreadOpts, !IO)
+        globals.lookup_string_option(Globals, ThreadFlagsOpt, ThreadOpts)
     ;
         UseThreadLibs = no,
         ThreadOpts = ""
     ),
 
     % Find the Mercury standard libraries.
-    get_mercury_std_libs(LinkTargetType, MercuryStdLibs, !IO),
+    get_mercury_std_libs(Globals, LinkTargetType, MercuryStdLibs),
 
     % Find which system libraries are needed.
-    get_system_libs(LinkTargetType, SystemLibs, !IO),
+    get_system_libs(Globals, LinkTargetType, SystemLibs),
 
-    globals.io_lookup_accumulating_option(LDFlagsOpt, LDFlagsList, !IO),
+    globals.lookup_accumulating_option(Globals, LDFlagsOpt, LDFlagsList),
     join_string_list(LDFlagsList, "", "", " ", LDFlags),
-    globals.io_lookup_accumulating_option(link_library_directories,
-        LinkLibraryDirectoriesList, !IO),
-    globals.io_lookup_string_option(linker_path_flag, LinkerPathFlag,
-        !IO),
+    globals.lookup_accumulating_option(Globals, link_library_directories,
+        LinkLibraryDirectoriesList),
+    globals.lookup_string_option(Globals, linker_path_flag, LinkerPathFlag),
     join_quoted_string_list(LinkLibraryDirectoriesList, LinkerPathFlag, "",
         " ", LinkLibraryDirectories),
 
     % Set up the runtime library path.
-    get_runtime_library_path_opts(LinkTargetType, RpathFlagOpt, RpathSepOpt,
-        RpathOpts, !IO),
+    get_runtime_library_path_opts(Globals, LinkTargetType,
+        RpathFlagOpt, RpathSepOpt, RpathOpts),
 
     % Set up the install name for shared libraries.
-    globals.io_lookup_bool_option(shlib_linker_use_install_name,
-        UseInstallName, !IO),
+    globals.lookup_bool_option(Globals, shlib_linker_use_install_name,
+        UseInstallName),
     (
         UseInstallName = yes,
         LinkTargetType = shared_library
@@ -1806,31 +1832,30 @@ link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
         %       be installed, *not* where it is going to be built. 
         %        
         BaseFileName = sym_name_to_string(ModuleName),
-        globals.io_lookup_string_option(shared_library_extension,
-            SharedLibExt, !IO),
+        globals.lookup_string_option(Globals, shared_library_extension,
+            SharedLibExt),
         ShLibFileName = "lib" ++ BaseFileName ++ SharedLibExt,
-        get_install_name_option(ShLibFileName, InstallNameOpt, !IO)
+        get_install_name_option(Globals, ShLibFileName, InstallNameOpt)
     ;
         InstallNameOpt = ""
     ),
 
-    globals.io_get_trace_level(TraceLevel, !IO),
+    globals.get_trace_level(Globals, TraceLevel),
     ( given_trace_level_is_none(TraceLevel) = yes ->
         TraceOpts = ""
     ;
-        globals.io_lookup_string_option(TraceFlagsOpt, TraceOpts, !IO)
+        globals.lookup_string_option(Globals, TraceFlagsOpt, TraceOpts)
     ),
 
-    get_link_libraries(MaybeLinkLibraries, !IO),
-    globals.io_lookup_string_option(linker_opt_separator,
-        LinkOptSep, !IO),
+    get_link_libraries(Globals, MaybeLinkLibraries, !IO),
+    globals.lookup_string_option(Globals, linker_opt_separator, LinkOptSep),
     (
         MaybeLinkLibraries = yes(LinkLibrariesList),
         join_quoted_string_list(LinkLibrariesList, "", "", " ",
             LinkLibraries),
 
-        globals.io_lookup_bool_option(restricted_command_line,
-            RestrictedCommandLine, !IO),
+        globals.lookup_bool_option(Globals, restricted_command_line,
+            RestrictedCommandLine),
         (
             % If we have a restricted command line then it's possible
             % that following link command will call sub-commands its self
@@ -1839,9 +1864,9 @@ link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
             %
             RestrictedCommandLine = yes,
             io.make_temp(TmpFile, !IO),
-            globals.io_lookup_string_option(library_extension, LibExt, !IO),
+            globals.lookup_string_option(Globals, library_extension, LibExt),
             TmpArchive = TmpFile ++ LibExt,
-            create_archive(ErrorStream, TmpArchive, yes, ObjectsList,
+            create_archive(Globals, ErrorStream, TmpArchive, yes, ObjectsList,
                 ArchiveSucceeded, !IO),
             MaybeDeleteTmpArchive = yes(TmpArchive),
             Objects = TmpArchive
@@ -1857,7 +1882,7 @@ link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
 
             % Note that LDFlags may contain `-l' options so it should come
             % after Objects.
-            globals.io_lookup_string_option(CommandOpt, Command, !IO),
+            globals.lookup_string_option(Globals, CommandOpt, Command),
             string.append_list([
                     Command, " ",
                     StaticOpts, " ",
@@ -1877,18 +1902,18 @@ link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
                     MercuryStdLibs, " ",
                     SystemLibs], LinkCmd),
 
-            globals.io_lookup_bool_option(demangle, Demangle, !IO),
+            globals.lookup_bool_option(Globals, demangle, Demangle),
             (
                 Demangle = yes,
-                globals.io_lookup_string_option(demangle_command,
-                    DemangleCmd, !IO),
+                globals.lookup_string_option(Globals, demangle_command,
+                    DemangleCmd),
                 MaybeDemangleCmd = yes(DemangleCmd)
             ;
                 Demangle = no,
                 MaybeDemangleCmd = no
             ),
 
-            invoke_system_command_maybe_filter_output(ErrorStream,
+            invoke_system_command_maybe_filter_output(Globals, ErrorStream,
                 cmd_verbose_commands, LinkCmd, MaybeDemangleCmd,
                 LinkSucceeded, !IO)
         ;
@@ -1911,21 +1936,21 @@ link_exe_or_shared_lib(ErrorStream, LinkTargetType, ModuleName,
     % Return the empty string if --mercury-standard-library-directory
     % is not set.
     %
-:- pred get_mercury_std_libs(linked_target_type::in, string::out,
-    io::di, io::uo) is det.
+:- pred get_mercury_std_libs(globals::in, linked_target_type::in, string::out)
+    is det.
 
-get_mercury_std_libs(TargetType, StdLibs, !IO) :-
-    globals.io_lookup_maybe_string_option(
-        mercury_standard_library_directory, MaybeStdlibDir, !IO),
+get_mercury_std_libs(Globals, TargetType, StdLibs) :-
+    globals.lookup_maybe_string_option(Globals,
+        mercury_standard_library_directory, MaybeStdlibDir),
     (
         MaybeStdlibDir = yes(StdLibDir),
-        globals.io_get_gc_method(GCMethod, !IO),
+        globals.get_gc_method(Globals, GCMethod),
         (
             ( TargetType = executable
             ; TargetType = static_library
             ; TargetType = shared_library
             ),
-            globals.io_lookup_string_option(library_extension, LibExt, !IO)
+            globals.lookup_string_option(Globals, library_extension, LibExt)
         ;
             TargetType = java_archive,
             unexpected(this_file, "get_mercury_std_libs: java_archive")
@@ -1933,7 +1958,6 @@ get_mercury_std_libs(TargetType, StdLibs, !IO) :-
             TargetType = erlang_archive,
             unexpected(this_file, "get_mercury_std_libs: erlang_archive")
         ),
-        globals.io_get_globals(Globals, !IO),
         grade_directory_component(Globals, GradeDir),
 
         % GC libraries.
@@ -1953,8 +1977,8 @@ get_mercury_std_libs(TargetType, StdLibs, !IO) :-
                 GCMethod = gc_boehm_debug,
                 GCGrade0 = "gc_debug"
             ),
-            globals.io_lookup_bool_option(profile_time, ProfTime, !IO),
-            globals.io_lookup_bool_option(profile_deep, ProfDeep, !IO),
+            globals.lookup_bool_option(Globals, profile_time, ProfTime),
+            globals.lookup_bool_option(Globals, profile_deep, ProfDeep),
             (
                 ( ProfTime = yes
                 ; ProfDeep = yes
@@ -1964,7 +1988,7 @@ get_mercury_std_libs(TargetType, StdLibs, !IO) :-
             ;
                 GCGrade1 = GCGrade0
             ),
-            globals.io_lookup_bool_option(parallel, Parallel, !IO),
+            globals.lookup_bool_option(Globals, parallel, Parallel),
             (
                 Parallel = yes,
                 GCGrade = "par_" ++ GCGrade1
@@ -1972,12 +1996,12 @@ get_mercury_std_libs(TargetType, StdLibs, !IO) :-
                 Parallel = no,
                 GCGrade = GCGrade1
             ),
-            make_link_lib(TargetType, GCGrade, SharedGCLibs, !IO),
+            make_link_lib(Globals, TargetType, GCGrade, SharedGCLibs),
             StaticGCLibs = quote_arg(StdLibDir/"lib"/
                 ("lib" ++ GCGrade ++ LibExt))
         ;
             GCMethod = gc_mps,
-            make_link_lib(TargetType, "mps", SharedGCLibs, !IO),
+            make_link_lib(Globals, TargetType, "mps", SharedGCLibs),
             StaticGCLibs = quote_arg(StdLibDir/"lib"/
                 ("libmps" ++ LibExt) )
         ;
@@ -1987,7 +2011,7 @@ get_mercury_std_libs(TargetType, StdLibs, !IO) :-
         ),
 
         % Trace libraries.
-        globals.io_get_trace_level(TraceLevel, !IO),
+        globals.get_trace_level(Globals, TraceLevel),
         ( given_trace_level_is_none(TraceLevel) = yes ->
             StaticTraceLibs = "",
             SharedTraceLibs = ""
@@ -2004,29 +2028,31 @@ get_mercury_std_libs(TargetType, StdLibs, !IO) :-
                 " " ++
                 quote_arg(StdLibDir/"lib"/GradeDir/
                     ("libmer_mdbcomp" ++ LibExt)),
-            make_link_lib(TargetType, "mer_trace", TraceLib, !IO),
-            make_link_lib(TargetType, "mer_eventspec", EventSpecLib, !IO),
-            make_link_lib(TargetType, "mer_browser", BrowserLib, !IO),
-            make_link_lib(TargetType, "mer_mdbcomp", MdbCompLib, !IO),
+            make_link_lib(Globals, TargetType, "mer_trace", TraceLib),
+            make_link_lib(Globals, TargetType, "mer_eventspec", EventSpecLib),
+            make_link_lib(Globals, TargetType, "mer_browser", BrowserLib),
+            make_link_lib(Globals, TargetType, "mer_mdbcomp", MdbCompLib),
             SharedTraceLibs = string.join_list(" ",
                 [TraceLib, EventSpecLib, BrowserLib, MdbCompLib])
         ),
 
         % Source-to-source debugging libraries.
-        globals.io_lookup_bool_option(source_to_source_debug, SourceDebug, !IO),
+        globals.lookup_bool_option(Globals, source_to_source_debug,
+            SourceDebug),
         (
             SourceDebug = yes,
             StaticSourceDebugLibs =
                 quote_arg(StdLibDir/"lib"/GradeDir/
                     ("libmer_ssdb" ++ LibExt)),
-            make_link_lib(TargetType, "mer_mdbcomp", SharedSourceDebugLibs, !IO)
+            make_link_lib(Globals, TargetType, "mer_mdbcomp",
+                SharedSourceDebugLibs)
         ;
             SourceDebug = no,
             StaticSourceDebugLibs = "",
             SharedSourceDebugLibs = ""
         ),
 
-        globals.io_lookup_string_option(mercury_linkage, MercuryLinkage, !IO),
+        globals.lookup_string_option(Globals, mercury_linkage, MercuryLinkage),
         ( MercuryLinkage = "static" ->
             StdLibs = string.join_list(" ", [
                 StaticTraceLibs,
@@ -2038,8 +2064,8 @@ get_mercury_std_libs(TargetType, StdLibs, !IO) :-
                 StaticGCLibs
             ])
         ; MercuryLinkage = "shared" ->
-            make_link_lib(TargetType, "mer_std", StdLib, !IO),
-            make_link_lib(TargetType, "mer_rt", RuntimeLib, !IO),
+            make_link_lib(Globals, TargetType, "mer_std", StdLib),
+            make_link_lib(Globals, TargetType, "mer_rt", RuntimeLib),
             StdLibs = string.join_list(" ", [
                 SharedTraceLibs,
                 SharedSourceDebugLibs,
@@ -2055,23 +2081,21 @@ get_mercury_std_libs(TargetType, StdLibs, !IO) :-
         StdLibs = ""
     ).
     
-    % Pass either `-llib' or `PREFIX/lib/GRADE/liblib.a',
-    % depending on whether we are linking with static or shared
-    % Mercury libraries.
+    % Pass either `-llib' or `PREFIX/lib/GRADE/liblib.a', depending on
+    % whether we are linking with static or shared Mercury libraries.
     %
-:- pred get_link_libraries(maybe(list(string))::out, io::di, io::uo) is det.
+:- pred get_link_libraries(globals::in, maybe(list(string))::out,
+    io::di, io::uo) is det.
 
-get_link_libraries(MaybeLinkLibraries, !IO) :-
-    globals.io_lookup_accumulating_option(
-        mercury_library_directories, MercuryLibDirs0, !IO),
-    globals.io_get_globals(Globals, !IO),
-    grade_directory_component(Globals, GradeDir),
-    MercuryLibDirs = list.map(
-        (func(LibDir) = LibDir/"lib"/GradeDir),
+get_link_libraries(Globals, MaybeLinkLibraries, !IO) :-
+    globals.lookup_accumulating_option(Globals, mercury_library_directories,
         MercuryLibDirs0),
-    globals.io_lookup_accumulating_option(link_libraries,
-        LinkLibrariesList0, !IO),
-    list.map_foldl2(process_link_library(MercuryLibDirs),
+    grade_directory_component(Globals, GradeDir),
+    MercuryLibDirs = list.map((func(LibDir) = LibDir/"lib"/GradeDir),
+        MercuryLibDirs0),
+    globals.lookup_accumulating_option(Globals, link_libraries,
+        LinkLibrariesList0),
+    list.map_foldl2(process_link_library(Globals, MercuryLibDirs),
         LinkLibrariesList0, LinkLibrariesList, yes,
         LibrariesSucceeded, !IO),
     (
@@ -2082,10 +2106,10 @@ get_link_libraries(MaybeLinkLibraries, !IO) :-
         MaybeLinkLibraries = no
     ).
 
-:- pred make_link_lib(linked_target_type::in, string::in, string::out,
-    io::di, io::uo) is det.
+:- pred make_link_lib(globals::in, linked_target_type::in,
+    string::in, string::out) is det.
 
-make_link_lib(TargetType, LibName, LinkOpt, !IO) :-
+make_link_lib(Globals, TargetType, LibName, LinkOpt) :-
     (
         (
             TargetType = executable,
@@ -2096,8 +2120,8 @@ make_link_lib(TargetType, LibName, LinkOpt, !IO) :-
             LinkLibFlag = shlib_linker_link_lib_flag,
             LinkLibSuffix = shlib_linker_link_lib_suffix
         ),
-        globals.io_lookup_string_option(LinkLibFlag, LinkLibOpt, !IO),
-        globals.io_lookup_string_option(LinkLibSuffix, Suffix, !IO),
+        globals.lookup_string_option(Globals, LinkLibFlag, LinkLibOpt),
+        globals.lookup_string_option(Globals, LinkLibSuffix, Suffix),
         LinkOpt = quote_arg(LinkLibOpt ++ LibName ++ Suffix)
     ;
         TargetType = java_archive,
@@ -2110,17 +2134,17 @@ make_link_lib(TargetType, LibName, LinkOpt, !IO) :-
         unexpected(this_file, "make_link_lib: static_library")
     ).
 
-:- pred get_runtime_library_path_opts(linked_target_type::in,
+:- pred get_runtime_library_path_opts(globals::in, linked_target_type::in,
     option::in(bound(shlib_linker_rpath_flag ; linker_rpath_flag)),
     option::in(bound(shlib_linker_rpath_separator ; linker_rpath_separator)),
-    string::out, io::di, io::uo) is det.
+    string::out) is det.
 
-get_runtime_library_path_opts(LinkTargetType, RpathFlagOpt, RpathSepOpt,
-        RpathOpts, !IO) :-
-    globals.io_lookup_bool_option(shlib_linker_use_install_name,
-        UseInstallName, !IO),
-    shared_libraries_supported(SharedLibsSupported, !IO),
-    globals.io_lookup_string_option(linkage, Linkage, !IO),
+get_runtime_library_path_opts(Globals, LinkTargetType,
+        RpathFlagOpt, RpathSepOpt, RpathOpts) :-
+    globals.lookup_bool_option(Globals, shlib_linker_use_install_name,
+        UseInstallName),
+    shared_libraries_supported(Globals, SharedLibsSupported),
+    globals.lookup_string_option(Globals, linkage, Linkage),
     (
         UseInstallName = no,
         SharedLibsSupported = yes,
@@ -2128,16 +2152,16 @@ get_runtime_library_path_opts(LinkTargetType, RpathFlagOpt, RpathSepOpt,
         ; LinkTargetType = shared_library
         )
     ->
-        globals.io_lookup_accumulating_option(runtime_link_library_directories,
-            RpathDirs0, !IO),
+        globals.lookup_accumulating_option(Globals,
+            runtime_link_library_directories, RpathDirs0),
         RpathDirs = list.map(quote_arg, RpathDirs0),
         ( 
             RpathDirs = [],
             RpathOpts = ""
         ;
             RpathDirs = [_ | _],
-            globals.io_lookup_string_option(RpathSepOpt, RpathSep, !IO),
-            globals.io_lookup_string_option(RpathFlagOpt, RpathFlag, !IO),
+            globals.lookup_string_option(Globals, RpathSepOpt, RpathSep),
+            globals.lookup_string_option(Globals, RpathFlagOpt, RpathFlag),
             RpathOpts0 = string.join_list(RpathSep, RpathDirs),
             RpathOpts = RpathFlag ++ RpathOpts0
         )
@@ -2145,20 +2169,20 @@ get_runtime_library_path_opts(LinkTargetType, RpathFlagOpt, RpathSepOpt,
         RpathOpts = ""
     ).
 
-:- pred get_system_libs(linked_target_type::in, string::out, io::di, io::uo)
+:- pred get_system_libs(globals::in, linked_target_type::in, string::out)
     is det.
 
-get_system_libs(TargetType, SystemLibs, !IO) :-
+get_system_libs(Globals, TargetType, SystemLibs) :-
     % System libraries used when tracing.
-    globals.io_get_trace_level(TraceLevel, !IO),
+    globals.get_trace_level(Globals, TraceLevel),
     ( given_trace_level_is_none(TraceLevel) = yes ->
         SystemTraceLibs = ""
     ;
-        globals.io_lookup_string_option(trace_libs, SystemTraceLibs0, !IO),
-        globals.io_lookup_bool_option(use_readline, UseReadline, !IO),
+        globals.lookup_string_option(Globals, trace_libs, SystemTraceLibs0),
+        globals.lookup_bool_option(Globals, use_readline, UseReadline),
         (
             UseReadline = yes,
-            globals.io_lookup_string_option(readline_libs, ReadlineLibs, !IO),
+            globals.lookup_string_option(Globals, readline_libs, ReadlineLibs),
             SystemTraceLibs = SystemTraceLibs0 ++ " " ++ ReadlineLibs
         ;
             UseReadline = no,
@@ -2167,10 +2191,10 @@ get_system_libs(TargetType, SystemLibs, !IO) :-
     ),
 
     % Thread libraries
-    use_thread_libs(UseThreadLibs, !IO),
+    use_thread_libs(Globals, UseThreadLibs),
     (
         UseThreadLibs = yes,
-        globals.io_lookup_string_option(thread_libs, ThreadLibs, !IO)
+        globals.lookup_string_option(Globals, thread_libs, ThreadLibs)
     ;
         UseThreadLibs = no,
         ThreadLibs = ""
@@ -2179,7 +2203,7 @@ get_system_libs(TargetType, SystemLibs, !IO) :-
     % Other system libraries.
     (
         TargetType = shared_library,
-        globals.io_lookup_string_option(shared_libs, OtherSystemLibs, !IO)
+        globals.lookup_string_option(Globals, shared_libs, OtherSystemLibs)
     ;
         TargetType = static_library,
         unexpected(this_file, "get_std_libs: static library")
@@ -2191,44 +2215,44 @@ get_system_libs(TargetType, SystemLibs, !IO) :-
         unexpected(this_file, "get_std_libs: erlang archive")
     ;
         TargetType = executable,
-        globals.io_lookup_string_option(math_lib, OtherSystemLibs, !IO)
+        globals.lookup_string_option(Globals, math_lib, OtherSystemLibs)
     ),
 
     SystemLibs = string.join_list(" ",
         [SystemTraceLibs, OtherSystemLibs, ThreadLibs]).
 
-:- pred use_thread_libs(bool::out, io::di, io::uo) is det.
+:- pred use_thread_libs(globals::in, bool::out) is det.
 
-use_thread_libs(UseThreadLibs, !IO) :-
-    globals.io_lookup_bool_option(parallel, Parallel, !IO),
-    globals.io_get_gc_method(GCMethod, !IO),
+use_thread_libs(Globals, UseThreadLibs) :-
+    globals.lookup_bool_option(Globals, parallel, Parallel),
+    globals.get_gc_method(Globals, GCMethod),
     UseThreadLibs = ( ( Parallel = yes ; GCMethod = gc_mps ) -> yes ; no ).
     
 post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
-        Succeeded, MadeSymlinkOrCopy, !IO) :-
-    globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
+        Globals, Succeeded, MadeSymlinkOrCopy, !IO) :-
+    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
     (
         UseGradeSubdirs = yes,
-        link_output_filename(LinkTargetType, ModuleName,
-            Ext, OutputFileName, !IO),
+        link_output_filename(Globals, LinkTargetType, ModuleName, Ext,
+            OutputFileName, !IO),
         % Link/copy the executable into the user's directory.
-        globals.io_set_option(use_subdirs, bool(no), !IO),
-        globals.io_set_option(use_grade_subdirs, bool(no), !IO),
+        globals.set_option(use_subdirs, bool(no),
+            Globals, NoSubdirGlobals0),
+        globals.set_option(use_grade_subdirs, bool(no),
+            NoSubdirGlobals0, NoSubdirGlobals),
         ( 
             LinkTargetType = executable,
-            module_name_to_file_name(ModuleName, Ext, do_not_create_dirs,
-                UserDirFileName, !IO)
+            module_name_to_file_name(NoSubdirGlobals, ModuleName, Ext,
+                do_not_create_dirs, UserDirFileName, !IO)
         ;
             ( LinkTargetType = static_library
             ; LinkTargetType = shared_library
             ; LinkTargetType = java_archive
             ; LinkTargetType = erlang_archive
             ),
-            module_name_to_lib_file_name("lib", ModuleName, Ext,
-                do_not_create_dirs, UserDirFileName, !IO)
+            module_name_to_lib_file_name(NoSubdirGlobals, "lib", ModuleName,
+                Ext, do_not_create_dirs, UserDirFileName, !IO)
         ),
-        globals.io_set_option(use_subdirs, bool(yes), !IO),
-        globals.io_set_option(use_grade_subdirs, bool(yes), !IO),
 
         same_timestamp(OutputFileName, UserDirFileName, SameTimestamp, !IO),
         (
@@ -2240,7 +2264,7 @@ post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
             io.set_output_stream(ErrorStream, OutputStream, !IO),
             % Remove the target of the symlink/copy in case it already exists.
             io.remove_file_recursively(UserDirFileName, _, !IO),
-            make_symlink_or_copy_file(OutputFileName, UserDirFileName,
+            make_symlink_or_copy_file(Globals, OutputFileName, UserDirFileName,
                 Succeeded, !IO),
             io.set_output_stream(OutputStream, _, !IO),
             MadeSymlinkOrCopy = yes
@@ -2262,38 +2286,37 @@ same_timestamp(FileNameA, FileNameB, SameTimestamp, !IO) :-
         SameTimestamp = no
     ).
 
-shared_libraries_supported(Supported, !IO) :-
+shared_libraries_supported(Globals, Supported) :-
     % XXX This seems to be the standard way to check whether shared libraries
     % are supported but it's not very nice.
-    globals.io_lookup_string_option(library_extension, LibExt, !IO),
-    globals.io_lookup_string_option(shared_library_extension, SharedLibExt,
-        !IO),
+    globals.lookup_string_option(Globals, library_extension, LibExt),
+    globals.lookup_string_option(Globals, shared_library_extension,
+        SharedLibExt),
     Supported = (if LibExt \= SharedLibExt then yes else no).
 
 %-----------------------------------------------------------------------------%
 
-:- pred process_link_library(list(dir_name)::in, string::in, string::out,
-    bool::in, bool::out, io::di, io::uo) is det.
+:- pred process_link_library(globals::in, list(dir_name)::in, string::in,
+    string::out, bool::in, bool::out, io::di, io::uo) is det.
 
-process_link_library(MercuryLibDirs, LibName, LinkerOpt, !Succeeded, !IO) :-
-    globals.io_lookup_string_option(mercury_linkage, MercuryLinkage, !IO),
-    globals.io_lookup_accumulating_option(mercury_libraries, MercuryLibs,
-        !IO),
+process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
+        !IO) :-
+    globals.lookup_string_option(Globals, mercury_linkage, MercuryLinkage),
+    globals.lookup_accumulating_option(Globals, mercury_libraries,
+        MercuryLibs),
     (
         MercuryLinkage = "static",
         list.member(LibName, MercuryLibs)
     ->
         % If we are linking statically with Mercury libraries, pass the
         % absolute pathname of the `.a' file for the library.
-        globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
-
         file_name_to_module_name(LibName, LibModuleName),
-        globals.io_lookup_string_option(library_extension, LibExt, !IO),
+        globals.lookup_string_option(Globals, library_extension, LibExt),
 
-        globals.io_set_option(use_grade_subdirs, bool(no), !IO),
-        module_name_to_lib_file_name("lib", LibModuleName, LibExt,
-            do_not_create_dirs, LibFileName, !IO),
-        globals.io_set_option(use_grade_subdirs, bool(UseGradeSubdirs), !IO),
+        globals.set_option(use_grade_subdirs, bool(no),
+            Globals, NoSubDirGlobals),
+        module_name_to_lib_file_name(NoSubDirGlobals, "lib", LibModuleName,
+            LibExt, do_not_create_dirs, LibFileName, !IO),
 
         search_for_file_returning_dir(do_not_open_file, MercuryLibDirs,
             LibFileName, SearchResult, !IO),
@@ -2310,17 +2333,18 @@ process_link_library(MercuryLibDirs, LibName, LinkerOpt, !Succeeded, !IO) :-
         LinkerOpt = "-l" ++ LibName
     ).
 
-:- pred create_archive(io.output_stream::in, file_name::in, bool::in,
-    list(file_name)::in, bool::out, io::di, io::uo) is det.
+:- pred create_archive(globals::in, io.output_stream::in, file_name::in,
+    bool::in, list(file_name)::in, bool::out, io::di, io::uo) is det.
 
-create_archive(ErrorStream, LibFileName, Quote, ObjectList, Succeeded, !IO) :-
-    globals.io_lookup_string_option(create_archive_command, ArCmd, !IO),
-    globals.io_lookup_accumulating_option(create_archive_command_flags,
-        ArFlagsList, !IO),
+create_archive(Globals, ErrorStream, LibFileName, Quote, ObjectList,
+        Succeeded, !IO) :-
+    globals.lookup_string_option(Globals, create_archive_command, ArCmd),
+    globals.lookup_accumulating_option(Globals, create_archive_command_flags,
+        ArFlagsList),
     join_string_list(ArFlagsList, "", "", " ", ArFlags),
-    globals.io_lookup_string_option(create_archive_command_output_flag,
-        ArOutputFlag, !IO),
-    globals.io_lookup_string_option(ranlib_command, RanLib, !IO),
+    globals.lookup_string_option(Globals, create_archive_command_output_flag,
+        ArOutputFlag),
+    globals.lookup_string_option(Globals, ranlib_command, RanLib),
     (
         Quote = yes,
         join_quoted_string_list(ObjectList, "", "", " ", Objects)
@@ -2336,7 +2360,7 @@ create_archive(ErrorStream, LibFileName, Quote, ObjectList, Succeeded, !IO) :-
         ArFlags, " ", ArOutputFlag, " ",
         LibFileName, " ", Objects]),
 
-    invoke_long_system_command(ErrorStream, cmd_verbose_commands,
+    invoke_long_system_command(Globals, ErrorStream, cmd_verbose_commands,
         ArCmd, MakeLibCmdArgs, MakeLibCmdSucceeded, !IO),
 
     (
@@ -2347,17 +2371,19 @@ create_archive(ErrorStream, LibFileName, Quote, ObjectList, Succeeded, !IO) :-
         Succeeded = MakeLibCmdSucceeded
     ;
         RanLibCmd = string.append_list([RanLib, " ", LibFileName]),
-        invoke_system_command(ErrorStream, cmd_verbose_commands, RanLibCmd,
-            Succeeded, !IO)
+        invoke_system_command(Globals, ErrorStream, cmd_verbose_commands,
+            RanLibCmd, Succeeded, !IO)
     ).
 
-:- pred create_java_archive(io.output_stream::in, file_name::in,
+:- pred create_java_archive(globals::in, io.output_stream::in, file_name::in,
     list(file_name)::in, bool::out, io::di, io::uo) is det.
 
-create_java_archive(ErrorStream, JarFileName, ObjectList, Succeeded, !IO) :-
-    globals.io_lookup_string_option(java_archive_command, Jar, !IO),
+create_java_archive(Globals, ErrorStream, JarFileName, ObjectList, Succeeded,
+        !IO) :-
+    globals.lookup_string_option(Globals, java_archive_command, Jar),
 
-    list_class_files_for_jar(ObjectList, ClassSubDir, ListClassFiles, !IO),
+    list_class_files_for_jar(Globals, ObjectList, ClassSubDir, ListClassFiles,
+        !IO),
     (
         ListClassFiles = [],
         unexpected(this_file, "empty list of .class files")
@@ -2378,7 +2404,7 @@ create_java_archive(ErrorStream, JarFileName, ObjectList, Succeeded, !IO) :-
 
         Cmd = string.append_list(
             [Jar, " cf ", JarFileName, " @", TempFileName]),
-        invoke_system_command(ErrorStream, cmd_verbose_commands, Cmd,
+        invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Cmd,
             Succeeded, !IO),
         io.remove_file(TempFileName, _, !IO),
 
@@ -2386,8 +2412,8 @@ create_java_archive(ErrorStream, JarFileName, ObjectList, Succeeded, !IO) :-
             Succeeded = yes,
             % Add an index, which is supposed to speed up class loading.
             IndexCmd = string.append_list([Jar, " i ", JarFileName]),
-            invoke_system_command(ErrorStream, cmd_verbose_commands, IndexCmd,
-                _, !IO)
+            invoke_system_command(Globals, ErrorStream, cmd_verbose_commands,
+                IndexCmd, _, !IO)
         ;
             Succeeded = no,
             io.remove_file(JarFileName, _, !IO)
@@ -2421,17 +2447,18 @@ write_jar_class_argument(Stream, ClassSubDir, ClassFileName, !IO) :-
     % Create an "Erlang archive", which is simply a directory containing
     % `.beam' files.
     %
-:- pred create_erlang_archive(io.output_stream::in, module_name::in,
-    file_name::in, list(file_name)::in, bool::out, io::di, io::uo) is det.
+:- pred create_erlang_archive(globals::in, io.output_stream::in,
+    module_name::in, file_name::in, list(file_name)::in, bool::out,
+    io::di, io::uo) is det.
 
-create_erlang_archive(ErrorStream, _ModuleName, ErlangArchiveFileName,
+create_erlang_archive(Globals, ErrorStream, _ModuleName, ErlangArchiveFileName,
         ObjectList, Succeeded, !IO) :-
     % Delete anything in the way first.
     io.remove_file_recursively(ErlangArchiveFileName, _, !IO),
     dir.make_directory(ErlangArchiveFileName, Res, !IO),
     (
         Res = ok,
-        copy_erlang_archive_files(ErrorStream, ErlangArchiveFileName,
+        copy_erlang_archive_files(Globals, ErrorStream, ErlangArchiveFileName,
             ObjectList, Succeeded, !IO)
     ;
         Res = error(Error),
@@ -2443,17 +2470,18 @@ create_erlang_archive(ErrorStream, _ModuleName, ErlangArchiveFileName,
         Succeeded = no
     ).
 
-:- pred copy_erlang_archive_files(io.output_stream::in, file_name::in,
-    list(file_name)::in, bool::out, io::di, io::uo) is det.
+:- pred copy_erlang_archive_files(globals::in, io.output_stream::in,
+    file_name::in, list(file_name)::in, bool::out, io::di, io::uo) is det.
 
-copy_erlang_archive_files(_ErrorStream, _ErlangArchiveFileName, [], yes, !IO).
-copy_erlang_archive_files(ErrorStream, ErlangArchiveFileName, [Obj | Objs],
-        Succeeded, !IO) :-
-    copy_file(Obj, ErlangArchiveFileName, Res, !IO),
+copy_erlang_archive_files(_Globals, _ErrorStream, _ErlangArchiveFileName,
+        [], yes, !IO).
+copy_erlang_archive_files(Globals, ErrorStream, ErlangArchiveFileName,
+        [Obj | Objs], Succeeded, !IO) :-
+    copy_file(Globals, Obj, ErlangArchiveFileName, Res, !IO),
     (
         Res = ok,
-        copy_erlang_archive_files(ErrorStream, ErlangArchiveFileName, Objs,
-            Succeeded, !IO)
+        copy_erlang_archive_files(Globals, ErrorStream, ErlangArchiveFileName,
+            Objs, Succeeded, !IO)
     ;
         Res = error(Error),
         io.write_string(ErrorStream, "Error copying `", !IO),
@@ -2466,16 +2494,17 @@ copy_erlang_archive_files(ErrorStream, ErlangArchiveFileName, [Obj | Objs],
 
 %-----------------------------------------------------------------------------%
 
-get_object_code_type(FileType, ObjectCodeType, !IO) :-
-    globals.io_lookup_string_option(pic_object_file_extension, PicObjExt, !IO),
-    globals.io_lookup_string_option(link_with_pic_object_file_extension,
-        LinkWithPicObjExt, !IO),
-    globals.io_lookup_string_option(object_file_extension, ObjExt, !IO),
-    globals.io_lookup_string_option(mercury_linkage, MercuryLinkage, !IO),
-    globals.io_lookup_bool_option(gcc_global_registers, GCCGlobals, !IO),
-    globals.io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
-    globals.io_lookup_bool_option(pic, PIC, !IO),
-    globals.io_get_target(Target, !IO),
+get_object_code_type(Globals, FileType, ObjectCodeType) :-
+    globals.lookup_string_option(Globals, pic_object_file_extension,
+        PicObjExt),
+    globals.lookup_string_option(Globals, link_with_pic_object_file_extension,
+        LinkWithPicObjExt),
+    globals.lookup_string_option(Globals, object_file_extension, ObjExt),
+    globals.lookup_string_option(Globals, mercury_linkage, MercuryLinkage),
+    globals.lookup_bool_option(Globals, gcc_global_registers, GCCGlobals),
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    globals.lookup_bool_option(Globals, pic, PIC),
+    globals.get_target(Globals, Target),
     (
         PIC = yes,
         % We've been explicitly told to use position independent code.
@@ -2520,15 +2549,26 @@ get_object_code_type(FileType, ObjectCodeType, !IO) :-
         )
     ).
 
+get_linked_target_type(Globals, LinkedTargetType) :-
+    globals.lookup_bool_option(Globals, compile_to_shared_lib, MakeSharedLib),
+    (
+        MakeSharedLib = yes,
+        LinkedTargetType = shared_library
+    ;
+        MakeSharedLib = no,
+        LinkedTargetType = executable
+    ).
+
 %-----------------------------------------------------------------------------%
 
-:- pred standard_library_directory_option(string::out, io::di, io::uo) is det.
+:- pred standard_library_directory_option(globals::in, string::out,
+    io::di, io::uo) is det.
 
-standard_library_directory_option(Opt, !IO) :-
-    globals.io_lookup_maybe_string_option(mercury_standard_library_directory,
-        MaybeStdLibDir, !IO),
-    globals.io_lookup_maybe_string_option(mercury_configuration_directory,
-        MaybeConfDir, !IO),
+standard_library_directory_option(Globals, Opt, !IO) :-
+    globals.lookup_maybe_string_option(Globals,
+        mercury_standard_library_directory, MaybeStdLibDir),
+    globals.lookup_maybe_string_option(Globals,
+        mercury_configuration_directory, MaybeConfDir),
     (
         MaybeStdLibDir = yes(StdLibDir),
         Opt0 = "--mercury-standard-library-directory " ++ StdLibDir ++ " ",
@@ -2579,7 +2619,7 @@ join_quoted_string_list(Strings, Prefix, Suffix, Separator, Result) :-
     join_string_list(map(quote_arg, Strings), Prefix, Suffix, Separator,
         Result).
 
-    % join_module_list(ModuleNames, Extension, Result):
+    % join_module_list(Globals, ModuleNames, Extension, Result, !IO):
     %
     % The list of strings `Result' is computed from the list of strings
     % `ModuleNames', by removing any directory paths, and converting the
@@ -2587,24 +2627,26 @@ join_quoted_string_list(Strings, Prefix, Suffix, Separator, Result) :-
     % (This conversion ensures that we follow the usual file naming
     % conventions.)
     %
-:- pred join_module_list(list(string)::in, string::in, list(string)::out,
-    io::di, io::uo) is det.
+:- pred join_module_list(globals::in, list(string)::in, string::in,
+    list(string)::out, io::di, io::uo) is det.
 
-join_module_list([], _Extension, [], !IO).
-join_module_list([Module | Modules], Extension, [FileName | Rest], !IO) :-
+join_module_list(_Globals, [], _Extension, [], !IO).
+join_module_list(Globals, [Module | Modules], Extension,
+        [FileName | FileNames], !IO) :-
     file_name_to_module_name(dir.basename_det(Module), ModuleName),
-    module_name_to_file_name(ModuleName, Extension, do_not_create_dirs,
-        FileName, !IO),
-    join_module_list(Modules, Extension, Rest, !IO).
+    module_name_to_file_name(Globals, ModuleName, Extension,
+        do_not_create_dirs, FileName, !IO),
+    join_module_list(Globals, Modules, Extension, FileNames, !IO).
 
 %-----------------------------------------------------------------------------%
 
-make_all_module_command(Command0, MainModule, AllModules, Command, !IO) :-
+make_all_module_command(Globals, Command0, MainModule, AllModules, Command,
+        !IO) :-
     % Pass the main module first.
     list.map_foldl(
         (pred(Module::in, FileName::out, IO0::di, IO::uo) is det :-
-            module_name_to_file_name(Module, ".m", do_not_create_dirs,
-                FileName, IO0, IO)
+            module_name_to_file_name(Globals, Module, ".m",
+                do_not_create_dirs, FileName, IO0, IO)
         ),
         [MainModule | list.delete_all(AllModules, MainModule)],
         ModuleNameStrings, !IO),
@@ -2629,9 +2671,9 @@ maybe_pic_object_file_extension(Globals::in, PIC::in, Ext::out) :-
     ).
 maybe_pic_object_file_extension(Globals::in, PIC::out, Ext::in) :-
     (
-        % This test must come first -- if the architecture doesn't
-        % need special treatment for PIC, we should always return
-        % `non_pic'.  `mmc --make' depends on this.
+        % This test must come first -- if the architecture doesn't need
+        % special treatment for PIC, we should always return `non_pic'.
+        % `mmc --make' depends on this.
         globals.lookup_string_option(Globals, object_file_extension, Ext)
     ->
         PIC = non_pic
@@ -2648,10 +2690,6 @@ maybe_pic_object_file_extension(Globals::in, PIC::out, Ext::in) :-
         fail
     ).
 
-maybe_pic_object_file_extension(PIC, ObjExt, !IO) :-
-    globals.io_get_globals(Globals, !IO),
-    maybe_pic_object_file_extension(Globals, PIC, ObjExt).
-
 %-----------------------------------------------------------------------------%
 %
 % Standalone interfaces
@@ -2660,11 +2698,11 @@ maybe_pic_object_file_extension(PIC, ObjExt, !IO) :-
 % NOTE: the following code is similar to that of make_init_obj/7.  Any
 % changes here may need to be reflected there.
 
-make_standalone_interface(Basename, !IO) :-
+make_standalone_interface(Globals, Basename, !IO) :-
     make_standalone_int_header(Basename, HdrSucceeded, !IO),
     (
         HdrSucceeded = yes,
-        make_standalone_int_body(Basename, !IO)
+        make_standalone_int_body(Globals, Basename, !IO)
     ;
         HdrSucceeded = no
     ).
@@ -2705,10 +2743,10 @@ make_standalone_int_header(Basename, Succeeded, !IO) :-
         Succeeded = no
     ).
 
-:- pred make_standalone_int_body(string::in, io::di, io::uo) is det.
+:- pred make_standalone_int_body(globals::in, string::in, io::di, io::uo)
+    is det.
 
-make_standalone_int_body(Basename, !IO) :-
-    globals.io_get_globals(Globals, !IO),
+make_standalone_int_body(Globals, Basename, !IO) :-
     globals.lookup_accumulating_option(Globals, init_files, InitFiles0),
     % See the similar code in make_init_target_file for an explanation
     % of why we must remove duplicates from this list.
@@ -2761,8 +2799,8 @@ make_standalone_int_body(Basename, !IO) :-
     globals.lookup_accumulating_option(Globals, runtime_flags,
         RuntimeFlagsList),
     join_quoted_string_list(RuntimeFlagsList, "-r ", "", " ", RuntimeFlags),
-    globals.io_lookup_accumulating_option(init_file_directories,
-        InitFileDirsList, !IO),
+    globals.lookup_accumulating_option(Globals, init_file_directories,
+        InitFileDirsList),
     join_quoted_string_list(InitFileDirsList, "-I ", "", " ", InitFileDirs),
     globals.lookup_string_option(Globals, experimental_complexity,
         ExperimentalComplexity),
@@ -2785,15 +2823,15 @@ make_standalone_int_body(Basename, !IO) :-
             " -s "
         ]),
 
-    invoke_mkinit(ErrorStream, cmd_verbose_commands,
+    invoke_mkinit(Globals, ErrorStream, cmd_verbose_commands,
         MkInit, MkInitArgs, InitFiles, MkInitCmdOk, !IO),
     (
         MkInitCmdOk = yes,
-        get_object_code_type(executable, PIC, !IO),
-        maybe_pic_object_file_extension(PIC, ObjExt, !IO),
+        get_object_code_type(Globals, executable, PIC),
+        maybe_pic_object_file_extension(Globals, PIC, ObjExt),
         ObjFileName = Basename ++ ObjExt,
-        compile_c_file(ErrorStream, PIC, CFileName, ObjFileName,
-            CompileOk, !IO),
+        do_compile_c_file(ErrorStream, PIC, CFileName, ObjFileName,
+            Globals, CompileOk, !IO),
         (
             CompileOk = yes
         ;
@@ -2822,42 +2860,40 @@ make_standalone_int_body(Basename, !IO) :-
     % the normal invoke_system_command and hopes the command isn't too
     % long.
     %
-:- pred invoke_long_system_command(io.output_stream::in,
-    command_verbosity::in, string::in, string::in,
-    bool::out, io::di, io::uo) is det.
+:- pred invoke_long_system_command(globals::in, io.output_stream::in,
+    command_verbosity::in, string::in, string::in, bool::out, io::di, io::uo)
+    is det.
 
-invoke_long_system_command(ErrorStream, Verbosity, Cmd, Args, Succeeded, !IO) :-
-    invoke_long_system_command_maybe_filter_output(ErrorStream, Verbosity,
-        Cmd, Args, no, Succeeded, !IO).
+invoke_long_system_command(Globals, ErrorStream, Verbosity, Cmd, Args,
+        Succeeded, !IO) :-
+    invoke_long_system_command_maybe_filter_output(Globals, ErrorStream,
+        Verbosity, Cmd, Args, no, Succeeded, !IO).
 
-:- pred invoke_long_system_command_maybe_filter_output(io.output_stream::in,
-    command_verbosity::in, string::in, string::in, maybe(string)::in,
-    bool::out, io::di, io::uo) is det.
+:- pred invoke_long_system_command_maybe_filter_output(globals::in,
+    io.output_stream::in, command_verbosity::in, string::in, string::in,
+    maybe(string)::in, bool::out, io::di, io::uo) is det.
 
-invoke_long_system_command_maybe_filter_output(ErrorStream, Verbosity,
+invoke_long_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
         Cmd, Args, MaybeProcessOutput, Succeeded, !IO) :-
-    globals.io_lookup_bool_option(restricted_command_line,
-        RestrictedCommandLine, !IO),
-
+    globals.lookup_bool_option(Globals, restricted_command_line,
+        RestrictedCommandLine),
     (
         RestrictedCommandLine = yes,
 
-        %
-        % Avoid generating very long command lines by using @files
-        %
+        % Avoid generating very long command lines by using @files.
         io.make_temp(TmpFile, !IO),
         io.open_output(TmpFile, OpenResult, !IO),
         (
             OpenResult = ok(TmpStream),
 
-            % We need to escape any \ before writing them to
-            % the file, otherwise we lose them
+            % We need to escape any \ before writing them to the file,
+            % otherwise we lose them.
             TmpFileArgs = string.replace_all(Args, "\\", "\\\\"),
 
             io.write_string(TmpStream, TmpFileArgs, !IO),
             io.close_output(TmpStream, !IO),
 
-            globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+            globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
             (
                 VeryVerbose = yes,
                 io.write_string("% Args placed in @" ++ TmpFile ++ ": `", !IO),
@@ -2868,9 +2904,9 @@ invoke_long_system_command_maybe_filter_output(ErrorStream, Verbosity,
                 VeryVerbose = no
             ),
 
-            FullCmd = string.append_list([Cmd, " @", TmpFile]),
-            invoke_system_command(ErrorStream, Verbosity,
-                FullCmd, Succeeded0, !IO),
+            FullCmd = Cmd ++ " @" ++ TmpFile,
+            invoke_system_command(Globals, ErrorStream, Verbosity, FullCmd,
+                Succeeded0, !IO),
 
             io.remove_file(TmpFile, RemoveResult, !IO),
             (
@@ -2888,42 +2924,40 @@ invoke_long_system_command_maybe_filter_output(ErrorStream, Verbosity,
     ;
         RestrictedCommandLine = no,
         FullCmd = Cmd ++ " " ++ Args,
-        invoke_system_command_maybe_filter_output(ErrorStream, Verbosity,
-            FullCmd, MaybeProcessOutput, Succeeded, !IO)
+        invoke_system_command_maybe_filter_output(Globals, ErrorStream,
+            Verbosity, FullCmd, MaybeProcessOutput, Succeeded, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
 %
-% C compiler flags
+% C compiler flags.
 %
 
-output_c_compiler_flags(Stream, !IO) :-
-    get_object_code_type(executable, PIC, !IO),
-    gather_c_compiler_flags(PIC, CFlags, !IO),
+output_c_compiler_flags(Globals, Stream, !IO) :-
+    get_object_code_type(Globals, executable, PIC),
+    gather_c_compiler_flags(Globals, PIC, CFlags),
     io.write_string(Stream, CFlags, !IO).    
 
 %-----------------------------------------------------------------------------%
 %
-% Library link flags
+% Library link flags.
 %
 
-output_library_link_flags(Stream, !IO) :-
-    
+output_library_link_flags(Globals, Stream, !IO) :-
     % We output the library link flags as they are for when we are linking
     % an executable.
     LinkTargetType = executable,
     RpathFlagOpt = linker_rpath_flag,
     RpathSepOpt = linker_rpath_separator,
     
-    globals.io_lookup_accumulating_option(link_library_directories,
-        LinkLibraryDirectoriesList, !IO),
-    globals.io_lookup_string_option(linker_path_flag, LinkerPathFlag,
-        !IO),
+    globals.lookup_accumulating_option(Globals, link_library_directories,
+        LinkLibraryDirectoriesList),
+    globals.lookup_string_option(Globals, linker_path_flag, LinkerPathFlag),
     join_quoted_string_list(LinkLibraryDirectoriesList, LinkerPathFlag, "",
         " ", LinkLibraryDirectories),
-    get_runtime_library_path_opts(LinkTargetType, RpathFlagOpt, RpathSepOpt,
-        RpathOpts, !IO), 
-    get_link_libraries(MaybeLinkLibraries, !IO),
+    get_runtime_library_path_opts(Globals, LinkTargetType,
+        RpathFlagOpt, RpathSepOpt, RpathOpts), 
+    get_link_libraries(Globals, MaybeLinkLibraries, !IO),
     (   
         MaybeLinkLibraries = yes(LinkLibrariesList),
         join_quoted_string_list(LinkLibrariesList, "", "", " ",
@@ -2933,8 +2967,8 @@ output_library_link_flags(Stream, !IO) :-
         LinkLibraries = ""
     ),
     % Find the Mercury standard libraries.
-    get_mercury_std_libs(LinkTargetType, MercuryStdLibs, !IO),
-    get_system_libs(LinkTargetType, SystemLibs, !IO),
+    get_mercury_std_libs(Globals, LinkTargetType, MercuryStdLibs),
+    get_system_libs(Globals, LinkTargetType, SystemLibs),
     string.append_list([
         LinkLibraryDirectories, " ",
         RpathOpts, " ",

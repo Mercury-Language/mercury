@@ -66,12 +66,6 @@
 :- pred output_c_file(mlds::in, globals::in, string::in, io::di, io::uo)
     is det.
 
-    % Output an MLDS context in C #line format.
-    % This is useful for other foreign language interfaces such as
-    % managed extensions for C++.
-    %
-:- pred output_context(mlds_context::in, io::di, io::uo) is det.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -127,15 +121,20 @@
 
     % This type concentrates the values of all the options that this module
     % needs, in a form that can be looked up much more quickly than by calling
-    % lookup_bool_option. Each field is named after the option whose value
-    % it holds, with the exception of m2co_need_to_init, which is set to `yes'
-    % if any of the profile_calls, profile_memory and profile_time fields
-    % is `yes'.
+    % lookup_bool_option.
     %
-    % This last is because we need to output calls to MR_init_entry if any form
-    % of profiling is enabled. (It would be OK to output the calls regardless,
+    % Each field in the first batch of fields is named after the option
+    % whose value it holds.
+    %
+    % m2co_need_to_init is set to `yes' if any of the profile_calls,
+    % profile_memory and profile_time fields is `yes'. This is because
+    % we need to output calls to MR_init_entry if any form of profiling
+    % is enabled. (It would be OK to output the calls regardless,
     % since they will macro-expand to nothing if profiling is not enabled,
     % but for readability of the generated code we prefer not to.)
+    %
+    % m2co_std_func_decl is `yes' if want to use standard argument names
+    % in function declarations.
     %
 :- type mlds_to_c_opts
     --->    mlds_to_c_opts(
@@ -147,9 +146,15 @@
                 m2co_profile_calls          :: bool,
                 m2co_profile_memory         :: bool,
                 m2co_profile_time           :: bool,
+
                 m2co_need_to_init           :: bool,
+
                 m2co_target                 :: compilation_target,
-                m2co_std_func_decl          :: bool
+                m2co_gc_method              :: gc_method,
+
+                m2co_std_func_decl          :: bool,
+
+                m2co_all_globals            :: globals
             ).
 
 :- func init_mlds_to_c_opts(globals) = mlds_to_c_opts.
@@ -174,10 +179,11 @@ init_mlds_to_c_opts(Globals) = Opts :-
         ProfileAny = no
     ),
     globals.get_target(Globals, Target),
+    globals.get_gc_method(Globals, GCMethod),
     StdFuncDecls = no,
     Opts = mlds_to_c_opts(LineNumbers, Comments, GccLabels, GccNested,
         HighLevelData, ProfileCalls, ProfileMemory, ProfileTime, ProfileAny,
-        Target, StdFuncDecls).
+        Target, GCMethod, StdFuncDecls, Globals).
 
 output_c_mlds(MLDS, Globals, Suffix, !IO) :-
     % We output the source file before outputting the header, since the Mmake
@@ -201,10 +207,12 @@ output_c_file(MLDS, Globals, Suffix, !IO) :-
 
 output_c_file_opts(MLDS, Opts, Suffix, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
-    module_name_to_file_name(ModuleName, ".c" ++ Suffix, do_create_dirs,
-        SourceFile, !IO),
+    Globals = Opts ^ m2co_all_globals,
+    module_name_to_file_name(Globals, ModuleName, ".c" ++ Suffix,
+        do_create_dirs, SourceFile, !IO),
     Indent = 0,
-    output_to_file(SourceFile, mlds_output_src_file(Opts, Indent, MLDS), !IO).
+    output_to_file(Globals, SourceFile,
+        mlds_output_src_file(Opts, Indent, MLDS), !IO).
 
 output_c_header_file(MLDS, Globals, Suffix, !IO) :-
     Opts = init_mlds_to_c_opts(Globals),
@@ -220,14 +228,15 @@ output_c_header_file_opts(MLDS, Opts, Suffix, !IO) :-
     % changed.
 
     ModuleName = mlds_get_module_name(MLDS),
-    module_name_to_file_name(ModuleName, ".mih" ++ Suffix ++ ".tmp",
+    Globals = Opts ^ m2co_all_globals,
+    module_name_to_file_name(Globals, ModuleName, ".mih" ++ Suffix ++ ".tmp",
         do_create_dirs, TmpHeaderFile, !IO),
-    module_name_to_file_name(ModuleName, ".mih" ++ Suffix,
+    module_name_to_file_name(Globals, ModuleName, ".mih" ++ Suffix,
         do_create_dirs, HeaderFile, !IO),
     Indent = 0,
-    output_to_file(TmpHeaderFile, mlds_output_hdr_file(Opts, Indent, MLDS),
-        !IO),
-    update_interface(HeaderFile, !IO).
+    output_to_file(Globals, TmpHeaderFile,
+        mlds_output_hdr_file(Opts, Indent, MLDS), !IO),
+    update_interface(Globals, HeaderFile, !IO).
 
 :- pred mlds_output_hdr_file(mlds_to_c_opts::in, indent::in, mlds::in,
     io::di, io::uo) is det.
@@ -239,16 +248,16 @@ mlds_output_hdr_file(Opts, Indent, MLDS, !IO) :-
         _ScalarCellGroupMap, _VectorCellGroupMap, GlobalDefns),
     Defns = GlobalDefns ++ PlainDefns,
 
-    mlds_output_hdr_start(Indent, ModuleName, !IO),
+    mlds_output_hdr_start(Opts, Indent, ModuleName, !IO),
     io.nl(!IO),
     mlds_output_hdr_imports(Indent, Imports, !IO),
     io.nl(!IO),
 
     % Get the foreign code for C
     ForeignCode = mlds_get_c_foreign_code(AllForeignCode),
-    mlds_output_c_hdr_decls(MLDS_ModuleName, Indent, ForeignCode, !IO),
+    mlds_output_c_hdr_decls(Opts, Indent, MLDS_ModuleName, ForeignCode, !IO),
     io.nl(!IO),
-    mlds_output_export_enums(ExportEnums, Indent, !IO),
+    mlds_output_export_enums(Opts, Indent, ExportEnums, !IO),
     io.nl(!IO),
 
     % The header file must contain _definitions_ of all public types, but only
@@ -271,7 +280,7 @@ mlds_output_hdr_file(Opts, Indent, MLDS, !IO) :-
     io.nl(!IO),
     mlds_output_init_fn_decls(MLDS_ModuleName, InitPreds, FinalPreds, !IO),
     io.nl(!IO),
-    mlds_output_hdr_end(Indent, ModuleName, !IO).
+    mlds_output_hdr_end(Opts, Indent, ModuleName, !IO).
 
 :- pred mlds_output_hdr_imports(indent::in, mlds_imports::in,
     io::di, io::uo) is det.
@@ -280,11 +289,11 @@ mlds_output_hdr_file(Opts, Indent, MLDS, !IO) :-
 % file does not depend on any types defined in other header files.
 mlds_output_hdr_imports(_Indent, _Imports, !IO).
 
-:- pred mlds_output_src_imports(indent::in, mlds_imports::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_src_imports(mlds_to_c_opts::in, indent::in,
+    mlds_imports::in, io::di, io::uo) is det.
 
-mlds_output_src_imports(Indent, Imports, !IO) :-
-    globals.io_get_target(Target, !IO),
+mlds_output_src_imports(Opts, Indent, Imports, !IO) :-
+    Target = Opts ^ m2co_target,
     (
         Target = target_asm
         % For --target asm, we don't create the header files for modules that
@@ -296,7 +305,7 @@ mlds_output_src_imports(Indent, Imports, !IO) :-
         % `pragma foreign_export') may not have been declared.
     ;
         Target = target_c,
-        list.foldl(mlds_output_src_import(Indent), Imports, !IO)
+        list.foldl(mlds_output_src_import(Opts, Indent), Imports, !IO)
     ;
         ( Target = target_java
         ; Target = target_il
@@ -306,10 +315,10 @@ mlds_output_src_imports(Indent, Imports, !IO) :-
         unexpected(this_file, "expected target asm or target c")
     ).
 
-:- pred mlds_output_src_import(indent::in, mlds_import::in,
+:- pred mlds_output_src_import(mlds_to_c_opts::in, indent::in, mlds_import::in,
     io::di, io::uo) is det.
 
-mlds_output_src_import(_Indent, Import, !IO) :-
+mlds_output_src_import(Opts, _Indent, Import, !IO) :-
     (
         Import = mercury_import(ImportType, ImportName),
         ModuleName0 = mlds_module_name_to_sym_name(ImportName),
@@ -335,7 +344,9 @@ mlds_output_src_import(_Indent, Import, !IO) :-
         HeaderExt = ".dll"
     ),
 
-    module_name_to_search_file_name(ModuleName, HeaderExt, HeaderFile, !IO),
+    Globals = Opts ^ m2co_all_globals,
+    module_name_to_search_file_name(Globals, ModuleName, HeaderExt, HeaderFile,
+        !IO),
     io.write_strings(["#include """, HeaderFile, """\n"], !IO).
 
     % Generate the `.c' file.
@@ -359,13 +370,13 @@ mlds_output_src_file(Opts, Indent, MLDS, !IO) :-
     ForeignCode = mlds_get_c_foreign_code(AllForeignCode),
     EnvVarNameSet = mlds_get_env_var_names(PlainDefns),
     set.to_sorted_list(EnvVarNameSet, EnvVarNames),
-    mlds_output_src_start(Indent, ModuleName, ForeignCode,
+    mlds_output_src_start(Opts, Indent, ModuleName, ForeignCode,
         InitPreds, FinalPreds, EnvVarNames, !IO),
     io.nl(!IO),
-    mlds_output_src_imports(Indent, Imports, !IO),
+    mlds_output_src_imports(Opts, Indent, Imports, !IO),
     io.nl(!IO),
 
-    mlds_output_c_decls(Indent, ForeignCode, !IO),
+    mlds_output_c_decls(Opts, Indent, ForeignCode, !IO),
     io.nl(!IO),
 
     list.foldl(mlds_output_env_var_decl, EnvVarNames, !IO),
@@ -449,11 +460,11 @@ mlds_output_env_var_decl(EnvVarName, !IO) :-
     io.write_string(global_var_name(env_var_ref(EnvVarName)), !IO),
     io.write_string(";\n", !IO).
 
-:- pred mlds_output_hdr_start(indent::in, mercury_module_name::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_hdr_start(mlds_to_c_opts::in, indent::in,
+    mercury_module_name::in, io::di, io::uo) is det.
 
-mlds_output_hdr_start(Indent, ModuleName, !IO) :-
-    mlds_output_auto_gen_comment(ModuleName, !IO),
+mlds_output_hdr_start(Opts, Indent, ModuleName, !IO) :-
+    mlds_output_auto_gen_comment(Opts, ModuleName, !IO),
     mlds_indent(Indent, !IO),
     io.write_string("/* :- module ", !IO),
     prog_out.write_sym_name(ModuleName, !IO),
@@ -476,7 +487,7 @@ mlds_output_hdr_start(Indent, ModuleName, !IO) :-
     % `extern "C"' wrapper around the header file, so that the header file
     % can be #included by C++ programs.
 
-    globals.io_get_target(Target, !IO),
+    Target = Opts ^ m2co_target,
     (
         Target = target_c,
         mlds_indent(Indent, !IO),
@@ -497,13 +508,14 @@ mlds_output_hdr_start(Indent, ModuleName, !IO) :-
     mlds_indent(Indent, !IO),
     io.write_string("#include ""mercury.h""\n", !IO).
 
-:- pred mlds_output_src_start(indent::in, mercury_module_name::in,
-    mlds_foreign_code::in, list(string)::in, list(string)::in,
-    list(string)::in, io::di, io::uo) is det.
+:- pred mlds_output_src_start(mlds_to_c_opts::in, indent::in,
+    mercury_module_name::in, mlds_foreign_code::in,
+    list(string)::in, list(string)::in, list(string)::in,
+    io::di, io::uo) is det.
 
-mlds_output_src_start(Indent, ModuleName, ForeignCode, InitPreds, FinalPreds,
-        EnvVarNames, !IO) :-
-    mlds_output_auto_gen_comment(ModuleName, !IO),
+mlds_output_src_start(Opts, Indent, ModuleName, ForeignCode,
+        InitPreds, FinalPreds, EnvVarNames, !IO) :-
+    mlds_output_auto_gen_comment(Opts, ModuleName, !IO),
     mlds_indent(Indent, !IO),
     io.write_string("/* :- module ", !IO),
     prog_out.write_sym_name(ModuleName, !IO),
@@ -515,7 +527,7 @@ mlds_output_src_start(Indent, ModuleName, ForeignCode, InitPreds, FinalPreds,
     mlds_output_init_and_final_comments(ModuleName, InitPreds, FinalPreds,
         EnvVarNames, !IO),
 
-    mlds_output_src_import(Indent,
+    mlds_output_src_import(Opts, Indent,
         mercury_import(compiler_visible_interface,
             mercury_module_name_to_mlds(ModuleName)), !IO),
 
@@ -524,7 +536,7 @@ mlds_output_src_start(Indent, ModuleName, ForeignCode, InitPreds, FinalPreds,
     ( ForeignCode = mlds_foreign_code(_, _, _, []) ->
         true
     ;
-        mlds_output_src_import(Indent,
+        mlds_output_src_import(Opts, Indent,
             mercury_import(user_visible_interface,
                 mercury_module_name_to_mlds(ModuleName)), !IO)
     ),
@@ -582,11 +594,11 @@ mlds_output_env_var_init(EnvVarName, !IO) :-
 
 mlds_output_src_bootstrap_defines(!IO).
 
-:- pred mlds_output_hdr_end(indent::in, mercury_module_name::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_hdr_end(mlds_to_c_opts::in, indent::in,
+    mercury_module_name::in, io::di, io::uo) is det.
 
-mlds_output_hdr_end(Indent, ModuleName, !IO) :-
-    globals.io_get_target(Target, !IO),
+mlds_output_hdr_end(Opts, Indent, ModuleName, !IO) :-
+    Target = Opts ^ m2co_target,
     (
         Target = target_c,
         % Terminate the `extern "C"' wrapper.
@@ -627,13 +639,15 @@ mlds_output_src_end(Indent, ModuleName, !IO) :-
     % Output a C comment saying that the file was automatically generated
     % (and giving details such as the compiler version).
     %
-:- pred mlds_output_auto_gen_comment(module_name::in, io::di, io::uo) is det.
+:- pred mlds_output_auto_gen_comment(mlds_to_c_opts::in, module_name::in,
+    io::di, io::uo) is det.
 
-mlds_output_auto_gen_comment(ModuleName, !IO) :-
+mlds_output_auto_gen_comment(Opts, ModuleName, !IO) :-
     library.version(Version),
-    module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
+    Globals = Opts ^ m2co_all_globals,
+    module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
         SourceFileName, !IO),
-    output_c_file_intro_and_grade(SourceFileName, Version, !IO),
+    output_c_file_intro_and_grade(Globals, SourceFileName, Version, !IO),
     io.nl(!IO).
 
     % Output a reference to the mangled grade name for the grade that the C
@@ -846,13 +860,13 @@ mlds_output_calls_to_register_tci(ModuleName,
 
 %-----------------------------------------------------------------------------%
 %
-% Foreign language interface stuff
+% Foreign language interface stuff.
 %
 
-:- pred mlds_output_c_hdr_decls(mlds_module_name::in, indent::in,
-    mlds_foreign_code::in, io::di, io::uo) is det.
+:- pred mlds_output_c_hdr_decls(mlds_to_c_opts::in, indent::in,
+    mlds_module_name::in, mlds_foreign_code::in, io::di, io::uo) is det.
 
-mlds_output_c_hdr_decls(ModuleName, Indent, ForeignCode, !IO) :-
+mlds_output_c_hdr_decls(Opts, Indent, ModuleName, ForeignCode, !IO) :-
     ForeignCode = mlds_foreign_code(RevHeaderCode, _RevImports,
         _RevBodyCode, _ExportDefns),
     HeaderCode = list.reverse(RevHeaderCode),
@@ -871,19 +885,22 @@ mlds_output_c_hdr_decls(ModuleName, Indent, ForeignCode, !IO) :-
     % declarations required by mutables.
     %
     AncestorModuleNames = get_ancestors(SymName),
-    list.map(module_name_to_file_name, AncestorModuleNames, AncestorFileNames),
+    list.map(module_name_to_file_name_stem,
+        AncestorModuleNames, AncestorFileNames),
     WriteAncestorInclude = (pred(Ancestor::in, !.IO::di, !:IO::uo) is det :-
         io.write_strings(["#include \"", Ancestor, ".mih", "\"\n"], !IO)
     ),
     list.foldl(WriteAncestorInclude, AncestorFileNames, !IO),
     io.write_list(HeaderCode, "\n",
-        mlds_output_c_hdr_decl(Indent, yes(foreign_decl_is_exported)), !IO),
+        mlds_output_c_hdr_decl(Opts, Indent, yes(foreign_decl_is_exported)),
+        !IO),
     io.write_string("\n#endif\n", !IO).
 
-:- pred mlds_output_c_hdr_decl(indent::in, maybe(foreign_decl_is_local)::in,
-    foreign_decl_code::in, io::di, io::uo) is det.
+:- pred mlds_output_c_hdr_decl(mlds_to_c_opts::in, indent::in,
+    maybe(foreign_decl_is_local)::in, foreign_decl_code::in,
+    io::di, io::uo) is det.
 
-mlds_output_c_hdr_decl(_Indent, MaybeDesiredIsLocal, DeclCode, !IO) :-
+mlds_output_c_hdr_decl(Opts, _Indent, MaybeDesiredIsLocal, DeclCode, !IO) :-
     DeclCode = foreign_decl_code(Lang, IsLocal, Code, Context),
     % Only output C code in the C header file.
     (
@@ -896,7 +913,7 @@ mlds_output_c_hdr_decl(_Indent, MaybeDesiredIsLocal, DeclCode, !IO) :-
                 IsLocal = DesiredIsLocal
             )
         ->
-            output_context(mlds_make_context(Context), !IO),
+            output_context_opts(Opts, mlds_make_context(Context), !IO),
             io.write_string(Code, !IO)
         ;
             true
@@ -910,15 +927,15 @@ mlds_output_c_hdr_decl(_Indent, MaybeDesiredIsLocal, DeclCode, !IO) :-
         sorry(this_file, "foreign code other than C")
     ).
 
-:- pred mlds_output_c_decls(indent::in, mlds_foreign_code::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_c_decls(mlds_to_c_opts::in, indent::in,
+    mlds_foreign_code::in, io::di, io::uo) is det.
 
-mlds_output_c_decls(Indent, ForeignCode, !IO) :-
+mlds_output_c_decls(Opts, Indent, ForeignCode, !IO) :-
     ForeignCode = mlds_foreign_code(RevHeaderCode, _RevImports,
         _RevBodyCode, _ExportDefns),
     HeaderCode = list.reverse(RevHeaderCode),
     io.write_list(HeaderCode, "\n",
-        mlds_output_c_hdr_decl(Indent, yes(foreign_decl_is_local)), !IO).
+        mlds_output_c_hdr_decl(Opts, Indent, yes(foreign_decl_is_local)), !IO).
 
 :- pred mlds_output_c_defns(mlds_to_c_opts::in, mlds_module_name::in,
     indent::in, mlds_foreign_code::in, io::di, io::uo) is det.
@@ -927,21 +944,22 @@ mlds_output_c_defns(Opts, ModuleName, Indent, ForeignCode, !IO) :-
     ForeignCode = mlds_foreign_code(_RevHeaderCode, RevImports,
         RevBodyCode, ExportDefns),
     Imports = list.reverse(RevImports),
-    list.foldl(mlds_output_c_foreign_import_module(Indent), Imports, !IO),
+    list.foldl(mlds_output_c_foreign_import_module(Opts, Indent),
+        Imports, !IO),
     BodyCode = list.reverse(RevBodyCode),
-    io.write_list(BodyCode, "\n", mlds_output_c_defn(Indent), !IO),
+    io.write_list(BodyCode, "\n", mlds_output_c_defn(Opts, Indent), !IO),
     io.write_string("\n", !IO),
     io.write_list(ExportDefns, "\n",
         mlds_output_pragma_export_defn(Opts, ModuleName, Indent), !IO).
 
-:- pred mlds_output_c_foreign_import_module(int::in,
+:- pred mlds_output_c_foreign_import_module(mlds_to_c_opts::in, int::in,
     foreign_import_module_info::in, io::di, io::uo) is det.
 
-mlds_output_c_foreign_import_module(Indent, ForeignImport, !IO) :-
+mlds_output_c_foreign_import_module(Opts, Indent, ForeignImport, !IO) :-
     ForeignImport = foreign_import_module_info(Lang, Import, _),
     (
         Lang = lang_c,
-        mlds_output_src_import(Indent,
+        mlds_output_src_import(Opts, Indent,
             mercury_import(user_visible_interface,
                 mercury_module_name_to_mlds(Import)), !IO)
     ;
@@ -953,20 +971,23 @@ mlds_output_c_foreign_import_module(Indent, ForeignImport, !IO) :-
         sorry(this_file, "foreign code other than C")
     ).
 
-:- pred mlds_output_c_defn(indent::in, user_foreign_code::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_c_defn(mlds_to_c_opts::in, indent::in,
+    user_foreign_code::in, io::di, io::uo) is det.
 
-mlds_output_c_defn(_Indent, user_foreign_code(lang_c, Code, Context), !IO) :-
-    output_context(mlds_make_context(Context), !IO),
-    io.write_string(Code, !IO).
-mlds_output_c_defn(_Indent, user_foreign_code(lang_csharp, _, _), !IO) :-
-    sorry(this_file, "foreign code other than C").
-mlds_output_c_defn(_Indent, user_foreign_code(lang_il, _, _), !IO) :-
-    sorry(this_file, "foreign code other than C").
-mlds_output_c_defn(_Indent, user_foreign_code(lang_java, _, _), !IO) :-
-    sorry(this_file, "foreign code other than C").
-mlds_output_c_defn(_Indent, user_foreign_code(lang_erlang, _, _), !IO) :-
-    sorry(this_file, "foreign code other than C").
+mlds_output_c_defn(Opts, _Indent, UserForeignCode, !IO) :-
+    UserForeignCode = user_foreign_code(Lang, Code, Context),
+    (
+        Lang = lang_c,
+        output_context_opts(Opts, mlds_make_context(Context), !IO),
+        io.write_string(Code, !IO)
+    ;
+        ( Lang = lang_csharp
+        ; Lang = lang_il
+        ; Lang = lang_java
+        ; Lang = lang_erlang
+        ),
+        sorry(this_file, "mlds_output_c_defn: foreign code other than C")
+    ).
 
 :- pred mlds_output_pragma_export_defn(mlds_to_c_opts::in,
     mlds_module_name::in, indent::in, mlds_pragma_export::in, io::di, io::uo)
@@ -980,9 +1001,11 @@ mlds_output_pragma_export_defn(Opts, ModuleName, Indent, PragmaExport, !IO) :-
     mlds_output_pragma_export_func_name(Opts, ModuleName, Indent,
         PragmaExport, !IO),
     io.write_string("\n", !IO),
-    mlds_output_context_and_indent(Context, Indent, !IO),
+    output_context_opts(Opts, Context, !IO),
+    mlds_indent(Indent, !IO),
     io.write_string("{\n", !IO),
-    mlds_output_context_and_indent(Context, Indent, !IO),
+    output_context_opts(Opts, Context, !IO),
+    mlds_indent(Indent, !IO),
     mlds_output_pragma_export_defn_body(Opts, ModuleName,
         MLDS_Name, MLDS_Signature, !IO),
     io.write_string("}\n", !IO).
@@ -995,7 +1018,8 @@ mlds_output_pragma_export_func_name(Opts, ModuleName, Indent, Export, !IO) :-
     Export = ml_pragma_export(Lang, ExportName, _MLDSName, Signature, Context),
     expect(unify(Lang, lang_c), this_file, "export to language other than C."),
     Name = qual(ModuleName, module_qual, entity_export(ExportName)),
-    mlds_output_context_and_indent(Context, Indent, !IO),
+    output_context_opts(Opts, Context, !IO),
+    mlds_indent(Indent, !IO),
     % For functions exported using `pragma foreign_export',
     % we use the default C calling convention.
     CallingConvention = "",
@@ -1334,21 +1358,21 @@ det_func_signature(mlds_func_params(Args, _RetTypes)) = Params :-
     ),
     Params = mlds_func_params(InputArgs, [ReturnArgType]).
 
-:- pred mlds_output_export_enums(list(mlds_exported_enum)::in, indent::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_export_enums(mlds_to_c_opts::in, indent::in,
+    list(mlds_exported_enum)::in, io::di, io::uo) is det.
 
-mlds_output_export_enums(ExportedEnums, Indent, !IO) :-
-    list.foldl(mlds_output_export_enum(Indent), ExportedEnums, !IO).
+mlds_output_export_enums(Opts, Indent, ExportedEnums, !IO) :-
+    list.foldl(mlds_output_export_enum(Opts, Indent), ExportedEnums, !IO).
 
-:- pred mlds_output_export_enum(indent::in, mlds_exported_enum::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_export_enum(mlds_to_c_opts::in, indent::in,
+    mlds_exported_enum::in, io::di, io::uo) is det.
 
-mlds_output_export_enum(_Indent, ExportedEnum, !IO) :-
+mlds_output_export_enum(Opts, _Indent, ExportedEnum, !IO) :-
     ExportedEnum = mlds_exported_enum(Lang, Context, _TypeCtor,
         ExportConstants0),
     (
         Lang = lang_c,
-        output_context(mlds_make_context(Context), !IO),
+        output_context_opts(Opts, mlds_make_context(Context), !IO),
         % We reverse the list so the constants are printed out in order.
         list.reverse(ExportConstants0, ExportConstants),
         list.foldl(mlds_output_exported_enum_constant, ExportConstants, !IO)
@@ -1471,7 +1495,8 @@ mlds_output_decl(Opts, Indent, ModuleName, Defn, !IO) :-
         ),
 
         % Now output the declaration for this mlds_defn.
-        mlds_output_context_and_indent(Context, Indent, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent, !IO),
         mlds_output_decl_flags(Opts, Flags, forward_decl, Name, DefnBody, !IO),
         QualName = qual(ModuleName, module_qual, Name),
         mlds_output_decl_body(Opts, Indent, QualName, Context, DefnBody, !IO)
@@ -1714,7 +1739,8 @@ mlds_output_defn(Opts, Indent, Separate, ModuleName, Defn, !IO) :-
             Separate = no
         )
     ),
-    mlds_output_context_and_indent(Context, Indent, !IO),
+    output_context_opts(Opts, Context, !IO),
+    mlds_indent(Indent, !IO),
     mlds_output_decl_flags(Opts, Flags, definition, Name, DefnBody, !IO),
     mlds_output_defn_body(Opts, Indent, qual(ModuleName, module_qual, Name),
         Context, DefnBody, !IO).
@@ -1897,7 +1923,8 @@ mlds_output_class(Opts, Indent, Name, Context, ClassDefn, !IO) :-
         mlds_output_defns(Opts, Indent + 1, no, ClassModuleName,
             BasesAndMembers, !IO)
     ),
-    mlds_output_context_and_indent(Context, Indent, !IO),
+    output_context_opts(Opts, Context, !IO),
+    mlds_indent(Indent, !IO),
     io.write_string("};\n", !IO),
     mlds_output_defns(Opts, Indent, yes, ClassModuleName, StaticMembers, !IO).
 
@@ -1959,7 +1986,8 @@ mlds_output_enum_constant(Opts, Indent, EnumModuleName, Defn, !IO) :-
     Defn = mlds_defn(Name, Context, _Flags, DefnBody),
     (
         DefnBody = mlds_data(Type, Initializer, _GCStatement),
-        mlds_output_context_and_indent(Context, Indent, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent, !IO),
         mlds_output_fully_qualified_name(
             qual(EnumModuleName, type_qual, Name), !IO),
         mlds_output_initializer(Opts, Type, Initializer, !IO)
@@ -2125,7 +2153,8 @@ mlds_output_func(Opts, Indent, Name, Context, Params, FunctionBody, !IO) :-
         FunctionBody = body_defined_here(Body),
         io.write_string("\n", !IO),
 
-        mlds_output_context_and_indent(Context, Indent, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent, !IO),
         io.write_string("{\n", !IO),
 
         mlds_maybe_output_time_profile_instr(Opts, Context, Indent + 1, Name,
@@ -2135,7 +2164,8 @@ mlds_output_func(Opts, Indent, Name, Context, Params, FunctionBody, !IO) :-
         FuncInfo = func_info(Name, Signature),
         mlds_output_statement(Opts, Indent + 1, FuncInfo, Body, !IO),
 
-        mlds_output_context_and_indent(Context, Indent, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent, !IO),
         io.write_string("}\n", !IO)    % end the function
     ).
 
@@ -2266,7 +2296,8 @@ mlds_output_param(Opts, OutputPrefix, OutputSuffix, Indent, ModuleName,
         Context, Arg, !IO) :-
     Arg = mlds_argument(Name, Type, GCStatement),
     QualName = qual(ModuleName, module_qual, Name),
-    mlds_output_context_and_indent(Context, Indent, !IO),
+    output_context_opts(Opts, Context, !IO),
+    mlds_indent(Indent, !IO),
     mlds_output_data_decl_ho(Opts, OutputPrefix, OutputSuffix, QualName, Type,
         !IO),
     mlds_output_gc_statement(Opts, Indent, QualName, GCStatement, "\n", !IO).
@@ -3047,7 +3078,8 @@ mlds_output_statement(Opts, Indent, FuncInfo, Statement, !IO) :-
             Defns = []
         ),
         mlds_output_statements(Opts, Indent + 1, FuncInfo, Statements, !IO),
-        mlds_output_context_and_indent(Context, Indent, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent, !IO),
         io.write_string("}\n", !IO)
     ;
         Stmt = ml_stmt_while(Kind, Cond, LoopStatement),
@@ -3065,7 +3097,8 @@ mlds_output_statement(Opts, Indent, FuncInfo, Statement, !IO) :-
             io.write_string("do\n", !IO),
             mlds_output_statement(Opts, Indent + 1, FuncInfo, LoopStatement,
                 !IO),
-            mlds_output_context_and_indent(Context, Indent, !IO),
+            output_context_opts(Opts, Context, !IO),
+            mlds_indent(Indent, !IO),
             io.write_string("while (", !IO),
             mlds_output_rval(Opts, Cond, !IO),
             io.write_string(");\n", !IO)
@@ -3119,7 +3152,8 @@ mlds_output_statement(Opts, Indent, FuncInfo, Statement, !IO) :-
         mlds_output_statement(Opts, Indent + 1, FuncInfo, Then, !IO),
         (
             MaybeElse = yes(Else),
-            mlds_output_context_and_indent(Context, Indent, !IO),
+            output_context_opts(Opts, Context, !IO),
+            mlds_indent(Indent, !IO),
             io.write_string("else\n", !IO),
             mlds_output_statement(Opts, Indent + 1, FuncInfo, Else, !IO)
         ;
@@ -3127,7 +3161,8 @@ mlds_output_statement(Opts, Indent, FuncInfo, Statement, !IO) :-
         )
     ;
         Stmt = ml_stmt_switch(_Type, Val, _Range, Cases, Default),
-        mlds_output_context_and_indent(Context, Indent, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent, !IO),
         io.write_string("switch (", !IO),
         mlds_output_rval(Opts, Val, !IO),
         io.write_string(") {\n", !IO),
@@ -3138,7 +3173,8 @@ mlds_output_statement(Opts, Indent, FuncInfo, Statement, !IO) :-
         list.foldl(
             mlds_output_switch_case(Opts, Indent + 1, FuncInfo, Context),
             Cases, !IO),
-        mlds_output_context_and_indent(Context, Indent, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent, !IO),
         io.write_string("}\n", !IO)
     ;
         Stmt = ml_stmt_label(LabelName),
@@ -3175,11 +3211,13 @@ mlds_output_statement(Opts, Indent, FuncInfo, Statement, !IO) :-
         io.write_string("switch (", !IO),
         mlds_output_rval(Opts, Expr, !IO),
         io.write_string(") {\n", !IO),
-        list.foldl2(mlds_output_computed_goto_label(Context, Indent), Labels,
-            0, _FinalCount, !IO),
-        mlds_output_context_and_indent(Context, Indent + 1, !IO),
+        list.foldl2(mlds_output_computed_goto_label(Opts, Context, Indent),
+            Labels, 0, _FinalCount, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent + 1, !IO),
         io.write_string("default: /*NOTREACHED*/ MR_assert(0);\n", !IO),
-        mlds_output_context_and_indent(Context, Indent, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent, !IO),
         io.write_string("}\n", !IO)
     ;
         Stmt = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs,
@@ -3212,7 +3250,8 @@ mlds_output_statement(Opts, Indent, FuncInfo, Statement, !IO) :-
         % are different can be marked as tail calls if they are known
         % to never return.)
 
-        mlds_output_context_and_indent(Context, Indent + 1, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent + 1, !IO),
         Signature = mlds_func_signature(_, RetTypes),
         CallerSignature = mlds_func_signature(_, CallerRetTypes),
         (
@@ -3255,7 +3294,8 @@ mlds_output_statement(Opts, Indent, FuncInfo, Statement, !IO) :-
             ),
             CallerRetTypes = []
         ->
-            mlds_output_context_and_indent(Context, Indent + 1, !IO),
+            output_context_opts(Opts, Context, !IO),
+            mlds_indent(Indent + 1, !IO),
             io.write_string("return;\n", !IO)
         ;
             mlds_maybe_output_time_profile_instr(Opts, Context, Indent + 1,
@@ -3318,18 +3358,21 @@ mlds_output_statement(Opts, Indent, FuncInfo, Statement, !IO) :-
 
             mlds_output_statement(Opts, Indent, FuncInfo, SubStatement0, !IO),
 
-            mlds_output_context_and_indent(Context, Indent, !IO),
+            output_context_opts(Opts, Context, !IO),
+            mlds_indent(Indent, !IO),
             io.write_string("goto ", !IO),
             mlds_output_lval(Opts, Ref, !IO),
             io.write_string("_done;\n", !IO),
 
-            mlds_output_context_and_indent(Context, Indent - 1, !IO),
+            output_context_opts(Opts, Context, !IO),
+            mlds_indent(Indent - 1, !IO),
             mlds_output_lval(Opts, Ref, !IO),
             io.write_string(":\n", !IO),
 
             mlds_output_statement(Opts, Indent, FuncInfo, Handler, !IO),
 
-            mlds_output_context_and_indent(Context, Indent - 1, !IO),
+            output_context_opts(Opts, Context, !IO),
+            mlds_indent(Indent - 1, !IO),
             mlds_output_lval(Opts, Ref, !IO),
             io.write_string("_done:\t;\n", !IO)
 
@@ -3378,18 +3421,21 @@ mlds_output_statement(Opts, Indent, FuncInfo, Statement, !IO) :-
             mlds_output_statement(Opts, Indent + 1, FuncInfo, SubStatement,
                 !IO),
 
-            mlds_output_context_and_indent(Context, Indent, !IO),
+            output_context_opts(Opts, Context, !IO),
+            mlds_indent(Indent, !IO),
             io.write_string("else\n", !IO),
 
             mlds_output_statement(Opts, Indent + 1, FuncInfo, Handler, !IO)
         )
     ).
 
-:- pred mlds_output_computed_goto_label(mlds_context::in, int::in,
-    mlds_label::in, int::in, int::out, io::di, io::uo) is det.
+:- pred mlds_output_computed_goto_label(mlds_to_c_opts::in, mlds_context::in,
+    int::in, mlds_label::in, int::in, int::out, io::di, io::uo) is det.
 
-mlds_output_computed_goto_label(Context, Indent, Label, Count0, Count, !IO) :-
-    mlds_output_context_and_indent(Context, Indent + 1, !IO),
+mlds_output_computed_goto_label(Opts, Context, Indent, Label, Count0, Count,
+        !IO) :-
+    output_context_opts(Opts, Context, !IO),
+    mlds_indent(Indent + 1, !IO),
     io.write_string("case ", !IO),
     io.write_int(Count0, !IO),
     io.write_string(": goto ", !IO),
@@ -3410,7 +3456,8 @@ mlds_output_switch_case(Opts, Indent, FuncInfo, Context, Case, !IO) :-
     mlds_output_case_cond(Opts, Indent, Context, FirstCond, !IO),
     list.foldl(mlds_output_case_cond(Opts, Indent, Context), LaterConds, !IO),
     mlds_output_statement(Opts, Indent + 1, FuncInfo, Statement, !IO),
-    mlds_output_context_and_indent(Context, Indent + 1, !IO),
+    output_context_opts(Opts, Context, !IO),
+    mlds_indent(Indent + 1, !IO),
     io.write_string("break;\n", !IO).
 
 :- pred mlds_output_case_cond(mlds_to_c_opts::in, indent::in, mlds_context::in,
@@ -3419,14 +3466,16 @@ mlds_output_switch_case(Opts, Indent, FuncInfo, Context, Case, !IO) :-
 mlds_output_case_cond(Opts, Indent, Context, Match, !IO) :-
     (
         Match = match_value(Val),
-        mlds_output_context_and_indent(Context, Indent, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent, !IO),
         io.write_string("case ", !IO),
         mlds_output_rval(Opts, Val, !IO),
         io.write_string(":\n", !IO)
     ;
         Match = match_range(Low, High),
         % This uses the GNU C extension `case <Low> ... <High>:'.
-        mlds_output_context_and_indent(Context, Indent, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent, !IO),
         io.write_string("case ", !IO),
         mlds_output_rval(Opts, Low, !IO),
         io.write_string(" ... ", !IO),
@@ -3441,16 +3490,19 @@ mlds_output_case_cond(Opts, Indent, Context, Match, !IO) :-
 mlds_output_switch_default(Opts, Indent, FuncInfo, Context, Default, !IO) :-
     (
         Default = default_is_unreachable,
-        mlds_output_context_and_indent(Context, Indent, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent, !IO),
         io.write_string("default: /*NOTREACHED*/ MR_assert(0);\n", !IO)
     ;
         Default = default_do_nothing
     ;
         Default = default_case(Statement),
-        mlds_output_context_and_indent(Context, Indent, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent, !IO),
         io.write_string("default:\n", !IO),
         mlds_output_statement(Opts, Indent + 1, FuncInfo, Statement, !IO),
-        mlds_output_context_and_indent(Context, Indent + 1, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent + 1, !IO),
         io.write_string("break;\n", !IO)
     ).
 
@@ -3469,7 +3521,8 @@ mlds_maybe_output_heap_profile_instr(Opts, Context, Indent, Args, FuncName,
     ProfileMemory = Opts ^ m2co_profile_calls,
     (
         ProfileMemory = yes,
-        mlds_output_context_and_indent(Context, Indent, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent, !IO),
         io.write_string("MR_record_allocation(", !IO),
         io.write_int(list.length(Args), !IO),
         io.write_string(", ", !IO),
@@ -3508,7 +3561,8 @@ mlds_maybe_output_call_profile_instr(Opts, Context, Indent,
     ProfileCalls = Opts ^ m2co_profile_calls,
     (
         ProfileCalls = yes,
-        mlds_output_context_and_indent(Context, Indent, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent, !IO),
         io.write_string("MR_prof_call_profile(", !IO),
         mlds_output_bracketed_rval(Opts, CalleeFuncRval, !IO),
         io.write_string(", ", !IO),
@@ -3529,7 +3583,8 @@ mlds_maybe_output_time_profile_instr(Opts, Context, Indent, Name, !IO) :-
     ProfileTime = Opts ^ m2co_profile_time,
     (
         ProfileTime = yes,
-        mlds_output_context_and_indent(Context, Indent, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent, !IO),
         io.write_string("MR_set_prof_current_proc(", !IO),
         mlds_output_fully_qualified_name(Name, !IO),
         io.write_string(");\n", !IO)
@@ -3597,7 +3652,8 @@ mlds_output_atomic_stmt(Opts, Indent, FuncInfo, Statement, Context, !IO) :-
             % forms of the variables inside Args all include "__".
             BaseVarName = "base",
             Base = ls_string(BaseVarName),
-            mlds_output_context_and_indent(Context, Indent + 1, !IO),
+            output_context_opts(Opts, Context, !IO),
+            mlds_indent(Indent + 1, !IO),
             mlds_output_type_prefix(Opts, Type, !IO),
             io.write_string(" ", !IO),
             io.write_string(BaseVarName, !IO),
@@ -3607,10 +3663,11 @@ mlds_output_atomic_stmt(Opts, Indent, FuncInfo, Statement, Context, !IO) :-
 
         % For --gc accurate, we need to insert a call to GC_check()
         % before every allocation.
-        globals.io_get_gc_method(GC_Method, !IO),
+        GC_Method = Opts ^ m2co_gc_method,
         (
             GC_Method = gc_accurate,
-            mlds_output_context_and_indent(Context, Indent + 1, !IO),
+            output_context_opts(Opts, Context, !IO),
+            mlds_indent(Indent + 1, !IO),
             io.write_string("MR_GC_check();\n", !IO),
             % For types which hold RTTI that will be traversed by the collector
             % at GC-time, we need to allocate an extra word at the start,
@@ -3621,10 +3678,12 @@ mlds_output_atomic_stmt(Opts, Indent, FuncInfo, Statement, Context, !IO) :-
             NeedsForwardingSpace = type_needs_forwarding_pointer_space(Type),
             (
                 NeedsForwardingSpace = yes,
-                mlds_output_context_and_indent(Context, Indent + 1, !IO),
+                output_context_opts(Opts, Context, !IO),
+                mlds_indent(Indent + 1, !IO),
                 io.write_string("/* reserve space for " ++
                     "GC forwarding pointer*/\n", !IO),
-                mlds_output_context_and_indent(Context, Indent + 1, !IO),
+                output_context_opts(Opts, Context, !IO),
+                mlds_indent(Indent + 1, !IO),
                 io.write_string("MR_hp_alloc(1);\n", !IO)
             ;
                 NeedsForwardingSpace = no
@@ -3642,7 +3701,8 @@ mlds_output_atomic_stmt(Opts, Indent, FuncInfo, Statement, Context, !IO) :-
         mlds_maybe_output_heap_profile_instr(Opts, Context, Indent + 1, Args,
             FuncName, MaybeCtorName, !IO),
 
-        mlds_output_context_and_indent(Context, Indent + 1, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent + 1, !IO),
         write_lval_or_string(Opts, Base, !IO),
         io.write_string(" = ", !IO),
         (
@@ -3700,7 +3760,8 @@ mlds_output_atomic_stmt(Opts, Indent, FuncInfo, Statement, Context, !IO) :-
             Base = ls_lval(_)
         ;
             Base = ls_string(BaseVarName1),
-            mlds_output_context_and_indent(Context, Indent + 1, !IO),
+            output_context_opts(Opts, Context, !IO),
+            mlds_indent(Indent + 1, !IO),
             mlds_output_lval(Opts, Target, !IO),
             io.write_string(" = ", !IO),
             io.write_string(BaseVarName1, !IO),
@@ -3708,7 +3769,8 @@ mlds_output_atomic_stmt(Opts, Indent, FuncInfo, Statement, Context, !IO) :-
         ),
         mlds_output_init_args(Args, ArgTypes, Context, 0, Base, Tag,
             Opts, Indent + 1, !IO),
-        mlds_output_context_and_indent(Context, Indent, !IO),
+        output_context_opts(Opts, Context, !IO),
+        mlds_indent(Indent, !IO),
         io.write_string("}\n", !IO)
     ;
         Statement = gc_check,
@@ -3853,7 +3915,8 @@ mlds_output_init_args([Arg | Args], [ArgType | ArgTypes], Context,
     % (or perhaps a call to a constructor function) rather than using the
     % MR_hl_field() macro.
 
-    mlds_output_context_and_indent(Context, Indent, !IO),
+    output_context_opts(Opts, Context, !IO),
+    mlds_indent(Indent, !IO),
     io.write_string("MR_hl_field(", !IO),
     mlds_output_tag(Tag, !IO),
     io.write_string(", ", !IO),
@@ -4495,12 +4558,6 @@ mlds_output_data_var_name(ModuleName, DataName, !IO) :-
 % source context annotations (#line directives).
 %
 
-output_context(Context, !IO) :-
-    ProgContext = mlds_get_prog_context(Context),
-    term.context_file(ProgContext, FileName),
-    term.context_line(ProgContext, LineNumber),
-    c_util.set_line_num(FileName, LineNumber, !IO).
-
 :- pred output_context_opts(mlds_to_c_opts::in, mlds_context::in,
     io::di, io::uo) is det.
 
@@ -4516,11 +4573,6 @@ output_context_opts(Opts, Context, !IO) :-
         LineNumbers = no
     ).
 
-:- pred reset_context(io::di, io::uo) is det.
-
-reset_context(!IO) :-
-    c_util.reset_line_num(!IO).
-
 :- pred reset_context_opts(mlds_to_c_opts::in, io::di, io::uo) is det.
 
 reset_context_opts(Opts, !IO) :-
@@ -4531,13 +4583,6 @@ reset_context_opts(Opts, !IO) :-
     ;
         LineNumbers = no
     ).
-
-:- pred mlds_output_context_and_indent(mlds_context::in, indent::in,
-    io::di, io::uo) is det.
-
-mlds_output_context_and_indent(Context, N, !IO) :-
-    output_context(Context, !IO),
-    mlds_indent(N, !IO).
 
     % A value of type `indent' records the number of levels
     % of indentation to indent the next piece of code.

@@ -48,6 +48,7 @@
 :- interface.
 
 :- import_module libs.file_util.
+:- import_module libs.globals.
 :- import_module libs.timestamp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.
@@ -89,12 +90,13 @@
     % DefaultModuleName if there is no `:- module' declaration.
     % Specs is a list of warning/error messages. Items is the parse tree.
     %
-:- pred actually_read_module(open_file_pred(FileInfo)::in(open_file_pred),
-    module_name::in, maybe_return_timestamp::in, maybe(FileInfo)::out,
+:- pred actually_read_module(globals::in,
+    open_file_pred(FileInfo)::in(open_file_pred), module_name::in,
+    maybe_return_timestamp::in, maybe(FileInfo)::out,
     module_name::out, list(item)::out, list(error_spec)::out,
     module_error::out, maybe(io.res(timestamp))::out, io::di, io::uo) is det.
 
-:- pred actually_read_module_if_changed(
+:- pred actually_read_module_if_changed(globals::in,
     open_file_pred(FileInfo)::in(open_file_pred),
     module_name::in, timestamp::in, maybe(FileInfo)::out, module_name::out,
     list(item)::out, list(error_spec)::out, module_error::out,
@@ -105,8 +107,9 @@
     % Also report an error if the actual module name doesn't match
     % the expected module name.
     %
-:- pred actually_read_opt_file(file_name::in, module_name::in, list(item)::out,
-    list(error_spec)::out, module_error::out, io::di, io::uo) is det.
+:- pred actually_read_opt_file(globals::in, file_name::in, module_name::in,
+    list(item)::out, list(error_spec)::out, module_error::out,
+    io::di, io::uo) is det.
 
     % check_module_has_expected_name(FileName, ExpectedName, ActualName):
     %
@@ -114,9 +117,9 @@
     % aren't.
     %
 :- pred check_module_has_expected_name(file_name::in, module_name::in,
-    module_name::in, io::di, io::uo) is det.
+    module_name::in, list(error_spec)::out) is det.
 
-    % search_for_module_source(Dirs, InterfaceDirs, ModuleName,
+    % search_for_module_source(Globals, Dirs, InterfaceDirs, ModuleName,
     %   FoundSourceFileName, !IO):
     %
     % Look for the source for ModuleName in Dirs. This will also search for
@@ -125,12 +128,13 @@
     % in InterfaceDirs. For example, module foo.bar.baz can be found in
     % foo.bar.m, bar.baz.m or bar.m.
     %
-:- pred search_for_module_source(list(dir_name)::in, list(dir_name)::in,
-    module_name::in, maybe_error(file_name)::out, io::di, io::uo) is det.
+:- pred search_for_module_source(globals::in, list(dir_name)::in,
+    list(dir_name)::in, module_name::in, maybe_error(file_name)::out,
+    io::di, io::uo) is det.
 
     % Read the first item from the given file to find the module name.
     %
-:- pred find_module_name(file_name::in, maybe(module_name)::out,
+:- pred find_module_name(globals::in, file_name::in, maybe(module_name)::out,
     io::di, io::uo) is det.
 
     % parse_item(ModuleName, VarSet, Term, SeqNum, MaybeItem):
@@ -181,7 +185,6 @@
 :- implementation.
 
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
@@ -216,37 +219,41 @@
 
 %-----------------------------------------------------------------------------%
 
-actually_read_module(OpenFile, DefaultModuleName, ReturnTimestamp, FileData,
-        ModuleName, Items, Specs, Error, MaybeModuleTimestamp, !IO) :-
-    actually_read_module_2(OpenFile, DefaultModuleName, no, ReturnTimestamp,
-        FileData, ModuleName, Items, Specs, Error, MaybeModuleTimestamp, !IO).
-
-actually_read_module_if_changed(OpenFile, DefaultModuleName, OldTimestamp,
+actually_read_module(Globals, OpenFile, DefaultModuleName, ReturnTimestamp,
         FileData, ModuleName, Items, Specs, Error, MaybeModuleTimestamp,
         !IO) :-
-    actually_read_module_2(OpenFile, DefaultModuleName, yes(OldTimestamp),
-        do_return_timestamp,
-        FileData, ModuleName, Items, Specs, Error,MaybeModuleTimestamp, !IO).
+    actually_read_module_2(Globals, OpenFile, DefaultModuleName,
+        no, ReturnTimestamp, FileData, ModuleName,
+        Items, Specs, Error, MaybeModuleTimestamp, !IO).
 
-actually_read_opt_file(FileName, DefaultModuleName, Items, Specs, Error,
-        !IO) :-
-    globals.io_lookup_accumulating_option(intermod_directories, Dirs, !IO),
-    actually_read_module_2(search_for_file(open_file, Dirs, FileName),
+actually_read_module_if_changed(Globals, OpenFile, DefaultModuleName,
+        OldTimestamp, FileData, ModuleName, Items, Specs, Error,
+        MaybeModuleTimestamp, !IO) :-
+    actually_read_module_2(Globals, OpenFile, DefaultModuleName,
+        yes(OldTimestamp), do_return_timestamp, FileData, ModuleName,
+        Items, Specs, Error,MaybeModuleTimestamp, !IO).
+
+actually_read_opt_file(Globals, FileName, DefaultModuleName,
+        Items, Specs, Error, !IO) :-
+    globals.lookup_accumulating_option(Globals, intermod_directories, Dirs),
+    actually_read_module_2(Globals, search_for_file(open_file, Dirs, FileName),
         DefaultModuleName, no, do_not_return_timestamp, _, ModuleName, Items,
-        Specs, Error, _, !IO),
+        ItemSpecs, Error, _, !IO),
     check_module_has_expected_name(FileName, DefaultModuleName, ModuleName,
-        !IO).
+        NameSpecs),
+    Specs = ItemSpecs ++ NameSpecs.
 
-check_module_has_expected_name(FileName, ExpectedName, ActualName, !IO) :-
+check_module_has_expected_name(FileName, ExpectedName, ActualName, Specs) :-
     ( ActualName \= ExpectedName ->
         Pieces = [words("Error: file"), quote(FileName),
             words("contains the wrong module."), nl,
             words("Expected module"), sym_name(ExpectedName), suffix(","),
             words("found module"), sym_name(ActualName), suffix("."), nl],
-        write_error_pieces_plain(Pieces, !IO),
-        io.set_exit_status(1, !IO)
+        Msg = error_msg(no, treat_as_first, 0, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_read_files, [Msg]),
+        Specs = [Spec]
     ;
-        true
+        Specs = []
     ).
 
     % This implementation uses io.read_term to read in the program one term
@@ -256,12 +263,13 @@ check_module_has_expected_name(FileName, ExpectedName, ActualName, !IO) :-
     % and then reverse them afterwards. (Using difference lists would require
     % late-input modes.)
     %
-:- pred actually_read_module_2(open_file_pred(T)::in(open_file_pred),
-    module_name::in, maybe(timestamp)::in, maybe_return_timestamp::in,
+:- pred actually_read_module_2(globals::in,
+    open_file_pred(T)::in(open_file_pred), module_name::in,
+    maybe(timestamp)::in, maybe_return_timestamp::in,
     maybe(T)::out, module_name::out, list(item)::out, list(error_spec)::out,
     module_error::out, maybe(io.res(timestamp))::out, io::di, io::uo) is det.
 
-actually_read_module_2(OpenFile, DefaultModuleName, MaybeOldTimestamp,
+actually_read_module_2(Globals, OpenFile, DefaultModuleName, MaybeOldTimestamp,
         ReturnTimestamp, MaybeFileData, ModuleName, Items, Specs, Error,
         MaybeModuleTimestamp, !IO) :-
     io.input_stream(OldInputStream, !IO),
@@ -298,7 +306,7 @@ actually_read_module_2(OpenFile, DefaultModuleName, MaybeOldTimestamp,
             Specs = [],
             Error = no_module_errors
         ;
-            read_all_items(DefaultModuleName, ModuleName, Items,
+            read_all_items(Globals, DefaultModuleName, ModuleName, Items,
                 Specs, Error, !IO)
         ),
         io.set_input_stream(OldInputStream, ModuleInputStream, !IO),
@@ -318,9 +326,9 @@ actually_read_module_2(OpenFile, DefaultModuleName, MaybeOldTimestamp,
         Error = fatal_module_errors
     ).
 
-search_for_module_source(Dirs, InterfaceDirs, ModuleName, MaybeFileName,
-        !IO) :-
-    search_for_module_source_2(Dirs, ModuleName, ModuleName,
+search_for_module_source(Globals, Dirs, InterfaceDirs, ModuleName,
+        MaybeFileName, !IO) :-
+    search_for_module_source_2(Globals, Dirs, ModuleName, ModuleName,
         MaybeFileName0, !IO),
     (
         MaybeFileName0 = ok(SourceFileName),
@@ -337,7 +345,7 @@ search_for_module_source(Dirs, InterfaceDirs, ModuleName, MaybeFileName,
             % `bit_buffer.read.int' in the standard library.
 
             io.input_stream(SourceStream, !IO),
-            search_for_module_source_2(InterfaceDirs, ModuleName,
+            search_for_module_source_2(Globals, InterfaceDirs, ModuleName,
                 ModuleName, MaybeFileName2, !IO),
             ( MaybeFileName2 = ok(_) ->
                 io.seen(!IO)
@@ -357,7 +365,7 @@ search_for_module_source(Dirs, InterfaceDirs, ModuleName, MaybeFileName,
                 MaybeFileName = error(find_source_error(ModuleName,
                     Dirs, yes(SourceFileName2)))
             ;
-                module_name_to_file_name(ModuleName, ".int",
+                module_name_to_file_name(Globals, ModuleName, ".int",
                     do_not_create_dirs, IntFile, !IO),
                 search_for_file_returning_dir(do_not_open_file, InterfaceDirs,
                     IntFile, MaybeIntDir, !IO),
@@ -397,13 +405,14 @@ find_source_error(ModuleName, Dirs, MaybeBetterMatch) = Msg :-
             " in interface search path"
     ).
 
-:- pred search_for_module_source_2(list(dir_name)::in, module_name::in,
-    module_name::in, maybe_error(file_name)::out, io::di, io::uo) is det.
+:- pred search_for_module_source_2(globals::in, list(dir_name)::in,
+    module_name::in, module_name::in, maybe_error(file_name)::out,
+    io::di, io::uo) is det.
 
-search_for_module_source_2(Dirs, ModuleName, PartialModuleName, MaybeFileName,
-        !IO) :-
-    module_name_to_file_name(PartialModuleName, ".m", do_not_create_dirs,
-        FileName, !IO),
+search_for_module_source_2(Globals, Dirs, ModuleName, PartialModuleName,
+        MaybeFileName, !IO) :-
+    module_name_to_file_name(Globals, PartialModuleName, ".m",
+        do_not_create_dirs, FileName, !IO),
     search_for_file(open_file, Dirs, FileName, MaybeFileName0, !IO),
     (
         MaybeFileName0 = ok(_),
@@ -411,8 +420,8 @@ search_for_module_source_2(Dirs, ModuleName, PartialModuleName, MaybeFileName,
     ;
         MaybeFileName0 = error(_),
         ( PartialModuleName1 = drop_one_qualifier(PartialModuleName) ->
-            search_for_module_source_2(Dirs, ModuleName, PartialModuleName1,
-                MaybeFileName, !IO)
+            search_for_module_source_2(Globals, Dirs, ModuleName,
+                PartialModuleName1, MaybeFileName, !IO)
         ;
             MaybeFileName = error(find_source_error(ModuleName, Dirs, no))
         )
@@ -531,7 +540,7 @@ dummy_term_with_context(Context, Term) :-
 
 %-----------------------------------------------------------------------------%
 
-find_module_name(FileName, MaybeModuleName, !IO) :-
+find_module_name(Globals, FileName, MaybeModuleName, !IO) :-
     io.open_input(FileName, OpenRes, !IO),
     (
         OpenRes = ok(InputStream),
@@ -552,7 +561,6 @@ find_module_name(FileName, MaybeModuleName, !IO) :-
             ModuleName, _, _, Specs, _, SeqNumCounter0, _, !IO),
         MaybeModuleName = yes(ModuleName),
         % XXX _NumErrors
-        globals.io_get_globals(Globals, !IO),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
         io.set_input_stream(OldInputStream, _, !IO),
         io.close_input(InputStream, !IO)
@@ -564,7 +572,6 @@ find_module_name(FileName, MaybeModuleName, !IO) :-
             quote(FileName), suffix(":"), words(ErrorMsg), suffix("."), nl],
         Spec = error_spec(severity_error, phase_read_files,
             [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
-        globals.io_get_globals(Globals, !IO),
         % XXX _NumErrors
         write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
         MaybeModuleName = no
@@ -583,11 +590,12 @@ find_module_name(FileName, MaybeModuleName, !IO) :-
     %
     % We use a continuation-passing style here.
     %
-:- pred read_all_items(module_name::in, module_name::out,
+:- pred read_all_items(globals::in, module_name::in, module_name::out,
     list(item)::out, list(error_spec)::out, module_error::out,
     io::di, io::uo) is det.
 
-read_all_items(DefaultModuleName, ModuleName, Items, !:Specs, !:Error, !IO) :-
+read_all_items(Globals, DefaultModuleName, ModuleName, Items,
+        !:Specs, !:Error, !IO) :-
     some [!SeqNumCounter] (
         counter.init(1, !:SeqNumCounter),
 
@@ -603,11 +611,12 @@ read_all_items(DefaultModuleName, ModuleName, Items, !:Specs, !:Error, !IO) :-
             read_term_to_item_result(ModuleName, SourceFileName0, SecondTerm,
                 !SeqNumCounter, MaybeSecondItem),
 
-            read_items_loop_2(MaybeSecondItem, ModuleName, SourceFileName,
-                RevItems0, RevItems1, !Specs, !Error, !.SeqNumCounter, _, !IO)
+            read_items_loop_2(Globals, MaybeSecondItem, ModuleName,
+                SourceFileName, RevItems0, RevItems1,
+                !Specs, !Error, !.SeqNumCounter, _, !IO)
         ;
             MaybeSecondTerm = no,
-            read_items_loop(ModuleName, SourceFileName,
+            read_items_loop(Globals, ModuleName, SourceFileName,
                 RevItems0, RevItems1, !Specs, !Error, !.SeqNumCounter, _, !IO)
         ),
 
@@ -737,28 +746,28 @@ make_module_decl(ModuleName, Context, Item) :-
     % a single item - via io.gc_call/1, which called the goal with
     % garbage collection. But optimizing for NU-Prolog is no longer a concern.
 
-:- pred read_items_loop(module_name::in, file_name::in,
+:- pred read_items_loop(globals::in, module_name::in, file_name::in,
     list(item)::in, list(item)::out,
     list(error_spec)::in, list(error_spec)::out,
     module_error::in, module_error::out, counter::in, counter::out,
     io::di, io::uo) is det.
 
-read_items_loop(ModuleName, SourceFileName, !Items, !Specs, !Error,
-        !SeqNumCounter, !IO) :-
+read_items_loop(Globals, ModuleName, SourceFileName, !Items,
+        !Specs, !Error, !SeqNumCounter, !IO) :-
     read_item(ModuleName, SourceFileName, MaybeItem, !SeqNumCounter, !IO),
-    read_items_loop_2(MaybeItem, ModuleName, SourceFileName, !Items,
+    read_items_loop_2(Globals, MaybeItem, ModuleName, SourceFileName, !Items,
         !Specs, !Error, !SeqNumCounter, !IO).
 
 %-----------------------------------------------------------------------------%
 
-:- pred read_items_loop_2(read_item_result::in, module_name::in,
+:- pred read_items_loop_2(globals::in, read_item_result::in, module_name::in,
     file_name::in, list(item)::in, list(item)::out,
     list(error_spec)::in, list(error_spec)::out,
     module_error::in, module_error::out, counter::in, counter::out,
     io::di, io::uo) is det.
 
-read_items_loop_2(MaybeItemOrEOF, !.ModuleName, !.SourceFileName, !Items,
-        !Specs, !Error, !SeqNumCounter, !IO) :-
+read_items_loop_2(Globals, MaybeItemOrEOF, !.ModuleName, !.SourceFileName,
+        !Items, !Specs, !Error, !SeqNumCounter, !IO) :-
     (
         MaybeItemOrEOF = read_item_eof
         % If the next item was end-of-file, then we're done.
@@ -769,22 +778,23 @@ read_items_loop_2(MaybeItemOrEOF, !.ModuleName, !.SourceFileName, !Items,
         MaybeItemOrEOF = read_item_errors(ItemSpecs),
         !:Specs = ItemSpecs ++ !.Specs,
         !:Error = some_module_errors,
-        read_items_loop(!.ModuleName, !.SourceFileName, !Items,
+        read_items_loop(Globals, !.ModuleName, !.SourceFileName, !Items,
             !Specs, !Error, !SeqNumCounter, !IO)
     ;
         MaybeItemOrEOF = read_item_ok(Item),
-        read_items_loop_ok(Item, !ModuleName, !SourceFileName, !Items,
+        read_items_loop_ok(Globals, Item, !ModuleName, !SourceFileName, !Items,
             !Specs, !Error, !IO),
-        read_items_loop(!.ModuleName, !.SourceFileName, !Items,
+        read_items_loop(Globals, !.ModuleName, !.SourceFileName, !Items,
             !Specs, !Error, !SeqNumCounter, !IO)
     ).
 
-:- pred read_items_loop_ok(item::in, module_name::in, module_name::out,
-    file_name::in, file_name::out, list(item)::in, list(item)::out,
+:- pred read_items_loop_ok(globals::in, item::in,
+    module_name::in, module_name::out, file_name::in, file_name::out,
+    list(item)::in, list(item)::out,
     list(error_spec)::in, list(error_spec)::out,
     module_error::in, module_error::out, io::di, io::uo) is det.
 
-read_items_loop_ok(Item0, !ModuleName, !SourceFileName, !Items,
+read_items_loop_ok(Globals, Item0, !ModuleName, !SourceFileName, !Items,
         !Specs, !Error, !IO) :-
     (
         Item0 = item_nothing(ItemNothing0),
@@ -793,7 +803,7 @@ read_items_loop_ok(Item0, !ModuleName, !SourceFileName, !Items,
         Warning = item_warning(MaybeOption, Msg, Term),
         (
             MaybeOption = yes(Option),
-            globals.io_lookup_bool_option(Option, Warn, !IO)
+            globals.lookup_bool_option(Globals, Option, Warn)
         ;
             MaybeOption = no,
             Warn = yes
@@ -805,7 +815,7 @@ read_items_loop_ok(Item0, !ModuleName, !SourceFileName, !Items,
                 [simple_msg(get_term_context(Term), [always(Pieces)])]),
             !:Specs = [Spec | !.Specs],
 
-            globals.io_lookup_bool_option(halt_at_warn, Halt, !IO),
+            globals.lookup_bool_option(Globals, halt_at_warn, Halt),
             (
                 Halt = yes,
                 !:Error = some_module_errors

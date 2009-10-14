@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007 University of Melbourne.
+% Copyright (C) 2002-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -29,20 +29,20 @@
 :- type post_signal_cleanup(Info) == pred(Info, Info, io, io).
 :- inst post_signal_cleanup == (pred(in, out, di, uo) is det).
 
-    % build_with_check_for_interrupt(Build, Cleanup, Succeeded, !Info):
+    % build_with_check_for_interrupt(VeryVerbose, Build, Cleanup, Succeeded,
+    %   !Info, !IO):
     %
-    % Apply `Build' with signal handlers installed to check for
-    % signals which would normally kill the process. If a signal
-    % occurs call `Cleanup', then restore signal handlers to their
-    % defaults and reraise the signal to kill the current process.
-    % An action being performed in a child process by
-    % call_in_forked_process will be killed if a fatal signal
-    % (SIGINT, SIGTERM, SIGHUP or SIGQUIT) is received by the
-    % current process.  An action being performed within the current
-    % process or by system() will run to completion, with the
-    % interrupt being taken immediately afterwards.
+    % Apply `Build' with signal handlers installed to check for signals
+    % which would normally kill the process. If a signal occurs call `Cleanup',
+    % then restore signal handlers to their defaults and reraise the signal
+    % to kill the current process. An action being performed in a child process
+    % by call_in_forked_process will be killed if a fatal signal (SIGINT,
+    % SIGTERM, SIGHUP or SIGQUIT) is received by the current process.
+    % An action being performed within the current process or by system()
+    % will run to completion, with the interrupt being taken immediately
+    % afterwards.
     %
-:- pred build_with_check_for_interrupt(build0(Info)::in(build0),
+:- pred build_with_check_for_interrupt(bool::in, build0(Info)::in(build0),
     post_signal_cleanup(Info)::in(post_signal_cleanup), bool::out,
     Info::in, Info::out, io::di, io::uo) is det.
 
@@ -129,21 +129,21 @@
 
 %-----------------------------------------------------------------------------%
 
-build_with_check_for_interrupt(Build, Cleanup, Succeeded, !Info, !IO) :-
+build_with_check_for_interrupt(VeryVerbose, Build, Cleanup, Succeeded,
+        !Info, !IO) :-
     setup_signal_handlers(MaybeSigIntHandler, !IO),
     Build(Succeeded0, !Info, !IO),
     restore_signal_handlers(MaybeSigIntHandler, !IO),
     check_for_signal(Signalled, Signal, !IO),
     ( Signalled = 1 ->
         Succeeded = no,
-        globals.io_lookup_bool_option(very_verbose, Verbose, !IO),
         (
-            Verbose = yes,
+            VeryVerbose = yes,
             io.write_string("** Received signal ", !IO),
             io.write_int(Signal, !IO),
             io.write_string(", cleaning up.\n", !IO)
         ;
-            Verbose = no
+            VeryVerbose = no
         ),
         Cleanup(!Info, !IO),
 

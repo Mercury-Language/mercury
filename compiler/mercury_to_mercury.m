@@ -70,12 +70,18 @@
 
     % Convert_to_mercury(ModuleName, OutputFileName, Items).
     %
-:- pred convert_to_mercury(module_name::in, string::in,
+:- pred convert_to_mercury(globals::in, module_name::in, string::in,
     list(item)::in, io::di, io::uo) is det.
+
+:- type merc_out_info.
+:- func init_merc_out_info_for_item(globals) = merc_out_info.
+:- func init_merc_out_info_for_hlds_dump(globals) = merc_out_info.
+
+:- func merc_out_info_disable_line_numbers(merc_out_info) = merc_out_info.
 
     % Output the specified item, followed by ".\n".
     %
-:- pred mercury_output_item(item::in, io::di, io::uo) is det.
+:- pred mercury_output_item(merc_out_info::in, item::in, io::di, io::uo) is det.
 
     % Output a `:- pred' declaration, making sure that the variable
     % number appears in variable names if the boolean argument
@@ -352,7 +358,7 @@
 :- pred write_maybe_termination_info(maybe(generic_termination_info(S, T))::in,
     bool::in, io::di, io::uo) is det.
 
-:- pred mercury_output_where_attributes(tvarset::in,
+:- pred mercury_output_where_attributes(merc_out_info::in, tvarset::in,
     maybe(solver_type_details)::in, maybe(unify_compare)::in, io::di, io::uo)
     is det.
 
@@ -432,11 +438,11 @@
 
 %-----------------------------------------------------------------------------%
 
-convert_to_mercury(ModuleName, OutputFileName, Items, !IO) :-
+convert_to_mercury(Globals, ModuleName, OutputFileName, Items, !IO) :-
     io.open_output(OutputFileName, Res, !IO),
     (
         Res = ok(FileStream),
-        globals.io_lookup_bool_option(verbose, Verbose, !IO),
+        globals.lookup_bool_option(Globals, verbose, Verbose),
         (
             Verbose = yes,
             io.write_string("% Writing output to ", !IO),
@@ -455,7 +461,8 @@ convert_to_mercury(ModuleName, OutputFileName, Items, !IO) :-
         % Module qualifiers on items are redundant after the
         % declaration above.
         UnqualifiedItemNames = yes,
-        mercury_output_item_list(UnqualifiedItemNames, Items, !IO),
+        Info = init_merc_out_info(Globals, UnqualifiedItemNames),
+        mercury_output_item_list(Info, Items, !IO),
         io.set_output_stream(OutputStream, _, !IO),
         io.close_output(FileStream, !IO),
         (
@@ -475,88 +482,80 @@ convert_to_mercury(ModuleName, OutputFileName, Items, !IO) :-
 
     % Output the declarations one by one.
     %
-:- pred mercury_output_item_list(bool::in, list(item)::in,
+:- pred mercury_output_item_list(merc_out_info::in, list(item)::in,
     io::di, io::uo) is det.
 
 mercury_output_item_list(_, [], !IO).
-mercury_output_item_list(UnqualifiedItemNames, [Item | Items], !IO) :-
-    mercury_output_item_2(UnqualifiedItemNames, Item, !IO),
-    mercury_output_item_list(UnqualifiedItemNames, Items, !IO).
+mercury_output_item_list(Info, [Item | Items], !IO) :-
+    mercury_output_item(Info, Item, !IO),
+    mercury_output_item_list(Info, Items, !IO).
 
 %-----------------------------------------------------------------------------%
 
-mercury_output_item(Item, !IO) :-
-    UnqualifiedItemNames = no,
-    mercury_output_item_2(UnqualifiedItemNames, Item, !IO).
-
-:- pred mercury_output_item_2(bool::in, item::in, io::di, io::uo) is det.
-
-mercury_output_item_2(UnqualifiedItemNames, Item, !IO) :-
+mercury_output_item(Info, Item, !IO) :-
     (
         Item = item_module_defn(ItemModuleDefn),
-        mercury_output_item_module_defn(UnqualifiedItemNames, ItemModuleDefn,
-            !IO)
+        mercury_output_item_module_defn(Info, ItemModuleDefn, !IO)
     ;
         Item = item_clause(ItemClause),
-        mercury_output_item_clause(UnqualifiedItemNames, ItemClause, !IO)
+        mercury_output_item_clause(Info, ItemClause, !IO)
     ;
         Item = item_type_defn(ItemTypeDefn),
-        mercury_output_item_type_defn(UnqualifiedItemNames, ItemTypeDefn, !IO)
+        mercury_output_item_type_defn(Info, ItemTypeDefn, !IO)
     ;
         Item = item_inst_defn(ItemInstDefn),
-        mercury_output_item_inst_defn(UnqualifiedItemNames, ItemInstDefn, !IO)
+        mercury_output_item_inst_defn(Info, ItemInstDefn, !IO)
     ;
         Item = item_mode_defn(ItemModeDefn),
-        mercury_output_item_mode_defn(UnqualifiedItemNames, ItemModeDefn, !IO)
+        mercury_output_item_mode_defn(Info, ItemModeDefn, !IO)
     ;
         Item = item_pred_decl(ItemPredDecl),
-        mercury_output_item_pred_decl(UnqualifiedItemNames, ItemPredDecl, !IO)
+        mercury_output_item_pred_decl(Info, ItemPredDecl, !IO)
     ;
         Item = item_mode_decl(ItemModeDecl),
-        mercury_output_item_mode_decl(UnqualifiedItemNames, ItemModeDecl, !IO)
+        mercury_output_item_mode_decl(Info, ItemModeDecl, !IO)
     ;
         Item = item_pragma(ItemPragma),
-        mercury_output_item_pragma(UnqualifiedItemNames, ItemPragma, !IO)
+        mercury_output_item_pragma(Info, ItemPragma, !IO)
     ;
         Item = item_promise(ItemPromise),
-        mercury_output_item_promise(UnqualifiedItemNames, ItemPromise, !IO)
+        mercury_output_item_promise(Info, ItemPromise, !IO)
     ;
         Item = item_typeclass(ItemTypeClass),
-        mercury_output_item_typeclass(UnqualifiedItemNames, ItemTypeClass, !IO)
+        mercury_output_item_typeclass(Info, ItemTypeClass, !IO)
     ;
         Item = item_instance(ItemInstance),
-        mercury_output_item_instance(UnqualifiedItemNames, ItemInstance, !IO)
+        mercury_output_item_instance(Info, ItemInstance, !IO)
     ;
         Item = item_initialise(ItemInitialise),
-        mercury_output_item_initialise(UnqualifiedItemNames, ItemInitialise,
-            !IO)
+        mercury_output_item_initialise(Info, ItemInitialise, !IO)
     ;
         Item = item_finalise(ItemFinalise),
-        mercury_output_item_finalise(UnqualifiedItemNames, ItemFinalise, !IO)
+        mercury_output_item_finalise(Info, ItemFinalise, !IO)
     ;
         Item = item_mutable(ItemMutable),
-        mercury_output_item_mutable(UnqualifiedItemNames, ItemMutable, !IO)
+        mercury_output_item_mutable(Info, ItemMutable, !IO)
     ;
         Item = item_nothing(_ItemNothing)
     ).
 
-:- pred mercury_output_item_type_defn(bool::in, item_type_defn_info::in,
+:- pred mercury_output_item_type_defn(merc_out_info::in, item_type_defn_info::in,
     io::di, io::uo) is det.
 
-mercury_output_item_type_defn(UnqualifiedItemNames, ItemTypeDefn, !IO) :-
+mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
     ItemTypeDefn = item_type_defn_info(VarSet, Name0, Args, TypeDefn, _Cond,
         Context, _SeqNum),
-    maybe_unqualify_sym_name(UnqualifiedItemNames, Name0, Name),
-    maybe_output_line_number(Context, !IO),
-    mercury_output_type_defn(VarSet, Name, Args, TypeDefn, Context, !IO).
+    maybe_unqualify_sym_name(Info, Name0, Name),
+    maybe_output_line_number(Info, Context, !IO),
+    mercury_output_type_defn(Info, VarSet, Name, Args, TypeDefn, Context, !IO).
 
-:- pred mercury_output_item_inst_defn(bool::in, item_inst_defn_info::in,
+:- pred mercury_output_item_inst_defn(merc_out_info::in, item_inst_defn_info::in,
     io::di, io::uo) is det.
 
-mercury_output_item_inst_defn(UnqualifiedItemNames, ItemInstDefn, !IO) :-
+mercury_output_item_inst_defn(Info, ItemInstDefn, !IO) :-
     ItemInstDefn = item_inst_defn_info(VarSet, Name0, Args, InstDefn, _Cond,
         Context, _SeqNum),
-    maybe_unqualify_sym_name(UnqualifiedItemNames, Name0, Name1),
+    maybe_unqualify_sym_name(Info, Name0, Name1),
     % If the unqualified name is a builtin inst, then output the qualified
     % name.  This prevents the compiler giving an error about redefining
     % builtin insts when an interface file is read back in.
@@ -565,28 +564,28 @@ mercury_output_item_inst_defn(UnqualifiedItemNames, ItemInstDefn, !IO) :-
     ;
         Name = Name1
     ),
-    maybe_output_line_number(Context, !IO),
+    maybe_output_line_number(Info, Context, !IO),
     mercury_output_inst_defn(VarSet, Name, Args, InstDefn, Context, !IO).
 
-:- pred mercury_output_item_mode_defn(bool::in, item_mode_defn_info::in,
+:- pred mercury_output_item_mode_defn(merc_out_info::in, item_mode_defn_info::in,
     io::di, io::uo) is det.
 
-mercury_output_item_mode_defn(UnqualifiedItemNames, ItemModeDefn, !IO) :-
+mercury_output_item_mode_defn(Info, ItemModeDefn, !IO) :-
     ItemModeDefn = item_mode_defn_info(VarSet, Name0, Args, ModeDefn, _Cond,
         Context, _SeqNum),
-    maybe_unqualify_sym_name(UnqualifiedItemNames, Name0, Name),
-    maybe_output_line_number(Context, !IO),
+    maybe_unqualify_sym_name(Info, Name0, Name),
+    maybe_output_line_number(Info, Context, !IO),
     mercury_format_mode_defn(VarSet, Name, Args, ModeDefn, Context, !IO).
 
-:- pred mercury_output_item_pred_decl(bool::in, item_pred_decl_info::in,
+:- pred mercury_output_item_pred_decl(merc_out_info::in, item_pred_decl_info::in,
     io::di, io::uo) is det.
 
-mercury_output_item_pred_decl(UnqualifiedItemNames, ItemPredDecl, !IO) :-
+mercury_output_item_pred_decl(Info, ItemPredDecl, !IO) :-
     ItemPredDecl = item_pred_decl_info(_Origin, TypeVarSet, InstVarSet,
         ExistQVars, PredOrFunc, PredName0, TypesAndModes, WithType, WithInst,
         Det, _Cond, Purity, ClassContext, Context, _SeqNum),
-    maybe_unqualify_sym_name(UnqualifiedItemNames, PredName0, PredName),
-    maybe_output_line_number(Context, !IO),
+    maybe_unqualify_sym_name(Info, PredName0, PredName),
+    maybe_output_line_number(Info, Context, !IO),
     (
         % Function declarations using `with_type` have the same
         % format as predicate declarations, but with `func' instead
@@ -605,14 +604,14 @@ mercury_output_item_pred_decl(UnqualifiedItemNames, ItemPredDecl, !IO) :-
             Purity, ClassContext, Context, ":- ", ".\n", ".\n", !IO)
     ).
 
-:- pred mercury_output_item_mode_decl(bool::in, item_mode_decl_info::in,
+:- pred mercury_output_item_mode_decl(merc_out_info::in, item_mode_decl_info::in,
     io::di, io::uo) is det.
 
-mercury_output_item_mode_decl(UnqualifiedItemNames, ItemModeDecl, !IO) :-
+mercury_output_item_mode_decl(Info, ItemModeDecl, !IO) :-
     ItemModeDecl = item_mode_decl_info(VarSet, PredOrFunc, PredName0, Modes,
         WithInst, MaybeDet, _Cond, Context, _SeqNum),
-    maybe_unqualify_sym_name(UnqualifiedItemNames, PredName0, PredName),
-    maybe_output_line_number(Context, !IO),
+    maybe_unqualify_sym_name(Info, PredName0, PredName),
+    maybe_output_line_number(Info, Context, !IO),
     (
         % Function mode declarations using `with_type` have
         % the same format as predicate mode declarations.
@@ -627,22 +626,22 @@ mercury_output_item_mode_decl(UnqualifiedItemNames, ItemModeDecl, !IO) :-
             MaybeDet, Context, !IO)
     ).
 
-:- pred mercury_output_item_module_defn(bool::in, item_module_defn_info::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_item_module_defn(merc_out_info::in,
+    item_module_defn_info::in, io::di, io::uo) is det.
 
-mercury_output_item_module_defn(_, ItemModuleDefn, !IO) :-
+mercury_output_item_module_defn(Info, ItemModuleDefn, !IO) :-
     ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, _SeqNum),
-    maybe_output_line_number(Context, !IO),
+    maybe_output_line_number(Info, Context, !IO),
     mercury_output_module_defn(ModuleDefn, Context, !IO).
 
-:- pred mercury_output_item_clause(bool::in, item_clause_info::in,
+:- pred mercury_output_item_clause(merc_out_info::in, item_clause_info::in,
     io::di, io::uo) is det.
 
-mercury_output_item_clause(UnqualifiedItemNames, ItemClause, !IO) :-
+mercury_output_item_clause(Info, ItemClause, !IO) :-
     ItemClause = item_clause_info(_, VarSet, PredOrFunc, PredName0, Args,
         Body, Context, _SeqNum),
-    maybe_unqualify_sym_name(UnqualifiedItemNames, PredName0, PredName),
-    maybe_output_line_number(Context, !IO),
+    maybe_unqualify_sym_name(Info, PredName0, PredName),
+    maybe_output_line_number(Info, Context, !IO),
     (
         PredOrFunc = pf_predicate,
         mercury_output_pred_clause(VarSet, PredName, Args, Body, Context, !IO)
@@ -654,12 +653,12 @@ mercury_output_item_clause(UnqualifiedItemNames, ItemClause, !IO) :-
     ),
     io.write_string(".\n", !IO).
 
-:- pred mercury_output_item_pragma(bool::in, item_pragma_info::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_item_pragma(merc_out_info::in,
+    item_pragma_info::in, io::di, io::uo) is det.
 
-mercury_output_item_pragma(_UnqualifiedItemNames, ItemPragma, !IO) :-
+mercury_output_item_pragma(Info, ItemPragma, !IO) :-
     ItemPragma = item_pragma_info(_, Pragma, Context, _SeqNum),
-    maybe_output_line_number(Context, !IO),
+    maybe_output_line_number(Info, Context, !IO),
     (
         Pragma = pragma_source_file(SourceFile),
         mercury_output_pragma_source_file(SourceFile, !IO)
@@ -867,7 +866,7 @@ mercury_output_item_pragma(_UnqualifiedItemNames, ItemPragma, !IO) :-
         mercury_output_pragma_require_feature_set(Features, !IO)
     ).
 
-:- pred mercury_output_item_promise(bool::in, item_promise_info::in,
+:- pred mercury_output_item_promise(merc_out_info::in, item_promise_info::in,
     io::di, io::uo) is det.
 
 mercury_output_item_promise(_, ItemPromise, !IO) :-
@@ -908,13 +907,13 @@ mercury_output_item_promise(_, ItemPromise, !IO) :-
     mercury_output_goal(Goal, VarSet, Indent, !IO),
     io.write_string(".\n", !IO).
 
-:- pred mercury_output_item_typeclass(bool::in, item_typeclass_info::in,
+:- pred mercury_output_item_typeclass(merc_out_info::in, item_typeclass_info::in,
     io::di, io::uo) is det.
 
-mercury_output_item_typeclass(UnqualifiedItemNames, ItemTypeClass, !IO) :-
+mercury_output_item_typeclass(Info, ItemTypeClass, !IO) :-
     ItemTypeClass = item_typeclass_info(Constraints, FunDeps, ClassName0,
         Vars, Interface, VarSet, _Context, _SeqNum),
-    maybe_unqualify_sym_name(UnqualifiedItemNames, ClassName0, ClassName),
+    maybe_unqualify_sym_name(Info, ClassName0, ClassName),
     io.write_string(":- typeclass ", !IO),
 
     % We put an extra set of brackets around the class name in
@@ -940,7 +939,7 @@ mercury_output_item_typeclass(UnqualifiedItemNames, ItemTypeClass, !IO) :-
         io.write_string("\n].\n", !IO)
     ).
 
-:- pred mercury_output_item_instance(bool::in, item_instance_info::in,
+:- pred mercury_output_item_instance(merc_out_info::in, item_instance_info::in,
     io::di, io::uo) is det.
 
 mercury_output_item_instance(_, ItemInstance, !IO) :-
@@ -968,7 +967,7 @@ mercury_output_item_instance(_, ItemInstance, !IO) :-
     ),
     io.write_string(".\n", !IO).
 
-:- pred mercury_output_item_initialise(bool::in, item_initialise_info::in,
+:- pred mercury_output_item_initialise(merc_out_info::in, item_initialise_info::in,
     io::di, io::uo) is det.
 
 mercury_output_item_initialise(_, ItemInitialise, !IO) :-
@@ -980,7 +979,7 @@ mercury_output_item_initialise(_, ItemInitialise, !IO) :-
     io.write_int(Arity, !IO),
     io.write_string(".\n", !IO).
 
-:- pred mercury_output_item_finalise(bool::in, item_finalise_info::in,
+:- pred mercury_output_item_finalise(merc_out_info::in, item_finalise_info::in,
     io::di, io::uo) is det.
 
 mercury_output_item_finalise(_, ItemFinalise, !IO) :-
@@ -992,7 +991,7 @@ mercury_output_item_finalise(_, ItemFinalise, !IO) :-
     io.write_int(Arity, !IO),
     io.write_string(".\n", !IO).
 
-:- pred mercury_output_item_mutable(bool::in, item_mutable_info::in,
+:- pred mercury_output_item_mutable(merc_out_info::in, item_mutable_info::in,
     io::di, io::uo) is det.
 
 mercury_output_item_mutable(_, ItemMutable, !IO) :-
@@ -1908,123 +1907,133 @@ mercury_format_mode(user_defined_mode(Name, Args), InstInfo, !U) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_output_type_defn(tvarset::in, sym_name::in,
+:- pred mercury_output_type_defn(merc_out_info::in, tvarset::in, sym_name::in,
     list(type_param)::in, type_defn::in, prog_context::in, io::di, io::uo)
     is det.
 
-mercury_output_type_defn(TVarSet, Name, TParams,
-        parse_tree_abstract_type(IsSolverType), Context, !IO) :-
-    mercury_output_begin_type_decl(IsSolverType, !IO),
-    Args = list.map((func(V) = term.variable(V, Context)), TParams),
-    construct_qualified_term(Name, Args, Context, TypeTerm),
-    mercury_output_term_nq(TVarSet, no, next_to_graphic_token, TypeTerm, !IO),
-    io.write_string(".\n", !IO).
-
-mercury_output_type_defn(TVarSet, Name, TParams, parse_tree_eqv_type(Body),
-        Context, !IO) :-
-    mercury_output_begin_type_decl(non_solver_type, !IO),
-    Args = list.map((func(V) = term.variable(V, Context)), TParams),
-    construct_qualified_term(Name, Args, Context, TypeTerm),
-    mercury_output_term(TVarSet, no, TypeTerm, !IO),
-    io.write_string(" == ", !IO),
-    mercury_output_type(TVarSet, no, Body, !IO),
-    io.write_string(".\n", !IO).
-
-mercury_output_type_defn(TVarSet, Name, TParams,
-        parse_tree_du_type(Ctors, MaybeUserEqComp), Context, !IO) :-
-    mercury_output_begin_type_decl(non_solver_type, !IO),
-    Args = list.map((func(V) = term.variable(V, Context)), TParams),
-    construct_qualified_term(Name, Args, Context, TypeTerm),
-    mercury_output_term(TVarSet, no, TypeTerm, !IO),
-    io.write_string("\n\t--->\t", !IO),
-    mercury_output_ctors(Ctors, TVarSet, !IO),
-    mercury_output_where_attributes(TVarSet, no, MaybeUserEqComp, !IO),
-    io.write_string(".\n", !IO).
-
-mercury_output_type_defn(TVarSet, Name, TParams,
-        parse_tree_solver_type(SolverTypeDetails, MaybeUserEqComp),
-        Context, !IO) :-
-    mercury_output_begin_type_decl(solver_type, !IO),
-    Args = list.map((func(V) = term.variable(V, Context)), TParams),
-    construct_qualified_term(Name, Args, Context, TypeTerm),
-    mercury_output_term(TVarSet, no, TypeTerm, !IO),
-    mercury_output_where_attributes(TVarSet, yes(SolverTypeDetails),
-        MaybeUserEqComp, !IO),
-    io.write_string(".\n", !IO).
-
-mercury_output_type_defn(TVarSet, Name, TParams,
-        parse_tree_foreign_type(ForeignType, MaybeUserEqComp, Assertions),
-        _Context, !IO) :-
-    io.write_string(":- pragma foreign_type(", !IO),
+mercury_output_type_defn(Info, TVarSet, Name, TParams, TypeDefn, Context,
+        !IO) :-
     (
-        ForeignType = il(_),
-        io.write_string("il, ", !IO)
-    ;
-        ForeignType = c(_),
-        io.write_string("c, ", !IO)
-    ;
-        ForeignType = java(_),
-        io.write_string("java, ", !IO)
-    ;
-        ForeignType = erlang(_),
-        io.write_string("erlang, ", !IO)
-    ),
-    Args = list.map((func(V) = term.variable(V, context_init)), TParams),
-    construct_qualified_term(Name, Args, MercuryType),
-    mercury_output_term(TVarSet, no, MercuryType, !IO),
-    io.write_string(", \"", !IO),
-    (
-        ForeignType = il(il_type(RefOrVal, ForeignLocStr, ForeignTypeName)),
-        (
-            RefOrVal = reference,
-            RefOrValStr = "class "
-        ;
-            RefOrVal = value,
-            RefOrValStr = "valuetype "
-        ),
-        NameStr = sym_name_to_string(ForeignTypeName),
-        ForeignTypeStr = RefOrValStr ++ "[" ++ ForeignLocStr ++ "]" ++ NameStr
-    ;
-        ForeignType = c(c_type(ForeignTypeStr))
-    ;
-        ForeignType = java(java_type(ForeignTypeStr))
-    ;
-        ForeignType = erlang(erlang_type),
-        ForeignTypeStr = ""
-    ),
-    io.write_string(ForeignTypeStr, !IO),
-    io.write_string("\"", !IO),
-    (
-        Assertions = []
-    ;
-        Assertions = [_ | _],
-        io.write_string(", [", !IO),
-        io.write_list(Assertions, ", ", mercury_output_foreign_type_assertion,
+        TypeDefn = parse_tree_abstract_type(IsSolverType),
+        mercury_output_begin_type_decl(IsSolverType, !IO),
+        Args = list.map((func(V) = term.variable(V, Context)), TParams),
+        construct_qualified_term(Name, Args, Context, TypeTerm),
+        mercury_output_term_nq(TVarSet, no, next_to_graphic_token, TypeTerm,
             !IO),
-        io.write_string("]", !IO)
-    ),
-    io.write_string(")", !IO),
-    mercury_output_where_attributes(TVarSet, no, MaybeUserEqComp, !IO),
-    io.write_string(".\n", !IO).
+        io.write_string(".\n", !IO)
+    ;
+        TypeDefn = parse_tree_eqv_type(Body),
+        mercury_output_begin_type_decl(non_solver_type, !IO),
+        Args = list.map((func(V) = term.variable(V, Context)), TParams),
+        construct_qualified_term(Name, Args, Context, TypeTerm),
+        mercury_output_term(TVarSet, no, TypeTerm, !IO),
+        io.write_string(" == ", !IO),
+        mercury_output_type(TVarSet, no, Body, !IO),
+        io.write_string(".\n", !IO)
+    ;
+        TypeDefn = parse_tree_du_type(Ctors, MaybeUserEqComp),
+        mercury_output_begin_type_decl(non_solver_type, !IO),
+        Args = list.map((func(V) = term.variable(V, Context)), TParams),
+        construct_qualified_term(Name, Args, Context, TypeTerm),
+        mercury_output_term(TVarSet, no, TypeTerm, !IO),
+        io.write_string("\n\t--->\t", !IO),
+        mercury_output_ctors(Ctors, TVarSet, !IO),
+        mercury_output_where_attributes(Info, TVarSet, no, MaybeUserEqComp,
+            !IO),
+        io.write_string(".\n", !IO)
+    ;
+        TypeDefn = parse_tree_solver_type(SolverTypeDetails, MaybeUserEqComp),
+        mercury_output_begin_type_decl(solver_type, !IO),
+        Args = list.map((func(V) = term.variable(V, Context)), TParams),
+        construct_qualified_term(Name, Args, Context, TypeTerm),
+        mercury_output_term(TVarSet, no, TypeTerm, !IO),
+        mercury_output_where_attributes(Info, TVarSet, yes(SolverTypeDetails),
+            MaybeUserEqComp, !IO),
+        io.write_string(".\n", !IO)
+    ;
+        TypeDefn = parse_tree_foreign_type(ForeignType, MaybeUserEqComp,
+            Assertions),
+        io.write_string(":- pragma foreign_type(", !IO),
+        (
+            ForeignType = il(_),
+            io.write_string("il, ", !IO)
+        ;
+            ForeignType = c(_),
+            io.write_string("c, ", !IO)
+        ;
+            ForeignType = java(_),
+            io.write_string("java, ", !IO)
+        ;
+            ForeignType = erlang(_),
+            io.write_string("erlang, ", !IO)
+        ),
+        Args = list.map((func(V) = term.variable(V, context_init)), TParams),
+        construct_qualified_term(Name, Args, MercuryType),
+        mercury_output_term(TVarSet, no, MercuryType, !IO),
+        io.write_string(", \"", !IO),
+        (
+            ForeignType = il(il_type(RefOrVal, ForeignLocStr,
+                ForeignTypeName)),
+            (
+                RefOrVal = reference,
+                RefOrValStr = "class "
+            ;
+                RefOrVal = value,
+                RefOrValStr = "valuetype "
+            ),
+            NameStr = sym_name_to_string(ForeignTypeName),
+            ForeignTypeStr = RefOrValStr ++ "[" ++ ForeignLocStr ++ "]" ++
+                NameStr
+        ;
+            ForeignType = c(c_type(ForeignTypeStr))
+        ;
+            ForeignType = java(java_type(ForeignTypeStr))
+        ;
+            ForeignType = erlang(erlang_type),
+            ForeignTypeStr = ""
+        ),
+        io.write_string(ForeignTypeStr, !IO),
+        io.write_string("\"", !IO),
+        (
+            Assertions = []
+        ;
+            Assertions = [_ | _],
+            io.write_string(", [", !IO),
+            io.write_list(Assertions, ", ",
+                mercury_output_foreign_type_assertion, !IO),
+            io.write_string("]", !IO)
+        ),
+        io.write_string(")", !IO),
+        mercury_output_where_attributes(Info, TVarSet, no, MaybeUserEqComp,
+            !IO),
+        io.write_string(".\n", !IO)
+    ).
 
 :- pred mercury_output_foreign_type_assertion(foreign_type_assertion::in,
     io::di, io::uo) is det.
 
-mercury_output_foreign_type_assertion(foreign_type_can_pass_as_mercury_type,
-        !IO) :-
-    io.write_string("can_pass_as_mercury_type", !IO).
-mercury_output_foreign_type_assertion(foreign_type_stable, !IO) :-
-    io.write_string("stable", !IO).
+mercury_output_foreign_type_assertion(Assertion, !IO) :-
+    (
+        Assertion = foreign_type_can_pass_as_mercury_type,
+        io.write_string("can_pass_as_mercury_type", !IO)
+    ;
+        Assertion = foreign_type_stable,
+        io.write_string("stable", !IO)
+    ).
 
 :- pred mercury_output_begin_type_decl(is_solver_type::in,
     io::di, io::uo) is det.
 
-mercury_output_begin_type_decl(solver_type, !IO) :-
-    io.write_string(":- solver type ", !IO).
-mercury_output_begin_type_decl(non_solver_type, !IO) :-
-    io.write_string(":- type ", !IO).
+mercury_output_begin_type_decl(IsSolverType, !IO) :-
+    (
+        IsSolverType = solver_type,
+        io.write_string(":- solver type ", !IO)
+    ;
+        IsSolverType = non_solver_type,
+        io.write_string(":- type ", !IO)
+    ).
 
-mercury_output_where_attributes(TVarSet,
+mercury_output_where_attributes(Info, TVarSet,
         MaybeSolverTypeDetails, MaybeUserEqComp, !IO) :-
     (
         MaybeSolverTypeDetails = no,
@@ -2048,8 +2057,8 @@ mercury_output_where_attributes(TVarSet,
         ;
             (
                 MaybeSolverTypeDetails = yes(SolverTypeDetails),
-                mercury_output_solver_type_details(TVarSet, SolverTypeDetails,
-                    !IO),
+                mercury_output_solver_type_details(Info, TVarSet,
+                    SolverTypeDetails, !IO),
                 (
                     (   MaybeUnifyPred = yes(_)
                     ;   MaybeComparePred = yes(_)
@@ -2085,12 +2094,12 @@ mercury_output_where_attributes(TVarSet,
         )
     ).
 
-:- pred mercury_output_solver_type_details(tvarset::in,
-        solver_type_details::in, io::di, io::uo) is det.
+:- pred mercury_output_solver_type_details(merc_out_info::in, tvarset::in,
+    solver_type_details::in, io::di, io::uo) is det.
 
-mercury_output_solver_type_details(TVarSet,
-        solver_type_details(RepresentationType, HowToInit, GroundInst, AnyInst,
-        MutableItems), !IO) :-
+mercury_output_solver_type_details(Info, TVarSet, Details, !IO) :-
+    Details = solver_type_details(RepresentationType, HowToInit, GroundInst,
+        AnyInst, MutableItems),
     io.write_string("representation is ", !IO),
     mercury_output_type(TVarSet, no, RepresentationType, !IO),
     (
@@ -2110,7 +2119,7 @@ mercury_output_solver_type_details(TVarSet,
     ;
         MutableItems = [_ | _],
         io.write_string(",\n\t\tconstraint_store is [\n\t\t\t", !IO),
-        io.write_list(MutableItems, ",\n\t\t\t", mercury_output_item,
+        io.write_list(MutableItems, ",\n\t\t\t", mercury_output_item(Info),
             !IO),
         io.write_string("\n\t\t]", !IO)
     ).
@@ -4841,10 +4850,11 @@ strip_trailing_primes(Name0, Name, Num) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_output_line_number(prog_context::in, io::di, io::uo) is det.
+:- pred maybe_output_line_number(merc_out_info::in, prog_context::in,
+    io::di, io::uo) is det.
 
-maybe_output_line_number(Context, !IO) :-
-    globals.io_lookup_bool_option(line_numbers, LineNumbers, !IO),
+maybe_output_line_number(OutInfo, Context, !IO) :-
+    LineNumbers = OutInfo ^ moi_line_numbers,
     (
         LineNumbers = yes,
         io.write_string("\t% ", !IO),
@@ -4856,10 +4866,18 @@ maybe_output_line_number(Context, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_unqualify_sym_name(bool::in, sym_name::in, sym_name::out) is det.
+:- pred maybe_unqualify_sym_name(merc_out_info::in,
+    sym_name::in, sym_name::out) is det.
 
-maybe_unqualify_sym_name(no, SymName, SymName).
-maybe_unqualify_sym_name(yes, SymName, unqualified(unqualify_name(SymName))).
+maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
+    UnqualifiedItemNames = Info ^ moi_unqualified_item_names,
+    (
+        UnqualifiedItemNames = no,
+        OutSymName = SymName
+    ;
+        UnqualifiedItemNames = yes,
+        OutSymName = unqualified(unqualify_name(SymName))
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -5335,6 +5353,33 @@ describe_error_term(VarSet, Term) =
 :- func max_term_string_size_in_syntax_error = int.
 
 max_term_string_size_in_syntax_error = 80.
+
+%---------------------------------------------------------------------------%
+
+:- type merc_out_info
+    --->    merc_out_info(
+                moi_unqualified_item_names  :: bool,
+                moi_line_numbers            :: bool
+            ).
+
+:- func init_merc_out_info(globals, bool) = merc_out_info.
+
+init_merc_out_info(Globals, UnqualifiedItemNames) = Info :-
+    globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
+    Info = merc_out_info(UnqualifiedItemNames, LineNumbers).
+
+init_merc_out_info_for_hlds_dump(Globals) = Info :-
+    % Since hlds_out.m does not use this module to print whole items,
+    % the value of UnqualifiedItemNames does not really matter.
+    UnqualifiedItemNames = yes,
+    Info = init_merc_out_info(Globals, UnqualifiedItemNames).
+
+init_merc_out_info_for_item(Globals) = Info :-
+    UnqualifiedItemNames = no,
+    Info = init_merc_out_info(Globals, UnqualifiedItemNames).
+
+merc_out_info_disable_line_numbers(Info0) = Info :-
+    Info = Info0 ^ moi_unqualified_item_names := no.
 
 %---------------------------------------------------------------------------%
 

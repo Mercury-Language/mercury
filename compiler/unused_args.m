@@ -249,8 +249,8 @@ unused_args_process_module(!ModuleInfo, !Specs, !IO) :-
         IntermodAnalysis = no
     ->
         module_info_get_name(!.ModuleInfo, ModuleName),
-        module_name_to_file_name(ModuleName, ".opt.tmp", do_not_create_dirs,
-            OptFileName, !IO),
+        module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
+            do_not_create_dirs, OptFileName, !IO),
         io.open_append(OptFileName, OptFileRes, !IO),
         (
             OptFileRes = ok(OptFile),

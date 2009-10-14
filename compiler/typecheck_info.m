@@ -394,6 +394,7 @@ typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
         Status, PredMarkers, NonOverloadErrors, Info) :-
     CallPredId =
         plain_call_id(simple_call_id(pf_predicate, unqualified(""), 0)),
+    ArgNum = 0,
     term.context_init(Context),
     map.init(TypeBindings),
     map.init(Proofs),
@@ -405,15 +406,16 @@ typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
         WarnLimit),
     globals.lookup_int_option(Globals, typecheck_ambiguity_error_limit,
         ErrorLimit),
+    UnifyContext = unify_context(umc_explicit, []),
+    TypeAssignSet = [type_assign(VarTypes, TypeVarSet, HeadTypeParams,
+        TypeBindings, Constraints, Proofs, ConstraintMap)],
+
     SubInfo = typecheck_sub_info(PredId, Status,
         PredMarkers, IsFieldAccessFunction, VarSet,
         NonOverloadErrors, OverloadErrors, OverloadedSymbols, ErrorLimit),
-    Info = typecheck_info(SubInfo, ModuleInfo, CallPredId, 0,
-        Context, unify_context(umc_explicit, []),
-        [type_assign(VarTypes, TypeVarSet, HeadTypeParams,
-            TypeBindings, Constraints, Proofs, ConstraintMap)],
-        WarnLimit
-    ).
+
+    Info = typecheck_info(SubInfo, ModuleInfo, CallPredId, ArgNum,
+        Context, UnifyContext, TypeAssignSet, WarnLimit).
 
 typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
         OldExplicitVarTypes, NewTypeVarSet, NewHeadTypeParams,
@@ -991,7 +993,9 @@ do_type_checkpoint(Msg, Info, !IO) :-
     io.write_string("At ", !IO),
     io.write_string(Msg, !IO),
     io.write_string(": ", !IO),
-    globals.io_lookup_bool_option(detailed_statistics, Statistics, !IO),
+    ModuleInfo = tc_info_module_info(Info),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
     maybe_report_stats(Statistics, !IO),
     io.write_string("\n", !IO),
     TypeAssignSet = tc_info_type_assign_set(Info),

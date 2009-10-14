@@ -230,15 +230,16 @@
     % Attempt to transform a procedure into accumulator recursive form.
     %
 process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
-    globals.io_lookup_bool_option(optimize_constructor_last_call_accumulator,
-        DoLCO, !IO),
-    globals.io_lookup_bool_option(fully_strict, FullyStrict, !IO),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals,
+        optimize_constructor_last_call_accumulator, DoLCO),
+    globals.lookup_bool_option(Globals, fully_strict, FullyStrict),
     (
         module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
         attempt_transform(ProcId, PredId, PredInfo, DoLCO, FullyStrict,
             !ProcInfo, !ModuleInfo, Warnings)
     ->
-        globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+        globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         (
             VeryVerbose = yes,
             io.write_string("% Accumulators introduced into ", !IO),
@@ -248,8 +249,8 @@ process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
             VeryVerbose = no
         ),
 
-        globals.io_lookup_bool_option(inhibit_accumulator_warnings,
-            InhibitWarnings, !IO),
+        globals.lookup_bool_option(Globals, inhibit_accumulator_warnings,
+            InhibitWarnings),
         (
             ( InhibitWarnings = yes
             ; Warnings = []
@@ -272,7 +273,7 @@ process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
                 words("`--inhibit-accumulator-warnings'.")],
             write_error_pieces(Context, 2, Pieces1, !IO),
 
-            globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+            globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
             (
                 VerboseErrors = yes,
                 Pieces2 = [words("If a predicate has been declared"),
@@ -293,7 +294,7 @@ process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
                 VerboseErrors = no,
                 globals.io_set_extra_error_info(yes, !IO)
             ),
-            globals.io_lookup_bool_option(halt_at_warn, HaltAtWarn, !IO),
+            globals.lookup_bool_option(Globals, halt_at_warn, HaltAtWarn),
             (
                 HaltAtWarn = yes,
                 io.set_exit_status(1, !IO),

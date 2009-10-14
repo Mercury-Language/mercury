@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001, 2003-2006 The University of Melbourne.
+% Copyright (C) 2000-2001, 2003-2006, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -30,7 +30,7 @@
 %
 %   This isn't really a peephole optimization, might be better done
 %   elsewhere.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.il_peephole.
@@ -49,7 +49,7 @@
     % those optimizations which are necessary for verifiable code.
     %
 :- pred il_peephole_optimize(bool::in,
-    list(ilasm__decl)::in, list(ilasm__decl)::out) is det.
+    list(il_decl)::in, list(il_decl)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -80,31 +80,47 @@ il_peephole_optimize(VerifyOnly, Decls0, Decls) :-
     % result of the optimization (that is, whether Decl \= Decl0).
     % This can be used to decide whether to keep repeat the optimizations.
     %
-:- pred optimize_decl(bool::in, decl::in, decl::out, bool::in, bool::out)
+:- pred optimize_decl(bool::in, il_decl::in, il_decl::out, bool::in, bool::out)
     is det.
 
 optimize_decl(VerifyOnly, Decl0, Decl, !Mod) :-
-    ( Decl0 = class(A, B, C, D, ClassMembers0) ->
+    (
+        Decl0 = ildecl_class(ClassAttrs, ClassId, ParentClass, Implements,
+            ClassMembers0),
         list.map_foldl(optimize_class_member(VerifyOnly),
             ClassMembers0, ClassMembers, !Mod),
-        Decl = class(A, B, C, D, ClassMembers)
-    ; Decl0 = method(A, MethodDecls0) ->
-        list.map_foldl(optimize_method_decl(VerifyOnly), MethodDecls0,
-            MethodDecls, !Mod),
-        Decl = method(A, MethodDecls)
-    ; Decl0 = namespace(A, NamespaceDecls0) ->
+        Decl = ildecl_class(ClassAttrs, ClassId, ParentClass, Implements,
+            ClassMembers)
+    ;
+        Decl0 = ildecl_namespace(NameSpaceName, NamespaceDecls0),
         list.map_foldl(optimize_decl(VerifyOnly), NamespaceDecls0,
             NamespaceDecls, !Mod),
-        Decl = namespace(A, NamespaceDecls)
+        Decl = ildecl_namespace(NameSpaceName, NamespaceDecls)
     ;
+        Decl0 = ildecl_method(MethodHead, MethodDecls0),
+        list.map_foldl(optimize_method_decl(VerifyOnly), MethodDecls0,
+            MethodDecls, !Mod),
+        Decl = ildecl_method(MethodHead, MethodDecls)
+    ;
+        ( Decl0 = ildecl_data(_, _, _)
+        ; Decl0 = ildecl_file(_)
+        ; Decl0 = ildecl_extern_module(_)
+        ; Decl0 = ildecl_extern_assembly(_, _)
+        ; Decl0 = ildecl_assembly(_)
+        ; Decl0 = ildecl_custom(_)
+        ; Decl0 = ildecl_comment_term(_)
+        ; Decl0 = ildecl_comment_thing(_)
+        ; Decl0 = ildecl_comment(_)
+        ),
         Decl0 = Decl
     ).
 
 :- pred optimize_class_member(bool::in, class_member::in, class_member::out,
     bool::in, bool::out) is det.
 
-optimize_class_member(VerifyOnly, Decl0, Decl, !Mod) :-
-    ( Decl0 = method(A, MethodDecls0) ->
+optimize_class_member(VerifyOnly, Member0, Member, !Mod) :-
+    (
+        Member0 = member_method(MethodHead, MethodDecls0),
         list.map_foldl(optimize_method_decl(VerifyOnly), MethodDecls0,
             MethodDecls1, !Mod),
         (
@@ -115,23 +131,29 @@ optimize_class_member(VerifyOnly, Decl0, Decl, !Mod) :-
                   then calculate_max_stack(I)
                   else 0
                 )), MethodDecls1),
-            NewMaxStack = list.foldl((func(X, Y0) = X + Y0),
-                MaxStacks, 0
-            ),
-                % set the maxstack
+            NewMaxStack = list.foldl((func(X, Y) = X + Y), MaxStacks, 0),
+            % Set the maxstack.
             MethodDecls = list.map((func(X) =
                 ( if X = maxstack(_)
                   then maxstack(int32(NewMaxStack))
                   else X
                 )), MethodDecls1),
-            Decl = method(A, MethodDecls)
+            Member = member_method(MethodHead, MethodDecls)
         ;
             !.Mod = no,
-            Decl = method(A, MethodDecls1)
+            Member = member_method(MethodHead, MethodDecls1)
         )
     ;
+        ( Member0 = member_field(_, _, _, _, _)
+        ; Member0 = member_property(_, _, _, _)
+        ; Member0 = member_nested_class(_, _, _, _, _)
+        ; Member0 = member_custom(_)
+        ; Member0 = member_comment_term(_)
+        ; Member0 = member_comment_thing(_)
+        ; Member0 = member_comment(_)
+        ),
         !:Mod = no,
-        Decl0 = Decl
+        Member0 = Member
     ).
 
 :- pred optimize_method_decl(bool::in,
@@ -445,7 +467,7 @@ skip_over_block([Instr | Instrs], Id) =
 :- pred skip_comments(instrs::in, instrs::out, instrs::out) is det.
 
 skip_comments(Instrs0, Instrs, Comments) :-
-    list.takewhile(pred(ilds__comment(_)::in) is semidet,
+    list.takewhile(pred(ilds.comment(_)::in) is semidet,
         Instrs0, Comments, Instrs).
 
     % Skip over all the nop equivalents.
@@ -453,8 +475,8 @@ skip_comments(Instrs0, Instrs, Comments) :-
 :- pred skip_nops(instrs::in, instrs::out, instrs::out) is det.
 
 skip_nops(Instrs0, Instrs, Nops) :-
-        list.takewhile((pred(X::in) is semidet :- equivalent_to_nop(X) = yes),
-        Instrs0, Nops, Instrs).
+    list.takewhile((pred(X::in) is semidet :- equivalent_to_nop(X) = yes),
+    Instrs0, Nops, Instrs).
 
     % keep_looking(Producer, Condition, Input, IntermediateResult0,
     %   FinalResult, Leftovers):

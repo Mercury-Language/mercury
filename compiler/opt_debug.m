@@ -35,19 +35,19 @@
 
 :- pred msg(bool::in, int::in, string::in, io::di, io::uo) is det.
 
-    % maybe_write_instrs(OptDebug, MaybeProcLabel, Instrs, !IO):
+    % maybe_write_instrs(OptDebug, AutoComments, MaybeProcLabel, Instrs, !IO):
     %
     % If OptDebug = yes, write out the given list of instructions,
     % Use the value of the auto_comments option to decide whether
     % to include comments in the output.
     %
-:- pred maybe_write_instrs(bool::in, maybe(proc_label)::in,
+:- pred maybe_write_instrs(bool::in, bool::in, maybe(proc_label)::in,
     list(instruction)::in, io::di, io::uo) is det.
 
-    % write_instrs(MaybeProcLabel, Instrs, PrintComments, !IO):
+    % write_instrs(MaybeProcLabel, Instrs, AutoComments, !IO):
     %
     % Write out the given list of instructions, together with comments if
-    % PrintComments = yes.
+    % AutoComments = yes.
     %
 :- pred write_instrs(list(instruction)::in, maybe(proc_label)::in, bool::in,
     io::di, io::uo) is det.
@@ -172,30 +172,28 @@ msg(OptDebug, LabelNo, Msg, !IO) :-
         OptDebug = no
     ).
 
-maybe_write_instrs(OptDebug, MaybeProcLabel, Instrs, !IO) :-
+maybe_write_instrs(OptDebug, AutoComments, MaybeProcLabel, Instrs, !IO) :-
     (
         OptDebug = yes,
-        globals.io_lookup_bool_option(auto_comments, PrintComments,
-            !IO),
-        write_instrs(Instrs, MaybeProcLabel, PrintComments, !IO)
+        write_instrs(Instrs, MaybeProcLabel, AutoComments, !IO)
     ;
         OptDebug = no
     ).
 
-write_instrs([], _MaybeProcLabel, _PrintComments, !IO).
-write_instrs([Instr | Instrs], MaybeProcLabel, PrintComments, !IO) :-
+write_instrs([], _MaybeProcLabel, _AutoComments, !IO).
+write_instrs([Instr | Instrs], MaybeProcLabel, AutoComments, !IO) :-
     Instr = llds_instr(Uinstr, Comment),
     ( Uinstr = label(_) ->
-        io.write_string(dump_instr(MaybeProcLabel, PrintComments, Uinstr), !IO)
+        io.write_string(dump_instr(MaybeProcLabel, AutoComments, Uinstr), !IO)
     ; Uinstr = comment(InstrComment) ->
         io.write_string("\t% ", !IO),
         string.foldl(print_comment_char, InstrComment, !IO)
     ;
         io.write_string("\t", !IO),
-        io.write_string(dump_instr(MaybeProcLabel, PrintComments, Uinstr), !IO)
+        io.write_string(dump_instr(MaybeProcLabel, AutoComments, Uinstr), !IO)
     ),
     (
-        PrintComments = yes,
+        AutoComments = yes,
         Comment \= ""
     ->
         io.write_string("\n\t\t" ++ Comment, !IO)
@@ -203,28 +201,28 @@ write_instrs([Instr | Instrs], MaybeProcLabel, PrintComments, !IO) :-
         true
     ),
     io.nl(!IO),
-    write_instrs(Instrs, MaybeProcLabel, PrintComments, !IO).
+    write_instrs(Instrs, MaybeProcLabel, AutoComments, !IO).
 
-dump_instrs(_MaybeProcLabel, _PrintComments, []) = "".
-dump_instrs(MaybeProcLabel, PrintComments, [Instr | Instrs]) = Str :-
+dump_instrs(_MaybeProcLabel, _AutoComments, []) = "".
+dump_instrs(MaybeProcLabel, AutoComments, [Instr | Instrs]) = Str :-
     Instr = llds_instr(Uinstr, Comment),
     ( Uinstr = label(_) ->
-        InstrStr0 = dump_instr(MaybeProcLabel, PrintComments, Uinstr)
+        InstrStr0 = dump_instr(MaybeProcLabel, AutoComments, Uinstr)
     ; Uinstr = comment(InstrComment) ->
         string.foldl(dump_comment_char, InstrComment, "", InstrCommentStr),
         InstrStr0 = "\t% " ++ InstrCommentStr
     ;
-        InstrStr0 = "\t" ++ dump_instr(MaybeProcLabel, PrintComments, Uinstr)
+        InstrStr0 = "\t" ++ dump_instr(MaybeProcLabel, AutoComments, Uinstr)
     ),
     (
-        PrintComments = yes,
+        AutoComments = yes,
         Comment \= ""
     ->
         InstrStr = InstrStr0 ++ "\n\t\t" ++ Comment ++ "\n"
     ;
         InstrStr = InstrStr0 ++ "\n"
     ),
-    InstrsStr = dump_instrs(MaybeProcLabel, PrintComments, Instrs),
+    InstrsStr = dump_instrs(MaybeProcLabel, AutoComments, Instrs),
     Str = InstrStr ++ InstrsStr.
 
 :- pred print_comment_char(char::in, io::di, io::uo) is det.
@@ -712,7 +710,7 @@ dump_code_model(model_non) = "model_non".
 dump_stack_incr_kind(stack_incr_leaf) = "leaf".
 dump_stack_incr_kind(stack_incr_nonleaf) = "nonleaf".
 
-dump_instr(MaybeProcLabel, PrintComments, Instr) = Str :-
+dump_instr(MaybeProcLabel, AutoComments, Instr) = Str :-
     (
         Instr = comment(Comment),
         Str = "comment(" ++ Comment ++ ")"
@@ -723,7 +721,7 @@ dump_instr(MaybeProcLabel, PrintComments, Instr) = Str :-
         Instr = block(RTemps, FTemps, Instrs),
         Str = "block(" ++ int_to_string(RTemps) ++ ", "
             ++ int_to_string(FTemps) ++ ",\n"
-            ++ dump_instrs(MaybeProcLabel, PrintComments, Instrs)
+            ++ dump_instrs(MaybeProcLabel, AutoComments, Instrs)
             ++ ")"
     ;
         Instr = assign(Lval, Rval),
@@ -1136,18 +1134,18 @@ dump_output_component(MaybeProcLabel,
 dump_maybe_dummy(is_not_dummy_type) = "".
 dump_maybe_dummy(is_dummy_type) = " (dummy)".
 
-dump_fullinstr(MaybeProcLabel, PrintComments, llds_instr(Uinstr, Comment))
+dump_fullinstr(MaybeProcLabel, AutoComments, llds_instr(Uinstr, Comment))
         = Str :-
     (
-        PrintComments = no,
-        Str = dump_instr(MaybeProcLabel, PrintComments, Uinstr) ++ "\n"
+        AutoComments = no,
+        Str = dump_instr(MaybeProcLabel, AutoComments, Uinstr) ++ "\n"
     ;
-        PrintComments = yes,
-        Str = dump_instr(MaybeProcLabel, PrintComments, Uinstr) ++
+        AutoComments = yes,
+        Str = dump_instr(MaybeProcLabel, AutoComments, Uinstr) ++
             " - " ++ Comment ++ "\n"
     ).
 
-dump_fullinstrs(_MaybeProcLabel, _PrintComments, []) = "".
-dump_fullinstrs(MaybeProcLabel, PrintComments, [Instr | Instrs]) =
-    dump_fullinstr(MaybeProcLabel, PrintComments, Instr)
-    ++ dump_fullinstrs(MaybeProcLabel, PrintComments, Instrs).
+dump_fullinstrs(_MaybeProcLabel, _AutoComments, []) = "".
+dump_fullinstrs(MaybeProcLabel, AutoComments, [Instr | Instrs]) =
+    dump_fullinstr(MaybeProcLabel, AutoComments, Instr)
+    ++ dump_fullinstrs(MaybeProcLabel, AutoComments, Instrs).

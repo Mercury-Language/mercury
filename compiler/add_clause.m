@@ -788,7 +788,10 @@ transform_goal_2(atomic_expr(Outer0, Inner0, MaybeOutputVars0,
     HLDSGoal = hlds_goal(GoalExpr, GoalInfo),
     trace [compiletime(flag("atomic_scope_syntax")), io(!IO)] (
         io.write_string("atomic:\n", !IO),
-        write_goal(HLDSGoal, !.ModuleInfo, !.VarSet, yes, 0, "\n", !IO),
+        module_info_get_globals(!.ModuleInfo, Globals),
+        OutInfo = init_hlds_out_info(Globals),
+        write_goal(OutInfo, HLDSGoal, !.ModuleInfo, !.VarSet, yes, 0, "\n",
+            !IO),
         io.nl(!IO)
     ).
 transform_goal_2(

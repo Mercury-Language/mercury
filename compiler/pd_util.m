@@ -193,14 +193,16 @@ goal_get_calls(Goal0, CalledPreds) :-
 %-----------------------------------------------------------------------------%
 
 propagate_constraints(!Goal, !PDInfo, !IO) :-
-    globals.io_lookup_bool_option(local_constraint_propagation,
-        ConstraintProp, !IO),
+    pd_info_get_module_info(!.PDInfo, ModuleInfo0),
+    module_info_get_globals(ModuleInfo0, Globals),
+    globals.lookup_bool_option(Globals, local_constraint_propagation,
+        ConstraintProp),
+    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
     (
         ConstraintProp = yes,
         Goal0 = !.Goal,
-        pd_debug_message("%% Propagating constraints\n", [], !IO),
+        pd_debug_message(DebugPD, "%% Propagating constraints\n", [], !IO),
         pd_debug_output_goal(!.PDInfo, "before constraints\n", Goal0, !IO),
-        pd_info_get_module_info(!.PDInfo, ModuleInfo0),
         pd_info_get_proc_info(!.PDInfo, ProcInfo0),
         pd_info_get_instmap(!.PDInfo, InstMap),
         proc_info_get_vartypes(ProcInfo0, VarTypes0),
@@ -222,7 +224,6 @@ propagate_constraints(!Goal, !PDInfo, !IO) :-
             pd_requantify_goal(NonLocals, !Goal, !PDInfo),
             pd_recompute_instmap_delta(!Goal, !PDInfo),
             rerun_det_analysis(!Goal, !PDInfo, !IO),
-            module_info_get_globals(ModuleInfo, Globals),
             simplify.find_simplifications(no, Globals, Simplifications),
             pd_simplify_goal(Simplifications, !Goal, !PDInfo)
         ;
@@ -294,21 +295,20 @@ unique_modecheck_goal(LiveVars, Goal0, Goal, Errors, !PDInfo, !IO) :-
         check_unique_modes, MayChangeCalledProc, ModeInfo0),
 
     unique_modes_check_goal(Goal0, Goal, ModeInfo0, ModeInfo),
-    globals.io_lookup_bool_option(debug_pd, Debug, !IO),
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, debug_pd, Debug),
+    mode_info_get_errors(ModeInfo, Errors),
     (
         Debug = yes,
-        mode_info_get_errors(ModeInfo, ModeErrors),
-        ErrorSpecs = list.map(mode_error_info_to_spec(ModeInfo), ModeErrors),
-        module_info_get_globals(ModuleInfo, Globals),
+        ErrorSpecs = list.map(mode_error_info_to_spec(ModeInfo), Errors),
         write_error_specs(ErrorSpecs, Globals, 0, _NumWarnings, 0, _NumErrors,
             !IO)
     ;
         Debug = no
     ),
-    mode_info_get_errors(ModeInfo, Errors),
 
     % Deconstruct the mode_info.
-    mode_info_get_module_info(ModeInfo, ModuleInfo),
     mode_info_get_varset(ModeInfo, VarSet),
     mode_info_get_var_types(ModeInfo, VarTypes),
     pd_info_set_module_info(ModuleInfo, !PDInfo),
@@ -380,12 +380,12 @@ rerun_det_analysis(Goal0, Goal, !PDInfo, !IO) :-
     pd_info_get_instmap(!.PDInfo, InstMap),
     det_infer_goal(Goal0, Goal, InstMap, SolnContext, [], no, _, _,
         DetInfo0, DetInfo),
-    det_info_get_module_info(DetInfo, ModuleInfo2),
-    pd_info_set_module_info(ModuleInfo2, !PDInfo),
+    det_info_get_module_info(DetInfo, ModuleInfo),
+    pd_info_set_module_info(ModuleInfo, !PDInfo),
     det_info_get_error_specs(DetInfo, Specs),
 
     % Make sure there were no errors.
-    globals.io_get_globals(Globals, !IO),
+    module_info_get_globals(ModuleInfo, Globals),
     disable_det_warnings(_OptionsToRestore, Globals, GlobalsToUse),
     write_error_specs(Specs, GlobalsToUse, 0, _NumWarnings, 0, NumErrors, !IO),
     expect(unify(NumErrors, 0), this_file,

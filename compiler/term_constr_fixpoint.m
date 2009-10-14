@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002, 2005-2008 The University of Melbourne.
+% Copyright (C) 2002, 2005-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -26,7 +26,6 @@
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_errors.
 
-:- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -34,17 +33,17 @@
     % Derive the argument size constraints for the procedures in this SCC.
     %
 :- pred do_fixpoint_calculation(fixpoint_options::in, list(pred_proc_id)::in,
-    int::in, term2_errors::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    int::in, term2_errors::out, module_info::in, module_info::out) is det.
 
     % This structure holds the values of options used to control
     % the fixpoint calculation.
     %
 :- type fixpoint_options.
 
-    % fixpoint_options_init(Widening, MaxMatrixSize).  Initialise the
-    % fixpoint_options structure.  `Widening' is the threshold after
-    % which we invoke widening.  `MaxMatrixSize' specifies the maximum
+    % fixpoint_options_init(Widening, MaxMatrixSize):
+    %
+    % Initialise the fixpoint_options structure. `Widening' is the threshold
+    % after which we invoke widening. `MaxMatrixSize' specifies the maximum
     % number of constraints we allow a matrix to grow to before we abort
     % and try other approximations.
     %
@@ -57,7 +56,9 @@
 
 :- import_module hlds.hlds_out.
 :- import_module libs.compiler_util.
+:- import_module libs.globals.
 :- import_module libs.lp_rational.
+:- import_module libs.options.
 :- import_module libs.polyhedron.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.term_constr_data.
@@ -66,6 +67,7 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module maybe.
 :- import_module set.
 :- import_module string.
@@ -100,7 +102,7 @@ fixpoint_options_init(Widening, MaxMatrixSize) =
 
 :- type iteration_infos == list(iteration_info).
 
-do_fixpoint_calculation(Options, SCC, Iteration, [], !ModuleInfo, !IO) :-
+do_fixpoint_calculation(Options, SCC, Iteration, [], !ModuleInfo) :-
     AbstractSCC = get_abstract_scc(!.ModuleInfo, SCC),
 
     % Carry out one iteration of fixpoint computation. We need to do this
@@ -109,14 +111,15 @@ do_fixpoint_calculation(Options, SCC, Iteration, [], !ModuleInfo, !IO) :-
     % the build phase for non-recursive procedures (and in fact used to)
     % but the code ends up being a horrible mess.
     %
-    list.foldl2(traverse_abstract_proc(Iteration, Options, !.ModuleInfo),
-        AbstractSCC, [], IterationInfos, !IO),
+    list.foldl(
+        term_iterate_over_abstract_proc(Iteration, Options, !.ModuleInfo),
+        AbstractSCC, [], IterationInfos),
     ChangeFlag = or_flags(IterationInfos),
     (
         ChangeFlag = yes,
         list.foldl(update_size_info, IterationInfos, !ModuleInfo),
         do_fixpoint_calculation(Options, SCC, Iteration + 1,
-            _, !ModuleInfo, !IO)
+            _, !ModuleInfo)
     ;
         ChangeFlag = no,
         % If one of the polyhedra in the SCC has `false' as its
@@ -154,12 +157,12 @@ update_size_info(Info, !ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred traverse_abstract_proc(int::in, fixpoint_options::in,
+:- pred term_iterate_over_abstract_proc(int::in, fixpoint_options::in,
     module_info::in, abstract_proc::in,
-    iteration_infos::in, iteration_infos::out, io::di, io::uo) is det.
+    iteration_infos::in, iteration_infos::out) is det.
 
-traverse_abstract_proc(Iteration, Options, ModuleInfo, Proc,
-        !IterationInfo, !IO) :-
+term_iterate_over_abstract_proc(Iteration, Options, ModuleInfo, Proc,
+        !IterationInfo) :-
     WideningInfo = Options ^ fo_widening,
     MaxMatrixSize = Options ^ fo_max_size,
     AbstractPPId = Proc ^ ap_ppid,
@@ -169,12 +172,22 @@ traverse_abstract_proc(Iteration, Options, ModuleInfo, Proc,
     HeadVars = Proc ^ ap_head_vars,
 
     % Print out the debugging traces.
-    maybe_write_trace(io.write(PPId), !IO),
-    maybe_write_trace(io.write_string(": "), !IO),
-    maybe_write_trace(hlds_out.write_pred_proc_id(ModuleInfo, PPId), !IO),
-    maybe_write_trace(io.write_string(" "), !IO),
-    maybe_write_trace(write_size_vars(SizeVarSet, HeadVars), !IO),
-    maybe_write_trace(io.format("\nIteration %d:\n", [i(Iteration)]), !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, debug_term, DebugTerm),
+    (
+        DebugTerm = yes,
+        trace [io(!IO)] (
+            io.write(PPId, !IO),
+            io.write_string(": ", !IO),
+            hlds_out.write_pred_proc_id(ModuleInfo, PPId, !IO),
+            io.write_string(" ", !IO),
+            write_size_vars(SizeVarSet, HeadVars, !IO),
+            io.format("\nIteration %d:\n", [i(Iteration)], !IO),
+            io.flush_output(!IO)
+        )
+    ;
+        DebugTerm = no
+    ),
 
     % Begin by traversing the procedure and calculating the
     % IR approximation for this iteration.
@@ -183,7 +196,7 @@ traverse_abstract_proc(Iteration, Options, ModuleInfo, Proc,
         HeadVars, Zeros),
 
     some [!Polyhedron] (
-        traverse_abstract_goal(Info, Proc ^ ap_body, polyhedron.universe,
+        term_traverse_abstract_goal(Info, Proc ^ ap_body, polyhedron.universe,
             !:Polyhedron),
         polyhedron.optimize(SizeVarSet, !Polyhedron),
 
@@ -200,9 +213,16 @@ traverse_abstract_proc(Iteration, Options, ModuleInfo, Proc,
         % XXX End of bug workaround.
 
         % Print out the polyhedron obtained during this iteration.
-        maybe_write_trace(
-            polyhedron.write_polyhedron(!.Polyhedron, SizeVarSet), !IO),
-        maybe_write_trace(io.nl, !IO),
+        (
+            DebugTerm = yes,
+            trace [io(!IO)] (
+                polyhedron.write_polyhedron(!.Polyhedron, SizeVarSet, !IO),
+                io.nl(!IO),
+                io.flush_output(!IO)
+            )
+        ;
+            DebugTerm = no
+        ),
 
         % Look up the constraints obtained during the previous iteration.
         ArgSizeInfo = lookup_proc_constr_arg_size_info(ModuleInfo, PPId),
@@ -241,18 +261,18 @@ traverse_abstract_proc(Iteration, Options, ModuleInfo, Proc,
         ),
         ThisIterationInfo = iteration_info(PPId, !.Polyhedron, ChangeFlag)
     ),
-    list.cons(ThisIterationInfo, !IterationInfo).
+    !:IterationInfo = [ThisIterationInfo | !.IterationInfo].
 
 %-----------------------------------------------------------------------------%
 
 :- type fixpoint_info
     --->    fixpoint_info(
-                module_info        :: module_info,
-                varset             :: size_varset,
-                ppid               :: pred_proc_id,
-                max_matrix_size    :: int,
-                curr_head_vars     :: head_vars,
-                zeros              :: zero_vars
+                tcfi_module_info        :: module_info,
+                tcfi_varset             :: size_varset,
+                tcfi_ppid               :: pred_proc_id,
+                tcfi_max_matrix_size    :: int,
+                tcfi_curr_head_vars     :: head_vars,
+                tcfi_zeros              :: zero_vars
             ).
 
 :- func init_fixpoint_info(module_info, size_varset, pred_proc_id, int,
@@ -265,10 +285,10 @@ init_fixpoint_info(ModuleInfo, SizeVarSet, PPId, MaxMatrixSize, HeadVars,
 
 %-----------------------------------------------------------------------------%
 
-:- pred traverse_abstract_goal(fixpoint_info::in, abstract_goal::in,
+:- pred term_traverse_abstract_goal(fixpoint_info::in, abstract_goal::in,
     polyhedron::in, polyhedron::out) is det.
 
-traverse_abstract_goal(Info, Goal, !Polyhedron) :-
+term_traverse_abstract_goal(Info, Goal, !Polyhedron) :-
     (
         Goal = term_disj(Goals, _Size, Locals, _),
         % There are number of possible improvements that should be made here:
@@ -285,19 +305,20 @@ traverse_abstract_goal(Info, Goal, !Polyhedron) :-
         %   currently don't use it.
 
         PriorConstraints = polyhedron.universe,
-        traverse_abstract_disj_linearly(Goals, Locals, Info, PriorConstraints,
-            Polyhedron0),
+        term_traverse_abstract_disj_linearly(Goals, Locals, Info,
+            PriorConstraints, Polyhedron0),
         post_process_abstract_goal(Locals, Info, Polyhedron0, !Polyhedron)
     ;
         Goal = term_conj(Goals, Locals, _),
-        list.foldl(traverse_abstract_goal(Info), Goals, polyhedron.universe,
+        list.foldl(
+            term_traverse_abstract_goal(Info), Goals, polyhedron.universe,
             Polyhedron0),
         post_process_abstract_goal(Locals, Info, Polyhedron0, !Polyhedron)
     ;
         Goal = term_call(CallPPId0, _, CallVars, CallZeros, Locals, _,
             CallArgsPoly),
         CallPPId0 = real(CallPPId),
-        module_info_pred_proc_info(Info ^ module_info, CallPPId, _,
+        module_info_pred_proc_info(Info ^ tcfi_module_info, CallPPId, _,
             CallProcInfo),
         proc_info_get_termination2_info(CallProcInfo, CallTerm2Info),
         CallArgSizeInfo = CallTerm2Info ^ success_constrs,
@@ -314,12 +335,10 @@ traverse_abstract_goal(Info, Goal, !Polyhedron) :-
                     % Constraint store += true
                 ;
                     HeadVars = CallTerm2Info ^ head_vars,
-                    SubstMap = create_var_substitution(CallVars,
-                        HeadVars),
-                    Polyhedron0 = polyhedron.substitute_vars(
-                        SubstMap, SizeInfo),
-                    Polyhedron1 = intersection(Polyhedron0,
-                        CallArgsPoly),
+                    SubstMap = create_var_substitution(CallVars, HeadVars),
+                    Polyhedron0 = polyhedron.substitute_vars(SubstMap,
+                        SizeInfo),
+                    Polyhedron1 = intersection(Polyhedron0, CallArgsPoly),
                     % Set any zero_vars in the constraints to zero
                     % (i.e. delete the terms). We need to do this
                     % when polymorphic arguments are zero sized.
@@ -343,7 +362,7 @@ post_process_abstract_goal(Locals, Info, GoalPolyhedron0, !Polyhedron) :-
     ( polyhedron.is_empty(GoalPolyhedron0) ->
         GoalPolyhedron = polyhedron.empty
     ;
-        GoalPolyhedron = polyhedron.project(Locals, Info ^ varset,
+        GoalPolyhedron = polyhedron.project(Locals, Info ^ tcfi_varset,
             GoalPolyhedron0)
     ),
     polyhedron.intersection(GoalPolyhedron, !Polyhedron).
@@ -358,22 +377,22 @@ post_process_abstract_goal(Locals, Info, GoalPolyhedron0, !Polyhedron) :-
     %
     %  ((((empty \/ A ) \/ B ) \/ C ) \/ D)
     %
-:- pred traverse_abstract_disj_linearly(abstract_goals::in,
+:- pred term_traverse_abstract_disj_linearly(abstract_goals::in,
     size_vars::in, fixpoint_info::in, polyhedron::in, polyhedron::out) is det.
 
-traverse_abstract_disj_linearly(Goals, Locals, Info, !Polyhedron) :-
-    list.foldl(traverse_abstract_disj_linearly_2(Info, Locals),
+term_traverse_abstract_disj_linearly(Goals, Locals, Info, !Polyhedron) :-
+    list.foldl(term_traverse_abstract_disj_linearly_2(Info, Locals),
         Goals, polyhedron.empty, ConvexUnion),
     polyhedron.intersection(ConvexUnion, !Polyhedron).
 
-:- pred traverse_abstract_disj_linearly_2(fixpoint_info::in,
+:- pred term_traverse_abstract_disj_linearly_2(fixpoint_info::in,
     size_vars::in, abstract_goal::in, polyhedron::in, polyhedron::out) is det.
 
-traverse_abstract_disj_linearly_2(Info, Locals, Goal, !Polyhedron) :-
-    SizeVarSet = Info ^ varset,
-    traverse_abstract_goal(Info, Goal, polyhedron.universe, Polyhedron0),
+term_traverse_abstract_disj_linearly_2(Info, Locals, Goal, !Polyhedron) :-
+    SizeVarSet = Info ^ tcfi_varset,
+    term_traverse_abstract_goal(Info, Goal, polyhedron.universe, Polyhedron0),
     Polyhedron1 = polyhedron.project(Locals, SizeVarSet, Polyhedron0),
-    polyhedron.convex_union(SizeVarSet, yes(Info ^ max_matrix_size),
+    polyhedron.convex_union(SizeVarSet, yes(Info ^ tcfi_max_matrix_size),
         Polyhedron1, !Polyhedron).
 
     % This version computes the convex hull pairwise. That is
@@ -381,24 +400,25 @@ traverse_abstract_disj_linearly_2(Info, Locals, Goal, !Polyhedron) :-
     %
     % XXX This code is currently unused.
     %
-:- pred traverse_abstract_disj_pairwise(abstract_goals::in, size_vars::in,
+:- pred term_traverse_abstract_disj_pairwise(abstract_goals::in, size_vars::in,
     fixpoint_info::in, polyhedron::in, polyhedron::out) is det.
 
-traverse_abstract_disj_pairwise(Goals, Locals, Info, !Polyhedron) :-
-    SizeVarSet = Info ^ varset,
+term_traverse_abstract_disj_pairwise(Goals, Locals, Info, !Polyhedron) :-
+    SizeVarSet = Info ^ tcfi_varset,
     % XXX at the moment, could be !.Poly...
     PolyToLeft = polyhedron.universe,
 
     % First convert the list of goals into their corresponding polyhedra.
     ToPoly = (func(Goal) = Poly :-
-        traverse_abstract_goal(Info, Goal, PolyToLeft, Poly0),
+        term_traverse_abstract_goal(Info, Goal, PolyToLeft, Poly0),
         Poly = polyhedron.project(Locals, SizeVarSet, Poly0)
     ),
     Polyhedra0 = list.map(ToPoly, Goals),
 
     % Now pairwise convex hull them.
     HullOp = (func(A, B) = C :-
-        polyhedron.convex_union(SizeVarSet, yes(Info ^ max_matrix_size), A, B, C)
+        polyhedron.convex_union(SizeVarSet, yes(Info ^ tcfi_max_matrix_size),
+            A, B, C)
     ),
     ConvexUnion = pairwise_map(HullOp, [ polyhedron.empty | Polyhedra0]),
     polyhedron.intersection(ConvexUnion, !Polyhedron).
@@ -409,7 +429,7 @@ traverse_abstract_disj_pairwise(Goals, Locals, Info, !Polyhedron) :-
  :- func pairwise_map(func(T, T) = T, list(T)) = T.
 
 pairwise_map(_, []) = _ :- unexpected(this_file, "pairwise_map: empty list").
-pairwise_map(_,  [X]) = X.
+pairwise_map(_, [X]) = X.
 pairwise_map(Op, List @ [_, _ | _]) = X :-
     pairwise_map_2(Op, List, [], X0),
     X = pairwise_map(Op, X0).
@@ -417,10 +437,10 @@ pairwise_map(Op, List @ [_, _ | _]) = X :-
 :- pred pairwise_map_2(func(T, T) = T, list(T), list(T), list(T)).
 :- mode pairwise_map_2(func(in, in) = out is det, in, in, out) is det.
 
-pairwise_map_2(_,  [], !Acc).
-pairwise_map_2(_,  [X], Acc, [X | Acc]).
+pairwise_map_2(_, [], !Acc).
+pairwise_map_2(_, [X], Acc, [X | Acc]).
 pairwise_map_2(Op, [X, Y | Rest], !Acc) :-
-    list.cons(Op(X, Y), !Acc),
+    !:Acc = [Op(X, Y) | !.Acc],
     pairwise_map_2(Op, Rest, !Acc).
 
 %------------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2008 The University of Melbourne.
+% Copyright (C) 2001-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -61,7 +61,7 @@
 delay_construct_proc(PredId, ProcId, ModuleInfo, !ProcInfo, !IO) :-
     write_proc_progress_message("% Delaying construction unifications in ",
         PredId, ProcId, ModuleInfo, !IO),
-    globals.io_get_globals(Globals, !IO),
+    module_info_get_globals(ModuleInfo, Globals),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     delay_construct_proc_no_io(PredInfo, ModuleInfo, Globals, !ProcInfo).
 

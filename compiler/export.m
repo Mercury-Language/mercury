@@ -670,13 +670,14 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
     ForeignExportDecls = foreign_export_decls(ForeignDecls, C_ExportDecls),
     module_info_get_exported_enums(ModuleInfo, ExportedEnums),
     HeaderExt = ".mh",
-    module_name_to_file_name(ModuleName, HeaderExt, do_create_dirs,
+    module_info_get_globals(ModuleInfo, Globals),
+    module_name_to_file_name(Globals, ModuleName, HeaderExt, do_create_dirs,
         FileName, !IO),
     io.open_output(FileName ++ ".tmp", Result, !IO),
     (
         Result = ok(FileStream),
         io.set_output_stream(FileStream, OutputStream, !IO),
-        module_name_to_file_name(ModuleName, ".m", do_not_create_dirs,
+        module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
             SourceFileName, !IO),
         library.version(Version),
         io.write_strings([
@@ -688,7 +689,7 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
             "*/\n"], !IO),
         MangledModuleName = sym_name_mangle(ModuleName),
         string.to_upper(MangledModuleName, UppercaseModuleName),
-        string.append(UppercaseModuleName, "_MH", GuardMacroName),
+        GuardMacroName = UppercaseModuleName ++ "_MH",
         io.write_strings([
             "#ifndef ", GuardMacroName, "\n",
             "#define ", GuardMacroName, "\n",
@@ -713,7 +714,7 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
             "#ifndef ", decl_guard(ModuleName), "\n",
             "#define ", decl_guard(ModuleName), "\n"], !IO),
         list.foldl(output_exported_enum(ModuleInfo), ExportedEnums, !IO),
-        list.foldl(output_foreign_decl(yes(foreign_decl_is_exported)),
+        list.foldl(output_foreign_decl(Globals, yes(foreign_decl_is_exported)),
             ForeignDecls, !IO),
         io.write_string("\n#endif\n", !IO),
 
@@ -728,7 +729,7 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
         io.set_output_stream(OutputStream, _, !IO),
         io.close_output(FileStream, !IO),
         % rename "<ModuleName>.mh.tmp" to "<ModuleName>.mh".
-        update_interface(FileName, !IO)
+        update_interface(Globals, FileName, !IO)
     ;
         Result = error(_),
         io.progname_base("export.m", ProgName, !IO),
@@ -765,10 +766,10 @@ produce_header_file_2([E | ExportedProcs], !IO) :-
     ),
     produce_header_file_2(ExportedProcs, !IO).
 
-:- pred output_foreign_decl(maybe(foreign_decl_is_local)::in,
+:- pred output_foreign_decl(globals::in, maybe(foreign_decl_is_local)::in,
     foreign_decl_code::in, io::di, io::uo) is det.
 
-output_foreign_decl(MaybeDesiredIsLocal, DeclCode, !IO) :-
+output_foreign_decl(Globals, MaybeDesiredIsLocal, DeclCode, !IO) :-
     DeclCode = foreign_decl_code(Lang, IsLocal, Code, Context),
     (
         Lang = lang_c,
@@ -781,17 +782,17 @@ output_foreign_decl(MaybeDesiredIsLocal, DeclCode, !IO) :-
     ->
         term.context_file(Context, File),
         term.context_line(Context, Line),
-        c_util.set_line_num(File, Line, !IO),
+        c_util.set_line_num(Globals, File, Line, !IO),
         io.write_string(Code, !IO),
         io.nl(!IO),
-        c_util.reset_line_num(!IO)
+        c_util.reset_line_num(Globals, !IO)
     ;
         true
     ).
         
 %-----------------------------------------------------------------------------%
 %
-% Code for writing out foreign exported enumerations
+% Code for writing out foreign exported enumerations.
 %
 
 % For C/C++ we emit a #defined constant for constructors exported from an
@@ -848,13 +849,14 @@ output_exported_enum_2(ModuleInfo, ExportedEnumInfo, !IO) :-
                 Ctors, [], ForeignNamesAndTags0),
             % We reverse the list so the constants are printed out in order.
             list.reverse(ForeignNamesAndTags0, ForeignNamesAndTags),
+            module_info_get_globals(ModuleInfo, Globals),
             term.context_file(Context, File),
             term.context_line(Context, Line),
-            c_util.set_line_num(File, Line, !IO),
+            c_util.set_line_num(Globals, File, Line, !IO),
             io.write_list(ForeignNamesAndTags, "\n",
                 output_exported_enum_3(ModuleInfo), !IO),
             io.nl(!IO),
-            c_util.reset_line_num(!IO)
+            c_util.reset_line_num(Globals, !IO)
         )
     ).
 

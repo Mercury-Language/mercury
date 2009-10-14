@@ -34,11 +34,10 @@
 :- module ml_backend.ml_optimize.
 :- interface.
 
+:- import_module libs.globals.
 :- import_module ml_backend.mlds.
 
-:- import_module io.
-
-:- pred mlds_optimize(mlds::in, mlds::out, io::di, io::uo) is det.
+:- pred mlds_optimize(globals::in, mlds::in, mlds::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -46,7 +45,6 @@
 :- implementation.
 
 :- import_module libs.compiler_util.
-:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_code_util.
@@ -71,8 +69,7 @@
                 oi_context          :: mlds_context
             ).
 
-mlds_optimize(!MLDS, !IO) :-
-    globals.io_get_globals(Globals, !IO),
+mlds_optimize(Globals, !MLDS) :-
     Defns0 = !.MLDS ^ mlds_defns,
     ModuleName = mercury_module_name_to_mlds(!.MLDS ^ mlds_name),
     optimize_in_defns(Globals, ModuleName, Defns0, Defns),

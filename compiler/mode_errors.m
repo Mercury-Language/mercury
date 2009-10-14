@@ -515,7 +515,10 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
 :- instance error_util.print_anything(write_indented_goal) where [
     ( print_anything(write_indented_goal(ModuleInfo, VarSet, Goal), !IO) :-
         io.write_string("\t\t", !IO),
-        hlds_out.write_goal(Goal, ModuleInfo, VarSet, no, 2, ".\n", !IO)
+        module_info_get_globals(ModuleInfo, Globals),
+        OutInfo = init_hlds_out_info(Globals),
+        hlds_out.write_goal(OutInfo, Goal, ModuleInfo, VarSet, no, 2, ".\n",
+            !IO)
     )
 ].
 

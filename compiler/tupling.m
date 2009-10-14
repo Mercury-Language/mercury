@@ -154,7 +154,7 @@ tuple_arguments(!ModuleInfo, !IO) :-
     globals.lookup_string_option(Globals,
         tuple_trace_counts_file, TraceCountsFile),
     ( TraceCountsFile = "" ->
-        report_warning("Warning: --tuple requires " ++
+        report_warning(Globals, "Warning: --tuple requires " ++
             "--tuple-trace-counts-file to work.\n", !IO)
     ;
         read_trace_counts_source(TraceCountsFile, Result, !IO),
@@ -163,7 +163,7 @@ tuple_arguments(!ModuleInfo, !IO) :-
             tuple_arguments_2(!ModuleInfo, TraceCounts, !IO)
         ;
             Result = list_error_message(Message),
-            warn_trace_counts_error(TraceCountsFile, Message, !IO)
+            warn_trace_counts_error(Globals, TraceCountsFile, Message, !IO)
         )
     ).
 
@@ -214,13 +214,14 @@ tuple_arguments_2(!ModuleInfo, TraceCounts0, !IO) :-
     list.foldl(fix_calls_in_procs(TransformMap), SCCs, !ModuleInfo),
     fix_calls_in_transformed_procs(TransformMap, !ModuleInfo).
 
-:- pred warn_trace_counts_error(string::in, string::in, io::di, io::uo) is det.
+:- pred warn_trace_counts_error(globals::in, string::in, string::in,
+    io::di, io::uo) is det.
 
-warn_trace_counts_error(TraceCountsFile, Reason, !IO) :-
+warn_trace_counts_error(Globals, TraceCountsFile, Reason, !IO) :-
     string.format(
         "Warning: unable to read trace count summary from %s (%s)\n",
         [s(TraceCountsFile), s(Reason)], Message),
-    report_warning(Message, !IO).
+    report_warning(Globals, Message, !IO).
 
 %-----------------------------------------------------------------------------%
 

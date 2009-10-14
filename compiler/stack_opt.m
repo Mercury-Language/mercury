@@ -1009,7 +1009,10 @@ maybe_write_progress_message(Message, DebugStackOpt, PredIdInt, ProcInfo,
         io.write_string(":\n", !IO),
         proc_info_get_goal(ProcInfo, Goal),
         proc_info_get_varset(ProcInfo, VarSet),
-        hlds_out.write_goal(Goal, ModuleInfo, VarSet, yes, 0, "\n", !IO),
+        module_info_get_globals(ModuleInfo, Globals),
+        OutInfo = init_hlds_out_info(Globals),
+        hlds_out.write_goal(OutInfo, Goal, ModuleInfo, VarSet, yes, 0, "\n",
+            !IO),
         io.write_string("\n", !IO)
     ;
         true

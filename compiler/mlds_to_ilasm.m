@@ -55,10 +55,10 @@
 
 output_mlds_via_ilasm(Globals, MLDS, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
-    module_name_to_file_name(ModuleName, ".il", do_create_dirs, ILAsmFile,
-        !IO),
-    output_to_file_return_result(ILAsmFile, output_assembler(Globals, MLDS),
-        Result, !IO),
+    module_name_to_file_name(Globals, ModuleName, ".il",
+        do_create_dirs, ILAsmFile, !IO),
+    output_to_file_return_result(Globals, ILAsmFile,
+        output_assembler(Globals, MLDS), Result, !IO),
 
     (
         Result = yes(ForeignLangs),
@@ -84,9 +84,10 @@ output_foreign_file(Globals, MLDS, ForeignLang, !IO) :-
     ->
         (
             ForeignLang = lang_csharp,
-            module_name_to_file_name(ForeignModuleName, Extension,
+            module_name_to_file_name(Globals, ForeignModuleName, Extension,
                 do_create_dirs, File, !IO),
-            output_to_file(File, output_csharp_code(Globals, MLDS), !IO)
+            output_to_file(Globals, File, output_csharp_code(Globals, MLDS),
+                !IO)
         ;
             ForeignLang = lang_c,
             sorry(this_file, "language C foreign code not supported")
@@ -135,7 +136,7 @@ output_assembler(Globals, MLDS, ForeignLangs, !IO) :-
     ),
 
     % Output the assembly.
-    ilasm.output(ILAsm, !IO),
+    ilasm_output(Globals, ILAsm, !IO),
     output_src_end(ModuleName, !IO).
 
 %-----------------------------------------------------------------------------%

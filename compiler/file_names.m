@@ -17,6 +17,7 @@
 
 :- import_module mdbcomp.prim_data.
 :- import_module libs.file_util.
+:- import_module libs.globals.
 
 :- import_module io.
 
@@ -40,10 +41,11 @@
     --->    do_create_dirs
     ;       do_not_create_dirs.
 
-    % module_name_to_file_name(Module, Extension, Mkdir, FileName):
+    % module_name_to_file_name(Globals, Module, Extension, Mkdir, FileName,
+    %   !IO):
     %
     % Convert a module name and file extension to the corresponding file name.
-    % If `MkDir' is create_dirs, then create any directories needed.
+    % If `MkDir' is do_create_dirs, then create any directories needed.
     %
     % Currently we use the convention that the module `foo.bar.baz' should be
     % named `foo.bar.baz.m', and allow other naming conventions with the
@@ -52,10 +54,11 @@
     % Note that this predicate is also used to create some "phony" Makefile
     % targets that do not have corresponding files, e.g. `<foo>.clean'.
     %
-:- pred module_name_to_file_name(module_name::in, string::in,
+:- pred module_name_to_file_name(globals::in, module_name::in, string::in,
     maybe_create_dirs::in, file_name::out, io::di, io::uo) is det.
 
-    % module_name_to_search_file_name(Module, Extension, FileName):
+    % module_name_to_search_file_name(Globals, Module, Extension, FileName,
+    %   !IO):
     %
     % As above, but for a file which might be in an installed library,
     % not the current directory.
@@ -72,39 +75,40 @@
     % `Mercury/<grade>/<arch>/Mercury/mihs/<module>.mihs',
     % which would be used when writing or removing the `.mih' file.
     %
-:- pred module_name_to_search_file_name(module_name::in, string::in,
-    file_name::out, io::di, io::uo) is det.
+:- pred module_name_to_search_file_name(globals::in, module_name::in,
+    string::in, file_name::out, io::di, io::uo) is det.
 
 :- type maybe_search
     --->    do_search
     ;       do_not_search.
 
-    % module_name_to_lib_file_name(Prefix, Module, Extension, MkDir,
-    %       FileName):
+    % module_name_to_lib_file_name(Globals, Prefix, Module, Extension, MkDir,
+    %   FileName, !IO):
     %
     % Like module_name_to_file_name, but also allows a prefix.
-    %
     % Used for creating library names, e.g. `lib<foo>.$A' and `lib<foo>.so'.
     %
-:- pred module_name_to_lib_file_name(string::in, module_name::in, string::in,
-    maybe_create_dirs::in, file_name::out, io::di, io::uo) is det.
+:- pred module_name_to_lib_file_name(globals::in, string::in, module_name::in,
+    string::in, maybe_create_dirs::in, file_name::out, io::di, io::uo) is det.
 
-    % fact_table_file_name(Module, FactTableFileName, Ext, MkDir, FileName):
+    % fact_table_file_name(Globals, Module, FactTableFileName, Ext, MkDir,
+    %   FileName, !IO):
+    %
     % Returns the filename to use when compiling fact table files.
     % If 'MkDir' is do_create_dirs, then create any directories needed.
     %
-:- pred fact_table_file_name(module_name::in, file_name::in, string::in,
-    maybe_create_dirs::in, file_name::out, io::di, io::uo) is det.
+:- pred fact_table_file_name(globals::in, module_name::in, file_name::in,
+    string::in, maybe_create_dirs::in, file_name::out, io::di, io::uo) is det.
 
-    % extra_link_obj_file_name(Module, ExtraLinkObjName,
-    %   Ext, MkDir, FileName):
+    % extra_link_obj_file_name(Globals, Module, ExtraLinkObjName, Ext,
+    %   MkDir, FileName, !IO):
     %
     % Returns the filename to use when compiling extra objects that must be
     % linked into the executable (currently used only for fact tables).
     % If `MkDir' is do_create_dirs, make any directories necessary.
     %
-:- pred extra_link_obj_file_name(module_name::in, file_name::in, string::in,
-    maybe_create_dirs::in, file_name::out, io::di, io::uo) is det.
+:- pred extra_link_obj_file_name(globals::in,module_name::in, file_name::in,
+    string::in, maybe_create_dirs::in, file_name::out, io::di, io::uo) is det.
 
     % Convert a file name (excluding the trailing `.m') to the corresponding
     % module name.
@@ -113,7 +117,7 @@
 
     % Convert a module name to a file name stem (e.g. foo.bar.baz).
     %
-:- pred module_name_to_file_name(module_name::in, file_name::out) is det.
+:- pred module_name_to_file_name_stem(module_name::in, file_name::out) is det.
 
     % Convert a module name to something that is suitable
     % for use as a variable name in makefiles.
@@ -122,7 +126,7 @@
 
     % Return the name of the directory containing Java `.class' files.
     %
-:- pred get_class_dir_name(string::out, io::di, io::uo) is det.
+:- pred get_class_dir_name(globals::in, string::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -149,11 +153,11 @@
 mercury_std_library_module_name(unqualified(Name)) :-
     mercury_std_library_module(Name).
 mercury_std_library_module_name(qualified(Module, Name)) :-
-    module_name_to_file_name(qualified(Module, Name), ModuleNameStr),
+    module_name_to_file_name_stem(qualified(Module, Name), ModuleNameStr),
     mercury_std_library_module(ModuleNameStr).
 mercury_std_library_module_name(qualified(Module, Name)) :-
     strip_outermost_qualifier(qualified(Module, Name), "mercury", ModuleName),
-    module_name_to_file_name(ModuleName, ModuleNameStr),
+    module_name_to_file_name_stem(ModuleName, ModuleNameStr),
     mercury_std_library_module(ModuleNameStr).
 
 qualify_mercury_std_library_module_name(ModuleName) = QualModuleName :-
@@ -165,20 +169,20 @@ qualify_mercury_std_library_module_name(ModuleName) = QualModuleName :-
 
 %-----------------------------------------------------------------------------%
 
-module_name_to_file_name(ModuleName, Ext, MkDir, FileName, !IO) :-
-    module_name_to_file_name_general(ModuleName, Ext,
+module_name_to_file_name(Globals, ModuleName, Ext, MkDir, FileName, !IO) :-
+    module_name_to_file_name_general(Globals, ModuleName, Ext,
         do_not_search, MkDir, FileName, !IO).
 
-module_name_to_search_file_name(ModuleName, Ext, FileName, !IO) :-
-    module_name_to_file_name_general(ModuleName, Ext,
+module_name_to_search_file_name(Globals, ModuleName, Ext, FileName, !IO) :-
+    module_name_to_file_name_general(Globals, ModuleName, Ext,
         do_search, do_not_create_dirs, FileName, !IO).
 
-:- pred module_name_to_file_name_general(module_name::in, string::in,
-    maybe_search::in, maybe_create_dirs::in, file_name::out, io::di, io::uo)
-    is det.
+:- pred module_name_to_file_name_general(globals::in, module_name::in,
+    string::in, maybe_search::in, maybe_create_dirs::in, file_name::out,
+    io::di, io::uo) is det.
 
-module_name_to_file_name_general(ModuleName, Ext, Search, MkDir, FileName,
-        !IO) :-
+module_name_to_file_name_general(Globals, ModuleName, Ext, Search, MkDir,
+        FileName, !IO) :-
     ( Ext = ".m" ->
         % Look up the module in the module->file mapping.
         source_file_map.lookup_module_source_file(ModuleName, FileName, !IO)
@@ -193,8 +197,8 @@ module_name_to_file_name_general(ModuleName, Ext, Search, MkDir, FileName,
         mangle_sym_name_for_java(ModuleName, module_qual, "__",
             MangledModuleName),
         BaseName = MangledModuleName ++ Ext,
-        choose_file_name(ModuleName, BaseParentDirs, BaseName, Ext, Search,
-            MkDir, FileName, !IO)
+        choose_file_name(Globals, ModuleName, BaseParentDirs, BaseName, Ext,
+            Search, MkDir, FileName, !IO)
     ;
         % Erlang uses `.' as a package separator and expects a module
         % `a.b.c' to be in a file `a/b/c.erl'.  Rather than that, we use
@@ -206,30 +210,31 @@ module_name_to_file_name_general(ModuleName, Ext, Search, MkDir, FileName,
     ->
         ErlangModuleName = qualify_mercury_std_library_module_name(ModuleName),
         BaseName = sym_name_to_string_sep(ErlangModuleName, "__") ++ Ext,
-        choose_file_name(ErlangModuleName, [], BaseName, Ext, Search, MkDir,
-            FileName, !IO)
+        choose_file_name(Globals, ErlangModuleName, [], BaseName, Ext, Search,
+            MkDir, FileName, !IO)
     ;
         BaseName = sym_name_to_string_sep(ModuleName, ".") ++ Ext,
-        choose_file_name(ModuleName, [], BaseName, Ext, Search, MkDir,
+        choose_file_name(Globals, ModuleName, [], BaseName, Ext, Search, MkDir,
             FileName, !IO)
     ).
 
-module_name_to_lib_file_name(Prefix, ModuleName, Ext, MkDir, FileName, !IO) :-
+module_name_to_lib_file_name(Globals, Prefix, ModuleName, Ext, MkDir,
+        FileName, !IO) :-
     BaseFileName = sym_name_to_string(ModuleName),
-    string.append_list([Prefix, BaseFileName, Ext], BaseName),
-    choose_file_name(ModuleName, [], BaseName, Ext, do_not_search, MkDir,
-        FileName, !IO).
+    BaseName = Prefix ++ BaseFileName ++ Ext,
+    choose_file_name(Globals, ModuleName, [], BaseName, Ext, do_not_search,
+        MkDir, FileName, !IO).
 
-fact_table_file_name(ModuleName, FactTableFileName, Ext, MkDir, FileName,
-        !IO) :-
-    extra_link_obj_file_name(ModuleName, FactTableFileName, Ext, MkDir,
-        FileName, !IO).
+fact_table_file_name(Globals, ModuleName, FactTableFileName, Ext, MkDir,
+        FileName, !IO) :-
+    extra_link_obj_file_name(Globals, ModuleName, FactTableFileName, Ext,
+        MkDir, FileName, !IO).
 
-extra_link_obj_file_name(ModuleName, ExtraLinkObjName, Ext, MkDir, FileName,
-        !IO) :-
+extra_link_obj_file_name(Globals, ModuleName, ExtraLinkObjName, Ext, MkDir,
+        FileName, !IO) :-
     BaseName = ExtraLinkObjName ++ Ext,
-    choose_file_name(ModuleName, [], BaseName, Ext, do_not_search, MkDir,
-        FileName, !IO).
+    choose_file_name(Globals, ModuleName, [], BaseName, Ext, do_not_search,
+        MkDir, FileName, !IO).
 
     % choose_file_name(ModuleName, BaseParentDirs, BaseName, Ext, Search,
     %   MkDir, FileName, !IO)
@@ -237,13 +242,12 @@ extra_link_obj_file_name(ModuleName, ExtraLinkObjName, Ext, MkDir, FileName,
     % BaseParentDirs is usually empty.  For Java files, BaseParentDirs are the
     % package directories that the file needs to be placed in.
     %
-:- pred choose_file_name(module_name::in, list(string)::in, string::in,
-    string::in, maybe_search::in, maybe_create_dirs::in, file_name::out,
-    io::di, io::uo) is det.
+:- pred choose_file_name(globals::in, module_name::in, list(string)::in,
+    string::in, string::in, maybe_search::in, maybe_create_dirs::in,
+    file_name::out, io::di, io::uo) is det.
 
-choose_file_name(_ModuleName, BaseParentDirs, BaseName, Ext, Search, MkDir,
-        FileName, !IO) :-
-    globals.io_get_globals(Globals, !IO),
+choose_file_name(Globals, _ModuleName, BaseParentDirs, BaseName, Ext,
+        Search, MkDir, FileName, !IO) :-
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
     globals.lookup_string_option(Globals, library_extension, LibExt),
@@ -272,8 +276,8 @@ choose_file_name(_ModuleName, BaseParentDirs, BaseName, Ext, Search, MkDir,
         % Even if not putting files in a `Mercury' directory, Java files will
         % have non-empty BaseParentDirs (the package) which may need to be
         % created.
-        make_file_name(BaseParentDirs, Search, MkDir, BaseName, Ext, FileName,
-            !IO)
+        make_file_name(Globals, BaseParentDirs, Search, MkDir, BaseName, Ext,
+            FileName, !IO)
     ;
         % The source files, the final executables, library files (including
         % .init files) output files intended for use by the user, and phony
@@ -412,25 +416,25 @@ choose_file_name(_ModuleName, BaseParentDirs, BaseName, Ext, Search, MkDir,
             unexpected(this_file, ErrorMsg)
         ),
 
-        make_file_name([SubDirName | BaseParentDirs], Search, MkDir, BaseName,
-            Ext, FileName, !IO)
+        make_file_name(Globals, [SubDirName | BaseParentDirs], Search, MkDir,
+            BaseName, Ext, FileName, !IO)
     ).
 
 file_name_to_module_name(FileName, ModuleName) :-
     ModuleName = string_to_sym_name(FileName).
 
-module_name_to_file_name(ModuleName, FileName) :-
+module_name_to_file_name_stem(ModuleName, FileName) :-
     FileName = sym_name_to_string(ModuleName).
 
 module_name_to_make_var_name(ModuleName, MakeVarName) :-
     MakeVarName = sym_name_to_string(ModuleName).
 
-:- pred make_file_name(list(dir_name)::in, maybe_search::in,
+:- pred make_file_name(globals::in, list(dir_name)::in, maybe_search::in,
     maybe_create_dirs::in, file_name::in, string::in, file_name::out,
     io::di, io::uo) is det.
 
-make_file_name(SubDirNames, Search, MkDir, BaseName, Ext, FileName, !IO) :-
-    globals.io_get_globals(Globals, !IO),
+make_file_name(Globals, SubDirNames, Search, MkDir, BaseName, Ext, FileName,
+        !IO) :-
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
     (
@@ -483,8 +487,7 @@ make_file_name(SubDirNames, Search, MkDir, BaseName, Ext, FileName, !IO) :-
         FileName = dir.relative_path_name_from_components(Components)
     ).
 
-get_class_dir_name(ClassDirName, !IO) :-
-    globals.io_get_globals(Globals, !IO),
+get_class_dir_name(Globals, ClassDirName) :-
     globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
     globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
     (
