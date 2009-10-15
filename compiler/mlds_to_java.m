@@ -118,6 +118,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module multi_map.
 :- import_module pair.
 :- import_module set.
 :- import_module string.
@@ -346,12 +347,14 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     % Find and build list of all methods which would have their addresses
     % taken to be used as a function pointer.
     find_pointer_addressed_methods(GlobalDefns, [], CodeAddrs0),
-    find_pointer_addressed_methods(Defns0, CodeAddrs0, CodeAddrs1),
-    CodeAddrs = list.sort_and_remove_dups(CodeAddrs1),
+    find_pointer_addressed_methods(Defns0, CodeAddrs0, CodeAddrs),
+    make_code_addr_map(CodeAddrs, multi_map.init, CodeAddrsMap),
+    map.to_assoc_list(CodeAddrsMap, CodeAddrsAssocList),
 
     % Create wrappers in MLDS for all pointer addressed methods.
-    list.map(generate_addr_wrapper_class, CodeAddrs, WrapperDefns),
-    Defns1 = GlobalDefns ++ WrapperDefns ++ Defns0,
+    list.map_foldl(generate_addr_wrapper_class(MLDS_ModuleName),
+        CodeAddrsAssocList, WrapperClassDefns, map.init, AddrOfMap),
+    Defns1 = GlobalDefns ++ WrapperClassDefns ++ Defns0,
 
     % Rename classes with excessively long names.
     shorten_long_class_names(MLDS_ModuleName, Defns1, Defns),
@@ -372,29 +375,25 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     % library/private_builtin.m they contain static constants
     % that will get used in the RTTI definitions.
     module_info_get_globals(ModuleInfo, Globals),
-    Info = init_java_out_info(Globals),
+    Info = init_java_out_info(ModuleInfo, AddrOfMap),
     output_src_start(Globals, Info, Indent, ModuleName, Imports, ForeignDecls,
         Defns, !IO),
     io.write_list(ForeignBodyCode, "\n", output_java_body_code(Info, Indent),
         !IO),
     list.filter(defn_is_rtti_data, Defns, RttiDefns, NonRttiDefns),
     io.write_string("\n// RttiDefns\n", !IO),
-    output_defns(Info, Indent + 1, ModuleInfo, MLDS_ModuleName, alloc_only,
-        RttiDefns, !IO),
-    output_rtti_assignments(Info, Indent + 1, ModuleInfo, MLDS_ModuleName,
-        RttiDefns, !IO),
+    output_defns(Info, Indent + 1, alloc_only, RttiDefns, !IO),
+    output_rtti_assignments(Info, Indent + 1, RttiDefns, !IO),
     io.write_string("\n// NonRttiDefns\n", !IO),
-    output_defns(Info, Indent + 1, ModuleInfo, MLDS_ModuleName, none,
-        NonRttiDefns, !IO),
+    output_defns(Info, Indent + 1, none, NonRttiDefns, !IO),
     io.write_string("\n// ExportDefns\n", !IO),
-    output_exports(Info, Indent + 1, ModuleInfo, MLDS_ModuleName, none,
-        ExportDefns, !IO),
+    output_exports(Info, Indent + 1, ExportDefns, !IO),
     io.write_string("\n// ExportedEnums\n", !IO),
-    output_exported_enums(Info, Indent + 1, ModuleInfo, ExportedEnums, !IO),
+    output_exported_enums(Info, Indent + 1, ExportedEnums, !IO),
     io.write_string("\n// InitPreds\n", !IO),
-    output_inits(Indent + 1, ModuleInfo, InitPreds, !IO),
+    output_inits(Indent + 1, InitPreds, !IO),
     io.write_string("\n// FinalPreds\n", !IO),
-    output_finals(Indent + 1, ModuleInfo, FinalPreds, !IO),
+    output_finals(Indent + 1, FinalPreds, !IO),
     io.write_string("\n// EnvVarNames\n", !IO),
     output_env_vars(Indent + 1, NonRttiDefns, !IO),
     output_src_end(Indent, ModuleName, !IO).
@@ -468,13 +467,11 @@ mlds_get_java_foreign_code(AllForeignCode) = ForeignCode :-
     % be referred to within foreign_procs that are inlined across module
     % boundaries.
     %
-:- pred output_exports(java_out_info::in, indent::in, module_info::in,
-    mlds_module_name::in, output_aux::in, list(mlds_pragma_export)::in,
-    io::di, io::uo) is det.
+:- pred output_exports(java_out_info::in, indent::in,
+    list(mlds_pragma_export)::in, io::di, io::uo) is det.
 
-output_exports(_, _, _, _, _, [], !IO).
-output_exports(Info, Indent, ModuleInfo, MLDS_ModuleName, OutputAux,
-        [Export | Exports], !IO) :-
+output_exports(_, _, [], !IO).
+output_exports(Info, Indent, [Export | Exports], !IO) :-
     Export = ml_pragma_export(Lang, ExportName, MLDS_Name, MLDS_Signature,
         MLDS_Context),
     expect(unify(Lang, lang_java), this_file,
@@ -494,8 +491,7 @@ output_exports(Info, Indent, ModuleInfo, MLDS_ModuleName, OutputAux,
         io.write_string("java.lang.Object []", !IO)
     ),
     io.write_string(" " ++ ExportName, !IO),
-    output_params(Info, Indent + 1, MLDS_ModuleName, MLDS_Context, Parameters,
-        !IO),
+    output_params(Info, Indent + 1, MLDS_Context, Parameters, !IO),
     io.nl(!IO),
     indent_line(Indent, !IO),
     io.write_string("{\n", !IO),
@@ -516,28 +512,23 @@ output_exports(Info, Indent, ModuleInfo, MLDS_ModuleName, OutputAux,
     io.write_string(");\n", !IO),
     indent_line(Indent, !IO),
     io.write_string("}\n", !IO),
-    output_exports(Info, Indent, ModuleInfo, MLDS_ModuleName, OutputAux,
-        Exports, !IO).
+    output_exports(Info, Indent, Exports, !IO).
 
 %-----------------------------------------------------------------------------%
 %
 % Code for handling `pragma foreign_export_enum' for Java.
 %
 
-:- pred output_exported_enums(java_out_info::in, indent::in, module_info::in,
+:- pred output_exported_enums(java_out_info::in, indent::in,
     list(mlds_exported_enum)::in, io::di, io::uo) is det.
 
-output_exported_enums(Info, Indent, ModuleInfo, ExportedEnums, !IO) :-
-    module_info_get_name(ModuleInfo, ModuleName),
-    MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    list.foldl(output_exported_enum(Info, Indent, ModuleInfo, MLDS_ModuleName),
-        ExportedEnums, !IO).
+output_exported_enums(Info, Indent, ExportedEnums, !IO) :-
+    list.foldl(output_exported_enum(Info, Indent), ExportedEnums, !IO).
 
-:- pred output_exported_enum(java_out_info::in, indent::in, module_info::in,
-    mlds_module_name::in, mlds_exported_enum::in, io::di, io::uo) is det.
+:- pred output_exported_enum(java_out_info::in, indent::in,
+    mlds_exported_enum::in, io::di, io::uo) is det.
 
-output_exported_enum(Info, Indent, ModuleInfo, MLDS_ModuleName, ExportedEnum,
-        !IO) :-
+output_exported_enum(Info, Indent, ExportedEnum, !IO) :-
     ExportedEnum = mlds_exported_enum(Lang, _, TypeCtor, ExportedConstants0),
     (
         Lang = lang_java,
@@ -545,8 +536,8 @@ output_exported_enum(Info, Indent, ModuleInfo, MLDS_ModuleName, ExportedEnum,
         MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_enum),
         % We reverse the list so the constants are printed out in order.
         list.reverse(ExportedConstants0, ExportedConstants),
-        list.foldl(output_exported_enum_constant(Info, Indent, ModuleInfo,
-            MLDS_ModuleName, MLDS_Type), ExportedConstants, !IO)
+        list.foldl(output_exported_enum_constant(Info, Indent, MLDS_Type),
+            ExportedConstants, !IO)
     ;
         ( Lang = lang_c
         ; Lang = lang_csharp
@@ -556,11 +547,10 @@ output_exported_enum(Info, Indent, ModuleInfo, MLDS_ModuleName, ExportedEnum,
     ).
 
 :- pred output_exported_enum_constant(java_out_info::in, indent::in,
-    module_info::in, mlds_module_name::in, mlds_type::in,
-    mlds_exported_enum_constant::in, io::di, io::uo) is det.
+    mlds_type::in, mlds_exported_enum_constant::in, io::di, io::uo) is det.
 
-output_exported_enum_constant(Info, Indent, ModuleInfo, MLDS_ModuleName,
-        MLDS_Type, ExportedConstant, !IO) :-
+output_exported_enum_constant(Info, Indent, MLDS_Type, ExportedConstant,
+        !IO) :-
     ExportedConstant = mlds_exported_enum_constant(Name, Initializer),
     indent_line(Indent, !IO),
     io.write_string("public static final ", !IO),
@@ -568,8 +558,7 @@ output_exported_enum_constant(Info, Indent, ModuleInfo, MLDS_ModuleName,
     io.write_string(" ", !IO),
     io.write_string(Name, !IO),
     io.write_string(" = ", !IO),
-    output_initializer_body(Info, ModuleInfo, Initializer, no,
-        MLDS_ModuleName, !IO),
+    output_initializer_body(Info, Initializer, no, !IO),
     io.write_string(";\n", !IO).
 
 %-----------------------------------------------------------------------------%
@@ -817,13 +806,92 @@ method_ptrs_in_lval(ml_global_var_ref(_), !CodeAddrs).
 % module. This is due to the fact that the names of the generated wrapper
 % classes are based purely on the method name.
 
-    % Generate the MLDS wrapper class for a given code_addr.
-    %
-:- pred generate_addr_wrapper_class(mlds_code_addr::in, mlds_defn::out) is det.
+:- type call_method_inputs
+    --->    cmi_separate(list(mlds_var_name))
+    ;       cmi_array(mlds_var_name).
 
-generate_addr_wrapper_class(CodeAddr, ClassDefn) :-
-    % Create a method that calls the original predicate.
-    generate_call_method(CodeAddr, MethodDefn, Arity),
+:- pred make_code_addr_map(list(mlds_code_addr)::in,
+    multi_map(arity, mlds_code_addr)::in,
+    multi_map(arity, mlds_code_addr)::out) is det.
+
+make_code_addr_map([], !Map).
+make_code_addr_map([CodeAddr | CodeAddrs], !Map) :-
+    (
+        CodeAddr = code_addr_proc(_ProcLabel, OrigFuncSignature)
+    ;
+        CodeAddr = code_addr_internal(_ProcLabel, _SeqNum, OrigFuncSignature)
+    ),
+    OrigFuncSignature = mlds_func_signature(OrigArgTypes, _OrigRetTypes),
+    list.length(OrigArgTypes, Arity),
+    multi_map.set(!.Map, Arity, CodeAddr, !:Map),
+    make_code_addr_map(CodeAddrs, !Map).
+
+:- pred generate_addr_wrapper_class(mlds_module_name::in,
+    pair(arity, list(mlds_code_addr))::in, mlds_defn::out,
+    map(mlds_code_addr, code_addr_wrapper)::in,
+    map(mlds_code_addr, code_addr_wrapper)::out) is det.
+
+generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
+        !AddrOfMap) :-
+    % Create a name for this wrapper class based on the fully qualified method
+    % (predicate) name.
+    ClassName = "addrOf" ++ string.from_int(Arity),
+
+    % If the class is wrapping more than one method then add a member variable
+    % which says which predicate to call, and a constructor function to
+    % initialise that variable.
+    (
+        CodeAddrs = [_],
+        DataDefns = [],
+        CtorDefns = []
+    ;
+        CodeAddrs = [_, _ | _],
+        Context = mlds_make_context(term.context_init),
+
+        % Create the member variable.
+        DataDefn = mlds_defn(
+            entity_data(mlds_data_var(mlds_var_name("ptr_num", no))),
+            Context, ml_gen_final_member_decl_flags,
+            mlds_data(mlds_native_int_type, no_initializer, gc_no_stmt)),
+        DataDefns = [DataDefn],
+
+        % Create the constructor function.
+        QualClassName = qual(MLDS_ModuleName, module_qual, ClassName),
+        ClassType = mlds_class_type(QualClassName, 0, mlds_class),
+
+        FieldName = qual(MLDS_ModuleName, type_qual, "ptr_num"),
+        FieldId = ml_field_named(FieldName, ClassType),
+        FieldLval = ml_field(no, ml_self(ClassType), FieldId,
+            mlds_native_int_type, ClassType),
+
+        CtorArgName = mlds_var_name("ptr_num", no),
+        CtorArg = entity_data(mlds_data_var(CtorArgName)),
+        CtorArgs = [mlds_argument(CtorArg, mlds_native_int_type, gc_no_stmt)],
+        CtorReturnValues = [],
+
+        CtorArgLval = ml_var(qual(MLDS_ModuleName, type_qual, CtorArgName),
+            mlds_native_int_type),
+        CtorArgRval = ml_lval(CtorArgLval),
+        CtorStatement = statement(
+            ml_stmt_atomic(assign(FieldLval, CtorArgRval)), Context),
+
+        Attributes = [],
+        EnvVarNames = set.init,
+        Ctor = mlds_function(no, mlds_func_params(CtorArgs, CtorReturnValues),
+            body_defined_here(CtorStatement), Attributes, EnvVarNames),
+        CtorFlags = init_decl_flags(acc_public, per_instance, non_virtual,
+            overridable, modifiable, concrete),
+        CtorDefn = mlds_defn(entity_export("<constructor>"), Context,
+            CtorFlags, Ctor),
+        CtorDefns = [CtorDefn]
+    ;
+        CodeAddrs = [],
+        unexpected(this_file,
+            "generate_addr_wrapper_class_for_arity: no addresses")
+    ),
+
+    % Create a method that calls the original predicates.
+    generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn),
 
     ( Arity =< max_specialised_method_ptr_arity ->
         InterfaceName = "MethodPtr" ++ string.from_int(Arity)
@@ -840,47 +908,18 @@ generate_addr_wrapper_class(CodeAddr, ClassDefn) :-
     InterfaceDefn = mlds_class_type(Interface, 0, mlds_interface),
     ClassImplements = [InterfaceDefn],
 
-    % Create a name for this wrapper class based on the fully qualified method
-    % (predicate) name.
-    create_addr_wrapper_name(CodeAddr, MangledClassEntityName),
-
-    % XXX We should fill in the Context properly. This would probably involve
-    % also returning context information for each "code_addr" returned by the
-    % "method_ptrs_*" predicates above.
-    Context = mlds_make_context(term.context_init),
-
     % Put it all together.
-    ClassMembers  = [MethodDefn],
-    ClassCtors    = [],
-    ClassName     = entity_type(MangledClassEntityName, 0),
-    ClassContext  = Context,
+    ClassMembers  = DataDefns ++ [MethodDefn],
+    ClassEntityName = entity_type(ClassName, 0),
+    ClassContext  = mlds_make_context(term.context_init),
     ClassFlags    = addr_wrapper_decl_flags,
     ClassBodyDefn = mlds_class_defn(mlds_class, ClassImports,
-        ClassExtends, ClassImplements, ClassCtors, ClassMembers),
+        ClassExtends, ClassImplements, CtorDefns, ClassMembers),
     ClassBody     = mlds_class(ClassBodyDefn),
-    ClassDefn = mlds_defn(ClassName, ClassContext, ClassFlags, ClassBody).
+    ClassDefn = mlds_defn(ClassEntityName, ClassContext, ClassFlags,
+        ClassBody),
 
-:- pred create_addr_wrapper_name(mlds_code_addr::in, string::out) is det.
-
-create_addr_wrapper_name(CodeAddr, MangledClassEntityName) :-
-    (
-        CodeAddr = code_addr_proc(ProcLabel, _FuncSig),
-        MaybeSeqNum = no
-    ;
-        CodeAddr = code_addr_internal(ProcLabel, SeqNum, _FuncSig),
-        MaybeSeqNum = yes(SeqNum)
-    ),
-    ProcLabel = qual(ModuleQualifier, QualKind,
-        mlds_proc_label(PredLabel, ProcID)),
-    PredName = make_pred_name_string(PredLabel, ProcID, MaybeSeqNum),
-
-    % Create a name for this wrapper class based on the fully qualified method
-    % (predicate) name.
-    ModuleQualifierSym = mlds_module_name_to_sym_name(ModuleQualifier),
-    mangle_sym_name_for_java(ModuleQualifierSym, convert_qual_kind(QualKind),
-        "__", ModuleNameStr),
-    ClassEntityName = "addrOf__" ++ ModuleNameStr ++ "__" ++ PredName,
-    MangledClassEntityName = name_mangle_no_leading_digit(ClassEntityName).
+    add_to_address_map(ClassName, CodeAddrs, !AddrOfMap).
 
     % The highest arity for which there is a specialised MethodPtr<n> interface.
     %
@@ -888,52 +927,108 @@ create_addr_wrapper_name(CodeAddr, MangledClassEntityName) :-
 
 max_specialised_method_ptr_arity = 15.
 
-    % Generates a call methods which calls the original method we have
-    % created the wrapper for.
-    %
-:- pred generate_call_method(mlds_code_addr::in, mlds_defn::out, int::out)
+:- pred generate_call_method(mlds_module_name::in, arity::in,
+    list(mlds_code_addr)::in, mlds_defn::out) is det.
+
+generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn) :-
+    % Create the arguments to the call method.  For low arities the method
+    % takes n arguments directly.  For higher arities the arguments are passed
+    % in as an array.
+    ( Arity =< max_specialised_method_ptr_arity ->
+        list.map2(create_generic_arg, 1 .. Arity, ArgNames, MethodArgs),
+        InputArgs = cmi_separate(ArgNames)
+    ;
+        ArgName = mlds_var_name("args", no),
+        ArgDataName = entity_data(mlds_data_var(ArgName)),
+        ArgType = mlds_array_type(mlds_generic_type),
+        Arg = mlds_argument(ArgDataName, ArgType, gc_no_stmt),
+        MethodArgs = [Arg],
+        InputArgs = cmi_array(ArgName)
+    ),
+
+    % Create a statement to call each of the original methods.
+    list.map(generate_call_statement_for_addr(InputArgs), CodeAddrs,
+        CodeAddrStatements),
+
+    Context = mlds_make_context(term.context_init),
+
+    % If there is more than one original method then we need to switch on the
+    % ptr_num member variable.
+    (
+        CodeAddrStatements = [Statement]
+    ;
+        CodeAddrStatements = [_, _ | _],
+        MaxCase = list.length(CodeAddrs) - 1,
+        MakeCase = (func(I, CaseStatement) = Case :-
+            MatchCond = match_value(ml_const(mlconst_int(I))),
+            Case = mlds_switch_case(MatchCond, [], CaseStatement)
+        ),
+        Cases = list.map_corresponding(MakeCase, 0 .. MaxCase,
+            CodeAddrStatements),
+
+        SwitchVarName = mlds_var_name("ptr_num", no),
+        SwitchVar = qual(MLDS_ModuleName, module_qual, SwitchVarName),
+        SwitchVarRval = ml_lval(ml_var(SwitchVar, mlds_native_int_type)),
+        SwitchRange = mlds_switch_range(0, MaxCase),
+        Switch = ml_stmt_switch(mlds_native_int_type, SwitchVarRval,
+            SwitchRange, Cases, default_is_unreachable),
+        Statement = statement(Switch, Context)
+    ;
+        CodeAddrStatements = [],
+        unexpected(this_file, "generate_call_method: no statements")
+    ),
+
+    % Create new method name.
+    PredID = hlds_pred.initial_pred_id,
+    ProcID = initial_proc_id,
+    Label = mlds_special_pred_label("call", no, "", 0),
+    MethodName = entity_function(Label, ProcID, no, PredID),
+
+    % Create return type.
+    MethodRetType = mlds_generic_type,
+    MethodRets = [MethodRetType],
+
+    % Put it all together.
+    MethodParams = mlds_func_params(MethodArgs, MethodRets),
+    MethodMaybeID = no,
+    MethodAttribs = [],
+    MethodEnvVarNames = set.init,
+    MethodBody   = mlds_function(MethodMaybeID, MethodParams,
+        body_defined_here(Statement), MethodAttribs, MethodEnvVarNames),
+    MethodFlags  = ml_gen_final_member_decl_flags,
+    MethodDefn   = mlds_defn(MethodName, Context, MethodFlags, MethodBody).
+
+:- pred create_generic_arg(int::in, mlds_var_name::out, mlds_argument::out)
     is det.
 
-generate_call_method(CodeAddr, MethodDefn, Arity) :-
+create_generic_arg(I, ArgName, Arg) :-
+    ArgName = mlds_var_name("arg" ++ string.from_int(I), no),
+    Arg = mlds_argument(entity_data(mlds_data_var(ArgName)),
+        mlds_generic_type, gc_no_stmt).
+
+:- pred generate_call_statement_for_addr(call_method_inputs::in,
+    mlds_code_addr::in, statement::out) is det.
+
+generate_call_statement_for_addr(InputArgs, CodeAddr, Statement) :-
     (
         CodeAddr = code_addr_proc(ProcLabel, OrigFuncSignature)
     ;
         CodeAddr = code_addr_internal(ProcLabel, _SeqNum, OrigFuncSignature)
     ),
     OrigFuncSignature = mlds_func_signature(OrigArgTypes, OrigRetTypes),
-    % XXX We should fill in the Context properly.
-    Context = mlds_make_context(term.context_init),
     ModuleName = ProcLabel ^ mod_name,
-    PredID = hlds_pred.initial_pred_id,
-    ProcID = initial_proc_id,
 
-    % Create new method name.
-    Label = mlds_special_pred_label("call", no, "", 0),
-    MethodName = entity_function(Label, ProcID, no, PredID),
-
-    list.length(OrigArgTypes, Arity),
-
-    % Create method arguments and call arguments.  For low arities we have
-    % specialised MethodPtr interfaces which contain a method which takes n
-    % arguments directly.  For higher arities the arguments are passed in as an
-    % array.
-    ( Arity =< max_specialised_method_ptr_arity ->
-        list.map2_foldl(generate_call_method_nth_arg(ModuleName),
-            OrigArgTypes, MethodArgs, CallArgs, 1, _Arity)
+    % Create the arguments to pass to the original method.
+    (
+        InputArgs = cmi_separate(ArgNames),
+        list.map_corresponding(generate_call_method_nth_arg(ModuleName),
+            OrigArgTypes, ArgNames, CallArgs)
     ;
-        MethodArgVariable = mlds_var_name("args", no),
-        MethodArgType = mlds_argument(
-            entity_data(mlds_data_var(MethodArgVariable)),
-            mlds_array_type(mlds_generic_type), gc_no_stmt),
-        MethodArgs = [MethodArgType],
-        CallArgLabel = qual(ModuleName, module_qual, MethodArgVariable),
-        generate_call_method_array_args(OrigArgTypes, CallArgLabel, 0, [],
-            CallArgs)
+        InputArgs = cmi_array(ArrayVarName),
+        ArrayVar = qual(ModuleName, module_qual, ArrayVarName),
+        generate_call_method_args_from_array(OrigArgTypes, ArrayVar, 0,
+            [], CallArgs)
     ),
-
-    % Create return type.
-    MethodRetType = mlds_generic_type,
-    MethodRets = [MethodRetType],
 
     % Create a temporary variable to store the result of the call to the
     % original method.
@@ -957,6 +1052,7 @@ generate_call_method(CodeAddr, MethodDefn, Arity) :-
     ReturnDecFlags = ml_gen_local_var_decl_flags,
     GCStatement = gc_no_stmt,  % The Java back-end does its own GC.
     ReturnEntityDefn = mlds_data(ReturnVarType, no_initializer, GCStatement),
+    Context = mlds_make_context(term.context_init),
     ReturnVarDefn = mlds_defn(ReturnEntityName, Context, ReturnDecFlags,
         ReturnEntityDefn),
     MethodDefns = [ReturnVarDefn],
@@ -986,34 +1082,21 @@ generate_call_method(CodeAddr, MethodDefn, Arity) :-
     ReturnStatement = statement(Return, Context),
 
     Block = ml_stmt_block(MethodDefns, [CallStatement, ReturnStatement]),
-    Statements = statement(Block, Context),
-
-    % Put it all together.
-    MethodParams = mlds_func_params(MethodArgs, MethodRets),
-    MethodMaybeID = no,
-    MethodAttribs = [],
-    MethodEnvVarNames = set.init,
-    MethodBody   = mlds_function(MethodMaybeID, MethodParams,
-        body_defined_here(Statements), MethodAttribs, MethodEnvVarNames),
-    MethodFlags  = ml_gen_special_member_decl_flags,
-    MethodDefn   = mlds_defn(MethodName, Context, MethodFlags, MethodBody).
+    Statement = statement(Block, Context).
 
 :- pred generate_call_method_nth_arg(mlds_module_name::in, mlds_type::in,
-    mlds_argument::out, mlds_rval::out, int::in, int::out) is det.
+    mlds_var_name::in, mlds_rval::out) is det.
 
-generate_call_method_nth_arg(ModuleName, Type, MethodArg, CallArg, I, I + 1) :-
-    MethodArgVariable = mlds_var_name("arg" ++ string.from_int(I), no),
-    MethodArg = mlds_argument(entity_data(mlds_data_var(MethodArgVariable)),
-        mlds_generic_type, gc_no_stmt),
+generate_call_method_nth_arg(ModuleName, Type, MethodArgVariable, CallArg) :-
     CallArgLabel = qual(ModuleName, module_qual, MethodArgVariable),
     Rval = ml_lval(ml_var(CallArgLabel, mlds_generic_type)),
     CallArg = ml_unop(unbox(Type), Rval).
 
-:- pred generate_call_method_array_args(list(mlds_type)::in, mlds_var::in,
-    int::in, list(mlds_rval)::in, list(mlds_rval)::out) is det.
+:- pred generate_call_method_args_from_array(list(mlds_type)::in,
+    mlds_var::in, int::in, list(mlds_rval)::in, list(mlds_rval)::out) is det.
 
-generate_call_method_array_args([], _, _, Args, Args).
-generate_call_method_array_args([Type | Types], ArrayVar, Counter,
+generate_call_method_args_from_array([], _, _, Args, Args).
+generate_call_method_args_from_array([Type | Types], ArrayVar, Counter,
         Args0, Args) :-
     ArrayRval = ml_lval(ml_var(ArrayVar, mlds_native_int_type)),
     IndexRval = ml_const(mlconst_int(Counter)),
@@ -1021,66 +1104,8 @@ generate_call_method_array_args([Type | Types], ArrayVar, Counter,
     Rval = ml_binop(array_index(ElemType), ArrayRval, IndexRval),
     UnBoxedRval = ml_unop(unbox(Type), Rval),
     Args1 = Args0 ++ [UnBoxedRval],
-    generate_call_method_array_args(Types, ArrayVar, Counter + 1, Args1, Args).
-
-:- func make_pred_name_string(mlds_pred_label, proc_id,
-    maybe(mlds_func_sequence_num)) = string.
-
-make_pred_name_string(PredLabel, ProcId, MaybeSeqNum) = NameStr :-
-    PredLabelStr = pred_label_string(PredLabel),
-    proc_id_to_int(ProcId, ModeNum),
-    NameStr0 = PredLabelStr ++ "_" ++ string.int_to_string(ModeNum),
-    (
-        MaybeSeqNum = yes(SeqNum),
-        NameStr = NameStr0 ++ "_" ++ string.int_to_string(SeqNum)
-    ;
-        MaybeSeqNum = no,
-        NameStr = NameStr0
-    ).
-
-:- func pred_label_string(mlds_pred_label) = string.
-
-pred_label_string(PredLabel) = PredLabelStr :-
-    (
-        PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
-            PredArity, _CodeModel, _NonOutputFunc),
-        (
-            PredOrFunc = pf_predicate,
-            Suffix = "p",
-            OrigArity = PredArity
-        ;
-            PredOrFunc = pf_function,
-            Suffix = "f",
-            OrigArity = PredArity - 1
-        ),
-        MangledName = name_mangle_no_leading_digit(Name),
-        PredLabelStr0 = MangledName ++ "_" ++ string.int_to_string(OrigArity)
-            ++ "_" ++ Suffix,
-        (
-            MaybeDefiningModule = yes(DefiningModule),
-            MangledModuleName = sym_name_mangle(DefiningModule),
-            PredLabelStr = PredLabelStr0 ++ "_in__" ++ MangledModuleName
-        ;
-            MaybeDefiningModule = no,
-            PredLabelStr = PredLabelStr0
-        )
-    ;
-        PredLabel = mlds_special_pred_label(PredName, MaybeTypeModule,
-            TypeName, TypeArity),
-        MangledPredName = name_mangle_no_leading_digit(PredName),
-        MangledTypeName = name_mangle(TypeName),
-        PredLabelStr0 = MangledPredName ++ "__",
-        (
-            MaybeTypeModule = yes(TypeModule),
-            MangledModuleName = sym_name_mangle(TypeModule),
-            PredLabelStr1 = PredLabelStr0 ++ "__" ++ MangledModuleName
-        ;
-            MaybeTypeModule = no,
-            PredLabelStr1 = PredLabelStr0
-        ),
-        PredLabelStr = PredLabelStr1 ++ MangledTypeName ++ "_" ++
-            string.int_to_string(TypeArity)
-    ).
+    generate_call_method_args_from_array(Types, ArrayVar, Counter + 1,
+        Args1, Args).
 
 :- func addr_wrapper_decl_flags = mlds_decl_flags.
 
@@ -1093,6 +1118,35 @@ addr_wrapper_decl_flags = MLDS_DeclFlags :-
     Abstractness = concrete,
     MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
         Virtuality, Finality, Constness, Abstractness).
+
+:- pred add_to_address_map(string::in, list(mlds_code_addr)::in,
+    map(mlds_code_addr, code_addr_wrapper)::in,
+    map(mlds_code_addr, code_addr_wrapper)::out) is det.
+
+add_to_address_map(ClassName, CodeAddrs, !AddrOfMap) :-
+    FlippedClassName = flip_initial_case(ClassName),
+    (
+        CodeAddrs = [CodeAddr],
+        Wrapper = code_addr_wrapper(FlippedClassName, no),
+        svmap.det_insert(CodeAddr, Wrapper, !AddrOfMap)
+    ;
+        CodeAddrs = [_, _ | _],
+        add_to_address_map_2(FlippedClassName, CodeAddrs, 0, !AddrOfMap)
+    ;
+        CodeAddrs = [],
+        unexpected(this_file, "generate_addr_wrapper_class: no addresses")
+    ).
+
+:- pred add_to_address_map_2(string::in, list(mlds_code_addr)::in, int::in,
+    map(mlds_code_addr, code_addr_wrapper)::in,
+    map(mlds_code_addr, code_addr_wrapper)::out) is det.
+
+add_to_address_map_2(_, [], _, !AddrOfMap).
+add_to_address_map_2(FlippedClassName, [CodeAddr | CodeAddrs], I,
+        !AddrOfMap) :-
+    Wrapper = code_addr_wrapper(FlippedClassName, yes(I)),
+    svmap.det_insert(CodeAddr, Wrapper, !AddrOfMap),
+    add_to_address_map_2(FlippedClassName, CodeAddrs, I + 1, !AddrOfMap).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1589,10 +1643,9 @@ rename_class_names_unary_op(Renaming, !Op) :-
 % Code to output calls to module initialisers.
 %
 
-:- pred output_inits(int::in, module_info::in, list(string)::in,
-    io::di, io::uo) is det.
+:- pred output_inits(int::in, list(string)::in, io::di, io::uo) is det.
 
-output_inits(Indent, _ModuleInfo, InitPreds, !IO) :-
+output_inits(Indent, InitPreds, !IO) :-
     (
         InitPreds = []
     ;
@@ -1618,10 +1671,9 @@ output_init_2(Indent, InitPred, !IO) :-
 % Code to output module finalisers.
 %
 
-:- pred output_finals(indent::in, module_info::in, list(string)::in,
-    io::di, io::uo) is det.
+:- pred output_finals(indent::in, list(string)::in, io::di, io::uo) is det.
 
-output_finals(Indent, _ModuleInfo, FinalPreds, !IO) :-
+output_finals(Indent, FinalPreds, !IO) :-
     (
         FinalPreds = []
     ;
@@ -1841,24 +1893,26 @@ output_auto_gen_comment(Globals, ModuleName, !IO)  :-
             % is needed since the class name is not available for a constructor
             % in the MLDS.
 
-    ;       alloc_only.
+    ;       alloc_only
             % When writing out RTTI structure definitions, initialise members
             % with allocated top-level structures but don't fill in the fields
             % yet.
 
-:- pred output_defns(java_out_info::in, indent::in, module_info::in,
-    mlds_module_name::in, output_aux::in, list(mlds_defn)::in,
-    io::di, io::uo) is det.
+    ;       force_init.
+            % Used to force local variables to be initialised even if an
+            % initialiser is not provided.
 
-output_defns(Info, Indent, ModuleInfo, ModuleName, OutputAux, Defns, !IO) :-
-    OutputDefn = output_defn(Info, Indent, ModuleInfo, ModuleName, OutputAux),
-    list.foldl(OutputDefn, Defns, !IO).
+:- pred output_defns(java_out_info::in, indent::in, output_aux::in,
+    list(mlds_defn)::in, io::di, io::uo) is det.
 
-:- pred output_defn(java_out_info::in, indent::in, module_info::in,
-    mlds_module_name::in, output_aux::in, mlds_defn::in,
-    io::di, io::uo) is det.
+output_defns(Info, Indent, OutputAux, Defns, !IO) :-
+    list.foldl(output_defn(Info, Indent, OutputAux), Defns, !IO).
 
-output_defn(Info, Indent, ModuleInfo, ModuleName, OutputAux, Defn, !IO) :-
+:- pred output_defn(java_out_info::in, indent::in, output_aux::in,
+    mlds_defn::in, io::di, io::uo) is det.
+
+output_defn(Info, Indent, OutputAux, Defn, !IO) :-
+    ModuleName = Info ^ joi_module_name,
     Defn = mlds_defn(Name, Context, Flags, DefnBody),
     QualName = qual(ModuleName, module_qual, Name),
     indent_line(Info, Context, Indent, !IO),
@@ -1870,34 +1924,33 @@ output_defn(Info, Indent, ModuleInfo, ModuleName, OutputAux, Defn, !IO) :-
         % must be given in `pragma java_code' in the same module.)
         io.write_string("/* external:\n", !IO),
         output_decl_flags(Info, Flags, !IO),
-        output_defn_body(Info, Indent, ModuleInfo, QualName, OutputAux,
-            Context, DefnBody, !IO),
+        output_defn_body(Info, Indent, QualName, OutputAux, Context, DefnBody,
+            !IO),
         io.write_string("*/\n", !IO)
     ;
         output_decl_flags(Info, Flags, !IO),
-        output_defn_body(Info, Indent, ModuleInfo, QualName, OutputAux,
-            Context, DefnBody, !IO)
+        output_defn_body(Info, Indent, QualName, OutputAux, Context, DefnBody,
+            !IO)
     ).
 
-:- pred output_defn_body(java_out_info::in, indent::in, module_info::in,
+:- pred output_defn_body(java_out_info::in, indent::in, 
     mlds_qualified_entity_name::in, output_aux::in,
     mlds_context::in, mlds_entity_defn::in, io::di, io::uo) is det.
 
-output_defn_body(Info, Indent, ModuleInfo, Name, OutputAux, Context, Entity,
-        !IO) :-
+output_defn_body(Info, Indent, Name, OutputAux, Context, Entity, !IO) :-
     (
         Entity = mlds_data(Type, Initializer, _),
-        output_data_defn(Info, ModuleInfo, Name, OutputAux, Type, Initializer,
+        output_data_defn(Info, Name, OutputAux, Type, Initializer,
             !IO)
     ;
         Entity = mlds_function(MaybePredProcId, Signature, MaybeBody,
             _Attributes, _EnvVarNames),
         output_maybe(MaybePredProcId, output_pred_proc_id(Info), !IO),
-        output_func(Info, Indent, ModuleInfo, Name, OutputAux, Context,
+        output_func(Info, Indent, Name, OutputAux, Context,
             Signature, MaybeBody, !IO)
     ;
         Entity = mlds_class(ClassDefn),
-        output_class(Info, Indent, ModuleInfo, Name, Context, ClassDefn, !IO)
+        output_class(Info, Indent, Name, Context, ClassDefn, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1905,12 +1958,12 @@ output_defn_body(Info, Indent, ModuleInfo, Name, OutputAux, Context, Entity,
 % Code to output classes.
 %
 
-:- pred output_class(java_out_info::in, indent::in, module_info::in,
+:- pred output_class(java_out_info::in, indent::in,
     mlds_qualified_entity_name::in, mlds_context::in, mlds_class_defn::in,
     io::di, io::uo) is det.
 
-output_class(Info, Indent, ModuleInfo, Name, _Context, ClassDefn, !IO) :-
-    Name = qual(ModuleName, _QualKind, UnqualName),
+output_class(Info, Indent, Name, _Context, ClassDefn, !IO) :-
+    Name = qual(_ModuleName, _QualKind, UnqualName),
     (
         UnqualName = entity_type(ClassNamePrime, ArityPrime),
         ClassName = ClassNamePrime,
@@ -1941,11 +1994,9 @@ output_class(Info, Indent, ModuleInfo, Name, _Context, ClassDefn, !IO) :-
     output_implements_list(Indent + 1, Implements, !IO),
     indent_line(Indent, !IO),
     io.write_string("{\n", !IO),
-    output_class_body(Info, Indent + 1, ModuleInfo, Kind, Name, AllMembers,
-        ModuleName, !IO),
+    output_class_body(Info, Indent + 1, Kind, Name, AllMembers, !IO),
     io.nl(!IO),
-    output_defns(Info, Indent + 1, ModuleInfo, ModuleName, cname(UnqualName),
-        Ctors, !IO),
+    output_defns(Info, Indent + 1, cname(UnqualName), Ctors, !IO),
     indent_line(Indent, !IO),
     io.write_string("}\n\n", !IO).
 
@@ -2005,23 +2056,20 @@ output_interface(Interface, !IO) :-
         unexpected(this_file, "output_interface: interface was not a class.")
     ).
 
-:- pred output_class_body(java_out_info::in, indent::in, module_info::in,
-    mlds_class_kind::in, mlds_qualified_entity_name::in, list(mlds_defn)::in,
-    mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_class_body(java_out_info::in, indent::in, mlds_class_kind::in,
+    mlds_qualified_entity_name::in, list(mlds_defn)::in, io::di, io::uo)
+    is det.
 
-output_class_body(Info, Indent, ModuleInfo, Kind, Name, AllMembers, ModuleName,
-        !IO) :-
+output_class_body(Info, Indent, Kind, Name, AllMembers, !IO) :-
     (
         Kind = mlds_class,
-        output_defns(Info, Indent, ModuleInfo, ModuleName, none, AllMembers,
-            !IO)
+        output_defns(Info, Indent, none, AllMembers, !IO)
     ;
         Kind = mlds_package,
         unexpected(this_file, "cannot use package as a type.")
     ;
         Kind = mlds_interface,
-        output_defns(Info, Indent, ModuleInfo, ModuleName, none, AllMembers,
-            !IO)
+        output_defns(Info, Indent, none, AllMembers, !IO)
     ;
         Kind = mlds_struct,
         unexpected(this_file,
@@ -2125,14 +2173,12 @@ output_data_decl(Info, qual(_, _, Name), Type, !IO) :-
     io.write_char(' ', !IO),
     output_name(Name, !IO).
 
-:- pred output_data_defn(java_out_info::in, module_info::in,
-    mlds_qualified_entity_name::in, output_aux::in, mlds_type::in,
-    mlds_initializer::in, io::di, io::uo) is det.
+:- pred output_data_defn(java_out_info::in, mlds_qualified_entity_name::in,
+    output_aux::in, mlds_type::in, mlds_initializer::in, io::di, io::uo) is det.
 
-output_data_defn(Info, ModuleInfo, Name, OutputAux, Type, Initializer, !IO) :-
+output_data_defn(Info, Name, OutputAux, Type, Initializer, !IO) :-
     output_data_decl(Info, Name, Type, !IO),
-    output_initializer(Info, ModuleInfo, Name ^ mod_name, OutputAux, Type,
-        Initializer, !IO),
+    output_initializer(Info, OutputAux, Type, Initializer, !IO),
     io.write_string(";\n", !IO).
 
     % We need to provide initializers for local variables to avoid problems
@@ -2210,16 +2256,14 @@ output_maybe(MaybeValue, OutputAction, !IO) :-
         MaybeValue = no
     ).
 
-:- pred output_initializer(java_out_info::in, module_info::in,
-    mlds_module_name::in, output_aux::in, mlds_type::in, mlds_initializer::in,
-    io::di, io::uo) is det.
+:- pred output_initializer(java_out_info::in, output_aux::in, mlds_type::in,
+    mlds_initializer::in, io::di, io::uo) is det.
 
-output_initializer(Info, ModuleInfo, ModuleName, OutputAux, Type, Initializer,
-        !IO) :-
-    io.write_string(" = ", !IO),
+output_initializer(Info, OutputAux, Type, Initializer, !IO) :-
     NeedsInit = needs_initialization(Initializer),
     (
         NeedsInit = yes,
+        io.write_string(" = ", !IO),
         % Due to cyclic references, we need to separate the allocation and
         % initialisation steps of RTTI structures.  If InitStyle is alloc_only
         % then we output an initializer to allocate a structure without filling
@@ -2227,21 +2271,26 @@ output_initializer(Info, ModuleInfo, ModuleName, OutputAux, Type, Initializer,
         (
             ( OutputAux = none
             ; OutputAux = cname(_)
+            ; OutputAux = force_init
             ),
-            output_initializer_body(Info, ModuleInfo, Initializer, yes(Type),
-                ModuleName, !IO)
+            output_initializer_body(Info, Initializer, yes(Type), !IO)
         ;
             OutputAux = alloc_only,
-            output_initializer_alloc_only(Info, ModuleInfo, Initializer,
-                yes(Type), ModuleName, !IO)
+            output_initializer_alloc_only(Info, Initializer, yes(Type), !IO)
         )
     ;
         NeedsInit = no,
-        % If we are not provided with an initializer we just, supply the
-        % default java values -- note: this is strictly only necessary for
-        % local variables, but it's not going to hurt anything else.
-        %
-        io.write_string(get_java_type_initializer(Type), !IO)
+        (
+            OutputAux = force_init,
+            % Local variables need to be initialised to avoid warnings.
+            io.write_string(" = ", !IO),
+            io.write_string(get_java_type_initializer(Type), !IO)
+        ;
+            ( OutputAux = none
+            ; OutputAux = cname(_)
+            ; OutputAux = alloc_only
+            )
+        )
     ).
 
 :- func needs_initialization(mlds_initializer) = bool.
@@ -2251,12 +2300,10 @@ needs_initialization(init_obj(_)) = yes.
 needs_initialization(init_struct(_, _)) = yes.
 needs_initialization(init_array(_)) = yes.
 
-:- pred output_initializer_alloc_only(java_out_info::in, module_info::in,
-    mlds_initializer::in, maybe(mlds_type)::in, mlds_module_name::in,
-    io::di, io::uo) is det.
+:- pred output_initializer_alloc_only(java_out_info::in, mlds_initializer::in,
+    maybe(mlds_type)::in, io::di, io::uo) is det.
 
-output_initializer_alloc_only(Info, _ModuleInfo, Initializer, MaybeType,
-        _ModuleName, !IO) :-
+output_initializer_alloc_only(Info, Initializer, MaybeType, !IO) :-
     (
         Initializer = no_initializer,
         unexpected(this_file, "output_initializer_alloc_only: no_initializer")
@@ -2283,26 +2330,23 @@ output_initializer_alloc_only(Info, _ModuleInfo, Initializer, MaybeType,
         )
     ).
 
-:- pred output_initializer_body(java_out_info::in, module_info::in,
-    mlds_initializer::in, maybe(mlds_type)::in, mlds_module_name::in,
-    io::di, io::uo) is det.
+:- pred output_initializer_body(java_out_info::in, mlds_initializer::in,
+    maybe(mlds_type)::in, io::di, io::uo) is det.
 
-output_initializer_body(Info, ModuleInfo, Initializer, MaybeType, ModuleName,
-        !IO) :-
+output_initializer_body(Info, Initializer, MaybeType, !IO) :-
     (
         Initializer = no_initializer,
         unexpected(this_file, "output_initializer_body: no_initializer")
     ;
         Initializer = init_obj(Rval),
-        output_rval(Info, ModuleInfo, Rval, ModuleName, !IO)
+        output_rval(Info, Rval, !IO)
     ;
         Initializer = init_struct(StructType, FieldInits),
         io.write_string("new ", !IO),
         output_type(Info, normal_style, StructType, !IO),
         IsArray = type_is_array(StructType),
         io.write_string(if IsArray = is_array then " {" else "(", !IO),
-        output_initializer_body_list(Info, ModuleInfo, ModuleName,
-            FieldInits, !IO),
+        output_initializer_body_list(Info, FieldInits, !IO),
         io.write_char(if IsArray = is_array then '}' else ')', !IO)
     ;
         Initializer = init_array(ElementInits),
@@ -2316,19 +2360,17 @@ output_initializer_body(Info, ModuleInfo, Initializer, MaybeType, ModuleName,
             io.write_string("/* XXX init_array */ Object[]", !IO)
         ),
         io.write_string(" {\n\t\t", !IO),
-        output_initializer_body_list(Info, ModuleInfo, ModuleName,
-            ElementInits, !IO),
+        output_initializer_body_list(Info, ElementInits, !IO),
         io.write_string("}", !IO)
     ).
 
-:- pred output_initializer_body_list(java_out_info::in, module_info::in,
-    mlds_module_name::in, list(mlds_initializer)::in, io::di, io::uo) is det.
+:- pred output_initializer_body_list(java_out_info::in,
+    list(mlds_initializer)::in, io::di, io::uo) is det.
 
-output_initializer_body_list(Info, ModuleInfo, ModuleName, Inits, !IO) :-
+output_initializer_body_list(Info, Inits, !IO) :-
     io.write_list(Inits, ",\n\t\t",
         (pred(Init::in, !.IO::di, !:IO::uo) is det :-
-            output_initializer_body(Info, ModuleInfo, Init, no, ModuleName,
-                !IO)),
+            output_initializer_body(Info, Init, no, !IO)),
         !IO).
 
 %-----------------------------------------------------------------------------%
@@ -2336,10 +2378,10 @@ output_initializer_body_list(Info, ModuleInfo, ModuleName, Inits, !IO) :-
 % Code to output RTTI data assignments.
 %
 
-:- pred output_rtti_assignments(java_out_info::in, indent::in, module_info::in,
-    mlds_module_name::in, list(mlds_defn)::in, io::di, io::uo) is det.
+:- pred output_rtti_assignments(java_out_info::in, indent::in,
+    list(mlds_defn)::in, io::di, io::uo) is det.
 
-output_rtti_assignments(Info, Indent, ModuleInfo, ModuleName, Defns, !IO) :-
+output_rtti_assignments(Info, Indent, Defns, !IO) :-
     (
         Defns = []
     ;
@@ -2347,38 +2389,30 @@ output_rtti_assignments(Info, Indent, ModuleInfo, ModuleName, Defns, !IO) :-
         OrderedDefns = order_mlds_rtti_defns(Defns),
         indent_line(Indent, !IO),
         io.write_string("static {\n", !IO),
-        list.foldl(
-            output_rtti_defns_assignments(Info, Indent + 1, ModuleInfo,
-                ModuleName),
+        list.foldl(output_rtti_defns_assignments(Info, Indent + 1),
             OrderedDefns, !IO),
         indent_line(Indent, !IO),
         io.write_string("}\n", !IO)
     ).
 
 :- pred output_rtti_defns_assignments(java_out_info::in, indent::in,
-    module_info::in, mlds_module_name::in, list(mlds_defn)::in,
-    io::di, io::uo) is det.
+    list(mlds_defn)::in, io::di, io::uo) is det.
 
-output_rtti_defns_assignments(Info, Indent, ModuleInfo, ModuleName, Defns,
-        !IO) :-
+output_rtti_defns_assignments(Info, Indent, Defns, !IO) :-
     % Separate cliques.
     indent_line(Indent, !IO),
     io.write_string("//\n", !IO),
-    list.foldl(
-        output_rtti_defn_assignments(Info, Indent, ModuleInfo, ModuleName),
+    list.foldl(output_rtti_defn_assignments(Info, Indent),
         Defns, !IO).
 
 :- pred output_rtti_defn_assignments(java_out_info::in, indent::in,
-    module_info::in, mlds_module_name::in, mlds_defn::in,
-    io::di, io::uo) is det.
+    mlds_defn::in, io::di, io::uo) is det.
 
-output_rtti_defn_assignments(Info, Indent, ModuleInfo, ModuleName, Defn,
-        !IO) :-
+output_rtti_defn_assignments(Info, Indent, Defn, !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
     (
-        DefnBody = mlds_data(Type, Initializer, _),
-        output_rtti_defn_assignments_2(Info, Indent, ModuleInfo, ModuleName,
-            Name, Type, Initializer, !IO)
+        DefnBody = mlds_data(_Type, Initializer, _),
+        output_rtti_defn_assignments_2(Info, Indent, Name, Initializer, !IO)
     ;
         ( DefnBody = mlds_function(_, _, _, _, _)
         ; DefnBody = mlds_class(_)
@@ -2388,11 +2422,9 @@ output_rtti_defn_assignments(Info, Indent, ModuleInfo, ModuleName, Defn,
     ).
 
 :- pred output_rtti_defn_assignments_2(java_out_info::in, indent::in,
-    module_info::in, mlds_module_name::in, mlds_entity_name::in, mlds_type::in,
-    mlds_initializer::in, io::di, io::uo) is det.
+    mlds_entity_name::in, mlds_initializer::in, io::di, io::uo) is det.
 
-output_rtti_defn_assignments_2(Info, Indent, ModuleInfo, ModuleName, Name,
-        _Type, Initializer, !IO) :-
+output_rtti_defn_assignments_2(Info, Indent, Name, Initializer, !IO) :-
     (
         Initializer = no_initializer
     ;
@@ -2407,8 +2439,7 @@ output_rtti_defn_assignments_2(Info, Indent, ModuleInfo, ModuleName, Name,
             indent_line(Indent, !IO),
             output_name(Name, !IO),
             io.write_string(".init(", !IO),
-            output_initializer_body_list(Info, ModuleInfo, ModuleName,
-                FieldInits, !IO),
+            output_initializer_body_list(Info, FieldInits, !IO),
             io.write_string(");\n", !IO)
         ;
             IsArray = is_array,
@@ -2417,23 +2448,22 @@ output_rtti_defn_assignments_2(Info, Indent, ModuleInfo, ModuleName, Name,
         )
     ;
         Initializer = init_array(ElementInits),
-        list.foldl2(output_rtti_array_assignments(Info, Indent, ModuleInfo,
-            ModuleName, Name), ElementInits, 0, _Index, !IO)
+        list.foldl2(output_rtti_array_assignments(Info, Indent, Name),
+            ElementInits, 0, _Index, !IO)
     ).
 
 :- pred output_rtti_array_assignments(java_out_info::in, indent::in,
-    module_info::in, mlds_module_name::in, mlds_entity_name::in,
-    mlds_initializer::in, int::in, int::out, io::di, io::uo) is det.
+    mlds_entity_name::in, mlds_initializer::in, int::in, int::out,
+    io::di, io::uo) is det.
 
-output_rtti_array_assignments(Info, Indent, ModuleInfo, ModuleName, Name,
-        ElementInit, Index, Index + 1, !IO) :-
+output_rtti_array_assignments(Info, Indent, Name, ElementInit,
+        Index, Index + 1, !IO) :-
     indent_line(Indent, !IO),
     output_name(Name, !IO),
     io.write_string("[", !IO),
     io.write_int(Index, !IO),
     io.write_string("] = ", !IO),
-    output_initializer_body(Info, ModuleInfo, ElementInit, no, ModuleName,
-        !IO),
+    output_initializer_body(Info, ElementInit, no, !IO),
     io.write_string(";\n", !IO).
 
 %-----------------------------------------------------------------------------%
@@ -2459,12 +2489,12 @@ output_pred_proc_id(Info, proc(PredId, ProcId), !IO) :-
         AutoComments = no
     ).
 
-:- pred output_func(java_out_info::in, indent::in, module_info::in,
+:- pred output_func(java_out_info::in, indent::in,
     mlds_qualified_entity_name::in, output_aux::in, mlds_context::in,
     mlds_func_params::in, mlds_function_body::in, io::di, io::uo) is det.
 
-output_func(Info, Indent, ModuleInfo, Name, OutputAux, Context, Signature,
-        MaybeBody, !IO) :-
+output_func(Info, Indent, Name, OutputAux, Context, Signature, MaybeBody,
+        !IO) :-
     (
         MaybeBody = body_defined_here(Body),
         output_func_decl(Info, Indent, Name, OutputAux, Context, Signature,
@@ -2473,8 +2503,7 @@ output_func(Info, Indent, ModuleInfo, Name, OutputAux, Context, Signature,
         indent_line(Info, Context, Indent, !IO),
         io.write_string("{\n", !IO),
         FuncInfo = func_info(Name, Signature),
-        output_statement(Info, Indent + 1, ModuleInfo, FuncInfo, Body,
-            _ExitMethods, !IO),
+        output_statement(Info, Indent + 1, FuncInfo, Body, _ExitMethods, !IO),
         indent_line(Info, Context, Indent, !IO),
         io.write_string("}\n", !IO)    % end the function
     ;
@@ -2491,11 +2520,11 @@ output_func_decl(Info, Indent, QualifiedName, OutputAux, Context, Signature,
         OutputAux = cname(CtorName),
         Signature = mlds_func_params(Parameters, _RetTypes),
         output_name(CtorName, !IO),
-        output_params(Info, Indent, QualifiedName ^ mod_name, Context,
-            Parameters, !IO)
+        output_params(Info, Indent, Context, Parameters, !IO)
     ;
         ( OutputAux = none
         ; OutputAux = alloc_only
+        ; OutputAux = force_init
         ),
         Signature = mlds_func_params(Parameters, RetTypes),
         (
@@ -2510,15 +2539,15 @@ output_func_decl(Info, Indent, QualifiedName, OutputAux, Context, Signature,
             io.write_string("java.lang.Object []", !IO)
         ),
         io.write_char(' ', !IO),
-        QualifiedName = qual(ModuleName, _QualKind, Name),
+        QualifiedName = qual(_ModuleName, _QualKind, Name),
         output_name(Name, !IO),
-        output_params(Info, Indent, ModuleName, Context, Parameters, !IO)
+        output_params(Info, Indent, Context, Parameters, !IO)
     ).
 
-:- pred output_params(java_out_info::in, indent::in, mlds_module_name::in,
-    mlds_context::in, mlds_arguments::in, io::di, io::uo) is det.
+:- pred output_params(java_out_info::in, indent::in, mlds_context::in,
+    mlds_arguments::in, io::di, io::uo) is det.
 
-output_params(Info, Indent, ModuleName, Context, Parameters, !IO) :-
+output_params(Info, Indent, Context, Parameters, !IO) :-
     io.write_char('(', !IO),
     (
         Parameters = []
@@ -2526,14 +2555,14 @@ output_params(Info, Indent, ModuleName, Context, Parameters, !IO) :-
         Parameters = [_ | _],
         io.nl(!IO),
         io.write_list(Parameters, ",\n",
-            output_param(Info, Indent + 1, ModuleName, Context), !IO)
+            output_param(Info, Indent + 1, Context), !IO)
     ),
     io.write_char(')', !IO).
 
-:- pred output_param(java_out_info::in, indent::in, mlds_module_name::in,
-    mlds_context::in, mlds_argument::in, io::di, io::uo) is det.
+:- pred output_param(java_out_info::in, indent::in, mlds_context::in,
+    mlds_argument::in, io::di, io::uo) is det.
 
-output_param(Info, Indent, _ModuleName, Context, Arg, !IO) :-
+output_param(Info, Indent, Context, Arg, !IO) :-
     Arg = mlds_argument(Name, Type, _GCStatement),
     indent_line(Info, Context, Indent, !IO),
     output_type(Info, normal_style, Type, !IO),
@@ -3154,6 +3183,12 @@ maybe_output_comment(Info, Comment, !IO) :-
                                 % normally and execution can continue
                                 % with the following statement.
 
+:- type code_addr_wrapper
+    --->    code_addr_wrapper(
+                caw_class           :: string,
+                caw_ptr_num         :: maybe(int)
+            ).
+
 :- type func_info
     --->    func_info(
                 func_info_name      :: mlds_qualified_entity_name,
@@ -3164,18 +3199,17 @@ maybe_output_comment(Info, Comment, !IO) :-
 
 mod_name(qual(ModuleName, _, _)) = ModuleName.
 
-:- pred output_statements(java_out_info::in, indent::in, module_info::in,
-    func_info::in, list(statement)::in, exit_methods::out,
-    io::di, io::uo) is det.
+:- pred output_statements(java_out_info::in, indent::in, func_info::in,
+    list(statement)::in, exit_methods::out, io::di, io::uo) is det.
 
-output_statements(_, _, _, _, [], ExitMethods, !IO) :-
+output_statements(_, _, _, [], ExitMethods, !IO) :-
     ExitMethods = set.make_singleton_set(can_fall_through).
-output_statements(Info, Indent, ModuleInfo, FuncInfo, [Statement | Statements],
+output_statements(Info, Indent, FuncInfo, [Statement | Statements],
         ExitMethods, !IO) :-
-    output_statement(Info, Indent, ModuleInfo, FuncInfo, Statement,
+    output_statement(Info, Indent, FuncInfo, Statement,
         StmtExitMethods, !IO),
     ( set.member(can_fall_through, StmtExitMethods) ->
-        output_statements(Info, Indent, ModuleInfo, FuncInfo, Statements,
+        output_statements(Info, Indent, FuncInfo, Statements,
             StmtsExitMethods, !IO),
         ExitMethods0 = StmtExitMethods `set.union` StmtsExitMethods,
         ( set.member(can_fall_through, StmtsExitMethods) ->
@@ -3191,35 +3225,31 @@ output_statements(Info, Indent, ModuleInfo, FuncInfo, [Statement | Statements],
         ExitMethods = StmtExitMethods
     ).
 
-:- pred output_statement(java_out_info::in, indent::in, module_info::in,
+:- pred output_statement(java_out_info::in, indent::in,
     func_info::in, statement::in, exit_methods::out, io::di, io::uo) is det.
 
-output_statement(Info, Indent, ModuleInfo, FuncInfo,
+output_statement(Info, Indent, FuncInfo,
         statement(Statement, Context), ExitMethods, !IO) :-
     output_context(Info, Context, !IO),
-    output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
+    output_stmt(Info, Indent, FuncInfo, Statement, Context,
         ExitMethods, !IO).
 
-:- pred output_stmt(java_out_info::in, indent::in, module_info::in,
-    func_info::in, mlds_stmt::in, mlds_context::in, exit_methods::out,
-    io::di, io::uo) is det.
+:- pred output_stmt(java_out_info::in, indent::in, func_info::in,
+    mlds_stmt::in, mlds_context::in, exit_methods::out, io::di, io::uo) is det.
 
-output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
-        ExitMethods, !IO) :-
+output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
     (
         Statement = ml_stmt_block(Defns, Statements),
         indent_line(Indent, !IO),
         io.write_string("{\n", !IO),
         (
             Defns = [_ | _],
-            ModuleName = FuncInfo ^ func_info_name ^ mod_name,
-            output_defns(Info, Indent + 1, ModuleInfo, ModuleName, none,
-                Defns, !IO),
+            output_defns(Info, Indent + 1, force_init, Defns, !IO),
             io.write_string("\n", !IO)
         ;
             Defns = []
         ),
-        output_statements(Info, Indent + 1, ModuleInfo, FuncInfo, Statements,
+        output_statements(Info, Indent + 1, FuncInfo, Statements,
             ExitMethods, !IO),
         indent_line(Info, Context, Indent, !IO),
         io.write_string("}\n", !IO)
@@ -3228,8 +3258,7 @@ output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
         Kind = may_loop_zero_times,
         indent_line(Indent, !IO),
         io.write_string("while (", !IO),
-        ModuleName = FuncInfo ^ func_info_name ^ mod_name,
-        output_rval(Info, ModuleInfo, Cond, ModuleName, !IO),
+        output_rval(Info, Cond, !IO),
         io.write_string(")\n", !IO),
         % The contained statement is reachable iff the while statement is
         % reachable and the condition expression is not a constant expression
@@ -3239,8 +3268,8 @@ output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
             io.write_string("{  /* Unreachable code */  }\n", !IO),
             ExitMethods = set.make_singleton_set(can_fall_through)
         ;
-            output_statement(Info, Indent + 1, ModuleInfo, FuncInfo,
-                BodyStatement, StmtExitMethods, !IO),
+            output_statement(Info, Indent + 1, FuncInfo, BodyStatement,
+                StmtExitMethods, !IO),
             ExitMethods = while_exit_methods(Cond, StmtExitMethods)
         )
     ;
@@ -3248,12 +3277,11 @@ output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
         Kind = loop_at_least_once,
         indent_line(Indent, !IO),
         io.write_string("do\n", !IO),
-        output_statement(Info, Indent + 1, ModuleInfo, FuncInfo, BodyStatement,
+        output_statement(Info, Indent + 1, FuncInfo, BodyStatement,
             StmtExitMethods, !IO),
         indent_line(Info, Context, Indent, !IO),
         io.write_string("while (", !IO),
-        ModuleName = FuncInfo ^ func_info_name ^ mod_name,
-        output_rval(Info, ModuleInfo, Cond, ModuleName, !IO),
+        output_rval(Info, Cond, !IO),
         io.write_string(");\n", !IO),
         ExitMethods = while_exit_methods(Cond, StmtExitMethods)
     ;
@@ -3283,16 +3311,15 @@ output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
 
         indent_line(Indent, !IO),
         io.write_string("if (", !IO),
-        ModuleName = FuncInfo ^ func_info_name ^ mod_name,
-        output_rval(Info, ModuleInfo, Cond, ModuleName, !IO),
+        output_rval(Info, Cond, !IO),
         io.write_string(")\n", !IO),
-        output_statement(Info, Indent + 1, ModuleInfo, FuncInfo, Then,
+        output_statement(Info, Indent + 1, FuncInfo, Then,
             ThenExitMethods, !IO),
         (
             MaybeElse = yes(Else),
             indent_line(Info, Context, Indent, !IO),
             io.write_string("else\n", !IO),
-            output_statement(Info, Indent + 1, ModuleInfo, FuncInfo, Else,
+            output_statement(Info, Indent + 1, FuncInfo, Else,
                 ElseExitMethods, !IO),
             % An if-then-else statement can complete normally iff the
             % then-statement can complete normally or the else-statement
@@ -3308,11 +3335,10 @@ output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
         Statement = ml_stmt_switch(_Type, Val, _Range, Cases, Default),
         indent_line(Info, Context, Indent, !IO),
         io.write_string("switch (", !IO),
-        output_rval_maybe_with_enum(Info, ModuleInfo, Val,
-            FuncInfo ^ func_info_name ^ mod_name, !IO),
+        output_rval_maybe_with_enum(Info, Val, !IO),
         io.write_string(") {\n", !IO),
-        output_switch_cases(Info, Indent + 1, ModuleInfo, FuncInfo, Context,
-            Cases, Default, ExitMethods, !IO),
+        output_switch_cases(Info, Indent + 1, FuncInfo, Context, Cases,
+            Default, ExitMethods, !IO),
         indent_line(Info, Context, Indent, !IO),
         io.write_string("}\n", !IO)
     ;
@@ -3339,7 +3365,6 @@ output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
         Statement = ml_stmt_call(Signature, FuncRval, MaybeObject, CallArgs,
             Results, _IsTailCall),
         Signature = mlds_func_signature(ArgTypes, RetTypes),
-        ModuleName = FuncInfo ^ func_info_name ^ mod_name,
         indent_line(Indent, !IO),
         io.write_string("{\n", !IO),
         indent_line(Info, Context, Indent + 1, !IO),
@@ -3347,7 +3372,7 @@ output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
             Results = []
         ;
             Results = [Lval],
-            output_lval(Info, ModuleInfo, Lval, ModuleName, !IO),
+            output_lval(Info, Lval, !IO),
             io.write_string(" = ", !IO)
         ;
             Results = [_, _ | _],
@@ -3365,19 +3390,15 @@ output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
             % This is a standard method call.
             (
                 MaybeObject = yes(Object),
-                output_bracketed_rval(Info, ModuleInfo, Object, ModuleName,
-                    !IO),
+                output_bracketed_rval(Info, Object, !IO),
                 io.write_string(".", !IO)
             ;
                 MaybeObject = no
             ),
             % This is a standard function call.
-            output_call_rval(Info, ModuleInfo, FuncRval, ModuleName, !IO),
+            output_call_rval(Info, FuncRval, !IO),
             io.write_string("(", !IO),
-            PrintArgs =
-                (pred(CallArg::in, !.IO::di, !:IO::uo) is det :-
-                    output_rval(Info, ModuleInfo, CallArg, ModuleName, !IO)),
-            io.write_list(CallArgs, ", ", PrintArgs, !IO),
+            io.write_list(CallArgs, ", ", output_rval(Info), !IO),
             io.write_string(")", !IO)
         ;
             % This is a call using a method pointer.
@@ -3409,8 +3430,7 @@ output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
             ),
             (
                 MaybeObject = yes(Object),
-                output_bracketed_rval(Info, ModuleInfo, Object, ModuleName,
-                    !IO),
+                output_bracketed_rval(Info, Object, !IO),
                 io.write_string(".", !IO)
             ;
                 MaybeObject = no
@@ -3421,18 +3441,14 @@ output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
                 io.write_string("((jmercury.runtime.MethodPtr", !IO),
                 io.write_int(Arity, !IO),
                 io.write_string(") ", !IO),
-                output_bracketed_rval(Info, ModuleInfo, FuncRval, ModuleName,
-                    !IO),
+                output_bracketed_rval(Info, FuncRval, !IO),
                 io.write_string(").call___0_0(", !IO),
-                output_boxed_args(Info, ModuleInfo, CallArgs, ArgTypes,
-                    ModuleName, !IO)
+                output_boxed_args(Info, CallArgs, ArgTypes, !IO)
             ;
                 io.write_string("((jmercury.runtime.MethodPtrN) ", !IO),
-                output_bracketed_rval(Info, ModuleInfo, FuncRval, ModuleName,
-                    !IO),
+                output_bracketed_rval(Info, FuncRval, !IO),
                 io.write_string(").call___0_0(", !IO),
-                output_args_as_array(Info, ModuleInfo, CallArgs, ArgTypes,
-                    ModuleName, !IO)
+                output_args_as_array(Info, CallArgs, ArgTypes, !IO)
             ),
 
             % Closes brackets, and calls unbox methods for downcasting.
@@ -3459,8 +3475,8 @@ output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
         ( Results = [_, _ | _] ->
             % Copy the results from the "result" array into the Result
             % lvals (unboxing them as we go).
-            output_assign_results(Info, ModuleInfo, Results, RetTypes, 0,
-                ModuleName, Indent + 1, Context, !IO)
+            output_assign_results(Info, Results, RetTypes, 0, Indent + 1,
+                Context, !IO)
         ;
             true
         ),
@@ -3487,12 +3503,11 @@ output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
             Results = [Rval],
             indent_line(Indent, !IO),
             io.write_string("return ", !IO),
-            output_rval(Info, ModuleInfo, Rval,
-                FuncInfo ^ func_info_name ^ mod_name, !IO),
+            output_rval(Info, Rval, !IO),
             io.write_string(";\n", !IO)
         ;
             Results = [_, _ | _],
-            FuncInfo = func_info(FuncName, Params),
+            FuncInfo = func_info(_FuncName, Params),
             Params = mlds_func_params(_Args, ReturnTypes),
             TypesAndResults = assoc_list.from_corresponding_lists(
                 ReturnTypes, Results),
@@ -3501,8 +3516,7 @@ output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
             Separator = ",\n" ++ duplicate_char(' ', (Indent + 1) * 2),
             io.write_list(TypesAndResults, Separator,
                 (pred((Type - Result)::in, !.IO::di, !:IO::uo) is det :-
-                    output_boxed_rval(Info, ModuleInfo, Type, Result,
-                        FuncName ^ mod_name, !IO)),
+                    output_boxed_rval(Info, Type, Result, !IO)),
                 !IO),
             io.write_string("\n", !IO),
             indent_line(Indent, !IO),
@@ -3512,12 +3526,11 @@ output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
     ;
         Statement = ml_stmt_do_commit(Ref),
         indent_line(Indent, !IO),
-        ModuleName = FuncInfo ^ func_info_name ^ mod_name,
-        output_rval(Info, ModuleInfo, Ref, ModuleName, !IO),
+        output_rval(Info, Ref, !IO),
         io.write_string(" = new jmercury.runtime.Commit();\n", !IO),
         indent_line(Indent, !IO),
         io.write_string("throw ", !IO),
-        output_rval(Info, ModuleInfo, Ref, ModuleName, !IO),
+        output_rval(Info, Ref, !IO),
         io.write_string(";\n", !IO),
         ExitMethods = set.make_singleton_set(can_throw)
     ;
@@ -3526,7 +3539,7 @@ output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
         io.write_string("try\n", !IO),
         indent_line(Indent, !IO),
         io.write_string("{\n", !IO),
-        output_statement(Info, Indent + 1, ModuleInfo, FuncInfo, Stmt,
+        output_statement(Info, Indent + 1, FuncInfo, Stmt,
             TryExitMethods0, !IO),
         indent_line(Indent, !IO),
         io.write_string("}\n", !IO),
@@ -3536,7 +3549,7 @@ output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
         indent_line(Indent, !IO),
         io.write_string("{\n", !IO),
         indent_line(Indent + 1, !IO),
-        output_statement(Info, Indent + 1, ModuleInfo, FuncInfo, Handler,
+        output_statement(Info, Indent + 1, FuncInfo, Handler,
             CatchExitMethods, !IO),
         indent_line(Indent, !IO),
         io.write_string("}\n", !IO),
@@ -3544,8 +3557,7 @@ output_stmt(Info, Indent, ModuleInfo, FuncInfo, Statement, Context,
             `set.union`  CatchExitMethods
     ;
         Statement = ml_stmt_atomic(AtomicStatement),
-        output_atomic_stmt(Info, Indent, ModuleInfo, FuncInfo, AtomicStatement,
-            Context, !IO),
+        output_atomic_stmt(Info, Indent, AtomicStatement, Context, !IO),
         ExitMethods = set.make_singleton_set(can_fall_through)
     ).
 
@@ -3581,36 +3593,31 @@ while_exit_methods(Cond, BlockExitMethods) = ExitMethods :-
 % Extra code for handling function calls/returns.
 %
 
-:- pred output_args_as_array(java_out_info::in, module_info::in,
-    list(mlds_rval)::in, list(mlds_type)::in, mlds_module_name::in,
-    io::di, io::uo) is det.
+:- pred output_args_as_array(java_out_info::in, list(mlds_rval)::in,
+    list(mlds_type)::in, io::di, io::uo) is det.
 
-output_args_as_array(Info, ModuleInfo, CallArgs, CallArgTypes, ModuleName,
-        !IO) :-
+output_args_as_array(Info, CallArgs, CallArgTypes, !IO) :-
     io.write_string("new java.lang.Object[] { ", !IO),
-    output_boxed_args(Info, ModuleInfo, CallArgs, CallArgTypes, ModuleName,
-        !IO),
+    output_boxed_args(Info, CallArgs, CallArgTypes, !IO),
     io.write_string("} ", !IO).
 
-:- pred output_boxed_args(java_out_info::in, module_info::in,
-    list(mlds_rval)::in, list(mlds_type)::in, mlds_module_name::in,
-    io::di, io::uo) is det.
+:- pred output_boxed_args(java_out_info::in, list(mlds_rval)::in,
+    list(mlds_type)::in, io::di, io::uo) is det.
 
-output_boxed_args(_, _, [], [], _, !IO).
-output_boxed_args(_, _, [_ | _], [], _, _, _) :-
+output_boxed_args(_, [], [], !IO).
+output_boxed_args(_, [_ | _], [], !IO) :-
     unexpected(this_file, "output_boxed_args: length mismatch.").
-output_boxed_args(_, _, [], [_ | _], _, _, _) :-
+output_boxed_args(_, [], [_ | _], !IO) :-
     unexpected(this_file, "output_boxed_args: length mismatch.").
-output_boxed_args(Info, ModuleInfo, [CallArg | CallArgs],
-        [CallArgType | CallArgTypes], ModuleName, !IO) :-
-    output_boxed_rval(Info, ModuleInfo, CallArgType, CallArg, ModuleName, !IO),
+output_boxed_args(Info, [CallArg | CallArgs], [CallArgType | CallArgTypes],
+        !IO) :-
+    output_boxed_rval(Info, CallArgType, CallArg, !IO),
     (
         CallArgs = []
     ;
         CallArgs = [_ | _],
         io.write_string(", ", !IO),
-        output_boxed_args(Info, ModuleInfo, CallArgs, CallArgTypes, ModuleName,
-            !IO)
+        output_boxed_args(Info, CallArgs, CallArgTypes, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3629,24 +3636,24 @@ output_boxed_args(Info, ModuleInfo, [CallArg | CallArgs],
 
     % This procedure generates the assignments to the outputs.
     %
-:- pred output_assign_results(java_out_info::in, module_info::in,
-    list(mlds_lval)::in, list(mlds_type)::in, int::in, mlds_module_name::in,
-    indent::in, mlds_context::in, io::di, io::uo) is det.
+:- pred output_assign_results(java_out_info::in, list(mlds_lval)::in,
+    list(mlds_type)::in, int::in, indent::in, mlds_context::in,
+    io::di, io::uo) is det.
 
-output_assign_results(_, _, [], [], _, _, _, _, !IO).
-output_assign_results(Info, ModuleInfo, [Lval | Lvals], [Type | Types],
-        ResultIndex, ModuleName, Indent, Context, !IO) :-
+output_assign_results(_, [], [], _, _, _, !IO).
+output_assign_results(Info, [Lval | Lvals], [Type | Types], ResultIndex,
+        Indent, Context, !IO) :-
     indent_line(Info, Context, Indent, !IO),
-    output_lval(Info, ModuleInfo, Lval, ModuleName, !IO),
+    output_lval(Info, Lval, !IO),
     io.write_string(" = ", !IO),
     output_unboxed_result(Info, Type, ResultIndex, !IO),
     io.write_string(";\n", !IO),
-    output_assign_results(Info, ModuleInfo, Lvals, Types, ResultIndex + 1,
-        ModuleName, Indent, Context, !IO).
-output_assign_results(_, _, [_ | _], [], _, _, _, _, _, _) :-
+    output_assign_results(Info, Lvals, Types, ResultIndex + 1,
+        Indent, Context, !IO).
+output_assign_results(_, [_ | _], [], _, _, _, _, _) :-
     unexpected(this_file, "output_assign_results: list length mismatch.").
-output_assign_results(_, _, [], [_ | _], _, _, _, _, _, _) :-
-    unexpected(this_file, "output_assign_results: list lenght mismatch.").
+output_assign_results(_, [], [_ | _], _, _, _, _, _) :-
+    unexpected(this_file, "output_assign_results: list length mismatch.").
 
 :- pred output_unboxed_result(java_out_info::in, mlds_type::in, int::in,
     io::di, io::uo) is det.
@@ -3669,20 +3676,20 @@ output_unboxed_result(Info, Type, ResultIndex, !IO) :-
 % Extra code for outputting switch statements.
 %
 
-:- pred output_switch_cases(java_out_info::in, indent::in, module_info::in,
-    func_info::in, mlds_context::in, list(mlds_switch_case)::in,
-    mlds_switch_default::in, exit_methods::out, io::di, io::uo) is det.
+:- pred output_switch_cases(java_out_info::in, indent::in, func_info::in,
+    mlds_context::in, list(mlds_switch_case)::in, mlds_switch_default::in,
+    exit_methods::out, io::di, io::uo) is det.
 
-output_switch_cases(Info, Indent, ModuleInfo, FuncInfo, Context,
+output_switch_cases(Info, Indent, FuncInfo, Context,
         [], Default, ExitMethods, !IO) :-
-    output_switch_default(Info, Indent, ModuleInfo, FuncInfo, Context, Default,
+    output_switch_default(Info, Indent, FuncInfo, Context, Default,
         ExitMethods, !IO).
-output_switch_cases(Info, Indent, ModuleInfo, FuncInfo, Context,
+output_switch_cases(Info, Indent, FuncInfo, Context,
         [Case | Cases], Default, ExitMethods, !IO) :-
-    output_switch_case(Info, Indent, ModuleInfo, FuncInfo, Context, Case,
+    output_switch_case(Info, Indent, FuncInfo, Context, Case,
         CaseExitMethods0, !IO),
-    output_switch_cases(Info, Indent, ModuleInfo, FuncInfo, Context, Cases,
-        Default, CasesExitMethods, !IO),
+    output_switch_cases(Info, Indent, FuncInfo, Context, Cases, Default,
+        CasesExitMethods, !IO),
     ( set.member(can_break, CaseExitMethods0) ->
         CaseExitMethods = (CaseExitMethods0 `set.delete` can_break)
             `set.insert` can_fall_through
@@ -3691,19 +3698,15 @@ output_switch_cases(Info, Indent, ModuleInfo, FuncInfo, Context,
     ),
     ExitMethods = CaseExitMethods `set.union` CasesExitMethods.
 
-:- pred output_switch_case(java_out_info::in, indent::in, module_info::in,
-    func_info::in, mlds_context::in, mlds_switch_case::in, exit_methods::out,
+:- pred output_switch_case(java_out_info::in, indent::in, func_info::in,
+    mlds_context::in, mlds_switch_case::in, exit_methods::out,
     io::di, io::uo) is det.
 
-output_switch_case(Info, Indent, ModuleInfo, FuncInfo, Context, Case,
-        ExitMethods, !IO) :-
+output_switch_case(Info, Indent, FuncInfo, Context, Case, ExitMethods, !IO) :-
     Case = mlds_switch_case(FirstCond, LaterConds, Statement),
-    ModuleName = FuncInfo ^ func_info_name ^ mod_name,
-    output_case_cond(Info, Indent, ModuleInfo, ModuleName, Context, FirstCond,
-        !IO),
-    list.foldl(output_case_cond(Info, Indent, ModuleInfo, ModuleName, Context),
-        LaterConds, !IO),
-    output_statement(Info, Indent + 1, ModuleInfo, FuncInfo, Statement,
+    output_case_cond(Info, Indent, Context, FirstCond, !IO),
+    list.foldl(output_case_cond(Info, Indent, Context), LaterConds, !IO),
+    output_statement(Info, Indent + 1, FuncInfo, Statement,
         StmtExitMethods, !IO),
     ( set.member(can_fall_through, StmtExitMethods) ->
         indent_line(Info, Context, Indent + 1, !IO),
@@ -3715,16 +3718,15 @@ output_switch_case(Info, Indent, ModuleInfo, FuncInfo, Context, Case,
         ExitMethods = StmtExitMethods
     ).
 
-:- pred output_case_cond(java_out_info::in, indent::in, module_info::in,
-    mlds_module_name::in, mlds_context::in, mlds_case_match_cond::in,
-    io::di, io::uo) is det.
+:- pred output_case_cond(java_out_info::in, indent::in, mlds_context::in,
+    mlds_case_match_cond::in, io::di, io::uo) is det.
 
-output_case_cond(Info, Indent, ModuleInfo, ModuleName, Context, Match, !IO) :-
+output_case_cond(Info, Indent, Context, Match, !IO) :-
     (
         Match = match_value(Val),
         indent_line(Info, Context, Indent, !IO),
         io.write_string("case ", !IO),
-        output_rval(Info, ModuleInfo, Val, ModuleName, !IO),
+        output_rval(Info, Val, !IO),
         io.write_string(":\n", !IO)
     ;
         Match = match_range(_, _),
@@ -3732,11 +3734,11 @@ output_case_cond(Info, Indent, ModuleInfo, ModuleName, Context, Match, !IO) :-
             "output_case_cond: cannot match ranges in Java cases")
     ).
 
-:- pred output_switch_default(java_out_info::in, indent::in, module_info::in,
-    func_info::in, mlds_context::in, mlds_switch_default::in,
-    exit_methods::out, io::di, io::uo) is det.
+:- pred output_switch_default(java_out_info::in, indent::in, func_info::in,
+    mlds_context::in, mlds_switch_default::in, exit_methods::out,
+    io::di, io::uo) is det.
 
-output_switch_default(Info, Indent, ModuleInfo, FuncInfo, Context, Default,
+output_switch_default(Info, Indent, FuncInfo, Context, Default,
         ExitMethods, !IO) :-
     (
         Default = default_do_nothing,
@@ -3745,8 +3747,8 @@ output_switch_default(Info, Indent, ModuleInfo, FuncInfo, Context, Default,
         Default = default_case(Statement),
         indent_line(Info, Context, Indent, !IO),
         io.write_string("default:\n", !IO),
-        output_statement(Info, Indent + 1, ModuleInfo, FuncInfo, Statement,
-            ExitMethods, !IO)
+        output_statement(Info, Indent + 1, FuncInfo, Statement, ExitMethods,
+            !IO)
     ;
         Default = default_is_unreachable,
         indent_line(Info, Context, Indent, !IO),
@@ -3762,12 +3764,10 @@ output_switch_default(Info, Indent, ModuleInfo, FuncInfo, Context, Default,
 % Code for outputting atomic statements.
 %
 
-:- pred output_atomic_stmt(java_out_info::in, indent::in, module_info::in,
-    func_info::in, mlds_atomic_statement::in, mlds_context::in,
-    io::di, io::uo) is det.
+:- pred output_atomic_stmt(java_out_info::in, indent::in,
+    mlds_atomic_statement::in, mlds_context::in, io::di, io::uo) is det.
 
-output_atomic_stmt(Info, Indent, ModuleInfo, FuncInfo, AtomicStmt, Context,
-        !IO) :-
+output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
     (
         AtomicStmt = comment(Comment),
         % XXX We should escape any "*/"'s in the Comment. We should also split
@@ -3778,11 +3778,10 @@ output_atomic_stmt(Info, Indent, ModuleInfo, FuncInfo, AtomicStmt, Context,
         io.write_string(" */\n", !IO)
     ;
         AtomicStmt = assign(Lval, Rval),
-        ModuleName = FuncInfo ^ func_info_name ^ mod_name,
         indent_line(Indent, !IO),
-        output_lval(Info, ModuleInfo, Lval, ModuleName, !IO),
+        output_lval(Info, Lval, !IO),
         io.write_string(" = ", !IO),
-        output_rval(Info, ModuleInfo, Rval, ModuleName, !IO),
+        output_rval(Info, Rval, !IO),
         io.write_string(";\n", !IO)
     ;
         AtomicStmt = assign_if_in_heap(_, _),
@@ -3800,13 +3799,11 @@ output_atomic_stmt(Info, Indent, ModuleInfo, FuncInfo, AtomicStmt, Context,
             ExplicitSecTag = no
         ),
 
-        ModuleName = FuncInfo ^ func_info_name ^ mod_name,
         indent_line(Indent, !IO),
         io.write_string("{\n", !IO),
         indent_line(Info, Context, Indent + 1, !IO),
-        output_lval(Info, ModuleInfo, Target, ModuleName, !IO),
+        output_lval(Info, Target, !IO),
         io.write_string(" = new ", !IO),
-
         % Generate class constructor name.
         (
             MaybeCtorName = yes(QualifiedCtorId),
@@ -3829,15 +3826,13 @@ output_atomic_stmt(Info, Indent, ModuleInfo, FuncInfo, AtomicStmt, Context,
             % The new object will be an array, so we need to initialise it
             % using array literals syntax.
             io.write_string(" {", !IO),
-            output_init_args(Info, ModuleInfo, Args, ArgTypes, ModuleName,
-                !IO),
+            output_init_args(Info, Args, ArgTypes, !IO),
             io.write_string("};\n", !IO)
         ;
             IsArray = not_array,
             % Generate constructor arguments.
             io.write_string("(", !IO),
-            output_init_args(Info, ModuleInfo, Args, ArgTypes, ModuleName,
-                !IO),
+            output_init_args(Info, Args, ArgTypes, !IO),
             io.write_string(");\n", !IO)
         ),
         indent_line(Indent, !IO),
@@ -3859,11 +3854,7 @@ output_atomic_stmt(Info, Indent, ModuleInfo, FuncInfo, AtomicStmt, Context,
         (
             TargetLang = ml_target_java,
             indent_line(Indent, !IO),
-            ModuleName = FuncInfo ^ func_info_name ^ mod_name,
-            list.foldl(
-                output_target_code_component(Info, ModuleInfo, ModuleName,
-                    Context),
-                Components, !IO)
+            list.foldl(output_target_code_component(Info), Components, !IO)
         ;
             ( TargetLang = ml_target_c
             ; TargetLang = ml_target_gnu_c
@@ -3880,12 +3871,10 @@ output_atomic_stmt(Info, Indent, ModuleInfo, FuncInfo, AtomicStmt, Context,
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_target_code_component(java_out_info::in, module_info::in,
-    mlds_module_name::in, mlds_context::in, target_code_component::in,
-    io::di, io::uo) is det.
+:- pred output_target_code_component(java_out_info::in,
+    target_code_component::in, io::di, io::uo) is det.
 
-output_target_code_component(Info, ModuleInfo, ModuleName, _Context,
-        TargetCode, !IO) :-
+output_target_code_component(Info, TargetCode, !IO) :-
     (
         TargetCode = user_target_code(CodeString, MaybeUserContext, _Attrs),
         (
@@ -3900,15 +3889,16 @@ output_target_code_component(Info, ModuleInfo, ModuleName, _Context,
         io.write_string(CodeString, !IO)
     ;
         TargetCode = target_code_input(Rval),
-        output_rval(Info, ModuleInfo, Rval, ModuleName, !IO)
+        output_rval(Info, Rval, !IO)
     ;
         TargetCode = target_code_output(Lval),
-        output_lval(Info, ModuleInfo, Lval, ModuleName, !IO)
+        output_lval(Info, Lval, !IO)
     ;
         TargetCode = target_code_type(Type),
         output_type(Info, normal_style, Type, !IO)
     ;
         TargetCode = target_code_name(Name),
+        ModuleName = Info ^ joi_module_name,
         output_maybe_qualified_name(Name, ModuleName, !IO)
     ).
 
@@ -3917,35 +3907,32 @@ output_target_code_component(Info, ModuleInfo, ModuleName, _Context,
     % Output initial values of an object's fields as arguments for the
     % object's class constructor.
     %
-:- pred output_init_args(java_out_info::in, module_info::in,
-    list(mlds_rval)::in, list(mlds_type)::in, mlds_module_name::in,
-    io::di, io::uo) is det.
+:- pred output_init_args(java_out_info::in, list(mlds_rval)::in,
+    list(mlds_type)::in, io::di, io::uo) is det.
 
-output_init_args(_, _, [], [], _, !IO).
-output_init_args(_, _, [_ | _], [], _, _, _) :-
+output_init_args(_, [], [], !IO).
+output_init_args(_, [_ | _], [], _, _) :-
     unexpected(this_file, "output_init_args: length mismatch.").
-output_init_args(_, _, [], [_ | _], _, _, _) :-
+output_init_args(_, [], [_ | _], _, _) :-
     unexpected(this_file, "output_init_args: length mismatch.").
-output_init_args(Info, ModuleInfo, [Arg | Args], [_ArgType | ArgTypes],
-        ModuleName, !IO) :-
-    output_rval(Info, ModuleInfo, Arg, ModuleName, !IO),
+output_init_args(Info, [Arg | Args], [_ArgType | ArgTypes], !IO) :-
+    output_rval(Info, Arg, !IO),
     (
         Args = []
     ;
         Args = [_ | _],
         io.write_string(", ", !IO)
     ),
-    output_init_args(Info, ModuleInfo, Args, ArgTypes, ModuleName, !IO).
+    output_init_args(Info, Args, ArgTypes, !IO).
 
 %-----------------------------------------------------------------------------%
 %
 % Code to output expressions.
 %
 
-:- pred output_lval(java_out_info::in, module_info::in, mlds_lval::in,
-    mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_lval(java_out_info::in, mlds_lval::in, io::di, io::uo) is det.
 
-output_lval(Info, ModuleInfo, Lval, ModuleName, !IO) :-
+output_lval(Info, Lval, !IO) :-
     (
         Lval = ml_field(_MaybeTag, PtrRval, FieldId, FieldType, _),
         (
@@ -3964,9 +3951,9 @@ output_lval(Info, ModuleInfo, Lval, ModuleName, !IO) :-
             % XXX We shouldn't need this cast here, but there are cases where
             % it is needed and the MLDS doesn't seem to generate it.
             io.write_string("((java.lang.Object[]) ", !IO),
-            output_rval(Info, ModuleInfo, PtrRval, ModuleName, !IO),
+            output_rval(Info, PtrRval, !IO),
             io.write_string(")[", !IO),
-            output_rval(Info, ModuleInfo, OffsetRval, ModuleName, !IO),
+            output_rval(Info, OffsetRval, !IO),
             io.write_string("]", !IO)
         ;
             FieldId = ml_field_named(FieldName, CtorType),
@@ -3976,8 +3963,15 @@ output_lval(Info, ModuleInfo, Lval, ModuleName, !IO) :-
             ->
                 % If the field we are trying to access is just a `data_tag'
                 % then it is a member of the base class.
-                output_bracketed_rval(Info, ModuleInfo, PtrRval, ModuleName,
-                    !IO),
+                output_bracketed_rval(Info, PtrRval, !IO),
+                io.write_string(".", !IO)
+            ;
+                PtrRval = ml_self(_)
+            ->
+                % Suppress type cast on `this' keyword.  This makes a
+                % difference when assigning to `final' member variables in
+                % constructor functions.
+                output_rval(Info, PtrRval, !IO),
                 io.write_string(".", !IO)
             ;
                 % Otherwise the field we are trying to access may be
@@ -3988,9 +3982,7 @@ output_lval(Info, ModuleInfo, Lval, ModuleName, !IO) :-
                 io.write_string("((", !IO),
                 output_type(Info, normal_style, CtorType, !IO),
                 io.write_string(") ", !IO),
-                output_bracketed_rval(Info, ModuleInfo, PtrRval, ModuleName,
-                    !IO),
-                % The actual variable.
+                output_bracketed_rval(Info, PtrRval, !IO),
                 io.write_string(").", !IO)
             ),
             FieldName = qual(_, _, UnqualFieldName),
@@ -3998,7 +3990,7 @@ output_lval(Info, ModuleInfo, Lval, ModuleName, !IO) :-
         )
     ;
         Lval = ml_mem_ref(Rval, _Type),
-        output_bracketed_rval(Info, ModuleInfo, Rval, ModuleName, !IO)
+        output_bracketed_rval(Info, Rval, !IO)
     ;
         Lval = ml_global_var_ref(GlobalVarRef),
         GlobalVarRef = env_var_ref(EnvVarName),
@@ -4007,6 +3999,7 @@ output_lval(Info, ModuleInfo, Lval, ModuleName, !IO) :-
     ;
         Lval = ml_var(qual(ModName, QualKind, Name), _),
         QualName = qual(ModName, QualKind, entity_data(mlds_data_var(Name))),
+        ModuleName = Info ^ joi_module_name,
         output_maybe_qualified_name(QualName, ModuleName, !IO)
     ).
 
@@ -4023,44 +4016,43 @@ output_valid_mangled_name(Name, !IO) :-
     JavaSafeName = valid_java_symbol_name(MangledName),
     io.write_string(JavaSafeName, !IO).
 
-:- pred output_call_rval(java_out_info::in, module_info::in, mlds_rval::in,
-    mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_call_rval(java_out_info::in, mlds_rval::in, io::di, io::uo)
+    is det.
 
-output_call_rval(Info, ModuleInfo, Rval, ModuleName, !IO) :-
+output_call_rval(Info, Rval, !IO) :-
     (
         Rval = ml_const(Const),
         Const = mlconst_code_addr(CodeAddr)
     ->
         IsCall = yes,
-        mlds_output_code_addr(CodeAddr, IsCall, !IO)
+        mlds_output_code_addr(Info, CodeAddr, IsCall, !IO)
     ;
-        output_bracketed_rval(Info, ModuleInfo, Rval, ModuleName, !IO)
+        output_bracketed_rval(Info, Rval, !IO)
     ).
 
-:- pred output_bracketed_rval(java_out_info::in, module_info::in,
-    mlds_rval::in, mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_bracketed_rval(java_out_info::in, mlds_rval::in, io::di, io::uo)
+    is det.
 
-output_bracketed_rval(Info, ModuleInfo, Rval, ModuleName, !IO) :-
+output_bracketed_rval(Info, Rval, !IO) :-
     (
         % If it's just a variable name, then we don't need parentheses.
         ( Rval = ml_lval(ml_var(_,_))
         ; Rval = ml_const(mlconst_code_addr(_))
         )
     ->
-        output_rval(Info, ModuleInfo, Rval, ModuleName, !IO)
+        output_rval(Info, Rval, !IO)
     ;
         io.write_char('(', !IO),
-        output_rval(Info, ModuleInfo, Rval, ModuleName, !IO),
+        output_rval(Info, Rval, !IO),
         io.write_char(')', !IO)
     ).
 
-:- pred output_rval(java_out_info::in, module_info::in, mlds_rval::in,
-    mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_rval(java_out_info::in, mlds_rval::in, io::di, io::uo) is det.
 
-output_rval(Info, ModuleInfo, Rval, ModuleName, !IO) :-
+output_rval(Info, Rval, !IO) :-
     (
         Rval = ml_lval(Lval),
-        output_lval(Info, ModuleInfo, Lval, ModuleName, !IO)
+        output_lval(Info, Lval, !IO)
     ;
         Rval = ml_scalar_common(_),
         unexpected(this_file, "output_rval: ml_scalar_common")
@@ -4075,10 +4067,10 @@ output_rval(Info, ModuleInfo, Rval, ModuleName, !IO) :-
         output_rval_const(Info, Const, !IO)
     ;
         Rval = ml_unop(Op, RvalA),
-        output_unop(Info, ModuleInfo, Op, RvalA, ModuleName, !IO)
+        output_unop(Info, Op, RvalA, !IO)
     ;
         Rval = ml_binop(Op, RvalA, RvalB),
-        output_binop(Info, ModuleInfo, Op, RvalA, RvalB, ModuleName, !IO)
+        output_binop(Info, Op, RvalA, RvalB, !IO)
     ;
         Rval = ml_mem_addr(_Lval),
         unexpected(this_file, "output_rval: mem_addr(_) not supported")
@@ -4087,28 +4079,28 @@ output_rval(Info, ModuleInfo, Rval, ModuleName, !IO) :-
         io.write_string("this", !IO)
     ).
 
-:- pred output_unop(java_out_info::in, module_info::in, mlds_unary_op::in,
-    mlds_rval::in, mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_unop(java_out_info::in, mlds_unary_op::in, mlds_rval::in,
+    io::di, io::uo) is det.
 
-output_unop(Info, ModuleInfo, Unop, Expr, ModuleName, !IO) :-
+output_unop(Info, Unop, Expr, !IO) :-
     (
         Unop = cast(Type),
-        output_cast_rval(Info, ModuleInfo, Type, Expr, ModuleName, !IO)
+        output_cast_rval(Info, Type, Expr, !IO)
     ;
         Unop = box(Type),
-        output_boxed_rval(Info, ModuleInfo, Type, Expr, ModuleName, !IO)
+        output_boxed_rval(Info, Type, Expr, !IO)
     ;
         Unop = unbox(Type),
-        output_unboxed_rval(Info, ModuleInfo, Type, Expr, ModuleName, !IO)
+        output_unboxed_rval(Info, Type, Expr, !IO)
     ;
         Unop = std_unop(StdUnop),
-        output_std_unop(Info, ModuleInfo, StdUnop, Expr, ModuleName, !IO)
+        output_std_unop(Info, StdUnop, Expr, !IO)
     ).
 
-:- pred output_cast_rval(java_out_info::in, module_info::in, mlds_type::in,
-    mlds_rval::in, mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_cast_rval(java_out_info::in, mlds_type::in, mlds_rval::in,
+    io::di, io::uo) is det.
 
-output_cast_rval(Info, ModuleInfo, Type, Expr, ModuleName, !IO) :-
+output_cast_rval(Info, Type, Expr, !IO) :-
     % rtti_to_mlds.m generates casts from int to
     % jmercury.runtime.PseudoTypeInfo, but for Java
     % we need to treat these as constructions, not casts.
@@ -4123,7 +4115,7 @@ output_cast_rval(Info, ModuleInfo, Type, Expr, ModuleName, !IO) :-
             io.write_int(N, !IO)
         ;
             io.write_string("new jmercury.runtime.PseudoTypeInfo(", !IO),
-            output_rval(Info, ModuleInfo, Expr, ModuleName, !IO),
+            output_rval(Info, Expr, !IO),
             io.write_string(")", !IO)
         )
     ;
@@ -4136,19 +4128,20 @@ output_cast_rval(Info, ModuleInfo, Type, Expr, ModuleName, !IO) :-
         % be rather difficult as the compiler doesn't keep track of where
         % type_ctor_infos are acting as type_infos properly.
         maybe_output_comment(Info, "cast", !IO),
-        io.write_string("jmercury.runtime.TypeInfo_Struct.maybe_new(", !IO),
-        output_rval(Info, ModuleInfo, Expr, ModuleName, !IO),
+        io.write_string("jmercury.runtime.TypeInfo_Struct.maybe_new(",
+            !IO),
+        output_rval(Info, Expr, !IO),
         io.write_string(")", !IO)
     ;
         java_builtin_type(Type, "int", _, _)
     ->
         io.write_string("(int) ", !IO),
-        output_rval_maybe_with_enum(Info, ModuleInfo, Expr, ModuleName, !IO)
+        output_rval_maybe_with_enum(Info, Expr, !IO)
     ;
         io.write_string("(", !IO),
         output_type(Info, normal_style, Type, !IO),
         io.write_string(") ", !IO),
-        output_rval(Info, ModuleInfo, Expr, ModuleName, !IO)
+        output_rval(Info, Expr, !IO)
     ).
 
 :- pred have_preallocated_pseudo_type_var(int::in) is semidet.
@@ -4158,31 +4151,31 @@ have_preallocated_pseudo_type_var(N) :-
     N >= 1,
     N =< 5.
 
-:- pred output_boxed_rval(java_out_info::in, module_info::in, mlds_type::in,
-    mlds_rval::in, mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_boxed_rval(java_out_info::in, mlds_type::in, mlds_rval::in,
+     io::di, io::uo) is det.
 
-output_boxed_rval(Info, ModuleInfo, Type, Expr, ModuleName, !IO) :-
+output_boxed_rval(Info, Type, Expr, !IO) :-
     ( java_builtin_type(Type, _JavaName, JavaBoxedName, _) ->
         io.write_string("new ", !IO),
         io.write_string(JavaBoxedName, !IO),
         io.write_string("(", !IO),
-        output_rval(Info, ModuleInfo, Expr, ModuleName, !IO),
+        output_rval(Info, Expr, !IO),
         io.write_string(")", !IO)
     ;
         io.write_string("((java.lang.Object) (", !IO),
-        output_rval(Info, ModuleInfo, Expr, ModuleName, !IO),
+        output_rval(Info, Expr, !IO),
         io.write_string("))", !IO)
     ).
 
-:- pred output_unboxed_rval(java_out_info::in, module_info::in, mlds_type::in,
-    mlds_rval::in, mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_unboxed_rval(java_out_info::in, mlds_type::in, mlds_rval::in,
+    io::di, io::uo) is det.
 
-output_unboxed_rval(Info, ModuleInfo, Type, Expr, ModuleName, !IO) :-
+output_unboxed_rval(Info, Type, Expr, !IO) :-
     ( java_builtin_type(Type, _, JavaBoxedName, UnboxMethod) ->
         io.write_string("((", !IO),
         io.write_string(JavaBoxedName, !IO),
         io.write_string(") ", !IO),
-        output_bracketed_rval(Info, ModuleInfo, Expr, ModuleName, !IO),
+        output_bracketed_rval(Info, Expr, !IO),
         io.write_string(").", !IO),
         io.write_string(UnboxMethod, !IO),
         io.write_string("()", !IO)
@@ -4190,7 +4183,7 @@ output_unboxed_rval(Info, ModuleInfo, Type, Expr, ModuleName, !IO) :-
         io.write_string("((", !IO),
         output_type(Info, normal_style, Type, !IO),
         io.write_string(") ", !IO),
-        output_rval(Info, ModuleInfo, Expr, ModuleName, !IO),
+        output_rval(Info, Expr, !IO),
         io.write_string(")", !IO)
     ).
 
@@ -4230,57 +4223,56 @@ java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
     Type = mercury_type(defined_type(_, _, _), TypeCtorCat, _),
     TypeCtorCat = ctor_cat_builtin_dummy.
 
-:- pred output_std_unop(java_out_info::in, module_info::in,
-    builtin_ops.unary_op::in, mlds_rval::in, mlds_module_name::in,
-    io::di, io::uo) is det.
+:- pred output_std_unop(java_out_info::in, builtin_ops.unary_op::in,
+    mlds_rval::in, io::di, io::uo) is det.
 
     % For the Java back-end, there are no tags, so all the tagging operators
     % are no-ops, except for `tag', which always returns zero (a tag of zero
     % means there's no tag).
     %
-output_std_unop(Info, ModuleInfo, UnaryOp, Expr, ModuleName, !IO) :-
+output_std_unop(Info, UnaryOp, Expr, !IO) :-
     ( UnaryOp = tag ->
         io.write_string("/* tag */  0", !IO)
     ;
         java_unary_prefix_op(UnaryOp, UnaryOpString),
         io.write_string(UnaryOpString, !IO),
         io.write_string("(", !IO),
-        output_rval(Info, ModuleInfo, Expr, ModuleName, !IO),
+        output_rval(Info, Expr, !IO),
         io.write_string(")", !IO)
     ).
 
-:- pred output_binop(java_out_info::in, module_info::in, binary_op::in,
-    mlds_rval::in, mlds_rval::in, mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_binop(java_out_info::in, binary_op::in, mlds_rval::in,
+    mlds_rval::in, io::di, io::uo) is det.
 
-output_binop(Info, ModuleInfo, Op, X, Y, ModuleName, !IO) :-
+output_binop(Info, Op, X, Y, !IO) :-
     ( Op = array_index(_Type) ->
-        output_bracketed_rval(Info, ModuleInfo, X, ModuleName, !IO),
+        output_bracketed_rval(Info, X, !IO),
         io.write_string("[", !IO),
-        output_rval(Info, ModuleInfo, Y, ModuleName, !IO),
+        output_rval(Info, Y, !IO),
         io.write_string("]", !IO)
     ; java_string_compare_op(Op, OpStr) ->
         io.write_string("(", !IO),
-        output_rval(Info, ModuleInfo, X, ModuleName, !IO),
+        output_rval(Info, X, !IO),
         io.write_string(".compareTo(", !IO),
-        output_rval(Info, ModuleInfo, Y, ModuleName, !IO),
+        output_rval(Info, Y, !IO),
         io.write_string(") ", !IO),
         io.write_string(OpStr, !IO),
         io.write_string(" 0)", !IO)
     ; rval_is_enum_object(X) ->
         io.write_string("(", !IO),
-        output_rval(Info, ModuleInfo, X, ModuleName, !IO),
+        output_rval(Info, X, !IO),
         io.write_string(".MR_value ", !IO),
         output_binary_op(Op, !IO),
         io.write_string(" ", !IO),
-        output_rval(Info, ModuleInfo, Y, ModuleName, !IO),
+        output_rval(Info, Y, !IO),
         io.write_string(".MR_value)", !IO)
     ;
         io.write_string("(", !IO),
-        output_rval(Info, ModuleInfo, X, ModuleName, !IO),
+        output_rval(Info, X, !IO),
         io.write_string(" ", !IO),
         output_binary_op(Op, !IO),
         io.write_string(" ", !IO),
-        output_rval(Info, ModuleInfo, Y, ModuleName, !IO),
+        output_rval(Info, Y, !IO),
         io.write_string(")", !IO)
     ).
 
@@ -4295,11 +4287,11 @@ output_binop(Info, ModuleInfo, Op, X, Y, ModuleName, !IO) :-
     % output_rval_maybe_with_enum are called and make sure the correct one
     % is being used.
     %
-:- pred output_rval_maybe_with_enum(java_out_info::in, module_info::in,
-    mlds_rval::in, mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_rval_maybe_with_enum(java_out_info::in, mlds_rval::in,
+    io::di, io::uo) is det.
 
-output_rval_maybe_with_enum(Info, ModuleInfo, Rval, ModuleName, !IO) :-
-    output_rval(Info, ModuleInfo, Rval, ModuleName, !IO),
+output_rval_maybe_with_enum(Info, Rval, !IO) :-
+    output_rval(Info, Rval, !IO),
     ( rval_is_enum_object(Rval) ->
         io.write_string(".MR_value", !IO)
     ;
@@ -4368,7 +4360,7 @@ output_rval_const(Info, Const, !IO) :-
     ;
         Const = mlconst_code_addr(CodeAddr),
         IsCall = no,
-        mlds_output_code_addr(CodeAddr, IsCall, !IO)
+        mlds_output_code_addr(Info, CodeAddr, IsCall, !IO)
     ;
         Const = mlconst_data_addr(DataAddr),
         mlds_output_data_addr(DataAddr, !IO)
@@ -4402,19 +4394,27 @@ output_int_const(N, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred mlds_output_code_addr(mlds_code_addr::in, bool::in, io::di,
-    io::uo) is det.
+:- pred mlds_output_code_addr(java_out_info::in, mlds_code_addr::in, bool::in,
+    io::di, io::uo) is det.
 
-mlds_output_code_addr(CodeAddr, IsCall, !IO) :-
+mlds_output_code_addr(Info, CodeAddr, IsCall, !IO) :-
     (
         IsCall = no,
         % Not a function call, so we are taking the address of the
         % wrapper for that function (method).
         io.write_string("new ", !IO),
-        create_addr_wrapper_name(CodeAddr, MangledClassEntityName0),
-        MangledClassEntityName = shorten_class_name(MangledClassEntityName0),
-        io.write_string(flip_initial_case(MangledClassEntityName), !IO),
-        io.write_string("_0()", !IO)
+        AddrOfMap = Info ^ joi_addrof_map,
+        map.lookup(AddrOfMap, CodeAddr, CodeAddrWrapper),
+        CodeAddrWrapper = code_addr_wrapper(ClassName, MaybePtrNum),
+        io.write_string(ClassName, !IO),
+        io.write_string("_0(", !IO),
+        (
+            MaybePtrNum = yes(PtrNum),
+            io.write_int(PtrNum, !IO)
+        ;
+            MaybePtrNum = no
+        ),
+        io.write_string(")", !IO)
     ;
         IsCall = yes,
         (
@@ -4510,16 +4510,23 @@ indent_line(N, !IO) :-
 
 :- type java_out_info
     --->    java_out_info(
-                joi_auto_comments       :: bool,
-                joi_line_numbers        :: bool
+                joi_auto_comments   :: bool,
+                joi_line_numbers    :: bool,
+                joi_module_name     :: mlds_module_name,
+                joi_addrof_map      :: map(mlds_code_addr, code_addr_wrapper)
             ).
 
-:- func init_java_out_info(globals) = java_out_info.
+:- func init_java_out_info(module_info, map(mlds_code_addr, code_addr_wrapper))
+    = java_out_info.
 
-init_java_out_info(Globals) = Info :-
+init_java_out_info(ModuleInfo, AddrOfMap) = Info :-
+    module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, auto_comments, AutoComments),
     globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
-    Info = java_out_info(AutoComments, LineNumbers).
+    module_info_get_name(ModuleInfo, ModuleName),
+    MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+    Info = java_out_info(AutoComments, LineNumbers, MLDS_ModuleName,
+        AddrOfMap).
 
 %-----------------------------------------------------------------------------%
 

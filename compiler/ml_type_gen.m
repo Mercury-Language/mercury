@@ -69,11 +69,10 @@
     %
 :- func ml_gen_member_decl_flags = mlds_decl_flags.
 
-    % Return the declaration flags appropriate for a member of a class
-    % that was transformed from a special predicate.  These differ
-    % from normal members in that their finality is `final'.
+    % Return the declaration flags appropriate for a member variable
+    % with finality `final'.
     %
-:- func ml_gen_special_member_decl_flags = mlds_decl_flags.
+:- func ml_gen_final_member_decl_flags = mlds_decl_flags.
 
     % ml_uses_secondary_tag(TypeCtor, ConsTagValues, Ctor, SecondaryTag):
     % Check if this constructor uses a secondary tag,
@@ -1158,9 +1157,9 @@ ml_gen_member_decl_flags = MLDS_DeclFlags :-
     MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
         Virtuality, Finality, Constness, Abstractness).
 
-ml_gen_enum_constant_decl_flags = MLDS_DeclFlags :-
+ml_gen_final_member_decl_flags = MLDS_DeclFlags :-
     Access = acc_public,
-    PerInstance = one_copy,
+    PerInstance = per_instance,
     Virtuality = non_virtual,
     Finality = final,
     Constness = const,
@@ -1168,9 +1167,9 @@ ml_gen_enum_constant_decl_flags = MLDS_DeclFlags :-
     MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
         Virtuality, Finality, Constness, Abstractness).
 
-ml_gen_special_member_decl_flags = MLDS_DeclFlags :-
+ml_gen_enum_constant_decl_flags = MLDS_DeclFlags :-
     Access = acc_public,
-    PerInstance = per_instance,
+    PerInstance = one_copy,
     Virtuality = non_virtual,
     Finality = final,
     Constness = const,
