@@ -608,9 +608,15 @@ make_track_flags_files_2(Globals, ModuleName, Success, !LastHash, !Info,
     io::di, io::uo) is det.
 
 option_table_hash(AllOptionArgs, Hash, !IO) :-
-    handle_given_options(AllOptionArgs, _, _, _,
-        OptionsErrors, UpdatedGlobals, !IO),
-    % XXX We throw away UpdatedGlobals after computing its hash. Why? -zs
+    % This code is part of the --track-flags implementation. We hash the
+    % options in the updated globals because they include module-specific
+    % options.The hash is then compared with the hash in a MODULE.track_flags
+    % file, which is updated if it differs. The new timestamp will later force
+    % the module to be recompiled if necessary, but that's later. We are not
+    % compiling the module immediately, so this is the only use we have for
+    % AllOptionArgsGlobals here.
+    handle_given_options(AllOptionArgs, _, _, _, OptionsErrors,
+        AllOptionArgsGlobals, !IO),
     (
         OptionsErrors = []
     ;
@@ -618,7 +624,7 @@ option_table_hash(AllOptionArgs, Hash, !IO) :-
         unexpected($file, $pred ++ ": " ++
             "handle_options returned with errors")
     ),
-    globals.get_options(UpdatedGlobals, OptionTable),
+    globals.get_options(AllOptionArgsGlobals, OptionTable),
     map.to_sorted_assoc_list(OptionTable, OptionList),
     inconsequential_options(InconsequentialOptions),
     list.filter(is_consequential_option(InconsequentialOptions),
