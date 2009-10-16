@@ -154,6 +154,7 @@
     ;       debug_modes_minimal
     ;       debug_modes_verbose
     ;       debug_modes_pred_id
+    ;       debug_dep_par_conj
     ;       debug_det
     ;       debug_code_gen_pred_id
     ;       debug_opt
@@ -1080,6 +1081,7 @@ option_defaults_2(verbosity_option, [
     debug_modes_minimal                 -   bool(no),
     debug_modes_verbose                 -   bool(no),
     debug_modes_pred_id                 -   int(-1),
+    debug_dep_par_conj                  -   accumulating([]),
     debug_det                           -   bool(no),
     debug_code_gen_pred_id              -   int(-1),
     debug_term                          -   bool(no),
@@ -1899,6 +1901,7 @@ long_option("debug-modes-statistics",   debug_modes_statistics).
 long_option("debug-modes-minimal",      debug_modes_minimal).
 long_option("debug-modes-verbose",      debug_modes_verbose).
 long_option("debug-modes-pred-id",      debug_modes_pred_id).
+long_option("debug-dep-par-conj",       debug_dep_par_conj).
 long_option("debug-determinism",        debug_det).
 long_option("debug-det",                debug_det).
 long_option("debug-code-gen-pred-id",   debug_code_gen_pred_id).
@@ -3436,6 +3439,13 @@ options_help_verbosity -->
         "\tWith --debug-modes, restrict the debugging traces to the",
         "\tmode checking of the predicate or function with the specified",
         "\tpred id.",
+% --debug-dep-par-conj <n> is a developer only option,
+% and it is effective only if the compiler was compiled with the right
+% trace flags.
+%       "--debug-dep-par-conj <n>",
+%       "\tOutput detailed debugging traces during the dependent",
+%       "\tAND-parallelism transformation of the predicate with the",
+%       "\tpredicate id.",
         "--debug-det, --debug-determinism",
         "\tOutput detailed debugging traces of determinism analysis.",
 % --debug-code-gen-pred-id <n> is a developer only option,

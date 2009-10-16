@@ -145,6 +145,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.purity.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
@@ -1263,6 +1264,28 @@ find_specialization_requests_in_proc(DoneProcs, InitialModuleInfo, PredProcId,
         proc_info_get_goal(!.ProcInfo, !:Goal),
         !:SpecInfo = spec_info(DoneProcs, InitialModuleInfo, VarTypes,
             !.ModuleInfo, !.PendingParProcs, !.Pushability),
+
+        trace [compile_time(flag("debug-dep-par-conj")), io(!IO)] (
+            module_info_get_globals(!.ModuleInfo, Globals),
+            globals.lookup_accumulating_option(Globals, debug_dep_par_conj,
+                DebugDepParConjWords),
+            PredIdInt = pred_id_to_int(PredId),
+            PredIdStr = string.int_to_string(PredIdInt),
+            (
+                some [DebugDepParConjWord] (
+                    list.member(DebugDepParConjWord, DebugDepParConjWords),
+                    DebugDepParConjWord = PredIdStr
+                )
+            ->
+                OutInfo = init_hlds_out_info(Globals),
+                proc_info_get_varset(!.ProcInfo, VarSet),
+                write_goal(OutInfo, !.Goal, !.ModuleInfo, VarSet,
+                    yes, 0, "", !IO)
+            ;
+                true
+            )
+        ),
+
         specialize_sequences_in_goal(!Goal, !SpecInfo),
         !.SpecInfo = spec_info(_, _, _,
             !:ModuleInfo, !:PendingParProcs, !:Pushability),
@@ -2376,12 +2399,32 @@ should_we_push_signal(Var, Goal, !Signal) :-
             ; SignalElse = seen_signal_negligible_cost_after
             )
         ->
-            expect(negate(unify(SignalThen, not_seen_signal)),
-                this_file, "should_we_push_signal: ite mode mismatch"),
-            expect(negate(unify(SignalElse, not_seen_signal)),
-                this_file, "should_we_push_signal: ite mode mismatch"),
-            % Both arms of the if-then-else signal Var, but neither does
-            % anything nontrivial after the signal.
+            (
+                Then = hlds_goal(_, ThenInfo),
+                ThenDetism = goal_info_get_determinism(ThenInfo),
+                determinism_components(ThenDetism, _, ThenMaxSolns),
+                SignalThen = not_seen_signal,
+                not ( ThenMaxSolns = at_most_zero)
+            ->
+                unexpected(this_file,
+                    "should_we_push_signal: ite mode mismatch")
+            ;
+                true
+            ),
+            (
+                Else = hlds_goal(_, ElseInfo),
+                ElseDetism = goal_info_get_determinism(ElseInfo),
+                determinism_components(ElseDetism, _, ElseMaxSolns),
+                SignalElse = not_seen_signal,
+                not ( ElseMaxSolns = at_most_zero)
+            ->
+                unexpected(this_file,
+                    "should_we_push_signal: ite mode mismatch")
+            ;
+                true
+            ),
+            % Both arms of the if-then-else signal Var (if they succeed
+            % at all), but neither does anything nontrivial after the signal.
             !:Signal = seen_signal_negligible_cost_after
         ;
             expect(unify(SignalThen, not_seen_signal),
