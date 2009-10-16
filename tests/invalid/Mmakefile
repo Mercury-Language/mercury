@@ -47,9 +47,10 @@ SINGLEMODULE= \
 	bigtest \
 	bind_in_negated \
 	bind_var_errors \
+	bug113 \
+	bug83 \
 	builtin_int \
 	builtin_proc \
-	bug83 \
 	circ_inst \
 	circ_inst2 \
 	circ_inst3 \
@@ -64,8 +65,8 @@ SINGLEMODULE= \
 	circ_type3 \
 	circ_type5 \
 	complex_constraint_err \
-	conflicting_tabling_pragmas \
 	conflicting_fs \
+	conflicting_tabling_pragmas \
 	constrained_poly_insts \
 	constructor_warning \
 	cyclic_typeclass \
@@ -148,10 +149,10 @@ SINGLEMODULE= \
 	mpj1 \
 	mpj3 \
 	mpj4 \
+	multimode_addr_problems \
 	multimode_dcg \
 	multimode_missing_impure \
 	multimode_syntax \
-	multimode_addr_problems \
 	multisoln_func \
 	nested_impl_in_int \
 	no_exports \
