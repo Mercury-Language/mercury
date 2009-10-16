@@ -75,6 +75,7 @@
 :- import_module check_hlds.mode_constraints.
 :- import_module check_hlds.modes.
 :- import_module check_hlds.polymorphism.
+:- import_module check_hlds.post_typecheck.
 :- import_module check_hlds.purity.
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.stratify.
@@ -97,6 +98,7 @@
 
 :- import_module benchmarking.
 :- import_module bool.
+:- import_module int.
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
@@ -245,21 +247,29 @@ frontend_pass_after_typecheck(FoundUndefModeError, !FoundError,
         !:FoundError = yes,
         io.set_exit_status(1, !IO)
     ;
-        puritycheck(Verbose, Stats, !HLDS, FoundTypeError,
-            FoundPostTypecheckError, !Specs, !IO),
-        maybe_dump_hlds(!.HLDS, 20, "puritycheck", !DumpInfo, !IO),
-
-        !:FoundError = !.FoundError `or` FoundTypeError,
+        % Only report error messages for unbound type variables if we didn't
+        % get any type errors already; this avoids a lot of spurious
+        % diagnostics.
+        PostTypeCheckReportErrors = bool.not(FoundTypeError),
+        module_info_predids(PredIds, !HLDS),
+        post_typecheck_finish_preds(PredIds, PostTypeCheckReportErrors,
+            NumPostTypeCheckErrors, !HLDS, !Specs),
+        maybe_dump_hlds(!.HLDS, 19, "post_typecheck", !DumpInfo, !IO),
 
         % Stop here if `--typecheck-only' was specified.
         globals.lookup_bool_option(Globals, typecheck_only, TypecheckOnly),
         (
-            TypecheckOnly = yes
+            TypecheckOnly = yes,
+            ( NumPostTypeCheckErrors > 0 ->
+                !:FoundError = yes
+            ;
+                true
+            )
         ;
             TypecheckOnly = no,
             (
                 ( FoundTypeError = yes
-                ; FoundPostTypecheckError = yes
+                ; NumPostTypeCheckErrors > 0
                 )
             ->
                 % XXX It would be nice if we could go on and mode-check the
@@ -269,6 +279,9 @@ frontend_pass_after_typecheck(FoundUndefModeError, !FoundError,
                 % are not type-correct.
                 !:FoundError = yes
             ;
+                puritycheck(Verbose, Stats, !HLDS, !Specs, !IO),
+                maybe_dump_hlds(!.HLDS, 20, "puritycheck", !DumpInfo, !IO),
+
                 % Substitute implementation-defined literals before clauses are
                 % written out to `.opt' files.
                 subst_implementation_defined_literals(Verbose, Stats, !HLDS,
@@ -480,17 +493,16 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pred puritycheck(bool::in, bool::in, module_info::in, module_info::out,
-    bool::in, bool::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-puritycheck(Verbose, Stats, !HLDS, FoundTypeError, FoundPostTypecheckError,
-        !Specs, !IO) :-
-    puritycheck_module(FoundTypeError, FoundPostTypecheckError, !HLDS,
-        [], PuritySpecs),
+puritycheck(Verbose, Stats, !HLDS, !Specs, !IO) :-
+    maybe_write_string(Verbose, "% Purity-checking clauses...\n", !IO),
+    puritycheck_module(!HLDS, [], PuritySpecs),
     !:Specs = PuritySpecs ++ !.Specs,
     module_info_get_globals(!.HLDS, Globals),
     PurityErrors = contains_errors(Globals, PuritySpecs),
     maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_report_stats(Stats, !IO),
     (
         PurityErrors = yes,
         maybe_write_string(Verbose,

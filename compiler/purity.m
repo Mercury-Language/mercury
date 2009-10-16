@@ -15,7 +15,7 @@
 %
 % The main purpose of this module is check the consistency of the `impure' and
 % `promise_pure' (etc.) declarations, and to thus report error messages if the
-% program is not "purity-correct".  This includes treating procedures with
+% program is not "purity-correct". This includes treating procedures with
 % different clauses for different modes as impure, unless promised pure.
 %
 % This module also calls post_typecheck.m to perform the final parts of
@@ -42,43 +42,43 @@
 %
 % The aim of Mercury's purity system is to allow one to declare certain parts
 % of one's program to be impure, thereby forbidding the compiler from making
-% certain optimizations to that part of the code.  Since one can often
+% certain optimizations to that part of the code. Since one can often
 % implement a perfectly pure predicate or function in terms of impure
 % predicates and functions, one is also allowed to promise to the compiler
 % that a predicate *is* pure, despite calling impure predicates and
 % functions.
 %
 % To keep purity/impurity consistent, it is required that every impure
-% predicate/function be declared so.  A predicate is impure if:
+% predicate/function be declared so. A predicate is impure if:
 %
-%   1.  It's declared impure, or
-%   2a. It's not promised pure, and
+%   1.  It is declared impure, or
+%   2a. It is not promised pure, and
 %   2b. It calls some impure predicates or functions.
 %
 % A predicate or function is declared impure by preceding the `pred' or
-% `func' in its declaration with `impure'.  It is promised to be pure with a
+% `func' in its declaration with `impure'. It is promised to be pure with a
 %
 %   :- pragma promise_pure(Name/Arity).
 %
 % directive.
 %
-% Calls to impure predicates may not be optimized away.  Neither may they be
-% reodered relative to any other goals in a given conjunction; ie, an impure
+% Calls to impure predicates may not be optimized away. Neither may they be
+% reordered relative to any other goals in a given conjunction; i.e., an impure
 % goal cleaves a conjunction into the stuff before it and the stuff after it.
 % Both of these groups may be reordered separately, but no goal from either
-% group may move into the other.  Similarly for disjunctions.
+% group may move into the other. Similarly for disjunctions.
 %
 % Semipure goals are goals that are sensitive to the effects of impure goals.
 % They may be reordered and optimized away just like pure goals, except that
 % a semipure goal may behave differently after a call to an impure goal than
-% before.  This means that semipure (as well as impure) predicates must not
-% be tabled.  Further, duplicate semipure goals on different sides of an
-% impure goal must not be optimized away.  In the current implementation, we
+% before. This means that semipure (as well as impure) predicates must not
+% be tabled. Further, duplicate semipure goals on different sides of an
+% impure goal must not be optimized away. In the current implementation, we
 % simply do not optimize away duplicate semipure (or impure) goals at all.
 %
 % A predicate either has no purity declaration and so is assumed pure, or is
 % declared semipure or impure, or is promised to be pure despite calling
-% semipure or impure predicates.  This promise cannot be checked, so we must
+% semipure or impure predicates. This promise cannot be checked, so we must
 % trust the programmer.
 %
 % See the language reference manual for more information on syntax and
@@ -93,14 +93,13 @@
 % This eliminates any need to define some order of evaluation of nested
 % impure functions.
 %
-% Of course it also eliminates the benefits of using functions to
-% cut down on the number of variables introduced.  The main use of
-% impure functions is to interface nicely with foreign language
-% functions.
+% Of course it also eliminates the benefits of using functions to cut down
+% on the number of variables introduced. The main use of impure functions
+% is to interface nicely with foreign language functions.
 %
-% Any non-variable arguments to the function are flattened into
-% unification goals (see unravel_unifications in superhomogeneous.m)
-% which are placed as pure goals before the function call itself.
+% Any non-variable arguments to the function are flattened into unification
+% goals (see unravel_unifications in superhomogeneous.m) which are placed
+% as pure goals before the function call itself.
 %
 % Wishlist:
 %   It would be nice to use impure functions in DCG goals as well as
@@ -108,14 +107,13 @@
 %
 %   It might be nice to allow
 %       X = impure some_impure_fuc(Arg1, Arg2, ...)
-%   syntax as well.  But there are advantages to having the
-%   impure/semipure annotation in a regular position (on the left
-%   hand side of a goal) too.  If this is implemented it should
-%   probably be handled in prog_io, and turned into an impure
-%   unify item.
+%   syntax aswell. But there are advantages to having the impure or semipure
+%   annotation in a regular position (on the left hand side of a goal) too.
+%   If this is implemented it should probably be handled in prog_io, and
+%   turned into an impure unify item.
 %
-%   It may also be nice to allow semipure function calls to occur
-%   inline (since ordering is not an issue for them).
+%   It may also be nice to allow semipure function calls to occur inline
+%   (since ordering is not an issue for them).
 %
 % To do:
 %   Reconsider whether impure parallel conjuncts should be allowed.
@@ -132,22 +130,20 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
-:- import_module bool.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
 
-    % Purity check a whole module.  Also do the post-typecheck stuff described
+    % Purity check a whole module. Also do the post-typecheck stuff described
     % above, and eliminate double negations and calls to
-    % `private_builtin.unsafe_type_cast/2'.  The first argument specifies
+    % `private_builtin.unsafe_type_cast/2'. The first argument specifies
     % whether there were any type errors (if so, we suppress some diagnostics
-    % in post_typecheck.m because they are usually spurious).  The second
+    % in post_typecheck.m because they are usually spurious). The second
     % argument specifies whether post_typecheck.m detected any errors that
     % would cause problems for later passes (if so, we stop compilation after
     % this pass).
     %
-:- pred puritycheck_module(bool::in, bool::out,
-    module_info::in, module_info::out,
+:- pred puritycheck_module(module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % Rerun purity checking on a procedure after an optimization pass has
@@ -207,47 +203,9 @@
 :- import_module assoc_list.
 
 %-----------------------------------------------------------------------------%
-%
-% Public Predicates
-%
 
-puritycheck_module(FoundTypeError, PostTypecheckError, !ModuleInfo, !Specs) :-
-    module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, statistics, Statistics),
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-
-    trace [io(!IO)] (
-        maybe_write_string(Verbose, "% Purity-checking clauses...\n", !IO)
-    ),
-    finish_typecheck_and_check_preds_purity(FoundTypeError, PostTypecheckError,
-        !ModuleInfo, !Specs),
-    trace [io(!IO)] (
-        maybe_report_stats(Statistics, !IO)
-    ).
-
-%-----------------------------------------------------------------------------%
-
-    % Purity-check the code for all the predicates in a module.
-    %
-:- pred finish_typecheck_and_check_preds_purity(bool::in, bool::out,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-finish_typecheck_and_check_preds_purity(FoundTypeError, PostTypecheckError,
-        !ModuleInfo, !Specs) :-
+puritycheck_module(!ModuleInfo, !Specs) :-
     module_info_predids(PredIds, !ModuleInfo),
-
-    % Only report error messages for unbound type variables if we didn't get
-    % any type errors already; this avoids a lot of spurious diagnostics.
-    ReportTypeErrors = bool.not(FoundTypeError),
-    post_typecheck_finish_preds(PredIds, ReportTypeErrors, NumPostErrors,
-        !ModuleInfo, !Specs),
-    ( NumPostErrors > 0 ->
-        PostTypecheckError = yes
-    ;
-        PostTypecheckError = no
-    ),
-
     check_preds_purity(PredIds, !ModuleInfo, !Specs).
 
 :- pred check_preds_purity(list(pred_id)::in,
@@ -290,17 +248,17 @@ check_preds_purity([PredId | PredIds], !ModuleInfo, !Specs) :-
 %
 % Check purity of a single predicate.
 %
-% Purity checking is quite simple.  Since impurity /must/ be declared, we can
+% Purity checking is quite simple. Since impurity /must/ be declared, we can
 % perform a single pass checking that the actual purity of each predicate
-% matches the declared (or implied) purity.  A predicate is just as pure as
-% its least pure goal.  While we're doing this, we attach a `feature' to each
+% matches the declared (or implied) purity. A predicate is just as pure as
+% its least pure goal. While we're doing this, we attach a `feature' to each
 % goal that is not pure, including non-atomic goals, indicating its purity.
 % This information must be maintained by later compilation passes, at least
 % until after the last pass that may perform transformations that would not
-% be correct for impure code.  As we check purity and attach impurity
+% be correct for impure code. As we check purity and attach impurity
 % features, we also check that impure (semipure) atomic goals were marked in
-% the source code as impure (semipure).  At this stage in the computation,
-% this is indicated by already having the appropriate goal feature.  (During
+% the source code as impure (semipure). At this stage in the computation,
+% this is indicated by already having the appropriate goal feature. (During
 % the translation from term to goal, calls have their purity attached to
 % them, and in the translation from goal to hlds_goal, the attached purity is
 % turned into the appropriate feature in the hlds_goal_info.)
@@ -988,10 +946,9 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
     % Peform purity checking of the actual and declared purity,
     % and check that promises are consistent.
     %
-    % ActualPurity: The inferred purity of the pred
-    % DeclaredPurity: The declared purity of the pred
-    % InPragmaCCode: Is this foreign language code?
-    % Promised: Did we promise this pred as pure?
+    % ActualPurity:     The inferred purity of the pred.
+    % DeclaredPurity:   The declared purity of the pred.
+    % Promised:         Did we promise this pred as pure?
     %
 :- pred perform_pred_purity_checks(pred_info::in, purity::in, purity::in,
     purity::in, purity_check_result::out) is det.
@@ -1137,7 +1094,7 @@ compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info) :-
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-    % Compute the purity of a list of hlds_goals.  Since the purity of a
+    % Compute the purity of a list of hlds_goals. Since the purity of a
     % disjunction is computed the same way as the purity of a conjunction,
     % we use the same code for both
     %

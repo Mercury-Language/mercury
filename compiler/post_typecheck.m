@@ -78,14 +78,6 @@
 :- pred post_typecheck_finish_imported_pred_no_io(module_info::in,
     list(proc_id)::out, pred_info::in, pred_info::out) is det.
 
-    % For ill-typed preds, we just need to set the modes up correctly
-    % so that any calls to that pred from correctly-typed predicates
-    % won't result in spurious mode errors.
-    %
-:- pred post_typecheck_finish_ill_typed_pred(module_info::in, pred_id::in,
-    pred_info::in, pred_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
     % Now that the assertion has finished being typechecked, remove it
     % from further processing and store it in the assertion_table.
     %
@@ -566,12 +558,6 @@ get_qualified_pred_name(ModuleInfo, PredId) = SymName :-
 post_typecheck_finish_pred_no_io(ModuleInfo, ErrorProcs, !PredInfo) :-
     propagate_types_into_modes(ModuleInfo, ErrorProcs, !PredInfo).
 
-post_typecheck_finish_ill_typed_pred(ModuleInfo, PredId, !PredInfo, !Specs) :-
-    propagate_types_into_modes(ModuleInfo, ErrorProcs, !PredInfo),
-    report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo,
-        !Specs),
-    check_for_indistinguishable_modes(ModuleInfo, PredId, !PredInfo, !Specs).
-
     % For imported preds, we just need to ensure that all constructors
     % occurring in predicate mode declarations are module qualified.
     %
@@ -875,7 +861,8 @@ propagate_types_into_modes(ModuleInfo, ErrorProcIds, !PredInfo) :-
     pred_info_get_procedures(!.PredInfo, Procs0),
     ProcIds = pred_info_procids(!.PredInfo),
     propagate_types_into_proc_modes(ModuleInfo, ProcIds, ArgTypes,
-        [], ErrorProcIds, Procs0, Procs),
+        [], RevErrorProcIds, Procs0, Procs),
+    ErrorProcIds = list.reverse(RevErrorProcIds),
     pred_info_set_procedures(Procs, !PredInfo).
 
 %-----------------------------------------------------------------------------%
@@ -884,10 +871,9 @@ propagate_types_into_modes(ModuleInfo, ErrorProcIds, !PredInfo) :-
     list(mer_type)::in, list(proc_id)::in, list(proc_id)::out,
     proc_table::in, proc_table::out) is det.
 
-propagate_types_into_proc_modes(_, [], _,
-        ErrorProcIds, list.reverse(ErrorProcIds), !Procs).
+propagate_types_into_proc_modes(_, [], _, !RevErrorProcIds, !Procs).
 propagate_types_into_proc_modes(ModuleInfo, [ProcId | ProcIds], ArgTypes,
-        !ErrorProcIds, !Procs) :-
+        !RevErrorProcIds, !Procs) :-
     map.lookup(!.Procs, ProcId, ProcInfo0),
     proc_info_get_argmodes(ProcInfo0, ArgModes0),
     propagate_types_into_mode_list(ModuleInfo, ArgTypes, ArgModes0, ArgModes),
@@ -897,13 +883,13 @@ propagate_types_into_proc_modes(ModuleInfo, [ProcId | ProcIds], ArgTypes,
     % to be module-qualified; and it needs to be done before mode analysis,
     % to avoid internal errors.)
     ( mode_list_contains_inst_var(ArgModes, ModuleInfo, _InstVar) ->
-        !:ErrorProcIds = [ProcId | !.ErrorProcIds]
+        !:RevErrorProcIds = [ProcId | !.RevErrorProcIds]
     ;
         proc_info_set_argmodes(ArgModes, ProcInfo0, ProcInfo),
         svmap.det_update(ProcId, ProcInfo, !Procs)
     ),
     propagate_types_into_proc_modes(ModuleInfo, ProcIds, ArgTypes,
-        !ErrorProcIds, !Procs).
+        !RevErrorProcIds, !Procs).
 
 :- pred report_unbound_inst_vars(module_info::in, pred_id::in,
     list(proc_id)::in, pred_info::in, pred_info::out,
@@ -1205,7 +1191,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
             ;
                 Name = unqualify_name(SymName0),
                 TypeCtorOfX = type_ctor(TypeCtorSymName, _),
-                ( 
+                (
                     TypeCtorSymName = qualified(TypeCtorModule, _),
                     SymName = qualified(TypeCtorModule, Name),
                     ConsId = cons(SymName, Arity, TypeCtorOfX)
