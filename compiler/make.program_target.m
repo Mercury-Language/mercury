@@ -2095,7 +2095,7 @@ check_stdlib_is_installed(Globals, Grade, Succeeded, !IO) :-
             io.progname_base("mercury_compile", ProgName, !IO),
             io.format(Stderr,
                 "%s: error: the Mercury standard library "  ++
-                " cannot be found in grade %s.\n",
+                "cannot be found in grade %s.\n",
                 [s(ProgName), s(Grade)], !IO),
             Succeeded = no
         )
