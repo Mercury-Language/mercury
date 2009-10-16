@@ -153,6 +153,14 @@ defn_is_rtti_data(Defn) :-
     Body = mlds_data(Type, _, _),
     Type = mlds_rtti_type(_).
 
+    % Succeeds iff this definition is a data definition.
+    %
+:- pred defn_is_data(mlds_defn::in) is semidet.
+
+defn_is_data(Defn) :-
+    Defn = mlds_defn(_Name, _Context, _Flags, Body),
+    Body = mlds_data(_, _, _).
+
     % Succeeds iff this type is a enumeration.
     %
 :- pred type_is_enum(mlds_type::in) is semidet.
@@ -380,22 +388,35 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
         Defns, !IO),
     io.write_list(ForeignBodyCode, "\n", output_java_body_code(Info, Indent),
         !IO),
+
     list.filter(defn_is_rtti_data, Defns, RttiDefns, NonRttiDefns),
     io.write_string("\n// RttiDefns\n", !IO),
     output_defns(Info, Indent + 1, alloc_only, RttiDefns, !IO),
     output_rtti_assignments(Info, Indent + 1, RttiDefns, !IO),
-    io.write_string("\n// NonRttiDefns\n", !IO),
-    output_defns(Info, Indent + 1, none, NonRttiDefns, !IO),
+
+    list.filter(defn_is_data, NonRttiDefns, DataDefns, NonDataDefns),
+    io.write_string("\n// DataDefns\n", !IO),
+    output_data_decls(Info, Indent + 1, DataDefns, !IO),
+    output_data_assignments(Info, Indent + 1, DataDefns, !IO),
+
+    io.write_string("\n// NonDataDefns\n", !IO),
+    output_defns(Info, Indent + 1, none, NonDataDefns, !IO),
+
     io.write_string("\n// ExportDefns\n", !IO),
     output_exports(Info, Indent + 1, ExportDefns, !IO),
+
     io.write_string("\n// ExportedEnums\n", !IO),
     output_exported_enums(Info, Indent + 1, ExportedEnums, !IO),
+
     io.write_string("\n// InitPreds\n", !IO),
     output_inits(Indent + 1, InitPreds, !IO),
+
     io.write_string("\n// FinalPreds\n", !IO),
     output_finals(Indent + 1, FinalPreds, !IO),
+
     io.write_string("\n// EnvVarNames\n", !IO),
     output_env_vars(Indent + 1, NonRttiDefns, !IO),
+
     output_src_end(Indent, ModuleName, !IO).
     % XXX Need to handle non-Java foreign code at this point.
 
@@ -1912,9 +1933,7 @@ output_defns(Info, Indent, OutputAux, Defns, !IO) :-
     mlds_defn::in, io::di, io::uo) is det.
 
 output_defn(Info, Indent, OutputAux, Defn, !IO) :-
-    ModuleName = Info ^ joi_module_name,
     Defn = mlds_defn(Name, Context, Flags, DefnBody),
-    QualName = qual(ModuleName, module_qual, Name),
     indent_line(Info, Context, Indent, !IO),
     ( DefnBody = mlds_function(_, _, body_external, _, _) ->
         % This is just a function declaration, with no body.
@@ -1924,33 +1943,33 @@ output_defn(Info, Indent, OutputAux, Defn, !IO) :-
         % must be given in `pragma java_code' in the same module.)
         io.write_string("/* external:\n", !IO),
         output_decl_flags(Info, Flags, !IO),
-        output_defn_body(Info, Indent, QualName, OutputAux, Context, DefnBody,
+        output_defn_body(Info, Indent, Name, OutputAux, Context, DefnBody,
             !IO),
         io.write_string("*/\n", !IO)
     ;
         output_decl_flags(Info, Flags, !IO),
-        output_defn_body(Info, Indent, QualName, OutputAux, Context, DefnBody,
+        output_defn_body(Info, Indent, Name, OutputAux, Context, DefnBody,
             !IO)
     ).
 
-:- pred output_defn_body(java_out_info::in, indent::in, 
-    mlds_qualified_entity_name::in, output_aux::in,
-    mlds_context::in, mlds_entity_defn::in, io::di, io::uo) is det.
+:- pred output_defn_body(java_out_info::in, indent::in, mlds_entity_name::in,
+    output_aux::in, mlds_context::in, mlds_entity_defn::in, io::di, io::uo)
+    is det.
 
-output_defn_body(Info, Indent, Name, OutputAux, Context, Entity, !IO) :-
+output_defn_body(Info, Indent, UnqualName, OutputAux, Context, Entity, !IO) :-
     (
         Entity = mlds_data(Type, Initializer, _),
-        output_data_defn(Info, Name, OutputAux, Type, Initializer,
+        output_data_defn(Info, UnqualName, OutputAux, Type, Initializer,
             !IO)
     ;
         Entity = mlds_function(MaybePredProcId, Signature, MaybeBody,
             _Attributes, _EnvVarNames),
         output_maybe(MaybePredProcId, output_pred_proc_id(Info), !IO),
-        output_func(Info, Indent, Name, OutputAux, Context,
+        output_func(Info, Indent, UnqualName, OutputAux, Context,
             Signature, MaybeBody, !IO)
     ;
         Entity = mlds_class(ClassDefn),
-        output_class(Info, Indent, Name, Context, ClassDefn, !IO)
+        output_class(Info, Indent, UnqualName, Context, ClassDefn, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1958,12 +1977,10 @@ output_defn_body(Info, Indent, Name, OutputAux, Context, Entity, !IO) :-
 % Code to output classes.
 %
 
-:- pred output_class(java_out_info::in, indent::in,
-    mlds_qualified_entity_name::in, mlds_context::in, mlds_class_defn::in,
-    io::di, io::uo) is det.
+:- pred output_class(java_out_info::in, indent::in, mlds_entity_name::in,
+    mlds_context::in, mlds_class_defn::in, io::di, io::uo) is det.
 
-output_class(Info, Indent, Name, _Context, ClassDefn, !IO) :-
-    Name = qual(_ModuleName, _QualKind, UnqualName),
+output_class(Info, Indent, UnqualName, _Context, ClassDefn, !IO) :-
     (
         UnqualName = entity_type(ClassNamePrime, ArityPrime),
         ClassName = ClassNamePrime,
@@ -1994,7 +2011,7 @@ output_class(Info, Indent, Name, _Context, ClassDefn, !IO) :-
     output_implements_list(Indent + 1, Implements, !IO),
     indent_line(Indent, !IO),
     io.write_string("{\n", !IO),
-    output_class_body(Info, Indent + 1, Kind, Name, AllMembers, !IO),
+    output_class_body(Info, Indent + 1, Kind, UnqualName, AllMembers, !IO),
     io.nl(!IO),
     output_defns(Info, Indent + 1, cname(UnqualName), Ctors, !IO),
     indent_line(Indent, !IO),
@@ -2057,10 +2074,9 @@ output_interface(Interface, !IO) :-
     ).
 
 :- pred output_class_body(java_out_info::in, indent::in, mlds_class_kind::in,
-    mlds_qualified_entity_name::in, list(mlds_defn)::in, io::di, io::uo)
-    is det.
+    mlds_entity_name::in, list(mlds_defn)::in, io::di, io::uo) is det.
 
-output_class_body(Info, Indent, Kind, Name, AllMembers, !IO) :-
+output_class_body(Info, Indent, Kind, UnqualName, AllMembers, !IO) :-
     (
         Kind = mlds_class,
         output_defns(Info, Indent, none, AllMembers, !IO)
@@ -2077,7 +2093,6 @@ output_class_body(Info, Indent, Kind, Name, AllMembers, !IO) :-
     ;
         Kind = mlds_enum,
         list.filter(defn_is_const, AllMembers, EnumConsts),
-        Name = qual(_NameModuleName, _QualKind, UnqualName),
         output_enum_constants(Info, Indent + 1, UnqualName, EnumConsts, !IO),
         io.nl(!IO),
         output_enum_ctor(Indent + 1, UnqualName, !IO)
@@ -2165,16 +2180,86 @@ output_enum_constant(_Info, Indent, EnumName, Defn, !IO) :-
 % Code to output data declarations/definitions.
 %
 
-:- pred output_data_decl(java_out_info::in, mlds_qualified_entity_name::in,
+:- pred output_data_decls(java_out_info::in, indent::in, list(mlds_defn)::in,
+    io::di, io::uo) is det.
+
+output_data_decls(_, _, [], !IO).
+output_data_decls(Info, Indent, [Defn | Defns], !IO) :-
+    Defn = mlds_defn(Name, _Context, Flags, DefnBody),
+    ( DefnBody = mlds_data(Type, _Initializer, _GCStatement) ->
+        indent_line(Indent, !IO),
+        % We can't honour `final' here as the variable is assigned separately.
+        NonFinalFlags = set_finality(Flags, overridable),
+        output_decl_flags(Info, NonFinalFlags, !IO),
+        output_data_decl(Info, Name, Type, !IO),
+        io.write_string(";\n", !IO)
+    ;
+        unexpected(this_file, "output_data_decls: not data")
+    ),
+    output_data_decls(Info, Indent, Defns, !IO).
+
+:- pred output_data_decl(java_out_info::in, mlds_entity_name::in,
     mlds_type::in, io::di, io::uo) is det.
 
-output_data_decl(Info, qual(_, _, Name), Type, !IO) :-
+output_data_decl(Info, Name, Type, !IO) :-
     output_type(Info, normal_style, Type, !IO),
     io.write_char(' ', !IO),
     output_name(Name, !IO).
 
-:- pred output_data_defn(java_out_info::in, mlds_qualified_entity_name::in,
-    output_aux::in, mlds_type::in, mlds_initializer::in, io::di, io::uo) is det.
+:- pred output_data_assignments(java_out_info::in, indent::in,
+    list(mlds_defn)::in, io::di, io::uo) is det.
+
+output_data_assignments(Info, Indent, Defns, !IO) :-
+    % Divide into small methods to avoid running into the maximum method size
+    % limit.
+    list.chunk(Defns, 1000, DefnChunks),
+    list.foldl2(output_init_data_method(Info, Indent),
+        DefnChunks, 0, NumChunks, !IO),
+
+    % Call the individual methods.
+    indent_line(Indent, !IO),
+    io.write_string("static {\n", !IO),
+    int.fold_up(output_call_init_data_method(Indent + 1), 0, NumChunks - 1,
+        !IO),
+    indent_line(Indent, !IO),
+    io.write_string("}\n", !IO).
+
+:- pred output_init_data_method(java_out_info::in, indent::in,
+    list(mlds_defn)::in, int::in, int::out, io::di, io::uo) is det.
+
+output_init_data_method(Info, Indent, Defns, Chunk, Chunk + 1, !IO) :-
+    indent_line(Indent, !IO),
+    io.format("private static void MR_init_data_%d() {\n", [i(Chunk)], !IO),
+    output_init_data_statements(Info, Indent + 1, Defns, !IO),
+    indent_line(Indent, !IO),
+    io.write_string("}\n", !IO).
+
+:- pred output_init_data_statements(java_out_info::in, indent::in,
+    list(mlds_defn)::in, io::di, io::uo) is det.
+
+output_init_data_statements(_, _, [], !IO).
+output_init_data_statements(Info, Indent, [Defn | Defns], !IO) :-
+    Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
+    ( DefnBody = mlds_data(Type, Initializer, _GCStatement) ->
+        indent_line(Indent, !IO),
+        output_name(Name, !IO),
+        output_initializer(Info, none, Type, Initializer, !IO),
+        io.write_string(";\n", !IO)
+    ;
+        unexpected(this_file, "output_init_data_statements: not mlds_data")
+    ),
+    output_init_data_statements(Info, Indent, Defns, !IO).
+
+:- pred output_call_init_data_method(indent::in, int::in, io::di, io::uo)
+    is det.
+
+output_call_init_data_method(Indent, I, !IO) :-
+    indent_line(Indent, !IO),
+    io.format("MR_init_data_%d();\n", [i(I)], !IO).
+
+:- pred output_data_defn(java_out_info::in, mlds_entity_name::in,
+    output_aux::in, mlds_type::in, mlds_initializer::in, io::di, io::uo)
+    is det.
 
 output_data_defn(Info, Name, OutputAux, Type, Initializer, !IO) :-
     output_data_decl(Info, Name, Type, !IO),
@@ -2489,8 +2574,8 @@ output_pred_proc_id(Info, proc(PredId, ProcId), !IO) :-
         AutoComments = no
     ).
 
-:- pred output_func(java_out_info::in, indent::in,
-    mlds_qualified_entity_name::in, output_aux::in, mlds_context::in,
+:- pred output_func(java_out_info::in, indent::in, mlds_entity_name::in,
+    output_aux::in, mlds_context::in,
     mlds_func_params::in, mlds_function_body::in, io::di, io::uo) is det.
 
 output_func(Info, Indent, Name, OutputAux, Context, Signature, MaybeBody,
@@ -2502,7 +2587,7 @@ output_func(Info, Indent, Name, OutputAux, Context, Signature, MaybeBody,
         io.write_string("\n", !IO),
         indent_line(Info, Context, Indent, !IO),
         io.write_string("{\n", !IO),
-        FuncInfo = func_info(Name, Signature),
+        FuncInfo = func_info(Signature),
         output_statement(Info, Indent + 1, FuncInfo, Body, _ExitMethods, !IO),
         indent_line(Info, Context, Indent, !IO),
         io.write_string("}\n", !IO)    % end the function
@@ -2511,11 +2596,10 @@ output_func(Info, Indent, Name, OutputAux, Context, Signature, MaybeBody,
     ).
 
 :- pred output_func_decl(java_out_info::in, indent::in,
-    mlds_qualified_entity_name::in, output_aux::in, mlds_context::in,
+    mlds_entity_name::in, output_aux::in, mlds_context::in,
     mlds_func_params::in, io::di, io::uo) is det.
 
-output_func_decl(Info, Indent, QualifiedName, OutputAux, Context, Signature,
-        !IO) :-
+output_func_decl(Info, Indent, Name, OutputAux, Context, Signature, !IO) :-
     (
         OutputAux = cname(CtorName),
         Signature = mlds_func_params(Parameters, _RetTypes),
@@ -2539,7 +2623,6 @@ output_func_decl(Info, Indent, QualifiedName, OutputAux, Context, Signature,
             io.write_string("java.lang.Object []", !IO)
         ),
         io.write_char(' ', !IO),
-        QualifiedName = qual(_ModuleName, _QualKind, Name),
         output_name(Name, !IO),
         output_params(Info, Indent, Context, Parameters, !IO)
     ).
@@ -2577,14 +2660,15 @@ output_param(Info, Indent, Context, Arg, !IO) :-
 % names properly.
 %
 
-:- pred output_maybe_qualified_name(mlds_qualified_entity_name::in,
-    mlds_module_name::in, io::di, io::uo) is det.
+:- pred output_maybe_qualified_name(java_out_info::in,
+    mlds_qualified_entity_name::in, io::di, io::uo) is det.
 
-output_maybe_qualified_name(QualifiedName, CurrentModuleName, !IO) :-
+output_maybe_qualified_name(Info, QualifiedName, !IO) :-
     % Don't module qualify names which are defined in the current module.
     % This avoids unnecessary verbosity, and is also necessary in the case
     % of local variables and function parameters, which must not be qualified.
     QualifiedName = qual(ModuleName, _QualKind, Name),
+    CurrentModuleName = Info ^ joi_module_name,
     ( ModuleName = CurrentModuleName ->
         output_name(Name, !IO)
     ;
@@ -3191,7 +3275,6 @@ maybe_output_comment(Info, Comment, !IO) :-
 
 :- type func_info
     --->    func_info(
-                func_info_name      :: mlds_qualified_entity_name,
                 func_info_params    :: mlds_func_params
             ).
 
@@ -3507,7 +3590,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
             io.write_string(";\n", !IO)
         ;
             Results = [_, _ | _],
-            FuncInfo = func_info(_FuncName, Params),
+            FuncInfo = func_info(Params),
             Params = mlds_func_params(_Args, ReturnTypes),
             TypesAndResults = assoc_list.from_corresponding_lists(
                 ReturnTypes, Results),
@@ -3898,8 +3981,7 @@ output_target_code_component(Info, TargetCode, !IO) :-
         output_type(Info, normal_style, Type, !IO)
     ;
         TargetCode = target_code_name(Name),
-        ModuleName = Info ^ joi_module_name,
-        output_maybe_qualified_name(Name, ModuleName, !IO)
+        output_maybe_qualified_name(Info, Name, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3999,8 +4081,7 @@ output_lval(Info, Lval, !IO) :-
     ;
         Lval = ml_var(qual(ModName, QualKind, Name), _),
         QualName = qual(ModName, QualKind, entity_data(mlds_data_var(Name))),
-        ModuleName = Info ^ joi_module_name,
-        output_maybe_qualified_name(QualName, ModuleName, !IO)
+        output_maybe_qualified_name(Info, QualName, !IO)
     ).
 
 :- pred output_mangled_name(string::in, io::di, io::uo) is det.

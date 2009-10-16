@@ -731,6 +731,7 @@ MC_unlock_job_ctl(MC_JobCtl *job_ctl)
 
 :- type job_ctl.
 :- pragma foreign_type("C", job_ctl, "MC_JobCtl *").
+:- pragma foreign_type("Java", job_ctl, "java.lang.Object"). % stub
 
 :- pred have_job_ctl_ipc is semidet.
 
