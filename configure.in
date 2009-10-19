@@ -4095,8 +4095,21 @@ case "$host" in
                 # The MACOSX_DEPLOYMENT_TARGET environment variable
                 # needs to be set when linking with two level namespaces
                 # so we can use the `-undefined dynamic_lookup' option.
+                #
+                # On 10.6, the deployment target needs to be at least 10.4.
+                # For earlier versions of Mac OS X we use 10.3.
+                case "$host" in
+                    *apple*darwin*10*)
+                        DEPLOYMENT_TARGET="10.4"
+                    ;;
+                    
+                    *)
+                        DEPLOYMENT_TARGET="10.3"
+                    ;;
+                esac
+            
                 SET_MACOSX_DEPLOYMENT_TARGET="\
-                    MACOSX_DEPLOYMENT_TARGET=10.3; \
+                    MACOSX_DEPLOYMENT_TARGET=$DEPLOYMENT_TARGET; \
                     export MACOSX_DEPLOYMENT_TARGET"
                 AC_SUBST(SET_MACOSX_DEPLOYMENT_TARGET)
                 LINK_SHARED_OBJ="$GCC_PROG -multiply_defined suppress \
