@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006 The University of Melbourne.
+% Copyright (C) 2006, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -398,8 +398,8 @@
     % - In every list of nodes, the list elements are sorted on offset, and
     %   no two elements have the same offset.
     %
-    % - A list of nodes of level N must have the ranges of all its nodes
-    %   contained within the range of a single level N+1 node.
+    % - A list of nodes of level k must have the ranges of all its nodes
+    %   contained within the range of a single level k+1 node.
     %
     % - If a node's range contains no items, the node must be deleted.
     %
