@@ -6,6 +6,7 @@
 --no-shlib-linker-use-install-name
 --force-disable-tracing
 --no-ssdb
+--no-libgrade
 --generate-mmc-deps
 -I../library
 -I../mdbcomp
@@ -23,4 +24,8 @@
 -L../trace
 -L../mdbcomp
 -L../browser
+--no-java-classpath
+--java-classpath ../library/mer_rt.jar
+--java-classpath ../library/mer_std.jar
+--java-classpath ../mdbcomp/mer_mdbcomp.jar
 --config-file ../scripts/Mercury.config.bootstrap

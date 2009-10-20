@@ -621,9 +621,9 @@ install_grades: install_main
 	    gc_grade=`scripts/ml --grade $${grade} --print-gc-grade`;         \
 	    IWS=`/bin/pwd`/install_grade_dir.$${grade};                       \
 	    (                                                                 \
-		if [ "$${grade}" = "erlang" ]; then                           \
-		    MMAKE_USE_MMC_MAKE=yes;                                   \
-		fi;                                                           \
+		case $${grade} in                                             \
+			java*|erlang*) MMAKE_USE_MMC_MAKE=yes;                \
+		esac;                                                         \
 		scripts/prepare_install_dir $${IWS} &&                        \
 		( cd $${IWS}/boehm_gc &&                                      \
 		  $(SUBDIR_MMAKE) MC=mmc GRADE=$${grade} WORKSPACE=$${IWS}    \

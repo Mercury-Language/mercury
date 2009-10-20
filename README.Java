@@ -165,15 +165,9 @@ Q. So how do I enable Java-level debugging?
 
 A. By default, javac already generates line number and source file debugging
    information.  You can include local variable debugging information by
-   specifying "--target-debug" when invoking the Mercury compiler, or by
-   setting the JAVACFLAGS variable to include "-g" when invoking mmake,
-   e.g.
+   specifying "--target-debug" when invoking the Mercury compiler, e.g.
 
         mmc --make --java --target-debug <progname>
-
-   or
-   	
-	mmake GRADE=java JAVACFLAGS=-g <progname>
 
    You can then use Sun's "jdb" debugging tool, which comes
    as part of the Java SDK distribution, to debug your program.

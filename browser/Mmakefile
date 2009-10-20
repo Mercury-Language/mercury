@@ -89,8 +89,6 @@ LD_LIBFLAGS-libmer_browser.dylib = -install_name \
 
 #-----------------------------------------------------------------------------#
 
-JAVACFLAGS = -classpath $(LIBRARY_DIR):$(MDBCOMP_DIR)
-
 MTAGS	= $(SCRIPTS_DIR)/mtags
 
 LN	= ln
@@ -222,26 +220,6 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
-JARS = $(BROWSER_LIB_NAME).jar
-
-.PHONY:	jars
-jars:	classes
-	echo jmercury/*.class > $(BROWSER_LIB_NAME).classes
-	$(JAR) $(JAR_CREATE_FLAGS) $(BROWSER_LIB_NAME).jar @$(BROWSER_LIB_NAME).classes
-	$(JAR) i $(BROWSER_LIB_NAME).jar
-	$(RM) $(BROWSER_LIB_NAME).classes
-
-JAVAS = $(wildcard jmercury/*.java)
-
-.PHONY:
-classes: javas
-	$(JAVAC) $(ALL_JAVACFLAGS) $(JAVAS)
-
-.PHONY: javas
-javas: $(BROWSER_LIB_NAME).javas
-
-#-----------------------------------------------------------------------------#
-
 .PHONY: os cs ss ils
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 os: $($(BROWSER_LIB_NAME).os)
@@ -272,12 +250,7 @@ realclean_local:
 # Installation targets
 
 .PHONY: install
-ifeq ("$(findstring ssdebug,$(GRADE))","ssdebug")
-# The ssdebug grade requires the interface files.
-install: install_library install_ints
-else
 install: install_library
-endif
 
 .PHONY: install_dirs
 install_dirs:
@@ -302,15 +275,13 @@ install_library:
 else ifneq (,$(findstring java,$(GRADE)))
 
 .PHONY: install_ints
-install_ints: lib$(BROWSER_LIB_NAME).install_ints
+install_ints:
 
 .PHONY: install_init
 install_init: 
 
 .PHONY: install_library
-install_library: jars
-	mkdir -p $(INSTALL_JAVA_LIBRARY_DIR)
-	cp $(JARS) $(INSTALL_JAVA_LIBRARY_DIR)
+install_library: lib$(BROWSER_LIB_NAME).install
 
 else 
 

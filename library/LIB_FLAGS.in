@@ -9,6 +9,7 @@
 --no-shlib-linker-use-install-name
 --trace minimum
 --no-ssdb
+--no-libgrade
 --c-include-directory ../boehm_gc
 --c-include-directory ../boehm_gc/include
 --c-include-directory ../runtime
@@ -19,4 +20,5 @@
 -L../trace
 -L../mdbcomp
 -L../browser
+--no-java-classpath
 --config-file ../scripts/Mercury.config.bootstrap

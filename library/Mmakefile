@@ -116,6 +116,9 @@ MCFLAGS      += -R$(FINAL_INSTALL_MERC_LIB_DIR) \
 		-R$(FINAL_INSTALL_MERC_GC_LIB_DIR)
 endif
 
+# Let javac find jmercury/runtime/*.java files.
+JAVACFLAGS   += -sourcepath .
+
 MTAGS	= $(SCRIPTS_DIR)/mtags
 
 LN	= ln
@@ -167,7 +170,7 @@ mercury: lib_std
 #-----------------------------------------------------------------------------#
 
 .PHONY: depend
-depend:	LIB_FLAGS $(STD_LIB_NAME).depend
+depend:	LIB_FLAGS java_symlinks $(STD_LIB_NAME).depend
 
 .PHONY: check
 check:	$(STD_LIB_NAME).check
@@ -243,48 +246,38 @@ ils: $(STD_LIB_NAME).ils
 javas: $(STD_LIB_NAME).javas
 endif
 
-# The compiler names Java files differently to the original source files to
-# avoid keywords.  Instead of replicating that logic here we just use a
-# wildcard to find the file names.
-JAVAS = $(wildcard jmercury/*.java)
-RUNTIME_JAVAS = $(wildcard jmercury/runtime/*.java)
-
-# We need to invoke javac on all of the classes at the same time,
-# rather than compiling them separately.  This is needed because
-# otherwise javac doesn't handle cyclic dependencies between different
-# modules.
-classes: javas java_symlinks
-	$(JAVAC) $(ALL_JAVACFLAGS) $(JAVAS)
-	$(JAVAC) $(ALL_JAVACFLAGS) $(RUNTIME_JAVAS)
-
-# javac expects to find the sources for symbols named mercury.runtime.* in
-# mercury/runtime/*, but in our sources those symbols actually come from
+# javac expects to find the sources for symbols named jmercury.runtime.* in
+# jmercury/runtime/*, but in our sources those symbols actually come from
 # java/runtime/*.  So we set up a symbolic link to help javac find the way to
 # the sources.
 .PHONY: java_symlinks
+.PHONY: install_mer_rt
+
+ifeq ("$(findstring java,$(GRADE))","java")
+
 java_symlinks:
 	[ -d jmercury ] || mkdir jmercury
 	[ -d jmercury/runtime ] || ln -s ../../java/runtime jmercury/runtime
 
-# Once all of the library classes have been compiled, we put them in a single
-# jar file.  At this point we also add the runtime classes to a jar file.
-# Note that this stage makes use of the symbolic links created earlier to
-# ensure that the path names are correct within the jar files.
-# We also compile NATIVE_SO here and copy it into the library directory.
+install_mer_rt: $(RT_LIB_NAME).jar
+	mkdir -p $(INSTALL_JAVA_LIBRARY_DIR)
+	cp $(RT_LIB_NAME).jar $(INSTALL_JAVA_LIBRARY_DIR)
 
-JARS = $(STD_LIB_NAME).jar $(RT_LIB_NAME).jar
+else
 
-# We list the classes in a temporary file to avoid overlong command lines.
-# We ignore the exit status of the last two commands because NATIVE_SO is not
-# an essential part of the Mercury standard library for the Java
-# implementation.  Users should be able to run programs in grade Java without
-# any architecture-specific objects.
-.PHONY:	jars
-jars:	classes
-	echo jmercury/*.class > $(STD_LIB_NAME).classes
-	$(JAR) $(JAR_CREATE_FLAGS) $(STD_LIB_NAME).jar @$(STD_LIB_NAME).classes
-	$(JAR) i $(STD_LIB_NAME).jar
-	$(RM) $(STD_LIB_NAME).classes
+java_symlinks:
+
+install_mer_rt:
+
+endif
+
+# mmc --make must be used to install the java grade.
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+$(STD_LIB_NAME).jar: libmer_std
+endif
+
+$(RT_LIB_NAME).jar: java_symlinks
+	$(JAVAC) $(ALL_JAVACFLAGS) jmercury/runtime/*.java
 	$(JAR) $(JAR_CREATE_FLAGS) $(RT_LIB_NAME).jar jmercury/runtime/*.class
 	$(JAR) i $(RT_LIB_NAME).jar
 	# -+cd jmercury/runtime && mmake $(NATIVE_SO)
@@ -356,7 +349,7 @@ endif
 
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 ifeq ("$(findstring java,$(GRADE))","java")
-lib_std: jars
+lib_std: $(STD_LIB_NAME).jar $(RT_LIB_NAME).jar $(NATIVE_SO)
 endif
 endif
 
@@ -456,7 +449,7 @@ realclean_local:
 	rm -rf jmercury
 	rm -f mr_int.class mr_float.class mr_char.class
 	rm -f mr_int\$$*.class mr_float\$$*.class mr_char\$$*.class
-	rm -f $(JARS) $(NATIVE_SO)
+	rm -f $(STD_LIB_NAME).jar $(RT_LIB_NAME).jar $(NATIVE_SO)
 	rm -f erlang_conf.hrl
 
 #-----------------------------------------------------------------------------#
@@ -530,46 +523,21 @@ install_strong_name: library_strong_name.sn
 
 else
 
-ifneq (,$(findstring java,$(GRADE)))
-
-# Copy the jars and NATIVE_SO to INSTALL_JAVA_LIBRARY_DIR.  Ignore the exit
-# status of last command, since NATIVE_SO may not be available and is not
-# essential.  Note that in the java.ssdebug grade the library will still
-# be copied to INSTALL_JAVA_LIBRARY_DIR.  That's okay for now, because
-# we turn off the ssdebug transformations for the library, so it is equivalent
-# to the non-ssdebug grade.
-# The int3s target is there because some modules in the browser directory need
-# the library.int3 file.
-
-.PHONY: install_library
-install_library: int3s jars
-	mkdir -p $(INSTALL_JAVA_LIBRARY_DIR)
-	cp $(JARS) $(INSTALL_JAVA_LIBRARY_DIR)
-	# -cp $(NATIVE_SO) $(INSTALL_JAVA_LIBRARY_DIR)
-
-else
-
 # we depend on lib$(STD_LIB_NAME) because lib$(STD_LIB_NAME).install_library
 # doesn't make library.int3, but some modules in the browser directory need it.
 
 .PHONY: install_library
 install_library: lib$(STD_LIB_NAME) lib$(STD_LIB_NAME).install_library
 
-endif  #ifneq (,$(findstring java,$(GRADE)))
-
 endif  #ifneq (,$(findstring il,$(GRADE)))
 
 else	#ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
-# Prevent `mmc --make' from installing the default set of grades for
-# `libFOO.install' targets.
-MCFLAGS += --no-libgrade
-
 .PHONY: install_mercury
-install_mercury: lib$(STD_LIB_NAME).install
+install_mercury: install_library
 
 .PHONY: install_library
-install_library: lib$(STD_LIB_NAME).install
+install_library: install_mer_rt lib$(STD_LIB_NAME).install
 
 endif	#ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 

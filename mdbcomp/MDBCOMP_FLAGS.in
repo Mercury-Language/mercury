@@ -5,6 +5,7 @@
 --no-mercury-stdlib-dir
 --generate-mmc-deps
 --no-ssdb
+--no-libgrade
 --no-shlib-linker-use-install-name
 -I../library
 --c-include-directory ../boehm_gc
@@ -19,4 +20,7 @@
 -L../trace
 -L../mdbcomp
 -L../browser
+--no-java-classpath
+--java-classpath ../library/mer_rt.jar
+--java-classpath ../library/mer_std.jar
 --config-file ../scripts/Mercury.config.bootstrap
