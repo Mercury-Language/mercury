@@ -1,5 +1,3 @@
-purity_type_error.m:009: In predicate `warn'/1:
-purity_type_error.m:009:   warning: declared impure but actually pure.
 purity_type_error.m:020: In clause for predicate `type_error'/1:
 purity_type_error.m:020:   in argument 1 of clause head:
 purity_type_error.m:020:   type error in unification of variable `HeadVar__1'
