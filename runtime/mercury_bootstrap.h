@@ -15,7 +15,47 @@
 #ifndef	MERCURY_BOOTSTRAP_H
 #define	MERCURY_BOOTSTRAP_H
 
-#ifndef	MR_DISABLE_ALIASES
+/*---------------------------------------------------------------------------*/
+/*
+** This stuff is enabled by default,
+** but you can disable it by defining MR_NO_BACKWARDS_COMPAT.
+*/
+
+#ifndef MR_NO_BACKWARDS_COMPAT
+
+/*
+** MR_Bool is the C representation for the Mercury type bool__bool.
+** For ordinary booleans, use MR_bool in mercury_std.h.
+**
+** XXX Why is it not defined defined to be MR_Word, and why is the definition
+** here?
+*/
+
+typedef MR_intptr_t		MR_Bool;
+
+#endif	/* !MR_NO_BACKWARDS_COMPAT */
+
+/*---------------------------------------------------------------------------*/
+/*
+** This stuff is not enabled by default.
+** To enable it, you must explicitly define MR_EXTRA_BACKWARDS_COMPAT.
+*/
+
+#ifdef	MR_EXTRA_BACKWARDS_COMPAT
+
+/*
+** For a long time the Mercury C types were defined as Char, Float,
+** Integer, Word, etc.  There will doubtless be lots of C code in
+** libraries that relies upon these names.
+**
+** People may have written code that relies upon these names, so
+** if you remove these names you need to give warning (unlike some of
+** the other changes in this file).
+*/
+
+#include "mercury_types.h"
+#include "mercury_float.h"
+
 #define	MR_Table_Trie_Step		MR_TableTrieStep
 #define	MR_Long_Lval_Type		MR_LongLvalType
 #define	MR_Long_Lval			MR_LongLval
@@ -40,30 +80,9 @@
 #define	MR_Stack_Walk_Step_Result	MR_StackWalkStepResult
 #define	MR_Context_Position		MR_ContextPosition
 #define	MR_find_first_call_seq_or_event	MR_FindFirstCallSeqOrEvent
-#endif
 
 #define	MR_STATIC(l)		MR_ENTRY(l)
 #define	MR_GOTO_STATIC(l)	MR_GOTO_ENTRY(l)
-
-/*
-** This stuff is enabled by default,
-** but you can disable it by defining MR_NO_BACKWARDS_COMPAT.
-*/
-
-#ifndef MR_NO_BACKWARDS_COMPAT
-
-/*
-** For a long time the Mercury C types were defined as Char, Float,
-** Integer, Word, etc.  There will doubtless be lots of C code in
-** libraries that relies upon these names.
-**
-** People may have written code that relies upon these names, so
-** if you remove these names you need to give warning (unlike some of
-** the other changes in this file).
-*/
-
-#include "mercury_types.h"
-#include "mercury_float.h"
 
 typedef MR_Word 		Word;
 typedef MR_Code 		Code;
@@ -76,11 +95,6 @@ typedef MR_UnsignedChar 	UnsignedChar;
 typedef MR_String 		String;
 typedef MR_ConstString 		ConstString;
 
-/*
-** MR_Bool is the C representation for the Mercury type bool__bool.
-** For ordinary booleans, use MR_bool in mercury_std.h.
-*/
-typedef MR_intptr_t		MR_Bool;
 typedef MR_Bool			Bool;
 
 /*
@@ -114,15 +128,6 @@ typedef MR_Bool			Bool;
 #ifndef NO_RETURN
 #define NO_RETURN		MR_NO_RETURN
 #endif
-
-#endif	/* !MR_NO_BACKWARDS_COMPAT */
-
-/*---------------------------------------------------------------------------*/
-/*
-** This stuff is not enabled by default.
-** To enable it, you must explicitly define MR_EXTRA_BACKWARDS_COMPAT.
-*/
-#ifdef	MR_EXTRA_BACKWARDS_COMPAT
 
 #define MR_saved_reg(save_area, n)					\
 	MR_LVALUE_COND((n) > MR_MAX_REAL_R_REG,				\

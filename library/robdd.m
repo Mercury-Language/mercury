@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2006, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1469,7 +1469,7 @@ node_name(R) =
     node_num(R::in) = (N::out),
     [will_not_call_mercury, promise_pure],
 "
-    N = (Integer) R;
+    N = (MR_Integer) R;
 ").
 
 :- func terminal_name(robdd(T)) = string.

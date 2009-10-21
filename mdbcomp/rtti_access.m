@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -381,7 +381,7 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
                         ** for the numerical suffix.
                         */
                         start_of_num == out_base_name_len &&
-                        strneq(out_name, in_name, start_of_num)
+                        MR_strneq(out_name, in_name, start_of_num)
                     )
                 ||
                     (
@@ -393,7 +393,7 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
                         start_of_num == out_base_name_len + 1 &&
                         start_of_num > 0 &&
                         in_name[start_of_num - 1] == '_' &&
-                        strneq(out_name, in_name, start_of_num - 1)
+                        MR_strneq(out_name, in_name, start_of_num - 1)
                     )
                 ))
             {
