@@ -170,7 +170,7 @@ mercury: lib_std
 #-----------------------------------------------------------------------------#
 
 .PHONY: depend
-depend:	LIB_FLAGS java_symlinks $(STD_LIB_NAME).depend
+depend:	LIB_FLAGS copy_java_runtime_files $(STD_LIB_NAME).depend
 
 .PHONY: check
 check:	$(STD_LIB_NAME).check
@@ -250,14 +250,14 @@ endif
 # jmercury/runtime/*, but in our sources those symbols actually come from
 # java/runtime/*.  So we set up a symbolic link to help javac find the way to
 # the sources.
-.PHONY: java_symlinks
+.PHONY: copy_java_runtime_files
 .PHONY: install_mer_rt
 
 ifeq ("$(findstring java,$(GRADE))","java")
 
-java_symlinks:
+copy_java_runtime_files:
 	[ -d jmercury ] || mkdir jmercury
-	[ -d jmercury/runtime ] || ln -s ../../java/runtime jmercury/runtime
+	[ -d jmercury/runtime ] || cp -r ../java/runtime jmercury
 
 install_mer_rt: $(RT_LIB_NAME).jar
 	mkdir -p $(INSTALL_JAVA_LIBRARY_DIR)
@@ -265,7 +265,7 @@ install_mer_rt: $(RT_LIB_NAME).jar
 
 else
 
-java_symlinks:
+copy_java_runtime_files:
 
 install_mer_rt:
 
@@ -276,7 +276,7 @@ ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 $(STD_LIB_NAME).jar: libmer_std
 endif
 
-$(RT_LIB_NAME).jar: java_symlinks
+$(RT_LIB_NAME).jar: copy_java_runtime_files
 	$(JAVAC) $(ALL_JAVACFLAGS) jmercury/runtime/*.java
 	$(JAR) $(JAR_CREATE_FLAGS) $(RT_LIB_NAME).jar jmercury/runtime/*.class
 	$(JAR) i $(RT_LIB_NAME).jar
