@@ -24,8 +24,8 @@ main -->
 
 :- impure func get_counter(int) = int is det.
 
-:- pragma foreign_decl("C", "extern Integer counter;").
-:- pragma foreign_code("C", "Integer counter = 42;").
+:- pragma foreign_decl("C", "extern MR_Integer counter;").
+:- pragma foreign_code("C", "MR_Integer counter = 42;").
 :- pragma foreign_proc("C",
 	get_counter(Y::in) = (X::out),
 	[will_not_call_mercury],
