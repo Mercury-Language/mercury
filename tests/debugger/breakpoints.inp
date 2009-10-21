@@ -2,10 +2,10 @@ echo on
 register --quiet
 break data
 *
-delete 0
 delete 1
+delete 0
 break data
-0
+1
 continue
 disable 0
 break info

@@ -723,7 +723,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
     ;
         Uinstr0 = foreign_proc_code(Decls, Components0, MayCallMercury,
             MaybeFixNoLayout, MaybeFixLayout, MaybeFixOnlyLayout,
-            MaybeNoFix0, StackSlotRef, MaybeDup),
+            MaybeNoFix0, MaybeDefLabel, StackSlotRef, MaybeDup),
         some [!Redirect] (
             list.map_foldl(short_foreign_proc_component(Instrmap),
                 Components0, Components, no, !:Redirect),
@@ -776,7 +776,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                 Comment = Comment0 ++ " (some redirects)",
                 Uinstr = foreign_proc_code(Decls, Components, MayCallMercury,
                     MaybeFixNoLayout, MaybeFixLayout, MaybeFixOnlyLayout,
-                    MaybeNoFix, StackSlotRef, MaybeDup),
+                    MaybeNoFix, MaybeDefLabel, StackSlotRef, MaybeDup),
                 Instr = llds_instr(Uinstr, Comment),
                 NewRemain = specified([Instr], Instrs0)
             )

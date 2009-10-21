@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2001, 2003-2007 The University of Melbourne.
+** Copyright (C) 1995-2001, 2003-2007, 2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -15,6 +15,8 @@
 #include "mercury_debug.h"	/* for MR_debuggoto() */
 #include "mercury_label.h"	/* for MR_insert_{entry,internal}_label() */
 #include "mercury_dummy.h"	/* for MR_dummy_identify_function() */
+
+/*---------------------------------------------------------------------------*/
 
 /*
 ** Definitions for constructing the names of entry and internal labels,
@@ -62,7 +64,7 @@
 		num)
 
 #define	MR_label_user_name(mod, name, a, mode, num)			\
-	MR_label_name(MR_proc_entry_user_name(mod, name, a, mode), 	\
+	MR_label_name(MR_proc_entry_user_name(mod, name, a, mode),	\
 		num)
 #define	MR_label_uci_name(mod, name, type, a, mode, num)		\
 	MR_label_name(MR_proc_entry_uci_name(mod, name, type, a, mode), \
@@ -80,6 +82,8 @@
 	MR_PASTE2(mercury_data__label_layout__,				\
 		MR_label_uci_name(mod, name, type, a, mode, num))
 
+/*---------------------------------------------------------------------------*/
+
 #define MR_PROC_LAYOUT_NAME(label)					\
 	MR_PASTE2(mercury_data__proc_layout__,label)
 #define MR_LABEL_LAYOUT_NAME(label)					\
@@ -89,7 +93,7 @@
 
 #define MR_PROC_LAYOUT(label)						\
 	((const MR_ProcLayout *) (MR_Word) &MR_PROC_LAYOUT_NAME(label))
-#define MR_LABEL_LAYOUT(label) 						\
+#define MR_LABEL_LAYOUT(label)						\
 	((const MR_LabelLayout *) (MR_Word) &MR_LABEL_LAYOUT_NAME(label))
 
 #define MR_PROC_LAYOUT1(label)						\
@@ -165,64 +169,66 @@
 	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1))
 
 #define MR_DECL_LABEL_LAYOUT2(e, ln1, ln2)				\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1))	\
 	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2))
 
 #define MR_DECL_LABEL_LAYOUT3(e, ln1, ln2, ln3)				\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2))	\
 	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3))
 
 #define MR_DECL_LABEL_LAYOUT4(e, ln1, ln2, ln3, ln4)			\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3))	\
 	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4))
 
 #define MR_DECL_LABEL_LAYOUT5(e, ln1, ln2, ln3, ln4, ln5)		\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4))	\
 	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln5))
 
 #define MR_DECL_LABEL_LAYOUT6(e, ln1, ln2, ln3, ln4, ln5, ln6)		\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln5)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln5))	\
 	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln6))
 
 #define MR_DECL_LABEL_LAYOUT7(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7)	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln5)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln6)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln5))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln6))	\
 	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln7))
 
 #define MR_DECL_LABEL_LAYOUT8(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8) \
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln5)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln6)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln7)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln5))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln6))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln7))	\
 	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln8))
 
 #define MR_DECL_LABEL_LAYOUT9(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8, ln9) \
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln5)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln6)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln7)) 	\
-	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln8)) 	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln1))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln2))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln3))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln4))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln5))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln6))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln7))	\
+	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln8))	\
 	MR_DECL_LABEL_LAYOUT(MR_label_name(MR_add_prefix(e), ln9))
+
+/*---------------------------------------------------------------------------*/
 
 /*
 ** Passing the name of a label to MR_insert_{internal,entry}_label
@@ -242,6 +248,8 @@
   #define MR_insert_entry(n, a, l)	MR_insert_entry_label(NULL, a, l)
 #endif
 
+/*---------------------------------------------------------------------------*/
+
 /*
 ** Taking the address of a label can inhibit gcc's optimization, because it
 ** assumes that anything can jump there. Therefore we want to do it only if
@@ -257,23 +265,21 @@
 ** are frequently needed in debugging, e.g. MR_do_fail.
 */
 
-#define MR_make_label_ai(n, a, l)		MR_insert_internal(n, a, NULL)
-#define MR_make_label_an(n, a, l)		MR_insert_internal_label(n, \
-							a, NULL)
-#define MR_make_label_sl(n, a, l)		MR_insert_internal(n, a, \
-							MR_LABEL_LAYOUT(l))
+#define MR_make_label_ai(n, a, l)	MR_insert_internal(n, a, NULL)
+#define MR_make_label_an(n, a, l)	MR_insert_internal_label(n, a, NULL)
+#define MR_make_label_sl(n, a, l)	MR_insert_internal(n, a, l)
 
-#define MR_make_local_ai(n, a, l)		MR_insert_entry(n, a, NULL)
-#define MR_make_local_an(n, a, l)		MR_do_insert_entry_label(n, \
-							a, NULL)
-#define MR_make_local_sl(n, a, l)		MR_insert_entry(n, a, \
-							MR_PROC_LAYOUT(l))
+#define MR_make_local_ai(n, a, l)	MR_insert_entry(n, a, NULL)
+#define MR_make_local_an(n, a, l)	MR_do_insert_entry_label(n, a, NULL)
+#define MR_make_local_sl(n, a, l)	MR_insert_entry(n, a, \
+						MR_PROC_LAYOUT(l))
 
-#define MR_make_entry_ai(n, a, l)		MR_insert_entry(n, a, NULL)
-#define MR_make_entry_an(n, a, l)		MR_do_insert_entry_label(n, \
-							a, NULL)
-#define MR_make_entry_sl(n, a, l)		MR_insert_entry(n, a, \
-							MR_PROC_LAYOUT(l))
+#define MR_make_entry_ai(n, a, l)	MR_insert_entry(n, a, NULL)
+#define MR_make_entry_an(n, a, l)	MR_do_insert_entry_label(n, a, NULL)
+#define MR_make_entry_sl(n, a, l)	MR_insert_entry(n, a, \
+						MR_PROC_LAYOUT(l))
+
+/*---------------------------------------------------------------------------*/
 
 #if defined(MR_INSERT_LABELS)
   #define MR_make_label(n, a, l)		MR_make_label_ai(n, a, l)
@@ -295,6 +301,7 @@
 ** to the MLDS back-end too, you may also need to change the
 ** `need_to_init_entries' predicate in compiler/mlds_to_c.m.
 */
+
 #if defined(MR_INSERT_LABELS) || defined(MR_MPROF_PROFILE_CALLS)
   #define MR_make_entry(n, a, l)		MR_make_entry_ai(n, a, l)
 #else
@@ -320,9 +327,9 @@
   ** to the address we are jumping to, so that we can use an `ldgp'
   ** instruction on entry to the procedure to set up the right gp value.
   */
-  #define MR_ASM_JUMP(address)				\
-	__asm__("bis %0, %0, $27\n\t" 			\
-		: : "r"(address) : "$27");		\
+  #define MR_ASM_JUMP(address)						\
+	__asm__("bis %0, %0, $27\n\t"					\
+		: : "r"(address) : "$27");				\
 	goto *(address)
 	/*
 	** Explanation:
@@ -334,14 +341,14 @@
   ** on entry to a procedure, we need to load the $gp register
   ** with the correct value relative to the current address in $27
   */
-  #define MR_INLINE_ASM_FIXUP_REGS				\
-  	"	ldgp $gp, 0($27)\n" : : : "memory"
+  #define MR_INLINE_ASM_FIXUP_REGS					\
+	"	ldgp $gp, 0($27)\n" : : : "memory"
 
   /*
   ** on fall-thru, we need to skip the ldgp instruction
   */
-  #define MR_ASM_FALLTHROUGH(label) \
-  	goto MR_skip(label);
+  #define MR_ASM_FALLTHROUGH(label)					\
+	goto MR_skip(label);
 
 #elif defined(__i386__) || defined(__mc68000__) || defined(__x86_64__)
 
@@ -371,9 +378,9 @@
   */
   #if defined(__i386__)
     #define MR_ASM_JUMP(label)				\
-  	{ register int stack_pointer __asm__("esp");	\
-  	__asm__("" : : "g"(stack_pointer)); }		\
-  	goto *(label)
+	{ register int stack_pointer __asm__("esp");	\
+	__asm__("" : : "g"(stack_pointer)); }		\
+	goto *(label)
   #elif defined(__x86_64__)
     #define MR_ASM_JUMP(label)				\
 	{ register int stack_pointer __asm__("rsp");	\
@@ -381,9 +388,9 @@
 	goto *(label)
   #elif defined(__mc68000__)
     #define MR_ASM_JUMP(label)				\
-  	{ register int stack_pointer __asm__("sp");	\
-  	__asm__("" : : "g"(stack_pointer)); }		\
-  	goto *(label)
+	{ register int stack_pointer __asm__("sp");	\
+	__asm__("" : : "g"(stack_pointer)); }		\
+	goto *(label)
   #endif
 
   /*
@@ -425,19 +432,19 @@
 
       #define MR_EBX "%%ebx"
 
-      #define MR_INLINE_ASM_FIXUP_REGS     				\
-    	"	call 0f\n"     						\
-    	"0:\n"       							\
-    	"	popl " MR_EBX "\n"     					\
-    	"	addl $_GLOBAL_OFFSET_TABLE_+[.-0b]," MR_EBX "\n\t"	\
-    		: :
+      #define MR_INLINE_ASM_FIXUP_REGS					\
+	"	call 0f\n"						\
+	"0:\n"								\
+	"	popl " MR_EBX "\n"					\
+	"	addl $_GLOBAL_OFFSET_TABLE_+[.-0b]," MR_EBX "\n\t"	\
+		: :
 #if 0
 	/*
 	** The following doesn't seem to be necessary, and
 	** leaving it out might make gcc generate slightly better code.
 	*/
-		/* tell gcc we clobber ebx and memory */	\
-    		: : : "%ebx", "memory"
+		/* tell gcc we clobber ebx and memory */		\
+		: : : "%ebx", "memory"
 #endif
     #elif defined(__mc68000__)
 
@@ -446,7 +453,7 @@
 	**  <Roman.Hodek@informatik.uni-erlangen.de>
 	*/
 
-      #define MR_INLINE_ASM_FIXUP_REGS \
+      #define MR_INLINE_ASM_FIXUP_REGS					\
         "       lea (%%pc,_GLOBAL_OFFSET_TABLE_@GOTPC),%%a5\n" : : : "memory"
 
     #endif
@@ -458,9 +465,10 @@
     ** better... for the moment, we just fall through, since
     ** that keeps the code smaller.
     */
+
     #if 0
-      #define MR_ASM_FALLTHROUGH(label) \
-  	goto MR_skip(label);
+      #define MR_ASM_FALLTHROUGH(label)				\
+	goto MR_skip(label);
     #endif
 
   #endif /* MR_PIC */
@@ -471,7 +479,7 @@
   ** Hence the `.type' directive below.
   */
   #ifdef __ELF__
-    #define MR_INLINE_ASM_ENTRY_LABEL_TYPE(label) \
+    #define MR_INLINE_ASM_ENTRY_LABEL_TYPE(label)			\
 	"	.type _entry_" MR_STRINGIFY(label) ",@function\n"
   #endif
 
@@ -502,16 +510,16 @@
     ** instruction, and `0b' means the label `0:' before the current
     ** instruction.
     */
-    #define MR_INLINE_ASM_FIXUP_REGS     			\
-    	"0:\n"     						\
-    	"	call 1f\n"     					\
-    	"	nop\n"     					\
-    	"1:\n"       						\
+    #define MR_INLINE_ASM_FIXUP_REGS				\
+	"0:\n"							\
+	"	call 1f\n"						\
+	"	nop\n"						\
+	"1:\n"							\
 	"	sethi %%hi(_GLOBAL_OFFSET_TABLE_-(0b-.)),%%l7\n"	\
 	"	or %%l7,%%lo(_GLOBAL_OFFSET_TABLE_-(0b-.)),%%l7\n"	\
-	"	add %%l7,%%o7,%%l7\n"				\
-		/* tell gcc we clobber l7, o7, and memory */	\
-    		: : : "%l7", "%o7", "memory"
+	"	add %%l7,%%o7,%%l7\n"					\
+		/* tell gcc we clobber l7, o7, and memory */		\
+		: : : "%l7", "%o7", "memory"
 
     /*
     ** It is safe to fall through into MR_INLINE_ASM_FIXUP_REGS,
@@ -520,9 +528,10 @@
     ** better... for the moment, we just fall through, since
     ** that keeps the code smaller.
     */
+
     #if 0
-      #define MR_ASM_FALLTHROUGH(label) \
-  	goto MR_skip(label);
+      #define MR_ASM_FALLTHROUGH(label)				\
+	goto MR_skip(label);
     #endif
 
   #endif /* MR_PIC */
@@ -534,7 +543,7 @@
   ** Hence the `.type' directive below.
   */
   #ifndef MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE
-    #define MR_INLINE_ASM_ENTRY_LABEL_TYPE(label) \
+    #define MR_INLINE_ASM_ENTRY_LABEL_TYPE(label)			\
 	"	.type _entry_" MR_STRINGIFY(label) ",#function\n"
   #endif
 
@@ -570,12 +579,12 @@
      */
      #define MR_ARM_PIC_REG "sl"
 
-     #define MR_INLINE_ASM_FIXUP_REGS				\
+     #define MR_INLINE_ASM_FIXUP_REGS					\
        "	    ldr	" MR_ARM_PIC_REG ", 1f\n"			\
-       "0:\n"							\
+       "0:\n"								\
        "	    add	" MR_ARM_PIC_REG ", pc, " MR_ARM_PIC_REG "\n"	\
        "	    b 2f\n"						\
-       "1:\n"							\
+       "1:\n"								\
        "	    .word	_GLOBAL_OFFSET_TABLE_-(0b+8)\n"		\
        "2:\n"
 
@@ -587,18 +596,20 @@
      */
      #ifdef __ELF__
        #define MR_INLINE_ASM_ENTRY_LABEL_TYPE(label) \
- 	  "	.type _entry_" MR_STRINGIFY(label) ",#function\n"
+	  "	.type _entry_" MR_STRINGIFY(label) ",#function\n"
      #endif
 
      /*
      ** Save a few clock ticks branching past MR_INLINE_ASM_FIXUP_REGS
      */
-     #define MR_ASM_FALLTHROUGH(label) \
+     #define MR_ASM_FALLTHROUGH(label)					\
        goto MR_skip(label);
 
    #endif
 
 #endif
+
+/*---------------------------------------------------------------------------*/
 
 /* for other architectures, these macros have default definitions */
 
@@ -683,9 +694,10 @@
 ** MR_ASM_ENTRY is used to declare an external entry point
 ** using a (global) assembler label.
 */
-#define MR_ASM_ENTRY(label) 				\
+
+#define MR_ASM_ENTRY(label)				\
 	MR_ASM_FALLTHROUGH(label)			\
-  	MR_entry(label):				\
+	MR_entry(label):				\
 	__asm__ __volatile__(				\
 		MR_INLINE_ASM_GLOBALIZE_LABEL(label)	\
 		MR_INLINE_ASM_ENTRY_LABEL_TYPE(label)	\
@@ -702,9 +714,10 @@
 ** C file, their address may be taken and so there may be indirect
 ** calls.
 */
-#define MR_ASM_STATIC_ENTRY(label) 			\
+
+#define MR_ASM_STATIC_ENTRY(label)			\
 	MR_ASM_FALLTHROUGH(label)			\
-  	MR_entry(label):				\
+	MR_entry(label):				\
 	__asm__ __volatile__(				\
 		MR_INLINE_ASM_ENTRY_LABEL_TYPE(label)	\
 		MR_INLINE_ASM_ENTRY_LABEL(label)	\
@@ -727,9 +740,10 @@
 ** to identical code, but for which we have different information
 ** stored in the stack layout structs, etc.
 */
-#define MR_ASM_LOCAL_ENTRY(label) 			\
+
+#define MR_ASM_LOCAL_ENTRY(label)			\
 	MR_ASM_FALLTHROUGH(label)			\
-  	MR_entry(label):				\
+	MR_entry(label):				\
 	__asm__ __volatile__(				\
 		MR_INLINE_ASM_COMMENT(label)		\
 		MR_INLINE_ASM_FIXUP_REGS		\
@@ -759,15 +773,15 @@
 	__asm__ __volatile__("" : : "g"(address))
   /*
   Explanation:
-  	__asm__
-  	__volatile__			don't optimize this asm away
-  	(
-  		""			empty assembler code
-  		: 			no outputs
-  		: "g" (address)		one input value, `address';
-  					"g" means that it can go in any
-  					general-purpose register
-  	)
+	__asm__
+	__volatile__			don't optimize this asm away
+	(
+		""			empty assembler code
+		:			no outputs
+		: "g" (address)		one input value, `address';
+					"g" means that it can go in any
+					general-purpose register
+	)
   */
 
   /*
@@ -781,8 +795,8 @@
 	__asm__ __volatile("":::"memory")
   /*
   Explanation:
-  	__asm__
-	__volatile__		 	Don't optimize this asm away.
+	__asm__
+	__volatile__			Don't optimize this asm away.
 	(
 		""			Empty assembler code.
 		:			No outputs.
@@ -844,24 +858,24 @@
   #define MR_END_MODULE } }
 
   #if defined(MR_USE_ASM_LABELS)
-    #define MR_declare_entry(label)		\
+    #define MR_declare_entry(label)					\
 	extern void label(void) __asm__("_entry_" MR_STRINGIFY(label))
-    #define MR_declare_static(label)		\
+    #define MR_declare_static(label)					\
 	static void label(void) __asm__("_entry_" MR_STRINGIFY(label))
     #define MR_define_extern_entry(label)	MR_declare_entry(label)
-    #define MR_define_entry(label)		\
-		MR_ASM_ENTRY(label)		\
-	}					\
-	label:					\
-	MR_PRETEND_ADDRESS_IS_USED(&&MR_entry(label));	\
-	{ \
+    #define MR_define_entry(label)					\
+		MR_ASM_ENTRY(label)					\
+	}								\
+	label:								\
+	MR_PRETEND_ADDRESS_IS_USED(&&MR_entry(label));			\
+	{								\
 	MR_PRETEND_REGS_ARE_USED;
-    #define MR_define_static(label)		\
-		MR_ASM_STATIC_ENTRY(label) 	\
-	}					\
-	label:					\
-	MR_PRETEND_ADDRESS_IS_USED(&&MR_entry(label));	\
-	{ \
+    #define MR_define_static(label)					\
+		MR_ASM_STATIC_ENTRY(label)				\
+	}								\
+	label:								\
+	MR_PRETEND_ADDRESS_IS_USED(&&MR_entry(label));			\
+	{								\
 	MR_PRETEND_REGS_ARE_USED;
     /*
     ** The MR_PRETEND_ADDRESS_IS_USED macro is necessary to
@@ -870,24 +884,24 @@
     ** macro is used to prevent gcc from caching values in registers
     ** before the label.
     */
-    #define MR_init_entry(label)	\
-	MR_PRETEND_ADDRESS_IS_USED(&&label); \
+    #define MR_init_entry(label)					\
+	MR_PRETEND_ADDRESS_IS_USED(&&label);				\
 	MR_make_entry(MR_STRINGIFY(label), label, label)
-    #define MR_init_entry_ai(label)	\
-	MR_PRETEND_ADDRESS_IS_USED(&&label); \
+    #define MR_init_entry_ai(label)					\
+	MR_PRETEND_ADDRESS_IS_USED(&&label);				\
 	MR_make_entry_ai(MR_STRINGIFY(label), label, label)
-    #define MR_init_entry_an(label)	\
-	MR_PRETEND_ADDRESS_IS_USED(&&label); \
+    #define MR_init_entry_an(label)					\
+	MR_PRETEND_ADDRESS_IS_USED(&&label);				\
 	MR_make_entry_an(MR_STRINGIFY(label), label, label)
-    #define MR_init_entry_sl(label)	\
-	MR_PRETEND_ADDRESS_IS_USED(&&label); \
+    #define MR_init_entry_sl(label)					\
+	MR_PRETEND_ADDRESS_IS_USED(&&label);				\
 	MR_make_entry_sl(MR_STRINGIFY(label), label, label)
 
-    #define MR_pretend_address_is_used(label)			\
+    #define MR_pretend_address_is_used(label)				\
 	MR_PRETEND_ADDRESS_IS_USED(&&label);
     #define MR_entry_addr_wrapper(label)
 
-    #define MR_ENTRY(label) 		(&label)
+    #define MR_ENTRY(label)		(&label)
 
     #ifndef MR_JUMP
     #define MR_JUMP(label)		MR_ASM_JUMP(label)
@@ -899,29 +913,29 @@
     #define MR_declare_entry(label)	extern MR_Code * MR_entry(label)
     #define MR_declare_static(label)	static MR_Code * MR_entry(label)
     #define MR_define_extern_entry(label) MR_Code * MR_entry(label)
-    #define MR_define_entry(label)	\
-	}	\
-	MR_entry(label): \
-	label:	\
+    #define MR_define_entry(label)					\
+	}								\
+	MR_entry(label):						\
+	label:								\
 	{
-    #define MR_define_static(label)	\
-	}	\
-	MR_entry(label): \
-	label:	\
+    #define MR_define_static(label)					\
+	}								\
+	MR_entry(label):						\
+	label:								\
 	{
-    #define MR_init_entry(label)	\
-	MR_make_entry(MR_STRINGIFY(label), &&label, label);	\
+    #define MR_init_entry(label)					\
+	MR_make_entry(MR_STRINGIFY(label), &&label, label);		\
 	MR_entry(label) = &&label
-    #define MR_init_entry_ai(label)	\
-	MR_make_entry_ai(MR_STRINGIFY(label), &&label, label);	\
+    #define MR_init_entry_ai(label)					\
+	MR_make_entry_ai(MR_STRINGIFY(label), &&label, label);		\
 	MR_entry(label) = &&label
-    #define MR_init_entry_an(label)	\
-	MR_make_entry_an(MR_STRINGIFY(label), &&label, label);	\
+    #define MR_init_entry_an(label)					\
+	MR_make_entry_an(MR_STRINGIFY(label), &&label, label);		\
 	MR_entry(label) = &&label
-    #define MR_init_entry_sl(label)	\
-	MR_make_entry_sl(MR_STRINGIFY(label), &&label, label);	\
+    #define MR_init_entry_sl(label)					\
+	MR_make_entry_sl(MR_STRINGIFY(label), &&label, label);		\
 	MR_entry(label) = &&label
-    #define MR_ENTRY(label) 		(MR_entry(label))
+    #define MR_ENTRY(label)		(MR_entry(label))
 
     #ifndef MR_JUMP
     #define MR_JUMP(label)		goto *(label)
@@ -930,40 +944,55 @@
   #endif /* !defined(MR_USE_ASM_LABELS) */
 
   #define MR_declare_local(label)	/* no declaration required */
-  #define MR_define_local(label)	\
-  		MR_ASM_LOCAL_ENTRY(label)	\
-	}	\
-	label:	\
+  #define MR_define_local(label)					\
+		MR_ASM_LOCAL_ENTRY(label)				\
+	}								\
+	label:								\
 	{
-  #define MR_init_local(label)	\
-  	MR_make_local(MR_STRINGIFY(label), &&MR_entry(label), label)
-  #define MR_init_local_ai(label)	\
-  	MR_make_local_ai(MR_STRINGIFY(label), &&MR_entry(label), label)
-  #define MR_init_local_an(label)	\
-  	MR_make_local_an(MR_STRINGIFY(label), &&MR_entry(label), label)
-  #define MR_init_local_sl(label)	\
-  	MR_make_local_sl(MR_STRINGIFY(label), &&MR_entry(label), label)
+  #define MR_init_local(label)						\
+	MR_make_local(MR_STRINGIFY(label), &&MR_entry(label), label)
+  #define MR_init_local_ai(label)					\
+	MR_make_local_ai(MR_STRINGIFY(label), &&MR_entry(label), label)
+  #define MR_init_local_an(label)					\
+	MR_make_local_an(MR_STRINGIFY(label), &&MR_entry(label), label)
+  #define MR_init_local_sl(label)					\
+	MR_make_local_sl(MR_STRINGIFY(label), &&MR_entry(label), label)
+
   #define MR_define_label(label)	MR_define_local(label)
   #define MR_declare_label(label)	/* no declaration required */
-  #define MR_init_label(label)	\
-	MR_make_label(MR_STRINGIFY(label), &&MR_entry(label), label)
-  #define MR_init_label_ai(label)	\
-	MR_make_label_ai(MR_STRINGIFY(label), &&MR_entry(label), label)
-  #define MR_init_label_an(label)	\
-	MR_make_label_an(MR_STRINGIFY(label), &&MR_entry(label), label)
-  #define MR_init_label_sl(label)	\
-	MR_make_label_sl(MR_STRINGIFY(label), &&MR_entry(label), label)
+
+  #define MR_init_label(label)						\
+	MR_make_label(MR_STRINGIFY(label), &&MR_entry(label),		\
+		MR_LABEL_LAYOUT(label))
+  #define MR_init_label_ai(label)					\
+	MR_make_label_ai(MR_STRINGIFY(label), &&MR_entry(label),	\
+		MR_LABEL_LAYOUT(label))
+  #define MR_init_label_an(label)					\
+	MR_make_label_an(MR_STRINGIFY(label), &&MR_entry(label),	\
+		MR_LABEL_LAYOUT(label))
+  #define MR_init_label_sl(label)					\
+	MR_make_label_sl(MR_STRINGIFY(label), &&MR_entry(label),	\
+		MR_LABEL_LAYOUT(label))
+
+  #define MR_init_label_ml(label, layout)				\
+	MR_make_label(MR_STRINGIFY(label), &&MR_entry(label), layout)
+  #define MR_init_label_ml_ai(label, layout)				\
+	MR_make_label_ai(MR_STRINGIFY(label), &&MR_entry(label), layout)
+  #define MR_init_label_ml_an(label, layout)				\
+	MR_make_label_an(MR_STRINGIFY(label), &&MR_entry(label), layout)
+  #define MR_init_label_ml_sl(label, layout)				\
+	MR_make_label_sl(MR_STRINGIFY(label), &&MR_entry(label), layout)
 
   #define MR_LOCAL(label)	(&&MR_entry(label))
   #define MR_LABEL(label)	(&&MR_entry(label))
   #define MR_GOTO(label)	do {					\
-	  				MR_debuggoto(label);		\
+					MR_debuggoto(label);		\
 					MR_JUMP(label);			\
-  				} while(0)
-  #define MR_GOTO_ENTRY(label) 	MR_GOTO(MR_ENTRY(label))
-  #define MR_GOTO_LOCAL(label) 	MR_GOTO_LABEL(label)
-  #define MR_GOTO_LABEL(label) 	do {					\
-  					MR_debuggoto(MR_LABEL(label));	\
+				} while(0)
+  #define MR_GOTO_ENTRY(label)	MR_GOTO(MR_ENTRY(label))
+  #define MR_GOTO_LOCAL(label)	MR_GOTO_LABEL(label)
+  #define MR_GOTO_LABEL(label)	do {					\
+					MR_debuggoto(MR_LABEL(label));	\
 					goto label;			\
 				} while(0)
 
@@ -978,31 +1007,32 @@
   /* Define the type of a module initialization function */
   typedef MR_Code * MR_ModuleFunc(void);
 
-  #define MR_BEGIN_MODULE(module_name)	\
-	MR_MODULE_STATIC_OR_EXTERN MR_Code* module_name(void); \
-	MR_MODULE_STATIC_OR_EXTERN MR_Code* module_name(void) {
+  #define MR_BEGIN_MODULE(module_name)					\
+	MR_MODULE_STATIC_OR_EXTERN MR_Code * module_name(void);		\
+	MR_MODULE_STATIC_OR_EXTERN MR_Code * module_name(void) {
   #define MR_BEGIN_CODE			return 0;
   #define MR_END_MODULE			}
 
   #define MR_declare_entry(label)		extern MR_Code *label(void)
   #define MR_declare_static(label)		static MR_Code *label(void)
   #define MR_define_extern_entry(label)		MR_Code *label(void)
-  #define MR_define_entry(label)		\
-		MR_GOTO_LABEL(label);		\
-	}					\
+  #define MR_define_entry(label)					\
+		MR_GOTO_LABEL(label);					\
+	}								\
 	MR_Code* label(void) {
-  #define MR_define_static(label)		\
-		MR_GOTO_LABEL(label);		\
-	}					\
+  #define MR_define_static(label)					\
+		MR_GOTO_LABEL(label);					\
+	}								\
 	static MR_Code* label(void) {
-  #define MR_init_entry(label)		MR_make_entry(MR_STRINGIFY(label),    \
-		  				label, label)
-  #define MR_init_entry_ai(label)	MR_make_entry_ai(MR_STRINGIFY(label), \
-		  				label, label)
-  #define MR_init_entry_an(label)	MR_make_entry_an(MR_STRINGIFY(label), \
-		  				label, label)
-  #define MR_init_entry_sl(label)	MR_make_entry_sl(MR_STRINGIFY(label), \
-		  				label, label)
+
+  #define MR_init_entry(label)						\
+	MR_make_entry(MR_STRINGIFY(label), label, label)
+  #define MR_init_entry_ai(label)					\
+	MR_make_entry_ai(MR_STRINGIFY(label), label, label)
+  #define MR_init_entry_an(label)					\
+	MR_make_entry_an(MR_STRINGIFY(label), label, label)
+  #define MR_init_entry_sl(label)					\
+	MR_make_entry_sl(MR_STRINGIFY(label), label, label)
 
   #define MR_declare_local(label)	static MR_Code *label(void)
   #define MR_define_local(label)	\
@@ -1010,31 +1040,40 @@
 	}				\
 	static MR_Code* label(void) {
 
-  #define MR_init_local(label)		MR_make_local(MR_STRINGIFY(label),    \
-		  				label, label)
-  #define MR_init_local_ai(label)	MR_make_local_ai(MR_STRINGIFY(label), \
-		  				label, label)
-  #define MR_init_local_an(label)	MR_make_local_an(MR_STRINGIFY(label), \
-		  				label, label)
-  #define MR_init_local_sl(label)	MR_make_local_sl(MR_STRINGIFY(label), \
-		  				label, label)
+  #define MR_init_local(label)						\
+	MR_make_local(MR_STRINGIFY(label),    label, label)
+  #define MR_init_local_ai(label)					\
+	MR_make_local_ai(MR_STRINGIFY(label), label, label)
+  #define MR_init_local_an(label)					\
+	MR_make_local_an(MR_STRINGIFY(label), label, label)
+  #define MR_init_local_sl(label)					\
+	MR_make_local_sl(MR_STRINGIFY(label), label, label)
 
   #define MR_declare_label(label)	static MR_Code *label(void)
-  #define MR_define_label(label)	\
-		MR_GOTO_LABEL(label);	\
-	}				\
+  #define MR_define_label(label)					\
+		MR_GOTO_LABEL(label);					\
+	}								\
 	static MR_Code* label(void) {
 
-  #define MR_init_label(label)		MR_make_label(MR_STRINGIFY(label),    \
-		  				label, label)
-  #define MR_init_label_ai(label)	MR_make_label_ai(MR_STRINGIFY(label), \
-		  				label, label)
-  #define MR_init_label_an(label)	MR_make_label_an(MR_STRINGIFY(label), \
-		  				label, label)
-  #define MR_init_label_sl(label)	MR_make_label_sl(MR_STRINGIFY(label), \
-		  				label, label)
+  #define MR_init_label(label)						\
+	MR_make_label(MR_STRINGIFY(label),    label, MR_LABEL_LAYOUT(label))
+  #define MR_init_label_ai(label)					\
+	MR_make_label_ai(MR_STRINGIFY(label), label, MR_LABEL_LAYOUT(label))
+  #define MR_init_label_an(label)					\
+	MR_make_label_an(MR_STRINGIFY(label), label, MR_LABEL_LAYOUT(label))
+  #define MR_init_label_sl(label)					\
+	MR_make_label_sl(MR_STRINGIFY(label), label, MR_LABEL_LAYOUT(label))
 
-  #define MR_ENTRY(label) 	((MR_Code *) (label))
+  #define MR_init_label_ml(label, layout)				\
+	MR_make_label(MR_STRINGIFY(label),    label, layout)
+  #define MR_init_label_ml_ai(label, layout)				\
+	MR_make_label_ai(MR_STRINGIFY(label), label, layout)
+  #define MR_init_label_ml_an(label, layout)				\
+	MR_make_label_an(MR_STRINGIFY(label), label, layout)
+  #define MR_init_label_ml_sl(label, layout)				\
+	MR_make_label_sl(MR_STRINGIFY(label), label, layout)
+
+  #define MR_ENTRY(label)	((MR_Code *) (label))
   #define MR_LOCAL(label)	((MR_Code *) (label))
   #define MR_LABEL(label)	((MR_Code *) (label))
   /*
@@ -1042,19 +1081,21 @@
   ** which is why the following definitions have no MR_debuggoto().
   */
   #define MR_GOTO(label)	return (label)
-  #define MR_GOTO_ENTRY(label) 	MR_GOTO(MR_ENTRY(label))
-  #define MR_GOTO_LOCAL(label) 	MR_GOTO(MR_LOCAL(label))
-  #define MR_GOTO_LABEL(label) 	MR_GOTO(MR_LABEL(label))
+  #define MR_GOTO_ENTRY(label)	MR_GOTO(MR_ENTRY(label))
+  #define MR_GOTO_LOCAL(label)	MR_GOTO(MR_LOCAL(label))
+  #define MR_GOTO_LABEL(label)	MR_GOTO(MR_LABEL(label))
 
 #endif /* !defined(MR_USE_GCC_NONLOCAL_GOTOS) */
 
-#define MR_ENTRY_AP(label) 		MR_ENTRY(MR_add_prefix(label))
+/*---------------------------------------------------------------------------*/
+
+#define MR_ENTRY_AP(label)		MR_ENTRY(MR_add_prefix(label))
 #define MR_LOCAL_AP(label)		MR_LOCAL(MR_add_prefix(label))
 #define MR_LABEL_AP(label)		MR_LABEL(MR_add_prefix(label))
 #define MR_GOTO_AP(label)		MR_GOTO(MR_add_prefix(label))
-#define MR_GOTO_ENT(label) 		MR_GOTO_ENTRY(MR_add_prefix(label))
-#define MR_GOTO_LOC(label) 		MR_GOTO_LOCAL(MR_add_prefix(label))
-#define MR_GOTO_LAB(label) 		MR_GOTO_LABEL(MR_add_prefix(label))
+#define MR_GOTO_ENT(label)		MR_GOTO_ENTRY(MR_add_prefix(label))
+#define MR_GOTO_LOC(label)		MR_GOTO_LOCAL(MR_add_prefix(label))
+#define MR_GOTO_LAB(label)		MR_GOTO_LABEL(MR_add_prefix(label))
 
 #define	MR_decl_user_entry(mod, name, arity, mode) \
 	MR_declare_entry(MR_proc_entry_user_name(mod, name, arity, mode))
@@ -1079,6 +1120,8 @@
 	MR_define_static(MR_proc_entry_user_name(mod, name, arity, mode))
 #define	MR_def_uci_static(mod, name, type, arity, mode) \
 	MR_define_static(MR_proc_entry_uci_name(mod, name, type, arity, mode))
+
+/*---------------------------------------------------------------------------*/
 
 #if defined(MR_INSERT_LABELS) || defined(MR_MPROF_PROFILE_CALLS)
   #define MR_need_insert_entry(ai)		1
@@ -1105,23 +1148,23 @@
 #endif
 
 #define	MR_init_entry_select(str, addr, layout, ai, an, sl)		\
-  	( MR_need_insert_entry(ai) ?					\
+	( MR_need_insert_entry(ai) ?					\
 		MR_insert_entry_label(					\
 			MR_need_entry_label_names(an) ? str : NULL,	\
 			addr, sl ? layout : NULL)			\
 		: (void) 0 )
 
 #define	MR_init_internal_select(str, addr, layout, ai, an, sl)		\
-  	( MR_need_insert_internal(ai) ?					\
+	( MR_need_insert_internal(ai) ?					\
 		MR_insert_internal_label(				\
 			MR_need_internal_label_names(an) ? str : NULL,	\
 			addr, sl ? layout : NULL)			\
 		: (void) 0 )
 
 #define MR_init_user_entry_select(mod, name, arity, mode, ai, an, sl)	\
-  	MR_pretend_address_is_used(					\
+	MR_pretend_address_is_used(					\
 		MR_proc_entry_user_name(mod, name, arity, mode))	\
-  	MR_init_entry_select(						\
+	MR_init_entry_select(						\
 		MR_proc_entry_user_name_str(mod, name, arity, mode),	\
 		MR_entry_addr_wrapper(					\
 			MR_proc_entry_user_name(mod, name, arity, mode)),\
@@ -1129,9 +1172,9 @@
 		ai, an, sl)
 
 #define MR_init_uci_entry_select(mod, name, type, arity, mode, ai, an, sl) \
-  	MR_pretend_address_is_used(					\
+	MR_pretend_address_is_used(					\
 		MR_proc_entry_uci_name(mod, name, type, arity, mode))	\
-  	MR_init_entry_select(						\
+	MR_init_entry_select(						\
 		MR_proc_entry_uci_name_str(mod, name, type, arity, mode), \
 		MR_entry_addr_wrapper(					\
 			MR_proc_entry_uci_name(mod, name, type, arity, mode)),\
@@ -1139,7 +1182,7 @@
 		ai, an, sl)
 
 #define MR_init_user_label_select(mod, name, arity, mode, num, ai, an, sl) \
-  	MR_init_label_select(						\
+	MR_init_label_select(						\
 		MR_label_user_name_str(mod, name, arity, mode, num),	\
 		MR_entry_addr_wrapper(					\
 			MR_label_user_name(mod, name, arity, mode, num)),\
@@ -1147,7 +1190,7 @@
 		ai, an, sl)
 
 #define MR_init_uci_label_select(mod, name, type, arity, mode, num, ai, an, sl)\
-  	MR_init_label_select(						\
+	MR_init_label_select(						\
 		MR_label_uci_name_str(mod, name, type, arity, mode, num), \
 		MR_entry_addr_wrapper(					\
 			MR_label_uci_name(mod, name, type, arity, mode, num)),\
@@ -1209,164 +1252,486 @@
 #define	MR_init_local1_sl(e)						\
 	MR_init_local_sl(MR_add_prefix(e));
 
-#define	MR_init_label1(e, ln1)						\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln1));
-
-#define	MR_init_label2(e, ln1, ln2)					\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln2));
-
-#define	MR_init_label3(e, ln1, ln2, ln3)				\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln3));
-
-#define	MR_init_label4(e, ln1, ln2, ln3, ln4)				\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln4));
-
-#define	MR_init_label5(e, ln1, ln2, ln3, ln4, ln5)			\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln4));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln5));
-
-#define	MR_init_label6(e, ln1, ln2, ln3, ln4, ln5, ln6)			\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln4));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln5));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln6));
-
-#define	MR_init_label7(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7)		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln4));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln5));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln6));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln7));
-
-#define	MR_init_label8(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8)	\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln4));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln5));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln6));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln7));		\
-	MR_init_label(MR_label_name(MR_add_prefix(e), ln8));
-
 #define	MR_init_label1_sl(e)						\
 	MR_init_label_sl(MR_add_prefix(e));
 
-#define	MR_init_label_sl1(e, ln1)					\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));
+/*---------------------------------------------------------------------------*/
 
-#define	MR_init_label_sl2(e, ln1, ln2)					\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));
+#define	MR_var_label_layouts(m)						\
+	MR_PASTE2(mercury_data__var_label_layout_array__, m)
 
-#define	MR_init_label_sl3(e, ln1, ln2, ln3)				\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));
+#define	MR_no_var_label_layouts(m)					\
+	MR_PASTE2(mercury_data__no_var_label_layout_array__, m)
 
-#define	MR_init_label_sl4(e, ln1, ln2, ln3, ln4)			\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));
+#define	MR_user_event_var_nums(m)					\
+	MR_PASTE2(mercury_data__user_event_var_nums_array__, m)
 
-#define	MR_init_label_sl5(e, ln1, ln2, ln3, ln4, ln5)			\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln5));
+#define	MR_user_event_layouts(m)					\
+	MR_PASTE2(mercury_data__user_event_layouts_array__, m)
 
-#define	MR_init_label_sl6(e, ln1, ln2, ln3, ln4, ln5, ln6)		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln5));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln6));
+/*---------------------------------------------------------------------------*/
 
-#define	MR_init_label_sl7(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7)		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln5));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln6));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln7));
+#define	MR_var_label_layout_refs1(m, s1)				\
+	&MR_var_label_layouts(m)[s1],
 
-#define	MR_init_label_sl8(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8)	\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln5));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln6));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln7));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln8));
+#define	MR_var_label_layout_refs2(m, s1, s2) 				\
+	MR_var_label_layout_refs1(m, s1)				\
+	MR_var_label_layout_refs1(m, s2)
 
-#define	MR_init_label_sl1(e, ln1)					\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));
+#define	MR_var_label_layout_refs3(m, s1, s2, s3) 			\
+	MR_var_label_layout_refs1(m, s1)				\
+	MR_var_label_layout_refs1(m, s2)				\
+	MR_var_label_layout_refs1(m, s3)
 
-#define	MR_init_label_sl2(e, ln1, ln2)					\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));
+#define	MR_var_label_layout_refs4(m, s1, s2, s3, s4) 			\
+	MR_var_label_layout_refs1(m, s1)				\
+	MR_var_label_layout_refs1(m, s2)				\
+	MR_var_label_layout_refs1(m, s3)				\
+	MR_var_label_layout_refs1(m, s4)
 
-#define	MR_init_label_sl3(e, ln1, ln2, ln3)				\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));
+#define	MR_var_label_layout_refs5(m, s1, s2, s3, s4, s5) 		\
+	MR_var_label_layout_refs1(m, s1)				\
+	MR_var_label_layout_refs1(m, s2)				\
+	MR_var_label_layout_refs1(m, s3)				\
+	MR_var_label_layout_refs1(m, s4)				\
+	MR_var_label_layout_refs1(m, s5)
 
-#define	MR_init_label_sl4(e, ln1, ln2, ln3, ln4)			\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));
+#define	MR_var_label_layout_refs6(m, s1, s2, s3, s4, s5, s6) 		\
+	MR_var_label_layout_refs1(m, s1)				\
+	MR_var_label_layout_refs1(m, s2)				\
+	MR_var_label_layout_refs1(m, s3)				\
+	MR_var_label_layout_refs1(m, s4)				\
+	MR_var_label_layout_refs1(m, s5)				\
+	MR_var_label_layout_refs1(m, s6)
 
-#define	MR_init_label_sl5(e, ln1, ln2, ln3, ln4, ln5)			\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln5));
+#define	MR_var_label_layout_refs7(m, s1, s2, s3, s4, s5, s6, s7) 	\
+	MR_var_label_layout_refs1(m, s1)				\
+	MR_var_label_layout_refs1(m, s2)				\
+	MR_var_label_layout_refs1(m, s3)				\
+	MR_var_label_layout_refs1(m, s4)				\
+	MR_var_label_layout_refs1(m, s5)				\
+	MR_var_label_layout_refs1(m, s6)				\
+	MR_var_label_layout_refs1(m, s7)
 
-#define	MR_init_label_sl6(e, ln1, ln2, ln3, ln4, ln5, ln6)		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln5));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln6));
+#define	MR_var_label_layout_refs8(m, s1, s2, s3, s4, s5, s6, s7, s8) 	\
+	MR_var_label_layout_refs1(m, s1)				\
+	MR_var_label_layout_refs1(m, s2)				\
+	MR_var_label_layout_refs1(m, s3)				\
+	MR_var_label_layout_refs1(m, s4)				\
+	MR_var_label_layout_refs1(m, s5)				\
+	MR_var_label_layout_refs1(m, s6)				\
+	MR_var_label_layout_refs1(m, s7)				\
+	MR_var_label_layout_refs1(m, s8)
 
-#define	MR_init_label_sl7(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7)		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln5));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln6));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln7));
+#define	MR_var_label_layout_refs9(m, s1, s2, s3, s4, s5, s6, s7, s8, s9) \
+	MR_var_label_layout_refs1(m, s1)				\
+	MR_var_label_layout_refs1(m, s2)				\
+	MR_var_label_layout_refs1(m, s3)				\
+	MR_var_label_layout_refs1(m, s4)				\
+	MR_var_label_layout_refs1(m, s5)				\
+	MR_var_label_layout_refs1(m, s6)				\
+	MR_var_label_layout_refs1(m, s7)				\
+	MR_var_label_layout_refs1(m, s8)				\
+	MR_var_label_layout_refs1(m, s9)
 
-#define	MR_init_label_sl8(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8)	\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln4));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln5));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln6));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln7));		\
-	MR_init_label_sl(MR_label_name(MR_add_prefix(e), ln8));
+#define	MR_var_label_layout_refs10(m, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10) \
+	MR_var_label_layout_refs1(m, s1)				\
+	MR_var_label_layout_refs1(m, s2)				\
+	MR_var_label_layout_refs1(m, s3)				\
+	MR_var_label_layout_refs1(m, s4)				\
+	MR_var_label_layout_refs1(m, s5)				\
+	MR_var_label_layout_refs1(m, s6)				\
+	MR_var_label_layout_refs1(m, s7)				\
+	MR_var_label_layout_refs1(m, s8)				\
+	MR_var_label_layout_refs1(m, s9)				\
+	MR_var_label_layout_refs1(m, s10)
+
+#define	MR_no_var_label_layout_refs1(m, s1)				\
+	&MR_no_var_label_layouts(m)[s1],
+
+#define	MR_no_var_label_layout_refs2(m, s1, s2)				\
+	MR_no_var_label_layout_refs1(m, s1)				\
+	MR_no_var_label_layout_refs1(m, s2)
+
+#define	MR_no_var_label_layout_refs3(m, s1, s2, s3) 			\
+	MR_no_var_label_layout_refs1(m, s1)				\
+	MR_no_var_label_layout_refs1(m, s2)				\
+	MR_no_var_label_layout_refs1(m, s3)
+
+#define	MR_no_var_label_layout_refs4(m, s1, s2, s3, s4) 		\
+	MR_no_var_label_layout_refs1(m, s1)				\
+	MR_no_var_label_layout_refs1(m, s2)				\
+	MR_no_var_label_layout_refs1(m, s3)				\
+	MR_no_var_label_layout_refs1(m, s4)
+
+#define	MR_no_var_label_layout_refs5(m, s1, s2, s3, s4, s5) 		\
+	MR_no_var_label_layout_refs1(m, s1)				\
+	MR_no_var_label_layout_refs1(m, s2)				\
+	MR_no_var_label_layout_refs1(m, s3)				\
+	MR_no_var_label_layout_refs1(m, s4)				\
+	MR_no_var_label_layout_refs1(m, s5)
+
+#define	MR_no_var_label_layout_refs6(m, s1, s2, s3, s4, s5, s6) 	\
+	MR_no_var_label_layout_refs1(m, s1)				\
+	MR_no_var_label_layout_refs1(m, s2)				\
+	MR_no_var_label_layout_refs1(m, s3)				\
+	MR_no_var_label_layout_refs1(m, s4)				\
+	MR_no_var_label_layout_refs1(m, s5)				\
+	MR_no_var_label_layout_refs1(m, s6)
+
+#define	MR_no_var_label_layout_refs7(m, s1, s2, s3, s4, s5, s6, s7) 	\
+	MR_no_var_label_layout_refs1(m, s1)				\
+	MR_no_var_label_layout_refs1(m, s2)				\
+	MR_no_var_label_layout_refs1(m, s3)				\
+	MR_no_var_label_layout_refs1(m, s4)				\
+	MR_no_var_label_layout_refs1(m, s5)				\
+	MR_no_var_label_layout_refs1(m, s6)				\
+	MR_no_var_label_layout_refs1(m, s7)
+
+#define	MR_no_var_label_layout_refs8(m, s1, s2, s3, s4, s5, s6, s7, s8)	\
+	MR_no_var_label_layout_refs1(m, s1)				\
+	MR_no_var_label_layout_refs1(m, s2)				\
+	MR_no_var_label_layout_refs1(m, s3)				\
+	MR_no_var_label_layout_refs1(m, s4)				\
+	MR_no_var_label_layout_refs1(m, s5)				\
+	MR_no_var_label_layout_refs1(m, s6)				\
+	MR_no_var_label_layout_refs1(m, s7)				\
+	MR_no_var_label_layout_refs1(m, s8)
+
+#define	MR_no_var_label_layout_refs9(m, s1, s2, s3, s4, s5, s6, s7, s8, s9) \
+	MR_no_var_label_layout_refs1(m, s1)				\
+	MR_no_var_label_layout_refs1(m, s2)				\
+	MR_no_var_label_layout_refs1(m, s3)				\
+	MR_no_var_label_layout_refs1(m, s4)				\
+	MR_no_var_label_layout_refs1(m, s5)				\
+	MR_no_var_label_layout_refs1(m, s6)				\
+	MR_no_var_label_layout_refs1(m, s7)				\
+	MR_no_var_label_layout_refs1(m, s8)				\
+	MR_no_var_label_layout_refs1(m, s9)
+
+#define	MR_no_var_label_layout_refs10(m, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10) \
+	MR_no_var_label_layout_refs1(m, s1)				\
+	MR_no_var_label_layout_refs1(m, s2)				\
+	MR_no_var_label_layout_refs1(m, s3)				\
+	MR_no_var_label_layout_refs1(m, s4)				\
+	MR_no_var_label_layout_refs1(m, s5)				\
+	MR_no_var_label_layout_refs1(m, s6)				\
+	MR_no_var_label_layout_refs1(m, s7)				\
+	MR_no_var_label_layout_refs1(m, s8)				\
+	MR_no_var_label_layout_refs1(m, s9)				\
+	MR_no_var_label_layout_refs1(m, s10)
+
+/*---------------------------------------------------------------------------*/
+
+#define	MR_init_label1(e, l1)						\
+	MR_init_label(MR_label_name(MR_add_prefix(e), l1));
+
+#define	MR_init_label2(e, l1, l2)					\
+	MR_init_label1(e, l1)						\
+	MR_init_label1(e, l2)
+
+#define	MR_init_label3(e, l1, l2, l3)					\
+	MR_init_label1(e, l1)						\
+	MR_init_label1(e, l2)						\
+	MR_init_label1(e, l3)
+
+#define	MR_init_label4(e, l1, l2, l3, l4)				\
+	MR_init_label1(e, l1)						\
+	MR_init_label1(e, l2)						\
+	MR_init_label1(e, l3)						\
+	MR_init_label1(e, l4)
+
+#define	MR_init_label5(e, l1, l2, l3, l4, l5)				\
+	MR_init_label1(e, l1)						\
+	MR_init_label1(e, l2)						\
+	MR_init_label1(e, l3)						\
+	MR_init_label1(e, l4)						\
+	MR_init_label1(e, l5)
+
+#define	MR_init_label6(e, l1, l2, l3, l4, l5, l6)			\
+	MR_init_label1(e, l1)						\
+	MR_init_label1(e, l2)						\
+	MR_init_label1(e, l3)						\
+	MR_init_label1(e, l4)						\
+	MR_init_label1(e, l5)						\
+	MR_init_label1(e, l6)
+
+#define	MR_init_label7(e, l1, l2, l3, l4, l5, l6, l7)			\
+	MR_init_label1(e, l1)						\
+	MR_init_label1(e, l2)						\
+	MR_init_label1(e, l3)						\
+	MR_init_label1(e, l4)						\
+	MR_init_label1(e, l5)						\
+	MR_init_label1(e, l6)						\
+	MR_init_label1(e, l7)
+
+#define	MR_init_label8(e, l1, l2, l3, l4, l5, l6, l7, l8)		\
+	MR_init_label1(e, l1)						\
+	MR_init_label1(e, l2)						\
+	MR_init_label1(e, l3)						\
+	MR_init_label1(e, l4)						\
+	MR_init_label1(e, l5)						\
+	MR_init_label1(e, l6)						\
+	MR_init_label1(e, l7)						\
+	MR_init_label1(e, l8)
+
+#define	MR_init_label9(e, l1, l2, l3, l4, l5, l6, l7, l8, l9)		\
+	MR_init_label1(e, l1)						\
+	MR_init_label1(e, l2)						\
+	MR_init_label1(e, l3)						\
+	MR_init_label1(e, l4)						\
+	MR_init_label1(e, l5)						\
+	MR_init_label1(e, l6)						\
+	MR_init_label1(e, l7)						\
+	MR_init_label1(e, l8)						\
+	MR_init_label1(e, l9)
+
+#define	MR_init_label10(e, l1, l2, l3, l4, l5, l6, l7, l8, l9, l10)	\
+	MR_init_label1(e, l1)						\
+	MR_init_label1(e, l2)						\
+	MR_init_label1(e, l3)						\
+	MR_init_label1(e, l4)						\
+	MR_init_label1(e, l5)						\
+	MR_init_label1(e, l6)						\
+	MR_init_label1(e, l7)						\
+	MR_init_label1(e, l8)						\
+	MR_init_label1(e, l9)						\
+	MR_init_label1(e, l10)
+
+/*---------------------------------------------------------------------------*/
+
+#define	MR_init_label_sl1(e, l1)					\
+	MR_init_label_sl(MR_label_name(MR_add_prefix(e), l1));
+
+#define	MR_init_label_sl2(e, l1, l2)					\
+	MR_init_label_sl1(e, l1)					\
+	MR_init_label_sl1(e, l2)
+
+#define	MR_init_label_sl3(e, l1, l2, l3)				\
+	MR_init_label_sl1(e, l1)					\
+	MR_init_label_sl1(e, l2)					\
+	MR_init_label_sl1(e, l3)
+
+#define	MR_init_label_sl4(e, l1, l2, l3, l4)				\
+	MR_init_label_sl1(e, l1)					\
+	MR_init_label_sl1(e, l2)					\
+	MR_init_label_sl1(e, l3)					\
+	MR_init_label_sl1(e, l4)
+
+#define	MR_init_label_sl5(e, l1, l2, l3, l4, l5)			\
+	MR_init_label_sl1(e, l1)					\
+	MR_init_label_sl1(e, l2)					\
+	MR_init_label_sl1(e, l3)					\
+	MR_init_label_sl1(e, l4)					\
+	MR_init_label_sl1(e, l5)
+
+#define	MR_init_label_sl6(e, l1, l2, l3, l4, l5, l6)			\
+	MR_init_label_sl1(e, l1)					\
+	MR_init_label_sl1(e, l2)					\
+	MR_init_label_sl1(e, l3)					\
+	MR_init_label_sl1(e, l4)					\
+	MR_init_label_sl1(e, l5)					\
+	MR_init_label_sl1(e, l6)
+
+#define	MR_init_label_sl7(e, l1, l2, l3, l4, l5, l6, l7)		\
+	MR_init_label_sl1(e, l1)					\
+	MR_init_label_sl1(e, l2)					\
+	MR_init_label_sl1(e, l3)					\
+	MR_init_label_sl1(e, l4)					\
+	MR_init_label_sl1(e, l5)					\
+	MR_init_label_sl1(e, l6)					\
+	MR_init_label_sl1(e, l7)
+
+#define	MR_init_label_sl8(e, l1, l2, l3, l4, l5, l6, l7, l8)		\
+	MR_init_label_sl1(e, l1)					\
+	MR_init_label_sl1(e, l2)					\
+	MR_init_label_sl1(e, l3)					\
+	MR_init_label_sl1(e, l4)					\
+	MR_init_label_sl1(e, l5)					\
+	MR_init_label_sl1(e, l6)					\
+	MR_init_label_sl1(e, l7)					\
+	MR_init_label_sl1(e, l8)
+
+#define	MR_init_label_sl9(e, l1, l2, l3, l4, l5, l6, l7, l8, l9)	\
+	MR_init_label_sl1(e, l1)					\
+	MR_init_label_sl1(e, l2)					\
+	MR_init_label_sl1(e, l3)					\
+	MR_init_label_sl1(e, l4)					\
+	MR_init_label_sl1(e, l5)					\
+	MR_init_label_sl1(e, l6)					\
+	MR_init_label_sl1(e, l7)					\
+	MR_init_label_sl1(e, l8)					\
+	MR_init_label_sl1(e, l9)
+
+#define	MR_init_label_sl10(e, l1, l2, l3, l4, l5, l6, l7, l8, l9, l10)	\
+	MR_init_label_sl1(e, l1)					\
+	MR_init_label_sl1(e, l2)					\
+	MR_init_label_sl1(e, l3)					\
+	MR_init_label_sl1(e, l4)					\
+	MR_init_label_sl1(e, l5)					\
+	MR_init_label_sl1(e, l6)					\
+	MR_init_label_sl1(e, l7)					\
+	MR_init_label_sl1(e, l8)					\
+	MR_init_label_sl1(e, l9)					\
+	MR_init_label_sl1(e, l10)
+
+/*---------------------------------------------------------------------------*/
+
+#define	MR_init_label_vi1(e, m, l1, s1)					\
+	MR_init_label_ml_sl(MR_label_name(MR_add_prefix(e), l1),	\
+		&MR_var_label_layouts(m)[s1]);
+
+#define	MR_init_label_vi2(e, m, l1,s1, l2,s2)				\
+	MR_init_label_vi1(e, m, l1, s1)					\
+	MR_init_label_vi1(e, m, l2, s2)
+
+#define	MR_init_label_vi3(e, m, l1,s1, l2,s2, l3,s3)			\
+	MR_init_label_vi1(e, m, l1, s1)					\
+	MR_init_label_vi1(e, m, l2, s2)					\
+	MR_init_label_vi1(e, m, l3, s3)
+
+#define	MR_init_label_vi4(e, m, l1,s1, l2,s2, l3,s3, l4,s4)		\
+	MR_init_label_vi1(e, m, l1, s1)					\
+	MR_init_label_vi1(e, m, l2, s2)					\
+	MR_init_label_vi1(e, m, l3, s3)					\
+	MR_init_label_vi1(e, m, l4, s4)
+
+#define	MR_init_label_vi5(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5)	\
+	MR_init_label_vi1(e, m, l1, s1)					\
+	MR_init_label_vi1(e, m, l2, s2)					\
+	MR_init_label_vi1(e, m, l3, s3)					\
+	MR_init_label_vi1(e, m, l4, s4)					\
+	MR_init_label_vi1(e, m, l5, s5)
+
+#define	MR_init_label_vi6(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6) \
+	MR_init_label_vi1(e, m, l1, s1)					\
+	MR_init_label_vi1(e, m, l2, s2)					\
+	MR_init_label_vi1(e, m, l3, s3)					\
+	MR_init_label_vi1(e, m, l4, s4)					\
+	MR_init_label_vi1(e, m, l5, s5)					\
+	MR_init_label_vi1(e, m, l6, s6)
+
+#define	MR_init_label_vi7(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7) \
+	MR_init_label_vi1(e, m, l1, s1)					\
+	MR_init_label_vi1(e, m, l2, s2)					\
+	MR_init_label_vi1(e, m, l3, s3)					\
+	MR_init_label_vi1(e, m, l4, s4)					\
+	MR_init_label_vi1(e, m, l5, s5)					\
+	MR_init_label_vi1(e, m, l6, s6)					\
+	MR_init_label_vi1(e, m, l7, s7)
+
+#define	MR_init_label_vi8(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7, l8,s8) \
+	MR_init_label_vi1(e, m, l1, s1)					\
+	MR_init_label_vi1(e, m, l2, s2)					\
+	MR_init_label_vi1(e, m, l3, s3)					\
+	MR_init_label_vi1(e, m, l4, s4)					\
+	MR_init_label_vi1(e, m, l5, s5)					\
+	MR_init_label_vi1(e, m, l6, s6)					\
+	MR_init_label_vi1(e, m, l7, s7)					\
+	MR_init_label_vi1(e, m, l8, s8)
+
+#define	MR_init_label_vi9(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7, l8,s8, l9,s9) \
+	MR_init_label_vi1(e, m, l1, s1)					\
+	MR_init_label_vi1(e, m, l2, s2)					\
+	MR_init_label_vi1(e, m, l3, s3)					\
+	MR_init_label_vi1(e, m, l4, s4)					\
+	MR_init_label_vi1(e, m, l5, s5)					\
+	MR_init_label_vi1(e, m, l6, s6)					\
+	MR_init_label_vi1(e, m, l7, s7)					\
+	MR_init_label_vi1(e, m, l8, s8)					\
+	MR_init_label_vi1(e, m, l9, s9)
+
+#define	MR_init_label_vi10(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7, l8,s8, l9,s9, l10,s10) \
+	MR_init_label_vi1(e, m, l1, s1)					\
+	MR_init_label_vi1(e, m, l2, s2)					\
+	MR_init_label_vi1(e, m, l3, s3)					\
+	MR_init_label_vi1(e, m, l4, s4)					\
+	MR_init_label_vi1(e, m, l5, s5)					\
+	MR_init_label_vi1(e, m, l6, s6)					\
+	MR_init_label_vi1(e, m, l7, s7)					\
+	MR_init_label_vi1(e, m, l8, s8)					\
+	MR_init_label_vi1(e, m, l9, s9)					\
+	MR_init_label_vi1(e, m, l10, s10)
+
+/*---------------------------------------------------------------------------*/
+
+#define	MR_init_label_nvi1(e, m, l1, s1)				\
+	MR_init_label_ml_sl(MR_label_name(MR_add_prefix(e), l1),	\
+		&MR_no_var_label_layouts(m)[s1]);
+
+#define	MR_init_label_nvi2(e, m, l1,s1, l2,s2)				\
+	MR_init_label_nvi1(e, m, l1, s1)				\
+	MR_init_label_nvi1(e, m, l2, s2)
+
+#define	MR_init_label_nvi3(e, m, l1,s1, l2,s2, l3,s3)			\
+	MR_init_label_nvi1(e, m, l1, s1)				\
+	MR_init_label_nvi1(e, m, l2, s2)				\
+	MR_init_label_nvi1(e, m, l3, s3)
+
+#define	MR_init_label_nvi4(e, m, l1,s1, l2,s2, l3,s3, l4,s4)		\
+	MR_init_label_nvi1(e, m, l1, s1)				\
+	MR_init_label_nvi1(e, m, l2, s2)				\
+	MR_init_label_nvi1(e, m, l3, s3)				\
+	MR_init_label_nvi1(e, m, l4, s4)
+
+#define	MR_init_label_nvi5(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5)	\
+	MR_init_label_nvi1(e, m, l1, s1)				\
+	MR_init_label_nvi1(e, m, l2, s2)				\
+	MR_init_label_nvi1(e, m, l3, s3)				\
+	MR_init_label_nvi1(e, m, l4, s4)				\
+	MR_init_label_nvi1(e, m, l5, s5)
+
+#define	MR_init_label_nvi6(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6) \
+	MR_init_label_nvi1(e, m, l1, s1)				\
+	MR_init_label_nvi1(e, m, l2, s2)				\
+	MR_init_label_nvi1(e, m, l3, s3)				\
+	MR_init_label_nvi1(e, m, l4, s4)				\
+	MR_init_label_nvi1(e, m, l5, s5)				\
+	MR_init_label_nvi1(e, m, l6, s6)
+
+#define	MR_init_label_nvi7(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7) \
+	MR_init_label_nvi1(e, m, l1, s1)				\
+	MR_init_label_nvi1(e, m, l2, s2)				\
+	MR_init_label_nvi1(e, m, l3, s3)				\
+	MR_init_label_nvi1(e, m, l4, s4)				\
+	MR_init_label_nvi1(e, m, l5, s5)				\
+	MR_init_label_nvi1(e, m, l6, s6)				\
+	MR_init_label_nvi1(e, m, l7, s7)
+
+#define	MR_init_label_nvi8(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7, l8,s8) \
+	MR_init_label_nvi1(e, m, l1, s1)				\
+	MR_init_label_nvi1(e, m, l2, s2)				\
+	MR_init_label_nvi1(e, m, l3, s3)				\
+	MR_init_label_nvi1(e, m, l4, s4)				\
+	MR_init_label_nvi1(e, m, l5, s5)				\
+	MR_init_label_nvi1(e, m, l6, s6)				\
+	MR_init_label_nvi1(e, m, l7, s7)				\
+	MR_init_label_nvi1(e, m, l8, s8)
+
+#define	MR_init_label_nvi9(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7, l8,s8, l9,s9) \
+	MR_init_label_nvi1(e, m, l1, s1)				\
+	MR_init_label_nvi1(e, m, l2, s2)				\
+	MR_init_label_nvi1(e, m, l3, s3)				\
+	MR_init_label_nvi1(e, m, l4, s4)				\
+	MR_init_label_nvi1(e, m, l5, s5)				\
+	MR_init_label_nvi1(e, m, l6, s6)				\
+	MR_init_label_nvi1(e, m, l7, s7)				\
+	MR_init_label_nvi1(e, m, l8, s8)				\
+	MR_init_label_nvi1(e, m, l9, s9)
+
+#define	MR_init_label_nvi10(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7, l8,s8, l9,s9, l10,s10) \
+	MR_init_label_nvi1(e, m, l1, s1)				\
+	MR_init_label_nvi1(e, m, l2, s2)				\
+	MR_init_label_nvi1(e, m, l3, s3)				\
+	MR_init_label_nvi1(e, m, l4, s4)				\
+	MR_init_label_nvi1(e, m, l5, s5)				\
+	MR_init_label_nvi1(e, m, l6, s6)				\
+	MR_init_label_nvi1(e, m, l7, s7)				\
+	MR_init_label_nvi1(e, m, l8, s8)				\
+	MR_init_label_nvi1(e, m, l9, s9)				\
+	MR_init_label_nvi1(e, m, l10, s10)
+
+/*---------------------------------------------------------------------------*/
 
 #define	MR_decl_extern_entry(e)						\
 	MR_declare_extern_entry(MR_add_prefix(e));
@@ -1380,67 +1745,94 @@
 #define	MR_decl_local(e)						\
 	MR_declare_local(MR_add_prefix(e));
 
-#define	MR_decl_label1(e, ln1)						\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln1));
+#define	MR_decl_label1(e, l1)						\
+	MR_declare_label(MR_label_name(MR_add_prefix(e), l1));
 
-#define	MR_decl_label2(e, ln1, ln2)					\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln2));
+#define	MR_decl_label2(e, l1, l2)					\
+	MR_decl_label1(e, l1)						\
+	MR_decl_label1(e, l2)
 
-#define	MR_decl_label3(e, ln1, ln2, ln3)				\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln3));
+#define	MR_decl_label3(e, l1, l2, l3)					\
+	MR_decl_label1(e, l1)						\
+	MR_decl_label1(e, l2)						\
+	MR_decl_label1(e, l3)
 
-#define	MR_decl_label4(e, ln1, ln2, ln3, ln4)				\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln4));
+#define	MR_decl_label4(e, l1, l2, l3, l4)				\
+	MR_decl_label1(e, l1)						\
+	MR_decl_label1(e, l2)						\
+	MR_decl_label1(e, l3)						\
+	MR_decl_label1(e, l4)
 
-#define	MR_decl_label5(e, ln1, ln2, ln3, ln4, ln5)			\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln4));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln5));
+#define	MR_decl_label5(e, l1, l2, l3, l4, l5)				\
+	MR_decl_label1(e, l1)						\
+	MR_decl_label1(e, l2)						\
+	MR_decl_label1(e, l3)						\
+	MR_decl_label1(e, l4)						\
+	MR_decl_label1(e, l5)
 
-#define	MR_decl_label6(e, ln1, ln2, ln3, ln4, ln5, ln6)			\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln4));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln5));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln6));
+#define	MR_decl_label6(e, l1, l2, l3, l4, l5, l6)			\
+	MR_decl_label1(e, l1)						\
+	MR_decl_label1(e, l2)						\
+	MR_decl_label1(e, l3)						\
+	MR_decl_label1(e, l4)						\
+	MR_decl_label1(e, l5)						\
+	MR_decl_label1(e, l6)
 
-#define	MR_decl_label7(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7)		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln4));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln5));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln6));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln7));
+#define	MR_decl_label7(e, l1, l2, l3, l4, l5, l6, l7)			\
+	MR_decl_label1(e, l1)						\
+	MR_decl_label1(e, l2)						\
+	MR_decl_label1(e, l3)						\
+	MR_decl_label1(e, l4)						\
+	MR_decl_label1(e, l5)						\
+	MR_decl_label1(e, l6)						\
+	MR_decl_label1(e, l7)
 
-#define	MR_decl_label8(e, ln1, ln2, ln3, ln4, ln5, ln6, ln7, ln8)	\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln1));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln2));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln3));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln4));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln5));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln6));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln7));		\
-	MR_declare_label(MR_label_name(MR_add_prefix(e), ln8));
+#define	MR_decl_label8(e, l1, l2, l3, l4, l5, l6, l7, l8)		\
+	MR_decl_label1(e, l1)						\
+	MR_decl_label1(e, l2)						\
+	MR_decl_label1(e, l3)						\
+	MR_decl_label1(e, l4)						\
+	MR_decl_label1(e, l5)						\
+	MR_decl_label1(e, l6)						\
+	MR_decl_label1(e, l7)						\
+	MR_decl_label1(e, l8)
+
+#define	MR_decl_label9(e, l1, l2, l3, l4, l5, l6, l7, l8, l9)		\
+	MR_decl_label1(e, l1)						\
+	MR_decl_label1(e, l2)						\
+	MR_decl_label1(e, l3)						\
+	MR_decl_label1(e, l4)						\
+	MR_decl_label1(e, l5)						\
+	MR_decl_label1(e, l6)						\
+	MR_decl_label1(e, l7)						\
+	MR_decl_label1(e, l8)						\
+	MR_decl_label1(e, l9)
+
+#define	MR_decl_label10(e, l1, l2, l3, l4, l5, l6, l7, l8, l9, l10)	\
+	MR_decl_label1(e, l1)						\
+	MR_decl_label1(e, l2)						\
+	MR_decl_label1(e, l3)						\
+	MR_decl_label1(e, l4)						\
+	MR_decl_label1(e, l5)						\
+	MR_decl_label1(e, l6)						\
+	MR_decl_label1(e, l7)						\
+	MR_decl_label1(e, l8)						\
+	MR_decl_label1(e, l9)						\
+	MR_decl_label1(e, l10)
+
+/*---------------------------------------------------------------------------*/
 
 /* definitions for computed gotos */
 
-#define MR_COMPUTED_GOTO(val, labels) 			\
+#define MR_COMPUTED_GOTO(val, labels)			\
 	{						\
 		static MR_Code *jump_table[] = {	\
 			labels				\
 		};					\
-	  	MR_GOTO(jump_table[val]);		\
+		MR_GOTO(jump_table[val]);		\
 	}
 #define MR_AND ,	/* used to separate the labels */
 
 #endif /* not MERCURY_GOTO_H */
+
+/*---------------------------------------------------------------------------*/

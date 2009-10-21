@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2008 The University of Melbourne.
+% Copyright (C) 2001-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -58,13 +58,21 @@
 :- type event_set_layout_data
     --->    event_set_layout_data(
                 event_set_data,
-                map(int, rval)          % Maps each event number to an rval
-                                        % that gives the vector of typeinfos
-                                        % for the arguments of that event.
+
+                % Maps each event number to an rval that gives the vector
+                % of typeinfos for the arguments of that event.
+                map(int, rval)
             ).
 
-:- type layout_data
-    --->    label_layout_data(          % defines MR_LabelLayout
+:- type user_event_data
+    --->    user_event_data(
+                user_event_number       :: int,
+                user_event_locns        :: rval,
+                user_event_var_nums     :: layout_slot_name
+            ).
+
+:- type basic_label_layout
+    --->    basic_label_layout(
                 proc_label              :: proc_label,
                 label_num               :: int,
                 proc_layout_name        :: layout_name,
@@ -72,20 +80,37 @@
                 maybe_is_hidden         :: maybe(bool),
                 label_num_in_module     :: int,
                 maybe_goal_path         :: maybe(int), % offset
-                maybe_user_info         :: maybe(user_event_data),
-                maybe_var_info          :: maybe(label_var_info)
-            )
-    ;       proc_layout_data(           % defines MR_ProcLayout
+                maybe_user_info         :: maybe(layout_slot_name)
+            ).
+
+:- type label_layout_vars
+    --->    label_layout_vars(
+                % defines MR_LabelLayout
+                basic_label_layout,
+                label_var_info
+            ).
+
+:- type label_layout_no_vars
+    --->    label_layout_no_vars(
+                % defines MR_LabelLayoutNoVarInfo
+                basic_label_layout
+            ).
+
+:- type layout_data
+    --->    proc_layout_data(
+                % defines MR_ProcLayout
                 proc_layout_label       :: rtti_proc_label,
                 proc_layout_trav        :: proc_layout_stack_traversal,
                 proc_layout_more        :: maybe_proc_id_and_more
             )
-    ;       module_layout_common_data(  % defines MR_ModuleCommonLayout
+    ;       module_layout_common_data(
+                % defines MR_ModuleCommonLayout
                 module_common_name      :: module_name,
                 string_table_size       :: int,
                 string_table            :: string_with_0s
             )
-    ;       module_layout_data(         % defines MR_ModuleLayout
+    ;       module_layout_data(
+                % defines MR_ModuleLayout
                 module_name             :: module_name,
                 module_common           :: layout_name,
                 proc_layout_names       :: list(layout_name),
@@ -95,7 +120,8 @@
                 num_label_exec_count    :: int,
                 maybe_event_specs       :: maybe(event_set_layout_data)
             )
-    ;       closure_proc_id_data(       % defines MR_ClosureId
+    ;       closure_proc_id_data(
+                % defines MR_ClosureId
                 caller_proc_label       :: proc_label,
                 caller_closure_seq_no   :: int,
                 closure_proc_label      :: proc_label,
@@ -106,19 +132,15 @@
                 closure_goal_path       :: string
             )
     ;       table_io_decl_data(
+                % defines MR_TableIoDecl
                 table_io_decl_proc_ptr  :: rtti_proc_label,
                 table_io_decl_kind      :: proc_layout_kind,
                 table_io_decl_num_ptis  :: int,
-                table_io_decl_ptis      :: rval,
-                                        % pseudo-typeinfos for headvars
-                table_io_decl_type_params :: rval
-            ).
 
-:- type user_event_data
-    --->    user_event_data(
-                user_event_number       :: int,
-                user_event_locns        :: rval,
-                user_event_var_nums     :: list(maybe(int))
+                % pseudo-typeinfos for headvars
+                table_io_decl_ptis      :: rval,
+
+                table_io_decl_type_params :: rval
             ).
 
 :- type label_var_info
@@ -131,10 +153,10 @@
 
 :- type proc_layout_stack_traversal     % defines MR_StackTraversal
     --->    proc_layout_stack_traversal(
+                % The proc entry label will be `no' if we don't have
+                % static code addresses.
                 entry_label             :: maybe(label),
-                                        % The proc entry label; will be `no'
-                                        % if we don't have static code
-                                        % addresses.
+
                 succip_slot             :: maybe(int),
                 stack_slot_count        :: int,
                 detism                  :: determinism
@@ -168,35 +190,33 @@
     ;       proc_id_and_more(
                 maybe_proc_static       :: maybe(proc_layout_proc_static),
                 maybe_exec_trace        :: maybe(proc_layout_exec_trace),
+
+                % The procedure body represented as a list of bytecodes.
                 proc_body_bytes         :: list(int),
-                                        % The procedure body represented as
-                                        % a list of bytecodes.
+
+                % The name of the module_common_layout structure.
                 proc_module_common      :: layout_name
-                                        % The name of the module_common_layout
-                                        % structure.
             ).
 
 :- type proc_layout_exec_trace          % defines MR_ExecTrace
     --->    proc_layout_exec_trace(
-                maybe_call_label_layout :: maybe(label_layout_details),
+                maybe_call_label_layout :: maybe(layout_slot_name),
 
-                proc_label_layouts      :: list(data_addr),
-                                        % The label layouts of the events in
-                                        % the predicate. Interface events
-                                        % first, internal events second.
+                % The label layouts of the events in the predicate.
+                % Interface events first, internal events second.
+                interface_event_layouts :: list(layout_slot_name),
+                internal_event_layouts  :: list(layout_slot_name),
 
                 maybe_table_info        :: maybe(data_addr),
-                head_var_nums           :: list(int),
-                                        % The variable numbers of the
-                                        % head variables, including the
-                                        % ones added by the compiler,
-                                        % in order. The length of the
-                                        % list must be the same as the
-                                        % procedure's arity.
 
+                % The variable numbers of the head variables, including the
+                % ones added by the compiler, in order. The length of the list
+                % must be the same as the procedure's arity.
+                head_var_nums           :: list(int),
+
+                % Each variable name is an offset into the module's
+                % string table.
                 var_names               :: list(int),
-                                        % Each variable name is an offset into
-                                        % the module's string table.
 
                 max_var_num             :: int,
                 max_r_num               :: int,
@@ -214,16 +234,21 @@
 :- type file_layout_data
     --->    file_layout_data(
                 file_name               :: string,
-                line_no_label_list      :: assoc_list(int, layout_name)
+                line_no_label_list      :: assoc_list(int, layout_slot_name)
             ).
 
 %-----------------------------------------------------------------------------%
 
+:- type layout_slot_name
+    --->    layout_slot(layout_array_name, int).
+
+:- type layout_array_name
+    --->    label_layout_array(label_vars)
+    ;       user_event_layout_array
+    ;       user_event_var_nums_array.
+
 :- type layout_name
-    --->    label_layout(proc_label, int, label_vars)
-    ;       user_event_layout(proc_label, int)
-    ;       user_event_attr_var_nums(proc_label, int)
-    ;       proc_layout(rtti_proc_label, proc_layout_kind)
+    --->    proc_layout(rtti_proc_label, proc_layout_kind)
             % A proc layout structure for stack tracing, accurate gc,
             % deep profiling and/or execution tracing.
     ;       proc_layout_exec_trace(rtti_proc_label)

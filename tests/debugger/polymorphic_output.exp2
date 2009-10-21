@@ -51,10 +51,10 @@ browser> p
 '_'
 browser> quit
 mdb> b -A deconstruct.det_arg/4
- 0: + stop  interface pred deconstruct.det_arg/4-3 (cc_multi)
- 1: + stop  interface pred deconstruct.det_arg/4-2 (cc_multi)
- 2: + stop  interface pred deconstruct.det_arg/4-1 (det)
- 3: + stop  interface pred deconstruct.det_arg/4-0 (det)
+ 0: + stop  interface pred deconstruct.det_arg/4-0 (det)
+ 1: + stop  interface pred deconstruct.det_arg/4-1 (det)
+ 2: + stop  interface pred deconstruct.det_arg/4-2 (cc_multi)
+ 3: + stop  interface pred deconstruct.det_arg/4-3 (cc_multi)
 mdb> c
       E3:     C3 CALL pred deconstruct.det_arg/4-1 (det)
 mdb> P
@@ -69,9 +69,9 @@ mdb> P
        Index (arg 3)          	3
        Argument (arg 4)       	two("two", 2, empty, empty)
 mdb> disable *
- 0: - stop  interface pred deconstruct.det_arg/4-3 (cc_multi)
- 1: - stop  interface pred deconstruct.det_arg/4-2 (cc_multi)
- 2: - stop  interface pred deconstruct.det_arg/4-1 (det)
- 3: - stop  interface pred deconstruct.det_arg/4-0 (det)
+ 0: - stop  interface pred deconstruct.det_arg/4-0 (det)
+ 1: - stop  interface pred deconstruct.det_arg/4-1 (det)
+ 2: - stop  interface pred deconstruct.det_arg/4-2 (cc_multi)
+ 3: - stop  interface pred deconstruct.det_arg/4-3 (cc_multi)
 mdb> c
 two

@@ -1088,13 +1088,16 @@ compute_block_needs_frame(Label, Instrs, NeedsFrame) :-
                 Uinstr = arbitrary_c_code(_, _, _)
             ;
                 Uinstr = foreign_proc_code(_, _, MayCallMercury, _,
-                    MaybeLayout, MaybeOnlyLayout, _, NeedStack, _),
+                    MaybeLayout, MaybeOnlyLayout, _, MaybeDefLabel,
+                    NeedStack, _),
                 (
                     MayCallMercury = proc_may_call_mercury
                 ;
                     MaybeLayout = yes(_)
                 ;
                     MaybeOnlyLayout = yes(_)
+                ;
+                    MaybeDefLabel = yes(_)
                 ;
                     NeedStack = yes
                 )
@@ -1224,7 +1227,7 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
             BlockInstrs = AllButLastInstrs ++ [LastInstr]
         ;
             LastUinstr0 = foreign_proc_code(D, Comps0, MC, FNL, FL, FOL, NF0,
-                S, MD)
+                MDL, S, MD)
         ->
             (
                 NF0 = no,
@@ -1237,7 +1240,7 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
                 replace_labels_comps(Comps0, Comps, PreExitDummyLabelMap)
             ),
             LastUinstr = foreign_proc_code(D, Comps, MC, FNL, FL, FOL, NF,
-                S, MD),
+                MDL, S, MD),
             LastInstr = llds_instr(LastUinstr, Comment),
             BlockInstrs = AllButLastInstrs ++ [LastInstr]
         ;
@@ -1357,7 +1360,7 @@ can_clobber_succip([Label | Labels], BlockMap) = CanClobberSuccip :-
         ;
             % Only may_call_mercury foreign_proc_codes can clobber succip.
             Uinstr = foreign_proc_code(_, _, proc_may_call_mercury,
-                _, _, _, _, _, _)
+                _, _, _, _, _, _, _)
         )
     ->
         CanClobberSuccip = yes

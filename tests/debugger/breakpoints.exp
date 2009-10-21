@@ -4,22 +4,22 @@ Command echo enabled.
 mdb> register --quiet
 mdb> break data
 Ambiguous procedure specification. The matches are:
-0: pred breakpoints.data/1-0 (det)
-1: func breakpoints.data/0-0 (det)
+0: func breakpoints.data/0-0 (det)
+1: pred breakpoints.data/1-0 (det)
 
 Which do you want to put a breakpoint on (0-1 or *)? *
- 0: + stop  interface pred breakpoints.data/1-0 (det)
- 1: + stop  interface func breakpoints.data/0-0 (det)
-mdb> delete 0
- 0: E stop  interface pred breakpoints.data/1-0 (det)
+ 0: + stop  interface func breakpoints.data/0-0 (det)
+ 1: + stop  interface pred breakpoints.data/1-0 (det)
 mdb> delete 1
- 1: E stop  interface func breakpoints.data/0-0 (det)
+ 1: E stop  interface pred breakpoints.data/1-0 (det)
+mdb> delete 0
+ 0: E stop  interface func breakpoints.data/0-0 (det)
 mdb> break data
 Ambiguous procedure specification. The matches are:
-0: pred breakpoints.data/1-0 (det)
-1: func breakpoints.data/0-0 (det)
+0: func breakpoints.data/0-0 (det)
+1: pred breakpoints.data/1-0 (det)
 
-Which do you want to put a breakpoint on (0-1 or *)? 0
+Which do you want to put a breakpoint on (0-1 or *)? 1
  0: + stop  interface pred breakpoints.data/1-0 (det)
 mdb> continue
       E2:     C2 CALL pred breakpoints.data/1-0 (det) breakpoints.m:58 (breakpoints.m:56)
@@ -208,8 +208,8 @@ func breakpoints.a.afunc/0-0 (det)
 mdb> procedures a.testmod
 List of procedures in module `a.testmod'
 
-func breakpoints.a.testmod.test_in_ab/0-0 (det)
 func breakpoints.a.testmod.test_in_a/0-0 (det)
+func breakpoints.a.testmod.test_in_ab/0-0 (det)
 mdb> break -O test_in_ab
 Ambiguous procedure specification. The matches are:
 0: func breakpoints.a.testmod.test_in_ab/0-0 (det)

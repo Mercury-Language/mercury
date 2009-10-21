@@ -604,10 +604,12 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
     globals.lookup_bool_option(Globals, new_type_class_rtti, NewTypeClassRtti),
     generate_type_class_info_rtti(HLDS, NewTypeClassRtti,
         NewTypeClassInfoRttiData),
-    list.append(OldTypeClassInfoRttiData, NewTypeClassInfoRttiData,
-        TypeClassInfoRttiData),
-    stack_layout.generate_llds(HLDS, GlobalData0, GlobalData, StackLayoutDatas,
-        LayoutLabels),
+    TypeClassInfoRttiData =
+        OldTypeClassInfoRttiData ++ NewTypeClassInfoRttiData,
+    stack_layout.generate_llds_layout_data(HLDS, GlobalData0, GlobalData,
+        UserEventVarNums, UserEvents, VarLabelLayouts, NoVarLabelLayouts,
+        InternalLabelToLayoutMap, ProcLabelToLayoutMap,
+        ProcLayoutDatas, ModuleLayoutDatas, OtherLayoutDatas),
 
     % Here we perform some optimizations on the LLDS data.
     % XXX This should perhaps be part of backend_pass rather than output_pass.
@@ -621,12 +623,14 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
 
     % Next we put it all together and output it to one or more C files.
     RttiDatas = TypeCtorRttiData ++ TypeClassInfoRttiData,
-    LayoutDatas = ClosureLayoutDatas ++ StackLayoutDatas,
-    construct_c_file(HLDS, C_InterfaceInfo, Procs, TablingInfoStructs,
-        ScalarCommonCellDatas, VectorCommonCellDatas, RttiDatas, LayoutDatas,
-        CFile, !IO),
     module_info_get_complexity_proc_infos(HLDS, ComplexityProcs),
-    output_llds_file(Globals, ModuleName, CFile, ComplexityProcs, LayoutLabels,
+    construct_c_file(HLDS, C_InterfaceInfo, Procs, TablingInfoStructs,
+        ScalarCommonCellDatas, VectorCommonCellDatas, RttiDatas,
+        UserEventVarNums, UserEvents, VarLabelLayouts, NoVarLabelLayouts,
+        InternalLabelToLayoutMap, ProcLabelToLayoutMap,
+        ProcLayoutDatas, ModuleLayoutDatas, ClosureLayoutDatas,
+        OtherLayoutDatas, ComplexityProcs, CFile, !IO),
+    output_llds_file(Globals, ModuleName, CFile,
         Verbose, Stats, !IO),
 
     C_InterfaceInfo = foreign_interface_info(_, _, _, _, C_ExportDecls, _),
@@ -697,12 +701,19 @@ llds_get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
 :- pred construct_c_file(module_info::in, foreign_interface_info::in,
     list(c_procedure)::in, list(tabling_info_struct)::in,
     list(scalar_common_data_array)::in, list(vector_common_data_array)::in,
-    list(rtti_data)::in, list(layout_data)::in, c_file::out, io::di, io::uo)
-    is det.
+    list(rtti_data)::in, list(maybe(int))::in, list(user_event_data)::in,
+    list(label_layout_vars)::in, list(label_layout_no_vars)::in,
+    map(label, layout_slot_name)::in, map(label, data_addr)::in,
+    list(layout_data)::in, list(layout_data)::in,
+    list(layout_data)::in, list(layout_data)::in,
+    list(complexity_proc_info)::in, c_file::out, io::di, io::uo) is det.
 
 construct_c_file(ModuleInfo, C_InterfaceInfo, Procedures, TablingInfoStructs,
-        ScalarCommonCellDatas, VectorCommonCellDatas, RttiDatas, LayoutDatas,
-        CFile, !IO) :-
+        ScalarCommonCellDatas, VectorCommonCellDatas, RttiDatas,
+        UserEventVarNums, UserEvents, VarLabelLayouts, NoVarLabelLayouts,
+        InternalLabelToLayoutMap, ProcLabelToLayoutMap,
+        ProcLayoutDatas, ModuleLayoutDatas, ClosureLayoutDatas,
+        OtherLayoutDatas, ComplexityProcs, CFile, !IO) :-
     C_InterfaceInfo = foreign_interface_info(ModuleSymName, C_HeaderCode0,
         C_Includes, C_BodyCode0, _C_ExportDecls, C_ExportDefns),
     MangledModuleName = sym_name_mangle(ModuleSymName),
@@ -737,8 +748,12 @@ construct_c_file(ModuleInfo, C_InterfaceInfo, Procedures, TablingInfoStructs,
 
     CFile = c_file(ModuleSymName, C_HeaderCode, C_BodyCode, C_ExportDefns,
         TablingInfoStructs, ScalarCommonCellDatas, VectorCommonCellDatas,
-        RttiDatas, LayoutDatas, ChunkedModules, UserInitPredCNames,
-        UserFinalPredCNames).
+        RttiDatas, UserEventVarNums, UserEvents,
+        VarLabelLayouts, NoVarLabelLayouts,
+        InternalLabelToLayoutMap, ProcLabelToLayoutMap,
+        ProcLayoutDatas, ModuleLayoutDatas, ClosureLayoutDatas,
+        OtherLayoutDatas, ChunkedModules,
+        UserInitPredCNames, UserFinalPredCNames, ComplexityProcs).
 
 :- pred foreign_decl_code_is_local(foreign_decl_code::in) is semidet.
 
@@ -815,11 +830,9 @@ combine_chunks_2([Chunk | Chunks], ModuleName, Num, [Module | Modules]) :-
     combine_chunks_2(Chunks, ModuleName, Num1, Modules).
 
 :- pred output_llds_file(globals::in, module_name::in, c_file::in,
-    list(complexity_proc_info)::in, map(llds.label, llds.data_addr)::in,
     bool::in, bool::in, io::di, io::uo) is det.
 
-output_llds_file(Globals, ModuleName, LLDS0, ComplexityProcs,
-        StackLayoutLabels, Verbose, Stats, !IO) :-
+output_llds_file(Globals, ModuleName, LLDS0, Verbose, Stats, !IO) :-
     maybe_write_string(Verbose, "% Writing output to `", !IO),
     module_name_to_file_name(Globals, ModuleName, ".c", do_create_dirs,
         FileName, !IO),
@@ -827,7 +840,7 @@ output_llds_file(Globals, ModuleName, LLDS0, ComplexityProcs,
     maybe_write_string(Verbose, "'...", !IO),
     maybe_flush_output(Verbose, !IO),
     transform_llds(Globals, LLDS0, LLDS),
-    output_llds(Globals, LLDS, ComplexityProcs, StackLayoutLabels, !IO),
+    output_llds(Globals, LLDS, !IO),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_flush_output(Verbose, !IO),
     maybe_report_stats(Stats, !IO).

@@ -18,9 +18,9 @@
 :- interface.
 
 :- import_module hlds.hlds_llds.
-:- import_module hlds.hlds_module.
 :- import_module libs.globals.
 :- import_module libs.trace_params.
+:- import_module ll_backend.layout.
 :- import_module ll_backend.llds.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
@@ -34,6 +34,9 @@
 
 :- type llds_out_info
     --->    llds_out_info(
+                lout_mangled_module_name        :: string,
+                lout_internal_label_to_layout   :: map(label, layout_slot_name),
+                lout_entry_label_to_layout      :: map(label, data_addr),
                 lout_auto_comments              :: bool,
                 lout_line_numbers               :: bool,
                 lout_emit_c_loops               :: bool,
@@ -50,16 +53,13 @@
                 lout_globals                    :: globals
             ).
 
-:- func init_llds_out_info(globals) = llds_out_info.
-
 %-----------------------------------------------------------------------------%
 
     % Given a 'c_file' structure, output the LLDS code inside it
     % into a .c file. The second argument gives the set of labels that have
     % layout structures.
     %
-:- pred output_llds(globals::in, c_file::in, list(complexity_proc_info)::in,
-    map(label, data_addr)::in, io::di, io::uo) is det.
+:- pred output_llds(globals::in, c_file::in, io::di, io::uo) is det.
 
     % output_record_rval_decls(Info, Rval, !DeclSet) outputs the declarations
     % of any static constants, etc. that need to be declared before
@@ -208,10 +208,10 @@
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.options.
-:- import_module ll_backend.layout.
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.pragma_c_gen.
 :- import_module ll_backend.rtti_out.
@@ -228,8 +228,8 @@
 :- import_module int.
 :- import_module library.   % for the version number.
 :- import_module maybe.
-:- import_module pair.
 :- import_module multi_map.
+:- import_module pair.
 :- import_module set.
 :- import_module set_tree234.
 :- import_module string.
@@ -252,7 +252,7 @@ decl_set_is_member(DeclId, DeclSet) :-
 
 %-----------------------------------------------------------------------------%
 
-output_llds(Globals, CFile, ComplexityProcs, StackLayoutLabels, !IO) :-
+output_llds(Globals, CFile, !IO) :-
     ModuleName = CFile ^ cfile_modulename,
     module_name_to_file_name(Globals, ModuleName, ".c", do_create_dirs,
         FileName, !IO),
@@ -260,8 +260,7 @@ output_llds(Globals, CFile, ComplexityProcs, StackLayoutLabels, !IO) :-
     (
         Result = ok(FileStream),
         decl_set_init(DeclSet0),
-        output_single_c_file(Globals, CFile, ComplexityProcs,
-            StackLayoutLabels, FileStream, DeclSet0, _, !IO),
+        output_single_c_file(Globals, CFile, FileStream, DeclSet0, _, !IO),
         io.close_output(FileStream, !IO)
     ;
         Result = error(Error),
@@ -303,17 +302,20 @@ output_c_file_mercury_headers(Info, !IO) :-
         GenerateBytecode = no
     ).
 
-:- pred output_single_c_file(globals::in, c_file::in,
-    list(complexity_proc_info)::in, map(label, data_addr)::in,
-    io.output_stream::in, decl_set::in, decl_set::out, io::di, io::uo) is det.
+:- pred output_single_c_file(globals::in, c_file::in, io.output_stream::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_single_c_file(Globals, CFile, ComplexityProcs, StackLayoutLabels,
-        FileStream, !DeclSet, !IO) :-
-    Info = init_llds_out_info(Globals),
+output_single_c_file(Globals, CFile, FileStream, !DeclSet, !IO) :-
     CFile = c_file(ModuleName, C_HeaderLines, UserForeignCode, Exports,
         TablingInfoStructs, ScalarCommonDatas, VectorCommonDatas,
-        RttiDatas, LayoutDatas0, Modules,
-        UserInitPredCNames, UserFinalPredCNames),
+        RttiDatas, UserEventVarNums, UserEvents,
+        VarLabelLayouts, NoVarLabelLayouts,
+        InternalLabelToLayoutMap, EntryLabelToLayoutMap,
+        ProcLayoutDatas, ModuleLayoutDatas, ClosureLayoutDatas,
+        OtherLayoutDatas, Modules, UserInitPredCNames, UserFinalPredCNames,
+        ComplexityProcs),
+    Info = init_llds_out_info(ModuleName, Globals,
+        InternalLabelToLayoutMap, EntryLabelToLayoutMap),
     library.version(Version),
     io.set_output_stream(FileStream, OutputStream, !IO),
     module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
@@ -328,8 +330,7 @@ output_single_c_file(Globals, CFile, ComplexityProcs, StackLayoutLabels,
     output_foreign_header_include_lines(Info, C_HeaderLines, !IO),
     io.write_string("\n", !IO),
 
-    gather_c_file_labels(Modules, Labels),
-    order_layout_datas(LayoutDatas0, LayoutDatas),
+    gather_c_file_labels(Modules, EntryLabels, InternalLabels),
 
     output_static_linkage_define(!IO),
     list.foldl2(output_scalar_common_data_decl, ScalarCommonDatas,
@@ -337,7 +338,7 @@ output_single_c_file(Globals, CFile, ComplexityProcs, StackLayoutLabels,
     list.foldl2(output_vector_common_data_decl, VectorCommonDatas,
         !DeclSet, !IO),
     output_rtti_data_decl_list(Info, RttiDatas, !DeclSet, !IO),
-    output_record_c_label_decls(Info, StackLayoutLabels, Labels,
+    output_record_c_label_decls(Info, EntryLabels, InternalLabels,
         !DeclSet, !IO),
     list.foldl2(output_tabling_info_struct(Info), TablingInfoStructs,
         !DeclSet, !IO),
@@ -346,16 +347,87 @@ output_single_c_file(Globals, CFile, ComplexityProcs, StackLayoutLabels,
     list.foldl2(output_vector_common_data_defn(Info), VectorCommonDatas,
         !DeclSet, !IO),
     list.foldl2(output_rtti_data_defn(Info), RttiDatas, !DeclSet, !IO),
-    list.foldl2(output_layout_data_defn(Info), LayoutDatas, !DeclSet, !IO),
 
-    list.foldl2(output_comp_gen_c_module(Info, StackLayoutLabels), Modules,
+    io.nl(!IO),
+    MangledModuleName = Info ^ lout_mangled_module_name,
+    (
+        UserEventVarNums = []
+    ;
+        UserEventVarNums = [_ | _],
+        UserEventVarNumArrayName = user_event_var_nums_array,
+        output_layout_array_name_storage_type_name(MangledModuleName,
+            UserEventVarNumArrayName, not_being_defined, !IO),
+        io.write_string("[];\n", !IO)
+    ),
+    (
+        UserEvents = []
+    ;
+        UserEvents = [_ | _],
+        UserEventsArrayName = user_event_layout_array,
+        output_layout_array_name_storage_type_name(MangledModuleName,
+            UserEventsArrayName, not_being_defined, !IO),
+        io.write_string("[];\n", !IO)
+    ),
+    (
+        VarLabelLayouts = []
+    ;
+        VarLabelLayouts = [_ | _],
+        VarLabelLayoutArrayName = label_layout_array(label_has_var_info),
+        output_layout_array_name_storage_type_name(MangledModuleName,
+            VarLabelLayoutArrayName, not_being_defined, !IO),
+        io.write_string("[];\n", !IO)
+    ),
+    (
+        NoVarLabelLayouts = []
+    ;
+        NoVarLabelLayouts = [_ | _],
+        NoVarLabelLayoutArrayName = label_layout_array(label_has_no_var_info),
+        output_layout_array_name_storage_type_name(MangledModuleName,
+            NoVarLabelLayoutArrayName, not_being_defined, !IO),
+        io.write_string("[];\n", !IO)
+    ),
+
+    list.foldl2(output_layout_data_defn(Info), ProcLayoutDatas,
         !DeclSet, !IO),
+    list.foldl2(output_layout_data_defn(Info), ModuleLayoutDatas,
+        !DeclSet, !IO),
+    list.foldl2(output_layout_data_defn(Info), ClosureLayoutDatas,
+        !DeclSet, !IO),
+    list.foldl2(output_layout_data_defn(Info), OtherLayoutDatas,
+        !DeclSet, !IO),
+    io.nl(!IO),
+    (
+        UserEventVarNums = []
+    ;
+        UserEventVarNums = [_ | _],
+        output_user_event_var_nums_array_defn(Info, UserEventVarNums, !IO)
+    ),
+    (
+        UserEvents = []
+    ;
+        UserEvents = [_ | _],
+        output_user_events_array_defn(Info, UserEvents, !IO)
+    ),
+    (
+        VarLabelLayouts = []
+    ;
+        VarLabelLayouts = [_ | _],
+        output_var_label_layouts_array_defn(Info, VarLabelLayouts, !IO)
+    ),
+    (
+        NoVarLabelLayouts = []
+    ;
+        NoVarLabelLayouts = [_ | _],
+        output_no_var_label_layouts_array_defn(Info, NoVarLabelLayouts, !IO)
+    ),
+
+    list.foldl2(output_comp_gen_c_module(Info), Modules, !DeclSet, !IO),
     list.foldl(output_user_foreign_code(Info), UserForeignCode, !IO),
     list.foldl(io.write_string, Exports, !IO),
     io.write_string("\n", !IO),
     output_c_module_init_list(Info, ModuleName, Modules, RttiDatas,
-        LayoutDatas, ComplexityProcs, StackLayoutLabels, UserInitPredCNames,
-        UserFinalPredCNames, !DeclSet, !IO),
+        ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs,
+        UserInitPredCNames, UserFinalPredCNames, !DeclSet, !IO),
     io.set_output_stream(OutputStream, _, !IO).
 
 :- pred module_gather_env_var_names(list(comp_gen_c_module)::in,
@@ -374,45 +446,17 @@ proc_gather_env_var_names([Proc | Procs], !EnvVarNames) :-
     set.union(Proc ^ cproc_c_global_vars, !EnvVarNames),
     proc_gather_env_var_names(Procs, !EnvVarNames).
 
-:- pred order_layout_datas(list(layout_data)::in, list(layout_data)::out)
-    is det.
-
-order_layout_datas(LayoutDatas0, LayoutDatas) :-
-    order_layout_datas_2(LayoutDatas0, [], ProcLayouts,
-        [], LabelLayouts, [], OtherLayouts),
-    % list.reverse(RevProcLayouts, ProcLayouts),
-    % list.reverse(RevLabelLayouts, LabelLayouts),
-    % list.reverse(RevOtherLayouts, OtherLayouts),
-    list.condense([ProcLayouts, LabelLayouts, OtherLayouts], LayoutDatas).
-
-:- pred order_layout_datas_2(list(layout_data)::in,
-    list(layout_data)::in, list(layout_data)::out,
-    list(layout_data)::in, list(layout_data)::out,
-    list(layout_data)::in, list(layout_data)::out) is det.
-
-order_layout_datas_2([], !ProcLayouts, !LabelLayouts, !OtherLayouts).
-order_layout_datas_2([Layout | Layouts], !ProcLayouts, !LabelLayouts,
-        !OtherLayouts) :-
-    ( Layout = proc_layout_data(_, _, _) ->
-        !:ProcLayouts = [Layout | !.ProcLayouts]
-    ; Layout = label_layout_data(_, _, _, _, _, _, _, _, _) ->
-        !:LabelLayouts = [Layout | !.LabelLayouts]
-    ;
-        !:OtherLayouts = [Layout | !.OtherLayouts]
-    ),
-    order_layout_datas_2(Layouts, !ProcLayouts, !LabelLayouts, !OtherLayouts).
-
 :- pred output_c_module_init_list(llds_out_info::in, module_name::in,
-    list(comp_gen_c_module)::in, list(rtti_data)::in, list(layout_data)::in,
-    list(complexity_proc_info)::in, map(label, data_addr)::in,
-    list(string)::in, list(string)::in,
+    list(comp_gen_c_module)::in, list(rtti_data)::in,
+    list(layout_data)::in, list(layout_data)::in,
+    list(complexity_proc_info)::in, list(string)::in, list(string)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_c_module_init_list(Info, ModuleName, Modules, RttiDatas, LayoutDatas,
-        ComplexityProcs, StackLayoutLabels, InitPredNames, FinalPredNames,
-        !DeclSet, !IO) :-
+output_c_module_init_list(Info, ModuleName, Modules, RttiDatas,
+        ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs,
+        InitPredNames, FinalPredNames, !DeclSet, !IO) :-
     MustInit = (pred(Module::in) is semidet :-
-        module_defines_label_with_layout(Module, StackLayoutLabels)
+        module_defines_label_with_layout(Info, Module)
     ),
     list.filter(MustInit, Modules, AlwaysInitModules, MaybeInitModules),
     list.chunk(AlwaysInitModules, 40, AlwaysInitModuleBunches),
@@ -517,7 +561,8 @@ output_c_module_init_list(Info, ModuleName, Modules, RttiDatas, LayoutDatas,
     output_type_tables_init_list(RttiDatas, !IO),
     io.write_string("}\n\n", !IO),
 
-    output_record_debugger_init_list_decls(Info, LayoutDatas, !DeclSet, !IO),
+    output_record_debugger_init_list_decls(Info, ModuleLayoutDatas,
+        !DeclSet, !IO),
     io.write_string("\n", !IO),
     io.write_string("void ", !IO),
     output_init_name(ModuleName, !IO),
@@ -528,11 +573,11 @@ output_c_module_init_list(Info, ModuleName, Modules, RttiDatas, LayoutDatas,
     io.write_string("\t\treturn;\n", !IO),
     io.write_string("\t}\n", !IO),
     io.write_string("\tdone = MR_TRUE;\n", !IO),
-    output_debugger_init_list(LayoutDatas, !IO),
+    output_debugger_init_list(ModuleLayoutDatas, !IO),
     io.write_string("}\n\n", !IO),
 
     io.write_string("#ifdef MR_DEEP_PROFILING\n", !IO),
-    output_write_proc_static_list_decls(LayoutDatas, !DeclSet, !IO),
+    output_write_proc_static_list_decls(ProcLayoutDatas, !DeclSet, !IO),
     io.write_string("\nvoid ", !IO),
     output_init_name(ModuleName, !IO),
     io.write_string(
@@ -542,7 +587,7 @@ output_c_module_init_list(Info, ModuleName, Modules, RttiDatas, LayoutDatas,
     io.write_string("\tMR_write_out_module_proc_reps_start(procrep_fp, &", !IO),
     output_layout_name(ModuleCommonLayoutName, !IO),
     io.write_string(");\n", !IO),
-    output_write_proc_static_list(LayoutDatas, !IO),
+    output_write_proc_static_list(ProcLayoutDatas, !IO),
     io.write_string("\tMR_write_out_module_proc_reps_end(procrep_fp);\n", !IO),
     io.write_string("}\n", !IO),
     io.write_string("\n#endif\n\n", !IO),
@@ -588,17 +633,40 @@ output_c_module_init_list(Info, ModuleName, Modules, RttiDatas, LayoutDatas,
     io.write_string(
         "static const void *const MR_grade = &MR_GRADE_VAR;\n", !IO).
 
-:- pred module_defines_label_with_layout(comp_gen_c_module::in,
-    map(label, data_addr)::in) is semidet.
+:- pred module_defines_label_with_layout(llds_out_info::in,
+    comp_gen_c_module::in) is semidet.
 
-module_defines_label_with_layout(Module, StackLayoutLabels) :-
+module_defines_label_with_layout(Info, Module) :-
     % Checking whether the set is empty or not
     % allows us to avoid calling gather_c_module_labels.
-    \+ map.is_empty(StackLayoutLabels),
+    InternalLabelToLayoutMap = Info ^ lout_internal_label_to_layout,
+    EntryLabelToLayoutMap = Info ^ lout_entry_label_to_layout,
+    (
+        \+ map.is_empty(InternalLabelToLayoutMap)
+    ;
+        \+ map.is_empty(EntryLabelToLayoutMap)
+    ),
     Module = comp_gen_c_module(_, Procedures),
-    gather_c_module_labels(Procedures, Labels),
-    list.member(Label, Labels),
-    map.search(StackLayoutLabels, Label, _).
+    gather_c_module_labels(Procedures, EntryLabels, InternalLabels),
+    (
+        find_first_match(internal_label_has_layout(InternalLabelToLayoutMap),
+            InternalLabels, _)
+    ;
+        find_first_match(entry_label_has_layout(EntryLabelToLayoutMap),
+            EntryLabels, _)
+    ).
+
+:- pred internal_label_has_layout(map(label, layout_slot_name)::in, label::in)
+    is semidet.
+
+internal_label_has_layout(InternalLabelToLayoutMap, Label) :-
+    map.search(InternalLabelToLayoutMap, Label, _).
+
+:- pred entry_label_has_layout(map(label, data_addr)::in, label::in)
+    is semidet.
+
+entry_label_has_layout(EntryLabelToLayoutMap, Label) :-
+    map.search(EntryLabelToLayoutMap, Label, _).
 
 %-----------------------------------------------------------------------------%
 
@@ -878,24 +946,21 @@ output_bunch_name(ModuleName, InitStatus, Number, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_comp_gen_c_module(llds_out_info::in, map(label, data_addr)::in,
-    comp_gen_c_module::in, decl_set::in, decl_set::out, io::di, io::uo)
-    is det.
+:- pred output_comp_gen_c_module(llds_out_info::in, comp_gen_c_module::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_comp_gen_c_module(Info, StackLayoutLabels, CompGenCModule,
-        !DeclSet, !IO) :-
+output_comp_gen_c_module(Info, CompGenCModule, !DeclSet, !IO) :-
     CompGenCModule = comp_gen_c_module(ModuleName, Procedures),
     io.write_string("\n", !IO),
-    list.foldl2(output_record_c_procedure_decls(Info, StackLayoutLabels),
-        Procedures, !DeclSet, !IO),
+    list.foldl2(output_record_c_procedure_decls(Info), Procedures,
+        !DeclSet, !IO),
     io.write_string("\n", !IO),
     io.write_string("MR_BEGIN_MODULE(", !IO),
     io.write_string(ModuleName, !IO),
     io.write_string(")\n", !IO),
-    gather_c_module_labels(Procedures, Labels),
-    output_c_label_inits(StackLayoutLabels, Labels, !IO),
+    gather_c_module_labels(Procedures, EntryLabels, InternalLabels),
+    output_c_label_inits(Info, EntryLabels, InternalLabels, !IO),
     io.write_string("MR_BEGIN_CODE\n", !IO),
-    io.write_string("\n", !IO),
     list.foldl(output_c_procedure(Info), Procedures, !IO),
     io.write_string("MR_END_MODULE\n", !IO).
 
@@ -1401,101 +1466,50 @@ output_foreign_header_include_line(Info, Decl, !AlreadyDone, !IO) :-
     ).
 
 :- pred output_record_c_label_decls(llds_out_info::in,
-    map(label, data_addr)::in, list(label)::in, decl_set::in, decl_set::out,
-    io::di, io::uo) is det.
-
-output_record_c_label_decls(Info, StackLayoutLabels, Labels, !DeclSet, !IO) :-
-    group_c_labels_with_layouts(StackLayoutLabels, Labels,
-        multi_map.init, DeclLLMap, multi_map.init, LocalLabels,
-        [], RevAddrsToDecl, [], RevOtherLabels),
-    multi_map.to_assoc_list(DeclLLMap, DeclLLList),
-    list.foldl2(output_label_layout_decls, DeclLLList, !DeclSet, !IO),
-    multi_map.to_assoc_list(LocalLabels, LocalLabelList),
-    list.foldl2(output_local_label_decls, LocalLabelList, !DeclSet, !IO),
-    list.reverse(RevAddrsToDecl, AddrsToDecl),
-    list.foldl2(output_record_stack_layout_decl(Info), AddrsToDecl,
-        !DeclSet, !IO),
-    list.reverse(RevOtherLabels, OtherLabels),
-    list.foldl2(output_record_c_label_decl(Info, StackLayoutLabels),
-        OtherLabels, !DeclSet, !IO).
-
-:- pred group_c_labels_with_layouts(map(label, data_addr)::in, list(label)::in,
-    multi_map(proc_label, int)::in, multi_map(proc_label, int)::out,
-    multi_map(proc_label, int)::in, multi_map(proc_label, int)::out,
-    list(data_addr)::in, list(data_addr)::out,
-    list(label)::in, list(label)::out) is det.
-
-group_c_labels_with_layouts(_StackLayoutLabels, [],
-        !DeclLLMap, !OtherLocalMap, !RevAddrsToDecl, !RevOthers).
-group_c_labels_with_layouts(StackLayoutLabels, [Label | Labels],
-        !DeclLLMap, !OtherLocalMap, !RevAddrsToDecl, !RevOthers) :-
-    (
-        Label = internal_label(LabelNum, ProcLabel),
-        ( map.search(StackLayoutLabels, Label, DataAddr) ->
-            (
-                DataAddr = layout_addr(LayoutName),
-                LayoutName = label_layout(ProcLabel, LabelNum,
-                    LabelVars),
-                LabelVars = label_has_var_info
-            ->
-                svmulti_map.set(ProcLabel, LabelNum, !DeclLLMap)
-            ;
-                svmulti_map.set(ProcLabel, LabelNum, !OtherLocalMap),
-                !:RevAddrsToDecl = [DataAddr | !.RevAddrsToDecl]
-            )
-        ;
-            svmulti_map.set(ProcLabel, LabelNum, !OtherLocalMap)
-        )
-    ;
-        Label = entry_label(_, _),
-        !:RevOthers = [Label | !.RevOthers]
-    ),
-    group_c_labels_with_layouts(StackLayoutLabels, Labels,
-        !DeclLLMap, !OtherLocalMap, !RevAddrsToDecl, !RevOthers).
-
-:- pred output_label_layout_decls(pair(proc_label, list(int))::in,
+    list(label)::in, list(label)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_label_layout_decls(ProcLabel - LabelNums0, !DeclSet, !IO) :-
-    % There must be a macro of the form MR_DECL_LL<n> for every <n>
-    % up to MaxChunkSize.
-    list.reverse(LabelNums0, LabelNums),
-    MaxChunkSize = 10,
-    list.chunk(LabelNums, MaxChunkSize, LabelNumChunks),
-    list.foldl2(output_label_layout_decl_group(ProcLabel), LabelNumChunks,
+output_record_c_label_decls(Info, EntryLabels, InternalLabels,
+        !DeclSet, !IO) :-
+    group_decl_c_labels(InternalLabels, multi_map.init, InternalLabelMap),
+    multi_map.to_assoc_list(InternalLabelMap, InternalLabelList),
+    list.foldl2(output_record_internal_label_decls, InternalLabelList,
+        !DeclSet, !IO),
+    list.foldl2(output_record_entry_label_decl(Info), EntryLabels,
         !DeclSet, !IO).
 
-:- pred output_label_layout_decl_group(proc_label::in, list(int)::in,
+:- pred group_decl_c_labels(list(label)::in,
+    multi_map(proc_label, int)::in, multi_map(proc_label, int)::out) is det.
+
+group_decl_c_labels([], !InternalLabelMap).
+group_decl_c_labels([Label | Labels], !InternalLabelMap) :-
+    (
+        Label = internal_label(LabelNum, ProcLabel),
+        svmulti_map.set(ProcLabel, LabelNum, !InternalLabelMap)
+    ;
+        Label = entry_label(_, _),
+        unexpected(this_file, "group_decl_c_labels: entry label")
+    ),
+    group_decl_c_labels(Labels, !InternalLabelMap).
+
+:- pred output_record_internal_label_decls(pair(proc_label, list(int))::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_label_layout_decl_group(ProcLabel, LabelNums, !DeclSet, !IO) :-
-    io.write_string("MR_DECL_LL", !IO),
-    io.write_int(list.length(LabelNums), !IO),
-    io.write_string("(", !IO),
-    output_proc_label_no_prefix(ProcLabel, !IO),
-    io.write_string(", ", !IO),
-    io.write_list(LabelNums, ",", io.write_int, !IO),
-    io.write_string(")\n", !IO).
-
-:- pred output_local_label_decls(pair(proc_label, list(int))::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_local_label_decls(ProcLabel - LabelNums0, !DeclSet, !IO) :-
+output_record_internal_label_decls(ProcLabel - RevLabelNums, !DeclSet, !IO) :-
+    list.reverse(RevLabelNums, LabelNums),
     % There must be a macro of the form MR_decl_label<n> for every <n>
     % up to MaxChunkSize.
-    list.reverse(LabelNums0, LabelNums),
-    MaxChunkSize = 8,
+    MaxChunkSize = 10,
     list.chunk(LabelNums, MaxChunkSize, LabelNumChunks),
-    list.foldl2(output_local_label_decl_group(ProcLabel), LabelNumChunks,
-        !DeclSet, !IO),
-    list.foldl(insert_var_info_label_layout_decl(ProcLabel), LabelNums,
-        !DeclSet),
-    list.foldl(insert_code_addr_decl(ProcLabel), LabelNums, !DeclSet).
+    list.foldl2(output_record_internal_label_decl_group(ProcLabel),
+        LabelNumChunks, !DeclSet, !IO),
+    list.foldl(insert_internal_label_code_addr_decl(ProcLabel), LabelNums,
+        !DeclSet).
 
-:- pred output_local_label_decl_group(proc_label::in, list(int)::in,
+:- pred output_record_internal_label_decl_group(proc_label::in, list(int)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_local_label_decl_group(ProcLabel, LabelNums, !DeclSet, !IO) :-
+output_record_internal_label_decl_group(ProcLabel, LabelNums, !DeclSet, !IO) :-
     io.write_string("MR_decl_label", !IO),
     io.write_int(list.length(LabelNums), !IO),
     io.write_string("(", !IO),
@@ -1503,82 +1517,37 @@ output_local_label_decl_group(ProcLabel, LabelNums, !DeclSet, !IO) :-
     io.write_string(", ", !IO),
     io.write_list(LabelNums, ",", io.write_int, !IO),
     io.write_string(")\n", !IO),
-    list.foldl(insert_code_addr_decl(ProcLabel), LabelNums, !DeclSet).
+    list.foldl(insert_internal_label_code_addr_decl(ProcLabel), LabelNums,
+        !DeclSet).
 
-:- pred insert_var_info_label_layout_decl(proc_label::in, int::in,
+:- pred insert_internal_label_code_addr_decl(proc_label::in, int::in,
     decl_set::in, decl_set::out) is det.
 
-insert_var_info_label_layout_decl(ProcLabel, LabelNum, !DeclSet) :-
-    LayoutName = label_layout(ProcLabel, LabelNum, label_has_var_info),
-    DataAddr = layout_addr(LayoutName),
-    DeclId = decl_data_addr(DataAddr),
-    decl_set_insert(DeclId, !DeclSet).
-
-:- pred insert_code_addr_decl(proc_label::in, int::in,
-    decl_set::in, decl_set::out) is det.
-
-insert_code_addr_decl(ProcLabel, LabelNum, !DeclSet) :-
+insert_internal_label_code_addr_decl(ProcLabel, LabelNum, !DeclSet) :-
     DeclId = decl_code_addr(code_label(internal_label(LabelNum, ProcLabel))),
     decl_set_insert(DeclId, !DeclSet).
 
-:- pred output_record_c_label_decl(llds_out_info::in,
-    map(label, data_addr)::in, label::in, decl_set::in, decl_set::out,
-    io::di, io::uo) is det.
+:- pred output_record_entry_label_decl(llds_out_info::in, label::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_record_c_label_decl(Info, StackLayoutLabels, Label, !DeclSet, !IO) :-
-    % Declare the stack layout entry for this label, if needed.
-    ( map.search(StackLayoutLabels, Label, DataAddr) ->
-        (
-            Label = internal_label(LabelNum, ProcLabel),
-            DataAddr = layout_addr(LayoutName),
-            LayoutName = label_layout(ProcLabel, LabelNum, LabelVars)
-        ->
-            (
-                LabelVars = label_has_var_info,
-                Macro = "MR_DECL_LL"
-            ;
-                LabelVars = label_has_no_var_info,
-                Macro = "MR_DECL_LLNVI"
-            ),
-            io.write_string(Macro, !IO),
-            io.write_string("(", !IO),
-            output_proc_label_no_prefix(ProcLabel, !IO),
-            io.write_string(", ", !IO),
-            io.write_int(LabelNum, !IO),
-            % The final semicolon is in the macro definition.
-            io.write_string(")\n", !IO),
-            % The macro declares both the label layout structure and the label.
-            AlreadyDeclaredLabel = yes
-        ;
-            output_record_stack_layout_decl(Info, DataAddr, !DeclSet, !IO),
-            AlreadyDeclaredLabel = no
-        )
-    ;
-        AlreadyDeclaredLabel = no
-    ),
+output_record_entry_label_decl(_Info, Label, !DeclSet, !IO) :-
     (
-        AlreadyDeclaredLabel = no,
-        % Declare the label itself.
-        (
-            Label = entry_label(entry_label_exported, _),
-            DeclMacro = "MR_def_extern_entry("
-        ;
-            Label = entry_label(entry_label_local, _),
-            DeclMacro = "MR_decl_static("
-        ;
-            Label = entry_label(entry_label_c_local, _),
-            DeclMacro = "MR_decl_local("
-        ;
-            Label = internal_label(_, _),
-            DeclMacro = "MR_decl_label("
-        ),
-        io.write_string(DeclMacro, !IO),
-        io.write_string("", !IO),
-        output_label(Label, no, !IO),
-        io.write_string(")\n", !IO)
+        Label = entry_label(entry_label_exported, _),
+        DeclMacro = "MR_def_extern_entry"
     ;
-        AlreadyDeclaredLabel = yes
+        Label = entry_label(entry_label_local, _),
+        DeclMacro = "MR_decl_static"
+    ;
+        Label = entry_label(entry_label_c_local, _),
+        DeclMacro = "MR_decl_local"
+    ;
+        Label = internal_label(_, _),
+        unexpected(this_file, "output_record_entry_label_decl: internal label")
     ),
+    io.write_string(DeclMacro, !IO),
+    io.write_string("(", !IO),
+    output_label(Label, no, !IO),
+    io.write_string(")\n", !IO),
     decl_set_insert(decl_code_addr(code_label(Label)), !DeclSet).
 
 :- pred output_record_stack_layout_decl(llds_out_info::in, data_addr::in,
@@ -1587,59 +1556,89 @@ output_record_c_label_decl(Info, StackLayoutLabels, Label, !DeclSet, !IO) :-
 output_record_stack_layout_decl(Info, DataAddr, !DeclSet, !IO) :-
     output_record_data_addr_decls(Info, DataAddr, !DeclSet, !IO).
 
-:- pred output_c_label_inits(map(label, data_addr)::in, list(label)::in,
+%-----------------------------------------------------------------------------%
+
+:- pred output_c_label_inits(llds_out_info::in,
+    list(label)::in, list(label)::in,
     io::di, io::uo) is det.
 
-output_c_label_inits(StackLayoutLabels, Labels, !IO) :-
-    group_c_labels(StackLayoutLabels, Labels, multi_map.init, NoLayoutMap,
-        multi_map.init, LayoutMap, [], RevOtherLabels),
-    list.reverse(RevOtherLabels, OtherLabels),
-    list.foldl(output_c_label_init(StackLayoutLabels), OtherLabels, !IO),
-    multi_map.to_assoc_list(NoLayoutMap, NoLayoutList),
-    multi_map.to_assoc_list(LayoutMap, LayoutList),
-    list.foldl(output_c_label_init_group(""), NoLayoutList, !IO),
-    list.foldl(output_c_label_init_group("_sl"), LayoutList, !IO).
+output_c_label_inits(Info, EntryLabels, InternalLabels, !IO) :-
+    EntryLabelToLayoutMap = Info ^ lout_entry_label_to_layout,
+    list.foldl(output_c_entry_label_init(EntryLabelToLayoutMap),
+        EntryLabels, !IO),
 
-:- pred group_c_labels(map(label, data_addr)::in, list(label)::in,
-    multi_map(proc_label, int)::in, multi_map(proc_label, int)::out,
-    multi_map(proc_label, int)::in, multi_map(proc_label, int)::out,
-    list(label)::in, list(label)::out) is det.
+    InternalLabelToLayoutMap = Info ^ lout_internal_label_to_layout,
+    group_init_c_labels(InternalLabelToLayoutMap, InternalLabels,
+        multi_map.init, NoLayoutInternalMap,
+        multi_map.init, NoVarLayoutInternalMap,
+        multi_map.init, VarLayoutInternalMap),
 
-group_c_labels(_StackLayoutLabels, [], !NoLayoutMap, !LayoutMap, !RevOthers).
-group_c_labels(StackLayoutLabels, [Label | Labels], !NoLayoutMap, !LayoutMap,
-        !RevOthers) :-
+    multi_map.to_assoc_list(NoLayoutInternalMap, NoLayoutInternalList),
+    list.foldl(output_c_internal_label_no_layout_init_group,
+        NoLayoutInternalList, !IO),
+
+    multi_map.to_assoc_list(NoVarLayoutInternalMap, NoVarLayoutInternalList),
+    list.foldl(output_c_internal_label_layout_init_group(Info, "_nvi"),
+        NoVarLayoutInternalList, !IO),
+
+    multi_map.to_assoc_list(VarLayoutInternalMap, VarLayoutInternalList),
+    list.foldl(output_c_internal_label_layout_init_group(Info, "_vi"),
+        VarLayoutInternalList, !IO).
+
+:- pred group_init_c_labels(map(label, layout_slot_name)::in, list(label)::in,
+    multi_map(proc_label, int)::in, multi_map(proc_label, int)::out,
+    multi_map(proc_label, {int, int})::in,
+    multi_map(proc_label, {int, int})::out,
+    multi_map(proc_label, {int, int})::in,
+    multi_map(proc_label, {int, int})::out) is det.
+
+group_init_c_labels(_InternalLabelToLayoutMap, [],
+        !NoLayoutMap, !NoVarLayoutMap, !VarLayoutMap).
+group_init_c_labels(InternalLabelToLayoutMap, [Label | Labels],
+        !NoLayoutMap, !NoVarLayoutMap, !VarLayoutMap) :-
     (
         Label = internal_label(LabelNum, ProcLabel),
-        ( map.search(StackLayoutLabels, Label, _DataAddr) ->
-            svmulti_map.set(ProcLabel, LabelNum, !LayoutMap)
+        ( map.search(InternalLabelToLayoutMap, Label, Slot) ->
+            Slot = layout_slot(ArrayName, SlotNum),
+            ( ArrayName = label_layout_array(Vars) ->
+                Pair = {LabelNum, SlotNum},
+                (
+                    Vars = label_has_var_info,
+                    svmulti_map.set(ProcLabel, Pair, !VarLayoutMap)
+                ;
+                    Vars = label_has_no_var_info,
+                    svmulti_map.set(ProcLabel, Pair, !NoVarLayoutMap)
+                )
+            ;
+                unexpected(this_file, "group_init_c_labels: bad slot type")
+            )
         ;
             svmulti_map.set(ProcLabel, LabelNum, !NoLayoutMap)
         )
     ;
         Label = entry_label(_, _),
-        !:RevOthers = [Label | !.RevOthers]
+        unexpected(this_file, "group_init_c_labels: entry label")
     ),
-    group_c_labels(StackLayoutLabels, Labels, !NoLayoutMap, !LayoutMap,
-        !RevOthers).
+    group_init_c_labels(InternalLabelToLayoutMap, Labels,
+        !NoLayoutMap, !NoVarLayoutMap, !VarLayoutMap).
 
-:- pred output_c_label_init_group(string::in,
+:- pred output_c_internal_label_no_layout_init_group(
     pair(proc_label, list(int))::in, io::di, io::uo) is det.
 
-output_c_label_init_group(Suffix, ProcLabel - RevLabelNums, !IO) :-
+output_c_internal_label_no_layout_init_group(ProcLabel - RevLabelNums, !IO) :-
     list.reverse(RevLabelNums, LabelNums),
-    % There must be macros of the form MR_init_label<n> and
-    % MR_init_label_sl<n> for every <n> up to MaxChunkSize.
-    MaxChunkSize = 8,
+    % There must be macros of the form MR_init_label_nvi<n> for every <n>
+    % up to MaxChunkSize.
+    MaxChunkSize = 10,
     list.chunk(LabelNums, MaxChunkSize, LabelNumChunks),
-    list.foldl(output_c_label_init_chunk(Suffix, ProcLabel),
+    list.foldl(output_c_internal_label_no_layout_init_chunk(ProcLabel),
         LabelNumChunks, !IO).
 
-:- pred output_c_label_init_chunk(string::in,
-    proc_label::in, list(int)::in, io::di, io::uo) is det.
+:- pred output_c_internal_label_no_layout_init_chunk(proc_label::in,
+    list(int)::in, io::di, io::uo) is det.
 
-output_c_label_init_chunk(Suffix, ProcLabel, LabelNums, !IO) :-
+output_c_internal_label_no_layout_init_chunk(ProcLabel, LabelNums, !IO) :-
     io.write_string("\tMR_init_label", !IO),
-    io.write_string(Suffix, !IO),
     io.write_int(list.length(LabelNums), !IO),
     io.write_string("(", !IO),
     output_proc_label_no_prefix(ProcLabel, !IO),
@@ -1647,26 +1646,54 @@ output_c_label_init_chunk(Suffix, ProcLabel, LabelNums, !IO) :-
     io.write_list(LabelNums, ",", io.write_int, !IO),
     io.write_string(")\n", !IO).
 
-:- pred output_c_label_init(map(label, data_addr)::in, label::in,
+:- pred output_c_internal_label_layout_init_group(llds_out_info::in,
+    string::in, pair(proc_label, list({int, int}))::in,
     io::di, io::uo) is det.
 
-output_c_label_init(StackLayoutLabels, Label, !IO) :-
-    ( map.search(StackLayoutLabels, Label, DataAddr) ->
-        SuffixOpen = "_sl(",
-        ( DataAddr = layout_addr(proc_layout(_, _)) ->
-            % Labels whose stack layouts are proc layouts may need
-            % to have the code address in that layout initialized
-            % at run time (if code addresses are not static).
-            InitProcLayout = yes
-        ;
-            % Labels whose stack layouts are internal layouts
-            % do not have code addresses in their layouts.
-            InitProcLayout = no
-        )
+output_c_internal_label_layout_init_group(Info, Suffix,
+        ProcLabel - RevLabelSlotNums, !IO) :-
+    list.reverse(RevLabelSlotNums, LabelSlotNums),
+    % There must be macros of the form MR_init_label_vi<n> for every <n>
+    % up to MaxChunkSize.
+    MaxChunkSize = 10,
+    list.chunk(LabelSlotNums, MaxChunkSize, LabelSlotNumChunks),
+    list.foldl(
+        output_c_internal_label_layout_init_chunk(Info, Suffix, ProcLabel),
+        LabelSlotNumChunks, !IO).
+
+:- pred output_c_internal_label_layout_init_chunk(llds_out_info::in,
+    string::in, proc_label::in, list({int, int})::in, io::di, io::uo) is det.
+
+output_c_internal_label_layout_init_chunk(Info, Suffix, ProcLabel,
+        LabelSlotNums, !IO) :-
+    io.write_string("\tMR_init_label", !IO),
+    io.write_string(Suffix, !IO),
+    io.write_int(list.length(LabelSlotNums), !IO),
+    io.write_string("(", !IO),
+    output_proc_label_no_prefix(ProcLabel, !IO),
+    io.write_string(", ", !IO),
+    ModuleName = Info ^ lout_mangled_module_name,
+    io.write_string(ModuleName, !IO),
+    io.write_string(",\n\t\t", !IO),
+    io.write_list(LabelSlotNums, ", ", write_int_pair, !IO),
+    io.write_string(")\n", !IO).
+
+:- pred write_int_pair({int, int}::in, io::di, io::uo) is det.
+
+write_int_pair({LabelNum, SlotNum}, !IO) :- 
+    io.write_int(LabelNum, !IO),
+    io.write_string(",", !IO),
+    io.write_int(SlotNum, !IO).
+
+:- pred output_c_entry_label_init(map(label, data_addr)::in, label::in,
+    io::di, io::uo) is det.
+
+output_c_entry_label_init(EntryLabelToLayoutMap, Label, !IO) :-
+    ( map.search(EntryLabelToLayoutMap, Label, _DataAddr) ->
+        SuffixOpen = "_sl("
     ;
-        SuffixOpen = "(",
+        SuffixOpen = "("
         % This label has no stack layout to initialize.
-        InitProcLayout = no
     ),
     (
         Label = entry_label(entry_label_exported, ProcLabel),
@@ -1680,38 +1707,28 @@ output_c_label_init(StackLayoutLabels, Label, !IO) :-
     ;
         Label = internal_label(_, _),
         % These should have been separated out by group_c_labels.
-        unexpected(this_file, "output_c_label_init: internal/2")
+        unexpected(this_file, "output_c_entry_label_init: internal/2")
     ),
     io.write_string(TabInitMacro, !IO),
     io.write_string(SuffixOpen, !IO),
     output_proc_label_no_prefix(ProcLabel, !IO),
     io.write_string(");\n", !IO),
-    (
-        InitProcLayout = yes,
-        io.write_string("\tMR_INIT_PROC_LAYOUT_ADDR(", !IO),
-        output_label(Label, !IO),
-        io.write_string(");\n", !IO)
-    ;
-        InitProcLayout = no
-    ).
 
-:- pred label_is_proc_entry(label::in, bool::out) is det.
+    io.write_string("\tMR_INIT_PROC_LAYOUT_ADDR(", !IO),
+    output_label(Label, !IO),
+    io.write_string(");\n", !IO).
 
-label_is_proc_entry(internal_label(_, _), no).
-label_is_proc_entry(entry_label(_, _), yes).
+%-----------------------------------------------------------------------------%
 
-:- pred output_record_c_procedure_decls(llds_out_info::in,
-    map(label, data_addr)::in, c_procedure::in, decl_set::in, decl_set::out,
-    io::di, io::uo) is det.
+:- pred output_record_c_procedure_decls(llds_out_info::in, c_procedure::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_record_c_procedure_decls(Info, StackLayoutLabels, Proc,
-        !DeclSet, !IO) :-
+output_record_c_procedure_decls(Info, Proc, !DeclSet, !IO) :-
     Instrs = Proc ^ cproc_code,
     CGlobalVarSet = Proc ^ cproc_c_global_vars,
     set.to_sorted_list(CGlobalVarSet, CGlobalVars),
     list.foldl2(output_c_global_var_decl, CGlobalVars, !DeclSet, !IO),
-    list.foldl2(output_record_instruction_decls(Info, StackLayoutLabels),
-        Instrs, !DeclSet, !IO).
+    list.foldl2(output_record_instruction_decls(Info), Instrs, !DeclSet, !IO).
 
 :- pred output_c_global_var_decl(string::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
@@ -1917,19 +1934,17 @@ count_while_label_in_block(Label, [Instr0 | Instrs0], !Count) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_record_instruction_decls(llds_out_info::in,
-    map(label, data_addr)::in, instruction::in, decl_set::in, decl_set::out,
-    io::di, io::uo) is det.
+:- pred output_record_instruction_decls(llds_out_info::in, instruction::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_record_instruction_decls(Info, StackLayoutLabels, Instr,
-        !DeclSet, !IO) :-
+output_record_instruction_decls(Info, Instr, !DeclSet, !IO) :-
     Instr = llds_instr(Uinstr, _),
-    output_record_instr_decls(Info, StackLayoutLabels, Uinstr, !DeclSet, !IO).
+    output_record_instr_decls(Info, Uinstr, !DeclSet, !IO).
 
-:- pred output_record_instr_decls(llds_out_info::in, map(label, data_addr)::in,
-    instr::in, decl_set::in, decl_set::out, io::di, io::uo) is det.
+:- pred output_record_instr_decls(llds_out_info::in, instr::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_record_instr_decls(Info, StackLayoutLabels, Instr, !DeclSet, !IO) :-
+output_record_instr_decls(Info, Instr, !DeclSet, !IO) :-
     (
         ( Instr = comment(_)
         ; Instr = livevals(_)
@@ -1945,8 +1960,8 @@ output_record_instr_decls(Info, StackLayoutLabels, Instr, !DeclSet, !IO) :-
         )
     ;
         Instr = block(_TempR, _TempF, Instrs),
-        list.foldl2(output_record_instruction_decls(Info, StackLayoutLabels),
-            Instrs, !DeclSet, !IO)
+        list.foldl2(output_record_instruction_decls(Info), Instrs,
+            !DeclSet, !IO)
     ;
         Instr = assign(Lval, Rval),
         output_record_lval_decls(Info, Lval, !DeclSet, !IO),
@@ -2060,22 +2075,7 @@ output_record_instr_decls(Info, StackLayoutLabels, Instr, !DeclSet, !IO) :-
         Instr = region_set_fixed_slot(_SetOp, _EmbeddedFrame, ValueRval),
         output_record_rval_decls(Info, ValueRval, !DeclSet, !IO)
     ;
-        Instr = foreign_proc_code(_, Comps, _, _,
-            MaybeLayoutLabel, MaybeOnlyLayoutLabel, _, _, _),
-        (
-            MaybeLayoutLabel = yes(Label),
-            map.lookup(StackLayoutLabels, Label, DataAddr),
-            output_record_stack_layout_decl(Info, DataAddr, !DeclSet, !IO)
-        ;
-            MaybeLayoutLabel = no
-        ),
-        (
-            MaybeOnlyLayoutLabel = yes(OnlyLabel),
-            map.lookup(StackLayoutLabels, OnlyLabel, OnlyDataAddr),
-            output_record_stack_layout_decl(Info, OnlyDataAddr, !DeclSet, !IO)
-        ;
-            MaybeOnlyLayoutLabel = no
-        ),
+        Instr = foreign_proc_code(_, Comps, _, _, _, _, _, _, _, _),
         list.foldl2(output_record_foreign_proc_component_decls(Info), Comps,
             !DeclSet, !IO)
     ;
@@ -2718,10 +2718,25 @@ output_instruction(Info, Instr, ProfInfo, !IO) :-
         io.write_int(N, !IO),
         io.write_string(");\n", !IO)
     ;
-        Instr = foreign_proc_code(Decls, Components, _, _, _, _, _, _, _),
+        Instr = foreign_proc_code(Decls, Components, _, _, _, _, _,
+            MaybeDefLabel, _, _),
         io.write_string("\t{\n", !IO),
         output_foreign_proc_decls(Decls, !IO),
-        list.foldl(output_foreign_proc_component(Info), Components, !IO),
+        (
+            MaybeDefLabel = no,
+            list.foldl(output_foreign_proc_component(Info), Components, !IO)
+        ;
+            MaybeDefLabel = yes(DefLabel),
+            InternalLabelToLayoutMap = Info ^ lout_internal_label_to_layout,
+            map.lookup(InternalLabelToLayoutMap, DefLabel, DefLabelLayout),
+            io.write_string("#define MR_HASH_DEF_LABEL_LAYOUT ", !IO),
+            MangledModuleName = Info ^ lout_mangled_module_name,
+            output_layout_slot_name(use_layout_macro, MangledModuleName,
+                DefLabelLayout, !IO),
+            io.nl(!IO),
+            list.foldl(output_foreign_proc_component(Info), Components, !IO),
+            io.write_string("#undef MR_HASH_DEF_LABEL_LAYOUT\n", !IO)
+        ),
         io.write_string("\t}\n", !IO)
     ;
         Instr = init_sync_term(Lval, N),
@@ -3696,7 +3711,8 @@ output_llds_type(lt_code_ptr, !IO) :-
     io.write_string("MR_Code *", !IO).
 
 :- pred output_common_cell_value(llds_out_info::in, common_cell_value::in,
-    io::di, io::uo) is det. 
+    io::di, io::uo) is det.
+
 output_common_cell_value(Info, CellValue, !IO) :-
     io.write_string("{\n", !IO),
     (
@@ -4136,7 +4152,8 @@ output_data_addr_decls_2(Info, DataAddr, FirstIndent, LaterIndent, !N, !IO) :-
         io.write_string(";\n", !IO)
     ;
         DataAddr = layout_addr(LayoutName),
-        output_layout_name_storage_type_name(LayoutName, no, !IO),
+        output_layout_name_storage_type_name(LayoutName,
+            not_being_defined, !IO),
         io.write_string(";\n", !IO)
     ).
 
@@ -5890,55 +5907,76 @@ max_virtual_r_reg = 1024.
 
 %-----------------------------------------------------------------------------%
 
-:- pred gather_c_file_labels(list(comp_gen_c_module)::in, list(label)::out)
-    is det.
+:- pred gather_c_file_labels(list(comp_gen_c_module)::in,
+    list(label)::out, list(label)::out) is det.
 
-gather_c_file_labels(Modules, Labels) :-
-    gather_labels_from_c_modules(Modules, [], Labels1),
-    list.reverse(Labels1, Labels).
+gather_c_file_labels(Modules, EntryLabels, InternalLabels) :-
+    gather_labels_from_c_modules_acc(Modules,
+        [], RevEntryLabels, [], RevInternalLabels),
+    list.reverse(RevEntryLabels, EntryLabels),
+    list.reverse(RevInternalLabels, InternalLabels).
 
-:- pred gather_c_module_labels(list(c_procedure)::in, list(label)::out) is det.
+:- pred gather_c_module_labels(list(c_procedure)::in,
+    list(label)::out, list(label)::out) is det.
 
-gather_c_module_labels(Procs, Labels) :-
-    gather_labels_from_c_procs(Procs, [], Labels1),
-    list.reverse(Labels1, Labels).
+gather_c_module_labels(Procs, EntryLabels, InternalLabels) :-
+    gather_labels_from_c_procs_acc(Procs,
+        [], RevEntryLabels, [], RevInternalLabels),
+    list.reverse(RevEntryLabels, EntryLabels),
+    list.reverse(RevInternalLabels, InternalLabels).
 
 %-----------------------------------------------------------------------------%
 
-:- pred gather_labels_from_c_modules(list(comp_gen_c_module)::in,
+:- pred gather_labels_from_c_modules_acc(list(comp_gen_c_module)::in,
+    list(label)::in, list(label)::out,
     list(label)::in, list(label)::out) is det.
 
-gather_labels_from_c_modules([], !Labels).
-gather_labels_from_c_modules([Module | Modules], !Labels) :-
-    gather_labels_from_c_module(Module, !Labels),
-    gather_labels_from_c_modules(Modules, !Labels).
+gather_labels_from_c_modules_acc([], !RevEntryLabels, !RevInternalLabels).
+gather_labels_from_c_modules_acc([Module | Modules],
+        !RevEntryLabels, !RevInternalLabels) :-
+    gather_labels_from_c_module_acc(Module,
+        !RevEntryLabels, !RevInternalLabels),
+    gather_labels_from_c_modules_acc(Modules,
+        !RevEntryLabels, !RevInternalLabels).
 
-:- pred gather_labels_from_c_module(comp_gen_c_module::in,
+:- pred gather_labels_from_c_module_acc(comp_gen_c_module::in,
+    list(label)::in, list(label)::out,
     list(label)::in, list(label)::out) is det.
 
-gather_labels_from_c_module(comp_gen_c_module(_, Procs), Labels0, Labels) :-
-    gather_labels_from_c_procs(Procs, Labels0, Labels).
+gather_labels_from_c_module_acc(comp_gen_c_module(_, Procs),
+        !RevEntryLabels, !RevInternalLabels) :-
+    gather_labels_from_c_procs_acc(Procs, !RevEntryLabels, !RevInternalLabels).
 
-:- pred gather_labels_from_c_procs(list(c_procedure)::in,
+:- pred gather_labels_from_c_procs_acc(list(c_procedure)::in,
+    list(label)::in, list(label)::out,
     list(label)::in, list(label)::out) is det.
 
-gather_labels_from_c_procs([], Labels, Labels).
-gather_labels_from_c_procs([Proc | Procs], !Labels) :-
+gather_labels_from_c_procs_acc([], !RevEntryLabels, !RevInternalLabels).
+gather_labels_from_c_procs_acc([Proc | Procs],
+        !RevEntryLabels, !RevInternalLabels) :-
     Instrs = Proc ^ cproc_code,
-    gather_labels_from_instrs(Instrs, !Labels),
-    gather_labels_from_c_procs(Procs, !Labels).
+    gather_labels_from_instrs_acc(Instrs, !RevEntryLabels, !RevInternalLabels),
+    gather_labels_from_c_procs_acc(Procs, !RevEntryLabels, !RevInternalLabels).
 
-:- pred gather_labels_from_instrs(list(instruction)::in,
+:- pred gather_labels_from_instrs_acc(list(instruction)::in,
+    list(label)::in, list(label)::out,
     list(label)::in, list(label)::out) is det.
 
-gather_labels_from_instrs([], !Labels).
-gather_labels_from_instrs([Instr | Instrs], !Labels) :-
+gather_labels_from_instrs_acc([], !RevEntryLabels, !RevInternalLabels).
+gather_labels_from_instrs_acc([Instr | Instrs],
+        !RevEntryLabels, !RevInternalLabels) :-
     ( Instr = llds_instr(label(Label), _) ->
-        !:Labels = [Label | !.Labels]
+        (
+            Label = entry_label(_, _),
+            !:RevEntryLabels = [Label | !.RevEntryLabels]
+        ;
+            Label = internal_label(_, _),
+            !:RevInternalLabels = [Label | !.RevInternalLabels]
+        )
     ;
         true
     ),
-    gather_labels_from_instrs(Instrs, !Labels).
+    gather_labels_from_instrs_acc(Instrs, !RevEntryLabels, !RevInternalLabels).
 
 %-----------------------------------------------------------------------------%
 
@@ -5970,7 +6008,12 @@ explain_stack_slots_2([Var - Slot | Rest], VarSet, !Explanation) :-
 
 %---------------------------------------------------------------------------%
 
-init_llds_out_info(Globals) = Info :-
+:- func init_llds_out_info(module_name, globals,
+    map(label, layout_slot_name), map(label, data_addr)) = llds_out_info.
+
+init_llds_out_info(ModuleName, Globals,
+        InternalLabelToLayoutMap, EntryLabelToLayoutMap) = Info :-
+    MangledModuleName = sym_name_mangle(ModuleName),
     globals.lookup_bool_option(Globals, auto_comments, AutoComments),
     globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
     globals.lookup_bool_option(Globals, emit_c_loops, EmitCLoops),
@@ -5987,8 +6030,10 @@ init_llds_out_info(Globals) = Info :-
     globals.lookup_bool_option(Globals, use_macro_for_redo_fail,
         UseMacroForRedoFail),
     globals.get_trace_level(Globals, TraceLevel),
-    Info = llds_out_info(AutoComments, LineNumbers, EmitCLoops,
-        GenerateBytecode, LocalThreadEngineBase,
+    Info = llds_out_info(MangledModuleName,
+        InternalLabelToLayoutMap, EntryLabelToLayoutMap,
+        AutoComments, LineNumbers,
+        EmitCLoops, GenerateBytecode, LocalThreadEngineBase,
         ProfileCalls, ProfileTime, ProfileMemory, ProfileDeep,
         UnboxedFloat, StaticGroundFloats, UseMacroForRedoFail,
         TraceLevel, Globals).

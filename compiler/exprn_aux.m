@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2008 The University of Melbourne.
+% Copyright (C) 1995-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -393,12 +393,12 @@ transform_lval_in_uinstr(Transform, Uinstr0, Uinstr, !Acc) :-
 %       Uinstr = discard_tickets_to(Rval)
     ;
         Uinstr0 = foreign_proc_code(Decls, Components0, MayCallMercury,
-            MaybeLabel1, MaybeLabel2, MaybeLabel3, MaybeLabel4,
+            MaybeLabel1, MaybeLabel2, MaybeLabel3, MaybeLabel4, MaybeLabel5,
             ReferStackSlot, MayDupl),
         list.map_foldl(transform_lval_in_component(Transform),
             Components0, Components, !Acc),
         Uinstr = foreign_proc_code(Decls, Components, MayCallMercury,
-            MaybeLabel1, MaybeLabel2, MaybeLabel3, MaybeLabel4,
+            MaybeLabel1, MaybeLabel2, MaybeLabel3, MaybeLabel4, MaybeLabel5,
             ReferStackSlot, MayDupl)
     ;
         Uinstr0 = init_sync_term(Lval0, BranchCount),

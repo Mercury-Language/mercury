@@ -629,14 +629,14 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
             MaybeRedoLabel = yes(RedoLayoutLabel),
             redo_layout_slot(CodeModel, RedoLayoutLval),
             stackref_to_string(RedoLayoutLval, RedoLayoutStr),
-            LayoutAddrStr =
-                layout_out.make_label_layout_name(RedoLayoutLabel),
             !:CodeStr = !.CodeStr ++ "\t\t" ++ RedoLayoutStr ++
-                " = (MR_Word) (const MR_Word *) &" ++ LayoutAddrStr ++ ";\n",
-            MaybeLayoutLabel = yes(RedoLayoutLabel)
+                " = (MR_Word) (const MR_Word *) MR_HASH_DEF_LABEL_LAYOUT;\n",
+            MaybeLayoutLabel = yes(RedoLayoutLabel),
+            MaybeHashDefLabel = yes(RedoLayoutLabel)
         ;
             MaybeRedoLabel = no,
-            MaybeLayoutLabel = no
+            MaybeLayoutLabel = no,
+            MaybeHashDefLabel = no
         ),
         % Stage 3 is handled later.
         % Stage 4.
@@ -663,7 +663,7 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
         ;
             MaybeTrailLvals = no
         ),
-        % Stage 3.
+        % Stage 3 (delayed).
         (
             MaybeFromFullSlot = yes(CallFromFullSlot),
             stackref_to_string(CallFromFullSlot, CallFromFullSlotStr),
@@ -684,7 +684,7 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
     TraceCode1 = singleton(
         llds_instr(foreign_proc_code([], TraceComponents1,
             proc_will_not_call_mercury, no, no, MaybeLayoutLabel,
-            no, yes, proc_may_not_duplicate), "")
+            no, MaybeHashDefLabel, yes, proc_may_not_duplicate), "")
     ),
     % Stage 6.
     (
@@ -713,8 +713,8 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
             TraceStmt3)],
         TraceCode3 = singleton(
             llds_instr(foreign_proc_code([], TraceComponents3,
-                proc_will_not_call_mercury, no, no, no, no, yes,
-                proc_may_not_duplicate),
+                proc_will_not_call_mercury, no, no, no, no, no,
+                yes, proc_may_not_duplicate),
                 "initialize tail recursion count")
         )
     ;
@@ -731,8 +731,8 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
             TraceStmt4)],
         TraceCode4 = singleton(
             llds_instr(foreign_proc_code([], TraceComponents4,
-                proc_will_not_call_mercury, no, no, no, no, yes,
-                proc_may_not_duplicate), "")
+                proc_will_not_call_mercury, no, no, no, no, no,
+                yes, proc_may_not_duplicate), "")
         )
     ;
         MaybeCallTableLval = no,
@@ -1016,8 +1016,8 @@ generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
         ForeignLangCodeStr)],
     ForeignLangCode = singleton(
         llds_instr(foreign_proc_code([], ForeignLangComponents,
-            proc_will_not_call_mercury, no, no, no,
-            no, yes, proc_may_duplicate), "")
+            proc_will_not_call_mercury, no, no, no, no, no,
+            yes, proc_may_duplicate), "")
     ),
     Code = ForeignLangCode ++ MaxfrCode ++ TailRecLvalCode.
 
@@ -1108,13 +1108,12 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
 
     set.list_to_set(VarInfoList, VarInfoSet),
     LayoutLabelInfo = layout_label_info(VarInfoSet, TvarDataMap),
-    LabelStr = llds_out.label_to_c_string(Label, no),
     (
         MaybeUserInfo = no,
-        TraceStmt0 = "\t\tMR_EVENT(" ++ LabelStr ++ ")\n"
+        TraceStmt0 = "\t\tMR_EVENT_SYS\n"
     ;
         MaybeUserInfo = yes(_),
-        TraceStmt0 = "\t\tMR_USER_EVENT(" ++ LabelStr ++ ")\n"
+        TraceStmt0 = "\t\tMR_EVENT_USER\n"
     ),
     TraceStmt = "\t\t/* port " ++ trace_port_to_string(Port) ++ ", " ++
         "path <" ++ goal_path_to_string(Path) ++ "> */\n" ++
@@ -1155,8 +1154,8 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
                 % pair is preceded by another label, and this way we can
                 % eliminate this other label.
             llds_instr(foreign_proc_code([], TraceComponents,
-                proc_may_call_mercury, no, no, yes(Label), no, yes,
-                proc_may_not_duplicate), "")
+                proc_may_call_mercury, no, no, yes(Label), no, yes(Label),
+                yes, proc_may_not_duplicate), "")
         ]),
     Code = ProduceCode ++ TailRecResetCode ++ TraceCode.
 

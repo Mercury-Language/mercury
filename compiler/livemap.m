@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2007 The University of Melbourne.
+% Copyright (C) 1995-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -356,7 +356,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         build_live_lval_info(AffectsLiveness, LiveLvalInfo, Code,
             !Livevals, !ContainsBadUserCode)
     ;
-        Uinstr0 = foreign_proc_code(_, Components, _, _, _, _, _, _, _),
+        Uinstr0 = foreign_proc_code(_, Components, _, _, _, _, _, _, _, _),
         build_livemap_foreign_proc_components(Components,
             !Livevals, !ContainsBadUserCode)
     ).

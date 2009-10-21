@@ -662,7 +662,7 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
     ),
     PragmaCCode = singleton(
         llds_instr(foreign_proc_code(Decls, Components, MayCallMercury,
-            no, no, no, MaybeFailLabel, RefersToLLDSSTack, MayDupl),
+            no, no, no, MaybeFailLabel, no, RefersToLLDSSTack, MayDupl),
             "foreign_proc inclusion")
     ),
 
@@ -948,7 +948,7 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         ],
         CallBlockCode = singleton(
             llds_instr(foreign_proc_code(CallDecls, CallComponents,
-                MayCallMercury, no, no, no, no, yes, MD),
+                MayCallMercury, no, no, no, no, no, yes, MD),
                 "Call and shared foreign_proc inclusion")
         ),
 
@@ -999,7 +999,7 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         ],
         RetryBlockCode = singleton(
             llds_instr(foreign_proc_code(RetryDecls, RetryComponents,
-                MayCallMercury, no, no, no, no, yes, MD),
+                MayCallMercury, no, no, no, no, no, yes, MD),
                 "Retry and shared foreign_proc inclusion")
         ),
 
@@ -1078,7 +1078,7 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         ],
         CallBlockCode = singleton(
             llds_instr(foreign_proc_code(CallDecls, CallComponents,
-                MayCallMercury, yes(SharedLabel), no, no, no, yes, MD),
+                MayCallMercury, yes(SharedLabel), no, no, no, no, yes, MD),
                 "Call foreign_proc inclusion")
         ),
 
@@ -1131,7 +1131,7 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         ],
         RetryBlockCode = singleton(
             llds_instr(foreign_proc_code(RetryDecls, RetryComponents,
-                MayCallMercury, yes(SharedLabel), no, no, no, yes, MD),
+                MayCallMercury, yes(SharedLabel), no, no, no, no, yes, MD),
                 "Retry foreign_proc inclusion")
         ),
 
@@ -1185,7 +1185,7 @@ generate_nondet_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         ],
         SharedBlockCode = singleton(
             llds_instr(foreign_proc_code(SharedDecls, SharedComponents,
-                MayCallMercury, no, no, no, no, yes, MD),
+                MayCallMercury, no, no, no, no, no, yes, MD),
                 "Shared foreign_proc inclusion")
         ),
 

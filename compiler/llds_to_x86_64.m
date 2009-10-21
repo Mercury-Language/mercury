@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -430,7 +430,7 @@ instr_to_x86_64(!RegMap, decr_sp(NumSlots), Instrs) :-
 instr_to_x86_64(!RegMap, decr_sp_and_return(NumSlots), Instrs) :-
     Instrs = [x86_64_comment("<<decr_sp_and_return>> " ++
         string.int_to_string(NumSlots))].
-instr_to_x86_64(!RegMap, foreign_proc_code(_, _, _, _, _, _, _, _, _),
+instr_to_x86_64(!RegMap, foreign_proc_code(_, _, _, _, _, _, _, _, _, _),
         Instr) :-
     Instr = [x86_64_comment("<<foreign_proc_code>>")].
 instr_to_x86_64(!RegMap, init_sync_term(_, _), Instr) :-

@@ -120,7 +120,7 @@ is_recursive_call(Goal, CodeInfo) :-
     %
 :- func contains_only_builtins(hlds_goal) = bool.
 
-contains_only_builtins(Goal) = 
+contains_only_builtins(Goal) =
     contains_only_builtins_expr(Goal ^ hlds_goal_expr).
 
 :- func contains_only_builtins_expr(hlds_goal_expr) = bool.
@@ -514,92 +514,91 @@ find_used_registers([llds_instr(Uinstr, _) | Instrs], !Used) :-
 :- pred find_used_registers_instr(instr::in,
     set(int)::in, set(int)::out) is det.
 
-find_used_registers_instr(comment(_), !Used).
-find_used_registers_instr(livevals(LvalSet), !Used) :-
-    set.to_sorted_list(LvalSet, LvalList),
-    find_used_registers_lvals(LvalList, !Used).
-find_used_registers_instr(block(_, _, Instrs), !Used) :-
-    find_used_registers(Instrs, !Used).
-find_used_registers_instr(assign(Lval, Rval), !Used) :-
-    find_used_registers_lval(Lval, !Used),
-    find_used_registers_rval(Rval, !Used).
-find_used_registers_instr(keep_assign(Lval, Rval), !Used) :-
-    find_used_registers_lval(Lval, !Used),
-    find_used_registers_rval(Rval, !Used).
-find_used_registers_instr(llcall(_, _, _, _, _, _), !Used).
-find_used_registers_instr(mkframe(_, _), !Used).
-find_used_registers_instr(label(_), !Used).
-find_used_registers_instr(goto(_), !Used).
-find_used_registers_instr(computed_goto(Rval, _), !Used) :-
-    find_used_registers_rval(Rval, !Used).
-find_used_registers_instr(arbitrary_c_code(_, _, _), !Used).
-find_used_registers_instr(if_val(Rval, _), !Used) :-
-    find_used_registers_rval(Rval, !Used).
-find_used_registers_instr(save_maxfr(Lval), !Used) :-
-    find_used_registers_lval(Lval, !Used).
-find_used_registers_instr(restore_maxfr(Lval), !Used) :-
-    find_used_registers_lval(Lval, !Used).
-find_used_registers_instr(incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval,
-        MaybeReuse), !Used) :-
-    find_used_registers_lval(Lval, !Used),
-    find_used_registers_rval(Rval, !Used),
+find_used_registers_instr(Uinstr, !Used) :-
     (
-        MaybeRegionRval = yes(RegionRval),
-        find_used_registers_rval(RegionRval, !Used)
-    ;
-        MaybeRegionRval = no
-    ),
-    (
-        MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
-        find_used_registers_rval(ReuseRval, !Used),
-        (
-            MaybeFlagLval = yes(FlagLval),
-            find_used_registers_lval(FlagLval, !Used)
-        ;
-            MaybeFlagLval = no
+        ( Uinstr = comment(_)
+        ; Uinstr = llcall(_, _, _, _, _, _)
+        ; Uinstr = mkframe(_, _)
+        ; Uinstr = label(_)
+        ; Uinstr = goto(_)
+        ; Uinstr = arbitrary_c_code(_, _, _)
+        ; Uinstr = push_region_frame(_Id, _EmbeddedStackFrame)
+        ; Uinstr = use_and_maybe_pop_region_frame(_UseOp, _EmbeddedStackFrame)
+        ; Uinstr = discard_ticket
+        ; Uinstr = prune_ticket
+        ; Uinstr = incr_sp(_, _, _)
+        ; Uinstr = decr_sp(_)
+        ; Uinstr = decr_sp_and_return(_)
         )
     ;
-        MaybeReuse = no_llds_reuse
+        Uinstr = livevals(LvalSet),
+        set.to_sorted_list(LvalSet, LvalList),
+        find_used_registers_lvals(LvalList, !Used)
+    ;
+        Uinstr = block(_, _, Instrs),
+        find_used_registers(Instrs, !Used)
+    ;
+        ( Uinstr = assign(Lval, Rval)
+        ; Uinstr = keep_assign(Lval, Rval)
+        ),
+        find_used_registers_lval(Lval, !Used),
+        find_used_registers_rval(Rval, !Used)
+    ;
+        Uinstr = incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval,
+            MaybeReuse),
+        find_used_registers_lval(Lval, !Used),
+        find_used_registers_rval(Rval, !Used),
+        (
+            MaybeRegionRval = yes(RegionRval),
+            find_used_registers_rval(RegionRval, !Used)
+        ;
+            MaybeRegionRval = no
+        ),
+        (
+            MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
+            find_used_registers_rval(ReuseRval, !Used),
+            (
+                MaybeFlagLval = yes(FlagLval),
+                find_used_registers_lval(FlagLval, !Used)
+            ;
+                MaybeFlagLval = no
+            )
+        ;
+            MaybeReuse = no_llds_reuse
+        )
+    ;
+        Uinstr = region_fill_frame(_FillOp, _EmbeddedStackFrame,
+            IdRval, NumLval, AddrLval),
+        find_used_registers_rval(IdRval, !Used),
+        find_used_registers_lval(NumLval, !Used),
+        find_used_registers_lval(AddrLval, !Used)
+    ;
+        Uinstr = region_set_fixed_slot(_SetOp, _EmbeddedStackFrame, ValueRval),
+        find_used_registers_rval(ValueRval, !Used)
+    ;
+        Uinstr = foreign_proc_code(_, Components, _, _, _, _, _, _, _, _),
+        find_used_registers_components(Components, !Used)
+    ;
+        ( Uinstr = computed_goto(Rval, _)
+        ; Uinstr = if_val(Rval, _)
+        ; Uinstr = restore_hp(Rval)
+        ; Uinstr = free_heap(Rval)
+        ; Uinstr = reset_ticket(Rval, _Rsn)
+        ; Uinstr = prune_tickets_to(Rval)
+        ),
+        find_used_registers_rval(Rval, !Used)
+    ;
+        ( Uinstr = save_maxfr(Lval)
+        ; Uinstr = restore_maxfr(Lval)
+        ; Uinstr = mark_hp(Lval)
+        ; Uinstr = store_ticket(Lval)
+        ; Uinstr = mark_ticket_stack(Lval)
+        ; Uinstr = init_sync_term(Lval, _)
+        ; Uinstr = fork_new_child(Lval, _)
+        ; Uinstr = join_and_continue(Lval, _)
+        ),
+        find_used_registers_lval(Lval, !Used)
     ).
-find_used_registers_instr(mark_hp(Lval), !Used) :-
-    find_used_registers_lval(Lval, !Used).
-find_used_registers_instr(restore_hp(Rval), !Used) :-
-    find_used_registers_rval(Rval, !Used).
-find_used_registers_instr(free_heap(Rval), !Used) :-
-    find_used_registers_rval(Rval, !Used).
-find_used_registers_instr(push_region_frame(_Id, _EmbeddedStackFrame), !Used).
-find_used_registers_instr(region_fill_frame(_FillOp, _EmbeddedStackFrame,
-        IdRval, NumLval, AddrLval), !Used) :-
-    find_used_registers_rval(IdRval, !Used),
-    find_used_registers_lval(NumLval, !Used),
-    find_used_registers_lval(AddrLval, !Used).
-find_used_registers_instr(region_set_fixed_slot(_SetOp, _EmbeddedStackFrame,
-        ValueRval), !Used) :-
-    find_used_registers_rval(ValueRval, !Used).
-find_used_registers_instr(use_and_maybe_pop_region_frame(_UseOp,
-    _EmbeddedStackFrame), !Used).
-find_used_registers_instr(store_ticket(Lval), !Used) :-
-    find_used_registers_lval(Lval, !Used).
-find_used_registers_instr(reset_ticket(Rval, _Rsn), !Used) :-
-    find_used_registers_rval(Rval, !Used).
-find_used_registers_instr(discard_ticket, !Used).
-find_used_registers_instr(prune_ticket, !Used).
-find_used_registers_instr(mark_ticket_stack(Lval), !Used) :-
-    find_used_registers_lval(Lval, !Used).
-find_used_registers_instr(prune_tickets_to(Rval), !Used) :-
-    find_used_registers_rval(Rval, !Used).
-find_used_registers_instr(incr_sp(_, _, _), !Used).
-find_used_registers_instr(decr_sp(_), !Used).
-find_used_registers_instr(decr_sp_and_return(_), !Used).
-find_used_registers_instr(foreign_proc_code(_, Components,
-        _, _, _, _, _, _, _), !Used) :-
-    find_used_registers_components(Components, !Used).
-find_used_registers_instr(init_sync_term(Lval, _), !Used) :-
-    find_used_registers_lval(Lval, !Used).
-find_used_registers_instr(fork_new_child(Lval, _), !Used) :-
-    find_used_registers_lval(Lval, !Used).
-find_used_registers_instr(join_and_continue(Lval, _), !Used) :-
-    find_used_registers_lval(Lval, !Used).
 
 :- pred find_used_registers_components(
     list(foreign_proc_component)::in,

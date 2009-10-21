@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2007 The University of Melbourne.
+% Copyright (C) 1995-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -145,9 +145,10 @@ dupelim_build_maps([Label | Labels], BlockMap, !StdMap, !Fixed) :-
     set(label)::in, set(label)::out) is det.
 
 add_pragma_pref_labels(Instr, !FoldFixed) :-
+    Instr = llds_instr(Uinstr, _),
     (
-        Instr = llds_instr(foreign_proc_code(_, _, _, MaybeFixedLabel,
-            MaybeLayoutLabel, MaybeOnlyLayoutLabel, _, _, _), _)
+        Uinstr = foreign_proc_code(_, _, _, MaybeFixedLabel,
+            MaybeLayoutLabel, MaybeOnlyLayoutLabel, _, MaybeDefLabel, _, _)
     ->
         (
             MaybeFixedLabel = yes(FixedLabel),
@@ -166,6 +167,12 @@ add_pragma_pref_labels(Instr, !FoldFixed) :-
             svset.insert(OnlyLayoutLabel, !FoldFixed)
         ;
             MaybeOnlyLayoutLabel = no
+        ),
+        (
+            MaybeDefLabel = yes(DefLabel),
+            svset.insert(DefLabel, !FoldFixed)
+        ;
+            MaybeDefLabel = no
         )
     ;
         true
@@ -439,7 +446,7 @@ standardize_instr(Instr0, Instr) :-
         ; Instr0 = decr_sp(_)
         ; Instr0 = decr_sp_and_return(_)
         ; Instr0 = fork_new_child(_, _)
-        ; Instr0 = foreign_proc_code(_, _, _, _, _, _, _, _, _)
+        ; Instr0 = foreign_proc_code(_, _, _, _, _, _, _, _, _, _)
         ),
         Instr = Instr0
     ).
@@ -826,7 +833,7 @@ most_specific_instr(InstrA, InstrB, MaybeInstr) :-
         ; InstrA = incr_sp(_, _, _)
         ; InstrA = decr_sp(_)
         ; InstrA = decr_sp_and_return(_)
-        ; InstrA = foreign_proc_code(_, _, _, _, _, _, _, _, _)
+        ; InstrA = foreign_proc_code(_, _, _, _, _, _, _, _, _, _)
         ; InstrA = fork_new_child(_, _)
         ; InstrA = init_sync_term(_, _)
         ; InstrA = join_and_continue(_, _)

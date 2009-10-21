@@ -5,19 +5,19 @@ mdb> context none
 Contexts will not be printed.
 mdb> register --quiet
 mdb> break -A unif*uci.
- 0: + stop  interface __Unify__ for uci.t4/4-0 (semidet)
- 1: + stop  interface __Unify__ for uci.t3/3-0 (semidet)
- 2: + stop  interface __Unify__ for uci.t2/2-0 (semidet)
- 3: + stop  interface __Unify__ for uci.t1/1-0 (semidet)
- 4: + stop  interface __Unify__ for uci.t0/0-0 (semidet)
- 5: + stop  interface __Unify__ for uci.i/3-0 (semidet)
+ 0: + stop  interface __Unify__ for uci.i/3-0 (semidet)
+ 1: + stop  interface __Unify__ for uci.t0/0-0 (semidet)
+ 2: + stop  interface __Unify__ for uci.t1/1-0 (semidet)
+ 3: + stop  interface __Unify__ for uci.t2/2-0 (semidet)
+ 4: + stop  interface __Unify__ for uci.t3/3-0 (semidet)
+ 5: + stop  interface __Unify__ for uci.t4/4-0 (semidet)
 mdb> break -A comp*uci.
- 6: + stop  interface __Compare__ for uci.t4/4-0 (det)
- 7: + stop  interface __Compare__ for uci.t3/3-0 (det)
- 8: + stop  interface __Compare__ for uci.t2/2-0 (det)
- 9: + stop  interface __Compare__ for uci.t1/1-0 (det)
-10: + stop  interface __Compare__ for uci.t0/0-0 (det)
-11: + stop  interface __Compare__ for uci.i/3-0 (det)
+ 6: + stop  interface __Compare__ for uci.i/3-0 (det)
+ 7: + stop  interface __Compare__ for uci.t0/0-0 (det)
+ 8: + stop  interface __Compare__ for uci.t1/1-0 (det)
+ 9: + stop  interface __Compare__ for uci.t2/2-0 (det)
+10: + stop  interface __Compare__ for uci.t3/3-0 (det)
+11: + stop  interface __Compare__ for uci.t4/4-0 (det)
 mdb> c
       E2:     C2 CALL __Compare__ for uci.t1/1-0 (det)
 mdb> print goal

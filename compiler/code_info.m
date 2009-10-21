@@ -2208,7 +2208,8 @@ prepare_for_semi_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
             MD = proc_may_duplicate,
             MarkCode = singleton(
                 llds_instr(foreign_proc_code([], Components,
-                    proc_will_not_call_mercury, no, no, no, no, no, MD), "")
+                    proc_will_not_call_mercury, no, no, no, no, no, no, MD),
+                    "")
             )
         ;
             UseMinimalModelStackCopyCut = no,
@@ -2296,7 +2297,7 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
             MD = proc_may_duplicate,
             CutCode = singleton(
                 llds_instr(foreign_proc_code([], Components,
-                    proc_will_not_call_mercury, no, no, no, no, no, MD),
+                    proc_will_not_call_mercury, no, no, no, no, no, no, MD),
                     "commit for temp frame hijack")
             )
         ;

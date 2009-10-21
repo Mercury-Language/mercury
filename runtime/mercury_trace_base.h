@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2008 The University of Melbourne.
+** Copyright (C) 1997-2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -662,7 +662,35 @@ MR_declare_entry(MR_do_trace_redo_fail_deep);
 ** The compiler emits the following macro at each system-defined trace event.
 */
 
-#define MR_EVENT(label)                                                 \
+#define MR_EVENT_SYS                                                    \
+    {                                                                   \
+        MR_Code *MR_jumpaddr;                                           \
+        MR_save_transient_registers();                                  \
+        MR_jumpaddr = MR_trace((const MR_LabelLayout *)                 \
+            MR_HASH_DEF_LABEL_LAYOUT);                                  \
+        MR_restore_transient_registers();                               \
+        if (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);                  \
+    }
+
+/*
+** The compiler emits the following macro at each user-defined trace event.
+*/
+
+#define MR_EVENT_USER                                                   \
+    {                                                                   \
+        MR_Code *MR_jumpaddr;                                           \
+        MR_save_transient_registers();                                  \
+        MR_jumpaddr = MR_user_trace((const MR_LabelLayout *)            \
+            MR_HASH_DEF_LABEL_LAYOUT);                                  \
+        MR_restore_transient_registers();                               \
+        if (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);                  \
+    }
+
+/*
+** The compiler used to emit the following macros instead of those above.
+*/
+
+#define MR_EVENT(label_layout)                                          \
     {                                                                   \
         MR_Code *MR_jumpaddr;                                           \
         MR_save_transient_registers();                                  \
@@ -672,11 +700,7 @@ MR_declare_entry(MR_do_trace_redo_fail_deep);
         if (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);                  \
     }
 
-/*
-** The compiler emits the following macro at each user-defined trace event.
-*/
-
-#define MR_USER_EVENT(label)                                            \
+#define MR_USER_EVENT(label_layout)                                     \
     {                                                                   \
         MR_Code *MR_jumpaddr;                                           \
         MR_save_transient_registers();                                  \

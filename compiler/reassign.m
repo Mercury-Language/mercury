@@ -301,7 +301,7 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         !:KnownContentsMap = map.init,
         !:DepLvalMap = map.init
     ;
-        Uinstr0 = foreign_proc_code(_, _, _, _, _, _, _, _, _),
+        Uinstr0 = foreign_proc_code(_, _, _, _, _, _, _, _, _, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % The C code may clobber any lval.
         !:KnownContentsMap = map.init,

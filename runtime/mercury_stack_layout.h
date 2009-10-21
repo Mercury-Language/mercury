@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2008 The University of Melbourne.
+** Copyright (C) 1998-2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -371,11 +371,11 @@ struct MR_UserEventSpec_Struct {
 ** the return from the call that raised the exception).
 **
 ** The MR_sll_hidden field contains a boolean which is meaningful only if the
-** label corresponds to an execution tracing event. It will be true if the
+** label corresponds to an execution tracing event. It will be MR_HIDDEN if the
 ** event should have no effects that the user can see (no message printed, no
-** increment of the event number etc), and false otherwise. Hidden events
-** are sometimes needed by the declarative debugger to provide the proper
-** context for other events.
+** increment of the event number etc), and MR_NOT_HIDDEN otherwise. Hidden
+** events are sometimes needed by the declarative debugger to provide the
+** proper context for other events.
 **
 ** The MR_sll_goal_path field contains an offset into the module-wide string
 ** table, leading to a string that gives the goal path associated with the
@@ -471,6 +471,9 @@ struct MR_UserEventSpec_Struct {
 ** are ground.
 */
 
+#define MR_HIDDEN       1
+#define MR_NOT_HIDDEN   0
+
 struct MR_TypeParamLocns_Struct {
     MR_uint_least32_t       MR_tp_param_count;
     MR_LongLval             MR_tp_param_locns[MR_VARIABLE_SIZED];
@@ -563,6 +566,8 @@ typedef struct MR_LabelLayoutNoVarInfo_Struct {
         -1      /* No info about live values */                             \
     }
 
+/*-------------------------------------------------------------------------*/
+
 /*
 ** These macros are used as shorthands in generated C source files.
 ** The first two arguments are the entry label name and the label number;
@@ -589,7 +594,6 @@ typedef struct MR_LabelLayoutNoVarInfo_Struct {
         MR_PASTE2(MR_PORT_, port),                                          \
         (h), (num), (path), (ue), -1                                        \
     }
-
 
 #define MR_DEF_LL(e, ln, port, num, path, vc, lt, vn, tv)                   \
     MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, NULL, vc, lt, vn, tv)
@@ -672,6 +676,8 @@ typedef struct MR_LabelLayoutNoVarInfo_Struct {
 #define MR_DEF_LLNVIT_U(e, ln, port, num, path)                             \
     MR_DEF_LLNVI_GEN(e, ln, port, MR_TRUE, num, path,                       \
         &MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)))
+
+/*-------------------------------------------------------------------------*/
 
 #define MR_DECL_LL(e, ln)                                                   \
     MR_declare_label(MR_label_name(MR_add_prefix(e), ln));                  \
@@ -757,6 +763,62 @@ typedef struct MR_LabelLayoutNoVarInfo_Struct {
     MR_DECL_LL(e, ln8)                                                      \
     MR_DECL_LL(e, ln9)                                                      \
     MR_DECL_LL(e, ln10)
+
+/*-------------------------------------------------------------------------*/
+
+/*
+** These macros are used as shorthands in generated C source files
+** for some fields of MR_LabelLayouts.
+**
+** We need to cast the addresses of proc layout structures because there
+** are several kinds of proc layouts, of different (though compatible) types.
+**
+** We need to cast the values we intend to put into the MR_sll_locns_types,
+** MR_sll_var_nums and MR_sll_tvars field because (due to our representation
+** scheme, documented with the MR_LabelLayout type) the values supplied by
+** the compiler will usually be references to slots in arrays of data-specific
+** types.
+*/
+
+#define MR_LLC(e, port, num, path)                                          \
+        MR_PROC_LAYOUT(MR_add_prefix(e)),                                   \
+        MR_PASTE2(MR_PORT_, port),                                          \
+        MR_NOT_HIDDEN, (num), (path), NULL
+
+#define MR_LLC_H(e, port, num, path)                                        \
+        MR_PROC_LAYOUT(MR_add_prefix(e)),                                   \
+        MR_PASTE2(MR_PORT_, port),                                          \
+        MR_HIDDEN, (num), (path), NULL
+
+#define MR_LLC_U(e, port, num, path, ue)                                    \
+        MR_PROC_LAYOUT(MR_add_prefix(e)),                                   \
+        MR_PASTE2(MR_PORT_, port),                                          \
+        MR_NOT_HIDDEN, (num), (path), (ue)
+
+#define MR_LLC_H_U(e, port, num, path, ue)                                  \
+        MR_PROC_LAYOUT(MR_add_prefix(e)),                                   \
+        MR_PASTE2(MR_PORT_, port),                                          \
+        MR_HIDDEN, (num), (path), (ue)
+
+#define MR_LLV(lt, vn, tp)                                                  \
+        (const void *) (lt),                                                \
+        (const MR_uint_least16_t *) (vn),                                   \
+        (const MR_TypeParamLocns *) (tp)
+
+#define MR_LLV_CC(ltt, ltc, vnt, vnc, tp)                                   \
+        (const void *) MR_XCOMMON(ltt, ltc),                                \
+        (const MR_uint_least16_t *) MR_XCOMMON(vnt, vnc),                   \
+        (const MR_TypeParamLocns *) (tp)
+
+#define MR_LLV_CCC(ltt, ltc, vnt, vnc, tpt, tpc)                            \
+        (const void *) MR_XCOMMON(ltt, ltc),                                \
+        (const MR_uint_least16_t *) MR_XCOMMON(vnt, vnc),                   \
+        (const MR_TypeParamLocns *) MR_XCOMMON(tpt, tpc)
+
+#define MR_LLV_CC0(ltt, ltc, vnt, vnc)                                      \
+        (const void *) MR_XCOMMON(ltt, ltc),                                \
+        (const MR_uint_least16_t *) MR_XCOMMON(vnt, vnc),                   \
+        (const MR_TypeParamLocns *) 0
 
 /*-------------------------------------------------------------------------*/
 /*

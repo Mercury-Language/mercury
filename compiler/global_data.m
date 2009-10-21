@@ -927,9 +927,9 @@ remap_instr(Remap, Instr0, Instr) :-
         remap_rval(Remap, Rval0, Rval),
         Instr  = if_val(Rval, CodeAddr)
     ;
-        Instr0 = foreign_proc_code(A, Comps0, B, C, D, E, F, G, H),
+        Instr0 = foreign_proc_code(A, Comps0, B, C, D, E, F, G, H, I),
         list.map(remap_foreign_proc_component(Remap), Comps0, Comps),
-        Instr  = foreign_proc_code(A, Comps,  B, C, D, E, F, G, H)
+        Instr  = foreign_proc_code(A, Comps,  B, C, D, E, F, G, H, I)
     ;
         Instr0 = computed_goto(Rval0, MaybeLabels),
         remap_rval(Remap, Rval0, Rval),

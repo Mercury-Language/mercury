@@ -97,6 +97,10 @@
 
 :- func dump_tc_rtti_name(tc_rtti_name) = string.
 
+:- func dump_layout_slot_name(layout_slot_name) = string.
+
+:- func dump_layout_array_name(layout_array_name) = string.
+
 :- func dump_layout_name(layout_name) = string.
 
 :- func dump_unop(unary_op) = string.
@@ -493,22 +497,29 @@ dump_rtti_type_class_instance_types(TCTypes) = Str :-
     string.append_list(EncodedTCTypes, TypesStr),
     Str = "tc_instance(" ++ TypesStr ++ ")".
 
-dump_layout_name(label_layout(ProcLabel, LabelNum, LabelVars)) = Str :-
-    LabelStr = dump_label(no, internal_label(LabelNum, ProcLabel)),
+dump_layout_slot_name(layout_slot(Array, Slot)) = Str :-
+    ArrayStr = dump_layout_array_name(Array),
+    SlotStr = string.int_to_string(Slot),
+    Str = ArrayStr ++ "[" ++ SlotStr ++ "]".
+
+dump_layout_array_name(ArrayName) = Str :-
     (
-        LabelVars = label_has_var_info,
-        LabelVarsStr = "label_has_var_info"
+        ArrayName = label_layout_array(LabelVars),
+        (
+            LabelVars = label_has_var_info,
+            Str = "vars_label_layout_array"
+        ;
+            LabelVars = label_has_no_var_info,
+            Str = "no_vars_label_layout_array"
+        )
     ;
-        LabelVars = label_has_no_var_info,
-        LabelVarsStr = "label_has_no_var_info"
-    ),
-    Str = "label_layout(" ++ LabelStr ++ ", " ++ LabelVarsStr ++ ")".
-dump_layout_name(user_event_layout(ProcLabel, LabelNum)) = Str :-
-    LabelStr = dump_label(no, internal_label(LabelNum, ProcLabel)),
-    Str = "user_event_layout(" ++ LabelStr ++ ")".
-dump_layout_name(user_event_attr_var_nums(ProcLabel, LabelNum)) = Str :-
-    LabelStr = dump_label(no, internal_label(LabelNum, ProcLabel)),
-    Str = "user_event_attr_var_nums(" ++ LabelStr ++ ")".
+        ArrayName = user_event_layout_array,
+        Str = "user_event_layout_array"
+    ;
+        ArrayName = user_event_var_nums_array,
+        Str = "user_event_var_nums_array"
+    ).
+
 dump_layout_name(proc_layout(RttiProcLabel, _)) =
     "proc_layout(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
 dump_layout_name(proc_layout_exec_trace(RttiProcLabel)) =
@@ -993,7 +1004,7 @@ dump_instr(MaybeProcLabel, AutoComments, Instr) = Str :-
         Str = "join_and_continue(" ++ dump_lval(MaybeProcLabel, Lval) ++ ", "
             ++ dump_label(MaybeProcLabel, Label) ++ ")"
     ;
-        Instr = foreign_proc_code(Decls, Comps, MCM, MFNL, MFL, MFOL, MNF,
+        Instr = foreign_proc_code(Decls, Comps, MCM, MFNL, MFL, MFOL, MNF, MDL,
             SSR, MD),
         Str = "foreign_proc_code(\n"
             ++ "declarations:\n" ++ dump_decls(Decls)
@@ -1003,6 +1014,7 @@ dump_instr(MaybeProcLabel, AutoComments, Instr) = Str :-
             ++ dump_maybe_label("fix layout:", MaybeProcLabel, MFL)
             ++ dump_maybe_label("fix onlylayout:", MaybeProcLabel, MFOL)
             ++ dump_maybe_label("nofix:", MaybeProcLabel, MNF)
+            ++ dump_maybe_label("maybe def:", MaybeProcLabel, MDL)
             ++ dump_bool_msg("stack slot ref:", SSR)
             ++ dump_may_duplicate(MD) ++ "\n"
             ++ ")"

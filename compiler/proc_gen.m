@@ -911,7 +911,8 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
                 llds_instr(mkframe(NondetFrameInfo, yes(OutsideResumeAddress)),
                     "Allocate stack frame"),
                 llds_instr(foreign_proc_code([], DefineComponents,
-                    proc_will_not_call_mercury, no, no, no, no, no, MD), "")
+                    proc_will_not_call_mercury, no, no, no, no, no, no, MD),
+                    "")
             ]),
             NondetPragma = yes
         ;
@@ -1004,7 +1005,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
         MD = proc_may_not_duplicate,
         UndefCode = singleton(
             llds_instr(foreign_proc_code([], UndefComponents,
-                proc_will_not_call_mercury, no, no, no, no, no, MD), "")
+                proc_will_not_call_mercury, no, no, no, no, no, no, MD), "")
         ),
         RestoreDeallocCode = empty, % always empty for nondet code
         ExitCode = StartComment ++ UndefCode ++ EndComment
@@ -1170,7 +1171,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                 SuccessCode = from_list([
                     llds_instr(livevals(LiveLvals), ""),
                     llds_instr(foreign_proc_code([], [Component],
-                        proc_may_call_mercury, no, no, no, no, no, MD), "")
+                        proc_may_call_mercury, no, no, no, no, no, no, MD), "")
                 ])
             ;
                 MaybeSpecialReturn = no,
@@ -1278,7 +1279,7 @@ bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
     BytecodeInstructions = [
         llds_instr(label(EntryLabel), "Procedure entry point"),
         llds_instr(foreign_proc_code([], BytecodeInstructionsComponents,
-            proc_may_call_mercury, no, no, no, no, no, MD), "Entry stub")
+            proc_may_call_mercury, no, no, no, no, no, no, MD), "Entry stub")
     ].
 
 %---------------------------------------------------------------------------%

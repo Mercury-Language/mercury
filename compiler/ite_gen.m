@@ -532,15 +532,15 @@ make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
         MD = proc_may_duplicate,
         PNegCondCode = singleton(
             llds_instr(foreign_proc_code([], PNegCondComponents,
-                proc_will_not_call_mercury, no, no, no, no, yes, MD), "")
+                proc_will_not_call_mercury, no, no, no, no, no, yes, MD), "")
         ),
         PNegThenCode = singleton(
             llds_instr(foreign_proc_code([], PNegThenComponents,
-                proc_will_not_call_mercury, no, no, no, no, yes, MD), "")
+                proc_will_not_call_mercury, no, no, no, no, no, yes, MD), "")
         ),
         PNegElseCode = singleton(
             llds_instr(foreign_proc_code([], PNegElseComponents,
-                proc_will_not_call_mercury, no, no, no, no, yes, MD), "")
+                proc_will_not_call_mercury, no, no, no, no, no, yes, MD), "")
         )
     ;
         PNegCondCode = empty,

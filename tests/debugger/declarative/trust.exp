@@ -4,31 +4,31 @@ mdb> echo on
 Command echo enabled.
 mdb> trust trust_1.
 Ambiguous predicate or function specification. The matches are:
-0: pred trust_1.lambda_trust_1_m_15/3
-1: pred trust_1.w_cmp/3
+0: pred trust_1.w_cmp/3
+1: pred trust_1.lambda_trust_1_m_15/3
 
 Which predicate or function do you want to trust (0-1 or *)? *
-Trusting pred trust_1.lambda_trust_1_m_15/3
 Trusting pred trust_1.w_cmp/3
+Trusting pred trust_1.lambda_trust_1_m_15/3
 mdb> trusted
 Trusted Objects:
-1: predicate trust_1.lambda_trust_1_m_15/3
-2: predicate trust_1.w_cmp/3
-mdb> untrust 2
-mdb> trusted
-Trusted Objects:
-1: predicate trust_1.lambda_trust_1_m_15/3
+1: predicate trust_1.w_cmp/3
+2: predicate trust_1.lambda_trust_1_m_15/3
 mdb> untrust 1
+mdb> trusted
+Trusted Objects:
+2: predicate trust_1.lambda_trust_1_m_15/3
+mdb> untrust 2
 mdb> trusted
 There are no trusted modules, predicates or functions.
 mdb> trust trust_2
 Trusting module trust_2
 mdb> trust trust.
 Ambiguous predicate or function specification. The matches are:
-0: pred trust.dostuff/2
-1: pred trust.main/2
+0: pred trust.main/2
+1: pred trust.dostuff/2
 
-Which predicate or function do you want to trust (0-1 or *)? 1
+Which predicate or function do you want to trust (0-1 or *)? 0
 Trusting pred trust.main/2
 mdb> trusted
 Trusted Objects:

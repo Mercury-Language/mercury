@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -232,7 +232,7 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
     ;
         % The labels occurring in foreign_proc_code instructions
         % cannot be substituted.
-        Instr = foreign_proc_code(_, _, _, _, _, _, _, _, _),
+        Instr = foreign_proc_code(_, _, _, _, _, _, _, _, _, _),
         StdInstr = Instr
     ;
         % These instructions have no labels inside them, or anything else

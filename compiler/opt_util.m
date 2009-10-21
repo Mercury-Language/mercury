@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -966,7 +966,7 @@ instr_refers_to_stack(llds_instr(Uinstr, _)) = Refers :-
         Uinstr = prune_tickets_to(Rval),
         Refers = rval_refers_stackvars(Rval)
     ;
-        Uinstr = foreign_proc_code(_, Components, _, _, _, _, _, _, _),
+        Uinstr = foreign_proc_code(_, Components, _, _, _, _, _, _, _, _),
         Refers = bool.or_list(list.map(foreign_proc_component_refers_stackvars,
             Components))
     ).
@@ -1112,7 +1112,7 @@ can_instr_branch_away(decr_sp_and_return(_)) = yes.
 can_instr_branch_away(init_sync_term(_, _)) = no.
 can_instr_branch_away(fork_new_child(_, _)) = no.
 can_instr_branch_away(join_and_continue(_, _)) = yes.
-can_instr_branch_away(foreign_proc_code(_, Comps, _, _, _, _, _, _, _)) =
+can_instr_branch_away(foreign_proc_code(_, Comps, _, _, _, _, _, _, _, _)) =
     can_components_branch_away(Comps).
 
 :- func can_components_branch_away(list(foreign_proc_component)) = bool.
@@ -1191,7 +1191,7 @@ can_instr_fall_through(decr_sp_and_return(_)) = no.
 can_instr_fall_through(init_sync_term(_, _)) = yes.
 can_instr_fall_through(fork_new_child(_, _)) = yes.
 can_instr_fall_through(join_and_continue(_, _)) = no.
-can_instr_fall_through(foreign_proc_code(_, _, _, _, _, _, _, _, _)) = yes.
+can_instr_fall_through(foreign_proc_code(_, _, _, _, _, _, _, _, _, _)) = yes.
 
     % Check whether an instruction sequence can possibly fall through
     % to the next instruction without using its label.
@@ -1242,16 +1242,96 @@ can_use_livevals(decr_sp_and_return(_), yes).
 can_use_livevals(init_sync_term(_, _), no).
 can_use_livevals(fork_new_child(_, _), no).
 can_use_livevals(join_and_continue(_, _), no).
-can_use_livevals(foreign_proc_code(_, _, _, _, _, _, _, _, _), no).
+can_use_livevals(foreign_proc_code(_, _, _, _, _, _, _, _, _, _), no).
 
 instr_labels(Instr, Labels, CodeAddrs) :-
     instr_labels_2(Instr, Labels0, CodeAddrs1),
     instr_rvals_and_lvals(Instr, Rvals, Lvals),
     exprn_aux.rval_list_addrs(Rvals, CodeAddrs2, _),
     exprn_aux.lval_list_addrs(Lvals, CodeAddrs3, _),
-    list.append(CodeAddrs1, CodeAddrs2, CodeAddrs12),
-    list.append(CodeAddrs12, CodeAddrs3, CodeAddrs),
+    CodeAddrs = CodeAddrs1 ++ CodeAddrs2 ++ CodeAddrs3,
     find_label_code_addrs(CodeAddrs, Labels0, Labels).
+
+    % Determine all the labels and code_addresses that are directly referenced
+    % by an instruction (not counting ones referenced indirectly via rvals or
+    % lvals).
+    %
+:- pred instr_labels_2(instr::in, list(label)::out, list(code_addr)::out)
+    is det.
+
+instr_labels_2(Uinstr, Labels, CodeAddrs) :-
+    (
+        ( Uinstr = comment(_)
+        ; Uinstr = livevals(_)
+        ; Uinstr = assign(_,_)
+        ; Uinstr = keep_assign(_,_)
+        ; Uinstr = mkframe(_, no)
+        ; Uinstr = label(_)
+        ; Uinstr = arbitrary_c_code(_, _, _)
+        ; Uinstr = save_maxfr(_)
+        ; Uinstr = restore_maxfr(_)
+        ; Uinstr = incr_hp(_, _, _, _, _, _, _, _)
+        ; Uinstr = mark_hp(_)
+        ; Uinstr = restore_hp(_)
+        ; Uinstr = free_heap(_)
+        ; Uinstr = push_region_frame(_, _)
+        ; Uinstr = region_fill_frame(_, _, _, _, _)
+        ; Uinstr = region_set_fixed_slot(_, _, _)
+        ; Uinstr = use_and_maybe_pop_region_frame(_, _)
+        ; Uinstr = store_ticket(_)
+        ; Uinstr = reset_ticket(_, _)
+        ; Uinstr = discard_ticket
+        ; Uinstr = prune_ticket
+        ; Uinstr = mark_ticket_stack(_)
+        ; Uinstr = prune_tickets_to(_)
+        ; Uinstr = incr_sp(_, _, _)
+        ; Uinstr = decr_sp(_)
+        ; Uinstr = init_sync_term(_, _)
+        ),
+        Labels = [],
+        CodeAddrs = []
+    ;
+        Uinstr = llcall(Target, Ret, _, _, _, _),
+        Labels = [],
+        CodeAddrs = [Target, Ret]
+    ;
+        ( Uinstr = mkframe(_, yes(Addr))
+        ; Uinstr = goto(Addr)
+        ; Uinstr = if_val(_, Addr)
+        ),
+        Labels = [],
+        CodeAddrs = [Addr]
+    ;
+        Uinstr = decr_sp_and_return(_),
+        % XXX decr_sp_and_return does refer to a code addr, but the code addr
+        % it refers to is the original succip (now in a stack slot), which is
+        % not necessarily the current succip. However, we introduce
+        % decr_sp_and_return so late that this predicate should never be
+        % invoked on such instructions.
+        unexpected(this_file, "instr_labels_2: decr_sp_and_return")
+    ;
+        Uinstr = fork_new_child(_, Child),
+        Labels = [Child],
+        CodeAddrs = []
+    ;
+        Uinstr = join_and_continue(_, Label),
+        Labels = [Label],
+        CodeAddrs = []
+    ;
+        Uinstr = block(_, _, Instrs),
+        instr_list_labels(Instrs, Labels, CodeAddrs)
+    ;
+        Uinstr = computed_goto(_, MaybeLabels),
+        possible_targets_maybe_labels(MaybeLabels, [], RevLabels),
+        list.reverse(RevLabels, Labels),
+        CodeAddrs = []
+    ;
+        Uinstr = foreign_proc_code(_, _, _, MaybeFixLabel, MaybeLayoutLabel,
+            MaybeOnlyLayoutLabel, MaybeSubLabel, MaybeDefLabel, _, _),
+        foreign_proc_labels(MaybeFixLabel, MaybeLayoutLabel,
+            MaybeOnlyLayoutLabel, MaybeSubLabel, MaybeDefLabel, Labels),
+        CodeAddrs = []
+    ).
 
     % Find out which code addresses are also labels.
     %
@@ -1267,125 +1347,81 @@ find_label_code_addrs([CodeAddr | Rest], Labels0, Labels) :-
     ),
     find_label_code_addrs(Rest, Labels1, Labels).
 
-    % Determine all the labels and code_addresses that are directly referenced
-    % by an instruction (not counting ones referenced indirectly via rvals or
-    % lvals).
-    %
-:- pred instr_labels_2(instr::in, list(label)::out, list(code_addr)::out)
-    is det.
-
-instr_labels_2(comment(_), [], []).
-instr_labels_2(livevals(_), [], []).
-instr_labels_2(block(_, _, Instrs), Labels, CodeAddrs) :-
-    instr_list_labels(Instrs, Labels, CodeAddrs).
-instr_labels_2(assign(_,_), [], []).
-instr_labels_2(keep_assign(_,_), [], []).
-instr_labels_2(llcall(Target, Ret, _, _, _, _), [], [Target, Ret]).
-instr_labels_2(mkframe(_, yes(Addr)), [], [Addr]).
-instr_labels_2(mkframe(_, no), [], []).
-instr_labels_2(label(_), [], []).
-instr_labels_2(goto(Addr), [], [Addr]).
-instr_labels_2(computed_goto(_, MaybeLabels), Labels, []) :-
-    possible_targets_maybe_labels(MaybeLabels, [], RevLabels),
-    list.reverse(RevLabels, Labels).
-instr_labels_2(arbitrary_c_code(_, _, _), [], []).
-instr_labels_2(if_val(_, Addr), [], [Addr]).
-instr_labels_2(save_maxfr(_), [], []).
-instr_labels_2(restore_maxfr(_), [], []).
-instr_labels_2(incr_hp(_, _, _, _, _, _, _, _), [], []).
-instr_labels_2(mark_hp(_), [], []).
-instr_labels_2(restore_hp(_), [], []).
-instr_labels_2(free_heap(_), [], []).
-instr_labels_2(push_region_frame(_, _), [], []).
-instr_labels_2(region_fill_frame(_, _, _, _, _), [], []).
-instr_labels_2(region_set_fixed_slot(_, _, _), [], []).
-instr_labels_2(use_and_maybe_pop_region_frame(_, _), [], []).
-instr_labels_2(store_ticket(_), [], []).
-instr_labels_2(reset_ticket(_, _), [], []).
-instr_labels_2(discard_ticket, [], []).
-instr_labels_2(prune_ticket, [], []).
-instr_labels_2(mark_ticket_stack(_), [], []).
-instr_labels_2(prune_tickets_to(_), [], []).
-instr_labels_2(incr_sp(_, _, _), [], []).
-instr_labels_2(decr_sp(_), [], []).
-instr_labels_2(decr_sp_and_return(_), [], []) :-
-    % XXX decr_sp_and_return does refer to a code addr, but the code addr it
-    % refers to is the original succip (now in a stack slot), which is not
-    % necessarily the current succip. However, we introduce decr_sp_and_return
-    % so late that this predicate should never be invoked on such instructions.
-    unexpected(this_file, "instr_labels_2: decr_sp_and_return").
-instr_labels_2(init_sync_term(_, _), [], []).
-instr_labels_2(fork_new_child(_, Child), [Child], []).
-instr_labels_2(join_and_continue(_, Label), [Label], []).
-instr_labels_2(foreign_proc_code(_, _, _, MaybeFixLabel, MaybeLayoutLabel,
-        MaybeOnlyLayoutLabel, MaybeSubLabel, _, _), Labels, []) :-
-    foreign_proc_labels(MaybeFixLabel, MaybeLayoutLabel,
-        MaybeOnlyLayoutLabel, MaybeSubLabel, Labels).
-
-possible_targets(comment(_), [], []).
-possible_targets(livevals(_), [], []).
-possible_targets(block(_, _, _), _, _) :-
-    unexpected(this_file, "block in possible_targets").
-possible_targets(assign(_, _), [], []).
-possible_targets(keep_assign(_, _), [], []).
-possible_targets(llcall(_, Return, _, _, _, _), Labels, CodeAddrs) :-
-    ( Return = code_label(ReturnLabel) ->
-        Labels = [ReturnLabel],
+possible_targets(Uinstr, Labels, CodeAddrs) :-
+    (
+        ( Uinstr = comment(_)
+        ; Uinstr = livevals(_)
+        ; Uinstr = assign(_,_)
+        ; Uinstr = keep_assign(_,_)
+        ; Uinstr = mkframe(_, _)
+        ; Uinstr = label(_)
+        ; Uinstr = arbitrary_c_code(_, _, _)
+        ; Uinstr = save_maxfr(_)
+        ; Uinstr = restore_maxfr(_)
+        ; Uinstr = incr_hp(_, _, _, _, _, _, _, _)
+        ; Uinstr = mark_hp(_)
+        ; Uinstr = restore_hp(_)
+        ; Uinstr = free_heap(_)
+        ; Uinstr = push_region_frame(_, _)
+        ; Uinstr = region_fill_frame(_, _, _, _, _)
+        ; Uinstr = region_set_fixed_slot(_, _, _)
+        ; Uinstr = use_and_maybe_pop_region_frame(_, _)
+        ; Uinstr = store_ticket(_)
+        ; Uinstr = reset_ticket(_, _)
+        ; Uinstr = discard_ticket
+        ; Uinstr = prune_ticket
+        ; Uinstr = mark_ticket_stack(_)
+        ; Uinstr = prune_tickets_to(_)
+        ; Uinstr = incr_sp(_, _, _)
+        ; Uinstr = decr_sp(_)
+        ; Uinstr = init_sync_term(_, _)
+        ; Uinstr = fork_new_child(_, _)
+        ),
+        Labels = [],
         CodeAddrs = []
     ;
-        Labels = [],
-        CodeAddrs = [Return]
-    ).
-possible_targets(mkframe(_, _), [], []).
-possible_targets(label(_), [], []).
-possible_targets(goto(CodeAddr), Labels, CodeAddrs) :-
-    ( CodeAddr = code_label(Label) ->
+        Uinstr = llcall(_, Return, _, _, _, _),
+        ( Return = code_label(ReturnLabel) ->
+            Labels = [ReturnLabel],
+            CodeAddrs = []
+        ;
+            Labels = [],
+            CodeAddrs = [Return]
+        )
+    ;
+        ( Uinstr = goto(CodeAddr)
+        ; Uinstr = if_val(_, CodeAddr)
+        ),
+        ( CodeAddr = code_label(Label) ->
+            Labels = [Label],
+            CodeAddrs = []
+        ;
+            Labels = [],
+            CodeAddrs = [CodeAddr]
+        )
+    ;
+        Uinstr = decr_sp_and_return(_),
+        % XXX see the comment in instr_labels_2.
+        unexpected(this_file, "possible_targets: decr_sp_and_return")
+    ;
+        Uinstr = join_and_continue(_, Label),
         Labels = [Label],
         CodeAddrs = []
     ;
-        Labels = [],
-        CodeAddrs = [CodeAddr]
-    ).
-possible_targets(computed_goto(_, MaybeLabels), Labels, []) :-
-    possible_targets_maybe_labels(MaybeLabels, [], RevLabels),
-    list.reverse(RevLabels, Labels).
-possible_targets(arbitrary_c_code(_, _, _), [], []).
-possible_targets(if_val(_, CodeAddr), Labels, CodeAddrs) :-
-    ( CodeAddr = code_label(Label) ->
-        Labels = [Label],
+        Uinstr = block(_, _, _),
+        unexpected(this_file, "block in possible_targets")
+    ;
+        Uinstr = computed_goto(_, MaybeLabels),
+        possible_targets_maybe_labels(MaybeLabels, [], RevLabels),
+        list.reverse(RevLabels, Labels),
         CodeAddrs = []
     ;
-        Labels = [],
-        CodeAddrs = [CodeAddr]
+        Uinstr = foreign_proc_code(_, _, _, MaybeFixLabel, MaybeLayoutLabel,
+            MaybeOnlyLayoutLabel, MaybeSubLabel, MaybeDefLabel, _, _),
+        foreign_proc_labels(MaybeFixLabel, MaybeLayoutLabel,
+            MaybeOnlyLayoutLabel, MaybeSubLabel, MaybeDefLabel, Labels),
+        CodeAddrs = []
     ).
-possible_targets(save_maxfr(_), [], []).
-possible_targets(restore_maxfr(_), [], []).
-possible_targets(incr_hp(_, _, _, _, _, _, _, _), [], []).
-possible_targets(mark_hp(_), [], []).
-possible_targets(restore_hp(_), [], []).
-possible_targets(free_heap(_), [], []).
-possible_targets(push_region_frame(_, _), [], []).
-possible_targets(region_fill_frame(_, _, _, _, _), [], []).
-possible_targets(region_set_fixed_slot(_, _, _), [], []).
-possible_targets(use_and_maybe_pop_region_frame(_, _), [], []).
-possible_targets(store_ticket(_), [], []).
-possible_targets(reset_ticket(_, _), [], []).
-possible_targets(discard_ticket, [], []).
-possible_targets(prune_ticket, [], []).
-possible_targets(mark_ticket_stack(_), [], []).
-possible_targets(prune_tickets_to(_), [], []).
-possible_targets(incr_sp(_, _, _), [], []).
-possible_targets(decr_sp(_), [], []).
-possible_targets(decr_sp_and_return(_), [], []) :-
-    % See the comment in instr_labels_2.
-    unexpected(this_file, "possible_targets: decr_sp_and_return").
-possible_targets(init_sync_term(_, _), [], []).
-possible_targets(fork_new_child(_, _), [], []).
-possible_targets(join_and_continue(_, L), [L], []).
-possible_targets(foreign_proc_code(_, _, _, MaybeFixedLabel, MaybeLayoutLabel,
-        _, MaybeSubLabel, _, _), Labels, []) :-
-    foreign_proc_labels(MaybeFixedLabel, MaybeLayoutLabel,
-        no, MaybeSubLabel, Labels).
 
 :- pred possible_targets_maybe_labels(list(maybe(label))::in,
     list(label)::in, list(label)::out) is det.
@@ -1401,10 +1437,11 @@ possible_targets_maybe_labels([MaybeLabel | MaybeLabels], !RevLabels) :-
     possible_targets_maybe_labels(MaybeLabels, !RevLabels).
 
 :- pred foreign_proc_labels(maybe(label)::in, maybe(label)::in,
-    maybe(label)::in, maybe(label)::in, list(label)::out) is det.
+    maybe(label)::in, maybe(label)::in, maybe(label)::in, list(label)::out)
+    is det.
 
 foreign_proc_labels(MaybeFixedLabel, MaybeLayoutLabel,
-        MaybeOnlyLayoutLabel, MaybeSubLabel, !:Labels) :-
+        MaybeOnlyLayoutLabel, MaybeSubLabel, MaybeDefLabel, !:Labels) :-
     !:Labels = [],
     (
         MaybeFixedLabel = yes(FixedLabel),
@@ -1429,6 +1466,12 @@ foreign_proc_labels(MaybeFixedLabel, MaybeLayoutLabel,
         !:Labels = [SubLabel | !.Labels]
     ;
         MaybeSubLabel = no
+    ),
+    (
+        MaybeDefLabel = yes(DefLabel),
+        !:Labels = [DefLabel | !.Labels]
+    ;
+        MaybeDefLabel = no
     ).
 
     % Determine all the rvals and lvals referenced by an instruction.
@@ -1502,7 +1545,7 @@ instr_rvals_and_lvals(decr_sp_and_return(_), [], []).
 instr_rvals_and_lvals(init_sync_term(Lval, _), [], [Lval]).
 instr_rvals_and_lvals(fork_new_child(Lval, _), [], [Lval]).
 instr_rvals_and_lvals(join_and_continue(Lval, _), [], [Lval]).
-instr_rvals_and_lvals(foreign_proc_code(_, Cs, _, _, _, _, _, _, _),
+instr_rvals_and_lvals(foreign_proc_code(_, Cs, _, _, _, _, _, _, _, _),
         Rvals, Lvals) :-
     foreign_proc_components_get_rvals_and_lvals(Cs, Rvals, Lvals).
 
@@ -1683,7 +1726,8 @@ count_temps_instr(fork_new_child(Lval, _), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
 count_temps_instr(join_and_continue(Lval, _), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
-count_temps_instr(foreign_proc_code(_, Comps, _, _, _, _, _, _, _), !R, !F) :-
+count_temps_instr(foreign_proc_code(_, Comps, _, _, _, _, _, _, _, _),
+        !R, !F) :-
     count_temps_components(Comps, !R, !F).
 
 :- pred count_temps_components(list(foreign_proc_component)::in,
@@ -1969,7 +2013,7 @@ touches_nondet_ctrl_instr(Uinstr) = Touch :-
         Uinstr = prune_tickets_to(Rval),
         Touch = touches_nondet_ctrl_rval(Rval)
     ;
-        Uinstr = foreign_proc_code(_, Components, _, _, _, _, _, _, _),
+        Uinstr = foreign_proc_code(_, Components, _, _, _, _, _, _, _, _),
         Touch = touches_nondet_ctrl_components(Components)
     ).
 
@@ -2458,8 +2502,9 @@ replace_labels_instr(Uinstr0, Uinstr, ReplMap, ReplData) :-
         replace_labels_lval(Lval0, Lval, ReplMap),
         Uinstr = join_and_continue(Lval, Label)
     ;
-        Uinstr0 = foreign_proc_code(A, Comps0, C, MaybeFix, MaybeLayout,
-            MaybeOnlyLayout, MaybeSub0, H, I),
+        Uinstr0 = foreign_proc_code(Decls, Comps0, MayCallMercury,
+            MaybeFix, MaybeLayout, MaybeOnlyLayout, MaybeSub0, MaybeDef,
+            StackSlotRef, MayDupl),
         (
             MaybeFix = no
         ;
@@ -2497,8 +2542,18 @@ replace_labels_instr(Uinstr0, Uinstr, ReplMap, ReplData) :-
             MaybeSub = yes(SubLabel),
             replace_labels_comps(Comps0, Comps, ReplMap)
         ),
-        Uinstr = foreign_proc_code(A, Comps, C, MaybeFix, MaybeLayout,
-            MaybeOnlyLayout, MaybeSub, H, I)
+        (
+            MaybeDef = no
+        ;
+            MaybeDef = yes(DefLabel0),
+            replace_labels_label(DefLabel0, DefLabel, ReplMap),
+            % We cannot replace a label that has a layout structure.
+            expect(unify(DefLabel0, DefLabel), this_file,
+                "trying to replace Mercury label with layout")
+        ),
+        Uinstr = foreign_proc_code(Decls, Comps, MayCallMercury,
+            MaybeFix, MaybeLayout, MaybeOnlyLayout, MaybeSub, MaybeDef,
+            StackSlotRef, MayDupl)
     ).
 
 replace_labels_comps([], [], _).

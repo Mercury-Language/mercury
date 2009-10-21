@@ -4,12 +4,12 @@ Command echo enabled.
 mdb> register --quiet
 mdb> break ite_2.ite
 Ambiguous procedure specification. The matches are:
-0: pred ite_2.ite/3-1 (multi)
-1: pred ite_2.ite/3-0 (det)
+0: pred ite_2.ite/3-0 (det)
+1: pred ite_2.ite/3-1 (multi)
 
 Which do you want to put a breakpoint on (0-1 or *)? *
- 0: + stop  interface pred ite_2.ite/3-1 (multi)
- 1: + stop  interface pred ite_2.ite/3-0 (det)
+ 0: + stop  interface pred ite_2.ite/3-0 (det)
+ 1: + stop  interface pred ite_2.ite/3-1 (multi)
 mdb> continue
        2:      2  2 CALL pred ite_2.ite/3-0 (det) ite_2.m:21 (ite_2.m:9)
 mdb> finish

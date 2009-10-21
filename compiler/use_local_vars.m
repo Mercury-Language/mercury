@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2008 The University of Melbourne.
+% Copyright (C) 2001-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -184,7 +184,7 @@ opt_assign([Instr0 | TailInstrs0], Instrs, !TempCounter, NumRealRRegs,
             MaybeMore = no
         ;
             Uinstr0 = foreign_proc_code(_D, Comps, _MCM, _FNL, _FL, _FOL, _NF,
-                _S, _MD),
+                _MDL, _S, _MD),
             opt_assign_find_output_in_components(Comps, NumRealRRegs,
                 !.AvoidLvals, ToLval),
             MaybeMore = yes
@@ -477,23 +477,29 @@ base_lval_worth_replacing_not_tried(AlreadyTried, NumRealRRegs, Lval) :-
 
 substitute_lval_in_defn(OldLval, NewLval, Instr0, Instr) :-
     Instr0 = llds_instr(Uinstr0, Comment),
-    ( Uinstr0 = assign(ToLval, FromRval) ->
+    (
+        Uinstr0 = assign(ToLval, FromRval)
+    ->
         expect(unify(ToLval, OldLval),
             this_file, "substitute_lval_in_defn: mismatch in assign"),
         Uinstr = assign(NewLval, FromRval)
-    ; Uinstr0 = incr_hp(ToLval, MaybeTag, SizeRval, MO, Type,
-            MayUseAtomic, MaybeRegionRval, MaybeReuse) ->
+    ;
+        Uinstr0 = incr_hp(ToLval, MaybeTag, SizeRval, MO, Type,
+            MayUseAtomic, MaybeRegionRval, MaybeReuse)
+    ->
         expect(unify(ToLval, OldLval),
             this_file, "substitute_lval_in_defn: mismatch in incr_hp"),
         Uinstr = incr_hp(NewLval, MaybeTag, SizeRval, MO, Type,
             MayUseAtomic, MaybeRegionRval, MaybeReuse)
-    ; Uinstr0 = foreign_proc_code(D, Comps0, MCM, FNL, FL, FOL, NF, S, MD) ->
+    ;
+        Uinstr0 = foreign_proc_code(D, Comps0, MCM, FNL, FL, FOL, NF, MDL,
+            S, MD)
+    ->
         substitute_lval_in_defn_components(OldLval, NewLval, Comps0, Comps,
             0, NumSubsts),
-        expect(unify(NumSubsts, 1),
-            this_file,
+        expect(unify(NumSubsts, 1), this_file,
             "substitute_lval_in_defn: mismatch in foreign_proc_code"),
-        Uinstr = foreign_proc_code(D, Comps, MCM, FNL, FL, FOL, NF, S, MD)
+        Uinstr = foreign_proc_code(D, Comps, MCM, FNL, FL, FOL, NF, MDL, S, MD)
     ;
         unexpected(this_file,
             "substitute_lval_in_defn: unexpected instruction")
@@ -639,7 +645,7 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
         exprn_aux.substitute_lval_in_instr(OldLval, NewLval, !Instr, !N),
         substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)
     ;
-        Uinstr0 = foreign_proc_code(_, Components, _, _, _, _, _, _, _),
+        Uinstr0 = foreign_proc_code(_, Components, _, _, _, _, _, _, _, _),
         AffectsLiveness = components_affect_liveness(Components),
         (
             AffectsLiveness = no,

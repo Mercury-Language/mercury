@@ -24,12 +24,27 @@
 :- interface.
 
 :- import_module ll_backend.layout.
-:- import_module ll_backend.llds.
 :- import_module ll_backend.llds_out.
 :- import_module mdbcomp.prim_data.
 
 :- import_module bool.
 :- import_module io.
+:- import_module list.
+:- import_module maybe.
+
+%-----------------------------------------------------------------------------%
+
+:- pred output_user_event_var_nums_array_defn(llds_out_info::in,
+    list(maybe(int))::in, io::di, io::uo) is det.
+
+:- pred output_user_events_array_defn(llds_out_info::in,
+    list(user_event_data)::in, io::di, io::uo) is det.
+
+:- pred output_var_label_layouts_array_defn(llds_out_info::in,
+    list(label_layout_vars)::in, io::di, io::uo) is det.
+
+:- pred output_no_var_label_layouts_array_defn(llds_out_info::in,
+    list(label_layout_no_vars)::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -46,6 +61,7 @@
 
     % Given the name of a layout structure, output the declaration of the C
     % global variable which will hold it, if it has not already been declared.
+    %
 :- pred output_maybe_layout_name_decl(layout_name::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
@@ -56,13 +72,45 @@
 :- pred output_maybe_layout_data_decl(layout_data::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
+:- type being_defined
+    --->    not_being_defined
+    ;       being_defined.
+
     % Given a reference to a layout structure, output the storage class
     % (e.g. static), type and name of the global variable that will
-    % hold it. The bool says whether the output is part of the definition of
-    % that variable (this influences e.g. whether we output "extern" or not).
+    % hold it. The second arg says whether the output is part of the definition
+    % of that variable (this influences e.g. whether we output "extern"
+    % or not).
     %
-:- pred output_layout_name_storage_type_name(layout_name::in, bool::in,
-    io::di, io::uo) is det.
+:- pred output_layout_name_storage_type_name(layout_name::in,
+    being_defined::in, io::di, io::uo) is det.
+
+    % Given a mangled module name and a reference to a layout array, output
+    % the storage class (e.g. static), type and name of the global variable
+    % that will hold it. The bool says whether the output is part of the
+    % definition of that variable (this influences e.g. whether we output
+    % "extern" or not).
+    %
+:- pred output_layout_array_name_storage_type_name(string::in,
+    layout_array_name::in, being_defined::in, io::di, io::uo) is det.
+
+:- type use_layout_macro
+    --->    do_not_use_layout_macro
+    ;       use_layout_macro.
+
+    % Given the mangled name of the module and a reference to a layout array,
+    % output the name of the global variable that will hold it. The first arg
+    % says whether we should use a macro to refer to the global. Using the
+    % macro generates shorter code, but is not valid in all contexts.
+    %
+:- pred output_layout_array_name(use_layout_macro::in, string::in,
+    layout_array_name::in, io::di, io::uo) is det.
+
+    % Given the mangled name of the module, output a reference to the address
+    % of the given layout array slot.
+    %
+:- pred output_layout_slot_name(use_layout_macro::in, string::in,
+    layout_slot_name::in, io::di, io::uo) is det.
 
     % Given a reference to a layout structure, output the name of the
     % global variable that will hold it.
@@ -73,13 +121,6 @@
     % iff the layout structure contains code addresses.
     %
 :- func layout_name_would_include_code_addr(layout_name) = bool.
-
-    % Given a label, return a string giving the name of the global variable
-    % containing the label layout structure that would be associated with it.
-    % Make_label_layout_name does not guarantee that the label *has* an
-    % associated label layout structure.
-    %
-:- func make_label_layout_name(label) = string.
 
     % For a given procedure label, return whether the procedure is
     % user-defined or part of a compiler-generated unify, compare or index
@@ -110,6 +151,7 @@
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.trace_params.
+:- import_module ll_backend.llds.
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
@@ -118,27 +160,245 @@
 :- import_module assoc_list.
 :- import_module char.
 :- import_module int.
-:- import_module list.
 :- import_module map.
-:- import_module maybe.
 :- import_module pair.
 :- import_module string.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
+output_user_event_var_nums_array_defn(Info, MaybeVarNums, !IO) :-
+    ModuleName = Info ^ lout_mangled_module_name,
+    list.length(MaybeVarNums, NumMaybeVarNums),
+    Name = user_event_var_nums_array,
+    output_layout_array_name_storage_type_name(ModuleName, Name,
+        being_defined, !IO),
+    io.format("[%d] = {", [i(NumMaybeVarNums)], !IO),
+    list.foldl2(output_maybe_var_num_slot, MaybeVarNums, 0, _, !IO),
+    io.write_string("};\n\n", !IO).
+
+:- pred output_maybe_var_num_slot(maybe(int)::in, int::in, int::out,
+    io::di, io::uo) is det.
+
+output_maybe_var_num_slot(MaybeVarNum, !Slot, !IO) :-
+    (
+        MaybeVarNum = no,
+        % Zero means not a variable, which is what we want.
+        VarNum = 0
+    ;
+        MaybeVarNum = yes(VarNum)
+    ),
+    ( !.Slot mod 10 = 0 ->
+        io.format("\n/* slot %d */ ", [i(!.Slot)], !IO)
+    ;
+        io.write_string(" ", !IO)
+    ),
+    io.format("%d,", [i(VarNum)], !IO),
+    !:Slot = !.Slot + 1.
+
+%-----------------------------------------------------------------------------%
+
+output_user_events_array_defn(Info, UserEvents, !IO) :-
+    ModuleName = Info ^ lout_mangled_module_name,
+    list.length(UserEvents, NumUserEvents),
+    Name = user_event_layout_array,
+    output_layout_array_name_storage_type_name(ModuleName, Name,
+        being_defined, !IO),
+    io.format("[%d] = {\n", [i(NumUserEvents)], !IO),
+    list.foldl2(output_user_event_slot(Info), UserEvents, 0, _, !IO),
+    io.write_string("};\n\n", !IO).
+
+:- pred output_user_event_slot(llds_out_info::in, user_event_data::in,
+    int::in, int::out, io::di, io::uo) is det.
+
+output_user_event_slot(Info, UserEvent, !Slot, !IO) :-
+    UserEvent = user_event_data(UserEventNumber, UserLocnsRval,
+        MaybeVarNumsSlot),
+    io.format("  { /* slot %d */ %d, ",
+        [i(!.Slot), i(UserEventNumber)], !IO),
+    io.write_string("(MR_LongLval *) ", !IO),
+    output_rval_as_addr(Info, UserLocnsRval, !IO),
+    io.write_string(",\n    ", !IO),
+    ModuleName = Info ^ lout_mangled_module_name,
+    output_layout_slot_name(use_layout_macro, ModuleName, MaybeVarNumsSlot,
+        !IO),
+    io.write_string(" },\n", !IO),
+    !:Slot = !.Slot + 1.
+
+%-----------------------------------------------------------------------------%
+
+output_var_label_layouts_array_defn(Info, LabelLayouts, !IO) :-
+    ModuleName = Info ^ lout_mangled_module_name,
+    list.length(LabelLayouts, NumLabelLayouts),
+    Name = label_layout_array(label_has_var_info),
+    output_layout_array_name_storage_type_name(ModuleName, Name,
+        being_defined, !IO),
+    io.format("[%d] = {\n", [i(NumLabelLayouts)], !IO),
+    list.foldl2(output_var_label_layout_slot(Info), LabelLayouts, 0, _, !IO),
+    io.write_string("};\n\n", !IO).
+
+output_no_var_label_layouts_array_defn(Info, LabelLayouts, !IO) :-
+    ModuleName = Info ^ lout_mangled_module_name,
+    list.length(LabelLayouts, NumLabelLayouts),
+    Name = label_layout_array(label_has_no_var_info),
+    output_layout_array_name_storage_type_name(ModuleName, Name,
+        being_defined, !IO),
+    io.format("[%d] = {\n", [i(NumLabelLayouts)], !IO),
+    list.foldl2(output_no_var_label_layout_slot(Info), LabelLayouts,
+        0, _, !IO),
+    io.write_string("};\n\n", !IO).
+
+:- pred output_var_label_layout_slot(llds_out_info::in,
+    label_layout_vars::in, int::in, int::out, io::di, io::uo) is det.
+
+output_var_label_layout_slot(Info, LabelLayout, !Slot, !IO) :-
+    ModuleName = Info ^ lout_mangled_module_name,
+    LabelLayout = label_layout_vars(BasicLabelLayout, LabelVarInfo),
+    BasicLabelLayout = basic_label_layout(_ProcLabel, LabelNum,
+        _, _, _, _, _, _),
+    % The procedure is given by the proc_label printed from the basic layout.
+    io.format("{/* %d, %d */\n  ", [i(!.Slot), i(LabelNum)], !IO),
+    output_basic_label_layout_slot(ModuleName, BasicLabelLayout, !IO),
+    io.write_string(",\n  ", !IO),
+
+    LabelVarInfo = label_var_info(EncodedVarCount, LocnsTypes, VarNums,
+        TypeParams),
+    io.write_int(EncodedVarCount, !IO),
+    io.write_string(",", !IO),
+    (
+        LocnsTypes = const(llconst_data_addr(LTDataAddr, no)),
+        LTDataAddr = data_addr(_,
+            scalar_common_ref(type_num(LTTypeNum), LTCellNum)),
+        VarNums = const(llconst_data_addr(VNDataAddr, no)),
+        VNDataAddr = data_addr(_,
+            scalar_common_ref(type_num(VNTypeNum), VNCellNum))
+    ->
+        (
+            TypeParams = const(llconst_data_addr(TPDataAddr, no)),
+            TPDataAddr = data_addr(_,
+                scalar_common_ref(type_num(TPTypeNum), TPCellNum))
+        ->
+            io.format("MR_LLV_CCC(%d,%d,%d,%d,%d,%d)",
+                [i(LTTypeNum), i(LTCellNum), i(VNTypeNum), i(VNCellNum),
+                i(TPTypeNum), i(TPCellNum)], !IO)
+        ;
+            TypeParams = const(llconst_int(0))
+        ->
+            io.format("MR_LLV_CC0(%d,%d,%d,%d)",
+                [i(LTTypeNum), i(LTCellNum), i(VNTypeNum), i(VNCellNum)], !IO)
+        ;
+            io.format("MR_LLV_CC(%d,%d,%d,%d,",
+                [i(LTTypeNum), i(LTCellNum), i(VNTypeNum), i(VNCellNum)], !IO),
+            output_rval_as_addr(Info, TypeParams, !IO),
+            io.write_string(")", !IO)
+        )
+    ;
+        io.write_string("MR_LLV(", !IO),
+        output_rval_as_addr(Info, LocnsTypes, !IO),
+        io.write_string(",", !IO),
+        output_rval_as_addr(Info, VarNums, !IO),
+        io.write_string(",", !IO),
+        output_rval_as_addr(Info, TypeParams, !IO),
+        io.write_string(")", !IO)
+    ),
+
+    io.write_string(" },\n", !IO),
+    !:Slot = !.Slot + 1.
+
+:- pred output_no_var_label_layout_slot(llds_out_info::in,
+    label_layout_no_vars::in, int::in, int::out, io::di, io::uo) is det.
+
+output_no_var_label_layout_slot(Info, LabelLayout, !Slot, !IO) :-
+    ModuleName = Info ^ lout_mangled_module_name,
+    LabelLayout = label_layout_no_vars(BasicLabelLayout),
+    BasicLabelLayout = basic_label_layout(_ProcLabel, LabelNum,
+        _, _, _, _, _, _),
+    % The procedure is given by the proc_label printed from the basic layout.
+    io.format("{ /* %d, %d */\n  ",
+        [i(!.Slot), i(LabelNum)], !IO),
+    output_basic_label_layout_slot(ModuleName, BasicLabelLayout, !IO),
+    io.write_string(" },\n", !IO),
+    !:Slot = !.Slot + 1.
+
+:- pred output_basic_label_layout_slot(string::in, basic_label_layout::in,
+    io::di, io::uo) is det.
+
+output_basic_label_layout_slot(ModuleName, BasicLabelLayout, !IO) :-
+    BasicLabelLayout = basic_label_layout(ProcLabel, _LabelNum,
+        ProcLayoutName, MaybePort, MaybeIsHidden, LabelNumberInModule,
+        MaybeGoalPath, MaybeUserSlotName),
+    (
+        ProcLayoutName = proc_layout(RttiProcLabel, _),
+        ProcLabelFromRtti = make_proc_label_from_rtti(RttiProcLabel),
+        ProcLabelFromRtti = ProcLabel
+    ->
+        true
+    ;
+        unexpected(this_file, "output_basic_label_layout_slot: != proclabels")
+    ),
+
+    % MaybeIsHidden = no means that the value of the hidden field shouldn't
+    % matter; we arbitrarily set it to `not hidden'.
+    (
+        ( MaybeIsHidden = no
+        ; MaybeIsHidden = yes(no)
+        ),
+        (
+            MaybeUserSlotName = no,
+            MacroName = "MR_LLC"
+        ;
+            MaybeUserSlotName = yes(_),
+            MacroName = "MR_LLC_U"
+        )
+    ;
+        MaybeIsHidden = yes(yes),
+        (
+            MaybeUserSlotName = no,
+            MacroName = "MR_LLC_H"
+        ;
+            MaybeUserSlotName = yes(_),
+            MacroName = "MR_LLC_H_U"
+        )
+    ),
+
+    io.write_string(MacroName, !IO),
+    io.write_string("(", !IO),
+    output_proc_label_no_prefix(ProcLabel, !IO),
+    io.write_string(", ", !IO),
+    (
+        MaybePort = yes(Port),
+        io.write_string(trace_port_to_string(Port), !IO),
+        io.write_string(",", !IO)
+    ;
+        MaybePort = no,
+        io.write_string("NONE,", !IO)
+    ),
+    io.write_int(LabelNumberInModule, !IO),
+    io.write_string(",", !IO),
+    (
+        MaybeGoalPath = yes(GoalPath),
+        io.write_int(GoalPath, !IO)
+    ;
+        MaybeGoalPath = no,
+        io.write_string("0", !IO)
+    ),
+    (
+        MaybeUserSlotName = no
+    ;
+        MaybeUserSlotName = yes(UserSlotName),
+        io.write_string(",", !IO),
+        output_layout_slot_name(use_layout_macro, ModuleName, UserSlotName,
+            !IO)
+    ),
+    io.write_string(")", !IO).
+
+%-----------------------------------------------------------------------------%
+
 output_layout_data_defn(Info, Data, !DeclSet, !IO) :-
     (
-        Data = label_layout_data(ProcLabel, LabelNum, ProcLayoutAddr,
-            MaybePort, MaybeIsHidden, LabelNumber, MaybeGoalPath,
-            MaybeUserData, MaybeVarInfo),
-        output_label_layout_data_defn(Info, ProcLabel, LabelNum,
-            ProcLayoutAddr, MaybePort, MaybeIsHidden, LabelNumber,
-            MaybeGoalPath, MaybeUserData, MaybeVarInfo, !DeclSet, !IO)
-    ;
         Data = proc_layout_data(ProcLabel, Traversal, MaybeRest),
-        output_proc_layout_data_defn(Info, ProcLabel, Traversal, MaybeRest,
-            !DeclSet, !IO)
+        output_proc_layout_data_defn(Info, ProcLabel,
+            Traversal, MaybeRest, !DeclSet, !IO)
     ;
         Data = closure_proc_id_data(CallerProcLabel, SeqNo, ProcLabel,
             ModuleName, FileName, LineNumber, PredOrigin, GoalPath),
@@ -167,7 +427,7 @@ output_layout_data_defn(Info, Data, !DeclSet, !IO) :-
 %-----------------------------------------------------------------------------%
 
 output_layout_name_decl(LayoutName, !IO) :-
-    output_layout_name_storage_type_name(LayoutName, no, !IO),
+    output_layout_name_storage_type_name(LayoutName, not_being_defined, !IO),
     io.write_string(";\n", !IO).
 
 output_maybe_layout_name_decl(LayoutName, !DeclSet, !IO) :-
@@ -186,17 +446,6 @@ output_maybe_layout_data_decl(LayoutData, !DeclSet, !IO) :-
 
 extract_layout_name(Data, LayoutName) :-
     (
-        Data = label_layout_data(ProcLabel, LabelNum, _, _, _, _, _, _,
-            MaybeVarInfo),
-        (
-            MaybeVarInfo = yes(_),
-            LabelVars = label_has_var_info
-        ;
-            MaybeVarInfo = no,
-            LabelVars = label_has_no_var_info
-        ),
-        LayoutName = label_layout(ProcLabel, LabelNum, LabelVars)
-    ;
         Data = proc_layout_data(RttiProcLabel, _, MaybeRest),
         ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
         Kind = maybe_proc_layout_and_more_kind(MaybeRest, ProcLabel),
@@ -223,50 +472,62 @@ output_layout_decl(LayoutName, !DeclSet, !IO) :-
     ( decl_set_is_member(decl_data_addr(layout_addr(LayoutName)), !.DeclSet) ->
         true
     ;
-        output_layout_name_storage_type_name(LayoutName, no, !IO),
+        output_layout_name_storage_type_name(LayoutName, not_being_defined,
+            !IO),
         io.write_string(";\n", !IO),
         decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet)
     ).
 
-    % This code should be kept in sync with output_layout_name/3 below.
-make_label_layout_name(Label) = Name :-
-    % We can't omit the mercury_ prefix on LabelName, even though the
-    % mercury_data_prefix duplicates it, because there is no simple way
-    % to make the MR_init_label_sl macro delete that prefix from the
-    % label's name to get the name of its layout structure.
-    LabelName = label_to_c_string(Label, yes),
-    string.append_list([
-        mercury_data_prefix,
-        "_label_layout__",
-        LabelName
-    ], Name).
+output_layout_array_name(UseMacro, ModuleName, ArrayName, !IO) :-
+    (
+        UseMacro = use_layout_macro,
+        (
+            ArrayName = label_layout_array(label_has_var_info),
+            io.write_string("MR_var_label_layouts", !IO)
+        ;
+            ArrayName = label_layout_array(label_has_no_var_info),
+            io.write_string("MR_no_var_label_layouts", !IO)
+        ;
+            ArrayName = user_event_var_nums_array,
+            io.write_string("MR_user_event_var_nums", !IO)
+        ;
+            ArrayName = user_event_layout_array,
+            io.write_string("MR_user_event_layouts", !IO)
+        ),
+        io.write_string("(", !IO),
+        io.write_string(ModuleName, !IO),
+        io.write_string(")", !IO)
+    ;
+        UseMacro = do_not_use_layout_macro,
+        (
+            ArrayName = label_layout_array(label_has_var_info),
+            io.write_string("mercury_data__var_label_layout_array__", !IO)
+        ;
+            ArrayName = label_layout_array(label_has_no_var_info),
+            io.write_string("mercury_data__no_var_label_layout_array__", !IO)
+        ;
+            ArrayName = user_event_var_nums_array,
+            io.write_string("mercury_data__user_event_var_nums_array__", !IO)
+        ;
+            ArrayName = user_event_layout_array,
+            io.write_string("mercury_data__user_event_layouts_array__", !IO)
+        ),
+        io.write_string(ModuleName, !IO)
+    ).
+
+output_layout_slot_name(UseMacro, ModuleName, SlotName, !IO) :-
+    SlotName = layout_slot(ArrayName, SlotNum),
+    io.write_string("&", !IO),
+    output_layout_array_name(UseMacro, ModuleName, ArrayName, !IO),
+    io.format("[%d]", [i(SlotNum)], !IO).
 
 output_layout_name(Data, !IO) :-
     (
-        Data = label_layout(ProcLabel, LabelNum, _),
-        % This code should be kept in sync with make_label_layout_name/1 above.
-        io.write_string(mercury_data_prefix, !IO),
-        io.write_string("_label_layout__", !IO),
-        io.write_string(
-            label_to_c_string(internal_label(LabelNum, ProcLabel), yes), !IO)
-    ;
-        Data = user_event_layout(ProcLabel, LabelNum),
-        io.write_string(mercury_data_prefix, !IO),
-        io.write_string("_user_event_layout__", !IO),
-        io.write_string(
-            label_to_c_string(internal_label(LabelNum, ProcLabel), yes), !IO)
-    ;
-        Data = user_event_attr_var_nums(ProcLabel, LabelNum),
-        io.write_string(mercury_data_prefix, !IO),
-        io.write_string("_user_event_attr_var_nums__", !IO),
-        io.write_string(
-            label_to_c_string(internal_label(LabelNum, ProcLabel), yes), !IO)
-    ;
         Data = proc_layout(RttiProcLabel, _),
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_proc_layout__", !IO),
         % We can't omit the mercury_ prefix on ProcLabel, even though the
-        % mercury_data_prefix duplicates it, because there is no simply way
+        % mercury_data_prefix duplicates it, because there is no simple way
         % to make the MR_init_entryl_sl macro delete that prefix from the
         % entry label's name to get the name of its layout structure.
         output_proc_label(make_proc_label_from_rtti(RttiProcLabel), !IO)
@@ -457,23 +718,32 @@ output_layout_name(Data, !IO) :-
         output_proc_label_no_prefix(ProcLabel, !IO)
     ).
 
+output_layout_array_name_storage_type_name(ModuleName, Name, _BeingDefined,
+        !IO) :-
+    (
+        Name = label_layout_array(label_has_var_info),
+        io.write_string("static const MR_LabelLayout ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = label_layout_array(label_has_no_var_info),
+        io.write_string("static const MR_LabelLayoutNoVarInfo ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = user_event_var_nums_array,
+        io.write_string("static const MR_HLDSVarNum ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = user_event_layout_array,
+        io.write_string("static const struct MR_UserEvent_Struct ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ).
+
 output_layout_name_storage_type_name(Name, BeingDefined, !IO) :-
     (
-        Name = label_layout(_ProcLabel, _LabelNum, LabelVars),
-        io.write_string("static const ", !IO),
-        io.write_string(label_vars_to_type(LabelVars), !IO),
-        io.write_string(" ", !IO),
-        output_layout_name(Name, !IO)
-    ;
-        Name = user_event_layout(_ProcLabel, _LabelNum),
-        io.write_string("static const struct MR_UserEvent_Struct ", !IO),
-        output_layout_name(Name, !IO)
-    ;
-        Name = user_event_attr_var_nums(_ProcLabel, _LabelNum),
-        io.write_string("static const MR_HLDSVarNum ", !IO),
-        output_layout_name(Name, !IO),
-        io.write_string("[]", !IO)
-    ;
         Name = proc_layout(ProcLabel, Kind),
         ProcIsImported = ProcLabel ^ proc_is_imported,
         ProcIsExported = ProcLabel ^ proc_is_exported,
@@ -484,9 +754,9 @@ output_layout_name_storage_type_name(Name, BeingDefined, !IO) :-
             io.write_string("static ", !IO)
         ;
             (
-                BeingDefined = yes
+                BeingDefined = being_defined
             ;
-                BeingDefined = no,
+                BeingDefined = not_being_defined,
                 io.write_string("extern ", !IO)
             )
         ),
@@ -638,9 +908,6 @@ output_layout_name_storage_type_name(Name, BeingDefined, !IO) :-
         output_layout_name(Name, !IO)
     ).
 
-layout_name_would_include_code_addr(label_layout(_, _, _)) = no.
-layout_name_would_include_code_addr(user_event_layout(_, _)) = no.
-layout_name_would_include_code_addr(user_event_attr_var_nums(_, _)) = no.
 layout_name_would_include_code_addr(proc_layout(_, _)) = no.
 layout_name_would_include_code_addr(proc_layout_exec_trace(_)) = yes.
 layout_name_would_include_code_addr(proc_layout_label_layouts(_)) = no.
@@ -675,11 +942,6 @@ layout_name_would_include_code_addr(proc_static_coverage_point_static(_)) = no.
 layout_name_would_include_code_addr(proc_static_coverage_point_dynamic(_)) = no.
 layout_name_would_include_code_addr(table_io_decl(_)) = no.
 
-:- func label_vars_to_type(label_vars) = string.
-
-label_vars_to_type(label_has_var_info) =    "MR_LabelLayout".
-label_vars_to_type(label_has_no_var_info) = "MR_LabelLayoutNoVarInfo".
-
 :- func proc_layout_kind_to_type(proc_layout_kind) = string.
 
 proc_layout_kind_to_type(proc_layout_traversal) = "MR_ProcLayout_Traversal".
@@ -687,177 +949,6 @@ proc_layout_kind_to_type(proc_layout_proc_id(user)) = "MR_ProcLayoutUser".
 proc_layout_kind_to_type(proc_layout_proc_id(uci)) = "MR_ProcLayoutUCI".
 
 %-----------------------------------------------------------------------------%
-
-:- type rval_or_numpair_or_none
-    --->    kind_rval(rval)
-    ;       kind_num_pair(type_num, int)
-    ;       kind_none.
-
-:- pred output_rval_or_numpair_or_none(llds_out_info::in,
-    rval_or_numpair_or_none::in, io::di, io::uo) is det.
-
-output_rval_or_numpair_or_none(Info, RvalOrNumPairOrNone, !IO) :-
-    (
-        RvalOrNumPairOrNone = kind_rval(Rval),
-        io.write_string(", ", !IO),
-        output_rval_as_addr(Info, Rval, !IO)
-    ;
-        RvalOrNumPairOrNone = kind_num_pair(type_num(Num1), Num2),
-        io.write_string(", ", !IO),
-        io.write_int(Num1, !IO),
-        io.write_string(", ", !IO),
-        io.write_int(Num2, !IO)
-    ;
-        RvalOrNumPairOrNone = kind_none
-    ).
-
-:- pred output_label_layout_data_defn(llds_out_info::in, proc_label::in,
-    int::in, layout_name::in, maybe(trace_port)::in, maybe(bool)::in, int::in,
-    maybe(int)::in, maybe(user_event_data)::in, maybe(label_var_info)::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_label_layout_data_defn(Info, ProcLabel, LabelNum, ProcLayoutAddr,
-        MaybePort, MaybeIsHidden, LabelNumberInModule, MaybeGoalPath,
-        MaybeUserData, MaybeVarInfo, !DeclSet, !IO) :-
-    output_layout_decl(ProcLayoutAddr, !DeclSet, !IO),
-    (
-        MaybeUserData = no,
-        UserChars = ""
-    ;
-        MaybeUserData = yes(UserData),
-        UserChars = "_U",
-        UserData = user_event_data(UserEventNumber, UserLocnsRval,
-            UserAttrMaybeVarNums),
-
-        AttrVarNumsLayoutName = user_event_attr_var_nums(ProcLabel, LabelNum),
-        AttrVarNumsDataAddr = layout_addr(AttrVarNumsLayoutName),
-        decl_set_insert(decl_data_addr(AttrVarNumsDataAddr), !DeclSet),
-        output_layout_name_storage_type_name(AttrVarNumsLayoutName, no, !IO),
-        io.write_string(" = {\n", !IO),
-        io.write_list(UserAttrMaybeVarNums, ", ", output_maybe_var_num, !IO),
-        io.write_string("\n};\n\n", !IO),
-
-        UserLayoutName = user_event_layout(ProcLabel, LabelNum),
-        UserDataAddr = layout_addr(UserLayoutName),
-        decl_set_insert(decl_data_addr(UserDataAddr), !DeclSet),
-        output_layout_name_storage_type_name(UserLayoutName, no, !IO),
-        io.write_string(" = {\n", !IO),
-        io.write_int(UserEventNumber, !IO),
-        io.write_string(",\n(MR_LongLval *) ", !IO),
-        output_rval_as_addr(Info, UserLocnsRval, !IO),
-        io.write_string(",\n", !IO),
-        output_layout_name(AttrVarNumsLayoutName, !IO),
-        io.write_string("\n};\n\n", !IO)
-    ),
-    (
-        MaybeIsHidden = yes(yes),
-        HiddenChars = "T"
-    ;
-        MaybeIsHidden = yes(no),
-        HiddenChars = ""
-    ;
-        MaybeIsHidden = no,
-        % The value of the hidden field shouldn't matter here.
-        HiddenChars = ""
-    ),
-    (
-        MaybeVarInfo = yes(VarInfo0),
-        VarInfo0 = label_var_info(EncodedVarCount1, LocnsTypes0, VarNums0,
-            TypeParams0),
-        output_record_rval_decls(Info, LocnsTypes0, !DeclSet, !IO),
-        output_record_rval_decls(Info, VarNums0, !DeclSet, !IO),
-        output_record_rval_decls(Info, TypeParams0, !DeclSet, !IO),
-        LabelVars = label_has_var_info,
-        (
-            LocnsTypes0 = const(llconst_data_addr(LTDataAddr, no)),
-            LTDataAddr = data_addr(_, scalar_common_ref(LTTypeNum, LTCellNum)),
-            VarNums0 = const(llconst_data_addr(VNDataAddr, no)),
-            VNDataAddr = data_addr(_, scalar_common_ref(VNTypeNum, VNCellNum))
-        ->
-            (
-                TypeParams0 = const(llconst_data_addr(TPDataAddr, no)),
-                TPDataAddr = data_addr(_,
-                    scalar_common_ref(TPTypeNum, TPCellNum))
-            ->
-                CommonChars = "XCCC",
-                LocnsTypes1 = kind_num_pair(LTTypeNum, LTCellNum),
-                VarNums1 = kind_num_pair(VNTypeNum, VNCellNum),
-                TypeParams1 = kind_num_pair(TPTypeNum, TPCellNum)
-            ;
-                TypeParams0 = const(llconst_int(0))
-            ->
-                CommonChars = "XCC0",
-                LocnsTypes1 = kind_num_pair(LTTypeNum, LTCellNum),
-                VarNums1 = kind_num_pair(VNTypeNum, VNCellNum),
-                TypeParams1 = kind_none
-            ;
-                CommonChars = "",
-                LocnsTypes1 = kind_rval(LocnsTypes0),
-                VarNums1 = kind_rval(VarNums0),
-                TypeParams1 = kind_rval(TypeParams0)
-            )
-        ;
-            CommonChars = "",
-            LocnsTypes1 = kind_rval(LocnsTypes0),
-            VarNums1 = kind_rval(VarNums0),
-            TypeParams1 = kind_rval(TypeParams0)
-        ),
-        Macro0 = "MR_DEF_LL" ++ HiddenChars ++ CommonChars,
-        MaybeVarInfoTuple = yes({EncodedVarCount1, LocnsTypes1, VarNums1,
-            TypeParams1})
-    ;
-        MaybeVarInfo = no,
-        LabelVars = label_has_no_var_info,
-        Macro0 = "MR_DEF_LLNVI" ++ HiddenChars,
-        MaybeVarInfoTuple = no
-    ),
-    Macro = Macro0 ++ UserChars,
-    LayoutName = label_layout(ProcLabel, LabelNum, LabelVars),
-    io.write_string("\n", !IO),
-    io.write_string(Macro, !IO),
-    io.write_string("(", !IO),
-    output_proc_label_no_prefix(ProcLabel, !IO),
-    io.write_string(",\n", !IO),
-    io.write_int(LabelNum, !IO),
-    io.write_string(", ", !IO),
-    (
-        MaybePort = yes(Port),
-        io.write_string(trace_port_to_string(Port), !IO)
-    ;
-        MaybePort = no,
-        io.write_string("NONE", !IO)
-    ),
-    io.write_string(", ", !IO),
-    io.write_int(LabelNumberInModule, !IO),
-    io.write_string(", ", !IO),
-    (
-        MaybeGoalPath = yes(GoalPath),
-        io.write_int(GoalPath, !IO)
-    ;
-        MaybeGoalPath = no,
-        io.write_string("0", !IO)
-    ),
-    (
-        MaybeVarInfoTuple = yes({EncodedVarCount,
-            LocnsTypes, VarNums, TypeParams}),
-        io.write_string(", ", !IO),
-        io.write_int(EncodedVarCount, !IO),
-        output_rval_or_numpair_or_none(Info, LocnsTypes, !IO),
-        output_rval_or_numpair_or_none(Info, VarNums, !IO),
-        output_rval_or_numpair_or_none(Info, TypeParams, !IO)
-    ;
-        MaybeVarInfoTuple = no
-    ),
-    io.write_string(");\n", !IO),
-    decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).
-
-:- pred output_maybe_var_num(maybe(int)::in, io::di, io::uo) is det.
-
-output_maybe_var_num(no, !IO) :-
-    % Zero means not a variable, which is what we want.
-    io.write_int(0, !IO).
-output_maybe_var_num(yes(VarNum), !IO) :-
-    io.write_int(VarNum, !IO).
 
     % Output the rval in a context in which it is immediately cast to an
     % address.
@@ -867,7 +958,7 @@ output_maybe_var_num(yes(VarNum), !IO) :-
 
 output_rval_as_addr(Info, Rval, !IO) :-
     ( Rval = const(llconst_int(0)) ->
-        io.write_string(" 0", !IO)
+        io.write_string("0", !IO)
     ; Rval = const(llconst_data_addr(DataAddr, no)) ->
         ( DataAddr = data_addr(_, scalar_common_ref(_TypeNum, _CellNum)) ->
             output_data_addr(DataAddr, !IO)
@@ -907,6 +998,7 @@ trace_port_to_string(port_user) =                "USER".
 
 output_proc_layout_data_defn(Info, RttiProcLabel, Traversal, MaybeRest,
         !DeclSet, !IO) :-
+    MangledModuleName = Info ^ lout_mangled_module_name,
     output_layout_traversal_decls(Info, Traversal, !DeclSet, !IO),
     ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
     Kind = maybe_proc_layout_and_more_kind(MaybeRest, ProcLabel),
@@ -937,7 +1029,8 @@ output_proc_layout_data_defn(Info, RttiProcLabel, Traversal, MaybeRest,
                 !DeclSet, !IO),
             output_layout_exec_trace_decls(Info, RttiProcLabel, ExecTrace,
                 !DeclSet, !IO),
-            output_layout_exec_trace(RttiProcLabel, ExecTrace, !DeclSet, !IO)
+            output_layout_exec_trace(MangledModuleName, RttiProcLabel,
+                ExecTrace, !DeclSet, !IO)
         ;
             MaybeExecTrace = no
         ),
@@ -947,7 +1040,7 @@ output_proc_layout_data_defn(Info, RttiProcLabel, Traversal, MaybeRest,
             ProcBodyBytes = [_ | _],
             io.write_string("\n", !IO),
             output_layout_name_storage_type_name(
-                proc_layout_body_bytecode(RttiProcLabel), yes, !IO),
+                proc_layout_body_bytecode(RttiProcLabel), being_defined, !IO),
             io.write_string(" = {\n", !IO),
             output_bytecodes_driver(ProcBodyBytes, !IO),
             io.write_string("};\n\n", !IO)
@@ -1014,7 +1107,7 @@ proc_label_user_or_uci(special_proc_label(_, _, _, _, _, _)) = uci.
 output_proc_layout_data_defn_start(RttiProcLabel, Kind, Traversal, !IO) :-
     io.write_string("\n", !IO),
     output_layout_name_storage_type_name(proc_layout(RttiProcLabel, Kind),
-        yes, !IO),
+        being_defined, !IO),
     io.write_string(" = {\n", !IO),
     output_layout_traversal_group(Traversal, !IO).
 
@@ -1097,26 +1190,14 @@ output_layout_no_proc_id_group(!IO) :-
     io::di, io::uo) is det.
 
 output_layout_exec_trace_decls(Info, RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
-    ExecTrace = proc_layout_exec_trace(MaybeCallLabelLayout,
-        EventDataAddrs, MaybeTableInfo, _HeadVarNums, _VarNames, _MaxVarNum,
+    ExecTrace = proc_layout_exec_trace(_MaybeCallLabelLayout,
+        _InterfaceEventSlots, _InternalEventSlots, MaybeTableInfo,
+        _HeadVarNums, _VarNames, _MaxVarNum,
         _MaxRegNum, _MaybeFromFullSlot, _MaybeIoSeqSlot,
         _MaybeTrailSlot, _MaybeMaxfrSlot, _EvalMethod,
         _MaybeCallTableSlot, _MaybeTailRecSlot, _EffTraceLevel, _Flags),
     ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
     ModuleName = get_defining_module_name(ProcLabel),
-    output_label_layout_addrs_in_vector(EventDataAddrs, "MR_DECL_LABEL_LAYOUT",
-        !IO),
-    EventDataDeclIds = list.map(wrap_decl_data_addr, EventDataAddrs),
-    list.foldl(decl_set_insert, EventDataDeclIds, !DeclSet),
-    (
-        MaybeCallLabelLayout = yes(CallLabelDetails),
-        CallLabelDetails = label_layout_details(CallProcLabel, LabelNum,
-            LabelVars),
-        CallLabelLayout = label_layout(CallProcLabel, LabelNum, LabelVars),
-        output_layout_decl(CallLabelLayout, !DeclSet, !IO)
-    ;
-        MaybeCallLabelLayout = no
-    ),
     output_layout_decl(module_layout(ModuleName), !DeclSet, !IO),
     (
         MaybeTableInfo = yes(TableInfo),
@@ -1167,40 +1248,40 @@ output_bytecodes(Bytes, BytesLeft, !.Seq, MaxSeq, !IO) :-
         )
     ).
 
-:- pred output_layout_exec_trace(rtti_proc_label::in,
+:- pred output_layout_exec_trace(string::in, rtti_proc_label::in,
     proc_layout_exec_trace::in, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
 
-output_layout_exec_trace(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
+output_layout_exec_trace(MangledModuleName, RttiProcLabel, ExecTrace,
+        !DeclSet, !IO) :-
     ExecTrace = proc_layout_exec_trace(MaybeCallLabelDetails,
-        EventDataAddrs, MaybeTableInfo, HeadVarNums, _VarNames, MaxVarNum,
-        MaxRegNum, MaybeFromFullSlot, MaybeIoSeqSlot, MaybeTrailSlot,
-        MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot, MaybeTailRecSlot,
-        EffTraceLevel, Flags),
+        InterfaceEventLabelSlots, InternalEventLabelSlots, MaybeTableInfo,
+        HeadVarNums, _VarNames, MaxVarNum, MaxRegNum,
+        MaybeFromFullSlot, MaybeIoSeqSlot, MaybeTrailSlot, MaybeMaxfrSlot,
+        EvalMethod, MaybeCallTableSlot, MaybeTailRecSlot, EffTraceLevel,
+        Flags),
 
+    EventLabelSlots = InterfaceEventLabelSlots ++ InternalEventLabelSlots,
     (
-        EventDataAddrs = []
+        EventLabelSlots = []
     ;
-        EventDataAddrs = [_ | _],
+        EventLabelSlots = [_ | _],
         io.write_string("\n", !IO),
         output_layout_name_storage_type_name(
-            proc_layout_label_layouts(RttiProcLabel), yes, !IO),
+            proc_layout_label_layouts(RttiProcLabel), being_defined, !IO),
         io.write_string(" = {\n", !IO),
-        output_label_layout_addrs_in_vector(EventDataAddrs, "MR_LABEL_LAYOUT",
-            !IO),
+        output_layout_slots_in_vector(MangledModuleName, EventLabelSlots, !IO),
         io.write_string("};\n\n", !IO)
     ),
 
     output_layout_name_storage_type_name(
-        proc_layout_exec_trace(RttiProcLabel), yes, !IO),
+        proc_layout_exec_trace(RttiProcLabel), being_defined, !IO),
     io.write_string(" = {\n", !IO),
     (
-        MaybeCallLabelDetails = yes(CallLabelDetails),
-        io.write_string("MR_LABEL_LAYOUT_REF(", !IO),
-        CallLabelDetails = label_layout_details(CallProcLabel, CallLabelNum,
-            _),
-        output_label(internal_label(CallLabelNum, CallProcLabel), no, !IO),
-        io.write_string("),\n", !IO)
+        MaybeCallLabelDetails = yes(CallLabelSlot),
+        output_layout_slot_name(use_layout_macro, MangledModuleName,
+            CallLabelSlot, !IO),
+        io.write_string(",\n", !IO)
     ;
         MaybeCallLabelDetails = no,
         io.write_string("NULL,\n", !IO)
@@ -1211,15 +1292,15 @@ output_layout_exec_trace(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
     output_layout_name(module_layout(ModuleName), !IO),
     io.write_string(",\n", !IO),
     (
-        EventDataAddrs = [],
+        EventLabelSlots = [],
         io.write_string("NULL,\n", !IO)
     ;
-        EventDataAddrs = [_ | _],
+        EventLabelSlots = [_ | _],
         output_layout_name(proc_layout_label_layouts(RttiProcLabel), !IO),
         io.write_string(",\n", !IO)
     ),
-    list.length(EventDataAddrs, NumEventDataAddrs),
-    io.write_int(NumEventDataAddrs, !IO),
+    list.length(EventLabelSlots, NumEventLabelSlots),
+    io.write_int(NumEventLabelSlots, !IO),
     io.write_string(",\n", !IO),
     io.write_string("{ ", !IO),
     (
@@ -1308,7 +1389,7 @@ eval_method_to_c_string(eval_table_io(Decl, Unitize)) = Str :-
 output_proc_layout_head_var_nums(ProcLabel, HeadVarNums, !DeclSet, !IO) :-
     io.write_string("\n", !IO),
     output_layout_name_storage_type_name(proc_layout_head_var_nums(ProcLabel),
-        yes, !IO),
+        being_defined, !IO),
     io.write_string(" = {\n", !IO),
     (
         HeadVarNums = [],
@@ -1331,8 +1412,8 @@ output_proc_layout_var_names(ProcLabel, VarNames, MaxVarNum, !DeclSet, !IO) :-
     expect(unify(VarNameCount, MaxVarNum), this_file,
         "output_proc_layout_var_names: VarNameCount != MaxVarNum"),
     io.write_string("\n", !IO),
-    output_layout_name_storage_type_name(proc_layout_var_names(ProcLabel), yes,
-        !IO),
+    output_layout_name_storage_type_name(proc_layout_var_names(ProcLabel),
+        being_defined, !IO),
     io.write_string(" = {\n", !IO),
     (
         VarNames = [],
@@ -1358,7 +1439,7 @@ output_closure_proc_id_data_defn(CallerProcLabel, SeqNo, ClosureProcLabel,
         !DeclSet, !IO) :-
     io.write_string("\n", !IO),
     LayoutName = closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel),
-    output_layout_name_storage_type_name(LayoutName, yes, !IO),
+    output_layout_name_storage_type_name(LayoutName, being_defined, !IO),
     io.write_string(" = {\n{\n", !IO),
     output_proc_id(ClosureProcLabel, PredOrigin, !IO),
     io.write_string("},\n", !IO),
@@ -1534,7 +1615,8 @@ output_module_common_layout_data_defn(ModuleName, StringTableSize, StringTable,
 
     ModuleCommonLayoutName = module_common_layout(ModuleName),
     io.write_string("\n", !IO),
-    output_layout_name_storage_type_name(ModuleCommonLayoutName, yes, !IO),
+    output_layout_name_storage_type_name(ModuleCommonLayoutName,
+        being_defined, !IO),
     io.write_string(" = {\n", !IO),
     io.write_int(layout_version_number, !IO),
     io.write_string(",\n", !IO),
@@ -1549,26 +1631,28 @@ output_module_common_layout_data_defn(ModuleName, StringTableSize, StringTable,
     decl_set_insert(decl_data_addr(layout_addr(ModuleCommonLayoutName)),
         !DeclSet).
 
-:- pred output_module_layout_data_defn(llds_out_info::in, module_name::in,
-    layout_name::in, list(layout_name)::in, list(file_layout_data)::in,
-    trace_level::in, int::in, int::in, maybe(event_set_layout_data)::in,
+:- pred output_module_layout_data_defn(llds_out_info::in,
+    module_name::in, layout_name::in, list(layout_name)::in,
+    list(file_layout_data)::in, trace_level::in, int::in, int::in,
+    maybe(event_set_layout_data)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_module_layout_data_defn(Info, ModuleName, ModuleCommonLayoutName,
-        ProcLayoutNames, FileLayouts, TraceLevel, SuppressedEvents,
-        NumLabels, MaybeEventSetLayout, !DeclSet, !IO) :-
+output_module_layout_data_defn(Info, ModuleName,
+        ModuleCommonLayoutName, ProcLayoutNames, FileLayouts, TraceLevel,
+        SuppressedEvents, NumLabels, MaybeEventSetLayout, !DeclSet, !IO) :-
     output_layout_decl(module_common_layout(ModuleName), !DeclSet, !IO),
     output_module_layout_proc_vector_defn(ModuleName, ProcLayoutNames,
         ProcVectorName, !DeclSet, !IO),
-    output_file_layout_data_defns(Info, ModuleName, 0, FileLayouts,
-        FileLayoutNames, !DeclSet, !IO),
+    output_file_layout_data_defns(Info, ModuleName,
+        0, FileLayouts, FileLayoutNames, !DeclSet, !IO),
     output_file_layout_vector_data_defn(ModuleName, FileLayoutNames,
         FileVectorName, !DeclSet, !IO),
 
     io.write_string("\n", !IO),
     LabelExecCountName = module_layout_label_exec_count(ModuleName,
         NumLabels),
-    output_layout_name_storage_type_name(LabelExecCountName, yes, !IO),
+    output_layout_name_storage_type_name(LabelExecCountName,
+        being_defined, !IO),
     io.write_string(";\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(LabelExecCountName)), !DeclSet),
 
@@ -1587,7 +1671,7 @@ output_module_layout_data_defn(Info, ModuleName, ModuleCommonLayoutName,
 
     ModuleLayoutName = module_layout(ModuleName),
     io.write_string("\n", !IO),
-    output_layout_name_storage_type_name(ModuleLayoutName, yes, !IO),
+    output_layout_name_storage_type_name(ModuleLayoutName, being_defined, !IO),
     io.write_string(" = {\n", !IO),
     io.write_string("&", !IO),
     output_layout_name(ModuleCommonLayoutName, !IO),
@@ -1650,7 +1734,7 @@ output_event_specs_and_components(Info, EventSpecs, ModuleName, TypesRvalMap,
     LayoutName = module_layout_event_specs(ModuleName),
     DataAddr = layout_addr(LayoutName),
     decl_set_insert(decl_data_addr(DataAddr), !DeclSet),
-    output_layout_name_storage_type_name(LayoutName, yes, !IO),
+    output_layout_name_storage_type_name(LayoutName, being_defined, !IO),
     io.write_string(" = {\n", !IO),
     io.write_list(EventSpecs, ",\n",
         output_event_spec(Info, ModuleName, TypesRvalMap), !IO),
@@ -1667,7 +1751,8 @@ output_event_spec_components(ModuleName, EventSpec, !DeclSet, !IO) :-
         module_layout_event_arg_names(ModuleName, EventNumber),
     AttrNamesDataAddr = layout_addr(AttrNamesLayoutName),
     decl_set_insert(decl_data_addr(AttrNamesDataAddr), !DeclSet),
-    output_layout_name_storage_type_name(AttrNamesLayoutName, yes, !IO),
+    output_layout_name_storage_type_name(AttrNamesLayoutName,
+        being_defined, !IO),
     io.write_string(" = {\n", !IO),
     io.write_list(Attrs, ", ", output_attr_name, !IO),
     io.write_string("\n};\n\n", !IO),
@@ -1684,7 +1769,8 @@ output_event_spec_components(ModuleName, EventSpec, !DeclSet, !IO) :-
             module_layout_event_synth_attrs(ModuleName, EventNumber),
         SynthAttrsDataAddr = layout_addr(SynthAttrsLayoutName),
         decl_set_insert(decl_data_addr(SynthAttrsDataAddr), !DeclSet),
-        output_layout_name_storage_type_name(SynthAttrsLayoutName, yes, !IO),
+        output_layout_name_storage_type_name(SynthAttrsLayoutName,
+            being_defined, !IO),
         io.write_string(" = {\n", !IO),
         io.write_list(Attrs, ",\n",
             output_synth_attr(ModuleName, EventNumber), !IO),
@@ -1694,7 +1780,8 @@ output_event_spec_components(ModuleName, EventSpec, !DeclSet, !IO) :-
             module_layout_event_synth_order(ModuleName, EventNumber),
         SynthOrderDataAddr = layout_addr(SynthOrderLayoutName),
         decl_set_insert(decl_data_addr(SynthOrderDataAddr), !DeclSet),
-        output_layout_name_storage_type_name(SynthOrderLayoutName, yes, !IO),
+        output_layout_name_storage_type_name(SynthOrderLayoutName,
+            being_defined, !IO),
         io.write_string(" = {\n", !IO),
         % The -1 acts as sentinel.
         io.write_list(SynthOrder ++ [-1], ", ", io.write_int, !IO),
@@ -1724,7 +1811,8 @@ output_synth_attr_args(ModuleName, EventNumber, Attr, !DeclSet, !IO) :-
             EventNumber, AttrNumber),
         ArgsDataAddr = layout_addr(ArgsLayoutName),
         decl_set_insert(decl_data_addr(ArgsDataAddr), !DeclSet),
-        output_layout_name_storage_type_name(ArgsLayoutName, yes, !IO),
+        output_layout_name_storage_type_name(ArgsLayoutName,
+            being_defined, !IO),
         io.write_string(" =\n{ ", !IO),
         io.write_list(ArgAttrNums, ", ", io.write_int, !IO),
         io.write_string(" };\n\n", !IO),
@@ -1733,7 +1821,8 @@ output_synth_attr_args(ModuleName, EventNumber, Attr, !DeclSet, !IO) :-
             EventNumber, AttrNumber),
         OrderDataAddr = layout_addr(OrderLayoutName),
         decl_set_insert(decl_data_addr(OrderDataAddr), !DeclSet),
-        output_layout_name_storage_type_name(OrderLayoutName, yes, !IO),
+        output_layout_name_storage_type_name(OrderLayoutName,
+            being_defined, !IO),
         io.write_string(" =\n{ ", !IO),
         OrderSentinel = Order ++ [-1],
         io.write_list(OrderSentinel, ", ", io.write_int, !IO),
@@ -1816,7 +1905,7 @@ output_module_layout_proc_vector_defn(ModuleName, ProcLayoutNames,
     list.foldl2(output_layout_decl, ProcLayoutNames, !DeclSet, !IO),
     VectorName = module_layout_proc_vector(ModuleName),
     io.write_string("\n", !IO),
-    output_layout_name_storage_type_name(VectorName, yes, !IO),
+    output_layout_name_storage_type_name(VectorName, being_defined, !IO),
     io.write_string(" = {\n", !IO),
     (
         ProcLayoutNames = [],
@@ -1852,7 +1941,7 @@ output_proc_layout_name_in_vector(LayoutName, !IO) :-
 output_event_set_desc_defn(ModuleName, EventSetDesc, !DeclSet, !IO) :-
     LayoutName = module_layout_event_set_desc(ModuleName),
     io.write_string("\n", !IO),
-    output_layout_name_storage_type_name(LayoutName, yes, !IO),
+    output_layout_name_storage_type_name(LayoutName, being_defined, !IO),
     io.write_string(" = {", !IO),
     output_module_string_table_strings(EventSetDesc, [], !IO),
     io.write_string("};\n", !IO),
@@ -1866,7 +1955,7 @@ output_module_string_table(ModuleName, _StringTableSize,
         string_with_0s(StringTable0), !DeclSet, !IO) :-
     TableName = module_layout_string_table(ModuleName),
     io.write_string("\n", !IO),
-    output_layout_name_storage_type_name(TableName, yes, !IO),
+    output_layout_name_storage_type_name(TableName, being_defined, !IO),
     io.write_string(" = {", !IO),
 
     %
@@ -1923,7 +2012,7 @@ output_file_layout_vector_data_defn(ModuleName, FileLayoutNames, VectorName,
     list.foldl2(output_layout_decl, FileLayoutNames, !DeclSet, !IO),
     VectorName = module_layout_file_vector(ModuleName),
     io.write_string("\n", !IO),
-    output_layout_name_storage_type_name(VectorName, yes, !IO),
+    output_layout_name_storage_type_name(VectorName, being_defined, !IO),
     io.write_string(" = {\n", !IO),
     (
         FileLayoutNames = [],
@@ -1945,32 +2034,30 @@ output_file_layout_data_defns(_, _, _, [], [], !DeclSet, !IO).
 output_file_layout_data_defns(Info, ModuleName, FileNum,
         [FileLayout | FileLayouts], [FileLayoutName | FileLayoutNames],
         !DeclSet, !IO) :-
-    output_file_layout_data_defn(Info, ModuleName, FileNum, FileLayout,
-        FileLayoutName, !DeclSet, !IO),
-    output_file_layout_data_defns(Info, ModuleName, FileNum + 1, FileLayouts,
-        FileLayoutNames, !DeclSet, !IO).
+    output_file_layout_data_defn(Info, ModuleName,
+        FileNum, FileLayout, FileLayoutName, !DeclSet, !IO),
+    output_file_layout_data_defns(Info, ModuleName,
+        FileNum + 1, FileLayouts, FileLayoutNames, !DeclSet, !IO).
 
-:- pred output_file_layout_data_defn(llds_out_info::in, module_name::in,
-    int::in, file_layout_data::in, layout_name::out,
+:- pred output_file_layout_data_defn(llds_out_info::in,
+    module_name::in, int::in, file_layout_data::in, layout_name::out,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_file_layout_data_defn(Info, ModuleName, FileNum, FileLayout,
         FileLayoutName, !DeclSet, !IO) :-
+    MangledModuleName = Info ^ lout_mangled_module_name,
     FileLayout = file_layout_data(FileName, LineNoLabelList),
-    list.map2(line_no_label_to_label_layout_addr, LineNoLabelList,
-        LineNos, LabelLayoutAddrs),
-    list.foldl2(output_record_data_addr_decls(Info), LabelLayoutAddrs,
-        !DeclSet, !IO),
+    assoc_list.keys_and_values(LineNoLabelList, LineNos, LabelLayoutSlots),
 
     list.length(LineNoLabelList, VectorLengths),
     output_file_layout_line_number_vector_defn(ModuleName, FileNum,
         LineNos, LineNumberVectorName, !DeclSet, !IO),
-    output_file_layout_label_layout_vector_defn(ModuleName, FileNum,
-        LabelLayoutAddrs, LabelVectorName, !DeclSet, !IO),
+    output_file_layout_label_layout_vector_defn(MangledModuleName, ModuleName,
+        FileNum, LabelLayoutSlots, LabelVectorName, !DeclSet, !IO),
 
     FileLayoutName = file_layout(ModuleName, FileNum),
     io.write_string("\n", !IO),
-    output_layout_name_storage_type_name(FileLayoutName, yes, !IO),
+    output_layout_name_storage_type_name(FileLayoutName, being_defined, !IO),
     io.write_string(" = {\n", !IO),
     quote_and_write_string(FileName, !IO),
     io.write_string(",\n", !IO),
@@ -1990,7 +2077,7 @@ output_file_layout_line_number_vector_defn(ModuleName, FileNum, LineNumbers,
         LayoutName, !DeclSet, !IO) :-
     LayoutName = file_layout_line_number_vector(ModuleName, FileNum),
     io.write_string("\n", !IO),
-    output_layout_name_storage_type_name(LayoutName, yes, !IO),
+    output_layout_name_storage_type_name(LayoutName, being_defined, !IO),
     io.write_string(" = {\n", !IO),
     (
         LineNumbers = [],
@@ -2004,97 +2091,94 @@ output_file_layout_line_number_vector_defn(ModuleName, FileNum, LineNumbers,
     io.write_string("};\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).
 
-:- pred output_file_layout_label_layout_vector_defn(module_name::in, int::in,
-    list(data_addr)::in, layout_name::out, decl_set::in, decl_set::out,
-    io::di, io::uo) is det.
+:- pred output_file_layout_label_layout_vector_defn(string::in,
+    module_name::in, int::in, list(layout_slot_name)::in, layout_name::out,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_file_layout_label_layout_vector_defn(ModuleName, FileNum, LabelAddrs,
-        LayoutName, !DeclSet, !IO) :-
+output_file_layout_label_layout_vector_defn(MangledModuleName, ModuleName,
+        FileNum, LabelSlots, LayoutName, !DeclSet, !IO) :-
     LayoutName = file_layout_label_layout_vector(ModuleName, FileNum),
     io.write_string("\n", !IO),
-    output_layout_name_storage_type_name(LayoutName, yes, !IO),
+    output_layout_name_storage_type_name(LayoutName, being_defined, !IO),
     io.write_string(" = {\n", !IO),
     (
-        LabelAddrs = [],
+        LabelSlots = [],
         % ANSI/ISO C doesn't allow empty arrays, so place a dummy value
         % in the array.
         io.write_string("NULL\n", !IO)
     ;
-        LabelAddrs = [_ | _],
-        output_label_layout_addrs_in_vector(LabelAddrs, "MR_LABEL_LAYOUT", !IO)
+        LabelSlots = [_ | _],
+        output_layout_slots_in_vector(MangledModuleName, LabelSlots, !IO)
     ),
     io.write_string("};\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_label_layout_addrs_in_vector(list(data_addr)::in, string::in,
+:- pred output_layout_slots_in_vector(string::in, list(layout_slot_name)::in,
     io::di, io::uo) is det.
 
-output_label_layout_addrs_in_vector([], _, !IO).
-output_label_layout_addrs_in_vector([DataAddr | DataAddrs], Macro, !IO) :-
+output_layout_slots_in_vector(_ModuleName, [], !IO).
+output_layout_slots_in_vector(ModuleName, [SlotName | SlotNames], !IO) :-
+    SlotName = layout_slot(ArrayName, SlotNum),
     (
-        DataAddr = layout_addr(LayoutName),
-        LayoutName = label_layout(ProcLabel, LabelNum, label_has_var_info)
-    ->
-        groupable_labels(ProcLabel, 1, _N, [LabelNum], RevLabelNums,
-            DataAddrs, RemainingDataAddrs),
-        list.reverse(RevLabelNums, LabelNums),
-        io.write_string(Macro, !IO),
-        io.write_int(list.length(LabelNums), !IO),
-        io.write_string("(", !IO),
-        output_proc_label_no_prefix(ProcLabel, !IO),
-        io.write_string(",", !IO),
-        io.write_list(LabelNums, ",", io.write_int, !IO),
-        io.write_string(")\n", !IO),
-        output_label_layout_addrs_in_vector(RemainingDataAddrs, Macro, !IO)
-    ;
-        unexpected(this_file,
-            "output_label_layout_addrs_in_vector: not label layout")
-    ).
-
-:- pred groupable_labels(proc_label::in, int::in, int::out,
-    list(int)::in, list(int)::out, list(data_addr)::in, list(data_addr)::out)
-    is det.
-
-groupable_labels(GroupProcLabel, !Count, !RevLabelsNums, !DataAddrs) :-
-    (
-        !.DataAddrs = []
-    ;
-        !.DataAddrs = [DataAddr | DataAddrsTail],
         (
-            DataAddr = layout_addr(LayoutName),
-            LayoutName = label_layout(ProcLabel, LabelNum, label_has_var_info)
-        ->
-            % There must be a macro of the form MR_LABEL_LAYOUT<n> and
-            % MR_DECL_LABEL_LAYOUT<n> for every <n> up to MaxChunkSize.
-            MaxChunkSize = 9,
-            (
-                % We cannot group together labels from different procedures.
-                ProcLabel = GroupProcLabel,
-                % Leave room for the one we're adding.
-                !.Count < MaxChunkSize
-            ->
-                !:DataAddrs = DataAddrsTail,
-                !:Count = !.Count + 1,
-                !:RevLabelsNums = [LabelNum | !.RevLabelsNums],
-                groupable_labels(GroupProcLabel, !Count, !RevLabelsNums,
-                    !DataAddrs)
-            ;
-                true
-            )
+            ArrayName = label_layout_array(label_has_var_info),
+            Macro = "MR_var_label_layout_refs"
         ;
-            unexpected(this_file, "groupable_labels: not label layout")
-        )
+            ArrayName = label_layout_array(label_has_no_var_info),
+            Macro = "MR_no_var_label_layout_refs"
+        ),
+        find_slots_in_same_array(ArrayName, SlotNames, [], RevTailSlotNums,
+            OtherArraySlotNames),
+        list.reverse(RevTailSlotNums, TailSlotNums),
+        SlotNums = [SlotNum | TailSlotNums],
+        % There must be a macro of the form Macro<n> for all values of <n>
+        % between 1 and ChunkSize.
+        ChunkSize = 10,
+        list.chunk(SlotNums, ChunkSize, SlotNumChunks),
+        list.foldl(output_layout_slot_chunk(Macro, ModuleName),
+            SlotNumChunks, !IO),
+        output_layout_slots_in_vector(ModuleName, OtherArraySlotNames, !IO)
+    ;
+        ( ArrayName = user_event_var_nums_array
+        ; ArrayName = user_event_layout_array
+        ),
+        output_layout_slot_name(use_layout_macro, ModuleName, SlotName, !IO),
+        io.write_string(",\n", !IO),
+        output_layout_slots_in_vector(ModuleName, SlotNames, !IO)
     ).
+
+:- pred find_slots_in_same_array(layout_array_name::in,
+    list(layout_slot_name)::in, list(int)::in, list(int)::out,
+    list(layout_slot_name)::out) is det.
+
+find_slots_in_same_array(_ArrayName, [], !RevSlotNums, []).
+find_slots_in_same_array(ArrayName, [SlotName | SlotNames], !RevSlotNums,
+        OtherArraySlotNames) :-
+    SlotName = layout_slot(SlotArrayName, SlotNum),
+    ( SlotArrayName = ArrayName ->
+        !:RevSlotNums = [SlotNum | !.RevSlotNums],
+        find_slots_in_same_array(ArrayName, SlotNames, !RevSlotNums,
+            OtherArraySlotNames)
+    ;
+        OtherArraySlotNames = [SlotName | SlotNames]
+    ).
+
+:- pred output_layout_slot_chunk(string::in, string::in, list(int)::in,
+    io::di, io::uo) is det.
+
+output_layout_slot_chunk(Macro, ModuleName, SlotNums, !IO) :-
+    list.length(SlotNums, Length),
+    io.write_string(Macro, !IO),
+    io.write_int(Length, !IO),
+    io.write_string("(", !IO),
+    io.write_string(ModuleName, !IO),
+    io.write_string(", ", !IO),
+    io.write_list(SlotNums, ",", io.write_int, !IO),
+    io.write_string(")\n", !IO).
 
 %-----------------------------------------------------------------------------%
-
-:- pred line_no_label_to_label_layout_addr(pair(int, layout_name)::in,
-    int::out, data_addr::out) is det.
-
-line_no_label_to_label_layout_addr(LineNo - LabelLayout, LineNo, DataAddr) :-
-    DataAddr = layout_addr(LabelLayout).
 
 :- pred quote_and_write_string(string::in, io::di, io::uo) is det.
 
@@ -2150,7 +2234,7 @@ output_proc_static_data_defn(RttiProcLabel, ProcLayoutProcStatic,
     % Write out the proc static.
     LayoutName = proc_static(RttiProcLabel),
     io.write_string("\n", !IO),
-    output_layout_name_storage_type_name(LayoutName, yes, !IO),
+    output_layout_name_storage_type_name(LayoutName, being_defined, !IO),
     io.write_string(" = {\n", !IO),
     quote_and_write_string(FileName, !IO),
     io.write_string(",\n", !IO),
@@ -2198,7 +2282,7 @@ output_proc_static_data_defn(RttiProcLabel, ProcLayoutProcStatic,
 output_call_site_static_array(RttiProcLabel, CallSites, !DeclSet, !IO) :-
     LayoutName = proc_static_call_sites(RttiProcLabel),
     io.write_string("\n", !IO),
-    output_layout_name_storage_type_name(LayoutName, yes, !IO),
+    output_layout_name_storage_type_name(LayoutName, being_defined, !IO),
     io.write_string(" = {\n", !IO),
     list.foldl2(output_call_site_static, CallSites, 0, _, !IO),
     io.write_string("};\n", !IO),
@@ -2279,7 +2363,7 @@ output_coverage_point_static_array(RttiProcLabel, CoveragePoints, !DeclSet,
         !IO) :-
     LayoutName = proc_static_coverage_point_static(RttiProcLabel),
     io.write_string("\n", !IO),
-    output_layout_name_storage_type_name(LayoutName, yes, !IO),
+    output_layout_name_storage_type_name(LayoutName, being_defined, !IO),
     io.write_string(" = {\n", !IO),
     list.foldl(output_coverage_point_static, CoveragePoints, !IO),
     io.write_string("};\n", !IO),
@@ -2304,7 +2388,7 @@ output_coverage_point_dynamic_array(RttiProcLabel, NumCoveragePoints,
         !DeclSet, !IO) :-
     LayoutName = proc_static_coverage_point_dynamic(RttiProcLabel),
     io.write_string("\n", !IO),
-    output_layout_name_storage_type_name(LayoutName, yes, !IO),
+    output_layout_name_storage_type_name(LayoutName, being_defined, !IO),
     io.write_string(" = {\n", !IO),
     duplicate(NumCoveragePoints, "0,", Zeros),
     io.write_strings(Zeros, !IO),
@@ -2325,7 +2409,7 @@ output_table_io_decl(Info, RttiProcLabel, ProcLayoutKind, NumPTIs,
     output_layout_decl(ProcLayoutName, !DeclSet, !IO),
 
     io.write_string("\n", !IO),
-    output_layout_name_storage_type_name(LayoutName, yes, !IO),
+    output_layout_name_storage_type_name(LayoutName, being_defined, !IO),
     io.write_string(" = {\n(const MR_ProcLayout *) &", !IO),
     output_layout_name(ProcLayoutName, !IO),
     io.write_string(",\n", !IO),

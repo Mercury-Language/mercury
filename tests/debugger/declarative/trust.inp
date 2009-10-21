@@ -5,13 +5,13 @@ echo on
 trust trust_1.
 *
 trusted
-untrust 2
-trusted
 untrust 1
+trusted
+untrust 2
 trusted
 trust trust_2
 trust trust.
-1
+0
 trusted
 trust trust_2
 trusted

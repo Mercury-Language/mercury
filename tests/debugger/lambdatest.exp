@@ -4,10 +4,10 @@ Command echo enabled.
 mdb> procedures lambdatest
 List of procedures in module `lambdatest'
 
-func lambdatest.lambda2_lambdatest_m_14/1-0 (det)
-func lambdatest.lambda_lambdatest_m_14/1-0 (det)
-func lambdatest.polycall/2-0 (det)
 pred lambdatest.main/2-0 (det)
+func lambdatest.polycall/2-0 (det)
+func lambdatest.lambda_lambdatest_m_14/1-0 (det)
+func lambdatest.lambda2_lambdatest_m_14/1-0 (det)
 mdb> break lambda_lambdatest_m_14
  0: + stop  interface func lambdatest.lambda_lambdatest_m_14/1-0 (det)
 mdb> c
