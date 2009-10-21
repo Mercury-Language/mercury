@@ -915,7 +915,11 @@ compile_java_files(ErrorStream, JavaFiles, Globals, Succeeded, !IO) :-
 
     globals.lookup_accumulating_option(Globals, java_classpath,
         Java_Incl_Dirs),
-    ( dir.use_windows_paths ->
+    (
+        ( dir.use_windows_paths
+        ; io.have_cygwin
+        )
+    ->
         PathSeparator = ";"
     ;
         PathSeparator = ":"
@@ -2393,8 +2397,10 @@ create_java_archive(Globals, ErrorStream, JarFileName, ObjectList, Succeeded,
 
     % Write the list of class files to a temporary file and pass the name of
     % the temporary file to jar using @syntax.  The list of class files can be
-    % extremely long.
-    io.make_temp(TempFileName, !IO),
+    % extremely long.  We create the temporary file in the current directory to
+    % avoid problems under Cygwin, where absolute paths will be interpreted
+    % incorrectly when passed to a non-Cygwin jar program.
+    io.make_temp(".", "mtmp", TempFileName, !IO),
     io.open_output(TempFileName, OpenResult, !IO),
     (
         OpenResult = ok(Stream),
