@@ -232,7 +232,7 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
             AuxPredInfo, AuxProcInfo, !ModuleInfo),
 
         % We update the body of AuxProc by replacing adding the set of
-        % computed invariant vars to the argument list, % replacing invariant
+        % computed invariant vars to the argument list, replacing invariant
         % goals in InProc with `true', and recursive calls at the end of
         % recursive paths with calls to the auxiliary procedure.
         gen_aux_proc(InvGoals, PredProcId,
@@ -1211,8 +1211,8 @@ input_arg(ModuleInfo, X, M) = X :-
 
 %-----------------------------------------------------------------------------%
 
-    % Find the list of vars for a goal that are free before the call.
-    % This only applies to calls and unifications.
+    % Find the list of vars for a goal that are free before the call and bound
+    % afterwards.  This only applies to calls and unifications.
     %
 :- func goal_outputs(module_info, hlds_goal) = prog_vars.
 
@@ -1269,13 +1269,12 @@ goal_outputs(ModuleInfo, Goal) = Outputs :-
 
 %-----------------------------------------------------------------------------%
 
-    % An output arg is one whose pre-call inst is free.
+    % An output arg is one whose pre-call inst is free and ground after.
     %
 :- func output_arg(module_info, prog_var, mer_mode) = prog_var is semidet.
 
 output_arg(ModuleInfo, X, M) = X :-
-    mode_get_insts(ModuleInfo, M, InInst, _OutInst),
-    inst_is_free(ModuleInfo, InInst).
+    mode_is_fully_output(ModuleInfo, M).
 
 %-----------------------------------------------------------------------------%
 
