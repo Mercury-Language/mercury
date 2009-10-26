@@ -2012,7 +2012,10 @@ then
 ****    cannot use unboxed floats, bootstrapping using boxed floats
 ****    after installation is complete you may want to reinstall
 ****    from scratch so you can use unboxed floats, which are more
-****    efficient.])
+****    efficient.
+****    NOTE: before reinstalling from scratch, ensure that the
+****    source tree is clean by running \`make realclean'.  Not doing
+****    this may result in a broken Mercury installation.])
         mercury_cv_unboxed_floats=no
     fi
 fi
@@ -3132,13 +3135,15 @@ if test "$BEST_GRADE_FOR_COMPILER" != "$BOOTSTRAP_GRADE"; then
     if test "$BOOTSTRAP_MC" = ""; then
         GRADE="$BOOTSTRAP_GRADE"
         AC_MSG_WARN(
-[Mercury compiler not yet installed
+[Mercury compiler not yet installed -
 ****    cannot use grade \`$BEST_GRADE_FOR_COMPILER'
 ****    using grade \`$GRADE' to compile the compiler
 ****    after installation is complete you should reinstall
 ****    from scratch so you can use the more efficient
-****    grade \`$BEST_GRADE_FOR_COMPILER'.])
-
+****    grade \`$BEST_GRADE_FOR_COMPILER'.
+****    NOTE: before reinstalling from scratch, ensure that the
+****    source tree is clean by running `make realclean'.  Not doing
+****    this may result in a broken Mercury installation.])
     else
         GRADE=$BEST_GRADE_FOR_COMPILER
         MERCURY_MSG(
@@ -4886,7 +4891,7 @@ some_kept=false
 to_delete=""
 if test "$BOOTSTRAP_MC" != "" ; then
     MERCURY_MSG("checking whether any C files need to be rebuilt...")
-    for directory in library compiler profiler deep_profiler mdbcomp browser slice
+    for directory in library compiler profiler deep_profiler mdbcomp browser slice ssdb
     do
         mercury_check_c_files $directory $directory
         mercury_check_c_files $directory/Mercury/cs $directory/Mercury/c_dates
