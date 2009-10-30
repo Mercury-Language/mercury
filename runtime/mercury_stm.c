@@ -370,12 +370,13 @@ MR_STM_block_thread(MR_STM_TransLog *tlog)
         fprintf(stderr, "STM BLOCKING: log <0x%.8lx>\n", (MR_Word)tlog);
 #endif
         MR_STM_condvar_wait(thread_condvar, &MR_STM_lock);
-        MR_UNLOCK(&MR_STM_lock, "MR_STM_block_thread");
 
 #if defined(MR_STM_DEBUG)
         fprintf(stderr, "STM RESCHEDULING: log <0x%.8lx>\n", (MR_Word)tlog);
 #endif
         MR_STM_unwait(tlog, thread_condvar);
+
+        MR_UNLOCK(&MR_STM_lock, "MR_STM_block_thread");
 
         MR_GC_free(thread_condvar);
 #else
