@@ -264,6 +264,7 @@ LLDS_PROGS= \
 	exists_cast_bug \
 	fzn_debug_abort \
 	livevars_shallow \
+	livevars_shallow2 \
 	untuple_bug
 
 # These tests only work in grades that support tabling.

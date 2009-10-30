@@ -865,10 +865,12 @@ detect_deadness_in_disj([Goal0 | Goals0], [Goal | Goals], Deadness0, Liveness0,
     set(prog_var)::in, set(prog_var)::out, set(prog_var)::out) is det.
 
 detect_deadness_in_cases(SwitchVar, [], [], _Deadness0, _Liveness,
-        CompletedNonLocals, _LiveInfo, !Union, CompletedNonLocalUnion) :-
-    % If the switch variable does not become dead in a case,
-    % it must be put in the pre-death set of that case.
-    set.insert(!.Union, SwitchVar, !:Union),
+        CompletedNonLocals, LiveInfo, !Union, CompletedNonLocalUnion) :-
+    % If the switch variable does not become dead in a case, it must be put in
+    % the pre-death set of that case.
+    maybe_complete_with_typeinfos(LiveInfo, set.make_singleton_set(SwitchVar),
+        CompletedSwitchVar),
+    set.union(CompletedSwitchVar, !Union),
     set.intersect(!.Union, CompletedNonLocals, CompletedNonLocalUnion).
 detect_deadness_in_cases(SwitchVar, [Case0 | Cases0], [Case | Cases],
         Deadness0, Liveness0, CompletedNonLocals, LiveInfo, !Union,

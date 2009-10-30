@@ -10,45 +10,50 @@
 :- module livevars_shallow.
 :- interface.
 
-:- pred update({}::out) is det.
+:- import_module list.
+
+:- type node(A)
+    --->    place
+    ;       task
+    .
+
+:- type task_type(A)
+    --->    atomick
+    ;       composite.
+
+:- pred cancellation_set_updates(list(node(A))::in, list(string)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- type net(AtomicTask)
-    --->    net.
+cancellation_set_updates(Nodes, L) :-
+    classify_nodes(Nodes, L).
 
-:- type task(AtomicTask)
-    --->    task.
+:- pred classify_nodes(list(node(A))::in, list(string)::out) is det.
 
-:- type task_type(AtomicTask)
-    --->    atomik
-    ;       composite.
-
-%-----------------------------------------------------------------------------%
-
-update(AtomicTasks) :-
-    Net = net : net(int),
-    classify_nodes(Net, AtomicTasks).
-
-:- pred classify_nodes(net(AtomicTask)::in, {}::out) is det.
-
-classify_nodes(_ : net(AtomicTask), AtomicTasks) :-
-    Task = task : task(AtomicTask),
-    TaskType = get_task_type(Task),
+classify_nodes([], []).
+classify_nodes([Node | Nodes], L) :-
     (
-        TaskType = atomik,
-        AtomicTasks = {}
+        Node = place,
+        classify_nodes(Nodes, L)
     ;
-        TaskType = composite,
-        AtomicTasks = {}
+        Node = task,
+        classify_nodes(Nodes, L0),
+        TaskType = get_task_type(Node),
+        (
+            TaskType = atomick,
+            L = L0
+        ;
+            TaskType = composite,
+            L = L0
+        )
     ).
 
-:- func get_task_type(task(AtomicTask)) = task_type(AtomicTask).
+:- func get_task_type(node(A)) = task_type(A).
 
-get_task_type(_) = atomik.
+get_task_type(_) = composite.
 
 %-----------------------------------------------------------------------------%
 % vim: set sts=4 sw=4 et:
