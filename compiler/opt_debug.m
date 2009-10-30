@@ -83,9 +83,7 @@
 
 :- func dump_const(maybe(proc_label), rval_const) = string.
 
-:- func dump_data_addr(data_addr) = string.
-
-:- func dump_data_name(data_name) = string.
+:- func dump_data_id(data_id) = string.
 
 :- func dump_rtti_type_ctor(rtti_type_ctor) = string.
 
@@ -145,6 +143,7 @@
 :- import_module backend_libs.proc_label.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.special_pred.
 :- import_module libs.globals.
@@ -373,37 +372,41 @@ dump_const(_, llconst_multi_string(_S)) =
     "multi_string(...)".
 dump_const(MaybeProcLabel, llconst_code_addr(CodeAddr)) =
     "code_addr_const(" ++ dump_code_addr(MaybeProcLabel, CodeAddr) ++ ")".
-dump_const(_, llconst_data_addr(DataAddr, MaybeOffset)) = Str :-
-    DataAddrStr = dump_data_addr(DataAddr),
+dump_const(_, llconst_data_addr(DataId, MaybeOffset)) = Str :-
+    DataIdStr = dump_data_id(DataId),
     (
         MaybeOffset = no,
-        Str = "data_addr_const(" ++ DataAddrStr ++ ")"
+        Str = "data_addr_const(" ++ DataIdStr ++ ")"
     ;
         MaybeOffset = yes(Offset),
-        Str = "data_addr_const(" ++ DataAddrStr ++ ", "
+        Str = "data_addr_const(" ++ DataIdStr ++ ", "
             ++ int_to_string(Offset) ++ ")"
     ).
 
-dump_data_addr(data_addr(ModuleName, DataName)) =
-    "data_addr(" ++ sym_name_to_string(ModuleName) ++ ", "
-        ++ dump_data_name(DataName) ++ ")".
-dump_data_addr(rtti_addr(ctor_rtti_id(RttiTypeCtor, DataName))) =
-    "rtti_addr(" ++ dump_rtti_type_ctor(RttiTypeCtor) ++ ", "
+dump_data_id(rtti_data_id(ctor_rtti_id(RttiTypeCtor, DataName))) =
+    "rtti_id(" ++ dump_rtti_type_ctor(RttiTypeCtor) ++ ", "
         ++ dump_rtti_name(DataName) ++ ")".
-dump_data_addr(rtti_addr(tc_rtti_id(TCName, TCDataName))) =
-    "tc_rtti_addr(" ++ dump_rtti_type_class_name(TCName) ++ ", "
+dump_data_id(rtti_data_id(tc_rtti_id(TCName, TCDataName))) =
+    "tc_rtti_id(" ++ dump_rtti_type_class_name(TCName) ++ ", "
         ++ dump_tc_rtti_name(TCDataName) ++ ")".
-dump_data_addr(layout_addr(LayoutName)) =
-    "layout_addr(" ++ dump_layout_name(LayoutName) ++ ")".
-
-dump_data_name(scalar_common_ref(type_num(TypeNum), Offset)) =
-    "scalar_common_ref(" ++ int_to_string(TypeNum) ++ ", "
-        ++ int_to_string(Offset) ++ ")".
-dump_data_name(vector_common_ref(type_num(TypeNum), Offset)) =
-    "vector_common_ref(" ++ int_to_string(TypeNum) ++ ", "
-        ++ int_to_string(Offset) ++ ")".
-dump_data_name(proc_tabling_ref(ProcLabel, Id)) =
+dump_data_id(proc_tabling_data_id(ProcLabel, Id)) =
     tabling_info_id_str(Id) ++ "(" ++ dump_proclabel(ProcLabel) ++ ")".
+dump_data_id(scalar_common_data_id(type_num(TypeNum), Offset)) =
+    "scalar_common_data_id(" ++ int_to_string(TypeNum) ++ ", "
+        ++ int_to_string(Offset) ++ ")".
+dump_data_id(vector_common_data_id(type_num(TypeNum), Offset)) =
+    "vector_common_data_id(" ++ int_to_string(TypeNum) ++ ", "
+        ++ int_to_string(Offset) ++ ")".
+dump_data_id(layout_id(LayoutName)) =
+    "layout_id(" ++ dump_layout_name(LayoutName) ++ ")".
+dump_data_id(layout_slot_id(table_io_decl_id, PredProcId)) =
+    "table_io_decl_id(" ++ dump_pred_proc_id(PredProcId) ++ ")".
+
+:- func dump_pred_proc_id(pred_proc_id) = string.
+
+dump_pred_proc_id(proc(PredId, ProcId)) =
+    "proc(" ++ string.int_to_string(pred_id_to_int(PredId)) ++ ", " ++
+        string.int_to_string(proc_id_to_int(ProcId)) ++ ")".
 
 dump_rtti_type_ctor(rtti_type_ctor(ModuleName, TypeName, Arity)) =
     "rtti_type_ctor(" ++ sym_name_mangle(ModuleName) ++ ", "
@@ -506,32 +509,67 @@ dump_layout_array_name(ArrayName) = Str :-
     (
         ArrayName = label_layout_array(LabelVars),
         (
-            LabelVars = label_has_var_info,
-            Str = "vars_label_layout_array"
-        ;
             LabelVars = label_has_no_var_info,
             Str = "no_vars_label_layout_array"
+        ;
+            LabelVars = label_has_short_var_info,
+            Str = "short_vars_label_layout_array"
+        ;
+            LabelVars = label_has_long_var_info,
+            Str = "long_vars_label_layout_array"
         )
+    ;
+        ArrayName = pseudo_type_info_array,
+        Str = "pseudo_type_info_array"
+    ;
+        ArrayName = long_locns_array,
+        Str = "long_locns_array"
+    ;
+        ArrayName = short_locns_array,
+        Str = "short_locns_array"
+    ;
+        ArrayName = hlds_var_nums_array,
+        Str = "hlds_var_nums_array"
     ;
         ArrayName = user_event_layout_array,
         Str = "user_event_layout_array"
     ;
         ArrayName = user_event_var_nums_array,
         Str = "user_event_var_nums_array"
+    ;
+        ArrayName = proc_static_array,
+        Str = "proc_static_array"
+    ;
+        ArrayName = proc_static_call_sites_array,
+        Str = "proc_static_call_sites_array"
+    ;
+        ArrayName = proc_static_cp_static_array,
+        Str = "proc_static_cp_static_array"
+    ;
+        ArrayName = proc_static_cp_dynamic_array,
+        Str = "proc_static_cp_dynamic_array"
+    ;
+        ArrayName = proc_exec_trace_array,
+        Str = "proc_exec_trace_array"
+    ;
+        ArrayName = proc_event_layouts_array,
+        Str = "proc_event_layouts_array"
+    ;
+        ArrayName = proc_head_var_nums_array,
+        Str = "proc_head_var_nums_array"
+    ;
+        ArrayName = proc_var_names_array,
+        Str = "proc_var_names_array"
+    ;
+        ArrayName = proc_body_bytecodes_array,
+        Str = "proc_body_bytecodes_array"
+    ;
+        ArrayName = proc_table_io_decl_array,
+        Str = "proc_table_io_decl_array"
     ).
 
 dump_layout_name(proc_layout(RttiProcLabel, _)) =
     "proc_layout(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
-dump_layout_name(proc_layout_exec_trace(RttiProcLabel)) =
-    "proc_layout_exec_trace(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
-dump_layout_name(proc_layout_label_layouts(RttiProcLabel)) =
-    "proc_layout_label_layouts(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
-dump_layout_name(proc_layout_head_var_nums(RttiProcLabel)) =
-    "proc_layout_head_var_nums(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
-dump_layout_name(proc_layout_var_names(RttiProcLabel)) =
-    "proc_layout_var_names(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
-dump_layout_name(proc_layout_body_bytecode(RttiProcLabel)) =
-    "proc_layout_body_bytecode(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
 dump_layout_name(closure_proc_id(ProcLabel, SeqNo, _)) =
     "closure_proc_id(" ++ dump_proclabel(ProcLabel)
         ++ int_to_string(SeqNo) ++ ")".
@@ -580,18 +618,6 @@ dump_layout_name(module_common_layout(ModuleName)) =
     "module_common_layout(" ++ sym_name_mangle(ModuleName) ++ ")".
 dump_layout_name(module_layout(ModuleName)) =
     "module_layout(" ++ sym_name_mangle(ModuleName) ++ ")".
-dump_layout_name(proc_static(RttiProcLabel)) =
-    "proc_static(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
-dump_layout_name(proc_static_call_sites(RttiProcLabel)) =
-    "proc_static_call_sites(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
-dump_layout_name(proc_static_coverage_point_static(RttiProcLabel)) =
-    "proc_static_coverage_point_static(" ++ dump_rttiproclabel(RttiProcLabel) 
-        ++ ")".
-dump_layout_name(proc_static_coverage_point_dynamic(RttiProcLabel)) =
-    "proc_static_coverage_point_dynamic(" ++ dump_rttiproclabel(RttiProcLabel) 
-        ++ ")".
-dump_layout_name(table_io_decl(RttiProcLabel)) =
-    "table_io_decl(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
 
 dump_unop(mktag) = "mktag".
 dump_unop(tag) = "tag".

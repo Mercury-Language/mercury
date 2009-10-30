@@ -8785,6 +8785,11 @@ low-level intermediate code before emitting C code.
 @findex --common-data
 Disable optimization of common data structures.
 
+@item --no-layout-common-data
+@findex --no-layout-common-data
+@findex --common-layout-data
+Disable optimization of common subsequences in layout structures.
+
 @item --no-llds-optimize
 @findex --no-llds-optimize
 @findex --llds-optimize

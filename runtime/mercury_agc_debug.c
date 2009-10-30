@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2007 The University of Melbourne.
+** Copyright (C) 1998-2007, 2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -244,13 +244,14 @@ MR_dump_live_variables(const MR_LabelLayout *label_layout,
     MR_Word             saved_regs[MR_MAX_FAKE_REG];
     MR_Word             *current_regs;
 
-    short_var_count = MR_short_desc_var_count(label_layout);
     long_var_count = MR_long_desc_var_count(label_layout);
+    short_var_count = MR_short_desc_var_count(label_layout);
 
     /*
-    ** For the top stack frame, we should pass a pointer to a filled-in saved_regs
-    ** instead of NULL. For other stack frames, passing NULL is fine, since output
-    ** arguments are not live yet for any call except the top one.
+    ** For the top stack frame, we should pass a pointer to a filled-in
+    ** saved_regs instead of NULL. For other stack frames, passing NULL
+    ** is fine, since output arguments are not live yet for any call
+    ** except the top one.
     */
 
     MR_restore_registers();
@@ -294,7 +295,7 @@ MR_dump_live_variables(const MR_LabelLayout *label_layout,
         }
     }
 
-    for (; i < short_var_count; i++) {
+    for (i = 0; i < short_var_count; i++) {
         fprintf(stderr, "%-12s\t", "");
         if (MR_PROC_LAYOUT_HAS_PROC_ID(label_layout->MR_sll_entry)) {
             MR_print_proc_id(stderr, label_layout->MR_sll_entry);

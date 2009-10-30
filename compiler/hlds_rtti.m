@@ -38,18 +38,18 @@
 
 :- type rtti_proc_label
     --->    rtti_proc_label(
-                pred_or_func            ::  pred_or_func,
-                this_module             ::  module_name,
-                proc_module             ::  module_name,
-                proc_name               ::  string,
-                proc_arity              ::  arity,
-                proc_arg_types          ::  list(mer_type),
-                pred_id                 ::  pred_id,
-                proc_id                 ::  proc_id,
-                proc_headvars           ::  assoc_list(prog_var,
+                rpl_pred_or_func            ::  pred_or_func,
+                rpl_this_module             ::  module_name,
+                rpl_proc_module             ::  module_name,
+                rpl_proc_name               ::  string,
+                rpl_proc_arity              ::  arity,
+                rpl_proc_arg_types          ::  list(mer_type),
+                rpl_pred_id                 ::  pred_id,
+                rpl_proc_id                 ::  proc_id,
+                rpl_proc_headvars           ::  assoc_list(prog_var,
                                                 prog_var_name),
-                proc_arg_modes          ::  list(arg_mode),
-                proc_interface_detism   ::  determinism,
+                rpl_proc_arg_modes          ::  list(arg_mode),
+                rpl_proc_interface_detism   ::  determinism,
 
                 % The following booleans hold values computed from the
                 % pred_info, using procedures
@@ -66,21 +66,21 @@
                 % abstract interfaces rather than hard-coding tests
                 % on the import_status.
 
-                pred_is_imported        ::  bool,
-                pred_is_pseudo_imported ::  bool,
-                pred_info_origin        ::  pred_origin,
+                rpl_pred_is_imported        ::  bool,
+                rpl_pred_is_pseudo_imported ::  bool,
+                rpl_pred_info_origin        ::  pred_origin,
 
                 % The following boolean holds a value computed from the
                 % proc_info, using procedure_is_exported/2
 
-                proc_is_exported        ::  bool,
+                rpl_proc_is_exported        ::  bool,
 
                 % The following bool is true if the procedure was
                 % imported, either because the containing predicate
                 % was imported, or because it was pseudoimported
                 % and the procedure is an in-in unify procedure.
 
-                proc_is_imported        ::  bool
+                rpl_proc_is_imported        ::  bool
             ).
 
     % Construct an rtti_proc_label for a given procedure.
@@ -105,35 +105,33 @@
 :- type instance_method_constraints
     --->    instance_method_constraints(
                 class_id,
-                list(mer_type),         % The types in the head of the
-                                        % instance declaration.
-                list(prog_constraint),  % The universal constraints
-                                        % on the instance declaration.
-                prog_constraints        % The contraints on the method's
-                                        % type declaration in the
-                                        % `:- typeclass' declaration.
+
+                % The types in the head of the instance declaration.
+                list(mer_type),
+
+                % The universal constraints on the instance declaration.
+                list(prog_constraint),
+
+                % The contraints on the method's type declaration in the
+                % `:- typeclass' declaration.
+                prog_constraints
             ).
 
     %  A type_info_locn specifies how to access a type_info.
     %
 :- type type_info_locn
     --->    type_info(prog_var)
-                % It is a normal type_info, i.e. the type
-                % is not constrained.
+            % It is a normal type_info, i.e. the type is not constrained.
 
     ;       typeclass_info(prog_var, int).
-                % The type_info is packed inside a
-                % typeclass_info. If the int is N, it is
-                % the Nth type_info inside the typeclass_info,
-                % but there may be several superclass pointers
-                % before the block of type_infos, so it won't
-                % be the Nth word of the typeclass_info.
-                %
-                % To find the type_info inside the
-                % typeclass_info, use the predicate
-                % type_info_from_typeclass_info from Mercury
-                % code; from C code use the macro
-                % MR_typeclass_info_superclass_info.
+            % The type_info is packed inside a typeclass_info. If the int is N,
+            % it is the Nth type_info inside the typeclass_info, but there
+            % may be several superclass pointers before the block of
+            % type_infos, so it won't be the Nth word of the typeclass_info.
+            %
+            % To find the type_info inside the typeclass_info, use the
+            % predicate type_info_from_typeclass_info from Mercury code;
+            % from C code use the macro MR_typeclass_info_superclass_info.
 
     % type_info_locn_var(TypeInfoLocn, Var):
     %
@@ -388,9 +386,9 @@ make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
         PredIsImported, PredIsPseudoImp, Origin,
         ProcIsExported, ProcIsImported).
 
-proc_label_pred_proc_id(ProcLabel, PredId, ProcId) :-
-    PredId = ProcLabel ^ pred_id,
-    ProcId = ProcLabel ^ proc_id.
+proc_label_pred_proc_id(RttiProcLabel, PredId, ProcId) :-
+    PredId = RttiProcLabel ^ rpl_pred_id,
+    ProcId = RttiProcLabel ^ rpl_proc_id.
 
 %-----------------------------------------------------------------------------%
 

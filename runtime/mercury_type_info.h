@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1995-2007 The University of Melbourne.
+** Copyright (C) 1995-2007, 2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -72,24 +72,24 @@
 ** compiler/type_ctor_info.m.
 */
 
-#define MR_RTTI_VERSION                 MR_RTTI_VERSION__BITMAP
-#define MR_RTTI_VERSION__INITIAL        2
-#define MR_RTTI_VERSION__USEREQ         3
-#define MR_RTTI_VERSION__CLEAN_LAYOUT   4
-#define MR_RTTI_VERSION__VERSION_NO     5
-#define MR_RTTI_VERSION__COMPACT        6
-#define MR_RTTI_VERSION__REP            7
-#define MR_RTTI_VERSION__FLAG           8
-#define MR_RTTI_VERSION__STABLE_FOREIGN 9
-#define MR_RTTI_VERSION__TYPE_INFO_ZERO 10
-#define MR_RTTI_VERSION__DUMMY          11
-#define MR_RTTI_VERSION__FUNCTOR_NUMBERS 12
-#define MR_RTTI_VERSION__BITMAP         13
+#define MR_RTTI_VERSION                     MR_RTTI_VERSION__BITMAP
+#define MR_RTTI_VERSION__INITIAL            2
+#define MR_RTTI_VERSION__USEREQ             3
+#define MR_RTTI_VERSION__CLEAN_LAYOUT       4
+#define MR_RTTI_VERSION__VERSION_NO         5
+#define MR_RTTI_VERSION__COMPACT            6
+#define MR_RTTI_VERSION__REP                7
+#define MR_RTTI_VERSION__FLAG               8
+#define MR_RTTI_VERSION__STABLE_FOREIGN     9
+#define MR_RTTI_VERSION__TYPE_INFO_ZERO     10
+#define MR_RTTI_VERSION__DUMMY              11
+#define MR_RTTI_VERSION__FUNCTOR_NUMBERS    12
+#define MR_RTTI_VERSION__BITMAP             13
 
 /*
 ** Check that the RTTI version is in a sensible range.
-** The lower bound should be the lowest currently supported version
-** number.  The upper bound is the current version number.
+** The lower bound should be the lowest currently supported version number.
+** The upper bound is the current version number.
 ** If you increase the lower bound you should also increase the binary
 ** compatibility version number in runtime/mercury_grade.h (MR_GRADE_PART_0).
 **
@@ -100,7 +100,7 @@
 */
 
 #define MR_TYPE_CTOR_INFO_CHECK_RTTI_VERSION_RANGE(typector)    \
-    assert((typector)->MR_type_ctor_version == MR_RTTI_VERSION__FUNCTOR_NUMBERS)
+    assert((typector)->MR_type_ctor_version >= MR_RTTI_VERSION__FUNCTOR_NUMBERS)
 
 /*---------------------------------------------------------------------------*/
 

@@ -531,7 +531,7 @@ maybe_set_trace_level(PredInfo, !ModuleInfo) :-
     ).
 
 :- func generate_deep_prof_info(proc_info, deep_profile_proc_info)
-    = proc_layout_proc_static.
+    = proc_deep_prof_info.
 
 generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = DeepProfInfo :-
     HLDSDeepInfo ^ deep_layout = MaybeHLDSDeepLayout,
@@ -566,7 +566,7 @@ generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = DeepProfInfo :-
     ),
     DeepExcpSlots = deep_excp_slots(TopCSDSlotNum, MiddleCSDSlotNum,
         OldOutermostSlotNum),
-    DeepProfInfo = proc_layout_proc_static(HLDSProcStatic, DeepExcpSlots,
+    DeepProfInfo = proc_deep_prof_info(HLDSProcStatic, DeepExcpSlots,
         OriginalProcBody).
 
 %---------------------------------------------------------------------------%
@@ -1345,9 +1345,8 @@ add_tabling_info_struct(PredProcId - TableStructInfo, !GlobalData) :-
 
     MaybeSizeLimit = TableAttributes ^ table_attr_size_limit,
     Statistics = TableAttributes ^ table_attr_statistics,
-    ModuleName = RttiProcLabel ^ proc_module,
     ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
-    Var = tabling_info_struct(ModuleName, ProcLabel, EvalMethod,
+    Var = tabling_info_struct(ProcLabel, EvalMethod,
         NumInputs, NumOutputs, InputSteps, MaybeOutputSteps, PTIVectorRval,
         TVarVectorRval, MaybeSizeLimit, Statistics),
     global_data_add_new_proc_var(PredProcId, Var, !GlobalData).

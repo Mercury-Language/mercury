@@ -1257,172 +1257,6 @@
 
 /*---------------------------------------------------------------------------*/
 
-#define	MR_var_label_layouts(m)						\
-	MR_PASTE2(mercury_data__var_label_layout_array__, m)
-
-#define	MR_no_var_label_layouts(m)					\
-	MR_PASTE2(mercury_data__no_var_label_layout_array__, m)
-
-#define	MR_user_event_var_nums(m)					\
-	MR_PASTE2(mercury_data__user_event_var_nums_array__, m)
-
-#define	MR_user_event_layouts(m)					\
-	MR_PASTE2(mercury_data__user_event_layouts_array__, m)
-
-/*---------------------------------------------------------------------------*/
-
-#define	MR_var_label_layout_refs1(m, s1)				\
-	&MR_var_label_layouts(m)[s1],
-
-#define	MR_var_label_layout_refs2(m, s1, s2) 				\
-	MR_var_label_layout_refs1(m, s1)				\
-	MR_var_label_layout_refs1(m, s2)
-
-#define	MR_var_label_layout_refs3(m, s1, s2, s3) 			\
-	MR_var_label_layout_refs1(m, s1)				\
-	MR_var_label_layout_refs1(m, s2)				\
-	MR_var_label_layout_refs1(m, s3)
-
-#define	MR_var_label_layout_refs4(m, s1, s2, s3, s4) 			\
-	MR_var_label_layout_refs1(m, s1)				\
-	MR_var_label_layout_refs1(m, s2)				\
-	MR_var_label_layout_refs1(m, s3)				\
-	MR_var_label_layout_refs1(m, s4)
-
-#define	MR_var_label_layout_refs5(m, s1, s2, s3, s4, s5) 		\
-	MR_var_label_layout_refs1(m, s1)				\
-	MR_var_label_layout_refs1(m, s2)				\
-	MR_var_label_layout_refs1(m, s3)				\
-	MR_var_label_layout_refs1(m, s4)				\
-	MR_var_label_layout_refs1(m, s5)
-
-#define	MR_var_label_layout_refs6(m, s1, s2, s3, s4, s5, s6) 		\
-	MR_var_label_layout_refs1(m, s1)				\
-	MR_var_label_layout_refs1(m, s2)				\
-	MR_var_label_layout_refs1(m, s3)				\
-	MR_var_label_layout_refs1(m, s4)				\
-	MR_var_label_layout_refs1(m, s5)				\
-	MR_var_label_layout_refs1(m, s6)
-
-#define	MR_var_label_layout_refs7(m, s1, s2, s3, s4, s5, s6, s7) 	\
-	MR_var_label_layout_refs1(m, s1)				\
-	MR_var_label_layout_refs1(m, s2)				\
-	MR_var_label_layout_refs1(m, s3)				\
-	MR_var_label_layout_refs1(m, s4)				\
-	MR_var_label_layout_refs1(m, s5)				\
-	MR_var_label_layout_refs1(m, s6)				\
-	MR_var_label_layout_refs1(m, s7)
-
-#define	MR_var_label_layout_refs8(m, s1, s2, s3, s4, s5, s6, s7, s8) 	\
-	MR_var_label_layout_refs1(m, s1)				\
-	MR_var_label_layout_refs1(m, s2)				\
-	MR_var_label_layout_refs1(m, s3)				\
-	MR_var_label_layout_refs1(m, s4)				\
-	MR_var_label_layout_refs1(m, s5)				\
-	MR_var_label_layout_refs1(m, s6)				\
-	MR_var_label_layout_refs1(m, s7)				\
-	MR_var_label_layout_refs1(m, s8)
-
-#define	MR_var_label_layout_refs9(m, s1, s2, s3, s4, s5, s6, s7, s8, s9) \
-	MR_var_label_layout_refs1(m, s1)				\
-	MR_var_label_layout_refs1(m, s2)				\
-	MR_var_label_layout_refs1(m, s3)				\
-	MR_var_label_layout_refs1(m, s4)				\
-	MR_var_label_layout_refs1(m, s5)				\
-	MR_var_label_layout_refs1(m, s6)				\
-	MR_var_label_layout_refs1(m, s7)				\
-	MR_var_label_layout_refs1(m, s8)				\
-	MR_var_label_layout_refs1(m, s9)
-
-#define	MR_var_label_layout_refs10(m, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10) \
-	MR_var_label_layout_refs1(m, s1)				\
-	MR_var_label_layout_refs1(m, s2)				\
-	MR_var_label_layout_refs1(m, s3)				\
-	MR_var_label_layout_refs1(m, s4)				\
-	MR_var_label_layout_refs1(m, s5)				\
-	MR_var_label_layout_refs1(m, s6)				\
-	MR_var_label_layout_refs1(m, s7)				\
-	MR_var_label_layout_refs1(m, s8)				\
-	MR_var_label_layout_refs1(m, s9)				\
-	MR_var_label_layout_refs1(m, s10)
-
-#define	MR_no_var_label_layout_refs1(m, s1)				\
-	&MR_no_var_label_layouts(m)[s1],
-
-#define	MR_no_var_label_layout_refs2(m, s1, s2)				\
-	MR_no_var_label_layout_refs1(m, s1)				\
-	MR_no_var_label_layout_refs1(m, s2)
-
-#define	MR_no_var_label_layout_refs3(m, s1, s2, s3) 			\
-	MR_no_var_label_layout_refs1(m, s1)				\
-	MR_no_var_label_layout_refs1(m, s2)				\
-	MR_no_var_label_layout_refs1(m, s3)
-
-#define	MR_no_var_label_layout_refs4(m, s1, s2, s3, s4) 		\
-	MR_no_var_label_layout_refs1(m, s1)				\
-	MR_no_var_label_layout_refs1(m, s2)				\
-	MR_no_var_label_layout_refs1(m, s3)				\
-	MR_no_var_label_layout_refs1(m, s4)
-
-#define	MR_no_var_label_layout_refs5(m, s1, s2, s3, s4, s5) 		\
-	MR_no_var_label_layout_refs1(m, s1)				\
-	MR_no_var_label_layout_refs1(m, s2)				\
-	MR_no_var_label_layout_refs1(m, s3)				\
-	MR_no_var_label_layout_refs1(m, s4)				\
-	MR_no_var_label_layout_refs1(m, s5)
-
-#define	MR_no_var_label_layout_refs6(m, s1, s2, s3, s4, s5, s6) 	\
-	MR_no_var_label_layout_refs1(m, s1)				\
-	MR_no_var_label_layout_refs1(m, s2)				\
-	MR_no_var_label_layout_refs1(m, s3)				\
-	MR_no_var_label_layout_refs1(m, s4)				\
-	MR_no_var_label_layout_refs1(m, s5)				\
-	MR_no_var_label_layout_refs1(m, s6)
-
-#define	MR_no_var_label_layout_refs7(m, s1, s2, s3, s4, s5, s6, s7) 	\
-	MR_no_var_label_layout_refs1(m, s1)				\
-	MR_no_var_label_layout_refs1(m, s2)				\
-	MR_no_var_label_layout_refs1(m, s3)				\
-	MR_no_var_label_layout_refs1(m, s4)				\
-	MR_no_var_label_layout_refs1(m, s5)				\
-	MR_no_var_label_layout_refs1(m, s6)				\
-	MR_no_var_label_layout_refs1(m, s7)
-
-#define	MR_no_var_label_layout_refs8(m, s1, s2, s3, s4, s5, s6, s7, s8)	\
-	MR_no_var_label_layout_refs1(m, s1)				\
-	MR_no_var_label_layout_refs1(m, s2)				\
-	MR_no_var_label_layout_refs1(m, s3)				\
-	MR_no_var_label_layout_refs1(m, s4)				\
-	MR_no_var_label_layout_refs1(m, s5)				\
-	MR_no_var_label_layout_refs1(m, s6)				\
-	MR_no_var_label_layout_refs1(m, s7)				\
-	MR_no_var_label_layout_refs1(m, s8)
-
-#define	MR_no_var_label_layout_refs9(m, s1, s2, s3, s4, s5, s6, s7, s8, s9) \
-	MR_no_var_label_layout_refs1(m, s1)				\
-	MR_no_var_label_layout_refs1(m, s2)				\
-	MR_no_var_label_layout_refs1(m, s3)				\
-	MR_no_var_label_layout_refs1(m, s4)				\
-	MR_no_var_label_layout_refs1(m, s5)				\
-	MR_no_var_label_layout_refs1(m, s6)				\
-	MR_no_var_label_layout_refs1(m, s7)				\
-	MR_no_var_label_layout_refs1(m, s8)				\
-	MR_no_var_label_layout_refs1(m, s9)
-
-#define	MR_no_var_label_layout_refs10(m, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10) \
-	MR_no_var_label_layout_refs1(m, s1)				\
-	MR_no_var_label_layout_refs1(m, s2)				\
-	MR_no_var_label_layout_refs1(m, s3)				\
-	MR_no_var_label_layout_refs1(m, s4)				\
-	MR_no_var_label_layout_refs1(m, s5)				\
-	MR_no_var_label_layout_refs1(m, s6)				\
-	MR_no_var_label_layout_refs1(m, s7)				\
-	MR_no_var_label_layout_refs1(m, s8)				\
-	MR_no_var_label_layout_refs1(m, s9)				\
-	MR_no_var_label_layout_refs1(m, s10)
-
-/*---------------------------------------------------------------------------*/
-
 #define	MR_init_label1(e, l1)						\
 	MR_init_label(MR_label_name(MR_add_prefix(e), l1));
 
@@ -1577,84 +1411,6 @@
 
 /*---------------------------------------------------------------------------*/
 
-#define	MR_init_label_vi1(e, m, l1, s1)					\
-	MR_init_label_ml_sl(MR_label_name(MR_add_prefix(e), l1),	\
-		&MR_var_label_layouts(m)[s1]);
-
-#define	MR_init_label_vi2(e, m, l1,s1, l2,s2)				\
-	MR_init_label_vi1(e, m, l1, s1)					\
-	MR_init_label_vi1(e, m, l2, s2)
-
-#define	MR_init_label_vi3(e, m, l1,s1, l2,s2, l3,s3)			\
-	MR_init_label_vi1(e, m, l1, s1)					\
-	MR_init_label_vi1(e, m, l2, s2)					\
-	MR_init_label_vi1(e, m, l3, s3)
-
-#define	MR_init_label_vi4(e, m, l1,s1, l2,s2, l3,s3, l4,s4)		\
-	MR_init_label_vi1(e, m, l1, s1)					\
-	MR_init_label_vi1(e, m, l2, s2)					\
-	MR_init_label_vi1(e, m, l3, s3)					\
-	MR_init_label_vi1(e, m, l4, s4)
-
-#define	MR_init_label_vi5(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5)	\
-	MR_init_label_vi1(e, m, l1, s1)					\
-	MR_init_label_vi1(e, m, l2, s2)					\
-	MR_init_label_vi1(e, m, l3, s3)					\
-	MR_init_label_vi1(e, m, l4, s4)					\
-	MR_init_label_vi1(e, m, l5, s5)
-
-#define	MR_init_label_vi6(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6) \
-	MR_init_label_vi1(e, m, l1, s1)					\
-	MR_init_label_vi1(e, m, l2, s2)					\
-	MR_init_label_vi1(e, m, l3, s3)					\
-	MR_init_label_vi1(e, m, l4, s4)					\
-	MR_init_label_vi1(e, m, l5, s5)					\
-	MR_init_label_vi1(e, m, l6, s6)
-
-#define	MR_init_label_vi7(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7) \
-	MR_init_label_vi1(e, m, l1, s1)					\
-	MR_init_label_vi1(e, m, l2, s2)					\
-	MR_init_label_vi1(e, m, l3, s3)					\
-	MR_init_label_vi1(e, m, l4, s4)					\
-	MR_init_label_vi1(e, m, l5, s5)					\
-	MR_init_label_vi1(e, m, l6, s6)					\
-	MR_init_label_vi1(e, m, l7, s7)
-
-#define	MR_init_label_vi8(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7, l8,s8) \
-	MR_init_label_vi1(e, m, l1, s1)					\
-	MR_init_label_vi1(e, m, l2, s2)					\
-	MR_init_label_vi1(e, m, l3, s3)					\
-	MR_init_label_vi1(e, m, l4, s4)					\
-	MR_init_label_vi1(e, m, l5, s5)					\
-	MR_init_label_vi1(e, m, l6, s6)					\
-	MR_init_label_vi1(e, m, l7, s7)					\
-	MR_init_label_vi1(e, m, l8, s8)
-
-#define	MR_init_label_vi9(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7, l8,s8, l9,s9) \
-	MR_init_label_vi1(e, m, l1, s1)					\
-	MR_init_label_vi1(e, m, l2, s2)					\
-	MR_init_label_vi1(e, m, l3, s3)					\
-	MR_init_label_vi1(e, m, l4, s4)					\
-	MR_init_label_vi1(e, m, l5, s5)					\
-	MR_init_label_vi1(e, m, l6, s6)					\
-	MR_init_label_vi1(e, m, l7, s7)					\
-	MR_init_label_vi1(e, m, l8, s8)					\
-	MR_init_label_vi1(e, m, l9, s9)
-
-#define	MR_init_label_vi10(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7, l8,s8, l9,s9, l10,s10) \
-	MR_init_label_vi1(e, m, l1, s1)					\
-	MR_init_label_vi1(e, m, l2, s2)					\
-	MR_init_label_vi1(e, m, l3, s3)					\
-	MR_init_label_vi1(e, m, l4, s4)					\
-	MR_init_label_vi1(e, m, l5, s5)					\
-	MR_init_label_vi1(e, m, l6, s6)					\
-	MR_init_label_vi1(e, m, l7, s7)					\
-	MR_init_label_vi1(e, m, l8, s8)					\
-	MR_init_label_vi1(e, m, l9, s9)					\
-	MR_init_label_vi1(e, m, l10, s10)
-
-/*---------------------------------------------------------------------------*/
-
 #define	MR_init_label_nvi1(e, m, l1, s1)				\
 	MR_init_label_ml_sl(MR_label_name(MR_add_prefix(e), l1),	\
 		&MR_no_var_label_layouts(m)[s1]);
@@ -1730,6 +1486,162 @@
 	MR_init_label_nvi1(e, m, l8, s8)				\
 	MR_init_label_nvi1(e, m, l9, s9)				\
 	MR_init_label_nvi1(e, m, l10, s10)
+
+/*---------------------------------------------------------------------------*/
+
+#define	MR_init_label_svi1(e, m, l1, s1)				\
+	MR_init_label_ml_sl(MR_label_name(MR_add_prefix(e), l1),	\
+		(MR_LabelLayout *) &MR_svar_label_layouts(m)[s1]);
+
+#define	MR_init_label_svi2(e, m, l1,s1, l2,s2)				\
+	MR_init_label_svi1(e, m, l1, s1)				\
+	MR_init_label_svi1(e, m, l2, s2)
+
+#define	MR_init_label_svi3(e, m, l1,s1, l2,s2, l3,s3)			\
+	MR_init_label_svi1(e, m, l1, s1)				\
+	MR_init_label_svi1(e, m, l2, s2)				\
+	MR_init_label_svi1(e, m, l3, s3)
+
+#define	MR_init_label_svi4(e, m, l1,s1, l2,s2, l3,s3, l4,s4)		\
+	MR_init_label_svi1(e, m, l1, s1)				\
+	MR_init_label_svi1(e, m, l2, s2)				\
+	MR_init_label_svi1(e, m, l3, s3)				\
+	MR_init_label_svi1(e, m, l4, s4)
+
+#define	MR_init_label_svi5(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5)	\
+	MR_init_label_svi1(e, m, l1, s1)				\
+	MR_init_label_svi1(e, m, l2, s2)				\
+	MR_init_label_svi1(e, m, l3, s3)				\
+	MR_init_label_svi1(e, m, l4, s4)				\
+	MR_init_label_svi1(e, m, l5, s5)
+
+#define	MR_init_label_svi6(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6) \
+	MR_init_label_svi1(e, m, l1, s1)				\
+	MR_init_label_svi1(e, m, l2, s2)				\
+	MR_init_label_svi1(e, m, l3, s3)				\
+	MR_init_label_svi1(e, m, l4, s4)				\
+	MR_init_label_svi1(e, m, l5, s5)				\
+	MR_init_label_svi1(e, m, l6, s6)
+
+#define	MR_init_label_svi7(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7) \
+	MR_init_label_svi1(e, m, l1, s1)				\
+	MR_init_label_svi1(e, m, l2, s2)				\
+	MR_init_label_svi1(e, m, l3, s3)				\
+	MR_init_label_svi1(e, m, l4, s4)				\
+	MR_init_label_svi1(e, m, l5, s5)				\
+	MR_init_label_svi1(e, m, l6, s6)				\
+	MR_init_label_svi1(e, m, l7, s7)
+
+#define	MR_init_label_svi8(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7, l8,s8) \
+	MR_init_label_svi1(e, m, l1, s1)				\
+	MR_init_label_svi1(e, m, l2, s2)				\
+	MR_init_label_svi1(e, m, l3, s3)				\
+	MR_init_label_svi1(e, m, l4, s4)				\
+	MR_init_label_svi1(e, m, l5, s5)				\
+	MR_init_label_svi1(e, m, l6, s6)				\
+	MR_init_label_svi1(e, m, l7, s7)				\
+	MR_init_label_svi1(e, m, l8, s8)
+
+#define	MR_init_label_svi9(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7, l8,s8, l9,s9) \
+	MR_init_label_svi1(e, m, l1, s1)				\
+	MR_init_label_svi1(e, m, l2, s2)				\
+	MR_init_label_svi1(e, m, l3, s3)				\
+	MR_init_label_svi1(e, m, l4, s4)				\
+	MR_init_label_svi1(e, m, l5, s5)				\
+	MR_init_label_svi1(e, m, l6, s6)				\
+	MR_init_label_svi1(e, m, l7, s7)				\
+	MR_init_label_svi1(e, m, l8, s8)				\
+	MR_init_label_svi1(e, m, l9, s9)
+
+#define	MR_init_label_svi10(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7, l8,s8, l9,s9, l10,s10) \
+	MR_init_label_svi1(e, m, l1, s1)				\
+	MR_init_label_svi1(e, m, l2, s2)				\
+	MR_init_label_svi1(e, m, l3, s3)				\
+	MR_init_label_svi1(e, m, l4, s4)				\
+	MR_init_label_svi1(e, m, l5, s5)				\
+	MR_init_label_svi1(e, m, l6, s6)				\
+	MR_init_label_svi1(e, m, l7, s7)				\
+	MR_init_label_svi1(e, m, l8, s8)				\
+	MR_init_label_svi1(e, m, l9, s9)				\
+	MR_init_label_svi1(e, m, l10, s10)
+
+/*---------------------------------------------------------------------------*/
+
+#define	MR_init_label_lvi1(e, m, l1, s1)				\
+	MR_init_label_ml_sl(MR_label_name(MR_add_prefix(e), l1),	\
+		&MR_lvar_label_layouts(m)[s1]);
+
+#define	MR_init_label_lvi2(e, m, l1,s1, l2,s2)				\
+	MR_init_label_lvi1(e, m, l1, s1)				\
+	MR_init_label_lvi1(e, m, l2, s2)
+
+#define	MR_init_label_lvi3(e, m, l1,s1, l2,s2, l3,s3)			\
+	MR_init_label_lvi1(e, m, l1, s1)				\
+	MR_init_label_lvi1(e, m, l2, s2)				\
+	MR_init_label_lvi1(e, m, l3, s3)
+
+#define	MR_init_label_lvi4(e, m, l1,s1, l2,s2, l3,s3, l4,s4)		\
+	MR_init_label_lvi1(e, m, l1, s1)				\
+	MR_init_label_lvi1(e, m, l2, s2)				\
+	MR_init_label_lvi1(e, m, l3, s3)				\
+	MR_init_label_lvi1(e, m, l4, s4)
+
+#define	MR_init_label_lvi5(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5)	\
+	MR_init_label_lvi1(e, m, l1, s1)				\
+	MR_init_label_lvi1(e, m, l2, s2)				\
+	MR_init_label_lvi1(e, m, l3, s3)				\
+	MR_init_label_lvi1(e, m, l4, s4)				\
+	MR_init_label_lvi1(e, m, l5, s5)
+
+#define	MR_init_label_lvi6(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6) \
+	MR_init_label_lvi1(e, m, l1, s1)				\
+	MR_init_label_lvi1(e, m, l2, s2)				\
+	MR_init_label_lvi1(e, m, l3, s3)				\
+	MR_init_label_lvi1(e, m, l4, s4)				\
+	MR_init_label_lvi1(e, m, l5, s5)				\
+	MR_init_label_lvi1(e, m, l6, s6)
+
+#define	MR_init_label_lvi7(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7) \
+	MR_init_label_lvi1(e, m, l1, s1)				\
+	MR_init_label_lvi1(e, m, l2, s2)				\
+	MR_init_label_lvi1(e, m, l3, s3)				\
+	MR_init_label_lvi1(e, m, l4, s4)				\
+	MR_init_label_lvi1(e, m, l5, s5)				\
+	MR_init_label_lvi1(e, m, l6, s6)				\
+	MR_init_label_lvi1(e, m, l7, s7)
+
+#define	MR_init_label_lvi8(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7, l8,s8) \
+	MR_init_label_lvi1(e, m, l1, s1)				\
+	MR_init_label_lvi1(e, m, l2, s2)				\
+	MR_init_label_lvi1(e, m, l3, s3)				\
+	MR_init_label_lvi1(e, m, l4, s4)				\
+	MR_init_label_lvi1(e, m, l5, s5)				\
+	MR_init_label_lvi1(e, m, l6, s6)				\
+	MR_init_label_lvi1(e, m, l7, s7)				\
+	MR_init_label_lvi1(e, m, l8, s8)
+
+#define	MR_init_label_lvi9(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7, l8,s8, l9,s9) \
+	MR_init_label_lvi1(e, m, l1, s1)				\
+	MR_init_label_lvi1(e, m, l2, s2)				\
+	MR_init_label_lvi1(e, m, l3, s3)				\
+	MR_init_label_lvi1(e, m, l4, s4)				\
+	MR_init_label_lvi1(e, m, l5, s5)				\
+	MR_init_label_lvi1(e, m, l6, s6)				\
+	MR_init_label_lvi1(e, m, l7, s7)				\
+	MR_init_label_lvi1(e, m, l8, s8)				\
+	MR_init_label_lvi1(e, m, l9, s9)
+
+#define	MR_init_label_lvi10(e, m, l1,s1, l2,s2, l3,s3, l4,s4, l5,s5, l6,s6, l7,s7, l8,s8, l9,s9, l10,s10) \
+	MR_init_label_lvi1(e, m, l1, s1)				\
+	MR_init_label_lvi1(e, m, l2, s2)				\
+	MR_init_label_lvi1(e, m, l3, s3)				\
+	MR_init_label_lvi1(e, m, l4, s4)				\
+	MR_init_label_lvi1(e, m, l5, s5)				\
+	MR_init_label_lvi1(e, m, l6, s6)				\
+	MR_init_label_lvi1(e, m, l7, s7)				\
+	MR_init_label_lvi1(e, m, l8, s8)				\
+	MR_init_label_lvi1(e, m, l9, s9)				\
+	MR_init_label_lvi1(e, m, l10, s10)
 
 /*---------------------------------------------------------------------------*/
 

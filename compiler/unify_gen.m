@@ -533,18 +533,18 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
         expect(unify(Args, []), this_file,
             "generate_construction_2: type_ctor_info constant has args"),
         RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
-        DataAddr = rtti_addr(ctor_rtti_id(RttiTypeCtor,
+        DataId = rtti_data_id(ctor_rtti_id(RttiTypeCtor,
             type_ctor_type_ctor_info)),
-        assign_const_to_var(Var, const(llconst_data_addr(DataAddr, no)), !CI),
+        assign_const_to_var(Var, const(llconst_data_addr(DataId, no)), !CI),
         Code = empty
     ;
         ConsTag = base_typeclass_info_tag(ModuleName, ClassId, Instance),
         expect(unify(Args, []), this_file,
             "generate_construction_2: base_typeclass_info constant has args"),
         TCName = generate_class_name(ClassId),
-        DataAddr = rtti_addr(tc_rtti_id(TCName,
+        DataId = rtti_data_id(tc_rtti_id(TCName,
             type_class_base_typeclass_info(ModuleName, Instance))),
-        assign_const_to_var(Var, const(llconst_data_addr(DataAddr, no)), !CI),
+        assign_const_to_var(Var, const(llconst_data_addr(DataId, no)), !CI),
         Code = empty
     ;
         ConsTag = tabling_info_tag(PredId, ProcId),
@@ -552,10 +552,8 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
             "generate_construction_2: tabling_info constant has args"),
         get_module_info(!.CI, ModuleInfo),
         ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
-        module_info_get_name(ModuleInfo, ModuleName),
-        DataAddr = data_addr(ModuleName,
-            proc_tabling_ref(ProcLabel, tabling_info)),
-        assign_const_to_var(Var, const(llconst_data_addr(DataAddr, no)), !CI),
+        DataId = proc_tabling_data_id(ProcLabel, tabling_info),
+        assign_const_to_var(Var, const(llconst_data_addr(DataId, no)), !CI),
         Code = empty
     ;
         ConsTag = deep_profiling_proc_layout_tag(PredId, ProcId),
@@ -563,24 +561,23 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
             "generate_construction_2: deep_profiling_proc_static has args"),
         get_module_info(!.CI, ModuleInfo),
         RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
-        Origin = RttiProcLabel ^ pred_info_origin,
+        Origin = RttiProcLabel ^ rpl_pred_info_origin,
         ( Origin = origin_special_pred(_) ->
             UserOrUCI = uci
         ;
             UserOrUCI = user
         ),
         ProcKind = proc_layout_proc_id(UserOrUCI),
-        DataAddr = layout_addr(proc_layout(RttiProcLabel, ProcKind)),
-        assign_const_to_var(Var, const(llconst_data_addr(DataAddr, no)), !CI),
+        DataId = layout_id(proc_layout(RttiProcLabel, ProcKind)),
+        assign_const_to_var(Var, const(llconst_data_addr(DataId, no)), !CI),
         Code = empty
     ;
         ConsTag = table_io_decl_tag(PredId, ProcId),
         expect(unify(Args, []), this_file,
             "generate_construction_2: table_io_decl has args"),
-        get_module_info(!.CI, ModuleInfo),
-        RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
-        DataAddr = layout_addr(table_io_decl(RttiProcLabel)),
-        assign_const_to_var(Var, const(llconst_data_addr(DataAddr, no)), !CI),
+        PredProcId = proc(PredId, ProcId),
+        DataId = layout_slot_id(table_io_decl_id, PredProcId),
+        assign_const_to_var(Var, const(llconst_data_addr(DataId, no)), !CI),
         Code = empty
     ;
         ConsTag = reserved_address_tag(RA),

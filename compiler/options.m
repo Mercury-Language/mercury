@@ -738,6 +738,7 @@
 
     %   - LLDS
     ;       common_data
+    ;       common_layout_data
     ;       optimize            % Also used for MLDS->MLDS optimizations.
     ;       optimize_peep
     ;       optimize_jumps
@@ -1563,6 +1564,7 @@ option_defaults_2(optimization_option, [
 
     % LLDS
     common_data                         -   bool(no),
+    common_layout_data                  -   bool(yes),
     optimize                            -   bool(no),
     optimize_peep                       -   bool(no),
     optimize_jumps                      -   bool(no),
@@ -2452,6 +2454,7 @@ long_option("generate-trail-ops-inline", generate_trail_ops_inline).
 
 % LLDS optimizations
 long_option("common-data",          common_data).
+long_option("common-layout-data",   common_layout_data).
 long_option("llds-optimize",        optimize).
 long_option("llds-optimise",        optimize).
 long_option("optimize-peep",        optimize_peep).
@@ -4985,6 +4988,8 @@ options_help_llds_llds_optimization -->
     write_tabbed_lines([
         "--no-common-data",
         "\tDisable optimization of common data structures.",
+        "--no-common-layout-data",
+        "\tDisable optimization of common subsequences in layout structures.",
         "--no-llds-optimize",
         "\tDisable the low-level optimization passes.",
         "--optimize-dead-procs",

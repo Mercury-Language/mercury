@@ -6,16 +6,16 @@ mdb> table_io start
 I/O tabling started.
 mdb> break try
 Ambiguous procedure specification. The matches are:
-0: pred exception.try/2-3 (cc_multi)
-1: pred exception.try/2-2 (cc_multi)
-2: pred exception.try/2-1 (cc_multi)
-3: pred exception.try/2-0 (cc_multi)
+0: pred exception.try/2-0 (cc_multi)
+1: pred exception.try/2-1 (cc_multi)
+2: pred exception.try/2-2 (cc_multi)
+3: pred exception.try/2-3 (cc_multi)
 
 Which do you want to put a breakpoint on (0-3 or *)? *
- 0: + stop  interface pred exception.try/2-3 (cc_multi)
- 1: + stop  interface pred exception.try/2-2 (cc_multi)
- 2: + stop  interface pred exception.try/2-1 (cc_multi)
- 3: + stop  interface pred exception.try/2-0 (cc_multi)
+ 0: + stop  interface pred exception.try/2-0 (cc_multi)
+ 1: + stop  interface pred exception.try/2-1 (cc_multi)
+ 2: + stop  interface pred exception.try/2-2 (cc_multi)
+ 3: + stop  interface pred exception.try/2-3 (cc_multi)
 mdb> c
       E2:     C2 CALL pred exception.try/2-0 (cc_multi) exception.m:NNNN (track_through_catch.m:15)
 mdb> f

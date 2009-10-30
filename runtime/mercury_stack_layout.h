@@ -44,7 +44,7 @@
 
 /*-------------------------------------------------------------------------*/
 /*
-** Definitions for MR_Determinism
+** Definitions for MR_Determinism.
 */
 
 /*
@@ -86,11 +86,11 @@ typedef MR_int_least16_t    MR_Determinism;
 
 /*-------------------------------------------------------------------------*/
 /*
-** Definitions for MR_LongLval and MR_ShortLval
+** Definitions for MR_LongLval and MR_ShortLval.
 */
 
 /*
-** MR_LongLval is a MR_Unsigned which describes a location.
+** MR_LongLval is a MR_int_least32_t which describes a location.
 ** This includes lvals such as stack slots, general registers, and special
 ** registers such as succip, hp, etc, as well as locations whose address is
 ** given as a typeinfo inside the type class info structure pointed to by an
@@ -124,18 +124,15 @@ typedef MR_int_least16_t    MR_Determinism;
 ** (a) an integer with MR_LONG_LVAL_OFFSETBITS bits giving the index of
 ** the typeinfo inside a type class info (to be interpreted by
 ** MR_typeclass_info_type_info or the predicate
-** private_builtin:type_info_from_typeclass_info, which calls it) and
+** private_builtin.type_info_from_typeclass_info, which calls it) and
 ** (b) a MR_LongLval value giving the location of the pointer to the
-** type class info. This MR_LongLval value will *not* have an indirect
-** tag.
+** type class info. This MR_LongLval value will *not* have an indirect tag.
 **
 ** This data is generated in stack_layout.represent_locn_as_int,
 ** which must be kept in sync with the constants and macros defined here.
 */
 
-struct MR_LongLval_Struct {
-    MR_Unsigned MR_long_lval;
-};
+typedef MR_uint_least32_t   MR_LongLval;
 
 typedef enum {
     MR_LONG_LVAL_TYPE_CONS_0,
@@ -161,26 +158,22 @@ typedef enum {
 #define MR_LONG_LVAL_CONST_TAGBITS  2
 
 #define MR_LONG_LVAL_TYPE(Locn)                                             \
-    ((MR_LongLvalType)                                                      \
-        ((Locn).MR_long_lval & ((1 << MR_LONG_LVAL_TAGBITS) - 1)))
+    ((MR_LongLvalType) ((Locn) & ((1 << MR_LONG_LVAL_TAGBITS) - 1)))
 
 #define MR_LONG_LVAL_NUMBER(Locn)                                           \
-    ((int) (Locn).MR_long_lval >> MR_LONG_LVAL_TAGBITS)
+    ((int) ((Locn) >> MR_LONG_LVAL_TAGBITS))
 
 #define MR_LONG_LVAL_CONST(Locn)                                            \
-    (* (MR_Word *) ((Locn).MR_long_lval &                                   \
-        ~ ((1 << MR_LONG_LVAL_CONST_TAGBITS) - 1)))
+    (* (MR_Word *) ((Locn) & ~ ((1 << MR_LONG_LVAL_CONST_TAGBITS) - 1)))
 
 /* This must be in sync with stack_layout.offset_bits */
 #define MR_LONG_LVAL_OFFSETBITS 6
 
 #define MR_LONG_LVAL_INDIRECT_OFFSET(LocnNumber)                            \
-    ((int) ((LocnNumber).MR_long_lval &                                     \
-        ((1 << MR_LONG_LVAL_OFFSETBITS) - 1)))
+    ((int) ((LocnNumber) & ((1 << MR_LONG_LVAL_OFFSETBITS) - 1)))
 
 #define MR_LONG_LVAL_INDIRECT_BASE_LVAL_INT(LocnNumber)                     \
-    (((MR_uint_least32_t) (LocnNumber).MR_long_lval)                        \
-        >> MR_LONG_LVAL_OFFSETBITS)
+    (((MR_uint_least32_t) (LocnNumber)) >> MR_LONG_LVAL_OFFSETBITS)
 
 #define MR_LONG_LVAL_STACKVAR_INT(n)                                        \
     (((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_STACKVAR)
@@ -228,7 +221,7 @@ typedef enum {
         (((MR_Word) Locn) & ((1 << MR_SHORT_LVAL_TAGBITS) - 1)))
 
 #define MR_SHORT_LVAL_NUMBER(Locn)                                          \
-    ((int) ((MR_Word) Locn) >> MR_SHORT_LVAL_TAGBITS)
+    ((int) (((MR_Word) Locn) >> MR_SHORT_LVAL_TAGBITS))
 
 #define MR_SHORT_LVAL_STACKVAR(n)                                           \
     ((MR_ShortLval) (((n) << MR_SHORT_LVAL_TAGBITS)                         \
@@ -244,7 +237,7 @@ typedef enum {
 
 /*-------------------------------------------------------------------------*/
 /*
-** Definitions for MR_UserEvent and MR_UserEventSpec
+** Definitions for MR_UserEvent and MR_UserEventSpec.
 */
 
 /*
@@ -353,7 +346,7 @@ struct MR_UserEventSpec_Struct {
 
 /*-------------------------------------------------------------------------*/
 /*
-** Definitions for MR_LabelLayout
+** Definitions for MR_LabelLayout.
 */
 
 /*
@@ -390,9 +383,9 @@ struct MR_UserEventSpec_Struct {
 **
 ** The remaining fields give information about the values live at the given
 ** label, if this information is available. If it is available, the
-** MR_has_valid_var_count macro will return true and the last three fields are
-** meaningful; if it is not available, the macro will return false and the last
-** three fields are not meaningful (i.e. you are looking at an
+** MR_has_valid_var_count macro will return true and the fields after the count
+** are meaningful; if it is not available, the macro will return false and
+** those fields are not meaningful (i.e. you are looking at an
 ** MR_LabelLayoutNoVarInfo structure).
 **
 ** The format in which we store information about the values live at the label
@@ -411,17 +404,20 @@ struct MR_UserEventSpec_Struct {
 ** the values need to be distinct; this is why MR_SHORT_COUNT_BITS is
 ** more than 8.)
 **
-** The MR_sll_locns_types field points to a memory area that contains three
-** vectors back to back. The first vector has #Long + #Short word-sized
-** elements, each of which is a pointer to a MR_PseudoTypeInfo giving the type
-** of a live data item, with a small integer instead of a pointer representing
-** a special kind of live data item (e.g. a saved succip or hp). The second
-** vector is an array of #Long MR_LongLvals, and the third is an array of
-** #Short MR_ShortLvals, each of which describes a location. The
-** pseudotypeinfo pointed to by the slot at subscript i in the first vector
-** describes the type of the data stored in slot i in the second vector if
-** i < #Long, and the type of the data stored in slot i - #Long in the third
-** vector otherwise.
+** The MR_sll_types field points to an array of #Long + #Short
+** MR_PseudoTypeInfos each giving the type of a live data item, with
+** a small integer instead of a pointer representing a special kind of
+** live data item (e.g. a saved succip or hp). This field will be null if 
+** #Long + #Short is zero.
+**
+** The MR_sll_long_locns field points to an array of #Long MR_LongLvals,
+** while the MR_sll_short_locns field points to an array of #Short
+** MR_ShortLvals. The element at index i in the MR_sll_long_locns vector
+** will have its type described by the element at index i in the MR_sll_types
+** vector, while the element at index i in the MR_sll_short_locns vector
+** will have its type described by the element at index #Long + i in the
+** MR_sll_types vector. MR_sll_long_locns will be NULL if #Long is zero,
+** and similarly MR_sll_short_locns will be NULL if #Short is zero.
 **
 ** The MR_sll_var_nums field may be NULL, which means that there is no
 ** information about the variable numbers of the live values. If the field
@@ -444,8 +440,8 @@ struct MR_UserEventSpec_Struct {
 ** parameters can materialize all the type parameters from their location
 ** descriptions in one go. This is an optimization, since the type parameter
 ** vector could simply be indexed on demand by the type variable's variable
-** number stored within the MR_PseudoTypeInfos stored inside the first vector
-** pointed to by the MR_sll_locns_types field.
+** number stored within the MR_PseudoTypeInfos stored inside the vector
+** pointed to by the MR_sll_types field.
 **
 ** Since we allocate type variable numbers sequentially, the MR_tp_param_locns
 ** vector will usually be dense. However, after all variables whose types
@@ -486,11 +482,27 @@ struct MR_LabelLayout_Struct {
     MR_uint_least16_t       MR_sll_label_num_in_module;
     MR_uint_least32_t       MR_sll_goal_path;
     const MR_UserEvent      *MR_sll_user_event;
-    MR_Integer              MR_sll_var_count; /* >= 0 */
-    const void              *MR_sll_locns_types;
-    const MR_HLDSVarNum     *MR_sll_var_nums;
+    MR_Integer              MR_sll_var_count; /* >= 0, encoding Long > 0 */
     const MR_TypeParamLocns *MR_sll_tvars;
+    const MR_PseudoTypeInfo *MR_sll_types;
+    const MR_HLDSVarNum     *MR_sll_var_nums;
+    const MR_ShortLval      *MR_sll_short_locns;
+    const MR_LongLval       *MR_sll_long_locns;
 };
+
+typedef struct MR_LabelLayoutShort_Struct {
+    const MR_ProcLayout     *MR_sll_entry;
+    MR_int_least8_t         MR_sll_port;
+    MR_int_least8_t         MR_sll_hidden;
+    MR_uint_least16_t       MR_sll_label_num_in_module;
+    MR_uint_least32_t       MR_sll_goal_path;
+    const MR_UserEvent      *MR_sll_user_event;
+    MR_Integer              MR_sll_var_count; /* >= 0 , encoding Long == 0*/
+    const MR_TypeParamLocns *MR_sll_tvars;
+    const MR_PseudoTypeInfo *MR_sll_types;
+    const MR_HLDSVarNum     *MR_sll_var_nums;
+    const MR_ShortLval      *MR_sll_short_locns;
+} MR_LabelLayoutShort;
 
 typedef struct MR_LabelLayoutNoVarInfo_Struct {
     const MR_ProcLayout     *MR_sll_entry;
@@ -516,25 +528,19 @@ typedef struct MR_LabelLayoutNoVarInfo_Struct {
         (((sll)->MR_sll_var_count) >= 0)
 #define MR_has_valid_var_info(sll)                                          \
         (((sll)->MR_sll_var_count) > 0)
-#define MR_long_desc_var_count(sll)                                         \
-        (((sll)->MR_sll_var_count) >> MR_SHORT_COUNT_BITS)
 #define MR_short_desc_var_count(sll)                                        \
         (((sll)->MR_sll_var_count) & MR_SHORT_COUNT_MASK)
+#define MR_long_desc_var_count(sll)                                         \
+        (((sll)->MR_sll_var_count) >> MR_SHORT_COUNT_BITS)
 #define MR_all_desc_var_count(sll)                                          \
         (MR_long_desc_var_count(sll) + MR_short_desc_var_count(sll))
 
 #define MR_var_pti(sll, i)                                                  \
-        (((MR_PseudoTypeInfo *) ((sll)->MR_sll_locns_types))[(i)])
-#define MR_end_of_var_ptis(sll)                                             \
-        (&MR_var_pti((sll), MR_all_desc_var_count(sll)))
-#define MR_long_desc_var_locn(sll, i)                                       \
-        (((MR_LongLval *) MR_end_of_var_ptis(sll))[(i)])
-#define MR_end_of_long_desc_var_locns(sll)                                  \
-        (&MR_long_desc_var_locn((sll), MR_long_desc_var_count(sll)))
+        ((sll)->MR_sll_types[(i)])
 #define MR_short_desc_var_locn(sll, i)                                      \
-        (((MR_ShortLval *)                                                  \
-            MR_end_of_long_desc_var_locns(sll))                             \
-                [((i) - MR_long_desc_var_count(sll))])
+        ((sll)->MR_sll_short_locns[(i)])
+#define MR_long_desc_var_locn(sll, i)                                       \
+        ((sll)->MR_sll_long_locns[(i)])
 
 /*
 ** Define a stack layout for an internal label.
@@ -572,6 +578,11 @@ typedef struct MR_LabelLayoutNoVarInfo_Struct {
 ** These macros are used as shorthands in generated C source files.
 ** The first two arguments are the entry label name and the label number;
 ** the others are the fields of MR_LabelLayouts.
+*/
+
+/*
+** The following macros are obsolete. They should be deleted as soon as
+** workspaces referring to them have been updated and recompiled.
 */
 
 #define MR_DEF_LL_GEN(e, ln, port, h, num, path, ue, vc, lt, vn, tv)        \
@@ -613,55 +624,55 @@ typedef struct MR_LabelLayoutNoVarInfo_Struct {
 
 #define MR_DEF_LLXCCC(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt, tvc)\
     MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, NULL, vc,               \
-        MR_XCOMMON(ltt, ltc),                                               \
-        MR_XCOMMON(vnt, vnc),                                               \
-        MR_XCOMMON(tvt, tvc))
+        MR_COMMON(ltt, ltc),                                                \
+        MR_COMMON(vnt, vnc),                                                \
+        MR_COMMON(tvt, tvc))
 
 #define MR_DEF_LLXCC0(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)       \
     MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, NULL, vc,               \
-        MR_XCOMMON(ltt, ltc),                                               \
-        MR_XCOMMON(vnt, vnc), 0)
+        MR_COMMON(ltt, ltc),                                                \
+        MR_COMMON(vnt, vnc), 0)
 
 #define MR_DEF_LLTXCCC(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt,tvc)\
     MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, NULL, vc,                \
-        MR_XCOMMON(ltt, ltc),                                               \
-        MR_XCOMMON(vnt, vnc),                                               \
-        MR_XCOMMON(tvt, tvc))
+        MR_COMMON(ltt, ltc),                                                \
+        MR_COMMON(vnt, vnc),                                                \
+        MR_COMMON(tvt, tvc))
 
 #define MR_DEF_LLTXCC0(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)      \
     MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, NULL, vc,                \
-        MR_XCOMMON(ltt, ltc),                                               \
-        MR_XCOMMON(vnt, vnc), 0)
+        MR_COMMON(ltt, ltc),                                                \
+        MR_COMMON(vnt, vnc), 0)
 
 #define MR_DEF_LLXCCC_U(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt, tvc)\
     MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path,                         \
         &MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)),          \
         vc,                                                                 \
-        MR_XCOMMON(ltt, ltc),                                               \
-        MR_XCOMMON(vnt, vnc),                                               \
-        MR_XCOMMON(tvt, tvc))
+        MR_COMMON(ltt, ltc),                                                \
+        MR_COMMON(vnt, vnc),                                                \
+        MR_COMMON(tvt, tvc))
 
 #define MR_DEF_LLXCC0_U(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)     \
     MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path,                         \
         &MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)),          \
         vc,                                                                 \
-        MR_XCOMMON(ltt, ltc),                                               \
-        MR_XCOMMON(vnt, vnc), 0)
+        MR_COMMON(ltt, ltc),                                                \
+        MR_COMMON(vnt, vnc), 0)
 
 #define MR_DEF_LLTXCCC_U(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt,tvc)\
     MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path,                          \
         &MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)),          \
         vc,                                                                 \
-        MR_XCOMMON(ltt, ltc),                                               \
-        MR_XCOMMON(vnt, vnc),                                               \
-        MR_XCOMMON(tvt, tvc))
+        MR_COMMON(ltt, ltc),                                                \
+        MR_COMMON(vnt, vnc),                                                \
+        MR_COMMON(tvt, tvc))
 
 #define MR_DEF_LLTXCC0_U(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)    \
     MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path,                          \
         &MR_USER_LAYOUT_NAME(MR_label_name(MR_add_prefix(e), ln)),          \
         vc,                                                                 \
-        MR_XCOMMON(ltt, ltc),                                               \
-        MR_XCOMMON(vnt, vnc), 0)
+        MR_COMMON(ltt, ltc),                                                \
+        MR_COMMON(vnt, vnc), 0)
 
 #define MR_DEF_LLNVI(e, ln, port, num, path)                                \
     MR_DEF_LLNVI_GEN(e, ln, port, MR_FALSE, path, NULL)
@@ -772,57 +783,156 @@ typedef struct MR_LabelLayoutNoVarInfo_Struct {
 **
 ** We need to cast the addresses of proc layout structures because there
 ** are several kinds of proc layouts, of different (though compatible) types.
-**
-** We need to cast the values we intend to put into the MR_sll_locns_types,
-** MR_sll_var_nums and MR_sll_tvars field because (due to our representation
-** scheme, documented with the MR_LabelLayout type) the values supplied by
-** the compiler will usually be references to slots in arrays of data-specific
-** types.
 */
 
-#define MR_LLC(e, port, num, path)                                          \
+#define MR_LL(e, port, num, path)                                           \
         MR_PROC_LAYOUT(MR_add_prefix(e)),                                   \
         MR_PASTE2(MR_PORT_, port),                                          \
         MR_NOT_HIDDEN, (num), (path), NULL
 
-#define MR_LLC_H(e, port, num, path)                                        \
+#define MR_LL_H(e, port, num, path)                                         \
         MR_PROC_LAYOUT(MR_add_prefix(e)),                                   \
         MR_PASTE2(MR_PORT_, port),                                          \
         MR_HIDDEN, (num), (path), NULL
 
-#define MR_LLC_U(e, port, num, path, ue)                                    \
+#define MR_LL_U(e, port, num, path, ue)                                     \
         MR_PROC_LAYOUT(MR_add_prefix(e)),                                   \
         MR_PASTE2(MR_PORT_, port),                                          \
         MR_NOT_HIDDEN, (num), (path), (ue)
 
-#define MR_LLC_H_U(e, port, num, path, ue)                                  \
+#define MR_LL_H_U(e, port, num, path, ue)                                   \
         MR_PROC_LAYOUT(MR_add_prefix(e)),                                   \
         MR_PASTE2(MR_PORT_, port),                                          \
         MR_HIDDEN, (num), (path), (ue)
 
+#if 0
+/* these are new but already obsolete */
 #define MR_LLV(lt, vn, tp)                                                  \
         (const void *) (lt),                                                \
         (const MR_uint_least16_t *) (vn),                                   \
         (const MR_TypeParamLocns *) (tp)
 
 #define MR_LLV_CC(ltt, ltc, vnt, vnc, tp)                                   \
-        (const void *) MR_XCOMMON(ltt, ltc),                                \
-        (const MR_uint_least16_t *) MR_XCOMMON(vnt, vnc),                   \
+        (const void *) MR_COMMON(ltt, ltc),                                 \
+        (const MR_uint_least16_t *) MR_COMMON(vnt, vnc),                    \
         (const MR_TypeParamLocns *) (tp)
 
 #define MR_LLV_CCC(ltt, ltc, vnt, vnc, tpt, tpc)                            \
-        (const void *) MR_XCOMMON(ltt, ltc),                                \
-        (const MR_uint_least16_t *) MR_XCOMMON(vnt, vnc),                   \
-        (const MR_TypeParamLocns *) MR_XCOMMON(tpt, tpc)
+        (const void *) MR_COMMON(ltt, ltc),                                 \
+        (const MR_uint_least16_t *) MR_COMMON(vnt, vnc),                    \
+        (const MR_TypeParamLocns *) MR_COMMON(tpt, tpc)
 
 #define MR_LLV_CC0(ltt, ltc, vnt, vnc)                                      \
-        (const void *) MR_XCOMMON(ltt, ltc),                                \
-        (const MR_uint_least16_t *) MR_XCOMMON(vnt, vnc),                   \
+        (const void *) MR_COMMON(ltt, ltc),                                 \
+        (const MR_uint_least16_t *) MR_COMMON(vnt, vnc),                    \
         (const MR_TypeParamLocns *) 0
+#endif
+
+#define MR_LLVS(m, p, h, s)                                                 \
+        &MR_pseudo_type_infos(m)[p],                                        \
+        &MR_hlds_var_nums(m)[h],                                            \
+        &MR_short_locns(m)[s]
+
+#define MR_LLVL(m, p, h, s, l)                                              \
+        &MR_pseudo_type_infos(m)[p],                                        \
+        &MR_hlds_var_nums(m)[h],                                            \
+        &MR_short_locns(m)[s],                                              \
+        &MR_long_locns(m)[l]
+
+#define MR_LLVS0(m, p, h, s)                                                \
+        0,                                                                  \
+        MR_LLVS(m, p, h, s)
+
+#define MR_LLVL0(m, p, h, s, l)                                             \
+        0,                                                                  \
+        MR_LLVL(m, p, h, s, l)
+
+#define MR_LLVSC(m, tpt, tpc, p, h, s)                                      \
+        (const MR_TypeParamLocns *) MR_COMMON(tpt, tpc),                    \
+        MR_LLVS(m, p, h, s)
+
+#define MR_LLVLC(m, tpt, tpc, p, h, s, l)                                   \
+        (const MR_TypeParamLocns *) MR_COMMON(tpt, tpc),                    \
+        MR_LLVL(m, p, h, s, l)
+
+#define MR_cast_to_pti1(r1)                                                 \
+        (MR_PseudoTypeInfo) (r1),
+
+#define MR_cast_to_pti2(r1, r2)                                             \
+        (MR_PseudoTypeInfo) (r1),                                           \
+        (MR_PseudoTypeInfo) (r2),
+
+#define MR_cast_to_pti3(r1, r2, r3)                                         \
+        (MR_PseudoTypeInfo) (r1),                                           \
+        (MR_PseudoTypeInfo) (r2),                                           \
+        (MR_PseudoTypeInfo) (r3)
+
+#define MR_cast_to_pti4(r1, r2, r3, r4)                                     \
+        (MR_PseudoTypeInfo) (r1),                                           \
+        (MR_PseudoTypeInfo) (r2),                                           \
+        (MR_PseudoTypeInfo) (r3),                                           \
+        (MR_PseudoTypeInfo) (r4),
+
+#define MR_cast_to_pti5(r1, r2, r3, r4, r5)                                 \
+        (MR_PseudoTypeInfo) (r1),                                           \
+        (MR_PseudoTypeInfo) (r2),                                           \
+        (MR_PseudoTypeInfo) (r3),                                           \
+        (MR_PseudoTypeInfo) (r4),                                           \
+        (MR_PseudoTypeInfo) (r5),
+
+#define MR_cast_to_pti6(r1, r2, r3, r4, r5, r6)                             \
+        (MR_PseudoTypeInfo) (r1),                                           \
+        (MR_PseudoTypeInfo) (r2),                                           \
+        (MR_PseudoTypeInfo) (r3),                                           \
+        (MR_PseudoTypeInfo) (r4),                                           \
+        (MR_PseudoTypeInfo) (r5),                                           \
+        (MR_PseudoTypeInfo) (r6),
+
+#define MR_cast_to_pti7(r1, r2, r3, r4, r5, r6, r7)                         \
+        (MR_PseudoTypeInfo) (r1),                                           \
+        (MR_PseudoTypeInfo) (r2),                                           \
+        (MR_PseudoTypeInfo) (r3),                                           \
+        (MR_PseudoTypeInfo) (r4),                                           \
+        (MR_PseudoTypeInfo) (r5),                                           \
+        (MR_PseudoTypeInfo) (r6),                                           \
+        (MR_PseudoTypeInfo) (r7),
+
+#define MR_cast_to_pti8(r1, r2, r3, r4, r5, r6, r7, r8)                     \
+        (MR_PseudoTypeInfo) (r1),                                           \
+        (MR_PseudoTypeInfo) (r2),                                           \
+        (MR_PseudoTypeInfo) (r3),                                           \
+        (MR_PseudoTypeInfo) (r4),                                           \
+        (MR_PseudoTypeInfo) (r5),                                           \
+        (MR_PseudoTypeInfo) (r6),                                           \
+        (MR_PseudoTypeInfo) (r7),                                           \
+        (MR_PseudoTypeInfo) (r8),
+
+#define MR_cast_to_pti9(r1, r2, r3, r4, r5, r6, r7, r8, r9)                 \
+        (MR_PseudoTypeInfo) (r1),                                           \
+        (MR_PseudoTypeInfo) (r2),                                           \
+        (MR_PseudoTypeInfo) (r3),                                           \
+        (MR_PseudoTypeInfo) (r4),                                           \
+        (MR_PseudoTypeInfo) (r5),                                           \
+        (MR_PseudoTypeInfo) (r6),                                           \
+        (MR_PseudoTypeInfo) (r7),                                           \
+        (MR_PseudoTypeInfo) (r8),                                           \
+        (MR_PseudoTypeInfo) (r9),
+
+#define MR_cast_to_pti10(r1, r2, r3, r4, r5, r6, r7, r8, r9, r10)           \
+        (MR_PseudoTypeInfo) (r1),                                           \
+        (MR_PseudoTypeInfo) (r2),                                           \
+        (MR_PseudoTypeInfo) (r3),                                           \
+        (MR_PseudoTypeInfo) (r4),                                           \
+        (MR_PseudoTypeInfo) (r5),                                           \
+        (MR_PseudoTypeInfo) (r6),                                           \
+        (MR_PseudoTypeInfo) (r7),                                           \
+        (MR_PseudoTypeInfo) (r8),                                           \
+        (MR_PseudoTypeInfo) (r9),                                           \
+        (MR_PseudoTypeInfo) (r10),
 
 /*-------------------------------------------------------------------------*/
 /*
-** Definitions for MR_ProcLayout
+** Definitions for MR_ProcLayout.
 */
 
 /*
@@ -1070,10 +1180,7 @@ typedef struct MR_ExecTrace_Struct {
         }                                                                   \
     } while (0)
 
-/*-------------------------------------------------------------------------*/
 /*
-** Definitions for MR_ProcLayout
-**
 ** Proc layout structures contain one, two or three substructures.
 **
 ** - The first substructure is the MR_StackTraversal structure, which contains
@@ -1298,7 +1405,7 @@ extern  int             MR_find_start_of_num_suffix(const char *str);
             MR_MAKE_PROC_LAYOUT_ADDR(                                       \
                 MR_proc_entry_user_name(module, name,                       \
                     arity, mode)),                                          \
-            { succip_locn },                                                \
+            succip_locn,                                                    \
             slots,                                                          \
             detism                                                          \
         },                                                                  \
@@ -1324,7 +1431,7 @@ extern  int             MR_find_start_of_num_suffix(const char *str);
             MR_MAKE_PROC_LAYOUT_ADDR(                                       \
                 MR_proc_entry_uci_name(module, name,                        \
                     type, arity, mode)),                                    \
-            { succip_locn },                                                \
+            succip_locn,                                                    \
             slots,                                                          \
             detism                                                          \
         },                                                                  \
@@ -1429,7 +1536,7 @@ extern  int             MR_find_start_of_num_suffix(const char *str);
 
 /*-------------------------------------------------------------------------*/
 /*
-** Definitions for MR_ModuleLayout
+** Definitions for MR_ModuleLayout.
 **
 ** The layout structure for a module contains the following fields.
 **
@@ -1533,7 +1640,7 @@ struct MR_ModuleLayout_Struct {
 
 /*-------------------------------------------------------------------------*/
 /*
-** Definitions for MR_ClosureId
+** Definitions for MR_ClosureId.
 **
 ** Each closure contains an MR_ClosureId structure. The proc_id field
 ** identifies the procedure called by the closure. The other fields identify

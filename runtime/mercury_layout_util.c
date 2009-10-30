@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2007 The University of Melbourne.
+** Copyright (C) 1998-2007, 2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -98,7 +98,7 @@ MR_materialize_type_params_base(const MR_LabelLayout *label_layout,
         type_params = (MR_TypeInfoParams) MR_NEW_ARRAY(MR_Word, count + 1);
 
         for (i = 0; i < count; i++) {
-            if (tvar_locns->MR_tp_param_locns[i].MR_long_lval != 0) {
+            if (tvar_locns->MR_tp_param_locns[i] != 0) {
                 type_params[i + 1] = (MR_TypeInfo)
                     MR_lookup_long_lval_base(tvar_locns->MR_tp_param_locns[i],
                         saved_regs, base_sp, base_curfr, &succeeded);
@@ -132,7 +132,7 @@ MR_materialize_closure_type_params(MR_Closure *closure)
         type_params = (MR_TypeInfoParams) MR_NEW_ARRAY(MR_Word, count + 1);
 
         for (i = 0; i < count; i++) {
-            if (tvar_locns->MR_tp_param_locns[i].MR_long_lval != 0) {
+            if (tvar_locns->MR_tp_param_locns[i] != 0) {
                 type_params[i + 1] = (MR_TypeInfo)
                     MR_lookup_closure_long_lval(
                         tvar_locns->MR_tp_param_locns[i], closure, &succeeded);
@@ -166,7 +166,7 @@ MR_materialize_typeclass_info_type_params(MR_Word typeclass_info,
         type_params = (MR_TypeInfoParams) MR_NEW_ARRAY(MR_Word, count + 1);
 
         for (i = 0; i < count; i++) {
-            if (tvar_locns->MR_tp_param_locns[i].MR_long_lval != 0)
+            if (tvar_locns->MR_tp_param_locns[i] != 0)
             {
                 type_params[i + 1] = (MR_TypeInfo)
                     MR_lookup_typeclass_info_long_lval(
@@ -199,7 +199,7 @@ MR_materialize_answer_block_type_params(const MR_TypeParamLocns *tvar_locns,
         type_params = (MR_TypeInfoParams) MR_NEW_ARRAY(MR_Word, count + 1);
 
         for (i = 0; i < count; i++) {
-            if (tvar_locns->MR_tp_param_locns[i].MR_long_lval != 0) {
+            if (tvar_locns->MR_tp_param_locns[i] != 0) {
                 type_params[i + 1] = (MR_TypeInfo)
                     MR_lookup_answer_block_long_lval(
                         tvar_locns->MR_tp_param_locns[i], answer_block,
@@ -325,11 +325,10 @@ MR_lookup_closure_long_lval(MR_LongLval locn, MR_Closure *closure,
             break;
 
         case MR_LONG_LVAL_TYPE_INDIRECT:
-            indirect_lval.MR_long_lval = locn_num;
+            indirect_lval = locn_num;
 
             offset = MR_LONG_LVAL_INDIRECT_OFFSET(indirect_lval);
-            sublocn.MR_long_lval =
-                MR_LONG_LVAL_INDIRECT_BASE_LVAL_INT(indirect_lval);
+            sublocn = MR_LONG_LVAL_INDIRECT_BASE_LVAL_INT(indirect_lval);
 
             if (MR_print_locn) {
                 printf("closure offset %d from ", offset);
@@ -445,11 +444,10 @@ MR_lookup_typeclass_info_long_lval(MR_LongLval locn, MR_Word typeclass_info,
             break;
 
         case MR_LONG_LVAL_TYPE_INDIRECT:
-            indirect_lval.MR_long_lval = locn_num;
+            indirect_lval = locn_num;
 
             offset = MR_LONG_LVAL_INDIRECT_OFFSET(indirect_lval);
-            sublocn.MR_long_lval =
-                MR_LONG_LVAL_INDIRECT_BASE_LVAL_INT(indirect_lval);
+            sublocn = MR_LONG_LVAL_INDIRECT_BASE_LVAL_INT(indirect_lval);
 
             if (MR_print_locn) {
                 printf("typeclassinfo offset %d from ", offset);
@@ -562,11 +560,10 @@ MR_lookup_answer_block_long_lval(MR_LongLval locn, MR_Word *answer_block,
             break;
 
         case MR_LONG_LVAL_TYPE_INDIRECT:
-            indirect_lval.MR_long_lval = locn_num;
+            indirect_lval = locn_num;
 
             offset = MR_LONG_LVAL_INDIRECT_OFFSET(indirect_lval);
-            sublocn.MR_long_lval =
-                MR_LONG_LVAL_INDIRECT_BASE_LVAL_INT(indirect_lval);
+            sublocn = MR_LONG_LVAL_INDIRECT_BASE_LVAL_INT(indirect_lval);
 
             if (MR_print_locn) {
                 printf("answer_block offset %d from ", offset);
@@ -683,11 +680,10 @@ MR_lookup_long_lval_base(MR_LongLval locn, MR_Word *saved_regs,
             break;
 
         case MR_LONG_LVAL_TYPE_INDIRECT:
-            indirect_lval.MR_long_lval = locn_num;
+            indirect_lval = locn_num;
 
             offset = MR_LONG_LVAL_INDIRECT_OFFSET(indirect_lval);
-            sublocn.MR_long_lval =
-                MR_LONG_LVAL_INDIRECT_BASE_LVAL_INT(indirect_lval);
+            sublocn = MR_LONG_LVAL_INDIRECT_BASE_LVAL_INT(indirect_lval);
 
             if (MR_print_locn) {
                 printf("long offset %d from ", offset);
@@ -835,25 +831,26 @@ MR_get_type_and_value_base(const MR_LabelLayout *label_layout, int i,
     MR_bool             succeeded;
     MR_LongLval         long_locn;
     MR_ShortLval        short_locn;
+    int                 num_longs;
 
     pseudo_type_info = MR_var_pti(label_layout, i);
     *type_info = MR_create_type_info(type_params, pseudo_type_info);
 
-    if (i < MR_long_desc_var_count(label_layout)) {
+    num_longs = MR_long_desc_var_count(label_layout);
+    if (i < num_longs) {
         if (MR_print_locn) {
-            printf("looking up long lval\n");
+            printf("looking up long lval: ");
         }
 
-        long_locn.MR_long_lval =
-            MR_long_desc_var_locn(label_layout, i).MR_long_lval;
+        long_locn = MR_long_desc_var_locn(label_layout, i);
         *value = MR_lookup_long_lval_base(long_locn,
             saved_regs, base_sp, base_curfr, &succeeded);
     } else {
         if (MR_print_locn) {
-            printf("looking up short lval\n");
+            printf("looking up short lval: ");
         }
 
-        short_locn = MR_short_desc_var_locn(label_layout, i),
+        short_locn = MR_short_desc_var_locn(label_layout, i - num_longs),
         *value = MR_lookup_short_lval_base(short_locn,
             saved_regs, base_sp, base_curfr, &succeeded);
     }

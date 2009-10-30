@@ -1266,8 +1266,10 @@ struct MR_option MR_long_opts[] = {
     { "small-det-stack-size-kwords",    1, 0, MR_SMALL_DETSTACK_SIZE_KWORDS },
     { "small-nondetstack-size",         1, 0, MR_SMALL_NONDETSTACK_SIZE },
     { "small-nondet-stack-size",        1, 0, MR_SMALL_NONDETSTACK_SIZE },
-    { "small-nondetstack-size-kwords",  1, 0, MR_SMALL_NONDETSTACK_SIZE_KWORDS },
-    { "small-nondet-stack-size-kwords", 1, 0, MR_SMALL_NONDETSTACK_SIZE_KWORDS },
+    { "small-nondetstack-size-kwords",
+        1, 0, MR_SMALL_NONDETSTACK_SIZE_KWORDS },
+    { "small-nondet-stack-size-kwords",
+        1, 0, MR_SMALL_NONDETSTACK_SIZE_KWORDS },
     { "solutions-heap-size",            1, 0, MR_SOLUTIONS_HEAP_SIZE },
     { "solutions-heap-size-kwords",     1, 0, MR_SOLUTIONS_HEAP_SIZE_KWORDS },
     { "trail-size",                     1, 0, MR_TRAIL_SIZE },
@@ -1279,18 +1281,18 @@ struct MR_option MR_long_opts[] = {
     { "detstack-redzone-size",          1, 0, MR_DETSTACK_REDZONE_SIZE },
     { "det-stack-redzone-size",         1, 0, MR_DETSTACK_REDZONE_SIZE },
     { "detstack-redzone-size-kwords",
-            1, 0, MR_DETSTACK_REDZONE_SIZE_KWORDS },
+        1, 0, MR_DETSTACK_REDZONE_SIZE_KWORDS },
     { "det-stack-redzone-size-kwords",
-            1, 0, MR_DETSTACK_REDZONE_SIZE_KWORDS },
+        1, 0, MR_DETSTACK_REDZONE_SIZE_KWORDS },
     { "nondetstack-redzone-size",       1, 0, MR_NONDETSTACK_REDZONE_SIZE },
     { "nondet-stack-redzone-size",      1, 0, MR_NONDETSTACK_REDZONE_SIZE },
     { "nondetstack-redzone-size-kwords",
-            1, 0, MR_NONDETSTACK_REDZONE_SIZE_KWORDS },
+        1, 0, MR_NONDETSTACK_REDZONE_SIZE_KWORDS },
     { "nondet-stack-redzone-size-kwords",
-            1, 0, MR_NONDETSTACK_REDZONE_SIZE_KWORDS },
+        1, 0, MR_NONDETSTACK_REDZONE_SIZE_KWORDS },
     { "solutions-heap-redzone-size",1, 0, MR_SOLUTIONS_HEAP_REDZONE_SIZE },
     { "solutions-heap-redzone-size-kwords",
-            1, 0, MR_SOLUTIONS_HEAP_REDZONE_SIZE_KWORDS },
+        1, 0, MR_SOLUTIONS_HEAP_REDZONE_SIZE_KWORDS },
     { "trail-redzone-size",             1, 0, MR_TRAIL_REDZONE_SIZE },
     { "trail-redzone-size-kwords",      1, 0, MR_TRAIL_REDZONE_SIZE_KWORDS },
     { "heap-margin-size",               1, 0, MR_HEAP_MARGIN_SIZE },
@@ -1342,8 +1344,10 @@ struct MR_option MR_long_opts[] = {
     { "coverage-test-if-exec",          1, 0, MR_COVERAGE_TEST_IF_EXEC_OPT },
     { "tc-output-file",                 1, 0, MR_TRACE_COUNT_FILE },
     { "trace-count-output-file",        1, 0, MR_TRACE_COUNT_FILE },
-    { "tc-summary-file",                1, 0, MR_TRACE_COUNT_SUMMARY_FILE_OPT },
-    { "trace-count-summary-file",       1, 0, MR_TRACE_COUNT_SUMMARY_FILE_OPT },
+    { "tc-summary-file",
+        1, 0, MR_TRACE_COUNT_SUMMARY_FILE_OPT },
+    { "trace-count-summary-file",
+        1, 0, MR_TRACE_COUNT_SUMMARY_FILE_OPT },
     { "tc-summary-cmd",                 1, 0, MR_TRACE_COUNT_SUMMARY_CMD_OPT },
     { "trace-count-summary-cmd",        1, 0, MR_TRACE_COUNT_SUMMARY_CMD_OPT },
     { "tc-summary-max",                 1, 0, MR_TRACE_COUNT_SUMMARY_MAX_OPT },
@@ -1947,9 +1951,9 @@ MR_process_options(int argc, char **argv)
                     ** Particular rounding modes are only supported if the
                     ** corresponding FE_* macro is defined.  The four below are
                     ** the ones from C99.  C99 says that these macros
-                    ** should expand to a nonnegative value, so we use a negative value
-                    ** to indicate that the selected rounding mode is not supported by
-                    ** the system.
+                    ** should expand to a nonnegative value, so we use a
+                    ** negative value to indicate that the selected rounding
+                    ** mode is not supported by the system.
                     */
                     if (MR_streq(MR_optarg, "downward")) {
                         #if defined(FE_DOWNWARD)
@@ -1980,14 +1984,14 @@ MR_process_options(int argc, char **argv)
                     }
 
                     if (rounding_mode < 0) {
-                        printf("Mercury runtime: the selected rounding mode is "
-                            "not supported by this system.\n");
+                        printf("Mercury runtime: the selected rounding mode "
+                            "is not supported by this system.\n");
                         fflush(stdout);
                         exit(1);
                     } else {
                         if (fesetround(rounding_mode) != 0) {
-                            printf("Mercury runtime: could not establish selected "
-                                "rounding mode.\n");
+                            printf("Mercury runtime: could not establish "
+                                "the selected rounding mode.\n");
                             fflush(stdout);
                             exit(1);
                         }
@@ -1996,7 +2000,8 @@ MR_process_options(int argc, char **argv)
 #else
                 printf("Mercury runtime: `--fp-rounding-mode' is specified "
                     "in MERCURY_OPTIONS\n");
-                printf("but the rounding mode cannot be changed on this system.\n");
+                printf("but the rounding mode cannot be changed"
+                    "on this system.\n");
                 fflush(stdout);
                 exit(1);
 #endif
@@ -2029,10 +2034,10 @@ MR_process_options(int argc, char **argv)
                     MR_finaldebug       = MR_TRUE;
                     MR_tracedebug       = MR_TRUE;
 #ifdef MR_MPS_GC
-                    MR_mps_quiet = MR_FALSE;
+                    MR_mps_quiet        = MR_FALSE;
 #endif
 #ifdef MR_NATIVE_GC
-                    MR_agc_debug      = MR_TRUE;
+                    MR_agc_debug        = MR_TRUE;
 #endif
                 } else if (MR_streq(MR_optarg, "b")) {
                     MR_nondetstackdebug = MR_TRUE;
@@ -2070,6 +2075,8 @@ MR_process_options(int argc, char **argv)
                     MR_watch_csd_start_name = strdup(MR_optarg+1);
                 } else if (MR_optarg[0] == 'j') {
                     MR_lld_start_name = strdup(MR_optarg+1);
+                } else if (MR_streq(MR_optarg, "l")) {
+                    MR_printlocndebug = MR_TRUE;
                 } else if (MR_streq(MR_optarg, "m")) {
                     MR_memdebug       = MR_TRUE;
                 } else if (MR_streq(MR_optarg, "o")) {
@@ -2476,7 +2483,8 @@ mercury_runtime_main(void)
 
     if (use_own_timer) {
         printf("%8.3fu ",
-            ((double) (MR_user_time_at_finish - MR_user_time_at_start)) / 1000);
+            ((double) (MR_user_time_at_finish - MR_user_time_at_start))
+                / 1000);
     }
 
 #ifdef  MR_TYPE_CTOR_STATS
@@ -2488,9 +2496,8 @@ mercury_runtime_main(void)
 #endif  /* MR_STACK_FRAME_STATS */
 
     /*
-    ** Save the Mercury registers and
-    ** restore the C callee-save registers before returning,
-    ** since they may be used by the C code that called us.
+    ** Save the Mercury registers and restore the C callee-save registers
+    ** before returning, since they may be used by the C code that called us.
     */
     MR_save_registers();
     MR_restore_regs_from_mem(c_regs);
@@ -2654,8 +2661,8 @@ MR_do_interpreter(void)
     assert(pthread_self() == MR_primordial_thread);
     MR_LOCK(&MR_thread_barrier_lock, "MR_do_interpreter");
     while (MR_thread_barrier_count > 0) {
-        while (MR_WAIT(&MR_thread_barrier_cond, &MR_thread_barrier_lock) != 0) {
-        }
+        while (MR_WAIT(&MR_thread_barrier_cond, &MR_thread_barrier_lock) != 0)
+            ;
     }
     MR_UNLOCK(&MR_thread_barrier_lock, "MR_do_interpreter");
   #endif

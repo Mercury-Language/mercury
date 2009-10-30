@@ -458,8 +458,7 @@ output_maybe_pseudo_type_info_defn(Info, MaybePseudoTypeInfo, !DeclSet, !IO) :-
 output_type_info_defn(Info, TypeInfo, !DeclSet, !IO) :-
     (
         rtti_data_to_id(rtti_data_type_info(TypeInfo), RttiId),
-        DataAddr = rtti_addr(RttiId),
-        decl_set_is_member(decl_data_addr(DataAddr), !.DeclSet)
+        decl_set_is_member(decl_rtti_id(RttiId), !.DeclSet)
     ->
         true
     ;
@@ -524,8 +523,7 @@ output_pseudo_type_info_defn(Info, PseudoTypeInfo, !DeclSet, !IO) :-
         true
     ;
         rtti_data_to_id(rtti_data_pseudo_type_info(PseudoTypeInfo), RttiId),
-        DataAddr = rtti_addr(RttiId),
-        decl_set_is_member(decl_data_addr(DataAddr), !.DeclSet)
+        decl_set_is_member(decl_rtti_id(RttiId), !.DeclSet)
     ->
         true
     ;
@@ -1473,8 +1471,7 @@ output_rtti_data_decl_chunk_entries(_IsArray, [], !DeclSet, !IO) :-
         "output_rtti_data_decl_chunk_entries: empty list").
 output_rtti_data_decl_chunk_entries(IsArray, [RttiId | RttiIds],
         !DeclSet, !IO) :-
-    DataAddr = rtti_addr(RttiId),
-    decl_set_insert(decl_data_addr(DataAddr), !DeclSet),
+    decl_set_insert(decl_rtti_id(RttiId), !DeclSet),
     io.write_string("\t", !IO),
     output_rtti_id(RttiId, !IO),
     (
@@ -1512,8 +1509,7 @@ output_rtti_data_decl(Info, RttiData, !DeclSet, !IO) :-
 output_generic_rtti_data_decl(Info, RttiId, !DeclSet, !IO) :-
     output_rtti_id_storage_type_name(Info, RttiId, no, !DeclSet, !IO),
     io.write_string(";\n", !IO),
-    DataAddr = rtti_addr(RttiId),
-    decl_set_insert(decl_data_addr(DataAddr), !DeclSet).
+    decl_set_insert(decl_rtti_id(RttiId), !DeclSet).
 
 :- pred output_generic_rtti_data_defn_start(llds_out_info::in, rtti_id::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
@@ -1521,8 +1517,7 @@ output_generic_rtti_data_decl(Info, RttiId, !DeclSet, !IO) :-
 output_generic_rtti_data_defn_start(Info, RttiId, !DeclSet, !IO) :-
     io.write_string("\n", !IO),
     output_rtti_id_storage_type_name(Info, RttiId, yes, !DeclSet, !IO),
-    DataAddr = rtti_addr(RttiId),
-    decl_set_insert(decl_data_addr(DataAddr), !DeclSet).
+    decl_set_insert(decl_rtti_id(RttiId), !DeclSet).
 
 output_rtti_id_storage_type_name_no_decl(Info, RttiId, BeingDefined, !IO) :-
     decl_set_init(DeclSet0),
@@ -1763,7 +1758,7 @@ output_record_rtti_data_decls(Info, RttiData, FirstIndent, LaterIndent,
 
 output_record_rtti_id_decls(Info, RttiId, FirstIndent, LaterIndent,
         !N, !DeclSet, !IO) :-
-    output_record_data_addr_decls_format(Info, rtti_addr(RttiId),
+    output_record_data_id_decls_format(Info, rtti_data_id(RttiId),
         FirstIndent, LaterIndent, !N, !DeclSet, !IO).
 
 :- pred output_cast_addr_of_rtti_ids(string::in, list(rtti_id)::in,

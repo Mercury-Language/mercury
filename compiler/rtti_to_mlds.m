@@ -1505,7 +1505,7 @@ gen_init_special_pred(ModuleInfo, RttiProcIdUniv, Initializer, !GlobalData) :-
     % hence we need to generate a wrapper function which unboxes the arguments
     % if necessary.
     ( univ_to_type(RttiProcIdUniv, RttiProcId) ->
-        ( RttiProcId ^ proc_arity = 0 ->
+        ( RttiProcId ^ rpl_proc_arity = 0 ->
             % If there are no arguments, then there's no unboxing to do,
             % so we don't need a wrapper. (This case can occur with
             % --no-special-preds, where the procedure will be
@@ -1535,8 +1535,8 @@ gen_wrapper_func_and_initializer(ModuleInfo, NumExtra, RttiProcId,
         % with any function labels used when generating code for the wrapped
         % procedure.
 
-        PredId = RttiProcId ^ pred_id,
-        ProcId = RttiProcId ^ proc_id,
+        PredId = RttiProcId ^ rpl_pred_id,
+        ProcId = RttiProcId ^ rpl_proc_id,
         module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
         !:Info = ml_gen_info_init(ModuleInfo, PredId, ProcId, ProcInfo,
             !.GlobalData),
@@ -1561,7 +1561,7 @@ gen_init_proc_id(ModuleInfo, RttiProcId) = Initializer :-
     % Construct an rval for the address of this procedure
     % (this is similar to ml_gen_proc_addr_rval).
     ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcId, PredLabel, PredModule),
-    ProcId = RttiProcId ^ proc_id,
+    ProcId = RttiProcId ^ rpl_proc_id,
     QualifiedProcLabel = qual(PredModule, module_qual,
         mlds_proc_label(PredLabel, ProcId)),
     Params = ml_gen_proc_params_from_rtti(ModuleInfo, RttiProcId),

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2008 The University of Melbourne.
+** Copyright (C) 1997-2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -692,6 +692,8 @@ MR_trace_retry(MR_EventInfo *event_info,
     const MR_LabelLayout    *return_label_layout;
     const MR_LabelLayout    *call_label;
     const MR_ProcLayout     *level_layout;
+    int                     call_all_var_count;
+    int                     call_long_var_count;
     MR_Word                 *args;
     int                     arg_max;
     int                     arg_num;
@@ -792,7 +794,9 @@ MR_trace_retry(MR_EventInfo *event_info,
     type_params = MR_materialize_type_params_base(return_label_layout,
         saved_regs, base_sp, base_curfr);
 
-    for (i = 0; i < MR_all_desc_var_count(call_label); i++) {
+    call_all_var_count = MR_all_desc_var_count(call_label);
+    call_long_var_count = MR_long_desc_var_count(call_label);
+    for (i = 0; i < call_all_var_count; i++) {
         /*
         ** Check if the argument is of type io.state.  We check this before
         ** calling MR_trace_find_input_arg, since MR_trace_find_input_arg may
@@ -816,16 +820,16 @@ MR_trace_retry(MR_EventInfo *event_info,
                 goto report_problem;
             }
 
-            if (i < MR_long_desc_var_count(call_label)) {
+            if (i < call_long_var_count) {
                 MR_LongLval     long_locn;
 
-                long_locn.MR_long_lval =
-                    MR_long_desc_var_locn(call_label, i).MR_long_lval;
+                long_locn = MR_long_desc_var_locn(call_label, i);
                 arg_num = MR_get_register_number_long(long_locn);
             } else {
                 MR_ShortLval    short_locn;
 
-                short_locn = MR_short_desc_var_locn(call_label, i);
+                short_locn = MR_short_desc_var_locn(call_label,
+                    i - call_long_var_count);
                 arg_num = MR_get_register_number_short(short_locn);
             }
 
@@ -1375,25 +1379,29 @@ MR_trace_find_input_arg(const MR_LabelLayout *label_layout,
     MR_uint_least16_t var_num, MR_bool *succeeded)
 {
     int i;
+    int all_var_count;
+    int long_var_count;
 
     if (label_layout->MR_sll_var_nums == NULL) {
         *succeeded = MR_FALSE;
         return 0;
     }
 
-    for (i = 0; i < MR_all_desc_var_count(label_layout); i++) {
+    all_var_count = MR_all_desc_var_count(label_layout);
+    long_var_count = MR_long_desc_var_count(label_layout);
+    for (i = 0; i < all_var_count; i++) {
         if (var_num == label_layout->MR_sll_var_nums[i]) {
-            if (i < MR_long_desc_var_count(label_layout)) {
+            if (i < long_var_count) {
                 MR_LongLval     long_locn;
 
-                long_locn.MR_long_lval =
-                    MR_long_desc_var_locn(label_layout, i).MR_long_lval;
+                long_locn = MR_long_desc_var_locn(label_layout, i);
                 return MR_lookup_long_lval_base(long_locn,
                     saved_regs, base_sp, base_curfr, succeeded);
             } else {
                 MR_ShortLval    short_locn;
 
-                short_locn = MR_short_desc_var_locn(label_layout, i);
+                short_locn = MR_short_desc_var_locn(label_layout,
+                    i - long_var_count);
                 return MR_lookup_short_lval_base(short_locn,
                     saved_regs, base_sp, base_curfr, succeeded);
             }

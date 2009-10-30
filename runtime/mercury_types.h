@@ -247,7 +247,6 @@ typedef struct MR_ProfilingMetrics_Struct       MR_ProfilingMetrics;
 
 typedef struct MR_CallSiteDynList_Struct        MR_CallSiteDynList;
 
-typedef struct MR_LongLval_Struct               MR_LongLval;
 typedef struct MR_ProcLayout_Struct             MR_ProcLayout;
 typedef struct MR_ModuleCommonLayout_Struct     MR_ModuleCommonLayout;
 typedef struct MR_ModuleLayout_Struct           MR_ModuleLayout;

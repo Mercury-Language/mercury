@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2008 The University of Melbourne.
+** Copyright (C) 1997-2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -64,7 +64,7 @@
 */
 
 #define MR_GRADE_PART_0 v15_
-#define MR_GRADE_EXEC_TRACE_VERSION_NO  8
+#define MR_GRADE_EXEC_TRACE_VERSION_NO  9
 #define MR_GRADE_DEEP_PROF_VERSION_NO   3
 
 #ifdef MR_HIGHLEVEL_CODE

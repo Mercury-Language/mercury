@@ -90,9 +90,9 @@ convert_pseudo_type_info(Pseudo, !StaticCellInfo, Rval, LldsType) :-
         LldsType = lt_integer
     ;
         Pseudo = plain_arity_zero_pseudo_type_info(RttiTypeCtor),
-        DataAddr = rtti_addr(
+        DataId = rtti_data_id(
             ctor_rtti_id(RttiTypeCtor, type_ctor_pseudo_type_info(Pseudo))),
-        Rval = const(llconst_data_addr(DataAddr, no)),
+        Rval = const(llconst_data_addr(DataId, no)),
         LldsType = lt_data_ptr
     ;
         Pseudo = plain_pseudo_type_info(RttiTypeCtor, Args),
@@ -114,9 +114,9 @@ convert_pseudo_type_info(Pseudo, !StaticCellInfo, Rval, LldsType) :-
 convert_plain_type_info(TypeInfo, !StaticCellInfo, Rval, LldsType) :-
     (
         TypeInfo = plain_arity_zero_type_info(RttiTypeCtor),
-        DataAddr = rtti_addr(ctor_rtti_id(RttiTypeCtor,
+        DataId = rtti_data_id(ctor_rtti_id(RttiTypeCtor,
             type_ctor_type_info(TypeInfo))),
-        Rval = const(llconst_data_addr(DataAddr, no)),
+        Rval = const(llconst_data_addr(DataId, no)),
         LldsType = lt_data_ptr
     ;
         TypeInfo = plain_type_info(RttiTypeCtor, Args),
@@ -138,9 +138,9 @@ convert_plain_type_info(TypeInfo, !StaticCellInfo, Rval, LldsType) :-
 
 convert_compound_pseudo_type_info(RttiTypeCtor, ArgRvals0, Args,
         !StaticCellInfo, Rval, LldsType) :-
-    TypeCtorInfoDataAddr = rtti_addr(
+    TypeCtorInfoDataId = rtti_data_id(
         ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info)),
-    TypeCtorInfoRval = const(llconst_data_addr(TypeCtorInfoDataAddr, no)),
+    TypeCtorInfoRval = const(llconst_data_addr(TypeCtorInfoDataId, no)),
     LldsType = lt_data_ptr,
     list.map_foldl((pred(A::in, AR::out, SCI0::in, SCI::out) is det :-
         (
@@ -153,8 +153,8 @@ convert_compound_pseudo_type_info(RttiTypeCtor, ArgRvals0, Args,
     ), Args, ArgRvals1, !StaticCellInfo),
     list.append(ArgRvals0, ArgRvals1, ArgRvals),
     add_scalar_static_cell_natural_types([TypeCtorInfoRval | ArgRvals],
-        DataAddr, !StaticCellInfo),
-    Rval = const(llconst_data_addr(DataAddr, no)).
+        DataId, !StaticCellInfo),
+    Rval = const(llconst_data_addr(DataId, no)).
 
 :- pred convert_compound_type_info(rtti_type_ctor::in, list(rval)::in,
     list(rtti_type_info)::in, static_cell_info::in, static_cell_info::out,
@@ -164,17 +164,17 @@ convert_compound_type_info(RttiTypeCtor, ArgRvals0, Args, !StaticCellInfo,
         Rval, LldsType) :-
     TypeCtorInfoData = type_ctor_type_info(
         plain_arity_zero_type_info(RttiTypeCtor)),
-    TypeCtorInfoDataAddr = rtti_addr(
+    TypeCtorInfoDataId = rtti_data_id(
         ctor_rtti_id(RttiTypeCtor, TypeCtorInfoData)),
-    TypeCtorInfoRval = const(llconst_data_addr(TypeCtorInfoDataAddr, no)),
+    TypeCtorInfoRval = const(llconst_data_addr(TypeCtorInfoDataId, no)),
     LldsType = lt_data_ptr,
     list.map_foldl((pred(A::in, AR::out, SCI0::in, SCI::out) is det :-
         convert_plain_type_info(A, SCI0, SCI, AR, _LldsType)
     ), Args, ArgRvals1, !StaticCellInfo),
     list.append(ArgRvals0, ArgRvals1, ArgRvals),
     add_scalar_static_cell_natural_types([TypeCtorInfoRval | ArgRvals],
-        DataAddr, !StaticCellInfo),
-    Rval = const(llconst_data_addr(DataAddr, no)).
+        DataId, !StaticCellInfo),
+    Rval = const(llconst_data_addr(DataId, no)).
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_pseudo_type_info.

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1994-2007 The University of Melbourne.
+** Copyright (C) 1994-2007, 2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -277,6 +277,7 @@ typedef struct {
 **
 ** this_context Points to the "backing store" for the context currently
 **              executing on this engine.
+**
 ** context      Stores all the context information for the context currently
 **              executing in this engine.
 **

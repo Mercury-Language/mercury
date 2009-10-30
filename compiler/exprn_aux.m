@@ -78,15 +78,15 @@
     % and return a list of the code and data addresses that it references.
     %
 :- pred rval_list_addrs(list(rval)::in,
-    list(code_addr)::out, list(data_addr)::out) is det.
+    list(code_addr)::out, list(data_id)::out) is det.
 
 :- pred lval_list_addrs(list(lval)::in,
-    list(code_addr)::out, list(data_addr)::out) is det.
+    list(code_addr)::out, list(data_id)::out) is det.
 
-:- pred rval_addrs(rval::in, list(code_addr)::out, list(data_addr)::out)
+:- pred rval_addrs(rval::in, list(code_addr)::out, list(data_id)::out)
     is det.
 
-:- pred lval_addrs(lval::in, list(code_addr)::out, list(data_addr)::out)
+:- pred lval_addrs(lval::in, list(code_addr)::out, list(data_id)::out)
     is det.
 
 :- func var_lval_to_rval(prog_var, lval) = rval.
@@ -193,10 +193,10 @@ vars_in_rval(mkword(_, Rval), Vars) :-
 vars_in_rval(const(_Conts), []).
 vars_in_rval(unop(_Unop, Rval), Vars) :-
     vars_in_rval(Rval, Vars).
-vars_in_rval(binop(_Binop, Rval0, Rval1), Vars) :-
-    vars_in_rval(Rval0, Vars0),
-    vars_in_rval(Rval1, Vars1),
-    list.append(Vars0, Vars1, Vars).
+vars_in_rval(binop(_Binop, RvalA, RvalB), Vars) :-
+    vars_in_rval(RvalA, VarsA),
+    vars_in_rval(RvalB, VarsB),
+    Vars = VarsA ++ VarsB.
 vars_in_rval(mem_addr(MemRef), Vars) :-
     vars_in_mem_ref(MemRef, Vars).
 
@@ -221,10 +221,10 @@ vars_in_lval(succfr_slot(Rval), Vars) :-
     vars_in_rval(Rval, Vars).
 vars_in_lval(prevfr_slot(Rval), Vars) :-
     vars_in_rval(Rval, Vars).
-vars_in_lval(field(_MaybeTag, Rval0, Rval1), Vars) :-
-    vars_in_rval(Rval0, Vars0),
-    vars_in_rval(Rval1, Vars1),
-    list.append(Vars0, Vars1, Vars).
+vars_in_lval(field(_MaybeTag, RvalA, RvalB), Vars) :-
+    vars_in_rval(RvalA, VarsA),
+    vars_in_rval(RvalB, VarsB),
+    Vars = VarsA ++ VarsB.
 vars_in_lval(mem_ref(Rval), Vars) :-
     vars_in_rval(Rval, Vars).
 vars_in_lval(global_var_ref(_), []).
@@ -795,31 +795,31 @@ simplify_arg(MaybeRval0, MaybeRval) :-
 
 %-----------------------------------------------------------------------------%
 
-rval_addrs(lval(Lval), CodeAddrs, DataAddrs) :-
-    lval_addrs(Lval, CodeAddrs, DataAddrs).
+rval_addrs(lval(Lval), CodeAddrs, DataIds) :-
+    lval_addrs(Lval, CodeAddrs, DataIds).
 rval_addrs(var(_Var), [], []).
-rval_addrs(mkword(_Tag, Rval), CodeAddrs, DataAddrs) :-
-    rval_addrs(Rval, CodeAddrs, DataAddrs).
-rval_addrs(const(Const), CodeAddrs, DataAddrs) :-
+rval_addrs(mkword(_Tag, Rval), CodeAddrs, DataIds) :-
+    rval_addrs(Rval, CodeAddrs, DataIds).
+rval_addrs(const(Const), CodeAddrs, DataIds) :-
     ( Const = llconst_code_addr(CodeAddress) ->
         CodeAddrs = [CodeAddress],
-        DataAddrs = []
-    ; Const = llconst_data_addr(DataAddress, _) ->
+        DataIds = []
+    ; Const = llconst_data_addr(DataId, _) ->
         CodeAddrs = [],
-        DataAddrs = [DataAddress]
+        DataIds = [DataId]
     ;
         CodeAddrs = [],
-        DataAddrs = []
+        DataIds = []
     ).
-rval_addrs(unop(_Unop, Rval), CodeAddrs, DataAddrs) :-
-    rval_addrs(Rval, CodeAddrs, DataAddrs).
-rval_addrs(binop(_Binop, Rval1, Rval2), CodeAddrs, DataAddrs) :-
-    rval_addrs(Rval1, CodeAddrs1, DataAddrs1),
-    rval_addrs(Rval2, CodeAddrs2, DataAddrs2),
-    list.append(CodeAddrs1, CodeAddrs2, CodeAddrs),
-    list.append(DataAddrs1, DataAddrs2, DataAddrs).
-rval_addrs(mem_addr(Rval), CodeAddrs, DataAddrs) :-
-    mem_ref_addrs(Rval, CodeAddrs, DataAddrs).
+rval_addrs(unop(_Unop, Rval), CodeAddrs, DataIds) :-
+    rval_addrs(Rval, CodeAddrs, DataIds).
+rval_addrs(binop(_Binop, RvalA, RvalB), CodeAddrs, DataIds) :-
+    rval_addrs(RvalA, CodeAddrsA, DataIdsA),
+    rval_addrs(RvalB, CodeAddrsB, DataIdsB),
+    CodeAddrs = CodeAddrsA ++ CodeAddrsB,
+    DataIds = DataIdsA ++ DataIdsB.
+rval_addrs(mem_addr(Rval), CodeAddrs, DataIds) :-
+    mem_ref_addrs(Rval, CodeAddrs, DataIds).
 
 lval_addrs(reg(_Type, _RegNum), [], []).
 lval_addrs(stackvar(_SlotNum), [], []).
@@ -828,69 +828,69 @@ lval_addrs(framevar(_SlotNum), [], []).
 lval_addrs(succip, [], []).
 lval_addrs(maxfr, [], []).
 lval_addrs(curfr, [], []).
-lval_addrs(prevfr_slot(Rval), CodeAddrs, DataAddrs) :-
-    rval_addrs(Rval, CodeAddrs, DataAddrs).
-lval_addrs(succfr_slot(Rval), CodeAddrs, DataAddrs) :-
-    rval_addrs(Rval, CodeAddrs, DataAddrs).
-lval_addrs(redofr_slot(Rval), CodeAddrs, DataAddrs) :-
-    rval_addrs(Rval, CodeAddrs, DataAddrs).
-lval_addrs(redoip_slot(Rval), CodeAddrs, DataAddrs) :-
-    rval_addrs(Rval, CodeAddrs, DataAddrs).
-lval_addrs(succip_slot(Rval), CodeAddrs, DataAddrs) :-
-    rval_addrs(Rval, CodeAddrs, DataAddrs).
+lval_addrs(prevfr_slot(Rval), CodeAddrs, DataIds) :-
+    rval_addrs(Rval, CodeAddrs, DataIds).
+lval_addrs(succfr_slot(Rval), CodeAddrs, DataIds) :-
+    rval_addrs(Rval, CodeAddrs, DataIds).
+lval_addrs(redofr_slot(Rval), CodeAddrs, DataIds) :-
+    rval_addrs(Rval, CodeAddrs, DataIds).
+lval_addrs(redoip_slot(Rval), CodeAddrs, DataIds) :-
+    rval_addrs(Rval, CodeAddrs, DataIds).
+lval_addrs(succip_slot(Rval), CodeAddrs, DataIds) :-
+    rval_addrs(Rval, CodeAddrs, DataIds).
 lval_addrs(hp, [], []).
 lval_addrs(sp, [], []).
 lval_addrs(parent_sp, [], []).
-lval_addrs(field(_Tag, Rval1, Rval2), CodeAddrs, DataAddrs) :-
-    rval_addrs(Rval1, CodeAddrs1, DataAddrs1),
-    rval_addrs(Rval2, CodeAddrs2, DataAddrs2),
-    list.append(CodeAddrs1, CodeAddrs2, CodeAddrs),
-    list.append(DataAddrs1, DataAddrs2, DataAddrs).
+lval_addrs(field(_Tag, RvalA, RvalB), CodeAddrs, DataIds) :-
+    rval_addrs(RvalA, CodeAddrsA, DataIdsA),
+    rval_addrs(RvalB, CodeAddrsB, DataIdsB),
+    CodeAddrs = CodeAddrsA ++ CodeAddrsB,
+    DataIds = DataIdsA ++ DataIdsB.
 lval_addrs(lvar(_Var), [], []).
 lval_addrs(temp(_Type, _TmpNum), [], []).
-lval_addrs(mem_ref(Rval), CodeAddrs, DataAddrs) :-
-    rval_addrs(Rval, CodeAddrs, DataAddrs).
+lval_addrs(mem_ref(Rval), CodeAddrs, DataIds) :-
+    rval_addrs(Rval, CodeAddrs, DataIds).
 lval_addrs(global_var_ref(_), [], []).
 
 rval_list_addrs([], [], []).
-rval_list_addrs([Rval | Rvals], CodeAddrs, DataAddrs) :-
-    rval_addrs(Rval, CodeAddrs0, DataAddrs0),
-    rval_list_addrs(Rvals, CodeAddrs1, DataAddrs1),
-    list.append(CodeAddrs0, CodeAddrs1, CodeAddrs),
-    list.append(DataAddrs0, DataAddrs1, DataAddrs).
+rval_list_addrs([Rval | Rvals], CodeAddrs, DataIds) :-
+    rval_addrs(Rval, HeadCodeAddrs, HeadDataIds),
+    rval_list_addrs(Rvals, TailCodeAddrs, TailDataIds),
+    CodeAddrs = HeadCodeAddrs ++ TailCodeAddrs,
+    DataIds = HeadDataIds ++ TailDataIds.
 
 lval_list_addrs([], [], []).
-lval_list_addrs([Lval | Lvals], CodeAddrs, DataAddrs) :-
-    lval_addrs(Lval, CodeAddrs0, DataAddrs0),
-    lval_list_addrs(Lvals, CodeAddrs1, DataAddrs1),
-    list.append(CodeAddrs0, CodeAddrs1, CodeAddrs),
-    list.append(DataAddrs0, DataAddrs1, DataAddrs).
+lval_list_addrs([Lval | Lvals], CodeAddrs, DataIds) :-
+    lval_addrs(Lval, HeadCodeAddrs, HeadDataIds),
+    lval_list_addrs(Lvals, TailCodeAddrs, TailDataIds),
+    CodeAddrs = HeadCodeAddrs ++ TailCodeAddrs,
+    DataIds = HeadDataIds ++ TailDataIds.
 
 :- pred mem_ref_addrs(mem_ref::in,
-    list(code_addr)::out, list(data_addr)::out) is det.
+    list(code_addr)::out, list(data_id)::out) is det.
 
 mem_ref_addrs(stackvar_ref(_SlotNum), [], []).
 mem_ref_addrs(framevar_ref(_SlotNum), [], []).
-mem_ref_addrs(heap_ref(Rval, _Tag, _FieldNum), CodeAddrs, DataAddrs) :-
-    rval_addrs(Rval, CodeAddrs, DataAddrs).
+mem_ref_addrs(heap_ref(Rval, _Tag, _FieldNum), CodeAddrs, DataIds) :-
+    rval_addrs(Rval, CodeAddrs, DataIds).
 
     % Give a list of maybe(rval), return a list of the code and data
     % addresses that are referenced by that list.
     %
 :- pred maybe_rval_list_addrs(list(maybe(rval))::in,
-    list(code_addr)::out, list(data_addr)::out) is det.
+    list(code_addr)::out, list(data_id)::out) is det.
 
 maybe_rval_list_addrs([], [], []).
-maybe_rval_list_addrs([MaybeRval | MaybeRvals], CodeAddrs, DataAddrs) :-
+maybe_rval_list_addrs([MaybeRval | MaybeRvals], CodeAddrs, DataIds) :-
     (
         MaybeRval = yes(Rval),
-        rval_addrs(Rval, CodeAddrs0, DataAddrs0),
-        maybe_rval_list_addrs(MaybeRvals, CodeAddrs1, DataAddrs1),
-        list.append(CodeAddrs0, CodeAddrs1, CodeAddrs),
-        list.append(DataAddrs0, DataAddrs1, DataAddrs)
+        rval_addrs(Rval, HeadCodeAddrs, HeadDataIds),
+        maybe_rval_list_addrs(MaybeRvals, TailCodeAddrs, TailDataIds),
+        CodeAddrs = HeadCodeAddrs ++ TailCodeAddrs,
+        DataIds = HeadDataIds ++ TailDataIds
     ;
         MaybeRval = no,
-        maybe_rval_list_addrs(MaybeRvals, CodeAddrs, DataAddrs)
+        maybe_rval_list_addrs(MaybeRvals, CodeAddrs, DataIds)
     ).
 
 var_lval_to_rval(_Var, Lval) = lval(Lval).

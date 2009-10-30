@@ -421,10 +421,6 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
         return "there is no information about live variables";
     }
 
-    if (level_layout->MR_sll_var_nums == NULL) {
-        return "there are no names for the live variables";
-    }
-
     if (! MR_find_context(level_layout, &filename, &linenumber)) {
         filename = "";
         linenumber = 0;
@@ -448,10 +444,10 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
         var_count = MR_all_desc_var_count(level_layout);
     } else {
         /*
-        ** If the count of variables is zero, then the rest of the information
-        ** about the set of live variables (e.g. the type parameter array
-        ** pointer) is not present. Continuing would therefore lead to a
-        ** core dump.
+        ** If the count of variables is negative, then the rest of the
+        ** information about the set of live variables (e.g. the type
+        ** parameter array pointer) is not present. Continuing would
+        ** therefore lead to a core dump.
         **
         ** Instead, we set up the remaining meaningful fields of MR_point.
         */
@@ -460,13 +456,17 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
         return NULL;
     }
 
+    if (var_count > 0 && level_layout->MR_sll_var_nums == NULL) {
+        return "there are no names for the live variables";
+    }
+
     user = level_layout->MR_sll_user_event;
-    if (user != NULL) {
-        user_spec = &MR_user_event_spec(level_layout);
-        attr_count = user_spec->MR_ues_num_attrs;
-    } else {
+    if (user == NULL) {
         user_spec = NULL;
         attr_count = 0;
+    } else {
+        user_spec = &MR_user_event_spec(level_layout);
+        attr_count = user_spec->MR_ues_num_attrs;
     }
 
     total_count = var_count + attr_count;
@@ -640,6 +640,14 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
         }
     }
 
+#ifdef  MR_DEBUG_LVAL_REP
+    printf("var_count encoded %d, long %d, short %d, total %d\n",
+        level_layout->MR_sll_var_count,
+        MR_long_desc_var_count(level_layout),
+        MR_short_desc_var_count(level_layout),
+        var_count);
+#endif
+
     for (i = 0; i < var_count; i++) {
         MR_HLDSVarNum   hlds_var_num;
         int             head_var_num;
@@ -648,6 +656,11 @@ MR_trace_set_level_from_layout(const MR_LabelLayout *level_layout,
 
         hlds_var_num = level_layout->MR_sll_var_nums[i];
         name = MR_hlds_var_name(entry, hlds_var_num);
+
+#ifdef  MR_DEBUG_LVAL_REP
+        printf("i %d, hlds_var_num %d, name %s\n", i, hlds_var_num, name);
+#endif
+
         if (name == NULL || MR_streq(name, "")) {
             /* This value is not a variable or is not named by the user. */
             continue;

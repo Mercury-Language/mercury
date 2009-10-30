@@ -855,11 +855,11 @@ ml_gen_proc_params(PredId, ProcId, FuncParams, !Info) :-
     ).
 
 ml_gen_proc_params_from_rtti(ModuleInfo, RttiProcId) = FuncParams :-
-    HeadVars = RttiProcId ^ proc_headvars,
-    ArgTypes = RttiProcId ^ proc_arg_types,
-    ArgModes = RttiProcId ^ proc_arg_modes,
-    PredOrFunc = RttiProcId ^ pred_or_func,
-    Detism = RttiProcId ^ proc_interface_detism,
+    HeadVars = RttiProcId ^ rpl_proc_headvars,
+    ArgTypes = RttiProcId ^ rpl_proc_arg_types,
+    ArgModes = RttiProcId ^ rpl_proc_arg_modes,
+    PredOrFunc = RttiProcId ^ rpl_pred_or_func,
+    Detism = RttiProcId ^ rpl_proc_interface_detism,
     determinism_to_code_model(Detism, CodeModel),
     HeadVarNames = list.map(
         (func(Var - Name) = Result :-

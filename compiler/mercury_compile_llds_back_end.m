@@ -607,9 +607,14 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
     TypeClassInfoRttiData =
         OldTypeClassInfoRttiData ++ NewTypeClassInfoRttiData,
     stack_layout.generate_llds_layout_data(HLDS, GlobalData0, GlobalData,
-        UserEventVarNums, UserEvents, VarLabelLayouts, NoVarLabelLayouts,
+        PseudoTypeInfos, HLDSVarNums, ShortLocns, LongLocns, 
+        UserEventVarNums, UserEvents,
+        NoVarLabelLayouts, SVarLabelLayouts, LVarLabelLayouts,
         InternalLabelToLayoutMap, ProcLabelToLayoutMap,
-        ProcLayoutDatas, ModuleLayoutDatas, OtherLayoutDatas),
+        CallSites, CoveragePoints, ProcStatics,
+        ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes,
+        TableIoDecls, TableIoDeclMap, ProcEventLayouts,
+        ExecTraces, ProcLayoutDatas, ModuleLayoutDatas),
 
     % Here we perform some optimizations on the LLDS data.
     % XXX This should perhaps be part of backend_pass rather than output_pass.
@@ -624,14 +629,54 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
     % Next we put it all together and output it to one or more C files.
     RttiDatas = TypeCtorRttiData ++ TypeClassInfoRttiData,
     module_info_get_complexity_proc_infos(HLDS, ComplexityProcs),
-    construct_c_file(HLDS, C_InterfaceInfo, Procs, TablingInfoStructs,
-        ScalarCommonCellDatas, VectorCommonCellDatas, RttiDatas,
-        UserEventVarNums, UserEvents, VarLabelLayouts, NoVarLabelLayouts,
+
+    C_InterfaceInfo = foreign_interface_info(ModuleSymName, C_HeaderCode0,
+        C_Includes, C_BodyCode0, _C_ExportDecls, C_ExportDefns),
+    MangledModuleName = sym_name_mangle(ModuleSymName),
+    CModuleName = MangledModuleName ++ "_module",
+    get_c_body_code(C_BodyCode0, C_BodyCode),
+
+    % Split the code up into bite-size chunks for the C compiler.
+    %
+    globals.lookup_int_option(Globals, procs_per_c_function, ProcsPerFunc),
+    ( ProcsPerFunc = 0 ->
+        % ProcsPerFunc = 0 really means infinity -
+        % we store all the procs in a single function.
+        ChunkedModules = [comp_gen_c_module(CModuleName, Procs)]
+    ;
+        list.chunk(Procs, ProcsPerFunc, ChunkedProcs),
+        combine_chunks(ChunkedProcs, CModuleName, ChunkedModules)
+    ),
+    list.map_foldl(make_foreign_import_header_code(Globals), C_Includes,
+        C_IncludeHeaderCode, !IO),
+
+    % The lists are reversed because insertions into them are at the front.
+    % We don't want to put C_LocalHeaderCode between Start and End, because
+    % C_IncludeHeaderCode may include our own header file, which defines
+    % the module's guard macro, which in turn #ifdefs out the stuff between
+    % Start and End.
+    list.filter(foreign_decl_code_is_local, list.reverse(C_HeaderCode0),
+        C_LocalHeaderCode, C_ExportedHeaderCode),
+    make_decl_guards(ModuleSymName, Start, End),
+    C_HeaderCode = list.reverse(C_IncludeHeaderCode) ++
+        C_LocalHeaderCode ++ [Start | C_ExportedHeaderCode] ++ [End],
+
+    module_info_user_init_pred_c_names(HLDS, UserInitPredCNames),
+    module_info_user_final_pred_c_names(HLDS, UserFinalPredCNames),
+
+    CFile = c_file(ModuleSymName, C_HeaderCode, C_BodyCode, C_ExportDefns,
+        TablingInfoStructs, ScalarCommonCellDatas, VectorCommonCellDatas,
+        RttiDatas, PseudoTypeInfos, HLDSVarNums, ShortLocns, LongLocns, 
+        UserEventVarNums, UserEvents,
+        NoVarLabelLayouts, SVarLabelLayouts, LVarLabelLayouts,
         InternalLabelToLayoutMap, ProcLabelToLayoutMap,
-        ProcLayoutDatas, ModuleLayoutDatas, ClosureLayoutDatas,
-        OtherLayoutDatas, ComplexityProcs, CFile, !IO),
-    output_llds_file(Globals, ModuleName, CFile,
-        Verbose, Stats, !IO),
+        CallSites, CoveragePoints, ProcStatics,
+        ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes,
+        TableIoDecls, TableIoDeclMap, ProcEventLayouts, ExecTraces,
+        ProcLayoutDatas, ModuleLayoutDatas, ClosureLayoutDatas, ChunkedModules,
+        UserInitPredCNames, UserFinalPredCNames, ComplexityProcs),
+
+    output_llds_file(Globals, ModuleName, CFile, Verbose, Stats, !IO),
 
     C_InterfaceInfo = foreign_interface_info(_, _, _, _, C_ExportDecls, _),
     export.produce_header_file(HLDS, C_ExportDecls, ModuleName, !IO),
@@ -695,65 +740,6 @@ llds_get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
     Foreign_InterfaceInfo = foreign_interface_info(ModuleName,
         WantedForeignDecls, WantedForeignImports,
         WantedForeignBodys, Foreign_ExportDecls, Foreign_ExportDefns).
-
-    % Split the code up into bite-size chunks for the C compiler.
-    %
-:- pred construct_c_file(module_info::in, foreign_interface_info::in,
-    list(c_procedure)::in, list(tabling_info_struct)::in,
-    list(scalar_common_data_array)::in, list(vector_common_data_array)::in,
-    list(rtti_data)::in, list(maybe(int))::in, list(user_event_data)::in,
-    list(label_layout_vars)::in, list(label_layout_no_vars)::in,
-    map(label, layout_slot_name)::in, map(label, data_addr)::in,
-    list(layout_data)::in, list(layout_data)::in,
-    list(layout_data)::in, list(layout_data)::in,
-    list(complexity_proc_info)::in, c_file::out, io::di, io::uo) is det.
-
-construct_c_file(ModuleInfo, C_InterfaceInfo, Procedures, TablingInfoStructs,
-        ScalarCommonCellDatas, VectorCommonCellDatas, RttiDatas,
-        UserEventVarNums, UserEvents, VarLabelLayouts, NoVarLabelLayouts,
-        InternalLabelToLayoutMap, ProcLabelToLayoutMap,
-        ProcLayoutDatas, ModuleLayoutDatas, ClosureLayoutDatas,
-        OtherLayoutDatas, ComplexityProcs, CFile, !IO) :-
-    C_InterfaceInfo = foreign_interface_info(ModuleSymName, C_HeaderCode0,
-        C_Includes, C_BodyCode0, _C_ExportDecls, C_ExportDefns),
-    MangledModuleName = sym_name_mangle(ModuleSymName),
-    ModuleName = MangledModuleName ++ "_module",
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_int_option(Globals, procs_per_c_function, ProcsPerFunc),
-    get_c_body_code(C_BodyCode0, C_BodyCode),
-    ( ProcsPerFunc = 0 ->
-        % ProcsPerFunc = 0 really means infinity -
-        % we store all the procs in a single function.
-        ChunkedModules = [comp_gen_c_module(ModuleName, Procedures)]
-    ;
-        list.chunk(Procedures, ProcsPerFunc, ChunkedProcs),
-        combine_chunks(ChunkedProcs, ModuleName, ChunkedModules)
-    ),
-    list.map_foldl(make_foreign_import_header_code(Globals), C_Includes,
-        C_IncludeHeaderCode, !IO),
-
-    % The lists are reversed because insertions into them are at the front.
-    % We don't want to put C_LocalHeaderCode between Start and End, because
-    % C_IncludeHeaderCode may include our own header file, which defines
-    % the module's guard macro, which in turn #ifdefs out the stuff between
-    % Start and End.
-    list.filter(foreign_decl_code_is_local, list.reverse(C_HeaderCode0),
-        C_LocalHeaderCode, C_ExportedHeaderCode),
-    make_decl_guards(ModuleSymName, Start, End),
-    C_HeaderCode = list.reverse(C_IncludeHeaderCode) ++
-        C_LocalHeaderCode ++ [Start | C_ExportedHeaderCode] ++ [End],
-
-    module_info_user_init_pred_c_names(ModuleInfo, UserInitPredCNames),
-    module_info_user_final_pred_c_names(ModuleInfo, UserFinalPredCNames),
-
-    CFile = c_file(ModuleSymName, C_HeaderCode, C_BodyCode, C_ExportDefns,
-        TablingInfoStructs, ScalarCommonCellDatas, VectorCommonCellDatas,
-        RttiDatas, UserEventVarNums, UserEvents,
-        VarLabelLayouts, NoVarLabelLayouts,
-        InternalLabelToLayoutMap, ProcLabelToLayoutMap,
-        ProcLayoutDatas, ModuleLayoutDatas, ClosureLayoutDatas,
-        OtherLayoutDatas, ChunkedModules,
-        UserInitPredCNames, UserFinalPredCNames, ComplexityProcs).
 
 :- pred foreign_decl_code_is_local(foreign_decl_code::in) is semidet.
 

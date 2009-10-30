@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -108,7 +108,7 @@ make_entry_label(ModuleInfo, PredId, ProcId, Immed) = ProcAddr :-
     ProcAddr = make_entry_label_from_rtti(RttiProcLabel, Immed).
 
 make_entry_label_from_rtti(RttiProcLabel, Immed) = ProcAddr :-
-    ProcIsImported = RttiProcLabel ^ proc_is_imported,
+    ProcIsImported = RttiProcLabel ^ rpl_proc_is_imported,
     (
         ProcIsImported = yes,
         ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
@@ -132,7 +132,7 @@ make_local_entry_label_from_rtti(RttiProcLabel, Immed) = Label :-
         % If we want to define the label or use it to put it into a data
         % structure, a label that is usable only within the current C module
         % won't do.
-        ProcIsExported = RttiProcLabel ^ proc_is_exported,
+        ProcIsExported = RttiProcLabel ^ rpl_proc_is_exported,
         (
             ProcIsExported = yes,
             EntryType = entry_label_exported
@@ -144,7 +144,8 @@ make_local_entry_label_from_rtti(RttiProcLabel, Immed) = Label :-
     ;
         Immed = yes(ProcsPerFunc - proc(CurPredId, CurProcId)),
         Label = choose_local_label_type(ProcsPerFunc, CurPredId, CurProcId,
-            RttiProcLabel ^ pred_id, RttiProcLabel ^ proc_id, ProcLabel)
+            RttiProcLabel ^ rpl_pred_id, RttiProcLabel ^ rpl_proc_id,
+            ProcLabel)
     ).
 
 :- func choose_local_label_type(int, pred_id, proc_id, pred_id, proc_id,

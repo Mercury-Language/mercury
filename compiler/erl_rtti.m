@@ -287,13 +287,13 @@ rtti_data_to_elds(ModuleInfo, RttiData, RttiDefns) :-
 :- pred erl_gen_method_wrapper(module_info::in, int::in, rtti_proc_label::in,
     elds_expr::out, prog_varset::in, prog_varset::out) is det.
 
-erl_gen_method_wrapper(ModuleInfo, NumExtra, RttiProcId, WrapperFun,
+erl_gen_method_wrapper(ModuleInfo, NumExtra, RttiProcLabel, WrapperFun,
         !VarSet) :-
-    PredId = RttiProcId ^ pred_id,
-    ProcId = RttiProcId ^ proc_id,
-    ArgTypes = RttiProcId ^ proc_arg_types,
-    ArgModes = RttiProcId ^ proc_arg_modes,
-    Detism = RttiProcId ^ proc_interface_detism,
+    PredId = RttiProcLabel ^ rpl_pred_id,
+    ProcId = RttiProcLabel ^ rpl_proc_id,
+    ArgTypes = RttiProcLabel ^ rpl_proc_arg_types,
+    ArgModes = RttiProcLabel ^ rpl_proc_arg_modes,
+    Detism = RttiProcLabel ^ rpl_proc_interface_detism,
 
     % We can't store the address of the typeclass method directly in the
     % base_typeclass_info; instead, we need to generate a wrapper function
@@ -657,24 +657,24 @@ erlang_type_ctor_rep(erlang_impl_artifact(erlang_impl_ctor_ticket)) =
 :- pred gen_init_special_pred(module_info::in, maybe(rtti_proc_label)::in,
     elds_expr::out, prog_varset::in, prog_varset::out) is det.
 
-gen_init_special_pred(ModuleInfo, MaybeRttiProcId, Expr, !VarSet) :-
+gen_init_special_pred(ModuleInfo, MaybeRttiProcLabel, Expr, !VarSet) :-
     (
-        MaybeRttiProcId = yes(RttiProcId),
-        erl_gen_special_pred_wrapper(ModuleInfo, RttiProcId, Expr, !VarSet)
+        MaybeRttiProcLabel = yes(RttiProcLabel),
+        erl_gen_special_pred_wrapper(ModuleInfo, RttiProcLabel, Expr, !VarSet)
     ;
-        MaybeRttiProcId = no,
+        MaybeRttiProcLabel = no,
         unexpected(this_file, "gen_init_special_pred: no special pred")
     ).
 
 :- pred erl_gen_special_pred_wrapper(module_info::in, rtti_proc_label::in,
     elds_expr::out, prog_varset::in, prog_varset::out) is det.
 
-erl_gen_special_pred_wrapper(ModuleInfo, RttiProcId, WrapperFun, !VarSet) :-
-    PredId = RttiProcId ^ pred_id,
-    ProcId = RttiProcId ^ proc_id,
-    ArgTypes = RttiProcId ^ proc_arg_types,
-    ArgModes = RttiProcId ^ proc_arg_modes,
-    Detism = RttiProcId ^ proc_interface_detism,
+erl_gen_special_pred_wrapper(ModuleInfo, RttiProcLabel, WrapperFun, !VarSet) :-
+    PredId = RttiProcLabel ^ rpl_pred_id,
+    ProcId = RttiProcLabel ^ rpl_proc_id,
+    ArgTypes = RttiProcLabel ^ rpl_proc_arg_types,
+    ArgModes = RttiProcLabel ^ rpl_proc_arg_modes,
+    Detism = RttiProcLabel ^ rpl_proc_interface_detism,
 
     % Create the variable list.
     svvarset.new_vars(list.length(ArgTypes), Ws, !VarSet),

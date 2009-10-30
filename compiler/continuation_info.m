@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000,2002-2008 The University of Melbourne.
+% Copyright (C) 1997-2000,2002-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -152,8 +152,15 @@
                 pli_need_all_names      :: bool,
                 % True iff we need the names of all the variables.
 
-                pli_deep_prof           :: maybe(proc_layout_proc_static)
-        ).
+                pli_deep_prof           :: maybe(proc_deep_prof_info)
+            ).
+
+:- type proc_deep_prof_info
+    --->    proc_deep_prof_info(
+                pdpi_proc_static        :: hlds_proc_static,
+                pdpi_excp_slots         :: deep_excp_slots,
+                pdpi_orig_body          :: deep_original_body
+            ).
 
 :- type proc_layout_table_info
     --->    proc_table_io_decl(

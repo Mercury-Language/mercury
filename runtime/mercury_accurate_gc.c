@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1998-2007 The University of Melbourne.
+** Copyright (C) 1998-2007, 2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -353,8 +353,8 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
 #endif
 
     /* 
-    ** If we have already scheduled a garbage collection, undo the
-    ** last change, and do a new one.
+    ** If we have already scheduled a garbage collection, undo the last change,
+    ** and do a new one.
     */
     if (gc_scheduled) {
 #ifdef MR_DEBUG_AGC_SCHEDULING
@@ -384,20 +384,18 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
     } else {
         callee_was_model_semi = MR_FALSE;
         /*
-        ** XXX we ought to also overwrite the redoip,
-        **     otherwise we might miss failure-driven loops
-        **     which don't contain any returns.
+        ** XXX we ought to also overwrite the redoip, otherwise we might miss
+        ** failure-driven loops which don't contain any returns.
         */
         /*
         ** Save the old succip and its location.
         **
-        ** Note that curfr always points to an ordinary procedure
-        ** frame, never to a temp frame, so it is safe to access
-        ** the succip slot of that frame without checking what kind
-        ** of frame it is.
+        ** Note that curfr always points to an ordinary procedure frame,
+        ** never to a temp frame, so it is safe to access the succip slot
+        ** of that frame without checking what kind of frame it is.
         */
-        assert(location.MR_long_lval == -1);
-            /* succip is saved in succip_slot */
+        assert(location == -1);
+        /* succip is saved in succip_slot */
         saved_success_location = MR_succip_slot_addr(curfr_at_signal);
         saved_success = *saved_success_location;
     }
@@ -410,8 +408,7 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
 #endif
 
     /*
-    ** Replace the old succip with the address of the
-    ** garbage collector.
+    ** Replace the old succip with the address of the garbage collector.
     */
     *saved_success_location = MR_ENTRY(mercury__garbage_collect_0_0);
 
@@ -704,8 +701,8 @@ traverse_frame(MR_bool registers_live, const MR_LabelLayout *label_layout,
         fflush(NULL);
     }
 
-    short_var_count = MR_short_desc_var_count(label_layout);
     long_var_count = MR_long_desc_var_count(label_layout);
+    short_var_count = MR_short_desc_var_count(label_layout);
 
     /* Get the type parameters from the stack frame. */
 
@@ -717,10 +714,10 @@ traverse_frame(MR_bool registers_live, const MR_LabelLayout *label_layout,
     ** caller-save registers (they are all callee-save).
     */
     /*
-    ** XXX this won't handle calls to semidet existentially typed procedures:
-    **      we will try to dereference the type_infos for the
-    **      existential type vars here, even if the success
-    **      indicator is false and hence the registers are not live.
+    ** XXX This won't handle calls to semidet existentially typed procedures.
+    ** We will try to dereference the type_infos for the existential type vars
+    ** here, even if the success indicator is false and hence the registers
+    ** are not live.
     */
     type_params = MR_materialize_type_params_base(label_layout,
         (registers_live ? MR_fake_reg : NULL), stack_pointer, current_frame);
@@ -739,7 +736,7 @@ traverse_frame(MR_bool registers_live, const MR_LabelLayout *label_layout,
         allocated_memory_cells = NULL;
     }
 
-    for (; i < short_var_count; i++) {
+    for (i = 0; i < short_var_count; i++) {
         locn = MR_short_desc_var_locn(label_layout, i);
         pseudo_type_info = MR_var_pti(label_layout, i);
 
