@@ -635,7 +635,7 @@ calc_pred_variables(InitInstmap, FinalInstmap, HldsGoal,
 %-----------------------------------------------------------------------------%
 %
 % Predicates involved in the removal of the dummy predicates
-% "stm_from_inner_to_outer_io" and "stm_from_outer_to_inner_io".
+% "stm_from_inner_to_outer" and "stm_from_outer_to_inner".
 %
 
     % Removes all calls to the dummy predicates in a list of goals.
@@ -2601,9 +2601,9 @@ get_input_output_modes(StmGoalVars, InputModes, OutputModes) :-
 :- func stm_outer_inner = sym_name.
 
 stm_inner_outer =
-    qualified(mercury_stm_builtin_module, "stm_from_inner_to_outer_io").
+    qualified(mercury_stm_builtin_module, "stm_from_inner_to_outer").
 stm_outer_inner =
-    qualified(mercury_stm_builtin_module, "stm_from_outer_to_inner_io").
+    qualified(mercury_stm_builtin_module, "stm_from_outer_to_inner").
 
 %-----------------------------------------------------------------------------%
 
