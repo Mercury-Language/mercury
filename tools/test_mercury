@@ -420,6 +420,7 @@ case $HOST in
     saturn)
         CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
         INSTALL_LIBGRADES="asm_fast.gc  \
+            asm_fast.gc.par             \
             asm_fast.gc.trseg           \
             asm_fast.gc.trseg.debug     \
             asm_fast.gc.trseg.profdeep  \
@@ -497,6 +498,7 @@ case $HOST in
             hlc.gc.trseg.prof           \
             hlc.gc.trseg.memprof        \
             hlc.gc.trseg.ll_debug       \
+            asm_fast.gc.par             \
             asm_fast.gc.tsw.tr.debug    \
             asm_fast.gc.trseg.debug     \
             asm_fast.gc.trseg.decldebug \
