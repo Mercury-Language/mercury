@@ -475,23 +475,10 @@ build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
     set.difference(Liveness, OutVars, ForwardVars0),
 
     % Might need to add more live variables with typeinfo liveness
-    % calculation. We only add the typeinfo variables for nonlocal outputs.
+    % calculation.
 
-    NonLocals = goal_info_get_nonlocals(GoalInfo0),
-    set.intersect(OutVars, NonLocals, NonLocalOutVars),
     maybe_add_typeinfo_liveness(AllocData ^ ad_proc_info,
-        AllocData ^ ad_typeinfo_liveness, NonLocalOutVars,
-        ForwardVars0, ForwardVars),
-
-    % Sanity check.
-    goal_info_get_post_deaths(GoalInfo0, PostDeaths0),
-    set.intersect(PostDeaths0, ForwardVars, Intersect),
-    ( set.empty(Intersect) ->
-        true
-    ;
-        unexpected(this_file,
-            "build_live_sets_in_call: ForwardVars intersects post-death set")
-    ),
+        AllocData ^ ad_typeinfo_liveness, OutVars, ForwardVars0, ForwardVars),
 
     Detism = goal_info_get_determinism(GoalInfo0),
     (
