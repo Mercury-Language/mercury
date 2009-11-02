@@ -32,47 +32,47 @@
 
 :- instance enum(int).
 
-    % less than
+    % Less than.
     %
 :- pred (int::in) < (int::in) is semidet.
 
-    % greater than
+    % Greater than.
     %
 :- pred (int::in) > (int::in) is semidet.
 
-    % less than or equal
+    % Less than or equal.
     %
 :- pred (int::in) =< (int::in) is semidet.
 
-    % greater than or equal
+    % Greater than or equal.
     %
 :- pred (int::in) >= (int::in) is semidet.
 
-    % absolute value
+    % Absolute value.
     %
 :- func int.abs(int) = int.
 :- pred int.abs(int::in, int::out) is det.
 
-    % maximum
+    % Maximum.
     %
 :- func int.max(int, int) = int.
 :- pred int.max(int::in, int::in, int::out) is det.
 
-    % minimum
+    % Minimum.
     %
 :- func int.min(int, int) = int.
 :- pred int.min(int::in, int::in, int::out) is det.
 
-    % exponentiation
-    % int.pow(X, Y, Z): Z is X raised to the Yth power
+    % Exponentiation.
+    % int.pow(X, Y, Z): Z is X raised to the Yth power.
     % Throws a `math.domain_error' exception if Y is negative.
     %
 :- func int.pow(int, int) = int.
 :- pred int.pow(int::in, int::in, int::out) is det.
 
-    % base 2 logarithm
-    % int.log2(X) = N is the least integer such that 2 to the
-    % power N is greater than or equal to X.
+    % Base 2 logarithm.
+    % int.log2(X) = N is the least integer such that 2 to the power N
+    % is greater than or equal to X.
     % Throws a `math.domain_error' exception if X is not positive.
     %
 :- func int.log2(int) = int.
@@ -87,12 +87,12 @@
 
 :- func int.plus(int, int) = int.
 
-    % multiplication
+    % Multiplication.
     %
 :- func (int::in) * (int::in) = (int::uo) is det.
 :- func int.times(int, int) = int.
 
-    % subtraction
+    % Subtraction.
     %
 :- func int - int = int.
 :- mode in  - in  = uo  is det.
@@ -101,23 +101,23 @@
 
 :- func int.minus(int, int) = int.
 
-    % flooring integer division
+    % Flooring integer division.
     % Truncates towards minus infinity, e.g. (-10) div 3 = (-4).
     %
-    % Throws a `math.domain_error' exception if the right operand
-    % is zero. See the comments at the top of math.m to find out how to
-    % disable domain checks.
+    % Throws a `math.domain_error' exception if the right operand is zero.
+    % See the comments at the top of math.m to find out how to disable
+    % domain checks.
     %
 :- func div(int::in, int::in) = (int::uo) is det.
 
-    % truncating integer division
+    % Truncating integer division.
     % Truncates towards zero, e.g. (-10) // 3 = (-3).
     % `div' has nicer mathematical properties for negative operands,
     % but `//' is typically more efficient.
     %
-    % Throws a `math.domain_error' exception if the right operand
-    % is zero. See the comments at the top of math.m to find out how to
-    % disable domain checks.
+    % Throws a `math.domain_error' exception if the right operand is zero.
+    % See the comments at the top of math.m to find out how to disable
+    % domain checks.
     %
 :- func (int::in) // (int::in) = (int::uo) is det.
 
@@ -126,17 +126,17 @@
     %
 :- func (int::in) / (int::in) = (int::uo) is det.
 
-    % unchecked_quotient(X, Y) is the same as X // Y, but the
-    % behaviour is undefined if the right operand is zero.
+    % unchecked_quotient(X, Y) is the same as X // Y, but the behaviour
+    % is undefined if the right operand is zero.
     %
 :- func unchecked_quotient(int::in, int::in) = (int::uo) is det.
 
-    % modulus
+    % Modulus.
     % X mod Y = X - (X div Y) * Y
     %
 :- func (int::in) mod (int::in) = (int::uo) is det.
 
-    % remainder
+    % Remainder.
     % X rem Y = X - (X // Y) * Y
     % `mod' has nicer mathematical properties for negative X,
     % but `rem' is typically more efficient.
@@ -188,30 +188,30 @@
     %
 :- pred odd(int::in) is semidet.
 
-    % bitwise and
+    % Bitwise and.
     %
 :- func (int::in) /\ (int::in) = (int::uo) is det.
 
-    % bitwise or
+    % Bitwise or.
     %
 :- func (int::in) \/ (int::in) = (int::uo) is det.
 
-    % bitwise exclusive or (xor)
+    % Bitwise exclusive or (xor).
     %
 :- func int.xor(int, int) = int.
 :- mode int.xor(in, in) = uo is det.
 :- mode int.xor(in, uo) = in is det.
 :- mode int.xor(uo, in) = in is det.
 
-    % bitwise complement
+    % Bitwise complement.
     %
 :- func \ (int::in) = (int::uo) is det.
 
-    % unary plus
+    % Unary plus.
     %
 :- func + (int::in) = (int::uo) is det.
 
-    % unary minus
+    % Unary minus.
     %
 :- func - (int::in) = (int::uo) is det.
 
@@ -362,11 +362,11 @@
 %-----------------------------------------------------------------------------%
 
     % commutivity and associativity of +
-:- promise all [A, B, C]    ( C = B + A <=> C = A + B ).
+:- promise all [A, B, C]        ( C = B + A <=> C = A + B ).
 :- promise all [A, B, C, ABC]   ( ABC = (A + B) + C <=> ABC = A + (B + C) ).
 
     % commutivity and associativity of *
-:- promise all [A, B, C]    ( C = B * A <=> C = A * B ).
+:- promise all [A, B, C]        ( C = B * A <=> C = A * B ).
 :- promise all [A, B, C, ABC]   ( ABC = (A * B) * C <=> ABC = A * (B * C) ).
 
 %-----------------------------------------------------------------------------%
@@ -376,14 +376,14 @@
     % Returns the largest multiple of bits_per_int which is less than or
     % equal to `Int'.
     %
-    % Used by sparse_bitset.m. Makes it clearer to gcc that parts
-    % of this operation can be optimized into shifts, without
-    % turning up the optimization level.
+    % Used by sparse_bitset.m. Makes it clearer to gcc that parts of this
+    % operation can be optimized into shifts, without turning up the
+    % optimization level.
     %
 :- func floor_to_multiple_of_bits_per_int(int) = int.
 
-    % Used by floor_to_multiple_of_bits_per_int, placed
-    % here to make sure they go in the `.opt' file.
+    % Used by floor_to_multiple_of_bits_per_int, placed here to make sure
+    % they go in the `.opt' file.
 
     % int.quot_bits_per_int(X) = X // bits_per_int.
     %
@@ -393,9 +393,8 @@
     %
 :- func int.times_bits_per_int(int) = int.
 
-    % Used by bitmap.m.  Like the ones above, the purpose of
-    % defining this in C is to make it clearer to gcc that
-    % this can be optimized.
+    % Used by bitmap.m.  Like the ones above, the purpose of defining this in C
+    % is to make it clearer to gcc that this can be optimized.
 
     % int.rem_bits_per_int(X) = X `rem` bits_per_int.
     %

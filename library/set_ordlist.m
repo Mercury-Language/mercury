@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997,1999-2002, 2004-2006, 2008 The University of Melbourne.
+% Copyright (C) 1996-1997,1999-2002, 2004-2006, 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -232,12 +232,11 @@
     % FalsePart consists of those elements of Set for which Pred fails.
     %
 :- pred set_ordlist.divide(pred(T)::in(pred(in) is semidet),
-    set_ordlist(T)::in, set_ordlist(T)::out, set_ordlist(T)::out)
-    is det.
+    set_ordlist(T)::in, set_ordlist(T)::out, set_ordlist(T)::out) is det.
 
     % set_ordlist.divide_by_set(DivideBySet, Set, InPart, OutPart):
     % InPart consists of those elements of Set which are also in DivideBySet;
-    % OutPart consists of those elements of which are not in DivideBySet.
+    % OutPart consists of those elements of Set which are not in DivideBySet.
     %
 :- pred set_ordlist.divide_by_set(set_ordlist(T)::in, set_ordlist(T)::in,
     set_ordlist(T)::out, set_ordlist(T)::out) is det.
@@ -552,18 +551,16 @@ set_ordlist.filter_map(PF, S1) = S2 :-
 set_ordlist.fold(F, S, A) = B :-
     B = list.foldl(F, set_ordlist.to_sorted_list(S), A).
 
-    % The calls to reverse allow us to make set_ordlist.divide_2 tail
-    % recursive. This costs us a higher constant factor, but allows
-    % set_ordlist.divide to work in constant stack space.
 set_ordlist.divide(Pred, sol(Set), sol(TruePart), sol(FalsePart)) :-
+    % The calls to reverse allow us to make divide_2 tail recursive.
+    % This costs us a higher constant factor, but allows divide to work
+    % in constant stack space.
     set_ordlist.divide_2(Pred, Set, [], RevTruePart, [], RevFalsePart),
     list.reverse(RevTruePart, TruePart),
     list.reverse(RevFalsePart, FalsePart).
 
-:- pred set_ordlist.divide_2(pred(T)::in(pred(in) is semidet),
-    list(T)::in,
-    list(T)::in, list(T)::out,
-    list(T)::in, list(T)::out) is det.
+:- pred set_ordlist.divide_2(pred(T)::in(pred(in) is semidet), list(T)::in,
+    list(T)::in, list(T)::out, list(T)::in, list(T)::out) is det.
 
 set_ordlist.divide_2(_Pred, [], RevTrue, RevTrue, RevFalse, RevFalse).
 set_ordlist.divide_2(Pred, [H | T], RevTrue0, RevTrue, RevFalse0, RevFalse) :-
