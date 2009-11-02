@@ -1098,7 +1098,17 @@ polymorphism_process_goal_expr(GoalExpr0, GoalInfo0, Goal, !Info) :-
         % The rest of the cases just process goals recursively.
         (
             GoalExpr0 = conj(ConjType, Goals0),
-            polymorphism_process_conj(Goals0, Goals, !Info),
+            (
+                ConjType = plain_conj,
+                polymorphism_process_plain_conj(Goals0, Goals, !Info)
+            ;
+                ConjType = parallel_conj,
+                get_maps_snapshot(!.Info, InitialSnapshot),
+                polymorphism_process_par_conj(Goals0, Goals, InitialSnapshot,
+                    !Info)
+                % Unlike with disjunctions, we do not have to reset to
+                % InitialSnapshot.
+            ),
             GoalExpr = conj(ConjType, Goals)
         ;
             GoalExpr0 = disj(Goals0),
@@ -1941,13 +1951,30 @@ underscore_and_tvar_name(TypeVarSet, TVar) = TVarName :-
     varset.lookup_name(TypeVarSet, TVar, TVarName0),
     TVarName = "_" ++ TVarName0.
 
-:- pred polymorphism_process_conj(list(hlds_goal)::in,
+:- pred polymorphism_process_plain_conj(list(hlds_goal)::in,
     list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
-polymorphism_process_conj([], [], !Info).
-polymorphism_process_conj([Goal0 | Goals0], [Goal | Goals], !Info) :-
+polymorphism_process_plain_conj([], [], !Info).
+polymorphism_process_plain_conj([Goal0 | Goals0], [Goal | Goals], !Info) :-
     polymorphism_process_goal(Goal0, Goal, !Info),
-    polymorphism_process_conj(Goals0, Goals, !Info).
+    polymorphism_process_plain_conj(Goals0, Goals, !Info).
+
+:- pred polymorphism_process_par_conj(list(hlds_goal)::in,
+    list(hlds_goal)::out, maps_snapshot::in, poly_info::in, poly_info::out)
+    is det.
+
+polymorphism_process_par_conj([], [], _, !Info).
+polymorphism_process_par_conj([Goal0 | Goals0], [Goal | Goals],
+        InitialSnapshot, !Info) :-
+    % Any variable that a later parallel conjunct reuses from an earlier
+    % parallel conjunct (a) will definitely require synchronization, whose
+    % cost will be greater than the cost of building a typeinfo from scratch,
+    % and (b) may drastically reduce the available parallelism, if the earlier
+    % conjunct produces the variable late but the later conjunct requires it
+    % early.
+    set_maps_snapshot(InitialSnapshot, !Info),
+    polymorphism_process_goal(Goal0, Goal, !Info),
+    polymorphism_process_par_conj(Goals0, Goals, InitialSnapshot, !Info).
 
 :- pred polymorphism_process_disj(list(hlds_goal)::in, list(hlds_goal)::out,
     maps_snapshot::in, poly_info::in, poly_info::out) is det.
