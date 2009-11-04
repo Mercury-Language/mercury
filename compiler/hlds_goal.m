@@ -222,6 +222,34 @@
             % the construction of the HLDS, so most passes of the compiler
             % will just call error/1 if they occur.
 
+:- inst goal_expr_unify
+    --->    unify(ground, ground, ground, ground, ground).
+:- inst goal_expr_plain_call
+    --->    plain_call(ground, ground, ground, ground, ground, ground).
+:- inst goal_expr_generic_call
+    --->    generic_call(ground, ground, ground, ground).
+:- inst goal_expr_foreign_proc
+    --->    call_foreign_proc(ground, ground, ground, ground, ground,
+                ground, ground).
+:- inst goal_expr_conj
+    --->    conj(ground, ground).
+:- inst goal_expr_plain_conj
+    --->    conj(bound(plain_conj), ground).
+:- inst goal_expr_parallel_conj
+    --->    conj(bound(parallel_conj), ground).
+:- inst goal_expr_disj
+    --->    disj(ground).
+:- inst goal_expr_switch
+    --->    switch(ground, ground, ground).
+:- inst goal_expr_ite
+    --->    if_then_else(ground, ground, ground, ground).
+:- inst goal_expr_neg
+    --->    negation(ground).
+:- inst goal_expr_scope
+    --->    scope(ground, ground).
+:- inst goal_expr_shorthand
+    --->    shorthand(ground).
+
 :- inst plain_call_expr
     --->    plain_call(ground, ground, ground, ground, ground, ground).
 :- inst plain_call
@@ -1203,6 +1231,19 @@
 :- pred goal_info_init(set(prog_var)::in, instmap_delta::in, determinism::in,
     purity::in, prog_context::in, hlds_goal_info::out) is det.
 
+:- func impure_init_goal_info(set(prog_var), instmap_delta, determinism)
+    = hlds_goal_info.
+:- func impure_reachable_init_goal_info(set(prog_var), determinism)
+    = hlds_goal_info.
+:- func impure_unreachable_init_goal_info(set(prog_var), determinism)
+    = hlds_goal_info.
+
+:- func goal_info_add_nonlocals_make_impure(hlds_goal_info, set(prog_var))
+    = hlds_goal_info.
+:- pred make_impure(hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred add_impurity_if_needed(bool::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+
 % Instead of recording the liveness of every variable at every
 % part of the goal, we just keep track of the initial liveness
 % and the changes in liveness.  Note that when traversing forwards
@@ -1331,6 +1372,12 @@
 :- pred goal_info_remove_feature(goal_feature::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_has_feature(hlds_goal_info::in, goal_feature::in) is semidet.
+
+    % Set the 'goal_is_mdprof_inst' field in the goal_dp_info structure
+    % in the given goal info structure.
+    %
+:- pred goal_info_set_mdprof_inst(goal_is_mdprof_inst::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
 
 :- pred goal_set_context(term.context::in, hlds_goal::in, hlds_goal::out)
     is det.
@@ -1595,6 +1642,7 @@
     %
 :- func fail_goal = hlds_goal.
 :- func fail_goal_expr = hlds_goal_expr.
+:- func fail_goal_info = hlds_goal_info.
 
 :- func fail_goal_with_context(prog_context) = hlds_goal.
 
@@ -1917,6 +1965,53 @@ goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context, GoalInfo) :-
     GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, Purity,
         Features, GoalPath, no_code_gen_info,
         hlds_goal_extra_info_init(Context)).
+
+impure_init_goal_info(NonLocals, InstMapDelta, Determinism) = GoalInfo :-
+    goal_info_init(NonLocals, InstMapDelta, Determinism, purity_impure,
+        GoalInfo0),
+    goal_info_add_feature(feature_not_impure_for_determinism,
+        GoalInfo0, GoalInfo).
+
+impure_reachable_init_goal_info(NonLocals, Determinism) = GoalInfo :-
+    instmap_delta_init_reachable(InstMapDelta),
+    goal_info_init(NonLocals, InstMapDelta, Determinism, purity_impure,
+        GoalInfo).
+
+impure_unreachable_init_goal_info(NonLocals, Determinism) = GoalInfo :-
+    instmap_delta_init_unreachable(InstMapDelta),
+    goal_info_init(NonLocals, InstMapDelta, Determinism, purity_impure,
+        GoalInfo0),
+    goal_info_add_feature(feature_not_impure_for_determinism,
+        GoalInfo0, GoalInfo).
+
+goal_info_add_nonlocals_make_impure(!.GoalInfo, NewNonLocals) = !:GoalInfo :-
+    NonLocals0 = goal_info_get_nonlocals(!.GoalInfo),
+    NonLocals = set.union(NonLocals0, NewNonLocals),
+    goal_info_set_nonlocals(NonLocals, !GoalInfo),
+    make_impure(!GoalInfo).
+
+fail_goal_info = GoalInfo :-
+    instmap_delta_init_unreachable(InstMapDelta),
+    goal_info_init(set.init, InstMapDelta, detism_failure, purity_pure,
+        GoalInfo).
+
+make_impure(!GoalInfo) :-
+    ( goal_info_get_purity(!.GoalInfo) = purity_impure ->
+        % We don't add not_impure_for_determinism, since we want to
+        % keep the existing determinism.
+        true
+    ;
+        goal_info_set_purity(purity_impure, !GoalInfo),
+        goal_info_add_feature(feature_not_impure_for_determinism, !GoalInfo)
+    ).
+
+add_impurity_if_needed(AddedImpurity, !GoalInfo) :-
+    (
+        AddedImpurity = no
+    ;
+        AddedImpurity = yes,
+        make_impure(!GoalInfo)
+    ).
 
 :- func hlds_goal_extra_info_init(term.context) = hlds_goal_extra_info.
 
@@ -2292,6 +2387,19 @@ goal_info_remove_feature(Feature, !GoalInfo) :-
 goal_info_has_feature(GoalInfo, Feature) :-
     Features = goal_info_get_features(GoalInfo),
     set.member(Feature, Features).
+
+%-----------------------------------------------------------------------------%
+
+goal_info_set_mdprof_inst(IsMDProfInst, !GoalInfo) :-
+    goal_info_get_maybe_dp_info(!.GoalInfo) = MaybeDPInfo0,
+    (
+        MaybeDPInfo0 = yes(dp_goal_info(_, DPCoverageInfo)),
+        MaybeDPInfo = yes(dp_goal_info(IsMDProfInst, DPCoverageInfo))
+    ;
+        MaybeDPInfo0 = no,
+        MaybeDPInfo = yes(dp_goal_info(IsMDProfInst, no))
+    ),
+    goal_info_set_maybe_dp_info(MaybeDPInfo, !GoalInfo).
 
 %-----------------------------------------------------------------------------%
 

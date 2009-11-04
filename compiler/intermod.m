@@ -106,6 +106,10 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_goal.
+:- import_module hlds.hlds_out.hlds_out_module.
+:- import_module hlds.hlds_out.hlds_out_pred.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
@@ -1714,7 +1718,7 @@ write_preds(OutInfo, ModuleInfo, [PredId | PredIds], !IO) :-
 
     ( pred_info_get_goal_type(PredInfo, goal_type_promise(PromiseType)) ->
         ( Clauses = [Clause] ->
-            hlds_out.write_promise(OutInfo, PromiseType, 0, ModuleInfo,
+            write_promise(OutInfo, PromiseType, 0, ModuleInfo,
                 PredId, VarSet, no, HeadVars, PredOrFunc, Clause,
                 no_varset_vartypes, !IO)
         ;
@@ -1916,7 +1920,7 @@ write_pragmas(SymName, Arity, [Marker | Markers], PredOrFunc, !IO) :-
     should_output_marker(Marker, ShouldOutput),
     (
         ShouldOutput = yes,
-        hlds_out.marker_name(Marker, Name),
+        marker_name(Marker, Name),
         mercury_output_pragma_decl(SymName, Arity, PredOrFunc, Name, no, !IO)
     ;
         ShouldOutput = no

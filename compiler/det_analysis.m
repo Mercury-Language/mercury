@@ -116,6 +116,8 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_goal.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.file_util.
@@ -124,6 +126,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
@@ -357,7 +360,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
             ExportPieces = [words("Error: "),
                 fixed("`:- pragma foreign_export' declaration"),
                 words("for a procedure that has a determinism of"),
-                fixed(hlds_out.determinism_to_string(NewDetism) ++ ".")],
+                fixed(determinism_to_string(NewDetism) ++ ".")],
             ExportSpec = error_spec(severity_error, phase_detism_check,
                 [simple_msg(PragmaContext, [always(ExportPieces)])]),
             !:Specs = [ExportSpec | !.Specs]
@@ -1791,7 +1794,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
                     suffix(":"), nl]
             ;
                 GoalContext = ccuc_unify(UnifyContext),
-                hlds_out.unify_context_to_pieces(UnifyContext, [], Pieces0)
+                unify_context_to_pieces(UnifyContext, [], Pieces0)
             ),
             (
                 Pieces0 = [],

@@ -80,6 +80,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module libs.compiler_util.
@@ -229,7 +230,7 @@ generate_maybe_pred_code(ModuleInfo, PredId, Predicates, !GlobalData, !IO) :-
         (
             VeryVerbose = yes,
             io.write_string("% Generating code for ", !IO),
-            hlds_out.write_pred_id(ModuleInfo, PredId, !IO),
+            write_pred_id(ModuleInfo, PredId, !IO),
             io.write_string("\n", !IO),
             globals.lookup_bool_option(Globals, detailed_statistics,
                 Statistics),

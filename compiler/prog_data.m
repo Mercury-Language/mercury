@@ -1801,6 +1801,13 @@ equivalent_cons_ids(ConsIdA, ConsIdB) :-
 
 :- type vartypes == map(prog_var, mer_type).
 
+:- type prog_var_set_types
+    --->    prog_var_set_types(prog_varset, vartypes).
+
+:- type maybe_vartypes
+    --->    varset_vartypes(tvarset, vartypes)
+    ;       no_varset_vartypes.
+
 :- type builtin_type
     --->    builtin_type_int
     ;       builtin_type_float

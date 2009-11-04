@@ -147,7 +147,6 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_out.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.make_hlds_error.
@@ -162,7 +161,7 @@
 :- import_module libs.options.
 :- import_module ll_backend.
 :- import_module ll_backend.fact_table.
-:- import_module ll_backend.llds_out.
+:- import_module ll_backend.rtti_out.
 :- import_module ml_backend.
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.mlds_to_c.
@@ -482,7 +481,7 @@ add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name, PredId,
                 fixed("`:- pragma foreign_export' declaration"),
                 words("for a procedure that has"),
                 words("a declared determinism of"),
-                fixed(hlds_out.determinism_to_string(Detism) ++ ".")
+                fixed(determinism_to_string(Detism) ++ ".")
             ],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
@@ -2993,6 +2992,11 @@ table_info_c_global_var_name(ModuleInfo, SimpleCallId, ProcId) = VarName :-
             PredName, Arity, ProcIdInt),
         VarName = proc_tabling_info_var_name(ProcLabel)
     ).
+
+:- func proc_tabling_info_var_name(proc_label) = string.
+
+proc_tabling_info_var_name(ProcLabel) =
+    tabling_struct_data_addr_string(ProcLabel, tabling_info).
 
 :- pred check_pred_args_against_tabling_methods(list(mer_mode)::in,
     list(maybe(arg_tabling_method))::in, module_info::in, int::in,

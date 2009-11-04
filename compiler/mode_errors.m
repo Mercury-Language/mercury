@@ -243,6 +243,9 @@
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_goal.
+:- import_module hlds.hlds_out.hlds_out_mode.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -517,8 +520,7 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
         io.write_string("\t\t", !IO),
         module_info_get_globals(ModuleInfo, Globals),
         OutInfo = init_hlds_out_info(Globals),
-        hlds_out.write_goal(OutInfo, Goal, ModuleInfo, VarSet, no, 2, ".\n",
-            !IO)
+        write_goal(OutInfo, Goal, ModuleInfo, VarSet, no, 2, ".\n", !IO)
     )
 ].
 
@@ -742,7 +744,7 @@ mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts) = Spec :-
     mode_info_get_mode_context(ModeInfo, ModeContext),
     (
         ModeContext = mode_context_call(CallId, _),
-        CallIdStr = hlds_out.call_id_to_string(CallId)
+        CallIdStr = call_id_to_string(CallId)
     ;
         ( ModeContext = mode_context_unify(_, _)
         ; ModeContext = mode_context_uninitialized
@@ -883,13 +885,12 @@ mode_error_unify_pred_to_spec(ModeInfo, X, RHS, Type, PredOrFunc) = Spec :-
         RHSStr = mercury_var_to_string(VarSet, no, Y)
     ;
         RHS = error_at_functor(ConsId, ArgVars),
-        RHSStr = hlds_out.functor_cons_id_to_string(ConsId, ArgVars, VarSet,
+        RHSStr = functor_cons_id_to_string(ConsId, ArgVars, VarSet,
             ModuleInfo, no)
     ;
         RHS = error_at_lambda(ArgVars, ArgModes),
         RHSStr = "lambda(["
-            ++ hlds_out.var_modes_to_string(ArgVars, ArgModes, VarSet,
-                InstVarSet, no)
+            ++ var_modes_to_string(ArgVars, ArgModes, VarSet, InstVarSet, no)
             ++ "] ... )"
     ),
     varset.init(TypeVarSet),
@@ -1025,14 +1026,14 @@ mode_error_unify_var_functor_to_spec(ModeInfo, X, ConsId, Args,
     Pieces1 = [words("mode error in unification of"),
         words(add_quotes(mercury_var_to_string(VarSet, no, X))),
         words("and"),
-        words(add_quotes(hlds_out.functor_cons_id_to_string(ConsId, Args,
+        words(add_quotes(functor_cons_id_to_string(ConsId, Args,
             VarSet, ModuleInfo, no))), suffix("."), nl,
         words("Variable"),
         words(add_quotes(mercury_var_to_string(VarSet, no, X))),
         words("has instantiatedness"),
         words(add_quotes(inst_to_string(ModeInfo, InstX))), suffix(","), nl,
         words("term"),
-        words(add_quotes(hlds_out.functor_cons_id_to_string(ConsId, Args,
+        words(add_quotes(functor_cons_id_to_string(ConsId, Args,
             VarSet, ModuleInfo, no)))],
     ConsIdStr = mercury_cons_id_to_string(ConsId, does_not_need_brackets),
     (
@@ -1130,7 +1131,7 @@ mode_info_context_preamble(ModeInfo) = Pieces :-
 mode_context_to_pieces(mode_context_uninitialized, _Markers) = [].
 mode_context_to_pieces(mode_context_call(CallId, ArgNum), Markers) =
     [words("in"),
-        words(hlds_out.call_arg_id_to_string(CallId, ArgNum, Markers)),
+        words(call_arg_id_to_string(CallId, ArgNum, Markers)),
         suffix(":"), nl].
 mode_context_to_pieces(mode_context_unify(UnifyContext, _Side), _Markers)
         = Pieces :-

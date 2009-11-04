@@ -105,6 +105,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.quantification.
@@ -257,7 +258,7 @@ maybe_tuple_scc(TraceCounts, TuningParams, DepGraph, SCC,
         VeryVerbose = yes,
         io.write_string("% Considering tupling in ", !IO),
         list.foldl((pred(PredProcId::in, IO0::di, IO::uo) is det :-
-            hlds_out.write_pred_proc_id(!.ModuleInfo, PredProcId, IO0, IO)),
+            write_pred_proc_id(!.ModuleInfo, PredProcId, IO0, IO)),
             SCC, !IO),
         io.write_string("\n", !IO)
     ;

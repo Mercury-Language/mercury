@@ -235,19 +235,19 @@
                 % except for the varset and the set of environment variables,
                 % which can be added to.
 
-                module_info         :: module_info,
-                pred_id             :: pred_id,
-                proc_id             :: proc_id,
-                varset              :: prog_varset,
-                var_types           :: vartypes,
+                egi_module_info         :: module_info,
+                egi_pred_id             :: pred_id,
+                egi_proc_id             :: proc_id,
+                egi_varset              :: prog_varset,
+                egi_var_types           :: vartypes,
 
                 % input_vars and output_vars do not include variables of dummy
                 % types.
-                input_vars          :: prog_vars,
-                output_vars         :: prog_vars,
+                egi_input_vars          :: prog_vars,
+                egi_output_vars         :: prog_vars,
 
                 % Set of environment variables used by this procedure.
-                env_var_names       :: set(string)
+                egi_env_var_names       :: set(string)
             ).
 
 erl_gen_info_init(ModuleInfo, PredId, ProcId) = Info :-
@@ -271,16 +271,17 @@ erl_gen_info_init(ModuleInfo, PredId, ProcId) = Info :-
         EnvVars
     ).
 
-erl_gen_info_get_module_info(Info, Info ^ module_info).
-erl_gen_info_get_varset(Info, Info ^ varset).
-erl_gen_info_get_var_types(Info, Info ^ var_types).
-erl_gen_info_get_input_vars(Info, Info ^ input_vars).
-erl_gen_info_get_output_vars(Info, Info ^ output_vars).
+erl_gen_info_get_module_info(Info, Info ^ egi_module_info).
+erl_gen_info_get_varset(Info, Info ^ egi_varset).
+erl_gen_info_get_var_types(Info, Info ^ egi_var_types).
+erl_gen_info_get_input_vars(Info, Info ^ egi_input_vars).
+erl_gen_info_get_output_vars(Info, Info ^ egi_output_vars).
 
 :- pred erl_gen_info_set_varset(prog_varset::in,
     erl_gen_info::in, erl_gen_info::out) is det.
 
-erl_gen_info_set_varset(VarSet, Info, Info ^ varset := VarSet).
+erl_gen_info_set_varset(VarSet, !Info) :-
+    !Info ^ egi_varset := VarSet.
 
 erl_gen_info_new_named_var(Name, NewVar, !Info) :-
     erl_gen_info_get_varset(!.Info, VarSet0),
@@ -312,11 +313,11 @@ erl_variable_type(Info, Var, Type) :-
     map.lookup(VarTypes, Var, Type).
 
 erl_gen_info_add_env_var_name(Name, !Info) :-
-    EnvVarNames0 = !.Info ^ env_var_names,
+    EnvVarNames0 = !.Info ^ egi_env_var_names,
     set.insert(EnvVarNames0, Name, EnvVarNames),
-    !:Info = !.Info ^ env_var_names := EnvVarNames.
+    !Info ^ egi_env_var_names := EnvVarNames.
 
-erl_gen_info_get_env_vars(Info, Info ^ env_var_names).
+erl_gen_info_get_env_vars(Info, Info ^ egi_env_var_names).
 
 %-----------------------------------------------------------------------------%
 %

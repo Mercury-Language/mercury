@@ -146,6 +146,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
@@ -916,16 +917,13 @@ queued_proc_progress_message(ModuleInfo, PredProcId, HowToCheckGoal, !IO) :-
             io.write_string("% Analyzing modes, determinism, " ++
                 "and unique-modes for\n% ", !IO)
         ),
-        hlds_out.write_pred_proc_id(ModuleInfo, PredProcId, !IO),
+        write_pred_proc_id(ModuleInfo, PredProcId, !IO),
         io.write_string("\n", !IO)
-%       /*****
-%       mode_list_get_initial_insts(Modes, ModuleInfo1,
-%           InitialInsts),
+%       mode_list_get_initial_insts(Modes, ModuleInfo1, InitialInsts),
 %       io.write_string("% Initial insts: `", !IO),
 %       varset.init(InstVarSet),
 %       mercury_output_inst_list(InitialInsts, InstVarSet, !IO),
 %       io.write_string("'\n", !IO)
-%       *****/
     ;
         VeryVerbose = no
     ).

@@ -42,6 +42,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
@@ -109,7 +110,7 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo) :-
         VeryVerbose = yes,
         trace [io(!IO)] (
             io.write_string("% Detecting common deconstructions for ", !IO),
-            hlds_out.write_pred_id(!.ModuleInfo, PredId, !IO),
+            write_pred_id(!.ModuleInfo, PredId, !IO),
             io.write_string("\n", !IO)
         )
     ;
@@ -128,7 +129,7 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo) :-
             VeryVerbose = yes,
             trace [io(!IO)] (
                 io.write_string("% Repeating mode check for ", !IO),
-                hlds_out.write_pred_id(!.ModuleInfo, PredId, !IO),
+                write_pred_id(!.ModuleInfo, PredId, !IO),
                 io.write_string("\n", !IO)
             )
         ;
@@ -152,7 +153,7 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo) :-
             VeryVerbose = yes,
             trace [io(!IO)] (
                 io.write_string("% Repeating switch detection for ", !IO),
-                hlds_out.write_pred_id(!.ModuleInfo, PredId, !IO),
+                write_pred_id(!.ModuleInfo, PredId, !IO),
                 io.write_string("\n", !IO)
             )
         ;
@@ -167,7 +168,7 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo) :-
             trace [io(!IO)] (
                 io.write_string("% Repeating common " ++
                     "deconstruction detection for ", !IO),
-                hlds_out.write_pred_id(!.ModuleInfo, PredId, !IO),
+                write_pred_id(!.ModuleInfo, PredId, !IO),
                 io.write_string("\n", !IO)
             )
         ;

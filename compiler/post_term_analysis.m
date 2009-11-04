@@ -39,6 +39,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
@@ -225,7 +226,7 @@ get_user_unify_compare(_ModuleInfo, TypeBody, UnifyCompare) :-
 
 emit_non_term_user_special_warning(Globals, Context, SpecialPred, TypeCtor,
         !IO) :-
-    TypeCtorString = hlds_out.type_ctor_to_string(TypeCtor),
+    TypeCtorString = type_ctor_to_string(TypeCtor),
     ( 
         SpecialPred = spec_pred_unify,
         SpecialPredStr = "equality"
@@ -244,6 +245,7 @@ emit_non_term_user_special_warning(Globals, Context, SpecialPred, TypeCtor,
         fixed(SpecialPredStr ++ " predicate"),
         words("for the type "), fixed(TypeCtorString),
         words("cannot be proven to terminate.")],
+    % ZZZ
     report_warning(Globals, Context, 0, Pieces, !IO).    
 
 %----------------------------------------------------------------------------%

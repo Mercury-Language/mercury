@@ -55,6 +55,7 @@
 :- implementation.
 
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.lp_rational.
@@ -179,7 +180,7 @@ term_iterate_over_abstract_proc(Iteration, Options, ModuleInfo, Proc,
         trace [io(!IO)] (
             io.write(PPId, !IO),
             io.write_string(": ", !IO),
-            hlds_out.write_pred_proc_id(ModuleInfo, PPId, !IO),
+            write_pred_proc_id(ModuleInfo, PPId, !IO),
             io.write_string(" ", !IO),
             write_size_vars(SizeVarSet, HeadVars, !IO),
             io.format("\nIteration %d:\n", [i(Iteration)], !IO),

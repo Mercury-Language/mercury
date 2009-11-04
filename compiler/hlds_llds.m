@@ -26,9 +26,6 @@
 :- import_module maybe.
 :- import_module set.
 
-% The following types are annotations on the HLDS
-% that are used only by the LLDS back-end.
-
 :- type stack_slot
     --->    det_slot(int)
     ;       parent_det_slot(int)
@@ -37,6 +34,8 @@
     % Maps variables to their stack slots.
     %
 :- type stack_slots ==  map(prog_var, stack_slot).
+
+:- func explain_stack_slots(stack_slots, prog_varset) = string.
 
 :- type abs_locn
     --->    any_reg
@@ -47,28 +46,24 @@
 
 :- type abs_follow_vars_map ==  map(prog_var, abs_locn).
 
-:- type abs_follow_vars --->    abs_follow_vars(abs_follow_vars_map, int).
-                                % Advisory information about where variables
-                                % ought to be put next. Variables may or may
-                                % not appear in the map. If they do, then the
-                                % associated locn says where the value of that
-                                % variable ought to be put when it is computed,
-                                % or, if the locn is any_reg, it says that it
-                                % should be put into any available register.
-                                % The integer in the second half of the pair
-                                % gives the number of the first register that
-                                % is not reserved for other purposes, and is
-                                % free to hold such variables.
+    % Advisory information about where variables ought to be put next.
+    % Variables may or may not appear in the map. If they do, then the
+    % associated locn says where the value of that variable ought to be put
+    % when it is computed, or, if the locn is any_reg, it says that it
+    % should be put into any available register. The integer in the
+    % second half of the pair gives the number of the first register that
+    % is not reserved for other purposes, and is free to hold such variables.
+    %
+:- type abs_follow_vars
+    --->    abs_follow_vars(abs_follow_vars_map, int).
 
-:- type abs_store_map ==        map(prog_var, abs_locn).
-                                % Authoritative information about where
-                                % variables must be put at the ends of
-                                % branches of branched control structures.
-                                % However, between the follow_vars and
-                                % and store_alloc passes, these fields
-                                % temporarily hold follow_vars information.
-                                % The final value is not allowed to map any
-                                % variable to any_reg.
+    % Authoritative information about where variables must be put
+    % at the ends of branches of branched control structures.
+    % However, between the follow_vars and and store_alloc passes,
+    % these fields temporarily hold follow_vars information.
+    % The final value is not allowed to map any variable to any_reg.
+    %
+:- type abs_store_map == map(prog_var, abs_locn).
 
     % see compiler/notes/allocation.html for what these alternatives mean
 :- type resume_point
@@ -99,9 +94,9 @@
 
 :- type need_across_call
     --->    need_across_call(
-                call_forward_vars   :: set(prog_var),
-                call_resume_vars    :: set(prog_var),
-                call_nondet_vars    :: set(prog_var)
+                call_forward_vars       :: set(prog_var),
+                call_resume_vars        :: set(prog_var),
+                call_nondet_vars        :: set(prog_var)
             ).
 
     % resume_vars_on_stack is true if the resume point has a stack label.
@@ -115,8 +110,8 @@
 :- type need_in_resume
     --->    need_in_resume(
                 resume_vars_on_stack    :: bool,
-                resume_resume_vars  :: set(prog_var),
-                resume_nondet_vars  :: set(prog_var)
+                resume_resume_vars      :: set(prog_var),
+                resume_nondet_vars      :: set(prog_var)
             ).
 
     % par_conj_engine_vars gives the set of variables that the execution
@@ -289,8 +284,37 @@
 :- import_module list.
 :- import_module pair.
 :- import_module string.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
+
+explain_stack_slots(StackSlots, VarSet) = Explanation :-
+    map.to_assoc_list(StackSlots, StackSlotsList),
+    explain_stack_slots_2(StackSlotsList, VarSet, "", Explanation1),
+    Explanation = "\nStack slot assignments (if any):\n" ++ Explanation1.
+
+:- pred explain_stack_slots_2(assoc_list(prog_var, stack_slot)::in,
+    prog_varset::in, string::in, string::out) is det.
+
+explain_stack_slots_2([], _, !Explanation).
+explain_stack_slots_2([Var - Slot | Rest], VarSet, !Explanation) :-
+    explain_stack_slots_2(Rest, VarSet, !Explanation),
+    (
+        Slot = det_slot(SlotNum),
+        StackStr = "sv"
+    ;
+        Slot = parent_det_slot(SlotNum),
+        StackStr = "parent_sv"
+    ;
+        Slot = nondet_slot(SlotNum),
+        StackStr = "fv"
+    ),
+    int_to_string(SlotNum, SlotStr),
+    varset.lookup_name(VarSet, Var, VarName),
+    string.append_list([VarName, "\t ->\t", StackStr, SlotStr, "\n",
+        !.Explanation], !:Explanation).
+
+%----------------------------------------------------------------------------%
 
     % For the meaning of this type, see the documentation of the
     % maybe_need field of llds_code_gen_details below.

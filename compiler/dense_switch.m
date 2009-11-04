@@ -57,6 +57,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module libs.compiler_util.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.trace_gen.

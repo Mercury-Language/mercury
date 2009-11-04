@@ -61,6 +61,9 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_goal.
+:- import_module hlds.hlds_out.hlds_out_mode.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.instmap.
 :- import_module hlds.instmap.
 :- import_module libs.globals.
@@ -157,11 +160,11 @@ pd_debug_output_version(ModuleInfo, PredProcId, Version, WriteUnfoldedGoal,
     io.write_string(" args: ", !IO),
     mercury_output_vars(VarSet, yes, Args, !IO),
     io.nl(!IO),
-    hlds_out.write_instmap(InstMap1, VarSet, yes, 1, !IO),
+    write_instmap(InstMap1, VarSet, yes, 1, !IO),
     io.nl(!IO),
     module_info_get_globals(ModuleInfo, Globals),
     OutInfo = init_hlds_out_info(Globals),
-    hlds_out.write_goal(OutInfo, Goal, ModuleInfo, VarSet, yes, 1, "\n", !IO),
+    write_goal(OutInfo, Goal, ModuleInfo, VarSet, yes, 1, "\n", !IO),
     io.nl(!IO),
     io.write_string("Parents: ", !IO),
     set.to_sorted_list(Parents, ParentsList),
@@ -171,8 +174,7 @@ pd_debug_output_version(ModuleInfo, PredProcId, Version, WriteUnfoldedGoal,
         WriteUnfoldedGoal = yes,
         proc_info_get_goal(ProcInfo, ProcGoal),
         io.write_string("Unfolded goal\n", !IO),
-        hlds_out.write_goal(OutInfo, ProcGoal, ModuleInfo, VarSet, yes, 1,
-            "\n", !IO),
+        write_goal(OutInfo, ProcGoal, ModuleInfo, VarSet, yes, 1, "\n", !IO),
         io.nl(!IO)
     ;
         WriteUnfoldedGoal = no
@@ -187,8 +189,7 @@ pd_debug_write_instmap(PDInfo, !IO) :-
     pd_info_get_module_info(PDInfo, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, debug_pd, DebugPD),
-    pd_debug_do_io(DebugPD, hlds_out.write_instmap(InstMap, VarSet, yes, 1),
-        !IO).
+    pd_debug_do_io(DebugPD, write_instmap(InstMap, VarSet, yes, 1), !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -226,11 +227,11 @@ pd_debug_output_goal_2(PDInfo, Msg, Goal, !IO) :-
     io.write_string(Msg, !IO),
     goal_util.goal_vars(hlds_goal(GoalExpr, GoalInfo), Vars),
     instmap_restrict(Vars, InstMap, InstMap1),
-    hlds_out.write_instmap(InstMap1, VarSet, yes, 1, !IO),
+    write_instmap(InstMap1, VarSet, yes, 1, !IO),
     io.nl(!IO),
     module_info_get_globals(ModuleInfo, Globals),
     OutInfo = init_hlds_out_info(Globals),
-    hlds_out.write_goal(OutInfo, Goal, ModuleInfo, VarSet, yes, 1, "\n", !IO),
+    write_goal(OutInfo, Goal, ModuleInfo, VarSet, yes, 1, "\n", !IO),
     io.nl(!IO),
     io.flush_output(!IO).
 

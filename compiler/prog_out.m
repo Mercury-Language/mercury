@@ -92,6 +92,10 @@
 :- mode promise_to_string(out) = in is semidet.
 :- mode promise_to_string(out) = out is multi.
 
+:- pred write_type_name(type_ctor::in, io::di, io::uo) is det.
+
+:- func type_name_to_string(type_ctor) = string.
+
 :- pred builtin_type_to_string(builtin_type, string).
 :- mode builtin_type_to_string(in, out) is det.
 :- mode builtin_type_to_string(out, in) is semidet.
@@ -133,10 +137,15 @@
     % Convert an eval_method to a string description.
     %
 :- func eval_method_to_string(eval_method) = string.
+:- pred write_eval_method(eval_method::in, io::di, io::uo) is det.
 
 :- func maybe_arg_tabling_method_to_string(maybe(arg_tabling_method)) = string.
 
 :- func arg_tabling_method_to_string(arg_tabling_method) = string.
+
+:- func determinism_to_string(determinism) = string.
+
+:- func can_fail_to_string(can_fail) = string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -293,6 +302,12 @@ promise_to_string(promise_type_exhaustive) =  "promise_exhaustive".
 promise_to_string(promise_type_exclusive_exhaustive) =
     "promise_exclusive_exhaustive".
 
+write_type_name(type_ctor(Name, _Arity), !IO) :-
+    prog_out.write_sym_name(Name, !IO).
+
+type_name_to_string(type_ctor(Name, _Arity)) =
+    sym_name_to_escaped_string(Name).
+
 builtin_type_to_string(builtin_type_int, "int").
 builtin_type_to_string(builtin_type_float, "float").
 builtin_type_to_string(builtin_type_string, "string").
@@ -394,6 +409,9 @@ eval_method_to_string(eval_table_io(IsDecl, IsUnitize)) = Str :-
     ),
     Str = "table_io(" ++ DeclStr ++ UnitizeStr ++ ")".
 
+write_eval_method(EvalMethod, !IO) :-
+    io.write_string(eval_method_to_string(EvalMethod), !IO).
+
 maybe_arg_tabling_method_to_string(yes(ArgTablingMethod)) =
     arg_tabling_method_to_string(ArgTablingMethod).
 maybe_arg_tabling_method_to_string(no) = "output".
@@ -401,6 +419,18 @@ maybe_arg_tabling_method_to_string(no) = "output".
 arg_tabling_method_to_string(arg_value) = "value".
 arg_tabling_method_to_string(arg_addr) = "addr".
 arg_tabling_method_to_string(arg_promise_implied) = "promise_implied".
+
+determinism_to_string(detism_det) = "det".
+determinism_to_string(detism_semi) = "semidet".
+determinism_to_string(detism_non) = "nondet".
+determinism_to_string(detism_multi) = "multi".
+determinism_to_string(detism_cc_non) = "cc_nondet".
+determinism_to_string(detism_cc_multi) = "cc_multi".
+determinism_to_string(detism_erroneous) = "erroneous".
+determinism_to_string(detism_failure) = "failure".
+
+can_fail_to_string(can_fail) = "can_fail".
+can_fail_to_string(cannot_fail) = "cannot_fail".
 
 %-----------------------------------------------------------------------------%
 

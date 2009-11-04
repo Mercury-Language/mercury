@@ -193,6 +193,8 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_goal.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
@@ -352,8 +354,7 @@ io_maybe_debug_liveness(Message, DebugLiveness, PredIdInt,
         io.write_string(":\n", !IO),
         module_info_get_globals(ModuleInfo, Globals),
         OutInfo = init_hlds_out_info(Globals),
-        hlds_out.write_goal(OutInfo, Goal, ModuleInfo, VarSet, yes, 0, "\n",
-            !IO)
+        write_goal(OutInfo, Goal, ModuleInfo, VarSet, yes, 0, "\n", !IO)
     ;
         true
     ).

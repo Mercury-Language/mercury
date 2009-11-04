@@ -1,0 +1,184 @@
+%----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%----------------------------------------------------------------------------%
+% Copyright (C) 2009 The University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%----------------------------------------------------------------------------%
+%
+% File: llds_out_util.m.
+%
+% This module defines utility routines for printing out LLDS code and data.
+%
+%----------------------------------------------------------------------------%
+
+:- module ll_backend.llds_out.llds_out_util.
+:- interface.
+
+:- import_module backend_libs.rtti.
+:- import_module hlds.hlds_pred.
+:- import_module libs.globals.
+:- import_module libs.trace_params.
+:- import_module ll_backend.layout.
+:- import_module ll_backend.llds.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
+
+:- import_module bool.
+:- import_module io.
+:- import_module map.
+
+%----------------------------------------------------------------------------%
+
+:- type llds_out_info
+    --->    llds_out_info(
+                lout_module_name                :: module_name,
+                lout_mangled_module_name        :: string,
+                lout_internal_label_to_layout   :: map(label,
+                                                    layout_slot_name),
+                lout_entry_label_to_layout      :: map(label, data_id),
+                lout_table_io_decl_map          :: map(pred_proc_id,
+                                                    layout_slot_name),
+                lout_auto_comments              :: bool,
+                lout_line_numbers               :: bool,
+                lout_emit_c_loops               :: bool,
+                lout_generate_bytecode          :: bool,
+                lout_local_thread_engine_base   :: bool,
+                lout_profile_calls              :: bool,
+                lout_profile_time               :: bool,
+                lout_profile_memory             :: bool,
+                lout_profile_deep               :: bool,
+                lout_unboxed_float              :: bool,
+                lout_static_ground_floats       :: bool,
+                lout_use_macro_for_redo_fail    :: bool,
+                lout_trace_level                :: trace_level,
+                lout_globals                    :: globals
+            ).
+
+:- func init_llds_out_info(module_name, globals,
+    map(label, layout_slot_name), map(label, data_id),
+    map(pred_proc_id, layout_slot_name)) = llds_out_info.
+
+:- pred output_set_line_num(llds_out_info::in, prog_context::in,
+    io::di, io::uo) is det.
+
+:- pred output_reset_line_num(llds_out_info::in, io::di, io::uo) is det.
+
+%----------------------------------------------------------------------------%
+
+:- type decl_id
+    --->    decl_float_label(string)
+    ;       decl_common_type(type_num)
+    ;       decl_code_addr(code_addr)
+    ;       decl_rtti_id(rtti_id)
+    ;       decl_layout_id(layout_name)
+    ;       decl_tabling_id(proc_label, proc_tabling_struct_id)
+    ;       decl_foreign_proc_struct(string)
+    ;       decl_c_global_var(c_global_var_ref)
+    ;       decl_type_info_like_struct(int)
+    ;       decl_typeclass_constraint_struct(int).
+
+:- type decl_set.
+
+    % Every time we emit a declaration for a symbol, we insert it into the
+    % set of symbols we've already declared. That way, we avoid generating
+    % the same symbol twice, which would cause an error in the C code.
+
+:- pred decl_set_init(decl_set::out) is det.
+
+:- pred decl_set_insert(decl_id::in, decl_set::in, decl_set::out) is det.
+
+:- pred decl_set_is_member(decl_id::in, decl_set::in) is semidet.
+
+%----------------------------------------------------------------------------%
+
+:- pred output_indent(string::in, string::in, int::in, io::di, io::uo) is det.
+
+%----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module backend_libs.c_util.
+:- import_module libs.options.
+:- import_module parse_tree.prog_foreign.
+
+:- import_module int.
+:- import_module set_tree234.
+:- import_module term.
+
+%----------------------------------------------------------------------------%
+
+init_llds_out_info(ModuleName, Globals,
+        InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoDeclMap)
+        = Info :-
+    MangledModuleName = sym_name_mangle(ModuleName),
+    globals.lookup_bool_option(Globals, auto_comments, AutoComments),
+    globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
+    globals.lookup_bool_option(Globals, emit_c_loops, EmitCLoops),
+    globals.lookup_bool_option(Globals, generate_bytecode, GenerateBytecode),
+    globals.lookup_bool_option(Globals, local_thread_engine_base,
+        LocalThreadEngineBase),
+    globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
+    globals.lookup_bool_option(Globals, profile_time, ProfileTime),
+    globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
+    globals.lookup_bool_option(Globals, profile_deep, ProfileDeep),
+    globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
+    globals.lookup_bool_option(Globals, static_ground_floats,
+        StaticGroundFloats),
+    globals.lookup_bool_option(Globals, use_macro_for_redo_fail,
+        UseMacroForRedoFail),
+    globals.get_trace_level(Globals, TraceLevel),
+    Info = llds_out_info(ModuleName, MangledModuleName,
+        InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoDeclMap,
+        AutoComments, LineNumbers,
+        EmitCLoops, GenerateBytecode, LocalThreadEngineBase,
+        ProfileCalls, ProfileTime, ProfileMemory, ProfileDeep,
+        UnboxedFloat, StaticGroundFloats, UseMacroForRedoFail,
+        TraceLevel, Globals).
+
+output_set_line_num(Info, Context, !IO) :-
+    LineNumbers = Info ^ lout_line_numbers,
+    (
+        LineNumbers = yes,
+        term.context_file(Context, File),
+        term.context_line(Context, Line),
+        c_util.always_set_line_num(File, Line, !IO)
+    ;
+        LineNumbers = no
+    ).
+
+output_reset_line_num(Info, !IO) :-
+    LineNumbers = Info ^ lout_line_numbers,
+    (
+        LineNumbers = yes,
+        c_util.always_reset_line_num(!IO)
+    ;
+        LineNumbers= no
+    ).
+
+%----------------------------------------------------------------------------%
+
+:- type decl_set == set_tree234(decl_id).
+
+decl_set_init(DeclSet) :-
+    DeclSet = set_tree234.init.
+
+decl_set_insert(DeclId, DeclSet0, DeclSet) :-
+    set_tree234.insert(DeclId, DeclSet0, DeclSet).
+
+decl_set_is_member(DeclId, DeclSet) :-
+    set_tree234.contains(DeclSet, DeclId).
+
+%----------------------------------------------------------------------------%
+
+output_indent(FirstIndent, LaterIndent, N0, !IO) :-
+    ( N0 > 0 ->
+        io.write_string(LaterIndent, !IO)
+    ;
+        io.write_string(FirstIndent, !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+:- end_module llds_out_util.
+%---------------------------------------------------------------------------%

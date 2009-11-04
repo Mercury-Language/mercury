@@ -103,6 +103,7 @@
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.compiler_util.

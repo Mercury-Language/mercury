@@ -191,6 +191,7 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -375,13 +376,13 @@ maybe_write_scc_procs(SCC, ModuleInfo, _, !IO) :-
 write_scc_procs_2([], _, !IO).
 write_scc_procs_2([PPId | PPIds], ModuleInfo, !IO) :-
     io.write_char('\t', !IO),
-    hlds_out.write_pred_proc_id(ModuleInfo, PPId, !IO),
+    write_pred_proc_id(ModuleInfo, PPId, !IO),
     io.nl(!IO),
     write_scc_procs_2(PPIds, ModuleInfo, !IO).
 
 maybe_write_proc_name(PPId, String, ModuleInfo, _, !IO) :-
     io.write_string(String, !IO),
-    hlds_out.write_pred_proc_id(ModuleInfo, PPId, !IO),
+    write_pred_proc_id(ModuleInfo, PPId, !IO),
     io.nl(!IO).
 
 write_size_vars(Varset, Vars, !IO) :-

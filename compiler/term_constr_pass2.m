@@ -51,6 +51,7 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.lp_rational.
@@ -667,7 +668,7 @@ write_cycle([], _, !IO).
 write_cycle([Proc | Procs], ModuleInfo, !IO) :-
     io.write_string("\t- ", !IO),
     Proc = real(PredProcId),
-    hlds_out.write_pred_proc_id(ModuleInfo, PredProcId, !IO),
+    write_pred_proc_id(ModuleInfo, PredProcId, !IO),
     io.nl(!IO),
     write_cycle(Procs, ModuleInfo, !IO).
 
@@ -677,7 +678,7 @@ write_cycle([Proc | Procs], ModuleInfo, !IO) :-
 write_edge(ModuleInfo, SizeVarSet, Edge, !IO) :-
     io.write_string("Edge is:\n\tHead: ", !IO),
     Edge ^ tcge_caller = real(PredProcId),
-    hlds_out.write_pred_proc_id(ModuleInfo, PredProcId, !IO),
+    write_pred_proc_id(ModuleInfo, PredProcId, !IO),
     io.write_string(" : ", !IO),
     write_size_vars(SizeVarSet, Edge ^ tcge_head_args, !IO),
     io.write_string(" :- \n", !IO),
@@ -685,7 +686,7 @@ write_edge(ModuleInfo, SizeVarSet, Edge, !IO) :-
     write_polyhedron(Edge ^ tcge_label, SizeVarSet, !IO),
     io.write_string("\n\tCall is:  ", !IO),
     Edge ^ tcge_callee = real(CallPredProcId),
-    hlds_out.write_pred_proc_id(ModuleInfo, CallPredProcId, !IO),
+    write_pred_proc_id(ModuleInfo, CallPredProcId, !IO),
     io.write_string(" : ", !IO),
     write_size_vars(SizeVarSet, Edge ^ tcge_call_args, !IO),
     io.write_string(" :- \n", !IO),

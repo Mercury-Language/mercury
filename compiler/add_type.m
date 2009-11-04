@@ -62,6 +62,8 @@
 :- import_module hlds.make_tags.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_goal.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.

@@ -927,23 +927,6 @@ goal_is_call_to_builtin_false(hlds_goal(GoalExpr, _)) :-
 
 %-----------------------------------------------------------------------------%
 
-:- inst goal_expr_conj == bound(conj(ground, ground)).
-:- inst goal_expr_plain_conj == bound(conj(bound(plain_conj), ground)).
-:- inst goal_expr_parallel_conj == bound(conj(bound(parallel_conj), ground)).
-:- inst goal_expr_disj == bound(disj(ground)).
-:- inst goal_expr_switch == bound(switch(ground, ground, ground)).
-:- inst goal_expr_generic_call == bound(generic_call(ground, ground, ground,
-    ground)).
-:- inst goal_expr_plain_call == bound(plain_call(ground, ground, ground,
-    ground, ground, ground)).
-:- inst goal_expr_unify == bound(unify(ground, ground, ground, ground,
-    ground)).
-:- inst goal_expr_ite == bound(if_then_else(ground, ground, ground, ground)).
-:- inst goal_expr_neg == bound(negation(ground)).
-:- inst goal_expr_scope == bound(scope(ground, ground)).
-:- inst goal_expr_foreign_proc == bound(call_foreign_proc(ground, ground,
-    ground, ground, ground, ground, ground)).
-
 :- pred simplify_goal_expr(hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.

@@ -19,15 +19,16 @@
 %-----------------------------------------------------------------------------%
 
 % Pre-passes to transform or annotate the HLDS.
-:- include_module deep_profiling.   % transform
-:- include_module saved_vars.       % transform
-:- include_module stack_opt.        % transform
-:- include_module follow_code.      % transform
-:- include_module liveness.         % annotate
-:- include_module stack_alloc.      % annotate
-   :- include_module live_vars.     % annotate
-   :- include_module follow_vars.   % annotate
-:- include_module store_alloc.      % annotate
+:- include_module deep_profiling.       % transform
+:- include_module coverage_profiling.   % transform
+:- include_module saved_vars.           % transform
+:- include_module stack_opt.            % transform
+:- include_module follow_code.          % transform
+:- include_module liveness.             % annotate
+:- include_module stack_alloc.          % annotate
+   :- include_module live_vars.         % annotate
+   :- include_module follow_vars.       % annotate
+:- include_module store_alloc.          % annotate
 
 % The LLDS data structure itself.
 :- include_module llds.

@@ -149,6 +149,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.llds_out.
+:- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 

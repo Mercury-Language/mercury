@@ -100,6 +100,7 @@
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.make_hlds.add_class.
 :- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.add_mode.

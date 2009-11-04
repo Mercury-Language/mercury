@@ -65,6 +65,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module libs.lp_rational.
@@ -191,7 +192,7 @@ term_constr_build_abstract_proc(EntryProcs, Options, SCC, ModuleInfo, PPId,
         !SizeVarset, !AbstractInfo, !IO) :-
     trace [io(!DebugIO), compiletime(flag("term_constr_build"))] (
         io.write_string("Building procedure: ", !DebugIO),
-        hlds_out.write_pred_proc_id(ModuleInfo, PPId, !DebugIO),
+        write_pred_proc_id(ModuleInfo, PPId, !DebugIO),
         io.nl(!DebugIO),
         io.flush_output(!DebugIO)
     ),

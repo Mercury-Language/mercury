@@ -165,6 +165,7 @@
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
@@ -243,7 +244,7 @@ process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         (
             VeryVerbose = yes,
             io.write_string("% Accumulators introduced into ", !IO),
-            hlds_out.write_pred_id(!.ModuleInfo, PredId, !IO),
+            write_pred_id(!.ModuleInfo, PredId, !IO),
             io.write_string("\n", !IO)
         ;
             VeryVerbose = no

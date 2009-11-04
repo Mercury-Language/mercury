@@ -186,6 +186,8 @@
 
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_module.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module libs.compiler_util.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -356,7 +358,7 @@ write_pred_progress_message(Message, PredId, ModuleInfo, !IO) :-
     (
         VeryVerbose = yes,
         io.write_string(Message, !IO),
-        hlds_out.write_pred_id(ModuleInfo, PredId, !IO),
+        write_pred_id(ModuleInfo, PredId, !IO),
         io.write_string("\n", !IO)
     ;
         VeryVerbose = no
@@ -371,7 +373,7 @@ write_proc_progress_message(Message, PredId, ProcId, ModuleInfo, !IO) :-
     (
         VeryVerbose = yes,
         io.write_string(Message, !IO),
-        hlds_out.write_pred_proc_id_pair(ModuleInfo, PredId, ProcId, !IO),
+        write_pred_proc_id_pair(ModuleInfo, PredId, ProcId, !IO),
         io.write_string("\n", !IO)
     ;
         VeryVerbose = no
@@ -606,7 +608,7 @@ dump_hlds(DumpFile, HLDS, !IO) :-
     (
         Res = ok(FileStream),
         io.set_output_stream(FileStream, OutputStream, !IO),
-        hlds_out.write_hlds(0, HLDS, !IO),
+        write_hlds(0, HLDS, !IO),
         io.set_output_stream(OutputStream, _, !IO),
         io.close_output(FileStream, !IO),
         maybe_write_string(Verbose, " done.\n", !IO),

@@ -70,6 +70,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.

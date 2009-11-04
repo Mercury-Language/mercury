@@ -99,6 +99,7 @@
 
 :- import_module check_hlds.goal_path.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module libs.compiler_util.

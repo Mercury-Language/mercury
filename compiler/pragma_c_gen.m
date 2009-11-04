@@ -71,6 +71,7 @@
 :- import_module libs.options.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.llds_out.
+:- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module ll_backend.trace_gen.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.

@@ -51,6 +51,7 @@
 :- import_module backend_libs.name_mangle.
 :- import_module libs.compiler_util.
 :- import_module ll_backend.llds_out.
+:- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module ll_backend.x86_64_out.
 :- import_module ll_backend.x86_64_regs.
 :- import_module mdbcomp.prim_data.
@@ -267,7 +268,7 @@ instr_to_x86_64(!RegMap, llcall(Target0, Continuation0, _, _, _, _), Instrs) :-
     Instrs = [Instr1, Instr2].
 instr_to_x86_64(!RegMap, mkframe(_, _), [x86_64_comment("<<mkframe>>")]).
 instr_to_x86_64(!RegMap, label(Label), Instrs) :-
-    LabelStr = ll_backend.llds_out.label_to_c_string(Label, no),
+    LabelStr = label_to_c_string(Label, no),
     Instrs = [x86_64_label(LabelStr)].
 instr_to_x86_64(!RegMap, goto(CodeAddr), Instrs) :-
     code_addr_type(CodeAddr, Label),
@@ -890,7 +891,7 @@ binop_instr(compound_lt, _, _, [x86_64_comment("<<compound_lt>>")]).
 :- pred code_addr_type(code_addr::in, string::out) is det.
 
 code_addr_type(code_label(Label), CodeAddr) :-
-    CodeAddr = "$" ++  ll_backend.llds_out.label_to_c_string(Label, no).
+    CodeAddr = "$" ++  label_to_c_string(Label, no).
 code_addr_type(code_imported_proc(ProcLabel), CodeAddr) :-
     CodeAddr = "$" ++
         backend_libs.name_mangle.proc_label_to_c_string(ProcLabel, no).
@@ -992,7 +993,7 @@ maybe_labels_to_string([], Str, Str).
 maybe_labels_to_string([MaybeLabel | MaybeLabels], Str0, Str) :-
     (
         MaybeLabel = yes(Label),
-        LabelStr = ll_backend.llds_out.label_to_c_string(Label, no)
+        LabelStr = label_to_c_string(Label, no)
     ;
         MaybeLabel = no,
         LabelStr = "<<do_not_reached>>"

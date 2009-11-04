@@ -77,7 +77,7 @@
 % for strings and arrays would be desirable, since real programs do contain
 % predicates whose complexity is governed by the length of an array or a
 % string, but this remains future work.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.size_prof.
@@ -114,6 +114,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
@@ -223,8 +224,7 @@ size_prof_process_proc_msg(Transform, PredId, ProcId, _PredInfo,
         VeryVerbose = yes,
         trace [io(!IO)] (
             io.write_string("% Adding typeinfos in ", !IO),
-            hlds_out.write_pred_proc_id_pair(!.ModuleInfo, PredId, ProcId,
-                !IO),
+            write_pred_proc_id_pair(!.ModuleInfo, PredId, ProcId, !IO),
             io.write_string(": ", !IO)
         ),
         size_prof_process_proc(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
@@ -491,7 +491,7 @@ size_prof_process_goal(Goal0, Goal, !Info) :-
         GoalExpr0 = scope(Reason0, SubGoal0),
         % The code inside from_ground_term_construct scopes wants to construct
         % terms statically, but for term size profiling, we need to construct
-        % terms dynamically, 
+        % terms dynamically,
         ( Reason0 = from_ground_term(TermVar, from_ground_term_construct) ->
             Reason = from_ground_term(TermVar, from_ground_term_other)
         ;
@@ -988,9 +988,9 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
     polymorphism.init_type_info_var(Type, ArgVars, MaybePreferredVar,
         TypeInfoVar, TypeInfoGoal, VarSet2, VarSet, VarTypes2, VarTypes,
         RttiVarMaps0, RttiVarMaps),
-    !:Info = !.Info ^ spi_varset := VarSet,
-    !:Info = !.Info ^ spi_vartypes := VarTypes,
-    !:Info = !.Info ^ spi_rtti_varmaps := RttiVarMaps,
+    !Info ^ spi_varset := VarSet,
+    !Info ^ spi_vartypes := VarTypes,
+    !Info ^ spi_rtti_varmaps := RttiVarMaps,
     TypeInfoGoals = ArgTypeInfoGoals ++ FrontGoals ++ [TypeInfoGoal].
 
     % Create a type_ctor_info for a given type constructor as cheaply as
@@ -1006,7 +1006,7 @@ make_type_ctor_info(TypeCtor, TypeArgs, TypeCtorVar, TypeCtorGoals, !Info) :-
         TypeCtorVar = TypeCtorVarPrime,
         TypeCtorGoals = []
     ;
-        ( 
+        (
             type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc, EvalMethod)
         ->
             construct_higher_order_type(Purity, PredOrFunc, EvalMethod,
@@ -1022,9 +1022,9 @@ make_type_ctor_info(TypeCtor, TypeArgs, TypeCtorVar, TypeCtorGoals, !Info) :-
             VarSet0, VarSet, VarTypes0, VarTypes,
             RttiVarMaps0, RttiVarMaps),
         TypeCtorGoals = [TypeCtorGoal],
-        !:Info = !.Info ^ spi_varset := VarSet,
-        !:Info = !.Info ^ spi_vartypes := VarTypes,
-        !:Info = !.Info ^ spi_rtti_varmaps := RttiVarMaps
+        !Info ^ spi_varset := VarSet,
+        !Info ^ spi_vartypes := VarTypes,
+        !Info ^ spi_rtti_varmaps := RttiVarMaps
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1078,8 +1078,8 @@ get_new_var(Type, Prefix, Var, !Info) :-
     string.append(Prefix, VarNumStr, Name),
     varset.name_var(VarSet1, Var, Name, VarSet),
     map.set(VarTypes0, Var, Type, VarTypes),
-    !:Info = !.Info ^ spi_varset := VarSet,
-    !:Info = !.Info ^ spi_vartypes := VarTypes.
+    !Info ^ spi_varset := VarSet,
+    !Info ^ spi_vartypes := VarTypes.
 
 %---------------------------------------------------------------------------%
 
@@ -1112,8 +1112,8 @@ record_known_type_ctor_info(Var, TypeCtorModule, TypeCtorName, TypeCtorArity,
     RevTypeCtorMap0 = !.Info ^ spi_rev_type_ctor_map,
     map.set(TypeCtorMap0, TypeCtor, Var, TypeCtorMap),
     map.set(RevTypeCtorMap0, Var, TypeCtor, RevTypeCtorMap),
-    !:Info = !.Info ^ spi_type_ctor_map := TypeCtorMap,
-    !:Info = !.Info ^ spi_rev_type_ctor_map := RevTypeCtorMap.
+    !Info ^ spi_type_ctor_map := TypeCtorMap,
+    !Info ^ spi_rev_type_ctor_map := RevTypeCtorMap.
 
 :- pred record_known_type_info(prog_var::in, prog_var::in, list(prog_var)::in,
     info::in, info::out) is det.
@@ -1130,7 +1130,7 @@ record_known_type_info(Var, TypeCtorInfoVar, ArgTypeInfoVars, !Info) :-
             construct_type(TypeCtor1, ArgTypes, Type),
             record_type_info_var(Type, Var, !Info)
         ;
-            !:Info = !.Info
+            true
         )
     ;
         % We don't know what type is being constructed, because we have

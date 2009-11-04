@@ -68,6 +68,7 @@
 :- import_module check_hlds.simplify.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
 :- import_module libs.file_util.
@@ -1226,7 +1227,6 @@ maybe_record_sharing_analysis_result_2(ModuleInfo, SharingAsTable, PredId,
                 run_time(env("TOP_REASONS"))
             ] (
                 ReasonsList = set.to_sorted_list(Reasons),
-                write_pred_proc_id(ModuleInfo, PPId, !IO),
                 io.write_string(":\n", !IO),
                 io.write_list(ReasonsList, "\n",
                     write_top_feedback(ModuleInfo), !IO),

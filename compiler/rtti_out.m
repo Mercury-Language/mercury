@@ -27,6 +27,8 @@
 
 :- import_module backend_libs.rtti.
 :- import_module ll_backend.llds_out.
+:- import_module ll_backend.llds_out.llds_out_util.
+:- import_module mdbcomp.prim_data.
 
 :- import_module bool.
 :- import_module io.
@@ -92,6 +94,9 @@
 :- pred output_rtti_id_storage_type_name_no_decl(llds_out_info::in,
     rtti_id::in, bool::in, io::di, io::uo) is det.
 
+:- func tabling_struct_data_addr_string(proc_label, proc_tabling_struct_id)
+    = string.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -107,7 +112,10 @@
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.llds.
-:- import_module mdbcomp.prim_data.
+:- import_module ll_backend.llds_out.llds_out_code_addr.
+:- import_module ll_backend.llds_out.llds_out_data.
+:- import_module ll_backend.llds_out.llds_out_file.
+:- import_module ll_backend.llds_out.llds_out_instr.
 :- import_module parse_tree.prog_foreign.
 
 :- import_module assoc_list.
@@ -1947,6 +1955,12 @@ rtti_id_linkage(RttiId, Linkage) :-
         ; Exported = no, Linkage = static
         )
     ).
+
+%-----------------------------------------------------------------------------%
+
+tabling_struct_data_addr_string(ProcLabel, Id) =
+    mercury_var_prefix ++ "_proc" ++ tabling_info_id_str(Id) ++ "__" ++
+        proc_label_to_c_string(ProcLabel, no).
 
 %-----------------------------------------------------------------------------%
 

@@ -81,6 +81,8 @@
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_goal.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
@@ -227,7 +229,7 @@ unneeded_process_proc_msg(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
     (
         VeryVerbose = yes,
         io.write_string("% Removing dead code in ", !IO),
-        hlds_out.write_pred_proc_id_pair(!.ModuleInfo, PredId, ProcId, !IO),
+        write_pred_proc_id_pair(!.ModuleInfo, PredId, ProcId, !IO),
         io.write_string(" ...\n", !IO),
         unneeded_pre_process_proc(!ProcInfo),
         unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, 1, Successful),
@@ -339,7 +341,7 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
                         [i(Pass)], !IO),
                     AppendVarNums = yes,
                     OutInfo = init_hlds_out_info(Globals),
-                    hlds_out.write_goal(OutInfo, Goal0, !.ModuleInfo, VarSet0,
+                    write_goal(OutInfo, Goal0, !.ModuleInfo, VarSet0,
                         AppendVarNums, 0, ".\n", !IO)
                 ;
                     true

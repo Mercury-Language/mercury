@@ -55,6 +55,7 @@
 :- import_module hlds.arg_info.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.mark_tail_calls.
 :- import_module libs.compiler_util.
@@ -69,6 +70,7 @@
 :- import_module ll_backend.layout.
 :- import_module ll_backend.liveness.
 :- import_module ll_backend.llds_out.
+:- import_module ll_backend.llds_out.llds_out_file.
 :- import_module ll_backend.optimize.
 :- import_module ll_backend.proc_gen.
 :- import_module ll_backend.saved_vars.
@@ -229,7 +231,7 @@ llds_backend_pass_by_preds_2([PredId | PredIds], !HLDS, !GlobalData,
         (
             Verbose = yes,
             io.write_string("% Generating code for ", !IO),
-            hlds_out.write_pred_id(!.HLDS, PredId, !IO),
+            write_pred_id(!.HLDS, PredId, !IO),
             io.write_string("\n", !IO)
         ;
             Verbose = no

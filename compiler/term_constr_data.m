@@ -383,6 +383,7 @@
 
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
 
@@ -643,7 +644,7 @@ dump_abstract_proc(ModuleInfo, Indent, Proc, !IO) :-
     SizeVarSet = Proc ^ ap_size_varset,
     indent_line(Indent, !IO),
     AbstractPPId = real(PPId),
-    hlds_out.write_pred_proc_id(ModuleInfo, PPId, !IO),
+    write_pred_proc_id(ModuleInfo, PPId, !IO),
     io.write_string(" : [", !IO),
     WriteHeadVars = (pred(Var::in, !.IO::di, !:IO::uo) is det :-
         varset.lookup_name(SizeVarSet, Var, VarName),
@@ -712,7 +713,7 @@ dump_abstract_goal(ModuleInfo, VarSet, Indent, AbstractGoal, !IO) :-
         indent_line(Indent, !IO),
         io.write_string("call: ", !IO),
         PPId0 = real(PPId),
-        hlds_out.write_pred_proc_id(ModuleInfo, PPId, !IO),
+        write_pred_proc_id(ModuleInfo, PPId, !IO),
         io.write_string(" : [", !IO),
         io.write_list(CallVars, ", ", dump_var_name(VarSet), !IO),
         io.write_string("]\n", !IO),

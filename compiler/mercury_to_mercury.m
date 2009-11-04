@@ -4892,7 +4892,7 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_quoted_string/3) is term_io.quote_string,
     pred(add_constant/3) is term_io.write_constant,
     pred(add_class_id/3) is write_class_id,
-    pred(add_eval_method/3) is write_eval_method,
+    pred(add_eval_method/3) is write_eval_eval_method,
     pred(add_lambda_eval_method/3) is write_lambda_eval_method,
     pred(add_escaped_string/3) is term_io.write_escaped_string,
     pred(add_format/4) is io.format,
@@ -4910,7 +4910,7 @@ maybe_unqualify_sym_name(Info, SymName, OutSymName) :-
     pred(add_quoted_string/3) is output_quoted_string,
     pred(add_constant/3) is output_constant,
     pred(add_class_id/3) is output_class_id,
-    pred(add_eval_method/3) is output_eval_method,
+    pred(add_eval_method/3) is output_eval_eval_method,
     pred(add_lambda_eval_method/3) is output_lambda_eval_method,
     pred(add_escaped_string/3) is output_escaped_string,
     pred(add_format/4) is output_format,
@@ -4923,10 +4923,10 @@ write_class_id(ClassId, !IO) :-
     output_class_id(ClassId, "", ClassIdStr),
     io.write_string(ClassIdStr, !IO).
 
-:- pred write_eval_method(eval_method::in, io::di, io::uo) is det.
+:- pred write_eval_eval_method(eval_method::in, io::di, io::uo) is det.
 
-write_eval_method(EvalMethod, !IO) :-
-    output_eval_method(EvalMethod, "", EvalMethodStr),
+write_eval_eval_method(EvalMethod, !IO) :-
+    output_eval_eval_method(EvalMethod, "", EvalMethodStr),
     io.write_string(EvalMethodStr, !IO).
 
 :- pred write_lambda_eval_method(lambda_eval_method::in, io::di, io::uo)
@@ -5003,9 +5003,10 @@ output_class_id(class_id(Name, Arity), !Str) :-
     output_int(Arity, !Str),
     output_string(")", !Str).
 
-:- pred output_eval_method(eval_method::in, string::di, string::uo) is det.
+:- pred output_eval_eval_method(eval_method::in, string::di, string::uo)
+    is det.
 
-output_eval_method(EvalMethod, !Str) :-
+output_eval_eval_method(EvalMethod, !Str) :-
     output_string("eval_", !Str),
     output_string(eval_method_to_string(EvalMethod), !Str).
 

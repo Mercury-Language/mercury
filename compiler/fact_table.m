@@ -109,6 +109,7 @@
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.llds.
 :- import_module ll_backend.llds_out.
+:- import_module ll_backend.llds_out.llds_out_data.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
@@ -3074,7 +3075,7 @@ generate_arg_output_code(Name, Type, RegNum, OutputCode) :-
 get_reg_name(RegNum, RegName) :-
     code_util.arg_loc_to_register(RegNum, Lval),
     ( Lval = reg(RegType, N) ->
-        RegName = llds_out.reg_to_string(RegType, N)
+        RegName = reg_to_string(RegType, N)
     ;
         unexpected(this_file, "get_reg_name: lval is not a register")
     ).
