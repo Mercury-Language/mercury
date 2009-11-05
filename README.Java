@@ -161,6 +161,7 @@ A. The following implementation features are not supported:
 
    This list is probably not complete.
 
+
 Q. So how do I enable Java-level debugging?
 
 A. By default, javac already generates line number and source file debugging
@@ -172,5 +173,17 @@ A. By default, javac already generates line number and source file debugging
    You can then use Sun's "jdb" debugging tool, which comes
    as part of the Java SDK distribution, to debug your program.
    For more information, see the documentation for javac and jdb.
+
+
+Q. The Java compiler runs out of memory!
+
+A. You are probably hitting an artificial limit. You can pass an option to
+   the javac program to increase the limit, e.g.
+
+        mmc --make foo --java --java-flag -J-Xmx512m
+
+   Or in a Mercury.options file:
+
+        JAVACFLAGS += -J-Xmx512m
 
 -----------------------------------------------------------------------------

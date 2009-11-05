@@ -119,6 +119,14 @@ endif
 # Let javac find jmercury/runtime/*.java files.
 JAVACFLAGS   += -sourcepath .
 
+# -Xmx256m doesn't always seem to be enough memory to build the standard
+# library. This bumps up the memory when building the standard library
+# if the javac executable accepts the -J-Xmx flag, without bumping up
+# the memory requirements in general.
+ifneq ("$(findstring -J-Xmx,$(JAVACFLAGS))","")
+JAVACFLAGS   += -J-Xmx512m
+endif
+
 MTAGS	= $(SCRIPTS_DIR)/mtags
 
 LN	= ln
