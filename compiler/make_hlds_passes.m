@@ -309,6 +309,12 @@ add_item_list_pass_3([Item | Items], Status0, !ModuleInfo, !QualInfo,
 
 add_item_decl_pass_1(Item, FoundError, !Status, !ModuleInfo, !Specs) :-
     (
+        Item = item_module_start(_),
+        FoundError = no
+    ;
+        Item = item_module_end(_),
+        FoundError = no
+    ;
         Item = item_module_defn(ItemModuleDefn),
         add_pass_1_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !Specs),
         FoundError = no
@@ -449,51 +455,64 @@ add_pass_1_module_defn(ItemModuleDefn, !Status, !ModuleInfo, !Specs) :-
     ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, _SeqNum),
     ( module_defn_update_import_status(ModuleDefn, StatusPrime) ->
         !:Status = StatusPrime
-    ; ModuleDefn = md_import(ModuleSpecifiers) ->
-        !.Status = item_status(IStat, _),
-        add_module_specifiers(ModuleSpecifiers, IStat, !ModuleInfo)
-    ; ModuleDefn = md_use(ModuleSpecifiers) ->
-        !.Status = item_status(IStat, _),
-        add_module_specifiers(ModuleSpecifiers, IStat, !ModuleInfo)
-    ; ModuleDefn = md_include_module(_) ->
-        true
-    ; ModuleDefn = md_external(MaybeBackend, External) ->
-        ( External = name_arity(Name, Arity) ->
-            module_info_get_globals(!.ModuleInfo, Globals),
-            CurrentBackend = lookup_current_backend(Globals),
-            (
+    ;
+        (
+            ( ModuleDefn = md_import(ModuleSpecifiers)
+            ; ModuleDefn = md_use(ModuleSpecifiers)
+            ),
+            !.Status = item_status(IStat, _),
+            add_module_specifiers(ModuleSpecifiers, IStat, !ModuleInfo)
+        ;
+            ModuleDefn = md_external(MaybeBackend, External),
+            ( External = name_arity(Name, Arity) ->
+                module_info_get_globals(!.ModuleInfo, Globals),
+                CurrentBackend = lookup_current_backend(Globals),
                 (
-                    MaybeBackend = no
+                    (
+                        MaybeBackend = no
+                    ;
+                        MaybeBackend = yes(Backend),
+                        Backend = CurrentBackend
+                    )
+                ->
+                    module_mark_as_external(Name, Arity, Context, !ModuleInfo,
+                        !Specs)
                 ;
-                    MaybeBackend = yes(Backend),
-                    Backend = CurrentBackend
+                    true
                 )
-            ->
-                module_mark_as_external(Name, Arity, Context, !ModuleInfo,
-                    !Specs)
             ;
-                true
+                Pieces = [words("Warning:"), quote("external"),
+                    words("declaration requires arity."), nl],
+                Msg = simple_msg(Context, [always(Pieces)]),
+                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                    [Msg]),
+                !:Specs = [Spec | !.Specs]
             )
         ;
-            Pieces = [words("Warning:"), quote("external"),
-                words("declaration requires arity."), nl],
+            ( ModuleDefn = md_include_module(_)
+            ; ModuleDefn = md_version_numbers(_, _)
+            ; ModuleDefn = md_transitively_imported
+            )
+        ;
+            ( ModuleDefn = md_interface
+            ; ModuleDefn = md_implementation
+            ; ModuleDefn = md_private_interface
+            ; ModuleDefn = md_imported(_)
+            ; ModuleDefn = md_used(_)
+            ; ModuleDefn = md_opt_imported
+            ; ModuleDefn = md_abstract_imported
+            ),
+            unexpected(this_file,
+                "add_pass_1_module_defn: " ++
+                "module_defn_update_import_status missed something")
+        ;
+            ModuleDefn = md_export(_),
+            Pieces = [words("Warning: declaration not yet implemented."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            Spec = error_spec(severity_warning, phase_parse_tree_to_hlds,
+                [Msg]),
             !:Specs = [Spec | !.Specs]
         )
-    ; ModuleDefn = md_module(_ModuleName) ->
-        report_unexpected_decl("module", Context, !Specs)
-    ; ModuleDefn = md_end_module(_ModuleName) ->
-        report_unexpected_decl("end_module", Context, !Specs)
-    ; ModuleDefn = md_version_numbers(_, _) ->
-        true
-    ; ModuleDefn = md_transitively_imported ->
-        true
-    ;
-        Pieces = [words("Warning: declaration not yet implemented."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_warning, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs]
     ).
 
 :- pred add_pass_1_mutable(item_mutable_info::in,
@@ -700,7 +719,9 @@ add_item_decl_pass_2(Item, !Status, !ModuleInfo, !Specs) :-
         Item = item_mutable(ItemMutable),
         add_pass_2_mutable(ItemMutable, !.Status, !ModuleInfo, !Specs)
     ;
-        ( Item = item_clause(_)
+        ( Item = item_module_start(_)
+        ; Item = item_module_end(_)
+        ; Item = item_clause(_)
         ; Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
         ; Item = item_mode_decl(_)
@@ -1040,7 +1061,9 @@ add_item_pass_3(Item, !Status, !ModuleInfo, !QualInfo, !Specs) :-
         add_pass_3_mutable(ItemMutable, !.Status, !ModuleInfo, !QualInfo,
             !Specs)
     ;
-        ( Item = item_inst_defn(_)
+        ( Item = item_module_start(_)
+        ; Item = item_module_end(_)
+        ; Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
         ; Item = item_mode_decl(_)
         ; Item = item_typeclass(_)
@@ -2775,20 +2798,29 @@ add_solver_type_mutable_items_clauses([Item | Items], !Status,
 :- pred module_defn_update_import_status(module_defn::in, item_status::out)
     is semidet.
 
-module_defn_update_import_status(md_interface,
-        item_status(status_exported, may_be_unqualified)).
-module_defn_update_import_status(md_implementation,
-        item_status(status_local, may_be_unqualified)).
-module_defn_update_import_status(md_private_interface,
-        item_status(status_exported_to_submodules, may_be_unqualified)).
-module_defn_update_import_status(md_imported(Section),
-        item_status(status_imported(Section), may_be_unqualified)).
-module_defn_update_import_status(md_used(Section),
-        item_status(status_imported(Section), must_be_qualified)).
-module_defn_update_import_status(md_opt_imported,
-        item_status(status_opt_imported, must_be_qualified)).
-module_defn_update_import_status(md_abstract_imported,
-        item_status(status_abstract_imported, must_be_qualified)).
+module_defn_update_import_status(ModuleDefn, Status) :-
+    (
+        ModuleDefn = md_interface,
+        Status = item_status(status_exported, may_be_unqualified)
+    ;
+        ModuleDefn = md_implementation,
+        Status = item_status(status_local, may_be_unqualified)
+    ;
+        ModuleDefn = md_private_interface,
+        Status = item_status(status_exported_to_submodules, may_be_unqualified)
+    ;
+        ModuleDefn = md_imported(Section),
+        Status = item_status(status_imported(Section), may_be_unqualified)
+    ;
+        ModuleDefn = md_used(Section),
+        Status = item_status(status_imported(Section), must_be_qualified)
+    ;
+        ModuleDefn = md_opt_imported,
+        Status = item_status(status_opt_imported, must_be_qualified)
+    ;
+        ModuleDefn = md_abstract_imported,
+        Status = item_status(status_abstract_imported, must_be_qualified)
+    ).
 
 %-----------------------------------------------------------------------------%
 

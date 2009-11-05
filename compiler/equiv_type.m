@@ -208,20 +208,42 @@ build_eqv_map([Item | Items], !EqvMap, !EqvInstMap) :-
 skip_abstract_imported_items([], []).
 skip_abstract_imported_items([Item0 | Items0], Items) :-
     (
-        Item0 = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _SeqNum),
-        is_section_defn(ModuleDefn) = yes,
-        ModuleDefn \= md_abstract_imported
-    ->
+        ( Item0 = item_module_start(_)
+        ; Item0 = item_module_end(_)
+        ),
         Items = Items0
     ;
+        Item0 = item_module_defn(ItemModuleDefn),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
+        (
+            is_section_defn(ModuleDefn) = yes,
+            ModuleDefn \= md_abstract_imported
+        ->
+            Items = Items0
+        ;
+            skip_abstract_imported_items(Items0, Items)
+        )
+    ;
+        ( Item0 = item_clause(_)
+        ; Item0 = item_type_defn(_)
+        ; Item0 = item_inst_defn(_)
+        ; Item0 = item_mode_defn(_)
+        ; Item0 = item_pred_decl(_)
+        ; Item0 = item_mode_decl(_)
+        ; Item0 = item_pragma(_)
+        ; Item0 = item_promise(_)
+        ; Item0 = item_typeclass(_)
+        ; Item0 = item_instance(_)
+        ; Item0 = item_initialise(_)
+        ; Item0 = item_finalise(_)
+        ; Item0 = item_mutable(_)
+        ; Item0 = item_nothing(_)
+        ),
         skip_abstract_imported_items(Items0, Items)
     ).
 
 :- func is_section_defn(module_defn) = bool.
 
-is_section_defn(md_module(_)) = yes.
-is_section_defn(md_end_module(_)) = yes.
 is_section_defn(md_interface) = yes.
 is_section_defn(md_implementation) = yes.
 is_section_defn(md_private_interface) = yes.
@@ -253,7 +275,8 @@ replace_in_item_list(_, _, [], _, _, !Items, !RecompInfo, !UsedModules,
         !Specs).
 replace_in_item_list(ModuleName, Location0, [Item0 | Items0],
         EqvMap, EqvInstMap, !ReplItems, !RecompInfo, !UsedModules, !Specs) :-
-    ( Item0 = item_module_defn(ItemModuleDefn) ->
+    (
+        Item0 = item_module_defn(ItemModuleDefn),
         ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _SeqNum),
         (
             ModuleDefn = md_interface,
@@ -270,23 +293,41 @@ replace_in_item_list(ModuleName, Location0, [Item0 | Items0],
             ; ModuleDefn = md_abstract_imported
             ; ModuleDefn = md_opt_imported
             ; ModuleDefn = md_transitively_imported
-            % XXX I'm not sure what these two are so they may not signify
+            % XXX I'm not sure what this is so it may not signify
             % that we've finished processing the module.
-            ; ModuleDefn = md_external(_, _)
             ; ModuleDefn = md_export(_)
             ),
             Location = eqv_type_out_of_module
         ;
-            ( ModuleDefn = md_module(_)
-            ; ModuleDefn = md_end_module(_)
-            ; ModuleDefn = md_import(_)
+            ( ModuleDefn = md_import(_)
             ; ModuleDefn = md_use(_)
             ; ModuleDefn = md_include_module(_)
+            ; ModuleDefn = md_external(_, _)
             ; ModuleDefn = md_version_numbers(_, _)
             ),
             Location = Location0
         )
     ;
+        ( Item0 = item_module_start(_)
+        ; Item0 = item_module_end(_)
+        ),
+        unexpected(this_file, "replace_in_item_list: module start or end")
+    ;
+        ( Item0 = item_clause(_)
+        ; Item0 = item_type_defn(_)
+        ; Item0 = item_inst_defn(_)
+        ; Item0 = item_mode_defn(_)
+        ; Item0 = item_pred_decl(_)
+        ; Item0 = item_mode_decl(_)
+        ; Item0 = item_pragma(_)
+        ; Item0 = item_promise(_)
+        ; Item0 = item_typeclass(_)
+        ; Item0 = item_instance(_)
+        ; Item0 = item_initialise(_)
+        ; Item0 = item_finalise(_)
+        ; Item0 = item_mutable(_)
+        ; Item0 = item_nothing(_)
+        ),
         Location = Location0
     ),
     replace_in_item(ModuleName, Location, EqvMap, EqvInstMap,
@@ -351,7 +392,9 @@ replace_in_item(ModuleName, Location, EqvMap, EqvInstMap,
         Item = Item0,
         Specs = []
     ;
-        ( Item0 = item_module_defn(_)
+        ( Item0 = item_module_start(_)
+        ; Item0 = item_module_end(_)
+        ; Item0 = item_module_defn(_)
         ; Item0 = item_clause(_)
         ; Item0 = item_inst_defn(_)
         ; Item0 = item_promise(_)

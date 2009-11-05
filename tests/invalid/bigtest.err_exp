@@ -1,3 +1,4 @@
+bigtest.m:001: Error: module must start with a `:- module' declaration.
 bigtest.m:001: Error: unrecognized declaration:
 bigtest.m:001:   export_sym(((list / 1) , ((append / 3) , member))).
 bigtest.m:001: Warning: interface for module `bigtest' does not export
@@ -7,7 +8,6 @@ bigtest.m:001:   contain at least one declaration other than `:- import_module'
 bigtest.m:001:   in its interface section(s). This would normally be a
 bigtest.m:001:   `:- pred', `:- func', `:- type', `:- inst' or `:- mode'
 bigtest.m:001:   declaration.
-bigtest.m:001: Warning: module should start with a `:- module' declaration.
 bigtest.m:002: Error: unrecognized declaration:
 bigtest.m:002:   export_pred(((append / 3) , member)).
 bigtest.m:003: Error: unrecognized declaration:

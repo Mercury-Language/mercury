@@ -1,4 +1,4 @@
-typeclass_test_1.m:001: Warning: module should start with a `:- module'
+typeclass_test_1.m:001: Error: module must start with a `:- module'
 typeclass_test_1.m:001:   declaration.
 typeclass_test_1.m:007: In clause for predicate `main'/2:
 typeclass_test_1.m:007:   unsatisfiable typeclass constraint:

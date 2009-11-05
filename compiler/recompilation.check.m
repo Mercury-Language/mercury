@@ -936,10 +936,12 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers, Item,
         check_for_pred_or_func_item_ambiguity(no, NeedQualifier, OldTimestamp,
             VersionNumbers, PredOrFunc, Name, Args, WithType, !Info)
     ;
-        ( Item = item_mode_decl(_)
+        ( Item = item_module_start(_)
+        ; Item = item_module_end(_)
+        ; Item = item_module_defn(_)
+        ; Item = item_mode_decl(_)
         ; Item = item_pragma(_)
         ; Item = item_promise(_)
-        ; Item = item_module_defn(_)
         ; Item = item_instance(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)

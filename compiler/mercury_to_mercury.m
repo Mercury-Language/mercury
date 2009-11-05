@@ -494,6 +494,18 @@ mercury_output_item_list(Info, [Item | Items], !IO) :-
 
 mercury_output_item(Info, Item, !IO) :-
     (
+        Item = item_module_start(ItemModuleStart),
+        ItemModuleStart = item_module_start_info(ModuleName, _, _),
+        io.write_string(":- module ", !IO),
+        mercury_output_bracketed_sym_name(ModuleName, !IO),
+        io.write_string(".\n", !IO)
+    ;
+        Item = item_module_end(ItemModuleEnd),
+        ItemModuleEnd = item_module_end_info(ModuleName, _, _),
+        io.write_string(":- end_module ", !IO),
+        mercury_output_bracketed_sym_name(ModuleName, !IO),
+        io.write_string(".\n", !IO)
+    ;
         Item = item_module_defn(ItemModuleDefn),
         mercury_output_item_module_defn(Info, ItemModuleDefn, !IO)
     ;
@@ -567,8 +579,8 @@ mercury_output_item_inst_defn(Info, ItemInstDefn, !IO) :-
     maybe_output_line_number(Info, Context, !IO),
     mercury_output_inst_defn(VarSet, Name, Args, InstDefn, Context, !IO).
 
-:- pred mercury_output_item_mode_defn(merc_out_info::in, item_mode_defn_info::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_item_mode_defn(merc_out_info::in,
+    item_mode_defn_info::in, io::di, io::uo) is det.
 
 mercury_output_item_mode_defn(Info, ItemModeDefn, !IO) :-
     ItemModeDefn = item_mode_defn_info(VarSet, Name0, Args, ModeDefn, _Cond,
@@ -577,8 +589,8 @@ mercury_output_item_mode_defn(Info, ItemModeDefn, !IO) :-
     maybe_output_line_number(Info, Context, !IO),
     mercury_format_mode_defn(VarSet, Name, Args, ModeDefn, Context, !IO).
 
-:- pred mercury_output_item_pred_decl(merc_out_info::in, item_pred_decl_info::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_item_pred_decl(merc_out_info::in,
+    item_pred_decl_info::in, io::di, io::uo) is det.
 
 mercury_output_item_pred_decl(Info, ItemPredDecl, !IO) :-
     ItemPredDecl = item_pred_decl_info(_Origin, TypeVarSet, InstVarSet,
@@ -604,8 +616,8 @@ mercury_output_item_pred_decl(Info, ItemPredDecl, !IO) :-
             Purity, ClassContext, Context, ":- ", ".\n", ".\n", !IO)
     ).
 
-:- pred mercury_output_item_mode_decl(merc_out_info::in, item_mode_decl_info::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_item_mode_decl(merc_out_info::in,
+    item_mode_decl_info::in, io::di, io::uo) is det.
 
 mercury_output_item_mode_decl(Info, ItemModeDecl, !IO) :-
     ItemModeDecl = item_mode_decl_info(VarSet, PredOrFunc, PredName0, Modes,
@@ -907,8 +919,8 @@ mercury_output_item_promise(_, ItemPromise, !IO) :-
     mercury_output_goal(Goal, VarSet, Indent, !IO),
     io.write_string(".\n", !IO).
 
-:- pred mercury_output_item_typeclass(merc_out_info::in, item_typeclass_info::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_item_typeclass(merc_out_info::in,
+    item_typeclass_info::in, io::di, io::uo) is det.
 
 mercury_output_item_typeclass(Info, ItemTypeClass, !IO) :-
     ItemTypeClass = item_typeclass_info(Constraints, FunDeps, ClassName0,
@@ -967,8 +979,8 @@ mercury_output_item_instance(_, ItemInstance, !IO) :-
     ),
     io.write_string(".\n", !IO).
 
-:- pred mercury_output_item_initialise(merc_out_info::in, item_initialise_info::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_item_initialise(merc_out_info::in,
+    item_initialise_info::in, io::di, io::uo) is det.
 
 mercury_output_item_initialise(_, ItemInitialise, !IO) :-
     ItemInitialise = item_initialise_info(_, PredSymName, Arity, _Context,
@@ -1147,21 +1159,11 @@ mercury_output_module_defn(ModuleDefn, _Context, !IO) :-
         mercury_write_module_spec_list(IncludedModules, !IO),
         io.write_string(".\n", !IO)
     ;
-        ModuleDefn = md_module(Module),
-        io.write_string(":- module ", !IO),
-        mercury_output_bracketed_sym_name(Module, !IO),
-        io.write_string(".\n", !IO)
-    ;
-        ModuleDefn = md_end_module(Module),
-        io.write_string(":- end_module ", !IO),
-        mercury_output_bracketed_sym_name(Module, !IO),
-        io.write_string(".\n", !IO)
-    ;
-        ModuleDefn = md_version_numbers(Module, VersionNumbers),
+        ModuleDefn = md_version_numbers(ModuleName, VersionNumbers),
         io.write_string(":- version_numbers(", !IO),
         io.write_int(version_numbers_version_number, !IO),
         io.write_string(", ", !IO),
-        mercury_output_bracketed_sym_name(Module, !IO),
+        mercury_output_bracketed_sym_name(ModuleName, !IO),
         io.write_string(",\n", !IO),
         recompilation.version.write_version_numbers(VersionNumbers, !IO),
         io.write_string(").\n", !IO)
@@ -1786,15 +1788,15 @@ mercury_format_cons_id(ConsId, NeedsBrackets, !U) :-
         % add_lambda_eval_method(EvalMethod, !U),
         add_string(")>", !U)
     ;
-        ConsId = type_ctor_info_const(Module, Type, Arity),
-        ModuleString = sym_name_to_string(Module),
+        ConsId = type_ctor_info_const(ModuleName, Type, Arity),
+        ModuleString = sym_name_to_string(ModuleName),
         string.int_to_string(Arity, ArityString),
         add_strings(["<type_ctor_info for ",
             ModuleString, ".", Type, "/", ArityString, ">"], !U)
     ;
-        ConsId = base_typeclass_info_const(Module, Class, InstanceNum,
+        ConsId = base_typeclass_info_const(ModuleName, Class, InstanceNum,
             InstanceString),
-        ModuleString = sym_name_to_string(Module),
+        ModuleString = sym_name_to_string(ModuleName),
         add_string("<base_typeclass_info for ", !U),
         add_class_id(Class, !U),
         ( ModuleString \= "some bogus module name" ->

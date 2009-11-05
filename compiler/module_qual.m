@@ -278,6 +278,16 @@ collect_mq_info([Item | Items], !Info) :-
 
 collect_mq_info_item(Item, !Info) :-
     (
+        Item = item_module_start(ItemModuleStart),
+        ItemModuleStart = item_module_start_info(ModuleName, _, _),
+        add_module_defn(ModuleName, !Info)
+    ;
+        Item = item_module_end(_)
+    ;
+        Item = item_module_defn(ItemModuleDefn),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
+        process_module_defn(ModuleDefn, !Info)
+    ;
         Item = item_type_defn(ItemTypeDefn),
         ItemTypeDefn = item_type_defn_info(_, SymName, Params, _, _, _, _),
         ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
@@ -320,10 +330,6 @@ collect_mq_info_item(Item, !Info) :-
             id_set_insert(NeedQualifier, mq_id(SymName, Arity), Modes0, Modes),
             mq_info_set_modes(Modes, !Info)
         )
-    ;
-        Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
-        process_module_defn(ModuleDefn, !Info)
     ;
         Item = item_promise(ItemPromise),
         ItemPromise = item_promise_info(_PromiseType, Goal, _ProgVarSet,
@@ -395,8 +401,6 @@ collect_mq_info_qualified_symname(SymName, !Info) :-
     %
 :- pred process_module_defn(module_defn::in, mq_info::in, mq_info::out) is det.
 
-process_module_defn(md_module(ModuleName), !Info) :-
-    add_module_defn(ModuleName, !Info).
 process_module_defn(md_include_module(ModuleNameList), !Info) :-
     list.foldl(add_module_defn, ModuleNameList, !Info).
 process_module_defn(md_interface, !Info) :-
@@ -421,7 +425,6 @@ process_module_defn(md_abstract_imported, !Info) :-
 process_module_defn(md_transitively_imported, !Info) :-
     unexpected(this_file, "process_module_defn: transitively_imported item").
 process_module_defn(md_external(_, _), !Info).
-process_module_defn(md_end_module(_), !Info).
 process_module_defn(md_export(_), !Info).
 process_module_defn(md_import(Imports), !Info) :-
     add_imports(Imports, !Info).
@@ -723,9 +726,21 @@ do_module_qualify_items([Item0 | Items0], [Item | Items], !Info, !Specs) :-
 
 module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
     (
-        Item0 = item_clause(_),
+        ( Item0 = item_module_start(_)
+        ; Item0 = item_module_end(_)
+        ; Item0 = item_clause(_)
+        ; Item0 = item_initialise(_)
+        ; Item0 = item_finalise(_)
+        ; Item0 = item_promise(_)
+        ; Item0 = item_nothing(_)
+        ),
         Item = Item0,
         Continue = yes
+    ;
+        Item0 = item_module_defn(ItemModuleDefn),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
+        update_import_status(ModuleDefn, !Info, Continue),
+        Item = Item0
     ;
         Item0 = item_type_defn(ItemTypeDefn0),
         ItemTypeDefn0 = item_type_defn_info(TVarSet, SymName, Params,
@@ -762,12 +777,6 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
             Context, SeqNum),
         Item = item_mode_defn(ItemModeDefn),
         Continue = yes
-    ;
-        Item0 = item_module_defn(ItemModuleDefn0),
-        ItemModuleDefn0 = item_module_defn_info(ModuleDefn, Context, SeqNum),
-        update_import_status(ModuleDefn, !Info, Continue),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, SeqNum),
-        Item = item_module_defn(ItemModuleDefn)
     ;
         Item0 = item_pred_decl(ItemPredDecl0),
         ItemPredDecl0 = item_pred_decl_info(Origin, A, IVs, B, PredOrFunc,
@@ -810,14 +819,6 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
         Item = item_pragma(ItemPragma),
         Continue = yes
     ;
-        Item0 = item_promise(_),
-        Item = Item0,
-        Continue = yes
-    ;
-        Item0 = item_nothing(_),
-        Item = Item0,
-        Continue = yes
-    ;
         Item0 = item_typeclass(ItemTypeClass0),
         ItemTypeClass0 = item_typeclass_info(Constraints0, FunDeps,
             Name, Vars, Interface0, VarSet, Context, SeqNum),
@@ -854,14 +855,6 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
         ItemInstance = item_instance_info(Constraints, Name, Types,
             Body, VarSet, ModName, Context, SeqNum),
         Item = item_instance(ItemInstance),
-        Continue = yes
-    ;
-        Item0 = item_initialise(_),
-        Item = Item0,
-        Continue = yes
-    ;
-        Item0 = item_finalise(_O),
-        Item = Item0,
         Continue = yes
     ;
         Item0 = item_mutable(ItemMutable0),
@@ -925,7 +918,6 @@ update_import_status(md_opt_imported, !Info, no).
 update_import_status(md_abstract_imported, !Info, yes) :-
     mq_info_set_import_status(mq_status_abstract_imported, !Info).
 update_import_status(md_transitively_imported, !Info, no).
-update_import_status(md_module(_), !Info, yes).
 update_import_status(md_interface, !Info, yes) :-
     mq_info_set_import_status(mq_status_exported, !Info).
 update_import_status(md_implementation, !Info, yes) :-
@@ -935,7 +927,6 @@ update_import_status(md_private_interface, !Info, yes) :-
 update_import_status(md_imported(_), !Info, no).
 update_import_status(md_used(_), !Info, no).
 update_import_status(md_external(_, _), !Info, yes).
-update_import_status(md_end_module(_), !Info, yes).
 update_import_status(md_export(_), !Info, yes).
 update_import_status(md_import(_), !Info, yes).
 update_import_status(md_use(_), !Info, yes).

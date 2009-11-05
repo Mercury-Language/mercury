@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2008 The University of Melbourne.
+% Copyright (C) 1996-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -93,7 +93,9 @@
             % pragmas. XXX Why?
 
 :- type item
-    --->    item_module_defn(item_module_defn_info)
+    --->    item_module_start(item_module_start_info)
+    ;       item_module_end(item_module_end_info)
+    ;       item_module_defn(item_module_defn_info)
     ;       item_clause(item_clause_info)
     ;       item_type_defn(item_type_defn_info)
     ;       item_inst_defn(item_inst_defn_info)
@@ -108,6 +110,20 @@
     ;       item_finalise(item_finalise_info)
     ;       item_mutable(item_mutable_info)
     ;       item_nothing(item_nothing_info).
+
+:- type item_module_start_info
+    --->    item_module_start_info(
+                module_start_module_name        :: module_name,
+                module_start_context            :: prog_context,
+                module_start_seq_num            :: int
+            ).
+
+:- type item_module_end_info
+    --->    item_module_end_info(
+                module_end_module_name          :: module_name,
+                module_end_context              :: prog_context,
+                module_end_seq_num              :: int
+            ).
 
 :- type item_module_defn_info
     --->    item_module_defn_info(
@@ -430,9 +446,8 @@
 %
 
 :- type pragma_type
-    %
-    % Foreign language interfacing pragmas
-    %
+    % Foreign language interfacing pragmas.
+
             % A foreign language declaration, such as C header code.
     --->    pragma_foreign_decl(
                 decl_lang               :: foreign_language,
@@ -506,9 +521,9 @@
                 foreign_enum_type_arity :: arity,
                 foreign_enum_values     :: assoc_list(sym_name, string)
             )
-    %
-    % Optimization pragmas
-    %
+
+    % Optimization pragmas.
+
     ;       pragma_type_spec(
                 tspec_pred_name         :: sym_name,
                 tspec_new_name          :: sym_name,
@@ -558,28 +573,26 @@
             )
 
     ;       pragma_trailing_info(
+                % PredName, Arity, Mode number, Trailing status.
+                % Should on appear in `.opt' or `.trans_opt' files.
                 trailing_info_p_or_f    :: pred_or_func,
                 trailing_info_name      :: sym_name,
                 trailing_info_arity     :: arity,
                 trailing_info_mode      :: mode_num,
                 trailing_info_status    :: trailing_status
             )
-                % PredName, Arity, Mode number, Trailing status.
-                % Should on appear in `.opt' or `.trans_opt' files.
 
     ;       pragma_mm_tabling_info(
+                % PredName, Arity, Mode number, MM Tabling status.
+                % Should on appear in `.opt' or `.trans_opt' files.
                 mm_tabling_info_p_or_f  :: pred_or_func,
                 mm_tabling_info_name    :: sym_name,
                 mm_tabling_info_arity   :: arity,
                 mm_tabling_info_mode    :: mode_num,
                 mm_tabling_info_status  :: mm_tabling_status
             )
-                % PredName, Arity, Mode number, MM Tabling status.
-                % Should on appear in `.opt' or `.trans_opt' files.
 
-    %
-    % Diagnostics pragmas (pragmas related to compiler warnings/errors)
-    %
+    % Diagnostics pragmas (pragmas related to compiler warnings/errors).
 
     ;       pragma_obsolete(
                 obsolete_name           :: sym_name,
@@ -588,13 +601,11 @@
             )
 
     ;       pragma_source_file(
-                pragma_source_file      :: string
                 % Source file name.
+                pragma_source_file      :: string
             )
 
-    %
-    % Evaluation method pragmas
-    %
+    % Evaluation method pragmas.
 
     ;       pragma_tabled(
                 tabled_method           :: eval_method,
@@ -619,9 +630,7 @@
                 % Typename, Arity
             )
 
-    %
-    % Purity pragmas
-    %
+    % Purity pragmas.
 
     ;       pragma_promise_equivalent_clauses(
                 eqv_clauses_name        :: sym_name,
@@ -641,9 +650,7 @@
                 % Predname, Arity
             )
 
-    %
-    % Termination analysis pragmas
-    %
+    % Termination analysis pragmas.
 
     ;       pragma_termination_info(
                 terminfo_p_or_f         :: pred_or_func,
@@ -694,9 +701,7 @@
                 mode_check_clause_arity :: arity
             )
 
-    %
     % CTGC pragmas: structure sharing / structure reuse analysis.
-    %
 
     ;       pragma_structure_sharing(
                 sharing_p_or_f          :: pred_or_func,
@@ -729,6 +734,8 @@
             % argmodes if there are no declared ones).
             % The last sym_name (reuse_optimised_name) stores the name of the
             % optimised version of the exported predicate.
+
+    % Misc pragmas.
 
     ;       pragma_require_feature_set(
                 rfs_feature_set :: set(required_feature)
@@ -857,17 +864,14 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Module system
+% Module system.
 %
 
-    % This is how module-system declarations (such as imports and exports)
-    % are represented.
+    % This is how most module-system declarations (such as imports and exports,
+    % but not including the starts and ends of modules) are represented.
     %
 :- type module_defn
-    --->    md_module(module_name)
-    ;       md_end_module(module_name)
-
-    ;       md_interface
+    --->    md_interface
     ;       md_implementation
 
     ;       md_private_interface
@@ -950,6 +954,12 @@
 
 get_item_context(Item) = Context :-
     (
+        Item = item_module_start(ItemModuleStart),
+        Context = ItemModuleStart ^ module_start_context
+    ;
+        Item = item_module_end(ItemModuleEnd),
+        Context = ItemModuleEnd ^ module_end_context
+    ;
         Item = item_module_defn(ItemModuleDefn),
         Context = ItemModuleDefn ^ module_defn_context
     ;

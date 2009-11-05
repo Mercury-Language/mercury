@@ -222,21 +222,22 @@
 actually_read_module(Globals, OpenFile, DefaultModuleName, ReturnTimestamp,
         FileData, ModuleName, Items, Specs, Error, MaybeModuleTimestamp,
         !IO) :-
-    actually_read_module_2(Globals, OpenFile, DefaultModuleName,
+    do_actually_read_module(Globals, OpenFile, DefaultModuleName,
         no, ReturnTimestamp, FileData, ModuleName,
         Items, Specs, Error, MaybeModuleTimestamp, !IO).
 
 actually_read_module_if_changed(Globals, OpenFile, DefaultModuleName,
         OldTimestamp, FileData, ModuleName, Items, Specs, Error,
         MaybeModuleTimestamp, !IO) :-
-    actually_read_module_2(Globals, OpenFile, DefaultModuleName,
+    do_actually_read_module(Globals, OpenFile, DefaultModuleName,
         yes(OldTimestamp), do_return_timestamp, FileData, ModuleName,
         Items, Specs, Error,MaybeModuleTimestamp, !IO).
 
 actually_read_opt_file(Globals, FileName, DefaultModuleName,
         Items, Specs, Error, !IO) :-
     globals.lookup_accumulating_option(Globals, intermod_directories, Dirs),
-    actually_read_module_2(Globals, search_for_file(open_file, Dirs, FileName),
+    do_actually_read_module(Globals,
+        search_for_file(open_file, Dirs, FileName),
         DefaultModuleName, no, do_not_return_timestamp, _, ModuleName, Items,
         ItemSpecs, Error, _, !IO),
     check_module_has_expected_name(FileName, DefaultModuleName, ModuleName,
@@ -263,15 +264,15 @@ check_module_has_expected_name(FileName, ExpectedName, ActualName, Specs) :-
     % and then reverse them afterwards. (Using difference lists would require
     % late-input modes.)
     %
-:- pred actually_read_module_2(globals::in,
+:- pred do_actually_read_module(globals::in,
     open_file_pred(T)::in(open_file_pred), module_name::in,
     maybe(timestamp)::in, maybe_return_timestamp::in,
     maybe(T)::out, module_name::out, list(item)::out, list(error_spec)::out,
     module_error::out, maybe(io.res(timestamp))::out, io::di, io::uo) is det.
 
-actually_read_module_2(Globals, OpenFile, DefaultModuleName, MaybeOldTimestamp,
-        ReturnTimestamp, MaybeFileData, ModuleName, Items, Specs, Error,
-        MaybeModuleTimestamp, !IO) :-
+do_actually_read_module(Globals, OpenFile, DefaultModuleName,
+        MaybeOldTimestamp, ReturnTimestamp, MaybeFileData, ModuleName,
+        Items, Specs, Error, MaybeModuleTimestamp, !IO) :-
     io.input_stream(OldInputStream, !IO),
     OpenFile(OpenResult, !IO),
     (
@@ -464,9 +465,8 @@ get_end_module(ModuleName, RevItems0, RevItems, EndModule) :-
         % nested module, the error will be caught by make_hlds.
 
         RevItems0 = [Item | RevItemsPrime],
-        Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, _SeqNum),
-        ModuleDefn = md_end_module(ModuleName)
+        Item = item_module_end(ItemModuleEnd),
+        ItemModuleEnd = item_module_end_info(ModuleName, Context, _SeqNum)
     ->
         RevItems = RevItemsPrime,
         EndModule = module_end_yes(ModuleName, Context)
@@ -490,14 +490,14 @@ check_end_module(EndModule, !Items, !Specs, !Error) :-
     % and remove it from the front of the item list.
     (
         !.Items = [Item | !:Items],
-        Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(md_module(ModuleName1), _, _)
+        Item = item_module_start(ItemModuleStart),
+        ItemModuleStart = item_module_start_info(StartModuleName, _, _)
     ->
         % Check that the end module declaration (if any) matches
         % the begin module declaration.
         (
             EndModule = module_end_yes(EndModuleName, EndModuleContext),
-            ModuleName1 \= EndModuleName
+            StartModuleName \= EndModuleName
         ->
             Pieces = [words("Error:"),
                 quote(":- end_module"), words("declaration"),
@@ -603,8 +603,9 @@ read_all_items(Globals, DefaultModuleName, ModuleName, Items,
         io.input_stream(Stream, !IO),
         io.input_stream_name(Stream, SourceFileName0, !IO),
         read_first_item(DefaultModuleName, SourceFileName0, SourceFileName,
-            ModuleName, RevItems0, MaybeSecondTerm, !:Specs, !:Error,
+            ModuleName, ModuleDeclItem, MaybeSecondTerm, !:Specs, !:Error,
             !SeqNumCounter, !IO),
+        RevItems0 = [ModuleDeclItem],
         (
             MaybeSecondTerm = yes(SecondTerm),
             % XXX Should this be SourceFileName instead of SourceFileName0?
@@ -629,24 +630,24 @@ read_all_items(Globals, DefaultModuleName, ModuleName, Items,
     ).
 
     % We need to jump through a few hoops when reading the first item,
-    % to allow the initial `:- module' declaration to be optional.
+    % to allow us to recover from a missing initial `:- module' declaration.
     % The reason is that in order to parse an item, we need to know
     % which module it is defined in (because we do some module
     % qualification and checking of module qualifiers at parse time),
     % but the initial `:- module' declaration and the declaration
     % that follows it occur in different scopes, so we need to know
-    % what it is that we're parsing before we can parse it!
+    % what it is that we are parsing before we can parse it!
     % We solve this dilemma by first parsing it in the root scope,
     % and then if it turns out to not be a `:- module' declaration
     % we reparse it in the default module scope. Blecchh.
     %
 :- pred read_first_item(module_name::in, file_name::in, file_name::out,
-    module_name::out, list(item)::out, maybe(read_term)::out,
+    module_name::out, item::out, maybe(read_term)::out,
     list(error_spec)::out, module_error::out, counter::in, counter::out,
     io::di, io::uo) is det.
 
 read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
-        Items, MaybeSecondTerm, Specs, Error, !SeqNumCounter, !IO) :-
+        ModuleDeclItem, MaybeSecondTerm, Specs, Error, !SeqNumCounter, !IO) :-
     % Parse the first term, treating it as occurring within the scope
     % of the special "root" module (so that any `:- module' declaration
     % is taken to be a non-nested module unless explicitly qualified).
@@ -662,30 +663,31 @@ read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
         Pragma = pragma_source_file(!:SourceFileName)
     ->
         read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
-            Items, MaybeSecondTerm, Specs, Error, !SeqNumCounter, !IO)
+            ModuleDeclItem, MaybeSecondTerm, Specs, Error, !SeqNumCounter, !IO)
     ;
         % Check if the first term was a `:- module' decl.
         MaybeFirstItem = read_item_ok(FirstItem),
-        FirstItem = item_module_defn(FirstItemModuleDefn),
-        FirstItemModuleDefn = item_module_defn_info(ModuleDefn, FirstContext,
-            _FirstItemSeqNum),
-        ModuleDefn = md_module(StartModuleName)
+        FirstItem = item_module_start(FirstItemModuleStart),
+        FirstItemModuleStart = item_module_start_info(StartModuleName,
+            FirstContext, _FirstItemSeqNum)
     ->
         % If so, then check that it matches the expected module name,
         % and if not, report a warning.
         ( match_sym_name(StartModuleName, DefaultModuleName) ->
             ModuleName = DefaultModuleName,
-            Specs = []
+            Specs = [],
+            Error = no_module_errors
         ; match_sym_name(DefaultModuleName, StartModuleName) ->
             ModuleName = StartModuleName,
-            Specs = []
+            Specs = [],
+            Error = no_module_errors
         ;
             % XXX I think this should be an error, not a warning. -zs
-            Pieces = [words("Warning: source file"), quote(!.SourceFileName),
+            Pieces = [words("Error: source file"), quote(!.SourceFileName),
                 words("contains module named"), sym_name(StartModuleName),
                 suffix("."), nl],
             Severity = severity_conditional(warn_wrong_module_name, yes,
-                severity_warning, no),
+                severity_error, no),
             Msgs = [option_is_set(warn_wrong_module_name, yes,
                 [always(Pieces)])],
             Spec = error_spec(Severity, phase_term_to_parse_tree,
@@ -695,49 +697,42 @@ read_first_item(DefaultModuleName, !SourceFileName, ModuleName,
             % Which one should we use here? We used to use the default module
             % name (computed from the filename) but now we use the declared
             % one.
-            ModuleName = StartModuleName
+            ModuleName = StartModuleName,
+            Error = some_module_errors
         ),
-        make_module_decl(ModuleName, FirstContext, FixedFirstItem),
-        Items = [FixedFirstItem],
-        Error = no_module_errors,
+        make_module_decl(ModuleName, FirstContext, ModuleDeclItem),
         MaybeSecondTerm = no
     ;
-        % If the first term was not a `:- module' decl, then issue a warning
-        % (if warning enabled), and insert an implicit `:- module ModuleName'
-        % decl.
+        % If the first term was not a `:- module' decl, then generate an
+        % error message, and insert an implicit `:- module ModuleName' decl.
         ( MaybeFirstItem = read_item_ok(FirstItem) ->
             FirstContext = get_item_context(FirstItem)
         ;
             term.context_init(!.SourceFileName, 1, FirstContext)
         ),
-        % XXX I think this should be an error, not a warning. -zs
-        Pieces = [words("Warning: module should start with a"),
+        Pieces = [words("Error: module must start with a"),
             quote(":- module"), words("declaration."), nl],
-        Severity = severity_conditional(warn_missing_module_name, yes,
-            severity_warning, no),
-        Msgs  = [option_is_set(warn_missing_module_name, yes,
-            [always(Pieces)])],
+        Severity = severity_error,
+        Msgs  = [always(Pieces)],
         Spec = error_spec(Severity, phase_term_to_parse_tree,
             [simple_msg(FirstContext, Msgs)]),
         Specs = [Spec],
+        Error = some_module_errors,
 
         ModuleName = DefaultModuleName,
-        make_module_decl(ModuleName, FirstContext, FixedFirstItem),
+        make_module_decl(ModuleName, FirstContext, ModuleDeclItem),
 
         % Reparse the first term, this time treating it as occuring within
         % the scope of the implicit `:- module' decl rather than in the
         % root module.
-        MaybeSecondTerm = yes(MaybeFirstTerm),
-        Items = [FixedFirstItem],
-        Error = no_module_errors
+        MaybeSecondTerm = yes(MaybeFirstTerm)
     ).
 
 :- pred make_module_decl(module_name::in, term.context::in, item::out) is det.
 
 make_module_decl(ModuleName, Context, Item) :-
-    ModuleDefn = md_module(ModuleName),
-    ItemInfo = item_module_defn_info(ModuleDefn, Context, -1),
-    Item = item_module_defn(ItemInfo).
+    ItemInfo = item_module_start_info(ModuleName, Context, -1),
+    Item = item_module_start(ItemInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -794,43 +789,8 @@ read_items_loop_2(Globals, MaybeItemOrEOF, !.ModuleName, !.SourceFileName,
     list(error_spec)::in, list(error_spec)::out,
     module_error::in, module_error::out, io::di, io::uo) is det.
 
-read_items_loop_ok(Globals, Item0, !ModuleName, !SourceFileName, !Items,
+read_items_loop_ok(Globals, Item, !ModuleName, !SourceFileName, !Items,
         !Specs, !Error, !IO) :-
-    (
-        Item0 = item_nothing(ItemNothing0),
-        ItemNothing0 = item_nothing_info(yes(Warning), Context0, NothingSeqNum)
-    ->
-        Warning = item_warning(MaybeOption, Msg, Term),
-        (
-            MaybeOption = yes(Option),
-            globals.lookup_bool_option(Globals, Option, Warn)
-        ;
-            MaybeOption = no,
-            Warn = yes
-        ),
-        (
-            Warn = yes,
-            Pieces = [words("Warning: "), words(Msg), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
-            !:Specs = [Spec | !.Specs],
-
-            globals.lookup_bool_option(Globals, halt_at_warn, Halt),
-            (
-                Halt = yes,
-                !:Error = some_module_errors
-            ;
-                Halt = no
-            )
-        ;
-            Warn = no
-        ),
-        ItemNothing = item_nothing_info(no, Context0, NothingSeqNum),
-        Item = item_nothing(ItemNothing)
-    ;
-        Item = Item0
-    ),
-
     % If the next item was a valid item, check whether it was a declaration
     % that affects the current parsing context -- i.e. either a `module' or
     % `end_module' declaration, or a `pragma source_file' declaration.
@@ -838,24 +798,21 @@ read_items_loop_ok(Globals, Item0, !ModuleName, !SourceFileName, !Items,
     % is a `pragma source_file' declaration, insert it into the item list.
     % Then continue looping.
     (
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(_, Pragma, _, _),
-        Pragma = pragma_source_file(NewSourceFileName)
-    ->
-        !:SourceFileName = NewSourceFileName
+        Item = item_module_start(ItemModuleStart),
+        ItemModuleStart = item_module_start_info(NestedModuleName, _, _),
+        !:ModuleName = NestedModuleName,
+        !:Items = [Item | !.Items]
     ;
-        Item = item_module_defn(ItemModuleDefn)
-    ->
+        Item = item_module_end(ItemModuleEnd),
+        ItemModuleEnd = item_module_end_info(NestedModuleName, _, _),
+        sym_name_get_module_name_default(NestedModuleName,
+            root_module_name, ParentModuleName),
+        !:ModuleName = ParentModuleName,
+        !:Items = [Item | !.Items]
+    ;
+        Item = item_module_defn(ItemModuleDefn),
         ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, SeqNum),
-        ( ModuleDefn = md_module(NestedModuleName) ->
-            !:ModuleName = NestedModuleName,
-            !:Items = [Item | !.Items]
-        ; ModuleDefn = md_end_module(NestedModuleName) ->
-            sym_name_get_module_name_default(NestedModuleName,
-                root_module_name, ParentModuleName),
-            !:ModuleName = ParentModuleName,
-            !:Items = [Item | !.Items]
-        ; ModuleDefn = md_import(Modules) ->
+        ( ModuleDefn = md_import(Modules) ->
             list.map(make_pseudo_import_module_decl(Context, SeqNum),
                 Modules, ImportItems),
             !:Items = ImportItems ++ !.Items
@@ -871,7 +828,65 @@ read_items_loop_ok(Globals, Item0, !ModuleName, !SourceFileName, !Items,
             !:Items = [Item | !.Items]
         )
     ;
+        Item = item_pragma(ItemPragma),
+        ItemPragma = item_pragma_info(_, Pragma, _, _),
+        ( Pragma = pragma_source_file(NewSourceFileName) ->
+            !:SourceFileName = NewSourceFileName
+        ;
+            !:Items = [Item | !.Items]
+        )
+    ;
+        ( Item = item_clause(_)
+        ; Item = item_type_defn(_)
+        ; Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ; Item = item_pred_decl(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_promise(_)
+        ; Item = item_typeclass(_)
+        ; Item = item_instance(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_mutable(_)
+        ),
         !:Items = [Item | !.Items]
+    ;
+        Item = item_nothing(ItemNothing),
+        ItemNothing = item_nothing_info(MaybeWarning, Context, NothingSeqNum),
+        (
+            MaybeWarning = no,
+            !:Items = [Item | !.Items]
+        ;
+            MaybeWarning = yes(Warning),
+            Warning = item_warning(MaybeOption, Msg, Term),
+            (
+                MaybeOption = yes(Option),
+                globals.lookup_bool_option(Globals, Option, Warn)
+            ;
+                MaybeOption = no,
+                Warn = yes
+            ),
+            (
+                Warn = yes,
+                Pieces = [words("Warning: "), words(Msg), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(Term), [always(Pieces)])]),
+                !:Specs = [Spec | !.Specs],
+
+                globals.lookup_bool_option(Globals, halt_at_warn, Halt),
+                (
+                    Halt = yes,
+                    !:Error = some_module_errors
+                ;
+                    Halt = no
+                )
+            ;
+                Warn = no
+            ),
+            NoWarnItemNothing = item_nothing_info(no, Context, NothingSeqNum),
+            NoWarnItem = item_nothing(NoWarnItemNothing),
+            !:Items = [NoWarnItem | !.Items]
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1155,10 +1170,31 @@ parse_attributed_decl(ModuleName, VarSet, Functor, ArgTerms, Attributes,
             MaybeModuleNameSym),
         (
             MaybeModuleNameSym = ok1(ModuleNameSym),
-            ModuleDefn = md_module(ModuleNameSym),
-            ItemModuleDefn =
-                item_module_defn_info(ModuleDefn, Context, SeqNum),
-            Item = item_module_defn(ItemModuleDefn),
+            ItemModuleStart =
+                item_module_start_info(ModuleNameSym, Context, SeqNum),
+            Item = item_module_start(ItemModuleStart),
+            MaybeItem0 = ok1(Item)
+        ;
+            MaybeModuleNameSym = error1(Specs),
+            MaybeItem0 = error1(Specs)
+        ),
+        check_no_attributes(MaybeItem0, Attributes, MaybeItem)
+    ;
+        Functor = "end_module",
+        ArgTerms = [ModuleNameTerm],
+        % The name in an `end_module' declaration not inside the scope of the
+        % module being ended, so the default module name here (ModuleName)
+        % is the parent of the previous default module name.
+
+        sym_name_get_module_name_default(ModuleName, root_module_name,
+            ParentOfModuleName),
+        parse_module_name(ParentOfModuleName, VarSet, ModuleNameTerm,
+            MaybeModuleNameSym),
+        (
+            MaybeModuleNameSym = ok1(ModuleNameSym),
+            ItemModuleEnd =
+                item_module_end_info(ModuleNameSym, Context, SeqNum),
+            Item = item_module_end(ItemModuleEnd),
             MaybeItem0 = ok1(Item)
         ;
             MaybeModuleNameSym = error1(Specs),
@@ -1179,29 +1215,6 @@ parse_attributed_decl(ModuleName, VarSet, Functor, ArgTerms, Attributes,
             MaybeItem0 = ok1(Item)
         ;
             MaybeModuleNameSyms = error1(Specs),
-            MaybeItem0 = error1(Specs)
-        ),
-        check_no_attributes(MaybeItem0, Attributes, MaybeItem)
-    ;
-        Functor = "end_module",
-        ArgTerms = [ModuleNameTerm],
-        % The name in an `end_module' declaration not inside the scope of the
-        % module being ended, so the default module name here (ModuleName)
-        % is the parent of the previous default module name.
-
-        sym_name_get_module_name_default(ModuleName, root_module_name,
-            ParentOfModuleName),
-        parse_module_name(ParentOfModuleName, VarSet, ModuleNameTerm,
-            MaybeModuleNameSym),
-        (
-            MaybeModuleNameSym = ok1(ModuleNameSym),
-            ModuleDefn = md_end_module(ModuleNameSym),
-            ItemModuleDefn =
-                item_module_defn_info(ModuleDefn, Context, SeqNum),
-            Item = item_module_defn(ItemModuleDefn),
-            MaybeItem0 = ok1(Item)
-        ;
-            MaybeModuleNameSym = error1(Specs),
             MaybeItem0 = error1(Specs)
         ),
         check_no_attributes(MaybeItem0, Attributes, MaybeItem)

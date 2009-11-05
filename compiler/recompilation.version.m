@@ -515,7 +515,9 @@ item_to_item_id(Item, ItemId) :-
 
 item_to_item_id_2(Item, MaybeItemId) :-
     (
-        ( Item = item_module_defn(_)
+        ( Item = item_module_start(_)
+        ; Item = item_module_end(_)
+        ; Item = item_module_defn(_)
         ; Item = item_clause(_)
         ; Item = item_promise(_)
         ; Item = item_initialise(_)
@@ -700,6 +702,28 @@ items_are_unchanged([Section - Item1 | Items1], [Section - Item2 | Items2]) :-
 
 item_is_unchanged(Item1, Item2) = Unchanged :-
     (
+        Item1 = item_module_start(ItemModuleStart1),
+        ItemModuleStart1 = item_module_start_info(ModuleName, _, _),
+        (
+            Item2 = item_module_start(ItemModuleStart2),
+            ItemModuleStart2 = item_module_start_info(ModuleName, _, _)
+        ->
+            Unchanged = yes
+        ;
+            Unchanged = no
+        )
+    ;
+        Item1 = item_module_end(ItemModuleEnd1),
+        ItemModuleEnd1 = item_module_end_info(ModuleName, _, _),
+        (
+            Item2 = item_module_end(ItemModuleEnd2),
+            ItemModuleEnd2 = item_module_end_info(ModuleName, _, _)
+        ->
+            Unchanged = yes
+        ;
+            Unchanged = no
+        )
+    ;
         Item1 = item_module_defn(ItemModuleDefn1),
         ItemModuleDefn1 = item_module_defn_info(ModuleDefn, _, _),
         (

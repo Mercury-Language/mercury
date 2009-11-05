@@ -650,7 +650,8 @@ strip_imported_items(Items0, Items) :-
 
 strip_imported_items_2([], !RevItems).
 strip_imported_items_2([Item | Items], !RevItems) :-
-    ( Item = item_module_defn(ItemModuleDefn) ->
+    (
+        Item = item_module_defn(ItemModuleDefn),
         ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
         (
             ( ModuleDefn = md_imported(_)
@@ -661,9 +662,7 @@ strip_imported_items_2([Item | Items], !RevItems) :-
             % Item and everything in Items from the list.
         ;
             % XXX Some of these should probably cause an error message.
-            ( ModuleDefn = md_module(_)
-            ; ModuleDefn = md_end_module(_)
-            ; ModuleDefn = md_interface
+            ( ModuleDefn = md_interface
             ; ModuleDefn = md_implementation
             ; ModuleDefn = md_private_interface
             ; ModuleDefn = md_opt_imported
@@ -679,6 +678,23 @@ strip_imported_items_2([Item | Items], !RevItems) :-
             strip_imported_items_2(Items, !RevItems)
         )
     ;
+        ( Item = item_module_start(_)
+        ; Item = item_module_end(_)
+        ; Item = item_clause(_)
+        ; Item = item_type_defn(_)
+        ; Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ; Item = item_pred_decl(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_pragma(_)
+        ; Item = item_promise(_)
+        ; Item = item_typeclass(_)
+        ; Item = item_instance(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_mutable(_)
+        ; Item = item_nothing(_)
+        ),
         !:RevItems = [Item | !.RevItems],
         strip_imported_items_2(Items, !RevItems)
     ).
@@ -859,9 +875,7 @@ do_standardize_impl_items([Item | Items], !Unexpected,
                     "do_standardize_impl_items: non-singleton-module use")
             )
         ;
-            ( ModuleDefn = md_module(_)
-            ; ModuleDefn = md_end_module(_)
-            ; ModuleDefn = md_imported(_)
+            ( ModuleDefn = md_imported(_)
             ; ModuleDefn = md_used(_)
             ; ModuleDefn = md_abstract_imported
             ; ModuleDefn = md_opt_imported
@@ -1314,7 +1328,9 @@ get_requirements_of_impl_typeclass(Item, !Modules) :-
         list.foldl(get_requirements_of_impl_from_constraint, Constraints,
             !Modules)
     ;
-        ( Item = item_module_defn(_)
+        ( Item = item_module_start(_)
+        ; Item = item_module_end(_)
+        ; Item = item_module_defn(_)
         ; Item = item_clause(_)
         ; Item = item_type_defn(_)
         ; Item = item_inst_defn(_)
@@ -1445,7 +1461,9 @@ check_for_clauses_in_interface([Item0 | Items0], Items, !Specs) :-
             Items = [Item0 | Items1]
         )
     ;
-        ( Item0 = item_module_defn(_)
+        ( Item0 = item_module_start(_)
+        ; Item0 = item_module_end(_)
+        ; Item0 = item_module_defn(_)
         ; Item0 = item_type_defn(_)
         ; Item0 = item_inst_defn(_)
         ; Item0 = item_mode_defn(_)
@@ -3132,7 +3150,8 @@ get_accessible_children(Items, IncludeDeps) :-
 
 get_accessible_children_2(_, [], !IncludeDeps).
 get_accessible_children_2(!.Visible, [Item | Items], !IncludeDeps) :-
-    ( Item = item_module_defn(ItemModuleDefn) ->
+    (
+        Item = item_module_defn(ItemModuleDefn),
         ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
         (
             ( ModuleDefn = md_abstract_imported
@@ -3157,9 +3176,7 @@ get_accessible_children_2(!.Visible, [Item | Items], !IncludeDeps) :-
                 !.Visible = no
             )
         ;
-            ( ModuleDefn = md_module(_)
-            ; ModuleDefn = md_end_module(_)
-            ; ModuleDefn = md_external(_, _)
+            ( ModuleDefn = md_external(_, _)
             ; ModuleDefn = md_export(_)
             ; ModuleDefn = md_import(_)
             ; ModuleDefn = md_use(_)
@@ -3168,7 +3185,23 @@ get_accessible_children_2(!.Visible, [Item | Items], !IncludeDeps) :-
             % Do nothing.
         )
     ;
-        true
+        ( Item = item_module_start(_)
+        ; Item = item_module_end(_)
+        ; Item = item_clause(_)
+        ; Item = item_type_defn(_)
+        ; Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ; Item = item_pred_decl(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_pragma(_)
+        ; Item = item_promise(_)
+        ; Item = item_typeclass(_)
+        ; Item = item_instance(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_mutable(_)
+        ; Item = item_nothing(_)
+        )
     ),
     get_accessible_children_2(!.Visible, Items, !IncludeDeps).
 
@@ -3231,9 +3264,9 @@ split_into_submodules_3(ModuleName, [Item | Items1],
     (
         % Check for a `module' declaration, which signals the start
         % of a nested module.
-        Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, SeqNum),
-        ModuleDefn = md_module(SubModuleName)
+        Item = item_module_start(ItemModuleStart),
+        ItemModuleStart =
+            item_module_start_info(SubModuleName, Context, SeqNum)
     ->
         % Parse in the items for the nested submodule.
         split_into_submodules_2(SubModuleName, Items1, !.InInterface,
@@ -3256,9 +3289,8 @@ split_into_submodules_3(ModuleName, [Item | Items1],
         OtherItems = Items3
     ;
         % Check for a matching `end_module' declaration.
-        Item = item_module_defn(ItemModuleDefn),
-        ItemModuleDefn = item_module_defn_info(ModuleDefn, _Context, _),
-        ModuleDefn = md_end_module(EndModuleName),
+        Item = item_module_end(ItemModuleEnd),
+        ItemModuleEnd = item_module_end_info(EndModuleName, _, _),
         EndModuleName = ModuleName
     ->
         % If so, that's the end of this module.
@@ -3357,24 +3389,37 @@ report_error_implementation_in_interface(ModuleName, Context, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_duplicate_modules(Duplicates, Items, !Specs) :-
-    solutions.solutions(is_duplicate_error(Duplicates, Items),
-        DuplicateErrors),
+    list.filter_map(is_duplicate_error(Duplicates), Items,
+        DuplicateErrorLists),
+    list.condense(DuplicateErrorLists, DuplicateErrors),
     list.foldl(report_error_duplicate_module_decl, DuplicateErrors, !Specs).
 
-:- pred is_duplicate_error(set(module_name)::in, list(item)::in,
-    pair(module_name, prog_context)::out) is nondet.
+:- pred is_duplicate_error(set(module_name)::in, item::in,
+    list(pair(module_name, prog_context))::out) is semidet.
 
-is_duplicate_error(Duplicates, Items, SubModuleName - Context) :-
-    list.member(Item, Items),
-    Item = item_module_defn(ItemModuleDefn),
-    ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, _),
+is_duplicate_error(DuplicatesSet, Item, SubModuleNameContexts) :-
     (
-        ModuleDefn = md_module(SubModuleName)
+        Item = item_module_start(ItemModuleStart),
+        ItemModuleStart = item_module_start_info(SubModuleName, Context, _),
+        set.member(SubModuleName, DuplicatesSet),
+        SubModuleNameContexts = [SubModuleName - Context]
     ;
+        Item = item_module_defn(ItemModuleDefn),
+        ItemModuleDefn = item_module_defn_info(ModuleDefn, Context, _),
         ModuleDefn = md_include_module(SubModuleNames),
-        list.member(SubModuleName, SubModuleNames)
-    ),
-    set.member(SubModuleName, Duplicates).
+        set.list_to_set(SubModuleNames, SubModuleNamesSet),
+        set.intersect(SubModuleNamesSet, DuplicatesSet,
+            DuplicatedSubModuleNamesSet),
+        set.to_sorted_list(DuplicatedSubModuleNamesSet,
+            DuplicatedSubModuleNames),
+        SubModuleNameContexts =
+            list.map(pair_with_context(Context), DuplicatedSubModuleNames)
+    ).
+
+:- func pair_with_context(prog_context, module_name) =
+    pair(module_name, prog_context).
+
+pair_with_context(Context, ModuleName) = ModuleName - Context.
 
 :- pred report_error_duplicate_module_decl(pair(module_name, prog_context)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -3601,7 +3646,9 @@ get_short_interface_2([Item | Items], Kind, !RevItems) :-
 
 include_in_short_interface(Item) = Include :-
     (
-        ( Item = item_module_defn(_)
+        ( Item = item_module_start(_)
+        ; Item = item_module_end(_)
+        ; Item = item_module_defn(_)
         ; Item = item_type_defn(_)
         ; Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
@@ -3661,7 +3708,9 @@ item_needs_imports(Item) = NeedsImports :-
         ),
         NeedsImports = yes
     ;
-        ( Item = item_module_defn(_)
+        ( Item = item_module_start(_)
+        ; Item = item_module_end(_)
+        ; Item = item_module_defn(_)
         ; Item = item_nothing(_)
         ),
         NeedsImports = no
@@ -3732,7 +3781,9 @@ item_needs_foreign_imports(Item) = Langs :-
             Langs = []
         )
     ;
-        ( Item = item_module_defn(_)
+        ( Item = item_module_start(_)
+        ; Item = item_module_end(_)
+        ; Item = item_module_defn(_)
         ; Item = item_clause(_)
         ; Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
@@ -3764,9 +3815,7 @@ include_in_int_file_implementation(Item) = Include :-
         ItemModuleDefn = item_module_defn_info(ModuleDefn, _, _),
         (
             % XXX Some of these should yield an exception.
-            ( ModuleDefn = md_module(_)
-            ; ModuleDefn = md_end_module(_)
-            ; ModuleDefn = md_interface
+            ( ModuleDefn = md_interface
             ; ModuleDefn = md_implementation
             ; ModuleDefn = md_private_interface
             ; ModuleDefn = md_imported(_)
@@ -3830,7 +3879,9 @@ include_in_int_file_implementation(Item) = Include :-
             Include = no
         )
     ;
-        ( Item = item_clause(_)
+        ( Item = item_module_start(_)
+        ; Item = item_module_end(_)
+        ; Item = item_clause(_)
         ; Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
         ; Item = item_pred_decl(_)
@@ -4157,7 +4208,9 @@ reorderable_item(Item) = Reorderable :-
         ),
         Reorderable = yes
     ;
-        ( Item = item_clause(_)
+        ( Item = item_module_start(_)
+        ; Item = item_module_end(_)
+        ; Item = item_clause(_)
         ; Item = item_pred_decl(_)
         ; Item = item_mode_decl(_)
         ; Item = item_initialise(_)
@@ -4173,14 +4226,12 @@ reorderable_item(Item) = Reorderable :-
 reorderable_module_defn(ModuleDefn) = Reorderable :-
     ( ModuleDefn = md_import(_), Reorderable = yes
     ; ModuleDefn = md_abstract_imported, Reorderable = no
-    ; ModuleDefn = md_end_module(_), Reorderable = no
     ; ModuleDefn = md_export(_), Reorderable = yes
     ; ModuleDefn = md_external(_, _), Reorderable = yes
     ; ModuleDefn = md_implementation, Reorderable = no
     ; ModuleDefn = md_imported(_), Reorderable = no
     ; ModuleDefn = md_include_module(_), Reorderable = no
     ; ModuleDefn = md_interface, Reorderable = no
-    ; ModuleDefn = md_module(_), Reorderable = no
     ; ModuleDefn = md_opt_imported, Reorderable = no
     ; ModuleDefn = md_private_interface, Reorderable = no
     ; ModuleDefn = md_transitively_imported, Reorderable = no
@@ -4266,7 +4317,10 @@ chunkable_item(Item) = Chunkable :-
         ),
         Chunkable = yes
     ;
-        Item = item_mutable(_),
+        ( Item = item_module_start(_)
+        ; Item = item_module_end(_)
+        ; Item = item_mutable(_)
+        ),
         Chunkable = no
     ).
 
@@ -4274,7 +4328,6 @@ chunkable_item(Item) = Chunkable :-
 
 chunkable_module_defn(ModuleDefn) = Reorderable :-
     ( ModuleDefn = md_abstract_imported, Reorderable = no
-    ; ModuleDefn = md_end_module(_), Reorderable = no
     ; ModuleDefn = md_export(_), Reorderable = yes
     ; ModuleDefn = md_external(_, _), Reorderable = yes
     ; ModuleDefn = md_implementation, Reorderable = no
@@ -4282,7 +4335,6 @@ chunkable_module_defn(ModuleDefn) = Reorderable :-
     ; ModuleDefn = md_imported(_), Reorderable = no
     ; ModuleDefn = md_include_module(_), Reorderable = no
     ; ModuleDefn = md_interface, Reorderable = no
-    ; ModuleDefn = md_module(_), Reorderable = no
     ; ModuleDefn = md_opt_imported, Reorderable = no
     ; ModuleDefn = md_private_interface, Reorderable = no
     ; ModuleDefn = md_transitively_imported, Reorderable = no
