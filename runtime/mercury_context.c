@@ -170,7 +170,7 @@ MR_init_thread_stuff(void)
      */
     if (MR_num_threads == 0)
     {
-#if defined(MR_HAVE_SYSCONF) && defined(MR_HAVE__SC_NPROCESSORS_ONLN) 
+#if defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN) 
         long result;
 
         result = sysconf(_SC_NPROCESSORS_ONLN);
@@ -179,19 +179,24 @@ MR_init_thread_stuff(void)
             MR_num_threads = 1;
         } else {
             MR_num_threads = result;
-            /* On systems that don't support sched_setaffinity we don't try to
+            /*
+            ** On systems that don't support sched_setaffinity we don't try to
             ** automatically enable thread pinning.  This prevents a runtime
             ** warning that could unnecessarily confuse the user.
             **/
-#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY) 
-            MR_thread_pinning = MR_TRUE;
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY)
+            /*
+            ** Comment this back in to enable thread pinning by default if we
+            ** autodetected the correct number of CPUs.
+            */
+            /* MR_thread_pinning = MR_TRUE; */
 #endif
         }
-#else
+#else /* ! defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN) */
         MR_num_threads = 1;
-#endif
+#endif /* ! defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN) */ 
     }
-#endif
+#endif /* MR_THREAD_SAFE */
 }
 
 void
@@ -200,7 +205,7 @@ MR_pin_thread(void)
 #if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
         defined(MR_HAVE_SCHED_SETAFFINITY) 
     MR_LOCK(&MR_next_cpu_lock, "MR_pin_thread");
-    if (MR_thread_pinning == MR_TRUE) {
+    if (MR_thread_pinning) {
         cpu_set_t   cpus;
 
         if (MR_next_cpu < CPU_SETSIZE) {
@@ -211,19 +216,21 @@ MR_pin_thread(void)
                 MR_next_cpu++;
             } else {
                 perror("Warning: Couldn't set CPU affinity");
-                /* if this failed once it will probably fail again so disable
-                ** it. 
+                /* 
+                ** If this failed once it will probably fail again so we
+                ** disable it. 
                 */
                 MR_thread_pinning = MR_FALSE;
             }
         } else {
-            perror("Warning: Couldn't set CPU affinity due to a static " \
+            perror("Warning: Couldn't set CPU affinity due to a static "
                 "system limit");
             MR_thread_pinning = MR_FALSE;
         }
     }
     MR_UNLOCK(&MR_next_cpu_lock, "MR_pin_thread");
-#endif
+#endif /* defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
+            defined(MR_HAVE_SCHED_SETAFFINITY) */ 
 }
 
 void
@@ -364,7 +371,7 @@ fprint_stats(FILE *stream, const char *message, MR_Stats *stats) {
     }
 };
 
-#endif
+#endif /* defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) */
 
 static void 
 MR_init_context_maybe_generator(MR_Context *c, const char *id,

@@ -9711,7 +9711,7 @@ This only has an effect if the executable was built in a profiling grade.
 @findex -P (runtime option)
 Tells the runtime system to use @var{num} threads
 if the program was built in a parallel low-level C grade.
-The mercury runtime attempts to automatically determine this value if support
+The Mercury runtime attempts to automatically determine this value if support
 is available from the operating system.
 If it cannot or support is unavailable it defaults to @samp{1}.
 
@@ -9737,13 +9737,15 @@ grade.
 @sp 1
 @item --thread-pinning
 @findex --thread-pinning
-Request that the runtime system attempts to pin mercury engines (POSIX threads)
+Request that the runtime system attempts to pin Mercury engines (POSIX threads)
 to CPU cores/hardware threads.
-This only has an effect if the executable was build in a parallel low-level C 
+This only has an effect if the executable was built in a parallel low-level C 
 grade.
-It is disabled by default unless @samp{-P @var{num}} is not specified and the
-runtime system is able to detect the number of processors enabled by the
-operating system.
+This is disabled by default but may be enabled by default in the future.
+@c In case this is enabled by default the following comment is relevant.
+@c This is disabled by default unless @samp{-P @var{num}} is not specified and the
+@c runtime system is able to detect the number of processors enabled by the
+@c operating system.
 
 @c @item -r @var{num}
 @c @findex -r (runtime option)

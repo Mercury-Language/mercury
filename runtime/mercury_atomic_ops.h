@@ -8,7 +8,8 @@
 */
 
 /*
-** mercury_atomic.h - defines atomic operations.
+** mercury_atomic.h - defines atomic operations and other primitives used by
+** the parallel runtime.
 */
 
 #ifndef MERCURY_ATOMIC_OPS_H
@@ -16,18 +17,13 @@
 
 #include "mercury_std.h"
 
-/*
-** AMD say that __amd64__ is defined by the compiler for 64bit platforms,
-** Intel say that __x86_64__ is the correct macro.  Really these refer to
-** the same thing that is simply branded differently, we use __amd64__ below
-** and define it if necessary ourselves.
-*/
-#if defined(__x86_64__) && !defined(__amd64__)
-#define __amd64__
-#endif
-
 /*---------------------------------------------------------------------------*/
+
 #if defined(MR_LL_PARALLEL_CONJ)
+
+/*
+** Declarations for inline atomic operations.
+*/
 
 /*
 ** If the value at addr is equal to old, assign new to addr and return true.
@@ -47,7 +43,7 @@ MR_compare_and_swap_word(volatile MR_Integer *addr, MR_Integer old,
             return __sync_bool_compare_and_swap(addr, old, new_val);        \
         } while (0)
 
-#elif defined(__GNUC__) && defined(__amd64__)
+#elif defined(__GNUC__) && defined(__x86_64__)
 
     #define MR_COMPARE_AND_SWAP_WORD_BODY                                   \
         do {                                                                \
@@ -95,7 +91,7 @@ MR_compare_and_swap_word(volatile MR_Integer *addr, MR_Integer old,
 MR_EXTERN_INLINE void
 MR_atomic_inc_int(volatile MR_Integer *addr);
 
-#if defined(__GNUC__) && defined(__amd64__)
+#if defined(__GNUC__) && defined(__x86_64__)
 
     #define MR_ATOMIC_INC_INT_BODY                                          \
         do {                                                                \
@@ -148,7 +144,7 @@ MR_atomic_inc_int(volatile MR_Integer *addr);
 MR_EXTERN_INLINE void
 MR_atomic_dec_int(volatile MR_Integer *addr);
 
-#if defined(__GNUC__) && defined(__amd64__)
+#if defined(__GNUC__) && defined(__x86_64__)
 
     #define MR_ATOMIC_DEC_INT_BODY                                          \
         do {                                                                \
@@ -191,7 +187,7 @@ MR_atomic_dec_int(volatile MR_Integer *addr);
 MR_EXTERN_INLINE void
 MR_atomic_add_int(volatile MR_Integer *addr, MR_Integer addend);
 
-#if defined(__GNUC__) && defined(__amd64__)
+#if defined(__GNUC__) && defined(__x86_64__)
 
     #define MR_ATOMIC_ADD_INT_BODY                                          \
         do {                                                                \
@@ -233,7 +229,7 @@ MR_atomic_add_int(volatile MR_Integer *addr, MR_Integer addend);
 MR_EXTERN_INLINE void
 MR_atomic_sub_int(volatile MR_Integer *addr, MR_Integer x);
 
-#if defined(__GNUC__) && defined(__amd64__)
+#if defined(__GNUC__) && defined(__x86_64__)
 
     #define MR_ATOMIC_SUB_INT_BODY                                          \
         do {                                                                \
@@ -294,7 +290,7 @@ MR_atomic_sub_int(volatile MR_Integer *addr, MR_Integer x);
  * References: Intel and AMD documentation for PAUSE, Intel optimisation
  * guide.
  */
-#if defined(__GNUC__) && ( defined(__i386__) || defined(__amd64__) )
+#if defined(__GNUC__) && ( defined(__i386__) || defined(__x86_64__) )
 
     #define MR_ATOMIC_PAUSE                                                 \
         do {                                                                \
@@ -323,6 +319,10 @@ MR_atomic_sub_int(volatile MR_Integer *addr, MR_Integer x);
 
 #if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
 
+/*
+** Declarations for profiling the parallel runtime.
+*/
+
 typedef struct {
     MR_Unsigned         MR_stat_count_recorded;
     MR_Unsigned         MR_stat_count_not_recorded;
@@ -344,7 +344,7 @@ typedef struct {
 } MR_Timer;
 
 /*
-** Configure the profiling stats code.  On i386 and amd64 machines this uses
+** Configure the profiling stats code.  On i386 and x86_64 machines this uses
 ** CPUID to determine if the RDTSCP instruction is available and not prohibited
 ** by the OS.
 */
@@ -363,7 +363,7 @@ MR_profiling_start_timer(MR_Timer *timer);
 extern void
 MR_profiling_stop_timer(MR_Timer *timer, MR_Stats *stats);
 
-#endif /* MR_THREAD_SAFE && MR_PROFILE_PARALLEL_EXECUTION */
+#endif /* MR_THREAD_SAFE && MR_PROFILE_PARALLEL_EXECUTION_SUPPORT */
 
 /*---------------------------------------------------------------------------*/
 

@@ -460,7 +460,7 @@ extern  void        MR_destroy_context(MR_Context *context);
 
 /*
 ** MR_init_thread_stuff() initializes the lock structures for the runqueue, 
-** and detect the number of threads to use on the LLC backend.
+** and detects the number of threads to use on the LLC backend.
 */
 extern  void        MR_init_thread_stuff(void);
 

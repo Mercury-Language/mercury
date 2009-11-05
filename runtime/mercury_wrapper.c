@@ -290,7 +290,7 @@ static  char        *MR_mem_usage_report_prefix = NULL;
 static  int         MR_num_output_args = 0;
 
 /*
-** This is initialized to zero, if it is still zero after configuration of the
+** This is initialized to zero.  If it is still zero after configuration of the
 ** runtime but before threads are started then the number of processors on the
 ** system is detected and used if support is available.  Otherwise we fall back
 ** to 1 
@@ -1736,6 +1736,7 @@ MR_process_options(int argc, char **argv)
 #if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
                 MR_thread_pinning = MR_TRUE;
 #endif
+                break;
 
             case MR_PROFILE_PARALLEL_EXECUTION:
 #if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 

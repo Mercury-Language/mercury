@@ -14,11 +14,12 @@
 #include "mercury_imp.h"
 #include "mercury_atomic_ops.h"
 
+/*---------------------------------------------------------------------------*/
+
 #if defined(MR_LL_PARALLEL_CONJ)
 
-/*---------------------------------------------------------------------------*/
 /*
-** Provide definitions for functions declared `extern inline'.
+** Definitions for the atomic functions declared `extern inline'.
 */
 
 MR_OUTLINE_DEFN(
@@ -69,20 +70,26 @@ MR_OUTLINE_DEFN(
 
 #endif /* MR_LL_PARALLEL_CONJ */
 
+/*---------------------------------------------------------------------------*/
+
 #if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
 
-#if defined(__GNUC__) && (defined(__i386__) || defined(__amd64__))
+/*
+** Profiling of the parallel runtime.
+*/
+
+#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
 static MR_bool  MR_rdtscp_is_available = MR_FALSE;
 static MR_bool  MR_rdtsc_is_available = MR_FALSE;
 #endif
 
-#if defined(__GNUC__) && (defined(__i386__) || defined(__amd64__))
+#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
 
 /* Set this to 1 to enable some printfs below */
 #define MR_DEBUG_CPU_FEATURE_DETECTION 0 
 
 /*
-** cpuid, rdtscp and rdtsc are i386/amd64 instructions.
+** cpuid, rdtscp and rdtsc are i386/x86_64 instructions.
 */
 static __inline__ void
 MR_cpuid(MR_Unsigned code, MR_Unsigned sub_code,
@@ -94,18 +101,18 @@ MR_rdtscp(MR_uint_least64_t *tsc, MR_Unsigned *processor_id);
 static __inline__ void
 MR_rdtsc(MR_uint_least64_t *tsc);
 
-#endif
+#endif /* __GNUC__ && (__i386__ || __x86_64__) */
 
 extern void 
 MR_configure_profiling_timers(void) {
-#if defined(__GNUC__) && (defined(__i386__) || defined(__amd64__))
+#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
     MR_Unsigned     a, b, c, d;
     MR_Unsigned     eflags, old_eflags;
 
     /* 
     ** Check for the CPUID instruction.  CPUID is supported if we can flip bit
     ** 21 in the CPU's EFLAGS register.  The assembly below is written in a
-    ** subset of i386 and amd64 assembly.  To read and write EFLAGS we have
+    ** subset of i386 and x86_64 assembly.  To read and write EFLAGS we have
     ** to go via the C stack.
     */
     __asm__ ("pushf; pop %0"
@@ -251,12 +258,12 @@ MR_configure_profiling_timers(void) {
 #endif
     MR_rdtscp_is_available = MR_TRUE;
 
-#endif
+#endif /* __GNUC__ && (__i386__ || __x86_64__) */
 }
 
 extern void
 MR_profiling_start_timer(MR_Timer *timer) {
-#if defined(__GNUC__) && (defined(__i386__) || defined(__amd64__))
+#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
     /*
     ** If we don't have enough data to fill in all the fields of this structure
     ** we leave them alone, we won't check them later without checking
@@ -275,7 +282,7 @@ MR_profiling_start_timer(MR_Timer *timer) {
 
 extern void
 MR_profiling_stop_timer(MR_Timer *timer, MR_Stats *stats) {
-#if defined(__GNUC__) && (defined(__i386__) || defined(__amd64__))
+#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
     MR_Timer            now;
     MR_int_least64_t    duration;
     MR_uint_least64_t   duration_squared;
@@ -303,16 +310,16 @@ MR_profiling_stop_timer(MR_Timer *timer, MR_Stats *stats) {
         MR_atomic_add_int(&(stats->MR_stat_sum), duration);
         MR_atomic_add_int(&(stats->MR_stat_sum_squares), duration_squared);
     }
-#elif
+#elif /* not __GNUC__ && (__i386__ || __x86_64__) */
     /* No TSC support on this architecture or with this C compiler */
     MR_atomic_inc_int(&(stats->MR_stat_count_recorded));
-#endif
+#endif /* not __GNUC__ && (__i386__ || __x86_64__) */
 }
 
 /*
-** It's convenient that this instruction is the same on both i386 and amd64
+** It's convenient that this instruction is the same on both i386 and x86_64
 */
-#if defined(__GNUC__) && (defined(__i386__) || defined(__amd64__))
+#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
 
 static __inline__ void 
 MR_cpuid(MR_Unsigned code, MR_Unsigned sub_code,
@@ -348,7 +355,7 @@ MR_rdtsc(MR_uint_least64_t *tsc) {
     *tsc |= tsc_high; 
 }
 
-#endif
+#endif /* __GNUC__ && (__i386__ || __x86_64__) */
 
-#endif
+#endif /* MR_THREAD_SAFE && MR_PROFILE_PARALLEL_EXECUTION_SUPPORT */
 

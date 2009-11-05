@@ -1173,24 +1173,6 @@ MERCURY_CHECK_FOR_FENV_FUNC([fesetround], [$MATH_LIB])
 
 #-----------------------------------------------------------------------------#
 #
-# Check for declarations. 
-#
-
-mercury_check_for_declarations () {
-    for mercury_cv_decl in "$@"
-    do
-        mercury_cv_decl_define="MR_HAVE_`echo $mercury_cv_decl | \
-            tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ`"
-        AC_CHECK_DECL($mercury_cv_decl, [
-            AC_DEFINE_UNQUOTED($mercury_cv_decl_define)
-        ])
-    done
-}
-
-mercury_check_for_declarations "_SC_NPROCESSORS_ONLN"
-
-#-----------------------------------------------------------------------------#
-#
 # Check the basics of sigaction
 #
 
