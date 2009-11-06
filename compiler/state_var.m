@@ -691,12 +691,9 @@ svar_finish_outer_atomic_scope(OuterScopeInfo, !SInfo) :-
                 before_svar_info            :: svar_info
             ).
 
-svar_start_inner_atomic_scope(Context, InnerStateVar, InnerScopeInfo,
+svar_start_inner_atomic_scope(_Context, InnerStateVar, InnerScopeInfo,
         !VarSet, !SInfo, !Specs) :-
-    prepare_for_local_state_vars([InnerStateVar], !VarSet, !SInfo),
-    % This mention of !:InnerStateVar is to allow code in the atomic scope
-    % to access !.InnerStateVar.
-    svar_colon(Context, InnerStateVar, InnerDI, !VarSet, !SInfo, !Specs),
+    new_local_state_var(InnerStateVar, InnerDI, _, !VarSet, !SInfo),
     InnerScopeInfo = svar_inner_atomic_scope_info(InnerStateVar, InnerDI,
         !.SInfo).
 
@@ -704,8 +701,7 @@ svar_finish_inner_atomic_scope(Context, InnerScopeInfo, InnerDI, InnerUO,
         !VarSet, !SInfo, !Specs) :-
     InnerScopeInfo = svar_inner_atomic_scope_info(InnerStateVar, InnerDI,
         BeforeSInfo),
-    % XXX Should this be svar_dot?
-    svar_colon(Context, InnerStateVar, InnerUO, !VarSet, !SInfo, !Specs),
+    svar_dot(Context, InnerStateVar, InnerUO, !VarSet, !SInfo, !Specs),
     finish_local_state_vars([InnerStateVar], Vars, BeforeSInfo, !SInfo),
     trace [compiletime(flag("atomic_scope_syntax")), io(!IO)] (
         ( Vars = [Var1, Var2] ->
@@ -714,7 +710,7 @@ svar_finish_inner_atomic_scope(Context, InnerScopeInfo, InnerDI, InnerUO,
             io.nl(!IO),
             io.write(InnerUO, !IO),
             io.nl(!IO),
-            io.write_string("finish", !IO),
+            io.write_string("finish:\n", !IO),
             io.write(Var1, !IO),
             io.nl(!IO),
             io.write(Var2, !IO),

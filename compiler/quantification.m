@@ -107,6 +107,7 @@
 :- import_module hlds.instmap.
 :- import_module libs.compiler_util.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module map.
 :- import_module maybe.
@@ -568,6 +569,7 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal0, OrElseGoals0, OrElseInners0),
+
             % The call to implicitly_quantify_disj causes the inner STM
             % interface variables to be renamed in any or_else goals, but
             % doing it first explicitly allows the new names of these
@@ -582,11 +584,14 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
                 OrElseGoals1 = OrElseGoals0,
                 !:Info = !.Info
             ),
-            AllAtomicGoals0 = [MainGoal0 | OrElseGoals1],
+
+            assoc_list.from_corresponding_lists([MainGoal0 | OrElseGoals1],
+                [Inner | OrElseInners], AtomicGoalsWithInners0),
             NonLocalVarSets0 = [],
-            implicitly_quantify_disj(AllAtomicGoals0, AllAtomicGoals,
-                NonLocalsToRecompute, !Info,
+            implicitly_quantify_atomic_goals(AtomicGoalsWithInners0,
+                AllAtomicGoals, NonLocalsToRecompute, !Info,
                 NonLocalVarSets0, NonLocalVarSets),
+
             (
                 AllAtomicGoals = [MainGoal | OrElseGoals]
             ;
@@ -599,9 +604,7 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
             (
                 GoalType = unknown_atomic_goal_type,
                 Outer = atomic_interface_vars(OuterDI, OuterUO),
-                Inner = atomic_interface_vars(InnerDI, InnerUO),
-                insert_list(NonLocalVars0, [OuterDI, OuterUO], NonLocalVars1),
-                delete_list(NonLocalVars1, [InnerDI, InnerUO], NonLocalVars)
+                insert_list(NonLocalVars0, [OuterDI, OuterUO], NonLocalVars)
             ;
                 ( GoalType = top_level_atomic_goal
                 ; GoalType = nested_atomic_goal
@@ -609,6 +612,7 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
                 NonLocalVars = NonLocalVars0
             ),
             set_nonlocals(NonLocalVars, !Info),
+
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal, OrElseGoals, OrElseInners),
             GoalExpr = shorthand(ShortHand)
@@ -1145,6 +1149,38 @@ implicitly_quantify_disj([Goal0 | Goals0], [Goal | Goals],
     get_nonlocals(!.Info, GoalNonLocalVars),
     !:NonLocalVarSets = [GoalNonLocalVars | !.NonLocalVarSets],
     implicitly_quantify_disj(Goals0, Goals, NonLocalsToRecompute,
+        !Info, !NonLocalVarSets).
+
+:- pred implicitly_quantify_atomic_goals(
+    list(pair(hlds_goal, atomic_interface_vars)), list(hlds_goal),
+    nonlocals_to_recompute, quant_info, quant_info,
+    list(set_of_var), list(set_of_var)).
+:- mode implicitly_quantify_atomic_goals(in, out,
+    in(ordinary_nonlocals_maybe_lambda), in, out, in, out) is det.
+:- mode implicitly_quantify_atomic_goals(in, out,
+    in(ordinary_nonlocals_no_lambda), in, out, in, out) is det.
+:- mode implicitly_quantify_atomic_goals(in, out,
+    in(code_gen_nonlocals_no_lambda), in, out, in, out) is det.
+
+implicitly_quantify_atomic_goals([], [], _, !Info, !NonLocalVarSets).
+implicitly_quantify_atomic_goals([Goal0 - Inner0 | Goals0], [Goal | Goals],
+        NonLocalsToRecompute, !Info, !NonLocalVarSets) :-
+    Goal0 = hlds_goal(_, GoalInfo0),
+    ( goal_info_has_feature(GoalInfo0, feature_contains_stm_inner_outer) ->
+        true
+    ;
+        % The calls to stm_from_outer_to_inner and stm_from_inner_to_outer are
+        % not inserted until the purity checking pass.
+        Inner0 = atomic_interface_vars(InnerDI, InnerUO),
+        get_outside(!.Info, OutsideVars0),
+        insert_list(OutsideVars0, [InnerDI, InnerUO], OutsideVars),
+        set_outside(OutsideVars, !Info)
+    ),
+    implicitly_quantify_goal_quant_info(Goal0, Goal, NonLocalsToRecompute,
+        !Info),
+    get_nonlocals(!.Info, GoalNonLocalVars),
+    !:NonLocalVarSets = [GoalNonLocalVars | !.NonLocalVarSets],
+    implicitly_quantify_atomic_goals(Goals0, Goals, NonLocalsToRecompute,
         !Info, !NonLocalVarSets).
 
 :- pred implicitly_quantify_cases(list(case), list(case),

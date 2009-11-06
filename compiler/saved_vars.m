@@ -243,6 +243,7 @@ ok_to_duplicate(feature_contains_trace) = yes.
 ok_to_duplicate(feature_pretest_equality) = yes.
 ok_to_duplicate(feature_pretest_equality_condition) = yes.
 ok_to_duplicate(feature_lambda_undetermined_mode) = yes.
+ok_to_duplicate(feature_contains_stm_inner_outer) = yes.
 
     % Divide a list of goals into an initial subsequence of goals
     % that construct constants, and all other goals.

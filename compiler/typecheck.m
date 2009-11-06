@@ -1329,19 +1329,18 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
             typecheck_goal(MainGoal0, MainGoal, !Info),
             typecheck_goal_list(OrElseGoals0, OrElseGoals, !Info),
 
-            InnerVars = atomic_interface_list_to_var_list(
-                [Inner | OrElseInners]),
             Outer = atomic_interface_vars(OuterDI, OuterUO),
-            InterfaceVars = [OuterDI, OuterUO | InnerVars],
-            ensure_vars_have_a_type(InterfaceVars, !Info),
+            ensure_vars_have_a_single_type([OuterDI, OuterUO], !Info),
 
-            % The outer variables must either be both I/O states of STM states.
+            % The outer variables must either be both I/O states or STM states.
             % Checking that here could double the number of type assign sets.
             % We therefore delay the check until after we have typechecked
             % the predicate body, in post_typecheck. The code in the
             % post_typecheck pass (actually in purity.m) will do this
             % if the GoalType is unknown_atomic_goal_type.
-            foldl((pred(Var::in, Info0::in, Info::out) is det :-
+            InnerVars = atomic_interface_list_to_var_list(
+                [Inner | OrElseInners]),
+            list.foldl((pred(Var::in, Info0::in, Info::out) is det :-
                     typecheck_var_has_type(Var, stm_atomic_type, Info0, Info)),
                 InnerVars, !Info),
             expect(unify(GoalType, unknown_atomic_goal_type), this_file,
@@ -1369,6 +1368,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
 
 :- func atomic_interface_list_to_var_list(list(atomic_interface_vars)) =
     list(prog_var).
+
 atomic_interface_list_to_var_list([]) = [].
 atomic_interface_list_to_var_list([atomic_interface_vars(I, O) | Interfaces]) =
     [I, O | atomic_interface_list_to_var_list(Interfaces)].
@@ -1402,6 +1402,29 @@ ensure_vars_have_a_type(Vars, !Info) :-
         varset.init(TypeVarSet0),
         varset.new_vars(TypeVarSet0, NumVars, TypeVars, TypeVarSet),
         prog_type.var_list_to_type_list(map.init, TypeVars, Types),
+        empty_hlds_constraints(EmptyConstraints),
+        typecheck_var_has_polymorphic_type_list(Vars, TypeVarSet, [],
+            Types, EmptyConstraints, !Info)
+    ).
+
+    % Ensure that each variable in Vars has been assigned a single type.
+    %
+:- pred ensure_vars_have_a_single_type(list(prog_var)::in,
+    typecheck_info::in, typecheck_info::out) is det.
+
+ensure_vars_have_a_single_type(Vars, !Info) :-
+    (
+        Vars = []
+    ;
+        Vars = [_ | _],
+        % Invent a new type variable to use as the type of these
+        % variables. Since the type is the type of a program variable,
+        % each must have kind `star'.
+        varset.init(TypeVarSet0),
+        varset.new_var(TypeVarSet0, TypeVar, TypeVarSet),
+        Type = type_variable(TypeVar, kind_star),
+        list.length(Vars, NumVars),
+        list.duplicate(NumVars, Type, Types),
         empty_hlds_constraints(EmptyConstraints),
         typecheck_var_has_polymorphic_type_list(Vars, TypeVarSet, [],
             Types, EmptyConstraints, !Info)

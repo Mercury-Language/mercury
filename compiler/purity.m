@@ -784,58 +784,16 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
     purity_info::in, purity_info::out) is det.
 
 wrap_inner_outer_goals(Outer, Goal0 - Inner, Goal, !Info) :-
-    % Generate an error if the outer variables are in the nonlocals of the
-    % original goal, since they are not supposed to be used in the goal.
-    %
-    % Generate an error if the inner variables are in the nonlocals of the
-    % original goal, since they are not supposed to be used outside the goal.
     Goal0 = hlds_goal(_, GoalInfo0),
     NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
     Context = goal_info_get_context(GoalInfo0),
     Outer = atomic_interface_vars(OuterDI, OuterUO),
     Inner = atomic_interface_vars(InnerDI, InnerUO),
-    list.filter(set.contains(NonLocals0), [OuterUO, OuterDI], PresentOuter),
-    list.filter(set.contains(NonLocals0), [InnerUO, InnerDI], PresentInner),
-    VarSet = !.Info ^ pi_varset,
-    (
-        PresentOuter = []
-    ;
-        PresentOuter = [_ | _],
-        PresentOuterVarNames =
-            list.map(mercury_var_to_string(VarSet, no), PresentOuter),
-        Pieces1 = [words("Outer"),
-            words(choose_number(PresentOuterVarNames,
-                "variable", "variables"))] ++
-            list_to_pieces(PresentOuterVarNames) ++
-            [words(choose_number(PresentOuterVarNames, "is", "are")),
-            words("present in the atomic goal.")],
-        Msg1 = error_msg(yes(Context), do_not_treat_as_first, 0,
-            [always(Pieces1)]),
-        Spec1 = error_spec(severity_error, phase_type_check, [Msg1]),
-        purity_info_add_message(Spec1, !Info)
-    ),
-    (
-        PresentInner = []
-    ;
-        PresentInner = [_ | _],
-        PresentInnerVarNames =
-            list.map(mercury_var_to_string(VarSet, no), PresentInner),
-        Pieces2 = [words("Inner"),
-            words(choose_number(PresentInnerVarNames,
-                "variable", "variables"))] ++
-            list_to_pieces(PresentInnerVarNames) ++
-            [words(choose_number(PresentInnerVarNames, "is", "are")),
-            words("present outside the atomic goal.")],
-        Msg2 = error_msg(yes(Context), do_not_treat_as_first, 0,
-            [always(Pieces2)]),
-        Spec2 = error_spec(severity_error, phase_type_check, [Msg2]),
-        purity_info_add_message(Spec2, !Info)
-    ),
 
-    % generate the outer_to_inner and inner_to_outer goals
+    % Generate the STM outer_to_inner and inner_to_outer goals.
     OuterToInnerPred = "stm_from_outer_to_inner",
     InnerToOuterPred = "stm_from_inner_to_outer",
-    ModuleInfo = !.Info^pi_module_info,
+    ModuleInfo = !.Info ^ pi_module_info,
     generate_simple_call(mercury_stm_builtin_module,
         OuterToInnerPred, pf_predicate, only_mode,
         detism_det, purity_pure, [OuterDI, InnerDI], [],
@@ -855,7 +813,9 @@ wrap_inner_outer_goals(Outer, Goal0 - Inner, Goal, !Info) :-
     % goal, and *should* be used by code outside the goal. However, even if
     % they are not, the nonlocals set is allowed to overapproximate.
     set.insert_list(NonLocals0, [OuterDI, OuterUO], NonLocals),
-    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
+    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
+    goal_info_add_feature(feature_contains_stm_inner_outer, GoalInfo1,
+        GoalInfo),
     Goal = hlds_goal(WrapExpr, GoalInfo).
 
 :- pred check_outer_var_type(prog_context::in, vartypes::in, prog_varset::in,

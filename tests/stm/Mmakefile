@@ -12,6 +12,8 @@ VALID_PROGS = 			\
 	nested				\
 	nested_or_else		\
 	atomic_or_else		\
+	atomic_conj			\
+	atomic_ite			\
 	#demo				\
 	par-asm_test7		\
 	par-asm_test8		\
