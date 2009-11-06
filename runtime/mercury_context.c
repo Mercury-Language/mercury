@@ -277,6 +277,11 @@ MR_write_out_profiling_parallel_execution(void)
 
     result = fprintf(file, "Mercury parallel execution profiling data\n\n");
     if (result < 0) goto Error;
+    
+    if (MR_cpu_cycles_per_sec) {
+        result = fprintf(file, "CPU cycles per second: %ld\n", MR_cpu_cycles_per_sec);
+        if (result < 0) goto Error;
+    }
 
     result = fprint_stats(file, "MR_do_runnext(): global sparks executed",
         &MR_profile_parallel_executed_global_sparks); 

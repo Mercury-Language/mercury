@@ -344,6 +344,12 @@ typedef struct {
 } MR_Timer;
 
 /*
+** The number of CPU clock cycles per second, ie a 1GHz CPU will have a value
+** of 10^9, zero if unknown.
+*/
+extern MR_uint_least64_t MR_cpu_cycles_per_sec;
+
+/*
 ** Configure the profiling stats code.  On i386 and x86_64 machines this uses
 ** CPUID to determine if the RDTSCP instruction is available and not prohibited
 ** by the OS.

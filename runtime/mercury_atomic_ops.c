@@ -79,9 +79,14 @@ MR_OUTLINE_DEFN(
 */
 
 #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+/*
+** True if the RDTSCP and RDTSC instructions are available respectively.
+*/
 static MR_bool  MR_rdtscp_is_available = MR_FALSE;
 static MR_bool  MR_rdtsc_is_available = MR_FALSE;
 #endif
+
+MR_uint_least64_t MR_cpu_cycles_per_sec = 0;
 
 #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
 
@@ -101,6 +106,13 @@ MR_rdtscp(MR_uint_least64_t *tsc, MR_Unsigned *processor_id);
 static __inline__ void
 MR_rdtsc(MR_uint_least64_t *tsc);
 
+/*
+** Return zero if parsing failed, otherwise return the number of cycles per
+** second.
+*/
+static MR_uint_least64_t
+parse_freq_from_x86_brand_string(char *string);
+
 #endif /* __GNUC__ && (__i386__ || __x86_64__) */
 
 extern void 
@@ -108,6 +120,7 @@ MR_configure_profiling_timers(void) {
 #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
     MR_Unsigned     a, b, c, d;
     MR_Unsigned     eflags, old_eflags;
+    MR_Unsigned     maximum_extended_page;
 
     /* 
     ** Check for the CPUID instruction.  CPUID is supported if we can flip bit
@@ -232,34 +245,139 @@ MR_configure_profiling_timers(void) {
         */
         return;
     }
+    maximum_extended_page = a;
 #if MR_DEBUG_CPU_FEATURE_DETECTION
-    fprintf(stderr, "Maximum extended CPUID node: 0x%x\n", a);
+    fprintf(stderr, "Maximum extended CPUID page: 0x%x\n", maximum_extended_page);
 #endif
-    if (a < 0x80000001)
-        return;
 
     /*
     ** Extended CPUID 0x80000001
     **
     ** If EDX bit 27 is set the RDTSCP instruction is available.
     */
-    MR_cpuid(0x80000001, 0, &a, &b, &c, &d);
+    if (maximum_extended_page >= 0x80000001) {
+        MR_cpuid(0x80000001, 0, &a, &b, &c, &d);
 #if MR_DEBUG_CPU_FEATURE_DETECTION
-    fprintf(stderr, "CPUID 0x80000001 EDX: 0x%x\n", d);
+        fprintf(stderr, "CPUID 0x80000001 EDX: 0x%x\n", d);
 #endif
-    if (!(d & (1 << 27)))
-        return;
-   
-    /*
-    ** Support for RDTSCP appears to be present
-    */
+        if ((d & (1 << 27))) {
+            /*
+            ** This processor supports RDTSCP.
+            */
 #if MR_DEBUG_CPU_FEATURE_DETECTION
-    fprintf(stderr, "RDTSCP is available\n");
+            fprintf(stderr, "RDTSCP is available\n");
 #endif
-    MR_rdtscp_is_available = MR_TRUE;
+            MR_rdtscp_is_available = MR_TRUE;
+        }
+    }
+
+    if (maximum_extended_page >= 0x80000004) {
+        /*
+        ** 3 CPUID pages, 4 return registers each, containing 4 bytes each,
+        ** plus a null byte.  Intel say they include their own null byte, but
+        ** for the cost of a single byte I feel safer using our own.
+        */
+#define CPUID_BRAND_STRING_SIZE (3*4*4 + 1)
+        char buff[CPUID_BRAND_STRING_SIZE]; 
+        unsigned int page;
+        unsigned int byte;
+        unsigned int shift;
+
+        /*
+         * This processor supports the brand string from which we can extract
+         * the clock speed.  This algorithm is described in the Intel
+         * Instruction Set Reference, Volume 2B, Chapter 3, Pages 207-208, In
+         * particular the flow chart in figure 3-10.
+         */
+        for (page = 0; page < 3; page++) {
+            MR_cpuid(page + 0x80000002, 0, &a, &b, &c, &d);
+#if MR_DEBUG_CPU_FEATURE_DETECTION
+            fprintf(stderr, "CPUID page: 0x%.8x, eax: 0x%.8x, ebx: 0x%.8x, ecx: 0x%.8x, edx: 0x%.8x\n",
+                page + 0x80000002, a, b, c, d);
+#endif
+            for (byte = 0; byte < 4; byte++) {
+                shift = byte * 8;
+                buff[page*4*4 + 0 + byte] = (char)(0xFF & (a >> shift));
+                buff[page*4*4 + 4 + byte] = (char)(0xFF & (b >> shift));
+                buff[page*4*4 + 8 + byte] = (char)(0xFF & (c >> shift));
+                buff[page*4*4 + 12 + byte] = (char)(0xFF & (d >> shift));
+            }
+        }
+        /* Add a null byte */
+        buff[CPUID_BRAND_STRING_SIZE - 1] = 0;
+#if MR_DEBUG_CPU_FEATURE_DETECTION
+        fprintf(stderr, "CPUID Brand string: %s\n", buff);
+#endif
+
+        MR_cpu_cycles_per_sec = parse_freq_from_x86_brand_string(buff);
+#if MR_DEBUG_CPU_FEATURE_DETECTION
+        fprintf(stderr, "Cycles per second: %ld\n", MR_cpu_cycles_per_sec);
+#endif
+    }
 
 #endif /* __GNUC__ && (__i386__ || __x86_64__) */
 }
+
+#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+static MR_uint_least64_t
+parse_freq_from_x86_brand_string(char *string) {
+    unsigned int brand_string_len;
+    unsigned int i;
+    double       multiplier;
+    int          freq_index = -1; 
+
+    brand_string_len = strlen(string);
+    
+    /*
+     * There will be at least five characters if we can parse this, three
+     * for the '?Hz' suffix, at least one for the units, plus a space at
+     * the beginning o
+     */
+    if (!(brand_string_len > 5))
+        return 0;
+
+    if (!((string[brand_string_len - 1] == 'z') &&
+          (string[brand_string_len - 2] == 'H')))
+        return 0;
+
+    switch (string[brand_string_len - 3]) {
+        case 'M':
+            multiplier = 1000000.0;
+            break;
+        case 'G':
+            multiplier = 1000000000.0;
+            break;
+        case 'T':
+            /* 
+            ** Yes, this is defined in the specification, Intel have some
+            ** strong ambitions regarding Moore's law. :-)  We include it here to
+            ** conform with the standard.
+            */
+            multiplier = 1000000000000.0;
+            break;
+        default:
+            return 0;
+    }
+
+    /* Search for the beginning of the digits. */
+    for (i = brand_string_len - 4; i >= 0; i--) {
+        if (string[i] == ' ') {
+            freq_index = i+1;
+            break;
+        }
+    }
+    if (freq_index == -1) {
+        /* We didn't find the beginning of the frequency */
+        return 0;
+    }
+   
+    /*
+    ** If strtod fails it returns zero, so if we fail to parse a number here,
+    ** we'll return zero which our caller understands as a parsing failure.
+    */
+    return (MR_uint_least64_t)(strtod(&string[freq_index], NULL) * multiplier);
+}
+#endif /* __GNUC__ && (__i386__ || __x86_64__) */
 
 extern void
 MR_profiling_start_timer(MR_Timer *timer) {
