@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1995, 2001-2004 Peter Schachte and, 2006 The University of Melbourne.
+** Copyright (C) 1995, 2001-2004 Peter Schachte and, 2006, 2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -133,13 +133,13 @@
 #define MR_ROBDD_UNUSED_MAPPING -1    /* this MUST BE -1 */
 
 #if !defined(MR_ROBDD_max)
-  #define MR_ROBDD_max(a,b) ((a)<(b) ? (b) : (a))
+  #define MR_ROBDD_max(a, b) ((a)<(b) ? (b) : (a))
 #endif
 #if !defined(MR_ROBDD_min)
-  #define MR_ROBDD_min(a,b) ((a)<(b) ? (a) : (b))
+  #define MR_ROBDD_min(a, b) ((a)<(b) ? (a) : (b))
 #endif
 
-#define MR_ROBDD_PERCENTAGE(x,y) ((100.0 * (float)(x)) / (float)(y))
+#define MR_ROBDD_PERCENTAGE(x, y) ((100.0 * (float)(x)) / (float)(y))
 
 #ifdef MR_ROBDD_POOL
   typedef struct pool {
@@ -302,13 +302,13 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
 #endif /* MR_ROBDD_STATISTICS */
 
 #if defined(MR_ROBDD_EQUAL_TEST)
-  #define MR_ROBDD_DIRECT_EQUAL_TEST(f,g,result)   \
+  #define MR_ROBDD_DIRECT_EQUAL_TEST(f, g, result)   \
     if ((f) == (g)) return (result)
-  #define MR_ROBDD_ELSE_TRY_EQUAL_TEST(f,g,result) \
-    else MR_ROBDD_DIRECT_EQUAL_TEST(f,g,result);
+  #define MR_ROBDD_ELSE_TRY_EQUAL_TEST(f, g, result) \
+    else MR_ROBDD_DIRECT_EQUAL_TEST(f, g, result);
 #else /* ! MR_ROBDD_EQUAL_TEST */
-  #define MR_ROBDD_DIRECT_EQUAL_TEST(f,g,result)
-  #define MR_ROBDD_ELSE_TRY_EQUAL_TEST(f,g,result)
+  #define MR_ROBDD_DIRECT_EQUAL_TEST(f, g, result)
+  #define MR_ROBDD_ELSE_TRY_EQUAL_TEST(f, g, result)
 #endif
 
 #if defined(MR_ROBDD_CLEAR_CACHES)
@@ -353,18 +353,18 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
 #if defined(MR_ROBDD_COMPUTED_TABLE)
 
   #if defined(MR_ROBDD_STATISTICS)
-    #define MR_ROBDD_DECLARE_CACHE(op,MR_ROBDD_type)                    \
+    #define MR_ROBDD_DECLARE_CACHE(op, MR_ROBDD_type)                   \
     static int op##_computed_hits;                                      \
     static int op##_computed_misses;                                    \
     static MR_ROBDD_type op##_computed_cache[MR_ROBDD_COMPUTED_TABLE_SIZE]
   #else /* !MR_ROBDD_STATISTICS */
-    #define MR_ROBDD_DECLARE_CACHE(op,MR_ROBDD_type)                    \
+    #define MR_ROBDD_DECLARE_CACHE(op, MR_ROBDD_type)                   \
     static MR_ROBDD_type op##_computed_cache[MR_ROBDD_COMPUTED_TABLE_SIZE]
   #endif /* MR_ROBDD_STATISTICS */
 
 /********************* the cache for MR_ROBDD_ite **************************/
 
-  #define MR_ROBDD_TERNARY_NODE_HASH(f,g,h) \
+  #define MR_ROBDD_TERNARY_NODE_HASH(f, g, h) \
     (((MR_ROBDD_INTCAST(f)>>4)+MR_ROBDD_INTCAST(g)+(MR_ROBDD_INTCAST(h)<<1)) \
         % MR_ROBDD_COMPUTED_TABLE_SIZE)
 
@@ -383,7 +383,7 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
 
   #define MR_ROBDD_DECLARE_ITE_CACHE_ENTRY ite_cache_entry *cache;
 
-  #define MR_ROBDD_TRY_ITE_CACHE(n1,n2,n3,op)                               \
+  #define MR_ROBDD_TRY_ITE_CACHE(n1, n2, n3, op)                            \
     do {                                                                    \
         cache = &op##_computed_cache[MR_ROBDD_TERNARY_NODE_HASH(n1,n2,n3)]; \
         if (cache->f==n1 && cache->g==n2 && cache->h==n3) {                 \
@@ -392,7 +392,7 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
         }                                                                   \
     } while (0)
 
-  #define MR_ROBDD_UPDATE_ITE_CACHE(n1,n2,n3,MR_ROBDD_node,op)              \
+  #define MR_ROBDD_UPDATE_ITE_CACHE(n1, n2, n3, MR_ROBDD_node, op)          \
     do {                                                                    \
         cache->f = n1;                                                      \
         cache->g = n2;                                                      \
@@ -421,14 +421,14 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
 
   #define MR_ROBDD_DECLARE_UNARY_CACHE_ENTRY unary_cache_entry *cache;
 
-  #define MR_ROBDD_UPDATE_UNARY_CACHE(n,MR_ROBDD_node,op)                   \
+  #define MR_ROBDD_UPDATE_UNARY_CACHE(n, MR_ROBDD_node, op)                 \
     do {                                                                    \
         cache->f = n;                                                       \
         cache->result = MR_ROBDD_node;                                      \
         MR_ROBDD_COUNT_MISS(op);                                            \
     } while (0)
 
-  #define MR_ROBDD_TRY_UNARY_CACHE(n,op)                                    \
+  #define MR_ROBDD_TRY_UNARY_CACHE(n, op)                                   \
     do {                                                                    \
         cache = &((op##_computed_cache)[MR_ROBDD_UNARY_NODE_HASH(n)]);      \
         if (cache->f==(n)) {                                                \
@@ -439,7 +439,7 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
 
 /******************** the cache for MR_ROBDD_var_entailed ************/
 
-  #define MR_ROBDD_VAR_ENTAILED_HASH(a,n) \
+  #define MR_ROBDD_VAR_ENTAILED_HASH(a, n) \
       ((MR_ROBDD_INTCAST(a)+n) % MR_ROBDD_COMPUTED_TABLE_SIZE)
 
   typedef struct {
@@ -456,7 +456,7 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
   #define MR_ROBDD_DECLARE_VAR_ENTAILED_CACHE_ENTRY \
     var_entailed_cache_entry *cache;
 
-  #define MR_ROBDD_UPDATE_VAR_ENTAILED_CACHE(MR_ROBDD_node,var,val)         \
+  #define MR_ROBDD_UPDATE_VAR_ENTAILED_CACHE(MR_ROBDD_node, var, val)       \
     do {                                                                    \
         cache->f = MR_ROBDD_node;                                           \
         cache->n = var;                                                     \
@@ -464,10 +464,10 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
         MR_ROBDD_COUNT_MISS(MR_ROBDD_var_entailed);                         \
     } while (0)
 
-  #define MR_ROBDD_TRY_VAR_ENTAILED_CACHE(MR_ROBDD_node,var)                \
+  #define MR_ROBDD_TRY_VAR_ENTAILED_CACHE(MR_ROBDD_node, var)               \
     do {                                                                    \
         cache = &((MR_ROBDD_var_entailed_computed_cache)                    \
-              [MR_ROBDD_VAR_ENTAILED_HASH(MR_ROBDD_node,var)]);             \
+              [MR_ROBDD_VAR_ENTAILED_HASH(MR_ROBDD_node, var)]);            \
         if (cache->f==(MR_ROBDD_node) && cache->n==(var)) {                 \
             MR_ROBDD_COUNT_HIT(op);                                         \
             return cache->result;                                           \
@@ -489,14 +489,14 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
   #define MR_ROBDD_DECLARE_UNARY_BITSET_CACHE_ENTRY                         \
     unary_bitset_cache_entry *cache;
 
-  #define MR_ROBDD_UPDATE_UNARY_BITSET_CACHE(n,set,op)                      \
+  #define MR_ROBDD_UPDATE_UNARY_BITSET_CACHE(n, set, op)                    \
     do {                                                                    \
         cache->f = n;                                                       \
         cache->result = set;                                                \
         MR_ROBDD_COUNT_MISS(op);                                            \
     } while (0)
 
-  #define MR_ROBDD_TRY_UNARY_BITSET_CACHE(n,op)                             \
+  #define MR_ROBDD_TRY_UNARY_BITSET_CACHE(n, op)                            \
     do {                                                                    \
         cache = &((op##_computed_cache)[MR_ROBDD_UNARY_NODE_HASH(n)]);      \
         if (cache->f==(n)) {                                                \
@@ -509,14 +509,14 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
 
 /*
 ** NB:  Since MR_ROBDD_glb and MR_ROBDD_lub are commutative, cache entries
-** will work both ways round, so we want a symmetrical cache, ie, (a,b) should
-** hash to the same value as (b,a).  We achieve this by first exchanging
+** will work both ways round, so we want a symmetrical cache, ie, (a, b) should
+** hash to the same value as (b, a).  We achieve this by first exchanging
 ** a and b if a > b (comparing their addresses) in MR_ROBDD_TRY_BIN_CACHE.
 ** We assume that they won't be changed (or exchanged) before
 ** MR_ROBDD_UPDATE_BIN_CACHE is called.
 */
 
-  #define MR_ROBDD_BINARY_NODE_HASH(a,b) \
+  #define MR_ROBDD_BINARY_NODE_HASH(a, b) \
       ((MR_ROBDD_INTCAST(a)+(MR_ROBDD_INTCAST(b)<<1)) % MR_ROBDD_COMPUTED_TABLE_SIZE)
 
   typedef struct {
@@ -535,7 +535,7 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
 
   #define MR_ROBDD_DECLARE_BIN_CACHE_ENTRY bin_cache_entry *cache;
 
-  #define MR_ROBDD_UPDATE_BIN_CACHE(n1,n2,MR_ROBDD_node,op)                 \
+  #define MR_ROBDD_UPDATE_BIN_CACHE(n1, n2, MR_ROBDD_node, op)              \
     do {                                                                    \
         cache->f = n1;                                                      \
         cache->g = n2;                                                      \
@@ -543,7 +543,7 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
         MR_ROBDD_COUNT_MISS(op);                                            \
     } while (0)
 
-  #define MR_ROBDD_TRY_BIN_CACHE(n1,n2,op)                                  \
+  #define MR_ROBDD_TRY_BIN_CACHE(n1, n2, op)                                \
     do {                                                                    \
         if (n2 < n1) {                                                      \
             MR_ROBDD_node *temp = (n2);                                     \
@@ -571,10 +571,10 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
 
     #define MR_ROBDD_DECLARE_ASYM_BIN_CACHE_ENTRY bin_cache_entry *cache;
 
-    #define MR_ROBDD_UPDATE_ASYM_BIN_CACHE(n1,n2,MR_ROBDD_node,op)          \
-        MR_ROBDD_UPDATE_BIN_CACHE(n1,n2,MR_ROBDD_node,op)
+    #define MR_ROBDD_UPDATE_ASYM_BIN_CACHE(n1, n2, MR_ROBDD_node, op)       \
+        MR_ROBDD_UPDATE_BIN_CACHE(n1, n2, MR_ROBDD_node, op)
 
-  #define MR_ROBDD_TRY_ASYM_BIN_CACHE(n1,n2,op)                             \
+  #define MR_ROBDD_TRY_ASYM_BIN_CACHE(n1, n2, op)                           \
     do {                                                                    \
         cache = &((op##_computed_cache)[MR_ROBDD_BINARY_NODE_HASH(n1,n2)]); \
         if (cache->f==(n1) && cache->g==(n2)) {                             \
@@ -590,18 +590,18 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
   #if defined(MR_ROBDD_USE_RGLB)
 
     typedef struct {
-    MR_ROBDD_node *f;
-    MR_ROBDD_node *g;
-    MR_ROBDD_node *result;
-    int  thresh;
-    MR_ROBDD_CACHE_COUNT_MEMBER
+        MR_ROBDD_node   *f;
+        MR_ROBDD_node   *g;
+        MR_ROBDD_node   *result;
+        int             thresh;
+        MR_ROBDD_CACHE_COUNT_MEMBER
     } rglb_cache_entry;
 
     MR_ROBDD_DECLARE_CACHE(rglb, rglb_cache_entry);
 
     #define MR_ROBDD_DECLARE_RGLB_CACHE_ENTRY rglb_cache_entry *cache;
 
-    #define MR_ROBDD_TRY_RGLB_CACHE(n1,n2,th)                               \
+    #define MR_ROBDD_TRY_RGLB_CACHE(n1, n2, th)                             \
     do {                                                                    \
         if (n2 < n1) {                                                      \
             MR_ROBDD_node *temp = (n2);                                     \
@@ -617,7 +617,7 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
         }                                                                   \
     } while (0)
 
-    #define MR_ROBDD_UPDATE_RGLB_CACHE(n1,n2,th,MR_ROBDD_node)              \
+    #define MR_ROBDD_UPDATE_RGLB_CACHE(n1, n2, th,MR_ROBDD_node)            \
     do {                                                                    \
         cache->f = n1;                                                      \
         cache->g = n2;                                                      \
@@ -644,7 +644,7 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
     #define MR_ROBDD_DECLARE_COMPLETE_OR_CACHE_ENTRY \
         complete_or_cache_entry *cache;
 
-    #define MR_ROBDD_TRY_COMPLETE_OR_CACHE(n1,n2,pr)                        \
+    #define MR_ROBDD_TRY_COMPLETE_OR_CACHE(n1, n2, pr)                      \
     do {                                                                    \
         if (n2 < n1) {                                                      \
             MR_ROBDD_node *temp = (n2);                                     \
@@ -659,7 +659,7 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
         }                                                                   \
     } while (0)
 
-    #define MR_ROBDD_UPDATE_COMPLETE_OR_CACHE(n1,n2,pr,MR_ROBDD_node)       \
+    #define MR_ROBDD_UPDATE_COMPLETE_OR_CACHE(n1, n2, pr, MR_ROBDD_node)    \
     do {                                                                    \
         cache->f = n1;                                                      \
         cache->g = n2;                                                      \
@@ -674,7 +674,7 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
 
   #if defined(MR_ROBDD_NEW)
 
-    #define MR_ROBDD_ITE_VAR_COMPUTED_HASH(f,g,h) \
+    #define MR_ROBDD_ITE_VAR_COMPUTED_HASH(f, g, h) \
       ((f+MR_ROBDD_INTCAST(g)+(MR_ROBDD_INTCAST(h)<<1)) \
         % MR_ROBDD_COMPUTED_TABLE_SIZE)
 
@@ -690,7 +690,7 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
 
     #define MR_ROBDD_DECLARE_ITE_VAR_CACHE_ENTRY ite_var_cache_entry *cache;
 
-    #define MR_ROBDD_TRY_ITE_VAR_CACHE(n1,n2,h)                             \
+    #define MR_ROBDD_TRY_ITE_VAR_CACHE(n1, n2, h)                           \
     do {                                                                    \
         cache = &MR_ROBDD_ite_var_computed_cache[                           \
             MR_ROBDD_ITE_VAR_COMPUTED_HASH(n1,n2,h)];                       \
@@ -700,7 +700,7 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
         }                                                                   \
     } while (0)
 
-    #define MR_ROBDD_UPDATE_ITE_VAR_CACHE(n1,n2,h,MR_ROBDD_node)            \
+    #define MR_ROBDD_UPDATE_ITE_VAR_CACHE(n1, n2, h, MR_ROBDD_node)         \
     do {                                                                    \
         cache->f = n1;                                                      \
         cache->g = n2;                                                      \
@@ -716,40 +716,40 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
 /**************************** no caching at all **************************/
 
   #define MR_ROBDD_DECLARE_ITE_CACHE_ENTRY
-  #define MR_ROBDD_TRY_ITE_CACHE(n1,n2,n3,op)
-  #define MR_ROBDD_UPDATE_ITE_CACHE(n1,n2,n3,MR_ROBDD_node,op)
+  #define MR_ROBDD_TRY_ITE_CACHE(n1, n2, n3, op)
+  #define MR_ROBDD_UPDATE_ITE_CACHE(n1, n2, n3, MR_ROBDD_node, op)
 
   #define MR_ROBDD_DECLARE_UNARY_CACHE_ENTRY
-  #define MR_ROBDD_UPDATE_UNARY_CACHE(n,MR_ROBDD_node,op)
-  #define MR_ROBDD_TRY_UNARY_CACHE(n,op)
+  #define MR_ROBDD_UPDATE_UNARY_CACHE(n, MR_ROBDD_node, op)
+  #define MR_ROBDD_TRY_UNARY_CACHE(n, op)
 
   #define MR_ROBDD_DECLARE_VAR_ENTAILED_CACHE_ENTRY
-  #define MR_ROBDD_UPDATE_VAR_ENTAILED_CACHE(MR_ROBDD_node,var,val)
-  #define MR_ROBDD_TRY_VAR_ENTAILED_CACHE(MR_ROBDD_node,var)
+  #define MR_ROBDD_UPDATE_VAR_ENTAILED_CACHE(MR_ROBDD_node, var, val)
+  #define MR_ROBDD_TRY_VAR_ENTAILED_CACHE(MR_ROBDD_node, var)
 
   #define MR_ROBDD_DECLARE_UNARY_BITSET_CACHE_ENTRY
-  #define MR_ROBDD_UPDATE_UNARY_BITSET_CACHE(n,set,op)
-  #define MR_ROBDD_TRY_UNARY_BITSET_CACHE(n,op)
+  #define MR_ROBDD_UPDATE_UNARY_BITSET_CACHE(n, set, op)
+  #define MR_ROBDD_TRY_UNARY_BITSET_CACHE(n, op)
 
   #define MR_ROBDD_DECLARE_BIN_CACHE_ENTRY
-  #define MR_ROBDD_TRY_BIN_CACHE(n1,n2,op)
-  #define MR_ROBDD_UPDATE_BIN_CACHE(n1,n2,MR_ROBDD_node,op)
+  #define MR_ROBDD_TRY_BIN_CACHE(n1, n2, op)
+  #define MR_ROBDD_UPDATE_BIN_CACHE(n1, n2, MR_ROBDD_node, op)
 
   #define MR_ROBDD_DECLARE_ASYM_BIN_CACHE_ENTRY
-  #define MR_ROBDD_UPDATE_ASYM_BIN_CACHE(n1,n2,MR_ROBDD_node,op)
-  #define MR_ROBDD_TRY_ASYM_BIN_CACHE(n1,n2,op)
+  #define MR_ROBDD_UPDATE_ASYM_BIN_CACHE(n1, n2, MR_ROBDD_node, op)
+  #define MR_ROBDD_TRY_ASYM_BIN_CACHE(n1, n2, op)
 
   #define MR_ROBDD_DECLARE_RGLB_CACHE_ENTRY
-  #define MR_ROBDD_TRY_RGLB_CACHE(n1,n2,th)
-  #define MR_ROBDD_UPDATE_RGLB_CACHE(n1,n2,th,MR_ROBDD_node)
+  #define MR_ROBDD_TRY_RGLB_CACHE(n1, n2, th)
+  #define MR_ROBDD_UPDATE_RGLB_CACHE(n1, n2, th, MR_ROBDD_node)
 
   #define MR_ROBDD_DECLARE_COMPLETE_OR_CACHE_ENTRY
-  #define MR_ROBDD_TRY_COMPLETE_OR_CACHE(n1,n2,pr)
-  #define MR_ROBDD_UPDATE_COMPLETE_OR_CACHE(n1,n2,pr,MR_ROBDD_node)
+  #define MR_ROBDD_TRY_COMPLETE_OR_CACHE(n1, n2, pr)
+  #define MR_ROBDD_UPDATE_COMPLETE_OR_CACHE(n1, n2, pr, MR_ROBDD_node)
 
   #define MR_ROBDD_DECLARE_ITE_VAR_CACHE_ENTRY
-  #define MR_ROBDD_TRY_ITE_VAR_CACHE(n1,n2,h)
-  #define MR_ROBDD_UPDATE_ITE_VAR_CACHE(n1,n2,h,MR_ROBDD_node)
+  #define MR_ROBDD_TRY_ITE_VAR_CACHE(n1, n2, h)
+  #define MR_ROBDD_UPDATE_ITE_VAR_CACHE(n1, n2, h, MR_ROBDD_node)
 
   #undef MR_ROBDD_COMPUTED_TABLE_SIZE
   #define MR_ROBDD_COMPUTED_TABLE_SIZE 0
@@ -765,7 +765,7 @@ MR_ROBDD_bitset MR_ROBDD_emptyset;
 static MR_ROBDD_BRYANT_hidden_node_pointer
     MR_ROBDD_unique_table[MR_ROBDD_UNIQUE_TABLE_SIZE];
 
-#define MR_ROBDD_UNIQUE_HASH(var,tr,fa) \
+#define MR_ROBDD_UNIQUE_HASH(var, tr, fa) \
   (((var)+MR_ROBDD_INTCAST(tr)+(MR_ROBDD_INTCAST(fa)<<1)) \
     % MR_ROBDD_UNIQUE_TABLE_SIZE)
 
@@ -778,19 +778,20 @@ static MR_ROBDD_BRYANT_hidden_node_pointer
 extern void MR_ROBDD_printBryant(MR_ROBDD_node *a);
 
 /* if then else algorithm */
-MR_ROBDD_node *MR_ROBDD_ite(MR_ROBDD_node *f,MR_ROBDD_node *g,MR_ROBDD_node *h);
-MR_ROBDD_node *MR_ROBDD_restricted_iff_conj_array(int v0, int n, int arr[],
-        int thresh);
+MR_ROBDD_node   *MR_ROBDD_ite(MR_ROBDD_node *f, MR_ROBDD_node *g,
+                    MR_ROBDD_node *h);
+MR_ROBDD_node   *MR_ROBDD_restricted_iff_conj_array(int v0, int n, int arr[],
+                    int thresh);
 
-MR_ROBDD_node *MR_ROBDD_renameArray(MR_ROBDD_node *in, int count,
-        int mappping[]);
-MR_ROBDD_node *MR_ROBDD_reverseRenameArray(MR_ROBDD_node *in, int count,
-        int rev_mappping[]);
+MR_ROBDD_node   *MR_ROBDD_renameArray(MR_ROBDD_node *in, int count,
+                    int mappping[]);
+MR_ROBDD_node   *MR_ROBDD_reverseRenameArray(MR_ROBDD_node *in, int count,
+                    int rev_mappping[]);
 
-MR_ROBDD_node *MR_ROBDD_complete(MR_ROBDD_node *f, MR_ROBDD_node *g);
-MR_ROBDD_node *MR_ROBDD_bin_univ(MR_ROBDD_node *f);
+MR_ROBDD_node   *MR_ROBDD_complete(MR_ROBDD_node *f, MR_ROBDD_node *g);
+MR_ROBDD_node   *MR_ROBDD_bin_univ(MR_ROBDD_node *f);
 
-static int MR_ROBDD_intcompare(const void *i, const void *j);
+static int      MR_ROBDD_intcompare(const void *i, const void *j);
 
 /****************************************************************
 
@@ -1214,7 +1215,7 @@ MR_ROBDD_make_node(int var, MR_ROBDD_node *tr, MR_ROBDD_node *fa)
         return tr;
     }
 
-    bucket = &MR_ROBDD_unique_table[MR_ROBDD_UNIQUE_HASH(var,tr,fa)];
+    bucket = &MR_ROBDD_unique_table[MR_ROBDD_UNIQUE_HASH(var, tr, fa)];
 
     /*
     ** The following check avoids the need to initialise the table
@@ -1287,13 +1288,13 @@ MR_ROBDD_node *
 MR_ROBDD_variableRep(int var)
 {
     MR_ROBDD_COUNT_FN(MR_ROBDD_variableRep);
-    return MR_ROBDD_make_node(var,MR_ROBDD_one,MR_ROBDD_zero);
+    return MR_ROBDD_make_node(var, MR_ROBDD_one, MR_ROBDD_zero);
 }
 
 MR_ROBDD_DECLARE_FN_COUNT(MR_ROBDD_ite)
 
 MR_ROBDD_node *
-MR_ROBDD_ite(MR_ROBDD_node *f,MR_ROBDD_node *g,MR_ROBDD_node *h)
+MR_ROBDD_ite(MR_ROBDD_node *f, MR_ROBDD_node *g, MR_ROBDD_node *h)
 {
     MR_ROBDD_node *f_tr, *f_fa;
     MR_ROBDD_node *g_tr, *g_fa;
@@ -1350,7 +1351,7 @@ MR_ROBDD_ite(MR_ROBDD_node *f,MR_ROBDD_node *g,MR_ROBDD_node *h)
     newnode = MR_ROBDD_make_node(top,
                 MR_ROBDD_ite(f_tr, g_tr, h_tr),
                 MR_ROBDD_ite(f_fa, g_fa, h_fa));
-    MR_ROBDD_UPDATE_ITE_CACHE(f,g,h,newnode,MR_ROBDD_ite);
+    MR_ROBDD_UPDATE_ITE_CACHE(f, g, h, newnode, MR_ROBDD_ite);
     return newnode;
 }
 
@@ -1364,7 +1365,7 @@ MR_ROBDD_ite(MR_ROBDD_node *f,MR_ROBDD_node *g,MR_ROBDD_node *h)
 */
 
 MR_ROBDD_node *
-MR_ROBDD_ite_constant(MR_ROBDD_node *f,MR_ROBDD_node *g,MR_ROBDD_node *h)
+MR_ROBDD_ite_constant(MR_ROBDD_node *f, MR_ROBDD_node *g, MR_ROBDD_node *h)
 {
     MR_ROBDD_node *f_tr, *f_fa;
     MR_ROBDD_node *g_tr, *g_fa;
@@ -1427,7 +1428,7 @@ MR_ROBDD_ite_constant(MR_ROBDD_node *f,MR_ROBDD_node *g,MR_ROBDD_node *h)
         result = MR_ROBDD_nonterminal;
     }
 
-    MR_ROBDD_UPDATE_ITE_CACHE(f,g,h,result,MR_ROBDD_ite_constant);
+    MR_ROBDD_UPDATE_ITE_CACHE(f, g, h, result, MR_ROBDD_ite_constant);
     return result;
 }
 #endif /* MR_ROBDD_USE_ITE_CONSTANT */
@@ -1438,7 +1439,7 @@ MR_ROBDD_node *
 MR_ROBDD_implies(MR_ROBDD_node *a, MR_ROBDD_node *b)
 {
     MR_ROBDD_COUNT_FN(MR_ROBDD_implies);
-    return MR_ROBDD_ite(a,b,MR_ROBDD_one);
+    return MR_ROBDD_ite(a, b, MR_ROBDD_one);
 }
 
 /* returns a copy of graph a */
@@ -1465,14 +1466,14 @@ MR_ROBDD_node *
 MR_ROBDD_glb(MR_ROBDD_node *a, MR_ROBDD_node *b)
 {
     MR_ROBDD_COUNT_FN(MR_ROBDD_glb);
-    return MR_ROBDD_ite(a,b,MR_ROBDD_zero);
+    return MR_ROBDD_ite(a, b, MR_ROBDD_zero);
 }
 
 MR_ROBDD_node *
 MR_ROBDD_lub(MR_ROBDD_node *a, MR_ROBDD_node *b)
 {
     MR_ROBDD_COUNT_FN(MR_ROBDD_lub);
-    return MR_ROBDD_ite(a,MR_ROBDD_one,b);
+    return MR_ROBDD_ite(a, MR_ROBDD_one, b);
 }
 
 #else /* !MR_ROBDD_NAIVE */
@@ -1485,7 +1486,7 @@ MR_ROBDD_lub(MR_ROBDD_node *f, MR_ROBDD_node *g)
         return f == MR_ROBDD_one ? MR_ROBDD_one : g;
     } else if (MR_ROBDD_IS_TERMINAL(g)) {
         return g == MR_ROBDD_one ? MR_ROBDD_one : f;
-    } MR_ROBDD_ELSE_TRY_EQUAL_TEST(f,g,f)
+    } MR_ROBDD_ELSE_TRY_EQUAL_TEST(f, g, f)
     else {
         MR_ROBDD_node *result;
         MR_ROBDD_DECLARE_BIN_CACHE_ENTRY
@@ -1515,7 +1516,7 @@ MR_ROBDD_glb(MR_ROBDD_node *f, MR_ROBDD_node *g)
         return f == MR_ROBDD_one ? g : MR_ROBDD_zero;
     } else if (MR_ROBDD_IS_TERMINAL(g)) {
         return g == MR_ROBDD_one ? f : MR_ROBDD_zero;
-    } MR_ROBDD_ELSE_TRY_EQUAL_TEST(f,g,f)
+    } MR_ROBDD_ELSE_TRY_EQUAL_TEST(f, g, f)
     else {
         MR_ROBDD_node *result;
         MR_ROBDD_DECLARE_BIN_CACHE_ENTRY
@@ -1587,7 +1588,7 @@ MR_ROBDD_restrict(int c, MR_ROBDD_node *f)
         return f;
     } else if (f->value < c) {
         return MR_ROBDD_make_node(f->value,
-            MR_ROBDD_restrict(c,f->tr), MR_ROBDD_restrict(c,f->fa));
+            MR_ROBDD_restrict(c, f->tr), MR_ROBDD_restrict(c, f->fa));
     } else {
         return MR_ROBDD_lub(f->tr, f->fa);
     }
@@ -1658,12 +1659,14 @@ MR_ROBDD_restrictThresh(int thresh, MR_ROBDD_node *f)
         MR_ROBDD_node *result;        
         MR_ROBDD_DECLARE_ASYM_BIN_CACHE_ENTRY;
 
-        MR_ROBDD_TRY_ASYM_BIN_CACHE((MR_ROBDD_node *) thresh, f, MR_ROBDD_restrictThresh);
+        MR_ROBDD_TRY_ASYM_BIN_CACHE((MR_ROBDD_node *) thresh, f,
+            MR_ROBDD_restrictThresh);
 
         result = MR_ROBDD_make_node(f->value,
                  MR_ROBDD_restrictThresh(thresh, f->tr),
                  MR_ROBDD_restrictThresh(thresh, f->fa));
-        MR_ROBDD_UPDATE_ASYM_BIN_CACHE((MR_ROBDD_node *) thresh, f, result, MR_ROBDD_restrictThresh);
+        MR_ROBDD_UPDATE_ASYM_BIN_CACHE((MR_ROBDD_node *) thresh, f, result,
+            MR_ROBDD_restrictThresh);
         return result;
     } else {
         return MR_ROBDD_one;
@@ -1690,7 +1693,7 @@ MR_ROBDD_restricted_glb(int thresh, MR_ROBDD_node *f, MR_ROBDD_node *g)
 
 #else /* MR_ROBDD_USE_RGLB */
 
-/* returns true iff MR_ROBDD_glb(f,g) is not 'MR_ROBDD_zero' */
+/* returns true iff MR_ROBDD_glb(f, g) is not 'MR_ROBDD_zero' */
 static int
 MR_ROBDD_exists_glb(MR_ROBDD_node *f, MR_ROBDD_node *g)
 {
@@ -1722,7 +1725,7 @@ MR_ROBDD_restricted_glb(int c, MR_ROBDD_node *f, MR_ROBDD_node *g)
     } else if (MR_ROBDD_IS_TERMINAL(g)) {
         return (g == MR_ROBDD_one) ? MR_ROBDD_restrictThresh(c, f)
             : MR_ROBDD_zero;
-    } MR_ROBDD_ELSE_TRY_EQUAL_TEST(f,g,MR_ROBDD_restrictThresh(c, f))
+    } MR_ROBDD_ELSE_TRY_EQUAL_TEST(f, g, MR_ROBDD_restrictThresh(c, f))
     else {
         int v;
         MR_ROBDD_node *tr1, *tr2, *fa1, *fa2;
@@ -1753,14 +1756,14 @@ MR_ROBDD_restricted_glb(int c, MR_ROBDD_node *f, MR_ROBDD_node *g)
         }
         if (v > c) {
             result =
-                (MR_ROBDD_exists_glb(tr1,tr2)||MR_ROBDD_exists_glb(fa1,fa2)) ?
+                (MR_ROBDD_exists_glb(tr1, tr2) || MR_ROBDD_exists_glb(fa1, fa2)) ?
                     MR_ROBDD_one : MR_ROBDD_zero;
         } else {
             result = MR_ROBDD_make_node(v,
                MR_ROBDD_restricted_glb(c, tr1, tr2),
                MR_ROBDD_restricted_glb(c, fa1, fa2));
         }
-        MR_ROBDD_UPDATE_RGLB_CACHE(f,g,c,result);
+        MR_ROBDD_UPDATE_RGLB_CACHE(f, g, c, result);
         return result;
     }
 }
@@ -1876,7 +1879,7 @@ MR_ROBDD_ite_var_h(int f, MR_ROBDD_node *g, MR_ROBDD_node *h)
 */        
 
 MR_ROBDD_node *
-MR_ROBDD_ite_var(int f,MR_ROBDD_node *g,MR_ROBDD_node *h)
+MR_ROBDD_ite_var(int f, MR_ROBDD_node *g, MR_ROBDD_node *h)
 {
     int g_val = INT_MAX;
     int h_val = INT_MAX;
@@ -1885,7 +1888,7 @@ MR_ROBDD_ite_var(int f,MR_ROBDD_node *g,MR_ROBDD_node *h)
     MR_ROBDD_DECLARE_ITE_VAR_CACHE_ENTRY
 
     MR_ROBDD_COUNT_FN(MR_ROBDD_ite_var);
-    MR_ROBDD_DIRECT_EQUAL_TEST(g,h,g);
+    MR_ROBDD_DIRECT_EQUAL_TEST(g, h, g);
     MR_ROBDD_TRY_ITE_VAR_CACHE(f, g, h);
 
     if (!MR_ROBDD_IS_TERMINAL(g)) g_val = g->value;
@@ -1905,7 +1908,7 @@ MR_ROBDD_ite_var(int f,MR_ROBDD_node *g,MR_ROBDD_node *h)
     }
 
     if (f < g_val) {
-        if (f < h_val) /* case 2 (b,c,d):  f < g && f < h */ {
+        if (f < h_val) /* case 2 (b, c, d):  f < g && f < h */ {
             result = MR_ROBDD_make_node(f, g, h);
         } else /* case 8 (k):  h < f < g */ {
             result = MR_ROBDD_make_node(h_val,
@@ -1918,7 +1921,7 @@ MR_ROBDD_ite_var(int f,MR_ROBDD_node *g,MR_ROBDD_node *h)
                    MR_ROBDD_ite_var_h(f, g_tr, h),
                    MR_ROBDD_ite_var_h(f, g_fa, h));
     /* g < f && h < f */
-    } else if (h_val < g_val) /* case 9 (l,m): h < g < f */ {
+    } else if (h_val < g_val) /* case 9 (l, m): h < g < f */ {
         result = MR_ROBDD_make_node(h_val,
                    MR_ROBDD_ite_var(f, g, h_tr),
                    MR_ROBDD_ite_var(f, g, h_fa));
@@ -1927,7 +1930,7 @@ MR_ROBDD_ite_var(int f,MR_ROBDD_node *g,MR_ROBDD_node *h)
         result = MR_ROBDD_make_node(g_val,
                    MR_ROBDD_ite_var(f, g_tr, h_tr),
                    MR_ROBDD_ite_var(f, g_fa, h_fa));
-    } else /* case 6 (h,i):  g < h < f */ {
+    } else /* case 6 (h, i):  g < h < f */ {
         result = MR_ROBDD_make_node(g_val,
                    MR_ROBDD_ite_var(f, g_tr, h),
                    MR_ROBDD_ite_var(f, g_fa, h));
@@ -1939,7 +1942,7 @@ MR_ROBDD_ite_var(int f,MR_ROBDD_node *g,MR_ROBDD_node *h)
 
 #else /* ! MR_ROBDD_NEW */
 
-#define MR_ROBDD_ite_var(v,f,g) MR_ROBDD_ite(MR_ROBDD_variableRep(v), f, g)
+#define MR_ROBDD_ite_var(v, f, g) MR_ROBDD_ite(MR_ROBDD_variableRep(v), f, g)
 
 #endif /* !MR_ROBDD_NEW */
 
@@ -1972,7 +1975,7 @@ MR_ROBDD_reverseRenameArray(MR_ROBDD_node *f, int count, int mapping[])
     MR_ROBDD_COUNT_FN(MR_ROBDD_reverseRenameArray);
     /* NB:  four -1 bytes is the same as a -1 word */
     MR_memset(rev_map, ~((char) 0), sizeof(rev_map));
-    for (i=1,MR_ROBDD_max=-1; i<=count; ++i) {
+    for (i=1, MR_ROBDD_max=-1; i<=count; ++i) {
         rev_map[(val=mapping[i])] = i;
         if (MR_ROBDD_max < val) MR_ROBDD_max = val;
     }
@@ -2027,9 +2030,9 @@ MR_ROBDD_exists_restrict_sets(MR_ROBDD_node *f, MR_ROBDD_bitset *trues,
             int word = MR_ROBDD_BITSET_WORD(f->value);
             MR_ROBDD_bitmask mask = MR_ROBDD_BITSET_MASK(f->value);
 
-            if (MR_ROBDD_BITSET_MEMBER(*trues,word,mask)) {
+            if (MR_ROBDD_BITSET_MEMBER(*trues, word, mask)) {
                 f = f->tr;            /* continue loop */
-            } else if (MR_ROBDD_BITSET_MEMBER(*falses,word,mask)) {
+            } else if (MR_ROBDD_BITSET_MEMBER(*falses, word, mask)) {
                 f = f->fa;            /* continue loop */
             } else if (MR_ROBDD_exists_restrict_sets(f->tr, trues, falses,
                 hielt))
@@ -2063,9 +2066,9 @@ MR_ROBDD_restrict_sets(MR_ROBDD_node *f, MR_ROBDD_bitset *trues,
             int word = MR_ROBDD_BITSET_WORD(f->value);
             MR_ROBDD_bitmask mask = MR_ROBDD_BITSET_MASK(f->value);
 
-            if (MR_ROBDD_BITSET_MEMBER(*trues,word,mask)) {
+            if (MR_ROBDD_BITSET_MEMBER(*trues, word, mask)) {
                 f = f->tr;            /* continue loop */
-            } else if (MR_ROBDD_BITSET_MEMBER(*falses,word,mask)) {
+            } else if (MR_ROBDD_BITSET_MEMBER(*falses, word, mask)) {
                 f = f->fa;            /* continue loop */
             } else {
                 return MR_ROBDD_make_node(f->value,
@@ -2094,9 +2097,9 @@ MR_ROBDD_follow_path(MR_ROBDD_node *f, MR_ROBDD_bitset *trues,
         int word = MR_ROBDD_BITSET_WORD(f->value);
         MR_ROBDD_bitmask mask = MR_ROBDD_BITSET_MASK(f->value);
         
-        if (MR_ROBDD_BITSET_MEMBER(*trues,word,mask)) {
+        if (MR_ROBDD_BITSET_MEMBER(*trues, word, mask)) {
             f = f->tr;
-        } else if (MR_ROBDD_BITSET_MEMBER(*falses,word,mask)) {
+        } else if (MR_ROBDD_BITSET_MEMBER(*falses, word, mask)) {
             f = f->fa;
         } else {
             break;
@@ -2180,14 +2183,14 @@ MR_ROBDD_abexit(MR_ROBDD_node *context, MR_ROBDD_node *f, int count,
             MR_ROBDD_bitmask mask = MR_ROBDD_BITSET_MASK(newval);
             int newhi = (newval>hielt ? newval : hielt);
 
-            MR_ROBDD_BITSET_ADD(*trues,word,mask); /* turn on true bit */
+            MR_ROBDD_BITSET_ADD(*trues, word, mask); /* turn on true bit */
             tr = MR_ROBDD_abexit(context, f->tr, count, mapping, thresh,
                     trues, falses, newhi);
-            MR_ROBDD_BITSET_TOGGLE(*trues,word,mask); /* turn off true bit */
-            MR_ROBDD_BITSET_ADD(*falses,word,mask); /* turn on false bit */
+            MR_ROBDD_BITSET_TOGGLE(*trues, word, mask); /* turn off true bit */
+            MR_ROBDD_BITSET_ADD(*falses, word, mask); /* turn on false bit */
             fa = MR_ROBDD_abexit(context, f->fa, count, mapping, thresh,
                     trues, falses, newhi);
-            MR_ROBDD_BITSET_TOGGLE(*falses,word,mask); /* turn off false bit */
+            MR_ROBDD_BITSET_TOGGLE(*falses, word, mask); /* turn off false bit */
         }
         if (newval > thresh) {
             return MR_ROBDD_lub(tr, fa);
@@ -2227,25 +2230,25 @@ MR_ROBDD_abstract_exit(MR_ROBDD_node *context, MR_ROBDD_node *f, int count,
 /*
 ** NB:  MR_ROBDD_iff_conj_array, and so all the functions that call it, now
 ** allow v0 to apear in the array of variables arr[].  This makes the
-** analyzer robust for handling goals like X = f(X,Y).  Since it's
+** analyzer robust for handling goals like X = f(X, Y).  Since it's
 ** cheaper and easier to check this in C, I do it here.
 */
 
 #if defined(MR_ROBDD_ELIM_DUPS)
   #define MR_ROBDD_DECLARE_PREV(init) int prev = (init);
-  #define MR_ROBDD_HANDLE_DUP(this,rel)                                 \
+  #define MR_ROBDD_HANDLE_DUP(this, rel)                                 \
     if ((this) == prev) continue;                                       \
     assert((this) rel prev);                                            \
     prev = (this);
 #elif !defined(NDEBUG)
   #define MR_ROBDD_DECLARE_PREV(init) int prev = (init);
-  #define MR_ROBDD_HANDLE_DUP(this,rel)                                 \
+  #define MR_ROBDD_HANDLE_DUP(this, rel)                                 \
     assert((this) != prev);                                             \
     assert((this) rel prev);                                            \
     prev = (this);
 #else
   #define MR_ROBDD_DECLARE_PREV(init)
-  #define MR_ROBDD_HANDLE_DUP(this,rel)
+  #define MR_ROBDD_HANDLE_DUP(this, rel)
 #endif
 
 MR_ROBDD_DECLARE_FN_COUNT(iff_conj)
@@ -2268,8 +2271,8 @@ MR_ROBDD_node *MR_ROBDD_iff_conj_array(int v0, int n, int arr[])
             conj = MR_ROBDD_glb(conj, MR_ROBDD_variableRep(arr[i]));
         }
     }
-    return MR_ROBDD_glb(MR_ROBDD_implies(conj,v_rep),
-        MR_ROBDD_implies(v_rep,conj));
+    return MR_ROBDD_glb(MR_ROBDD_implies(conj, v_rep),
+        MR_ROBDD_implies(v_rep, conj));
 }
 
 #elif !defined(MR_ROBDD_USE_THRESH)
@@ -2324,7 +2327,7 @@ MR_ROBDD_node *MR_ROBDD_iff_conj_array(int v0, int n, int arr[])
     }
 
     /* make v0 MR_ROBDD_node */
-    thens = MR_ROBDD_make_node(v0,thens,elses);
+    thens = MR_ROBDD_make_node(v0, thens, elses);
 
     /* Finally build part of graph above v0.  For this, we build
      * only MR_ROBDD_one graph, whose then branch is the graph we've built
@@ -2334,7 +2337,7 @@ MR_ROBDD_node *MR_ROBDD_iff_conj_array(int v0, int n, int arr[])
     if (ptr >= arr) {
         MR_ROBDD_DECLARE_PREV(MR_ROBDD_MAXVAR)
         /* make ~v0 */
-        elses = MR_ROBDD_make_node(v0,MR_ROBDD_zero,MR_ROBDD_one);
+        elses = MR_ROBDD_make_node(v0, MR_ROBDD_zero, MR_ROBDD_one);
 
         do {
             vi = *ptr;
@@ -2791,7 +2794,7 @@ MR_ROBDD_vars_entailed(MR_ROBDD_node *f, int MR_ROBDD_topvar)
 
     for (i=0; i<MR_ROBDD_topvar; ++i) {
         if (MR_ROBDD_var_entailed(f, i)) {
-            MR_ROBDD_BITSET_ADD_ELEMENT(def_vars,i);
+            MR_ROBDD_BITSET_ADD_ELEMENT(def_vars, i);
         }
     }
     return &def_vars;
@@ -2823,7 +2826,7 @@ MR_ROBDD_vars_entailed(MR_ROBDD_node *f)
 
     for (; i >= 0; --i) {
         if (MR_ROBDD_var_entailed(f, i)) {
-            MR_ROBDD_BITSET_ADD_ELEMENT(def_vars,i);
+            MR_ROBDD_BITSET_ADD_ELEMENT(def_vars, i);
         }
     }
     return &def_vars;
@@ -2855,10 +2858,10 @@ MR_ROBDD_vars_entailed_aux(MR_ROBDD_node *f)
         MR_ROBDD_bitmask mask = MR_ROBDD_BITSET_MASK(f->value);
         
         /* turn on bit for then branch */
-        MR_ROBDD_BITSET_ADD(MR_ROBDD_this_path,word,mask);
+        MR_ROBDD_BITSET_ADD(MR_ROBDD_this_path, word, mask);
         MR_ROBDD_vars_entailed_aux(f->tr);
         /* turn it off for the else branch */
-        MR_ROBDD_BITSET_TOGGLE(MR_ROBDD_this_path,word,mask);
+        MR_ROBDD_BITSET_TOGGLE(MR_ROBDD_this_path, word, mask);
         f = f->fa;
     }
     /* needn't do anything for false terminals */
@@ -3134,8 +3137,8 @@ MR_ROBDD_complete(MR_ROBDD_node *f, MR_ROBDD_node *g)
         result = MR_ROBDD_make_node(fvar,
              MR_ROBDD_complete_or(f->fa, g->tr,
                  MR_ROBDD_complete_or(f->tr, g->tr,
-                 MR_ROBDD_complete(f->tr,g->fa))),
-             MR_ROBDD_complete(f->fa,g->fa));
+                 MR_ROBDD_complete(f->tr, g->fa))),
+             MR_ROBDD_complete(f->fa, g->fa));
     } else if (fvar < gvar) {
         MR_ROBDD_node *cfa = MR_ROBDD_complete(f->fa, g);
 
@@ -3277,8 +3280,8 @@ MR_ROBDD_print_distribution(int array[], int MR_ROBDD_max)
             sum += array[count];
             printf(
                 "%5d nodes:%6d %5.2f%% (cum = %6d %5.1f%%, >0 = %6d %5.1f%%)\n",
-                count, array[count], MR_ROBDD_PERCENTAGE(array[count],total),
-                sum, MR_ROBDD_PERCENTAGE(sum,total), sum-zero_count,
+                count, array[count], MR_ROBDD_PERCENTAGE(array[count], total),
+                sum, MR_ROBDD_PERCENTAGE(sum, total), sum-zero_count,
                 total == zero_count ? 999.999
                     : MR_ROBDD_PERCENTAGE(sum-zero_count, total-zero_count));
         }
@@ -3286,7 +3289,7 @@ MR_ROBDD_print_distribution(int array[], int MR_ROBDD_max)
     if (array[MR_ROBDD_max+1] > 0) {
         printf(">%4d nodes:%6d %2.2f%%\n",
            MR_ROBDD_max, array[MR_ROBDD_max],
-           MR_ROBDD_PERCENTAGE(array[MR_ROBDD_max],total));
+           MR_ROBDD_PERCENTAGE(array[MR_ROBDD_max], total));
     }
     printf("\n");
 }
@@ -3484,7 +3487,7 @@ MR_ROBDD_testing_iff_conj_array(int v0, int n, int arr[])
     }
     
     /* make v0 MR_ROBDD_node */
-    thens = MR_ROBDD_make_node(v0,thens,elses);
+    thens = MR_ROBDD_make_node(v0, thens, elses);
 
     /*
     ** Finally build part of graph above v0.  For this, we build
@@ -3494,7 +3497,7 @@ MR_ROBDD_testing_iff_conj_array(int v0, int n, int arr[])
 
     if (ptr >= arr) {
         /* make ~v0 */
-        elses = MR_ROBDD_make_node(v0,MR_ROBDD_zero,MR_ROBDD_one);
+        elses = MR_ROBDD_make_node(v0, MR_ROBDD_zero, MR_ROBDD_one);
 
         do {
             vi = *ptr;
