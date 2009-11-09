@@ -300,6 +300,7 @@ output_layout_array_decls(Info, PseudoTypeInfos, HLDSVarNums,
         CoveragePointsDynamicArrayName = proc_static_cp_dynamic_array,
         output_layout_array_name_storage_type_name(MangledModuleName,
             CoveragePointsStaticArrayName, not_being_defined, !IO),
+        io.write_string("[];\n", !IO),
         output_layout_array_name_storage_type_name(MangledModuleName,
             CoveragePointsDynamicArrayName, not_being_defined, !IO),
         io.write_string("[];\n", !IO)
