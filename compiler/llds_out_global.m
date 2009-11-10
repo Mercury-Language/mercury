@@ -231,14 +231,14 @@ output_tabling_info_struct(Info, TablingInfoStruct, !DeclSet, !IO) :-
     io.write_string(",\n", !IO),
     io.write_string("{ 0 },\n", !IO),
     io.write_string("{\n", !IO),
-    output_data_id_addr(Info, InputStepsDataId, !IO),
+    output_data_id(Info, InputStepsDataId, !IO),
     io.write_string(",\n", !IO),
     (
         MaybeOutputSteps = no,
         io.write_string("NULL\n", !IO)
     ;
         MaybeOutputSteps = yes(_),
-        output_data_id_addr(Info, OutputStepsDataId, !IO),
+        output_data_id(Info, OutputStepsDataId, !IO),
         io.write_string("\n", !IO)
     ),
     io.write_string("},\n", !IO),
@@ -266,12 +266,12 @@ output_tabling_info_struct(Info, TablingInfoStruct, !DeclSet, !IO) :-
         io.write_string("{{{\n", !IO),
         io.write_string("0,\n", !IO),
         io.write_string("0,\n", !IO),
-        output_data_id_addr(Info, CallStatsDataId, !IO),
+        output_data_id(Info, CallStatsDataId, !IO),
         io.write_string("\n", !IO),
         io.write_string("},{\n", !IO),
         io.write_string("0,\n", !IO),
         io.write_string("0,\n", !IO),
-        output_data_id_addr(Info, PrevCallStatsDataId, !IO),
+        output_data_id(Info, PrevCallStatsDataId, !IO),
         io.write_string("\n", !IO),
         io.write_string("}},{{\n", !IO),
         (
@@ -287,12 +287,12 @@ output_tabling_info_struct(Info, TablingInfoStruct, !DeclSet, !IO) :-
             MaybeOutputSteps = yes(_),
             io.write_string("0,\n", !IO),
             io.write_string("0,\n", !IO),
-            output_data_id_addr(Info, AnswerStatsDataId, !IO),
+            output_data_id(Info, AnswerStatsDataId, !IO),
             io.write_string("\n", !IO),
             io.write_string("},{\n", !IO),
             io.write_string("0,\n", !IO),
             io.write_string("0,\n", !IO),
-            output_data_id_addr(Info, PrevAnswerStatsDataId, !IO),
+            output_data_id(Info, PrevAnswerStatsDataId, !IO),
             io.write_string("\n", !IO)
         ),
         io.write_string("}}},\n", !IO)

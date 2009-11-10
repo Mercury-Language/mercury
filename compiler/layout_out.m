@@ -772,6 +772,7 @@ output_short_var_label_layout_slot(Info, LabelLayout, !Slot, !IO) :-
                 i(PTIsSlot), i(HLDSVarNumsSlot), i(ShortLocnsSlot)], !IO)
         )
     ;
+        io.write_string("(const MR_TypeParamLocns *) ", !IO),
         output_rval_as_addr(Info, TypeParams, !IO),
         io.write_string(",", !IO),
         ( PTIsSlot >= 0 ->
@@ -877,6 +878,7 @@ output_long_var_label_layout_slot(Info, LabelLayout, !Slot, !IO) :-
                 i(ShortLocnsSlot), i(LongLocnsSlot)], !IO)
         )
     ;
+        io.write_string("(const MR_TypeParamLocns *) ", !IO),
         output_rval_as_addr(Info, TypeParams, !IO),
         io.write_string(",", !IO),
         ( PTIsSlot >= 0 ->
