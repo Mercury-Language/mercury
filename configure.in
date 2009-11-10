@@ -3124,7 +3124,7 @@ if test "$BEST_GRADE_FOR_COMPILER" != "$BOOTSTRAP_GRADE"; then
 ****    from scratch so you can use the more efficient
 ****    grade \`$BEST_GRADE_FOR_COMPILER'.
 ****    NOTE: before reinstalling from scratch, ensure that the
-****    source tree is clean by running `make realclean'.  Not doing
+****    source tree is clean by running \`make realclean'.  Not doing
 ****    this may result in a broken Mercury installation.])
     else
         GRADE=$BEST_GRADE_FOR_COMPILER
