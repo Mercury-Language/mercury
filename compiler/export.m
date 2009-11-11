@@ -611,10 +611,10 @@ convert_type_to_mercury(Rval, Type, ConvertedRval) :-
             ConvertedRval = "MR_float_to_word(" ++ Rval ++ ")"
         ;
             BuiltinType = builtin_type_char,
-            % We need to explicitly cast to UnsignedChar
+            % We need to explicitly cast to MR_UnsignedChar
             % to avoid problems with C compilers for which `char'
             % is signed.
-            ConvertedRval = "(UnsignedChar) " ++ Rval
+            ConvertedRval = "(MR_UnsignedChar) " ++ Rval
         ;
             BuiltinType = builtin_type_int,
             ConvertedRval = Rval
