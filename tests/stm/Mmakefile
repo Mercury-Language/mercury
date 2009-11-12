@@ -15,6 +15,7 @@ VALID_PROGS = 			\
 	atomic_conj			\
 	atomic_ite			\
 	atomic_mvar			\
+	atomic_scope		\
 	#demo				\
 	par-asm_test7		\
 	par-asm_test8		\

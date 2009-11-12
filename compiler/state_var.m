@@ -693,10 +693,11 @@ svar_finish_outer_atomic_scope(OuterScopeInfo, !SInfo) :-
 
 svar_start_inner_atomic_scope(_Context, InnerStateVar, InnerScopeInfo,
         !VarSet, !SInfo, !Specs) :-
+    BeforeSInfo = !.SInfo,
     new_dot_state_var(InnerStateVar, InnerDI, !VarSet, !SInfo),
     new_colon_state_var(InnerStateVar, _, !VarSet, !SInfo),
     InnerScopeInfo = svar_inner_atomic_scope_info(InnerStateVar, InnerDI,
-        !.SInfo).
+        BeforeSInfo).
 
 svar_finish_inner_atomic_scope(Context, InnerScopeInfo, InnerDI, InnerUO,
         !VarSet, !SInfo, !Specs) :-
@@ -719,12 +720,6 @@ svar_finish_inner_atomic_scope(Context, InnerScopeInfo, InnerDI, InnerUO,
         ;
             unexpected(this_file, "transform_goal_2: |Vars| != 2")
         )
-    ),
-    ( InnerDI = InnerUO ->
-        unexpected(this_file,
-            "svar_inner_atomic_scope_info: InnerDI = InnerUO")
-    ;
-        true
     ).
 
 %-----------------------------------------------------------------------------%

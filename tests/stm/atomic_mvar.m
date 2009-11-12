@@ -75,5 +75,13 @@ try_put_mvar(MVar, T, Success, !STM) :-
         Success = no
     ).
 
+:- pred nonsense(io::di, io::uo) is det.
+
+nonsense(!IO) :-
+    atomic [outer(!IO), inner(!STM)] (
+        % !STM not mentioned
+        true
+    ).
+
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=8 sts=4 sw=4 et
