@@ -222,7 +222,7 @@ install_cgi_progs: mdprof_cgi mdprof_dump mdprof_test mdprof_feedback
 			cp mdprof_cgi $(INSTALL_CGI_DIR) ; \
 		else \
 			echo "cannot install mdprof_cgi: " \
-				"$(INSTALL_CGI_DIR) is not writeable" \
+				"$(INSTALL_CGI_DIR) is not writeable"; \
 		fi \
 	fi
 	# We also install mdprof_cgi in $(INSTALL_MERC_BIN_DIR).
