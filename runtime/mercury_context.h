@@ -347,9 +347,10 @@ extern      MR_Context  *MR_runqueue_tail;
   extern    MR_bool         MR_thread_pinning;
 #endif
 
-#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
+#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
 extern MR_bool      MR_profile_parallel_execution;
 
+/* XXX: This is currently unused, we plan to use it in the future. -pbone */
 extern MR_Stats     MR_profile_parallel_executed_local_sparks;
 
 #define MR_IF_PROFILE_PARALLEL_EXECUTION_SUPPORT(statement)                 \
@@ -813,12 +814,6 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
   #define MR_join_and_continue(sync_term, join_label)                         \
     do {                                                                      \
         MR_SyncTerm *jnc_st = (MR_SyncTerm *) &sync_term;                     \
-MR_IF_PROFILE_PARALLEL_EXECUTION_SUPPORT(                                     \
-            MR_Timer MR_local_spark_timer;                                    \
-            if (MR_profile_parallel_execution == MR_TRUE) {                   \
-                MR_profiling_start_timer(&MR_local_spark_timer);              \
-            }                                                                 \
-        );                                                                    \
                                                                               \
         if (!jnc_st->MR_st_is_shared) {                                       \
             /* This parallel conjunction has only executed sequentially. */   \
@@ -870,11 +865,6 @@ MR_IF_PROFILE_PARALLEL_EXECUTION_SUPPORT(                                     \
             &jnc_spark);                                                      \
         if (jnc_popped) {                                                     \
             MR_atomic_dec_int(&MR_num_outstanding_contexts_and_all_sparks);   \
-MR_IF_PROFILE_PARALLEL_EXECUTION_SUPPORT(                                     \
-            if (MR_profile_parallel_execution == MR_TRUE) {                   \
-                MR_profiling_stop_timer(&MR_local_spark_timer,                \
-                    &MR_profile_parallel_executed_local_sparks);              \
-            });                                                               \
             MR_GOTO(jnc_spark.MR_spark_resume);                               \
         } else {                                                              \
             MR_runnext();                                                     \
@@ -899,11 +889,6 @@ MR_IF_PROFILE_PARALLEL_EXECUTION_SUPPORT(                                     \
             */                                                                \
             MR_UNLOCK(&MR_sync_term_lock, "continue_2 i");                    \
             MR_atomic_dec_int(&MR_num_outstanding_contexts_and_all_sparks);   \
-MR_IF_PROFILE_PARALLEL_EXECUTION_SUPPORT(                                     \
-            if (MR_profile_parallel_execution == MR_TRUE) {                   \
-                MR_profiling_stop_timer(&MR_local_spark_timer,                \
-                    &MR_profile_parallel_executed_local_sparks);              \
-            });                                                               \
             MR_GOTO(jnc_spark.MR_spark_resume);                               \
         } else {                                                              \
             /*                                                                \
