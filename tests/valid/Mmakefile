@@ -263,6 +263,7 @@ DEEP_PROF_CAPABLE_PROGS = \
 LLDS_PROGS= \
 	exists_cast_bug \
 	fzn_debug_abort \
+	liveness_ite \
 	livevars_shallow \
 	livevars_shallow2 \
 	untuple_bug

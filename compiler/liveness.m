@@ -773,10 +773,11 @@ detect_deadness_in_goal(Goal0, Goal, !Deadness, !.Liveness, LiveInfo) :-
             set.union(DeadnessCond, DeadnessElse, Deadness),
             set.intersect(Deadness, CompletedNonLocals,
                 CompletedNonLocalDeadness),
+            InstmapReachable = no,
             add_branch_pre_deaths(DeadnessCond, Deadness0,
-                CompletedNonLocalDeadness, yes, Cond1, Cond),
+                CompletedNonLocalDeadness, InstmapReachable, Cond1, Cond),
             add_branch_pre_deaths(DeadnessElse, Deadness0,
-                CompletedNonLocalDeadness, yes, Else1, Else)
+                CompletedNonLocalDeadness, InstmapReachable, Else1, Else)
         ),
         !:Deadness = Deadness,
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
