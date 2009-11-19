@@ -464,7 +464,9 @@ case $HOST in
         # The asm_fast grades don't work on Darwin.
         # The reg grades don't work with the default gcc compiler
         # on this machine either.
-        # XXX Install more grades on this machine.
+        # XXX compilation of the debug grades is very slow with
+        # Mac OS 10.6 an gcc 4.2 - it is disabled for now.
+        #
         CONFIG_OPTS=""
         DEFAULT_GRADE="hlc.gc"
         export DEFAULT_GRADE
@@ -474,8 +476,7 @@ case $HOST in
             hlc.gc.trseg.ll_debug       \
             hlc.gc.trseg.prof           \
             hlc.gc.trseg.memprof        \
-            none.gc.trseg               \
-            none.gc.tr.debug"
+            none.gc.trseg               "
         ;;
     taura)
         CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
