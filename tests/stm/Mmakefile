@@ -12,6 +12,7 @@ VALID_PROGS = 			\
 	nested				\
 	nested_or_else		\
 	atomic_or_else		\
+	atomic_or_else2		\
 	atomic_conj			\
 	atomic_ite			\
 	atomic_mvar			\

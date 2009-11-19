@@ -39,8 +39,8 @@
 %       IO0 = IO.
 %
 %
-%   :- pred 'StmExpaded_rollback_0_0_0'(int::in, int::out) is cc_multi.
-%   'StmExpaded_rollback_0_0_0'(X, Y) :-
+%   :- pred 'StmExpanded_rollback_0_0_0'(int::in, int::out) is cc_multi.
+%   'StmExpanded_rollback_0_0_0'(X, Y) :-
 %       promise_pure (
 %           impure stm_create_trasaction_log(STM0),
 %           Closure = 'StmExpanded_wrapper_0_0_0'(X),
@@ -548,6 +548,13 @@ order_vars_into_groups_2(ModuleInfo, [Var|Vars], InitInstmap, FinalInstmap,
     order_vars_into_groups_2(ModuleInfo, Vars, InitInstmap, FinalInstmap,
         !LocalVars, !InputVars, !OutputVars).
 
+    % Return the var sets for the first atomic goal in the list, taking the
+    % union of the input var sets of all the goals.  If the first atomic goal
+    % does not succeed, we will try the later goals, so inputs to the later
+    % goals must also be inputs of the first goal.
+    %
+    % XXX This probably could done directly in calc_pred_variables_list.
+    %
 :- pred common_goal_vars_from_list(list(stm_goal_vars)::in, stm_goal_vars::out)
     is det.
 
@@ -817,11 +824,10 @@ create_top_level_goal(InitInstmap, FinalInstmap, OuterDI, OuterUO,
 
 create_top_level_pred(AtomicGoalVarList, OuterDI, OuterUO, AtomicGoal,
         OrElseGoals, HldsGoal, !StmInfo) :-
-    AtomicGoalVars = list.det_head(AtomicGoalVarList),
-
     create_rollback_pred(AtomicGoalVarList, WrapperCall, AtomicGoal,
         OrElseGoals, !StmInfo),
 
+    common_goal_vars_from_list(AtomicGoalVarList, AtomicGoalVars),
     get_input_output_varlist(AtomicGoalVars, InputVars, OutputVars),
     get_input_output_types(AtomicGoalVars, !.StmInfo, InputTypes, OutputTypes),
     get_input_output_modes(AtomicGoalVars, InputModes, OutputModes),
@@ -1036,7 +1042,12 @@ create_validate_exception_goal(StmVar, ExceptionVar, ReturnType, RecursiveCall,
         HldsGoal_ExceptionThrow_Call, !NewPredInfo),
     create_plain_conj(CreateTypeInfoGoals ++ [HldsGoal_ExceptionThrow_Call],
         HldsGoal_ValidBranch),
-    create_plain_conj([RecursiveCall], HldsGoal_InvalidBranch),
+    create_simple_call(mercury_stm_builtin_module,
+        "stm_discard_transaction_log",
+        pf_predicate, only_mode, detism_det, purity_impure, [StmVar], [],
+        instmap_delta_from_assoc_list([StmVar - ground(clobbered, none)]),
+        DropStateCall, !NewPredInfo),
+    create_plain_conj([DropStateCall, RecursiveCall], HldsGoal_InvalidBranch),
     template_lock_and_validate(StmVar, yes, HldsGoal_ValidBranch,
         HldsGoal_InvalidBranch, HldsGoals, !NewPredInfo),
     create_plain_conj(HldsGoals, HldsGoal).
@@ -1183,8 +1194,7 @@ create_rollback_handler_goal(AtomicGoalVars, ReturnType, StmVarDI, StmVarUO,
 
 create_rollback_pred(AtomicGoalVarList, CallGoal, AtomicGoal, OrElseGoals,
         !StmInfo) :-
-    AtomicGoalVars = list.det_head(AtomicGoalVarList),
-
+    common_goal_vars_from_list(AtomicGoalVarList, AtomicGoalVars),
     get_input_output_varlist(AtomicGoalVars, InputVars, OutputVars),
     get_input_output_types(AtomicGoalVars, !.StmInfo, InputTypes, OutputTypes),
     get_input_output_modes(AtomicGoalVars, InputModes, OutputModes),
@@ -1203,11 +1213,11 @@ create_rollback_pred(AtomicGoalVarList, CallGoal, AtomicGoal, OrElseGoals,
 
 create_rollback_pred_2(AtomicGoalVarList, RecCallGoal, AtomicGoal, OrElseGoals,
         !NewPredInfo, !StmInfo) :-
-    AtomicGoalVars = list.det_head(AtomicGoalVarList),
+    common_goal_vars_from_list(AtomicGoalVarList, AtomicGoalVars),
 
     get_input_output_types(AtomicGoalVars, !.StmInfo, _, OutputTypes),
     make_return_type(OutputTypes, ResultType),
-    create_aux_variable(ResultType, yes("ResltVar"), ResultVar, !NewPredInfo),
+    create_aux_variable(ResultType, yes("ResultVar"), ResultVar, !NewPredInfo),
     create_aux_variable(stm_state_type, yes("STM0"), InnerDI, !NewPredInfo),
     create_aux_variable(stm_state_type, yes("STM"), InnerUO, !NewPredInfo),
 

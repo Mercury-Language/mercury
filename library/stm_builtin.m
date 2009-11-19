@@ -530,7 +530,7 @@ or_else(TransA, TransB, Result, OuterSTM0, OuterSTM) :-
                         throw(rollback_invalid_transaction)
                     )
                 ;
-                    impure stm_unlock,
+                    impure stm_discard_transaction_log(InnerSTM_B),
                     rethrow(ResultB)
                 )
             )
