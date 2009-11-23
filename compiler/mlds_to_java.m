@@ -4551,8 +4551,10 @@ output_context(Info, Context, !IO) :-
             File \= ""
         ->
             % Java doesn't have an equivalent of #line directives.
+            % \u is treated as a Unicode escape even with comments.
             io.write_string("// ", !IO),
-            io.write_string(File, !IO),
+            string.replace_all(File, "\\u", "\\\\u", SafePath),
+            io.write_string(SafePath, !IO),
             io.write_string(":", !IO),
             io.write_int(Line, !IO),
             io.nl(!IO),
