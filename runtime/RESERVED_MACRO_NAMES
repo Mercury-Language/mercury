@@ -66,6 +66,7 @@ sigcontext_struct
 # defined by the C implementation.
 _GNU_SOURCE
 __EXTENSIONS__
+__GCC_HAVE_DWARF2_CFI_ASM
 __OPTIMIZE__
 #-----------------------------------------------------------------------------#
 # These are defined in when threads are enabled.

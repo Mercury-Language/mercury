@@ -838,6 +838,18 @@ else
 fi
 
 AC_SUBST(CFLAGS_FOR_NO_STRICT_ALIASING)
+
+AC_MSG_CHECKING(whether we can use -fno-move-loop-invariants)
+if $CC -fno-move-loop-invariants -c conftest.c \
+    </dev/null >&AC_FD_CC 2>&1
+then
+    AC_MSG_RESULT(yes)
+    CFLAGS_FOR_NO_MOVE_LOOP_INVARIANTS="-fno-move-loop-invariants"
+else
+    AC_MSG_RESULT(no)
+    CFLAGS_FOR_NO_MOVE_LOOP_INVARIANTS=
+fi
+
 rm -f conftest*
 
 #-----------------------------------------------------------------------------#
@@ -2329,6 +2341,9 @@ AC_SUBST(MR_DARWIN_SETJMP_WORKAROUND)
 # (Actually I don't know if `-fno-functions-cse' is really needed.
 # Maybe you can get away without it.  But better to err on the safe side...)
 #
+# For x86, x86-64 and possibly other architectures, when using non-local
+# gotos with gcc 4.x we need `-fno-move-loop-invariants'.
+#
 # For alpha, mips, and ARM, and probably on other architectures, when using
 # non-local gotos we need -fomit-frame-pointer, otherwise when compiling
 # with --no-c-optimize we run into a problem similar to the one above:
@@ -2359,6 +2374,7 @@ case "$ac_cv_prog_gcc" in yes)
             CFLAGS_FOR_GOTOS="-fno-defer-pop -fno-function-cse -fno-gcse"
             ;;
     esac
+    CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS $CFLAGS_FOR_NO_MOVE_LOOP_INVARIANTS"
     case "$host" in
         mips-sgi-irix5.*)
             # Non-local gotos don't work with shared libraries on Irix 5,
@@ -2994,15 +3010,15 @@ case "$mercury_cv_user_base_grade" in
             fi
         fi
 
-        # Force the use of the none base grade if the C compiler
-        # is GCC 4.{1,2,3,4}.  The asm_fast and reg grades either
-        # don't work or are unstable with those versions.
-        # (See bugs #39, #66 and #78 in the Mercury bug database.)
-        case "$mercury_cv_gcc_version" in
-            4_1_*|4_2_*|4_3_*|4_4_*)
-                BEST_LLDS_BASE_GRADE=none
-            ;;
-        esac
+        # We used to force the use of the none base grade if the C compiler
+        # is GCC 4.{1,2,3,4}, as the asm_fast and reg grades had problems
+        # with those versions. This is now fixed but this code may be useful
+        # in the future.
+        # case "$mercury_cv_gcc_version" in
+        #     4_1_*|4_2_*|4_3_*|4_4_*)
+        #         BEST_LLDS_BASE_GRADE=none
+        #     ;;
+        # esac
      ;;
 esac
 

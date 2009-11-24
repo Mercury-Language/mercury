@@ -353,6 +353,20 @@
 #elif defined(__i386__) || defined(__mc68000__) || defined(__x86_64__)
 
   /*
+  ** This hack is to prevent gcc 4.x optimizing away stores to succip before
+  ** jumping to a label in asm_fast.
+  */
+  #if defined(MR_USE_GCC_GLOBAL_REGISTERS)
+    #define MR_FORCE_SUCCIP_STORE			\
+	__asm__ __volatile__(""				\
+	    : "=r"(MR_succip_word)			\
+	    : "0"(MR_succip_word)			\
+	    )
+  #else
+    #define MR_FORCE_SUCCIP_STORE   (void)
+  #endif
+
+  /*
   ** The following hack works around a stack leak on the i386.
   ** (and apparently the 68000 and x86_64 too).
   **
@@ -380,11 +394,13 @@
     #define MR_ASM_JUMP(label)				\
 	{ register int stack_pointer __asm__("esp");	\
 	__asm__("" : : "g"(stack_pointer)); }		\
+	MR_FORCE_SUCCIP_STORE;				\
 	goto *(label)
   #elif defined(__x86_64__)
     #define MR_ASM_JUMP(label)				\
 	{ register int stack_pointer __asm__("rsp");	\
 	__asm__("" : : "g"(stack_pointer)); }		\
+	MR_FORCE_SUCCIP_STORE;				\
 	goto *(label)
   #elif defined(__mc68000__)
     #define MR_ASM_JUMP(label)				\
