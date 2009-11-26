@@ -289,9 +289,9 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, !Specs) :-
     WorstPurity = Purity,
     perform_pred_purity_checks(!.PredInfo, Purity, DeclPurity,
         PromisedPurity, PurityCheckResult0),
-    % XXX Work around a segfault while purity checking invalid/purity/purity.m.
-    % It seems to be due to gcc 4.1.2 on x86-64 miscompiling the computed
-    % goto following the workaround at gcc -O1 and above.
+    % This was to avoid a crash in the following computed goto, when compiled
+    % with gcc 4.1 on x86-64. The problem seems to be gone now, but there's not
+    % much to gain from removing the workaround.
     PurityCheckResult = workaround_gcc_bug(PurityCheckResult0),
     (
         PurityCheckResult = inconsistent_promise,
