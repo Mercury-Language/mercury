@@ -221,34 +221,36 @@ MR_mutex_unlock(MercuryLock *lock, const char *from)
 }
 
 int
-MR_cond_signal(MercuryCond *cond)
+MR_cond_signal(MercuryCond *cond, const char *from)
 {
     int err;
 
-    fprintf(stderr, "%ld signaling %p\n", (long) pthread_self(), cond);
+    fprintf(stderr, "%ld signaling %p (%s)\n", 
+        (long) pthread_self(), cond, from);
     err = pthread_cond_signal(cond);
     assert(err == 0);
     return err;
 }
 
 int
-MR_cond_broadcast(MercuryCond *cond)
+MR_cond_broadcast(MercuryCond *cond, const char *from)
 {
     int err;
 
-    fprintf(stderr, "%ld signaling %p\n", (long) pthread_self(), cond);
+    fprintf(stderr, "%ld broadcasting %p (%s)\n", 
+        (long) pthread_self(), cond, from);
     err = pthread_cond_broadcast(cond);
     assert(err == 0);
     return err;
 }
 
 int
-MR_cond_wait(MercuryCond *cond, MercuryLock *lock)
+MR_cond_wait(MercuryCond *cond, MercuryLock *lock, const char *from)
 {
     int err;
 
-    fprintf(stderr, "%ld waiting on %p (%p)\n", (long) pthread_self(),
-        cond, lock);
+    fprintf(stderr, "%ld waiting on cond: %p lock: %p (%s)\n", 
+        (long) pthread_self(), cond, lock, from);
     err = pthread_cond_wait(cond, lock);
     assert(err == 0);
     return err;

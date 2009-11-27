@@ -811,111 +811,15 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
         MR_atomic_inc_int(&MR_num_outstanding_contexts_and_all_sparks);       \
     } while (0)
 
+extern MR_Code* 
+MR_do_join_and_continue(MR_SyncTerm *sync_term, MR_Code *join_label);
+
   #define MR_join_and_continue(sync_term, join_label)                         \
     do {                                                                      \
-        MR_SyncTerm *jnc_st = (MR_SyncTerm *) &sync_term;                     \
-                                                                              \
-        if (!jnc_st->MR_st_is_shared) {                                       \
-            /* This parallel conjunction has only executed sequentially. */   \
-            if (--jnc_st->MR_st_count == 0) {                                 \
-                MR_GOTO(join_label);                                          \
-            } else {                                                          \
-                MR_join_and_continue_1();                                     \
-            }                                                                 \
-        } else {                                                              \
-            /* This parallel conjunction may be executing in parallel. */     \
-            MR_LOCK(&MR_sync_term_lock, "continue");                          \
-            if (--jnc_st->MR_st_count == 0) {                                 \
-                if (MR_ENGINE(MR_eng_this_context)                            \
-                    == jnc_st->MR_st_orig_context)                            \
-                {                                                             \
-                    /*                                                        \
-                    ** This context originated this parallel conjunction and  \
-                    ** all the branches have finished so jump to the join     \
-                    ** label.                                                 \
-                    */                                                        \
-                    MR_UNLOCK(&MR_sync_term_lock, "continue i");              \
-                    MR_GOTO(join_label);                                      \
-                } else {                                                      \
-                    /*                                                        \
-                    ** This context didn't originate this parallel            \
-                    ** conjunction and we're the last branch to finish.  The  \
-                    ** originating context should be suspended waiting for us \
-                    ** to finish, so wake it up.                              \
-                    */                                                        \
-                    jnc_st->MR_st_orig_context->MR_ctxt_resume = join_label;  \
-                    MR_schedule_context(jnc_st->MR_st_orig_context);          \
-                    MR_UNLOCK(&MR_sync_term_lock, "continue ii");             \
-                    MR_runnext();                                             \
-                }                                                             \
-            } else {                                                          \
-                MR_join_and_continue_2();                                     \
-            }                                                                 \
-        }                                                                     \
-    } while (0)
-
-  #define MR_join_and_continue_1()                                            \
-    do {                                                                      \
-        MR_Context  *jnc_ctxt;                                                \
-        MR_bool     jnc_popped;                                               \
-        MR_Spark    jnc_spark;                                                \
-                                                                              \
-        jnc_ctxt = MR_ENGINE(MR_eng_this_context);                            \
-        jnc_popped = MR_wsdeque_pop_bottom(&jnc_ctxt->MR_ctxt_spark_deque,    \
-            &jnc_spark);                                                      \
-        if (jnc_popped) {                                                     \
-            MR_atomic_dec_int(&MR_num_outstanding_contexts_and_all_sparks);   \
-            MR_GOTO(jnc_spark.MR_spark_resume);                               \
-        } else {                                                              \
-            MR_runnext();                                                     \
-        }                                                                     \
-    } while (0)
-
-  #define MR_join_and_continue_2()                                            \
-    do {                                                                      \
-        MR_Context  *jnc_ctxt;                                                \
-        MR_bool     jnc_popped;                                               \
-        MR_Spark    jnc_spark;                                                \
-                                                                              \
-        jnc_ctxt = MR_ENGINE(MR_eng_this_context);                            \
-        jnc_popped = MR_wsdeque_pop_bottom(&jnc_ctxt->MR_ctxt_spark_deque,    \
-            &jnc_spark);                                                      \
-        if (jnc_popped && (jnc_spark.MR_spark_parent_sp == MR_parent_sp)) {   \
-            /*                                                                \
-            ** The spark at the top of the stack is due to the same parallel  \
-            ** conjunction that we've just been executing. We can immediately \
-            ** execute the next branch of the same parallel conjunction in    \
-            ** the current context.                                           \
-            */                                                                \
-            MR_UNLOCK(&MR_sync_term_lock, "continue_2 i");                    \
-            MR_atomic_dec_int(&MR_num_outstanding_contexts_and_all_sparks);   \
-            MR_GOTO(jnc_spark.MR_spark_resume);                               \
-        } else {                                                              \
-            /*                                                                \
-            ** The spark stack is empty or the next spark is from a different \
-            ** parallel conjunction to the one we've been executing.  Either  \
-            ** way, there's nothing more we can do with this context right    \
-            ** now.  Put back the spark we won't be using.                    \
-            */                                                                \
-            if (jnc_popped) {                                                 \
-                MR_wsdeque_putback_bottom(&jnc_ctxt->MR_ctxt_spark_deque,     \
-                    &jnc_spark);                                              \
-            }                                                                 \
-            /*                                                                \
-            ** If this context originated the parallel conjunction we've been \
-            ** executing, the rest of the parallel conjunction must have been \
-            ** put on the global spark queue to be executed in other          \
-            ** contexts.  This context will need to be resumed once the       \
-            ** parallel conjunction is completed, so suspend the context.     \
-            */                                                                \
-            if (jnc_ctxt == jnc_st->MR_st_orig_context) {                     \
-                MR_save_context(jnc_ctxt);                                    \
-                MR_ENGINE(MR_eng_this_context) = NULL;                        \
-            }                                                                 \
-            /* Finally look for other work. */                                \
-            MR_UNLOCK(&MR_sync_term_lock, "continue_2 ii");                   \
-            MR_runnext();                                                     \
-        }                                                                     \
+        MR_Code     *jump_target;                                             \
+        jump_target =                                                         \
+            MR_do_join_and_continue((MR_SyncTerm*) &(sync_term), join_label); \
+        MR_GOTO(jump_target);                                                 \
     } while (0)
 
   /* This needs to come after the definition of MR_SparkDeque_Struct. */

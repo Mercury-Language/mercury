@@ -31,11 +31,16 @@
   typedef pthread_mutex_t   MercuryLock;
   typedef pthread_cond_t    MercuryCond;
 
-  extern int        MR_mutex_lock(MercuryLock *lock, const char *from);
-  extern int        MR_mutex_unlock(MercuryLock *lock, const char *from);
-  extern int        MR_cond_signal(MercuryCond *cond);
-  extern int        MR_cond_broadcast(MercuryCond *cond);
-  extern int        MR_cond_wait(MercuryCond *cond, MercuryLock *lock);
+extern int
+MR_mutex_lock(MercuryLock *lock, const char *from);
+extern int
+MR_mutex_unlock(MercuryLock *lock, const char *from);
+extern int
+MR_cond_signal(MercuryCond *cond, const char *from);
+extern int
+MR_cond_broadcast(MercuryCond *cond, const char *from);
+extern int
+MR_cond_wait(MercuryCond *cond, MercuryLock *lock, const char *from);
 
   extern MR_bool    MR_debug_threads;
 
@@ -48,9 +53,9 @@
     #define MR_LOCK(lck, from)      pthread_mutex_lock((lck))
     #define MR_UNLOCK(lck, from)    pthread_mutex_unlock((lck))
 
-    #define MR_SIGNAL(cnd)          pthread_cond_signal((cnd))
-    #define MR_BROADCAST(cnd)       pthread_cond_broadcast((cnd))
-    #define MR_WAIT(cnd, mtx)       pthread_cond_wait((cnd), (mtx))
+    #define MR_SIGNAL(cnd, from)    pthread_cond_signal((cnd))
+    #define MR_BROADCAST(cnd, from) pthread_cond_broadcast((cnd))
+    #define MR_WAIT(cnd, mtx, from) pthread_cond_wait((cnd), (mtx))
   #else
     #define MR_LOCK(lck, from)                          \
                 ( MR_debug_threads ?                    \
@@ -65,21 +70,21 @@
                     pthread_mutex_unlock((lck))         \
                 )
 
-    #define MR_SIGNAL(cnd)                              \
+    #define MR_SIGNAL(cnd, from)                        \
                 ( MR_debug_threads ?                    \
-                    MR_cond_signal((cnd))               \
+                    MR_cond_signal((cnd), (from))       \
                 :                                       \
                     pthread_cond_signal((cnd))          \
                 )
-    #define MR_BROADCAST(cnd)                           \
+    #define MR_BROADCAST(cnd, from)                     \
                 ( MR_debug_threads ?                    \
-                    MR_cond_broadcast((cnd))            \
+                    MR_cond_broadcast((cnd), (from))    \
                 :                                       \
                     pthread_cond_broadcast((cnd))       \
                 )
-    #define MR_WAIT(cnd, mtx)                           \
+    #define MR_WAIT(cnd, mtx, from)                     \
                 ( MR_debug_threads ?                    \
-                    MR_cond_wait((cnd), (mtx))          \
+                    MR_cond_wait((cnd), (mtx), (from))  \
                 :                                       \
                     pthread_cond_wait((cnd), (mtx))     \
                 )
@@ -155,9 +160,9 @@
   #define MR_LOCK(nothing, from)        do { } while (0)
   #define MR_UNLOCK(nothing, from)      do { } while (0)
 
-  #define MR_SIGNAL(nothing)            do { } while (0)
-  #define MR_BROADCAST(nothing)         do { } while (0)
-  #define MR_WAIT(no, thing)            (0)
+  #define MR_SIGNAL(nothing, from)      do { } while (0)
+  #define MR_BROADCAST(nothing, from)   do { } while (0)
+  #define MR_WAIT(no, thing, from)      (0)
 
   #define MR_OBTAIN_GLOBAL_LOCK(where)  do { } while (0)
   #define MR_RELEASE_GLOBAL_LOCK(where) do { } while (0)
