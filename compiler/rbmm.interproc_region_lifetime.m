@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2007, 2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -144,7 +144,7 @@ apply_live_region_born_removal_rules(ModuleInfo, RptaInfoTable, ExecPathTable,
 
 :- type rule_pred == (
         pred(pred_proc_id, region_set, region_set, proc_region_set_table,
-            map(rptg_node, rptg_node), region_set)
+            rpt_call_alpha_mapping, region_set)
     ).
 :- inst rule_pred == ( pred(in, in, in, in, in, out) is det ).
 
@@ -347,8 +347,8 @@ apply_live_region_rules_exec_path(Rule, [ProgPoint - Goal | ProgPoint_Goals],
     % Rules for eliminating regions from deadR set.
     %
 :- pred dead_removal_rules(pred_proc_id::in, region_set::in, region_set::in,
-    proc_region_set_table::in, map(rptg_node, rptg_node)::in,
-    region_set::out) is det.
+    proc_region_set_table::in, rpt_call_alpha_mapping::in, region_set::out)
+    is det.
 
 dead_removal_rules(Q_Id, LRBefore, LRAfter, DeadRTable, AlphaAtPP, DeadR_q) :-
     % The current deadR of q.
@@ -364,7 +364,7 @@ dead_removal_rules(Q_Id, LRBefore, LRAfter, DeadRTable, AlphaAtPP, DeadR_q) :-
     targets_with_more_than_one_source(AlphaAtPP, Targets),
     set.fold(dead_removal_rule_2(AlphaAtPP), Targets, DeadR_q1, DeadR_q).
 
-:- pred dead_removal_rule_1(map(rptg_node, rptg_node)::in, rptg_node::in,
+:- pred dead_removal_rule_1(rpt_call_alpha_mapping::in, rptg_node::in,
     region_set::in, region_set::out) is det.
 
 dead_removal_rule_1(AlphaAtCallSite, Region, !DeadR_q) :-
@@ -375,7 +375,7 @@ dead_removal_rule_1(AlphaAtCallSite, Region, !DeadR_q) :-
     % Remove any r' that is in deadR(q).
     set.difference(!.DeadR_q, RPrimes, !:DeadR_q).
 
-:- pred dead_removal_rule_2(map(rptg_node, rptg_node)::in, rptg_node::in,
+:- pred dead_removal_rule_2(rpt_call_alpha_mapping::in, rptg_node::in,
     set(rptg_node)::in, set(rptg_node)::out) is det.
 
 dead_removal_rule_2(AlphaAtCallSite, Region, !DeadR_q) :-
@@ -386,7 +386,7 @@ dead_removal_rule_2(AlphaAtCallSite, Region, !DeadR_q) :-
     % rules for eliminating regions from bornR set.
     %
 :- pred born_removal_rules(pred_proc_id::in, region_set::in, region_set::in,
-    proc_region_set_table::in, map(rptg_node, rptg_node)::in,
+    proc_region_set_table::in, rpt_call_alpha_mapping::in,
     region_set::out) is det.
 
 born_removal_rules(Q_Id, LRBefore, _, BornRTable, AlphaAtCallSite, BornR_q) :-
@@ -403,7 +403,7 @@ born_removal_rules(Q_Id, LRBefore, _, BornRTable, AlphaAtCallSite, BornR_q) :-
     set.fold(born_removal_rule_2(AlphaAtCallSite), Targets,
         BornR_q1, BornR_q).
 
-:- pred born_removal_rule_1(map(rptg_node, rptg_node)::in, rptg_node::in,
+:- pred born_removal_rule_1(rpt_call_alpha_mapping::in, rptg_node::in,
     set(rptg_node)::in, set(rptg_node)::out) is det.
 
 born_removal_rule_1(AlphaAtCallSite, Region, !BornR_q) :-
@@ -414,7 +414,7 @@ born_removal_rule_1(AlphaAtCallSite, Region, !BornR_q) :-
     % alpha(r') = r, alpha(r'') = r, r', r'' in bornR(q) imply remove r',
     % r'' from bornR(q).
     %
-:- pred born_removal_rule_2(map(rptg_node, rptg_node)::in, rptg_node::in,
+:- pred born_removal_rule_2(rpt_call_alpha_mapping::in, rptg_node::in,
     set(rptg_node)::in, set(rptg_node)::out) is det.
 
 born_removal_rule_2(AlphaAtCallSite, Region, !BornR_q) :-
@@ -425,7 +425,7 @@ born_removal_rule_2(AlphaAtCallSite, Region, !BornR_q) :-
     % Find targets of alpha mapping that are mapped to by more than one
     % source.
     %
-:- pred targets_with_more_than_one_source(map(rptg_node, rptg_node)::in,
+:- pred targets_with_more_than_one_source(rpt_call_alpha_mapping::in,
     region_set::out) is det.
 
 targets_with_more_than_one_source(AlphaAtCallSite, Targets) :-

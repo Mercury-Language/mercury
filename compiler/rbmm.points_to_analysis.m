@@ -772,7 +772,7 @@ rule_3_condition(NZ, NY, Graph, NZ1) :-
     %
 :- pred alpha_mapping_at_call_site(list(prog_var)::in, list(prog_var)::in,
     rpt_graph::in, rpt_graph::in, rpt_graph::out,
-    map(rptg_node, rptg_node)::in, map(rptg_node, rptg_node)::out) is det.
+    rpt_call_alpha_mapping::in, rpt_call_alpha_mapping::out) is det.
 
 alpha_mapping_at_call_site([], [], _, !CallerGraph, !AlphaMap).
 alpha_mapping_at_call_site([], [_ | _], _, _, _, _, _) :-
@@ -781,30 +781,33 @@ alpha_mapping_at_call_site([], [_ | _], _, _, _, _, _) :-
 alpha_mapping_at_call_site([_ | _], [], _, _, _, _, _) :-
     unexpected(this_file,
         "alpha_mapping_at_call_site: actuals and formals do not match.").
-    % Xi's are formal arguments, Yi's are actual arguments at the call site
-    %
 alpha_mapping_at_call_site([Xi | Xs], [Yi | Ys], CalleeGraph,
         !CallerGraph, !AlphaMap) :-
+    % Xi's are formal arguments, Yi's are actual arguments at the call site.
     rptg_get_node_by_variable(CalleeGraph, Xi, N_Xi),
     rptg_get_node_by_variable(!.CallerGraph, Yi, N_Yi),
     ( map.search(!.AlphaMap, N_Xi, N_Y) ->
         % alpha(N_Xi) = N_Y, alpha(N_Xi) = N_Yi, N_Y != N_Yi.
         %
-        ( N_Y \= N_Yi ->
+        ( N_Y = N_Yi ->
+            true
+        ;
             % Apply rule P4.
             unify_operator(N_Y, N_Yi, !CallerGraph),
 
             % Apply rule P1 after some nodes are unified.
             rule_1(N_Y, !CallerGraph)
-        ;
-            true
         )
     ;
         svmap.set(N_Xi, N_Yi, !AlphaMap),
 
-        % N_Yi inherits N_Xi's is_allocated.
-        IsAlloc = rptg_lookup_node_is_allocated(CalleeGraph, N_Xi),
-        rptg_set_node_is_allocated(N_Yi, IsAlloc, !CallerGraph)
+        % If N_Xi's is_allocated then N_Yi is also allocated.
+        % Otherwise leave N_Yi alone.
+        ( rptg_is_allocated_node(CalleeGraph, N_Xi) ->
+            rptg_set_node_is_allocated(N_Yi, bool.yes, !CallerGraph)
+        ;
+           true
+        )
     ),
     alpha_mapping_at_call_site(Xs, Ys, CalleeGraph, !CallerGraph, !AlphaMap).
 
@@ -930,9 +933,12 @@ rule_6(Edge, CallSite, CalleeRptaInfo, CallerNode,
             svmap.set(CalleeM, CallerM, AlphaAtCallSite0, AlphaAtCallSite1),
             svmap.set(CallSite, AlphaAtCallSite1, !CallerAlphaMapping),
 
-            % CallerM inherits CalleeM's is_allocated.
-            IsAlloc = rptg_lookup_node_is_allocated(CalleeGraph, CalleeM),
-            rptg_set_node_is_allocated(CallerM, IsAlloc, !CallerGraph)
+            % If CalleeM's is_allocated then CallerM is also allocated. 
+            % Otherwise leave CallerM alone.
+            ( rptg_is_allocated_node(CalleeGraph, CalleeM) ->
+                rptg_set_node_is_allocated(CallerM, bool.yes, !CallerGraph)
+            ;   true
+            )
         )
       else
         true

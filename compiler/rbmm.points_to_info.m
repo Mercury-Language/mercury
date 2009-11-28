@@ -37,8 +37,6 @@
 :- pred rpta_info_table_set_rpta_info(pred_proc_id::in, rpta_info::in,
     rpta_info_table::in, rpta_info_table::out) is det.
 
-    % type rpta_info and operations
-    %
 :- type rpta_info
         ---> rpta_info(rpt_graph, rpt_alpha_mapping).
 
@@ -52,7 +50,16 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type rpt_alpha_mapping == map(program_point, map(rptg_node, rptg_node)).
+    % This type represents the alpha mapping of all call sites in a procedure.
+    % For documentation of alpha mappings, see Chapter 4 in Quan's thesis;
+    % basically, they map the nodes in the region points-to graph of the callee
+    % to the corresponding nodes in the caller.
+    %
+:- type rpt_alpha_mapping == map(program_point, rpt_call_alpha_mapping).
+
+    % This type represents the alpha mapping at one call site.
+    %
+:- type rpt_call_alpha_mapping == map(rptg_node, rptg_node).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -77,15 +84,13 @@
 %-----------------------------------------------------------------------------%
 
 rpta_info_table_init = map.init.
+
 rpta_info_table_search_rpta_info(PredProcId, Table) = RptaInfo :-
     Table ^ elem(PredProcId) = RptaInfo.
-rpta_info_table_set_rpta_info(PredProcId, RptaInfo, Table0, Table) :-
-    Table = Table0 ^ elem(PredProcId) := RptaInfo.
 
-    % The rpta_info will be for a specific procedure, so at the beginning
-    % the alpha mapping is empty and the rpt graph contains all the nodes
-    % corresponding to all the variables appear in the procedure.
-    %
+rpta_info_table_set_rpta_info(PredProcId, RptaInfo, !Table) :-
+    !Table ^ elem(PredProcId) := RptaInfo.
+
 rpta_info_init(ProcInfo) = RptaInfo :-
     proc_info_get_vartypes(ProcInfo, VarTypes),
     map.keys(VarTypes, Vars),
@@ -139,8 +144,8 @@ rpt_alpha_mapping_equal_2([CallSiteA | CallSiteAs],
         AlphaMappingAtCallSiteA,AlphaMappingAtCallSiteB),
     rpt_alpha_mapping_equal_2(CallSiteAs, AlphaMappingA, AlphaMappingB).
 
-:- pred rpt_alpha_mapping_at_call_site_equal(map(rptg_node, rptg_node)::in,
-    map(rptg_node, rptg_node)::in) is semidet.
+:- pred rpt_alpha_mapping_at_call_site_equal(rpt_call_alpha_mapping::in,
+    rpt_call_alpha_mapping::in) is semidet.
 
 rpt_alpha_mapping_at_call_site_equal(AMAtCallSiteA, AMAtCallSiteB) :-
     map.count(AMAtCallSiteA, CA),
@@ -151,7 +156,7 @@ rpt_alpha_mapping_at_call_site_equal(AMAtCallSiteA, AMAtCallSiteB) :-
         AMAtCallSiteB).
 
 :- pred rpt_alpha_mapping_at_call_site_equal_2(list(rptg_node)::in,
-    map(rptg_node, rptg_node)::in, map(rptg_node, rptg_node)::in) is semidet.
+    rpt_call_alpha_mapping::in, rpt_call_alpha_mapping::in) is semidet.
 
 rpt_alpha_mapping_at_call_site_equal_2([], _, _).
 rpt_alpha_mapping_at_call_site_equal_2([N | Ns], AMAtCallSiteA,

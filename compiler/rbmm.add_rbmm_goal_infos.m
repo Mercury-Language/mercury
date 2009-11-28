@@ -41,8 +41,8 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module transform_hlds.rbmm.actual_region_arguments.
 :- import_module transform_hlds.rbmm.points_to_info.
+:- import_module transform_hlds.rbmm.region_arguments.
 :- import_module transform_hlds.rbmm.region_resurrection_renaming.
 :- import_module transform_hlds.rbmm.region_transformation.
 
@@ -63,6 +63,8 @@
 :- import_module hlds.hlds_pred.
 :- import_module libs.
 :- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
@@ -72,11 +74,12 @@
 :- import_module transform_hlds.rbmm.points_to_graph.
 :- import_module transform_hlds.smm_common.
 
-:- import_module string.
+:- import_module bool.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module set.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 %
@@ -163,7 +166,7 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, _, Graph, _, ResurRenamingProc,
     collect_rbmm_goal_info_unification(Unification, ModuleInfo, Graph,
         ResurRenaming, IteRenaming, NameToRegionVar, !Info).
 
-collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, _,
+collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, Graph,
         ActualRegionArgumentProc, _, _, _, !Expr, !Info) :-
     !.Expr = plain_call(PredId, ProcId, Args, _, _, _),
     CalleePPId = proc(PredId, ProcId),
@@ -189,7 +192,7 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, _,
         proc_info_get_vartypes(ProcInfo, VarTypes),
         RegionArgs = list.filter(is_region_var(VarTypes), Args),
         map.lookup(ActualRegionArgumentProc, CallSite, ActualRegionArgs),
-        ActualRegionArgs = actual_region_args(Constants, Inputs, _Outputs),
+        ActualRegionArgs = region_args(Constants, Inputs, _Outputs),
         list.det_split_list(list.length(Constants), RegionArgs,
             CarriedRegions, RemovedAndCreated),
         list.det_split_list(list.length(Inputs), RemovedAndCreated,
@@ -198,12 +201,55 @@ collect_rbmm_goal_info_goal_expr(ModuleInfo, ProcInfo, _,
         % are allocated into and read from in this call.
         AllocatedIntoAndReadFrom =
             set.from_list(RemovedRegions ++ CarriedRegions),
+
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, use_alloc_regions,
+            UseAllocRegions),
+        (
+            UseAllocRegions = yes,
+            % Keep only the regions that are removed but also allocated into.
+            keep_allocated_regions(Inputs, RemovedRegions, Graph,
+                RemovedAndAllocRegions),
+            % Allocated regions are the above plus the carried ones.
+            % The carried here are those that are also allocated into.
+            AllocatedIntoRegions =
+                set.from_list(RemovedAndAllocRegions ++ CarriedRegions)
+        ;
+            UseAllocRegions = no,
+            AllocatedIntoRegions = AllocatedIntoAndReadFrom
+        ),
+
+        % The read-from set is not very important so we are not precise
+        % in estimating it.
         RbmmGoalInfo = rbmm_goal_info(set.from_list(CreatedRegions),
             set.from_list(RemovedRegions), set.from_list(CarriedRegions),
-            AllocatedIntoAndReadFrom, AllocatedIntoAndReadFrom),
+            AllocatedIntoRegions, AllocatedIntoAndReadFrom),
         goal_info_set_maybe_rbmm(yes(RbmmGoalInfo), !Info)
      ).
 
+    % The elements in the first and second lists are corresponding.
+    % Ones in the first list are the nodes in rpt graph therefore we can
+    % check their allocated property, ones in the second list are prog_vars
+    % (after renaming) that represent those in the first.
+    %
+:- pred keep_allocated_regions(list(rptg_node)::in, list(prog_var)::in,
+    rpt_graph::in, list(prog_var)::out) is det.
+
+keep_allocated_regions([], [], _, []).
+keep_allocated_regions([], [_ | _], _, []) :-
+    unexpected(this_file, "keep_allocated_regions: length mismatch").
+keep_allocated_regions([_ | _], [], _, []) :-
+    unexpected(this_file, "keep_allocated_regions: length mismatch").
+keep_allocated_regions([Input | Inputs], [RemovedRegion | RemovedRegions],
+        Graph, RemovedAndAllocRegions) :-
+    keep_allocated_regions(Inputs, RemovedRegions, Graph,
+        RemovedAndAllocRegions0), 
+    ( rptg_is_allocated_node(Graph, Input) ->
+        RemovedAndAllocRegions = [RemovedRegion | RemovedAndAllocRegions0]
+    ;
+        RemovedAndAllocRegions = RemovedAndAllocRegions0
+    ). 
+    
     % We do not handle generic calls and calls to foreign procs in RBMM yet,
     % so if a program has any of them the RBMM compilation will fail before
     % reaching here. We just call sorry now so that they are not
@@ -440,6 +486,8 @@ collect_rbmm_goal_info_unification(Unification, ModuleInfo, Graph,
           then
                 goal_info_set_maybe_rbmm(yes(rbmm_info_init), !Info)
           else
+                % We need to try to apply renaming here because the
+                % region name in the Graph may need to be changed.
                 OriginalName = rptg_lookup_region_name(Graph, Node),
                 ( map.search(ResurRenaming, OriginalName, ResurNameList) ->
                     Name = list.det_last(ResurNameList)
@@ -448,18 +496,29 @@ collect_rbmm_goal_info_unification(Unification, ModuleInfo, Graph,
                 ;
                     Name = OriginalName
                 ),
-                map.lookup(RegionNameToVar, Name, RegionVar),
-                RbmmInfo = rbmm_goal_info(set.init, set.init,
-                    set.make_singleton_set(RegionVar),
-                    set.init, set.make_singleton_set(RegionVar)),
+
+                % This region may only be read from in the procedure containing
+                % this deconstruction therefore there might be no entry for it
+                % in RegionNameToVar.
+                ( map.search(RegionNameToVar, Name, RegionVar) ->
+                    RbmmInfo = rbmm_goal_info(set.init, set.init,
+                        set.make_singleton_set(RegionVar),
+                        set.init, set.make_singleton_set(RegionVar))
+                ;
+                    RbmmInfo = rbmm_info_init
+                ),
                 goal_info_set_maybe_rbmm(yes(RbmmInfo), !Info)
         )
     ;
-        ( Unification = assign(_, _)
+        (
+          % XXX We do have assignments between two region variables. But
+          % we do not consider either of them created or removed because
+          % the region they are bound to is still there, i.e., it has been
+          % created and will not be removed.
+          Unification = assign(_, _)
         ; Unification = simple_test(_, _)
         ),
-        goal_info_set_maybe_rbmm(yes(rbmm_goal_info(set.init, set.init,
-            set.init, set.init, set.init)), !Info)
+        goal_info_set_maybe_rbmm(yes(rbmm_info_init), !Info)
     ;
         Unification = complicated_unify(_, _, _),
         unexpected(this_file, "collect_rbmm_goal_info_unification:"

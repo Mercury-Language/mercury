@@ -179,6 +179,8 @@
 :- func rptg_lookup_node_vars(rpt_graph, rptg_node) = set(prog_var).
 :- func rptg_lookup_node_is_allocated(rpt_graph, rptg_node) = bool.
 
+:- pred rptg_is_allocated_node(rpt_graph::in, rptg_node::in) is semidet.
+
     % Return the list of edges (edge id's).
     %
 :- func rptg_lookup_list_outedges(rpt_graph, rptg_node) = list(rptg_edge).
@@ -589,6 +591,10 @@ rptg_lookup_node_is_allocated(Graph, Node) = IsAllocated :-
     NodeContent = rptg_get_node_content(Graph, Node),
     IsAllocated = rptg_node_content_get_is_allocated(NodeContent).
 
+rptg_is_allocated_node(Graph, Region) :-
+    IsAlloc = rptg_lookup_node_is_allocated(Graph, Region),
+    IsAlloc = bool.yes.
+
 rptg_lookup_list_outedges(Graph, Node) = EdgeList :-
     OutEdgesOfNode = rptg_lookup_map_outedges(Graph, Node),
     map.keys(OutEdgesOfNode, EdgeList).
@@ -987,9 +993,6 @@ reach_from_a_variable_2([Node_Selector | Node_Selectors0],
     Processed = [Node | Processed0],
 
     % Take out-edges of the Node and update the remembered list.
-    %OutEdges = rptg_get_outedges(Graph),
-    %map.lookup(OutEdges, Node, OutEdgesOfNode),
-    %map.keys(OutEdgesOfNode, EdgeList),
     EdgeList = rptg_lookup_list_outedges(Graph, Node),
     list.foldl(
         update_remembered_list(Selector, HLDS, TypeX, Graph, Processed),

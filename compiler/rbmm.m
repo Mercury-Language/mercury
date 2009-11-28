@@ -16,7 +16,7 @@
 :- module transform_hlds.rbmm.
 :- interface.
 
-:- include_module actual_region_arguments.
+:- include_module add_rbmm_goal_infos.
 :- include_module condition_renaming.
 :- include_module execution_path.
 :- include_module interproc_region_lifetime.
@@ -25,7 +25,7 @@
 :- include_module points_to_analysis.
 :- include_module points_to_graph.
 :- include_module points_to_info.
-:- include_module add_rbmm_goal_infos.
+:- include_module region_arguments.
 :- include_module region_instruction.
 :- include_module region_liveness_info.
 :- include_module region_resurrection_renaming.
@@ -45,7 +45,6 @@
 
 :- implementation.
 
-:- import_module transform_hlds.rbmm.actual_region_arguments.
 :- import_module transform_hlds.rbmm.condition_renaming.
 :- import_module transform_hlds.rbmm.execution_path.
 :- import_module transform_hlds.rbmm.interproc_region_lifetime.
@@ -53,6 +52,7 @@
 :- import_module transform_hlds.rbmm.live_variable_analysis.
 :- import_module transform_hlds.rbmm.points_to_analysis.
 :- import_module transform_hlds.rbmm.add_rbmm_goal_infos.
+:- import_module transform_hlds.rbmm.region_arguments.
 :- import_module transform_hlds.rbmm.region_instruction.
 :- import_module transform_hlds.rbmm.region_resurrection_renaming.
 :- import_module transform_hlds.rbmm.region_transformation.
@@ -84,9 +84,9 @@ do_region_analysis(!ModuleInfo, !IO) :-
         BecomeLiveTable, BecomeDeadBeforeTable, BecomeDeadAfterTable,
         RegionInstructionTable),
 
-    record_actual_region_arguments(!.ModuleInfo, RptaInfoTable,
-        ConstantRTable, DeadRTable, BornRTable,
-        ActualRegionArgumentTable),
+    record_region_arguments(!.ModuleInfo, RptaInfoTable,
+        ConstantRTable, DeadRTable, BornRTable, FormalRegionArgTable,
+        ActualRegionArgTable),
 
     % The region analysis treats region variables as if they are
     % imperative-style updatable variables. They may also have scopes
@@ -119,12 +119,12 @@ do_region_analysis(!ModuleInfo, !IO) :-
         RptaInfoTable, IteRenamingTable0, IteRenamingTable,
         IteRenamingAnnoTable),
 
-    region_transform(RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
-        ActualRegionArgumentTable, ResurRenamingTable, IteRenamingTable,
-        RegionInstructionTable, ResurRenamingAnnoTable,
+    region_transform(RptaInfoTable, FormalRegionArgTable,
+        ActualRegionArgTable, ResurRenamingTable,
+        IteRenamingTable, RegionInstructionTable, ResurRenamingAnnoTable,
         IteRenamingAnnoTable, map.init, NameToVarTable, !ModuleInfo),
     
-    collect_rbmm_goal_info(RptaInfoTable, ActualRegionArgumentTable,
+    collect_rbmm_goal_info(RptaInfoTable, ActualRegionArgTable,
         ResurRenamingTable, IteRenamingTable, NameToVarTable, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%

@@ -27,10 +27,9 @@
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-:- import_module transform_hlds.rbmm.actual_region_arguments.
 :- import_module transform_hlds.rbmm.points_to_info.
+:- import_module transform_hlds.rbmm.region_arguments.
 :- import_module transform_hlds.rbmm.region_instruction.
-:- import_module transform_hlds.rbmm.region_liveness_info.
 :- import_module transform_hlds.rbmm.region_resurrection_renaming.
 
 :- import_module map.
@@ -45,21 +44,24 @@
 :- type name_to_prog_var == map(string, prog_var).
 
     % The names of the predicates for creating and removing regions.
-    % The predicates are in mercury_region_builtin_module.
+    % The predicates are in region_builtin library module.
     %
 :- func create_region_pred_name = string.
 :- func remove_region_pred_name = string.
 
-    % XXX Besides changing the HLDS, this predicate also returns a mapping
-    % from a region name to a program variable which represents the
-    % region. We will only create a new program variable for a region
-    % name which is not yet in the map. Currently this map is only used
-    % in this transformation. If we do not need the map later on we should
-    % not return it.
+    % Besides changing the HLDS with region information, this predicate also
+    % returns a mapping from a region name to a program variable which
+    % represents the region. We will only create a new program variable for a
+    % region name which is not yet in the map. This information is needed when
+    % computing rbmm_goal_info. Note that because we only pass as argument to
+    % a procedure a region that will be allocated into, be removed, or be
+    % created in the procedure, some regions in the rpt graph of the procedure
+    % may not need to be presented by program variables. They are the regions
+    % that only be read from in the procedure. Therefore there are NO entries
+    % for them in the region_name-to-prog_var map.
     %
-:- pred region_transform(rpta_info_table::in, proc_region_set_table::in,
-    proc_region_set_table::in, proc_region_set_table::in,
-    proc_pp_actual_region_args_table::in,
+:- pred region_transform(rpta_info_table::in,
+    proc_formal_region_args_table::in, proc_pp_actual_region_args_table::in,
     renaming_table::in, renaming_table::in, region_instr_table::in,
     renaming_annotation_table::in, renaming_annotation_table::in,
     name_to_prog_var_table::in, name_to_prog_var_table::out,
@@ -105,15 +107,13 @@
 create_region_pred_name = "create_region".
 remove_region_pred_name = "remove_region".
 
-region_transform(RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
+region_transform(RptaInfoTable, FormalRegionArgTable, ActualRegionArgTable,
+        ResurRenamingTable, IteRenamingTable, RegionInstructionTable,
+        ResurRenamingAnnoTable, IteRenamingAnnoTable, !NameToVarTable,
+        !ModuleInfo) :-
+    map.foldl2(annotate_pred, FormalRegionArgTable, [], PredIds, !ModuleInfo),
+    list.foldl2(region_transform_pred(RptaInfoTable, FormalRegionArgTable,
         ActualRegionArgTable, ResurRenamingTable, IteRenamingTable,
-        RegionInstructionTable, ResurRenamingAnnoTable, IteRenamingAnnoTable,
-        !NameToVarTable, !ModuleInfo) :-
-    map.foldl2(annotate_pred(DeadRTable, BornRTable), ConstantRTable, [],
-        PredIds, !ModuleInfo),
-    list.foldl2(region_transform_pred(RptaInfoTable,
-        ConstantRTable, DeadRTable, BornRTable, ActualRegionArgTable,
-        ResurRenamingTable, IteRenamingTable,
         RegionInstructionTable, ResurRenamingAnnoTable, IteRenamingAnnoTable),
         PredIds, !NameToVarTable, !ModuleInfo),
 
@@ -121,7 +121,6 @@ region_transform(RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
     % annotated with region information and recorded. This is necessary
     % because recompute_instmap_delta_proc and repuritycheck_proc need to
     % look up information about the (annotated) called procedures.
-
     list.foldl(update_instmap_delta_pred, PredIds, !ModuleInfo),
     list.foldl(recheck_purity_pred, PredIds, !ModuleInfo).
 
@@ -133,22 +132,20 @@ region_transform(RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
     % 2. Argument types: arg_types, updated with region type for region
     %    arguments.
     %
-:- pred annotate_pred(proc_region_set_table::in, proc_region_set_table::in,
-    pred_proc_id::in, region_set::in, list(pred_id)::in, list(pred_id)::out,
+:- pred annotate_pred(pred_proc_id::in, region_args::in,
+    list(pred_id)::in, list(pred_id)::out,
     module_info::in, module_info::out) is det.
 
-annotate_pred(DeadRTable, BornRTable, PPId, ConstantR, !Processed,
-        !ModuleInfo) :-
+annotate_pred(PPId, FormalRegionArgs, !Processed, !ModuleInfo) :-
     PPId = proc(PredId, _),
     ( list.member(PredId, !.Processed) ->
         true
     ;
         some [!PredInfo] (
             module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
-            map.lookup(DeadRTable, PPId, DeadR),
-            map.lookup(BornRTable, PPId, BornR),
-            NumberOfRegArgs = set.count(DeadR) + set.count(BornR) +
-                set.count(ConstantR),
+            FormalRegionArgs = region_args(Constants, Deads, Borns),
+            NumberOfRegArgs = list.length(Constants) + list.length(Deads) +
+                list.length(Borns),
             Arity = pred_info_orig_arity(!.PredInfo),
             pred_info_set_orig_arity(Arity + NumberOfRegArgs, !PredInfo),
 
@@ -174,22 +171,22 @@ annotate_pred(DeadRTable, BornRTable, PPId, ConstantR, !Processed,
 
     % This predicate transforms the procedures of a predicate.
     %
-:- pred region_transform_pred(rpta_info_table::in, proc_region_set_table::in,
-    proc_region_set_table::in, proc_region_set_table::in,
+:- pred region_transform_pred(rpta_info_table::in,
+    proc_formal_region_args_table::in,
     proc_pp_actual_region_args_table::in,
     renaming_table::in, renaming_table::in, region_instr_table::in,
     renaming_annotation_table::in, renaming_annotation_table::in,
     pred_id::in, name_to_prog_var_table::in, name_to_prog_var_table::out,
     module_info::in, module_info::out) is det.
 
-region_transform_pred(RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
+region_transform_pred(RptaInfoTable, FormalRegionArgTable,
         ActualRegionArgTable, ResurRenamingTable, IteRenamingTable,
         RegionInstructionTable, ResurRenamingAnnoTable, IteRenamingAnnoTable,
         PredId, !NameToVarTable, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
     list.foldl2(region_transform_proc(RptaInfoTable,
-        ConstantRTable, DeadRTable, BornRTable, ActualRegionArgTable,
+        FormalRegionArgTable, ActualRegionArgTable,
         ResurRenamingTable, IteRenamingTable,
         RegionInstructionTable, ResurRenamingAnnoTable, IteRenamingAnnoTable,
         PredId), ProcIds, !NameToVarTable, !ModuleInfo).
@@ -208,15 +205,14 @@ region_transform_pred(RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
     % As said above, we will recompute instmap delta, recheck purity for
     % this annotated procedure after all the procedures have been transformed.
     %
-:- pred region_transform_proc(rpta_info_table::in, proc_region_set_table::in,
-    proc_region_set_table::in, proc_region_set_table::in,
-    proc_pp_actual_region_args_table::in,
+:- pred region_transform_proc(rpta_info_table::in,
+    proc_formal_region_args_table::in, proc_pp_actual_region_args_table::in,
     renaming_table::in, renaming_table::in, region_instr_table::in,
     renaming_annotation_table::in, renaming_annotation_table::in,
     pred_id::in, proc_id::in, name_to_prog_var_table::in,
     name_to_prog_var_table::out, module_info::in, module_info::out) is det.
 
-region_transform_proc(RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
+region_transform_proc(RptaInfoTable, FormalRegionArgTable,
         ActualRegionArgTable, ResurRenamingTable, IteRenamingTable,
         RegionInstructionTable, ResurRenamingAnnoTable, IteRenamingAnnoTable,
         PredId, ProcId, !NameToVarTable, !ModuleInfo) :-
@@ -229,9 +225,7 @@ region_transform_proc(RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
     proc_info_get_argmodes(ProcInfo1, ActualArgModes0),
     proc_info_get_goal(ProcInfo1, Goal0),
     map.lookup(RptaInfoTable, PPId, rpta_info(Graph, _)),
-    map.lookup(ConstantRTable, PPId, ConstantR),
-    map.lookup(DeadRTable, PPId, DeadR),
-    map.lookup(BornRTable, PPId, BornR),
+    map.lookup(FormalRegionArgTable, PPId, FormalRegionArgProc),
     map.lookup(ActualRegionArgTable, PPId, ActualRegionArgProc),
     ( map.search(ResurRenamingTable, PPId, ResurRenamingProc0) ->
         ResurRenamingProc = ResurRenamingProc0,
@@ -249,7 +243,7 @@ region_transform_proc(RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
     ),
     map.lookup(RegionInstructionTable, PPId, RegionInstructionProc),
     NameToVar0 = map.init,
-    annotate_proc(!.ModuleInfo, PredInfo0, Graph, ConstantR, DeadR, BornR,
+    annotate_proc(!.ModuleInfo, PredInfo0, Graph, FormalRegionArgProc,
         ActualRegionArgProc, ResurRenamingProc, IteRenamingProc,
         RegionInstructionProc, ResurRenamingAnnoProc, IteRenamingAnnoProc,
         VarSet0, _, VarTypes0, _, HeadVars0, _, ActualArgModes0, _,
@@ -269,16 +263,15 @@ region_transform_proc(RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
     %    + new calls to region instructions
     %
 :- pred annotate_proc(module_info::in, pred_info::in, rpt_graph::in,
-    region_set::in, region_set::in, region_set::in,
-    pp_actual_region_args_table::in, renaming_proc::in, renaming_proc::in,
-    region_instr_proc::in, renaming_annotation_proc::in,
+    region_args::in, pp_actual_region_args_table::in, renaming_proc::in,
+    renaming_proc::in, region_instr_proc::in, renaming_annotation_proc::in,
     renaming_annotation_proc::in, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, list(prog_var)::in, list(prog_var)::out,
     list(mer_mode)::in, list(mer_mode)::out, hlds_goal::in, hlds_goal::out,
     name_to_prog_var::in, name_to_prog_var::out, proc_info::in,
     proc_info::out) is det.
 
-annotate_proc(ModuleInfo, PredInfo, Graph, ConstantR, DeadR, BornR,
+annotate_proc(ModuleInfo, PredInfo, Graph, FormalRegionArgProc,
         ActualRegionArgProc, ResurRenamingProc, IteRenamingProc,
         RegionInstructionProc, ResurRenamingAnnoProc, IteRenamingAnnoProc,
         !VarSet, !VarTypes, !HeadVars, !ActualArgModes, !Goal,
@@ -302,18 +295,17 @@ annotate_proc(ModuleInfo, PredInfo, Graph, ConstantR, DeadR, BornR,
     % Note that formal region arguments are not subjected to renaming.
     %
     % Along with the extra arguments we also add extra modes for them.
-    set.to_sorted_list(ConstantR, LConstantR),
-    set.to_sorted_list(DeadR, LDeadR),
-    set.to_sorted_list(BornR, LBornR),
-    FormalInputNodes = LConstantR ++ LDeadR,
-    FormalNodes = FormalInputNodes ++ LBornR,
+
+    FormalRegionArgProc = region_args(Constants, Deads, Borns),
+    FormalInputNodes = Constants ++ Deads,
+    FormalNodes = FormalInputNodes ++ Borns,
     list.map_foldl3(node_to_var(Graph), FormalNodes, FormalRegionArgs,
         !NameToVar, !VarSet, !VarTypes),
 
     InMode = in_mode,
     OutMode = out_mode,
     list.duplicate(list.length(FormalInputNodes), InMode, InModes),
-    list.duplicate(list.length(LBornR), OutMode, OutModes),
+    list.duplicate(list.length(Borns), OutMode, OutModes),
 
     % Notice that the output of a function needs to be the last argument.
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -438,9 +430,9 @@ region_transform_goal_expr(ModuleInfo, Graph, ResurRenaming, IteRenaming,
     ( map.search(ActualRegionArgProc, ProgPoint, ActualNodes0) ->
         ActualNodes = ActualNodes0
     ;
-        ActualNodes = actual_region_args([], [], [])
+        ActualNodes = region_args([], [], [])
     ),
-    ActualNodes = actual_region_args(Constants, Ins, Outs),
+    ActualNodes = region_args(Constants, Ins, Outs),
     AllNodes = Constants ++ Ins ++ Outs,
     list.map_foldl3(
         node_to_var_with_both_renamings(Graph, ResurRenaming, IteRenaming),
