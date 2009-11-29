@@ -372,7 +372,7 @@ INIT mercury_sys_init_thread_modules
     MR_LOCK(&MR_thread_barrier_lock, ""ML_thread_wrapper"");
     MR_thread_barrier_count--;
     if (MR_thread_barrier_count == 0) {
-        MR_SIGNAL(&MR_thread_barrier_cond);
+        MR_SIGNAL(&MR_thread_barrier_cond, ""ML_thread_wrapper"");
     }
     MR_UNLOCK(&MR_thread_barrier_lock, ""ML_thread_wrapper"");
 

@@ -246,7 +246,7 @@ ML_finalize_semaphore(void *obj, void *cd)
     }
 #else
     sem->count++;
-    MR_SIGNAL(&(sem->cond));
+    MR_SIGNAL(&(sem->cond), ""semaphore.signal"");
     MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
 #endif
     IO = IO0;
@@ -329,7 +329,8 @@ ML_finalize_semaphore(void *obj, void *cd)
         ** return prematurely with the error code EINTR in glibc 2.3.2
         ** if the thread is sent a signal.
         */
-        while (MR_WAIT(&(sem->cond), &(sem->lock)) != 0) {
+        while (MR_WAIT(&(sem->cond), &(sem->lock), ""semaphore.wait"") != 0) {
+            /* do nothing */
         }
     }
 
