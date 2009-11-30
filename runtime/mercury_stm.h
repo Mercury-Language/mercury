@@ -77,8 +77,8 @@ typedef struct MR_STM_TransLog_Struct       MR_STM_TransLog;
         typedef MercuryCond  MR_STM_ConditionVar;
 
         #define MR_STM_condvar_init(x)        pthread_cond_init(x, MR_COND_ATTR)
-        #define MR_STM_condvar_wait(x, y)     MR_cond_wait(x, y)
-        #define MR_STM_condvar_signal(x)      MR_cond_signal(x)
+        #define MR_STM_condvar_wait(x, y)     MR_cond_wait(x, y, "STM_condvar_wait")
+        #define MR_STM_condvar_signal(x)      MR_cond_signal(x, "STM_condvar_signal")
     #else
         typedef MR_Integer      MR_STM_ConditionVar;
         /*

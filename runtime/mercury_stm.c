@@ -391,7 +391,7 @@ MR_STM_block_thread(MR_STM_TransLog *tlog)
 ** In the low level C grades, the "condition variable" created when an STM
 ** transaction blocks is actually a pointer to the transaction log.
 ** "Signalling" it consists of going through the STM variables listed in the
-** log and removing ** the waiters attached to them for the context listed
+** log and removing the waiters attached to them for the context listed
 ** in the log. After this, the context can be safely rescheduled.
 */
 void

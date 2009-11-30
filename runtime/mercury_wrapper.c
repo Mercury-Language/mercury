@@ -2156,7 +2156,8 @@ MR_process_options(int argc, char **argv)
 
             case 'P':
 #ifdef  MR_THREAD_SAFE
-                if (sscanf(MR_optarg, "%u", &MR_num_threads) != 1) {
+                if (sscanf(MR_optarg, "%"MR_INTEGER_LENGTH_MODIFIER"u",
+                        &MR_num_threads) != 1) {
                     MR_usage();
                 }
 
@@ -2662,7 +2663,8 @@ MR_do_interpreter(void)
     assert(pthread_self() == MR_primordial_thread);
     MR_LOCK(&MR_thread_barrier_lock, "MR_do_interpreter");
     while (MR_thread_barrier_count > 0) {
-        while (MR_WAIT(&MR_thread_barrier_cond, &MR_thread_barrier_lock) != 0)
+        while (MR_WAIT(&MR_thread_barrier_cond, &MR_thread_barrier_lock,
+                "MR_do_interpreter") != 0)
             ;
     }
     MR_UNLOCK(&MR_thread_barrier_lock, "MR_do_interpreter");
