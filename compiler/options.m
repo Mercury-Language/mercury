@@ -412,6 +412,9 @@
     ;       put_commit_in_own_func
     ;       put_nondet_env_on_heap
 
+    % Java back-end compilation model options
+    ;       java_export_ref_out
+
     % IL back-end compilation model options
     ;       verifiable_code
     ;       il_refany_fields
@@ -1299,6 +1302,9 @@ option_defaults_2(compilation_model_option, [
     put_commit_in_own_func              -   bool(no),
     put_nondet_env_on_heap              -   bool(no),
 
+    % Java back-end compilation model options
+    java_export_ref_out                 -   bool(no),
+
     % IL back-end compilation model options
     verifiable_code                     -   bool(no),
     il_funcptr_types                    -   bool(no),
@@ -2154,6 +2160,8 @@ long_option("det-copy-out",         det_copy_out).
 long_option("nondet-copy-out",      nondet_copy_out).
 long_option("put-commit-in-own-func",   put_commit_in_own_func).
 long_option("put-nondet-env-on-heap",   put_nondet_env_on_heap).
+% Java back-end compilation model options
+long_option("java-export-ref-out",  java_export_ref_out).
 % IL back-end compilation model options
 long_option("verifiable-code",      verifiable_code).
 long_option("verifiable",           verifiable_code).
@@ -4263,7 +4271,7 @@ options_help_compilation_model -->
         "\tUse an alternative higher-level data representation.",
 %       "--high-level\t\t\t(grades: hl, hl_nest, il, java)",
         "--high-level\t\t\t(grades: hl, il, java)",
-        "\tAn abbreviation for `--high-level-code --high-level-data'."
+        "\tAn abbreviation for `--high-level-code --high-level-data'.",
 % The --gcc-nested-functions option is not yet documented,
 % because it doesn't pass our test suite, and it is
 % probably not very useful.
@@ -4302,6 +4310,9 @@ options_help_compilation_model -->
 %       "\tnondeterministic Mercury procedures on the heap,",
 %       "\trather than on the stack.",
 %
+        "--java-export-ref-out",
+        "\tUse pass-by-reference for exported procedures with multiple",
+        "\toutput arguments."
 %   ]),
 %   io.write_string("\n      IL back-end compilation model options:\n"),
 %   write_tabbed_lines([

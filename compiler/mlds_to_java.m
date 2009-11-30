@@ -491,10 +491,14 @@ mlds_get_java_foreign_code(AllForeignCode) = ForeignCode :-
 :- pred output_exports(java_out_info::in, indent::in,
     list(mlds_pragma_export)::in, io::di, io::uo) is det.
 
-output_exports(_, _, [], !IO).
-output_exports(Info, Indent, [Export | Exports], !IO) :-
-    Export = ml_pragma_export(Lang, ExportName, MLDS_Name, MLDS_Signature,
-        MLDS_Context),
+output_exports(Info, Indent, Exports, !IO) :-
+    list.foldl(output_export(Info, Indent), Exports, !IO).
+
+:- pred output_export(java_out_info::in, indent::in, mlds_pragma_export::in,
+    io::di, io::uo) is det.
+
+output_export(Info, Indent, Export, !IO) :-
+    Export = ml_pragma_export(Lang, ExportName, _, MLDS_Signature, _),
     expect(unify(Lang, lang_java), this_file,
         "foreign_export for language other than Java."),
     indent_line(Indent, !IO),
@@ -512,6 +516,30 @@ output_exports(Info, Indent, [Export | Exports], !IO) :-
         io.write_string("java.lang.Object []", !IO)
     ),
     io.write_string(" " ++ ExportName, !IO),
+    (
+        list.member(Param, Parameters),
+        has_ptr_type(Param)
+    ->
+        (
+            ( ReturnTypes = []
+            ; ReturnTypes = [_]
+            ),
+            output_export_ref_out(Info, Indent, Export, !IO)
+        ;
+            ReturnTypes = [_, _ | _],
+            unexpected(this_file, "output_export: multiple return values")
+        )
+    ;
+        output_export_no_ref_out(Info, Indent, Export, !IO)
+    ).
+
+:- pred output_export_no_ref_out(java_out_info::in, indent::in,
+    mlds_pragma_export::in, io::di, io::uo) is det.
+
+output_export_no_ref_out(Info, Indent, Export, !IO) :-
+    Export = ml_pragma_export(_Lang, _ExportName, MLDS_Name, MLDS_Signature,
+        MLDS_Context),
+    MLDS_Signature = mlds_func_params(Parameters, ReturnTypes),
     output_params(Info, Indent + 1, MLDS_Context, Parameters, !IO),
     io.nl(!IO),
     indent_line(Indent, !IO),
@@ -523,17 +551,122 @@ output_exports(Info, Indent, [Export | Exports], !IO) :-
         ReturnTypes = [_ | _],
         io.write_string("return ", !IO)
     ),
+    write_export_call(MLDS_Name, Parameters, !IO),
+    indent_line(Indent, !IO),
+    io.write_string("}\n", !IO).
+
+:- pred output_export_ref_out(java_out_info::in, indent::in,
+    mlds_pragma_export::in, io::di, io::uo) is det.
+
+output_export_ref_out(Info, Indent, Export, !IO) :-
+    Export = ml_pragma_export(_Lang, _ExportName, MLDS_Name, MLDS_Signature,
+        MLDS_Context),
+    MLDS_Signature = mlds_func_params(Parameters, ReturnTypes),
+    list.filter(has_ptr_type, Parameters, RefParams, NonRefParams),
+
+    output_export_params_ref_out(Info, Indent, MLDS_Context, Parameters, !IO),
+    io.nl(!IO),
+    indent_line(Indent, !IO),
+    io.write_string("{\n", !IO),
+    indent_line(Indent + 1, !IO),
+    io.write_string("java.lang.Object[] results = ", !IO),
+    write_export_call(MLDS_Name, NonRefParams, !IO),
+
+    ( ReturnTypes = [] ->
+        FirstRefArg = 0
+    ; ReturnTypes = [mlds_native_bool_type] ->
+        % Semidet procedure.
+        FirstRefArg = 1
+    ;
+        unexpected(this_file, "output_export_ref_out: unexpected ReturnTypes")
+    ),
+    list.foldl2(assign_ref_output(Info, Indent + 1), RefParams,
+        FirstRefArg, _, !IO),
+    (
+        FirstRefArg = 0
+    ;
+        FirstRefArg = 1,
+        indent_line(Indent + 1, !IO),
+        Stmt = "return ((java.lang.Boolean) results[0]).booleanValue();\n",
+        io.write_string(Stmt, !IO)
+    ),
+    indent_line(Indent, !IO),
+    io.write_string("}\n", !IO).
+
+:- pred output_export_params_ref_out(java_out_info::in, indent::in,
+    mlds_context::in, list(mlds_argument)::in, io::di, io::uo) is det.
+
+output_export_params_ref_out(Info, Indent, Context, Parameters, !IO) :-
+    io.write_string("(", !IO),
+    (
+        Parameters = []
+    ;
+        Parameters = [_ | _],
+        io.nl(!IO),
+        io.write_list(Parameters, ",\n",
+            output_export_param_ref_out(Info, Indent + 1, Context), !IO)
+    ),
+    io.write_string(")", !IO).
+
+:- pred output_export_param_ref_out(java_out_info::in, indent::in,
+    mlds_context::in, mlds_argument::in, io::di, io::uo) is det.
+
+output_export_param_ref_out(Info, Indent, _Context, Argument, !IO) :-
+    Argument = mlds_argument(Name, Type, _),
+    indent_line(Indent, !IO),
+    ( Type = mlds_ptr_type(InnerType) ->
+        io.write_string("jmercury.runtime.Ref<", !IO),
+        output_boxed_type(Info, InnerType, !IO),
+        io.write_string("> ", !IO)
+    ;
+        output_type(Info, normal_style, Type, !IO),
+        io.write_string(" ", !IO)
+    ),
+    output_name(Name, !IO).
+
+:- pred write_export_call(mlds_qualified_entity_name::in,
+    list(mlds_argument)::in, io::di, io::uo) is det.
+
+write_export_call(MLDS_Name, Parameters, !IO) :-
     output_fully_qualified_name(MLDS_Name, !IO),
     io.write_char('(', !IO),
-    WriteCallArg = (pred(Arg::in, !.IO::di, !:IO::uo) is det :-
-        Arg = mlds_argument(Name, _, _),
-        output_name(Name, !IO)
-    ),
-    io.write_list(Parameters, ", ", WriteCallArg, !IO),
-    io.write_string(");\n", !IO),
+    io.write_list(Parameters, ", ", write_argument_name, !IO),
+    io.write_string(");\n", !IO).
+
+:- pred write_argument_name(mlds_argument::in, io::di, io::uo) is det.
+
+write_argument_name(Arg, !IO) :-
+    Arg = mlds_argument(Name, _, _),
+    output_name(Name, !IO).
+
+:- pred assign_ref_output(java_out_info::in, indent::in, mlds_argument::in,
+    int::in, int::out, io::di, io::uo) is det.
+
+assign_ref_output(Info, Indent, Arg, N, N + 1, !IO) :-
+    Arg = mlds_argument(Name, Type, _),
     indent_line(Indent, !IO),
-    io.write_string("}\n", !IO),
-    output_exports(Info, Indent, Exports, !IO).
+    output_name(Name, !IO),
+    io.write_string(".val = (", !IO),
+    ( Type = mlds_ptr_type(InnerType) ->
+        output_boxed_type(Info, InnerType, !IO)
+    ;
+        output_boxed_type(Info, Type, !IO)
+    ),
+    io.format(") results[%d];\n", [i(N)], !IO).
+
+:- pred output_boxed_type(java_out_info::in, mlds_type::in,
+    io::di, io::uo) is det.
+
+output_boxed_type(Info, Type, !IO) :-
+    ( java_builtin_type(Type, _, JavaBoxedName, _) ->
+        io.write_string(JavaBoxedName, !IO)
+    ;
+        output_type(Info, normal_style, Type, !IO)
+    ).
+
+:- pred has_ptr_type(mlds_argument::in) is semidet.
+
+has_ptr_type(mlds_argument(_, mlds_ptr_type(_), _)).
 
 %-----------------------------------------------------------------------------%
 %

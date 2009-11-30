@@ -54,6 +54,8 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
+:- import_module getopt_io.
+:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -208,10 +210,42 @@ ml_gen_pragma_export_proc(ModuleInfo, PragmaExportedProc, Defn) :-
     PragmaExportedProc = pragma_exported_proc(Lang, PredId, ProcId,
         ExportName, ProgContext),
     ml_gen_proc_label(ModuleInfo, PredId, ProcId, Name, ModuleName),
-    FuncParams = ml_gen_proc_params(ModuleInfo, PredId, ProcId),
+    ml_gen_export_proc_params(ModuleInfo, PredId, ProcId, FuncParams),
     MLDS_Context = mlds_make_context(ProgContext),
     Defn = ml_pragma_export(Lang, ExportName,
         qual(ModuleName, module_qual, Name), FuncParams, MLDS_Context).
+
+:- pred ml_gen_export_proc_params(module_info::in, pred_id::in, proc_id::in,
+    mlds_func_params::out) is det.
+
+ml_gen_export_proc_params(ModuleInfo, PredId, ProcId, FuncParams) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
+    (
+        Target = target_java,
+        globals.lookup_bool_option(Globals, java_export_ref_out, yes),
+        globals.set_option(det_copy_out, bool(no), Globals, GlobalsByRef),
+        module_info_set_globals(GlobalsByRef, ModuleInfo, ModuleInfoByRef),
+        FuncParamsByRef = ml_gen_proc_params(ModuleInfoByRef, PredId, ProcId),
+        FuncParamsByRef = mlds_func_params(Args, ReturnTypes),
+        (
+            ReturnTypes = [],
+            % If there is only one output argument, then we should use the
+            % return value.
+            list.filter(has_ptr_type, Args, OutArgs),
+            list.length(OutArgs) > 1
+        ;
+            ReturnTypes = [_ | _]
+        )
+    ->
+        FuncParams = FuncParamsByRef
+    ;
+        FuncParams = ml_gen_proc_params(ModuleInfo, PredId, ProcId)
+    ).
+
+:- pred has_ptr_type(mlds_argument::in) is semidet.
+
+has_ptr_type(mlds_argument(_, mlds_ptr_type(_), _)).
 
 %-----------------------------------------------------------------------------%
 %

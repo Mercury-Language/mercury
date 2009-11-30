@@ -6969,9 +6969,6 @@ the length of the array is the number of elements in the tuple.
 Mercury variables whose type is a type variable will be passed as
 @code{java.lang.Object}.
 Mercury array types are mapped to Java array types.
-When compiling with @samp{--no-high-level-data}, all other Mercury variables
-are passed as @code{java.lang.Object[]}.
-When compiling with @samp{--high-level-data},
 Mercury variables whose type is a Mercury discriminated union type
 will be passed as a Java type whose type name is determined from
 the Mercury type name (ignoring any type parameters) followed by
@@ -7000,13 +6997,20 @@ whose result has an input mode, then the Mercury function result is
 appended to the list of input parameters, so that the Mercury function
 result becomes the last parameter to the corresponding Java function.
 
+The handling of multiple output arguments depends on the option
+@samp{--java-export-ref-out}.  It is disabled by default, but in the
+future will become enabled by default.
+
+@noindent
+Without @samp{--java-export-ref-out}:
+
 The result of the Java function will be a sequence comprised of
 the outputs of the Mercury procedure.  If the Mercury procedure's
 determinism indicates that it can fail, then its first output will
 be a @samp{boolean} success indicator, with a @samp{true} value
 denoting success and a @samp{false} value denoting failure. The
 remaining outputs will be the subsequence of the Mercury procedure's
-arguments and function result (if any) that have output modes.            
+arguments and function result (if any) that have output modes.
  
 If the sequence has length zero then the return type of the
 Java function is @samp{void}.
@@ -7014,7 +7018,30 @@ If the sequence has length one then the return type of the
 Java function is the type of the item in question.
 Otherwise, the Java function will return an array of type
 @samp{java.lang.Object[]}.
-                                                                                
+
+@noindent
+With @samp{--java-export-ref-out}:
+
+If the Mercury procedure is deterministic and has no output arguments,
+then the return type of the Java function is @samp{void}; if it has
+one output argument, then the return value of the function is that
+output argument.
+
+If the Mercury procedure is deterministic and has two or more output
+arguments, then the return type of the Java function is @samp{void}.
+At the position of each output argument, the Java function takes a
+value of the type @samp{jmercury.runtime.Ref<T>} where @samp{T} is the
+Java type corresponding to the type of the output argument.
+@samp{Ref} is a class with a single field @samp{val}, which is
+assigned the output value when the function returns.
+
+If the Mercury procedure is semi-deterministic then the Java function
+returns a @samp{boolean}.  A @samp{true} return value denotes success
+and @samp{false} denotes failure.  Output arguments are handled in the
+same way as multiple outputs deterministic procedures, using the
+@samp{Ref} class.  On failure the values of the @samp{val} fields are
+undefined.
+
 Arguments of type @samp{io.state} or @samp{store.store(_)} are not
 passed or returned at all.
 (The reason for this is that these types represent mutable state,
