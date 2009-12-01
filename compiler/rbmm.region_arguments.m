@@ -74,7 +74,10 @@
 :- import_module hlds.hlds_goal.
 :- import_module libs.
 :- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
 
+:- import_module bool.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.
@@ -116,28 +119,29 @@ record_region_arguments_proc(ModuleInfo, PredId, RptaInfoTable,
         ConstantRTable, DeadRTable, BornRTable, ProcId,
         !FormalRegionArgTable, !ActualRegionArgTable) :-
     PPId = proc(PredId, ProcId),
-    ( if    some_are_special_preds([PPId], ModuleInfo)
-      then  true
-      else
-            record_formal_region_arguments_proc(PPId, RptaInfoTable,
-                ConstantRTable, DeadRTable, BornRTable, !FormalRegionArgTable),
+    ( some_are_special_preds([PPId], ModuleInfo) ->
+        true
+    ;
+        record_formal_region_arguments_proc(ModuleInfo, PPId,
+            RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
+            !FormalRegionArgTable),
 
-            module_info_proc_info(ModuleInfo, PPId, ProcInfo0),
-            fill_goal_path_slots(ModuleInfo, ProcInfo0, ProcInfo),
-            proc_info_get_goal(ProcInfo, Body),
-            record_actual_region_arguments_goal(ModuleInfo, PPId,
-                RptaInfoTable, ConstantRTable, DeadRTable, BornRTable, Body,
-                !FormalRegionArgTable, map.init, ActualRegionArgProc),
-            svmap.set(PPId, ActualRegionArgProc, !ActualRegionArgTable)
+        module_info_proc_info(ModuleInfo, PPId, ProcInfo0),
+        fill_goal_path_slots(ModuleInfo, ProcInfo0, ProcInfo),
+        proc_info_get_goal(ProcInfo, Body),
+        record_actual_region_arguments_goal(ModuleInfo, PPId,
+            RptaInfoTable, ConstantRTable, DeadRTable, BornRTable, Body,
+            !FormalRegionArgTable, map.init, ActualRegionArgProc),
+        svmap.set(PPId, ActualRegionArgProc, !ActualRegionArgTable)
     ).
 
-:- pred record_formal_region_arguments_proc(pred_proc_id::in,
+:- pred record_formal_region_arguments_proc(module_info::in, pred_proc_id::in,
     rpta_info_table::in, proc_region_set_table::in,
     proc_region_set_table::in, proc_region_set_table::in,
     proc_formal_region_args_table::in, proc_formal_region_args_table::out)
     is det.
 
-record_formal_region_arguments_proc(PPId, RptaInfoTable,
+record_formal_region_arguments_proc(ModuleInfo, PPId, RptaInfoTable,
         ConstantRTable, DeadRTable, BornRTable, !FormalRegionArgTable) :-
     ( map.search(!.FormalRegionArgTable, PPId, _) ->
         true
@@ -151,8 +155,20 @@ record_formal_region_arguments_proc(PPId, RptaInfoTable,
 
         % Formal constant, allocated-into region arguments.
         set.to_sorted_list(ConstantR, LConstantR),
-        list.filter(rptg_is_allocated_node(Graph),
-            LConstantR, LFormalConstantAllocR),
+
+        % When emulating the rbmm2 system in the paper and in Quan's thesis,
+        % we omit the test for allocated-into for constant regions.
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, use_alloc_regions,
+            UseAllocRegions),
+        (
+            UseAllocRegions = yes,
+            list.filter(rptg_is_allocated_node(Graph),
+                LConstantR, LFormalConstantAllocR)
+        ;
+            UseAllocRegions = no,
+            LFormalConstantAllocR = LConstantR
+        ),
 
         % Formal dead region arguments.
         set.to_sorted_list(DeadR, FormalDeadR),
@@ -160,9 +176,9 @@ record_formal_region_arguments_proc(PPId, RptaInfoTable,
         % Formal born region arguments.
         set.to_sorted_list(BornR, FormalBornR),
 
-        svmap.det_insert(PPId,
+        RegionArgs =
             region_args(LFormalConstantAllocR, FormalDeadR, FormalBornR),
-            !FormalRegionArgTable)
+        svmap.det_insert(PPId, RegionArgs, !FormalRegionArgTable)
     ).
 
 :- pred record_actual_region_arguments_goal(module_info::in,
@@ -175,18 +191,18 @@ record_actual_region_arguments_goal(ModuleInfo, PPId, RptaInfoTable,
         ConstantRTable, DeadRTable, BornRTable, Goal,
         !FormalRegionArgTable, !ActualRegionArgProc) :-
     Goal = hlds_goal(Expr, Info),
-    record_actual_region_arguments_expr(Expr, Info, ModuleInfo, PPId,
+    record_actual_region_arguments_expr(ModuleInfo, Expr, Info, PPId,
         RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
         !FormalRegionArgTable, !ActualRegionArgProc).
 
-:- pred record_actual_region_arguments_expr(hlds_goal_expr::in,
-    hlds_goal_info::in, module_info::in, pred_proc_id::in,
+:- pred record_actual_region_arguments_expr(module_info::in,
+    hlds_goal_expr::in, hlds_goal_info::in, pred_proc_id::in,
     rpta_info_table::in, proc_region_set_table::in,
     proc_region_set_table::in, proc_region_set_table::in,
     proc_formal_region_args_table::in, proc_formal_region_args_table::out,
     pp_actual_region_args_table::in, pp_actual_region_args_table::out) is det.
 
-record_actual_region_arguments_expr(GoalExpr, GoalInfo, ModuleInfo, CallerPPId,
+record_actual_region_arguments_expr(ModuleInfo, GoalExpr, GoalInfo, CallerPPId,
         RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
         !FormalRegionArgTable, !ActualRegionArgProc) :-
     (
@@ -196,9 +212,10 @@ record_actual_region_arguments_expr(GoalExpr, GoalInfo, ModuleInfo, CallerPPId,
             true
         ;
             CallSite = program_point_init(GoalInfo),
-            record_actual_region_arguments_call_site(CallerPPId, CallSite,
-                CalleePPId, RptaInfoTable, ConstantRTable, DeadRTable,
-                BornRTable, !FormalRegionArgTable, !ActualRegionArgProc)
+            record_actual_region_arguments_call_site(ModuleInfo, CallerPPId,
+                CallSite, CalleePPId, RptaInfoTable, ConstantRTable,
+                DeadRTable, BornRTable,
+                !FormalRegionArgTable, !ActualRegionArgProc)
         )
     ;
         GoalExpr = conj(_, Conjuncts),
@@ -268,7 +285,7 @@ record_actual_region_arguments_case(ModuleInfo, PPId, RptaInfoTable,
         !FormalRegionArgTable, !ActualRegionArgProc) :-
     Case = case(_, _, Goal),
     record_actual_region_arguments_goal(ModuleInfo, PPId, RptaInfoTable,
-        ConstantRTable, DeadRTable, BornRTable, Goal, 
+        ConstantRTable, DeadRTable, BornRTable, Goal,
         !FormalRegionArgTable, !ActualRegionArgProc).
 
     % Region variables in deadR and in bornR are passed as arguments.
@@ -277,14 +294,14 @@ record_actual_region_arguments_case(ModuleInfo, PPId, RptaInfoTable,
     % may be allocated into as arguments. The actual region arguments are
     % computed according to these lines.
     %
-:- pred record_actual_region_arguments_call_site(pred_proc_id::in,
-    program_point::in, pred_proc_id::in,
+:- pred record_actual_region_arguments_call_site(module_info::in,
+    pred_proc_id::in, program_point::in, pred_proc_id::in,
     rpta_info_table::in, proc_region_set_table::in,
     proc_region_set_table::in, proc_region_set_table::in,
     proc_formal_region_args_table::in, proc_formal_region_args_table::out,
     pp_actual_region_args_table::in, pp_actual_region_args_table::out) is det.
 
-record_actual_region_arguments_call_site(CallerPPId, CallSite,
+record_actual_region_arguments_call_site(ModuleInfo, CallerPPId, CallSite,
         CalleePPId, RptaInfoTable, ConstantRTable, DeadRTable,
         BornRTable, !FormalRegionArgTable, !ActualRegionArgProc) :-
     ( map.search(!.FormalRegionArgTable, CalleePPId, FormalRegionArgCallee) ->
@@ -308,13 +325,14 @@ record_actual_region_arguments_call_site(CallerPPId, CallSite,
     ;
         % The formal region arguments of the called procedure haven't been
         % recorded, so do it now.
-        record_formal_region_arguments_proc(CalleePPId, RptaInfoTable,
-            ConstantRTable, DeadRTable, BornRTable, !FormalRegionArgTable),
+        record_formal_region_arguments_proc(ModuleInfo, CalleePPId,
+            RptaInfoTable, ConstantRTable, DeadRTable, BornRTable,
+            !FormalRegionArgTable),
 
         % We try again at this call site after the formal region arguments
         % are recorded.
-        record_actual_region_arguments_call_site(CallerPPId, CallSite,
-            CalleePPId, RptaInfoTable, ConstantRTable, DeadRTable,
+        record_actual_region_arguments_call_site(ModuleInfo, CallerPPId,
+            CallSite, CalleePPId, RptaInfoTable, ConstantRTable, DeadRTable,
             BornRTable, !FormalRegionArgTable, !ActualRegionArgProc)
     ).
 
