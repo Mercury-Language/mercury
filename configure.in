@@ -1606,6 +1606,7 @@ AC_CACHE_VAL(mercury_cv_word_type,
 if test "$mercury_cv_word_type" = unknown; then
     AC_TRY_RUN([
     #include <stdio.h>
+    #include <stdlib.h>
     int main() {
         FILE *fp;
 
@@ -1689,6 +1690,7 @@ if test "$mercury_cv_int_least64_type" = unknown; then
     AC_TRY_RUN([
     #include <stdio.h>
     #include <limits.h>
+    #include <stdlib.h>
     int main() {
         FILE *fp;
 
@@ -1725,6 +1727,7 @@ AC_CACHE_VAL(mercury_cv_int_least32_type,
     AC_TRY_RUN([
     #include <stdio.h>
     #include <limits.h>
+    #include <stdlib.h>
     int main() {
         FILE *fp;
 
@@ -1792,6 +1795,7 @@ AC_CACHE_VAL(mercury_cv_int_least16_type,
     AC_TRY_RUN([
     #include <stdio.h>
     #include <limits.h>
+    #include <stdlib.h>
     int main() {
         FILE *fp;
 
