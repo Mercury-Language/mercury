@@ -6,7 +6,7 @@ INIT mercury_sys_init_engine
 ENDINIT
 */
 /*
-** Copyright (C) 1993-2001, 2003-2007 The University of Melbourne.
+** Copyright (C) 1993-2001, 2003-2007, 2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -20,6 +20,8 @@ ENDINIT
 #include    "mercury_engine.h"
 #include    "mercury_memory_zones.h"    /* for MR_create_zone() */
 #include    "mercury_memory_handlers.h" /* for MR_default_handler() */
+#include    "mercury_threadscope.h"     /* for MR_threadscope_setup_engine()
+                                           and event posting */
 
 #include    "mercury_dummy.h"
 
@@ -147,6 +149,11 @@ MR_init_engine(MercuryEngine *eng)
     eng->MR_eng_c_depth = 0;
 #endif
 
+#if defined(MR_LL_PARALLEL_CONJ) && \
+    defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+    MR_threadscope_setup_engine(eng);
+#endif
+
     /*
     ** Don't allocate a context for this engine until it is actually needed.
     */
@@ -164,6 +171,13 @@ void MR_finalize_engine(MercuryEngine *eng)
     if (eng->MR_eng_this_context) {
         MR_destroy_context(eng->MR_eng_this_context);
     }
+
+#if defined(MR_LL_PARALLEL_CONJ) && \
+    defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+    if (eng->MR_eng_ts_buffer) {
+        MR_threadscope_finalize_engine(eng);
+    }
+#endif
 }
 
 /*---------------------------------------------------------------------------*/
@@ -513,6 +527,9 @@ MR_define_label(engine_done);
             MR_GOTO_LABEL(engine_done_2);
         }
 
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
+        MR_threadscope_post_stop_context(MR_TS_STOP_REASON_YIELDING);
+#endif
         MR_save_context(this_ctxt);
         this_ctxt->MR_ctxt_resume = MR_LABEL(engine_done_2);
         this_ctxt->MR_ctxt_resume_owner_thread = owner->MR_saved_owner_thread;

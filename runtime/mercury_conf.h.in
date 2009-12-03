@@ -140,6 +140,7 @@
 **	MR_HAVE_SYS_MMAN_H	we have <sys/mman.h>
 **	MR_HAVE_SYS_SEM_H 	we have <sys/sem.h>
 **	MR_HAVE_SCHED_H		we have <sched.h>
+**	MR_HAVE_UTMPX_H		we have <utmpx.h>
 */
 #undef	MR_HAVE_SYS_SIGINFO_H
 #undef	MR_HAVE_SYS_SIGNAL_H
@@ -170,6 +171,7 @@
 #undef	MR_HAVE_SYS_MMAN_H
 #undef	MR_HAVE_SYS_SEM_H
 #undef	MR_HAVE_SCHED_H
+#undef  MR_HAVE_UTMPX_H
 
 /*
 ** MR_HAVE_POSIX_TIMES is defined if we have the POSIX
@@ -268,7 +270,8 @@
 **	MR_HAVE__PUTENV		we have the _putenv() function.
 **	MR_HAVE_POSIX_SPAWN	we have the posix_spawn() function.
 **	MR_HAVE_FESETROUND	we have the fesetround() function.
-**	MR_HAVE_SCHED_SETAFFINITY if we have the sched_setaffinity() function.
+**	MR_HAVE_SCHED_SETAFFINITY we have the sched_setaffinity() function.
+**	MR_HAVE_SCHED_GETCPU	we have the sched_getcpu() function (glibc specific).
 */
 #undef	MR_HAVE_GETPID
 #undef	MR_HAVE_SETPGID
@@ -331,6 +334,7 @@
 #undef	MR_HAVE_POSIX_SPAWN
 #undef	MR_HAVE_FESETROUND
 #undef	MR_HAVE_SCHED_SETAFFINITY
+#undef	MR_HAVE_SCHED_GETCPU
 
 /*
 ** We use mprotect() and signals to catch stack and heap overflows.

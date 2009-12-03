@@ -38,11 +38,12 @@ ENDINIT
 #include "mercury_memory_handlers.h"
 #include "mercury_context.h"
 #include "mercury_engine.h"             /* for `MR_memdebug' */
+#include "mercury_threadscope.h"        /* for data types and posting events */
 #include "mercury_reg_workarounds.h"    /* for `MR_fd*' stuff */
 
-static void
-MR_init_context_maybe_generator(MR_Context *c, const char *id,
-    MR_GeneratorPtr gen);
+#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
+#define MR_PROFILE_PARALLEL_EXECUTION_FILENAME "parallel_execution_profile.txt"
+#endif
 
 /*---------------------------------------------------------------------------*/
 
@@ -66,9 +67,6 @@ MR_Context              *MR_runqueue_tail;
 #ifdef  MR_LL_PARALLEL_CONJ
   MR_SparkDeque         MR_spark_queue;
   MercuryLock           MR_sync_term_lock;
-  MR_bool               MR_thread_pinning = MR_FALSE;
-  static MercuryLock    MR_next_cpu_lock;
-  static MR_Unsigned    MR_next_cpu = 0;
 #endif
 
 MR_PendingContext       *MR_pending_contexts;
@@ -96,14 +94,27 @@ static MR_Integer       MR_profile_parallel_small_context_reused = 0;
 static MR_Integer       MR_profile_parallel_regular_context_reused = 0;
 static MR_Integer       MR_profile_parallel_small_context_kept = 0;
 static MR_Integer       MR_profile_parallel_regular_context_kept = 0;
+#endif
 
 /*
-** Write out the profiling data that we collect during execution.
+** Local variables for thread pinning.
 */
-static void
-MR_write_out_profiling_parallel_execution(void);
+#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
+    defined(MR_HAVE_SCHED_SETAFFINITY)
+static MercuryLock      MR_next_cpu_lock;
+MR_bool                 MR_thread_pinning = MR_FALSE;
+static MR_Unsigned      MR_next_cpu = 0;
+  #ifdef  MR_HAVE_SCHED_GETCPU
+static MR_Integer       MR_primordial_thread_cpu = -1;
+  #endif
+#endif
 
-#define MR_PROFILE_PARALLEL_EXECUTION_FILENAME "parallel_execution_profile.txt"
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+/*
+** This is used to give each context its own unique ID.  It is protected by the
+** free_context_list_lock.
+*/
+static MR_ContextId     MR_next_context_id = 0;
 #endif
 
 /*
@@ -123,7 +134,27 @@ int volatile MR_num_idle_engines = 0;
 int volatile MR_num_outstanding_contexts_and_global_sparks = 0;
 MR_Integer volatile MR_num_outstanding_contexts_and_all_sparks = 0;
 
+MR_Unsigned volatile MR_num_exited_engines = 0;
+
 static MercuryLock MR_par_cond_stats_lock;
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+static void
+MR_init_context_maybe_generator(MR_Context *c, const char *id,
+    MR_GeneratorPtr gen);
+
+/*
+** Write out the profiling data that we collect during execution.
+*/
+static void
+MR_write_out_profiling_parallel_execution(void);
+
+#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
+        defined(MR_HAVE_SCHED_SETAFFINITY) 
+static void 
+MR_do_pin_thread(int cpu);
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -142,9 +173,9 @@ MR_init_thread_stuff(void)
     MR_init_wsdeque(&MR_spark_queue, MR_INITIAL_GLOBAL_SPARK_QUEUE_SIZE);
     pthread_mutex_init(&MR_sync_term_lock, MR_MUTEX_ATTR);
     pthread_mutex_init(&MR_next_cpu_lock, MR_MUTEX_ATTR);
-  #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
+    #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
     pthread_mutex_init(&MR_par_cond_stats_lock, MR_MUTEX_ATTR);
-  #endif
+    #endif
   #endif
     pthread_mutex_init(&MR_STM_lock, MR_MUTEX_ATTR);
   #ifndef MR_THREAD_LOCAL_STORAGE
@@ -199,6 +230,39 @@ MR_init_thread_stuff(void)
 #endif /* MR_THREAD_SAFE */
 }
 
+/*
+** Pin the primordial thread first to the CPU it is currently using.  (where
+** support is available).
+*/
+void
+MR_pin_primordial_thread(void)
+{
+#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
+        defined(MR_HAVE_SCHED_SETAFFINITY) 
+  #ifdef MR_HAVE_SCHED_GETCPU
+    /*
+    ** We don't need locking to pin the primordial thread as it is called
+    ** before any other threads exist.
+    */
+    if (MR_thread_pinning) {
+        MR_primordial_thread_cpu = sched_getcpu();
+        if (MR_primordial_thread_cpu == -1) {
+            perror("Warning: unable to determine the current CPU for "
+             "the primordial thread: ");
+        } else {
+            MR_do_pin_thread(MR_primordial_thread_cpu);
+        }
+    }
+    if (MR_primordial_thread_cpu == -1) {
+        MR_pin_thread();
+    }
+  #else
+    MR_pin_thread();
+  #endif
+#endif /* defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
+            defined(MR_HAVE_SCHED_SETAFFINITY) */ 
+}
+
 void
 MR_pin_thread(void)
 {
@@ -206,32 +270,45 @@ MR_pin_thread(void)
         defined(MR_HAVE_SCHED_SETAFFINITY) 
     MR_LOCK(&MR_next_cpu_lock, "MR_pin_thread");
     if (MR_thread_pinning) {
-        cpu_set_t   cpus;
-
-        if (MR_next_cpu < CPU_SETSIZE) {
-            CPU_ZERO(&cpus);
-            CPU_SET(MR_next_cpu, &cpus);
-            if (sched_setaffinity(0, sizeof(cpu_set_t), &cpus) == 0)
-            {
-                MR_next_cpu++;
-            } else {
-                perror("Warning: Couldn't set CPU affinity");
-                /* 
-                ** If this failed once it will probably fail again so we
-                ** disable it. 
-                */
-                MR_thread_pinning = MR_FALSE;
-            }
-        } else {
-            perror("Warning: Couldn't set CPU affinity due to a static "
-                "system limit");
-            MR_thread_pinning = MR_FALSE;
+#if defined(MR_HAVE_SCHED_GETCPU)
+        if (MR_next_cpu == MR_primordial_thread_cpu) {
+            MR_next_cpu++;
         }
+#endif
+        MR_do_pin_thread(MR_next_cpu);
+        MR_next_cpu++;
     }
     MR_UNLOCK(&MR_next_cpu_lock, "MR_pin_thread");
 #endif /* defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
             defined(MR_HAVE_SCHED_SETAFFINITY) */ 
 }
+
+#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
+        defined(MR_HAVE_SCHED_SETAFFINITY) 
+static void 
+MR_do_pin_thread(int cpu) 
+{
+    cpu_set_t   cpus;
+
+    if (cpu < CPU_SETSIZE) {
+        CPU_ZERO(&cpus);
+        CPU_SET(cpu, &cpus);
+        if (sched_setaffinity(0, sizeof(cpu_set_t), &cpus) == -1) {
+            perror("Warning: Couldn't set CPU affinity: ");
+            /* 
+            ** If this failed once it will probably fail again so we
+            ** disable it. 
+            */
+            MR_thread_pinning = MR_FALSE;
+        }
+    } else {
+        perror("Warning: Couldn't set CPU affinity due to a static "
+            "system limit: ");
+        MR_thread_pinning = MR_FALSE;
+    }
+}
+#endif /* defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
+            defined(MR_HAVE_SCHED_SETAFFINITY) */ 
 
 void
 MR_finalize_thread_stuff(void)
@@ -558,6 +635,9 @@ MR_Context *
 MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
 {
     MR_Context  *c;
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+    MR_Unsigned context_id;
+#endif
 
     MR_LOCK(&free_context_list_lock, "create_context");
 
@@ -590,7 +670,9 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
     } else {
         c = NULL;
     }
-
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+    context_id = MR_next_context_id++;
+#endif
     MR_UNLOCK(&free_context_list_lock, "create_context i");
 
     if (c == NULL) {
@@ -607,7 +689,10 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
         c->MR_ctxt_trail_zone = NULL;
 #endif
     }
-
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+    c->MR_ctxt_num_id = context_id;
+#endif
+    
     MR_init_context_maybe_generator(c, id, gen);
     return c;
 }
@@ -771,6 +856,9 @@ MR_check_pending_contexts(MR_bool block)
 void
 MR_schedule_context(MR_Context *ctxt)
 {
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+    MR_threadscope_post_context_runnable(ctxt);
+#endif
     MR_LOCK(&MR_runqueue_lock, "schedule_context");
     ctxt->MR_ctxt_next = NULL;
     if (MR_runqueue_tail) {
@@ -862,8 +950,10 @@ MR_define_entry(MR_do_runnext);
             ** up the Mercury runtime.  It cannot exit by this route.
             */
             assert(thd != MR_primordial_thread);
-            MR_UNLOCK(&MR_runqueue_lock, "MR_do_runnext (ii)");
             MR_destroy_thread(MR_cur_engine());
+            MR_num_exited_engines++;
+            MR_UNLOCK(&MR_runqueue_lock, "MR_do_runnext (ii)");
+            pthread_exit(0);
         }
 
         /* Search for a ready context which we can handle. */
@@ -944,12 +1034,17 @@ MR_define_entry(MR_do_runnext);
     if (MR_ENGINE(MR_eng_this_context) == NULL) {
         MR_ENGINE(MR_eng_this_context) = MR_create_context("from spark",
             MR_CONTEXT_SIZE_SMALL, NULL);
-        MR_load_context(MR_ENGINE(MR_eng_this_context));
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
+        MR_threadscope_post_create_context_for_spark(MR_ENGINE(MR_eng_this_context));
         if (MR_profile_parallel_execution) {
             MR_atomic_inc_int(
                     &MR_profile_parallel_contexts_created_for_sparks);
         }
+#endif
+        MR_load_context(MR_ENGINE(MR_eng_this_context));
+    } else {
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+        MR_threadscope_post_run_context();
 #endif
     }
     MR_parent_sp = spark.MR_spark_parent_sp;
@@ -992,6 +1087,11 @@ MR_END_MODULE
 MR_Code*
 MR_do_join_and_continue(MR_SyncTerm *jnc_st, MR_Code *join_label) 
 {
+    /*
+     * XXX: We should take the current TSC time here and use it to post the
+     * various 'context stopped' threadscope events.  This profile will be more
+     * accurate. 
+     */
     if (!jnc_st->MR_st_is_shared) {
         /* This parallel conjunction has only executed sequentially. */
         if (--jnc_st->MR_st_count == 0) {
@@ -1047,6 +1147,9 @@ MR_do_join_and_continue(MR_SyncTerm *jnc_st, MR_Code *join_label)
                 jnc_st->MR_st_orig_context->MR_ctxt_resume = join_label;
                 MR_schedule_context(jnc_st->MR_st_orig_context);
                 MR_UNLOCK(&MR_sync_term_lock, "continue ii");
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
+                MR_threadscope_post_stop_context(MR_TS_STOP_REASON_FINISHED);
+#endif
                 return MR_ENTRY(MR_do_runnext);
             }
         } else {
@@ -1096,9 +1199,17 @@ MR_do_join_and_continue(MR_SyncTerm *jnc_st, MR_Code *join_label)
                 ** away once we enable work-stealing. - pbone. 
                 */
                 if (jnc_ctxt == jnc_st->MR_st_orig_context) {
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
+                    MR_threadscope_post_stop_context(MR_TS_STOP_REASON_BLOCKED);
+#endif
                     MR_save_context(jnc_ctxt);
                     MR_ENGINE(MR_eng_this_context) = NULL;
+                } else {
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
+                    MR_threadscope_post_stop_context(MR_TS_STOP_REASON_FINISHED);
+#endif
                 }
+
                 /* Finally look for other work. */
                 MR_UNLOCK(&MR_sync_term_lock, "continue_2 ii");
                 return MR_ENTRY(MR_do_runnext);

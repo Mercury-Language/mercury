@@ -65,6 +65,7 @@ ENDINIT
 #include    "mercury_memory.h"          /* for MR_copy_string() */
 #include    "mercury_memory_handlers.h" /* for MR_default_handler */
 #include    "mercury_thread.h"          /* for MR_debug_threads */
+#include    "mercury_threadscope.h"
 
 #if defined(MR_HAVE__SNPRINTF) && ! defined(MR_HAVE_SNPRINTF)
   #define snprintf	_snprintf
@@ -529,12 +530,13 @@ mercury_runtime_init(int argc, char **argv)
 
 #if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
     /*
-    ** Setup support for reading the CPU's TSC.  This is currently used by
-    ** profiling of the parallelism runtime but may be used by other profiling
+    ** Setup support for reading the CPU's TSC and detect the clock speed of the
+    ** processor.  This is currently used by profiling of the parallelism
+    ** runtime and the threadscope support but may be used by other profiling
     ** or timing code.  On architectures other than i386 and amd64 this is a
     ** no-op.
     */
-    MR_configure_profiling_timers();
+    MR_do_cpu_feature_detection();
 #endif 
 
     /*
@@ -614,6 +616,18 @@ mercury_runtime_init(int argc, char **argv)
     MR_ticket_high_water = 1;
   #endif
 #else
+
+#if defined(MR_LL_PARALLEL_CONJ)
+    MR_pin_primordial_thread();
+  #if defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+    /*
+    ** We must setup threadscope before we setup the first engine.
+    ** Pin the primordial thread, if thread pinning is configured.
+    */
+    MR_setup_threadscope();
+  #endif
+#endif
+
     /*
     ** Start up the Mercury engine.  We don't yet know how many slots will be
     ** needed for thread-local mutable values so allocate the maximum number.
@@ -621,16 +635,26 @@ mercury_runtime_init(int argc, char **argv)
     MR_init_thread(MR_use_now);
     MR_SET_THREAD_LOCAL_MUTABLES(
         MR_create_thread_local_mutables(MR_MAX_THREAD_LOCAL_MUTABLES));
-
+ 
   #ifdef MR_LL_PARALLEL_CONJ
     {
         int i;
 
         MR_exit_now = MR_FALSE;
-        for (i = 1 ; i < MR_num_threads ; i++) {
+        
+        for (i = 1; i < MR_num_threads; i++) {
             MR_create_thread(NULL);
         }
-        MR_pin_thread();
+    #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
+    /*
+    ** TSC Synchronization is not used, support is commented out.  See
+    ** runtime/mercury_threadscope.h for an explanation.
+    **
+        for (i = 1; i < MR_num_threads; i++) {
+            MR_threadscope_sync_tsc_master();
+        }
+    */
+    #endif
         while (MR_num_idle_engines < MR_num_threads-1) {
             /* busy wait until the worker threads are ready */
             MR_ATOMIC_PAUSE;
@@ -2413,12 +2437,26 @@ mercury_runtime_main(void)
         MR_setup_callback(MR_program_entry_point);
 #endif
 
+#if defined(MR_LL_PARALLEL_CONJ) && \
+        defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+
+        MR_threadscope_post_calling_main();
+
+#endif
+
 #ifdef MR_HIGHLEVEL_CODE
         MR_do_interpreter();
 #else
         MR_debugmsg0("About to call engine\n");
         (void) MR_call_engine(MR_ENTRY(MR_do_interpreter), MR_FALSE);
         MR_debugmsg0("Returning from MR_call_engine()\n");
+#endif
+
+#if defined(MR_LL_PARALLEL_CONJ) && \
+        defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+
+        MR_threadscope_post_stop_context(MR_TS_STOP_REASON_FINISHED);
+
 #endif
 
 #ifdef  MR_DEEP_PROFILING
@@ -2928,7 +2966,19 @@ mercury_runtime_terminate(void)
     MR_exit_now = MR_TRUE;
     pthread_cond_broadcast(&MR_runqueue_cond);
     MR_UNLOCK(&MR_runqueue_lock, "exit_now");
+   
+    while (MR_num_exited_engines < MR_num_threads - 1) {
+        MR_ATOMIC_PAUSE;
+    }
 
+#if defined(MR_LL_PARALLEL_CONJ) && \
+        defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+    if (MR_ENGINE(MR_eng_ts_buffer)) {
+        MR_threadscope_finalize_engine(MR_thread_engine_base);
+    }
+    MR_finalize_threadscope();
+#endif
+    
     assert(MR_primordial_thread == pthread_self());
     MR_primordial_thread = (MercuryThread) 0;
     

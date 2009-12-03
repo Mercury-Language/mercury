@@ -1153,7 +1153,8 @@ mercury_check_for_functions \
         getpid setpgid fork execlp wait kill \
         grantpt unlockpt ptsname tcgetattr tcsetattr ioctl \
         access sleep opendir readdir closedir mkdir symlink readlink \
-        gettimeofday setenv putenv _putenv posix_spawn sched_setaffinity
+        gettimeofday setenv putenv _putenv posix_spawn sched_setaffinity \
+        sched_getcpu
 
 #-----------------------------------------------------------------------------#
 
@@ -1163,7 +1164,7 @@ MERCURY_CHECK_FOR_HEADERS( \
         sys/types.h sys/stat.h fcntl.h termios.h sys/ioctl.h \
         sys/stropts.h windows.h dirent.h getopt.h malloc.h \
         semaphore.h pthread.h time.h spawn.h fenv.h sys/mman.h sys/sem.h \
-        sched.h)
+        sched.h utmpx.h)
 
 if test "$MR_HAVE_GETOPT_H" = 1; then
     GETOPT_H_AVAILABLE=yes

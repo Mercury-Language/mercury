@@ -256,6 +256,9 @@ struct MR_SparkDeque_Struct {
 
 struct MR_Context_Struct {
     const char          *MR_ctxt_id;
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+    MR_Unsigned         MR_ctxt_num_id;
+#endif
     MR_ContextSize      MR_ctxt_size;
     MR_Context          *MR_ctxt_next;
     MR_Code             *MR_ctxt_resume;
@@ -352,16 +355,6 @@ extern MR_bool      MR_profile_parallel_execution;
 
 /* XXX: This is currently unused, we plan to use it in the future. -pbone */
 extern MR_Stats     MR_profile_parallel_executed_local_sparks;
-
-#define MR_IF_PROFILE_PARALLEL_EXECUTION_SUPPORT(statement)                 \
-    do {                                                                    \
-        statement;                                                          \
-    } while (0);
-
-#else
-
-#define MR_IF_PROFILE_PARALLEL_EXECUTION_SUPPORT(statement)
-
 #endif
 
 /*
@@ -434,6 +427,13 @@ extern  MR_PendingContext   *MR_pending_contexts;
   ** instructions, even when done from within a critical section.
   */
   extern volatile MR_Integer    MR_num_outstanding_contexts_and_all_sparks;
+
+  /*
+  ** The number of engines that have exited so far.  We can spin on this to
+  ** make sure that our engines have exited before finalizing some global
+  ** resources.
+  */
+  extern volatile MR_Unsigned   MR_num_exited_engines;
 #endif  /* !MR_LL_PARALLEL_CONJ */
 
 /*---------------------------------------------------------------------------*/
@@ -468,7 +468,11 @@ extern  void        MR_init_thread_stuff(void);
 /*
 ** MR_pin_thread() pins the current thread to the next available processor ID,
 ** if thread pinning is enabled.
+** MR_pin_primordial_thread() is a special case for the primordial thread.  It
+** should only be executed once, and only by the primordial thread _before_
+** the other threads are started.
 */
+extern  void        MR_pin_primordial_thread(void);
 extern  void        MR_pin_thread(void);
 
 /*
@@ -582,6 +586,13 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
   #define MR_IF_NOT_HIGHLEVEL_CODE(x)
 #endif
 
+#if defined(MR_LL_PARALLEL_CONJ) && \
+    defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+  #define MR_IF_LL_PAR_CONJ_AND_PROF_PAR_EXEC(x) x
+#else
+  #define MR_IF_LL_PAR_CONJ_AND_PROF_PAR_EXEC(x)
+#endif
+
 #define MR_load_context(cptr)                                                 \
     do {                                                                      \
         MR_Context  *load_context_c;                                          \
@@ -646,6 +657,9 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
             )                                                                 \
         )                                                                     \
         MR_set_min_heap_reclamation_point(load_context_c);                    \
+        MR_IF_LL_PAR_CONJ_AND_PROF_PAR_EXEC(                                  \
+            MR_threadscope_post_run_context();                                \
+        )                                                                     \
     } while (0)
 
 #define MR_save_context(cptr)                                                 \

@@ -1,3 +1,8 @@
+/*
+** Copyright (C) 2009 The University of Melbourne.
+** This file lacks an original copyright message, there are authors other than
+** the University of Melbourne.
+*/
 #include "private/pthread_support.h"
 
 #if defined(GC_PTHREADS) && !defined(GC_WIN32_THREADS) && \
@@ -119,7 +124,13 @@ void GC_suspend_handler_inner(ptr_t sig_arg, void *context);
 void GC_suspend_handler(int sig, siginfo_t *info, void *context)
 {
   int old_errno = errno;
+  if (GC_mercury_callback_pause_thread) {
+    GC_mercury_callback_pause_thread();
+  }
   GC_with_callee_saves_pushed(GC_suspend_handler_inner, (ptr_t)(word)sig);
+  if (GC_mercury_callback_resume_thread) {
+    GC_mercury_callback_resume_thread();
+  }
   errno = old_errno;
 }
 #else
@@ -128,7 +139,13 @@ void GC_suspend_handler(int sig, siginfo_t *info, void *context)
 void GC_suspend_handler(int sig, siginfo_t *info, void *context)
 {
   int old_errno = errno;
+  if (GC_mercury_callback_pause_thread) {
+    GC_mercury_callback_pause_thread();
+  }
   GC_suspend_handler_inner((ptr_t)(word)sig, context);
+  if (GC_mercury_callback_resume_thread) {
+    GC_mercury_callback_resume_thread();
+  }
   errno = old_errno;
 }
 #endif

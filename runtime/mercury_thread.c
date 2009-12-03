@@ -13,6 +13,7 @@
 #include "mercury_memory.h"
 #include "mercury_context.h"    /* for MR_do_runnext */
 #include "mercury_thread.h"
+#include "mercury_threadscope.h"
 
 #include <stdio.h>
 #include <errno.h>
@@ -89,6 +90,7 @@ MR_create_thread_2(void *goal0)
     if (goal != NULL) {
         MR_init_thread(MR_use_now);
         (goal->func)(goal->arg);
+        /* XXX: We should clean up the engine here */
     } else {
         MR_pin_thread();
         MR_init_thread(MR_use_later);
@@ -129,6 +131,17 @@ MR_init_thread(MR_when_to_use when_to_use)
 
 #ifdef  MR_THREAD_SAFE
     MR_ENGINE(MR_eng_owner_thread) = pthread_self();
+  #if defined(MR_LL_PARALLEL_CONJ) && \
+    defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+    /*
+    ** TSC Synchronization is not used, support is commented out.  See
+    ** runtime/mercury_threadscope.h for an explanation.
+    **
+    if (when_to_use == MR_use_later) {
+        MR_threadscope_sync_tsc_slave();
+    }
+    */
+  #endif
 #endif
 
     switch (when_to_use) {
@@ -137,6 +150,7 @@ MR_init_thread(MR_when_to_use when_to_use)
             MR_fatal_error("Sorry, not implemented: "
                 "--high-level-code and multiple engines");
 #else
+            /* This call may never return */
             (void) MR_call_engine(MR_ENTRY(MR_do_runnext), MR_FALSE);
 #endif
             MR_destroy_engine(eng);
@@ -152,6 +166,10 @@ MR_init_thread(MR_when_to_use when_to_use)
                 MR_ENGINE(MR_eng_this_context) =
                     MR_create_context("init_thread",
                         MR_CONTEXT_SIZE_REGULAR, NULL);
+#if defined(MR_LL_PARALLEL_CONJ) && \
+    defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+                MR_threadscope_post_create_context(MR_ENGINE(MR_eng_this_context));
+#endif
             }
             MR_load_context(MR_ENGINE(MR_eng_this_context));
             MR_save_registers();
@@ -189,7 +207,6 @@ MR_destroy_thread(void *eng0)
 {
     MercuryEngine *eng = eng0;
     MR_destroy_engine(eng);
-    pthread_exit(0);
 }
 
 #endif

@@ -20,16 +20,16 @@
 ** Include mercury_regs.h first so that we don't have any function prototypes
 ** before the global register declarations.
 */
-#include "mercury_regs.h"       /* for MR_NUM_REAL_REGS */
+#include "mercury_regs.h"           /* for MR_NUM_REAL_REGS */
 
 #include <setjmp.h>
 
-#include "mercury_std.h"        /* for `MR_bool' */
-#include "mercury_types.h"      /* for `MR_Code *' */
-#include "mercury_goto.h"       /* for `MR_define_entry()' */
-#include "mercury_thread.h"     /* for pthread types */
-#include "mercury_context.h"    /* for MR_Context, MR_IF_USE_TRAIL */
-#include "mercury_conf.h"       /* for MR_CONSERVATIVE_GC */
+#include "mercury_std.h"            /* for `MR_bool' */
+#include "mercury_types.h"          /* for `MR_Code *' */
+#include "mercury_goto.h"           /* for `MR_define_entry()' */
+#include "mercury_thread.h"         /* for pthread types */
+#include "mercury_context.h"        /* for MR_Context, MR_IF_USE_TRAIL */
+#include "mercury_conf.h"           /* for MR_CONSERVATIVE_GC */
 
 /*---------------------------------------------------------------------------*/
 
@@ -392,6 +392,16 @@ typedef struct MR_mercury_engine_struct {
 #ifdef  MR_THREAD_SAFE
     MercuryThread       MR_eng_owner_thread;
     MR_Unsigned         MR_eng_c_depth;
+  #if defined(MR_LL_PARALLEL_CONJ) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+    /*
+    ** For each profiling event add this offset to the time so that events on
+    ** different engines that occur at the same time have the same time in
+    ** clock ticks.
+    */
+    MR_int_least64_t                    MR_eng_cpu_clock_ticks_offset;
+    struct MR_threadscope_event_buffer  *MR_eng_ts_buffer;
+    MR_Unsigned                         MR_eng_id;
+  #endif
 #endif
     jmp_buf             *MR_eng_jmp_buf;
     MR_Word             *MR_eng_exception;

@@ -65,6 +65,13 @@ GC_bool         GC_mercury_calc_gc_time = 0;
 unsigned long 	GC_total_gc_time = 0;
 			   /* Measured in milliseconds.         */
 
+void (*GC_mercury_callback_start_collect)(void) = NULL;
+void (*GC_mercury_callback_stop_collect)(void) = NULL;
+void (*GC_mercury_callback_pause_thread)(void) = NULL;
+void (*GC_mercury_callback_resume_thread)(void) = NULL;
+                           /* Callbacks for mercury to notify   */
+                           /* the runtime of certain events     */
+
 #ifndef SMALL_CONFIG
   int GC_incremental = 0;  /* By default, stop the world.	*/
 #endif
@@ -310,7 +317,8 @@ void GC_maybe_gc(void)
  */
 GC_bool GC_try_to_collect_inner(GC_stop_func stop_func)
 {
-    CLOCK_TYPE start_time, current_time;
+    CLOCK_TYPE  start_time, current_time;
+    GC_bool     result = TRUE;
     if (GC_dont_gc) return FALSE;
     if (GC_incremental && GC_collection_in_progress()) {
       if (GC_print_stats) {
@@ -351,6 +359,9 @@ GC_bool GC_try_to_collect_inner(GC_stop_func stop_func)
         GC_save_callers(GC_last_stack);
 #   endif
     GC_is_full_gc = TRUE;
+    if (GC_mercury_callback_start_collect) {
+      GC_mercury_callback_start_collect();
+    }
     if (!GC_stopped_mark(stop_func)) {
       if (!GC_incremental) {
     	/* We're partially done and have no way to complete or use 	*/
@@ -360,14 +371,15 @@ GC_bool GC_try_to_collect_inner(GC_stop_func stop_func)
 	GC_unpromote_black_lists();
       } /* else we claim the world is already still consistent.  We'll 	*/
         /* finish incrementally.					*/
-      return(FALSE);
+      result = FALSE;
+    } else {
+      GC_finish_collection();
     }
-    GC_finish_collection();
     if (GC_print_stats || GC_mercury_calc_gc_time) {
 	unsigned long cur_gc_time;
         GET_TIME(current_time);
         cur_gc_time = MS_TIME_DIFF(current_time,start_time);
-        if (GC_print_stats) {
+        if (GC_print_stats && result) {
 	    GC_log_printf("Complete collection took %lu msecs\n",
                 cur_gc_time);
 	}
@@ -375,7 +387,10 @@ GC_bool GC_try_to_collect_inner(GC_stop_func stop_func)
             GC_total_gc_time += cur_gc_time;
 	}
     }
-    return(TRUE);
+    if (GC_mercury_callback_stop_collect) {
+      GC_mercury_callback_stop_collect();
+    }
+    return(result);
 }
 
 

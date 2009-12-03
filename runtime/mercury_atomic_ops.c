@@ -116,7 +116,7 @@ parse_freq_from_x86_brand_string(char *string);
 #endif /* __GNUC__ && (__i386__ || __x86_64__) */
 
 extern void 
-MR_configure_profiling_timers(void) {
+MR_do_cpu_feature_detection(void) {
 #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
     MR_Unsigned     a, b, c, d;
     MR_Unsigned     eflags, old_eflags;
@@ -431,6 +431,23 @@ MR_profiling_stop_timer(MR_Timer *timer, MR_Stats *stats) {
 #elif /* not __GNUC__ && (__i386__ || __x86_64__) */
     /* No TSC support on this architecture or with this C compiler */
     MR_atomic_inc_int(&(stats->MR_stat_count_recorded));
+#endif /* not __GNUC__ && (__i386__ || __x86_64__) */
+}
+
+MR_uint_least64_t
+MR_read_cpu_tsc(void)
+{
+#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+    MR_uint_least64_t   tsc;
+
+    if (MR_rdtsc_is_available == MR_TRUE) {
+        MR_rdtsc(&tsc);
+    } else {
+        tsc = 0;
+    }
+    return tsc;
+#elif /* not __GNUC__ && (__i386__ || __x86_64__) */
+    return 0;
 #endif /* not __GNUC__ && (__i386__ || __x86_64__) */
 }
 

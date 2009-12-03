@@ -50,8 +50,8 @@ MR_compare_and_swap_word(volatile MR_Integer *addr, MR_Integer old,
             char result;                                                    \
                                                                             \
             __asm__ __volatile__(                                           \
-                "lock; cmpxchgq %3, %0; setz %1"                            \
-                : "=m"(*addr), "=q"(result)                                 \
+                "lock; cmpxchgq %4, %0; setz %1"                            \
+                : "=m"(*addr), "=q"(result), "=a"(old)                      \
                 : "m"(*addr), "r" (new_val), "a"(old)                       \
             );                                                              \
             return (int) result;                                            \
@@ -65,8 +65,8 @@ MR_compare_and_swap_word(volatile MR_Integer *addr, MR_Integer old,
             char result;                                                    \
                                                                             \
             __asm__ __volatile__(                                           \
-                "lock; cmpxchgl %3, %0; setz %1"                            \
-                : "=m"(*addr), "=q"(result)                                 \
+                "lock; cmpxchgl %4, %0; setz %1"                            \
+                : "=m"(*addr), "=q"(result), "=a"(old)                      \
                 : "m"(*addr), "r" (new_val), "a"(old)                       \
                 );                                                          \
             return (int) result;                                            \
@@ -307,6 +307,115 @@ MR_atomic_sub_int(volatile MR_Integer *addr, MR_Integer x);
 
 #endif
 
+/*
+** Memory fence operations.
+*/
+#if defined(__GNUC__) && ( defined(__i386__) || defined(__x86_64__) )
+    /*
+    ** Guarantees that any stores executed before this fence are globally
+    ** visible before those after this fence.
+    */
+    #define MR_CPU_SFENCE                                                   \
+        do {                                                                \
+            __asm__ __volatile__("sfence");                                 \
+        } while(0)
+
+    /*
+    ** Guarantees that any loads executed before this fence are complete before
+    ** any loads after this fence.
+    */
+    #define MR_CPU_LFENCE                                                   \
+        do {                                                                \
+            __asm__ __volatile__("lfence");                                 \
+        } while(0)
+
+    /*
+    ** A combination of the above.
+    */
+    #define MR_CPU_MFENCE                                                   \
+        do {                                                                \
+            __asm__ __volatile__("mfence");                                 \
+        } while(0)
+
+#elif __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
+
+    /*
+    ** Our memory fences are better than GCC's.  GCC only implements a full
+    ** fence.
+    */
+    #define MR_CPU_MFENCE                                                   \
+        do {                                                                \
+            __sync_synchronize();                                           \
+        } while(0)
+    #define MR_CPU_SFENCE MR_CPU_MFENCE
+    #define MR_CPU_LFENCE MR_CPU_MFENCE
+
+#else
+
+    #pragma error "Please implement memory fence operations for this " \
+        "compiler/architecture"
+
+#endif
+
+/*
+** Roll our own cheap user-space mutual exclusion locks.  Blocking without
+** spinning is not supported.  Storage for these locks should be volatile.
+**
+** I expect these to be faster than pthread mutexes when threads are pinned and
+** critical sections are short.
+*/
+typedef MR_Unsigned MR_Us_Lock;
+
+#define MR_US_LOCK_INITIAL_VALUE (0)
+
+#define MR_US_TRY_LOCK(x)                                                   \
+    MR_compare_and_swap_word(x, 0, 1)
+
+#define MR_US_SPIN_LOCK(x)                                                  \
+    do {                                                                    \
+        while (!MR_compare_and_swap_word(x, 0, 1)) {                        \
+            MR_ATOMIC_PAUSE;                                                \
+        }                                                                   \
+    } while (0)
+
+#define MR_US_UNLOCK(x)                                                     \
+    do {                                                                    \
+        MR_CPU_MFENCE;                                                      \
+        *x = 0;                                                             \
+    } while (0)
+
+/*
+** Similar support for condition variables.  Again, make sure that storage for
+** these is declared as volatile.
+**
+** XXX: These are not atomic, A waiting thread will not see a change until
+** sometime after the signaling thread has signaled the condition.  The same
+** race can occur when clearing a condition.  Order of memory operations is not
+** guaranteed either.
+*/
+typedef MR_Unsigned MR_Us_Cond;
+
+#define MR_US_COND_CLEAR(x)                                                 \
+    do {                                                                    \
+        MR_CPU_MFENCE;                                                      \
+        *x = 0;                                                             \
+    } while (0)
+
+#define MR_US_COND_SET(x)                                                   \
+    do {                                                                    \
+        MR_CPU_MFENCE;                                                      \
+        *x = 1;                                                             \
+        MR_CPU_MFENCE;                                                      \
+    } while (0)
+
+#define MR_US_SPIN_COND(x)                                                  \
+    do {                                                                    \
+        while (!(*x)) {                                                     \
+            MR_ATOMIC_PAUSE;                                                \
+        }                                                                   \
+        MR_CPU_MFENCE;                                                      \
+    } while (0)
+
 #endif /* MR_LL_PARALLEL_CONJ */
 
 /*
@@ -346,16 +455,20 @@ typedef struct {
 /*
 ** The number of CPU clock cycles per second, ie a 1GHz CPU will have a value
 ** of 10^9, zero if unknown.
+** This value is only available after MR_do_cpu_feature_detection() has been
+** called.
 */
 extern MR_uint_least64_t MR_cpu_cycles_per_sec;
 
 /*
-** Configure the profiling stats code.  On i386 and x86_64 machines this uses
-** CPUID to determine if the RDTSCP instruction is available and not prohibited
-** by the OS.
+** Do CPU feature detection, this is necessary for profiling parallel code
+** execution and the threadscope code.
+** On i386 and x86_64 machines this uses CPUID to determine if the RDTSCP
+** instruction is available and not prohibited by the OS.
+** This function is idempotent.
 */
 extern void
-MR_configure_profiling_timers(void);
+MR_do_cpu_feature_detection(void);
 
 /*
 ** Start and initialize a timer structure.
@@ -368,6 +481,13 @@ MR_profiling_start_timer(MR_Timer *timer);
 */
 extern void
 MR_profiling_stop_timer(MR_Timer *timer, MR_Stats *stats);
+
+/*
+** Read the CPU's TSC.  This is currently only implemented for i386 and x86-64
+** systems.  It returns 0 when support is not available.
+*/
+extern MR_uint_least64_t
+MR_read_cpu_tsc(void);
 
 #endif /* MR_THREAD_SAFE && MR_PROFILE_PARALLEL_EXECUTION_SUPPORT */
 
