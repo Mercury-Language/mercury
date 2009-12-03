@@ -7038,7 +7038,7 @@ assigned the output value when the function returns.
 If the Mercury procedure is semi-deterministic then the Java function
 returns a @samp{boolean}.  A @samp{true} return value denotes success
 and @samp{false} denotes failure.  Output arguments are handled in the
-same way as multiple outputs deterministic procedures, using the
+same way as multiple outputs for deterministic procedures, using the
 @samp{Ref} class.  On failure the values of the @samp{val} fields are
 undefined.
 
