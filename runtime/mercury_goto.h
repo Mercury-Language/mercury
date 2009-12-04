@@ -363,7 +363,7 @@
 	    : "0"(MR_succip_word)			\
 	    )
   #else
-    #define MR_FORCE_SUCCIP_STORE   (void)
+    #define MR_FORCE_SUCCIP_STORE   ((void) 0)
   #endif
 
   /*
