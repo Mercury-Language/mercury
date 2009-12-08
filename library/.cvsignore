@@ -21,6 +21,7 @@
 *.ilk
 *.pdb
 *__cpp_code.cpp
+*__csharp_code.cs
 *.dll
 *.*_date
 mercury.*.h
