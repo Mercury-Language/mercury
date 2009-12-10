@@ -217,21 +217,6 @@ a new local variable, which we will call @samp{Value1}:
 
 @example
 lookup(Map, Key, Value) :-
-        (if some [Value1]
-                map.search(Map, Key, Value1)
-        then
-                Value = Value1
-        else 
-                Value = -1
-        ).
-@end example
-
-@noindent
-The explicit existential quantifier is optional; if you
-prefer a slightly more succinct style you can write this as
-
-@example
-lookup(Map, Key, Value) :-
         ( map.search(Map, Key, Value1) ->
                 Value = Value1
         ;

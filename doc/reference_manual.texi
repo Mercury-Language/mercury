@@ -722,6 +722,28 @@ fails, it executes the @var{ElseGoal}.  Note that @var{CondGoal} can be
 nondeterministic --- unlike Prolog, Mercury's if-then-else does not commit
 to the first solution of the condition if the condition succeeds.
 
+If @var{CondGoal} is an explicit existential quantification, 
+@code{some @var{Vars} @var{QuantifiedCondGoal}}, then the variables
+@var{Vars} are existentially quantified over the conjunction of the goals
+@var{QuantifiedCondGoal} and @var{ThenGoal}.
+Explicit existential quantifications that occur as subgoals of @var{CondGoal}
+do @emph{not} affect the scope of variables in the ``then'' part.
+For example, in
+@example
+   ( if some [V] @var{C} then @var{T} else @var{E} )
+@end example
+@noindent
+the variable @var{V} is quantified over the conjunction of the goals
+@var{C} and @var{T} because the top-level goal of the condition is
+an explicit existential quantification, but in 
+@example
+   ( if true, some [V] @var{C} then @var{T} else @var{E} )
+@end example
+@noindent
+the variable @var{V} is only quantified over @var{C}
+because the top-level goal of the condition is not an explicit
+existential quantification.
+
 @item @code{@var{Term1} = @var{Term2}}
 A unification.
 @var{Term1} and @var{Term2} must be valid data-terms.
