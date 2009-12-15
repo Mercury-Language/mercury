@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2007 The University of Melbourne.
+** Copyright (C) 2007, 2009 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -71,8 +71,8 @@ extern  void    MR_wsdeque_putback_bottom(MR_SparkDeque *dq,
 ** Pop a spark off the bottom of the deque.  Must only be called by
 ** the owner of the deque.  Returns true if successful.
 */
-MR_INLINE
-MR_bool         MR_wsdeque_pop_bottom(MR_SparkDeque *dq, MR_Spark *ret_spark);
+MR_INLINE MR_bool
+MR_wsdeque_pop_bottom(MR_SparkDeque *dq, MR_Code **ret_spark_resume);
 
 /*
 ** Attempt to steal a spark from the top of the deque.
@@ -122,7 +122,7 @@ MR_wsdeque_push_bottom(MR_SparkDeque *dq, const MR_Spark *spark)
 }
 
 MR_INLINE MR_bool
-MR_wsdeque_pop_bottom(MR_SparkDeque *dq, MR_Spark *ret_spark)
+MR_wsdeque_pop_bottom(MR_SparkDeque *dq, MR_Code **ret_spark_resume)
 {
     MR_Integer              bot;
     MR_Integer              top;
@@ -143,7 +143,7 @@ MR_wsdeque_pop_bottom(MR_SparkDeque *dq, MR_Spark *ret_spark)
         return MR_FALSE;
     }
 
-    *ret_spark = MR_sa_element(arr, bot);
+    (*ret_spark_resume) = MR_sa_element(arr, bot).MR_spark_resume;
     if (size > 0) {
         return MR_TRUE;
     }

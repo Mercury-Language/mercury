@@ -202,22 +202,6 @@
 **                  (Accessed via MR_eng_this_context.)
 */
 
-/*
-** A spark contains just enough information to begin execution of a parallel
-** conjunct.  Sparks exist on a context's local spark deque or in the global
-** spark queue.  In the former case, a spark will eventually be executed in the
-** same context (same detstack, etc.) as the code that generated the spark. In
-** the latter case the spark can be picked up and executed by any idle engine
-** in a different context.
-**
-** In the current implementation a spark is put on the global spark queue if,
-** at the time a fork instruction is reached, we think the spark has a chance
-** of being picked up for execution by an idle engine.  Otherwise the spark
-** goes on the context's spark stack. At the moment this is an irrevocable
-** decision. A future possibility is to allow idle engines to steal work
-** from the cold end of some context's spark deque.
-*/
-
 typedef struct MR_Context_Struct        MR_Context;
 
 typedef enum {
@@ -237,13 +221,21 @@ struct MR_SavedOwner_Struct {
 
 
 #ifdef MR_LL_PARALLEL_CONJ
+typedef struct MR_SyncTerm_Struct       MR_SyncTerm;
 typedef struct MR_Spark_Struct          MR_Spark;
 typedef struct MR_SparkDeque_Struct     MR_SparkDeque;
 typedef struct MR_SparkArray_Struct     MR_SparkArray;
 
+/*
+** A spark contains just enough information to begin execution of a parallel
+** conjunct.  A spark will either be executed in the same context (same
+** detstack, etc.) as the code that generated the spark, or it may be stolen
+** from its deque and executed by any idle engine in a different context.
+*/
+
 struct MR_Spark_Struct {
+    MR_SyncTerm             *MR_spark_sync_term;
     MR_Code                 *MR_spark_resume;
-    MR_Word                 *MR_spark_parent_sp;
     MR_ThreadLocalMuts      *MR_spark_thread_local_mutables;
 };
 
@@ -261,7 +253,14 @@ struct MR_Context_Struct {
 #endif
     MR_ContextSize      MR_ctxt_size;
     MR_Context          *MR_ctxt_next;
+#ifdef  MR_LL_PARALLEL_CONJ
+    /*
+    ** The value of this field is used for synchronization.
+    */
+    MR_Code * volatile  MR_ctxt_resume;
+#else
     MR_Code             *MR_ctxt_resume;
+#endif
 #ifdef  MR_THREAD_SAFE
     MercuryThread       MR_ctxt_resume_owner_thread;
     MR_Unsigned         MR_ctxt_resume_c_depth;
@@ -332,10 +331,6 @@ struct MR_Context_Struct {
 
 /*
 ** The runqueue is a linked list of contexts that are runnable.
-** The spark_queue is an array of sparks that are runnable.
-** We keep them separate to prioritise contexts (which are mainly
-** computations which have already started) over sparks (which are
-** computations which have not begun).
 */
 
 extern      MR_Context  *MR_runqueue_head;
@@ -345,8 +340,6 @@ extern      MR_Context  *MR_runqueue_tail;
   extern    MercuryCond MR_runqueue_cond;
 #endif
 #ifdef  MR_LL_PARALLEL_CONJ
-  extern    MR_SparkDeque   MR_spark_queue;
-  extern    MercuryLock     MR_sync_term_lock;
   extern    MR_bool         MR_thread_pinning;
 #endif
 
@@ -400,7 +393,7 @@ extern  MR_PendingContext   *MR_pending_contexts;
   ** XXX We may need to use atomic instructions or memory fences on some
   ** architectures.
   */
-  extern volatile int   MR_num_idle_engines;
+  extern volatile MR_Integer MR_num_idle_engines;
 
   /*
   ** The number of contexts that are not in the free list (i.e. are executing
@@ -489,16 +482,14 @@ extern  void        MR_finalize_thread_stuff(void);
 extern  void        MR_flounder(void);
 
 /*
+** Relinquish the processor voluntarily without blocking.
+*/
+extern  void        MR_sched_yield(void);
+
+/*
 ** Append the given context onto the end of the run queue.
 */
 extern  void        MR_schedule_context(MR_Context *ctxt);
-
-#ifdef MR_LL_PARALLEL_CONJ
-  /*
-  ** Append the given spark onto the end of the spark queue.
-  */
-  extern    void    MR_schedule_spark_globally(const MR_Spark *spark);
-#endif /* !MR_LL_PARALLEL_CONJ */
 
 #ifndef MR_HIGHLEVEL_CODE
   MR_declare_entry(MR_do_runnext);
@@ -733,7 +724,7 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
         /* it wouldn't be appropriate to copy the resume field */             \
         to_cptr->MR_ctxt_thread_local_mutables =                              \
             from_cptr->MR_ctxt_thread_local_mutables;                         \
-        /* it wouldn't be appropriate to copy the spark_queue field */        \
+        /* it wouldn't be appropriate to copy the spark_deque field */        \
         /* it wouldn't be appropriate to copy the saved_owners field */       \
     } while (0)
 
@@ -744,19 +735,14 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
   /*
   ** If you change MR_SyncTerm_Struct you need to update configure.in.
   **
-  ** MR_st_count is `int' so that on a 64-bit machine the total size of the
-  ** sync term is two words, not three words (assuming `int' is 32 bits).
-  **
-  ** XXX we should remove that assumption but it's a little tricky because
-  ** configure needs to understand the types as well
+  ** MR_st_count is manipulated via atomic operations, therefore it is declared
+  ** as volatile and an MR_Integer.
   */
-
-  typedef struct MR_SyncTerm_Struct MR_SyncTerm;
 
   struct MR_SyncTerm_Struct {
     MR_Context      *MR_st_orig_context;
-    volatile int    MR_st_count;
-    volatile int    MR_st_is_shared;
+    MR_Word             *MR_st_parent_sp;
+    volatile MR_Integer MR_st_count;
   };
 
   #define MR_init_sync_term(sync_term, nbranches)                             \
@@ -764,42 +750,30 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
         MR_SyncTerm *init_st = (MR_SyncTerm *) &(sync_term);                  \
                                                                               \
         init_st->MR_st_orig_context = MR_ENGINE(MR_eng_this_context);         \
+        init_st->MR_st_parent_sp = MR_parent_sp;                              \
         init_st->MR_st_count = (nbranches);                                   \
-        init_st->MR_st_is_shared = MR_FALSE;                                  \
     } while (0)
 
   /*
   ** fork_new_child(MR_SyncTerm st, MR_Code *child):
   **
   ** Create a new spark to execute the code at `child'.  The new spark is put
-  ** on the global spark queue or the context-local spark deque.  The current
-  ** context resumes at `parent'.  MR_parent_sp must already be set
-  ** appropriately before this instruction is executed.
-  **
-  ** If the spark ends up on the global spark queue then we set
-  ** `MR_st_is_shared' to true as branches of this parallel conjunction could
-  ** be executed in parallel.
+  ** on the context's spark queue.  The current context resumes at `parent'.
+  ** MR_parent_sp must already be set appropriately before this instruction
+  ** is executed.
   */
   #define MR_fork_new_child(sync_term, child)                                 \
     do {                                                                      \
         MR_Spark fnc_spark;                                                   \
+        MR_SparkDeque   *fnc_deque;                                           \
                                                                               \
+        fnc_spark.MR_spark_sync_term = (MR_SyncTerm*) &(sync_term);           \
         fnc_spark.MR_spark_resume = (child);                                  \
-        fnc_spark.MR_spark_parent_sp = MR_parent_sp;                          \
         fnc_spark.MR_spark_thread_local_mutables = MR_THREAD_LOCAL_MUTABLES;  \
-        if (MR_fork_globally_criteria) {                                      \
-            MR_SyncTerm *fnc_st = (MR_SyncTerm *) &(sync_term);               \
-            fnc_st->MR_st_is_shared = MR_TRUE;                                \
-            MR_schedule_spark_globally(&fnc_spark);                           \
-        } else {                                                              \
-            MR_schedule_spark_locally(&fnc_spark);                            \
-        }                                                                     \
+        fnc_deque = &MR_ENGINE(MR_eng_this_context)->MR_ctxt_spark_deque;     \
+        MR_atomic_inc_int(&MR_num_outstanding_contexts_and_all_sparks);       \
+        MR_wsdeque_push_bottom(fnc_deque, &fnc_spark);                        \
     } while (0)
-
-  #define MR_fork_globally_criteria                                           \
-    (MR_num_idle_engines != 0 &&                                              \
-     MR_num_outstanding_contexts_and_global_sparks <                          \
-            MR_max_outstanding_contexts)
 
   /*
   ** These macros may be used as conditions for runtime parallelism decisions.
@@ -811,19 +785,6 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
 
   #define MR_par_cond_contexts_and_all_sparks_vs_num_cpus(target_cpus)        \
       (MR_num_outstanding_contexts_and_all_sparks < target_cpus)
-
-  #define MR_schedule_spark_locally(spark)                                    \
-    do {                                                                      \
-        MR_Context  *ssl_ctxt;                                                \
-                                                                              \
-        /*                                                                    \
-        ** Only the engine running the context is allowed to access           \
-        ** the context's spark stack, so no locking is required here.         \
-        */                                                                    \
-        ssl_ctxt = MR_ENGINE(MR_eng_this_context);                            \
-        MR_wsdeque_push_bottom(&ssl_ctxt->MR_ctxt_spark_deque, (spark));      \
-        MR_atomic_inc_int(&MR_num_outstanding_contexts_and_all_sparks);       \
-    } while (0)
 
 extern MR_Code* 
 MR_do_join_and_continue(MR_SyncTerm *sync_term, MR_Code *join_label);

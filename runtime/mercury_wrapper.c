@@ -200,6 +200,17 @@ size_t      MR_pcache_size = 8192;
 MR_Unsigned MR_max_contexts_per_thread = 2;
 MR_Unsigned MR_max_outstanding_contexts;
 
+#ifdef MR_LL_PARALLEL_CONJ
+/*
+** In grades that support parallel conjunctions, an idle engine can steal
+** parallel work from Mercury contexts. The following variables control the
+** maximum number of contexts that an idle engine will try to steal from
+** before resting, and how long to rest before attempting another steal.
+*/
+MR_Unsigned MR_worksteal_max_attempts = 24;
+MR_Unsigned MR_worksteal_sleep_msecs = 2;
+#endif
+
 /* file names for mdb's debugger I/O streams */
 const char  *MR_mdb_in_filename = NULL;
 const char  *MR_mdb_out_filename = NULL;
@@ -1240,6 +1251,8 @@ enum MR_long_option {
     MR_GEN_NONDETSTACK_REDZONE_SIZE,
     MR_GEN_NONDETSTACK_REDZONE_SIZE_KWORDS,
     MR_MAX_CONTEXTS_PER_THREAD,
+    MR_WORKSTEAL_MAX_ATTEMPTS,
+    MR_WORKSTEAL_SLEEP_MSECS,
     MR_THREAD_PINNING,
     MR_PROFILE_PARALLEL_EXECUTION,
     MR_MDB_TTY,
@@ -1340,6 +1353,8 @@ struct MR_option MR_long_opts[] = {
     { "gen-nondetstack-zone-size-kwords",
         1, 0, MR_GEN_NONDETSTACK_REDZONE_SIZE_KWORDS },
     { "max-contexts-per-thread",        1, 0, MR_MAX_CONTEXTS_PER_THREAD },
+    { "worksteal-max-attempts",         1, 0, MR_WORKSTEAL_MAX_ATTEMPTS },
+    { "worksteal-max-attempts",         1, 0, MR_WORKSTEAL_SLEEP_MSECS },
     { "thread-pinning",                 0, 0, MR_THREAD_PINNING },
     { "profile-parallel-execution",     0, 0, MR_PROFILE_PARALLEL_EXECUTION },
     { "mdb-tty",                        1, 0, MR_MDB_TTY },
@@ -1754,6 +1769,22 @@ MR_process_options(int argc, char **argv)
                 }
 
                 MR_max_contexts_per_thread = size;
+                break;
+
+            case MR_WORKSTEAL_MAX_ATTEMPTS:
+#ifdef MR_LL_PARALLEL_CONJ
+                if (sscanf(MR_optarg, "%lu", &MR_worksteal_max_attempts) != 1) {
+                    MR_usage();
+                }
+#endif
+                break;
+
+            case MR_WORKSTEAL_SLEEP_MSECS:
+#ifdef MR_LL_PARALLEL_CONJ
+                if (sscanf(MR_optarg, "%lu", &MR_worksteal_sleep_msecs) != 1) {
+                    MR_usage();
+                }
+#endif
                 break;
 
             case MR_THREAD_PINNING:
@@ -2826,9 +2857,6 @@ MR_define_label(global_fail);
 
 MR_define_label(all_done);
     assert(MR_runqueue_head == NULL);
-#ifdef MR_LL_PARALLEL_CONJ
-    assert(MR_wsdeque_is_empty(&MR_spark_queue));
-#endif
 
 #ifdef  MR_MPROF_PROFILE_TIME
     if (MR_profiling) {

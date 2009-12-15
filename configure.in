@@ -1154,7 +1154,7 @@ mercury_check_for_functions \
         grantpt unlockpt ptsname tcgetattr tcsetattr ioctl \
         access sleep opendir readdir closedir mkdir symlink readlink \
         gettimeofday setenv putenv _putenv posix_spawn sched_setaffinity \
-        sched_getcpu
+        sched_getcpu sched_yield
 
 #-----------------------------------------------------------------------------#
 
@@ -1935,8 +1935,8 @@ AC_CACHE_VAL(mercury_cv_sync_term_size,
     int main() {
         struct {
             void        *orig_context;
-            int     count;
-            int         is_shared;
+            void                    *parent_sp;
+            $mercury_cv_word_type   count;
         } x;
         FILE *fp;
 

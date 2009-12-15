@@ -68,6 +68,15 @@ MR_OUTLINE_DEFN(
     }
 )
 
+MR_OUTLINE_DEFN(
+    MR_bool
+    MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr)
+,
+    {
+        MR_ATOMIC_DEC_INT_AND_IS_ZERO_BODY;
+    }
+)
+
 #endif /* MR_LL_PARALLEL_CONJ */
 
 /*---------------------------------------------------------------------------*/

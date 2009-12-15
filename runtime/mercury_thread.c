@@ -30,7 +30,7 @@
   MercuryLock       MR_global_lock;
 #endif
 
-MR_bool             MR_exit_now;
+volatile MR_bool    MR_exit_now;
 MR_bool             MR_debug_threads = MR_FALSE;
 
 MR_Unsigned         MR_num_thread_local_mutables = 0;
@@ -212,6 +212,10 @@ MR_destroy_thread(void *eng0)
 #endif
 
 #if defined(MR_THREAD_SAFE)
+/*
+** XXX: maybe shese should only be conditionally compiled when MR_DEBUG_THREADS
+** is also set. - pbone 
+*/
 
 int
 MR_mutex_lock(MercuryLock *lock, const char *from)
@@ -270,6 +274,19 @@ MR_cond_wait(MercuryCond *cond, MercuryLock *lock, const char *from)
         (long) pthread_self(), cond, lock, from);
     err = pthread_cond_wait(cond, lock);
     assert(err == 0);
+    return err;
+}
+
+int
+MR_cond_timed_wait(MercuryCond *cond, MercuryLock *lock, 
+    const struct timespec *abstime, const char *from)
+{
+    int err;
+    
+    fprintf(stderr, "%ld timed-waiting on cond: %p lock: %p (%s)\n",
+        (long)pthread_self(), cond, lock, from);
+    err = pthread_cond_timedwait(cond, lock, abstime);
+    fprintf(stderr, "%ld timed-wait returned %d\n", err);
     return err;
 }
 

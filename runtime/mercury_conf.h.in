@@ -272,6 +272,7 @@
 **	MR_HAVE_FESETROUND	we have the fesetround() function.
 **	MR_HAVE_SCHED_SETAFFINITY we have the sched_setaffinity() function.
 **	MR_HAVE_SCHED_GETCPU	we have the sched_getcpu() function (glibc specific).
+**	MR_HAVE_SCHED_YIELD	we have the sched_yield() function.
 */
 #undef	MR_HAVE_GETPID
 #undef	MR_HAVE_SETPGID
@@ -335,6 +336,7 @@
 #undef	MR_HAVE_FESETROUND
 #undef	MR_HAVE_SCHED_SETAFFINITY
 #undef	MR_HAVE_SCHED_GETCPU
+#undef	MR_HAVE_SCHED_YIELD
 
 /*
 ** We use mprotect() and signals to catch stack and heap overflows.

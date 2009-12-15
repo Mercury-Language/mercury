@@ -41,6 +41,9 @@ extern int
 MR_cond_broadcast(MercuryCond *cond, const char *from);
 extern int
 MR_cond_wait(MercuryCond *cond, MercuryLock *lock, const char *from);
+int
+MR_cond_timed_wait(MercuryCond *cond, MercuryLock *lock, 
+    const struct timespec *abstime, const char *from);
 
   extern MR_bool    MR_debug_threads;
 
@@ -56,6 +59,8 @@ MR_cond_wait(MercuryCond *cond, MercuryLock *lock, const char *from);
     #define MR_SIGNAL(cnd, from)    pthread_cond_signal((cnd))
     #define MR_BROADCAST(cnd, from) pthread_cond_broadcast((cnd))
     #define MR_WAIT(cnd, mtx, from) pthread_cond_wait((cnd), (mtx))
+    #define MR_TIMED_WAIT(cond, mtx, abstime, from)                         \
+        pthread_cond_timedwait((cond), (mtx), (abstime))
   #else
     #define MR_LOCK(lck, from)                          \
                 ( MR_debug_threads ?                    \
@@ -88,6 +93,12 @@ MR_cond_wait(MercuryCond *cond, MercuryLock *lock, const char *from);
                 :                                       \
                     pthread_cond_wait((cnd), (mtx))     \
                 )
+    #define MR_TIMED_WAIT(cond, mtx, abstime, from)                         \
+        ( MR_debug_threads ?                                                \
+            MR_cond_timed_wait((cond), (mtx), (abstime), (from))            \
+        :                                                                   \
+            pthread_cond_timedwait((cond), (mtx), (abstime))                \
+        )
   #endif
 
     /*
@@ -127,7 +138,7 @@ MR_cond_wait(MercuryCond *cond, MercuryLock *lock, const char *from);
 
   extern MercuryThread      *MR_create_thread(MR_ThreadGoal *);
   extern void               MR_destroy_thread(void *eng);
-  extern MR_bool            MR_exit_now;
+  extern volatile MR_bool   MR_exit_now;
 
   /*
   ** The primordial thread. Currently used for debugging.

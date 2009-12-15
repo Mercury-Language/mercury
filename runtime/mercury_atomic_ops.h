@@ -269,6 +269,61 @@ MR_atomic_sub_int(volatile MR_Integer *addr, MR_Integer x);
 #endif
 
 /*
+ * Decrement the integer at the pointed to address and set is_zero if it is
+ * zero after the decrement.  While fetching the value is more powerful on
+ * x86(_64) it requires a compare and exchange loop.
+ */
+MR_EXTERN_INLINE MR_bool 
+MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
+
+/*
+ * Note that on x86(_64) we have to use the sub instruction rather than the
+ * dec instruction because we need it to set the CPU flags.
+ */
+#if defined(__GNUC__) && defined(__x86_64__)
+
+    #define MR_ATOMIC_DEC_INT_AND_IS_ZERO_BODY                              \
+        do {                                                                \
+            char is_zero;                                                   \
+            __asm__(                                                        \
+                "lock; subq $1, %0; setz %1"                                \
+                : "=m"(*addr), "=q"(is_zero)                                \
+                : "m"(*addr)                                                \
+                );                                                          \
+            return (MR_bool)is_zero;                                        \
+        } while (0)
+
+#elif defined(__GNUC__) && defined(__i386__)
+    
+    #define MR_ATOMIC_DEC_INT_AND_IS_ZERO_BODY                              \
+        do {                                                                \
+            char is_zero;                                                   \
+            __asm__(                                                        \
+                "lock: subl $1, %0; setz %1"                                \
+                : "=m"(*addr), "=q"(is_zero)                                \
+                : "m"(*addr)                                                \
+                );                                                          \
+            return (MR_bool)is_zero;                                        \
+        } while (0)
+
+#elif __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
+
+    #define MR_ATOMIC_DEC_INT_AND_IS_ZERO_BODY                              \
+        do {                                                                \
+            is_zero = __sync_sub_and_fetch(addr, 1) == 0;                   \
+        } while (0)
+
+#endif
+
+#ifdef MR_ATOMIC_DEC_INT_AND_IS_ZERO_BODY
+    MR_EXTERN_INLINE MR_bool 
+    MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr)
+    {
+        MR_ATOMIC_DEC_INT_AND_IS_ZERO_BODY;
+    }
+#endif
+
+/*
  * Intel and AMD support a pause instruction that is roughly equivalent
  * to a no-op.  Intel recommend that it is used in spin-loops to improve
  * performance.  Without a pause instruction multiple simultaneous
