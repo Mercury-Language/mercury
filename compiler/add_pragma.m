@@ -2758,8 +2758,8 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
             % even in the presence of errors above, because if didn't do so,
             % later compiler passes would report errors at the sites where
             % these predicates are called.
-            % We only do it if C is supported as a foreign language, otherwise
-            % we get warnings that these predicates are missing clauses.
+            % XXX Currently, we only create the statistics predicates in C
+            % grades; references to them in non-C grades will cause errors.
             module_info_get_globals(!.ModuleInfo, Globals),
             get_backend_foreign_languages(Globals, ForeignLanguages),
             ( list.member(lang_c, ForeignLanguages) ->
@@ -2770,17 +2770,17 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
                         !Status, !ModuleInfo, !QualInfo, !Specs)
                 ;
                     Statistics = table_dont_gather_statistics
-                ),
-                (
-                    AllowReset = table_allow_reset,
-                    create_tabling_reset_pred(ProcId, Context,
-                        SimpleCallId, SingleProc, !ProcTable,
-                        !Status, !ModuleInfo, !QualInfo, !Specs)
-                ;
-                    AllowReset = table_dont_allow_reset
                 )
             ;
                 true
+            ),
+            (
+                AllowReset = table_allow_reset,
+                create_tabling_reset_pred(ProcId, Context,
+                    SimpleCallId, SingleProc, !ProcTable,
+                    !Status, !ModuleInfo, !QualInfo, !Specs)
+            ;
+                AllowReset = table_dont_allow_reset
             )
         )
     ).
@@ -2882,7 +2882,25 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
         !ModuleInfo, !Specs),
 
     some [!Attrs, !VarSet] (
-        !:Attrs = default_attributes(lang_c),
+        module_info_get_globals(!.ModuleInfo, Globals),
+        get_target(Globals, TargetLang),
+        (
+            ( TargetLang = target_c
+            ; TargetLang = target_asm
+            ; TargetLang = target_x86_64
+            ),
+            ForeignLang = lang_c
+        ;
+            TargetLang = target_il,
+            ForeignLang = lang_csharp
+        ;
+            TargetLang = target_java,
+            ForeignLang = lang_java
+        ;
+            TargetLang = target_erlang,
+            ForeignLang = lang_erlang
+        ), 
+        !:Attrs = default_attributes(ForeignLang),
         set_may_call_mercury(proc_will_not_call_mercury, !Attrs),
         set_thread_safe(proc_thread_safe, !Attrs),
         set_purity(purity_pure, !Attrs),
@@ -2893,7 +2911,6 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
         Arg1 = pragma_var(IO0, "_IO0", di_mode, always_boxed),
         Arg2 = pragma_var(IO, "_IO", uo_mode, always_boxed),
 
-        module_info_get_globals(!.ModuleInfo, Globals),
         current_grade_supports_tabling(Globals, IsTablingSupported),
         (
             IsTablingSupported = yes,
