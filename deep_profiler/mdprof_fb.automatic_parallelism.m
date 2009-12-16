@@ -66,12 +66,14 @@
 :- import_module coverage.
 :- import_module create_report.
 :- import_module mdbcomp.program_representation.
+:- import_module measurement_units.
 :- import_module measurements.
 :- import_module program_representation_utils.
 :- import_module report.
 :- import_module var_use_analysis.
 
 :- import_module array.
+:- import_module assoc_list.
 :- import_module io.
 :- import_module list.
 :- import_module map.
@@ -107,14 +109,42 @@ candidate_parallel_conjunctions(Opts, Deep, Messages, !Feedback) :-
     % runtime since it is modeled here as a call site that in reality does not
     % exist.
     RootCliqueCost = build_cs_cost_csq(1, float(TotalCallseqs) + 1.0),
-    candidate_parallel_conjunctions_clique(Opts, Deep, RootCliqueCost, 
-        RootCliquePtr, ConjunctionsMultiMap, Messages),
+    RootParallelism = no_parallelism,
+    candidate_parallel_conjunctions_clique(Opts, Deep, RootCliqueCost,
+        RootParallelism, RootCliquePtr, ConjunctionsMultiMap, Messages),
 
-    multi_map.to_flat_assoc_list(ConjunctionsMultiMap, ConjunctionsAssocList),
+    multi_map.to_flat_assoc_list(ConjunctionsMultiMap,
+        ConjunctionsAssocList0),
+    ConjunctionsAssocList =
+        map_values_only(internal_cpconjunction_to_cpconjunction,
+        ConjunctionsAssocList0),
     CandidateParallelConjunctions =
         feedback_data_candidate_parallel_conjunctions(DesiredParallelism,
         SparkingCost, LockingCost, ConjunctionsAssocList),
     put_feedback_data(CandidateParallelConjunctions, !Feedback).
+
+:- func internal_cpconjunction_to_cpconjunction(
+        candidate_par_conjunction_internal)
+    = candidate_par_conjunction.
+
+internal_cpconjunction_to_cpconjunction(CPCI) = CPC :-
+    CPCI = candidate_par_conjunction_internal(GoalPath, ConjAI, ConjBI,
+        Dependence, Speedup),
+    internal_cpconjunct_to_cpconjunct(ConjAI, ConjA),
+    internal_cpconjunct_to_cpconjunct(ConjBI, ConjB),
+    CPC = candidate_par_conjunction(GoalPath, ConjA, ConjB, Dependence,
+        Speedup).
+
+:- pred internal_cpconjunct_to_cpconjunct(
+        candidate_par_conjunct_internal::in, candidate_par_conjunct::out) 
+    is det.
+
+internal_cpconjunct_to_cpconjunct(CPCI, CPC) :-
+    CPCI = candidate_par_conjunct_internal(Callee, Vars, CostPercall,
+        _ConjNum),
+    CPC = candidate_par_conjunct(Callee, Vars, CostPercall).
+
+%----------------------------------------------------------------------------%
 
 :- type implicit_parallelism_info
     --->    implicit_parallelism_info(
@@ -126,16 +156,65 @@ candidate_parallel_conjunctions(Opts, Deep, Messages, !Feedback) :-
                 ipi_var_table       :: var_table
             ).
 
-:- type candidate_par_conjunctions ==
-    multi_map(string_proc_label, candidate_par_conjunction).
+    % These data types reflect those in mdbcomp/feedback.m.  These are
+    % internal to this module and may be changed without changing the
+    % feedback file format or the compiler.  They often contain extra
+    % information that it not needed by the compiler and therefore not
+    % present in the feedback file format. 
+    %
+:- type candidate_par_conjunction_internal
+    --->    candidate_par_conjunction_internal(
+                cpci_goal_path          :: goal_path_string,
+                    % The path within the procedure to this conjunction.
+                
+                cpci_par_conjunct_a     :: candidate_par_conjunct_internal,
+                cpci_par_conjunct_b     :: candidate_par_conjunct_internal,
+                    % The conjuncts worth parallelising
 
+                cpci_dependence         :: conjuncts_are_dependant,
+
+                cpci_speedup            :: float
+            ).
+
+:- type candidate_par_conjunct_internal
+    --->    candidate_par_conjunct_internal(
+                cpci_callee              :: maybe(pair(string, string)),
+                    % If the name of the callee is known (it's not a HO call),
+                    % then store the module and symbol names here.
+                    % Note: arity and mode are not represented.
+                    
+                cpci_vars                :: list(maybe(string)),
+                    % The names of variables (if used defined) given as
+                    % arguments to this call.
+                    
+                cpci_cost_percall        :: float,
+                    % The per-call cost of this call in call sequence counts.
+                
+                cpci_conj_num            :: int
+                    % The place within the conjunction that this conjunct
+                    % lies.
+            ).
+
+
+:- type candidate_par_conjunctions ==
+    multi_map(string_proc_label, candidate_par_conjunction_internal).
+
+    % candidate_parallel_conjunctions_clique(Opts, Deep, ParentCSCost, 
+    %   ParentUsedParallelism, CliquePtr, CandidateParallelConjunctions,
+    %   Messages)
+    %
+    % Find any CandidateParallelConjunctions in this clique and it's children.
+    % We stop searching when ParentCSCost is too low that the overheads of
+    % parallelism are too great or if ParentUsedParallelism becomes greater
+    % than the desired amount of parallelism.
+    %
 :- pred candidate_parallel_conjunctions_clique(
     candidate_parallel_conjunctions_opts::in, deep::in, cs_cost_csq::in,
-    clique_ptr::in, candidate_par_conjunctions::out, cord(message)::out) 
-    is det.
+    parallelism_amount::in, clique_ptr::in, candidate_par_conjunctions::out,
+    cord(message)::out) is det.
 
-candidate_parallel_conjunctions_clique(Opts, Deep, ParentCSCostInfo, CliquePtr,
-        Candidates, Messages) :-
+candidate_parallel_conjunctions_clique(Opts, Deep, ParentCSCostInfo, ParentParallelism,
+        CliquePtr, Candidates, Messages) :-
     create_clique_report(Deep, CliquePtr, MaybeCliqueReport),
     (
         MaybeCliqueReport = ok(CliqueReport),
@@ -150,8 +229,8 @@ candidate_parallel_conjunctions_clique(Opts, Deep, ParentCSCostInfo, CliquePtr,
         CliqueIsRecursive = is_clique_recursive(CliqueReport),
         make_clique_proc_map(CliqueProcs, CliqueProcMap),
         candidate_parallel_conjunctions_clique_proc(Opts, Deep,
-            CliqueIsRecursive, ParentCSCostInfo, set.init, CliqueProcMap,
-            CliquePtr, FirstCliqueProc, Candidates, Messages)
+            CliqueIsRecursive, ParentCSCostInfo, ParentParallelism, set.init,
+            CliqueProcMap, CliquePtr, FirstCliqueProc, Candidates, Messages)
     ;
         MaybeCliqueReport = error(Error),
         error(this_file ++ Error),
@@ -229,82 +308,68 @@ make_clique_proc_map(CliqueProcs, CliqueProcMap) :-
     %
 :- pred candidate_parallel_conjunctions_clique_proc(
     candidate_parallel_conjunctions_opts::in, deep::in, 
-    clique_is_recursive::in, cs_cost_csq::in, set(proc_desc)::in,
-    map(proc_desc, clique_proc_report)::in,
-    clique_ptr::in, clique_proc_report::in,
-    candidate_par_conjunctions::out, cord(message)::out) is det.
+    clique_is_recursive::in, cs_cost_csq::in, parallelism_amount::in,
+    set(proc_desc)::in, map(proc_desc, clique_proc_report)::in, clique_ptr::in,
+    clique_proc_report::in, candidate_par_conjunctions::out,
+    cord(message)::out) is det.
 
 candidate_parallel_conjunctions_clique_proc(Opts, Deep, 
-        CliqueIsRecursive, ParentCSCostInfo, ProcsAnalysed0, CliqueProcMap, 
-        CliquePtr, CliqueProc, Candidates, Messages) :-
+        CliqueIsRecursive, ParentCSCostInfo, ParentParallelism, ProcsAnalysed0,
+        CliqueProcMap, CliquePtr, CliqueProc, Candidates, Messages) :-
     some [!Messages]
     (
         !:Messages = cord.empty,
-        % Use the total cost the call to this procedure to decide if we should
-        % stop recursing the call graph at this point.  If the procedure does
-        % not contribute to the runtime of the program in an absolute way then
-        % do not recurse further.  This test is performed here rather than in
-        % the callees of this predicate to avoid duplication of code.
-        TotalCost = cs_cost_get_total(ParentCSCostInfo),
-        ( TotalCost > float(Opts ^ cpc_clique_threshold) ->
-            CliqueProcCalls = CliqueProc ^ cpr_proc_summary ^ perf_row_calls,
-            cs_cost_to_proc_cost(ParentCSCostInfo, CliqueProcCalls, 
-            
-            ParentCostInfo),
-            % Determine the costs of the call sites in the procedure.
-            (
-                CliqueIsRecursive = clique_is_recursive,
-                build_recursive_call_site_cost_map(Deep, CliqueProc, CliquePtr,
-                    ParentCostInfo, RecursiveCallSiteCostMap, CSCMMessages),
-                !:Messages = !.Messages ++ CSCMMessages,
-                trace [compile_time(flag("debug_cpc_search")), io(!IO)]
-                  io.format(
-                    "D: In clique %s recursive call site cost map is: %s\n",
-                    [s(string(CliquePtr)), s(string(RecursiveCallSiteCostMap))],
-                    !IO)
-            ;
-                CliqueIsRecursive = clique_is_not_recursive,
-                RecursiveCallSiteCostMap = map.init
-            ),
-
-            % Analyse this procedure for parallelism opportunities.
-            candidate_parallel_conjunctions_proc(Opts, Deep, CliqueProc,
-                RecursiveCallSiteCostMap, ProcCandidates, ProcMessages),
-            !:Messages = !.Messages ++ ProcMessages,
-
-            ProcDesc = CliqueProc ^ cpr_proc_summary ^ perf_row_subject,
-
-            % Get a list of call sites
-            ( CliqueProc ^ cpr_other_proc_dynamics = [_ | _] ->
-                proc_label_from_proc_desc(Deep, ProcDesc, ProcLabel),
-                append_message(proc(ProcLabel),
-                    error_extra_proc_dynamics_in_clique_proc,
-                    !Messages)
-            ;
-                true
-            ),
-            CallSiteReports = 
-                CliqueProc ^ cpr_first_proc_dynamic ^ cpdr_call_sites,
-            % Analyse child cliques of this clique proc for parallelism
-            % opportunities.  Recursive calls point to this same clique, in
-            % these cases call candidate_parallel_conjunctions_clique_proc on
-            % the procedure within this clique that they call.
-            set.insert(ProcsAnalysed0, ProcDesc, ProcsAnalysed),
-            list.map2(candidate_parallel_conjunctions_call_site(Opts, Deep,
-                    ProcsAnalysed, CliqueIsRecursive, RecursiveCallSiteCostMap,
-                    CliqueProcMap, CliquePtr),
-                CallSiteReports, CSCandidatesList, CSMessagesList),
-          
-            list.foldl(multi_map.merge, CSCandidatesList, multi_map.init,
-                CSCandidates),
-            Candidates = multi_map.merge(ProcCandidates, CSCandidates),
-            !:Messages = !.Messages ++ cord_list_to_cord(CSMessagesList)
-        ;
-            Candidates = multi_map.init,
+        CliqueProcCalls = CliqueProc ^ cpr_proc_summary ^ perf_row_calls,
+        cs_cost_to_proc_cost(ParentCSCostInfo, CliqueProcCalls, ParentCostInfo),
+        % Determine the costs of the call sites in the procedure.
+        (
+            CliqueIsRecursive = clique_is_recursive,
+            build_recursive_call_site_cost_map(Deep, CliqueProc, CliquePtr,
+                ParentCostInfo, RecursiveCallSiteCostMap, CSCMMessages),
+            !:Messages = !.Messages ++ CSCMMessages,
             trace [compile_time(flag("debug_cpc_search")), io(!IO)]
-                io.format("D: Not entering cheap clique: %s with cost %s\n",
-                    [s(string(CliquePtr)), s(string(ParentCSCostInfo))], !IO)
+              io.format(
+                "D: In clique %s recursive call site cost map is: %s\n",
+                [s(string(CliquePtr)), s(string(RecursiveCallSiteCostMap))],
+                !IO)
+        ;
+            CliqueIsRecursive = clique_is_not_recursive,
+            RecursiveCallSiteCostMap = map.init
         ),
+
+        % Analyse this procedure for parallelism opportunities.
+        candidate_parallel_conjunctions_proc(Opts, Deep, CliqueProc,
+            RecursiveCallSiteCostMap, ProcCandidates, ProcCandidatesByGoalPath,
+            ProcMessages),
+        !:Messages = !.Messages ++ ProcMessages,
+
+        ProcDesc = CliqueProc ^ cpr_proc_summary ^ perf_row_subject,
+
+        % Get a list of call sites
+        ( CliqueProc ^ cpr_other_proc_dynamics = [_ | _] ->
+            proc_label_from_proc_desc(Deep, ProcDesc, ProcLabel),
+            append_message(proc(ProcLabel),
+                error_extra_proc_dynamics_in_clique_proc, !Messages)
+        ;
+            true
+        ),
+        CallSiteReports = CliqueProc ^ cpr_first_proc_dynamic ^ cpdr_call_sites,
+        
+        % Analyse child cliques of this clique proc for parallelism
+        % opportunities.  Recursive calls point to this same clique, in these
+        % cases call candidate_parallel_conjunctions_clique_proc on the
+        % procedure within this clique that they call.
+        set.insert(ProcsAnalysed0, ProcDesc, ProcsAnalysed),
+        list.map2(candidate_parallel_conjunctions_call_site(Opts, Deep,
+                ProcsAnalysed, CliqueIsRecursive, RecursiveCallSiteCostMap,
+                CliqueProcMap, CliquePtr, ParentParallelism,
+                ProcCandidatesByGoalPath),
+            CallSiteReports, CSCandidatesList, CSMessagesList),
+      
+        list.foldl(multi_map.merge, CSCandidatesList, multi_map.init,
+            CSCandidates),
+        Candidates = multi_map.merge(ProcCandidates, CSCandidates),
+        !:Messages = !.Messages ++ cord_list_to_cord(CSMessagesList),
         Messages = !.Messages
     ).
 
@@ -312,33 +377,130 @@ candidate_parallel_conjunctions_clique_proc(Opts, Deep,
     candidate_parallel_conjunctions_opts::in, deep::in, set(proc_desc)::in,
     clique_is_recursive::in, map(goal_path, cs_cost_csq)::in,
     map(proc_desc, clique_proc_report)::in, clique_ptr::in,
-    clique_call_site_report::in, candidate_par_conjunctions::out,
+    parallelism_amount::in,
+    multi_map(string, candidate_par_conjunction_internal)::in,
+    clique_call_site_report::in,
+    candidate_par_conjunctions::out,
     cord(message)::out) is det.
 
 candidate_parallel_conjunctions_call_site(Opts, Deep, ProcsAnalysed,
         CliqueIsRecursive, RecursiveCallSiteCostMap, CliqueProcMap, CliquePtr,
+        ParentParallelism, ProcParallelismCandidates,
         CallSiteReport, Candidates, Messages) :-
     % XXX: This does not weight the callees by the probability that they will
     % be called.  This is only a problem for higher order call sites.
     CalleePerfs = CallSiteReport ^ ccsr_callee_perfs,
     CallSiteDesc = CallSiteReport ^ ccsr_call_site_summary ^ perf_row_subject,
+    GoalPath = CallSiteDesc ^ csdesc_goal_path,
+    parallelism_probability(ProcParallelismCandidates, GoalPath,
+        ParallelismProbability),
+    sub_computation_parallelism(ParallelismProbability, 
+        ParentParallelism, Parallelism), 
     list.map2(candidate_parallel_conjunctions_callee(Opts, Deep, ProcsAnalysed,
             CliqueIsRecursive, RecursiveCallSiteCostMap, CliqueProcMap,
-            CliquePtr, CallSiteDesc),
+            CliquePtr, CallSiteDesc, Parallelism),
         CalleePerfs, CandidatesList, MessagesList),
     list.foldl(multi_map.merge, CandidatesList, multi_map.init, Candidates),
     Messages = cord_list_to_cord(MessagesList).
+
+:- pred parallelism_probability(
+    multi_map(goal_path_string, candidate_par_conjunction_internal)::in,
+    goal_path::in, probability::out) is det.
+
+parallelism_probability(Candidates, ConjGoalPath, ParallelismProbability) :-
+    ( goal_path_remove_last(ConjGoalPath, GoalPath, step_conj(ConjNum)) ->
+        StringGoalPath = goal_path_to_string(GoalPath),
+        ( multi_map.search(Candidates, StringGoalPath, CandidateList) ->
+            (
+                % We assume that we can only ever be a member of one
+                % parallel conjunction.  That is that overlapping
+                % conjunctions are never recommended/seen.
+                promise_equivalent_solutions [Candidate, Conj] (
+                    member(Candidate, CandidateList),
+                    ( Conj = Candidate ^ cpci_par_conjunct_a
+                    ; Conj = Candidate ^ cpci_par_conjunct_b
+                    ),
+                    ConjNum = Conj ^ cpci_conj_num
+                )
+            ->
+                Dependence = Candidate ^ cpci_dependence,
+                (
+                    Dependence = conjuncts_are_dependant(_),
+                    ParallelismProbability =
+                        calculate_dependant_probability(Candidate, Conj)
+                ;
+                    Dependence = conjuncts_are_independent,
+                    ParallelismProbability = 
+                        calculate_independent_probability(Candidate, Conj) 
+                )
+            ;
+                ParallelismProbability = impossible 
+            )
+        ;
+            % This callsite is not within a parallel conjunction.
+            ParallelismProbability = impossible
+        )
+    ;
+        % We may not be able to remove this goal if it is not directly in a
+        % conjunction.  Perhaps it's directly within some branch goal or at the
+        % root of a goal path.  In these cases it is not in a parallel
+        % conjunction so the parallelism probability is 0.0. 
+        ParallelismProbability = impossible
+    ).
+
+    % Determine the probability that the conjunct executes in parallel with
+    % some other conjunct in the conjunction.  Provided that these two
+    % conjuncts are dependant.
+    %
+:- func calculate_dependant_probability(candidate_par_conjunction_internal,
+    candidate_par_conjunct_internal) = probability.
+
+calculate_dependant_probability(Conjunction, Conj) =
+    % XXX: Implement this after the new dependant conjunction analysis
+    % proposed on Zoltan's talk (Leuven 2009).
+    calculate_independent_probability(Conjunction, Conj).
+
+    % Determine the probability that the conjunct executes in parallel with
+    % some other conjunct in the conjunction.  Provided that these two
+    % conjuncts are dependant.
+    %
+:- func calculate_independent_probability(candidate_par_conjunction_internal,
+    candidate_par_conjunct_internal) = probability.
+
+calculate_independent_probability(Conjunction, Conj) = Prob :-
+    ConjA = Conjunction ^ cpci_par_conjunct_a,
+    ConjB = Conjunction ^ cpci_par_conjunct_b,
+    ConjACPC = ConjA ^ cpci_cost_percall,
+    ConjBCPC = ConjB ^ cpci_cost_percall,
+    % Determine which conjunct's perspective we're looking from then determine
+    % the probability that the other conjunct will be executing.  If this
+    % conjunct is the smaller one then the other one will always be running,
+    % otherwise divide the cost of the other one by the cost of this one.
+    ( ConjA = Conj ->
+        ( ConjACPC < ConjBCPC ->
+            Prob = certain
+        ;
+            Prob = probable(ConjBCPC / ConjACPC)
+        )
+    ;
+        ( ConjBCPC < ConjACPC ->
+            Prob = certain
+        ;
+            Prob = probable(ConjACPC / ConjBCPC)
+        )
+    ).
 
 :- pred candidate_parallel_conjunctions_callee(
     candidate_parallel_conjunctions_opts::in, deep::in, set(proc_desc)::in,
     clique_is_recursive::in, map(goal_path, cs_cost_csq)::in,
     map(proc_desc, clique_proc_report)::in, clique_ptr::in, call_site_desc::in,
-    perf_row_data(clique_desc)::in, candidate_par_conjunctions::out,
-    cord(message)::out) is det.
+    parallelism_amount::in, perf_row_data(clique_desc)::in,
+    candidate_par_conjunctions::out, cord(message)::out) is det.
 
 candidate_parallel_conjunctions_callee(Opts, Deep, ProcsAnalysed0,
         ParentCliqueIsRecursive, RecursiveCallSiteCostMap, CliqueProcReportMap,
-        ParentCliquePtr, CallSiteDesc, CliquePerf, Candidates, Messages) :-
+        ParentCliquePtr, CallSiteDesc, Parallelism, CliquePerf, Candidates,
+        Messages) :-
     CliqueDesc = CliquePerf ^ perf_row_subject,
     CliquePtr = CliqueDesc ^ cdesc_clique_ptr,
     CliqueEntryProc = CliqueDesc ^ cdesc_entry_member,
@@ -358,18 +520,39 @@ candidate_parallel_conjunctions_callee(Opts, Deep, ProcsAnalysed0,
             map.lookup(RecursiveCallSiteCostMap, 
                 CallSiteDesc ^ csdesc_goal_path, CallCostInfo),
             candidate_parallel_conjunctions_clique_proc(Opts, Deep,
-                ParentCliqueIsRecursive, CallCostInfo, ProcsAnalysed, 
-                CliqueProcReportMap, ParentCliquePtr, CliqueProcReport, 
-                Candidates, Messages)
+                ParentCliqueIsRecursive, CallCostInfo, Parallelism, 
+                ProcsAnalysed, CliqueProcReportMap, ParentCliquePtr,
+                CliqueProcReport, Candidates, Messages)
         )
     ;
         CSCost = build_cs_cost_from_perf(CliquePerf),
-        ( cs_cost_get_total(CSCost) > float(Opts ^ cpc_clique_threshold) ->
+        ( 
+            % Use the total cost the call to this procedure to decide if we
+            % should stop recursing the call graph at this point.  If the
+            % procedure does not contribute to the runtime of the program in an
+            % absolute way then do not recurse further.  This test is performed
+            % here rather than in the callees of this predicate to avoid
+            % duplication of code.
+            %
+            % Also check check if the desired amount of parallelism has been
+            % reached, if so do not recurse further to prevent creating too
+            % much extra parallelism.
+            cs_cost_get_total(CSCost) > float(Opts ^ cpc_clique_threshold), 
+            not exceeded_desired_parallelism(Opts ^ cpc_desired_parallelism,
+                Parallelism)
+        ->
             candidate_parallel_conjunctions_clique(Opts, Deep, CSCost,
-                CliquePtr, Candidates, Messages)
+                Parallelism, CliquePtr, Candidates, Messages)
         ;
             Candidates = multi_map.init, 
-            Messages = cord.empty
+            Messages = cord.empty,
+            trace [compile_time(flag("debug_cpc_search")), io(!IO)]
+                io.format(
+                    "D: Not entering clique: %s with cost %s.  " ++
+                    "There are %s parallel resources used\n",
+                    [s(string(CliquePtr)), s(string(CSCost)),
+                     s(string(Parallelism))],
+                    !IO)
         )
     ).
 
@@ -828,10 +1011,12 @@ build_recursive_call_site_cost_map_call_site(RecursiveCostPerCall,
     candidate_parallel_conjunctions_opts::in, deep::in,
     clique_proc_report::in, map(goal_path, cs_cost_csq)::in,
     candidate_par_conjunctions::out,
+    multi_map(goal_path_string, candidate_par_conjunction_internal)::out,
     cord(message)::out) is det.
 
 candidate_parallel_conjunctions_proc(Opts, Deep, CliqueProc,
-        RecursiveCallSiteCostMap, Candidates, Messages) :-
+        RecursiveCallSiteCostMap, Candidates, CandidatesByGoalPath,
+        Messages) :-
     % Lookup the proc static to find the ProcLabel.
     PerfRowData = CliqueProc ^ cpr_proc_summary,
     ProcDesc = PerfRowData ^ perf_row_subject,
@@ -857,21 +1042,35 @@ candidate_parallel_conjunctions_proc(Opts, Deep, CliqueProc,
         goal_get_conjunctions_worth_parallelising(Goal, empty_goal_path, Info,
             ProcLabel, Candidates0, _, _,
             Messages, initial_inst_map(ProcDefnRep), _),
-        list.foldl((pred(Candidate::in, Map0::in, Map::out) is det :-
-                multi_map.set(Map0, ProcLabel, Candidate, Map)
-            ), Candidates0, multi_map.init, Candidates)
+        list.foldl2(build_candidate_par_conjunction_maps(ProcLabel),
+            Candidates0, multi_map.init, Candidates, 
+            map.init, CandidatesByGoalPath)
     ;
         % Builtin procedures cannot be found in the program representation, and
         % cannot be parallelised either.
         Candidates = multi_map.init,
+        CandidatesByGoalPath = map.init,
         append_message(proc(ProcLabel), warning_cannot_lookup_proc_defn,
             Messages0, Messages)
     ).
+
+:- pred build_candidate_par_conjunction_maps(string_proc_label::in,
+    candidate_par_conjunction_internal::in, 
+    candidate_par_conjunctions::in, candidate_par_conjunctions::out,
+    multi_map(goal_path_string, candidate_par_conjunction_internal)::in,
+    multi_map(goal_path_string, candidate_par_conjunction_internal)::out)
+    is det.
+
+build_candidate_par_conjunction_maps(ProcLabel, Candidate, !Map, !GPMap) :- 
+    multi_map.set(!.Map, ProcLabel, Candidate, !:Map),
+    GoalPath = Candidate ^ cpci_goal_path,
+    multi_map.set(!.GPMap, GoalPath, Candidate, !:GPMap).
     
 :- pred goal_get_conjunctions_worth_parallelising(goal_rep::in, goal_path::in,
-    implicit_parallelism_info::in, string_proc_label::in, 
-    list(candidate_par_conjunction)::out, seen_duplicate_instantiation::out,
-    maybe_call_conjunct::out, cord(message)::out, inst_map::in, inst_map::out) 
+    implicit_parallelism_info::in, string_proc_label::in,
+    list(candidate_par_conjunction_internal)::out,
+    seen_duplicate_instantiation::out, maybe_call_conjunct::out,
+    cord(message)::out, inst_map::in, inst_map::out) 
     is det.
 
 goal_get_conjunctions_worth_parallelising(Goal, GoalPath, Info, ProcLabel, 
@@ -946,8 +1145,9 @@ goal_get_conjunctions_worth_parallelising(Goal, GoalPath, Info, ProcLabel,
 
 :- pred conj_get_conjunctions_worth_parallelising(list(goal_rep)::in,
     goal_path::in, implicit_parallelism_info::in, string_proc_label::in,
-    list(candidate_par_conjunction)::out, seen_duplicate_instantiation::out, 
-    cord(message)::out, inst_map::in, inst_map::out) is det.
+    list(candidate_par_conjunction_internal)::out,
+    seen_duplicate_instantiation::out, cord(message)::out, 
+    inst_map::in, inst_map::out) is det.
 
 conj_get_conjunctions_worth_parallelising(Conjs, GoalPath, Info,
         ProcLabel, Candidates, SeenDuplicateInstantiation, Messages, 
@@ -973,7 +1173,10 @@ conj_get_conjunctions_worth_parallelising(Conjs, GoalPath, Info,
         % Pick best candidate from queue.
         (
             SeenDuplicateInstantiation = have_not_seen_duplicate_instantiation,
-            ( pqueue.remove(CandidatesQueue, _, Candidate, CandidatesQueuePrime) ->
+            ( 
+                pqueue.remove(CandidatesQueue, _, Candidate, 
+                    CandidatesQueuePrime)
+            ->
                 Candidates = [Candidate | Candidates0],
                 (
                     pqueue.length(CandidatesQueuePrime) = Length,
@@ -1010,7 +1213,7 @@ conj_get_conjunctions_worth_parallelising(Conjs, GoalPath, Info,
 
 :- pred conj_get_conjunctions_worth_parallelising_2(list(goal_rep)::in,
     goal_path::in, int::in, implicit_parallelism_info::in,
-    string_proc_label::in, list(candidate_par_conjunction)::out,
+    string_proc_label::in, list(candidate_par_conjunction_internal)::out,
     cord(maybe_call_conjunct)::out, seen_duplicate_instantiation::out,
     cord(message)::out, inst_map::in, inst_map::out) is det.
 
@@ -1037,7 +1240,7 @@ conj_get_conjunctions_worth_parallelising_2([Conj | Conjs], GoalPath,
 
 :- pred disj_get_conjunctions_worth_parallelising(list(goal_rep)::in,
     goal_path::in, int::in, implicit_parallelism_info::in, 
-    string_proc_label::in, list(candidate_par_conjunction)::out,
+    string_proc_label::in, list(candidate_par_conjunction_internal)::out,
     seen_duplicate_instantiation::out, cord(message)::out,
     inst_map::in, inst_map::out) is det.
 
@@ -1072,7 +1275,7 @@ disj_get_conjunctions_worth_parallelising([Disj | Disjs], GoalPath, DisjNum,
 
 :- pred switch_case_get_conjunctions_worth_parallelising(list(case_rep)::in,
     goal_path::in, int::in, implicit_parallelism_info::in,
-    string_proc_label::in, list(candidate_par_conjunction)::out,
+    string_proc_label::in, list(candidate_par_conjunction_internal)::out,
     seen_duplicate_instantiation::out, cord(message)::out, 
     inst_map::in, inst_map::out) is det.
 
@@ -1108,7 +1311,7 @@ switch_case_get_conjunctions_worth_parallelising([Case | Cases], GoalPath,
 
 :- pred ite_get_conjunctions_worth_parallelising(goal_rep::in, goal_rep::in,
     goal_rep::in, goal_path::in, implicit_parallelism_info::in,
-    string_proc_label::in, list(candidate_par_conjunction)::out,
+    string_proc_label::in, list(candidate_par_conjunction_internal)::out,
     seen_duplicate_instantiation::out, cord(message)::out,
     inst_map::in, inst_map::out) is det.
 
@@ -1264,8 +1467,8 @@ var_get_mode(InstMapBefore, InstMapAfter, VarRep, VarModeRep) :-
 :- pred build_candidate_conjunctions(implicit_parallelism_info::in,
     inst_map::in, goal_path::in, string_proc_label::in, 
     list(maybe_call_conjunct)::in, cord(message)::out,
-    pqueue(float, candidate_par_conjunction)::in, 
-    pqueue(float, candidate_par_conjunction)::out) is det.
+    pqueue(float, candidate_par_conjunction_internal)::in, 
+    pqueue(float, candidate_par_conjunction_internal)::out) is det.
 
 build_candidate_conjunctions(_, _, _, _, [], cord.empty, !Candidates).
 build_candidate_conjunctions(Info, InstMap, GoalPath, ProcLabel,
@@ -1313,8 +1516,8 @@ build_candidate_conjunctions(Info, InstMap, GoalPath, ProcLabel,
     inst_map::in, goal_path::in, string_proc_label::in, 
     maybe_call_conjunct::in(call), cord(maybe_call_conjunct)::in,
     list(maybe_call_conjunct)::in, cord(message)::out,
-    pqueue(float, candidate_par_conjunction)::in, 
-    pqueue(float, candidate_par_conjunction)::out) is det.
+    pqueue(float, candidate_par_conjunction_internal)::in, 
+    pqueue(float, candidate_par_conjunction_internal)::out) is det.
 
 build_candidate_conjunctions_2(_, _, _, _, _, _, [], cord.empty, !Candidates).
 build_candidate_conjunctions_2(Info, InstMap, GoalPath, ProcLabel, CallA,
@@ -1325,19 +1528,20 @@ build_candidate_conjunctions_2(Info, InstMap, GoalPath, ProcLabel, CallA,
             MaybeCall = call(_, _, _, CallSiteReport),
             !:Messages = cord.empty,
             CallB = MaybeCall,
-            Cost = cs_cost_get_percall(get_call_site_cost(Info, CallSiteReport)),
+            Cost = cs_cost_get_percall(
+                get_call_site_cost(Info, CallSiteReport)),
             ( Cost > float(Info ^ ipi_opts ^ cpc_call_site_threshold) ->
                 % This conjunct is a call and is expensive enough to
                 % parallelise.
-                are_conjuncts_dependant(CallA, CallB, InstMap, Dependance),
+                are_conjuncts_dependant(CallA, CallB, InstMap, Dependence),
                 (
-                    Dependance = conjuncts_are_dependant(DepVars),
+                    Dependence = conjuncts_are_dependant(DepVars),
                     compute_optimal_dependant_parallelisation(Info, 
                         CallA, CallB, DepVars, IntermediateGoals, InstMap,
                         CPCA, CPCB, Speedup, CODPMessages),
                     !:Messages = !.Messages ++ CODPMessages
                 ;
-                    Dependance = conjuncts_are_independent,
+                    Dependence = conjuncts_are_independent,
                     compute_independent_parallelisation_speedup(Info, 
                         CallA, CallB, CPCA, CPCB, Speedup)
                 ),
@@ -1345,8 +1549,8 @@ build_candidate_conjunctions_2(Info, InstMap, GoalPath, ProcLabel, CallA,
                 ( Speedup > 0.0 ->
                     ( length(IntermediateGoals) = 0 -> 
                         GoalPathString = goal_path_to_string(GoalPath),
-                        Candidate = candidate_par_conjunction(GoalPathString, 
-                            CPCA, CPCB, Dependance, Speedup),
+                        Candidate = candidate_par_conjunction_internal(
+                            GoalPathString, CPCA, CPCB, Dependence, Speedup),
                         % So that the candidates with the greatest speedup are
                         % removed first multiply speedup by -1.0.
                         pqueue.insert(!.Candidates, Speedup * -1.0, Candidate,
@@ -1384,7 +1588,7 @@ build_candidate_conjunctions_2(Info, InstMap, GoalPath, ProcLabel, CallA,
     maybe_call_conjunct::in(call), inst_map::in, conjuncts_are_dependant::out)
     is det.
 
-are_conjuncts_dependant(CallA, CallB, InstMap, Dependance) :-
+are_conjuncts_dependant(CallA, CallB, InstMap, Dependence) :-
     % Conjuncts are dependant if there exists an input variable in CallB that
     % is made ground by CallA or depends upon a variable made ground by CallA.
     list.foldl(add_output_var_to_set, CallA ^ mccc_args, 
@@ -1392,9 +1596,9 @@ are_conjuncts_dependant(CallA, CallB, InstMap, Dependance) :-
     list.foldl(are_conjuncts_dependant_var(CallAOutputs, InstMap), 
         CallB ^ mccc_args, set.init, DepVars),
     ( set.empty(DepVars) ->
-        Dependance = conjuncts_are_independent
+        Dependence = conjuncts_are_independent
     ;
-        Dependance = conjuncts_are_dependant(DepVars)
+        Dependence = conjuncts_are_dependant(DepVars)
     ).
 
 :- pred are_conjuncts_dependant_var(set(var_rep)::in, inst_map::in,
@@ -1457,13 +1661,16 @@ get_call_site_cost(Info, CallSite) = Cost :-
 :- pred compute_independent_parallelisation_speedup(
     implicit_parallelism_info::in, 
     maybe_call_conjunct::in(call), maybe_call_conjunct::in(call),
-    candidate_par_conjunct::out, candidate_par_conjunct::out,
+    candidate_par_conjunct_internal::out,
+    candidate_par_conjunct_internal::out,
     float::out) is det.
 
 compute_independent_parallelisation_speedup(Info, CallA, CallB, 
         CPCA, CPCB, Speedup) :-
-    CostA = cs_cost_get_percall(get_call_site_cost(Info, CallA ^ mccc_call_site)),
-    CostB = cs_cost_get_percall(get_call_site_cost(Info, CallB ^ mccc_call_site)),
+    CostA = cs_cost_get_percall(
+        get_call_site_cost(Info, CallA ^ mccc_call_site)),
+    CostB = cs_cost_get_percall(
+        get_call_site_cost(Info, CallB ^ mccc_call_site)),
     SequentialCost = CostA + CostB,
     ParallelCost = max(CostA, CostB) + 
         float(Info ^ ipi_opts ^ cpc_sparking_cost),
@@ -1475,14 +1682,17 @@ compute_independent_parallelisation_speedup(Info, CallA, CallB,
     implicit_parallelism_info::in,
     maybe_call_conjunct::in(call), maybe_call_conjunct::in(call),
     set(var_rep)::in, cord(maybe_call_conjunct)::in, inst_map::in,
-    candidate_par_conjunct::out, candidate_par_conjunct::out,
+    candidate_par_conjunct_internal::out,
+    candidate_par_conjunct_internal::out,
     float::out, cord(message)::out) is det.
 
 compute_optimal_dependant_parallelisation(Info, CallA, CallB,
         DepVars, _IntermediateGoals, InstMap, CPCA, CPCB,
         Speedup, Messages) :-
-    CostA = cs_cost_get_percall(get_call_site_cost(Info, CallA ^ mccc_call_site)),
-    CostB = cs_cost_get_percall(get_call_site_cost(Info, CallB ^ mccc_call_site)),
+    CostA = cs_cost_get_percall(
+        get_call_site_cost(Info, CallA ^ mccc_call_site)),
+    CostB = cs_cost_get_percall(
+        get_call_site_cost(Info, CallB ^ mccc_call_site)),
     SequentialCost = CostA + CostB,
     ( singleton_set(DepVars, DepVar) ->
         % Only parallelise conjunctions with a single dependant variable for
@@ -1590,14 +1800,23 @@ get_var_use_add_to_queue(VarsModeAndUse, VarRep, !Queue) :-
 
 :- pred call_site_conj_to_candidate_par_conjunct(
     implicit_parallelism_info::in, maybe_call_conjunct::in(call),
-    candidate_par_conjunct::out) is det.
+    candidate_par_conjunct_internal::out) is det.
 
 call_site_conj_to_candidate_par_conjunct(Info, Call, CPC) :-
-    Call = call(MaybeCallee, _Detism, Args, Perf),
+    Call = call(MaybeCallee, _Detism, Args, CliqueCallSiteReport),
     VarTable = Info ^ ipi_var_table,
     list.map(var_mode_use_to_var_in_par_conj(VarTable), Args, Vars),
-    Cost = cs_cost_get_percall(get_call_site_cost(Info, Perf)),
-    CPC = candidate_par_conjunct(MaybeCallee, Vars, Cost).
+    Cost = cs_cost_get_percall(get_call_site_cost(Info, CliqueCallSiteReport)),
+    GoalPath = CliqueCallSiteReport ^ ccsr_call_site_summary ^ perf_row_subject 
+        ^ csdesc_goal_path,
+    ( step_conj(ConjNumPrime) = goal_path_get_last(GoalPath) ->
+        ConjNum = ConjNumPrime
+    ;
+        error(this_file ++ 
+            "Couldn't determine conjunct number of when creating a " ++ 
+            "candidate_par_conjunct")
+    ),
+    CPC = candidate_par_conjunct_internal(MaybeCallee, Vars, Cost, ConjNum).
 
 :- pred var_mode_use_to_var_in_par_conj(var_table::in, var_mode_and_use::in,
     maybe(string)::out) is det.

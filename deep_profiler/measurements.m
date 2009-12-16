@@ -19,6 +19,8 @@
 
 :- import_module list.
 
+:- import_module measurement_units.
+
 %-----------------------------------------------------------------------------%
 
 :- type own_prof_info.
@@ -135,6 +137,34 @@
     proc_cost_csq::out) is det.
 
 :- func cs_cost_per_proc_call(cs_cost_csq, proc_cost_csq) = cs_cost_csq.
+
+%-----------------------------------------------------------------------------%
+
+    % The amount of parallelism either available or exploited.
+    %
+:- type parallelism_amount.
+
+:- func no_parallelism = parallelism_amount.
+
+    % sub_computation_parallelism(ChildRunnableProb, 
+    %   ParentParallelism, ChildParallelism).
+    %
+    % When control passes from a parent to a child a parallel thread is invoked
+    % that parallelises a job against another.  ParentParallelism is the amount
+    % of contention for CPUs in the parent and ChildParallelism is the amount
+    % of contention for CPUs in either child given that the other child has a
+    % ChildRunnableProb chance of being on CPU or in the run queue during the
+    % execution of the first child.
+    %
+:- pred sub_computation_parallelism(probability::in, parallelism_amount::in,
+    parallelism_amount::out) is det.
+
+    % exceeded_desired_parallelism(DesiredParallelism, Parallelism)
+    %
+    % True iff Parallelism > DesiredParallelism
+    % 
+:- pred exceeded_desired_parallelism(float::in, parallelism_amount::in) 
+    is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -573,6 +603,41 @@ Cost0 / Denom = Cost :-
         Cost0 = cost_per_call(Percall),
         Cost = cost_per_call(Percall / float(Denom))
     ).
+
+%----------------------------------------------------------------------------%
+
+    % This type can be represented in multiple ways.  A single value expressing
+    % the probable value, or a probable value and a measure of
+    % deviation/variance.  Or as below three values that can express the
+    % skewedness of a distribution of values.
+    %
+    % For now represent it as a single scalar.  Consider uncommenting the other
+    % two fields in the future.
+    %
+:- type parallelism_amount
+    --->    parallelism_amount(
+%                pa_best         :: float,
+%                    % An upper bound on the probable amount of parallelism.
+%                    % IE: the most optimistic value.
+%
+%                pa_worst        :: float,
+%                    % A lower bound on the probable amount of parallelism.
+%
+                pa_likely       :: float
+                    % The likely amount of parallelism here.
+            ).
+
+no_parallelism = parallelism_amount(1.0).
+
+sub_computation_parallelism(Prob, ParentParallelism, ChildParallelism) :-
+    probability_to_float(Prob) = ProbFloat,
+    ParentParallelism = parallelism_amount(ParLikely),
+    CldLikely = ParLikely + ProbFloat,
+    ChildParallelism = parallelism_amount(CldLikely).
+
+exceeded_desired_parallelism(DesiredParallelism, Parallelism) :-
+    Parallelism = parallelism_amount(LikelyParallelism),
+    DesiredParallelism < LikelyParallelism.
 
 %----------------------------------------------------------------------------%
 :- end_module measurements.

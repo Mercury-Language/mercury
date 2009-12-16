@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008 The University of Melbourne.
+% Copyright (C) 2008-2009 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -108,6 +108,30 @@
     % letter mu.
     %
 :- func format_time(time) = string.
+
+%-----------------------------------------------------------------------------%
+%
+% Probability
+%
+
+:- type probability.
+
+    % A certain thing,  A probability of 1.0
+    %
+:- func certain = probability.
+
+    % An impossible thing.  A probability of 0.0
+    %
+:- func impossible = probability.
+
+    % Any probability.  Note that the float augment must be between 0.0 and 1.0
+    % inclusive.
+    %
+:- func probable(float) = probability.
+
+    % Convert a probability value into a floating point value.
+    %
+:- func probability_to_float(probability) = float.
 
 %-----------------------------------------------------------------------------%
 %
@@ -255,6 +279,30 @@ format_time(time_sec(F)) = String :-
         % Print in seconds.
         string.format("%.1fs", [f(F)], String)
     ).
+
+%-----------------------------------------------------------------------------%
+%
+% Probability
+%
+
+:- type probability == float.
+
+certain = 1.0.
+
+impossible = 0.0.
+
+probable(Prob) = Prob :-
+    (
+        Prob =< 1.0,
+        Prob >= 0.0
+    ->
+        true
+    ;
+        error(format("Probability %f out of range 0.0 to 1.0 inclusive", 
+            [f(Prob)]))
+    ).
+
+probability_to_float(Prob) = Prob.
 
 %-----------------------------------------------------------------------------%
 %
