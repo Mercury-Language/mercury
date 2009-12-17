@@ -916,7 +916,7 @@ MR_milliseconds_from_now(struct timespec *timeout, unsigned int msecs)
     _ftime(&now);
     timeout->tv_sec = now.time;
     nanosecs = ((MR_int_least64_t) (msecs + now.millitm)) *
-ANOSEC_PER_MILLISEC;
+        NANOSEC_PER_MILLISEC;
     if (nanosecs >= NANOSEC_PER_SEC) {
         timeout->tv_sec++;
         nanosecs %= NANOSEC_PER_SEC;

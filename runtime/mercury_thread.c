@@ -213,7 +213,7 @@ MR_destroy_thread(void *eng0)
 
 #if defined(MR_THREAD_SAFE)
 /*
-** XXX: maybe shese should only be conditionally compiled when MR_DEBUG_THREADS
+** XXX: maybe these should only be conditionally compiled when MR_DEBUG_THREADS
 ** is also set. - pbone 
 */
 
