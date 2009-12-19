@@ -586,6 +586,8 @@ output_c_file_intro_and_grade(Globals, SourceFileName, Version, !IO) :-
     string.int_to_string(NumTagBits, NumTagBitsStr),
     globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
     UnboxedFloatStr = convert_bool_to_string(UnboxedFloat),
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    HighLevelCodeStr = convert_bool_to_string(HighLevelCode),
 
     io.write_strings([
         "/*\n",
@@ -599,6 +601,7 @@ output_c_file_intro_and_grade(Globals, SourceFileName, Version, !IO) :-
         "**\n",
         "** TAG_BITS=", NumTagBitsStr, "\n",
         "** UNBOXED_FLOAT=", UnboxedFloatStr, "\n",
+        "** HIGHLEVEL_CODE=", HighLevelCodeStr, "\n",
         "**\n",
         "** END_OF_C_GRADE_INFO\n",
         "*/\n",
