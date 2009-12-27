@@ -810,35 +810,6 @@ cat > conftest.c << EOF
     }
 EOF
 
-AC_MSG_CHECKING(whether we can use -fno-strict-aliasing)
-if $CC -O2 -Wall -fno-strict-aliasing -c conftest.c \
-    </dev/null >&AC_FD_CC 2>&1
-then
-    AC_MSG_RESULT(yes)
-
-    AC_MSG_CHECKING(whether we need to use -fno-strict-aliasing)
-    $CC -O2 -Wall -fno-strict-aliasing -c conftest.c \
-        </dev/null > conftest1.out 2>&1
-    $CC -O2 -Wall -c conftest.c \
-        </dev/null > conftest2.out 2>&1
-    # get the lines that exist only in conftest2.out
-    comm -13 conftest1.out conftest2.out > conftest.2only
-
-    if test -s conftest.2only
-    then
-        AC_MSG_RESULT(yes)
-        CFLAGS_FOR_NO_STRICT_ALIASING="-fno-strict-aliasing"
-    else
-        AC_MSG_RESULT(no)
-        CFLAGS_FOR_NO_STRICT_ALIASING=""
-    fi
-else
-    AC_MSG_RESULT(no)
-    CFLAGS_FOR_NO_STRICT_ALIASING=
-fi
-
-AC_SUBST(CFLAGS_FOR_NO_STRICT_ALIASING)
-
 AC_MSG_CHECKING(whether we can use -fno-move-loop-invariants)
 if $CC -fno-move-loop-invariants -c conftest.c \
     </dev/null >&AC_FD_CC 2>&1
@@ -4178,6 +4149,7 @@ then
     CFLAGS_FOR_WARNINGS="-Wall -Wwrite-strings -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized -Wstrict-prototypes"
     CFLAGS_FOR_OPT="-O2 -fomit-frame-pointer"
     CFLAGS_FOR_DEBUG="-g"
+    CFLAGS_FOR_NO_STRICT_ALIASING="-fno-strict-aliasing"
     MCFLAGS_FOR_CC=
 else
 
@@ -4194,6 +4166,7 @@ else
 
             CFLAGS_FOR_OPT=
             CFLAGS_FOR_DEBUG="-g"
+            CFLAGS_FOR_NO_STRICT_ALIASING=
             MCFLAGS_FOR_CC=
             ;;
         
@@ -4203,6 +4176,7 @@ else
             CFLAGS_FOR_WARNINGS=
             CFLAGS_FOR_OPT=
             CFLAGS_FOR_DEBUG="/Zi"
+            CFLAGS_FOR_NO_STRICT_ALIASING=
 
             # Using the MSVC compiler implies that we must use
             # a maximum jump table size of 512 to avoid a fixed limit
@@ -4216,6 +4190,7 @@ else
             CFLAGS_FOR_OPT="-O"
             CFLAGS_FOR_WARNINGS=
             CFLAGS_FOR_DEBUG="-g"
+            CFLAGS_FOR_NO_STRICT_ALIASING=
             MCFLAGS_FOR_CC=
             ;;
         
@@ -4225,6 +4200,7 @@ else
             CFLAGS_FOR_OPT="-O"
             CFLAGS_FOR_WARNINGS=
             CFLAGS_FOR_DEBUG="-g"
+            CFLAGS_FOR_NO_STRICT_ALIASING=
             MCFLAGS_FOR_CC=
             ;;
     esac
@@ -4236,6 +4212,7 @@ AC_SUBST([CFLAGS_FOR_ANSI])
 AC_SUBST([CFLAGS_FOR_WARNINGS])
 AC_SUBST([CFLAGS_FOR_OPT])
 AC_SUBST([CFLAGS_FOR_DEBUG])
+AC_SUBST([CFLAGS_FOR_NO_STRICT_ALIASING])
 AC_SUBST([MCFLAGS_FOR_CC])
 AC_SUBST([C_COMPILER_TYPE])
 
