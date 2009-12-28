@@ -260,7 +260,7 @@ case $HOST in
         # Set --profile-for-implicit-parallelism so that the deep profiling
         # version of the standard library is suitable for Paul's implicit
         # parallelism work.  This is not enabled by default because it enables
-        # inlineing which is confusing for programmers using the deep profiler.
+        # inlining which is confusing for programmers using the deep profiler.
         OPTIMIZE="-O5 --intermodule-optimization"
         EXTRA_INSTALL_MCFLAGS="--profile-for-implicit-parallelism"
         EXTRA_INSTALL_CFLAGS="-DMR_PROFILE_PARALLEL_EXECUTION_SUPPORT"
@@ -345,8 +345,8 @@ PATH="$INSTALL_DIR/bin:$PATH"
 PARALLEL=
 case $HOST in
     saturn|goofy|taura) PARALLEL="-j2" ;;
-    eris)               PARALLEL="-j2" ;;
-    goliath)            PARALLEL="-j2" ;;
+    eris)               PARALLEL="-j3" ;;
+    goliath)            PARALLEL="-j4" ;;
     *)                  PARALLEL= ;;
 esac
 
@@ -418,54 +418,64 @@ status=0
 
 case $HOST in
     saturn)
-        CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
+        CONFIG_OPTS="--with-cc=/usr/bin/gcc-4.2"
         INSTALL_LIBGRADES="asm_fast.gc  \
-            asm_fast.gc.par             \
-            asm_fast.gc.trseg           \
-            asm_fast.gc.trseg.debug     \
-            asm_fast.gc.trseg.profdeep  \
+            asm_fast.par.gc             \
+            asm_fast.gc.decldebug       \
+            asm_fast.gc.profdeep        \
+            asm_fast.gc.stseg           \
+            asm_fast.par.gc.stseg       \
+            asm_fast.gc.stseg.trseg     \
+            asm_fast.gc.tsc.debug       \
             hlc.gc                      \
             hlc.gc.trseg                \
-            hlc.par.gc                  \
-            hlc_nest.gc"
+            asm_fast"
         ;;
     neptune)
-        CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
+        CONFIG_OPTS="--with-cc=/usr/bin/gcc-4.1"
         INSTALL_LIBGRADES="asm_fast.gc      \
             asm_fast.gc.trseg               \
-            asm_fast.gc.trseg.ll_debug      \
             asm_fast.gc.trseg.debug         \
+            asm_fast.gc.trseg.profdeep      \
+            reg.gc                          \
+            reg.gc.trseg                    \
             hlc.gc                          \
-            hlc.gc.trseg.ll_debug           \
             hlc.gc.trseg                    \
-            asm_fast.gc.trseg.prof          \
-            asm_fast.gc.trseg.memprof       \
-            asm_fast.gc.trseg.profdeep"        
+            hlc.par.gc.trseg                \
+            hl_nest.gc                      \
+            hlc_nest.gc"
         ;;
     goofy)
         DEFAULT_GRADE="hlc.gc"
         export DEFAULT_GRADE
         INSTALL_GRADE="hlc.gc"
-        CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
+        CONFIG_OPTS="--with-cc=/usr/bin/gcc-4.1"
         INSTALL_LIBGRADES="hlc.gc           \
-            hlc.gc.trseg                    \
-            hlc.par.gc                      \
             asm_fast.gc                     \
-            asm_fast.par.gc                 \
-            asm_fast.gc.trseg               \
-            asm_fast.gc.trseg.debug         \
-            asm_fast.gc.profdeep            \
-            asm_fast.gc.stseg"
+            asm_fast.gc.prof                \
+            asm_fast.gc.memprof             \
+            asm_fast.gc.mm                  \
+            asm_fast.gc.tr                  \
+            asm_fast.gc.rbmm                \
+            hlc.par.gc                      \
+            hlc.gc.trseg                    \
+            hl.gc                           \
+            hl.par.gc"
         ;;
     aral)
         CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
         ;;
     eris)
-        # The asm_fast grades don't work on Darwin.
-        # The reg grades don't work with the default gcc compiler
-        # on this machine either.
+        # The asm_fast grades don't (yet) work on Darwin.
+        # XXX The reg grades cause heap exhaustion on Mac OS 10.6.
         # XXX compilation of the debug grades is very slow with
         # Mac OS 10.6 an gcc 4.2 - it is disabled for now.
+        # We should also test the following grades on eris:
+        #   hlc.par.gc
+        #   none.par.gc
+        #   hl.gc.par
+        # The Boehm GC doesn't currently build in .par grades
+        # on eris [bug #121].
         #
         CONFIG_OPTS=""
         DEFAULT_GRADE="hlc.gc"
@@ -476,34 +486,38 @@ case $HOST in
             hlc.gc.trseg.ll_debug       \
             hlc.gc.trseg.prof           \
             hlc.gc.trseg.memprof        \
-            none.gc.trseg               "
+            none.gc                     \
+            none.gc.trseg               \
+            hl.gc                       \
+            java"
         ;;
     taura)
         CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
         INSTALL_LIBGRADES="asm_fast.gc  \
-            asm_fast.gc.tr              \
             asm_fast.par.gc             \
-            asm_fast.gc.tr.debug        \
             asm_fast.gc.profdeep        \
             asm_fast.gc.decldebug       \
-            asm_fast.gc.tsc.tr.debug    \
+            asm_fast.gc.tsw.debug       \
+            asm_fast.gc.mmos            \
+            asm_fast.gc.mmos.debug      \
+            asm_jump.gc                 \
             hlc.gc                      \
-            hlc.gc.tr                   \
             hlc.gc.trseg"
         ;;
     goliath)
-        CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
+        CONFIG_OPTS="--with-cc=/usr/bin/gcc-4.1"
         INSTALL_LIBGRADES="asm_fast.gc  \
             hlc.gc                      \
             hlc.gc.trseg                \
             hlc.gc.trseg.prof           \
             hlc.gc.trseg.memprof        \
             hlc.gc.trseg.ll_debug       \
-            asm_fast.gc.par             \
-            asm_fast.gc.tsw.tr.debug    \
+            asm_fast.gc.tr              \
+            asm_fast.par.gc             \
+            asm_fast.gc.trseg           \
             asm_fast.gc.trseg.debug     \
-            asm_fast.gc.trseg.decldebug \
-            asm_fast.gc.trseg.profdeep"
+            asm_fast.gc.trseg.profdeep  \
+            java"
         ;;
     bob)
         # bob (a VM on spelter) is used by the G12 group for doing builds of
@@ -867,6 +881,12 @@ cd tests || { false; exit 1; }
 echo "test_mercury running tests in grades $GRADES" 1>&2
 for grade in $GRADES
 do
+    case $grade in
+        erlang*|java*)
+            continue
+        ;;
+    esac
+        
     echo "test_mercury starting tests for grade $grade at `date`" 1>&2
     MERCURY_SUPPRESS_STACK_TRACE=yes
     export MERCURY_SUPPRESS_STACK_TRACE
