@@ -712,14 +712,17 @@ case "$HOST" in
         namespace_opt="--no-check-namespace"
         ;;
 esac
-        
+
+# XXX building the depend target in parallel sometimes fails so we don't
+# do that at the moment - it's probably not worth doing anyway.
+#
 autoconf || { false; exit 1; }
 rm -f config.cache
 ./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
-$MMAKE $target_opts depend $PARALLEL || { false; exit 1; }
+$MMAKE $target_opts depend || { false; exit 1; }
 $MMAKE $target_opts realclean MMAKEFLAGS=$PARALLEL || { false; exit 1; }
 ./configure --prefix=$INSTALL_DIR $CONFIG_OPTS || { false; exit 1; }
-$MMAKE $target_opts depend $PARALLEL || { false; exit 1; }
+$MMAKE $target_opts depend || { false; exit 1; }
 version=`$MMAKE $target_opts version` || { false; exit 1; }
 fullarch=`$MMAKE $target_opts fullarch` || { false; exit 1; }
 tools/bootcheck $USE_MMC_MAKE $use_cp_opt $target_opts \
