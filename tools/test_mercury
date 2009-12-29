@@ -418,7 +418,9 @@ status=0
 
 case $HOST in
     saturn)
-        CONFIG_OPTS="--with-cc=/usr/bin/gcc-4.2"
+        # XXX should use gcc 4.2 but the standard lib triggers
+        # an internal error in that in asm_fast.gc.decldebug.
+        CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
         INSTALL_LIBGRADES="asm_fast.gc  \
             asm_fast.par.gc             \
             asm_fast.gc.decldebug       \
