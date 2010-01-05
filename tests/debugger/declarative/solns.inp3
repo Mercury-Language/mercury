@@ -1,16 +1,11 @@
-register --quiet
-context none
 echo on
-trust int
-trust list
-trust std_util
+register --quiet
 break p
 continue
 finish
 dd -d 3 -n 7
 no
 yes
-yesy
 yes
 yes
 yes

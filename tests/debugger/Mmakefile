@@ -184,13 +184,21 @@ ALL_NONRETRY_PROGS = $(NONRETRY_PROGS) $(SENSITIVE_PROGS) \
 # stack layouts (which are required for tracing).
 
 ifneq "$(findstring profdeep,$(GRADE))" ""
-    # Eventually, this should be DEBUGGER_PROGS=$(ALL_NONRETRY_PROGS).
+    # Eventually, this should be DEBUGGER_PROGS0=$(ALL_NONRETRY_PROGS).
     # However, the code that is required to switch off the profiling
     # primitives in Mercury code invoked by the debugger (e.g. for
     # browsing) has not yet been implemented.
-    DEBUGGER_PROGS=
+    DEBUGGER_PROGS0=
 else
-    DEBUGGER_PROGS=$(ALL_NONRETRY_PROGS) $(ALL_RETRY_PROGS)
+    DEBUGGER_PROGS0=$(ALL_NONRETRY_PROGS) $(ALL_RETRY_PROGS)
+endif
+
+# The tail call optimisation isn't supported in decldebug grades,
+# so we don't run the tailrec1 test in those grades.
+ifneq "$(findstring decldebug,$(GRADE))" ""
+    DEBUGGER_PROGS=$(subst tailrec1,,$(DEBUGGER_PROGS0))
+else
+    DEBUGGER_PROGS=$(DEBUGGER_PROGS0)
 endif
 
 ifneq "$(filter hl% java% il% erlang%,$(GRADE))" ""
