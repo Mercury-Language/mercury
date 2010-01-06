@@ -32,6 +32,7 @@ main(!IO) :-
 	io.format("X = %d\n", [i(X)], !IO).
 
 :- pragma promise_pure(test/2).
+:- pragma no_inline(test/2).
 :- pred test(int::in, int::out) is det.
 
 test(X, Y) :-
