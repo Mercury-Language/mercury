@@ -1541,8 +1541,28 @@ public static class MercuryBitmap {
     public byte[] elements;
 
     public MercuryBitmap(int numBits) {
-        num_bits = numBits;
-        elements = new byte[numBits / 8 + (((numBits % 8) != 0) ? 1 : 0)];
+        this.num_bits = numBits;
+        this.elements = new byte[numBits / 8 + (((numBits % 8) != 0) ? 1 : 0)];
+    }
+
+    public MercuryBitmap(int numBits, byte[] elements) {
+        // This is provided so that foreign code can construct bitmaps from an
+        // existing byte array.
+        this.num_bits = numBits;
+        this.elements = elements;
+    }
+
+    @Override
+    public boolean equals(Object that) {
+        if (this == that) {
+            return true;
+        }
+        if (that instanceof MercuryBitmap) {
+            MercuryBitmap other = (MercuryBitmap)that;
+            return this.num_bits == other.num_bits
+                && java.util.Arrays.equals(this.elements, other.elements);
+        }
+        return false;
     }
 }
 ").
@@ -1585,7 +1605,7 @@ public class MercuryBitmap {
     bitmap_equal(BM1::in, BM2::in),
     [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "
-    succeeded = java.util.Arrays.equals(BM1.elements, BM2.elements);
+    succeeded = BM1.equals(BM2);
 ").
 
 :- pragma foreign_proc("Erlang",
