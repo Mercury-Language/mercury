@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2009 The University of Melbourne.
+% Copyright (C) 2008-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -27,8 +27,6 @@
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
-:- import_module pair.
-:- import_module set.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -107,38 +105,89 @@
     %
 :- type candidate_par_conjunction
     --->    candidate_par_conjunction(
-                goal_path       :: goal_path_string,
+                cpc_goal_path           :: goal_path_string,
                     % The path within the procedure to this conjunuction.
-                
-                par_conjunct_a  :: candidate_par_conjunct,
-                par_conjunct_b  :: candidate_par_conjunct,
-                    % The conjuncts worth parallelising
+               
+                cpc_partition_number    :: int,
+                    % Used to locate the goals to be parallelised within the
+                    % conjunction.  Partitions are separated by non atomic
+                    % goals, the first partition has the number 1.
 
-                dependence      :: conjuncts_are_dependant,
+                cpc_is_dependant        :: conjuncts_are_dependant,
 
-                speedup         :: float
+                cpc_conjs               :: list(seq_conj),
+                    % A list of parallel conjuncts, each is a sequential
+                    % conjunction of inner goals.  All inner goals that are
+                    % seen in the program presentation must be stored here
+                    % unless they are to be scheduled before or after the
+                    % sequential conjunction.  If these conjuncts are flattened
+                    % the inner goals will appear in the same order as the
+                    % program representation.  By maintaining these two rules
+                    % the compiler and analysis tools can use similar
+                    % algorithms to construct the same parallel conjunction
+                    % from the same program representation/HLDS structure.
+
+                cpc_speedup             :: float
+                    % Speedup is absolute so different speedups for different
+                    % peices of code can be compared.  That is the formula used
+                    % in many text books is _not_ used.  Instead we use:
+                    %
+                    %  Speedup = (SequentialTime - ParallelTime) * NumCalls
+                    %
+                    % This way speedup directly measures the benifit of
+                    % parallelisation, Any costs of parallel execution are
+                    % assumed to be in ParallelTime.
             ).
 
-:- type candidate_par_conjunct
-    --->    candidate_par_conjunct(
-                callee                  :: maybe(pair(string, string)),
-                    % If the name of the callee is known (it's not a HO call),
-                    % then store the module and symbol names here.
-                    % Note: arity and mode are not represented.
+:- type seq_conj
+    --->    seq_conj(
+                sc_conjs            :: list(inner_goal)
+            ).
+
+:- type callee_rep
+    --->    unknown_callee
+                % An unknown callee such as a higher order or method call.
+                
+    ;       named_callee(
+                % A known callee.  note that arrity and mode are not stored at
+                % all.
+               
+                nc_module_name  :: string,
+                nc_proc_name    :: string
+            ).
+
+    % A representation of a goal within a parallel conjunction.  We don't have
+    % to represent many types of goals or details about them, at least for now.
+    %
+:- type inner_goal
+    --->    ig_call(
+                % This is a call that we're considering parallelising.  It has
+                % a significant enough cost to be considered for
+                % parallelisation.
+                
+                igc_callee                  :: callee_rep,
                     
-                vars                    :: list(maybe(string)),
+                igc_vars                    :: list(maybe(string)),
                     % The names of variables (if used defined) given as
                     % arguments to this call.
                     
-                cost_percall            :: float
+                igc_cost_percall            :: float
                     % The per-call cost of this call in call sequence counts.
-                   
-            ).
+            )
+    ;       ig_cheap_call(
+                % This call is to cheap to be considered for parallelisation,
+                % we track it in the feedback information to help inform the
+                % compiler about _how_ to parallelise calls around it.
+                
+                igcc_callee                  :: callee_rep,
+                igcc_vars                    :: list(maybe(string))
+                    % As above.
+            )
+    ;       ig_other_atomic_goal.
+                % Some other (cheap) atomic goal.
 
 :- type conjuncts_are_dependant
-    --->    conjuncts_are_dependant(
-                dependant_vars          :: set(var_rep)
-            )
+    --->    conjuncts_are_dependant
     ;       conjuncts_are_independent.
 
 %-----------------------------------------------------------------------------%
@@ -550,7 +599,7 @@ feedback_first_line = "Mercury Compiler Feedback".
 
 :- func feedback_version = string.
 
-feedback_version = "4".
+feedback_version = "5".
 
 %-----------------------------------------------------------------------------%
 :- end_module mdbcomp.feedback.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2006, 2008-2009 The University of Melbourne.
+% Copyright (C) 2001, 2004-2006, 2008-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -146,17 +146,26 @@
 
 :- func no_parallelism = parallelism_amount.
 
-    % sub_computation_parallelism(ChildRunnableProb, 
-    %   ParentParallelism, ChildParallelism).
+:- func some_parallelism(float) = parallelism_amount.
+
+    % sub_computation_parallelism(ParentParallelism, ChildRunnableProb, 
+    %   ChildParallelism, Parallelism).
+    % sub_computation_parallelism(ParentParallelism, ChildRunnableProb, 
+    %   Parallelism).
     %
-    % When control passes from a parent to a child a parallel thread is invoked
-    % that parallelises a job against another.  ParentParallelism is the amount
-    % of contention for CPUs in the parent and ChildParallelism is the amount
-    % of contention for CPUs in either child given that the other child has a
-    % ChildRunnableProb chance of being on CPU or in the run queue during the
-    % execution of the first child.
+    % Compute the total parallelism seen during the child's execution if the
+    % parent is executed in a context with parallelism and the child it's self
+    % has some amount of parallelism and there is a probability of
+    % ChildRunnableProb that the child will be executed.
     %
-:- pred sub_computation_parallelism(probability::in, parallelism_amount::in,
+    % In the three argument version we assume that the child has no parallelism.
+    % In this version it's useful to think of the ChildRunnableProb as the
+    % chance a forked off child (of a pair of two) will be 'runnable' during
+    % the execution of it's sibling.
+    %
+:- pred sub_computation_parallelism(parallelism_amount::in, probability::in, 
+    parallelism_amount::in, parallelism_amount::out) is det.
+:- pred sub_computation_parallelism(parallelism_amount::in, probability::in, 
     parallelism_amount::out) is det.
 
     % exceeded_desired_parallelism(DesiredParallelism, Parallelism)
@@ -173,6 +182,7 @@
 
 :- import_module float.
 :- import_module int.
+:- import_module require.
 :- import_module string.
 
 %----------------------------------------------------------------------------%
@@ -629,15 +639,35 @@ Cost0 / Denom = Cost :-
 
 no_parallelism = parallelism_amount(1.0).
 
-sub_computation_parallelism(Prob, ParentParallelism, ChildParallelism) :-
+some_parallelism(Num) = parallelism_amount(Num) :-
+    ( Num < 1.0 ->
+        error(this_file ++ "some_parallelism/1+1: " ++ 
+            "Parallelism amount cannot ever be less than 1.0")
+    ;
+        true
+    ).
+
+sub_computation_parallelism(ParentParallelism, Prob, ChildParallelism,
+        Parallelism) :-
     probability_to_float(Prob) = ProbFloat,
     ParentParallelism = parallelism_amount(ParLikely),
-    CldLikely = ParLikely + ProbFloat,
-    ChildParallelism = parallelism_amount(CldLikely).
+    ChildParallelism = parallelism_amount(ChildLikely),
+    Likely = ParLikely + (ProbFloat * ChildLikely),
+    Parallelism = parallelism_amount(Likely).
+
+sub_computation_parallelism(ParentParallelism, Prob, Parallelism) :-
+    sub_computation_parallelism(ParentParallelism, Prob, no_parallelism,
+        Parallelism).
 
 exceeded_desired_parallelism(DesiredParallelism, Parallelism) :-
     Parallelism = parallelism_amount(LikelyParallelism),
     DesiredParallelism < LikelyParallelism.
+
+%----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "measurements.m".
 
 %----------------------------------------------------------------------------%
 :- end_module measurements.

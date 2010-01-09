@@ -149,6 +149,8 @@ Changes to the Mercury standard library:
 * The following function has been added to the pqueue module
 	pqueue.length/1
 
+* We have added maybe_is_yes/2 semidet predicate to the maybe module.
+
 * We have changed the interface of the ops module to make lookups of operators
   more efficient.
 

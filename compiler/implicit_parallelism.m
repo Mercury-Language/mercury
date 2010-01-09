@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2009 The University of Melbourne.
+% Copyright (C) 2006-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -247,7 +247,7 @@ maybe_parallelise_proc(ModuleInfo, ParallelismInfo, PredId, ProcId, !ProcTable,
     CPCMap = ParallelismInfo ^ pi_cpc_map,
     ( map.search(CPCMap, IMProcLabel, CPC) ->
         proc_info_get_goal(ProcInfo0, Goal0),
-        TargetGoalPathString = CPC ^ goal_path,
+        TargetGoalPathString = CPC ^ cpc_goal_path,
         ( goal_path_from_string(TargetGoalPathString, TargetGoalPathPrime) ->
             TargetGoalPath = TargetGoalPathPrime
         ;
@@ -298,95 +298,275 @@ maybe_parallelise_conj(ProcInfo, CPC, Goal0, MaybeGoal) :-
     GoalExpr0 = Goal0 ^ hlds_goal_expr,
     % We've reached the point indicated by the goal path, Find the
     % conjuncts that we wish to parallelise.
-    ( 
+    PartitionNum = CPC ^ cpc_partition_number,
+    FeedbackParConjuncts = CPC ^ cpc_conjs, 
+    (
+        % XXX: Temporarily avoid parallelising dependant conjunctions,  This
+        % appears to trigger bugs in later stages of the compiler.
+        CPC ^ cpc_is_dependant = conjuncts_are_independent, 
         GoalExpr0 = conj(plain_conj, Conjs0),
-        index1_of_candidate_par_conjunct(ProcInfo, CPC ^ par_conjunct_a,
-            Conjs0, AIdx),
-        index1_of_candidate_par_conjunct(ProcInfo, CPC ^ par_conjunct_b,
-            Conjs0, BIdx),
-        AIdx \= BIdx,
-        % In the future there may be some goals between the two calls to
-        % parallelise.  The analysis will say how many of these goals should be
-        % run with each of the two calls, but it may be incorrect in cases
-        % where the code has changed.  Thus we need to ensure that the code is
-        % still mode-correct.
-        GoalA = list.det_index1(Conjs0, AIdx),
-        GoalB = list.det_index1(Conjs0, BIdx),
-        model_det_and_at_least_semipure(GoalA),
-        model_det_and_at_least_semipure(GoalB),
-        ( BIdx - AIdx = 1 ->
-            % The conjuncts are adjacent with GoalA occuring first.
-            FirstParGoal = GoalA,
-            SecondParGoal = GoalB,
-            MaxIdx = BIdx,
-            MinIdx = AIdx
-        ; AIdx - BIdx = 1 ->
-            FirstParGoal = GoalB,
-            SecondParGoal = GoalA,
-            MaxIdx = AIdx,
-            MinIdx = BIdx
-        ;
-            fail
-        )
+        flatten_conj(Conjs0, Conjs1),
+        find_partition(PartitionNum, Conjs1, GoalsBeforePartition,
+            yes(Partition0), GoalsAfterPartition),
+        build_par_conjuncts(ProcInfo, Partition0, FeedbackParConjuncts,
+            yes(ParConjuncts), GoalsBefore, GoalsAfter)
     ->
-        ParConjExprList = [FirstParGoal, SecondParGoal],
-        ParConjExpr = conj(parallel_conj, ParConjExprList),
-        goal_list_nonlocals(ParConjExprList, ParConjNonLocals),
-        goal_list_instmap_delta(ParConjExprList, ParConjInstmapDelta),
-        goal_list_determinism(ParConjExprList, ParConjDetism),
-        goal_list_purity(ParConjExprList, ParConjPurity),
-        goal_info_init(ParConjNonLocals, ParConjInstmapDelta, ParConjDetism,
-            ParConjPurity, ParConjInfo),
-        ParConj = hlds_goal(ParConjExpr, ParConjInfo),
-        (
-            take(MinIdx - 1, Conjs0, GoalsBeforeParPrime),
-            drop(MaxIdx, Conjs0, GoalsAfterParPrime)
-        ->
-            GoalsBeforePar = GoalsBeforeParPrime,
-            GoalsAfterPar = GoalsAfterParPrime
-        ;
-            unexpected(this_file, "Miscalculated conjunct list operations.")
-        ),
-        Conjs = GoalsBeforePar ++ [ ParConj | GoalsAfterPar ],
+        create_conj_from_list(ParConjuncts, parallel_conj, ParConjunction),
+        Conjs = GoalsBeforePartition ++ GoalsBefore ++ 
+            [ ParConjunction | GoalsAfter ++ GoalsAfterPartition ], 
         GoalExpr = conj(plain_conj, Conjs),
         MaybeGoal = yes(hlds_goal(GoalExpr, Goal0 ^ hlds_goal_info))
     ;
         MaybeGoal = no
     ).
 
-:- pred index1_of_candidate_par_conjunct(proc_info::in, 
-    candidate_par_conjunct::in, list(hlds_goal)::in, int::out) is semidet.
+:- pred find_partition(int::in, list(hlds_goal)::in, list(hlds_goal)::out,
+    maybe(list(hlds_goal))::out, list(hlds_goal)::out) is det.
 
-index1_of_candidate_par_conjunct(ProcInfo, CPC, Goals, Index) :-
-    MaybeCallee = CPC ^ callee,
-    (
-        MaybeCallee = yes(Callee),
-        NamePt1 - NamePt2 = Callee,
-        MaybeName = yes(string_to_sym_name(NamePt1 ++ "." ++ NamePt2))
+find_partition(_, [], [], no, []).
+find_partition(PartitionNum0, [Goal | Goals], GoalsBefore, MaybePartition,
+        GoalsAfter) :-
+    ( PartitionNum0 = 1 ->
+        % We've found the correct partition.
+        GoalsBefore = [],
+        find_end_of_partition(Goals, Partition, GoalsAfter),
+        MaybePartition = yes([ Goal | Partition ])
     ;
-        MaybeCallee = no,
-        MaybeName = no
-    ),
-    CPC ^ vars = CPCArgs,
-    proc_info_get_varset(ProcInfo, VarSet),
+        goal_is_atomic(Goal, GoalIsAtomic),
+        (
+            GoalIsAtomic = goal_is_atomic,
+            PartitionNum = PartitionNum0
+        ;
+            GoalIsAtomic = goal_is_nonatomic,
+            PartitionNum = PartitionNum0 - 1
+        ),
+        find_partition(PartitionNum, Goals, GoalsBefore0, MaybePartition,
+            GoalsAfter),
+        GoalsBefore = [ Goal | GoalsBefore0 ]
+    ).
 
-    find_index_of_match((pred(Goal::in) is semidet :-
-            Goal = hlds_goal(CallGoal, _),
-            % Some calls know the name of the callee, others dont.  match the
-            % if the name is know and what it is if known against the candidate
-            % parallel conjunct.
-            % Note: we don't (yet) allow parallelisation of foreign code,
+:- pred find_end_of_partition(list(hlds_goal)::in, list(hlds_goal)::out, 
+    list(hlds_goal)::out) is det.
+
+find_end_of_partition([], [], []).
+find_end_of_partition([ Goal | Goals ], Partition, GoalsAfter) :-
+    goal_is_atomic(Goal, GoalIsAtomic),
+    (
+        GoalIsAtomic = goal_is_atomic,
+        find_end_of_partition(Goals, Partition0, GoalsAfter),
+        Partition = [ Goal | Partition0 ]
+    ;
+        GoalIsAtomic = goal_is_nonatomic,
+        Partition = [ Goal ],
+        GoalsAfter = Goals
+    ).
+
+:- pred build_par_conjuncts(proc_info::in, hlds_goals::in, list(seq_conj)::in, 
+    maybe(hlds_goals)::out, hlds_goals::out, hlds_goals::out) is det.
+
+build_par_conjuncts(ProcInfo, Goals, FeedbackParConjuncts0,
+        MaybeParConjuncts, GoalsBefore, GoalsAfter) :-
+    (
+        FeedbackParConjuncts0 = [ FeedbackParConjunct | FeedbackParConjuncts ],
+        FeedbackParConjunct = seq_conj(FeedbackSeqConjuncts),
+        build_seq_conjuncts(ProcInfo, Goals, FeedbackSeqConjuncts,
+            MaybeSeqConjuncts0, GoalsBefore, GoalsAfterSeqConj),
+        (
+            MaybeSeqConjuncts0 = yes(SeqConjuncts0),
+            build_par_conjuncts(ProcInfo, GoalsAfterSeqConj,
+                FeedbackParConjuncts, MaybeParConjuncts0, GoalsBefore0,
+                GoalsAfter0),
             (
-                CallGoal = plain_call(_, _, Args, _, _, Name),
-                MaybeName = yes(Name)
-            ; 
-                CallGoal = generic_call(_, Args, _, _),
-                MaybeName = no
+                MaybeParConjuncts0 = yes(ParConjuncts0),
+                % GoalsBefore0 must be put into either the current parallel
+                % conjunct or the next parallel conjunct.
+                (
+                    ParConjuncts0 = [],
+                    % If there are no parallel conjuncts remaining then
+                    % schedule all these goals after the parallel conjunction,
+                    % this is a trivial conservative strategy.
+                    GoalsAfter = GoalsBefore0 ++ GoalsAfter0,
+                    SeqConjuncts = SeqConjuncts0
+                ;
+                    ParConjuncts0 = [_ | _],
+                    GoalsAfter = GoalsAfter0,
+                    SeqConjuncts = SeqConjuncts0,
+                    (
+                        GoalsBefore0 = []
+                    ;
+                        GoalsBefore0 = [_ | _],
+                        sorry(this_file, 
+                          "Extra goals found during automatic parallelisation")
+                    )
+                ),
+                create_conj_from_list(SeqConjuncts, plain_conj, ParConjunct),
+                % Mercury only supports parallelisation of deterministic code,
+                % furthermore it's just not a good idea to parallelise anything
+                % that is impure.
+                ( model_det_and_at_least_semipure(ParConjunct) ->
+                    MaybeParConjuncts = yes([ ParConjunct | ParConjuncts0 ])
+                ;
+                    MaybeParConjuncts = no
+                )
+            ;
+                MaybeParConjuncts0 = no,
+                MaybeParConjuncts = no,
+                GoalsAfter = Goals
+            )
+        ;
+            MaybeSeqConjuncts0 = no,
+            MaybeParConjuncts = no,
+            GoalsAfter = Goals
+        )
+    ;
+        FeedbackParConjuncts0 = [],
+        MaybeParConjuncts = yes([]),
+        GoalsBefore = [],
+        GoalsAfter = Goals
+    ).
+
+:- pred build_seq_conjuncts(proc_info::in, hlds_goals::in, list(inner_goal)::in,
+    maybe(hlds_goals)::out, hlds_goals::out, hlds_goals::out) is det.
+
+build_seq_conjuncts(ProcInfo, Goals, FeedbackSeqConjuncts0, MaybeSeqConjuncts,
+        GoalsBefore, GoalsAfter) :-
+    (
+        FeedbackSeqConjuncts0 = [ FeedbackSeqConjunct | FeedbackSeqConjuncts ],
+        inner_goal_match_hlds_goal(ProcInfo, FeedbackSeqConjunct, Goals,
+            MaybeGoal, GoalsBefore0, GoalsAfter0),
+        (
+            MaybeGoal = yes(Goal),
+            GoalsBefore = GoalsBefore0,
+            SeqConjunct = Goal,
+            build_seq_conjuncts(ProcInfo, GoalsAfter0, FeedbackSeqConjuncts,
+                MaybeSeqConjuncts0, GoalsBetween, GoalsAfter),
+            (
+                MaybeSeqConjuncts0 = yes(SeqConjuncts0),
+                SeqConjuncts = [ SeqConjunct | 
+                    (GoalsBetween ++ SeqConjuncts0) ],
+                MaybeSeqConjuncts = yes(SeqConjuncts)
+            ;
+                MaybeSeqConjuncts0 = no,
+                MaybeSeqConjuncts = no
+            )
+        ;
+            MaybeGoal = no,
+            MaybeSeqConjuncts = no,
+            GoalsBefore = [],
+            GoalsAfter = Goals
+        )
+    ;
+        FeedbackSeqConjuncts0 = [],
+        MaybeSeqConjuncts = yes([]),
+        GoalsBefore = [],
+        GoalsAfter = Goals
+    ).
+
+:- pred inner_goal_match_hlds_goal(proc_info::in, inner_goal::in,
+    hlds_goals::in, maybe(hlds_goal)::out, hlds_goals::out, hlds_goals::out)
+    is det.
+
+inner_goal_match_hlds_goal(_ProcInfo, _, [], no, [], []).
+inner_goal_match_hlds_goal(ProcInfo, InnerGoal, [ Goal | Goals ], MaybeGoal,
+        GoalsBefore, GoalsAfter) :-
+    proc_info_get_varset(ProcInfo, Varset),
+    GoalExpr = Goal ^ hlds_goal_expr,
+    (
+        ( GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        (
+            ( InnerGoal = ig_call(_, _, _)
+            ; InnerGoal = ig_cheap_call(_, _)
             ),
-            % Match arguments which have user defined names in the profiled
-            % program against the names in the current program.
-            list.map(args_match(VarSet), Args, CPCArgs)
-        ), Goals, 1, Index).
+            Match = no
+        ;
+            InnerGoal = ig_other_atomic_goal,
+            Match = yes
+        )
+    ;
+        (
+            GoalExpr = plain_call(_, _, Args, Builtin, _, _)
+        ;
+            GoalExpr = generic_call(_, Args, _, _),
+            Builtin = not_builtin
+        ),
+        (
+            ( InnerGoal = ig_call(Callee, FbArgs, _)
+            ; InnerGoal = ig_cheap_call(Callee, FbArgs)
+            ),
+            % Try to match the callee and the vars.
+            (
+                Builtin = not_builtin,
+                (
+                    (
+                        GoalExpr = generic_call(_, _, _, _),
+                        Callee = unknown_callee
+                    ;
+                        GoalExpr = plain_call(_, _, _, _, _, SymName),
+                        Callee = named_callee(ModuleName, ProcName),
+                        match_sym_name(SymName, ModuleName, ProcName)
+                    ),
+                    map(args_match(Varset), Args, FbArgs)
+                ->
+                    Match = yes
+                ;
+                    Match = no
+                )
+            ;
+                ( Builtin = inline_builtin
+                ; Builtin = out_of_line_builtin
+                ),
+                Match = no
+            )
+        ;
+            InnerGoal = ig_other_atomic_goal,
+            (
+                Builtin = not_builtin,
+                Match = no
+            ;
+                ( Builtin = inline_builtin
+                ; Builtin = out_of_line_builtin
+                ),
+                Match = yes 
+            )
+        )
+    ;
+        ( GoalExpr = conj(_, _)
+        ; GoalExpr = disj(_)
+        ; GoalExpr = switch(_, _, _)
+        ; GoalExpr = negation(_)
+        ; GoalExpr = scope(_, _)
+        ; GoalExpr = if_then_else(_, _, _, _)
+        ; GoalExpr = shorthand(_)
+        ),
+        unexpected(this_file, 
+            "Found non-atomic goal in inner_goal_match_hlds_goal")
+    ),
+    (
+        Match = yes,
+        MaybeGoal = yes(Goal),
+        GoalsBefore = [],
+        GoalsAfter = Goals
+    ;
+        Match = no,
+        inner_goal_match_hlds_goal(ProcInfo, InnerGoal, Goals, MaybeGoal,
+            GoalsBefore0, GoalsAfter),
+        GoalsBefore = [ Goal | GoalsBefore0 ]
+    ).
+
+:- pred match_sym_name(sym_name::in, string::in, string::in) is semidet.
+
+match_sym_name(unqualified(ProcName), _, ProcName).
+match_sym_name(qualified(SymModuleName, ProcName), ModuleName, ProcName) :-
+    ModuleNameParts = reverse(split_at_separator(unify('.'), ModuleName)),
+    match_sym_module_name(SymModuleName, ModuleNameParts).
+
+:- pred match_sym_module_name(sym_name::in, list(string)::in) is semidet.
+
+match_sym_module_name(unqualified(Name), [Name]).
+match_sym_module_name(qualified(SymName, Name), [Name | Names]) :-
+    match_sym_module_name(SymName, Names).
 
 :- pred args_match(prog_varset::in, prog_var::in, maybe(string)::in) 
     is semidet.

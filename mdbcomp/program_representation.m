@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2009 The University of Melbourne.
+% Copyright (C) 2001-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -377,6 +377,9 @@
     %
 :- pred search_var_name(var_table::in, var_rep::in, string::out) is semidet.
 
+:- pred maybe_search_var_name(var_table::in, var_rep::in, maybe(string)::out)
+    is det.
+
     % If the given atomic goal behaves like a call in the sense that it
     % generates events as ordinary calls do, then return the list of variables
     % that are passed as arguments.
@@ -479,6 +482,9 @@
     % The empty goal path.
     %
 :- func empty_goal_path = goal_path.
+:- pred empty_goal_path(goal_path).
+:- mode empty_goal_path(out) is det.
+:- mode empty_goal_path(in) is semidet.
 
     % A singleton goal path.
     %
@@ -832,7 +838,10 @@ goal_rep_type = type_of(_ : goal_rep).
                 gp_steps    :: list(goal_path_step)
             ).
 
-empty_goal_path = goal_path([]).
+empty_goal_path = Empty :-
+    empty_goal_path(Empty).
+
+empty_goal_path(goal_path([])).
 
 singleton_goal_path(Step) = goal_path([Step]).
 
@@ -1055,6 +1064,13 @@ lookup_var_name(VarTable, VarRep, String) :-
 
 search_var_name(VarTable, VarRep, String) :-
     map.search(VarTable, VarRep, String).
+
+maybe_search_var_name(VarTable, VarRep, MaybeString) :-
+    ( search_var_name(VarTable, VarRep, String) ->
+        MaybeString = yes(String)
+    ;
+        MaybeString = no
+    ).
 
 %-----------------------------------------------------------------------------%
 

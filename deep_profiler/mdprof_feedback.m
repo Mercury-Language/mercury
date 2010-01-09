@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2009 The University of Melbourne.
+% Copyright (C) 2006-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -111,7 +111,7 @@ main(!IO) :-
                             ( message_level_to_int(Level) =< VerbosityLevel ->
                                 message_to_string(Message, MessageStr),
                                 io.write_string(Stderr, MessageStr, IO0, IO1),
-                                io.nl(IO1, IO)
+                                io.nl(Stderr, IO1, IO)
                             ;
                                 IO = IO0
                             )

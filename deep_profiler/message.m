@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -59,6 +59,8 @@
 
 :- pred message_to_string(message::in, string::out) is det.
 
+:- pred location_to_string(program_location::in, string::out) is det.
+
 :- pred append_message(program_location::in, message_type::in,
     cord(message)::in, cord(message)::out) is det.
 
@@ -71,7 +73,23 @@
 
                 % A candidate parallel conjunction has been found.
     --->    info_found_candidate_conjunction
-                
+
+                % There are a number of conjuncts containing calls above the
+                % configured call site threshold, we're considering them for
+                % parallelisation against one another.
+                %
+    ;       info_found_conjs_above_callsite_threshold(int)
+
+                % The conjunction being consdered for parallelisation had to be
+                % split into several 'partitions' because it contains some non
+                % atomic goals, this can limit the amount of parallelism
+                % available.
+    ;       info_split_conjunction_into_partitions(int)
+
+                % There are N conjunctions whose speedup due to parallelisation
+                % is positive.
+    ;       info_found_n_conjunctions_with_positive_speedup(int)
+
                 % This occurs when a variable is instantiated twice in a
                 % procedure body (different instantiation states are used).  We
                 % don't bother parallelising such procedures.
@@ -82,32 +100,21 @@
                     % parallelised.
             )
 
-                % Extra call pairs could have been parallelised but weren't in
-                % this implementation.
-                %
-    ;       notice_extra_callpairs_in_conjunction(
-                int
-                    % The number of call pairs that were not parallelised.
-            )
-   
-                % A pair of calls that we want to parallelise are separated by
-                % some other goal.
-                %
-    ;       notice_candidate_callpairs_not_adjacent
-
-                % As above, except that the goal in between is a call goal.
-                %
-    ;       notice_cannot_parallelise_over_cheap_call_goal
-        
-                % As above, except that the goal in between is non-atomic.
-                %
-    ;       notice_cannot_parallelise_over_nonatomic_goal
-            
                 % A pair of calls that could be parallelised have many
                 % dependant variables.  We don't yet calculate the speedup in
                 % these situations.
+                %
     ;       notice_callpair_has_more_than_one_dependant_var
-                
+
+                % A partition does not enough enough costly calls (>1) and
+                % could not be parallelised, we could have parallelised them if
+                % we could parallelise over non-atomic code.
+                % 
+                % The parameters are the partition number and the number of
+                % costly calls found.
+                %
+    ;       notice_partition_does_not_have_costly_calls(int, int)
+
                 % Couldn't find the proc defn in the progrep data, maybe the
                 % procedure is built-in.
                 %
@@ -135,6 +142,8 @@
 
 :- import_module list.
 
+:- import_module program_representation_utils.
+
 %-----------------------------------------------------------------------------%
 
 message_get_level(message(_, Type)) =
@@ -143,12 +152,27 @@ message_get_level(message(_, Type)) =
 %-----------------------------------------------------------------------------%
 
 message_to_string(message(Location, MessageType), String) :-
-    LocationString = string(Location),
+    location_to_string(Location, LocationString),
     Level = message_type_to_level(MessageType),
     LevelString = message_level_to_string(Level),
     MessageStr = message_type_to_string(MessageType),
     string.format("%s: In %s: %s",
         [s(LevelString), s(LocationString), s(MessageStr)], String).
+
+location_to_string(proc(ProcLabel), String) :-
+    print_proc_label_to_string(ProcLabel, ProcLabelString),
+    format("procedure %s", [s(ProcLabelString)], String). 
+location_to_string(goal(ProcLabel, GoalPath), String) :-
+    print_proc_label_to_string(ProcLabel, ProcLabelString),
+    ( empty_goal_path(GoalPath) ->
+        GoalPathString = "root goal"
+    ;
+        GoalPathString = goal_path_to_string(GoalPath)
+    ),
+    format("goal %s in procedure %s", 
+        [s(GoalPathString), s(ProcLabelString)], String).
+location_to_string(clique(clique_ptr(Id)), String) :-
+    format("clique %d", [i(Id)], String).
 
 %-----------------------------------------------------------------------------%
 
@@ -159,7 +183,6 @@ append_message(Location, MessageType, !Messages) :-
 %-----------------------------------------------------------------------------%
 
 :- func message_level_to_string(message_level) = string.
-
 message_level_to_string(message_info) = "Info".
 message_level_to_string(message_notice) = "Notice".
 message_level_to_string(message_warning) = "Warning".
@@ -178,16 +201,15 @@ message_level_to_int(message_error) = 1.
 
 message_type_to_level(info_found_candidate_conjunction) =
     message_info.
+message_type_to_level(info_found_conjs_above_callsite_threshold(_)) =
+    message_info.
+message_type_to_level(info_found_n_conjunctions_with_positive_speedup(_)) =
+    message_info.
+message_type_to_level(info_split_conjunction_into_partitions(_)) = message_info.
 message_type_to_level(notice_duplicate_instantiation(_)) = message_notice.
-message_type_to_level(notice_extra_callpairs_in_conjunction(_)) =
-    message_notice.
-message_type_to_level(notice_candidate_callpairs_not_adjacent) = 
-    message_notice.
-message_type_to_level(notice_cannot_parallelise_over_cheap_call_goal) =
-    message_notice.
-message_type_to_level(notice_cannot_parallelise_over_nonatomic_goal) =
-    message_notice.
 message_type_to_level(notice_callpair_has_more_than_one_dependant_var) =
+    message_notice.
+message_type_to_level(notice_partition_does_not_have_costly_calls(_, _)) =
     message_notice.
 message_type_to_level(warning_cannot_lookup_proc_defn) = message_warning.
 message_type_to_level(warning_cannot_compute_procrep_coverage_fallback(_)) =
@@ -206,31 +228,34 @@ message_type_to_string(MessageType) = String :-
         MessageType = info_found_candidate_conjunction, 
         String = "Found candidate conjunction"
     ;
+        (
+            MessageType = info_found_conjs_above_callsite_threshold(Num),
+            MessageStr = "Found %d conjuncts above callsite threashold"
+        ;
+            MessageType = info_found_n_conjunctions_with_positive_speedup(Num),
+            MessageStr = "Found %d conjunctions with a positive speedup due"
+                ++ " to parallelisation"
+        ;
+            MessageType = info_split_conjunction_into_partitions(Num),
+            MessageStr = "Split conjunction into %d partitions, this may reduce"
+                ++ " parallelism"
+        ),
+        string.format(MessageStr, [i(Num)], String)
+    ;
         MessageType = notice_duplicate_instantiation(CandidateConjuncts), 
         string.format(
             "%d conjunctions not parallelised: Seen duplicate instantiations",
             [i(CandidateConjuncts)], String)
     ;
-        MessageType = notice_extra_callpairs_in_conjunction(NumCPCs),
-        string.format(
-            "%d potential call pairs not parallelised in this conjunction",
-            [i(NumCPCs)], String)
-    ;
-        MessageType = notice_candidate_callpairs_not_adjacent,
-        String = "Two callpairs are difficult to parallelise because they are"
-            ++ " not adjacent"
-    ;
-        MessageType = notice_cannot_parallelise_over_cheap_call_goal,
-        String = "Parallelising expensive call goals with cheap call goals"
-            ++ " between them is not supported"
-    ;
-        MessageType = notice_cannot_parallelise_over_nonatomic_goal, 
-        String = "Parallelising call goals with non-atomic goals between them"
-            ++ " is not supported"
-    ;
         MessageType = notice_callpair_has_more_than_one_dependant_var,
         String = "Parallelising call pairs that have more than one dependant"
             ++ " variable is not yet supported."
+    ;
+        MessageType = notice_partition_does_not_have_costly_calls(PartNum,
+            NumCalls),
+        string.format("Partition %d has only %d costly calls and cannot be"
+                ++ " parallelised", 
+            [i(PartNum), i(NumCalls)], String)
     ;
         MessageType = warning_cannot_lookup_proc_defn,
         String = "Could not look up proc defn, perhaps this procedure is"

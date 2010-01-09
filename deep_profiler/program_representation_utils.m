@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008 The University of Melbourne.
+% Copyright (C) 2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -41,6 +41,10 @@
     %
 :- pred print_proc_to_strings(proc_rep(GoalAnn)::in, cord(string)::out) is det
     <= goal_annotation(GoalAnn).
+
+    % Print a proc label to a string.
+    %
+:- pred print_proc_label_to_string(string_proc_label::in, string::out) is det.
 
 %----------------------------------------------------------------------------%
 
@@ -118,6 +122,33 @@
 
 %----------------------------------------------------------------------------%
 
+    % A difference between too inst maps.  This lists the variables that are
+    % instantiated by a particular goal.
+    %
+:- type inst_map_delta.
+
+    % Get the set of variables that are instantiated by this inst map.
+    %
+:- pred inst_map_delta_get_var_set(inst_map_delta::in, set(var_rep)::out)
+    is det.
+
+    % The empty inst_map_delta.  Nothing is instantiated.
+    %
+:- pred empty_inst_map_delta(inst_map_delta::out) is det.
+:- func empty_inst_map_delta = inst_map_delta.
+
+    % calc_inst_map_delta(InstMapBefore, InstMapAfter, InstMapDelta)
+    %
+    % Calculate the difference between two inst maps.
+    %
+    % InstMapAfter is InstMapBefore after the variables in InstMapDelta have
+    % been instantiated.
+    %
+:- pred calc_inst_map_delta(inst_map::in, inst_map::in, inst_map_delta::out) 
+    is det.
+
+%----------------------------------------------------------------------------%
+
     % Retrieve a set of all the vars involved with this atomic goal.
     %
 :- pred atomic_goal_get_vars(atomic_goal_rep::in, set(var_rep)::out) is det.
@@ -160,16 +191,16 @@ accumulate_print_proc_to_strings(_, Proc, !Strings) :-
 print_proc_to_strings(ProcRep, Strings) :-
     ProcRep = proc_rep(ProcLabel, ProcDefnRep),
     ProcDefnRep = proc_defn_rep(ArgVarReps, GoalRep, VarTable, Detism),
-    print_proc_label_to_strings(Detism, ProcLabel, ProcLabelString),
+    print_proc_label_to_string(ProcLabel, ProcLabelString0),
+    detism_to_string(Detism, DetismString),
+    ProcLabelString = DetismString ++ cord.singleton(" ") ++ 
+        cord.singleton(ProcLabelString0),
     print_args_to_strings(print_head_var, VarTable, ArgVarReps, ArgsString),
     print_goal_to_strings(VarTable, 1, GoalRep, GoalString),
     Strings = ProcLabelString ++ ArgsString ++ cord.singleton(" :-\n") ++
         GoalString ++ nl.
 
-:- pred print_proc_label_to_strings(detism_rep::in, string_proc_label::in,
-    cord(string)::out) is det.
-
-print_proc_label_to_strings(Detism, ProcLabel, Strings) :-
+print_proc_label_to_string(ProcLabel, String) :-
     (
         ProcLabel = str_ordinary_proc_label(PredFunc, DeclModule, _DefModule,
             Name, Arity, Mode),
@@ -180,16 +211,14 @@ print_proc_label_to_strings(Detism, ProcLabel, Strings) :-
             PredFunc = pf_function,
             PF = "func"
         ),
-        string.format(" %s %s.%s/%d-%d",
+        string.format("%s %s.%s/%d-%d",
             [s(PF), s(DeclModule), s(Name), i(Arity), i(Mode)], String)
     ;
         ProcLabel = str_special_proc_label(TypeName, TypeModule, _DefModule,
             Name, Arity, Mode),
-        string.format(" %s for %s.%s/%d-%d",
+        string.format("%s for %s.%s/%d-%d",
             [s(Name), s(TypeModule), s(TypeName), i(Arity), i(Mode)], String)
-    ),
-    detism_to_string(Detism, DetismString),
-    Strings = DetismString ++ cord.singleton(String).
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -563,10 +592,10 @@ modulerep_search_proc(ModuleRep, ProcLabel, ProcRep) :-
 
 :- type inst_map
     --->    inst_map(
-                map(var_rep, inst_rep),
+                im_inst_map         :: map(var_rep, inst_rep),
                     % The actual inst map.
 
-                map(var_rep, set(var_rep))
+                im_var_dep_map      :: map(var_rep, set(var_rep))
                     % A tree describing dependencies between bound variables.
             ).
 
@@ -701,6 +730,33 @@ inst_map_get_var_deps_2(VarToDepVars, VarRep, !Set) :-
             true
         )
     ).
+
+%----------------------------------------------------------------------------%
+
+:- type inst_map_delta
+    --->    inst_map_delta(set(var_rep)).
+
+inst_map_delta_get_var_set(inst_map_delta(Vars), Vars).
+
+empty_inst_map_delta(inst_map_delta(Vars)) :-
+    set.init(Vars).
+empty_inst_map_delta = InstMap :-
+    empty_inst_map_delta(InstMap).
+
+calc_inst_map_delta(Before, After, inst_map_delta(DeltaVars)) :-
+    AfterVars = map.sorted_keys(After ^ im_inst_map),
+    filter((pred(Var::in) is semidet :-
+            (
+                map.search(Before ^ im_inst_map, Var, BeforeInst)
+            ->
+                BeforeInst = ir_free_rep
+            ;
+                % If we couldn't find the variable then it was free, It may
+                % have been in the head of the procedure.
+                true
+            )
+        ), AfterVars, DeltaVarsList),
+    DeltaVars = sorted_list_to_set(DeltaVarsList).
 
 %----------------------------------------------------------------------------%
 

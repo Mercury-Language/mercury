@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2006 The University of Melbourne.
+% Copyright (C) 1994-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -84,6 +84,12 @@
 :- mode map_fold2_maybe(pred(in, out, in, out, di, uo) is det,
     in, out, in, out, di, uo) is det.
 
+    % maybe_is_yes(yes(X), X).
+    %
+    % This is useful as an argument to list.filter_map
+    %
+:- pred maybe_is_yes(maybe(T)::in, T::out) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -108,6 +114,8 @@ map_fold_maybe(P, yes(T0), yes(T), Acc0, Acc) :-
 map_fold2_maybe(_, no, no, !A, !B).
 map_fold2_maybe(P, yes(T0), yes(T), !A, !B) :-
     P(T0, T, !A, !B).
+
+maybe_is_yes(yes(X), X).
 
 %-----------------------------------------------------------------------------%
 :- end_module maybe.

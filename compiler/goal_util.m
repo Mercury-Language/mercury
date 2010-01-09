@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2009 The University of Melbourne.
+% Copyright (C) 1995-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -231,6 +231,14 @@
     % Returns all the procedures that are used within a goal.
     %
 :- pred pred_proc_ids_from_goal(hlds_goal::in, list(pred_proc_id)::out) is det.
+
+:- type goal_is_atomic
+    --->    goal_is_atomic
+    ;       goal_is_nonatomic.
+
+    % Returns whether a goal is atomic.  This is undefined for shorthand goals.
+    %
+:- pred goal_is_atomic(hlds_goal::in, goal_is_atomic::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -1498,21 +1506,27 @@ create_conj(GoalA, GoalB, Type, ConjGoal) :-
 
 create_conj_from_list(GoalsInConj, Type, ConjGoal) :-
     (
-        GoalsInConj = [ GoalA | _ ]
+        GoalsInConj = [ GoalA | GoalsTail ],
+        (
+            GoalsTail = [ _ | _ ],
+            ConjGoalExpr = conj(Type, GoalsInConj),
+            goal_list_nonlocals(GoalsInConj, NonLocals),
+            goal_list_instmap_delta(GoalsInConj, InstMapDelta),
+            goal_list_determinism(GoalsInConj, Detism),
+            goal_list_purity(GoalsInConj, Purity),
+            GoalAInfo = GoalA ^ hlds_goal_info,
+            Context = goal_info_get_context(GoalAInfo),
+            goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
+                ConjGoalInfo),
+            ConjGoal = hlds_goal(ConjGoalExpr, ConjGoalInfo)
+        ;
+            GoalsTail = [],
+            ConjGoal = GoalA
+        )
     ;
         GoalsInConj = [],
         unexpected(this_file, "create_conj_from_list: empty conjunction")
-    ),
-    ConjGoalExpr = conj(Type, GoalsInConj),
-    goal_list_nonlocals(GoalsInConj, NonLocals),
-    goal_list_instmap_delta(GoalsInConj, InstMapDelta),
-    goal_list_determinism(GoalsInConj, Detism),
-    goal_list_purity(GoalsInConj, Purity),
-    GoalAInfo = GoalA ^ hlds_goal_info,
-    Context = goal_info_get_context(GoalAInfo),
-    goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
-        ConjGoalInfo),
-    ConjGoal = hlds_goal(ConjGoalExpr, ConjGoalInfo).
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1804,6 +1818,29 @@ pred_proc_ids_from_goal(Goal, PredProcIds) :-
     P = (pred(PredProcId::out) is nondet :- goal_calls(Goal, PredProcId)),
     solutions.solutions(P, PredProcIds).
 
+goal_is_atomic(Goal, GoalIsAtomic) :-
+    GoalExpr = Goal ^ hlds_goal_expr,
+    (
+        ( GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        GoalIsAtomic = goal_is_atomic
+    ;
+        ( GoalExpr = conj(_, _)
+        ; GoalExpr = disj(_)
+        ; GoalExpr = switch(_, _, _)
+        ; GoalExpr = negation(_)
+        ; GoalExpr = scope(_, _)
+        ; GoalExpr = if_then_else(_, _, _, _)
+        ),
+        GoalIsAtomic = goal_is_nonatomic
+    ;
+        GoalExpr = shorthand(_),
+        unexpected(this_file, "goal_is_atomic/2: shorthand goal")
+    ).
+        
 %-----------------------------------------------------------------------------%
 
 foreign_code_uses_variable(Impl, VarName) :-
