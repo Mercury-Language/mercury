@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2009 The University of Melbourne.
+% Copyright (C) 2002-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -496,6 +496,14 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         Parallel = no,
         CFLAGS_FOR_THREADS = ""
     ),
+    globals.lookup_bool_option(Globals, threadscope, Threadscope),
+    (
+        Threadscope = yes,
+        ThreadscopeOpt = "-DMR_THREADSCOPE "
+    ;
+        Threadscope = no,
+        ThreadscopeOpt = ""
+    ),
     globals.get_gc_method(Globals, GC_Method),
     BoehmGC_Opt = "-DMR_CONSERVATIVE_GC -DMR_BOEHM_GC ",
     (
@@ -861,6 +869,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         RegOpt, GotoOpt, AsmOpt,
         CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
         CFLAGS_FOR_THREADS, " ", CFLAGS_FOR_PIC, " ",
+        ThreadscopeOpt,
         GC_Opt, 
         ProfileCallsOpt, ProfileTimeOpt, 
         ProfileMemoryOpt, ProfileDeepOpt, 

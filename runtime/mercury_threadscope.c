@@ -6,7 +6,7 @@ INIT mercury_sys_init_threadscope
 ENDINIT
 */
 /*
-** Copyright (C) 2009 The University of Melbourne.
+** Copyright (C) 2009-2010 The University of Melbourne.
 ** Copyright (C) 2008-2009 The GHC Team.
 **
 ** This file may only be copied under the terms of the GNU Library General
@@ -85,8 +85,7 @@ ENDINIT
 #include <stdio.h>
 #include <string.h>
 
-#if defined(MR_LL_PARALLEL_CONJ) && \
-        defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+#ifdef MR_THREADSCOPE
 
 /***************************************************************************/
 
@@ -1171,8 +1170,7 @@ get_current_time_nanosecs(void)
 
 /***************************************************************************/
 
-#endif /* defined(MR_LL_PARALLEL_CONJ) && \
-        defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) */
+#endif /* MR_THREADSCOPE */
 
 /* forward decls to suppress gcc warnings */
 void mercury_sys_init_threadscope_init(void);

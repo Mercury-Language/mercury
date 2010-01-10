@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2007, 2009 The University of Melbourne.
+** Copyright (C) 2007, 2009-2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -81,7 +81,7 @@ MR_OUTLINE_DEFN(
 
 /*---------------------------------------------------------------------------*/
 
-#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+#if defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
 
 /*
 ** Profiling of the parallel runtime.
@@ -501,5 +501,5 @@ MR_rdtsc(MR_uint_least64_t *tsc) {
 
 #endif /* __GNUC__ && (__i386__ || __x86_64__) */
 
-#endif /* MR_THREAD_SAFE && MR_PROFILE_PARALLEL_EXECUTION_SUPPORT */
+#endif /* MR_PROFILE_PARALLEL_EXECUTION_SUPPORT */
 

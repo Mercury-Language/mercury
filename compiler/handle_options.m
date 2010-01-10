@@ -554,6 +554,18 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     ;
         TagsMethod = TagsMethod0
     ),
+        
+    globals.lookup_bool_option(!.Globals, parallel, Parallel),
+    globals.lookup_bool_option(!.Globals, threadscope, Threadscope),
+    (
+        Parallel = no,
+        Threadscope = yes
+    ->
+        add_error("'threadscope' grade component requires a parallel grade", 
+            !Errors)
+    ;
+        true
+    ),
 
     % Implicit parallelism requires feedback information, however this
     % error should only be shown in a parallel grade, otherwise implicit
@@ -562,7 +574,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         ImplicitParallelism),
     (
         ImplicitParallelism = yes,
-        globals.lookup_bool_option(!.Globals, parallel, Parallel),
         (
             Parallel = yes,
             globals.lookup_string_option(!.Globals, feedback_file,
@@ -2476,10 +2487,8 @@ grade_string_to_comp_strings(GradeString, MaybeGrade, !Errors) :-
 
 %-----------------------------------------------------------------------------%
 
-    % IMPORTANT: any changes here may require similar changes to
-    %   runtime/mercury_grade.h
-    %   scripts/parse_grade_options.sh-subr
-    %   scripts/canonical_grade.sh-subr
+    % IMPORTANT: any changes here may require similar changes to other files,
+    % see the list of files at the top of runtime/mercury_grade.h
     %
     % The grade_component type should have one constructor for each
     % dimension of the grade. It is used when converting the components
@@ -2493,16 +2502,19 @@ grade_string_to_comp_strings(GradeString, MaybeGrade, !Errors) :-
     % The value to which a grade option should be reset should be given
     % in the grade_start_values table below.
     %
-    % The ordering of the components here is the same as the order
-    % used in scripts/ml.in, and any change here will require a
-    % corresponding change there. The only place where the ordering
-    % actually matters is for constructing the pathname for the
-    % grade of the library, etc for linking (and installation).
+    % The ordering of the components here is the same as the order used in
+    % scripts/canonical_grand.sh-subr, and any change here will require a
+    % corresponding change there. The only place where the ordering actually
+    % matters is for constructing the pathname for the grade of the library,
+    % etc for linking (and installation).
     %
 :- type grade_component
     --->    comp_gcc_ext        % gcc extensions etc. -- see
                                 % grade_component_table
     ;       comp_par            % parallelism / multithreading
+    ;       comp_par_threadscope
+                                % Whether to support theadscope profiling of
+                                % parallel grades.
     ;       comp_gc             % the kind of GC to use
     ;       comp_prof           % what profiling options to use
     ;       comp_term_size      % whether or not to record term sizes
@@ -2754,6 +2766,10 @@ grade_component_table("erlang", comp_gcc_ext, [],
     % Parallelism/multithreading components.
 grade_component_table("par", comp_par, [parallel - bool(yes)], no, yes).
 
+    % Threadscope profiling in parallel grades.
+grade_component_table("threadscope", comp_par_threadscope, 
+    [threadscope - bool(yes)], no, yes).
+
     % GC components.
 grade_component_table("gc", comp_gc, [gc - string("boehm")], no, yes).
 grade_component_table("gcd", comp_gc, [gc - string("boehm_debug")], no, yes).
@@ -2866,7 +2882,7 @@ grade_component_table("rbmmp", comp_regions,
 grade_component_table("rbmmdp", comp_regions,
     [use_regions - bool(yes),
     use_regions_debug - bool(yes), use_regions_profiling - bool(yes)],
-    no, yes).  
+    no, yes).
 
 :- pred reset_grade_options(option_table::in, option_table::out) is det.
 
@@ -2886,6 +2902,7 @@ grade_start_values(highlevel_code - bool(no)).
 grade_start_values(highlevel_data - bool(no)).
 grade_start_values(gcc_nested_functions - bool(no)).
 grade_start_values(parallel - bool(no)).
+grade_start_values(threadscope - bool(no)).
 grade_start_values(gc - string("none")).
 grade_start_values(profile_deep - bool(no)).
 grade_start_values(profile_time - bool(no)).

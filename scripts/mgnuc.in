@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 et
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2007 The University of Melbourne.
+# Copyright (C) 1995-2007, 2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -284,6 +284,11 @@ case $thread_safe in
                     ANSI_OPTS=""
                 esac ;;
     false)      THREAD_OPTS="" ;;
+esac
+
+case $threadscope in
+    true)       THREADSCOPE_OPTS="-DMR_THREADSCOPE" ;;
+    false)      THREADSCOPE_OPTS="" ;;
 esac
 
 # Set the correct flags if we're to use the MS Visual C runtime.
@@ -648,6 +653,7 @@ ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS\
     $SINGLE_PREC_FLOAT_OPTS\
     $SPLIT_OPTS\
     $THREAD_OPTS\
+    $THREADSCOPE_OPTS\
     $REGION_OPTS\
     $PICREG_OPTS\
     $ARCH_OPTS\

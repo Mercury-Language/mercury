@@ -73,6 +73,7 @@ into another language, under the above conditions for modified versions.
 @author Tyson Dowd
 @author Mark Brown
 @author Ian MacLarty
+@author Paul Bone
 @page
 @vskip 0pt plus 1filll
 Copyright @copyright{} 1995--2010 The University of Melbourne.
@@ -7307,6 +7308,7 @@ The set of aspects and their alternatives are:
 @cindex .decldebug (grade modifier)
 @c @cindex .ssdebug (grade modifier)
 @cindex .par (grade modifier)
+@c @cindex .threadscope (grade modifier)
 @cindex prof (grade modifier)
 @cindex memprof (grade modifier)
 @cindex profdeep (grade modifier)
@@ -7319,6 +7321,7 @@ The set of aspects and their alternatives are:
 @cindex decldebug (grade modifier)
 @c @cindex ssdebug (grade modifier)
 @cindex par (grade modifier)
+@c @cindex threadscope (grade modifier)
 @table @asis
 @item What target language to use, what data representation to use, and (for C) what combination of GNU C extensions to use:
 @samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
@@ -7350,6 +7353,12 @@ small segments: @samp{stseg} (the default is to used fixed size stacks)
 
 @item Whether to use a thread-safe version of the runtime environment:
 @samp{par} (the default is a non-thread-safe environment).
+
+@c @item Whether to include support for profile the execution of parallel
+@c programs:
+@c @samp{threadscope} (the default is no support for profiling parallel
+@c execution).
+@c See also the @samp{--profile-parallel-execution} runtime option.
 
 @end table
 
@@ -9730,9 +9739,8 @@ grade.
 @c @findex --profile-parallel-execution
 @c Tells the runtime to collect and write out parallel execution profiling
 @c information to a file named @file{parallel_execution_profile.txt}.
-@c This only has an effect if the executable was built in a parallel grade
-@c and the @samp{MR_PROFILE_PARALLEL_EXECUTION_SUPPORT} C macro was
-@c defined when the runtime system was compiled.
+@c This only has an effect if the executable was built in a low level c,
+@c parallel, threadscope grade.
 
 @sp 1
 @item --thread-pinning

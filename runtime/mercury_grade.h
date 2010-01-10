@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2009 The University of Melbourne.
+** Copyright (C) 1997-2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -447,8 +447,16 @@
   #define MR_GRADE_OPT_PART_17  MR_GRADE_OPT_PART_16
 #endif
 
-#define MR_GRADE                MR_GRADE_PART_17
-#define MR_GRADE_OPT            MR_GRADE_OPT_PART_17
+#if defined(MR_THREADSCOPE)
+  #define MR_GRADE_PART_18      MR_PASTE2(MR_GRADE_PART_17, _threadscope)
+  #define MR_GRADE_OPT_PART_18  MR_GRADE_OPT_PART_17 ".threadscope"
+#else
+  #define MR_GRADE_PART_18      MR_GRADE_PART_17
+  #define MR_GRADE_OPT_PART_18  MR_GRADE_OPT_PART_17
+#endif
+
+#define MR_GRADE                MR_GRADE_PART_18
+#define MR_GRADE_OPT            MR_GRADE_OPT_PART_18
 
 #define MR_GRADE_VAR            MR_PASTE2(MR_grade_,MR_GRADE)
 #define MR_GRADE_STRING         MR_STRINGIFY(MR_GRADE)

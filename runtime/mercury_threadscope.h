@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2009 The University of Melbourne.
+** Copyright (C) 2009-2010 The University of Melbourne.
 **
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -22,8 +22,7 @@
 #include "mercury_engine.h"
 #include "mercury_context.h"
 
-#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
-        defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+#ifdef MR_THREADSCOPE
 
 /*
 ** Reasons why a context has been stopped, not all of these apply to Mercury,
@@ -128,7 +127,6 @@ MR_threadscope_post_stop_context(MR_ContextStopReason reason);
 extern void
 MR_threadscope_post_calling_main(void);
 
-#endif /* defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
-        defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) */
+#endif /* MR_THREADSCOPE */
 
 #endif /* not MERCURY_THREADSCOPE_H */

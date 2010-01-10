@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2001, 2003, 2005-2007, 2009 The University of Melbourne.
+** Copyright (C) 1997-2001, 2003, 2005-2007, 2009-2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -131,8 +131,7 @@ MR_init_thread(MR_when_to_use when_to_use)
 
 #ifdef  MR_THREAD_SAFE
     MR_ENGINE(MR_eng_owner_thread) = pthread_self();
-  #if defined(MR_LL_PARALLEL_CONJ) && \
-    defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+  #ifdef MR_THREADSCOPE
     /*
     ** TSC Synchronization is not used, support is commented out.  See
     ** runtime/mercury_threadscope.h for an explanation.
@@ -166,8 +165,7 @@ MR_init_thread(MR_when_to_use when_to_use)
                 MR_ENGINE(MR_eng_this_context) =
                     MR_create_context("init_thread",
                         MR_CONTEXT_SIZE_REGULAR, NULL);
-#if defined(MR_LL_PARALLEL_CONJ) && \
-    defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+#ifdef MR_THREADSCOPE
                 MR_threadscope_post_create_context(MR_ENGINE(MR_eng_this_context));
 #endif
             }

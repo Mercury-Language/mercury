@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2007, 2009 The University of Melbourne.
+** Copyright (C) 1997-2007, 2009-2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -113,10 +113,15 @@
 ** MR_THREAD_SAFE
 **	Enable support for parallelism.
 **
+** MR_THREADSCOPE
+**  Enable support for parallelism profiling, aka 'threadscope'.  This is a
+**  grade component.  This works only with the low level C parallel grades.
+**
 ** MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
-**  Enable support for profiling parallel execution.  This only has an
-**  effect of MR_THREAD_SAFE is also defined.  This must also be enabled
-**  with the --profile-parallel-execution runtime option.
+**  Enable support for profiling the parallel runtime system.  This collects
+**  counts and timings of certain runtime events.  It is implied by
+**  MR_THREADSCOPE and must be enabled at runtime with the
+**  --profile-parallel-execution runtime option.
 **
 ** MR_NO_BACKWARDS_COMPAT
 **	Disable backwards compatibility with C code using obsolete low-level
@@ -728,8 +733,26 @@
 ** Whether we are in a grade which supports the low-level parallel
 ** conjunction execution mechanism.
 */
+#ifdef MR_LL_PARALLEL_CONJ
+  #error "MR_LL_PARALLEL_CONJ may not be defined on the command line"
+#endif
 #if !defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
   #define MR_LL_PARALLEL_CONJ
+#endif
+
+/*
+** Check that MR_THREADSCOPE is used correctly.
+*/
+#if defined(MR_THREADSCOPE) && !defined(MR_THREAD_SAFE)
+  #error "The threadscope grade component may only be used with " \
+    "parallel grades"
+#endif
+
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
+  #error "MR_PROFILE_PARALLEL_EXECUTION_SUPPORT may only be implied by MR_THREADSCOPE"
+#endif
+#ifdef MR_THREADSCOPE
+  #define MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
 #endif
 
 /* XXX document MR_BYTECODE_CALLABLE */

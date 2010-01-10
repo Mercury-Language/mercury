@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2007, 2009 The University of Melbourne.
+** Copyright (C) 1997-2007, 2009-2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -248,7 +248,7 @@ struct MR_SparkDeque_Struct {
 
 struct MR_Context_Struct {
     const char          *MR_ctxt_id;
-#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+#ifdef MR_THREADSCOPE
     MR_Unsigned         MR_ctxt_num_id;
 #endif
     MR_ContextSize      MR_ctxt_size;
@@ -343,7 +343,7 @@ extern      MR_Context  *MR_runqueue_tail;
   extern    MR_bool         MR_thread_pinning;
 #endif
 
-#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
 extern MR_bool      MR_profile_parallel_execution;
 
 /* XXX: This is currently unused, we plan to use it in the future. -pbone */
@@ -577,11 +577,10 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
   #define MR_IF_NOT_HIGHLEVEL_CODE(x)
 #endif
 
-#if defined(MR_LL_PARALLEL_CONJ) && \
-    defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
-  #define MR_IF_LL_PAR_CONJ_AND_PROF_PAR_EXEC(x) x
+#ifdef MR_THREADSCOPE
+  #define MR_IF_THREADSCOPE(x) x
 #else
-  #define MR_IF_LL_PAR_CONJ_AND_PROF_PAR_EXEC(x)
+  #define MR_IF_THREADSCOPE(x)
 #endif
 
 #define MR_load_context(cptr)                                                 \
@@ -648,7 +647,7 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
             )                                                                 \
         )                                                                     \
         MR_set_min_heap_reclamation_point(load_context_c);                    \
-        MR_IF_LL_PAR_CONJ_AND_PROF_PAR_EXEC(                                  \
+        MR_IF_THREADSCOPE(                                  \
             MR_threadscope_post_run_context();                                \
         )                                                                     \
     } while (0)

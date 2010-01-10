@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -361,6 +361,7 @@
     % (c) Miscellaneous
     ;       gc
     ;       parallel
+    ;       threadscope
     ;       use_trail
     ;       trail_segments
     ;       use_minimal_model_stack_copy
@@ -1245,6 +1246,7 @@ option_defaults_2(compilation_model_option, [
     % (c) Miscellaneous optional features
     gc                                  -   string("boehm"),
     parallel                            -   bool(no),
+    threadscope                         -   bool(no),
     use_trail                           -   bool(no),
     trail_segments                      -   bool(no),
     maybe_thread_safe_opt               -   string("no"),

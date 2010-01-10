@@ -1,7 +1,7 @@
 #---------------------------------------------------------------------------#
 # vim: ft=sh
 #---------------------------------------------------------------------------#
-# Copyright (C) 2000-2007 The University of Melbourne.
+# Copyright (C) 2000-2007, 2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -81,9 +81,15 @@ case $gcc_nested_functions,$highlevel_code in
 	*)		;;
 esac
 	
-case $thread_safe in
-	true)	GRADE="$GRADE.par" ;;
-	false)	;;
+case $thread_safe,$threadscope in
+	true,false)	    GRADE="$GRADE.par" ;;
+    true,true)      GRADE="$GRADE.par.threadscope" ;;
+    false,false)    ;;
+	*)
+        echo "$progname: error: The 'threadscope' grade component may only be" 1>&2
+        echo "$progname: error: used in parallel grades"
+        exit 1
+        ;;
 esac
 
 case $gc_method in

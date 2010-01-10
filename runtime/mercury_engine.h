@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1994-2007, 2009 The University of Melbourne.
+** Copyright (C) 1994-2007, 2009-2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -392,7 +392,7 @@ typedef struct MR_mercury_engine_struct {
 #ifdef  MR_THREAD_SAFE
     MercuryThread       MR_eng_owner_thread;
     MR_Unsigned         MR_eng_c_depth;
-  #if defined(MR_LL_PARALLEL_CONJ) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+  #ifdef MR_THREADSCOPE
     /*
     ** For each profiling event add this offset to the time so that events on
     ** different engines that occur at the same time have the same time in

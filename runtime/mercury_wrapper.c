@@ -6,7 +6,7 @@ INIT mercury_sys_init_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1994-2009 The University of Melbourne.
+** Copyright (C) 1994-2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -539,7 +539,7 @@ mercury_runtime_init(int argc, char **argv)
     }
 #endif
 
-#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+#if defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
     /*
     ** Setup support for reading the CPU's TSC and detect the clock speed of the
     ** processor.  This is currently used by profiling of the parallelism
@@ -630,7 +630,7 @@ mercury_runtime_init(int argc, char **argv)
 
 #if defined(MR_LL_PARALLEL_CONJ)
     MR_pin_primordial_thread();
-  #if defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+  #if defined(MR_THREADSCOPE)
     /*
     ** We must setup threadscope before we setup the first engine.
     ** Pin the primordial thread, if thread pinning is configured.
@@ -656,7 +656,7 @@ mercury_runtime_init(int argc, char **argv)
         for (i = 1; i < MR_num_threads; i++) {
             MR_create_thread(NULL);
         }
-    #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
+    #ifdef MR_THREADSCOPE
     /*
     ** TSC Synchronization is not used, support is commented out.  See
     ** runtime/mercury_threadscope.h for an explanation.
@@ -1794,7 +1794,7 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_PROFILE_PARALLEL_EXECUTION:
-#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
                 MR_profile_parallel_execution = MR_TRUE;
 #endif
                 break;
@@ -2468,8 +2468,7 @@ mercury_runtime_main(void)
         MR_setup_callback(MR_program_entry_point);
 #endif
 
-#if defined(MR_LL_PARALLEL_CONJ) && \
-        defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+#ifdef MR_THREADSCOPE
 
         MR_threadscope_post_calling_main();
 
@@ -2483,8 +2482,7 @@ mercury_runtime_main(void)
         MR_debugmsg0("Returning from MR_call_engine()\n");
 #endif
 
-#if defined(MR_LL_PARALLEL_CONJ) && \
-        defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+#ifdef MR_THREADSCOPE
 
         MR_threadscope_post_stop_context(MR_TS_STOP_REASON_FINISHED);
 
@@ -2999,8 +2997,7 @@ mercury_runtime_terminate(void)
         MR_ATOMIC_PAUSE;
     }
 
-#if defined(MR_LL_PARALLEL_CONJ) && \
-        defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+#ifdef MR_THREADSCOPE
     if (MR_ENGINE(MR_eng_ts_buffer)) {
         MR_threadscope_finalize_engine(MR_thread_engine_base);
     }

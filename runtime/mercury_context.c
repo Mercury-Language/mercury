@@ -6,7 +6,7 @@ INIT mercury_sys_init_scheduler_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1995-2007, 2009 The University of Melbourne.
+** Copyright (C) 1995-2007, 2009-2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -27,7 +27,7 @@ ENDINIT
 	#include <unistd.h>	/* for select() on OS X */
   #endif	
 #endif
-#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
   #include <math.h> /* for sqrt and pow */
 #endif
 
@@ -45,7 +45,7 @@ ENDINIT
 #include "mercury_threadscope.h"        /* for data types and posting events */
 #include "mercury_reg_workarounds.h"    /* for `MR_fd*' stuff */
 
-#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
 #define MR_PROFILE_PARALLEL_EXECUTION_FILENAME "parallel_execution_profile.txt"
 #endif
 
@@ -82,9 +82,10 @@ MR_PendingContext       *MR_pending_contexts;
   MercuryLock           MR_pending_contexts_lock;
 #endif
 
-#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
 MR_bool                 MR_profile_parallel_execution = MR_FALSE;
 
+#ifndef MR_HIGHLEVEL_CODE
 static MR_Stats         MR_profile_parallel_executed_global_sparks = 
         { 0, 0, 0, 0 };
 static MR_Stats         MR_profile_parallel_executed_contexts = { 0, 0, 0, 0 };
@@ -102,13 +103,13 @@ static MR_Integer       MR_profile_parallel_small_context_reused = 0;
 static MR_Integer       MR_profile_parallel_regular_context_reused = 0;
 static MR_Integer       MR_profile_parallel_small_context_kept = 0;
 static MR_Integer       MR_profile_parallel_regular_context_kept = 0;
-#endif
+#endif /* ! MR_HIGHLEVEL_CODE */
+#endif /* MR_PROFILE_PARALLEL_EXECUTION_SUPPORT */
 
 /*
 ** Local variables for thread pinning.
 */
-#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
-    defined(MR_HAVE_SCHED_SETAFFINITY)
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY)
 static MercuryLock      MR_next_cpu_lock;
 MR_bool                 MR_thread_pinning = MR_FALSE;
 static MR_Unsigned      MR_next_cpu = 0;
@@ -163,8 +164,7 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
 static void
 MR_write_out_profiling_parallel_execution(void);
 
-#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
-        defined(MR_HAVE_SCHED_SETAFFINITY) 
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY) 
 static void 
 MR_do_pin_thread(int cpu);
 #endif
@@ -248,8 +248,7 @@ MR_init_thread_stuff(void)
 void
 MR_pin_primordial_thread(void)
 {
-#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
-        defined(MR_HAVE_SCHED_SETAFFINITY) 
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY) 
   #ifdef MR_HAVE_SCHED_GETCPU
     /*
     ** We don't need locking to pin the primordial thread as it is called
@@ -270,15 +269,14 @@ MR_pin_primordial_thread(void)
   #else
     MR_pin_thread();
   #endif
-#endif /* defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
-            defined(MR_HAVE_SCHED_SETAFFINITY) */ 
+#endif /* defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY)
+  */ 
 }
 
 void
 MR_pin_thread(void)
 {
-#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
-        defined(MR_HAVE_SCHED_SETAFFINITY) 
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY) 
     MR_LOCK(&MR_next_cpu_lock, "MR_pin_thread");
     if (MR_thread_pinning) {
 #if defined(MR_HAVE_SCHED_GETCPU)
@@ -290,12 +288,11 @@ MR_pin_thread(void)
         MR_next_cpu++;
     }
     MR_UNLOCK(&MR_next_cpu_lock, "MR_pin_thread");
-#endif /* defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
-            defined(MR_HAVE_SCHED_SETAFFINITY) */ 
+#endif /* defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY) 
+  */ 
 }
 
-#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
-        defined(MR_HAVE_SCHED_SETAFFINITY) 
+#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY) 
 static void 
 MR_do_pin_thread(int cpu) 
 {
@@ -318,8 +315,8 @@ MR_do_pin_thread(int cpu)
         MR_thread_pinning = MR_FALSE;
     }
 }
-#endif /* defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) && \
-            defined(MR_HAVE_SCHED_SETAFFINITY) */ 
+#endif /* defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY) 
+  */ 
 
 void
 MR_finalize_thread_stuff(void)
@@ -334,14 +331,14 @@ MR_finalize_thread_stuff(void)
     pthread_mutex_destroy(&spark_deques_lock);
 #endif
 
-#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
     if (MR_profile_parallel_execution) {
         MR_write_out_profiling_parallel_execution();
     }
 #endif
 }
 
-#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
 static int
 fprint_stats(FILE *stream, const char *message, MR_Stats *stats);
 
@@ -464,7 +461,7 @@ fprint_stats(FILE *stream, const char *message, MR_Stats *stats) {
     }
 };
 
-#endif /* defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) */
+#endif /* MR_PROFILE_PARALLEL_EXECUTION_SUPPORT */
 
 static void 
 MR_init_context_maybe_generator(MR_Context *c, const char *id,
@@ -647,7 +644,7 @@ MR_Context *
 MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
 {
     MR_Context  *c;
-#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+#if MR_THREADSCOPE
     MR_Unsigned context_id;
 #endif
 
@@ -666,7 +663,7 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
     if (ctxt_size == MR_CONTEXT_SIZE_SMALL && free_small_context_list) {
         c = free_small_context_list;
         free_small_context_list = c->MR_ctxt_next;
-#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
         if (MR_profile_parallel_execution) {
             MR_profile_parallel_small_context_reused++;
         }
@@ -674,7 +671,7 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
     } else if (free_context_list != NULL) {
         c = free_context_list;
         free_context_list = c->MR_ctxt_next;
-#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
         if (MR_profile_parallel_execution) {
             MR_profile_parallel_regular_context_reused++;
         }
@@ -682,7 +679,7 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
     } else {
         c = NULL;
     }
-#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+#if MR_THREADSCOPE
     context_id = MR_next_context_id++;
 #endif
     MR_UNLOCK(&free_context_list_lock, "create_context i");
@@ -701,7 +698,7 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
         c->MR_ctxt_trail_zone = NULL;
 #endif
     }
-#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+#ifdef MR_THREADSCOPE
     c->MR_ctxt_num_id = context_id;
 #endif
     
@@ -738,7 +735,7 @@ MR_destroy_context(MR_Context *c)
         case MR_CONTEXT_SIZE_REGULAR:
             c->MR_ctxt_next = free_context_list;
             free_context_list = c;
-#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
             if (MR_profile_parallel_execution) {
                 MR_profile_parallel_regular_context_kept++;
             }
@@ -747,7 +744,7 @@ MR_destroy_context(MR_Context *c)
         case MR_CONTEXT_SIZE_SMALL:
             c->MR_ctxt_next = free_small_context_list;
             free_small_context_list = c;
-#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT) 
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
             if (MR_profile_parallel_execution) {
                 MR_profile_parallel_small_context_kept++;
             }
@@ -1055,7 +1052,7 @@ MR_check_pending_contexts(MR_bool block)
 void
 MR_schedule_context(MR_Context *ctxt)
 {
-#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
     MR_threadscope_post_context_runnable(ctxt);
 #endif
     MR_LOCK(&MR_runqueue_lock, "schedule_context");
@@ -1223,8 +1220,10 @@ MR_define_entry(MR_do_runnext);
     if (MR_ENGINE(MR_eng_this_context) == NULL) {
         MR_ENGINE(MR_eng_this_context) = MR_create_context("from spark",
             MR_CONTEXT_SIZE_SMALL, NULL);
-#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
+#ifdef MR_THREADSCOPE
         MR_threadscope_post_create_context_for_spark(MR_ENGINE(MR_eng_this_context));
+#endif
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
         if (MR_profile_parallel_execution) {
             MR_atomic_inc_int(
                     &MR_profile_parallel_contexts_created_for_sparks);
@@ -1232,7 +1231,7 @@ MR_define_entry(MR_do_runnext);
 #endif
         MR_load_context(MR_ENGINE(MR_eng_this_context));
     } else {
-#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+#ifdef MR_THREADSCOPE
         MR_threadscope_post_run_context();
 #endif
     }
@@ -1298,14 +1297,14 @@ MR_do_join_and_continue(MR_SyncTerm *jnc_st, MR_Code *join_label)
 
     if (jnc_last) {
         if (this_context == jnc_st->MR_st_orig_context) {
-                /*
-            ** It has finished executing and we're the originating context.  Jump
-            ** to the join label.
-                */
-                return join_label;
-            } else {
-#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
-                MR_threadscope_post_stop_context(MR_TS_STOP_REASON_FINISHED);
+            /*
+            ** This context originated this parallel conjunction and all the
+            ** branches have finished so jump to the join label.
+            */
+            return join_label;
+        } else {
+#ifdef MR_THREADSCOPE
+            MR_threadscope_post_stop_context(MR_TS_STOP_REASON_FINISHED);
 #endif
             /*
             ** This context didn't originate this parallel conjunction and
@@ -1322,46 +1321,48 @@ MR_do_join_and_continue(MR_SyncTerm *jnc_st, MR_Code *join_label)
                 MR_ATOMIC_PAUSE;
             }
             MR_schedule_context(jnc_st->MR_st_orig_context);
-                return MR_ENTRY(MR_do_runnext);
-            }
-        } else {
+            return MR_ENTRY(MR_do_runnext);
+        }
+    } else {
         MR_bool     popped;
         MR_Code     *spark_resume;
         
-            /*
+        /*
          * The parallel conjunction it is not yet finished.  Try to work on a
          * spark from our local stack.  The sparks on our stack are likely to
          * cause this conjunction to be complete.
-                */
-        popped = MR_wsdeque_pop_bottom(&this_context->MR_ctxt_spark_deque, &spark_resume);
+         */
+        popped = MR_wsdeque_pop_bottom(&this_context->MR_ctxt_spark_deque, 
+            &spark_resume);
         if (popped) {
-                MR_atomic_dec_int(&MR_num_outstanding_contexts_and_all_sparks);
+            MR_atomic_dec_int(&MR_num_outstanding_contexts_and_all_sparks);
             return spark_resume;
-            } else {
-                /*
-                ** If this context originated the parallel conjunction we've been
-            ** executing, suspend this context such that it will be resumed   
-            ** at the join label once the parallel conjunction is completed.  
-                **
+        } else {
+            /*
+            ** If this context originated the parallel conjunction that we've
+            ** been executing, suspend this context so that it will be
+            ** resumed at the join label once the parallel conjunction is
+            ** completed.  
+            **
             ** Otherwise we can reuse this context for the next piece of work.
-                */
+            */
             if (this_context == jnc_st->MR_st_orig_context) {
-#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
-                    MR_threadscope_post_stop_context(MR_TS_STOP_REASON_BLOCKED);
+#ifdef MR_THREADSCOPE
+                MR_threadscope_post_stop_context(MR_TS_STOP_REASON_BLOCKED);
 #endif
                 MR_save_context(this_context);
                 /* XXX: Make sure the context gets saved before we set the join
                  * label, use a memory barrier.*/
                 this_context->MR_ctxt_resume = (join_label);
-                    MR_ENGINE(MR_eng_this_context) = NULL;
-                } else {
-#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
-                    MR_threadscope_post_stop_context(MR_TS_STOP_REASON_FINISHED);
+                MR_ENGINE(MR_eng_this_context) = NULL;
+            } else {
+#ifdef MR_THREADSCOPE
+                MR_threadscope_post_stop_context(MR_TS_STOP_REASON_FINISHED);
 #endif
-                }
-                return MR_ENTRY(MR_do_runnext);
             }
+            return MR_ENTRY(MR_do_runnext);
         }
+    }
 }
 #endif
 

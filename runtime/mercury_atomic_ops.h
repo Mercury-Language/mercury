@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2007, 2009 The University of Melbourne.
+** Copyright (C) 2007, 2009-2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -481,7 +481,7 @@ typedef MR_Unsigned MR_Us_Cond;
 
 /*---------------------------------------------------------------------------*/
 
-#if defined(MR_THREAD_SAFE) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
+#if defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
 
 /*
 ** Declarations for profiling the parallel runtime.
@@ -544,7 +544,7 @@ MR_profiling_stop_timer(MR_Timer *timer, MR_Stats *stats);
 extern MR_uint_least64_t
 MR_read_cpu_tsc(void);
 
-#endif /* MR_THREAD_SAFE && MR_PROFILE_PARALLEL_EXECUTION_SUPPORT */
+#endif /* MR_PROFILE_PARALLEL_EXECUTION_SUPPORT */
 
 /*---------------------------------------------------------------------------*/
 
