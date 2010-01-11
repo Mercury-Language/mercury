@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2009 The University of Melbourne.
+% Copyright (C) 2006-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -159,6 +159,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
+:- import_module transform_hlds.dependency_graph.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -227,7 +228,10 @@ impl_dep_par_conjs_in_module(!ModuleInfo) :-
                 % These fields are updated when we add new variables.
                 % XXX We may also need the rtti_var_maps.
                 sync_varset                 :: prog_varset,
-                sync_vartypes               :: vartypes
+                sync_vartypes               :: vartypes,
+
+                % The current procedure.
+                sync_this_proc              :: pred_proc_id
             ).
 
 :- pred maybe_sync_dep_par_conjs_in_pred(pred_id::in,
@@ -272,10 +276,15 @@ sync_dep_par_conjs_in_proc(PredId, ProcId, IgnoreVars, !ModuleInfo,
         globals.lookup_bool_option(Globals, allow_some_paths_only_waits,
             AllowSomePathsOnly),
 
+        % We rely on dependency information in order to determine which calls a
+        % recursive.  The information is stored within !ModuleInfo so doesn't
+        % need to be kept here, this call simply forces an update.
+        module_info_rebuild_dependency_info(!ModuleInfo, _),
+        
         !:SyncInfo = sync_info(!.ModuleInfo, IgnoreVars, AllowSomePathsOnly,
-            !.VarSet, !.VarTypes),
+            !.VarSet, !.VarTypes, proc(PredId, ProcId)),
         sync_dep_par_conjs_in_goal(!Goal, InstMap0, _, !SyncInfo),
-        !.SyncInfo = sync_info(_, _, _, !:VarSet, !:VarTypes),
+        !.SyncInfo = sync_info(_, _, _, !:VarSet, !:VarTypes, _),
         % XXX RTTI varmaps may need to be updated
 
         % We really only need to run this part if something changed, but we
@@ -398,10 +407,10 @@ sync_dep_par_conjs_in_cases([Case0 | Cases0], [Case | Cases], InstMap0,
     is det.
 
 maybe_sync_dep_par_conj(Conjuncts, GoalInfo, NewGoal, InstMap, !SyncInfo) :-
-    !.SyncInfo = sync_info(ModuleInfo, IgnoreVars, AllowSomePathsOnly,
-        VarSet0, VarTypes0),
+    !.SyncInfo = sync_info(ModuleInfo0, IgnoreVars, AllowSomePathsOnly,
+        VarSet0, VarTypes0, PredProcId),
     % Find the variables that are shared between conjuncts.
-    SharedVars0 = find_shared_variables(ModuleInfo, InstMap, Conjuncts),
+    SharedVars0 = find_shared_variables(ModuleInfo0, InstMap, Conjuncts),
 
     % Filter out all the variables which have already have associated futures,
     % i.e. they were head variables which were replaced by futures; signal and
@@ -409,14 +418,18 @@ maybe_sync_dep_par_conj(Conjuncts, GoalInfo, NewGoal, InstMap, !SyncInfo) :-
     SharedVars = set.filter(isnt(set.contains(IgnoreVars)), SharedVars0),
 
     ( set.empty(SharedVars) ->
-        % Independent parallel conjunctions need no transformation.
-        par_conj_list_to_goal(Conjuncts, GoalInfo, NewGoal)
+        % Independant parallel conjunctions can somtimes be re-ordered to
+        % generate faster code.
+        reorder_indep_par_conj(PredProcId, VarTypes0, InstMap, Conjuncts,
+            GoalInfo, NewGoal, ModuleInfo0, ModuleInfo),
+        !:SyncInfo = sync_info(ModuleInfo, IgnoreVars, AllowSomePathsOnly,
+            VarSet0, VarTypes0, PredProcId)
     ;
-        sync_dep_par_conj(ModuleInfo, AllowSomePathsOnly, SharedVars,
+        sync_dep_par_conj(ModuleInfo0, AllowSomePathsOnly, SharedVars,
             Conjuncts, GoalInfo, NewGoal, InstMap,
             VarSet0, VarSet, VarTypes0, VarTypes),
-        !:SyncInfo = sync_info(ModuleInfo, IgnoreVars, AllowSomePathsOnly,
-            VarSet, VarTypes)
+        !:SyncInfo = sync_info(ModuleInfo0, IgnoreVars, AllowSomePathsOnly,
+            VarSet, VarTypes, PredProcId)
     ).
 
     % Transforming the parallel conjunction.
@@ -1154,6 +1167,127 @@ insert_signal_in_cases(ModuleInfo, FutureMap, ProducedVar,
     Case = case(MainConsId, OtherConsIds, Goal),
     insert_signal_in_cases(ModuleInfo, FutureMap, ProducedVar,
         Cases0, Cases, !VarSet, !VarTypes).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%
+% The independent parallel conjunction re-ordering transformation.
+%
+
+:- pred reorder_indep_par_conj(pred_proc_id::in, vartypes::in, instmap::in,
+    hlds_goals::in, hlds_goal_info::in, hlds_goal::out, 
+    module_info::in, module_info::out) is det.
+
+reorder_indep_par_conj(PredProcId, VarTypes, InstMapBefore, Conjuncts0,
+        GoalInfo, Goal, !ModuleInfo) :-
+    module_info_dependency_info(!.ModuleInfo, DependencyInfo),
+    hlds_dependency_info_get_dependency_ordering(DependencyInfo, Ordering),
+    search_scc(Ordering, PredProcId, SCC),
+    CallsToSameSCC = goal_list_calls_proc_in_list(Conjuncts0, SCC),
+    (
+        % The conjunction doesn't contain a recursive or mutually-recursive
+        % call, this optimisation does not apply.
+        CallsToSameSCC = [],
+        Conjuncts = Conjuncts0
+    ;
+        CallsToSameSCC = [_ | _],
+        reorder_indep_par_conj_2(SCC, VarTypes, InstMapBefore, Conjuncts0,
+            Conjuncts, !ModuleInfo)
+    ),
+    GoalExpr = conj(parallel_conj, Conjuncts),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
+
+:- pred reorder_indep_par_conj_2(list(pred_proc_id)::in, vartypes::in,
+    instmap::in, hlds_goals::in, hlds_goals::out, 
+    module_info::in, module_info::out) is det.
+
+reorder_indep_par_conj_2(_, _, _, [], [], !ModuleInfo).
+reorder_indep_par_conj_2(SCC, VarTypes, InstMapBefore, [ Goal | Goals0 ],
+        Goals, !ModuleInfo) :-
+    apply_instmap_delta(InstMapBefore, 
+        goal_info_get_instmap_delta(Goal ^ hlds_goal_info),
+        InstMapBeforeGoals0),
+    reorder_indep_par_conj_2(SCC, VarTypes, InstMapBeforeGoals0, Goals0,
+        Goals1, !ModuleInfo),
+    % These instmaps are equal since they both still apply Goal's instmap
+    % delta.
+    InstMapBeforeGoals1 = InstMapBeforeGoals0,
+
+    % If Goal is non recursive try to push it down into the conjunction.
+    (
+        member(CallPredProcId, SCC),
+        goal_calls(Goal, CallPredProcId)
+    ->
+        % Goal is recursive.
+        Goals = [ Goal | Goals1 ]
+    ;
+        % Goal is non-recursive.
+        push_goal_into_conj(VarTypes, InstMapBefore, Goal, InstMapBeforeGoals1,
+            Goals1, MaybeGoals, !ModuleInfo),
+        (
+            MaybeGoals = yes(Goals)
+        ;
+            MaybeGoals = no,
+            Goals = [ Goal | Goals1 ]
+        )
+    ).
+
+:- pred push_goal_into_conj(vartypes::in, instmap::in, hlds_goal::in,
+    instmap::in, hlds_goals::in, maybe(hlds_goals)::out, 
+    module_info::in, module_info::out) is det.
+
+push_goal_into_conj(_, _, Goal, _, [], yes([Goal]), !ModuleInfo).
+push_goal_into_conj(VarTypes, InstMapBeforeGoal, Goal, InstMapBeforePivotGoal,
+        [ PivotGoal | Goals0 ], MaybeGoals, !ModuleInfo) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
+    lookup_bool_option(Globals, fully_strict, FullyStrict),
+    can_reorder_goals(VarTypes, FullyStrict, InstMapBeforeGoal, Goal,
+        InstMapBeforePivotGoal, PivotGoal, CanReorderGoals, !ModuleInfo),
+    (
+        CanReorderGoals = yes,
+        % InstMapBeforeGoalAfterPivot represents the inst map before Goal given
+        % that it has already been swapped with PivotGoal, that is PivotGoal
+        % occurs before Goal.
+        PivotInstMapDelta = 
+            goal_info_get_instmap_delta(PivotGoal ^ hlds_goal_info),
+        apply_instmap_delta(InstMapBeforeGoal, PivotInstMapDelta,
+            InstMapBeforeGoalAfterPivot),
+       
+        GoalInstMapDelta =
+            goal_info_get_instmap_delta(Goal ^ hlds_goal_info),
+        apply_instmap_delta(InstMapBeforeGoalAfterPivot, GoalInstMapDelta,
+            InstMapAfterPivotAndGoal),
+
+        push_goal_into_conj(VarTypes, InstMapBeforeGoalAfterPivot, Goal,
+            InstMapAfterPivotAndGoal, Goals0, MaybeGoals1, !ModuleInfo),
+        (
+            MaybeGoals1 = yes(Goals1),
+            Goals = [ PivotGoal | Goals1 ]
+        ;
+            MaybeGoals1 = no,
+            Goals = [ Goal | Goals0 ]
+        ),
+        MaybeGoals = yes(Goals)
+    ;
+        CanReorderGoals = no,
+        MaybeGoals = no
+    ).
+
+:- pred search_scc(list(list(pred_proc_id))::in, pred_proc_id::in, 
+    list(pred_proc_id)::out) is det.
+
+search_scc(SCCs, PredProcId, SCC) :-
+    % There should not be more than one solution here.  Operationally the
+    % search stops after finding the first solution.
+    promise_equivalent_solutions [SCC]
+    (
+        member(SCCPrime, SCCs),
+        member(PredProcId, SCCPrime)
+    ->
+        SCC = SCCPrime
+    ;
+        unexpected(this_file, "Couldn't find SCC for pred/proc id.")
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
