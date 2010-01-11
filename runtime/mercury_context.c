@@ -183,7 +183,9 @@ MR_init_thread_stuff(void)
     pthread_mutex_init(&MR_pending_contexts_lock, MR_MUTEX_ATTR);
   #ifdef MR_LL_PARALLEL_CONJ
     pthread_mutex_init(&spark_deques_lock, MR_MUTEX_ATTR);
+    #ifdef MR_HAVE_SCHED_SETAFFINITY
     pthread_mutex_init(&MR_next_cpu_lock, MR_MUTEX_ATTR);
+    #endif
     #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
     pthread_mutex_init(&MR_par_cond_stats_lock, MR_MUTEX_ATTR);
     #endif
