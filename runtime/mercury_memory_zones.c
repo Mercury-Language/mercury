@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1998-2000, 2002-2007 The University of Melbourne.
+** Copyright (C) 1998-2000, 2002-2007, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -708,7 +708,10 @@ MR_setup_redzones(MR_MemoryZone *zone)
         - MR_stack_margin_size;
 
     assert((MR_Word *) zone->MR_zone_extend_threshold > zone->MR_zone_min);
+
+  #ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
     assert((MR_Word *) zone->MR_zone_extend_threshold < zone->MR_zone_redzone);
+  #endif
 #endif
 }
 
