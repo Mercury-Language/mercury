@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2009 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -657,7 +657,7 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
     list.sort_and_remove_dups(VarsToKeep0, VarsToKeep),
 
     % Project away the unwanted type variables.
-    varset.squash(TVarSet1, VarsToKeep, TVarSet, SquashSubst),
+    varset.squash(TVarSet1, VarsToKeep, TVarSet2, SquashSubst),
     apply_variable_renaming_to_type_list(SquashSubst, ArgTypes1, ArgTypes),
     apply_variable_renaming_to_prog_constraints(SquashSubst,
         ClassMethodClassContext1, ClassMethodClassContext),
@@ -703,7 +703,8 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
     adjust_func_arity(PredOrFunc, Arity, PredArity),
     produce_instance_method_clauses(InstancePredDefn, PredOrFunc,
         PredArity, ArgTypes, Markers, Context, Status, ClausesInfo,
-        ModuleInfo0, ModuleInfo1, QualInfo0, QualInfo, !Specs),
+        TVarSet2, TVarSet, ModuleInfo0, ModuleInfo1, QualInfo0, QualInfo,
+        !Specs),
 
     % Fill in some information in the pred_info which is used by polymorphism
     % to make sure the type-infos and typeclass-infos are added in the correct

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2009 The University of Melbourne.
+% Copyright (C) 2005-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -964,7 +964,7 @@ type_assign_constraints_to_pieces_list(Operator, [Constraint | Constraints],
 write_type_with_bindings(Type0, TypeVarSet, TypeBindings, !IO) :-
     apply_rec_subst_to_type(TypeBindings, Type0, Type1),
     strip_builtin_qualifiers_from_type(Type1, Type),
-    mercury_output_type(TypeVarSet, no, Type, !IO).
+    mercury_output_type(TypeVarSet, yes, Type, !IO).
 
 :- func type_with_bindings_to_string(mer_type, tvarset, tsubst) = string.
 

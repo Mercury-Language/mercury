@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006, 2009 The University of Melbourne.
+% Copyright (C) 1993-2006, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -96,9 +96,9 @@
     % for that definition.
     %
 :- pred produce_instance_method_clauses(instance_proc_def::in,
-    pred_or_func::in, arity::in, list(mer_type)::in, pred_markers::in,
-    term.context::in, import_status::in, clauses_info::out,
-    module_info::in, module_info::out,
+    pred_or_func::in, arity::in, list(mer_type)::in,
+    pred_markers::in, term.context::in, import_status::in, clauses_info::out,
+    tvarset::in, tvarset::out, module_info::in, module_info::out,
     make_hlds_qual_info::in, make_hlds_qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -165,9 +165,9 @@ add_special_pred_decl_for_real(SpecialPredId, TVarSet,
 
 produce_instance_method_clauses(InstanceProcDefn,
         PredOrFunc, PredArity, ArgTypes, Markers, Context, Status,
-        ClausesInfo, !ModuleInfo, !QualInfo, !Specs) :-
+        ClausesInfo, !TVarSet, !ModuleInfo, !QualInfo, !Specs) :-
     do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc,
-        PredArity, ArgTypes, Markers, Context, Status, ClausesInfo,
+        PredArity, ArgTypes, Markers, Context, Status, ClausesInfo, !TVarSet,
         !ModuleInfo, !QualInfo, !Specs).
 
 set_module_recomp_info(QualInfo, !ModuleInfo) :-

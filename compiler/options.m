@@ -3440,7 +3440,7 @@ options_help_verbosity -->
 %       "\tOutput more detailed messages about the compiler's",
 %       "\ttime/space usage.",
 % --debug-types works only if the compiler was compiled with
-% "--trace-flags type_checkpoint".
+% "--trace-flag type_checkpoint".
 %       "-T, --debug-types",
 %       "\tOutput detailed debugging traces of the type checking.",
         "-N, --debug-modes",

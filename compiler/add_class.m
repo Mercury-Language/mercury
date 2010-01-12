@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2009 The University of Melbourne.
+% Copyright (C) 1993-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -37,10 +37,11 @@
     % for that definition.
     %
 :- pred do_produce_instance_method_clauses(instance_proc_def::in,
-    pred_or_func::in, arity::in, list(mer_type)::in, pred_markers::in,
-    term.context::in, import_status::in, clauses_info::out,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    pred_or_func::in, arity::in, list(mer_type)::in,
+    pred_markers::in, term.context::in, import_status::in, clauses_info::out,
+    tvarset::in, tvarset::out, module_info::in, module_info::out,
+    qual_info::in, qual_info::out, list(error_spec)::in, list(error_spec)::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -598,9 +599,9 @@ same_type_hlds_instance_defn(InstanceDefnA, InstanceDefnB) :-
     apply_variable_renaming_to_type_list(Renaming, TypesB1, TypesB),
 
     TypesA = TypesB.
-    
+
 do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
-        ArgTypes, Markers, Context, Status, ClausesInfo, !ModuleInfo,
+        ArgTypes, Markers, Context, Status, ClausesInfo, !TVarSet, !ModuleInfo,
         !QualInfo, !Specs) :-
     (
         % Handle the `pred(<MethodName>/<Arity>) is <ImplName>' syntax.
@@ -640,20 +641,20 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         InstanceProcDefn = instance_proc_def_clauses(InstanceClauses),
         clauses_info_init(PredOrFunc, PredArity,
             init_clause_item_numbers_comp_gen, ClausesInfo0),
-        list.foldl4(
+        list.foldl5(
             produce_instance_method_clause(PredOrFunc, Context, Status),
-            InstanceClauses, !ModuleInfo, !QualInfo,
+            InstanceClauses, !TVarSet, !ModuleInfo, !QualInfo,
             ClausesInfo0, ClausesInfo, !Specs)
     ).
 
 :- pred produce_instance_method_clause(pred_or_func::in,
     prog_context::in, import_status::in, item_clause_info::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    clauses_info::in, clauses_info::out,
+    tvarset::in, tvarset::out, module_info::in, module_info::out,
+    qual_info::in, qual_info::out, clauses_info::in, clauses_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
-        !ModuleInfo, !QualInfo, !ClausesInfo, !Specs) :-
+        TVarSet0, TVarSet, !ModuleInfo, !QualInfo, !ClausesInfo, !Specs) :-
     InstanceClause = item_clause_info(_Origin, CVarSet, ClausePredOrFunc,
         PredName, HeadTerms0, Body, _ClauseContext, _SeqNum),
     % XXX Can this ever fail? If yes, we should generate an error message
@@ -661,14 +662,13 @@ produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
     expect(unify(PredOrFunc, ClausePredOrFunc), this_file,
         "produce_instance_method_clause: PredOrFunc mismatch"),
     ( illegal_state_var_func_result(PredOrFunc, HeadTerms0, StateVar) ->
+        TVarSet = TVarSet0,
         report_illegal_func_svar_result(Context, CVarSet, StateVar, !Specs)
     ;
         HeadTerms = expand_bang_state_var_args(HeadTerms0),
         PredArity = list.length(HeadTerms),
         adjust_func_arity(PredOrFunc, Arity, PredArity),
-        % TVarSet0 is only used for explicit type qualifications, of which
-        % there are none in this clause, so this dummy value should be ok.
-        varset.init(TVarSet0),
+
         % AllProcIds is only used when the predicate has foreign procs,
         % which the instance method pred should not have, so this dummy value
         % should be ok.
@@ -677,7 +677,7 @@ produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
         GoalType = goal_type_none,    % goal is not a promise
         clauses_info_add_clause(all_modes, AllProcIds, CVarSet, TVarSet0,
             HeadTerms, Body, Context, no, Status, PredOrFunc, Arity,
-            GoalType, Goal, VarSet, _TVarSet, !ClausesInfo, Warnings,
+            GoalType, Goal, VarSet, TVarSet, !ClausesInfo, Warnings,
             !ModuleInfo, !QualInfo, !Specs),
 
         SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
