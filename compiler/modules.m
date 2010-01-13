@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -727,8 +727,8 @@ strip_unnecessary_impl_defns(Items0, Items) :-
         % the interface are required by the definitions of equivalence
         % types and dummy types in the implementation.
         get_requirements_of_impl_exported_types(!.IntTypesMap, !.ImplTypesMap,
-            BothTypesMap, NecessaryDummyTypeCtors, NecessaryEqvTypeCtors,
-            NecessaryTypeImplImports),
+            BothTypesMap, NecessaryDummyTypeCtors,
+            NecessaryAbsImplExpTypeCtors, NecessaryTypeImplImports),
 
         % Work out which module imports in the implementation section of
         % the interface are required by the definitions of typeclasses
@@ -784,7 +784,7 @@ strip_unnecessary_impl_defns(Items0, Items) :-
         maybe_strip_import_decls(!ImplItems),
 
         strip_unnecessary_impl_imports(NecessaryImplImports, !ImplItems),
-        set.union(NecessaryDummyTypeCtors, NecessaryEqvTypeCtors,
+        set.union(NecessaryDummyTypeCtors, NecessaryAbsImplExpTypeCtors,
             AllNecessaryTypeCtors),
         strip_unnecessary_impl_types(AllNecessaryTypeCtors, !ImplItems),
         strip_local_foreign_enum_pragmas(!.IntTypesMap, !ImplItems),
@@ -1100,17 +1100,19 @@ is_not_unnecessary_impl_type(NecessaryTypeCtors, Item) :-
     ).
 
     % get_requirements_of_impl_exported_types(InterfaceTypeMap, ImplTypeMap,
-    %   BothTypeMap, NecessaryTypeCtors, Modules):
+    %   BothTypeMap, DummyTypeCtors, NecessaryTypeCtors, Modules):
     %
     % Figure out the set of abstract equivalence type constructors
     % (i.e. the types that are exported as abstract types and which are defined
     % in the implementation section as equivalence types or as foreign types).
     % Return in NecessaryTypeCtors the smallest set containing those
     % constructors, and the set of private type constructors referred to
-    % by the right hand side of any equivalence type in NecessaryTypeCtors.
+    % by the right hand side of any type in NecessaryTypeCtors.
+    %
+    % Return in DummyTypeCtors the set of dummy type constructors.
     %
     % Given a du type definition in the implementation section, we should
-    % include it in AbsEqvLhsTypeCtors if the type constructor is abstract
+    % include it in AbsImplExpLhsTypeCtors if the type constructor is abstract
     % exported and the implementation section also contains a foreign_type
     % definition of the type constructor.
     %
@@ -1122,14 +1124,17 @@ is_not_unnecessary_impl_type(NecessaryTypeCtors, Item) :-
     set(type_ctor)::out, set(type_ctor)::out, set(module_name)::out) is det.
 
 get_requirements_of_impl_exported_types(InterfaceTypeMap, ImplTypeMap,
-        BothTypeMap, DummyTypeCtors, EqvTypeCtors, Modules) :-
+        BothTypeMap, DummyTypeCtors, NecessaryTypeCtors, Modules) :-
     multi_map.to_flat_assoc_list(ImplTypeMap, ImplTypes),
     list.foldl2(
         accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap, BothTypeMap),
-        ImplTypes, set.init, AbsEqvLhsTypeCtors, set.init, DummyTypeCtors),
-    set.fold2(accumulate_abs_eqv_type_rhs(ImplTypeMap), AbsEqvLhsTypeCtors,
-        set.init, AbsEqvRhsTypeCtors, set.init, Modules),
-    set.union(AbsEqvLhsTypeCtors, AbsEqvRhsTypeCtors, EqvTypeCtors).
+        ImplTypes, set.init, AbsImplExpLhsTypeCtors, set.init, DummyTypeCtors),
+    set.fold3(accumulate_abs_impl_exported_type_rhs(ImplTypeMap),
+        AbsImplExpLhsTypeCtors,
+        set.init, AbsEqvRhsTypeCtors, set.init, ForeignDuFieldTypeCtors,
+        set.init, Modules),
+    NecessaryTypeCtors = set.union_list([AbsImplExpLhsTypeCtors,
+        AbsEqvRhsTypeCtors, ForeignDuFieldTypeCtors]).
 
 :- pred accumulate_abs_impl_exported_type_lhs(type_defn_map::in,
     type_defn_map::in,
@@ -1162,15 +1167,16 @@ accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap, BothTypesMap,
         true
     ).
 
-:- pred accumulate_abs_eqv_type_rhs(type_defn_map::in, type_ctor::in,
+:- pred accumulate_abs_impl_exported_type_rhs(type_defn_map::in, type_ctor::in,
+    set(type_ctor)::in, set(type_ctor)::out,
     set(type_ctor)::in, set(type_ctor)::out,
     set(module_name)::in, set(module_name)::out) is det.
 
-accumulate_abs_eqv_type_rhs(ImplTypeMap, TypeCtor, !AbsEqvRhsTypeCtors,
-        !Modules) :-
+accumulate_abs_impl_exported_type_rhs(ImplTypeMap, TypeCtor,
+        !AbsEqvRhsTypeCtors, !ForeignDuFieldTypeCtors, !Modules) :-
     ( map.search(ImplTypeMap, TypeCtor, TypeDefns) ->
-        list.foldl2(accumulate_abs_eqv_type_rhs_2(ImplTypeMap), TypeDefns,
-            !AbsEqvRhsTypeCtors, !Modules)
+        list.foldl3(accumulate_abs_eqv_type_rhs_2(ImplTypeMap), TypeDefns,
+            !AbsEqvRhsTypeCtors, !ForeignDuFieldTypeCtors, !Modules)
     ;
         true
     ).
@@ -1178,17 +1184,24 @@ accumulate_abs_eqv_type_rhs(ImplTypeMap, TypeCtor, !AbsEqvRhsTypeCtors,
 :- pred accumulate_abs_eqv_type_rhs_2(type_defn_map::in,
     pair(type_defn, item_type_defn_info)::in,
     set(type_ctor)::in, set(type_ctor)::out,
+    set(type_ctor)::in, set(type_ctor)::out,
     set(module_name)::in, set(module_name)::out) is det.
 
-accumulate_abs_eqv_type_rhs_2(ImplTypeMap, TypeDefn - _, !AbsEqvRhsTypeCtors,
-        !Modules) :-
+accumulate_abs_eqv_type_rhs_2(ImplTypeMap, TypeDefn - _,
+        !AbsEqvRhsTypeCtors, !ForeignDuFieldTypeCtors, !Modules) :-
     ( TypeDefn = parse_tree_eqv_type(RhsType) ->
         type_to_type_ctor_set(RhsType, set.init, RhsTypeCtors),
         set.difference(RhsTypeCtors, !.AbsEqvRhsTypeCtors, NewRhsTypeCtors),
         set.fold(accumulate_modules, NewRhsTypeCtors, !Modules),
         set.union(NewRhsTypeCtors, !AbsEqvRhsTypeCtors),
-        set.fold2(accumulate_abs_eqv_type_rhs(ImplTypeMap), NewRhsTypeCtors,
-            !AbsEqvRhsTypeCtors, !Modules)
+        set.fold3(accumulate_abs_impl_exported_type_rhs(ImplTypeMap),
+            NewRhsTypeCtors, !AbsEqvRhsTypeCtors, set.init, _, !Modules)
+    ; TypeDefn = parse_tree_du_type(Ctors, _) ->
+        % There must exist a foreign type alternative to this type.  As the du
+        % type will be exported, we require the types of all the fields.
+        ctors_to_type_ctor_set(Ctors, set.init, RhsTypeCtors),
+        set.union(RhsTypeCtors, !ForeignDuFieldTypeCtors),
+        set.fold(accumulate_modules, RhsTypeCtors, !Modules)
     ;
         true
     ).
@@ -1242,6 +1255,24 @@ type_to_type_ctor_set(Type, !TypeCtors) :-
     ;
         true
     ).
+
+:- pred ctors_to_type_ctor_set(list(constructor)::in,
+    set(type_ctor)::in, set(type_ctor)::out) is det.
+
+ctors_to_type_ctor_set([], !TypeCtors).
+ctors_to_type_ctor_set([Ctor | Ctors], !TypeCtors) :-
+    Ctor = ctor(_, _, _, ConsArgs, _),
+    cons_args_to_type_ctor_set(ConsArgs, !TypeCtors),
+    ctors_to_type_ctor_set(Ctors, !TypeCtors).
+
+:- pred cons_args_to_type_ctor_set(list(constructor_arg)::in,
+    set(type_ctor)::in, set(type_ctor)::out) is det.
+
+cons_args_to_type_ctor_set([], !TypeCtors).
+cons_args_to_type_ctor_set([Arg | Args], !TypeCtors) :-
+    Arg = ctor_arg(_, Type, _),
+    type_to_type_ctor_set(Type, !TypeCtors),
+    cons_args_to_type_ctor_set(Args, !TypeCtors).
 
 :- type type_defn_map ==
     multi_map(type_ctor, pair(type_defn, item_type_defn_info)).
