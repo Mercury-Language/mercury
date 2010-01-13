@@ -98,6 +98,7 @@ OTHER_PROGS= \
 	fail_ite \
 	file_stream_instances \
 	followcode_det_problem \
+	foreign_du_field \
 	foreign_underscore_var \
 	func_default_modes \
 	func_in_head \
