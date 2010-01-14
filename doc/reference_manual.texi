@@ -6218,7 +6218,7 @@ Any variables bound by @var{Goal} are visible in @var{ThenGoal} only.
 If @var{Goal} fails, then @var{ElseGoal} is executed.
 
 If @var{Goal} throws an exception, the exception value is unified
-with each the @var{Term}s in the ``catch'' branches in turn.
+with each of the @var{Term}s in the ``catch'' branches in turn.
 On the first successful unification, the corresponding @var{CatchGoal} is
 executed (and other ``catch'' and ``catch_any'' branches ignored).
 Variables bound during the unification of the @var{Term} are in scope
