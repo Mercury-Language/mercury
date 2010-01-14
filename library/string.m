@@ -351,14 +351,14 @@
     % preceded by a plus or minus sign. For bases > 10, digits 10 to 35
     % are represented by the letters A-Z or a-z. If the string does not match
     % this syntax or the base is 10 and the number is not in the range
-    % [int.min_int+1, int.max_int], the predicate fails.
+    % [int.min_int, int.max_int], the predicate fails.
     %
 :- pred string.base_string_to_int(int::in, string::in, int::out) is semidet.
 
     % Converts a signed base N string to an int; throws an exception
     % if the string argument is not precisely an optional sign followed by
     % a non-empty string of base N digits and, if the base is 10, the number
-    % is in the range [int.min_int+1, int.max_int].
+    % is in the range [int.min_int, int.max_int].
     %
 :- func string.det_base_string_to_int(int, string) = int.
 
@@ -947,15 +947,13 @@ string.base_string_to_int(Base, String, Int) :-
     Len = string.length(String),
     ( Char = ('-') ->
         Len > 1,
-        foldl_substring(accumulate_int(Base), String, 1, Len - 1, 0, N),
-        Int = -N
+        foldl_substring(accumulate_negative_int(Base), String, 1,
+            Len - 1, 0, Int)
     ; Char = ('+') ->
         Len > 1,
-        foldl_substring(accumulate_int(Base), String, 1, Len - 1, 0, N),
-        Int = N
+        foldl_substring(accumulate_int(Base), String, 1, Len - 1, 0, Int)
     ;
-        foldl_substring(accumulate_int(Base), String, 0, Len, 0, N),
-        Int = N
+        foldl_substring(accumulate_int(Base), String, 0, Len, 0, Int)
     ).
 
 :- pred accumulate_int(int::in, char::in, int::in, int::out) is semidet.
@@ -965,6 +963,15 @@ accumulate_int(Base, Char, N0, N) :-
     M < Base,
     N = (Base * N0) + M,
     ( N0 =< N ; Base \= 10 ).           % Fail on overflow for base 10 numbers.
+
+:- pred accumulate_negative_int(int::in, char::in,
+    int::in, int::out) is semidet.
+
+accumulate_negative_int(Base, Char, N0, N) :-
+    char.digit_to_int(Char, M),
+    M < Base,
+    N = (Base * N0) - M,
+    ( N =< N0 ; Base \= 10 ).       % Fail on underflow for base 10 numbers.
 
 % It is important to inline string.index and string.index_det.
 % so that the compiler can do loop invariant hoisting

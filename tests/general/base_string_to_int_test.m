@@ -21,7 +21,7 @@
 
 :- implementation.
 
-:- import_module int, list, string.
+:- import_module int, list, require, string.
 
 %-----------------------------------------------------------------------------%
 
@@ -35,8 +35,19 @@ main(!IO) :-
     test("123abc", !IO),
     test("abc", !IO),
     test("+abc", !IO),
-    test("-abc", !IO).
-
+    test("-abc", !IO),
+    ( int.bits_per_int = 32 ->
+        MinIntStr = "-2147483648"
+    ; int.bits_per_int = 64 ->
+        MinIntStr = "-9223372036854775808"
+    ;
+        error("unknown architecture")
+    ),
+    ( string.base_string_to_int(10, MinIntStr, int.min_int) ->
+        io.write_string("min_int ok.\n", !IO)
+    ;
+        io.write_string("min_int failed.\n", !IO)
+    ).
 
 :- pred test(string::in, io::di, io::uo) is det.
 
