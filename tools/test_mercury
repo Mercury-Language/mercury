@@ -837,6 +837,7 @@ case $HOST in $ROTD_HOST)
     $MMAKE realclean MMAKEFLAGS=$PARALLEL) &&
     : > Mmake.params &&
     rm -f so_locations &&
+    rm -f .enable_lib_grades &&
     autoconf &&
     mercury_cv_low_tag_bits=2 \
     mercury_cv_bits_per_word=32 \
