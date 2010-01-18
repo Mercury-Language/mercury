@@ -1231,9 +1231,19 @@ check_consistency(ClassId, ClassDefn, [Instance | Instances], FunDeps,
 
 check_consistency_pair(ClassId, ClassDefn, FunDeps, InstanceA, InstanceB,
         !ModuleInfo, !Specs) :-
-    list.foldl2(
-        check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB),
-        FunDeps, !ModuleInfo, !Specs).
+    % If both instances are imported from the same module then we don't need
+    % to check the consistency, since this would have been checked when
+    % compiling that module.
+    (
+        InstanceA ^ instance_module = InstanceB ^ instance_module,
+        status_is_imported(InstanceA ^ instance_status) = yes
+    ->
+        true
+    ;
+        list.foldl2(
+            check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB),
+            FunDeps, !ModuleInfo, !Specs)
+    ).
 
 :- pred check_consistency_pair_2(class_id::in, hlds_class_defn::in,
     hlds_instance_defn::in, hlds_instance_defn::in, hlds_class_fundep::in,
