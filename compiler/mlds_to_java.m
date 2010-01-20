@@ -2996,7 +2996,7 @@ output_type(Info, Style, MLDS_Type, !IO) :-
             % We need to handle type_info (etc.) types specially --
             % they get mapped to types in the runtime rather than
             % in private_builtin.
-            hand_defined_type(CtorCat, SubstituteName)
+            hand_defined_type(Type, CtorCat, SubstituteName)
         ->
             io.write_string(SubstituteName, !IO)
         ;
@@ -3254,26 +3254,38 @@ type_category_is_array(CtorCat) = IsArray :-
         IsArray = is_array
     ).
 
-    % hand_defined_type(Type, SubstituteName):
+    % hand_defined_type(Type, CtorCat, SubstituteName):
     %
     % We need to handle type_info (etc.) types specially -- they get mapped
     % to types in the runtime rather than in private_builtin.
     %
-:- pred hand_defined_type(type_ctor_category::in, string::out) is semidet.
+:- pred hand_defined_type(mer_type::in, type_ctor_category::in, string::out)
+    is semidet.
 
-hand_defined_type(ctor_cat_system(Kind), SubstituteName) :-
+hand_defined_type(Type, CtorCat, SubstituteName) :-
     (
-        Kind = cat_system_type_info,
+        CtorCat = ctor_cat_system(cat_system_type_info),
         SubstituteName = "jmercury.runtime.TypeInfo_Struct"
     ;
-        Kind = cat_system_type_ctor_info,
+        CtorCat = ctor_cat_system(cat_system_type_ctor_info),
         SubstituteName = "jmercury.runtime.TypeCtorInfo_Struct"
     ;
-        Kind = cat_system_typeclass_info,
+        CtorCat = ctor_cat_system(cat_system_typeclass_info),
         SubstituteName = "/* typeclass_info */ java.lang.Object[]"
     ;
-        Kind = cat_system_base_typeclass_info,
+        CtorCat = ctor_cat_system(cat_system_base_typeclass_info),
         SubstituteName = "/* base_typeclass_info */ java.lang.Object[]"
+    ;
+        CtorCat = ctor_cat_user(cat_user_general),
+        ( Type = type_desc_type ->
+            SubstituteName = "jmercury.runtime.TypeInfo_Struct"
+        ; Type = pseudo_type_desc_type ->
+            SubstituteName = "jmercury.runtime.PseudoTypeInfo"
+        ; Type = type_ctor_desc_type ->
+            SubstituteName = "jmercury.runtime.TypeCtorInfo_Struct"
+        ;
+            fail
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -4024,8 +4036,8 @@ output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
         (
             MaybeCtorName = yes(QualifiedCtorId),
             \+ (
-                Type = mercury_type(_, CtorCat, _),
-                hand_defined_type(CtorCat, _)
+                Type = mercury_type(MerType, CtorCat, _),
+                hand_defined_type(MerType, CtorCat, _)
             )
         ->
             output_type(Info, normal_style, Type, !IO),

@@ -46,6 +46,7 @@
     % abstract types.
 :- type type_info.
 :- type type_ctor_info.
+:- type pseudo_type_info.
 
 :- func get_type_info(T::unused) = (type_info::out) is det.
 
@@ -56,11 +57,19 @@
 :- pred compare_type_infos(comparison_result::out,
     type_info::in, type_info::in) is det.
 
+:- func get_type_ctor_info(type_info) = type_ctor_info.
+
 :- pred type_ctor_and_args(type_info::in, type_ctor_info::out,
     list(type_info)::out) is det.
 
 :- pred type_ctor_name_and_arity(type_ctor_info::in,
     string::out, string::out, int::out) is det.
+
+:- pred pseudo_type_ctor_and_args(pseudo_type_info::in,
+    type_ctor_info::out, list(pseudo_type_info)::out) is semidet.
+
+:- pred is_univ_pseudo_type_info(pseudo_type_info::in, int::out) is semidet.
+:- pred is_exist_pseudo_type_info(pseudo_type_info::in, int::out) is semidet.
 
 :- func construct(type_info, int, list(univ)) = univ is semidet.
 
@@ -79,10 +88,16 @@
 :- pred type_info_num_functors(type_info::in, int::out) is semidet.
 
 :- pred type_info_get_functor(type_info::in, int::in, string::out, int::out,
-    list(type_info)::out) is semidet.
+    list(pseudo_type_info)::out) is semidet.
 
 :- pred type_info_get_functor_with_names(type_info::in, int::in, string::out,
-    int::out, list(type_info)::out, list(string)::out) is semidet.
+    int::out, list(pseudo_type_info)::out, list(string)::out) is semidet.
+
+:- pred type_info_get_functor_ordinal(type_info::in, int::in, int::out)
+    is semidet.
+
+:- pred type_info_get_functor_lex(type_info::in, int::in, int::out)
+    is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -186,6 +201,7 @@
 
     import jmercury.runtime.DuFunctorDesc;
     import jmercury.runtime.EnumFunctorDesc;
+    import jmercury.runtime.PseudoTypeInfo;
     import jmercury.runtime.TypeCtorInfo_Struct;
     import jmercury.runtime.TypeInfo_Struct;
 ").
@@ -264,20 +280,20 @@ type_info_num_functors(TypeInfo, NumFunctors) :-
     ).
 
 type_info_get_functor(TypeInfo, FunctorNumber, FunctorName, Arity,
-        TypeInfoList) :-
+        PseudoTypeInfoList) :-
     get_functor_impl(TypeInfo, FunctorNumber, FunctorName, Arity,
-        TypeInfoList, _Names).
+        PseudoTypeInfoList, _Names).
 
 type_info_get_functor_with_names(TypeInfo, FunctorNumber, FunctorName, Arity,
-        TypeInfoList, Names) :-
+        PseudoTypeInfoList, Names) :-
     get_functor_impl(TypeInfo, FunctorNumber, FunctorName, Arity,
-        TypeInfoList, Names).
+        PseudoTypeInfoList, Names).
 
 :- pred get_functor_impl(type_info::in, int::in, string::out, int::out,
-    list(type_info)::out, list(string)::out) is semidet.
+    list(pseudo_type_info)::out, list(string)::out) is semidet.
 
 get_functor_impl(TypeInfo, FunctorNumber,
-        FunctorName, Arity, TypeInfoList, Names) :-
+        FunctorName, Arity, PseudoTypeInfoList, Names) :-
     type_info_num_functors(TypeInfo, NumFunctors),
     FunctorNumber >= 0,
     FunctorNumber < NumFunctors,
@@ -290,14 +306,14 @@ get_functor_impl(TypeInfo, FunctorNumber,
         ; TypeCtorRep = tcr_reserved_addr_usereq
         ),
         get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo,
-            FunctorNumber, FunctorName, Arity, TypeInfoList, Names)
+            FunctorNumber, FunctorName, Arity, PseudoTypeInfoList, Names)
     ;
         ( TypeCtorRep = tcr_enum
         ; TypeCtorRep = tcr_enum_usereq
         ; TypeCtorRep = tcr_dummy
         ),
         get_functor_enum(TypeCtorRep, TypeCtorInfo,
-            FunctorNumber, FunctorName, Arity, TypeInfoList, Names)
+            FunctorNumber, FunctorName, Arity, PseudoTypeInfoList, Names)
     ;
         ( TypeCtorRep = tcr_notag
         ; TypeCtorRep = tcr_notag_usereq
@@ -305,19 +321,20 @@ get_functor_impl(TypeInfo, FunctorNumber,
         ; TypeCtorRep = tcr_notag_ground_usereq
         ),
         get_functor_notag(TypeCtorRep, TypeCtorInfo,
-            FunctorNumber, FunctorName, Arity, TypeInfoList, Names)
+            FunctorNumber, FunctorName, Arity, PseudoTypeInfoList, Names)
     ;
         ( TypeCtorRep = tcr_equiv_ground
         ; TypeCtorRep = tcr_equiv
         ),
         NewTypeInfo = collapse_equivalences(TypeInfo),
         get_functor_impl(NewTypeInfo, FunctorNumber,
-            FunctorName, Arity, TypeInfoList, Names)
+            FunctorName, Arity, PseudoTypeInfoList, Names)
     ;
         TypeCtorRep = tcr_tuple,
         FunctorName = "{}",
         Arity = get_var_arity_typeinfo_arity(TypeInfo),
-        TypeInfoList = iterate(1, Arity, var_arity_type_info_index(TypeInfo)),
+        PseudoTypeInfoList = iterate(1, Arity,
+            var_arity_type_info_index_as_pti(TypeInfo)),
         Names = list.duplicate(Arity, null_string)
     ;
         ( TypeCtorRep = tcr_subgoal
@@ -359,29 +376,22 @@ get_functor_impl(TypeInfo, FunctorNumber,
 
 :- pred get_functor_du(type_ctor_rep::in(du), type_info::in,
     type_ctor_info::in, int::in, string::out, int::out,
-    list(type_info)::out, list(string)::out) is semidet.
+    list(pseudo_type_info)::out, list(string)::out) is det.
 
 get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo, FunctorNumber,
-        FunctorName, Arity, TypeDescList, Names) :-
+        FunctorName, Arity, PseudoTypeInfoList, Names) :-
     TypeFunctors = get_type_ctor_functors(TypeCtorInfo),
     DuFunctorDesc = TypeFunctors ^ du_functor_desc(TypeCtorRep, FunctorNumber),
-
-    % XXX We don't handle functors with existentially quantified arguments.
-    not get_du_functor_exist_info(DuFunctorDesc, _),
 
     FunctorName = DuFunctorDesc ^ du_functor_name,
     Arity = DuFunctorDesc ^ du_functor_arity,
 
     ArgTypes = DuFunctorDesc ^ du_functor_arg_types,
-    F = (func(I) = ArgTypeInfo :-
+    F = (func(I) = ArgPseudoTypeInfo :-
         PseudoTypeInfo = get_pti_from_arg_types(ArgTypes, I),
-            % XXX we can pass 0 instead of an instance of the functor because
-            % that is only needed for functors with existentially quantified
-            % arguments.
-        get_arg_type_info(TypeInfo, PseudoTypeInfo, 0, DuFunctorDesc,
-            ArgTypeInfo)
+        ArgPseudoTypeInfo = create_pseudo_type_info(TypeInfo, PseudoTypeInfo)
     ),
-    TypeDescList = iterate(0, Arity - 1, F),
+    PseudoTypeInfoList = iterate(0, Arity - 1, F),
 
     ( get_du_functor_arg_names(DuFunctorDesc, ArgNames) ->
         Names = iterate(0, Arity - 1, arg_names_index(ArgNames))
@@ -389,26 +399,74 @@ get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo, FunctorNumber,
         Names = list.duplicate(Arity, null_string)
     ).
 
+%-----------------------------------------------------------------------------%
+
+    % Unlike get_arg_type_info, existentially quantified type variables are
+    % simply returned with no attempt to extract the type infos from terms.
+    % cf. MR_create_pseudo_type_info
+    %
+:- func create_pseudo_type_info(type_info, pseudo_type_info) = pseudo_type_info.
+
+create_pseudo_type_info(TypeInfo, PseudoTypeInfo) = ArgPseudoTypeInfo :-
+    ( is_exist_pseudo_type_info(PseudoTypeInfo, _VarNum) ->
+        ArgPseudoTypeInfo = PseudoTypeInfo
+    ; is_univ_pseudo_type_info(PseudoTypeInfo, VarNum) ->
+        % In some cases we may need to call var_arity_type_info_index_as_pti.
+        ArgPseudoTypeInfo = type_info_index_as_pti(TypeInfo, VarNum)
+    ; pseudo_type_ctor_and_args(PseudoTypeInfo, TypeCtorInfo, Args0) ->
+        Args = list.map(create_pseudo_type_info(TypeInfo), Args0),
+        NewTypeInfo = make_type_info(TypeCtorInfo, list.length(Args), Args),
+        private_builtin.unsafe_type_cast(NewTypeInfo, ArgPseudoTypeInfo)
+    ;
+        error("create_pseudo_type_info")
+    ).
+
+:- func make_type_info(type_ctor_info, int, list(pseudo_type_info)) =
+    type_info.
+
+:- pragma foreign_proc("Java",
+    make_type_info(TypeCtorInfo::in, Arity::in, Args::in) = (TypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+    PseudoTypeInfo[] as = new PseudoTypeInfo[Arity];
+    int i = 0;
+    list.List_1 lst = Args;
+    while (!list.is_empty(lst)) {
+        as[i] = (PseudoTypeInfo) list.det_head(lst);
+        lst = list.det_tail(lst);
+        i++;
+    }
+
+    TypeInfo = new TypeInfo_Struct();
+    TypeInfo.init(TypeCtorInfo, Arity, as);
+").
+
+make_type_info(_, _, _) = _ :-
+   private_builtin.sorry("make_type_info/3").
+
+%-----------------------------------------------------------------------------%
+
 :- pred get_functor_enum(type_ctor_rep::in(enum), type_ctor_info::in, int::in,
-    string::out, int::out, list(type_info)::out, list(string)::out) is det.
+    string::out, int::out, list(pseudo_type_info)::out, list(string)::out)
+    is det.
 
 get_functor_enum(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
-        TypeDescList, Names) :-
+        PseudoTypeInfoList, Names) :-
     TypeFunctors = get_type_functors(TypeCtorInfo),
     EnumFunctorDesc = get_enum_functor_desc(TypeCtorRep, FunctorNumber,
         TypeFunctors),
 
     FunctorName = EnumFunctorDesc ^ enum_functor_name,
     Arity = 0,
-    TypeDescList = [],
+    PseudoTypeInfoList = [],
     Names = [].
 
 :- pred get_functor_notag(type_ctor_rep::in(notag), type_ctor_info::in,
-    int::in, string::out, int::out, list(type_info)::out, list(string)::out)
-    is det.
+    int::in, string::out, int::out, list(pseudo_type_info)::out,
+    list(string)::out) is det.
 
 get_functor_notag(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
-        TypeInfoList, Names) :-
+        PseudoTypeInfoList, Names) :-
     TypeFunctors = get_type_ctor_functors(TypeCtorInfo),
     NoTagFunctorDesc = TypeFunctors ^
         notag_functor_desc(TypeCtorRep, FunctorNumber),
@@ -419,18 +477,108 @@ get_functor_notag(TypeCtorRep, TypeCtorInfo, FunctorNumber, FunctorName, Arity,
     ArgType = NoTagFunctorDesc ^ notag_functor_arg_type,
     ArgName = NoTagFunctorDesc ^ notag_functor_arg_name,
 
-    TypeInfoList = [ArgType],
+    PseudoTypeInfoList = [ArgType],
     Names = [ArgName].
 
 %-----------------------------------------------------------------------------%
+
+type_info_get_functor_ordinal(TypeInfo, FunctorNum, Ordinal) :-
+    TypeCtorInfo = get_type_ctor_info(TypeInfo),
+    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
+    (
+        ( TypeCtorRep = tcr_enum
+        ; TypeCtorRep = tcr_enum_usereq
+        ),
+        TypeFunctors = get_type_functors(TypeCtorInfo),
+        EnumFunctorDesc = get_enum_functor_desc(TypeCtorRep, FunctorNum,
+            TypeFunctors),
+        Ordinal = enum_functor_ordinal(EnumFunctorDesc)
+    ;
+        ( TypeCtorRep = tcr_foreign_enum
+        ; TypeCtorRep = tcr_foreign_enum_usereq
+        ),
+        % XXX todo
+        fail
+    ;
+        ( TypeCtorRep = tcr_dummy
+        ; TypeCtorRep = tcr_notag
+        ; TypeCtorRep = tcr_notag_usereq
+        ; TypeCtorRep = tcr_notag_ground
+        ; TypeCtorRep = tcr_notag_ground_usereq
+        ; TypeCtorRep = tcr_tuple
+        ),
+        FunctorNum = 0,
+        Ordinal = 0
+    ;
+        ( TypeCtorRep = tcr_du
+        ; TypeCtorRep = tcr_du_usereq
+        ; TypeCtorRep = tcr_reserved_addr
+        ; TypeCtorRep = tcr_reserved_addr_usereq
+        ),
+        TypeFunctors = get_type_ctor_functors(TypeCtorInfo),
+        DuFunctorDesc = TypeFunctors ^ du_functor_desc(TypeCtorRep,
+            FunctorNum),
+        Ordinal = du_functor_ordinal(DuFunctorDesc)
+    ;
+        ( TypeCtorRep = tcr_equiv
+        ; TypeCtorRep = tcr_equiv_ground
+        ; TypeCtorRep = tcr_func
+        ; TypeCtorRep = tcr_pred
+        ; TypeCtorRep = tcr_int
+        ; TypeCtorRep = tcr_float
+        ; TypeCtorRep = tcr_char
+        ; TypeCtorRep = tcr_string
+        ; TypeCtorRep = tcr_bitmap
+        ; TypeCtorRep = tcr_subgoal
+        ; TypeCtorRep = tcr_void
+        ; TypeCtorRep = tcr_c_pointer
+        ; TypeCtorRep = tcr_stable_c_pointer
+        ; TypeCtorRep = tcr_typeinfo
+        ; TypeCtorRep = tcr_type_ctor_info
+        ; TypeCtorRep = tcr_typeclassinfo
+        ; TypeCtorRep = tcr_base_typeclass_info
+        ; TypeCtorRep = tcr_type_desc
+        ; TypeCtorRep = tcr_type_ctor_desc
+        ; TypeCtorRep = tcr_pseudo_type_desc
+        ; TypeCtorRep = tcr_array
+        ; TypeCtorRep = tcr_reference
+        ; TypeCtorRep = tcr_succip
+        ; TypeCtorRep = tcr_hp
+        ; TypeCtorRep = tcr_curfr
+        ; TypeCtorRep = tcr_maxfr
+        ; TypeCtorRep = tcr_redofr
+        ; TypeCtorRep = tcr_redoip
+        ; TypeCtorRep = tcr_trail_ptr
+        ; TypeCtorRep = tcr_ticket
+        ; TypeCtorRep = tcr_foreign
+        ; TypeCtorRep = tcr_stable_foreign
+        ; TypeCtorRep = tcr_unknown
+        ),
+        fail
+    ).
+
+%-----------------------------------------------------------------------------%
+
+type_info_get_functor_lex(TypeInfo0, Ordinal, FunctorNumber) :-
+    TypeInfo = collapse_equivalences(TypeInfo0),
+    TypeCtorInfo = get_type_ctor_info(TypeInfo),
+    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
+    % XXX This special case seems like it should be not necessary.
+    ( TypeCtorRep = tcr_tuple ->
+        Ordinal = 0,
+        FunctorNumber = 0
+    ;
+        type_ctor_search_functor_number_map(TypeCtorInfo, Ordinal,
+            FunctorNumber)
+    ).
+
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("Java",
     get_type_info(_T::unused) = (TypeInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    // XXX why is the cast needed here?
-    TypeInfo = (jmercury.runtime.TypeInfo_Struct) TypeInfo_for_T;
+    TypeInfo = TypeInfo_for_T;
 ").
 
 :- pragma foreign_proc("C#",
@@ -493,32 +641,32 @@ generic_compare(Res, X, Y) :-
             result_call_4(ComparePred, Res, X, Y)
         ; Arity = 1 ->
             result_call_5(ComparePred, Res,
-                type_info_index(TypeInfo, 1), X, Y)
+                type_info_index_as_ti(TypeInfo, 1), X, Y)
         ; Arity = 2 ->
             result_call_6(ComparePred, Res,
-                type_info_index(TypeInfo, 1),
-                type_info_index(TypeInfo, 2),
+                type_info_index_as_ti(TypeInfo, 1),
+                type_info_index_as_ti(TypeInfo, 2),
                 X, Y)
         ; Arity = 3 ->
             result_call_7(ComparePred, Res,
-                type_info_index(TypeInfo, 1),
-                type_info_index(TypeInfo, 2),
-                type_info_index(TypeInfo, 3),
+                type_info_index_as_ti(TypeInfo, 1),
+                type_info_index_as_ti(TypeInfo, 2),
+                type_info_index_as_ti(TypeInfo, 3),
                 X, Y)
         ; Arity = 4 ->
             result_call_8(ComparePred, Res,
-                type_info_index(TypeInfo, 1),
-                type_info_index(TypeInfo, 2),
-                type_info_index(TypeInfo, 3),
-                type_info_index(TypeInfo, 4),
+                type_info_index_as_ti(TypeInfo, 1),
+                type_info_index_as_ti(TypeInfo, 2),
+                type_info_index_as_ti(TypeInfo, 3),
+                type_info_index_as_ti(TypeInfo, 4),
                 X, Y)
         ; Arity = 5 ->
             result_call_9(ComparePred, Res,
-                type_info_index(TypeInfo, 1),
-                type_info_index(TypeInfo, 2),
-                type_info_index(TypeInfo, 3),
-                type_info_index(TypeInfo, 4),
-                type_info_index(TypeInfo, 5),
+                type_info_index_as_ti(TypeInfo, 1),
+                type_info_index_as_ti(TypeInfo, 2),
+                type_info_index_as_ti(TypeInfo, 3),
+                type_info_index_as_ti(TypeInfo, 4),
+                type_info_index_as_ti(TypeInfo, 5),
                 X, Y)
         ;
             error("compare/3: type arity > 5 not supported")
@@ -544,33 +692,33 @@ generic_unify(X, Y) :-
             semidet_call_3(UnifyPred, X, Y)
         ; Arity = 1 ->
             semidet_call_4(UnifyPred,
-                type_info_index(TypeInfo, 1),
+                type_info_index_as_ti(TypeInfo, 1),
                 X, Y)
         ; Arity = 2 ->
             semidet_call_5(UnifyPred,
-                type_info_index(TypeInfo, 1),
-                type_info_index(TypeInfo, 2),
+                type_info_index_as_ti(TypeInfo, 1),
+                type_info_index_as_ti(TypeInfo, 2),
                 X, Y)
         ; Arity = 3 ->
             semidet_call_6(UnifyPred,
-                type_info_index(TypeInfo, 1),
-                type_info_index(TypeInfo, 2),
-                type_info_index(TypeInfo, 3),
+                type_info_index_as_ti(TypeInfo, 1),
+                type_info_index_as_ti(TypeInfo, 2),
+                type_info_index_as_ti(TypeInfo, 3),
                 X, Y)
         ; Arity = 4 ->
             semidet_call_7(UnifyPred,
-                type_info_index(TypeInfo, 1),
-                type_info_index(TypeInfo, 2),
-                type_info_index(TypeInfo, 3),
-                type_info_index(TypeInfo, 4),
+                type_info_index_as_ti(TypeInfo, 1),
+                type_info_index_as_ti(TypeInfo, 2),
+                type_info_index_as_ti(TypeInfo, 3),
+                type_info_index_as_ti(TypeInfo, 4),
                 X, Y)
         ; Arity = 5 ->
             semidet_call_8(UnifyPred,
-                type_info_index(TypeInfo, 1),
-                type_info_index(TypeInfo, 2),
-                type_info_index(TypeInfo, 3),
-                type_info_index(TypeInfo, 4),
-                type_info_index(TypeInfo, 5),
+                type_info_index_as_ti(TypeInfo, 1),
+                type_info_index_as_ti(TypeInfo, 2),
+                type_info_index_as_ti(TypeInfo, 3),
+                type_info_index_as_ti(TypeInfo, 4),
+                type_info_index_as_ti(TypeInfo, 5),
                 X, Y)
         ;
             error("unify/2: type arity > 5 not supported")
@@ -590,7 +738,7 @@ unify_tuple_pos(Loc, TupleArity, TypeInfo, TermA, TermB) :-
     ( Loc > TupleArity ->
         true
     ;
-        ArgTypeInfo = var_arity_type_info_index(TypeInfo, Loc),
+        ArgTypeInfo = var_arity_type_info_index_as_ti(TypeInfo, Loc),
 
         SubTermA = get_tuple_subterm(ArgTypeInfo, TermA, Loc - 1),
         SubTermB = get_tuple_subterm(ArgTypeInfo, TermB, Loc - 1),
@@ -615,7 +763,7 @@ compare_tuple_pos(Loc, TupleArity, TypeInfo, Result, TermA, TermB) :-
     ( Loc > TupleArity ->
         Result = (=)
     ;
-        ArgTypeInfo = var_arity_type_info_index(TypeInfo, Loc),
+        ArgTypeInfo = var_arity_type_info_index_as_ti(TypeInfo, Loc),
 
         SubTermA = get_tuple_subterm(ArgTypeInfo, TermA, Loc - 1),
         SubTermB = get_tuple_subterm(ArgTypeInfo, TermB, Loc - 1),
@@ -914,17 +1062,15 @@ compare_collapsed_type_infos(Res, TypeInfo1, TypeInfo2) :-
     TypeCtorInfo1 = get_type_ctor_info(TypeInfo1),
     TypeCtorInfo2 = get_type_ctor_info(TypeInfo2),
 
-    % The comparison here is arbitrary. In the past we just compared pointers
-    % to the type_ctor_infos.
-    compare(NameRes, TypeCtorInfo1 ^ type_ctor_name,
-        TypeCtorInfo2 ^ type_ctor_name),
+    % cf. MR_compare_type_info
+    compare(ModNameRes, TypeCtorInfo1 ^ type_ctor_module_name,
+        TypeCtorInfo2 ^ type_ctor_module_name),
     (
-        NameRes = (=),
-        compare(ModNameRes,
-            TypeCtorInfo1 ^ type_ctor_module_name,
-            TypeCtorInfo2 ^ type_ctor_module_name),
+        ModNameRes = (=),
+        compare(NameRes, TypeCtorInfo1 ^ type_ctor_name,
+            TypeCtorInfo2 ^ type_ctor_name),
         (
-            ModNameRes = (=),
+            NameRes = (=),
             ( type_ctor_is_variable_arity(TypeCtorInfo1) ->
                 Arity1 = get_var_arity_typeinfo_arity(TypeInfo1),
                 Arity2 = get_var_arity_typeinfo_arity(TypeInfo2),
@@ -943,16 +1089,50 @@ compare_collapsed_type_infos(Res, TypeInfo1, TypeInfo2) :-
                 Res = (=)
             )
         ;
-            ( ModNameRes = (<)
-            ; ModNameRes = (>)
+            ( NameRes = (<)
+            ; NameRes = (>)
             ),
-            Res = ModNameRes
+            Res = NameRes
         )
     ;
-        ( NameRes = (<)
-        ; NameRes = (>)
+        ( ModNameRes = (<)
+        ; ModNameRes = (>)
         ),
-        Res = NameRes
+        Res = ModNameRes
+    ).
+
+:- pred compare_type_ctor_infos(comparison_result::out,
+    type_ctor_info::in, type_ctor_info::in) is det.
+
+:- pragma foreign_export("Java", compare_type_ctor_infos(out, in, in),
+    "ML_compare_type_ctor_infos").
+
+compare_type_ctor_infos(Res, TypeCtorInfo1, TypeCtorInfo2) :-
+    % cf. MR_compare_type_ctor_info
+    compare(ModNameRes,
+        TypeCtorInfo1 ^ type_ctor_module_name,
+        TypeCtorInfo2 ^ type_ctor_module_name),
+    (
+        ModNameRes = (=),
+        compare(NameRes,
+            TypeCtorInfo1 ^ type_ctor_name,
+            TypeCtorInfo2 ^ type_ctor_name),
+        (
+            NameRes = (=),
+            Arity1 = type_ctor_arity(TypeCtorInfo1),
+            Arity2 = type_ctor_arity(TypeCtorInfo2),
+            compare(Res, Arity1, Arity2)
+        ;
+            ( NameRes = (<)
+            ; NameRes = (>)
+            ),
+            Res = NameRes
+        )
+    ;
+        ( ModNameRes = (<)
+        ; ModNameRes = (>)
+        ),
+        Res = ModNameRes
     ).
 
 :- pred compare_var_arity_typeinfos(int::in, int::in,
@@ -962,8 +1142,8 @@ compare_var_arity_typeinfos(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
     ( Loc > Arity ->
         Result = (=)
     ;
-        SubTypeInfoA = var_arity_type_info_index(TypeInfoA, Loc),
-        SubTypeInfoB = var_arity_type_info_index(TypeInfoB, Loc),
+        SubTypeInfoA = var_arity_type_info_index_as_ti(TypeInfoA, Loc),
+        SubTypeInfoB = var_arity_type_info_index_as_ti(TypeInfoB, Loc),
 
         compare_collapsed_type_infos(SubResult, SubTypeInfoA, SubTypeInfoB),
         (
@@ -1040,10 +1220,10 @@ type_ctor_and_args(TypeInfo0, TypeCtorInfo, TypeArgs) :-
         type_ctor_is_variable_arity(TypeCtorInfo)
     ->
         Arity = get_var_arity_typeinfo_arity(TypeInfo),
-        TypeArgs = iterate(1, Arity, var_arity_type_info_index(TypeInfo))
+        TypeArgs = iterate(1, Arity, var_arity_type_info_index_as_ti(TypeInfo))
     ;
         Arity = type_ctor_arity(TypeCtorInfo),
-        TypeArgs = iterate(1, Arity, type_info_index(TypeInfo))
+        TypeArgs = iterate(1, Arity, type_info_index_as_ti(TypeInfo))
     ).
 
 :- func iterate(int, int, (func(int) = T)) = list(T).
@@ -1055,6 +1235,64 @@ iterate(Start, Max, Func) = Results :-
     ;
         Results = []
     ).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_proc("Java",
+    pseudo_type_ctor_and_args(PseudoTypeInfo::in, TypeCtorInfo::out,
+        ArgPseudoTypeInfos::out),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+    if (PseudoTypeInfo.variable_number == -1) {
+        if (PseudoTypeInfo instanceof TypeCtorInfo_Struct) {
+            TypeCtorInfo = (TypeCtorInfo_Struct) PseudoTypeInfo;
+            ArgPseudoTypeInfos = list.empty_list();
+        } else {
+            TypeInfo_Struct ti = (TypeInfo_Struct) PseudoTypeInfo;
+            TypeCtorInfo = ti.type_ctor;
+
+            list.List_1 lst = list.empty_list();
+            if (ti.args != null) {
+                for (int i = ti.args.length - 1; i >= 0; i--) {
+                    lst = list.cons(ti.args[i], lst);
+                }
+            }
+            ArgPseudoTypeInfos = lst;
+        }
+        succeeded = true;
+    } else {
+        /* Fail if input is a variable. */
+        TypeCtorInfo = null;
+        ArgPseudoTypeInfos = null;
+        succeeded = false;
+    }
+").
+
+pseudo_type_ctor_and_args(_, _, _) :-
+    private_builtin.sorry("pseudo_type_ctor_and_args/3").
+
+:- pragma foreign_proc("Java",
+    is_univ_pseudo_type_info(PseudoTypeInfo::in, VarNum::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    VarNum = PseudoTypeInfo.variable_number;
+    succeeded = (VarNum >= 0 && VarNum <= last_univ_quant_varnum);
+").
+
+is_univ_pseudo_type_info(_, _) :-
+    private_builtin.sorry("is_univ_pseudo_type_info/2").
+
+:- pragma foreign_proc("Java",
+    is_exist_pseudo_type_info(PseudoTypeInfo::in, VarNum::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    VarNum = PseudoTypeInfo.variable_number;
+    succeeded = (VarNum >= first_exist_quant_varnum);
+").
+
+is_exist_pseudo_type_info(_, _) :-
+    private_builtin.sorry("is_exist_pseudo_type_info/2").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1956,14 +2194,13 @@ high_level_data :-
 get_arg_type_info(TypeInfoParams, PseudoTypeInfo, Term, FunctorDesc,
         ArgTypeInfo) :-
     ( pseudo_type_info_is_variable(PseudoTypeInfo, VarNum) ->
-        get_type_info_for_var(TypeInfoParams, VarNum, Term, FunctorDesc,
-            ArgTypeInfo)
+        get_type_info_for_var(TypeInfoParams, VarNum, Term,
+            FunctorDesc, ArgTypeInfo)
     ;
         CastTypeInfo = type_info_from_pseudo_type_info(PseudoTypeInfo),
         TypeCtorInfo = get_type_ctor_info(CastTypeInfo),
         ( type_ctor_is_variable_arity(TypeCtorInfo) ->
-            % XXX This branch seems to be unreachable.
-            Arity = pseudotypeinfo_get_higher_order_arity(CastTypeInfo),
+            Arity = type_info_get_higher_order_arity(CastTypeInfo),
             StartRegionSize = 2
         ;
             Arity = TypeCtorInfo ^ type_ctor_arity,
@@ -1990,12 +2227,18 @@ get_arg_type_info_2(TypeInfoParams, TypeInfo, Term, FunctorDesc,
         true
     ).
 
-    % XXX This is completely unimplemented.
-    %
-:- func pseudotypeinfo_get_higher_order_arity(type_info) = int.
+:- func type_info_get_higher_order_arity(type_info) = int.
 
-pseudotypeinfo_get_higher_order_arity(_) = 1 :-
-    det_unimplemented("pseudotypeinfo_get_higher_order_arity").
+:- pragma foreign_proc("Java",
+    type_info_get_higher_order_arity(PseudoTypeInfo::in) = (Arity::out),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+    TypeInfo_Struct ti = (TypeInfo_Struct) PseudoTypeInfo;
+    Arity = ti.args.length;
+").
+
+type_info_get_higher_order_arity(_) = 1 :-
+    det_unimplemented("type_info_get_higher_order_arity").
 
     % Make a new type-info with the given arity, using the given type_info
     % as the basis.
@@ -2074,8 +2317,9 @@ get_pti_from_type_info_index(_, _, _, _) :-
 
 get_type_info_for_var(TypeInfo, VarNum, Term, FunctorDesc, ArgTypeInfo) :-
     ( type_variable_is_univ_quant(VarNum) ->
-        ArgTypeInfo = type_info_index(TypeInfo, VarNum)
+        ArgTypeInfo = type_info_index_as_ti(TypeInfo, VarNum)
     ;
+        % Existentially qualified.
         ( get_du_functor_exist_info(FunctorDesc, ExistInfo0) ->
             ExistInfo = ExistInfo0
         ;
@@ -2162,7 +2406,9 @@ get_subterm(_, _, _, _, _) = -1 :-
         if (FunctorDesc.du_functor_arg_names != null) {
             fieldName = FunctorDesc.du_functor_arg_names[Index];
         }
-        if (fieldName == null) {
+        if (fieldName != null) {
+            fieldName = ML_name_mangle(fieldName);
+        } else {
             // The F<i> field variables are numbered from 1.
             int i = 1 + Index + ExtraArgs;
             fieldName = ""F"" + i;
@@ -2267,12 +2513,15 @@ last_univ_quant_varnum = 512.
 
 first_exist_quant_varnum = 513.
 
+:- pragma foreign_code("Java", "
+private static final int last_univ_quant_varnum = 512;
+private static final int first_exist_quant_varnum = 513;
+").
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
 % XXX we have only implemented the .NET backend for the low-level data case.
-
-:- func get_type_ctor_info(type_info) = type_ctor_info is det.
 
 :- pragma foreign_code("C#", "
 
@@ -2726,56 +2975,98 @@ typeclass_info_type_info(TypeClassInfo, Index) = TypeInfo :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- func var_arity_type_info_index(type_info, int) = type_info.
+:- func var_arity_type_info_index_as_ti(type_info, int) = type_info.
+:- func var_arity_type_info_index_as_pti(type_info, int) = pseudo_type_info.
 
-var_arity_type_info_index(TypeInfo, Index) =
-    type_info_index(TypeInfo, Index + 1).
+var_arity_type_info_index_as_ti(TypeInfo, Index) =
+    type_info_index_as_ti(TypeInfo, Index + 1).
 
-    % The generic definition of var_arity_type_info_index assumes that
-    % variable arity type_infos store the arity in the first word but that's
-    % not true for the jmercury.runtime.TypeInfo_Struct in Java.
+var_arity_type_info_index_as_pti(TypeInfo, Index) =
+    type_info_index_as_pti(TypeInfo, Index + 1).
+
+    % The generic definitions of var_arity_type_info_index_as_ti/pti assume
+    % that variable arity type_infos store the arity in the first word but
+    % that's not true for the jmercury.runtime.TypeInfo_Struct in Java.
     %
-    % Keep this in sync with the Java version of type_info_index.
+    % Keep this in sync with the Java version of type_info_index_as_ti/pti.
     %
 :- pragma foreign_proc("Java",
-    var_arity_type_info_index(TypeInfo::in, VarNum::in)
+    var_arity_type_info_index_as_ti(TypeInfo::in, VarNum::in)
         = (TypeInfoAtIndex::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     assert TypeInfo.args != null;
     // Variable numbers count from one.
-    assert VarNum != 0;
+    assert VarNum > 0;
 
     TypeInfoAtIndex =
         (jmercury.runtime.TypeInfo_Struct) TypeInfo.args[VarNum - 1];
 ").
 
-:- func type_info_index(type_info, int) = type_info.
+:- pragma foreign_proc("Java",
+    var_arity_type_info_index_as_pti(TypeInfo::in, VarNum::in)
+        = (PseudoTypeInfoAtIndex::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    assert TypeInfo.args != null;
+    // Variable numbers count from one.
+    assert VarNum > 0;
 
-type_info_index(TypeInfo, _) = TypeInfo :-
+    PseudoTypeInfoAtIndex = TypeInfo.args[VarNum - 1];
+").
+
+:- func type_info_index_as_ti(type_info, int) = type_info.
+:- func type_info_index_as_pti(type_info, int) = pseudo_type_info.
+
+type_info_index_as_ti(TypeInfo, _) = TypeInfo :-
     % This is an "unimplemented" definition in Mercury, which will be
     % used by default.
     det_unimplemented("type_info_index").
 
+type_info_index_as_pti(TypeInfo, _) = PseudoTypeInfo :-
+    det_unimplemented("type_info_index_as_pti"),
+    private_builtin.unsafe_type_cast(TypeInfo, PseudoTypeInfo).
+
 :- pragma foreign_proc("C#",
-    type_info_index(TypeInfo::in, Index::in) = (TypeInfoAtIndex::out),
+    type_info_index_as_ti(TypeInfo::in, Index::in) = (TypeInfoAtIndex::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     TypeInfoAtIndex = (object[]) TypeInfo[Index];
 ").
 
-    % Keep this in sync with the Java version of var_arity_type_info_index.
-    %
-:- pragma foreign_proc("Java",
-    type_info_index(TypeInfo::in, VarNum::in) = (TypeInfoAtIndex::out),
+:- pragma foreign_proc("C#",
+    type_info_index_as_pti(TypeInfo::in, Index::in) = (TypeInfoAtIndex::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
+    TypeInfoAtIndex = (object[]) TypeInfo[Index];
+").
+
+    % Keep this in sync with the Java version of
+    % var_arity_type_info_index_as_ti/pti and type_info_index_as_ti/pti.
+    %
+:- pragma foreign_proc("Java",
+    type_info_index_as_ti(TypeInfo::in, VarNum::in) = (TypeInfoAtIndex::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    assert TypeInfo.variable_number == -1;
     assert TypeInfo.args != null;
     // Variable numbers count from one.
-    assert VarNum != 0;
+    assert VarNum > 0;
 
     TypeInfoAtIndex =
         (jmercury.runtime.TypeInfo_Struct) TypeInfo.args[VarNum - 1];
+").
+
+:- pragma foreign_proc("Java",
+    type_info_index_as_pti(TypeInfo::in, VarNum::in) = (PseudoTypeInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    assert TypeInfo.variable_number == -1;
+    assert TypeInfo.args != null;
+    // Variable numbers count from one.
+    assert VarNum > 0;
+
+    PseudoTypeInfo = TypeInfo.args[VarNum - 1];
 ").
 
 :- pred set_type_info_index(int::in, int::in, type_info::in,
@@ -3078,6 +3369,26 @@ type_ctor_num_functors(_) = _ :-
     % matching foreign_proc version.
     private_builtin.sorry("type_ctor_num_functors").
 
+:- pred type_ctor_search_functor_number_map(type_ctor_info::in,
+    int::in, int::out) is semidet.
+
+:- pragma foreign_proc("Java",
+    type_ctor_search_functor_number_map(TypeCtorInfo::in, Ordinal::in,
+        FunctorNumber::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (Ordinal >= 0 && Ordinal < TypeCtorInfo.type_ctor_num_functors) {
+        FunctorNumber = TypeCtorInfo.type_functor_number_map[Ordinal];
+        succeeded = true;
+    } else {
+        FunctorNumber = -1;
+        succeeded = false;
+    }
+").
+
+type_ctor_search_functor_number_map(_, _, _) :-
+    private_builtin.sorry("type_ctor_search_functor_number_map/3").
+
 %-----------------------------------------------------------------------------%
 %
 % TypeFunctors
@@ -3368,19 +3679,16 @@ notag_functor_name(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(0).
     Name = NotagFunctorDesc.no_tag_functor_name;
 ").
 
-    % XXX This is a bug. This function should actually return a PseudoTypeInfo.
-    % The Java code below should work once this is corrected.
-    %
-:- func notag_functor_arg_type(notag_functor_desc) = type_info.
+:- func notag_functor_arg_type(notag_functor_desc) = pseudo_type_info.
 
 notag_functor_arg_type(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(1).
 
-% :- pragma foreign_proc("Java",
-%   notag_functor_arg_type(NotagFunctorDesc::in) = (ArgType::out),
-%   [will_not_call_mercury, promise_pure, thread_safe],
-% "
-%   ArgType = NotagFunctorDesc.no_tag_functor_arg_type;
-% ").
+:- pragma foreign_proc("Java",
+    notag_functor_arg_type(NotagFunctorDesc::in) = (ArgType::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    ArgType = NotagFunctorDesc.no_tag_functor_arg_type;
+").
 
 :- func notag_functor_arg_name(notag_functor_desc) = string.
 

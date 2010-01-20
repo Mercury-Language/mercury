@@ -227,12 +227,6 @@
 :- pred type_info_list_to_type_desc_list(
     list(rtti_implementation.type_info)::in, list(type_desc)::out) is det.
 
-:- pred type_ctor_desc_to_type_ctor_info(type_ctor_desc::in,
-    rtti_implementation.type_ctor_info::out) is det.
-
-:- pred type_ctor_info_to_type_ctor_desc(
-    rtti_implementation.type_ctor_info::in, type_ctor_desc::out) is det.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -251,6 +245,25 @@
 #include ""mercury_type_desc.h""
 ").
 
+% The Java backend substitutes:
+%
+%   type_desc        == jmercury.runtime.TypeInfo_Struct
+%   pseudo_type_desc == jmercury.runtime.PseudoTypeDesc
+%   type_ctor_desc   == jmercury.runtime.TypeCtorInfo_Struct
+%
+% We can't use `:- pragma foreign_type' because the compiler will complain
+% that non-Java grades are missing type definitions.
+
+:- pragma foreign_decl("Java", local, "
+/*
+** Any foreign_procs which use the unqualified names should be marked
+** `may_not_duplicate' so as not to be written to .opt files.
+*/
+import jmercury.runtime.PseudoTypeInfo;
+import jmercury.runtime.TypeCtorInfo_Struct;
+import jmercury.runtime.TypeInfo_Struct;
+").
+
 %-----------------------------------------------------------------------------%
 
 type_desc_to_type_info(TypeDesc, TypeInfo) :-
@@ -260,26 +273,12 @@ type_desc_to_type_info(TypeDesc, TypeInfo) :-
         error("type_desc_to_type_info/2")
     ).
 
-:- pragma foreign_proc("Java",
-    type_desc_to_type_info(TypeDesc::in, TypeInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    TypeInfo = TypeDesc.type_info();
-").
-
 type_info_to_type_desc(TypeInfo, TypeDesc) :-
     ( type_info_desc_same_representation ->
         private_builtin.unsafe_type_cast(TypeInfo, TypeDesc)
     ;
         error("type_info_to_type_desc/2")
     ).
-
-:- pragma foreign_proc("Java",
-    type_info_to_type_desc(TypeInfo::in, TypeDesc::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    TypeDesc = new type_desc.Type_desc_0(TypeInfo);
-").
 
 type_info_list_to_type_desc_list(TypeInfoList, TypeDescList) :-
     ( type_info_desc_same_representation ->
@@ -288,6 +287,9 @@ type_info_list_to_type_desc_list(TypeInfoList, TypeDescList) :-
         list.map(type_info_to_type_desc, TypeInfoList, TypeDescList)
     ).
 
+:- pred type_ctor_desc_to_type_ctor_info(type_ctor_desc::in,
+    rtti_implementation.type_ctor_info::out) is det.
+
 type_ctor_desc_to_type_ctor_info(TypeCtorDesc, TypeCtorInfo) :-
     ( type_info_desc_same_representation ->
         private_builtin.unsafe_type_cast(TypeCtorDesc, TypeCtorInfo)
@@ -295,38 +297,20 @@ type_ctor_desc_to_type_ctor_info(TypeCtorDesc, TypeCtorInfo) :-
         error("type_ctor_desc_to_type_ctor_info/2")
     ).
 
-:- pragma foreign_proc("Java",
-    type_ctor_desc_to_type_ctor_info(TypeCtorDesc::in, TypeCtorInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    TypeCtorInfo = TypeCtorDesc.type_ctor_info();
-").
+:- pred pseudo_type_desc_to_pseudo_type_info(pseudo_type_desc::in,
+    rtti_implementation.pseudo_type_info::out) is det.
 
-type_ctor_info_to_type_ctor_desc(TypeCtorInfo, TypeCtorDesc) :-
+pseudo_type_desc_to_pseudo_type_info(PseudoTypeDesc, PseudoTypeInfo) :-
     ( type_info_desc_same_representation ->
-        private_builtin.unsafe_type_cast(TypeCtorInfo, TypeCtorDesc)
+        private_builtin.unsafe_type_cast(PseudoTypeDesc, PseudoTypeInfo)
     ;
-        error("type_ctor_info_to_type_ctor_desc/2")
+        error("pseudo_type_desc_to_pseudo_type_info/2")
     ).
-
-:- pragma foreign_proc("Java",
-    type_ctor_info_to_type_ctor_desc(TypeCtorInfo::in, TypeCtorDesc::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    TypeCtorDesc = new type_desc.Type_ctor_desc_0(TypeCtorInfo);
-").
 
 :- pred type_info_desc_same_representation is semidet.
 
 type_info_desc_same_representation :-
     semidet_true.
-
-:- pragma foreign_proc("Java",
-    type_info_desc_same_representation,
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    succeeded = false;
-").
 
 %-----------------------------------------------------------------------------%
 
@@ -452,7 +436,8 @@ is_univ_pseudo_type_desc(PTD, N) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
         erlang_rtti_implementation.is_univ_pseudo_type_desc(PTD, N)
     ;
-        private_builtin.sorry("is_univ_pseudo_type_desc")
+        pseudo_type_desc_to_pseudo_type_info(PTD, PTI),
+        rtti_implementation.is_univ_pseudo_type_info(PTI, N)
     ).
 
 :- pred is_exist_pseudo_type_desc(pseudo_type_desc::in, int::out) is semidet.
@@ -479,7 +464,8 @@ is_exist_pseudo_type_desc(PTD, N) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
         erlang_rtti_implementation.is_exist_pseudo_type_desc(PTD, N)
     ;
-        private_builtin.sorry("is_exist_pseudo_type_desc")
+        pseudo_type_desc_to_pseudo_type_info(PTD, PTI),
+        rtti_implementation.is_exist_pseudo_type_info(PTI, N)
     ).
 
 :- pragma foreign_proc("C",
@@ -522,38 +508,6 @@ ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc) = TypeDesc :-
         error("ground_pseudo_type_desc_to_type_desc_det: not ground")
     ).
 
-:- pragma foreign_proc("Java",
-    ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc::in) = (TypeDesc::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    Pseudo_type_desc_0 ptd = PseudoTypeDesc;
-
-    if (ptd.struct instanceof jmercury.runtime.TypeInfo_Struct) {
-        TypeDesc = new Type_desc_0(
-            (jmercury.runtime.TypeInfo_Struct) ptd.struct);
-        succeeded = true;
-    } else {
-        TypeDesc = null;
-        succeeded = false;
-    }
-").
-
-:- pragma foreign_proc("Java",
-    ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc::in)
-        = (TypeDesc::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    Pseudo_type_desc_0 ptd = PseudoTypeDesc;
-
-    if (ptd.struct instanceof jmercury.runtime.TypeInfo_Struct) {
-        TypeDesc = new Type_desc_0(
-            (jmercury.runtime.TypeInfo_Struct) ptd.struct);
-    } else {
-        throw new java.lang.Error(
-            ""ground_pseudo_type_desc_to_type_desc_det/2 not implemented"");
-    }
-").
-
 :- pragma foreign_proc("C",
     type_of(_Value::unused) = (TypeInfo::out),
     [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail,
@@ -586,8 +540,7 @@ ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc) = TypeDesc :-
     type_of(_Value::unused) = (TypeInfo::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    TypeInfo = new type_desc.Type_desc_0(
-        (jmercury.runtime.TypeInfo_Struct) TypeInfo_for_T);
+    TypeInfo = TypeInfo_for_T;
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -615,7 +568,7 @@ ground_pseudo_type_desc_to_type_desc_det(PseudoTypeDesc) = TypeDesc :-
     has_type(_Arg::unused, TypeInfo::in),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    TypeInfo_for_T = TypeInfo.type_info();
+    TypeInfo_for_T = TypeInfo;
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -750,7 +703,9 @@ type_ctor(TypeDesc) = TypeCtorDesc :-
     ( erlang_rtti_implementation.is_erlang_backend ->
         erlang_rtti_implementation.type_ctor_desc(TypeDesc, TypeCtorDesc)
     ;
-        private_builtin.sorry("type_ctor/1")
+        type_desc_to_type_info(TypeDesc, TypeInfo),
+        TypeCtorInfo = rtti_implementation.get_type_ctor_info(TypeInfo),
+        make_type_ctor_desc(TypeInfo, TypeCtorInfo, TypeCtorDesc)
     ).
 
 :- pragma foreign_proc("C",
@@ -776,6 +731,9 @@ type_ctor(TypeDesc) = TypeCtorDesc :-
     }
 }").
 
+pseudo_type_ctor(_) = _ :-
+    private_builtin.sorry("pseudo_type_ctor/1").
+
 :- pragma foreign_proc("C",
     type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out),
     [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
@@ -792,27 +750,6 @@ type_ctor(TypeDesc) = TypeCtorDesc :-
     MR_restore_transient_registers();
 }").
 
-:- pragma foreign_proc("Java",
-    type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out),
-    [may_call_mercury, thread_safe, promise_pure, terminates],
-"
-    java.lang.Object [] result =
-        rtti_implementation.type_ctor_and_args_3_p_0(TypeDesc.type_info());
-
-    TypeCtorDesc = new Type_ctor_desc_0(
-        (jmercury.runtime.TypeCtorInfo_Struct) result[0]);
-    ArgTypes = (list.List_1) result[1];
-
-    // Convert list from jmercury.runtime.TypeInfo_Struct to type_desc_0
-    list.List_1 type_list = ArgTypes;
-    while (type_list.data_tag == 1) {
-        ((list.List_1.F_cons_2) type_list).F1 =
-            new type_desc.Type_desc_0((jmercury.runtime.TypeInfo_Struct)
-                ((list.List_1.F_cons_2) type_list).F1);
-        type_list = (list.List_1) ((list.List_1.F_cons_2) type_list).F2;
-    }
-").
-
 type_ctor_and_args(TypeDesc, TypeCtorDesc, ArgTypeDescs) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
         erlang_rtti_implementation.type_ctor_desc_and_args(TypeDesc,
@@ -821,7 +758,7 @@ type_ctor_and_args(TypeDesc, TypeCtorDesc, ArgTypeDescs) :-
         type_desc_to_type_info(TypeDesc, TypeInfo),
         rtti_implementation.type_ctor_and_args(TypeInfo, TypeCtorInfo,
             ArgTypeInfos),
-        type_ctor_info_to_type_ctor_desc(TypeCtorInfo, TypeCtorDesc),
+        make_type_ctor_desc(TypeInfo, TypeCtorInfo, TypeCtorDesc),
         type_info_list_to_type_desc_list(ArgTypeInfos, ArgTypeDescs)
     ).
 
@@ -843,14 +780,89 @@ type_ctor_and_args(TypeDesc, TypeCtorDesc, ArgTypeDescs) :-
     SUCCESS_INDICATOR = success;
 }").
 
-pseudo_type_ctor_and_args(PTD, TC, Args) :-
+pseudo_type_ctor_and_args(PseudoTypeDesc, TypeCtorDesc, ArgPseudoTypeDescs) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
-        erlang_rtti_implementation.pseudo_type_ctor_and_args(PTD, TC, Args)
+        erlang_rtti_implementation.pseudo_type_ctor_and_args(PseudoTypeDesc,
+            TypeCtorDesc, ArgPseudoTypeDescs)
     ;
-        private_builtin.sorry("pseudo_type_ctor_and_args")
+        pseudo_type_desc_to_pseudo_type_info(PseudoTypeDesc, PseudoTypeInfo),
+        rtti_implementation.pseudo_type_ctor_and_args(PseudoTypeInfo,
+            TypeCtorInfo, ArgPseudoTypeInfos),
+        Arity = list.length(ArgPseudoTypeInfos),
+        make_type_ctor_desc_with_arity(Arity, TypeCtorInfo, TypeCtorDesc),
+        private_builtin.unsafe_type_cast(ArgPseudoTypeInfos,
+            ArgPseudoTypeDescs)
     ).
 
-% This is the forwards mode of make_type/2: given a type constructor and
+%-----------------------------------------------------------------------------%
+
+    % Make a type_info_desc from a type_ctor_info.  A type_info_desc is
+    % different to a type_ctor_info in the case of variable arity types,
+    % i.e. predicates, functions and tuples.
+    %
+    % The C implementation uses small integers to encode variable arity
+    % type_ctor_infos (see mercury_type_desc.h).  In the Java backend we simply
+    % allocate new TypeCtorInfo_Struct objects and set the `arity' field.
+    % Two equivalent type_ctor_descs may have different addresses.
+    %
+:- pred make_type_ctor_desc(rtti_implementation.type_info::in,
+    rtti_implementation.type_ctor_info::in, type_ctor_desc::out) is det.
+
+:- pragma foreign_proc("Java",
+    make_type_ctor_desc(TypeInfo::in, TypeCtorInfo::in, TypeCtorDesc::out),
+    [will_not_call_mercury, promise_pure, thread_safe,
+        may_not_duplicate],
+"
+    TypeCtorInfo_Struct tci = TypeCtorInfo;
+
+    /* Handle variable arity types. */
+    switch (tci.type_ctor_rep.value) {
+        case private_builtin.MR_TYPECTOR_REP_PRED:
+        case private_builtin.MR_TYPECTOR_REP_FUNC:
+        case private_builtin.MR_TYPECTOR_REP_TUPLE:
+            tci = new TypeCtorInfo_Struct(tci, TypeInfo.args.length);
+            break;
+        default:
+            break;
+    }
+
+    TypeCtorDesc = tci;
+").
+
+make_type_ctor_desc(_, _, _) :-
+    private_builtin.sorry("make_type_ctor_desc/3").
+
+:- pred make_type_ctor_desc_with_arity(int::in,
+    rtti_implementation.type_ctor_info::in, type_ctor_desc::out) is det.
+
+:- pragma foreign_proc("Java",
+    make_type_ctor_desc_with_arity(Arity::in, TypeCtorInfo::in,
+        TypeCtorDesc::out),
+    [will_not_call_mercury, promise_pure, thread_safe,
+        may_not_duplicate],
+"
+    TypeCtorInfo_Struct tci = TypeCtorInfo;
+
+    /* Handle variable arity types. */
+    switch (tci.type_ctor_rep.value) {
+        case private_builtin.MR_TYPECTOR_REP_PRED:
+        case private_builtin.MR_TYPECTOR_REP_FUNC:
+        case private_builtin.MR_TYPECTOR_REP_TUPLE:
+            tci = new TypeCtorInfo_Struct(tci, Arity);
+            break;
+        default:
+            break;
+    }
+
+    TypeCtorDesc = tci;
+").
+
+make_type_ctor_desc_with_arity(_, _, _) :-
+    private_builtin.sorry("make_type_ctor_desc_with_arity/3").
+
+%-----------------------------------------------------------------------------%
+
+% This is the forwards mode of make_type/1: given a type constructor and
 % a list of argument types, check that the length of the argument types
 % matches the arity of the type constructor, and if so, use the type
 % constructor to construct a new type with the specified arguments.
@@ -891,6 +903,32 @@ pseudo_type_ctor_and_args(PTD, TC, Args) :-
     }
 }").
 
+:- pragma foreign_proc("Java",
+    make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out),
+    [will_not_call_mercury, thread_safe, will_not_modify_trail,
+        may_not_duplicate],
+"{
+    PseudoTypeInfo[] as = new PseudoTypeInfo[TypeCtorDesc.arity];
+
+    succeeded = true;
+    list.List_1 arg_types = ArgTypes;
+    for (int i = 0; i < TypeCtorDesc.arity; i++) {
+        if (list.is_empty(arg_types)) {
+            succeeded = false;
+            break;
+        }
+        as[i] = (TypeInfo_Struct) list.det_head(arg_types);
+        arg_types = list.det_tail(arg_types);
+    }
+
+    if (succeeded) {
+        TypeDesc = new TypeInfo_Struct();
+        TypeDesc.init(TypeCtorDesc, as);
+    } else {
+        TypeDesc = null;
+    }
+}").
+
     /*
     ** This is the reverse mode of make_type: given a type,
     ** split it up into a type constructor and a list of
@@ -918,11 +956,11 @@ make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out) :-
         erlang_rtti_implementation.make_type_desc(TypeCtorDesc, ArgTypes,
             TypeDesc)
     ;
-        private_builtin.sorry("make_type/2")
+        private_builtin.sorry("make_type(in, in) = out")
     ).
 
 make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
-    private_builtin.sorry("make_type/2").
+    private_builtin.sorry("make_type(out, out) = in").
 
 :- pragma foreign_proc("C",
     type_ctor_name_and_arity(TypeCtorDesc::in, TypeCtorModuleName::out,
@@ -958,21 +996,8 @@ make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
     }
 }").
 
-:- pragma foreign_proc("Java",
-    type_ctor_name_and_arity(TypeCtorDesc::in, TypeCtorModuleName::out,
-        TypeCtorName::out, TypeCtorArity::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    Object[] result = rtti_implementation.
-        type_ctor_name_and_arity_4_p_0(TypeCtorDesc.type_ctor_info());
-
-    TypeCtorModuleName = (java.lang.String) result[0];
-    TypeCtorName = (java.lang.String) result[1];
-    TypeCtorArity = ((java.lang.Integer) result[2]).intValue();
-").
-
-type_ctor_name_and_arity(TypeCtorDesc::in, ModuleName::out,
-        TypeCtorName::out, TypeCtorArity::out) :-
+type_ctor_name_and_arity(TypeCtorDesc, ModuleName, TypeCtorName,
+        TypeCtorArity) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
         erlang_rtti_implementation.type_ctor_desc_name_and_arity(TypeCtorDesc,
             ModuleName, TypeCtorName, TypeCtorArity)
@@ -1005,84 +1030,44 @@ get_type_info_for_type_info = TypeDesc :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_code("Java", "
-    // XXX Why can't we just use the jmercury.runtime.* classes?
-
-    public static class Pseudo_type_desc_0 {
-        final protected jmercury.runtime.PseudoTypeInfo struct;
-
-        public Pseudo_type_desc_0(jmercury.runtime.PseudoTypeInfo init) {
-            struct = init;
-        }
-    }
-
-    public static class Type_desc_0 extends Pseudo_type_desc_0 {
-        public Type_desc_0(jmercury.runtime.TypeInfo_Struct init) {
-            super(init);
-        }
-
-        public jmercury.runtime.TypeInfo_Struct type_info() {
-            return (jmercury.runtime.TypeInfo_Struct) this.struct;
-        }
-    }
-
-    public static class Type_ctor_desc_0 extends Pseudo_type_desc_0 {
-        public Type_ctor_desc_0(jmercury.runtime.TypeCtorInfo_Struct init) {
-            super(init);
-        }
-
-        public jmercury.runtime.TypeCtorInfo_Struct type_ctor_info() {
-            return (jmercury.runtime.TypeCtorInfo_Struct) this.struct;
-        }
+    public static boolean
+    __Unify____type_desc_0_0(TypeInfo_Struct x, TypeInfo_Struct y)
+    {
+        return x.unify(y);
     }
 
     public static boolean
-    __Unify____type_desc_0_0(type_desc.Type_desc_0 x, type_desc.Type_desc_0 y)
+    __Unify____type_ctor_desc_0_0(TypeCtorInfo_Struct x, TypeCtorInfo_Struct y)
     {
-        return x.type_info().unify(y.type_info());
+        return x.unify(y);
+    }
+
+    public static builtin.Comparison_result_0
+    __Compare____type_desc_0_0(TypeInfo_Struct x, TypeInfo_Struct y)
+    {
+        return rtti_implementation.ML_compare_type_infos(x, y);
+    }
+
+    public static builtin.Comparison_result_0
+    __Compare____type_ctor_desc_0_0(TypeCtorInfo_Struct x,
+        TypeCtorInfo_Struct y)
+    {
+        return rtti_implementation.ML_compare_type_ctor_infos(x, y);
     }
 
     public static boolean
-    __Unify____type_ctor_desc_0_0(type_desc.Type_ctor_desc_0 x,
-        type_desc.Type_ctor_desc_0 y)
+    __Unify____pseudo_type_desc_0_0(PseudoTypeInfo x, PseudoTypeInfo y)
     {
-        return x.type_ctor_info().unify(y.type_ctor_info());
+        return x.unify(y);
     }
 
     public static builtin.Comparison_result_0
-    __Compare____type_desc_0_0(type_desc.Type_desc_0 x,
-        type_desc.Type_desc_0 y)
-    {
-        return rtti_implementation.ML_compare_type_infos(
-            x.type_info(), y.type_info());
-    }
-
-    public static builtin.Comparison_result_0
-    __Compare____type_ctor_desc_0_0(type_desc.Type_ctor_desc_0 x,
-        type_desc.Type_ctor_desc_0 y)
-    {
-        // stub only
-        throw new java.lang.Error
-            (""compare/3 for type_ctor_desc type not implemented"");
-    }
-
-    public static boolean
-    __Unify____pseudo_type_desc_0_0(type_desc.Pseudo_type_desc_0 x,
-        type_desc.Pseudo_type_desc_0 y)
-    {
-        // stub only
-        throw new java.lang.Error(
-            ""__Unify____type_ctor_desc_0_0 not implemented"");
-    }
-
-    public static builtin.Comparison_result_0
-    __Compare____pseudo_type_desc_0_0(type_desc.Pseudo_type_desc_0 x,
-        type_desc.Pseudo_type_desc_0 y)
+    __Compare____pseudo_type_desc_0_0(PseudoTypeInfo x, PseudoTypeInfo y)
     {
         // stub only
         throw new java.lang.Error(
             ""__Compare____pseudo_type_desc_0_0 not implemented"");
     }
-
 ").
 
 :- pragma foreign_code("Erlang", "

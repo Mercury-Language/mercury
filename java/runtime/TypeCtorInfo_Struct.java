@@ -30,6 +30,27 @@ public class TypeCtorInfo_Struct extends PseudoTypeInfo
 	{
 	}
 
+	// Constructor for variable arity type_ctor_infos,
+	// i.e. predicates, functions and tuples.
+	public TypeCtorInfo_Struct(TypeCtorInfo_Struct other, int arity)
+	{
+		this.init(
+			arity,
+			other.type_ctor_version,
+			other.type_ctor_num_ptags,
+			other.type_ctor_rep.value,
+			other.unify_pred,
+			other.compare_pred,
+			other.type_ctor_module_name,
+			other.type_ctor_name,
+			other.type_functors,
+			other.type_layout,
+			other.type_ctor_num_functors,
+			other.type_ctor_flags,
+			other.type_functor_number_map
+		);
+	}
+
 	public void init(
 			int type_arity, int version, int num_ptags, int rep,
 			Object unify_proc, Object compare_proc, 

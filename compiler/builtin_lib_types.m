@@ -35,6 +35,9 @@
 :- func sample_typeclass_info_type = mer_type.
 :- func type_info_type = mer_type.
 :- func type_ctor_info_type = mer_type.
+:- func type_desc_type = mer_type.
+:- func pseudo_type_desc_type = mer_type.
+:- func type_ctor_desc_type = mer_type.
 :- func comparison_result_type = mer_type.
 :- func io_state_type = mer_type.
 :- func io_io_type = mer_type.
@@ -144,6 +147,18 @@ type_info_type = defined_type(Name, [], kind_star) :-
 type_ctor_info_type = defined_type(Name, [], kind_star) :-
     BuiltinModule = mercury_private_builtin_module,
     Name = qualified(BuiltinModule, "type_ctor_info").
+
+type_desc_type = defined_type(Name, [], kind_star) :-
+    Module = mercury_std_lib_module_name(unqualified("type_desc")),
+    Name = qualified(Module, "type_desc").
+
+pseudo_type_desc_type = defined_type(Name, [], kind_star) :-
+    Module = mercury_std_lib_module_name(unqualified("type_desc")),
+    Name = qualified(Module, "pseudo_type_desc").
+
+type_ctor_desc_type = defined_type(Name, [], kind_star) :-
+    Module = mercury_std_lib_module_name(unqualified("type_desc")),
+    Name = qualified(Module, "type_ctor_desc").
 
 comparison_result_type = defined_type(Name, [], kind_star) :-
     BuiltinModule = mercury_public_builtin_module,

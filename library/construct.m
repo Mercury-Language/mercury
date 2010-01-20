@@ -181,21 +181,24 @@ get_functor_with_names(TypeDesc, I, Functor, Arity,
     int::out, list(pseudo_type_desc)::out) is semidet.
 
 get_functor_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
-        MaybeTypeDescList) :-
+        PseudoTypeDescList) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
         erlang_rtti_implementation.get_functor(TypeDesc, FunctorNumber,
-            FunctorName, Arity, TypeDescList)
+            FunctorName, Arity, TypeDescList),
+        % XXX This old comment is wrong now:
+        % The backends in which we use this definition of this predicate don't
+        % yet support function symbols with existential types, which is the
+        % only kind of function symbol in which we may want to return unbound.
+        PseudoTypeDescList = list.map(type_desc_to_pseudo_type_desc,
+            TypeDescList)
     ;
         type_desc_to_type_info(TypeDesc, TypeInfo),
         rtti_implementation.type_info_get_functor(TypeInfo, FunctorNumber,
-            FunctorName, Arity, TypeInfoList),
-        type_info_list_to_type_desc_list(TypeInfoList, TypeDescList)
-    ),
-
-    % The backends in which we use this definition of this predicate
-    % don't yet support function symbols with existential types, which is
-    % the only kind of function symbol in which we may want to return unbound.
-    MaybeTypeDescList = list.map(type_desc_to_pseudo_type_desc, TypeDescList).
+            FunctorName, Arity, PseudoTypeInfoList),
+        % Assumes they have the same representation.
+        private_builtin.unsafe_type_cast(PseudoTypeInfoList,
+            PseudoTypeDescList)
+    ).
 
 :- pragma foreign_proc("C",
     get_functor_internal(TypeDesc::in, FunctorNumber::in, FunctorName::out,
@@ -260,21 +263,24 @@ get_functor_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
     is semidet.
 
 get_functor_with_names_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
-        MaybeTypeDescList, Names) :-
+        PseudoTypeDescList, Names) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
         erlang_rtti_implementation.get_functor_with_names(TypeDesc,
-            FunctorNumber, FunctorName, Arity, TypeDescList, Names)
+            FunctorNumber, FunctorName, Arity, TypeDescList, Names),
+        % XXX This old comment is wrong now:
+        % The backends in which we use this definition of this predicate don't
+        % yet support function symbols with existential types, which is the
+        % only kind of function symbol in which we may want to return unbound.
+        PseudoTypeDescList = list.map(type_desc_to_pseudo_type_desc,
+            TypeDescList)
     ;
         type_desc_to_type_info(TypeDesc, TypeInfo),
         rtti_implementation.type_info_get_functor_with_names(TypeInfo,
-            FunctorNumber, FunctorName, Arity, TypeInfoList, Names),
-        type_info_list_to_type_desc_list(TypeInfoList, TypeDescList)
-    ),
-
-    % The backends in which we use this definition of this predicate
-    % don't yet support function symbols with existential types, which is
-    % the only kind of function symbol in which we may want to return unbound.
-    MaybeTypeDescList = list.map(type_desc_to_pseudo_type_desc, TypeDescList).
+            FunctorNumber, FunctorName, Arity, PseudoTypeInfoList, Names),
+        % Assumes they have the same representation.
+        private_builtin.unsafe_type_cast(PseudoTypeInfoList,
+            PseudoTypeDescList)
+    ).
 
 :- pragma foreign_proc("C",
     get_functor_with_names_internal(TypeDesc::in, FunctorNumber::in,
@@ -390,7 +396,9 @@ get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal) :-
         erlang_rtti_implementation.get_functor_ordinal(TypeDesc, FunctorNumber,
             Ordinal)
     ;
-        private_builtin.sorry("get_functor_ordinal/3")
+        type_desc_to_type_info(TypeDesc, TypeInfo),
+        rtti_implementation.type_info_get_functor_ordinal(TypeInfo,
+            FunctorNumber, Ordinal)
     ).
 
 :- pragma foreign_proc("C",
@@ -490,7 +498,9 @@ get_functor_lex(TypeDesc, Ordinal) = FunctorNumber :-
         erlang_rtti_implementation.get_functor_lex(TypeDesc, Ordinal,
             FunctorNumber)
     ;
-        private_builtin.sorry("get_functor_lex/3")
+        type_desc_to_type_info(TypeDesc, TypeInfo),
+        rtti_implementation.type_info_get_functor_lex(TypeInfo, Ordinal,
+            FunctorNumber)
     ).
 
 :- pragma foreign_proc("C",
