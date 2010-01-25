@@ -471,6 +471,7 @@ public static /* typeclass_info */ Object[] MR_typeclass_info_superclass_info(
     /* typeclass_info */ Object[] base_tcinfo;
     int t1;
 
+    /* The zeroth argument is num_extra_instance_args. */
     base_tcinfo = (Object[]) tcinfo[0];
     t1 = ((Integer) base_tcinfo[0]).intValue() + index;
     return (/* typeclass_info */ Object[]) tcinfo[t1];
@@ -719,8 +720,7 @@ special__Compare____base_typeclass_info_1_0(
         TypeInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeInfo = MR_typeclass_info_param_type_info(
-        (Object[]) TypeClassInfo, Index);
+    TypeInfo = MR_typeclass_info_param_type_info(TypeClassInfo, Index);
 ").
 
 :- pragma foreign_proc("Java",
@@ -728,8 +728,7 @@ special__Compare____base_typeclass_info_1_0(
         Index::in, TypeInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeInfo = MR_typeclass_info_instance_tvar_type_info(
-        (Object[]) TypeClassInfo, Index);
+    TypeInfo = MR_typeclass_info_instance_tvar_type_info(TypeClassInfo, Index);
 ").
 
 :- pragma foreign_proc("Java",
@@ -737,8 +736,7 @@ special__Compare____base_typeclass_info_1_0(
         TypeClassInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeClassInfo = MR_typeclass_info_superclass_info(
-        (Object[]) TypeClassInfo0, Index);
+    TypeClassInfo = MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
 ").
 
 :- pragma foreign_proc("Java",
@@ -746,8 +744,7 @@ special__Compare____base_typeclass_info_1_0(
         Index::in, TypeClassInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeClassInfo = MR_typeclass_info_arg_typeclass_info(
-        (Object[]) TypeClassInfo0, Index);
+    TypeClassInfo = MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
 ").
 
 :- pragma foreign_proc("Erlang",

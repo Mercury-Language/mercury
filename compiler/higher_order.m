@@ -2020,16 +2020,21 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
         module_info_get_instance_table(ModuleInfo, Instances),
         map.lookup(Instances, ClassId, InstanceDefns),
         list.index1_det(InstanceDefns, InstanceNum, InstanceDefn),
-        InstanceDefn = hlds_instance_defn(_, _, _, Constraints, _, _, _, _, _),
+        InstanceDefn = hlds_instance_defn(_, _, _, Constraints, InstanceTypes,
+            _, _, _, _),
         (
-            Manipulator = type_info_from_typeclass_info,
+            ( Manipulator = type_info_from_typeclass_info
+            ; Manipulator = superclass_from_typeclass_info
+            ),
+            % polymorphism.m adds MR_typeclass_info_num_extra_instance_args
+            % to the index. The calculation of NumExtra is from
+            % base_typeclass_info.gen_body.
+            type_vars_list(InstanceTypes, TypeVars),
+            get_unconstrained_tvars(TypeVars, Constraints, Unconstrained),
             list.length(Constraints, NumConstraints),
-            Index = Index0 + NumConstraints
-        ;
-            Manipulator = superclass_from_typeclass_info,
-            list.length(Constraints, NumConstraints),
-            % Polymorphism.m adds the number of type_infos to the index.
-            Index = Index0 + NumConstraints
+            list.length(Unconstrained, NumUnconstrained),
+            NumExtra = NumConstraints + NumUnconstrained,
+            Index = Index0 + NumExtra
         ;
             Manipulator = instance_constraint_from_typeclass_info,
             Index = Index0
@@ -2045,6 +2050,18 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
         rtti_var_info_duplicate_replace(TypeInfoArg, TypeInfoVar,
             RttiVarMaps0, RttiVarMaps),
         proc_info_set_rtti_varmaps(RttiVarMaps, ProcInfo0, ProcInfo),
+
+        % Sanity check.
+        proc_info_get_vartypes(ProcInfo, VarTypes),
+        map.lookup(VarTypes, TypeInfoVar, TypeInfoVarType),
+        map.lookup(VarTypes, TypeInfoArg, TypeInfoArgType),
+        ( TypeInfoVarType = TypeInfoArgType ->
+            true
+        ;
+            unexpected(this_file,
+                "interpret_typeclass_info_manipulator: type mismatch")
+        ),
+
         !Info ^ hoi_proc_info := ProcInfo,
 
         !Info ^ hoi_changed := ho_changed

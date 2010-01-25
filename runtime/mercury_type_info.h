@@ -496,7 +496,7 @@ typedef MR_PseudoTypeInfo       *MR_PseudoTypeInfoParams;
 ** change, as above.)
 **
 ** MR_typeclass_info_arg_typeclass_info returns a typeclass_info for one of the
-** constrains on the instance declaration.
+** constraints on the instance declaration.
 **
 ** MR_typeclass_info_extra_instance_arg returns either what
 ** MR_typeclass_info_instance_tvar_type_info or
