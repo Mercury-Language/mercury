@@ -7,7 +7,7 @@ ENDINIT
 */
 
 /*
-** Copyright (C) 1998-2001, 2003-2006 The University of Melbourne.
+** Copyright (C) 1998-2001, 2003-2006, 2008, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -316,6 +316,7 @@ MR_rewind_nondetstack_segments(MR_Word *maxfr)
 {
     MR_MemoryZone   *reusable_zone;
     MR_MemoryZone   *zone;
+    MR_Word         *limit;
     MR_MemoryZones  *list;
 
     reusable_zone = NULL;
@@ -324,11 +325,10 @@ MR_rewind_nondetstack_segments(MR_Word *maxfr)
         zone = MR_CONTEXT(MR_ctxt_nondetstack_zone);
         /*
         ** XXX why is maxfr sometimes slightly past MR_zone_extend_threshold?
-        ** That's why we test against MR_zone_redzone.
+        ** That's why we test against MR_zone_end instead.
         */
-        if (maxfr >= zone->MR_zone_min &&
-            maxfr < (MR_Word *) zone->MR_zone_redzone)
-        {
+        limit = (MR_Word *) zone->MR_zone_end;
+        if (maxfr >= zone->MR_zone_min && maxfr < limit) {
             break;
         }
 
