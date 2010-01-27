@@ -23,6 +23,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
 
+:- import_module bool.
 :- import_module cord.
 :- import_module int.
 :- import_module float.
@@ -42,7 +43,8 @@
                 cpc_sparking_cost           :: int,
                 cpc_locking_cost            :: int,
                 cpc_clique_threshold        :: int,
-                cpc_call_site_threshold     :: int
+                cpc_call_site_threshold     :: int,
+                cpc_parallelise_dep_conjs   :: bool
             ).
     
 %-----------------------------------------------------------------------------%
@@ -99,7 +101,8 @@
 
 candidate_parallel_conjunctions(Opts, Deep, Messages, !Feedback) :-
     Opts = candidate_parallel_conjunctions_opts(DesiredParallelism,
-        SparkingCost, LockingCost, _CliqueThreshold, _CallSiteThreshold),
+        SparkingCost, LockingCost, _CliqueThreshold, _CallSiteThreshold, 
+        _ParalleliseDepConjs),
 
     % Find opertunities for parallelism by walking the clique tree.  Don't
     % Descened into cliques cheaper than the threshold.
@@ -1355,8 +1358,10 @@ partition_inner_goals(Location, [ IG | IGs ], !Partition, !PartitionNum,
     inner_goals_partition::in, maybe(candidate_par_conjunction_internal)::out)
     is det.
 
-innergoals_build_candidate_conjunction(_Info, DependencyMaps, Location, GoalPath,
+innergoals_build_candidate_conjunction(Info, DependencyMaps, Location, GoalPath,
         InnerGoalsPartition, MaybeCandidate) :-
+    ParalleliseDependantConjs = Info ^ ipi_opts ^ cpc_parallelise_dep_conjs,
+
     % Setting up the first parallel conjunct is a different algorithm to the
     % latter ones, at this point we have the option of moving goals from before
     % the first costly call to either before or during the parallel
@@ -1414,7 +1419,13 @@ innergoals_build_candidate_conjunction(_Info, DependencyMaps, Location, GoalPath
     Speedup = (SequentialCost - ParallelCost) * float(NumCalls), 
     ( 
         length(ParConjsCord) > 1, 
-        Speedup > 0.0
+        Speedup > 0.0,
+        (
+            ParalleliseDependantConjs = no,
+            IsDependant = conjuncts_are_independent
+        ;
+            ParalleliseDependantConjs = yes
+        )
     ->
         ParConjs = list(ParConjsCord),
         MaybeCandidate = yes(candidate_par_conjunction_internal(

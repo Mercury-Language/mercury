@@ -301,9 +301,6 @@ maybe_parallelise_conj(ProcInfo, CPC, Goal0, MaybeGoal) :-
     PartitionNum = CPC ^ cpc_partition_number,
     FeedbackParConjuncts = CPC ^ cpc_conjs, 
     (
-        % XXX: Temporarily avoid parallelising dependant conjunctions,  This
-        % appears to trigger bugs in later stages of the compiler.
-        CPC ^ cpc_is_dependant = conjuncts_are_independent, 
         GoalExpr0 = conj(plain_conj, Conjs0),
         flatten_conj(Conjs0, Conjs1),
         find_partition(PartitionNum, Conjs1, GoalsBeforePartition,

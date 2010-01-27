@@ -183,6 +183,10 @@ help_message =
     --implicit-parallelism-call-site-cost-threshold <value>
                 The cost of a call site to be considered for parallelism
                 against another call site.
+    --implicit-parallelism-dependant-conjunctions
+                Advise the compiler to parallelism dependant conjunctions.
+                This will become the default once the implementation is
+                complete. 
 
     The following options select specific types of feedback information
     and parameterise them:
@@ -270,7 +274,8 @@ read_deep_file(Input, Debug, MaybeDeep, !IO) :-
     ;       implicit_parallelism_sparking_cost
     ;       implicit_parallelism_locking_cost
     ;       implicit_parallelism_clique_cost_threshold
-    ;       implicit_parallelism_call_site_cost_threshold.
+    ;       implicit_parallelism_call_site_cost_threshold
+    ;       implicit_parallelism_dependant_conjunctions.
 
 % TODO: Introduce an option to disable parallelisation of dependant
 % conjunctions, or switch to the simple calculations for independent
@@ -304,6 +309,8 @@ long("implicit-parallelism-clique-cost-threshold",
     implicit_parallelism_clique_cost_threshold).
 long("implicit-parallelism-call-site-cost-threshold",
     implicit_parallelism_call_site_cost_threshold).
+long("implicit-parallelism-dependant-conjunctions",
+    implicit_parallelism_dependant_conjunctions).
 
 :- pred defaults(option::out, option_data::out) is multi.
 
@@ -325,6 +332,7 @@ defaults(implicit_parallelism_sparking_cost,                int(100)).
 defaults(implicit_parallelism_locking_cost,                 int(100)).
 defaults(implicit_parallelism_clique_cost_threshold,        int(100000)).
 defaults(implicit_parallelism_call_site_cost_threshold,     int(50000)).
+defaults(implicit_parallelism_dependant_conjunctions,       bool(no)).
 
 :- pred construct_measure(string::in, stat_measure::out) is semidet.
 
@@ -423,12 +431,16 @@ check_options(Options0, RequestedFeedbackInfo) :-
         lookup_int_option(Options, 
             implicit_parallelism_call_site_cost_threshold,
             CPCCallSiteThreshold),
+        lookup_bool_option(Options,
+            implicit_parallelism_dependant_conjunctions,
+            ParalleliseDepConjs),
         CandidateParallelConjunctionsOpts =
             candidate_parallel_conjunctions_opts(DesiredParallelism, 
                 SparkingCost,
                 LockingCost,
                 CPCProcThreshold,
-                CPCCallSiteThreshold),
+                CPCCallSiteThreshold,
+                ParalleliseDepConjs),
         MaybeCandidateParallelConjunctionsOpts =
             yes(CandidateParallelConjunctionsOpts)
     ;
