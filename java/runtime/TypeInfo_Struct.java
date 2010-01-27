@@ -115,22 +115,24 @@ public class TypeInfo_Struct extends PseudoTypeInfo
 			return true;
 		}
 
-		if (type_ctor.unify(ti.type_ctor) == false) {
+		if (!type_ctor.unify(ti.type_ctor)) {
 			return false;
 		}
 
-		if (args == null || ti.args == null) {
-			if (args == null && ti.args == null) {
-				return true;
-			}
+		int len1 = 0;
+		int len2 = 0;
+		if (args != null) {
+			len1 = args.length;
+		}
+		if (ti.args != null) {
+			len2 = ti.args.length;
+		}
+		if (len1 != len2) {
 			return false;
 		}
 
-		for (int i = 0; i < args.length || i < ti.args.length; i++) {
-			if (i == args.length || i == ti.args.length) {
-				return false;
-			}
-			if (args[i].unify(ti.args[i]) == false) {
+		for (int i = 0; i < len1; i++) {
+			if (!args[i].unify(ti.args[i])) {
 				return false;
 			}
 		}
