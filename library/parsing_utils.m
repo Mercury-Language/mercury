@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -38,7 +38,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module parsing_utils.
-
 :- interface.
 
 :- import_module char.
@@ -49,7 +48,7 @@
 :- import_module string.
 :- import_module unit.
 
-
+%-----------------------------------------------------------------------------%
 
     % The parser source (input string).
     %
@@ -135,7 +134,7 @@
 :- pred offset_to_line_number_and_position(line_numbers::in, int::in,
         int::out, int::out) is det.
 
-    % input_substring(Src, StartOffset, EndOffsetPlusOne, Substring)
+    % input_substring(Src, StartOffset, EndOffsetPlusOne, Substring):
     % Copy the substring from the input occupying the offsets
     % [StartOffset, EndOffsetPlusOne).
     %
@@ -169,8 +168,8 @@
 :- pred ikeyword(string::in, string::in, src::in, unit::out,
         ps::in, ps::out) is semidet.
 
-    % identifier(Src, InitIdChars, IdChars, Identifier, !PS) matches the next
-    % identifer (result in Identifier) comprising a char from InitIdChars
+    % identifier(InitIdChars, IdChars, Src, Identifier, !PS) matches the next
+    % identifier (result in Identifier) comprising a char from InitIdChars
     % followed by zero or more chars from IdChars.  Any subsequent whitespace
     % is consumed.
     %
