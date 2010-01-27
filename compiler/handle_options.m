@@ -581,7 +581,8 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
             (
                 FeedbackFile = ""
             ->
-                add_error("'--implicit-parallelism' requires '--feedback'", 
+                add_error(
+                    "'--implicit-parallelism' requires '--feedback-file'", 
                     !Errors)
             ;
                 true
