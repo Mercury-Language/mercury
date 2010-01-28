@@ -5505,7 +5505,7 @@ options_help_build_system -->
         "\tattempting to use them.  (This option is only meaningful with",
         "\t`mmc --make'.)",
         "--order-make-by-timestamp",
-        "\tMake `mmc --make' compile more recently modified source files"
+        "\tMake `mmc --make' compile more recently modified source files",
         "\tfirst.",
         "--show-make-times",
         "\tReport run times for commands executed by `mmc --make'.",
