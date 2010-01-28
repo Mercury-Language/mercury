@@ -299,6 +299,9 @@ Changes to the Mercury compiler:
 * We have added support for `mmc --make' to recompile modules if options have
   changed.
 
+* We have added an option for `mmc --make' to compile more recently modified
+  source files first.
+
 * We have added support for stack segments, which allows programs to grow
   stacks on demand.
 
@@ -526,6 +529,9 @@ Changes to the Mercury compiler:
   by enabling the `--track-flags' option.  Then `mmc --make' can know to
   recompile modules whose options have changed, even if the files haven't
   been touched.
+
+* `mmc --make' can compile more recently modified files first, if the option
+  `--order-make-by-timestamp' is enabled.
 
 * The option `--stack-segments', or grade component `.stseg', causes
   programs to execute using stack segments, where segments can be allocated

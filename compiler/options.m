@@ -938,6 +938,7 @@
     ;       intermod_directories
     ;       use_search_directories_for_intermod
     ;       libgrade_install_check
+    ;       order_make_by_timestamp
     ;       show_make_times
     ;       extra_library_header
     ;       restricted_command_line
@@ -1794,6 +1795,7 @@ option_defaults_2(build_system_option, [
     intermod_directories                -   accumulating([]),
     use_search_directories_for_intermod -   bool(yes),
     libgrade_install_check              -   bool(yes),
+    order_make_by_timestamp             -   bool(no),
     show_make_times                     -   bool(no),
     extra_library_header                -   accumulating([]),
     restricted_command_line             -   bool(no)
@@ -2696,6 +2698,7 @@ long_option("intermod-directory",   intermod_directories).
 long_option("use-search-directories-for-intermod",
                     use_search_directories_for_intermod).
 long_option("libgrade-install-check", libgrade_install_check).
+long_option("order-make-by-timestamp", order_make_by_timestamp).
 long_option("show-make-times",      show_make_times).
 long_option("extra-lib-header",     extra_library_header).
 long_option("extra-library-header", extra_library_header).
@@ -5501,6 +5504,9 @@ options_help_build_system -->
         "\tDo not check that libraries have been installed before",
         "\tattempting to use them.  (This option is only meaningful with",
         "\t`mmc --make'.)",
+        "--order-make-by-timestamp",
+        "\tMake `mmc --make' compile more recently modified source files"
+        "\tfirst.",
         "--show-make-times",
         "\tReport run times for commands executed by `mmc --make'.",
         "--extra-library-header <file>, --extra-lib-header <file>",

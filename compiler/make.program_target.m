@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2009 The University of Melbourne.
+% Copyright (C) 2002-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -185,7 +185,8 @@ make_linked_target_2(LinkedTargetFile, Globals, _, Succeeded, !Info, !IO) :-
 
         AllModulesList = set.to_sorted_list(AllModules),
         get_target_modules(Globals, IntermediateTargetType, AllModulesList,
-            ObjModules, !Info, !IO),
+            ObjModulesAlpha, !Info, !IO),
+        order_target_modules(Globals, ObjModulesAlpha, ObjModules, !Info, !IO),
         IntermediateTargets = make_dependency_list(ObjModules,
             IntermediateTargetType),
         ObjTargets = make_dependency_list(ObjModules, ObjectTargetType),
@@ -307,6 +308,56 @@ get_target_modules_2(Globals, ModuleName, !TargetModules, !Info, !IO) :-
         !:TargetModules = [ModuleName | !.TargetModules]
     ;
         true
+    ).
+
+:- pred order_target_modules(globals::in,
+    list(module_name)::in, list(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+order_target_modules(Globals, Modules, OrderedModules, !Info, !IO) :-
+    globals.lookup_bool_option(Globals, order_make_by_timestamp,
+        OrderByTimestamp),
+    (
+        OrderByTimestamp = yes,
+        list.map_foldl2(pair_module_with_timestamp(Globals),
+            Modules, PairedModules, !Info, !IO),
+        list.sort(compare_paired_modules, PairedModules, OrderedPairs),
+        list.map(pair.snd, OrderedPairs, OrderedModules)
+    ;
+        OrderByTimestamp = no,
+        OrderedModules = Modules
+    ).
+
+:- pred pair_module_with_timestamp(globals::in,
+    module_name::in, pair(timestamp, module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+pair_module_with_timestamp(Globals, Module, Timestamp - Module, !Info, !IO) :-
+    Search = do_not_search,
+    Target = target_file(Module, module_target_source),
+    get_target_timestamp(Globals, Search, Target, MaybeTimestamp, !Info, !IO),
+    (
+        MaybeTimestamp = ok(Timestamp)
+    ;
+        MaybeTimestamp = error(_),
+        Timestamp = oldest_timestamp
+    ).
+
+:- pred compare_paired_modules(pair(timestamp, module_name)::in,
+    pair(timestamp, module_name)::in, comparison_result::out) is det.
+
+compare_paired_modules(TimeA - ModuleA, TimeB - ModuleB, Res) :-
+    compare(TimeRes, TimeA, TimeB),
+    % More recently touched files should appear earlier in the list.
+    (
+        TimeRes = (<),
+        Res = (>)
+    ;
+        TimeRes = (>),
+        Res = (<)
+    ;
+        TimeRes = (=),
+        compare(Res, ModuleA, ModuleB)
     ).
 
 :- pred get_foreign_object_targets(globals::in, pic::in, module_name::in,

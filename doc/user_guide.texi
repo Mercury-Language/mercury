@@ -9151,6 +9151,11 @@ current directory.
 work with @samp{mmc --make}).
 
 @sp 1
+@item --order-make-by-timestamp
+@findex --order-make-by-timestamp
+Make @samp{mmc --make} compile more recently modified source files first.
+
+@sp 1
 @item --show-make-times
 @findex --show-make-times
 Report run times for commands executed by @samp{mmc --make}.
