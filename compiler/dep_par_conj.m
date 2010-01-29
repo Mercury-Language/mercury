@@ -164,6 +164,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -280,12 +281,39 @@ sync_dep_par_conjs_in_proc(PredId, ProcId, IgnoreVars, !ModuleInfo,
         % recursive.  The information is stored within !ModuleInfo so doesn't
         % need to be kept here, this call simply forces an update.
         module_info_rebuild_dependency_info(!ModuleInfo, _),
-        
+
+        GoalBeforeDepParConj = !.Goal,
         !:SyncInfo = sync_info(!.ModuleInfo, IgnoreVars, AllowSomePathsOnly,
             !.VarSet, !.VarTypes, proc(PredId, ProcId)),
         sync_dep_par_conjs_in_goal(!Goal, InstMap0, _, !SyncInfo),
         !.SyncInfo = sync_info(_, _, _, !:VarSet, !:VarTypes, _),
         % XXX RTTI varmaps may need to be updated
+        
+        trace [compile_time(flag("debug-dep-par-conj")), io(!IO)] (
+            globals.lookup_accumulating_option(Globals, debug_dep_par_conj,
+                DebugDepParConjWords),
+            PredIdInt = pred_id_to_int(PredId),
+            PredIdStr = string.int_to_string(PredIdInt),
+            (
+                some [DebugDepParConjWord] (
+                    list.member(DebugDepParConjWord, DebugDepParConjWords),
+                    DebugDepParConjWord = PredIdStr
+                )
+            ->
+                OutInfo = init_hlds_out_info(Globals),
+                format("Pred/Proc: %s/%s before dep-par-conj:\n",
+                    [s(string(PredId)), s(string(ProcId))], !IO),
+                write_goal(OutInfo, GoalBeforeDepParConj, !.ModuleInfo,
+                    !.VarSet, yes, 0, "", !IO),
+                nl(!IO),
+                write_string("After dep-par-conj:\n", !IO),
+                write_goal(OutInfo, !.Goal, !.ModuleInfo, !.VarSet,
+                    yes, 0, "", !IO),
+                nl(!IO)
+            ;
+                true
+            )
+        ), 
 
         % We really only need to run this part if something changed, but we
         % only run this predicate on procedures which are likely to have
@@ -317,8 +345,22 @@ sync_dep_par_conjs_in_goal(Goal0, Goal, InstMap0, InstMap, !SyncInfo) :-
             conj_list_to_goal(Goals, GoalInfo0, Goal)
         ;
             ConjType = parallel_conj,
-            maybe_sync_dep_par_conj(Goals, GoalInfo0, Goal, InstMap0,
-                !SyncInfo)
+            Goal0InstmapDelta = 
+                goal_info_get_instmap_delta(Goal0 ^ hlds_goal_info),
+            ( instmap_delta_is_unreachable(Goal0InstmapDelta) ->
+                % If the instmap becomes unreachable then calculating the
+                % produces and consumers for the dependant parallel conjunction
+                % transformation becomes impossible.  Since this probably
+                % throws an exception anyway there's no point parallelising it.
+                % This should not be a compiler error.  For instance in the
+                % bug_130 test case a call to a deterministic predicate whose
+                % body is erroneous is inlined.  Generating an error in this
+                % case would confuse the programmer.
+                conj_list_to_goal(Goals, GoalInfo0, Goal)
+            ;
+                maybe_sync_dep_par_conj(Goals, GoalInfo0, Goal, InstMap0,
+                    !SyncInfo)
+            )
         )
     ;
         GoalExpr0 = disj(Goals0),
@@ -1415,8 +1457,11 @@ find_specialization_requests_in_proc(DoneProcs, InitialModuleInfo, PredProcId,
             ->
                 OutInfo = init_hlds_out_info(Globals),
                 proc_info_get_varset(!.ProcInfo, VarSet),
+                format("About to search %d/%d for dependant par conjs:\n",
+                    [i(PredIdInt), i(proc_id_to_int(ProcId))], !IO), 
                 write_goal(OutInfo, !.Goal, !.ModuleInfo, VarSet,
-                    yes, 0, "", !IO)
+                    yes, 0, "", !IO),
+                nl(!IO)
             ;
                 true
             )
