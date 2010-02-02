@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -165,9 +165,43 @@ module_qualify_items(Items0, Items, EventSpecMap0, EventSpecMap, Globals,
     mq_info_get_type_error_flag(!.Info, UndefTypes),
     mq_info_get_mode_error_flag(!.Info, UndefModes),
     (
+        % Warn about any unused module imports in the interface.
+        % There is a special case involving type class instances that
+        % we need to handle here.  Consider:
+        %
+        %   :- module foo.
+        %   :- interface.
+        % 
+        %   :- import_module bar.
+        %   :- typeclass tc1(T) <= tc2(T).
+        %   :- instance tc1(unit).
+        %
+        % where module bar exports the instance tc2(unit).  We must import
+        % the module bar in the interface of the module foo in order for
+        % the superclass constraint on the instance tc1(unit) to be satisfied.
+        % However, at this stage of compilation we do not know that the
+        % instance tc2(unit) needs to be visible.  (Knowing this would require
+        % a more extensive analysis of type classes and instances to be done
+        % in this module.)
+        %
+        % In order to prevent the import of the module bar being erroneously 
+        % reported as unused we make the conservative assumption that any
+        % imported module that exports a type class instance is used in
+        % the interface of the importing module, except if the importing
+        % module itself exports _no_ type class instances.
+        %
         MaybeFileName = yes(FileName),
         mq_info_get_unused_interface_modules(!.Info, UnusedImports0),
-        set.to_sorted_list(UnusedImports0, UnusedImports),
+        mq_info_get_exported_instances_flag(!.Info, ModuleExportsInstances),
+        (
+            ModuleExportsInstances = yes,
+            mq_info_get_imported_instance_modules(!.Info, InstanceImports),
+            set.difference(UnusedImports0, InstanceImports, UnusedImports1)
+        ;
+            ModuleExportsInstances = no,
+            UnusedImports1 = UnusedImports0
+        ),
+        set.to_sorted_list(UnusedImports1, UnusedImports),
         maybe_warn_unused_interface_imports(ModuleName, FileName,
             UnusedImports, !Specs)
     ;
@@ -210,6 +244,13 @@ qualify_type_qualification(Type0, Type, Context, !Info, !Specs) :-
                 % needed in the interface.
                 unused_interface_modules    :: set(module_name),
 
+                % Modules from which `:- instance' declarations have
+                % been imported.
+                imported_instance_modules   :: set(module_name),
+
+                % Does this module export any type class instances?
+                exported_instances_flag      :: bool,
+
                 % Import status of the current item.
                 import_status               :: mq_import_status,
 
@@ -235,6 +276,8 @@ qualify_type_qualification(Type0, Type, Context, !Info, !Specs) :-
                 need_qual_flag              :: need_qualifier,
 
                 maybe_recompilation_info    :: maybe(recompilation_info)
+
+                
             ).
 
 :- type partial_qualifier_info
@@ -361,11 +404,23 @@ collect_mq_info_item(Item, !Info) :-
             mq_info_set_classes(Classes, !Info)
         )
     ;
+          Item = item_instance(ItemInstance),
+          ( mq_info_get_import_status(!.Info, mq_status_imported(_)) ->
+              InstanceModule = ItemInstance ^ ci_module_containing_instance,
+              mq_info_get_imported_instance_modules(!.Info,
+                ImportedInstanceModules0),
+              set.insert(ImportedInstanceModules0, InstanceModule,
+                ImportedInstanceModules),
+              mq_info_set_imported_instance_modules(ImportedInstanceModules,
+                !Info)
+          ;
+              true
+          )
+    ;
         ( Item = item_clause(_)
         ; Item = item_pred_decl(_)
         ; Item = item_mode_decl(_)
         ; Item = item_pragma(_)
-        ; Item = item_instance(_)
         ; Item = item_initialise(_)
         ; Item = item_finalise(_)
         ; Item = item_mutable(_)
@@ -845,6 +900,12 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
         list.length(Types0, Arity),
         Id = mq_id(Name0, Arity),
         mq_info_set_error_context(mqec_instance(Id) - Context, !Info),
+       
+        ( mq_info_get_import_status(!.Info, mq_status_exported) ->
+            mq_info_set_exported_instances_flag(yes, !Info)
+        ;
+            true
+        ),
 
         % We don't qualify the implementation yet, since that requires
         % us to resolve overloading.
@@ -1850,6 +1911,8 @@ init_mq_info(Items, Globals, ReportErrors, ModuleName, Info) :-
     term.context_init(Context),
     ErrorContext = mqec_type(mq_id(unqualified(""), 0)) - Context,
     set.init(InterfaceModules0),
+    set.init(InstanceModules),
+    ExportedInstancesFlag = no,
     get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps),
     set.list_to_set(ImportDeps `list.append` UseDeps, ImportedModules),
 
@@ -1869,8 +1932,8 @@ init_mq_info(Items, Globals, ReportErrors, ModuleName, Info) :-
     ),
     Info = mq_info(ImportedModules, InterfaceVisibleModules,
         Empty, Empty, Empty, Empty, Empty, Empty,
-        InterfaceModules0, mq_status_local, 0,
-        no, no, ReportErrors, ErrorContext, ModuleName,
+        InterfaceModules0, InstanceModules, ExportedInstancesFlag,
+        mq_status_local, 0, no, no, ReportErrors, ErrorContext, ModuleName,
         may_be_unqualified, MaybeRecompInfo).
 
 :- pred mq_info_get_imported_modules(mq_info::in, set(module_name)::out)
@@ -1885,6 +1948,9 @@ init_mq_info(Items, Globals, ReportErrors, ModuleName, Info) :-
 :- pred mq_info_get_classes(mq_info::in, class_id_set::out) is det.
 :- pred mq_info_get_unused_interface_modules(mq_info::in,
     set(module_name)::out) is det.
+:- pred mq_info_get_imported_instance_modules(mq_info::in,
+    set(module_name)::out) is det.
+:- pred mq_info_get_exported_instances_flag(mq_info::in, bool::out) is det.
 :- pred mq_info_get_import_status(mq_info::in, mq_import_status::out) is det.
 % :- pred mq_info_get_type_error_flag(mq_info::in, bool::out) is det.
 % :- pred mq_info_get_mode_error_flag(mq_info::in, bool::out) is det.
@@ -1900,6 +1966,8 @@ mq_info_get_insts(Info, Info ^ insts).
 mq_info_get_modes(Info, Info ^ modes).
 mq_info_get_classes(Info, Info ^ classes).
 mq_info_get_unused_interface_modules(Info, Info ^ unused_interface_modules).
+mq_info_get_imported_instance_modules(Info, Info ^ imported_instance_modules).
+mq_info_get_exported_instances_flag(Info, Info ^ exported_instances_flag).
 mq_info_get_import_status(Info, Info ^ import_status).
 mq_info_get_type_error_flag(Info, Info ^ type_error_flag).
 mq_info_get_mode_error_flag(Info, Info ^ mode_error_flag).
@@ -1926,6 +1994,10 @@ mq_info_get_recompilation_info(Info, Info ^ maybe_recompilation_info).
     mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_unused_interface_modules(set(module_name)::in,
     mq_info::in, mq_info::out) is det.
+:- pred mq_info_set_imported_instance_modules(set(module_name)::in,
+    mq_info::in, mq_info::out) is det.
+:- pred mq_info_set_exported_instances_flag(bool::in,
+    mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_import_status(mq_import_status::in,
     mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_type_error_flag(mq_info::in, mq_info::out) is det.
@@ -1945,6 +2017,10 @@ mq_info_set_modes(Modes, Info, Info ^ modes := Modes).
 mq_info_set_classes(Classes, Info, Info ^ classes := Classes).
 mq_info_set_unused_interface_modules(Modules, Info,
     Info ^ unused_interface_modules := Modules).
+mq_info_set_imported_instance_modules(Modules, Info,
+    Info ^ imported_instance_modules := Modules).
+mq_info_set_exported_instances_flag(Flag, Info,
+    Info ^ exported_instances_flag := Flag).
 mq_info_set_import_status(Status, Info, Info ^ import_status := Status).
 mq_info_set_type_error_flag(Info, Info ^ type_error_flag := yes).
 mq_info_set_mode_error_flag(Info, Info ^ mode_error_flag := yes).

@@ -34,6 +34,7 @@ ERRORCHECK_PROGS= \
 	unify_f_g \
 	unused_args_test \
 	unused_import \
+	unused_interface_import \
 	warn_contiguous_foreign \
 	warn_non_contiguous \
 	warn_non_contiguous_foreign \
