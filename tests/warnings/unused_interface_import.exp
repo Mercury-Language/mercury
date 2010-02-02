@@ -1,0 +1,4 @@
+unused_interface_import.m:001: In module `unused_interface_import':
+unused_interface_import.m:001:   warning: module `unused_interface_import2' is
+unused_interface_import.m:001:   imported in the interface, but is not used in
+unused_interface_import.m:001:   the interface.
