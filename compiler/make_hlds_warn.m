@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2009 The University of Melbourne.
+% Copyright (C) 1993-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -386,7 +386,7 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet,
                 words("occurs more than once in this scope."), nl]
         ;
             MultiPieces = [words("warning: variables"), MultiVarsPiece,
-                words("ccur more than once in this scope."), nl]
+                words("occur more than once in this scope."), nl]
         ),
         MultiMsg = simple_msg(goal_info_get_context(GoalInfo),
             [option_is_set(warn_singleton_vars, yes,
