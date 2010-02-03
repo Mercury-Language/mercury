@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2008 The University of Melbourne.
+% Copyright (C) 1993-2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -9851,11 +9851,32 @@ command_line_argument(_, "") :-
 :- pragma foreign_proc("Java",
     io.call_system_code(Command::in, Status::out, Msg::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
 "
+    boolean has_sh;
     try {
-        java.lang.Process process = java.lang.Runtime.getRuntime().
-            exec(Command);
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            sm.checkExec(""/bin/sh"");
+            has_sh = true;
+        } else {
+            // If there is no security manager installed we just check if the
+            // file exists.
+            has_sh = new java.io.File(""/bin/sh"").exists();
+        }
+    } catch (java.lang.Exception e) {
+        has_sh = false;
+    }
+
+    try {
+        // Emulate system() if /bin/sh is available.
+        java.lang.Process process;
+        if (has_sh) {
+            final String[] args = {""/bin/sh"", ""-c"", Command};
+            process = java.lang.Runtime.getRuntime().exec(args);
+        } else {
+            process = java.lang.Runtime.getRuntime().exec(Command);
+        }
 
         StreamPipe stdin = new StreamPipe(mercury_stdin,
             process.getOutputStream());

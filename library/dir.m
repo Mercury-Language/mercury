@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995,1997,1999-2000,2002-2009 The University of Melbourne.
+% Copyright (C) 1994-1995,1997,1999-2000,2002-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1549,13 +1549,21 @@ can_implement_dir_foldl :- semidet_fail.
 :- pragma foreign_proc("C#",
     can_implement_dir_foldl,
     [will_not_call_mercury, promise_pure, thread_safe],
-    "SUCCESS_INDICATOR = true;"
-).
+"
+    SUCCESS_INDICATOR = true;
+").
+:- pragma foreign_proc("Java",
+    can_implement_dir_foldl,
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    succeeded = true;
+").
 :- pragma foreign_proc("Erlang",
     can_implement_dir_foldl,
     [will_not_call_mercury, promise_pure, thread_safe],
-    "SUCCESS_INDICATOR = true"
-).
+"
+    SUCCESS_INDICATOR = true
+").
 
     % Win32 doesn't allow us to open a directory without
     % returning the first item.

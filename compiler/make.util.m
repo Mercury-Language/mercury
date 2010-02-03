@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2009 University of Melbourne.
+% Copyright (C) 2002-2010 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1802,6 +1802,15 @@ make_write_module_or_linked_target(Globals, ModuleName - FileType, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Time = MR_get_real_milliseconds();
+    IO = IO0;
+").
+
+:- pragma foreign_proc("Java",
+    get_real_milliseconds(Time::out, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    // The loss of precision is acceptable for mmc --make.
+    Time = (int) System.currentTimeMillis();
     IO = IO0;
 ").
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -201,12 +201,22 @@ expand_file_into_arg_list(S, Res, !IO) :-
 real_main_after_expansion(CmdLineArgs, !IO) :-
     % XXX Processing the options up to three times is not what you call
     % elegant.
-    ( CmdLineArgs = ["--arg-file", ArgFile] ->
+    ( CmdLineArgs = ["--arg-file", ArgFile | ExtraArgs] ->
         % All the configuration and options file options are passed in the
         % given file, which is created by the parent `mmc --make' process.
         % (make.module_target does this to overcome limits on the lengths
         % of command lines on Windows.) The environment is ignored, unlike
         % with @file syntax.
+
+        % Diagnose bad invocations, e.g. shell redirection operators treated
+        % as command line arguments.
+        (
+            ExtraArgs = []
+        ;
+            ExtraArgs = [_ | _],
+            unexpected(this_file, "extra arguments with --arg-file: " ++
+                string(ExtraArgs))
+        ),
 
         % `mmc --mmake' does not use the --arg-file mechanism for linking.
         Link = no,
