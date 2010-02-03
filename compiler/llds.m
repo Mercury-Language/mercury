@@ -629,6 +629,16 @@
             % The label gives the address of the code following the parallel
             % conjunction. 
 
+:- inst instr_llcall
+    --->    llcall(ground, ground, ground, ground, ground, ground).
+:- inst instr_goto
+    --->    goto(ground).
+:- inst instr_if_val
+    --->    if_val(ground, ground).
+:- inst instr_foreign_proc_code
+    --->    foreign_proc_code(ground, ground, ground, ground, ground,
+                ground, ground, ground, ground, ground).
+
 :- type stack_incr_kind
     --->    stack_incr_leaf         % The incr_sp creates the stack frame
                                     % of a leaf procedure.

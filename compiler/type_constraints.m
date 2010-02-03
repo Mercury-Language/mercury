@@ -352,7 +352,8 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
 
 %-----------------------------------------------------------------------------%
 %
-% General typechecking utility predicates
+% General typechecking utility predicates.
+%
 
     % A compiler-generated predicate only needs type checking if
     % (a) it is a user-defined equality pred, or
@@ -544,7 +545,9 @@ set_clause_body(Goal, Clause, Clause ^ clause_body := Goal).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-% Constraint solving
+%
+% Constraint solving.
+%
 
     % Tries to solve a constraint on the types of variables in a predicate.
     % If a definite solution cannot be found, use labeling to guess the value
@@ -951,6 +954,7 @@ unify_equal_tvars(TCInfo, Replaced, Replacement, Target,
 %-----------------------------------------------------------------------------%
 %
 % Constraint solving utility predicates.
+%
 
     % Returns the type variable that is unified with Target in the constraint.
     % Fails if no such variable exists.
@@ -1451,7 +1455,8 @@ merge_type_constraints2(A, B, Result) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Error diagnosis
+% Error diagnosis.
+%
 
     % If the list of type constraints contains more than one predicate call
     % constraint, return an error message describing the ambiguity and one
@@ -1609,7 +1614,8 @@ conj_constraint_get_context(Constraint, Constraint ^ tconstr_context).
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
-% Constraint generation
+% Constraint generation.
+%
 
     % Turn a goal expression to a constraint on the types of variable
     % appearing within that goal, then update all relevant maps with the
@@ -1619,203 +1625,22 @@ conj_constraint_get_context(Constraint, Constraint ^ tconstr_context).
     type_constraint_info::in, type_constraint_info::out) is det.
 
 goal_to_constraint(Environment, Goal, !TCInfo) :-
-    Environment = tconstr_environment(_, _, FuncEnv, PredEnv),
+    % Environment = tconstr_environment(_, _, FuncEnv, PredEnv),
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
-        GoalExpr = unify(L, RHS, _, _, _),
-        % Transform a unification constraint into an assignment of types
-        % to the variables being unified.
-
-        Context = goal_info_get_context(GoalInfo),
-        get_var_type(L, LTVar, !TCInfo),
-        (
-            RHS = rhs_var(R),
-            get_var_type(R, RTVar, !TCInfo),
-            Constraints = [ctconstr([stconstr(LTVar, tvar_to_type(RTVar))],
-                tconstr_active, Context, no, no)],
-            RelevantTVars = [LTVar, RTVar]
-        ;
-            RHS = rhs_functor(ConsId, _, Args),
-            (
-                builtin_atomic_type(ConsId, Builtin)
-            ->
-                SimpleConstraint = stconstr(LTVar, builtin_type(Builtin)),
-                Constraints = [ctconstr([SimpleConstraint], tconstr_active,
-                    Context, no, no)],
-                RelevantTVars = [LTVar]
-            ;
-                ConsId = cons(Name, Arity, _TypeCtor),
-                % The _TypeCtor field is not meaningful yet.
-                Arity = list.length(Args)
-            ->
-                list.map_foldl(get_var_type, Args, ArgTypeVars, !TCInfo),
-                % If it is a data constructor, create a disjunction
-                % constraint with each possible type of the constructor.
-                ( map.search(FuncEnv, ConsId, Cons_Defns) ->
-                    list.map_foldl(
-                        functor_unif_constraint(LTVar, ArgTypeVars, GoalInfo),
-                        Cons_Defns, TypeConstraints, !TCInfo)
-                ;
-                    TypeConstraints = []
-                ),
-                % If it is a closure constructor, create a disjunction
-                % constraint for each predicate it could refer to.
-                (
-                    predicate_table_search_sym(PredEnv,
-                        may_be_partially_qualified, Name, PredIds)
-                ->
-                    predicate_table_get_preds(PredEnv, Preds),
-                    list.filter_map_foldl(
-                        ho_pred_unif_constraint(Preds, GoalInfo, LTVar,
-                            ArgTypeVars),
-                        PredIds, PredConstraints, !TCInfo)
-                ;
-                    PredConstraints = []
-                ),
-                Constraints = TypeConstraints ++ PredConstraints,
-                (
-                    Constraints = [],
-                    ErrMsg = simple_msg(Context, [always([
-                        words("The constructor"),
-                        sym_name_and_arity(Name / Arity),
-                        words("has not been defined")])]),
-                    add_message_to_spec(ErrMsg, !TCInfo)
-                ;
-                    Constraints = [_ | _]
-                ),
-                RelevantTVars = [LTVar | ArgTypeVars]
-            ;
-                Pieces = [words("The given type is not supported"),
-                    words("by constraint-based type checking.")],
-                ErrMsg = simple_msg(Context, [always(Pieces)]),
-                add_message_to_spec(ErrMsg, !TCInfo),
-                RelevantTVars = [],
-                Constraints = []
-            )
-        ;
-            RHS = rhs_lambda_goal(Purity, _, PredOrFunc, EvalMethod, _, Args,
-                _, _, LambdaGoal),
-            list.map_foldl(get_var_type, Args, ArgTVars, !TCInfo),
-            ArgTypes = list.map(tvar_to_type, ArgTVars),
-            construct_higher_order_type(Purity, PredOrFunc, EvalMethod,
-                ArgTypes, LambdaType),
-            Constraints = [ctconstr([stconstr(LTVar, LambdaType)],
-                tconstr_active, Context, no, no)],
-            RelevantTVars = [LTVar | ArgTVars],
-            goal_to_constraint(Environment, LambdaGoal, !TCInfo)
-        ),
-        add_type_constraint(Constraints, RelevantTVars, !TCInfo)
+        GoalExpr = unify(_, _, _, _, _),
+        unify_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo)
     ;
-        GoalExpr = plain_call(_, _, Args, _, _, Name),
-        % Transform a call to variable assignments of the variables
-        % used in the call.
-        (
-            predicate_table_search_pred_sym(PredEnv,
-                may_be_partially_qualified, Name, PredIds0)
-        ->
-            PredIds1 = PredIds0
-        ;
-            PredIds1 = []
-        ),
-        predicate_table_get_preds(PredEnv, Preds),
-        list.filter(pred_has_arity(Preds, list.length(Args)),
-            PredIds1, PredIds),
-        list.map_foldl(get_var_type, Args, ArgTVars, !TCInfo),
-        list.map2_foldl(pred_call_constraint(Preds, GoalInfo, ArgTVars),
-            PredIds, Constraints, PredTVars, !TCInfo),
-        list.condense([ArgTVars | PredTVars], TVars),
-        add_type_constraint(Constraints, TVars, !TCInfo)
+        GoalExpr = plain_call(_, _, _, _, _, _),
+        plain_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo)
     ;
-        GoalExpr = call_foreign_proc(_, PredId, _, ForeignArgs, _, _, _),
-        Context = goal_info_get_context(GoalInfo),
-        ArgVars = list.map(foreign_arg_var, ForeignArgs),
-        ArgTypes0 = list.map(foreign_arg_type, ForeignArgs),
-        predicate_table_get_preds(Environment ^ pred_env, Preds),
-        ( map.search(Preds, PredId, PredInfo) ->
-            pred_info_get_typevarset(PredInfo, PredTVarSet),
-            prog_data.tvarset_merge_renaming(!.TCInfo ^ tconstr_tvarset,
-                PredTVarSet, NewTVarSet, TVarRenaming),
-            !TCInfo ^ tconstr_tvarset := NewTVarSet,
-            prog_type_subst.apply_variable_renaming_to_type_list(TVarRenaming,
-                ArgTypes0, ArgTypes),
-            list.foldl_corresponding(variable_assignment_constraint(Context),
-                ArgVars, ArgTypes, !TCInfo)
-        ;
-            unexpected(this_file, "cannot find pred_info for foreign_proc")
-        )
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
+        foreign_proc_goal_to_constraint(Environment, GoalExpr, GoalInfo,
+            !TCInfo)
     ;
-        GoalExpr = generic_call(Details, Vars, _, _),
-        Context = goal_info_get_context(GoalInfo),
-        list.map_foldl(get_var_type, Vars, ArgTVars, !TCInfo),
-        ArgTypes = list.map(tvar_to_type, ArgTVars),
-        (
-            Details = higher_order(CallVar, Purity, Kind, _),
-            (
-                Kind = pf_predicate,
-                HOType = higher_order_type(ArgTypes, no, Purity, lambda_normal)
-            ;
-                Kind = pf_function,
-                svvarset.new_var(FunctionTVar, !.TCInfo ^ tconstr_tvarset,
-                    NewTVarSet),
-                !TCInfo ^ tconstr_tvarset := NewTVarSet,
-                HOType = apply_n_type(FunctionTVar, ArgTypes, kind_star)
-            ),
-            variable_assignment_constraint(Context, CallVar, HOType, !TCInfo)
-        ;
-            % Class methods are handled by looking up the method number in the
-            % class' method list.
-            Details = class_method(_, MethodNum, ClassId, _),
-            ClassId = class_id(Name, Arity),
-            ( map.search(Environment ^ class_env, ClassId, ClassDefn) ->
-                (
-                    list.index0(ClassDefn ^ class_hlds_interface, MethodNum,
-                        Method)
-                ->
-                    Method = hlds_class_proc(PredId, _),
-                    predicate_table_get_preds(Environment ^ pred_env, Preds),
-                    ( pred_has_arity(Preds, list.length(Vars), PredId) ->
-                        pred_call_constraint(Preds, GoalInfo, ArgTVars, PredId,
-                            Constraint, PredTVars, !TCInfo),
-                        list.append(ArgTVars, PredTVars, TVars),
-                        add_type_constraint([Constraint], TVars, !TCInfo)
-                    ;
-                        Pieces = [words("Incorrect number of arguments"),
-                            words("provided to method"), int_fixed(MethodNum),
-                            words("of typeclass"),
-                            sym_name_and_arity(Name / Arity)],
-                        ErrMsg = simple_msg(Context, [always(Pieces)]),
-                        add_message_to_spec(ErrMsg, !TCInfo)
-                    )
-                ;
-                    Pieces = [words("The typeclass"),
-                        sym_name_and_arity(Name / Arity),
-                        words("does not have the given method.")],
-                    ErrMsg = simple_msg(Context, [always(Pieces)]),
-                    add_message_to_spec(ErrMsg, !TCInfo)
-                )
-            ;
-                Pieces = [words("The typeclass"),
-                    sym_name_and_arity(Name / Arity),
-                    words("is undefined.")],
-                ErrMsg = simple_msg(Context, [always(Pieces)]),
-                add_message_to_spec(ErrMsg, !TCInfo)
-            )
-        ;
-            Details = event_call(Name),
-            ( event_arg_types(Environment ^ event_env, Name, _ArgTypes0) ->
-                Pieces = [words("Event calls are not yet supported"),
-                    words("by constraint-based typechecking.")],
-                ErrMsg = simple_msg(Context, [always(Pieces)]),
-                add_message_to_spec(ErrMsg, !TCInfo)
-            ;
-                Pieces = [words("There is not event named"), words(Name)],
-                ErrMsg = simple_msg(Context, [always(Pieces)]),
-                add_message_to_spec(ErrMsg, !TCInfo)
-            )
-        ;
-            % Casts do not contain any type information.
-            Details = cast(_)
-        )
+        GoalExpr = generic_call(_, _, _, _),
+        generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo,
+            !TCInfo)
     ;
         GoalExpr = conj(_, Goals),
         list.foldl(goal_to_constraint(Environment), Goals, !TCInfo)
@@ -1838,12 +1663,235 @@ goal_to_constraint(Environment, Goal, !TCInfo) :-
         list.map(get_case_goal, Cases, Goals),
         list.foldl(goal_to_constraint(Environment), Goals, !TCInfo)
     ;
-        GoalExpr = shorthand(bi_implication(GoalA, GoalB)),
-        goal_to_constraint(Environment, GoalA, !TCInfo),
-        goal_to_constraint(Environment, GoalB, !TCInfo)
+        GoalExpr = shorthand(_),
+        shorthand_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo)
+    ).
+
+    % Transform a unification constraint into an assignment of types
+    % to the variables being unified.
+    %
+:- pred unify_goal_to_constraint(tconstr_environment::in,
+    hlds_goal_expr::in(goal_expr_unify), hlds_goal_info::in,
+    type_constraint_info::in, type_constraint_info::out) is det.
+
+unify_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
+    Context = goal_info_get_context(GoalInfo),
+    GoalExpr = unify(L, RHS, _, _, _),
+    get_var_type(L, LTVar, !TCInfo),
+    (
+        RHS = rhs_var(R),
+        get_var_type(R, RTVar, !TCInfo),
+        Constraints = [ctconstr([stconstr(LTVar, tvar_to_type(RTVar))],
+            tconstr_active, Context, no, no)],
+        RelevantTVars = [LTVar, RTVar]
     ;
-        GoalExpr = shorthand(atomic_goal(GoalType, Outer, Inner,
-            _, Main, Alternatives, _)),
+        RHS = rhs_functor(ConsId, _, Args),
+        (
+            builtin_atomic_type(ConsId, Builtin)
+        ->
+            SimpleConstraint = stconstr(LTVar, builtin_type(Builtin)),
+            Constraints = [ctconstr([SimpleConstraint], tconstr_active,
+                Context, no, no)],
+            RelevantTVars = [LTVar]
+        ;
+            ConsId = cons(Name, Arity, _TypeCtor),
+            % The _TypeCtor field is not meaningful yet.
+            Arity = list.length(Args)
+        ->
+            list.map_foldl(get_var_type, Args, ArgTypeVars, !TCInfo),
+            % If it is a data constructor, create a disjunction constraint
+            % with each possible type of the constructor.
+            Environment = tconstr_environment(_, _, FuncEnv, PredEnv),
+            ( map.search(FuncEnv, ConsId, Cons_Defns) ->
+                list.map_foldl(
+                    functor_unif_constraint(LTVar, ArgTypeVars, GoalInfo),
+                    Cons_Defns, TypeConstraints, !TCInfo)
+            ;
+                TypeConstraints = []
+            ),
+            % If it is a closure constructor, create a disjunction
+            % constraint for each predicate it could refer to.
+            (
+                predicate_table_search_sym(PredEnv,
+                    may_be_partially_qualified, Name, PredIds)
+            ->
+                predicate_table_get_preds(PredEnv, Preds),
+                list.filter_map_foldl(
+                    ho_pred_unif_constraint(Preds, GoalInfo, LTVar,
+                        ArgTypeVars),
+                    PredIds, PredConstraints, !TCInfo)
+            ;
+                PredConstraints = []
+            ),
+            Constraints = TypeConstraints ++ PredConstraints,
+            (
+                Constraints = [],
+                ErrMsg = simple_msg(Context, [always([
+                    words("The constructor"),
+                    sym_name_and_arity(Name / Arity),
+                    words("has not been defined")])]),
+                add_message_to_spec(ErrMsg, !TCInfo)
+            ;
+                Constraints = [_ | _]
+            ),
+            RelevantTVars = [LTVar | ArgTypeVars]
+        ;
+            Pieces = [words("The given type is not supported"),
+                words("by constraint-based type checking.")],
+            ErrMsg = simple_msg(Context, [always(Pieces)]),
+            add_message_to_spec(ErrMsg, !TCInfo),
+            RelevantTVars = [],
+            Constraints = []
+        )
+    ;
+        RHS = rhs_lambda_goal(Purity, _, PredOrFunc, EvalMethod, _, Args,
+            _, _, LambdaGoal),
+        list.map_foldl(get_var_type, Args, ArgTVars, !TCInfo),
+        ArgTypes = list.map(tvar_to_type, ArgTVars),
+        construct_higher_order_type(Purity, PredOrFunc, EvalMethod,
+            ArgTypes, LambdaType),
+        Constraints = [ctconstr([stconstr(LTVar, LambdaType)],
+            tconstr_active, Context, no, no)],
+        RelevantTVars = [LTVar | ArgTVars],
+        goal_to_constraint(Environment, LambdaGoal, !TCInfo)
+    ),
+    add_type_constraint(Constraints, RelevantTVars, !TCInfo).
+
+:- pred plain_call_goal_to_constraint(tconstr_environment::in,
+    hlds_goal_expr::in(goal_expr_plain_call), hlds_goal_info::in,
+    type_constraint_info::in, type_constraint_info::out) is det.
+
+plain_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
+    Environment = tconstr_environment(_, _, _FuncEnv, PredEnv),
+    GoalExpr = plain_call(_, _, Args, _, _, Name),
+    % Transform a call to variable assignments of the variables
+    % used in the call.
+    (
+        predicate_table_search_pred_sym(PredEnv, may_be_partially_qualified,
+            Name, PredIds0)
+    ->
+        PredIds1 = PredIds0
+    ;
+        PredIds1 = []
+    ),
+    predicate_table_get_preds(PredEnv, Preds),
+    list.filter(pred_has_arity(Preds, list.length(Args)), PredIds1, PredIds),
+    list.map_foldl(get_var_type, Args, ArgTVars, !TCInfo),
+    list.map2_foldl(pred_call_constraint(Preds, GoalInfo, ArgTVars),
+        PredIds, Constraints, PredTVars, !TCInfo),
+    list.condense([ArgTVars | PredTVars], TVars),
+    add_type_constraint(Constraints, TVars, !TCInfo).
+
+:- pred foreign_proc_goal_to_constraint(tconstr_environment::in,
+    hlds_goal_expr::in(goal_expr_foreign_proc), hlds_goal_info::in,
+    type_constraint_info::in, type_constraint_info::out) is det.
+
+foreign_proc_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
+    GoalExpr = call_foreign_proc(_, PredId, _, ForeignArgs, _, _, _),
+    Context = goal_info_get_context(GoalInfo),
+    ArgVars = list.map(foreign_arg_var, ForeignArgs),
+    ArgTypes0 = list.map(foreign_arg_type, ForeignArgs),
+    predicate_table_get_preds(Environment ^ pred_env, Preds),
+    ( map.search(Preds, PredId, PredInfo) ->
+        pred_info_get_typevarset(PredInfo, PredTVarSet),
+        prog_data.tvarset_merge_renaming(!.TCInfo ^ tconstr_tvarset,
+            PredTVarSet, NewTVarSet, TVarRenaming),
+        !TCInfo ^ tconstr_tvarset := NewTVarSet,
+        prog_type_subst.apply_variable_renaming_to_type_list(TVarRenaming,
+            ArgTypes0, ArgTypes),
+        list.foldl_corresponding(variable_assignment_constraint(Context),
+            ArgVars, ArgTypes, !TCInfo)
+    ;
+        unexpected(this_file, "cannot find pred_info for foreign_proc")
+    ).
+
+:- pred generic_call_goal_to_constraint(tconstr_environment::in,
+    hlds_goal_expr::in(goal_expr_generic_call), hlds_goal_info::in,
+    type_constraint_info::in, type_constraint_info::out) is det.
+
+generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
+    GoalExpr = generic_call(Details, Vars, _, _),
+    Context = goal_info_get_context(GoalInfo),
+    list.map_foldl(get_var_type, Vars, ArgTVars, !TCInfo),
+    ArgTypes = list.map(tvar_to_type, ArgTVars),
+    (
+        Details = higher_order(CallVar, Purity, Kind, _),
+        (
+            Kind = pf_predicate,
+            HOType = higher_order_type(ArgTypes, no, Purity, lambda_normal)
+        ;
+            Kind = pf_function,
+            svvarset.new_var(FunctionTVar, !.TCInfo ^ tconstr_tvarset,
+                NewTVarSet),
+            !TCInfo ^ tconstr_tvarset := NewTVarSet,
+            HOType = apply_n_type(FunctionTVar, ArgTypes, kind_star)
+        ),
+        variable_assignment_constraint(Context, CallVar, HOType, !TCInfo)
+    ;
+        % Class methods are handled by looking up the method number in the
+        % class' method list.
+        Details = class_method(_, MethodNum, ClassId, _),
+        ClassId = class_id(Name, Arity),
+        ( map.search(Environment ^ class_env, ClassId, ClassDefn) ->
+            (
+                list.index0(ClassDefn ^ class_hlds_interface, MethodNum,
+                    Method)
+            ->
+                Method = hlds_class_proc(PredId, _),
+                predicate_table_get_preds(Environment ^ pred_env, Preds),
+                ( pred_has_arity(Preds, list.length(Vars), PredId) ->
+                    pred_call_constraint(Preds, GoalInfo, ArgTVars, PredId,
+                        Constraint, PredTVars, !TCInfo),
+                    list.append(ArgTVars, PredTVars, TVars),
+                    add_type_constraint([Constraint], TVars, !TCInfo)
+                ;
+                    Pieces = [words("Incorrect number of arguments"),
+                        words("provided to method"), int_fixed(MethodNum),
+                        words("of typeclass"),
+                        sym_name_and_arity(Name / Arity)],
+                    ErrMsg = simple_msg(Context, [always(Pieces)]),
+                    add_message_to_spec(ErrMsg, !TCInfo)
+                )
+            ;
+                Pieces = [words("The typeclass"),
+                    sym_name_and_arity(Name / Arity),
+                    words("does not have the given method.")],
+                ErrMsg = simple_msg(Context, [always(Pieces)]),
+                add_message_to_spec(ErrMsg, !TCInfo)
+            )
+        ;
+            Pieces = [words("The typeclass"),
+                sym_name_and_arity(Name / Arity),
+                words("is undefined.")],
+            ErrMsg = simple_msg(Context, [always(Pieces)]),
+            add_message_to_spec(ErrMsg, !TCInfo)
+        )
+    ;
+        Details = event_call(Name),
+        ( event_arg_types(Environment ^ event_env, Name, _ArgTypes0) ->
+            Pieces = [words("Event calls are not yet supported"),
+                words("by constraint-based typechecking.")],
+            ErrMsg = simple_msg(Context, [always(Pieces)]),
+            add_message_to_spec(ErrMsg, !TCInfo)
+        ;
+            Pieces = [words("There is not event named"), words(Name)],
+            ErrMsg = simple_msg(Context, [always(Pieces)]),
+            add_message_to_spec(ErrMsg, !TCInfo)
+        )
+    ;
+        % Casts do not contain any type information.
+        Details = cast(_)
+    ).
+
+:- pred shorthand_goal_to_constraint(tconstr_environment::in,
+    hlds_goal_expr::in(goal_expr_shorthand), hlds_goal_info::in,
+    type_constraint_info::in, type_constraint_info::out) is det.
+
+shorthand_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
+    GoalExpr = shorthand(Shorthand),
+    (
+        Shorthand = atomic_goal(GoalType, Outer, Inner, _,
+            Main, Alternatives, _),
         % Atomic goals are handled by forcing their inner arguments
         % to be of type stm_atomic_type, their outer arguments to be
         % of type stm_atomic_type or io_state_type, depending on the type
@@ -1889,7 +1937,7 @@ goal_to_constraint(Environment, Goal, !TCInfo) :-
         list.foldl(goal_to_constraint(Environment), [Main | Alternatives],
             !TCInfo)
     ;
-        GoalExpr = shorthand(try_goal(MaybeIO, _ResultVar, SubGoal)),
+        Shorthand = try_goal(MaybeIO, _ResultVar, SubGoal),
         Context = goal_info_get_context(GoalInfo),
         (
             MaybeIO = yes(try_io_state_vars(IOVarA, IOVarB)),
@@ -1905,6 +1953,10 @@ goal_to_constraint(Environment, Goal, !TCInfo) :-
             MaybeIO = no
         ),
         goal_to_constraint(Environment, SubGoal, !TCInfo)
+    ;
+        Shorthand = bi_implication(GoalA, GoalB),
+        goal_to_constraint(Environment, GoalA, !TCInfo),
+        goal_to_constraint(Environment, GoalB, !TCInfo)
     ).
 
     % Creates a constraint from the information stored in a predicate
@@ -2053,6 +2105,7 @@ functor_unif_constraint(LTVar, ArgTVars, Info, ConsDefn, Constraints,
 %-----------------------------------------------------------------------------%
 %
 % Constraint generation utility predicates.
+%
 
 :- pred pred_has_arity(pred_table::in, int::in, pred_id::in) is semidet.
 
@@ -2162,6 +2215,7 @@ tvar_to_type(TVar) = type_variable(TVar, kind_star).
 %-----------------------------------------------------------------------------%
 %
 % Constraint printing.
+%
 
 :- pred print_guess(tvarset::in, pair(tvar, type_domain)::in, io::di, io::uo)
     is det.
@@ -2399,7 +2453,7 @@ type_to_string(TVarSet, Type, Name) :-
     ;
         Type = builtin_type(builtin_type_string),
         Name = "string"
-    ; 
+    ;
         Type = builtin_type(builtin_type_char),
         Name = "character"
     ;
@@ -2428,6 +2482,7 @@ type_to_string(TVarSet, Type, Name) :-
 %-----------------------------------------------------------------------------%
 %
 % General purpose utilities.
+%
 
 :- pred remove_maybe(maybe(T)::in, T::out) is semidet.
 

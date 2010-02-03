@@ -1730,6 +1730,40 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     module_name_to_file_name(Globals, ModuleName, "_init.pic_o",
         do_create_dirs, InitPicObjFileName, !IO),
 
+    globals.lookup_bool_option(Globals, intermodule_optimization, Intermod),
+    globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
+    globals.lookup_bool_option(Globals, generate_mmc_make_module_dependencies,
+        MmcMakeDeps),
+
+    generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
+        MakeVarName, InitFileName, InitObjFileName,
+        Intermod, TransOpt, MmcMakeDeps,
+        MaybeOptsVar, MaybeTransOptsVar, MaybeModuleDepsVar,
+        ExeFileName, JarFileName, LibFileName, SharedLibFileName, !IO),
+    generate_dep_file_init_targets(Globals, DepStream, ModuleName,
+        MakeVarName, InitCFileName, InitFileName, DepFileName, DvFileName,
+        !IO),
+    generate_dep_file_install_targets(Globals, DepStream, ModuleName, DepsMap,
+        MakeVarName, MmcMakeDeps, Intermod, TransOpt,
+        MaybeModuleDepsVar, MaybeOptsVar, MaybeTransOptsVar, !IO),
+    generate_dep_file_collective_targets(Globals, DepStream, ModuleName,
+        MakeVarName, !IO),
+    generate_dep_file_clean_targets(Globals, DepStream, ModuleName,
+        MakeVarName, ExeFileName, InitCFileName, InitAsmFileName,
+        InitObjFileName, InitPicObjFileName, InitFileName,
+        LibFileName, SharedLibFileName, JarFileName, DepFileName, DvFileName,
+        !IO).
+
+:- pred generate_dep_file_exec_library_targets(globals::in,
+    io.output_stream::in, module_name::in, string::in, string::in, string::in,
+    bool::in, bool::in, bool::in, string::out, string::out, string::out,
+    string::out, string::out, string::out, string::out, io::di, io::uo) is det.
+
+generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
+        MakeVarName, InitFileName, InitObjFileName,
+        Intermod, TransOpt, MmcMakeDeps,
+        MaybeOptsVar, MaybeTransOptsVar, MaybeModuleDepsVar,
+        ExeFileName, JarFileName, LibFileName, SharedLibFileName, !IO) :-
     % Note we have to do some ``interesting'' hacks to get
     % `$(ALL_MLLIBS_DEP)' to work in the dependency list
     % (and not complain about undefined variables).
@@ -1773,10 +1807,12 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     ILMainRule = [ExeFileName, " : ", ExeFileName, ".exe\n",
         ExeFileName, ".exe : ", "$(", MakeVarName, ".dlls) ",
         "$(", MakeVarName, ".foreign_dlls)\n"],
-    Else = ["else\n"],
-    IfJava = [" ifeq ($(findstring java,$(GRADE)),java)\n"],
+    IfJava2 = [" ifeq ($(findstring java,$(GRADE)),java)\n"],
     JavaMainRule = [ExeFileName, " : $(", MakeVarName, ".classes)\n"],
+
+    Else = ["else\n"],
     Else2 = [" else\n"],
+    EndIf = ["endif\n"],
     EndIf2 = [" endif\n"],
 
     % XXX The output here is GNU Make-specific.
@@ -1794,13 +1830,12 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
         "\t$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -- $(ALL_LDFLAGS) ",
             "-o ", ExeFileName, "$(EXT_FOR_EXE) ", InitObjFileName, " \\\n",
         "\t\t$(", MakeVarName, ".os) ", All_MLObjsString, " $(ALL_MLLIBS)\n"],
-    EndIf = ["endif\n"],
 
     globals.get_target(Globals, Target),
     (
         Gmake = yes,
         Rules = IfIL ++ ILMainRule ++ Else ++
-            IfJava ++ JavaMainRule ++ Else2 ++
+            IfJava2 ++ JavaMainRule ++ Else2 ++
             MainRule ++ EndIf2 ++ EndIf
     ;
         Gmake = no,
@@ -1824,29 +1859,23 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     ),
     io.write_strings(DepStream, Rules, !IO),
 
-    globals.lookup_bool_option(Globals, intermodule_optimization, Intermod),
     (
         Intermod = yes,
-        string.append_list(["$(", MakeVarName, ".opts) "], MaybeOptsVar)
+        MaybeOptsVar = "$(" ++ MakeVarName ++ ".opts) "
     ;
         Intermod = no,
         MaybeOptsVar = ""
     ),
-    globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
     (
         TransOpt = yes,
-        string.append_list(["$(", MakeVarName, ".trans_opts) "],
-            MaybeTransOptsVar)
+        MaybeTransOptsVar = "$(" ++ MakeVarName ++ ".trans_opts) "
     ;
         TransOpt = no,
         MaybeTransOptsVar = ""
     ),
-    globals.lookup_bool_option(Globals, generate_mmc_make_module_dependencies,
-        MmcMakeDeps),
     (
         MmcMakeDeps = yes,
-        string.append_list(["$(", MakeVarName, ".module_deps) "],
-            MaybeModuleDepsVar)
+        MaybeModuleDepsVar = "$(" ++ MakeVarName ++ ".module_deps) "
     ;
         MmcMakeDeps = no,
         MaybeModuleDepsVar = ""
@@ -1899,7 +1928,7 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     (
         Gmake = yes,
         LibRules = IfIL ++ ILLibRule ++ Else ++
-            IfJava ++ JavaLibRule ++ Else2 ++
+            IfJava2 ++ JavaLibRule ++ Else2 ++
             LibRule ++ EndIf2 ++ EndIf
     ;
         Gmake = no,
@@ -1954,8 +1983,15 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
         JarFileName, " : ", "$(", MakeVarName, ".classes)\n",
         "\t$(JAR) $(JAR_CREATE_FLAGS) ", JarFileName, " ",
         ListClassFiles, "\n\n"
-    ], !IO),
+    ], !IO).
 
+:- pred generate_dep_file_init_targets(globals::in, io.output_stream::in,
+    module_name::in, string::in, string::in, string::in,
+    string::out, string::out, io::di, io::uo) is det.
+
+generate_dep_file_init_targets(Globals, DepStream, ModuleName,
+        MakeVarName, InitCFileName, InitFileName, DepFileName, DvFileName,
+        !IO) :-
     module_name_to_file_name(Globals, ModuleName, ".dep",
         do_not_create_dirs, DepFileName, !IO),
     module_name_to_file_name(Globals, ModuleName, ".dv",
@@ -1990,7 +2026,19 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
             "--init-c-file ", TmpInitCFileName,
             " $(", MakeVarName, ".init_cs) $(ALL_C2INITARGS)\n",
         "\t@mercury_update_interface ", InitCFileName, "\n\n"
-    ], !IO),
+    ], !IO).
+
+:- pred generate_dep_file_install_targets(globals::in, io.output_stream::in,
+    module_name::in, deps_map::in, string::in, bool::in, bool::in, bool::in,
+    string::in, string::in, string::in, io::di, io::uo) is det.
+
+generate_dep_file_install_targets(Globals, DepStream, ModuleName, DepsMap,
+        MakeVarName, MmcMakeDeps, Intermod, TransOpt,
+        MaybeModuleDepsVar, MaybeOptsVar, MaybeTransOptsVar, !IO) :-
+    % XXX  Note that we install the `.opt' and `.trans_opt' files
+    % in two places: in the `lib/$(GRADE)/opts' directory, so
+    % that mmc will find them, and also in the `ints' directory,
+    % so that Mmake will find them.  That's not ideal, but it works.
 
     module_name_to_lib_file_name(Globals, "lib", ModuleName, ".install_ints",
         do_not_create_dirs, LibInstallIntsTargetName, !IO),
@@ -2063,11 +2111,6 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
         "\tdone\n\n"
     ], !IO),
 
-    % XXX  Note that we install the `.opt' and `.trans_opt' files
-    % in two places: in the `lib/$(GRADE)/opts' directory, so
-    % that mmc will find them, and also in the `ints' directory,
-    % so that Mmake will find them.  That's not ideal, but it works.
-
     module_name_to_lib_file_name(Globals, "lib", ModuleName, ".install_opts",
         do_not_create_dirs, LibInstallOptsTargetName, !IO),
     io.write_strings(DepStream,
@@ -2080,32 +2123,32 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
         io.write_string(DepStream, "\n\t@:\n\n", !IO)
     ;
         io.write_strings(DepStream, [
-        MaybeOptsVar, MaybeTransOptsVar, "install_grade_dirs\n",
-        "\tfiles=""", MaybeOptsVar, MaybeTransOptsVar, """; \\\n",
-        "\tfor file in $$files; do \\\n",
-        "\t\ttarget=""$(INSTALL_GRADE_INT_DIR)/`basename $$file`"";\\\n",
-        "\t\tif cmp -s ""$$file"" ""$$target""; then \\\n",
-        "\t\t\techo \"$$target unchanged\"; \\\n",
-        "\t\telse \\\n",
-        "\t\t\techo \"installing $$target\"; \\\n",
-        "\t\t\t$(INSTALL) ""$$file"" ""$$target""; \\\n",
-        "\t\tfi; \\\n",
-        "\tdone\n",
-        "\t# The following is needed to support the `--use-subdirs' option\n",
-        "\t# We try using `$(LN_S)', but if that fails, then we just use\n",
-        "\t# `$(INSTALL)'.\n",
-        "\tfor ext in ",
-        OptStr, TransOptStr,
-        "; do \\\n",
-        "\t\tdir=""$(INSTALL_GRADE_INT_DIR)/Mercury/$${ext}s""; \\\n",
-        "\t\trm -rf ""$$dir""; \\\n",
-        "\t\t$(LN_S) .. ""$$dir"" || { \\\n",
-        "\t\t\t{ [ -d ""$$dir"" ] || \\\n",
-        "\t\t\t\t$(INSTALL_MKDIR) ""$$dir""; } && \\\n",
-        "\t\t\t$(INSTALL) ""$(INSTALL_GRADE_INT_DIR)""/*.$$ext \\\n",
-        "\t\t\t\t""$$dir""; \\\n",
-        "\t\t} || exit 1; \\\n",
-        "\tdone\n\n"
+            MaybeOptsVar, MaybeTransOptsVar, "install_grade_dirs\n",
+            "\tfiles=""", MaybeOptsVar, MaybeTransOptsVar, """; \\\n",
+            "\tfor file in $$files; do \\\n",
+            "\t\ttarget=""$(INSTALL_GRADE_INT_DIR)/`basename $$file`"";\\\n",
+            "\t\tif cmp -s ""$$file"" ""$$target""; then \\\n",
+            "\t\t\techo \"$$target unchanged\"; \\\n",
+            "\t\telse \\\n",
+            "\t\t\techo \"installing $$target\"; \\\n",
+            "\t\t\t$(INSTALL) ""$$file"" ""$$target""; \\\n",
+            "\t\tfi; \\\n",
+            "\tdone\n",
+            "\t# The following is needed to support the",
+                " `--use-subdirs' option\n",
+            "\t# We try using `$(LN_S)', but if that fails,",
+                " then we just use\n",
+            "\t# `$(INSTALL)'.\n",
+            "\tfor ext in ", OptStr, TransOptStr, "; do \\\n",
+            "\t\tdir=""$(INSTALL_GRADE_INT_DIR)/Mercury/$${ext}s""; \\\n",
+            "\t\trm -rf ""$$dir""; \\\n",
+            "\t\t$(LN_S) .. ""$$dir"" || { \\\n",
+            "\t\t\t{ [ -d ""$$dir"" ] || \\\n",
+            "\t\t\t\t$(INSTALL_MKDIR) ""$$dir""; } && \\\n",
+            "\t\t\t$(INSTALL) ""$(INSTALL_GRADE_INT_DIR)""/*.$$ext \\\n",
+            "\t\t\t\t""$$dir""; \\\n",
+            "\t\t} || exit 1; \\\n",
+            "\tdone\n\n"
         ], !IO)
     ),
 
@@ -2170,8 +2213,13 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     "\t\t$(INSTALL) $(INSTALL_GRADE_INC_DIR)/*.mih \\\n",
     "\t\t\t$(INSTALL_INT_DIR); \\\n",
     "\t} || exit 1\n",
-    "endif\n\n"], !IO),
+    "endif\n\n"], !IO).
 
+:- pred generate_dep_file_collective_targets(globals::in, io.output_stream::in,
+    module_name::in, string::in, io::di, io::uo) is det.
+
+generate_dep_file_collective_targets(Globals, DepStream, ModuleName,
+        MakeVarName, !IO) :-
     module_name_to_file_name(Globals, ModuleName, ".check",
         do_not_create_dirs, CheckTargetName, !IO),
     module_name_to_file_name(Globals, ModuleName, ".ints",
@@ -2193,11 +2241,10 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     module_name_to_file_name(Globals, ModuleName, ".classes",
         do_not_create_dirs, ClassesTargetName, !IO),
 
-    % We need to explicitly mention
-    % $(foo.pic_ss) somewhere in the Mmakefile, otherwise it
-    % won't build properly with --target asm: GNU Make's pattern rule
-    % algorithm will try to use the .m -> .c_date -> .c -> .pic_o rule chain
-    % rather than the .m -> .pic_s_date -> .pic_s -> .pic_o chain.
+    % We need to explicitly mention $(foo.pic_ss) somewhere in the Mmakefile,
+    % otherwise it won't build properly with --target asm: GNU Make's pattern
+    % rule algorithm will try to use the .m -> .c_date -> .c -> .pic_o rule
+    % chain rather than the .m -> .pic_s_date -> .pic_s -> .pic_o chain.
     % So don't remove the pic_ss target here.
 
     io.write_strings(DepStream, [
@@ -2222,8 +2269,17 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
         JavasTargetName, " : $(", MakeVarName, ".javas)\n\n",
         ".PHONY : ", ClassesTargetName, "\n",
         ClassesTargetName, " : $(", MakeVarName, ".classes)\n\n"
-    ], !IO),
+    ], !IO).
 
+:- pred generate_dep_file_clean_targets(globals::in, io.output_stream::in,
+    module_name::in, string::in, string::in, string::in, string::in,
+    string::in, string::in, string::in, string::in, string::in, string::in,
+    string::in, string::in, io::di, io::uo) is det.
+
+generate_dep_file_clean_targets(Globals, DepStream, ModuleName, MakeVarName,
+        ExeFileName, InitCFileName, InitAsmFileName,
+        InitObjFileName, InitPicObjFileName, InitFileName, LibFileName,
+        SharedLibFileName, JarFileName, DepFileName, DvFileName, !IO) :-
     % If you change the clean targets below, please also update the
     % documentation in doc/user_guide.texi.
     %
@@ -2262,10 +2318,9 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
         "\t-echo $(", MakeVarName, ".javas) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".profs) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".errs) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".foreign_cs) | xargs rm -f\n"
+        "\t-echo $(", MakeVarName, ".foreign_cs) | xargs rm -f\n",
+        "\n"
     ], !IO),
-
-    io.write_string(DepStream, "\n", !IO),
 
     module_name_to_file_name(Globals, ModuleName, ".realclean",
         do_not_create_dirs, RealCleanTargetName, !IO),

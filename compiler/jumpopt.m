@@ -81,22 +81,22 @@
 % We then traverse the instruction list, using the information in the
 % tables to short-circuit jumps.
 %
-% Instrmap:     Maps each label to the next real (non-comment, non-livevals)
+% InstrMap:     Maps each label to the next real (non-comment, non-livevals)
 %               instruction after that label.
-% Lvalmap:      Maps each label to yes(Livevals) if the label is followed
+% LvalMap:      Maps each label to yes(Livevals) if the label is followed
 %               by a livevals instruction, and to no otherwise.
-% Blockmap:     Maps each label to the block following that label.
+% BlockMap:     Maps each label to the block following that label.
 %               This includes all instructions up to the first one that
 %               cannot fall through.
-% Procmap:      Maps each label that begins a det epilog to the epilog.
-% Succmap:      Maps each label that begins a nondet epilog to the epilog.
-% Sdprocmap:    Maps each label that begins a semidet epilog to the epilog.
+% ProcMap:      Maps each label that begins a det epilog to the epilog.
+% SuccMap:      Maps each label that begins a nondet epilog to the epilog.
+% SdprocMap:    Maps each label that begins a semidet epilog to the epilog.
 %               This can be the success epilog or the failure epilog.
-% Forkmap:      Maps each label that begins a full semidet epilog (code to
+% ForkMap:      Maps each label that begins a full semidet epilog (code to
 %               test r1, and to execute the the success or failure epilog
 %               depending on the result) to the epilog.
 %
-% Blockmap will not contain the initial block of the procedure unless
+% BlockMap will not contain the initial block of the procedure unless
 % Recjump is set. The intention is that Recjump will not be set until
 % frameopt, which can do a better job of optimizing this block, have
 % been applied.
@@ -104,34 +104,35 @@
 optimize_jumps_in_proc(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
         Recjump, PessimizeTailCalls, CheckedNondetTailCall, !C, !Instrs,
         Mod) :-
-    some [!Instrmap, !Blockmap, !Lvalmap, !Procmap, !Sdprocmap, !Succmap,
-        !Forkmap]
+    some [!InstrMap, !BlockMap, !LvalMap, !ProcMap, !SdprocMap, !SuccMap,
+        !ForkMap]
     (
         Instrs0 = !.Instrs,
-        map.init(!:Instrmap),
-        map.init(!:Blockmap),
-        map.init(!:Lvalmap),
-        map.init(!:Procmap),
-        map.init(!:Sdprocmap),
-        map.init(!:Succmap),
-        jump_opt_build_maps(!.Instrs, Recjump, !Instrmap, !Blockmap, !Lvalmap,
-            !Procmap, !Sdprocmap, !Succmap),
-        jump_opt_build_forkmap(!.Instrs, !.Sdprocmap, map.init, !:Forkmap),
+        map.init(!:InstrMap),
+        map.init(!:BlockMap),
+        map.init(!:LvalMap),
+        map.init(!:ProcMap),
+        map.init(!:SdprocMap),
+        map.init(!:SuccMap),
+        jump_opt_build_maps(!.Instrs, Recjump, !InstrMap, !BlockMap, !LvalMap,
+            !ProcMap, !SdprocMap, !SuccMap),
+        jump_opt_build_forkmap(!.Instrs, !.SdprocMap, map.init, !:ForkMap),
         (
             PessimizeTailCalls = no
         ;
             PessimizeTailCalls = yes,
-            !:Procmap = map.init,
-            !:Sdprocmap = map.init,
-            !:Succmap = map.init,
-            !:Forkmap = map.init
+            !:ProcMap = map.init,
+            !:SdprocMap = map.init,
+            !:SuccMap = map.init,
+            !:ForkMap = map.init
         ),
+        JumpOptInfo = jump_opt_info(!.InstrMap, !.BlockMap, !.LvalMap,
+            !.ProcMap, !.SdprocMap, !.ForkMap, !.SuccMap, LayoutLabels,
+            Fulljumpopt, MayAlterRtti),
         (
             CheckedNondetTailCall = yes,
             CheckedNondetTailCallInfo0 = yes(ProcLabel - !.C),
-            jump_opt_instr_list(!.Instrs, comment(""), !.Instrmap, !.Blockmap,
-                !.Lvalmap, !.Procmap, !.Sdprocmap, !.Forkmap, !.Succmap,
-                LayoutLabels, Fulljumpopt, MayAlterRtti,
+            jump_opt_instr_list(!.Instrs, comment(""), JumpOptInfo,
                 CheckedNondetTailCallInfo0, CheckedNondetTailCallInfo,
                 [], RevInstrs),
             (
@@ -144,9 +145,7 @@ optimize_jumps_in_proc(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
         ;
             CheckedNondetTailCall = no,
             CheckedNondetTailCallInfo0 = no,
-            jump_opt_instr_list(!.Instrs, comment(""), !.Instrmap, !.Blockmap,
-                !.Lvalmap, !.Procmap, !.Sdprocmap, !.Forkmap, !.Succmap,
-                LayoutLabels, Fulljumpopt, MayAlterRtti,
+            jump_opt_instr_list(!.Instrs, comment(""), JumpOptInfo,
                 CheckedNondetTailCallInfo0, _, [], RevInstrs)
         ),
         list.reverse(RevInstrs, !:Instrs),
@@ -165,36 +164,36 @@ optimize_jumps_in_proc(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
     lvalmap::in, lvalmap::out, tailmap::in, tailmap::out,
     tailmap::in, tailmap::out, tailmap::in, tailmap::out) is det.
 
-jump_opt_build_maps([], _, !Instrmap, !Blockmap,
-        !Lvalmap, !Procmap, !Sdprocmap, !Succmap).
-jump_opt_build_maps([Instr0 | Instrs0], Recjump, !Instrmap, !Blockmap,
-        !Lvalmap, !Procmap, !Sdprocmap, !Succmap) :-
+jump_opt_build_maps([], _, !InstrMap, !BlockMap,
+        !LvalMap, !ProcMap, !SdprocMap, !SuccMap).
+jump_opt_build_maps([Instr0 | Instrs0], Recjump, !InstrMap, !BlockMap,
+        !LvalMap, !ProcMap, !SdprocMap, !SuccMap) :-
     Instr0 = llds_instr(Uinstr0, _),
     ( Uinstr0 = label(Label) ->
         opt_util.skip_comments(Instrs0, Instrs1),
         ( Instrs1 = [Instr1 | _], Instr1 = llds_instr(livevals(_), _) ->
-            svmap.det_insert(Label, yes(Instr1), !Lvalmap)
+            svmap.det_insert(Label, yes(Instr1), !LvalMap)
         ;
-            svmap.det_insert(Label, no, !Lvalmap)
+            svmap.det_insert(Label, no, !LvalMap)
         ),
         opt_util.skip_comments_livevals(Instrs1, Instrs2),
         ( Instrs2 = [Instr2 | _] ->
-            svmap.det_insert(Label, Instr2, !Instrmap)
+            svmap.det_insert(Label, Instr2, !InstrMap)
         ;
             true
         ),
         ( opt_util.is_proceed_next(Instrs1, Between1) ->
-            svmap.det_insert(Label, Between1, !Procmap)
+            svmap.det_insert(Label, Between1, !ProcMap)
         ;
             true
         ),
         ( opt_util.is_sdproceed_next(Instrs1, Between2) ->
-            svmap.det_insert(Label, Between2, !Sdprocmap)
+            svmap.det_insert(Label, Between2, !SdprocMap)
         ;
             true
         ),
         ( opt_util.is_succeed_next(Instrs1, Between3) ->
-            svmap.det_insert(Label, Between3, !Succmap)
+            svmap.det_insert(Label, Between3, !SuccMap)
         ;
             true
         ),
@@ -206,15 +205,15 @@ jump_opt_build_maps([Instr0 | Instrs0], Recjump, !Instrmap, !Blockmap,
             )
         ->
             opt_util.find_no_fallthrough(Instrs1, Block),
-            svmap.det_insert(Label, Block, !Blockmap)
+            svmap.det_insert(Label, Block, !BlockMap)
         ;
             true
         )
     ;
         true
     ),
-    jump_opt_build_maps(Instrs0, Recjump, !Instrmap, !Blockmap, !Lvalmap,
-        !Procmap, !Sdprocmap, !Succmap).
+    jump_opt_build_maps(Instrs0, Recjump, !InstrMap, !BlockMap, !LvalMap,
+        !ProcMap, !SdprocMap, !SuccMap).
 
     % Find labels followed by a test of r1 where both paths set r1 to
     % its original value and proceed.
@@ -222,20 +221,34 @@ jump_opt_build_maps([Instr0 | Instrs0], Recjump, !Instrmap, !Blockmap,
 :- pred jump_opt_build_forkmap(list(instruction)::in, tailmap::in,
     tailmap::in, tailmap::out) is det.
 
-jump_opt_build_forkmap([], _Sdprocmap, !Forkmap).
-jump_opt_build_forkmap([llds_instr(Uinstr, _Comment) | Instrs], Sdprocmap,
-        !Forkmap) :-
+jump_opt_build_forkmap([], _SdprocMap, !ForkMap).
+jump_opt_build_forkmap([llds_instr(Uinstr, _Comment) | Instrs], SdprocMap,
+        !ForkMap) :-
     (
         Uinstr = label(Label),
-        opt_util.is_forkproceed_next(Instrs, Sdprocmap, Between)
+        opt_util.is_forkproceed_next(Instrs, SdprocMap, Between)
     ->
-        svmap.det_insert(Label, Between, !Forkmap)
+        svmap.det_insert(Label, Between, !ForkMap)
     ;
         true
     ),
-    jump_opt_build_forkmap(Instrs, Sdprocmap, !Forkmap).
+    jump_opt_build_forkmap(Instrs, SdprocMap, !ForkMap).
 
 %-----------------------------------------------------------------------------%
+
+:- type jump_opt_info
+    --->    jump_opt_info(
+                joi_instr_map       :: instrmap,
+                joi_block_map       :: tailmap,
+                joi_lval_map        :: lvalmap,
+                joi_proc_map        :: tailmap,
+                joi_sdproc_map      :: tailmap,
+                joi_fork_map        :: tailmap,
+                joi_succ_map        :: tailmap,
+                joi_layout_labels   :: set(label),
+                joi_full_jump_opt   :: bool,
+                joi_may_alter_rtti  :: may_alter_rtti
+            ).
 
 :- type new_remain
     --->    specified(
@@ -272,250 +285,36 @@ jump_opt_build_forkmap([llds_instr(Uinstr, _Comment) | Instrs], Sdprocmap,
     % building it in right order would make instr_list not tail recursive,
     % and thus unable to handle very long instruction lists.
     %
-:- pred jump_opt_instr_list(list(instruction)::in, instr::in, instrmap::in,
-    tailmap::in, lvalmap::in, tailmap::in, tailmap::in, tailmap::in,
-    tailmap::in, set(label)::in, bool::in, may_alter_rtti::in,
+:- pred jump_opt_instr_list(list(instruction)::in, instr::in,
+    jump_opt_info::in,
     maybe(pair(proc_label, counter))::in,
     maybe(pair(proc_label, counter))::out,
     list(instruction)::in, list(instruction)::out) is det.
 
-jump_opt_instr_list([], _PrevInstr, _Instrmap, _Blockmap, _Lvalmap,
-        _Procmap, _Sdprocmap, _Forkmap, _Succmap, _LayoutLabels,
-        _Fulljumpopt, _MayAlterRtti, !CheckedNondetTailCallInfo, !RevInstrs).
-jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
-        Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap, LayoutLabels,
-        Fulljumpopt, MayAlterRtti, !CheckedNondetTailCallInfo, !RevInstrs) :-
+jump_opt_instr_list([], _PrevInstr, _, !CheckedNondetTailCallInfo, !RevInstrs).
+jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
+        !CheckedNondetTailCallInfo, !RevInstrs) :-
     Instr0 = llds_instr(Uinstr0, Comment0),
     % We do a switch on the instruction type to ensure that we short circuit
-    % all the labels that are in Instrmap but not in LayoutLabels in *all*
+    % all the labels that are in InstrMap but not in LayoutLabels in *all*
     % instructions in which they occur. This means we must fully search
     % every part of every instruction that may possibly hold a label.
     % In theory, this means every lval and every rval, but in practice we
     % know that rvals representing e.g. the tags of fields cannot contain
     % labels.
     (
-        Uinstr0 = llcall(Proc, RetAddr, LiveInfos, Context, GoalPath,
-            CallModel),
-        ( RetAddr = code_label(RetLabel) ->
-            (
-                % Look for det style tailcalls. We look for this even if
-                % the call is semidet, because one of the optimizations below
-                % turns a pair of semidet epilogs into a det epilog.
-                ( CallModel = call_model_det
-                ; CallModel = call_model_semidet
-                ),
-                map.search(Procmap, RetLabel, Between0),
-                PrevInstr = livevals(Livevals),
-                MayAlterRtti = may_alter_rtti,
-                not set.member(RetLabel, LayoutLabels)
-            ->
-                opt_util.filter_out_livevals(Between0, Between1),
-                NewInstrs = Between1 ++ [llds_instr(livevals(Livevals), ""),
-                    llds_instr(goto(Proc), redirect_comment(Comment0))],
-                NewRemain = specified(NewInstrs, Instrs0)
-            ;
-                % Look for semidet style tailcalls.
-                CallModel = call_model_semidet,
-                map.search(Forkmap, RetLabel, Between),
-                PrevInstr = livevals(Livevals),
-                MayAlterRtti = may_alter_rtti,
-                not set.member(RetLabel, LayoutLabels)
-            ->
-                NewInstrs = Between ++ [llds_instr(livevals(Livevals), ""),
-                    llds_instr(goto(Proc), redirect_comment(Comment0))],
-                NewRemain = specified(NewInstrs, Instrs0)
-            ;
-                % Look for nondet style tailcalls which do not need
-                % a runtime check.
-                CallModel = call_model_nondet(unchecked_tail_call),
-                map.search(Succmap, RetLabel, BetweenIncl),
-                BetweenIncl = [llds_instr(livevals(_), _),
-                    llds_instr(goto(_), _)],
-                PrevInstr = livevals(Livevals),
-                MayAlterRtti = may_alter_rtti,
-                not set.member(RetLabel, LayoutLabels)
-            ->
-                NewInstrs = [
-                    llds_instr(assign(maxfr, lval(prevfr_slot(lval(curfr)))),
-                        "discard this frame"),
-                    llds_instr(assign(succip, lval(succip_slot(lval(curfr)))),
-                        "setup PC on return from tailcall"),
-                    llds_instr(assign(curfr, lval(succfr_slot(lval(curfr)))),
-                        "setup curfr on return from tailcall"),
-                    llds_instr(livevals(Livevals), ""),
-                    llds_instr(goto(Proc), redirect_comment(Comment0))
-                ],
-                NewRemain = specified(NewInstrs, Instrs0)
-            ;
-                % Look for nondet style tailcalls which do need
-                % a runtime check.
-                CallModel = call_model_nondet(checked_tail_call),
-                !.CheckedNondetTailCallInfo = yes(ProcLabel - Counter0),
-                map.search(Succmap, RetLabel, BetweenIncl),
-                BetweenIncl = [llds_instr(livevals(_), _),
-                    llds_instr(goto(_), _)],
-                PrevInstr = livevals(Livevals),
-                MayAlterRtti = may_alter_rtti,
-                not set.member(RetLabel, LayoutLabels)
-            ->
-                counter.allocate(LabelNum, Counter0, Counter1),
-                NewLabel = internal_label(LabelNum, ProcLabel),
-                NewInstrs = [
-                    llds_instr(if_val(binop(ne, lval(curfr), lval(maxfr)),
-                        code_label(NewLabel)),
-                        "branch around if cannot tail call"),
-                    llds_instr(assign(maxfr, lval(prevfr_slot(lval(curfr)))),
-                        "discard this frame"),
-                    llds_instr(assign(succip, lval(succip_slot(lval(curfr)))),
-                        "setup PC on return from tailcall"),
-                    llds_instr(assign(curfr, lval(succfr_slot(lval(curfr)))),
-                        "setup curfr on return from tailcall"),
-                    llds_instr(livevals(Livevals), ""),
-                    llds_instr(goto(Proc), redirect_comment(Comment0)),
-                    llds_instr(label(NewLabel), "non tail call"),
-                    llds_instr(livevals(Livevals), ""),
-                    Instr0
-                ],
-                NewRemain = specified(NewInstrs, Instrs0),
-                !:CheckedNondetTailCallInfo = yes(ProcLabel - Counter1)
-            ;
-                % Short circuit the return label if possible.
-                map.search(Instrmap, RetLabel, RetInstr),
-                MayAlterRtti = may_alter_rtti,
-                not set.member(RetLabel, LayoutLabels)
-            ->
-                final_dest(Instrmap, RetLabel, DestLabel,
-                    RetInstr, _DestInstr),
-                ( RetLabel = DestLabel ->
-                    NewInstrs = [Instr0]
-                ;
-                    NewInstrs = [llds_instr(llcall(Proc, code_label(DestLabel),
-                        LiveInfos, Context, GoalPath, CallModel),
-                        redirect_comment(Comment0))]
-                ),
-                NewRemain = specified(NewInstrs, Instrs0)
-            ;
-                NewRemain = usual_case
-            )
-        ;
-            NewRemain = usual_case
-        )
+        Uinstr0 = llcall(_, _, _, _, _, _),
+        jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
+            !CheckedNondetTailCallInfo, NewRemain)
     ;
-        Uinstr0 = goto(TargetAddr),
-        ( TargetAddr = code_label(TargetLabel) ->
-            (
-                % Eliminate the goto if possible.
-                opt_util.is_this_label_next(TargetLabel, Instrs0, _)
-            ->
-                NewInstrs = [],
-                NewRemain = specified(NewInstrs, Instrs0)
-            ;
-                PrevInstr = if_val(_, code_label(IfTargetLabel)),
-                opt_util.is_this_label_next(IfTargetLabel, Instrs0, _)
-            ->
-                % Eliminating the goto (by the local peephole pass)
-                % is better than shortcircuiting it here,
-                % PROVIDED the test will succeed most of the time;
-                % we could use profiling feedback on this.
-                % We cannot eliminate the instruction here because
-                % that would require altering the if_val instruction.
-                NewInstrs = [Instr0],
-                NewRemain = specified(NewInstrs, Instrs0)
-            ;
-                % Replace a jump to a det epilog with the epilog.
-                map.search(Procmap, TargetLabel, Between0)
-            ->
-                adjust_livevals(PrevInstr, Between0, Between),
-                NewInstrs = Between ++
-                    [llds_instr(goto(code_succip), "shortcircuit")],
-                NewRemain = specified(NewInstrs, Instrs0)
-            ;
-                % Replace a jump to a semidet epilog with the epilog.
-                map.search(Sdprocmap, TargetLabel, Between0)
-            ->
-                adjust_livevals(PrevInstr, Between0, Between),
-                NewInstrs = Between ++
-                    [llds_instr(goto(code_succip), "shortcircuit")],
-                NewRemain = specified(NewInstrs, Instrs0)
-            ;
-                % Replace a jump to a nondet epilog with the epilog.
-                map.search(Succmap, TargetLabel, BetweenIncl0)
-            ->
-                adjust_livevals(PrevInstr, BetweenIncl0, NewInstrs),
-                NewRemain = specified(NewInstrs, Instrs0)
-            ;
-                % Replace a jump to a non-epilog block with the
-                % block itself. These jumps are treated separately
-                % from jumps to epilog blocks, for two reasons.
-                % First, epilog blocks are always short, so we
-                % always want to replace jumps to them, whereas
-                % other blocks may be long, so we want to replace
-                % jumps to them only if the fulljumps option
-                % was given. Second, non-epilog blocks may contain
-                % branches to other labels in this procedure, and
-                % we want to make sure that these are short-circuited.
-                % This short-circuiting is necessary because
-                % another optimization below eliminates labels,
-                % which is correct only if jumps to those labels
-                % are short-circuited everywhere.
-                Fulljumpopt = yes,
-                map.search(Instrmap, TargetLabel, TargetInstr),
-                final_dest(Instrmap, TargetLabel, DestLabel,
-                    TargetInstr, _DestInstr),
-                map.search(Blockmap, DestLabel, Block),
-                block_may_be_duplicated(Block) = yes
-            ->
-                opt_util.filter_out_labels(Block, FilteredBlock),
-                adjust_livevals(PrevInstr, FilteredBlock,
-                    AdjustedBlock),
-                % Block may end with a goto to DestLabel. We avoid
-                % infinite expansion in such cases by removing
-                % DestLabel from Blockmap, though only while
-                % processing AdjustedBlock.
-                map.delete(Blockmap, DestLabel, CrippledBlockmap),
-                jump_opt_instr_list(AdjustedBlock, comment(""), Instrmap,
-                    CrippledBlockmap, Lvalmap, Procmap, Sdprocmap, Forkmap,
-                    Succmap, LayoutLabels, Fulljumpopt, MayAlterRtti,
-                    !CheckedNondetTailCallInfo, [], RevNewInstrs),
-                NewRemain = specified(list.reverse(RevNewInstrs), Instrs0)
-            ;
-                % Short-circuit the goto.
-                map.search(Instrmap, TargetLabel, TargetInstr)
-            ->
-                final_dest(Instrmap, TargetLabel, DestLabel,
-                    TargetInstr, DestInstr),
-                DestInstr = llds_instr(UdestInstr, _Destcomment),
-                Shorted = "shortcircuited jump: " ++ Comment0,
-                opt_util.can_instr_fall_through(UdestInstr) = Canfallthrough,
-                (
-                    Canfallthrough = no,
-                    NewInstrs0 = [llds_instr(UdestInstr, Shorted)]
-                ;
-                    Canfallthrough = yes,
-                    ( TargetLabel = DestLabel ->
-                        NewInstrs0 = [Instr0]
-                    ;
-                        NewInstrs0 =
-                            [llds_instr(goto(code_label(DestLabel)), Shorted)]
-                    )
-                ),
-                ( map.search(Lvalmap, DestLabel, yes(Lvalinstr)) ->
-                    adjust_livevals(PrevInstr, [Lvalinstr | NewInstrs0],
-                        NewInstrs)
-                ;
-                    NewInstrs = NewInstrs0
-                ),
-                NewRemain = specified(NewInstrs, Instrs0)
-            ;
-                NewRemain = usual_case
-            )
-        ;
-            NewRemain = usual_case
-        )
+        Uinstr0 = goto(_),
+        jump_opt_goto(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
+            !CheckedNondetTailCallInfo, NewRemain)
     ;
         Uinstr0 = computed_goto(Index, MaybeTargets0),
+        InstrMap = JumpOptInfo ^ joi_instr_map,
         % Short-circuit all the destination labels.
-        short_maybe_labels(Instrmap, MaybeTargets0, MaybeTargets),
+        short_maybe_labels(InstrMap, MaybeTargets0, MaybeTargets),
         ( MaybeTargets = MaybeTargets0 ->
             NewRemain = usual_case
         ;
@@ -525,167 +324,14 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
             NewRemain = specified(NewInstrs, Instrs0)
         )
     ;
-        Uinstr0 = if_val(Cond, TargetAddr),
-        ( TargetAddr = code_label(TargetLabel) ->
-            (
-                % Attempt to transform code such as
-                %
-                %   if (Cond) L2
-                % L1:
-                %   goto L3
-                % L2:   ...
-                %
-                % into
-                %
-                %   if (! Cond) L3
-                % L2:   ...
-                %
-                % The label L1 may be present or not. If it is present,
-                % we are eliminating it, which is possible only because
-                % we short-circuit all jumps to it (make them jump
-                % directly to L3). This may not be possible if L3 is
-                % a non-label code address; e.g. we cannot jump to
-                % non-label code addresses from computed gotos.
-                opt_util.skip_comments(Instrs0, Instrs1),
-                Instrs1 = [Instr1 | Instrs2],
-                ( Instr1 = llds_instr(label(ElimLabel), _) ->
-                    not set.member(ElimLabel, LayoutLabels),
-                    opt_util.skip_comments(Instrs2, Instrs3),
-                    Instrs3 = [GotoInstr | AfterGoto],
-                    HaveLabel = yes
-                ;
-                    Instr1 = GotoInstr,
-                    AfterGoto = Instrs2,
-                    HaveLabel = no
-                ),
-                GotoInstr = llds_instr(goto(GotoTarget), GotoComment),
-                ( HaveLabel = no ; GotoTarget = code_label(_) ),
-                opt_util.skip_comments(AfterGoto, AfterGotoComments),
-                AfterGotoComments = [LabelInstr | _],
-                LabelInstr = llds_instr(label(TargetLabel), _)
-            ->
-                code_util.neg_rval(Cond, NotCond),
-                NewInstr =
-                    llds_instr(if_val(NotCond, GotoTarget), GotoComment),
-                NewInstrs = [],
-                % The transformed code may fit the pattern again,
-                % so make sure that we look for the pattern again
-                % by giving all of the transformed instructions to
-                % the recursive call. We can't go into an infinite
-                % loop because each application of the transformation
-                % strictly reduces the size of the code.
-                RemainInstrs = [NewInstr | AfterGoto],
-                NewRemain = specified(NewInstrs, RemainInstrs)
-            ;
-                % Attempt to transform code such as
-                %
-                %   if (Cond) L1
-                %   goto L2
-                %
-                % into
-                %
-                %   if (! Cond) L2
-                %   <code at L1>
-                %
-                % when we know the code at L1 and don't know the code
-                % at L2. Here, we just generate
-                %
-                %   if (! Cond) L2
-                %   goto L1
-                %
-                % and get the code processed again starting after the
-                % if_val, to get the recursive call to replace the goto
-                % to L1 with the code at L1.
-                Fulljumpopt = yes,
-                map.search(Blockmap, TargetLabel, _TargetBlock),
-                opt_util.skip_comments(Instrs0, Instrs1),
-                Instrs1 = [GotoInstr | AfterGoto],
-                GotoInstr = llds_instr(goto(GotoAddr), GotoComment),
-                \+ (
-                    GotoAddr = code_label(GotoLabel),
-                    map.search(Blockmap, GotoLabel, _)
-                )
-            ->
-                code_util.neg_rval(Cond, NotCond),
-                NewIfInstr =
-                    llds_instr(if_val(NotCond, GotoAddr), GotoComment),
-                NewInstrs = [NewIfInstr],
-                NewGotoComment = Comment0 ++ " (switched)",
-                NewGotoInstr =
-                    llds_instr(goto(code_label(TargetLabel)), NewGotoComment),
-                RemainInstrs = [NewGotoInstr | AfterGoto],
-                NewRemain = specified(NewInstrs, RemainInstrs)
-            ;
-                map.search(Instrmap, TargetLabel, TargetInstr)
-            ->
-                final_dest(Instrmap, TargetLabel, DestLabel,
-                    TargetInstr, _DestInstr),
-                (
-                    % Attempt to transform code such as
-                    %
-                    %   if (Cond) L1
-                    %   r1 = MR_TRUE
-                    %   <epilog>
-                    %   ...
-                    % L1:
-                    %   r1 = MR_FALSE
-                    %   <epilog>
-                    %
-                    % into
-                    %
-                    %   r1 = Cond
-                    %   <epilog>
-                    %
-                    opt_util.is_sdproceed_next(Instrs0, BetweenFT),
-                    map.search(Blockmap, DestLabel, Block),
-                    opt_util.is_sdproceed_next(Block, BetweenBR),
-                    opt_util.filter_out_r1(BetweenFT, yes(SuccessFT),
-                        Between),
-                    opt_util.filter_out_r1(BetweenBR, yes(SuccessBR),
-                        Between),
-                    (
-                        SuccessFT = llconst_true,
-                        SuccessBR = llconst_false,
-                        code_util.neg_rval(Cond, NewCond)
-                    ;
-                        SuccessFT = llconst_false,
-                        SuccessBR = llconst_true,
-                        NewCond = Cond
-                    ),
-                    \+ needs_workaround(reg(reg_r, 1), NewCond)
-                ->
-                    ( NewCond = lval(reg(reg_r, 1)) ->
-                        NewAssign = llds_instr(comment("r1 = old r1"), "")
-                    ;
-                        NewAssign = llds_instr(assign(reg(reg_r, 1), NewCond),
-                            "shortcircuit bool computation")
-                    ),
-                    Proceed = llds_instr(goto(code_succip), "shortcircuit"),
-                    NewInstrs = [NewAssign | Between] ++ [Proceed],
-                    NewRemain = specified(NewInstrs, Instrs0)
-                ;
-                    % Try to short-circuit the destination.
-                    TargetLabel \= DestLabel
-                ->
-                    Shorted = "shortcircuited jump: " ++ Comment0,
-                    NewInstrs = [
-                        llds_instr(if_val(Cond, code_label(DestLabel)),
-                            Shorted)
-                    ],
-                    NewRemain = specified(NewInstrs, Instrs0)
-                ;
-                    NewRemain = usual_case
-                )
-            ;
-                NewRemain = usual_case
-            )
-        ;
-            NewRemain = usual_case
-        )
+        Uinstr0 = if_val(_, _),
+        jump_opt_if_val(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
+            !CheckedNondetTailCallInfo, NewRemain)
     ;
         Uinstr0 = assign(Lval, Rval0),
         % Any labels mentioned in Rval0 should be short-circuited.
-        short_labels_rval(Instrmap, Rval0, Rval),
+        InstrMap = JumpOptInfo ^ joi_instr_map,
+        short_labels_rval(InstrMap, Rval0, Rval),
         ( Rval = Rval0 ->
             NewRemain = usual_case
         ;
@@ -696,7 +342,8 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
     ;
         Uinstr0 = keep_assign(Lval, Rval0),
         % Any labels mentioned in Rval0 should be short-circuited.
-        short_labels_rval(Instrmap, Rval0, Rval),
+        InstrMap = JumpOptInfo ^ joi_instr_map,
+        short_labels_rval(InstrMap, Rval0, Rval),
         ( Rval = Rval0 ->
             NewRemain = usual_case
         ;
@@ -707,7 +354,8 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
     ;
         Uinstr0 = mkframe(FrameInfo, Redoip),
         ( Redoip = yes(code_label(Label0)) ->
-            short_label(Instrmap, Label0, Label),
+            InstrMap = JumpOptInfo ^ joi_instr_map,
+            short_label(InstrMap, Label0, Label),
             ( Label = Label0 ->
                 NewRemain = usual_case
             ;
@@ -721,74 +369,18 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
             NewRemain = usual_case
         )
     ;
-        Uinstr0 = foreign_proc_code(Decls, Components0, MayCallMercury,
-            MaybeFixNoLayout, MaybeFixLayout, MaybeFixOnlyLayout,
-            MaybeNoFix0, MaybeDefLabel, StackSlotRef, MaybeDup),
-        some [!Redirect] (
-            list.map_foldl(short_foreign_proc_component(Instrmap),
-                Components0, Components, no, !:Redirect),
-            (
-                MaybeNoFix0 = yes(NoFix),
-                short_label(Instrmap, NoFix, NoFixDest),
-                MaybeNoFix = yes(NoFixDest),
-                !:Redirect = yes
-            ;
-                MaybeNoFix0 = no,
-                MaybeNoFix = no
-            ),
-% These sanity checks are too strong, because we don't prohibit labels
-% appearing these slots of foreign_proc_code instructions from appearing
-% in Instrmap; we only prohibit the use of those entries in Instrmap
-% to optimize away these labels.
-%
-%           (
-%               MaybeFixNoLayout = yes(FixNoLayout),
-%               short_label(Instrmap, FixNoLayout, FixNoLayoutDest),
-%               FixNoLayoutDest \= FixNoLayout
-%           ->
-%               error("jump_opt_instr_list: foreign_proc_code fix_no_layout")
-%           ;
-%               true
-%           ),
-%           (
-%               MaybeFixLayout = yes(FixLayout),
-%               short_label(Instrmap, FixLayout, FixLayoutDest),
-%               FixLayoutDest \= FixLayout
-%           ->
-%               error("jump_opt_instr_list: foreign_proc_code fix_layout")
-%           ;
-%               true
-%           ),
-%           (
-%               MaybeFixOnlyLayout = yes(FixOnlyLayout),
-%               short_label(Instrmap, FixOnlyLayout, FixOnlyLayoutDest),
-%               FixOnlyLayoutDest \= FixOnlyLayout
-%           ->
-%               error("jump_opt_instr_list: foreign_proc_code fix_only_layout")
-%           ;
-%               true
-%           ),
-            (
-                !.Redirect = no,
-                NewRemain = usual_case
-            ;
-                !.Redirect = yes,
-                Comment = Comment0 ++ " (some redirects)",
-                Uinstr = foreign_proc_code(Decls, Components, MayCallMercury,
-                    MaybeFixNoLayout, MaybeFixLayout, MaybeFixOnlyLayout,
-                    MaybeNoFix, MaybeDefLabel, StackSlotRef, MaybeDup),
-                Instr = llds_instr(Uinstr, Comment),
-                NewRemain = specified([Instr], Instrs0)
-            )
-        )
+        Uinstr0 = foreign_proc_code(_, _, _, _, _, _, _, _, _, _),
+        jump_opt_foreign_proc_code(Uinstr0, Comment0, Instrs0, PrevInstr,
+            JumpOptInfo, !CheckedNondetTailCallInfo, NewRemain)
     ;
         Uinstr0 = block(_, _, _),
         % These are supposed to be introduced only after jumpopt is run
         % for the last time.
-        unexpected(this_file, "instr_list: block")
+        unexpected(this_file, "jump_opt_instr_list: block")
     ;
         Uinstr0 = fork_new_child(SyncTerm, Child0),
-        short_label(Instrmap, Child0, Child),
+        InstrMap = JumpOptInfo ^ joi_instr_map,
+        short_label(InstrMap, Child0, Child),
         ( Child = Child0 ->
             NewRemain = usual_case
         ;
@@ -799,7 +391,8 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
         )
     ;
         Uinstr0 = join_and_continue(SyncTerm, Label0),
-        short_label(Instrmap, Label0, Label),
+        InstrMap = JumpOptInfo ^ joi_instr_map,
+        short_label(InstrMap, Label0, Label),
         ( Label = Label0 ->
             NewRemain = usual_case
         ;
@@ -864,9 +457,483 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
     ;
         NewPrevInstr = Uinstr0
     ),
-    jump_opt_instr_list(RecurseInstrs, NewPrevInstr, Instrmap, Blockmap,
-        Lvalmap, Procmap, Sdprocmap, Forkmap, Succmap, LayoutLabels,
-        Fulljumpopt, MayAlterRtti, !CheckedNondetTailCallInfo, !RevInstrs).
+    jump_opt_instr_list(RecurseInstrs, NewPrevInstr, JumpOptInfo,
+        !CheckedNondetTailCallInfo, !RevInstrs).
+
+:- pred jump_opt_llcall(instr::in(instr_llcall), string::in,
+    list(instruction)::in, instr::in, jump_opt_info::in,
+    maybe(pair(proc_label, counter))::in,
+    maybe(pair(proc_label, counter))::out,
+    new_remain::out) is det.
+
+jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
+        !CheckedNondetTailCallInfo, NewRemain) :-
+    Uinstr0 = llcall(Proc, RetAddr, LiveInfos, Context, GoalPath, CallModel),
+    ( RetAddr = code_label(RetLabel) ->
+        (
+            (
+                JumpOptInfo ^ joi_may_alter_rtti = must_not_alter_rtti
+            ;
+                LayoutLabels = JumpOptInfo ^ joi_layout_labels,
+                set.member(RetLabel, LayoutLabels)
+            )
+        ->
+            % We cannot optimize the call. Test for this once, here, instead
+            % of at the end of each of the following conditions.
+            NewRemain = usual_case
+        ;
+            % Look for det style tailcalls. We look for this even if
+            % the call is semidet, because one of the optimizations below
+            % turns a pair of semidet epilogs into a det epilog.
+            ( CallModel = call_model_det
+            ; CallModel = call_model_semidet
+            ),
+            ProcMap = JumpOptInfo ^ joi_proc_map,
+            map.search(ProcMap, RetLabel, Between0),
+            PrevInstr = livevals(Livevals)
+        ->
+            opt_util.filter_out_livevals(Between0, Between1),
+            NewInstrs = Between1 ++ [llds_instr(livevals(Livevals), ""),
+                llds_instr(goto(Proc), redirect_comment(Comment0))],
+            NewRemain = specified(NewInstrs, Instrs0)
+        ;
+            % Look for semidet style tailcalls.
+            CallModel = call_model_semidet,
+            ForkMap = JumpOptInfo ^ joi_fork_map,
+            map.search(ForkMap, RetLabel, Between),
+            PrevInstr = livevals(Livevals)
+        ->
+            NewInstrs = Between ++ [llds_instr(livevals(Livevals), ""),
+                llds_instr(goto(Proc), redirect_comment(Comment0))],
+            NewRemain = specified(NewInstrs, Instrs0)
+        ;
+            % Look for nondet style tailcalls which do not need
+            % a runtime check.
+            CallModel = call_model_nondet(unchecked_tail_call),
+            SuccMap = JumpOptInfo ^ joi_succ_map,
+            map.search(SuccMap, RetLabel, BetweenIncl),
+            BetweenIncl = [llds_instr(livevals(_), _), llds_instr(goto(_), _)],
+            PrevInstr = livevals(Livevals)
+        ->
+            NewInstrs = [
+                llds_instr(assign(maxfr, lval(prevfr_slot(lval(curfr)))),
+                    "discard this frame"),
+                llds_instr(assign(succip, lval(succip_slot(lval(curfr)))),
+                    "setup PC on return from tailcall"),
+                llds_instr(assign(curfr, lval(succfr_slot(lval(curfr)))),
+                    "setup curfr on return from tailcall"),
+                llds_instr(livevals(Livevals), ""),
+                llds_instr(goto(Proc), redirect_comment(Comment0))
+            ],
+            NewRemain = specified(NewInstrs, Instrs0)
+        ;
+            % Look for nondet style tailcalls which do need
+            % a runtime check.
+            CallModel = call_model_nondet(checked_tail_call),
+            !.CheckedNondetTailCallInfo = yes(ProcLabel - Counter0),
+            SuccMap = JumpOptInfo ^ joi_succ_map,
+            map.search(SuccMap, RetLabel, BetweenIncl),
+            BetweenIncl = [llds_instr(livevals(_), _),
+                llds_instr(goto(_), _)],
+            PrevInstr = livevals(Livevals)
+        ->
+            counter.allocate(LabelNum, Counter0, Counter1),
+            NewLabel = internal_label(LabelNum, ProcLabel),
+            NewInstrs = [
+                llds_instr(if_val(binop(ne, lval(curfr), lval(maxfr)),
+                    code_label(NewLabel)),
+                    "branch around if cannot tail call"),
+                llds_instr(assign(maxfr, lval(prevfr_slot(lval(curfr)))),
+                    "discard this frame"),
+                llds_instr(assign(succip, lval(succip_slot(lval(curfr)))),
+                    "setup PC on return from tailcall"),
+                llds_instr(assign(curfr, lval(succfr_slot(lval(curfr)))),
+                    "setup curfr on return from tailcall"),
+                llds_instr(livevals(Livevals), ""),
+                llds_instr(goto(Proc), redirect_comment(Comment0)),
+                llds_instr(label(NewLabel), "non tail call"),
+                llds_instr(livevals(Livevals), ""),
+                llds_instr(Uinstr0, Comment0)
+            ],
+            NewRemain = specified(NewInstrs, Instrs0),
+            !:CheckedNondetTailCallInfo = yes(ProcLabel - Counter1)
+        ;
+            % Short circuit the return label if possible.
+            InstrMap = JumpOptInfo ^ joi_instr_map,
+            map.search(InstrMap, RetLabel, RetInstr)
+        ->
+            final_dest(InstrMap, RetLabel, DestLabel, RetInstr, _DestInstr),
+            ( RetLabel = DestLabel ->
+                NewInstrs = [llds_instr(Uinstr0, Comment0)]
+            ;
+                NewInstrs = [llds_instr(llcall(Proc, code_label(DestLabel),
+                    LiveInfos, Context, GoalPath, CallModel),
+                    redirect_comment(Comment0))]
+            ),
+            NewRemain = specified(NewInstrs, Instrs0)
+        ;
+            NewRemain = usual_case
+        )
+    ;
+        NewRemain = usual_case
+    ).
+
+:- pred jump_opt_goto(instr::in(instr_goto), string::in,
+    list(instruction)::in, instr::in, jump_opt_info::in,
+    maybe(pair(proc_label, counter))::in,
+    maybe(pair(proc_label, counter))::out,
+    new_remain::out) is det.
+
+jump_opt_goto(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
+        !CheckedNondetTailCallInfo, NewRemain) :-
+    Uinstr0 = goto(TargetAddr),
+    ( TargetAddr = code_label(TargetLabel) ->
+        (
+            % Eliminate the goto if possible.
+            opt_util.is_this_label_next(TargetLabel, Instrs0, _)
+        ->
+            NewInstrs = [],
+            NewRemain = specified(NewInstrs, Instrs0)
+        ;
+            PrevInstr = if_val(_, code_label(IfTargetLabel)),
+            opt_util.is_this_label_next(IfTargetLabel, Instrs0, _)
+        ->
+            % Eliminating the goto (by the local peephole pass)
+            % is better than shortcircuiting it here,
+            % PROVIDED the test will succeed most of the time;
+            % we could use profiling feedback on this.
+            % We cannot eliminate the instruction here because
+            % that would require altering the if_val instruction.
+            NewInstrs = [llds_instr(Uinstr0, Comment0)],
+            NewRemain = specified(NewInstrs, Instrs0)
+        ;
+            % Replace a jump to a det epilog with the epilog.
+            ProcMap = JumpOptInfo ^ joi_proc_map,
+            map.search(ProcMap, TargetLabel, Between0)
+        ->
+            adjust_livevals(PrevInstr, Between0, Between),
+            NewInstrs = Between ++
+                [llds_instr(goto(code_succip), "shortcircuit")],
+            NewRemain = specified(NewInstrs, Instrs0)
+        ;
+            % Replace a jump to a semidet epilog with the epilog.
+            SdprocMap = JumpOptInfo ^ joi_sdproc_map,
+            map.search(SdprocMap, TargetLabel, Between0)
+        ->
+            adjust_livevals(PrevInstr, Between0, Between),
+            NewInstrs = Between ++
+                [llds_instr(goto(code_succip), "shortcircuit")],
+            NewRemain = specified(NewInstrs, Instrs0)
+        ;
+            % Replace a jump to a nondet epilog with the epilog.
+            SuccMap = JumpOptInfo ^ joi_succ_map,
+            map.search(SuccMap, TargetLabel, BetweenIncl0)
+        ->
+            adjust_livevals(PrevInstr, BetweenIncl0, NewInstrs),
+            NewRemain = specified(NewInstrs, Instrs0)
+        ;
+            % Replace a jump to a non-epilog block with the block itself.
+            % These jumps are treated separately from jumps to epilog blocks,
+            % for two reasons. First, epilog blocks are always short, so we
+            % always want to replace jumps to them, whereas other blocks
+            % may be long, so we want to replace jumps to them only if the
+            % fulljumps option was given. Second, non-epilog blocks may contain
+            % branches to other labels in this procedure, and we want to
+            % make sure that these are short-circuited. This short-circuiting
+            % is necessary because another optimization below eliminates
+            % labels, which is correct only if jumps to those labels are
+            % short-circuited everywhere.
+            JumpOptInfo ^ joi_full_jump_opt = yes,
+            InstrMap = JumpOptInfo ^ joi_instr_map,
+            map.search(InstrMap, TargetLabel, TargetInstr),
+            final_dest(InstrMap, TargetLabel, DestLabel,
+                TargetInstr, _DestInstr),
+            BlockMap = JumpOptInfo ^ joi_block_map,
+            map.search(BlockMap, DestLabel, Block),
+            block_may_be_duplicated(Block) = yes
+        ->
+            opt_util.filter_out_labels(Block, FilteredBlock),
+            adjust_livevals(PrevInstr, FilteredBlock, AdjustedBlock),
+            % Block may end with a goto to DestLabel. We avoid infinite
+            % expansion in such cases by removing DestLabel from BlockMap,
+            % though only while processing AdjustedBlock.
+            map.delete(BlockMap, DestLabel, CrippledBlockMap),
+            CrippledJumpOptInfo = JumpOptInfo ^ joi_block_map :=
+                CrippledBlockMap,
+            jump_opt_instr_list(AdjustedBlock, comment(""),
+                CrippledJumpOptInfo, !CheckedNondetTailCallInfo,
+                [], RevNewInstrs),
+            NewRemain = specified(list.reverse(RevNewInstrs), Instrs0)
+        ;
+            % Short-circuit the goto.
+            InstrMap = JumpOptInfo ^ joi_instr_map,
+            map.search(InstrMap, TargetLabel, TargetInstr)
+        ->
+            final_dest(InstrMap, TargetLabel, DestLabel,
+                TargetInstr, DestInstr),
+            DestInstr = llds_instr(UdestInstr, _Destcomment),
+            Shorted = "shortcircuited jump: " ++ Comment0,
+            opt_util.can_instr_fall_through(UdestInstr) = Canfallthrough,
+            (
+                Canfallthrough = no,
+                NewInstrs0 = [llds_instr(UdestInstr, Shorted)]
+            ;
+                Canfallthrough = yes,
+                ( TargetLabel = DestLabel ->
+                    NewInstrs0 = [llds_instr(Uinstr0, Comment0)]
+                ;
+                    NewInstrs0 =
+                        [llds_instr(goto(code_label(DestLabel)), Shorted)]
+                )
+            ),
+            LvalMap = JumpOptInfo ^ joi_lval_map,
+            ( map.search(LvalMap, DestLabel, yes(Lvalinstr)) ->
+                adjust_livevals(PrevInstr, [Lvalinstr | NewInstrs0], NewInstrs)
+            ;
+                NewInstrs = NewInstrs0
+            ),
+            NewRemain = specified(NewInstrs, Instrs0)
+        ;
+            NewRemain = usual_case
+        )
+    ;
+        NewRemain = usual_case
+    ).
+
+:- pred jump_opt_if_val(instr::in(instr_if_val), string::in,
+    list(instruction)::in, instr::in, jump_opt_info::in,
+    maybe(pair(proc_label, counter))::in,
+    maybe(pair(proc_label, counter))::out,
+    new_remain::out) is det.
+
+jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
+        !CheckedNondetTailCallInfo, NewRemain) :-
+    Uinstr0 = if_val(Cond, TargetAddr),
+    ( TargetAddr = code_label(TargetLabel) ->
+        JumpOptInfo = jump_opt_info(InstrMap, BlockMap, _LvalMap,
+            _ProcMap, _SdprocMap, _ForkMap, _SuccMap, LayoutLabels,
+            Fulljumpopt, _MayAlterRtti),
+        (
+            % Attempt to transform code such as
+            %
+            %   if (Cond) L2
+            % L1:
+            %   goto L3
+            % L2:   ...
+            %
+            % into
+            %
+            %   if (! Cond) L3
+            % L2:   ...
+            %
+            % The label L1 may be present or not. If it is present,
+            % we are eliminating it, which is possible only because
+            % we short-circuit all jumps to it (make them jump
+            % directly to L3). This may not be possible if L3 is
+            % a non-label code address; e.g. we cannot jump to
+            % non-label code addresses from computed gotos.
+            opt_util.skip_comments(Instrs0, Instrs1),
+            Instrs1 = [Instr1 | Instrs2],
+            ( Instr1 = llds_instr(label(ElimLabel), _) ->
+                not set.member(ElimLabel, LayoutLabels),
+                opt_util.skip_comments(Instrs2, Instrs3),
+                Instrs3 = [GotoInstr | AfterGoto],
+                HaveLabel = yes
+            ;
+                Instr1 = GotoInstr,
+                AfterGoto = Instrs2,
+                HaveLabel = no
+            ),
+            GotoInstr = llds_instr(goto(GotoTarget), GotoComment),
+            ( HaveLabel = no ; GotoTarget = code_label(_) ),
+            opt_util.skip_comments(AfterGoto, AfterGotoComments),
+            AfterGotoComments = [LabelInstr | _],
+            LabelInstr = llds_instr(label(TargetLabel), _)
+        ->
+            code_util.neg_rval(Cond, NotCond),
+            NewInstr = llds_instr(if_val(NotCond, GotoTarget), GotoComment),
+            NewInstrs = [],
+            % The transformed code may fit the pattern again,
+            % so make sure that we look for the pattern again
+            % by giving all of the transformed instructions to
+            % the recursive call. We can't go into an infinite
+            % loop because each application of the transformation
+            % strictly reduces the size of the code.
+            RemainInstrs = [NewInstr | AfterGoto],
+            NewRemain = specified(NewInstrs, RemainInstrs)
+        ;
+            % Attempt to transform code such as
+            %
+            %   if (Cond) L1
+            %   goto L2
+            %
+            % into
+            %
+            %   if (! Cond) L2
+            %   <code at L1>
+            %
+            % when we know the code at L1 and don't know the code
+            % at L2. Here, we just generate
+            %
+            %   if (! Cond) L2
+            %   goto L1
+            %
+            % and get the code processed again starting after the
+            % if_val, to get the recursive call to replace the goto
+            % to L1 with the code at L1.
+            Fulljumpopt = yes,
+            map.search(BlockMap, TargetLabel, _TargetBlock),
+            opt_util.skip_comments(Instrs0, Instrs1),
+            Instrs1 = [GotoInstr | AfterGoto],
+            GotoInstr = llds_instr(goto(GotoAddr), GotoComment),
+            \+ (
+                GotoAddr = code_label(GotoLabel),
+                map.search(BlockMap, GotoLabel, _)
+            )
+        ->
+            code_util.neg_rval(Cond, NotCond),
+            NewIfInstr =
+                llds_instr(if_val(NotCond, GotoAddr), GotoComment),
+            NewInstrs = [NewIfInstr],
+            NewGotoComment = Comment0 ++ " (switched)",
+            NewGotoInstr =
+                llds_instr(goto(code_label(TargetLabel)), NewGotoComment),
+            RemainInstrs = [NewGotoInstr | AfterGoto],
+            NewRemain = specified(NewInstrs, RemainInstrs)
+        ;
+            map.search(InstrMap, TargetLabel, TargetInstr)
+        ->
+            final_dest(InstrMap, TargetLabel, DestLabel,
+                TargetInstr, _DestInstr),
+            (
+                % Attempt to transform code such as
+                %
+                %   if (Cond) L1
+                %   r1 = MR_TRUE
+                %   <epilog>
+                %   ...
+                % L1:
+                %   r1 = MR_FALSE
+                %   <epilog>
+                %
+                % into
+                %
+                %   r1 = Cond
+                %   <epilog>
+                %
+                opt_util.is_sdproceed_next(Instrs0, BetweenFT),
+                map.search(BlockMap, DestLabel, Block),
+                opt_util.is_sdproceed_next(Block, BetweenBR),
+                opt_util.filter_out_r1(BetweenFT, yes(SuccessFT), Between),
+                opt_util.filter_out_r1(BetweenBR, yes(SuccessBR), Between),
+                (
+                    SuccessFT = llconst_true,
+                    SuccessBR = llconst_false,
+                    code_util.neg_rval(Cond, NewCond)
+                ;
+                    SuccessFT = llconst_false,
+                    SuccessBR = llconst_true,
+                    NewCond = Cond
+                ),
+                \+ needs_workaround(reg(reg_r, 1), NewCond)
+            ->
+                ( NewCond = lval(reg(reg_r, 1)) ->
+                    NewAssign = llds_instr(comment("r1 = old r1"), "")
+                ;
+                    NewAssign = llds_instr(assign(reg(reg_r, 1), NewCond),
+                        "shortcircuit bool computation")
+                ),
+                Proceed = llds_instr(goto(code_succip), "shortcircuit"),
+                NewInstrs = [NewAssign | Between] ++ [Proceed],
+                NewRemain = specified(NewInstrs, Instrs0)
+            ;
+                % Try to short-circuit the destination.
+                TargetLabel \= DestLabel
+            ->
+                Shorted = "shortcircuited jump: " ++ Comment0,
+                NewInstrs = [
+                    llds_instr(if_val(Cond, code_label(DestLabel)), Shorted)
+                ],
+                NewRemain = specified(NewInstrs, Instrs0)
+            ;
+                NewRemain = usual_case
+            )
+        ;
+            NewRemain = usual_case
+        )
+    ;
+        NewRemain = usual_case
+    ).
+
+:- pred jump_opt_foreign_proc_code(instr::in(instr_foreign_proc_code),
+    string::in, list(instruction)::in, instr::in, jump_opt_info::in,
+    maybe(pair(proc_label, counter))::in,
+    maybe(pair(proc_label, counter))::out,
+    new_remain::out) is det.
+
+jump_opt_foreign_proc_code(Uinstr0, Comment0, Instrs0, _PrevInstr,
+        JumpOptInfo, !CheckedNondetTailCallInfo, NewRemain) :-
+    Uinstr0 = foreign_proc_code(Decls, Components0, MayCallMercury,
+        MaybeFixNoLayout, MaybeFixLayout, MaybeFixOnlyLayout,
+        MaybeNoFix0, MaybeDefLabel, StackSlotRef, MaybeDup),
+    some [!Redirect] (
+        InstrMap = JumpOptInfo ^ joi_instr_map,
+        list.map_foldl(short_foreign_proc_component(InstrMap),
+            Components0, Components, no, !:Redirect),
+        (
+            MaybeNoFix0 = yes(NoFix),
+            short_label(InstrMap, NoFix, NoFixDest),
+            MaybeNoFix = yes(NoFixDest),
+            !:Redirect = yes
+        ;
+            MaybeNoFix0 = no,
+            MaybeNoFix = no
+        ),
+% These sanity checks are too strong, because we don't prohibit labels
+% appearing these slots of foreign_proc_code instructions from appearing
+% in InstrMap; we only prohibit the use of those entries in InstrMap
+% to optimize away these labels.
+%
+%       (
+%           MaybeFixNoLayout = yes(FixNoLayout),
+%           short_label(InstrMap, FixNoLayout, FixNoLayoutDest),
+%           FixNoLayoutDest \= FixNoLayout
+%       ->
+%           error("jump_opt_instr_list: foreign_proc_code fix_no_layout")
+%       ;
+%           true
+%       ),
+%       (
+%           MaybeFixLayout = yes(FixLayout),
+%           short_label(InstrMap, FixLayout, FixLayoutDest),
+%           FixLayoutDest \= FixLayout
+%       ->
+%           error("jump_opt_instr_list: foreign_proc_code fix_layout")
+%       ;
+%           true
+%       ),
+%       (
+%           MaybeFixOnlyLayout = yes(FixOnlyLayout),
+%           short_label(InstrMap, FixOnlyLayout, FixOnlyLayoutDest),
+%           FixOnlyLayoutDest \= FixOnlyLayout
+%       ->
+%           error("jump_opt_instr_list: foreign_proc_code fix_only_layout")
+%       ;
+%           true
+%       ),
+        (
+            !.Redirect = no,
+            NewRemain = usual_case
+        ;
+            !.Redirect = yes,
+            Comment = Comment0 ++ " (some redirects)",
+            Uinstr = foreign_proc_code(Decls, Components, MayCallMercury,
+                MaybeFixNoLayout, MaybeFixLayout, MaybeFixOnlyLayout,
+                MaybeNoFix, MaybeDefLabel, StackSlotRef, MaybeDup),
+            Instr = llds_instr(Uinstr, Comment),
+            NewRemain = specified([Instr], Instrs0)
+        )
+    ).
 
 :- func block_may_be_duplicated(list(instruction)) = bool.
 
@@ -963,9 +1030,9 @@ adjust_livevals(PrevInstr, Instrs0, Instrs) :-
     %
 :- pred short_label(instrmap::in, label::in, label::out) is det.
 
-short_label(Instrmap, Label0, Label) :-
-    ( map.search(Instrmap, Label0, Instr0) ->
-        final_dest(Instrmap, Label0, Label, Instr0, _Instr)
+short_label(InstrMap, Label0, Label) :-
+    ( map.search(InstrMap, Label0, Instr0) ->
+        final_dest(InstrMap, Label0, Label, Instr0, _Instr)
     ;
         Label = Label0
     ).
@@ -973,18 +1040,18 @@ short_label(Instrmap, Label0, Label) :-
 :- pred short_maybe_labels(instrmap::in,
     list(maybe(label))::in, list(maybe(label))::out) is det.
 
-short_maybe_labels(_Instrmap, [], []).
-short_maybe_labels(Instrmap, [MaybeLabel0 | MaybeLabels0],
+short_maybe_labels(_InstrMap, [], []).
+short_maybe_labels(InstrMap, [MaybeLabel0 | MaybeLabels0],
         [MaybeLabel | MaybeLabels]) :-
     (
         MaybeLabel0 = yes(Label0),
-        short_label(Instrmap, Label0, Label),
+        short_label(InstrMap, Label0, Label),
         MaybeLabel = yes(Label)
     ;
         MaybeLabel0 = no,
         MaybeLabel = no
     ),
-    short_maybe_labels(Instrmap, MaybeLabels0, MaybeLabels).
+    short_maybe_labels(InstrMap, MaybeLabels0, MaybeLabels).
 
 %-----------------------------------------------------------------------------%
 
@@ -994,13 +1061,13 @@ short_maybe_labels(Instrmap, [MaybeLabel0 | MaybeLabels0],
 :- pred final_dest(instrmap::in, label::in, label::out, instruction::in,
     instruction::out) is det.
 
-final_dest(Instrmap, SrcLabel, DestLabel, SrcInstr, DestInstr) :-
-    final_dest_2(Instrmap, [], SrcLabel, DestLabel, SrcInstr, DestInstr).
+final_dest(InstrMap, SrcLabel, DestLabel, SrcInstr, DestInstr) :-
+    final_dest_2(InstrMap, [], SrcLabel, DestLabel, SrcInstr, DestInstr).
 
 :- pred final_dest_2(instrmap::in, list(label)::in,
     label::in, label::out, instruction::in, instruction::out) is det.
 
-final_dest_2(Instrmap, LabelsSofar, SrcLabel, DestLabel,
+final_dest_2(InstrMap, LabelsSofar, SrcLabel, DestLabel,
         SrcInstr, DestInstr) :-
     (
         SrcInstr = llds_instr(SrcUinstr, _Comment),
@@ -1009,10 +1076,10 @@ final_dest_2(Instrmap, LabelsSofar, SrcLabel, DestLabel,
         ;
             SrcUinstr = label(TargetLabel)
         ),
-        map.search(Instrmap, TargetLabel, TargetInstr),
+        map.search(InstrMap, TargetLabel, TargetInstr),
         \+ list.member(SrcLabel, LabelsSofar)
     ->
-        final_dest_2(Instrmap, [SrcLabel | LabelsSofar],
+        final_dest_2(InstrMap, [SrcLabel | LabelsSofar],
             TargetLabel, DestLabel, TargetInstr, DestInstr)
     ;
         DestLabel = SrcLabel,
@@ -1023,20 +1090,20 @@ final_dest_2(Instrmap, LabelsSofar, SrcLabel, DestLabel,
 
 :- pred short_labels_rval(instrmap::in, rval::in, rval::out) is det.
 
-short_labels_rval(Instrmap, lval(Lval0), lval(Lval)) :-
-    short_labels_lval(Instrmap, Lval0, Lval).
+short_labels_rval(InstrMap, lval(Lval0), lval(Lval)) :-
+    short_labels_lval(InstrMap, Lval0, Lval).
 short_labels_rval(_, var(_), _) :-
     unexpected(this_file, "var rval in short_labels_rval").
-short_labels_rval(Instrmap, mkword(Tag, Rval0), mkword(Tag, Rval)) :-
-    short_labels_rval(Instrmap, Rval0, Rval).
-short_labels_rval(Instrmap, const(Const0), const(Const)) :-
-    short_labels_const(Instrmap, Const0, Const).
-short_labels_rval(Instrmap, unop(Op, Rval0), unop(Op, Rval)) :-
-    short_labels_rval(Instrmap, Rval0, Rval).
-short_labels_rval(Instrmap, binop(Op, LRval0, RRval0),
+short_labels_rval(InstrMap, mkword(Tag, Rval0), mkword(Tag, Rval)) :-
+    short_labels_rval(InstrMap, Rval0, Rval).
+short_labels_rval(InstrMap, const(Const0), const(Const)) :-
+    short_labels_const(InstrMap, Const0, Const).
+short_labels_rval(InstrMap, unop(Op, Rval0), unop(Op, Rval)) :-
+    short_labels_rval(InstrMap, Rval0, Rval).
+short_labels_rval(InstrMap, binop(Op, LRval0, RRval0),
         binop(Op, LRval, RRval)) :-
-    short_labels_rval(Instrmap, LRval0, LRval),
-    short_labels_rval(Instrmap, RRval0, RRval).
+    short_labels_rval(InstrMap, LRval0, LRval),
+    short_labels_rval(InstrMap, RRval0, RRval).
 short_labels_rval(_, mem_addr(MemRef), mem_addr(MemRef)).
 
 :- pred short_labels_const(instrmap::in,
@@ -1049,10 +1116,10 @@ short_labels_const(_, llconst_foreign(V, T), llconst_foreign(V, T)).
 short_labels_const(_, llconst_float(F), llconst_float(F)).
 short_labels_const(_, llconst_string(S), llconst_string(S)).
 short_labels_const(_, llconst_multi_string(S), llconst_multi_string(S)).
-short_labels_const(Instrmap, llconst_code_addr(CodeAddr0),
+short_labels_const(InstrMap, llconst_code_addr(CodeAddr0),
         llconst_code_addr(CodeAddr)) :-
     ( CodeAddr0 = code_label(Label0) ->
-        short_label(Instrmap, Label0, Label),
+        short_label(InstrMap, Label0, Label),
         CodeAddr = code_label(Label)
     ;
         CodeAddr = CodeAddr0
@@ -1064,21 +1131,21 @@ short_labels_const(_, llconst_data_addr(D, O),
     list(maybe(rval))::out) is det.
 
 short_labels_maybe_rvals(_, [], []).
-short_labels_maybe_rvals(Instrmap, [MaybeRval0 | MaybeRvals0],
+short_labels_maybe_rvals(InstrMap, [MaybeRval0 | MaybeRvals0],
         [MaybeRval | MaybeRvals]) :-
-    short_labels_maybe_rval(Instrmap, MaybeRval0, MaybeRval),
-    short_labels_maybe_rvals(Instrmap, MaybeRvals0, MaybeRvals).
+    short_labels_maybe_rval(InstrMap, MaybeRval0, MaybeRval),
+    short_labels_maybe_rvals(InstrMap, MaybeRvals0, MaybeRvals).
 
 :- pred short_labels_maybe_rval(instrmap::in,
     maybe(rval)::in, maybe(rval)::out) is det.
 
-short_labels_maybe_rval(Instrmap, MaybeRval0, MaybeRval) :-
+short_labels_maybe_rval(InstrMap, MaybeRval0, MaybeRval) :-
     (
         MaybeRval0 = no,
         MaybeRval = no
     ;
         MaybeRval0 = yes(Rval0),
-        short_labels_rval(Instrmap, Rval0, Rval),
+        short_labels_rval(InstrMap, Rval0, Rval),
         MaybeRval = yes(Rval)
     ).
 
@@ -1096,22 +1163,22 @@ short_labels_lval(_, stackvar(N), stackvar(N)).
 short_labels_lval(_, parent_stackvar(N), parent_stackvar(N)).
 short_labels_lval(_, framevar(N), framevar(N)).
 short_labels_lval(_, global_var_ref(Var), global_var_ref(Var)).
-short_labels_lval(Instrmap, succip_slot(Rval0), succip_slot(Rval)) :-
-    short_labels_rval(Instrmap, Rval0, Rval).
-short_labels_lval(Instrmap, redoip_slot(Rval0), redoip_slot(Rval)) :-
-    short_labels_rval(Instrmap, Rval0, Rval).
-short_labels_lval(Instrmap, redofr_slot(Rval0), redofr_slot(Rval)) :-
-    short_labels_rval(Instrmap, Rval0, Rval).
-short_labels_lval(Instrmap, succfr_slot(Rval0), succfr_slot(Rval)) :-
-    short_labels_rval(Instrmap, Rval0, Rval).
-short_labels_lval(Instrmap, prevfr_slot(Rval0), prevfr_slot(Rval)) :-
-    short_labels_rval(Instrmap, Rval0, Rval).
-short_labels_lval(Instrmap, field(Tag, Rval0, Field0),
+short_labels_lval(InstrMap, succip_slot(Rval0), succip_slot(Rval)) :-
+    short_labels_rval(InstrMap, Rval0, Rval).
+short_labels_lval(InstrMap, redoip_slot(Rval0), redoip_slot(Rval)) :-
+    short_labels_rval(InstrMap, Rval0, Rval).
+short_labels_lval(InstrMap, redofr_slot(Rval0), redofr_slot(Rval)) :-
+    short_labels_rval(InstrMap, Rval0, Rval).
+short_labels_lval(InstrMap, succfr_slot(Rval0), succfr_slot(Rval)) :-
+    short_labels_rval(InstrMap, Rval0, Rval).
+short_labels_lval(InstrMap, prevfr_slot(Rval0), prevfr_slot(Rval)) :-
+    short_labels_rval(InstrMap, Rval0, Rval).
+short_labels_lval(InstrMap, field(Tag, Rval0, Field0),
         field(Tag, Rval, Field)) :-
-    short_labels_rval(Instrmap, Rval0, Rval),
-    short_labels_rval(Instrmap, Field0, Field).
-short_labels_lval(Instrmap, mem_ref(Rval0), mem_ref(Rval)) :-
-    short_labels_rval(Instrmap, Rval0, Rval).
+    short_labels_rval(InstrMap, Rval0, Rval),
+    short_labels_rval(InstrMap, Field0, Field).
+short_labels_lval(InstrMap, mem_ref(Rval0), mem_ref(Rval)) :-
+    short_labels_rval(InstrMap, Rval0, Rval).
 short_labels_lval(_, lvar(_), _) :-
     unexpected(this_file, "lvar lval in short_labels_lval").
 
@@ -1119,7 +1186,7 @@ short_labels_lval(_, lvar(_), _) :-
     foreign_proc_component::in, foreign_proc_component::out,
     bool::in, bool::out) is det.
 
-short_foreign_proc_component(Instrmap, !Component, !Redirect) :-
+short_foreign_proc_component(InstrMap, !Component, !Redirect) :-
     (
         !.Component = foreign_proc_inputs(_)
     ;
@@ -1130,7 +1197,7 @@ short_foreign_proc_component(Instrmap, !Component, !Redirect) :-
         !.Component = foreign_proc_raw_code(_, _, _, _)
     ;
         !.Component = foreign_proc_fail_to(Label0),
-        short_label(Instrmap, Label0, Label),
+        short_label(InstrMap, Label0, Label),
         !:Component = foreign_proc_fail_to(Label),
         ( Label = Label0 ->
             true
