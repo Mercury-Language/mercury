@@ -208,6 +208,13 @@ case $BRANCH in
         RELEASE_VERSION=0.13.1
         RELEASE_VERSION_PATTERN=0.13.1*
         ;;
+    10.04-beta)
+        CHECKOUT_OPTS=-rversion-10_04-beta
+        BASE_TAG_NAME=version-10_04-beta
+        FTP_DIR_NAME=10.04-beta
+        RELEASE_VERSION=10.04-beta
+        RELEASE_VERSION_PATTERN=10.04-beta*
+        ;;
 esac
 
 case "$C_COMPILER" in
