@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2009 The University of Melbourne.
+% Copyright (C) 2002-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -54,6 +54,7 @@
 :- include_module mark_static_terms.
 :- include_module mark_tail_calls.
 :- include_module passes_aux.
+:- include_module hlds_statistics.
 
 %-----------------------------------------------------------------------------%
 

@@ -148,6 +148,7 @@
     ;       output_compile_error_lines
     ;       statistics
     ;       detailed_statistics
+    ;       proc_size_statistics
     ;       debug_types
     ;       debug_modes
     ;       debug_modes_statistics
@@ -1082,6 +1083,7 @@ option_defaults_2(verbosity_option, [
     output_compile_error_lines          -   int(15),
     statistics                          -   bool(no),
     detailed_statistics                 -   bool(no),
+    proc_size_statistics                -   string(""),
     debug_types                         -   bool(no),
     debug_modes                         -   bool(no),
     debug_modes_statistics              -   bool(no),
@@ -1909,6 +1911,7 @@ long_option("verbose-commands",         verbose_commands).
 long_option("output-compile-error-lines",   output_compile_error_lines).
 long_option("statistics",               statistics).
 long_option("detailed-statistics",      detailed_statistics).
+long_option("proc-size-statistics",     proc_size_statistics).
 long_option("debug-types",              debug_types).
 long_option("debug-modes",              debug_modes).
 long_option("debug-modes-statistics",   debug_modes_statistics).
@@ -3442,6 +3445,9 @@ options_help_verbosity -->
 %       "--detailed-statistics",
 %       "\tOutput more detailed messages about the compiler's",
 %       "\ttime/space usage.",
+        "--proc-size-statistics <filename>",
+        "\tAppend information about the size of each procedure in the module",
+        "\tin terms of goals and variables to the end of the named file.",
 % --debug-types works only if the compiler was compiled with
 % "--trace-flag type_checkpoint".
 %       "-T, --debug-types",

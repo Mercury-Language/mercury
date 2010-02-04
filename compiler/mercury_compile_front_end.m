@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -86,6 +86,7 @@
 :- import_module check_hlds.unique_modes.
 :- import_module check_hlds.unused_imports.
 :- import_module hlds.hlds_error_util.
+:- import_module hlds.hlds_statistics.
 :- import_module libs.compiler_util.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -467,6 +468,9 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
         maybe_simplify(yes, simplify_pass_frontend, Verbose, Stats,
             !HLDS, !Specs, !IO),
         maybe_dump_hlds(!.HLDS, 65, "frontend_simplify", !DumpInfo, !IO),
+
+        maybe_proc_statistics(Verbose, Stats, "AfterFrontEnd", !HLDS,
+            !Specs, !IO),
 
         % Work out whether we encountered any errors.
         module_info_get_num_errors(!.HLDS, NumErrors),
@@ -866,8 +870,7 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
             ->
                 list.cons(simp_constant_prop, !SimpList)
             ;
-                !:SimpList = list.delete_all(!.SimpList,
-                    simp_constant_prop)
+                !:SimpList = list.delete_all(!.SimpList, simp_constant_prop)
             ),
             list.cons(simp_do_once, !SimpList),
             list.cons(simp_elim_removable_scopes, !SimpList)
@@ -899,6 +902,37 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
         maybe_report_stats(Stats, !IO)
     ;
         SimpList = []
+    ).
+
+:- pred maybe_proc_statistics(bool::in, bool::in, string::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+maybe_proc_statistics(Verbose, Stats, Msg, !HLDS, !Specs, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+
+    globals.lookup_string_option(Globals, proc_size_statistics, StatsFileName),
+    ( StatsFileName = "" ->
+        % The user has not asked us to print these statistics.
+        true
+    ;
+        io.open_append(StatsFileName, StatsFileNameResult, !IO),
+        (
+            StatsFileNameResult = ok(StatsFileStream),
+            maybe_write_string(Verbose,
+                "% Generating proc statistics...\n", !IO),
+            write_proc_stats_for_module(StatsFileStream, Msg, !.HLDS, !IO),
+            maybe_write_string(Verbose, "% done.\n", !IO),
+            maybe_report_stats(Stats, !IO)
+        ;
+            StatsFileNameResult = error(StatsFileError),
+            io.error_message(StatsFileError, StatsFileErrorMsg),
+            maybe_write_string(Verbose,
+                "% Cannot write proc statistics: ", !IO),
+            maybe_write_string(Verbose, StatsFileErrorMsg, !IO),
+            maybe_write_string(Verbose, "\n", !IO)
+        )
     ).
 
 %-----------------------------------------------------------------------------%

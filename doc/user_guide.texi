@@ -6496,6 +6496,12 @@ so you get information at the boundaries between phases of the compiler.
 @findex --no-trad-passes
 @findex --trad-passes
 
+@sp 1
+@item --proc-size-statistics @var{filename}
+@findex --proc-size-statistics
+Append information about the size of each procedure in the module
+in terms of goals and variables to the end of the named file.
+
 @c @sp 1
 @c @item -T
 @c @itemx --debug-types

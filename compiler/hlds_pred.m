@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1390,9 +1390,9 @@ pred_info_get_arg_types(PredInfo, PredInfo ^ decl_typevarset,
         PredInfo ^ exist_quant_tvars, PredInfo ^ arg_types).
 
 pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes, !PredInfo) :-
-    !:PredInfo = !.PredInfo ^ decl_typevarset := TypeVarSet,
-    !:PredInfo = !.PredInfo ^ exist_quant_tvars := ExistQVars,
-    !:PredInfo = !.PredInfo ^ arg_types := ArgTypes.
+    !PredInfo ^ decl_typevarset := TypeVarSet,
+    !PredInfo ^ exist_quant_tvars := ExistQVars,
+    !PredInfo ^ arg_types := ArgTypes.
 
 pred_info_proc_info(PredInfo, ProcId, ProcInfo) :-
     ProcInfo = map.lookup(PredInfo ^ procedures, ProcId).
@@ -2521,11 +2521,11 @@ proc_info_create_with_declared_detism(Context, VarSet, VarTypes, HeadVars,
         RttiVarMaps, eval_normal, ProcSubInfo).
 
 proc_info_set_body(VarSet, VarTypes, HeadVars, Goal, RttiVarMaps, !ProcInfo) :-
-    !:ProcInfo = !.ProcInfo ^ prog_varset := VarSet,
-    !:ProcInfo = !.ProcInfo ^ var_types := VarTypes,
-    !:ProcInfo = !.ProcInfo ^ head_vars := HeadVars,
-    !:ProcInfo = !.ProcInfo ^ body := Goal,
-    !:ProcInfo = !.ProcInfo ^ proc_rtti_varmaps := RttiVarMaps.
+    !ProcInfo ^ prog_varset := VarSet,
+    !ProcInfo ^ var_types := VarTypes,
+    !ProcInfo ^ head_vars := HeadVars,
+    !ProcInfo ^ body := Goal,
+    !ProcInfo ^ proc_rtti_varmaps := RttiVarMaps.
 
 proc_info_get_context(PI, PI ^ proc_context).
 proc_info_get_varset(PI, PI ^ prog_varset).
@@ -2698,16 +2698,15 @@ proc_info_get_termination2_info(ProcInfo, Termination2Info) :-
     Termination2Info = ProcInfo ^ proc_sub_info ^ termination2.
 
 proc_info_set_termination2_info(Termination2Info, !ProcInfo) :-
-    !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ termination2 :=
-        Termination2Info.
+    !ProcInfo ^ proc_sub_info ^ termination2 := Termination2Info.
 
 proc_info_get_structure_sharing(ProcInfo, MaybeSharing) :-
     MaybeSharing = ProcInfo ^ proc_sub_info ^ structure_sharing
         ^ maybe_sharing.
 
 proc_info_set_structure_sharing(Sharing, !ProcInfo) :-
-    !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ structure_sharing
-        ^ maybe_sharing := yes(Sharing).
+    !ProcInfo ^ proc_sub_info ^ structure_sharing ^ maybe_sharing :=
+        yes(Sharing).
 
 proc_info_get_imported_structure_sharing(ProcInfo, HeadVars, Types, Sharing) :-
     MaybeImportedSharing = ProcInfo ^ proc_sub_info ^ structure_sharing
@@ -2719,19 +2718,18 @@ proc_info_set_imported_structure_sharing(HeadVars, Types, Sharing,
         !ProcInfo) :-
     ImportedSharing = imported_sharing(HeadVars, Types, Sharing),
     MaybeImportedSharing = yes(ImportedSharing),
-    !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ structure_sharing
-        ^ maybe_imported_sharing := MaybeImportedSharing.
+    !ProcInfo ^ proc_sub_info ^ structure_sharing ^ maybe_imported_sharing :=
+        MaybeImportedSharing.
 
 proc_info_reset_imported_structure_sharing(!ProcInfo) :-
-    !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ structure_sharing
-        ^ maybe_imported_sharing := no.
+    !ProcInfo ^ proc_sub_info ^ structure_sharing ^ maybe_imported_sharing :=
+        no.
 
 proc_info_get_structure_reuse(ProcInfo, MaybeReuse) :-
     MaybeReuse = ProcInfo ^ proc_sub_info ^ structure_reuse ^ maybe_reuse.
 
 proc_info_set_structure_reuse(Reuse, !ProcInfo) :-
-    !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ structure_reuse
-        ^ maybe_reuse := yes(Reuse).
+    !ProcInfo ^ proc_sub_info ^ structure_reuse ^ maybe_reuse := yes(Reuse).
 
 proc_info_get_imported_structure_reuse(ProcInfo, HeadVars, Types, Reuse) :-
     MaybeImportedReuse = ProcInfo ^ proc_sub_info ^ structure_reuse
@@ -2743,12 +2741,11 @@ proc_info_set_imported_structure_reuse(HeadVars, Types, Reuse,
         !ProcInfo) :-
     ImportedReuse = imported_reuse(HeadVars, Types, Reuse),
     MaybeImportedReuse = yes(ImportedReuse),
-    !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ structure_reuse
-        ^ maybe_imported_reuse := MaybeImportedReuse.
+    !ProcInfo ^ proc_sub_info ^ structure_reuse ^ maybe_imported_reuse :=
+        MaybeImportedReuse.
 
 proc_info_reset_imported_structure_reuse(!ProcInfo) :-
-    !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ structure_reuse
-        ^ maybe_imported_reuse := no.
+    !ProcInfo ^ proc_sub_info ^ structure_reuse ^ maybe_imported_reuse := no.
 
 proc_info_ensure_unique_names(!ProcInfo) :-
     proc_info_get_vartypes(!.ProcInfo, VarTypes),
