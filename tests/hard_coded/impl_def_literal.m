@@ -5,7 +5,7 @@
 
 :- import_module io.
 
-:- pred main(io::di, io::uo) is det.
+:- pred main(io::di, io::uo) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -28,6 +28,12 @@ main(!IO) :-
     io.nl(!IO),
     a_lambda(FromLambda),
     io.write_string(FromLambda, !IO),
+    io.nl(!IO),
+    a_try_goal(FromTryGoal),
+    io.write_string(FromTryGoal, !IO),
+    io.nl(!IO),
+    an_atomic_goal(FromAtomicGoal, !IO),
+    io.write_string(FromAtomicGoal, !IO),
     io.nl(!IO),
 
     fun_with_lines(!IO),
@@ -65,6 +71,22 @@ a_function = $pred.
 a_lambda(String) :-
     Pred = (pred($pred::out) is det),
     Pred(String).
+
+:- pred a_try_goal(string::out) is cc_multi.
+
+a_try_goal(String) :-
+    (try []
+        String = $pred
+    then
+        true
+    ).
+
+:- pred an_atomic_goal(string::out, io::di, io::uo) is det.
+
+an_atomic_goal(String, !IO) :-
+    atomic [outer(!IO), inner(!STM)] (
+        String = $pred
+    ).
 
 :- pred fun_with_lines(io::di, io::uo) is det.
 
