@@ -3,13 +3,14 @@ context none
 echo on
 table_io allow
 table_io start
-trust all_trusted
-break p
+trust q
+break q
 c
 f
 dd -d 3 -n 7 -a
-y
-break main
-c
+maybe
+Yes
+quit
 dd -d 3 -n 7 -a
+n
 quit -y

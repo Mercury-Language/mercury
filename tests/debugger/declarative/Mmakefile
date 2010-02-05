@@ -68,6 +68,7 @@ DECLARATIVE_PROGS=		\
 	special_term_dep	\
 	skip			\
 	solns			\
+	supertree_warning	\
 	tabled_read_decl	\
 	tabled_read_decl_goto	\
 	throw			\
@@ -525,6 +526,10 @@ special_term_dep.out: special_term_dep special_term_dep.inp
 
 skip.out: skip skip.inp
 	$(MDB_STD) ./skip < skip.inp > skip.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+supertree_warning.out: supertree_warning supertree_warning.inp
+	$(MDB_STD) ./supertree_warning < supertree_warning.inp > supertree_warning.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 tabled_read_decl.out: tabled_read_decl tabled_read_decl.inp

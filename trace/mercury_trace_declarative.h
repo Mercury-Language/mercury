@@ -85,6 +85,12 @@ extern  void        MR_trace_decl_set_fallback_search_mode(
                         MR_DeclSearchMode search_mode);
 
 /*
+** MR_trace_decl_session_init performs per-session initialization.
+*/
+
+extern void         MR_trace_decl_session_init(void);
+
+/*
 ** MR_trace_decl_reset_knowledge_base resets the oracle's knowledge base.
 */
 

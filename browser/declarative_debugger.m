@@ -310,6 +310,7 @@
 
 :- import_module mdb.declarative_edt.
 :- import_module mdb.declarative_oracle.
+:- import_module mdb.util.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.rtti_access.
 
@@ -342,18 +343,27 @@ get_decl_question_atom(unexpected_exception(_, init_decl_atom(Atom), _)) =
 
 :- type diagnoser_state(R)
     --->    diagnoser(
-                analyser_state      :: analyser_state(edt_node(R)),
-                oracle_state        :: oracle_state,
+                analyser_state          :: analyser_state(edt_node(R)),
+                oracle_state            :: oracle_state,
 
-                % The diagnoser state before the previous oracle answer
-                % (if there oracle has given any answers yet).
-                previous_diagnoser  :: maybe(diagnoser_state(R))
+                warn_if_searching_supertree :: bool,
+                    % This field keeps track of whether we should warn the
+                    % user when a supertree is requested.
+                    % We issue a warning when there have been no interactions
+                    % with the user and a supertree has been requested.
+                    % This can happen when all the nodes under the starting
+                    % node are trusted.  This behaviour can be confusing, so
+                    % we print a message to explain what is going on.
+
+                previous_diagnoser      :: maybe(diagnoser_state(R))
+                    % The diagnoser state before the previous oracle answer
+                    % (if the oracle has given any answers yet).
             ).
 
 diagnoser_state_init(InStr, OutStr, Browser, HelpSystem, Diagnoser) :-
     analyser_state_init(Analyser),
     oracle_state_init(InStr, OutStr, Browser, HelpSystem, Oracle),
-    Diagnoser = diagnoser(Analyser, Oracle, no).
+    Diagnoser = diagnoser(Analyser, Oracle, yes, no).
 
 :- pred push_diagnoser(diagnoser_state(R)::in, diagnoser_state(R)::out) is det.
 
@@ -434,11 +444,16 @@ handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
         query_oracle(Question, OracleResponse, FromUser, Oracle0, Oracle, !IO),
         (
             FromUser = yes,
-            oracle_response_undoable(OracleResponse)
-        ->
-            push_diagnoser(!Diagnoser)
+            !Diagnoser ^ warn_if_searching_supertree := no,
+            (
+                oracle_response_undoable(OracleResponse)
+            ->
+                push_diagnoser(!Diagnoser)
+            ;
+                true
+            )
         ;
-            true
+            FromUser = no
         ),
         !:Diagnoser = !.Diagnoser ^ oracle_state := Oracle,
         handle_oracle_response(Store, OracleResponse, DiagnoserResponse,
@@ -457,7 +472,22 @@ handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
     ;
         AnalyserResponse = analyser_response_require_explicit_supertree(Node),
         edt_subtree_details(Store, Node, Event, Seqno, _),
-        DiagnoserResponse = require_supertree(Event, Seqno)
+        ( !.Diagnoser ^ warn_if_searching_supertree = no,
+            DiagnoserResponse = require_supertree(Event, Seqno)
+        ; !.Diagnoser ^ warn_if_searching_supertree = yes,
+            Out = get_user_output_stream(!.Diagnoser ^ oracle_state),
+            io.write_string(Out, "All descendent calls are trusted.\n" ++
+                "Shall I continue searching in ancestor calls?\n", !IO),
+            read_search_supertree_response(!.Diagnoser, Response, !IO),
+            ( Response = yes,
+                DiagnoserResponse = require_supertree(Event, Seqno)
+            ; Response = no,
+                io.write_string(Out, "Diagnosis aborted.\n", !IO),
+                DiagnoserResponse = no_bug_found
+            ),
+            % We only want to issue the warning once, so set the flag to no.
+            !Diagnoser ^ warn_if_searching_supertree := no
+        )
     ;
         AnalyserResponse = analyser_response_revise(Question),
         Oracle0 = !.Diagnoser ^ oracle_state,
@@ -466,6 +496,33 @@ handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
         handle_analyser_response(Store,
             analyser_response_oracle_question(Question), no, DiagnoserResponse,
             !Diagnoser, !IO)
+    ).
+
+:- pred read_search_supertree_response(diagnoser_state(R)::in,
+    bool::out, io::di, io::uo) is det.
+
+read_search_supertree_response(Diagnoser, Response, !IO) :-
+    In = get_user_input_stream(Diagnoser ^ oracle_state),
+    Out = get_user_output_stream(Diagnoser ^ oracle_state),
+    Prompt = "> ",
+    util.trace_getline(Prompt, Result, In, Out, !IO),
+    ( Result = ok(Line),
+        UpperLine = string.to_upper(Line),
+        ( (UpperLine = "YES" ; UpperLine = "Y") ->
+            Response = yes
+        ; (UpperLine = "NO" ; UpperLine = "N") ->
+            Response = no
+        ;
+            io.write_string(Out, "Please answer yes or no.\n", !IO),
+            read_search_supertree_response(Diagnoser, Response, !IO)
+        )
+    ; Result = error(ErrNo),
+        io.write_string(Out, "Error reading input: " ++
+            io.error_message(ErrNo) ++ ". Aborting.\n", !IO),
+        Response = no
+    ; Result = eof,
+        io.write_string(Out, "Unexpected EOF. Aborting.\n", !IO),
+        Response = no
     ).
 
 :- pred handle_oracle_response(S::in, oracle_response(edt_node(R))::in,
@@ -585,6 +642,19 @@ overrule_bug(Store, Response, Diagnoser0, Diagnoser, !IO) :-
 
 diagnoser_state_init_store(InStr, OutStr, Browser, HelpSystem, Diagnoser) :-
     diagnoser_state_init(InStr, OutStr, Browser, HelpSystem, Diagnoser).
+
+    % This is called when the user starts a new declarative
+    % debugging session with the dd command (and the --resume option
+    % wasn't given).
+    %
+:- pred diagnoser_session_init(diagnoser_state(trace_node_id)::in,
+    diagnoser_state(trace_node_id)::out) is det.
+
+diagnoser_session_init(!Diagnoser) :-
+    !Diagnoser ^ warn_if_searching_supertree := yes.
+
+:- pragma foreign_export("C", diagnoser_session_init(in, out),
+    "MR_DD_decl_session_init").
 
     % Set the testing flag of the user_state in the given diagnoser.
     %

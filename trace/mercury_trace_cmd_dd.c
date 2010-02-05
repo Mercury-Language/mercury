@@ -117,6 +117,10 @@ MR_trace_cmd_dd(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
         MR_trace_decl_set_testing_flag(testing);
 
+        if (new_session) {
+            MR_trace_decl_session_init();
+        }
+
         if (search_mode_was_set || new_session) {
             MR_trace_decl_set_fallback_search_mode(search_mode);
         }

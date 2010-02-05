@@ -90,6 +90,10 @@
     %
 :- func get_user_output_stream(user_state) = io.output_stream.
 
+    % Return the input stream used for interacting with the user.
+    %
+:- func get_user_input_stream(user_state) = io.input_stream.
+
     % Set the testing flag of the user_state.
     %
 :- pred set_user_testing_flag(bool::in, user_state::in, user_state::out)
@@ -1342,6 +1346,8 @@ set_browser_state(Browser, !User) :-
     !:User = !.User ^ browser := Browser.
 
 get_user_output_stream(User) = User ^ outstr.
+
+get_user_input_stream(User) = User ^ instr.
 
 set_user_testing_flag(Testing, User, User ^ testing := Testing).
 

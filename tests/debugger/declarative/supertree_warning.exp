@@ -1,0 +1,32 @@
+      E1:     C1 CALL pred supertree_warning.main/2-0 (det) supertree_warning.m:13
+mdb> mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> table_io allow
+mdb> table_io start
+I/O tabling started.
+mdb> trust q
+Trusting pred supertree_warning.q/2
+mdb> break q
+ 0: + stop  interface pred supertree_warning.q/2-0 (det)
+mdb> c
+      E2:     C2 CALL pred supertree_warning.q/2-0 (det)
+mdb> f
+      E3:     C2 EXIT pred supertree_warning.q/2-0 (det)
+mdb> dd -d 3 -n 7 -a
+All descendent calls are trusted.
+Shall I continue searching in ancestor calls?
+> maybe
+Please answer yes or no.
+> Yes
+p(1, 1)
+Valid? quit
+Diagnosis aborted.
+      E3:     C2 EXIT pred supertree_warning.q/2-0 (det)
+mdb> dd -d 3 -n 7 -a
+All descendent calls are trusted.
+Shall I continue searching in ancestor calls?
+> n
+Diagnosis aborted.
+      E3:     C2 EXIT pred supertree_warning.q/2-0 (det)
+mdb> quit -y

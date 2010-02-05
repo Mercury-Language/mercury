@@ -1482,6 +1482,16 @@ MR_trace_decl_ensure_init(void)
 }
 
 void
+MR_trace_decl_session_init()
+{
+    MR_trace_decl_ensure_init();
+    MR_TRACE_CALL_MERCURY(
+        MR_DD_decl_session_init(
+            MR_trace_front_end_state, &MR_trace_front_end_state);
+    );
+}
+
+void
 MR_trace_decl_set_fallback_search_mode(MR_DeclSearchMode search_mode)
 {
     MR_trace_decl_ensure_init();

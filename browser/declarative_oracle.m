@@ -153,6 +153,10 @@
     %
 :- func get_user_output_stream(oracle_state) = io.output_stream.
 
+    % Return the input stream used for interacting with the user.
+    %
+:- func get_user_input_stream(oracle_state) = io.input_stream.
+
     % Set the testing flag of the user_state in the given oracle.
     %
 :- pred set_oracle_testing_flag(bool::in, oracle_state::in, oracle_state::out)
@@ -712,7 +716,10 @@ set_browser_state(Browser, !Oracle) :-
     !:Oracle = !.Oracle ^ user_state := User.
 
 get_user_output_stream(Oracle) =
-    declarative_user.get_user_output_stream( Oracle ^ user_state).
+    declarative_user.get_user_output_stream(Oracle ^ user_state).
+
+get_user_input_stream(Oracle) =
+    declarative_user.get_user_input_stream(Oracle ^ user_state).
 
 set_oracle_testing_flag(Testing, !Oracle) :-
     User0 = !.Oracle ^ user_state,
