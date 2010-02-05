@@ -327,13 +327,12 @@ update_changed_proc(Goal, PredId, ProcId, PredInfo, !.ProcInfo, !ModuleInfo,
         !:Specs = ModeSpecs ++ !.Specs
     ;
         HasModeErrors = no,
-        determinism_check_proc(ProcId, PredId, !ModuleInfo, DetismSpecs),
-        % XXX Is there any point in including DetismSpecs in !Specs?
-        % Can there be warnings in there that weren't there before the
-        % try_expand pass?
-        HasDetismErrors = contains_errors(Globals, DetismSpecs),
-        expect(unify(HasDetismErrors, no), this_file,
-            "determinism check fails when repeated")
+        % Determinism errors should have been detected before expansion, but
+        % compilation would continue anyway.
+        % XXX It would be nice to replace any pre-expansion determinism error
+        % messages (which mention the hidden predicate magic_exception_result)
+        % with these error messages.
+        determinism_check_proc(ProcId, PredId, !ModuleInfo, _DetismSpecs)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -547,7 +546,9 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
     make_try_lambda(Goal1, GoalOutputVarsSet, OutputTupleType, MaybeIO,
         LambdaVar, AssignLambdaVar, !ProcInfo),
 
-    GoalPurity = goal_get_purity(Goal1),
+    Goal1 = hlds_goal(_, GoalInfo1),
+    GoalPurity = goal_info_get_purity(GoalInfo1),
+    GoalContext = goal_info_get_context(GoalInfo1),
 
     (
         MaybeIO = yes(try_io_state_vars(GoalInitialIOVar, GoalFinalIOVar)),
@@ -576,7 +577,7 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
             TryIOOutputVar, !ProcInfo),
         make_try_call("try_io", LambdaVar, ResultVar,
             [GoalInitialIOVar, TryIOOutputVar], OutputTupleType, GoalPurity,
-            CallTryGoal, !PredInfo, !ProcInfo, !ModuleInfo),
+            GoalContext, CallTryGoal, !PredInfo, !ProcInfo, !ModuleInfo),
 
         create_pure_atomic_complicated_unification(GoalFinalIOVar,
             rhs_var(TryIOOutputVar), term.context_init,
@@ -588,7 +589,8 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
     ;
         MaybeIO = no,
         make_try_call("try", LambdaVar, ResultVar, [], OutputTupleType,
-            GoalPurity, CallTryGoal, !PredInfo, !ProcInfo, !ModuleInfo),
+            GoalPurity, GoalContext, CallTryGoal, !PredInfo, !ProcInfo,
+            !ModuleInfo),
         Then = Then1,
         ExcpHandling = ExcpHandling1
     ),
@@ -849,14 +851,15 @@ detism_to_try_lambda_detism(detism_erroneous, detism_det).
 detism_to_try_lambda_detism(detism_failure, detism_semi).
 
 :- pred make_try_call(string::in, prog_var::in, prog_var::in,
-    list(prog_var)::in, mer_type::in, purity::in, hlds_goal::out,
+    list(prog_var)::in, mer_type::in, purity::in, prog_context::in,
+    hlds_goal::out,
     pred_info::in, pred_info::out, proc_info::in, proc_info::out,
     module_info::in, module_info::out) is det.
 
 make_try_call(PredName, LambdaVar, ResultVar, ExtraArgs, OutputTupleType,
-        GoalPurity, OverallGoal, !PredInfo, !ProcInfo, !ModuleInfo) :-
+        GoalPurity, Context, OverallGoal, !PredInfo, !ProcInfo, !ModuleInfo) :-
     create_poly_info(!.ModuleInfo, !.PredInfo, !.ProcInfo, PolyInfo0),
-    polymorphism_make_type_info_var(OutputTupleType, term.context_init,
+    polymorphism_make_type_info_var(OutputTupleType, Context,
         TypeInfoVar, MakeTypeInfoGoals, PolyInfo0, PolyInfo),
     poly_info_extract(PolyInfo, !PredInfo, !ProcInfo, !:ModuleInfo),
 
@@ -866,10 +869,9 @@ make_try_call(PredName, LambdaVar, ResultVar, ExtraArgs, OutputTupleType,
     Features = [],
     generate_simple_call(mercury_exception_module, PredName,
         pf_predicate, Mode, detism_cc_multi, purity_pure, Args, Features,
-        instmap_delta_bind_no_var, !.ModuleInfo, term.context_init,
-        CallGoal0),
+        instmap_delta_bind_no_var, !.ModuleInfo, Context, CallGoal0),
 
-    goal_info_init(GoalInfo),
+    goal_info_init(Context, GoalInfo),
 
     % The try* predicates are only implemented for pure lambdas.  If the lambda
     % is actually non-pure, retain that in the call to try* with a purity
