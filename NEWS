@@ -1,6 +1,13 @@
 NEWS since Mercury 0.13.1
 -------------------------
 
+Changes to the release numbering:
+
+The release is now numbered according to the year and month the
+release was made, eg 10.04 is the release made in April 2010.
+Previously the release naming scheme was 0.x where x was the x'th
+major release of the system.
+
 Changes to the Mercury language:
 
 * We have removed support for automatic initialisation of solver variables.

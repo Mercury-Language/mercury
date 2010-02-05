@@ -13,9 +13,13 @@ VERSION=DEV
 #
 # Pattern	Examples	Explanation
 # -------	-------		-----------
-# *.*		0.6, 0.7 	Major releases.
+# YY.MM		09.04, 10.10 	Major releases are named after the
+# 				year and month they are released in.
 #
-# *.*.*		0.6.1		Bug-fix releases.
+# YY.MM.*	10.04.1		Bug-fix releases.
+# 				Note these releases are named after
+# 				the year and month the orginal release
+# 				was made in.
 #
 # rotd-<DATE>	rotd-1997-07-28 "Release-of-the-day" releases.
 #				These releases are snapshots of our
