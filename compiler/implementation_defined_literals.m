@@ -164,10 +164,30 @@ subst_literals_in_goal(Info, Goal0, Goal) :-
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
+        GoalExpr0 = shorthand(Shorthand0),
+        (
+            Shorthand0 = bi_implication(A0, B0),
+            subst_literals_in_goal(Info, A0, A),
+            subst_literals_in_goal(Info, B0, B),
+            Shorthand = bi_implication(A, B)
+        ;
+            Shorthand0 = atomic_goal(GoalType, OuterVars, InnerVars,
+                OutputVars, MainGoal0, OrElseGoals0, OrElseInners),
+            subst_literals_in_goal(Info, MainGoal0, MainGoal),
+            list.map(subst_literals_in_goal(Info), OrElseGoals0, OrElseGoals),
+            Shorthand = atomic_goal(GoalType, OuterVars, InnerVars,
+                OutputVars, MainGoal, OrElseGoals, OrElseInners)
+        ;
+            Shorthand0 = try_goal(MaybeIOVars, ResultVar, TryGoal0),
+            subst_literals_in_goal(Info, TryGoal0, TryGoal),
+            Shorthand = try_goal(MaybeIOVars, ResultVar, TryGoal)
+        ),
+        GoalExpr = shorthand(Shorthand),
+        Goal = hlds_goal(GoalExpr, GoalInfo0)
+    ;
         ( GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ; GoalExpr0 = generic_call(_, _, _, _)
         ; GoalExpr0 = plain_call(_, _, _, _, _, _)
-        ; GoalExpr0 = shorthand(_)
         ),
         Goal = Goal0
     ).
