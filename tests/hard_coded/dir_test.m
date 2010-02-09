@@ -60,6 +60,11 @@ main -->
 		"unwritable file found to be unwritable\n")
 	),
 
+	% Execute permissions are not handled correctly on all platforms so
+	% just check that it doesn't crash.
+	io__check_file_accessibility("unwritable",
+		[execute], _ExecuteResult),
+
 	dir__current_directory(CwdResult),
 	(
 	    { CwdResult = ok(Cwd) },

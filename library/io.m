@@ -3397,38 +3397,46 @@ io.check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         may_not_duplicate],
 "
-    java.lang.String permissions = null;
-
-    if (ML_access_types_includes_read(AccessTypes)) {
-        permissions = ""read"";
-    }
-
-    if (ML_access_types_includes_write(AccessTypes)) {
-        if (permissions == null) {
-            permissions = ""write"";
-        } else {
-            permissions = ""read,write"";
-        }
-    }
-
-    if (ML_access_types_includes_execute(AccessTypes))
-    {
-        if (permissions == null) {
-            permissions = ""execute"";
-        } else {
-            permissions = permissions + "",execute"";
-        }
-    }
-
+    java.io.File file = new java.io.File(FileName);
     try {
-        if (permissions != null) {
-            java.lang.System.getSecurityManager().checkPermission(
-                new java.io.FilePermission(FileName, permissions));
+        boolean ok = true;
+
+        if (ML_access_types_includes_read(AccessTypes)) {
+            ok = file.canRead();
         }
-        Result = ML_make_io_res_0_ok();
+
+        if (ok && ML_access_types_includes_write(AccessTypes)) {
+            ok = file.canWrite();
+        }
+
+        if (ok && ML_access_types_includes_execute(AccessTypes)) {
+            // File.canExecute() was added in Java 1.6 but we only require
+            // Java 1.5.
+            try {
+                java.lang.reflect.Method canExecute =
+                    file.getClass().getMethod(""canExecute"");
+                ok = (Boolean) canExecute.invoke(file);
+            }
+            catch (java.lang.NoSuchMethodException e) {
+                // Assume the file is executable.
+            }
+            catch (java.lang.IllegalAccessException e) {
+                // Assume the file is executable.
+            }
+            catch (java.lang.reflect.InvocationTargetException e) {
+                ok = false;
+            }
+        }
+
+        if (ok) {
+            Result = ML_make_io_res_0_ok();
+        } else {
+            Result = ML_make_io_res_0_error_msg(
+                ""file not accessible: Permission denied"");
+        }
     }
-    catch (java.lang.Exception e) {
-        Result = ML_make_io_res_0_error_msg(e.getMessage());
+    catch (java.lang.SecurityException e) {
+        Result = ML_make_io_res_0_error_msg(e.toString());
     }
 ").
 
