@@ -6,7 +6,8 @@ THIS_DIR = par_conj
 
 # please keep these lists sorted
 DEP_PAR_CONJ_PROGS= \
-	bug_130 \
+	bug_130_unreachable \
+	bug_130_should_push_signal \
 	consume_in_some_branches \
 	consume_in_some_branches_and_after \
 	consume_wait \

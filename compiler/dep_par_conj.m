@@ -1008,110 +1008,117 @@ insert_wait_in_cases(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
 insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
         Goal0, Goal, !VarSet, !VarTypes) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    ( var_in_nonlocals(ProducedVar, Goal0) ->
-        (
-            GoalExpr0 = conj(ConjType, Goals0),
+    Detism = goal_info_get_determinism(GoalInfo0),
+    determinism_components(Detism, _CanFail, NumSolutions),
+    (
+        ( NumSolutions = at_most_one
+        ; NumSolutions = at_most_many_cc
+        ; NumSolutions = at_most_many
+        ),
+        ( var_in_nonlocals(ProducedVar, Goal0) ->
             (
-                ConjType = plain_conj,
-                insert_signal_in_plain_conj(ModuleInfo, FutureMap, ProducedVar,
-                    Goals0, Goals, !VarSet, !VarTypes)
-            ;
-                ConjType = parallel_conj,
-                insert_signal_in_par_conj(ModuleInfo, FutureMap, ProducedVar,
-                    Goals0, Goals, !VarSet, !VarTypes)
-            ),
-            GoalExpr = conj(ConjType, Goals),
-            Goal = hlds_goal(GoalExpr, GoalInfo0)
-        ;
-            GoalExpr0 = disj(Goals0),
-            insert_signal_in_disj(ModuleInfo, FutureMap, ProducedVar,
-                Goals0, Goals, !VarSet, !VarTypes),
-            GoalExpr = disj(Goals),
-            Goal = hlds_goal(GoalExpr, GoalInfo0)
-        ;
-            GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
-            ( ProducedVar = SwitchVar ->
-                unexpected(this_file, "switch on unbound shared variable")
-            ;
-                insert_signal_in_cases(ModuleInfo, FutureMap, ProducedVar,
-                    Cases0, Cases, !VarSet, !VarTypes),
-                GoalExpr = switch(SwitchVar, CanFail, Cases),
-                Goal = hlds_goal(GoalExpr, GoalInfo0)
-            )
-        ;
-            GoalExpr0 = if_then_else(QuantVars, Cond, Then0, Else0),
-            expect(var_not_in_nonlocals(ProducedVar, Cond),
-                this_file, "condition binds shared variable"),
-            insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
-                Then0, Then, !VarSet, !VarTypes),
-            insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
-                Else0, Else, !VarSet, !VarTypes),
-            GoalExpr = if_then_else(QuantVars, Cond, Then, Else),
-            Goal = hlds_goal(GoalExpr, GoalInfo0)
-        ;
-            GoalExpr0 = negation(_),
-            unexpected(this_file, "negation binds shared variable")
-        ;
-            GoalExpr0 = scope(Reason, SubGoal0),
-            ( Reason = from_ground_term(_, from_ground_term_construct) ->
-                % Pushing the signal into the scope would invalidate the
-                % invariant that from_ground_term_construct scopes do nothing
-                % except construct a ground term. It would also be pointless,
-                % since the code generator will turn the entire scope into a
-                % single assignment statement. We therefore put he signal
-                % *after* the scope.
-                insert_signal_after_goal(ModuleInfo, FutureMap, ProducedVar,
-                    Goal0, Goal, !VarSet, !VarTypes)
-            ;
-                SubGoal0 = hlds_goal(_, SubGoalInfo0),
-                Detism0 = goal_info_get_determinism(GoalInfo0),
-                SubDetism0 = goal_info_get_determinism(SubGoalInfo0),
-                determinism_components(Detism0, _, MaxSolns0),
-                determinism_components(SubDetism0, _, SubMaxSolns0),
+                GoalExpr0 = conj(ConjType, Goals0),
                 (
-                    SubMaxSolns0 = at_most_many,
-                    MaxSolns0 \= at_most_many
-                ->
-                    % The value of ProducedVar is not stable inside SubGoal0,
-                    % i.e. SubGoal0 can generate a value for ProducedVar and
-                    % then backtrack over the goal that generated it. In such
-                    % cases, we can signal the availability of ProducedVar
-                    % only when it has become stable, which is when the scope
-                    % has cut away any possibility of further backtracking
-                    % inside SubGoal0.
+                    ConjType = plain_conj,
+                    insert_signal_in_plain_conj(ModuleInfo, FutureMap,
+                        ProducedVar, Goals0, Goals, !VarSet, !VarTypes)
+                ;
+                    ConjType = parallel_conj,
+                    insert_signal_in_par_conj(ModuleInfo, FutureMap,
+                        ProducedVar, Goals0, Goals, !VarSet, !VarTypes)
+                ),
+                GoalExpr = conj(ConjType, Goals),
+                Goal = hlds_goal(GoalExpr, GoalInfo0)
+            ;
+                GoalExpr0 = disj(Goals0),
+                insert_signal_in_disj(ModuleInfo, FutureMap, ProducedVar,
+                    Goals0, Goals, !VarSet, !VarTypes),
+                GoalExpr = disj(Goals),
+                Goal = hlds_goal(GoalExpr, GoalInfo0)
+            ;
+                GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
+                ( ProducedVar = SwitchVar ->
+                    unexpected(this_file, "switch on unbound shared variable")
+                ;
+                    insert_signal_in_cases(ModuleInfo, FutureMap, ProducedVar,
+                        Cases0, Cases, !VarSet, !VarTypes),
+                    GoalExpr = switch(SwitchVar, CanFail, Cases),
+                    Goal = hlds_goal(GoalExpr, GoalInfo0)
+                )
+            ;
+                GoalExpr0 = if_then_else(QuantVars, Cond, Then0, Else0),
+                expect(var_not_in_nonlocals(ProducedVar, Cond),
+                    this_file, "condition binds shared variable"),
+                insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
+                    Then0, Then, !VarSet, !VarTypes),
+                insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
+                    Else0, Else, !VarSet, !VarTypes),
+                GoalExpr = if_then_else(QuantVars, Cond, Then, Else),
+                Goal = hlds_goal(GoalExpr, GoalInfo0)
+            ;
+                GoalExpr0 = negation(_),
+                unexpected(this_file, "negation binds shared variable")
+            ;
+                GoalExpr0 = scope(Reason, SubGoal0),
+                ( Reason = from_ground_term(_, from_ground_term_construct) ->
+                    % Pushing the signal into the scope would invalidate the
+                    % invariant that from_ground_term_construct scopes do
+                    % nothing except construct a ground term. It would also be
+                    % pointless, since the code generator will turn the entire
+                    % scope into a single assignment statement. We therefore
+                    % put he signal *after* the scope.
                     insert_signal_after_goal(ModuleInfo, FutureMap, ProducedVar,
                         Goal0, Goal, !VarSet, !VarTypes)
                 ;
-                    insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
-                        SubGoal0, SubGoal, !VarSet, !VarTypes),
-                    GoalExpr = scope(Reason, SubGoal),
-                    Goal = hlds_goal(GoalExpr, GoalInfo0)
+                    SubGoal0 = hlds_goal(_, SubGoalInfo0),
+                    Detism0 = goal_info_get_determinism(GoalInfo0),
+                    SubDetism0 = goal_info_get_determinism(SubGoalInfo0),
+                    determinism_components(Detism0, _, MaxSolns0),
+                    determinism_components(SubDetism0, _, SubMaxSolns0),
+                    (
+                        SubMaxSolns0 = at_most_many,
+                        MaxSolns0 \= at_most_many
+                    ->
+                        % The value of ProducedVar is not stable inside
+                        % SubGoal0, i.e. SubGoal0 can generate a value for
+                        % ProducedVar and then backtrack over the goal that
+                        % generated it. In such cases, we can signal the
+                        % availability of ProducedVar only when it has become
+                        % stable, which is when the scope has cut away any
+                        % possibility of further backtracking inside SubGoal0.
+                        insert_signal_after_goal(ModuleInfo, FutureMap,
+                            ProducedVar, Goal0, Goal, !VarSet, !VarTypes)
+                    ;
+                        insert_signal_in_goal(ModuleInfo, FutureMap,
+                            ProducedVar, SubGoal0, SubGoal, !VarSet, !VarTypes),
+                        GoalExpr = scope(Reason, SubGoal),
+                        Goal = hlds_goal(GoalExpr, GoalInfo0)
+                    )
                 )
+            ;
+                ( GoalExpr0 = unify(_, _, _, _, _)
+                ; GoalExpr0 = plain_call(_, _, _, _, _, _)
+                ; GoalExpr0 = generic_call(_, _, _, _)
+                ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+                ),
+                insert_signal_after_goal(ModuleInfo, FutureMap, ProducedVar,
+                    Goal0, Goal, !VarSet, !VarTypes)
+            ;
+                GoalExpr0 = shorthand(_),
+                unexpected(this_file, "insert_signal_in_goal: shorthand")
             )
         ;
-            ( GoalExpr0 = unify(_, _, _, _, _)
-            ; GoalExpr0 = plain_call(_, _, _, _, _, _)
-            ; GoalExpr0 = generic_call(_, _, _, _)
-            ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
-            ),
-            insert_signal_after_goal(ModuleInfo, FutureMap, ProducedVar,
-                Goal0, Goal, !VarSet, !VarTypes)
-        ;
-            GoalExpr0 = shorthand(_),
-            unexpected(this_file, "insert_signal_in_goal: shorthand")
+            % We expected this goal to produce the variable that we're looking
+            % for.
+            unexpected(this_file,
+                "insert_signal_in_goal: ProducedVar is not in nonlocals")
         )
     ;
-        % When inserting waits into a goal, it is ok for the goal not to
-        % mention the consumed variable, but when inserting signals into a
-        % goal, the goal must produce the variable if it succeeds, so if
-        % the goal does not mention the variable, it cannot succeed.
-        Detism = goal_info_get_determinism(GoalInfo0),
-        determinism_components(Detism, _CanFail, SolnCount),
-        expect(unify(SolnCount, at_most_zero), this_file,
-            "insert_signal_in_goal: ProducedVar is not in nonlocals"),
-
-        % There would be no point in adding a signal to the end of Goal0,
-        % since execution cannot get there.
+        NumSolutions = at_most_zero,
+        % We don't bother pushing signals into code that has no solutions.
+        % Note that we can't call unexpected here since we could be trying to
+        % push a signal into a procedure during specialisation.  We must fail
+        % gracefully.
         Goal = Goal0
     ).
 
@@ -2191,6 +2198,11 @@ should_we_push_test(PredProcId, ArgPos, PushOp, IsWorthPushing, SpecInfo) :-
         ;
             CostAfterSignal = seen_signal_non_negligible_cost_after,
             IsWorthPushing = worth_pushing
+        ;
+            CostAfterSignal = code_has_no_solutions,
+            % The signal will never be executed no matter where we put it,
+            % don't bother specialising code.
+            IsWorthPushing = not_worth_pushing 
         )
     ).
 
@@ -2460,10 +2472,22 @@ should_we_push_wait_in_cases(Var, [Case | Cases], SeenWait, CostBeforeWait) :-
 
 :- type cost_after_signal
     --->    not_seen_signal
+    ;       code_has_no_solutions
+                % The goal has no solutions and therefore does not produce the
+                % result.
+
     ;       seen_signal_negligible_cost_after
     ;       seen_signal_non_negligible_cost_after.
 
-:- pred seen_produced_var(cost_after_signal::in, cost_after_signal::out)
+    % The should we signal code only makes sense when it's input is one of
+    % these values for !.Signal.
+    %
+:- inst cost_after_signal_in
+    --->    not_seen_signal
+    ;       seen_signal_negligible_cost_after.
+
+:- pred seen_produced_var(cost_after_signal::in(cost_after_signal_in),
+    cost_after_signal::out)
     is det.
 
 seen_produced_var(!Signal) :-
@@ -2471,13 +2495,11 @@ seen_produced_var(!Signal) :-
         !.Signal = not_seen_signal,
         !:Signal = seen_signal_negligible_cost_after
     ;
-        ( !.Signal = seen_signal_negligible_cost_after
-        ; !.Signal = seen_signal_non_negligible_cost_after
-        )
+        !.Signal = seen_signal_negligible_cost_after
     ).
 
-:- pred seen_nontrivial_cost(cost_after_signal::in, cost_after_signal::out)
-    is det.
+:- pred seen_nontrivial_cost(cost_after_signal::in(cost_after_signal_in), 
+    cost_after_signal::out) is det.
 
 seen_nontrivial_cost(!Signal) :-
     (
@@ -2486,167 +2508,176 @@ seen_nontrivial_cost(!Signal) :-
     ;
         !.Signal = seen_signal_negligible_cost_after,
         !:Signal = seen_signal_non_negligible_cost_after
-    ;
-        !.Signal = seen_signal_non_negligible_cost_after
     ).
 
 :- pred should_we_push_signal(prog_var::in, hlds_goal::in,
-    cost_after_signal::in, cost_after_signal::out) is det.
+    cost_after_signal::in(cost_after_signal_in), cost_after_signal::out) 
+    is det.
 
 should_we_push_signal(Var, Goal, !Signal) :-
-    expect(negate(unify(!.Signal, seen_signal_non_negligible_cost_after)),
-        this_file, "should_we_push_signal: already know we want to push"),
     Goal = hlds_goal(GoalExpr, GoalInfo),
-    NonLocals = goal_info_get_nonlocals(GoalInfo),
-    % When handling calls, we could use profiling data to decide whether
-    % a call site has negligible cost or not. In the absence of such data,
-    % we have to assume that all call sites have non-negligible cost, because
-    % if we assumed that they have negligible cost, then we would have to infer
-    % that *all* goals have negligible cost, which besides being incorrect,
-    % would mean that there is never any point in pushing signals, rendering
-    % this entire code useless.
+    Detism = goal_info_get_determinism(GoalInfo),
+    determinism_components(Detism, _CanFail, NumSolutions),
     (
-        GoalExpr = unify(_, _, _, _, _),
-        ( set.member(Var, NonLocals) ->
-            seen_produced_var(!Signal)
-        ;
-            true
-        )
-    ;
-        % With generic calls, the only safe assumption is that they produce
-        % Var just before return. With foreign code, the signal is done after
-        % the return to Mercury execution.
-        ( GoalExpr = generic_call(_, _, _, _)
-        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ( NumSolutions = at_most_one
+        ; NumSolutions = at_most_many_cc
+        ; NumSolutions = at_most_many
         ),
-        ( set.member(Var, NonLocals) ->
-            seen_produced_var(!Signal)
-        ;
-            seen_nontrivial_cost(!Signal)
-        )
-    ;
-        GoalExpr = plain_call(_, _, _, _, _, _),
-        % XXX We should invoke should_we_push recursively on the called
-        % procedure, though that would require safeguards against infinite
-        % recursion.
-        ( set.member(Var, NonLocals) ->
-            seen_produced_var(!Signal)
-        ;
-            seen_nontrivial_cost(!Signal)
-        )
-    ;
-        GoalExpr = conj(ConjType, Conjuncts),
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
+        % When handling calls, we could use profiling data to decide whether a
+        % call site has negligible cost or not. In the absence of such data, we
+        % have to assume that all call sites have non-negligible cost, because
+        % if we assumed that they have negligible cost, then we would have to
+        % infer that *all* goals have negligible cost, which besides being
+        % incorrect, would mean that there is never any point in pushing
+        % signals, rendering this entire code useless.
         (
-            ConjType = plain_conj,
-            should_we_push_signal_in_plain_conj(Var, Conjuncts, !Signal)
-        ;
-            ConjType = parallel_conj,
-            should_we_push_signal_in_par_conj(Var, Conjuncts, !.Signal,
-                !Signal)
-        )
-    ;
-        GoalExpr = disj(Disjuncts),
-        % What we do in this case doesn't usually matter. Semidet disjunctions
-        % cannot bind any nonlocal variables (and thus cannot bind Var).
-        % Nondet disjunctions can bind variables, but we want to parallelize
-        % only model_det code. The only case where what we do here matters
-        % is when a nondet disjunction is inside a scope that commits to the
-        % first success.
-        should_we_push_signal_in_disj(Var, Disjuncts, !.Signal, !Signal)
-    ;
-        GoalExpr = switch(SwitchVar, _, Cases),
-        ( Var = SwitchVar ->
-            % !.Signal must show that we have already seen a signal.
-            expect(negate(unify(!.Signal, not_seen_signal)),
-                this_file, "should_we_push_signal: not seen switch var")
-        ;
-            should_we_push_signal_in_cases(Var, Cases, !.Signal, !Signal)
-        )
-    ;
-        GoalExpr = if_then_else(_Vars, _Cond, Then, Else),
-        % The condition cannot produce a nonlocal variable such as Var.
-        should_we_push_signal(Var, Then, !.Signal, SignalThen),
-        should_we_push_signal(Var, Else, !.Signal, SignalElse),
-        (
-            ( SignalThen = seen_signal_non_negligible_cost_after
-            ; SignalElse = seen_signal_non_negligible_cost_after
-            )
-        ->
-            % It is worth pushing the signal into at least one of the then and
-            % else cases.
-            !:Signal = seen_signal_non_negligible_cost_after
-        ;
-            ( SignalThen = seen_signal_negligible_cost_after
-            ; SignalElse = seen_signal_negligible_cost_after
-            )
-        ->
-            (
-                Then = hlds_goal(_, ThenInfo),
-                ThenDetism = goal_info_get_determinism(ThenInfo),
-                determinism_components(ThenDetism, _, ThenMaxSolns),
-                SignalThen = not_seen_signal,
-                not ( ThenMaxSolns = at_most_zero)
-            ->
-                unexpected(this_file,
-                    "should_we_push_signal: ite mode mismatch")
-            ;
-                true
-            ),
-            (
-                Else = hlds_goal(_, ElseInfo),
-                ElseDetism = goal_info_get_determinism(ElseInfo),
-                determinism_components(ElseDetism, _, ElseMaxSolns),
-                SignalElse = not_seen_signal,
-                not ( ElseMaxSolns = at_most_zero)
-            ->
-                unexpected(this_file,
-                    "should_we_push_signal: ite mode mismatch")
-            ;
-                true
-            ),
-            % Both arms of the if-then-else signal Var (if they succeed
-            % at all), but neither does anything nontrivial after the signal.
-            !:Signal = seen_signal_negligible_cost_after
-        ;
-            expect(unify(SignalThen, not_seen_signal),
-                this_file, "should_we_push_signal: ite not_seen_signal"),
-            expect(unify(SignalElse, not_seen_signal),
-                this_file, "should_we_push_signal: ite not_seen_signal"),
-            !:Signal = not_seen_signal
-        )
-    ;
-        GoalExpr = negation(SubGoal),
-        (
-            !.Signal = not_seen_signal
-            % A negated goal cannot produce a nonlocal variable such as Var,
-            % and we don't care about the cost of computations before the
-            % signal.
-        ;
-            !.Signal = seen_signal_negligible_cost_after,
-            % We do care whether the cost of SubGoal is negligible or not.
-            should_we_push_signal(Var, SubGoal, !Signal)
-        ;
-            !.Signal = seen_signal_non_negligible_cost_after,
-            unexpected(this_file, "seen_signal_non_negligible_cost_after")
-        )
-    ;
-        GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
-            ( Var = TermVar ->
+            GoalExpr = unify(_, _, _, _, _),
+            ( set.member(Var, NonLocals) ->
                 seen_produced_var(!Signal)
             ;
                 true
             )
-        ;   
-            should_we_push_signal(Var, SubGoal, !Signal)
+        ;
+            % With generic calls, the only safe assumption is that they produce
+            % Var just before return. With foreign code, the signal is done after
+            % the return to Mercury execution.
+            ( GoalExpr = generic_call(_, _, _, _)
+            ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+            ),
+            ( set.member(Var, NonLocals) ->
+                seen_produced_var(!Signal)
+            ;
+                seen_nontrivial_cost(!Signal)
+            )
+        ;
+            GoalExpr = plain_call(_, _, _, _, _, _),
+            % XXX We should invoke should_we_push recursively on the called
+            % procedure, though that would require safeguards against infinite
+            % recursion.
+            ( set.member(Var, NonLocals) ->
+                seen_produced_var(!Signal)
+            ;
+                seen_nontrivial_cost(!Signal)
+            )
+        ;
+            GoalExpr = conj(ConjType, Conjuncts),
+            (
+                ConjType = plain_conj,
+                should_we_push_signal_in_plain_conj(Var, Conjuncts, !Signal)
+            ;
+                ConjType = parallel_conj,
+                should_we_push_signal_in_par_conj(Var, Conjuncts, !.Signal,
+                    !Signal)
+            )
+        ;
+            GoalExpr = disj(Disjuncts),
+            % What we do in this case doesn't usually matter. Semidet
+            % disjunctions cannot bind any nonlocal variables (and thus cannot
+            % bind Var).  Nondet disjunctions can bind variables, but we want
+            % to parallelize only model_det code. The only case where what we
+            % do here matters is when a nondet disjunction is inside a scope
+            % that commits to the first success.
+            should_we_push_signal_in_disj(Var, Disjuncts, !Signal)
+        ;
+            GoalExpr = switch(SwitchVar, _, Cases),
+            ( Var = SwitchVar ->
+                % !.Signal must show that we have already seen a signal.
+                expect(negate(unify(!.Signal, not_seen_signal)),
+                    this_file, "should_we_push_signal: not seen switch var")
+            ;
+                should_we_push_signal_in_cases(Var, Cases, !Signal)
+            )
+        ;
+            GoalExpr = if_then_else(_Vars, _Cond, Then, Else),
+            % The condition cannot produce a nonlocal variable such as Var.
+            should_we_push_signal(Var, Then, !.Signal, SignalThen),
+            should_we_push_signal(Var, Else, !.Signal, SignalElse),
+            (
+                SignalThen = not_seen_signal,
+                (
+                    ( SignalElse = not_seen_signal
+                    ; SignalElse = code_has_no_solutions
+                    ),
+                    !:Signal = not_seen_signal
+                ;
+                    ( SignalElse = seen_signal_non_negligible_cost_after
+                    ; SignalElse = seen_signal_negligible_cost_after
+                    ),
+                    unexpected(this_file, "should_we_push_signal: " ++
+                        "ITE is not mode safe")
+                )
+            ;
+                SignalThen = code_has_no_solutions,
+                !:Signal = SignalElse
+            ;
+                SignalThen = seen_signal_non_negligible_cost_after,
+                (
+                    SignalElse = not_seen_signal,
+                    unexpected(this_file, "should_we_push_signal: " ++
+                        "ITE is not mode safe")
+                ;
+                    ( SignalElse = code_has_no_solutions
+                    ; SignalElse = seen_signal_non_negligible_cost_after
+                    ; SignalElse = seen_signal_negligible_cost_after
+                    ),
+                    !:Signal = seen_signal_non_negligible_cost_after
+                ) 
+            ;
+                SignalThen = seen_signal_negligible_cost_after,
+                (
+                    SignalElse = not_seen_signal,
+                    unexpected(this_file, "should_we_push_signal: " ++
+                        "ITE is not mode safe")
+                ;
+                    ( SignalElse = code_has_no_solutions
+                    ; SignalElse = seen_signal_negligible_cost_after
+                    ),
+                    !:Signal = seen_signal_negligible_cost_after
+                ;
+                    SignalElse = seen_signal_non_negligible_cost_after,
+                    !:Signal = seen_signal_non_negligible_cost_after
+                ) 
+            )
+        ;
+            GoalExpr = negation(SubGoal),
+            (
+                !.Signal = not_seen_signal
+                % A negated goal cannot produce a nonlocal variable such as Var,
+                % and we don't care about the cost of computations before the
+                % signal.
+            ;
+                !.Signal = seen_signal_negligible_cost_after,
+                % We do care whether the cost of SubGoal is negligible or not.
+                should_we_push_signal(Var, SubGoal, !Signal)
+            )
+        ;
+            GoalExpr = scope(Reason, SubGoal),
+            ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
+                ( Var = TermVar ->
+                    seen_produced_var(!Signal)
+                ;
+                    true
+                )
+            ;   
+                should_we_push_signal(Var, SubGoal, !Signal)
+            )
+        ;
+            GoalExpr = shorthand(_),
+            unexpected(this_file, "should_we_push_signal: shorthand")
         )
     ;
-        GoalExpr = shorthand(_),
-        unexpected(this_file, "should_we_push_signal: shorthand")
+        NumSolutions = at_most_zero,
+        % The goal can never complete, which means that it can never produce
+        % the future and has an 'unreachable' instmap.  Note that we haven't
+        % checked that this goal or a goal after it definitely produce the
+        % variable.
+        !:Signal = code_has_no_solutions
     ).
 
 :- pred should_we_push_signal_in_plain_conj(prog_var::in, list(hlds_goal)::in,
-    cost_after_signal::in, cost_after_signal::out) is det.
+    cost_after_signal::in(cost_after_signal_in), cost_after_signal::out) 
+    is det.
 
 should_we_push_signal_in_plain_conj(_Var, [], !Signal).
 should_we_push_signal_in_plain_conj(Var, [Conjunct | Conjuncts], !Signal) :-
@@ -2656,6 +2687,9 @@ should_we_push_signal_in_plain_conj(Var, [Conjunct | Conjuncts], !Signal) :-
         % There is no point in looking at Conjuncts; we already know
         % we want to push the signal.
     ;
+        !.Signal = code_has_no_solutions
+        % We don't bother checking if the signal occurs in unreachable code.
+    ;
         ( !.Signal = not_seen_signal
         ; !.Signal = seen_signal_negligible_cost_after
         ),
@@ -2663,8 +2697,8 @@ should_we_push_signal_in_plain_conj(Var, [Conjunct | Conjuncts], !Signal) :-
     ).
 
 :- pred should_we_push_signal_in_par_conj(prog_var::in, list(hlds_goal)::in,
-    cost_after_signal::in, cost_after_signal::in, cost_after_signal::out)
-    is det.
+    cost_after_signal::in(cost_after_signal_in), 
+    cost_after_signal::in, cost_after_signal::out) is det.
 
 should_we_push_signal_in_par_conj(_Var, [], _OrigSignal, !FinalSignal).
 should_we_push_signal_in_par_conj(Var, [Conjunct | Conjuncts], OrigSignal,
@@ -2677,6 +2711,9 @@ should_we_push_signal_in_par_conj(Var, [Conjunct | Conjuncts], OrigSignal,
         % conjuncts we have looked at so far produce Var.
         should_we_push_signal_in_par_conj(Var, Conjuncts, OrigSignal,
             !FinalSignal)
+    ;
+        ConjunctSignal = code_has_no_solutions,
+        !:FinalSignal = code_has_no_solutions
     ;
         ConjunctSignal = seen_signal_negligible_cost_after,
         (
@@ -2703,56 +2740,96 @@ should_we_push_signal_in_par_conj(Var, [Conjunct | Conjuncts], OrigSignal,
         "should_we_push_signal_in_par_conj: final signal goes backwards").
 
 :- pred should_we_push_signal_in_disj(prog_var::in, list(hlds_goal)::in,
-    cost_after_signal::in, cost_after_signal::in, cost_after_signal::out)
-    is det.
+    cost_after_signal::in(cost_after_signal_in), 
+    cost_after_signal::out) is det.
 
-should_we_push_signal_in_disj(_Var, [], _OrigSignal, !FinalSignal).
+should_we_push_signal_in_disj(_Var, [], _OrigSignal, code_has_no_solutions).
 should_we_push_signal_in_disj(Var, [FirstGoal | LaterGoals], OrigSignal,
-        _, !:FinalSignal) :-
+        Signal) :-
     should_we_push_signal(Var, FirstGoal, OrigSignal, SignalFirst),
     (
         SignalFirst = not_seen_signal,
         % If FirstGoal does not signal Var, the rest of the disjuncts
         % shouldn't either.
-        !:FinalSignal = SignalFirst
+        Signal = SignalFirst
     ;
         SignalFirst = seen_signal_non_negligible_cost_after,
         % We already know we want to push the signal.
-        !:FinalSignal = SignalFirst
+        Signal = SignalFirst
     ;
-        SignalFirst = seen_signal_negligible_cost_after,
+        ( SignalFirst = seen_signal_negligible_cost_after
+        ; SignalFirst = code_has_no_solutions
+        ),
         % We want to push the signal only if it is worth pushing
         % into one of the the rest of the disjuncts.
-        !:FinalSignal = SignalFirst,
         should_we_push_signal_in_disj(Var, LaterGoals, OrigSignal,
-            !FinalSignal)
+            Signal0),
+        (
+            SignalFirst = seen_signal_negligible_cost_after,
+            (
+                Signal0 = not_seen_signal,
+                unexpected(this_file, "should_we_push_signal_in_disj: " ++ 
+                    "The program doesn't seem mode correct")
+            ;
+                Signal0 = code_has_no_solutions,
+                Signal = SignalFirst
+            ;
+                ( Signal0 = seen_signal_negligible_cost_after
+                ; Signal0 = seen_signal_non_negligible_cost_after
+                ),
+                Signal = Signal0
+            )
+        ;
+            SignalFirst = code_has_no_solutions,
+            Signal = Signal0
+        )
     ).
 
 :- pred should_we_push_signal_in_cases(prog_var::in, list(case)::in,
-    cost_after_signal::in, cost_after_signal::in, cost_after_signal::out)
-    is det.
+    cost_after_signal::in(cost_after_signal_in), 
+    cost_after_signal::out) is det.
 
-should_we_push_signal_in_cases(_Var, [], _OrigSignal, !FinalSignal).
+should_we_push_signal_in_cases(_Var, [], _OrigSignal, code_has_no_solutions).
 should_we_push_signal_in_cases(Var, [FirstCase | LaterCases], OrigSignal,
-        _, !:FinalSignal) :-
+        Signal) :-
     FirstCase = case(_, _, FirstGoal),
     should_we_push_signal(Var, FirstGoal, OrigSignal, SignalFirst),
     (
         SignalFirst = not_seen_signal,
         % If FirstCase does not signal Var, the rest of the cases
         % shouldn't either.
-        !:FinalSignal = SignalFirst
+        Signal = SignalFirst
     ;
         SignalFirst = seen_signal_non_negligible_cost_after,
         % We already know we want to push the signal.
-        !:FinalSignal = SignalFirst
+        Signal = SignalFirst
     ;
-        SignalFirst = seen_signal_negligible_cost_after,
+        ( SignalFirst = seen_signal_negligible_cost_after
+        ; SignalFirst = code_has_no_solutions
+        ),
         % We want to push the signal only if it is worth pushing
         % into one of the the rest of the cases.
-        !:FinalSignal = SignalFirst,
         should_we_push_signal_in_cases(Var, LaterCases, OrigSignal,
-            !FinalSignal)
+            Signal0),
+        (
+            SignalFirst = seen_signal_negligible_cost_after,
+            (
+                Signal0 = not_seen_signal,
+                unexpected(this_file, "should_we_push_signal_in_cases: " ++ 
+                    "The program doesn't seem mode correct")
+            ;
+                Signal0 = code_has_no_solutions,
+                Signal = SignalFirst
+            ;
+                ( Signal0 = seen_signal_negligible_cost_after
+                ; Signal0 = seen_signal_non_negligible_cost_after
+                ),
+                Signal = Signal0
+            )
+        ;
+            SignalFirst = code_has_no_solutions,
+            Signal = Signal0 
+        )
     ).
 
 :- pred seen_more_signal(cost_after_signal::in, cost_after_signal::in)
@@ -2764,14 +2841,26 @@ seen_more_signal(SignalA, SignalB) :-
 :- func seen_more_signal_2(cost_after_signal, cost_after_signal) = bool.
 
 seen_more_signal_2(not_seen_signal, _) = yes.
+seen_more_signal_2(code_has_no_solutions, 
+    not_seen_signal) = no.
+seen_more_signal_2(code_has_no_solutions, 
+    code_has_no_solutions) = yes.
+seen_more_signal_2(code_has_no_solutions, 
+    seen_signal_negligible_cost_after) = no.
+seen_more_signal_2(code_has_no_solutions, 
+    seen_signal_non_negligible_cost_after) = no.
 seen_more_signal_2(seen_signal_negligible_cost_after,
     not_seen_signal) = no.
+seen_more_signal_2(seen_signal_negligible_cost_after,
+    code_has_no_solutions) = yes.
 seen_more_signal_2(seen_signal_negligible_cost_after,
     seen_signal_negligible_cost_after) = yes.
 seen_more_signal_2(seen_signal_negligible_cost_after,
     seen_signal_non_negligible_cost_after) = yes.
 seen_more_signal_2(seen_signal_non_negligible_cost_after,
     not_seen_signal) = no.
+seen_more_signal_2(seen_signal_non_negligible_cost_after,
+    code_has_no_solutions) = yes.
 seen_more_signal_2(seen_signal_non_negligible_cost_after,
     seen_signal_negligible_cost_after) = no.
 seen_more_signal_2(seen_signal_non_negligible_cost_after,
