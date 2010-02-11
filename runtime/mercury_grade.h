@@ -126,6 +126,9 @@
 #if defined(MR_MPS_GC)
   #define MR_GRADE_PART_4       MR_PASTE2(MR_GRADE_PART_3, _mps)
   #define MR_GRADE_OPT_PART_4   MR_GRADE_OPT_PART_3 ".mps"
+#elif defined(MR_HGC)
+  #define MR_GRADE_PART_4       MR_PASTE2(MR_GRADE_PART_3, _hgc)
+  #define MR_GRADE_OPT_PART_4   MR_GRADE_OPT_PART_3 ".hgc"
 #elif defined(MR_BOEHM_GC_DEBUG)
   #define MR_GRADE_PART_4       MR_PASTE2(MR_GRADE_PART_3, _gcd)
   #define MR_GRADE_OPT_PART_4   MR_GRADE_OPT_PART_3 ".gcd"

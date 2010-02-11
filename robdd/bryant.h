@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995, 2001-2005 Peter Schachte and The University of Melbourne.
+** Copyright (C) 1995, 2001-2005 Peter Schachte and, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -23,7 +23,11 @@
 #include "var.h"
 #if defined(CONSERVATIVE_GC)
   #define GC_I_HIDE_POINTERS
+  #if defined(MR_HGC)
+    #include "mercury_hgc.h"
+  #else
   #include "gc.h"
+  #endif
   #define MR_ROBDD_BRYANT_CONSERVATIVE_GC
   #define MR_ROBDD_HIDE_POINTER(p) 	HIDE_POINTER(p)
   #define MR_ROBDD_REVEAL_POINTER(p)	REVEAL_POINTER(p)

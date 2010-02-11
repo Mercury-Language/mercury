@@ -311,6 +311,7 @@ case $gc_method in
     accurate)       GC_OPTS="-DMR_NATIVE_GC" ;;
     boehm)          GC_OPTS="$boehm_opts" ;;
     boehm_debug)    GC_OPTS="$boehm_opts -DMR_BOEHM_GC_DEBUG -DGC_DEBUG -DKEEP_BACK_PTRS" ;;
+    hgc)            GC_OPTS="-DMR_CONSERVATIVE_GC -DMR_HGC" ;;
     conservative)   GC_OPTS="-DMR_CONSERVATIVE_GC -DMR_BOEHM_GC" ;;
     mps)            GC_OPTS="-DMR_CONSERVATIVE_GC -DMR_MPS_GC" ;;
     none)           GC_OPTS="" ;;

@@ -96,6 +96,7 @@ case $gc_method in
 	conservative)	GRADE="$GRADE.gc" ;;	# deprecated; alias for boehm
 	boehm)		GRADE="$GRADE.gc" ;;
 	boehm_debug)	GRADE="$GRADE.gcd" ;;
+	hgc)		GRADE="$GRADE.hgc" ;;
 	mps)		GRADE="$GRADE.mps" ;;
 	accurate)	GRADE="$GRADE.agc" ;;
 esac

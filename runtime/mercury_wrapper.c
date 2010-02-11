@@ -792,9 +792,16 @@ mercury_runtime_init(int argc, char **argv)
 void
 MR_init_conservative_GC(void)
 {
-  #ifdef MR_MPS_GC
+  #if defined(MR_MPS_GC)
 
     mercury_mps_init(MR_heap_size * 1024, !MR_mps_quiet);
+
+  #elif defined(MR_HGC)
+
+    mercury_hgc_init();
+    MR_runqueue_head = NULL;
+    mercury_hgc_add_root(&MR_runqueue_head);
+    (*MR_address_of_init_gc)();
 
   #else /* MR_BOEHM_GC */
 

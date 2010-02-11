@@ -47,6 +47,7 @@
 ** MR_USE_ASM_LABELS
 ** MR_CONSERVATIVE_GC (= boehm_gc *or* MPS)
 ** MR_BOEHM_GC
+** MR_HGC
 ** MR_MPS_GC
 ** MR_NATIVE_GC
 ** MR_NO_TYPE_LAYOUT
@@ -656,7 +657,7 @@
 ** If MR_CONSERVATIVE_GC is defined without specifying which
 ** collector to use, then default to using the Boehm collector.
 */
-#if defined(MR_BOEHM_GC) || defined(MR_MPS_GC)
+#if defined(MR_HGC) || defined(MR_BOEHM_GC) || defined(MR_MPS_GC)
   #ifndef MR_CONSERVATIVE_GC
   #define MR_CONSERVATIVE_GC
   #endif

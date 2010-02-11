@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -95,6 +95,9 @@
 
     ;       gc_boehm_debug
             % Boehm collector with debugging enabled.
+
+    ;       gc_hgc
+            % Ralph Becket's hgc conservative collector.
 
     ;       gc_mps
             % A different conservative collector, based on Ravenbrook Limited's
@@ -330,6 +333,7 @@ convert_gc_method("none", gc_none).
 convert_gc_method("conservative", gc_boehm).
 convert_gc_method("boehm", gc_boehm).
 convert_gc_method("boehm_debug", gc_boehm_debug).
+convert_gc_method("hgc", gc_hgc).
 convert_gc_method("mps", gc_mps).
 convert_gc_method("accurate", gc_accurate).
 convert_gc_method("automatic", gc_automatic).
@@ -455,6 +459,7 @@ simple_foreign_language_string(lang_erlang) = "erlang".
 
 gc_is_conservative(gc_boehm) = yes.
 gc_is_conservative(gc_boehm_debug) = yes.
+gc_is_conservative(gc_hgc) = yes.
 gc_is_conservative(gc_mps) = yes.
 gc_is_conservative(gc_none) = no.
 gc_is_conservative(gc_accurate) = no.

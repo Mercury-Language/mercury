@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 et
 */
 /*
-** Copyright (C) 1995-2006 The University of Melbourne.
+** Copyright (C) 1995-2006, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -43,6 +43,9 @@
 #ifdef MR_CONSERVATIVE_GC
   #ifdef MR_MPS_GC
     #include "mercury_mps.h"
+  #endif
+  #ifdef MR_HGC
+    #include "mercury_hgc.h"
   #endif
   #ifdef MR_BOEHM_GC
     #define GC_I_HIDE_POINTERS

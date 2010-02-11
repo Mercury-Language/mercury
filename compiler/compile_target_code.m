@@ -520,6 +520,9 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         GC_Opt = BoehmGC_Opt ++
             "-DMR_BOEHM_GC_DEBUG -DGC_DEBUG -DKEEP_BACKPTRS "
     ;
+        GC_Method = gc_hgc,
+        GC_Opt = "-DMR_CONSERVATIVE_GC -DMR_HGC "
+    ;
         GC_Method = gc_mps,
         GC_Opt = "-DMR_CONSERVATIVE_GC -DMR_MPS_GC "
     ;
@@ -1974,12 +1977,17 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
         grade_directory_component(Globals, GradeDir),
 
         % GC libraries.
+        % We always compile with hgc since it's home-grown and very small.
         (
             GCMethod = gc_automatic,
             StaticGCLibs = "",
             SharedGCLibs = ""
         ;
             GCMethod = gc_none,
+            StaticGCLibs = "",
+            SharedGCLibs = ""
+        ;
+            GCMethod = gc_hgc,
             StaticGCLibs = "",
             SharedGCLibs = ""
         ;

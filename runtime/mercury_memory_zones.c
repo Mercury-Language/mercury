@@ -146,7 +146,11 @@ MR_alloc_zone_memory(size_t size)
             (unsigned long) size, (unsigned long) GetLastError());
     }
 
-  #ifdef MR_CONSERVATIVE_GC
+  #if defined(MR_HGC)
+    if (ptr != NULL) {
+        mercury_hgc_add_roots_range((char *) ptr, ((char *) ptr) + size);
+    }
+  #elif defined(MR_CONSERVATIVE_GC)
     if (ptr != NULL) {
         GC_add_roots((char *) ptr, (char *) ptr + size);
     }

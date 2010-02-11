@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1995-2008 The University of Melbourne.
+** Copyright (C) 1995-2008, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -363,7 +363,11 @@ static const char mercury_funcs1[] =
     "   ** on RS/6000, and for gnu-win32 on Windows 95 or NT.\n"
     "   ** It may also be helpful on other systems.\n"
     "   */\n"
+    "   #ifdef MR_HGC\n"
+    "    mercury_hgc_set_stack_bot(stackbottom);\n"
+    "   #else\n"
     "   GC_stackbottom = stackbottom;\n"
+    "   #endif\n"
     "#endif\n"
     "\n"
     "/*\n"

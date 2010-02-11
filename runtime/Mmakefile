@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2009 The University of Melbourne.
+# Copyright (C) 1998-2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -27,14 +27,14 @@ HDRS		=	\
 			mercury_array_macros.h	\
 			mercury_atomic_ops.h	\
 			mercury_backjump.h	\
+			mercury_bitmap.h	\
 			mercury_bootstrap.h	\
 			mercury_builtin_types.h	\
 			mercury_builtin_types_proc_layouts.h	\
-			mercury_bitmap.h	\
 			mercury_calls.h		\
 			mercury_complexity.h	\
-			mercury_conf_bootstrap.h \
 			mercury_conf.h		\
+			mercury_conf_bootstrap.h \
 			mercury_conf_param.h	\
 			mercury_construct.h	\
 			mercury_context.h	\
@@ -48,6 +48,7 @@ HDRS		=	\
 			mercury_dummy.h		\
 			mercury_dword.h		\
 			mercury_engine.h	\
+            mercury_expanding_array.h \
 			mercury_file.h		\
 			mercury_float.h		\
 			mercury_getopt.h	\
@@ -56,6 +57,7 @@ HDRS		=	\
 			mercury_hash_table.h	\
 			mercury_heap.h		\
 			mercury_heap_profile.h	\
+			mercury_hgc.h			\
 			mercury_hlc_types.h	\
 			mercury_ho_call.h	\
 			mercury_imp.h		\
@@ -76,14 +78,14 @@ HDRS		=	\
 			mercury_prof_mem.h	\
 			mercury_prof_time.h	\
 			mercury_profiling_builtin.h	\
+			mercury_reg_workarounds.h	\
 			mercury_region.h	\
 			mercury_regs.h		\
-			mercury_reg_workarounds.h	\
 			mercury_runtime_util.h	\
 			mercury_signal.h	\
 			mercury_stack_layout.h	\
-			mercury_stacks.h	\
 			mercury_stack_trace.h	\
+			mercury_stacks.h	\
 			mercury_std.h		\
 			mercury_stm.h		\
 			mercury_string.h	\
@@ -97,11 +99,11 @@ HDRS		=	\
 			mercury_trace_base.h	\
 			mercury_trace_term.h	\
 			mercury_trail.h		\
-			mercury_typeclass_info.h	\
 			mercury_type_desc.h	\
 			mercury_type_info.h	\
-			mercury_types.h		\
 			mercury_type_tables.h	\
+			mercury_typeclass_info.h	\
+			mercury_types.h		\
 			mercury_univ.h		\
 			mercury_wrapper.h	\
 			mercury_wsdeque.h
@@ -154,9 +156,9 @@ CFILES		= 	\
 			mercury_agc_debug.c	\
 			mercury_atomic_ops.c	\
 			mercury_backjump.c	\
+			mercury_bitmap.c	\
 			mercury_bootstrap.c	\
 			mercury_builtin_types.c	\
-			mercury_bitmap.c	\
 			mercury_construct.c	\
 			mercury_context.c	\
 			mercury_debug.c		\
@@ -168,11 +170,12 @@ CFILES		= 	\
 			mercury_engine.c	\
 			mercury_file.c		\
 			mercury_float.c		\
-			mercury_getopt1.c	\
 			mercury_getopt.c	\
+			mercury_getopt1.c	\
 			mercury_grade.c		\
 			mercury_hash_table.c	\
 			mercury_heap_profile.c	\
+			mercury_hgc.c			\
 			mercury_ho_call.c	\
 			mercury_label.c		\
 			mercury_layout_util.c	\

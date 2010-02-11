@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2006 The University of Melbourne.
+** Copyright (C) 1993-2006, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -100,6 +100,10 @@ extern	int	mercury_terminate(void);
   #ifdef MR_BOEHM_GC
     #define GC_I_HIDE_POINTERS
     #include "gc.h"		/* for GC_INIT(), GC_stack_bottom */
+  #endif
+  #ifdef MR_HGC
+    #include "mercury_hgc.h"    /* for mercury_hgc_init(), 
+                                   mercury_hgc_set_stack_bot() */
   #endif
 #endif
 

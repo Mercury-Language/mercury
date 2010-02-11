@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 noet
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2008 The University of Melbourne.
+# Copyright (C) 1995-2008, 2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -232,6 +232,9 @@ case "$GRADE" in
 	*.gc*)
 		gc_grade=gc
 		;;
+	*.hgc*)
+		gc_grade=hgc
+		;;
 	*.mps*)
 		gc_grade=mps
 		;;
@@ -251,6 +254,11 @@ esac
 
 case "$gc_grade" in
 	nogc)	
+		LIBGC=
+		LIBGC_STATIC=
+		;;
+	hgc)
+		# HGC is part of the runtime, don't link anything extra.
 		LIBGC=
 		LIBGC_STATIC=
 		;;
