@@ -127,6 +127,12 @@ MR_threadscope_post_stop_context(MR_ContextStopReason reason);
 extern void
 MR_threadscope_post_calling_main(void);
 
+/*
+** Post this message when a thread begins looking for work in MR_do_runnext
+*/
+extern void
+MR_threadscope_post_looking_for_global_work(void);
+
 #endif /* MR_THREADSCOPE */
 
 #endif /* not MERCURY_THREADSCOPE_H */

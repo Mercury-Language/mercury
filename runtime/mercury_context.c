@@ -1118,6 +1118,10 @@ MR_define_entry(MR_do_runnext);
 
     MR_atomic_inc_int(&MR_num_idle_engines);
 
+#ifdef MR_THREADSCOPE
+    MR_threadscope_post_looking_for_global_work();
+#endif
+
     MR_LOCK(&MR_runqueue_lock, "MR_do_runnext (i)");
 
     while (1) {

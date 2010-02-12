@@ -137,8 +137,10 @@ ENDINIT
 #define MR_TS_EVENT_GC_WORK             21 /* () */
 #define MR_TS_EVENT_GC_DONE             22 /* () */
 #define MR_TS_EVENT_CALL_MAIN           23 /* () */
+#define MR_TS_EVENT_LOOKING_FOR_GLOBAL_WORK \
+                                        24 /* () */
 
-#define MR_TS_NUM_EVENT_TAGS            24
+#define MR_TS_NUM_EVENT_TAGS            25
 
 #if 0  /* DEPRECATED EVENTS: */
 #define EVENT_CREATE_SPARK        13 /* (cap, thread) */
@@ -175,6 +177,12 @@ struct MR_threadscope_event_buffer {
 
     /* The position of the start of the most recent block. */
     MR_Integer          MR_tsbuffer_block_open_pos;
+
+    /* 
+    ** True if the engine's current context is stopped and therefore stop and
+    ** start events should not be posted from the GC callback procedures.
+    */
+    MR_bool             MR_tsbuffer_ctxt_is_stopped;
 
     /* A cheap userspace lock to make buffers reentrant. */
     volatile MR_Us_Lock MR_tsbuffer_lock;
@@ -284,6 +292,10 @@ static EventTypeDesc event_type_descs[] = {
         "About to call main/2"
     },
     {
+        MR_TS_EVENT_LOOKING_FOR_GLOBAL_WORK,
+        "Engine begins looking for global work"
+    },
+    {
         /* Mark the end of this array. */
         MR_TS_NUM_EVENT_TAGS, NULL
     }
@@ -303,6 +315,7 @@ static MR_uint_least16_t event_type_sizes[] = {
     [MR_TS_EVENT_GC_START]          = 0,
     [MR_TS_EVENT_GC_END]            = 0,
     [MR_TS_EVENT_CALL_MAIN]         = 0,
+    [MR_TS_EVENT_LOOKING_FOR_GLOBAL_WORK] = 0,
 };
 
 static FILE* MR_threadscope_output_file = NULL;
@@ -471,7 +484,7 @@ static void
 maybe_close_block(struct MR_threadscope_event_buffer *buffer);
 
 static void
-open_block(struct MR_threadscope_event_buffer *buffer);
+open_block(struct MR_threadscope_event_buffer *buffer, MR_Unsigned eng_id);
 
 static void
 start_gc_callback(void);
@@ -573,9 +586,9 @@ MR_threadscope_finalize_engine(MercuryEngine *eng)
     
     if (!enough_room_for_event(buffer, MR_TS_EVENT_SHUTDOWN)) {
         flush_event_buffer(buffer);
-        open_block(buffer);
+        open_block(buffer, eng->MR_eng_id);
     } else if (!block_is_open(buffer)) {
-        open_block(buffer);
+        open_block(buffer, eng->MR_eng_id);
     }
     put_event_header(buffer, MR_TS_EVENT_SHUTDOWN, get_current_time_nanosecs());
 
@@ -755,9 +768,9 @@ MR_threadscope_post_create_context(MR_Context *context)
     
     if (!enough_room_for_event(buffer, MR_TS_EVENT_CREATE_THREAD)) {
         flush_event_buffer(buffer);
-        open_block(buffer);
+        open_block(buffer, MR_ENGINE(MR_eng_id));
     } else if (!block_is_open(buffer)) {
-        open_block(buffer);
+        open_block(buffer, MR_ENGINE(MR_eng_id));
     }
 
     put_event_header(buffer, MR_TS_EVENT_CREATE_THREAD, get_current_time_nanosecs());
@@ -775,9 +788,9 @@ MR_threadscope_post_create_context_for_spark(MR_Context *context)
     
     if (!enough_room_for_event(buffer, MR_TS_EVENT_CREATE_SPARK_THREAD)) {
         flush_event_buffer(buffer);
-        open_block(buffer);
+        open_block(buffer, MR_ENGINE(MR_eng_id));
     } else if (!block_is_open(buffer)) {
-        open_block(buffer);
+        open_block(buffer, MR_ENGINE(MR_eng_id));
     }
 
     put_event_header(buffer, MR_TS_EVENT_CREATE_SPARK_THREAD,
@@ -796,9 +809,9 @@ MR_threadscope_post_context_runnable(MR_Context *context)
 
     if (!enough_room_for_event(buffer, MR_TS_EVENT_THREAD_RUNNABLE)) {
         flush_event_buffer(buffer);
-        open_block(buffer);
+        open_block(buffer, MR_ENGINE(MR_eng_id));
     } else if (!block_is_open(buffer)) {
-        open_block(buffer);
+        open_block(buffer, MR_ENGINE(MR_eng_id));
     }
 
     put_event_header(buffer, MR_TS_EVENT_THREAD_RUNNABLE, get_current_time_nanosecs());
@@ -814,9 +827,9 @@ MR_threadscope_post_run_context_locked(
 {
     if (!enough_room_for_event(buffer, MR_TS_EVENT_RUN_THREAD)) {
         flush_event_buffer(buffer);
-        open_block(buffer);
+        open_block(buffer, MR_thread_engine_base->MR_eng_id);
     } else if (!block_is_open(buffer)) {
-        open_block(buffer);
+        open_block(buffer, MR_thread_engine_base->MR_eng_id);
     }
     
     put_event_header(buffer, MR_TS_EVENT_RUN_THREAD, 
@@ -838,6 +851,7 @@ MR_threadscope_post_run_context(void)
     if (context) {
         MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
         MR_threadscope_post_run_context_locked(buffer, context);
+        buffer->MR_tsbuffer_ctxt_is_stopped = 0;
         MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
     }
 }
@@ -850,9 +864,9 @@ MR_threadscope_post_stop_context_locked(
 {
     if (!enough_room_for_event(buffer, MR_TS_EVENT_STOP_THREAD)) {
         flush_event_buffer(buffer);
-        open_block(buffer);
+        open_block(buffer, MR_thread_engine_base->MR_eng_id);
     } else if (!block_is_open(buffer)) {
-        open_block(buffer);
+        open_block(buffer, MR_thread_engine_base->MR_eng_id);
     }
     
     put_event_header(buffer, MR_TS_EVENT_STOP_THREAD, get_current_time_nanosecs());
@@ -870,23 +884,43 @@ MR_threadscope_post_stop_context(MR_ContextStopReason reason)
     context = MR_thread_engine_base->MR_eng_this_context;
 
     MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
-    MR_threadscope_post_stop_context_locked(buffer, context, reason); 
+    MR_threadscope_post_stop_context_locked(buffer, context, reason);
+
+    buffer->MR_tsbuffer_ctxt_is_stopped = 1;
     MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
 }
 
-extern void
+void
 MR_threadscope_post_calling_main(void) {
     struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
     
     MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
     if (!enough_room_for_event(buffer, MR_TS_EVENT_CALL_MAIN)) {
         flush_event_buffer(buffer);
-        open_block(buffer);
+        open_block(buffer, MR_ENGINE(MR_eng_id));
     } else if (!block_is_open(buffer)) {
-        open_block(buffer);
+        open_block(buffer, MR_ENGINE(MR_eng_id));
     }
     
-    put_event_header(buffer, MR_TS_EVENT_CALL_MAIN, get_current_time_nanosecs());
+    put_event_header(buffer, MR_TS_EVENT_CALL_MAIN,
+        get_current_time_nanosecs());
+    MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
+}
+
+void
+MR_threadscope_post_looking_for_global_work(void) {
+    struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
+
+    MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
+    if (!enough_room_for_event(buffer, MR_TS_EVENT_LOOKING_FOR_GLOBAL_WORK)) {
+        flush_event_buffer(buffer);
+        open_block(buffer, MR_ENGINE(MR_eng_id));
+    } else if (!block_is_open(buffer)) {
+        open_block(buffer, MR_ENGINE(MR_eng_id));
+    }
+
+    put_event_header(buffer, MR_TS_EVENT_LOOKING_FOR_GLOBAL_WORK,
+        get_current_time_nanosecs());
     MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
 }
 
@@ -900,6 +934,7 @@ MR_create_event_buffer(void)
     buffer = MR_GC_NEW(MR_threadscope_event_buffer_t);
     buffer->MR_tsbuffer_pos = 0;
     buffer->MR_tsbuffer_block_open_pos = -1;
+    buffer->MR_tsbuffer_ctxt_is_stopped = 1;
     buffer->MR_tsbuffer_lock = MR_US_LOCK_INITIAL_VALUE;
 
     return buffer;
@@ -1021,7 +1056,7 @@ maybe_close_block(struct MR_threadscope_event_buffer *buffer)
 }
 
 static void
-open_block(struct MR_threadscope_event_buffer *buffer)
+open_block(struct MR_threadscope_event_buffer *buffer, MR_Unsigned eng_id)
 {
     maybe_close_block(buffer);
 
@@ -1036,7 +1071,7 @@ open_block(struct MR_threadscope_event_buffer *buffer)
     /* Skip over the next two fields, they are filled in by close_block */
     buffer->MR_tsbuffer_pos += sizeof(EventlogOffset) + sizeof(Time); 
 
-    put_engine_id(buffer, MR_ENGINE(MR_eng_id));
+    put_engine_id(buffer, eng_id);
 }
 
 static void 
@@ -1048,25 +1083,33 @@ start_gc_callback(void)
     MR_DO_THREADSCOPE_DEBUG(
         fprintf(stderr, "In gc start callback thread: 0x%lx\n", pthread_self())
     );
-    if (MR_thread_engine_base == NULL) return; 
+    if (MR_thread_engine_base == NULL) {
+        return;
+    }
+    MR_DO_THREADSCOPE_DEBUG(
+        fprintf(stderr, "\tEngine: 0x%.16lx\n", MR_thread_engine_base)
+    );
     buffer = MR_thread_engine_base->MR_eng_ts_buffer;
     if (buffer == NULL) {
         /* GC might be running before we're done setting up */
         return; 
     }
+    MR_DO_THREADSCOPE_DEBUG(
+        fprintf(stderr, "\tBuffer: 0x%.16lx\n", buffer)
+    );
 
     if (MR_US_TRY_LOCK(&(buffer->MR_tsbuffer_lock))) {
         context = MR_thread_engine_base->MR_eng_this_context;
-        if (context) {
+        if (!buffer->MR_tsbuffer_ctxt_is_stopped && context) {
             MR_threadscope_post_stop_context_locked(buffer,
                 context, MR_TS_STOP_REASON_HEAP_OVERFLOW);
         }
 
         if (!enough_room_for_event(buffer, MR_TS_EVENT_GC_START)) {
             flush_event_buffer(buffer);
-            open_block(buffer);
+            open_block(buffer, MR_thread_engine_base->MR_eng_id);
         } else if (!block_is_open(buffer)) {
-            open_block(buffer);
+            open_block(buffer, MR_thread_engine_base->MR_eng_id);
         }
         
         put_event_header(buffer, MR_TS_EVENT_GC_START,
@@ -1094,15 +1137,15 @@ stop_gc_callback(void)
     if (MR_US_TRY_LOCK(&(buffer->MR_tsbuffer_lock))) {
         if (!enough_room_for_event(buffer, MR_TS_EVENT_GC_END)) {
             flush_event_buffer(buffer);
-            open_block(buffer);
+            open_block(buffer, MR_thread_engine_base->MR_eng_id);
         } else if (!block_is_open(buffer)) {
-            open_block(buffer);
+            open_block(buffer, MR_thread_engine_base->MR_eng_id);
         }
         
         put_event_header(buffer, MR_TS_EVENT_GC_END, get_current_time_nanosecs());
         
         context = MR_thread_engine_base->MR_eng_this_context;
-        if (context) {
+        if (!buffer->MR_tsbuffer_ctxt_is_stopped && context) {
             MR_threadscope_post_run_context_locked(buffer, context);
         }
         MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
@@ -1125,9 +1168,12 @@ pause_thread_gc_callback(void)
         return; 
     }
 
-    context = MR_thread_engine_base->MR_eng_this_context;
-    if (context && MR_US_TRY_LOCK(&(buffer->MR_tsbuffer_lock))) {
-        MR_threadscope_post_stop_context_locked(buffer, context, MR_TS_STOP_REASON_YIELDING);
+    if (MR_US_TRY_LOCK(&(buffer->MR_tsbuffer_lock))) {
+        context = MR_thread_engine_base->MR_eng_this_context;
+        if (!buffer->MR_tsbuffer_ctxt_is_stopped && context) {
+            MR_threadscope_post_stop_context_locked(buffer, context, 
+                MR_TS_STOP_REASON_YIELDING);
+        }
         MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
     }
 }
@@ -1148,9 +1194,11 @@ resume_thread_gc_callback(void)
         return; 
     }
    
-    context = MR_thread_engine_base->MR_eng_this_context;
-    if (context && MR_US_TRY_LOCK(&(buffer->MR_tsbuffer_lock))) {
-        MR_threadscope_post_run_context_locked(buffer, context);
+    if (MR_US_TRY_LOCK(&(buffer->MR_tsbuffer_lock))) {
+        context = MR_thread_engine_base->MR_eng_this_context;
+        if (!buffer->MR_tsbuffer_ctxt_is_stopped && context) {
+            MR_threadscope_post_run_context_locked(buffer, context);
+        }
         MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
     }
 }
