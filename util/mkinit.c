@@ -364,7 +364,7 @@ static const char mercury_funcs1[] =
     "   ** It may also be helpful on other systems.\n"
     "   */\n"
     "   #ifdef MR_HGC\n"
-    "    mercury_hgc_set_stack_bot(stackbottom);\n"
+    "    MR_hgc_set_stack_bot(stackbottom);\n"
     "   #else\n"
     "   GC_stackbottom = stackbottom;\n"
     "   #endif\n"

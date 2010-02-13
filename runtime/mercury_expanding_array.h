@@ -18,7 +18,7 @@
 #ifndef MERCURY_EXPANDING_ARRAY_H
 #define MERCURY_EXPANDING_ARRAY_H
 
-#define MERCURY_DEFINE_EXPANDING_ARRAY(array_name, item_type, initial_size) \
+#define MR_DEFINE_EXPANDING_ARRAY(array_name, item_type, initial_size) \
 \
 struct struct_##array_name { \
     unsigned int size; \

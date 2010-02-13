@@ -798,9 +798,9 @@ MR_init_conservative_GC(void)
 
   #elif defined(MR_HGC)
 
-    mercury_hgc_init();
+    MR_hgc_init();
     MR_runqueue_head = NULL;
-    mercury_hgc_add_root(&MR_runqueue_head);
+    MR_hgc_add_root(&MR_runqueue_head);
     (*MR_address_of_init_gc)();
 
   #else /* MR_BOEHM_GC */

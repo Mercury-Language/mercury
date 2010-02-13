@@ -103,7 +103,7 @@ extern	int	mercury_terminate(void);
   #endif
   #ifdef MR_HGC
     #include "mercury_hgc.h"    /* for mercury_hgc_init(), 
-                                   mercury_hgc_set_stack_bot() */
+                                   MR_hgc_set_stack_bot() */
   #endif
 #endif
 

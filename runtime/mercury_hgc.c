@@ -222,21 +222,21 @@ struct roots_range {
 /*
 ** Define the roots_array expanding array type and its operations.
 */
-MERCURY_DEFINE_EXPANDING_ARRAY(roots_array, struct roots_range, 256);
+MR_DEFINE_EXPANDING_ARRAY(roots_array, struct roots_range, 256);
 
 static roots_array *roots = NULL;       /* The roots ranges. */
 
 /*
 ** Define the mutables_array expanding array type and its operations.
 */
-MERCURY_DEFINE_EXPANDING_ARRAY(mutables_array, hgc_ptr, 256);
+MR_DEFINE_EXPANDING_ARRAY(mutables_array, hgc_ptr, 256);
 
 static mutables_array *mutables = NULL; /* The mutables array. */
 
 /*
 ** Define the uncollectables_array expanding array type and its operations.
 */
-MERCURY_DEFINE_EXPANDING_ARRAY(uncollectables_array, hgc_ptr, 256);
+MR_DEFINE_EXPANDING_ARRAY(uncollectables_array, hgc_ptr, 256);
 
 static uncollectables_array *uncollectables = NULL; 
 
@@ -359,7 +359,7 @@ alloc_small_cell(hgc_int payload_size)
     /*
     ** We can't allocate a new page, try garbage collecting.
     */
-    mercury_hgc_gc();
+    MR_hgc_gc();
     if (small_cell_free_list[payload_size] != NULL) {
         return alloc_small_cell(payload_size);
     }
@@ -721,7 +721,7 @@ alloc_big_cell(hgc_int payload_size)
     ** We can't grow the big heap right now; try garbage collecting and
     ** seeing what happens.
     */
-    mercury_hgc_gc();
+    MR_hgc_gc();
     for (ix = big_size_index; 0 <= ix && min_cell_size <= 1 << ix; ix --) {
         if (big_cell_free_list[ix] != NULL) {
             return alloc_big_cell(payload_size);
@@ -944,7 +944,7 @@ lookup_env_var(const char *name, hgc_int default_value)
 ** Initialise the heap.
 */
 void
-mercury_hgc_init(void)
+MR_hgc_init(void)
 {
     hgc_int heap_size;                  /* In words. */
     hgc_int initial_small_heap_size;    /* In words. */
@@ -1057,7 +1057,7 @@ mercury_hgc_init(void)
 ** Add a roots range.
 */
 void
-mercury_hgc_add_roots_range(void *bot, void *top)
+MR_hgc_add_roots_range(void *bot, void *top)
 {
     struct roots_range rr = {bot, top};
     TRC if (!hgc_initialised) {
@@ -1068,9 +1068,9 @@ mercury_hgc_add_roots_range(void *bot, void *top)
 }
 
 void
-mercury_hgc_add_root(void *rt)
+MR_hgc_add_root(void *rt)
 {
-    mercury_hgc_add_roots_range(rt, rt + 1);
+    MR_hgc_add_roots_range(rt, rt + 1);
 }
 
 /*
@@ -1201,7 +1201,7 @@ mark_from_mutables(void)
 ** Perform a garbage collection.
 */
 void
-mercury_hgc_gc(void)
+MR_hgc_gc(void)
 {
     TRC if (!hgc_initialised) {
         fprintf(stderr, "hgc: hgc_init() has not been called.\n");
@@ -1220,7 +1220,7 @@ mercury_hgc_gc(void)
 ** Malloc replacement.
 */
 void *
-mercury_hgc_malloc_immutable(size_t size_bytes)
+MR_hgc_malloc_immutable(size_t size_bytes)
 {
     hgc_int size = words(size_bytes);
 
@@ -1239,7 +1239,7 @@ mercury_hgc_malloc_immutable(size_t size_bytes)
 ** Add a cell to the mutables array.
 */
 void
-mercury_hgc_make_mutable(void *p)
+MR_hgc_make_mutable(void *p)
 {
     mutables = mutables_array_append_item(mutables, (hgc_ptr) p);
 }
@@ -1248,10 +1248,10 @@ mercury_hgc_make_mutable(void *p)
 ** Allocate a mutable cell.
 */
 void *
-mercury_hgc_malloc_mutable(size_t size_bytes)
+MR_hgc_malloc_mutable(size_t size_bytes)
 {
-    void *p = mercury_hgc_malloc_immutable(size_bytes);
-    mercury_hgc_make_mutable(p);
+    void *p = MR_hgc_malloc_immutable(size_bytes);
+    MR_hgc_make_mutable(p);
     return p;
 }
 
@@ -1259,7 +1259,7 @@ mercury_hgc_malloc_mutable(size_t size_bytes)
 ** Make a cell uncollectable (i.e., always live).
 */
 void
-mercury_hgc_make_uncollectable(void *p)
+MR_hgc_make_uncollectable(void *p)
 {
     uncollectables = uncollectables_array_append_item(uncollectables, p);
 }
@@ -1268,10 +1268,10 @@ mercury_hgc_make_uncollectable(void *p)
 ** Allocate an uncollectable, mutable cell.
 */
 void *
-mercury_hgc_malloc_uncollectable(size_t size_bytes)
+MR_hgc_malloc_uncollectable(size_t size_bytes)
 {
-    void *p = mercury_hgc_malloc_mutable(size_bytes);
-    mercury_hgc_make_uncollectable(p);
+    void *p = MR_hgc_malloc_mutable(size_bytes);
+    MR_hgc_make_uncollectable(p);
     return p;
 }
 
@@ -1279,7 +1279,7 @@ mercury_hgc_malloc_uncollectable(size_t size_bytes)
 ** Allow the application to change stack_bot.
 */
 void
-mercury_hgc_set_stack_bot(void *p)
+MR_hgc_set_stack_bot(void *p)
 {
     stack_bot = (hgc_ptr *)untag((hgc_ptr) p);
 }
@@ -1290,7 +1290,7 @@ mercury_hgc_set_stack_bot(void *p)
 ** is.  The new cell is uncollectable if the old cell is.
 */
 void *
-mercury_hgc_realloc(void *p, size_t size_bytes)
+MR_hgc_realloc(void *p, size_t size_bytes)
 {
     hgc_int new_payload_size = words(size_bytes);
     hgc_ptr old_cl;
@@ -1299,7 +1299,7 @@ mercury_hgc_realloc(void *p, size_t size_bytes)
     if (find_cell(p, &old_cl, &old_payload, &old_payload_size)) {
         if (old_payload_size < new_payload_size) {
             hgc_ptr new_payload = 
-                mercury_hgc_malloc_immutable(new_payload_size);
+                MR_hgc_malloc_immutable(new_payload_size);
             hgc_int i;
             for (i = 0; i < old_payload_size; i++) {
                 new_payload[i] = old_payload[i];
@@ -1337,7 +1337,7 @@ mercury_hgc_realloc(void *p, size_t size_bytes)
 ** its payload size to zero (big cells).
 */
 void
-mercury_hgc_free(void *p)
+MR_hgc_free(void *p)
 {
     hgc_ptr cl;
     hgc_ptr payload;

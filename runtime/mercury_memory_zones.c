@@ -148,7 +148,7 @@ MR_alloc_zone_memory(size_t size)
 
   #if defined(MR_HGC)
     if (ptr != NULL) {
-        mercury_hgc_add_roots_range((char *) ptr, ((char *) ptr) + size);
+        MR_hgc_add_roots_range((char *) ptr, ((char *) ptr) + size);
     }
   #elif defined(MR_CONSERVATIVE_GC)
     if (ptr != NULL) {

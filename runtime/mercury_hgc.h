@@ -25,17 +25,17 @@
 ** your program, unless you are using hgc_set_stack_bot().
 */
 extern void
-mercury_hgc_init(void);
+MR_hgc_init(void);
 
 /*
 ** Tell hgc about a global variable or address range that may point into the
 ** heap.
 */
 extern void
-mercury_hgc_add_root(void *p);
+MR_hgc_add_root(void *p);
 
 extern void
-mercury_hgc_add_roots_range(void *bot, void *top);
+MR_hgc_add_roots_range(void *bot, void *top);
 
 /*
 ** An "immutable" cell in hgc parlance means one that will never hold
@@ -43,7 +43,7 @@ mercury_hgc_add_roots_range(void *bot, void *top);
 ** to an "immutable" cell's contents are fine.
 */
 extern void *
-mercury_hgc_malloc_immutable(size_t size_bytes);
+MR_hgc_malloc_immutable(size_t size_bytes);
 
 /*
 ** Make a cell mutable.  This allows you to include in the cell references
@@ -52,25 +52,25 @@ mercury_hgc_malloc_immutable(size_t size_bytes);
 ** delay the collection of other dead cells they reference.
 */
 extern void
-mercury_hgc_make_mutable(void *p);
+MR_hgc_make_mutable(void *p);
 
 /*
 ** Allocate a cell and make it mutable.
 */
 extern void *
-mercury_hgc_malloc_mutable(size_t size_bytes);
+MR_hgc_malloc_mutable(size_t size_bytes);
 
 /*
 ** Ensure an allocated cell is never collected.
 */
 extern void
-mercury_hgc_make_uncollectable(void *p);
+MR_hgc_make_uncollectable(void *p);
 
 /*
 ** Allocate a mutable cell which will never be collected.
 */
 extern void *
-mercury_hgc_malloc_uncollectable(size_t size_bytes);
+MR_hgc_malloc_uncollectable(size_t size_bytes);
 
 /*
 ** If necessary, allocate a new cell of the given size and copy as much of the
@@ -78,20 +78,20 @@ mercury_hgc_malloc_uncollectable(size_t size_bytes);
 ** is.  The new cell is uncollectable if the old cell is.
 */
 extern void *
-mercury_hgc_realloc(void *p, size_t size_bytes);
+MR_hgc_realloc(void *p, size_t size_bytes);
 
 /*
 ** Free up a cell (this essentially just fills the cell with NULL pointers).
 */
 extern void
-mercury_hgc_free(void *p);
+MR_hgc_free(void *p);
 
 /*
 ** Force a garbage collection.  This should be unneccessary in normal
 ** practice.
 */
 extern void
-mercury_hgc_gc(void);
+MR_hgc_gc(void);
 
 /*
 ** Tell hgc what you think is the bottom stack address.  This is estimated by
@@ -99,22 +99,22 @@ mercury_hgc_gc(void);
 ** hgc_set_stack_bot() can be called before or after hgc_init().
 */
 extern void
-mercury_hgc_set_stack_bot(void *p);
+MR_hgc_set_stack_bot(void *p);
 
 
 /*
 ** Definitions providing a Boehm-like interface.
 */
 typedef void *GC_hidden_pointer;
-#define GC_INIT mercury_hgc_init
-#define GC_malloc mercury_hgc_malloc_immutable
-#define GC_MALLOC mercury_hgc_malloc_immutable
-#define GC_MALLOC_ATOMIC mercury_hgc_malloc_immutable
-#define GC_MALLOC_UNCOLLECTABLE mercury_hgc_malloc_uncollectable
-#define GC_REALLOC mercury_hgc_realloc
-#define GC_gcollect mercury_hgc_gc
-#define GC_free mercury_hgc_free
-#define GC_FREE mercury_hgc_free
+#define GC_INIT MR_hgc_init
+#define GC_malloc MR_hgc_malloc_immutable
+#define GC_MALLOC MR_hgc_malloc_immutable
+#define GC_MALLOC_ATOMIC MR_hgc_malloc_immutable
+#define GC_MALLOC_UNCOLLECTABLE MR_hgc_malloc_uncollectable
+#define GC_REALLOC MR_hgc_realloc
+#define GC_gcollect MR_hgc_gc
+#define GC_free MR_hgc_free
+#define GC_FREE MR_hgc_free
 #define GC_register_finalizer(p, f, d, of, od)
 #define HIDE_POINTER(p) (~(long long)(p))
 #define REVEAL_POINTER(p) ((void *)HIDE_POINTER(p))
