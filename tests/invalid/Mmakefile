@@ -192,6 +192,7 @@ SINGLEMODULE= \
 	test_may_duplicate \
 	tricky_assert1 \
 	try_bad_params \
+	try_detism \
 	try_io_else \
 	type_error_ambiguous \
 	type_inf_loop \

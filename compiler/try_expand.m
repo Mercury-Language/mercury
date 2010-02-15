@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public Licence - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -641,6 +641,20 @@ extract_intermediate_goal_parts(ModuleInfo, ResultVar, IntermediateGoal,
     (
         extract_intermediate_goal_parts_2(ModuleInfo, ResultVar,
             IntermediateGoal, GoalPrime, ThenPrime, MaybeElsePrime,
+            ExcpHandlingPrime)
+    ->
+        Goal = GoalPrime,
+        Then = ThenPrime,
+        MaybeElse = MaybeElsePrime,
+        ExcpHandling = ExcpHandlingPrime
+    ;
+        % This form should only be encountered if there was an error in the
+        % program, when the inner goal may fail, in a context where it must not
+        % fail.  Compilation doesn't stop immediately after determinism
+        % analysis detects the error so we need to handle this form as well.
+        IntermediateGoal = hlds_goal(scope(_, ScopedGoal), _),
+        extract_intermediate_goal_parts_2(ModuleInfo, ResultVar,
+            ScopedGoal, GoalPrime, ThenPrime, MaybeElsePrime,
             ExcpHandlingPrime)
     ->
         Goal = GoalPrime,
