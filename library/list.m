@@ -1707,33 +1707,33 @@ list.contains(List, Elem) :-
 list.merge([], [], []).
 list.merge([A | As], [], [A | As]).
 list.merge([], [B | Bs], [B | Bs]).
-list.merge([A | As], [B | Bs], [C | Cs]) :-
+list.merge([A | As], [B | Bs], Cs) :-
     ( compare(>, A, B) ->
-        C = B,
-        list.merge([A | As], Bs, Cs)
+        list.merge([A | As], Bs, Cs0),
+        Cs = [B | Cs0]
     ;
         % If compare((=), A, B), take A first.
-        C = A,
-        list.merge(As, [B | Bs], Cs)
+        list.merge(As, [B | Bs], Cs0),
+        Cs = [A | Cs0]
     ).
 
 list.merge_and_remove_dups([], [], []).
 list.merge_and_remove_dups([A | As], [], [A | As]).
 list.merge_and_remove_dups([], [B | Bs], [B | Bs]).
-list.merge_and_remove_dups([A | As], [B | Bs], [C | Cs]) :-
+list.merge_and_remove_dups([A | As], [B | Bs], Cs) :-
     compare(Res, A, B),
     (
         Res = (<),
-        C = A,
-        list.merge_and_remove_dups(As, [B | Bs], Cs)
+        list.merge_and_remove_dups(As, [B | Bs], Cs0),
+        Cs = [A | Cs0]
     ;
         Res = (=),
-        C = A,
-        list.merge_and_remove_dups(As, Bs, Cs)
+        list.merge_and_remove_dups(As, Bs, Cs0),
+        Cs = [A | Cs0]
     ;
         Res = (>),
-        C = B,
-        list.merge_and_remove_dups([A | As], Bs, Cs)
+        list.merge_and_remove_dups([A | As], Bs, Cs0),
+        Cs = [B | Cs0]
     ).
 
 %-----------------------------------------------------------------------------%
