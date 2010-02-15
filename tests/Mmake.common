@@ -379,8 +379,8 @@ runtests_subdirs: $(RUNTESTS_IN_SUBDIRS)
 
 .PHONY: $(RUNTESTS_IN_SUBDIRS)
 $(RUNTESTS_IN_SUBDIRS): runtests_in_%:
-	+if (cd $* && mmake runtests) ; then \
-		true ; \
+	+if test -d $* ; then \
+		cd $* && mmake runtests ; \
 	else \
 		echo Could not run tests in directory $* ; \
 		echo Could not run tests in directory $* >> NOMAKE_DIRS ; \
