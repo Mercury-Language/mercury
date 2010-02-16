@@ -270,6 +270,10 @@ static EventTypeDesc event_type_descs[] = {
         "Create a context for executing a spark"
     },
     {
+        MR_TS_EVENT_LOG_MSG,
+        "A user-provided log message"
+    },
+    {
         /*
         ** Start a garbage collection run
         */
@@ -312,6 +316,7 @@ static MR_uint_least16_t event_type_sizes[] = {
     [MR_TS_EVENT_STOP_THREAD]       = 4 + 2,
                                       /* MR_ContextId, MR_ContextStopReason */
     [MR_TS_EVENT_CREATE_SPARK_THREAD] = 4, /* MR_ContextId */
+    [MR_TS_EVENT_LOG_MSG]           = -1, /* Variable size event */
     [MR_TS_EVENT_GC_START]          = 0,
     [MR_TS_EVENT_GC_END]            = 0,
     [MR_TS_EVENT_CALL_MAIN]         = 0,
@@ -342,7 +347,8 @@ static struct MR_threadscope_event_buffer global_buffer;
 ** Is there enough room for this statically sized event in the current engine's
 ** buffer _and_ enough room for the block marker event.
 */
-static __inline__ MR_bool enough_room_for_event(
+static __inline__ MR_bool
+enough_room_for_event(
         struct MR_threadscope_event_buffer *buffer,
         EventType event_type) 
 {
@@ -350,6 +356,17 @@ static __inline__ MR_bool enough_room_for_event(
                 event_type_sizes[MR_TS_EVENT_BLOCK_MARKER] +
                 ((2 + 8) * 2)) /* (EventType, Time) * 2 */
             < MR_TS_BUFFERSIZE; 
+}
+
+static __inline__ MR_bool
+enough_room_for_variable_size_event(
+        struct MR_threadscope_event_buffer *buffer,
+        MR_Unsigned length)
+{
+    return (buffer->MR_tsbuffer_pos + length + 
+                event_type_sizes[MR_TS_EVENT_BLOCK_MARKER] +
+                ((2 + 8) * 2) + 2) /* (EventType, Time) * 2 + StringLength */
+        - MR_TS_BUFFERSIZE;
 }
 
 /*
@@ -403,7 +420,37 @@ static __inline__ void put_be_uint64(
     put_be_uint32(buffer, word & 0xFFFFFFFF);
 }
 
-static __inline__ void put_string(
+static __inline__ void put_raw_string(
+        struct MR_threadscope_event_buffer *buffer,
+        const char *string,
+        unsigned len)
+{
+    unsigned i;
+    for (i = 0; i < len; i++) {
+        put_byte(buffer, string[i]);
+    }
+}
+
+/*
+** Put a string in the given buffer,  The string will be preceeded by a 16 bit
+** integer giving the string's length.
+*/
+static __inline__ void put_string_size16(
+        struct MR_threadscope_event_buffer *buffer,
+        const char *string)
+{
+    unsigned i, len;
+
+    len = strlen(string);
+    put_be_uint16(buffer, len);
+    put_raw_string(buffer, string, len);
+}
+
+/*
+** Put a string in the given buffer,  The string will be preceeded by a 32 bit
+** integer giving the string's length.
+*/
+static __inline__ void put_string_size32(
         struct MR_threadscope_event_buffer *buffer,
         const char *string)
 {
@@ -411,9 +458,7 @@ static __inline__ void put_string(
 
     len = strlen(string);
     put_be_uint32(buffer, len);
-    for (i = 0; i < len; i++) {
-        put_byte(buffer, string[i]);
-    }
+    put_raw_string(buffer, string, len);
 }
 
 static __inline__ void put_timestamp(
@@ -924,6 +969,25 @@ MR_threadscope_post_looking_for_global_work(void) {
     MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
 }
 
+void
+MR_threadscope_post_log_msg(const char *message) {
+    struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
+
+    MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
+    if (!enough_room_for_variable_size_event(buffer, strlen(message))) {
+        flush_event_buffer(buffer),
+        open_block(buffer, MR_ENGINE(MR_eng_id));
+    } else if (!block_is_open(buffer)) {
+        open_block(buffer, MR_ENGINE(MR_eng_id));
+    }
+
+    put_event_header(buffer, MR_TS_EVENT_LOG_MSG,
+        get_current_time_nanosecs());
+    put_string_size16(buffer, message);
+
+    MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
+}
+
 /***************************************************************************/
 
 static struct MR_threadscope_event_buffer* 
@@ -1008,7 +1072,7 @@ put_event_type(struct MR_threadscope_event_buffer *buffer, EventTypeDesc *event_
     put_be_uint16(buffer, event_type->etd_event_type);
     put_be_int16(buffer, event_type_sizes[event_type->etd_event_type]);
 
-    put_string(buffer, event_type->etd_description);
+    put_string_size32(buffer, event_type->etd_description);
 
     /* There is no extended data in any of our events */
     put_be_uint32(buffer, 0);

@@ -133,6 +133,12 @@ MR_threadscope_post_calling_main(void);
 extern void
 MR_threadscope_post_looking_for_global_work(void);
 
+/*
+** Post a user-defined log message.
+*/
+extern void
+MR_threadscope_post_log_msg(const char *message);
+
 #endif /* MR_THREADSCOPE */
 
 #endif /* not MERCURY_THREADSCOPE_H */
