@@ -340,11 +340,12 @@
 ** options to execute the more portable code even on systems where the more
 ** optimal code is safe.  This is useful to make test coverage a bit more even.
 **
-** These first two options are not mutually exclusive.  The first is relevant
-** when we prefer handwritten assembler (in some cases this is more efficient).
-** Where as the second is relevant when we prefer compiler intrinsics (usually
-** because there's no advantage to handwritten assembler other than when the
-** intrinsics are not supported by the compiler).
+** options MR_AVOID_HANDWRITTEN_ASSEMBLER and MR_AVOID_COMPILER_INTRINSICS are
+** not mutually exclusive.  The first is relevant when we prefer handwritten
+** assembler (in some cases this is more efficient).  Where as the second is
+** relevant when we prefer compiler intrinsics (usually because there's no
+** advantage to handwritten assembler other than when the intrinsics are not
+** supported by the compiler).
 **
 ** MR_AVOID_HANDWRITTEN_ASSEMBLER
 **  Avoid using handwritten assembler in the runtime.  This will usually
@@ -357,7 +358,9 @@
 **
 ** MR_DO_NOT_USE_CPU_RELAX
 **  Do not compile in CPU relax instructions in spin loops,  See the 'pause'
-**  instruction on x86.
+**  instruction on x86.  This is used when defining MR_PAUSE in
+**  runtime/mercury_atomic_ops.h, MR_PAUSE is used in spin-wait loops and the
+**  implementation of spin locks which is also in mercury_atomic_ops.h.
 */
 
 /*

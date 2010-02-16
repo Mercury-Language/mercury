@@ -60,10 +60,9 @@ MR_EXTERN_INLINE void
 MR_atomic_dec_int(volatile MR_Integer *addr);
 
 /*
- * Decrement the integer at the pointed to address and set is_zero if it is
- * zero after the decrement.  While fetching the value is more powerful on
- * x86(_64) it requires a compare and exchange loop.
- */
+** Decrement the integer pointed at by the address and return true iff it is
+** zero after the decrement.
+*/
 MR_EXTERN_INLINE MR_bool 
 MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
 
@@ -301,12 +300,20 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
 /*---------------------------------------------------------------------------*/
 
 /*
- * Note that on x86(_64) we have to use the sub instruction rather than the
- * dec instruction because we need it to set the CPU flags.
- */
+** Note that on x86(_64) we have to use the sub instruction rather than the
+** dec instruction because we need it to set the CPU flags.
+*/
 #if defined(__GNUC__) && defined(__x86_64__) && \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
+/*
+** This could be trivially implemented using the __sync_sub_and_fetch compiler
+** intrinsic.  However on X86(_64) this will use a compare and exchange loop.
+** We can avoid this because we don't need to retrieve the result of the
+** subtraction.
+*/
+* While fetching the value is more powerful on
+ * x86(_64) it requires a compare and exchange loop.
     #define MR_ATOMIC_DEC_INT_AND_IS_ZERO_BODY                              \
         do {                                                                \
             char is_zero;                                                   \
