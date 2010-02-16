@@ -33,7 +33,45 @@ MR_EXTERN_INLINE MR_bool
 MR_compare_and_swap_word(volatile MR_Integer *addr, MR_Integer old,
         MR_Integer new_val);
 
-#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
+/*
+** Atomically add the second argument to the memory pointed to by the first
+** argument.
+*/
+MR_EXTERN_INLINE void
+MR_atomic_add_int(volatile MR_Integer *addr, MR_Integer addend);
+
+/*
+** Atomically subtract the second argument from the memory pointed to by the
+** first argument.
+*/
+MR_EXTERN_INLINE void
+MR_atomic_sub_int(volatile MR_Integer *addr, MR_Integer x);
+
+/*
+** Increment the word pointed at by the address.
+*/
+MR_EXTERN_INLINE void
+MR_atomic_inc_int(volatile MR_Integer *addr);
+
+/*
+** Decrement the word pointed at by the address.
+*/
+MR_EXTERN_INLINE void
+MR_atomic_dec_int(volatile MR_Integer *addr);
+
+/*
+ * Decrement the integer at the pointed to address and set is_zero if it is
+ * zero after the decrement.  While fetching the value is more powerful on
+ * x86(_64) it requires a compare and exchange loop.
+ */
+MR_EXTERN_INLINE MR_bool 
+MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
+
+/*---------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------*/
+
+#if (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)) && \
+    !defined(MR_AVOID_COMPILER_INTRINSICS)
 
     /*
     ** gcc 4.1 and above have builtin atomic operations.
@@ -85,109 +123,8 @@ MR_compare_and_swap_word(volatile MR_Integer *addr, MR_Integer old,
 
 /*---------------------------------------------------------------------------*/
 
-/*
-** Increment the word pointed at by the address.
-*/
-MR_EXTERN_INLINE void
-MR_atomic_inc_int(volatile MR_Integer *addr);
-
-#if defined(__GNUC__) && defined(__x86_64__)
-
-    #define MR_ATOMIC_INC_INT_BODY                                          \
-        do {                                                                \
-            __asm__ __volatile__(                                           \
-                "lock; incq %0;"                                            \
-                : "=m"(*addr)                                               \
-                : "m"(*addr)                                                \
-                );                                                          \
-        } while (0)
-
-#elif defined(__GNUC__) && defined(__i386__)
-
-    /* Really 486 or better. */
-    #define MR_ATOMIC_INC_INT_BODY                                          \
-        do {                                                                \
-            __asm__ __volatile__(                                           \
-                "lock; incl %0;"                                            \
-                : "=m"(*addr)                                               \
-                : "m"(*addr)                                                \
-                );                                                          \
-        } while (0)
-
-#else
-
-    /*
-    ** Fall back to an atomic add 1 operation.
-    **
-    ** We could fall back to the built-in GCC instructions but they also fetch
-    ** the value.  I believe this is more efficient.
-    **  - pbone
-    */
-    #define MR_ATOMIC_INC_INT_BODY                                          \
-        MR_atomic_add_int(addr, 1)                                          \
-
-#endif
-
-#ifdef MR_ATOMIC_INC_INT_BODY
-    MR_EXTERN_INLINE void 
-    MR_atomic_inc_int(volatile MR_Integer *addr)
-    {
-        MR_ATOMIC_INC_INT_BODY;
-    }
-#endif
-
-/*---------------------------------------------------------------------------*/
-
-/*
-** Decrement the word pointed at by the address.
-*/
-MR_EXTERN_INLINE void
-MR_atomic_dec_int(volatile MR_Integer *addr);
-
-#if defined(__GNUC__) && defined(__x86_64__)
-
-    #define MR_ATOMIC_DEC_INT_BODY                                          \
-        do {                                                                \
-            __asm__ __volatile__(                                           \
-                "lock; decq %0;"                                            \
-                : "=m"(*addr)                                               \
-                : "m"(*addr)                                                \
-                );                                                          \
-        } while (0)
-
-#elif defined(__GNUC__) && defined(__i386__)
-
-    /* Really 486 or better. */
-    #define MR_ATOMIC_DEC_INT_BODY                                          \
-        do {                                                                \
-            __asm__ __volatile__(                                           \
-                "lock; decl %0;"                                            \
-                : "=m"(*addr)                                               \
-                : "m"(*addr)                                                \
-                );                                                          \
-        } while (0)
-#else
-    /*
-    ** Fall back to an atomic subtract 1 operation.
-    */
-
-    #define MR_ATOMIC_DEC_INT_BODY                                          \
-        MR_atomic_sub_int(addr, 1)
-
-#endif
-
-#ifdef MR_ATOMIC_DEC_INT_BODY
-    MR_EXTERN_INLINE void 
-    MR_atomic_dec_int(volatile MR_Integer *addr)
-    {
-        MR_ATOMIC_DEC_INT_BODY;
-    }
-#endif
-
-MR_EXTERN_INLINE void
-MR_atomic_add_int(volatile MR_Integer *addr, MR_Integer addend);
-
-#if defined(__GNUC__) && defined(__x86_64__)
+#if defined(__GNUC__) && defined(__x86_64__) && \
+    !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     #define MR_ATOMIC_ADD_INT_BODY                                          \
         do {                                                                \
@@ -226,10 +163,10 @@ MR_atomic_add_int(volatile MR_Integer *addr, MR_Integer addend);
     }
 #endif
 
-MR_EXTERN_INLINE void
-MR_atomic_sub_int(volatile MR_Integer *addr, MR_Integer x);
+/*---------------------------------------------------------------------------*/
 
-#if defined(__GNUC__) && defined(__x86_64__)
+#if defined(__GNUC__) && defined(__x86_64__) && \
+    !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     #define MR_ATOMIC_SUB_INT_BODY                                          \
         do {                                                                \
@@ -268,19 +205,107 @@ MR_atomic_sub_int(volatile MR_Integer *addr, MR_Integer x);
     }
 #endif
 
-/*
- * Decrement the integer at the pointed to address and set is_zero if it is
- * zero after the decrement.  While fetching the value is more powerful on
- * x86(_64) it requires a compare and exchange loop.
- */
-MR_EXTERN_INLINE MR_bool 
-MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
+/*---------------------------------------------------------------------------*/
+
+#if defined(__GNUC__) && defined(__x86_64__) && \
+    !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
+
+    #define MR_ATOMIC_INC_INT_BODY                                          \
+        do {                                                                \
+            __asm__ __volatile__(                                           \
+                "lock; incq %0;"                                            \
+                : "=m"(*addr)                                               \
+                : "m"(*addr)                                                \
+                );                                                          \
+        } while (0)
+
+#elif defined(__GNUC__) && defined(__i386__) && \
+    !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
+
+    /* Really 486 or better. */
+    #define MR_ATOMIC_INC_INT_BODY                                          \
+        do {                                                                \
+            __asm__ __volatile__(                                           \
+                "lock; incl %0;"                                            \
+                : "=m"(*addr)                                               \
+                : "m"(*addr)                                                \
+                );                                                          \
+        } while (0)
+
+#else
+
+    /*
+    ** Fall back to an atomic add 1 operation.
+    **
+    ** We could fall back to the built-in GCC instructions but they also fetch
+    ** the value.  I believe this is more efficient.
+    **  - pbone
+    */
+    #define MR_ATOMIC_INC_INT_BODY                                          \
+        MR_atomic_add_int(addr, 1)                                          \
+
+#endif
+
+#ifdef MR_ATOMIC_INC_INT_BODY
+    MR_EXTERN_INLINE void 
+    MR_atomic_inc_int(volatile MR_Integer *addr)
+    {
+        MR_ATOMIC_INC_INT_BODY;
+    }
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+#if defined(__GNUC__) && defined(__x86_64__) && \
+    !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
+
+    #define MR_ATOMIC_DEC_INT_BODY                                          \
+        do {                                                                \
+            __asm__ __volatile__(                                           \
+                "lock; decq %0;"                                            \
+                : "=m"(*addr)                                               \
+                : "m"(*addr)                                                \
+                );                                                          \
+        } while (0)
+
+#elif defined(__GNUC__) && defined(__i386__) && \
+    !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
+
+    /* Really 486 or better. */
+    #define MR_ATOMIC_DEC_INT_BODY                                          \
+        do {                                                                \
+            __asm__ __volatile__(                                           \
+                "lock; decl %0;"                                            \
+                : "=m"(*addr)                                               \
+                : "m"(*addr)                                                \
+                );                                                          \
+        } while (0)
+#else
+    /*
+    ** Fall back to an atomic subtract 1 operation.
+    */
+
+    #define MR_ATOMIC_DEC_INT_BODY                                          \
+        MR_atomic_sub_int(addr, 1)
+
+#endif
+
+#ifdef MR_ATOMIC_DEC_INT_BODY
+    MR_EXTERN_INLINE void 
+    MR_atomic_dec_int(volatile MR_Integer *addr)
+    {
+        MR_ATOMIC_DEC_INT_BODY;
+    }
+#endif
+
+/*---------------------------------------------------------------------------*/
 
 /*
  * Note that on x86(_64) we have to use the sub instruction rather than the
  * dec instruction because we need it to set the CPU flags.
  */
-#if defined(__GNUC__) && defined(__x86_64__)
+#if defined(__GNUC__) && defined(__x86_64__) && \
+    !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     #define MR_ATOMIC_DEC_INT_AND_IS_ZERO_BODY                              \
         do {                                                                \
@@ -310,7 +335,7 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
 
     #define MR_ATOMIC_DEC_INT_AND_IS_ZERO_BODY                              \
         do {                                                                \
-            is_zero = __sync_sub_and_fetch(addr, 1) == 0;                   \
+            return (__sync_sub_and_fetch(addr, 1) == 0);                    \
         } while (0)
 
 #endif
@@ -322,6 +347,9 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
         MR_ATOMIC_DEC_INT_AND_IS_ZERO_BODY;
     }
 #endif
+
+/*---------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------*/
 
 /*
  * Intel and AMD support a pause instruction that is roughly equivalent
@@ -345,7 +373,8 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
  * References: Intel and AMD documentation for PAUSE, Intel optimisation
  * guide.
  */
-#if defined(__GNUC__) && ( defined(__i386__) || defined(__x86_64__) )
+#if defined(__GNUC__) && ( defined(__i386__) || defined(__x86_64__) ) && \
+    !defined(MR_DO_NOT_USE_CPU_RELAX)
 
     #define MR_ATOMIC_PAUSE                                                 \
         do {                                                                \
@@ -362,10 +391,14 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
 
 #endif
 
+/*---------------------------------------------------------------------------*/
+
 /*
 ** Memory fence operations.
 */
-#if defined(__GNUC__) && ( defined(__i386__) || defined(__x86_64__) )
+#if defined(__GNUC__) && ( defined(__i386__) || defined(__x86_64__) ) && \
+    !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
+
     /*
     ** Guarantees that any stores executed before this fence are globally
     ** visible before those after this fence.
@@ -411,6 +444,8 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
         "compiler/architecture"
 
 #endif
+
+/*---------------------------------------------------------------------------*/
 
 /*
 ** Roll our own cheap user-space mutual exclusion locks.  Blocking without

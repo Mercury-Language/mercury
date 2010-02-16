@@ -335,6 +335,32 @@
 */
 
 /*
+** Runtime code alternatives. --- Sometimes there is more than one way to do
+** something, a more efficient/optimal way, and a more portable way.  Use these
+** options to execute the more portable code even on systems where the more
+** optimal code is safe.  This is useful to make test coverage a bit more even.
+**
+** These first two options are not mutually exclusive.  The first is relevant
+** when we prefer handwritten assembler (in some cases this is more efficient).
+** Where as the second is relevant when we prefer compiler intrinsics (usually
+** because there's no advantage to handwritten assembler other than when the
+** intrinsics are not supported by the compiler).
+**
+** MR_AVOID_HANDWRITTEN_ASSEMBLER
+**  Avoid using handwritten assembler in the runtime.  This will usually
+**  default to compiler intrinsics or C code, see runtime/mercury_atomic_ops.h
+**
+** MR_AVOID_COMPILER_INTRINSICS
+**  Avoid using compiler intrinsics.  This will usually fall back to hand
+**  written assembler, therefore it is only supported on architectures where
+**  hand written assembler code exists.
+**
+** MR_DO_NOT_USE_CPU_RELAX
+**  Do not compile in CPU relax instructions in spin loops,  See the 'pause'
+**  instruction on x86.
+*/
+
+/*
 ** Execution tracing and deep profiling both need stack traces, e.g.
 ** simulate exits from calls between an exception being thrown and being
 ** caught. Stack tracing is therefore automatically enabled in debugging and
