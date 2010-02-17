@@ -306,21 +306,36 @@ static EventTypeDesc event_type_descs[] = {
 };
 
 static MR_uint_least16_t event_type_sizes[] = {
-    [MR_TS_EVENT_STARTUP]           = 2, /* MR_EngineId */
-    [MR_TS_EVENT_SHUTDOWN]          = 0,
-    [MR_TS_EVENT_BLOCK_MARKER]      = 4 + 8 + 2, 
-                                      /* EnginelogOffset, Time, MR_EngineId */
-    [MR_TS_EVENT_CREATE_THREAD]     = 4, /* MR_ContextId */
-    [MR_TS_EVENT_THREAD_RUNNABLE]   = 4, /* MR_ContextId */
-    [MR_TS_EVENT_RUN_THREAD]        = 4, /* MR_ContextId */
-    [MR_TS_EVENT_STOP_THREAD]       = 4 + 2,
-                                      /* MR_ContextId, MR_ContextStopReason */
-    [MR_TS_EVENT_CREATE_SPARK_THREAD] = 4, /* MR_ContextId */
-    [MR_TS_EVENT_LOG_MSG]           = -1, /* Variable size event */
-    [MR_TS_EVENT_GC_START]          = 0,
-    [MR_TS_EVENT_GC_END]            = 0,
-    [MR_TS_EVENT_CALL_MAIN]         = 0,
-    [MR_TS_EVENT_LOOKING_FOR_GLOBAL_WORK] = 0,
+    /* MR_TS_EVENT_CREATE_THREAD */
+        4, /* MR_ContextId */
+    /* MR_TS_EVENT_RUN_THREAD */
+        4, /* MR_ContextId */
+    /* MR_TS_EVENT_STOP_THREAD */
+        4 + 2, /* MR_ContextId, MR_ContextStopReason */
+    /* MR_TS_EVENT_THREAD_RUNNABLE */
+        4, /* MR_ContextId */
+    0, 0, 0,
+    /* MR_TS_EVENT_SHUTDOWN */          
+        0,
+    0,
+    /* MR_TS_EVENT_GC_START */
+        0,
+    /* MR_TS_EVENT_GC_END */
+        0,
+    0, 0, 0, 0,
+    /* MR_TS_EVENT_CREATE_SPARK_THREAD */
+        4, /* MR_ContextId */
+    /* MR_TS_EVENT_LOG_MSG */
+        -1, /* Variable size event */
+    /* MR_TS_EVENT_STARTUP */
+        2, /* MR_EngineId */
+    /* MR_TS_EVENT_BLOCK_MARKER */
+        4 + 8 + 2, /* EnginelogOffset, Time, MR_EngineId */
+    0, 0, 0, 0,
+    /* MR_TS_EVENT_CALL_MAIN */
+        0,
+    /* MR_TS_EVENT_LOOKING_FOR_GLOBAL_WORK */
+        0,
 };
 
 static FILE* MR_threadscope_output_file = NULL;
@@ -347,7 +362,7 @@ static struct MR_threadscope_event_buffer global_buffer;
 ** Is there enough room for this statically sized event in the current engine's
 ** buffer _and_ enough room for the block marker event.
 */
-static __inline__ MR_bool
+MR_STATIC_INLINE MR_bool
 enough_room_for_event(
         struct MR_threadscope_event_buffer *buffer,
         EventType event_type) 
@@ -358,7 +373,7 @@ enough_room_for_event(
             < MR_TS_BUFFERSIZE; 
 }
 
-static __inline__ MR_bool
+MR_STATIC_INLINE MR_bool
 enough_room_for_variable_size_event(
         struct MR_threadscope_event_buffer *buffer,
         MR_Unsigned length)
@@ -372,7 +387,7 @@ enough_room_for_variable_size_event(
 /*
 ** Is a block currently open?
 */
-static __inline__ MR_bool block_is_open(
+MR_STATIC_INLINE MR_bool block_is_open(
         struct MR_threadscope_event_buffer *buffer)
 {
     return !(buffer->MR_tsbuffer_block_open_pos == -1);
@@ -381,14 +396,14 @@ static __inline__ MR_bool block_is_open(
 /*
 ** Put words into the current engine's buffer in big endian order.
 */
-static __inline__ void put_byte(
+MR_STATIC_INLINE void put_byte(
         struct MR_threadscope_event_buffer *buffer, 
         int byte) 
 {
     buffer->MR_tsbuffer_data[buffer->MR_tsbuffer_pos++] = byte;
 }
 
-static __inline__ void put_be_int16(
+MR_STATIC_INLINE void put_be_int16(
         struct MR_threadscope_event_buffer *buffer,
         MR_int_least16_t word) 
 {
@@ -396,7 +411,7 @@ static __inline__ void put_be_int16(
     put_byte(buffer, word & 0xFF);
 }
 
-static __inline__ void put_be_uint16(
+MR_STATIC_INLINE void put_be_uint16(
         struct MR_threadscope_event_buffer *buffer,
         MR_uint_least16_t word) 
 {
@@ -404,7 +419,7 @@ static __inline__ void put_be_uint16(
     put_byte(buffer, word & 0xFF);
 }
 
-static __inline__ void put_be_uint32(
+MR_STATIC_INLINE void put_be_uint32(
         struct MR_threadscope_event_buffer *buffer,
         MR_uint_least32_t word) 
 {
@@ -412,7 +427,7 @@ static __inline__ void put_be_uint32(
     put_be_uint16(buffer, word & 0xFFFF);
 }
 
-static __inline__ void put_be_uint64(
+MR_STATIC_INLINE void put_be_uint64(
         struct MR_threadscope_event_buffer *buffer,
         MR_uint_least64_t word)
 {
@@ -420,7 +435,7 @@ static __inline__ void put_be_uint64(
     put_be_uint32(buffer, word & 0xFFFFFFFF);
 }
 
-static __inline__ void put_raw_string(
+MR_STATIC_INLINE void put_raw_string(
         struct MR_threadscope_event_buffer *buffer,
         const char *string,
         unsigned len)
@@ -435,7 +450,7 @@ static __inline__ void put_raw_string(
 ** Put a string in the given buffer,  The string will be preceeded by a 16 bit
 ** integer giving the string's length.
 */
-static __inline__ void put_string_size16(
+MR_STATIC_INLINE void put_string_size16(
         struct MR_threadscope_event_buffer *buffer,
         const char *string)
 {
@@ -450,7 +465,7 @@ static __inline__ void put_string_size16(
 ** Put a string in the given buffer,  The string will be preceeded by a 32 bit
 ** integer giving the string's length.
 */
-static __inline__ void put_string_size32(
+MR_STATIC_INLINE void put_string_size32(
         struct MR_threadscope_event_buffer *buffer,
         const char *string)
 {
@@ -461,21 +476,21 @@ static __inline__ void put_string_size32(
     put_raw_string(buffer, string, len);
 }
 
-static __inline__ void put_timestamp(
+MR_STATIC_INLINE void put_timestamp(
         struct MR_threadscope_event_buffer *buffer,
         Time timestamp) 
 {
     put_be_uint64(buffer, timestamp);
 }
 
-static __inline__ void put_eventlog_offset(
+MR_STATIC_INLINE void put_eventlog_offset(
         struct MR_threadscope_event_buffer *buffer,
         EventlogOffset offset) 
 {
     put_be_uint32(buffer, offset);
 }
 
-static __inline__ void put_event_header(
+MR_STATIC_INLINE void put_event_header(
         struct MR_threadscope_event_buffer *buffer,
         EventType event_type, Time timestamp) 
 {
@@ -483,21 +498,21 @@ static __inline__ void put_event_header(
     put_timestamp(buffer, timestamp);
 }
 
-static __inline__ void put_engine_id(
+MR_STATIC_INLINE void put_engine_id(
         struct MR_threadscope_event_buffer *buffer,
         MR_EngineId engine_num) 
 {
     put_be_uint16(buffer, engine_num);
 }
 
-static __inline__ void put_context_id(
+MR_STATIC_INLINE void put_context_id(
         struct MR_threadscope_event_buffer *buffer,
         MR_ContextId context_id) 
 {
     put_be_uint32(buffer, context_id);
 }
 
-static __inline__ void put_stop_reason(
+MR_STATIC_INLINE void put_stop_reason(
         struct MR_threadscope_event_buffer *buffer,
         MR_ContextStopReason reason) 
 {
