@@ -403,8 +403,6 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
 ** We can avoid this because we don't need to retrieve the result of the
 ** subtraction.
 */
-* While fetching the value is more powerful on
- * x86(_64) it requires a compare and exchange loop.
     #define MR_ATOMIC_DEC_INT_AND_IS_ZERO_BODY                              \
         do {                                                                \
             char is_zero;                                                   \
