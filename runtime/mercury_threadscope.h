@@ -38,7 +38,7 @@ typedef struct MR_threadscope_event_buffer MR_threadscope_event_buffer_t;
 
 typedef MR_uint_least16_t   MR_EngineId;
 typedef MR_uint_least16_t   MR_ContextStopReason;
-typedef MR_uint_least32_t   MR_ContextId;
+typedef MR_Integer          MR_ContextId;
 
 /*
 ** This must be called by the primordial thread before starting any other

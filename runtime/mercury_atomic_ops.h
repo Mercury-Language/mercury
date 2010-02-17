@@ -22,6 +22,48 @@
 #if defined(MR_LL_PARALLEL_CONJ)
 
 /*
+ * Intel and AMD support a pause instruction that is roughly equivalent
+ * to a no-op.  Intel recommend that it is used in spin-loops to improve
+ * performance.  Without a pause instruction multiple simultaneous
+ * read-requests will be in-flight for the synchronization variable from a
+ * single thread.  Giving the pause instruction causes these to be executed
+ * in sequence allowing the processor to handle the change in the
+ * synchronization variable more easily.
+ *
+ * On some chips it may cause the spin-loop to use less power.
+ *
+ * This instruction was introduced with the Pentium 4 but is backwards
+ * compatible, This works because the two byte instruction for PAUSE is
+ * equivalent to the NOP instruction prefixed by REPE.  Therefore older
+ * processors perform a no-op.
+ *
+ * This is not really an atomic instruction but we name it
+ * MR_ATOMIC_PAUSE for consistency.
+ *
+ * References: Intel and AMD documentation for PAUSE, Intel optimisation
+ * guide.
+ */
+#if defined(__GNUC__) && ( defined(__i386__) || defined(__x86_64__) ) && \
+    !defined(MR_DO_NOT_USE_CPU_RELAX)
+
+    #define MR_ATOMIC_PAUSE                                                 \
+        do {                                                                \
+            __asm__ __volatile__("pause");                                  \
+        } while(0)
+
+#else
+
+    /* Fall back to a no-op */
+    #define MR_ATOMIC_PAUSE                                                 \
+        do {                                                                \
+            ;                                                               \
+        } while(0)
+
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+/*
 ** Declarations for inline atomic operations.
 */
 
@@ -32,6 +74,13 @@
 MR_EXTERN_INLINE MR_bool
 MR_compare_and_swap_word(volatile MR_Integer *addr, MR_Integer old,
         MR_Integer new_val);
+
+/*
+** Atomically add to an integer in memory and retrieve the result.  In other
+** words an atomic pre-increment operation.
+*/
+MR_EXTERN_INLINE MR_Integer 
+MR_atomic_add_and_fetch_int(volatile MR_Integer *addr, MR_Integer addend);
 
 /*
 ** Atomically add the second argument to the memory pointed to by the first
@@ -65,6 +114,11 @@ MR_atomic_dec_int(volatile MR_Integer *addr);
 */
 MR_EXTERN_INLINE MR_bool 
 MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
+
+/*
+** For information about GCC's builtins for atomic operations see:
+** http://gcc.gnu.org/onlinedocs/gcc-4.2.4/gcc/Atomic-Builtins.html
+*/ 
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
@@ -122,6 +176,43 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
 
 /*---------------------------------------------------------------------------*/
 
+#if (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)) && \
+    !defined(MR_AVOID_COMPILER_INTRINSICS)
+
+    #define MR_ATOMIC_ADD_AND_FETCH_INT_BODY                                \
+        do {                                                                \
+            return __sync_add_and_fetch(addr, addend);                      \
+        } while (0)
+
+#elif defined(MR_COMPARE_AND_SWAP_WORD_BODY)
+    /*
+    ** If there is no GCC builtin for this then it can be implemented in terms
+    ** of compare and swap, assuming that that has been implemented in
+    ** assembler for this architecture.
+    */
+    #define MR_ATOMIC_ADD_AND_FETCH_INT_BODY                                \
+        do {                                                                \
+            MR_Integer temp;                                                \
+            temp = *addr;                                                   \
+            while (!MR_compare_and_swap_word(addr, temp, temp+addend)) {    \
+                MR_ATOMIC_PAUSE;                                            \
+                temp = *addr;                                               \
+            }                                                               \
+            return temp+addend;                                             \
+        } while (0)
+
+#endif
+
+#ifdef MR_ATOMIC_ADD_AND_FETCH_INT_BODY
+    MR_EXTERN_INLINE MR_Integer
+    MR_atomic_add_and_fetch_int(volatile MR_Integer *addr, MR_Integer addend)
+    {
+        MR_ATOMIC_ADD_AND_FETCH_INT_BODY;
+    }
+#endif
+
+/*---------------------------------------------------------------------------*/
+
 #if defined(__GNUC__) && defined(__x86_64__) && \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
@@ -145,11 +236,11 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
                 );                                                          \
         } while (0)
 
-#elif __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
+#elif defined(MR_ATOMIC_ADD_AND_FETCH_INT_BODY)
 
     #define MR_ATOMIC_ADD_INT_BODY                                          \
         do {                                                                \
-            __sync_add_and_fetch(addr, addend);                             \
+            MR_atomic_add_and_fetch_int(addr, addend);                      \
         } while (0)
 
 #endif
@@ -356,48 +447,6 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
 #endif
 
 /*---------------------------------------------------------------------------*/
-/*---------------------------------------------------------------------------*/
-
-/*
- * Intel and AMD support a pause instruction that is roughly equivalent
- * to a no-op.  Intel recommend that it is used in spin-loops to improve
- * performance.  Without a pause instruction multiple simultaneous
- * read-requests will be in-flight for the synchronization variable from a
- * single thread.  Giving the pause instruction causes these to be executed
- * in sequence allowing the processor to handle the change in the
- * synchronization variable more easily.
- *
- * On some chips it may cause the spin-loop to use less power.
- *
- * This instruction was introduced with the Pentium 4 but is backwards
- * compatible, This works because the two byte instruction for PAUSE is
- * equivalent to the NOP instruction prefixed by REPE.  Therefore older
- * processors perform a no-op.
- *
- * This is not really an atomic instruction but we name it
- * MR_ATOMIC_PAUSE for consistency.
- *
- * References: Intel and AMD documentation for PAUSE, Intel optimisation
- * guide.
- */
-#if defined(__GNUC__) && ( defined(__i386__) || defined(__x86_64__) ) && \
-    !defined(MR_DO_NOT_USE_CPU_RELAX)
-
-    #define MR_ATOMIC_PAUSE                                                 \
-        do {                                                                \
-            __asm__ __volatile__("pause");                                  \
-        } while(0)
-
-#else
-
-    /* Fall back to a no-op */
-    #define MR_ATOMIC_PAUSE                                                 \
-        do {                                                                \
-            ;                                                               \
-        } while(0)
-
-#endif
-
 /*---------------------------------------------------------------------------*/
 
 /*

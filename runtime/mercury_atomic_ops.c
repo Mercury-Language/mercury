@@ -33,20 +33,11 @@ MR_OUTLINE_DEFN(
 )
 
 MR_OUTLINE_DEFN(
-    void 
-    MR_atomic_inc_int(volatile MR_Integer *addr)
+    MR_Integer 
+    MR_atomic_add_and_fetch_int(volatile MR_Integer *addr, MR_Integer addend)
 ,
     {
-        MR_ATOMIC_INC_INT_BODY;
-    }
-)
-
-MR_OUTLINE_DEFN(
-    void 
-    MR_atomic_dec_int(volatile MR_Integer *addr)
-,
-    {
-        MR_ATOMIC_DEC_INT_BODY;
+        MR_ATOMIC_ADD_AND_FETCH_INT_BODY;
     }
 )
 
@@ -65,6 +56,24 @@ MR_OUTLINE_DEFN(
 ,
     {
         MR_ATOMIC_SUB_INT_BODY;
+    }
+)
+
+MR_OUTLINE_DEFN(
+    void 
+    MR_atomic_inc_int(volatile MR_Integer *addr)
+,
+    {
+        MR_ATOMIC_INC_INT_BODY;
+    }
+)
+
+MR_OUTLINE_DEFN(
+    void 
+    MR_atomic_dec_int(volatile MR_Integer *addr)
+,
+    {
+        MR_ATOMIC_DEC_INT_BODY;
     }
 )
 

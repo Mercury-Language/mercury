@@ -120,10 +120,16 @@ static MR_Integer       MR_primordial_thread_cpu = -1;
 
 #if defined(MR_LL_PARALLEL_CONJ) && defined(MR_PROFILE_PARALLEL_EXECUTION_SUPPORT)
 /*
-** This is used to give each context its own unique ID.  It is protected by the
-** free_context_list_lock.
+** This is used to give each context its own unique ID.  It is accessed with
+** atomic operations.
 */
 static MR_ContextId     MR_next_context_id = 0;
+
+/*
+** Allocate a context ID.
+*/
+static MR_ContextId
+allocate_context_id(void);
 #endif
 
 /*
@@ -646,9 +652,6 @@ MR_Context *
 MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
 {
     MR_Context  *c;
-#if MR_THREADSCOPE
-    MR_Unsigned context_id;
-#endif
 
     MR_LOCK(&free_context_list_lock, "create_context");
 
@@ -681,9 +684,6 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
     } else {
         c = NULL;
     }
-#if MR_THREADSCOPE
-    context_id = MR_next_context_id++;
-#endif
     MR_UNLOCK(&free_context_list_lock, "create_context i");
 
     if (c == NULL) {
@@ -701,7 +701,7 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
 #endif
     }
 #ifdef MR_THREADSCOPE
-    c->MR_ctxt_num_id = context_id;
+    c->MR_ctxt_num_id = allocate_context_id();
 #endif
     
     MR_init_context_maybe_generator(c, id, gen);
@@ -755,6 +755,13 @@ MR_destroy_context(MR_Context *c)
     }
     MR_UNLOCK(&free_context_list_lock, "destroy_context");
 }
+
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
+static MR_ContextId
+allocate_context_id(void) {
+    return MR_atomic_add_and_fetch_int(&MR_next_context_id, 1);
+}
+#endif
 
 #ifdef MR_LL_PARALLEL_CONJ
 
@@ -1238,6 +1245,11 @@ MR_define_entry(MR_do_runnext);
         MR_load_context(MR_ENGINE(MR_eng_this_context));
     } else {
 #ifdef MR_THREADSCOPE
+        /*
+        ** Allocate a new context Id so that someone looking at the threadscope
+        ** profile sees this as new work.
+        */
+        MR_ENGINE(MR_eng_this_context)->MR_ctxt_num_id = allocate_context_id();
         MR_threadscope_post_run_context();
 #endif
     }
