@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2009 The University of Melbourne.
+% Copyright (C) 1993-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2422,50 +2422,48 @@ list.find_first_match(P, [H | T], FirstMatch) :-
 
 list.filter(_, [],  []).
 list.filter(P, [H | T], True) :-
-    list.filter(P, T, TrueTail),
     ( P(H) ->
+        list.filter(P, T, TrueTail),
         True = [H | TrueTail]
     ;
-        True = TrueTail
+        list.filter(P, T, True)
     ).
 
 list.negated_filter(_, [],  []).
 list.negated_filter(P, [H | T], False) :-
-    list.negated_filter(P, T, FalseTail),
     ( P(H) ->
-        False = FalseTail
+        list.negated_filter(P, T, False)
     ;
+        list.negated_filter(P, T, FalseTail),
         False = [H | FalseTail]
     ).
 
 list.filter(_, [],  [], []).
 list.filter(P, [H | T], True, False) :-
-    list.filter(P, T, TrueTail, FalseTail),
     ( P(H) ->
-        True = [H | TrueTail],
-        False = FalseTail
+        list.filter(P, T, TrueTail, False),
+        True = [H | TrueTail]
     ;
-        True = TrueTail,
+        list.filter(P, T, True, FalseTail),
         False = [H | FalseTail]
     ).
 
 list.filter_map(_, [],  []).
 list.filter_map(P, [H0 | T0], True) :-
-    list.filter_map(P, T0, TrueTail),
     ( P(H0, H) ->
+        list.filter_map(P, T0, TrueTail),
         True = [H | TrueTail]
     ;
-        True = TrueTail
+        list.filter_map(P, T0, True)
     ).
 
 list.filter_map(_, [], [], []).
 list.filter_map(P, [H0 | T0], True, False) :-
-    list.filter_map(P, T0, TrueTail, FalseTail),
     ( P(H0, H) ->
-        True = [H | TrueTail],
-        False = FalseTail
+        list.filter_map(P, T0, TrueTail, False),
+        True = [H | TrueTail]
     ;
-        True = TrueTail,
+        list.filter_map(P, T0, True, FalseTail),
         False = [H0 | FalseTail]
     ).
 

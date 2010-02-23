@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -85,7 +85,10 @@
 % 3 replaces the output arguments with input arguments of type
 %   store_at_ref_type(T), where T is type of the field pointed to, and
 %
-% 4 follows each primitive goal that binds one of the output arguments
+% 4 calls to other procedures in the same SCC are replaced by calls to
+%   variants where possible, and
+%
+% 5 follows each primitive goal that binds one of the output arguments
 %   with a store to the memory location indicated by the corresponding pointer.
 %
 %   p(In1, ... InN, Out1, ... OutM) :-
@@ -212,7 +215,9 @@
 
 :- type variant_arg
     --->    variant_arg(
-                % Position of the output argument.
+                % Position of the output argument.  The first output argument
+                % is 1, the second is 2, and so on, without counting input
+                % arguments.
                 va_pos      :: int,
 
                 % For low-level data this is `no'.
@@ -276,6 +281,7 @@ lco_modulo_constructors(!ModuleInfo) :-
     hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
     list.foldl2(lco_scc, SCCs, map.init, _, !ModuleInfo).
 
+    % XXX did we forget to add CurSCCVariants to !VariantMap?
 :- pred lco_scc(list(pred_proc_id)::in, variant_map::in, variant_map::out,
     module_info::in, module_info::out) is det.
 
@@ -291,7 +297,8 @@ lco_scc(SCC, !VariantMap, !ModuleInfo) :-
         CurSCCUpdates = [_ | _]
     ->
         list.foldl(process_proc_update, CurSCCUpdates, !ModuleInfo),
-        list.foldl(process_proc_variant, CurSCCVariants, !ModuleInfo)
+        list.foldl(process_proc_variant(CurSCCVariantMap), CurSCCVariants,
+            !ModuleInfo)
     ;
         !:ModuleInfo = ModuleInfo0
     ).
@@ -312,17 +319,18 @@ process_proc_update(PredProcId - NewProcInfo, !ModuleInfo) :-
     map.det_update(PredTable0, PredId, PredInfo, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
-:- pred process_proc_variant(pair(pred_proc_id, variant_id)::in,
+:- pred process_proc_variant(variant_map::in,
+    pair(pred_proc_id, variant_id)::in,
     module_info::in, module_info::out) is det.
 
-process_proc_variant(PredProcId - VariantId, !ModuleInfo) :-
+process_proc_variant(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
     VariantId = variant_id(AddrOutArgs, VariantPredProcId, VariantName),
     VariantPredProcId = proc(VariantPredId, VariantProcId),
     PredProcId = proc(PredId, ProcId),
 
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         _PredInfo, ProcInfo),
-    transform_variant_proc(AddrOutArgs, ProcInfo, VariantProcInfo,
+    transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo, VariantProcInfo,
         !ModuleInfo),
 
     proc_info_get_headvars(VariantProcInfo, HeadVars),
@@ -783,14 +791,8 @@ ensure_variant_exists(PredId, ProcId, AddrArgNums, VariantPredProcId,
         multi_map.search(CurSCCVariants0, PredProcId, ExistingVariants),
         match_existing_variant(ExistingVariants, AddrArgNums, ExistingVariant)
     ->
-        ExistingVariant = variant_id(_, VariantPredProcId, VariantName),
-        (
-            SymName = unqualified(_Name),
-            VariantSymName = unqualified(VariantName)
-        ;
-            SymName = qualified(ModuleName, _Name),
-            VariantSymName = qualified(ModuleName, VariantName)
-        )
+        get_variant_id_and_name(ExistingVariant, SymName, VariantPredProcId,
+            VariantSymName)
     ;
         ModuleInfo0 = !.Info ^ lco_module_info,
         clone_pred_proc(PredId, ClonePredId, PredOrFunc,
@@ -825,6 +827,19 @@ match_existing_variant([Variant0 | Variants], AddrArgNums, Variant) :-
         Variant = Variant0
     ;
         match_existing_variant(Variants, AddrArgNums, Variant)
+    ).
+
+:- pred get_variant_id_and_name(variant_id::in, sym_name::in,
+    pred_proc_id::out, sym_name::out) is det.
+
+get_variant_id_and_name(VariantId, SymName, PredProcId, VariantSymName) :-
+    VariantId = variant_id(_, PredProcId, VariantName),
+    (
+        SymName = unqualified(_Name),
+        VariantSymName = unqualified(VariantName)
+    ;
+        SymName = qualified(ModuleName, _Name),
+        VariantSymName = qualified(ModuleName, VariantName)
     ).
 
 :- func max_variants_per_proc = int.
@@ -982,10 +997,10 @@ occurs_once(Bag, Var) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred transform_variant_proc(list(variant_arg)::in,
+:- pred transform_variant_proc(variant_map::in, list(variant_arg)::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
-transform_variant_proc(AddrOutArgs, ProcInfo, !:VariantProcInfo,
+transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo, !:VariantProcInfo,
         !ModuleInfo) :-
     !:VariantProcInfo = ProcInfo,
     proc_info_get_varset(ProcInfo, VarSet0),
@@ -1002,8 +1017,8 @@ transform_variant_proc(AddrOutArgs, ProcInfo, !:VariantProcInfo,
 
     proc_info_get_initial_instmap(ProcInfo, !.ModuleInfo, InstMap0),
     proc_info_get_goal(ProcInfo, Goal0),
-    transform_variant_goal(!.ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
-        _Changed, !VariantProcInfo),
+    transform_variant_goal(!.ModuleInfo, VariantMap, VarToAddr, InstMap0,
+        Goal0, Goal, _Changed, !VariantProcInfo),
     proc_info_set_goal(Goal, !VariantProcInfo),
     % We changed the scopes of the headvars we now return via pointers.
     requantify_proc_general(ordinary_nonlocals_no_lambda, !VariantProcInfo),
@@ -1088,20 +1103,21 @@ make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
         unexpected(this_file, "make_addr_vars: top_unused")
     ).
 
-:- pred transform_variant_goal(module_info::in, var_to_target::in,
-    instmap::in, hlds_goal::in, hlds_goal::out, bool::out,
+:- pred transform_variant_goal(module_info::in, variant_map::in,
+    var_to_target::in, instmap::in, hlds_goal::in, hlds_goal::out, bool::out,
     proc_info::in, proc_info::out) is det.
 
-transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
-        Changed, !ProcInfo) :-
+transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
+        Goal0, Goal, Changed, !ProcInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
-            transform_variant_conj(ModuleInfo, VarToAddr, InstMap0,
+            transform_variant_conj(ModuleInfo, VariantMap, VarToAddr, InstMap0,
                 Goals0, Goals, Changed, !ProcInfo),
-            GoalExpr = conj(ConjType, Goals)
+            GoalExpr = conj(ConjType, Goals),
+            GoalInfo = GoalInfo0
         ;
             ConjType = parallel_conj,
             unexpected(this_file, "transform_variant_goal: parallel_conj")
@@ -1109,57 +1125,67 @@ transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
     ;
         GoalExpr0 = disj(Goals0),
         list.map2_foldl(
-            transform_variant_goal(ModuleInfo, VarToAddr, InstMap0),
+            transform_variant_goal(ModuleInfo, VariantMap, VarToAddr,
+                InstMap0),
             Goals0, Goals, DisjsChanged, !ProcInfo),
         Changed = bool.or_list(DisjsChanged),
-        GoalExpr = disj(Goals)
+        GoalExpr = disj(Goals),
+        GoalInfo = GoalInfo0
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         list.map2_foldl(
-            transform_variant_case(ModuleInfo, VarToAddr, InstMap0),
+            transform_variant_case(ModuleInfo, VariantMap, VarToAddr,
+                InstMap0),
             Cases0, Cases, CasesChanged, !ProcInfo),
         Changed = bool.or_list(CasesChanged),
-        GoalExpr = switch(Var, CanFail, Cases)
+        GoalExpr = switch(Var, CanFail, Cases),
+        GoalInfo = GoalInfo0
     ;
         GoalExpr0 = if_then_else(Vars, Cond, Then0, Else0),
         update_instmap(Cond, InstMap0, InstMap1),
-        transform_variant_goal(ModuleInfo, VarToAddr, InstMap1, Then0, Then,
-            ThenChanged, !ProcInfo),
-        transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Else0, Else,
-            ElseChanged, !ProcInfo),
+        transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap1,
+            Then0, Then, ThenChanged, !ProcInfo),
+        transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
+            Else0, Else, ElseChanged, !ProcInfo),
         Changed = bool.or(ThenChanged, ElseChanged),
-        GoalExpr = if_then_else(Vars, Cond, Then, Else)
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        GoalInfo = GoalInfo0
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
         ( Reason = from_ground_term(_, from_ground_term_construct) ->
             GoalExpr = GoalExpr0,
             Changed = no
         ;
-            transform_variant_goal(ModuleInfo, VarToAddr, InstMap0,
+            transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
                 SubGoal0, SubGoal, Changed, !ProcInfo),
             GoalExpr = scope(Reason, SubGoal)
-        )
+        ),
+        GoalInfo = GoalInfo0
     ;
         GoalExpr0 = negation(_),
         GoalExpr = GoalExpr0,
+        GoalInfo = GoalInfo0,
         Changed = no
     ;
         GoalExpr0 = generic_call(_, _, _, _),
         transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
-            GoalInfo0, GoalExpr0, GoalExpr, Changed, !ProcInfo)
+            GoalInfo0, GoalExpr0, GoalExpr, Changed, !ProcInfo),
+        GoalInfo = GoalInfo0
     ;
         GoalExpr0 = plain_call(_, _, _, _, _, _),
-        % XXX We could handle recursive calls better.
-        transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
-            GoalInfo0, GoalExpr0, GoalExpr, Changed, !ProcInfo)
+        transform_variant_plain_call(ModuleInfo, VariantMap, VarToAddr,
+            InstMap0, GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, Changed,
+            !ProcInfo)
     ;
         GoalExpr0 = unify(_, _, _, _, _),
         transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
-            GoalInfo0, GoalExpr0, GoalExpr, Changed, !ProcInfo)
+            GoalInfo0, GoalExpr0, GoalExpr, Changed, !ProcInfo),
+        GoalInfo = GoalInfo0
     ;
         GoalExpr0 = call_foreign_proc(_, _, _, _,  _, _, _),
         transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
-            GoalInfo0, GoalExpr0, GoalExpr, Changed, !ProcInfo)
+            GoalInfo0, GoalExpr0, GoalExpr, Changed, !ProcInfo),
+        GoalInfo = GoalInfo0
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
@@ -1167,25 +1193,27 @@ transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
     ),
     (
         Changed = yes,
-        goal_info_set_purity(purity_impure, GoalInfo0, GoalInfo),
-        Goal = hlds_goal(GoalExpr, GoalInfo)
+        % This is not actually necessary for the transformation used for
+        % high-level data.
+        goal_info_set_purity(purity_impure, GoalInfo, GoalInfoImpure),
+        Goal = hlds_goal(GoalExpr, GoalInfoImpure)
     ;
         Changed = no,
         Goal = Goal0
     ).
 
-:- pred transform_variant_conj(module_info::in, var_to_target::in,
-    instmap::in, list(hlds_goal)::in, list(hlds_goal)::out, bool::out,
-    proc_info::in, proc_info::out) is det.
+:- pred transform_variant_conj(module_info::in, variant_map::in,
+    var_to_target::in, instmap::in, list(hlds_goal)::in, list(hlds_goal)::out,
+    bool::out, proc_info::in, proc_info::out) is det.
 
-transform_variant_conj(_, _, _, [], [], no, !ProcInfo).
-transform_variant_conj(ModuleInfo, VarToAddr, InstMap0, [Goal0 | Goals0],
-        Conj, Changed, !ProcInfo) :-
-    transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
-        HeadChanged, !ProcInfo),
+transform_variant_conj(_, _, _, _, [], [], no, !ProcInfo).
+transform_variant_conj(ModuleInfo, VariantMap, VarToAddr, InstMap0,
+        [Goal0 | Goals0], Conj, Changed, !ProcInfo) :-
+    transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
+        Goal0, Goal, HeadChanged, !ProcInfo),
     update_instmap(Goal0, InstMap0, InstMap1),
-    transform_variant_conj(ModuleInfo, VarToAddr, InstMap1, Goals0, Goals,
-        TailChanged, !ProcInfo),
+    transform_variant_conj(ModuleInfo, VariantMap, VarToAddr, InstMap1,
+        Goals0, Goals, TailChanged, !ProcInfo),
     Changed = bool.or(HeadChanged, TailChanged),
     ( Goal = hlds_goal(conj(plain_conj, SubConj), _) ->
         Conj = SubConj ++ Goals
@@ -1193,14 +1221,15 @@ transform_variant_conj(ModuleInfo, VarToAddr, InstMap0, [Goal0 | Goals0],
         Conj = [Goal | Goals]
     ).
 
-:- pred transform_variant_case(module_info::in, var_to_target::in, instmap::in,
-    case::in, case::out, bool::out, proc_info::in, proc_info::out) is det.
+:- pred transform_variant_case(module_info::in, variant_map::in,
+    var_to_target::in, instmap::in, case::in, case::out, bool::out,
+    proc_info::in, proc_info::out) is det.
 
-transform_variant_case(ModuleInfo, VarToAddr, InstMap0, Case0, Case,
-        Changed, !ProcInfo) :-
+transform_variant_case(ModuleInfo, VariantMap, VarToAddr, InstMap0,
+        Case0, Case, Changed, !ProcInfo) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
-        Changed, !ProcInfo),
+    transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
+        Goal0, Goal, Changed, !ProcInfo),
     Case = case(MainConsId, OtherConsIds, Goal).
 
 :- pred transform_variant_atomic_goal(module_info::in,
@@ -1208,8 +1237,8 @@ transform_variant_case(ModuleInfo, VarToAddr, InstMap0, Case0, Case,
     hlds_goal_expr::in, hlds_goal_expr::out, bool::out,
     proc_info::in, proc_info::out) is det.
 
-transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0, GoalInfo,
-        GoalExpr0, GoalExpr, Changed, !ProcInfo) :-
+transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
+        GoalInfo, GoalExpr0, GoalExpr, Changed, !ProcInfo) :-
     update_instmap(hlds_goal(GoalExpr0, GoalInfo), InstMap0, InstMap1),
     list.filter(is_grounding(ModuleInfo, InstMap0, InstMap1), VarToAddr,
         GroundingVarToAddr),
@@ -1226,14 +1255,107 @@ transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0, GoalInfo,
         Changed = yes
     ).
 
+:- pred transform_variant_plain_call(module_info::in, variant_map::in,
+    var_to_target::in, instmap::in,
+    hlds_goal_expr::in(plain_call_expr), hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out, bool::out,
+    proc_info::in, proc_info::out) is det.
+
+transform_variant_plain_call(ModuleInfo, VariantMap, VarToAddr, InstMap0,
+        GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, Changed, !ProcInfo) :-
+    update_instmap(hlds_goal(GoalExpr0, GoalInfo0), InstMap0, InstMap1),
+    list.filter(is_grounding(ModuleInfo, InstMap0, InstMap1), VarToAddr,
+        GroundingVarToAddr),
+    (
+        GroundingVarToAddr = [],
+        GoalExpr = GoalExpr0,
+        GoalInfo = GoalInfo0,
+        Changed = no
+    ;
+        GroundingVarToAddr = [_ | _],
+        % Check if there is a variant of the called procedure where we can pass
+        % an address variable in place of each variable that would be ground by
+        % the call.
+        GoalExpr0 = plain_call(CallPredId, CallProcId, Args, Builtin,
+            UnifyContext, SymName),
+        CallPredProcId = proc(CallPredId, CallProcId),
+        module_info_proc_info(ModuleInfo, CallPredId, CallProcId,
+            CalleeProcInfo),
+        proc_info_get_vartypes(!.ProcInfo, VarTypes),
+        proc_info_get_argmodes(CalleeProcInfo, CalleeArgModes),
+        (
+            multi_map.search(VariantMap, CallPredProcId, ExistingVariants),
+            classify_proc_call_args(ModuleInfo, VarTypes, Args, CalleeArgModes,
+                _InArgs, OutArgs, _UnusedArgs),
+            grounding_to_variant_args(GroundingVarToAddr, 1, OutArgs, Subst,
+                VariantArgs),
+            match_existing_variant(ExistingVariants, VariantArgs,
+                ExistingVariant)
+        ->
+            rename_var_list(need_not_rename, Subst, Args, CallArgs),
+            get_variant_id_and_name(ExistingVariant, SymName,
+                proc(VariantPredId, VariantProcId), VariantSymName),
+            GoalExpr = plain_call(VariantPredId, VariantProcId, CallArgs,
+                Builtin, UnifyContext, VariantSymName),
+
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+            (
+                HighLevelData = no,
+                GoalInfo = GoalInfo0
+            ;
+                HighLevelData = yes,
+                % The partially instantiated cells will be ground after the
+                % call.
+                list.map(pair.fst, GroundingVarToAddr, GroundVars),
+                map.apply_to_list(GroundVars, Subst, AddrVars),
+                InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
+                instmap_delta_set_vars_same(ground_inst, AddrVars,
+                    InstMapDelta0, InstMapDelta),
+                goal_info_set_instmap_delta(InstMapDelta, GoalInfo0, GoalInfo)
+            ),
+            Changed = yes
+        ;
+            transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
+                GoalInfo0, GoalExpr0, GoalExpr, Changed, !ProcInfo),
+            GoalInfo = GoalInfo0
+        )
+    ).
+
 :- pred is_grounding(module_info::in, instmap::in, instmap::in,
     pair(prog_var, store_target)::in) is semidet.
 
 is_grounding(ModuleInfo, InstMap0, InstMap, Var - _StoreTarget) :-
     instmap_lookup_var(InstMap0, Var, Inst0),
     not inst_is_ground(ModuleInfo, Inst0),
+    instmap_is_reachable(InstMap),
     instmap_lookup_var(InstMap, Var, Inst),
     inst_is_ground(ModuleInfo, Inst).
+
+:- pred grounding_to_variant_args(assoc_list(prog_var, store_target)::in,
+    int::in, list(prog_var)::in, prog_var_renaming::out,
+    list(variant_arg)::out) is det.
+
+grounding_to_variant_args(GroundingVarToAddr, OutArgNum, OutArgs, Subst,
+        VariantArgs) :-
+    (
+        OutArgs = [],
+        Subst = map.init,
+        VariantArgs = []
+    ;
+        OutArgs = [OutArg | OutArgsTail],
+        grounding_to_variant_args(GroundingVarToAddr, OutArgNum + 1,
+            OutArgsTail, Subst0, VariantArgsTail),
+        ( assoc_list.search(GroundingVarToAddr, OutArg, StoreTarget) ->
+            StoreTarget = store_target(StoreArg, MaybeFieldId),
+            map.det_insert(Subst0, OutArg, StoreArg, Subst),
+            VariantArg = variant_arg(OutArgNum, MaybeFieldId),
+            VariantArgs = [VariantArg | VariantArgsTail]
+        ;
+            Subst = Subst0,
+            VariantArgs = VariantArgsTail
+        )
+    ).
 
 :- pred make_store_goal(module_info::in, instmap::in,
     pair(prog_var, store_target)::in, hlds_goal::out,
