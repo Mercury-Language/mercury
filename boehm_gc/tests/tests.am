@@ -10,14 +10,17 @@
 # modified is included with the above copyright notice.
 
 
-## FIXME: trace_test doesn't work on macosx 10.3 
+## FIXME: trace_test don't works on macosx 10.3 
 ## gcc -g -O2 -o .libs/tracetest trace_test.o  ../.libs/libgc.dylib -lpthread
 ## ld: Undefined symbols:
 ## _GC_generate_random_backtrace
 
 
 # Common libs to _LDADD for all tests.
-test_ldadd = $(top_builddir)/libgc.la $(EXTRA_TEST_LIBS)
+test_ldadd = \
+	$(top_builddir)/libgc.la \
+	$(THREADDLLIBS) $(UNWINDLIBS) $(EXTRA_TEST_LIBS)
+
 
 
 TESTS += gctest$(EXEEXT)
@@ -36,22 +39,10 @@ check_PROGRAMS += middletest
 middletest_SOURCES = tests/middle.c
 middletest_LDADD = $(test_ldadd)
 
-TESTS += smashtest$(EXEEXT)
-check_PROGRAMS += smashtest
-smashtest_SOURCES = tests/smash_test.c
-smashtest_LDADD = $(test_ldadd)
-
-TESTS += hugetest$(EXEEXT)
-check_PROGRAMS += hugetest
-hugetest_SOURCES = tests/huge_test.c
-hugetest_LDADD = $(test_ldadd)
-
-if KEEP_BACK_PTRS
-TESTS += tracetest$(EXEEXT)
-check_PROGRAMS += tracetest
-tracetest_SOURCES = tests/trace_test.c
-tracetest_LDADD = $(test_ldadd)
-endif
+#TESTS += tracetest$(EXEEXT)
+#check_PROGRAMS += tracetest
+#tracetest_SOURCES = tests/trace_test.c
+#tracetest_LDADD = $(test_ldadd)
 
 if THREADS
 TESTS += threadleaktest$(EXEEXT)
@@ -64,10 +55,6 @@ if CPLUSPLUS
 TESTS += test_cpp$(EXEEXT)
 check_PROGRAMS += test_cpp
 test_cpp_SOURCES = tests/test_cpp.cc
-if AVOID_CPP_LIB
-test_cpp_LDADD = gc_cpp.o $(test_ldadd)
-else
 test_cpp_LDADD = libgccpp.la $(test_ldadd)
-endif
 endif
 
