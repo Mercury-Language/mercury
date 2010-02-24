@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2004, 2006-2007 The University of Melbourne. 
+# Copyright (C) 1995-2004, 2006-2007, 2010 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -85,7 +85,7 @@ clean_local:
 	rm -rf libatomic_ops-install
 else 
 
-submake: force
+submake: Makefile force 
 	MAKEFLAGS=""; export MAKEFLAGS; \
 	$(MAKE) $(MMAKEFLAGS) -j1 GRADE=$(GRADE) GC_GRADE=$(GC_GRADE) \
 		lib$(GC_GRADE).$A lib$(GC_GRADE).$(EXT_FOR_SHARED_LIB) \
@@ -103,6 +103,14 @@ clean_local:
 	rm -f libatomic_ops-1.2/src/config.h
 	rm -f libatomic_ops-1.2/src/atomic_ops/sysdeps/Makefile
 	rm -rf libatomic_ops-install
+	rm -f Makefile
+
+# Makefile.direct is the makefile supplied with the Boehm tarball.  We have
+# to make a copy named Makefile, rather than use make's -f option, because it
+# introduces dependencies between the .o files and a file named Makefile.
+#
+Makefile: Makefile.direct
+	cp Makefile.direct Makefile
 
 endif
 

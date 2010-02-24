@@ -16,7 +16,7 @@ Mercury compiler, version <VERSION>, built on a `<FULLARCH>' system.
 	if the need should arise.
 
 This distribution also contains a slightly modified copy of 
-version 7.0 alpha 6 (CVS 2006-08-14) of the conservative garbage collector
+version 7.2 alpha 4 of the conservative garbage collector
 distributed by Hans Boehm:
 
 	Copyright 1988, 1989 Hans-J. Boehm, Alan J. Demers

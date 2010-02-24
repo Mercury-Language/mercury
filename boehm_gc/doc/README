@@ -28,10 +28,15 @@ modified is included with the above copyright notice.
 A few of the files needed to use the GNU-style build procedure come with
 slightly different licenses, though they are all similar in spirit.  A few
 are GPL'ed, but with an exception that should cover all uses in the
-collector.  (If you are concerned about such things, I recommend you look
+collector. (If you are concerned about such things, I recommend you look
 at the notice in config.guess or ltmain.sh.)
 
-This is version 7.0alpha6 of a conservative garbage collector for C and C++.
+The atomic_ops library contains some code that is covered by the GNU General
+Public License, but is not needed by, nor linked into the collector library.
+It is included here only becuase the atomic_ops distribution is, for
+simplicity, included in its entirety.
+
+This is version 7.2alpha4 of a conservative garbage collector for C and C++.
 
 You might find a more recent version of this at
 
@@ -74,7 +79,7 @@ http://www.hpl.hp.com/personal/Hans_Boehm/papers/, among other places.)
   Unlike the collector described in the second reference, this collector
 operates either with the mutator stopped during the entire collection
 (default) or incrementally during allocations.  (The latter is supported
-on only a few machines.)  On the most common platforms, it can be built
+on fewer machines.)  On the most common platforms, it can be built
 with or without thread support.  On a few platforms, it can take advantage
 of a multiprocessor to speed up garbage collection.
 
@@ -113,19 +118,21 @@ introduced leaks, the amount of unreclaimed memory typically stays
 bounded.
 
   In the following, an "object" is defined to be a region of memory allocated
-by the routines described below.  
+by the routines described below.
 
   Any objects not intended to be collected must be pointed to either
 from other such accessible objects, or from the registers,
 stack, data, or statically allocated bss segments.  Pointers from
 the stack or registers may point to anywhere inside an object.
 The same is true for heap pointers if the collector is compiled with
- ALL_INTERIOR_POINTERS defined, as is now the default.
+ALL_INTERIOR_POINTERS defined, or GC_all_interior_pointers is otherwise
+set, as is now the default.
 
 Compiling without ALL_INTERIOR_POINTERS may reduce accidental retention
 of garbage objects, by requiring pointers from the heap to to the beginning
 of an object.  But this no longer appears to be a significant
-issue for most programs.
+issue for most programs occupying a small fraction of the possible
+address space.
 
 There are a number of routines which modify the pointer recognition
 algorithm.  GC_register_displacement allows certain interior pointers
@@ -184,29 +191,40 @@ stored on the thread's stack for the duration of their lifetime.
 
 INSTALLATION AND PORTABILITY
 
-  As distributed, the macro SILENT is defined in Makefile.
-In the event of problems, this can be removed to obtain a moderate
-amount of descriptive output for each collection.
+  As distributed, the collector operates silently
+In the event of problems, this can usually be changed by defining the
+GC_PRINT_STATS or GC_PRINT_VERBOSE_STATS environment variables.  This
+will result in a few lines of descriptive output for each collection.
 (The given statistics exhibit a few peculiarities.
 Things don't appear to add up for a variety of reasons, most notably
 fragmentation losses.  These are probably much more significant for the
 contrived program "test.c" than for your application.)
 
-  Note that typing "make test" will automatically build the collector
-and then run setjmp_test and gctest. Setjmp_test will give you information
-about configuring the collector, which is useful primarily if you have
-a machine that's not already supported.  Gctest is a somewhat superficial
-test of collector functionality.  Failure is indicated by a core dump or
-a message to the effect that the collector is broken.  Gctest takes about 
-35 seconds to run on a SPARCstation 2. It may use up to 8 MB of memory.  (The
-multi-threaded version will use more.  64-bit versions may use more.)
-"Make test" will also, as its last step, attempt to build and test the
-"cord" string library.  This will fail without an ANSI C compiler, but
-the garbage collector itself should still be usable.
+  On most Un*x-like platforms, the collector can be built either using a
+GNU autoconf-based build infrastructure (type "configure; make" in the
+simplest case), or with a classic makefile by itself (type
+"cp Makefile.direct Makefile; make").  Here we focus on the latter option.
+On other platforms, typically only the latter option is available, though
+with a different supplied Makefile.)
 
-  The Makefile will generate a library gc.a which you should link against.
+  For the Makefile.direct-based process, typing "make test" instead of "make"
+will automatically build the collector and then run setjmp_test and gctest.
+Setjmp_test will give you information about configuring the collector, which is
+useful primarily if you have a machine that's not already supported.  Gctest is
+a somewhat superficial test of collector functionality.  Failure is indicated
+by a core dump or a message to the effect that the collector is broken.  Gctest
+takes about a second to two to run on reasonable 2007 vintage desktops.  It may
+use up to about 30MB of memory.  (The multi-threaded version will use more.
+64-bit versions may use more.) "Make test" will also, as its last step, attempt
+to build and test the "cord" string library.)
+
+  Makefile.direct will generate a library gc.a which you should link against.
 Typing "make cords" will add the cord library to gc.a.
-Note that this requires an ANSI C compiler.
+
+  The GNU style build process understands the usual targets.  "Make check"
+runs a number of tests.  "Make install" installs at least libgc, and libcord.
+Try "./configure --help" to see the configuration options.  It is currently
+not possible to exercise all combinations of build options this way.
 
   It is suggested that if you need to replace a piece of the collector
 (e.g. GC_mark_rts.c) you simply list your version ahead of gc.a on the
@@ -262,9 +280,9 @@ THE C INTERFACE TO THE ALLOCATOR
   The following routines are intended to be directly called by the user.
 Note that usually only GC_malloc is necessary.  GC_clear_roots and GC_add_roots
 calls may be required if the collector has to trace from nonstandard places
-(e.g. from dynamic library data areas on a machine on which the 
+(e.g. from dynamic library data areas on a machine on which the
 collector doesn't already understand them.)  On some machines, it may
-be desirable to set GC_stacktop to a good approximation of the stack base. 
+be desirable to set GC_stacktop to a good approximation of the stack base.
 (This enhances code portability on HP PA machines, since there is no
 good way for the collector to compute this value.)  Client code may include
 "gc.h", which defines all of the following, plus many others.
@@ -314,17 +332,17 @@ good way for the collector to compute this value.)  Client code may include
       program startup.)
 
 6)  GC_malloc_ignore_off_page(bytes)
-	- identical to GC_malloc, but the client promises to keep a pointer to
-	  the somewhere within the first 256 bytes of the object while it is
-	  live.  (This pointer should nortmally be declared volatile to prevent
-	  interference from compiler optimizations.)  This is the recommended
-	  way to allocate anything that is likely to be larger than 100Kbytes
-	  or so.  (GC_malloc may result in failure to reclaim such objects.)
+        - identical to GC_malloc, but the client promises to keep a pointer to
+          the somewhere within the first 256 bytes of the object while it is
+          live.  (This pointer should nortmally be declared volatile to prevent
+          interference from compiler optimizations.)  This is the recommended
+          way to allocate anything that is likely to be larger than 100Kbytes
+          or so.  (GC_malloc may result in failure to reclaim such objects.)
 
 7)  GC_set_warn_proc(proc)
-	- Can be used to redirect warnings from the collector.  Such warnings
-	  should be rare, and should not be ignored during code development.
-      
+        - Can be used to redirect warnings from the collector.  Such warnings
+          should be rare, and should not be ignored during code development.
+
 8) GC_enable_incremental()
     - Enables generational and incremental collection.  Useful for large
       heaps on machines that provide access to page dirty information.
@@ -336,7 +354,7 @@ good way for the collector to compute this value.)  Client code may include
 9) Several routines to allow for registration of finalization code.
    User supplied finalization code may be invoked when an object becomes
    unreachable.  To call (*f)(obj, x) when obj becomes inaccessible, use
-	GC_register_finalizer(obj, f, x, 0, 0);
+        GC_register_finalizer(obj, f, x, 0, 0);
    For more sophisticated uses, and for finalization ordering issues,
    see gc.h.
 
@@ -352,7 +370,7 @@ in excessive memory consumption.
 
   Some additional tuning is possible through the parameters defined
 near the top of gc_priv.h.
-  
+
   If only GC_malloc is intended to be used, it might be appropriate to define:
 
 #define malloc(n) GC_malloc(n)
@@ -378,21 +396,10 @@ See gc_cpp.h for the definition of the interface.  This interface
 tries to approximate the Ellis-Detlefs C++ garbage collection
 proposal without compiler changes.
 
-Cautions:
-1. Arrays allocated without new placement syntax are
-allocated as uncollectable objects.  They are traced by the
-collector, but will not be reclaimed.
-
-2. Failure to use "make c++" in combination with (1) will
-result in arrays allocated using the default new operator.
-This is likely to result in disaster without linker warnings.
-
-3. If your compiler supports an overloaded new[] operator,
-then gc_cpp.cc and gc_cpp.h should be suitably modified.
-
-4. Many current C++ compilers have deficiencies that
-break some of the functionality.  See the comments in gc_cpp.h
-for suggested workarounds.
+  Very often it will also be necessary to use gc_allocator.h and the
+allocator declared there to construct STL data structures.  Otherwise
+subobjects of STL data structures wil be allcoated using a system
+allocator, and objects they refer to may be prematurely collected.
 
 USE AS LEAK DETECTOR:
 
@@ -403,19 +410,14 @@ This will cause the collector to invoke the report_leak
 routine defined near the top of reclaim.c whenever an inaccessible
 object is found that has not been explicitly freed.  Such objects will
 also be automatically reclaimed.
-  Productive use of this facility normally involves redefining report_leak
-to do something more intelligent.  This typically requires annotating
-objects with additional information (e.g. creation time stack trace) that
-identifies their origin.  Such code is typically not very portable, and is
-not included here, except on SPARC machines.
-  If all objects are allocated with GC_DEBUG_MALLOC (see next section),
-then the default version of report_leak will report the source file
-and line number at which the leaked object was allocated.  This may
-sometimes be sufficient.  (On SPARC/SUNOS4 machines, it will also report
-a cryptic stack trace.  This can often be turned into a sympolic stack
-trace by invoking program "foo" with "callprocs foo".  Callprocs is
-a short shell script that invokes adb to expand program counter values
-to symbolic addresses.  It was largely supplied by Scott Schwartz.)
+  If all objects are allocated with GC_DEBUG_MALLOC (see next section), then
+the default version of report_leak will report at least the source file and
+line number at which the leaked object was allocated.  This may sometimes be
+sufficient.  (On a few machines, it will also report a cryptic stack trace.
+If this is not symbolic, it can somethimes be called into a sympolic stack
+trace by invoking program "foo" with "callprocs foo".  Callprocs is a short
+shell script that invokes adb to expand program counter values to symbolic
+addresses.  It was largely supplied by Scott Schwartz.)
   Note that the debugging facilities described in the next section can
 sometimes be slightly LESS effective in leak finding mode, since in
 leak finding mode, GC_debug_free actually results in reuse of the object.
@@ -475,7 +477,7 @@ in the header, see the definition of the type oh in debug_malloc.c)
 
 INCREMENTAL/GENERATIONAL COLLECTION:
 
-The collector normally interrupts client code for the duration of 
+The collector normally interrupts client code for the duration of
 a garbage collection mark phase.  This may be unacceptable if interactive
 response is needed for programs with large heaps.  The collector
 can also run in a "generational" mode, in which it usually attempts to
@@ -517,14 +519,14 @@ objects.  Stubborn objects are treated less efficiently than pointerfree
 A rough rule of thumb is that, in the absence of VM information, garbage
 collection pauses are proportional to the amount of pointerful storage
 plus the amount of modified "stubborn" storage that is reachable during
-the collection.  
+the collection.
 
 Initial allocation of stubborn objects takes longer than allocation
 of other objects, since other data structures need to be maintained.
 
 We recommend against random use of stubborn objects in client
 code, since bugs caused by inappropriate writes to stubborn objects
-are likely to be very infrequently observed and hard to trace.  
+are likely to be very infrequently observed and hard to trace.
 However, their use may be appropriate in a few carefully written
 library routines that do not make the objects themselves available
 for writing by client code.
@@ -542,11 +544,12 @@ for suggestions on how to fix your compiler.
   This is not a real-time collector.  In the standard configuration,
 percentage of time required for collection should be constant across
 heap sizes.  But collection pauses will increase for larger heaps.
-(On SPARCstation 2s collection times will be on the order of 300 msecs
-per MB of accessible memory that needs to be scanned.  Your mileage
-may vary.)  The incremental/generational collection facility helps,
-but is portable only if "stubborn" allocation is used.
+They will decrease with the number of processors if parallel marking
+is enabled.
+(On 2007 vintage machines, GC times may be on the order of 5 msecs
+per MB of accessible memory that needs to be scanned and processor.
+Your mileage may vary.)  The incremental/generational collection facility
+may help in some cases.
   Please address bug reports to boehm@acm.org.  If you are
 contemplating a major addition, you might also send mail to ask whether
 it's already been done (or whether we tried and discarded it).
-

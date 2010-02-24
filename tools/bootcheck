@@ -775,18 +775,20 @@ then
             rm -f boehm_gc
             mkdir boehm_gc
             cd boehm_gc
-            $LN_S $root/boehm_gc/*.h .
             $LN_S $root/boehm_gc/*.c .
             $LN_S $root/boehm_gc/*.s .
             $LN_S $root/boehm_gc/*.S .
             $LN_S $root/boehm_gc/include .
             cp $root/boehm_gc/Mmake* .
-            $LN_S $root/boehm_gc/Makefile .
+            cp $root/boehm_gc/Makefile.direct .
             cp $root/boehm_gc/NT_MAKEFILE .
             cp $root/boehm_gc/gc_cpp.cc .
             $LN_S $root/boehm_gc/machdeps .
             cp $root/boehm_gc/configure_atomic_ops.sh .
+            cp $root/boehm_gc/build_atomic_ops.sh* .
             cp -r $root/boehm_gc/libatomic_ops-*[0-9] .
+            cp -r $root/boehm_gc/libatomic_ops .
+            cp -r $root/boehm_gc/extra .
             cd $root/$stage2dir
         else
             $LN_S $root/boehm_gc .

@@ -8,7 +8,7 @@ Q=`mktemp -d`
 ln -s "$P" $Q/dir
 cd $Q/dir/libatomic_ops
 ./configure --prefix=$Q/dir/libatomic_ops-install
-$MAKE CC=$CC install
+$MAKE CC="$CC" install
 cd /
 rm $Q/dir
 rmdir $Q
