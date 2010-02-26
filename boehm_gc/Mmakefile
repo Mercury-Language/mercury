@@ -143,6 +143,7 @@ HEADERS= \
 	include/gc_inline.h \
 	include/gc_tiny_fl.h \
 	include/gc_mark.h \
+	include/gc_version.h \
 	$(LIBGC_DLL_H) $(LIBGC_GLOBALS_H)
 PRIVATE_HEADERS= \
 	include/private/gc_priv.h \
