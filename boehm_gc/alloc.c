@@ -929,9 +929,7 @@ STATIC void GC_finish_collection(void)
       GC_finalizer_bytes_freed = 0;
 
 #   ifdef USE_MUNMAP
-    if (GC_MERCURY_USE_MUNMAP) {
-	GC_unmap_old();
-    }
+      GC_unmap_old();
 #   endif
 
 #   ifndef SMALL_CONFIG

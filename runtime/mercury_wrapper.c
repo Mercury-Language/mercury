@@ -1287,7 +1287,6 @@ enum MR_long_option {
     MR_COVERAGE_TEST_IF_EXEC_OPT,
     MR_TRACE_COUNT_FILE,
     MR_MEM_USAGE_REPORT,
-    MR_BOEHM_GC_MUNMAP,
     MR_BOEHM_GC_FREE_SPACE_DIVISOR,
     MR_BOEHM_GC_CALC_TIME,
     MR_FP_ROUNDING_MODE
@@ -1399,7 +1398,6 @@ struct MR_option MR_long_opts[] = {
     { "tc-summary-max",                 1, 0, MR_TRACE_COUNT_SUMMARY_MAX_OPT },
     { "trace-count-summary-max",        1, 0, MR_TRACE_COUNT_SUMMARY_MAX_OPT },
     { "mem-usage-report",               1, 0, MR_MEM_USAGE_REPORT },
-    { "boehm-gc-munmap",                0, 0, MR_BOEHM_GC_MUNMAP },
     { "boehm-gc-free-space-divisor",    1, 0, MR_BOEHM_GC_FREE_SPACE_DIVISOR },
     { "boehm-gc-calc-time",             0, 0, MR_BOEHM_GC_CALC_TIME },
     { "fp-rounding-mode",               1, 0, MR_FP_ROUNDING_MODE }, 
@@ -1977,12 +1975,6 @@ MR_process_options(int argc, char **argv)
 
             case MR_MEM_USAGE_REPORT:
                 MR_mem_usage_report_prefix = MR_copy_string(MR_optarg);
-                break;
-
-            case MR_BOEHM_GC_MUNMAP:
-#ifdef MR_BOEHM_GC
-                GC_mercury_use_munmap = MR_TRUE;
-#endif
                 break;
 
             case MR_BOEHM_GC_FREE_SPACE_DIVISOR:

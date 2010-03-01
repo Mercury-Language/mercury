@@ -60,10 +60,10 @@ GC_INNER ptr_t GC_alloc_large(size_t lb, int k, unsigned flags)
             GC_collect_a_little_inner((int)n_blocks);
     h = GC_allochblk(lb, k, flags);
 #   ifdef USE_MUNMAP
-	if (0 == h && GC_MERCURY_USE_MUNMAP) {
-	    GC_merge_unmapped();
-	    h = GC_allochblk(lb, k, flags);
-	}
+        if (0 == h) {
+            GC_merge_unmapped();
+            h = GC_allochblk(lb, k, flags);
+        }
 #   endif
     while (0 == h && GC_collect_or_expand(n_blocks, flags != 0, retry)) {
         h = GC_allochblk(lb, k, flags);

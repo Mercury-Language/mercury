@@ -10185,14 +10185,6 @@ The default maximum value of @var{N} is 20.
 @c testing the code writing out deep profiling data).
 
 @sp 1
-@item --boehm-gc-munmap
-@findex --boehm-gc-munmap
-This option enables code in the Boehm garbage collector to return unused memory
-pages back to the operating system. It is meaningful only when using the Boehm
-garbage collector, and requires @samp{--enable-gc-munmap} to be passed to
-@samp{configure}. (This may not work with all platforms).
-
-@sp 1
 @item --boehm-gc-free-space-divisor=@var{N}
 @findex --boehm-gc-free-space-divisor=@var{N}
 This option sets the value of the free space divisor in the Boehm garbage
