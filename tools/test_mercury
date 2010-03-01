@@ -478,12 +478,6 @@ case $HOST in
         # XXX The reg grades cause heap exhaustion on Mac OS 10.6.
         # XXX compilation of the debug grades is very slow with
         # Mac OS 10.6 an gcc 4.2 - it is disabled for now.
-        # We should also test the following grades on eris:
-        #   hlc.par.gc
-        #   none.par.gc
-        #   hl.gc.par
-        # The Boehm GC doesn't currently build in .par grades
-        # on eris [bug #121].
         #
         CONFIG_OPTS=""
         DEFAULT_GRADE="hlc.gc"
@@ -497,6 +491,9 @@ case $HOST in
             none.gc                     \
             none.gc.trseg               \
             hl.gc                       \
+            hlc.par.gc                  \
+            none.par.gc                 \
+            hl.par.gc                   \
             java"
         ;;
     taura)
