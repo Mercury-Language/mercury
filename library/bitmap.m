@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2007, 2009 The University of Melbourne
+% Copyright (C) 2001-2002, 2004-2007, 2009-2010 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -553,6 +553,11 @@ initialize_bitmap_bytes(BM, ByteIndex, LastByteIndex, Init) =
 
 in_range(BM, I) :- 0 =< I, I < num_bits(BM).
 
+:- pred in_range_rexcl(bitmap, bit_index).
+:- mode in_range_rexcl(in, in) is semidet.
+
+in_range_rexcl(BM, I) :- 0 =< I, I =< num_bits(BM).
+
 byte_in_range(BM, I) :-
     in_range(BM, I * bits_per_byte + bits_per_byte - 1).
 
@@ -581,9 +586,9 @@ BM ^ unsafe_bit(I) =
 BM ^ bits(FirstBit, NumBits) =
     ( if
         FirstBit >= 0,
-        in_range(BM, FirstBit + NumBits - 1),
         NumBits >= 0,
-        NumBits =< int.bits_per_int
+        NumBits =< int.bits_per_int,
+        in_range_rexcl(BM, FirstBit + NumBits)
       then
         BM ^ unsafe_bits(FirstBit, NumBits)
       else if
@@ -591,8 +596,8 @@ BM ^ bits(FirstBit, NumBits) =
         ; NumBits > int.bits_per_int
         )
       then
-        throw_bitmap_error(
-    "bitmap.bits: number of bits must be between 0 and `int.bits_per_int'.")
+        throw_bitmap_error("bitmap.bits: number of bits must be between " ++
+            "0 and `int.bits_per_int'.")
       else
         throw_bounds_error(BM, "bitmap.bits", FirstBit)
     ).
@@ -644,14 +649,9 @@ extract_bits_from_byte_index(ByteIndex, FirstBitIndex,
 (BM ^ bits(FirstBit, NumBits) := Bits) =
     ( if
         FirstBit >= 0,
-        (
-            NumBits >= 0,
-            NumBits =< int.bits_per_int,
-            in_range(BM, FirstBit + NumBits - 1)
-        ;
-            NumBits = 0,
-            in_range(BM, FirstBit)
-        )
+        NumBits >= 0,
+        NumBits =< int.bits_per_int,
+        in_range_rexcl(BM, FirstBit + NumBits)
       then
         BM ^ unsafe_bits(FirstBit, NumBits) := Bits
       else if
@@ -706,19 +706,17 @@ set_bits_in_byte_index(ByteIndex, LastBitIndex,
 %-----------------------------------------------------------------------------%
 
 :- type bitmap.slice
-    ---> bitmap.slice_ctor(
-            slice_bitmap_field :: bitmap,
-            slice_start_bit_index_field :: bit_index,
-            slice_num_bits_field :: num_bits
-    ).
+    --->    bitmap.slice_ctor(
+                slice_bitmap_field          :: bitmap,
+                slice_start_bit_index_field :: bit_index,
+                slice_num_bits_field        :: num_bits
+            ).
 
 slice(BM, StartBit, NumBits) = Slice :-
     ( if
         NumBits >= 0,
         StartBit >= 0,
-        ( in_range(BM, StartBit + NumBits - 1)
-        ; NumBits = 0, in_range(BM, StartBit)
-        )
+        in_range_rexcl(BM, StartBit + NumBits)
       then
         Slice = bitmap.slice_ctor(BM, StartBit, NumBits)
       else
@@ -741,10 +739,9 @@ Slice ^ slice_num_bytes =
 
 :- func quotient_bits_per_byte_with_rem_zero(string, int) = int is det.
 
-quotient_bits_per_byte_with_rem_zero(Pred, Int) =
-            Int `unchecked_quotient` bits_per_byte :-
-    ( Int `unchecked_rem` bits_per_byte = 0 ->
-        true
+quotient_bits_per_byte_with_rem_zero(Pred, Int) = Quotient :-
+    ( unchecked_rem(Int, bits_per_byte) = 0 ->
+        Quotient = unchecked_quotient(Int, bits_per_byte)
     ;
         throw_bitmap_error(Pred ++ ": not a byte slice.")
     ).
@@ -777,17 +774,23 @@ flip(I, BM, flip(BM, I)).
 
 %-----------------------------------------------------------------------------%
 
-unsafe_set(BM, I) =
-    BM ^ unsafe_byte(byte_index_for_bit(I)) :=
-        BM ^ unsafe_byte(byte_index_for_bit(I)) \/ bitmask(I).
+unsafe_set(BM0, I) = BM :-
+    ByteIndex = byte_index_for_bit(I),
+    Byte0 = BM0 ^ unsafe_byte(ByteIndex),
+    Byte = Byte0 \/ bitmask(I),
+    BM = BM0 ^ unsafe_byte(ByteIndex) := Byte.
 
-unsafe_clear(BM, I) =
-    BM ^ unsafe_byte(byte_index_for_bit(I)) :=
-        BM ^ unsafe_byte(byte_index_for_bit(I)) /\ \bitmask(I).
+unsafe_clear(BM0, I) = BM :-
+    ByteIndex = byte_index_for_bit(I),
+    Byte0 = BM0 ^ unsafe_byte(ByteIndex),
+    Byte = Byte0 /\ \bitmask(I),
+    BM = BM0 ^ unsafe_byte(ByteIndex) := Byte.
 
-unsafe_flip(BM, I) =
-    BM ^ unsafe_byte(byte_index_for_bit(I)) :=
-        BM ^ unsafe_byte(byte_index_for_bit(I)) `xor` bitmask(I).
+unsafe_flip(BM0, I) = BM :-
+    ByteIndex = byte_index_for_bit(I),
+    Byte0 = BM0 ^ unsafe_byte(ByteIndex),
+    Byte = Byte0 `xor` bitmask(I),
+    BM = BM0 ^ unsafe_byte(ByteIndex) := Byte.
 
 unsafe_set(I, BM, unsafe_set(BM, I)).
 
@@ -833,11 +836,15 @@ complement(BM) =
 :- func complement_2(int, bitmap) = bitmap.
 :- mode complement_2(in, bitmap_di) = bitmap_uo is det.
 
-complement_2(ByteI, BM) =
-    ( if ByteI < 0
-      then BM
-      else complement_2(ByteI - 1,
-            BM ^ unsafe_byte(ByteI) := \ (BM ^ unsafe_byte(ByteI)))
+complement_2(ByteI, BM0) = BM :-
+    ( if
+        ByteI < 0
+      then
+        BM = BM0
+      else
+        X = BM0 ^ unsafe_byte(ByteI),
+        BM1 = BM0 ^ unsafe_byte(ByteI) := \ X,
+        BM = complement_2(ByteI - 1, BM1)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -889,7 +896,8 @@ xor(BMa, BMb) =
     in, bitmap_di) = bitmap_uo is det.
 
 zip(Fn, BMa, BMb) =
-    ( if num_bits(BMb) = 0 then BMb
+    ( if num_bits(BMb) = 0
+      then BMb
       else zip2(byte_index_for_bit(num_bits(BMb) - 1), Fn, BMa, BMb)
     ).
 
@@ -900,13 +908,14 @@ zip(Fn, BMa, BMb) =
 :- mode zip2(in, func(in, in) = out is det,
     in, bitmap_di) = bitmap_uo is det.
 
-zip2(I, Fn, BMa, BMb) =
+zip2(I, Fn, BMa, BMb) = BM :-
     ( if I >= 0 then
-        zip2(I - 1, Fn, BMa,
-            BMb ^ unsafe_byte(I) :=
-                Fn(BMa ^ unsafe_byte(I), BMb ^ unsafe_byte(I)))
+        Xa = BMa ^ unsafe_byte(I),
+        Xb = BMb ^ unsafe_byte(I),
+        BMc = BMb ^ unsafe_byte(I) := Fn(Xa, Xb),
+        BM = zip2(I - 1, Fn, BMa, BMc)
       else
-        BMb
+        BM = BMb
     ).
 
 %-----------------------------------------------------------------------------%
@@ -941,12 +950,8 @@ copy_bits(SameBM, SrcBM, SrcStartBit, DestBM, DestStartBit, NumBits) =
         NumBits >= 0,
         SrcStartBit >= 0,
         DestStartBit >= 0,
-        ( in_range(SrcBM, SrcStartBit + NumBits - 1)
-        ; NumBits = 0, in_range(SrcBM, SrcStartBit)
-        ),
-        ( in_range(DestBM, DestStartBit + NumBits - 1)
-        ; NumBits = 0, in_range(DestBM, DestStartBit)
-        )
+        in_range_rexcl(SrcBM, SrcStartBit + NumBits),
+        in_range_rexcl(DestBM, DestStartBit + NumBits)
       then
         unsafe_copy_bits(SameBM, SrcBM, SrcStartBit,
             DestBM, DestStartBit, NumBits)
@@ -1105,8 +1110,12 @@ copy_bytes_in_bitmap(SrcBM, SrcStartByteIndex, DestStartByteIndex, NumBytes) =
     bitmap_di, in, in) = bitmap_uo is det.
 
 copy_bytes(SameBM, SrcBM, SrcStartByte, DestBM, DestStartByte, NumBytes) =
-   ( if
-        NumBytes >= 0,
+    ( if
+        NumBytes = 0
+      then
+        DestBM
+      else if
+        NumBytes > 0,
         SrcStartByte >= 0,
         byte_in_range(SrcBM, SrcStartByte + NumBytes - 1),
         DestStartByte >= 0,
@@ -1387,10 +1396,10 @@ choose_copy_direction(SameBM, SrcStartBit, DestStartBit) =
     %
 to_string(BM) = Str :-
     NumBits = BM ^ num_bits,
-    to_string_chars(byte_index_for_bit(NumBits - 1), BM,
-        [('>')], Chars),
-    Str = string.from_char_list(
-            [('<') | to_char_list(int_to_string(NumBits))] ++ [(':') | Chars]).
+    to_string_chars(byte_index_for_bit(NumBits - 1), BM, ['>'], BitChars),
+    LenChars = to_char_list(int_to_string(NumBits)),
+    Chars = ['<' | LenChars] ++ [':' | BitChars],
+    Str = string.from_char_list(Chars).
 
 :- pred to_string_chars(int, bitmap, list(char), list(char)).
 %:- mode to_string_chars(in, bitmap_ui, in, out) is det.
@@ -1687,10 +1696,17 @@ bytes_equal(Index, MaxIndex, BM1, BM2) :-
 ").
 
 bitmap_compare(Result, BM1, BM2) :-
-    compare(Result0, BM1 ^ num_bits, (BM2 ^ num_bits) @ NumBits),
-    ( if Result0 = (=) then
-        bytes_compare(Result, 0, byte_index_for_bit(NumBits), BM1, BM2)
-      else
+    NumBits1 = BM1 ^ num_bits,
+    NumBits2 = BM2 ^ num_bits,
+    compare(Result0, NumBits1, NumBits2),
+    (
+        Result0 = (=),
+        MaxIndex = byte_index_for_bit(NumBits2),
+        bytes_compare(Result, 0, MaxIndex, BM1, BM2)
+    ;
+        ( Result0 = (<)
+        ; Result0 = (>)
+        ),
         Result = Result0
     ).
 
@@ -1700,7 +1716,9 @@ bitmap_compare(Result, BM1, BM2) :-
 
 bytes_compare(Result, Index, MaxIndex, BM1, BM2) :-
     ( if Index =< MaxIndex then
-        compare(Result0, BM1 ^ unsafe_byte(Index), BM2 ^ unsafe_byte(Index)),
+        Byte1 = BM1 ^ unsafe_byte(Index),
+        Byte2 = BM2 ^ unsafe_byte(Index),
+        compare(Result0, Byte1, Byte2),
         (
             Result0 = (=),
             bytes_compare(Result, Index + 1, MaxIndex, BM1, BM2)
@@ -1732,6 +1750,7 @@ det_num_bytes(BM) = Bytes :-
 %-----------------------------------------------------------------------------%
 
 num_bits(_) = _ :- private_builtin.sorry("bitmap.num_bits").
+
 :- pragma foreign_proc("C",
     num_bits(BM::in) = (NumBits::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -1766,6 +1785,7 @@ num_bits(_) = _ :- private_builtin.sorry("bitmap.num_bits").
 :- mode 'num_bits :='(bitmap_di, in) = bitmap_uo is det.
 
 'num_bits :='(_, _) = _ :- private_builtin.sorry("bitmap.'num_bits :='").
+
 :- pragma foreign_proc("C",
     'num_bits :='(BM0::bitmap_di, NumBits::in) = (BM::bitmap_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -1960,7 +1980,12 @@ bits_per_byte = 8.
     %
 :- func byte_index_for_bit(bit_index) = byte_index.
 
-byte_index_for_bit(I) = unchecked_quotient(I, bits_per_byte).
+byte_index_for_bit(I) =
+    ( if I < 0 then
+        -1
+      else
+        unchecked_quotient(I, bits_per_byte)
+    ).
 
 %-----------------------------------------------------------------------------%
 

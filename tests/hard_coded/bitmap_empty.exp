@@ -1,0 +1,68 @@
+-- new
+"<0:>"
+-- copy
+"<0:>"
+-- resize
+"<0:>"
+"<4:F0>"
+"<0:>"
+-- shrink_without_copying
+"<0:>"
+-- in_range
+ok
+ok
+ok
+-- byte_in_range
+ok
+ok
+ok
+-- num_bits
+0
+-- det_num_bytes
+0
+-- ^bit
+expected: bitmap_error("bitmap.bit: index 0 is out of bounds [0 - 0).")
+-- ^bits
+0
+-- ^bits:=
+"<0:>"
+-- ^byte
+expected: bitmap_error("bitmap.byte: index 0 is out of bounds [0 - 0).")
+-- ^byte:=
+expected: bitmap_error("bitmap.\'byte :=\': index 0 is out of bounds [0 - 0).")
+-- slice
+slice_ctor("<0:>", 0, 0)
+-- byte_slice
+slice_ctor("<0:>", 0, 0)
+-- flip
+expected: bitmap_error("bitmap.flip: index 0 is out of bounds [0 - 0).")
+-- complement
+"<0:>"
+-- union
+"<0:>"
+-- intersect
+"<0:>"
+-- difference
+"<0:>"
+-- xor
+"<0:>"
+-- append_list
+"<2:C0>"
+-- copy_bits
+"<0:>"
+-- copy_bits_in_bitmap
+"<0:>"
+-- copy_bytes
+"<0:>"
+-- copy_bytes_in_bitmap
+"<0:>"
+-- from_string
+"<0:>"
+-- to_byte_string
+<>
+-- hash
+0
+-- bitmap_equal
+equal
+-- bitmap_compare
+'='

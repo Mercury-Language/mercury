@@ -198,6 +198,9 @@ Changes to the Mercury standard library:
 * bitmap.difference/2 and version_bitmap.difference/2 now compute difference,
   not xor.  bitmap.xor/2 and version_bitmap.xor/2 have been added.
 
+* bitmap.to_string(BM) now returns "<0:>" for an empty bitmap BM.
+  Previously it returned "<0:00>".
+
 * Version bitmaps now have a field `bit' for getting and setting a single bit.
 
   version_bitmap.get/2 has been deprecated; use version_bitmap.bit/2 instead.

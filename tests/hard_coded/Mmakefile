@@ -556,6 +556,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		allow_stubs \
 		backend_external \
 		backjump_test \
+		bitmap_empty \
 		bitmap_test \
 		bit_buffer_test \
 		dir_test \
