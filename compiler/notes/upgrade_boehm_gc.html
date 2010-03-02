@@ -63,7 +63,7 @@ but they have been modified by various upgrades to the collector.
 These files live on the vendor branch.
 For example, before upgrading the collector the file, BCC_MAKEFILE,
 had the version number, 1.1.1.6.
-However if the upgrade of the collector has requires a modification to
+However, if the upgrade of the collector involves a modification to
 BCC_MAKEFILE then the new version will be 1.1.1.7 on the vendor branch
 and when you update boehm_gc you will get version 1.1.1.7 of BCC_MAKEFILE,
 which is obviously inconsistent.
@@ -119,7 +119,7 @@ last import of the collector.
 </P>
 
 <P>
-Now resolve any of the conflicts.
+Now resolve all of the conflicts.
 Bootcheck the compiler in at least asm_fast.gc and hlc.gc.
 Then use the new system to do an install (with non-empty LIBGRADES)
 and test that the installed version can compile some test programs.
@@ -130,7 +130,7 @@ and scripts/prepare_tmp_dir_*).
 </P>
 
 <P>
-Finally update .README.in (in the root directoy of the mercury module) and
+Finally update .README.in (in the root directory of the mercury module) and
 bindist/bindist.README to reflect the current version of the collector
 being used.
 </P>
@@ -140,7 +140,7 @@ Now one can check it in!
 </P>
 
 <P>
-Last update was $Date: 2009-01-02 02:07:03 $ by $Author: juliensf $@cs.mu.oz.au.
+Last update was $Date: 2010-03-02 05:26:58 $ by $Author: juliensf $@cs.mu.oz.au.
 </P>
 
 </body>
