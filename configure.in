@@ -1,7 +1,7 @@
 #-----------------------------------------------------------------------------#
 # vim: ts=4 sw=4 expandtab
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2009 The University of Melbourne.
+# Copyright (C) 1995-2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -224,7 +224,9 @@ case $BOOTSTRAP_MC in
         MERCURY_MSG("wrong mmc ignored")
         ;;
 esac
-if test "$BOOTSTRAP_MC" != ""; then
+
+if test "$BOOTSTRAP_MC" != ""
+then
     AC_MSG_CHECKING(whether the above mmc works and is sufficiently recent)
     cat > conftest.m << EOF
         % This module contains features which didn't work in
@@ -370,7 +372,7 @@ EOF
         # Note that we need to set --grade to an LLDS grade
         # when doing this test because term size profiling
         # requires an LLDS grade.
-        # This also tests for the --shlib-linker-intall-name-flag,
+        # This also tests for the --shlib-linker-install-name-flag,
         # --warn-known-bad-format-calls and
         # --warn-insts-without-matching-type options.
         $BOOTSTRAP_MC \
@@ -399,6 +401,9 @@ EOF
             test -f $PREFIX/bin/mercury_compile ||
             test -f $PREFIX/bin/mercury_compile.exe
         then
+            # This variable is used to let the tests in the following section know
+            # that we are going to attempt to bootstrap with the compiler $PREFIX/bin.
+            bootstrap_from_prefix="yes"
             AC_MSG_WARN(
 [using $PREFIX/bin/mercury_compile to bootstrap])
         else
@@ -408,6 +413,62 @@ EOF
     fi
     rm -f conftest*
 fi
+
+#-----------------------------------------------------------------------------#
+
+if test "$BOOTSTRAP_MC" = ""
+then
+    # If we do not have a working boostrap Mercury compiler, then work out
+    # whether any .c files we do have were compiled with --highlevel code or
+    # not.  At this point we only check a single file -- this is enough to
+    # allow us to determine a value for BOOTSTRAP_GRADE below -- we check
+    # any other pre-generated .c files as part of the call to
+    # mercury_check_c_files() later on.
+    #
+    if test -f compiler/top_level.c
+    then
+        highlevel_code=`grep "HIGHLEVEL_CODE=.*" compiler/top_level.c`
+    else
+        if test -f compiler/Mercury/cs/top_level.c
+        then
+            highlevel_code=`grep "HIGHLEVEL_CODE=.*" compiler/Mercury/cs/top_level.c`
+        else
+            # If we are going to attempt to bootstrap from a compiler in 
+            # $PREFIX/bin (see the above section), then it is ok if we do not
+            # have any pre-generated .c files; if not, then we cannot continue.
+            #
+            if test "$bootstrap_from_prefix" != "yes"
+            then
+                AC_MSG_ERROR(
+[You need a working Mercury compiler to bootstrap with])
+            fi
+        fi
+    fi
+    
+    case "$highlevel_code" in
+
+        *yes)
+            BOOTSTRAP_HLC="yes"
+            ;;
+
+        *no)
+            BOOTSTRAP_HLC="no"
+            ;;
+       
+        "")
+            # This corresponds to the case where we compile using
+            # $PREFIX/bin/mercury_compile.  Since we can (hopefully)
+            # regenerate any .c files, it is irrelevant whether we used
+            # --highlevel-code or not when compiling any existing ones.
+            ;;
+    
+        *)
+            AC_MSG_ERROR(
+[Cannot determine what code model pre-generated .c files use.])
+            ;;
+    esac
+fi
+
 #-----------------------------------------------------------------------------#
 #
 # Let the user specify which C compiler to use.
@@ -3078,29 +3139,32 @@ case $BEST_LLDS_BASE_GRADE in
         ;;
 esac
 
-# BOOTSTRAP_GRADE is the most efficient grade which we can use to bootstrap
-# the compiler from the source distribution, if there is no installed Mercury
-# compiler.  This grade needs to be one for which the C files are
-# compatible with the C files that we ship in the source distribution,
-# which are generated with grade asm_fast.gc.
+# BOOTSTRAP_GRADE is the most efficient grade which we can use to bootstrap the
+# compiler from the source distribution, if there is no installed Mercury
+# compiler.  This grade needs to be one for which the C files are compatible
+# with the C files that we ship in the source distribution.  The C files in the
+# source distribution are generated in either hlc.gc or in asm_fast.gc.  In the
+# former case, we _must_ use the grade hlc.gc, in the latter case we can use any
+# of the base LLDS grades (it's the same C code), except that a couple of them
+# (fast and jump) don't support code addresses in static initalizers.
 
-# In order to be compatible with grade asm_fast.gc, it needs to be an LLDS
-# grade.  We generate the same C code for the base LLDS grades, except that a
-# couple of them (fast and jump) don't support code addresses in static
-# initializers.
-
-case $BEST_LLDS_BASE_GRADE in
-    jump|fast)
-        if test $mercury_cv_gcc_model_reg = yes; then
-            BOOTSTRAP_GRADE=reg.gc
-        else
-            BOOTSTRAP_GRADE=none.gc
-        fi
-        ;;
-    *)
-        BOOTSTRAP_GRADE=$BEST_LLDS_BASE_GRADE.gc
-        ;;
-esac
+if test "$BOOTSTRAP_HLC" = "yes"
+then
+    BOOTSTRAP_GRADE=hlc.gc
+else
+    case $BEST_LLDS_BASE_GRADE in
+        jump|fast)
+            if test $mercury_cv_gcc_model_reg = yes; then
+                BOOTSTRAP_GRADE=reg.gc
+            else
+                BOOTSTRAP_GRADE=none.gc
+            fi
+            ;;
+        *)
+            BOOTSTRAP_GRADE=$BEST_LLDS_BASE_GRADE.gc
+            ;;
+    esac
+fi
 
 # Choose whether to use $BOOTSTRAP_GRADE or $BEST_GRADE_FOR_COMPILER,
 # and if necessary remove the previously built C files.
@@ -4838,6 +4902,14 @@ AC_SUBST(DEFAULT_XML_TMP_FILENAME)
 
 #-----------------------------------------------------------------------------#
 
+# We need to check that any existing .c files are compatible with the selected
+# grade with respect to whether --highlevel-code was used to generate them.
+#
+case "$GRADE" in
+    hl*) need_hl_c_files="yes" ;;
+    *)   need_hl_c_files="no"  ;;
+esac     
+
 mercury_check_c_files () {
     c_dir=$1
     c_date_dir=$2
@@ -4855,6 +4927,8 @@ mercury_check_c_files () {
             if grep "TAG_BITS=$mercury_cv_low_tag_bits" \
                     confscratch > /dev/null 2>&1 \
                 && grep "UNBOXED_FLOAT=$mercury_cv_unboxed_floats" \
+                    confscratch > /dev/null 2>&1 \
+                && grep "HIGHLEVEL_CODE=$need_hl_c_files" \
                     confscratch > /dev/null 2>&1
             then
                 some_kept=true
