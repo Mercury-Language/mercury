@@ -95,10 +95,59 @@ do
     fi
 done
 AC_SUBST(RECONFIGURE_ARGS)
+
 #-----------------------------------------------------------------------------#
+
 remake_dependencies=false
 AC_CONFIG_HEADER(runtime/mercury_conf.h)
 AC_PREFIX_DEFAULT(/usr/local/mercury-`. ./VERSION; echo $VERSION`)
+
+#-----------------------------------------------------------------------------#
+#
+# Let the user specify which C compiler to use.
+#
+
+AC_ARG_WITH(cc,
+    AC_HELP_STRING([--with-cc=<program>],
+                   [Specify which C compiler to use.]),
+    mercury_cv_with_cc="$withval", mercury_cv_with_cc="")
+
+case "$mercury_cv_with_cc" in
+    yes)
+        AC_MSG_ERROR(missing argument to --with-cc=... option)
+        exit 1
+        ;;
+    no)
+        AC_MSG_ERROR(invalid option --without-cc)
+        exit 1
+        ;;
+    "")
+        ;;
+    *)
+        CC="$mercury_cv_with_cc"
+        ;;
+esac
+
+#-----------------------------------------------------------------------------#
+#
+# Determine what C compiler to use
+#
+
+# The code in config.guess that distinguishes between the i*86 and x86_64
+# versions of Darwin needs to use the C compiler to make that distinction.
+# In particular, if we wish to build a 32-bit Mercury installation on
+# x86_64 machine, then we need to tell configure that we are using the
+# 32-bit C compiler.  If we didn't call the AC_PROG_CC macro at this point
+# then configure's --with-cc option would not do that.
+ 
+AC_PROG_CC
+AC_SUBST([CC])
+
+# Ensure that AC_CANONICAl_HOST uses the value of CC we just determined.
+export CC
+
+#-----------------------------------------------------------------------------#
+
 AC_CANONICAL_HOST
 FULLARCH="$host"
 AC_SUBST(FULLARCH)
@@ -471,32 +520,6 @@ fi
 
 #-----------------------------------------------------------------------------#
 #
-# Let the user specify which C compiler to use.
-#
-
-AC_ARG_WITH(cc,
-    AC_HELP_STRING([--with-cc=<program>],
-                   [Specify which C compiler to use.]),
-    mercury_cv_with_cc="$withval", mercury_cv_with_cc="")
-
-case "$mercury_cv_with_cc" in
-    yes)
-        AC_MSG_ERROR(missing argument to --with-cc=... option)
-        exit 1
-        ;;
-    no)
-        AC_MSG_ERROR(invalid option --without-cc)
-        exit 1
-        ;;
-    "")
-        ;;
-    *)
-        CC="$mercury_cv_with_cc"
-        ;;
-esac
-
-#-----------------------------------------------------------------------------#
-#
 # Determine whether to define LARGE_CONFIG when compiling boehm_gc.
 #
 
@@ -779,20 +802,8 @@ case "$HOSTNAMECMD" in
 esac
 AC_DEFINE_UNQUOTED(MR_HOSTNAMECMD, "$HOSTNAMECMD")
 #-----------------------------------------------------------------------------#
-AC_PROG_CC
+
 MERCURY_CHECK_CC_NEEDS_TRAD_CPP
-
-# Mercury doesn't currently work on 64 bit Darwin, so we need to pass
-# -m32 to gcc.
-case "$host" in
-    *apple*darwin*9*|*apple*darwin*10*)
-        if test "$GCC" = "yes"; then
-            CC="$CC -m32"
-        fi
-        ;;
-esac
-
-AC_SUBST(CC)
 
 # AC_PROG_CC sets GCC to yes if $CC is GNU C.
 # If the C compiler is GCC try to work out what version we are using.
@@ -837,7 +848,6 @@ case "$MERCURY_CONF_RECONFIGURE" in
         CPPFLAGS="-I$PREFIX/lib/mercury/inc $CPPFLAGS"
         ;;
 esac
-
 
 #-----------------------------------------------------------------------------#
 
@@ -3066,7 +3076,7 @@ esac
 # with gcc's Darwin support.
 #
 case "$host" in
-    i*86*apple*darwin*)
+    i*86*apple*darwin*|x86_64*apple*darwin*)
         BEST_LLDS_BASE_GRADE=none
         ;;
 esac    
