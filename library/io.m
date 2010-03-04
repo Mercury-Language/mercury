@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2008, 2010 The University of Melbourne.
+% Copyright (C) 1993-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -9899,11 +9899,13 @@ command_line_argument(_, "") :-
         Status  = process.waitFor();
         Msg = null;
 
-        // The StreamPipes are killed off after the Process is finished,
-        // so as not to waste CPU cycles with pointless threads.
+        // The stdin StreamPipe is killed off after the Process is finished
+        // so as not to waste CPU cycles with a pointless thread.
         stdin.interrupt();
-        stdout.interrupt();
-        stderr.interrupt();
+
+        // Wait for all the outputs to be written.
+        stdout.join();
+        stderr.join();
 
         if (stdin.exception != null) {
             throw stdin.exception;
