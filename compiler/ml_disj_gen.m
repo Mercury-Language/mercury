@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -125,6 +125,7 @@
 :- import_module hlds.hlds_module.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
+:- import_module libs.options.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_gen_info.
@@ -153,10 +154,17 @@ ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Statements, !Info) :-
             LaterDisjuncts = [_ | _],
             (
                 CodeModel = model_non,
-                ml_gen_info_get_target(!.Info, Target),
-                DisjNonLocals = goal_info_get_nonlocals(GoalInfo),
                 (
+                    ml_gen_info_get_target(!.Info, Target),
                     allow_lookup_disj(Target) = yes,
+
+                    ml_gen_info_get_module_info(!.Info, ModuleInfo),
+                    module_info_get_globals(ModuleInfo, Globals),
+                    globals.lookup_bool_option(Globals, static_ground_cells,
+                        StaticGroundCells),
+                    StaticGroundCells = yes,
+
+                    DisjNonLocals = goal_info_get_nonlocals(GoalInfo),
                     all_disjuncts_are_conj_of_unify(DisjNonLocals, Disjuncts)
                 ->
                     % Since the MLDS backend implements trailing by a

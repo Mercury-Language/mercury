@@ -65,6 +65,7 @@ OTHER_PROGS= \
 	big_foreign_type \
 	bug85 \
 	bug100 \
+	bug134 \
 	builtin_false \
 	call_failure \
 	common_struct_bug \
