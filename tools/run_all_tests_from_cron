@@ -88,7 +88,7 @@ ARCH="`expr $FULLARCH : '\([^-]*\)-.*' `"
 
 #-----------------------------------------------------------------------------#
 
-release_branch=0.13
+release_branch=10.04
 case "$BRANCH" in
     "")
         DAY=`date '+%e'`
