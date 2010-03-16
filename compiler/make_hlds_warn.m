@@ -618,10 +618,18 @@ is_multi_var(NonLocals, VarSet, Var) :-
 
 pragma_foreign_proc_body_checks(Lang, Context, PredOrFuncCallId, PredId, ProcId,
         ModuleInfo, BodyPieces, !Specs) :-
-    check_fp_body_for_success_indicator(Lang, Context, PredOrFuncCallId,
-        PredId, ProcId, ModuleInfo, BodyPieces, !Specs),
-    check_fp_body_for_return(Lang, Context, PredOrFuncCallId, BodyPieces,
-        !Specs).
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_import_status(PredInfo, ImportStatus),
+    IsImported = status_is_imported(ImportStatus),
+    (
+        IsImported = yes
+    ;
+        IsImported = no,
+        check_fp_body_for_success_indicator(Lang, Context, PredOrFuncCallId,
+            PredId, ProcId, ModuleInfo, BodyPieces, !Specs),
+        check_fp_body_for_return(Lang, Context, PredOrFuncCallId, BodyPieces,
+            !Specs)
+    ).
 
 :- pred check_fp_body_for_success_indicator(foreign_language::in,
     prog_context::in, simple_call_id::in, pred_id::in, proc_id::in,

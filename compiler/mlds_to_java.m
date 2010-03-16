@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2009 The University of Melbourne.
+% Copyright (C) 2000-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -4477,13 +4477,20 @@ output_binop(Info, Op, X, Y, !IO) :-
         output_rval(Info, Y, !IO),
         io.write_string("]", !IO)
     ; java_string_compare_op(Op, OpStr) ->
-        io.write_string("(", !IO),
-        output_rval(Info, X, !IO),
-        io.write_string(".compareTo(", !IO),
-        output_rval(Info, Y, !IO),
-        io.write_string(") ", !IO),
-        io.write_string(OpStr, !IO),
-        io.write_string(" 0)", !IO)
+        ( OpStr = "==" ->
+            output_rval(Info, X, !IO),
+            io.write_string(".equals(", !IO),
+            output_rval(Info, Y, !IO),
+            io.write_string(")", !IO)
+        ;
+            io.write_string("(", !IO),
+            output_rval(Info, X, !IO),
+            io.write_string(".compareTo(", !IO),
+            output_rval(Info, Y, !IO),
+            io.write_string(") ", !IO),
+            io.write_string(OpStr, !IO),
+            io.write_string(" 0)", !IO)
+        )
     ; rval_is_enum_object(X) ->
         io.write_string("(", !IO),
         output_rval(Info, X, !IO),

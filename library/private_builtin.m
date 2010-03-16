@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1652,7 +1652,8 @@ no_clauses(PredName) :-
     public static final int MR_TYPECTOR_REP_FOREIGN_ENUM            = 44;
     public static final int MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ     = 45;
     public static final int MR_TYPECTOR_REP_UNKNOWN                 = 46;
-    
+    public static final int MR_TYPECTOR_REP_MAX                     = 47;
+
     public static final int MR_SECTAG_NONE      = 0;
     public static final int MR_SECTAG_LOCAL     = 1;
     public static final int MR_SECTAG_REMOTE    = 2;

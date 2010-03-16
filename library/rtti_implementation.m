@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2007, 2009 The University of Melbourne.
+% Copyright (C) 2001-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -204,6 +204,17 @@
     import jmercury.runtime.PseudoTypeInfo;
     import jmercury.runtime.TypeCtorInfo_Struct;
     import jmercury.runtime.TypeInfo_Struct;
+").
+
+:- pragma foreign_code("Java",
+"
+    private static final Type_ctor_rep_0[] static_type_ctor_rep
+        = new Type_ctor_rep_0[private_builtin.MR_TYPECTOR_REP_MAX];
+    static {
+        for (int i = 0; i < private_builtin.MR_TYPECTOR_REP_MAX; i++) {
+            static_type_ctor_rep[i] = new Type_ctor_rep_0(i);
+        }
+    }
 ").
 
 %-----------------------------------------------------------------------------%
@@ -3212,8 +3223,7 @@ type_ctor_compare_pred(_) = unify_or_compare_pred :-
     get_type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    // XXX this is called quite a lot so this might be inefficient
-    TypeCtorRep = new Type_ctor_rep_0(TypeCtorInfo.type_ctor_rep.value);
+    TypeCtorRep = static_type_ctor_rep[TypeCtorInfo.type_ctor_rep.value];
 ").
 :- pragma foreign_proc("C",
     get_type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),

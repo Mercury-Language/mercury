@@ -1006,8 +1006,8 @@ library should be created: @samp{shared} or @samp{static}. The
 In our example, the files @samp{libmypackage.a} and @samp{libmypackage.so}
 should appear in the current directory.
 
-The library is most easily used in other programs if you install it to a
-directory. To install the library, issue the following command:
+Other programs can more easily use a library that is installed.
+To install the library, issue the following command:
 
 @example
 mmc --make --install-prefix <dir> libmypackage.install
@@ -1015,14 +1015,16 @@ mmc --make --install-prefix <dir> libmypackage.install
 
 @noindent
 @samp{mmc} will create the directory @samp{<dir>/lib/mercury} and install the
-library compiled in all valid grades and with all interface files. Because
-several grades are usually compiled, installing the library can be a lengthy
-process. You can specify the set of installed grades using the option
+library there.
+The library will be compiled in all valid grades and with all interface files.
+Because several grades are usually compiled, installing the library can be a lengthy
+process.
+You can specify the set of installed grades using the option
 @samp{--no-libgrade} followed by @samp{--libgrade <grade>} for all grades you
 wish to install.
 
 If no @samp{--install-prefix <dir>} is specified, the library will be installed
-in standard location, next to the Mercury standard library.
+in the standard location, next to the Mercury standard library.
 
 
 @node Using installed libraries with mmc --make
