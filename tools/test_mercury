@@ -229,7 +229,7 @@ EXTRA_INSTALL_CFLAGS=""
 case $HOST in
     # test things at different optimization levels...
 
-    $ROTD_HOST|aral)
+    $ROTD_HOST)
         OPTIMIZE="-O2 --intermodule-optimization"
         ;;
     
@@ -306,7 +306,7 @@ esac
 # So if you modify this list of hosts, you need to also modify
 # run_all_tests_from_cron.
 case $HOST in
-    aral|saturn|neptune|goofy|taura|bob|goliath)
+    saturn|neptune|goofy|taura|bob|goliath)
         INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH
         ;;
 
@@ -457,9 +457,6 @@ case $HOST in
             hlc.gc.trseg                    \
             hl.gc                           \
             hl.par.gc"
-        ;;
-    aral)
-        CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
         ;;
     eris)
         # The asm_fast grades don't (yet) work on Darwin.
@@ -1002,11 +999,8 @@ echo "test_mercury starting to create binary distribution at `date`" 1>&2
 # Also we distinguish them based on what optimization level
 # they were compiled with.
 case $HOST in
-    aral)        
-        fullname=i686-pc-linux-libc2.7-gnu-O2-intermod
-        ;;
     saturn)
-        fullname=x86_64-unknown-linux-gnu-libc2.7-gnu-O5-intermod
+        fullname=x86_64-unknown-linux-gnu-libc2.7-gnu-O2-intermod
         ;;
     neptune)
         fullname=x86_64-unknown-linux-gnu-libc2.9-gnu-O4

@@ -104,19 +104,11 @@ case "$BRANCH" in
 		#esac
 		BRANCH=latest
 		;;
-	   aral)
-		BRANCH=latest
-		#case $DAY in
-		#	*[13579]) BRANCH=$release_branch ;;
-		#	*) BRANCH=latest ;;
-		#esac
-	   	;;
-	   saturn|neptune|goofy|eris)
- 	       	BRANCH=latest
-		#case $DAY in
-		#	*[02468]) BRANCH=$release_branch ;;
-		#        *) BRANCH=latest ;;
-	       	#esac
+	   saturn)
+		case $DAY in
+			*[02468]) BRANCH=$release_branch ;;
+		        *) 	  BRANCH=latest ;;
+	       	esac
 	       	;;	
 	   *)
 	    	# On anything else just test the main branch.
