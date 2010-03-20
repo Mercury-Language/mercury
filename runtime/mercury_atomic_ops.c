@@ -24,8 +24,18 @@
 
 MR_OUTLINE_DEFN(
     MR_bool
-    MR_compare_and_swap_word(volatile MR_Integer *addr, MR_Integer old,
+    MR_compare_and_swap_int(volatile MR_Integer *addr, MR_Integer old,
         MR_Integer new_val)
+,
+    {
+        MR_COMPARE_AND_SWAP_WORD_BODY;
+    }
+)
+
+MR_OUTLINE_DEFN(
+    MR_bool
+    MR_compare_and_swap_uint(volatile MR_Unsigned *addr, MR_Unsigned old,
+        MR_Unsigned new_val)
 ,
     {
         MR_COMPARE_AND_SWAP_WORD_BODY;
@@ -42,11 +52,29 @@ MR_OUTLINE_DEFN(
 )
 
 MR_OUTLINE_DEFN(
+    MR_Unsigned 
+    MR_atomic_add_and_fetch_uint(volatile MR_Unsigned *addr, MR_Unsigned addend)
+,
+    {
+        MR_ATOMIC_ADD_AND_FETCH_UINT_BODY;
+    }
+)
+
+MR_OUTLINE_DEFN(
     void
     MR_atomic_add_int(volatile MR_Integer *addr, MR_Integer addend)
 ,
     {
         MR_ATOMIC_ADD_INT_BODY;
+    }
+)
+
+MR_OUTLINE_DEFN(
+    void
+    MR_atomic_add_uint(volatile MR_Unsigned *addr, MR_Unsigned addend)
+,
+    {
+        MR_ATOMIC_ADD_UINT_BODY;
     }
 )
 
@@ -70,6 +98,15 @@ MR_OUTLINE_DEFN(
 
 MR_OUTLINE_DEFN(
     void 
+    MR_atomic_inc_uint(volatile MR_Unsigned *addr)
+,
+    {
+        MR_ATOMIC_INC_UINT_BODY;
+    }
+)
+
+MR_OUTLINE_DEFN(
+    void 
     MR_atomic_dec_int(volatile MR_Integer *addr)
 ,
     {
@@ -79,10 +116,19 @@ MR_OUTLINE_DEFN(
 
 MR_OUTLINE_DEFN(
     MR_bool
-    MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr)
+    MR_atomic_dec_and_is_zero_int(volatile MR_Integer *addr)
 ,
     {
-        MR_ATOMIC_DEC_INT_AND_IS_ZERO_BODY;
+        MR_ATOMIC_DEC_AND_IS_ZERO_INT_BODY;
+    }
+)
+
+MR_OUTLINE_DEFN(
+    MR_bool
+    MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr)
+,
+    {
+        MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY;
     }
 )
 
@@ -184,30 +230,30 @@ MR_do_cpu_feature_detection(void) {
         MR_rdtsc_is_available = MR_TRUE;
 
     /*
-     * BTW: Intel can't count:
-     *
-     * http://www.pagetable.com/?p=18
-     * http://www.codinghorror.com/blog/archives/000364.html
-     *
-     * 486 (1989): family 4
-     * Pentium (1993): family 5
-     * Pentium Pro (1995): family 6, models 0 and 1
-     * Pentium 2 (1997): family 6, models 3, 5 and 6
-     * Pentium 3 (2000): family 6, models 7, 8, 10, 11
-     * Itanium (2001): family 7
-     * Pentium 4 (2000): family 15/0
-     * Itanium 2 (2002): family 15/1 and 15/2
-     * Pentium D: family 15/4
-     * Pentium M (2003): family 6, models 9 and 13
-     * Core (2006): family 6, model 14
-     * Core 2 (2006): family 6, model 15
-     * i7: family 6, model 26
-     * Atom: family 6, model 28
-     *
-     * This list is incomplete, it doesn't cover AMD or any other brand of x86
-     * processor, and it probably doesn't cover all post-pentium Intel
-     * processors.
-     */
+    ** BTW: Intel can't count:
+    **
+    ** http://www.pagetable.com/?p=18
+    ** http://www.codinghorror.com/blog/archives/000364.html
+    **
+    ** 486 (1989): family 4
+    ** Pentium (1993): family 5
+    ** Pentium Pro (1995): family 6, models 0 and 1
+    ** Pentium 2 (1997): family 6, models 3, 5 and 6
+    ** Pentium 3 (2000): family 6, models 7, 8, 10, 11
+    ** Itanium (2001): family 7
+    ** Pentium 4 (2000): family 15/0
+    ** Itanium 2 (2002): family 15/1 and 15/2
+    ** Pentium D: family 15/4
+    ** Pentium M (2003): family 6, models 9 and 13
+    ** Core (2006): family 6, model 14
+    ** Core 2 (2006): family 6, model 15
+    ** i7: family 6, model 26
+    ** Atom: family 6, model 28
+    **
+    ** This list is incomplete, it doesn't cover AMD or any other brand of x86
+    ** processor, and it probably doesn't cover all post-pentium Intel
+    ** processors.
+    */
 
     /* bits 8-11 (first bit (LSB) is bit 0) */
     MR_Unsigned extended_family, basic_family, family,
@@ -302,11 +348,13 @@ MR_do_cpu_feature_detection(void) {
         unsigned int shift;
 
         /*
-         * This processor supports the brand string from which we can extract
-         * the clock speed.  This algorithm is described in the Intel
-         * Instruction Set Reference, Volume 2B, Chapter 3, Pages 207-208, In
-         * particular the flow chart in figure 3-10.
-         */
+        ** This processor supports the brand string from which we can
+        ** try to extract the clock speed.  This algorithm is described
+        ** in the Intel Instruction Set Reference, Volume 2B, Chapter 3,
+        ** Pages 207-208, In particular the flow chart in figure 3-10.
+        ** This does not work on AMD processors since they don't include
+        ** the clock speed in the brand string.
+        */
         for (page = 0; page < 3; page++) {
             MR_cpuid(page + 0x80000002, 0, &a, &b, &c, &d);
 #if MR_DEBUG_CPU_FEATURE_DETECTION
@@ -329,10 +377,14 @@ MR_do_cpu_feature_detection(void) {
 
         MR_cpu_cycles_per_sec = parse_freq_from_x86_brand_string(buff);
 #if MR_DEBUG_CPU_FEATURE_DETECTION
-        fprintf(stderr, "Cycles per second: %ld\n", MR_cpu_cycles_per_sec);
+        if (MR_cpu_cycles_per_sec == 0) {
+            fprintf(stderr, "Failed to detect cycles per second "
+                "you can probably blame AMD for this.\n");
+        } else {
+            fprintf(stderr, "Cycles per second: %ld\n", MR_cpu_cycles_per_sec);
+        }
 #endif
     }
-
 #endif /* __GNUC__ && (__i386__ || __x86_64__) */
 }
 
@@ -347,10 +399,10 @@ parse_freq_from_x86_brand_string(char *string) {
     brand_string_len = strlen(string);
     
     /*
-     * There will be at least five characters if we can parse this, three
-     * for the '?Hz' suffix, at least one for the units, plus a space at
-     * the beginning o
-     */
+    ** There will be at least five characters if we can parse this, three
+    ** for the '?Hz' suffix, at least one for the units, plus a space at
+    ** the beginning of the number.
+    */
     if (!(brand_string_len > 5))
         return 0;
 
@@ -430,11 +482,18 @@ MR_profiling_stop_timer(MR_Timer *timer, MR_Stats *stats) {
         {
             duration = now.MR_timer_time - timer->MR_timer_time;
             duration_squared = duration * duration;
-            MR_atomic_inc_int(&(stats->MR_stat_count_recorded));
+            MR_atomic_inc_uint(&(stats->MR_stat_count_recorded));
+  #if MR_LOW_TAG_BITS >= 3
             MR_atomic_add_int(&(stats->MR_stat_sum), duration);
-            MR_atomic_add_int(&(stats->MR_stat_sum_squares), duration_squared);
+            MR_atomic_add_uint(&(stats->MR_stat_sum_squares), duration_squared);
+  #else
+            MR_US_SPIN_LOCK(&(stats->MR_stat_sums_lock));
+            stats->MR_stat_sum += duration;
+            stats->MR_stat_sum_squares += duration_squared;
+            MR_US_UNLOCK(&(stats->MR_stat_sums_lock));
+  #endif
         } else {
-            MR_atomic_inc_int(&(stats->MR_stat_count_not_recorded));
+            MR_atomic_inc_uint(&(stats->MR_stat_count_not_recorded));
         }
     }
     else if (MR_rdtsc_is_available == MR_TRUE)
@@ -442,11 +501,18 @@ MR_profiling_stop_timer(MR_Timer *timer, MR_Stats *stats) {
         MR_rdtsc(&(now.MR_timer_time));
         duration = now.MR_timer_time - timer->MR_timer_time;
         duration_squared = duration * duration;
-        MR_atomic_inc_int(&(stats->MR_stat_count_recorded));
+        MR_atomic_inc_uint(&(stats->MR_stat_count_recorded));
+  #if MR_LOW_TAG_BITS >= 3
         MR_atomic_add_int(&(stats->MR_stat_sum), duration);
-        MR_atomic_add_int(&(stats->MR_stat_sum_squares), duration_squared);
+        MR_atomic_add_uint(&(stats->MR_stat_sum_squares), duration_squared);
+  #else
+        MR_US_SPIN_LOCK(&(stats->MR_stat_sums_lock));
+        stats->MR_stat_sum += duration;
+        stats->MR_stat_sum_squares += duration_squared;
+        MR_US_UNLOCK(&(stats->MR_stat_sums_lock));
+  #endif
     }
-#elif /* not __GNUC__ && (__i386__ || __x86_64__) */
+#else /* not __GNUC__ && (__i386__ || __x86_64__) */
     /* No TSC support on this architecture or with this C compiler */
     MR_atomic_inc_int(&(stats->MR_stat_count_recorded));
 #endif /* not __GNUC__ && (__i386__ || __x86_64__) */
@@ -464,7 +530,7 @@ MR_read_cpu_tsc(void)
         tsc = 0;
     }
     return tsc;
-#elif /* not __GNUC__ && (__i386__ || __x86_64__) */
+#else /* not __GNUC__ && (__i386__ || __x86_64__) */
     return 0;
 #endif /* not __GNUC__ && (__i386__ || __x86_64__) */
 }
@@ -477,35 +543,56 @@ MR_read_cpu_tsc(void)
 static __inline__ void 
 MR_cpuid(MR_Unsigned code, MR_Unsigned sub_code,
         MR_Unsigned *a, MR_Unsigned *b, MR_Unsigned *c, MR_Unsigned *d) {
+#ifdef __x86_64__
     __asm__("cpuid"
         : "=a"(*a), "=b"(*b), "=c"(*c), "=d"(*d)
         : "0"(code), "2"(sub_code));
+#elif defined(__i386__)
+    /*
+    ** i386 is more register staved, in particular we can't use ebx in
+    ** position independent code.  And we can't move ebx into another
+    ** general purpose register, between register pinning, PIC, the
+    ** stack and frame pointers and the other registers used by CPUID
+    ** there are literally no general purpose registers left on i386.
+    */
+    __asm__("pushl %%ebx; \
+             cpuid; \
+             movl %%ebx, %1; \
+             popl %%ebx;"
+        : "=a"(*a), "=m"(*b), "=c"(*c), "=d"(*d)
+        : "0"(code), "2"(sub_code)
+        : "memory");
+#endif
 }
 
 static __inline__ void
 MR_rdtscp(MR_uint_least64_t *tsc, MR_Unsigned *processor_id) {
-    MR_uint_least64_t tsc_high;
+    MR_Unsigned tsc_low;
+    MR_Unsigned tsc_high;
 
     /*
     ** On 64bit systems the high 32 bits of RAX and RDX are 0 filled by
     ** rdtsc{p}
     */
     __asm__("rdtscp"
-           : "=a"(*tsc), "=d"(tsc_high), "=c"(*processor_id));
+           : "=a"(tsc_low), "=d"(tsc_high), "=c"(*processor_id));
 
-    tsc_high = tsc_high << 32;
-    *tsc |= tsc_high; 
+    *tsc = tsc_high;
+    *tsc = *tsc << 32;
+    *tsc |= tsc_low;
 }
 
 static __inline__ void
 MR_rdtsc(MR_uint_least64_t *tsc) {
-    MR_uint_least64_t tsc_high;
+    MR_Unsigned tsc_low;
+    MR_Unsigned tsc_high;
 
     __asm__("rdtsc"
-           : "=a"(*tsc), "=d"(tsc_high));
+           : "=a"(tsc_low), "=d"(tsc_high));
 
-    tsc_high = tsc_high << 32;
-    *tsc |= tsc_high; 
+    *tsc = tsc_high;
+    *tsc = *tsc << 32;
+    *tsc |= tsc_low;
 }
 
 #endif /* __GNUC__ && (__i386__ || __x86_64__) */

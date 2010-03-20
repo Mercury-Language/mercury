@@ -735,13 +735,13 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
   ** If you change MR_SyncTerm_Struct you need to update configure.in.
   **
   ** MR_st_count is manipulated via atomic operations, therefore it is declared
-  ** as volatile and an MR_Integer.
+  ** as volatile.
   */
 
   struct MR_SyncTerm_Struct {
-    MR_Context      *MR_st_orig_context;
-    MR_Word             *MR_st_parent_sp;
-    volatile MR_Integer MR_st_count;
+    MR_Context              *MR_st_orig_context;
+    MR_Word                 *MR_st_parent_sp;
+    volatile MR_Unsigned    MR_st_count;
   };
 
   #define MR_init_sync_term(sync_term, nbranches)                             \

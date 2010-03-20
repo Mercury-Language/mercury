@@ -1291,8 +1291,17 @@ get_current_time_nanosecs(void)
     MercuryEngine       *eng = MR_thread_engine_base;
 
     current_tsc = MR_read_cpu_tsc();
-    return (current_tsc + eng->MR_eng_cpu_clock_ticks_offset) / 
-        (MR_cpu_cycles_per_sec / 1000000000);
+
+    if (MR_cpu_cycles_per_sec == 0) {
+        return current_tsc + eng->MR_eng_cpu_clock_ticks_offset;
+    } else {
+        /*
+        ** The large constant (10^9) here converts seconds into
+        ** nanoseconds.
+        */
+        return (current_tsc + eng->MR_eng_cpu_clock_ticks_offset) / 
+            (MR_cpu_cycles_per_sec / 1000000000);
+    }
 }
 
 /***************************************************************************/

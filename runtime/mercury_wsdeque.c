@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2007 The University of Melbourne.
+** Copyright (C) 2007, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -85,7 +85,7 @@ MR_wsdeque_steal_top(MR_SparkDeque *dq, MR_Spark *ret_spark)
     }
 
     *ret_spark = MR_sa_element(arr, top);
-    if (!MR_compare_and_swap_word(&dq->MR_sd_top, top, top + 1)) {
+    if (!MR_compare_and_swap_int(&dq->MR_sd_top, top, top + 1)) {
         return -1;  /* abort */
     }
 
