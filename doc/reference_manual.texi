@@ -672,6 +672,17 @@ This is an abbreviation for @samp{not (some @var{Vars} not @var{Goal})}.
 A conjunction.
 @var{Goal1} and @var{Goal2} must be valid goals.
 
+@item @code{@var{Goal1} & @var{Goal2}}
+A parallel conjunction.
+This has the same declarative semantics as the normal conjunction.
+Operationally, implementations may execute @var{Goal1} & @var{Goal2}
+in parallel.
+The order in which parallel conjuncts begin execution is
+not fixed.
+It is an error for @var{Goal1} or @var{Goal2} to have a
+determinism other than @samp{det} or @samp{cc_multi}.  
+@xref{Determinism categories}.
+
 @item @code{@var{Goal1} ; @var{Goal2}}
 where @var{Goal1} is not of the form @samp{Goal1a -> Goal1b}:
 a disjunction.

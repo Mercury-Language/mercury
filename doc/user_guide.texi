@@ -5590,6 +5590,8 @@ then a progress message will be displayed as each file is read.
                                     program with mprof.
 * Using mdprof::                    How to analyze the time and/or memory
                                     performance of a program with mdprof.
+* Using threadscope::               How to analyse the parallel
+                                    execution of a program with threadscope.
 * Profiling and shared libraries::  Profiling dynamically linked executables.
 @end menu
 
@@ -5599,6 +5601,7 @@ then a progress message will be displayed as each file is read.
 @cindex Measuring performance
 @cindex Optimization
 @cindex Efficiency
+@cindex Parallel performance
 
 To obtain the best trade-off between productivity and efficiency,
 programmers should not spend too much time optimizing their code
@@ -5618,19 +5621,35 @@ that associates a lot more context with each measurement.
 but not both at the same time;
 @samp{mdprof} can profile both time and space at the same time.
 
+The parallel execution of Mercury programs can be analyzed with a third
+profiler called @samp{threadscope}.
+@samp{threadscope} allows programmers to visualise CPU utilisation for work,
+garbage collection, and idle time.
+This enables programmers to see the effect of parallelization decisions such as
+task granularity.
+The @samp{threadscope} tool is not included with the Melbourne Mercury
+Compiler,
+See @url{http://research.microsoft.com/en-us/projects/threadscope/, 
+Threadscope: Performance Tuning Parallel Haskell Programs}.
+
 @node Building profiled applications
 @section Building profiled applications
 @cindex Building profiled applications
 @pindex mprof
 @pindex mdprof
+@pindex threadscope
 @cindex Time profiling
 @cindex Heap profiling
 @cindex Memory profiling
 @cindex Allocation profiling
 @cindex Deep profiling
+@cindex Threadscope profiling
+@cindex Parallel runtime profiling
+@findex --parallel
+@findex --threadscope
 
 To enable profiling, your program must be built with profiling enabled.
-The two different profilers require different support,
+The three different profilers require different support,
 and thus you must choose which one to enable when you build your program.
 
 @itemize @bullet
@@ -5646,6 +5665,10 @@ pass the @samp{--memory-profiling} option to @samp{mmc},
 To build your program with deep profiling enabled (for @samp{mdprof}),
 pass the @samp{--deep-profiling} option to @samp{mmc},
 @samp{mgnuc} and @samp{ml}.
+@item
+To build your program with threadscope profiling enabled (for @samp{threadscope}).
+pass the @samp{--parallel} and @samp{--threadscope} options to @samp{mmc},
+@samp{mgnuc} and @samp{ml}.
 @end itemize
 
 If you are using Mmake,
@@ -5655,7 +5678,7 @@ e.g.@: by adding the line @samp{GRADEFLAGS=--profiling}.
 (For more information about the different grades,
 see @ref{Compilation model options}.)
 
-Enabling profiling has several effects.
+Enabling @samp{mprof} or @samp{mdprof} profiling has several effects.
 First, it causes the compiler to generate slightly modified code,
 which counts the number of times each predicate or function is called,
 and for every call, records the caller and callee.
@@ -5668,6 +5691,12 @@ that were compiled with the same kind of profiling enabled.
 Third, if you enable graph profiling,
 the compiler will generate for each source file
 the static call graph for that file in @samp{@var{module}.prof}.
+
+Enabling @samp{threadscope} profiling causes the compiler to build the program 
+against a different runtime system.
+This runtime system logs events relevant to parallel execution.
+@samp{threadscope} support is not compatibile with all processors,
+see @file{README.ThreadScope} for more information.
 
 @node Creating profiles
 @section Creating profiles
@@ -5703,6 +5732,11 @@ will use two of those files (@file{Prof.Decls} and @file{Prof.CallPair})
 and a two others: @file{Prof.MemoryWords} and @file{Prof.MemoryCells}.
 Executables compiled with @samp{--deep-profiling}
 save profiling data in a single file, @file{Deep.data}.
+Executables compiled with the @samp{--threadscope} option write profiling data
+to a file whose name is that of the program being profiled with the extension
+@samp{.eventlog}.
+For example, the profile for the program @samp{my_program} would be written to
+the file @file{my_program.eventlog}.
 
 It is also possible to combine @samp{mprof} profiling results
 from multiple runs of your program.
@@ -5717,7 +5751,7 @@ when running your program with @samp{mprof} profiling enabled.
 If this happens, just run it again --- the problem occurs only very rarely.
 The same vulnerability does not occur with @samp{mdprof} profiling.
 
-With both profilers,
+With the @samp{mprof} and @samp{mdprof} profilers,
 you can control whether time profiling measures
 real (elapsed) time, user time plus system time, or user time only,
 by including the options @samp{-Tr}, @samp{-Tp}, or @samp{-Tv} respectively
@@ -6093,6 +6127,30 @@ all		list
 all		map
 internal	set
 @end example
+
+@node Using threadscope
+@section Using threadscope
+
+@pindex threadscope
+@pindex show-ghc-events
+@cindex ThreadScope profiling
+@cindex Parallel execution profiling
+
+The ThreadScope tools are not distributed with Mercury.
+For information about how to install them please see the
+@file{README.ThreadScope} file included in the Mercury distribution.
+
+ThreadScope provides two programs that can be used to view profiles in
+@file{.eventlog} files.
+The first, @samp{show-ghc-events}, lists the ThreadScope events sorted from the
+earliest to the latest,
+while the second, @samp{threadscope} provides a graphical display for browsing
+the profile.
+
+Both programs accept the name of a @file{.eventlog} file on the command
+line.  
+The @samp{threadscope} program also provides a menu from which users can choose
+a file to open.
 
 @node Profiling and shared libraries
 @section Profiling and shared libraries
@@ -7316,7 +7374,7 @@ The set of aspects and their alternatives are:
 @cindex .decldebug (grade modifier)
 @c @cindex .ssdebug (grade modifier)
 @cindex .par (grade modifier)
-@c @cindex .threadscope (grade modifier)
+@cindex .threadscope (grade modifier)
 @cindex prof (grade modifier)
 @cindex memprof (grade modifier)
 @cindex profdeep (grade modifier)
@@ -7329,7 +7387,7 @@ The set of aspects and their alternatives are:
 @cindex decldebug (grade modifier)
 @c @cindex ssdebug (grade modifier)
 @cindex par (grade modifier)
-@c @cindex threadscope (grade modifier)
+@cindex threadscope (grade modifier)
 @table @asis
 @item What target language to use, what data representation to use, and (for C) what combination of GNU C extensions to use:
 @samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
@@ -7362,10 +7420,8 @@ small segments: @samp{stseg} (the default is to used fixed size stacks)
 @item Whether to use a thread-safe version of the runtime environment:
 @samp{par} (the default is a non-thread-safe environment).
 
-@c @item Whether to include support for profile the execution of parallel
-@c programs:
-@c @samp{threadscope} (the default is no support for profiling parallel
-@c execution).
+@item Whether to include support for profiling of parallel programs:
+@samp{threadscope} (the default is no support for profiling parallel programs).
 @c See also the @samp{--profile-parallel-execution} runtime option.
 
 @end table
@@ -7498,6 +7554,12 @@ and grade modifier; they are followed by descriptions of those options.
 
 @c @item @samp{.ssdebug}
 @c @code{--ss-debug}.
+
+@item @samp{.par}
+@code{--parallel}.
+
+@item @samp{.threadscope}
+@code{--threadscope}.
 
 @end table
 
@@ -7858,6 +7920,35 @@ Enable use of a trail.
 This is necessary for interfacing with constraint solvers,
 or for backtrackable destructive update.
 This option is only supported by the C back-ends.
+
+@sp 1
+@item @code{--parallel}
+@findex --parallel
+@cindex Parallel execution 
+In low-level C grades this enables support for parallel execution.
+Parallel execution can be achieved by using either the parallel conjunction
+operator or the concurrency support in the @samp{thread} module of the
+standard library.
+@xref{Goals, parallel conjunction, Goals, mercury_ref, The Mercury
+Language Reference Manual}, and
+@xref{thread, the thread module, thread, mercury_library, The Mercury
+Library Reference Manual}.
+
+In high-level C grades this enables support for concurrency, which is
+accessible via the @samp{thread} module in the standard library.
+The runtime uses POSIX threads to achieve this, therefore it may also support
+parallel execution of threads.
+
+The Java, IL and Erlang grades support concurrency without this option.
+Parallel execution may also be available depending on the target's runtime. 
+
+@sp 1
+@item @code{--threadscope}
+@findex --threadscope
+@cindex Threadscope profiling
+Enable support for threadscope profiling.
+This enables runtime support for profiling the parallel execution of
+programs, @xref{Using threadscope}.
 
 @sp 1
 @item @code{--maybe-thread-safe @{yes, no@}}

@@ -4172,7 +4172,12 @@ options_help_compilation_model -->
         "\tEnable experimental complexity analysis for the predicates",
         "\tlisted in the given file.",
         "\tThis option is supported for the C back-end, with",
-        "\t--no-highlevel-code."
+        "\t--no-highlevel-code.",
+
+        "--threadscope\t\t(grade modifier: `.threadscope')",
+        "\tEnable support for profiling parallel execution.",
+        "\tThis option is supported by the low-level C back-end parallel",
+        "\tgrades on some processors, See README.ThreadScope for details."
     ]),
 
     io.write_string("      Miscellaneous optional features\n"),
@@ -4206,6 +4211,9 @@ options_help_compilation_model -->
         "\tAs above, but use a dynamically sized trail that is composed",
         "\tof small segments.  This can help to avoid trail exhaustion",
         "\tat the cost of increased execution time.",
+        "--parallel\t\t(grade modifier: `.par')",
+        "\tEnable parallel execution support for the low-level C grades.",
+        "\tEnable concurrency (via pthreads) for the high-level C grades.",
         "--maybe-thread-safe {yes, no}",
         "\tSpecify how to treat the `maybe_thread_safe' foreign code",
         "\tattribute.  `yes' means that a foreign procedure with the",
