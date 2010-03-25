@@ -1,5 +1,14 @@
-NEWS since Mercury 0.13.1
--------------------------
+NEWS since Mercury 10.04 beta 
+-----------------------------
+
+Changes to the Mercury standard library:
+
+* New predicates have been added to the assoc_list module, these are
+  map_keys_only/3 map_values_only/3 and map_values/3.  They complement the
+  functions of the same name.
+
+NEWS for Mercury 10.04 beta
+---------------------------
 
 Changes to the release numbering:
 
