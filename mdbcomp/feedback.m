@@ -78,7 +78,7 @@
                     % variable in call sequence counts.
 
                 conjunctions        :: assoc_list(string_proc_label,
-                                            candidate_par_conjunction)
+                                        candidate_par_conjunction(pard_goal))
                     % Assoclist of procedure labels and candidate parallel
                     % conjunctions.
             ).
@@ -103,7 +103,7 @@
     % and maintaining the target amount of parallelism, this may involve
     % distance granularity.
     %
-:- type candidate_par_conjunction
+:- type candidate_par_conjunction(GoalType)
     --->    candidate_par_conjunction(
                 cpc_goal_path           :: goal_path_string,
                     % The path within the procedure to this conjunuction.
@@ -115,7 +115,7 @@
 
                 cpc_is_dependant        :: conjuncts_are_dependant,
 
-                cpc_conjs               :: list(seq_conj),
+                cpc_conjs               :: list(seq_conj(GoalType)),
                     % A list of parallel conjuncts, each is a sequential
                     % conjunction of inner goals.  All inner goals that are
                     % seen in the program presentation must be stored here
@@ -139,9 +139,9 @@
                     % assumed to be in ParallelTime.
             ).
 
-:- type seq_conj
+:- type seq_conj(GoalType)
     --->    seq_conj(
-                sc_conjs            :: list(inner_goal)
+                sc_conjs            :: list(GoalType)
             ).
 
 :- type callee_rep
@@ -156,39 +156,46 @@
                 nc_proc_name    :: string
             ).
 
-    % A representation of a goal within a parallel conjunction.  We don't have
-    % to represent many types of goals or details about them, at least for now.
+    % A parallelised goal (pard_goal), a goal within a parallel conjunction.
+    % We don't yet have to represent many types of goals or details about them.
     %
-:- type inner_goal
-    --->    ig_call(
+:- type pard_goal
+    --->    pg_call(
                 % This is a call that we're considering parallelising.  It has
                 % a significant enough cost to be considered for
                 % parallelisation.
                 
-                igc_callee                  :: callee_rep,
+                pgc_callee                  :: callee_rep,
                     
-                igc_vars                    :: list(maybe(string)),
+                pgc_vars                    :: list(maybe(string)),
                     % The names of variables (if used defined) given as
                     % arguments to this call.
                     
-                igc_cost_percall            :: float
+                pgc_cost_percall            :: float
                     % The per-call cost of this call in call sequence counts.
             )
-    ;       ig_cheap_call(
+    ;       pg_cheap_call(
                 % This call is to cheap to be considered for parallelisation,
                 % we track it in the feedback information to help inform the
                 % compiler about _how_ to parallelise calls around it.
                 
-                igcc_callee                  :: callee_rep,
-                igcc_vars                    :: list(maybe(string))
+                pgcc_callee                  :: callee_rep,
+                pgcc_vars                    :: list(maybe(string))
                     % As above.
             )
-    ;       ig_other_atomic_goal.
+    ;       pg_other_atomic_goal.
                 % Some other (cheap) atomic goal.
 
 :- type conjuncts_are_dependant
     --->    conjuncts_are_dependant
     ;       conjuncts_are_independent.
+
+:- pred convert_candidate_par_conjunction(pred(A, B), 
+    candidate_par_conjunction(A), candidate_par_conjunction(B)).
+:- mode convert_candidate_par_conjunction(pred(in, out) is det, in, out) is det.
+
+:- pred convert_seq_conj(pred(A, B), seq_conj(A), seq_conj(B)).
+:- mode convert_seq_conj(pred(in, out) is det, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -599,7 +606,22 @@ feedback_first_line = "Mercury Compiler Feedback".
 
 :- func feedback_version = string.
 
-feedback_version = "5".
+feedback_version = "6".
+
+%-----------------------------------------------------------------------------%
+%
+% Helper predicates for the candidate parallel conjunctions type.
+%
+% XXX: These and their types should probably be moved to a new module.
+%
+
+convert_candidate_par_conjunction(Conv, CPC0, CPC) :-
+    Conjs0 = CPC0 ^ cpc_conjs,
+    map(convert_seq_conj(Conv), Conjs0, Conjs),
+    CPC = CPC0 ^ cpc_conjs := Conjs.
+
+convert_seq_conj(Conv, seq_conj(Conjs0), seq_conj(Conjs)) :-
+    map(Conv, Conjs0, Conjs).
 
 %-----------------------------------------------------------------------------%
 :- end_module mdbcomp.feedback.

@@ -160,6 +160,10 @@ apply_new_implicit_parallelism_transformation(ModuleInfo0, MaybeModuleInfo) :-
                 im_mode                 :: int
             ).
 
+:- type candidate_par_conjunction == candidate_par_conjunction(pard_goal).
+
+:- type seq_conj == seq_conj(pard_goal).
+
     % A map of the candidate parallel conjunctions indexed by the procedure
     % label for a given module.
     %
@@ -422,14 +426,14 @@ build_par_conjuncts(ProcInfo, Goals, FeedbackParConjuncts0,
         GoalsAfter = Goals
     ).
 
-:- pred build_seq_conjuncts(proc_info::in, hlds_goals::in, list(inner_goal)::in,
+:- pred build_seq_conjuncts(proc_info::in, hlds_goals::in, list(pard_goal)::in,
     maybe(hlds_goals)::out, hlds_goals::out, hlds_goals::out) is det.
 
 build_seq_conjuncts(ProcInfo, Goals, FeedbackSeqConjuncts0, MaybeSeqConjuncts,
         GoalsBefore, GoalsAfter) :-
     (
         FeedbackSeqConjuncts0 = [ FeedbackSeqConjunct | FeedbackSeqConjuncts ],
-        inner_goal_match_hlds_goal(ProcInfo, FeedbackSeqConjunct, Goals,
+        pard_goal_match_hlds_goal(ProcInfo, FeedbackSeqConjunct, Goals,
             MaybeGoal, GoalsBefore0, GoalsAfter0),
         (
             MaybeGoal = yes(Goal),
@@ -459,12 +463,12 @@ build_seq_conjuncts(ProcInfo, Goals, FeedbackSeqConjuncts0, MaybeSeqConjuncts,
         GoalsAfter = Goals
     ).
 
-:- pred inner_goal_match_hlds_goal(proc_info::in, inner_goal::in,
+:- pred pard_goal_match_hlds_goal(proc_info::in, pard_goal::in,
     hlds_goals::in, maybe(hlds_goal)::out, hlds_goals::out, hlds_goals::out)
     is det.
 
-inner_goal_match_hlds_goal(_ProcInfo, _, [], no, [], []).
-inner_goal_match_hlds_goal(ProcInfo, InnerGoal, [ Goal | Goals ], MaybeGoal,
+pard_goal_match_hlds_goal(_ProcInfo, _, [], no, [], []).
+pard_goal_match_hlds_goal(ProcInfo, InnerGoal, [ Goal | Goals ], MaybeGoal,
         GoalsBefore, GoalsAfter) :-
     proc_info_get_varset(ProcInfo, Varset),
     GoalExpr = Goal ^ hlds_goal_expr,
@@ -473,12 +477,12 @@ inner_goal_match_hlds_goal(ProcInfo, InnerGoal, [ Goal | Goals ], MaybeGoal,
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ),
         (
-            ( InnerGoal = ig_call(_, _, _)
-            ; InnerGoal = ig_cheap_call(_, _)
+            ( InnerGoal = pg_call(_, _, _)
+            ; InnerGoal = pg_cheap_call(_, _)
             ),
             Match = no
         ;
-            InnerGoal = ig_other_atomic_goal,
+            InnerGoal = pg_other_atomic_goal,
             Match = yes
         )
     ;
@@ -489,8 +493,8 @@ inner_goal_match_hlds_goal(ProcInfo, InnerGoal, [ Goal | Goals ], MaybeGoal,
             Builtin = not_builtin
         ),
         (
-            ( InnerGoal = ig_call(Callee, FbArgs, _)
-            ; InnerGoal = ig_cheap_call(Callee, FbArgs)
+            ( InnerGoal = pg_call(Callee, FbArgs, _)
+            ; InnerGoal = pg_cheap_call(Callee, FbArgs)
             ),
             % Try to match the callee and the vars.
             (
@@ -517,7 +521,7 @@ inner_goal_match_hlds_goal(ProcInfo, InnerGoal, [ Goal | Goals ], MaybeGoal,
                 Match = no
             )
         ;
-            InnerGoal = ig_other_atomic_goal,
+            InnerGoal = pg_other_atomic_goal,
             (
                 Builtin = not_builtin,
                 Match = no
@@ -538,7 +542,7 @@ inner_goal_match_hlds_goal(ProcInfo, InnerGoal, [ Goal | Goals ], MaybeGoal,
         ; GoalExpr = shorthand(_)
         ),
         unexpected(this_file, 
-            "Found non-atomic goal in inner_goal_match_hlds_goal")
+            "Found non-atomic goal in pard_goal_match_hlds_goal")
     ),
     (
         Match = yes,
@@ -547,7 +551,7 @@ inner_goal_match_hlds_goal(ProcInfo, InnerGoal, [ Goal | Goals ], MaybeGoal,
         GoalsAfter = Goals
     ;
         Match = no,
-        inner_goal_match_hlds_goal(ProcInfo, InnerGoal, Goals, MaybeGoal,
+        pard_goal_match_hlds_goal(ProcInfo, InnerGoal, Goals, MaybeGoal,
             GoalsBefore0, GoalsAfter),
         GoalsBefore = [ Goal | GoalsBefore0 ]
     ).

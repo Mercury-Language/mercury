@@ -118,48 +118,31 @@ candidate_parallel_conjunctions(Opts, Deep, Messages, !Feedback) :-
 
     multi_map.to_flat_assoc_list(ConjunctionsMultiMap,
         ConjunctionsAssocList0),
-    ConjunctionsAssocList =
-        map_values_only(internal_cpconjunction_to_cpconjunction,
-        ConjunctionsAssocList0),
+    map_values_only(convert_candidate_par_conjunction(
+            pard_goal_detail_to_pard_goal),
+        ConjunctionsAssocList0, ConjunctionsAssocList),
     CandidateParallelConjunctions =
         feedback_data_candidate_parallel_conjunctions(DesiredParallelism,
         SparkingCost, LockingCost, ConjunctionsAssocList),
     put_feedback_data(CandidateParallelConjunctions, !Feedback).
 
-:- func internal_cpconjunction_to_cpconjunction(
-        candidate_par_conjunction_internal)
-    = candidate_par_conjunction.
-
-internal_cpconjunction_to_cpconjunction(CPCI) = CPC :-
-    CPCI = candidate_par_conjunction_internal(GoalPath, PartNum, Dependance, 
-        ConjsI, Speedup),
-    map(internal_seq_conj_to_seq_conj, ConjsI, Conjs),
-    CPC = candidate_par_conjunction(GoalPath, PartNum, Dependance, Conjs,
-        Speedup).
-
-:- pred internal_seq_conj_to_seq_conj(seq_conj_internal::in, seq_conj::out) 
+:- pred pard_goal_detail_to_pard_goal(pard_goal_detail::in, pard_goal::out) 
     is det.
 
-internal_seq_conj_to_seq_conj(seq_conj_internal(ConjsI), seq_conj(Conjs)) :-
-    map(inner_goal_internal_to_inner_goal, ConjsI, Conjs).
-
-:- pred inner_goal_internal_to_inner_goal(inner_goal_internal::in, 
-    inner_goal::out) is det.
-
-inner_goal_internal_to_inner_goal(inner_goal_internal(IGT, _, _, _), IG) :-
+pard_goal_detail_to_pard_goal(pard_goal_detail(PGT, _, _, _), PG) :-
     (
-        IGT = igt_call(Callee, Vars, CostPercall, _, _),
-        IG = ig_call(Callee, Vars, CostPercall)
+        PGT = pgt_call(Callee, Vars, CostPercall, _, _),
+        PG = pg_call(Callee, Vars, CostPercall)
     ;
-        IGT = igt_cheap_call(Callee, Vars, _, _),
-        IG = ig_cheap_call(Callee, Vars)
+        PGT = pgt_cheap_call(Callee, Vars, _, _),
+        PG = pg_cheap_call(Callee, Vars)
     ;
-        IGT = igt_other_atomic_goal,
-        IG = ig_other_atomic_goal
+        PGT = pgt_other_atomic_goal,
+        PG = pg_other_atomic_goal
     ;
-        IGT = igt_non_atomic_goal,
+        PGT = pgt_non_atomic_goal,
         error(this_file ++ 
-            "Unexpected: non atomic goal in inner_goal_internal_to_inner_goal")
+            "Unexpected: non atomic goal in pard_goal_detail_to_pard_goal")
     ).
 
 %----------------------------------------------------------------------------%
@@ -174,87 +157,61 @@ inner_goal_internal_to_inner_goal(inner_goal_internal(IGT, _, _, _), IG) :-
                 ipi_var_table       :: var_table
             ).
 
-    % These data types reflect those in mdbcomp/feedback.m.  These are
-    % internal to this module and may be changed without changing the
-    % feedback file format or the compiler.  They often contain extra
-    % information that it not needed by the compiler and therefore not
-    % present in the feedback file format. 
-    %
-:- type candidate_par_conjunction_internal
-    --->    candidate_par_conjunction_internal(
-                cpci_goal_path          :: goal_path_string,
-                    % The path within the procedure to this conjunction.
-
-                cpci_partition_number   :: int,
-                    % Used to locate the goals to be parallelised within the
-                    % conjunction.  Partitions are separated by non atomic
-                    % goals, the first partition has the number 1.
-
-                cpci_is_dependant       :: conjuncts_are_dependant,
-
-                cpci_conjs              :: list(seq_conj_internal),
-                    % The suggested parallel expression.
-
-                cpci_speedup            :: float
-            ).
-
-:- type seq_conj_internal
-    --->    seq_conj_internal(
-                sci_conjs           :: list(inner_goal_internal)
-            ).
-
     % A representation of a goal within a parallel conjunction.  We don't have
     % to represent many types of goals or details about them, at least for now.
+    % This type provides more detail than feedback.pard_goal, this detail isn't
+    % required by the compiler and therefore not part of the feedback file
+    % format.
     %
-:- type inner_goal_internal
-    --->    inner_goal_internal(
-                igi_ig_type             :: inner_goal_type,
-                    % The type and type-specific values of the inner goal.
+:- type pard_goal_detail
+    --->    pard_goal_detail(
+                pgd_pg_type             :: pard_goal_type,
+                    % The type and type-specific values of the pard goal.
 
-                igi_detism              :: detism_rep,
+                pgd_detism              :: detism_rep,
                     % The determinism of the call.
 
-                igi_conj_num            :: int,
+                pgd_conj_num            :: int,
                     % The place within the conjunction that this conjunct
                     % lies.
 
-                igi_inst_map_info       :: inst_map_info
+                pgd_inst_map_info       :: inst_map_info
                     % The inst map info attached to the original goal.
             ).
 
-:- type inner_goal_type 
-    --->    igt_call(
-                igtc_callee             :: callee_rep,
+:- type pard_goal_type 
+    --->    pgt_call(
+                pgtc_callee             :: callee_rep,
                     
-                igtc_vars               :: list(maybe(string)),
+                pgtc_vars               :: list(maybe(string)),
                     % The names of variables (if user defined) given as
                     % arguments to this call.
 
-                igtc_cost_percall       :: float,
+                pgtc_cost_percall       :: float,
                     % The per-call cost of this call in call sequence counts.
              
-                igtc_args               :: list(var_mode_and_use),
+                pgtc_args               :: list(var_mode_and_use),
                     % The argument modes and use information.
 
-                igtc_call_site          :: clique_call_site_report
+                pgtc_call_site          :: clique_call_site_report
                     % The call site report from the deep profiler.
             )
-    ;       igt_cheap_call(
-                igtcc_callee            :: callee_rep,
-                igtcc_vars              :: list(maybe(string)),
-                igtcc_args              :: list(var_mode_and_use),
-                igtcc_cost              :: cs_cost_csq 
+    ;       pgt_cheap_call(
+                pgtcc_callee            :: callee_rep,
+                pgtcc_vars              :: list(maybe(string)),
+                pgtcc_args              :: list(var_mode_and_use),
+                pgtcc_cost              :: cs_cost_csq 
             )
-    ;       igt_other_atomic_goal
-    ;       igt_non_atomic_goal.
+    ;       pgt_other_atomic_goal
+    ;       pgt_non_atomic_goal.
 
-:- inst igt_call 
-    --->    igt_call(ground, ground, ground, ground, ground).
+:- inst pgt_call 
+    --->    pgt_call(ground, ground, ground, ground, ground).
 
-:- inst igt_atomic_goal
-    --->    igt_call(ground, ground, ground, ground, ground)
-    ;       igt_cheap_call(ground, ground, ground, ground)
-    ;       igt_other_atomic_goal.
+:- inst pgt_atomic_goal
+    --->    pgt_call(ground, ground, ground, ground, ground)
+    ;       pgt_cheap_call(ground, ground, ground, ground)
+    ;       pgt_other_atomic_goal.
     
     % A variable, it's mode and it's usage in the callee.  The mode information
     % is also summarised within the variable use information.
@@ -267,12 +224,12 @@ inner_goal_internal_to_inner_goal(inner_goal_internal(IGT, _, _, _), IG) :-
             ).
 
 :- type candidate_par_conjunctions ==
-    multi_map(string_proc_label, candidate_par_conjunction_internal).
+    multi_map(string_proc_label, candidate_par_conjunction(pard_goal_detail)).
 
-:- type inner_goals_partition
-    --->    inner_goals_partition(
-                igp_goals               :: list(inner_goal_internal),
-                igp_partition_num       :: int
+:- type pard_goals_partition
+    --->    pard_goals_partition(
+                pgp_goals               :: list(pard_goal_detail),
+                pgp_partition_num       :: int
             ).
 
 %----------------------------------------------------------------------------%
@@ -459,7 +416,7 @@ candidate_parallel_conjunctions_clique_proc(Opts, Deep,
     clique_is_recursive::in, map(goal_path, cs_cost_csq)::in,
     map(proc_desc, clique_proc_report)::in, clique_ptr::in,
     parallelism_amount::in,
-    multi_map(string, candidate_par_conjunction_internal)::in,
+    multi_map(string, candidate_par_conjunction(pard_goal_detail))::in,
     clique_call_site_report::in,
     candidate_par_conjunctions::out,
     cord(message)::out) is det.
@@ -485,7 +442,8 @@ candidate_parallel_conjunctions_call_site(Opts, Deep, ProcsAnalysed,
     Messages = cord_list_to_cord(MessagesList).
 
 :- pred parallelism_probability(
-    multi_map(goal_path_string, candidate_par_conjunction_internal)::in,
+    multi_map(goal_path_string, 
+        candidate_par_conjunction(pard_goal_detail))::in,
     goal_path::in, probability::out, parallelism_amount::out) is det.
 
 parallelism_probability(Candidates, ConjGoalPath, ParallelismProbability,
@@ -499,8 +457,8 @@ parallelism_probability(Candidates, ConjGoalPath, ParallelismProbability,
                 % conjunctions are never recommended/seen.
                 promise_equivalent_solutions [Amount] some [Candidate, Conj] (
                     member(Candidate, CandidateList),
-                    parallel_amount(Candidate ^ cpci_conjs, Conj, Amount),
-                    ConjNum = Conj ^ igi_conj_num
+                    parallel_amount(Candidate ^ cpc_conjs, Conj, Amount),
+                    ConjNum = Conj ^ pgd_conj_num
                 )
             ->
                 % XXX: Wait until we have the new calculations for how
@@ -527,12 +485,12 @@ parallelism_probability(Candidates, ConjGoalPath, ParallelismProbability,
         ParallelismAmount = no_parallelism 
     ).
 
-:- pred parallel_amount(list(seq_conj_internal)::in, 
-    inner_goal_internal::out, parallelism_amount::out) is nondet.
+:- pred parallel_amount(list(seq_conj(pard_goal_detail))::in, 
+    pard_goal_detail::out, parallelism_amount::out) is nondet.
 
 parallel_amount(SeqConjs, Conj, Parallelism) :-
     member(SeqConj, SeqConjs),
-    SeqConj = seq_conj_internal(Conjs),
+    SeqConj = seq_conj(Conjs),
     Parallelism0 = some_parallelism(float(length(Conjs))),
     member(Conj, Conjs),
     sub_computation_parallelism(Parallelism0, certain, Parallelism).
@@ -1065,7 +1023,8 @@ build_recursive_call_site_cost_map_call_site(RecursiveCostPerCall,
     candidate_parallel_conjunctions_opts::in, deep::in,
     clique_proc_report::in, map(goal_path, cs_cost_csq)::in,
     candidate_par_conjunctions::out,
-    multi_map(goal_path_string, candidate_par_conjunction_internal)::out,
+    multi_map(goal_path_string, 
+        candidate_par_conjunction(pard_goal_detail))::out,
     cord(message)::out) is det.
 
 candidate_parallel_conjunctions_proc(Opts, Deep, CliqueProc,
@@ -1128,20 +1087,22 @@ candidate_parallel_conjunctions_proc(Opts, Deep, CliqueProc,
     ).
 
 :- pred build_candidate_par_conjunction_maps(string_proc_label::in,
-    candidate_par_conjunction_internal::in, 
+    candidate_par_conjunction(pard_goal_detail)::in, 
     candidate_par_conjunctions::in, candidate_par_conjunctions::out,
-    multi_map(goal_path_string, candidate_par_conjunction_internal)::in,
-    multi_map(goal_path_string, candidate_par_conjunction_internal)::out)
+    multi_map(goal_path_string, 
+        candidate_par_conjunction(pard_goal_detail))::in,
+    multi_map(goal_path_string, 
+        candidate_par_conjunction(pard_goal_detail))::out)
     is det.
 
 build_candidate_par_conjunction_maps(ProcLabel, Candidate, !Map, !GPMap) :- 
     multi_map.set(!.Map, ProcLabel, Candidate, !:Map),
-    GoalPath = Candidate ^ cpci_goal_path,
+    GoalPath = Candidate ^ cpc_goal_path,
     multi_map.set(!.GPMap, GoalPath, Candidate, !:GPMap).
     
 :- pred goal_get_conjunctions_worth_parallelising(goal_rep(inst_map_info)::in, 
     goal_path::in, implicit_parallelism_info::in, string_proc_label::in,
-    list(candidate_par_conjunction_internal)::out,
+    list(candidate_par_conjunction(pard_goal_detail))::out,
     cord(message)::out) is det.
 
 goal_get_conjunctions_worth_parallelising(Goal, GoalPath, Info, ProcLabel, 
@@ -1189,7 +1150,7 @@ goal_get_conjunctions_worth_parallelising(Goal, GoalPath, Info, ProcLabel,
 :- pred conj_get_conjunctions_worth_parallelising(
     list(goal_rep(inst_map_info))::in, goal_path::in, int::in,
     implicit_parallelism_info::in, string_proc_label::in,
-    list(candidate_par_conjunction_internal)::out,
+    list(candidate_par_conjunction(pard_goal_detail))::out,
     cord(message)::out) is det.
 
 conj_get_conjunctions_worth_parallelising([], _, _, _, _, [], cord.empty).
@@ -1208,7 +1169,8 @@ conj_get_conjunctions_worth_parallelising([Conj | Conjs], GoalPath,
 :- pred disj_get_conjunctions_worth_parallelising(
     list(goal_rep(inst_map_info))::in, goal_path::in, int::in,
     implicit_parallelism_info::in, string_proc_label::in,
-    list(candidate_par_conjunction_internal)::out, cord(message)::out) is det.
+    list(candidate_par_conjunction(pard_goal_detail))::out, cord(message)::out) 
+    is det.
 
 disj_get_conjunctions_worth_parallelising([], _, _, _, _, [], cord.empty).
 disj_get_conjunctions_worth_parallelising([Disj | Disjs], GoalPath, DisjNum,
@@ -1224,7 +1186,7 @@ disj_get_conjunctions_worth_parallelising([Disj | Disjs], GoalPath, DisjNum,
 :- pred switch_case_get_conjunctions_worth_parallelising(
     list(case_rep(inst_map_info))::in, goal_path::in, int::in,
     implicit_parallelism_info::in, string_proc_label::in,
-    list(candidate_par_conjunction_internal)::out, cord(message)::out) is det.
+    list(candidate_par_conjunction(pard_goal_detail))::out, cord(message)::out) is det.
 
 switch_case_get_conjunctions_worth_parallelising([], _, _, _, _, [],
         cord.empty).
@@ -1243,7 +1205,7 @@ switch_case_get_conjunctions_worth_parallelising([Case | Cases], GoalPath,
 :- pred ite_get_conjunctions_worth_parallelising(goal_rep(inst_map_info)::in,
     goal_rep(inst_map_info)::in, goal_rep(inst_map_info)::in, goal_path::in,
     implicit_parallelism_info::in, string_proc_label::in,
-    list(candidate_par_conjunction_internal)::out, cord(message)::out) is det.
+    list(candidate_par_conjunction(pard_goal_detail))::out, cord(message)::out) is det.
 
 ite_get_conjunctions_worth_parallelising(Cond, Then, Else, GoalPath, Info,
         ProcLabel, Candidates, Messages) :-
@@ -1264,7 +1226,7 @@ ite_get_conjunctions_worth_parallelising(Cond, Then, Else, GoalPath, Info,
     %
 :- pred conj_build_candidate_conjunctions(list(goal_rep(inst_map_info))::in, 
     goal_path::in, implicit_parallelism_info::in, string_proc_label::in,
-    cord(message)::out, list(candidate_par_conjunction_internal)::out)
+    cord(message)::out, list(candidate_par_conjunction(pard_goal_detail))::out)
     is det.
 
 conj_build_candidate_conjunctions(Conjs, GoalPath, Info, ProcLabel, Messages,
@@ -1274,21 +1236,21 @@ conj_build_candidate_conjunctions(Conjs, GoalPath, Info, ProcLabel, Messages,
         !:Messages = cord.empty,
         Location = goal(ProcLabel, GoalPath),
 
-        conj_to_inner_goal_list(Conjs, GoalPath, 1, Info, [], InnerGoals, 0,
+        conj_to_pard_goal_list(Conjs, GoalPath, 1, Info, [], PardGoals, 0,
             NumCostlyCalls),
         ( NumCostlyCalls > 1 -> 
             append_message(Location,
                 info_found_conjs_above_callsite_threshold(NumCostlyCalls),
                 !Messages), 
-            build_dependency_maps(InnerGoals, DependencyMaps),
+            build_dependency_maps(PardGoals, DependencyMaps),
             % We don't parallelise across non-atomic goals, so split a list of
-            % inner goals into partitions where non-atomic goals seperate the
+            % pard goals into partitions where non-atomic goals seperate the
             % partitions.
-            partition_inner_goals(Location, InnerGoals, [], _, 
-                1, _NumPartitions, 0, _, [], PartitionedInnerGoals, !Messages),
-            map(innergoals_build_candidate_conjunction(Info, 
+            partition_pard_goals(Location, PardGoals, [], _, 
+                1, _NumPartitions, 0, _, [], PartitionedGoals, !Messages),
+            map(pardgoals_build_candidate_conjunction(Info, 
                     DependencyMaps, Location, GoalPath), 
-                PartitionedInnerGoals, MaybeCandidates),
+                PartitionedGoals, MaybeCandidates),
             filter_map(maybe_is_yes, MaybeCandidates, Candidates),
             append_message(Location,
                 info_found_n_conjunctions_with_positive_speedup(
@@ -1299,18 +1261,18 @@ conj_build_candidate_conjunctions(Conjs, GoalPath, Info, ProcLabel, Messages,
         Messages = !.Messages
     ).
 
-:- pred partition_inner_goals(program_location::in, 
-    list(inner_goal_internal)::in,
-    list(inner_goal_internal)::in, list(inner_goal_internal)::out,
+:- pred partition_pard_goals(program_location::in, 
+    list(pard_goal_detail)::in,
+    list(pard_goal_detail)::in, list(pard_goal_detail)::out,
     int::in, int::out, int::in, int::out,
-    list(inner_goals_partition)::in, list(inner_goals_partition)::out,
+    list(pard_goals_partition)::in, list(pard_goals_partition)::out,
     cord(message)::in, cord(message)::out) is det.
 
-partition_inner_goals(Location, [], !Partition, !PartitionNum, !NumCostlyCalls,
+partition_pard_goals(Location, [], !Partition, !PartitionNum, !NumCostlyCalls,
         !Partitions, !Messages) :-
     ( !.NumCostlyCalls > 1 ->
         Partition = 
-            inner_goals_partition(reverse(!.Partition), !.PartitionNum),
+            pard_goals_partition(reverse(!.Partition), !.PartitionNum),
         !:Partitions = [ Partition | !.Partitions ]
     ;
         true     
@@ -1322,24 +1284,24 @@ partition_inner_goals(Location, [], !Partition, !PartitionNum, !NumCostlyCalls,
         true
     ),
     reverse(!Partitions).
-partition_inner_goals(Location, [ IG | IGs ], !Partition, !PartitionNum,
+partition_pard_goals(Location, [ PG | PGs ], !Partition, !PartitionNum,
         !NumCostlyCalls, !Partitions, !Messages) :-
-    IGType = IG ^ igi_ig_type,
+    PGType = PG ^ pgd_pg_type,
     (
         (
-            IGType = igt_call(_, _, _, _, _),
+            PGType = pgt_call(_, _, _, _, _),
             !:NumCostlyCalls = !.NumCostlyCalls + 1
         ;
-            IGType = igt_cheap_call(_, _, _, _)
+            PGType = pgt_cheap_call(_, _, _, _)
         ;
-            IGType = igt_other_atomic_goal
+            PGType = pgt_other_atomic_goal
         ),
-        !:Partition = [ IG | !.Partition ]
+        !:Partition = [ PG | !.Partition ]
     ;
-        IGType = igt_non_atomic_goal,
+        PGType = pgt_non_atomic_goal,
         ( !.NumCostlyCalls > 1 ->
             Partition = 
-                inner_goals_partition(reverse(!.Partition), !.PartitionNum),
+                pard_goals_partition(reverse(!.Partition), !.PartitionNum),
             !:Partitions = [ Partition | !.Partitions ]
         ;
             append_message(Location,
@@ -1350,16 +1312,16 @@ partition_inner_goals(Location, [ IG | IGs ], !Partition, !PartitionNum,
         !:NumCostlyCalls = 0,
         !:Partition = [] 
     ),
-    partition_inner_goals(Location, IGs, !Partition, !PartitionNum,
+    partition_pard_goals(Location, PGs, !Partition, !PartitionNum,
         !NumCostlyCalls, !Partitions, !Messages).
 
-:- pred innergoals_build_candidate_conjunction(implicit_parallelism_info::in,
+:- pred pardgoals_build_candidate_conjunction(implicit_parallelism_info::in,
     dependency_maps::in, program_location::in, goal_path::in,
-    inner_goals_partition::in, maybe(candidate_par_conjunction_internal)::out)
-    is det.
+    pard_goals_partition::in,
+    maybe(candidate_par_conjunction(pard_goal_detail))::out) is det.
 
-innergoals_build_candidate_conjunction(Info, DependencyMaps, Location, GoalPath,
-        InnerGoalsPartition, MaybeCandidate) :-
+pardgoals_build_candidate_conjunction(Info, DependencyMaps, Location, GoalPath,
+        GoalsPartition, MaybeCandidate) :-
     ParalleliseDependantConjs = Info ^ ipi_opts ^ cpc_parallelise_dep_conjs,
 
     % Setting up the first parallel conjunct is a different algorithm to the
@@ -1369,19 +1331,19 @@ innergoals_build_candidate_conjunction(Info, DependencyMaps, Location, GoalPath,
     % efficient.  However if goals within other parallel conjuncts depend on
     % them and don't depend upon the first costly call then this would make the
     % conjunction dependant when it could be independent.
-    inner_goals_partition(InnerGoalsList, PartNum) = InnerGoalsPartition,
-    InnerGoals = cord.from_list(InnerGoalsList),
-    find_costly_call(InnerGoals, cord.empty, GoalsBefore0, MaybeFirstCall,
+    pard_goals_partition(GoalsList, PartNum) = GoalsPartition,
+    Goals = cord.from_list(GoalsList),
+    find_costly_call(Goals, cord.empty, GoalsBefore0, MaybeFirstCall,
         GoalsDuringAfter),
     (
         MaybeFirstCall = yes(FirstCall),
-        FirstCallType = FirstCall ^ igi_ig_type,
+        FirstCallType = FirstCall ^ pgd_pg_type,
         (
-            FirstCallType = igt_call(_, _, _, _, FirstCallCallSite)
+            FirstCallType = pgt_call(_, _, _, _, FirstCallCallSite)
         ;
-            ( FirstCallType = igt_cheap_call(_, _, _, _)
-            ; FirstCallType = igt_other_atomic_goal
-            ; FirstCallType = igt_non_atomic_goal
+            ( FirstCallType = pgt_cheap_call(_, _, _, _)
+            ; FirstCallType = pgt_other_atomic_goal
+            ; FirstCallType = pgt_non_atomic_goal
             ),
             location_to_string(Location, LocationString),
             error(format(
@@ -1397,23 +1359,23 @@ innergoals_build_candidate_conjunction(Info, DependencyMaps, Location, GoalPath,
 
     ),
     build_first_seq_conjunction(DependencyMaps, 
-        FirstCall ^ igi_conj_num, length(GoalsBefore0),
+        FirstCall ^ pgd_conj_num, length(GoalsBefore0),
         length(GoalsDuringAfter), GoalsBefore0,
         cord.singleton(FirstCall), FirstSeqConjunction0, GoalsBefore),
     ( get_first(FirstSeqConjunction0, FirstConj) ->
-        FirstConjNumOfFirstParConjunct = FirstConj ^ igi_conj_num
+        FirstConjNumOfFirstParConjunct = FirstConj ^ pgd_conj_num
     ;
         error(this_file ++ "Found empty first parallel conjunct")
     ),
-    innergoals_build_par_conjs(GoalsDuringAfter, DependencyMaps,
+    pardgoals_build_par_conjs(GoalsDuringAfter, DependencyMaps,
         FirstConjNumOfFirstParConjunct, FirstSeqConjunction0, GoalsAfter,
         cord.empty, ParConjsCord, 0.0, ParConjCost, 
         conjuncts_are_independent, IsDependant),
     
     % Calculate Speedup.
-    foldl_pred(innergoal_calc_cost, InnerGoals, 0.0, SequentialCost),
-    foldl_pred(innergoal_calc_cost, GoalsBefore, 0.0, GoalsBeforeCost),
-    foldl_pred(innergoal_calc_cost, GoalsAfter, 0.0, GoalsAfterCost),
+    foldl_pred(pardgoal_calc_cost, Goals, 0.0, SequentialCost),
+    foldl_pred(pardgoal_calc_cost, GoalsBefore, 0.0, GoalsBeforeCost),
+    foldl_pred(pardgoal_calc_cost, GoalsAfter, 0.0, GoalsAfterCost),
     ParallelCost = GoalsBeforeCost + GoalsAfterCost + ParConjCost,
     NumCalls = FirstCallCallSite ^ ccsr_call_site_summary ^ perf_row_calls,
     Speedup = (SequentialCost - ParallelCost) * float(NumCalls), 
@@ -1428,7 +1390,7 @@ innergoals_build_candidate_conjunction(Info, DependencyMaps, Location, GoalPath,
         )
     ->
         ParConjs = list(ParConjsCord),
-        MaybeCandidate = yes(candidate_par_conjunction_internal(
+        MaybeCandidate = yes(candidate_par_conjunction(
             goal_path_to_string(GoalPath), PartNum, IsDependant, ParConjs,
             Speedup))
     ;
@@ -1436,15 +1398,15 @@ innergoals_build_candidate_conjunction(Info, DependencyMaps, Location, GoalPath,
     ).
 
 :- pred build_first_seq_conjunction(dependency_maps::in, 
-    int::in, int::in, int::in, cord(inner_goal_internal)::in, 
-    cord(inner_goal_internal)::in, cord(inner_goal_internal)::out,
-    cord(inner_goal_internal)::out) is det. 
+    int::in, int::in, int::in, cord(pard_goal_detail)::in, 
+    cord(pard_goal_detail)::in, cord(pard_goal_detail)::out,
+    cord(pard_goal_detail)::out) is det. 
 
 build_first_seq_conjunction(DependencyMaps, CallConjNum, NumGoalsBefore,
         NumGoalsAfter, Goals0, !FirstSeqConjunction, GoalsBefore) :-
     % Move over goals in reverse order.
     ( split_last(Goals0, Goals, Goal) ->
-        ConjNum = Goal ^ igi_conj_num,
+        ConjNum = Goal ^ pgd_conj_num,
         depends_lookup_rev(DependencyMaps, ConjNum, GoalRevDeps),
         depends_lookup_rev(DependencyMaps, CallConjNum, CallRevDeps),
         (
@@ -1470,14 +1432,15 @@ build_first_seq_conjunction(DependencyMaps, CallConjNum, NumGoalsBefore,
         GoalsBefore = cord.empty
     ).
 
-:- pred innergoals_build_par_conjs(cord(inner_goal_internal)::in,
+:- pred pardgoals_build_par_conjs(cord(pard_goal_detail)::in,
     dependency_maps::in, int::in,
-    cord(inner_goal_internal)::in, cord(inner_goal_internal)::out,
-    cord(seq_conj_internal)::in, cord(seq_conj_internal)::out,
+    cord(pard_goal_detail)::in, cord(pard_goal_detail)::out,
+    cord(seq_conj(pard_goal_detail))::in,
+    cord(seq_conj(pard_goal_detail))::out,
     float::in, float::out, 
     conjuncts_are_dependant::in, conjuncts_are_dependant::out) is det.
 
-innergoals_build_par_conjs(Goals0, DependencyMaps,
+pardgoals_build_par_conjs(Goals0, DependencyMaps,
         FirstConjNumOfFirstParConjunct, CurSeqConjunction0, GoalsAfter,
         !ParConjs, !Cost, !ConjsAreDependant) :-
     % Find the next costly call.
@@ -1496,9 +1459,9 @@ innergoals_build_par_conjs(Goals0, DependencyMaps,
         NewSeqConjunction = snoc(GoalsBefore, NextCall),
       
         % Has the conjunction become dependant.
-        map_pred(ig_get_conj_num, CurSeqConjunction, CurSeqConjNumsCord),
+        map_pred(pg_get_conj_num, CurSeqConjunction, CurSeqConjNumsCord),
         CurSeqConjNumsSet = set(list(CurSeqConjNumsCord)),
-        map_pred(ig_get_conj_num, NewSeqConjunction, NewSeqConjNumsCord),
+        map_pred(pg_get_conj_num, NewSeqConjunction, NewSeqConjNumsCord),
         (
             !.ConjsAreDependant = conjuncts_are_independent,
             member(NewSeqConjNum, NewSeqConjNumsCord),
@@ -1511,16 +1474,16 @@ innergoals_build_par_conjs(Goals0, DependencyMaps,
             true
         ),
 
-        SeqConjunction = seq_conj_internal(list(CurSeqConjunction)),
+        SeqConjunction = seq_conj(list(CurSeqConjunction)),
         !:ParConjs = snoc(!.ParConjs, SeqConjunction),
-        innergoals_build_par_conjs(Goals, DependencyMaps,
+        pardgoals_build_par_conjs(Goals, DependencyMaps,
             FirstConjNumOfFirstParConjunct, NewSeqConjunction, GoalsAfter,
             !ParConjs, !Cost, !ConjsAreDependant)
     ;
         MaybeNextCall = no,
         ( cord.get_first(CurSeqConjunction0, FirstGoalInLastConjunct) ->
             FirstConjNumOfLastParConjunct = 
-                FirstGoalInLastConjunct ^ igi_conj_num
+                FirstGoalInLastConjunct ^ pgd_conj_num
         ; 
             error(this_file ++ " empty parallel conjunct")
         ),
@@ -1533,31 +1496,31 @@ innergoals_build_par_conjs(Goals0, DependencyMaps,
         build_last_seq_conjunction(Goals0, DependencyMaps,
             GoalsInOtherParConjuncts, GoalsAfter, 
             cord.empty, GoalsInLastConjunct),
-        SeqConjunction = seq_conj_internal(list(
+        SeqConjunction = seq_conj(list(
             CurSeqConjunction0 ++ GoalsInLastConjunct)),
         !:ParConjs = snoc(!.ParConjs, SeqConjunction)
     ).
 
-:- pred find_costly_call(cord(inner_goal_internal)::in,
-    cord(inner_goal_internal)::in, cord(inner_goal_internal)::out,
-    maybe(inner_goal_internal)::out,
-    cord(inner_goal_internal)::out) is det.
+:- pred find_costly_call(cord(pard_goal_detail)::in,
+    cord(pard_goal_detail)::in, cord(pard_goal_detail)::out,
+    maybe(pard_goal_detail)::out,
+    cord(pard_goal_detail)::out) is det.
 
 find_costly_call(Goals, !GoalsBefore, MaybeCall, GoalsAfter) :-
     ( head_tail(Goals, Goal, GoalsTail) ->
-        GoalType = Goal ^ igi_ig_type,
+        GoalType = Goal ^ pgd_pg_type,
         ( 
-            GoalType = igt_call(_, _, _, _, _),
+            GoalType = pgt_call(_, _, _, _, _),
             MaybeCall = yes(Goal),
             GoalsAfter = GoalsTail
         ;
-            ( GoalType = igt_cheap_call(_, _, _, _)
-            ; GoalType = igt_other_atomic_goal
+            ( GoalType = pgt_cheap_call(_, _, _, _)
+            ; GoalType = pgt_other_atomic_goal
             ),
             !:GoalsBefore = snoc(!.GoalsBefore, Goal),
             find_costly_call(GoalsTail, !GoalsBefore, MaybeCall, GoalsAfter)
         ;
-            GoalType = igt_non_atomic_goal,
+            GoalType = pgt_non_atomic_goal,
             error(this_file ++ "Found non-atomic goal")
         )
     ;
@@ -1565,14 +1528,14 @@ find_costly_call(Goals, !GoalsBefore, MaybeCall, GoalsAfter) :-
         GoalsAfter = cord.empty
     ).
 
-:- pred build_last_seq_conjunction(cord(inner_goal_internal)::in, 
-    dependency_maps::in, set(int)::in, cord(inner_goal_internal)::out,
-    cord(inner_goal_internal)::in, cord(inner_goal_internal)::out) is det.
+:- pred build_last_seq_conjunction(cord(pard_goal_detail)::in, 
+    dependency_maps::in, set(int)::in, cord(pard_goal_detail)::out,
+    cord(pard_goal_detail)::in, cord(pard_goal_detail)::out) is det.
 
 build_last_seq_conjunction(Goals0, DependencyMaps, GoalsInOtherParConjuncts, 
         GoalsAfter, !GoalsInLastConjunct) :-
     ( head_tail(Goals0, Goal, Goals) ->
-        ConjNum = Goal ^ igi_conj_num,
+        ConjNum = Goal ^ pgd_conj_num,
         depends_lookup(DependencyMaps, ConjNum, Dependencies),
         intersect(Dependencies, GoalsInOtherParConjuncts, Intersection),
         (
@@ -1580,7 +1543,7 @@ build_last_seq_conjunction(Goals0, DependencyMaps, GoalsInOtherParConjuncts,
             not set.empty(Intersection) => 
             % But not dependant upon a goal in the current parallel conjunct.
             (
-                map_pred(ig_get_conj_num, !.GoalsInLastConjunct, 
+                map_pred(pg_get_conj_num, !.GoalsInLastConjunct, 
                     ConjNumsInLastConjunct),
                 intersect(Dependencies, set(list(ConjNumsInLastConjunct)),
                     Intersection2),
@@ -1601,20 +1564,20 @@ build_last_seq_conjunction(Goals0, DependencyMaps, GoalsInOtherParConjuncts,
         GoalsAfter = cord.empty
     ).
 
-:- pred ig_get_conj_num(inner_goal_internal::in, int::out) is det.
+:- pred pg_get_conj_num(pard_goal_detail::in, int::out) is det.
 
-ig_get_conj_num(IG, IG ^ igi_conj_num).
+pg_get_conj_num(PG, PG ^ pgd_conj_num).
 
-:- pred innergoal_calc_cost(inner_goal_internal::in, float::in, float::out) 
+:- pred pardgoal_calc_cost(pard_goal_detail::in, float::in, float::out) 
     is det.
 
-innergoal_calc_cost(Goal, !Cost) :-
-    GoalType = Goal ^ igi_ig_type,
+pardgoal_calc_cost(Goal, !Cost) :-
+    GoalType = Goal ^ pgd_pg_type,
     (
-        GoalType = igt_call(_, _, CostPercall, _, _),
+        GoalType = pgt_call(_, _, CostPercall, _, _),
         !:Cost = !.Cost + CostPercall
     ; 
-        GoalType = igt_cheap_call(_, _, _, Cost),
+        GoalType = pgt_cheap_call(_, _, _, Cost),
         ( cs_cost_get_calls(Cost) > 0.0 ->
             !:Cost = !.Cost + cs_cost_get_percall(Cost)
         ;
@@ -1622,9 +1585,9 @@ innergoal_calc_cost(Goal, !Cost) :-
             true
         )
     ;
-        GoalType = igt_other_atomic_goal
+        GoalType = pgt_other_atomic_goal
     ;
-        GoalType = igt_non_atomic_goal,
+        GoalType = pgt_non_atomic_goal,
         error(this_file ++ "unexpected non atomic goal")
     ).
 
@@ -1639,14 +1602,14 @@ innergoal_calc_cost(Goal, !Cost) :-
                 % to conjunct numbers that depend on this goal.
          ).
 
-:- pred build_dependency_maps(list(inner_goal_internal)::in, 
+:- pred build_dependency_maps(list(pard_goal_detail)::in, 
     dependency_maps::out) is det.
 
-build_dependency_maps(InnerGoals, Maps) :-
-    length(InnerGoals, InnerGoalsLen),
+build_dependency_maps(Goals, Maps) :-
+    length(Goals, GoalsLen),
     % Both maps are initialised equally.
-    fold_up(insert_empty_set, 1, InnerGoalsLen, map.init, InitialisedMap), 
-    build_dependency_map(InnerGoals, 1, map.init, _VarDepMap, 
+    fold_up(insert_empty_set, 1, GoalsLen, map.init, InitialisedMap), 
+    build_dependency_map(Goals, 1, map.init, _VarDepMap, 
         InitialisedMap, Map, InitialisedMap, RevMap),
     Maps = dependency_maps(Map, RevMap).
 
@@ -1668,14 +1631,14 @@ depends_lookup_rev(DependencyMaps, GoalNum, Dependencies) :-
 insert_empty_set(K, !Map) :-
     svmap.det_insert(K, set.init, !Map).
 
-:- pred build_dependency_map(list(inner_goal_internal)::in, int::in, 
+:- pred build_dependency_map(list(pard_goal_detail)::in, int::in, 
     map(var_rep, set(int))::in, map(var_rep, set(int))::out,
     map(int, set(int))::in, map(int, set(int))::out,
     map(int, set(int))::in, map(int, set(int))::out) is det.
 
 build_dependency_map([], _ConjNum, !VarDepMap, !Map, !RevMap).
-build_dependency_map([IG | IGs], ConjNum, !VarDepMap, !Map, !RevMap) :-
-    InstMapInfo = IG ^ igi_inst_map_info,
+build_dependency_map([PG | PGs], ConjNum, !VarDepMap, !Map, !RevMap) :-
+    InstMapInfo = PG ^ pgd_inst_map_info,
     
     % For each variable consumed by a goal we find out which goals instantiate
     % that variable and add them as it's dependencies along with their
@@ -1708,7 +1671,7 @@ build_dependency_map([IG | IGs], ConjNum, !VarDepMap, !Map, !RevMap) :-
     inst_map_delta_get_var_set(InstMapDelta, InstVars),
     fold(add_var_to_var_dep_map(ConjNum), InstVars, !VarDepMap),
 
-    build_dependency_map(IGs, ConjNum + 1, !VarDepMap, !Map, !RevMap).
+    build_dependency_map(PGs, ConjNum + 1, !VarDepMap, !Map, !RevMap).
 
 :- pred add_var_to_var_dep_map(int::in, var_rep::in, 
     map(var_rep, set(int))::in, map(var_rep, set(int))::out) is det. 
@@ -1743,10 +1706,10 @@ can_parallelise_call(Info, Detism, CallSiteReport) :-
 
 :- pred maybe_costly_call(implicit_parallelism_info::in, goal_path::in,
     atomic_goal_rep::in, detism_rep::in, inst_map_info::in,
-    inner_goal_type::out(igt_atomic_goal)) is det.
+    pard_goal_type::out(pgt_atomic_goal)) is det.
 
 maybe_costly_call(Info, GoalPath, AtomicGoal, Detism,
-        InstMapInfo, InnerGoalType) :-
+        InstMapInfo, GoalType) :-
     InstMapBefore = InstMapInfo ^ im_before,
     InstMapAfter = InstMapInfo ^ im_after,
     (
@@ -1762,7 +1725,7 @@ maybe_costly_call(Info, GoalPath, AtomicGoal, Detism,
         ; AtomicGoal = builtin_call_rep(_, _, _)
         ; AtomicGoal = event_call_rep(_, _)
         ),
-        InnerGoalType = igt_other_atomic_goal 
+        GoalType = pgt_other_atomic_goal 
     ;
         ( AtomicGoal = higher_order_call_rep(_, Args)
         ; AtomicGoal = method_call_rep(_, _, Args)
@@ -1809,11 +1772,11 @@ maybe_costly_call(Info, GoalPath, AtomicGoal, Detism,
         ( can_parallelise_call(Info, Detism, CallSite) ->
             CostPercall = cs_cost_get_percall(get_call_site_cost(Info,
                 CallSite)),
-            InnerGoalType = 
-                igt_call(Callee, Vars, CostPercall, VarModeAndUses, CallSite)
+            GoalType = 
+                pgt_call(Callee, Vars, CostPercall, VarModeAndUses, CallSite)
         ;
             CallSiteCost = get_call_site_cost(Info, CallSite),
-            InnerGoalType = igt_cheap_call(Callee, Vars, VarModeAndUses,
+            GoalType = pgt_cheap_call(Callee, Vars, VarModeAndUses,
                 CallSiteCost)
         )
     ).
@@ -1826,20 +1789,20 @@ var_get_mode(InstMapBefore, InstMapAfter, VarRep, VarModeRep) :-
     inst_map_get(InstMapAfter, VarRep, InstAfter, _),
     VarModeRep = var_mode_rep(InstBefore, InstAfter).
 
-    % Transform a conjunction of goals into a list of inner goals..
+    % Transform a conjunction of goals into a list of pard goals..
     %
     % The results are returned in the order that they appear.
     %
-:- pred conj_to_inner_goal_list(list(goal_rep(inst_map_info))::in,
+:- pred conj_to_pard_goal_list(list(goal_rep(inst_map_info))::in,
     goal_path::in, int::in, implicit_parallelism_info::in,
-    list(inner_goal_internal)::in, list(inner_goal_internal)::out,
+    list(pard_goal_detail)::in, list(pard_goal_detail)::out,
     int::in, int::out) is det.
 
-conj_to_inner_goal_list([], _, _, _, !InnerGoals, !NumCostlyCalls) :-
-    list.reverse(!InnerGoals).
+conj_to_pard_goal_list([], _, _, _, !PardGoals, !NumCostlyCalls) :-
+    list.reverse(!PardGoals).
 
-conj_to_inner_goal_list([Goal | Goals], GoalPath0, ConjNum, Info,
-        !InnerGoals, !NumCostlyCalls) :-
+conj_to_pard_goal_list([Goal | Goals], GoalPath0, ConjNum, Info,
+        !PardGoals, !NumCostlyCalls) :-
     Goal = goal_rep(GoalExpr, Detism, InstMapInfo),
     (
         ( GoalExpr = conj_rep(_)
@@ -1852,26 +1815,26 @@ conj_to_inner_goal_list([Goal | Goals], GoalPath0, ConjNum, Info,
         % XXX: We my consider lifting calls out of non-atomic goals so that
         % they can be parallelised,  or parallelising the whole non-atomic
         % goal.
-        InnerGoalType = igt_non_atomic_goal
+        PardGoalType = pgt_non_atomic_goal
     ;
         GoalExpr = atomic_goal_rep(_Context, _Line, _BoundVars, AtomicGoal),
         GoalPath = goal_path_add_at_end(GoalPath0, step_conj(ConjNum)),
         maybe_costly_call(Info, GoalPath, AtomicGoal, Detism,
-            InstMapInfo, InnerGoalType),
+            InstMapInfo, PardGoalType),
         (
-            InnerGoalType = igt_call(_, _, _, _, _),
+            PardGoalType = pgt_call(_, _, _, _, _),
             !:NumCostlyCalls = !.NumCostlyCalls + 1
         ;
-            InnerGoalType = igt_cheap_call(_, _, _, _)
+            PardGoalType = pgt_cheap_call(_, _, _, _)
         ;
-            InnerGoalType = igt_other_atomic_goal
+            PardGoalType = pgt_other_atomic_goal
         )
     ),
-    InnerGoal = inner_goal_internal(InnerGoalType, Detism, ConjNum,
+    PardGoal = pard_goal_detail(PardGoalType, Detism, ConjNum,
         InstMapInfo),
-    !:InnerGoals = [InnerGoal | !.InnerGoals],
-    conj_to_inner_goal_list(Goals, GoalPath0, ConjNum+1, Info, 
-        !InnerGoals, !NumCostlyCalls).
+    !:PardGoals = [PardGoal | !.PardGoals],
+    conj_to_pard_goal_list(Goals, GoalPath0, ConjNum+1, Info, 
+        !PardGoals, !NumCostlyCalls).
 
     % are_conjuncts_dependant(CallOutputs, InstMap, VarModeAndUse, !DepVars),
     %
