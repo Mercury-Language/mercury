@@ -1,0 +1,81 @@
+Threadscope
+===========
+
+This file contains information about threadscope profiling for Mercury.
+
+ 1. Contact Info
+ 2. Supported Systems.
+ 3. Threadscope Profiling Tools
+
+
+Contact Info
+------------
+
+    Paul Bone
+    pbone@csse.unimelb.edu.au
+
+    Mercuiry Project
+    mercury@csse.unimelb.edu.au
+    http://www.mercury.csse.unimelb.edu.au
+
+
+Supported Systems
+-----------------
+
+Threadscope uses the RDTSCP or RDTSC instructions found on some x86 and x86_64
+processors to get fast, high precision timing information.  These instructions
+read the time stamp counter (TSC), this is incremented for every clock cycle.
+Processors must increment this at a constant rate, regardless of their power
+state, (see /proc/cpuinfo for constant_tsc).
+
+TSC must also be synchronised between processors in the same system, although
+it may be possible to work around this, let me know if you have such a system
+(See contact info).
+
+AMD processors do not seem to store their clock frequency in their brand ID
+string.  On these systems Theadscope profiles are not to scale since clock
+counts cannot be converted into time in nanoseconds.  The threadscope profile
+will count one nanosecond for each clock tick.
+
+I have had success with the following processors:
+
+    Intel Core2
+    Intel Xeon CPU X5472 (in a dual socket system).
+
+Processors that do not work correctly:
+
+    AMD Athlon 64 X2 
+
+Threadscope Profiling Tools
+---------------------------
+
+Mercury supports threadscope profiling.  See the profiling section in the user
+guide. 
+
+The Threadscope profiling tools are written in Haskell and are known to work
+with GHC 6.10.  threadscope depends upon the following Haskell libraries:
+
+    array
+    binary
+    containers
+    filepath
+    ghc-events
+    gtk2hs
+    mtl
+
+Many of these will be provided with GHC or packaged for/by your operating
+system.
+
+ghc-events is not packaged by most operating systems at this stage, It can be
+retrieved from hackage:
+
+    http://hackage.haskell.org/package/ghc-events
+
+threadscope itself can also be retrieved from hackage:
+
+    http://hackage.haskell.org/package/threadscope
+
+Information about how to install Haskell packages can be found here:
+
+    http://haskell.org/haskellwiki/Cabal/How_to_install_a_Cabal_package
+
