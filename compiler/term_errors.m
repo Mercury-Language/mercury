@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000, 2003-2006 The University of Melbourne.
+% Copyright (C) 1997-2000, 2003-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -224,6 +224,7 @@ is_fatal_error(inconsistent_annotations) = no.
 %-----------------------------------------------------------------------------%
 
 report_term_errors(SCC, Errors, Module, !IO) :-
+    module_info_get_globals(Module, Globals),
     get_context_from_scc(SCC, Module, Context),
     ( SCC = [PPId] ->
         Pieces1 = [words("Termination of")] ++
@@ -241,18 +242,18 @@ report_term_errors(SCC, Errors, Module, !IO) :-
         % error("empty list of errors")
         Pieces2 = [words("not proven, for unknown reason(s).")],
         list.append(Pieces1, Pieces2, Pieces),
-        write_error_pieces(Context, 0, Pieces, !IO)
+        write_error_pieces(Globals, Context, 0, Pieces, !IO)
     ;
         Errors = [Error],
         Pieces2 = [words("not proven for the following reason:")],
         list.append(Pieces1, Pieces2, Pieces),
-        write_error_pieces(Context, 0, Pieces, !IO),
+        write_error_pieces(Globals, Context, 0, Pieces, !IO),
         output_term_error(Error, Single, no, 0, Module, !IO)
     ;
         Errors = [_, _ | _],
         Pieces2 = [words("not proven for the following reasons:")],
         list.append(Pieces1, Pieces2, Pieces),
-        write_error_pieces(Context, 0, Pieces, !IO),
+        write_error_pieces(Globals, Context, 0, Pieces, !IO),
         output_term_errors(Errors, Single, 1, 0, Module, !IO)
     ).
 
@@ -261,6 +262,7 @@ report_term_errors(SCC, Errors, Module, !IO) :-
     io::di, io::uo) is det.
 
 report_arg_size_errors(SCC, Errors, Module, !IO) :-
+    module_info_get_globals(Module, Globals),
     get_context_from_scc(SCC, Module, Context),
     ( SCC = [PPId] ->
         Pieces1 = [words("Termination constant of")] ++
@@ -280,13 +282,13 @@ report_arg_size_errors(SCC, Errors, Module, !IO) :-
         Errors = [Error],
         Piece3 = words("reason:"),
         list.append(Pieces1, [Piece2, Piece3], Pieces),
-        write_error_pieces(Context, 0, Pieces, !IO),
+        write_error_pieces(Globals, Context, 0, Pieces, !IO),
         output_term_error(Error, Single, no, 0, Module, !IO)
     ;
         Errors = [_, _ | _],
         Piece3 = words("reasons:"),
         list.append(Pieces1, [Piece2, Piece3], Pieces),
-        write_error_pieces(Context, 0, Pieces, !IO),
+        write_error_pieces(Globals, Context, 0, Pieces, !IO),
         output_term_errors(Errors, Single, 1, 0, Module, !IO)
     ).
 
@@ -315,7 +317,8 @@ output_term_error(TermErrorContext, Single, ErrorNum, Indent, Module, !IO) :-
         ErrorNum = no,
         Pieces = Pieces0
     ),
-    write_error_pieces(Context, Indent, Pieces, !IO),
+    module_info_get_globals(Module, Globals),
+    write_error_pieces(Globals, Context, Indent, Pieces, !IO),
     (
         Reason = yes(InfArgSizePPId),
         lookup_proc_arg_size_info(Module, InfArgSizePPId, ArgSize),

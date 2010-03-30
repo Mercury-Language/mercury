@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2009 The University of Melbourne.
+% Copyright (C) 2002-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -335,8 +335,8 @@ read_options_lines(Globals, Dir, !Variables, !IO) :-
         LineResult = exception(Exception),
         ( Exception = univ(options_file_error(Error)) ->
             io.input_stream_name(FileName, !IO),
-            write_error_pieces(term.context_init(FileName, LineNumber),
-                0, [words(Error)], !IO),
+            Context = term.context_init(FileName, LineNumber),
+            write_error_pieces(Globals, Context, 0, [words(Error)], !IO),
 
             % This will be caught by `read_options_files'. The open options
             % files aren't closed on the way up, but we will be exiting
@@ -567,7 +567,7 @@ report_undefined_variables_2(Globals, [_ | Rest] @ UndefVars, !IO) :-
         ),
         Pieces = [words("Warning: "), words(Word) | VarList]
             ++ [words(IsOrAre), words("undefined.")],
-        write_error_pieces(Context, 0, Pieces, !IO),
+        write_error_pieces(Globals, Context, 0, Pieces, !IO),
 
         globals.lookup_bool_option(Globals, halt_at_warn, Halt),
         (

@@ -355,7 +355,7 @@ maybe_add_heap_ops(Verbose, Stats, !HLDS, !IO) :-
             "`--reclaim-heap-on-semidet-failure' and " ++
             "`--reclaim-heap-on-nondet-failure'. " ++
             "Use `--(no-)reclaim-heap-on-failure' instead.",
-        write_error_pieces_plain([words(Msg)], !IO),
+        write_error_pieces_plain(Globals, [words(Msg)], !IO),
         io.set_exit_status(1, !IO)
     ).
 

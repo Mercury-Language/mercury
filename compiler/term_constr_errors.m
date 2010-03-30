@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002, 2005-2007, 2009 The University of Melbourne.
+% Copyright (C) 2002, 2005-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -167,19 +167,20 @@ report_term_errors(SCC, Errors, Module, !IO) :-
         Pieces1 = Pieces0 ++ ProcNames,
         Single = no
     ),  
+    module_info_get_globals(Module, Globals),
     (
         Errors = [],
         Pieces2 = [words("not proven, for unknown reason(s).")],
-        write_error_pieces(Context, 0, Pieces1 ++ Pieces2, !IO)
+        write_error_pieces(Globals, Context, 0, Pieces1 ++ Pieces2, !IO)
     ;
         Errors = [Error],
         Pieces2 = [words("not proven for the following reason:")],
-        write_error_pieces(Context, 0, Pieces1 ++ Pieces2, !IO),
+        write_error_pieces(Globals, Context, 0, Pieces1 ++ Pieces2, !IO),
         output_error(Error, Single, no, 0, Module, !IO)
     ;
         Errors = [_, _ | _],
         Pieces2 = [words("not proven for the following reasons:")],
-        write_error_pieces(Context, 0, Pieces1 ++ Pieces2, !IO),
+        write_error_pieces(Globals, Context, 0, Pieces1 ++ Pieces2, !IO),
         output_errors(Errors, Single, 1, 0, Module, !IO)
     ).
 
@@ -206,7 +207,8 @@ output_error(Context - Error, Single, ErrorNum, Indent, Module, !IO) :-
         ErrorNum = no,
         Pieces = Pieces0
     ),
-    write_error_pieces(Context, Indent, Pieces, !IO).
+    module_info_get_globals(Module, Globals),
+    write_error_pieces(Globals, Context, Indent, Pieces, !IO).
 
 :- pred description(termination2_error::in,
     maybe(pred_proc_id)::in, module_info::in, list(format_component)::out,

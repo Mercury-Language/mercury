@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007, 2009 The University of Melbourne.
+% Copyright (C) 1996-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1031,13 +1031,14 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
             pred_info_get_call_id(OtherPredInfo, OtherPredCallId),
             % XXX this is not very nice
             trace [io(!IO)] (
+                module_info_get_globals(ModuleInfo, Globals),
                 Pieces = [
                     words("Error: unresolved predicate overloading, matched"),
                     simple_call(PredCallId), words("and"),
                     simple_call(OtherPredCallId), suffix("."),
                     words("You need to use an explicit module qualifier."),
                     nl],
-                write_error_pieces(Context, 0, Pieces, !IO)
+                write_error_pieces(Globals, Context, 0, Pieces, !IO)
             ),
             unexpected(this_file,
                 "find_matching_pred_id: unresolvable predicate overloading")

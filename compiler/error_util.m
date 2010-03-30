@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2009 The University of Melbourne.
+% Copyright (C) 1997-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,8 +23,8 @@
 % with spaces between each pair of words, subject to the constraints
 % that every line starts with a context, followed by Indent+1 spaces
 % on the first line and Indent+3 spaces on later lines, and that every
-% line contains at most 79 characters (unless a long single word
-% forces the line over this limit).
+% line contains at most <n> characters (unless a long single word
+% forces the line over this limit) where --max-error-line-width <n>.
 %
 % The caller supplies the list of words to be printed in the form
 % of a list of error message components. Each component may specify
@@ -395,7 +395,7 @@
     % Display the given error message, without a context and with standard
     % indentation.
     %
-:- pred write_error_pieces_plain(list(format_component)::in,
+:- pred write_error_pieces_plain(globals::in, list(format_component)::in,
     io::di, io::uo) is det.
 
     % write_error_plain_with_progname(ProgName, Msg):
@@ -406,29 +406,17 @@
 :- pred write_error_plain_with_progname(string::in, string::in,
     io::di, io::uo) is det.
 
-    % write_error_pieces(Context, Indent, Components):
+    % write_error_pieces(Globals, Context, Indent, Components):
     %
     % Display `Components' as the error message, with `Context' as a context
     % and indent by `Indent'.
     %
-:- pred write_error_pieces(prog_context::in, int::in,
+:- pred write_error_pieces(globals::in, prog_context::in, int::in,
     list(format_component)::in, io::di, io::uo) is det.
 
-    % Display the given error message, but indent the first line.
-    % This is useful when adding extra lines to an already displayed message.
-    %
-:- pred write_error_pieces_not_first_line(prog_context::in, int::in,
-    list(format_component)::in, io::di, io::uo) is det.
-
-    % Display the given error message. The first argument tells us whether
-    % to treat this as the first line.
-    %
-:- pred write_error_pieces_maybe_first_line(maybe_treat_as_first::in,
-    prog_context::in, int::in, list(format_component)::in, io::di, io::uo)
-    is det.
-
-:- pred write_error_pieces_maybe_with_context(maybe(prog_context)::in, int::in,
-    list(format_component)::in, io::di, io::uo) is det.
+:- pred write_error_pieces_maybe_with_context(globals::in,
+    maybe(prog_context)::in, int::in, list(format_component)::in,
+    io::di, io::uo) is det.
 
 :- func error_pieces_to_string(list(format_component)) = string.
 
@@ -817,7 +805,8 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
         !First, !PrintedSome, !IO) :-
     (
         Component = always(ComponentPieces),
-        do_write_error_pieces(!.First, MaybeContext, Indent,
+        globals.lookup_int_option(Globals, max_error_line_width, MaxWidth),
+        do_write_error_pieces(!.First, MaybeContext, Indent, MaxWidth,
             ComponentPieces, !IO),
         !:First = do_not_treat_as_first,
         !:PrintedSome = printed_something
@@ -835,7 +824,9 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
         globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
         (
             VerboseErrors = yes,
-            do_write_error_pieces(!.First, MaybeContext, Indent,
+            globals.lookup_int_option(Globals, max_error_line_width,
+                MaxWidth),
+            do_write_error_pieces(!.First, MaybeContext, Indent, MaxWidth,
                 ComponentPieces, !IO),
             !:First = do_not_treat_as_first,
             !:PrintedSome = printed_something
@@ -846,13 +837,14 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
     ;
         Component = verbose_and_nonverbose(VerbosePieces, NonVerbosePieces),
         globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
+        globals.lookup_int_option(Globals, max_error_line_width, MaxWidth),
         (
             VerboseErrors = yes,
-            do_write_error_pieces(!.First, MaybeContext, Indent,
+            do_write_error_pieces(!.First, MaybeContext, Indent, MaxWidth,
                 VerbosePieces, !IO)
         ;
             VerboseErrors = no,
-            do_write_error_pieces(!.First, MaybeContext, Indent,
+            do_write_error_pieces(!.First, MaybeContext, Indent, MaxWidth,
                 NonVerbosePieces, !IO),
             globals.io_set_extra_error_info(yes, !IO)
         ),
@@ -924,33 +916,31 @@ is_or_are([]) = "" :-
 is_or_are([_]) = "is".
 is_or_are([_, _ | _]) = "are".
 
-write_error_pieces_plain(Components, !IO) :-
-    do_write_error_pieces(treat_as_first, no, 0, Components, !IO).
+write_error_pieces_plain(Globals, Components, !IO) :-
+    globals.lookup_int_option(Globals, max_error_line_width, MaxWidth),
+    do_write_error_pieces(treat_as_first, no, 0, MaxWidth, Components, !IO).
 
 write_error_plain_with_progname(ProgName, Msg, !IO) :-
-    write_error_pieces_plain([fixed(ProgName ++ ":"), words(Msg)], !IO).
+    MaxWidth = 79,
+    Components = [fixed(ProgName ++ ":"), words(Msg)],
+    do_write_error_pieces(treat_as_first, no, 0, MaxWidth, Components, !IO).
 
-write_error_pieces(Context, Indent, Components, !IO) :-
-    do_write_error_pieces(treat_as_first, yes(Context), Indent,
+write_error_pieces(Globals, Context, Indent, Components, !IO) :-
+    globals.lookup_int_option(Globals, max_error_line_width, MaxWidth),
+    do_write_error_pieces(treat_as_first, yes(Context), Indent, MaxWidth,
         Components, !IO).
 
-write_error_pieces_not_first_line(Context, Indent, Components, !IO) :-
-    do_write_error_pieces(do_not_treat_as_first, yes(Context), Indent,
-        Components, !IO).
-
-write_error_pieces_maybe_first_line(TreatAsFirst, Context, Indent, Components,
-        !IO) :-
-    do_write_error_pieces(TreatAsFirst, yes(Context), Indent, Components, !IO).
-
-write_error_pieces_maybe_with_context(MaybeContext, Indent, Components, !IO) :-
-    do_write_error_pieces(treat_as_first, MaybeContext, Indent,
+write_error_pieces_maybe_with_context(Globals, MaybeContext, Indent,
+        Components, !IO) :-
+    globals.lookup_int_option(Globals, max_error_line_width, MaxWidth),
+    do_write_error_pieces(treat_as_first, MaybeContext, Indent, MaxWidth,
         Components, !IO).
 
 :- pred do_write_error_pieces(maybe_treat_as_first::in,
-    maybe(prog_context)::in, int::in, list(format_component)::in,
+    maybe(prog_context)::in, int::in, int::in, list(format_component)::in,
     io::di, io::uo) is det.
 
-do_write_error_pieces(TreatAsFirst, MaybeContext, FixedIndent,
+do_write_error_pieces(TreatAsFirst, MaybeContext, FixedIndent, MaxWidth,
         Components, !IO) :-
     % The fixed characters at the start of the line are:
     % filename
@@ -978,7 +968,7 @@ do_write_error_pieces(TreatAsFirst, MaybeContext, FixedIndent,
     ),
     convert_components_to_paragraphs(Components, Paragraphs),
     FirstIndent = (TreatAsFirst = treat_as_first -> 0 ; 1),
-    Remain = 79 - (ContextLength + FixedIndent),
+    Remain = MaxWidth - (ContextLength + FixedIndent),
     group_words(TreatAsFirst, FirstIndent, Paragraphs, Remain, Lines),
     write_lines(Lines, MaybeContext, FixedIndent, !IO).
 
@@ -1509,7 +1499,7 @@ capitalize(Str0) = Str :-
 
 report_warning(Globals, Context, Indent, Components, !IO) :-
     record_warning(Globals, !IO),
-    write_error_pieces(Context, Indent, Components, !IO).
+    write_error_pieces(Globals, Context, Indent, Components, !IO).
 
 %-----------------------------------------------------------------------------%
 

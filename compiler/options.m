@@ -247,6 +247,7 @@
     ;       line_numbers
     ;       auto_comments
     ;       frameopt_comments
+    ;       max_error_line_width
     ;       show_dependency_graph
     ;       imports_graph
     ;       dump_trace_counts
@@ -1163,6 +1164,7 @@ option_defaults_2(aux_output_option, [
     line_numbers                        -   bool(yes),
     auto_comments                       -   bool(no),
     frameopt_comments                   -   bool(no),
+    max_error_line_width                -   int(79),
     show_dependency_graph               -   bool(no),
     imports_graph                       -   bool(no),
     dump_trace_counts                   -   accumulating([]),
@@ -2010,6 +2012,7 @@ long_option("generate-bytecode",        generate_bytecode).
 long_option("line-numbers",             line_numbers).
 long_option("auto-comments",            auto_comments).
 long_option("frameopt-comments",        frameopt_comments).
+long_option("max-error-line-width",     max_error_line_width).
 long_option("show-dependency-graph",    show_dependency_graph).
 long_option("imports-graph",            imports_graph).
 long_option("dump-trace-counts",        dump_trace_counts).
@@ -3733,6 +3736,9 @@ options_help_aux_output -->
 %       "\tGet frameopt.m to generate comments describing its operation.",
         "\t(The code may be easier to understand if you also",
         "\tuse the `--no-llds-optimize' option.)",
+        "--max-error-line-width <n>",
+        "\tSet the maximum width of an error message line to <n> characters",
+        "\t(unless a long single word forces the line over this limit).",
         "--show-dependency-graph",
         "\tWrite out the dependency graph to `<module>.dependency_graph'.",
         "--imports-graph",

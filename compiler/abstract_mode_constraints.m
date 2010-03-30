@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006, 2009 The University of Melbourne.
+% Copyright (C) 2004-2006, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,6 +20,8 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -152,7 +154,7 @@
 
     % Print the mc_constraints it is passed in a human readable format.
     %
-:- pred dump_constraints_and_annotations(mc_varset::in,
+:- pred dump_constraints_and_annotations(globals::in, mc_varset::in,
     list(mc_ann_constraint)::in, io::di, io::uo) is det.
 
     % Print a list of models for the constraint system.
@@ -409,74 +411,81 @@ xor(MCVarSet, Context, A, B, !Constraints) :-
 % Dumping constraints for --debug-mode-constraints
 %
 
-dump_constraints_and_annotations(VarSet, AnnConstraints, !IO) :-
+dump_constraints_and_annotations(Globals, VarSet, AnnConstraints, !IO) :-
     Indent = 0,
-    list.foldl(dump_ann_constraint(VarSet, Indent), AnnConstraints, !IO).
+    list.foldl(dump_ann_constraint(Globals, VarSet, Indent), AnnConstraints,
+        !IO).
 
     % Dumps a list of constraints using the same constraint annotation
     % at indent level indicated by the int.
     %
-:- pred dump_constraints(mc_varset::in, int::in, mc_annotation::in,
-    list(mc_constraint)::in, io::di, io::uo) is det.
+:- pred dump_constraints(globals::in, mc_varset::in, int::in,
+    mc_annotation::in, list(mc_constraint)::in, io::di, io::uo) is det.
 
-dump_constraints(VarSet, Indent, Annotation, Constraints, !IO) :-
-    list.foldl(dump_constraint(VarSet, Indent, Annotation), Constraints, !IO).
+dump_constraints(Globals, VarSet, Indent, Annotation, Constraints, !IO) :-
+    list.foldl(dump_constraint(Globals, VarSet, Indent, Annotation),
+        Constraints, !IO).
 
-:- pred dump_ann_constraint(mc_varset::in, int::in, mc_ann_constraint::in,
-    io::di, io::uo) is det.
+:- pred dump_ann_constraint(globals::in, mc_varset::in, int::in,
+    mc_ann_constraint::in, io::di, io::uo) is det.
 
-dump_ann_constraint(VarSet, Indent, AnnConstraint, !IO) :-
+dump_ann_constraint(Globals, VarSet, Indent, AnnConstraint, !IO) :-
     AnnConstraint = mc_ann_constraint(Constraint, Annotation),
-    dump_constraint(VarSet, Indent, Annotation, Constraint, !IO).
+    dump_constraint(Globals, VarSet, Indent, Annotation, Constraint, !IO).
 
     % Prints one mc_constraint to the output. The int is an indent level.
     %
-:- pred dump_constraint(mc_varset::in, int::in, mc_annotation::in,
+:- pred dump_constraint(globals::in, mc_varset::in, int::in, mc_annotation::in,
     mc_constraint::in, io::di, io::uo) is det.
 
-dump_constraint(VarSet, Indent, Annotation, Constraint, !IO) :-
+dump_constraint(Globals, VarSet, Indent, Annotation, Constraint, !IO) :-
     (
         Constraint = mc_disj(Constraints),
         Context = context(Annotation),
-        write_error_pieces(Context, Indent, [words("disj(")], !IO),
-        dump_constraints(VarSet, Indent+1, Annotation, Constraints, !IO),
-        write_error_pieces(Context, Indent, [words(") end disj")], !IO)
+        write_error_pieces(Globals, Context, Indent, [words("disj(")], !IO),
+        dump_constraints(Globals, VarSet, Indent+1, Annotation, Constraints,
+            !IO),
+        write_error_pieces(Globals, Context, Indent, [words(") end disj")],
+            !IO)
     ;
         Constraint = mc_conj(Constraints),
         Context = context(Annotation),
-        write_error_pieces(Context, Indent, [words("conj(")], !IO),
-        dump_constraints(VarSet, Indent+1, Annotation, Constraints, !IO),
-        write_error_pieces(Context, Indent, [words(") end conj")], !IO)
+        write_error_pieces(Globals, Context, Indent, [words("conj(")], !IO),
+        dump_constraints(Globals, VarSet, Indent+1, Annotation, Constraints,
+            !IO),
+        write_error_pieces(Globals, Context, Indent, [words(") end conj")],
+            !IO)
     ;
         Constraint = mc_atomic(AtomicConstraint),
-        dump_var_constraint(VarSet, Indent, Annotation, AtomicConstraint, !IO)
+        dump_var_constraint(Globals, VarSet, Indent, Annotation,
+            AtomicConstraint, !IO)
     ).
 
     % Prints a var_constraint to the output. The int is an indent level.
     %
-:- pred dump_var_constraint(mc_varset::in, int::in, mc_annotation::in,
-    var_constraint::in, io::di, io::uo) is det.
+:- pred dump_var_constraint(globals::in, mc_varset::in, int::in,
+    mc_annotation::in, var_constraint::in, io::di, io::uo) is det.
 
-dump_var_constraint(VarSet, Indent, Annotation, Constraint, !IO) :-
+dump_var_constraint(Globals, VarSet, Indent, Annotation, Constraint, !IO) :-
     (
         Constraint = equiv_bool(X, Val),
         mc_var_list_to_string(VarSet, [X], VarName),
         mc_var_val_to_string(Val, ValString),
         Context = context(Annotation),
-        write_error_pieces(Context, Indent,
+        write_error_pieces(Globals, Context, Indent,
             [words(VarName ++ " = " ++ ValString)], !IO)
     ;
         Constraint = equivalent(Xs),
         mc_var_list_to_string(VarSet, Xs, VarsString),
         Context = context(Annotation),
-        write_error_pieces(Context, Indent,
+        write_error_pieces(Globals, Context, Indent,
             [words("equivalent(" ++ VarsString ++ ")")], !IO)
     ;
         Constraint = implies(X, Y),
         mc_var_list_to_string(VarSet, [X], XName),
         mc_var_list_to_string(VarSet, [Y], YName),
         Context = context(Annotation),
-        write_error_pieces(Context, Indent,
+        write_error_pieces(Globals, Context, Indent,
             [words(XName ++ " -> " ++ YName)], !IO)
     ;
         Constraint = equiv_disj(X, Xs),
@@ -484,19 +493,19 @@ dump_var_constraint(VarSet, Indent, Annotation, Constraint, !IO) :-
         mc_var_list_to_string(VarSet, Xs, XsString),
         Context = context(Annotation),
         Pieces = [words(XName ++ " <-> disj(" ++ XsString ++ ")")],
-        write_error_pieces(Context, Indent, Pieces, !IO)
+        write_error_pieces(Globals, Context, Indent, Pieces, !IO)
     ;
         Constraint = at_most_one(Xs),
         mc_var_list_to_string(VarSet, Xs, XsString),
         Pieces = [words("at_most_one(" ++ XsString ++ ")")],
         Context = context(Annotation),
-        write_error_pieces(Context, Indent, Pieces, !IO)
+        write_error_pieces(Globals, Context, Indent, Pieces, !IO)
     ;
         Constraint = exactly_one(Xs),
         mc_var_list_to_string(VarSet, Xs, XsString),
         Pieces = [words("exactly_one(" ++ XsString ++ ")")],
         Context = context(Annotation),
-        write_error_pieces(Context, Indent, Pieces, !IO)
+        write_error_pieces(Globals, Context, Indent, Pieces, !IO)
     ).
 
     % mc_var_list_to_string(VarSet, MCVars, MCVarsString):

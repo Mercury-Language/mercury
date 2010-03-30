@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000,2002-2007, 2009 The University of Melbourne.
+% Copyright (C) 1999-2000,2002-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -262,7 +262,8 @@ process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
             pred_info_get_context(PredInfo, Context),
             PredPieces = describe_one_pred_name(!.ModuleInfo,
                 should_module_qualify, PredId),
-            write_error_pieces(Context, 0, [words("In") | PredPieces], !IO),
+            write_error_pieces(Globals, Context, 0, [words("In") | PredPieces],
+                !IO),
 
             proc_info_get_varset(!.ProcInfo, VarSet),
             output_warnings(Warnings, VarSet, !.ModuleInfo, !IO),
@@ -272,7 +273,7 @@ process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
                 words("performance problems."),
                 words("These warnings can be suppressed by"),
                 words("`--inhibit-accumulator-warnings'.")],
-            write_error_pieces(Context, 2, Pieces1, !IO),
+            write_error_pieces(Globals, Context, 2, Pieces1, !IO),
 
             globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
             (
@@ -290,7 +291,7 @@ process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
                     words("the optimization off, or "),
                     words("`--inhibit-accumulator-warnings' to turn off"),
                     words("the warnings.")],
-                write_error_pieces(Context, 2, Pieces2, !IO)
+                write_error_pieces(Globals, Context, 2, Pieces2, !IO)
             ;
                 VerboseErrors = no,
                 globals.io_set_extra_error_info(yes, !IO)
@@ -317,7 +318,8 @@ process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
 output_warnings([], _, _, !IO).
 output_warnings([W | Ws], VarSet, ModuleInfo, !IO) :-
     output_warning(W, VarSet, ModuleInfo, Context, Format),
-    write_error_pieces(Context, 2, Format, !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    write_error_pieces(Globals, Context, 2, Format, !IO),
     output_warnings(Ws, VarSet, ModuleInfo, !IO).
 
 :- pred output_warning(warning::in, prog_varset::in, module_info::in,
