@@ -14,6 +14,8 @@
 
 :- import_module string, std_util, list.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
 	test(1, 1, !IO),
 	test(1, 2, !IO),

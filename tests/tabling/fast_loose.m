@@ -13,6 +13,8 @@
 :- import_module list.
 :- import_module require.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
 	perform_trials(80, !IO).
 

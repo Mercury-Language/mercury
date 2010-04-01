@@ -22,6 +22,8 @@
 
 :- import_module int, list.
 
+:- pragma require_feature_set([memo]).
+
 main --> boyer.
 
 :- pred boyer(io::di, io::uo) is det .

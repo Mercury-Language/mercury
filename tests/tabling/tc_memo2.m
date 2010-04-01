@@ -10,6 +10,8 @@
 
 :- import_module std_util, list.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
 	(
 		tc(1, 4),

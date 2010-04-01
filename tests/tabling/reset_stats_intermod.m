@@ -16,6 +16,8 @@
 
 :- import_module reset_stats_intermod_2.
 
+:- pragma require_feature_set([memo]).
+
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-

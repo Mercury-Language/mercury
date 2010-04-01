@@ -23,6 +23,8 @@
 :- import_module std_util.
 :- import_module string.
 
+:- pragma require_feature_set([memo]).
+
 :- type record(T1, T2)  --->  record(T1, T2, T1, T2).
 
 main(!IO) :-

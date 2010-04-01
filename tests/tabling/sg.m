@@ -12,6 +12,8 @@
 
 :- import_module pair, list, solutions.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
 	solutions(sg1, Solns1),
 	io__write(Solns1, !IO),

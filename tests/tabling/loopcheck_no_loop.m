@@ -8,6 +8,8 @@
 
 :- implementation.
 
+:- pragma require_feature_set([memo]).
+
 :- import_module int.
 
 main(!IO) :-

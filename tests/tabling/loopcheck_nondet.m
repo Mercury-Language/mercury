@@ -9,6 +9,8 @@
 
 :- import_module int, solutions.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
 	solutions(loop(2), Y),
 	io__write(Y, !IO),

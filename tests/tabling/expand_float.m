@@ -12,6 +12,8 @@
 
 :- import_module bool, int, float, list, assoc_list, pair, random, require.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
 	random__init(0, RS0),
 	random__permutation(range(0, 1023), Perm, RS0, RS1),

@@ -17,6 +17,8 @@
 
 :- import_module bool, int, list, std_util, random, require.
 
+:- pragma require_feature_set([memo]).
+
 :- type record(T1, T2)	--->	record(T1, T1, T2).
 
 main(!IO) :-
