@@ -10,6 +10,8 @@
 :- implementation.
 :- import_module int, solutions.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
 	solutions(test_non(1, 2), NonSoln1),
 	io__write(NonSoln1, !IO),

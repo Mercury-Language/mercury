@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2009 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -215,15 +215,15 @@ fact_table_size(Globals, FactTableSize) :-
 
 fact_table_compile_facts(PredName, Arity, FileName, !PredInfo, Context,
         ModuleInfo, C_HeaderCode, PrimaryProcID, !IO) :-
-    see_input_handle_error(yes(Context), FileName, SeeResult, !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    see_input_handle_error(Globals, yes(Context), FileName, SeeResult, !IO),
     (
         SeeResult = ok,
-        module_info_get_globals(ModuleInfo, Globals),
         module_info_get_name(ModuleInfo, ModuleName),
         fact_table_file_name(Globals, ModuleName, FileName, ".c",
             do_create_dirs, OutputFileName, !IO),
-        open_output_handle_error(yes(Context), OutputFileName, OpenResult,
-            !IO),
+        open_output_handle_error(Globals, yes(Context), OutputFileName,
+            OpenResult, !IO),
         (
             OpenResult = ok(OutputStream),
             fact_table_compile_facts_2(PredName, Arity, FileName, !PredInfo,
@@ -313,7 +313,7 @@ fact_table_compile_facts_2(PredName, Arity, FileName, !PredInfo, Context,
                 C_HeaderCode2, C_HeaderCode3], C_HeaderCode)
         ;
             OpenCompileErrors = [_ | _],
-            print_error_reports(OpenCompileErrors, !IO),
+            print_error_reports(Globals, OpenCompileErrors, !IO),
             C_HeaderCode = C_HeaderCode0,
             PrimaryProcID = invalid_proc_id,
             DataFileName = ""
@@ -324,7 +324,7 @@ fact_table_compile_facts_2(PredName, Arity, FileName, !PredInfo, Context,
         % `:- pred' or `:- func' declaration had some types that are not
         % supported in fact tables so there is no point trying to type-check
         % all the facts.
-        print_error_reports(Pass1HeaderErrors, !IO),
+        print_error_reports(Globals, Pass1HeaderErrors, !IO),
         C_HeaderCode = C_HeaderCode0,
         PrimaryProcID = invalid_proc_id,
         WriteDataAfterSorting = no,
@@ -1175,13 +1175,13 @@ infer_determinism_pass_2([ProcID - FileName | ProcFiles], Globals,
                 "%s: an error occurred in the `sort' program "
                 ++ "during fact table determinism inference.",
                 [s(ProgName)], Msg),
-            write_error_pieces_plain([words(Msg)], !IO),
+            write_error_pieces_plain(Globals, [words(Msg)], !IO),
             io.set_exit_status(1, !IO),
             Determinism = detism_erroneous
         )
     ;
         Result = error(ErrorCode),
-        write_call_system_error_msg("sort", ErrorCode, !IO),
+        write_call_system_error_msg(Globals, "sort", ErrorCode, !IO),
         Determinism = detism_erroneous
     ),
     proc_info_set_inferred_determinism(Determinism, ProcInfo0, ProcInfo),
@@ -1354,14 +1354,14 @@ maybe_append_data_table(Globals, yes, OutputFileName, DataFileName, !IO) :-
         ;
             Msg = "An error occurred while concatenating" ++
                 "fact table output files.",
-            write_error_pieces_plain([words(Msg)], !IO),
+            write_error_pieces_plain(Globals, [words(Msg)], !IO),
             io.set_exit_status(1, !IO)
         )
     ;
         Result = error(ErrorCode),
-        write_call_system_error_msg("cat", ErrorCode, !IO)
+        write_call_system_error_msg(Globals, "cat", ErrorCode, !IO)
     ),
-    delete_temporary_file(DataFileName, !IO).
+    delete_temporary_file(Globals, DataFileName, !IO).
 
     % Write hash tables for the primary key. Create a map from indices in the
     % original input table to the table sorted on the primary key.
@@ -1376,12 +1376,13 @@ write_primary_hash_table(ProcID, FileName, DataFileName, StructName, ProcTable,
         ModuleInfo, OutputStream, FactArgInfos, WriteDataTable,
         NumFacts, CreateFactMap, Result, FactMap, C_HeaderCode, !IO) :-
     map.init(FactMap0),
-    see_input_handle_error(no, FileName, Result0, !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    see_input_handle_error(Globals, no, FileName, Result0, !IO),
     (
         Result0 = ok,
         (
             WriteDataTable  = yes,
-            open_output_handle_error(no, DataFileName, Result1, !IO),
+            open_output_handle_error(Globals, no, DataFileName, Result1, !IO),
             (
                 Result1 = ok(DataStream),
                 MaybeDataStream = yes(DataStream),
@@ -1433,7 +1434,6 @@ write_primary_hash_table(ProcID, FileName, DataFileName, StructName, ProcTable,
             MaybeDataStream = yes(DataStream1),
             % Closing brace for last fact data array.
             write_closing_brace(DataStream1, !IO),
-            module_info_get_globals(ModuleInfo, Globals),
             fact_table_size(Globals, FactTableSize),
             write_fact_table_pointer_array(NumFacts, FactTableSize,
                 StructName, DataStream1, C_HeaderCode1, !IO),
@@ -1444,7 +1444,7 @@ write_primary_hash_table(ProcID, FileName, DataFileName, StructName, ProcTable,
             C_HeaderCode = C_HeaderCode0
         ),
         io.seen(!IO),
-        delete_temporary_file(FileName, !IO)
+        delete_temporary_file(Globals, FileName, !IO)
     ;
         Result0 = error(_),
         Result = error,
@@ -1463,7 +1463,8 @@ write_secondary_hash_tables([], _, _, _, _, _, _, !C_HeaderCode, !IO).
 write_secondary_hash_tables([ProcID - FileName | ProcFiles], StructName,
         ProcTable, ModuleInfo, OutputStream, FactMap, FactArgInfos,
         !C_HeaderCode, !IO) :-
-    see_input_handle_error(no, FileName, SeeResult, !IO),
+    module_info_get_globals(ModuleInfo, Globals),
+    see_input_handle_error(Globals, no, FileName, SeeResult, !IO),
     (
         SeeResult = ok,
         proc_id_to_int(ProcID, ProcInt),
@@ -1486,7 +1487,7 @@ write_secondary_hash_tables([ProcID - FileName | ProcFiles], StructName,
                 ModuleInfo, FactArgInfos, no, OutputStream, FirstFact, no, no,
                 FactMap, _, !IO),
             io.seen(!IO),
-            delete_temporary_file(FileName, !IO),
+            delete_temporary_file(Globals, FileName, !IO),
             write_secondary_hash_tables(ProcFiles, StructName, ProcTable,
                 ModuleInfo, OutputStream, FactMap, FactArgInfos,
                 !C_HeaderCode, !IO)
@@ -1518,7 +1519,9 @@ read_sort_file_line(FactArgInfos, ArgModes, ModuleInfo, MaybeSortFileLine,
         io.error_message(ErrorCode, ErrorMessage),
         io.input_stream_name(FileName, !IO),
         string.format("Error reading file `%s':", [s(FileName)], Msg),
-        write_error_pieces_plain([words(Msg), nl, words(ErrorMessage)], !IO),
+        module_info_get_globals(ModuleInfo, Globals),
+        write_error_pieces_plain(Globals,
+            [words(Msg), nl, words(ErrorMessage)], !IO),
         io.set_exit_status(1, !IO),
         MaybeSortFileLine = no
     ).
@@ -3285,9 +3288,9 @@ void mercury_sys_init_%s_module(void) {
 
     % Delete a file. Report an error message if something goes wrong.
     %
-:- pred delete_temporary_file(string::in, io::di, io::uo) is det.
+:- pred delete_temporary_file(globals::in, string::in, io::di, io::uo) is det.
 
-delete_temporary_file(FileName, !IO) :-
+delete_temporary_file(Globals, FileName, !IO) :-
     io.remove_file(FileName, Result, !IO),
     (
         Result = ok
@@ -3297,14 +3300,15 @@ delete_temporary_file(FileName, !IO) :-
         io.progname_base("mercury_compile", ProgName, !IO),
         string.format("%s: error deleting file `%s:",
             [s(ProgName), s(FileName)], Msg),
-        write_error_pieces_plain([words(Msg), nl, words(ErrorMsg)], !IO),
+        write_error_pieces_plain(Globals, [words(Msg), nl, words(ErrorMsg)],
+            !IO),
         io.set_exit_status(1, !IO)
     ).
 
-:- pred open_output_handle_error(maybe(context)::in, string::in,
+:- pred open_output_handle_error(globals::in, maybe(context)::in, string::in,
     io.res(io.output_stream)::out, io::di, io::uo) is det.
 
-open_output_handle_error(MaybeContext, FileName, Result, !IO) :-
+open_output_handle_error(Globals, MaybeContext, FileName, Result, !IO) :-
     io.open_output(FileName, Result, !IO),
     (
         Result = ok(_)
@@ -3313,30 +3317,14 @@ open_output_handle_error(MaybeContext, FileName, Result, !IO) :-
         io.error_message(ErrorCode, ErrorMsg),
         string.format("Error opening file `%s' for output:",
             [s(FileName)], Msg),
-        write_error_msg(MaybeContext, Msg, ErrorMsg, !IO),
+        write_error_msg(Globals, MaybeContext, Msg, ErrorMsg, !IO),
         io.set_exit_status(1, !IO)
     ).
 
-:- pred open_input_handle_error(maybe(context)::in, string::in,
-    io.res(io.input_stream)::out, io::di, io::uo) is det.
-
-open_input_handle_error(MaybeContext, FileName, Result, !IO) :-
-    io.open_input(FileName, Result, !IO),
-    (
-        Result = ok(_)
-    ;
-        Result = error(ErrorCode),
-        io.error_message(ErrorCode, ErrorMsg),
-        string.format("Error opening file `%s' for input:",
-            [s(FileName)], Msg),
-        write_error_msg(MaybeContext, Msg, ErrorMsg, !IO),
-        io.set_exit_status(1, !IO)
-    ).
-
-:- pred see_input_handle_error(maybe(context)::in, string::in,
+:- pred see_input_handle_error(globals::in, maybe(context)::in, string::in,
     io.res::out, io::di, io::uo) is det.
 
-see_input_handle_error(MaybeContext, FileName, Result, !IO) :-
+see_input_handle_error(Globals, MaybeContext, FileName, Result, !IO) :-
     io.see(FileName, Result, !IO),
     (
         Result = ok
@@ -3345,31 +3333,33 @@ see_input_handle_error(MaybeContext, FileName, Result, !IO) :-
         io.error_message(ErrorCode, ErrorMsg),
         string.format("Error opening file `%s' for input:",
             [s(FileName)], Msg),
-        write_error_msg(MaybeContext, Msg, ErrorMsg, !IO),
+        write_error_msg(Globals, MaybeContext, Msg, ErrorMsg, !IO),
         io.set_exit_status(1, !IO)
     ).
 
-:- pred write_error_msg(maybe(context)::in, string::in, string::in,
-    io::di, io::uo) is det.
+:- pred write_error_msg(globals::in, maybe(context)::in,
+    string::in, string::in, io::di, io::uo) is det.
 
-write_error_msg(MaybeContext, Msg, ErrorMsg, !IO) :-
+write_error_msg(Globals, MaybeContext, Msg, ErrorMsg, !IO) :-
     (
         MaybeContext = yes(Context),
-        write_error_pieces(Context, 0, [words(Msg), nl, words(ErrorMsg)], !IO)
+        write_error_pieces(Globals, Context, 0,
+            [words(Msg), nl, words(ErrorMsg)], !IO)
     ;
         MaybeContext = no,
-        write_error_pieces_plain([words(Msg), nl, words(ErrorMsg)], !IO)
+        write_error_pieces_plain(Globals, [words(Msg), nl, words(ErrorMsg)],
+            !IO)
     ).
 
-:- pred write_call_system_error_msg(string::in, io.error::in, io::di, io::uo)
-    is det.
+:- pred write_call_system_error_msg(globals::in, string::in, io.error::in,
+    io::di, io::uo) is det.
 
-write_call_system_error_msg(Cmd, ErrorCode, !IO) :-
+write_call_system_error_msg(Globals, Cmd, ErrorCode, !IO) :-
     io.error_message(ErrorCode, ErrorMsg),
     io.progname_base("mercury_compile", ProgName, !IO),
     string.format("%s: error executing system command `%s:",
         [s(ProgName), s(Cmd)], Msg),
-    write_error_pieces_plain([words(Msg), nl, words(ErrorMsg)], !IO),
+    write_error_pieces_plain(Globals, [words(Msg), nl, words(ErrorMsg)], !IO),
     io.set_exit_status(1, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -3393,21 +3383,23 @@ add_error_report(Context, Components, !Errors) :-
 add_error_report(Components, !Errors) :-
     !:Errors = [no - Components | !.Errors].
 
-:- pred print_error_reports(error_reports::in, io::di, io::uo) is det.
+:- pred print_error_reports(globals::in, error_reports::in, io::di, io::uo)
+    is det.
 
-print_error_reports(RevErrors, !IO) :-
+print_error_reports(Globals, RevErrors, !IO) :-
     list.reverse(RevErrors, Errors),
-    list.foldl(print_error_report, Errors, !IO).
+    list.foldl(print_error_report(Globals), Errors, !IO).
 
-:- pred print_error_report(error_report::in, io::di, io::uo) is det.
+:- pred print_error_report(globals::in, error_report::in, io::di, io::uo)
+    is det.
 
-print_error_report(MaybeContext - Components, !IO) :-
+print_error_report(Globals, MaybeContext - Components, !IO) :-
     (
         MaybeContext = yes(Context),
-        write_error_pieces(Context, 0, Components, !IO)
+        write_error_pieces(Globals, Context, 0, Components, !IO)
     ;
         MaybeContext = no,
-        write_error_pieces_plain(Components, !IO)
+        write_error_pieces_plain(Globals, Components, !IO)
     ),
     io.set_exit_status(1, !IO).
 

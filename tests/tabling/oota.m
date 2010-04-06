@@ -31,6 +31,8 @@
 :- import_module string.
 :- import_module unit.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
     io.command_line_arguments(Args, !IO),
     (

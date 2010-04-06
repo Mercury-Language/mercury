@@ -13,6 +13,8 @@
 
 :- import_module list, assoc_list, pair, solutions.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
 	solutions(test([1 - "one", 2 - "two", 2 - "two", 1 - "one"]),
 		Solns),

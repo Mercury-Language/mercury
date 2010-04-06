@@ -15,6 +15,8 @@
 
 :- import_module solutions, int, list, set.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
     testgroup(3, 2, !IO),
     testgroup(3, 1, !IO),

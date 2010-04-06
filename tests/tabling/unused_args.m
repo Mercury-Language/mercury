@@ -12,6 +12,8 @@
 :- implementation.
 :- import_module std_util.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
 	test(!IO),
 	test(!IO),

@@ -72,8 +72,11 @@
 ** Otherwise return false.
 */
 MR_EXTERN_INLINE MR_bool
-MR_compare_and_swap_word(volatile MR_Integer *addr, MR_Integer old,
+MR_compare_and_swap_int(volatile MR_Integer *addr, MR_Integer old,
         MR_Integer new_val);
+MR_EXTERN_INLINE MR_bool
+MR_compare_and_swap_uint(volatile MR_Unsigned *addr, MR_Unsigned old,
+        MR_Unsigned new_val);
 
 /*
 ** Atomically add to an integer in memory and retrieve the result.  In other
@@ -81,6 +84,8 @@ MR_compare_and_swap_word(volatile MR_Integer *addr, MR_Integer old,
 */
 MR_EXTERN_INLINE MR_Integer 
 MR_atomic_add_and_fetch_int(volatile MR_Integer *addr, MR_Integer addend);
+MR_EXTERN_INLINE MR_Unsigned
+MR_atomic_add_and_fetch_uint(volatile MR_Unsigned *addr, MR_Unsigned addend);
 
 /*
 ** Atomically add the second argument to the memory pointed to by the first
@@ -88,6 +93,8 @@ MR_atomic_add_and_fetch_int(volatile MR_Integer *addr, MR_Integer addend);
 */
 MR_EXTERN_INLINE void
 MR_atomic_add_int(volatile MR_Integer *addr, MR_Integer addend);
+MR_EXTERN_INLINE void
+MR_atomic_add_uint(volatile MR_Unsigned *addr, MR_Unsigned addend);
 
 /*
 ** Atomically subtract the second argument from the memory pointed to by the
@@ -101,6 +108,8 @@ MR_atomic_sub_int(volatile MR_Integer *addr, MR_Integer x);
 */
 MR_EXTERN_INLINE void
 MR_atomic_inc_int(volatile MR_Integer *addr);
+MR_EXTERN_INLINE void
+MR_atomic_inc_uint(volatile MR_Unsigned *addr);
 
 /*
 ** Decrement the word pointed at by the address.
@@ -113,7 +122,9 @@ MR_atomic_dec_int(volatile MR_Integer *addr);
 ** zero after the decrement.
 */
 MR_EXTERN_INLINE MR_bool 
-MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
+MR_atomic_dec_and_is_zero_int(volatile MR_Integer *addr);
+MR_EXTERN_INLINE MR_bool 
+MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr);
 
 /*
 ** For information about GCC's builtins for atomic operations see:
@@ -145,7 +156,7 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
                 : "=m"(*addr), "=q"(result), "=a"(old)                      \
                 : "m"(*addr), "r" (new_val), "a"(old)                       \
             );                                                              \
-            return (int) result;                                            \
+            return (MR_bool) result;                                        \
         } while (0)
 
 #elif defined(__GNUC__) && defined(__i386__)
@@ -160,15 +171,22 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
                 : "=m"(*addr), "=q"(result), "=a"(old)                      \
                 : "m"(*addr), "r" (new_val), "a"(old)                       \
                 );                                                          \
-            return (int) result;                                            \
+            return (MR_bool) result;                                        \
         } while (0)
 
 #endif
 
 #ifdef MR_COMPARE_AND_SWAP_WORD_BODY
     MR_EXTERN_INLINE MR_bool
-    MR_compare_and_swap_word(volatile MR_Integer *addr, MR_Integer old,
+    MR_compare_and_swap_int(volatile MR_Integer *addr, MR_Integer old,
             MR_Integer new_val) 
+    {
+        MR_COMPARE_AND_SWAP_WORD_BODY;
+    }
+
+    MR_EXTERN_INLINE MR_bool
+    MR_compare_and_swap_uint(volatile MR_Unsigned *addr, MR_Unsigned old,
+            MR_Unsigned new_val)
     {
         MR_COMPARE_AND_SWAP_WORD_BODY;
     }
@@ -179,22 +197,39 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
 #if (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)) && \
     !defined(MR_AVOID_COMPILER_INTRINSICS)
 
-    #define MR_ATOMIC_ADD_AND_FETCH_INT_BODY                                \
+    #define MR_ATOMIC_ADD_AND_FETCH_WORD_BODY                               \
         do {                                                                \
             return __sync_add_and_fetch(addr, addend);                      \
         } while (0)
+
+    #define MR_ATOMIC_ADD_AND_FETCH_INT_BODY MR_ATOMIC_ADD_AND_FETCH_WORD_BODY
+    #define MR_ATOMIC_ADD_AND_FETCH_UINT_BODY MR_ATOMIC_ADD_AND_FETCH_WORD_BODY
 
 #elif defined(MR_COMPARE_AND_SWAP_WORD_BODY)
     /*
     ** If there is no GCC builtin for this then it can be implemented in terms
     ** of compare and swap, assuming that that has been implemented in
     ** assembler for this architecture.
+    **
+    ** XXX: There is an add and exchange (xadd) instruction on x86, this is
+    ** better than the CAS loop below.
     */
     #define MR_ATOMIC_ADD_AND_FETCH_INT_BODY                                \
         do {                                                                \
             MR_Integer temp;                                                \
             temp = *addr;                                                   \
-            while (!MR_compare_and_swap_word(addr, temp, temp+addend)) {    \
+            while (!MR_compare_and_swap_int(addr, temp, temp+addend)) {     \
+                MR_ATOMIC_PAUSE;                                            \
+                temp = *addr;                                               \
+            }                                                               \
+            return temp+addend;                                             \
+        } while (0)
+
+    #define MR_ATOMIC_ADD_AND_FETCH_UINT_BODY                               \
+        do {                                                                \
+            MR_Unsigned temp;                                               \
+            temp = *addr;                                                   \
+            while (!MR_compare_and_swap_uint(addr, temp, temp+addend)) {    \
                 MR_ATOMIC_PAUSE;                                            \
                 temp = *addr;                                               \
             }                                                               \
@@ -211,12 +246,20 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
     }
 #endif
 
+#ifdef MR_ATOMIC_ADD_AND_FETCH_UINT_BODY
+    MR_EXTERN_INLINE MR_Unsigned
+    MR_atomic_add_and_fetch_uint(volatile MR_Unsigned *addr, MR_Unsigned addend)
+    {
+        MR_ATOMIC_ADD_AND_FETCH_UINT_BODY;
+    }
+#endif
+
 /*---------------------------------------------------------------------------*/
 
 #if defined(__GNUC__) && defined(__x86_64__) && \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
-    #define MR_ATOMIC_ADD_INT_BODY                                          \
+    #define MR_ATOMIC_ADD_WORD_BODY                                         \
         do {                                                                \
             __asm__ __volatile__(                                           \
                 "lock; addq %2, %0"                                         \
@@ -225,9 +268,12 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
                 );                                                          \
         } while (0)
     
+    #define MR_ATOMIC_ADD_INT_BODY MR_ATOMIC_ADD_WORD_BODY
+    #define MR_ATOMIC_ADD_UINT_BODY MR_ATOMIC_ADD_WORD_BODY
+
 #elif defined(__GNUC__) && defined(__i386__)
     
-    #define MR_ATOMIC_ADD_INT_BODY                                          \
+    #define MR_ATOMIC_ADD_WORD_BODY                                         \
         do {                                                                \
             __asm__ __volatile__(                                           \
                 "lock; addl %2, %0;"                                        \
@@ -235,12 +281,20 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
                 : "m"(*addr), "r"(addend)                                   \
                 );                                                          \
         } while (0)
+    
+    #define MR_ATOMIC_ADD_INT_BODY MR_ATOMIC_ADD_WORD_BODY
+    #define MR_ATOMIC_ADD_UINT_BODY MR_ATOMIC_ADD_WORD_BODY
 
 #elif defined(MR_ATOMIC_ADD_AND_FETCH_INT_BODY)
 
     #define MR_ATOMIC_ADD_INT_BODY                                          \
         do {                                                                \
             MR_atomic_add_and_fetch_int(addr, addend);                      \
+        } while (0)
+
+    #define MR_ATOMIC_ADD_UINT_BODY                                         \
+        do {                                                                \
+            MR_atomic_add_and_fetch_uint(addr, addend);                     \
         } while (0)
 
 #endif
@@ -250,6 +304,14 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
     MR_atomic_add_int(volatile MR_Integer *addr, MR_Integer addend)
     {
         MR_ATOMIC_ADD_INT_BODY;
+    }
+#endif
+
+#ifdef MR_ATOMIC_ADD_UINT_BODY
+    MR_EXTERN_INLINE void 
+    MR_atomic_add_uint(volatile MR_Unsigned *addr, MR_Unsigned addend)
+    {
+        MR_ATOMIC_ADD_UINT_BODY;
     }
 #endif
 
@@ -300,7 +362,7 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
 #if defined(__GNUC__) && defined(__x86_64__) && \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
-    #define MR_ATOMIC_INC_INT_BODY                                          \
+    #define MR_ATOMIC_INC_WORD_BODY                                         \
         do {                                                                \
             __asm__ __volatile__(                                           \
                 "lock; incq %0;"                                            \
@@ -309,11 +371,14 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
                 );                                                          \
         } while (0)
 
+    #define MR_ATOMIC_INC_INT_BODY MR_ATOMIC_INC_WORD_BODY
+    #define MR_ATOMIC_INC_UINT_BODY MR_ATOMIC_INC_WORD_BODY
+
 #elif defined(__GNUC__) && defined(__i386__) && \
     !defined(MR_AVOID_HANDWRITTEN_ASSEMBLER)
 
     /* Really 486 or better. */
-    #define MR_ATOMIC_INC_INT_BODY                                          \
+    #define MR_ATOMIC_INC_WORD_BODY                                         \
         do {                                                                \
             __asm__ __volatile__(                                           \
                 "lock; incl %0;"                                            \
@@ -321,6 +386,9 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
                 : "m"(*addr)                                                \
                 );                                                          \
         } while (0)
+    
+    #define MR_ATOMIC_INC_INT_BODY MR_ATOMIC_INC_WORD_BODY
+    #define MR_ATOMIC_INC_UINT_BODY MR_ATOMIC_INC_WORD_BODY
 
 #else
 
@@ -332,7 +400,9 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
     **  - pbone
     */
     #define MR_ATOMIC_INC_INT_BODY                                          \
-        MR_atomic_add_int(addr, 1)                                          \
+        MR_atomic_add_int(addr, 1)
+    #define MR_ATOMIC_INC_UINT_BODY                                          \
+        MR_atomic_add_uint(addr, 1)
 
 #endif
 
@@ -341,6 +411,14 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
     MR_atomic_inc_int(volatile MR_Integer *addr)
     {
         MR_ATOMIC_INC_INT_BODY;
+    }
+#endif
+
+#ifdef MR_ATOMIC_INC_UINT_BODY
+    MR_EXTERN_INLINE void
+    MR_atomic_inc_uint(volatile MR_Unsigned *addr)
+    {
+        MR_ATOMIC_INC_UINT_BODY;
     }
 #endif
 
@@ -399,11 +477,11 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
 
 /*
 ** This could be trivially implemented using the __sync_sub_and_fetch compiler
-** intrinsic.  However on X86(_64) this will use a compare and exchange loop.
-** We can avoid this because we don't need to retrieve the result of the
+** intrinsic.  However on some platforms this could use a compare and exchange
+** loop. We can avoid this because we don't need to retrieve the result of the
 ** subtraction.
 */
-    #define MR_ATOMIC_DEC_INT_AND_IS_ZERO_BODY                              \
+    #define MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY                             \
         do {                                                                \
             char is_zero;                                                   \
             __asm__(                                                        \
@@ -414,33 +492,56 @@ MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr);
             return (MR_bool)is_zero;                                        \
         } while (0)
 
+    #define MR_ATOMIC_DEC_AND_IS_ZERO_INT_BODY \
+        MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY
+    #define MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY \
+        MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY
+
 #elif defined(__GNUC__) && defined(__i386__)
     
-    #define MR_ATOMIC_DEC_INT_AND_IS_ZERO_BODY                              \
+    #define MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY                              \
         do {                                                                \
             char is_zero;                                                   \
             __asm__(                                                        \
-                "lock: subl $1, %0; setz %1"                                \
+                "lock; subl $1, %0; setz %1"                                \
                 : "=m"(*addr), "=q"(is_zero)                                \
                 : "m"(*addr)                                                \
                 );                                                          \
             return (MR_bool)is_zero;                                        \
         } while (0)
+    
+    #define MR_ATOMIC_DEC_AND_IS_ZERO_INT_BODY \
+        MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY
+    #define MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY \
+        MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY
 
 #elif __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1)
 
-    #define MR_ATOMIC_DEC_INT_AND_IS_ZERO_BODY                              \
+    #define MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY                             \
         do {                                                                \
             return (__sync_sub_and_fetch(addr, 1) == 0);                    \
         } while (0)
+    
+    #define MR_ATOMIC_DEC_AND_IS_ZERO_INT_BODY \
+        MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY
+    #define MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY \
+        MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY
 
 #endif
 
-#ifdef MR_ATOMIC_DEC_INT_AND_IS_ZERO_BODY
+#ifdef MR_ATOMIC_DEC_AND_IS_ZERO_INT_BODY
     MR_EXTERN_INLINE MR_bool 
-    MR_atomic_dec_int_and_is_zero(volatile MR_Integer *addr)
+    MR_atomic_dec_and_is_zero_int(volatile MR_Integer *addr)
     {
-        MR_ATOMIC_DEC_INT_AND_IS_ZERO_BODY;
+        MR_ATOMIC_DEC_AND_IS_ZERO_INT_BODY;
+    }
+#endif
+
+#ifdef MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY
+    MR_EXTERN_INLINE MR_bool 
+    MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr)
+    {
+        MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY;
     }
 #endif
 
@@ -513,11 +614,11 @@ typedef MR_Unsigned MR_Us_Lock;
 #define MR_US_LOCK_INITIAL_VALUE (0)
 
 #define MR_US_TRY_LOCK(x)                                                   \
-    MR_compare_and_swap_word(x, 0, 1)
+    MR_compare_and_swap_uint(x, 0, 1)
 
 #define MR_US_SPIN_LOCK(x)                                                  \
     do {                                                                    \
-        while (!MR_compare_and_swap_word(x, 0, 1)) {                        \
+        while (!MR_compare_and_swap_uint(x, 0, 1)) {                        \
             MR_ATOMIC_PAUSE;                                                \
         }                                                                   \
     } while (0)
@@ -577,18 +678,29 @@ typedef MR_Unsigned MR_Us_Cond;
 */
 
 typedef struct {
-    MR_Unsigned         MR_stat_count_recorded;
-    MR_Unsigned         MR_stat_count_not_recorded;
-        /*
-        ** The total number of times this event occurred is implicitly the
-        ** sum of the recorded and not_recorded counts.
-        */
-    MR_int_least64_t    MR_stat_sum;
-    MR_uint_least64_t   MR_stat_sum_squares;
-        /*
-        ** The sum of squares is used to calculate variance and standard
-        ** deviation.
-        */
+    /*
+    ** The total number of times this event occurred is implicitly the sum of
+    ** the recorded and not_recorded counts.
+    */
+    volatile MR_Unsigned    MR_stat_count_recorded;
+    volatile MR_Unsigned    MR_stat_count_not_recorded;
+
+    /*
+    ** Atomic instructions are used to update these fields, and these fields
+    ** must be 64 bit to contain the valid ranges of values.  However a 32 bit
+    ** machine cannot (usually) do atomic operations on 64 bit data.  Therefore
+    ** if we have fewer than 64 bits we protect these two fields with a lock.
+    **
+    ** The sum of squares is used to calculate variance and standard deviation.
+    */
+  #if MR_LOW_TAG_BIGS >= 3 
+    volatile MR_Integer     MR_stat_sum;
+    volatile MR_Unsigned    MR_stat_sum_squares;
+  #else
+    MR_Us_Lock              MR_stat_sums_lock;
+    MR_int_least64_t        MR_stat_sum;
+    MR_uint_least64_t       MR_stat_sum_squares;
+  #endif
 } MR_Stats;
 
 typedef struct {

@@ -2347,7 +2347,8 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
         ;
             SearchResult = error(Error),
             LinkerOpt = "",
-            write_error_pieces_maybe_with_context(no, 0, [words(Error)], !IO),
+            write_error_pieces_maybe_with_context(Globals, no, 0,
+                [words(Error)], !IO),
             !:Succeeded = no
         )
     ;

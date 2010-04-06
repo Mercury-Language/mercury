@@ -25,6 +25,8 @@
 :- import_module string.
 :- import_module table_statistics.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
     perform_trials(aplp_vs_vplp, [1, 4], 14, 3, 0, 0, !IO),
     perform_trials(apli_vs_vpli, [1, 4], 14, 3, 0, 0, !IO),

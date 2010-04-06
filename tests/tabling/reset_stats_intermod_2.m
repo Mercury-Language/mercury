@@ -15,6 +15,8 @@
 
 :- implementation.
 
+:- pragma require_feature_set([memo]).
+
 :- pragma memo(plus1/1, [allow_reset, statistics]).
 
 plus1(X) = X + 1.

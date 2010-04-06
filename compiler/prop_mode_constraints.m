@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2009 The University of Melbourne.
+% Copyright (C) 2004-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -520,18 +520,20 @@ pretty_print_pred_constraints_map(ModuleInfo, ConstraintVarset,
 
 pretty_print_pred_constraints(ModuleInfo, ConstraintVarset,
         PredConstraintsMap, PredId, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+
     % Start with a blank line.
-    write_error_pieces_plain([fixed("")], !IO),
+    write_error_pieces_plain(Globals, [fixed("")], !IO),
 
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    write_error_pieces_plain([words("Constraints for")] ++
+    write_error_pieces_plain(Globals, [words("Constraints for")] ++
         describe_one_pred_info_name(should_module_qualify, PredInfo) ++
         [suffix(":")], !IO),
 
     map.lookup(PredConstraintsMap, PredId, PredConstraints),
     AllProcAnnConstraints = allproc_annotated_constraints(PredConstraints),
-    dump_constraints_and_annotations(ConstraintVarset, AllProcAnnConstraints,
-        !IO),
+    dump_constraints_and_annotations(Globals, ConstraintVarset,
+        AllProcAnnConstraints, !IO),
     list.foldl(
         pretty_print_proc_constraints(ModuleInfo, ConstraintVarset,
             PredConstraints, PredId),
@@ -546,15 +548,17 @@ pretty_print_pred_constraints(ModuleInfo, ConstraintVarset,
 
 pretty_print_proc_constraints(ModuleInfo, ConstraintVarset, PredConstraints,
         PredId, ProcId, !IO) :-
-    % Start with a blank line.
-    write_error_pieces_plain([fixed("")], !IO),
+    module_info_get_globals(ModuleInfo, Globals),
 
-    write_error_pieces_plain(describe_one_proc_name(ModuleInfo,
+    % Start with a blank line.
+    write_error_pieces_plain(Globals, [fixed("")], !IO),
+
+    write_error_pieces_plain(Globals, describe_one_proc_name(ModuleInfo,
         should_module_qualify, proc(PredId, ProcId)) ++ [suffix(":")], !IO),
     ProcSpecAnnConstraints =
         proc_specific_annotated_constraints(ProcId, PredConstraints),
-    dump_constraints_and_annotations(ConstraintVarset, ProcSpecAnnConstraints,
-        !IO).
+    dump_constraints_and_annotations(Globals, ConstraintVarset,
+        ProcSpecAnnConstraints, !IO).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,0 +1,53 @@
+max_error_line_width.m:042: In clause for predicate `ambig_overload1'/1:
+max_error_line_width.m:042:   error: excessively ambiguous overloading.
+max_error_line_width.m:042:   This caused the type checker to exceed its limits. It may also make your code difficult to
+max_error_line_width.m:042:   understand.
+max_error_line_width.m:042:   The following symbol was overloaded in the following contexts.
+max_error_line_width.m:040:   The function symbol `f'/0.
+max_error_line_width.m:040:   The possible matches are:
+max_error_line_width.m:040:     the type constructor `max_error_line_width.bar'/0,
+max_error_line_width.m:040:     the type constructor `max_error_line_width.foo'/0,
+max_error_line_width.m:040:     the builtin type constructor `character'.
+max_error_line_width.m:041:   The function symbol `f'/0 is also overloaded here.
+max_error_line_width.m:045: In clause for predicate `ambig_overload2'/1:
+max_error_line_width.m:045:   warning: highly ambiguous overloading.
+max_error_line_width.m:045:   This may cause type-checking to be very slow. It may also make your code difficult to
+max_error_line_width.m:045:   understand.
+max_error_line_width.m:045:   The following symbols were overloaded in the following contexts.
+max_error_line_width.m:045:   The function symbol `a1'/0.
+max_error_line_width.m:045:   The possible matches are:
+max_error_line_width.m:045:     the type constructor `max_error_line_width.baz'/0,
+max_error_line_width.m:045:     the type constructor `max_error_line_width.qux'/0.
+max_error_line_width.m:045:   The function symbol `a2'/0.
+max_error_line_width.m:045:   The possible matches are:
+max_error_line_width.m:045:     the type constructor `max_error_line_width.baz'/0,
+max_error_line_width.m:045:     the type constructor `max_error_line_width.qux'/0.
+max_error_line_width.m:099: In clause for predicate `test_lt'/1:
+max_error_line_width.m:099:   error: excessively ambiguous overloading.
+max_error_line_width.m:099:   This caused the type checker to exceed its limits. It may also make your code difficult to
+max_error_line_width.m:099:   understand.
+max_error_line_width.m:099:   The following symbol was overloaded in the following contexts.
+max_error_line_width.m:050:   The predicate symbol predicate `<'/2.
+max_error_line_width.m:050:   The possible matches are:
+max_error_line_width.m:050:     predicate `int.<'/2,
+max_error_line_width.m:050:     predicate `float.<'/2.
+max_error_line_width.m:051:   The predicate symbol predicate `<'/2 is also overloaded here.
+max_error_line_width.m:052:   The predicate symbol predicate `<'/2 is also overloaded here.
+max_error_line_width.m:053:   The predicate symbol predicate `<'/2 is also overloaded here.
+max_error_line_width.m:054:   The predicate symbol predicate `<'/2 is also overloaded here.
+max_error_line_width.m:055:   The predicate symbol predicate `<'/2 is also overloaded here.
+max_error_line_width.m:056:   The predicate symbol predicate `<'/2 is also overloaded here.
+max_error_line_width.m:057:   The predicate symbol predicate `<'/2 is also overloaded here.
+max_error_line_width.m:058:   The predicate symbol predicate `<'/2 is also overloaded here.
+max_error_line_width.m:059:   The predicate symbol predicate `<'/2 is also overloaded here.
+max_error_line_width.m:060:   The predicate symbol predicate `<'/2 is also overloaded here.
+max_error_line_width.m:061:   The predicate symbol predicate `<'/2 is also overloaded here.
+max_error_line_width.m:109: In clause for predicate `set_browser_param_from_option_table'/3:
+max_error_line_width.m:109:   warning: highly ambiguous overloading.
+max_error_line_width.m:109:   This may cause type-checking to be very slow. It may also make your code difficult to
+max_error_line_width.m:109:   understand.
+max_error_line_width.m:109:   The following symbol was overloaded in the following context.
+max_error_line_width.m:103:   The function symbol `lookup_bool_option'/2.
+max_error_line_width.m:103:   The possible matches are:
+max_error_line_width.m:103:     predicate `getopt.lookup_bool_option'/3,
+max_error_line_width.m:103:     function `getopt.lookup_bool_option'/2.

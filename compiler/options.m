@@ -247,6 +247,7 @@
     ;       line_numbers
     ;       auto_comments
     ;       frameopt_comments
+    ;       max_error_line_width
     ;       show_dependency_graph
     ;       imports_graph
     ;       dump_trace_counts
@@ -1163,6 +1164,7 @@ option_defaults_2(aux_output_option, [
     line_numbers                        -   bool(yes),
     auto_comments                       -   bool(no),
     frameopt_comments                   -   bool(no),
+    max_error_line_width                -   int(79),
     show_dependency_graph               -   bool(no),
     imports_graph                       -   bool(no),
     dump_trace_counts                   -   accumulating([]),
@@ -2010,6 +2012,7 @@ long_option("generate-bytecode",        generate_bytecode).
 long_option("line-numbers",             line_numbers).
 long_option("auto-comments",            auto_comments).
 long_option("frameopt-comments",        frameopt_comments).
+long_option("max-error-line-width",     max_error_line_width).
 long_option("show-dependency-graph",    show_dependency_graph).
 long_option("imports-graph",            imports_graph).
 long_option("dump-trace-counts",        dump_trace_counts).
@@ -3733,6 +3736,9 @@ options_help_aux_output -->
 %       "\tGet frameopt.m to generate comments describing its operation.",
         "\t(The code may be easier to understand if you also",
         "\tuse the `--no-llds-optimize' option.)",
+        "--max-error-line-width <n>",
+        "\tSet the maximum width of an error message line to <n> characters",
+        "\t(unless a long single word forces the line over this limit).",
         "--show-dependency-graph",
         "\tWrite out the dependency graph to `<module>.dependency_graph'.",
         "--imports-graph",
@@ -4172,7 +4178,12 @@ options_help_compilation_model -->
         "\tEnable experimental complexity analysis for the predicates",
         "\tlisted in the given file.",
         "\tThis option is supported for the C back-end, with",
-        "\t--no-highlevel-code."
+        "\t--no-highlevel-code.",
+
+        "--threadscope\t\t(grade modifier: `.threadscope')",
+        "\tEnable support for profiling parallel execution.",
+        "\tThis option is supported by the low-level C back-end parallel",
+        "\tgrades on some processors, See README.ThreadScope for details."
     ]),
 
     io.write_string("      Miscellaneous optional features\n"),
@@ -4206,6 +4217,9 @@ options_help_compilation_model -->
         "\tAs above, but use a dynamically sized trail that is composed",
         "\tof small segments.  This can help to avoid trail exhaustion",
         "\tat the cost of increased execution time.",
+        "--parallel\t\t(grade modifier: `.par')",
+        "\tEnable parallel execution support for the low-level C grades.",
+        "\tEnable concurrency (via pthreads) for the high-level C grades.",
         "--maybe-thread-safe {yes, no}",
         "\tSpecify how to treat the `maybe_thread_safe' foreign code",
         "\tattribute.  `yes' means that a foreign procedure with the",

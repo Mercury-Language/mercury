@@ -12,6 +12,8 @@
 
 :- import_module int, string, list.
 
+:- pragma require_feature_set([memo]).
+
 :- type start_cond_type
 	--->    start_cond_initial
 	;       start_cond_ord.

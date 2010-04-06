@@ -15,6 +15,8 @@
 :- import_module string.
 :- import_module table_statistics.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
     test(1, 10, !IO),
     test(11, 20, !IO).

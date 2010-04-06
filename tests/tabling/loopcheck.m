@@ -10,6 +10,8 @@
 
 :- implementation.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
 	loop(10),
 	io__write_string("Hello, world\n", !IO).

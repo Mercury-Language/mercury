@@ -15,6 +15,8 @@
 :- import_module int, list.
 :- import_module solutions.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
 	q(Solns1, Solns2),
 	io__write(Solns1, !IO),

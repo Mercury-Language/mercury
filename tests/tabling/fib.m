@@ -12,6 +12,8 @@
 
 :- import_module benchmarking, require, int.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
     perform_trials(20, !IO).
 

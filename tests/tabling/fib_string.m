@@ -11,6 +11,8 @@
 :- import_module benchmarking, require, pair.
 :- import_module int, string, list, assoc_list, solutions.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
 	perform_trials("oneone", !IO).
 

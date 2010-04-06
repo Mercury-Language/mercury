@@ -135,6 +135,7 @@ SINGLEMODULE= \
 	loopcheck \
 	magicbox \
 	make_opt_error \
+	max_error_line_width \
 	merge_ground_any \
 	method_impl \
 	missing_concrete_instance \

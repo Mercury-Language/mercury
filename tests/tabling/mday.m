@@ -8,6 +8,8 @@
 
 :- implementation.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
 	( x(_) ->
 		write_string("yes\n", !IO)

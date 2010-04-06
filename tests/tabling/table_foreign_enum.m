@@ -9,6 +9,8 @@
 
 :- import_module string.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
 	test_foreign_enum(bar, baz, Result),
 	io.write_string("First result: " ++ Result ++ "\n", !IO),

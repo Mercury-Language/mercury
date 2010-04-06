@@ -15,6 +15,7 @@
 :- import_module list.
 
 :- import_module std_util, int, exception.
+:- pragma require_feature_set([memo]).
 
 main(!IO) :-
 	( r(1, RSoln1) ->

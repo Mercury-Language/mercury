@@ -1311,7 +1311,7 @@ MR_do_join_and_continue(MR_SyncTerm *jnc_st, MR_Code *join_label)
      * accurate. 
      */
 
-    jnc_last = MR_atomic_dec_int_and_is_zero(&(jnc_st->MR_st_count));
+    jnc_last = MR_atomic_dec_and_is_zero_uint(&(jnc_st->MR_st_count));
 
     if (jnc_last) {
         if (this_context == jnc_st->MR_st_orig_context) {

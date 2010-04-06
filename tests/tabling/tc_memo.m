@@ -10,6 +10,8 @@
 
 :- import_module solutions, list.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
 	solutions(tc(1), Solns),
 	io__write(Solns, !IO),

@@ -59,6 +59,8 @@
 :- import_module std_util.
 :- import_module string.
 
+:- pragma require_feature_set([memo]).
+
     % The parser "state".  This is just the offset into the input string,
     % which (depending on the version) may be passed around or stored in
     % a C global variable.

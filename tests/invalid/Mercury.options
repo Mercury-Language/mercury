@@ -42,6 +42,8 @@ MCFLAGS-invalid_mllibs =	--no-errorcheck-only --no-verbose-make \
 MCFLAGS-instance_var_bug =      --verbose-error-messages
 MCFLAGS-loopcheck =		--warn-inferred-erroneous \
 				--verbose-error-messages
+MCFLAGS-max_error_line_width =	--max-error-line-width 120 \
+				--verbose-error-messages
 MCFLAGS-method_impl =		--no-intermodule-optimization \
 				--verbose-error-messages
 MCFLAGS-missing_det_decls =	--no-infer-det --verbose-error-messages

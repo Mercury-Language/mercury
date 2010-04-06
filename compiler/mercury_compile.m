@@ -405,7 +405,7 @@ main_after_setup(OptionVariables, OptionArgs, Args, Link, Globals, !IO) :-
                 words(compilation_target_string(Target)),
                 suffix(".")
             ],
-            write_error_pieces_plain(NYIMsg, !IO),
+            write_error_pieces_plain(Globals, NYIMsg, !IO),
             io.set_exit_status(1, !IO)
         ;
             ( Target = target_c
@@ -517,7 +517,7 @@ process_all_args(Globals, OptionVariables, OptionArgs, Args,
                     Msg = "Sorry, not implemented: " ++
                         "`--target asm' with `--smart-recompilation' " ++
                         "with more than one module to compile.",
-                    write_error_pieces_plain([words(Msg)], !IO),
+                    write_error_pieces_plain(Globals, [words(Msg)], !IO),
                     io.set_exit_status(1, !IO),
                     ModulesToLink = [],
                     ExtraObjFiles = [],
@@ -535,7 +535,7 @@ process_all_args(Globals, OptionVariables, OptionArgs, Args,
             Args = [],
             Msg = "Sorry, not implemented: `--target asm' " ++
                 "with `--filenames-from-stdin",
-            write_error_pieces_plain([words(Msg)], !IO),
+            write_error_pieces_plain(Globals, [words(Msg)], !IO),
             io.set_exit_status(1, !IO),
             ModulesToLink = [],
             ExtraObjFiles = []
@@ -1027,7 +1027,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName, ReturnTimestamp,
                         words("Smart recompilation will not work unless"),
                         words("a module name to file name mapping is created"),
                         words("using `mmc -f *.m'."), nl],
-                    write_error_pieces_plain(Pieces, !IO),
+                    write_error_pieces_plain(Globals, Pieces, !IO),
                     record_warning(Globals, !IO)
                 ;
                     Warn = no

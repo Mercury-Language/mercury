@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999-2001, 2004-2006 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999-2001, 2004-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -78,10 +78,23 @@
 :- pred assoc_list.remove(assoc_list(K, V)::in, K::in, V::out,
     assoc_list(K, V)::out) is semidet.
 
+:- pred assoc_list.map_keys_only(pred(K, L), 
+    assoc_list(K, V), assoc_list(L, V)).
+:- mode assoc_list.map_keys_only(pred(in, out) is det, in, out) is det.
+
 :- func assoc_list.map_keys_only(func(K) = L, assoc_list(K, V))
     = assoc_list(L, V).
+
+:- pred assoc_list.map_values_only(pred(V, W), 
+    assoc_list(K, V), assoc_list(K, W)).
+:- mode assoc_list.map_values_only(pred(in, out) is det, in, out) is det.
+
 :- func assoc_list.map_values_only(func(V) = W, assoc_list(K, V))
     = assoc_list(K, W).
+
+:- pred assoc_list.map_values(pred(K, V, W), 
+    assoc_list(K, V), assoc_list(K, W)).
+:- mode assoc_list.map_values(pred(in, in, out) is det, in, out) is det.
 
 :- func assoc_list.map_values(func(K, V) = W, assoc_list(K, V))
     = assoc_list(K, W).
@@ -172,15 +185,30 @@ assoc_list.keys(AL) = Ks :-
 assoc_list.values(AL) = Vs :-
     assoc_list.values(AL, Vs).
 
+assoc_list.map_keys_only(_P, [], []).
+assoc_list.map_keys_only(P, [K0 - V | KVs0], [K - V | KVs]) :-
+    P(K0, K),
+    assoc_list.map_keys_only(P, KVs0, KVs).
+
 assoc_list.map_keys_only(_F, []) = [].
 assoc_list.map_keys_only(F, [K0 - V | KVs0]) = [K - V | KVs] :-
     K = F(K0),
     KVs = assoc_list.map_keys_only(F, KVs0).
 
+assoc_list.map_values_only(_P, [], []).
+assoc_list.map_values_only(P, [K - V0 | KVs0], [K - V | KVs]) :-
+    P(V0, V),
+    assoc_list.map_values_only(P, KVs0, KVs).
+
 assoc_list.map_values_only(_F, []) = [].
 assoc_list.map_values_only(F, [K - V0 | KVs0]) = [K - V | KVs] :-
     V = F(V0),
     KVs = assoc_list.map_values_only(F, KVs0).
+
+assoc_list.map_values(_P, [], []).
+assoc_list.map_values(P, [K - V0 | KVs0], [K - V | KVs]) :-
+    P(K, V0, V),
+    assoc_list.map_values(P, KVs0, KVs).
 
 assoc_list.map_values(_F, []) = [].
 assoc_list.map_values(F, [K - V0 | KVs0]) = [K - V | KVs] :-

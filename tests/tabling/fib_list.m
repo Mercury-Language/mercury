@@ -11,6 +11,8 @@
 :- import_module benchmarking, require, std_util.
 :- import_module int, list, assoc_list.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
 	perform_trials([1, 4], !IO).
 

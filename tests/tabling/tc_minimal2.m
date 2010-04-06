@@ -12,6 +12,8 @@
 
 :- import_module solutions, list.
 
+:- pragma require_feature_set([memo]).
+
 main(!IO) :-
 	solutions(tc_l(1), SolnsL),
 	io__write_string("L = ", !IO),

@@ -1,5 +1,5 @@
-NEWS since Mercury 0.13.1
--------------------------
+NEWS for Mercury 10.04 beta
+---------------------------
 
 Changes to the release numbering:
 
@@ -37,6 +37,10 @@ Changes to the Mercury language:
 * We now support `try' goals for catching exceptions.
 
 Changes to the Mercury standard library:
+
+* New predicates have been added to the assoc_list module, these are
+  map_keys_only/3 map_values_only/3 and map_values/3.  They complement the
+  functions of the same name.
 
 * A new module, parsing_utils, has been added to provide support for
   implementing recursive descent parsers.
@@ -328,6 +332,9 @@ Changes to the Mercury compiler:
 
 * We have removed support for Managed C++ as a foreign language for the IL
   backend.
+
+* The width of error message lines can be adjusted with a new option,
+  `--max-error-line-width'.
 
 Changes to the Mercury deep profiler:
 
