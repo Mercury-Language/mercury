@@ -9897,7 +9897,7 @@ command_line_argument(_, "") :-
         stderr.start();
 
         Status  = process.waitFor();
-        Msg = null;
+        Msg = """";
 
         // The stdin StreamPipe is killed off after the Process is finished
         // so as not to waste CPU cycles with a pointless thread.
