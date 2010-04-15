@@ -140,6 +140,16 @@
     %
 :- func ml_make_boxed_types(arity) = list(mer_type).
 
+    % Return the MLDS type corresponding to the `jmercury.runtime.MercuryType'
+    % interface.
+    %
+:- func ml_java_mercury_type_interface = mlds_type.
+
+    % Return the MLDS type corresponding to the `jmercury.runtime.MercuryEnum'
+    % class.
+    %
+:- func ml_java_mercury_enum_class = mlds_type.
+
 %-----------------------------------------------------------------------------%
 %
 % Routines for generating function declarations (i.e. mlds_func_params).
@@ -554,6 +564,7 @@
 :- import_module ml_backend.ml_call_gen.
 :- import_module ml_backend.ml_code_gen.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.java_names.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
@@ -812,6 +823,18 @@ ml_make_boxed_types(Arity) = BoxedTypes :-
     varset.init(TypeVarSet0),
     varset.new_vars(TypeVarSet0, Arity, BoxedTypeVars, _TypeVarSet),
     prog_type.var_list_to_type_list(map.init, BoxedTypeVars, BoxedTypes).
+
+ml_java_mercury_type_interface = TypeInterfaceDefn :-
+    InterfaceModuleName = mercury_module_name_to_mlds(
+        java_names.mercury_runtime_package_name),
+    TypeInterface = qual(InterfaceModuleName, module_qual, "MercuryType"),
+    TypeInterfaceDefn = mlds_class_type(TypeInterface, 0, mlds_interface).
+
+ml_java_mercury_enum_class = EnumClassDefn :-
+    InterfaceModuleName = mercury_module_name_to_mlds(
+        java_names.mercury_runtime_package_name),
+    EnumClass = qual(InterfaceModuleName, module_qual, "MercuryEnum"),
+    EnumClassDefn = mlds_class_type(EnumClass, 0, mlds_class).
 
 %-----------------------------------------------------------------------------%
 %

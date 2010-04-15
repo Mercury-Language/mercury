@@ -1257,7 +1257,7 @@ gen_class(Name, Context, ClassDefn, !GlobalInfo, !IO) :-
     % not when compiling to C++
 
     ClassDefn = mlds_class_defn(Kind, _Imports, BaseClasses, _Implements,
-        Ctors, AllMembers),
+        _TypeParams, Ctors, AllMembers),
     (
         Ctors = []
     ;

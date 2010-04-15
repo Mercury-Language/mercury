@@ -103,11 +103,11 @@ optimize_in_defn(ModuleName, Globals, Defn0, Defn) :-
     ;
         DefnBody0 = mlds_class(ClassDefn0),
         ClassDefn0 = mlds_class_defn(Kind, Imports, BaseClasses, Implements,
-            CtorDefns0, MemberDefns0),
+            TypeParams, CtorDefns0, MemberDefns0),
         optimize_in_defns(Globals, ModuleName, MemberDefns0, MemberDefns),
         optimize_in_defns(Globals, ModuleName, CtorDefns0, CtorDefns),
         ClassDefn = mlds_class_defn(Kind, Imports, BaseClasses, Implements,
-            CtorDefns, MemberDefns),
+            TypeParams, CtorDefns, MemberDefns),
         DefnBody = mlds_class(ClassDefn),
         Defn = mlds_defn(Name, Context, Flags, DefnBody)
     ).

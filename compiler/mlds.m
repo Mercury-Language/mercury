@@ -708,6 +708,9 @@
                 % Implements these interfaces.
                 mcd_implements  :: list(mlds_interface_id),
 
+                % Type parameters.
+                mcd_tparams     :: list(type_param),
+
                 % Has these constructors.
                 mcd_ctors       :: list(mlds_defn),
 
@@ -956,6 +959,8 @@
                 string,                        % Exported name
                 mlds_qualified_entity_name,    % MLDS name for exported entity
                 mlds_func_params,              % MLDS function parameters
+                list(tvar),                    % Universally quantified type
+                                               % variables.
                 mlds_context
             ).
 

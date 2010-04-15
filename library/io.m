@@ -1804,8 +1804,8 @@
 
 :- pragma foreign_code("Java",
 "
-    static tree234.Tree234_2 ML_io_stream_db =
-        new tree234.Tree234_2.Empty_0();
+    static tree234.Tree234_2<Integer, Stream_info_0> ML_io_stream_db
+        = new tree234.Tree234_2.Empty_0<Integer, Stream_info_0>();
     static univ.Univ_0 ML_io_user_globals = null;
 ").
 

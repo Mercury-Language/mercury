@@ -1653,31 +1653,28 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     [will_not_call_mercury, promise_pure],
 "
     try {
-        T = exception.ML_call_goal_det(
-            TypeInfo_for_T,
-            (Object[]) Pred);
+        T = exception.ML_call_goal_det(TypeInfo_for_T, (Object[]) Pred);
     }
     catch (jmercury.runtime.Exception ex) {
-        T = exception.ML_call_handler_det(
-            TypeInfo_for_T,
-            (Object[]) Handler,
+        T = exception.ML_call_handler_det(TypeInfo_for_T, (Object[]) Handler,
             (univ.Univ_0) ex.exception);
     }
 ").
 :- pragma foreign_proc("Java",
     catch_impl(Pred::pred(out) is semidet, Handler::in(handler), T::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     try {
-        T = exception.ML_call_goal_semidet(
-            TypeInfo_for_T,
-            (Object[]) Pred);
+        jmercury.runtime.Ref<Object> ref =
+            new jmercury.runtime.Ref<Object>();
+        succeeded = exception.ML_call_goal_semidet(TypeInfo_for_T,
+            (Object[]) Pred, ref);
+        T = ref.val;
     }
     catch (jmercury.runtime.Exception ex) {
-        T = exception.ML_call_handler_det(
-            TypeInfo_for_T,
-            (Object[]) Handler,
+        T = exception.ML_call_handler_det(TypeInfo_for_T, (Object[]) Handler,
             (univ.Univ_0) ex.exception);
+        succeeded = true;
     }
 ").
 :- pragma foreign_proc("Java",
@@ -1685,14 +1682,10 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     [will_not_call_mercury, promise_pure],
 "
     try {
-        T = exception.ML_call_goal_det(
-            (jmercury.runtime.TypeInfo_Struct) TypeInfo_for_T,
-            (Object[]) Pred);
+        T = exception.ML_call_goal_det(TypeInfo_for_T, (Object[]) Pred);
     }
     catch (jmercury.runtime.Exception ex) {
-        T = exception.ML_call_handler_det(
-            (jmercury.runtime.TypeInfo_Struct) TypeInfo_for_T,
-            (Object[]) Handler,
+        T = exception.ML_call_handler_det(TypeInfo_for_T, (Object[]) Handler,
             (univ.Univ_0) ex.exception);
     }
 ").

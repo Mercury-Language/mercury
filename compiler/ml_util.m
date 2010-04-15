@@ -682,7 +682,7 @@ defn_body_contains_var(DefnBody, DataName) = ContainsVar :-
     ;
         DefnBody = mlds_class(ClassDefn),
         ClassDefn = mlds_class_defn(_Kind, _Imports, _Inherits, _Implements,
-            CtorDefns, FieldDefns),
+            _TypeParams, CtorDefns, FieldDefns),
         ( defns_contains_var(FieldDefns, DataName) = yes ->
             ContainsVar = yes
         ;

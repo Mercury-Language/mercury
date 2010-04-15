@@ -202,6 +202,7 @@
     import jmercury.runtime.DuFunctorDesc;
     import jmercury.runtime.EnumFunctorDesc;
     import jmercury.runtime.PseudoTypeInfo;
+    import jmercury.runtime.Ref;
     import jmercury.runtime.TypeCtorInfo_Struct;
     import jmercury.runtime.TypeInfo_Struct;
 ").
@@ -441,9 +442,9 @@ create_pseudo_type_info(TypeInfo, PseudoTypeInfo) = ArgPseudoTypeInfo :-
 "
     PseudoTypeInfo[] as = new PseudoTypeInfo[Arity];
     int i = 0;
-    list.List_1 lst = Args;
+    list.List_1<PseudoTypeInfo> lst = Args;
     while (!list.is_empty(lst)) {
-        as[i] = (PseudoTypeInfo) list.det_head(lst);
+        as[i] = list.det_head(lst);
         lst = list.det_tail(lst);
         i++;
     }
@@ -1263,7 +1264,7 @@ iterate(Start, Max, Func) = Results :-
             TypeInfo_Struct ti = (TypeInfo_Struct) PseudoTypeInfo;
             TypeCtorInfo = ti.type_ctor;
 
-            list.List_1 lst = list.empty_list();
+            list.List_1<PseudoTypeInfo> lst = list.empty_list();
             if (ti.args != null) {
                 for (int i = ti.args.length - 1; i >= 0; i--) {
                     lst = list.cons(ti.args[i], lst);
@@ -1311,10 +1312,8 @@ is_exist_pseudo_type_info(_, _) :-
 :- pragma foreign_code("Java", "
 
     private static Object[]
-    ML_construct(
-        jmercury.runtime.TypeInfo_Struct TypeInfo,
-        int FunctorNumber,
-        list.List_1 ArgList)
+    ML_construct(TypeInfo_Struct TypeInfo, int FunctorNumber,
+        list.List_1<univ.Univ_0> ArgList)
     {
         /* If type_info is an equivalence type, expand it. */
         TypeInfo = ML_collapse_equivalences(TypeInfo);
@@ -1537,7 +1536,7 @@ is_exist_pseudo_type_info(_, _) :-
 
     private static Object
     ML_construct_du(TypeCtorInfo_Struct tc, DuFunctorDesc functor_desc,
-            list.List_1 arg_list)
+            list.List_1<univ.Univ_0> arg_list)
         throws ClassNotFoundException, NoSuchFieldException,
             IllegalAccessException, InstantiationException,
             InvocationTargetException
@@ -1585,13 +1584,15 @@ is_exist_pseudo_type_info(_, _) :-
     }
 
     private static Object[]
-    ML_univ_list_to_array(list.List_1 lst, int arity)
+    ML_univ_list_to_array(list.List_1<univ.Univ_0> lst, int arity)
     {
         final Object[] args = new Object[arity];
+        final Ref<TypeInfo_Struct> ti_ref = new Ref<TypeInfo_Struct>();
+        final Ref<Object> obj_ref = new Ref<Object>();
 
         for (int i = 0; i < arity; i++) {
-            univ.Univ_0 head = (univ.Univ_0) list.det_head(lst);
-            args[i] = univ.ML_unravel_univ(head)[1];
+            univ.ML_unravel_univ(ti_ref, list.det_head(lst), obj_ref);
+            args[i] = obj_ref.val;
             lst = list.det_tail(lst);
         }
 
@@ -1705,12 +1706,14 @@ construct(_, _, _) = _ :-
     [will_not_call_mercury, promise_pure, thread_safe,
         may_not_duplicate],
 "
-    list.List_1 args_list = Args;
+    list.List_1<univ.Univ_0> args_list = Args;
     Object[] args_array = new Object[Arity];
+    Ref<TypeInfo_Struct> ti_ref = new Ref<TypeInfo_Struct>();
+    Ref<Object> obj_ref = new Ref<Object>();
 
     for (int i = 0; i < Arity; i++) {
-        univ.Univ_0 head = (univ.Univ_0) list.det_head(args_list);
-        args_array[i] = univ.ML_unravel_univ(head)[1];
+        univ.ML_unravel_univ(ti_ref, list.det_head(args_list), obj_ref);
+        args_array[i] = obj_ref.val;
         args_list = list.det_tail(args_list);
     }
 

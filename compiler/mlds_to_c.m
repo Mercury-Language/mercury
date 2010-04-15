@@ -995,7 +995,7 @@ mlds_output_c_defn(Opts, _Indent, UserForeignCode, !IO) :-
 
 mlds_output_pragma_export_defn(Opts, ModuleName, Indent, PragmaExport, !IO) :-
     PragmaExport = ml_pragma_export(Lang, _ExportName, MLDS_Name,
-        MLDS_Signature, Context),
+        MLDS_Signature, _UnivQTVars, Context),
     expect(unify(Lang, lang_c), this_file,
         "foreign_export to language other than C."),
     mlds_output_pragma_export_func_name(Opts, ModuleName, Indent,
@@ -1015,7 +1015,8 @@ mlds_output_pragma_export_defn(Opts, ModuleName, Indent, PragmaExport, !IO) :-
     io::di, io::uo) is det.
 
 mlds_output_pragma_export_func_name(Opts, ModuleName, Indent, Export, !IO) :-
-    Export = ml_pragma_export(Lang, ExportName, _MLDSName, Signature, Context),
+    Export = ml_pragma_export(Lang, ExportName, _MLDSName, Signature,
+        _UnivQTVars, Context),
     expect(unify(Lang, lang_c), this_file, "export to language other than C."),
     Name = qual(ModuleName, module_qual, entity_export(ExportName)),
     output_context_opts(Opts, Context, !IO),
@@ -1867,7 +1868,7 @@ mlds_output_class(Opts, Indent, Name, Context, ClassDefn, !IO) :-
     % not when compiling to C++
 
     ClassDefn = mlds_class_defn(Kind, _Imports, BaseClasses, _Implements,
-        Ctors, Members),
+        _TypeParams, Ctors, Members),
 
     AllMembers = Ctors ++ Members,
 

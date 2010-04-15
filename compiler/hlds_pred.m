@@ -722,7 +722,7 @@
 :- pred pred_info_set_arg_types(tvarset::in, existq_tvars::in,
     list(mer_type)::in, pred_info::in, pred_info::out) is det.
 
-:- pred pred_info_get_univ_quant_tvars(pred_info::in, existq_tvars::out)
+:- pred pred_info_get_univ_quant_tvars(pred_info::in, list(tvar)::out)
     is det.
 
 :- pred pred_info_proc_info(pred_info::in, proc_id::in, proc_info::out) is det.

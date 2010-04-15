@@ -210,10 +210,13 @@ ml_gen_pragma_export_proc(ModuleInfo, PragmaExportedProc, Defn) :-
     PragmaExportedProc = pragma_exported_proc(Lang, PredId, ProcId,
         ExportName, ProgContext),
     ml_gen_proc_label(ModuleInfo, PredId, ProcId, Name, ModuleName),
+    MLDS_Name = qual(ModuleName, module_qual, Name),
     ml_gen_export_proc_params(ModuleInfo, PredId, ProcId, FuncParams),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_univ_quant_tvars(PredInfo, UnivQTVars),
     MLDS_Context = mlds_make_context(ProgContext),
-    Defn = ml_pragma_export(Lang, ExportName,
-        qual(ModuleName, module_qual, Name), FuncParams, MLDS_Context).
+    Defn = ml_pragma_export(Lang, ExportName, MLDS_Name, FuncParams,
+        UnivQTVars, MLDS_Context).
 
 :- pred ml_gen_export_proc_params(module_info::in, pred_id::in, proc_id::in,
     mlds_func_params::out) is det.
@@ -223,7 +226,6 @@ ml_gen_export_proc_params(ModuleInfo, PredId, ProcId, FuncParams) :-
     globals.get_target(Globals, Target),
     (
         Target = target_java,
-        globals.lookup_bool_option(Globals, java_export_ref_out, yes),
         globals.set_option(det_copy_out, bool(no), Globals, GlobalsByRef),
         module_info_set_globals(GlobalsByRef, ModuleInfo, ModuleInfoByRef),
         FuncParamsByRef = ml_gen_proc_params(ModuleInfoByRef, PredId, ProcId),
