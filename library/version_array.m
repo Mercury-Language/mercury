@@ -51,6 +51,26 @@
     %
 :- func init(int, T) = version_array(T).
 
+    % Same as empty/0 except the resulting version_array is not thread safe.
+    %
+    % That is your program can segfault if you attempt to concurrently access
+    % or update the array from different threads, or any two arrays produced
+    % from operations on the same original array.  However this version is much
+    % quicker if you guarantee that you never concurrently access the version
+    % array.
+    %
+:- func unsafe_empty = version_array(T).
+
+    % Same as new(N, X) except the resulting version_array is not thread safe.
+    %
+    % That is your program can segfault if you attempt to concurrently access
+    % or update the array from different threads, or any two arrays produced
+    % from operations on the same original array.  However this version is much
+    % quicker if you guarantee that you never concurrently access the version
+    % array.
+    %
+:- func unsafe_new(int, T) = version_array(T).
+
     % version_array(Xs) returns an array constructed from the items in the list
     % Xs.
     %
@@ -338,6 +358,11 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     VA->value            = (MR_Word) NULL;
     VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, 1);
     VA->rest.array->size = 0;
+
+#ifdef MR_THREAD_SAFE
+    VA->lock             = MR_GC_NEW(MercuryLock);
+    pthread_mutex_init(VA->lock, MR_MUTEX_ATTR);
+#endif
 ").
 
 :- pragma foreign_proc("Java",
@@ -345,11 +370,32 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    VA = new version_array.ML_va();
+    VA = new ML_sva(ML_uva.empty());
+").
 
-    VA.index = -1;
-    VA.value = null;
-    VA.rest  = new Object[0];
+:- pragma foreign_proc("C",
+    version_array.unsafe_empty = (VA::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    VA = MR_GC_NEW(struct ML_va);
+
+    VA->index            = -1;
+    VA->value            = (MR_Word) NULL;
+    VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, 1);
+    VA->rest.array->size = 0;
+
+#ifdef MR_THREAD_SAFE
+    VA->lock             = NULL;
+#endif
+").
+
+:- pragma foreign_proc("Java",
+    version_array.unsafe_empty = (VA::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    VA = ML_uva.empty();
 ").
 
 :- pragma foreign_proc("C",
@@ -368,6 +414,11 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     for (i = 0; i < N; i++) {
         VA->rest.array->elements[i] = X;
     }
+
+#ifdef MR_THREAD_SAFE
+    VA->lock             = MR_GC_NEW(MercuryLock);
+    pthread_mutex_init(VA->lock, MR_MUTEX_ATTR);
+#endif
 ").
 
 :- pragma foreign_proc("Java",
@@ -375,44 +426,45 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate],
 "
-    VA = new version_array.ML_va();
-    VA.index = -1;
-    VA.value = null;
-    VA.rest  = new Object[N];
-
-    java.util.Arrays.fill(VA.array(), X);
+    VA = new ML_sva(ML_uva.init(N, X));
 ").
 
 :- pragma foreign_proc("C",
-    resize(VA0::in, N::in, X::in) = (VA::out),
+    version_array.unsafe_new(N::in, X::in) = (VA::out),
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate],
 "
-    ML_va_ptr   latest;
     MR_Integer  i;
-    MR_Integer  size_VA0;
-    MR_Integer  min;
 
-    latest = ML_va_get_latest(VA0);
-
-    size_VA0 = ML_va_size(latest);
-    min      = (N <= size_VA0 ? N : size_VA0);
-    VA       = MR_GC_NEW(struct ML_va);
-
+    VA = MR_GC_NEW(struct ML_va);
     VA->index            = -1;
     VA->value            = (MR_Word) NULL;
     VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, N + 1);
     VA->rest.array->size = N;
 
-    for (i = 0; i < min; i++) {
-        VA->rest.array->elements[i] = latest->rest.array->elements[i];
-    }
-
-    ML_va_rewind_into(VA, VA0);
-
-    for (i = min; i < N; i++) {
+    for (i = 0; i < N; i++) {
         VA->rest.array->elements[i] = X;
     }
+
+#ifdef MR_THREAD_SAFE
+    VA->lock             = NULL;
+#endif
+").
+
+:- pragma foreign_proc("Java",
+    version_array.unsafe_new(N::in, X::in) = (VA::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness, may_not_duplicate],
+"
+    VA = ML_uva.init(N, X);
+").
+
+:- pragma foreign_proc("C",
+    resize(VA0::in, N::in, X::in) = (VA::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    VA = ML_va_resize_dolock(VA0, N, X);
 ").
 
 :- pragma foreign_proc("Java",
@@ -420,25 +472,7 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
         does_not_affect_liveness, may_not_duplicate],
 "
-    ML_va   latest;
-    int     size_VA0;
-    int     min;
-
-    latest = VA0.latest();
-
-    size_VA0 = latest.size();
-    min      = (N <= size_VA0 ? N : size_VA0);
-    VA       = new ML_va();
-
-    VA.index = -1;
-    VA.value = null;
-    VA.rest  = new Object[N];
-
-    System.arraycopy(latest.array(), 0, VA.array(), 0, min);
-
-    VA0.rewind_into(VA);
-
-    java.util.Arrays.fill(VA.array(), min, N, X);
+    VA = VA0.resize(N, X);
 ").
 
 resize(N, X, VA, resize(VA, N, X)).
@@ -448,7 +482,7 @@ resize(N, X, VA, resize(VA, N, X)).
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    N = ML_va_size(VA);
+    N = ML_va_size_dolock(VA);
 ").
 
 :- pragma foreign_proc("Java",
@@ -466,7 +500,7 @@ resize(N, X, VA, resize(VA, N, X)).
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    SUCCESS_INDICATOR = ML_va_get(VA, I, &X);
+    SUCCESS_INDICATOR = ML_va_get_dolock(VA, I, &X);
 ").
 
 :- pragma foreign_proc("Java",
@@ -491,7 +525,7 @@ resize(N, X, VA, resize(VA, N, X)).
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    SUCCESS_INDICATOR = ML_va_set(VA0, I, X, &VA);
+    SUCCESS_INDICATOR = ML_va_set_dolock(VA0, I, X, &VA);
 ").
 
 :- pragma foreign_proc("Java",
@@ -513,7 +547,7 @@ resize(N, X, VA, resize(VA, N, X)).
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    VA = ML_va_rewind(VA0);
+    VA = ML_va_rewind_dolock(VA0);
 ").
 
 :- pragma foreign_proc("Java",
@@ -542,6 +576,9 @@ struct ML_va {
         MR_ArrayPtr     array;  /* Valid if index == -1          */
         ML_va_ptr       next;   /* Valid if index >= 0           */
     } rest;
+#ifdef MR_THREAD_SAFE
+    MercuryLock         *lock;  /* NULL or lock                  */
+#endif
 };
 
     /*
@@ -552,21 +589,25 @@ extern ML_va_ptr    ML_va_get_latest(ML_va_ptr VA);
     /*
     ** Returns the number of items in a version array.
     */
-extern MR_Integer   ML_va_size(ML_va_ptr);
+extern MR_Integer   ML_va_size_dolock(ML_va_ptr);
+static MR_Integer   ML_va_size(ML_va_ptr);
 
     /*
     ** If I is in range then ML_va_get(VA, I, &X) sets X to the Ith item
     ** in VA (counting from zero) and returns MR_TRUE.  Otherwise it
     ** returns MR_FALSE.
     */
-extern int          ML_va_get(ML_va_ptr, MR_Integer, MR_Word *);
+extern int          ML_va_get_dolock(ML_va_ptr, MR_Integer, MR_Word *);
+static int          ML_va_get(ML_va_ptr VA, MR_Integer I, MR_Word *Xptr);
 
     /*
     ** If I is in range then ML_va_set(VA0, I, X, VA) sets VA to be VA0
     ** updated with the Ith item as X (counting from zero) and
     ** returns MR_TRUE.  Otherwise it returns MR_FALSE.
     */
-extern int          ML_va_set(ML_va_ptr, MR_Integer, MR_Word, ML_va_ptr *);
+extern int          ML_va_set_dolock(ML_va_ptr, MR_Integer, MR_Word,
+                        ML_va_ptr *);
+static int          ML_va_set(ML_va_ptr, MR_Integer, MR_Word, ML_va_ptr *);
 
     /*
     ** Create a copy of VA0 as a new array.
@@ -583,13 +624,39 @@ static void         ML_va_rewind_into(ML_va_ptr VA, const ML_va_ptr VA0);
     ** `Rewinds' a version array, invalidating all extant successors
     ** including the argument.
     */
-extern ML_va_ptr    ML_va_rewind(ML_va_ptr);
+extern ML_va_ptr    ML_va_rewind_dolock(ML_va_ptr);
+static ML_va_ptr    ML_va_rewind(ML_va_ptr VA);
+
+    /*
+    ** Resize a version array.
+    */
+extern ML_va_ptr    ML_va_resize_dolock(ML_va_ptr, MR_Integer, MR_Word);
+static ML_va_ptr    ML_va_resize(ML_va_ptr, MR_Integer, MR_Word);
 
 ").
 
 :- pragma foreign_code("C", "
 
 #define ML_va_latest_version(VA)   ((VA)->index == -1)
+
+#ifdef MR_THREAD_SAFE
+    #define ML_maybe_lock(lock)                         \
+        do {                                            \
+            if (lock) {                                 \
+                MR_LOCK(lock, ""ML_maybe_lock"");       \
+            }                                           \
+        } while (0)
+
+    #define ML_maybe_unlock(lock)                       \
+        do {                                            \
+            if (lock) {                                 \
+                MR_UNLOCK(lock, ""ML_maybe_unlock"");   \
+            }                                           \
+        } while (0)
+#else
+    #define ML_maybe_lock(lock)     ((void) 0)
+    #define ML_maybe_unlock(lock)   ((void) 0)
+#endif
 
 ML_va_ptr
 ML_va_get_latest(ML_va_ptr VA)
@@ -602,6 +669,23 @@ ML_va_get_latest(ML_va_ptr VA)
 }
 
 MR_Integer
+ML_va_size_dolock(ML_va_ptr VA)
+{
+#ifdef MR_THREAD_SAFE
+    MercuryLock *lock = VA->lock;
+#endif
+    MR_Integer  size;
+
+    ML_maybe_lock(lock);
+
+    size = ML_va_size(VA);
+
+    ML_maybe_unlock(lock);
+
+    return size;
+}
+
+static MR_Integer
 ML_va_size(ML_va_ptr VA)
 {
     VA = ML_va_get_latest(VA);
@@ -610,6 +694,23 @@ ML_va_size(ML_va_ptr VA)
 }
 
 int
+ML_va_get_dolock(ML_va_ptr VA, MR_Integer I, MR_Word *Xptr)
+{
+#ifdef MR_THREAD_SAFE
+    MercuryLock *lock = VA->lock;
+#endif
+    int         ret;
+
+    ML_maybe_lock(lock);
+
+    ret = ML_va_get(VA, I, Xptr);
+
+    ML_maybe_unlock(lock);
+
+    return ret;
+}
+
+static int
 ML_va_get(ML_va_ptr VA, MR_Integer I, MR_Word *Xptr)
 {
     while (!ML_va_latest_version(VA)) {
@@ -630,6 +731,23 @@ ML_va_get(ML_va_ptr VA, MR_Integer I, MR_Word *Xptr)
 }
 
 int
+ML_va_set_dolock(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr)
+{
+#ifdef MR_THREAD_SAFE
+    MercuryLock *lock = VA0->lock;
+#endif
+    int         ret;
+
+    ML_maybe_lock(lock);
+
+    ret = ML_va_set(VA0, I, X, VAptr);
+
+    ML_maybe_unlock(lock);
+
+    return ret;
+}
+
+static int
 ML_va_set(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr)
 {
     ML_va_ptr VA1;
@@ -643,6 +761,9 @@ ML_va_set(ML_va_ptr VA0, MR_Integer I, MR_Word X, ML_va_ptr *VAptr)
         VA1->index      = -1;
         VA1->value      = (MR_Word) NULL;
         VA1->rest.array = VA0->rest.array;
+#ifdef MR_THREAD_SAFE
+        VA1->lock       = VA0->lock;
+#endif
 
         VA0->index     = I;
         VA0->value     = VA0->rest.array->elements[I];
@@ -684,6 +805,15 @@ ML_va_flat_copy(const ML_va_ptr VA0)
         VA->rest.array->elements[i] = latest->rest.array->elements[i];
     }
 
+#ifdef MR_THREAD_SAFE
+    if (VA0->lock != NULL) {
+        VA->lock = MR_GC_NEW(MercuryLock);
+        pthread_mutex_init(VA->lock, MR_MUTEX_ATTR);
+    } else {
+        VA->lock = NULL;
+    }
+#endif
+
     ML_va_rewind_into(VA, VA0);
 
     return VA;
@@ -709,6 +839,21 @@ ML_va_rewind_into(ML_va_ptr VA, const ML_va_ptr VA0)
 }
 
 ML_va_ptr
+ML_va_rewind_dolock(ML_va_ptr VA)
+{
+#ifdef MR_THREAD_SAFE
+    MercuryLock *lock = VA->lock;
+#endif
+    ML_maybe_lock(lock);
+
+    VA = ML_va_rewind(VA);
+
+    ML_maybe_unlock(lock);
+
+    return VA;
+}
+
+static ML_va_ptr
 ML_va_rewind(ML_va_ptr VA)
 {
     MR_Integer I;
@@ -726,49 +871,229 @@ ML_va_rewind(ML_va_ptr VA)
     return VA;
 }
 
+ML_va_ptr
+ML_va_resize_dolock(ML_va_ptr VA0, MR_Integer N, MR_Word X)
+{
+#ifdef MR_THREAD_SAFE
+    MercuryLock *lock = VA0->lock;
+#endif
+    ML_va_ptr   VA;
+
+    ML_maybe_lock(lock);
+
+    VA = ML_va_resize(VA0, N, X);
+
+    ML_maybe_unlock(lock);
+
+    return VA;
+}
+
+static ML_va_ptr
+ML_va_resize(ML_va_ptr VA0, MR_Integer N, MR_Word X)
+{
+    ML_va_ptr   latest;
+    ML_va_ptr   VA;
+    MR_Integer  i;
+    MR_Integer  size_VA0;
+    MR_Integer  min;
+
+    latest = ML_va_get_latest(VA0);
+
+    size_VA0 = ML_va_size(latest);
+    min      = (N <= size_VA0 ? N : size_VA0);
+    VA       = MR_GC_NEW(struct ML_va);
+
+    VA->index            = -1;
+    VA->value            = (MR_Word) NULL;
+    VA->rest.array       = (MR_ArrayPtr) MR_GC_NEW_ARRAY(MR_Word, N + 1);
+    VA->rest.array->size = N;
+
+    for (i = 0; i < min; i++) {
+        VA->rest.array->elements[i] = latest->rest.array->elements[i];
+    }
+
+#ifdef MR_THREAD_SAFE
+    if (VA0->lock != NULL) {
+        VA->lock = MR_GC_NEW(MercuryLock);
+        pthread_mutex_init(VA->lock, MR_MUTEX_ATTR);
+    } else {
+        VA->lock = NULL;
+    }
+#endif
+
+    ML_va_rewind_into(VA, VA0);
+
+    for (i = min; i < N; i++) {
+        VA->rest.array->elements[i] = X;
+    }
+
+    return VA;
+}
+
 ").
 
 :- pragma foreign_code("Java", "
 
-static class ML_va {
-    int                 index;  /* -1 for latest, >= 0 for older */
-    Object              value;  /* Valid if index >= 0           */
-    Object              rest;   /* array if index == -1          */
-                                /* next if index >= 0            */
+public interface ML_va {
+    public Object get(int I) throws ArrayIndexOutOfBoundsException;
+    public ML_va set(int I, Object X);
+    public ML_va resize(int N, Object X);
+    public ML_va rewind();
+    public int size();
+}
 
-    boolean is_latest()
+// An implementation of version arrays that is safe when used in multiple
+// threads.
+//
+// It just wraps the unsafe version is some synchronization logic so
+// that only one thread can be accessing the array at one instant.
+public static class ML_sva implements ML_va {
+    private ML_uva version_array;
+    private Object lock;
+
+    public ML_sva(ML_uva va) {
+        version_array = va;
+        lock = new Object();
+    }
+
+    private ML_sva() {};
+
+    public Object get(int I) throws ArrayIndexOutOfBoundsException {
+        synchronized (lock) {
+            return version_array.get(I);
+        }
+    }
+
+    public ML_sva set(int I, Object X) {
+        synchronized (lock) {
+            ML_sva result = new ML_sva();
+
+            result.version_array = version_array.set(I, X);
+
+            if (result.version_array.isClone()) {
+                result.version_array.resetIsClone();
+                result.lock = new Object();
+            } else {
+                result.lock = this.lock;
+            }
+
+            return result;
+        }
+    }
+
+    public ML_sva resize(int N, Object X) {
+        synchronized (lock) {
+            ML_sva result = new ML_sva();
+            result.version_array = version_array.resize(N, X);
+            result.lock = new Object();
+            return result;
+        }
+    }
+
+    public ML_sva rewind()
+    {
+        synchronized (lock) {
+            ML_sva result = new ML_sva();
+            result.version_array = version_array.rewind();
+            result.lock = this.lock;
+            return result;
+        }
+    }
+
+    public int size()
+    {
+        synchronized (lock) {
+            return version_array.size();
+        }
+    }
+}
+
+// An implementation of version arrays that is only safe when used from
+// a single thread, but *much* faster than the synchronized version.
+public static class ML_uva implements ML_va {
+    private int                 index;  /* -1 for latest, >= 0 for older */
+    private Object              value;  /* Valid if index >= 0           */
+    private Object              rest;   /* array if index == -1          */
+                                        /* next if index >= 0            */
+
+    private boolean             clone = false;
+
+    public ML_uva() {}
+
+    public static ML_uva empty() {
+        ML_uva va = new ML_uva();
+        va.index = -1;
+        va.value = null;
+        va.rest  = new Object[0];
+        return va;
+    }
+
+    public static ML_uva init(int N, Object X) {
+        ML_uva va = new ML_uva();
+        va.index = -1;
+        va.value = null;
+        va.rest  = new Object[N];
+        java.util.Arrays.fill(va.array(), X);
+        return va;
+    }
+
+    public ML_uva resize(int N, Object X) {
+        ML_uva  VA0 = this;
+        ML_uva  latest;
+        int     size_VA0;
+        int     min;
+
+        latest = VA0.latest();
+
+        size_VA0 = latest.size();
+        min      = (N <= size_VA0 ? N : size_VA0);
+        ML_uva VA = new ML_uva();
+
+        VA.index = -1;
+        VA.value = null;
+        VA.rest  = new Object[N];
+
+        System.arraycopy(latest.array(), 0, VA.array(), 0, min);
+
+        VA0.rewind_into(VA);
+
+        java.util.Arrays.fill(VA.array(), min, N, X);
+        return VA;
+    }
+
+    private boolean is_latest()
     {
         return index == -1;
     }
 
-    ML_va latest()
+    private ML_uva latest()
     {
-        ML_va VA = this;
+        ML_uva VA = this;
         while (!VA.is_latest()) {
             VA = VA.next();
         }
         return VA;
     }
 
-    Object[] array()
+    private Object[] array()
     {
         return (Object[]) rest;
     }
 
-    ML_va next()
+    private ML_uva next()
     {
-        return (ML_va) rest;
+        return (ML_uva) rest;
     }
 
-    int size()
+    public int size()
     {
         return latest().array().length;
     }
 
-    Object get(int I)
+    public Object get(int I)
         throws ArrayIndexOutOfBoundsException
     {
-        ML_va VA = this;
+        ML_uva VA = this;
 
         while (!VA.is_latest()) {
             if (I == VA.index) {
@@ -781,13 +1106,13 @@ static class ML_va {
         return VA.array()[I];
     }
 
-    ML_va set(int I, Object X)
+    public ML_uva set(int I, Object X)
     {
-        ML_va VA0 = this;
-        ML_va VA1;
+        ML_uva VA0 = this;
+        ML_uva VA1;
 
         if (VA0.is_latest()) {
-            VA1 = new ML_va();
+            VA1 = new ML_uva();
             VA1.index   = -1;
             VA1.value   = null;
             VA1.rest    = VA0.array();
@@ -806,27 +1131,36 @@ static class ML_va {
         return VA1;
     }
 
-    ML_va flat_copy()
+    private ML_uva flat_copy()
     {
-        ML_va   VA0 = this;
-        ML_va   latest;
-        ML_va   VA;
+        ML_uva  VA0 = this;
+        ML_uva  latest;
+        ML_uva  VA;
         int     N;
 
         latest = VA0.latest();
         N = latest.size();
 
-        VA = new ML_va();
+        VA = new ML_uva();
         VA.index = -1;
         VA.value = null;
         VA.rest  = latest.array().clone();
+        VA.clone = true;
 
         VA0.rewind_into(VA);
 
         return VA;
     }
 
-    void rewind_into(ML_va VA)
+    public boolean isClone() {
+        return clone;
+    }
+
+    public void resetIsClone() {
+        this.clone = false;
+    }
+
+    private void rewind_into(ML_uva VA)
     {
         int     I;
         Object  X;
@@ -844,9 +1178,9 @@ static class ML_va {
         }
     }
 
-    ML_va rewind()
+    public ML_uva rewind()
     {
-        ML_va   VA = this;
+        ML_uva VA = this;
         int     I;
         Object  X;
 
@@ -862,6 +1196,7 @@ static class ML_va {
         return VA;
     }
 }
+
 ").
 
 %-----------------------------------------------------------------------------%
