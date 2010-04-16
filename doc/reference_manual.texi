@@ -4896,7 +4896,7 @@ directives that have not yet been executed will not be executed,
 @samp{initialize} is also allowed as a synonym for @samp{initialise}.
 
 Note: @samp{initialise} declarations are currently only supported on
-the C and Erlang backends.
+the C, Java and Erlang backends.
 
 @node Module finalisation
 @section Module finalisation
@@ -4937,7 +4937,7 @@ be executed.
 @samp{finalize} is also allowed as a synonym for @samp{finalise}.
 
 Note: @samp{finalise} declarations are currently only supported on
-the C and Erlang backends.
+the C, Java and Erlang backends.
 
 @node Module-local mutable variables
 @section Module-local mutable variables
@@ -5068,7 +5068,7 @@ an uncaught exception is also the same as though it were a predicate
 specified in a @samp{initialise} directive.
 
 Note: @samp{mutable} declarations are currently only supported on
-the C and Erlang backends.
+the C, Java and Erlang backends.
 
 @node Type classes
 @chapter Type classes
