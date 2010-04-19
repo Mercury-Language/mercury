@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2009 The University of Melbourne.
+% Copyright (C) 1993-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1363,7 +1363,7 @@ string.to_char_list(Str::uo, CharList::in) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    list.List_1 lst = list.empty_list();
+    list.List_1<Character> lst = list.empty_list();
     for (int i = Str.length() - 1; i >= 0; i--) {
         char c = Str.charAt(i);
         lst = list.cons(c, lst);

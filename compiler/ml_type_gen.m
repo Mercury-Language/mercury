@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2009 The University of Melbourne.
+% Copyright (C) 1999-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -260,14 +260,8 @@ ml_gen_enum_type(Target, TypeCtor, TypeDefn, Ctors, TagValues,
     % interface and extend the MercuryEnum class.
     (
         Target = target_java,
-        InterfaceModuleName = mercury_module_name_to_mlds(
-            java_names.mercury_runtime_package_name),
-        TypeInterface = qual(InterfaceModuleName, module_qual, "MercuryType"),
-        TypeInterfaceDefn = mlds_class_type(TypeInterface, 0, mlds_interface),
-        EnumClass = qual(InterfaceModuleName, module_qual, "MercuryEnum"),
-        EnumClassDefn = mlds_class_type(EnumClass, 0, mlds_class),
-        Implements = [TypeInterfaceDefn],
-        Inherits = [EnumClassDefn]
+        Implements = [ml_java_mercury_type_interface],
+        Inherits = [ml_java_mercury_enum_class]
     ;
         ( Target = target_c
         ; Target = target_il
@@ -279,11 +273,13 @@ ml_gen_enum_type(Target, TypeCtor, TypeDefn, Ctors, TagValues,
         Inherits = []
     ),
 
+    get_type_defn_tparams(TypeDefn, TypeVars),
+
     % Put it all together.
     MLDS_TypeName = entity_type(MLDS_ClassName, MLDS_ClassArity),
     MLDS_TypeFlags = ml_gen_type_decl_flags,
     MLDS_TypeDefnBody = mlds_class(mlds_class_defn(mlds_enum,
-        Imports, Inherits, Implements, [], Members)),
+        Imports, Inherits, Implements, TypeVars, [], Members)),
     Defn = mlds_defn(MLDS_TypeName, MLDS_Context, MLDS_TypeFlags,
         MLDS_TypeDefnBody),
 
@@ -509,11 +505,7 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
     % interface.
     (
         Target = target_java,
-        InterfaceModuleName = mercury_module_name_to_mlds(
-            java_names.mercury_runtime_package_name),
-        Interface = qual(InterfaceModuleName, module_qual, "MercuryType"),
-        InterfaceDefn = mlds_class_type(Interface, 0, mlds_interface),
-        Implements = [InterfaceDefn]
+        Implements = [ml_java_mercury_type_interface]
     ;
         ( Target = target_c
         ; Target = target_il
@@ -524,12 +516,14 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
         Implements = []
     ),
 
+    get_type_defn_tparams(TypeDefn, TypeParams),
+
     % Put it all together.
     Members = MaybeEqualityMembers ++ TagMembers ++ CtorMembers,
     MLDS_TypeName = entity_type(BaseClassName, BaseClassArity),
     MLDS_TypeFlags = ml_gen_type_decl_flags,
-    MLDS_TypeDefnBody = mlds_class(mlds_class_defn(mlds_class,
-        Imports, Inherits, Implements, BaseClassCtorMethods, Members)),
+    MLDS_TypeDefnBody = mlds_class(mlds_class_defn(mlds_class, Imports,
+        Inherits, Implements, TypeParams, BaseClassCtorMethods, Members)),
     Defn = mlds_defn(MLDS_TypeName, MLDS_Context, MLDS_TypeFlags,
         MLDS_TypeDefnBody),
 
@@ -639,11 +633,15 @@ ml_gen_secondary_tag_class(MLDS_Context, BaseClassQualifier, BaseClassId,
     Implements = [],
     Ctors = [],
 
+    % Type parameters are only used by the Java backend, which doesn't use
+    % secondary tag classes.
+    TypeParams = [],
+
     % Put it all together.
     MLDS_TypeName = entity_type(UnqualClassName, ClassArity),
     MLDS_TypeFlags = ml_gen_type_decl_flags,
-    MLDS_TypeDefnBody = mlds_class(mlds_class_defn(mlds_class,
-        Imports, Inherits, Implements, Ctors, Members)),
+    MLDS_TypeDefnBody = mlds_class(mlds_class_defn(mlds_class, Imports,
+        Inherits, Implements, TypeParams, Ctors, Members)),
     MLDS_TypeDefn = mlds_defn(MLDS_TypeName, MLDS_Context,
         MLDS_TypeFlags, MLDS_TypeDefnBody).
 
@@ -830,12 +828,13 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
             ),
             Imports = [],
             Implements = [],
+            get_type_defn_tparams(TypeDefn, TypeParams),
 
             % Put it all together.
             MLDS_TypeName = entity_type(UnqualCtorName, CtorArity),
             MLDS_TypeFlags = ml_gen_type_decl_flags,
-            MLDS_TypeDefnBody = mlds_class(mlds_class_defn(
-                mlds_class, Imports, Inherits, Implements, Ctors, Members)),
+            MLDS_TypeDefnBody = mlds_class(mlds_class_defn(mlds_class,
+                Imports, Inherits, Implements, TypeParams, Ctors, Members)),
             MLDS_TypeDefn = mlds_defn(MLDS_TypeName, MLDS_Context,
                 MLDS_TypeFlags, MLDS_TypeDefnBody),
             MLDS_Members = [MLDS_TypeDefn | MLDS_Members0],

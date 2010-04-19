@@ -124,6 +124,7 @@
 :- import_module string.
 :- import_module svmap.
 :- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -497,13 +498,21 @@ output_exports(Info, Indent, Exports, !IO) :-
 :- pred output_export(java_out_info::in, indent::in, mlds_pragma_export::in,
     io::di, io::uo) is det.
 
-output_export(Info, Indent, Export, !IO) :-
-    Export = ml_pragma_export(Lang, ExportName, _, MLDS_Signature, _),
+output_export(Info0, Indent, Export, !IO) :-
+    Export = ml_pragma_export(Lang, ExportName, _, MLDS_Signature,
+        UnivQTVars, _),
     expect(unify(Lang, lang_java), this_file,
         "foreign_export for language other than Java."),
+
     indent_line(Indent, !IO),
     io.write_string("public static ", !IO),
+    output_generic_tvars(UnivQTVars, !IO),
+    io.nl(!IO),
+    indent_line(Indent, !IO),
+
     MLDS_Signature = mlds_func_params(Parameters, ReturnTypes),
+    Info = (Info0 ^ joi_output_generics := do_output_generics)
+                  ^ joi_univ_tvars := UnivQTVars,
     (
         ReturnTypes = [],
         io.write_string("void", !IO)
@@ -538,9 +547,9 @@ output_export(Info, Indent, Export, !IO) :-
 
 output_export_no_ref_out(Info, Indent, Export, !IO) :-
     Export = ml_pragma_export(_Lang, _ExportName, MLDS_Name, MLDS_Signature,
-        MLDS_Context),
+        _UnivQTVars, _MLDS_Context),
     MLDS_Signature = mlds_func_params(Parameters, ReturnTypes),
-    output_params(Info, Indent + 1, MLDS_Context, Parameters, !IO),
+    output_params(Info, Indent + 1, Parameters, !IO),
     io.nl(!IO),
     indent_line(Indent, !IO),
     io.write_string("{\n", !IO),
@@ -548,7 +557,14 @@ output_export_no_ref_out(Info, Indent, Export, !IO) :-
     (
         ReturnTypes = []
     ;
-        ReturnTypes = [_ | _],
+        ReturnTypes = [RetType],
+        % The cast is required when the exported method uses generics but the
+        % underlying method does not use generics (i.e. returns Object).
+        io.write_string("return (", !IO),
+        output_type(Info, normal_style, RetType, !IO),
+        io.write_string(") ", !IO)
+    ;
+        ReturnTypes = [_, _ | _],
         io.write_string("return ", !IO)
     ),
     write_export_call(MLDS_Name, Parameters, !IO),
@@ -560,11 +576,11 @@ output_export_no_ref_out(Info, Indent, Export, !IO) :-
 
 output_export_ref_out(Info, Indent, Export, !IO) :-
     Export = ml_pragma_export(_Lang, _ExportName, MLDS_Name, MLDS_Signature,
-        MLDS_Context),
+        _UnivQTVars, _MLDS_Context),
     MLDS_Signature = mlds_func_params(Parameters, ReturnTypes),
     list.filter(has_ptr_type, Parameters, RefParams, NonRefParams),
 
-    output_export_params_ref_out(Info, Indent, MLDS_Context, Parameters, !IO),
+    output_export_params_ref_out(Info, Indent, Parameters, !IO),
     io.nl(!IO),
     indent_line(Indent, !IO),
     io.write_string("{\n", !IO),
@@ -594,9 +610,9 @@ output_export_ref_out(Info, Indent, Export, !IO) :-
     io.write_string("}\n", !IO).
 
 :- pred output_export_params_ref_out(java_out_info::in, indent::in,
-    mlds_context::in, list(mlds_argument)::in, io::di, io::uo) is det.
+    list(mlds_argument)::in, io::di, io::uo) is det.
 
-output_export_params_ref_out(Info, Indent, Context, Parameters, !IO) :-
+output_export_params_ref_out(Info, Indent, Parameters, !IO) :-
     io.write_string("(", !IO),
     (
         Parameters = []
@@ -604,14 +620,14 @@ output_export_params_ref_out(Info, Indent, Context, Parameters, !IO) :-
         Parameters = [_ | _],
         io.nl(!IO),
         io.write_list(Parameters, ",\n",
-            output_export_param_ref_out(Info, Indent + 1, Context), !IO)
+            output_export_param_ref_out(Info, Indent + 1), !IO)
     ),
     io.write_string(")", !IO).
 
 :- pred output_export_param_ref_out(java_out_info::in, indent::in,
-    mlds_context::in, mlds_argument::in, io::di, io::uo) is det.
+    mlds_argument::in, io::di, io::uo) is det.
 
-output_export_param_ref_out(Info, Indent, _Context, Argument, !IO) :-
+output_export_param_ref_out(Info, Indent, Argument, !IO) :-
     Argument = mlds_argument(Name, Type, _),
     indent_line(Indent, !IO),
     ( Type = mlds_ptr_type(InnerType) ->
@@ -747,7 +763,7 @@ method_ptrs_in_entity_defn(mlds_data(_Type, Initializer, _GCStatement),
         !CodeAddrs) :-
     method_ptrs_in_initializer(Initializer, !CodeAddrs).
 method_ptrs_in_entity_defn(mlds_class(ClassDefn), !CodeAddrs) :-
-    ClassDefn = mlds_class_defn(_, _, _, _, Ctors, Members),
+    ClassDefn = mlds_class_defn(_, _, _, _, _, Ctors, Members),
     method_ptrs_in_defns(Ctors, !CodeAddrs),
     method_ptrs_in_defns(Members, !CodeAddrs).
 
@@ -1061,14 +1077,15 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
     ClassExtends = [],
     InterfaceDefn = mlds_class_type(Interface, 0, mlds_interface),
     ClassImplements = [InterfaceDefn],
+    TypeParams = [],
 
     % Put it all together.
     ClassMembers  = DataDefns ++ [MethodDefn],
     ClassEntityName = entity_type(ClassName, 0),
     ClassContext  = mlds_make_context(term.context_init),
     ClassFlags    = addr_wrapper_decl_flags,
-    ClassBodyDefn = mlds_class_defn(mlds_class, ClassImports,
-        ClassExtends, ClassImplements, CtorDefns, ClassMembers),
+    ClassBodyDefn = mlds_class_defn(mlds_class, ClassImports, ClassExtends,
+        ClassImplements, TypeParams, CtorDefns, ClassMembers),
     ClassBody     = mlds_class(ClassBodyDefn),
     ClassDefn = mlds_defn(ClassEntityName, ClassContext, ClassFlags,
         ClassBody),
@@ -1419,11 +1436,11 @@ rename_class_names_defn(Renaming, !Defn) :-
             Attributes, EnvVarNames)
     ;
         EntityDefn0 = mlds_class(mlds_class_defn(ClassKind, Imports, Inherits,
-            Implements, Ctors0, Members0)),
+            Implements, TypeParams, Ctors0, Members0)),
         list.map(rename_class_names_defn(Renaming), Ctors0, Ctors),
         list.map(rename_class_names_defn(Renaming), Members0, Members),
         EntityDefn = mlds_class(mlds_class_defn(ClassKind, Imports, Inherits,
-            Implements, Ctors, Members))
+            Implements, TypeParams, Ctors, Members))
     ),
     !Defn ^ md_entity_defn := EntityDefn.
 
@@ -2102,7 +2119,7 @@ output_defn_body(Info, Indent, UnqualName, OutputAux, Context, Entity, !IO) :-
             Signature, MaybeBody, !IO)
     ;
         Entity = mlds_class(ClassDefn),
-        output_class(Info, Indent, UnqualName, Context, ClassDefn, !IO)
+        output_class(Info, Indent, UnqualName, ClassDefn, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2111,9 +2128,9 @@ output_defn_body(Info, Indent, UnqualName, OutputAux, Context, Entity, !IO) :-
 %
 
 :- pred output_class(java_out_info::in, indent::in, mlds_entity_name::in,
-    mlds_context::in, mlds_class_defn::in, io::di, io::uo) is det.
+    mlds_class_defn::in, io::di, io::uo) is det.
 
-output_class(Info, Indent, UnqualName, _Context, ClassDefn, !IO) :-
+output_class(!.Info, Indent, UnqualName, ClassDefn, !IO) :-
     (
         UnqualName = entity_type(ClassNamePrime, ArityPrime),
         ClassName = ClassNamePrime,
@@ -2126,7 +2143,41 @@ output_class(Info, Indent, UnqualName, _Context, ClassDefn, !IO) :-
         unexpected(this_file, "output_class: name is not entity_type.")
     ),
     ClassDefn = mlds_class_defn(Kind, _Imports, BaseClasses, Implements,
-        Ctors, AllMembers),
+        TypeParams, Ctors, AllMembers),
+
+    !Info ^ joi_univ_tvars := TypeParams,
+
+    % Use generics in the output if this class represents a Mercury type.
+    ( list.member(ml_java_mercury_type_interface, Implements) ->
+        !Info ^ joi_output_generics := do_output_generics
+    ;
+        true
+    ),
+
+    output_class_kind(Kind, !IO),
+    output_class_name_and_arity(ClassName, Arity, !IO),
+    OutputGenerics = !.Info ^ joi_output_generics,
+    (
+        OutputGenerics = do_output_generics,
+        output_generic_tvars(TypeParams, !IO)
+    ;
+        OutputGenerics = do_not_output_generics
+    ),
+    io.nl(!IO),
+
+    output_extends_list(!.Info, Indent + 1, BaseClasses, !IO),
+    output_implements_list(Indent + 1, Implements, !IO),
+    indent_line(Indent, !IO),
+    io.write_string("{\n", !IO),
+    output_class_body(!.Info, Indent + 1, Kind, UnqualName, AllMembers, !IO),
+    io.nl(!IO),
+    output_defns(!.Info, Indent + 1, cname(UnqualName), Ctors, !IO),
+    indent_line(Indent, !IO),
+    io.write_string("}\n\n", !IO).
+
+:- pred output_class_kind(mlds_class_kind::in, io::di, io::uo) is det.
+
+output_class_kind(Kind, !IO) :-
     (
         Kind = mlds_interface,
         io.write_string("interface ", !IO)
@@ -2137,18 +2188,25 @@ output_class(Info, Indent, UnqualName, _Context, ClassDefn, !IO) :-
         ; Kind = mlds_struct
         ),
         io.write_string("class ", !IO)
-    ),
-    output_class_name_and_arity(ClassName, Arity, !IO),
-    io.nl(!IO),
-    output_extends_list(Info, Indent + 1, BaseClasses, !IO),
-    output_implements_list(Indent + 1, Implements, !IO),
-    indent_line(Indent, !IO),
-    io.write_string("{\n", !IO),
-    output_class_body(Info, Indent + 1, Kind, UnqualName, AllMembers, !IO),
-    io.nl(!IO),
-    output_defns(Info, Indent + 1, cname(UnqualName), Ctors, !IO),
-    indent_line(Indent, !IO),
-    io.write_string("}\n\n", !IO).
+    ).
+
+:- pred output_generic_tvars(list(tvar)::in, io::di, io::uo) is det.
+
+output_generic_tvars(Vars, !IO) :-
+    (
+        Vars = []
+    ;
+        Vars = [_ | _],
+        io.write_string("<", !IO),
+        io.write_list(Vars, ", ", output_generic_tvar, !IO),
+        io.write_string(">", !IO)
+    ).
+
+:- pred output_generic_tvar(tvar::in, io::di, io::uo) is det.
+
+output_generic_tvar(Var, !IO) :-
+    varset.lookup_name(varset.init, Var, "MR_tvar_", VarName),
+    io.write_string(VarName, !IO).
 
     % Output superclass that this class extends. Java does not support
     % multiple inheritance, so more than one superclass is an error.
@@ -2715,8 +2773,7 @@ output_func(Info, Indent, Name, OutputAux, Context, Signature, MaybeBody,
         !IO) :-
     (
         MaybeBody = body_defined_here(Body),
-        output_func_decl(Info, Indent, Name, OutputAux, Context, Signature,
-            !IO),
+        output_func_decl(Info, Indent, Name, OutputAux, Signature, !IO),
         io.write_string("\n", !IO),
         indent_line(Info, Context, Indent, !IO),
         io.write_string("{\n", !IO),
@@ -2728,59 +2785,59 @@ output_func(Info, Indent, Name, OutputAux, Context, Signature, MaybeBody,
         MaybeBody = body_external
     ).
 
-:- pred output_func_decl(java_out_info::in, indent::in,
-    mlds_entity_name::in, output_aux::in, mlds_context::in,
-    mlds_func_params::in, io::di, io::uo) is det.
+:- pred output_func_decl(java_out_info::in, indent::in, mlds_entity_name::in,
+    output_aux::in, mlds_func_params::in, io::di, io::uo) is det.
 
-output_func_decl(Info, Indent, Name, OutputAux, Context, Signature, !IO) :-
+output_func_decl(Info, Indent, Name, OutputAux, Signature, !IO) :-
+    Signature = mlds_func_params(Parameters, RetTypes),
     (
         OutputAux = cname(CtorName),
-        Signature = mlds_func_params(Parameters, _RetTypes),
-        output_name(CtorName, !IO),
-        output_params(Info, Indent, Context, Parameters, !IO)
+        Name = entity_export("<constructor>")
+    ->
+        output_name(CtorName, !IO)
     ;
-        ( OutputAux = none
-        ; OutputAux = alloc_only
-        ; OutputAux = force_init
-        ),
-        Signature = mlds_func_params(Parameters, RetTypes),
-        (
-            RetTypes = [],
-            io.write_string("void", !IO)
-        ;
-            RetTypes = [RetType],
-            output_type(Info, normal_style, RetType, !IO)
-        ;
-            RetTypes = [_, _ | _],
-            % For multiple outputs, we return an array of objects.
-            io.write_string("java.lang.Object []", !IO)
-        ),
+        output_return_types(Info, RetTypes, !IO),
         io.write_char(' ', !IO),
-        output_name(Name, !IO),
-        output_params(Info, Indent, Context, Parameters, !IO)
+        output_name(Name, !IO)
+    ),
+    output_params(Info, Indent, Parameters, !IO).
+
+:- pred output_return_types(java_out_info::in, mlds_return_types::in,
+    io::di, io::uo) is det.
+
+output_return_types(Info, RetTypes, !IO) :-
+    (
+        RetTypes = [],
+        io.write_string("void", !IO)
+    ;
+        RetTypes = [RetType],
+        output_type(Info, normal_style, RetType, !IO)
+    ;
+        RetTypes = [_, _ | _],
+        % For multiple outputs, we return an array of objects.
+        io.write_string("java.lang.Object []", !IO)
     ).
 
-:- pred output_params(java_out_info::in, indent::in, mlds_context::in,
-    mlds_arguments::in, io::di, io::uo) is det.
+:- pred output_params(java_out_info::in, indent::in, mlds_arguments::in,
+    io::di, io::uo) is det.
 
-output_params(Info, Indent, Context, Parameters, !IO) :-
+output_params(Info, Indent, Parameters, !IO) :-
     io.write_char('(', !IO),
     (
         Parameters = []
     ;
         Parameters = [_ | _],
         io.nl(!IO),
-        io.write_list(Parameters, ",\n",
-            output_param(Info, Indent + 1, Context), !IO)
+        io.write_list(Parameters, ",\n", output_param(Info, Indent + 1), !IO)
     ),
     io.write_char(')', !IO).
 
-:- pred output_param(java_out_info::in, indent::in, mlds_context::in,
-    mlds_argument::in, io::di, io::uo) is det.
+:- pred output_param(java_out_info::in, indent::in, mlds_argument::in,
+    io::di, io::uo) is det.
 
-output_param(Info, Indent, Context, Arg, !IO) :-
+output_param(Info, Indent, Arg, !IO) :-
     Arg = mlds_argument(Name, Type, _GCStatement),
-    indent_line(Info, Context, Indent, !IO),
+    indent_line(Indent, !IO),
     output_type(Info, normal_style, Type, !IO),
     io.write_char(' ', !IO),
     output_name(Name, !IO).
@@ -3098,7 +3155,7 @@ output_type(Info, Style, MLDS_Type, !IO) :-
         io.write_string("jmercury.runtime.MethodPtr", !IO)
     ;
         MLDS_Type = mlds_generic_type,
-        io.write_string("java.lang.Object", !IO)
+        io.write_string("/* generic_type */ java.lang.Object", !IO)
     ;
         MLDS_Type = mlds_generic_env_ptr_type,
         io.write_string("/* env_ptr */ java.lang.Object", !IO)
@@ -3162,7 +3219,15 @@ output_mercury_type(Info, Style, Type, CtorCat, !IO) :-
         io.write_string("builtin.Void_0", !IO)
     ;
         CtorCat = ctor_cat_variable,
-        io.write_string("java.lang.Object", !IO)
+        (
+            Info ^ joi_output_generics = do_output_generics,
+            Type = type_variable(TVar, kind_star),
+            list.member(TVar, Info ^ joi_univ_tvars)
+        ->
+            output_generic_tvar(TVar, !IO)
+        ;
+            io.write_string("java.lang.Object", !IO)
+        )
     ;
         CtorCat = ctor_cat_tuple,
         io.write_string("/* tuple */ java.lang.Object", !IO),
@@ -3187,16 +3252,41 @@ output_mercury_type(Info, Style, Type, CtorCat, !IO) :-
     mer_type::in, type_ctor_category::in, io::di, io::uo) is det.
 
 output_mercury_user_type(Info, Style, Type, CtorCat, !IO) :-
-    ( type_to_ctor_and_args(Type, TypeCtor, _ArgsTypes) ->
+    ( type_to_ctor_and_args(Type, TypeCtor, ArgsTypes) ->
         ml_gen_type_name(TypeCtor, ClassName, ClassArity),
         ( CtorCat = ctor_cat_enum(_) ->
             MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_enum)
         ;
             MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_class)
         ),
-        output_type(Info, Style, MLDS_Type, !IO)
+        output_type(Info, Style, MLDS_Type, !IO),
+        OutputGenerics = Info ^ joi_output_generics,
+        (
+            OutputGenerics = do_output_generics,
+            output_generics_args_types(Info, ArgsTypes, !IO)
+        ;
+            OutputGenerics = do_not_output_generics
+        )
     ;
         unexpected(this_file, "output_mercury_user_type: not a user type")
+    ).
+
+:- pred output_generics_args_types(java_out_info::in, list(mer_type)::in,
+    io::di, io::uo) is det.
+
+output_generics_args_types(Info, ArgsTypes, !IO) :-
+    (
+        ArgsTypes = []
+    ;
+        ArgsTypes = [_ | _],
+        WriteType = (pred(ArgType::in, !.IO::di, !:IO::uo) is det :-
+            ModuleInfo = Info ^ joi_module_info,
+            MLDS_ArgType = mercury_type_to_mlds_type(ModuleInfo, ArgType),
+            output_boxed_type(Info, MLDS_ArgType, !IO)
+        ),
+        io.write_string("<", !IO),
+        io.write_list(ArgsTypes, ", ", WriteType, !IO),
+        io.write_string(">", !IO)
     ).
 
 :- pred output_array_brackets(output_style::in, io::di, io::uo) is det.
@@ -4123,7 +4213,8 @@ output_target_code_component(Info, TargetCode, !IO) :-
         output_lval(Info, Lval, !IO)
     ;
         TargetCode = target_code_type(Type),
-        output_type(Info, normal_style, Type, !IO)
+        InfoGenerics = Info ^ joi_output_generics := do_output_generics,
+        output_type(InfoGenerics, normal_style, Type, !IO)
     ;
         TargetCode = target_code_name(Name),
         output_maybe_qualified_name(Info, Name, !IO)
@@ -4745,11 +4836,21 @@ indent_line(N, !IO) :-
 
 :- type java_out_info
     --->    java_out_info(
+                % These are static.
+                joi_module_info     :: module_info,
                 joi_auto_comments   :: bool,
                 joi_line_numbers    :: bool,
                 joi_module_name     :: mlds_module_name,
-                joi_addrof_map      :: map(mlds_code_addr, code_addr_wrapper)
+                joi_addrof_map      :: map(mlds_code_addr, code_addr_wrapper),
+
+                % These are dynamic.
+                joi_output_generics :: output_generics,
+                joi_univ_tvars      :: list(tvar)
             ).
+
+:- type output_generics
+    --->    do_output_generics
+    ;       do_not_output_generics.
 
 :- func init_java_out_info(module_info, map(mlds_code_addr, code_addr_wrapper))
     = java_out_info.
@@ -4760,8 +4861,8 @@ init_java_out_info(ModuleInfo, AddrOfMap) = Info :-
     globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    Info = java_out_info(AutoComments, LineNumbers, MLDS_ModuleName,
-        AddrOfMap).
+    Info = java_out_info(ModuleInfo, AutoComments, LineNumbers,
+        MLDS_ModuleName, AddrOfMap, do_not_output_generics, []).
 
 %-----------------------------------------------------------------------------%
 

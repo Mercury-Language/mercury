@@ -289,6 +289,10 @@ Changes to the Mercury standard library:
   with separate chaining schemes.  Consequently delete works, and double
   hashing predicates are not required.
 
+* We have added optional synchronisation to the version_array and
+  version_hash_table implementations.  They are now thread safe, but slower,
+  by default.
+
 * We have added a calendar module to the standard library. This module
   contains utilities for working with the Gregorian calendar.
 

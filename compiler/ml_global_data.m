@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -463,7 +463,8 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
         ml_gen_vector_cell_field_types(MLDS_Context, FieldFlags,
             FieldNamePrefix, 0, ArgTypes, FieldNames, FieldDefns),
 
-        ClassDefn = mlds_class_defn(mlds_struct, [], [], [], [], FieldDefns),
+        ClassDefn = mlds_class_defn(mlds_struct, [], [], [], [], [],
+            FieldDefns),
         StructTypeName = "vector_common_type_" ++ TypeRawNumStr,
         StructTypeEntityName = entity_type(StructTypeName, 0),
         StructTypeEntityDefn = mlds_class(ClassDefn),

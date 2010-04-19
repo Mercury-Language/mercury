@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2009 The University of Melbourne.
+% Copyright (C) 1999-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -163,11 +163,11 @@ mark_tailcalls_in_defn(Defn0, Defn) :-
     ;
         DefnBody0 = mlds_class(ClassDefn0),
         ClassDefn0 = mlds_class_defn(Kind, Imports, BaseClasses, Implements,
-            CtorDefns0, MemberDefns0),
+            TypeParams, CtorDefns0, MemberDefns0),
         mark_tailcalls_in_defns(CtorDefns0, CtorDefns),
         mark_tailcalls_in_defns(MemberDefns0, MemberDefns),
         ClassDefn = mlds_class_defn(Kind, Imports, BaseClasses, Implements,
-            CtorDefns, MemberDefns),
+            TypeParams, CtorDefns, MemberDefns),
         DefnBody = mlds_class(ClassDefn),
         Defn = mlds_defn(Name, Context, Flags, DefnBody)
     ).
@@ -634,7 +634,7 @@ nontailcall_in_defn(ModuleName, Defn, Warning) :-
     ;
         DefnBody = mlds_class(ClassDefn),
         ClassDefn = mlds_class_defn(_Kind, _Imports, _BaseClasses,
-            _Implements, CtorDefns, MemberDefns),
+            _Implements, _TypeParams, CtorDefns, MemberDefns),
         ( nontailcall_in_defns(ModuleName, CtorDefns, Warning)
         ; nontailcall_in_defns(ModuleName, MemberDefns, Warning)
         )

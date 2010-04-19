@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007, 2009 The University of Melbourne.
+% Copyright (C) 2002-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -911,13 +911,13 @@ make_type_ctor_desc_with_arity(_, _, _) :-
     PseudoTypeInfo[] as = new PseudoTypeInfo[TypeCtorDesc.arity];
 
     succeeded = true;
-    list.List_1 arg_types = ArgTypes;
+    list.List_1<TypeInfo_Struct> arg_types = ArgTypes;
     for (int i = 0; i < TypeCtorDesc.arity; i++) {
         if (list.is_empty(arg_types)) {
             succeeded = false;
             break;
         }
-        as[i] = (TypeInfo_Struct) list.det_head(arg_types);
+        as[i] = list.det_head(arg_types);
         arg_types = list.det_tail(arg_types);
     }
 

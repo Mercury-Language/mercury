@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2009 The University of Melbourne.
+% Copyright (C) 1999-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -850,10 +850,11 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     ),
 
     Imports = [],
-    Ctors = [],     % mlds_to_il.m will add an empty constructor if needed.
     Interfaces = [],
+    TypeParams = [],
+    Ctors = [],     % mlds_to_il.m will add an empty constructor if needed.
     EnvTypeDefnBody = mlds_class(mlds_class_defn(EnvTypeKind, Imports,
-        BaseClasses, Interfaces, Ctors, Fields)),
+        BaseClasses, Interfaces, TypeParams, Ctors, Fields)),
     EnvTypeDefn = mlds_defn(EnvTypeEntityName, Context, EnvTypeFlags,
         EnvTypeDefnBody),
 
@@ -2335,7 +2336,7 @@ defn_contains_matching_defn(Filter, Defn) :-
         ;
             DefnBody = mlds_class(ClassDefn),
             ClassDefn = mlds_class_defn(_Kind, _Imports, _Inherits,
-                _Implements, CtorDefns, FieldDefns),
+                _Implements, _TypeParams, CtorDefns, FieldDefns),
             (
                 defns_contains_matching_defn(Filter, FieldDefns)
             ;

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2009 The University of Melbourne.
+% Copyright (C) 2000-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -414,7 +414,7 @@ wrapper_class(Members) =
         entity_export(wrapper_class_name),
         mlds_make_context(term.context_init),
         ml_gen_type_decl_flags,
-        mlds_class(mlds_class_defn(mlds_package, [], [], [], [], Members))
+        mlds_class(mlds_class_defn(mlds_package, [], [], [], [], [], Members))
     ).
 
 %-----------------------------------------------------------------------------%
@@ -447,9 +447,11 @@ rename_defn(Defn0) = Defn :-
     ;
         Entity0 = mlds_class(ClassDefn0),
         ClassDefn0 = mlds_class_defn(Kind, Imports, Inherits, Implements,
-            Ctors, Members),
+            TypeParams, Ctors0, Members0),
+        Ctors = list.map(rename_defn, Ctors0),
+        Members = list.map(rename_defn, Members0),
         ClassDefn = mlds_class_defn(Kind, Imports, Inherits, Implements,
-            list.map(rename_defn, Ctors), list.map(rename_defn, Members)),
+            TypeParams, Ctors, Members),
         Entity = mlds_class(ClassDefn)
     ),
     Defn = mlds_defn(Name, Context, Flags, Entity).
@@ -710,7 +712,7 @@ generate_class_body(Name, Context, ClassDefn, ClassName, EntityName, Extends,
         Interfaces, ClassMembers, !Info) :-
     EntityName = entity_name_to_ilds_id(Name),
     ClassDefn = mlds_class_defn(Kind, _Imports, Inherits, Implements,
-        Ctors0, Members),
+        _TypeParams, Ctors0, Members),
     Parent - Extends = generate_parent_and_extends(!.Info ^ il_data_rep,
         Kind, Inherits),
     Interfaces = implements(
@@ -1380,7 +1382,7 @@ attribute_to_custom_attribute(DataRep, custom(MLDSType))
 
 mlds_export_to_mlds_defn(ExportDefn, Defn) :-
     ExportDefn = ml_pragma_export(Lang, ExportName, EntityName, Params,
-        Context),
+        _UnivQTVars, Context),
     EntityName = qual(ModuleName, _QualKind, UnqualName),
     expect(unify(Lang, lang_il), this_file,
         "export for language other than IL."),
@@ -4459,7 +4461,7 @@ il_info_init(ModuleName, AssemblyName, Imports, ILDataRep,
     is det.
 
 il_info_new_class(ClassDefn, !Info) :-
-    ClassDefn = mlds_class_defn(_, _, _, _, _, Members),
+    ClassDefn = mlds_class_defn(_, _, _, _, _, _, Members),
     list.filter_map(
         (pred(M::in, S::out) is semidet :-
             M = mlds_defn(Name, _, _, mlds_data(_, _, _)),

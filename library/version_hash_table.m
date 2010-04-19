@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -49,10 +49,31 @@
 :- func new(hash_pred(K)::in(hash_pred), int::in, float::in) =
             (version_hash_table(K, V)::out) is det.
 
+    % unsafe_new(HashPred, N, MaxOccupancy)
+    %
+    % Like new/3, but the constructed hash table is backed by a non-thread safe
+    % version array. It is unsafe to concurrently access or update the hash
+    % table from different threads, or any two hash tables which were produced
+    % from operations on the same original hash table.
+    % However, if the hash table or its descendents will not be used in such a
+    % manner, a non-thread safe hash table can be much faster than a thread
+    % safe one.
+    %
+:- func unsafe_new(hash_pred(K)::in(hash_pred), int::in, float::in) =
+            (version_hash_table(K, V)::out) is det.
+
     % new_default(HashFn) constructs a hash table with default size and
     % occupancy arguments.
     %
 :- func new_default(hash_pred(K)::in(hash_pred)) =
+            (version_hash_table(K, V)::out) is det.
+
+    % unsafe_new_default(HashFn)
+    %
+    % Like new_default/3 but the constructed hash table is backed by a
+    % non-thread safe version array. See the description of unsafe_new/3 above.
+    %
+:- func unsafe_new_default(hash_pred(K)::in(hash_pred)) =
             (version_hash_table(K, V)::out) is det.
 
     % Retrieve the hash_pred associated with a hash table.
@@ -180,7 +201,14 @@
 
 %-----------------------------------------------------------------------------%
 
-new(HashPred, N, MaxOccupancy) = HT :-
+new(HashPred, N, MaxOccupancy) = new_2(HashPred, N, MaxOccupancy, yes).
+
+unsafe_new(HashPred, N, MaxOccupancy) = new_2(HashPred, N, MaxOccupancy, no).
+
+:- func new_2(hash_pred(K)::in(hash_pred), int::in, float::in, bool::in) =
+            (version_hash_table(K, V)::out) is det.
+
+new_2(HashPred, N, MaxOccupancy, NeedSafety) = HT :-
     (      if N =< 0 then
             throw(software_error("version_hash_table.new_hash_table: N =< 0"))
       else if N >= int.bits_per_int then
@@ -190,10 +218,16 @@ new(HashPred, N, MaxOccupancy) = HT :-
             throw(software_error(
                 "version_hash_table.new: MaxOccupancy =< 0.0"))
       else
-            NumBuckets   = 1 << N,
+            NumBuckets = 1 << N,
             MaxOccupants = ceiling_to_int(float(NumBuckets) * MaxOccupancy),
-            Buckets      = init(NumBuckets, []),
-            HT           = ht(0, MaxOccupants, HashPred, Buckets)
+            (
+                NeedSafety = yes,
+                Buckets = version_array.new(NumBuckets, [])
+            ;
+                NeedSafety = no,
+                Buckets = version_array.unsafe_new(NumBuckets, [])
+            ),
+            HT = ht(0, MaxOccupants, HashPred, Buckets)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -201,6 +235,8 @@ new(HashPred, N, MaxOccupancy) = HT :-
     % These numbers are picked out of thin air.
     %
 new_default(HashPred) = new(HashPred, 7, 0.9).
+
+unsafe_new_default(HashPred) = unsafe_new(HashPred, 7, 0.9).
 
 %-----------------------------------------------------------------------------%
 

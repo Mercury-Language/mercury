@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007, 2009 The University of Melbourne.
+% Copyright (C) 1999-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -682,7 +682,7 @@ defn_body_contains_var(DefnBody, DataName) = ContainsVar :-
     ;
         DefnBody = mlds_class(ClassDefn),
         ClassDefn = mlds_class_defn(_Kind, _Imports, _Inherits, _Implements,
-            CtorDefns, FieldDefns),
+            _TypeParams, CtorDefns, FieldDefns),
         ( defns_contains_var(FieldDefns, DataName) = yes ->
             ContainsVar = yes
         ;

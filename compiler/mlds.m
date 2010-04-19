@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2009 The University of Melbourne.
+% Copyright (C) 1999-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -708,6 +708,9 @@
                 % Implements these interfaces.
                 mcd_implements  :: list(mlds_interface_id),
 
+                % Type parameters.
+                mcd_tparams     :: list(type_param),
+
                 % Has these constructors.
                 mcd_ctors       :: list(mlds_defn),
 
@@ -956,6 +959,8 @@
                 string,                        % Exported name
                 mlds_qualified_entity_name,    % MLDS name for exported entity
                 mlds_func_params,              % MLDS function parameters
+                list(tvar),                    % Universally quantified type
+                                               % variables.
                 mlds_context
             ).
 

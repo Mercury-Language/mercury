@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2009 The University of Melbourne.
+% Copyright (C) 2000-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -103,11 +103,11 @@ optimize_in_defn(ModuleName, Globals, Defn0, Defn) :-
     ;
         DefnBody0 = mlds_class(ClassDefn0),
         ClassDefn0 = mlds_class_defn(Kind, Imports, BaseClasses, Implements,
-            CtorDefns0, MemberDefns0),
+            TypeParams, CtorDefns0, MemberDefns0),
         optimize_in_defns(Globals, ModuleName, MemberDefns0, MemberDefns),
         optimize_in_defns(Globals, ModuleName, CtorDefns0, CtorDefns),
         ClassDefn = mlds_class_defn(Kind, Imports, BaseClasses, Implements,
-            CtorDefns, MemberDefns),
+            TypeParams, CtorDefns, MemberDefns),
         DefnBody = mlds_class(ClassDefn),
         Defn = mlds_defn(Name, Context, Flags, DefnBody)
     ).

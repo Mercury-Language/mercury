@@ -7313,6 +7313,7 @@ The set of aspects and their alternatives are:
 @cindex .memprof (grade modifier)
 @cindex .profdeep (grade modifier)
 @cindex .tr (grade modifier)
+@cindex .trseg (grade modifier)
 @cindex .gc (grade modifier)
 @cindex .mps (grade modifier)
 @cindex .agc (grade modifier)
@@ -7327,6 +7328,7 @@ The set of aspects and their alternatives are:
 @cindex memprof (grade modifier)
 @cindex profdeep (grade modifier)
 @cindex tr (grade modifier)
+@cindex trseg (grade modifier)
 @cindex gc (grade modifier)
 @cindex agc (grade modifier)
 @cindex spf (grade modifier)
@@ -7353,7 +7355,7 @@ The set of aspects and their alternatives are:
 (the default is no profiling).
 
 @item Whether to enable the trail:
-@samp{tr} (the default is no trailing).
+@samp{tr} and @samp{trseg} (the default is no trailing).
 
 @item Whether to use single-precision representation of floating point values:
 @samp{spf} (the default is to use double-precision floats)
@@ -7409,7 +7411,9 @@ and grade modifier; they are followed by descriptions of those options.
 @findex --profiling
 @findex --memory-profiling
 @findex --deep-profiling
-@findex --trailing
+@findex --use-trail
+@findex --trail-segments
+@findex --no-trail-segments
 @findex --record-term-sizes-as-words
 @findex --record-term-sizes-as-cells
 @findex --single-prec-float
@@ -7482,7 +7486,10 @@ and grade modifier; they are followed by descriptions of those options.
 @c @code{--profile-calls}.
 @c
 @item @samp{.tr}
-@code{--use-trail}.
+@code{--use-trail --no-trail-segments}.
+
+@item @samp{.trseg}
+@code{--use-trail --trail-segments}.
 
 @item @samp{.tsw}
 @code{--record-term-sizes-as-words}.
@@ -7854,7 +7861,7 @@ This is the case for the IL, Java and Erlang back-ends, which always use
 the underlying implementation's garbage collector.
 
 @sp 1
-@item @code{--use-trail} (grades: any grade containing @samp{.tr})
+@item @code{--use-trail} (grades: any grade containing @samp{.tr} or @samp{.trseg})
 @findex --use-trail
 @cindex Trailing
 @cindex Constraint solving
@@ -7863,6 +7870,17 @@ the underlying implementation's garbage collector.
 Enable use of a trail.
 This is necessary for interfacing with constraint solvers,
 or for backtrackable destructive update.
+This option is only supported by the C back-ends.
+
+@item @code{--trail-segments} (grades: any grade containing @samp{.trseg})
+@findex --trail-segments
+@cindex Trailing
+@cindex Constraint solving
+@cindex Backtrackable destructive update
+@cindex Destructive update, backtrackable
+Enable the use of a dynamically sized trail that is composed of small segments.
+This can help to avoid trail exhaustion at the cost of increased execution
+time.
 This option is only supported by the C back-ends.
 
 @sp 1
