@@ -903,13 +903,13 @@ decrement_limit(triangular(N), triangular(N - 1)).
     %
 :- pragma foreign_decl("C",
 "
-    extern MR_Bool pretty_printer_is_initialised;
-    extern MR_Word pretty_printer_default_formatter_map;
+    extern MR_Bool ML_pretty_printer_is_initialised;
+    extern MR_Word ML_pretty_printer_default_formatter_map;
 ").
 :- pragma foreign_code("C",
 "
-    MR_Bool pretty_printer_is_initialised = MR_FALSE;
-    MR_Word pretty_printer_default_formatter_map = NULL;
+    MR_Bool ML_pretty_printer_is_initialised = MR_FALSE;
+    MR_Word ML_pretty_printer_default_formatter_map = NULL;
 ").
 
 :- pragma foreign_decl("Java",
@@ -932,7 +932,7 @@ decrement_limit(triangular(N), triangular(N - 1)).
         pretty_printer_is_initialised(Okay::out, _IO0::di, _IO::uo),
         [promise_pure, will_not_call_mercury, thread_safe],
 "
-    Okay = pretty_printer_is_initialised;
+    Okay = ML_pretty_printer_is_initialised;
 ").
 
 :- pragma foreign_proc("Java",
@@ -968,7 +968,7 @@ pretty_printer_is_initialised() ->
         unsafe_get_default_formatter_map(FMap::out, _IO0::di, _IO::uo),
         [promise_pure, will_not_call_mercury, thread_safe],
 "
-    FMap = pretty_printer_default_formatter_map;
+    FMap = ML_pretty_printer_default_formatter_map;
 ").
 
 :- pragma foreign_proc("Java",
@@ -1009,8 +1009,8 @@ get_default_formatter_map(FMap, !IO) :-
         set_default_formatter_map(FMap::in, _IO0::di, _IO::uo),
         [promise_pure, will_not_call_mercury],
 "
-    pretty_printer_default_formatter_map = FMap;
-    pretty_printer_is_initialised = MR_TRUE;
+    ML_pretty_printer_default_formatter_map = FMap;
+    ML_pretty_printer_is_initialised = MR_TRUE;
 ").
 
 :- pragma foreign_proc("Java",
