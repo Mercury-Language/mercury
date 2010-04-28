@@ -912,15 +912,13 @@ decrement_limit(triangular(N), triangular(N - 1)).
     MR_Word ML_pretty_printer_default_formatter_map = NULL;
 ").
 
-:- pragma foreign_decl("Java",
+:- pragma foreign_code("Java",
 "
-    class PrettyPrinterDefaultFormatterMap {
-        static bool.Bool_0 isInitialised = bool.NO;
-        static tree234.Tree234_2<java.lang.String,
-            tree234.Tree234_2<java.lang.Integer,
-                /* closure */ java.lang.Object[]>> defaultFormatterMap =
-                    null;
-    }
+    static bool.Bool_0 isInitialised = bool.NO;
+    static tree234.Tree234_2<String,
+            tree234.Tree234_2<String,
+             tree234.Tree234_2<Integer, /* closure */ java.lang.Object[]>>>
+                defaultFormatterMap = null;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -937,9 +935,9 @@ decrement_limit(triangular(N), triangular(N - 1)).
 
 :- pragma foreign_proc("Java",
         pretty_printer_is_initialised(Okay::out, _IO0::di, _IO::uo),
-        [promise_pure, will_not_call_mercury, thread_safe],
+        [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
-    Okay = PrettyPrinterDefaultFormatterMap.isInitialised;
+    Okay = pretty_printer.isInitialised;
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -973,9 +971,9 @@ pretty_printer_is_initialised() ->
 
 :- pragma foreign_proc("Java",
         unsafe_get_default_formatter_map(FMap::out, _IO0::di, _IO::uo),
-        [promise_pure, will_not_call_mercury, thread_safe],
+        [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
-    FMap = PrettyPrinterDefaultFormatterMap.defaultFormatterMap;
+    FMap = pretty_printer.defaultFormatterMap;
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -1015,10 +1013,10 @@ get_default_formatter_map(FMap, !IO) :-
 
 :- pragma foreign_proc("Java",
         set_default_formatter_map(FMap::in, _IO0::di, _IO::uo),
-        [promise_pure, will_not_call_mercury],
+        [promise_pure, will_not_call_mercury, may_not_duplicate],
 "
-    PrettyPrinterDefaultFormatterMap.isInitialised = bool.YES;
-    PrettyPrinterDefaultFormatterMap.defaultFormatterMap = FMap;
+    pretty_printer.isInitialised = bool.YES;
+    pretty_printer.defaultFormatterMap = FMap;
 ").
 
 :- pragma foreign_proc("Erlang",
