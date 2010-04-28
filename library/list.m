@@ -236,9 +236,18 @@
     % list.drop(Len, List, End):
     %
     % `End' is the remainder of `List' after removing the first `Len' elements.
+    % Fails if `List' does not have at least `Len' elements.
     % See also: list.split_list.
     %
 :- pred list.drop(int::in, list(T)::in, list(T)::out) is semidet.
+
+    % list.det_drop(Len, List, End):
+    %
+    % `End' is the remainder of `List' after removing the first `Len' elements.
+    % Aborts if `List' does not have at least `Len' elements.
+    % See also: list.split_list.
+    %
+:- pred list.det_drop(int::in, list(T)::in, list(T)::out) is det.
 
     % list.insert(Elem, List0, List):
     %
@@ -1933,8 +1942,21 @@ list.take_upto(N, As, Bs) :-
 
 list.drop(N, As, Bs) :-
     ( N > 0 ->
-        As = [_ | Cs],
-        list.drop(N - 1, Cs, Bs)
+        As = [_ | TailAs],
+        list.drop(N - 1, TailAs, Bs)
+    ;
+        As = Bs
+    ).
+
+list.det_drop(N, As, Bs) :-
+    ( N > 0 ->
+        (
+            As = [_ | TailAs],
+            list.det_drop(N - 1, TailAs, Bs)
+        ;
+            As = [],
+            error("list.det_drop: not enough elements")
+        )
     ;
         As = Bs
     ).
