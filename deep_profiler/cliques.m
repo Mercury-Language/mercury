@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2006, 2008 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2006, 2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -299,7 +299,7 @@ write_cliques(Cliques, !IO) :-
 
 :- pred write_clique(list(int)::in, io::di, io::uo) is det.
 
-  write_clique(Nodes, !IO) :-
+write_clique(Nodes, !IO) :-
     io.write_list(Nodes, "\n", io.write_int, !IO).
 
 %----------------------------------------------------------------------------%

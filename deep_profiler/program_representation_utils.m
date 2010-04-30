@@ -79,10 +79,13 @@
     %
 :- func initial_inst_map(proc_defn_rep) = inst_map.
 
-    % inst_map_ground_vars(Vars, !InstMap, SeenDuplicateInstantiaton).
+    % inst_map_ground_vars(Vars, DepVars, !InstMap, SeenDuplicateInstantiaton).
     %
     % Make the variables in the given list ground in the new copy of the inst
     % map.
+    %
+    % DepVars is the set of variables that each of the Vars directly depends
+    % upon.
     %
     % SeenDuplicateInstantiation will be true iff at least one of these
     % variables is already ground.
@@ -744,19 +747,62 @@ empty_inst_map_delta = InstMap :-
     empty_inst_map_delta(InstMap).
 
 calc_inst_map_delta(Before, After, inst_map_delta(DeltaVars)) :-
-    AfterVars = map.sorted_keys(After ^ im_inst_map),
-    filter((pred(Var::in) is semidet :-
+    map.foldl((pred(Var::in, Inst::in, Set0::in, Set::out) is det :-
             (
                 map.search(Before ^ im_inst_map, Var, BeforeInst)
             ->
-                BeforeInst = ir_free_rep
+                (
+                    BeforeInst = ir_free_rep,
+                    ( 
+                        Inst = ir_free_rep,
+                        Set = Set0
+                    ;
+                        ( Inst = ir_ground_rep
+                        ; Inst = ir_other_rep
+                        ),
+                        % This variable has become more instantiated.
+                        set.insert(Set0, Var, Set)
+                    )
+                ;
+                    BeforeInst = ir_ground_rep,
+                    (
+                        Inst = ir_free_rep,
+                        error("calc_inst_map_delta: " ++ 
+                            "Variables cannot become less instantiated.")
+                    ;
+                        ( Inst = ir_ground_rep
+                        ; Inst = ir_other_rep
+                        )
+                    ),
+                    Set = Set0
+                ;
+                    BeforeInst = ir_other_rep,
+                    (
+                        Inst = ir_free_rep,
+                        error("calc_inst_map_delta: " ++ 
+                            "Variables cannot become less instantiated.")
+                    ;
+                        ( Inst = ir_ground_rep
+                        ; Inst = ir_other_rep
+                        )
+                    ),
+                    Set = Set0
+                )
             ;
                 % If we couldn't find the variable then it was free, It may
                 % have been in the head of the procedure.
-                true
+                (
+                    Inst = ir_free_rep,
+                    Set = Set0
+                ;
+                    ( Inst = ir_ground_rep
+                    ; Inst = ir_other_rep
+                    ),
+                    % This variable has become more instantiated.
+                    set.insert(Set0, Var, Set)
+                )
             )
-        ), AfterVars, DeltaVarsList),
-    DeltaVars = sorted_list_to_set(DeltaVarsList).
+        ), After ^ im_inst_map, set.init, DeltaVars).
 
 %----------------------------------------------------------------------------%
 

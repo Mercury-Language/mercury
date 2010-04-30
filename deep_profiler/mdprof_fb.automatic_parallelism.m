@@ -22,11 +22,13 @@
 :- import_module message.
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
+:- import_module mdbcomp.program_representation.
 
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
 :- import_module float.
+:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 
@@ -41,6 +43,13 @@
     --->    candidate_parallel_conjunctions_opts(
                 cpc_desired_parallelism     :: float,
                 cpc_sparking_cost           :: int,
+                    % The cost of calling MR_fork_new_child.
+
+                cpc_sparking_delay          :: int,
+                    % The time from the start of the call to MR_fork_new_child
+                    % until the spark has been stolen (and in some cases a
+                    % context has been created).
+
                 cpc_locking_cost            :: int,
                 cpc_clique_threshold        :: int,
                 cpc_call_site_threshold     :: int,
@@ -61,13 +70,18 @@
             ).
 
 %-----------------------------------------------------------------------------%
+
+:- pred create_candidate_parallel_conj_report(
+    pair(string_proc_label, candidate_par_conjunction(pard_goal))::in, 
+    cord(string)::out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module coverage.
 :- import_module create_report.
-:- import_module mdbcomp.program_representation.
 :- import_module measurement_units.
 :- import_module measurements.
 :- import_module program_representation_utils.
@@ -76,12 +90,12 @@
 
 :- import_module array.
 :- import_module assoc_list.
+:- import_module float.
 :- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
-:- import_module pair.
 :- import_module pqueue.
 :- import_module require.
 :- import_module set.
@@ -101,8 +115,8 @@
 
 candidate_parallel_conjunctions(Opts, Deep, Messages, !Feedback) :-
     Opts = candidate_parallel_conjunctions_opts(DesiredParallelism,
-        SparkingCost, LockingCost, _CliqueThreshold, _CallSiteThreshold, 
-        _ParalleliseDepConjs),
+        SparkingCost, SparkingDelay, LockingCost, _CliqueThreshold,
+        _CallSiteThreshold, _ParalleliseDepConjs),
 
     % Find opertunities for parallelism by walking the clique tree.  Don't
     % Descened into cliques cheaper than the threshold.
@@ -123,7 +137,7 @@ candidate_parallel_conjunctions(Opts, Deep, Messages, !Feedback) :-
         ConjunctionsAssocList0, ConjunctionsAssocList),
     CandidateParallelConjunctions =
         feedback_data_candidate_parallel_conjunctions(DesiredParallelism,
-        SparkingCost, LockingCost, ConjunctionsAssocList),
+        SparkingCost, SparkingDelay, LockingCost, ConjunctionsAssocList),
     put_feedback_data(CandidateParallelConjunctions, !Feedback).
 
 :- pred pard_goal_detail_to_pard_goal(pard_goal_detail::in, pard_goal::out) 
@@ -131,11 +145,11 @@ candidate_parallel_conjunctions(Opts, Deep, Messages, !Feedback) :-
 
 pard_goal_detail_to_pard_goal(pard_goal_detail(PGT, _, _, _), PG) :-
     (
-        PGT = pgt_call(Callee, Vars, CostPercall, _, _),
-        PG = pg_call(Callee, Vars, CostPercall)
+        PGT = pgt_call(Callee, VarNames, _Vars, CostPercall, _, _),
+        PG = pg_call(Callee, VarNames, CostPercall)
     ;
-        PGT = pgt_cheap_call(Callee, Vars, _, _),
-        PG = pg_cheap_call(Callee, Vars)
+        PGT = pgt_cheap_call(Callee, VarNames, _, _, _),
+        PG = pg_cheap_call(Callee, VarNames)
     ;
         PGT = pgt_other_atomic_goal,
         PG = pg_other_atomic_goal
@@ -183,9 +197,12 @@ pard_goal_detail_to_pard_goal(pard_goal_detail(PGT, _, _, _), PG) :-
     --->    pgt_call(
                 pgtc_callee             :: callee_rep,
                     
-                pgtc_vars               :: list(maybe(string)),
+                pgtc_var_names          :: list(maybe(string)),
                     % The names of variables (if user defined) given as
                     % arguments to this call.
+
+                pgtc_vars               :: list(var_rep),
+                    % The actual variables given as arguments to this call.
 
                 pgtc_cost_percall       :: float,
                     % The per-call cost of this call in call sequence counts.
@@ -198,7 +215,8 @@ pard_goal_detail_to_pard_goal(pard_goal_detail(PGT, _, _, _), PG) :-
             )
     ;       pgt_cheap_call(
                 pgtcc_callee            :: callee_rep,
-                pgtcc_vars              :: list(maybe(string)),
+                pgtcc_var_names         :: list(maybe(string)),
+                pgtcc_vars              :: list(var_rep),
                 pgtcc_args              :: list(var_mode_and_use),
                 pgtcc_cost              :: cs_cost_csq 
             )
@@ -206,11 +224,11 @@ pard_goal_detail_to_pard_goal(pard_goal_detail(PGT, _, _, _), PG) :-
     ;       pgt_non_atomic_goal.
 
 :- inst pgt_call 
-    --->    pgt_call(ground, ground, ground, ground, ground).
+    --->    pgt_call(ground, ground, ground, ground, ground, ground).
 
 :- inst pgt_atomic_goal
-    --->    pgt_call(ground, ground, ground, ground, ground)
-    ;       pgt_cheap_call(ground, ground, ground, ground)
+    --->    pgt_call(ground, ground, ground, ground, ground, ground)
+    ;       pgt_cheap_call(ground, ground, ground, ground, ground)
     ;       pgt_other_atomic_goal.
     
     % A variable, it's mode and it's usage in the callee.  The mode information
@@ -365,11 +383,15 @@ candidate_parallel_conjunctions_clique_proc(Opts, Deep,
             build_recursive_call_site_cost_map(Deep, CliqueProc, CliquePtr,
                 ParentCostInfo, RecursiveCallSiteCostMap, CSCMMessages),
             !:Messages = !.Messages ++ CSCMMessages,
-            trace [compile_time(flag("debug_cpc_search")), io(!IO)]
-              io.format(
-                "D: In clique %s recursive call site cost map is: %s\n",
-                [s(string(CliquePtr)), s(string(RecursiveCallSiteCostMap))],
-                !IO)
+            trace [compile_time(flag("debug_cpc_search")), io(!IO)] (
+                format_recursive_call_site_cost_map(RecursiveCallSiteCostMap,
+                    PrettyCostMapCord),
+                PrettyCostMap = append_list(cord.list(PrettyCostMapCord)),
+                io.format(
+                    "D: In clique %s recursive call site cost map is:\n%s\n",
+                    [s(string(CliquePtr)), s(PrettyCostMap)],
+                    !IO)
+            )
         ;
             CliqueIsRecursive = clique_is_not_recursive,
             RecursiveCallSiteCostMap = map.init
@@ -531,6 +553,7 @@ candidate_parallel_conjunctions_callee(Opts, Deep, ProcsAnalysed0,
         )
     ;
         CSCost = build_cs_cost_from_perf(CliquePerf),
+        clique_ptr(CliqueNum) = CliquePtr,
         ( 
             % Use the total cost the call to this procedure to decide if we
             % should stop recursing the call graph at this point.  If the
@@ -538,26 +561,36 @@ candidate_parallel_conjunctions_callee(Opts, Deep, ProcsAnalysed0,
             % absolute way then do not recurse further.  This test is performed
             % here rather than in the callees of this predicate to avoid
             % duplication of code.
-            %
+            not cs_cost_get_total(CSCost) > float(Opts ^ cpc_clique_threshold)
+        ->
+            Candidates = multi_map.init, 
+            Messages = cord.empty,
+            trace [compile_time(flag("debug_cpc_search")), io(!IO)] (
+                CSPercallCost = cs_cost_get_percall(CSCost),
+                CSCalls = cs_cost_get_calls(CSCost),
+                io.format("D: Not entering clique: %d, " ++ 
+                    "it is below the clique threashold\n  " ++
+                    "It has per-call cost %f and is called %f times\n\n",
+                    [i(CliqueNum), f(CSPercallCost), f(CSCalls)], !IO)
+            )
+        ;
             % Also check check if the desired amount of parallelism has been
             % reached, if so do not recurse further to prevent creating too
             % much extra parallelism.
-            cs_cost_get_total(CSCost) > float(Opts ^ cpc_clique_threshold), 
-            not exceeded_desired_parallelism(Opts ^ cpc_desired_parallelism,
+            exceeded_desired_parallelism(Opts ^ cpc_desired_parallelism,
                 Parallelism)
         ->
-            candidate_parallel_conjunctions_clique(Opts, Deep, CSCost,
-                Parallelism, CliquePtr, Candidates, Messages)
-        ;
             Candidates = multi_map.init, 
             Messages = cord.empty,
-            trace [compile_time(flag("debug_cpc_search")), io(!IO)]
-                io.format(
-                    "D: Not entering clique: %s with cost %s.  " ++
-                    "There are %s parallel resources used\n",
-                    [s(string(CliquePtr)), s(string(CSCost)),
-                     s(string(Parallelism))],
-                    !IO)
+            trace [compile_time(flag("debug_cpc_search")), io(!IO)] (
+                io.format("D: Not entering clique: %d, " ++
+                    "no parallel resources left\n  " ++
+                    "There are already %s parallel resources used\n\n",
+                    [i(CliqueNum), s(string(Parallelism))], !IO)
+            )
+        ;
+            candidate_parallel_conjunctions_clique(Opts, Deep, CSCost,
+                Parallelism, CliquePtr, Candidates, Messages)
         )
     ).
 
@@ -627,6 +660,23 @@ build_recursive_call_site_cost_map(Deep, CliqueProc, CliquePtr,
             RecursiveCS, map.init, RecursiveCallSiteCostMap),
         Messages = !.Messages
     ).
+
+:- pred format_recursive_call_site_cost_map(map(goal_path, cs_cost_csq)::in, 
+    cord(string)::out) is det.
+
+format_recursive_call_site_cost_map(Map, Result) :-
+    map.foldl(format_recursive_call_site_cost, Map, cord.empty, Result).
+
+:- pred format_recursive_call_site_cost(goal_path::in, cs_cost_csq::in, 
+    cord(string)::in, cord(string)::out) is det.
+
+format_recursive_call_site_cost(GoalPath, Cost, !Result) :-
+    !:Result = cord.snoc(!.Result ++ indent(1), String),
+    String = format("%s -> Percall cost: %f Calls: %f\n",
+        [s(GoalPathString), f(PerCallCost), f(Calls)]),
+    GoalPathString = goal_path_to_string(GoalPath),
+    PerCallCost = cs_cost_get_percall(Cost),
+    Calls = cs_cost_get_calls(Cost).
 
 :- pred add_call_site_to_map(clique_call_site_report::in, 
     map(goal_path, clique_call_site_report)::in,
@@ -1049,7 +1099,19 @@ candidate_parallel_conjunctions_proc(Opts, Deep, CliqueProc,
         list.foldl(add_call_site_report_to_map,
             CallSites, map.init, CallSitesMap),
         deep_get_progrep_det(Deep, ProgRep),
-        ( progrep_search_proc(ProgRep, ProcLabel, ProcRep) ->
+        ( ProcLabel = str_ordinary_proc_label(_, ModuleName, _, _, _, _)
+        ; ProcLabel = str_special_proc_label(_, ModuleName, _, _, _, _)
+        ),
+        (
+            ModuleName = "Mercury runtime"
+        ->
+            % Silently skip over any code from the runtime, we can't expect to
+            % find it's procedure representation.
+            Candidates = multi_map.init,
+            CandidatesByGoalPath = map.init
+        ;
+            progrep_search_proc(ProgRep, ProcLabel, ProcRep) 
+        ->
             ProcRep ^ pr_defn = ProcDefnRep,
             ProcDefnRep ^ pdr_goal = Goal0,
             ProcDefnRep ^ pdr_var_table = VarTable,
@@ -1057,7 +1119,7 @@ candidate_parallel_conjunctions_proc(Opts, Deep, CliqueProc,
                 CallSitesMap, RecursiveCallSiteCostMap, VarTable),
             goal_annotate_with_instmap(Goal0, Goal,
                 initial_inst_map(ProcDefnRep), _FinalInstMap,
-                SeenDuplicateInstantiation, _AllVars),
+                SeenDuplicateInstantiation, _ConsumedVars, _BoundVars),
             goal_get_conjunctions_worth_parallelising(Goal, empty_goal_path,
                 Info, ProcLabel, Candidates0, MessagesA),
             !:Messages = !.Messages ++ MessagesA,
@@ -1289,10 +1351,10 @@ partition_pard_goals(Location, [ PG | PGs ], !Partition, !PartitionNum,
     PGType = PG ^ pgd_pg_type,
     (
         (
-            PGType = pgt_call(_, _, _, _, _),
+            PGType = pgt_call(_, _, _, _, _, _),
             !:NumCostlyCalls = !.NumCostlyCalls + 1
         ;
-            PGType = pgt_cheap_call(_, _, _, _)
+            PGType = pgt_cheap_call(_, _, _, _, _)
         ;
             PGType = pgt_other_atomic_goal
         ),
@@ -1339,60 +1401,85 @@ pardgoals_build_candidate_conjunction(Info, DependencyMaps, Location, GoalPath,
         MaybeFirstCall = yes(FirstCall),
         FirstCallType = FirstCall ^ pgd_pg_type,
         (
-            FirstCallType = pgt_call(_, _, _, _, FirstCallCallSite)
+            FirstCallType = pgt_call(_, _, _, _, _, FirstCallCallSite)
         ;
-            ( FirstCallType = pgt_cheap_call(_, _, _, _)
+            ( FirstCallType = pgt_cheap_call(_, _, _, _, _)
             ; FirstCallType = pgt_other_atomic_goal
             ; FirstCallType = pgt_non_atomic_goal
             ),
-            location_to_string(Location, LocationString),
-            error(format(
-                "%sFirst call in conjunction is not a call in %s partition %d",
-                [s(this_file), s(LocationString), i(PartNum)]))
+            location_to_string(1, Location, LocationString),
+            Error = singleton(this_file) ++ singleton("\n") ++
+                LocationString ++
+                nl_indent(1) ++ singleton(format("partition %d", [i(PartNum)]))
+                ++ nl_indent(1) ++ 
+                    singleton("First call in conjunction is not a call\n"),
+            error(append_list(cord.list(Error)))
         )
     ;
         MaybeFirstCall = no,
-        location_to_string(Location, LocationString),
-        error(format(
-            "%sCouldn't find first call in conjunction in %s partition %d",
-            [s(this_file), s(LocationString), i(PartNum)]))
-
+        location_to_string(1, Location, LocationString),
+        Error = singleton(this_file) ++ singleton("\n") ++
+            LocationString ++
+            nl_indent(1) ++ singleton(format("partition %d", [i(PartNum)])) ++
+            nl_indent(1) ++ singleton("Couldn't find first call\n"),
+        error(append_list(cord.list(Error)))
     ),
     build_first_seq_conjunction(DependencyMaps, 
         FirstCall ^ pgd_conj_num, length(GoalsBefore0),
         length(GoalsDuringAfter), GoalsBefore0,
-        cord.singleton(FirstCall), FirstSeqConjunction0, GoalsBefore),
+        cord.singleton(FirstCall), FirstSeqConjunction0, _GoalsBefore),
     ( get_first(FirstSeqConjunction0, FirstConj) ->
         FirstConjNumOfFirstParConjunct = FirstConj ^ pgd_conj_num
     ;
         error(this_file ++ "Found empty first parallel conjunct")
     ),
     pardgoals_build_par_conjs(GoalsDuringAfter, DependencyMaps,
-        FirstConjNumOfFirstParConjunct, FirstSeqConjunction0, GoalsAfter,
-        cord.empty, ParConjsCord, 0.0, ParConjCost, 
-        conjuncts_are_independent, IsDependant),
+        FirstConjNumOfFirstParConjunct, FirstSeqConjunction0, _GoalsAfter,
+        cord.empty, ParConjsCord, conjuncts_are_independent, IsDependant),
     
-    % Calculate Speedup.
-    foldl_pred(pardgoal_calc_cost, Goals, 0.0, SequentialCost),
-    foldl_pred(pardgoal_calc_cost, GoalsBefore, 0.0, GoalsBeforeCost),
-    foldl_pred(pardgoal_calc_cost, GoalsAfter, 0.0, GoalsAfterCost),
-    ParallelCost = GoalsBeforeCost + GoalsAfterCost + ParConjCost,
-    NumCalls = FirstCallCallSite ^ ccsr_call_site_summary ^ perf_row_calls,
-    Speedup = (SequentialCost - ParallelCost) * float(NumCalls), 
-    ( 
-        length(ParConjsCord) > 1, 
-        Speedup > 0.0,
-        (
-            ParalleliseDependantConjs = no,
-            IsDependant = conjuncts_are_independent
-        ;
-            ParalleliseDependantConjs = yes
+    (
+        not ( 
+            IsDependant = conjuncts_are_dependant,
+            ParalleliseDependantConjs = no
         )
     ->
+        calculate_parallel_cost(Info, ParConjsCord, ParMetricsIncomp),
+        NumCalls = FirstCallCallSite ^ ccsr_call_site_summary ^
+            perf_row_calls,
+        ParExecMetrics = 
+            finalise_parallel_exec_metrics(ParMetricsIncomp, NumCalls),
+        Speedup = parallel_exec_metrics_get_speedup(ParExecMetrics),
         ParConjs = list(ParConjsCord),
-        MaybeCandidate = yes(candidate_par_conjunction(
-            goal_path_to_string(GoalPath), PartNum, IsDependant, ParConjs,
-            Speedup))
+        Candidate = candidate_par_conjunction(
+            goal_path_to_string(GoalPath), PartNum, IsDependant,
+            ParConjs, ParExecMetrics),
+        ( Speedup > 1.0 ->
+            MaybeCandidate = yes(Candidate)
+        ;
+            MaybeCandidate = no,
+            trace [compile_time(flag("debug_parallel_conjunction_speedup")), 
+                    io(!IO)] 
+            (
+                (
+                    ( Location = proc(ProcLabel)
+                    ; Location = goal(ProcLabel, _)
+                    )
+                ;
+                    Location = clique(_),
+                    error("Location is a clique when it should be a proc " ++
+                        "or goal")
+                ),
+
+                convert_candidate_par_conjunction(pard_goal_detail_to_pard_goal,
+                    Candidate, FBCandidate),
+                create_candidate_parallel_conj_report(ProcLabel - FBCandidate, 
+                    Report),
+                io.write_string("Not parallelising conjunction, " ++ 
+                    "insufficient speedup:", !IO),
+                io.write_string(append_list(cord.list(Report)), !IO),
+                io.nl(!IO)
+            )
+        )
     ;
         MaybeCandidate = no
     ).
@@ -1437,24 +1524,21 @@ build_first_seq_conjunction(DependencyMaps, CallConjNum, NumGoalsBefore,
     cord(pard_goal_detail)::in, cord(pard_goal_detail)::out,
     cord(seq_conj(pard_goal_detail))::in,
     cord(seq_conj(pard_goal_detail))::out,
-    float::in, float::out, 
     conjuncts_are_dependant::in, conjuncts_are_dependant::out) is det.
 
 pardgoals_build_par_conjs(Goals0, DependencyMaps,
         FirstConjNumOfFirstParConjunct, CurSeqConjunction0, GoalsAfter,
-        !ParConjs, !Cost, !ConjsAreDependant) :-
+        !ParConjs, !ConjsAreDependant) :-
     % Find the next costly call.
     find_costly_call(Goals0, cord.empty, GoalsBefore, MaybeNextCall, 
         Goals),
     (
         MaybeNextCall = yes(NextCall),
-        
-        % XXX: This seems to work, but it's terrible, we need to implement the
-        % algorithm discussed in Zoltan's lecture slides and use my work to
-        % compute when things may be produced and consumed in dependant
-        % parallel conjunctions. -pbone
-        % XXX: At the very least we need to compute !Cost to reduce false
-        % positives.
+       
+        % XXX: We put all the goals between two paralleliseable goals in the
+        % parallel conjunct with the second goal.  This seems to work as often
+        % small unifications occurring before the next goal are used to prepare
+        % some arguments for it.
         CurSeqConjunction = CurSeqConjunction0,
         NewSeqConjunction = snoc(GoalsBefore, NextCall),
       
@@ -1478,7 +1562,7 @@ pardgoals_build_par_conjs(Goals0, DependencyMaps,
         !:ParConjs = snoc(!.ParConjs, SeqConjunction),
         pardgoals_build_par_conjs(Goals, DependencyMaps,
             FirstConjNumOfFirstParConjunct, NewSeqConjunction, GoalsAfter,
-            !ParConjs, !Cost, !ConjsAreDependant)
+            !ParConjs, !ConjsAreDependant)
     ;
         MaybeNextCall = no,
         ( cord.get_first(CurSeqConjunction0, FirstGoalInLastConjunct) ->
@@ -1510,11 +1594,11 @@ find_costly_call(Goals, !GoalsBefore, MaybeCall, GoalsAfter) :-
     ( head_tail(Goals, Goal, GoalsTail) ->
         GoalType = Goal ^ pgd_pg_type,
         ( 
-            GoalType = pgt_call(_, _, _, _, _),
+            GoalType = pgt_call(_, _, _, _, _, _),
             MaybeCall = yes(Goal),
             GoalsAfter = GoalsTail
         ;
-            ( GoalType = pgt_cheap_call(_, _, _, _)
+            ( GoalType = pgt_cheap_call(_, _, _, _, _)
             ; GoalType = pgt_other_atomic_goal
             ),
             !:GoalsBefore = snoc(!.GoalsBefore, Goal),
@@ -1564,6 +1648,199 @@ build_last_seq_conjunction(Goals0, DependencyMaps, GoalsInOtherParConjuncts,
         GoalsAfter = cord.empty
     ).
 
+    % calculate_dependant_parallel_cost(Conjs, ParExecMetrics).
+    %
+    % Analyse the parallel conjuncts and determine their likely performance.
+    %
+    % This is the new parallel execution overlap algorithm, it is general and
+    % therefore we also use is for independent conjunctions.
+    %
+:- pred calculate_parallel_cost(implicit_parallelism_info::in,
+    cord(seq_conj(pard_goal_detail))::in,
+    parallel_exec_metrics_incomplete::out) is det.
+
+calculate_parallel_cost(Info, Conjs, ParallelExecMetrics) :-
+    % We parepare the conjunctions before calculating the parallelisation cost.
+    % In doing this we create a left-associative data structure that makes the
+    % left-associative walk in the next step easier.  The data structure also
+    % contains extra information preventing quadratic code in the actual
+    % calculation.
+    calculate_parallel_cost_2(Info, Conjs, is_outermost_conjunct,
+        ParallelExecMetrics, _ParallelExecOverlap, _ParallelExec,
+        _NumConjuncts).
+
+    % This datastructure represents the execution of dependant conjuncts, it
+    % tracks which variabes are produced and consumed.
+    %
+    % TODO: Implement a pretty printer for this data.
+    %
+:- type parallel_execution_overlap
+    --->    peo_empty_conjunct
+    ;       peo_conjunction(
+                poec_left_conjunct      :: parallel_execution_overlap,
+                poec_right_conjunct     :: dependant_conjunct_execution,
+                poec_dependant_vars     :: set(var_rep)
+                    % The variables produced by the left conjunct and consumed
+                    % by the right conjunct.
+            ).
+
+:- type dependant_conjunct_execution
+    --->    dependant_conjunct_execution(
+                dce_execution           :: assoc_list(float, float),
+                    % Pairs of start and stop times of the execution.  Assume
+                    % that the list is not sorted.
+
+                dce_productions         :: map(var_rep, float),
+                    % The variable productions.  This may be a superset of the
+                    % dependant variables.
+
+                dce_consumptions        :: map(var_rep, float)
+                    % The variable consumptions.  This will contain only
+                    % references for those variables that will become futures.
+            ).
+
+:- type is_outermost_conjunct
+    --->    is_outermost_conjunct
+    ;       is_not_outermost_conjunct.
+
+    % calculate_parallel_cost(Info, Conjunctions, IsOutermostConjunct,
+    %   ParallelExecMetrics, ParallelExecOverlap, ProductionsMap, NumConjuncts).
+    %
+    % + CallerVars is the set of vars for which our caller wants us to build a
+    %   productions map for.
+    %
+    % + ParallelExecOpverlap: A representation of how the parallel conjuncts'
+    %   executions overlap.
+    %
+    % + ProductionsMap: A productions map that covers the production of
+    %   CallerVars.
+    %
+:- pred calculate_parallel_cost_2(implicit_parallelism_info::in, 
+    cord(seq_conj(pard_goal_detail))::in, is_outermost_conjunct::in,
+    parallel_exec_metrics_incomplete::out, parallel_execution_overlap::out,
+    map(var_rep, float)::out, int::out) is det.
+
+calculate_parallel_cost_2(Info, Conjs0, IsOutermostConjunct,
+        ParallelExecMetrics, ParallelExecOverlap, ProductionsMap, 
+        NumConjuncts) :-
+    ( cord.split_last(Conjs0, Conjs, Conj) ->
+        some [!ProductionsMap] (
+            calculate_parallel_cost_2(Info, Conjs, is_not_outermost_conjunct,
+                ParallelExecMetrics0, ParallelExecOverlap0, !:ProductionsMap,
+                NumConjuncts0), 
+           
+            seq_conj(Goals) = Conj,
+            foldl(pardgoal_calc_cost, Goals, 0.0, CostB),
+            foldl(pardgoal_consumed_vars_accum, Goals, set.init,
+                RightConsumedVars),
+            ProducedVars = 
+                set.from_sorted_list(map.sorted_keys(!.ProductionsMap)),
+            Vars = set.intersect(ProducedVars, RightConsumedVars),
+
+            % This conjunct will actually start after it has been sparked by
+            % the prevous conjunct.  Which in turn may have been sparked by an
+            % earlier conjunct.
+            SparkDelay = Info ^ ipi_opts ^ cpc_sparking_delay, 
+            StartTime0 = (NumConjuncts0 * SparkDelay),
+
+            % If there are conjuncts after this conjunct we will have the
+            % additional cost of sparking them.
+            (
+                IsOutermostConjunct = is_not_outermost_conjunct,
+                SparkCost = Info ^ ipi_opts ^ cpc_sparking_cost,
+                StartTime = float(StartTime0 + SparkCost)
+            ;
+                IsOutermostConjunct = is_outermost_conjunct,
+                StartTime = float(StartTime0)
+            ),
+
+            % Get the list of variables consumed by this conjunct that will be
+            % turned into futures.
+            foldl3(get_consumptions_list, Goals, Vars, _, 0.0, _, 
+                [], ConsumptionsList0),
+            reverse(ConsumptionsList0, ConsumptionsList),
+
+            % Determine how the parallel conjuncts overlap.
+            foldl4(calculate_dependant_parallel_cost_2(Info, !.ProductionsMap), 
+                ConsumptionsList, 0.0, LastSeqConsumeTime, 
+                StartTime, LastParConsumeTime, [], RevExecution0, 
+                map.init, ConsumptionsMap),
+            RevExecution = [ (LastParConsumeTime - CostBPar) | RevExecution0 ],
+            reverse(RevExecution, Execution),
+
+            CostBPar = LastParConsumeTime + (CostB - LastSeqConsumeTime),
+            ParallelExecMetrics = init_parallel_exec_metrics_incomplete(
+                ParallelExecMetrics0, CostB, CostBPar),
+            
+            % Build the productions map for our parent.  This map contains all
+            % the variables produced by this code, not just that are used for
+            % dependant parallelisation.
+            foldl3(get_productions_map, Goals, StartTime, _, Execution, _,
+                !ProductionsMap),
+
+            DepConjExec = dependant_conjunct_execution(Execution,
+                !.ProductionsMap, ConsumptionsMap),
+            ParallelExecOverlap = peo_conjunction(ParallelExecOverlap0, 
+                DepConjExec, Vars),
+
+            ProductionsMap = !.ProductionsMap,
+            NumConjuncts = NumConjuncts0 + 1
+        )
+    ;
+        ParallelExecMetrics = init_empty_parallel_exec_metrics,
+        ParallelExecOverlap = peo_empty_conjunct,
+        ProductionsMap = map.init,
+        NumConjuncts = 0
+    ).
+
+
+    % The main loop of the parallel overlap analysis.
+    %
+:- pred calculate_dependant_parallel_cost_2(implicit_parallelism_info::in, 
+    map(var_rep, float)::in, pair(var_rep, float)::in, float::in, float::out,
+    float::in, float::out,
+    assoc_list(float, float)::in, assoc_list(float, float)::out, 
+    map(var_rep, float)::in, map(var_rep, float)::out) is det.
+
+calculate_dependant_parallel_cost_2(Info, ProductionsMap, Var - SeqConsTime,
+        !PrevSeqConsumeTime, !PrevParConsumeTime, !RevExecution,
+        !ConsumptionsMap) :-
+    FutureSyncTime = float(Info ^ ipi_opts ^ cpc_locking_cost),
+    map.lookup(ProductionsMap, Var, ProdTime),
+
+    % Consider (P & Q):
+    %
+    % Q cannot consume the variable until P produces it.  Also Q cannot consume
+    % the variable until it is ready for it.  These are the two parameters to
+    % max/2.
+    %
+    % The second parameter can be explained further, Q may have waited on a
+    % future previously, if so !.PrevParConsumeTime is when it finished
+    % waiting, and SeqConsTime - !.PrevSeqConsumeTime is how long Q will take
+    % between the two waits.
+    %
+    ParConsTimeBlocked = ProdTime + FutureSyncTime,
+    ParConsTimeNotBlocked = !.PrevParConsumeTime + 
+        (SeqConsTime - !.PrevSeqConsumeTime),
+    ParConsTime = max(ParConsTimeBlocked, ParConsTimeNotBlocked),
+        
+    ( 
+        % True if Q had to suspend waiting for P,  Not that we don't include
+        % FutureSyncTime here.  This is true if Q has to block at all even if
+        % it can be made runable before the context switch is complete.
+        ProdTime > ParConsTimeNotBlocked 
+    ->
+        !:RevExecution = 
+            [ (!.PrevParConsumeTime - ParConsTimeNotBlocked) | !.RevExecution ] 
+    ;
+        true
+    ),
+
+    !:PrevSeqConsumeTime = SeqConsTime,
+    !:PrevParConsumeTime = ParConsTime,
+
+    svmap.det_insert(Var, ParConsTime, !ConsumptionsMap).
+
 :- pred pg_get_conj_num(pard_goal_detail::in, int::out) is det.
 
 pg_get_conj_num(PG, PG ^ pgd_conj_num).
@@ -1574,10 +1851,10 @@ pg_get_conj_num(PG, PG ^ pgd_conj_num).
 pardgoal_calc_cost(Goal, !Cost) :-
     GoalType = Goal ^ pgd_pg_type,
     (
-        GoalType = pgt_call(_, _, CostPercall, _, _),
+        GoalType = pgt_call(_, _, _, CostPercall, _, _),
         !:Cost = !.Cost + CostPercall
     ; 
-        GoalType = pgt_cheap_call(_, _, _, Cost),
+        GoalType = pgt_cheap_call(_, _, _, _, Cost),
         ( cs_cost_get_calls(Cost) > 0.0 ->
             !:Cost = !.Cost + cs_cost_get_percall(Cost)
         ;
@@ -1585,7 +1862,13 @@ pardgoal_calc_cost(Goal, !Cost) :-
             true
         )
     ;
-        GoalType = pgt_other_atomic_goal
+        GoalType = pgt_other_atomic_goal,
+        % Atomic goals are usually trivial but for the purposes of calculating
+        % the overlap of dependant conjunctions we'd like variable
+        % production/consumption information to be in order even among atomic
+        % goals.  Therefore atomic goals have a cost of 1.0.  This must be
+        % included here so we can compare costs properly.
+        !:Cost = !.Cost + 1.0
     ;
         GoalType = pgt_non_atomic_goal,
         error(this_file ++ "unexpected non atomic goal")
@@ -1645,8 +1928,8 @@ build_dependency_map([PG | PGs], ConjNum, !VarDepMap, !Map, !RevMap) :-
     % dependencies.  NOTE: We only consider variables that are read
     % and not those that are set.  This is safe because we only bother
     % analysing single assignment code.
-    AllVars = InstMapInfo ^ im_all_vars,
-    set.difference(AllVars, InstVars, RefedVars), 
+    RefedVars = InstMapInfo ^ im_consumed_vars,
+    InstVars = InstMapInfo ^ im_bound_vars,
     list.map((pred(RefedVar::in, DepConjsI::out) is det :-
         map.search(!.VarDepMap, RefedVar, DepConjsPrime) -> 
             DepConjsI = DepConjsPrime
@@ -1666,9 +1949,6 @@ build_dependency_map([PG | PGs], ConjNum, !VarDepMap, !Map, !RevMap) :-
     % For each variable instantiated by this goal add it to the VarDepMap with
     % this goal as it's instantiator.  That is a maping from the variable to
     % the conj num.  The var to conjnum map is not transitive.
-    calc_inst_map_delta(InstMapInfo ^ im_before, InstMapInfo ^ im_after, 
-        InstMapDelta),
-    inst_map_delta_get_var_set(InstMapDelta, InstVars),
     fold(add_var_to_var_dep_map(ConjNum), InstVars, !VarDepMap),
 
     build_dependency_map(PGs, ConjNum + 1, !VarDepMap, !Map, !RevMap).
@@ -1684,6 +1964,227 @@ add_var_to_var_dep_map(ConjNum, Var, !VarDepMap) :-
         singleton_set(ConjNums, ConjNum),
         svmap.det_insert(Var, ConjNums, !VarDepMap)
     ).
+
+    % foldl(get_productions_map(Goals, 0,0, _, Vars, _, map.init, Map).
+    %
+    % Build a map of variable productions in Goals.
+    %
+:- pred get_productions_map(pard_goal_detail::in, float::in, float::out,
+    assoc_list(float, float)::in, assoc_list(float, float)::out,
+    map(var_rep, float)::in, map(var_rep, float)::out) is det.
+
+get_productions_map(Goal, !Time, !Executions, !Map) :-
+    InstMapInfo = Goal ^ pgd_inst_map_info,
+    BoundVars = InstMapInfo ^ im_bound_vars,
+    adjust_time_for_waits(!Time, !Executions),
+    fold(var_production_time_to_map(!.Time, Goal), BoundVars, !Map),
+    pardgoal_calc_cost(Goal, !Time).
+
+:- pred adjust_time_for_waits(float::in, float::out, 
+    assoc_list(float, float)::in, assoc_list(float, float)::out) is det.
+
+adjust_time_for_waits(!Time, !Executions) :-
+    (
+        !.Executions = [ Execution | NextExecution ],
+        ( Start - End ) = Execution,
+        ( !.Time < Start ->
+            error("adjust_time_for_waits: " ++
+                "Time occurs before the current execution")
+        ; !.Time < End ->
+            % The production is within the current execution, no adjustment is
+            % necessary.
+            true
+        ;
+            % The time is after this execution.
+            !:Executions = NextExecution,
+            adjust_time_for_waits_2(End, !Time, !Executions)
+        )
+    ;
+        !.Executions = [],
+        error("adjust_time_for_waits: Time occurs after all executions")
+    ).
+
+:- pred adjust_time_for_waits_2(float::in, float::in, float::out,
+    assoc_list(float, float)::in, assoc_list(float, float)::out) is det.
+
+adjust_time_for_waits_2(LastEnd, !Time, !Executions) :-
+    (
+        !.Executions = [ Execution | NextExecution ],
+        ( Start - End ) = Execution,
+
+        % Do the adjustment.
+        !:Time = !.Time + (Start - LastEnd),
+
+        ( !.Time < Start ->
+            error("adjust_time_for_waits: Adjustment didn't work, " ++
+                "time occurs before the current execution")
+        ; !.Time < End ->
+            % The adjustment worked.
+            true
+        ;
+            % Further adjustment is needed.
+            !:Executions = NextExecution,
+            adjust_time_for_waits_2(End, !Time, !Executions)
+        )
+    ;
+        !.Executions = [],
+        error("adjust_time_for_waits: Ran out of executions")
+    ).
+
+    % var_production_time_to_map(TimeBefore, Goal, Var, !Map).
+    %
+    % Find the latest production time of Var in Goal, and add TimeBefore + the
+    % production time to the map.  An exception is thrown if a duplicate map
+    % entry is found, our caller must prevent this.
+    %
+:- pred var_production_time_to_map(float::in, pard_goal_detail::in,
+    var_rep::in, map(var_rep, float)::in, map(var_rep, float)::out) is det.
+
+var_production_time_to_map(TimeBefore, Goal, Var, !Map) :-
+    var_first_use_time(find_production, TimeBefore, Goal, Var, Time),
+    svmap.det_insert(Var, Time, !Map).
+
+    % foldl(get_consumptions_list(Vars), Goals, 0.0, _, [], RevConsumptions),
+    %
+    % Compute the order and time of variable consumptions in goals.
+    %
+:- pred get_consumptions_list(pard_goal_detail::in,
+    set(var_rep)::in, set(var_rep)::out, float::in, float::out,
+    assoc_list(var_rep, float)::in, assoc_list(var_rep, float)::out) is det.
+
+get_consumptions_list(Goal, !Vars, !Time, !List) :-
+    InstMapInfo = Goal ^ pgd_inst_map_info,
+    AllConsumptionVars = InstMapInfo ^ im_consumed_vars,
+    ConsumptionVars = intersect(!.Vars, AllConsumptionVars),
+    map(var_consumptions(!.Time, Goal),
+        ConsumptionVars, ConsumptionTimesSet0),
+    % Since we re-sort the list we don't need a sorted one to start with, but
+    % the set module doesn't export a "to_list" predicate,  (Sorting has no
+    % cost since the set is a sorted list internally).
+    set.to_sorted_list(ConsumptionTimesSet0, ConsumptionTimes0),
+    sort((pred((_ - TimeA)::in, (_ - TimeB)::in, Result::out) is det :-
+            % Note that the Time arguments are swapped, this list must be
+            % produced in latest to earliest order.
+            compare(Result, TimeB, TimeA)
+        ), ConsumptionTimes0, ConsumptionTimes),
+    !:List = ConsumptionTimes ++ !.List,
+    !:Vars = difference(!.Vars, ConsumptionVars),
+    pardgoal_calc_cost(Goal, !Time).
+
+:- pred var_consumptions(float::in, pard_goal_detail::in, var_rep::in,
+    pair.pair(var_rep, float)::out) is det.
+
+var_consumptions(TimeBefore, Goal, Var, Var - Time) :-
+    var_first_use_time(find_consumption, TimeBefore, Goal, Var, Time).
+
+:- type find_production_or_consumption
+    --->    find_production
+    ;       find_consumption.
+
+    % var_first_use_time(FindProdOrCons, Time0, Goal, Var, Time).
+    %
+    % if FindProdOrCons = find_production
+    %   Time is Time0 + the time that Goal produces Var.
+    % elif FindProdOrCons = find_consumption
+    %   Time is Time0 + the time that Goal first consumes Var.
+    %
+:- pred var_first_use_time(find_production_or_consumption::in, 
+    float::in, pard_goal_detail::in, var_rep::in, float::out) is det.
+
+var_first_use_time(FindProdOrCons, TimeBefore, Goal, Var, Time) :-
+    GoalType = Goal ^ pgd_pg_type,
+    (
+        ( 
+            GoalType = pgt_call(_Callee, _, Vars, CostPercall, Args, _CallSite)
+        ; 
+            GoalType = pgt_cheap_call(_Callee, _, Vars, Args, Cost),
+            CostPercall = cs_cost_get_percall(Cost)
+        ),
+        ( nth_member_search(Vars, Var, NthArg) ->
+            index1_det(Args, NthArg, Arg),
+            Use = Arg ^ vmu_use,
+            UseType = Use ^ vui_use_type,
+            (
+                (
+                    UseType = var_use_production,
+                    (
+                        FindProdOrCons = find_production
+                    ;
+                        FindProdOrCons = find_consumption,
+                        error("var_first_use_time: " 
+                            ++ "Found production when looking for consumption")
+                    )
+                ; 
+                    UseType = var_use_consumption,
+                    (
+                        FindProdOrCons = find_production,
+                        error("var_first_use_time: " 
+                            ++ "Found consumption when looking for production")
+                    ;
+                        FindProdOrCons = find_consumption
+                    )
+                ),
+                CostUntilUse = Use ^ vui_cost_until_use,
+                (
+                    CostUntilUse = cost_since_proc_start(UseTime)
+                ;
+                    CostUntilUse = cost_before_proc_end(CostBeforeProcEnd),
+                    UseTime = CostPercall - CostBeforeProcEnd,
+                    ( UseTime < 0.0 ->
+                        error("var_first_use_time: "
+                            ++ "CostPercall - CostBeforeProcEnd < 0.0")
+                    ;
+                        true
+                    )
+                )
+            ;
+                UseType = var_use_other,
+                % The analysis didn't recognise the instantiation here, so use a
+                % conservative default for the production time.
+                % XXX: How often does this occur?
+                (
+                    FindProdOrCons = find_production,
+                    UseTime = CostPercall
+                ;
+                    FindProdOrCons = find_consumption,
+                    UseTime = 0.0
+                )
+            )
+        ;
+            (
+                FindProdOrCons = find_production,
+                error("var_first_use_time: "
+                    ++ "Couldn't find var in arguments of call")
+            ;
+                FindProdOrCons = find_consumption,
+                % This must be a higher order call where the variable being
+                % consued is the higher order value.
+                UseTime = 0.0
+            )
+        )
+    ;
+        GoalType = pgt_other_atomic_goal,
+        (
+            FindProdOrCons = find_production,
+            UseTime = 1.0
+        ;
+            FindProdOrCons = find_consumption,
+            UseTime = 0.0
+        )
+    ;
+        GoalType = pgt_non_atomic_goal,
+        error("Auto parallelisation over non-atomic goals NIY")
+    ),
+    Time = TimeBefore + UseTime.
+
+%----------------------------------------------------------------------------%
+
+:- pred pardgoal_consumed_vars_accum(pard_goal_detail::in,
+    set(var_rep)::in, set(var_rep)::out) is det.
+
+pardgoal_consumed_vars_accum(Goal, !Vars) :-
+    RefedVars = Goal ^ pgd_inst_map_info ^ im_consumed_vars,
+    set.union(RefedVars, !Vars).
 
     % Check if it is appropriate to parallelise this call.  That is it must be
     % model_det and have a cost above the call site cost threshold.
@@ -1767,16 +2268,17 @@ maybe_costly_call(Info, GoalPath, AtomicGoal, Detism,
                         VarUseInfo)
                 ), Args, VarModeAndUses)
         ),
-        map(maybe_search_var_name(Info ^ ipi_var_table), Args, Vars),
+        map(maybe_search_var_name(Info ^ ipi_var_table), Args, VarNames),
 
         ( can_parallelise_call(Info, Detism, CallSite) ->
             CostPercall = cs_cost_get_percall(get_call_site_cost(Info,
                 CallSite)),
             GoalType = 
-                pgt_call(Callee, Vars, CostPercall, VarModeAndUses, CallSite)
+                pgt_call(Callee, VarNames, Args, CostPercall, VarModeAndUses,
+                    CallSite)
         ;
             CallSiteCost = get_call_site_cost(Info, CallSite),
-            GoalType = pgt_cheap_call(Callee, Vars, VarModeAndUses,
+            GoalType = pgt_cheap_call(Callee, VarNames, Args, VarModeAndUses,
                 CallSiteCost)
         )
     ).
@@ -1822,10 +2324,10 @@ conj_to_pard_goal_list([Goal | Goals], GoalPath0, ConjNum, Info,
         maybe_costly_call(Info, GoalPath, AtomicGoal, Detism,
             InstMapInfo, PardGoalType),
         (
-            PardGoalType = pgt_call(_, _, _, _, _),
+            PardGoalType = pgt_call(_, _, _, _, _, _),
             !:NumCostlyCalls = !.NumCostlyCalls + 1
         ;
-            PardGoalType = pgt_cheap_call(_, _, _, _)
+            PardGoalType = pgt_cheap_call(_, _, _, _, _)
         ;
             PardGoalType = pgt_other_atomic_goal
         )
@@ -1841,39 +2343,6 @@ conj_to_pard_goal_list([Goal | Goals], GoalPath0, ConjNum, Info,
     % Determine if a variables depends on an output from an earlier call either
     % directly or indirectly.  If it does add it to the DepVars set.
     %
-:- pred are_conjuncts_dependant_var(set(var_rep)::in, inst_map::in,
-    var_mode_and_use::in, set(var_rep)::in, set(var_rep)::out) is det.
-
-are_conjuncts_dependant_var(CallAOutputs, InstMap, VarModeAndUse, !DepVars) :-
-    VarModeAndUse = var_mode_and_use(VarRep, VarModeRep, _),
-    ( VarModeRep = var_mode_rep(ir_ground_rep, ir_ground_rep) ->
-        inst_map_get_var_deps(InstMap, VarRep, VarDeps),
-        (
-            (
-                contains(CallAOutputs, VarRep)
-            ;
-                member(VarDep, VarDeps),
-                contains(CallAOutputs, VarDep)
-            )
-        ->
-            svset.insert(VarRep, !DepVars)
-        ;
-            true
-        )
-    ;
-        true
-    ).
-
-:- pred add_output_var_to_set(var_mode_and_use::in, 
-    set(var_rep)::in, set(var_rep)::out) is det.
-
-add_output_var_to_set(var_mode_and_use(VarRep, VarModeRep, _), !Set) :-
-    ( VarModeRep = var_mode_rep(ir_free_rep, ir_ground_rep) ->
-        svset.insert(VarRep, !Set)
-    ;
-        true
-    ).
-
     % Retrieve the average cost of a call site.
     %
 :- func get_call_site_cost(implicit_parallelism_info, clique_call_site_report) 
@@ -1898,42 +2367,17 @@ get_call_site_cost(Info, CallSite) = Cost :-
         Cost = build_cs_cost_csq(Calls, float(TotalCost))
     ).
 
-:- pred get_var_use_from_args(list(var_mode_and_use)::in, var_rep::in, 
-    var_use_info::out) is semidet.
-
-get_var_use_from_args([], _, _) :- false.
-get_var_use_from_args([Arg | Args], Var, VarUse) :-
-    ( Arg = var_mode_and_use(Var, _, VarUsePrime) ->
-        VarUse = VarUsePrime
-    ;
-        get_var_use_from_args(Args, Var, VarUse)
-    ).
-
-:- pred get_var_use_add_to_queue(list(var_mode_and_use)::in, var_rep::in,
-    pqueue(float, cost_until_var_use)::in,
-    pqueue(float, cost_until_var_use)::out) is det.
-
-get_var_use_add_to_queue(VarsModeAndUse, VarRep, !Queue) :-
-    ( get_var_use_from_args(VarsModeAndUse, VarRep, VarUse) ->
-        VarUse = var_use_info(CostUntilVarUse, _),
-        % Priority queues return the smallest items first,  And we want to find
-        % the most pessimistic variable production so use the cost before the
-        % procedure's end.
-        Key = cost_until_to_cost_before_end(CostUntilVarUse, 0.0),
-        pqueue.insert(!.Queue, Key, CostUntilVarUse, !:Queue)
-    ;
-        true
-    ).
-
 %----------------------------------------------------------------------------%
 %
 % Annotate a goal with instantiation information.
 %
 
-    % XXX: This is poor, we need to associate an inst map delta with each goal
-    % rather than a pair of inst maps, without this some information cannot be
-    % recovered when trying to build the inst map, for example duplicate
-    % instantiations can't be recovered properly.
+    % inst_map_info now contains information that it's not necessary to
+    % contain.  Namely the im_after field can be calculated from the im_before
+    % and im_bound_vars fields.  However since this information will probably
+    % be attached to a different goal there is not much extra cost in having a
+    % pointer to it from here.
+    %
 :- type inst_map_info
     --->    inst_map_info(
                 im_before           :: inst_map,
@@ -1942,9 +2386,11 @@ get_var_use_add_to_queue(VarsModeAndUse, VarRep, !Queue) :-
                 im_after            :: inst_map,
                     % The inst map after this goal was executed.
 
-                im_all_vars         :: set(var_rep)
-                    % Variables referenced by this goal, both consumed and
-                    % produced.
+                im_consumed_vars    :: set(var_rep),
+                    % Variables consumed (read but not bound) by this goal.
+
+                im_bound_vars       :: set(var_rep)
+                    % The variables produced by this goal.
             ).
 
     % Note: It may be useful to add other annotations such as goal path or cost 
@@ -1958,46 +2404,50 @@ get_var_use_add_to_queue(VarsModeAndUse, VarRep, !Queue) :-
     %
 :- pred goal_annotate_with_instmap(goal_rep::in, goal_rep(inst_map_info)::out, 
     inst_map::in, inst_map::out, seen_duplicate_instantiation::out, 
-    set(var_rep)::out) is det.
+    set(var_rep)::out, set(var_rep)::out) is det.
 
 goal_annotate_with_instmap(Goal0, Goal, !InstMap, SeenDuplicateInstantiation,
-        Vars) :-
+        ConsumedVars, BoundVars) :-
     Goal0 = goal_rep(GoalExpr0, Detism, _),
     InstMapBefore = !.InstMap,
     (
         GoalExpr0 = conj_rep(Conjs0),
         conj_annotate_with_instmap(Conjs0, Conjs, !InstMap, 
-            SeenDuplicateInstantiation, Vars),
+            SeenDuplicateInstantiation, ConsumedVars, BoundVars),
         GoalExpr = conj_rep(Conjs)
     ;
         GoalExpr0 = disj_rep(Disjs0),
         disj_annotate_with_instmap(Disjs0, Disjs, !InstMap,
-            SeenDuplicateInstantiation, Vars),
+            SeenDuplicateInstantiation, ConsumedVars, BoundVars),
         GoalExpr = disj_rep(Disjs)
     ;
         GoalExpr0 = switch_rep(Var, CanFail, Cases0),
         switch_annotate_with_instmap(Cases0, Cases, !InstMap,
-            SeenDuplicateInstantiation, Vars0),
-        set.insert(Vars0, Var, Vars),
+            SeenDuplicateInstantiation, ConsumedVars0, BoundVars),
+        set.insert(ConsumedVars0, Var, ConsumedVars),
         GoalExpr = switch_rep(Var, CanFail, Cases)
     ;
         GoalExpr0 = ite_rep(Cond0, Then0, Else0),
         ite_annotate_with_instmap(Cond0, Cond, Then0, Then, Else0, Else,
-            !InstMap, SeenDuplicateInstantiation, Vars),
+            !InstMap, SeenDuplicateInstantiation, ConsumedVars, BoundVars),
         GoalExpr = ite_rep(Cond, Then, Else)
     ;
+        % XXX: Not all scope goals can produce variables, in fact some are used
+        % to isolate variables that aren't named apart.  But other scope goals
+        % can bind variables.  We don't know which we're looking at here. 
         GoalExpr0 = scope_rep(Subgoal0, MaybeCut),
         goal_annotate_with_instmap(Subgoal0, Subgoal, !InstMap, 
-            SeenDuplicateInstantiation, Vars),
+            SeenDuplicateInstantiation, ConsumedVars, BoundVars),
         GoalExpr = scope_rep(Subgoal, MaybeCut)
     ;
         GoalExpr0 = negation_rep(Subgoal0),
         % A negated goal cannot affect instantiation.
         goal_annotate_with_instmap(Subgoal0, Subgoal, !.InstMap, 
-            _InstMap, SeenDuplicateInstantiation, Vars),
+            _InstMap, SeenDuplicateInstantiation, ConsumedVars, _),
+        BoundVars = set.init,
         GoalExpr = negation_rep(Subgoal)
     ;
-        GoalExpr0 = atomic_goal_rep(File, Line, BoundVars, AtomicGoal),
+        GoalExpr0 = atomic_goal_rep(File, Line, BoundVarsList, AtomicGoal),
         % The binding of a variable may depend on any number of other
         % variables, and recursively the variables that those depended-on
         % variables depend upon.  
@@ -2007,58 +2457,67 @@ goal_annotate_with_instmap(Goal0, Goal, !InstMap, SeenDuplicateInstantiation,
         % We may get away with this as our new system for determining
         % goal-dependance takes these into account.
         atomic_goal_get_vars(AtomicGoal, Vars),
-        BoundVarsSet = set.from_list(BoundVars),
-        set.difference(Vars, BoundVarsSet, RefedVars),
-        inst_map_ground_vars(BoundVars, RefedVars, !InstMap,
+        BoundVars = set.from_list(BoundVarsList),
+        set.difference(Vars, BoundVars, ConsumedVars),
+        inst_map_ground_vars(BoundVarsList, ConsumedVars, !InstMap,
             SeenDuplicateInstantiation),
-        GoalExpr = atomic_goal_rep(File, Line, BoundVars, AtomicGoal) 
+        GoalExpr = atomic_goal_rep(File, Line, BoundVarsList, AtomicGoal) 
     ),
     InstMapAfter = !.InstMap,
-    InstMapInfo = inst_map_info(InstMapBefore, InstMapAfter, Vars),
+    InstMapInfo = inst_map_info(InstMapBefore, InstMapAfter, ConsumedVars,
+        BoundVars),
     Goal = goal_rep(GoalExpr, Detism, InstMapInfo).
 
 :- pred conj_annotate_with_instmap(list(goal_rep)::in,
     list(goal_rep(inst_map_info))::out, inst_map::in, inst_map::out,
-    seen_duplicate_instantiation::out, set(var_rep)::out) is det.
+    seen_duplicate_instantiation::out, set(var_rep)::out, set(var_rep)::out)
+    is det.
 
 conj_annotate_with_instmap([], [], !InstMap,
-    have_not_seen_duplicate_instantiation, set.init).
+    have_not_seen_duplicate_instantiation, set.init, set.init).
 conj_annotate_with_instmap([Conj0 | Conjs0], [Conj | Conjs], !InstMap, 
-        SeenDuplicateInstantiation, Vars) :-
+        SeenDuplicateInstantiation, ConsumedVars, BoundVars) :-
     goal_annotate_with_instmap(Conj0, Conj, !InstMap,
-        SeenDuplicateInstantiationHead, VarsHead),
+        SeenDuplicateInstantiationHead, ConsumedVarsHead, BoundVarsHead),
     conj_annotate_with_instmap(Conjs0, Conjs, !InstMap,
-        SeenDuplicateInstantiationTail, VarsTail),
-    set.union(VarsTail, VarsHead, Vars),
+        SeenDuplicateInstantiationTail, ConsumedVarsTail, BoundVarsTail),
+    set.union(ConsumedVarsTail, ConsumedVarsHead, ConsumedVars),
+    set.union(BoundVarsTail, BoundVarsHead, BoundVars),
     SeenDuplicateInstantiation = merge_seen_duplicate_instantiation(
         SeenDuplicateInstantiationHead,
         SeenDuplicateInstantiationTail).
 
 :- pred disj_annotate_with_instmap(list(goal_rep)::in,
     list(goal_rep(inst_map_info))::out, inst_map::in, inst_map::out,
-    seen_duplicate_instantiation::out, set(var_rep)::out) is det.
+    seen_duplicate_instantiation::out, set(var_rep)::out, set(var_rep)::out)
+    is det.
 
 disj_annotate_with_instmap([], [], !InstMap,
-        have_not_seen_duplicate_instantiation, set.init).
+        have_not_seen_duplicate_instantiation, set.init, set.init).
 disj_annotate_with_instmap([Disj0 | Disjs0], [Disj | Disjs], InstMap0, InstMap,
-        SeenDuplicateInstantiation, Vars) :-
+        SeenDuplicateInstantiation, ConsumedVars, BoundVars) :-
     HeadDetism = Disj0 ^ goal_detism_rep,
     goal_annotate_with_instmap(Disj0, Disj, InstMap0, InstMapHead,
-        SeenDuplicateInstantiationHead, VarsHead),
+        SeenDuplicateInstantiationHead, ConsumedVarsHead, BoundVarsHead),
     disj_annotate_with_instmap(Disjs0, Disjs, InstMap0, InstMapTail,
-        SeenDuplicateInstantiationTail, VarsTail),
+        SeenDuplicateInstantiationTail, ConsumedVarsTail, BoundVarsTail),
     
-    set.union(VarsTail, VarsHead, Vars),
+    set.union(ConsumedVarsTail, ConsumedVarsHead, ConsumedVars),
 
     % merge_inst_map requires the detism of goals that produce both inst maps,
     % we can create fake values that satisfy merge_inst_map easily.
     % XXX: Consider inferring determinism as another simple analysis.
+    % A disjunction may only bind a variable if all disjuncts bind that
+    % variable.  We respect that here and handle the special case of this being
+    % the last disjunct in a disjunction.
     (
         Disjs = [],
-        TailDetism = failure_rep
+        TailDetism = failure_rep,
+        BoundVars = BoundVarsHead
     ;
         Disjs = [_ | _],
-        TailDetism = det_rep
+        TailDetism = det_rep,
+        set.intersect(BoundVarsTail, BoundVarsHead, BoundVars)
     ),
     InstMap = merge_inst_map(InstMapHead, HeadDetism, InstMapTail, TailDetism),
     SeenDuplicateInstantiation = merge_seen_duplicate_instantiation(
@@ -2067,28 +2526,32 @@ disj_annotate_with_instmap([Disj0 | Disjs0], [Disj | Disjs], InstMap0, InstMap,
 
 :- pred switch_annotate_with_instmap(list(case_rep)::in, 
     list(case_rep(inst_map_info))::out, inst_map::in, inst_map::out,
-    seen_duplicate_instantiation::out, set(var_rep)::out) is det.
+    seen_duplicate_instantiation::out, set(var_rep)::out, set(var_rep)::out) 
+    is det.
 
 switch_annotate_with_instmap([], [], !InstMap,
-        have_not_seen_duplicate_instantiation, set.init).
+        have_not_seen_duplicate_instantiation, set.init, set.init).
 switch_annotate_with_instmap([Case0 | Cases0], [Case | Cases], 
-        InstMap0, InstMap, SeenDuplicateInstantiation, Vars) :-
+        InstMap0, InstMap, SeenDuplicateInstantiation, 
+        ConsumedVars, BoundVars) :-
     Case0 = case_rep(ConsIdArity, ExtraConsIdAritys, Goal0),
     HeadDetism = Goal0 ^ goal_detism_rep,
     goal_annotate_with_instmap(Goal0, Goal, InstMap0, InstMapHead,
-        SeenDuplicateInstantiationHead, VarsHead),
+        SeenDuplicateInstantiationHead, ConsumedVarsHead, BoundVarsHead),
     Case = case_rep(ConsIdArity, ExtraConsIdAritys, Goal),
     switch_annotate_with_instmap(Cases0, Cases, InstMap0, InstMapTail,
-        SeenDuplicateInstantiationTail, VarsTail),
-    set.union(VarsTail, VarsHead, Vars),
+        SeenDuplicateInstantiationTail, ConsumedVarsTail, BoundVarsTail),
+    set.union(ConsumedVarsTail, ConsumedVarsHead, ConsumedVars),
     % merge_inst_map requires the detism of goals that produce both inst maps,
     % we can create fake values that satisfy merge_inst_map easily.
     (
         Cases = [],
-        TailDetism = failure_rep
+        TailDetism = failure_rep,
+        BoundVars = BoundVarsHead
     ;
         Cases = [_ | _],
-        TailDetism = det_rep
+        TailDetism = det_rep,
+        set.intersect(BoundVarsTail, BoundVarsHead, BoundVars)
     ),
     InstMap = merge_inst_map(InstMapHead, HeadDetism, InstMapTail, TailDetism),
     SeenDuplicateInstantiation = merge_seen_duplicate_instantiation(
@@ -2099,16 +2562,17 @@ switch_annotate_with_instmap([Case0 | Cases0], [Case | Cases],
     goal_rep::in, goal_rep(inst_map_info)::out,
     goal_rep::in, goal_rep(inst_map_info)::out,
     inst_map::in, inst_map::out, 
-    seen_duplicate_instantiation::out, set(var_rep)::out) is det.
+    seen_duplicate_instantiation::out, set(var_rep)::out, set(var_rep)::out) 
+    is det.
 
 ite_annotate_with_instmap(Cond0, Cond, Then0, Then, Else0, Else, InstMap0, InstMap,
-        SeenDuplicateInstantiation, Vars) :-
+        SeenDuplicateInstantiation, ConsumedVars, BoundVars) :-
     goal_annotate_with_instmap(Cond0, Cond, InstMap0, InstMapAfterCond,
-        SeenDuplicateInstantiationCond, VarsCond),
+        SeenDuplicateInstantiationCond, ConsumedVarsCond, _BoundVarsCond),
     goal_annotate_with_instmap(Then0, Then, InstMapAfterCond, InstMapAfterThen,
-        SeenDuplicateInstantiationThen, VarsThen),
+        SeenDuplicateInstantiationThen, ConsumedVarsThen, BoundVarsThen),
     goal_annotate_with_instmap(Else0, Else, InstMap0, InstMapAfterElse,
-        SeenDuplicateInstantiationElse, VarsElse),
+        SeenDuplicateInstantiationElse, ConsumedVarsElse, BoundVarsElse),
     (
         SeenDuplicateInstantiationCond = have_not_seen_duplicate_instantiation,
         SeenDuplicateInstantiationThen = have_not_seen_duplicate_instantiation,
@@ -2118,8 +2582,11 @@ ite_annotate_with_instmap(Cond0, Cond, Then0, Then, Else0, Else, InstMap0, InstM
     ;
         SeenDuplicateInstantiation = seen_duplicate_instantiation
     ),
-    set.union(VarsCond, VarsThen, VarsCondThen),
-    set.union(VarsCondThen, VarsElse, Vars),
+    set.union(ConsumedVarsCond, ConsumedVarsThen, ConsumedVarsCondThen),
+    set.union(ConsumedVarsCondThen, ConsumedVarsElse, ConsumedVars),
+    % Cond is only allowed to bind variables for then.  THe variables bound by
+    % the ITE are only those that both Then and Else bind.
+    set.intersect(BoundVarsThen, BoundVarsElse, BoundVars),
     ThenDetism = Then ^ goal_detism_rep,
     ElseDetism = Else ^ goal_detism_rep,
     InstMap = merge_inst_map(InstMapAfterThen, ThenDetism, 
@@ -2306,26 +2773,153 @@ transitive_map_insert(K, V, !Map) :-
         svmap.det_insert(K, Vs, !Map)
     ).
 
-    % split_on(Pred, List, SplitLists).
-    %
-    % Split a list on items for which Pred is true, the delimiting items are
-    % not returned in the result, empty sections are not removed.
-    %
-    % split_on(unify(1), [2, 3, 1, 2, 6, 1, 1, 3, 1], 
-    %   [[2, 3], [2, 6], [], 3, []])
-    %
-:- pred split_on(pred(T), list(T), list(list(T))).
-:- mode split_on(pred(in) is semidet, in, out(non_empty_list)) is det.
+%-----------------------------------------------------------------------------%
 
-split_on(_Pred, [], [[]]).
-split_on(Pred, [X | Xs], SplitLists) :-
-    split_on(Pred, Xs, SplitLists0),
-    ( Pred(X) ->
-        SplitLists = [ [] | SplitLists0 ]
+create_candidate_parallel_conj_report(Proc - CandidateParConjunction, Report) :-
+    print_proc_label_to_string(Proc, ProcString),
+    CandidateParConjunction = candidate_par_conjunction(GoalPath,
+        PartNum, IsDependant, Conjs, ParExecMetrics),
+    NumCalls = parallel_exec_metrics_get_num_calls(ParExecMetrics),
+    (
+        IsDependant = conjuncts_are_independent,
+        DependanceString = "no"
     ;
-        SplitLists0 = [SplitList | T], 
-        SplitLists = [ [ X | SplitList ] | T ]
+        IsDependant = conjuncts_are_dependant,
+        DependanceString = "yes"
+    ),
+    SeqTime = parallel_exec_metrics_get_seq_time(ParExecMetrics),
+    ParTime = parallel_exec_metrics_get_par_time(ParExecMetrics),
+    Speedup = parallel_exec_metrics_get_speedup(ParExecMetrics),
+    TimeSaving = parallel_exec_metrics_get_time_saving(ParExecMetrics),
+    FirstConjDeadTime =
+        parallel_exec_metrics_get_first_conj_dead_time(ParExecMetrics),
+    FutureDeadTime =
+        parallel_exec_metrics_get_future_dead_time(ParExecMetrics),
+    TotalDeadTime = parallel_exec_metrics_get_total_dead_time(ParExecMetrics),
+    format("\n      %s\n" ++
+           "      Path and Partition Num: %s, %d\n" ++
+           "      Dependant: %s\n" ++
+           "      NumCalls: %d\n" ++
+           "      SeqTime: %f\n" ++
+           "      ParTime: %f\n" ++
+           "      Speedup: %f\n" ++
+           "      Time saving: %f\n" ++
+           "      First conj dead time: %f\n" ++
+           "      Future dead time: %f\n" ++
+           "      Total dead time: %f", 
+        [s(ProcString), s(GoalPath), i(PartNum), s(DependanceString),
+            i(NumCalls), f(SeqTime), f(ParTime), f(Speedup), f(TimeSaving), 
+            f(FirstConjDeadTime), f(FutureDeadTime), f(TotalDeadTime)],
+        ReportHeaderStr),
+    ReportHeader = singleton(ReportHeaderStr),
+
+    format_parallel_conjunction(3, Conjs, ReportParConj), 
+
+    Report = snoc(ReportHeader ++ ReportParConj, "\n").
+
+:- pred format_parallel_conjunction(int::in, 
+    list(seq_conj(pard_goal))::in, cord(string)::out) is det.
+
+format_parallel_conjunction(Indent, Conjs, Report) :-
+    IndentStr = nl_indent(Indent),
+    Report0 = IndentStr ++ singleton("(\n"),
+    format_parallel_conjuncts(Indent, Conjs, Report0, Report). 
+
+:- pred format_parallel_conjuncts(int::in, list(seq_conj(pard_goal))::in,
+    cord(string)::in, cord(string)::out) is det.
+
+format_parallel_conjuncts(Indent, [], !Report) :-
+    IndentStr = indent(Indent),
+    !:Report = snoc(!.Report ++ IndentStr, ")").
+format_parallel_conjuncts(Indent, [ Conj | Conjs ], !Report) :-
+    format_sequential_conjunction(Indent + 1, Conj, ConjReport),
+    !:Report = !.Report ++ ConjReport,
+    (
+        Conjs = []
+    ;
+        Conjs = [_ | _],
+        !:Report = snoc(!.Report ++ indent(Indent), "&\n")
+    ),
+    format_parallel_conjuncts(Indent, Conjs, !Report).
+
+:- pred format_sequential_conjunction(int::in, seq_conj(pard_goal)::in,
+    cord(string)::out) is det.
+
+format_sequential_conjunction(Indent, seq_conj(Conjs), Report) :-
+    format_sequential_conjuncts(Indent, Conjs, empty, Report).
+
+:- pred format_sequential_conjuncts(int::in, list(pard_goal)::in,
+    cord(string)::in, cord(string)::out) is det.
+
+format_sequential_conjuncts(_Indent, [], !Report).
+format_sequential_conjuncts(Indent, [ Conj | Conjs ], !Report) :-
+    format_pard_goal(Indent, Conj, ConjReport),
+    !:Report = !.Report ++ ConjReport,
+    (
+        Conjs = [],
+        !:Report = snoc(!.Report, "\n")
+    ;
+        Conjs = [_ | _],
+        !:Report = snoc(!.Report, ",\n")
+    ),
+    format_sequential_conjuncts(Indent, Conjs, !Report).
+
+:- pred format_pard_goal(int::in, pard_goal::in, cord(string)::out) is det.
+
+format_pard_goal(Indent, Goal, Report) :-
+    (
+        (
+            Goal = pg_call(Callee, Vars, CostPercall),
+            Line1 = singleton(format("%% cost: %f\n", [f(CostPercall)]))
+        ;
+            Goal = pg_cheap_call(Callee, Vars),
+            Line1 = singleton("% Cheap call\n")
+        ),
+        format_callee(Callee, CalleeReport),
+        ColsUsed = indent_size(Indent) + length(CalleeReport) + 1,
+        format_vars(Indent + 1, ColsUsed, Vars, empty, VarsReport),
+        Line2 = indent(Indent) ++ singleton(CalleeReport) ++ singleton("(") 
+            ++ VarsReport ++ singleton(")"),
+        Report = indent(Indent) ++ Line1 ++ Line2
+    ;
+        Goal = pg_other_atomic_goal,
+        Report = indent(Indent) ++ singleton("other_atomic_goal")
     ).
+
+:- pred format_vars(int::in, int::in, list(maybe(string))::in, 
+    cord(string)::in, cord(string)::out) is det.
+
+format_vars(_, _, [], !Reports).
+format_vars(Indent, ColsUsed0, [Var | Vars], !Reports) :-
+    (
+        Var = no,
+        Report0 = "_"
+    ;
+        Var = yes(VarName),
+        Report0 = VarName
+    ),
+    (
+        Vars = [],
+        Report = Report0
+    ;
+        Vars = [_ | _],
+        Report = Report0 ++ ", "
+    ),
+    ColsUsed1 = ColsUsed0 + length(Report),
+    ( ColsUsed1 >= 80 ->
+        !:Reports = !.Reports ++ nl_indent(Indent),
+        ColsUsed = length(Report)
+    ;
+        ColsUsed = ColsUsed1
+    ),
+    !:Reports = snoc(!.Reports, Report),
+    format_vars(Indent, ColsUsed, Vars, !Reports).
+
+:- pred format_callee(callee_rep::in, string::out) is det.
+
+format_callee(unknown_callee, "unknwon_call").
+format_callee(named_callee(Module, Proc), 
+    format("%s.%s", [s(Module), s(Proc)])).
 
 %-----------------------------------------------------------------------------%
 :- end_module mdprof_fb.automatic_parallelism.

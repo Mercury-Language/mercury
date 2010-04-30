@@ -143,6 +143,10 @@ apply_new_implicit_parallelism_transformation(ModuleInfo0, MaybeModuleInfo) :-
                 pi_sparking_cost        :: int,
                     % The cost of creating a spark in call sequence counts.
 
+                pi_sparking_delay       :: int,
+                    % The time it takes for a spark to be created, stolen and
+                    % begin execution.
+
                 pi_locking_cost         :: int,
                     % The cost of maintaining a lock on a single dependant
                     % variable in call sequence counts.
@@ -175,14 +179,15 @@ apply_new_implicit_parallelism_transformation(ModuleInfo0, MaybeModuleInfo) :-
 
 get_implicit_parallelism_feedback(ModuleName, FeedbackInfo, ParallelismInfo) :-
     FeedbackData = 
-        feedback_data_candidate_parallel_conjunctions(_, _, _, _),
+        feedback_data_candidate_parallel_conjunctions(_, _, _, _, _),
     get_feedback_data(FeedbackInfo, FeedbackData),
     FeedbackData = feedback_data_candidate_parallel_conjunctions(
-        DesiredParallelism, SparkingCost, LockingCost, AssocList), 
+        DesiredParallelism, SparkingCost, SparkingDelay, LockingCost,
+        AssocList), 
     make_module_candidate_par_conjs_map(ModuleName, AssocList,
         CandidateParConjsMap),
     ParallelismInfo = parallelism_info(DesiredParallelism, SparkingCost,
-        LockingCost, CandidateParConjsMap).
+        SparkingDelay, LockingCost, CandidateParConjsMap).
 
 :- pred make_module_candidate_par_conjs_map(module_name::in,
     assoc_list(string_proc_label, candidate_par_conjunction)::in,

@@ -73,6 +73,10 @@
                 sparking_cost       :: int,
                     % The cost of creating a spark in call sequence counts.
 
+                sparking_delay      :: int,
+                    % The time taken between the creation of the spark and when
+                    % it starts being executed in call sequence counts.
+
                 locking_cost        :: int,
                     % The cost of maintaining a lock on a single dependant
                     % variable in call sequence counts.
@@ -86,7 +90,7 @@
 :- inst feedback_data_query
     --->    feedback_data_calls_above_threshold_sorted(free, free, free)
     ;       feedback_data_candidate_parallel_conjunctions(free, free, free,
-                free).
+                free, free).
 
 :- type stat_measure
     --->    stat_mean
@@ -127,16 +131,7 @@
                     % algorithms to construct the same parallel conjunction
                     % from the same program representation/HLDS structure.
 
-                cpc_speedup             :: float
-                    % Speedup is absolute so different speedups for different
-                    % peices of code can be compared.  That is the formula used
-                    % in many text books is _not_ used.  Instead we use:
-                    %
-                    %  Speedup = (SequentialTime - ParallelTime) * NumCalls
-                    %
-                    % This way speedup directly measures the benifit of
-                    % parallelisation, Any costs of parallel execution are
-                    % assumed to be in ParallelTime.
+                cpc_par_exec_metrics    :: parallel_exec_metrics
             ).
 
 :- type seq_conj(GoalType)
@@ -199,6 +194,97 @@
 
 %-----------------------------------------------------------------------------%
 
+    % Represent the metrics of a parallel execution.
+    %
+:- type parallel_exec_metrics.
+
+    % Represent the metrics of part of a parallel execution.
+    %
+:- type parallel_exec_metrics_incomplete.
+    
+    % ParExecMetrics = init_parallel_execution_metrics(NumCalls, 
+    %   CostA, CostBSeq, CostBPar).
+    %
+    % CostA is the cost of the first conjunct in a conjunction.  CostBSeq is
+    % the cost of the second conjunct if this is a normal conjunction.
+    % CostBPar is the cost of the second conjunct if this is a parallel
+    % conjunction.
+    %
+    % This function should be used when building metrics for parallel
+    % conjunctions of exactly two conjuncts.
+    %
+:- func init_parallel_exec_metrics(int, float, float, float) =
+    parallel_exec_metrics. 
+    
+    % ParMetrics = init_parallel_exec_metrics_incomplete(PartMetricsA,
+    %   CostBSeq, CostBPar) 
+    %
+    % Use this function to build parallel execution metrics for a parallel
+    % conjunction of any size greater than one.
+    %
+    % Although the parallel conjunction operator is operationally
+    % right-associative, parallel overlap due in dependant parallel
+    % conjunctions is easier to model if we consider it to be left associative.
+    % That is the conjunction ( A & B & C ) should be modeled as two conjuncts
+    % (A & B) (which is a conjunction itself and C.  This is because how C
+    % waits for variables in either A or B may depend on How B waits for
+    % variables in A.
+    %
+:- func init_parallel_exec_metrics_incomplete(parallel_exec_metrics_incomplete,
+    float, float) = parallel_exec_metrics_incomplete.
+
+    % StartMetrics = init_empty_parallel_exec_metrics.
+    %
+    % Use this function to start with an empty set of metrics for an empty
+    % conjunction.  Then use init_parallel_exec_metrics_incomplete to continue
+    % adding conjuncts on the right.
+    %
+:- func init_empty_parallel_exec_metrics = parallel_exec_metrics_incomplete.
+
+    % Metrics = finalise_parallel_exec_metrics(IncompleteMetrics, NumCalls).
+    %
+    % Make the metrics structure complete.
+    %
+:- func finalise_parallel_exec_metrics(parallel_exec_metrics_incomplete, int) =
+    parallel_exec_metrics.
+
+:- func parallel_exec_metrics_get_num_calls(parallel_exec_metrics) = int.
+
+:- func parallel_exec_metrics_get_seq_time(parallel_exec_metrics) = float.
+
+:- func parallel_exec_metrics_get_par_time(parallel_exec_metrics) = float.
+
+    % The amount of time saved per-call. SeqTime - ParTime.
+    %
+:- func parallel_exec_metrics_get_time_saving(parallel_exec_metrics) = float.
+
+    % The speedup per call.  SeqTime / ParTime.  For example, a value of 2.0
+    % means that this is twice as fast when parallelised.
+    %
+:- func parallel_exec_metrics_get_speedup(parallel_exec_metrics) = float.
+
+    % The amount of time the initial (left most) conjunct spends waiting for
+    % the other conjuncts.  During this time the context used by this conjunct
+    % must be kept alive because it will resume executing sequential code after
+    % the conjunct, however we know that it cannot be resumed before it's
+    % children have completed.
+    %
+:- func parallel_exec_metrics_get_first_conj_dead_time(parallel_exec_metrics) =
+    float.
+
+    % The some of the amount of time spent waiting for variables to be produced
+    % throughout the whole conjunction.
+    %
+:- func parallel_exec_metrics_get_future_dead_time(parallel_exec_metrics) =
+    float.
+
+    % The sum of the above two times.
+    %
+:- func parallel_exec_metrics_get_total_dead_time(parallel_exec_metrics) =
+    float.
+
+%-----------------------------------------------------------------------------%
+
     % put_feedback_data(Data, !Info)
     %
     % Put feedback data into the feedback files.
@@ -221,6 +307,9 @@
 
 :- mode feedback_data_query ==
     feedback_data_query >> ground.
+
+:- pred get_all_feedback_data(feedback_info::in, list(feedback_data)::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -294,6 +383,7 @@
 :- implementation.
 
 :- import_module exception.
+:- import_module float.
 :- import_module map.
 :- import_module require.
 :- import_module svmap.
@@ -334,6 +424,9 @@ get_feedback_data(Info, Data) :-
             DataPrime)
     ).
 
+get_all_feedback_data(Info, AllData) :-
+    map.values(Info ^ fi_map, AllData).
+
 %-----------------------------------------------------------------------------%
 
 put_feedback_data(Data, !Info) :-
@@ -354,7 +447,7 @@ put_feedback_data(Data, !Info) :-
 feedback_data_type(feedback_type_calls_above_threshold_sorted,
     feedback_data_calls_above_threshold_sorted(_, _, _)).
 feedback_data_type(feedback_type_candidate_parallel_conjunctions,
-    feedback_data_candidate_parallel_conjunctions(_, _, _, _)).
+    feedback_data_candidate_parallel_conjunctions(_, _, _, _, _)).
 
 :- pred feedback_data_mismatch_error(string::in, feedback_type::in, 
     feedback_data::in) is erroneous.
@@ -606,7 +699,7 @@ feedback_first_line = "Mercury Compiler Feedback".
 
 :- func feedback_version = string.
 
-feedback_version = "6".
+feedback_version = "7".
 
 %-----------------------------------------------------------------------------%
 %
@@ -622,6 +715,130 @@ convert_candidate_par_conjunction(Conv, CPC0, CPC) :-
 
 convert_seq_conj(Conv, seq_conj(Conjs0), seq_conj(Conjs)) :-
     map(Conv, Conjs0, Conjs).
+
+%-----------------------------------------------------------------------------%
+
+:- type parallel_exec_metrics
+    --->    parallel_exec_metrics(
+                inner_metrics   :: parallel_exec_metrics_incomplete,
+                num_calls       :: int
+            ).
+
+:- type parallel_exec_metrics_incomplete
+    --->    pem_initial
+    ;       pem_additional(
+                cost_left       :: parallel_exec_metrics_incomplete,
+                    % The cost of the left conjunct (that may be a conjunction),
+
+                cost_right_seq  :: float,
+                    % The cost of the right conjunct if it is running after
+                    % the left in normal sequential execution.
+
+                cost_right_par   :: float
+                    % THe cost of the right conjunct if it is running in
+                    % parallel with the left conjunct.  It may have to stop and
+                    % wait for variables to be produced; therefore this cost is
+                    % different to cost_right_seq.  This cost also includes
+                    % parallel execution overheads and delays.
+            ).
+
+init_parallel_exec_metrics(NumCalls, TimeA, TimeBSeq, TimeBPar) = Metrics :-
+    Metrics0 = init_empty_parallel_exec_metrics,
+    Metrics1 = init_parallel_exec_metrics_incomplete(Metrics0, TimeA, TimeA),
+    Metrics2 = 
+        init_parallel_exec_metrics_incomplete(Metrics1, TimeBSeq, TimeBPar),
+    Metrics = finalise_parallel_exec_metrics(Metrics2, NumCalls).
+
+init_parallel_exec_metrics_incomplete(MetricsA, TimeBSeq, TimeBPar) = 
+    pem_additional(MetricsA, TimeBSeq, TimeBPar).
+
+init_empty_parallel_exec_metrics = pem_initial.
+
+finalise_parallel_exec_metrics(IncompleteMetrics, NumCalls) = 
+    parallel_exec_metrics(IncompleteMetrics, NumCalls).
+
+parallel_exec_metrics_get_num_calls(parallel_exec_metrics(_, NumCalls)) = 
+    NumCalls.
+
+parallel_exec_metrics_get_par_time(parallel_exec_metrics(Inner, _)) =
+    parallel_exec_metrics_incomp_get_par_time(Inner).
+
+parallel_exec_metrics_get_seq_time(parallel_exec_metrics(Inner, _)) =
+    parallel_exec_metrics_incomp_get_seq_time(Inner).
+
+parallel_exec_metrics_get_speedup(Metrics) = SeqTime / ParTime :-
+    SeqTime = parallel_exec_metrics_get_seq_time(Metrics),
+    ParTime = parallel_exec_metrics_get_par_time(Metrics).
+
+    % The expected parallel execution time.
+    %
+:- func parallel_exec_metrics_incomp_get_par_time(
+    parallel_exec_metrics_incomplete) = float.
+
+parallel_exec_metrics_incomp_get_par_time(pem_initial) = 0.0.
+parallel_exec_metrics_incomp_get_par_time(pem_additional(MetricsLeft, _, TimeRight)) 
+        = Time :-
+    TimeLeft = parallel_exec_metrics_incomp_get_par_time(MetricsLeft),
+    Time = max(TimeLeft, TimeRight).
+
+    % The expected sequential execution time.
+    %
+:- func parallel_exec_metrics_incomp_get_seq_time(
+    parallel_exec_metrics_incomplete) = float.
+
+parallel_exec_metrics_incomp_get_seq_time(pem_initial) = 0.0.
+parallel_exec_metrics_incomp_get_seq_time(pem_additional(MetricsLeft, TimeRight, _)) 
+        = Time :-
+    TimeLeft = parallel_exec_metrics_incomp_get_seq_time(MetricsLeft),
+    Time = TimeLeft + TimeRight.
+
+parallel_exec_metrics_get_time_saving(Metrics) = SeqTime - ParTime :-
+    SeqTime = parallel_exec_metrics_get_seq_time(Metrics),
+    ParTime = parallel_exec_metrics_get_par_time(Metrics).
+
+parallel_exec_metrics_get_first_conj_dead_time(Metrics) = DeadTime :-
+    parallel_exec_metrics(Inner, _) = Metrics,
+    FirstConjTime = pem_get_first_conj_time(Inner),
+    MaxConjTime = pem_get_max_conj_time(Inner, 0.0),
+    DeadTime = MaxConjTime - FirstConjTime.
+
+:- func pem_get_first_conj_time(parallel_exec_metrics_incomplete) = float.
+
+pem_get_first_conj_time(pem_initial) = _ :- 
+    error("pem_get_first_conj_time: Empty conjunction").
+pem_get_first_conj_time(pem_additional(Left, _RightSeq, RightPar)) = Time :-
+    (
+        Left = pem_initial,
+        Time = RightPar
+    ;
+        Left = pem_additional(_, _, _),
+        Time = pem_get_first_conj_time(Left)
+    ).
+
+:- func pem_get_max_conj_time(parallel_exec_metrics_incomplete, float) = float.
+
+pem_get_max_conj_time(pem_initial, Max) = Max.
+pem_get_max_conj_time(pem_additional(Left, _, Par), Max0) = Max :-
+    Max1 = max(Par, Max0),
+    Max = pem_get_max_conj_time(Left, Max1).
+
+parallel_exec_metrics_get_future_dead_time(Metrics) = DeadTime :-
+    parallel_exec_metrics(Inner, _) = Metrics,
+    DeadTime = pem_get_future_dead_time(Inner).
+
+:- func pem_get_future_dead_time(parallel_exec_metrics_incomplete) = float.
+
+pem_get_future_dead_time(pem_initial) = 0.0.
+pem_get_future_dead_time(pem_additional(Left, Seq, Par)) = DeadTime :-
+    DeadTime = ThisDeadTime + LeftDeadTime,
+    ThisDeadTime = Par - Seq,
+    LeftDeadTime = pem_get_future_dead_time(Left).
+
+parallel_exec_metrics_get_total_dead_time(Metrics) = DeadTime :-
+    DeadTime = FirstConjDeadTime + FutureDeadTime,
+    FirstConjDeadTime = 
+        parallel_exec_metrics_get_first_conj_dead_time(Metrics),
+    FutureDeadTime = parallel_exec_metrics_get_future_dead_time(Metrics).
 
 %-----------------------------------------------------------------------------%
 :- end_module mdbcomp.feedback.

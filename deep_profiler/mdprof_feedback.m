@@ -47,6 +47,7 @@
 :- import_module int.
 :- import_module library.
 :- import_module list.
+:- import_module map.
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
@@ -69,6 +70,7 @@ main(!IO) :-
         lookup_bool_option(Options, help, Help),
         lookup_bool_option(Options, version, Version),
         lookup_bool_option(Options, debug_read_profile, DebugReadProfile),
+        lookup_bool_option(Options, report, Report),
         (
             Version = yes
         ->
@@ -92,6 +94,12 @@ main(!IO) :-
                     process_deep_to_feedback(RequestedFeedbackInfo,
                         Deep, Messages, Feedback0, Feedback),
                     ProfileProgName = Deep ^ profile_stats ^ program_name,
+                    (
+                        Report = yes,
+                        print_feedback_report(ProfileProgName, Feedback, !IO)
+                    ;
+                        Report = no
+                    ),
                     write_feedback_file(OutputFileName, ProfileProgName,
                         Feedback, WriteResult, !IO),
                     (
@@ -141,6 +149,38 @@ main(!IO) :-
         write_help_message(ProgName, !IO)
     ).
 
+:- pred print_feedback_report(string::in, feedback_info::in, io::di, io::uo) 
+    is det.
+
+print_feedback_report(ProgName, Feedback, !IO) :-
+    get_all_feedback_data(Feedback, AllFeedback),
+    map(create_feedback_report, AllFeedback, Reports),
+    ReportStr = string.append_list(Reports),
+    io.format("Feedback report for %s:\n\n%s", [s(ProgName), s(ReportStr)], 
+        !IO).
+
+:- pred create_feedback_report(feedback_data::in, string::out) is det. 
+
+create_feedback_report(feedback_data_calls_above_threshold_sorted(_, _, _), 
+        Report) :-
+   Report = "  feedback_data_calls_above_threshold_sorted is deprecated\n".
+create_feedback_report(feedback_data_candidate_parallel_conjunctions(
+            DesiredParallelism, SparkingCost, SparkingDelay, LockingCost,
+            Conjs),
+        Report) :-
+    NumConjs = length(Conjs),
+    ReportHeader = singleton(format("  Candidate Parallel Conjunctions:\n" ++
+            "    Desired parallelism: %f\n" ++
+            "    Sparking cost: %d\n" ++
+            "    Sparking delay: %d\n" ++
+            "    Locking cost: %d\n" ++
+            "    Number of Parallel Conjunctions: %d\n" ++
+            "    Parallel Conjunctions:\n",
+        [f(DesiredParallelism), i(SparkingCost), i(SparkingDelay),
+         i(LockingCost), i(NumConjs)])),
+    map(create_candidate_parallel_conj_report, Conjs, ReportConjs),
+    Report = append_list(list(ReportHeader ++ cord_list_to_cord(ReportConjs))).
+
 :- func help_message = string.
 
 help_message =
@@ -159,7 +199,9 @@ help_message =
     --debug-read-profile
                     Generate debugging messages when reading the deep profile
                     and creating the deep structure.
-    
+    -r --report     Display a report about the feedback information in the file
+                    after any processing has been done.
+
     The following options select sets of feedback information useful
     for particular compiler optimizations:
 
@@ -173,6 +215,10 @@ help_message =
     --implicit-parallelism-sparking-cost <value>
                 The cost of creating a spark, measured in the deep profiler's
                 call sequence counts.
+    --implicit-parallelism-sparking-delay <value>
+                The time taken from the time a spark is created until the spark
+                is executed by another processor assuming that there is a free
+                processor.
     --implicit-parallelism-locking-cost <value>
                 The cost of maintaining a lock for a single dependant variable
                 in a conjunction, measured in the profiler's call sequence
@@ -258,6 +304,7 @@ read_deep_file(Input, Debug, MaybeDeep, !IO) :-
     ;       version
     ;       verbosity
     ;       debug_read_profile
+    ;       report
 
             % The calls above threshold sorted feedback information, this is
             % used for the old implicit parallelism implementation.
@@ -272,6 +319,7 @@ read_deep_file(Input, Debug, MaybeDeep, !IO) :-
     ;       implicit_parallelism
     ;       desired_parallelism
     ;       implicit_parallelism_sparking_cost
+    ;       implicit_parallelism_sparking_delay
     ;       implicit_parallelism_locking_cost
     ;       implicit_parallelism_clique_cost_threshold
     ;       implicit_parallelism_call_site_cost_threshold
@@ -286,6 +334,7 @@ read_deep_file(Input, Debug, MaybeDeep, !IO) :-
 short('h',  help).
 short('v',  verbosity).
 short('V',  version).
+short('r',  report).
 
 :- pred long(string::in, option::out) is semidet.
 
@@ -293,6 +342,7 @@ long("help",                                help).
 long("verbosity",                           verbosity).
 long("version",                             version).
 long("debug-read-profile",                  debug_read_profile).
+long("report",                              report).
 
 long("calls-above-threshold-sorted",        calls_above_threshold_sorted).
 long("calls-above-threshold-sorted-measure",
@@ -304,6 +354,7 @@ long("implicit-parallelism",                implicit_parallelism).
 
 long("desired-parallelism",                 desired_parallelism).
 long("implicit-parallelism-sparking-cost",  implicit_parallelism_sparking_cost).
+long("implicit-parallelism-sparking-delay", implicit_parallelism_sparking_delay).
 long("implicit-parallelism-locking-cost",   implicit_parallelism_locking_cost).
 long("implicit-parallelism-clique-cost-threshold", 
     implicit_parallelism_clique_cost_threshold).
@@ -318,6 +369,7 @@ defaults(help,                  bool(no)).
 defaults(verbosity,             int(2)).
 defaults(version,               bool(no)).
 defaults(debug_read_profile,    bool(no)).
+defaults(report,                bool(no)).
 
 defaults(calls_above_threshold_sorted,                      bool(no)).
 defaults(calls_above_threshold_sorted_measure,              string("mean")).
@@ -329,6 +381,7 @@ defaults(desired_parallelism,                               string("4.0")).
 % XXX: These values have been chosen arbitrarily, appropriately values should
 % be tested for.
 defaults(implicit_parallelism_sparking_cost,                int(100)).
+defaults(implicit_parallelism_sparking_delay,               int(1000)).
 defaults(implicit_parallelism_locking_cost,                 int(100)).
 defaults(implicit_parallelism_clique_cost_threshold,        int(100000)).
 defaults(implicit_parallelism_call_site_cost_threshold,     int(50000)).
@@ -424,6 +477,8 @@ check_options(Options0, RequestedFeedbackInfo) :-
         ),
         lookup_int_option(Options, implicit_parallelism_sparking_cost,
             SparkingCost),
+        lookup_int_option(Options, implicit_parallelism_sparking_delay,
+            SparkingDelay),
         lookup_int_option(Options, implicit_parallelism_locking_cost,
             LockingCost),
         lookup_int_option(Options, implicit_parallelism_clique_cost_threshold,
@@ -437,6 +492,7 @@ check_options(Options0, RequestedFeedbackInfo) :-
         CandidateParallelConjunctionsOpts =
             candidate_parallel_conjunctions_opts(DesiredParallelism, 
                 SparkingCost,
+                SparkingDelay,
                 LockingCost,
                 CPCProcThreshold,
                 CPCCallSiteThreshold,

@@ -59,7 +59,12 @@
 
 :- pred message_to_string(message::in, string::out) is det.
 
-:- pred location_to_string(program_location::in, string::out) is det.
+    % location_to_string(IndentLevel, Location, String).
+    %
+    % Pretty-print a location to a cord of strings.
+    %
+:- pred location_to_string(int::in, program_location::in, cord(string)::out) 
+    is det.
 
 :- pred append_message(program_location::in, message_type::in,
     cord(message)::in, cord(message)::out) is det.
@@ -136,11 +141,27 @@
     ;       error_coverage_procrep_error(string).
 
 %-----------------------------------------------------------------------------%
+
+    % Create an indentation of the appropriate amount.  Indentation is two
+    % spaces per indentation level.
+    %
+:- func indent(int) = cord(string).
+
+    % Create a new line proceeded by an indentation.
+    %
+:- func nl_indent(int) = cord(string).
+
+    % The size of an indentation level.  2 x the input.
+    %
+:- func indent_size(int) = int.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module list.
+:- import_module require.
 
 :- import_module program_representation_utils.
 
@@ -152,27 +173,31 @@ message_get_level(message(_, Type)) =
 %-----------------------------------------------------------------------------%
 
 message_to_string(message(Location, MessageType), String) :-
-    location_to_string(Location, LocationString),
+    location_to_string(1, Location, LocationString),
     Level = message_type_to_level(MessageType),
     LevelString = message_level_to_string(Level),
     MessageStr = message_type_to_string(MessageType),
-    string.format("%s: In %s: %s",
-        [s(LevelString), s(LocationString), s(MessageStr)], String).
+    Cord = LevelString ++ singleton(":\n") ++ LocationString ++
+        indent(1) ++ MessageStr ++ singleton("\n"),
+    append_list(cord.list(Cord), String).
 
-location_to_string(proc(ProcLabel), String) :-
+location_to_string(Level, proc(ProcLabel), String) :-
     print_proc_label_to_string(ProcLabel, ProcLabelString),
-    format("procedure %s", [s(ProcLabelString)], String). 
-location_to_string(goal(ProcLabel, GoalPath), String) :-
-    print_proc_label_to_string(ProcLabel, ProcLabelString),
+    String = indent(Level) ++ singleton("Proc: ") ++ 
+        singleton(ProcLabelString) ++ singleton("\n").
+location_to_string(Level, goal(ProcLabel, GoalPath), String) :-
     ( empty_goal_path(GoalPath) ->
-        GoalPathString = "root goal"
+        GoalPathString = singleton("Root goal")
     ;
-        GoalPathString = goal_path_to_string(GoalPath)
+        GoalPathString = 
+            singleton("Goal: ") ++ singleton(goal_path_to_string(GoalPath))
     ),
-    format("goal %s in procedure %s", 
-        [s(GoalPathString), s(ProcLabelString)], String).
-location_to_string(clique(clique_ptr(Id)), String) :-
-    format("clique %d", [i(Id)], String).
+    location_to_string(Level, proc(ProcLabel), FirstLine),
+    SecondLine = indent(Level) ++ GoalPathString ++ singleton("\n"),
+    String = FirstLine ++ SecondLine.
+location_to_string(Level, clique(clique_ptr(Id)), String) :-
+    format("clique %d", [i(Id)], String0),
+    String = indent(Level) ++ singleton(String0).
 
 %-----------------------------------------------------------------------------%
 
@@ -182,11 +207,12 @@ append_message(Location, MessageType, !Messages) :-
 
 %-----------------------------------------------------------------------------%
 
-:- func message_level_to_string(message_level) = string.
-message_level_to_string(message_info) = "Info".
-message_level_to_string(message_notice) = "Notice".
-message_level_to_string(message_warning) = "Warning".
-message_level_to_string(message_error) = "Error".
+:- func message_level_to_string(message_level) = cord(string).
+
+message_level_to_string(message_info) = singleton("Info").
+message_level_to_string(message_notice) = singleton("Notice").
+message_level_to_string(message_warning) = singleton("Warning").
+message_level_to_string(message_error) = singleton("Error").
 
 %-----------------------------------------------------------------------------%
 
@@ -221,9 +247,9 @@ message_type_to_level(error_coverage_procrep_error(_)) =
 
 %-----------------------------------------------------------------------------%
 
-:- func message_type_to_string(message_type) = string.
+:- func message_type_to_string(message_type) = cord(string).
 
-message_type_to_string(MessageType) = String :-
+message_type_to_string(MessageType) = Cord :-
     (
         MessageType = info_found_candidate_conjunction, 
         String = "Found candidate conjunction"
@@ -272,7 +298,23 @@ message_type_to_string(MessageType) = String :-
         MessageType = error_coverage_procrep_error(ErrorStr),
         string.format("Error generating coverage procedure report: %s",
             [s(ErrorStr)], String)
+    ),
+    Cord = singleton(String).
+
+%-----------------------------------------------------------------------------%
+
+indent(N) = Indent :-
+    ( N < 0 ->
+        error("automatic_parallelism: Negative indent")
+    ; N = 0 ->
+        Indent = empty 
+    ;
+        Indent = snoc(indent(N - 1), "  ")
     ).
+
+nl_indent(N) = singleton("\n") ++ indent(N).
+
+indent_size(N) = 2 * N.
 
 %-----------------------------------------------------------------------------%
 :- end_module message.
