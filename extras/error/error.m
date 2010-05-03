@@ -6,51 +6,52 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
 %
-% Author: Tom Conway <conway@cs.mu.oz.au>
+% Author: Tom Conway <conway@cs.mu.oz.au>.
+% Modifications by Tyson Dowd <trd@cs.mu.oz.au>
+% and Zoltan Somogyi (zs@cs.mu.OZ.AU).
 %
-% Modifications by: Tyson Dowd <trd@cs.mu.oz.au>
+% Error: a tool like the old unix tool of the same name.
 %
-% error: a tool like the old unix tool of the same name.
+% Error's jobs is to process compiler error messages, and insert them
+% as comments into the source files they refer to. By making the error messages
+% move with the code they refer to as the code is changed, this can help
+% programmers fix many errors in a single editing session; after fixing
+% one error, they don't have to recompile to get updated line numbers on
+% the remaining errors.
 %
-% error will process compiler error message, and insert them into source
-% files as comments.  This means you can fix a bunch of errors all in a
-% single editing session.
+% Error takes a list of files on the command line, and looks for errors
+% in the format:
 %
-% error takes a list of files on the command line, and looks for errors
-% in the common format:
+%   filename:linenumber: error message
 %
-% filename:linenumber: error message
-%
-% for example:
+% Most compilers output error messages in this format; gcc does, and the
+% Mercury compiler does too. This is an example from the Mercury compiler:
 %
 % foo.m:041: In clause for `main(di, uo)':
 % foo.m:041:   mode mismatch in disjunction.
 % foo.m:041:   `Errors' :: free, ground.
 %
-% error will then insert the error message at the appropriate line in
-% the file, with a ### preceding the error message, for example:
+% When such an error message occurs in a file that is input to error,
+% error will insert the error message at the appropriate line in the file,
+% with a ### marker preceding each line of the error message, like this:
 %
 % /* ###  In clause for `main(di, uo)': */
 % /* ###    mode mismatch in disjunction. */
 % /* ###    `Errors' :: free, ground. */
-% main -->
-%
-% Most compilers will output in this format (for example Mercury outputs
-% error messages in this format, so does gcc).
+% main(!IO) :-
 %
 % If the -v option is given, error will first insert the error messages,
 % and then invoke your editor on the list of files which contained errors.
 % error looks in the environment variable EDITOR for your editor, and if
 % that isn't found, it will attempt to use "vim".
 %
-% possible improvements:
+% Possible improvements:
 %   - better error handling
-%   - look for variables other than EDITOR
+%   - look for environment variables other than EDITOR
 %   - usage message, help message
-%   - take input from stdin if no filenames given or if - is a
-%     filename
+%   - take input from stdin if no filenames given or if the filename is "-"
 %   - handle options using getopt
-%   - handle other commenting styles than /* .... */
+%   - handle commenting styles other than /* .... */
 
 :- module error.
 
@@ -74,11 +75,11 @@
 :- import_module pair.
 :- import_module string.
 
-:- type file_error_map == map(line_number, list(message)).
-:- type error_map == map(filename, file_error_map).
 :- type filename == string.
 :- type line_number == int.
 :- type message == string.
+:- type file_error_map == map(line_number, list(message)).
+:- type error_map == map(filename, file_error_map).
 
 main(!IO) :-
     io.command_line_arguments(Args0, !IO),
@@ -208,29 +209,29 @@ process_error_map_2([], !IO).
 process_error_map_2([Head | Tail], !IO) :-
     Head = FileName - FileErrorMap,
     map.to_assoc_list(FileErrorMap, FileErrorList),
-    string.append(FileName, ".orig", OrigFileName),
-    io.rename_file(FileName, OrigFileName, RenameResult, !IO),
+    string.append(FileName, ".orig", DotOrigFileName),
+    io.rename_file(FileName, DotOrigFileName, RenameResult, !IO),
     (
         RenameResult = ok,
-        io.open_input(OrigFileName, InputResult, !IO),
+        io.open_input(DotOrigFileName, InputResult, !IO),
         (
             InputResult = ok(InputStream),
-            io.open_output(FileName, Res2, !IO),
+            io.open_output(FileName, OutputResult, !IO),
             (
-                Res2 = ok(OutputStream),
+                OutputResult = ok(OutputStream),
                 merge_file(InputStream, OutputStream, FileErrorList, 1, !IO),
                 io.close_output(OutputStream, !IO),
                 % There is nothing we can do if the remove fails.
-                io.remove_file(OrigFileName, _RemoveResult, !IO),
+                io.remove_file(DotOrigFileName, _RemoveResult, !IO),
 
-                % progress message.
+                % Print progress message.
                 io.format("updated %s\n", [s(FileName)], !IO)
             ;
-                Res2 = error(Err),
+                OutputResult = error(Err),
                 io.error_message(Err, Msg),
                 io.stderr_stream(StdErr, !IO),
                 io.format(StdErr, "error: %s\n", [s(Msg)], !IO),
-                io.rename_file(OrigFileName, FileName, _, !IO)
+                io.rename_file(DotOrigFileName, FileName, _, !IO)
             ),
             io.close_input(InputStream, !IO)
         ;
@@ -239,7 +240,7 @@ process_error_map_2([Head | Tail], !IO) :-
             io.stderr_stream(StdErr, !IO),
             io.format(StdErr, "error: %s\n", [s(ErrorMsg)], !IO),
             % There is nothing we can do if the rename fails.
-            io.rename_file(OrigFileName, FileName, _RenameResult, !IO)
+            io.rename_file(DotOrigFileName, FileName, _RenameResult, !IO)
         )
     ;
         RenameResult = error(Error),
@@ -276,8 +277,8 @@ merge_file(InputStream, OutputStream, [Head | Tail], CurrentLineNumber, !IO) :-
             Res0 = ok(Chars),
             string.from_char_list(Chars, Str),
             io.write_string(OutputStream, Str, !IO),
-            merge_file(InputStream, OutputStream,
-                [Head | Tail], CurrentLineNumber + 1, !IO)
+            merge_file(InputStream, OutputStream, [Head | Tail],
+                CurrentLineNumber + 1, !IO)
         )
     ).
 
