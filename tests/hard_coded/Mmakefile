@@ -151,6 +151,8 @@ ORDINARY_PROGS=	\
 	lookup_switch_simple_opt \
 	loop_inv_test \
 	loop_inv_test1 \
+	loop_inv_test3 \
+	loop_inv_test4 \
 	map_fold \
 	mapped_module \
 	merge_and_remove_dups \

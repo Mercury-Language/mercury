@@ -1699,6 +1699,9 @@ no_type_info_builtin(ModuleName, PredName, Arity) :-
     ;
         ModuleNameType = par_builtin,
         ModuleName = mercury_par_builtin_module
+    ;
+        ModuleNameType = rtti_implementation_builtin,
+        ModuleName = mercury_rtti_implementation_builtin_module
     ).
 
 :- type builtin_mod
@@ -1706,7 +1709,8 @@ no_type_info_builtin(ModuleName, PredName, Arity) :-
     ;       private_builtin
     ;       table_builtin
     ;       term_size_prof_builtin
-    ;       par_builtin.
+    ;       par_builtin
+    ;       rtti_implementation_builtin.
 
 :- pred no_type_info_builtin_2(builtin_mod::out, string::in, int::in)
     is semidet.
@@ -1734,6 +1738,18 @@ no_type_info_builtin_2(par_builtin, "new_future", 1).
 no_type_info_builtin_2(par_builtin, "wait_future", 2).
 no_type_info_builtin_2(par_builtin, "get_future", 2).
 no_type_info_builtin_2(par_builtin, "signal_future", 2).
+no_type_info_builtin_2(rtti_implementation_builtin, "semidet_call_3", 3).
+no_type_info_builtin_2(rtti_implementation_builtin, "semidet_call_4", 4).
+no_type_info_builtin_2(rtti_implementation_builtin, "semidet_call_5", 5).
+no_type_info_builtin_2(rtti_implementation_builtin, "semidet_call_6", 6).
+no_type_info_builtin_2(rtti_implementation_builtin, "semidet_call_7", 7).
+no_type_info_builtin_2(rtti_implementation_builtin, "semidet_call_8", 8).
+no_type_info_builtin_2(rtti_implementation_builtin, "result_call_4", 4).
+no_type_info_builtin_2(rtti_implementation_builtin, "result_call_5", 5).
+no_type_info_builtin_2(rtti_implementation_builtin, "result_call_6", 6).
+no_type_info_builtin_2(rtti_implementation_builtin, "result_call_7", 7).
+no_type_info_builtin_2(rtti_implementation_builtin, "result_call_8", 8).
+no_type_info_builtin_2(rtti_implementation_builtin, "result_call_9", 9).
 
     % True iff the given predicate is defined with an :- external
     % declaration.  Note that the arity includes the hidden type info

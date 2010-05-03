@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 expandtab tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007, 2009 The University of Melbourne
+% Copyright (C) 2007, 2009-2010 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -884,24 +884,158 @@ decrement_limit(triangular(N), triangular(N - 1)).
 %-----------------------------------------------------------------------------%
 % Convenience predicates.
 
-:- mutable(io_formatter_map, formatter_map, initial_formatter_map, ground,
-    [attach_to_io_state, untrailed, thread_local]).
-
+    % This is where we keep the display parameters (line width etc.).
+    % The formatter map is handled separately because it *has* to
+    % be initialised immediately (i.e., before any other module's
+    % initialisation directive can update the default formatter map).
+    %
 :- mutable(io_pp_params, pp_params, pp_params(78, 100, triangular(100)),
-    ground, [attach_to_io_state, untrailed, thread_local]).
+    ground, [attach_to_io_state, untrailed]).
+
+%-----------------------------------------------------------------------------%
+
+    % Because there is no guaranteed order of module initialisation, we need
+    % to ensure that we do the right thing if other modules try to update the
+    % default formatter_map before this module has been initialised.
+    %
+    % All of this machinery is needed to avoid a race condition between
+    % initialise directives and initialisation of mutables.
+    %
+:- pragma foreign_decl("C",
+"
+    extern MR_Bool ML_pretty_printer_is_initialised;
+    extern MR_Word ML_pretty_printer_default_formatter_map;
+").
+:- pragma foreign_code("C",
+"
+    MR_Bool ML_pretty_printer_is_initialised = MR_FALSE;
+    MR_Word ML_pretty_printer_default_formatter_map = NULL;
+").
+
+:- pragma foreign_code("Java",
+"
+    static bool.Bool_0 isInitialised = bool.NO;
+    static tree234.Tree234_2<String,
+            tree234.Tree234_2<String,
+             tree234.Tree234_2<Integer, /* closure */ java.lang.Object[]>>>
+                defaultFormatterMap = null;
+").
+
+%-----------------------------------------------------------------------------%
+
+:- pred pretty_printer_is_initialised(bool::out, io::di, io::uo)
+        is det.
+
+:- pragma foreign_proc("C",
+        pretty_printer_is_initialised(Okay::out, _IO0::di, _IO::uo),
+        [promise_pure, will_not_call_mercury, thread_safe],
+"
+    Okay = ML_pretty_printer_is_initialised;
+").
+
+:- pragma foreign_proc("Java",
+        pretty_printer_is_initialised(Okay::out, _IO0::di, _IO::uo),
+        [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
+"
+    Okay = pretty_printer.isInitialised;
+").
+
+:- pragma foreign_proc("Erlang",
+        pretty_printer_is_initialised(Okay::out, _IO0::di, _IO::uo),
+        [promise_pure, will_not_call_mercury, thread_safe],
+"
+pretty_printer_is_initialised() ->
+    'ML_erlang_global_server' !
+        {get_mutable, pretty_printer_is_initialised, self()},
+    receive
+        {get_mutable_ack, undefined} -> {no};
+        {get_mutable_ack, Okay} -> Okay
+    end.
+").
+
+%-----------------------------------------------------------------------------%
+
+    % This predicate must not be called unless pretty_printer_is_initialised ==
+    % MR_TRUE, which occurs when set_default_formatter_map has been called at
+    % least once.
+    %
+:- pred unsafe_get_default_formatter_map(formatter_map::out, io::di, io::uo)
+        is det.
+
+:- pragma foreign_proc("C",
+        unsafe_get_default_formatter_map(FMap::out, _IO0::di, _IO::uo),
+        [promise_pure, will_not_call_mercury, thread_safe],
+"
+    FMap = ML_pretty_printer_default_formatter_map;
+").
+
+:- pragma foreign_proc("Java",
+        unsafe_get_default_formatter_map(FMap::out, _IO0::di, _IO::uo),
+        [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
+"
+    FMap = pretty_printer.defaultFormatterMap;
+").
+
+:- pragma foreign_proc("Erlang",
+        unsafe_get_default_formatter_map(FMap::out, _IO0::di, _IO::uo),
+        [promise_pure, will_not_call_mercury, thread_safe],
+"
+unsafe_get_default_formatter_map() ->
+    'ML_erlang_global_server' !
+        {get_mutable, pretty_printer_formatter_map, self()},
+    receive
+        {get_mutable_ack, FMap} -> FMap
+    end.
+").
 
 %-----------------------------------------------------------------------------%
 
 get_default_formatter_map(FMap, !IO) :-
-    get_io_formatter_map(FMap, !IO).
+    pretty_printer_is_initialised(Okay, !IO),
+    (
+        Okay = no,
+        FMap = initial_formatter_map,
+        set_default_formatter_map(FMap, !IO)
+    ;
+        Okay = yes,
+        unsafe_get_default_formatter_map(FMap, !IO)
+    ).
 
-set_default_formatter_map(FMap, !IO) :-
-    set_io_formatter_map(FMap, !IO).
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+        set_default_formatter_map(FMap::in, _IO0::di, _IO::uo),
+        [promise_pure, will_not_call_mercury],
+"
+    ML_pretty_printer_default_formatter_map = FMap;
+    ML_pretty_printer_is_initialised = MR_TRUE;
+").
+
+:- pragma foreign_proc("Java",
+        set_default_formatter_map(FMap::in, _IO0::di, _IO::uo),
+        [promise_pure, will_not_call_mercury, may_not_duplicate],
+"
+    pretty_printer.isInitialised = bool.YES;
+    pretty_printer.defaultFormatterMap = FMap;
+").
+
+:- pragma foreign_proc("Erlang",
+        set_default_formatter_map(FMap::in, _IO0::di, _IO::uo),
+        [promise_pure, will_not_call_mercury, thread_safe],
+"
+unsafe_get_default_formatter_map(FMap) ->
+    'ML_erlang_global_server' !
+        {set_mutable, pretty_printer_is_initialised, {yes}},
+    'ML_erlang_global_server' !
+        {set_mutable, pretty_printer_default_formatter_map, FMap}.
+").
+
+%-----------------------------------------------------------------------------%
 
 set_default_formatter(ModuleName, TypeName, Arity, Formatter, !IO) :-
-    get_io_formatter_map(FMap0, !IO),
+    get_default_formatter_map(FMap0, !IO),
     FMap = set_formatter(ModuleName, TypeName, Arity, Formatter, FMap0),
-    set_io_formatter_map(FMap, !IO).
+    set_default_formatter_map(FMap, !IO).
 
 %-----------------------------------------------------------------------------%
 

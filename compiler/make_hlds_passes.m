@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2009 The University of Melbourne.
+% Copyright (C) 1993-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1230,23 +1230,7 @@ add_pass_3_pragma(ItemPragma, !Status, !ModuleInfo, !QualInfo, !Specs) :-
         )
     ;
         Pragma = pragma_type_spec(_, _, _, _, _, _, _, _),
-        % XXX For the Java back-end, `pragma type_spec' can result in
-        % class names that exceed the limits on file name length.
-        % So we ignore these pragmas for the Java back-end.
-        module_info_get_globals(!.ModuleInfo, Globals),
-        globals.get_target(Globals, Target),
-        (
-            Target = target_java
-        ;
-            ( Target = target_c
-            ; Target = target_il
-            ; Target = target_asm
-            ; Target = target_x86_64
-            ; Target = target_erlang
-            ),
-            add_pragma_type_spec(Pragma, Context, !ModuleInfo, !QualInfo,
-                !Specs)
-        )
+        add_pragma_type_spec(Pragma, Context, !ModuleInfo, !QualInfo, !Specs)
     ;
         Pragma = pragma_termination_info(PredOrFunc, SymName, ModeList,
             MaybeArgSizeInfo, MaybeTerminationInfo),

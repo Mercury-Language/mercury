@@ -802,6 +802,9 @@ compare_tuple_pos(Loc, TupleArity, TypeInfo, Result, TermA, TermB) :-
     %
     % We first give "unimplemented" definitions in Mercury, which will be
     % used by default.
+    %
+    % NOTE: semidet_call_* and result_call_* are declared as no-typeinfo
+    % builtins.
 
 :- type unify_or_compare_pred
     --->    unify_or_compare_pred.

@@ -1,6 +1,6 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2009 The University of Melbourne.
+% Copyright (C) 2005-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -340,6 +340,11 @@
     %
 :- func mercury_par_builtin_module = sym_name.
 
+    % Returns the name of the module containing the RTTI implementation for
+    % certain backends.
+    %
+:- func mercury_rtti_implementation_builtin_module = sym_name.
+
     % Returns the name of the module containing the builtins for the
     % source-to-source debugger.
     %
@@ -554,6 +559,7 @@ all_builtin_modules = [
     mercury_profiling_builtin_module,
     mercury_term_size_prof_builtin_module,
     mercury_par_builtin_module,
+    mercury_rtti_implementation_builtin_module,
     mercury_ssdb_builtin_module
 ].
 
@@ -574,6 +580,7 @@ mercury_table_statistics_module = unqualified("table_statistics").
 mercury_profiling_builtin_module = unqualified("profiling_builtin").
 mercury_term_size_prof_builtin_module = unqualified("term_size_prof_builtin").
 mercury_par_builtin_module = unqualified("par_builtin").
+mercury_rtti_implementation_builtin_module = unqualified("rtti_implementation").
 mercury_ssdb_builtin_module = unqualified("ssdb").
 mercury_list_module = unqualified("list").
 mercury_string_module = unqualified("string").

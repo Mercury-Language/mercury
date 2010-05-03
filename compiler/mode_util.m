@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1157,7 +1157,12 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
         GoalExpr = disj(Goals)
     ;
         GoalExpr0 = negation(SubGoal0),
-        instmap_delta_init_reachable(InstMapDelta),
+        InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo),
+        ( instmap_delta_is_reachable(InstMapDelta0) ->
+            instmap_delta_init_reachable(InstMapDelta)
+        ;
+            instmap_delta_init_unreachable(InstMapDelta)
+        ),
         recompute_instmap_delta_1(RecomputeAtomic, SubGoal0, SubGoal, VarTypes,
             InstMap0, _, !RI),
         GoalExpr = negation(SubGoal)
