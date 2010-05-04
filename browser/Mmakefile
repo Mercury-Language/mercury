@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2007, 2009 The University of Melbourne.
+# Copyright (C) 1998-2007, 2009-2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -252,53 +252,24 @@ realclean_local:
 .PHONY: install
 install: install_library
 
-.PHONY: install_dirs
-install_dirs:
-	[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
-	[ -d $(INSTALL_GRADE_MODULE_DIR) ] || \
-		mkdir -p $(INSTALL_GRADE_MODULE_DIR)
-	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
-
 ifneq ("$(filter il% erlang%,$(GRADE))","")
 
 # there is no browser in the .NET or Erlang backends
-
-.PHONY: install_ints
-install_ints:
-
-.PHONY: install_init
-install_init: 
 
 .PHONY: install_library
 install_library:
 
 else ifneq (,$(findstring java,$(GRADE)))
 
-.PHONY: install_ints
-install_ints:
-
-.PHONY: install_init
-install_init: 
-
 .PHONY: install_library
 install_library: lib$(BROWSER_LIB_NAME).install
 
 else 
 
-.PHONY: install_ints
-install_ints:
-
-.PHONY: install_init
-install_init: $(BROWSER_LIB_NAME).init install_dirs
-	cp `vpath_find $(BROWSER_LIB_NAME).init` $(INSTALL_GRADE_MODULE_DIR)
-
 .PHONY: install_library
-install_library: lib$(BROWSER_LIB_NAME) \
-		install_init \
-		install_dirs
-	cp `vpath_find lib$(BROWSER_LIB_NAME).$A \
-		lib$(BROWSER_LIB_NAME).$(EXT_FOR_SHARED_LIB)` \
-		$(INSTALL_MERC_LIB_DIR)
-	$(RANLIB) $(INSTALL_MERC_LIB_DIR)/lib$(BROWSER_LIB_NAME).$A
+install_library:				\
+	lib$(BROWSER_LIB_NAME).install_library	\
+	lib$(BROWSER_LIB_NAME).install_ints	\
+	lib$(BROWSER_LIB_NAME).install_hdrs
 
 endif
