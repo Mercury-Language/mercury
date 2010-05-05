@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -861,9 +861,10 @@ maybe_ssdb(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO),
 
-        % XXX Must be remove to manage the determinism by hand
-        % XXX zs: what does the above comment mean?
-        determinism_pass(!HLDS, _Specs)
+        % this pass fixes up some incorrect determinisms after applying
+        % the transformations
+        determinism_pass(!HLDS, _),
+        true
     ;
         true
     ).

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2009 The University of Melbourne.
+% Copyright (C) 2007-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -449,7 +449,8 @@ process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
             GoalsElse   = FailArgListGoals ++
                 [HandleEventFailGoal, SwitchFailPortGoal],
 
-            goal_info_set_determinism(detism_det, GoalInfoImpure, GoalInfoThen),
+            goal_info_set_determinism(detism_semi, GoalInfoImpure,
+                GoalInfoThen),
             goal_info_set_determinism(detism_semi, GoalInfoImpure,
                 GoalInfoElse),
 
@@ -783,7 +784,14 @@ make_recursive_call(PredInfo, ModuleInfo, PredId, ProcId, HeadVars, Goal) :-
     SymName = qualified(ModuleName, PredName),
     BuiltIn = builtin_state(ModuleInfo, PredId, PredId, ProcId),
     GoalExpr = plain_call(PredId, ProcId, HeadVars, BuiltIn, no, SymName),
-    goal_info_init(GoalInfoHG),
+
+        % We use the goal info of the top level goal in the proc info
+        % as this goal is the equivalent of what the recursive call
+        % is doing, ie binding the head vars.
+    pred_info_proc_info(PredInfo, ProcId, ProcInfo),
+    proc_info_get_goal(ProcInfo, BodyGoal0),
+    GoalInfoHG = get_hlds_goal_info(BodyGoal0),
+
     Goal = hlds_goal(GoalExpr, GoalInfoHG).
 
     % make_switch_goal(SwitchVar, SwitchCase1, SwitchCase2, GoalInfo, Goal).
