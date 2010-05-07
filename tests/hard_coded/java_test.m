@@ -64,6 +64,6 @@ XXX `pragma export' not yet supported for Java
 :- pred java_semidet_succeed is semidet.
 :- pred java_semidet_fail is semidet.
 :- pragma foreign_proc("Java", java_semidet_succeed,
-	[will_not_call_mercury, promise_pure], "succeeded = true;").
+	[will_not_call_mercury, promise_pure], "SUCCESS_INDICATOR = true;").
 :- pragma foreign_proc("Java", java_semidet_fail,
-	[will_not_call_mercury, promise_pure], "succeeded = false;").
+	[will_not_call_mercury, promise_pure], "SUCCESS_INDICATOR = false;").

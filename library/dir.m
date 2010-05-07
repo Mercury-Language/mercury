@@ -965,7 +965,8 @@ dir.make_directory(PathName, Result, !IO) :-
 % Java has a similar library function java.io.File.mkdirs()
 :- pragma foreign_proc("Java",
     dir.make_directory(DirName::in, Res::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+        may_not_duplicate],
 "
     try {
         java.io.File dir = new java.io.File(DirName);
@@ -1031,7 +1032,7 @@ can_implement_make_directory :- semidet_fail.
     can_implement_make_directory,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    succeeded = true;
+    SUCCESS_INDICATOR = true;
 "
 ).
 :- pragma foreign_proc("Erlang",
@@ -1130,7 +1131,8 @@ dir.make_single_directory(DirName, Result, !IO) :-
 :- pragma foreign_proc("Java",
     dir.make_single_directory_2(ErrorIfExists::in, DirName::in,
         Result::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+        may_not_duplicate],
 "
     try {
         java.io.File newDir = new java.io.File(DirName);
@@ -1556,7 +1558,7 @@ can_implement_dir_foldl :- semidet_fail.
     can_implement_dir_foldl,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    succeeded = true;
+    SUCCESS_INDICATOR = true;
 ").
 :- pragma foreign_proc("Erlang",
     can_implement_dir_foldl,

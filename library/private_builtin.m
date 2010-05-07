@@ -720,7 +720,8 @@ special__Compare____base_typeclass_info_1_0(
         TypeInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeInfo = MR_typeclass_info_param_type_info(TypeClassInfo, Index);
+    TypeInfo = jmercury.private_builtin.
+        MR_typeclass_info_param_type_info(TypeClassInfo, Index);
 ").
 
 :- pragma foreign_proc("Java",
@@ -728,7 +729,8 @@ special__Compare____base_typeclass_info_1_0(
         Index::in, TypeInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeInfo = MR_typeclass_info_instance_tvar_type_info(TypeClassInfo, Index);
+    TypeInfo = jmercury.private_builtin.
+        MR_typeclass_info_instance_tvar_type_info(TypeClassInfo, Index);
 ").
 
 :- pragma foreign_proc("Java",
@@ -736,7 +738,8 @@ special__Compare____base_typeclass_info_1_0(
         TypeClassInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeClassInfo = MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
+    TypeClassInfo = jmercury.private_builtin.
+        MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
 ").
 
 :- pragma foreign_proc("Java",
@@ -744,7 +747,8 @@ special__Compare____base_typeclass_info_1_0(
         Index::in, TypeClassInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeClassInfo = MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
+    TypeClassInfo = jmercury.private_builtin.
+        MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -1910,7 +1914,7 @@ no_clauses(PredName) :-
 :- pragma foreign_proc("Java",
     trace_evaluate_runtime_condition,
     [will_not_call_mercury, thread_safe, promise_semipure,
-        does_not_affect_liveness],
+        does_not_affect_liveness, may_not_duplicate],
 "
     if (true) {
         /* All uses of this predicate should override the body. */

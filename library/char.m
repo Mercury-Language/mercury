@@ -555,7 +555,7 @@ char.det_from_int(Int) = Char :-
     char.to_int(Character::in, Int::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    succeeded = ((int) Character == Int);
+    SUCCESS_INDICATOR = ((int) Character == Int);
 ").
 
 :- pragma foreign_proc("Java",
@@ -563,7 +563,7 @@ char.det_from_int(Int) = Char :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Character = (char) Int;
-    succeeded = ((int) Character == Int);
+    SUCCESS_INDICATOR = ((int) Character == Int);
 ").
 
 :- pragma foreign_proc("Erlang",

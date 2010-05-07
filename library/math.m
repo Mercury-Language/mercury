@@ -287,7 +287,7 @@
     math_domain_checks,
     [thread_safe, promise_pure],
 "
-    succeeded = true;
+    SUCCESS_INDICATOR = true;
 ").
 
 :- pragma foreign_proc("Erlang",

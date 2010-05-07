@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1020,13 +1020,13 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
 
 ok_to_inline_language(lang_c, target_c).
 ok_to_inline_language(lang_erlang, target_erlang).
+ok_to_inline_language(lang_java, target_java).
 
 % ok_to_inline_language(il, il). %
 % XXX we need to fix the handling of parameter marshalling for inlined code
 % before we can enable this -- see the comments in
 % ml_gen_ordinary_pragma_il_proc in ml_code_gen.m.
 %
-% ok_to_inline_language(java, java). % foreign_language = java not implemented
 % ok_to_inline_language(asm, asm).   % foreign_language = asm not implemented
 % We could define a language "C/C++" (c_slash_cplusplus) which was the
 % intersection of "C" and "C++", and then we'd have

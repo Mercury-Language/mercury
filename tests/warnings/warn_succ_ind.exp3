@@ -1,10 +1,11 @@
 warn_succ_ind.m:032: warning: the Java code for predicate `warn_succ_ind.foo'/2
-warn_succ_ind.m:032:   may set `succeeded' , but it cannot fail.
+warn_succ_ind.m:032:   may set `SUCCESS_INDICATOR' , but it cannot fail.
 warn_succ_ind.m:064: warning: the Java code for predicate
-warn_succ_ind.m:064:   `warn_succ_ind.foo2'/2 may set `succeeded' , but it
-warn_succ_ind.m:064:   cannot fail.
+warn_succ_ind.m:064:   `warn_succ_ind.foo2'/2 may set `SUCCESS_INDICATOR' , but
+warn_succ_ind.m:064:   it cannot fail.
 warn_succ_ind.m:094: warning: the Java code for predicate `warn_succ_ind.bar'/2
-warn_succ_ind.m:094:   does not appear to set `succeeded' , but it can fail.
+warn_succ_ind.m:094:   does not appear to set `SUCCESS_INDICATOR' , but it can
+warn_succ_ind.m:094:   fail.
 warn_succ_ind.m:122: warning: the Java code for predicate
 warn_succ_ind.m:122:   `warn_succ_ind.bar2'/2 does not appear to set
-warn_succ_ind.m:122:   `succeeded' , but it can fail.
+warn_succ_ind.m:122:   `SUCCESS_INDICATOR' , but it can fail.

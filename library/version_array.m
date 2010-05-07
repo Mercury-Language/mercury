@@ -510,10 +510,10 @@ resize(N, X, VA, resize(VA, N, X)).
 "
     try {
         X = VA.get(I);
-        succeeded = true;
+        SUCCESS_INDICATOR = true;
     } catch (ArrayIndexOutOfBoundsException e) {
         X = null;
-        succeeded = false;
+        SUCCESS_INDICATOR = false;
     }
 ").
 
@@ -535,10 +535,10 @@ resize(N, X, VA, resize(VA, N, X)).
 "
     try {
         VA = VA0.set(I, X);
-        succeeded = true;
+        SUCCESS_INDICATOR = true;
     } catch (ArrayIndexOutOfBoundsException e) {
         VA = null;
-        succeeded = false;
+        SUCCESS_INDICATOR = false;
     }
 ").
 

@@ -339,7 +339,7 @@
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     // never do bounds checking for Java (throw exceptions instead)
-    succeeded = false;
+    SUCCESS_INDICATOR = false;
 ").
 
 %-----------------------------------------------------------------------------%

@@ -71,7 +71,7 @@ compare_foo(Res, Foo1, Foo2) :-
 ).
 :- pragma foreign_proc("Java", foreign_equals(Foreign1::in, Foreign2::in),
                 [will_not_call_mercury, promise_pure],
-"succeeded = (Foreign1 == Foreign2);"
+"SUCCESS_INDICATOR = (Foreign1 == Foreign2);"
 ).
 :- pragma foreign_proc("Erlang", foreign_equals(Foreign1::in, Foreign2::in),
                 [will_not_call_mercury, promise_pure],

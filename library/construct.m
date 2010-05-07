@@ -375,7 +375,7 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
     null(S::in),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    succeeded = (S == null);
+    SUCCESS_INDICATOR = (S == null);
 ").
 
 :- pragma foreign_proc("Erlang",

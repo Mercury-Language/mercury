@@ -947,7 +947,7 @@ special__Compare____tuple_0_0(ref object[] result,
     [may_call_mercury, thread_safe, promise_pure, terminates],
 "
     try {
-        Y = deep_copy(X);
+        Y = builtin.deep_copy(X);
     } catch (java.lang.InstantiationException E) {
         throw new RuntimeException(E);
     } catch (java.lang.IllegalAccessException E) {
@@ -960,7 +960,7 @@ special__Compare____tuple_0_0(ref object[] result,
     [may_call_mercury, thread_safe, promise_pure, terminates],
 "
     try {
-        Y = deep_copy(X);
+        Y = builtin.deep_copy(X);
     } catch (java.lang.InstantiationException E) {
         throw new RuntimeException(E);
     } catch (java.lang.IllegalAccessException E) {

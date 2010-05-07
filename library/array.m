@@ -596,7 +596,7 @@ array.compare_elements(N, Size, Array1, Array2, Result) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     // never do bounds checking for Java (throw exceptions instead)
-    succeeded = false;
+    SUCCESS_INDICATOR = false;
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -1133,7 +1133,7 @@ ML_resize_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
 
 :- pragma foreign_proc("Java",
     array.resize(Array0::array_di, Size::in, Item::in, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     if (Size == 0) {
         Array = null;

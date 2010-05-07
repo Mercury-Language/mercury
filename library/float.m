@@ -293,7 +293,7 @@ X / Y = Z :-
 	float_domain_checks,
 	[thread_safe, promise_pure],
 "
-	succeeded = true;
+	SUCCESS_INDICATOR = true;
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -629,7 +629,7 @@ is_nan_or_inf(Float) :-
 	is_nan(Flt::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	succeeded = java.lang.Double.isNaN(Flt);
+	SUCCESS_INDICATOR = java.lang.Double.isNaN(Flt);
 ").
 :- pragma foreign_proc("Erlang",
 	is_nan(_Flt::in),
@@ -659,7 +659,7 @@ is_nan_or_inf(Float) :-
 	is_inf(Flt::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	succeeded = java.lang.Double.isInfinite(Flt);
+	SUCCESS_INDICATOR = java.lang.Double.isInfinite(Flt);
 ").
 :- pragma foreign_proc("Erlang",
 	is_inf(_Flt::in),

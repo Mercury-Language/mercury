@@ -99,7 +99,7 @@
     can_spawn,
     [will_not_call_mercury, promise_pure],
 "
-    succeeded = true;
+    SUCCESS_INDICATOR = true;
 ").
 
 %-----------------------------------------------------------------------------%

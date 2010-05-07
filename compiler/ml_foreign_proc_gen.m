@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -341,8 +341,7 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
             Foreign_Code, Context, Decls, Statements, !Info)
     ;
         Lang = lang_java,
-        % XXX should pass OrdinaryKind
-        ml_gen_ordinary_pragma_java_proc(CodeModel, Attributes,
+        ml_gen_ordinary_pragma_java_proc(OrdinaryKind, Attributes,
             PredId, ProcId, Args, ExtraArgs,
             Foreign_Code, Context, Decls, Statements, !Info)
     ;
@@ -351,13 +350,13 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
             "ml_gen_ordinary_pragma_foreign_proc: unexpected language Erlang")
     ).
 
-:- pred ml_gen_ordinary_pragma_java_proc(code_model::in,
+:- pred ml_gen_ordinary_pragma_java_proc(ordinary_pragma_kind::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
     prog_context::in, list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes, PredId, _ProcId,
+ml_gen_ordinary_pragma_java_proc(OrdinaryKind, Attributes, PredId, _ProcId,
         Args, ExtraArgs, JavaCode, Context, Decls, Statements, !Info) :-
     Lang = get_foreign_language(Attributes),
 
@@ -382,19 +381,58 @@ ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes, PredId, _ProcId,
     ml_gen_pragma_java_output_arg_list(MutableSpecial, Args, Context,
         AssignOutputsList, ConvDecls, ConvStatements, !Info),
 
-    % Put it all together
-    % XXX FIXME need to handle model_semi code here,
-    % i.e. provide some equivalent to SUCCESS_INDICATOR.
-    Java_Code = list.condense([
+    % Put it all together.
+
+    (
+        OrdinaryKind = kind_det,
+        SucceededDecl = [],
+        AssignSucceeded = []
+    ;
+        OrdinaryKind = kind_semi,
+        ml_success_lval(!.Info, SucceededLval),
+        SucceededDecl = [
+            raw_target_code("\tboolean SUCCESS_INDICATOR;\n", [])],
+        AssignSucceeded = [
+            raw_target_code("\t", []),
+            target_code_output(SucceededLval),
+            raw_target_code(" = SUCCESS_INDICATOR;\n", [])
+        ]
+    ;
+        OrdinaryKind = kind_failure,
+        ml_success_lval(!.Info, SucceededLval),
+        SucceededDecl = [],
+        AssignSucceeded = [
+            raw_target_code("\t", []),
+            target_code_output(SucceededLval),
+            raw_target_code(" = false;\n", [])
+        ]
+    ),
+
+    Starting_Code = list.condense([
+        [raw_target_code("{\n", [])],
         ArgDeclsList,
+        SucceededDecl,
         AssignInputsList,
         [user_target_code(JavaCode, yes(Context), [])]
     ]),
-    Java_Code_Stmt = inline_target_code(ml_target_java, Java_Code),
-    Java_Code_Statement = statement(
-        ml_stmt_atomic(Java_Code_Stmt),
+    Starting_Code_Stmt = inline_target_code(ml_target_java, Starting_Code),
+    Starting_Code_Statement = statement(ml_stmt_atomic(Starting_Code_Stmt),
         mlds_make_context(Context)),
-    Statements = [Java_Code_Statement | AssignOutputsList] ++ ConvStatements,
+
+    Ending_Code = list.condense([
+        AssignSucceeded,
+        [raw_target_code("\t}\n", [])]
+    ]),
+    Ending_Code_Stmt = inline_target_code(ml_target_java, Ending_Code),
+    Ending_Code_Statement = statement(ml_stmt_atomic(Ending_Code_Stmt),
+        mlds_make_context(Context)),
+
+    Statements = list.condense([
+        [Starting_Code_Statement],
+        AssignOutputsList,
+        ConvStatements,
+        [Ending_Code_Statement]
+    ]),
     Decls = ConvDecls.
 
 :- type ordinary_pragma_kind
