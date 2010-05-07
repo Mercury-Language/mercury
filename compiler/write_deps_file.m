@@ -438,6 +438,7 @@ write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             "else\n",
             " ifeq ($(findstring il,$(GRADE)),il)\n",
             ModuleDepFileName, " : ", ILFileName, "\n",
+            " else\n",
             "  ifeq ($(findstring java,$(GRADE)),java)\n",
             ModuleDepFileName, " : ", JavaFileName, "\n",
             "  else\n",
