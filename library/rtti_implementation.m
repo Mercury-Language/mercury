@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2007, 2009 The University of Melbourne.
+% Copyright (C) 2001-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -111,7 +111,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
-:- import_module term_io.
 :- import_module type_desc.
 
 %-----------------------------------------------------------------------------%
@@ -1879,7 +1878,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
     ;
         TypeCtorRep = tcr_char,
         det_dynamic_cast(Term, Char),
-        Functor = term_io.quoted_char(Char),
+        Functor = string.from_char_list(['\'', Char, '\'']),
         Arity = 0,
         Arguments = []
     ;
@@ -1891,7 +1890,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
     ;
         TypeCtorRep = tcr_string,
         det_dynamic_cast(Term, String),
-        Functor = term_io.quoted_string(String),
+        Functor = string.append_list(["\"", String, "\""]),
         Arity = 0,
         Arguments = []
     ;
