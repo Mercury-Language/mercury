@@ -37,7 +37,7 @@
     ").
     :- pragma foreign_proc("Java", unify_ft(X::in, Y::in), [promise_pure],
     "
-	    succeeded = (X == Y);
+	    SUCCESS_INDICATOR = (X == Y);
     ").
     :- pragma foreign_proc("Erlang", unify_ft(X::in, Y::in), [promise_pure],
     "

@@ -1467,7 +1467,7 @@ string.from_char_list(Chars::in, Str::uo) :-
         sb.append(c);
     }
     Str = sb.toString();
-    succeeded = true;
+    SUCCESS_INDICATOR = true;
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -1985,7 +1985,7 @@ string.sub_string_search(WholeString, Pattern, Index) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Index = WholeString.indexOf(Pattern, BeginAt);
-    succeeded = (Index >= 0);
+    SUCCESS_INDICATOR = (Index >= 0);
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -2496,7 +2496,7 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
 :- pragma foreign_proc("Java", using_sprintf,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    succeeded = false;
+    SUCCESS_INDICATOR = false;
 ").
 :- pragma foreign_proc("Erlang", using_sprintf,
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -3645,14 +3645,14 @@ string.det_to_float(FloatString) =
 
     // leading or trailing whitespace is not allowed
     if (FloatString.length() == 0 || FloatString.trim() != FloatString) {
-        succeeded = false;
+        SUCCESS_INDICATOR = false;
     } else {
         try {
             FloatVal = java.lang.Double.parseDouble(FloatString);
-            succeeded = true;
+            SUCCESS_INDICATOR = true;
         } catch(java.lang.NumberFormatException e) {
             // At this point it *should* in theory be safe just to set
-            // succeeded = false, since the Java API claims that
+            // SUCCESS_INDICATOR = false, since the Java API claims that
             // Double.parseDouble() will handle all the cases we require.
             // However, it turns out that in practice (tested with Sun's
             // Java 2 SDK, Standard Edition, version 1.3.1_04) Java actually
@@ -3661,23 +3661,23 @@ string.det_to_float(FloatString) =
 
             if (FloatString.equalsIgnoreCase(""nan"")) {
                 FloatVal = java.lang.Double.NaN;
-                succeeded = true;
+                SUCCESS_INDICATOR = true;
             } else if (FloatString.equalsIgnoreCase(""infinity"")) {
                 FloatVal = java.lang.Double.POSITIVE_INFINITY;
-                succeeded = true;
+                SUCCESS_INDICATOR = true;
             } else if (FloatString.substring(1).equalsIgnoreCase(""infinity""))
             {
                 if (FloatString.charAt(0) == '+') {
                     FloatVal = java.lang.Double.POSITIVE_INFINITY;
-                    succeeded = true;
+                    SUCCESS_INDICATOR = true;
                 } else if (FloatString.charAt(0) == '-') {
                     FloatVal = java.lang.Double.NEGATIVE_INFINITY;
-                    succeeded = true;
+                    SUCCESS_INDICATOR = true;
                 } else {
-                    succeeded = false;
+                    SUCCESS_INDICATOR = false;
                 }
             } else {
-                succeeded = false;
+                SUCCESS_INDICATOR = false;
             }
         }
     }
@@ -3753,7 +3753,7 @@ count_extra_trailing_zeroes(FloatStr, I, N0) = N :-
     string.contains_char(Str::in, Ch::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    succeeded = (Str.indexOf(Ch) != -1);
+    SUCCESS_INDICATOR = (Str.indexOf(Ch) != -1);
 ").
 
 string.contains_char(String, Char) :-
@@ -3933,12 +3933,12 @@ string.set_char(Char, Index, !Str) :-
 "
     if (Index < 0 || Index >= Str0.length()) {
         Str = null;
-        succeeded = false;
+        SUCCESS_INDICATOR = false;
     } else {
         java.lang.StringBuilder sb = new StringBuilder(Str0);
         sb.setCharAt(Index, Ch);
         Str = sb.toString();
-        succeeded = true;
+        SUCCESS_INDICATOR = true;
     }
 ").
 string.set_char_2(Ch, Index, Str0, Str) :-
@@ -4150,7 +4150,7 @@ string.append(S1::out, S2::out, S3::in) :-
     string.append_iii(S1::in, S2::in, S3::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    succeeded = S3.equals(S1.concat(S2));
+    SUCCESS_INDICATOR = S3.equals(S1.concat(S2));
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -4213,10 +4213,10 @@ string.append_iii(X, Y, Z) :-
 "
     if (S3.startsWith(S1)) {
         S2 = S3.substring(S1.length());
-        succeeded = true;
+        SUCCESS_INDICATOR = true;
     } else {
         S2 = null;
-        succeeded = false;
+        SUCCESS_INDICATOR = false;
     }
 ").
 
@@ -4590,7 +4590,7 @@ string.split(Str, Count, Left, Right) :-
     string.first_char(Str::in, First::in, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    succeeded = (Str.length() == Rest.length() + 1 &&
+    SUCCESS_INDICATOR = (Str.length() == Rest.length() + 1 &&
         Str.charAt(0) == First &&
         Str.endsWith(Rest));
 ").
@@ -4631,10 +4631,10 @@ string.split(Str, Count, Left, Right) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Str.length() == Rest.length() + 1 && Str.endsWith(Rest)) {
-        succeeded = true;
+        SUCCESS_INDICATOR = true;
         First = Str.charAt(0);
     } else {
-        succeeded = false;
+        SUCCESS_INDICATOR = false;
         // XXX to avoid uninitialized var warning
         First = (char) 0;
     }
@@ -4689,10 +4689,10 @@ string.split(Str, Count, Left, Right) :-
     int len = Str.length();
 
     if (len > 0) {
-        succeeded = (First == Str.charAt(0));
+        SUCCESS_INDICATOR = (First == Str.charAt(0));
         Rest = Str.substring(1);
     } else {
-        succeeded = false;
+        SUCCESS_INDICATOR = false;
         // XXX to avoid uninitialized var warning
         Rest = null;
     }
@@ -4745,14 +4745,14 @@ string.split(Str, Count, Left, Right) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     if (Str.length() == 0) {
-        succeeded = false;
+        SUCCESS_INDICATOR = false;
         // XXX to avoid uninitialized var warnings:
         First = (char) 0;
         Rest = null;
     } else {
         First = Str.charAt(0);
         Rest = Str.substring(1);
-        succeeded = true;
+        SUCCESS_INDICATOR = true;
     }
 }").
 :- pragma foreign_proc("Erlang",

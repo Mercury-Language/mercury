@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2009 The University of Melbourne.
+% Copyright (C) 2007-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -184,6 +184,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 
@@ -449,7 +450,8 @@ process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
             GoalsElse   = FailArgListGoals ++
                 [HandleEventFailGoal, SwitchFailPortGoal],
 
-            goal_info_set_determinism(detism_det, GoalInfoImpure, GoalInfoThen),
+            goal_info_set_determinism(detism_semi, GoalInfoImpure,
+                GoalInfoThen),
             goal_info_set_determinism(detism_semi, GoalInfoImpure,
                 GoalInfoElse),
 
@@ -783,7 +785,14 @@ make_recursive_call(PredInfo, ModuleInfo, PredId, ProcId, HeadVars, Goal) :-
     SymName = qualified(ModuleName, PredName),
     BuiltIn = builtin_state(ModuleInfo, PredId, PredId, ProcId),
     GoalExpr = plain_call(PredId, ProcId, HeadVars, BuiltIn, no, SymName),
-    goal_info_init(GoalInfoHG),
+
+        % We use the goal info of the top level goal in the proc info
+        % as this goal is the equivalent of what the recursive call
+        % is doing, ie binding the head vars.
+    pred_info_proc_info(PredInfo, ProcId, ProcInfo),
+    proc_info_get_goal(ProcInfo, BodyGoal0),
+    GoalInfoHG = get_hlds_goal_info(BodyGoal0),
+
     Goal = hlds_goal(GoalExpr, GoalInfoHG).
 
     % make_switch_goal(SwitchVar, SwitchCase1, SwitchCase2, GoalInfo, Goal).
@@ -957,45 +966,55 @@ check_arguments_modes(ModuleInfo, HeadModes) :-
     vartypes::in, vartypes::out,
     map(prog_var, prog_var)::in, map(prog_var, prog_var)::out) is det.
 
-make_arg_list(_Pos, _InstMap, [], _Renaming, Var, [Goal], !ModuleInfo,
+make_arg_list(_Pos, _InstMap, [], _Renaming, OutVar, [Goal], !ModuleInfo,
         !ProcInfo, !PredInfo, !Varset, !Vartypes, !BoundVarDescs) :-
-    svvarset.new_named_var("EmptyVarList", Var, !Varset),
-    svmap.det_insert(Var, list_var_value_type, !Vartypes),
+    svvarset.new_named_var("EmptyVarList", OutVar, !Varset),
+    svmap.det_insert(OutVar, list_var_value_type, !Vartypes),
     ListTypeSymName = qualified(mercury_list_module, "list"),
     ListTypeCtor = type_ctor(ListTypeSymName, 1),
     ConsId = cons(qualified(mercury_list_module, "[]" ), 0, ListTypeCtor),
-    construct_functor(Var, ConsId, [], Goal).
+    construct_functor(OutVar, ConsId, [], Goal).
 
-make_arg_list(Pos0, InstMap, [VarToInspect | ListVar], Renaming, Var,
+make_arg_list(Pos0, InstMap, [ProgVar | ProgVars], Renaming, OutVar,
         Goals, !ModuleInfo, !ProcInfo, !PredInfo, !Varset, !Vartypes,
         !BoundVarDescs) :-
     Pos = Pos0 + 1,
-    make_arg_list(Pos, InstMap, ListVar, Renaming, Var0, Goals0,
+    make_arg_list(Pos, InstMap, ProgVars, Renaming, OutVar0, Goals0,
         !ModuleInfo, !ProcInfo, !PredInfo, !Varset, !Vartypes, !BoundVarDescs),
 
-    % BoundVarDescs is filled with the description of the input variable during
-    % the first call to make_arg_list predicate.
-    % At the second call, we search if the current VarToInspect already exist
-    % in the map and if yes, copy his recorded description.
-
-    ( map.search(!.BoundVarDescs, VarToInspect, ExistingVarDesc) ->
-        ValueGoals = [],
-        VarDesc = ExistingVarDesc
+    map.lookup(!.Vartypes, ProgVar, ProgVarType),
+    (
+        ( ProgVarType = io_state_type
+        ; ProgVarType = io_io_type
+        )
+    ->
+        OutVar = OutVar0,
+        Goals = Goals0
     ;
-        make_var_value(InstMap, VarToInspect, Renaming, VarDesc, Pos0,
-            ValueGoals, !ModuleInfo, !ProcInfo, !PredInfo, !Varset, !Vartypes,
-            !BoundVarDescs)
-    ),
+        % BoundVarDescs is filled with the description of the input variable
+        % during the first call to make_arg_list predicate.
+        % At the second call, we search if the current ProgVar already exist
+        % in the map and if yes, copy his recorded description.
 
-    svvarset.new_named_var("FullListVar", Var, !Varset),
-    svmap.det_insert(Var, list_var_value_type, !Vartypes),
-    ListTypeSymName = qualified(mercury_list_module, "list"),
-    ListTypeCtor = type_ctor(ListTypeSymName, 1),
-    ConsId = cons(qualified(unqualified("list"), "[|]" ), 2, ListTypeCtor),
-    construct_functor(Var, ConsId, [VarDesc, Var0], Goal),
+        ( map.search(!.BoundVarDescs, ProgVar, ExistingVarDesc) ->
+            ValueGoals = [],
+            VarDesc = ExistingVarDesc
+        ;
+            make_var_value(InstMap, ProgVar, Renaming, VarDesc, Pos0,
+                ValueGoals, !ModuleInfo, !ProcInfo, !PredInfo, !Varset,
+                !Vartypes, !BoundVarDescs)
+        ),
 
-    %XXX Optimize me: repeated appends are slow.
-    Goals = Goals0 ++ ValueGoals ++ [Goal].
+        svvarset.new_named_var("FullListVar", OutVar, !Varset),
+        svmap.det_insert(OutVar, list_var_value_type, !Vartypes),
+        ListTypeSymName = qualified(mercury_list_module, "list"),
+        ListTypeCtor = type_ctor(ListTypeSymName, 1),
+        ConsId = cons(qualified(unqualified("list"), "[|]" ), 2, ListTypeCtor),
+        construct_functor(OutVar, ConsId, [VarDesc, OutVar0], Goal),
+
+        %XXX Optimize me: repeated appends are slow.
+        Goals = Goals0 ++ ValueGoals ++ [Goal]
+    ).
 
     % Return the type list(var_value).
     %

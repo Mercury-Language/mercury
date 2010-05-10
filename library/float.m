@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2001-2008 The University of Melbourne.
+% Copyright (C) 1994-1998,2001-2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -293,7 +293,7 @@ X / Y = Z :-
 	float_domain_checks,
 	[thread_safe, promise_pure],
 "
-	succeeded = true;
+	SUCCESS_INDICATOR = true;
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -629,7 +629,7 @@ is_nan_or_inf(Float) :-
 	is_nan(Flt::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	succeeded = java.lang.Double.isNaN(Flt);
+	SUCCESS_INDICATOR = java.lang.Double.isNaN(Flt);
 ").
 :- pragma foreign_proc("Erlang",
 	is_nan(_Flt::in),
@@ -659,7 +659,7 @@ is_nan_or_inf(Float) :-
 	is_inf(Flt::in),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	succeeded = java.lang.Double.isInfinite(Flt);
+	SUCCESS_INDICATOR = java.lang.Double.isInfinite(Flt);
 ").
 :- pragma foreign_proc("Erlang",
 	is_inf(_Flt::in),

@@ -209,7 +209,7 @@
 
 :- pragma foreign_code("Java",
 "
-    private static final Type_ctor_rep_0[] static_type_ctor_rep
+    public static final Type_ctor_rep_0[] static_type_ctor_rep
         = new Type_ctor_rep_0[private_builtin.MR_TYPECTOR_REP_MAX];
     static {
         for (int i = 0; i < private_builtin.MR_TYPECTOR_REP_MAX; i++) {
@@ -968,42 +968,42 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.runtime.MethodPtr2 P = (jmercury.runtime.MethodPtr2) Pred;
-    succeeded = (Boolean) P.call___0_0(X, Y);
+    SUCCESS_INDICATOR = (Boolean) P.call___0_0(X, Y);
 ").
 :- pragma foreign_proc("Java",
     semidet_call_4(Pred::in, A::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.runtime.MethodPtr3 P = (jmercury.runtime.MethodPtr3) Pred;
-    succeeded = (Boolean) P.call___0_0(A, X, Y);
+    SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, X, Y);
 ").
 :- pragma foreign_proc("Java",
     semidet_call_5(Pred::in, A::in, B::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.runtime.MethodPtr4 P = (jmercury.runtime.MethodPtr4) Pred;
-    succeeded = (Boolean) P.call___0_0(A, B, X, Y);
+    SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, B, X, Y);
 ").
 :- pragma foreign_proc("Java",
     semidet_call_6(Pred::in, A::in, B::in, C::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.runtime.MethodPtr5 P = (jmercury.runtime.MethodPtr5) Pred;
-    succeeded = (Boolean) P.call___0_0(A, B, C, X, Y);
+    SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, B, C, X, Y);
 ").
 :- pragma foreign_proc("Java",
     semidet_call_7(Pred::in, A::in, B::in, C::in, D::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.runtime.MethodPtr6 P = (jmercury.runtime.MethodPtr6) Pred;
-    succeeded = (Boolean) P.call___0_0(A, B, C, D, X, Y);
+    SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, B, C, D, X, Y);
 ").
 :- pragma foreign_proc("Java",
     semidet_call_8(Pred::in, A::in, B::in, C::in, D::in, E::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     jmercury.runtime.MethodPtr7 P = (jmercury.runtime.MethodPtr7) Pred;
-    succeeded = (Boolean) P.call___0_0(A, B, C, D, E, X, Y);
+    SUCCESS_INDICATOR = (Boolean) P.call___0_0(A, B, C, D, E, X, Y);
 ").
 
 :- pragma foreign_proc("Java",
@@ -1275,12 +1275,12 @@ iterate(Start, Max, Func) = Results :-
             }
             ArgPseudoTypeInfos = lst;
         }
-        succeeded = true;
+        SUCCESS_INDICATOR = true;
     } else {
         /* Fail if input is a variable. */
         TypeCtorInfo = null;
         ArgPseudoTypeInfos = null;
-        succeeded = false;
+        SUCCESS_INDICATOR = false;
     }
 ").
 
@@ -1292,7 +1292,8 @@ pseudo_type_ctor_and_args(_, _, _) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     VarNum = PseudoTypeInfo.variable_number;
-    succeeded = (VarNum >= 0 && VarNum <= last_univ_quant_varnum);
+    SUCCESS_INDICATOR =
+        (VarNum >= 0 && VarNum <= rtti_implementation.last_univ_quant_varnum);
 ").
 
 is_univ_pseudo_type_info(_, _) :-
@@ -1303,7 +1304,8 @@ is_univ_pseudo_type_info(_, _) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     VarNum = PseudoTypeInfo.variable_number;
-    succeeded = (VarNum >= first_exist_quant_varnum);
+    SUCCESS_INDICATOR =
+        (VarNum >= rtti_implementation.first_exist_quant_varnum);
 ").
 
 is_exist_pseudo_type_info(_, _) :-
@@ -1695,7 +1697,7 @@ is_exist_pseudo_type_info(_, _) :-
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     Object[] rc = ML_construct(TypeInfo, FunctorNumber, ArgList);
-    succeeded = (Boolean) rc[0];
+    SUCCESS_INDICATOR = (Boolean) rc[0];
     Term = (univ.Univ_0) rc[1];
 ").
 
@@ -2186,7 +2188,7 @@ get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = Arg :-
     high_level_data,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    succeeded = true;
+    SUCCESS_INDICATOR = true;
 ").
 :- pragma foreign_proc("C#",
     high_level_data,
@@ -2248,9 +2250,10 @@ get_arg_type_info_2(TypeInfoParams, TypeInfo, Term, FunctorDesc,
 
 :- pragma foreign_proc("Java",
     type_info_get_higher_order_arity(PseudoTypeInfo::in) = (Arity::out),
-    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeInfo_Struct ti = (TypeInfo_Struct) PseudoTypeInfo;
+    jmercury.runtime.TypeInfo_Struct ti =
+        (jmercury.runtime.TypeInfo_Struct) PseudoTypeInfo;
     Arity = ti.args.length;
 ").
 
@@ -2405,7 +2408,7 @@ get_subterm(_, _, _, _, _) = -1 :-
 :- pragma foreign_proc("Java",
     get_subterm(FunctorDesc::in, SubTermTypeInfo::in, Term::in,
         Index::in, ExtraArgs::in) = (Arg::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     // Mention TypeInfo_for_U to avoid a warning.
 
@@ -2506,7 +2509,7 @@ pseudo_type_info_is_variable(_, -1) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     VarNum = TypeInfo.variable_number;
-    succeeded = (VarNum != -1);
+    SUCCESS_INDICATOR = (VarNum != -1);
 
     // Variables number from one, not zero.
     // This is in keeping with mercury_type_info.h.
@@ -2531,8 +2534,8 @@ last_univ_quant_varnum = 512.
 first_exist_quant_varnum = 513.
 
 :- pragma foreign_code("Java", "
-private static final int last_univ_quant_varnum = 512;
-private static final int first_exist_quant_varnum = 513;
+public static final int last_univ_quant_varnum = 512;
+public static final int first_exist_quant_varnum = 513;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -2659,7 +2662,7 @@ same_pointer_value(X, Y) :- same_pointer_value_untyped(X, Y).
     same_pointer_value_untyped(T1::in, T2::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    succeeded = (T1 == T2);
+    SUCCESS_INDICATOR = (T1 == T2);
 ").
 
 same_pointer_value_untyped(_, _) :-
@@ -2938,7 +2941,7 @@ get_type_info_from_term(_, _) = _ :-
 
 :- pragma foreign_proc("Java",
     get_type_info_from_term(Term::in, Index::in) = (TypeInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     if (Term instanceof Object[]) {
         TypeInfo = (jmercury.runtime.TypeInfo_Struct) ((Object[]) Term)[Index];
@@ -2963,7 +2966,7 @@ get_typeclass_info_from_term(_, _) = _ :-
 
 :- pragma foreign_proc("Java",
     get_typeclass_info_from_term(Term::in, Index::in) = (TypeClassInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     if (Term instanceof Object[]) {
         TypeClassInfo = /*typeclass_info*/ (Object[]) ((Object[]) Term)[Index];
@@ -3229,7 +3232,8 @@ type_ctor_compare_pred(_) = unify_or_compare_pred :-
     get_type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeCtorRep = static_type_ctor_rep[TypeCtorInfo.type_ctor_rep.value];
+    TypeCtorRep = rtti_implementation.static_type_ctor_rep[
+        TypeCtorInfo.type_ctor_rep.value];
 ").
 :- pragma foreign_proc("C",
     get_type_ctor_rep(TypeCtorInfo::in) = (TypeCtorRep::out),
@@ -3395,10 +3399,10 @@ type_ctor_num_functors(_) = _ :-
 "
     if (Ordinal >= 0 && Ordinal < TypeCtorInfo.type_ctor_num_functors) {
         FunctorNumber = TypeCtorInfo.type_functor_number_map[Ordinal];
-        succeeded = true;
+        SUCCESS_INDICATOR = true;
     } else {
         FunctorNumber = -1;
-        succeeded = false;
+        SUCCESS_INDICATOR = false;
     }
 ").
 
@@ -3566,7 +3570,7 @@ arg_names_index(_, _) = _ :-
 "
     ArgNames = DuFunctorDesc.du_functor_arg_names;
 
-    succeeded = (ArgNames != null);
+    SUCCESS_INDICATOR = (ArgNames != null);
 ").
 
 :- pred get_du_functor_exist_info(du_functor_desc::in, exist_info::out)
@@ -3582,7 +3586,7 @@ get_du_functor_exist_info(DuFunctorDesc, ExistInfo) :-
 "
     ExistInfo = DuFunctorDesc.du_functor_exist_info;
 
-    succeeded = (ExistInfo != null);
+    SUCCESS_INDICATOR = (ExistInfo != null);
 ").
 
 %-----------------------------------------------------------------------------%
@@ -3762,7 +3766,7 @@ unsafe_make_enum(_) = _ :-
     null(S::in),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    succeeded = (S == null);
+    SUCCESS_INDICATOR = (S == null);
 ").
 null(_) :-
     % This version is only used for back-ends for which there is no

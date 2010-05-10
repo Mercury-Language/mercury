@@ -910,18 +910,18 @@ make_type_ctor_desc_with_arity(_, _, _) :-
 "{
     PseudoTypeInfo[] as = new PseudoTypeInfo[TypeCtorDesc.arity];
 
-    succeeded = true;
+    SUCCESS_INDICATOR = true;
     list.List_1<TypeInfo_Struct> arg_types = ArgTypes;
     for (int i = 0; i < TypeCtorDesc.arity; i++) {
         if (list.is_empty(arg_types)) {
-            succeeded = false;
+            SUCCESS_INDICATOR = false;
             break;
         }
         as[i] = list.det_head(arg_types);
         arg_types = list.det_tail(arg_types);
     }
 
-    if (succeeded) {
+    if (SUCCESS_INDICATOR) {
         TypeDesc = new TypeInfo_Struct();
         TypeDesc.init(TypeCtorDesc, as);
     } else {

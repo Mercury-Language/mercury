@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -339,7 +339,7 @@
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     // never do bounds checking for Java (throw exceptions instead)
-    succeeded = false;
+    SUCCESS_INDICATOR = false;
 ").
 
 %-----------------------------------------------------------------------------%

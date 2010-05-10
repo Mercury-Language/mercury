@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2009 The University of Melbourne.
+% Copyright (C) 2005-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -223,7 +223,6 @@
 %
 %   :- pragma foreign_code("Java", "
 %       static java.lang.Object mutable_<varname>;
-%       static final java.lang.Object mutable_<varname>_lock = new Object();
 %   ").
 %
 %   :- initialise initialise_mutable_<varname>/0.
@@ -234,19 +233,17 @@
 %       impure set_<varname>(<initval>).
 %
 % Operations on mutables are defined in terms of the following two predicates.
-% They are actually "safe": we synchronize the access and assignment statements
-% within the predicates (by the Java specification, only actually necessary for
-% doubles and longs).  They are named so to minimise the differences with the C
-% backends.
+% They are actually "safe": by the Java specification, 32-bit variables are
+% loaded/stored atomically.  Doubles and longs may be treated as two 32-bit
+% variables, but Mercury does not expose them yet.  The predicates are named so
+% to minimise the differences with the C backends.
 %
 %   :- impure pred unsafe_set_<varname>(<vartype>::in(<varinst>)) is det.
 %   :- pragma foreign_proc("Java",
 %       unsafe_set_<varname>(X::in(<varinst>)),
 %       [will_not_call_mercury, thread_safe],
 %   "
-%       synchronized (mutable_<varname>_lock) {
-%           mutable_<varname> = X;
-%       }
+%       mutable_<varname> = X;
 %   ").
 %
 %   :- semipure pred unsafe_get_<varname>(<vartype>::out(<varinst>)) is det.
@@ -254,9 +251,7 @@
 %       unsafe_get_varname(X::out(<varinst>)),
 %       [promise_semipure, will_not_call_mercury, thread_safe],
 %   "
-%       synchronized (mutable_<varname>_lock) {
-%           X = mutable_<varname>;
-%       }
+%       X = mutable_<varname>;
 %   ").
 %
 % As mutable_<varname> has the type `java.lang.Object' a cast is required

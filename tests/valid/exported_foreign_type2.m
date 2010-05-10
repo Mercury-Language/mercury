@@ -16,7 +16,7 @@
 "SUCCESS_INDICATOR = (T1 == T2);").
 
 :- pragma foreign_proc("Java", int_equals(T1::in, T2::in), [promise_pure],
-"succeeded = (T1 == T2);").
+"SUCCESS_INDICATOR = (T1 == T2);").
 
 :- pragma foreign_proc("Erlang", int_equals(T1::in, T2::in), [promise_pure],
 "SUCCESS_INDICATOR = (T1 =:= T2)").

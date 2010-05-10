@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -947,7 +947,7 @@ special__Compare____tuple_0_0(ref object[] result,
     [may_call_mercury, thread_safe, promise_pure, terminates],
 "
     try {
-        Y = deep_copy(X);
+        Y = builtin.deep_copy(X);
     } catch (java.lang.InstantiationException E) {
         throw new RuntimeException(E);
     } catch (java.lang.IllegalAccessException E) {
@@ -960,7 +960,7 @@ special__Compare____tuple_0_0(ref object[] result,
     [may_call_mercury, thread_safe, promise_pure, terminates],
 "
     try {
-        Y = deep_copy(X);
+        Y = builtin.deep_copy(X);
     } catch (java.lang.InstantiationException E) {
         throw new RuntimeException(E);
     } catch (java.lang.IllegalAccessException E) {

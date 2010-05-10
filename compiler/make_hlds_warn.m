@@ -643,19 +643,12 @@ check_fp_body_for_success_indicator(Lang, Context, CallId, PredId, ProcId,
     (
         MaybeDeclDetism = yes(Detism),
         (
-            (
-                Lang = lang_c,
-                SuccIndStr = "SUCCESS_INDICATOR"
-            ;
-                Lang = lang_csharp,
-                SuccIndStr = "SUCCESS_INDICATOR"
-            ;
-                Lang = lang_erlang,
-                SuccIndStr = "SUCCESS_INDICATOR"
-            ;
-                Lang = lang_java,
-                SuccIndStr = "succeeded"
+            ( Lang = lang_c
+            ; Lang = lang_csharp
+            ; Lang = lang_erlang
+            ; Lang = lang_java
             ),
+            SuccIndStr = "SUCCESS_INDICATOR",
             ( if    list.member(SuccIndStr, BodyPieces)
               then
                     LangStr = foreign_language_string(Lang),

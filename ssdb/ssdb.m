@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -123,10 +123,6 @@
 :- import_module mdb.browser_term.
 
 %----------------------------------------------------------------------------%
-
-    % These variables are all mutable, they are used to record the diffrents
-    % state of the debugger.
-    %
 
 :- type cur_ssdb_next_stop == next_stop.
 
@@ -785,7 +781,7 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
         AutoRetry = do_not_retry
     ).
 
-    % what_next_stop(CSN, EventNum, WhatNext, Retry).
+    % what_next_stop(EventNum, CSN, WhatNext, Retry).
     %
     % Set the NextStop and the Retry variable according to the WhatNext value.
     % In the case where the WathNext is set for a retry, it modify the
@@ -905,7 +901,7 @@ get_frame_at_depth_nondet_2(ProcId, Depth, ShadowStackNonDet0,
     ;       ssdb_disable
     ;       ssdb_delete
 
-    ;       ssdb_exit.
+    ;       ssdb_quit.
 
 :- pred ssdb_cmd_name(string::in, ssdb_cmd::out) is semidet.
 
@@ -928,6 +924,7 @@ ssdb_cmd_name("retry",      ssdb_retry).
 
 ssdb_cmd_name("st",         ssdb_stack).
 ssdb_cmd_name("stack",      ssdb_stack).
+ssdb_cmd_name("p",          ssdb_print).
 ssdb_cmd_name("print",      ssdb_print).
 ssdb_cmd_name("browse",     ssdb_browse).
 ssdb_cmd_name("d",          ssdb_down).
@@ -935,13 +932,20 @@ ssdb_cmd_name("down",       ssdb_down).
 ssdb_cmd_name("u",          ssdb_up).
 ssdb_cmd_name("up",         ssdb_up).
 
-ssdb_cmd_name("b",          ssdb_up).
-ssdb_cmd_name("break",      ssdb_up).
+ssdb_cmd_name("b",          ssdb_break).
+ssdb_cmd_name("break",      ssdb_break).
 ssdb_cmd_name("enable",     ssdb_enable).
 ssdb_cmd_name("disable",    ssdb_disable).
 ssdb_cmd_name("delete",     ssdb_delete).
 
-ssdb_cmd_name("exit",       ssdb_exit).
+ssdb_cmd_name("q",          ssdb_quit).
+ssdb_cmd_name("quit",       ssdb_quit).
+
+% Useful commands:
+%   level N         set level
+%   print           print the current atom
+%   print N|VAR     print single variable
+%   vars            print names of variables
 
 %---------------------------------------------------------------------------%
 
@@ -982,12 +986,12 @@ read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO) :-
         )
     ;
         Result = eof,
-        execute_cmd(ssdb_exit, [], Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_cmd(ssdb_quit, [], Event, ShadowStack, Depth, WhatNext, !IO)
     ;
         Result = error(Error),
         io.error_message(Error, Msg),
         io.format("could not read command: %s\n", [s(Msg)], !IO),
-        execute_cmd(ssdb_exit, [], Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_cmd(ssdb_quit, [], Event, ShadowStack, Depth, WhatNext, !IO)
     ).
 
     % Execute a command.
@@ -1045,8 +1049,8 @@ execute_cmd(Cmd, Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
         Cmd = ssdb_delete,
         execute_ssdb_delete(Args, Event, ShadowStack, Depth, WhatNext, !IO)
     ;
-        Cmd = ssdb_exit,
-        execute_ssdb_exit(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+        Cmd = ssdb_quit,
+        execute_ssdb_quit(Args, Event, ShadowStack, Depth, WhatNext, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1117,7 +1121,14 @@ execute_ssdb_goto(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
     ;
         Args = [EventNumToGoStr],
         ( string.to_int(EventNumToGoStr, EventNumToGo) ->
-            WhatNext = wn_goto(EventNumToGo)
+            get_cur_ssdb_event_number(CurEventNum, !IO),
+            ( EventNumToGo > CurEventNum ->
+                WhatNext = wn_goto(EventNumToGo)
+            ;
+                io.write_string("The debugger cannot go to a past event.\n",
+                    !IO),
+                read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            )
         ;
             io.write_string("The event number to go to must be an integer.\n",
                 !IO),
@@ -1379,7 +1390,8 @@ execute_ssdb_down(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
             DownDepth >= 0
         ->
             get_correct_frame_with_num(DownDepth, ShadowStack, FrameToPrint),
-            print_frame_info(FrameToPrint, !IO),
+            stack.depth(ShadowStack, StackDepth),
+            print_frame_info(FrameToPrint, StackDepth, !IO),
             read_and_execute_cmd(Event, ShadowStack, DownDepth, WhatNext, !IO)
         ;
             io.write_string("Already at bottom stack frame.\n", !IO),
@@ -1403,7 +1415,8 @@ execute_ssdb_up(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
             UpDepth < stack.depth(ShadowStack)
         ->
             get_correct_frame_with_num(UpDepth, ShadowStack, FrameToPrint),
-            print_frame_info(FrameToPrint, !IO),
+            stack.depth(ShadowStack, StackDepth),
+            print_frame_info(FrameToPrint, StackDepth, !IO),
             read_and_execute_cmd(Event, ShadowStack, UpDepth, WhatNext, !IO)
         ;
             io.write_string("Already at top stack frame.\n", !IO),
@@ -1551,14 +1564,37 @@ execute_ssdb_delete(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
         read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
     ).
 
-:- pred execute_ssdb_exit(list(string)::in, ssdb_event_type::in,
+:- pred execute_ssdb_quit(list(string)::in, ssdb_event_type::in,
     stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
 
-execute_ssdb_exit(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+execute_ssdb_quit(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
     (
         Args = [],
-        exit_debugger(!IO),
-        WhatNext = wn_step
+        io.write_string("ssdb: are you sure you want to quit? ", !IO),
+        io.flush_output(!IO),
+        % Read a string in input and return a string.
+        io.read_line_as_string(io.stdin_stream, Result, !IO),
+        (
+            Result = ok(String),
+            (
+                ( string.prefix(String, "y")
+                ; string.prefix(String, "Y")
+                )
+            ->
+                exit_debugger(!IO),
+                WhatNext = wn_step
+            ;
+                read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            )
+        ;
+            Result = eof,
+            exit_debugger(!IO),
+            WhatNext = wn_step
+        ;
+            Result = error(_Error),
+            exit_debugger(!IO),
+            WhatNext = wn_step
+        )
     ;
         Args = [_ | _],
         % Should we exit even in this case?
@@ -1666,7 +1702,7 @@ modify_state_breakpoint_with_num(State, Num, !IO) :-
             BreakPointsModified, !IO),
         set_cur_ssdb_breakpoints(BreakPointsModified, !IO)
     ;
-        io.write_string("No breakpoint found.\n", !IO)
+        io.format("ssdb: break point #%d does not exist.\n", [i(Num)], !IO)
     ).
 
     % delete_breakpoint_with_num(Num, !IO).
@@ -1686,7 +1722,7 @@ delete_breakpoint_with_num(Num, !IO) :-
         io.format("Breakpoint on %s.%s deleted\n", [s(Module), s(Procedure)],
             !IO)
     ;
-        io.write_string("No breakpoint found.\n", !IO)
+        io.format("ssdb: break point #%d does not exist.\n", [i(Num)], !IO)
     ).
 
     % find_breakpoint_with_num(Num, ListBreakPoint, BreakPointFound)
@@ -1731,11 +1767,12 @@ find_breakpoint_with_num(Num, [BP|ListBreakPoint], BreakPointFound) :-
     int::in, int::in, io::di, io::uo) is det.
 
 print_event_info(Event, EventNum, ProcId, PrintDepth, CSN, !IO) :-
-    io.write_string("       ", !IO),
+    % Should right align these numbers.
+    io.write_string("\t", !IO),
     io.write_int(EventNum, !IO),
-    io.write_string("\t", !IO),
+    io.write_string(":\t", !IO),
     io.write_int(CSN, !IO),
-    io.write_string("\t", !IO),
+    io.write_string("  ", !IO),
     io.write_int(PrintDepth, !IO),
     io.write_string("\t", !IO),
     (
@@ -1757,45 +1794,34 @@ print_event_info(Event, EventNum, ProcId, PrintDepth, CSN, !IO) :-
         Event = ssdb_redo_nondet,
         io.write_string("REDO", !IO)
     ),
-    io.write_string("\t\t", !IO),
+    io.write_string(" ", !IO),
+    % mdb writes pred/func here.
     io.write_string(ProcId ^ module_name, !IO),
     io.write_string(".", !IO),
     io.write_string(ProcId ^ proc_name, !IO),
+    % mdb writes arity, mode, determinism and context here.
     io.nl(!IO).
 
-    % print_frame_info(Frame, !IO).
+    % print_frame_info(Frame, StackDepth, !IO).
     %
     % Print the information of the frame gave in argument.
     %
-:- pred print_frame_info(stack_elem::in, io::di, io::uo) is det.
+:- pred print_frame_info(stack_elem::in, int::in, io::di, io::uo) is det.
 
-print_frame_info(TopFrame, !IO) :-
-    EventNum = TopFrame ^ se_event_number,
-    CSN = TopFrame ^ se_csn,
+print_frame_info(TopFrame, StackDepth, !IO) :-
     Depth = TopFrame ^ se_depth,
     ProcId = TopFrame ^ se_proc_id,
-    io.write_string("       ", !IO),
-    io.write_int(EventNum, !IO),
-    io.write_string("\t", !IO),
-    io.write_int(CSN, !IO),
-    io.write_string("\t", !IO),
-    io.write_int(Depth, !IO),
-    io.write_string("\t\t", !IO),
-    io.write_string(ProcId ^ module_name, !IO),
-    io.write_string(".", !IO),
-    io.write_string(ProcId ^ proc_name, !IO),
-    io.nl(!IO).
+    ModuleName = ProcId ^ module_name,
+    ProcName = ProcId ^ proc_name,
+    RevDepth = StackDepth - Depth,
+    io.format("%4d  %s.%s\n", [i(RevDepth), s(ModuleName), s(ProcName)], !IO).
 
     % Print a summary of the commands.
     %
 :- pred print_help(io::di, io::uo) is det.
 
 print_help(!IO) :-
-    io.nl(!IO),
-    io.write_string("\nPrincipal Commands", !IO),
-    io.write_string("\n------------------", !IO),
-    io.nl(!IO),
-    io.write_string("\n<step> or <s> or < >", !IO),
+    io.write_string("<step> or <s> or blank", !IO),
     io.write_string("\n<next> or <n>", !IO),
     io.write_string("\n<continue> or <c>", !IO),
     io.write_string("\n<finish> or <f>", !IO),
@@ -1810,12 +1836,8 @@ print_help(!IO) :-
     io.write_string("\n<down> or <d>", !IO),
     io.write_string("\n<goto N> or <g N>", !IO),
     io.write_string("\n<help> or <h>", !IO),
-    io.write_string("\n<exit>", !IO),
-    io.nl(!IO),
-    io.nl(!IO),
-    io.write_string("\nConsult the file : " ++
-        "/ssdb/SSDB_COMMAND_HELP.txt for details", !IO),
-    io.nl(!IO).
+    io.write_string("\n<quit> or <q>", !IO),
+    io.write_string("\n\n", !IO).
 
     % Print the Stack Trace. Predicate call at the 'stack' command.
     %
@@ -1846,7 +1868,6 @@ print_frames_list(Level, ShadowStack0, Depth, !IO) :-
 print_stack_frame(Starred, Level, Frame, !IO) :-
     Module = Frame ^ se_proc_id ^ module_name,
     Procedure = Frame ^ se_proc_id ^ proc_name,
-
     (
         Starred = yes,
         io.write_char('*', !IO)
@@ -1854,13 +1875,9 @@ print_stack_frame(Starred, Level, Frame, !IO) :-
         Starred = no,
         io.write_char(' ', !IO)
     ),
-    io.format(" %i \t%s.%s(\n", [i(Level), s(Module), s(Procedure)], !IO),
-    ListVarValue = Frame ^ se_list_var_value,
-    print_vars(ListVarValue, !IO),
-    io.write_string("   )\n", !IO).
+    io.format("%5d\t%s.%s\n", [i(Level), s(Module), s(Procedure)], !IO).
 
     % Print the given list of variables and their values, if bound.
-    % XXX We should treat the io.state better.
     % XXX The pprint.write predicate is used for the moment instead of
     % pretty_printer because this last one had a strange behavior
     % The terms would always appear after io.write_string output in the ssdb
@@ -1886,60 +1903,88 @@ print_vars(Vars, !IO) :-
 :- pred print_var(var_value::in, io::di, io::uo) is det.
 
 print_var(unbound_head_var(Name, Pos), !IO) :-
-    io.write_char('\t', !IO),
-    io.write_string(Name, !IO),
-    io.write_string(":\t", !IO),
-    io.write_int(Pos, !IO),
-    io.write_string("\t=\t", !IO),
-    io.write_string("_", !IO),
-    io.nl(!IO).
+    print_var_prelude(Name, Pos, !IO),
+    io.write_string("_\n", !IO).
 
 print_var(bound_head_var(Name, Pos, T), !IO) :-
-    io.write_char('\t', !IO),
-    io.write_string(Name, !IO),
-    io.write_string(":\t", !IO),
-    io.write_int(Pos, !IO),
-    io.write_string("\t=\t", !IO),
-    io.flush_output(!IO),
-    pprint.write(80, to_doc(T), !IO),
-    io.nl(!IO),
-    io.flush_output(!IO).
+    print_var_prelude(Name, Pos, !IO),
+    safe_write(T, !IO),
+    io.nl(!IO).
 
 print_var(bound_other_var(Name, T), !IO) :-
+    print_var_prelude(Name, -1, !IO),
+    safe_write(T, !IO),
+    io.nl(!IO).
+
+:- pred print_var_prelude(var_name::in, int::in, io::di, io::uo) is det.
+
+print_var_prelude(Name, Pos, !IO) :-
     io.write_char('\t', !IO),
     io.write_string(Name, !IO),
-    io.write_string(":\t_\t", !IO),
-    io.write_string("=\t", !IO),
-    io.flush_output(!IO),
-    pprint.write(80, to_doc(T), !IO),
-    io.nl(!IO),
-    io.flush_output(!IO).
+    ( Pos >= 0 ->
+        io.write_string(" (arg ", !IO),
+        io.write_int(Pos + 1, !IO),
+        io.write_string(")\t", !IO)
+    ;
+        io.write_string("\t", !IO)
+    ).
+
+:- pred safe_write(T::in, io::di, io::uo) is det.
+
+safe_write(T, !IO) :-
+    ( safe_to_write(T) ->
+        pprint.write(80, to_doc(T), !IO)
+    ;
+        io.write_string("<>", !IO)
+    ).
+
+:- pred safe_to_write(T::in) is semidet.
+
+safe_to_write(_) :-
+    semidet_true.
+
+:- pragma foreign_proc("C",
+    safe_to_write(T::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = (T != NULL);
+").
+
+:- pragma foreign_proc("Java",
+    safe_to_write(T::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = (T != null);
+").
 
     % Print the current list of breakpoints with their details.
     %
 :- pred print_breakpoints(list(breakpoint)::in, io::di, io::uo) is det.
 
 print_breakpoints(BreakPoints, !IO) :-
-    list.foldl(print_breakpoint, BreakPoints, !IO).
+    (
+        BreakPoints = [],
+        io.write_string("There are no break points.\n", !IO)
+    ;
+        BreakPoints = [_ | _],
+        list.foldl(print_breakpoint, BreakPoints, !IO)
+    ).
 
 :- pred print_breakpoint(breakpoint::in, io::di, io::uo) is det.
 
 print_breakpoint(BreakPoint, !IO) :-
-    io.write_char('\t', !IO),
-    io.write_int(BreakPoint ^ bp_number, !IO),
-    io.write_char('\t', !IO),
-    io.write_string(BreakPoint ^ bp_module_name, !IO),
-    io.write_string(".", !IO),
-    io.write_string(BreakPoint ^ bp_pred_name, !IO),
-    io.write_string("\t", !IO),
+    BreakPointNum = BreakPoint ^ bp_number,
     (
         BreakPoint ^ bp_state = bp_state_enabled,
-        io.write_string("enable", !IO)
+        Enabled = "+"
     ;
         BreakPoint ^ bp_state = bp_state_disabled,
-        io.write_string("disable", !IO)
+        Enabled = "-"
     ),
-    io.nl(!IO).
+    ModuleName = BreakPoint ^ bp_module_name,
+    PredName = BreakPoint ^ bp_pred_name,
+    io.format("%2d: %s %s.%s\n",
+        [i(BreakPointNum), s(Enabled), s(ModuleName), s(PredName)], !IO).
 
 %----------------------------------------------------------------------------%
 

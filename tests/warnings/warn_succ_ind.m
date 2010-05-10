@@ -34,7 +34,7 @@
     [will_not_call_mercury, promise_pure],
 "
     X = Y;
-    succeeded = MR_FALSE;
+    SUCCESS_INDICATOR = false;
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -42,7 +42,7 @@
     [will_not_call_mercury, promise_pure],
 "
     X = Y,
-    SUCCESS_INDICATOR = true
+    SUCCESS_INDICATOR = false
 ").
 
 :- pragma foreign_proc("C",
@@ -66,7 +66,7 @@
     [will_not_call_mercury, promise_pure],
 "
     X = Y;
-    succeeded = MR_FALSE;
+    SUCCESS_INDICATOR = false;
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -74,7 +74,7 @@
     [will_not_call_mercury, promise_pure],
 "
     X = Y,
-    SUCCESS_INDICATOR = true
+    SUCCESS_INDICATOR = false
 ").
 
 :- pragma foreign_proc("C",

@@ -114,7 +114,7 @@ unify(S, X, Y, !IO) :-
 	SUCCESS_INDICATOR = (X == Y);
 ").
 :- pragma foreign_proc("Java", unify_ft(X::in, Y::in), [promise_pure], "
-	succeeded = X.equals(Y);
+	SUCCESS_INDICATOR = X.equals(Y);
 ").
 :- pragma foreign_proc("Erlang", unify_ft(X::in, Y::in), [promise_pure], "
 	SUCCESS_INDICATOR = (X =:= Y)
@@ -129,7 +129,7 @@ unify(S, X, Y, !IO) :-
 	SUCCESS_INDICATOR = (X == Y);
 ").
 :- pragma foreign_proc("Java", unify_ft_T(X::in, Y::in), [promise_pure], "
-	succeeded = X.equals(Y);
+	SUCCESS_INDICATOR = X.equals(Y);
 ").
 :- pragma foreign_proc("Erlang", unify_ft_T(X::in, Y::in), [promise_pure], "
 	SUCCESS_INDICATOR = (X =:= Y)

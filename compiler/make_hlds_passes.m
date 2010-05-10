@@ -1678,8 +1678,8 @@ add_pass_3_mutable(ItemMutable, Status, !ModuleInfo, !QualInfo, !Specs) :-
             % Add foreign_code item that defines the global variable used to
             % implement the mutable.
             IsThreadLocal = mutable_var_thread_local(MutAttrs),
-            add_java_mutable_defn(TargetMutableName, Type, IsConstant,
-                IsThreadLocal, Context, !ModuleInfo, !QualInfo, !Specs),
+            add_java_mutable_defn(TargetMutableName, Type, IsThreadLocal,
+                Context, !ModuleInfo, !QualInfo, !Specs),
 
             % Add all the predicates related to mutables.
             add_java_mutable_preds(ItemMutable, TargetMutableName,
@@ -2309,38 +2309,30 @@ add_c_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
     % Add foreign_code item that defines the global variable used to hold the
     % mutable.
     %
-:- pred add_java_mutable_defn(string::in, mer_type::in, bool::in,
+:- pred add_java_mutable_defn(string::in, mer_type::in,
     mutable_thread_local::in, prog_context::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_java_mutable_defn(TargetMutableName, Type, IsConstant, IsThreadLocal,
-        Context, !ModuleInfo, !QualInfo, !Specs) :-
+add_java_mutable_defn(TargetMutableName, Type, IsThreadLocal, Context,
+        !ModuleInfo, !QualInfo, !Specs) :-
     get_java_mutable_global_foreign_defn(!.ModuleInfo, Type,
-        TargetMutableName, IsConstant, IsThreadLocal, Context, ForeignDefn),
+        TargetMutableName, IsThreadLocal, Context, ForeignDefn),
     ItemStatus0 = item_status(status_local, may_be_unqualified),
     add_item_decl_pass_2(ForeignDefn, ItemStatus0, _, !ModuleInfo, !Specs).
 
 :- pred get_java_mutable_global_foreign_defn(module_info::in, mer_type::in,
-    string::in, bool::in, mutable_thread_local::in, prog_context::in,
-    item::out) is det.
+    string::in, mutable_thread_local::in, prog_context::in, item::out) is det.
 
 get_java_mutable_global_foreign_defn(_ModuleInfo, _Type, TargetMutableName,
-        IsConstant, IsThreadLocal, Context, DefnItem) :-
-    MutableMutexVarName = mutable_mutex_var_name(TargetMutableName),
-
+        IsThreadLocal, Context, DefnItem) :-
     (
         IsThreadLocal = mutable_not_thread_local,
-        (
-            IsConstant = yes,
-            LockDefn = []
-        ;
-            IsConstant = no,
-            LockDefn = ["static final java.lang.Object ", MutableMutexVarName,
-                " = new java.lang.Object();\n"]
-        ),
+        % Synchronization is only required for double and long values, which
+        % Mercury does not expose. We could also use the volatile keyword.
+        % (Java Language Specification, 2nd Ed., 17.4).
         DefnBody = string.append_list([
-            "static java.lang.Object ", TargetMutableName, ";\n" | LockDefn])
+            "static java.lang.Object ", TargetMutableName, ";\n"])
     ;
         IsThreadLocal = mutable_thread_local,
         DefnBody = string.append_list([
@@ -2422,12 +2414,9 @@ add_java_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
     set_purity(purity_semipure, Attrs, GetAttrs0),
     set_thread_safe(proc_thread_safe, GetAttrs0, GetAttrs),
     varset.new_named_var(varset.init, "X", X, ProgVarSet),
-    MutableMutexVarName = mutable_mutex_var_name(TargetMutableName),
     (
         IsThreadLocal = mutable_not_thread_local,
-        GetCode =
-            "\tsynchronized (" ++ MutableMutexVarName ++ ") {\n" ++
-            "\t\tX = " ++ TargetMutableName ++ ";\n\t}\n"
+        GetCode = "\tX = " ++ TargetMutableName ++ ";\n"
     ;
         IsThreadLocal = mutable_thread_local,
         GetCode = "\tX = " ++ TargetMutableName ++ ".get();\n"
@@ -2463,8 +2452,7 @@ add_java_mutable_primitive_preds(TargetMutableName, ModuleName, MutableName,
     ),
     (
         IsThreadLocal = mutable_not_thread_local,
-        SetCode = "\tsynchronized (" ++ MutableMutexVarName ++ ") {\n" ++
-            "\t\t" ++ TargetMutableName ++ " = X;\n\t}\n"
+        SetCode = "\t" ++ TargetMutableName ++ " = X;\n"
     ;
         IsThreadLocal = mutable_thread_local,
         SetCode = "\t" ++ TargetMutableName ++ ".set(X);\n"

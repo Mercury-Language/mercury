@@ -8226,7 +8226,7 @@ for mapping Mercury types to Java types are described in
 The Java code in a @code{pragma foreign_proc} declaration
 for a procedure whose determinism indicates that it can fail
 must assign a value of type @samp{boolean} to the variable
-@samp{succeeded}.  For example:
+@samp{SUCCESS_INDICATOR}.  For example:
 
 @example
 :- pred string.contains_char(string, character).
@@ -8235,22 +8235,22 @@ must assign a value of type @samp{boolean} to the variable
 :- pragma foreign_proc("Java",
 	string.contains_char(Str::in, Ch::in),
         [will_not_call_mercury, promise_pure],
-        "succeeded = (Str.IndexOf(Ch) != -1);").
+        "SUCCESS_INDICATOR = (Str.IndexOf(Ch) != -1);").
 @end example
 
 @noindent
 Java code for procedures whose determinism indicates that they cannot fail
-should not refer to the @code{succeeded} variable.
+should not refer to the @code{SUCCESS_INDICATOR} variable.
 
 Arguments whose mode is input will have their values set by the
 Mercury implementation on entry to the Java code.
 With our current implementation, the Java code must set the values
 of all output variables, even if the procedure fails
-(i.e. sets the @samp{succeeded} variable to @code{false}).
+(i.e. sets the @samp{SUCCESS_INDICATOR} variable to @code{false}).
 @c If the procedure
 @c succeeds, the Java code must set the values of all output arguments
 @c If the procedure fails, the Java code need only
-@c set the @code{succeeded} variable to false.
+@c set the @code{SUCCESS_INDICATOR} variable to false.
 
 @node Using pragma foreign_export for Java
 @subsubsection Using pragma foreign_export for Java

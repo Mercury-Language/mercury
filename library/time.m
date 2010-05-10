@@ -4,7 +4,7 @@
 % Originally written in 1999 by Tomas By <T.By@dcs.shef.ac.uk>
 % "Feel free to use this code or parts of it any way you want."
 %
-% Some portions are Copyright (C) 1999-2007,2009 The University of Melbourne.
+% Some portions are Copyright (C) 1999-2007,2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -513,7 +513,7 @@ time.time(Result, !IO) :-
     time.time_t_is_invalid(_Val::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    succeeded = false;
+    SUCCESS_INDICATOR = false;
 ").
 :- pragma foreign_proc("Erlang",
     time.time_t_is_invalid(_Val::in),
@@ -623,7 +623,7 @@ time.localtime(time_t(Time)) = TM :-
 :- pragma foreign_proc("Java",
     time.c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     java.util.GregorianCalendar gc = new java.util.GregorianCalendar();
 
@@ -725,7 +725,7 @@ time.gmtime(time_t(Time)) = TM :-
 :- pragma foreign_proc("Java",
     time.c_gmtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     java.util.GregorianCalendar gc =
         new java.util.GregorianCalendar(
@@ -848,7 +848,7 @@ time.mktime(TM) = time_t(Time) :-
 :- pragma foreign_proc("Java",
     time.c_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
         _YD::in, _WD::in, N::in, Time::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     java.util.GregorianCalendar gc = new java.util.GregorianCalendar(
         Yr + 1900, Mnt, MD, Hrs, Min, Sec);

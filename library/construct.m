@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2009 The University of Melbourne.
+% Copyright (C) 2002-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -375,7 +375,7 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
     null(S::in),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    succeeded = (S == null);
+    SUCCESS_INDICATOR = (S == null);
 ").
 
 :- pragma foreign_proc("Erlang",

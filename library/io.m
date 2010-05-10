@@ -1804,9 +1804,9 @@
 
 :- pragma foreign_code("Java",
 "
-    static tree234.Tree234_2<Integer, Stream_info_0> ML_io_stream_db
+    public static tree234.Tree234_2<Integer, Stream_info_0> ML_io_stream_db
         = new tree234.Tree234_2.Empty_0<Integer, Stream_info_0>();
-    static univ.Univ_0 ML_io_user_globals = null;
+    public static univ.Univ_0 ML_io_user_globals = null;
 ").
 
 :- type io.stream_putback ==  map(io.stream_id, list(char)).
@@ -2921,7 +2921,8 @@ io.file_modification_time(File, Result, !IO) :-
 :- pragma foreign_proc("Java",
     io.file_modification_time_2(FileName::in, Status::out, Msg::out,
         Time::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        may_not_duplicate],
 "
     java.util.Date date = new java.util.Date();
     try {
@@ -3001,7 +3002,7 @@ file_type_implemented :-
     file_type_implemented,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    succeeded = true;
+    SUCCESS_INDICATOR = true;
 ").
 :- pragma foreign_proc("Erlang",
     file_type_implemented,
@@ -3180,7 +3181,8 @@ file_type_implemented :-
 :- pragma foreign_proc("Java",
     io.file_type_2(_FollowSymLinks::in, FileName::in,
         Result::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+        may_not_duplicate],
 "
     java.io.File file = new java.io.File(FileName);
 
@@ -5312,14 +5314,14 @@ io.unlock_globals :-
 
 :- pragma foreign_proc("Java",
     io.unsafe_get_globals(Globals::out, _IOState0::di, _IOState::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
 "
     Globals = io.ML_io_user_globals;
 ").
 
 :- pragma foreign_proc("Java",
     io.unsafe_set_globals(Globals::in, _IOState0::di, _IOState::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
 "
     io.ML_io_user_globals = Globals;
 ").
@@ -5375,7 +5377,7 @@ io.progname_base(DefaultName, PrognameBase, !IO) :-
 
 :- pragma foreign_proc("Java",
     io.get_stream_id(Stream::in) = (Id::out),
-    [will_not_call_mercury, promise_pure],
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     Id = Stream.id;
 ").
@@ -5764,14 +5766,14 @@ namespace mercury {
         abstract public void close() throws java.io.IOException;
     }
 
-    private static class MR_TextInputFile
+    public static class MR_TextInputFile
         extends MR_MercuryFileStruct
     {
         private java.io.InputStreamReader   input       = null;
         private char[]                      buf         = new char[1024];
         private int                         buf_pos     = 0;
         private int                         buf_end     = 0;
-        private int                         line_number = 1;
+        public  int                         line_number = 1;
 
         public MR_TextInputFile(java.io.InputStream stream) {
             input = new java.io.InputStreamReader(stream);
@@ -5926,7 +5928,7 @@ namespace mercury {
         }
     } // class MR_TextInputFile
 
-    private static class MR_TextOutputFile
+    public static class MR_TextOutputFile
         extends MR_MercuryFileStruct
     {
         private java.io.BufferedWriter  output      = null;
@@ -6003,7 +6005,7 @@ namespace mercury {
         }
     } // class MR_TextOutputFile
 
-    private abstract static class MR_BinaryFile
+    public abstract static class MR_BinaryFile
         extends MR_MercuryFileStruct
     {
         // These must match whence_to_int.
@@ -6062,7 +6064,7 @@ namespace mercury {
         }
     }
 
-    private static class MR_BinaryInputFile
+    public static class MR_BinaryInputFile
         extends MR_BinaryFile
     {
         private java.io.FileInputStream     binary_input = null;
@@ -6119,7 +6121,7 @@ namespace mercury {
         }
     }
 
-    private static class MR_BinaryOutputFile
+    public static class MR_BinaryOutputFile
         extends MR_BinaryFile
     {
         private java.io.FileOutputStream    binary_output = null;
@@ -6403,13 +6405,13 @@ static System.Exception MR_io_exception;
 
 :- pragma foreign_code("Java",
 "
-static MR_TextInputFile mercury_stdin =
+public static MR_TextInputFile mercury_stdin =
     new MR_TextInputFile(java.lang.System.in);
 
-static MR_TextOutputFile mercury_stdout =
+public static MR_TextOutputFile mercury_stdout =
     new MR_TextOutputFile(java.lang.System.out);
 
-static MR_TextOutputFile mercury_stderr =
+public static MR_TextOutputFile mercury_stderr =
     new MR_TextOutputFile(java.lang.System.err);
 
 /**
@@ -6417,18 +6419,18 @@ static MR_TextOutputFile mercury_stderr =
  * only when they are needed,  because the initialization code
  * does not work on Google's App Engine.
  */
-static MR_BinaryInputFile mercury_stdin_binary = null;
+private static MR_BinaryInputFile mercury_stdin_binary = null;
 
-static MR_BinaryOutputFile mercury_stdout_binary = null;
+private static MR_BinaryOutputFile mercury_stdout_binary = null;
 
-static void ensure_init_mercury_stdin_binary() {
+private static void ensure_init_mercury_stdin_binary() {
     if (mercury_stdin_binary == null) {
         mercury_stdin_binary = new MR_BinaryInputFile(
             new java.io.FileInputStream(java.io.FileDescriptor.in));
     }
 }
 
-static void ensure_init_mercury_stdout_binary() {
+private static void ensure_init_mercury_stdout_binary() {
     if (mercury_stdout_binary == null) {
         mercury_stdout_binary = new MR_BinaryOutputFile(
             new java.io.FileOutputStream(java.io.FileDescriptor.out));
@@ -6437,21 +6439,21 @@ static void ensure_init_mercury_stdout_binary() {
 
 // Note: these are also set in io.init_state.
 
-static ThreadLocal<MR_TextInputFile> mercury_current_text_input =
+public static ThreadLocal<MR_TextInputFile> mercury_current_text_input =
     new InheritableThreadLocal<MR_TextInputFile>() {
         protected MR_TextInputFile initialValue() {
             return mercury_stdin;
         }
     };
 
-static ThreadLocal<MR_TextOutputFile> mercury_current_text_output =
+public static ThreadLocal<MR_TextOutputFile> mercury_current_text_output =
     new InheritableThreadLocal<MR_TextOutputFile>() {
         protected MR_TextOutputFile initialValue() {
             return mercury_stdout;
         }
     };
 
-static ThreadLocal<MR_BinaryInputFile> mercury_current_binary_input =
+public static ThreadLocal<MR_BinaryInputFile> mercury_current_binary_input =
     new InheritableThreadLocal<MR_BinaryInputFile>() {
         protected MR_BinaryInputFile initialValue() {
             ensure_init_mercury_stdin_binary();
@@ -6459,7 +6461,7 @@ static ThreadLocal<MR_BinaryInputFile> mercury_current_binary_input =
         }
     };
 
-static ThreadLocal<MR_BinaryOutputFile> mercury_current_binary_output =
+public static ThreadLocal<MR_BinaryOutputFile> mercury_current_binary_output =
     new InheritableThreadLocal<MR_BinaryOutputFile>() {
         protected MR_BinaryOutputFile initialValue() {
             ensure_init_mercury_stdout_binary();
@@ -6467,7 +6469,8 @@ static ThreadLocal<MR_BinaryOutputFile> mercury_current_binary_output =
         }
     };
 
-static ThreadLocal<Exception> MR_io_exception = new ThreadLocal<Exception>();
+public static ThreadLocal<Exception> MR_io_exception =
+    new ThreadLocal<Exception>();
 ").
 
 :- pragma foreign_decl("Erlang", local, "
@@ -7504,7 +7507,7 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     try {
-        ByteVal = ((MR_BinaryInputFile) File).read_byte();
+        ByteVal = ((io.MR_BinaryInputFile) File).read_byte();
     } catch (java.io.IOException e) {
         io.MR_io_exception.set(e);
         ByteVal = -2;
@@ -8178,7 +8181,7 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
 :- pragma foreign_proc("Java",
     io.seek_binary_2(Stream::in, Flag::in, Off::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        terminates, may_not_duplicate],
+        terminates],
 "
     try {
         ((io.MR_BinaryFile) Stream).seek_binary(Flag, Off);
@@ -8195,7 +8198,7 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
     try {
         Offset = ((io.MR_BinaryFile) Stream).getOffset();
     } catch (java.io.IOException e) {
-        return -1;
+        Offset = -1;
     }
 ").
 
@@ -8203,56 +8206,56 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
     io.write_string_2(Stream::in, Message::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    ((MR_TextOutputFile) Stream).write_or_throw(Message);
+    ((io.MR_TextOutputFile) Stream).write_or_throw(Message);
 ").
 
 :- pragma foreign_proc("Java",
     io.write_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    ((MR_TextOutputFile) Stream).put_or_throw(Character);
+    ((io.MR_TextOutputFile) Stream).put_or_throw(Character);
 ").
 
 :- pragma foreign_proc("Java",
     io.write_int_2(Stream::in, Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
 "
-    ((MR_TextOutputFile) Stream).write_or_throw(String.valueOf(Val));
+    ((io.MR_TextOutputFile) Stream).write_or_throw(String.valueOf(Val));
 ").
 
 :- pragma foreign_proc("Java",
     io.write_float_2(Stream::in, Val::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
 "
-    ((MR_TextOutputFile) Stream).write_or_throw(String.valueOf(Val));
+    ((io.MR_TextOutputFile) Stream).write_or_throw(String.valueOf(Val));
 ").
 
 :- pragma foreign_proc("Java",
     io.write_byte_2(Stream::in, Byte::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    ((MR_BinaryOutputFile) Stream).put_or_throw((byte) Byte);
+    ((io.MR_BinaryOutputFile) Stream).put_or_throw((byte) Byte);
 ").
 
 :- pragma foreign_proc("Java",
     io.write_bytes_2(Stream::in, Message::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    ((MR_BinaryOutputFile) Stream).write_or_throw(Message);
+    ((io.MR_BinaryOutputFile) Stream).write_or_throw(Message);
 ").
 
 :- pragma foreign_proc("Java",
     io.flush_output_2(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    ((MR_TextOutputFile) Stream).flush_or_throw();
+    ((io.MR_TextOutputFile) Stream).flush_or_throw();
 ").
 
 :- pragma foreign_proc("Java",
     io.flush_binary_output_2(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    ((MR_BinaryOutputFile) Stream).flush_or_throw();
+    ((io.MR_BinaryOutputFile) Stream).flush_or_throw();
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -8905,44 +8908,50 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
 
 :- pragma foreign_proc("Java",
     io.stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
+        may_not_duplicate],
 "
-    ensure_init_mercury_stdin_binary();
+    io.ensure_init_mercury_stdin_binary();
     Stream = io.mercury_stdin_binary;
 ").
 
 :- pragma foreign_proc("Java",
     io.stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
+        may_not_duplicate],
 "
-    ensure_init_mercury_stdout_binary();
+    io.ensure_init_mercury_stdout_binary();
     Stream = io.mercury_stdout_binary;
 ").
 
 :- pragma foreign_proc("Java",
     io.input_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure, tabled_for_io,
+        may_not_duplicate],
 "
     Stream = io.mercury_current_text_input.get();
 ").
 
 :- pragma foreign_proc("Java",
     io.output_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure, tabled_for_io,
+        may_not_duplicate],
 "
     Stream = io.mercury_current_text_output.get();
 ").
 
 :- pragma foreign_proc("Java",
     io.binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure, tabled_for_io,
+        may_not_duplicate],
 "
     Stream = io.mercury_current_binary_input.get();
 ").
 
 :- pragma foreign_proc("Java",
     io.binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure, tabled_for_io,
+        may_not_duplicate],
 "
     Stream = io.mercury_current_binary_output.get();
 ").
@@ -9000,7 +9009,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
     io.set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
-    ((MR_TextOutputFile) Stream).line_number = LineNum;
+    ((io.MR_TextOutputFile) Stream).line_number = LineNum;
 ").
 
     % io.set_input_stream(NewStream, OldStream, IO0, IO1)
@@ -9448,7 +9457,8 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
 
 :- pragma foreign_proc("Java",
     io.close_stream(Stream::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+        may_not_duplicate],
 "
     try {
         Stream.close();
@@ -9771,21 +9781,24 @@ io.handle_system_command_exit_code(Status0::in) = (Status::out) :-
 
 :- pragma foreign_proc("Java",
     io.progname(_Default::in, PrognameOut::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        may_not_duplicate],
 "
     PrognameOut = jmercury.runtime.JavaInternal.progname;
 ").
 
 :- pragma foreign_proc("Java",
     io.get_exit_status(ExitStatus::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure, tabled_for_io,
+        may_not_duplicate],
 "
     ExitStatus = jmercury.runtime.JavaInternal.exit_status;
 ").
 
 :- pragma foreign_proc("Java",
     io.set_exit_status(ExitStatus::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    [will_not_call_mercury, promise_pure, tabled_for_io,
+        may_not_duplicate],
 "
     jmercury.runtime.JavaInternal.exit_status = ExitStatus;
 ").
@@ -9843,16 +9856,16 @@ command_line_argument(_, "") :-
 
 :- pragma foreign_proc("Java",
     command_line_argument(ArgNum::in, Arg::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     String[] arg_vector = jmercury.runtime.JavaInternal.args;
 
     if (ArgNum < arg_vector.length && ArgNum >= 0) {
         Arg = arg_vector[ArgNum];
-        succeeded = true;
+        SUCCESS_INDICATOR = true;
     } else {
         Arg = null;
-        succeeded = false;
+        SUCCESS_INDICATOR = false;
     }
 ").
 
@@ -9951,10 +9964,10 @@ command_line_argument(_, "") :-
 
 :- pragma foreign_proc("Java",
     io.getenv(Var::in, Value::out),
-    [will_not_call_mercury, tabled_for_io],
+    [will_not_call_mercury, tabled_for_io, may_not_duplicate],
 "
     Value = System.getenv(Var);
-    succeeded = (Value != null);
+    SUCCESS_INDICATOR = (Value != null);
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -10004,18 +10017,18 @@ io.setenv(Var, Value) :-
 
 :- pragma foreign_proc("Java",
     io.setenv(Var::in, Value::in),
-    [will_not_call_mercury, tabled_for_io],
+    [will_not_call_mercury, tabled_for_io, may_not_duplicate],
 "
     // Java does not provide a method to set environment variables, only a way
     // to modify the environment when creating a new process.
 
     // Avoid warning: Var, Value
-    succeeded = false;
+    SUCCESS_INDICATOR = false;
 ").
 
 :- pragma foreign_proc("Java",
     io.putenv(VarAndValue::in),
-    [will_not_call_mercury, tabled_for_io],
+    [will_not_call_mercury, tabled_for_io, may_not_duplicate],
 "
     // This procedure should never be called, as io.setenv/2 has been
     // implemented directly for Java.
@@ -10478,7 +10491,8 @@ io.remove_file(FileName, Result, !IO) :-
 :- pragma foreign_proc("Java",
     io.remove_file_2(FileName::in, RetVal::out, RetStr::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        may_not_duplicate],
 "
     try {
         java.io.File file = new java.io.File(FileName);
@@ -10616,7 +10630,8 @@ io.rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 :- pragma foreign_proc("Java",
     io.rename_file_2(OldFileName::in, NewFileName::in, RetVal::out,
         RetStr::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        may_not_duplicate],
 "
     try {
         java.io.File file = new java.io.File(OldFileName);
@@ -10824,7 +10839,8 @@ io.read_symlink(FileName, Result, !IO) :-
 :- pragma foreign_proc("Java",
     io.make_symlink_2(_FileName::in, _LinkFileName::in, _Status::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        may_not_duplicate],
 "
     if (true) {
         throw new java.lang.RuntimeException(
@@ -10835,7 +10851,8 @@ io.read_symlink(FileName, Result, !IO) :-
 :- pragma foreign_proc("Java",
     io.read_symlink_2(_FileName::in, _TargetFileName::out, _Status::out,
         _Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        may_not_duplicate],
 "
     if (true) {
         throw new java.lang.RuntimeException(

@@ -1614,7 +1614,7 @@ public class MercuryBitmap {
     bitmap_equal(BM1::in, BM2::in),
     [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "
-    succeeded = BM1.equals(BM2);
+    SUCCESS_INDICATOR = BM1.equals(BM2);
 ").
 
 :- pragma foreign_proc("Erlang",
