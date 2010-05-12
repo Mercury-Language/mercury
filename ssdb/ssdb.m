@@ -1467,10 +1467,9 @@ execute_ssdb_print(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
 execute_ssdb_browse(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
     (
         Args = [VarName],
-        get_correct_frame_with_num(0, ShadowStack, CurFrame),
+        get_correct_frame_with_num(Depth, ShadowStack, CurFrame),
         ListVarValue = CurFrame ^ se_list_var_value,
-        list_var_value_to_assoc_list(ListVarValue, VarDescs),
-        browse_var(VarDescs, VarName, !IO)
+        browse_var(ListVarValue, VarName, !IO)
     ;
         ( Args = []
         ; Args = [_, _ | _]
@@ -2130,20 +2129,31 @@ get_var_name(bound_other_var(Name, _)) = Name.
 
 %-----------------------------------------------------------------------------%
 
-:- pred browse_var(assoc_list(string, univ)::in, string::in, io::di, io::uo)
-    is det.
+:- pred browse_var(list(var_value)::in, string::in, io::di, io::uo) is det.
 
-browse_var(VarDescs, VarName, !IO) :-
+browse_var(ListVarValue, VarName, !IO) :-
     (
         string.to_int(VarName, VarNum),
         VarNum > 0
     ->
-        ( list.index1(VarDescs, VarNum, _ - Univ) ->
-            browse_univ(Univ, !IO)
+        ( list.index1(ListVarValue, VarNum, VarValue) ->
+            (
+                VarValue = bound_head_var(_, _, Value),
+                type_to_univ(Value, Univ),
+                browse_univ(Univ, !IO)
+            ;
+                VarValue = bound_other_var(_, Value),
+                type_to_univ(Value, Univ),
+                browse_univ(Univ, !IO)
+            ;
+                VarValue = unbound_head_var(_, _),
+                io.write_string("ssdb: the variable is unbound.\n", !IO)
+            )
         ;
             io.write_string("ssdb: there aren't that many variables.\n", !IO)
         )
     ;
+        list_var_value_to_assoc_list(ListVarValue, VarDescs),
         assoc_list.search(VarDescs, VarName, Univ)
     ->
         browse_univ(Univ, !IO)
