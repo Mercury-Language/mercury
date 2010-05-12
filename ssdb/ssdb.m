@@ -1466,37 +1466,19 @@ execute_ssdb_print(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
 
 execute_ssdb_browse(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
     (
-        Args = [],
-        % We should provide more detailed help.
-        print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
-    ;
         Args = [VarName],
-        (
-            get_correct_frame_with_num(0, ShadowStack, CurFrame),
-            ListVarValue = CurFrame ^ se_list_var_value,
-            list_var_value_to_assoc_list(ListVarValue, AssListVarValue),
-            assoc_list.search(AssListVarValue, VarName, Univ)
-        ->
-            io.stdin_stream(StdIn, !IO),
-            io.stdout_stream(StdOut, !IO),
-            browser_info.init_persistent_state(State0),
-            BT = browser_term.univ_to_browser_term(Univ),
-            promise_equivalent_solutions [!:IO] (
-                browse.browse_browser_term_no_modes(BT, StdIn, StdOut, _,
-                State0, _State1, !IO)
-            ),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
-        ;
-            io.format("There is no variable named `%s'.\n", [s(VarName)], !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
-        )
+        get_correct_frame_with_num(0, ShadowStack, CurFrame),
+        ListVarValue = CurFrame ^ se_list_var_value,
+        list_var_value_to_assoc_list(ListVarValue, VarDescs),
+        browse_var(VarDescs, VarName, !IO)
     ;
-        Args = [_, _ | _],
+        ( Args = []
+        ; Args = [_, _ | _]
+        ),
         % We should provide more detailed help.
-        print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
-    ).
+        print_help(!IO)
+    ),
+    read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO).
 
 :- pred execute_ssdb_vars(list(string)::in, ssdb_event_type::in,
     stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
@@ -1972,6 +1954,8 @@ print_help(!IO) :-
     io.write_string("\n<print> or <p>", !IO),
     io.write_string("\n<print VAR> or <p VAR>", !IO),
     io.write_string("\n<print N> or <p N>", !IO),
+    io.write_string("\n<browse VAR>", !IO),
+    io.write_string("\n<browse N>", !IO),
     io.write_string("\n<vars> or <v>", !IO),
     io.write_string("\n<stack> or <st>", !IO),
     io.write_string("\n<up> or <u>", !IO),
@@ -2143,6 +2127,41 @@ safe_to_write(_) :-
 get_var_name(unbound_head_var(Name, _)) = Name.
 get_var_name(bound_head_var(Name, _, _)) = Name.
 get_var_name(bound_other_var(Name, _)) = Name.
+
+%-----------------------------------------------------------------------------%
+
+:- pred browse_var(assoc_list(string, univ)::in, string::in, io::di, io::uo)
+    is det.
+
+browse_var(VarDescs, VarName, !IO) :-
+    (
+        string.to_int(VarName, VarNum),
+        VarNum > 0
+    ->
+        ( list.index1(VarDescs, VarNum, _ - Univ) ->
+            browse_univ(Univ, !IO)
+        ;
+            io.write_string("ssdb: there aren't that many variables.\n", !IO)
+        )
+    ;
+        assoc_list.search(VarDescs, VarName, Univ)
+    ->
+        browse_univ(Univ, !IO)
+    ;
+        io.write_string("ssdb: there is no such variable.\n", !IO)
+    ).
+
+:- pred browse_univ(univ::in, io::di, io::uo) is det.
+
+browse_univ(Univ, !IO) :-
+    io.stdin_stream(StdIn, !IO),
+    io.stdout_stream(StdOut, !IO),
+    browser_info.init_persistent_state(State0),
+    BT = browser_term.univ_to_browser_term(Univ),
+    promise_equivalent_solutions [!:IO] (
+        browse.browse_browser_term_no_modes(BT, StdIn, StdOut, _,
+        State0, _State1, !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 
