@@ -311,6 +311,10 @@
 :- pred get_all_feedback_data(feedback_info::in, list(feedback_data)::out)
     is det.
 
+    % Get the name of the program that generated this feedback information.
+    %
+:- func get_feedback_program_name(feedback_info) = string.
+
 %-----------------------------------------------------------------------------%
 
     % read_feedback_file(Path, FeedbackInfo, !IO)
@@ -329,13 +333,16 @@
     --->    open_error(io.error)
     ;       read_error(io.error)
     ;       parse_error(
-                message     :: string,
-                line_no     :: int
+                fre_pe_message          :: string,
+                fre_pe_line_no          :: int
             )
     ;       unexpected_eof
     ;       incorrect_version
     ;       incorrect_first_line
-    ;       incorrect_program_name.
+    ;       incorrect_program_name(
+                fre_ipn_expected        :: string,
+                fre_ipn_got             :: string
+            ).
 
 %-----------------------------------------------------------------------------%
 
@@ -348,19 +355,25 @@
 
 %-----------------------------------------------------------------------------%
 
+    % read_or_create(Path, ProgramName, Result, !IO).
+    %
     % Try to read in a feedback file, if the file doesn't exist create a new
     % empty feedback state in memory.
     %
-:- pred read_or_create(string::in, feedback_read_result(feedback_info)::out,
-    io::di, io::uo) is det.
+    % ProgramName is the name of the program that generated this feedback file.
+    % It is used to set this information for new feedback files or to verify
+    % that the name in an existing file matches what was expected.
+    %
+:- pred read_or_create(string::in, string::in,
+    feedback_read_result(feedback_info)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
-    % init_feedback_info = FeedbackInfo
+    % init_feedback_info(ProgramName) = FeedbackInfo
     %
     % Create a new empty feedback info structure.
     %
-:- func init_feedback_info = feedback_info.
+:- func init_feedback_info(string) = feedback_info.
 
 %-----------------------------------------------------------------------------%
 
@@ -394,6 +407,7 @@
 
 :- type feedback_info
     --->    feedback_info(
+                fi_program_name                 :: string,
                 fi_map                          :: map(feedback_type, 
                                                     feedback_data)
                     % The actual feedback data as read from the feedback file.
@@ -426,6 +440,8 @@ get_feedback_data(Info, Data) :-
 
 get_all_feedback_data(Info, AllData) :-
     map.values(Info ^ fi_map, AllData).
+
+get_feedback_program_name(Info) = Info ^ fi_program_name.
 
 %-----------------------------------------------------------------------------%
 
@@ -476,7 +492,7 @@ read_feedback_file(Path, ReadResultFeedbackInfo, !IO) :-
                 read_check_line(feedback_version, incorrect_version, Stream),
                 !Result, !IO),
             maybe_read(
-                read_no_check_line(Stream),
+                read_program_name(Stream),
                 !Result, !IO),
             maybe_read(read_data(Stream), !Result, !IO),
             ReadResultFeedbackInfo = !.Result
@@ -550,17 +566,33 @@ read_no_check_line(Stream, _, Result, !IO) :-
         Result = error(read_error(Error))
     ).
 
+:- pred read_program_name(io.input_stream::in, unit::in,
+    feedback_read_result(string)::out, io::di, io::uo) is det.
+
+read_program_name(Stream, _, Result, !IO) :-
+    io.read_line_as_string(Stream, IOResultLine, !IO),
+    (
+        IOResultLine = ok(String),
+        Result = ok(String)
+    ;
+        IOResultLine = eof,
+        Result = error(unexpected_eof)
+    ;
+        IOResultLine = error(Error),
+        Result = error(read_error(Error))
+    ).
+
     % Read the feedback data from the file.
     %
-:- pred read_data(io.input_stream::in, unit::in,
+:- pred read_data(io.input_stream::in, string::in,
     feedback_read_result(feedback_info)::out, io::di, io::uo) is det.
 
-read_data(Stream, _, Result, !IO) :-
+read_data(Stream, ProgramName, Result, !IO) :-
     io.read(Stream, ReadResultDataAssocList, !IO),
     (
         ReadResultDataAssocList = ok(DataList),
         list.foldl(det_insert_feedback_data, DataList, map.init, Map),
-        Result = ok(feedback_info(Map))
+        Result = ok(feedback_info(ProgramName, Map))
     ;
         ReadResultDataAssocList = eof,
         Result = error(unexpected_eof)
@@ -578,11 +610,17 @@ det_insert_feedback_data(Data, !Map) :-
 
 %-----------------------------------------------------------------------------%
 
-read_or_create(Path, ReadResultFeedback, !IO) :-
+read_or_create(Path, ExpectedProgName, ReadResultFeedback, !IO) :-
     read_feedback_file(Path, ReadResultFeedback1, !IO),
     (
-        ReadResultFeedback1 = ok(_),
-        ReadResultFeedback = ReadResultFeedback1
+        ReadResultFeedback1 = ok(Feedback),
+        GotProgName = get_feedback_program_name(Feedback),
+        ( ExpectedProgName = GotProgName ->
+            ReadResultFeedback = ReadResultFeedback1
+        ;
+            ReadResultFeedback = error(
+                incorrect_program_name(ExpectedProgName, GotProgName))
+        )
     ;
         ReadResultFeedback1 = error(Error),
         (
@@ -590,14 +628,14 @@ read_or_create(Path, ReadResultFeedback, !IO) :-
             % existing, (but we can't be sure because io.error is a string
             % internally, and error messages may change and are not portable).
             Error = open_error(_),
-            ReadResultFeedback = ok(init_feedback_info)
+            ReadResultFeedback = ok(init_feedback_info(ExpectedProgName))
         ;
             ( Error = read_error(_)
             ; Error = parse_error(_, _)
             ; Error = unexpected_eof
             ; Error = incorrect_version
             ; Error = incorrect_first_line
-            ; Error = incorrect_program_name
+            ; Error = incorrect_program_name(_, _)
             ),
             ReadResultFeedback = ReadResultFeedback1
         )
@@ -624,9 +662,10 @@ read_error_message_string(File, Error, Message) :-
         Error = incorrect_first_line,
         MessagePart = "Incorrect file format"
     ;
-        Error = incorrect_program_name,
+        Error = incorrect_program_name(Expected, Got),
         MessagePart =
-            "Program name didn't match, is this the right feedback file?"
+            "Program name didn't match, is this the right feedback file?\n"
+            ++ format("Expected: %s Got: %s", [s(Expected), s(Got)])
     ),
     string.format("%s: %s\n", [s(File), s(MessagePart)], Message).
 
@@ -641,7 +680,7 @@ display_read_error(File, Error, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-init_feedback_info = feedback_info(map.init).
+init_feedback_info(ProgramName) = feedback_info(ProgramName, map.init).
 
 %-----------------------------------------------------------------------------%
 

@@ -188,7 +188,8 @@
     tags_method::in, termination_norm::in, termination_norm::in,
     trace_level::in, trace_suppress_items::in,
     may_be_thread_safe::in, c_compiler_type::in, reuse_strategy::in,
-    maybe(il_version_number)::in, feedback_info::in, globals::out) is det.
+    maybe(il_version_number)::in, maybe(feedback_info)::in, globals::out) 
+    is det.
 
 :- pred get_options(globals::in, option_table::out) is det.
 :- pred get_target(globals::in, compilation_target::out) is det.
@@ -205,7 +206,7 @@
 :- pred get_reuse_strategy(globals::in, reuse_strategy::out) is det.
 :- pred get_maybe_il_version_number(globals::in, maybe(il_version_number)::out)
     is det.
-:- pred get_feedback_info(globals::in, feedback_info::out) is det.
+:- pred get_maybe_feedback_info(globals::in, maybe(feedback_info)::out) is det.
 
 :- pred set_option(option::in, option_data::in, globals::in, globals::out)
     is det.
@@ -214,8 +215,8 @@
 :- pred set_tags_method(tags_method::in, globals::in, globals::out) is det.
 :- pred set_trace_level(trace_level::in, globals::in, globals::out) is det.
 :- pred set_trace_level_none(globals::in, globals::out) is det.
-:- pred set_feedback_info(feedback_info::in, globals::in, globals::out) 
-    is det.
+:- pred set_maybe_feedback_info(maybe(feedback_info)::in, 
+    globals::in, globals::out) is det.
 
 :- pred lookup_option(globals::in, option::in, option_data::out) is det.
 
@@ -481,17 +482,17 @@ gc_is_conservative(gc_automatic) = no.
                 g_c_compiler_type           :: c_compiler_type,
                 g_reuse_strategy            :: reuse_strategy,
                 g_maybe_il_version_number   :: maybe(il_version_number),
-                g_feedback                  :: feedback_info
+                g_maybe_feedback            :: maybe(feedback_info)
             ).
 
 globals_init(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
         MaybeThreadSafe, C_CompilerType, ReuseStrategy, MaybeILVersion,
-        Feedback, Globals) :-
+        MaybeFeedback, Globals) :-
     Globals = globals(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
         MaybeThreadSafe, C_CompilerType, ReuseStrategy, MaybeILVersion,
-        Feedback).
+        MaybeFeedback).
 
 get_options(Globals, Globals ^ g_options).
 get_target(Globals, Globals ^ g_target).
@@ -505,7 +506,7 @@ get_maybe_thread_safe(Globals, Globals ^ g_may_be_thread_safe).
 get_c_compiler_type(Globals, Globals ^ g_c_compiler_type).
 get_reuse_strategy(Globals, Globals ^ g_reuse_strategy).
 get_maybe_il_version_number(Globals, Globals ^ g_maybe_il_version_number).
-get_feedback_info(Globals, Globals ^ g_feedback).
+get_maybe_feedback_info(Globals, Globals ^ g_maybe_feedback).
 
 get_backend_foreign_languages(Globals, ForeignLangs) :-
     lookup_accumulating_option(Globals, backend_foreign_languages, LangStrs),
@@ -536,8 +537,8 @@ set_trace_level(TraceLevel, !Globals) :-
 set_trace_level_none(!Globals) :-
     !Globals ^ g_trace_level := trace_level_none.
 
-set_feedback_info(Feedback, !Globals) :-
-    !Globals ^ g_feedback := Feedback.
+set_maybe_feedback_info(MaybeFeedback, !Globals) :-
+    !Globals ^ g_maybe_feedback := MaybeFeedback.
 
 lookup_option(Globals, Option, OptionData) :-
     get_options(Globals, OptionTable),

@@ -215,13 +215,13 @@ convert_option_table_result_to_globals(ok(OptionTable0), Errors,
     check_option_values(OptionTable0, OptionTable, Target, GC_Method,
         TagsMethod, TermNorm, Term2Norm, TraceLevel, TraceSuppress,
         MaybeThreadSafe, C_CompilerType, ReuseStrategy, MaybeILVersion,
-        FeedbackInfo, [], CheckErrors, !IO),
+        MaybeFeedbackInfo, [], CheckErrors, !IO),
     (
         CheckErrors = [],
         convert_options_to_globals(OptionTable, Target, GC_Method,
             TagsMethod, TermNorm, Term2Norm, TraceLevel,
             TraceSuppress, MaybeThreadSafe, C_CompilerType, ReuseStrategy,
-            MaybeILVersion, FeedbackInfo, [], Errors, Globals, !IO)
+            MaybeILVersion, MaybeFeedbackInfo, [], Errors, Globals, !IO)
     ;
         CheckErrors = [_ | _],
         Errors = CheckErrors,
@@ -233,12 +233,12 @@ convert_option_table_result_to_globals(ok(OptionTable0), Errors,
     termination_norm::out, termination_norm::out, trace_level::out,
     trace_suppress_items::out, may_be_thread_safe::out,
     c_compiler_type::out, reuse_strategy::out, maybe(il_version_number)::out,
-    feedback_info::out, list(string)::in, list(string)::out,
+    maybe(feedback_info)::out, list(string)::in, list(string)::out,
     io::di, io::uo) is det.
 
 check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-        C_CompilerType, ReuseStrategy, MaybeILVersion, FeedbackInfo,
+        C_CompilerType, ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
         !Errors, !IO) :-
     map.lookup(!.OptionTable, target, Target0),
     (
@@ -446,16 +446,17 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
     ->
         read_feedback_file(FeedbackFile, FeedbackReadResult, !IO),
         (
-            FeedbackReadResult = ok(FeedbackInfo)
+            FeedbackReadResult = ok(FeedbackInfo),
+            MaybeFeedbackInfo = yes(FeedbackInfo)
         ;
             FeedbackReadResult = error(Error),
             read_error_message_string(FeedbackFile, Error, ErrorMessage),
             add_error(ErrorMessage, !Errors),
-            FeedbackInfo = init_feedback_info
+            MaybeFeedbackInfo = no
         )
     ;
         % No feedback info.
-        FeedbackInfo = init_feedback_info
+        MaybeFeedbackInfo = no
     ). 
         
 :- pred add_error(string::in, list(string)::in, list(string)::out) is det.
@@ -471,16 +472,16 @@ add_error(Error, Errors0, Errors) :-
     compilation_target::in, gc_method::in, tags_method::in,
     termination_norm::in, termination_norm::in, trace_level::in,
     trace_suppress_items::in, may_be_thread_safe::in, c_compiler_type::in,
-    reuse_strategy::in, maybe(il_version_number)::in, feedback_info::in,
+    reuse_strategy::in, maybe(il_version_number)::in, maybe(feedback_info)::in,
     list(string)::in, list(string)::out, globals::out, io::di, io::uo) is det.
 
 convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-        C_CompilerType, ReuseStrategy, MaybeILVersion, FeedbackInfo,
+        C_CompilerType, ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
         !Errors, !:Globals, !IO) :-
     globals_init(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-        C_CompilerType, ReuseStrategy, MaybeILVersion, FeedbackInfo,
+        C_CompilerType, ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
         !:Globals),
 
     globals.lookup_string_option(!.Globals, event_set_file_name,

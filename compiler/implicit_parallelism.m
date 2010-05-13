@@ -100,9 +100,10 @@ apply_implicit_parallelism_transformation(ModuleInfo0, MaybeModuleInfo) :-
 
 apply_new_implicit_parallelism_transformation(ModuleInfo0, MaybeModuleInfo) :-
     module_info_get_globals(ModuleInfo0, Globals0),
-    globals.get_feedback_info(Globals0, FeedbackInfo),
+    globals.get_maybe_feedback_info(Globals0, MaybeFeedbackInfo),
     module_info_get_name(ModuleInfo0, ModuleName),
     (
+        yes(FeedbackInfo) = MaybeFeedbackInfo,
         get_implicit_parallelism_feedback(ModuleName, FeedbackInfo,
             ParallelismInfo)
     ->
@@ -647,8 +648,8 @@ construct_call_site_kind("callback",            csk_callback).
 
 apply_old_implicit_parallelism_transformation(ModuleInfo0, MaybeModuleInfo) :-
     module_info_get_globals(ModuleInfo0, Globals),
-    globals.get_feedback_info(Globals, FeedbackInfo),
     (
+        globals.get_maybe_feedback_info(Globals, yes(FeedbackInfo)),
         FeedbackData = feedback_data_calls_above_threshold_sorted(_, _, _),
         get_feedback_data(FeedbackInfo, FeedbackData)
     ->
