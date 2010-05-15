@@ -122,6 +122,12 @@
 :- import_module mdb.browser_info.
 :- import_module mdb.browser_term.
 
+:- pragma foreign_decl("C",
+"
+    #include ""mercury_signal.h""
+    static void MR_ssdb_sigint_handler(void);
+").
+
 %----------------------------------------------------------------------------%
 
 :- type cur_ssdb_next_stop == next_stop.
@@ -251,26 +257,113 @@
 :- mutable(cur_ssdb_shadow_stack_nondet, cur_ssdb_shadow_stack_nondet,
     stack.init, ground, [untrailed, attach_to_io_state]).
 
+%-----------------------------------------------------------------------------%
+
+:- mutable(tty_in, io.input_stream, io.stdin_stream, ground,
+    [untrailed, attach_to_io_state]).
+:- mutable(tty_out, io.output_stream, io.stdout_stream, ground,
+    [untrailed, attach_to_io_state]).
+
+:- mutable(saved_input_stream, io.input_stream, io.stdin_stream, ground,
+    [untrailed, attach_to_io_state]).
+:- mutable(saved_output_stream, io.output_stream, io.stdout_stream, ground,
+    [untrailed, attach_to_io_state]).
+
+    % This must be after the tty streams.
 :- mutable(debugger_state, debugger_state, init_debugger_state, ground,
     [untrailed, attach_to_io_state]).
 
 :- func init_debugger_state = debugger_state is det.
 
 init_debugger_state = DebuggerState :-
-    promise_pure (
-        some [!IO] (
-            impure invent_io(!:IO),
-            io.get_environment_var("SSDB", MaybeEnv, !IO),
-            impure consume_io(!.IO)
-        )
-    ),
-    (
-        MaybeEnv = yes(_),
-        DebuggerState = debugger_on
-    ;
-        MaybeEnv = no,
-        DebuggerState = debugger_disabled
+    some [!IO] promise_pure (
+        impure invent_io(!:IO),
+        io.get_environment_var("SSDB", MaybeEnv, !IO),
+        io.get_environment_var("SSDB_TTY", MaybeTTY, !IO),
+        (
+            ( MaybeEnv = yes(_)
+            ; MaybeTTY = yes(_)
+            )
+        ->
+            DebuggerState = debugger_on,
+            (
+                MaybeTTY = yes(FileName),
+                io.open_input(FileName, InputRes, !IO),
+                (
+                    InputRes = ok(InputStream),
+                    set_tty_in(InputStream, !IO)
+                ;
+                    InputRes = error(_)
+                ),
+                io.open_output(FileName, OutputRes, !IO),
+                (
+                    OutputRes = ok(OutputStream),
+                    set_tty_out(OutputStream, !IO)
+                ;
+                    OutputRes = error(_)
+                )
+            ;
+                MaybeTTY = no
+            ),
+            install_sigint_handler(!IO)
+        ;
+            DebuggerState = debugger_disabled
+        ),
+        impure consume_io(!.IO)
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred install_sigint_handler(io::di, io::uo) is det.
+
+install_sigint_handler(!IO).
+
+:- pragma foreign_proc("C",
+    install_sigint_handler(IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+    MR_setup_signal(SIGINT, (MR_Code *) MR_ssdb_sigint_handler,
+        MR_FALSE, ""ssdb: cannot install SIGINT signal handler"");
+    IO = IO0;
+").
+
+:- pragma foreign_code("C",
+"
+static void MR_ssdb_sigint_handler(void)
+{
+    SSDB_step_next_stop();
+}
+").
+
+:- pragma foreign_proc("Java",
+    install_sigint_handler(IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+    // This is an undocumented, unsupported and non-portable interface in the
+    // Sun JVM but it seems there is no alternative.
+    sun.misc.Signal.handle(new sun.misc.Signal(""INT""), new SigIntHandler());
+    IO = IO0;
+").
+
+:- pragma foreign_code("Java",
+"
+public static class SigIntHandler implements sun.misc.SignalHandler {
+    @Override
+    public void handle(sun.misc.Signal sig) {
+        SSDB_step_next_stop();
+    }
+}
+").
+
+:- pred step_next_stop(io::di, io::uo) is det.
+
+:- pragma foreign_export("C", step_next_stop(di, uo),
+    "SSDB_step_next_stop").
+:- pragma foreign_export("Java", step_next_stop(di, uo),
+    "SSDB_step_next_stop").
+
+step_next_stop(!IO) :-
+    set_cur_ssdb_next_stop(ns_step, !IO).
 
 %----------------------------------------------------------------------------%
 
@@ -284,6 +377,7 @@ handle_event_call(ProcId, ListVarValue) :-
         get_debugger_state(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
+            save_streams(!IO),
 
             Event = ssdb_call,
             get_ssdb_event_number_inc(EventNum, !IO),
@@ -306,7 +400,9 @@ handle_event_call(ProcId, ListVarValue) :-
                 what_next_stop(EventNum, CSN, WhatNext, _Retry, !IO)
             ;
                 Stop = no
-            )
+            ),
+
+            restore_streams(!IO)
         ;
             DebuggerState = debugger_off
         ;
@@ -325,6 +421,7 @@ handle_event_call_nondet(ProcId, ListVarValue) :-
         get_debugger_state(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
+            save_streams(!IO),
 
             Event = ssdb_call_nondet,
             get_ssdb_event_number_inc(EventNum, !IO),
@@ -352,7 +449,9 @@ handle_event_call_nondet(ProcId, ListVarValue) :-
                 what_next_stop(EventNum, CSN, WhatNext, _Retry, !IO)
             ;
                 Stop = no
-            )
+            ),
+
+            restore_streams(!IO)
         ;
             DebuggerState = debugger_off
         ;
@@ -370,6 +469,7 @@ handle_event_exit(ProcId, ListVarValue, Retry) :-
         get_debugger_state(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
+            save_streams(!IO),
 
             Event = ssdb_exit,
             get_ssdb_event_number_inc(EventNum, !IO),
@@ -408,7 +508,9 @@ handle_event_exit(ProcId, ListVarValue, Retry) :-
 
             get_ssdb_depth_dec(_Depth, !IO),
             stack.pop_det(ShadowStack0, _StackFrame1, ShadowStack),
-            set_cur_ssdb_shadow_stack(ShadowStack, !IO)
+            set_cur_ssdb_shadow_stack(ShadowStack, !IO),
+
+            restore_streams(!IO)
         ;
             ( DebuggerState = debugger_off
             ; DebuggerState = debugger_disabled
@@ -427,6 +529,7 @@ handle_event_exit_nondet(ProcId, ListVarValue) :-
         get_debugger_state(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
+            save_streams(!IO),
 
             Event = ssdb_exit_nondet,
             get_ssdb_event_number_inc(EventNum, !IO),
@@ -460,7 +563,9 @@ handle_event_exit_nondet(ProcId, ListVarValue) :-
 
             get_ssdb_depth_dec(_Depth, !IO),
             stack.pop_det(ShadowStack0, _StackFrame1, ShadowStack),
-            set_cur_ssdb_shadow_stack(ShadowStack, !IO)
+            set_cur_ssdb_shadow_stack(ShadowStack, !IO),
+
+            restore_streams(!IO)
         ;
             ( DebuggerState = debugger_off
             ; DebuggerState = debugger_disabled
@@ -478,6 +583,7 @@ handle_event_fail(ProcId, _ListVarValue, Retry) :-
         get_debugger_state(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
+            save_streams(!IO),
 
             Event = ssdb_fail,
             get_ssdb_event_number_inc(EventNum, !IO),
@@ -511,7 +617,9 @@ handle_event_fail(ProcId, _ListVarValue, Retry) :-
 
             get_ssdb_depth_dec(_Depth, !IO),
             stack.pop_det(ShadowStack0, _StackFrame1, ShadowStack),
-            set_cur_ssdb_shadow_stack(ShadowStack, !IO)
+            set_cur_ssdb_shadow_stack(ShadowStack, !IO),
+
+            restore_streams(!IO)
         ;
             ( DebuggerState = debugger_off
             ; DebuggerState = debugger_disabled
@@ -531,6 +639,7 @@ handle_event_fail_nondet(ProcId, _ListVarValue, Retry) :-
         Event = ssdb_fail_nondet,
         (
             DebuggerState = debugger_on,
+            save_streams(!IO),
 
             get_ssdb_event_number_inc(EventNum, !IO),
             get_cur_ssdb_shadow_stack(ShadowStack0, !IO),
@@ -576,7 +685,9 @@ handle_event_fail_nondet(ProcId, _ListVarValue, Retry) :-
             stack.pop_det(ShadowStackNonDet0, _StackFrameNonDet,
                 ShadowStackNonDet),
             set_cur_ssdb_shadow_stack(ShadowStack, !IO),
-            set_cur_ssdb_shadow_stack_nondet(ShadowStackNonDet, !IO)
+            set_cur_ssdb_shadow_stack_nondet(ShadowStackNonDet, !IO),
+
+            restore_streams(!IO)
         ;
             DebuggerState = debugger_off,
             get_cur_ssdb_depth(Depth, !IO),
@@ -608,6 +719,7 @@ handle_event_redo_nondet(ProcId, _ListVarValue) :-
         get_debugger_state(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
+            save_streams(!IO),
 
             Event = ssdb_redo_nondet,
             get_ssdb_event_number_inc(EventNum, !IO),
@@ -637,8 +749,9 @@ handle_event_redo_nondet(ProcId, _ListVarValue) :-
                 MaybeStackFrame = no,
                 error("Unexpected error: ssdb/ssdb.m : " ++
                     "get_frame_at_depth_nondet failed")
-            )
+            ),
 
+            restore_streams(!IO)
         ;
             ( DebuggerState = debugger_off
             ; DebuggerState = debugger_disabled
@@ -893,6 +1006,7 @@ get_frame_at_depth_nondet_2(ProcId, Depth, ShadowStackNonDet0,
     ;       ssdb_stack
     ;       ssdb_print
     ;       ssdb_browse
+    ;       ssdb_vars
     ;       ssdb_down
     ;       ssdb_up
 
@@ -927,6 +1041,8 @@ ssdb_cmd_name("stack",      ssdb_stack).
 ssdb_cmd_name("p",          ssdb_print).
 ssdb_cmd_name("print",      ssdb_print).
 ssdb_cmd_name("browse",     ssdb_browse).
+ssdb_cmd_name("vars",       ssdb_vars).
+ssdb_cmd_name("v",          ssdb_vars).
 ssdb_cmd_name("d",          ssdb_down).
 ssdb_cmd_name("down",       ssdb_down).
 ssdb_cmd_name("u",          ssdb_up).
@@ -944,8 +1060,6 @@ ssdb_cmd_name("quit",       ssdb_quit).
 % Useful commands:
 %   level N         set level
 %   print           print the current atom
-%   print N|VAR     print single variable
-%   vars            print names of variables
 
 %---------------------------------------------------------------------------%
 
@@ -955,11 +1069,10 @@ ssdb_cmd_name("quit",       ssdb_quit).
     int::in, what_next::out, io::di, io::uo) is det.
 
 read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO) :-
-    % XXX use stdout_stream
     io.write_string("ssdb> ", !IO),
     io.flush_output(!IO),
     % Read a string in input and return a string.
-    io.read_line_as_string(io.stdin_stream, Result, !IO),
+    io.read_line_as_string(Result, !IO),
     (
         Result = ok(String0),
         % Delete the trailing newline character.
@@ -1030,6 +1143,9 @@ execute_cmd(Cmd, Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
     ;
         Cmd = ssdb_browse,
         execute_ssdb_browse(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+    ;
+        Cmd = ssdb_vars,
+        execute_ssdb_vars(Args, Event, ShadowStack, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_down,
         execute_ssdb_down(Args, Event, ShadowStack, Depth, WhatNext, !IO)
@@ -1333,51 +1449,51 @@ execute_ssdb_print(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
         Args = [],
         get_correct_frame_with_num(Depth, ShadowStack, CurrentFrame),
         ListVarValue = CurrentFrame ^ se_list_var_value,
-        print_vars(ListVarValue, !IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        print_vars(ListVarValue, !IO)
     ;
-        Args = [_ | _],
-        % We should allow users to specify what they want to print.
-        print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
-    ).
+        Args = [Arg],
+        get_correct_frame_with_num(Depth, ShadowStack, CurrentFrame),
+        ListVarValue = CurrentFrame ^ se_list_var_value,
+        print_var_with_name(ListVarValue, Arg, !IO)
+    ;
+        Args = [_, _ | _],
+        print_help(!IO)
+    ),
+    read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO).
 
 :- pred execute_ssdb_browse(list(string)::in, ssdb_event_type::in,
     stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
 
 execute_ssdb_browse(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
     (
-        Args = [],
-        % We should provide more detailed help.
-        print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
-    ;
         Args = [VarName],
-        (
-            get_correct_frame_with_num(0, ShadowStack, CurFrame),
-            ListVarValue = CurFrame ^ se_list_var_value,
-            list_var_value_to_assoc_list(ListVarValue, AssListVarValue),
-            assoc_list.search(AssListVarValue, VarName, Univ)
-        ->
-            io.stdin_stream(StdIn, !IO),
-            io.stdout_stream(StdOut, !IO),
-            browser_info.init_persistent_state(State0),
-            BT = browser_term.univ_to_browser_term(Univ),
-            promise_equivalent_solutions [!:IO] (
-                browse.browse_browser_term_no_modes(BT, StdIn, StdOut, _,
-                State0, _State1, !IO)
-            ),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
-        ;
-            io.format("There is no variable named `%s'.\n", [s(VarName)], !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
-        )
+        get_correct_frame_with_num(Depth, ShadowStack, CurFrame),
+        ListVarValue = CurFrame ^ se_list_var_value,
+        browse_var(ListVarValue, VarName, !IO)
     ;
-        Args = [_, _ | _],
+        ( Args = []
+        ; Args = [_, _ | _]
+        ),
         % We should provide more detailed help.
-        print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
-    ).
+        print_help(!IO)
+    ),
+    read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO).
+
+:- pred execute_ssdb_vars(list(string)::in, ssdb_event_type::in,
+    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+
+execute_ssdb_vars(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+    (
+        Args = [],
+        get_correct_frame_with_num(Depth, ShadowStack, CurrentFrame),
+        ListVarValue = CurrentFrame ^ se_list_var_value,
+        print_vars_list(ListVarValue, 1, !IO)
+    ;
+        Args = [_ | _],
+        % We should provide more detailed help.
+        print_help(!IO)
+    ),
+    read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO).
 
 :- pred execute_ssdb_down(list(string)::in, ssdb_event_type::in,
     stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
@@ -1573,7 +1689,7 @@ execute_ssdb_quit(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
         io.write_string("ssdb: are you sure you want to quit? ", !IO),
         io.flush_output(!IO),
         % Read a string in input and return a string.
-        io.read_line_as_string(io.stdin_stream, Result, !IO),
+        io.read_line_as_string(Result, !IO),
         (
             Result = ok(String),
             (
@@ -1802,6 +1918,8 @@ print_event_info(Event, EventNum, ProcId, PrintDepth, CSN, !IO) :-
     % mdb writes arity, mode, determinism and context here.
     io.nl(!IO).
 
+%-----------------------------------------------------------------------------%
+
     % print_frame_info(Frame, StackDepth, !IO).
     %
     % Print the information of the frame gave in argument.
@@ -1815,6 +1933,8 @@ print_frame_info(TopFrame, StackDepth, !IO) :-
     ProcName = ProcId ^ proc_name,
     RevDepth = StackDepth - Depth,
     io.format("%4d  %s.%s\n", [i(RevDepth), s(ModuleName), s(ProcName)], !IO).
+
+%-----------------------------------------------------------------------------%
 
     % Print a summary of the commands.
     %
@@ -1831,6 +1951,11 @@ print_help(!IO) :-
     io.write_string("\n<enable / disable / delete *>", !IO),
     io.write_string("\n<enable / disable / delete N>", !IO),
     io.write_string("\n<print> or <p>", !IO),
+    io.write_string("\n<print VAR> or <p VAR>", !IO),
+    io.write_string("\n<print N> or <p N>", !IO),
+    io.write_string("\n<browse VAR>", !IO),
+    io.write_string("\n<browse N>", !IO),
+    io.write_string("\n<vars> or <v>", !IO),
     io.write_string("\n<stack> or <st>", !IO),
     io.write_string("\n<up> or <u>", !IO),
     io.write_string("\n<down> or <d>", !IO),
@@ -1838,6 +1963,8 @@ print_help(!IO) :-
     io.write_string("\n<help> or <h>", !IO),
     io.write_string("\n<quit> or <q>", !IO),
     io.write_string("\n\n", !IO).
+
+%-----------------------------------------------------------------------------%
 
     % Print the Stack Trace. Predicate call at the 'stack' command.
     %
@@ -1877,6 +2004,8 @@ print_stack_frame(Starred, Level, Frame, !IO) :-
     ),
     io.format("%5d\t%s.%s\n", [i(Level), s(Module), s(Procedure)], !IO).
 
+%-----------------------------------------------------------------------------%
+
     % Print the given list of variables and their values, if bound.
     % XXX The pprint.write predicate is used for the moment instead of
     % pretty_printer because this last one had a strange behavior
@@ -1899,6 +2028,41 @@ print_stack_frame(Starred, Level, Frame, !IO) :-
 
 print_vars(Vars, !IO) :-
     list.foldl(print_var, Vars, !IO).
+
+:- pred print_var_with_name(list(var_value)::in, string::in,
+    io::di, io::uo) is det.
+
+print_var_with_name(VarDescs, VarName, !IO) :-
+    (
+        string.to_int(VarName, VarNum),
+        VarNum > 0
+    ->
+        print_var_with_number(VarDescs, VarNum, !IO)
+    ;
+        % Since we don't have tab completion, make it easier for the user by
+        % matching prefixes instead of the entire name.
+        P = (pred(VarDesc::in) is semidet :-
+            string.prefix(get_var_name(VarDesc), VarName)
+        ),
+        list.filter(P, VarDescs, MatchVars),
+        (
+            MatchVars = [],
+            io.write_string("ssdb: there is no such variable.\n", !IO)
+        ;
+            MatchVars = [_ | _],
+            print_vars(MatchVars, !IO)
+        )
+    ).
+
+:- pred print_var_with_number(list(var_value)::in, int::in, io::di, io::uo)
+    is det.
+
+print_var_with_number(VarDescs, VarNum, !IO) :-
+    ( list.index1(VarDescs, VarNum, VarDesc) ->
+        print_var(VarDesc, !IO)
+    ;
+        io.write_string("ssdb: there aren't that many variables.\n", !IO)
+    ).
 
 :- pred print_var(var_value::in, io::di, io::uo) is det.
 
@@ -1947,7 +2111,7 @@ safe_to_write(_) :-
     safe_to_write(T::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    SUCCESS_INDICATOR = (T != NULL);
+    SUCCESS_INDICATOR = (T != 0);
 ").
 
 :- pragma foreign_proc("Java",
@@ -1956,6 +2120,79 @@ safe_to_write(_) :-
 "
     SUCCESS_INDICATOR = (T != null);
 ").
+
+:- func get_var_name(var_value) = string.
+
+get_var_name(unbound_head_var(Name, _)) = Name.
+get_var_name(bound_head_var(Name, _, _)) = Name.
+get_var_name(bound_other_var(Name, _)) = Name.
+
+%-----------------------------------------------------------------------------%
+
+:- pred browse_var(list(var_value)::in, string::in, io::di, io::uo) is det.
+
+browse_var(ListVarValue, VarName, !IO) :-
+    (
+        string.to_int(VarName, VarNum),
+        VarNum > 0
+    ->
+        ( list.index1(ListVarValue, VarNum, VarValue) ->
+            (
+                VarValue = bound_head_var(_, _, Value),
+                type_to_univ(Value, Univ),
+                browse_univ(Univ, !IO)
+            ;
+                VarValue = bound_other_var(_, Value),
+                type_to_univ(Value, Univ),
+                browse_univ(Univ, !IO)
+            ;
+                VarValue = unbound_head_var(_, _),
+                io.write_string("ssdb: the variable is unbound.\n", !IO)
+            )
+        ;
+            io.write_string("ssdb: there aren't that many variables.\n", !IO)
+        )
+    ;
+        list_var_value_to_assoc_list(ListVarValue, VarDescs),
+        assoc_list.search(VarDescs, VarName, Univ)
+    ->
+        browse_univ(Univ, !IO)
+    ;
+        io.write_string("ssdb: there is no such variable.\n", !IO)
+    ).
+
+:- pred browse_univ(univ::in, io::di, io::uo) is det.
+
+browse_univ(Univ, !IO) :-
+    io.stdin_stream(StdIn, !IO),
+    io.stdout_stream(StdOut, !IO),
+    browser_info.init_persistent_state(State0),
+    BT = browser_term.univ_to_browser_term(Univ),
+    promise_equivalent_solutions [!:IO] (
+        browse.browse_browser_term_no_modes(BT, StdIn, StdOut, _,
+        State0, _State1, !IO)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred print_vars_list(list(var_value)::in, int::in, io::di, io::uo) is det.
+
+print_vars_list([], _, !IO).
+print_vars_list([Var | Vars], VarNum, !IO) :-
+    io.format("\t%2d ", [i(VarNum)], !IO),
+    ( Var = unbound_head_var(Name, Pos)
+    ; Var = bound_head_var(Name, Pos, _)
+    ; Var = bound_other_var(Name, _), Pos = -1
+    ),
+    io.write_string(Name, !IO),
+    ( Pos >= 0 ->
+        io.format(" (arg %d)\n", [i(Pos + 1)], !IO)
+    ;
+        io.nl(!IO)
+    ),
+    print_vars_list(Vars, VarNum + 1, !IO).
+
+%-----------------------------------------------------------------------------%
 
     % Print the current list of breakpoints with their details.
     %
@@ -2043,6 +2280,26 @@ print_breakpoint(BreakPoint, !IO) :-
     [will_not_call_mercury, thread_safe],
 "
 ").
+
+%-----------------------------------------------------------------------------%
+
+:- pred save_streams(io::di, io::uo) is det.
+
+save_streams(!IO) :-
+    get_tty_in(TTY_in, !IO),
+    get_tty_out(TTY_out, !IO),
+    io.set_input_stream(TTY_in, OldInputStream, !IO),
+    io.set_output_stream(TTY_out, OldOutputStream, !IO),
+    set_saved_input_stream(OldInputStream, !IO),
+    set_saved_output_stream(OldOutputStream, !IO).
+
+:- pred restore_streams(io::di, io::uo) is det.
+
+restore_streams(!IO) :-
+    get_saved_input_stream(InputStream, !IO),
+    get_saved_output_stream(OutputStream, !IO),
+    io.set_input_stream(InputStream, _, !IO),
+    io.set_output_stream(OutputStream, _, !IO).
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%

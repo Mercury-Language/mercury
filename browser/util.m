@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2002, 2004-2007 The University of Melbourne.
+% Copyright (C) 1998-2002, 2004-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -125,8 +125,21 @@ trace_getline(Prompt, Result, MdbIn, MdbOut, !IO) :-
     IO = IO0;
 ").
 
-call_trace_getline(_, _, _, _, _, !IO) :-
-    private_builtin.sorry("mdb.call_trace_getline").
+call_trace_getline(MdbIn, MdbOut, Prompt, Line, Success, !IO) :-
+    io.write_string(MdbOut, Prompt, !IO),
+    io.flush_output(MdbOut, !IO),
+    io.read_line_as_string(MdbIn, Result, !IO),
+    (
+        Result = ok(Line),
+        Success = 1
+    ;
+        Result = eof,
+        Line = "",
+        Success = 0
+    ;
+        Result = error(Error),
+        error("call_trace_getline: " ++ io.error_message(Error))
+    ).
 
 trace_get_command(Prompt, Result, !IO) :-
     io.input_stream(MdbIn, !IO),
@@ -157,8 +170,8 @@ trace_get_command(Prompt, Result, !IO) :-
     State = State0;
 ").
 
-trace_get_command(_, _, _, _, !IO) :-
-    private_builtin.sorry("mdb.trace_get_command/6").
+trace_get_command(Prompt, Line, MdbIn, MdbOut, !IO) :-
+    trace_get_command_fallback(Prompt, Line, MdbIn, MdbOut, !IO).
 
     % This is called by trace_get_command when the trace library is not linked
     % in.

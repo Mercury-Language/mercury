@@ -4473,9 +4473,9 @@ have_preallocated_pseudo_type_var(N) :-
 
 output_boxed_rval(Info, Type, Expr, !IO) :-
     ( java_builtin_type(Type, _JavaName, JavaBoxedName, _) ->
-        io.write_string("new ", !IO),
+        % valueOf may return cached instances instead of creating new objects.
         io.write_string(JavaBoxedName, !IO),
-        io.write_string("(", !IO),
+        io.write_string(".valueOf(", !IO),
         output_rval(Info, Expr, !IO),
         io.write_string(")", !IO)
     ;

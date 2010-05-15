@@ -41,6 +41,7 @@ MCFLAGS-builtin_false		= --intermodule-optimization
 MCFLAGS-bug85			= -O0 --deforestation
 MCFLAGS-bug100                  = --halt-at-warn
 MCFLAGS-bug134                  = --no-static-ground-terms --no-optimize-dead-procs
+MCFLAGS-bug142                  = --optimise-higher-order --inline-single-use
 MCFLAGS-compl_unify_bug		= -O3
 MCFLAGS-constraint_prop_bug	= -O0 --common-struct --local-constraint-propagation
 MCFLAGS-csharp_hello		= --no-intermodule-optimization

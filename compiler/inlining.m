@@ -169,6 +169,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module maybe.
+:- import_module multi_map.
 :- import_module pair.
 :- import_module set.
 :- import_module svset.
@@ -647,7 +648,9 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
             list.length(CalleeListOfVars, CalleeThisMany),
             TotalVars = ThisMany + CalleeThisMany,
             TotalVars =< VarThresh
-        )
+        ),
+        % XXX Work around bug #142.
+        not may_encounter_bug_142(ProcInfo, ArgVars)
     ->
         do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
             VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet,
@@ -697,6 +700,33 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
     ;
         GoalExpr = plain_call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
         GoalInfo = GoalInfo0
+    ).
+
+:- pred may_encounter_bug_142(proc_info::in, list(prog_var)::in) is semidet.
+
+may_encounter_bug_142(CalleeProcInfo, ArgVars) :-
+    proc_info_get_rtti_varmaps(CalleeProcInfo, RttiVarMaps),
+    proc_info_get_headvars(CalleeProcInfo, HeadVars),
+    multi_map.from_corresponding_lists(ArgVars, HeadVars, MultiMap),
+    some [ArgVar] (
+        list.member(ArgVar, ArgVars),
+        multi_map.lookup(MultiMap, ArgVar, HeadVarsForArgVar),
+        HeadVarsForArgVar = [_ | _],
+        tci_vars_different_constraints(RttiVarMaps, HeadVarsForArgVar)
+    ).
+
+:- pred tci_vars_different_constraints(rtti_varmaps::in, list(prog_var)::in)
+    is semidet.
+
+tci_vars_different_constraints(RttiVarMaps, [VarA, VarB | Vars]) :-
+    (
+        rtti_varmaps_var_info(RttiVarMaps, VarA, VarInfoA),
+        rtti_varmaps_var_info(RttiVarMaps, VarB, VarInfoB),
+        VarInfoA = typeclass_info_var(ConstraintA),
+        VarInfoB = typeclass_info_var(ConstraintB),
+        ConstraintA \= ConstraintB
+    ;
+        tci_vars_different_constraints(RttiVarMaps, [VarB | Vars])
     ).
 
 %-----------------------------------------------------------------------------%

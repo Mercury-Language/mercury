@@ -1,110 +1,108 @@
-% 9-queens program
+% vim: ts=4 sw=4 et ft=mercury
+%
+% This program solves the N-queens problem. Given an N-by-N chessboard,
+% this problem asks us to find positions for N queens on the board such
+% that they do not attack each other. This means that no two queens can be
+%
+% - in the same row
+% - in the same column
+% - on the same diagnonal.
+%
+% We print the result as a list of integers. Each integer corresponds to one
+% of the board's N columns, and it gives the number of the row occupied by
+% the queen in that column. (Given the constraints of the problem, every column
+% must be occupied by exactly one queen.)
 
 :- module queens.
 
 :- interface.
 
-:- import_module list, int, io.
+:- import_module io.
 
-:- pred main1(list(int)).
-:- mode main1(out) is nondet.
-
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
-:- import_module prolog.
+:- import_module int.
+:- import_module list.
 
-main1(Out) :-	
-	data(Data),
-	queen(Data, Out).
+main(!IO) :-
+    data(Data),
+    ( queen(Data, Out) ->
+        print_list(Out, !IO)
+    ;
+        io.write_string("No solution\n", !IO)
+    ).
 
-main -->
-	( { data(Data), queen(Data, Out) } ->
-		print_list(Out)
-	;
-		io__write_string("No solution\n")
-	).
-
-:- pred data(list(int)).
-:- mode data(out) is det.
+% With this data, this program solves the 8-queens problem. To solve the
+% N-queens problem for some other N, make this predicate return the first
+% N integers.
+:- pred data(list(int)::out) is det.
 
 data([1,2,3,4,5,6,7,8]).
 
-:- pred queen(list(int), list(int)).
-:- mode queen(in, out) is nondet.
+:- pred queen(list(int)::in, list(int)::out) is nondet.
 
-queen(Data, Out) :-
-	qperm(Data, Out),
-	safe(Out).
+queen(Data, Perm) :-
+    qperm(Data, Perm),
+    safe(Perm).
 
-:- pred qperm(list(int), list(int)).
-:- mode qperm(in, out) is nondet.
+:- pred qperm(list(int)::in, list(int)::out) is nondet.
 
 qperm([], []).
-qperm([X|Y], K) :-
-	qdelete(U, [X|Y], Z),
-	K = [U|V],
-	qperm(Z, V).
+qperm([H | T], Perm) :-
+    qdelete([H | T], Element, Rest),
+    qperm(Rest, RestPerm),
+    Perm = [Element | RestPerm].
 
-:- pred qdelete(int, list(int), list(int)).
-:- mode qdelete(out, in, out) is nondet.
+:- pred qdelete(list(int)::in, int::out, list(int)::out) is nondet.
 
-qdelete(A, [A|L], L).
-qdelete(X, [A|Z], [A|R]) :-
-	qdelete(X, Z, R).
+qdelete([H | T], H, T).
+qdelete([H | T], E, [H | NT]) :-
+    qdelete(T, E, NT).
 
-:- pred safe(list(int)).
-:- mode safe(in) is semidet.
+:- pred safe(list(int)::in) is semidet.
 
 safe([]).
-safe([N|L]) :-
-	nodiag(N, 1, L),
-	safe(L).
+safe([H | T]) :-
+    nodiag(H, 1, T),
+    safe(T).
 
-:- pred nodiag(int, int, list(int)).
-:- mode nodiag(in, in, in) is semidet.
+:- pred nodiag(int::in, int::in, list(int)::in) is semidet.
 
 nodiag(_, _, []).
-nodiag(B, D, [N|L]) :-
-	NmB is N - B,
-	BmN is B - N,
-	( D = NmB ->
-		fail
-	; D = BmN ->
-		fail
-	;
-		true
-	),
-	D1 is D + 1,
-	nodiag(B, D1, L).
+nodiag(TestRow, !.Diff, [Row | Rows]) :-
+    ( !.Diff = Row - TestRow ->
+        fail
+    ; !.Diff = TestRow - Row ->
+        fail
+    ;
+        true
+    ),
+    !:Diff = !.Diff + 1,
+    nodiag(TestRow, !.Diff, Rows).
 
-:- pred print_list(list(int), io__state, io__state).
-:- mode print_list(in, di, uo) is det.
+:- pred print_list(list(int)::in, io::di, io::uo) is det.
 
-print_list(Xs) -->
-	(
-		{ Xs = [] }
-	->
-		io__write_string("[]\n")
-	;
-		io__write_string("["),
-		print_list_2(Xs),
-		io__write_string("]\n")
-	).
+print_list(Xs, !IO) :-
+    (
+        Xs = [],
+        io.write_string("[]\n", !IO)
+    ;
+        Xs = [H | T],
+        io.write_string("[", !IO),
+        print_list_elements(H, T, !IO),
+        io.write_string("]\n", !IO)
+    ).
 
-:- pred print_list_2(list(int), io__state, io__state).
-:- mode print_list_2(in, di, uo) is det.
+:- pred print_list_elements(int::in, list(int)::in, io::di, io::uo) is det.
 
-print_list_2([]) --> [].
-print_list_2([X|Xs]) --> 
-	io__write_int(X),
-	(
-		{ Xs = [] }
-	->
-		[]
-	;
-		io__write_string(", "),
-		print_list_2(Xs)
-	).
+print_list_elements(X, Xs, !IO) :-
+    io.write_int(X, !IO),
+    (
+        Xs = []
+    ;
+        Xs = [H | T],
+        io.write_string(", ", !IO),
+        print_list_elements(H, T, !IO)
+    ).
