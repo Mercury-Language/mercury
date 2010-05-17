@@ -942,15 +942,14 @@ decrement_limit(triangular(N), triangular(N - 1)).
 
 :- pragma foreign_proc("Erlang",
         pretty_printer_is_initialised(Okay::out, _IO0::di, _IO::uo),
-        [promise_pure, will_not_call_mercury, thread_safe],
+        [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
-pretty_printer_is_initialised() ->
     'ML_erlang_global_server' !
         {get_mutable, pretty_printer_is_initialised, self()},
     receive
-        {get_mutable_ack, undefined} -> {no};
-        {get_mutable_ack, Okay} -> Okay
-    end.
+        {get_mutable_ack, undefined} -> Okay = {no};
+        {get_mutable_ack, Okay} -> void
+    end
 ").
 
 %-----------------------------------------------------------------------------%
@@ -978,14 +977,13 @@ pretty_printer_is_initialised() ->
 
 :- pragma foreign_proc("Erlang",
         unsafe_get_default_formatter_map(FMap::out, _IO0::di, _IO::uo),
-        [promise_pure, will_not_call_mercury, thread_safe],
+        [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
-unsafe_get_default_formatter_map() ->
     'ML_erlang_global_server' !
-        {get_mutable, pretty_printer_formatter_map, self()},
+        {get_mutable, pretty_printer_default_formatter_map, self()},
     receive
         {get_mutable_ack, FMap} -> FMap
-    end.
+    end
 ").
 
 %-----------------------------------------------------------------------------%
@@ -1021,13 +1019,12 @@ get_default_formatter_map(FMap, !IO) :-
 
 :- pragma foreign_proc("Erlang",
         set_default_formatter_map(FMap::in, _IO0::di, _IO::uo),
-        [promise_pure, will_not_call_mercury, thread_safe],
+        [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
 "
-unsafe_get_default_formatter_map(FMap) ->
     'ML_erlang_global_server' !
         {set_mutable, pretty_printer_is_initialised, {yes}},
     'ML_erlang_global_server' !
-        {set_mutable, pretty_printer_default_formatter_map, FMap}.
+        {set_mutable, pretty_printer_default_formatter_map, FMap}
 ").
 
 %-----------------------------------------------------------------------------%
