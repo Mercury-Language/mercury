@@ -610,6 +610,18 @@ case $FULLARCH in powerpc*apple*darwin*)
     esac
 esac
 
+# At -O2 compilation times on Mac OS X are extremely slow for
+# Apple GCC 4.{0,2}.  We must force GCC to use -O0 here in order
+# to get acceptable compilation times.
+
+case $FULLARCH in *apple*darwin*)
+    case $debug in true)
+        case $COMPILER in gcc)
+            OVERRIDE_OPTS="$OVERRIDE_OPTS -O0"
+        esac
+    esac
+esac
+
 case $assemble in true)
     case $verbose in true)
         echo $AS $AS_OPTS "$@" ;;
