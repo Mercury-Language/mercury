@@ -2023,14 +2023,12 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
                 Parallel = no,
                 GCGrade = GCGrade1
             ),
-            make_link_lib(Globals, TargetType, GCGrade, SharedGCLibs),
-            StaticGCLibs = quote_arg(StdLibDir/"lib"/
-                ("lib" ++ GCGrade ++ LibExt))
+            link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+                GCGrade, StaticGCLibs, SharedGCLibs)
         ;
             GCMethod = gc_mps,
-            make_link_lib(Globals, TargetType, "mps", SharedGCLibs),
-            StaticGCLibs = quote_arg(StdLibDir/"lib"/
-                ("libmps" ++ LibExt) )
+            link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+                "mps", StaticGCLibs, SharedGCLibs)
         ;
             GCMethod = gc_accurate,
             StaticGCLibs = "",
@@ -2043,22 +2041,17 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
             StaticTraceLibs = "",
             SharedTraceLibs = ""
         ;
-            StaticTraceLibs =
-                quote_arg(StdLibDir/"lib"/GradeDir/
-                    ("libmer_trace" ++ LibExt)) ++
-                " " ++
-                quote_arg(StdLibDir/"lib"/GradeDir/
-                    ("libmer_eventspec" ++ LibExt)) ++
-                " " ++
-                quote_arg(StdLibDir/"lib"/GradeDir/
-                    ("libmer_browser" ++ LibExt)) ++
-                " " ++
-                quote_arg(StdLibDir/"lib"/GradeDir/
-                    ("libmer_mdbcomp" ++ LibExt)),
-            make_link_lib(Globals, TargetType, "mer_trace", TraceLib),
-            make_link_lib(Globals, TargetType, "mer_eventspec", EventSpecLib),
-            make_link_lib(Globals, TargetType, "mer_browser", BrowserLib),
-            make_link_lib(Globals, TargetType, "mer_mdbcomp", MdbCompLib),
+            link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+                "mer_trace", StaticTraceLib, TraceLib),
+            link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+                "mer_eventspec", StaticEventSpecLib, EventSpecLib),
+            link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+                "mer_browser", StaticBrowserLib, BrowserLib),
+            link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+                "mer_mdbcomp", StaticMdbCompLib, MdbCompLib),
+            StaticTraceLibs = string.join_list(" ",
+                [StaticTraceLib, StaticEventSpecLib, StaticBrowserLib,
+                StaticMdbCompLib]),
             SharedTraceLibs = string.join_list(" ",
                 [TraceLib, EventSpecLib, BrowserLib, MdbCompLib])
         ),
@@ -2068,11 +2061,16 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
             SourceDebug),
         (
             SourceDebug = yes,
-            StaticSourceDebugLibs =
-                quote_arg(StdLibDir/"lib"/GradeDir/
-                    ("libmer_ssdb" ++ LibExt)),
-            make_link_lib(Globals, TargetType, "mer_mdbcomp",
-                SharedSourceDebugLibs)
+            link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+                "mer_ssdb", StaticSsdbLib, SsdbLib),
+            link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+                "mer_browser", StaticBrowserLib2, BrowserLib2),
+            link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+                "mer_mdbcomp", StaticMdbCompLib2, MdbCompLib2),
+            StaticSourceDebugLibs = string.join_list(" ",
+                [StaticSsdbLib, StaticBrowserLib2, StaticMdbCompLib2]),
+            SharedSourceDebugLibs = string.join_list(" ",
+                [SsdbLib, BrowserLib2, MdbCompLib2])
         ;
             SourceDebug = no,
             StaticSourceDebugLibs = "",
@@ -2080,19 +2078,19 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
         ),
 
         globals.lookup_string_option(Globals, mercury_linkage, MercuryLinkage),
+        link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+            "mer_std", StaticStdLib, StdLib),
+        link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+            "mer_rt", StaticRuntimeLib, RuntimeLib),
         ( MercuryLinkage = "static" ->
             StdLibs = string.join_list(" ", [
                 StaticTraceLibs,
                 StaticSourceDebugLibs,
-                quote_arg(StdLibDir/"lib"/GradeDir/
-                    ("libmer_std" ++ LibExt)),
-                quote_arg(StdLibDir/"lib"/GradeDir/
-                    ("libmer_rt" ++ LibExt)),
+                StaticStdLib,
+                StaticRuntimeLib,
                 StaticGCLibs
             ])
         ; MercuryLinkage = "shared" ->
-            make_link_lib(Globals, TargetType, "mer_std", StdLib),
-            make_link_lib(Globals, TargetType, "mer_rt", RuntimeLib),
             StdLibs = string.join_list(" ", [
                 SharedTraceLibs,
                 SharedSourceDebugLibs,
@@ -2107,6 +2105,15 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
         MaybeStdlibDir = no,
         StdLibs = ""
     ).
+
+:- pred link_lib_args(globals::in, linked_target_type::in, string::in,
+    string::in, string::in, string::in, string::out, string::out) is det.
+
+link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt, Name,
+        StaticArg, SharedArg) :-
+    StaticLibName = "lib" ++ Name ++ LibExt,
+    StaticArg = quote_arg(StdLibDir/"lib"/GradeDir/StaticLibName),
+    make_link_lib(Globals, TargetType, Name, SharedArg).
 
     % Pass either `-llib' or `PREFIX/lib/GRADE/liblib.a', depending on
     % whether we are linking with static or shared Mercury libraries.
