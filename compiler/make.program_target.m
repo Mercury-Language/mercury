@@ -1571,13 +1571,13 @@ install_library_grade_files(Globals, LinkSucceeded0, GradeDir, ModuleName,
 
         globals.lookup_string_option(Globals, install_prefix, Prefix),
 
-        ( GradeDir = "java" ->
-            GradeLibDir = Prefix/"lib"/"mercury"/"lib"/"java",
+        ( string.prefix(GradeDir, "java") ->
+            GradeLibDir = Prefix/"lib"/"mercury"/"lib"/GradeDir,
             install_file(Globals, JarFileName, GradeLibDir, LibsSucceeded,
                 !IO),
             InitSucceeded = yes
-        ; GradeDir = "erlang" ->
-            GradeLibDir = Prefix/"lib"/"mercury"/"lib"/"erlang",
+        ; string.prefix(GradeDir, "erlang") ->
+            GradeLibDir = Prefix/"lib"/"mercury"/"lib"/GradeDir,
             % Our "Erlang archives" are actually directories.
             install_directory(Globals, ErlangArchiveFileName, GradeLibDir,
                 LibsSucceeded, !IO),

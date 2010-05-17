@@ -5,7 +5,7 @@
 --no-mercury-stdlib-dir
 --no-shlib-linker-use-install-name
 --force-disable-tracing
---no-ssdb
+--force-disable-ssdebug
 --no-libgrade
 --generate-mmc-deps
 -I../library

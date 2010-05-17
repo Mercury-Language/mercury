@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-2009 The University of Melbourne.
+# Copyright (C) 1997-2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -268,8 +268,8 @@ copy_java_runtime_files:
 	[ -d jmercury/runtime ] || cp -r ../java/runtime jmercury
 
 install_mer_rt: $(RT_LIB_NAME).jar
-	mkdir -p $(INSTALL_JAVA_LIBRARY_DIR)
-	cp $(RT_LIB_NAME).jar $(INSTALL_JAVA_LIBRARY_DIR)
+	mkdir -p $(INSTALL_PREFIX)/lib/mercury/lib/$(GRADE)
+	cp $(RT_LIB_NAME).jar $(INSTALL_PREFIX)/lib/mercury/lib/$(GRADE)
 
 else
 

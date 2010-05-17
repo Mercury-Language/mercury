@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -563,11 +563,14 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
         UseRegions = no
     ),
     globals.lookup_bool_option(Globals, source_to_source_debug, SSDB),
+    globals.lookup_bool_option(Globals, force_disable_ssdebug, DisableSSDB),
     (
         SSDB = yes,
+        DisableSSDB = no
+    ->
         !:UseDeps = [mercury_ssdb_builtin_module | !.UseDeps]
     ;
-        SSDB = no
+        true
     ).
 
 :- pred items_need_imports(list(item)::in,

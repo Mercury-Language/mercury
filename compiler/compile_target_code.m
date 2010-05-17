@@ -925,17 +925,9 @@ compile_java_files(ErrorStream, JavaFiles, Globals, Succeeded, !IO) :-
     globals.lookup_accumulating_option(Globals, java_flags, JavaFlagsList),
     join_string_list(JavaFlagsList, "", "", " ", JAVAFLAGS),
 
-    globals.lookup_accumulating_option(Globals, java_classpath,
-        Java_Incl_Dirs),
-    (
-        ( dir.use_windows_paths
-        ; io.have_cygwin
-        )
-    ->
-        PathSeparator = ";"
-    ;
-        PathSeparator = ":"
-    ),
+    get_mercury_std_libs_for_java(Globals, MercuryStdLibs),
+    globals.lookup_accumulating_option(Globals, java_classpath, UserClasspath),
+    Java_Incl_Dirs = MercuryStdLibs ++ UserClasspath,
     % We prepend the current CLASSPATH (if any) to preserve the accumulating
     % nature of this variable.
     get_env_classpath(EnvClasspath, !IO),
@@ -944,7 +936,7 @@ compile_java_files(ErrorStream, JavaFiles, Globals, Succeeded, !IO) :-
     ;
         ClassPathList = [EnvClasspath | Java_Incl_Dirs]
     ),
-    ClassPath = string.join_list(PathSeparator, ClassPathList),
+    ClassPath = string.join_list(java_classpath_separator, ClassPathList),
     ( ClassPath = "" ->
         InclOpt = ""
     ;
@@ -996,6 +988,19 @@ compile_java_files(ErrorStream, JavaFiles, Globals, Succeeded, !IO) :-
         Target_DebugOpt, JAVAFLAGS, " ", JoinedJavaFiles], Command),
     invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Command,
         Succeeded, !IO).
+
+:- func java_classpath_separator = string.
+
+java_classpath_separator = PathSeparator :-
+    (
+        ( dir.use_windows_paths
+        ; io.have_cygwin
+        )
+    ->
+        PathSeparator = ";"
+    ;
+        PathSeparator = ":"
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1951,6 +1956,7 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
     % libraries needed by them.
     % Return the empty string if --mercury-standard-library-directory
     % is not set.
+    % NOTE: changes here may require changes to get_mercury_std_libs_for_java.
     %
 :- pred get_mercury_std_libs(globals::in, linked_target_type::in, string::out)
     is det.
@@ -2101,7 +2107,7 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
         MaybeStdlibDir = no,
         StdLibs = ""
     ).
-    
+
     % Pass either `-llib' or `PREFIX/lib/GRADE/liblib.a', depending on
     % whether we are linking with static or shared Mercury libraries.
     %

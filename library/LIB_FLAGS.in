@@ -8,7 +8,7 @@
 --generate-mmc-deps
 --no-shlib-linker-use-install-name
 --trace minimum
---no-ssdb
+--force-disable-ssdebug
 --no-libgrade
 --c-include-directory ../boehm_gc
 --c-include-directory ../boehm_gc/include
