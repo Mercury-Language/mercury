@@ -140,28 +140,23 @@ endif
 # or Erlang grades or deep profiling (profdeep) grades.
 # Base grades `jump' and `fast' cannot be used with
 # stack layouts (which are required for tracing).
-# Currently, declarative debugging does not work in `rt' grades.
 # Also, declarative debugging only works in `.gc' grades.
 
 ifeq "$(filter hl% il% java% erlang%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
     ifneq "$(findstring .gc,$(GRADE))" ""
-        ifneq "$(findstring rt,$(GRADE))" ""
-	    PROGS=
-        else
-            ifneq "$(findstring asm_,$(GRADE))" ""
-                PROGS=$(PROGS_2)
-            else
-                ifneq "$(findstring jump,$(GRADE))" ""
-                    PROGS=
-                else
-                    ifneq "$(findstring fast,$(GRADE))" ""
-                        PROGS=
-                    else
-                        PROGS=$(PROGS_2)
-                    endif
-                endif
-            endif
-        endif
+       ifneq "$(findstring asm_,$(GRADE))" ""
+           PROGS=$(PROGS_2)
+       else
+           ifneq "$(findstring jump,$(GRADE))" ""
+               PROGS=
+           else
+               ifneq "$(findstring fast,$(GRADE))" ""
+                   PROGS=
+               else
+                   PROGS=$(PROGS_2)
+               endif
+           endif
+       endif
     else
         PROGS=
     endif
