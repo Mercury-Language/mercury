@@ -2044,11 +2044,11 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
                 Parallel = no,
                 GCGrade = GCGrade1
             ),
-            link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+            link_lib_args(Globals, TargetType, StdLibDir, "", LibExt,
                 GCGrade, StaticGCLibs, SharedGCLibs)
         ;
             GCMethod = gc_mps,
-            link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+            link_lib_args(Globals, TargetType, StdLibDir, "", LibExt,
                 "mps", StaticGCLibs, SharedGCLibs)
         ;
             GCMethod = gc_accurate,
