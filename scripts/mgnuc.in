@@ -613,6 +613,8 @@ esac
 # At -O2 compilation times on Mac OS X are extremely slow for
 # Apple GCC 4.{0,2}.  We must force GCC to use -O0 here in order
 # to get acceptable compilation times.
+# Changes to this need to be reflected in the predicate 
+# gather_c_compiler_flags/3 in compiler/compile_target_code.m.
 
 case $FULLARCH in *apple*darwin*)
     case $debug in true)

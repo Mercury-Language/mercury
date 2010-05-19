@@ -858,11 +858,31 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     ;
         AppleGCCRegWorkaroundOpt = ""
     ),
-    
+  
+    % Workaround performance problem(s) with gcc that causes the C files
+    % generated in debugging grades to compile very slowly at -O1 and above.
+    % (Changes here need to be reflected in scripts/mgnuc.in.)
+    (
+        ExecTrace = yes,
+        arch_is_apple_darwin(FullArch)
+    ->
+        OverrideOpts = "-O0"
+    ;
+        OverrideOpts = ""
+    ),
+ 
     % Be careful with the order here!  Some options override others,
     % e.g. CFLAGS_FOR_REGS must come after OptimizeOpt so that
     % it can override -fomit-frame-pointer with -fno-omit-frame-pointer.
     % Also be careful that each option is separated by spaces.
+    % 
+    % In general, user supplied C compiler flags, i.e. CFLAGS below, should
+    % be able to override those introduced by the Mercury compiler.
+    % In some circumstances we want to prevent the user doing this, typically
+    % where we know the behaviour of a particular C compiler is buggy; the
+    % last option, OverrideOpts, does this -- because of this it must be
+    % listed after CFLAGS.
+    %
     string.append_list([
         SubDirInclOpt, InclOpt,
         OptimizeOpt, " ",
@@ -894,7 +914,8 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         AppleGCCRegWorkaroundOpt,
         C_FnAlignOpt, 
         WarningOpt, " ", 
-        CFLAGS], AllCFlags).
+        CFLAGS, " ",
+        OverrideOpts], AllCFlags).
 
 %-----------------------------------------------------------------------------%
 
@@ -3013,6 +3034,21 @@ output_library_link_flags(Globals, Stream, !IO) :-
         MercuryStdLibs, " ",
         SystemLibs], LinkFlags),
     io.write_string(Stream, LinkFlags, !IO).
+
+%-----------------------------------------------------------------------------%
+
+    % Succeeds if the configuration name for this machine matches
+    % *-apple-darwin*, i.e. its an x86 / x86_64 / ppc machine with Mac OS X.
+    %
+:- pred arch_is_apple_darwin(string::in) is semidet.
+
+arch_is_apple_darwin(FullArch) :-
+    ArchComponents = string.split_at_char(('-'), FullArch),
+    % See the comments at the head of config.sub for details of how autoconf
+    % handles configuration names.
+    ArchComponents = [_CPU, Mfr, OS],
+    Mfr = "apple",
+    string.prefix(OS, "darwin").
 
 %-----------------------------------------------------------------------------%
 
