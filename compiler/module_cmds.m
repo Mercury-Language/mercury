@@ -140,6 +140,12 @@
 :- pred create_java_shell_script(globals::in, module_name::in, bool::out,
     io::di, io::uo) is det.
 
+    % Return the standard Mercury libraries needed for a Java program.
+    % Return the empty list if --mercury-standard-library-directory
+    % is not set.
+    %
+:- pred get_mercury_std_libs_for_java(globals::in, list(string)::out) is det.
+
     % Given a list .class files, return the list of .class files that should be
     % passed to `jar'.  This is required because nested classes are in separate
     % files which we don't know about, so we have to scan the directory to
@@ -679,11 +685,12 @@ create_java_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
     get_class_dir_name(Globals, ClassDirName),
     string.replace_all(ClassDirName, "\\", "/", ClassDirNameUnix),
 
+    get_mercury_std_libs_for_java(Globals, MercuryStdLibs),
     globals.lookup_accumulating_option(Globals, java_classpath,
-        Java_Incl_Dirs0),
+        UserClasspath),
     % We prepend the .class files' directory and the current CLASSPATH.
-    Java_Incl_Dirs = ["$DIR/" ++ ClassDirNameUnix,
-        "$CLASSPATH" | Java_Incl_Dirs0],
+    Java_Incl_Dirs = ["$DIR/" ++ ClassDirNameUnix] ++ MercuryStdLibs ++
+        ["$CLASSPATH" | UserClasspath],
     ClassPath = string.join_list("${SEP}", Java_Incl_Dirs),
 
     globals.lookup_string_option(Globals, java_interpreter, Java),
@@ -726,6 +733,31 @@ create_java_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
         OpenResult = error(Message),
         unexpected(this_file, io.error_message(Message)),
         Succeeded = no
+    ).
+
+    % NOTE: changes here may require changes to get_mercury_std_libs.
+get_mercury_std_libs_for_java(Globals, !:StdLibs) :-
+    !:StdLibs = [],
+    globals.lookup_maybe_string_option(Globals,
+        mercury_standard_library_directory, MaybeStdlibDir),
+    (
+        MaybeStdlibDir = yes(StdLibDir),
+        grade_directory_component(Globals, GradeDir),
+        % Source-to-source debugging libraries.
+        globals.lookup_bool_option(Globals, source_to_source_debug,
+            SourceDebug),
+        (
+            SourceDebug = yes,
+            list.cons(StdLibDir/"lib"/GradeDir/"mer_browser.jar", !StdLibs),
+            list.cons(StdLibDir/"lib"/GradeDir/"mer_mdbcomp.jar", !StdLibs),
+            list.cons(StdLibDir/"lib"/GradeDir/"mer_ssdb.jar", !StdLibs)
+        ;
+            SourceDebug = no
+        ),
+        list.cons(StdLibDir/"lib"/GradeDir/"mer_std.jar", !StdLibs),
+        list.cons(StdLibDir/"lib"/GradeDir/"mer_rt.jar", !StdLibs)
+    ;
+        MaybeStdlibDir = no
     ).
 
 list_class_files_for_jar(Globals, MainClassFiles, ClassSubDir,

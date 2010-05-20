@@ -37,6 +37,10 @@ case $asm_labels in
 	false)		;;
 esac
 
+case $target in
+	erlang)		GRADE="erlang" ;;
+esac
+
 case $highlevel_code,$highlevel_data,$GRADE,$target in
 	true,true,none,*)		
 		case $target in

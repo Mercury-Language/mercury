@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 2003-2007 The University of Melbourne.
+# Copyright (C) 2003-2007, 2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -34,9 +34,6 @@ MERCURY_ERLANG_INTERPRETER=@ERL@
 # be used by the substitution for SHARED_LIBS.
 MATH_LIB=$(MERCURY_MATH_LIB)
 
-# This needed for Java classpath.
-INSTALL_JAVA_LIBRARY_DIR=$(MERCURY_STDLIB_DIR)/lib/java
-
 # If you change these, you will also need to change the files indicated in
 # scripts/c2init.in.
 RT_LIB_NAME=mer_rt
@@ -67,11 +64,6 @@ DEFAULT_MCFLAGS=\
 		--cflags-for-gotos "@CFLAGS_FOR_GOTOS@" \
 		--cflags-for-pic "@CFLAGS_FOR_PIC@" \
 		--c-flag-to-name-object-file "@OBJFILE_OPT@" \
-		--java-classpath "$(INSTALL_JAVA_LIBRARY_DIR)/$(RT_LIB_NAME).jar" \
-		--java-classpath "$(INSTALL_JAVA_LIBRARY_DIR)/$(STD_LIB_NAME).jar" \
-		--java-classpath "$(INSTALL_JAVA_LIBRARY_DIR)/mer_mdbcomp.jar" \
-		--java-classpath "$(INSTALL_JAVA_LIBRARY_DIR)/mer_browser.jar" \
-		--java-classpath "$(INSTALL_JAVA_LIBRARY_DIR)/mer_ssdb.jar" \
 		--java-flags "@JAVAC_FLAGS_FOR_HEAP_SIZE@" \
 		--object-file-extension ".@OBJ_SUFFIX@" \
 		--pic-object-file-extension ".@EXT_FOR_PIC_OBJECTS@" \

@@ -7,7 +7,7 @@
 %---------------------------------------------------------------------------%
 %
 % File: ssdb.m.
-% Author: oannet.
+% Authors: oannet, wangp.
 %
 % This module is automatically imported into every module that is compiled
 % using --source-to-source-debug.
@@ -112,8 +112,6 @@
 :- import_module pair.
 :- import_module pprint.
 :- import_module require.
-:- import_module set.
-:- import_module stack.
 :- import_module string.
 :- import_module univ.
 
@@ -128,46 +126,36 @@
     static void MR_ssdb_sigint_handler(void);
 ").
 
-%----------------------------------------------------------------------------%
-
-:- type cur_ssdb_next_stop == next_stop.
+%-----------------------------------------------------------------------------%
 
 :- type cur_ssdb_breakpoints == map(pair(string,string), breakpoint).
 
-:- type cur_ssdb_shadow_stack == stack(stack_elem).
-
-:- type cur_ssdb_shadow_stack_nondet == stack(stack_elem).
-
-    % Note: debugger_disabled must be first because io.init_state/2 is called
+    % Note: debugger_off must be first because io.init_state/2 is called
     % before the `do_nothing' mutable is initialised.  At that time `do_nothing'
-    % will have a value of zero.  By putting debugger_disabled first, it will
+    % will have a value of zero.  By putting debugger_off first, it will
     % be represented by zero so the SSDB port code will correctly do nothing
     % until after the library is initialised.
-    % XXX In near future, the debugger_disabled state should be removed.
     %
 :- type debugger_state
-    --->    debugger_disabled
-    ;       debugger_on
-    ;       debugger_off.
+    --->    debugger_off
+    ;       debugger_on.
 
-    % Frame of the current call procedure.
-    %
-:- type stack_elem
-    --->    elem(
+:- type stack_frame
+    --->    stack_frame(
                 % Event Number
-                se_event_number     :: int,
+                sf_event_number     :: int,
 
                 % Call Sequence Number.
-                se_csn              :: int,
+                sf_csn              :: int,
 
                 % Depth of the procedure.
-                se_depth            :: int,
+                sf_depth            :: int,
 
                 % The goal's module name and procedure name.
-                se_proc_id          :: ssdb_proc_id,
+                sf_proc_id          :: ssdb_proc_id,
 
                 % The list of the procedure's arguments.
-                se_list_var_value   :: list(var_value)
+                sf_list_var_value   :: list(var_value)
             ).
 
 %----------------------------------------------------------------------------%
@@ -205,14 +193,16 @@
             % Continue until next breakpoint.
 
     ;       ns_final_port(int, ssdb_retry)
-            % Stop at final port (exit or fail) of the number between brakets,
-            % the ssdb_retry is used to retry the right csn number.
+            % Stop at the final port (exit or fail) of the given CSN.
+            % The second argument says whether to automatically retry
+            % upon reaching that port.
 
     ;       ns_final_port_nondet(int, ssdb_retry)
-            % Same as ns_final_port but for nondet procedure.
+            % As above for nondet procedures.
+            % Stop at the final port (fail) of the given CSN.
 
     ;       ns_goto(int).
-            % Stop at the Event Number given in argument.
+            % Stop at the given event number.
 
     % A breakpoint is represented by his module and procedure name.
     %
@@ -228,6 +218,14 @@
     --->    bp_state_enabled
     ;       bp_state_disabled.
 
+:- inst either_call
+    --->    ssdb_call
+    ;       ssdb_call_nondet.
+
+:- inst either_fail
+    --->    ssdb_fail
+    ;       ssdb_fail_nondet.
+
 %----------------------------------------------------------------------------%
 
     % Initialization of the mutable variables.
@@ -239,10 +237,7 @@
 :- mutable(cur_ssdb_csn, int, 0, ground,
     [untrailed, attach_to_io_state]).
 
-:- mutable(cur_ssdb_depth, int, 0, ground,
-    [untrailed, attach_to_io_state]).
-
-:- mutable(cur_ssdb_next_stop, cur_ssdb_next_stop, ns_step, ground,
+:- mutable(cur_ssdb_next_stop, next_stop, ns_step, ground,
     [untrailed, attach_to_io_state]).
 
 :- mutable(cur_ssdb_breakpoints, cur_ssdb_breakpoints, map.init, ground,
@@ -251,11 +246,15 @@
 :- mutable(cur_ssdb_number_of_breakpoint, int, 0,
     ground, [untrailed, attach_to_io_state]).
 
-:- mutable(cur_ssdb_shadow_stack, cur_ssdb_shadow_stack, stack.init, ground,
+:- mutable(shadow_stack, list(stack_frame), [], ground,
+    [untrailed, attach_to_io_state]).
+:- mutable(shadow_stack_depth, int, 0, ground,
     [untrailed, attach_to_io_state]).
 
-:- mutable(cur_ssdb_shadow_stack_nondet, cur_ssdb_shadow_stack_nondet,
-    stack.init, ground, [untrailed, attach_to_io_state]).
+:- mutable(nondet_shadow_stack, list(stack_frame), [], ground,
+    [untrailed, attach_to_io_state]).
+:- mutable(nondet_shadow_stack_depth, int, 0, ground,
+    [untrailed, attach_to_io_state]).
 
 %-----------------------------------------------------------------------------%
 
@@ -307,7 +306,7 @@ init_debugger_state = DebuggerState :-
             ),
             install_sigint_handler(!IO)
         ;
-            DebuggerState = debugger_disabled
+            DebuggerState = debugger_off
         ),
         impure consume_io(!.IO)
     ).
@@ -367,397 +366,262 @@ step_next_stop(!IO) :-
 
 %----------------------------------------------------------------------------%
 
-    % Call at call port. It writes out the event and calls
-    % read_and_execute_cmd.
-    %
 handle_event_call(ProcId, ListVarValue) :-
-    some [!IO]
-    (
+    some [!IO] (
         impure invent_io(!:IO),
         get_debugger_state(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
-            save_streams(!IO),
-
-            Event = ssdb_call,
-            get_ssdb_event_number_inc(EventNum, !IO),
-            get_ssdb_csn_inc(CSN, !IO),
-            get_ssdb_depth_inc(PrintDepth, !IO),
-
-            % Push the new stack frame on top of the shadow stack.
-            get_cur_ssdb_shadow_stack(ShadowStack0, !IO),
-            StackFrame = elem(EventNum, CSN, PrintDepth, ProcId, ListVarValue),
-            stack.push(ShadowStack0, StackFrame, ShadowStack),
-            set_cur_ssdb_shadow_stack(ShadowStack, !IO),
-
-            should_stop_at_this_event(Event, EventNum, CSN, ProcId, Stop,
-                _AutoRetry, !IO),
-            (
-                Stop = yes,
-                print_event_info(Event, EventNum, ProcId, PrintDepth, CSN,
-                    !IO),
-                read_and_execute_cmd(Event, ShadowStack, 0, WhatNext, !IO),
-                what_next_stop(EventNum, CSN, WhatNext, _Retry, !IO)
-            ;
-                Stop = no
-            ),
-
-            restore_streams(!IO)
+            handle_event_call_2(ssdb_call, ProcId, ListVarValue, !IO)
         ;
             DebuggerState = debugger_off
-        ;
-            DebuggerState = debugger_disabled
         ),
         impure consume_io(!.IO)
     ).
 
-    % Call at call port of nondet procedure. It writes out the event and calls
-    % read_and_execute_cmd.
-    %
 handle_event_call_nondet(ProcId, ListVarValue) :-
-    some [!IO]
-    (
+    some [!IO] (
         impure invent_io(!:IO),
         get_debugger_state(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
-            save_streams(!IO),
-
-            Event = ssdb_call_nondet,
-            get_ssdb_event_number_inc(EventNum, !IO),
-            get_ssdb_csn_inc(CSN, !IO),
-            get_ssdb_depth_inc(PrintDepth, !IO),
-
-            % Push the new stack frame on top of the shadow stack.
-            StackFrame = elem(EventNum, CSN, PrintDepth, ProcId, ListVarValue),
-
-            get_cur_ssdb_shadow_stack(ShadowStack0, !IO),
-            stack.push(ShadowStack0, StackFrame, ShadowStack),
-            set_cur_ssdb_shadow_stack(ShadowStack, !IO),
-
-            get_cur_ssdb_shadow_stack_nondet(ShadowStackNonDet0, !IO),
-            stack.push(ShadowStackNonDet0, StackFrame, ShadowStackNonDet),
-            set_cur_ssdb_shadow_stack_nondet(ShadowStackNonDet, !IO),
-
-            should_stop_at_this_event(Event, EventNum, CSN, ProcId, Stop,
-                _AutoRetry, !IO),
-            (
-                Stop = yes,
-                print_event_info(Event, EventNum, ProcId, PrintDepth, CSN,
-                    !IO),
-                read_and_execute_cmd(Event, ShadowStack, 0, WhatNext, !IO),
-                what_next_stop(EventNum, CSN, WhatNext, _Retry, !IO)
-            ;
-                Stop = no
-            ),
-
-            restore_streams(!IO)
+            handle_event_call_2(ssdb_call_nondet, ProcId, ListVarValue, !IO)
         ;
             DebuggerState = debugger_off
-        ;
-            DebuggerState = debugger_disabled
         ),
         impure consume_io(!.IO)
     ).
 
-    % Call at exit port. Writes out the event and calls read_and_execute_cmd.
-    %
+:- pred handle_event_call_2(ssdb_event_type::in(either_call), ssdb_proc_id::in,
+    list(var_value)::in, io::di, io::uo) is det.
+
+:- pragma inline(handle_event_call_2/5).
+
+handle_event_call_2(Event, ProcId, ListVarValue, !IO) :-
+    get_ssdb_event_number_inc(EventNum, !IO),
+    get_ssdb_csn_inc(CSN, !IO),
+    stack_depth(OldDepth, !IO),
+    Depth = OldDepth + 1,
+
+    % Push the new stack frame on top of the shadow stack(s).
+    StackFrame = stack_frame(EventNum, CSN, Depth, ProcId, ListVarValue),
+    stack_push(StackFrame, !IO),
+    (
+        Event = ssdb_call
+    ;
+        Event = ssdb_call_nondet,
+        nondet_stack_push(StackFrame, !IO)
+    ),
+
+    should_stop_at_this_event(Event, EventNum, CSN, ProcId, Stop, _AutoRetry,
+        !IO),
+    (
+        Stop = yes,
+        save_streams(!IO),
+        print_event_info(Event, !IO),
+        read_and_execute_cmd(Event, 0, WhatNext, !IO),
+        update_next_stop(EventNum, CSN, WhatNext, _Retry, !IO),
+        restore_streams(!IO)
+    ;
+        Stop = no
+    ).
+
+%-----------------------------------------------------------------------------%
+
 handle_event_exit(ProcId, ListVarValue, Retry) :-
-    some [!IO]
-    (
+    some [!IO] (
         impure invent_io(!:IO),
         get_debugger_state(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
-            save_streams(!IO),
-
-            Event = ssdb_exit,
-            get_ssdb_event_number_inc(EventNum, !IO),
-            get_cur_ssdb_depth(PrintDepth, !IO),
-            set_list_var_value_in_shadow_stack(ListVarValue, !IO),
-
-            % Just get the top stack frame. It will be popped at the end of
-            % handle_event. We need to leave the frame in place, e.g. for
-            % printing variables at the exit port of the procedure.
-            get_cur_ssdb_shadow_stack(ShadowStack0, !IO),
-            stack.top_det(ShadowStack0, StackFrame),
-            CSN = StackFrame ^ se_csn,
-
-            should_stop_at_this_event(Event, EventNum, CSN, ProcId, Stop,
-                AutoRetry, !IO),
-            (
-                Stop = yes,
-                (
-                    AutoRetry = do_retry,
-                    EventNumF = StackFrame ^ se_event_number,
-                    CSNF = StackFrame ^ se_csn,
-                    set_cur_ssdb_event_number(EventNumF - 1, !IO),
-                    set_cur_ssdb_csn(CSNF - 1, !IO),
-                    WhatNext = wn_retry(CSN)
-                ;
-                    AutoRetry = do_not_retry,
-                    print_event_info(Event, EventNum, ProcId, PrintDepth, CSN,
-                        !IO),
-                    read_and_execute_cmd(Event, ShadowStack0, 0, WhatNext, !IO)
-                ),
-                what_next_stop(EventNum, CSN, WhatNext, Retry, !IO)
-            ;
-                Stop = no,
-                Retry = do_not_retry
-            ),
-
-            get_ssdb_depth_dec(_Depth, !IO),
-            stack.pop_det(ShadowStack0, _StackFrame1, ShadowStack),
-            set_cur_ssdb_shadow_stack(ShadowStack, !IO),
-
-            restore_streams(!IO)
-        ;
-            ( DebuggerState = debugger_off
-            ; DebuggerState = debugger_disabled
-            ),
-            Retry = do_not_retry
-        ),
-        impure consume_io(!.IO)
-    ).
-
-    % Call at exit port of nondet procedure only.
-    %
-handle_event_exit_nondet(ProcId, ListVarValue) :-
-    some [!IO]
-    (
-        impure invent_io(!:IO),
-        get_debugger_state(DebuggerState, !IO),
-        (
-            DebuggerState = debugger_on,
-            save_streams(!IO),
-
-            Event = ssdb_exit_nondet,
-            get_ssdb_event_number_inc(EventNum, !IO),
-            get_cur_ssdb_depth(PrintDepth, !IO),
-            set_list_var_value_in_shadow_stack(ListVarValue, !IO),
-
-            % Just get the top stack frame. It will be popped at the end of
-            % handle_event. We need to leave the frame in place, e.g. for
-            % printing variables at the exit port of the procedure.
-            get_cur_ssdb_shadow_stack(ShadowStack0, !IO),
-            stack.top_det(ShadowStack0, StackFrame),
-            CSN = StackFrame ^ se_csn,
-
-            should_stop_at_this_event(Event, EventNum, CSN, ProcId, Stop,
-                AutoRetry, !IO),
-            (
-                Stop = yes,
-                (
-                    AutoRetry = do_retry,
-                    WhatNext = wn_retry(CSN)
-                ;
-                    AutoRetry = do_not_retry,
-                    print_event_info(Event, EventNum, ProcId, PrintDepth, CSN,
-                        !IO),
-                    read_and_execute_cmd(Event, ShadowStack0, 0, WhatNext, !IO)
-                ),
-                what_next_stop(EventNum, CSN, WhatNext, _Retry, !IO)
-            ;
-                Stop = no
-            ),
-
-            get_ssdb_depth_dec(_Depth, !IO),
-            stack.pop_det(ShadowStack0, _StackFrame1, ShadowStack),
-            set_cur_ssdb_shadow_stack(ShadowStack, !IO),
-
-            restore_streams(!IO)
-        ;
-            ( DebuggerState = debugger_off
-            ; DebuggerState = debugger_disabled
-            )
-        ),
-        impure consume_io(!.IO)
-    ).
-
-    % Call at fail port. Writes out the event and calls read_and_execute_cmd.
-    %
-handle_event_fail(ProcId, _ListVarValue, Retry) :-
-    some [!IO]
-    (
-        impure invent_io(!:IO),
-        get_debugger_state(DebuggerState, !IO),
-        (
-            DebuggerState = debugger_on,
-            save_streams(!IO),
-
-            Event = ssdb_fail,
-            get_ssdb_event_number_inc(EventNum, !IO),
-            get_cur_ssdb_depth(PrintDepth, !IO),
-            get_cur_ssdb_shadow_stack(ShadowStack0, !IO),
-            stack.top_det(ShadowStack0, StackFrame),
-            CSN = StackFrame ^ se_csn,
-
-            should_stop_at_this_event(Event, EventNum, CSN, ProcId, Stop,
-                AutoRetry, !IO),
-            (
-                Stop = yes,
-                (
-                    AutoRetry = do_retry,
-                    EventNumF = StackFrame ^ se_event_number,
-                    CSNF = StackFrame ^ se_csn,
-                    set_cur_ssdb_event_number(EventNumF - 1, !IO),
-                    set_cur_ssdb_csn(CSNF - 1, !IO),
-                    WhatNext = wn_retry(CSN)
-                ;
-                    AutoRetry = do_not_retry,
-                    print_event_info(Event, EventNum, ProcId, PrintDepth, CSN,
-                        !IO),
-                    read_and_execute_cmd(Event, ShadowStack0, 0, WhatNext, !IO)
-                ),
-                what_next_stop(EventNum, CSN, WhatNext, Retry, !IO)
-            ;
-                Stop = no,
-                Retry = do_not_retry
-            ),
-
-            get_ssdb_depth_dec(_Depth, !IO),
-            stack.pop_det(ShadowStack0, _StackFrame1, ShadowStack),
-            set_cur_ssdb_shadow_stack(ShadowStack, !IO),
-
-            restore_streams(!IO)
-        ;
-            ( DebuggerState = debugger_off
-            ; DebuggerState = debugger_disabled
-            ),
-            Retry = do_not_retry
-        ),
-        impure consume_io(!.IO)
-    ).
-
-    % Call at fail port of nondet procedure only.
-    %
-handle_event_fail_nondet(ProcId, _ListVarValue, Retry) :-
-    some [!IO]
-    (
-        impure invent_io(!:IO),
-        get_debugger_state(DebuggerState, !IO),
-        Event = ssdb_fail_nondet,
-        (
-            DebuggerState = debugger_on,
-            save_streams(!IO),
-
-            get_ssdb_event_number_inc(EventNum, !IO),
-            get_cur_ssdb_shadow_stack(ShadowStack0, !IO),
-            stack.top_det(ShadowStack0, StackFrame),
-            CSN = StackFrame ^ se_csn,
-            get_cur_ssdb_depth(PrintDepth, !IO),
-            get_cur_ssdb_shadow_stack_nondet(ShadowStackNonDet0, !IO),
-
-            should_stop_at_this_event(Event, EventNum, CSN, ProcId, Stop,
-                AutoRetry, !IO),
-            (
-                Stop = yes,
-                (
-                    AutoRetry = do_retry,
-                    get_frame_at_depth_nondet(ProcId, PrintDepth,
-                        MaybeStackFrameFound, !IO),
-                    (
-                        MaybeStackFrameFound = yes(StackFrameFound),
-                        EventNumF = StackFrameFound ^ se_event_number,
-                        CSNF = StackFrameFound ^ se_csn,
-                        set_cur_ssdb_event_number(EventNumF - 1, !IO),
-                        set_cur_ssdb_csn(CSNF - 1, !IO)
-                    ;
-                        MaybeStackFrameFound = no,
-                        error("Unexpected error: ssdb/ssdb.m " ++
-                            "get_frame_at_depth_nondet failed")
-                    ),
-                    WhatNext = wn_retry(CSN)
-                ;
-                    AutoRetry = do_not_retry,
-                    print_event_info(Event, EventNum, ProcId, PrintDepth, CSN,
-                        !IO),
-                    read_and_execute_cmd(Event, ShadowStack0, 0, WhatNext, !IO)
-                ),
-                what_next_stop(EventNum, CSN, WhatNext, Retry, !IO)
-            ;
-                Stop = no,
-                Retry = do_not_retry
-            ),
-
-            get_ssdb_depth_dec(_Depth, !IO),
-            stack.pop_det(ShadowStack0, _StackFrame, ShadowStack),
-            stack.pop_det(ShadowStackNonDet0, _StackFrameNonDet,
-                ShadowStackNonDet),
-            set_cur_ssdb_shadow_stack(ShadowStack, !IO),
-            set_cur_ssdb_shadow_stack_nondet(ShadowStackNonDet, !IO),
-
-            restore_streams(!IO)
+            handle_event_exit_2(ssdb_exit, ProcId, ListVarValue, Retry, !IO)
         ;
             DebuggerState = debugger_off,
-            get_cur_ssdb_depth(Depth, !IO),
-            % If this is the required frame, then make the debugger stop
-            % at the next event; otherwise continue.
-            get_frame_at_depth_nondet(ProcId, Depth + 1, MaybeStackFrame, !IO),
-            (
-                MaybeStackFrame = yes(_StackFrame),
-                set_debugger_state(debugger_on, !IO),
-                Retry = do_retry
-            ;
-                MaybeStackFrame = no,
-                Retry = do_not_retry
-            )
-        ;
-            DebuggerState = debugger_disabled,
             Retry = do_not_retry
         ),
         impure consume_io(!.IO)
     ).
 
-    % Call at redo port in nondet procedure. Writes out the event and calls
-    % read_and_execute_cmd.
-    %
-handle_event_redo_nondet(ProcId, _ListVarValue) :-
-    some [!IO]
-    (
+handle_event_exit_nondet(ProcId, ListVarValue) :-
+    some [!IO] (
         impure invent_io(!:IO),
         get_debugger_state(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
-            save_streams(!IO),
-
-            Event = ssdb_redo_nondet,
-            get_ssdb_event_number_inc(EventNum, !IO),
-            get_ssdb_depth_inc(PrintDepth, !IO),
-
-            get_frame_at_depth_nondet(ProcId, PrintDepth, MaybeStackFrame,
-                !IO),
-            (
-                MaybeStackFrame = yes(StackFrame),
-                get_cur_ssdb_shadow_stack(ShadowStack0, !IO),
-                stack.push(ShadowStack0, StackFrame, ShadowStack),
-                set_cur_ssdb_shadow_stack(ShadowStack, !IO),
-                CSN = StackFrame ^ se_csn,
-
-                should_stop_at_this_event(Event, EventNum, CSN, ProcId,
-                    Stop, _AutoRetry, !IO),
-                (
-                    Stop = yes,
-                    print_event_info(Event, EventNum, ProcId, PrintDepth, CSN,
-                        !IO),
-                    read_and_execute_cmd(Event, ShadowStack, 0, WhatNext, !IO),
-                    what_next_stop(EventNum, CSN, WhatNext, _Retry, !IO)
-                ;
-                    Stop = no
-                )
-            ;
-                MaybeStackFrame = no,
-                error("Unexpected error: ssdb/ssdb.m : " ++
-                    "get_frame_at_depth_nondet failed")
-            ),
-
-            restore_streams(!IO)
+            handle_event_exit_2(ssdb_exit_nondet, ProcId, ListVarValue,
+                _Retry, !IO)
         ;
-            ( DebuggerState = debugger_off
-            ; DebuggerState = debugger_disabled
-            )
+            DebuggerState = debugger_off
         ),
         impure consume_io(!.IO)
+    ).
+
+:- pred handle_event_exit_2(ssdb_event_type::in, ssdb_proc_id::in,
+    list(var_value)::in, ssdb_retry::out, io::di, io::uo) is det.
+
+:- pragma inline(handle_event_exit_2/6).
+
+handle_event_exit_2(Event, ProcId, ListVarValue, Retry, !IO) :-
+    get_ssdb_event_number_inc(EventNum, !IO),
+    stack_top_csn(CSN, !IO),
+    should_stop_at_this_event(Event, EventNum, CSN, ProcId, Stop, AutoRetry,
+        !IO),
+    (
+        Stop = yes,
+        (
+            AutoRetry = do_retry,
+            WhatNext = wn_retry(CSN)
+        ;
+            AutoRetry = do_not_retry,
+            % There is no need to update the variable list on the top stack
+            % frame unless we are stopping to look at it.
+            update_top_var_list(ListVarValue, !IO),
+            save_streams(!IO),
+            print_event_info(Event, !IO),
+            read_and_execute_cmd(Event, 0, WhatNext, !IO),
+            restore_streams(!IO)
+        ),
+        update_next_stop(EventNum, CSN, WhatNext, Retry, !IO)
+    ;
+        Stop = no,
+        Retry = do_not_retry
+    ),
+    stack_pop(!IO).
+
+%-----------------------------------------------------------------------------%
+
+handle_event_fail(ProcId, _ListVarValue, Retry) :-
+    some [!IO] (
+        impure invent_io(!:IO),
+        get_debugger_state(DebuggerState, !IO),
+        (
+            DebuggerState = debugger_on,
+            handle_event_fail_2(ssdb_fail, ProcId, Retry, !IO)
+        ;
+            DebuggerState = debugger_off,
+            Retry = do_not_retry
+        ),
+        impure consume_io(!.IO)
+    ).
+
+handle_event_fail_nondet(ProcId, _ListVarValue, Retry) :-
+    some [!IO] (
+        impure invent_io(!:IO),
+        get_debugger_state(DebuggerState, !IO),
+        (
+            DebuggerState = debugger_on,
+            handle_event_fail_2(ssdb_fail_nondet, ProcId, Retry, !IO)
+        ;
+            DebuggerState = debugger_off,
+            Retry = do_not_retry
+        ),
+        impure consume_io(!.IO)
+    ).
+
+:- pred handle_event_fail_2(ssdb_event_type::in(either_fail), ssdb_proc_id::in,
+    ssdb_retry::out, io::di, io::uo) is det.
+
+:- pragma inline(handle_event_fail_2/5).
+
+handle_event_fail_2(Event, ProcId, Retry, !IO) :-
+    get_ssdb_event_number_inc(EventNum, !IO),
+    stack_top_csn(CSN, !IO),
+    should_stop_at_this_event(Event, EventNum, CSN, ProcId, Stop, AutoRetry,
+        !IO),
+    (
+        Stop = yes,
+        (
+            AutoRetry = do_retry,
+            WhatNext = wn_retry(CSN)
+        ;
+            AutoRetry = do_not_retry,
+            save_streams(!IO),
+            print_event_info(Event, !IO),
+            read_and_execute_cmd(Event, 0, WhatNext, !IO),
+            restore_streams(!IO)
+        ),
+        update_next_stop(EventNum, CSN, WhatNext, Retry, !IO)
+    ;
+        Stop = no,
+        Retry = do_not_retry
+    ),
+    stack_pop(!IO),
+    (
+        Event = ssdb_fail
+    ;
+        Event = ssdb_fail_nondet,
+        nondet_stack_pop(!IO)
+    ).
+
+handle_event_redo_nondet(ProcId, _ListVarValue) :-
+    some [!IO] (
+        impure invent_io(!:IO),
+        get_debugger_state(DebuggerState, !IO),
+        (
+            DebuggerState = debugger_on,
+            Event = ssdb_redo_nondet,
+            get_ssdb_event_number_inc(EventNum, !IO),
+            stack_depth(OldDepth, !IO),
+            Depth = OldDepth + 1,
+            lookup_nondet_stack_frame(ProcId, Depth, StackFrame, !IO),
+            stack_push(StackFrame, !IO),
+            CSN = StackFrame ^ sf_csn,
+            should_stop_at_this_event(Event, EventNum, CSN, ProcId, Stop,
+                _AutoRetry, !IO),
+            (
+                Stop = yes,
+                save_streams(!IO),
+                print_event_info(Event, !IO),
+                read_and_execute_cmd(Event, 0, WhatNext, !IO),
+                update_next_stop(EventNum, CSN, WhatNext, _Retry, !IO),
+                restore_streams(!IO)
+            ;
+                Stop = no
+            )
+        ;
+            DebuggerState = debugger_off
+        ),
+        impure consume_io(!.IO)
+    ).
+
+:- pred lookup_nondet_stack_frame(ssdb_proc_id::in, int::in, stack_frame::out,
+    io::di, io::uo) is det.
+
+lookup_nondet_stack_frame(ProcId, Depth, StackFrame, !IO) :-
+    search_nondet_stack_frame(ProcId, Depth, MaybeStackFrame, !IO),
+    (
+        MaybeStackFrame = yes(StackFrame)
+    ;
+        MaybeStackFrame = no,
+        error("ssdb: lookup_nondet_stack_frame")
+    ).
+
+:- pred search_nondet_stack_frame(ssdb_proc_id::in, int::in,
+    maybe(stack_frame)::out, io::di, io::uo) is det.
+
+search_nondet_stack_frame(ProcId, Depth, StackFrame, !IO) :-
+    nondet_stack_depth(StackDepth, !IO),
+    search_nondet_stack_frame_2(ProcId, Depth, 0, StackDepth, StackFrame, !IO).
+
+:- pred search_nondet_stack_frame_2(ssdb_proc_id::in, int::in, int::in,
+    int::in, maybe(stack_frame)::out, io::di, io::uo) is det.
+
+search_nondet_stack_frame_2(ProcId, Depth, N, StackDepth, MaybeStackFrame,
+        !IO) :-
+    ( N >= StackDepth ->
+        MaybeStackFrame = no
+    ;
+        nondet_stack_index(N, Frame, !IO),
+        (
+            Frame ^ sf_proc_id ^ module_name = ProcId ^ module_name,
+            Frame ^ sf_proc_id ^ proc_name = ProcId ^ proc_name,
+            Frame ^ sf_depth = Depth
+        ->
+            MaybeStackFrame = yes(Frame)
+        ;
+            search_nondet_stack_frame_2(ProcId, Depth, N + 1, StackDepth,
+                MaybeStackFrame, !IO)
+        )
     ).
 
 %----------------------------------------------------------------------------%
@@ -788,37 +652,103 @@ get_ssdb_event_number_inc(EventNum, !IO) :-
     EventNum = EventNum0 + 1,
     set_cur_ssdb_event_number(EventNum, !IO).
 
-    % Increment the depth and return the new value.
+%-----------------------------------------------------------------------------%
+
+:- pred stack_top(stack_frame::out, io::di, io::uo) is det.
+
+stack_top(Frame, !IO) :-
+    stack_index(0, Frame, !IO).
+
+:- pred stack_top_csn(int::out, io::di, io::uo) is det.
+
+stack_top_csn(CSN, !IO) :-
+    stack_top(Frame, !IO),
+    CSN = Frame ^ sf_csn.
+
+:- pred stack_index(int::in, stack_frame::out, io::di, io::uo) is det.
+
+stack_index(Num, Frame, !IO) :-
+    get_shadow_stack(Stack, !IO),
+    list.index0_det(Stack, Num, Frame).
+
+:- pred stack_depth(int::out, io::di, io::uo) is det.
+
+stack_depth(Depth, !IO) :-
+    get_shadow_stack_depth(Depth, !IO).
+
+:- pred stack_push(stack_frame::in, io::di, io::uo) is det.
+
+stack_push(Frame, !IO) :-
+    get_shadow_stack(Stack, !IO),
+    set_shadow_stack([Frame | Stack], !IO),
+    get_shadow_stack_depth(Depth, !IO),
+    set_shadow_stack_depth(Depth + 1, !IO).
+
+:- pred stack_pop(io::di, io::uo) is det.
+
+stack_pop(!IO) :-
+    get_shadow_stack(Stack, !IO),
+    get_shadow_stack_depth(Depth, !IO),
+    (
+        Stack = [],
+        error("ssdb: stack_pop on empty stack")
+    ;
+        Stack = [_ | StackTail],
+        set_shadow_stack(StackTail, !IO),
+        set_shadow_stack_depth(Depth - 1, !IO)
+    ).
+
+    % Update the sf_list_var_value field of the top shadow stack element.
     %
-:- pred get_ssdb_depth_inc(int::out, io::di, io::uo) is det.
+:- pred update_top_var_list(list(var_value)::in, io::di, io::uo) is det.
 
-get_ssdb_depth_inc(Depth, !IO) :-
-    get_cur_ssdb_shadow_stack(ShadowStack, !IO),
-    Depth0 = stack.depth(ShadowStack),
-    Depth = Depth0 + 1,
-    set_cur_ssdb_depth(Depth, !IO).
+update_top_var_list(ListVarValue, !IO) :-
+    get_shadow_stack(Stack0, !IO),
+    (
+        Stack0 = [],
+        error("ssdb: update_top_var_list on empty stack")
+    ;
+        Stack0 = [Frame0 | Frames],
+        Frame = Frame0 ^ sf_list_var_value := ListVarValue,
+        set_shadow_stack([Frame | Frames], !IO)
+    ).
 
-    % Decrement the depth and return the new value.
-    %
-:- pred get_ssdb_depth_dec(int::out, io::di, io::uo) is det.
-
-get_ssdb_depth_dec(Depth, !IO) :-
-    get_cur_ssdb_shadow_stack(ShadowStack, !IO),
-    Depth0 = stack.depth(ShadowStack),
-    Depth = Depth0 - 1,
-    set_cur_ssdb_depth(Depth, !IO).
-
-    % Setter of the se_list_var_value in the first stack_elem.
-    %
-:- pred set_list_var_value_in_shadow_stack(list(var_value)::in,
+:- pred nondet_stack_index(int::in, stack_frame::out,
     io::di, io::uo) is det.
 
-set_list_var_value_in_shadow_stack(ListVarValue, !IO) :-
-    get_cur_ssdb_shadow_stack(ShadowStack0, !IO),
-    stack.pop_det(ShadowStack0, StackFrame0, PopedStack),
-    StackFrame = StackFrame0 ^ se_list_var_value := ListVarValue,
-    stack.push(PopedStack, StackFrame, ShadowStack),
-    set_cur_ssdb_shadow_stack(ShadowStack, !IO).
+nondet_stack_index(Num, Frame, !IO) :-
+    get_nondet_shadow_stack(Stack, !IO),
+    list.index0_det(Stack, Num, Frame).
+
+:- pred nondet_stack_depth(int::out, io::di, io::uo) is det.
+
+nondet_stack_depth(Depth, !IO) :-
+    get_nondet_shadow_stack_depth(Depth, !IO).
+
+:- pred nondet_stack_push(stack_frame::in, io::di, io::uo)
+    is det.
+
+nondet_stack_push(Frame, !IO) :-
+    get_nondet_shadow_stack(Stack, !IO),
+    set_nondet_shadow_stack([Frame | Stack], !IO),
+    get_nondet_shadow_stack_depth(Depth, !IO),
+    set_nondet_shadow_stack_depth(Depth + 1, !IO).
+
+:- pred nondet_stack_pop(io::di, io::uo) is det.
+
+nondet_stack_pop(!IO) :-
+    get_nondet_shadow_stack(Stack, !IO),
+    get_nondet_shadow_stack_depth(Depth, !IO),
+    (
+        Stack = [],
+        error("ssdb: nondet_stack_pop on empty stack")
+    ;
+        Stack = [_ | StackTail],
+        set_nondet_shadow_stack(StackTail, !IO),
+        set_nondet_shadow_stack_depth(Depth - 1, !IO)
+    ).
+
+%-----------------------------------------------------------------------------%
 
     % should_stop_at_the_event(Event, CSN, EventNum, ProcId, Stop, AutoRetry).
     %
@@ -842,6 +772,10 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
         NextStop = ns_continue,
         get_cur_ssdb_breakpoints(BreakPoints, !IO),
         (
+            % Avoid generating garbage when the user hasn't set any
+            % breakpoints. Eventually we should optimise the handling of
+            % breakpoints with a more appropriate data structure.
+            not map.is_empty(BreakPoints),
             map.search(BreakPoints,
                 pair(ProcId ^ module_name, ProcId ^ proc_name), BreakPoint)
         ->
@@ -865,7 +799,24 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
             ; Event = ssdb_fail
             ; Event = ssdb_fail_nondet
             ),
-            is_same_int(StopCSN, CSN, ShouldStopAtEvent)
+            ( StopCSN = CSN ->
+                (
+                    AutoRetry = do_retry,
+                    % NOTE: The event number and CSN used to be reset at the
+                    % time the user entered the `retry' command.  That is
+                    % incorrect as we may need to perform forward execution
+                    % before reaching the final port of the target CSN to
+                    % retry.  During forward execution the counters are
+                    % incremented as usual, so the debugger state is corrupted.
+                    stack_top(Frame, !IO),
+                    reset_counters_for_retry(Frame, !IO)
+                ;
+                    AutoRetry = do_not_retry
+                ),
+                ShouldStopAtEvent = yes
+            ;
+                ShouldStopAtEvent = no
+            )
         ;
             ( Event = ssdb_call
             ; Event = ssdb_call_nondet
@@ -877,7 +828,23 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
         NextStop = ns_final_port_nondet(StopCSN, AutoRetry),
         (
             Event = ssdb_fail_nondet,
-            is_same_int(StopCSN, CSN, ShouldStopAtEvent)
+            ( StopCSN = CSN ->
+                (
+                    AutoRetry = do_retry,
+                    nondet_stack_index(0, Frame, !IO),
+                    ( Frame ^ sf_csn = CSN ->
+                        % See note above.
+                        reset_counters_for_retry(Frame, !IO)
+                    ;
+                        error("ssdb: nondet stack frame has unexpected CSN")
+                    )
+                ;
+                    AutoRetry = do_not_retry
+                ),
+                ShouldStopAtEvent = yes
+            ;
+                ShouldStopAtEvent = no
+            )
         ;
             ( Event = ssdb_call
             ; Event = ssdb_exit
@@ -894,16 +861,16 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
         AutoRetry = do_not_retry
     ).
 
-    % what_next_stop(EventNum, CSN, WhatNext, Retry).
+    % update_next_stop(EventNum, CSN, WhatNext, Retry).
     %
     % Set the NextStop and the Retry variable according to the WhatNext value.
     % In the case where the WathNext is set for a retry, it modify the
     % debugger_state at his old value which it had at the call point.
     %
-:- pred what_next_stop(int::in, int::in, what_next::in, ssdb_retry::out,
+:- pred update_next_stop(int::in, int::in, what_next::in, ssdb_retry::out,
     io::di, io::uo) is det.
 
-what_next_stop(EventNum, CSN, WhatNext, Retry, !IO) :-
+update_next_stop(EventNum, CSN, WhatNext, Retry, !IO) :-
     (
         WhatNext = wn_step,
         NextStop = ns_step,
@@ -924,7 +891,9 @@ what_next_stop(EventNum, CSN, WhatNext, Retry, !IO) :-
         WhatNext = wn_retry(RetryCSN),
         ( RetryCSN = CSN ->
             NextStop = ns_step,
-            Retry = do_retry
+            Retry = do_retry,
+            stack_top(Frame, !IO),
+            reset_counters_for_retry(Frame, !IO)
         ;
             NextStop = ns_final_port(RetryCSN, do_retry),
             Retry = do_not_retry
@@ -945,35 +914,14 @@ what_next_stop(EventNum, CSN, WhatNext, Retry, !IO) :-
     ),
     set_cur_ssdb_next_stop(NextStop, !IO).
 
-    % Look up the procedure at the specified depth in the nondet shadow stack.
+    % Reset the event number and CSN counters in order to retry from event in
+    % the given frame.
     %
-:- pred get_frame_at_depth_nondet(ssdb_proc_id::in, int::in,
-    maybe(stack_elem)::out, io::di, io::uo) is det.
+:- pred reset_counters_for_retry(stack_frame::in, io::di, io::uo) is det.
 
-get_frame_at_depth_nondet(ProcId, Depth, StackFrame, !IO) :-
-    get_cur_ssdb_shadow_stack_nondet(ShadowStackNonDet, !IO),
-    get_frame_at_depth_nondet_2(ProcId, Depth, ShadowStackNonDet, StackFrame).
-
-:- pred get_frame_at_depth_nondet_2(ssdb_proc_id::in, int::in,
-    stack(stack_elem)::in, maybe(stack_elem)::out) is det.
-
-get_frame_at_depth_nondet_2(ProcId, Depth, ShadowStackNonDet0,
-        MaybeStackFrame) :-
-    ( stack.is_empty(ShadowStackNonDet0) ->
-        MaybeStackFrame = no
-    ;
-        stack.pop_det(ShadowStackNonDet0, Frame, ShadowStackNonDet),
-        (
-            Frame ^ se_proc_id ^ module_name = ProcId ^ module_name,
-            Frame ^ se_proc_id ^ proc_name = ProcId ^ proc_name,
-            Frame ^ se_depth = Depth
-        ->
-            MaybeStackFrame = yes(Frame)
-        ;
-            get_frame_at_depth_nondet_2(ProcId, Depth, ShadowStackNonDet,
-                MaybeStackFrame)
-        )
-    ).
+reset_counters_for_retry(Frame, !IO) :-
+    set_cur_ssdb_event_number(Frame ^ sf_event_number - 1, !IO),
+    set_cur_ssdb_csn(Frame ^ sf_csn - 1, !IO).
 
 %----------------------------------------------------------------------------%
 
@@ -1064,11 +1012,12 @@ ssdb_cmd_name("quit",       ssdb_quit).
 %---------------------------------------------------------------------------%
 
     % Display the prompt, read a user command, and execute it.
+    % Depth is the level of the stack that the user is currently viewing.
     %
-:- pred read_and_execute_cmd(ssdb_event_type::in, stack(stack_elem)::in,
-    int::in, what_next::out, io::di, io::uo) is det.
+:- pred read_and_execute_cmd(ssdb_event_type::in, int::in, what_next::out,
+    io::di, io::uo) is det.
 
-read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO) :-
+read_and_execute_cmd(Event, Depth, WhatNext, !IO) :-
     io.write_string("ssdb> ", !IO),
     io.flush_output(!IO),
     % Read a string in input and return a string.
@@ -1082,99 +1031,97 @@ read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO) :-
             Words = [],
             % We execute the default command. Alternatively, we could just do
             % nothing, and call read_and_execute_cmd recursively.
-            execute_cmd(ssdb_step, [], Event, ShadowStack, Depth, WhatNext,
-                !IO)
+            execute_cmd(ssdb_step, [], Event, Depth, WhatNext, !IO)
         ;
             Words = [CmdWord | ArgWords],
             % Implementing aliases would require only looking up an alias map
             % here.
             ( ssdb_cmd_name(CmdWord, Cmd) ->
-                execute_cmd(Cmd, ArgWords, Event, ShadowStack, Depth, WhatNext,
-                    !IO)
+                execute_cmd(Cmd, ArgWords, Event, Depth, WhatNext, !IO)
             ;
                 io.format("%s: unknown command (try \"help\")\n", [s(CmdWord)],
                     !IO),
-                read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+                read_and_execute_cmd(Event, Depth, WhatNext, !IO)
             )
         )
     ;
         Result = eof,
-        execute_cmd(ssdb_quit, [], Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_cmd(ssdb_quit, [], Event, Depth, WhatNext, !IO)
     ;
         Result = error(Error),
         io.error_message(Error, Msg),
         io.format("could not read command: %s\n", [s(Msg)], !IO),
-        execute_cmd(ssdb_quit, [], Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_cmd(ssdb_quit, [], Event, Depth, WhatNext, !IO)
     ).
 
     % Execute a command.
     %
 :- pred execute_cmd(ssdb_cmd::in, list(string)::in, ssdb_event_type::in,
-    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+    int::in, what_next::out, io::di, io::uo) is det.
 
-execute_cmd(Cmd, Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+execute_cmd(Cmd, Args, Event, Depth, WhatNext, !IO) :-
     (
         Cmd = ssdb_help,
-        execute_ssdb_help(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_ssdb_help(Args, Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_step,
-        execute_ssdb_step(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_ssdb_step(Args, Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_next,
-        execute_ssdb_next(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_ssdb_next(Args, Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_goto,
-        execute_ssdb_goto(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_ssdb_goto(Args, Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_continue,
-        execute_ssdb_continue(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_ssdb_continue(Args, Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_finish,
-        execute_ssdb_finish(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_ssdb_finish(Args, Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_retry,
-        execute_ssdb_retry(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_ssdb_retry(Args, Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_stack,
-        execute_ssdb_stack(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_ssdb_stack(Args, Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_print,
-        execute_ssdb_print(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_ssdb_print(Args, Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_browse,
-        execute_ssdb_browse(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_ssdb_browse(Args, Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_vars,
-        execute_ssdb_vars(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_ssdb_vars(Args, Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_down,
-        execute_ssdb_down(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_ssdb_down(Args, Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_up,
-        execute_ssdb_up(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_ssdb_up(Args, Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_break,
-        execute_ssdb_break(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_ssdb_break(Args, Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_enable,
-        execute_ssdb_enable(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_ssdb_enable(Args, Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_disable,
-        execute_ssdb_disable(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_ssdb_disable(Args, Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_delete,
-        execute_ssdb_delete(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_ssdb_delete(Args, Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_quit,
-        execute_ssdb_quit(Args, Event, ShadowStack, Depth, WhatNext, !IO)
+        execute_ssdb_quit(Args, Event, Depth, WhatNext, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
 :- pred execute_ssdb_help(list(string)::in, ssdb_event_type::in,
-    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+    int::in, what_next::out, io::di, io::uo) is det.
 
-execute_ssdb_help(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+execute_ssdb_help(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [],
         print_help(!IO)
@@ -1184,12 +1131,12 @@ execute_ssdb_help(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
         % name.
         print_help(!IO)
     ),
-    read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO).
+    read_and_execute_cmd(Event, Depth, WhatNext, !IO).
 
 :- pred execute_ssdb_step(list(string)::in, ssdb_event_type::in,
-    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+    int::in, what_next::out, io::di, io::uo) is det.
 
-execute_ssdb_step(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+execute_ssdb_step(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [],
         WhatNext = wn_step
@@ -1197,13 +1144,13 @@ execute_ssdb_step(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
         Args = [_ | _],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
 :- pred execute_ssdb_next(list(string)::in, ssdb_event_type::in,
-    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+    int::in, what_next::out, io::di, io::uo) is det.
 
-execute_ssdb_next(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+execute_ssdb_next(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [],
         (
@@ -1216,24 +1163,24 @@ execute_ssdb_next(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
         ;
             io.write_string("The `next' command can be executed "
                 ++ "only at a call or redo port.\n", !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
     ;
         Args = [_ | _],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
 :- pred execute_ssdb_goto(list(string)::in, ssdb_event_type::in,
-    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+    int::in, what_next::out, io::di, io::uo) is det.
 
-execute_ssdb_goto(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+execute_ssdb_goto(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ;
         Args = [EventNumToGoStr],
         ( string.to_int(EventNumToGoStr, EventNumToGo) ->
@@ -1243,24 +1190,24 @@ execute_ssdb_goto(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
             ;
                 io.write_string("The debugger cannot go to a past event.\n",
                     !IO),
-                read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+                read_and_execute_cmd(Event, Depth, WhatNext, !IO)
             )
         ;
             io.write_string("The event number to go to must be an integer.\n",
                 !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
     ;
         Args = [_, _ | _],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
 :- pred execute_ssdb_continue(list(string)::in, ssdb_event_type::in,
-    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+    int::in, what_next::out, io::di, io::uo) is det.
 
-execute_ssdb_continue(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+execute_ssdb_continue(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [],
         WhatNext = wn_continue
@@ -1268,13 +1215,13 @@ execute_ssdb_continue(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
         Args = [_ | _],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
 :- pred execute_ssdb_finish(list(string)::in, ssdb_event_type::in,
-    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+    int::in, what_next::out, io::di, io::uo) is det.
 
-execute_ssdb_finish(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+execute_ssdb_finish(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [],
         (
@@ -1283,192 +1230,172 @@ execute_ssdb_finish(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
             ; Event = ssdb_redo_nondet
             )
         ->
-            stack.top_det(ShadowStack, FrameStack),
-            CSN = FrameStack ^  se_csn,
+            stack_top(StackFrame, !IO),
+            CSN = StackFrame ^  sf_csn,
             WhatNext = wn_finish(CSN)
         ;
             io.write_string("The `finish' command can be executed "
                 ++ "only at a call or redo port.\n", !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
     ;
         Args = [Arg],
         ( string.to_int(Arg, Num) ->
-            get_cur_ssdb_depth(CurDepth, !IO),
+            stack_depth(CurDepth, !IO),
             (
                 Num >= 0,
-                Num =< CurDepth - 1
+                Num < CurDepth
             ->
-                get_correct_frame_with_num(Num, ShadowStack, StackFrame),
-                CSN = StackFrame ^ se_csn,
+                stack_index(Num, StackFrame, !IO),
+                CSN = StackFrame ^ sf_csn,
                 WhatNext = wn_finish(CSN)
             ;
-                io.format("The depth must be between 1 and %i.\n",
-                    [i(CurDepth)], !IO),
-                read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+                io.format("The depth must be between 0 and %i.\n",
+                    [i(CurDepth - 1)], !IO),
+                read_and_execute_cmd(Event, Depth, WhatNext, !IO)
             )
         ;
             io.write_string("The depth must be an integer.\n", !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
     ;
         Args = [_, _ | _],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
 :- pred execute_ssdb_retry(list(string)::in, ssdb_event_type::in,
-    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+    int::in, what_next::out, io::di, io::uo) is det.
 
-execute_ssdb_retry(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
-    % XXX: The cases for empty argument list and an argument list consisting of
-    % one number look to be the result of cut-and-paste programming: we should
-    % instead use common code parameterised in the appropriate places.
-    %
+execute_ssdb_retry(Args, Event, Depth, WhatNext, !IO) :-
     % XXX: For some reason, the original code here handled the case of the
     % number argument being zero as if the command had no argument at all.
     (
         Args = [],
-        (
-            ( Event = ssdb_exit
-            ; Event = ssdb_fail
-            ; Event = ssdb_fail_nondet
-            ),
-            stack.top_det(ShadowStack, FrameStack),
-            EventNum = FrameStack ^ se_event_number,
-            CSN = FrameStack ^ se_csn,
-            set_cur_ssdb_event_number(EventNum - 1, !IO),
-            set_cur_ssdb_csn(CSN - 1, !IO),
-            WhatNext = wn_retry(CSN)
-        ;
-            Event = ssdb_exit_nondet,
-            stack.top_det(ShadowStack, FrameStack),
-            EventNum = FrameStack ^ se_event_number,
-            CSN = FrameStack ^ se_csn,
-            set_debugger_state(debugger_off, !IO),
-            % Set the event number to CSN - 1 because it will be incremented
-            % at the next event. So, we need to set it to the number of the
-            % event just *before* the call to the retried procedure.
-            set_cur_ssdb_event_number(EventNum - 1, !IO),
-            set_cur_ssdb_csn(CSN - 1, !IO),
-            WhatNext = wn_retry(CSN)
-        ;
-            ( Event = ssdb_call
-            ; Event = ssdb_call_nondet
-            ; Event = ssdb_redo_nondet
-            ),
-            io.write_string("Cannot execute retry " ++
-                "at a call or redo port.\n", !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
-        )
+        execute_ssdb_retry_2(0, Event, Depth, WhatNext, !IO)
     ;
         Args = [Arg],
-        get_cur_ssdb_depth(CurDepth, !IO),
         ( string.to_int(Arg, Num) ->
+            stack_depth(CurDepth, !IO),
             (
-                Num = 0
-            ->
-                execute_ssdb_retry([], Event, ShadowStack, Depth, WhatNext,
-                    !IO)
-            ;
                 Num >= 0,
-                Num =< CurDepth - 1
+                Num < CurDepth
             ->
-                (
-                    ( Event = ssdb_exit
-                    ; Event = ssdb_fail
-                    ; Event = ssdb_fail_nondet
-                    ),
-                    get_correct_frame_with_num(Num, ShadowStack, FrameStack),
-                    EventNum = FrameStack ^ se_event_number,
-                    CSN = FrameStack ^ se_csn,
-                    set_cur_ssdb_event_number(EventNum - 1, !IO),
-                    set_cur_ssdb_csn(CSN - 1, !IO),
-                    WhatNext = wn_retry(CSN)
-                ;
-                    Event = ssdb_exit_nondet,
-                    get_correct_frame_with_num(Num, ShadowStack, FrameStack),
-                    CSN = FrameStack ^ se_csn,
-                    % Set the event number and the CSN minus 1 because
-                    % it will be increment at the next event. So, we
-                    % need to be at the event just before the call.
-                    get_cur_ssdb_shadow_stack_nondet(ShadowStackNonDet, !IO),
-                    ( csn_is_in_stack(CSN, ShadowStackNonDet) ->
-                        set_debugger_state(debugger_off, !IO),
-                        WhatNext = wn_retry_nondet(CSN)
-                    ;
-                        WhatNext = wn_retry(CSN)
-                    )
-                ;
-                    ( Event = ssdb_call
-                    ; Event = ssdb_call_nondet
-                    ; Event = ssdb_redo_nondet
-                    ),
-                    io.write_string("Cannot execute retry " ++
-                        "at a call or redo port.\n", !IO),
-                    read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext,
-                        !IO)
-                )
+                execute_ssdb_retry_2(Num, Event, Depth, WhatNext, !IO)
             ;
-                io.format("The depth must be between 1 and %i.\n",
-                    [i(CurDepth)], !IO),
-                read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+                io.format("The depth must be between 0 and %i.\n",
+                    [i(CurDepth - 1)], !IO),
+                read_and_execute_cmd(Event, Depth, WhatNext, !IO)
             )
         ;
             io.write_string("The depth must be an integer.\n", !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
     ;
         Args = [_, _ | _],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
-:- pred execute_ssdb_stack(list(string)::in, ssdb_event_type::in,
-    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+:- pred execute_ssdb_retry_2(int::in, ssdb_event_type::in, int::in,
+    what_next::out, io::di, io::uo) is det.
 
-execute_ssdb_stack(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+execute_ssdb_retry_2(Num, Event, Depth, WhatNext, !IO) :-
+    stack_index(Num, Frame, !IO),
+    CSN = Frame ^ sf_csn,
+    (
+        ( Event = ssdb_exit
+        ; Event = ssdb_fail
+        ; Event = ssdb_fail_nondet
+        ),
+        WhatNext = wn_retry(CSN)
+    ;
+        Event = ssdb_exit_nondet,
+        nondet_stack_contains_csn(CSN, Found, !IO),
+        (
+            Found = yes,
+            WhatNext = wn_retry_nondet(CSN)
+        ;
+            Found = no,
+            WhatNext = wn_retry(CSN)
+        )
+    ;
+        ( Event = ssdb_call
+        ; Event = ssdb_call_nondet
+        ; Event = ssdb_redo_nondet
+        ),
+        io.write_string("Cannot retry at call or redo port.\n", !IO),
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+    ).
+
+:- pred nondet_stack_contains_csn(int::in, bool::out, io::di, io::uo) is det.
+
+nondet_stack_contains_csn(CSN, Contains, !IO) :-
+    nondet_stack_depth(StackDepth, !IO),
+    nondet_stack_contains_csn_2(CSN, StackDepth - 1, Contains, !IO).
+
+:- pred nondet_stack_contains_csn_2(int::in, int::in, bool::out,
+    io::di, io::uo) is det.
+
+nondet_stack_contains_csn_2(CSN, Depth, Contains, !IO) :-
+    ( Depth < 0 ->
+        Contains = no
+    ;
+        nondet_stack_index(Depth, StackFrame, !IO),
+        ( CSN = StackFrame ^ sf_csn ->
+            Contains = yes
+        ;
+            nondet_stack_contains_csn_2(CSN, Depth - 1, Contains, !IO)
+        )
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred execute_ssdb_stack(list(string)::in, ssdb_event_type::in,
+    int::in, what_next::out, io::di, io::uo) is det.
+
+execute_ssdb_stack(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [],
-        print_frames_list(0, ShadowStack, Depth, !IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        print_stack_trace(0, Depth, !IO),
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ;
         Args = [_ | _],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
 :- pred execute_ssdb_print(list(string)::in, ssdb_event_type::in,
-    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+    int::in, what_next::out, io::di, io::uo) is det.
 
-execute_ssdb_print(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+execute_ssdb_print(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [],
-        get_correct_frame_with_num(Depth, ShadowStack, CurrentFrame),
-        ListVarValue = CurrentFrame ^ se_list_var_value,
+        stack_index(Depth, StackFrame, !IO),
+        ListVarValue = StackFrame ^ sf_list_var_value,
         print_vars(ListVarValue, !IO)
     ;
         Args = [Arg],
-        get_correct_frame_with_num(Depth, ShadowStack, CurrentFrame),
-        ListVarValue = CurrentFrame ^ se_list_var_value,
+        stack_index(Depth, StackFrame, !IO),
+        ListVarValue = StackFrame ^ sf_list_var_value,
         print_var_with_name(ListVarValue, Arg, !IO)
     ;
         Args = [_, _ | _],
         print_help(!IO)
     ),
-    read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO).
+    read_and_execute_cmd(Event, Depth, WhatNext, !IO).
 
 :- pred execute_ssdb_browse(list(string)::in, ssdb_event_type::in,
-    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+    int::in, what_next::out, io::di, io::uo) is det.
 
-execute_ssdb_browse(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+execute_ssdb_browse(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [VarName],
-        get_correct_frame_with_num(Depth, ShadowStack, CurFrame),
-        ListVarValue = CurFrame ^ se_list_var_value,
+        stack_index(Depth, StackFrame, !IO),
+        ListVarValue = StackFrame ^ sf_list_var_value,
         browse_var(ListVarValue, VarName, !IO)
     ;
         ( Args = []
@@ -1477,213 +1404,206 @@ execute_ssdb_browse(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
         % We should provide more detailed help.
         print_help(!IO)
     ),
-    read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO).
+    read_and_execute_cmd(Event, Depth, WhatNext, !IO).
 
 :- pred execute_ssdb_vars(list(string)::in, ssdb_event_type::in,
-    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+    int::in, what_next::out, io::di, io::uo) is det.
 
-execute_ssdb_vars(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+execute_ssdb_vars(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [],
-        get_correct_frame_with_num(Depth, ShadowStack, CurrentFrame),
-        ListVarValue = CurrentFrame ^ se_list_var_value,
+        stack_index(Depth, StackFrame, !IO),
+        ListVarValue = StackFrame ^ sf_list_var_value,
         print_vars_list(ListVarValue, 1, !IO)
     ;
         Args = [_ | _],
         % We should provide more detailed help.
         print_help(!IO)
     ),
-    read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO).
+    read_and_execute_cmd(Event, Depth, WhatNext, !IO).
 
 :- pred execute_ssdb_down(list(string)::in, ssdb_event_type::in,
-    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+    int::in, what_next::out, io::di, io::uo) is det.
 
-execute_ssdb_down(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+execute_ssdb_down(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [],
-        (
-            DownDepth = Depth - 1,
-            DownDepth >= 0
-        ->
-            get_correct_frame_with_num(DownDepth, ShadowStack, FrameToPrint),
-            stack.depth(ShadowStack, StackDepth),
-            print_frame_info(FrameToPrint, StackDepth, !IO),
-            read_and_execute_cmd(Event, ShadowStack, DownDepth, WhatNext, !IO)
+        DownDepth = Depth - 1,
+        ( DownDepth >= 0 ->
+            stack_index(DownDepth, StackFrame, !IO),
+            stack_depth(StackDepth, !IO),
+            print_frame_info(StackFrame, StackDepth, !IO),
+            read_and_execute_cmd(Event, DownDepth, WhatNext, !IO)
         ;
             io.write_string("Already at bottom stack frame.\n", !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
     ;
         Args = [_ | _],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
 :- pred execute_ssdb_up(list(string)::in, ssdb_event_type::in,
-    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+    int::in, what_next::out, io::di, io::uo) is det.
 
-execute_ssdb_up(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+execute_ssdb_up(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [],
-        (
-            UpDepth = Depth + 1,
-            UpDepth < stack.depth(ShadowStack)
-        ->
-            get_correct_frame_with_num(UpDepth, ShadowStack, FrameToPrint),
-            stack.depth(ShadowStack, StackDepth),
-            print_frame_info(FrameToPrint, StackDepth, !IO),
-            read_and_execute_cmd(Event, ShadowStack, UpDepth, WhatNext, !IO)
+        stack_depth(StackDepth, !IO),
+        UpDepth = Depth + 1,
+        ( UpDepth < StackDepth ->
+            stack_index(UpDepth, StackFrame, !IO),
+            print_frame_info(StackFrame, StackDepth, !IO),
+            read_and_execute_cmd(Event, UpDepth, WhatNext, !IO)
         ;
             io.write_string("Already at top stack frame.\n", !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
     ;
         Args = [_ | _],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
 :- pred execute_ssdb_break(list(string)::in, ssdb_event_type::in,
-    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+    int::in, what_next::out, io::di, io::uo) is det.
 
-execute_ssdb_break(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+execute_ssdb_break(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ;
         Args = [Arg],
         ( Arg = "info" ->
             get_cur_ssdb_breakpoints(BreakPoints, !IO),
-            BreakPointsListValue = map.values(BreakPoints),
-            print_breakpoints(BreakPointsListValue, !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            print_breakpoints(BreakPoints, !IO),
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         ;
             % We should provide more detailed help.
             print_help(!IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
     ;
-        Args = [ModuleName, ProcedureName],
+        Args = [ModuleName, ProcName],
         get_cur_ssdb_breakpoints(BreakPoints0, !IO),
-        Key = pair(ModuleName, ProcedureName),
+        Key = pair(ModuleName, ProcName),
         ( map.contains(BreakPoints0, Key) ->
-            io.write_string("The new breakpoint already exist\n", !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            io.write_string("The breakpoint already exists.\n", !IO),
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         ;
             get_cur_ssdb_number_of_breakpoint(Number, !IO),
-            NewBreakPoint = breakpoint(Number + 1, ModuleName,
-                ProcedureName, bp_state_enabled),
+            NewBreakPoint = breakpoint(Number + 1, ModuleName, ProcName,
+                bp_state_enabled),
             map.det_insert(BreakPoints0, Key, NewBreakPoint, BreakPoints),
-            BreakPointsListValue = map.values(BreakPoints),
-            print_breakpoints(BreakPointsListValue, !IO),
             set_cur_ssdb_breakpoints(BreakPoints, !IO),
             set_cur_ssdb_number_of_breakpoint(Number + 1, !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            print_breakpoint(NewBreakPoint, !IO),
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
     ;
         Args = [_, _, _ | _],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
 :- pred execute_ssdb_enable(list(string)::in, ssdb_event_type::in,
-    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+    int::in, what_next::out, io::di, io::uo) is det.
 
-execute_ssdb_enable(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+execute_ssdb_enable(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ;
         Args = [Arg],
         ( Arg = "*" ->
-            modify_state_breakpoints(bp_state_enabled, !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            modify_breakpoint_states(bp_state_enabled, !IO),
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         ; string.to_int(Arg, Num) ->
-            modify_state_breakpoint_with_num(bp_state_enabled, Num, !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            modify_breakpoint_state(Num, bp_state_enabled, !IO),
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         ;
             % We should provide more detailed help.
             print_help(!IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
     ;
         Args = [_, _ | _],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
 :- pred execute_ssdb_disable(list(string)::in, ssdb_event_type::in,
-    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+    int::in, what_next::out, io::di, io::uo) is det.
 
-execute_ssdb_disable(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+execute_ssdb_disable(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ;
         Args = [Arg],
         ( Arg = "*" ->
-            modify_state_breakpoints(bp_state_disabled, !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            modify_breakpoint_states(bp_state_disabled, !IO),
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         ; string.to_int(Arg, Num) ->
-            modify_state_breakpoint_with_num(bp_state_disabled, Num, !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            modify_breakpoint_state(Num, bp_state_disabled, !IO),
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         ;
             io.write_string("The number must be an integer\n", !IO),
             % We should provide more detailed help.
             print_help(!IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
     ;
         Args = [_, _ | _],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
 :- pred execute_ssdb_delete(list(string)::in, ssdb_event_type::in,
-    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+    int::in, what_next::out, io::di, io::uo) is det.
 
-execute_ssdb_delete(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+execute_ssdb_delete(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ;
         Args = [Arg],
         ( Arg = "*" ->
-            BreakPoints = map.init,
-            set_cur_ssdb_breakpoints(BreakPoints, !IO),
+            set_cur_ssdb_breakpoints(map.init, !IO),
             io.write_string("All breakpoints have been deleted.\n", !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         ; string.to_int(Arg, Num) ->
-            delete_breakpoint_with_num(Num, !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            delete_breakpoint(Num, !IO),
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         ;
             io.write_string("The number must be an integer\n", !IO),
-            read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
     ;
         Args = [_, _ | _],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
 :- pred execute_ssdb_quit(list(string)::in, ssdb_event_type::in,
-    stack(stack_elem)::in, int::in, what_next::out, io::di, io::uo) is det.
+    int::in, what_next::out, io::di, io::uo) is det.
 
-execute_ssdb_quit(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
+execute_ssdb_quit(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [],
         io.write_string("ssdb: are you sure you want to quit? ", !IO),
@@ -1697,192 +1617,102 @@ execute_ssdb_quit(Args, Event, ShadowStack, Depth, WhatNext, !IO) :-
                 ; string.prefix(String, "Y")
                 )
             ->
-                exit_debugger(!IO),
+                exit_process(!IO),
                 WhatNext = wn_step
             ;
-                read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+                read_and_execute_cmd(Event, Depth, WhatNext, !IO)
             )
         ;
             Result = eof,
-            exit_debugger(!IO),
+            exit_process(!IO),
             WhatNext = wn_step
         ;
             Result = error(_Error),
-            exit_debugger(!IO),
+            exit_process(!IO),
             WhatNext = wn_step
         )
     ;
         Args = [_ | _],
         % Should we exit even in this case?
         print_help(!IO),
-        read_and_execute_cmd(Event, ShadowStack, Depth, WhatNext, !IO)
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
-%---------------------------------------------------------------------------%
-
-    % csn_is_in_stack(CSN, Stack).
-    %
-    % Determine if a CSN from a given frame match a frame in the Stack
-    %
-:- pred csn_is_in_stack(int::in, stack(stack_elem)::in) is semidet.
-
-csn_is_in_stack(CSN, ShadowStack0) :-
-    stack.pop(ShadowStack0, Frame, ShadowStack),
-    ( CSN = Frame ^ se_csn ->
-        true
-    ;
-        csn_is_in_stack(CSN, ShadowStack)
-    ).
-
-    % Transform the list(var_value) into a assoc_list. As it is for the browser
-    % use, only the bound variable are put into the assoc_list structure.
-    %
-:- pred list_var_value_to_assoc_list(list(var_value)::in,
-    assoc_list(string, univ)::out) is det.
-
-list_var_value_to_assoc_list([], []).
-list_var_value_to_assoc_list([VarValue | VarValues], AssocListVarValue) :-
-    (
-        VarValue = unbound_head_var(_Name, _Pos),
-        list_var_value_to_assoc_list(VarValues, AssocListVarValue)
-    ;
-        VarValue = bound_head_var(Name, _Pos, Value),
-        type_to_univ(Value, ValueUniv),
-        list_var_value_to_assoc_list(VarValues, AssocListVarValue0),
-        AssocListVarValue = [pair(Name, ValueUniv) | AssocListVarValue0]
-    ;
-        VarValue = bound_other_var(Name, Value),
-        type_to_univ(Value, ValueUniv),
-        list_var_value_to_assoc_list(VarValues, AssocListVarValue0),
-        AssocListVarValue = [pair(Name, ValueUniv) | AssocListVarValue0]
-    ).
-
-    % get_correct_frame_with_num(Num, ShadowStack, Frame).
-    %
-    % Get the Nth frame from the shadow stack, beginning from the top.
-    % Num should be in the interval of 0 =< Num =< Depth - 1.
-    % If Num = 0, get the top frame.
-    %
-:- pred get_correct_frame_with_num(int::in, stack(stack_elem)::in,
-    stack_elem::out) is det.
-
-get_correct_frame_with_num(Num, ShadowStack0, StackFrame) :-
-    ( Num = 0 ->
-        stack.top_det(ShadowStack0, StackFrame)
-    ; Num > 0 ->
-        stack.pop_det(ShadowStack0, _Frame, ShadowStack),
-        get_correct_frame_with_num(Num-1, ShadowStack, StackFrame)
-    ;
-        error("Unexpected error : get_correct_frame_with_num")
-    ).
+%-----------------------------------------------------------------------------%
 
     % Disable or enable all breakpoints.
     %
-:- pred modify_state_breakpoints(bp_state::in, io::di, io::uo) is det.
+:- pred modify_breakpoint_states(bp_state::in, io::di, io::uo) is det.
 
-modify_state_breakpoints(State, !IO) :-
-    get_cur_ssdb_breakpoints(BreakPoints, !IO),
-    BreakPointListValue = map.values(BreakPoints),
-    modify_state_breakpoint(State, BreakPointListValue, BreakPoints,
-        BreakPointsModified, !IO),
-    set_cur_ssdb_breakpoints(BreakPointsModified, !IO).
-
-    % Modify state (enable or disable) of one breakpoint.
-    %
-:- pred modify_state_breakpoint(bp_state::in, list(breakpoint)::in,
-    map(pair(string, string), breakpoint)::in,
-    map(pair(string, string), breakpoint)::out,
-    io::di, io::uo) is det.
-
-modify_state_breakpoint(_State, [], !BreakPoints, !IO).
-modify_state_breakpoint(State, [BreakPoint0|BreakPoints], !BreakPoints, !IO) :-
-    BreakPoint = BreakPoint0 ^ bp_state := State,
-    print_breakpoint(BreakPoint, !IO),
-    map.det_update(!.BreakPoints,
-        pair(BreakPoint0 ^ bp_module_name, BreakPoint0 ^ bp_pred_name),
-        BreakPoint, !:BreakPoints),
-    modify_state_breakpoint(State, BreakPoints, !BreakPoints, !IO).
+modify_breakpoint_states(State, !IO) :-
+    get_cur_ssdb_breakpoints(BreakPoints0, !IO),
+    SetState = (func(BP) = BP ^ bp_state := State),
+    map.map_values_only(SetState, BreakPoints0) = BreakPoints,
+    set_cur_ssdb_breakpoints(BreakPoints, !IO),
+    print_breakpoints(BreakPoints, !IO).
 
     % modify_state_breakpoint_with_num(State, Num, !IO).
     %
     % Modify the state of the breakpoint with the number which match Num.
     %
-:- pred modify_state_breakpoint_with_num(bp_state::in, int::in,
-    io::di, io::uo) is det.
+:- pred modify_breakpoint_state(int::in, bp_state::in, io::di, io::uo) is det.
 
-modify_state_breakpoint_with_num(State, Num, !IO) :-
-    get_cur_ssdb_breakpoints(BreakPoints, !IO),
-    BreakPointListValue = map.values(BreakPoints),
-    ( find_breakpoint_with_num(Num, BreakPointListValue, BreakPointToModify) ->
-        modify_state_breakpoint(State, [BreakPointToModify], BreakPoints,
-            BreakPointsModified, !IO),
-        set_cur_ssdb_breakpoints(BreakPointsModified, !IO)
+modify_breakpoint_state(Num, State, !IO) :-
+    get_cur_ssdb_breakpoints(BreakPoints0, !IO),
+    ( find_breakpoint(BreakPoints0, Num, Key, BreakPoint0) ->
+        BreakPoint = BreakPoint0 ^ bp_state := State,
+        map.det_update(BreakPoints0, Key, BreakPoint, BreakPoints),
+        set_cur_ssdb_breakpoints(BreakPoints, !IO),
+        print_breakpoint(BreakPoint, !IO)
     ;
         io.format("ssdb: break point #%d does not exist.\n", [i(Num)], !IO)
     ).
 
-    % delete_breakpoint_with_num(Num, !IO).
+    % delete_breakpoint(Num, !IO).
     %
     % Delete the breakpoint that match with Num.
     %
-:- pred delete_breakpoint_with_num(int::in, io::di, io::uo) is det.
+:- pred delete_breakpoint(int::in, io::di, io::uo) is det.
 
-delete_breakpoint_with_num(Num, !IO) :-
+delete_breakpoint(Num, !IO) :-
     get_cur_ssdb_breakpoints(BreakPoints0, !IO),
-    BreakPointsListValue = map.values(BreakPoints0),
-    ( find_breakpoint_with_num(Num, BreakPointsListValue, BPToDelete) ->
-        Module = BPToDelete ^ bp_module_name,
-        Procedure = BPToDelete ^ bp_pred_name,
-        map.delete(BreakPoints0, pair(Module, Procedure), BreakPoints),
+    ( find_breakpoint(BreakPoints0, Num, Key, _BreakPoint) ->
+        map.delete(BreakPoints0, Key, BreakPoints),
         set_cur_ssdb_breakpoints(BreakPoints, !IO),
-        io.format("Breakpoint on %s.%s deleted\n", [s(Module), s(Procedure)],
-            !IO)
+        Key = ModuleName - PredName,
+        io.format("Breakpoint on %s.%s deleted.\n",
+            [s(ModuleName), s(PredName)], !IO)
     ;
         io.format("ssdb: break point #%d does not exist.\n", [i(Num)], !IO)
     ).
 
-    % find_breakpoint_with_num(Num, ListBreakPoint, BreakPointFound)
+    % find_breakpoint(BreakPoints, Num, Key, BreakPoint)
     %
-    % As the structure of a breakpoint have a Number, this predicate will
-    % return BreakPointFound with bp_number that match with the given Num.
+    % Return the breakpoint with the given id number.
     %
-:- pred find_breakpoint_with_num(int::in, list(breakpoint)::in,
-    breakpoint::out) is semidet.
+:- pred find_breakpoint(cur_ssdb_breakpoints::in, int::in,
+    pair(string, string)::out, breakpoint::out) is semidet.
 
-find_breakpoint_with_num(Num, [BP|ListBreakPoint], BreakPointFound) :-
-    ( BP ^ bp_number = Num ->
-        BreakPointFound = BP
-    ;
-        find_breakpoint_with_num(Num, ListBreakPoint, BreakPointFound)
+find_breakpoint(BreakPoints, Num, Key, BreakPoint) :-
+    % Breakpoints have unique integer ids so there is at most one solution.
+    promise_equivalent_solutions [Key, BreakPoint] (
+        map.member(BreakPoints, Key, BreakPoint),
+        BreakPoint ^ bp_number = Num
     ).
-
-    % Exit the debugger.
-    %
-:- pred exit_debugger(io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-    exit_debugger(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    exit(0);
-    IO = IO0;
-").
-
-:- pragma foreign_proc("Java",
-    exit_debugger(_IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    System.exit(0);
-").
 
 %----------------------------------------------------------------------------%
 
-    % Print the current informations at this event point.
+    % Print the current information at this event point.
     %
-:- pred print_event_info(ssdb_event_type::in, int::in, ssdb_proc_id::in,
-    int::in, int::in, io::di, io::uo) is det.
+:- pred print_event_info(ssdb_event_type::in, io::di, io::uo) is det.
 
-print_event_info(Event, EventNum, ProcId, PrintDepth, CSN, !IO) :-
+print_event_info(Event, !IO) :-
+    stack_top(StackFrame, !IO),
+    EventNum = StackFrame ^ sf_event_number,
+    CSN = StackFrame ^ sf_csn,
+    ProcId = StackFrame ^ sf_proc_id,
+    PrintDepth = StackFrame ^ sf_depth,
+
     % Should right align these numbers.
     io.write_string("\t", !IO),
     io.write_int(EventNum, !IO),
@@ -1924,13 +1754,12 @@ print_event_info(Event, EventNum, ProcId, PrintDepth, CSN, !IO) :-
     %
     % Print the information of the frame gave in argument.
     %
-:- pred print_frame_info(stack_elem::in, int::in, io::di, io::uo) is det.
+:- pred print_frame_info(stack_frame::in, int::in, io::di, io::uo) is det.
 
-print_frame_info(TopFrame, StackDepth, !IO) :-
-    Depth = TopFrame ^ se_depth,
-    ProcId = TopFrame ^ se_proc_id,
-    ModuleName = ProcId ^ module_name,
-    ProcName = ProcId ^ proc_name,
+print_frame_info(StackFrame, StackDepth, !IO) :-
+    Depth = StackFrame ^ sf_depth,
+    ProcId = StackFrame ^ sf_proc_id,
+    ProcId = ssdb_proc_id(ModuleName, ProcName),
     RevDepth = StackDepth - Depth,
     io.format("%4d  %s.%s\n", [i(RevDepth), s(ModuleName), s(ProcName)], !IO).
 
@@ -1968,19 +1797,19 @@ print_help(!IO) :-
 
     % Print the Stack Trace. Predicate call at the 'stack' command.
     %
-:- pred print_frames_list(int::in, stack(stack_elem)::in, int::in,
-    io::di, io::uo) is det.
+:- pred print_stack_trace(int::in, int::in, io::di, io::uo) is det.
 
-print_frames_list(Level, ShadowStack0, Depth, !IO) :-
-    ( if not stack.is_empty(ShadowStack0) then
-        stack.pop_det(ShadowStack0, PopFrame, ShadowStack),
-        (if Depth = 0 then
+print_stack_trace(Level, Depth, !IO) :-
+    stack_depth(StackDepth, !IO),
+    ( Level < StackDepth ->
+        stack_index(Level, PopFrame, !IO),
+        ( Depth = 0 ->
             print_stack_frame(yes, Level, PopFrame, !IO)
-        else
+        ;
             print_stack_frame(no, Level, PopFrame, !IO)
         ),
-        print_frames_list(Level + 1, ShadowStack, Depth - 1, !IO)
-    else
+        print_stack_trace(Level + 1, Depth - 1, !IO)
+    ;
         true
     ).
 
@@ -1989,12 +1818,12 @@ print_frames_list(Level, ShadowStack0, Depth, !IO) :-
     % Print the given Frame. The Level is the place of this frame in the
     % stack.
     %
-:- pred print_stack_frame(bool::in, int::in, stack_elem::in,
+:- pred print_stack_frame(bool::in, int::in, stack_frame::in,
     io::di, io::uo) is det.
 
 print_stack_frame(Starred, Level, Frame, !IO) :-
-    Module = Frame ^ se_proc_id ^ module_name,
-    Procedure = Frame ^ se_proc_id ^ proc_name,
+    Module = Frame ^ sf_proc_id ^ module_name,
+    Procedure = Frame ^ sf_proc_id ^ proc_name,
     (
         Starred = yes,
         io.write_char('*', !IO)
@@ -2173,6 +2002,29 @@ browse_univ(Univ, !IO) :-
         State0, _State1, !IO)
     ).
 
+    % Transform the list(var_value) into a assoc_list. As it is for the browser
+    % use, only the bound variable are put into the assoc_list structure.
+    %
+:- pred list_var_value_to_assoc_list(list(var_value)::in,
+    assoc_list(string, univ)::out) is det.
+
+list_var_value_to_assoc_list([], []).
+list_var_value_to_assoc_list([VarValue | VarValues], AssocListVarValue) :-
+    (
+        VarValue = unbound_head_var(_Name, _Pos),
+        list_var_value_to_assoc_list(VarValues, AssocListVarValue)
+    ;
+        VarValue = bound_head_var(Name, _Pos, Value),
+        type_to_univ(Value, ValueUniv),
+        list_var_value_to_assoc_list(VarValues, AssocListVarValue0),
+        AssocListVarValue = [pair(Name, ValueUniv) | AssocListVarValue0]
+    ;
+        VarValue = bound_other_var(Name, Value),
+        type_to_univ(Value, ValueUniv),
+        list_var_value_to_assoc_list(VarValues, AssocListVarValue0),
+        AssocListVarValue = [pair(Name, ValueUniv) | AssocListVarValue0]
+    ).
+
 %-----------------------------------------------------------------------------%
 
 :- pred print_vars_list(list(var_value)::in, int::in, io::di, io::uo) is det.
@@ -2196,15 +2048,15 @@ print_vars_list([Var | Vars], VarNum, !IO) :-
 
     % Print the current list of breakpoints with their details.
     %
-:- pred print_breakpoints(list(breakpoint)::in, io::di, io::uo) is det.
+:- pred print_breakpoints(cur_ssdb_breakpoints::in, io::di, io::uo) is det.
 
 print_breakpoints(BreakPoints, !IO) :-
-    (
-        BreakPoints = [],
+    ( map.is_empty(BreakPoints) ->
         io.write_string("There are no break points.\n", !IO)
     ;
-        BreakPoints = [_ | _],
-        list.foldl(print_breakpoint, BreakPoints, !IO)
+        % This relies on the integer id being the first field.
+        list.sort(map.values(BreakPoints), SortedBreakPoints),
+        list.foldl(print_breakpoint, SortedBreakPoints, !IO)
     ).
 
 :- pred print_breakpoint(breakpoint::in, io::di, io::uo) is det.
@@ -2300,6 +2152,25 @@ restore_streams(!IO) :-
     get_saved_output_stream(OutputStream, !IO),
     io.set_input_stream(InputStream, _, !IO),
     io.set_output_stream(OutputStream, _, !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- pred exit_process(io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    exit_process(IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"
+    exit(0);
+    IO = IO0;
+").
+
+:- pragma foreign_proc("Java",
+    exit_process(_IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"
+    System.exit(0);
+").
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%

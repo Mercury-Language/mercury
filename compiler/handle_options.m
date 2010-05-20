@@ -2919,6 +2919,7 @@ grade_start_values(minimal_model_debug - bool(no)).
 grade_start_values(pic_reg - bool(no)).
 grade_start_values(exec_trace - bool(no)).
 grade_start_values(decl_debug - bool(no)).
+grade_start_values(source_to_source_debug - bool(no)).
 grade_start_values(extend_stacks_when_needed - bool(no)).
 
 :- pred split_grade_string(string::in, list(string)::out) is semidet.

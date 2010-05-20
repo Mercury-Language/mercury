@@ -858,11 +858,31 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     ;
         AppleGCCRegWorkaroundOpt = ""
     ),
-    
+  
+    % Workaround performance problem(s) with gcc that causes the C files
+    % generated in debugging grades to compile very slowly at -O1 and above.
+    % (Changes here need to be reflected in scripts/mgnuc.in.)
+    (
+        ExecTrace = yes,
+        arch_is_apple_darwin(FullArch)
+    ->
+        OverrideOpts = "-O0"
+    ;
+        OverrideOpts = ""
+    ),
+ 
     % Be careful with the order here!  Some options override others,
     % e.g. CFLAGS_FOR_REGS must come after OptimizeOpt so that
     % it can override -fomit-frame-pointer with -fno-omit-frame-pointer.
     % Also be careful that each option is separated by spaces.
+    % 
+    % In general, user supplied C compiler flags, i.e. CFLAGS below, should
+    % be able to override those introduced by the Mercury compiler.
+    % In some circumstances we want to prevent the user doing this, typically
+    % where we know the behaviour of a particular C compiler is buggy; the
+    % last option, OverrideOpts, does this -- because of this it must be
+    % listed after CFLAGS.
+    %
     string.append_list([
         SubDirInclOpt, InclOpt,
         OptimizeOpt, " ",
@@ -894,7 +914,8 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         AppleGCCRegWorkaroundOpt,
         C_FnAlignOpt, 
         WarningOpt, " ", 
-        CFLAGS], AllCFlags).
+        CFLAGS, " ",
+        OverrideOpts], AllCFlags).
 
 %-----------------------------------------------------------------------------%
 
@@ -925,17 +946,9 @@ compile_java_files(ErrorStream, JavaFiles, Globals, Succeeded, !IO) :-
     globals.lookup_accumulating_option(Globals, java_flags, JavaFlagsList),
     join_string_list(JavaFlagsList, "", "", " ", JAVAFLAGS),
 
-    globals.lookup_accumulating_option(Globals, java_classpath,
-        Java_Incl_Dirs),
-    (
-        ( dir.use_windows_paths
-        ; io.have_cygwin
-        )
-    ->
-        PathSeparator = ";"
-    ;
-        PathSeparator = ":"
-    ),
+    get_mercury_std_libs_for_java(Globals, MercuryStdLibs),
+    globals.lookup_accumulating_option(Globals, java_classpath, UserClasspath),
+    Java_Incl_Dirs = MercuryStdLibs ++ UserClasspath,
     % We prepend the current CLASSPATH (if any) to preserve the accumulating
     % nature of this variable.
     get_env_classpath(EnvClasspath, !IO),
@@ -944,7 +957,7 @@ compile_java_files(ErrorStream, JavaFiles, Globals, Succeeded, !IO) :-
     ;
         ClassPathList = [EnvClasspath | Java_Incl_Dirs]
     ),
-    ClassPath = string.join_list(PathSeparator, ClassPathList),
+    ClassPath = string.join_list(java_classpath_separator, ClassPathList),
     ( ClassPath = "" ->
         InclOpt = ""
     ;
@@ -996,6 +1009,19 @@ compile_java_files(ErrorStream, JavaFiles, Globals, Succeeded, !IO) :-
         Target_DebugOpt, JAVAFLAGS, " ", JoinedJavaFiles], Command),
     invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Command,
         Succeeded, !IO).
+
+:- func java_classpath_separator = string.
+
+java_classpath_separator = PathSeparator :-
+    (
+        ( dir.use_windows_paths
+        ; io.have_cygwin
+        )
+    ->
+        PathSeparator = ";"
+    ;
+        PathSeparator = ":"
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1951,6 +1977,7 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
     % libraries needed by them.
     % Return the empty string if --mercury-standard-library-directory
     % is not set.
+    % NOTE: changes here may require changes to get_mercury_std_libs_for_java.
     %
 :- pred get_mercury_std_libs(globals::in, linked_target_type::in, string::out)
     is det.
@@ -2017,14 +2044,12 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
                 Parallel = no,
                 GCGrade = GCGrade1
             ),
-            make_link_lib(Globals, TargetType, GCGrade, SharedGCLibs),
-            StaticGCLibs = quote_arg(StdLibDir/"lib"/
-                ("lib" ++ GCGrade ++ LibExt))
+            link_lib_args(Globals, TargetType, StdLibDir, "", LibExt,
+                GCGrade, StaticGCLibs, SharedGCLibs)
         ;
             GCMethod = gc_mps,
-            make_link_lib(Globals, TargetType, "mps", SharedGCLibs),
-            StaticGCLibs = quote_arg(StdLibDir/"lib"/
-                ("libmps" ++ LibExt) )
+            link_lib_args(Globals, TargetType, StdLibDir, "", LibExt,
+                "mps", StaticGCLibs, SharedGCLibs)
         ;
             GCMethod = gc_accurate,
             StaticGCLibs = "",
@@ -2037,22 +2062,17 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
             StaticTraceLibs = "",
             SharedTraceLibs = ""
         ;
-            StaticTraceLibs =
-                quote_arg(StdLibDir/"lib"/GradeDir/
-                    ("libmer_trace" ++ LibExt)) ++
-                " " ++
-                quote_arg(StdLibDir/"lib"/GradeDir/
-                    ("libmer_eventspec" ++ LibExt)) ++
-                " " ++
-                quote_arg(StdLibDir/"lib"/GradeDir/
-                    ("libmer_browser" ++ LibExt)) ++
-                " " ++
-                quote_arg(StdLibDir/"lib"/GradeDir/
-                    ("libmer_mdbcomp" ++ LibExt)),
-            make_link_lib(Globals, TargetType, "mer_trace", TraceLib),
-            make_link_lib(Globals, TargetType, "mer_eventspec", EventSpecLib),
-            make_link_lib(Globals, TargetType, "mer_browser", BrowserLib),
-            make_link_lib(Globals, TargetType, "mer_mdbcomp", MdbCompLib),
+            link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+                "mer_trace", StaticTraceLib, TraceLib),
+            link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+                "mer_eventspec", StaticEventSpecLib, EventSpecLib),
+            link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+                "mer_browser", StaticBrowserLib, BrowserLib),
+            link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+                "mer_mdbcomp", StaticMdbCompLib, MdbCompLib),
+            StaticTraceLibs = string.join_list(" ",
+                [StaticTraceLib, StaticEventSpecLib, StaticBrowserLib,
+                StaticMdbCompLib]),
             SharedTraceLibs = string.join_list(" ",
                 [TraceLib, EventSpecLib, BrowserLib, MdbCompLib])
         ),
@@ -2062,11 +2082,16 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
             SourceDebug),
         (
             SourceDebug = yes,
-            StaticSourceDebugLibs =
-                quote_arg(StdLibDir/"lib"/GradeDir/
-                    ("libmer_ssdb" ++ LibExt)),
-            make_link_lib(Globals, TargetType, "mer_mdbcomp",
-                SharedSourceDebugLibs)
+            link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+                "mer_ssdb", StaticSsdbLib, SsdbLib),
+            link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+                "mer_browser", StaticBrowserLib2, BrowserLib2),
+            link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+                "mer_mdbcomp", StaticMdbCompLib2, MdbCompLib2),
+            StaticSourceDebugLibs = string.join_list(" ",
+                [StaticSsdbLib, StaticBrowserLib2, StaticMdbCompLib2]),
+            SharedSourceDebugLibs = string.join_list(" ",
+                [SsdbLib, BrowserLib2, MdbCompLib2])
         ;
             SourceDebug = no,
             StaticSourceDebugLibs = "",
@@ -2074,19 +2099,19 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
         ),
 
         globals.lookup_string_option(Globals, mercury_linkage, MercuryLinkage),
+        link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+            "mer_std", StaticStdLib, StdLib),
+        link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
+            "mer_rt", StaticRuntimeLib, RuntimeLib),
         ( MercuryLinkage = "static" ->
             StdLibs = string.join_list(" ", [
                 StaticTraceLibs,
                 StaticSourceDebugLibs,
-                quote_arg(StdLibDir/"lib"/GradeDir/
-                    ("libmer_std" ++ LibExt)),
-                quote_arg(StdLibDir/"lib"/GradeDir/
-                    ("libmer_rt" ++ LibExt)),
+                StaticStdLib,
+                StaticRuntimeLib,
                 StaticGCLibs
             ])
         ; MercuryLinkage = "shared" ->
-            make_link_lib(Globals, TargetType, "mer_std", StdLib),
-            make_link_lib(Globals, TargetType, "mer_rt", RuntimeLib),
             StdLibs = string.join_list(" ", [
                 SharedTraceLibs,
                 SharedSourceDebugLibs,
@@ -2101,7 +2126,16 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
         MaybeStdlibDir = no,
         StdLibs = ""
     ).
-    
+
+:- pred link_lib_args(globals::in, linked_target_type::in, string::in,
+    string::in, string::in, string::in, string::out, string::out) is det.
+
+link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt, Name,
+        StaticArg, SharedArg) :-
+    StaticLibName = "lib" ++ Name ++ LibExt,
+    StaticArg = quote_arg(StdLibDir/"lib"/GradeDir/StaticLibName),
+    make_link_lib(Globals, TargetType, Name, SharedArg).
+
     % Pass either `-llib' or `PREFIX/lib/GRADE/liblib.a', depending on
     % whether we are linking with static or shared Mercury libraries.
     %
@@ -3000,6 +3034,21 @@ output_library_link_flags(Globals, Stream, !IO) :-
         MercuryStdLibs, " ",
         SystemLibs], LinkFlags),
     io.write_string(Stream, LinkFlags, !IO).
+
+%-----------------------------------------------------------------------------%
+
+    % Succeeds if the configuration name for this machine matches
+    % *-apple-darwin*, i.e. its an x86 / x86_64 / ppc machine with Mac OS X.
+    %
+:- pred arch_is_apple_darwin(string::in) is semidet.
+
+arch_is_apple_darwin(FullArch) :-
+    ArchComponents = string.split_at_char(('-'), FullArch),
+    % See the comments at the head of config.sub for details of how autoconf
+    % handles configuration names.
+    ArchComponents = [_CPU, Mfr, OS],
+    Mfr = "apple",
+    string.prefix(OS, "darwin").
 
 %-----------------------------------------------------------------------------%
 
