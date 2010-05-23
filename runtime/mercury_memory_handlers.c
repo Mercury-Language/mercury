@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998, 2000, 2002, 2005-2007 The University of Melbourne.
+** Copyright (C) 1998, 2000, 2002, 2005-2007, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -401,7 +401,8 @@ MR_explain_context(void *the_context)
     MR_print_dump_stack();
     MR_dump_prev_locations();
     fprintf(stderr, "exiting from signal handler\n");
-    exit(1);
+    MR_reset_signal(sig);
+    raise(sig);
 } /* end complex_sighandler() */
 
 #elif defined(MR_HAVE_SIGINFO_T)
@@ -480,7 +481,8 @@ complex_bushandler(int sig, siginfo_t *info, void *context)
     MR_print_dump_stack();
     MR_dump_prev_locations();
     fprintf(stderr, "exiting from signal handler\n");
-    exit(1);
+    MR_reset_signal(sig);
+    raise(sig);
 } /* end complex_bushandler() */
 
 static void
@@ -557,7 +559,8 @@ complex_segvhandler(int sig, siginfo_t *info, void *context)
     MR_print_dump_stack();
     MR_dump_prev_locations();
     fprintf(stderr, "exiting from signal handler\n");
-    exit(1);
+    MR_reset_signal(sig);
+    raise(sig);
 } /* end complex_segvhandler */
 
 #else /* not MR_HAVE_SIGINFO_T && not MR_HAVE_SIGCONTEXT_STRUCT */
@@ -588,7 +591,8 @@ simple_sighandler(int sig)
     MR_print_dump_stack();
     MR_dump_prev_locations();
     fprintf(stderr, "exiting from signal handler\n");
-    exit(1);
+    MR_reset_signal(sig);
+    raise(sig);
 }
 
 #endif /* not MR_HAVE_SIGINFO_T && not MR_HAVE_SIGCONTEXT_STRUCT */
