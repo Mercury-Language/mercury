@@ -381,7 +381,7 @@ enough_room_for_variable_size_event(
     return (buffer->MR_tsbuffer_pos + length + 
                 event_type_sizes[MR_TS_EVENT_BLOCK_MARKER] +
                 ((2 + 8) * 2) + 2) /* (EventType, Time) * 2 + StringLength */
-        - MR_TS_BUFFERSIZE;
+            < MR_TS_BUFFERSIZE;
 }
 
 /*
