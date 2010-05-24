@@ -347,7 +347,9 @@ static void MR_ssdb_sigint_handler(void)
 :- pragma foreign_code("Java",
 "
 public static class SigIntHandler implements sun.misc.SignalHandler {
-    @Override
+//  XXX Using the @Override annotation here causes compilation errors
+//  with Java 1.5.
+//  @Override
     public void handle(sun.misc.Signal sig) {
         SSDB_step_next_stop();
     }
