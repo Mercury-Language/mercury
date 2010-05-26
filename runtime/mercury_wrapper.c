@@ -637,6 +637,14 @@ mercury_runtime_init(int argc, char **argv)
     */
     MR_setup_threadscope();
   #endif
+
+    MR_all_engine_bases = MR_GC_malloc(sizeof(MercuryEngine*)*MR_num_threads);
+    {
+        int i;
+        for (i = 0; i < MR_num_threads; i++) {
+            MR_all_engine_bases[i] = NULL;
+        }
+    }
 #endif
 
     /*

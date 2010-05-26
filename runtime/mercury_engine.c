@@ -79,8 +79,13 @@ MR_Debug_Flag_Info  MR_debug_flag_info[MR_MAXFLAG] = {
     { "detail",         MR_DETAILFLAG }
 };
 
-#ifndef MR_THREAD_SAFE
-  MercuryEngine MR_engine_base;
+#ifdef MR_THREAD_SAFE 
+/*
+** Writes to this array are protected by the init_engine_array_lock.
+*/
+MercuryEngine **MR_all_engine_bases = NULL;
+#else
+MercuryEngine MR_engine_base;
 #endif
 
 /*---------------------------------------------------------------------------*/

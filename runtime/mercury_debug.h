@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2003, 2006 The University of Melbourne.
+** Copyright (C) 1995-2003, 2006, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -256,6 +256,15 @@ extern	void	MR_print_label(FILE *fp, const MR_Code *w);
 extern	void	MR_printlabel(FILE *fp, const MR_Code *w);
 extern	void	MR_print_deep_prof_var(FILE *fp, const char *name,
 			MR_CallSiteDynamic *csd);
+
+/*
+** Log a message for debugging purposes.  This will log the message with
+** threadscope if available.  In other parallel grades it will print the
+** address of the MercuryEngine structure with the message to stdout, In all
+** other grades it will print the message to standard out.  In all cases there
+** is no need to put a newline character at the end of the message.
+*/
+extern  void    MR_debug_log_message(const char *format, ...);
 
 /*---------------------------------------------------------------------------*/
 

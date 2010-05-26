@@ -56,6 +56,7 @@
 #include "mercury_memory_zones.h"
 #include "mercury_memory_handlers.h"
 #include "mercury_faultaddr.h"
+#include "mercury_threadscope.h"
 
 /*---------------------------------------------------------------------------*/
 
@@ -108,6 +109,7 @@ static  char    *MR_explain_context(void *context);
 static  MR_Code *get_pc_from_context(void *the_context);
 static  MR_Word *get_sp_from_context(void *the_context);
 static  MR_Word *get_curfr_from_context(void *the_context);
+static  void    leave_signal_handler(int sig);
 
 #define STDERR 2
 
@@ -400,9 +402,7 @@ MR_explain_context(void *the_context)
     MR_trace_report(stderr);
     MR_print_dump_stack();
     MR_dump_prev_locations();
-    fprintf(stderr, "exiting from signal handler\n");
-    MR_reset_signal(sig);
-    raise(sig);
+    leave_signal_handler(sig);
 } /* end complex_sighandler() */
 
 #elif defined(MR_HAVE_SIGINFO_T)
@@ -480,9 +480,7 @@ complex_bushandler(int sig, siginfo_t *info, void *context)
     MR_trace_report(stderr);
     MR_print_dump_stack();
     MR_dump_prev_locations();
-    fprintf(stderr, "exiting from signal handler\n");
-    MR_reset_signal(sig);
-    raise(sig);
+    leave_signal_handler(sig);
 } /* end complex_bushandler() */
 
 static void
@@ -558,9 +556,7 @@ complex_segvhandler(int sig, siginfo_t *info, void *context)
     MR_trace_report(stderr);
     MR_print_dump_stack();
     MR_dump_prev_locations();
-    fprintf(stderr, "exiting from signal handler\n");
-    MR_reset_signal(sig);
-    raise(sig);
+    leave_signal_handler(sig);
 } /* end complex_segvhandler */
 
 #else /* not MR_HAVE_SIGINFO_T && not MR_HAVE_SIGCONTEXT_STRUCT */
@@ -590,9 +586,7 @@ simple_sighandler(int sig)
 
     MR_print_dump_stack();
     MR_dump_prev_locations();
-    fprintf(stderr, "exiting from signal handler\n");
-    MR_reset_signal(sig);
-    raise(sig);
+    leave_signal_handler(sig);
 }
 
 #endif /* not MR_HAVE_SIGINFO_T && not MR_HAVE_SIGCONTEXT_STRUCT */
@@ -1018,4 +1012,25 @@ MR_print_dump_stack(void)
     do {
         ret = write(STDERR, msg, strlen(msg));
     } while (ret == -1 && MR_is_eintr(errno));
+}
+
+static void
+leave_signal_handler(int sig)
+{
+    fprintf(stderr, "exiting from signal handler\n");
+#if defined(MR_THREAD_SAFE) && defined(MR_THREADSCOPE)
+    if (MR_all_engine_bases) {
+        int i;
+        for (i = 0; i < MR_num_threads; i++) {
+            if (MR_all_engine_bases[i] && 
+                MR_all_engine_bases[i]->MR_eng_ts_buffer) 
+            {
+                MR_threadscope_finalize_engine(MR_all_engine_bases[i]);
+            }
+        }
+    }
+    MR_finalize_threadscope();
+#endif
+    MR_reset_signal(sig);
+    raise(sig);
 }

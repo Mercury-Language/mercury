@@ -28,6 +28,7 @@
     MercuryThreadKey MR_engine_base_key;
   #endif
   MercuryLock       MR_global_lock;
+  MercuryLock       MR_init_engine_array_lock;
 #endif
 
 volatile MR_bool    MR_exit_now;
@@ -123,6 +124,17 @@ MR_init_thread(MR_when_to_use when_to_use)
   #ifdef MR_ENGINE_BASE_REGISTER
     MR_engine_base_word = (MR_Word) eng;
   #endif
+    MR_LOCK(&MR_init_engine_array_lock, "MR_init_thread");
+    {
+        int i;
+        for (i = 0; i < MR_num_threads; i++) {
+            if (!MR_all_engine_bases[i]) {
+                MR_all_engine_bases[i] = eng;
+                break;
+            }
+        }
+    }
+    MR_UNLOCK(&MR_init_engine_array_lock, "MR_init_thread");
 #else
     MR_memcpy(&MR_engine_base, eng, sizeof(MercuryEngine));
     MR_restore_registers();

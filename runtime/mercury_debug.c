@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1996-2007 The University of Melbourne.
+** Copyright (C) 1996-2007, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1266,5 +1266,49 @@ MR_find_zone_for_nondet_ptr(const MR_Word *ptr, MR_Context **ctxt_ptr,
 #endif  /* MR_USE_MINIMAL_MODEL_OWN_STACKS */
 
     return MR_FALSE;
+}
+
+void 
+MR_debug_log_message(const char *format, ...) {
+    char    *buffer;
+    int     len, result;
+    va_list args;
+
+    /*
+    ** This should be a reasonable estimate of the size of the buffer that we
+    ** need.  At least twice the size of the format string or 128 bytes.
+    */
+    len = strlen(format);
+    len = len*2;
+    len = len<128 ? 128 : len;
+
+    buffer = MR_GC_malloc(len);
+    while (1) {
+        va_start(args, format);
+#ifdef MR_HAVE_VSNPRINTF
+        result = vsnprintf(buffer, len, format, args);
+#elif MR_HAVE__VSNPRINTF
+        result = _vsnprintf(buffer, len, formst, args);
+#else
+        MR_fatal_error(
+            "MR_debug_log_message: Don't have vsnprintf or _vsnprintf\n");
+#endif
+        va_end(args);
+        if (result < len) {
+            break;
+        }
+
+        /* Make the buffer bigger. */
+        len = len*2;
+        buffer = MR_GC_realloc(buffer, len);
+    }
+
+#if defined(MR_THREADSCOPE) && defined(MR_THREAD_SAFE)
+    MR_threadscope_post_log_msg(buffer);
+#elif defined(MR_THREADSCOPE)
+    printf("Eng %p: %s\n", MR_thread_engine_base, buffer);
+#else
+    printf("%s\n", buffer);
+#endif
 }
 
