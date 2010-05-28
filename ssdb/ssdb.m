@@ -659,7 +659,13 @@ get_ssdb_event_number_inc(EventNum, !IO) :-
 :- pred stack_top(stack_frame::out, io::di, io::uo) is det.
 
 stack_top(Frame, !IO) :-
-    stack_index(0, Frame, !IO).
+    get_shadow_stack(Stack, !IO),
+    (
+        Stack = [],
+        error("ssdb: stack_top on empty stack")
+    ;
+        Stack = [Frame | _]
+    ).
 
 :- pred stack_top_csn(int::out, io::di, io::uo) is det.
 

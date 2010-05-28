@@ -2380,6 +2380,7 @@ pred_transform_name(transform_table_generator) = "table_gen".
 pred_transform_name(transform_stm_expansion) = "stm_expansion".
 pred_transform_name(transform_dnf(N)) = "dnf_" ++ int_to_string(N).
 pred_transform_name(transform_structure_reuse) = "structure_reuse".
+pred_transform_name(transform_source_to_source_debug) = "ssdebug".
 
 :- func ints_to_string(list(int)) = string.
 

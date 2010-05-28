@@ -482,7 +482,8 @@
                     % transformed into disjunctive normal form; this integer
                     % gives the part number.
             )
-    ;       transform_structure_reuse.
+    ;       transform_structure_reuse
+    ;       transform_source_to_source_debug.
 
 :- type pred_creation
     --->    created_by_deforestation
@@ -795,6 +796,8 @@
 :- pred terminates_to_markers(proc_terminates::in, pred_markers::out) is det.
 
 :- pred pred_info_get_call_id(pred_info::in, simple_call_id::out) is det.
+
+:- pred pred_info_get_sym_name(pred_info::in, sym_name::out) is det.
 
     % Create an empty set of markers.
     %
@@ -1579,10 +1582,14 @@ pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
 
 pred_info_get_call_id(PredInfo, SimpleCallId) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    pred_info_get_sym_name(PredInfo, SymName),
+    Arity = pred_info_orig_arity(PredInfo),
+    SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity).
+
+pred_info_get_sym_name(PredInfo, SymName) :-
     Module = pred_info_module(PredInfo),
     Name = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
-    SimpleCallId = simple_call_id(PredOrFunc, qualified(Module, Name), Arity).
+    SymName = qualified(Module, Name).
 
 %-----------------------------------------------------------------------------%
 
