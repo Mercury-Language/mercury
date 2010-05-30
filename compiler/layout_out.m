@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2009 The University of Melbourne.
+% Copyright (C) 2001-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2380,6 +2380,7 @@ pred_transform_name(transform_table_generator) = "table_gen".
 pred_transform_name(transform_stm_expansion) = "stm_expansion".
 pred_transform_name(transform_dnf(N)) = "dnf_" ++ int_to_string(N).
 pred_transform_name(transform_structure_reuse) = "structure_reuse".
+pred_transform_name(transform_source_to_source_debug) = "ssdebug".
 
 :- func ints_to_string(list(int)) = string.
 

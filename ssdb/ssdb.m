@@ -347,7 +347,9 @@ static void MR_ssdb_sigint_handler(void)
 :- pragma foreign_code("Java",
 "
 public static class SigIntHandler implements sun.misc.SignalHandler {
-    @Override
+//  XXX Using the @Override annotation here causes compilation errors
+//  with Java 1.5.
+//  @Override
     public void handle(sun.misc.Signal sig) {
         SSDB_step_next_stop();
     }
@@ -418,7 +420,7 @@ handle_event_call_2(Event, ProcId, ListVarValue, !IO) :-
     (
         Stop = yes,
         save_streams(!IO),
-        print_event_info(Event, !IO),
+        print_event_info(Event, EventNum, !IO),
         read_and_execute_cmd(Event, 0, WhatNext, !IO),
         update_next_stop(EventNum, CSN, WhatNext, _Retry, !IO),
         restore_streams(!IO)
@@ -477,7 +479,7 @@ handle_event_exit_2(Event, ProcId, ListVarValue, Retry, !IO) :-
             % frame unless we are stopping to look at it.
             update_top_var_list(ListVarValue, !IO),
             save_streams(!IO),
-            print_event_info(Event, !IO),
+            print_event_info(Event, EventNum, !IO),
             read_and_execute_cmd(Event, 0, WhatNext, !IO),
             restore_streams(!IO)
         ),
@@ -536,7 +538,7 @@ handle_event_fail_2(Event, ProcId, Retry, !IO) :-
         ;
             AutoRetry = do_not_retry,
             save_streams(!IO),
-            print_event_info(Event, !IO),
+            print_event_info(Event, EventNum, !IO),
             read_and_execute_cmd(Event, 0, WhatNext, !IO),
             restore_streams(!IO)
         ),
@@ -571,7 +573,7 @@ handle_event_redo_nondet(ProcId, _ListVarValue) :-
             (
                 Stop = yes,
                 save_streams(!IO),
-                print_event_info(Event, !IO),
+                print_event_info(Event, EventNum, !IO),
                 read_and_execute_cmd(Event, 0, WhatNext, !IO),
                 update_next_stop(EventNum, CSN, WhatNext, _Retry, !IO),
                 restore_streams(!IO)
@@ -657,7 +659,13 @@ get_ssdb_event_number_inc(EventNum, !IO) :-
 :- pred stack_top(stack_frame::out, io::di, io::uo) is det.
 
 stack_top(Frame, !IO) :-
-    stack_index(0, Frame, !IO).
+    get_shadow_stack(Stack, !IO),
+    (
+        Stack = [],
+        error("ssdb: stack_top on empty stack")
+    ;
+        Stack = [Frame | _]
+    ).
 
 :- pred stack_top_csn(int::out, io::di, io::uo) is det.
 
@@ -1704,11 +1712,10 @@ find_breakpoint(BreakPoints, Num, Key, BreakPoint) :-
 
     % Print the current information at this event point.
     %
-:- pred print_event_info(ssdb_event_type::in, io::di, io::uo) is det.
+:- pred print_event_info(ssdb_event_type::in, int::in, io::di, io::uo) is det.
 
-print_event_info(Event, !IO) :-
+print_event_info(Event, EventNum, !IO) :-
     stack_top(StackFrame, !IO),
-    EventNum = StackFrame ^ sf_event_number,
     CSN = StackFrame ^ sf_csn,
     ProcId = StackFrame ^ sf_proc_id,
     PrintDepth = StackFrame ^ sf_depth,

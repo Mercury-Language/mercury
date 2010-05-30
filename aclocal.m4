@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1999,2001-2004, 2006-2009 The University of Melbourne.
+# Copyright (C) 1999,2001-2004, 2006-2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -249,7 +249,8 @@ GACUTIL=`basename "$GACUTIL"`
 
 # Check for the C# (C sharp) compiler.
 # cscc is the DotGNU C# compiler.
-AC_PATH_PROGS(MS_CSC, csc cscc)
+# mcs is the mono C# compiler.
+AC_PATH_PROGS(MS_CSC, csc cscc mcs)
 MS_CSC=`basename "$MS_CSC"`
 
 # We default to the Beta 2 version of the library

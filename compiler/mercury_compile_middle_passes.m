@@ -856,15 +856,13 @@ maybe_ssdb(Verbose, Stats, !HLDS, !IO) :-
     ->
         maybe_write_string(Verbose,
             "% Apply debugging source to source transformation ...\n", !IO),
-        process_all_nonimported_procs(
-            update_module_io(ssdebug.process_proc), !HLDS, !IO),
+        ssdebug.transform_module(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO),
 
-        % this pass fixes up some incorrect determinisms after applying
-        % the transformations
-        determinism_pass(!HLDS, _),
-        true
+        % XXX This pass fixes up some incorrect determinisms after applying
+        % the transformations.
+        determinism_pass(!HLDS, _)
     ;
         true
     ).
