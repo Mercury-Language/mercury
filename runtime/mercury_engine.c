@@ -80,10 +80,12 @@ MR_Debug_Flag_Info  MR_debug_flag_info[MR_MAXFLAG] = {
 };
 
 #ifdef MR_THREAD_SAFE 
+  #ifndef MR_HIGHLEVEL_CODE
 /*
 ** Writes to this array are protected by the init_engine_array_lock.
 */
 MercuryEngine **MR_all_engine_bases = NULL;
+  #endif
 #else
 MercuryEngine MR_engine_base;
 #endif

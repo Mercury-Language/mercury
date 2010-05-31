@@ -157,11 +157,13 @@ MR_cond_timed_wait(MercuryCond *cond, MercuryLock *lock,
   ** call back into Mercury deadlock could result.
   */
   extern MercuryLock        MR_global_lock;
-  
+ 
+  #ifndef MR_HIGHLEVEL_CODE
   /*
   ** This lock protects writes to the MR_all_engine_bases structure.
   */
   extern MercuryLock        MR_init_engine_array_lock;
+  #endif
 
   /*
   ** MR_exception_handler_key stores a key which can be used to get

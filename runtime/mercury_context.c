@@ -186,7 +186,6 @@ MR_init_thread_stuff(void)
     pthread_cond_init(&MR_runqueue_cond, MR_COND_ATTR);
     pthread_mutex_init(&free_context_list_lock, MR_MUTEX_ATTR);
     pthread_mutex_init(&MR_global_lock, MR_MUTEX_ATTR);
-    pthread_mutex_init(&MR_init_engine_array_lock, MR_MUTEX_ATTR);
     pthread_mutex_init(&MR_pending_contexts_lock, MR_MUTEX_ATTR);
   #ifdef MR_LL_PARALLEL_CONJ
     pthread_mutex_init(&spark_deques_lock, MR_MUTEX_ATTR);
@@ -212,6 +211,8 @@ MR_init_thread_stuff(void)
     pthread_mutex_init(&MR_thread_barrier_lock, MR_MUTEX_ATTR);
   #ifdef MR_HIGHLEVEL_CODE
     pthread_cond_init(&MR_thread_barrier_cond, MR_COND_ATTR);
+  #else
+    pthread_mutex_init(&MR_init_engine_array_lock, MR_MUTEX_ATTR);
   #endif
 
     /* 
