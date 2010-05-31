@@ -20,29 +20,41 @@ major release of the system.
 Changes to the Mercury language:
 
 * We have removed support for automatic initialisation of solver variables.
+
 * A new pragma, foreign_enum, allows the constructors of Mercury 
   enumeration types to be assigned values from foreign language code.
+
 * A new pragma, foreign_export_enum, allows the constructors of Mercury
   enumeration types to be referred to in foreign language code.
+
 * Some of the restrictions on typeclass instances have been relaxed, allowing
   support for polymorphic instances with functional dependencies.
+
 * We now support trace goals, which can be used to print progress messages or
   log messages in the middle of arbitrary computations.
+
 * Mutables can now be marked as constant, which is useful when working with
   constant data structures that cannot be conveniently represented as constant
   terms.
+
 * Mutables can now be marked as thread-local, which can take on different
   values for each thread.
+
 * promise_equivalent_solutions scopes (et al.) must now also list variables
   with inst any that may be constrained by the goal.
+
 * We now support !X ^ field_list := Term as a synonym for
   !:X = !.X ^ field_list := Term.
+
 * We now support higher-order `any' insts.
+
 * We now support "implementation-defined literals", such as `$file', `$line',
   `$pred', which are useful for producing better run-time error messages.
+
 * We now support currying of multi-moded predicates or functions when the
   mode to curry can be determined from the insts of the higher-order
   arguments.
+
 * We now support `try' goals for catching exceptions.
 
 Changes to the Mercury standard library:
@@ -302,6 +314,18 @@ Changes to the Mercury standard library:
   contains utilities for working with the Gregorian calendar.
 
 Changes to the Mercury compiler:
+
+* The Java backend has been substantially improved and now supports
+  all the core features of the language and most of the standard library.
+  The Java backend is roughly three times slower (after allowing for JIT)
+  than the C backends.
+
+* Interfacing with Mercury code from Java is also improved:
+    * Polymorphic Mercury types are now translated to Java classes
+      with generics, allowing for greater type safety in the Java code.
+    * Exported Mercury procedures retain their argument order in the
+      corresponding Java versions (output arguments are handled with a new
+      Ref Java type).
 
 * We have added support for trail segments, which allow programs to grow
   the trail on demand.
