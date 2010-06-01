@@ -471,6 +471,16 @@ typedef struct MR_mercury_engine_struct {
   #define MR_cur_engine()   ((MercuryEngine *) MR_engine_base)
   #define MR_get_engine()   ((MercuryEngine *) MR_thread_engine_base)
 
+  #ifndef MR_HIGHLEVEL_CODE
+  /*
+  ** This points to an array containing MR_num_threads pointers to Mercury engines.
+  ** The first item in the array is the primordial thread.  During
+  ** initialisation the array may be a null pointer as may be any pointer
+  ** inside.
+  */
+  extern MercuryEngine      **MR_all_engine_bases;
+  #endif
+
 #else   /* !MR_THREAD_SAFE */
 
   extern MercuryEngine      MR_engine_base;

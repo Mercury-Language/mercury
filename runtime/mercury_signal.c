@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998,2000,2002, 2006 The University of Melbourne.
+** Copyright (C) 1998,2000,2002, 2006, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -82,6 +82,26 @@ MR_do_setup_signal(int sig, MR_Code *handler, MR_bool need_info,
 
     MR_init_signal_action(&act, handler, need_info, restart);
     MR_set_signal_action(sig, &act, error_message);
+}
+
+void
+MR_reset_signal(int sig)
+{
+    MR_signal_action    act;
+
+#ifdef MR_HAVE_SIGACTION
+    if (sigemptyset(&(act.sa_mask)) != 0) {
+        MR_perror("cannot set clear signal mask");
+        exit(1);
+    }
+    errno = 0;
+
+    act.sa_flags = 0;
+    act.sa_handler = SIG_DFL;
+#else
+    act = SIG_DFL; 
+#endif
+    MR_set_signal_action(sig, &act, "Couldn't reset signal");
 }
 
 void

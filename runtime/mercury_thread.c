@@ -28,6 +28,9 @@
     MercuryThreadKey MR_engine_base_key;
   #endif
   MercuryLock       MR_global_lock;
+  #ifndef MR_HIGHLEVEL_CODE
+  MercuryLock       MR_init_engine_array_lock;
+  #endif
 #endif
 
 volatile MR_bool    MR_exit_now;
@@ -122,6 +125,19 @@ MR_init_thread(MR_when_to_use when_to_use)
     MR_restore_registers();
   #ifdef MR_ENGINE_BASE_REGISTER
     MR_engine_base_word = (MR_Word) eng;
+  #endif
+  #ifndef MR_HIGHLEVEL_CODE
+    MR_LOCK(&MR_init_engine_array_lock, "MR_init_thread");
+    {
+        int i;
+        for (i = 0; i < MR_num_threads; i++) {
+            if (!MR_all_engine_bases[i]) {
+                MR_all_engine_bases[i] = eng;
+                break;
+            }
+        }
+    }
+    MR_UNLOCK(&MR_init_engine_array_lock, "MR_init_thread");
   #endif
 #else
     MR_memcpy(&MR_engine_base, eng, sizeof(MercuryEngine));
@@ -284,7 +300,8 @@ MR_cond_timed_wait(MercuryCond *cond, MercuryLock *lock,
     fprintf(stderr, "%ld timed-waiting on cond: %p lock: %p (%s)\n",
         (long)pthread_self(), cond, lock, from);
     err = pthread_cond_timedwait(cond, lock, abstime);
-    fprintf(stderr, "%ld timed-wait returned %d\n", err);
+    fprintf(stderr, "%ld timed-wait returned %d\n", 
+        (long)pthread_self(), err);
     return err;
 }
 

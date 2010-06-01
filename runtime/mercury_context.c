@@ -211,6 +211,8 @@ MR_init_thread_stuff(void)
     pthread_mutex_init(&MR_thread_barrier_lock, MR_MUTEX_ATTR);
   #ifdef MR_HIGHLEVEL_CODE
     pthread_cond_init(&MR_thread_barrier_cond, MR_COND_ATTR);
+  #else
+    pthread_mutex_init(&MR_init_engine_array_lock, MR_MUTEX_ATTR);
   #endif
 
     /* 
@@ -686,8 +688,17 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
     }
     MR_UNLOCK(&free_context_list_lock, "create_context i");
 
+#ifdef MR_DEBUG_STACK_SEGMENTS
+    MR_debug_log_message("Re-used an old context: %p", c);
+#endif
+
     if (c == NULL) {
         c = MR_GC_NEW(MR_Context);
+#ifdef MR_DEBUG_STACK_SEGMENTS
+        if (c) {
+            MR_debug_log_message("Creating new context: %p", c);
+        }
+#endif
         c->MR_ctxt_size = ctxt_size;
 #ifndef MR_HIGHLEVEL_CODE
         c->MR_ctxt_detstack_zone = NULL;
@@ -708,14 +719,27 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
     return c;
 }
 
+/*
+** TODO: We should gc the cached contexts, or otherwise not cache to many.
+*/
 void 
 MR_destroy_context(MR_Context *c)
 {
     MR_assert(c);
 
+#ifdef MR_DEBUG_STACK_SEGMENTS
+    MR_debug_log_message("Caching old context: %p", c);
+#endif
+
 #ifdef MR_THREAD_SAFE
     MR_assert(c->MR_ctxt_saved_owners == NULL);
 #endif
+
+    /*
+    ** Save the context first, even though we're not saving a computation
+    ** that's in progress we are saving some bookkeeping information.
+    */
+    MR_save_context(c);
 
     /* XXX not sure if this is an overall win yet */
 #if 0 && defined(MR_CONSERVATIVE_GC) && !defined(MR_HIGHLEVEL_CODE)
@@ -1186,6 +1210,10 @@ MR_define_entry(MR_do_runnext);
 
     /* Discard whatever unused context we may have and switch to tmp. */
     if (MR_ENGINE(MR_eng_this_context) != NULL) {
+#ifdef MR_DEBUG_STACK_SEGMENTS
+        MR_debug_log_message("destroying old context %p",
+            MR_ENGINE(MR_eng_this_context));
+#endif
         MR_destroy_context(MR_ENGINE(MR_eng_this_context));
     }
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
@@ -1196,12 +1224,19 @@ MR_define_entry(MR_do_runnext);
 #endif
     MR_ENGINE(MR_eng_this_context) = ready_context;
     MR_load_context(ready_context);
+#ifdef MR_DEBUG_STACK_SEGMENTS
+    MR_debug_log_message("resuming old context: %p", ready_context);
+#endif
 
     resume_point = (MR_Code*)(ready_context->MR_ctxt_resume);
     ready_context->MR_ctxt_resume = NULL;
     MR_GOTO(resume_point);
 
   ReadySpark:
+
+#ifdef MR_DEBUG_STACK_SEGMENTS
+    MR_debug_log_message("stole spark: st: %p", spark.MR_spark_sync_term);
+#endif
 
 #if 0 /* This is a complicated optimisation that may not be worth-while */
     if (!spark.MR_spark_sync_term->MR_st_is_shared) {
@@ -1243,6 +1278,11 @@ MR_define_entry(MR_do_runnext);
         }
 #endif
         MR_load_context(MR_ENGINE(MR_eng_this_context));
+#ifdef MR_DEBUG_STACK_SEGMENTS
+        MR_debug_log_message("created new context for spark: %p",
+            MR_ENGINE(MR_eng_this_context));
+#endif
+
     } else {
 #ifdef MR_THREADSCOPE
         /*

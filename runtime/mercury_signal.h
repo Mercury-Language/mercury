@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998, 2000, 2002, 2004-2005 The University of Melbourne.
+** Copyright (C) 1998, 2000, 2002, 2004-2005, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -79,6 +79,11 @@ extern	void	MR_setup_signal(int sig, MR_Code *handler, MR_bool need_info,
 
 extern	void	MR_setup_signal_no_restart(int sig, MR_Code *handler,
 			MR_bool need_info, const char * error_message);
+
+/*
+** Reset a signal to its default handler. (see SIG_DFL in signal(2)).
+*/
+extern  void    MR_reset_signal(int sig);
 
 /*
 ** As above, but initialize a signal action suitable to be
