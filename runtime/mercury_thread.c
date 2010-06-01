@@ -300,7 +300,8 @@ MR_cond_timed_wait(MercuryCond *cond, MercuryLock *lock,
     fprintf(stderr, "%ld timed-waiting on cond: %p lock: %p (%s)\n",
         (long)pthread_self(), cond, lock, from);
     err = pthread_cond_timedwait(cond, lock, abstime);
-    fprintf(stderr, "%ld timed-wait returned %d\n", err);
+    fprintf(stderr, "%ld timed-wait returned %d\n",
+        (long)pthread_self(), err);
     return err;
 }
 
