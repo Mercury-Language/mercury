@@ -65,6 +65,10 @@
     %
 :- type pos == int.
 
+    % Update globals recording the context of the upcoming call.
+    %
+:- impure pred set_context(string::in, int::in) is det.
+
     % This routine is called at each call event that occurs.
     %
 :- impure pred handle_event_call(ssdb_proc_id::in, list_var_value::in) is det.
@@ -155,6 +159,10 @@
                 % The goal's module name and procedure name.
                 sf_proc_id          :: ssdb_proc_id,
 
+                % The call site.
+                sf_call_site_file   :: string,
+                sf_call_site_line   :: int,
+
                 % The list of the procedure's arguments.
                 sf_list_var_value   :: list(var_value)
             ).
@@ -226,8 +234,10 @@
 
 %----------------------------------------------------------------------------%
 
-    % Initialization of the mutable variables.
-    %
+:- mutable(cur_filename, string, "", ground,
+    [untrailed, attach_to_io_state]).
+:- mutable(cur_line_number, int, 0, ground,
+    [untrailed, attach_to_io_state]).
 
 :- mutable(cur_ssdb_event_number, int, 0, ground,
     [untrailed, attach_to_io_state]).
@@ -365,6 +375,12 @@ public static class SigIntHandler implements sun.misc.SignalHandler {
 step_next_stop(!IO) :-
     set_cur_ssdb_next_stop(ns_step, !IO).
 
+%-----------------------------------------------------------------------------%
+
+set_context(FileName, Line) :-
+    impure set_cur_filename(FileName),
+    impure set_cur_line_number(Line).
+
 %----------------------------------------------------------------------------%
 
 handle_event_call(ProcId, ListVarValue) :-
@@ -405,7 +421,10 @@ handle_event_call_2(Event, ProcId, ListVarValue, !IO) :-
     Depth = OldDepth + 1,
 
     % Push the new stack frame on top of the shadow stack(s).
-    StackFrame = stack_frame(EventNum, CSN, Depth, ProcId, ListVarValue),
+    get_cur_filename(SiteFile, !IO),
+    get_cur_line_number(SiteLine, !IO),
+    StackFrame = stack_frame(EventNum, CSN, Depth, ProcId, SiteFile, SiteLine,
+        ListVarValue),
     stack_push(StackFrame, !IO),
     (
         Event = ssdb_call
@@ -690,7 +709,10 @@ handle_event_excp_2(ProcId, ListVarValue, !IO) :-
     Depth = OldDepth + 1,
 
     % Push the new stack frame on top of the shadow stack(s).
-    StackFrame = stack_frame(EventNum, CSN, Depth, ProcId, ListVarValue),
+    get_cur_filename(SiteFile, !IO),
+    get_cur_line_number(SiteLine, !IO),
+    StackFrame = stack_frame(EventNum, CSN, Depth, ProcId, SiteFile, SiteLine,
+        ListVarValue),
     stack_push(StackFrame, !IO),
 
     Event = ssdb_excp,
@@ -1919,6 +1941,8 @@ print_event_info(Event, EventNum, !IO) :-
     CSN = StackFrame ^ sf_csn,
     ProcId = StackFrame ^ sf_proc_id,
     PrintDepth = StackFrame ^ sf_depth,
+    SiteFile = StackFrame ^ sf_call_site_file,
+    SiteLine = StackFrame ^ sf_call_site_line,
 
     % Should right align these numbers.
     io.write_string("\t", !IO),
@@ -1956,7 +1980,7 @@ print_event_info(Event, EventNum, !IO) :-
     io.write_string(".", !IO),
     io.write_string(ProcId ^ proc_name, !IO),
     % mdb writes arity, mode, determinism and context here.
-    io.nl(!IO).
+    io.format(" (%s:%d)\n", [s(SiteFile), i(SiteLine)], !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1970,8 +1994,12 @@ print_frame_info(StackFrame, StackDepth, !IO) :-
     Depth = StackFrame ^ sf_depth,
     ProcId = StackFrame ^ sf_proc_id,
     ProcId = ssdb_proc_id(ModuleName, ProcName),
+    SiteFile = StackFrame ^ sf_call_site_file,
+    SiteLine = StackFrame ^ sf_call_site_line,
     RevDepth = StackDepth - Depth,
-    io.format("%4d  %s.%s\n", [i(RevDepth), s(ModuleName), s(ProcName)], !IO).
+    io.format("%4d  %s.%s (%s:%d)\n",
+        [i(RevDepth), s(ModuleName), s(ProcName), s(SiteFile), i(SiteLine)],
+        !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -2035,6 +2063,8 @@ print_stack_trace(Level, Depth, !IO) :-
 print_stack_frame(Starred, Level, Frame, !IO) :-
     Module = Frame ^ sf_proc_id ^ module_name,
     Procedure = Frame ^ sf_proc_id ^ proc_name,
+    SiteFile = Frame ^ sf_call_site_file,
+    SiteLine = Frame ^ sf_call_site_line,
     (
         Starred = yes,
         io.write_char('*', !IO)
@@ -2042,7 +2072,8 @@ print_stack_frame(Starred, Level, Frame, !IO) :-
         Starred = no,
         io.write_char(' ', !IO)
     ),
-    io.format("%5d\t%s.%s\n", [i(Level), s(Module), s(Procedure)], !IO).
+    io.format("%5d\t%s.%s (%s:%d)\n",
+        [i(Level), s(Module), s(Procedure), s(SiteFile), i(SiteLine)], !IO).
 
 %-----------------------------------------------------------------------------%
 

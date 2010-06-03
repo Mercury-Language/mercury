@@ -12,22 +12,38 @@
 % The ssdebug module does a source to source tranformation on each procedure
 % which allows the procedure to be debugged.
 %
-% Here is the transformation:
+% The ssdebug transformation is disabled on standard library predicates,
+% because it would introduce cyclic dependencies between ssdb.m and the
+% standard library.  Disabling the transformation on the standard library is
+% also useful for maintaining decent performance.
 %
-% original:
+% The tranformation is divided into two passes.
 %
-%    p(...) :-
-%        <original body>
+% The first pass replaces calls to standard library predicates, and closure
+% constructions referring to standard library predicates, by calls to and
+% closures over proxy predicates.  The proxy predicates generate events on
+% behalf of the standard library predicates.  There will be no events for
+% further calls within the standard library, but that is better for
+% performance.
 %
-% model_det transformed:
+% The first pass also inserts calls to a context update procedure before every
+% procedure call (first or higher order).  This will update global variables
+% with the location of the next call site, which will be used by the CALL event
+% handler.  Context update calls are not required within proxy predicates.
+%
+% The second pass performs the main ssdebug transformation, adding calls to
+% procedures to handle debugger events.  The transformation depends on the
+% determinism of the procedure.
+%
+% det/cc_multi:
 %
 %    p(...) :-
 %        promise_<original_purity> (
 %            CallVarDescs = [ ... ],
-%            impure call_port(ProcId, CallVarDescs),
+%            impure handle_event_call(ProcId, CallVarDescs),
 %            <original body>,    % renaming outputs
 %            ExitVarDescs = [ ... | CallVarDescs ],
-%            impure exit_port(ProcId, ExitVarDescs, DoRetry),
+%            impure handle_event_exit(ProcId, ExitVarDescs, DoRetry),
 %            (
 %                DoRetry = do_retry,
 %                p(...)
@@ -37,17 +53,17 @@
 %            )
 %        ).
 %
-% model_semi transformed:
+% semidet/cc_nondet:
 %
 %    p(...) :-
 %        promise_<original_purity> (
 %            CallVarDescs = [ ... ],
 %            (
-%                impure call_port(ProcId, CallVarDescs),
+%                impure handle_event_call(ProcId, CallVarDescs),
 %                <original body>    % renaming outputs
 %            ->
 %                ExitVarDescs = [ ... | CallVarDescs ],
-%                impure exit_port(ProcId, ExitVarDescs, DoRetryA),
+%                impure handle_event_exit(ProcId, ExitVarDescs, DoRetryA),
 %                (
 %                    DoRetryA = do_retry,
 %                    p(...)
@@ -56,7 +72,7 @@
 %                    % bind outputs
 %                )
 %            ;
-%                impure fail_port(ProcId, CallVarDescs, DoRetryB),
+%                impure handle_event_fail(ProcId, CallVarDescs, DoRetryB),
 %                (
 %                    DoRetryB = do_retry,
 %                    p(...)
@@ -67,26 +83,26 @@
 %            )
 %        ).
 %
-% model_non transformed:
+% nondet:
 %
 %    p(...) :-
 %        promise_<original_purity> (
 %            (
 %                CallVarDescs = [ ... ],
-%                impure call_port(ProcId, CallVarDescs),
+%                impure handle_event_call(ProcId, CallVarDescs),
 %                <original body>,
 %                ExitVarDescs = [ ... | CallVarDescs ],
 %                (
-%                    impure exit_port(ProcId, ExitVarDescs)
+%                    impure handle_event_exit(ProcId, ExitVarDescs)
 %                    % Go to fail port if retry.
 %                ;
 %                    % preserve_backtrack_into,
-%                    impure redo_port(ProcId, ExitVarDescs),
+%                    impure handle_event_redo(ProcId, ExitVarDescs),
 %                    fail
 %                )
 %            ;
 %                % preserve_backtrack_into
-%                impure fail_port(ProcId, CallVarDescs, DoRetryB),
+%                impure handle_event_fail(ProcId, CallVarDescs, DoRetryB),
 %                (
 %                    DoRetryB = do_retry,
 %                    p(...)
@@ -97,17 +113,17 @@
 %            )
 %        ).
 %
-% detism_failure:
+% failure:
 %
 %   p(...) :-
 %       promise_<original_purity> (
 %           (
 %               CallVarDescs = [ ... ],
-%               impure call_port(ProcId, CallVarDescs),
+%               impure handle_event_call(ProcId, CallVarDescs),
 %               <original body>
 %           ;
 %               % preserve_backtrack_into
-%               impure fail_port(ProcId, CallVarDescs, DoRetry),
+%               impure handle_event_fail(ProcId, CallVarDescs, DoRetry),
 %               (
 %                   DoRetry = do_retry,
 %                   p(...)
@@ -118,12 +134,12 @@
 %           )
 %       ).
 %
-% detism_erroneous:
+% erroneous:
 %
 %   p(...) :-
 %       promise_<original_purity> (
 %           CallVarDescs = [ ... ],
-%           impure call_port(ProcId, CallVarDescs),
+%           impure handle_event_call(ProcId, CallVarDescs),
 %           <original body>
 %       ).
 %
@@ -145,17 +161,6 @@
 % of head variables.
 %
 % The ProcId is of type ssdb.ssdb_proc_id.
-%
-% The transformation is disabled on standard library predicates, because it
-% would introduce cyclic dependencies between ssdb.m and the standard library.
-% Disabling the transformation on the standard library is also useful
-% for maintaining decent performance.
-%
-% Instead, for calls to standard library predicates, we create proxy predicates
-% in the calling module and transform those instead.  The proxy predicates
-% generate events on behalf of the standard library predicates.  Obviously
-% there will be no events for further calls within the standard library, but
-% that is better for performance.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -206,49 +211,50 @@
 %-----------------------------------------------------------------------------%
 
 ssdebug.transform_module(!ModuleInfo, !IO) :-
-    create_proxy_predicates(!ModuleInfo),
+    ssdebug.first_pass(!ModuleInfo),
     process_all_nonimported_procs(update_module(ssdebug.process_proc),
         !ModuleInfo, !IO).
 
 %-----------------------------------------------------------------------------%
 %
-% Creating proxies for standard library predicates
+% Create proxies for standard library predicates and insert context updates
 %
 
 :- type proxy_map == map(pred_id, maybe(pred_id)).
 
-:- pred create_proxy_predicates(module_info::in, module_info::out) is det.
+:- pred first_pass(module_info::in, module_info::out) is det.
 
-create_proxy_predicates(!ModuleInfo) :-
+first_pass(!ModuleInfo) :-
     module_info_predids(PredIds, !ModuleInfo),
-    list.foldl2(create_proxies_in_pred, PredIds, map.init, _ProxyMap,
-        !ModuleInfo).
+    list.foldl2(first_pass_in_pred, PredIds, map.init, _ProxyMap, !ModuleInfo).
 
-:- pred create_proxies_in_pred(pred_id::in, proxy_map::in, proxy_map::out,
+:- pred first_pass_in_pred(pred_id::in, proxy_map::in, proxy_map::out,
     module_info::in, module_info::out) is det.
 
-create_proxies_in_pred(PredId, !ProxyMap, !ModuleInfo) :-
+first_pass_in_pred(PredId, !ProxyMap, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_procids(PredInfo),
-    list.foldl2(create_proxies_in_proc(PredId), ProcIds, !ProxyMap,
-        !ModuleInfo).
+    ProcIds = pred_info_all_non_imported_procids(PredInfo),
+    list.foldl2(first_pass_in_proc(PredId), ProcIds, !ProxyMap, !ModuleInfo).
 
-:- pred create_proxies_in_proc(pred_id::in, proc_id::in,
+:- pred first_pass_in_proc(pred_id::in, proc_id::in,
     proxy_map::in, proxy_map::out, module_info::in, module_info::out) is det.
 
-create_proxies_in_proc(PredId, ProcId, !ProxyMap, !ModuleInfo) :-
-    module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId, PredInfo,
-        ProcInfo0),
-    proc_info_get_goal(ProcInfo0, Goal0),
-    create_proxies_in_goal(Goal0, Goal, !ProxyMap, !ModuleInfo),
-    proc_info_set_goal(Goal, ProcInfo0, ProcInfo),
-    module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
-        !ModuleInfo).
+first_pass_in_proc(PredId, ProcId, !ProxyMap, !ModuleInfo) :-
+    some [!ProcInfo] (
+        module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId, PredInfo,
+            !:ProcInfo),
+        proc_info_get_goal(!.ProcInfo, Goal0),
+        first_pass_in_goal(Goal0, Goal, !ProcInfo, !ProxyMap, !ModuleInfo),
+        proc_info_set_goal(Goal, !ProcInfo),
+        module_info_set_pred_proc_info(PredId, ProcId, PredInfo, !.ProcInfo,
+            !ModuleInfo)
+    ).
 
-:- pred create_proxies_in_goal(hlds_goal::in, hlds_goal::out,
-    proxy_map::in, proxy_map::out, module_info::in, module_info::out) is det.
+:- pred first_pass_in_goal(hlds_goal::in, hlds_goal::out,
+    proc_info::in, proc_info::out, proxy_map::in, proxy_map::out,
+    module_info::in, module_info::out) is det.
 
-create_proxies_in_goal(!Goal, !ProxyMap, !ModuleInfo) :-
+first_pass_in_goal(!Goal, !ProcInfo, !ProxyMap, !ModuleInfo) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = unify(_, _, _, Unification0, _),
@@ -290,49 +296,53 @@ create_proxies_in_goal(!Goal, !ProxyMap, !ModuleInfo) :-
                 !:Goal = hlds_goal(GoalExpr, GoalInfo0)
             ;
                 MaybeNewPredId = no
-            )
+            ),
+            insert_context_update_call(!.ModuleInfo, !Goal, !ProcInfo)
         ;
             Builtin = inline_builtin
         ;
             Builtin = out_of_line_builtin
         )
     ;
-        GoalExpr0 = generic_call(_, _, _, _)
+        GoalExpr0 = generic_call(_, _, _, _),
+        insert_context_update_call(!.ModuleInfo, !Goal, !ProcInfo)
     ;
         GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
     ;
         GoalExpr0 = conj(ConjType, Goals0),
-        list.map_foldl2(create_proxies_in_goal, Goals0, Goals, !ProxyMap,
-            !ModuleInfo),
+        list.map_foldl3(first_pass_in_goal, Goals0, Goals, !ProcInfo,
+            !ProxyMap, !ModuleInfo),
         GoalExpr = conj(ConjType, Goals),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = disj(Goals0),
-        list.map_foldl2(create_proxies_in_goal, Goals0, Goals, !ProxyMap,
-            !ModuleInfo),
+        list.map_foldl3(first_pass_in_goal, Goals0, Goals, !ProcInfo,
+            !ProxyMap, !ModuleInfo),
         GoalExpr = disj(Goals),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        list.map_foldl2(create_proxies_in_case, Cases0, Cases, !ProxyMap,
-            !ModuleInfo),
+        list.map_foldl3(first_pass_in_case, Cases0, Cases, !ProcInfo,
+            !ProxyMap, !ModuleInfo),
         GoalExpr = switch(Var, CanFail, Cases),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = negation(SubGoal0),
-        create_proxies_in_goal(SubGoal0, SubGoal, !ProxyMap, !ModuleInfo),
+        first_pass_in_goal(SubGoal0, SubGoal, !ProcInfo, !ProxyMap,
+            !ModuleInfo),
         GoalExpr = negation(SubGoal),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        create_proxies_in_goal(SubGoal0, SubGoal, !ProxyMap, !ModuleInfo),
+        first_pass_in_goal(SubGoal0, SubGoal, !ProcInfo, !ProxyMap,
+            !ModuleInfo),
         GoalExpr = scope(Reason, SubGoal),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        create_proxies_in_goal(Cond0, Cond, !ProxyMap, !ModuleInfo),
-        create_proxies_in_goal(Then0, Then, !ProxyMap, !ModuleInfo),
-        create_proxies_in_goal(Else0, Else, !ProxyMap, !ModuleInfo),
+        first_pass_in_goal(Cond0, Cond, !ProcInfo, !ProxyMap, !ModuleInfo),
+        first_pass_in_goal(Then0, Then, !ProcInfo, !ProxyMap, !ModuleInfo),
+        first_pass_in_goal(Else0, Else, !ProcInfo, !ProxyMap, !ModuleInfo),
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -341,12 +351,13 @@ create_proxies_in_goal(!Goal, !ProxyMap, !ModuleInfo) :-
         unexpected(this_file, "create_proxies_in_goal: unexpected shorthand")
     ).
 
-:- pred create_proxies_in_case(case::in, case::out,
+:- pred first_pass_in_case(case::in, case::out,
+    proc_info::in, proc_info::out,
     proxy_map::in, proxy_map::out, module_info::in, module_info::out) is det.
 
-create_proxies_in_case(Case0, Case, !ProxyMap, !ModuleInfo) :-
+first_pass_in_case(Case0, Case, !ProcInfo, !ProxyMap, !ModuleInfo) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    create_proxies_in_goal(Goal0, Goal, !ProxyMap, !ModuleInfo),
+    first_pass_in_goal(Goal0, Goal, !ProcInfo, !ProxyMap, !ModuleInfo),
     Case = case(MainConsId, OtherConsIds, Goal).
 
     % Look up the proxy for a predicate, creating one if appropriate.
@@ -413,6 +424,35 @@ create_proxy_proc(PredId, ProcId, !PredInfo, !ModuleInfo) :-
             !ProcInfo, !ModuleInfo),
         pred_info_set_proc_info(ProcId, !.ProcInfo, !PredInfo)
     ).
+
+:- pred insert_context_update_call(module_info::in,
+    hlds_goal::in, hlds_goal::out, proc_info::in, proc_info::out) is det.
+
+insert_context_update_call(ModuleInfo, Goal0, Goal, !ProcInfo) :-
+    Goal0 = hlds_goal(_, GoalInfo),
+    Context = goal_info_get_context(GoalInfo),
+    Context = term.context(FileName, LineNumber),
+
+    some [!VarSet, !VarTypes] (
+        proc_info_get_varset(!.ProcInfo, !:VarSet),
+        proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
+        make_string_const_construction_alloc(FileName, yes("FileName"),
+            MakeFileName, FileNameVar, !VarSet, !VarTypes),
+        make_int_const_construction_alloc(LineNumber, yes("LineNumber"),
+            MakeLineNumber, LineNumberVar, !VarSet, !VarTypes),
+        proc_info_set_varset(!.VarSet, !ProcInfo),
+        proc_info_set_vartypes(!.VarTypes, !ProcInfo)
+    ),
+
+    Args = [FileNameVar, LineNumberVar],
+    Features = [],
+    instmap_delta_init_reachable(InstMapDelta),
+    generate_simple_call(mercury_ssdb_builtin_module, "set_context",
+        pf_predicate, only_mode, detism_det, purity_impure, Args, Features,
+        InstMapDelta, ModuleInfo, Context, SetContextGoal),
+
+    conj_list_to_goal([MakeFileName, MakeLineNumber, SetContextGoal, Goal0],
+        GoalInfo, Goal).
 
 %-----------------------------------------------------------------------------%
 %
