@@ -1641,54 +1641,78 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 :- pragma foreign_export("Java", call_handler(pred(in, out) is det, in, out),
     "ML_call_handler_det").
 
+:- pragma foreign_code("Java", "
+/*
+ * The ssdb module may supply its implementation of these methods at runtime.
+ */
+public static class SsdbHooks {
+    public void on_throw_impl(univ.Univ_0 univ) {}
+    public int on_catch_impl() { return 0; }
+    public void on_catch_impl_exception(int CSN) {}
+}
+
+public static SsdbHooks ssdb_hooks;
+static {
+    if (ssdb_hooks == null) {
+        ssdb_hooks = new SsdbHooks();
+    }
+}
+").
+
 :- pragma foreign_proc("Java",
     throw_impl(T::in),
-    [will_not_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure],
 "
+    exception.ssdb_hooks.on_throw_impl(T);
     throw new jmercury.runtime.Exception(T);
 ").
 
 :- pragma foreign_proc("Java",
     catch_impl(Pred::pred(out) is det, Handler::in(handler), T::out),
-    [will_not_call_mercury, promise_pure],
+    [may_call_mercury, promise_pure],
 "
+    int CSN = ssdb_hooks.on_catch_impl();
     try {
-        T = exception.ML_call_goal_det(TypeInfo_for_T, (Object[]) Pred);
+        T = exception.ML_call_goal_det(TypeInfo_for_T, Pred);
     }
     catch (jmercury.runtime.Exception ex) {
-        T = exception.ML_call_handler_det(TypeInfo_for_T, (Object[]) Handler,
+        exception.ssdb_hooks.on_catch_impl_exception(CSN);
+        T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
             (univ.Univ_0) ex.exception);
     }
 ").
+
 :- pragma foreign_proc("Java",
-    catch_impl(Pred::pred(out) is semidet, Handler::in(handler), T::out),
+    catch_impl(_Pred::pred(out) is semidet, _Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
-    try {
-        jmercury.runtime.Ref<Object> ref =
-            new jmercury.runtime.Ref<Object>();
-        SUCCESS_INDICATOR = exception.ML_call_goal_semidet(TypeInfo_for_T,
-            (Object[]) Pred, ref);
-        T = ref.val;
+    // This predicate isn't called anywhere.
+    // The shenanigans with `if (always)' are to avoid errors from
+    // the Java compiler about unreachable code.
+    boolean always = true;
+    if (always) {
+        throw new java.lang.Error(
+            ""catch_impl (semidet) not yet implemented"");
     }
-    catch (jmercury.runtime.Exception ex) {
-        T = exception.ML_call_handler_det(TypeInfo_for_T, (Object[]) Handler,
-            (univ.Univ_0) ex.exception);
-        SUCCESS_INDICATOR = true;
-    }
+    T = null;
+    SUCCESS_INDICATOR = false;
 ").
+
 :- pragma foreign_proc("Java",
     catch_impl(Pred::pred(out) is cc_multi, Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
 "
+    int CSN = ssdb_hooks.on_catch_impl();
     try {
-        T = exception.ML_call_goal_det(TypeInfo_for_T, (Object[]) Pred);
+        T = exception.ML_call_goal_det(TypeInfo_for_T, Pred);
     }
     catch (jmercury.runtime.Exception ex) {
-        T = exception.ML_call_handler_det(TypeInfo_for_T, (Object[]) Handler,
+        exception.ssdb_hooks.on_catch_impl_exception(CSN);
+        T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
             (univ.Univ_0) ex.exception);
     }
 ").
+
 :- pragma foreign_proc("Java",
     catch_impl(_Pred::pred(out) is cc_nondet, _Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
@@ -1704,19 +1728,19 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     T = null;
     SUCCESS_INDICATOR = false;
 ").
+
 :- pragma foreign_proc("Java",
-    catch_impl(Pred0::pred(out) is multi, Handler0::in(handler), _T::out),
+    catch_impl(Pred::pred(out) is multi, Handler::in(handler), _T::out),
     [will_not_call_mercury, promise_pure, ordinary_despite_detism],
 "
-    Object[] Pred = (Object[]) Pred0;
-    Object[] Handler = (Object[]) Handler0;
-
+    int CSN = ssdb_hooks.on_catch_impl();
     try {
         jmercury.runtime.MethodPtr3 pred =
             (jmercury.runtime.MethodPtr3) Pred[1];
         pred.call___0_0(Pred, cont, cont_env_ptr);
     }
     catch (jmercury.runtime.Exception ex) {
+        ssdb_hooks.on_catch_impl_exception(CSN);
         Object T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
             (univ.Univ_0) ex.exception);
         ((jmercury.runtime.MethodPtr2) cont).call___0_0(T, cont_env_ptr);
@@ -1725,19 +1749,19 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     // Not really used.
     SUCCESS_INDICATOR = false;
 ").
+
 :- pragma foreign_proc("Java",
-    catch_impl(Pred0::pred(out) is nondet, Handler0::in(handler), _T::out),
+    catch_impl(Pred::pred(out) is nondet, Handler::in(handler), _T::out),
     [will_not_call_mercury, promise_pure, ordinary_despite_detism],
 "
-    Object[] Pred = (Object[]) Pred0;
-    Object[] Handler = (Object[]) Handler0;
-
+    int CSN = ssdb_hooks.on_catch_impl();
     try {
         jmercury.runtime.MethodPtr3 pred =
             (jmercury.runtime.MethodPtr3) Pred[1];
         pred.call___0_0(Pred, cont, cont_env_ptr);
     }
     catch (jmercury.runtime.Exception ex) {
+        ssdb_hooks.on_catch_impl_exception(CSN);
         Object T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
             (univ.Univ_0) ex.exception);
         ((jmercury.runtime.MethodPtr2) cont).call___0_0(T, cont_env_ptr);

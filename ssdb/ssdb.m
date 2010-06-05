@@ -35,7 +35,8 @@
     ;       ssdb_call_nondet
     ;       ssdb_exit_nondet
     ;       ssdb_redo_nondet
-    ;       ssdb_fail_nondet.
+    ;       ssdb_fail_nondet
+    ;       ssdb_excp.
 
     % Type to determine if it is necessary to do a retry.
     %
@@ -63,6 +64,10 @@
     % Positions are numbered from 0.
     %
 :- type pos == int.
+
+    % Update globals recording the context of the upcoming call.
+    %
+:- impure pred set_context(string::in, int::in) is det.
 
     % This routine is called at each call event that occurs.
     %
@@ -154,6 +159,10 @@
                 % The goal's module name and procedure name.
                 sf_proc_id          :: ssdb_proc_id,
 
+                % The call site.
+                sf_call_site_file   :: string,
+                sf_call_site_line   :: int,
+
                 % The list of the procedure's arguments.
                 sf_list_var_value   :: list(var_value)
             ).
@@ -168,16 +177,10 @@
     ;       wn_next
     ;       wn_continue
     ;       wn_finish(int)
+    ;       wn_exception
     ;       wn_retry(int)
     ;       wn_retry_nondet(int)
     ;       wn_goto(int).
-
-:- inst what_next_no_retry
-    --->    wn_step
-    ;       wn_next
-    ;       wn_continue
-    ;       wn_finish(ground)
-    ;       wn_goto(ground).
 
     % Type used by the handle_event predicate to determine the next stop of
     % the read_and_execute_cmd predicate.
@@ -201,8 +204,11 @@
             % As above for nondet procedures.
             % Stop at the final port (fail) of the given CSN.
 
-    ;       ns_goto(int).
+    ;       ns_goto(int)
             % Stop at the given event number.
+
+    ;       ns_exception.
+            % Stop at the next exception.
 
     % A breakpoint is represented by his module and procedure name.
     %
@@ -228,8 +234,10 @@
 
 %----------------------------------------------------------------------------%
 
-    % Initialization of the mutable variables.
-    %
+:- mutable(cur_filename, string, "", ground,
+    [untrailed, attach_to_io_state]).
+:- mutable(cur_line_number, int, 0, ground,
+    [untrailed, attach_to_io_state]).
 
 :- mutable(cur_ssdb_event_number, int, 0, ground,
     [untrailed, attach_to_io_state]).
@@ -304,7 +312,8 @@ init_debugger_state = DebuggerState :-
             ;
                 MaybeTTY = no
             ),
-            install_sigint_handler(!IO)
+            install_sigint_handler(!IO),
+            install_exception_hooks(!IO)
         ;
             DebuggerState = debugger_off
         ),
@@ -366,6 +375,12 @@ public static class SigIntHandler implements sun.misc.SignalHandler {
 step_next_stop(!IO) :-
     set_cur_ssdb_next_stop(ns_step, !IO).
 
+%-----------------------------------------------------------------------------%
+
+set_context(FileName, Line) :-
+    impure set_cur_filename(FileName),
+    impure set_cur_line_number(Line).
+
 %----------------------------------------------------------------------------%
 
 handle_event_call(ProcId, ListVarValue) :-
@@ -406,7 +421,10 @@ handle_event_call_2(Event, ProcId, ListVarValue, !IO) :-
     Depth = OldDepth + 1,
 
     % Push the new stack frame on top of the shadow stack(s).
-    StackFrame = stack_frame(EventNum, CSN, Depth, ProcId, ListVarValue),
+    get_cur_filename(SiteFile, !IO),
+    get_cur_line_number(SiteLine, !IO),
+    StackFrame = stack_frame(EventNum, CSN, Depth, ProcId, SiteFile, SiteLine,
+        ListVarValue),
     stack_push(StackFrame, !IO),
     (
         Event = ssdb_call
@@ -627,14 +645,94 @@ search_nondet_stack_frame_2(ProcId, Depth, N, StackDepth, MaybeStackFrame,
     ).
 
 %----------------------------------------------------------------------------%
+%
+% Support for exception events (Java only currently)
+%
 
-    % IsSame is 'yes' iff the two call sequence numbers are equal,
-    % 'no' otherwise.
-    %
-:- pred is_same_int(int::in, int::in, bool::out) is det.
+:- pred install_exception_hooks(io::di, io::uo) is det.
 
-is_same_int(IntA, IntB, IsSame) :-
-    IsSame = (IntA = IntB -> yes ; no).
+install_exception_hooks(!IO).
+
+:- pragma foreign_proc("Java",
+    install_exception_hooks(_IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+    exception.ssdb_hooks = new ssdb.SsdbHooks();
+").
+
+:- pragma foreign_code("Java", "
+private static class SsdbHooks extends exception.SsdbHooks {
+    @Override
+    public void on_throw_impl(univ.Univ_0 univ) {
+        ssdb.SSDB_handle_event_excp(""exception"", ""throw_impl"", univ);
+    }
+
+    @Override
+    public int on_catch_impl() {
+        return ssdb.SSDB_get_cur_ssdb_csn();
+    }
+
+    @Override
+    public void on_catch_impl_exception(int CSN) {
+        ssdb.SSDB_rollback_stack(CSN);
+        ssdb.SSDB_rollback_nondet_stack(CSN);
+    }
+}
+").
+
+:- impure pred handle_event_excp(string::in, string::in, univ::in) is det.
+:- pragma foreign_export("Java", handle_event_excp(in, in, in),
+    "SSDB_handle_event_excp").
+
+handle_event_excp(ModuleName, ProcName, Univ) :-
+    some [!IO] (
+        impure invent_io(!:IO),
+        get_debugger_state(DebuggerState, !IO),
+        (
+            DebuggerState = debugger_on,
+            ProcId = ssdb_proc_id(ModuleName, ProcName),
+            VarDescs = ['new bound_head_var'("Univ", 1, Univ)],
+            handle_event_excp_2(ProcId, VarDescs, !IO)
+        ;
+            DebuggerState = debugger_off
+        ),
+        impure consume_io(!.IO)
+    ).
+
+:- pred handle_event_excp_2(ssdb_proc_id::in, list(var_value)::in,
+    io::di, io::uo) is det.
+
+handle_event_excp_2(ProcId, ListVarValue, !IO) :-
+    get_ssdb_event_number_inc(EventNum, !IO),
+    get_ssdb_csn_inc(CSN, !IO),
+    stack_depth(OldDepth, !IO),
+    Depth = OldDepth + 1,
+
+    % Push the new stack frame on top of the shadow stack(s).
+    get_cur_filename(SiteFile, !IO),
+    get_cur_line_number(SiteLine, !IO),
+    StackFrame = stack_frame(EventNum, CSN, Depth, ProcId, SiteFile, SiteLine,
+        ListVarValue),
+    stack_push(StackFrame, !IO),
+
+    Event = ssdb_excp,
+    should_stop_at_this_event(Event, EventNum, CSN, ProcId, Stop, _AutoRetry,
+        !IO),
+    (
+        Stop = yes,
+        save_streams(!IO),
+        print_event_info(Event, EventNum, !IO),
+        read_and_execute_cmd(Event, 0, WhatNext, !IO),
+        update_next_stop(EventNum, CSN, WhatNext, _Retry, !IO),
+        restore_streams(!IO)
+    ;
+        Stop = no
+    ).
+
+%----------------------------------------------------------------------------%
+
+:- pragma foreign_export("Java", get_cur_ssdb_csn(out),
+    "SSDB_get_cur_ssdb_csn").
 
     % Increment the CSN and return the new value.
     %
@@ -756,6 +854,37 @@ nondet_stack_pop(!IO) :-
         set_nondet_shadow_stack_depth(Depth - 1, !IO)
     ).
 
+:- pred rollback_stack(int::in, io::di, io::uo) is det.
+:- pragma foreign_export("Java", rollback_stack(in, di, uo),
+    "SSDB_rollback_stack").
+
+rollback_stack(TargetCSN, !IO) :-
+    stack_top(StackFrame, !IO),
+    ( StackFrame ^ sf_csn =< TargetCSN ->
+        set_cur_ssdb_csn(StackFrame ^ sf_csn, !IO)
+    ;
+        stack_pop(!IO),
+        rollback_stack(TargetCSN, !IO)
+    ).
+
+:- pred rollback_nondet_stack(int::in, io::di, io::uo) is det.
+:- pragma foreign_export("Java", rollback_nondet_stack(in, di, uo),
+    "SSDB_rollback_nondet_stack").
+
+rollback_nondet_stack(TargetCSN, !IO) :-
+    nondet_stack_depth(StackDepth, !IO),
+    ( StackDepth = 0 ->
+        true
+    ;
+        nondet_stack_index(0, StackFrame, !IO),
+        ( StackFrame ^ sf_csn =< TargetCSN ->
+            true
+        ;
+            nondet_stack_pop(!IO),
+            rollback_nondet_stack(TargetCSN, !IO)
+        )
+    ).
+
 %-----------------------------------------------------------------------------%
 
     % should_stop_at_the_event(Event, CSN, EventNum, ProcId, Stop, AutoRetry).
@@ -800,7 +929,7 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
         ),
         AutoRetry = do_not_retry
     ;
-        NextStop = ns_final_port(StopCSN, AutoRetry),
+        NextStop = ns_final_port(StopCSN, AutoRetry0),
         (
             ( Event = ssdb_exit
             ; Event = ssdb_exit_nondet
@@ -808,6 +937,8 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
             ; Event = ssdb_fail_nondet
             ),
             ( StopCSN = CSN ->
+                ShouldStopAtEvent = yes,
+                AutoRetry = AutoRetry0,
                 (
                     AutoRetry = do_retry,
                     % NOTE: The event number and CSN used to be reset at the
@@ -820,23 +951,37 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
                     reset_counters_for_retry(Frame, !IO)
                 ;
                     AutoRetry = do_not_retry
-                ),
-                ShouldStopAtEvent = yes
+                )
             ;
-                ShouldStopAtEvent = no
+                ShouldStopAtEvent = no,
+                AutoRetry = do_not_retry
             )
+        ;
+            Event = ssdb_excp,
+            % Stop immediately, unless there is an exception handler which will
+            % catch the exception before we reach the final port of StopCSN.
+            get_shadow_stack(Stack, !IO),
+            ( exception_handler_exists(StopCSN, Stack) ->
+                ShouldStopAtEvent = no
+            ;
+                ShouldStopAtEvent = yes
+            ),
+            AutoRetry = do_not_retry
         ;
             ( Event = ssdb_call
             ; Event = ssdb_call_nondet
             ; Event = ssdb_redo_nondet
             ),
-            ShouldStopAtEvent = no
+            ShouldStopAtEvent = no,
+            AutoRetry = do_not_retry
         )
     ;
-        NextStop = ns_final_port_nondet(StopCSN, AutoRetry),
+        NextStop = ns_final_port_nondet(StopCSN, AutoRetry0),
         (
             Event = ssdb_fail_nondet,
             ( StopCSN = CSN ->
+                ShouldStopAtEvent = yes,
+                AutoRetry = AutoRetry0,
                 (
                     AutoRetry = do_retry,
                     nondet_stack_index(0, Frame, !IO),
@@ -848,11 +993,20 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
                     )
                 ;
                     AutoRetry = do_not_retry
-                ),
-                ShouldStopAtEvent = yes
+                )
             ;
-                ShouldStopAtEvent = no
+                ShouldStopAtEvent = no,
+                AutoRetry = do_not_retry
             )
+        ;
+            Event = ssdb_excp,
+            get_shadow_stack(Stack, !IO),
+            ( exception_handler_exists(StopCSN, Stack) ->
+                ShouldStopAtEvent = no
+            ;
+                ShouldStopAtEvent = yes
+            ),
+            AutoRetry = do_not_retry
         ;
             ( Event = ssdb_call
             ; Event = ssdb_exit
@@ -861,13 +1015,36 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
             ; Event = ssdb_exit_nondet
             ; Event = ssdb_redo_nondet
             ),
-            ShouldStopAtEvent = no
+            ShouldStopAtEvent = no,
+            AutoRetry = do_not_retry
         )
     ;
         NextStop = ns_goto(EventNumToGo),
         is_same_int(EventNumToGo, EventNum, ShouldStopAtEvent),
         AutoRetry = do_not_retry
+    ;
+        NextStop = ns_exception,
+        (
+            Event = ssdb_excp,
+            ShouldStopAtEvent = yes
+        ;
+            ( Event = ssdb_call
+            ; Event = ssdb_exit
+            ; Event = ssdb_fail
+            ; Event = ssdb_call_nondet
+            ; Event = ssdb_exit_nondet
+            ; Event = ssdb_redo_nondet
+            ; Event = ssdb_fail_nondet
+            ),
+            ShouldStopAtEvent = no
+        ),
+        AutoRetry = do_not_retry
     ).
+
+:- pred is_same_int(int::in, int::in, bool::out) is det.
+
+is_same_int(IntA, IntB, IsSame) :-
+    IsSame = (IntA = IntB -> yes ; no).
 
     % update_next_stop(EventNum, CSN, WhatNext, Retry).
     %
@@ -894,6 +1071,10 @@ update_next_stop(EventNum, CSN, WhatNext, Retry, !IO) :-
     ;
         WhatNext = wn_finish(EndCSN),
         NextStop = ns_final_port(EndCSN, do_not_retry),
+        Retry = do_not_retry
+    ;
+        WhatNext = wn_exception,
+        NextStop = ns_exception,
         Retry = do_not_retry
     ;
         WhatNext = wn_retry(RetryCSN),
@@ -931,6 +1112,26 @@ reset_counters_for_retry(Frame, !IO) :-
     set_cur_ssdb_event_number(Frame ^ sf_event_number - 1, !IO),
     set_cur_ssdb_csn(Frame ^ sf_csn - 1, !IO).
 
+:- pred exception_handler_exists(int::in, list(stack_frame)::in) is semidet.
+
+exception_handler_exists(CSN, StackFrames) :-
+    list.member(StackFrame, StackFrames),
+    StackFrame ^ sf_csn >= CSN,
+    pred_catches_exceptions(StackFrame ^ sf_proc_id).
+
+    % Succeed if the given procedure is one which catches exceptions.
+    %
+:- pred pred_catches_exceptions(ssdb_proc_id::in) is semidet.
+
+pred_catches_exceptions(ProcId) :-
+    ProcId = ssdb_proc_id("exception", Name),
+    ( Name = "try"
+    ; Name = "try_io"
+    ; Name = "try_store"
+    ; Name = "try_all"
+    ; Name = "incremental_try_all"
+    ).
+
 %----------------------------------------------------------------------------%
 
     % h     :: help
@@ -956,6 +1157,7 @@ reset_counters_for_retry(Frame, !IO) :-
     ;       ssdb_goto
     ;       ssdb_continue
     ;       ssdb_finish
+    ;       ssdb_exception
 
     ;       ssdb_retry
 
@@ -988,6 +1190,9 @@ ssdb_cmd_name("c",          ssdb_continue).
 ssdb_cmd_name("continue",   ssdb_continue).
 ssdb_cmd_name("f",          ssdb_finish).
 ssdb_cmd_name("finish",     ssdb_finish).
+ssdb_cmd_name("e",          ssdb_exception).
+ssdb_cmd_name("ex",         ssdb_exception).
+ssdb_cmd_name("exception",  ssdb_exception).
 
 ssdb_cmd_name("r",          ssdb_retry).
 ssdb_cmd_name("retry",      ssdb_retry).
@@ -1086,6 +1291,9 @@ execute_cmd(Cmd, Args, Event, Depth, WhatNext, !IO) :-
     ;
         Cmd = ssdb_finish,
         execute_ssdb_finish(Args, Event, Depth, WhatNext, !IO)
+    ;
+        Cmd = ssdb_exception,
+        execute_ssdb_exception(Args, Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_retry,
         execute_ssdb_retry(Args, Event, Depth, WhatNext, !IO)
@@ -1273,6 +1481,19 @@ execute_ssdb_finish(Args, Event, Depth, WhatNext, !IO) :-
         read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
+:- pred execute_ssdb_exception(list(string)::in, ssdb_event_type::in,
+    int::in, what_next::out, io::di, io::uo) is det.
+
+execute_ssdb_exception(Args, Event, Depth, WhatNext, !IO) :-
+    (
+        Args = [],
+        WhatNext = wn_exception
+    ;
+        Args = [_ | _],
+        io.write_string("The exception command accepts no arguments.\n", !IO),
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+    ).
+
 :- pred execute_ssdb_retry(list(string)::in, ssdb_event_type::in,
     int::in, what_next::out, io::di, io::uo) is det.
 
@@ -1333,6 +1554,7 @@ execute_ssdb_retry_2(Num, Event, Depth, WhatNext, !IO) :-
         ( Event = ssdb_call
         ; Event = ssdb_call_nondet
         ; Event = ssdb_redo_nondet
+        ; Event = ssdb_excp
         ),
         io.write_string("Cannot retry at call or redo port.\n", !IO),
         read_and_execute_cmd(Event, Depth, WhatNext, !IO)
@@ -1719,6 +1941,8 @@ print_event_info(Event, EventNum, !IO) :-
     CSN = StackFrame ^ sf_csn,
     ProcId = StackFrame ^ sf_proc_id,
     PrintDepth = StackFrame ^ sf_depth,
+    SiteFile = StackFrame ^ sf_call_site_file,
+    SiteLine = StackFrame ^ sf_call_site_line,
 
     % Should right align these numbers.
     io.write_string("\t", !IO),
@@ -1746,6 +1970,9 @@ print_event_info(Event, EventNum, !IO) :-
     ;
         Event = ssdb_redo_nondet,
         io.write_string("REDO", !IO)
+    ;
+        Event = ssdb_excp,
+        io.write_string("EXCP", !IO)
     ),
     io.write_string(" ", !IO),
     % mdb writes pred/func here.
@@ -1753,7 +1980,7 @@ print_event_info(Event, EventNum, !IO) :-
     io.write_string(".", !IO),
     io.write_string(ProcId ^ proc_name, !IO),
     % mdb writes arity, mode, determinism and context here.
-    io.nl(!IO).
+    io.format(" (%s:%d)\n", [s(SiteFile), i(SiteLine)], !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1767,8 +1994,12 @@ print_frame_info(StackFrame, StackDepth, !IO) :-
     Depth = StackFrame ^ sf_depth,
     ProcId = StackFrame ^ sf_proc_id,
     ProcId = ssdb_proc_id(ModuleName, ProcName),
+    SiteFile = StackFrame ^ sf_call_site_file,
+    SiteLine = StackFrame ^ sf_call_site_line,
     RevDepth = StackDepth - Depth,
-    io.format("%4d  %s.%s\n", [i(RevDepth), s(ModuleName), s(ProcName)], !IO).
+    io.format("%4d  %s.%s (%s:%d)\n",
+        [i(RevDepth), s(ModuleName), s(ProcName), s(SiteFile), i(SiteLine)],
+        !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1781,6 +2012,7 @@ print_help(!IO) :-
     io.write_string("\n<next> or <n>", !IO),
     io.write_string("\n<continue> or <c>", !IO),
     io.write_string("\n<finish> or <f>", !IO),
+    io.write_string("\n<exception> or <e>", !IO),
     io.write_string("\n<retry> or <r>", !IO),
     io.write_string("\n<break X Y> or <b X Y>", !IO),
     io.write_string("\n<break info> or <b info>", !IO),
@@ -1831,6 +2063,8 @@ print_stack_trace(Level, Depth, !IO) :-
 print_stack_frame(Starred, Level, Frame, !IO) :-
     Module = Frame ^ sf_proc_id ^ module_name,
     Procedure = Frame ^ sf_proc_id ^ proc_name,
+    SiteFile = Frame ^ sf_call_site_file,
+    SiteLine = Frame ^ sf_call_site_line,
     (
         Starred = yes,
         io.write_char('*', !IO)
@@ -1838,7 +2072,8 @@ print_stack_frame(Starred, Level, Frame, !IO) :-
         Starred = no,
         io.write_char(' ', !IO)
     ),
-    io.format("%5d\t%s.%s\n", [i(Level), s(Module), s(Procedure)], !IO).
+    io.format("%5d\t%s.%s (%s:%d)\n",
+        [i(Level), s(Module), s(Procedure), s(SiteFile), i(SiteLine)], !IO).
 
 %-----------------------------------------------------------------------------%
 

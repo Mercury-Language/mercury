@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2009 The University of Melbourne.
+% Copyright (C) 1999-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -287,6 +287,7 @@ ml_gen_cast(Context, ArgVars, Decls, Statements, !Info) :-
     ml_gen_var_list(!.Info, ArgVars, ArgLvals),
     ml_variable_types(!.Info, ArgVars, ArgTypes),
     (
+        ArgVars = [SrcVar, DestVar],
         ArgLvals = [SrcLval, DestLval],
         ArgTypes = [SrcType, DestType]
     ->
@@ -302,7 +303,14 @@ ml_gen_cast(Context, ArgVars, Decls, Statements, !Info) :-
             Assign = ml_gen_assign(DestLval, CastRval, Context),
             Statements = [Assign]
         ),
-        Decls = []
+        Decls = [],
+        ( ml_gen_info_search_const_var(!.Info, SrcVar, GroundTerm) ->
+            % If the source variable is a constant, so is the target after
+            % this cast.
+            ml_gen_info_set_const_var(DestVar, GroundTerm, !Info)
+        ;
+            true
+        )
     ;
         unexpected(this_file, "ml_gen_cast: wrong number of args for cast")
     ).
