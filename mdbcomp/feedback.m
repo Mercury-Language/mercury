@@ -119,6 +119,8 @@
 
                 cpc_is_dependant        :: conjuncts_are_dependant,
 
+                cpc_goals_before        :: list(GoalType),
+
                 cpc_conjs               :: list(seq_conj(GoalType)),
                     % A list of parallel conjuncts, each is a sequential
                     % conjunction of inner goals.  All inner goals that are
@@ -130,6 +132,8 @@
                     % the compiler and analysis tools can use similar
                     % algorithms to construct the same parallel conjunction
                     % from the same program representation/HLDS structure.
+
+                cpc_goals_after         :: list(GoalType),
 
                 cpc_par_exec_metrics    :: parallel_exec_metrics
             ).
@@ -202,20 +206,6 @@
     %
 :- type parallel_exec_metrics_incomplete.
     
-    % ParExecMetrics = init_parallel_execution_metrics(NumCalls, 
-    %   CostA, CostBSeq, CostBPar).
-    %
-    % CostA is the cost of the first conjunct in a conjunction.  CostBSeq is
-    % the cost of the second conjunct if this is a normal conjunction.
-    % CostBPar is the cost of the second conjunct if this is a parallel
-    % conjunction.
-    %
-    % This function should be used when building metrics for parallel
-    % conjunctions of exactly two conjuncts.
-    %
-:- func init_parallel_exec_metrics(int, float, float, float) =
-    parallel_exec_metrics. 
-    
     % ParMetrics = init_parallel_exec_metrics_incomplete(PartMetricsA,
     %   CostBSeq, CostBPar) 
     %
@@ -233,20 +223,26 @@
 :- func init_parallel_exec_metrics_incomplete(parallel_exec_metrics_incomplete,
     float, float) = parallel_exec_metrics_incomplete.
 
-    % StartMetrics = init_empty_parallel_exec_metrics.
+    % StartMetrics = init_empty_parallel_exec_metrics(CostBefore).
     %
     % Use this function to start with an empty set of metrics for an empty
     % conjunction.  Then use init_parallel_exec_metrics_incomplete to continue
     % adding conjuncts on the right.
     %
-:- func init_empty_parallel_exec_metrics = parallel_exec_metrics_incomplete.
+:- func init_empty_parallel_exec_metrics(float) = 
+    parallel_exec_metrics_incomplete.
 
-    % Metrics = finalise_parallel_exec_metrics(IncompleteMetrics, NumCalls).
+    % Metrics = finalise_parallel_exec_metrics(IncompleteMetrics, NumCalls,
+    %   CostAfterConj, RightConjDelay).:w
     %
     % Make the metrics structure complete.
     %
-:- func finalise_parallel_exec_metrics(parallel_exec_metrics_incomplete, int) =
-    parallel_exec_metrics.
+    % RightConjDelay is the delay before the conjunct to the right of & will
+    % begin executing.  & is considered to be right-associative since that's
+    % how sparks are sparked.
+    %
+:- func finalise_parallel_exec_metrics(parallel_exec_metrics_incomplete, 
+    int, float, float) = parallel_exec_metrics.
 
 :- func parallel_exec_metrics_get_num_calls(parallel_exec_metrics) = int.
 
@@ -573,7 +569,7 @@ read_program_name(Stream, _, Result, !IO) :-
     io.read_line_as_string(Stream, IOResultLine, !IO),
     (
         IOResultLine = ok(String),
-        Result = ok(String)
+        Result = ok(strip(String))
     ;
         IOResultLine = eof,
         Result = error(unexpected_eof)
@@ -665,7 +661,7 @@ read_error_message_string(File, Error, Message) :-
         Error = incorrect_program_name(Expected, Got),
         MessagePart =
             "Program name didn't match, is this the right feedback file?\n"
-            ++ format("Expected: %s Got: %s", [s(Expected), s(Got)])
+            ++ format("Expected: '%s' Got: '%s'", [s(Expected), s(Got)])
     ),
     string.format("%s: %s\n", [s(File), s(MessagePart)], Message).
 
@@ -738,7 +734,7 @@ feedback_first_line = "Mercury Compiler Feedback".
 
 :- func feedback_version = string.
 
-feedback_version = "7".
+feedback_version = "8".
 
 %-----------------------------------------------------------------------------%
 %
@@ -748,9 +744,13 @@ feedback_version = "7".
 %
 
 convert_candidate_par_conjunction(Conv, CPC0, CPC) :-
-    Conjs0 = CPC0 ^ cpc_conjs,
+    CPC0 = candidate_par_conjunction(GoalPath, PartNum, IsDependent, 
+        GoalsBefore0, Conjs0, GoalsAfter0, Metrics),
     map(convert_seq_conj(Conv), Conjs0, Conjs),
-    CPC = CPC0 ^ cpc_conjs := Conjs.
+    map(Conv, GoalsBefore0, GoalsBefore),
+    map(Conv, GoalsAfter0, GoalsAfter),
+    CPC = candidate_par_conjunction(GoalPath, PartNum, IsDependent, 
+        GoalsBefore, Conjs, GoalsAfter, Metrics).
 
 convert_seq_conj(Conv, seq_conj(Conjs0), seq_conj(Conjs)) :-
     map(Conv, Conjs0, Conjs).
@@ -759,51 +759,70 @@ convert_seq_conj(Conv, seq_conj(Conjs0), seq_conj(Conjs)) :-
 
 :- type parallel_exec_metrics
     --->    parallel_exec_metrics(
-                inner_metrics   :: parallel_exec_metrics_incomplete,
-                num_calls       :: int
+                pem_inner_metrics       :: parallel_exec_metrics_incomplete,
+                pem_num_calls           :: int,
+                pem_time_before_conj    :: float,
+                pem_time_after_conj     :: float,
+                pem_right_conj_delay    :: float
+                    % The delay before a conjunct to the right of & begins
+                    % executing.
             ).
 
 :- type parallel_exec_metrics_incomplete
-    --->    pem_initial
+    --->    pem_initial(
+                pemi_time_before_conj    :: float
+            )
     ;       pem_additional(
-                cost_left       :: parallel_exec_metrics_incomplete,
-                    % The cost of the left conjunct (that may be a conjunction),
+                pemi_time_left           :: parallel_exec_metrics_incomplete,
+                    % The time of the left conjunct (that may be a conjunction),
 
-                cost_right_seq  :: float,
-                    % The cost of the right conjunct if it is running after
+                pemi_time_right_seq      :: float,
+                    % The time of the right conjunct if it is running after
                     % the left in normal sequential execution.
 
-                cost_right_par   :: float
-                    % THe cost of the right conjunct if it is running in
+                pemi_time_right_par      :: float
+                    % The time of the right conjunct if it is running in
                     % parallel with the left conjunct.  It may have to stop and
-                    % wait for variables to be produced; therefore this cost is
-                    % different to cost_right_seq.  This cost also includes
+                    % wait for variables to be produced; therefore this time is
+                    % different to time_right_seq.  This time also includes
                     % parallel execution overheads and delays.
             ).
-
-init_parallel_exec_metrics(NumCalls, TimeA, TimeBSeq, TimeBPar) = Metrics :-
-    Metrics0 = init_empty_parallel_exec_metrics,
-    Metrics1 = init_parallel_exec_metrics_incomplete(Metrics0, TimeA, TimeA),
-    Metrics2 = 
-        init_parallel_exec_metrics_incomplete(Metrics1, TimeBSeq, TimeBPar),
-    Metrics = finalise_parallel_exec_metrics(Metrics2, NumCalls).
 
 init_parallel_exec_metrics_incomplete(MetricsA, TimeBSeq, TimeBPar) = 
     pem_additional(MetricsA, TimeBSeq, TimeBPar).
 
-init_empty_parallel_exec_metrics = pem_initial.
+init_empty_parallel_exec_metrics(TimeBefore) = pem_initial(TimeBefore).
 
-finalise_parallel_exec_metrics(IncompleteMetrics, NumCalls) = 
-    parallel_exec_metrics(IncompleteMetrics, NumCalls).
+finalise_parallel_exec_metrics(IncompleteMetrics, NumCalls, TimeAfter,
+        RightConjDelay) 
+    =
+        parallel_exec_metrics(IncompleteMetrics, NumCalls, TimeBefore,
+        TimeAfter, RightConjDelay) :-
+    TimeBefore = 
+        parallel_exec_metrics_incomp_get_time_before(IncompleteMetrics).
 
-parallel_exec_metrics_get_num_calls(parallel_exec_metrics(_, NumCalls)) = 
-    NumCalls.
+:- func parallel_exec_metrics_incomp_get_time_before(
+    parallel_exec_metrics_incomplete) = float.
 
-parallel_exec_metrics_get_par_time(parallel_exec_metrics(Inner, _)) =
-    parallel_exec_metrics_incomp_get_par_time(Inner).
+parallel_exec_metrics_incomp_get_time_before(pem_initial(Time)) = Time.
+parallel_exec_metrics_incomp_get_time_before(
+        pem_additional(Left, _, _)) = Time :-
+    Time = parallel_exec_metrics_incomp_get_time_before(Left).
 
-parallel_exec_metrics_get_seq_time(parallel_exec_metrics(Inner, _)) =
-    parallel_exec_metrics_incomp_get_seq_time(Inner).
+parallel_exec_metrics_get_num_calls(PEM) = NumCalls :-
+    NumCalls = PEM ^ pem_num_calls.
+
+parallel_exec_metrics_get_par_time(PEM) = Time :-
+    Inner = PEM ^ pem_inner_metrics,
+    InnerTime = parallel_exec_metrics_incomp_get_par_time(Inner),
+    BeforeAndAfterTime = PEM ^ pem_time_before_conj + PEM ^ pem_time_after_conj,
+    Time = InnerTime + BeforeAndAfterTime.
+
+parallel_exec_metrics_get_seq_time(PEM) = Time :- 
+    Inner = PEM ^ pem_inner_metrics,
+    InnerTime = parallel_exec_metrics_incomp_get_seq_time(Inner),
+    BeforeAndAfterTime = PEM ^ pem_time_before_conj + PEM ^ pem_time_after_conj,
+    Time = InnerTime + BeforeAndAfterTime.
 
 parallel_exec_metrics_get_speedup(Metrics) = SeqTime / ParTime :-
     SeqTime = parallel_exec_metrics_get_seq_time(Metrics),
@@ -814,7 +833,7 @@ parallel_exec_metrics_get_speedup(Metrics) = SeqTime / ParTime :-
 :- func parallel_exec_metrics_incomp_get_par_time(
     parallel_exec_metrics_incomplete) = float.
 
-parallel_exec_metrics_incomp_get_par_time(pem_initial) = 0.0.
+parallel_exec_metrics_incomp_get_par_time(pem_initial(_)) = 0.0.
 parallel_exec_metrics_incomp_get_par_time(pem_additional(MetricsLeft, _, TimeRight)) 
         = Time :-
     TimeLeft = parallel_exec_metrics_incomp_get_par_time(MetricsLeft),
@@ -825,7 +844,7 @@ parallel_exec_metrics_incomp_get_par_time(pem_additional(MetricsLeft, _, TimeRig
 :- func parallel_exec_metrics_incomp_get_seq_time(
     parallel_exec_metrics_incomplete) = float.
 
-parallel_exec_metrics_incomp_get_seq_time(pem_initial) = 0.0.
+parallel_exec_metrics_incomp_get_seq_time(pem_initial(_)) = 0.0.
 parallel_exec_metrics_incomp_get_seq_time(pem_additional(MetricsLeft, TimeRight, _)) 
         = Time :-
     TimeLeft = parallel_exec_metrics_incomp_get_seq_time(MetricsLeft),
@@ -836,18 +855,18 @@ parallel_exec_metrics_get_time_saving(Metrics) = SeqTime - ParTime :-
     ParTime = parallel_exec_metrics_get_par_time(Metrics).
 
 parallel_exec_metrics_get_first_conj_dead_time(Metrics) = DeadTime :-
-    parallel_exec_metrics(Inner, _) = Metrics,
+    Inner = Metrics ^ pem_inner_metrics,
     FirstConjTime = pem_get_first_conj_time(Inner),
     MaxConjTime = pem_get_max_conj_time(Inner, 0.0),
     DeadTime = MaxConjTime - FirstConjTime.
 
 :- func pem_get_first_conj_time(parallel_exec_metrics_incomplete) = float.
 
-pem_get_first_conj_time(pem_initial) = _ :- 
+pem_get_first_conj_time(pem_initial(_)) = _ :- 
     error("pem_get_first_conj_time: Empty conjunction").
 pem_get_first_conj_time(pem_additional(Left, _RightSeq, RightPar)) = Time :-
     (
-        Left = pem_initial,
+        Left = pem_initial(_),
         Time = RightPar
     ;
         Left = pem_additional(_, _, _),
@@ -856,22 +875,33 @@ pem_get_first_conj_time(pem_additional(Left, _RightSeq, RightPar)) = Time :-
 
 :- func pem_get_max_conj_time(parallel_exec_metrics_incomplete, float) = float.
 
-pem_get_max_conj_time(pem_initial, Max) = Max.
+pem_get_max_conj_time(pem_initial(_), Max) = Max.
 pem_get_max_conj_time(pem_additional(Left, _, Par), Max0) = Max :-
     Max1 = max(Par, Max0),
     Max = pem_get_max_conj_time(Left, Max1).
 
 parallel_exec_metrics_get_future_dead_time(Metrics) = DeadTime :-
-    parallel_exec_metrics(Inner, _) = Metrics,
-    DeadTime = pem_get_future_dead_time(Inner).
+    Inner = Metrics ^ pem_inner_metrics,
+    RightConjDelay = Metrics ^ pem_right_conj_delay,
+    DeadTime = pem_get_future_dead_time(Inner, RightConjDelay).
 
-:- func pem_get_future_dead_time(parallel_exec_metrics_incomplete) = float.
+:- func pem_get_future_dead_time(parallel_exec_metrics_incomplete, float) 
+    = float.
 
-pem_get_future_dead_time(pem_initial) = 0.0.
-pem_get_future_dead_time(pem_additional(Left, Seq, Par)) = DeadTime :-
+pem_get_future_dead_time(pem_initial(_), _) = 0.0.
+pem_get_future_dead_time(pem_additional(Left, Seq, Par), Delay) = DeadTime :-
     DeadTime = ThisDeadTime + LeftDeadTime,
-    ThisDeadTime = Par - Seq,
-    LeftDeadTime = pem_get_future_dead_time(Left).
+    % Only use the delay if this conjunction contains some code in it's left
+    % conjunct.
+    (
+        Left = pem_initial(_),
+        ThisDelay = 0.0
+    ;
+        Left = pem_additional(_, _, _),
+        ThisDelay = Delay
+    ),
+    ThisDeadTime = Par - Seq - ThisDelay,
+    LeftDeadTime = pem_get_future_dead_time(Left, Delay).
 
 parallel_exec_metrics_get_total_dead_time(Metrics) = DeadTime :-
     DeadTime = FirstConjDeadTime + FutureDeadTime,

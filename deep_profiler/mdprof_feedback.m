@@ -191,7 +191,7 @@ create_feedback_report(feedback_data_candidate_parallel_conjunctions(
             "    Sparking delay: %d\n" ++
             "    Locking cost: %d\n" ++
             "    Number of Parallel Conjunctions: %d\n" ++
-            "    Parallel Conjunctions:\n",
+            "    Parallel Conjunctions:\n\n",
         [f(DesiredParallelism), i(SparkingCost), i(SparkingDelay),
          i(LockingCost), i(NumConjs)])),
     map(create_candidate_parallel_conj_report, Conjs, ReportConjs),
@@ -513,7 +513,14 @@ check_options(Options0, RequestedFeedbackInfo) :-
             CPCCallSiteThreshold),
         lookup_bool_option(Options,
             implicit_parallelism_dependant_conjunctions,
-            ParalleliseDepConjs),
+            ParalleliseDepConjsBool),
+        (
+            ParalleliseDepConjsBool = yes,
+            ParalleliseDepConjs = parallelise_dep_conjs
+        ;
+            ParalleliseDepConjsBool = no,
+            ParalleliseDepConjs = do_not_parallelise_dep_conjs
+        ),
         CandidateParallelConjunctionsOpts =
             candidate_parallel_conjunctions_opts(DesiredParallelism, 
                 SparkingCost,

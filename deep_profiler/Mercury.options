@@ -40,4 +40,5 @@ MCFLAGS-top_procs = 	--no-optimize-duplicate-calls
 #MCFLAGS-mdprof_fb.automatic_parallelism = \
 #	--trace-flag=debug_cpc_search \
 #	--trace-flag=debug_recursive_costs \
-#	--trace-flag=debug_parallel_conjunction_speedup
+#	--trace-flag=debug_parallel_conjunction_speedup \
+#	--trace-flag=debug_branch_and_bound

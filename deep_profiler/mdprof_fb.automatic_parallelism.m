@@ -24,7 +24,6 @@
 :- import_module mdbcomp.feedback.
 :- import_module mdbcomp.program_representation.
 
-:- import_module bool.
 :- import_module cord.
 :- import_module int.
 :- import_module float.
@@ -53,9 +52,13 @@
                 cpc_locking_cost            :: int,
                 cpc_clique_threshold        :: int,
                 cpc_call_site_threshold     :: int,
-                cpc_parallelise_dep_conjs   :: bool
+                cpc_parallelise_dep_conjs   :: parallelise_dep_conjs 
             ).
     
+:- type parallelise_dep_conjs
+    --->    parallelise_dep_conjs
+    ;       do_not_parallelise_dep_conjs.
+
 %-----------------------------------------------------------------------------%
     
     % Perform Jerome's analysis and update the feedback info structure.
@@ -96,6 +99,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
+:- import_module mutvar.
 :- import_module pqueue.
 :- import_module require.
 :- import_module set.
@@ -111,6 +115,12 @@
 %
 %	--trace-flag=debug_recursive_costs 
 %     Debug the calculation of the costs of recursive call sites.
+%
+%   --trace-flag=debug_parallel_conjunction_speedup
+%     Print candidate parallel conjunctions that are pessimisations.
+%
+%   --trace-flag=debug_branch_and_bound
+%     Debug the branch and bound search for the best parallelisation.
 %
 
 candidate_parallel_conjunctions(Opts, Deep, Messages, !Feedback) :-
@@ -192,6 +202,9 @@ pard_goal_detail_to_pard_goal(pard_goal_detail(PGT, _, _, _), PG) :-
                 pgd_inst_map_info       :: inst_map_info
                     % The inst map info attached to the original goal.
             ).
+
+:- inst pard_goal_detail(T)
+    ---> pard_goal_detail(T, ground, ground, ground).
 
 :- type pard_goal_type 
     --->    pgt_call(
@@ -1384,8 +1397,6 @@ partition_pard_goals(Location, [ PG | PGs ], !Partition, !PartitionNum,
 
 pardgoals_build_candidate_conjunction(Info, DependencyMaps, Location, GoalPath,
         GoalsPartition, MaybeCandidate) :-
-    ParalleliseDependantConjs = Info ^ ipi_opts ^ cpc_parallelise_dep_conjs,
-
     % Setting up the first parallel conjunct is a different algorithm to the
     % latter ones, at this point we have the option of moving goals from before
     % the first costly call to either before or during the parallel
@@ -1395,64 +1406,21 @@ pardgoals_build_candidate_conjunction(Info, DependencyMaps, Location, GoalPath,
     % conjunction dependant when it could be independent.
     pard_goals_partition(GoalsList, PartNum) = GoalsPartition,
     Goals = cord.from_list(GoalsList),
-    find_costly_call(Goals, cord.empty, GoalsBefore0, MaybeFirstCall,
-        GoalsDuringAfter),
+    find_best_parallelisation(Info, Location, PartNum, DependencyMaps,
+        Goals, Parallelisation),
     (
-        MaybeFirstCall = yes(FirstCall),
-        FirstCallType = FirstCall ^ pgd_pg_type,
-        (
-            FirstCallType = pgt_call(_, _, _, _, _, FirstCallCallSite)
-        ;
-            ( FirstCallType = pgt_cheap_call(_, _, _, _, _)
-            ; FirstCallType = pgt_other_atomic_goal
-            ; FirstCallType = pgt_non_atomic_goal
-            ),
-            location_to_string(1, Location, LocationString),
-            Error = singleton(this_file) ++ singleton("\n") ++
-                LocationString ++
-                nl_indent(1) ++ singleton(format("partition %d", [i(PartNum)]))
-                ++ nl_indent(1) ++ 
-                    singleton("First call in conjunction is not a call\n"),
-            error(append_list(cord.list(Error)))
-        )
+        Parallelisation = bp_no_best_parallelisation,
+        MaybeCandidate = no
     ;
-        MaybeFirstCall = no,
-        location_to_string(1, Location, LocationString),
-        Error = singleton(this_file) ++ singleton("\n") ++
-            LocationString ++
-            nl_indent(1) ++ singleton(format("partition %d", [i(PartNum)])) ++
-            nl_indent(1) ++ singleton("Couldn't find first call\n"),
-        error(append_list(cord.list(Error)))
-    ),
-    build_first_seq_conjunction(DependencyMaps, 
-        FirstCall ^ pgd_conj_num, length(GoalsBefore0),
-        length(GoalsDuringAfter), GoalsBefore0,
-        cord.singleton(FirstCall), FirstSeqConjunction0, _GoalsBefore),
-    ( get_first(FirstSeqConjunction0, FirstConj) ->
-        FirstConjNumOfFirstParConjunct = FirstConj ^ pgd_conj_num
-    ;
-        error(this_file ++ "Found empty first parallel conjunct")
-    ),
-    pardgoals_build_par_conjs(GoalsDuringAfter, DependencyMaps,
-        FirstConjNumOfFirstParConjunct, FirstSeqConjunction0, _GoalsAfter,
-        cord.empty, ParConjsCord, conjuncts_are_independent, IsDependant),
-    
-    (
-        not ( 
-            IsDependant = conjuncts_are_dependant,
-            ParalleliseDependantConjs = no
-        )
-    ->
-        calculate_parallel_cost(Info, ParConjsCord, ParMetricsIncomp),
-        NumCalls = FirstCallCallSite ^ ccsr_call_site_summary ^
-            perf_row_calls,
-        ParExecMetrics = 
-            finalise_parallel_exec_metrics(ParMetricsIncomp, NumCalls),
-        Speedup = parallel_exec_metrics_get_speedup(ParExecMetrics),
-        ParConjs = list(ParConjsCord),
-        Candidate = candidate_par_conjunction(
-            goal_path_to_string(GoalPath), PartNum, IsDependant,
-            ParConjs, ParExecMetrics),
+        Parallelisation = bp_parallel_execution(GoalsBeforeCord, ParConjsCord,
+            GoalsAfterCord, IsDependent, Metrics),
+        Speedup = parallel_exec_metrics_get_speedup(Metrics),
+        GoalsBefore = list(GoalsBeforeCord),
+        GoalsAfter = list(GoalsAfterCord),
+        ParConjs = map((func(CordI) = seq_conj(list(CordI))),
+            list(ParConjsCord)),
+        Candidate = candidate_par_conjunction(goal_path_to_string(GoalPath),
+            PartNum, IsDependent, GoalsBefore, ParConjs, GoalsAfter, Metrics),
         ( Speedup > 1.0 ->
             MaybeCandidate = yes(Candidate)
         ;
@@ -1475,199 +1443,291 @@ pardgoals_build_candidate_conjunction(Info, DependencyMaps, Location, GoalPath,
                 create_candidate_parallel_conj_report(ProcLabel - FBCandidate, 
                     Report),
                 io.write_string("Not parallelising conjunction, " ++ 
-                    "insufficient speedup:", !IO),
-                io.write_string(append_list(cord.list(Report)), !IO),
-                io.nl(!IO)
+                    "insufficient speedup:\n", !IO),
+                io.write_string(append_list(cord.list(Report)), !IO)
             )
         )
-    ;
-        MaybeCandidate = no
     ).
 
-:- pred build_first_seq_conjunction(dependency_maps::in, 
-    int::in, int::in, int::in, cord(pard_goal_detail)::in, 
-    cord(pard_goal_detail)::in, cord(pard_goal_detail)::out,
-    cord(pard_goal_detail)::out) is det. 
-
-build_first_seq_conjunction(DependencyMaps, CallConjNum, NumGoalsBefore,
-        NumGoalsAfter, Goals0, !FirstSeqConjunction, GoalsBefore) :-
-    % Move over goals in reverse order.
-    ( split_last(Goals0, Goals, Goal) ->
-        ConjNum = Goal ^ pgd_conj_num,
-        depends_lookup_rev(DependencyMaps, ConjNum, GoalRevDeps),
-        depends_lookup_rev(DependencyMaps, CallConjNum, CallRevDeps),
-        (
-            % If later goals depend on this goal but not on the first call.
-            member(LaterGoalNum, (CallConjNum+1)..(CallConjNum+NumGoalsAfter)),
-            (
-                member(LaterGoalNum, GoalRevDeps)
-            =>
-                not member(LaterGoalNum, CallRevDeps)
+:- type find_costly_call_result
+    --->    costly_call_found(
+                fccrfc_goals_before     :: cord(pard_goal_detail),
+                fccrfc_call             :: pard_goal_detail,
+                fccrfc_gaols_after      :: cord(pard_goal_detail)
             )
-        ->
-            % Then this goal and all those before it must be in GoalsBefore.
-            % This can be pessimistic but we're not allowed to re-order goals.
-            GoalsBefore = Goals0
-        ;
-            % This goal may be parallelised as part of the first conjunction.
-            !:FirstSeqConjunction = cons(Goal, !.FirstSeqConjunction),
-            build_first_seq_conjunction(DependencyMaps, CallConjNum,
-                NumGoalsBefore, NumGoalsAfter, Goals, !FirstSeqConjunction,
-                GoalsBefore)
-        )
-    ;
-        GoalsBefore = cord.empty
-    ).
+    ;       costly_call_not_found.
 
-:- pred pardgoals_build_par_conjs(cord(pard_goal_detail)::in,
-    dependency_maps::in, int::in,
-    cord(pard_goal_detail)::in, cord(pard_goal_detail)::out,
-    cord(seq_conj(pard_goal_detail))::in,
-    cord(seq_conj(pard_goal_detail))::out,
-    conjuncts_are_dependant::in, conjuncts_are_dependant::out) is det.
+:- inst find_costly_call_result
+    --->    costly_call_found(ground, pard_goal_detail(pgt_call), ground)
+    ;       costly_call_not_found.
 
-pardgoals_build_par_conjs(Goals0, DependencyMaps,
-        FirstConjNumOfFirstParConjunct, CurSeqConjunction0, GoalsAfter,
-        !ParConjs, !ConjsAreDependant) :-
-    % Find the next costly call.
-    find_costly_call(Goals0, cord.empty, GoalsBefore, MaybeNextCall, 
-        Goals),
-    (
-        MaybeNextCall = yes(NextCall),
-       
-        % XXX: We put all the goals between two paralleliseable goals in the
-        % parallel conjunct with the second goal.  This seems to work as often
-        % small unifications occurring before the next goal are used to prepare
-        % some arguments for it.
-        CurSeqConjunction = CurSeqConjunction0,
-        NewSeqConjunction = snoc(GoalsBefore, NextCall),
-      
-        % Has the conjunction become dependant.
-        map_pred(pg_get_conj_num, CurSeqConjunction, CurSeqConjNumsCord),
-        CurSeqConjNumsSet = set(list(CurSeqConjNumsCord)),
-        map_pred(pg_get_conj_num, NewSeqConjunction, NewSeqConjNumsCord),
-        (
-            !.ConjsAreDependant = conjuncts_are_independent,
-            member(NewSeqConjNum, NewSeqConjNumsCord),
-            depends_lookup(DependencyMaps, NewSeqConjNum, Dependencies),
-            intersect(Dependencies, CurSeqConjNumsSet, Intersection),
-            not set.empty(Intersection)
-        ->
-            !:ConjsAreDependant = conjuncts_are_dependant
-        ;
-            true
-        ),
+:- pred find_costly_call(cord(pard_goal_detail)::in, cord(pard_goal_detail)::in,
+    find_costly_call_result::out(find_costly_call_result)) is det.
 
-        SeqConjunction = seq_conj(list(CurSeqConjunction)),
-        !:ParConjs = snoc(!.ParConjs, SeqConjunction),
-        pardgoals_build_par_conjs(Goals, DependencyMaps,
-            FirstConjNumOfFirstParConjunct, NewSeqConjunction, GoalsAfter,
-            !ParConjs, !ConjsAreDependant)
-    ;
-        MaybeNextCall = no,
-        ( cord.get_first(CurSeqConjunction0, FirstGoalInLastConjunct) ->
-            FirstConjNumOfLastParConjunct = 
-                FirstGoalInLastConjunct ^ pgd_conj_num
-        ; 
-            error(this_file ++ " empty parallel conjunct")
-        ),
-        % Because this is the last parallel conjunction we have the
-        % option of putting some remaining goals into the parallel conjunction
-        % as part of the last parallel conjunct.
-        sorted_list_to_set(
-            FirstConjNumOfFirstParConjunct..(FirstConjNumOfLastParConjunct-1),
-            GoalsInOtherParConjuncts),
-        build_last_seq_conjunction(Goals0, DependencyMaps,
-            GoalsInOtherParConjuncts, GoalsAfter, 
-            cord.empty, GoalsInLastConjunct),
-        SeqConjunction = seq_conj(list(
-            CurSeqConjunction0 ++ GoalsInLastConjunct)),
-        !:ParConjs = snoc(!.ParConjs, SeqConjunction)
-    ).
-
-:- pred find_costly_call(cord(pard_goal_detail)::in,
-    cord(pard_goal_detail)::in, cord(pard_goal_detail)::out,
-    maybe(pard_goal_detail)::out,
-    cord(pard_goal_detail)::out) is det.
-
-find_costly_call(Goals, !GoalsBefore, MaybeCall, GoalsAfter) :-
+find_costly_call(Goals, GoalsBefore0, Result) :-
     ( head_tail(Goals, Goal, GoalsTail) ->
         GoalType = Goal ^ pgd_pg_type,
         ( 
             GoalType = pgt_call(_, _, _, _, _, _),
-            MaybeCall = yes(Goal),
-            GoalsAfter = GoalsTail
+            Result = costly_call_found(GoalsBefore0, Goal, GoalsTail)
         ;
             ( GoalType = pgt_cheap_call(_, _, _, _, _)
             ; GoalType = pgt_other_atomic_goal
             ),
-            !:GoalsBefore = snoc(!.GoalsBefore, Goal),
-            find_costly_call(GoalsTail, !GoalsBefore, MaybeCall, GoalsAfter)
+            GoalsBefore = snoc(GoalsBefore0, Goal),
+            find_costly_call(GoalsTail, GoalsBefore, Result)
         ;
             GoalType = pgt_non_atomic_goal,
             error(this_file ++ "Found non-atomic goal")
         )
     ;
-        MaybeCall = no,
-        GoalsAfter = cord.empty
+        Result = costly_call_not_found
     ).
 
-:- pred build_last_seq_conjunction(cord(pard_goal_detail)::in, 
-    dependency_maps::in, set(int)::in, cord(pard_goal_detail)::out,
-    cord(pard_goal_detail)::in, cord(pard_goal_detail)::out) is det.
-
-build_last_seq_conjunction(Goals0, DependencyMaps, GoalsInOtherParConjuncts, 
-        GoalsAfter, !GoalsInLastConjunct) :-
-    ( head_tail(Goals0, Goal, Goals) ->
-        ConjNum = Goal ^ pgd_conj_num,
-        depends_lookup(DependencyMaps, ConjNum, Dependencies),
-        intersect(Dependencies, GoalsInOtherParConjuncts, Intersection),
-        (
-            % The goal is dependant apon a goal in a previous parallel conjunct.
-            not set.empty(Intersection) => 
-            % But not dependant upon a goal in the current parallel conjunct.
-            (
-                map_pred(pg_get_conj_num, !.GoalsInLastConjunct, 
-                    ConjNumsInLastConjunct),
-                intersect(Dependencies, set(list(ConjNumsInLastConjunct)),
-                    Intersection2),
-                set.empty(Intersection2)
+:- type best_parallelisation
+    --->    bp_parallel_execution(
+                bp_goals_before         :: cord(pard_goal_detail),
+                bp_par_conjs            :: cord(cord(pard_goal_detail)),
+                bp_goals_after          :: cord(pard_goal_detail),
+                bp_is_dependent         :: conjuncts_are_dependant,
+                bp_par_exec_metrics     :: parallel_exec_metrics
             )
+                % Rather than using the sequential execution as an initial 
+                % value for the branch and bound search we use this value.
+                % This allows us to report the best parallelisation even when
+                % sequential execution is optimal.
+    ;       bp_no_best_parallelisation.
+
+:- type incomplete_parallelisation
+    --->    incomplete_parallelisation(
+                ip_goals_before         :: cord(pard_goal_detail),
+                ip_par_conjs            :: cord(cord(pard_goal_detail)),
+                ip_par_exec_overlap     :: parallel_execution_overlap,
+                ip_par_exec_metrics     :: parallel_exec_metrics_incomplete,
+                ip_is_outermost_conj    :: is_outermost_conjunct,
+                ip_can_make_cheap_conj  :: can_make_cheap_conj
+            ).
+
+:- type can_make_cheap_conj
+    --->    can_make_cheap_conj
+    ;       cannot_make_cheap_conj.
+
+:- pred find_best_parallelisation(implicit_parallelism_info::in, 
+    program_location::in, int::in, dependency_maps::in, 
+    cord(pard_goal_detail)::in, best_parallelisation::out) is det.
+
+find_best_parallelisation(Info, Location, PartNum, DependencyMaps, Goals,
+        FinalBestParallelisation) :-
+    % Use a failure driven loop to implement a branch and bound solver.
+    promise_pure (
+        trace [compile_time(flag("debug_branch_and_bound")), io(!IO)] (
+            io.format("D: Branch and bound loop starting:\n%s\n",
+                [s(LocationString)], !IO),
+            location_to_string(1, Location, LocationCord),
+            string.append_list(list(LocationCord), LocationString)
+        ),
+        impure new_mutvar(bp_no_best_parallelisation,
+            BestParallelisationMutvar),
+        (
+            impure find_best_parallelisation_nondet(Info, Location, PartNum, 
+                DependencyMaps, Goals, BestParallelisationMutvar, 
+                BestParallelisation),
+            % this is the best parallelisation so far.
+            impure set_mutvar(BestParallelisationMutvar, BestParallelisation),
+            trace [compile_time(flag("debug_branch_and_bound")), io(!IO)] (
+                (
+                    BestParallelisation = bp_no_best_parallelisation
+                ;
+                    BestParallelisation = bp_parallel_execution(_, _, _, _,
+                        Metrics),
+                    io.format("D: Branch and bound: Solution par time: %f\n",
+                        [f(ParTime)], !IO),
+                    ParTime = parallel_exec_metrics_get_par_time(Metrics)
+                )
+            ),
+            semidet_fail
         ->
-            % This goal and all those after it must be placed after the
-            % conjunction.
-            GoalsAfter = Goals0
+            error("Failure driven loop must fail")
         ;
-            % This goal does not depend on goals in other parallel conjuncts,
-            % we can parallelise it here without introducing an extra future.
-            !:GoalsInLastConjunct = snoc(!.GoalsInLastConjunct, Goal),
-            build_last_seq_conjunction(Goals, DependencyMaps,
-                GoalsInOtherParConjuncts, GoalsAfter, !GoalsInLastConjunct)
+            impure get_mutvar(BestParallelisationMutvar, 
+                FinalBestParallelisation),
+            trace [compile_time(flag("debug_branch_and_bound")), io(!IO)] (
+                io.write_string("D: Branch and bound loop finished\n", !IO)
+            )
         )
-    ;
-        GoalsAfter = cord.empty
     ).
 
-    % calculate_dependant_parallel_cost(Conjs, ParExecMetrics).
-    %
-    % Analyse the parallel conjuncts and determine their likely performance.
-    %
-    % This is the new parallel execution overlap algorithm, it is general and
-    % therefore we also use is for independent conjunctions.
-    %
-:- pred calculate_parallel_cost(implicit_parallelism_info::in,
-    cord(seq_conj(pard_goal_detail))::in,
-    parallel_exec_metrics_incomplete::out) is det.
+:- impure pred find_best_parallelisation_nondet(implicit_parallelism_info::in,
+    program_location::in, int::in, dependency_maps::in, 
+    cord(pard_goal_detail)::in, 
+    mutvar(best_parallelisation)::in, best_parallelisation::out) is nondet.
 
-calculate_parallel_cost(Info, Conjs, ParallelExecMetrics) :-
-    % We parepare the conjunctions before calculating the parallelisation cost.
-    % In doing this we create a left-associative data structure that makes the
-    % left-associative walk in the next step easier.  The data structure also
-    % contains extra information preventing quadratic code in the actual
-    % calculation.
-    calculate_parallel_cost_2(Info, Conjs, is_outermost_conjunct,
-        ParallelExecMetrics, _ParallelExecOverlap, _ParallelExec,
-        _NumConjuncts).
+find_best_parallelisation_nondet(Info, Location, PartNum, DependencyMaps, Goals0, 
+        BestParallelisationMutvar, BestParallelisation) :-
+    find_costly_call(Goals0, cord.empty, FindCostlyCallResult),
+    (
+        FindCostlyCallResult = costly_call_found(GoalsBeforeFirstCall, 
+            FirstCall, GoalsAfterFirstCall)
+    ;
+        FindCostlyCallResult = costly_call_not_found,
+        location_to_string(1, Location, LocationString),
+        Error = singleton(this_file) ++ singleton("\n") ++
+            LocationString ++
+            nl_indent(1) ++ singleton(format("partition %d", [i(PartNum)])) ++
+            nl_indent(1) ++ singleton("Couldn't find first call\n"),
+        error(append_list(cord.list(Error)))
+    ),
+    FirstCallCallSite = FirstCall ^ pgd_pg_type ^ pgtc_call_site,
+    NumCalls = FirstCallCallSite ^ ccsr_call_site_summary ^
+        perf_row_calls,
+   
+    % Generate goals before conjunction.
+    cord_split(GoalsBeforeFirstCall, GoalsBeforeConj, 
+        GoalsBeforeCallInFirstConj),
+    Goals1 = GoalsBeforeCallInFirstConj ++ singleton(FirstCall) ++ 
+        GoalsAfterFirstCall,
+
+    foldl_pred(pardgoal_calc_cost, GoalsBeforeConj, 0.0, CostBeforeConj),
+    Metrics0 = init_empty_parallel_exec_metrics(CostBeforeConj),
+    Parallelisation0 = incomplete_parallelisation(GoalsBeforeConj, 
+        empty, peo_empty_conjunct, Metrics0, is_outermost_conjunct,
+        cannot_make_cheap_conj),
+    impure find_best_parallelisation_2(Info, DependencyMaps, 
+        BestParallelisationMutvar, 0, map.init, Goals1, 
+        GoalsAfterConj, Parallelisation0, Parallelisation1),
+
+    % Finalise the metrics and determine if this is the best solution so far.
+    foldl_pred(pardgoal_calc_cost, GoalsAfterConj, 0.0, CostAfterConj),
+    Metrics1 = Parallelisation1 ^ ip_par_exec_metrics,
+    SparkDelay = Info ^ ipi_opts ^ cpc_sparking_delay,
+    SparkCost = Info ^ ipi_opts ^ cpc_sparking_cost,
+    Metrics = finalise_parallel_exec_metrics(Metrics1, NumCalls, CostAfterConj, 
+        float(SparkDelay + SparkCost)),
+
+    impure get_mutvar(BestParallelisationMutvar, CurrentBestParallelisation),
+    cbmr_metrics_is_better = compare_best_parallelisation_and_metrics(
+        CurrentBestParallelisation, Metrics),
+
+    Conjuncts = Parallelisation1 ^ ip_par_conjs,
+    Overlap = Parallelisation1 ^ ip_par_exec_overlap,
+    par_conj_overlap_is_dependant(Overlap, IsDependent),
+    BestParallelisation = bp_parallel_execution(GoalsBeforeConj, Conjuncts,
+        GoalsAfterConj, IsDependent, Metrics).
+
+:- impure pred find_best_parallelisation_2(implicit_parallelism_info::in,
+    dependency_maps::in, mutvar(best_parallelisation)::in, 
+    int::in, map(var_rep, float)::in, 
+    cord(pard_goal_detail)::in, cord(pard_goal_detail)::out, 
+    incomplete_parallelisation::in, incomplete_parallelisation::out) is nondet. 
+
+find_best_parallelisation_2(Info, DependencyMaps, BestParallelisationMutvar, 
+        NumConjuncts0, ProductionsMap0, !Goals, !Parallelisation) :-
+    IsOutermostConjunct = !.Parallelisation ^ ip_is_outermost_conj,
+    find_costly_call(!.Goals, cord.empty, FindCostlyCallResult),
+    (
+        FindCostlyCallResult = 
+            costly_call_found(GoalsBefore0, Call, GoalsAfter0),
+        
+        (
+            can_make_cheap_conj = !.Parallelisation ^ ip_can_make_cheap_conj, 
+            find_costly_call(GoalsAfter0, cord.empty, 
+                costly_call_found(_, _, _)),
+            cord_split(GoalsBefore0, Conj, GoalsBefore),
+            !:Goals = snoc(GoalsBefore, Call) ++ GoalsAfter0,
+            !Parallelisation ^ ip_can_make_cheap_conj := cannot_make_cheap_conj
+        ;
+            % Determine how many goals to include after the call in this
+            % parallel conjunct.
+            cord_split(GoalsAfter0, GoalsAfter, !:Goals),
+            % Don't include two costly calls in the same parallel conjunct.
+            find_costly_call(GoalsAfter, cord.empty, costly_call_not_found),
+        
+            % Build the new conjunct and test to see if this is no worse than
+            % our best parallelisation.
+            Conj = snoc(GoalsBefore0, Call) ++ GoalsAfter,
+
+            % If we've found the last costly call then there are no more
+            % conjuncts to make and therefore we cannot make a cheap conjunct,
+            % otherwise we can make a cheap conjunct.
+            find_costly_call(!.Goals, cord.empty, Result2),
+            (
+                Result2 = costly_call_not_found,
+                !Parallelisation ^ ip_can_make_cheap_conj :=
+                    cannot_make_cheap_conj
+            ;
+                Result2 = costly_call_found(_, _, _),
+                !Parallelisation ^ ip_can_make_cheap_conj := can_make_cheap_conj
+            )
+        ),
+        not is_empty(Conj),
+        Conjs0 = !.Parallelisation ^ ip_par_conjs,
+        Conjs = snoc(Conjs0, Conj),
+        
+        Metrics0 = !.Parallelisation ^ ip_par_exec_metrics,
+        Overlap0 = !.Parallelisation ^ ip_par_exec_overlap,
+        calculate_parallel_cost_step(Info, IsOutermostConjunct, NumConjuncts0,
+            Conj, ProductionsMap0, ProductionsMap, Metrics0, Metrics, 
+            Overlap0, Overlap),
+        (
+            Overlap = peo_empty_conjunct,
+            DepVars = set.init
+        ;
+            Overlap = peo_conjunction(_, _, DepVars)
+        ),
+        ParalleliseDepConjs = Info ^ ipi_opts ^ cpc_parallelise_dep_conjs,
+        (
+            ParalleliseDepConjs = do_not_parallelise_dep_conjs
+        =>
+            set.empty(DepVars)
+        ),
+        SparkCost = Info ^ ipi_opts ^ cpc_sparking_cost,
+        SparkDelay = Info ^ ipi_opts ^ cpc_sparking_delay,
+        MetricsComplete = finalise_parallel_exec_metrics(Metrics, 1, 0.0, 
+            float(SparkDelay + SparkCost)),
+        impure get_mutvar(BestParallelisationMutvar, 
+            CurrentBestParallelisation),
+        cbmr_metrics_is_better = compare_best_parallelisation_and_metrics(
+            CurrentBestParallelisation, MetricsComplete), 
+
+        NumConjuncts = NumConjuncts0 + 1,
+        !Parallelisation ^ ip_par_exec_overlap := Overlap,
+        !Parallelisation ^ ip_par_exec_metrics := Metrics,
+        !Parallelisation ^ ip_par_conjs := Conjs,
+        !Parallelisation ^ ip_is_outermost_conj := is_not_outermost_conjunct,
+
+        impure find_best_parallelisation_2(Info, DependencyMaps, 
+            BestParallelisationMutvar, 
+            NumConjuncts, ProductionsMap, !Goals, !Parallelisation)
+    ;
+        FindCostlyCallResult = costly_call_not_found
+    ).
+
+:- type compare_best_and_metrics_result
+    --->    cbmr_metrics_is_better
+    ;       cbmr_metrics_is_not_better.
+
+    % Compare the best parallelisation with the current parallelisation.
+    %
+:- func compare_best_parallelisation_and_metrics(best_parallelisation,
+        parallel_exec_metrics) = compare_best_and_metrics_result.
+
+compare_best_parallelisation_and_metrics(BestParallelisation, Metrics) = 
+        Result :-
+    (
+        BestParallelisation = bp_no_best_parallelisation,
+        Result = cbmr_metrics_is_better
+    ;
+        BestParallelisation = bp_parallel_execution(_, _, _, _, BestMetrics),
+        BestParTime = parallel_exec_metrics_get_par_time(BestMetrics),
+        ParTime = parallel_exec_metrics_get_par_time(Metrics),
+        % TODO: Add other comparisons for tie breaking or a better optimisation
+        % formula.
+        ( BestParTime > ParTime ->
+            Result = cbmr_metrics_is_better
+        ;
+            Result = cbmr_metrics_is_not_better
+        )
+    ).
 
     % This datastructure represents the execution of dependant conjuncts, it
     % tracks which variabes are produced and consumed.
@@ -1706,6 +1766,13 @@ calculate_parallel_cost(Info, Conjs, ParallelExecMetrics) :-
     % calculate_parallel_cost(Info, Conjunctions, IsOutermostConjunct,
     %   ParallelExecMetrics, ParallelExecOverlap, ProductionsMap, NumConjuncts).
     %
+    % Analyse the parallel conjuncts and determine their likely performance.
+    % This code performs one step of the computation the steps are linked
+    % together by find_best_parallelisation.
+    %
+    % This is the new parallel execution overlap algorithm, it is general and
+    % therefore we also use is for independent conjunctions.
+    %
     % + CallerVars is the set of vars for which our caller wants us to build a
     %   productions map for.
     %
@@ -1715,96 +1782,78 @@ calculate_parallel_cost(Info, Conjs, ParallelExecMetrics) :-
     % + ProductionsMap: A productions map that covers the production of
     %   CallerVars.
     %
-:- pred calculate_parallel_cost_2(implicit_parallelism_info::in, 
-    cord(seq_conj(pard_goal_detail))::in, is_outermost_conjunct::in,
-    parallel_exec_metrics_incomplete::out, parallel_execution_overlap::out,
-    map(var_rep, float)::out, int::out) is det.
+:- pred calculate_parallel_cost_step(implicit_parallelism_info::in,
+    is_outermost_conjunct::in, int::in, cord(pard_goal_detail)::in, 
+    map(var_rep, float)::in, map(var_rep, float)::out,
+    parallel_exec_metrics_incomplete::in, parallel_exec_metrics_incomplete::out,
+    parallel_execution_overlap::in, parallel_execution_overlap::out) is det.
 
-calculate_parallel_cost_2(Info, Conjs0, IsOutermostConjunct,
-        ParallelExecMetrics, ParallelExecOverlap, ProductionsMap, 
-        NumConjuncts) :-
-    ( cord.split_last(Conjs0, Conjs, Conj) ->
-        some [!ProductionsMap] (
-            calculate_parallel_cost_2(Info, Conjs, is_not_outermost_conjunct,
-                ParallelExecMetrics0, ParallelExecOverlap0, !:ProductionsMap,
-                NumConjuncts0), 
-           
-            seq_conj(Goals) = Conj,
-            foldl(pardgoal_calc_cost, Goals, 0.0, CostB),
-            foldl(pardgoal_consumed_vars_accum, Goals, set.init,
-                RightConsumedVars),
-            ProducedVars = 
-                set.from_sorted_list(map.sorted_keys(!.ProductionsMap)),
-            Vars = set.intersect(ProducedVars, RightConsumedVars),
+calculate_parallel_cost_step(Info, IsOutermostConjunct, NumConjuncts, Conj,
+        !ProductionsMap, !Metrics, !Overlap) :-
+    Goals = list(Conj),
+    foldl(pardgoal_calc_cost, Goals, 0.0, CostB),
+    foldl(pardgoal_consumed_vars_accum, Goals, set.init,
+        RightConsumedVars),
+    ProducedVars = 
+        set.from_sorted_list(map.sorted_keys(!.ProductionsMap)),
+    Vars = set.intersect(ProducedVars, RightConsumedVars),
 
-            % This conjunct will actually start after it has been sparked by
-            % the prevous conjunct.  Which in turn may have been sparked by an
-            % earlier conjunct.
-            SparkDelay = Info ^ ipi_opts ^ cpc_sparking_delay, 
-            StartTime0 = (NumConjuncts0 * SparkDelay),
+    % This conjunct will actually start after it has been sparked by
+    % the prevous conjunct.  Which in turn may have been sparked by an
+    % earlier conjunct.
+    SparkDelay = Info ^ ipi_opts ^ cpc_sparking_delay, 
+    StartTime0 = (NumConjuncts * SparkDelay),
 
-            % If there are conjuncts after this conjunct we will have the
-            % additional cost of sparking them.
-            (
-                IsOutermostConjunct = is_not_outermost_conjunct,
-                SparkCost = Info ^ ipi_opts ^ cpc_sparking_cost,
-                StartTime = float(StartTime0 + SparkCost)
-            ;
-                IsOutermostConjunct = is_outermost_conjunct,
-                StartTime = float(StartTime0)
-            ),
-
-            % Get the list of variables consumed by this conjunct that will be
-            % turned into futures.
-            foldl3(get_consumptions_list, Goals, Vars, _, 0.0, _, 
-                [], ConsumptionsList0),
-            reverse(ConsumptionsList0, ConsumptionsList),
-
-            % Determine how the parallel conjuncts overlap.
-            foldl4(calculate_dependant_parallel_cost_2(Info, !.ProductionsMap), 
-                ConsumptionsList, 0.0, LastSeqConsumeTime, 
-                StartTime, LastParConsumeTime, [], RevExecution0, 
-                map.init, ConsumptionsMap),
-            RevExecution = [ (LastParConsumeTime - CostBPar) | RevExecution0 ],
-            reverse(RevExecution, Execution),
-
-            CostBPar = LastParConsumeTime + (CostB - LastSeqConsumeTime),
-            ParallelExecMetrics = init_parallel_exec_metrics_incomplete(
-                ParallelExecMetrics0, CostB, CostBPar),
-            
-            % Build the productions map for our parent.  This map contains all
-            % the variables produced by this code, not just that are used for
-            % dependant parallelisation.
-            foldl3(get_productions_map, Goals, StartTime, _, Execution, _,
-                !ProductionsMap),
-
-            DepConjExec = dependant_conjunct_execution(Execution,
-                !.ProductionsMap, ConsumptionsMap),
-            ParallelExecOverlap = peo_conjunction(ParallelExecOverlap0, 
-                DepConjExec, Vars),
-
-            ProductionsMap = !.ProductionsMap,
-            NumConjuncts = NumConjuncts0 + 1
-        )
+    % If there are conjuncts after this conjunct we will have the
+    % additional cost of sparking them.
+    (
+        IsOutermostConjunct = is_not_outermost_conjunct,
+        SparkCost = Info ^ ipi_opts ^ cpc_sparking_cost,
+        StartTime = float(StartTime0 + SparkCost)
     ;
-        ParallelExecMetrics = init_empty_parallel_exec_metrics,
-        ParallelExecOverlap = peo_empty_conjunct,
-        ProductionsMap = map.init,
-        NumConjuncts = 0
-    ).
+        IsOutermostConjunct = is_outermost_conjunct,
+        StartTime = float(StartTime0)
+    ),
 
+    % Get the list of variables consumed by this conjunct that will be
+    % turned into futures.
+    foldl3(get_consumptions_list, Goals, Vars, _, 0.0, _, 
+        [], ConsumptionsList0),
+    reverse(ConsumptionsList0, ConsumptionsList),
+
+    % Determine how the parallel conjuncts overlap.
+    foldl5(calculate_dependant_parallel_cost_2(Info, !.ProductionsMap), 
+        ConsumptionsList, 0.0, LastSeqConsumeTime, 
+        StartTime, LastParConsumeTime, StartTime, LastResumeTime, 
+        [], RevExecution0, map.init, ConsumptionsMap),
+    RevExecution = [ (LastResumeTime - CostBPar) | RevExecution0 ],
+    reverse(RevExecution, Execution),
+
+    CostBPar = LastParConsumeTime + (CostB - LastSeqConsumeTime),
+    !:Metrics = 
+        init_parallel_exec_metrics_incomplete(!.Metrics, CostB, CostBPar),
+    
+    % Build the productions map for our parent.  This map contains all
+    % the variables produced by this code, not just that are used for
+    % dependant parallelisation.
+    foldl3(get_productions_map, Goals, StartTime, _, Execution, _,
+        !ProductionsMap),
+
+    DepConjExec = dependant_conjunct_execution(Execution,
+        !.ProductionsMap, ConsumptionsMap),
+    !:Overlap = peo_conjunction(!.Overlap, DepConjExec, Vars).
 
     % The main loop of the parallel overlap analysis.
     %
 :- pred calculate_dependant_parallel_cost_2(implicit_parallelism_info::in, 
     map(var_rep, float)::in, pair(var_rep, float)::in, float::in, float::out,
-    float::in, float::out,
+    float::in, float::out, float::in, float::out,
     assoc_list(float, float)::in, assoc_list(float, float)::out, 
     map(var_rep, float)::in, map(var_rep, float)::out) is det.
 
 calculate_dependant_parallel_cost_2(Info, ProductionsMap, Var - SeqConsTime,
-        !PrevSeqConsumeTime, !PrevParConsumeTime, !RevExecution,
-        !ConsumptionsMap) :-
+        !PrevSeqConsumeTime, !PrevParConsumeTime, !ResumeTime,
+        !RevExecution, !ConsumptionsMap) :-
     FutureSyncTime = float(Info ^ ipi_opts ^ cpc_locking_cost),
     map.lookup(ProductionsMap, Var, ProdTime),
 
@@ -1831,7 +1880,8 @@ calculate_dependant_parallel_cost_2(Info, ProductionsMap, Var - SeqConsTime,
         ProdTime > ParConsTimeNotBlocked 
     ->
         !:RevExecution = 
-            [ (!.PrevParConsumeTime - ParConsTimeNotBlocked) | !.RevExecution ] 
+            [ (!.ResumeTime - ParConsTimeNotBlocked) | !.RevExecution ],
+        !:ResumeTime = ParConsTime
     ;
         true
     ),
@@ -1840,6 +1890,17 @@ calculate_dependant_parallel_cost_2(Info, ProductionsMap, Var - SeqConsTime,
     !:PrevParConsumeTime = ParConsTime,
 
     svmap.det_insert(Var, ParConsTime, !ConsumptionsMap).
+
+:- pred par_conj_overlap_is_dependant(parallel_execution_overlap::in, 
+    conjuncts_are_dependant::out) is det.
+
+par_conj_overlap_is_dependant(peo_empty_conjunct, conjuncts_are_independent).
+par_conj_overlap_is_dependant(peo_conjunction(Left, _, VarSet), IsDependent) :-
+    ( set.empty(VarSet) ->
+        par_conj_overlap_is_dependant(Left, IsDependent)
+    ;
+        IsDependent = conjuncts_are_dependant
+    ).
 
 :- pred pg_get_conj_num(pard_goal_detail::in, int::out) is det.
 
@@ -2778,7 +2839,7 @@ transitive_map_insert(K, V, !Map) :-
 create_candidate_parallel_conj_report(Proc - CandidateParConjunction, Report) :-
     print_proc_label_to_string(Proc, ProcString),
     CandidateParConjunction = candidate_par_conjunction(GoalPath,
-        PartNum, IsDependant, Conjs, ParExecMetrics),
+        PartNum, IsDependant, GoalsBefore, Conjs, GoalsAfter, ParExecMetrics),
     NumCalls = parallel_exec_metrics_get_num_calls(ParExecMetrics),
     (
         IsDependant = conjuncts_are_independent,
@@ -2796,7 +2857,7 @@ create_candidate_parallel_conj_report(Proc - CandidateParConjunction, Report) :-
     FutureDeadTime =
         parallel_exec_metrics_get_future_dead_time(ParExecMetrics),
     TotalDeadTime = parallel_exec_metrics_get_total_dead_time(ParExecMetrics),
-    format("\n      %s\n" ++
+    format("      %s\n" ++
            "      Path and Partition Num: %s, %d\n" ++
            "      Dependant: %s\n" ++
            "      NumCalls: %d\n" ++
@@ -2806,22 +2867,25 @@ create_candidate_parallel_conj_report(Proc - CandidateParConjunction, Report) :-
            "      Time saving: %f\n" ++
            "      First conj dead time: %f\n" ++
            "      Future dead time: %f\n" ++
-           "      Total dead time: %f", 
+           "      Total dead time: %f\n\n", 
         [s(ProcString), s(GoalPath), i(PartNum), s(DependanceString),
             i(NumCalls), f(SeqTime), f(ParTime), f(Speedup), f(TimeSaving), 
             f(FirstConjDeadTime), f(FutureDeadTime), f(TotalDeadTime)],
         ReportHeaderStr),
     ReportHeader = singleton(ReportHeaderStr),
 
-    format_parallel_conjunction(3, Conjs, ReportParConj), 
+    format_sequential_conjuncts(3, GoalsBefore, empty, ReportGoalsBefore),
+    format_parallel_conjunction(3, Conjs, ReportParConj),
+    format_sequential_conjuncts(3, GoalsAfter, empty, ReportGoalsAfter),
 
-    Report = snoc(ReportHeader ++ ReportParConj, "\n").
+    Report = snoc(ReportHeader ++ ReportGoalsBefore ++ ReportParConj ++ 
+        ReportGoalsAfter, "\n").
 
 :- pred format_parallel_conjunction(int::in, 
     list(seq_conj(pard_goal))::in, cord(string)::out) is det.
 
 format_parallel_conjunction(Indent, Conjs, Report) :-
-    IndentStr = nl_indent(Indent),
+    IndentStr = indent(Indent),
     Report0 = IndentStr ++ singleton("(\n"),
     format_parallel_conjuncts(Indent, Conjs, Report0, Report). 
 
@@ -2830,7 +2894,7 @@ format_parallel_conjunction(Indent, Conjs, Report) :-
 
 format_parallel_conjuncts(Indent, [], !Report) :-
     IndentStr = indent(Indent),
-    !:Report = snoc(!.Report ++ IndentStr, ")").
+    !:Report = snoc(!.Report ++ IndentStr, ")\n").
 format_parallel_conjuncts(Indent, [ Conj | Conjs ], !Report) :-
     format_sequential_conjunction(Indent + 1, Conj, ConjReport),
     !:Report = !.Report ++ ConjReport,
@@ -2920,6 +2984,28 @@ format_vars(Indent, ColsUsed0, [Var | Vars], !Reports) :-
 format_callee(unknown_callee, "unknwon_call").
 format_callee(named_callee(Module, Proc), 
     format("%s.%s", [s(Module), s(Proc)])).
+
+%-----------------------------------------------------------------------------%
+
+:- pred cord_split(cord(T)::in, cord(T)::out, cord(T)::out) is multi.
+
+cord_split(Cord, A, B) :-
+    ( cord.head_tail(Cord, Head, Tail) ->
+        (
+            % Put the split before Cord,
+            A = cord.empty,
+            B = Cord
+        ;
+            % Put the split within or after Cord.
+            cord_split(Tail, TailA, B),
+            A = cons(Head, TailA)
+        )
+    ;
+        % An empty cord can only be split one way (since we say that the split
+        % may happen before the cord).
+        A = cord.empty,
+        B = cord.empty
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module mdprof_fb.automatic_parallelism.
