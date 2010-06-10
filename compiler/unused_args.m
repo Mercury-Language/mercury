@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1140,8 +1140,7 @@ make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
             TypeName = type_ctor_name(ModuleInfo, TypeCtor),
             TypeArity = type_ctor_arity(ModuleInfo, TypeCtor),
             string.int_to_string(TypeArity, TypeArityStr),
-            TypeModuleString0 = sym_name_to_string(TypeModule),
-            string.replace_all(TypeModuleString0, ".", "__", TypeModuleString),
+            TypeModuleString = sym_name_to_string_sep(TypeModule, "__"),
             string.append_list([Name0, "_", TypeModuleString, "__", TypeName,
                 "_", TypeArityStr], Name1)
         ;
