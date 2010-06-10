@@ -372,6 +372,10 @@ Changes to the Mercury compiler:
 * Generation of 64-bit code on Mac OS X is now supported,
   i.e. the x86_64*apple*darwin* architecture is now supported.
 
+* We have added another debugger, called the source-to-source debugger (ssdb).
+  It is more limited than mdb, but it does work with backends other than the
+  low-level C backend, e.g. the Java backend.
+
 Changes to the Mercury deep profiler:
 
 * The deep profiler now supports measuring a proxy for time: a counter that
