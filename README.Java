@@ -125,7 +125,7 @@ Q. What features are not yet implemented for the Java back-end?
 
 A. The following implementation features are not supported:
 
-	Mercury-level debugging
+	Mercury-level debugging (but see next question)
 	Mercury-level profiling
 	trailing
 	tabling
@@ -162,7 +162,13 @@ A. The following implementation features are not supported:
    This list is probably not complete.
 
 
-Q. So how do I enable Java-level debugging?
+Q. How do I debug Mercury programs on Java?
+
+A. The only Mercury-level debugger available for Java grades is the
+   source-to-source debugger; see README.ssdebug.
+
+
+Q. How do I enable Java-level debugging?
 
 A. By default, javac already generates line number and source file debugging
    information.  You can include local variable debugging information by

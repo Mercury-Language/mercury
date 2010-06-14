@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2009 The University of Melbourne.
+% Copyright (C) 2005-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -737,8 +737,6 @@ insert_proc_start_deconstruction(Goal0, Goal, !VarSet, !VarTypes,
 
 create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
         AuxPredProcId, CallAux, ModuleInfo0, ModuleInfo) :-
-    module_info_get_name(ModuleInfo0, ModuleName),
-
     proc_info_get_headvars(ProcInfo, AuxHeadVars),
     proc_info_get_goal(ProcInfo, Goal @ hlds_goal(_GoalExpr, GoalInfo)),
     proc_info_get_initial_instmap(ProcInfo, ModuleInfo0,
@@ -753,19 +751,16 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
     pred_info_get_origin(PredInfo, OrigOrigin),
     pred_info_get_var_name_remap(PredInfo, VarNameRemap),
 
+    PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     Context = goal_info_get_context(GoalInfo),
     term.context_line(Context, Line),
-    proc_id_to_int(ProcId, ProcNo),
-    AuxNamePrefix = string.format("tupling_%d", [i(ProcNo)]),
-    make_pred_name_with_context(ModuleName, AuxNamePrefix,
-        PredOrFunc, PredName, Line, Counter, AuxPredSymName),
-    (
-        AuxPredSymName = unqualified(AuxPredName)
-    ;
-        AuxPredSymName = qualified(_ModuleSpecifier, AuxPredName)
-    ),
+    make_pred_name_with_context(PredModule, "tupling",
+        PredOrFunc, PredName, Line, Counter, AuxPredSymName0),
+    hlds_pred.proc_id_to_int(ProcId, ProcNo),
+    Suffix = string.format("_%d", [i(ProcNo)]),
+    add_sym_name_suffix(AuxPredSymName0, Suffix, AuxPredSymName),
 
     Origin = origin_transformed(transform_tuple(ProcNo), OrigOrigin, PredId),
     hlds_pred.define_new_pred(
@@ -775,7 +770,7 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
         AuxHeadVars,            % in
         _ExtraArgs,             % out
         InitialAuxInstMap,      % in
-        AuxPredName,            % in
+        AuxPredSymName,         % in
         TVarSet,                % in
         VarTypes,               % in
         ClassContext,           % in

@@ -3075,11 +3075,13 @@ esac
 # XXX provide a workaround for the former; the latter is a problem
 # with gcc's Darwin support.
 #
+# The asm_fast and reg grades also do not currently work on Linux/PPC.
+#
 case "$host" in
-    i*86*apple*darwin*|x86_64*apple*darwin*)
+    i*86*apple*darwin*|x86_64*apple*darwin*|powerpc*-linux-gnu)
         BEST_LLDS_BASE_GRADE=none
         ;;
-esac    
+esac
 
 # BEST_DEBUG_BASE_GRADE is the most efficient base grade that supports
 # debugging (`--trace deep').

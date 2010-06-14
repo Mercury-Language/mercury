@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001, 2003-2009 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -627,14 +627,13 @@ pd_info.define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
     counter.allocate(Count, Counter0, Counter),
     pd_info_set_counter(Counter, !PDInfo),
     pd_info_get_pred_info(!.PDInfo, PredInfo),
+    PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Context = goal_info_get_context(GoalInfo),
     term.context_line(Context, Line),
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
-    module_info_get_name(ModuleInfo0, ModuleName),
-    make_pred_name_with_context(ModuleName, "DeforestationIn",
+    make_pred_name_with_context(PredModule, "DeforestationIn",
         pf_predicate, PredName, Line, Count, SymName),
-    Name = unqualify_name(SymName),
 
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
     pred_info_get_typevarset(PredInfo, TVarSet),
@@ -648,7 +647,7 @@ pd_info.define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
     % XXX handle the extra typeinfo arguments for
     % --typeinfo-liveness properly.
     hlds_pred.define_new_pred(Origin, Goal, CallGoal, Args, _ExtraArgs,
-        InstMap, Name, TVarSet, VarTypes, ClassContext, RttiVarMaps,
+        InstMap, SymName, TVarSet, VarTypes, ClassContext, RttiVarMaps,
         VarSet, InstVarSet, Markers, address_is_not_taken, VarNameRemap,
         ModuleInfo0, ModuleInfo, PredProcId),
     pd_info_set_module_info(ModuleInfo, !PDInfo).

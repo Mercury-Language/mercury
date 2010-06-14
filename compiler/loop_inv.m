@@ -725,7 +725,6 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
 
     AuxHeadVars = HeadVars ++ ComputedInvArgs,
 
-    module_info_get_name(ModuleInfo0, ModuleName),
     module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
         PredInfo, ProcInfo),
 
@@ -740,19 +739,23 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
     pred_info_get_origin(PredInfo, OrigOrigin),
     pred_info_get_var_name_remap(PredInfo, VarNameRemap),
 
+    PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     Context = goal_info_get_context(GoalInfo),
     term.context_line(Context, Line),
-    hlds_pred.proc_id_to_int(ProcId, ProcNo),
-    AuxNamePrefix = string.format("loop_inv_%d", [i(ProcNo)]),
-    make_pred_name_with_context(ModuleName, AuxNamePrefix,
-        PredOrFunc, PredName, Line, 1, AuxPredSymName),
-    (
-        AuxPredSymName = unqualified(AuxPredName)
+    ( Line = 0 ->
+        % Use the predicate number to distinguish between similarly named
+        % generated predicates, e.g. special predicates.
+        Counter = pred_id_to_int(PredId)
     ;
-        AuxPredSymName = qualified(_ModuleSpecifier, AuxPredName)
+        Counter = 1
     ),
+    make_pred_name_with_context(PredModule, "loop_inv",
+        PredOrFunc, PredName, Line, Counter, AuxPredSymName0),
+    hlds_pred.proc_id_to_int(ProcId, ProcNo),
+    Suffix = string.format("_%d", [i(ProcNo)]),
+    add_sym_name_suffix(AuxPredSymName0, Suffix, AuxPredSymName),
 
     Origin = origin_transformed(transform_loop_invariant(ProcNo),
         OrigOrigin, PredId),
@@ -765,7 +768,7 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
                         %           liveness purposes.
         InitialAuxInstMap,
                         % in    - The initial instmap for the new aux proc.
-        AuxPredName,    % in    - The name of the new aux proc.
+        AuxPredSymName, % in    - The name of the new aux proc.
         TVarSet,        % in    - ???
         VarTypes,       % in    - The var -> type mapping for the new aux proc.
         ClassContext,   % in    - Typeclass constraints on the new aux proc.

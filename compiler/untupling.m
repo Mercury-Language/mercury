@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2009 The University of Melbourne.
+% Copyright (C) 2005-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -410,8 +410,6 @@ build_untuple_map([_| _], [], !_) :-
 create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
         AuxPredId, AuxProcId, CallAux, AuxPredInfo, AuxProcInfo,
         !ModuleInfo) :-
-    module_info_get_name(!.ModuleInfo, ModuleName),
-
     proc_info_get_headvars(ProcInfo, AuxHeadVars),
     proc_info_get_goal(ProcInfo, Goal @ hlds_goal(_GoalExpr, GoalInfo)),
     proc_info_get_initial_instmap(ProcInfo, !.ModuleInfo, InitialAuxInstMap),
@@ -425,23 +423,20 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
     pred_info_get_origin(PredInfo, OrigOrigin),
     pred_info_get_var_name_remap(PredInfo, VarNameRemap),
 
+    PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     Context = goal_info_get_context(GoalInfo),
     term.context_line(Context, Line),
+    make_pred_name_with_context(PredModule, "untupling",
+        PredOrFunc, PredName, Line, Counter, AuxPredSymName0),
     proc_id_to_int(ProcId, ProcNo),
-    AuxNamePrefix = string.format("untupling_%d", [i(ProcNo)]),
-    make_pred_name_with_context(ModuleName, AuxNamePrefix,
-        PredOrFunc, PredName, Line, Counter, AuxPredSymName),
-    (
-        AuxPredSymName = unqualified(AuxPredName)
-    ;
-        AuxPredSymName = qualified(_ModuleSpecifier, AuxPredName)
-    ),
+    Suffix = string.format("_%d", [i(ProcNo)]),
+    add_sym_name_suffix(AuxPredSymName0, Suffix, AuxPredSymName),
 
     Origin = origin_transformed(transform_untuple(ProcNo), OrigOrigin, PredId),
     hlds_pred.define_new_pred(Origin, Goal, CallAux, AuxHeadVars, _ExtraArgs,
-        InitialAuxInstMap, AuxPredName, TVarSet, VarTypes, ClassContext,
+        InitialAuxInstMap, AuxPredSymName, TVarSet, VarTypes, ClassContext,
         RttiVarMaps, VarSet, InstVarSet, Markers, address_is_not_taken,
         VarNameRemap, !ModuleInfo, proc(AuxPredId, AuxProcId)),
 

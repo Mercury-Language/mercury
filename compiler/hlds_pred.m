@@ -565,7 +565,7 @@
     %
 :- pred define_new_pred(pred_origin::in,
     hlds_goal::in, hlds_goal::out, list(prog_var)::in, list(prog_var)::out,
-    instmap::in, string::in, tvarset::in, vartypes::in,
+    instmap::in, sym_name::in, tvarset::in, vartypes::in,
     prog_constraints::in, rtti_varmaps::in, prog_varset::in,
     inst_varset::in, pred_markers::in, is_address_taken::in,
     map(prog_var, string)::in, module_info::in, module_info::out,
@@ -1143,7 +1143,7 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
         ExistQVars, ClassContext, ClausesInfo, Procs, PredSubInfo).
 
 define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
-        PredName, TVarSet, VarTypes0, ClassContext, RttiVarMaps,
+        SymName, TVarSet, VarTypes0, ClassContext, RttiVarMaps,
         VarSet0, InstVarSet, Markers, IsAddressTaken, VarNameRemap,
         ModuleInfo0, ModuleInfo, PredProcId) :-
     Goal0 = hlds_goal(_GoalExpr, GoalInfo),
@@ -1181,8 +1181,9 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
     compute_arg_types_modes(ArgVars, VarTypes0, InstMap0, InstMap,
         ArgTypes, ArgModes),
 
+    % XXX why does pred_info_create take a sym_name only to unqualify it?
     module_info_get_name(ModuleInfo0, ModuleName),
-    SymName = qualified(ModuleName, PredName),
+    sym_name_get_module_name_default(SymName, ModuleName, SymNameModule),
 
     % Remove unneeded variables from the vartypes and varset.
     goal_util.goal_vars(Goal0, GoalVars0),
@@ -1205,7 +1206,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 
     set.init(Assertions),
 
-    pred_info_create(ModuleName, SymName, pf_predicate, Context, Origin,
+    pred_info_create(SymNameModule, SymName, pf_predicate, Context, Origin,
         ExportStatus, Markers, ArgTypes, TVarSet, ExistQVars,
         ClassContext, Assertions, VarNameRemap, ProcInfo, ProcId, PredInfo),
 
