@@ -110,12 +110,12 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module char.
 :- import_module io.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
-:- import_module pprint.
 :- import_module require.
 :- import_module string.
 :- import_module univ.
@@ -177,6 +177,7 @@
     ;       wn_next
     ;       wn_continue
     ;       wn_finish(int)
+    ;       wn_return
     ;       wn_exception
     ;       wn_retry(int)
     ;       wn_retry_nondet(int)
@@ -203,6 +204,9 @@
     ;       ns_final_port_nondet(int, ssdb_retry)
             % As above for nondet procedures.
             % Stop at the final port (fail) of the given CSN.
+
+    ;       ns_nonexit
+            % Stop at any non-exit port.
 
     ;       ns_goto(int)
             % Stop at the given event number.
@@ -263,6 +267,17 @@
     [untrailed, attach_to_io_state]).
 :- mutable(nondet_shadow_stack_depth, int, 0, ground,
     [untrailed, attach_to_io_state]).
+
+%-----------------------------------------------------------------------------%
+
+:- mutable(browser_state, browser_persistent_state,
+    init_browser_persistent_state, ground,
+    [untrailed, attach_to_io_state]).
+
+:- func init_browser_persistent_state = browser_persistent_state.
+
+init_browser_persistent_state = State :-
+    browser_info.init_persistent_state(State).
 
 %-----------------------------------------------------------------------------%
 
@@ -1019,6 +1034,24 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
             AutoRetry = do_not_retry
         )
     ;
+        NextStop = ns_nonexit,
+        (
+            ( Event = ssdb_call
+            ; Event = ssdb_fail
+            ; Event = ssdb_call_nondet
+            ; Event = ssdb_redo_nondet
+            ; Event = ssdb_fail_nondet
+            ; Event = ssdb_excp
+            ),
+            ShouldStopAtEvent = yes
+        ;
+            ( Event = ssdb_exit
+            ; Event = ssdb_exit_nondet
+            ),
+            ShouldStopAtEvent = no
+        ),
+        AutoRetry = do_not_retry
+    ;
         NextStop = ns_goto(EventNumToGo),
         is_same_int(EventNumToGo, EventNum, ShouldStopAtEvent),
         AutoRetry = do_not_retry
@@ -1071,6 +1104,10 @@ update_next_stop(EventNum, CSN, WhatNext, Retry, !IO) :-
     ;
         WhatNext = wn_finish(EndCSN),
         NextStop = ns_final_port(EndCSN, do_not_retry),
+        Retry = do_not_retry
+    ;
+        WhatNext = wn_return,
+        NextStop = ns_nonexit,
         Retry = do_not_retry
     ;
         WhatNext = wn_exception,
@@ -1134,21 +1171,6 @@ pred_catches_exceptions(ProcId) :-
 
 %----------------------------------------------------------------------------%
 
-    % h     :: help
-    % f     :: finish (go to the next exit or fail of the current call)
-    % n     :: next
-    % s | _ :: next step
-    % c     :: continue
-    % b X Y :: breakpoint X = module_name Y = predicate_name
-    % b info:: print info of breakpoints
-    % delete/enable/disable */N
-    %       :: delete/enable/disable all/Nth breakpoint
-    % p     :: print
-    % dump  :: print stack trace
-    % u     :: up
-    % d     :: down
-    % g N   :: goto Nth event number
-
 :- type ssdb_cmd
     --->    ssdb_help
 
@@ -1157,6 +1179,7 @@ pred_catches_exceptions(ProcId) :-
     ;       ssdb_goto
     ;       ssdb_continue
     ;       ssdb_finish
+    ;       ssdb_return
     ;       ssdb_exception
 
     ;       ssdb_retry
@@ -1167,6 +1190,11 @@ pred_catches_exceptions(ProcId) :-
     ;       ssdb_vars
     ;       ssdb_down
     ;       ssdb_up
+    ;       ssdb_level
+    ;       ssdb_current
+
+    ;       ssdb_format
+    ;       ssdb_format_param
 
     ;       ssdb_break
     ;       ssdb_enable
@@ -1175,10 +1203,13 @@ pred_catches_exceptions(ProcId) :-
 
     ;       ssdb_quit.
 
-:- pred ssdb_cmd_name(string::in, ssdb_cmd::out) is semidet.
+:- pred ssdb_cmd_name(string, ssdb_cmd).
+:- mode ssdb_cmd_name(in, out) is semidet.
+:- mode ssdb_cmd_name(out, in) is multi.
 
 ssdb_cmd_name("h",          ssdb_help).
 ssdb_cmd_name("help",       ssdb_help).
+ssdb_cmd_name("?",          ssdb_help).
 
 ssdb_cmd_name("s",          ssdb_step).
 ssdb_cmd_name("step",       ssdb_step).
@@ -1190,6 +1221,7 @@ ssdb_cmd_name("c",          ssdb_continue).
 ssdb_cmd_name("continue",   ssdb_continue).
 ssdb_cmd_name("f",          ssdb_finish).
 ssdb_cmd_name("finish",     ssdb_finish).
+ssdb_cmd_name("return",     ssdb_return).
 ssdb_cmd_name("e",          ssdb_exception).
 ssdb_cmd_name("ex",         ssdb_exception).
 ssdb_cmd_name("exception",  ssdb_exception).
@@ -1208,6 +1240,13 @@ ssdb_cmd_name("d",          ssdb_down).
 ssdb_cmd_name("down",       ssdb_down).
 ssdb_cmd_name("u",          ssdb_up).
 ssdb_cmd_name("up",         ssdb_up).
+ssdb_cmd_name("level",      ssdb_level).
+ssdb_cmd_name("lv",         ssdb_level).
+ssdb_cmd_name("current",    ssdb_current).
+ssdb_cmd_name("cur",        ssdb_current).
+
+ssdb_cmd_name("format",     ssdb_format).
+ssdb_cmd_name("format_param", ssdb_format_param).
 
 ssdb_cmd_name("b",          ssdb_break).
 ssdb_cmd_name("break",      ssdb_break).
@@ -1218,9 +1257,10 @@ ssdb_cmd_name("delete",     ssdb_delete).
 ssdb_cmd_name("q",          ssdb_quit).
 ssdb_cmd_name("quit",       ssdb_quit).
 
-% Useful commands:
-%   level N         set level
-%   print           print the current atom
+:- pred ssdb_cmd_name(string::in, ssdb_cmd::out, list(string)::out)
+    is semidet.
+
+ssdb_cmd_name("P", ssdb_print, ["*"]).
 
 %---------------------------------------------------------------------------%
 
@@ -1251,6 +1291,14 @@ read_and_execute_cmd(Event, Depth, WhatNext, !IO) :-
             % here.
             ( ssdb_cmd_name(CmdWord, Cmd) ->
                 execute_cmd(Cmd, ArgWords, Event, Depth, WhatNext, !IO)
+            ; ssdb_cmd_name(CmdWord, Cmd, CmdArgs) ->
+                execute_cmd(Cmd, CmdArgs ++ ArgWords, Event, Depth, WhatNext,
+                    !IO)
+            ;
+                % A bare integer is treated like a step command.
+                string.to_int(CmdWord, _)
+            ->
+                execute_cmd(ssdb_step, Words, Event, Depth, WhatNext, !IO)
             ;
                 io.format("%s: unknown command (try \"help\")\n", [s(CmdWord)],
                     !IO),
@@ -1267,15 +1315,14 @@ read_and_execute_cmd(Event, Depth, WhatNext, !IO) :-
         execute_cmd(ssdb_quit, [], Event, Depth, WhatNext, !IO)
     ).
 
-    % Execute a command.
-    %
 :- pred execute_cmd(ssdb_cmd::in, list(string)::in, ssdb_event_type::in,
     int::in, what_next::out, io::di, io::uo) is det.
 
 execute_cmd(Cmd, Args, Event, Depth, WhatNext, !IO) :-
     (
         Cmd = ssdb_help,
-        execute_ssdb_help(Args, Event, Depth, WhatNext, !IO)
+        execute_ssdb_help(Args, !IO),
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_step,
         execute_ssdb_step(Args, Event, Depth, WhatNext, !IO)
@@ -1292,6 +1339,9 @@ execute_cmd(Cmd, Args, Event, Depth, WhatNext, !IO) :-
         Cmd = ssdb_finish,
         execute_ssdb_finish(Args, Event, Depth, WhatNext, !IO)
     ;
+        Cmd = ssdb_return,
+        execute_ssdb_return(Args, Event, Depth, WhatNext, !IO)
+    ;
         Cmd = ssdb_exception,
         execute_ssdb_exception(Args, Event, Depth, WhatNext, !IO)
     ;
@@ -1299,45 +1349,71 @@ execute_cmd(Cmd, Args, Event, Depth, WhatNext, !IO) :-
         execute_ssdb_retry(Args, Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_stack,
-        execute_ssdb_stack(Args, Event, Depth, WhatNext, !IO)
+        execute_ssdb_stack(Args, Depth, !IO),
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_print,
-        execute_ssdb_print(Args, Event, Depth, WhatNext, !IO)
+        execute_ssdb_print(Args, Depth, !IO),
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_browse,
-        execute_ssdb_browse(Args, Event, Depth, WhatNext, !IO)
+        execute_ssdb_browse(Args, Depth, !IO),
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_vars,
-        execute_ssdb_vars(Args, Event, Depth, WhatNext, !IO)
+        execute_ssdb_vars(Args, Depth, !IO),
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_down,
-        execute_ssdb_down(Args, Event, Depth, WhatNext, !IO)
+        execute_ssdb_down(Args, Depth, NewDepth, !IO),
+        read_and_execute_cmd(Event, NewDepth, WhatNext, !IO)
     ;
         Cmd = ssdb_up,
-        execute_ssdb_up(Args, Event, Depth, WhatNext, !IO)
+        execute_ssdb_up(Args, Depth, NewDepth, !IO),
+        read_and_execute_cmd(Event, NewDepth, WhatNext, !IO)
+    ;
+        Cmd = ssdb_level,
+        execute_ssdb_level(Args, Depth, NewDepth, !IO),
+        read_and_execute_cmd(Event, NewDepth, WhatNext, !IO)
+    ;
+        Cmd = ssdb_current,
+        execute_ssdb_current(Args, Event, !IO),
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+    ;
+        Cmd = ssdb_format,
+        execute_ssdb_format(Args, !IO),
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+    ;
+        Cmd = ssdb_format_param,
+        execute_ssdb_format_param(Args, !IO),
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_break,
-        execute_ssdb_break(Args, Event, Depth, WhatNext, !IO)
+        execute_ssdb_break(Args, !IO),
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_enable,
-        execute_ssdb_enable(Args, Event, Depth, WhatNext, !IO)
+        execute_ssdb_enable(Args, !IO),
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_disable,
-        execute_ssdb_disable(Args, Event, Depth, WhatNext, !IO)
+        execute_ssdb_disable(Args, !IO),
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_delete,
-        execute_ssdb_delete(Args, Event, Depth, WhatNext, !IO)
+        execute_ssdb_delete(Args, !IO),
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ;
         Cmd = ssdb_quit,
-        execute_ssdb_quit(Args, Event, Depth, WhatNext, !IO)
+        execute_ssdb_quit(Args, !IO),
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-:- pred execute_ssdb_help(list(string)::in, ssdb_event_type::in,
-    int::in, what_next::out, io::di, io::uo) is det.
+:- pred execute_ssdb_help(list(string)::in, io::di, io::uo) is det.
 
-execute_ssdb_help(Args, Event, Depth, WhatNext, !IO) :-
+execute_ssdb_help(Args, !IO) :-
     (
         Args = [],
         print_help(!IO)
@@ -1346,8 +1422,9 @@ execute_ssdb_help(Args, Event, Depth, WhatNext, !IO) :-
         % We should provide more detailed help if the user specifies a command
         % name.
         print_help(!IO)
-    ),
-    read_and_execute_cmd(Event, Depth, WhatNext, !IO).
+    ).
+
+%-----------------------------------------------------------------------------%
 
 :- pred execute_ssdb_step(list(string)::in, ssdb_event_type::in,
     int::in, what_next::out, io::di, io::uo) is det.
@@ -1358,9 +1435,18 @@ execute_ssdb_step(Args, Event, Depth, WhatNext, !IO) :-
         WhatNext = wn_step
     ;
         Args = [_ | _],
-        % We should provide more detailed help.
-        print_help(!IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+        (
+            Args = [NStr],
+            string.to_int(NStr, N),
+            N > 0
+        ->
+            get_cur_ssdb_event_number(EventNumber, !IO),
+            WhatNext = wn_goto(EventNumber + N)
+        ;
+            % We should provide more detailed help.
+            print_help(!IO),
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+        )
     ).
 
 :- pred execute_ssdb_next(list(string)::in, ssdb_event_type::in,
@@ -1481,6 +1567,34 @@ execute_ssdb_finish(Args, Event, Depth, WhatNext, !IO) :-
         read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
+:- pred execute_ssdb_return(list(string)::in, ssdb_event_type::in,
+    int::in, what_next::out, io::di, io::uo) is det.
+
+execute_ssdb_return(Args, Event, Depth, WhatNext, !IO) :-
+    (
+        Args = [],
+        (
+            ( Event = ssdb_exit
+            ; Event = ssdb_exit_nondet
+            ),
+            WhatNext = wn_return
+        ;
+            ( Event = ssdb_call
+            ; Event = ssdb_fail
+            ; Event = ssdb_call_nondet
+            ; Event = ssdb_redo_nondet
+            ; Event = ssdb_fail_nondet
+            ; Event = ssdb_excp
+            ),
+            io.write_string("This command is a no-op from this port.\n", !IO),
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+        )
+    ;
+        Args = [_ | _],
+        print_help(!IO),
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+    ).
+
 :- pred execute_ssdb_exception(list(string)::in, ssdb_event_type::in,
     int::in, what_next::out, io::di, io::uo) is det.
 
@@ -1493,6 +1607,8 @@ execute_ssdb_exception(Args, Event, Depth, WhatNext, !IO) :-
         io.write_string("The exception command accepts no arguments.\n", !IO),
         read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
+
+%-----------------------------------------------------------------------------%
 
 :- pred execute_ssdb_retry(list(string)::in, ssdb_event_type::in,
     int::in, what_next::out, io::di, io::uo) is det.
@@ -1583,63 +1699,130 @@ nondet_stack_contains_csn_2(CSN, Depth, Contains, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred execute_ssdb_stack(list(string)::in, ssdb_event_type::in,
-    int::in, what_next::out, io::di, io::uo) is det.
+:- pred execute_ssdb_stack(list(string)::in, int::in, io::di, io::uo) is det.
 
-execute_ssdb_stack(Args, Event, Depth, WhatNext, !IO) :-
+execute_ssdb_stack(Args, Depth, !IO) :-
     (
         Args = [],
-        print_stack_trace(0, Depth, !IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+        print_stack_trace(0, Depth, int.max_int, !IO)
     ;
         Args = [_ | _],
-        % We should provide more detailed help.
-        print_help(!IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+        (
+            Args = [NStr],
+            string.to_int(NStr, N),
+            N > 0
+        ->
+            print_stack_trace(0, Depth, N, !IO)
+        ;
+            io.write_string("ssdb: `stack' command expects integer argument\n",
+                !IO)
+        )
     ).
 
-:- pred execute_ssdb_print(list(string)::in, ssdb_event_type::in,
-    int::in, what_next::out, io::di, io::uo) is det.
+:- pred execute_ssdb_print(list(string)::in, int::in, io::di, io::uo) is det.
 
-execute_ssdb_print(Args, Event, Depth, WhatNext, !IO) :-
+execute_ssdb_print(!.Args, Depth, !IO) :-
+    process_options(print_options, !Args, no, Res),
+    (
+        Res = ok(MaybeFormat),
+        stack_index(Depth, StackFrame, !IO),
+        ( !.Args = [] ->
+            Term = goal_to_synthetic_term(StackFrame),
+            print_browser_term(MaybeFormat, print, Term, !IO)
+        ; !.Args = ["*"] ->
+            ListVarValue = StackFrame ^ sf_list_var_value,
+            (
+                ListVarValue = [],
+                io.write_string("ssdb: there are no live variables.\n", !IO)
+            ;
+                ListVarValue = [_ | _],
+                print_vars(MaybeFormat, print_all, ListVarValue, !IO)
+            )
+        ; !.Args = [Arg] ->
+            ListVarValue = StackFrame ^ sf_list_var_value,
+            print_var_with_name(MaybeFormat, ListVarValue, Arg, !IO)
+        ;
+            print_help(!IO)
+        )
+    ;
+        Res = error(Error),
+        io.write_string("ssdb: ", !IO),
+        io.write_string(io.error_message(Error), !IO),
+        io.nl(!IO)
+    ).
+
+:- pred print_options(string::in, maybe(portray_format)::in,
+    maybe(portray_format)::out) is semidet.
+
+print_options("--flat", _, yes(flat)).
+print_options("--pretty", _, yes(pretty)).
+print_options("--raw", _, yes(raw_pretty)).
+print_options("--verbose", _, yes(verbose)).
+print_options("-f", _, yes(flat)).
+print_options("-p", _, yes(pretty)).
+print_options("-r", _, yes(raw_pretty)).
+print_options("-v", _, yes(verbose)).
+
+:- func goal_to_synthetic_term(stack_frame) = browser_term.
+
+goal_to_synthetic_term(StackFrame) = Term :-
+    ProcId = StackFrame ^ sf_proc_id,
+    ProcId = ssdb_proc_id(_ModuleName, ProcName),
+    % XXX I/O state arguments at the end of this list will be missing.
+    % This can be fixed once we have the procedure arity.
+    make_arg_univs(StackFrame ^ sf_list_var_value, 0, ArgUnivs),
+    % XXX We need to know if the procedure is a predicate or function.
+    FuncReturn = no,
+    Term = synthetic_term(ProcName, ArgUnivs, FuncReturn).
+
+:- pred make_arg_univs(list(var_value)::in, int::in, list(univ)::out) is det.
+
+make_arg_univs([], _, []).
+make_arg_univs([Var | Vars], Pos, ArgUnivs) :-
+    (
+        Var = unbound_head_var(_, VarPos),
+        ( VarPos = Pos ->
+            make_arg_univs(Vars, Pos + 1, ArgUnivs0)
+        ;
+            make_arg_univs(Vars, Pos, ArgUnivs0)
+        ),
+        type_to_univ('_' : mdb.browse.unbound, Univ),
+        ArgUnivs = [Univ | ArgUnivs0]
+    ;
+        Var = bound_head_var(_, VarPos, Value),
+        ( VarPos = Pos ->
+            make_arg_univs(Vars, Pos + 1, ArgUnivs0),
+            type_to_univ(Value, Univ)
+        ;
+            make_arg_univs(Vars, Pos, ArgUnivs0),
+            type_to_univ('_' : mdb.browse.unbound, Univ)
+        ),
+        ArgUnivs = [Univ | ArgUnivs0]
+    ;
+        Var = bound_other_var(_, _),
+        make_arg_univs(Vars, Pos, ArgUnivs)
+    ).
+
+:- pred execute_ssdb_browse(list(string)::in, int::in, io::di, io::uo) is det.
+
+execute_ssdb_browse(Args, Depth, !IO) :-
+    stack_index(Depth, StackFrame, !IO),
     (
         Args = [],
-        stack_index(Depth, StackFrame, !IO),
-        ListVarValue = StackFrame ^ sf_list_var_value,
-        print_vars(ListVarValue, !IO)
+        browse_term(goal_to_synthetic_term(StackFrame), !IO)
     ;
-        Args = [Arg],
-        stack_index(Depth, StackFrame, !IO),
-        ListVarValue = StackFrame ^ sf_list_var_value,
-        print_var_with_name(ListVarValue, Arg, !IO)
-    ;
-        Args = [_, _ | _],
-        print_help(!IO)
-    ),
-    read_and_execute_cmd(Event, Depth, WhatNext, !IO).
-
-:- pred execute_ssdb_browse(list(string)::in, ssdb_event_type::in,
-    int::in, what_next::out, io::di, io::uo) is det.
-
-execute_ssdb_browse(Args, Event, Depth, WhatNext, !IO) :-
-    (
         Args = [VarName],
-        stack_index(Depth, StackFrame, !IO),
         ListVarValue = StackFrame ^ sf_list_var_value,
         browse_var(ListVarValue, VarName, !IO)
     ;
-        ( Args = []
-        ; Args = [_, _ | _]
-        ),
+        Args = [_, _ | _],
         % We should provide more detailed help.
         print_help(!IO)
-    ),
-    read_and_execute_cmd(Event, Depth, WhatNext, !IO).
+    ).
 
-:- pred execute_ssdb_vars(list(string)::in, ssdb_event_type::in,
-    int::in, what_next::out, io::di, io::uo) is det.
+:- pred execute_ssdb_vars(list(string)::in, int::in, io::di, io::uo) is det.
 
-execute_ssdb_vars(Args, Event, Depth, WhatNext, !IO) :-
+execute_ssdb_vars(Args, Depth, !IO) :-
     (
         Args = [],
         stack_index(Depth, StackFrame, !IO),
@@ -1649,82 +1832,264 @@ execute_ssdb_vars(Args, Event, Depth, WhatNext, !IO) :-
         Args = [_ | _],
         % We should provide more detailed help.
         print_help(!IO)
-    ),
-    read_and_execute_cmd(Event, Depth, WhatNext, !IO).
+    ).
 
-:- pred execute_ssdb_down(list(string)::in, ssdb_event_type::in,
-    int::in, what_next::out, io::di, io::uo) is det.
+:- pred execute_ssdb_down(list(string)::in, int::in, int::out, io::di, io::uo)
+    is det.
 
-execute_ssdb_down(Args, Event, Depth, WhatNext, !IO) :-
+execute_ssdb_down(Args, Depth, NewDepth, !IO) :-
     (
         Args = [],
         DownDepth = Depth - 1,
         ( DownDepth >= 0 ->
-            stack_index(DownDepth, StackFrame, !IO),
-            stack_depth(StackDepth, !IO),
-            print_frame_info(StackFrame, StackDepth, !IO),
-            read_and_execute_cmd(Event, DownDepth, WhatNext, !IO)
+            NewDepth = DownDepth,
+            print_depth_change(NewDepth, !IO)
         ;
             io.write_string("Already at bottom stack frame.\n", !IO),
-            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+            NewDepth = Depth
         )
     ;
         Args = [_ | _],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+        NewDepth = Depth
     ).
 
-:- pred execute_ssdb_up(list(string)::in, ssdb_event_type::in,
-    int::in, what_next::out, io::di, io::uo) is det.
+:- pred execute_ssdb_up(list(string)::in, int::in, int::out, io::di, io::uo)
+    is det.
 
-execute_ssdb_up(Args, Event, Depth, WhatNext, !IO) :-
+execute_ssdb_up(Args, Depth, NewDepth, !IO) :-
     (
         Args = [],
         stack_depth(StackDepth, !IO),
         UpDepth = Depth + 1,
         ( UpDepth < StackDepth ->
-            stack_index(UpDepth, StackFrame, !IO),
-            print_frame_info(StackFrame, StackDepth, !IO),
-            read_and_execute_cmd(Event, UpDepth, WhatNext, !IO)
+            NewDepth = UpDepth,
+            print_depth_change(NewDepth, !IO)
         ;
             io.write_string("Already at top stack frame.\n", !IO),
-            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+            NewDepth = Depth
         )
     ;
         Args = [_ | _],
         % We should provide more detailed help.
         print_help(!IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+        NewDepth = Depth
     ).
 
-:- pred execute_ssdb_break(list(string)::in, ssdb_event_type::in,
-    int::in, what_next::out, io::di, io::uo) is det.
+:- pred execute_ssdb_level(list(string)::in, int::in, int::out, io::di, io::uo)
+    is det.
 
-execute_ssdb_break(Args, Event, Depth, WhatNext, !IO) :-
+execute_ssdb_level(Args, Depth, NewDepth, !IO) :-
+    (
+        Args = [NStr],
+        string.to_int(NStr, N)
+    ->
+        stack_depth(StackDepth, !IO),
+        (
+            N >= 0,
+            N < StackDepth
+        ->
+            NewDepth = N,
+            print_depth_change(NewDepth, !IO)
+        ;
+            io.write_string("ssdb: invalid level\n", !IO),
+            NewDepth = Depth
+        )
+    ;
+        io.write_string("ssdb: `level' requires integer argument\n", !IO),
+        NewDepth = Depth
+    ).
+
+:- pred execute_ssdb_current(list(string)::in, ssdb_event_type::in,
+    io::di, io::uo) is det.
+
+execute_ssdb_current(Args, Event, !IO) :-
+    (
+        Args = [],
+        get_cur_ssdb_event_number(EventNum, !IO),
+        print_event_info(Event, EventNum, !IO)
+    ;
+        Args = [_ | _],
+        print_help(!IO)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred execute_ssdb_format(list(string)::in, io::di, io::uo) is det.
+
+execute_ssdb_format(!.Args, !IO) :-
+    Config0 = format_config(no, no, no, no, no, no, no),
+    process_options(format_options, !Args, Config0, Res),
+    (
+        Res = ok(format_config(P, B, A, F, Pr, V, NPr)),
+        (
+            !.Args = [Word],
+            is_portray_format(Word, Format)
+        ->
+            get_browser_state(State0, !IO),
+            FromBrowser = no,
+            set_browser_param(FromBrowser, P, B, A, F, Pr, V, NPr,
+                setting_format(Format), State0, State),
+            set_browser_state(State, !IO)
+        ;
+            print_help(!IO)
+        )
+    ;
+        Res = error(Error),
+        io.write_string("ssdb: ", !IO),
+        io.write_string(io.error_message(Error), !IO),
+        io.nl(!IO)
+    ).
+
+:- pred execute_ssdb_format_param(list(string)::in, io::di, io::uo) is det.
+
+execute_ssdb_format_param(!.Args, !IO) :-
+    Config0 = format_config(no, no, no, no, no, no, no),
+    process_options(format_param_options, !Args, Config0, Res),
+    (
+        Res = ok(format_config(P, B, A, F, Pr, V, NPr)),
+        ( format_param_setting(!.Args, Setting) ->
+            get_browser_state(State0, !IO),
+            FromBrowser = no,
+            set_browser_param(FromBrowser, P, B, A, F, Pr, V, NPr, Setting,
+                State0, State),
+            set_browser_state(State, !IO)
+        ;
+            print_help(!IO)
+        )
+    ;
+        Res = error(Error),
+        io.write_string("ssdb: ", !IO),
+        io.write_string(io.error_message(Error), !IO),
+        io.nl(!IO)
+    ).
+
+:- type format_config
+    --->    format_config(
+                print       :: bool,
+                browse      :: bool,
+                print_all   :: bool,
+                f           :: bool,
+                r           :: bool,
+                v           :: bool,
+                p           :: bool
+            ).
+
+:- pred format_options(string::in, format_config::in, format_config::out)
+    is semidet.
+
+format_options(Opt, !Config) :-
+    (
+        ( Opt = "-P"
+        ; Opt = "--print"
+        ),
+        !Config ^ print := yes
+    ;
+        ( Opt = "-B"
+        ; Opt = "--browse"
+        ),
+        !Config ^ browse := yes
+    ;
+        ( Opt = "-A"
+        ; Opt = "--print-all"
+        ),
+        !Config ^ print_all := yes
+    ).
+
+:- pred format_param_options(string::in, format_config::in, format_config::out)
+    is semidet.
+
+format_param_options(Opt, !Config) :-
+    (
+        ( Opt = "-P"
+        ; Opt = "--print"
+        ),
+        !Config ^ print := yes
+    ;
+        ( Opt = "-B"
+        ; Opt = "--browse"
+        ),
+        !Config ^ browse := yes
+    ;
+        ( Opt = "-A"
+        ; Opt = "--print-all"
+        ),
+        !Config ^ print_all := yes
+    ;
+        ( Opt = "-f"
+        ; Opt = "--flat"
+        ),
+        !Config ^ f := yes
+    ;
+        ( Opt = "-r"
+        ; Opt = "--raw"
+        ),
+        !Config ^ r := yes
+    ;
+        ( Opt = "-v"
+        ; Opt = "--verbose"
+        ),
+        !Config ^ v := yes
+    ;
+        ( Opt = "-p"
+        ; Opt = "--pretty"
+        ),
+        !Config ^ p := yes
+    ).
+
+:- pred is_portray_format(string, portray_format).
+:- mode is_portray_format(in, out) is semidet.
+:- mode is_portray_format(out, in) is det.
+
+is_portray_format("flat", flat).
+is_portray_format("raw_pretty", raw_pretty).
+is_portray_format("verbose", verbose).
+is_portray_format("pretty", pretty).
+
+:- pred format_param_setting(list(string)::in, browser_info.setting::out)
+    is semidet.
+
+format_param_setting([Word, ValueStr], Setting) :-
+    string.to_int(ValueStr, Value),
+    (
+        Word = "depth",
+        Setting = setting_depth(Value)
+    ;
+        Word = "size",
+        Setting = setting_size(Value)
+    ;
+        Word = "width",
+        Setting = setting_width(Value)
+    ;
+        Word = "lines",
+        Setting = setting_lines(Value)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred execute_ssdb_break(list(string)::in, io::di, io::uo) is det.
+
+execute_ssdb_break(Args, !IO) :-
     (
         Args = [],
         % We should provide more detailed help.
-        print_help(!IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+        print_help(!IO)
     ;
         Args = [Arg],
         ( Arg = "info" ->
             get_cur_ssdb_breakpoints(BreakPoints, !IO),
-            print_breakpoints(BreakPoints, !IO),
-            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+            print_breakpoints(BreakPoints, !IO)
         ;
             % We should provide more detailed help.
-            print_help(!IO),
-            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+            print_help(!IO)
         )
     ;
         Args = [ModuleName, ProcName],
         get_cur_ssdb_breakpoints(BreakPoints0, !IO),
         Key = pair(ModuleName, ProcName),
         ( map.contains(BreakPoints0, Key) ->
-            io.write_string("The breakpoint already exists.\n", !IO),
-            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+            io.write_string("The breakpoint already exists.\n", !IO)
         ;
             get_cur_ssdb_number_of_breakpoint(Number, !IO),
             NewBreakPoint = breakpoint(Number + 1, ModuleName, ProcName,
@@ -1732,108 +2097,89 @@ execute_ssdb_break(Args, Event, Depth, WhatNext, !IO) :-
             map.det_insert(BreakPoints0, Key, NewBreakPoint, BreakPoints),
             set_cur_ssdb_breakpoints(BreakPoints, !IO),
             set_cur_ssdb_number_of_breakpoint(Number + 1, !IO),
-            print_breakpoint(NewBreakPoint, !IO),
-            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+            print_breakpoint(NewBreakPoint, !IO)
         )
     ;
         Args = [_, _, _ | _],
         % We should provide more detailed help.
-        print_help(!IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+        print_help(!IO)
     ).
 
-:- pred execute_ssdb_enable(list(string)::in, ssdb_event_type::in,
-    int::in, what_next::out, io::di, io::uo) is det.
+:- pred execute_ssdb_enable(list(string)::in, io::di, io::uo) is det.
 
-execute_ssdb_enable(Args, Event, Depth, WhatNext, !IO) :-
+execute_ssdb_enable(Args, !IO) :-
     (
         Args = [],
         % We should provide more detailed help.
-        print_help(!IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+        print_help(!IO)
     ;
         Args = [Arg],
         ( Arg = "*" ->
-            modify_breakpoint_states(bp_state_enabled, !IO),
-            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+            modify_breakpoint_states(bp_state_enabled, !IO)
         ; string.to_int(Arg, Num) ->
-            modify_breakpoint_state(Num, bp_state_enabled, !IO),
-            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+            modify_breakpoint_state(Num, bp_state_enabled, !IO)
         ;
             % We should provide more detailed help.
-            print_help(!IO),
-            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+            print_help(!IO)
         )
     ;
         Args = [_, _ | _],
         % We should provide more detailed help.
-        print_help(!IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+        print_help(!IO)
     ).
 
-:- pred execute_ssdb_disable(list(string)::in, ssdb_event_type::in,
-    int::in, what_next::out, io::di, io::uo) is det.
+:- pred execute_ssdb_disable(list(string)::in, io::di, io::uo) is det.
 
-execute_ssdb_disable(Args, Event, Depth, WhatNext, !IO) :-
+execute_ssdb_disable(Args, !IO) :-
     (
         Args = [],
         % We should provide more detailed help.
-        print_help(!IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+        print_help(!IO)
     ;
         Args = [Arg],
         ( Arg = "*" ->
-            modify_breakpoint_states(bp_state_disabled, !IO),
-            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+            modify_breakpoint_states(bp_state_disabled, !IO)
         ; string.to_int(Arg, Num) ->
-            modify_breakpoint_state(Num, bp_state_disabled, !IO),
-            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+            modify_breakpoint_state(Num, bp_state_disabled, !IO)
         ;
             io.write_string("The number must be an integer\n", !IO),
             % We should provide more detailed help.
-            print_help(!IO),
-            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+            print_help(!IO)
         )
     ;
         Args = [_, _ | _],
         % We should provide more detailed help.
-        print_help(!IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+        print_help(!IO)
     ).
 
-:- pred execute_ssdb_delete(list(string)::in, ssdb_event_type::in,
-    int::in, what_next::out, io::di, io::uo) is det.
+:- pred execute_ssdb_delete(list(string)::in, io::di, io::uo) is det.
 
-execute_ssdb_delete(Args, Event, Depth, WhatNext, !IO) :-
+execute_ssdb_delete(Args, !IO) :-
     (
         Args = [],
         % We should provide more detailed help.
-        print_help(!IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+        print_help(!IO)
     ;
         Args = [Arg],
         ( Arg = "*" ->
             set_cur_ssdb_breakpoints(map.init, !IO),
-            io.write_string("All breakpoints have been deleted.\n", !IO),
-            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+            io.write_string("All breakpoints have been deleted.\n", !IO)
         ; string.to_int(Arg, Num) ->
-            delete_breakpoint(Num, !IO),
-            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+            delete_breakpoint(Num, !IO)
         ;
-            io.write_string("The number must be an integer\n", !IO),
-            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+            io.write_string("The number must be an integer\n", !IO)
         )
     ;
         Args = [_, _ | _],
         % We should provide more detailed help.
-        print_help(!IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+        print_help(!IO)
     ).
 
-:- pred execute_ssdb_quit(list(string)::in, ssdb_event_type::in,
-    int::in, what_next::out, io::di, io::uo) is det.
+%-----------------------------------------------------------------------------%
 
-execute_ssdb_quit(Args, Event, Depth, WhatNext, !IO) :-
+:- pred execute_ssdb_quit(list(string)::in, io::di, io::uo) is det.
+
+execute_ssdb_quit(Args, !IO) :-
     (
         Args = [],
         io.write_string("ssdb: are you sure you want to quit? ", !IO),
@@ -1847,25 +2193,24 @@ execute_ssdb_quit(Args, Event, Depth, WhatNext, !IO) :-
                 ; string.prefix(String, "Y")
                 )
             ->
-                exit_process(!IO),
-                WhatNext = wn_step
+                exit_process(!IO)
             ;
-                read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+                true
             )
         ;
             Result = eof,
-            exit_process(!IO),
-            WhatNext = wn_step
+            exit_process(!IO)
         ;
             Result = error(_Error),
-            exit_process(!IO),
-            WhatNext = wn_step
+            exit_process(!IO)
         )
     ;
         Args = [_ | _],
-        % Should we exit even in this case?
-        print_help(!IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+        ( Args = ["-y"] ->
+            exit_process(!IO)
+        ;
+            print_help(!IO)
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1984,6 +2329,14 @@ print_event_info(Event, EventNum, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred print_depth_change(int::in, io::di, io::uo) is det.
+
+print_depth_change(Depth, !IO) :-
+    io.format("Ancestor level set to %d:\n", [i(Depth)], !IO),
+    stack_index(Depth, StackFrame, !IO),
+    stack_depth(StackDepth, !IO),
+    print_frame_info(StackFrame, StackDepth, !IO).
+
     % print_frame_info(Frame, StackDepth, !IO).
     %
     % Print the information of the frame gave in argument.
@@ -2003,112 +2356,90 @@ print_frame_info(StackFrame, StackDepth, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Print a summary of the commands.
-    %
-:- pred print_help(io::di, io::uo) is det.
+:- pred print_stack_trace(int::in, int::in, int::in, io::di, io::uo) is det.
 
-print_help(!IO) :-
-    io.write_string("<step> or <s> or blank", !IO),
-    io.write_string("\n<next> or <n>", !IO),
-    io.write_string("\n<continue> or <c>", !IO),
-    io.write_string("\n<finish> or <f>", !IO),
-    io.write_string("\n<exception> or <e>", !IO),
-    io.write_string("\n<retry> or <r>", !IO),
-    io.write_string("\n<break X Y> or <b X Y>", !IO),
-    io.write_string("\n<break info> or <b info>", !IO),
-    io.write_string("\n<enable / disable / delete *>", !IO),
-    io.write_string("\n<enable / disable / delete N>", !IO),
-    io.write_string("\n<print> or <p>", !IO),
-    io.write_string("\n<print VAR> or <p VAR>", !IO),
-    io.write_string("\n<print N> or <p N>", !IO),
-    io.write_string("\n<browse VAR>", !IO),
-    io.write_string("\n<browse N>", !IO),
-    io.write_string("\n<vars> or <v>", !IO),
-    io.write_string("\n<stack> or <st>", !IO),
-    io.write_string("\n<up> or <u>", !IO),
-    io.write_string("\n<down> or <d>", !IO),
-    io.write_string("\n<goto N> or <g N>", !IO),
-    io.write_string("\n<help> or <h>", !IO),
-    io.write_string("\n<quit> or <q>", !IO),
-    io.write_string("\n\n", !IO).
-
-%-----------------------------------------------------------------------------%
-
-    % Print the Stack Trace. Predicate call at the 'stack' command.
-    %
-:- pred print_stack_trace(int::in, int::in, io::di, io::uo) is det.
-
-print_stack_trace(Level, Depth, !IO) :-
+print_stack_trace(CurLevel, StarDepth, RemainingLines, !IO) :-
     stack_depth(StackDepth, !IO),
-    ( Level < StackDepth ->
-        stack_index(Level, PopFrame, !IO),
-        ( Depth = 0 ->
-            print_stack_frame(yes, Level, PopFrame, !IO)
+    (
+        RemainingLines = 0,
+        CurLevel < StackDepth - 1
+    ->
+        io.write_string("<more stack frames snipped>\n", !IO)
+    ;
+        CurLevel < StackDepth
+    ->
+        stack_index(CurLevel, CurFrame, !IO),
+        compress_stack_frames(CurFrame, StackDepth, CurLevel, NextLevel, !IO),
+        SkippedFrames = NextLevel - CurLevel,
+        (
+            StarDepth >= CurLevel,
+            StarDepth < NextLevel
+        ->
+            Star = ('*')
         ;
-            print_stack_frame(no, Level, PopFrame, !IO)
+            Star = (' ')
         ),
-        print_stack_trace(Level + 1, Depth - 1, !IO)
+        print_stack_frame(Star, CurLevel, CurFrame, SkippedFrames, !IO),
+        print_stack_trace(CurLevel + SkippedFrames, StarDepth,
+            RemainingLines - 1, !IO)
     ;
         true
     ).
 
-    % print_stack_frame(Starred, Level, Frame, !IO).
-    %
-    % Print the given Frame. The Level is the place of this frame in the
-    % stack.
-    %
-:- pred print_stack_frame(bool::in, int::in, stack_frame::in,
+:- pred compress_stack_frames(stack_frame::in, int::in, int::in, int::out,
     io::di, io::uo) is det.
 
-print_stack_frame(Starred, Level, Frame, !IO) :-
+compress_stack_frames(RefFrame, StackDepth, Level, NextLevel, !IO) :-
+    ( Level < StackDepth ->
+        stack_index(Level, Frame, !IO),
+        ( RefFrame ^ sf_proc_id = Frame ^ sf_proc_id ->
+            compress_stack_frames(RefFrame, StackDepth, Level + 1, NextLevel,
+                !IO)
+        ;
+            NextLevel = Level
+        )
+    ;
+        NextLevel = Level
+    ).
+
+:- pred print_stack_frame(char::in, int::in, stack_frame::in, int::in,
+    io::di, io::uo) is det.
+
+print_stack_frame(Star, Level, Frame, SkippedFrames, !IO) :-
     Module = Frame ^ sf_proc_id ^ module_name,
     Procedure = Frame ^ sf_proc_id ^ proc_name,
     SiteFile = Frame ^ sf_call_site_file,
     SiteLine = Frame ^ sf_call_site_line,
-    (
-        Starred = yes,
-        io.write_char('*', !IO)
+    io.format("%c%4d", [c(Star), i(Level)], !IO),
+    ( SkippedFrames > 1 ->
+        io.format("%5d*", [i(SkippedFrames)], !IO),
+        Etc = " and others"
     ;
-        Starred = no,
-        io.write_char(' ', !IO)
+        io.write_string("      ", !IO),
+        Etc = ""
     ),
-    io.format("%5d\t%s.%s (%s:%d)\n",
-        [i(Level), s(Module), s(Procedure), s(SiteFile), i(SiteLine)], !IO).
+    io.format(" %s.%s (%s:%d%s)\n",
+        [s(Module), s(Procedure), s(SiteFile), i(SiteLine), s(Etc)], !IO).
 
 %-----------------------------------------------------------------------------%
 
     % Print the given list of variables and their values, if bound.
-    % XXX The pprint.write predicate is used for the moment instead of
-    % pretty_printer because this last one had a strange behavior
-    % The terms would always appear after io.write_string output in the ssdb
-    % 'p' command. Somehting like:
     %
-    % Var1 =
-    % Var2 =
-    % Var3 =
-    % <term of Var1>
-    % <term of Var2>
-    % <term of Var3>
-    %
-    % whereas it should be:
-    %
-    % Var1 = <term of Var1>
-    % etc.
-    %
-:- pred print_vars(list(var_value)::in, io::di, io::uo) is det.
+:- pred print_vars(maybe(portray_format)::in, browse_caller_type::in,
+    list(var_value)::in, io::di, io::uo) is det.
 
-print_vars(Vars, !IO) :-
-    list.foldl(print_var, Vars, !IO).
+print_vars(MaybeFormat, CallerType, Vars, !IO) :-
+    list.foldl(print_var(MaybeFormat, CallerType), Vars, !IO).
 
-:- pred print_var_with_name(list(var_value)::in, string::in,
-    io::di, io::uo) is det.
+:- pred print_var_with_name(maybe(portray_format)::in, list(var_value)::in,
+    string::in, io::di, io::uo) is det.
 
-print_var_with_name(VarDescs, VarName, !IO) :-
+print_var_with_name(MaybeFormat, VarDescs, VarName, !IO) :-
     (
         string.to_int(VarName, VarNum),
         VarNum > 0
     ->
-        print_var_with_number(VarDescs, VarNum, !IO)
+        print_var_with_number(MaybeFormat, VarDescs, VarNum, !IO)
     ;
         % Since we don't have tab completion, make it easier for the user by
         % matching prefixes instead of the entire name.
@@ -2121,35 +2452,42 @@ print_var_with_name(VarDescs, VarName, !IO) :-
             io.write_string("ssdb: there is no such variable.\n", !IO)
         ;
             MatchVars = [_ | _],
-            print_vars(MatchVars, !IO)
+            print_vars(MaybeFormat, print, MatchVars, !IO)
         )
     ).
 
-:- pred print_var_with_number(list(var_value)::in, int::in, io::di, io::uo)
-    is det.
+:- pred print_var_with_number(maybe(portray_format)::in, list(var_value)::in,
+    int::in, io::di, io::uo) is det.
 
-print_var_with_number(VarDescs, VarNum, !IO) :-
+print_var_with_number(MaybeFormat, VarDescs, VarNum, !IO) :-
     ( list.index1(VarDescs, VarNum, VarDesc) ->
-        print_var(VarDesc, !IO)
+        print_var(MaybeFormat, print, VarDesc, !IO)
     ;
         io.write_string("ssdb: there aren't that many variables.\n", !IO)
     ).
 
-:- pred print_var(var_value::in, io::di, io::uo) is det.
+:- pred print_var(maybe(portray_format)::in, browse_caller_type::in,
+    var_value::in, io::di, io::uo) is det.
 
-print_var(unbound_head_var(Name, Pos), !IO) :-
-    print_var_prelude(Name, Pos, !IO),
-    io.write_string("_\n", !IO).
-
-print_var(bound_head_var(Name, Pos, T), !IO) :-
-    print_var_prelude(Name, Pos, !IO),
-    safe_write(T, !IO),
-    io.nl(!IO).
-
-print_var(bound_other_var(Name, T), !IO) :-
-    print_var_prelude(Name, -1, !IO),
-    safe_write(T, !IO),
-    io.nl(!IO).
+print_var(MaybeFormat, CallerType, VarValue, !IO) :-
+    (
+        VarValue = unbound_head_var(Name, Pos),
+        print_var_prelude(Name, Pos, !IO),
+        io.write_string("_\n", !IO)
+    ;
+        VarValue = bound_head_var(Name, Pos, T),
+        % print_var_prelude(Name, Pos, !IO),
+        ( Pos >= 0 ->
+            Prefix = string.format("\t%s (arg %d)\t", [s(Name), i(Pos + 1)])
+        ;
+            Prefix = string.format("\t%s\t", [s(Name)])
+        ),
+        safe_write(MaybeFormat, CallerType, Prefix, T, !IO)
+    ;
+        VarValue = bound_other_var(Name, T),
+        Prefix = string.format("\t%s\t", [s(Name)]),
+        safe_write(MaybeFormat, CallerType, Prefix, T, !IO)
+    ).
 
 :- pred print_var_prelude(var_name::in, int::in, io::di, io::uo) is det.
 
@@ -2164,12 +2502,16 @@ print_var_prelude(Name, Pos, !IO) :-
         io.write_string("\t", !IO)
     ).
 
-:- pred safe_write(T::in, io::di, io::uo) is det.
+:- pred safe_write(maybe(portray_format)::in, browse_caller_type::in,
+    string::in, T::in, io::di, io::uo) is det.
 
-safe_write(T, !IO) :-
+safe_write(MaybeFormat, CallerType, Prefix, T, !IO) :-
     ( safe_to_write(T) ->
-        pprint.write(80, to_doc(T), !IO)
+        io.write_string(Prefix, !IO),
+        type_to_univ(T, Univ),
+        print_browser_term(MaybeFormat, CallerType, plain_term(Univ), !IO)
     ;
+        io.write_string(Prefix, !IO),
         io.write_string("<>", !IO)
     ).
 
@@ -2192,6 +2534,23 @@ safe_to_write(_) :-
     SUCCESS_INDICATOR = (T != null);
 ").
 
+:- pred print_browser_term(maybe(portray_format)::in, browse_caller_type::in,
+    browser_term::in, io::di, io::uo) is det.
+
+print_browser_term(MaybeFormat, CallerType, Term, !IO) :-
+    io.stdout_stream(StdOut, !IO),
+    get_browser_state(State, !IO),
+    promise_equivalent_solutions [!:IO] (
+        (
+            MaybeFormat = yes(Format),
+            print_browser_term_format(Term, StdOut, CallerType, Format, State,
+                !IO)
+        ;
+            MaybeFormat = no,
+            print_browser_term(Term, StdOut, CallerType, State, !IO)
+        )
+    ).
+
 :- func get_var_name(var_value) = string.
 
 get_var_name(unbound_head_var(Name, _)) = Name.
@@ -2211,11 +2570,11 @@ browse_var(ListVarValue, VarName, !IO) :-
             (
                 VarValue = bound_head_var(_, _, Value),
                 type_to_univ(Value, Univ),
-                browse_univ(Univ, !IO)
+                browse_term(plain_term(Univ), !IO)
             ;
                 VarValue = bound_other_var(_, Value),
                 type_to_univ(Value, Univ),
-                browse_univ(Univ, !IO)
+                browse_term(plain_term(Univ), !IO)
             ;
                 VarValue = unbound_head_var(_, _),
                 io.write_string("ssdb: the variable is unbound.\n", !IO)
@@ -2227,22 +2586,24 @@ browse_var(ListVarValue, VarName, !IO) :-
         list_var_value_to_assoc_list(ListVarValue, VarDescs),
         assoc_list.search(VarDescs, VarName, Univ)
     ->
-        browse_univ(Univ, !IO)
+        browse_term(plain_term(Univ), !IO)
     ;
         io.write_string("ssdb: there is no such variable.\n", !IO)
     ).
 
-:- pred browse_univ(univ::in, io::di, io::uo) is det.
+:- pred browse_term(browser_term::in, io::di, io::uo) is det.
 
-browse_univ(Univ, !IO) :-
+browse_term(Term, !IO) :-
     io.stdin_stream(StdIn, !IO),
     io.stdout_stream(StdOut, !IO),
-    browser_info.init_persistent_state(State0),
-    BT = browser_term.univ_to_browser_term(Univ),
-    promise_equivalent_solutions [!:IO] (
-        browse.browse_browser_term_no_modes(BT, StdIn, StdOut, _,
-        State0, _State1, !IO)
-    ).
+    get_browser_state(State0, !IO),
+    promise_equivalent_solutions [State, !:IO] (
+        browse.browse_browser_term_no_modes(Term, StdIn, StdOut, _,
+            State0, State, !IO)
+    ),
+    set_browser_state(State, !IO).
+
+%-----------------------------------------------------------------------------%
 
     % Transform the list(var_value) into a assoc_list. As it is for the browser
     % use, only the bound variable are put into the assoc_list structure.
@@ -2316,6 +2677,102 @@ print_breakpoint(BreakPoint, !IO) :-
     PredName = BreakPoint ^ bp_pred_name,
     io.format("%2d: %s %s.%s\n",
         [i(BreakPointNum), s(Enabled), s(ModuleName), s(PredName)], !IO).
+
+%-----------------------------------------------------------------------------%
+
+    % Print a summary of the commands.
+    %
+:- pred print_help(io::di, io::uo) is det.
+
+print_help(!IO) :-
+    Lines = [
+        "step [NUM] (s, default)",
+        "next (n)",
+        "goto NUM (g)",
+        "continue (c)",
+        "exception (e)",
+        "retry [NUM] (r)",
+        "print [-fprv] (p)",
+        "print [-fprv] VAR|NUM",
+        "print [-fprv] * (P)",
+        "browse VAR|NUM",
+        "vars (v)",
+        "stack [NUM] (st)",
+        "up (u)",
+        "down (d)",
+        "level NUM (lv)",
+        "current (cur)",
+        "format [-APB] flat|raw_pretty|pretty|verbose",
+        "format_param [-APBfpv] depth|size|width|lines NUM",
+        "break MODULE PRED (b)",
+        "break info",
+        "enable NUM|*",
+        "disable NUM|*",
+        "delete NUM|*",
+        "help (h)",
+        "quit [-y] (q)"
+    ],
+    io.write_list(Lines, "\n", io.write_string, !IO),
+    io.write_string("\n\n", !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- pred process_options(pred(string, T, T)::in(pred(in, in, out) is semidet),
+    list(string)::in, list(string)::out, T::in, io.res(T)::out) is det.
+
+process_options(Handler, Args0, Args, Data0, Res) :-
+    (
+        Args0 = [],
+        Args = [],
+        Res = ok(Data0)
+    ;
+        Args0 = [First | Rest],
+        ( string.prefix(First, "--") ->
+            ( Handler(First, Data0, Data1) ->
+                process_options(Handler, Rest, Args, Data1, Res)
+            ;
+                Message = "unrecognised option `" ++ First ++ "'",
+                Res = error(io.make_io_error(Message)),
+                Args = Args0
+            )
+        ;
+            string.prefix(First, "-"),
+            string.to_char_list(First, [_ | FirstChars]),
+            FirstChars = [_ | _]
+        ->
+            process_short_options(Handler, FirstChars, Data0, Res1),
+            (
+                Res1 = ok(Data1),
+                process_options(Handler, Rest, Args, Data1, Res)
+            ;
+                Res1 = error(_),
+                Res = Res1,
+                Args = Args0
+            )
+        ;
+            process_options(Handler, Rest, Rest1, Data0, Res),
+            Args = [First | Rest1]
+        )
+    ).
+
+:- pred process_short_options(
+    pred(string, T, T)::in(pred(in, in, out) is semidet), list(char)::in,
+    T::in, io.res(T)::out) is det.
+
+process_short_options(Handler, Chars, Data0, Res) :-
+    (
+        Chars = [],
+        Res = ok(Data0)
+    ;
+        Chars = [C | Cs],
+        Option = string.from_char_list(['-', C]),
+        ( Handler(Option, Data0, Data1) ->
+            process_short_options(Handler, Cs, Data1, Res)
+        ;
+            Message = "unrecognised option `" ++ Option ++ "'",
+            Res = error(io.make_io_error(Message))
+        )
+    ).
 
 %----------------------------------------------------------------------------%
 

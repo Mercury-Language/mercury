@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1999-2009 The University of Melbourne.
+** Copyright (C) 1999-2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1103,7 +1103,7 @@ MR_trace_headvar_num(int var_number, int *arg_pos)
 ** current typeinfo optimization scheme.
 */
 
-#define unbound_ctor_name MR_NONSTD_TYPE_CTOR_INFO_NAME(mdb__util, unbound, 0)
+#define unbound_ctor_name MR_NONSTD_TYPE_CTOR_INFO_NAME(mdb__browse, unbound, 0)
 
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(unbound_ctor_name);
 
