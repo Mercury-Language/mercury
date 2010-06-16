@@ -124,6 +124,7 @@
 :- import_module mdb.browse.
 :- import_module mdb.browser_info.
 :- import_module mdb.browser_term.
+:- import_module mdb.listing.
 
 :- pragma foreign_decl("C",
 "
@@ -165,6 +166,12 @@
 
                 % The list of the procedure's arguments.
                 sf_list_var_value   :: list(var_value)
+            ).
+
+:- type list_params
+    --->    list_params(
+                list_path           :: listing.search_path,
+                list_context_lines  :: int
             ).
 
 %----------------------------------------------------------------------------%
@@ -278,6 +285,13 @@
 
 init_browser_persistent_state = State :-
     browser_info.init_persistent_state(State).
+
+:- mutable(list_params, list_params, init_list_params, ground,
+    [untrailed, attach_to_io_state]).
+
+:- func init_list_params = list_params.
+
+init_list_params = list_params(new_list_path, 2).
 
 %-----------------------------------------------------------------------------%
 
@@ -1172,9 +1186,7 @@ pred_catches_exceptions(ProcId) :-
 %----------------------------------------------------------------------------%
 
 :- type ssdb_cmd
-    --->    ssdb_help
-
-    ;       ssdb_step
+    --->    ssdb_step
     ;       ssdb_next
     ;       ssdb_goto
     ;       ssdb_continue
@@ -1196,20 +1208,23 @@ pred_catches_exceptions(ProcId) :-
     ;       ssdb_format
     ;       ssdb_format_param
 
+    ;       ssdb_list
+    ;       ssdb_list_path
+    ;       ssdb_push_list_dir
+    ;       ssdb_pop_list_dir
+    ;       ssdb_list_context_lines
+
     ;       ssdb_break
     ;       ssdb_enable
     ;       ssdb_disable
     ;       ssdb_delete
 
+    ;       ssdb_help
     ;       ssdb_quit.
 
 :- pred ssdb_cmd_name(string, ssdb_cmd).
 :- mode ssdb_cmd_name(in, out) is semidet.
 :- mode ssdb_cmd_name(out, in) is multi.
-
-ssdb_cmd_name("h",          ssdb_help).
-ssdb_cmd_name("help",       ssdb_help).
-ssdb_cmd_name("?",          ssdb_help).
 
 ssdb_cmd_name("s",          ssdb_step).
 ssdb_cmd_name("step",       ssdb_step).
@@ -1248,12 +1263,23 @@ ssdb_cmd_name("cur",        ssdb_current).
 ssdb_cmd_name("format",     ssdb_format).
 ssdb_cmd_name("format_param", ssdb_format_param).
 
+ssdb_cmd_name("list",               ssdb_list).
+ssdb_cmd_name("l",                  ssdb_list).
+ssdb_cmd_name("list_path",          ssdb_list_path).
+ssdb_cmd_name("push_list_dir",      ssdb_push_list_dir).
+ssdb_cmd_name("pld",                ssdb_push_list_dir).
+ssdb_cmd_name("pop_list_dir",       ssdb_pop_list_dir).
+ssdb_cmd_name("list_context_lines", ssdb_list_context_lines).
+
 ssdb_cmd_name("b",          ssdb_break).
 ssdb_cmd_name("break",      ssdb_break).
 ssdb_cmd_name("enable",     ssdb_enable).
 ssdb_cmd_name("disable",    ssdb_disable).
 ssdb_cmd_name("delete",     ssdb_delete).
 
+ssdb_cmd_name("h",          ssdb_help).
+ssdb_cmd_name("help",       ssdb_help).
+ssdb_cmd_name("?",          ssdb_help).
 ssdb_cmd_name("q",          ssdb_quit).
 ssdb_cmd_name("quit",       ssdb_quit).
 
@@ -1261,6 +1287,10 @@ ssdb_cmd_name("quit",       ssdb_quit).
     is semidet.
 
 ssdb_cmd_name("P", ssdb_print, ["*"]).
+ssdb_cmd_name("depth", ssdb_format_param, ["depth"]).
+ssdb_cmd_name("lines", ssdb_format_param, ["lines"]).
+ssdb_cmd_name("size", ssdb_format_param, ["size"]).
+ssdb_cmd_name("width", ssdb_format_param, ["width"]).
 
 %---------------------------------------------------------------------------%
 
@@ -1320,10 +1350,6 @@ read_and_execute_cmd(Event, Depth, WhatNext, !IO) :-
 
 execute_cmd(Cmd, Args, Event, Depth, WhatNext, !IO) :-
     (
-        Cmd = ssdb_help,
-        execute_ssdb_help(Args, !IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
-    ;
         Cmd = ssdb_step,
         execute_ssdb_step(Args, Event, Depth, WhatNext, !IO)
     ;
@@ -1348,64 +1374,73 @@ execute_cmd(Cmd, Args, Event, Depth, WhatNext, !IO) :-
         Cmd = ssdb_retry,
         execute_ssdb_retry(Args, Event, Depth, WhatNext, !IO)
     ;
-        Cmd = ssdb_stack,
-        execute_ssdb_stack(Args, Depth, !IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
-    ;
-        Cmd = ssdb_print,
-        execute_ssdb_print(Args, Depth, !IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
-    ;
-        Cmd = ssdb_browse,
-        execute_ssdb_browse(Args, Depth, !IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
-    ;
-        Cmd = ssdb_vars,
-        execute_ssdb_vars(Args, Depth, !IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
-    ;
-        Cmd = ssdb_down,
-        execute_ssdb_down(Args, Depth, NewDepth, !IO),
+        (
+            Cmd = ssdb_down,
+            execute_ssdb_down(Args, Depth, NewDepth, !IO)
+        ;
+            Cmd = ssdb_up,
+            execute_ssdb_up(Args, Depth, NewDepth, !IO)
+        ;
+            Cmd = ssdb_level,
+            execute_ssdb_level(Args, Depth, NewDepth, !IO)
+        ),
         read_and_execute_cmd(Event, NewDepth, WhatNext, !IO)
     ;
-        Cmd = ssdb_up,
-        execute_ssdb_up(Args, Depth, NewDepth, !IO),
-        read_and_execute_cmd(Event, NewDepth, WhatNext, !IO)
-    ;
-        Cmd = ssdb_level,
-        execute_ssdb_level(Args, Depth, NewDepth, !IO),
-        read_and_execute_cmd(Event, NewDepth, WhatNext, !IO)
-    ;
-        Cmd = ssdb_current,
-        execute_ssdb_current(Args, Event, !IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
-    ;
-        Cmd = ssdb_format,
-        execute_ssdb_format(Args, !IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
-    ;
-        Cmd = ssdb_format_param,
-        execute_ssdb_format_param(Args, !IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
-    ;
-        Cmd = ssdb_break,
-        execute_ssdb_break(Args, !IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
-    ;
-        Cmd = ssdb_enable,
-        execute_ssdb_enable(Args, !IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
-    ;
-        Cmd = ssdb_disable,
-        execute_ssdb_disable(Args, !IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
-    ;
-        Cmd = ssdb_delete,
-        execute_ssdb_delete(Args, !IO),
-        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
-    ;
-        Cmd = ssdb_quit,
-        execute_ssdb_quit(Args, !IO),
+        (
+            Cmd = ssdb_stack,
+            execute_ssdb_stack(Args, Depth, !IO)
+        ;
+            Cmd = ssdb_print,
+            execute_ssdb_print(Args, Depth, !IO)
+        ;
+            Cmd = ssdb_browse,
+            execute_ssdb_browse(Args, Depth, !IO)
+        ;
+            Cmd = ssdb_vars,
+            execute_ssdb_vars(Args, Depth, !IO)
+        ;
+            Cmd = ssdb_current,
+            execute_ssdb_current(Args, Event, !IO)
+        ;
+            Cmd = ssdb_format,
+            execute_ssdb_format(Args, !IO)
+        ;
+            Cmd = ssdb_format_param,
+            execute_ssdb_format_param(Args, !IO)
+        ;
+            Cmd = ssdb_list,
+            execute_ssdb_list(Args, Depth, !IO)
+        ;
+            Cmd = ssdb_list_path,
+            execute_ssdb_list_path(Args, !IO)
+        ;
+            Cmd = ssdb_push_list_dir,
+            execute_ssdb_push_list_dir(Args, !IO)
+        ;
+            Cmd = ssdb_pop_list_dir,
+            execute_ssdb_pop_list_dir(Args, !IO)
+        ;
+            Cmd = ssdb_list_context_lines,
+            execute_ssdb_list_context_lines(Args, !IO)
+        ;
+            Cmd = ssdb_break,
+            execute_ssdb_break(Args, !IO)
+        ;
+            Cmd = ssdb_enable,
+            execute_ssdb_enable(Args, !IO)
+        ;
+            Cmd = ssdb_disable,
+            execute_ssdb_disable(Args, !IO)
+        ;
+            Cmd = ssdb_delete,
+            execute_ssdb_delete(Args, !IO)
+        ;
+            Cmd = ssdb_help,
+            execute_ssdb_help(Args, !IO)
+        ;
+            Cmd = ssdb_quit,
+            execute_ssdb_quit(Args, !IO)
+        ),
         read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
@@ -2068,6 +2103,132 @@ format_param_setting([Word, ValueStr], Setting) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred execute_ssdb_list(list(string)::in, int::in, io::di, io::uo) is det.
+
+execute_ssdb_list(Args, Depth, !IO) :-
+    (
+        Args = [],
+        get_list_params(Params, !IO),
+        ContextLines = Params ^ list_context_lines,
+        execute_ssdb_list_2(ContextLines, Depth, !IO)
+    ;
+        Args = [Arg],
+        (
+            string.to_int(Arg, ContextLines),
+            ContextLines >= 0
+        ->
+            execute_ssdb_list_2(ContextLines, Depth, !IO)
+        ;
+            io.write_string("ssdb: invalid argument.\n", !IO)
+        )
+    ;
+        Args = [_, _ | _],
+        io.write_string("ssdb: too many arguments.\n", !IO)
+    ).
+
+:- pred execute_ssdb_list_2(int::in, int::in, io::di, io::uo) is det.
+
+execute_ssdb_list_2(ContextLines, Depth, !IO) :-
+    stack_index(Depth, StackFrame, !IO),
+    FileName = StackFrame ^ sf_call_site_file,
+    MarkLine = StackFrame ^ sf_call_site_line,
+    ( FileName = "" ->
+        io.write_string("ssdb: sorry, call site is unknown.\n", !IO)
+    ;
+        FirstLine = int.max(0, MarkLine - ContextLines),
+        LastLine = MarkLine + ContextLines,
+        io.stdout_stream(StdOut, !IO),
+        io.stderr_stream(StdErr, !IO),
+        get_list_params(Params, !IO),
+        ListPath = Params ^ list_path,
+        list_file_portable(StdOut, StdErr, FileName, FirstLine, LastLine,
+            MarkLine, ListPath, !IO)
+    ).
+
+:- pred execute_ssdb_list_path(list(string)::in, io::di, io::uo) is det.
+
+execute_ssdb_list_path(Args, !IO) :-
+    (
+        Args = [],
+        get_list_params(Params, !IO),
+        Dirs = get_list_path(Params ^ list_path),
+        (
+            Dirs = [],
+            io.write_string("Context search path is empty\n", !IO)
+        ;
+            Dirs = [_ | _],
+            io.write_string("Context search path: ", !IO),
+            io.write_list(Dirs, " ", io.write_string, !IO),
+            io.nl(!IO)
+        )
+    ;
+        Args = [_ | _],
+        get_list_params(Params0, !IO),
+        ListPath0 = Params0 ^ list_path,
+        set_list_path(Args, ListPath0, ListPath),
+        Params = Params0 ^ list_path := ListPath,
+        set_list_params(Params, !IO)
+    ).
+
+:- pred execute_ssdb_push_list_dir(list(string)::in, io::di, io::uo) is det.
+
+execute_ssdb_push_list_dir(Args, !IO) :-
+    (
+        Args = [],
+        io.write_string("ssdb: command expects arguments.\n", !IO)
+    ;
+        Args = [_ | _],
+        get_list_params(Params0, !IO),
+        ListPath0 = Params0 ^ list_path,
+        list.foldr(push_list_path, Args, ListPath0, ListPath),
+        Params = Params0 ^ list_path := ListPath,
+        set_list_params(Params, !IO)
+    ).
+
+:- pred execute_ssdb_pop_list_dir(list(string)::in, io::di, io::uo) is det.
+
+execute_ssdb_pop_list_dir(Args, !IO) :-
+    (
+        Args = [],
+        get_list_params(Params0, !IO),
+        ListPath0 = Params0 ^ list_path,
+        pop_list_path(ListPath0, ListPath),
+        Params = Params0 ^ list_path := ListPath,
+        set_list_params(Params, !IO)
+    ;
+        Args = [_ | _],
+        io.write_string("ssdb: unexpected argument.\n", !IO)
+    ).
+
+:- pred execute_ssdb_list_context_lines(list(string)::in, io::di, io::uo)
+    is det.
+
+execute_ssdb_list_context_lines(Args, !IO) :-
+    (
+        Args = [],
+        get_list_params(Params, !IO),
+        Lines = Params ^ list_context_lines,
+        io.format("Printing %d lines around each context listing.\n",
+            [i(Lines)], !IO)
+    ;
+        Args = [Arg],
+        (
+            string.to_int(Arg, N),
+            N >= 0
+        ->
+            get_list_params(Params0, !IO),
+            Params = Params0 ^ list_context_lines := N,
+            set_list_params(Params, !IO)
+        ;
+            io.write_string("ssdb: invalid argument.\n", !IO)
+        )
+    ;
+        Args = [_, _ | _],
+        io.write_string("ssdb: too many arguments.\n", !IO)
+    ).
+
+%-----------------------------------------------------------------------------%
+
 :- pred execute_ssdb_break(list(string)::in, io::di, io::uo) is det.
 
 execute_ssdb_break(Args, !IO) :-
@@ -2704,6 +2865,10 @@ print_help(!IO) :-
         "current (cur)",
         "format [-APB] flat|raw_pretty|pretty|verbose",
         "format_param [-APBfpv] depth|size|width|lines NUM",
+        "list [NUM] (l)",
+        "list_path [DIR ...]",
+        "push_list_dir DIR ... (pld)",
+        "pop_list_dir",
         "break MODULE PRED (b)",
         "break info",
         "enable NUM|*",

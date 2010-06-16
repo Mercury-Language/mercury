@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -80,12 +80,21 @@
 :- pred list_file(c_file_ptr::in, c_file_ptr::in, file_name::in, line_no::in,
     line_no::in, line_no::in, search_path::in, io::di, io::uo) is det.
 
+    % As above, but implemented without foreign code.  This is used by the
+    % source-to-source debugger which does not enable debugging in standard
+    % library so does not suffer the problem of excessive stack usage.
+    %
+:- pred list_file_portable(io.output_stream::in, io.output_stream::in,
+    file_name::in, line_no::in, line_no::in, line_no::in, search_path::in,
+    io::di, io::uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module dir.
+:- import_module int.
 :- import_module maybe.
 :- import_module type_desc.
 
@@ -150,8 +159,9 @@ list_file(OutStrm, ErrStrm, FileName, FirstLine, LastLine, MarkLine, Path,
         (
             Result0 = ok(InStream),
             InStrm = mercury_stream_to_c_FILE_star(InStream),
-            print_lines_in_range(InStrm, OutStrm, 1, FirstLine, LastLine,
-                MarkLine, !IO)
+            print_lines_in_range_c(InStrm, OutStrm, 1, FirstLine, LastLine,
+                MarkLine, !IO),
+            io.close_input(InStream, !IO)
         ;
             Result0 = error(Error),
             ErrorMsg = io.error_message(Error),
@@ -164,9 +174,11 @@ list_file(OutStrm, ErrStrm, FileName, FirstLine, LastLine, MarkLine, Path,
     ;
         find_and_open_file([dir.this_directory | Path], FileName, Result, !IO),
         (
-            Result = yes(InStrm),
-            print_lines_in_range(InStrm, OutStrm, 1, FirstLine, LastLine,
-                MarkLine, !IO)
+            Result = yes(InStream),
+            InStrm = mercury_stream_to_c_FILE_star(InStream),
+            print_lines_in_range_c(InStrm, OutStrm, 1, FirstLine, LastLine,
+                MarkLine, !IO),
+            io.close_input(InStream, !IO)
         ;
             Result = no,
             write_to_c_file(ErrStrm, "mdb: cannot find file ", !IO),
@@ -187,20 +199,54 @@ list_file(OutStrm, ErrStrm, FileName, FirstLine, LastLine, MarkLine, Path,
 
 %-----------------------------------------------------------------------------%
 
+list_file_portable(OutStrm, ErrStrm, FileName, FirstLine, LastLine, MarkLine, Path,
+        !IO) :-
+    ( dir.path_name_is_absolute(FileName) ->
+        io.open_input(FileName, Result0, !IO),
+        (
+            Result0 = ok(InStrm),
+            print_lines_in_range_m(InStrm, OutStrm, 1, FirstLine, LastLine,
+                MarkLine, !IO),
+            io.close_input(InStrm, !IO)
+        ;
+            Result0 = error(Error),
+            ErrorMsg = io.error_message(Error),
+            io.write_string(ErrStrm, "mdb: cannot open file ", !IO),
+            io.write_string(ErrStrm, FileName, !IO),
+            io.write_string(ErrStrm, ": ", !IO),
+            io.write_string(ErrStrm, ErrorMsg, !IO),
+            io.write_string(ErrStrm, "\n", !IO)
+        )
+    ;
+        find_and_open_file([dir.this_directory | Path], FileName, Result, !IO),
+        (
+            Result = yes(InStrm),
+            print_lines_in_range_m(InStrm, OutStrm, 1, FirstLine, LastLine,
+                MarkLine, !IO),
+            io.close_input(InStrm, !IO)
+        ;
+            Result = no,
+            io.write_string(ErrStrm, "mdb: cannot find file ", !IO),
+            io.write_string(ErrStrm, FileName, !IO),
+            io.write_string(ErrStrm, "\n", !IO)
+        )
+    ).
+
+%-----------------------------------------------------------------------------%
+
     % Search for the first file with the given name on the search path
     % that we can open for reading and return the complete file name
     % (including the path component) and input stream handle.
     %
 :- pred find_and_open_file(search_path::in, file_name::in,
-    maybe(c_file_ptr)::out, io::di, io::uo) is det.
+    maybe(io.input_stream)::out, io::di, io::uo) is det.
 
 find_and_open_file([], _, no, !IO).
 find_and_open_file([Dir | Path], FileName, Result, !IO) :-
     io.open_input(Dir / FileName, Result0, !IO),
     (
         Result0 = ok(InStream),
-        InStrm = mercury_stream_to_c_FILE_star(InStream),
-        Result  = yes(InStrm)
+        Result  = yes(InStream)
     ;
         Result0 = error(_),
         find_and_open_file(Path, FileName, Result, !IO)
@@ -226,11 +272,11 @@ find_and_open_file([Dir | Path], FileName, Result, !IO) :-
     % numbered MarkLine, if it occurs in the range FirstLine .. LastLine,
     % which is indented with "> ".
     %
-:- pred print_lines_in_range(c_file_ptr::in, c_file_ptr::in,
+:- pred print_lines_in_range_c(c_file_ptr::in, c_file_ptr::in,
     line_no::in, line_no::in, line_no::in, line_no::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    print_lines_in_range(InStrm::in, OutStrm::in, ThisLine::in, FirstLine::in,
+    print_lines_in_range_c(InStrm::in, OutStrm::in, ThisLine::in, FirstLine::in,
         LastLine::in, MarkLine::in, IO0::di, IO::uo),
     [promise_pure, thread_safe, will_not_call_mercury],
 "
@@ -257,6 +303,37 @@ find_and_open_file([Dir | Path], FileName, Result, !IO) :-
     }
     IO = IO0;
 ").
+
+%-----------------------------------------------------------------------------%
+
+:- pred print_lines_in_range_m(io.input_stream::in, io.output_stream::in,
+    line_no::in, line_no::in, line_no::in, line_no::in, io::di, io::uo) is det.
+
+print_lines_in_range_m(InStrm, OutStrm, ThisLine, FirstLine, LastLine,
+        MarkLine, !IO) :-
+    io.read_line_as_string(InStrm, Res, !IO),
+    (
+        Res = ok(Line),
+        ( FirstLine =< ThisLine, ThisLine =< LastLine ->
+            ( ThisLine = MarkLine ->
+                io.write_string(OutStrm, "> ", !IO)
+            ;
+                io.write_string(OutStrm, "  ", !IO)
+            ),
+            io.write_string(OutStrm, Line, !IO)
+        ;
+            true
+        ),
+        print_lines_in_range_m(InStrm, OutStrm, ThisLine + 1, FirstLine,
+            LastLine, MarkLine, !IO)
+    ;
+        Res = eof
+    ;
+        Res = error(Error),
+        io.write_string(OutStrm, "Error: ", !IO),
+        io.write_string(OutStrm, io.error_message(Error), !IO),
+        io.write_string(OutStrm, "\n", !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
