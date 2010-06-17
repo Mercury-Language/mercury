@@ -525,8 +525,8 @@ process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
         proc_info_get_varset(!.ProcInfo, !:VarSet),
         proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
-        proc_info_get_headvars(!.ProcInfo, HeadVars),
-        proc_info_get_argmodes(!.ProcInfo, ArgModes),
+        get_stripped_headvars(!.PredInfo, !.ProcInfo, FullHeadVars, HeadVars,
+            ArgModes),
 
         % Make the ssdb_proc_id.
         make_proc_id_construction(!.ModuleInfo, !.PredInfo, ProcIdGoals,
@@ -580,7 +580,7 @@ process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
 
         % Generate the recursive call in the case of a retry.
         make_recursive_call(!.PredInfo, !.ModuleInfo, PredId, ProcId,
-            HeadVars, RecursiveGoal),
+            FullHeadVars, RecursiveGoal),
 
         % Create the switch on Retry at exit port.
         make_switch_goal(RetryVar, RecursiveGoal, AssignOutputsGoal,
@@ -611,8 +611,8 @@ process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
         proc_info_get_varset(!.ProcInfo, !:VarSet),
         proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
-        proc_info_get_headvars(!.ProcInfo, HeadVars),
-        proc_info_get_argmodes(!.ProcInfo, ArgModes),
+        get_stripped_headvars(!.PredInfo, !.ProcInfo, FullHeadVars, HeadVars,
+            ArgModes),
 
         % Make the ssdb_proc_id.
         make_proc_id_construction(!.ModuleInfo, !.PredInfo, ProcIdGoals,
@@ -651,7 +651,7 @@ process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
 
         % Generate the recursive call in the case of a retry.
         make_recursive_call(!.PredInfo, !.ModuleInfo, PredId, ProcId,
-            HeadVars, RecursiveGoal),
+            FullHeadVars, RecursiveGoal),
 
         % Generate the list of arguments at the fail port.
         make_arg_list(0, InitInstMap, [], Renaming, FailArgListVar,
@@ -734,7 +734,8 @@ process_proc_nondet(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
         proc_info_get_varset(!.ProcInfo, !:VarSet),
         proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
-        proc_info_get_headvars(!.ProcInfo, HeadVars),
+        get_stripped_headvars(!.PredInfo, !.ProcInfo, FullHeadVars, HeadVars,
+            _ArgModes),
 
         % Make the ssdb_proc_id.
         make_proc_id_construction(!.ModuleInfo, !.PredInfo, ProcIdGoals,
@@ -796,7 +797,7 @@ process_proc_nondet(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
             [ProcIdVar, FailArgListVar, RetryVar],
             HandleEventFailGoal, !ModuleInfo, !VarSet, !VarTypes),
         make_recursive_call(!.PredInfo, !.ModuleInfo, PredId, ProcId,
-            HeadVars, RecursiveGoal),
+            FullHeadVars, RecursiveGoal),
         make_switch_goal(RetryVar, RecursiveGoal, fail_goal,
             SwitchFailPortGoal),
         FailDisjunctGoals = list.condense([
@@ -826,7 +827,8 @@ process_proc_failure(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
         proc_info_get_varset(!.ProcInfo, !:VarSet),
         proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
-        proc_info_get_headvars(!.ProcInfo, HeadVars),
+        get_stripped_headvars(!.PredInfo, !.ProcInfo, FullHeadVars, HeadVars,
+            _ArgModes),
 
         % Make the ssdb_proc_id.
         make_proc_id_construction(!.ModuleInfo, !.PredInfo, ProcIdGoals,
@@ -853,7 +855,7 @@ process_proc_failure(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
 
         % Generate the recursive call in the case of a retry.
         make_recursive_call(!.PredInfo, !.ModuleInfo, PredId, ProcId,
-            HeadVars, RecursiveGoal),
+            FullHeadVars, RecursiveGoal),
 
         % Create the switch on Retry at fail port.
         make_switch_goal(RetryVar, RecursiveGoal, fail_goal, SwitchGoal),
@@ -886,7 +888,8 @@ process_proc_erroneous(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
         proc_info_get_varset(!.ProcInfo, !:VarSet),
         proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
-        proc_info_get_headvars(!.ProcInfo, HeadVars),
+        get_stripped_headvars(!.PredInfo, !.ProcInfo, _FullHeadVars, HeadVars,
+            _ArgModes),
 
         % Make the ssdb_proc_id.
         make_proc_id_construction(!.ModuleInfo, !.PredInfo, ProcIdGoals,
@@ -914,6 +917,20 @@ process_proc_erroneous(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
         commit_goal_changes(BodyGoals, PredId, ProcId, !.PredInfo, !ProcInfo,
             !ModuleInfo, !.VarSet, !.VarTypes)
     ).
+
+:- pred get_stripped_headvars(pred_info::in, proc_info::in,
+    list(prog_var)::out, list(prog_var)::out, list(mer_mode)::out) is det.
+
+get_stripped_headvars(PredInfo, ProcInfo, FullHeadVars, HeadVars, ArgModes) :-
+    PredArity = pred_info_orig_arity(PredInfo),
+    proc_info_get_headvars(ProcInfo, FullHeadVars),
+    proc_info_get_argmodes(ProcInfo, FullArgModes),
+    list.length(FullHeadVars, NumHeadVars),
+    % Strip off the extra type_info arguments inserted at the front by
+    % polymorphism.m.
+    NumToDrop = NumHeadVars - PredArity,
+    list.det_drop(NumToDrop, FullHeadVars, HeadVars),
+    list.det_drop(NumToDrop, FullArgModes, ArgModes).
 
 :- pred get_output_args(module_info::in, list(prog_var)::in,
     list(mer_mode)::in, list(prog_var)::out) is det.
