@@ -2105,7 +2105,7 @@ execute_ssdb_list_2(ContextLines, Depth, !IO) :-
     ;
         FirstLine = int.max(0, MarkLine - ContextLines),
         LastLine = MarkLine + ContextLines,
-        io.stdout_stream(StdOut, !IO),
+        io.output_stream(StdOut, !IO),
         io.stderr_stream(StdErr, !IO),
         get_list_params(Params, !IO),
         ListPath = Params ^ list_path,
@@ -2626,9 +2626,11 @@ print_stack_trace(CurLevel, StarDepth, RemainingLines, !IO) :-
     ;
         CurLevel < StackDepth
     ->
-        stack_index(CurLevel, CurFrame, !IO),
-        compress_stack_frames(CurFrame, StackDepth, CurLevel, NextLevel, !IO),
-        SkippedFrames = NextLevel - CurLevel,
+        get_shadow_stack(Stack0, !IO),
+        list.det_drop(CurLevel, Stack0, Stack),
+        CurFrame = list.det_head(Stack),
+        compress_stack_frames(CurFrame, Stack, 0, SkippedFrames),
+        NextLevel = CurLevel + SkippedFrames,
         (
             StarDepth >= CurLevel,
             StarDepth < NextLevel
@@ -2638,26 +2640,25 @@ print_stack_trace(CurLevel, StarDepth, RemainingLines, !IO) :-
             Star = (' ')
         ),
         print_stack_frame(Star, CurLevel, CurFrame, SkippedFrames, !IO),
-        print_stack_trace(CurLevel + SkippedFrames, StarDepth,
-            RemainingLines - 1, !IO)
+        print_stack_trace(NextLevel, StarDepth, RemainingLines - 1, !IO)
     ;
         true
     ).
 
-:- pred compress_stack_frames(stack_frame::in, int::in, int::in, int::out,
-    io::di, io::uo) is det.
+:- pred compress_stack_frames(stack_frame::in, list(stack_frame)::in,
+    int::in, int::out) is det.
 
-compress_stack_frames(RefFrame, StackDepth, Level, NextLevel, !IO) :-
-    ( Level < StackDepth ->
-        stack_index(Level, Frame, !IO),
-        ( RefFrame ^ sf_proc_id = Frame ^ sf_proc_id ->
-            compress_stack_frames(RefFrame, StackDepth, Level + 1, NextLevel,
-                !IO)
-        ;
-            NextLevel = Level
-        )
+compress_stack_frames(RefFrame, Stack, Count0, Count) :-
+    (
+        Stack = [],
+        Count = Count0
     ;
-        NextLevel = Level
+        Stack = [Frame | Frames],
+        ( RefFrame ^ sf_proc_id = Frame ^ sf_proc_id ->
+            compress_stack_frames(RefFrame, Frames, Count0 + 1, Count)
+        ;
+            Count = Count0
+        )
     ).
 
 :- pred print_stack_frame(char::in, int::in, stack_frame::in, int::in,
@@ -2668,12 +2669,12 @@ print_stack_frame(Star, Level, Frame, SkippedFrames, !IO) :-
     Procedure = Frame ^ sf_proc_id ^ proc_name,
     SiteFile = Frame ^ sf_call_site_file,
     SiteLine = Frame ^ sf_call_site_line,
-    io.format("%c%4d", [c(Star), i(Level)], !IO),
+    io.format("%c%4d ", [c(Star), i(Level)], !IO),
     ( SkippedFrames > 1 ->
-        io.format("%5d*", [i(SkippedFrames)], !IO),
+        io.format("%4d*", [i(SkippedFrames)], !IO),
         Etc = " and others"
     ;
-        io.write_string("      ", !IO),
+        io.write_string("     ", !IO),
         Etc = ""
     ),
     io.format(" %s.%s (%s:%d%s)\n",
@@ -2769,7 +2770,7 @@ safe_write(MaybeFormat, CallerType, Prefix, T, !IO) :-
         print_browser_term(MaybeFormat, CallerType, plain_term(Univ), !IO)
     ;
         io.write_string(Prefix, !IO),
-        io.write_string("<>", !IO)
+        io.write_string("(unsafe)\n", !IO)
     ).
 
 :- pred safe_to_write(T::in) is semidet.
@@ -2795,7 +2796,7 @@ safe_to_write(_) :-
     browser_term::in, io::di, io::uo) is det.
 
 print_browser_term(MaybeFormat, CallerType, Term, !IO) :-
-    io.stdout_stream(StdOut, !IO),
+    io.output_stream(StdOut, !IO),
     get_browser_state(State, !IO),
     promise_equivalent_solutions [!:IO] (
         (
@@ -2851,8 +2852,8 @@ browse_var(ListVarValue, VarName, !IO) :-
 :- pred browse_term(browser_term::in, io::di, io::uo) is det.
 
 browse_term(Term, !IO) :-
-    io.stdin_stream(StdIn, !IO),
-    io.stdout_stream(StdOut, !IO),
+    io.input_stream(StdIn, !IO),
+    io.output_stream(StdOut, !IO),
     get_browser_state(State0, !IO),
     promise_equivalent_solutions [State, !:IO] (
         browse.browse_browser_term_no_modes(Term, StdIn, StdOut, _,
