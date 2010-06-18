@@ -109,6 +109,7 @@
 :- implementation.
 
 :- import_module assoc_list.
+:- import_module bitmap.
 :- import_module bool.
 :- import_module char.
 :- import_module io.
@@ -133,8 +134,6 @@
 ").
 
 %-----------------------------------------------------------------------------%
-
-:- type cur_ssdb_breakpoints == map(pair(string,string), breakpoint).
 
     % Note: debugger_off must be first because io.init_state/2 is called
     % before the `do_nothing' mutable is initialised.  At that time `do_nothing'
@@ -221,13 +220,12 @@
     ;       ns_exception.
             % Stop at the next exception.
 
-    % A breakpoint is represented by his module and procedure name.
-    %
+:- type breakpoints_map == map(ssdb_proc_id, breakpoint).
+
 :- type breakpoint
     --->    breakpoint(
                 bp_number       :: int,
-                bp_module_name  :: string,
-                bp_pred_name    :: string,
+                bp_proc_id      :: ssdb_proc_id,
                 bp_state        :: bp_state
             ).
 
@@ -259,12 +257,6 @@
 :- mutable(cur_ssdb_next_stop, next_stop, ns_step, ground,
     [untrailed, attach_to_io_state]).
 
-:- mutable(cur_ssdb_breakpoints, cur_ssdb_breakpoints, map.init, ground,
-    [untrailed, attach_to_io_state]).
-
-:- mutable(cur_ssdb_number_of_breakpoint, int, 0,
-    ground, [untrailed, attach_to_io_state]).
-
 :- mutable(shadow_stack, list(stack_frame), [], ground,
     [untrailed, attach_to_io_state]).
 :- mutable(shadow_stack_depth, int, 0, ground,
@@ -273,6 +265,11 @@
 :- mutable(nondet_shadow_stack, list(stack_frame), [], ground,
     [untrailed, attach_to_io_state]).
 :- mutable(nondet_shadow_stack_depth, int, 0, ground,
+    [untrailed, attach_to_io_state]).
+
+:- mutable(breakpoints_map, breakpoints_map, map.init, ground,
+    [untrailed, attach_to_io_state]).
+:- mutable(breakpoints_filter, bitmap, new_breakpoints_filter, ground,
     [untrailed, attach_to_io_state]).
 
 %-----------------------------------------------------------------------------%
@@ -936,26 +933,7 @@ should_stop_at_this_event(Event, EventNum, CSN, ProcId, ShouldStopAtEvent,
         AutoRetry = do_not_retry
     ;
         NextStop = ns_continue,
-        get_cur_ssdb_breakpoints(BreakPoints, !IO),
-        (
-            % Avoid generating garbage when the user hasn't set any
-            % breakpoints. Eventually we should optimise the handling of
-            % breakpoints with a more appropriate data structure.
-            not map.is_empty(BreakPoints),
-            map.search(BreakPoints,
-                pair(ProcId ^ module_name, ProcId ^ proc_name), BreakPoint)
-        ->
-            BreakPointState = BreakPoint ^ bp_state,
-            (
-                BreakPointState = bp_state_enabled,
-                ShouldStopAtEvent = yes
-            ;
-                BreakPointState = bp_state_disabled,
-                ShouldStopAtEvent = no
-            )
-        ;
-            ShouldStopAtEvent = no
-        ),
+        check_breakpoint(ProcId, ShouldStopAtEvent, !IO),
         AutoRetry = do_not_retry
     ;
         NextStop = ns_final_port(StopCSN, AutoRetry0),
@@ -1872,68 +1850,58 @@ execute_ssdb_vars(Args, Depth, !IO) :-
 :- pred execute_ssdb_down(list(string)::in, int::in, int::out, io::di, io::uo)
     is det.
 
-execute_ssdb_down(Args, Depth, NewDepth, !IO) :-
-    (
-        Args = [],
-        DownDepth = Depth - 1,
-        ( DownDepth >= 0 ->
-            NewDepth = DownDepth,
-            print_depth_change(NewDepth, !IO)
-        ;
-            io.write_string("Already at bottom stack frame.\n", !IO),
-            NewDepth = Depth
-        )
-    ;
-        Args = [_ | _],
-        % We should provide more detailed help.
-        print_help(!IO),
-        NewDepth = Depth
-    ).
+execute_ssdb_down(Args, !Depth, !IO) :-
+    execute_ssdb_up_down(Args, -1, !Depth, !IO).
 
 :- pred execute_ssdb_up(list(string)::in, int::in, int::out, io::di, io::uo)
     is det.
 
-execute_ssdb_up(Args, Depth, NewDepth, !IO) :-
+execute_ssdb_up(Args, !Depth, !IO) :-
+    execute_ssdb_up_down(Args, 1, !Depth, !IO).
+
+:- pred execute_ssdb_up_down(list(string)::in, int::in, int::in, int::out,
+    io::di, io::uo) is det.
+
+execute_ssdb_up_down(Args, Direction, !Depth, !IO) :-
     (
-        Args = [],
-        stack_depth(StackDepth, !IO),
-        UpDepth = Depth + 1,
-        ( UpDepth < StackDepth ->
-            NewDepth = UpDepth,
-            print_depth_change(NewDepth, !IO)
-        ;
-            io.write_string("Already at top stack frame.\n", !IO),
-            NewDepth = Depth
-        )
+        Args = []
+    ->
+        change_depth(!.Depth + Direction, !Depth, !IO)
     ;
-        Args = [_ | _],
-        % We should provide more detailed help.
-        print_help(!IO),
-        NewDepth = Depth
+        Args = [Arg],
+        string.to_int(Arg, N),
+        N >= 0
+    ->
+        change_depth(!.Depth + N * Direction, !Depth, !IO)
+    ;
+        io.write_string("ssdb: expected integer argument.\n", !IO)
     ).
 
 :- pred execute_ssdb_level(list(string)::in, int::in, int::out, io::di, io::uo)
     is det.
 
-execute_ssdb_level(Args, Depth, NewDepth, !IO) :-
+execute_ssdb_level(Args, !Depth, !IO) :-
     (
         Args = [NStr],
-        string.to_int(NStr, N)
+        string.to_int(NStr, N),
+        N >= 0
     ->
-        stack_depth(StackDepth, !IO),
-        (
-            N >= 0,
-            N < StackDepth
-        ->
-            NewDepth = N,
-            print_depth_change(NewDepth, !IO)
-        ;
-            io.write_string("ssdb: invalid level\n", !IO),
-            NewDepth = Depth
-        )
+        change_depth(N, !Depth, !IO)
     ;
-        io.write_string("ssdb: `level' requires integer argument\n", !IO),
-        NewDepth = Depth
+        io.write_string("ssdb: `level' requires integer argument\n", !IO)
+    ).
+
+:- pred change_depth(int::in, int::in, int::out, io::di, io::uo) is det.
+
+change_depth(ChangedDepth, !Depth, !IO) :-
+    stack_depth(StackDepth, !IO),
+    ( ChangedDepth < 0 ->
+        io.write_string("ssdb: that stack frame does not exist.\n", !IO)
+    ; ChangedDepth >= StackDepth ->
+        io.write_string("ssdb: not that many ancestors.\n", !IO)
+    ;
+        print_depth_change(ChangedDepth, !IO),
+        !:Depth = ChangedDepth
     ).
 
 :- pred execute_ssdb_current(list(string)::in, ssdb_event_type::in,
@@ -2239,32 +2207,34 @@ execute_ssdb_break(Args, !IO) :-
     ;
         Args = [Arg],
         ( Arg = "info" ->
-            get_cur_ssdb_breakpoints(BreakPoints, !IO),
+            get_breakpoints_map(BreakPoints, !IO),
             print_breakpoints(BreakPoints, !IO)
+        ; split_module_pred_name(Arg, ModuleName, PredName) ->
+            ProcId = ssdb_proc_id(ModuleName, PredName),
+            add_breakpoint(ProcId, !IO)
         ;
-            % We should provide more detailed help.
-            print_help(!IO)
+            io.write_string("ssdb: invalid argument.\n", !IO)
         )
     ;
-        Args = [ModuleName, ProcName],
-        get_cur_ssdb_breakpoints(BreakPoints0, !IO),
-        Key = pair(ModuleName, ProcName),
-        ( map.contains(BreakPoints0, Key) ->
-            io.write_string("The breakpoint already exists.\n", !IO)
-        ;
-            get_cur_ssdb_number_of_breakpoint(Number, !IO),
-            NewBreakPoint = breakpoint(Number + 1, ModuleName, ProcName,
-                bp_state_enabled),
-            map.det_insert(BreakPoints0, Key, NewBreakPoint, BreakPoints),
-            set_cur_ssdb_breakpoints(BreakPoints, !IO),
-            set_cur_ssdb_number_of_breakpoint(Number + 1, !IO),
-            print_breakpoint(NewBreakPoint, !IO)
-        )
-    ;
-        Args = [_, _, _ | _],
-        % We should provide more detailed help.
-        print_help(!IO)
+        Args = [_, _ | _],
+        io.write_string("ssdb: too many arguments.\n", !IO)
     ).
+
+:- pred split_module_pred_name(string::in, string::out, string::out)
+    is semidet.
+
+split_module_pred_name(String, ModuleName, PredName) :-
+    ModuleDot = string.rstrip_pred(non_dot, String),
+    Sep = string.length(ModuleDot),
+    ModuleName = string.left(String, Sep - 1),
+    ModuleName \= "",
+    PredName = string.right(String, string.length(String) - Sep),
+    PredName \= "".
+
+:- pred non_dot(char::in) is semidet.
+
+non_dot(C) :-
+    C \= ('.').
 
 :- pred execute_ssdb_enable(list(string)::in, io::di, io::uo) is det.
 
@@ -2323,8 +2293,10 @@ execute_ssdb_delete(Args, !IO) :-
     ;
         Args = [Arg],
         ( Arg = "*" ->
-            set_cur_ssdb_breakpoints(map.init, !IO),
-            io.write_string("All breakpoints have been deleted.\n", !IO)
+            get_breakpoints_map(BreakPoints, !IO),
+            print_breakpoints(BreakPoints, !IO),
+            set_breakpoints_map(map.init, !IO),
+            set_breakpoints_filter(new_breakpoints_filter, !IO)
         ; string.to_int(Arg, Num) ->
             delete_breakpoint(Num, !IO)
         ;
@@ -2375,16 +2347,60 @@ execute_ssdb_quit(Args, !IO) :-
     ).
 
 %-----------------------------------------------------------------------------%
+%
+% Breakpoints
+%
+
+:- pred add_breakpoint(ssdb_proc_id::in, io::di, io::uo) is det.
+
+add_breakpoint(ProcId, !IO) :-
+    get_breakpoints_map(BreakPoints0, !IO),
+    ( map.contains(BreakPoints0, ProcId) ->
+        io.write_string("The breakpoint already exists.\n", !IO)
+    ;
+        get_free_breakpoint_number(BreakPoints0, Number),
+        NewBreakPoint = breakpoint(Number, ProcId, bp_state_enabled),
+        map.det_insert(BreakPoints0, ProcId, NewBreakPoint, BreakPoints),
+        set_breakpoints_map(BreakPoints, !IO),
+
+        get_breakpoints_filter(Filter0, !IO),
+        set_breakpoints_filter_bits(NewBreakPoint, Filter0, Filter),
+        set_breakpoints_filter(Filter, !IO),
+
+        print_breakpoint(NewBreakPoint, !IO)
+    ).
+
+:- pred get_free_breakpoint_number(breakpoints_map::in, int::out) is det.
+
+get_free_breakpoint_number(BreakPointsMap, Number) :-
+    map.values(BreakPointsMap, BreakPoints),
+    Numbers = list.map(bp_number, BreakPoints),
+    list.sort(Numbers, SortedNumbers),
+    first_unseen(SortedNumbers, 0, Number).
+
+:- func bp_number(breakpoint) = int.
+
+:- pred first_unseen(list(int)::in, int::in, int::out) is det.
+
+first_unseen([], N, N).
+first_unseen([H | T], N0, N) :-
+    ( H = N0 ->
+        first_unseen(T, N0 + 1, N)
+    ;
+        N = N0
+    ).
 
     % Disable or enable all breakpoints.
     %
 :- pred modify_breakpoint_states(bp_state::in, io::di, io::uo) is det.
 
 modify_breakpoint_states(State, !IO) :-
-    get_cur_ssdb_breakpoints(BreakPoints0, !IO),
+    get_breakpoints_map(BreakPoints0, !IO),
     SetState = (func(BP) = BP ^ bp_state := State),
     map.map_values_only(SetState, BreakPoints0) = BreakPoints,
-    set_cur_ssdb_breakpoints(BreakPoints, !IO),
+    set_breakpoints_map(BreakPoints, !IO),
+    generate_breakpoints_filter(BreakPoints, Filter),
+    set_breakpoints_filter(Filter, !IO),
     print_breakpoints(BreakPoints, !IO).
 
     % modify_state_breakpoint_with_num(State, Num, !IO).
@@ -2394,11 +2410,13 @@ modify_breakpoint_states(State, !IO) :-
 :- pred modify_breakpoint_state(int::in, bp_state::in, io::di, io::uo) is det.
 
 modify_breakpoint_state(Num, State, !IO) :-
-    get_cur_ssdb_breakpoints(BreakPoints0, !IO),
+    get_breakpoints_map(BreakPoints0, !IO),
     ( find_breakpoint(BreakPoints0, Num, Key, BreakPoint0) ->
         BreakPoint = BreakPoint0 ^ bp_state := State,
         map.det_update(BreakPoints0, Key, BreakPoint, BreakPoints),
-        set_cur_ssdb_breakpoints(BreakPoints, !IO),
+        set_breakpoints_map(BreakPoints, !IO),
+        generate_breakpoints_filter(BreakPoints, Filter),
+        set_breakpoints_filter(Filter, !IO),
         print_breakpoint(BreakPoint, !IO)
     ;
         io.format("ssdb: break point #%d does not exist.\n", [i(Num)], !IO)
@@ -2411,13 +2429,13 @@ modify_breakpoint_state(Num, State, !IO) :-
 :- pred delete_breakpoint(int::in, io::di, io::uo) is det.
 
 delete_breakpoint(Num, !IO) :-
-    get_cur_ssdb_breakpoints(BreakPoints0, !IO),
-    ( find_breakpoint(BreakPoints0, Num, Key, _BreakPoint) ->
-        map.delete(BreakPoints0, Key, BreakPoints),
-        set_cur_ssdb_breakpoints(BreakPoints, !IO),
-        Key = ModuleName - PredName,
-        io.format("Breakpoint on %s.%s deleted.\n",
-            [s(ModuleName), s(PredName)], !IO)
+    get_breakpoints_map(BreakPoints0, !IO),
+    ( find_breakpoint(BreakPoints0, Num, ProcId, BreakPoint) ->
+        map.delete(BreakPoints0, ProcId, BreakPoints),
+        set_breakpoints_map(BreakPoints, !IO),
+        generate_breakpoints_filter(BreakPoints, Filter),
+        set_breakpoints_filter(Filter, !IO),
+        print_breakpoint(BreakPoint, !IO)
     ;
         io.format("ssdb: break point #%d does not exist.\n", [i(Num)], !IO)
     ).
@@ -2426,8 +2444,8 @@ delete_breakpoint(Num, !IO) :-
     %
     % Return the breakpoint with the given id number.
     %
-:- pred find_breakpoint(cur_ssdb_breakpoints::in, int::in,
-    pair(string, string)::out, breakpoint::out) is semidet.
+:- pred find_breakpoint(breakpoints_map::in, int::in,
+    ssdb_proc_id::out, breakpoint::out) is semidet.
 
 find_breakpoint(BreakPoints, Num, Key, BreakPoint) :-
     % Breakpoints have unique integer ids so there is at most one solution.
@@ -2435,6 +2453,85 @@ find_breakpoint(BreakPoints, Num, Key, BreakPoint) :-
         map.member(BreakPoints, Key, BreakPoint),
         BreakPoint ^ bp_number = Num
     ).
+
+% At every event we will check if we have reached a breakpoint.  To minimise
+% the cost of these checks we use a simple Bloom filter, where, for each
+% breakpoint which is enabled, bits k1 and k2 of the bitmap are set:
+%
+%   k1 = hash(PredName) mod N,
+%   k2 = hash(ModuleName) mod N,
+%   N = bitmap size
+%
+% This is very quick to check.  Obviously, false positives are possible but
+% the relatively slow map lookups will usually be avoided.
+
+:- func new_breakpoints_filter = (bitmap::bitmap_uo) is det.
+
+new_breakpoints_filter = bitmap.new(breakpoints_filter_mask + 1).
+
+:- func breakpoints_filter_mask = int.
+
+breakpoints_filter_mask = 0xffff.
+
+:- func breakpoints_filter_hash(string) = int.
+
+breakpoints_filter_hash(String) =
+    string_hash(String) /\ breakpoints_filter_mask.
+
+:- pred generate_breakpoints_filter(breakpoints_map::in, bitmap::bitmap_uo)
+    is det.
+
+generate_breakpoints_filter(BreakPoints, Bitmap) :-
+    map.foldl_values(set_breakpoints_filter_bits, BreakPoints,
+        new_breakpoints_filter, Bitmap).
+
+:- pred set_breakpoints_filter_bits(breakpoint::in,
+    bitmap::bitmap_di, bitmap::bitmap_uo) is det.
+
+set_breakpoints_filter_bits(BreakPoint, !Bitmap) :-
+    BreakPoint = breakpoint(_Num, ProcId, State),
+    (
+        State = bp_state_enabled,
+        ProcId = ssdb_proc_id(ModuleName, ProcName),
+        bitmap.set(breakpoints_filter_hash(ModuleName), !Bitmap),
+        bitmap.set(breakpoints_filter_hash(ProcName), !Bitmap)
+    ;
+        State = bp_state_disabled
+    ).
+
+:- pred check_breakpoint(ssdb_proc_id::in, bool::out, io::di, io::uo) is det.
+
+check_breakpoint(ProcId, Hit, !IO) :-
+    get_breakpoints_filter(Filter, !IO),
+    ProcId = ssdb_proc_id(ModuleName, ProcName),
+    (
+        Filter ^ unsafe_bit(breakpoints_filter_hash(ProcName)) = yes,
+        Filter ^ unsafe_bit(breakpoints_filter_hash(ModuleName)) = yes
+    ->
+        get_breakpoints_map(BreakPoints, !IO),
+        (
+            map.search(BreakPoints, ProcId, BreakPoint),
+            BreakPoint ^ bp_state = bp_state_enabled
+        ->
+            Hit = yes
+        ;
+            Hit = no
+        )
+    ;
+        Hit = no
+    ).
+
+:- func string_hash(string) = int.
+
+string_hash(S) = string.hash(S).
+
+:- pragma foreign_proc("Java",
+    string_hash(Str::in) = (Hash::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // Faster than the string.hash implementation.
+    Hash = Str.hashCode();
+").
 
 %----------------------------------------------------------------------------%
 
@@ -2637,7 +2734,6 @@ print_var(MaybeFormat, CallerType, VarValue, !IO) :-
         io.write_string("_\n", !IO)
     ;
         VarValue = bound_head_var(Name, Pos, T),
-        % print_var_prelude(Name, Pos, !IO),
         ( Pos >= 0 ->
             Prefix = string.format("\t%s (arg %d)\t", [s(Name), i(Pos + 1)])
         ;
@@ -2812,7 +2908,7 @@ print_vars_list([Var | Vars], VarNum, !IO) :-
 
     % Print the current list of breakpoints with their details.
     %
-:- pred print_breakpoints(cur_ssdb_breakpoints::in, io::di, io::uo) is det.
+:- pred print_breakpoints(breakpoints_map::in, io::di, io::uo) is det.
 
 print_breakpoints(BreakPoints, !IO) :-
     ( map.is_empty(BreakPoints) ->
@@ -2826,18 +2922,17 @@ print_breakpoints(BreakPoints, !IO) :-
 :- pred print_breakpoint(breakpoint::in, io::di, io::uo) is det.
 
 print_breakpoint(BreakPoint, !IO) :-
-    BreakPointNum = BreakPoint ^ bp_number,
+    BreakPoint = breakpoint(Num, ProcId, State),
+    ProcId = ssdb_proc_id(ModuleName, PredName),
     (
-        BreakPoint ^ bp_state = bp_state_enabled,
+        State = bp_state_enabled,
         Enabled = "+"
     ;
-        BreakPoint ^ bp_state = bp_state_disabled,
+        State = bp_state_disabled,
         Enabled = "-"
     ),
-    ModuleName = BreakPoint ^ bp_module_name,
-    PredName = BreakPoint ^ bp_pred_name,
     io.format("%2d: %s %s.%s\n",
-        [i(BreakPointNum), s(Enabled), s(ModuleName), s(PredName)], !IO).
+        [i(Num), s(Enabled), s(ModuleName), s(PredName)], !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -2859,8 +2954,8 @@ print_help(!IO) :-
         "browse VAR|NUM",
         "vars (v)",
         "stack [NUM] (st)",
-        "up (u)",
-        "down (d)",
+        "up [NUM] (u)",
+        "down [NUM] (d)",
         "level NUM (lv)",
         "current (cur)",
         "format [-APB] flat|raw_pretty|pretty|verbose",
@@ -2869,7 +2964,7 @@ print_help(!IO) :-
         "list_path [DIR ...]",
         "push_list_dir DIR ... (pld)",
         "pop_list_dir",
-        "break MODULE PRED (b)",
+        "break MODULE.PRED (b)",
         "break info",
         "enable NUM|*",
         "disable NUM|*",
@@ -2944,58 +3039,17 @@ process_short_options(Handler, Chars, Data0, Res) :-
 :- pragma inline(invent_io/1).
 :- impure pred invent_io(io::uo) is det.
 
-:- pragma foreign_proc("C",
-    invent_io(_IO::uo),
-    [will_not_call_mercury, thread_safe],
-"
-").
-
-:- pragma foreign_proc("Erlang",
-    invent_io(_IO::uo),
-    [will_not_call_mercury, thread_safe],
-"
-    void
-").
-
-:- pragma foreign_proc("C#",
-    invent_io(_IO::uo),
-    [will_not_call_mercury, thread_safe],
-"
-").
-
-:- pragma foreign_proc("Java",
-    invent_io(_IO::uo),
-    [will_not_call_mercury, thread_safe],
-"
-").
+invent_io(IO) :-
+    promise_impure (
+        private_builtin.unsafe_type_cast(0, IO0),
+        unsafe_promise_unique(IO0, IO)
+    ).
 
 :- pragma inline(consume_io/1).
 :- impure pred consume_io(io::di) is det.
 
-:- pragma foreign_proc("C",
-    consume_io(_IO::di),
-    [will_not_call_mercury, thread_safe],
-"
-").
-
-:- pragma foreign_proc("Erlang",
-    consume_io(_IO::di),
-    [will_not_call_mercury, thread_safe],
-"
-    void
-").
-
-:- pragma foreign_proc("C#",
-    consume_io(_IO::di),
-    [will_not_call_mercury, thread_safe],
-"
-").
-
-:- pragma foreign_proc("Java",
-    consume_io(_IO::di),
-    [will_not_call_mercury, thread_safe],
-"
-").
+consume_io(_) :-
+    promise_impure true.
 
 %-----------------------------------------------------------------------------%
 
