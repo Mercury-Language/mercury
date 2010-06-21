@@ -65,6 +65,11 @@
 
 /*
 ** Declarations for inline atomic operations.
+**
+** These operations work on machine word-sized values, this is distinct from
+** C's idea of 'int' and 'unsigned int'.  MR_Integer and MR_Unsigned are
+** supposed to be machine word sized so these functions should only be used
+** with values of these types.
 */
 
 /*
