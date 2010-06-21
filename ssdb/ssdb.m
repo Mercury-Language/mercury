@@ -3041,16 +3041,15 @@ process_short_options(Handler, Chars, Data0, Res) :-
 :- impure pred invent_io(io::uo) is det.
 
 invent_io(IO) :-
-    promise_impure (
-        private_builtin.unsafe_type_cast(0, IO0),
-        unsafe_promise_unique(IO0, IO)
-    ).
+    private_builtin.unsafe_type_cast(0, IO0),
+    unsafe_promise_unique(IO0, IO),
+    impure impure_true.
 
 :- pragma inline(consume_io/1).
 :- impure pred consume_io(io::di) is det.
 
 consume_io(_) :-
-    promise_impure true.
+    impure impure_true.
 
 %-----------------------------------------------------------------------------%
 
