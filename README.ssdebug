@@ -26,7 +26,14 @@ the environment variable SSDB beforehand.
         ssdb>
 
 As in mdb, the three numbers are the event number, call sequence number (CSN)
-and the stack depth.  Type "help" to show a list of commands.
+and the stack depth.  Type "help" to show a list of commands.  All commands act
+like their mdb counterparts (with reduced functionality), except for `list'
+which prints the source code at the call site, not of the called procedure.
+
+The debugger will execute commands from `$HOME/.ssdbrc' and `.ssdbrc' in
+the current working directory, in order, at startup.  You can put your
+aliases and settings in those files.  Lines starting with the # character
+will be ignored.
 
 For Java grades, JDK 7 improves performance considerably.
 Early access releases are available from

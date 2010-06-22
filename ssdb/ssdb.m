@@ -112,6 +112,7 @@
 :- import_module bitmap.
 :- import_module bool.
 :- import_module char.
+:- import_module dir.
 :- import_module io.
 :- import_module int.
 :- import_module map.
@@ -267,6 +268,12 @@
 :- mutable(nondet_shadow_stack_depth, int, 0, ground,
     [untrailed, attach_to_io_state]).
 
+:- mutable(command_queue, list(string), init_command_queue, ground,
+    [untrailed, attach_to_io_state]).
+
+:- mutable(aliases, map(string, list(string)), map.init, ground,
+    [untrailed, attach_to_io_state]).
+
 :- mutable(breakpoints_map, breakpoints_map, map.init, ground,
     [untrailed, attach_to_io_state]).
 :- mutable(breakpoints_filter, bitmap, new_breakpoints_filter, ground,
@@ -339,11 +346,37 @@ init_debugger_state = DebuggerState :-
                 MaybeTTY = no
             ),
             install_sigint_handler(!IO),
-            install_exception_hooks(!IO)
+            install_exception_hooks(!IO),
+            add_source_commands(!IO)
         ;
             DebuggerState = debugger_off
         ),
         impure consume_io(!.IO)
+    ).
+
+:- pred add_source_commands(io::di, io::uo) is det.
+
+add_source_commands(!IO) :-
+    io.get_environment_var("HOME", MaybeHome, !IO),
+    (
+        MaybeHome = yes(Home),
+        maybe_add_source_commands(Home / ".ssdbrc", !IO)
+    ;
+        MaybeHome = no
+    ),
+    maybe_add_source_commands(".ssdbrc", !IO).
+
+:- pred maybe_add_source_commands(string::in, io::di, io::uo) is det.
+
+maybe_add_source_commands(FileName, !IO) :-
+    io.check_file_accessibility(FileName, [read], Res, !IO),
+    (
+        Res = ok,
+        Command = "source " ++ FileName,
+        get_command_queue(Queue, !IO),
+        set_command_queue(Queue ++ [Command], !IO)
+    ;
+        Res = error(_)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1185,6 +1218,8 @@ pred_catches_exceptions(ProcId) :-
 
     ;       ssdb_format
     ;       ssdb_format_param
+    ;       ssdb_alias
+    ;       ssdb_unalias
 
     ;       ssdb_list
     ;       ssdb_list_path
@@ -1198,77 +1233,73 @@ pred_catches_exceptions(ProcId) :-
     ;       ssdb_delete
 
     ;       ssdb_help
+    ;       ssdb_source
     ;       ssdb_quit.
 
 :- pred ssdb_cmd_name(string, ssdb_cmd).
 :- mode ssdb_cmd_name(in, out) is semidet.
-:- mode ssdb_cmd_name(out, in) is multi.
+:- mode ssdb_cmd_name(out, in) is det.
 
-ssdb_cmd_name("s",          ssdb_step).
 ssdb_cmd_name("step",       ssdb_step).
-ssdb_cmd_name("n",          ssdb_next).
 ssdb_cmd_name("next",       ssdb_next).
-ssdb_cmd_name("g",          ssdb_goto).
 ssdb_cmd_name("goto",       ssdb_goto).
-ssdb_cmd_name("c",          ssdb_continue).
 ssdb_cmd_name("continue",   ssdb_continue).
-ssdb_cmd_name("f",          ssdb_finish).
 ssdb_cmd_name("finish",     ssdb_finish).
 ssdb_cmd_name("return",     ssdb_return).
-ssdb_cmd_name("e",          ssdb_exception).
-ssdb_cmd_name("ex",         ssdb_exception).
 ssdb_cmd_name("exception",  ssdb_exception).
 
-ssdb_cmd_name("r",          ssdb_retry).
 ssdb_cmd_name("retry",      ssdb_retry).
 
-ssdb_cmd_name("st",         ssdb_stack).
 ssdb_cmd_name("stack",      ssdb_stack).
-ssdb_cmd_name("p",          ssdb_print).
 ssdb_cmd_name("print",      ssdb_print).
 ssdb_cmd_name("browse",     ssdb_browse).
 ssdb_cmd_name("vars",       ssdb_vars).
-ssdb_cmd_name("v",          ssdb_vars).
-ssdb_cmd_name("d",          ssdb_down).
 ssdb_cmd_name("down",       ssdb_down).
-ssdb_cmd_name("u",          ssdb_up).
 ssdb_cmd_name("up",         ssdb_up).
 ssdb_cmd_name("level",      ssdb_level).
-ssdb_cmd_name("lv",         ssdb_level).
 ssdb_cmd_name("current",    ssdb_current).
-ssdb_cmd_name("cur",        ssdb_current).
 
 ssdb_cmd_name("format",     ssdb_format).
 ssdb_cmd_name("format_param", ssdb_format_param).
+ssdb_cmd_name("alias",      ssdb_alias).
+ssdb_cmd_name("unalias",    ssdb_unalias).
 
 ssdb_cmd_name("list",               ssdb_list).
-ssdb_cmd_name("l",                  ssdb_list).
 ssdb_cmd_name("list_path",          ssdb_list_path).
 ssdb_cmd_name("push_list_dir",      ssdb_push_list_dir).
-ssdb_cmd_name("pld",                ssdb_push_list_dir).
 ssdb_cmd_name("pop_list_dir",       ssdb_pop_list_dir).
 ssdb_cmd_name("list_context_lines", ssdb_list_context_lines).
 
-ssdb_cmd_name("b",          ssdb_break).
 ssdb_cmd_name("break",      ssdb_break).
 ssdb_cmd_name("enable",     ssdb_enable).
 ssdb_cmd_name("disable",    ssdb_disable).
 ssdb_cmd_name("delete",     ssdb_delete).
 
-ssdb_cmd_name("h",          ssdb_help).
 ssdb_cmd_name("help",       ssdb_help).
-ssdb_cmd_name("?",          ssdb_help).
-ssdb_cmd_name("q",          ssdb_quit).
+ssdb_cmd_name("source",     ssdb_source).
 ssdb_cmd_name("quit",       ssdb_quit).
 
-:- pred ssdb_cmd_name(string::in, ssdb_cmd::out, list(string)::out)
-    is semidet.
+:- func init_command_queue = list(string).
 
-ssdb_cmd_name("P", ssdb_print, ["*"]).
-ssdb_cmd_name("depth", ssdb_format_param, ["depth"]).
-ssdb_cmd_name("lines", ssdb_format_param, ["lines"]).
-ssdb_cmd_name("size", ssdb_format_param, ["size"]).
-ssdb_cmd_name("width", ssdb_format_param, ["width"]).
+init_command_queue =
+    [
+        "alias s step",
+        "alias g goto",
+        "alias f finish",
+        "alias r retry",
+        "alias v vars",
+        "alias p print",
+        "alias P print *",
+        "alias d stack",
+        "alias c continue",
+        "alias b break",
+        "alias h help",
+        "alias ? help",
+        "alias excp exception",
+        "alias e exception",
+        "alias EMPTY step",
+        "alias NUMBER step"
+    ].
 
 %---------------------------------------------------------------------------%
 
@@ -1279,54 +1310,84 @@ ssdb_cmd_name("width", ssdb_format_param, ["width"]).
     io::di, io::uo) is det.
 
 read_and_execute_cmd(Event, Depth, WhatNext, !IO) :-
-    io.write_string("ssdb> ", !IO),
-    io.flush_output(!IO),
-    % Read a string in input and return a string.
-    io.read_line_as_string(Result, !IO),
+    get_command_queue(Queue0, !IO),
     (
-        Result = ok(String0),
-        % Delete the trailing newline character.
-        String = string.chomp(String0),
+        Queue0 = [],
+        io.write_string("ssdb> ", !IO),
+        io.flush_output(!IO),
+        io.read_line_as_string(Result, !IO),
+        Interacting = yes
+    ;
+        Queue0 = [QueuedString | Queue],
+        Result = ok(QueuedString),
+        set_command_queue(Queue, !IO),
+        Interacting = no
+    ),
+    (
+        Result = ok(String),
+        % We don't yet support the `NUMBER COMMAND' syntax of mdb.
         Words = string.words(String),
-        (
-            Words = [],
-            % We execute the default command. Alternatively, we could just do
-            % nothing, and call read_and_execute_cmd recursively.
-            execute_cmd(ssdb_step, [], Event, Depth, WhatNext, !IO)
-        ;
-            Words = [CmdWord | ArgWords],
-            % Implementing aliases would require only looking up an alias map
-            % here.
-            ( ssdb_cmd_name(CmdWord, Cmd) ->
-                execute_cmd(Cmd, ArgWords, Event, Depth, WhatNext, !IO)
-            ; ssdb_cmd_name(CmdWord, Cmd, CmdArgs) ->
-                execute_cmd(Cmd, CmdArgs ++ ArgWords, Event, Depth, WhatNext,
-                    !IO)
-            ;
-                % A bare integer is treated like a step command.
-                string.to_int(CmdWord, _)
-            ->
-                execute_cmd(ssdb_step, Words, Event, Depth, WhatNext, !IO)
-            ;
-                io.format("%s: unknown command (try \"help\")\n", [s(CmdWord)],
-                    !IO),
-                read_and_execute_cmd(Event, Depth, WhatNext, !IO)
-            )
-        )
+        expand_alias_and_execute(Words, Interacting, Event, Depth, WhatNext,
+            !IO)
     ;
         Result = eof,
-        execute_cmd(ssdb_quit, [], Event, Depth, WhatNext, !IO)
+        execute_cmd(ssdb_quit, [], Interacting, Event, Depth, WhatNext, !IO)
     ;
         Result = error(Error),
         io.error_message(Error, Msg),
         io.format("could not read command: %s\n", [s(Msg)], !IO),
-        execute_cmd(ssdb_quit, [], Event, Depth, WhatNext, !IO)
+        execute_cmd(ssdb_quit, ["-y"], no, Event, Depth, WhatNext, !IO)
     ).
 
-:- pred execute_cmd(ssdb_cmd::in, list(string)::in, ssdb_event_type::in,
-    int::in, what_next::out, io::di, io::uo) is det.
+:- pred expand_alias_and_execute(list(string)::in, bool::in,
+    ssdb_event_type::in, int::in, what_next::out, io::di, io::uo) is det.
 
-execute_cmd(Cmd, Args, Event, Depth, WhatNext, !IO) :-
+expand_alias_and_execute(Words, Interacting, Event, Depth, WhatNext, !IO) :-
+    get_aliases(Aliases, !IO),
+    (
+        Words = [],
+        ( map.search(Aliases, "EMPTY", [AliasWord | AliasWords]) ->
+            execute_cmd_string(AliasWord, AliasWords, Interacting,
+                Event, Depth, WhatNext, !IO)
+        ;
+            read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+        )
+    ;
+        Words = [FirstWord | LaterWords],
+        (
+            nonnegative_int(FirstWord, _),
+            map.search(Aliases, "NUMBER", [AliasWord | AliasWords])
+        ->
+            % Include the number itself as an argument.
+            execute_cmd_string(AliasWord, AliasWords ++ Words, Interacting,
+                Event, Depth, WhatNext, !IO)
+        ;
+            map.search(Aliases, FirstWord, [AliasWord | AliasWords])
+        ->
+            execute_cmd_string(AliasWord, AliasWords ++ LaterWords,
+                Interacting, Event, Depth, WhatNext, !IO)
+        ;
+            execute_cmd_string(FirstWord, LaterWords, Interacting,
+                Event, Depth, WhatNext, !IO)
+        )
+    ).
+
+:- pred execute_cmd_string(string::in, list(string)::in, bool::in,
+    ssdb_event_type::in, int::in, what_next::out, io::di, io::uo) is det.
+
+execute_cmd_string(CmdWord, ArgWords, Interacting, Event, Depth, WhatNext, !IO)
+        :-
+    ( ssdb_cmd_name(CmdWord, Cmd) ->
+        execute_cmd(Cmd, ArgWords, Interacting, Event, Depth, WhatNext, !IO)
+    ;
+        io.format("Unknown command `%s' (try \"help\").\n", [s(CmdWord)], !IO),
+        read_and_execute_cmd(Event, Depth, WhatNext, !IO)
+    ).
+
+:- pred execute_cmd(ssdb_cmd::in, list(string)::in, bool::in,
+    ssdb_event_type::in, int::in, what_next::out, io::di, io::uo) is det.
+
+execute_cmd(Cmd, Args, Interacting, Event, Depth, WhatNext, !IO) :-
     (
         Cmd = ssdb_step,
         execute_ssdb_step(Args, Event, Depth, WhatNext, !IO)
@@ -1386,6 +1447,12 @@ execute_cmd(Cmd, Args, Event, Depth, WhatNext, !IO) :-
             Cmd = ssdb_format_param,
             execute_ssdb_format_param(Args, !IO)
         ;
+            Cmd = ssdb_alias,
+            execute_ssdb_alias(Args, Interacting, !IO)
+        ;
+            Cmd = ssdb_unalias,
+            execute_ssdb_unalias(Args, Interacting, !IO)
+        ;
             Cmd = ssdb_list,
             execute_ssdb_list(Args, Depth, !IO)
         ;
@@ -1416,8 +1483,11 @@ execute_cmd(Cmd, Args, Event, Depth, WhatNext, !IO) :-
             Cmd = ssdb_help,
             execute_ssdb_help(Args, !IO)
         ;
+            Cmd = ssdb_source,
+            execute_ssdb_source(Args, !IO)
+        ;
             Cmd = ssdb_quit,
-            execute_ssdb_quit(Args, !IO)
+            execute_ssdb_quit(Args, Interacting, !IO)
         ),
         read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
@@ -1434,7 +1504,7 @@ execute_ssdb_help(Args, !IO) :-
         Args = [_ | _],
         % We should provide more detailed help if the user specifies a command
         % name.
-        print_help(!IO)
+        print_too_many_arguments(!IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1456,8 +1526,7 @@ execute_ssdb_step(Args, Event, Depth, WhatNext, !IO) :-
             get_cur_ssdb_event_number(EventNumber, !IO),
             WhatNext = wn_goto(EventNumber + N)
         ;
-            % We should provide more detailed help.
-            print_help(!IO),
+            print_expect_integer(!IO),
             read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
     ).
@@ -1482,8 +1551,7 @@ execute_ssdb_next(Args, Event, Depth, WhatNext, !IO) :-
         )
     ;
         Args = [_ | _],
-        % We should provide more detailed help.
-        print_help(!IO),
+        print_too_many_arguments(!IO),
         read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
@@ -1493,29 +1561,26 @@ execute_ssdb_next(Args, Event, Depth, WhatNext, !IO) :-
 execute_ssdb_goto(Args, Event, Depth, WhatNext, !IO) :-
     (
         Args = [],
-        % We should provide more detailed help.
-        print_help(!IO),
+        print_expect_integer(!IO),
         read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ;
-        Args = [EventNumToGoStr],
-        ( string.to_int(EventNumToGoStr, EventNumToGo) ->
+        Args = [Arg],
+        ( nonnegative_int(Arg, Num) ->
             get_cur_ssdb_event_number(CurEventNum, !IO),
-            ( EventNumToGo > CurEventNum ->
-                WhatNext = wn_goto(EventNumToGo)
+            ( Num > CurEventNum ->
+                WhatNext = wn_goto(Num)
             ;
                 io.write_string("The debugger cannot go to a past event.\n",
                     !IO),
                 read_and_execute_cmd(Event, Depth, WhatNext, !IO)
             )
         ;
-            io.write_string("The event number to go to must be an integer.\n",
-                !IO),
+            print_invalid_argument(!IO),
             read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
     ;
         Args = [_, _ | _],
-        % We should provide more detailed help.
-        print_help(!IO),
+        print_too_many_arguments(!IO),
         read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
@@ -1528,8 +1593,7 @@ execute_ssdb_continue(Args, Event, Depth, WhatNext, !IO) :-
         WhatNext = wn_continue
     ;
         Args = [_ | _],
-        % We should provide more detailed help.
-        print_help(!IO),
+        print_too_many_arguments(!IO),
         read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
@@ -1555,12 +1619,9 @@ execute_ssdb_finish(Args, Event, Depth, WhatNext, !IO) :-
         )
     ;
         Args = [Arg],
-        ( string.to_int(Arg, Num) ->
+        ( nonnegative_int(Arg, Num) ->
             stack_depth(CurDepth, !IO),
-            (
-                Num >= 0,
-                Num < CurDepth
-            ->
+            ( Num < CurDepth ->
                 stack_index(Num, StackFrame, !IO),
                 CSN = StackFrame ^ sf_csn,
                 WhatNext = wn_finish(CSN)
@@ -1570,13 +1631,12 @@ execute_ssdb_finish(Args, Event, Depth, WhatNext, !IO) :-
                 read_and_execute_cmd(Event, Depth, WhatNext, !IO)
             )
         ;
-            io.write_string("The depth must be an integer.\n", !IO),
+            print_invalid_argument(!IO),
             read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
     ;
         Args = [_, _ | _],
-        % We should provide more detailed help.
-        print_help(!IO),
+        print_too_many_arguments(!IO),
         read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
@@ -1604,7 +1664,7 @@ execute_ssdb_return(Args, Event, Depth, WhatNext, !IO) :-
         )
     ;
         Args = [_ | _],
-        print_help(!IO),
+        print_too_many_arguments(!IO),
         read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
@@ -1634,12 +1694,9 @@ execute_ssdb_retry(Args, Event, Depth, WhatNext, !IO) :-
         execute_ssdb_retry_2(0, Event, Depth, WhatNext, !IO)
     ;
         Args = [Arg],
-        ( string.to_int(Arg, Num) ->
+        ( nonnegative_int(Arg, Num) ->
             stack_depth(CurDepth, !IO),
-            (
-                Num >= 0,
-                Num < CurDepth
-            ->
+            ( Num < CurDepth ->
                 execute_ssdb_retry_2(Num, Event, Depth, WhatNext, !IO)
             ;
                 io.format("The depth must be between 0 and %i.\n",
@@ -1647,13 +1704,12 @@ execute_ssdb_retry(Args, Event, Depth, WhatNext, !IO) :-
                 read_and_execute_cmd(Event, Depth, WhatNext, !IO)
             )
         ;
-            io.write_string("The depth must be an integer.\n", !IO),
+            print_invalid_argument(!IO),
             read_and_execute_cmd(Event, Depth, WhatNext, !IO)
         )
     ;
         Args = [_, _ | _],
-        % We should provide more detailed help.
-        print_help(!IO),
+        print_too_many_arguments(!IO),
         read_and_execute_cmd(Event, Depth, WhatNext, !IO)
     ).
 
@@ -1727,8 +1783,7 @@ execute_ssdb_stack(Args, Depth, !IO) :-
         ->
             print_stack_trace(0, Depth, N, !IO)
         ;
-            io.write_string("ssdb: `stack' command expects integer argument\n",
-                !IO)
+            print_expect_integer(!IO)
         )
     ).
 
@@ -1755,7 +1810,7 @@ execute_ssdb_print(!.Args, Depth, !IO) :-
             ListVarValue = StackFrame ^ sf_list_var_value,
             print_var_with_name(MaybeFormat, ListVarValue, Arg, !IO)
         ;
-            print_help(!IO)
+            print_too_many_arguments(!IO)
         )
     ;
         Res = error(Error),
@@ -1829,8 +1884,7 @@ execute_ssdb_browse(Args, Depth, !IO) :-
         browse_var(ListVarValue, VarName, !IO)
     ;
         Args = [_, _ | _],
-        % We should provide more detailed help.
-        print_help(!IO)
+        print_too_many_arguments(!IO)
     ).
 
 :- pred execute_ssdb_vars(list(string)::in, int::in, io::di, io::uo) is det.
@@ -1843,8 +1897,7 @@ execute_ssdb_vars(Args, Depth, !IO) :-
         print_vars_list(ListVarValue, 1, !IO)
     ;
         Args = [_ | _],
-        % We should provide more detailed help.
-        print_help(!IO)
+        print_too_many_arguments(!IO)
     ).
 
 :- pred execute_ssdb_down(list(string)::in, int::in, int::out, io::di, io::uo)
@@ -1864,17 +1917,18 @@ execute_ssdb_up(Args, !Depth, !IO) :-
 
 execute_ssdb_up_down(Args, Direction, !Depth, !IO) :-
     (
-        Args = []
-    ->
+        Args = [],
         change_depth(!.Depth + Direction, !Depth, !IO)
     ;
         Args = [Arg],
-        string.to_int(Arg, N),
-        N >= 0
-    ->
-        change_depth(!.Depth + N * Direction, !Depth, !IO)
+        ( nonnegative_int(Arg, N) ->
+            change_depth(!.Depth + N * Direction, !Depth, !IO)
+        ;
+            print_expect_integer(!IO)
+        )
     ;
-        io.write_string("ssdb: expected integer argument.\n", !IO)
+        Args = [_, _ | _],
+        print_too_many_arguments(!IO)
     ).
 
 :- pred execute_ssdb_level(list(string)::in, int::in, int::out, io::di, io::uo)
@@ -1882,13 +1936,18 @@ execute_ssdb_up_down(Args, Direction, !Depth, !IO) :-
 
 execute_ssdb_level(Args, !Depth, !IO) :-
     (
-        Args = [NStr],
-        string.to_int(NStr, N),
-        N >= 0
-    ->
-        change_depth(N, !Depth, !IO)
+        Args = [],
+        print_expect_argument(!IO)
     ;
-        io.write_string("ssdb: `level' requires integer argument\n", !IO)
+        Args = [Arg],
+        ( nonnegative_int(Arg, N) ->
+            change_depth(N, !Depth, !IO)
+        ;
+            print_expect_integer(!IO)
+        )
+    ;
+        Args = [_, _ | _],
+        print_too_many_arguments(!IO)
     ).
 
 :- pred change_depth(int::in, int::in, int::out, io::di, io::uo) is det.
@@ -1914,7 +1973,7 @@ execute_ssdb_current(Args, Event, !IO) :-
         print_event_info(Event, EventNum, !IO)
     ;
         Args = [_ | _],
-        print_help(!IO)
+        print_too_many_arguments(!IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1936,7 +1995,7 @@ execute_ssdb_format(!.Args, !IO) :-
                 setting_format(Format), State0, State),
             set_browser_state(State, !IO)
         ;
-            print_help(!IO)
+            io.write_string("ssdb: cannot set to unknown format.\n", !IO)
         )
     ;
         Res = error(Error),
@@ -1959,7 +2018,7 @@ execute_ssdb_format_param(!.Args, !IO) :-
                 State0, State),
             set_browser_state(State, !IO)
         ;
-            print_help(!IO)
+            io.write_string("ssdb: invalid format parameter.\n", !IO)
         )
     ;
         Res = error(Error),
@@ -2054,7 +2113,7 @@ is_portray_format("pretty", pretty).
     is semidet.
 
 format_param_setting([Word, ValueStr], Setting) :-
-    string.to_int(ValueStr, Value),
+    nonnegative_int(ValueStr, Value),
     (
         Word = "depth",
         Setting = setting_depth(Value)
@@ -2071,6 +2130,69 @@ format_param_setting([Word, ValueStr], Setting) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred execute_ssdb_alias(list(string)::in, bool::in, io::di, io::uo) is det.
+
+execute_ssdb_alias(Args, Interacting, !IO) :-
+    get_aliases(Aliases0, !IO),
+    (
+        Args = [],
+        map.foldl(print_alias, Aliases0, !IO)
+    ;
+        Args = [Name],
+        ( map.search(Aliases0, Name, Command) ->
+            print_alias(Name, Command, !IO)
+        ;
+            io.write_string("There is no such alias.\n", !IO)
+        )
+    ;
+        Args = [Name | Words],
+        Words = [Command | _],
+        ( ssdb_cmd_name(Command, _) ->
+            map.set(Aliases0, Name, Words, Aliases),
+            set_aliases(Aliases, !IO),
+            (
+                Interacting = yes,
+                print_alias(Name, Words, !IO)
+            ;
+                Interacting = no
+            )
+        ;
+            io.format("`%s' is not a valid command.\n", [s(Command)], !IO)
+        )
+    ).
+
+:- pred execute_ssdb_unalias(list(string)::in, bool::in, io::di, io::uo)
+    is det.
+
+execute_ssdb_unalias(Args, Interacting, !IO) :-
+    ( Args = [Name] ->
+        get_aliases(Aliases0, !IO),
+        ( map.remove(Aliases0, Name, _, Aliases) ->
+            set_aliases(Aliases, !IO),
+            (
+                Interacting = yes,
+                io.format("Alias `%s' removed.\n", [s(Name)], !IO)
+            ;
+                Interacting = no
+            )
+        ;
+            io.format("Alias `%s' cannot be removed, " ++
+                "since it does not exist.\n", [s(Name)], !IO)
+        )
+    ;
+        print_expect_argument(!IO)
+    ).
+
+:- pred print_alias(string::in, list(string)::in, io::di, io::uo) is det.
+
+print_alias(Name, Command, !IO) :-
+    io.write_string(Name, !IO),
+    io.write_string("\t=>\t", !IO),
+    io.write_list(Command, " ", io.write_string, !IO),
+    io.nl(!IO).
+
+%-----------------------------------------------------------------------------%
+
 :- pred execute_ssdb_list(list(string)::in, int::in, io::di, io::uo) is det.
 
 execute_ssdb_list(Args, Depth, !IO) :-
@@ -2081,17 +2203,14 @@ execute_ssdb_list(Args, Depth, !IO) :-
         execute_ssdb_list_2(ContextLines, Depth, !IO)
     ;
         Args = [Arg],
-        (
-            string.to_int(Arg, ContextLines),
-            ContextLines >= 0
-        ->
+        ( nonnegative_int(Arg, ContextLines) ->
             execute_ssdb_list_2(ContextLines, Depth, !IO)
         ;
-            io.write_string("ssdb: invalid argument.\n", !IO)
+            print_expect_integer(!IO)
         )
     ;
         Args = [_, _ | _],
-        io.write_string("ssdb: too many arguments.\n", !IO)
+        print_too_many_arguments(!IO)
     ).
 
 :- pred execute_ssdb_list_2(int::in, int::in, io::di, io::uo) is det.
@@ -2143,7 +2262,7 @@ execute_ssdb_list_path(Args, !IO) :-
 execute_ssdb_push_list_dir(Args, !IO) :-
     (
         Args = [],
-        io.write_string("ssdb: command expects arguments.\n", !IO)
+        print_expect_argument(!IO)
     ;
         Args = [_ | _],
         get_list_params(Params0, !IO),
@@ -2165,7 +2284,7 @@ execute_ssdb_pop_list_dir(Args, !IO) :-
         set_list_params(Params, !IO)
     ;
         Args = [_ | _],
-        io.write_string("ssdb: unexpected argument.\n", !IO)
+        print_too_many_arguments(!IO)
     ).
 
 :- pred execute_ssdb_list_context_lines(list(string)::in, io::di, io::uo)
@@ -2180,19 +2299,16 @@ execute_ssdb_list_context_lines(Args, !IO) :-
             [i(Lines)], !IO)
     ;
         Args = [Arg],
-        (
-            string.to_int(Arg, N),
-            N >= 0
-        ->
+        ( nonnegative_int(Arg, N) ->
             get_list_params(Params0, !IO),
             Params = Params0 ^ list_context_lines := N,
             set_list_params(Params, !IO)
         ;
-            io.write_string("ssdb: invalid argument.\n", !IO)
+            print_expect_integer(!IO)
         )
     ;
         Args = [_, _ | _],
-        io.write_string("ssdb: too many arguments.\n", !IO)
+        print_too_many_arguments(!IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2202,8 +2318,7 @@ execute_ssdb_list_context_lines(Args, !IO) :-
 execute_ssdb_break(Args, !IO) :-
     (
         Args = [],
-        % We should provide more detailed help.
-        print_help(!IO)
+        print_expect_argument(!IO)
     ;
         Args = [Arg],
         ( Arg = "info" ->
@@ -2217,7 +2332,7 @@ execute_ssdb_break(Args, !IO) :-
         )
     ;
         Args = [_, _ | _],
-        io.write_string("ssdb: too many arguments.\n", !IO)
+        print_too_many_arguments(!IO)
     ).
 
 :- pred split_module_pred_name(string::in, string::out, string::out)
@@ -2241,22 +2356,19 @@ non_dot(C) :-
 execute_ssdb_enable(Args, !IO) :-
     (
         Args = [],
-        % We should provide more detailed help.
-        print_help(!IO)
+        print_expect_argument(!IO)
     ;
         Args = [Arg],
         ( Arg = "*" ->
             modify_breakpoint_states(bp_state_enabled, !IO)
-        ; string.to_int(Arg, Num) ->
+        ; nonnegative_int(Arg, Num) ->
             modify_breakpoint_state(Num, bp_state_enabled, !IO)
         ;
-            % We should provide more detailed help.
-            print_help(!IO)
+            print_invalid_argument(!IO)
         )
     ;
         Args = [_, _ | _],
-        % We should provide more detailed help.
-        print_help(!IO)
+        print_too_many_arguments(!IO)
     ).
 
 :- pred execute_ssdb_disable(list(string)::in, io::di, io::uo) is det.
@@ -2264,23 +2376,19 @@ execute_ssdb_enable(Args, !IO) :-
 execute_ssdb_disable(Args, !IO) :-
     (
         Args = [],
-        % We should provide more detailed help.
-        print_help(!IO)
+        print_expect_argument(!IO)
     ;
         Args = [Arg],
         ( Arg = "*" ->
             modify_breakpoint_states(bp_state_disabled, !IO)
-        ; string.to_int(Arg, Num) ->
+        ; nonnegative_int(Arg, Num) ->
             modify_breakpoint_state(Num, bp_state_disabled, !IO)
         ;
-            io.write_string("The number must be an integer\n", !IO),
-            % We should provide more detailed help.
-            print_help(!IO)
+            print_invalid_argument(!IO)
         )
     ;
         Args = [_, _ | _],
-        % We should provide more detailed help.
-        print_help(!IO)
+        print_too_many_arguments(!IO)
     ).
 
 :- pred execute_ssdb_delete(list(string)::in, io::di, io::uo) is det.
@@ -2288,8 +2396,7 @@ execute_ssdb_disable(Args, !IO) :-
 execute_ssdb_delete(Args, !IO) :-
     (
         Args = [],
-        % We should provide more detailed help.
-        print_help(!IO)
+        print_expect_argument(!IO)
     ;
         Args = [Arg],
         ( Arg = "*" ->
@@ -2297,27 +2404,81 @@ execute_ssdb_delete(Args, !IO) :-
             print_breakpoints(BreakPoints, !IO),
             set_breakpoints_map(map.init, !IO),
             set_breakpoints_filter(new_breakpoints_filter, !IO)
-        ; string.to_int(Arg, Num) ->
+        ; nonnegative_int(Arg, Num) ->
             delete_breakpoint(Num, !IO)
         ;
-            io.write_string("The number must be an integer\n", !IO)
+            print_invalid_argument(!IO)
         )
     ;
         Args = [_, _ | _],
-        % We should provide more detailed help.
-        print_help(!IO)
+        print_too_many_arguments(!IO)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred execute_ssdb_quit(list(string)::in, io::di, io::uo) is det.
+:- pred execute_ssdb_source(list(string)::in, io::di, io::uo) is det.
 
-execute_ssdb_quit(Args, !IO) :-
+execute_ssdb_source(Args, !IO) :-
+    ( Args = [FileName] ->
+        io.open_input(FileName, OpenRes, !IO),
+        (
+            OpenRes = ok(Stream),
+            read_command_lines(Stream, [], RevLines, !IO),
+            io.close_input(Stream, !IO),
+            get_command_queue(Queue0, !IO),
+            Queue = list.reverse(RevLines) ++ Queue0,
+            set_command_queue(Queue, !IO)
+        ;
+            OpenRes = error(Error),
+            io.stderr_stream(ErrorStream, !IO),
+            io.write_string(ErrorStream, "ssdb: ", !IO),
+            io.write_string(ErrorStream, io.error_message(Error), !IO),
+            io.nl(ErrorStream, !IO)
+        )
+    ;
+        io.write_string("ssdb: `source' command expects filename argument.\n",
+            !IO)
+    ).
+
+:- pred read_command_lines(io.input_stream::in,
+    list(string)::in, list(string)::out, io::di, io::uo) is det.
+
+read_command_lines(Stream, !RevLines, !IO) :-
+    io.read_line_as_string(Stream, Res, !IO),
+    (
+        Res = ok(Line),
+        Words = string.words(Line),
+        (
+            Words = []
+        ;
+            Words = [First | _],
+            ( string.prefix(First, "#") ->
+                true
+            ;
+                !:RevLines = [Line | !.RevLines]
+            )
+        ),
+        read_command_lines(Stream, !RevLines, !IO)
+    ;
+        Res = eof
+    ;
+        Res = error(Error),
+        io.stderr_stream(ErrorStream, !IO),
+        io.write_string(ErrorStream, "ssdb: ", !IO),
+        io.write_string(ErrorStream, io.error_message(Error), !IO),
+        io.nl(ErrorStream, !IO)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred execute_ssdb_quit(list(string)::in, bool::in, io::di, io::uo) is det.
+
+execute_ssdb_quit(Args, Interacting, !IO) :-
     (
         Args = [],
+        Interacting = yes,
         io.write_string("ssdb: are you sure you want to quit? ", !IO),
         io.flush_output(!IO),
-        % Read a string in input and return a string.
         io.read_line_as_string(Result, !IO),
         (
             Result = ok(String),
@@ -2338,11 +2499,15 @@ execute_ssdb_quit(Args, !IO) :-
             exit_process(!IO)
         )
     ;
+        Args = [],
+        Interacting = no
+        % Don't quit.
+    ;
         Args = [_ | _],
         ( Args = ["-y"] ->
             exit_process(!IO)
         ;
-            print_help(!IO)
+            io.write_string("ssdb: invalid argument.\n", !IO)
         )
     ).
 
@@ -2943,35 +3108,40 @@ print_breakpoint(BreakPoint, !IO) :-
 
 print_help(!IO) :-
     Lines = [
-        "step [NUM] (s, default)",
-        "next (n)",
-        "goto NUM (g)",
-        "continue (c)",
-        "exception (e)",
-        "retry [NUM] (r)",
-        "print [-fprv] (p)",
+        "Supported commands: (type `alias' to show aliases)",
+        "step [NUM]",
+        "next",
+        "goto NUM",
+        "continue",
+        "exception",
+        "retry [NUM]",
+        "print [-fprv]",
         "print [-fprv] VAR|NUM",
-        "print [-fprv] * (P)",
+        "print [-fprv] *",
         "browse VAR|NUM",
-        "vars (v)",
-        "stack [NUM] (st)",
-        "up [NUM] (u)",
-        "down [NUM] (d)",
-        "level NUM (lv)",
-        "current (cur)",
+        "vars",
+        "stack [NUM]",
+        "up [NUM]",
+        "down [NUM]",
+        "level NUM",
+        "current",
         "format [-APB] flat|raw_pretty|pretty|verbose",
         "format_param [-APBfpv] depth|size|width|lines NUM",
-        "list [NUM] (l)",
+        "alias [NAME]",
+        "alias NAME COMMAND [COMMAND-PARAMETER ...]",
+        "unalias NAME",
+        "list [NUM]",
         "list_path [DIR ...]",
-        "push_list_dir DIR ... (pld)",
+        "push_list_dir DIR ...",
         "pop_list_dir",
-        "break MODULE.PRED (b)",
+        "break MODULE.PRED",
         "break info",
         "enable NUM|*",
         "disable NUM|*",
         "delete NUM|*",
-        "help (h)",
-        "quit [-y] (q)"
+        "help",
+        "source FILENAME",
+        "quit [-y]"
     ],
     io.write_list(Lines, "\n", io.write_string, !IO),
     io.write_string("\n\n", !IO).
@@ -3035,6 +3205,28 @@ process_short_options(Handler, Chars, Data0, Res) :-
         )
     ).
 
+%-----------------------------------------------------------------------------%
+
+:- pred print_expect_argument(io::di, io::uo) is det.
+
+print_expect_argument(!IO) :-
+    io.write_string("ssdb: command requires argument.\n", !IO).
+
+:- pred print_expect_integer(io::di, io::uo) is det.
+
+print_expect_integer(!IO) :-
+    io.write_string("ssdb: command requires integer argument.\n", !IO).
+
+:- pred print_too_many_arguments(io::di, io::uo) is det.
+
+print_too_many_arguments(!IO) :-
+    io.write_string("ssdb: too many arguments to command.\n", !IO).
+
+:- pred print_invalid_argument(io::di, io::uo) is det.
+
+print_invalid_argument(!IO) :-
+    io.write_string("ssdb: invalid argument to command.\n", !IO).
+
 %----------------------------------------------------------------------------%
 
 :- pragma inline(invent_io/1).
@@ -3089,6 +3281,14 @@ restore_streams(!IO) :-
 "
     System.exit(0);
 ").
+
+%-----------------------------------------------------------------------------%
+
+:- pred nonnegative_int(string::in, int::out) is semidet.
+
+nonnegative_int(S, N) :-
+    string.to_int(S, N),
+    N >= 0.
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
