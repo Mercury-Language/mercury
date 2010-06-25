@@ -90,4 +90,6 @@ LIMITATIONS
 
 - There is no I/O tabling.
 
+- Debugging of multi-threaded programs is not supported.
+
 -----------------------------------------------------------------------------

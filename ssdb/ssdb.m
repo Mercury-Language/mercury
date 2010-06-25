@@ -20,7 +20,11 @@
 
 :- module ssdb.
 :- interface.
+
+:- import_module io.
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
 :- type ssdb_proc_id
     --->    ssdb_proc_id(
@@ -103,6 +107,26 @@
 :- impure pred handle_event_redo_nondet(ssdb_proc_id::in,
     list_var_value::in) is det.
 
+%-----------------------------------------------------------------------------%
+
+:- type debugging_paused.
+
+    % These low-level predicates allow you to suspend the debugger temporarily.
+    %
+    % Debugging of multi-threaded programs is unsupported, but it is possible
+    % to debug the initial thread only, if you pause debugging while spawning
+    % a thread:
+    %
+    %   ssdb.pause_debugging(Paused, !IO),
+    %   thread.spawn(some_thread_proc, !IO),
+    %   ssdb.resume_debugging(Paused, !IO)
+    %
+    % The spawned thread will simply execute as if debugging was disabled.
+    % It will continue running in the background during debugger prompts.
+    %
+:- pred pause_debugging(debugging_paused::out, io::di, io::uo) is det.
+:- pred resume_debugging(debugging_paused::in, io::di, io::uo) is det.
+
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
 
@@ -113,7 +137,6 @@
 :- import_module bool.
 :- import_module char.
 :- import_module dir.
-:- import_module io.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -145,6 +168,8 @@
 :- type debugger_state
     --->    debugger_off
     ;       debugger_on.
+
+:- type debugging_paused == debugger_state.
 
 :- type stack_frame
     --->    stack_frame(
@@ -309,50 +334,53 @@ init_list_params = list_params(new_list_path, 2).
 :- mutable(saved_output_stream, io.output_stream, io.stdout_stream, ground,
     [untrailed, attach_to_io_state]).
 
-    % This must be after the tty streams.
-:- mutable(debugger_state, debugger_state, init_debugger_state, ground,
-    [untrailed, attach_to_io_state]).
+    % This is thread-local to allow debugging of the initial thread in
+    % multi-threaded programs.  As thread-local mutables inherit their values
+    % from the parent thread, the user must temporarily disable debugging while
+    % the child thread is created, using `pause_debugging'.
+    %
+:- mutable(debugger_state, debugger_state, debugger_off, ground,
+    [untrailed, thread_local, attach_to_io_state]).
 
-:- func init_debugger_state = debugger_state is det.
+:- initialise(init_debugger_state/2).
 
-init_debugger_state = DebuggerState :-
-    some [!IO] promise_pure (
-        impure invent_io(!:IO),
-        io.get_environment_var("SSDB", MaybeEnv, !IO),
-        io.get_environment_var("SSDB_TTY", MaybeTTY, !IO),
+:- pred init_debugger_state(io::di, io::uo) is det.
+
+init_debugger_state(!IO) :-
+    io.get_environment_var("SSDB", MaybeEnv, !IO),
+    io.get_environment_var("SSDB_TTY", MaybeTTY, !IO),
+    (
+        ( MaybeEnv = yes(_)
+        ; MaybeTTY = yes(_)
+        )
+    ->
+        DebuggerState = debugger_on,
         (
-            ( MaybeEnv = yes(_)
-            ; MaybeTTY = yes(_)
-            )
-        ->
-            DebuggerState = debugger_on,
+            MaybeTTY = yes(FileName),
+            io.open_input(FileName, InputRes, !IO),
             (
-                MaybeTTY = yes(FileName),
-                io.open_input(FileName, InputRes, !IO),
-                (
-                    InputRes = ok(InputStream),
-                    set_tty_in(InputStream, !IO)
-                ;
-                    InputRes = error(_)
-                ),
-                io.open_output(FileName, OutputRes, !IO),
-                (
-                    OutputRes = ok(OutputStream),
-                    set_tty_out(OutputStream, !IO)
-                ;
-                    OutputRes = error(_)
-                )
+                InputRes = ok(InputStream),
+                set_tty_in(InputStream, !IO)
             ;
-                MaybeTTY = no
+                InputRes = error(_)
             ),
-            install_sigint_handler(!IO),
-            install_exception_hooks(!IO),
-            add_source_commands(!IO)
+            io.open_output(FileName, OutputRes, !IO),
+            (
+                OutputRes = ok(OutputStream),
+                set_tty_out(OutputStream, !IO)
+            ;
+                OutputRes = error(_)
+            )
         ;
-            DebuggerState = debugger_off
+            MaybeTTY = no
         ),
-        impure consume_io(!.IO)
-    ).
+        install_sigint_handler(!IO),
+        install_exception_hooks(!IO),
+        add_source_commands(!IO)
+    ;
+        DebuggerState = debugger_off
+    ),
+    set_debugger_state(DebuggerState, !IO).
 
 :- pred add_source_commands(io::di, io::uo) is det.
 
@@ -433,6 +461,25 @@ public static class SigIntHandler implements sun.misc.SignalHandler {
 
 step_next_stop(!IO) :-
     set_cur_ssdb_next_stop(ns_step, !IO).
+
+%-----------------------------------------------------------------------------%
+
+pause_debugging(Paused, !IO) :-
+    get_debugger_state(Paused, !IO),
+    (
+        Paused = debugger_off
+    ;
+        Paused = debugger_on,
+        set_debugger_state(debugger_off, !IO)
+    ).
+
+resume_debugging(Paused, !IO) :-
+    (
+        Paused = debugger_on,
+        set_debugger_state(debugger_on, !IO)
+    ;
+        Paused = debugger_off
+    ).
 
 %-----------------------------------------------------------------------------%
 
