@@ -828,6 +828,12 @@ case $HOST in $ROTD_HOST)
     # files in the distribution are built in a low-level C grade.
     # We use asm_fast rather than none or reg because the configure script
     # will prefer the use of the hlc grades if they are the base grade.
+    #
+    # --smart-indexing is disabled for the source distribution because we
+    # currently generate non-portable code for some types of switches when
+    # it is enabled.  (See bug #115 for further details -- it should be re-enbled
+    # once bug #115 has been fixed.)
+    #
     { cd $DIR/mercury &&
     $MMAKE realclean MMAKEFLAGS=$PARALLEL &&
     (cd $DIR/tests &&
@@ -840,7 +846,7 @@ case $HOST in $ROTD_HOST)
     mercury_cv_bits_per_word=32 \
     mercury_cv_unboxed_floats=no \
     sh configure --with-llds-base-grade=asm_fast --prefix=$INSTALL_DIR &&
-    $MMAKE MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space --cross-compiling' $PARALLEL" tar &&
+    $MMAKE MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space --cross-compiling --no-smart-indexing' $PARALLEL" tar &&
     cd .. &&
     rm -f $UNSTABLE/* &&
     cp mercury/NEWS $UNSTABLE/mercury-NEWS-$version-unstable.txt &&
