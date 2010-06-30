@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2007, 2009 The University of Melbourne.
+% Copyright (C) 1998-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -161,6 +161,10 @@
     % function.
     %
 :- pred string_is_return_value_alias(string::in) is semidet.
+
+    % For use in representing unbound head variables in the "print goal"
+    % commands in the debugger.
+:- type unbound ---> '_'.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

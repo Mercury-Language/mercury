@@ -224,8 +224,11 @@ rm -f $TEST_ERROR_FILE $FAILED_TESTS_FILE
 use_cp_opt=""
 # EXTRA_INSTALL_MCFLAGS can be used to customise INSTALL_MCFLAGS
 EXTRA_INSTALL_MCFLAGS=""
-# The same is true for EXTRA_INSTALL_CFLAGS
+# The same is true for EXTRA_TEST_MCFLAGS, EXTRA_INSTALL_CFLAGS and
+# EXTRA_TEST_CFLAGS
+EXTRA_TEST_MCFLAGS=""
 EXTRA_INSTALL_CFLAGS=""
+EXTRA_TEST_CFLAGS=""
 case $HOST in
     # test things at different optimization levels...
 
@@ -252,12 +255,17 @@ case $HOST in
         ;;
 
     taura)
+        OPTIMIZE="-O5 --intermodule-optimization"
         # Set --profile-for-implicit-parallelism so that the deep profiling
         # version of the standard library is suitable for Paul's implicit
         # parallelism work.  This is not enabled by default because it enables
         # inlining which is confusing for programmers using the deep profiler.
-        OPTIMIZE="-O5 --intermodule-optimization"
         EXTRA_INSTALL_MCFLAGS="--profile-for-implicit-parallelism"
+        EXTRA_TEST_MCFLAGS="--profile-for-implicit-parallelism"
+        # Exercise handwritten assembler in runtime/mercury_atomic_ops.h that
+        # is usually unused with GCC versions >= 4.1
+        EXTRA_INSTALL_CFLAGS="-DMR_AVOID_COMPILER_INTRINSICS=1"
+        EXTRA_TEST_CFLAGS="-DMR_AVOID_COMPILER_INTRINSICS=1"
         ;;
 
     goliath)
@@ -282,9 +290,9 @@ INSTALL_CFLAGS="$EXTRA_INSTALL_CFLAGS"
 INSTALL_MLFLAGS=""
 
 # Flags for running the tests.
-TEST_MCFLAGS="$OPTIMIZE --opt-space"
+TEST_MCFLAGS="$OPTIMIZE --opt-space $EXTRA_TEST_MCFLAGS"
 TEST_MGNUCFLAGS=""
-TEST_CFLAGS=""
+TEST_CFLAGS="$EXTRA_TEST_CFLAGS"
 TEST_MLFLAGS=""
 
 case $FULLARCH in
@@ -412,9 +420,9 @@ status=0
 
 case $HOST in
     saturn)
-        # XXX should use gcc 4.2 but the standard lib triggers
-        # an internal error in that in asm_fast.gc.decldebug.
-        CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
+        # XXX Avoid useing gcc 4.2 as the standard lib triggers
+        # an internal error in that in asm_fast.gc.decldebug. (Bug #124).
+        CONFIG_OPTS="--with-cc=/usr/bin/gcc-4.3"
         INSTALL_LIBGRADES="asm_fast.gc  \
             asm_fast.par.gc             \
             asm_fast.gc.decldebug       \
@@ -485,7 +493,7 @@ case $HOST in
             java"
         ;;
     taura)
-        CONFIG_OPTS="--with-cc=/usr/bin/gcc-3.4"
+        CONFIG_OPTS=""
         INSTALL_LIBGRADES="asm_fast.gc  \
             asm_fast.par.gc             \
             asm_fast.gc.profdeep        \
@@ -516,7 +524,7 @@ case $HOST in
         # bob (a VM on spelter) is used by the G12 group for doing builds of
         # the MiniZinc distribution.  We only need to install the grades that
         # are required for that.
-        CONFIG_OPTS="--wiht-cc=/usr/bin/gcc-3.4"
+        CONFIG_OPTS=""
         INSTALL_LIBGRADES="asm_fast.gc  \
             hlc.gc                      \
             hlc.gc.trseg"
@@ -823,6 +831,12 @@ case $HOST in $ROTD_HOST)
     # files in the distribution are built in a low-level C grade.
     # We use asm_fast rather than none or reg because the configure script
     # will prefer the use of the hlc grades if they are the base grade.
+    #
+    # --smart-indexing is disabled for the source distribution because we
+    # currently generate non-portable code for some types of switches when
+    # it is enabled.  (See bug #115 for further details -- it should be re-enbled
+    # once bug #115 has been fixed.)
+    #
     { cd $DIR/mercury &&
     $MMAKE realclean MMAKEFLAGS=$PARALLEL &&
     (cd $DIR/tests &&
@@ -835,7 +849,7 @@ case $HOST in $ROTD_HOST)
     mercury_cv_bits_per_word=32 \
     mercury_cv_unboxed_floats=no \
     sh configure --with-llds-base-grade=asm_fast --prefix=$INSTALL_DIR &&
-    $MMAKE MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space --cross-compiling' $PARALLEL" tar &&
+    $MMAKE MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space --cross-compiling --no-smart-indexing' $PARALLEL" tar &&
     cd .. &&
     rm -f $UNSTABLE/* &&
     cp mercury/NEWS $UNSTABLE/mercury-NEWS-$version-unstable.txt &&

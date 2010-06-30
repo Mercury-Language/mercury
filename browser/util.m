@@ -49,10 +49,6 @@
 :- pred limit(pred(list(T), list(T))::in(pred(in, out) is det),
     list(T)::in, list(T)::out) is det.
 
-    % For use in representing unbound head variables in the "print goal"
-    % commands in the debugger.
-:- type unbound ---> '_'.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 

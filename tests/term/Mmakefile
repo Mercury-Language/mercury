@@ -114,7 +114,7 @@ ALL_MCTOIFLAGS+=$(MCTRANSOPTFLAGS)
 		echo "Matches $*.trans_opt_exp" && \
 		cp $*.trans_opt_res1 $@; } || \
 	{ test -f $*.trans_opt_exp2 && \
-		@echo "with $*.trans_opt_exp2" && \
+		echo "with $*.trans_opt_exp2" && \
 		diff $(DIFF_OPTS) $*.trans_opt_exp2 \
 			$(trans_opts_subdir)$*.trans_opt \
 			> $*.trans_opt_res2 && \

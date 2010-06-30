@@ -26,7 +26,14 @@ the environment variable SSDB beforehand.
         ssdb>
 
 As in mdb, the three numbers are the event number, call sequence number (CSN)
-and the stack depth.  Type "help" to show a list of commands.
+and the stack depth.  Type "help" to show a list of commands.  All commands act
+like their mdb counterparts (with reduced functionality), except for `list'
+which prints the source code at the call site, not of the called procedure.
+
+The debugger will execute commands from `$HOME/.ssdbrc' and `.ssdbrc' in
+the current working directory, in order, at startup.  You can put your
+aliases and settings in those files.  Lines starting with the # character
+will be ignored.
 
 For Java grades, JDK 7 improves performance considerably.
 Early access releases are available from
@@ -72,10 +79,17 @@ LIMITATIONS
 - We provide the filename and line number of call sites, but not the location
   of the source code for the called procedure itself.  Use mtags.
 
+- The print goal command does not distinguish predicates and functions.
+
+- Procedures with arguments which are neither `in' nor `out' will not be
+  transformed, hence will not generate events when called.
+
 - Many commands available in mdb are not yet implemented for ssdebug.
 
 - There is no tab completion.
 
 - There is no I/O tabling.
+
+- Debugging of multi-threaded programs is not supported.
 
 -----------------------------------------------------------------------------
