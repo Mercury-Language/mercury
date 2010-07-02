@@ -544,15 +544,14 @@ limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-
 #undef  NONCANON
 }").
 
-functor_dna(Term::in, Functor::out, Arity::out) :-
-    local_deconstruct(Term,
-        do_not_allow, Functor, Arity, _Arguments).
-functor_can(Term::in, Functor::out, Arity::out) :-
-    local_deconstruct(Term,
-        canonicalize, Functor, Arity, _Arguments).
-functor_idcc(Term::in, Functor::out, Arity::out) :-
-    local_deconstruct(Term,
-        include_details_cc, Functor, Arity, _Arguments).
+functor_dna(Term, Functor, Arity) :-
+    local_deconstruct(Term, do_not_allow, Functor, _, Arity, _Arguments).
+
+functor_can(Term, Functor, Arity) :-
+    local_deconstruct(Term, canonicalize, Functor, _, Arity, _Arguments).
+
+functor_idcc(Term, Functor, Arity) :-
+    local_deconstruct(Term, include_details_cc, Functor, _, Arity, _Arguments).
 
 %-----------------------------------------------------------------------------%
 
@@ -596,19 +595,19 @@ SUCCESS_INDICATOR = (FunctorNumber >= 0);
 SUCCESS_INDICATOR = (FunctorNumber >= 0);
 }").
 
-functor_number(Term::in, FunctorNumber::out, Arity::out) :-
+functor_number(Term, FunctorNumber, Arity) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
         erlang_rtti_implementation.functor_number(Term, FunctorNumber, Arity)
     ;
         private_builtin.sorry("deconstruct.functor_number")
     ).
 
-functor_number_cc(Term::in, FunctorNumber::out, Arity::out) :-
+functor_number_cc(Term, FunctorNumber, Arity) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
         erlang_rtti_implementation.functor_number_cc(Term, FunctorNumber,
             Arity)
     ;
-        private_builtin.sorry("deconstruct.functor_number_cc")
+        rtti_implementation.functor_number_cc(Term, FunctorNumber, Arity)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -792,22 +791,39 @@ functor_number_cc(Term::in, FunctorNumber::out, Arity::out) :-
 % unnecessarily construct the list of univs for all the arguments, rather than
 % just constructing one univ for the argument selected.
 
-univ_arg_dna(Term::in, Index::in, Arg::out) :-
-    local_deconstruct(Term, do_not_allow,
-        _Functor, _Arity, Arguments),
+univ_arg_dna(Term, Index, Arg) :-
+    local_deconstruct(Term, do_not_allow, _Functor, _, _Arity, Arguments),
     list.index0(Arguments, Index, Arg).
-univ_arg_can(Term::in, Index::in, Arg::out) :-
-    local_deconstruct(Term, canonicalize,
-        _Functor, _Arity, Arguments),
+
+univ_arg_can(Term, Index, Arg) :-
+    local_deconstruct(Term, canonicalize, _Functor, _, _Arity, Arguments),
     list.index0(Arguments, Index, Arg).
-univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
-        Success::out) :-
-    local_deconstruct(Term, include_details_cc,
-        _Functor, _Arity, Arguments),
+
+univ_arg_idcc(Term, Index, DummyUniv, Argument, Success) :-
+    local_deconstruct(Term, include_details_cc, _Functor, _, _Arity, Arguments),
     ( list.index0(Arguments, Index, Arg) ->
         Argument = Arg,
         Success = 1
     ;
+        Argument = DummyUniv,
+        Success = 0
+    ).
+
+univ_named_arg_dna(Term, Name, Argument) :-
+    local_univ_named_arg(Term, do_not_allow, Name, Argument).
+
+univ_named_arg_can(Term, Name, Argument) :-
+    local_univ_named_arg(Term, canonicalize, Name, Argument).
+
+univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
+    ( local_univ_named_arg(Term, include_details_cc, Name, Arg) ->
+        Argument = Arg,
+        Success = 1
+    ;
+        Argument = DummyUniv,
+        Success = 0
+    ;
+        % Force cc_multi.
         Argument = DummyUniv,
         Success = 0
     ).
@@ -828,8 +844,8 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
     string::out, int::out, list(univ)::out) is cc_multi.
 
 :- pragma foreign_proc("C",
-    deconstruct_dna(Term::in, Functor::out, FunctorNumber::out,
-            Arity::out, Arguments::out),
+    deconstruct_dna(Term::in, Functor::out, FunctorNumber::out, Arity::out,
+        Arguments::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "{
 #define EXPAND_INFO_TYPE        MR_Expand_Functor_Args_Info
@@ -998,53 +1014,64 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
     }
 }").
 
-deconstruct_dna(Term::in, Functor::out, FunctorNumber::out,
-        Arity::out, Arguments::out) :-
-    FunctorNumber = -1,
-    local_deconstruct(Term, do_not_allow,
-        Functor, Arity, Arguments).
-deconstruct_can(Term::in, Functor::out, Arity::out, Arguments::out) :-
-    local_deconstruct(Term, canonicalize,
-        Functor, Arity, Arguments).
-deconstruct_idcc(Term::in, Functor::out, FunctorNumber::out,
-        Arity::out, Arguments::out) :-
-    FunctorNumber = -1,
-    local_deconstruct(Term, include_details_cc,
-        Functor, Arity, Arguments).
+deconstruct_dna(Term, Functor, FunctorNumber, Arity, Arguments) :-
+    local_deconstruct(Term, do_not_allow, Functor, FunctorNumber, Arity,
+        Arguments).
+
+deconstruct_can(Term, Functor, Arity, Arguments) :-
+    local_deconstruct(Term, canonicalize, Functor, _, Arity, Arguments).
+
+deconstruct_idcc(Term, Functor, FunctorNumber, Arity, Arguments) :-
+    local_deconstruct(Term, include_details_cc, Functor, FunctorNumber, Arity,
+        Arguments).
 
     % XXX The Mercury implementations of all of these limited_* procedures
     % are inefficient -- they construct Functor and Arguments even in the case
     % when Arity > MaxArity.
-limited_deconstruct_dna(Term::in, MaxArity::in,
-        Functor::out, Arity::out, Arguments::out) :-
-    local_deconstruct(Term, do_not_allow,
-        Functor, Arity, Arguments),
+limited_deconstruct_dna(Term, MaxArity, Functor, Arity, Arguments) :-
+    local_deconstruct(Term, do_not_allow, Functor, _, Arity, Arguments),
     Arity =< MaxArity.
-limited_deconstruct_can(Term::in, MaxArity::in,
-        Functor::out, Arity::out, Arguments::out) :-
-    local_deconstruct(Term, canonicalize,
-        Functor, Arity, Arguments),
+
+limited_deconstruct_can(Term, MaxArity, Functor, Arity, Arguments) :-
+    local_deconstruct(Term, canonicalize, Functor, _, Arity, Arguments),
     Arity =< MaxArity.
-limited_deconstruct_idcc(Term::in, _MaxArity::in,
-        Functor::out, Arity::out, Arguments::out) :-
+
+limited_deconstruct_idcc(Term, _MaxArity, Functor, Arity, Arguments) :-
     % For this one, the caller checks Arity =< MaxArity.
-    local_deconstruct(Term, include_details_cc,
-        Functor, Arity, Arguments).
+    local_deconstruct(Term, include_details_cc, Functor, _, Arity, Arguments).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred local_deconstruct(T, noncanon_handling, string, int, list(univ)).
-:- mode local_deconstruct(in, in(do_not_allow), out, out, out) is det.
-:- mode local_deconstruct(in, in(canonicalize), out, out, out) is det.
-:- mode local_deconstruct(in, in(include_details_cc), out, out, out) is cc_multi.
-:- mode local_deconstruct(in, in, out, out, out) is cc_multi.
+:- pred local_deconstruct(T, noncanon_handling, string, int, int, list(univ)).
+:- mode local_deconstruct(in, in(do_not_allow), out, out, out, out) is det.
+:- mode local_deconstruct(in, in(canonicalize), out, out, out, out) is det.
+:- mode local_deconstruct(in, in(include_details_cc), out, out, out, out)
+    is cc_multi.
+:- mode local_deconstruct(in, in, out, out, out, out) is cc_multi.
 
-local_deconstruct(T, H, F, A, As) :-
+local_deconstruct(Term, NonCanon, Functor, FunctorNumber, Arity, Arguments) :-
     ( erlang_rtti_implementation.is_erlang_backend ->
-        erlang_rtti_implementation.deconstruct(T, H, F, A, As)
+        erlang_rtti_implementation.deconstruct(Term, NonCanon, Functor, Arity,
+            Arguments),
+        % XXX incomplete
+        FunctorNumber = 0
     ;
-        rtti_implementation.deconstruct(T, H, F, A, As)
+        rtti_implementation.deconstruct(Term, NonCanon, Functor, FunctorNumber,
+            Arity, Arguments)
+    ).
+
+:- pred local_univ_named_arg(T, noncanon_handling, string, univ).
+:- mode local_univ_named_arg(in, in(do_not_allow), in, out) is semidet.
+:- mode local_univ_named_arg(in, in(canonicalize), in, out) is semidet.
+:- mode local_univ_named_arg(in, in(include_details_cc), in, out)
+    is semidet. % conceptually committed-choice
+
+local_univ_named_arg(Term, NonCanon, Name, Argument) :-
+    ( erlang_rtti_implementation.is_erlang_backend ->
+        private_builtin.sorry("local_univ_named_arg")
+    ;
+        rtti_implementation.univ_named_arg(Term, NonCanon, Name, Argument)
     ).
 
 %-----------------------------------------------------------------------------%

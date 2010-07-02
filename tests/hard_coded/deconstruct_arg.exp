@@ -2,6 +2,8 @@ deconstruct functor: apple/1
 deconstruct argument 0 of apple([]) is []
 deconstruct argument 1 of apple([]) doesn't exist
 deconstruct argument 2 of apple([]) doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
 deconstruct deconstruct: functor apple arity 1
 [[]]
 deconstruct limited deconstruct 3 of apple([])
@@ -11,6 +13,8 @@ deconstruct functor: apple/1
 deconstruct argument 0 of apple([9, 5, 1]) is [9, 5, 1]
 deconstruct argument 1 of apple([9, 5, 1]) doesn't exist
 deconstruct argument 2 of apple([9, 5, 1]) doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
 deconstruct deconstruct: functor apple arity 1
 [[9, 5, 1]]
 deconstruct limited deconstruct 3 of apple([9, 5, 1])
@@ -20,6 +24,8 @@ deconstruct functor: zop/2
 deconstruct argument 0 of zop(3.3, 2.03) is 3.3
 deconstruct argument 1 of zop(3.3, 2.03) is 2.03
 deconstruct argument 2 of zop(3.3, 2.03) doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
 deconstruct deconstruct: functor zop arity 2
 [3.3, 2.03]
 deconstruct limited deconstruct 3 of zop(3.3, 2.03)
@@ -29,6 +35,8 @@ deconstruct functor: zap/3
 deconstruct argument 0 of zap(50, 51.0, 52) is 50
 deconstruct argument 1 of zap(50, 51.0, 52) is 51.0
 deconstruct argument 2 of zap(50, 51.0, 52) is 52
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
 deconstruct deconstruct: functor zap arity 3
 [50, 51.0, 52]
 deconstruct limited deconstruct 3 of zap(50, 51.0, 52)
@@ -38,6 +46,8 @@ deconstruct functor: zip/4
 deconstruct argument 0 of zip(50, 51, 52, 53) is 50
 deconstruct argument 1 of zip(50, 51, 52, 53) is 51
 deconstruct argument 2 of zip(50, 51, 52, 53) is 52
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
 deconstruct deconstruct: functor zip arity 4
 [50, 51, 52, 53]
 deconstruct limited deconstruct 3 of zip(50, 51, 52, 53)
@@ -47,6 +57,8 @@ deconstruct functor: wombat/0
 deconstruct argument 0 of wombat doesn't exist
 deconstruct argument 1 of wombat doesn't exist
 deconstruct argument 2 of wombat doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
 deconstruct deconstruct: functor wombat arity 0
 []
 deconstruct limited deconstruct 3 of wombat
@@ -56,15 +68,30 @@ deconstruct functor: qwerty/1
 deconstruct argument 0 of qwerty(5) is 5
 deconstruct argument 1 of qwerty(5) doesn't exist
 deconstruct argument 2 of qwerty(5) doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
 deconstruct deconstruct: functor qwerty arity 1
 [5]
 deconstruct limited deconstruct 3 of qwerty(5)
 functor qwerty arity 1 [5]
 
+deconstruct functor: moomoo/2
+deconstruct argument 0 of moomoo(50, "moo.") is 50
+deconstruct argument 1 of moomoo(50, "moo.") is "moo."
+deconstruct argument 2 of moomoo(50, "moo.") doesn't exist
+deconstruct argument 'moo' is 50
+deconstruct argument 'mooo!' is "moo."
+deconstruct deconstruct: functor moomoo arity 2
+[50, "moo."]
+deconstruct limited deconstruct 3 of moomoo(50, "moo.")
+functor moomoo arity 2 [50, "moo."]
+
 deconstruct functor: 'a'/0
 deconstruct argument 0 of a doesn't exist
 deconstruct argument 1 of a doesn't exist
 deconstruct argument 2 of a doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
 deconstruct deconstruct: functor 'a' arity 0
 []
 deconstruct limited deconstruct 3 of a
@@ -74,6 +101,8 @@ deconstruct functor: 0.12345678901234566/0
 deconstruct argument 0 of 0.12345678901234566 doesn't exist
 deconstruct argument 1 of 0.12345678901234566 doesn't exist
 deconstruct argument 2 of 0.12345678901234566 doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
 deconstruct deconstruct: functor 0.12345678901234566 arity 0
 []
 deconstruct limited deconstruct 3 of 0.12345678901234566
@@ -83,6 +112,8 @@ deconstruct functor: 4/0
 deconstruct argument 0 of 4 doesn't exist
 deconstruct argument 1 of 4 doesn't exist
 deconstruct argument 2 of 4 doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
 deconstruct deconstruct: functor 4 arity 0
 []
 deconstruct limited deconstruct 3 of 4
@@ -92,6 +123,8 @@ deconstruct functor: univ_cons/1
 deconstruct argument 0 of ["hi! I\'m a univ!"] is ["hi! I\'m a univ!"]
 deconstruct argument 1 of ["hi! I\'m a univ!"] doesn't exist
 deconstruct argument 2 of ["hi! I\'m a univ!"] doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
 deconstruct deconstruct: functor univ_cons arity 1
 [["hi! I\'m a univ!"]]
 deconstruct limited deconstruct 3 of ["hi! I\'m a univ!"]
@@ -101,6 +134,8 @@ deconstruct functor: set_rep/1
 deconstruct argument 0 of '<<deconstruct_arg.set/1>>' is [1, 2, 3, 3]
 deconstruct argument 1 of '<<deconstruct_arg.set/1>>' doesn't exist
 deconstruct argument 2 of '<<deconstruct_arg.set/1>>' doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
 deconstruct deconstruct: functor set_rep arity 1
 [[1, 2, 3, 3]]
 deconstruct limited deconstruct 3 of '<<deconstruct_arg.set/1>>'
@@ -110,24 +145,30 @@ deconstruct functor: newline/0
 deconstruct argument 0 of '<<predicate>>' doesn't exist
 deconstruct argument 1 of '<<predicate>>' doesn't exist
 deconstruct argument 2 of '<<predicate>>' doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
 deconstruct deconstruct: functor newline arity 0
 []
 deconstruct limited deconstruct 3 of '<<predicate>>'
 functor newline arity 0 []
 
-deconstruct functor: lambda_deconstruct_arg_m_108/1
+deconstruct functor: lambda_deconstruct_arg_m_114/1
 deconstruct argument 0 of '<<predicate>>' is [1, 2]
 deconstruct argument 1 of '<<predicate>>' doesn't exist
 deconstruct argument 2 of '<<predicate>>' doesn't exist
-deconstruct deconstruct: functor lambda_deconstruct_arg_m_108 arity 1
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
+deconstruct deconstruct: functor lambda_deconstruct_arg_m_114 arity 1
 [[1, 2]]
 deconstruct limited deconstruct 3 of '<<predicate>>'
-functor lambda_deconstruct_arg_m_108 arity 1 [[1, 2]]
+functor lambda_deconstruct_arg_m_114 arity 1 [[1, 2]]
 
 deconstruct functor: {}/2
 deconstruct argument 0 of {1, 'b'} is 1
 deconstruct argument 1 of {1, 'b'} is 'b'
 deconstruct argument 2 of {1, 'b'} doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
 deconstruct deconstruct: functor {} arity 2
 [1, 'b']
 deconstruct limited deconstruct 3 of {1, 'b'}
@@ -137,6 +178,8 @@ deconstruct functor: {}/3
 deconstruct argument 0 of {1, 'b', "third"} is 1
 deconstruct argument 1 of {1, 'b', "third"} is 'b'
 deconstruct argument 2 of {1, 'b', "third"} is "third"
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
 deconstruct deconstruct: functor {} arity 3
 [1, 'b', "third"]
 deconstruct limited deconstruct 3 of {1, 'b', "third"}
@@ -146,6 +189,8 @@ deconstruct functor: {}/4
 deconstruct argument 0 of {1, 'b', "third", {1, 2, 3, 4}} is 1
 deconstruct argument 1 of {1, 'b', "third", {1, 2, 3, 4}} is 'b'
 deconstruct argument 2 of {1, 'b', "third", {1, 2, 3, 4}} is "third"
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
 deconstruct deconstruct: functor {} arity 4
 [1, 'b', "third", {1, 2, 3, 4}]
 deconstruct limited deconstruct 3 of {1, 'b', "third", {1, 2, 3, 4}}
@@ -155,6 +200,8 @@ deconstruct functor: <<array>>/2
 deconstruct argument 0 of array([1000, 2000]) is 1000
 deconstruct argument 1 of array([1000, 2000]) is 2000
 deconstruct argument 2 of array([1000, 2000]) doesn't exist
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
 deconstruct deconstruct: functor <<array>> arity 2
 [1000, 2000]
 deconstruct limited deconstruct 3 of array([1000, 2000])
@@ -164,6 +211,8 @@ deconstruct functor: <<array>>/3
 deconstruct argument 0 of array([100, 200, 300]) is 100
 deconstruct argument 1 of array([100, 200, 300]) is 200
 deconstruct argument 2 of array([100, 200, 300]) is 300
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
 deconstruct deconstruct: functor <<array>> arity 3
 [100, 200, 300]
 deconstruct limited deconstruct 3 of array([100, 200, 300])
@@ -173,6 +222,8 @@ deconstruct functor: <<array>>/4
 deconstruct argument 0 of array([10, 20, 30, 40]) is 10
 deconstruct argument 1 of array([10, 20, 30, 40]) is 20
 deconstruct argument 2 of array([10, 20, 30, 40]) is 30
+deconstruct argument 'moo' doesn't exist
+deconstruct argument 'mooo!' doesn't exist
 deconstruct deconstruct: functor <<array>> arity 4
 [10, 20, 30, 40]
 deconstruct limited deconstruct 3 of array([10, 20, 30, 40])
