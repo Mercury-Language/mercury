@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2009 The University of Melbourne.
+% Copyright (C) 2008-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1668,20 +1668,21 @@ display_report_procrep_coverage_info(Prefs, ProcrepCoverageReport, Display) :-
 coverage_to_cord_string(Coverage, cord.singleton(String)) :-
     (
         Coverage = coverage_unknown,
-        String = " _ - _"
+        String0 = "_ - _"
     ;
         Coverage = coverage_known(Before, After),
-        String = string.format(" %d - %d", [i(Before), i(After)])
+        String0 = string.format("%d - %d", [i(Before), i(After)])
     ;
         Coverage = coverage_known_same(Count),
-        String = string.format(" %d - %d", [i(Count), i(Count)])
+        String0 = string.format("%d - %d", [i(Count), i(Count)])
     ;
         Coverage = coverage_known_before(Before),
-        String = string.format(" %d - _", [i(Before)])
+        String0 = string.format("%d - _", [i(Before)])
     ;
         Coverage = coverage_known_after(After),
-        String = string.format(" _ - %d", [i(After)])
-    ).
+        String0 = string.format("_ - %d", [i(After)])
+    ),
+    String = "Coverage: " ++ String0.
 
 %-----------------------------------------------------------------------------%
 %

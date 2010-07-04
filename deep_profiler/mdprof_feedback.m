@@ -194,7 +194,7 @@ create_feedback_report(feedback_data_candidate_parallel_conjunctions(
             "    Parallel Conjunctions:\n\n",
         [f(DesiredParallelism), i(SparkingCost), i(SparkingDelay),
          i(LockingCost), i(NumConjs)])),
-    map(create_candidate_parallel_conj_report, Conjs, ReportConjs),
+    map(create_candidate_parallel_conj_proc_report, Conjs, ReportConjs),
     Report = append_list(list(ReportHeader ++ cord_list_to_cord(ReportConjs))).
 
 :- func help_message = string.

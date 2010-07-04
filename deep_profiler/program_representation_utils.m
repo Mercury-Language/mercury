@@ -46,6 +46,13 @@
     %
 :- pred print_proc_label_to_string(string_proc_label::in, string::out) is det.
 
+    % print_goal_to_strings(VarTable, Indent, Goal, Strings).
+    %
+    % Print a goal (recursively) to a string representation.
+    %
+:- pred print_goal_to_strings(var_table::in, int::in, goal_rep(GoalAnn)::in,
+    cord(string)::out) is det <= goal_annotation(GoalAnn).
+
 %----------------------------------------------------------------------------%
 
 :- typeclass goal_annotation(T) where [
@@ -225,31 +232,46 @@ print_proc_label_to_string(ProcLabel, String) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred print_goal_to_strings(var_table::in, int::in, goal_rep(GoalAnn)::in,
-    cord(string)::out) is det <= goal_annotation(GoalAnn).
-
 print_goal_to_strings(VarTable, Indent, GoalRep, Strings) :-
     GoalRep = goal_rep(GoalExprRep, DetismRep, GoalAnnotation),
-    detism_to_string(DetismRep, DetismString),
-    print_goal_annotation_to_strings(GoalAnnotation, GoalAnnotationString),
+    detism_to_string(DetismRep, DetismString0),
+    print_goal_annotation_to_strings(GoalAnnotation, GoalAnnotationString0),
+   
+    % Indicate which detisms and annotations apply to whole conjunctions.
+    ( GoalExprRep = conj_rep(_) ->
+        AnnotationPrefix = cord.singleton("% conj: ")
+    ;
+        AnnotationPrefix = cord.singleton("% ")
+    ),
+    GoalAnnotationString1 = AnnotationPrefix ++ GoalAnnotationString0,
+    DetismString = AnnotationPrefix ++ DetismString0,
+
+    % Don't print empty annotations, including their newline.
+    ( not is_empty(GoalAnnotationString0) ->
+        GoalAnnotationString = nl_indent(Indent) ++ GoalAnnotationString1
+    ;
+        GoalAnnotationString = cord.empty
+    ),
+    Strings = indent(Indent) ++ DetismString ++ 
+        GoalAnnotationString ++ 
+        nl ++ ExprString,
     (
         GoalExprRep = conj_rep(ConjGoalReps),
-        print_conj_to_strings(VarTable, Indent, ConjGoalReps, Strings)
+        print_conj_to_strings(VarTable, Indent, ConjGoalReps, ExprString)
     ;
         GoalExprRep = disj_rep(DisjGoalReps),
         print_disj_to_strings(VarTable, Indent, DisjGoalReps, no, DisjString),
-        Strings = indent(Indent) ++ DetismString ++ GoalAnnotationString ++
-            cord.singleton(" (\n") ++ DisjString ++ indent(Indent) ++
+        ExprString = indent(Indent) ++ 
+            cord.singleton("(\n") ++ DisjString ++ indent(Indent) ++
             cord.singleton(")\n")
     ;
         GoalExprRep = switch_rep(SwitchVarRep, CanFail, CasesRep),
         lookup_var_name(VarTable, SwitchVarRep, SwitchVarName),
-        string.format(" %s switch on %s\n",
+        string.format("%s switch on %s\n",
             [s(string(CanFail)), s(SwitchVarName)], SwitchOnString),
         print_switch_to_strings(VarTable, Indent, CasesRep, no, SwitchString),
-        Strings = indent(Indent) ++ DetismString ++ GoalAnnotationString ++
-            cord.singleton(SwitchOnString) ++
-            indent(Indent) ++ cord.singleton("(\n") ++ SwitchString ++
+        ExprString = indent(Indent) ++ cord.singleton(SwitchOnString) ++ 
+            indent(Indent) ++ cord.singleton("(\n") ++ SwitchString ++ 
             indent(Indent) ++ cord.singleton(")\n")
     ;
         GoalExprRep = ite_rep(CondRep, ThenRep, ElseRep),
@@ -257,16 +279,15 @@ print_goal_to_strings(VarTable, Indent, GoalRep, Strings) :-
         print_goal_to_strings(VarTable, Indent + 1, ThenRep, ThenString),
         print_goal_to_strings(VarTable, Indent + 1, ElseRep, ElseString),
         IndentString = indent(Indent),
-        Strings = IndentString ++ DetismString ++ GoalAnnotationString ++
-            cord.singleton(" (\n") ++ CondString ++ IndentString ++
-            cord.singleton("->\n") ++ ThenString ++ IndentString ++
-            cord.singleton(";\n") ++ ElseString ++ IndentString ++
-            cord.singleton(")\n")
+        ExprString = IndentString ++ cord.singleton("(\n") ++ CondString ++ 
+            IndentString ++ cord.singleton("->\n") ++ ThenString ++ 
+            IndentString ++ cord.singleton(";\n") ++ ElseString ++ 
+            IndentString ++ cord.singleton(")\n")
     ;
         GoalExprRep = negation_rep(SubGoalRep),
         print_goal_to_strings(VarTable, Indent + 1, SubGoalRep, SubGoalString),
-        Strings = indent(Indent) ++ cord.singleton("not (\n") ++ SubGoalString
-            ++ indent(Indent) ++ cord.singleton(")\n")
+        ExprString = indent(Indent) ++ cord.singleton("not (\n") ++ 
+            SubGoalString ++ indent(Indent) ++ cord.singleton(")\n")
     ;
         GoalExprRep = scope_rep(SubGoalRep, MaybeCut),
         (
@@ -277,14 +298,14 @@ print_goal_to_strings(VarTable, Indent, GoalRep, Strings) :-
             CutString = cord.empty
         ),
         print_goal_to_strings(VarTable, Indent + 1, SubGoalRep, SubGoalString),
-        Strings = indent(Indent) ++ DetismString ++ GoalAnnotationString ++
-            cord.singleton(" scope") ++ CutString ++ cord.singleton(" (\n") ++
+        ExprString = indent(Indent) ++ cord.singleton("scope") ++ CutString ++ 
+            cord.singleton(" (\n") ++
             SubGoalString ++ indent(Indent) ++ cord.singleton(")\n")
     ;
         GoalExprRep = atomic_goal_rep(_FileName, _LineNumber,
             _BoundVars, AtomicGoalRep),
-        print_atomic_goal_to_strings(GoalAnnotationString, VarTable, Indent,
-            DetismRep, AtomicGoalRep, Strings)
+        print_atomic_goal_to_strings(VarTable, AtomicGoalRep, ExprString0),
+        ExprString = indent(Indent) ++ ExprString0
     ).
 
 :- pred print_conj_to_strings(var_table::in, int::in,
@@ -364,15 +385,14 @@ print_switch_to_strings(VarTable, Indent, [CaseRep | CaseReps], PrintSemi,
 print_cons_id_and_arity_to_strings(Indent, ConsIdArityRep, Strings) :-
     ConsIdArityRep = cons_id_arity_rep(ConsIdRep, Arity),
     string.format("%% case %s/%d\n", [s(ConsIdRep), i(Arity)], String),
-    Strings = cord.snoc(indent(Indent + 1), String).
+    Strings = cord.snoc(indent(Indent), String).
 
 %-----------------------------------------------------------------------------%
 
-:- pred print_atomic_goal_to_strings(cord(string)::in, var_table::in, int::in,
-    detism_rep::in, atomic_goal_rep::in, cord(string)::out) is det.
+:- pred print_atomic_goal_to_strings(var_table::in, atomic_goal_rep::in, 
+    cord(string)::out) is det.
 
-print_atomic_goal_to_strings(GoalAnnotationString, VarTable, Indent, DetismRep,
-        AtomicGoalRep, Strings) :-
+print_atomic_goal_to_strings(VarTable, AtomicGoalRep, Strings) :-
     (
         (
             AtomicGoalRep = unify_construct_rep(VarRep, ConsIdRep, ArgReps),
@@ -382,7 +402,7 @@ print_atomic_goal_to_strings(GoalAnnotationString, VarTable, Indent, DetismRep,
             UnifyOp = "=>"
         ),
         lookup_var_name(VarTable, VarRep, VarName),
-        string.format(" %s %s %s", [s(VarName), s(UnifyOp), s(ConsIdRep)],
+        string.format("%s %s %s", [s(VarName), s(UnifyOp), s(ConsIdRep)],
             UnifyString),
         print_args_to_strings(lookup_var_name, VarTable, ArgReps, ArgsString),
         Strings0 = cord.cons(UnifyString, ArgsString)
@@ -397,7 +417,7 @@ print_atomic_goal_to_strings(GoalAnnotationString, VarTable, Indent, DetismRep,
             UnifyOp = "=>"
         ),
         lookup_var_name(VarTable, VarRep, VarName),
-        string.format(" %s %s %s", [s(VarName), s(UnifyOp), s(ConsIdRep)],
+        string.format("%s %s %s", [s(VarName), s(UnifyOp), s(ConsIdRep)],
             UnifyString),
         print_args_to_strings(print_maybe_var, VarTable, MaybeArgReps,
             ArgsString),
@@ -406,59 +426,57 @@ print_atomic_goal_to_strings(GoalAnnotationString, VarTable, Indent, DetismRep,
         AtomicGoalRep = unify_assign_rep(TargetRep, SourceRep),
         lookup_var_name(VarTable, TargetRep, TargetName),
         lookup_var_name(VarTable, SourceRep, SourceName),
-        string.format(" %s := %s", [s(TargetName), s(SourceName)], String),
+        string.format("%s := %s", [s(TargetName), s(SourceName)], String),
         Strings0 = cord.singleton(String)
     ;
         AtomicGoalRep = cast_rep(TargetRep, SourceRep),
         lookup_var_name(VarTable, TargetRep, TargetName),
         lookup_var_name(VarTable, SourceRep, SourceName),
-        string.format(" cast %s to %s", [s(SourceName), s(TargetName)], String),
+        string.format("cast %s to %s", [s(SourceName), s(TargetName)], String),
         Strings0 = cord.singleton(String)
     ;
         AtomicGoalRep = unify_simple_test_rep(TargetRep, SourceRep),
         lookup_var_name(VarTable, TargetRep, TargetName),
         lookup_var_name(VarTable, SourceRep, SourceName),
-        string.format(" %s == %s", [s(SourceName), s(TargetName)], String),
+        string.format("%s == %s", [s(SourceName), s(TargetName)], String),
         Strings0 = cord.singleton(String)
     ;
         AtomicGoalRep = pragma_foreign_code_rep(Args),
         print_args_to_strings(lookup_var_name, VarTable, Args, ArgsString),
-        Strings0 = cord.singleton(" foreign_proc(") ++ ArgsString ++
+        Strings0 = cord.singleton("foreign_proc(") ++ ArgsString ++
             cord.singleton(")")
     ;
         AtomicGoalRep = higher_order_call_rep(HOVarRep, Args),
         lookup_var_name(VarTable, HOVarRep, HOVarName),
-        string.format(" %s(", [s(HOVarName)], HeadString),
+        string.format("%s(", [s(HOVarName)], HeadString),
         print_args_to_strings(lookup_var_name, VarTable, Args, ArgsString),
         Strings0 = cord.singleton(HeadString) ++ ArgsString ++
             cord.singleton(")")
     ;
         AtomicGoalRep = method_call_rep(TCIVarRep, MethodNumber, Args),
         lookup_var_name(VarTable, TCIVarRep, TCIVarName),
-        string.format(" method %d of %s(", [i(MethodNumber), s(TCIVarName)],
+        string.format("method %d of %s(", [i(MethodNumber), s(TCIVarName)],
             HeadString),
         print_args_to_strings(lookup_var_name, VarTable, Args, ArgsString),
         Strings0 = cord.singleton(HeadString) ++ ArgsString ++
             cord.singleton(")")
     ;
         AtomicGoalRep = plain_call_rep(Module, Pred, Args),
-        string.format(" %s.%s", [s(Module), s(Pred)], HeadString),
+        string.format("%s.%s", [s(Module), s(Pred)], HeadString),
         print_args_to_strings(lookup_var_name, VarTable, Args, ArgsString),
         Strings0 = cord.cons(HeadString, ArgsString)
     ;
         AtomicGoalRep = builtin_call_rep(Module, Pred, Args),
-        string.format(" builtin %s.%s", [s(Module), s(Pred)], HeadString),
+        string.format("builtin %s.%s", [s(Module), s(Pred)], HeadString),
         print_args_to_strings(lookup_var_name, VarTable, Args, ArgsString),
         Strings0 = cord.cons(HeadString, ArgsString)
     ;
         AtomicGoalRep = event_call_rep(Event, Args),
-        string.format(" event %s", [s(Event)], HeadString),
+        string.format("event %s", [s(Event)], HeadString),
         print_args_to_strings(lookup_var_name, VarTable, Args, ArgsString),
         Strings0 = cord.cons(HeadString, ArgsString)
     ),
-    detism_to_string(DetismRep, DetismString),
-    Strings = indent(Indent) ++ DetismString ++ GoalAnnotationString ++
-        Strings0 ++ nl.
+    Strings = Strings0 ++ nl.
 
 %-----------------------------------------------------------------------------%
 
@@ -518,6 +536,10 @@ indent(N) =
     ;
         cord.singleton("  ") ++ indent(N - 1)
     ).
+
+:- func nl_indent(int) = cord(string).
+
+nl_indent(N) = nl ++ indent(N).
 
 :- pred detism_to_string(detism_rep::in, cord(string)::out) is det.
 

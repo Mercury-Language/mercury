@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=4 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -411,15 +411,15 @@ apply_pred_data_to_goal((GoalPath0 - PredId), !Goal) :-
     program_representation.goal_path_consable(GoalPath0, GoalPath),
     (
         goal_util.maybe_transform_goal_at_goal_path(set_goal_pred_id(PredId),
-            GoalPath, !.Goal, yes(GoalPrime))
+            GoalPath, !.Goal, ok(GoalPrime))
     ->
         !:Goal = GoalPrime
     ;
         true
     ).
 
-:- pred set_goal_pred_id(pred_id::in, hlds_goal::in, maybe(hlds_goal)::out)
-    is det.
+:- pred set_goal_pred_id(pred_id::in, hlds_goal::in, 
+    maybe_error(hlds_goal)::out) is det.
 
 set_goal_pred_id(PredId, hlds_goal(Expression0, Info), MaybeGoal) :-
     ( Expression0 = plain_call(_, _, _, _, _, _) ->
@@ -433,9 +433,9 @@ set_goal_pred_id(PredId, hlds_goal(Expression0, Info), MaybeGoal) :-
                 int_to_string(pred_id_to_int(PredId)) ++ "\n", !IO)
         ),
         NewCall = Expression0 ^ call_pred_id := PredId,
-        MaybeGoal = yes(hlds_goal(NewCall, Info))
+        MaybeGoal = ok(hlds_goal(NewCall, Info))
     ;
-        MaybeGoal = no
+        MaybeGoal = error("Goal was not a plain call") 
     ).
 
     % The following predicates extract the disjuncts from type constraints.

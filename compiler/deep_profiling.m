@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2009 The University of Melbourne.
+% Copyright (C) 2001-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -572,8 +572,9 @@ make_deep_original_body(ModuleInfo, ProcInfo, DeepOriginalBody) :-
         MaybeDetism = no,
         proc_info_get_inferred_determinism(ProcInfo, Detism)
     ),
+    proc_info_get_varset(ProcInfo, Varset),
     DeepOriginalBody = deep_original_body(Body, HeadVars, Instmap, Vartypes,
-        Detism).
+        Detism, Varset).
 
 %-----------------------------------------------------------------------------%
 

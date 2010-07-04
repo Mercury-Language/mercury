@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2009 University of Melbourne.
+% Copyright (C) 1997-2010 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -30,12 +30,14 @@
 :- module ll_backend.stack_layout.
 :- interface.
 
+:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.layout.
 :- import_module ll_backend.llds.
+:- import_module ll_backend.prog_rep.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
@@ -87,6 +89,12 @@
     string_table::in, string_table::out) is det.
 
 %---------------------------------------------------------------------------%
+
+:- pred compute_var_number_map(list(prog_var)::in, prog_varset::in,
+    assoc_list(int, internal_layout_info)::in, hlds_goal::in,
+    var_num_map::out) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -96,7 +104,6 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
@@ -107,7 +114,6 @@
 :- import_module ll_backend.layout.
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.ll_pseudo_type_info.
-:- import_module ll_backend.prog_rep.
 :- import_module ll_backend.trace_gen.
 :- import_module parse_tree.prog_event.
 
@@ -622,18 +628,9 @@ construct_proc_layout(Params, PLI, ProcLayoutName, Kind,
                 DeepOriginalBody = DeepProfInfo ^ pdpi_orig_body,
                 DeepOriginalBody = deep_original_body(BytecodeBody,
                     BytecodeHeadVars, BytecodeInstMap, BytecodeVarTypes,
-                    BytecodeDetism),
-                some [!VarNumMap, !Counter] (
-                    !:VarNumMap = map.init,
-                    !:Counter = counter.init(1),
-                    goal_util.goal_vars(BytecodeBody, BodyVarSet),
-                    set.to_sorted_list(BodyVarSet, BodyVars),
-                    list.foldl2(add_var_to_var_number_map(VarSet),
-                        BodyVars, !VarNumMap, !Counter),
-                    list.foldl2(add_var_to_var_number_map(VarSet),
-                        BytecodeHeadVars, !VarNumMap, !.Counter, _),
-                    BytecodeVarNumMap = !.VarNumMap
-                )
+                    BytecodeDetism, BytecodeVarSet),
+                compute_var_number_map(BytecodeHeadVars, BytecodeVarSet, [],
+                    BytecodeBody, BytecodeVarNumMap)
             ;
                 MaybeDeepProfInfo = no,
                 MaybeProcStaticSlotName = no,
@@ -1204,10 +1201,6 @@ construct_var_name_rvals([Var - Name | VarNamesTail], CurNum,
         !MaxNum, OffsetsTail, !StringTable).
 
 %---------------------------------------------------------------------------%
-
-:- pred compute_var_number_map(list(prog_var)::in, prog_varset::in,
-    assoc_list(int, internal_layout_info)::in, hlds_goal::in,
-    var_num_map::out) is det.
 
 compute_var_number_map(HeadVars, VarSet, Internals, Goal, VarNumMap) :-
     some [!VarNumMap, !Counter] (

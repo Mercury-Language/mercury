@@ -1750,7 +1750,8 @@ attribute_list_to_attributes(Attributes, Attributes).
                 dob_head_vars           :: list(prog_var),
                 dob_instmap             :: instmap,
                 dob_vartypes            :: vartypes,
-                dob_detism              :: determinism
+                dob_detism              :: determinism,
+                dob_varset              :: prog_varset
             ).
 
 :- type table_arg_infos

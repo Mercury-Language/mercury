@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2009 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -215,6 +215,12 @@
     %
 :- pred apply_instmap_delta(instmap::in, instmap_delta::in,
     instmap::out) is det.
+
+    % A version of apply_instmap_delta that can be conveniently used with foldl
+    % or in state variable notation.
+    %
+:- pred apply_instmap_delta_sv(instmap_delta::in, instmap::in, instmap::out)
+    is det.
 
     % Given two instmap_deltas, overlay the entries in the second instmap_delta
     % on top of those in the first to produce a new instmap_delta.
@@ -778,6 +784,9 @@ apply_instmap_delta(reachable(_), unreachable, unreachable).
 apply_instmap_delta(reachable(InstMapping0),
         reachable(InstMappingDelta), reachable(InstMapping)) :-
     map.overlay(InstMapping0, InstMappingDelta, InstMapping).
+
+apply_instmap_delta_sv(Delta, !Instmap) :-
+    apply_instmap_delta(!.Instmap, Delta, !:Instmap).
 
 instmap_delta_apply_instmap_delta(InstMap1, InstMap2, How, InstMap) :-
     (

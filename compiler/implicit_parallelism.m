@@ -21,17 +21,17 @@
 
 :- import_module hlds.hlds_module.
 
-:- import_module maybe.
+:- import_module io.
 
 %-----------------------------------------------------------------------------%
 
-    % apply_implicit_parallelism_transformation(!ModuleInfo, FeedbackFile, !IO)
+    % apply_implicit_parallelism_transformation(!ModuleInfo, !IO)
     %
     % Apply the implicit parallelism transformation using the specified
     % feedback file.
     %
 :- pred apply_implicit_parallelism_transformation(
-    module_info::in, maybe_error(module_info)::out) is det.
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -49,6 +49,9 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module ll_backend.
+:- import_module ll_backend.prog_rep.
+:- import_module ll_backend.stack_layout.
 :- import_module mdbcomp.feedback.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
@@ -63,27 +66,45 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.
+:- import_module term.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
-apply_implicit_parallelism_transformation(ModuleInfo0, MaybeModuleInfo) :-
-    module_info_get_globals(ModuleInfo0, Globals),
+apply_implicit_parallelism_transformation(!ModuleInfo, !IO) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
     lookup_bool_option(Globals, old_implicit_parallelism,
         UseOldImplicitParallelism), 
     (
         UseOldImplicitParallelism = yes,
-        apply_old_implicit_parallelism_transformation(ModuleInfo0,
-            MaybeModuleInfo)
+        apply_old_implicit_parallelism_transformation(!.ModuleInfo,
+            MaybeModuleInfo),
+        (
+            MaybeModuleInfo = ok(!:ModuleInfo)
+        ;
+            MaybeModuleInfo = error(Error),
+            sorry(this_file, "The old implicit parallelism code is not "
+                ++ "supported: " ++ Error)
+        )
     ;
         UseOldImplicitParallelism = no,
-        apply_new_implicit_parallelism_transformation(ModuleInfo0,
-            MaybeModuleInfo)
+        io_get_maybe_source_file_map(MaybeSourceFileMap, !IO),
+        (
+            MaybeSourceFileMap = yes(SourceFileMap)
+        ;
+            MaybeSourceFileMap = no,
+            error(this_file ++ "could not retrieve the source file map")
+        ),
+        apply_new_implicit_parallelism_transformation(SourceFileMap, Specs, 
+            !ModuleInfo),
+        write_error_specs(Specs, Globals, 0, _, 0, NumErrors, !IO),
+        module_info_incr_num_errors(NumErrors, !ModuleInfo)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -95,42 +116,43 @@ apply_implicit_parallelism_transformation(ModuleInfo0, MaybeModuleInfo) :-
     --->    have_not_introduced_parallelism
     ;       introduced_parallelism.
 
-:- pred apply_new_implicit_parallelism_transformation(module_info::in,
-    maybe_error(module_info)::out) is det.
+:- pred apply_new_implicit_parallelism_transformation(source_file_map::in,
+    list(error_spec)::out, module_info::in, module_info::out) is det.
 
-apply_new_implicit_parallelism_transformation(ModuleInfo0, MaybeModuleInfo) :-
-    module_info_get_globals(ModuleInfo0, Globals0),
+apply_new_implicit_parallelism_transformation(SourceFileMap, Specs,
+        !ModuleInfo) :-
+    module_info_get_globals(!.ModuleInfo, Globals0),
     globals.get_maybe_feedback_info(Globals0, MaybeFeedbackInfo),
-    module_info_get_name(ModuleInfo0, ModuleName),
+    module_info_get_name(!.ModuleInfo, ModuleName),
     (
         yes(FeedbackInfo) = MaybeFeedbackInfo,
         get_implicit_parallelism_feedback(ModuleName, FeedbackInfo,
             ParallelismInfo)
     ->
-        some [!ModuleInfo]
+        % Retrieve and process predicates.
+        module_info_predids(PredIds, !ModuleInfo),
+        module_info_get_predicate_table(!.ModuleInfo, PredTable0),
+        predicate_table_get_preds(PredTable0, PredMap0),
+        list.foldl3(maybe_parallelise_pred(!.ModuleInfo, ParallelismInfo), 
+            PredIds, PredMap0, PredMap, 
+            have_not_introduced_parallelism, IntroducedParallelism,
+            [], Specs),
         (
-            !:ModuleInfo = ModuleInfo0,
-            
-            % Retrieve and process predicates.
-            module_info_predids(PredIds, !ModuleInfo),
-            module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-            predicate_table_get_preds(PredTable0, PredMap0),
-            list.foldl2(maybe_parallelise_pred(!.ModuleInfo, ParallelismInfo), 
-                PredIds, PredMap0, PredMap, 
-                have_not_introduced_parallelism, IntroducedParallelism),
-            (
-                IntroducedParallelism = have_not_introduced_parallelism
-            ;
-                IntroducedParallelism = introduced_parallelism,
-                predicate_table_set_preds(PredMap, PredTable0, PredTable),
-                module_info_set_predicate_table(PredTable, !ModuleInfo),
-                module_info_set_contains_par_conj(!ModuleInfo)
-            ),
-            MaybeModuleInfo = ok(!.ModuleInfo)
+            IntroducedParallelism = have_not_introduced_parallelism
+        ;
+            IntroducedParallelism = introduced_parallelism,
+            predicate_table_set_preds(PredMap, PredTable0, PredTable),
+            module_info_set_predicate_table(PredTable, !ModuleInfo),
+            module_info_set_contains_par_conj(!ModuleInfo)
         )
     ;
-        MaybeModuleInfo =
-            error("Insufficient feedback information for implicit parallelism") 
+        map.lookup(SourceFileMap, ModuleName, ModuleFilename), 
+        Context = context(ModuleFilename, 1),
+        Peices = [words("Implicit parallelism was requested but the"),
+            words("feedback file does not the candidate parallel"),
+            words("conjunctions feedback information.")],
+        Specs = [error_spec(severity_error, phase_auto_parallelism,
+            [simple_msg(Context, [always(Peices)])])]
     ).
 
     % Information retrieved from the feedback system to be used for
@@ -173,7 +195,7 @@ apply_new_implicit_parallelism_transformation(ModuleInfo0, MaybeModuleInfo) :-
     % label for a given module.
     %
 :- type module_candidate_par_conjs_map
-    == map(intra_module_proc_label, candidate_par_conjunction).
+    == map(intra_module_proc_label, candidate_par_conjunctions_proc).
 
 :- pred get_implicit_parallelism_feedback(module_name::in, feedback_info::in,
     parallelism_info::out) is semidet.
@@ -191,7 +213,7 @@ get_implicit_parallelism_feedback(ModuleName, FeedbackInfo, ParallelismInfo) :-
         SparkingDelay, LockingCost, CandidateParConjsMap).
 
 :- pred make_module_candidate_par_conjs_map(module_name::in,
-    assoc_list(string_proc_label, candidate_par_conjunction)::in,
+    assoc_list(string_proc_label, candidate_par_conjunctions_proc)::in,
     module_candidate_par_conjs_map::out) is det.
 
 make_module_candidate_par_conjs_map(ModuleName,
@@ -202,8 +224,9 @@ make_module_candidate_par_conjs_map(ModuleName,
     CandidateParConjsMap = map.from_assoc_list(CandidateParConjsAssocList).
 
 :- pred cpc_proc_is_in_module(string::in, 
-    pair(string_proc_label, candidate_par_conjunction)::in,
-    pair(intra_module_proc_label, candidate_par_conjunction)::out) is semidet.
+    pair(string_proc_label, candidate_par_conjunctions_proc)::in,
+    pair(intra_module_proc_label, candidate_par_conjunctions_proc)::out) 
+    is semidet.
 
 cpc_proc_is_in_module(ModuleName, ProcLabel - CPC, IMProcLabel - CPC) :-
     ( 
@@ -220,16 +243,17 @@ cpc_proc_is_in_module(ModuleName, ProcLabel - CPC, IMProcLabel - CPC) :-
 
 :- pred maybe_parallelise_pred(module_info::in, parallelism_info::in, 
     pred_id::in, pred_table::in, pred_table::out,
-    introduced_parallelism::in, introduced_parallelism::out) is det.
+    introduced_parallelism::in, introduced_parallelism::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 maybe_parallelise_pred(ModuleInfo, ParallelismInfo, PredId, !PredTable, 
-        !IntroducedParallelism) :-
+        !IntroducedParallelism, !Specs) :-
     map.lookup(!.PredTable, PredId, PredInfo0),
     ProcIds = pred_info_non_imported_procids(PredInfo0),
     pred_info_get_procedures(PredInfo0, ProcTable0),
-    list.foldl2(maybe_parallelise_proc(ModuleInfo, ParallelismInfo, PredId),
+    list.foldl3(maybe_parallelise_proc(ModuleInfo, ParallelismInfo, PredId),
         ProcIds, ProcTable0, ProcTable, have_not_introduced_parallelism,
-        ProcIntroducedParallelism),
+        ProcIntroducedParallelism, !Specs),
     (
         ProcIntroducedParallelism = have_not_introduced_parallelism
     ;
@@ -241,10 +265,11 @@ maybe_parallelise_pred(ModuleInfo, ParallelismInfo, PredId, !PredTable,
 
 :- pred maybe_parallelise_proc(module_info::in, parallelism_info::in, 
     pred_id::in, proc_id::in, proc_table::in, proc_table::out, 
-    introduced_parallelism::in, introduced_parallelism::out) is det.
+    introduced_parallelism::in, introduced_parallelism::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 maybe_parallelise_proc(ModuleInfo, ParallelismInfo, PredId, ProcId, !ProcTable,
-        !IntroducedParallelism) :-
+        !IntroducedParallelism, !Specs) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, 
         PredInfo, ProcInfo0),
     
@@ -255,89 +280,241 @@ maybe_parallelise_proc(ModuleInfo, ParallelismInfo, PredId, ProcId, !ProcTable,
     Mode = proc_id_to_int(ProcId),
     IMProcLabel = intra_module_proc_label(Name, Arity, PredOrFunc, Mode),
     CPCMap = ParallelismInfo ^ pi_cpc_map,
-    ( map.search(CPCMap, IMProcLabel, CPC) ->
-        proc_info_get_goal(ProcInfo0, Goal0),
-        TargetGoalPathString = CPC ^ cpc_goal_path,
-        ( goal_path_from_string(TargetGoalPathString, TargetGoalPathPrime) ->
-            TargetGoalPath = TargetGoalPathPrime
-        ;
-            unexpected(this_file, 
-                "Invalid goal path in CPC Feedback Information")
-        ),
-        maybe_parallelise_goal(ProcInfo0, CPC, TargetGoalPath, 
-            Goal0, MaybeGoal),
+    ( map.search(CPCMap, IMProcLabel, CPCProc) ->
+        proc_info_get_has_parallel_conj(ProcInfo0, HasParallelConj), 
         (
-            MaybeGoal = yes(Goal),
-            % In the future we'll specialise the procedure for parallelism,  We
-            % don't do that now so simply replace the procedure's body.
-            proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
-            proc_info_set_has_parallel_conj(yes, ProcInfo1, ProcInfo),
-            svmap.det_update(ProcId, ProcInfo, !ProcTable),
-            !:IntroducedParallelism = introduced_parallelism
+            HasParallelConj = yes,
+            Spec = report_already_parallelised(PredInfo),
+            !:Specs = [Spec | !.Specs]
         ;
-            MaybeGoal = no
+            HasParallelConj = no,
+            
+            proc_info_get_goal(ProcInfo0, Goal0),
+            CPCProc = candidate_par_conjunctions_proc(VarTable, CPCs0),
+       
+            Context = goal_info_get_context(Goal0 ^ hlds_goal_info),
+            term.context_file(Context, FileName),
+            proc_info_get_vartypes(ProcInfo0, VarTypes),
+            % VarNumRep is not used by goal_to_goal_rep, byte is an arbitrary
+            % value.
+            VarNumRep = byte,
+            proc_info_get_headvars(ProcInfo0, HeadVars),
+            proc_info_get_varset(ProcInfo0, VarSet),
+            compute_var_number_map(HeadVars, VarSet, [], Goal0, VarNumMap),
+            ProgRepInfo = prog_rep_info(FileName, VarTypes, VarNumMap,
+                VarNumRep, ModuleInfo),
+            proc_info_get_initial_instmap(ProcInfo0, ModuleInfo, Instmap),
+
+            % Sort the candidate parallelisations so that we introduced
+            % parallelisations in a order that allows us to continue to insert
+            % parallelisations even as the goal tree changes.  In particular,
+            % insert deeper parallelisations before shallower ones, and later
+            % ones before earlier ones.
+            sort_and_remove_dups(compare_candidate_par_conjunctions, 
+                CPCs0, CPCs),
+            foldl3(maybe_parallelise_goal(PredInfo, ProgRepInfo, VarTable, 
+                    Instmap),
+                CPCs, Goal0, Goal, !IntroducedParallelism, !Specs),
+            (
+                !.IntroducedParallelism = introduced_parallelism,
+                % In the future we'll specialise the procedure for parallelism,
+                % We don't do that now so simply replace the procedure's body.
+                proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
+                proc_info_set_has_parallel_conj(yes, ProcInfo1, ProcInfo),
+                svmap.det_update(ProcId, ProcInfo, !ProcTable)
+            ;
+                !.IntroducedParallelism = have_not_introduced_parallelism
+            )
         )
     ;
-        true 
+        true
     ).
 
-    % maybe_parallelise_goal(ModuleInfo, CPC, GoalPath, Goal, MaybeGoal).
-    %
-    % Parallelise a goal addressed by GoalPath within Goal producing MaybeGoal
-    % if found.  The goal to parallelise must be a conjunction with conjuncts
-    % matching those described in CPC.
-    %
-    % As this predicate recurses deeper into the goal tree GoalPath becomes
-    % smaller as goal path steps are popped off the end and followed.
-    %
-    % Try to parallelise the given conjunction within this goal.
-    %
-:- pred maybe_parallelise_goal(proc_info::in, candidate_par_conjunction::in,
-    goal_path::in, hlds_goal::in, maybe(hlds_goal)::out) is det.
+:- pred compare_candidate_par_conjunctions(candidate_par_conjunction::in,
+    candidate_par_conjunction::in, comparison_result::out) is det.
 
-maybe_parallelise_goal(ProcInfo, CPC, TargetGoalPath, 
-        Goal0, MaybeGoal) :-
+compare_candidate_par_conjunctions(CPCA, CPCB, Result) :-
+    cpc_goal_path_consable_det(CPCA, GoalPathA),
+    cpc_goal_path_consable_det(CPCB, GoalPathB),
+    compare_goal_paths(GoalPathA, GoalPathB, Result).
+
+:- pred cpc_goal_path_consable_det(candidate_par_conjunction::in, 
+    goal_path_consable::out) is det.
+
+cpc_goal_path_consable_det(CPC, GoalPathConsable) :-
+    goal_path_from_string_det(CPC ^ cpc_goal_path, GoalPath),
+    goal_path_consable(GoalPath, GoalPathConsable).
+
+:- pred compare_goal_paths(goal_path_consable::in, goal_path_consable::in,
+    comparison_result::out) is det.
+
+compare_goal_paths(GoalPathA, GoalPathB, Result) :-
+    ( goal_path_consable_remove_first(GoalPathA, StepA, RestA) ->
+        ( goal_path_consable_remove_first(GoalPathB, StepB, RestB) ->
+            compare(Result0, StepA, StepB),
+            % Reverse the ordering here so that later goals are sorted before
+            % earlier ones, this way parallelisations are placed inside later
+            % goals first.
+            (
+                Result0 = (=),
+                compare_goal_paths(RestA, RestB, Result)
+            ;
+                Result0 = (<),
+                Result = (>)
+            ;
+                Result0 = (>),
+                Result = (<)
+            )
+        ;
+            % GoalPathA is longer than GoalPathB.  Make A 'less than' B so that
+            % deeper parallelisations are insearted first.
+            Result = (<)
+        )
+    ;
+        ( goal_path_consable_remove_first(GoalPathB, _, _) ->
+            % B is 'less than' A, see above.
+            Result = (>)
+        ;
+            % Both goal paths are empty.
+            Result = (=)
+        )
+    ).
+            
+    % maybe_parallelise_goal(ProgRepInfo, VarTable, CPC, !Goal, 
+    %   !IntroducedParallelism).
+    %
+    % Attempt to parallelise some part of !.Goal returning !:Goal.
+    % If !.IntroducedParallelism = have_not_introduced_parallelism then !Goal
+    % will be unmodified.
+    %
+:- pred maybe_parallelise_goal(pred_info::in, prog_rep_info::in, 
+    var_table::in, instmap::in, candidate_par_conjunction::in,
+    hlds_goal::in, hlds_goal::out,
+    introduced_parallelism::in, introduced_parallelism::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+maybe_parallelise_goal(PredInfo, ProgRepInfo, VarTable, Instmap0, CPC, Goal0,
+        Goal, !IntroducedParallelism, !Specs) :-
+    TargetGoalPathString = CPC ^ cpc_goal_path,
+    ( goal_path_from_string(TargetGoalPathString, TargetGoalPathPrime) ->
+        TargetGoalPath = TargetGoalPathPrime
+    ;
+        unexpected(this_file, 
+            "Invalid goal path in CPC Feedback Information")
+    ),
     goal_path_consable(TargetGoalPath, TargetGoalPathC),
-    maybe_transform_goal_at_goal_path(maybe_parallelise_conj(ProcInfo, CPC),
-        TargetGoalPathC, Goal0, MaybeGoal).
+    
+    maybe_transform_goal_at_goal_path_with_instmap(
+        maybe_parallelise_conj(ProgRepInfo, VarTable, CPC),
+        TargetGoalPathC, Instmap0, Goal0, MaybeGoal),
+    (
+        MaybeGoal = ok(Goal),
+        !:IntroducedParallelism = introduced_parallelism
+    ;
+        (
+            MaybeGoal = error(Error)
+        ;
+            MaybeGoal = goal_not_found,
+            Error = "Could not find goal in procedure; "
+                    ++ "perhaps the program has changed"
+        ),
+        Goal = Goal0,
+        Spec = report_failed_parallelisation(PredInfo, TargetGoalPathString,
+            Error),
+        !:Specs = [Spec | !.Specs]
+    ).
 
-:- pred maybe_parallelise_conj(proc_info::in, candidate_par_conjunction::in,
-    hlds_goal::in, maybe(hlds_goal)::out) is det.
+:- func report_failed_parallelisation(pred_info, string, string) =
+    error_spec.
 
-maybe_parallelise_conj(ProcInfo, CPC, Goal0, MaybeGoal) :-
-    GoalExpr0 = Goal0 ^ hlds_goal_expr,
+report_failed_parallelisation(PredInfo, GoalPath, Error) = Spec :-
+    % Should the severity be informational?
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    ModuleName = pred_info_module(PredInfo),
+    PredName = pred_info_name(PredInfo),
+    Arity = pred_info_orig_arity(PredInfo),
+    Peices = [words("In"), p_or_f(PredOrFunc),
+        sym_name_and_arity(qualified(ModuleName, PredName) / Arity),
+        suffix(":"), nl,
+        words("Warning: could not auto-parallelise"), quote(GoalPath), 
+        suffix(":"), words(Error)],
+    pred_info_get_context(PredInfo, Context),
+    Spec = error_spec(severity_warning, phase_auto_parallelism,
+        [simple_msg(Context, [always(Peices)])]).
+
+:- func report_already_parallelised(pred_info) = error_spec.
+
+report_already_parallelised(PredInfo) = Spec :-
+    % Should the severity be informational?
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    ModuleName = pred_info_module(PredInfo),
+    PredName = pred_info_name(PredInfo),
+    Arity = pred_info_orig_arity(PredInfo),
+    Peices = [words("In"), p_or_f(PredOrFunc),
+        sym_name_and_arity(qualified(ModuleName, PredName) / Arity),
+        suffix(":"), nl,
+        words("Warning: this procedure contains explicit parallel"),
+        words("conjunctions, it will not be automatically parallelised.")],
+    pred_info_get_context(PredInfo, Context),
+    Spec = error_spec(severity_warning, phase_auto_parallelism,
+        [simple_msg(Context, [always(Peices)])]).
+
+:- pred maybe_parallelise_conj(prog_rep_info::in, var_table::in, 
+    candidate_par_conjunction::in, instmap::in, hlds_goal::in,
+    maybe_error(hlds_goal)::out) is det.
+
+maybe_parallelise_conj(ProgRepInfo, VarTable, CPC, Instmap0, Goal0, MaybeGoal) :-
+    Goal0 = hlds_goal(GoalExpr0, _GoalInfo0),
     % We've reached the point indicated by the goal path, Find the
     % conjuncts that we wish to parallelise.
     PartitionNum = CPC ^ cpc_partition_number,
-    FeedbackParConjuncts = CPC ^ cpc_conjs, 
     (
         GoalExpr0 = conj(plain_conj, Conjs0),
         flatten_conj(Conjs0, Conjs1),
-        find_partition(PartitionNum, Conjs1, GoalsBeforePartition,
-            yes(Partition0), GoalsAfterPartition),
-        build_par_conjuncts(ProcInfo, Partition0, FeedbackParConjuncts,
-            yes(ParConjuncts), GoalsBefore, GoalsAfter)
+        find_partition(PartitionNum, Conjs1, yes(PartitionInConj))
     ->
-        create_conj_from_list(ParConjuncts, parallel_conj, ParConjunction),
-        Conjs = GoalsBeforePartition ++ GoalsBefore ++ 
-            [ ParConjunction | GoalsAfter ++ GoalsAfterPartition ], 
-        GoalExpr = conj(plain_conj, Conjs),
-        MaybeGoal = yes(hlds_goal(GoalExpr, Goal0 ^ hlds_goal_info))
+        GoalsBeforePartition = PartitionInConj ^ pic_goals_before,
+        GoalsBeforeInstDeltas = map(
+            (func(G) = goal_info_get_instmap_delta(G ^ hlds_goal_info)),
+            GoalsBeforePartition),
+        foldl(apply_instmap_delta_sv, GoalsBeforeInstDeltas,
+            Instmap0, Instmap),
+        Partition0 = PartitionInConj ^ pic_partition,
+        build_par_conjunction(ProgRepInfo, VarTable, Instmap, Partition0, CPC,
+            MaybeParConjunction),
+        (
+            MaybeParConjunction = ok(ParConjunction),
+            GoalsAfterPartition = PartitionInConj ^ pic_goals_after,
+            Conjs = GoalsBeforePartition ++ ParConjunction ++
+                GoalsAfterPartition, 
+            GoalExpr = conj(plain_conj, Conjs),
+            MaybeGoal = ok(hlds_goal(GoalExpr, Goal0 ^ hlds_goal_info))
+        ;
+            MaybeParConjunction = error(Error),
+            MaybeGoal = error(Error)
+        )
     ;
-        MaybeGoal = no
+        MaybeGoal = error("Could not find partition within conjunction: "
+                ++ "perhaps the program has changed")
     ).
 
-:- pred find_partition(int::in, list(hlds_goal)::in, list(hlds_goal)::out,
-    maybe(list(hlds_goal))::out, list(hlds_goal)::out) is det.
+:- type partition_in_conj
+    --->    partition_in_conj(
+                pic_goals_before        :: hlds_goals,
+                pic_partition           :: hlds_goals,
+                pic_goals_after         :: hlds_goals
+            ).
 
-find_partition(_, [], [], no, []).
-find_partition(PartitionNum0, [Goal | Goals], GoalsBefore, MaybePartition,
-        GoalsAfter) :-
+:- pred find_partition(int::in, list(hlds_goal)::in,
+    maybe(partition_in_conj)::out) is det.
+
+find_partition(_, [], no).
+find_partition(PartitionNum0, [Goal | Goals], MaybePartition) :-
     ( PartitionNum0 = 1 ->
         % We've found the correct partition.
-        GoalsBefore = [],
         find_end_of_partition(Goals, Partition, GoalsAfter),
-        MaybePartition = yes([ Goal | Partition ])
+        MaybePartition = yes(
+            partition_in_conj([], [ Goal | Partition ], GoalsAfter))
     ;
         goal_is_atomic(Goal, GoalIsAtomic),
         (
@@ -347,9 +524,18 @@ find_partition(PartitionNum0, [Goal | Goals], GoalsBefore, MaybePartition,
             GoalIsAtomic = goal_is_nonatomic,
             PartitionNum = PartitionNum0 - 1
         ),
-        find_partition(PartitionNum, Goals, GoalsBefore0, MaybePartition,
-            GoalsAfter),
-        GoalsBefore = [ Goal | GoalsBefore0 ]
+        find_partition(PartitionNum, Goals, MaybePartition0),
+        (
+            MaybePartition0 = yes(PartitionInConj0),
+            PartitionInConj0 = 
+                partition_in_conj(GoalsBefore0, Partition, GoalsAfter),
+            PartitionInConj = 
+                partition_in_conj([Goal | GoalsBefore0], Partition, GoalsAfter),
+            MaybePartition = yes(PartitionInConj)
+        ;
+            MaybePartition0 = no,
+            MaybePartition = MaybePartition0
+        )
     ).
 
 :- pred find_end_of_partition(list(hlds_goal)::in, list(hlds_goal)::out, 
@@ -364,203 +550,268 @@ find_end_of_partition([ Goal | Goals ], Partition, GoalsAfter) :-
         Partition = [ Goal | Partition0 ]
     ;
         GoalIsAtomic = goal_is_nonatomic,
-        Partition = [ Goal ],
-        GoalsAfter = Goals
+        Partition = [],
+        GoalsAfter = [Goal | Goals]
     ).
 
-:- pred build_par_conjuncts(proc_info::in, hlds_goals::in, list(seq_conj)::in, 
-    maybe(hlds_goals)::out, hlds_goals::out, hlds_goals::out) is det.
+:- pred build_par_conjunction(prog_rep_info::in, var_table::in, instmap::in,
+    hlds_goals::in, candidate_par_conjunction::in, 
+    maybe_error(hlds_goals)::out) is det.
 
-build_par_conjuncts(ProcInfo, Goals, FeedbackParConjuncts0,
-        MaybeParConjuncts, GoalsBefore, GoalsAfter) :-
-    (
-        FeedbackParConjuncts0 = [ FeedbackParConjunct | FeedbackParConjuncts ],
-        FeedbackParConjunct = seq_conj(FeedbackSeqConjuncts),
-        build_seq_conjuncts(ProcInfo, Goals, FeedbackSeqConjuncts,
-            MaybeSeqConjuncts0, GoalsBefore, GoalsAfterSeqConj),
-        (
-            MaybeSeqConjuncts0 = yes(SeqConjuncts0),
-            build_par_conjuncts(ProcInfo, GoalsAfterSeqConj,
-                FeedbackParConjuncts, MaybeParConjuncts0, GoalsBefore0,
-                GoalsAfter0),
-            (
-                MaybeParConjuncts0 = yes(ParConjuncts0),
-                % GoalsBefore0 must be put into either the current parallel
-                % conjunct or the next parallel conjunct.
-                (
-                    ParConjuncts0 = [],
-                    % If there are no parallel conjuncts remaining then
-                    % schedule all these goals after the parallel conjunction,
-                    % this is a trivial conservative strategy.
-                    GoalsAfter = GoalsBefore0 ++ GoalsAfter0,
-                    SeqConjuncts = SeqConjuncts0
-                ;
-                    ParConjuncts0 = [_ | _],
-                    GoalsAfter = GoalsAfter0,
-                    SeqConjuncts = SeqConjuncts0,
-                    (
-                        GoalsBefore0 = []
-                    ;
-                        GoalsBefore0 = [_ | _],
-                        sorry(this_file, 
-                          "Extra goals found during automatic parallelisation")
-                    )
-                ),
-                create_conj_from_list(SeqConjuncts, plain_conj, ParConjunct),
-                % Mercury only supports parallelisation of deterministic code,
-                % furthermore it's just not a good idea to parallelise anything
-                % that is impure.
-                ( model_det_and_at_least_semipure(ParConjunct) ->
-                    MaybeParConjuncts = yes([ ParConjunct | ParConjuncts0 ])
-                ;
-                    MaybeParConjuncts = no
-                )
-            ;
-                MaybeParConjuncts0 = no,
-                MaybeParConjuncts = no,
-                GoalsAfter = Goals
-            )
-        ;
-            MaybeSeqConjuncts0 = no,
-            MaybeParConjuncts = no,
-            GoalsAfter = Goals
-        )
-    ;
-        FeedbackParConjuncts0 = [],
-        MaybeParConjuncts = yes([]),
-        GoalsBefore = [],
-        GoalsAfter = Goals
-    ).
-
-:- pred build_seq_conjuncts(proc_info::in, hlds_goals::in, list(pard_goal)::in,
-    maybe(hlds_goals)::out, hlds_goals::out, hlds_goals::out) is det.
-
-build_seq_conjuncts(ProcInfo, Goals, FeedbackSeqConjuncts0, MaybeSeqConjuncts,
-        GoalsBefore, GoalsAfter) :-
-    (
-        FeedbackSeqConjuncts0 = [ FeedbackSeqConjunct | FeedbackSeqConjuncts ],
-        pard_goal_match_hlds_goal(ProcInfo, FeedbackSeqConjunct, Goals,
-            MaybeGoal, GoalsBefore0, GoalsAfter0),
-        (
-            MaybeGoal = yes(Goal),
-            GoalsBefore = GoalsBefore0,
-            SeqConjunct = Goal,
-            build_seq_conjuncts(ProcInfo, GoalsAfter0, FeedbackSeqConjuncts,
-                MaybeSeqConjuncts0, GoalsBetween, GoalsAfter),
-            (
-                MaybeSeqConjuncts0 = yes(SeqConjuncts0),
-                SeqConjuncts = [ SeqConjunct | 
-                    (GoalsBetween ++ SeqConjuncts0) ],
-                MaybeSeqConjuncts = yes(SeqConjuncts)
-            ;
-                MaybeSeqConjuncts0 = no,
-                MaybeSeqConjuncts = no
-            )
-        ;
-            MaybeGoal = no,
-            MaybeSeqConjuncts = no,
-            GoalsBefore = [],
-            GoalsAfter = Goals
-        )
-    ;
-        FeedbackSeqConjuncts0 = [],
-        MaybeSeqConjuncts = yes([]),
-        GoalsBefore = [],
-        GoalsAfter = Goals
-    ).
-
-:- pred pard_goal_match_hlds_goal(proc_info::in, pard_goal::in,
-    hlds_goals::in, maybe(hlds_goal)::out, hlds_goals::out, hlds_goals::out)
-    is det.
-
-pard_goal_match_hlds_goal(_ProcInfo, _, [], no, [], []).
-pard_goal_match_hlds_goal(ProcInfo, InnerGoal, [ Goal | Goals ], MaybeGoal,
-        GoalsBefore, GoalsAfter) :-
-    proc_info_get_varset(ProcInfo, Varset),
-    GoalExpr = Goal ^ hlds_goal_expr,
-    (
-        ( GoalExpr = unify(_, _, _, _, _)
-        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
-        ),
-        (
-            ( InnerGoal = pg_call(_, _, _)
-            ; InnerGoal = pg_cheap_call(_, _)
-            ),
-            Match = no
-        ;
-            InnerGoal = pg_other_atomic_goal,
-            Match = yes
-        )
-    ;
-        (
-            GoalExpr = plain_call(_, _, Args, Builtin, _, _)
-        ;
-            GoalExpr = generic_call(_, Args, _, _),
-            Builtin = not_builtin
-        ),
-        (
-            ( InnerGoal = pg_call(Callee, FbArgs, _)
-            ; InnerGoal = pg_cheap_call(Callee, FbArgs)
-            ),
-            % Try to match the callee and the vars.
-            (
-                Builtin = not_builtin,
-                (
-                    (
-                        GoalExpr = generic_call(_, _, _, _),
-                        Callee = unknown_callee
-                    ;
-                        GoalExpr = plain_call(_, _, _, _, _, SymName),
-                        Callee = named_callee(ModuleName, ProcName),
-                        match_sym_name(SymName, ModuleName, ProcName)
-                    ),
-                    map(args_match(Varset), Args, FbArgs)
-                ->
-                    Match = yes
-                ;
-                    Match = no
-                )
-            ;
-                ( Builtin = inline_builtin
-                ; Builtin = out_of_line_builtin
-                ),
-                Match = no
-            )
-        ;
-            InnerGoal = pg_other_atomic_goal,
-            (
-                Builtin = not_builtin,
-                Match = no
-            ;
-                ( Builtin = inline_builtin
-                ; Builtin = out_of_line_builtin
-                ),
-                Match = yes 
-            )
-        )
-    ;
-        ( GoalExpr = conj(_, _)
-        ; GoalExpr = disj(_)
-        ; GoalExpr = switch(_, _, _)
-        ; GoalExpr = negation(_)
-        ; GoalExpr = scope(_, _)
-        ; GoalExpr = if_then_else(_, _, _, _)
-        ; GoalExpr = shorthand(_)
-        ),
-        unexpected(this_file, 
-            "Found non-atomic goal in pard_goal_match_hlds_goal")
+build_par_conjunction(ProcRepInfo, VarTable, Instmap0, !.Goals, CPC,
+        MaybeParConjunction) :-
+    GoalRepsBefore = CPC ^ cpc_goals_before,
+    GoalRepsAfter = CPC ^ cpc_goals_after,
+    ParConjReps = CPC ^ cpc_conjs,
+    some [!Instmap] (
+        !:Instmap = Instmap0,
+        build_seq_conjuncts(ProcRepInfo, VarTable, GoalRepsBefore,
+            MaybeGoalsBefore, !Goals, !Instmap),
+        build_par_conjuncts(ProcRepInfo, VarTable, ParConjReps,
+            MaybeParConjuncts, !Goals, !Instmap),
+        build_seq_conjuncts(ProcRepInfo, VarTable, GoalRepsAfter,
+            MaybeGoalsAfter, !Goals, !Instmap),
+        _ = !.Instmap
     ),
     (
-        Match = yes,
-        MaybeGoal = yes(Goal),
-        GoalsBefore = [],
-        GoalsAfter = Goals
+        MaybeGoalsBefore = yes(GoalsBefore),
+        (
+            MaybeParConjuncts = yes(ParConjuncts),
+            (
+                MaybeGoalsAfter = yes(GoalsAfter),
+                ( !.Goals = [] ->
+
+                    create_conj_from_list(ParConjuncts, parallel_conj,
+                        ParConjunction),
+                    MaybeParConjunction = ok(GoalsBefore ++ 
+                        [ParConjunction | GoalsAfter])
+                ;
+                    MaybeParConjunction = error("There where goals left-over after "
+                        ++ "constructing the parallel conjunction")
+                )
+            ;
+                MaybeGoalsAfter = no,
+                MaybeParConjunction = error("The goals after the parallel "
+                    ++ "conjunction do not match those in the feedback file")
+            )
+        ;
+            MaybeParConjuncts = no,
+            MaybeParConjunction = error("The goals within the parallel "
+                ++ "conjunction do not match those in the feedback file")
+        )
     ;
-        Match = no,
-        pard_goal_match_hlds_goal(ProcInfo, InnerGoal, Goals, MaybeGoal,
-            GoalsBefore0, GoalsAfter),
-        GoalsBefore = [ Goal | GoalsBefore0 ]
+        MaybeGoalsBefore = no,
+        MaybeParConjunction = error("The goals before the parallel "
+            ++ "conjunction do not match those in the feedback file")
     ).
+
+:- pred build_par_conjuncts(prog_rep_info::in, var_table::in, 
+    list(seq_conj)::in, maybe(hlds_goals)::out, 
+    hlds_goals::in, hlds_goals::out, instmap::in, instmap::out) is det.
+
+build_par_conjuncts(_, _, [], yes([]), !Goals, !Instmap).
+build_par_conjuncts(ProcRepInfo, VarTable, [GoalRep | GoalReps], MaybeConjs,
+        !Goals, !Instmap) :-
+    GoalRep = seq_conj(SeqConjs),
+    build_seq_conjuncts(ProcRepInfo, VarTable, SeqConjs, MaybeConj, !Goals, 
+        !Instmap),
+    (
+        MaybeConj = yes(Conj0),
+        create_conj_from_list(Conj0, plain_conj, Conj), 
+        build_par_conjuncts(ProcRepInfo, VarTable, GoalReps, MaybeConjs0,
+            !Goals, !Instmap),
+        (
+            MaybeConjs0 = yes(Conjs0),
+            MaybeConjs = yes([Conj | Conjs0])
+        ;
+            MaybeConjs0 = no,
+            MaybeConjs = no
+        )
+    ;
+        MaybeConj = no,
+        MaybeConjs = no
+    ).
+
+:- pred build_seq_conjuncts(prog_rep_info::in, var_table::in, 
+    list(pard_goal)::in, maybe(hlds_goals)::out, 
+    hlds_goals::in, hlds_goals::out, instmap::in, instmap::out) is det.
+
+build_seq_conjuncts(_, _, [], yes([]), !Goals, !Instmap).
+build_seq_conjuncts(ProcRepInfo, VarTable, [GoalRep | GoalReps], MaybeConjs,
+        !Goals, !Instmap) :-
+    ( 
+        !.Goals = [Goal | !:Goals],
+        ( pard_goal_match_hlds_goal(ProcRepInfo, VarTable, !.Instmap, GoalRep, 
+                Goal) ->
+            InstmapDelta = goal_info_get_instmap_delta(Goal ^ hlds_goal_info),
+            apply_instmap_delta_sv(InstmapDelta, !Instmap),
+            build_seq_conjuncts(ProcRepInfo, VarTable, GoalReps, MaybeConjs0,
+                !Goals, !Instmap),
+            (
+                MaybeConjs0 = yes(Conjs0),
+                MaybeConjs = yes([Goal | Conjs0])
+            ;
+                MaybeConjs0 = no,
+                MaybeConjs = no
+            )
+        ;
+            MaybeConjs = no
+        )
+    ;
+        !.Goals = [],
+        MaybeConjs = no
+    ).
+
+:- pred pard_goal_match_hlds_goal(prog_rep_info::in, var_table::in,
+    instmap::in, pard_goal::in, hlds_goal::in) is semidet.
+
+pard_goal_match_hlds_goal(ProgRepInfo, VarTable, Instmap, GoalRep1, Goal) :-
+    goal_to_goal_rep(ProgRepInfo, Instmap, Goal, GoalRep2),
+    goal_reps_match(VarTable, GoalRep1, GoalRep2).
+
+:- pred goal_reps_match(var_table::in, goal_rep(A)::in, goal_rep(B)::in) 
+    is semidet.
+
+goal_reps_match(VarTable, goal_rep(GoalExpr1, Detism, _), 
+        goal_rep(GoalExpr2, Detism, _)) :-
+    goal_expr_reps_match(VarTable, GoalExpr1, GoalExpr2).
+
+:- pred goal_expr_reps_match(var_table::in, goal_expr_rep(A)::in, 
+    goal_expr_rep(B)::in) is semidet.
+
+goal_expr_reps_match(VarTable, conj_rep(Conjs1), conj_rep(Conjs2)) :-
+    zip_all_true(goal_reps_match(VarTable), Conjs1, Conjs2).
+goal_expr_reps_match(VarTable, disj_rep(Disjs1), disj_rep(Disjs2)) :-
+    zip_all_true(goal_reps_match(VarTable), Disjs1, Disjs2).
+goal_expr_reps_match(VarTable, switch_rep(VarRep1, CanFail, Cases1),
+        switch_rep(VarRep2, CanFail, Cases2)) :-
+    % Note that cases can appear in a different order and goals would still be
+    % equivalent.  We don't handle this.
+    var_reps_match(VarTable, VarRep1, VarRep2),
+    zip_all_true(case_reps_match(VarTable), Cases1, Cases2).
+goal_expr_reps_match(VarTable, ite_rep(Cond1, Then1, Else1), 
+        ite_rep(Cond2, Then2, Else2)) :-
+    goal_reps_match(VarTable, Cond1, Cond2),
+    goal_reps_match(VarTable, Then1, Then2),
+    goal_reps_match(VarTable, Else1, Else2).
+goal_expr_reps_match(VarTable, negation_rep(SubGoal1),
+        negation_rep(SubGoal2)) :- 
+    goal_reps_match(VarTable, SubGoal1, SubGoal2).
+goal_expr_reps_match(VarTable, scope_rep(SubGoal1, MaybeCut),
+        scope_rep(SubGoal2, MaybeCut)) :-
+    goal_reps_match(VarTable, SubGoal1, SubGoal2).
+goal_expr_reps_match(VarTable, atomic_goal_rep(_, _, _, AtomicGoal1),
+        atomic_goal_rep(_, _, _, AtomicGoal2)) :-
+    % We don't compare names and file numbers, a trivial change made by the
+    % user could change the line number dramatically without changing how the
+    % program should be parallelised.
+    %
+    % Vars are not matched here either, we only consider the vars within the
+    % atomic_goal_rep structures.
+    atomic_goal_reps_match(VarTable, AtomicGoal1, AtomicGoal2).
+
+:- pred atomic_goal_reps_match(var_table::in, atomic_goal_rep::in,
+    atomic_goal_rep::in) is semidet.
+
+atomic_goal_reps_match(VarTable, AtomicRepA, AtomicRepB) :-
+    (
+        (
+            AtomicRepA = unify_construct_rep(VarA, ConsId, ArgsA),
+            AtomicRepB = unify_construct_rep(VarB, ConsId, ArgsB)
+        ;
+            AtomicRepA = unify_deconstruct_rep(VarA, ConsId, ArgsA),
+            AtomicRepB = unify_deconstruct_rep(VarB, ConsId, ArgsB)
+        ;
+            AtomicRepA = higher_order_call_rep(VarA, ArgsA),
+            AtomicRepB = higher_order_call_rep(VarB, ArgsB)
+        ;
+            AtomicRepA = method_call_rep(VarA, MethodNum, ArgsA),
+            AtomicRepB = method_call_rep(VarB, MethodNum, ArgsB)
+        ),
+        var_reps_match(VarTable, VarA, VarB),
+        zip_all_true(var_reps_match(VarTable), ArgsA, ArgsB)
+    ;
+        (
+            AtomicRepA = partial_deconstruct_rep(VarA, ConsId, MaybeArgsA),
+            AtomicRepB = partial_deconstruct_rep(VarB, ConsId, MaybeArgsB)
+        ;
+            AtomicRepA = partial_construct_rep(VarA, ConsId, MaybeArgsA),
+            AtomicRepB = partial_construct_rep(VarB, ConsId, MaybeArgsB)
+        ),
+        var_reps_match(VarTable, VarA, VarB),
+        zip_all_true(maybe_var_reps_match(VarTable), MaybeArgsA, MaybeArgsB)
+    ;
+        (
+            AtomicRepA = unify_assign_rep(VarA1, VarA2),
+            AtomicRepB = unify_assign_rep(VarB1, VarB2)
+        ;
+            AtomicRepA = cast_rep(VarA1, VarA2),
+            AtomicRepB = cast_rep(VarB1, VarB2)
+        ;
+            AtomicRepA = unify_simple_test_rep(VarA1, VarA2),
+            AtomicRepB = unify_simple_test_rep(VarB1, VarB2)
+        ),
+        var_reps_match(VarTable, VarA1, VarB1),
+        var_reps_match(VarTable, VarA2, VarB2)
+    ;
+        (
+            AtomicRepA = pragma_foreign_code_rep(ArgsA),
+            AtomicRepB = pragma_foreign_code_rep(ArgsB)
+        ;
+            AtomicRepA = plain_call_rep(ModuleName, PredName, ArgsA),
+            AtomicRepB = plain_call_rep(ModuleName, PredName, ArgsB)
+        ;
+            AtomicRepA = builtin_call_rep(ModuleName, PredName, ArgsA),
+            AtomicRepB = builtin_call_rep(ModuleName, PredName, ArgsB)
+        ;
+            AtomicRepA = event_call_rep(EventName, ArgsA),
+            AtomicRepB = event_call_rep(EventName, ArgsB)
+        ),
+        zip_all_true(var_reps_match(VarTable), ArgsA, ArgsB)
+    ).
+
+:- pred case_reps_match(var_table::in, case_rep(A)::in, case_rep(B)::in)
+    is semidet.
+
+case_reps_match(VarTable, case_rep(ConsId, OtherConsIds, GoalRep1),
+        case_rep(ConsId, OtherConsIds, GoalRep2)) :-
+    goal_reps_match(VarTable, GoalRep1, GoalRep2).
+
+:- pred var_reps_match(var_table::in, var_rep::in, var_rep::in) is semidet.
+
+var_reps_match(VarTable, VarA, VarB) :-
+    ( search_var_name(VarTable, VarA, _) ->
+        % Variables named by the programmer _must_ match, we expect to find
+        % them in the var table, and that they would be identical.  (Since one
+        % of the variables will be built using it's name and the var table
+        % constructed when converting the original code to byte code).
+        VarA = VarB
+    ;
+        % Unamed variables match implicitly.  They will usually be identical be
+        % we allow this to be releaxed so that the program may change a little
+        % after being profiled but before being parallelised.
+        true
+    ).
+
+:- pred maybe_var_reps_match(var_table::in, 
+    maybe(var_rep)::in, maybe(var_rep)::in) is semidet.
+
+maybe_var_reps_match(_, no, no).
+maybe_var_reps_match(VarTable, yes(VarA), yes(VarB)) :-
+    var_reps_match(VarTable, VarA, VarB).
+
+    % zip_all_true(Pred, ListA, ListB)
+    %
+    % True when lists have equal length and every corresponding pair of values
+    % from the lists satisifies Pred.
+    %
+:- pred zip_all_true(pred(A, B), list(A), list(B)).
+:- mode zip_all_true(pred(in, in) is semidet, in, in) is semidet.
+
+zip_all_true(_, [], []).
+zip_all_true(Pred, [A | As], [B | Bs]) :-
+    Pred(A, B),
+    zip_all_true(Pred, As, Bs).
 
 :- pred match_sym_name(sym_name::in, string::in, string::in) is semidet.
 

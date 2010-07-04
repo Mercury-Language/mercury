@@ -117,6 +117,7 @@
     ;       phase_dead_code
     ;       phase_termination_analysis
     ;       phase_accumulator_intro
+    ;       phase_auto_parallelism
     ;       phase_interface_gen
     ;       phase_code_gen.
 
@@ -669,6 +670,7 @@ get_maybe_mode_report_control(phase_simplify(Control)) = yes(Control).
 get_maybe_mode_report_control(phase_dead_code) = no.
 get_maybe_mode_report_control(phase_termination_analysis) = no.
 get_maybe_mode_report_control(phase_accumulator_intro) = no.
+get_maybe_mode_report_control(phase_auto_parallelism) = no.
 get_maybe_mode_report_control(phase_interface_gen) = no.
 get_maybe_mode_report_control(phase_code_gen) = no.
 

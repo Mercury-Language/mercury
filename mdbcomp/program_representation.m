@@ -416,6 +416,12 @@
     %
 :- pred case_get_goal(case_rep(T)::in, goal_rep(T)::out) is det.
 
+    % Transform a goal representation annotated with T into one annotated with
+    % U.
+    %
+:- pred transform_goal_rep(pred(T, U), goal_rep(T), goal_rep(U)).
+:- mode transform_goal_rep(pred(in, out) is det, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
     % Describe a call site.
@@ -667,6 +673,16 @@
 :- mode var_num_rep_byte(in, out) is det.
 :- mode var_num_rep_byte(out, in) is semidet.
 
+    % Represent whether a scope goal cuts away solutions or not.
+    %
+:- pred cut_byte(maybe_cut, int).
+:- mode cut_byte(in, out) is det.
+:- mode cut_byte(out, in) is semidet.
+
+:- pred can_fail_byte(switch_can_fail_rep, int).
+:- mode can_fail_byte(in, out) is det.
+:- mode can_fail_byte(out, in) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- pred trace_read_proc_defn_rep(bytecode_bytes::in, label_layout::in,
@@ -827,6 +843,55 @@ proc_defn_rep_type = type_of(_ : proc_defn_rep).
 :- pragma foreign_export("C", goal_rep_type = out, "ML_goal_rep_type").
 
 goal_rep_type = type_of(_ : goal_rep).
+
+transform_goal_rep(Pred, Goal0, Goal) :-
+    Goal0 = goal_rep(Expr0, Detism, A),
+    transform_goal_expr(Pred, Expr0, Expr),
+    Pred(A, B),
+    Goal = goal_rep(Expr, Detism, B).
+
+:- pred transform_goal_expr(pred(T, U), goal_expr_rep(T), goal_expr_rep(U)).
+:- mode transform_goal_expr(pred(in, out) is det, in, out) is det.
+
+transform_goal_expr(Pred, Expr0, Expr) :-
+    (
+        Expr0 = conj_rep(Conjs0),
+        map(transform_goal_rep(Pred), Conjs0, Conjs),
+        Expr = conj_rep(Conjs)
+    ;
+        Expr0 = disj_rep(Disjs0),
+        map(transform_goal_rep(Pred), Disjs0, Disjs),
+        Expr = disj_rep(Disjs)
+    ;
+        Expr0 = switch_rep(Var, CanFail, Cases0),
+        map(transform_switch_case(Pred), Cases0, Cases),
+        Expr = switch_rep(Var, CanFail, Cases)
+    ;
+        Expr0 = ite_rep(Cond0, Then0, Else0),
+        transform_goal_rep(Pred, Cond0, Cond),
+        transform_goal_rep(Pred, Then0, Then),
+        transform_goal_rep(Pred, Else0, Else),
+        Expr = ite_rep(Cond, Then, Else)
+    ;
+        Expr0 = negation_rep(NegGoal0),
+        transform_goal_rep(Pred, NegGoal0, NegGoal),
+        Expr = negation_rep(NegGoal)
+    ;
+        Expr0 = scope_rep(SubGoal0, MaybeCut),
+        transform_goal_rep(Pred, SubGoal0, SubGoal),
+        Expr = scope_rep(SubGoal, MaybeCut)
+    ;
+        Expr0 = atomic_goal_rep(Filename, Lineno, BoundVars, AtomicGoal),
+        Expr = atomic_goal_rep(Filename, Lineno, BoundVars, AtomicGoal)
+    ).
+        
+:- pred transform_switch_case(pred(T, U), case_rep(T), case_rep(U)).
+:- mode transform_switch_case(pred(in, out) is det, in, out) is det.
+
+transform_switch_case(Pred, Case0, Case) :-
+    Case0 = case_rep(ConsId, OtherConsIds, Goal0),
+    transform_goal_rep(Pred, Goal0, Goal),
+    Case = case_rep(ConsId, OtherConsIds, Goal).
 
 %-----------------------------------------------------------------------------%
 
@@ -1418,10 +1483,8 @@ read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
         ;
             GoalType = goal_scope,
             read_byte(ByteCode, MaybeCutByte, !Pos),
-            ( MaybeCutByte = 0 ->
-                MaybeCut = scope_is_no_cut
-            ; MaybeCutByte = 1 ->
-                MaybeCut = scope_is_cut
+            ( cut_byte(MaybeCutPrime, MaybeCutByte) ->
+                MaybeCut = MaybeCutPrime
             ;
                 error("read_goal: bad maybe_cut")
             ),
@@ -1661,6 +1724,12 @@ read_switch_can_fail(Bytecode, CanFail, !Pos) :-
     ;
         error("read_goal: bad switch_can_fail")
     ).
+
+cut_byte(scope_is_no_cut, 0).
+cut_byte(scope_is_cut, 1).
+
+can_fail_byte(switch_can_fail_rep, 0).
+can_fail_byte(switch_can_not_fail_rep, 1).
 
     % An abstraction to read the given number of items using the higher order
     % predicate.

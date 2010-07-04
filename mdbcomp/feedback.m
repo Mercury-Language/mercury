@@ -26,7 +26,6 @@
 :- import_module int.
 :- import_module io.
 :- import_module list.
-:- import_module maybe.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -81,8 +80,8 @@
                     % The cost of maintaining a lock on a single dependant
                     % variable in call sequence counts.
 
-                conjunctions        :: assoc_list(string_proc_label,
-                                        candidate_par_conjunction(pard_goal))
+                conjunctions        :: assoc_list(string_proc_label, 
+                                        candidate_par_conjunctions_proc)
                     % Assoclist of procedure labels and candidate parallel
                     % conjunctions.
             ).
@@ -95,6 +94,20 @@
 :- type stat_measure
     --->    stat_mean
     ;       stat_median.
+
+    % The set of candidate parallel conjunctions within a procedure.
+    %
+:- type candidate_par_conjunctions_proc(GoalType)
+    --->    candidate_par_conjunctions_proc(
+                cpcp_var_table  :: var_table,
+                    % A variable name table for the variables that have
+                    % sensible names.
+                                        
+                cpcp_par_conjs  :: list(candidate_par_conjunction(GoalType))
+            ).
+
+:- type candidate_par_conjunctions_proc ==
+    candidate_par_conjunctions_proc(pard_goal).
 
     % A conjunction that is a candidate for parallelisation, it is identified
     % by a procedure label, goal path to the conjunction and the call sites
@@ -158,36 +171,42 @@
     % A parallelised goal (pard_goal), a goal within a parallel conjunction.
     % We don't yet have to represent many types of goals or details about them.
     %
-:- type pard_goal
-    --->    pg_call(
-                % This is a call that we're considering parallelising.  It has
-                % a significant enough cost to be considered for
+:- type pard_goal == goal_rep(pard_goal_annotation).
+
+:- type pard_goal_annotation
+    --->    pard_goal_call(
+                % A call goal,  These are the most interesting goals WRT
                 % parallelisation.
-                
-                pgc_callee                  :: callee_rep,
-                    
-                pgc_vars                    :: list(maybe(string)),
-                    % The names of variables (if used defined) given as
-                    % arguments to this call.
-                    
-                pgc_cost_percall            :: float
+
+                pgc_cost_percall            :: float,
                     % The per-call cost of this call in call sequence counts.
+
+                pgc_coat_above_threshold    :: cost_above_par_threshold
             )
-    ;       pg_cheap_call(
-                % This call is to cheap to be considered for parallelisation,
+    ;       pard_goal_other_atomic
+                % Some other (cheap) atomic goal.
+
+    ;       pard_goal_non_atomic.
+                % A non-atomic goal.
+
+:- type cost_above_par_threshold
+    --->    cost_above_par_threshold
+                % The goal has a significant enough cost to be considered for
+                % parallelisation.
+
+    ;       cost_not_above_par_threshold.
+                % The goal is to cheap to be considered for parallelisation,
                 % we track it in the feedback information to help inform the
                 % compiler about _how_ to parallelise calls around it.
-                
-                pgcc_callee                  :: callee_rep,
-                pgcc_vars                    :: list(maybe(string))
-                    % As above.
-            )
-    ;       pg_other_atomic_goal.
-                % Some other (cheap) atomic goal.
 
 :- type conjuncts_are_dependant
     --->    conjuncts_are_dependant
     ;       conjuncts_are_independent.
+
+:- pred convert_candidate_par_conjunctions_proc(pred(A, B),
+    candidate_par_conjunctions_proc(A), candidate_par_conjunctions_proc(B)).
+:- mode convert_candidate_par_conjunctions_proc(pred(in, out) is det, 
+    in, out) is det.
 
 :- pred convert_candidate_par_conjunction(pred(A, B), 
     candidate_par_conjunction(A), candidate_par_conjunction(B)).
@@ -734,7 +753,7 @@ feedback_first_line = "Mercury Compiler Feedback".
 
 :- func feedback_version = string.
 
-feedback_version = "8".
+feedback_version = "9".
 
 %-----------------------------------------------------------------------------%
 %
@@ -742,6 +761,11 @@ feedback_version = "8".
 %
 % XXX: These and their types should probably be moved to a new module.
 %
+
+convert_candidate_par_conjunctions_proc(Conv, CPCProcA, CPCProcB) :-
+    CPCProcA = candidate_par_conjunctions_proc(VarTable, CPCA),
+    map(convert_candidate_par_conjunction(Conv), CPCA, CPCB),
+    CPCProcB = candidate_par_conjunctions_proc(VarTable, CPCB).
 
 convert_candidate_par_conjunction(Conv, CPC0, CPC) :-
     CPC0 = candidate_par_conjunction(GoalPath, PartNum, IsDependent, 
