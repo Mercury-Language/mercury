@@ -41,7 +41,11 @@
 	;	zoom(int) 
 	;	zap(int, float, int) 
 	;	zip(int, int, int, int) 
-	;	zop(float, float).
+	;	zop(float, float)
+	;	moomoo(
+			moo	:: int,
+			'mooo!'	:: string
+		).
 
 :- type poly(A, B)
 	--->	poly_one(A)
@@ -92,6 +96,8 @@ main -->
 	test_all(wombat), newline,
 		% test notag
 	test_all(qwerty(5)), newline,
+		% test named arguments
+	test_all(moomoo(50, "moo.")), newline,
 		% test characters
 	test_all('a'), newline,
 		% test a float which requires 17 digits of precision
@@ -124,6 +130,8 @@ test_all(T) -->
 	test_deconstruct_arg(T, 0),
 	test_deconstruct_arg(T, 1),
 	test_deconstruct_arg(T, 2),
+	test_deconstruct_named_arg(T, "moo"),
+	test_deconstruct_named_arg(T, "mooo!"),
 	test_deconstruct_deconstruct(T),
 	test_deconstruct_limited_deconstruct(T, 3).
 
@@ -156,6 +164,22 @@ test_deconstruct_arg(T, ArgNum) -->
 	;
 		{ MaybeArg = no_arg },
 		io.write_string(" doesn't exist\n")
+	).
+
+:- pred test_deconstruct_named_arg(T::in, string::in, io::di, io::uo)
+	is cc_multi.
+
+test_deconstruct_named_arg(T, Name, !IO) :-
+	io.format("deconstruct argument '%s'", [s(Name)], !IO),
+	deconstruct.named_arg_cc(T, Name, MaybeArg),
+	(
+		MaybeArg = arg(Arg),
+		io.write_string(" is ", !IO),
+		io.write(Arg, !IO),
+		io.nl(!IO)
+	;
+		MaybeArg = no_arg,
+		io.write_string(" doesn't exist\n", !IO)
 	).
 
 :- pred test_deconstruct_deconstruct(T::in, io.state::di, io.state::uo)

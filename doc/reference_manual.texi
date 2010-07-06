@@ -6904,6 +6904,25 @@ MR_list_cons(head,tail)    /* construct a list with the given head and tail */
 Note that the use of these macros is subject to some caveats
 (@pxref{Memory management for C}).
 
+The implementation provides the macro @samp{MR_word_to_float} for converting a
+value of type @samp{MR_Word} to one of type @samp{MR_Float}, and the macro
+@samp{MR_float_to_word} for converting a value of type @samp{MR_Float} to one
+of type @samp{MR_Word}.
+These macros must be used to perform these conversions since for some Mercury
+implementations @samp{sizeof(MR_Float)} is greater than @samp{sizeof(MR_Word)}.
+
+The following fragment of C code illustrates the correct way to extract the
+head of a Mercury list of floats.
+
+@example
+MR_Float f;
+f = MR_word_to_float(MR_list_head(list));
+@end example
+
+Omitting the call to @samp{MR_word_to_float} in the above example would yield
+incorrect results for implementations where @samp{sizeof(MR_Float)} is greater
+than @samp{sizeof(MR_Word)}.
+
 @node IL and C# data passing conventions
 @subsection IL and C# data passing conventions
 

@@ -75,11 +75,21 @@
 
 :- func construct_tuple_2(list(univ), list(type_info), int) = univ.
 
-:- pred deconstruct(T, noncanon_handling, string, int, list(univ)).
-:- mode deconstruct(in, in(do_not_allow), out, out, out) is det.
-:- mode deconstruct(in, in(canonicalize), out, out, out) is det.
-:- mode deconstruct(in, in(include_details_cc), out, out, out) is cc_multi.
-:- mode deconstruct(in, in, out, out, out) is cc_multi.
+:- pred deconstruct(T, noncanon_handling, string, int, int, list(univ)).
+:- mode deconstruct(in, in(do_not_allow), out, out, out, out) is det.
+:- mode deconstruct(in, in(canonicalize), out, out, out, out) is det.
+:- mode deconstruct(in, in(include_details_cc), out, out, out, out)
+    is cc_multi.
+:- mode deconstruct(in, in, out, out, out, out) is cc_multi.
+
+:- pred functor_number_cc(T::in, int::out, int::out)
+    is semidet. % conceptually committed-choice
+
+:- pred univ_named_arg(T, noncanon_handling, string, univ).
+:- mode univ_named_arg(in, in(do_not_allow), in, out) is semidet.
+:- mode univ_named_arg(in, in(canonicalize), in, out) is semidet.
+:- mode univ_named_arg(in, in(include_details_cc), in, out)
+    is semidet. % conceptually committed-choice
 
 %-----------------------------------------------------------------------------%
 %
@@ -573,15 +583,7 @@ type_info_get_functor_ordinal(TypeInfo, FunctorNum, Ordinal) :-
 type_info_get_functor_lex(TypeInfo0, Ordinal, FunctorNumber) :-
     TypeInfo = collapse_equivalences(TypeInfo0),
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
-    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
-    % XXX This special case seems like it should be not necessary.
-    ( TypeCtorRep = tcr_tuple ->
-        Ordinal = 0,
-        FunctorNumber = 0
-    ;
-        type_ctor_search_functor_number_map(TypeCtorInfo, Ordinal,
-            FunctorNumber)
-    ).
+    type_ctor_search_functor_number_map(TypeCtorInfo, Ordinal, FunctorNumber).
 
 %-----------------------------------------------------------------------------%
 
@@ -1734,20 +1736,42 @@ construct_tuple_2(_Args, _ArgTypes, _Arity) = _ :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
+deconstruct(Term, NonCanon, Functor, FunctorNumber, Arity, Arguments) :-
     TypeInfo = get_type_info(Term),
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
     TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
     deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
-        Functor, Arity, Arguments).
+        Functor, Ordinal, Arity, Arguments),
+    (
+        Ordinal >= 0,
+        type_ctor_search_functor_number_map(TypeCtorInfo, Ordinal,
+            FunctorNumber0)
+    ->
+        FunctorNumber = FunctorNumber0
+    ;
+        FunctorNumber = 0
+    ).
+
+functor_number_cc(Term, FunctorNumber, Arity) :-
+    TypeInfo = get_type_info(Term),
+    TypeCtorInfo = get_type_ctor_info(TypeInfo),
+    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
+    promise_equivalent_solutions [Ordinal, Arity] (
+        deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
+            include_details_cc, _Functor, Ordinal, Arity, _Arguments)
+    ),
+    Ordinal >= 0,
+    type_ctor_search_functor_number_map(TypeCtorInfo, Ordinal, FunctorNumber).
 
 :- pred deconstruct_2(T, type_info, type_ctor_info, type_ctor_rep,
-    noncanon_handling, string, int, list(univ)).
-:- mode deconstruct_2(in, in, in, in, in(do_not_allow), out, out, out) is det.
-:- mode deconstruct_2(in, in, in, in, in(canonicalize), out, out, out) is det.
-:- mode deconstruct_2(in, in, in, in,
-    in(include_details_cc), out, out, out) is cc_multi.
-:- mode deconstruct_2(in, in, in, in, in, out, out, out) is cc_multi.
+    noncanon_handling, string, int, int, list(univ)).
+:- mode deconstruct_2(in, in, in, in, in(do_not_allow), out, out, out, out)
+    is det.
+:- mode deconstruct_2(in, in, in, in, in(canonicalize), out, out, out, out)
+    is det.
+:- mode deconstruct_2(in, in, in, in, in(include_details_cc), out, out, out,
+    out) is cc_multi.
+:- mode deconstruct_2(in, in, in, in, in, out, out, out, out) is cc_multi.
 
     % Code to perform deconstructions (XXX not yet complete).
     %
@@ -1756,17 +1780,18 @@ deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
     % so far.
     %
 deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
-        Functor, Arity, Arguments) :-
+        Functor, Ordinal, Arity, Arguments) :-
     (
         TypeCtorRep = tcr_enum_usereq,
         handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
-            NonCanon, Functor, Arity, Arguments)
+            NonCanon, Functor, Ordinal, Arity, Arguments)
     ;
         TypeCtorRep = tcr_enum,
         TypeLayout = get_type_layout(TypeCtorInfo),
         EnumFunctorDesc = get_enum_functor_desc_from_layout_enum(TypeCtorRep,
             unsafe_get_enum_value(Term), TypeLayout),
         Functor = enum_functor_name(EnumFunctorDesc),
+        Ordinal = enum_functor_ordinal(EnumFunctorDesc),
         Arity = 0,
         Arguments = []
     ;
@@ -1775,24 +1800,26 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         ForeignEnumFunctorDesc = foreign_enum_functor_desc(TypeCtorRep,
             unsafe_get_foreign_enum_value(Term), TypeFunctors),
         Functor = foreign_enum_functor_name(ForeignEnumFunctorDesc),
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_foreign_enum_usereq,
         handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
-            NonCanon, Functor, Arity, Arguments)
+            NonCanon, Functor, Ordinal, Arity, Arguments)
     ;
         TypeCtorRep = tcr_dummy,
         TypeLayout = get_type_layout(TypeCtorInfo),
         EnumFunctorDesc = get_enum_functor_desc_from_layout_enum(TypeCtorRep,
             0, TypeLayout),
         Functor = enum_functor_name(EnumFunctorDesc),
+        Ordinal = 0,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_du_usereq,
         handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep,
-            NonCanon, Functor, Arity, Arguments)
+            NonCanon, Functor, Ordinal, Arity, Arguments)
     ;
         TypeCtorRep = tcr_du,
 
@@ -1801,53 +1828,53 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         PTagEntry = LayoutInfo ^ ptag_index(PTag),
         SecTagLocn = PTagEntry ^ sectag_locn,
         (
-            SecTagLocn = stag_none,
-            FunctorDesc = PTagEntry ^ du_sectag_alternatives(0),
+            (
+                SecTagLocn = stag_none,
+                FunctorDesc = PTagEntry ^ du_sectag_alternatives(0)
+            ;
+                SecTagLocn = stag_remote,
+                SecTag = get_remote_secondary_tag(Term),
+                FunctorDesc = PTagEntry ^ du_sectag_alternatives(SecTag)
+            ),
             Functor = FunctorDesc ^ du_functor_name,
+            Ordinal = FunctorDesc ^ du_functor_ordinal,
             Arity = FunctorDesc ^ du_functor_arity,
             Arguments = iterate(0, Arity - 1,
-                (func(X) = univ(
-                    get_arg(Term, X, SecTagLocn, FunctorDesc, TypeInfo))
-                ))
+                get_arg_univ(Term, SecTagLocn, FunctorDesc, TypeInfo))
         ;
             SecTagLocn = stag_local,
             Functor = "some_du_local_sectag",
+            % XXX incomplete
+            Ordinal = -1,
             Arity = 0,
             Arguments = []
         ;
-            SecTagLocn = stag_remote,
-            SecTag = get_remote_secondary_tag(Term),
-            FunctorDesc = PTagEntry ^ du_sectag_alternatives(SecTag),
-            Functor = FunctorDesc ^ du_functor_name,
-            Arity = FunctorDesc ^ du_functor_arity,
-            Arguments = iterate(0, Arity - 1,
-                (func(X) = univ(
-                    get_arg(Term, X, SecTagLocn, FunctorDesc, TypeInfo))
-                ))
-        ;
             SecTagLocn = stag_variable,
             Functor = "some_du_variable_sectag",
+            Ordinal = -1,
             Arity = 0,
             Arguments = []
         )
     ;
         TypeCtorRep = tcr_notag_usereq,
         handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
-            Functor, Arity, Arguments)
+            Functor, Ordinal, Arity, Arguments)
     ;
         TypeCtorRep = tcr_notag,
         % XXX incomplete
         Functor = "some_notag",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_notag_ground_usereq,
         handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
-            Functor, Arity, Arguments)
+            Functor, Ordinal, Arity, Arguments)
     ;
         TypeCtorRep = tcr_notag_ground,
         % XXX incomplete
         Functor = "some_notag_ground",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
@@ -1856,41 +1883,47 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         NewTypeCtorInfo = get_type_ctor_info(NewTypeInfo),
         NewTypeCtorRep = get_type_ctor_rep(NewTypeCtorInfo),
         deconstruct_2(Term, NewTypeInfo, NewTypeCtorInfo, NewTypeCtorRep,
-            NonCanon, Functor, Arity, Arguments)
+            NonCanon, Functor, Ordinal, Arity, Arguments)
     ;
         % XXX noncanonical term
         TypeCtorRep = tcr_func,
         Functor = "<<function>>",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_equiv,
         % XXX incomplete
         Functor = "some_equiv",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_int,
         det_dynamic_cast(Term, Int),
         Functor = string.int_to_string(Int),
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_char,
         det_dynamic_cast(Term, Char),
         Functor = string.from_char_list(['\'', Char, '\'']),
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_float,
         det_dynamic_cast(Term, Float),
         Functor = float_to_string(Float),
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_string,
         det_dynamic_cast(Term, String),
         Functor = string.append_list(["\"", String, "\""]),
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
@@ -1898,18 +1931,21 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         det_dynamic_cast(Term, Bitmap),
         String = bitmap.to_string(Bitmap),
         Functor = "\"" ++ String ++ "\"",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         % XXX noncanonical term
         TypeCtorRep = tcr_pred,
         Functor = "<<predicate>>",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_tuple,
         type_ctor_and_args(TypeInfo, _TypeCtorInfo, TypeArgs),
         Functor = "{}",
+        Ordinal = 0,
         Arity = get_var_arity_typeinfo_arity(TypeInfo),
         list.map_foldl(
             (pred(TI::in, U::out, Index::in, Next::out) is det :-
@@ -1921,6 +1957,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         % XXX noncanonical term
         TypeCtorRep = tcr_subgoal,
         Functor = "<<subgoal>>",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
@@ -1932,24 +1969,28 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         TypeCtorRep = tcr_c_pointer,
         det_dynamic_cast(Term, CPtr),
         Functor = string.c_pointer_to_string(CPtr),
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_stable_c_pointer,
         det_dynamic_cast(Term, CPtr),
         Functor = "stable_" ++ string.c_pointer_to_string(CPtr),
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         % XXX noncanonical term
         TypeCtorRep = tcr_typeinfo,
         Functor = "some_typeinfo",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         % XXX noncanonical term
         TypeCtorRep = tcr_typeclassinfo,
         Functor = "<<typeclassinfo>>",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
@@ -1967,6 +2008,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         det_dynamic_cast(Term, Array),
 
         Functor = "<<array>>",
+        Ordinal = -1,
         Arity = array.size(Array),
         Arguments = array.foldr(
             (func(Elem, List) = [univ(Elem) | List]),
@@ -1974,99 +2016,233 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
     ;
         TypeCtorRep = tcr_succip,
         Functor = "<<succip>>",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_hp,
         Functor = "<<hp>>",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_curfr,
         Functor = "<<curfr>>",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_maxfr,
         Functor = "<<maxfr>>",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_redofr,
         Functor = "<<redofr>>",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_redoip,
         Functor = "<<redoip>>",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_trail_ptr,
         Functor = "<<trail_ptr>>",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_ticket,
         Functor = "<<ticket>>",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         % XXX FIXME!!!
         TypeCtorRep = tcr_reserved_addr,
         Functor = "some_reserved_addr",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_reserved_addr_usereq,
         handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
-            Functor, Arity, Arguments)
+            Functor, Ordinal, Arity, Arguments)
     ;
         % XXX noncanonical term
         TypeCtorRep = tcr_type_ctor_info,
         Functor = "some_typectorinfo",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         % XXX noncanonical term
         TypeCtorRep = tcr_base_typeclass_info,
         Functor = "<<basetypeclassinfo>>",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         % XXX noncanonical term
         TypeCtorRep = tcr_type_desc,
         Functor = "some_type_desc",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         % XXX noncanonical term
         TypeCtorRep = tcr_pseudo_type_desc,
         Functor = "some_pseudo_type_desc",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         % XXX noncanonical term
         TypeCtorRep = tcr_type_ctor_desc,
         Functor = "some_type_ctor_desc",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_foreign,
         Functor = "<<foreign>>",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         TypeCtorRep = tcr_stable_foreign,
         Functor = "<<stable_foreign>>",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
     ;
         % XXX noncanonical term
         TypeCtorRep = tcr_reference,
         Functor = "<<reference>>",
+        Ordinal = -1,
         Arity = 0,
         Arguments = []
+    ;
+        TypeCtorRep = tcr_unknown,
+        error("rtti_implementation: unknown type_ctor rep in deconstruct")
+    ).
+
+univ_named_arg(Term, NonCanon, Name, Argument) :-
+    TypeInfo = get_type_info(Term),
+    TypeCtorInfo = get_type_ctor_info(TypeInfo),
+    TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
+    univ_named_arg_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon, Name,
+        MaybeArgument),
+    MaybeArgument = yes(Argument).
+
+:- pred univ_named_arg_2(T, type_info, type_ctor_info, type_ctor_rep,
+    noncanon_handling, string, maybe(univ)).
+:- mode univ_named_arg_2(in, in, in, in, in(do_not_allow), in, out) is det.
+:- mode univ_named_arg_2(in, in, in, in, in(canonicalize), in, out) is det.
+:- mode univ_named_arg_2(in, in, in, in, in(include_details_cc), in, out)
+    is det.
+
+univ_named_arg_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon, Name,
+        MaybeArgument) :-
+    (
+        TypeCtorRep = tcr_du_usereq,
+        (
+            NonCanon = do_not_allow,
+            error("attempt to deconstruct noncanonical term")
+        ;
+            NonCanon = canonicalize,
+            MaybeArgument = no
+        ;
+            NonCanon = include_details_cc,
+            univ_named_arg_2(Term, TypeInfo, TypeCtorInfo, tcr_du, NonCanon,
+                Name, MaybeArgument)
+        )
+    ;
+        TypeCtorRep = tcr_du,
+        LayoutInfo = get_type_layout(TypeCtorInfo),
+        PTag = get_primary_tag(Term),
+        PTagEntry = LayoutInfo ^ ptag_index(PTag),
+        SecTagLocn = PTagEntry ^ sectag_locn,
+        (
+            (
+                SecTagLocn = stag_none,
+                SecTag = 0
+            ;
+                SecTagLocn = stag_remote,
+                SecTag = get_remote_secondary_tag(Term)
+            ),
+            FunctorDesc = PTagEntry ^ du_sectag_alternatives(SecTag),
+            Arity = FunctorDesc ^ du_functor_arity,
+            (
+                get_du_functor_arg_names(FunctorDesc, Names),
+                search_arg_names(Names, 0, Arity, Name, Index)
+            ->
+                ArgUniv = get_arg_univ(Term, SecTagLocn, FunctorDesc, TypeInfo,
+                    Index),
+                MaybeArgument = yes(ArgUniv)
+            ;
+                MaybeArgument = no
+            )
+        ;
+            SecTagLocn = stag_local,
+            MaybeArgument = no
+        ;
+            SecTagLocn = stag_variable,
+            MaybeArgument = no
+        )
+    ;
+        ( TypeCtorRep = tcr_enum
+        ; TypeCtorRep = tcr_enum_usereq
+        ; TypeCtorRep = tcr_notag
+        ; TypeCtorRep = tcr_notag_usereq
+        ; TypeCtorRep = tcr_equiv
+        ; TypeCtorRep = tcr_func
+        ; TypeCtorRep = tcr_int
+        ; TypeCtorRep = tcr_char
+        ; TypeCtorRep = tcr_float
+        ; TypeCtorRep = tcr_string
+        ; TypeCtorRep = tcr_pred
+        ; TypeCtorRep = tcr_subgoal
+        ; TypeCtorRep = tcr_c_pointer
+        ; TypeCtorRep = tcr_typeinfo
+        ; TypeCtorRep = tcr_typeclassinfo
+        ; TypeCtorRep = tcr_array
+        ; TypeCtorRep = tcr_succip
+        ; TypeCtorRep = tcr_hp
+        ; TypeCtorRep = tcr_curfr
+        ; TypeCtorRep = tcr_maxfr
+        ; TypeCtorRep = tcr_redofr
+        ; TypeCtorRep = tcr_redoip
+        ; TypeCtorRep = tcr_trail_ptr
+        ; TypeCtorRep = tcr_ticket
+        ; TypeCtorRep = tcr_notag_ground
+        ; TypeCtorRep = tcr_notag_ground_usereq
+        ; TypeCtorRep = tcr_equiv_ground
+        ; TypeCtorRep = tcr_tuple
+        ; TypeCtorRep = tcr_reserved_addr
+        ; TypeCtorRep = tcr_reserved_addr_usereq
+        ; TypeCtorRep = tcr_type_ctor_info
+        ; TypeCtorRep = tcr_base_typeclass_info
+        ; TypeCtorRep = tcr_type_desc
+        ; TypeCtorRep = tcr_type_ctor_desc
+        ; TypeCtorRep = tcr_foreign
+        ; TypeCtorRep = tcr_reference
+        ; TypeCtorRep = tcr_stable_c_pointer
+        ; TypeCtorRep = tcr_stable_foreign
+        ; TypeCtorRep = tcr_pseudo_type_desc
+        ; TypeCtorRep = tcr_dummy
+        ; TypeCtorRep = tcr_bitmap
+        ; TypeCtorRep = tcr_foreign_enum
+        ; TypeCtorRep = tcr_foreign_enum_usereq
+        ),
+        MaybeArgument = no
+    ;
+        TypeCtorRep = tcr_void,
+        error("rtti_implementation.m: cannot deconstruct void types")
     ;
         TypeCtorRep = tcr_unknown,
         error("rtti_implementation: unknown type_ctor rep in deconstruct")
@@ -2091,24 +2267,25 @@ same_array_elem_type(_, _).
     ;       tcr_reserved_addr_usereq.
 
 :- pred handle_usereq_type(T, type_info, type_ctor_info, type_ctor_rep,
-    noncanon_handling, string, int, list(univ)).
+    noncanon_handling, string, int, int, list(univ)).
 :- mode handle_usereq_type(in, in, in, in(usereq),
-    in(do_not_allow), out, out, out) is erroneous.
+    in(do_not_allow), out, out, out, out) is erroneous.
 :- mode handle_usereq_type(in, in, in, in(usereq),
-    in(canonicalize), out, out, out) is det.
+    in(canonicalize), out, out, out, out) is det.
 :- mode handle_usereq_type(in, in, in, in(usereq),
-    in(include_details_cc), out, out, out) is cc_multi.
+    in(include_details_cc), out, out, out, out) is cc_multi.
 :- mode handle_usereq_type(in, in, in, in(usereq),
-    in, out, out, out) is cc_multi.
+    in, out, out, out, out) is cc_multi.
 
-handle_usereq_type(Term, TypeInfo, TypeCtorInfo,
-        TypeCtorRep, NonCanon, Functor, Arity, Arguments) :-
+handle_usereq_type(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
+        Functor, Ordinal, Arity, Arguments) :-
     (
         NonCanon = do_not_allow,
         error("attempt to deconstruct noncanonical term")
     ;
         NonCanon = canonicalize,
         Functor = expand_type_name(TypeCtorInfo, yes),
+        Ordinal = -1, % not supported anyway
         Arity = 0,
         Arguments = []
     ;
@@ -2133,7 +2310,7 @@ handle_usereq_type(Term, TypeInfo, TypeCtorInfo,
             BaseTypeCtorRep = tcr_reserved_addr
         ),
         deconstruct_2(Term, TypeInfo, TypeCtorInfo, BaseTypeCtorRep, NonCanon,
-            Functor, Arity, Arguments)
+            Functor, Ordinal, Arity, Arguments)
     ).
 
     % MR_expand_type_name from mercury_deconstruct.c
@@ -2159,9 +2336,10 @@ expand_type_name(TypeCtorInfo, Wrap) = Name :-
 
     % Retrieve an argument number from a term, given the functor descriptor.
     %
-:- some [T] func get_arg(U, int, sectag_locn, du_functor_desc, type_info) = T.
+:- some [T] pred get_arg(U::in, sectag_locn::in, du_functor_desc::in,
+    type_info::in, int::in, T::out) is det.
 
-get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = Arg :-
+get_arg(Term, SecTagLocn, FunctorDesc, TypeInfo, Index, Arg) :-
     ( get_du_functor_exist_info(FunctorDesc, ExistInfo) ->
         ExtraArgs = exist_info_typeinfos_plain(ExistInfo) +
             exist_info_tcis(ExistInfo)
@@ -2180,6 +2358,12 @@ get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = Arg :-
     ),
     RealArgsOffset = TagOffset + ExtraArgs,
     Arg = get_subterm(FunctorDesc, ArgTypeInfo, Term, Index, RealArgsOffset).
+
+:- func get_arg_univ(U, sectag_locn, du_functor_desc, type_info, int) = univ.
+
+get_arg_univ(Term, SecTagLocn, FunctorDesc, TypeInfo, Index) = Univ :-
+    get_arg(Term, SecTagLocn, FunctorDesc, TypeInfo, Index, Arg),
+    type_to_univ(Arg, Univ).
 
 :- pred high_level_data is semidet.
 :- pragma promise_pure(high_level_data/0).
@@ -3399,6 +3583,10 @@ type_ctor_num_functors(_) = _ :-
     if (Ordinal >= 0 && Ordinal < TypeCtorInfo.type_ctor_num_functors) {
         FunctorNumber = TypeCtorInfo.type_functor_number_map[Ordinal];
         SUCCESS_INDICATOR = true;
+    } else if (Ordinal == 0 && TypeCtorInfo.type_ctor_num_functors == -1) {
+        /* This is for tuples. */
+        FunctorNumber = 0;
+        SUCCESS_INDICATOR = true;
     } else {
         FunctorNumber = -1;
         SUCCESS_INDICATOR = false;
@@ -3551,6 +3739,15 @@ get_du_functor_arg_names(DuFunctorDesc, ArgNames) :-
     ArgNames = DuFunctorDesc ^ unsafe_index(8),
     not null(ArgNames).
 
+:- pragma foreign_proc("Java",
+    get_du_functor_arg_names(DuFunctorDesc::in, ArgNames::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    ArgNames = DuFunctorDesc.du_functor_arg_names;
+
+    SUCCESS_INDICATOR = (ArgNames != null);
+").
+
 :- func arg_names_index(arg_names, int) = string.
 
 :- pragma foreign_proc("Java",
@@ -3563,14 +3760,16 @@ get_du_functor_arg_names(DuFunctorDesc, ArgNames) :-
 arg_names_index(_, _) = _ :-
     private_builtin.sorry("arg_names_index/2").
 
-:- pragma foreign_proc("Java",
-    get_du_functor_arg_names(DuFunctorDesc::in, ArgNames::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    ArgNames = DuFunctorDesc.du_functor_arg_names;
+:- pred search_arg_names(arg_names::in, int::in, int::in, string::in, int::out)
+    is semidet.
 
-    SUCCESS_INDICATOR = (ArgNames != null);
-").
+search_arg_names(ArgNames, I, Arity, Name, Index) :-
+    I < Arity,
+    ( arg_names_index(ArgNames, I) = Name ->
+        Index = I
+    ;
+        search_arg_names(ArgNames, I + 1, Arity, Name, Index)
+    ).
 
 :- pred get_du_functor_exist_info(du_functor_desc::in, exist_info::out)
     is semidet.
