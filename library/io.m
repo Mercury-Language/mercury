@@ -8075,7 +8075,11 @@ io.do_write_bitmap(Stream, Bitmap, Start, Length, !IO) :-
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         no_sharing],
 "
-    MR_WRITE(*Stream, Bitmap->elements + Start, Length);
+    MR_Integer bytes_written =
+        (MR_Integer)MR_WRITE(*Stream, Bitmap->elements + Start, Length);
+    if (bytes_written != Length) {
+        mercury_io_error(Stream, \"Error writing bitmap.\");
+    }
     MR_update_io(IO0, IO);
 ").
 

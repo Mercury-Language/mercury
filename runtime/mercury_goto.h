@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2001, 2003-2007, 2009 The University of Melbourne.
+** Copyright (C) 1995-2001, 2003-2007, 2009-2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -876,8 +876,12 @@
   #if defined(MR_USE_ASM_LABELS)
     #define MR_declare_entry(label)					\
 	extern void label(void) __asm__("_entry_" MR_STRINGIFY(label))
+    /* When using asm labels, we don't create a static declaration, */
+    /* because the lack of a C implementation for the function will */
+    /* cause GCC 4.x to issue warnings about the function being used */
+    /* and not defined. */
     #define MR_declare_static(label)					\
-	static void label(void) __asm__("_entry_" MR_STRINGIFY(label))
+	MR_declare_entry(label)
     #define MR_define_extern_entry(label)	MR_declare_entry(label)
     #define MR_define_entry(label)					\
 		MR_ASM_ENTRY(label)					\

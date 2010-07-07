@@ -58,6 +58,10 @@ diff                    This directory contains an implementation of a
 c_interface		This directory contains some examples of mixed
 			Mercury/C/C++/Fortran programs using the C interface.
 
+java_interface		This directory contains some examples of mixed
+			Mercury/Java programs using the foreign language
+			interface.
+
 rot13			This directory contains a few implementations of
 			rot-13 encoding.
 

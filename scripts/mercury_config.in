@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 2003, 2005, 2008 The University of Melbourne.
+# Copyright (C) 2003, 2005, 2008, 2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -14,6 +14,11 @@ Help="\
 Name:   mercury_config - generate new configurations for a Mercury installation
 Usage:  mercury_config [<options>] [-- <configure options>]
 Options:
+	--rebase
+		Use this option after moving a Mercury installation to
+		regenerate the scripts and configuration files so that
+		the Mercury installation will work from the new location.
+
 	--output-prefix <dir>
 		Generate the new copies of the Mercury scripts and
 		configuration files into the given directory.
@@ -51,8 +56,16 @@ unset MERCURY_STDLIB_DIR
 unset MERCURY_CONFIG_DIR
 recursive=no
 
+orig_arity=$#
+
 while : ; do
 	case $1 in 
+		--rebase)
+			input_prefix=$(readlink -f $0)
+			input_prefix=${input_prefix%/bin/mercury_config}
+			output_prefix=${input_prefix}
+			;;
+
 		# This option is only for use by
 		# bindist/bindist.INSTALL.in
 		--input-prefix=*)
@@ -94,6 +107,13 @@ done
 
 input_libdir="$input_prefix/lib/mercury"
 output_libdir="$output_prefix/lib/mercury"
+
+if test "$orig_arity" -eq 0 && ! test -d "$input_prefix"
+then
+	echo "Input directory \`$input_prefix' not found."
+	echo "Did you mean \`$0 --rebase'?"
+	exit 1
+fi
 
 # mercury_config regenerates itself, so we can't just execute it in place.
 case $recursive in
@@ -181,6 +201,7 @@ esac
 
 [ -d $output_libdir/conf ] || mkdir -p $output_libdir/conf || exit 1
 [ -d $output_libdir/mmake ] || mkdir -p $output_libdir/mmake || exit 1
+[ -d $output_libdir/mdb ] || mkdir -p $output_libdir/mdb || exit 1
 [ -d $output_prefix/bin ] || mkdir -p $output_prefix/bin || exit 1
 
 #
@@ -199,10 +220,13 @@ cd scripts
 echo *
 for file in *; do
 	case "$file" in
-		*.in|Mmake.*|Mercury.config|mdbrc|*.sh-subr) ;;
+		*.in|Mmake.*|Mercury.config*|*.sh-subr) ;;
+		mdbrc)
+			cp $file $output_libdir/mdb || exit 1
+			;;
 		*)
 			cp $file $output_prefix/bin || exit 1
-			chmod u+w $output_prefix/bin/$file || exit 1
+			chmod u+wx $output_prefix/bin/$file || exit 1
 			;;
 	esac
 done
