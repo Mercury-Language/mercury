@@ -876,8 +876,12 @@
   #if defined(MR_USE_ASM_LABELS)
     #define MR_declare_entry(label)					\
 	extern void label(void) __asm__("_entry_" MR_STRINGIFY(label))
+    /* When using asm labels, we don't create a static declaration, */
+    /* because the lack of a C implementation for the function will */
+    /* cause GCC 4.x to issue warnings about the function being used */
+    /* and not defined. */
     #define MR_declare_static(label)					\
-	static void label(void) __asm__("_entry_" MR_STRINGIFY(label))
+	MR_declare_entry(label)
     #define MR_define_extern_entry(label)	MR_declare_entry(label)
     #define MR_define_entry(label)					\
 		MR_ASM_ENTRY(label)					\
