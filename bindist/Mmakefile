@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1996-2003, 2005-2006, 2008 The University of Melbourne.
+# Copyright (C) 1996-2003, 2005-2006, 2008, 2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -22,6 +22,7 @@ LIB_FILES	= conf doc html inc ints lib mdb/mdb_doc modules reconf
 # Miscellaneous scripts and utilities not processed by configure
 UTILS		= $(INSTALL_PREFIX)/bin/mkinit$(EXT_FOR_EXE) \
 		  $(INSTALL_PREFIX)/bin/mdemangle$(EXT_FOR_EXE) \
+		  $(INSTALL_PREFIX)/bin/mfiltercc$(EXT_FOR_EXE) \
 		  $(INSTALL_PREFIX)/bin/mtags \
 		  $(INSTALL_PREFIX)/bin/mprof_merge_runs \
 		  $(INSTALL_PREFIX)/bin/vpath_find

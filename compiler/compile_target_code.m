@@ -407,8 +407,9 @@ do_compile_c_file(ErrorStream, PIC, C_File, O_File, Globals, Succeeded, !IO) :-
         AllCFlags,
         " -c ", C_File, " ",
         NameObjectFile, O_File], Command),
-    invoke_system_command(Globals, ErrorStream, cmd_verbose_commands,
-        Command, Succeeded, !IO).
+    get_maybe_filtercc_command(Globals, MaybeFilterCmd),
+    invoke_system_command_maybe_filter_output(Globals, ErrorStream,
+        cmd_verbose_commands, Command, MaybeFilterCmd, Succeeded, !IO).
 
 :- pred gather_c_compiler_flags(globals::in, pic::in, string::out) is det.
 
@@ -916,6 +917,22 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         WarningOpt, " ", 
         CFLAGS, " ",
         OverrideOpts], AllCFlags).
+
+:- pred get_maybe_filtercc_command(globals::in, maybe(string)::out) is det.
+
+get_maybe_filtercc_command(Globals, MaybeFilterCmd) :-
+    % At this time we only need to filter the compiler output when using
+    % assembler labels with gcc 4.x.  Mercury.config.bootstrap doesn't specify
+    % the gcc version so we don't check for it.
+    (
+        globals.lookup_bool_option(Globals, asm_labels, yes),
+        globals.lookup_string_option(Globals, filtercc_command, FilterCmd),
+        FilterCmd \= ""
+    ->
+        MaybeFilterCmd = yes(FilterCmd)
+    ;
+        MaybeFilterCmd = no
+    ).
 
 %-----------------------------------------------------------------------------%
 

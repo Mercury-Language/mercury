@@ -86,6 +86,7 @@ To build a compiler which targets MinGW from Cygwin do the following:
         mercury_compile.exe (in <prefix>/lib/mercury/bin/<config>)
         mercury_profile.exe (in <prefix>/lib/mercury/bin/<config>)
         mdemangle.exe (in <prefix>/bin)
+        mfiltercc.exe (in <prefix>/bin)
         mkinit.exe (in <prefix>/bin)
 
 -----------------------------------------------------------------------------

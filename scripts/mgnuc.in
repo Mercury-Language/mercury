@@ -638,6 +638,17 @@ else
     INVISIBLE_OPTS=""
 fi
 
+FILTERCC=""
+case $asm_labels in true)
+    # Check if mfiltercc is available as we may be bootstrapping with
+    # an older compiler which did not have it.
+    if mfiltercc=`which mfiltercc`
+    then
+        FILTERCC=$mfiltercc
+    fi
+    ;;
+esac
+
 ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS\
     $ANSI_OPTS\
     $CHECK_OPTS\
@@ -679,7 +690,13 @@ ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS\
 case $verbose in true)
     echo $CC $ALL_CC_OPTS "$@" $OVERRIDE_OPTS $ALL_LOCAL_C_INCL_DIRS;;
 esac
-case $# in
-    0) exec $CC $ALL_CC_OPTS $OVERRIDE_OPTS ;;
-    *) exec $CC $ALL_CC_OPTS "$@" $OVERRIDE_OPTS $ALL_LOCAL_C_INCL_DIRS;;
+
+# 3>&- closes fd 3 on both sides of the pipeline
+case $#,$FILTERCC in
+    0,)  exec $CC $ALL_CC_OPTS $OVERRIDE_OPTS ;;
+    0,*) exec $CC $ALL_CC_OPTS $OVERRIDE_OPTS \
+            2>&1 >&3 3>&- | $FILTERCC >&2 3>&- ;;
+    *,)  exec $CC $ALL_CC_OPTS "$@" $OVERRIDE_OPTS $ALL_LOCAL_C_INCL_DIRS ;;
+    *,*) exec $CC $ALL_CC_OPTS "$@" $OVERRIDE_OPTS $ALL_LOCAL_C_INCL_DIRS \
+            2>&1 >&3 3>&- | $FILTERCC >&2 3>&- ;;
 esac
