@@ -212,6 +212,7 @@ cp scripts/Mercury.config $output_libdir/conf || exit 1
 cp scripts/Mmake.vars $output_libdir/mmake || exit 1
 if [ "$input_prefix" != "$output_prefix" ]; then
 	cp $input_prefix/bin/mdemangle${exe_ext} \
+		$input_prefix/bin/mfiltercc${exe_ext} \
 		$input_prefix/bin/mkinit${exe_ext} \
 		$input_prefix/bin/info_to_mdb${exe_ext} $output_prefix/bin
 	cp $input_libdir/mmake/Mmake.rules $output_libdir/mmake

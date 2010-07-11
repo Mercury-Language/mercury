@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1998, 2000, 2002, 2004-2005 The University of Melbourne. 
+# Copyright (C) 1995-1998, 2000, 2002, 2004-2005, 2010 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -46,7 +46,7 @@ clean:
 	-rm -f */*.o */*.pic_o */*.a */*.so */*.dylib
 	-rm -rf */Mercury/os */Mercury/pic_os */Mercury/libs
 	-rm -f compiler/mercury_compile profiler/mercury_profile 
-	-rm -f util/mdemangle util/mkinit
+	-rm -f util/mdemangle util/mfiltercc util/mkinit
 	cd boehm_gc; $(MMAKE_SUBDIR) clean
 
 .PHONY: distclean

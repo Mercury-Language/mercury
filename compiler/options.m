@@ -878,6 +878,7 @@
     ;       mkinit_command
     ;       mkinit_erl_command
     ;       demangle_command
+    ;       filtercc_command
     ;       trace_libs
     ;       thread_libs
     ;       shared_libs
@@ -1727,6 +1728,7 @@ option_defaults_2(link_option, [
     mkinit_command                      -   string("mkinit"),
     mkinit_erl_command                  -   string("mkinit_erl"),
     demangle_command                    -   string("mdemangle"),
+    filtercc_command                    -   string("mfiltercc"),
     trace_libs                          -   string(""),
     thread_libs                         -   string(""),
     shared_libs                         -   string(""),
@@ -2628,6 +2630,7 @@ long_option("ranlib-flags",         ranlib_flags).
 long_option("mkinit-command",       mkinit_command).
 long_option("mkinit-erl-command",   mkinit_erl_command).
 long_option("demangle-command",     demangle_command).
+long_option("filtercc-command",     filtercc_command).
 long_option("trace-libs",           trace_libs).
 long_option("thread-libs",          thread_libs).
 long_option("shared-libs",          shared_libs).
@@ -5368,7 +5371,8 @@ options_help_link -->
         % --create-archive-command, --create-archive-command-flags
         % --create-archive-command-output-flag, --ranlib-command,
         % --ranlib-flags,
-        % --mkinit-command, --demangle-command, --trace-libs,
+        % --mkinit-command, --demangle-command, --filtercc-command,
+        % --trace-libs,
         % --thread-libs, --shared-libs, --math-lib, --readline-libs,
         % --linker-opt-separator,
         % --linker-debug-flags, --shlib-linker-debug-flags,

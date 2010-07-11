@@ -2,7 +2,7 @@
 # RPM (Red Hat Package Manager) spec file
 # for the Mercury implementation.
 # 
-# Copyright (c) 1999, 2001, 2002 The University of Melbourne
+# Copyright (C) 1999, 2001, 2002, 2010 The University of Melbourne
 #
 # Please send bugfixes or comments to <mercury-bugs@cs.mu.oz.au>.
 #
@@ -84,6 +84,7 @@ make install \
 /usr/bin/info_to_mdb
 /usr/bin/mdb
 /usr/bin/mdemangle
+/usr/bin/mfiltercc
 /usr/bin/mercury.bat
 /usr/bin/mercury_cleanup_install
 /usr/bin/mercury_config
