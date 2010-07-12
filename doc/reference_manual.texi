@@ -6871,7 +6871,7 @@ Mercury variables of type @code{int}, @code{float}, @code{char}, or
 given by the corresponding typedef. 
 
 For the Mercury standard library type @samp{bool.bool}, there is a 
-corresponding C type, @code{MR_bool}.  C code can refer to the boolean 
+corresponding C type, @code{MR_Bool}.  C code can refer to the boolean 
 data constructors @samp{yes} and @samp{no}, as @code{MR_YES} and
 @code{MR_NO} respectively.
 
