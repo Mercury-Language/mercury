@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2004, 2006, 2009 The University of Melbourne.
+** Copyright (C) 1999-2004, 2006, 2009-2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -14,26 +14,6 @@
 
 #ifndef	MERCURY_BOOTSTRAP_H
 #define	MERCURY_BOOTSTRAP_H
-
-/*---------------------------------------------------------------------------*/
-/*
-** This stuff is enabled by default,
-** but you can disable it by defining MR_NO_BACKWARDS_COMPAT.
-*/
-
-#ifndef MR_NO_BACKWARDS_COMPAT
-
-/*
-** MR_Bool is the C representation for the Mercury type bool__bool.
-** For ordinary booleans, use MR_bool in mercury_std.h.
-**
-** XXX Why is it not defined defined to be MR_Word, and why is the definition
-** here?
-*/
-
-typedef MR_intptr_t		MR_Bool;
-
-#endif	/* !MR_NO_BACKWARDS_COMPAT */
 
 /*---------------------------------------------------------------------------*/
 /*

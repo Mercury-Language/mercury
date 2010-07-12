@@ -908,8 +908,8 @@ decrement_limit(triangular(N), triangular(N - 1)).
 ").
 :- pragma foreign_code("C",
 "
-    MR_Bool ML_pretty_printer_is_initialised = MR_FALSE;
-    MR_Word ML_pretty_printer_default_formatter_map = NULL;
+    MR_Bool ML_pretty_printer_is_initialised = MR_NO;
+    MR_Word ML_pretty_printer_default_formatter_map = 0;
 ").
 
 :- pragma foreign_code("Java",
