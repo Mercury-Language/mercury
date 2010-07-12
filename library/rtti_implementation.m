@@ -2660,7 +2660,7 @@ get_tuple_subterm(TypeInfo, Term, Index) = SubTerm :-
     null_functor_desc = (NullFunctorDesc::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    NullFunctorDesc = NULL;
+    NullFunctorDesc = (MR_Word) NULL;
 ").
 
     % Test whether a (pseudo-) type info is variable.
