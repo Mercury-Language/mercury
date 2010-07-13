@@ -22,10 +22,6 @@ at some time in the future:
   <a href="http://msdn.microsoft.com/net/">.NET Common Language Runtime</a>.
   We're still working on this.
 
-<li> There is a `--target java' option, which generates Java.
-     We still need to add support for Java foreign language interfacing,
-     and implement the Mercury standard library for Java.
-
 <li> Thread-safe engine (the `.par' grades).
 
 <li> Independent AND-parallelism (the `&' parallel conjunction operator).
@@ -41,11 +37,6 @@ and it would allow the debugger to print type_class_infos.
 <li> We have added support for dynamic link libraries (DLLs) on Windows.
   This is not yet enabled by default because it has not yet been tested
   properly.
-
-<li> There is a new `--optimize-constructor-last-call' option
-  which identifies opportunities for LCO where a call
-  is followed only by some constructor invocations.
-  However, these opportunities are not exploited yet.
 
 <li> There is a new garbage collector that does accurate garbage
   collection (hlc.agc grade).  See the comments in
@@ -109,6 +100,6 @@ if someone has the time for it.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 2006-02-23 09:37:20 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2010-07-13 05:48:04 $ by $Author: juliensf $@cs.mu.oz.au. <br>
 </body>
 </html>

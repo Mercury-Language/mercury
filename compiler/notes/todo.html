@@ -108,10 +108,6 @@ mercury@csse.unimelb.edu.au.
 <ul>
 <li> finish off support for accurate garbage collection;
      see the comments in compiler/ml_elim_nested.m
-<li> implement a better solution to the problem with abstract
-     equivalence types defined as float (the current solution
-     is to use --intermodule-optimization, but it would better
-     to only do this for abstract equivalence types)
 <li> see also the comments in compiler/ml_code_gen.m
 </ul>
 
@@ -127,13 +123,6 @@ mercury@csse.unimelb.edu.au.
 <ul>
 <li> finish off standard library implementation
 <li> see also the TODO list in compiler/mlds_to_il.m
-</ul>
-
-<h3> Java back-end </h3>
-<ul>
-<li> implement the foreign language interface
-<li> finish off standard library implementation
-<li> see also the TODO list in compiler/mlds_to_java.m
 </ul>
 
 <h2> debugger </h2>
@@ -218,6 +207,9 @@ mercury@csse.unimelb.edu.au.
      arguments, and to have unique modes for curried arguments.
  
 <li> allow taking the address of a predicate with multiple modes
+     [we do allow this in case where the mode can be determined from
+     the inst of the high-order arguments]
+
 
 <li> improve support for higher-order programming, eg. by providing
      operators in the standard library which do things like:
@@ -310,9 +302,6 @@ mercury@csse.unimelb.edu.au.
 
 <li> improve efficiency of the module import handling (currently O(N^2))
 
-<li> improve the efficiency of mode checking very large facts
-     (e.g. this is particularly bad when compiling eliza.m).
-
 <li> use "store" rather than "map" for the major compiler data structures
 </ul>
 
@@ -345,11 +334,6 @@ mercury@csse.unimelb.edu.au.
      similar to Gofer
      [not-so-fast bytecode compiler done, but bytecode interpreter
      not implemented]
-
-<li> implement user-defined operators: <br>
-	Add a new construct `:- op(Pred, Type, Op).' as in Prolog;
-	change prog_io.m to parse this construct and call io__op
-	accordingly.  But how does this fit in with the module system?
 
 <li> support for easier formal specification translation (eg a Z library,
      or Z to Mercury).
@@ -384,6 +368,6 @@ mercury@csse.unimelb.edu.au.
 <hr>
 <!--======================-->
 
-Last update was $Date: 2006-09-15 09:11:22 $ by $Author: juliensf $@cs.mu.oz.au. <br>
+Last update was $Date: 2010-07-13 05:48:04 $ by $Author: juliensf $@cs.mu.oz.au. <br>
 </body>
 </html>

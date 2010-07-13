@@ -130,7 +130,7 @@ than in ISO Prolog. ISO Prolog specifies that ``@{1, 2, 3@}'' is parsed as
 @code{'@{@}'(','(1, ','(2, 3)))}. In Mercury, it is parsed as
 @code{'@{@}'(1, 2, 3)}.
 
-Mercury does not (yet) allow users to define their own operators.
+Mercury does not allow users to define their own operators.
 
 @node IO
 @chapter Input and output
