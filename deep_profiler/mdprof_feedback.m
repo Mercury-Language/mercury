@@ -181,19 +181,35 @@ create_feedback_report(feedback_data_calls_above_threshold_sorted(_, _, _),
         Report) :-
    Report = "  feedback_data_calls_above_threshold_sorted is deprecated\n".
 create_feedback_report(feedback_data_candidate_parallel_conjunctions(
-            DesiredParallelism, SparkingCost, SparkingDelay, LockingCost,
-            Conjs),
-        Report) :-
+        Parameters, Conjs), Report) :-
     NumConjs = length(Conjs),
+    Parameters = candidate_par_conjunctions_params(DesiredParallelism,
+        SparkingCost, SparkingDelay, SignalCost, WaitCost, 
+        ContextWakeupDelay, CliqueThreshold, CallSiteThreshold,
+        ParalleliseDepConjs),
     ReportHeader = singleton(format("  Candidate Parallel Conjunctions:\n" ++
             "    Desired parallelism: %f\n" ++
             "    Sparking cost: %d\n" ++
             "    Sparking delay: %d\n" ++
-            "    Locking cost: %d\n" ++
+            "    Future signal cost: %d\n" ++
+            "    Future wait cost: %d\n" ++
+            "    Context wakeup delay: %d\n" ++
+            "    Clique threshold: %d\n" ++
+            "    Call site threshold: %d\n" ++
+            "    Parallelise dependant conjunctions: %s\n" ++
             "    Number of Parallel Conjunctions: %d\n" ++
             "    Parallel Conjunctions:\n\n",
         [f(DesiredParallelism), i(SparkingCost), i(SparkingDelay),
-         i(LockingCost), i(NumConjs)])),
+         i(SignalCost), i(WaitCost), i(ContextWakeupDelay), 
+         i(CliqueThreshold), i(CallSiteThreshold), s(ParalleliseDepConjsStr),
+         i(NumConjs)])),
+    (
+        ParalleliseDepConjs = parallelise_dep_conjs,
+        ParalleliseDepConjsStr = "yes"
+    ;
+        ParalleliseDepConjs = do_not_parallelise_dep_conjs,
+        ParalleliseDepConjsStr = "no"
+    ),
     map(create_candidate_parallel_conj_proc_report, Conjs, ReportConjs),
     Report = append_list(list(ReportHeader ++ cord_list_to_cord(ReportConjs))).
 
@@ -244,10 +260,17 @@ help_message =
                 The time taken from the time a spark is created until the spark
                 is executed by another processor assuming that there is a free
                 processor.
-    --implicit-parallelism-locking-cost <value>
-                The cost of maintaining a lock for a single dependant variable
-                in a conjunction, measured in the profiler's call sequence
-                counts.
+    --implicit-parallelism-future-signal-cost <value>
+                The cost of the signal() call for the producer of a shared
+                variable, measured in the profiler's call sequence counts.
+    --implicit-parallelism-future-wait-cost <value>
+                The cost of the wait() call for the consumer of a shared
+                variable, measured in the profiler's call sequence counts.
+    --implicit-parallelism-context-wakeup-delay <value>
+                The time taken for a context to resume execution after being
+                placed on the run queue.  This is used to estimate the impact
+                of blocking of a context's execution, it is measured in the
+                profiler's call sequence counts.
     --implicit-parallelism-clique-cost-threshold <value>
                 The cost threshold for cliques to be considered for implicit
                 parallelism, measured on the profiler's call sequence counts.
@@ -277,13 +300,14 @@ help_message =
                 Produce a list of candidate parallel conjunctions for implicit
                 parallelism.  This option uses the implicit parallelism
                 settings above.
-    ".
+
+".
 
 :- pred write_help_message(string::in, io::di, io::uo) is det.
 
 write_help_message(ProgName, !IO) :-
     Message = help_message,
-    io.format(Message, [s(ProgName)], !IO).
+    io.format(Message, duplicate(4, s(ProgName)), !IO).
 
 :- pred write_version_message(string::in, io::di, io::uo) is det.
 
@@ -345,7 +369,9 @@ read_deep_file(Input, Debug, MaybeDeep, !IO) :-
     ;       desired_parallelism
     ;       implicit_parallelism_sparking_cost
     ;       implicit_parallelism_sparking_delay
-    ;       implicit_parallelism_locking_cost
+    ;       implicit_parallelism_future_signal_cost
+    ;       implicit_parallelism_future_wait_cost
+    ;       implicit_parallelism_context_wakeup_delay
     ;       implicit_parallelism_clique_cost_threshold
     ;       implicit_parallelism_call_site_cost_threshold
     ;       implicit_parallelism_dependant_conjunctions.
@@ -380,7 +406,12 @@ long("implicit-parallelism",                implicit_parallelism).
 long("desired-parallelism",                 desired_parallelism).
 long("implicit-parallelism-sparking-cost",  implicit_parallelism_sparking_cost).
 long("implicit-parallelism-sparking-delay", implicit_parallelism_sparking_delay).
-long("implicit-parallelism-locking-cost",   implicit_parallelism_locking_cost).
+long("implicit-parallelism-future-signal-cost",
+    implicit_parallelism_future_signal_cost).
+long("implicit-parallelism-future-wait-cost",
+    implicit_parallelism_future_wait_cost).
+long("implicit-parallelism-context-wakeup-delay",
+    implicit_parallelism_context_wakeup_delay).
 long("implicit-parallelism-clique-cost-threshold", 
     implicit_parallelism_clique_cost_threshold).
 long("implicit-parallelism-call-site-cost-threshold",
@@ -407,7 +438,9 @@ defaults(desired_parallelism,                               string("4.0")).
 % be tested for.
 defaults(implicit_parallelism_sparking_cost,                int(100)).
 defaults(implicit_parallelism_sparking_delay,               int(1000)).
-defaults(implicit_parallelism_locking_cost,                 int(100)).
+defaults(implicit_parallelism_future_signal_cost,           int(100)).
+defaults(implicit_parallelism_future_wait_cost,             int(250)).
+defaults(implicit_parallelism_context_wakeup_delay,         int(1000)).
 defaults(implicit_parallelism_clique_cost_threshold,        int(100000)).
 defaults(implicit_parallelism_call_site_cost_threshold,     int(50000)).
 defaults(implicit_parallelism_dependant_conjunctions,       bool(no)).
@@ -426,7 +459,7 @@ construct_measure("median",     stat_median).
                 maybe_calls_above_threshold_sorted
                     :: maybe(calls_above_threshold_sorted_opts),
                 maybe_candidate_parallel_conjunctions
-                    :: maybe(candidate_parallel_conjunctions_opts)
+                    :: maybe(candidate_par_conjunctions_params)
             ).
 
 :- pred check_verbosity_option(option_table(option)::in, int::out) is semidet.
@@ -504,10 +537,14 @@ check_options(Options0, RequestedFeedbackInfo) :-
             SparkingCost),
         lookup_int_option(Options, implicit_parallelism_sparking_delay,
             SparkingDelay),
-        lookup_int_option(Options, implicit_parallelism_locking_cost,
-            LockingCost),
+        lookup_int_option(Options, implicit_parallelism_future_signal_cost,
+            FutureSignalCost),
+        lookup_int_option(Options, implicit_parallelism_future_wait_cost,
+            FutureWaitCost),
+        lookup_int_option(Options, implicit_parallelism_context_wakeup_delay,
+            ContextWakeupDelay),
         lookup_int_option(Options, implicit_parallelism_clique_cost_threshold,
-            CPCProcThreshold),
+            CPCCliqueThreshold),
         lookup_int_option(Options, 
             implicit_parallelism_call_site_cost_threshold,
             CPCCallSiteThreshold),
@@ -522,11 +559,13 @@ check_options(Options0, RequestedFeedbackInfo) :-
             ParalleliseDepConjs = do_not_parallelise_dep_conjs
         ),
         CandidateParallelConjunctionsOpts =
-            candidate_parallel_conjunctions_opts(DesiredParallelism, 
+            candidate_par_conjunctions_params(DesiredParallelism, 
                 SparkingCost,
                 SparkingDelay,
-                LockingCost,
-                CPCProcThreshold,
+                FutureSignalCost,
+                FutureWaitCost,
+                ContextWakeupDelay,
+                CPCCliqueThreshold,
                 CPCCallSiteThreshold,
                 ParalleliseDepConjs),
         MaybeCandidateParallelConjunctionsOpts =

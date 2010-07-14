@@ -160,19 +160,7 @@ apply_new_implicit_parallelism_transformation(SourceFileMap, Specs,
     %
 :- type parallelism_info
     --->    parallelism_info(
-                pi_desired_parallelism  :: float,
-                    % The number of desired busy sparks.
-
-                pi_sparking_cost        :: int,
-                    % The cost of creating a spark in call sequence counts.
-
-                pi_sparking_delay       :: int,
-                    % The time it takes for a spark to be created, stolen and
-                    % begin execution.
-
-                pi_locking_cost         :: int,
-                    % The cost of maintaining a lock on a single dependant
-                    % variable in call sequence counts.
+                pi_parameters           :: candidate_par_conjunctions_params,
 
                 pi_cpc_map              :: module_candidate_par_conjs_map
                     % A map of candidate parallel conjunctions in this module
@@ -202,15 +190,13 @@ apply_new_implicit_parallelism_transformation(SourceFileMap, Specs,
 
 get_implicit_parallelism_feedback(ModuleName, FeedbackInfo, ParallelismInfo) :-
     FeedbackData = 
-        feedback_data_candidate_parallel_conjunctions(_, _, _, _, _),
+        feedback_data_candidate_parallel_conjunctions(_, _),
     get_feedback_data(FeedbackInfo, FeedbackData),
-    FeedbackData = feedback_data_candidate_parallel_conjunctions(
-        DesiredParallelism, SparkingCost, SparkingDelay, LockingCost,
-        AssocList), 
+    FeedbackData = 
+        feedback_data_candidate_parallel_conjunctions(Parameters, AssocList),
     make_module_candidate_par_conjs_map(ModuleName, AssocList,
         CandidateParConjsMap),
-    ParallelismInfo = parallelism_info(DesiredParallelism, SparkingCost,
-        SparkingDelay, LockingCost, CandidateParConjsMap).
+    ParallelismInfo = parallelism_info(Parameters, CandidateParConjsMap).
 
 :- pred make_module_candidate_par_conjs_map(module_name::in,
     assoc_list(string_proc_label, candidate_par_conjunctions_proc)::in,
