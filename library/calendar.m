@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -159,7 +159,7 @@
 :- func init_duration(years, months, days, hours, minutes, seconds,
     microseconds) = duration.
 
-    % Retrive all the components of a duration.
+    % Retrieve all the components of a duration.
     %
 :- pred unpack_duration(duration::in, years::out, months::out,
     days::out, hours::out, minutes::out, seconds::out, microseconds::out)
@@ -240,7 +240,7 @@
     %   current_utc_time(UTC, !IO),
     %   TZ = duration(UTC, Local)
     % except that it is as if the calls to current_utc_time and
-    % current_local_time occured at the same instant.
+    % current_local_time occurred at the same instant.
     %
     % To convert UTC time to local time, add the result of local_time_offset/3
     % to UTC (using add_duration/3).  To compute UTC given the local time,
@@ -256,7 +256,7 @@
     % days, hours, minutes, seconds, microseconds.
     % The returned duration is positive if DateB is after DateA and negative
     % if DateB is before DateA.
-    % Any leap seconds that occured between the two dates are ignored.
+    % Any leap seconds that occurred between the two dates are ignored.
     % The dates should be in the same timezone and in the same daylight
     % savings phase.  To work out the duration between dates in different
     % timezones or daylight savings phases, first convert the dates to
@@ -856,7 +856,7 @@ duration(DateA, DateB) = Duration :-
     % original call DateA < DateB, while ascending means that in the original
     % call DateA > DateB).  This is needed to correctly compute the days
     % component of the resulting duration.  The calculation is different
-    % depending on the original order, because we want the invarient:
+    % depending on the original order, because we want the invariant:
     %   add_duration(duration(DateA, DateB), DateA, DateB)
     % to hold, and in the case where DateA > DateB, Duration will be negative.
     %

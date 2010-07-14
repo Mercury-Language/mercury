@@ -145,7 +145,7 @@ Erlang.  See README.Java and README.Erlang for further details.
 
 The current Mercury system has been tested on Linux (x86), Linux (x86_64),
 Mac OS X (x86 and x86_64), and Windows (x86).
-For Windows, we have have tested this release only on Windows XP Pro.
+For Windows, we have tested this release only on Windows XP Pro.
 
 In the past Mercury has also been known to run on: Digital Unix,
 OSF1, IRIX 5.x, Ultrix 4.3, BSDI 1.1, AIX, HPUX, Linux (Alpha),
