@@ -5695,7 +5695,7 @@ the static call graph for that file in @samp{@var{module}.prof}.
 Enabling @samp{threadscope} profiling causes the compiler to build the program 
 against a different runtime system.
 This runtime system logs events relevant to parallel execution.
-@samp{threadscope} support is not compatibile with all processors,
+@samp{threadscope} support is not compatible with all processors,
 see @file{README.ThreadScope} for more information.
 
 @node Creating profiles
@@ -7101,7 +7101,7 @@ after the specified stage number or stage name, to
 @findex --mode-constraints
 Perform constraint based mode analysis on the given modules.
 At the moment, the only effect of this
-is to include more information in HDLS dumps,
+is to include more information in HLDS dumps,
 to allow the constraint based mode analysis algorithm to be debugged.
 
 @sp 1
