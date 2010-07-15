@@ -31,6 +31,10 @@ To build the source distribution under MSYS follow these steps:
     - tar --lzma -xf flex-2.5.35-1-msys-1.0.11-bin.tar.lzma
     - tar --lzma -xf libregex-1.20090805-1-msys-1.0.11-dll-1.tar.lzma
 
+    If bison complains about msys-intl-8.dll being missing then you need to
+    also install libintl-*-msys-dll-8.tar.lzma.  This file is part of the MSYS
+    gettext package.  It should be installed as above.
+
 2.  Unpack the source distribution with a command like:
     
         tar -xvzf mercury-compiler-<VERSION>.tar.gz

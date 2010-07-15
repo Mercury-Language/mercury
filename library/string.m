@@ -3285,7 +3285,7 @@ size_of_required_exponent(Float, Prec) = Exponent :-
     % Is mantissa one digit long?
     split_at_decimal_point(UnsafeBase, MantissaStr, _FractionStr),
     ( string.length(MantissaStr) > 1 ->
-        % We will need need to move decimal pt one place to the left:
+        % We will need to move decimal pt one place to the left:
         % therefore, increment exponent.
         Exponent = UnsafeExponent + 1
     ;
@@ -3329,7 +3329,7 @@ decimal_pos(Float) = Pos :-
     Pos = find_non_zero_pos(string.to_char_list(Float), NumZeros).
 
     % Given a list of chars representing a floating point number, this
-    % function determines the the first position containing a non-zero digit.
+    % function determines the first position containing a non-zero digit.
     % Positions after the decimal point are negative, and those before the
     % decimal point are positive.
     %

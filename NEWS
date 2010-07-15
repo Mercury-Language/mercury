@@ -112,6 +112,9 @@ Changes to the Mercury standard library:
   the access predicates, io.set_globals/3 and io.get_globals/3 have been
   changed accordingly.
 
+* We have added io.update_globals/3 which allows for atomic updates to
+  the globals field in the I/O state in the presence of multiple threads.
+
 * We have moved some of the concurrency primitives out of the extras
   distribution and into a new standard library module called `thread',
   and its submodules `thread.channel', `thread.mvar', and `thread.semaphore'.
@@ -172,13 +175,11 @@ Changes to the Mercury standard library:
 * The following function has been added to the pqueue module
 	pqueue.length/1
 
-* We have added maybe_is_yes/2 semidet predicate to the maybe module.
+* The following predicate has been added to the maybe module
+	maybe_is_yes/2
 
 * We have changed the interface of the ops module to make lookups of operators
   more efficient.
-
-* We have added io.update_globals/3 which allows for atomic updates to
-  the globals field in the I/O state in the presence of multiple threads.
 
 * We have added string.c_pointer_to_string/{1,2} and string.from_c_pointer/1
   to convert c_pointers to a human readable form.

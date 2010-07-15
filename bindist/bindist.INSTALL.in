@@ -3,7 +3,7 @@
 # INSTALL - installation instructions and installation script
 #	    for the binary distribution of Mercury.
 #
-# You need GNU C (2.6.3 or later) and GNU Make (3.69 or later) in order
+# You need GNU C (3.4 or later) and GNU Make (3.69 or later) in order
 # to use Mercury, though you don't need them to install this distribution.
 # To use the Mercury debugger, you may also need GNU Readline.
 #

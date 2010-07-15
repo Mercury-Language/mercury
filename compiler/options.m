@@ -310,7 +310,7 @@
     % (b) Profiling
     ;       profiling           % profile_time + profile_calls
     ;       time_profiling      % profile_time + profile_calls
-    ;       memory_profiling    % profime_mem + profile_calls
+    ;       memory_profiling    % profile_mem + profile_calls
     ;       deep_profiling      % profile_deep
     ;       profile_calls
     ;       profile_time
@@ -344,7 +344,7 @@
     ;       profile_deep_coverage_use_portcounts
     ;       profile_deep_coverage_use_trivial
 
-            % Turn on flags ralevent for profiler directed implicit
+            % Turn on flags relevant for profiler directed implicit
             % parallelism.
     ;       profile_for_implicit_parallelism
 
@@ -4158,7 +4158,7 @@ options_help_compilation_model -->
 %       "debugging.",
 %       
 %       "--no-profile-deep-coverage-use-portcounts",
-%       "\tTurn off usage of port counts in the deep profilier to provide",
+%       "\tTurn off usage of port counts in the deep profiler to provide",
 %       "\tsome coverage information.",
 %       "--no-profile-deep-coverage-use-trivial",
 %       "\tTurn off usage of trivial goal information",

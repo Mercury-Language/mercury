@@ -10084,7 +10084,7 @@ not support @samp{pragma fact_table} for procedures with determinism
 @c Using the atomic scope requires the program to explicitly import the modules
 @c @samp{stm_builtin}, @samp{exception} and @samp{univ}.
 @c This restriction will soon be dropped,
-@c as the the compiler itself will do the required imports.
+@c as the compiler itself will do the required imports.
 @c
 @c In STM systems, data shared between threads
 @c is stored in @samp{Transaction Variables}.
@@ -10612,7 +10612,7 @@ It emits an error if they are not.
 A @samp{pragma require_feature_set} may only occur in the implementation
 section of a module.
 
-A @samp{pragma require_feature_set} affects only the the module in which
+A @samp{pragma require_feature_set} affects only the module in which
 it occurs; in particular it does not affect any sub-modules
 
 If a module contains multiple @samp{pragma require_feature_set} declarations

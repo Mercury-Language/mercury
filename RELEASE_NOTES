@@ -1,5 +1,5 @@
 
-We are pleased to announce the release of version 0.13 of the Mercury system.
+We are pleased to announce the release of version 10.04  of the Mercury system.
 
 Mercury is a modern general-purpose programming language, designed and
 implemented by a small group of researchers at the University of
@@ -133,33 +133,35 @@ the syntax of the remaining part of the program is mostly compatible
 with Prolog syntax.
 
 The Mercury compiler compiles Mercury programs to C, which it uses as a
-portable assembler.  The system can exploit some GNU C extensions to the
-C language, if they are available: the ability to declare global
-register variables, the ability to take the addresses of labels, and
-the ability to use inline assembler.  Using these extensions, it
-generates code that is significantly better than all previous Prolog
-systems known to us.  However, the system does not need these
-extensions, and will work in their absence.
+portable assembler.  The system can exploit some GNU C extensions to the C
+language, if they are available: the ability to declare global register
+variables, the ability to take the addresses of labels, and the ability to use
+inline assembler.  Using these extensions, it generates code that is
+significantly better than all previous Prolog systems known to us.  However,
+the system does not need these extensions, and will work in their absence.
+
+The Mercury compiler can also compile Mercury programs to either Java or
+Erlang.  See README.Java and README.Erlang for further details.
 
 The current Mercury system has been tested on Linux (x86), Linux (x86_64),
-Solaris 9 (x86), Mac OS X (PowerPC), and Windows (x86).
-For Windows, we have have tested this release only on Windows XP Pro
-but it should also run fine on Windows 95, 98, ME, NT, and 2000.
+Mac OS X (x86 and x86_64), and Windows (x86).
+For Windows, we have tested this release only on Windows XP Pro.
 
 In the past Mercury has also been known to run on: Digital Unix,
 OSF1, IRIX 5.x, Ultrix 4.3, BSDI 1.1, AIX, HPUX, Linux (Alpha),
-Compaq Tru64 Unix (Alpha), Solaris 2.7 (SPARC)
+Compaq Tru64 Unix (Alpha), Solaris 2.7 (SPARC), Solaris (9),
+Mac OS X (PowerPc) and Windows 95, 98, ME, NT and 2000.
 
 It should run without too many changes on other Unix variants as well.
-If you do encounter any problems, please report them to
-<mercury-bugs@csse.unimelb.edu.au> (see the BUGS file).
+If you do encounter any problems, please report them to via the
+Mercury bug tracking system at <http://bugs.mercury.csse.unimelb.edu.au>
+(see the BUGS file).
 
-We recommend that you use gcc as the C compiler, preferably
-gcc version 3.2 or later.  Do not use gcc versions 2.96, 3.0
-or 4.0; those version have bugs that cause trouble for Mercury.
-If you are using gcc, you will need at least version 2.95 or higher,
-except on Mac OS X where you will need version 3.3 or higher.
-You will also need GNU make version 3.69 or higher.
+We recommend that you use gcc as the C compiler, preferably gcc version 3.4 or
+later.  Do not use gcc versions 2.96, 3.0 or 4.0; those version have bugs that
+cause trouble for Mercury.  If you are using gcc, you will need at least
+version 2.95 or higher, except on Mac OS X where you will need version 3.3 or
+higher.  You will also need GNU make version 3.69 or higher.
 
 The Mercury distribution is split into three parts.
 The "mercury-compiler" distribution contains:
@@ -185,13 +187,11 @@ The "mercury-extras" distribution contains some extra libraries for:
      o  lazy evaluation
      o  dynamic linking
      o  backtrackable (trailed) destructive update
-     o  concurrency
      o  arithmetic
         -  arithmetic on complex and imaginary numbers
-     o  a set of generic stream type classes
      o	an autotesting tool similar to Haskell's QuickCheck
      o  UIs:
-        -  graphics using Tk, OpenGL/GLUT or Xlib.
+        -  graphics using Tk, OpenGL/GLUT, Xlib or Allegro.
         -  text interfaces using curses
         -  processing HTML forms using the CGI interface
      o  interfacing:
@@ -200,7 +200,6 @@ The "mercury-extras" distribution contains some extra libraries for:
         -  an ODBC database interface
 and
      o  the Morphine trace analysis system
-     o  two (!) curses bindings, one more complete than the other
      o  a general purpose lexer
      o  Moose, a parser generator for Mercury.
      o  quickcheck, an autotesting tool similar to Haskell's QuickCheck.
@@ -212,19 +211,6 @@ via anonymous ftp or WWW from the following locations:
 
 	Australia:
 		ftp://ftp.mercury.csse.unimelb.edu.au/pub/mercury
-
-We hope to be able to make it available at the following sites
-too, eventually:
-
-	Sunsite and mirrors: (mercury-compiler source distribution only)
-		ftp://sunsite.unc.edu/pub/Linux/Incoming
-		ftp://sunsite.unc.edu/pub/linux/devel/lang/mercury
-
-	USA:
-		ftp://ftp.cs.sunysb.edu/pub/XSB/mercury
-
-	Europe:
-		ftp://ftp.csd.uu.se/pub/Mercury
 
 The home page of the project on the Web is:
 

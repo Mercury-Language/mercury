@@ -15,15 +15,16 @@ The 'asm_fast' and 'reg' grades are not currently available on Mac OS X 10.5 or
 will require a working Erlang installation.)
 
 By default, 64-bit versions of the executables and libraries in the Mercury
-system will be installed on Mac OS X 10.6.  To build a 32-bit installation on
-10.6, you need to arrange to have the option "-m32" passed to gcc.  This can be
-done by invoking Mercury's configure script with the option:
+system will be installed on x86-64 machines running Mac OS X 10.6.  To build a
+32-bit installation on such a machine, you need to arrange to have the option
+"-m32" passed to gcc.  This can be done by invoking Mercury's configure script
+with the option:
 
     --with-cc="gcc -m32"
 
 By default, 32-bit versions of the executables and libraries are installed on
-Mac OS X 10.5.  To build and install 64-bit Mercury on that system you must
-pass the "-m64" option to gcc. 
+x86-64 machines running Mac OS X 10.5.  To build and install 64-bit Mercury on
+such a system you must pass the "-m64" option to gcc. 
 
 Note that if you are building Mercury from scratch using an existing installed
 Mercury compiler, i.e. you are not installing using the pre-generated C files in
