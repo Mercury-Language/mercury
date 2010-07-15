@@ -7,8 +7,7 @@
 max_spec_explicit_arg=5
 max_spec_hidden_arg=5
 
-> mercury_ho_call_declares.i
-> mercury_ho_call_inits.i
+variants=""
 
 spec_explicit_arg=-1
 while test $spec_explicit_arg -le $max_spec_explicit_arg
@@ -123,8 +122,23 @@ do
     echo "}"
     echo
 
-    echo "MR_define_extern_entry(mercury__do_call_closure_$variant);" >> mercury_ho_call_declares.i
-    echo "    MR_init_entry_an(mercury__do_call_closure_$variant);" >> mercury_ho_call_inits.i
+    variants="$variants $variant"
 
     spec_explicit_arg=`expr $spec_explicit_arg + 1`
 done
+
+# Create these files atomically.
+
+{
+    for variant in $variants
+    do
+        echo "MR_define_extern_entry(mercury__do_call_closure_$variant);"
+    done
+} > mercury_ho_call_declares.i
+
+{
+    for variant in $variants
+    do
+        echo "    MR_init_entry_an(mercury__do_call_closure_$variant);"
+    done
+} > mercury_ho_call_inits.i
