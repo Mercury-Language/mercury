@@ -1672,12 +1672,25 @@ rename_class_names_atomic(Renaming, !Statement) :-
         !:Statement = new_object(TargetLval, MaybeTag, ExplicitSecTag, Type,
             MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic)
     ;
+        !.Statement = inline_target_code(Lang, Components0),
+        (
+            Lang = ml_target_java,
+            list.map(rename_class_names_target_code_component(Renaming),
+                Components0, Components),
+            !:Statement = inline_target_code(Lang, Components)
+        ;
+            ( Lang = ml_target_c
+            ; Lang = ml_target_gnu_c
+            ; Lang = ml_target_asm
+            ; Lang = ml_target_il
+            )
+        )
+    ;
         ( !.Statement = comment(_)
         ; !.Statement = gc_check
         ; !.Statement = mark_hp(_)
         ; !.Statement = restore_hp(_)
         ; !.Statement = trail_op(_)
-        ; !.Statement = inline_target_code(_, _)
         ; !.Statement = outline_foreign_proc(_, _, _, _)
         )
     ).
@@ -1807,6 +1820,49 @@ rename_class_names_unary_op(Renaming, !Op) :-
         !:Op = cast(Type)
     ;
         !.Op = std_unop(_)
+    ).
+
+:- pred rename_class_names_target_code_component(class_name_renaming::in,
+    target_code_component::in, target_code_component::out) is det.
+
+rename_class_names_target_code_component(Renaming, !Component) :-
+    (
+        !.Component = user_target_code(_, _, _)
+    ;
+        !.Component = raw_target_code(_, _)
+    ;
+        !.Component = target_code_input(Rval0),
+        rename_class_names_rval(Renaming, Rval0, Rval),
+        !:Component = target_code_input(Rval)
+    ;
+        !.Component = target_code_output(Lval0),
+        rename_class_names_lval(Renaming, Lval0, Lval),
+        !:Component = target_code_output(Lval)
+    ;
+        !.Component = target_code_type(Type0),
+        rename_class_names_type(Renaming, Type0, Type),
+        !:Component = target_code_type(Type)
+    ;
+        !.Component = target_code_name(QualName0),
+        QualName0 = qual(ModuleName, Kind, EntityName0),
+        (
+            EntityName0 = entity_type(ClassName0, Arity),
+            (
+                Renaming = class_name_renaming(ModuleName, RenamingMap),
+                map.search(RenamingMap, ClassName0, ClassName)
+            ->
+                EntityName = entity_type(ClassName, Arity),
+                QualName = qual(ModuleName, Kind, EntityName),
+                !:Component = target_code_name(QualName)
+            ;
+                true
+            )
+        ;
+            ( EntityName0 = entity_function(_, _, _, _)
+            ; EntityName0 = entity_data(_)
+            ; EntityName0 = entity_export(_)
+            )
+        )
     ).
 
 %-----------------------------------------------------------------------------%
