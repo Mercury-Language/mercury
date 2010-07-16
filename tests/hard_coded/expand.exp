@@ -125,16 +125,16 @@ no arguments
 expand: functor 3.14159 arity 0 arguments []
 deconstruct_du failed
 
-1.12832498300000e-21/0
+1.128324983e-21/0
 functor_number_cc failed
 no arguments
-expand: functor 1.12832498300000e-21 arity 0 arguments []
+expand: functor 1.128324983e-21 arity 0 arguments []
 deconstruct_du failed
 
-2.23954899000000e+23/0
+2.23954899e+23/0
 functor_number_cc failed
 no arguments
-expand: functor 2.23954899000000e+23 arity 0 arguments []
+expand: functor 2.23954899e+23 arity 0 arguments []
 deconstruct_du failed
 
 -65/0

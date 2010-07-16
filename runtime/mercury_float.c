@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997, 2000, 2002, 2006-2007 The University of Melbourne.
+** Copyright (C) 1997, 2000, 2002, 2006-2007, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -73,7 +73,7 @@ MR_sprintf_float(char *buf, MR_Float f)
     ** is round-trippable.
     */
     do {
-        sprintf(buf, "%#.*g", i, f);
+        sprintf(buf, "%.*g", i, f);
         if (i >= MR_FLT_MAX_PRECISION) {
             /*
             ** This should be sufficient precision to round-trip any value.
@@ -87,30 +87,18 @@ MR_sprintf_float(char *buf, MR_Float f)
     } while (round_trip != f);
 
     /*
-    ** Strip redundant trailing zeroes from the string (this behaviour
-    ** for %g is suppressed by the # modifier).
+    ** Append ".0" if there is no "e" or "." in the string.
     */
-    for (n = strlen(buf) - 1; n > 0; n--) {
-        switch (buf[n]) {
-            case '.': 
-                buf[n + 2] = '\0';
-                return;
-            case '0':
-                continue;
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
-                buf[n + 1] = '\0';
-                return;
-            default:
-                return;
+    while (1) {
+        if (*buf == 'e' || *buf == '.') {
+            return;
         }
+        if (*buf == '\0') {
+            /* We only get here if there is no '.' or 'e' in the string. */
+            strcpy(buf, ".0");
+            return;
+        }
+        buf++;
     }
 
     return;
