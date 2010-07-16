@@ -321,6 +321,9 @@ Changes to the Mercury compiler:
   The Java backend is roughly three times slower (after allowing for JIT)
   than the C backends.
 
+  The Java backend improvements were contributed by Mission Critical IT
+  <http://www.missioncriticalit.com/>.
+
 * Interfacing with Mercury code from Java is also improved:
     * Polymorphic Mercury types are now translated to Java classes
       with generics, allowing for greater type safety in the Java code.
@@ -336,6 +339,9 @@ Changes to the Mercury compiler:
 * Support for the reserve tag grades has been removed.
 
 * We have added an Erlang back-end.
+
+  The Erlang back-end was contributed by Mission Critical IT
+  <http://www.missioncriticalit.com/>.
 
 * In parallel grades we now support thread-local trailing.
 
