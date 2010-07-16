@@ -15,23 +15,27 @@ PREREQUISITES
 
 In order to try this system you will need 
 
-	- The Erlang/OTP distribution, which is open source and can be
-	  downloaded from
-		<http://www.erlang.org/download.html>
+        - The Erlang/OTP distribution, which is open source and can be
+          downloaded from
+                <http://www.erlang.org/download.html>
 
-	- The Mercury source distribution.  See below for installation
-	  instructions.
+        - The Mercury source distribution.  See below for installation
+          instructions.
 
-	  If you're reading this file from somewhere other than the
-	  Mercury distribution, try the Mercury homepage at
-	  	<http://www.mercury.csse.unimelb.edu.au>
+          If you're reading this file from somewhere other than the
+          Mercury distribution, try the Mercury homepage at
+                <http://www.mercury.csse.unimelb.edu.au>
 
-	- An installed Mercury compiler.  You must use `mmc --make' to
-	  install the standard library for Erlang.  See below.
+        - An installed Mercury compiler.  You must use `mmc --make' to
+          install the standard library for Erlang.  See below.
 
-	- A Unix-like environment.  The Erlang support has not been
-	  tested on Windows, but you will need a shell script
-	  interpreter.
+        - A Unix-like environment.  The Erlang support has not been
+          tested on Windows, but you will need a shell script
+          interpreter.
+
+        - Users of Debian or Ubuntu who are using the Erlang that is
+          packaged for those systems also need have the erlang-dev
+          package installed.
 
 WARNING
 
@@ -73,12 +77,12 @@ Mercury library in the erlang grade, as described above.
 You can now build programs such as hello.m or calculator.m in the samples
 directory.
 
-	cd samples
-	mmc --make --erlang hello
+        cd samples
+        mmc --make --erlang hello
 
 Now you can run hello
 
-	./hello
+        ./hello
 
 Note that hello is a simple shell script that starts the Erlang
 runtime system.  The actual object files will be stored in the Mercury
@@ -98,7 +102,7 @@ Mercury's foreign language interface.
 
 For more information about the foreign language interface, see the Mercury
 Language Reference Manual, which you can find at:
-	
+        
      <http://www.mercury.csse.unimelb.edu.au/information/documentation.html>
 
 -----------------------------------------------------------------------------
@@ -139,12 +143,12 @@ DIFFERENCES FROM OTHER BACKENDS
   An example is:
 
     foo(Xs) :-
-	( Xs = []
-	; Xs = [1 | _]
-	),
-	( Xs = []
-	; Xs = [_ | []]
-	).
+        ( Xs = []
+        ; Xs = [1 | _]
+        ),
+        ( Xs = []
+        ; Xs = [_ | []]
+        ).
 
 -----------------------------------------------------------------------------
 
@@ -176,21 +180,21 @@ Q. What features are not yet implemented for the Erlang back-end?
 
 A. The following language features are not supported and will not be:
 
-	trailing
-	tabling
+        trailing
+        tabling
 
    The following implementation features are not supported:
 
-	Mercury-level debugging
-	Mercury-level profiling
+        Mercury-level debugging
+        Mercury-level profiling
 
    The following standard library modules are completely unimplemented:
 
-	bit_buffer
-	thread
-	thread.semaphore
-	time
-	version_array
+        bit_buffer
+        thread
+        thread.semaphore
+        time
+        version_array
 
    In addition, many modules are incompletely implemented or have placeholder
    implementations.
@@ -202,19 +206,19 @@ A. With great difficulty.  One way is to copy or symlink all the .erl and
    into a single directory.  Then build the .beam files with debugging
    enabled, e.g.
 
-	erlc +debug_info *.erl
+        erlc +debug_info *.erl
 
    Start up the Erlang runtime system and the debugger:
 
-	% erl
-	...
-	1> debugger:start().
+        % erl
+        ...
+        1> debugger:start().
 
    In the debugger, select Module > Interpret... and choose the modules to
    interpret (probably "All").  At the erl prompt, the program can be started
    like so:
 
-	% hello:mercury__main_wrapper().
+        % hello:mercury__main_wrapper().
 
    To run it a second time you may need to call `main_2_p_0' instead.
 
