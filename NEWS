@@ -1,5 +1,5 @@
-NEWS since Mercury 10.04 beta 
------------------------------
+NEWS since Mercury 10.04
+------------------------
 
 Changes to the Mercury standard library:
 
@@ -7,8 +7,8 @@ Changes to the Mercury standard library:
   map_keys_only/3 map_values_only/3 and map_values/3.  They complement the
   functions of the same name.
 
-NEWS for Mercury 10.04 beta
----------------------------
+NEWS for Mercury 10.04
+----------------------
 
 Changes to the release numbering:
 
