@@ -191,8 +191,8 @@ case $BRANCH in
         #BASE_TAG_NAME=version-10_04-branch
         #FTP_DIR_NAME=10.04-beta
         #RELEASE_VERSION=10.04-beta-$DATE
-        3RELEASE_VERSION_PATTERN=10.04-beta-*
-        ;;
+        #RELEASE_VERSION_PATTERN=10.04-beta-*
+        #;;
         
         # This is for the 10.04 release itself.
         #
