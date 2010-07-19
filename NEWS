@@ -7,6 +7,8 @@ Changes to the Mercury standard library:
   map_keys_only/3 map_values_only/3 and map_values/3.  They complement the
   functions of the same name.
 
+* We have improved the performance of hash tables and version hash tables.
+
 NEWS for Mercury 10.04
 ----------------------
 

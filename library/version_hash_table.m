@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -196,8 +196,14 @@
                 num_occupants           :: int,
                 max_occupants           :: int,
                 hash_pred               :: hash_pred(K),
-                buckets                 :: version_array(assoc_list(K, V))
+                buckets                 :: buckets(K, V)
             ).
+
+:- type buckets(K, V) == version_array(hash_table_alist(K, V)).
+
+:- type hash_table_alist(K, V)
+    --->    ht_nil
+    ;       ht_cons(K, V, hash_table_alist(K, V)).
 
 %-----------------------------------------------------------------------------%
 
@@ -222,10 +228,10 @@ new_2(HashPred, N, MaxOccupancy, NeedSafety) = HT :-
             MaxOccupants = ceiling_to_int(float(NumBuckets) * MaxOccupancy),
             (
                 NeedSafety = yes,
-                Buckets = version_array.new(NumBuckets, [])
+                Buckets = version_array.new(NumBuckets, ht_nil)
             ;
                 NeedSafety = no,
-                Buckets = version_array.unsafe_new(NumBuckets, [])
+                Buckets = version_array.unsafe_new(NumBuckets, ht_nil)
             ),
             HT = ht(0, MaxOccupants, HashPred, Buckets)
     ).
@@ -280,11 +286,11 @@ find_slot_2(HashPred, K, NumBuckets, H) :-
 set(!.HT, K, V) = !:HT :-
     H = find_slot(!.HT, K),
     AL0 = !.HT ^ buckets ^ elem(H),
-    ( if assoc_list.remove(AL0, K, _, AL1) then
-        AL = [K - V | AL1],
+    ( if alist_replace(AL0, K, V, AL1) then
+        AL = AL1,
         MayExpand = no
       else
-        AL = [K - V | AL0],
+        AL = ht_cons(K, V, AL0),
         MayExpand = yes
     ),
     !HT ^ buckets ^ elem(H) := AL,
@@ -299,6 +305,17 @@ set(!.HT, K, V) = !:HT :-
 
 set(K, V, HT, set(HT, K, V)).
 
+:- pred alist_replace(hash_table_alist(K, V)::in, K::in, V::in,
+    hash_table_alist(K, V)::out) is semidet.
+
+alist_replace(ht_cons(HK, HV, T), K, V, AList) :-
+    ( if HK = K then
+        AList = ht_cons(K, V, T)
+      else
+        alist_replace(T, K, V, AList0),
+        AList = ht_cons(HK, HV, AList0)
+    ).
+
 %-----------------------------------------------------------------------------%
 
 search(HT, K, search(HT, K)).
@@ -306,18 +323,27 @@ search(HT, K, search(HT, K)).
 search(HT, K) = V :-
     H = find_slot(HT, K),
     AL = HT ^ buckets ^ elem(H),
-    assoc_list.search(AL, K, V).
+    alist_search(AL, K, V).
+
+:- pred alist_search(hash_table_alist(K, V)::in, K::in, V::out) is semidet.
+
+alist_search(ht_cons(HK, HV, T), K, V) :-
+    ( if HK = K then
+        HV = V
+      else
+        alist_search(T, K, V)
+    ).
 
 %-----------------------------------------------------------------------------%
 
 det_insert(!.HT, K, V) = !:HT :-
     H = find_slot(!.HT, K),
     AL0 = !.HT ^ buckets ^ elem(H),
-    ( if assoc_list.search(AL0, K, _) then
+    ( if alist_search(AL0, K, _) then
         throw(software_error(
             "version_hash_table.det_insert: key already present"))
       else
-        AL = [K - V | AL0]
+        AL = ht_cons(K, V, AL0)
     ),
     !HT ^ buckets ^ elem(H) := AL,
     increase_occupants(!HT).
@@ -329,8 +355,8 @@ det_insert(K, V, HT, det_insert(HT, K, V)).
 det_update(HT0, K, V) = HT :-
     H = find_slot(HT0, K),
     AL0 = HT0 ^ buckets ^ elem(H),
-    ( if assoc_list.remove(AL0, K, _, AL1) then
-        AL = [K - V | AL1]
+    ( if alist_replace(AL0, K, V, AL1) then
+        AL = AL1
       else
         throw(software_error("version_hash_table.det_update: key not found"))
     ),
@@ -353,7 +379,7 @@ elem(K, HT) = lookup(HT, K).
 delete(HT0, K) = HT :-
     H = find_slot(HT0, K),
     AL0 = HT0 ^ buckets ^ elem(H),
-    ( if assoc_list.remove(AL0, K, _, AL) then
+    ( if alist_remove(AL0, K, AL) then
         HT0 = ht(NumOccupants0, MaxOccupants, HashPred, Buckets0),
         Buckets = Buckets0 ^ elem(H) := AL,
         NumOccupants = NumOccupants0 - 1,
@@ -364,10 +390,29 @@ delete(HT0, K) = HT :-
 
 delete(K, HT, delete(HT, K)).
 
+:- pred alist_remove(hash_table_alist(K, V)::in, K::in,
+    hash_table_alist(K, V)::out) is semidet.
+
+alist_remove(ht_cons(HK, HV, T), K, AList) :-
+    ( if HK = K then
+        AList = T
+      else
+        alist_remove(T, K, AList0),
+        AList = ht_cons(HK, HV, AList0)
+    ).
+
 %-----------------------------------------------------------------------------%
 
 to_assoc_list(HT) =
-    foldl(list.append, HT ^ buckets, []).
+    foldl(to_assoc_list_2, HT ^ buckets, []).
+
+:- func to_assoc_list_2(hash_table_alist(K, V), assoc_list(K, V))
+    = assoc_list(K, V).
+
+to_assoc_list_2(ht_nil, AList) = AList.
+
+to_assoc_list_2(ht_cons(K, V, T), AList) =
+    to_assoc_list_2(T, [K - V | AList]).
 
 
 from_assoc_list(HP, AList) = from_assoc_list_2(AList, new_default(HP)).
@@ -407,45 +452,43 @@ expand(HT0, HT) :-
     MaxOccupants = MaxOccupants0 + MaxOccupants0,
 
     unsafe_hash_pred_cast(HashPred0, HashPred),
-    Buckets1 = init(NumBuckets, []),
+    Buckets1 = init(NumBuckets, ht_nil),
     reinsert_bindings(0, Buckets0, HashPred, NumBuckets, Buckets1, Buckets),
 
     HT = ht(NumOccupants0 + 1, MaxOccupants, HashPred, Buckets).
 
-:- pred reinsert_bindings(int, version_array(assoc_list(K, V)), hash_pred(K),
-    int, version_array(assoc_list(K, V)), version_array(assoc_list(K,V))).
-:- mode reinsert_bindings(in, in, in(hash_pred),
-    in, in, out) is det.
+:- pred reinsert_bindings(int::in, buckets(K, V)::in,
+    hash_pred(K)::in(hash_pred), int::in,
+    buckets(K, V)::in, buckets(K, V)::out) is det.
 
 reinsert_bindings(I, OldBuckets, HashPred, NumBuckets, !Buckets) :-
     ( if I >= size(OldBuckets) then
         true
       else
         AL = OldBuckets ^ elem(I),
-        reinsert_assoc_list(AL, HashPred, NumBuckets, !Buckets),
+        reinsert_alist(AL, HashPred, NumBuckets, !Buckets),
         reinsert_bindings(I + 1, OldBuckets, HashPred, NumBuckets, !Buckets)
     ).
 
-:- pred reinsert_assoc_list(assoc_list(K, V), hash_pred(K),
-    int, version_array(assoc_list(K, V)), version_array(assoc_list(K, V))).
-:- mode reinsert_assoc_list(in, in(hash_pred),
-    in, in, out) is det.
+:- pred reinsert_alist(hash_table_alist(K, V)::in, hash_pred(K)::in(hash_pred),
+    int::in, buckets(K, V)::in, buckets(K, V)::out) is det.
 
-reinsert_assoc_list([], _, _, !Buckets).
-reinsert_assoc_list([KV | KVs], HashPred, NumBuckets, !Buckets) :-
-    unsafe_insert(KV, HashPred, NumBuckets, !Buckets),
-    reinsert_assoc_list(KVs, HashPred, NumBuckets, !Buckets).
+reinsert_alist(AL, HashPred, NumBuckets, !Buckets) :-
+    (
+        AL = ht_nil
+    ;
+        AL = ht_cons(K, V, T),
+        unsafe_insert(K, V, HashPred, NumBuckets, !Buckets),
+        reinsert_alist(T, HashPred, NumBuckets, !Buckets)
+    ).
 
-:- pred unsafe_insert(pair(K, V), hash_pred(K),
-    int, version_array(assoc_list(K, V)), version_array(assoc_list(K, V))).
-:- mode unsafe_insert(in, in(hash_pred),
-    in, in, out) is det.
+:- pred unsafe_insert(K::in, V::in, hash_pred(K)::in(hash_pred), int::in,
+    buckets(K, V)::in, buckets(K, V)::out) is det.
 
-unsafe_insert(KV, HashPred, NumBuckets, Buckets0, Buckets) :-
-    KV = K - _,
+unsafe_insert(K, V, HashPred, NumBuckets, Buckets0, Buckets) :-
     find_slot_2(HashPred, K, NumBuckets, H),
     AL0 = Buckets0 ^ elem(H),
-    Buckets = Buckets0 ^ elem(H) := [KV | AL0].
+    Buckets = Buckets0 ^ elem(H) := ht_cons(K, V, AL0).
 
 %-----------------------------------------------------------------------------%
 
@@ -568,12 +611,12 @@ munge(N, X) =
 fold(F, HT, X0) = X :-
     foldl(fold_f(F), HT ^ buckets, X0, X).
 
-:- pred fold_f(func(K, V, T) = T, assoc_list(K, V), T, T).
+:- pred fold_f(func(K, V, T) = T, hash_table_alist(K, V), T, T).
 :- mode fold_f(func(in, in, in) = out is det, in, in, out) is det.
 :- mode fold_f(func(in, in, di) = uo is det, in, di, uo) is det.
 
-fold_f(_F, [], !A).
-fold_f(F, [K - V | KVs], !A) :-
+fold_f(_F, ht_nil, !A).
+fold_f(F, ht_cons(K, V, KVs), !A) :-
     F(K, V, !.A) = !:A,
     fold_f(F, KVs, !A).
 
@@ -581,12 +624,12 @@ fold_f(F, [K - V | KVs], !A) :-
 fold(P, HT, !A) :-
     foldl(fold_p(P), HT ^ buckets, !A).
 
-:- pred fold_p(pred(K, V, T, T), assoc_list(K, V), T, T).
+:- pred fold_p(pred(K, V, T, T), hash_table_alist(K, V), T, T).
 :- mode fold_p(pred(in, in, in, out) is det, in, in, out) is det.
 :- mode fold_p(pred(in, in, di, uo) is det, in, di, uo) is det.
 
-fold_p(_P, [], !A).
-fold_p(P, [K - V | KVs], !A) :-
+fold_p(_P, ht_nil, !A).
+fold_p(P, ht_cons(K, V, KVs), !A) :-
     P(K, V, !A),
     fold_p(P, KVs, !A).
 
