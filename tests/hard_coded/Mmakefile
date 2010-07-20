@@ -9,6 +9,7 @@ ORDINARY_PROGS=	\
 	address_of_builtins \
 	agg \
 	array_test \
+	array_test2 \
 	backquoted_qualified_ops \
 	bag_various \
 	bidirectional \
