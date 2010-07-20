@@ -228,9 +228,9 @@
 
 :- implementation.
 
-    % We use a custom association list representation to reduce type_info
-    % allocations (assoc_list requires a type_info for list, and one for pair),
-    % and better locality.
+    % We use a custom association list representation for better performance.
+    % assoc_list requires two cells to be allocated per table entry,
+    % and presumably has worse locality.
     %
     % Array bounds checks may be omitted in this module because the array
     % indices are computed by: hash(Key) mod size(Array)
