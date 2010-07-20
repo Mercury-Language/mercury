@@ -702,8 +702,79 @@ ML_array_size(Object Array)
 {
     if (Array == null) {
         return 0;
+    } else if (Array instanceof int[]) {
+        return ((int[]) Array).length;
+    } else if (Array instanceof double[]) {
+        return ((double[]) Array).length;
+    } else if (Array instanceof char[]) {
+        return ((char[]) Array).length;
+    } else if (Array instanceof boolean[]) {
+        return ((boolean[]) Array).length;
     } else {
-        return java.lang.reflect.Array.getLength(Array);
+        return ((Object[]) Array).length;
+    }
+}
+
+public static Object
+ML_array_resize(Object Array0, int Size, Object Item)
+{
+    if (Size == 0) {
+        return null;
+    }
+    if (Array0 == null) {
+        return ML_new_array(Size, Item, true);
+    }
+    if (ML_array_size(Array0) == Size) {
+        return Array0;
+    }
+    if (Array0 instanceof int[]) {
+        int[] arr0 = (int[]) Array0;
+        int[] Array = new int[Size];
+
+        System.arraycopy(arr0, 0, Array, 0, Math.min(arr0.length, Size));
+        for (int i = arr0.length; i < Size; i++) {
+            Array[i] = (Integer) Item;
+        }
+        return Array;
+    }
+    if (Array0 instanceof double[]) {
+        double[] arr0 = (double[]) Array0;
+        double[] Array = new double[Size];
+
+        System.arraycopy(arr0, 0, Array, 0, Math.min(arr0.length, Size));
+        for (int i = arr0.length; i < Size; i++) {
+            Array[i] = (Double) Item;
+        }
+        return Array;
+    }
+    if (Array0 instanceof char[]) {
+        char[] arr0 = (char[]) Array0;
+        char[] Array = new char[Size];
+
+        System.arraycopy(arr0, 0, Array, 0, Math.min(arr0.length, Size));
+        for (int i = arr0.length; i < Size; i++) {
+            Array[i] = (Character) Item;
+        }
+        return Array;
+    }
+    if (Array0 instanceof boolean[]) {
+        boolean[] arr0 = (boolean[]) Array0;
+        boolean[] Array = new boolean[Size];
+
+        System.arraycopy(arr0, 0, Array, 0, Math.min(arr0.length, Size));
+        for (int i = arr0.length; i < Size; i++) {
+            Array[i] = (Boolean) Item;
+        }
+        return Array;
+    } else {
+        Object[] arr0 = (Object[]) Array0;
+        Object[] Array = new Object[Size];
+
+        System.arraycopy(arr0, 0, Array, 0, Math.min(arr0.length, Size));
+        for (int i = arr0.length; i < Size; i++) {
+            Array[i] = Item;
+        }
+        return Array;
     }
 }
 ").
@@ -895,11 +966,7 @@ array.bounds(Array, Min, Max) :-
     array.size(Array::in, Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    if (Array != null) {
-        Max = java.lang.reflect.Array.getLength(Array);
-    } else {
-        Max = 0;
-    }
+    Max = jmercury.array.ML_array_size(Array);
 ").
 
 %-----------------------------------------------------------------------------%
@@ -972,7 +1039,17 @@ array.lookup(Array, Index, Item) :-
     array.unsafe_lookup(Array::in, Index::in, Item::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Item = java.lang.reflect.Array.get(Array, Index);
+    if (Array instanceof int[]) {
+        Item = ((int[]) Array)[Index];
+    } else if (Array instanceof double[]) {
+        Item = ((double[]) Array)[Index];
+    } else if (Array instanceof char[]) {
+        Item = ((char[]) Array)[Index];
+    } else if (Array instanceof boolean[]) {
+        Item = ((boolean[]) Array)[Index];
+    } else {
+        Item = ((Object[]) Array)[Index];
+    }
 ").
 
 %-----------------------------------------------------------------------------%
@@ -1017,7 +1094,17 @@ array.set(Array0, Index, Item, Array) :-
     array.unsafe_set(Array0::array_di, Index::in, Item::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    java.lang.reflect.Array.set(Array0, Index, Item);
+    if (Array0 instanceof int[]) {
+        ((int[]) Array0)[Index] = (Integer) Item;
+    } else if (Array0 instanceof double[]) {
+        ((double[]) Array0)[Index] = (Double) Item;
+    } else if (Array0 instanceof char[]) {
+        ((char[]) Array0)[Index] = (Character) Item;
+    } else if (Array0 instanceof boolean[]) {
+        ((boolean[]) Array0)[Index] = (Boolean) Item;
+    } else {
+        ((Object[]) Array0)[Index] = Item;
+    }
     Array = Array0;         /* destructive update! */
 ").
 
@@ -1133,26 +1220,9 @@ ML_resize_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
 
 :- pragma foreign_proc("Java",
     array.resize(Array0::array_di, Size::in, Item::in, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, thread_safe],
 "
-    if (Size == 0) {
-        Array = null;
-    } else if (Array0 == null) {
-        Array = array.ML_new_array(Size, Item, true);
-    } else if (array.ML_array_size(Array0) == Size) {
-        Array = Array0;
-    } else {
-        Array = array.ML_new_array(Size, Item, false);
-
-        int i;
-        for (i = 0; i < array.ML_array_size(Array0) && i < Size; i++) {
-            java.lang.reflect.Array.set(Array, i,
-                java.lang.reflect.Array.get(Array0, i));
-        }
-        for (/*i = Array0.length*/; i < Size; i++) {
-            java.lang.reflect.Array.set(Array, i, Item);
-        }
-    }
+    Array = jmercury.array.ML_array_resize(Array0, Size, Item);
 ").
 
 %-----------------------------------------------------------------------------%
@@ -1331,13 +1401,13 @@ ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array)
         Size = ((double[]) Array0).length;
         Array = new double[Size];
     } else if (Array0 instanceof char[]) {
-        Size = ((double[]) Array0).length;
+        Size = ((char[]) Array0).length;
         Array = new char[Size];
     } else if (Array0 instanceof boolean[]) {
         Size = ((boolean[]) Array0).length;
         Array = new boolean[Size];
     } else {
-        Size = ((boolean[]) Array0).length;
+        Size = ((Object[]) Array0).length;
         Array = new Object[Size];
     }
 

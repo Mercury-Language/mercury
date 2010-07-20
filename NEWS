@@ -1,3 +1,11 @@
+NEWS since Mercury 10.04.1-beta
+-------------------------------
+
+Changes to the Mercury standard library:
+
+* We have improved the performance of hash tables and version hash tables.
+
+
 NEWS for Mercury 10.04
 ----------------------
 
@@ -64,7 +72,7 @@ Changes to the Mercury standard library:
   checked for overflow.
 
 * A module for handling directed graphs, digraph.m, has been added.  This
-  supersedes relation.m and svrelation.m in that has a more consistent
+  supersedes relation.m and svrelation.m in that it has a more consistent
   interface (which supports state variable notation), provides more type
   safety by using phantom types, and has a number of efficiency improvements.
   Further use of relation.m and svrelation.m is deprecated.
@@ -360,7 +368,7 @@ Changes to the Mercury compiler:
 * A new option, `--generate-standalone-interface', simplifies the task
   of calling Mercury procedures from programs written in other languages.
 
-* We have added new option, `--inform-ite-instead-of-switch'. If this is
+* We have added a new option, `--inform-ite-instead-of-switch'. If this is
   enabled, the compiler will generate informational messages about
   if-then-elses that it thinks should be converted to switches for the
   sake of program reliability.

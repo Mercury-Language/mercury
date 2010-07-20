@@ -1,0 +1,65 @@
+----
+size: 5
+elements: [10, 11, 12, 13, 14]
+good: out of bounds lookup averted
+good: out of bounds lookup averted
+good: out of bounds set averted
+good: out of bounds set averted
+resize without resizing: array([10, 11, 12, 13, 14])
+shrink: array([10, 11, 12])
+enlarge: array([10, 11, 12, 10, 10])
+empty: array([])
+still empty: array([])
+nonempty from empty: array([10, 10, 10])
+----
+size: 5
+elements: [10.0, 11.1, 12.2, 13.3, 14.4]
+good: out of bounds lookup averted
+good: out of bounds lookup averted
+good: out of bounds set averted
+good: out of bounds set averted
+resize without resizing: array([10.0, 11.1, 12.2, 13.3, 14.4])
+shrink: array([10.0, 11.1, 12.2])
+enlarge: array([10.0, 11.1, 12.2, 10.0, 10.0])
+empty: array([])
+still empty: array([])
+nonempty from empty: array([10.0, 10.0, 10.0])
+----
+size: 5
+elements: ['p', 'o', 'k', 'e', 'y']
+good: out of bounds lookup averted
+good: out of bounds lookup averted
+good: out of bounds set averted
+good: out of bounds set averted
+resize without resizing: array(['p', 'o', 'k', 'e', 'y'])
+shrink: array(['p', 'o', 'k'])
+enlarge: array(['p', 'o', 'k', 'p', 'p'])
+empty: array([])
+still empty: array([])
+nonempty from empty: array(['p', 'p', 'p'])
+----
+size: 5
+elements: [yes, no, yes, yes, no]
+good: out of bounds lookup averted
+good: out of bounds lookup averted
+good: out of bounds set averted
+good: out of bounds set averted
+resize without resizing: array([yes, no, yes, yes, no])
+shrink: array([yes, no, yes])
+enlarge: array([yes, no, yes, yes, yes])
+empty: array([])
+still empty: array([])
+nonempty from empty: array([yes, yes, yes])
+----
+size: 5
+elements: ["ten", "eleven", "twelve", "thirteen", "fourteen"]
+good: out of bounds lookup averted
+good: out of bounds lookup averted
+good: out of bounds set averted
+good: out of bounds set averted
+resize without resizing: array(["ten", "eleven", "twelve", "thirteen", "fourteen"])
+shrink: array(["ten", "eleven", "twelve"])
+enlarge: array(["ten", "eleven", "twelve", "ten", "ten"])
+empty: array([])
+still empty: array([])
+nonempty from empty: array(["ten", "ten", "ten"])
