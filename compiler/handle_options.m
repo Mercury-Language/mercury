@@ -1696,8 +1696,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     globals.lookup_bool_option(!.Globals,
         disable_minimal_model_stack_copy_pneg, DisablePneg),
     globals.lookup_bool_option(!.Globals,
-        disable_minimal_model_stack_copy_cut,
-        DisableCut),
+        disable_minimal_model_stack_copy_cut, DisableCut),
     (
         UseMinimalModelStackCopy = yes,
         DisablePneg = no
