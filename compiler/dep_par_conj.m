@@ -563,11 +563,18 @@ sync_dep_par_conjunct(ModuleInfo, AllowSomePathsOnly, ParConjunctStatus,
         ProducedVarsList = set.to_sorted_list(ProducedVars),
 
         % Insert waits into the conjunct, as late as possible.
-        list.map_foldl3(
-            insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly,
-                FutureMap),
-            ConsumedVarsList, _WaitedOnAllSuccessPaths,
-            !Goal, !VarSet, !VarTypes),
+        (
+            ParConjunctStatus = par_conjunct_is_in_conjunction,
+            list.map_foldl3(insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly,
+                    FutureMap),
+                ConsumedVarsList, _WaitedOnAllSuccessPaths,
+                !Goal, !VarSet, !VarTypes)
+        ;
+            ParConjunctStatus = par_conjunct_is_proc_body,
+            list.foldl3(insert_wait_in_goal_for_proc(ModuleInfo,
+                    AllowSomePathsOnly, FutureMap),
+                ConsumedVarsList, !Goal, !VarSet, !VarTypes)
+        ),
 
         % Insert signals into the conjunct, as early as possible.
         list.foldl3(insert_signal_in_goal(ModuleInfo, FutureMap),
@@ -586,6 +593,26 @@ sync_dep_par_conjunct(ModuleInfo, AllowSomePathsOnly, ParConjunctStatus,
         )
     ),
     update_instmap(!.Goal, !InstMap).
+
+:- pred insert_wait_in_goal_for_proc(module_info::in, bool::in, future_map::in,
+    prog_var::in, hlds_goal::in, hlds_goal::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+insert_wait_in_goal_for_proc(ModuleInfo, AllowSomePathsOnly, FutureMap,
+        ConsumedVar, !Goal, !VarSet, !VarTypes) :-
+    insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, 
+        ConsumedVar, WaitedOnAllSuccessPaths, !Goal, !VarSet, !VarTypes),
+    % If we did not wait on all success paths then we must insert a
+    % wait here.  This preserves the invariant that a procedure called
+    % with a future that it should wait on will wait on it in all
+    % cases.  This way any future_get calls after such a call are safe.
+    (
+        WaitedOnAllSuccessPaths = waited_on_all_success_paths
+    ;
+        WaitedOnAllSuccessPaths = not_waited_on_all_success_paths,
+        insert_wait_after_goal(ModuleInfo, FutureMap, ConsumedVar, !Goal,
+            !VarSet, !VarTypes)
+    ).
 
 %-----------------------------------------------------------------------------%
 
