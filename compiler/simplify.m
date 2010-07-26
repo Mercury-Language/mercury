@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -726,9 +726,10 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info) :-
         true
     ),
     ( goal_info_has_feature(GoalInfo0, feature_contains_trace) ->
-        simplify_info_set_found_contains_trace(yes, !Info)
+        simplify_info_set_found_contains_trace(yes, !Info),
+        Goal0ContainsTrace = contains_trace_goal
     ;
-        true
+        Goal0ContainsTrace = contains_no_trace_goal
     ),
     Detism = goal_info_get_determinism(GoalInfo0),
     simplify_info_get_det_info(!.Info, DetInfo),
@@ -742,7 +743,10 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info) :-
         % with `fail'.
 
         Detism = detism_failure,
-        ( Purity = purity_pure ; Purity = purity_semipure ),
+        ( Purity = purity_pure
+        ; Purity = purity_semipure
+        ),
+        Goal0ContainsTrace = contains_no_trace_goal,
         ( det_info_get_fully_strict(DetInfo, no)
         ; Goal0CanLoopOrThrow = cannot_loop_or_throw
         )
@@ -801,7 +805,10 @@ simplify_goal(Goal0, hlds_goal(GoalExpr, GoalInfo), !Info) :-
         NonLocalVars = goal_info_get_nonlocals(GoalInfo0),
         simplify_info_get_instmap(!.Info, InstMap0),
         det_no_output_vars(NonLocalVars, InstMap0, InstMapDelta, DetInfo),
-        ( Purity = purity_pure ; Purity = purity_semipure ),
+        ( Purity = purity_pure
+        ; Purity = purity_semipure
+        ),
+        Goal0ContainsTrace = contains_no_trace_goal,
         ( det_info_get_fully_strict(DetInfo, no)
         ; Goal0CanLoopOrThrow = cannot_loop_or_throw
         )
@@ -3518,10 +3525,23 @@ goal_contains_trace(hlds_goal(GoalExpr0, GoalInfo0),
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        (
+            Reason = trace_goal(_, _, _, _, _),
+            SubGoal = SubGoal0,
+            ContainsTrace = contains_trace_goal
+        ;
+            Reason = from_ground_term(_, from_ground_term_construct),
             SubGoal = SubGoal0,
             ContainsTrace = contains_no_trace_goal
         ;
+            ( Reason = exist_quant(_)
+            ; Reason = promise_solutions(_, _)
+            ; Reason = promise_purity(_)
+            ; Reason = commit(_)
+            ; Reason = barrier(_)
+            ; Reason = from_ground_term(_, from_ground_term_deconstruct)
+            ; Reason = from_ground_term(_, from_ground_term_other)
+            ),
             goal_contains_trace(SubGoal0, SubGoal, ContainsTrace)
         ),
         GoalExpr = scope(Reason, SubGoal)

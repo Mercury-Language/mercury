@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2008 The University of Melbourne.
+% Copyright (C) 2001-2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -476,9 +476,12 @@ annotate_conj_constraints(ModuleInfo,
         Constraints1 = [],
         Goals1 = [Goal - [] | Goals0]
     ;
-        % Don't propagate constraints into or past impure goals.
+        % Don't propagate constraints into or past impure goals
+        % or trace goals.
         Goal = hlds_goal(_, GoalInfo),
-        goal_info_get_purity(GoalInfo) = purity_impure
+        ( goal_info_get_purity(GoalInfo) = purity_impure
+        ; goal_info_has_feature(GoalInfo, feature_contains_trace)
+        )
     ->
         Constraints1 = [],
         flatten_constraints(Constraints0,
