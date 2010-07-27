@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2003, 2005-2007 The University of Melbourne.
+% Copyright (C) 2001, 2003, 2005-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -612,70 +612,70 @@ update_dist_2(Univ, [Distribution | Distributions], Output) :-
 	% insances of testable.
 :- pred inst_cast_f0(f0, (func) = property).
 :- mode inst_cast_f0(in, out((func) = out is det)) is det.
-:- pragma c_code(inst_cast_f0(F0::in, F1::out((func) = out is det)),
-	[thread_safe, will_not_call_mercury],
+:- pragma foreign_proc("C", inst_cast_f0(F0::in, F1::out((func) = out is det)),
+	[promise_pure, thread_safe, will_not_call_mercury],
 	"F1 = F0;").
 
 :- pred inst_cast_f1(f1(T1), func(T1) = property).
 :- mode inst_cast_f1(in, out(func(in) = out is det)) is det.
-:- pragma c_code(inst_cast_f1(F0::in, F1::out(func(in) = out is det)),
-	[thread_safe, will_not_call_mercury],
+:- pragma foreign_proc("C", inst_cast_f1(F0::in, F1::out(func(in) = out is det)),
+	[promise_pure, thread_safe, will_not_call_mercury],
 	"F1 = F0;").
 
 :- pred inst_cast_f2(f2(T1, T2), func(T1, T2) = property).
 :- mode inst_cast_f2(in, out(func(in, in) = out is det)) is det.
-:- pragma c_code(inst_cast_f2(F0::in, F1::out(func(in, in) = out is det)),
-	[thread_safe, will_not_call_mercury],
+:- pragma foreign_proc("C", inst_cast_f2(F0::in, F1::out(func(in, in) = out is det)),
+	[promise_pure, thread_safe, will_not_call_mercury],
 	"F1 = F0;").
 
 :- pred inst_cast_f3(f3(T1, T2, T3), func(T1, T2, T3) = property).
 :- mode inst_cast_f3(in, out(func(in, in, in) = out is det)) is det.
-:- pragma c_code(inst_cast_f3(F0::in, F1::out(func(in, in, in) = out is det)),
-	[thread_safe, will_not_call_mercury],
+:- pragma foreign_proc("C", inst_cast_f3(F0::in, F1::out(func(in, in, in) = out is det)),
+	[promise_pure, thread_safe, will_not_call_mercury],
 	"F1 = F0;").
 
 :- pred inst_cast_f4(f4(T1, T2, T3, T4), func(T1, T2, T3, T4) = property).
 :- mode inst_cast_f4(in, out(func(in, in, in, in) = out is det)) is det.
-:- pragma c_code(inst_cast_f4(F0::in, 
+:- pragma foreign_proc("C", inst_cast_f4(F0::in, 
 			      F1::out(func(in, in, in, in) = out is det)),
-        [thread_safe, will_not_call_mercury],
+        [promise_pure, thread_safe, will_not_call_mercury],
 	"F1 = F0;").
 
 :- pred inst_cast_f5(f5(T1, T2, T3, T4, T5), 
 		     func(T1, T2, T3, T4, T5) = property).
 :- mode inst_cast_f5(in, out(func(in, in, in, in, in) = out is det)) is det.
-:- pragma c_code(inst_cast_f5(F0::in, 
+:- pragma foreign_proc("C", inst_cast_f5(F0::in, 
 	  	              F1::out(func(in, in, in, in, in)=out is det)),
-        [thread_safe, will_not_call_mercury],
+        [promise_pure, thread_safe, will_not_call_mercury],
 	"F1 = F0;").
 
 :- pred inst_cast_f6(f6(T1, T2, T3, T4, T5, T6), 
 		     func(T1, T2, T3, T4, T5, T6) = property).
 :- mode inst_cast_f6(in, out(func(in, in, in, in, in, in) = out is det)) is det.
-:- pragma c_code(inst_cast_f6(F0::in, 
+:- pragma foreign_proc("C", inst_cast_f6(F0::in, 
 	  	              F1::out(func(in, in, in, in, in, in)
 			      		   = out is det)),
-        [thread_safe, will_not_call_mercury],
+        [promise_pure, thread_safe, will_not_call_mercury],
 	"F1 = F0;").
 
 :- pred inst_cast_f7(f7(T1, T2, T3, T4, T5, T6, T7), 
 		     func(T1, T2, T3, T4, T5, T6, T7) = property).
 :- mode inst_cast_f7(in, out(func(in, in, in, in, in, in, in) 
 		                  = out is det)) is det.
-:- pragma c_code(inst_cast_f7(F0::in, 
+:- pragma foreign_proc("C", inst_cast_f7(F0::in, 
 	  	              F1::out(func(in, in, in, in, in, in, in) 
 			      	           = out is det)),
-        [thread_safe, will_not_call_mercury],
+        [promise_pure, thread_safe, will_not_call_mercury],
 	"F1 = F0;").
 
 :- pred inst_cast_f8(f8(T1, T2, T3, T4, T5, T6, T7, T8), 
 		     func(T1, T2, T3, T4, T5, T6, T7, T8) = property).
 :- mode inst_cast_f8(in, out(func(in, in, in, in, in, in, in, in) 
 			          = out is det)) is det.
-:- pragma c_code(inst_cast_f8(F0::in, 
+:- pragma foreign_proc("C", inst_cast_f8(F0::in, 
 	  	     F1::out(func(in, in, in, in, in, in, in, in) 
 		     	     = out is det)),
-        [thread_safe, will_not_call_mercury],
+        [promise_pure, thread_safe, will_not_call_mercury],
 	"F1 = F0;").
 
 :- pred inst_cast_f9(f9(T1, T2, T3, T4, T5, T6, T7, T8, T9), 
@@ -683,10 +683,10 @@ update_dist_2(Univ, [Distribution | Distributions], Output) :-
 :- mode inst_cast_f9(in, 
 		     out(func(in, in, in, in, in, in, in, in, in) 
 		     	      = out is det)) is det.
-:- pragma c_code(inst_cast_f9(F0::in, 
+:- pragma foreign_proc("C", inst_cast_f9(F0::in, 
 	  	              F1::out(func(in, in, in, in, in, in, 
 			                   in, in, in) = out is det)),
-        [thread_safe, will_not_call_mercury],
+        [promise_pure, thread_safe, will_not_call_mercury],
 	"F1 = F0;").
 
 :- pred inst_cast_f10(f10(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10), 
@@ -694,10 +694,10 @@ update_dist_2(Univ, [Distribution | Distributions], Output) :-
 :- mode inst_cast_f10(in, 
 		      out(func(in, in, in, in, in, in, in, in, in, in) 
 		               = out is det)) is det.
-:- pragma c_code(inst_cast_f10(F0::in, 
+:- pragma foreign_proc("C", inst_cast_f10(F0::in, 
 	  	               F1::out(func(in, in, in, in, in, in, 
 			       		    in, in, in, in) = out is det)),
-        [thread_safe, will_not_call_mercury],
+        [promise_pure, thread_safe, will_not_call_mercury],
 	"F1 = F0;").
 
 %---------------------------------------------------------------------------%
@@ -755,8 +755,8 @@ update_dist_2(Univ, [Distribution | Distributions], Output) :-
 
 :- pred inst_cast_p0((pred), (pred)).
 :- mode inst_cast_p0(in, out((pred) is semidet)) is det.
-:- pragma c_code(inst_cast_p0(F0::in, F1::out((pred) is semidet)),
-	[thread_safe, will_not_call_mercury],
+:- pragma foreign_proc("C", inst_cast_p0(F0::in, F1::out((pred) is semidet)),
+	[promise_pure, thread_safe, will_not_call_mercury],
 	"F1 = F0;").
 
 %---------------------------------------------------------------------------%

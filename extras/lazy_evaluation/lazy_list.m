@@ -85,7 +85,7 @@ force_list(Xs) = list_inst_cast(force(Xs)).
 
 % Because the Mercury mode system is not properly polymorphic,
 % it doesn't always infer the right inst.  We sometimes need
-% to use inst casts (which can be implemented using `pragma c_code').
+% to use inst casts (which can be implemented using `pragma foreign_proc').
 % :-(
 
 :- func list_inst_cast(lazy_list(T)) = lazy_list(T).

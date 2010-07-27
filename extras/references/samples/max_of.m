@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -87,10 +87,16 @@ max_of(Pred, Max) :-
 :- mode min_solutions(pred(out) is nondet, out(bound(0))) is det.
 :- mode min_solutions(pred(out) is multi, out(bound(1))) is det.
 
-:- pragma c_code(
+:- pragma foreign_proc("C",
 	min_solutions(_Pred::(pred(out) is nondet), Res::out(bound(0))),
-		will_not_call_mercury, "Res = 0;").
-:- pragma c_code(
+	[will_not_call_mercury],
+"
+	Res = 0;
+").
+:- pragma foreign_proc("C",
 	min_solutions(_Pred::(pred(out) is multi), Res::out(bound(1))),
-		will_not_call_mercury, "Res = 1;").
+	[will_not_call_mercury],
+"
+	Res = 1;
+").
 
