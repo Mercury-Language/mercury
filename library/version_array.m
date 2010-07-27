@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2009 The University of Melbourne.
+% Copyright (C) 2004-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -135,6 +135,9 @@
 :- mode foldl(pred(in, in, out) is det, in, in, out) is det.
 :- mode foldl(pred(in, mdi, muo) is det, in, mdi, muo) is det.
 :- mode foldl(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldl(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode foldl(pred(in, di, uo) is semidet, in, di, uo) is semidet.
 
     % foldr(F, A, X) is equivalent to list.foldr(F, list(A), Xs).
     %
@@ -243,6 +246,9 @@ foldl(P, VA, !Acc) :-
 :- mode foldl_2(pred(in, in, out) is det, in, in, in, in, out) is det.
 :- mode foldl_2(pred(in, mdi, muo) is det, in, in, in, mdi, muo) is det.
 :- mode foldl_2(pred(in, di, uo) is det, in, in, in, di, uo) is det.
+:- mode foldl_2(pred(in, in, out) is semidet, in, in, in, in, out) is semidet.
+:- mode foldl_2(pred(in, mdi, muo) is semidet, in, in, in, mdi, muo) is semidet.
+:- mode foldl_2(pred(in, di, uo) is semidet, in, in, in, di, uo) is semidet.
 
 foldl_2(P, VA, Lo, Hi, !Acc) :-
     ( if Lo < Hi then

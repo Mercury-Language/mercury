@@ -192,8 +192,18 @@
     % Fold a predicate over the key-value bindings in a hash table.
     %
 :- pred fold(pred(K, V, T, T), hash_table(K, V), T, T).
-:- mode fold(in(pred(in, in, in, out) is det), hash_table_ui, in, out) is det.
-:- mode fold(in(pred(in, in, di, uo) is det), hash_table_ui, di, uo) is det.
+:- mode fold(in(pred(in, in, in, out) is det), hash_table_ui,
+    in, out) is det.
+:- mode fold(in(pred(in, in, mdi, muo) is det), hash_table_ui,
+    mdi, muo) is det.
+:- mode fold(in(pred(in, in, di, uo) is det), hash_table_ui,
+    di, uo) is det.
+:- mode fold(in(pred(in, in, in, out) is semidet), hash_table_ui,
+    in, out) is semidet.
+:- mode fold(in(pred(in, in, mdi, muo) is semidet), hash_table_ui,
+    mdi, muo) is semidet.
+:- mode fold(in(pred(in, in, di, uo) is semidet), hash_table_ui,
+    di, uo) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -636,7 +646,11 @@ fold(P, HT, !A) :-
 
 :- pred fold_p(pred(K, V, T, T), hash_table_alist(K, V), T, T).
 :- mode fold_p(pred(in, in, in, out) is det, in, in, out) is det.
+:- mode fold_p(pred(in, in, mdi, muo) is det, in, mdi, muo) is det.
 :- mode fold_p(pred(in, in, di, uo) is det, in, di, uo) is det.
+:- mode fold_p(pred(in, in, in, out) is semidet, in, in, out) is semidet.
+:- mode fold_p(pred(in, in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode fold_p(pred(in, in, di, uo) is semidet, in, di, uo) is semidet.
 
 fold_p(_P, ht_nil, !A).
 fold_p(P, ht_cons(K, V, KVs), !A) :-

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997-2009 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -413,6 +413,9 @@
 :- mode array.foldl(pred(in, in, out) is det, in, in, out) is det.
 :- mode array.foldl(pred(in, mdi, muo) is det, in, mdi, muo) is det.
 :- mode array.foldl(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode array.foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode array.foldl(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode array.foldl(pred(in, di, uo) is semidet, in, di, uo) is semidet.
 
     % array.foldl2(Pr, Array, !X, !Y) is equivalent to
     %   list.foldl2(Pr, array.to_list(Array), !X, !Y)
@@ -425,6 +428,12 @@
     is det.
 :- mode array.foldl2(pred(in, in, out, di, uo) is det, in, in, out, di, uo)
     is det.
+:- mode array.foldl2(pred(in, in, out, in, out) is semidet, in,
+    in, out, in, out) is semidet.
+:- mode array.foldl2(pred(in, in, out, mdi, muo) is semidet, in,
+    in, out, mdi, muo) is semidet.
+:- mode array.foldl2(pred(in, in, out, di, uo) is semidet, in,
+    in, out, di, uo) is semidet.
 
     % array.foldr(Fn, Array, X) is equivalent to
     %   list.foldr(Fn, array.to_list(Array), X)
@@ -1698,6 +1707,9 @@ array.foldl(P, A, !X) :-
 :- mode foldl_0(pred(in, in, out) is det, in, in, in, in, out) is det.
 :- mode foldl_0(pred(in, mdi, muo) is det, in, in, in, mdi, muo) is det.
 :- mode foldl_0(pred(in, di, uo) is det, in, in, in, di, uo) is det.
+:- mode foldl_0(pred(in, in, out) is semidet, in, in, in, in, out) is semidet.
+:- mode foldl_0(pred(in, mdi, muo) is semidet, in, in, in, mdi, muo) is semidet.
+:- mode foldl_0(pred(in, di, uo) is semidet, in, in, in, di, uo) is semidet.
 
 foldl_0(P, A, I, Max, !X) :-
     ( Max < I ->
@@ -1707,7 +1719,7 @@ foldl_0(P, A, I, Max, !X) :-
         foldl_0(P, A, I+1, Max, !X)
     ).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 array.foldl2(P, A, X0, X, Y0, Y) :-
     array.foldl2_0(P, A, array.min(A), array.max(A), X0, X, Y0, Y).
@@ -1720,6 +1732,12 @@ array.foldl2(P, A, X0, X, Y0, Y) :-
     mdi, muo) is det.
 :- mode foldl2_0(pred(in, in, out, di, uo) is det, in, in, in, in, out,
     di, uo) is det.
+:- mode foldl2_0(pred(in, in, out, in, out) is semidet, in, in, in, in, out,
+    in, out) is semidet.
+:- mode foldl2_0(pred(in, in, out, mdi, muo) is semidet, in, in, in, in, out,
+    mdi, muo) is semidet.
+:- mode foldl2_0(pred(in, in, out, di, uo) is semidet, in, in, in, in, out,
+    di, uo) is semidet.
 
 foldl2_0(P, A, I, Max, X0, X, Y0, Y) :-
     ( Max < I ->
@@ -1730,7 +1748,7 @@ foldl2_0(P, A, I, Max, X0, X, Y0, Y) :-
         foldl2_0(P, A, I+1, Max, X1, X, Y1, Y)
     ).
 
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 array.foldr(Fn, A, X) =
     foldr_0(Fn, A, X, array.min(A), array.max(A)).
@@ -1748,8 +1766,8 @@ foldr_0(Fn, A, X, Min, I) =
         foldr_0(Fn, A, Fn(A ^ elem(I), X), Min, I - 1)
     ).
 
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % SAMsort (smooth applicative merge) invented by R.A. O'Keefe.
     %
