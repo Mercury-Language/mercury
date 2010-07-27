@@ -91,8 +91,12 @@ force_list(Xs) = list_inst_cast(force(Xs)).
 :- func list_inst_cast(lazy_list(T)) = lazy_list(T).
 :- mode list_inst_cast(in) = out(lazy_list) is det.
 
-:- pragma c_code(list_inst_cast(F::in) = (F2::out(lazy_list)),
-	[will_not_call_mercury, thread_safe], "F2 = F;").
+:- pragma foreign_proc("C",
+    list_inst_cast(F::in) = (F2::out(lazy_list)),
+    [promise_pure, will_not_call_mercury, thread_safe],
+" 
+    F2 = F;
+").
 
 %-----------------------------------------------------------------------------%
 
