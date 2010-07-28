@@ -6,6 +6,8 @@ Changes to the Mercury standard library:
 * Semidet modes have been added for array.foldl/4, array.foldl2/6,
   hash_table.fold/4, version_array.foldl/4, and version_hash_table.fold/4.
 
+* cc_multi modes have been added for map.foldl2/6, tree234.foldl2/6.
+
 * New predicates have been added to the assoc_list module, these are
   map_keys_only/3 map_values_only/3 and map_values/3.  They complement the
   functions of the same name.

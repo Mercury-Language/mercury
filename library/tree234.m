@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997,1999-2000,2002-2009 The University of Melbourne.
+% Copyright (C) 1994-1997,1999-2000,2002-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -158,6 +158,14 @@
     in, in, out, mdi, muo) is semidet.
 :- mode tree234.foldl2(pred(in, in, in, out, di, uo) is semidet,
     in, in, out, di, uo) is semidet.
+:- mode tree234.foldl2(pred(in, in, in, out, in, out) is cc_multi,
+    in, in, out, in, out) is cc_multi.
+:- mode tree234.foldl2(pred(in, in, in, out, mdi, muo) is cc_multi,
+    in, in, out, mdi, muo) is cc_multi.
+:- mode tree234.foldl2(pred(in, in, in, out, di, uo) is cc_multi,
+    in, in, out, di, uo) is cc_multi.
+:- mode tree234.foldl2(pred(in, in, di, uo, di, uo) is cc_multi,
+    in, di, uo, di, uo) is cc_multi.
 
 :- pred tree234.foldl3(pred(K, V, A, A, B, B, C, C), tree234(K, V),
 	A, A, B, B, C, C).
