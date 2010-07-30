@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001,2003-2009 The University of Melbourne.
+% Copyright (C) 1994-2001,2003-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -397,7 +397,7 @@ keep_nondet_frame([Instr0 | Instrs0], Instrs, ProcLabel, KeepFrameLabel,
 
 :- type block_type(EntryInfo, ExitInfo)
     --->    entry_block(EntryInfo)
-    ;       ordinary_block(block_needs_frame(needs_frame_reason), maybe_dummy)
+    ;       ordinary_block(block_needs_frame, maybe_dummy)
     ;       exit_block(ExitInfo).
 
 :- type maybe_dummy
@@ -405,31 +405,12 @@ keep_nondet_frame([Instr0 | Instrs0], Instrs, ProcLabel, KeepFrameLabel,
     ;       is_post_entry_dummy
     ;       is_pre_exit_dummy.
 
-:- type block_needs_frame(T)
-    --->    block_needs_frame(T)
+    % Until 30 July 2010, we used to keep a set of reasons *why* a block
+    % needs a frame. If that info can be useful to you, revert that diff
+    % in your workspace.
+:- type block_needs_frame
+    --->    block_needs_frame
     ;       block_doesnt_need_frame.
-
-:- type needs_frame_reasons == set(needs_frame_reason).
-
-:- type needs_frame_reason
-    --->    code_needs_frame(label)
-            % The code of the block of this label needs a frame.
-
-    ;       keep_frame
-
-    ;       redoip_label
-
-    ;       jump_around(label, needs_frame_reasons)
-
-    ;       frontier(label, needs_frame_reasons)
-
-    ;       succ_propagated(label, needs_frame_reason)
-            % The reason given by the second arg is propagated to its
-            % successors, including the block of the first argument.
-
-    ;       pred_propagated(label, needs_frame_reason).
-            % The reason given by the second arg is propagated to its
-            % predecessors, including the block of the first argument.
 
 :- type det_entry_info
     --->    det_entry(
@@ -1068,13 +1049,14 @@ nondetstack_teardown_2(Instrs0, !Extra, !SuccipRestore, !Maxfr, !Curfr,
     % Does an ordinary block with the given content need a stack frame?
     %
 :- pred compute_block_needs_frame(label::in, list(instruction)::in,
-    block_needs_frame(needs_frame_reason)::out) is det.
+    block_needs_frame::out) is det.
 
-compute_block_needs_frame(Label, Instrs, NeedsFrame) :-
+% ZZZ
+compute_block_needs_frame(_Label, Instrs, NeedsFrame) :-
     opt_util.block_refers_to_stack(Instrs) = ReferStackVars,
     (
         ReferStackVars = yes,
-        NeedsFrame = block_needs_frame(code_needs_frame(Label))
+        NeedsFrame = block_needs_frame
     ;
         ReferStackVars = no,
         (
@@ -1107,7 +1089,7 @@ compute_block_needs_frame(Label, Instrs, NeedsFrame) :-
                 Uinstr = assign(succip, _)
             )
         ->
-            NeedsFrame = block_needs_frame(code_needs_frame(Label))
+            NeedsFrame = block_needs_frame
         ;
             NeedsFrame = block_doesnt_need_frame
         )
@@ -1188,7 +1170,7 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
     BlockInfo0 = frame_block_info(BlockLabel, BlockInstrs0, FallInto,
         _, _, Type),
     (
-        Type = ordinary_block(block_needs_frame(_), _),
+        Type = ordinary_block(block_needs_frame, _),
         !:AnyBlockNeedsFrame = yes
     ;
         ( Type = ordinary_block(block_doesnt_need_frame, _)
@@ -1220,7 +1202,7 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
         ;
             LastUinstr0 = computed_goto(Rval, GotoTargets0)
         ->
-            replace_labels_maybe_label_list(GotoTargets0, GotoTargets, 
+            replace_labels_maybe_label_list(GotoTargets0, GotoTargets,
                 PreExitDummyLabelMap),
             LastUinstr = computed_goto(Rval, GotoTargets),
             LastInstr = llds_instr(LastUinstr, Comment),
@@ -1334,8 +1316,7 @@ mark_redoip_label(Label, !BlockMap) :-
         unexpected(this_file, "mark_redoip_label: entry_block")
     ;
         BlockType0 = ordinary_block(_, MaybeDummy),
-        Reason = redoip_label,
-        BlockType = ordinary_block(block_needs_frame(Reason), MaybeDummy),
+        BlockType = ordinary_block(block_needs_frame, MaybeDummy),
         BlockInfo = BlockInfo0 ^ fb_type := BlockType,
         svmap.det_update(Label, BlockInfo, !BlockMap)
     ;
@@ -1410,8 +1391,7 @@ keep_frame_transform([Label | Labels], FirstLabel, SecondLabel,
             BackInstrs = LivevalsGoto
         ),
         Instrs = [OrigLabelInstr | BackInstrs],
-        Reason = keep_frame,
-        BlockType = ordinary_block(block_needs_frame(Reason), is_not_dummy),
+        BlockType = ordinary_block(block_needs_frame, is_not_dummy),
         BlockInfo = frame_block_info(Label, Instrs, FallInto, [SecondLabel],
             no, BlockType),
         map.det_update(!.BlockMap, Label, BlockInfo, !:BlockMap)
@@ -1599,21 +1579,19 @@ delay_frame_transform(!LabelSeq, EntryInfo, ProcLabel, PredMap, !C, !BlockMap,
 
 max_propagation_steps = 10000.
 
-:- pred key_block_needs_frame(
-    pair(label, block_needs_frame(needs_frame_reasons))::in,
-    pair(needs_frame_reason, label)::out) is semidet.
+:- pred key_block_needs_frame(pair(label, block_needs_frame)::in, label::out)
+    is semidet.
 
-key_block_needs_frame(Label - block_needs_frame(Reasons),
-    frontier(Label, Reasons) - Label).
+key_block_needs_frame(Label - block_needs_frame, Label).
 
 %-----------------------------------------------------------------------------%
 
     % Maps the label of each ordinary block to a bool that says whether
     % the block needs a stack frame or not.
     %
-:- type ord_needs_frame == map(label, block_needs_frame(needs_frame_reasons)).
+:- type ord_needs_frame == map(label, block_needs_frame).
 
-:- type prop_queue == queue(pair(needs_frame_reason, label)).
+:- type prop_queue == queue(label).
 
     % Initialize the data structures for the delaying operation.
     % The first is a map showing the predecessors of each block,
@@ -1641,11 +1619,9 @@ delay_frame_init([Label | Labels], BlockMap, !RevMap, !Queue,
             NeedsFrame = block_doesnt_need_frame,
             svmap.det_insert(Label, block_doesnt_need_frame, !OrdNeedsFrame)
         ;
-            NeedsFrame = block_needs_frame(Reason),
-            Reasons = make_singleton_set(Reason),
-            svmap.det_insert(Label, block_needs_frame(Reasons),
-                !OrdNeedsFrame),
-            svqueue.put(Reason - Label, !Queue)
+            NeedsFrame = block_needs_frame,
+            svmap.det_insert(Label, block_needs_frame, !OrdNeedsFrame),
+            svqueue.put(Label, !Queue)
         )
     ;
         BlockType = exit_block(_)
@@ -1669,19 +1645,16 @@ rev_map_side_labels([Label | Labels], SourceLabel, !RevMap) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred ord_needs_frame(label::in, needs_frame_reason::in,
+:- pred ord_needs_frame(label::in,
     ord_needs_frame::in, ord_needs_frame::out) is det.
 
-ord_needs_frame(Label, CurReason, !OrdNeedsFrame) :-
+ord_needs_frame(Label, !OrdNeedsFrame) :-
     map.lookup(!.OrdNeedsFrame, Label, NeedsFrame0),
     (
         NeedsFrame0 = block_doesnt_need_frame,
-        Reasons = make_singleton_set(CurReason),
-        svmap.det_update(Label, block_needs_frame(Reasons), !OrdNeedsFrame)
+        svmap.det_update(Label, block_needs_frame, !OrdNeedsFrame)
     ;
-        NeedsFrame0 = block_needs_frame(Reasons0),
-        set.insert(Reasons0, CurReason, Reasons),
-        svmap.det_update(Label, block_needs_frame(Reasons), !OrdNeedsFrame)
+        NeedsFrame0 = block_needs_frame
     ).
 
     % Given a queue of labels representing ordinary blocks that must have
@@ -1704,14 +1677,14 @@ propagate_frame_requirement_to_successors(!.Queue, BlockMap, !OrdNeedsFrame,
         !.CanTransform = can_transform,
         ( !.PropagationStepsLeft < 0 ->
             !:CanTransform = cannot_transform
-        ; svqueue.get(Reason - Label, !Queue) ->
+        ; svqueue.get(Label, !Queue) ->
             !:PropagationStepsLeft = !.PropagationStepsLeft - 1,
             svset.insert(Label, !AlreadyProcessed),
             map.lookup(BlockMap, Label, BlockInfo),
             BlockType = BlockInfo ^ fb_type,
             (
                 BlockType = ordinary_block(_, _MaybeDummy),
-                ord_needs_frame(Label, Reason, !OrdNeedsFrame),
+                ord_needs_frame(Label, !OrdNeedsFrame),
                 % Putting an already processed label into the queue could
                 % lead to an infinite loop. However, we cannot decide whether
                 % a label has been processed by checking whether
@@ -1723,9 +1696,7 @@ propagate_frame_requirement_to_successors(!.Queue, BlockMap, !OrdNeedsFrame,
                 % to do that for exit frames.
                 list.filter(set.contains(!.AlreadyProcessed),
                     successors(BlockInfo), _, UnprocessedSuccessors),
-                list.map(pair_with(succ_propagated(Label, Reason)),
-                    UnprocessedSuccessors, PairedUnprocessedSuccessors),
-                svqueue.put_list(PairedUnprocessedSuccessors, !Queue)
+                svqueue.put_list(UnprocessedSuccessors, !Queue)
             ;
                 BlockType = entry_block(_),
                 !:CanTransform = cannot_transform
@@ -1757,7 +1728,7 @@ propagate_frame_requirement_to_predecessors(!.Queue, BlockMap, RevMap,
         !.CanTransform = can_transform,
         ( !.PropagationStepsLeft < 0 ->
             !:CanTransform = cannot_transform
-        ; svqueue.get(Reason - Label, !Queue) ->
+        ; svqueue.get(Label, !Queue) ->
             !:PropagationStepsLeft = !.PropagationStepsLeft - 1,
             ( map.search(RevMap, Label, PredecessorsPrime) ->
                 Predecessors = PredecessorsPrime
@@ -1768,17 +1739,15 @@ propagate_frame_requirement_to_predecessors(!.Queue, BlockMap, RevMap,
                 % Label on the stack, and thus is already known to need
                 % a stack frame.
                 Predecessors = [],
-                ord_needs_frame(Label, Reason, !OrdNeedsFrame)
+                ord_needs_frame(Label, !OrdNeedsFrame)
             ),
             list.filter(all_successors_need_frame(BlockMap, !.OrdNeedsFrame),
                 Predecessors, NowNeedFrameLabels),
-            list.foldl2(record_frame_need(BlockMap, Reason), NowNeedFrameLabels,
+            list.foldl2(record_frame_need(BlockMap), NowNeedFrameLabels,
                 !OrdNeedsFrame, !CanTransform),
             % XXX map.lookup(BlockMap, Label, BlockInfo),
             % XXX Successors = successors(BlockInfo),
-            list.map(pair_with(pred_propagated(Label, Reason)),
-                NowNeedFrameLabels, PairedNowNeedFrameLabels),
-            svqueue.put_list(PairedNowNeedFrameLabels, !Queue),
+            svqueue.put_list(NowNeedFrameLabels, !Queue),
             propagate_frame_requirement_to_predecessors(!.Queue, BlockMap,
                 RevMap, !OrdNeedsFrame, !PropagationStepsLeft, !CanTransform)
         ;
@@ -1786,11 +1755,11 @@ propagate_frame_requirement_to_predecessors(!.Queue, BlockMap, RevMap,
         )
     ).
 
-:- pred record_frame_need(frame_block_map(En, Ex)::in, needs_frame_reason::in,
+:- pred record_frame_need(frame_block_map(En, Ex)::in,
     label::in, ord_needs_frame::in, ord_needs_frame::out,
     can_transform::in, can_transform::out) is det.
 
-record_frame_need(BlockMap, Reason, Label, !OrdNeedsFrame, !CanTransform) :-
+record_frame_need(BlockMap, Label, !OrdNeedsFrame, !CanTransform) :-
     map.lookup(BlockMap, Label, BlockInfo),
     BlockType = BlockInfo ^ fb_type,
     (
@@ -1798,7 +1767,7 @@ record_frame_need(BlockMap, Reason, Label, !OrdNeedsFrame, !CanTransform) :-
         !:CanTransform = cannot_transform
     ;
         BlockType = ordinary_block(_, _),
-        ord_needs_frame(Label, Reason, !OrdNeedsFrame)
+        ord_needs_frame(Label, !OrdNeedsFrame)
     ;
         BlockType = exit_block(_),
         unexpected(this_file, "record_frame_need: exit_block")
@@ -1818,7 +1787,7 @@ all_successors_need_frame(BlockMap, OrdNeedsFrame, Label) :-
 
 label_needs_frame(OrdNeedsFrame, Label) :-
     ( map.search(OrdNeedsFrame, Label, NeedsFrame) ->
-        NeedsFrame = block_needs_frame(_)
+        NeedsFrame = block_needs_frame
     ;
         % If the map.search fails, Label is not an ordinary frame.
         % Entry blocks and exit blocks don't need frames.
@@ -1882,7 +1851,7 @@ process_frame_delay([Label0 | Labels0], OrdNeedsFrame, ProcLabel, !C,
         Type = ordinary_block(_, _),
         map.lookup(OrdNeedsFrame, Label0, NeedsFrame),
         (
-            NeedsFrame = block_needs_frame(_),
+            NeedsFrame = block_needs_frame,
             % Every block reachable from this block, whether via jump or
             % fallthrough, will be an ordinary block also mapped to `yes'
             % by OrdNeedsFrame, or will be an exit block, or will be a pre-exit
@@ -2028,7 +1997,7 @@ mark_parallel_for_nostack_successor(Label0, Label, OrdNeedsFrame, BlockMap,
         Type = ordinary_block(_, _),
         map.lookup(OrdNeedsFrame, Label0, NeedsFrame),
         (
-            NeedsFrame = block_needs_frame(_),
+            NeedsFrame = block_needs_frame,
             ensure_setup_parallel(Label0, Label, ProcLabel, !C, !SetupParMap)
         ;
             NeedsFrame = block_doesnt_need_frame,
@@ -2092,7 +2061,7 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
                 svmap.det_update(Label0, BlockInfo, !BlockMap),
                 ParallelBlockFallInto = FallInto
             ;
-                PrevNeedsFrame = block_needs_frame(_),
+                PrevNeedsFrame = block_needs_frame,
                 Labels = [Label0, ParallelLabel | Labels1],
                 ParallelBlockFallInto = no
             ),
@@ -2111,7 +2080,7 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
             "create_parallels: block in setup map is not ordinary"),
         PrevNeedsFrame = prev_block_needs_frame(OrdNeedsFrame, BlockInfo0),
         (
-            PrevNeedsFrame = block_needs_frame(Reasons),
+            PrevNeedsFrame = block_needs_frame,
             counter.allocate(N, !C),
             JumpAroundLabel = internal_label(N, ProcLabel),
             % By not including a label instruction at the start of
@@ -2124,11 +2093,9 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
             JumpAroundCode =
                 [llds_instr(goto(code_label(Label0)), "jump around setup")],
             Labels = [JumpAroundLabel, SetupLabel, Label0 | Labels1],
-            JumpAroundReason = jump_around(Label0, Reasons),
             JumpAroundBlockInfo = frame_block_info(JumpAroundLabel,
                 JumpAroundCode, no, [Label0], FallInto,
-                ordinary_block(block_needs_frame(JumpAroundReason),
-                    is_not_dummy)),
+                ordinary_block(block_needs_frame, is_not_dummy)),
             svmap.det_insert(JumpAroundLabel, JumpAroundBlockInfo, !BlockMap),
             SetupFallInto = yes(JumpAroundLabel),
             BlockInfo = BlockInfo0 ^ fb_fallen_into := yes(SetupLabel),
@@ -2148,7 +2115,7 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
     ).
 
 :- func prev_block_needs_frame(ord_needs_frame, frame_block_info(En, Ex)) =
-    block_needs_frame(needs_frame_reasons).
+    block_needs_frame.
 
 prev_block_needs_frame(OrdNeedsFrame, BlockInfo) = PrevNeedsFrame :-
     MaybeFallIntoFrom = BlockInfo ^ fb_fallen_into,
@@ -2303,17 +2270,11 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
             TypeStr0 = "ordinary_block (pre_exit_dummy); "
         ),
         (
-            UsesFrame = block_needs_frame(UsesReason),
-            TypeStr1 = TypeStr0 ++ "uses frame",
-            ( UsesReason = code_needs_frame(Label) ->
-                TypeStr2 = TypeStr1 ++ "\n"
-            ;
-                TypeStr2 = TypeStr1 ++ " " ++
-                    describe_reason(YesProcLabel, UsesReason) ++ "\n"
-            )
+            UsesFrame = block_needs_frame,
+            TypeStr1 = TypeStr0 ++ "uses frame\n"
         ;
             UsesFrame = block_doesnt_need_frame,
-            TypeStr2 = TypeStr0 ++ "does not use frame\n"
+            TypeStr1 = TypeStr0 ++ "does not use frame\n"
         ),
         ( map.search(OrdNeedsFrame, Label, NeedsFrame) ->
             (
@@ -2322,16 +2283,14 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
                     "describe_block: "
                     ++ "NeedsFrame=block_doesnt_need_frame, "
                     ++ "UsesFrame=block_needs_frame"),
-                TypeStr = TypeStr2 ++ "does not need frame\n"
+                TypeStr = TypeStr1 ++ "does not need frame\n"
             ;
-                NeedsFrame = block_needs_frame(NeedsReasonSet),
-                set.to_sorted_list(NeedsReasonSet, NeedsReasons),
-                ReasonsStr = describe_top_reasons(YesProcLabel, NeedsReasons),
-                TypeStr = TypeStr2 ++ "does need frame\n" ++ ReasonsStr
+                NeedsFrame = block_needs_frame,
+                TypeStr = TypeStr1 ++ "does need frame\n"
             )
         ;
             % We can get here if delay_frame_transform fails.
-            TypeStr = TypeStr2 ++ "(unknown whether it does need frame)\n"
+            TypeStr = TypeStr1 ++ "(unknown whether it does need frame)\n"
         )
     ;
         Type = exit_block(Exit),
@@ -2391,42 +2350,6 @@ describe_nondet_exit(MaybeProcLabel, nondet_teardown_exit(Succip, Maxfr, Curfr,
     ++ dump_fullinstrs(MaybeProcLabel, yes, Livevals)
     ++ "goto:     "
     ++ dump_fullinstr(MaybeProcLabel, yes, Goto).
-
-:- func describe_top_reasons(maybe(proc_label), list(needs_frame_reason))
-    = string.
-
-describe_top_reasons(_MaybeProcLabel, []) = "".
-describe_top_reasons(MaybeProcLabel, [Reason | Reasons]) =
-    describe_reason(MaybeProcLabel, Reason) ++ "\n" ++
-    describe_top_reasons(MaybeProcLabel, Reasons).
-
-:- func describe_reason(maybe(proc_label), needs_frame_reason) = string.
-
-describe_reason(MaybeProcLabel, code_needs_frame(Label)) =
-    "code " ++ dump_label(MaybeProcLabel, Label).
-describe_reason(_MaybeProcLabel, keep_frame) = "keep_frame".
-describe_reason(_MaybeProcLabel, redoip_label) = "redoip_label".
-describe_reason(MaybeProcLabel, frontier(Label, Reasons)) =
-    "frontier(" ++ dump_label(MaybeProcLabel, Label) ++ ", {"
-        ++ describe_reasons(MaybeProcLabel, to_sorted_list(Reasons)) ++ "})".
-describe_reason(MaybeProcLabel, jump_around(Label, Reasons)) =
-    "jump_around(" ++ dump_label(MaybeProcLabel, Label) ++ ", {"
-        ++ describe_reasons(MaybeProcLabel, to_sorted_list(Reasons)) ++ "})".
-describe_reason(MaybeProcLabel, succ_propagated(Label, Reason)) =
-    "successor(" ++ dump_label(MaybeProcLabel, Label) ++ ", "
-        ++ describe_reason(MaybeProcLabel, Reason) ++ ")".
-describe_reason(MaybeProcLabel, pred_propagated(Label, Reason)) =
-    "predecessor(" ++ dump_label(MaybeProcLabel, Label) ++ ", "
-        ++ describe_reason(MaybeProcLabel, Reason) ++ ")".
-
-:- func describe_reasons(maybe(proc_label), list(needs_frame_reason)) = string.
-
-describe_reasons(_, []) = "".
-describe_reasons(MaybeProcLabel, [Reason]) =
-    describe_reason(MaybeProcLabel, Reason).
-describe_reasons(MaybeProcLabel, [Reason1, Reason2 | Reasons]) =
-    describe_reason(MaybeProcLabel, Reason1) ++ ", " ++
-    describe_reasons(MaybeProcLabel, [Reason2 | Reasons]).
 
 %-----------------------------------------------------------------------------%
 

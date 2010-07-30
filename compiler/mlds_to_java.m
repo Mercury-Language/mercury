@@ -2307,10 +2307,9 @@ output_interface(Interface, !IO) :-
         mangle_sym_name_for_java(SymName, convert_qual_kind(QualKind),
             ".", ModuleName),
         io.format("%s.%s", [s(ModuleName), s(Name)], !IO),
-        %
-        % Check if the interface is one of the ones in the runtime
-        % system.  If it is we don't need to output the arity.
-        %
+
+        % Check if the interface is one of the ones in the runtime system.
+        % If it is, we don't need to output the arity.
         ( interface_is_special(Name) ->
             true
         ;

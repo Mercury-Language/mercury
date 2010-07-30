@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -92,14 +92,18 @@ optimize_proc(Globals, GlobalData, CProc0, CProc, !IO) :-
         ;
             set.init(LayoutLabelSet)
         ),
+        Statistics = Info ^ lopt_detailed_statistics,
         optimize_initial(Info, LayoutLabelSet, ProcLabel, CodeModel,
             MayAlterRtti, !C, !OptDebugInfo, !Instrs, !IO),
         optimize_repeat(Info, Repeat, LayoutLabelSet, ProcLabel,
             MayAlterRtti, !C, !OptDebugInfo, !Instrs, !IO),
+        maybe_report_stats(Statistics, !IO),
         optimize_middle(Info, yes, LayoutLabelSet, ProcLabel, CodeModel,
             MayAlterRtti, !C, !OptDebugInfo, !Instrs, !IO),
+        maybe_report_stats(Statistics, !IO),
         optimize_last(Info, LayoutLabelSet, ProcLabel, !C, !.OptDebugInfo,
             !Instrs, !IO),
+        maybe_report_stats(Statistics, !IO),
         CProc = c_procedure(Name, Arity, PredProcId, CodeModel, !.Instrs,
             ProcLabel, !.C, MayAlterRtti, CGlobalVars)
     ).
@@ -470,6 +474,9 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
         ),
         maybe_opt_debug(Info, !.Instrs, !.C, "frame", "after frame opt",
             ProcLabel, !OptDebugInfo, !IO),
+        Statistics = Info ^ lopt_detailed_statistics,
+        maybe_report_stats(Statistics, !IO),
+
         OptFullJump = Info ^ lopt_opt_fulljumps,
         PessimizeTailCalls = Info ^ lopt_pes_tailcalls,
         CheckedNondetTailCalls = Info ^ lopt_checked_nondet_tailcalls,
