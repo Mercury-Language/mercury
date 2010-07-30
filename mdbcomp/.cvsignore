@@ -24,3 +24,4 @@ Mercury
 Mercury.modules
 MDBCOMP_FLAGS
 config.log
+*.module_dep

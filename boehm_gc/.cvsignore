@@ -14,3 +14,4 @@ libgc.lib
 gc_cpp.cpp
 libgc.dylib
 libatomic_ops-install
+Makefile

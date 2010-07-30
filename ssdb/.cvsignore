@@ -20,3 +20,4 @@ SSDB_FLAGS
 *.opt
 *.optdate
 mer_ssdb.init
+*.module_dep
