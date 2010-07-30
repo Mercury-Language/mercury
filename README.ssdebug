@@ -13,6 +13,15 @@ ssdebug is still an experimental feature.
 
 -----------------------------------------------------------------------------
 
+INSTALLATION
+
+To use the source-to-source debugger you must install grades containing the
+".ssdebug" grade component.  One way to do this is to invoke configure
+with the option `--enable-ssdebug-grades'.  This will add the grades
+hlc.gc.ssdebug and java.ssdebug to the set of library grades to install.
+
+-----------------------------------------------------------------------------
+
 THE .ssdebug GRADE COMPONENT
 
 Compile your program in a grade with the ".ssdebug" grade component,
