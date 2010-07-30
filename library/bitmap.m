@@ -425,23 +425,6 @@
 :- pred throw_bounds_error(bitmap::in, string::in, bit_index::in, num_bits::in)
     is erroneous.
 
-    % Replaced by BM ^ bits(I).
-
-    % get(BM, I) returns `yes' if is_set(BM, I) and `no' otherwise.
-    %
-:- func get(bitmap, int) = bool.
-%:- mode get(bitmap_ui, in) = out is det.
-:- mode get(in, in) = out is det.
-:- pragma obsolete(get/2).
-
-    % Unsafe version of the above: if the index is out of range
-    % then behaviour is undefined and bad things are likely to happen.
-    %
-:- func unsafe_get(bitmap, int) = bool.
-%:- mode unsafe_get(bitmap_ui, in) = out is det.
-:- mode unsafe_get(in, in) = out is det.
-:- pragma obsolete(unsafe_get/2).
-
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -819,14 +802,6 @@ unsafe_is_set(BM, I) :-
 
 unsafe_is_clear(BM, I) :-
     BM ^ unsafe_byte(byte_index_for_bit(I)) /\ bitmask(I) = 0.
-
-%-----------------------------------------------------------------------------%
-
-get(BM, I) = BM ^ bit(I).
-
-%------------------------------------------------------------------------------%
-
-unsafe_get(BM, I) = BM ^ unsafe_bit(I).
 
 %-----------------------------------------------------------------------------%
 

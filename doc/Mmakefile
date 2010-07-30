@@ -271,6 +271,10 @@ library-menu.texi_pp: $(LIBRARY_DIR)/*.m
 				;;					\
 			$(LIBRARY_DIR)/backjump.m)			\
 				;;					\
+			$(LIBRARY_DIR)/bintree.m)			\
+				;;					\
+			$(LIBRARY_DIR)/bintree_set.m)			\
+				;;					\
 			*)						\
 				echo "* `basename $$filename .m`::"; 	\
 				;;					\
@@ -308,6 +312,10 @@ library-chapters.texi_pp: $(LIBRARY_DIR)/[a-z]*.m
 			$(LIBRARY_DIR)/mutvar.m)			\
 				;;					\
 			$(LIBRARY_DIR)/backjump.m)			\
+				;;					\
+			$(LIBRARY_DIR)/bintree.m)			\
+				;;					\
+			$(LIBRARY_DIR)/bintree_set.m)			\
 				;;					\
 			*)						\
 				file="`basename $$filename .m`"; 	\

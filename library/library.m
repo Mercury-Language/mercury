@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2007, 2009 The University of Melbourne.
+% Copyright (C) 1993-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -50,8 +50,6 @@
 :- import_module bag.
 :- import_module benchmarking.
 :- import_module bimap.
-:- import_module bintree.
-:- import_module bintree_set.
 :- import_module bitmap.
 :- import_module bit_buffer.
 :- import_module bit_buffer.read.
@@ -222,8 +220,6 @@ mercury_std_library_module("backjump").
 mercury_std_library_module("bag").
 mercury_std_library_module("benchmarking").
 mercury_std_library_module("bimap").
-mercury_std_library_module("bintree").
-mercury_std_library_module("bintree_set").
 mercury_std_library_module("bitmap").
 mercury_std_library_module("bit_buffer").
 mercury_std_library_module("bit_buffer.read").

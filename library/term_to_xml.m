@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2007 The University of Melbourne.
+% Copyright (C) 1993-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -467,90 +467,6 @@
 :- mode write_xml_element_general(in, in(include_details_cc),
     in(element_mapping), in, in, di, uo) is cc_multi.
 :- mode write_xml_element_general(in, in, in(element_mapping),
-    in, in, di, uo) is cc_multi.
-
-%-----------------------------------------------------------------------------%
-% The following predicates are all deprecated.  They will be removed
-% after the next official release.
-%
-
-:- import_module io.
-
-:- pragma obsolete(write_xml_doc/3).
-:- pred write_xml_doc(T::in, io::di, io::uo) is det <= xmlable(T).
-
-:- pragma obsolete(write_xml_doc_to_stream/4).
-:- pred write_xml_doc_to_stream(io.output_stream::in, T::in, io::di, io::uo)
-    is det <= xmlable(T).
-
-:- pragma obsolete(write_xml_doc_style_dtd/5).
-:- pred write_xml_doc_style_dtd(T::in, maybe_stylesheet::in,
-    maybe_dtd::in(non_embedded_dtd), io::di, io::uo) is det <= xmlable(T).
-
-:- pragma obsolete(write_xml_doc_style_dtd_stream/6).
-:- pred write_xml_doc_style_dtd_stream(io.output_stream::in, T::in,
-    maybe_stylesheet::in, maybe_dtd::in(non_embedded_dtd), io::di, io::uo)
-    is det <= xmlable(T).
-
-:- pragma obsolete(write_xml_element/4).
-:- pred write_xml_element(int::in, T::in, io::di, io::uo) is det <= xmlable(T).
-
-:- pragma obsolete(write_xml_element_to_stream/5).
-:- pred write_xml_element_to_stream(io.output_stream::in, int::in, T::in,
-    io::di, io::uo) is det <= xmlable(T).
-
-:- pragma obsolete(write_xml_header/3).
-:- pred write_xml_header(maybe(string)::in, io::di, io::uo) is det.
-
-:- pragma obsolete(write_xml_doc_general/7).
-:- pred write_xml_doc_general(T::in, element_mapping::in(element_mapping),
-    maybe_stylesheet::in, maybe_dtd::in, dtd_generation_result::out,
-    io::di, io::uo) is det.
-
-:- pragma obsolete(write_xml_doc_general_to_stream/8).
-:- pred write_xml_doc_general_to_stream(io.output_stream::in, T::in,
-    element_mapping::in(element_mapping), maybe_stylesheet::in,
-    maybe_dtd::in, dtd_generation_result::out, io::di, io::uo) is det.
-
-:- pragma obsolete(write_xml_doc_general_cc/7).
-:- pred write_xml_doc_general_cc(T::in, element_mapping::in(element_mapping),
-    maybe_stylesheet::in, maybe_dtd::in, dtd_generation_result::out,
-    io::di, io::uo) is cc_multi.
-
-:- pragma obsolete(write_xml_doc_general_cc_to_stream/8).
-:- pred write_xml_doc_general_cc_to_stream(io.output_stream::in, T::in,
-    element_mapping::in(element_mapping), maybe_stylesheet::in,
-    maybe_dtd::in, dtd_generation_result::out, io::di, io::uo) is cc_multi.
-
-:- pragma obsolete(write_dtd/5).
-:- pred write_dtd(T::unused, element_mapping::in(element_mapping),
-    dtd_generation_result::out, io::di, io::uo) is det.
-
-:- pragma obsolete(write_dtd_to_stream/6).
-:- pred write_dtd_to_stream(io.output_stream::in, T::unused,
-    element_mapping::in(element_mapping), dtd_generation_result::out,
-    io::di, io::uo) is det.
-
-:- pragma obsolete(write_dtd_from_type/5).
-:- pred write_dtd_from_type(type_desc::in,
-    element_mapping::in(element_mapping), dtd_generation_result::out,
-    io::di, io::uo) is det.
-
-:- pragma obsolete(write_dtd_from_type_to_stream/6).
-:- pred write_dtd_from_type_to_stream(io.output_stream::in, type_desc::in,
-    element_mapping::in(element_mapping), dtd_generation_result::out,
-    io::di, io::uo) is det.
-
-:- pragma obsolete(write_xml_element_general/6).
-:- pred write_xml_element_general(deconstruct.noncanon_handling,
-    element_mapping, int, T, io, io).
-:- mode write_xml_element_general(in(do_not_allow), in(element_mapping),
-    in, in, di, uo) is det.
-:- mode write_xml_element_general(in(canonicalize), in(element_mapping),
-    in, in, di, uo) is det.
-:- mode write_xml_element_general(in(include_details_cc), in(element_mapping),
-    in, in, di, uo) is cc_multi.
-:- mode write_xml_element_general(in, in(element_mapping),
     in, in, di, uo) is cc_multi.
 
 %-----------------------------------------------------------------------------%
@@ -1724,74 +1640,6 @@ dtd_allowed_functors_regex(MakeElement, TypeDesc) = Regex :-
     ;
         Regex = ElementsStr
     ).
-
-%-----------------------------------------------------------------------------%
-
-write_xml_doc(Term, !IO) :-
-    io.output_stream(Stream, !IO),
-    write_xml_doc(Stream, Term, !IO).
-
-write_xml_doc_to_stream(Stream, Term, !IO) :-
-    write_xml_doc(Stream, Term, !IO).
-
-write_xml_doc_style_dtd(Term, MaybeStyleSheet, MaybeDTD, !IO) :-
-    io.output_stream(Stream, !IO),
-    write_xml_doc_style_dtd(Stream, Term, MaybeStyleSheet, MaybeDTD, !IO).
-
-write_xml_doc_style_dtd_stream(Stream, Term, MaybeStyleSheet, MaybeDTD, !IO) :-
-    write_xml_doc_style_dtd(Stream, Term, MaybeStyleSheet, MaybeDTD, !IO).
-
-write_xml_element(Indent, Term, !IO) :-
-    io.output_stream(Stream, !IO),
-    write_xml_element(Stream, Indent, Term, !IO).
-
-write_xml_element_to_stream(Stream, Indent, Term, !IO) :-
-    write_xml_element(Stream, Indent, Term, !IO).
-
-write_xml_header(MaybeEncoding, !IO) :-
-    io.output_stream(Stream, !IO),
-    write_xml_header(Stream, MaybeEncoding, !IO).
-
-write_xml_doc_general(Term, Mapping, MaybeStyleSheet, MaybeDTD,
-        DTDGenerationResult, !IO) :-
-    io.output_stream(Stream, !IO),
-    write_xml_doc_general(Stream, Term, Mapping, MaybeStyleSheet, MaybeDTD,
-            DTDGenerationResult, !IO).
-
-write_xml_doc_general_to_stream(Stream, Term, Mapping, MaybeStyleSheet,
-        MaybeDTD, DTDGenerationResult, !IO) :-
-    write_xml_doc_general(Stream, Term, Mapping, MaybeStyleSheet, MaybeDTD,
-            DTDGenerationResult, !IO).
-
-write_xml_doc_general_cc(Term, Mapping, MaybeStyleSheet, MaybeDTD,
-        DTDGenerationResult, !IO) :-
-    io.output_stream(Stream, !IO),
-    write_xml_doc_general_cc(Stream, Term, Mapping, MaybeStyleSheet, MaybeDTD,
-            DTDGenerationResult, !IO).
-
-write_xml_doc_general_cc_to_stream(Stream, Term, Mapping, MaybeStyleSheet,
-        MaybeDTD, DTDGenerationResult, !IO) :-
-    write_xml_doc_general_cc(Stream, Term, Mapping, MaybeStyleSheet, MaybeDTD,
-            DTDGenerationResult, !IO).
-
-write_dtd(Term, Mapping, DTDGenerationResult, !IO) :-
-    io.output_stream(Stream, !IO),
-    write_dtd(Stream, Term, Mapping, DTDGenerationResult, !IO).
-
-write_dtd_to_stream(Stream, Term, Mapping, DTDGenerationResult, !IO) :-
-    write_dtd(Stream, Term, Mapping, DTDGenerationResult, !IO).
-
-write_dtd_from_type(Type, Mapping, DTDGenerationResult, !IO) :-
-    io.output_stream(Stream, !IO),
-    write_dtd_from_type(Stream, Type, Mapping, DTDGenerationResult, !IO).
-
-write_dtd_from_type_to_stream(Stream, Type, Mapping, DTDGenerationResult, !IO)
-        :-
-    write_dtd_from_type(Stream, Type, Mapping, DTDGenerationResult, !IO).
-
-write_xml_element_general(NonCanon, Mapping, Indent, Term, !IO) :-
-    io.output_stream(Stream, !IO),
-    write_xml_element_general(Stream, NonCanon, Mapping, Indent, Term, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module term_to_xml.

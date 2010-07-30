@@ -13,11 +13,9 @@
 %---------------------------------------------------------------------------%
 
 :- module lazy_list.
-
 :- interface.
 
-:- import_module int, list.
-:- import_module std_util.
+:- import_module list.
 
 %-----------------------------------------------------------------------------%
 
@@ -316,7 +314,7 @@ NOT YET IMPLEMENTED
 
 :- implementation.
 
-:- import_module bintree_set, require.
+:- import_module require.
 
 %-----------------------------------------------------------------------------%
 

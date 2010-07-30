@@ -984,23 +984,6 @@
 :- pred io.write_byte(io.binary_output_stream::in, int::in, io::di, io::uo)
     is det.
 
-    % Writes several bytes to the current binary output stream.
-    % The bytes are taken from a string.
-    % A string is poor choice of data structure to hold raw bytes.
-    % Use io.write_bitmap/3 instead.
-    %
-:- pred io.write_bytes(string::in, io::di, io::uo) is det.
-:- pragma obsolete(io.write_bytes/3).
-
-    % Writes several bytes to the specified binary output stream.
-    % The bytes are taken from a string.
-    % A string is poor choice of data structure to hold raw bytes.
-    % Use io.write_bitmap/4 instead.
-    %
-:- pred io.write_bytes(io.binary_output_stream::in, string::in,
-    io::di, io::uo) is det.
-:- pragma obsolete(io.write_bytes/4).
-
     % Write a bitmap to the current binary output stream.
     % The bitmap must not contain a partial final byte.
     %
@@ -1038,22 +1021,6 @@
 :- pred io.flush_binary_output(io.binary_output_stream::in,
     io::di, io::uo) is det.
 
-    % The following typeclass and instances are required for the
-    % deprecated predicates io.seek_binary/5 io.binary_stream_offset/4 to work.
-    % They will be deleted when those predicate are.
-    %
-:- typeclass io.binary_stream(T).
-:- instance  io.binary_stream(io.binary_input_stream).
-:- instance  io.binary_stream(io.binary_output_stream).
-
-    % Seek to an offset relative to Whence (documented above)
-    % on a specified binary stream. Attempting to seek on a pipe
-    % or tty results in implementation dependent behaviour.
-    %
-:- pragma obsolete(io.seek_binary/5).
-:- pred io.seek_binary(T::in, io.whence::in, int::in, io::di, io::uo)
-    is det <= io.binary_stream(T).
-
     % Seek to an offset relative to Whence (documented above)
     % on a specified binary input stream. Attempting to seek on a pipe
     % or tty results in implementation dependent behaviour.
@@ -1069,16 +1036,6 @@
     %
 :- pred io.seek_binary_output(io.binary_output_stream::in, io.whence::in,
     int::in, io::di, io::uo) is det.
-
-    % Returns the offset (in bytes) into the specified binary stream.
-    %
-    % NOTE: this predicate is deprecated; please use either
-    %       io.binary_input_stream_offset or io.binary_output_stream_offset
-    %       instead.
-    %
-:- pragma obsolete(io.binary_stream_offset/4).
-:- pred io.binary_stream_offset(T::in, int::out, io::di, io::uo)
-    is det <= io.binary_stream(T).
 
     % Returns the offset (in bytes) into the specified binary input stream.
     %
@@ -7629,15 +7586,6 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
     MR_update_io(IO0, IO);
 ").
 
-:- pragma foreign_proc("C",
-    io.write_bytes(Message::in, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness, no_sharing],
-"{
-    mercury_print_binary_string(mercury_current_binary_output(), Message);
-    MR_update_io(IO0, IO);
-}").
-
 io.write_bitmap(Bitmap, !IO) :-
     io.binary_output_stream(Stream, !IO),
     io.write_bitmap(Stream, Bitmap, !IO).
@@ -7720,13 +7668,6 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.write_bytes(Message::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"{
-    mercury_print_binary_string(mercury_current_binary_output, Message);
-}").
-
-:- pragma foreign_proc("C#",
     io.flush_output(_IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
@@ -7771,13 +7712,6 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     io.mercury_current_binary_output.get().put_or_throw((byte) Byte);
-").
-
-:- pragma foreign_proc("Java",
-    io.write_bytes(Message::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"
-    io.mercury_current_binary_output.get().write_or_throw(Message);
 ").
 
 :- pragma foreign_proc("Java",
@@ -7828,14 +7762,6 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    io.write_bytes(Bytes::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"
-    Stream = ?ML_get_current_binary_output,
-    mercury__io:mercury_write_string(Stream, Bytes)
-").
-
-:- pragma foreign_proc("Erlang",
     io.flush_output(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         terminates],
@@ -7866,23 +7792,6 @@ whence_to_int(set, 0).
 whence_to_int(cur, 1).
 whence_to_int(end, 2).
 
-:- typeclass io.binary_stream(T) where [
-    func extract_stream(T) = io.stream
-].
-
-:- instance io.binary_stream(io.binary_input_stream) where [
-    (extract_stream(binary_input_stream(Stream)) = Stream)
-].
-
-:- instance io.binary_stream(io.binary_output_stream) where [
-    (extract_stream(binary_output_stream(Stream)) = Stream)
-].
-
-io.seek_binary(Stream, Whence, Offset, IO0, IO) :-
-    whence_to_int(Whence, Flag),
-    RealStream = extract_stream(Stream),
-    io.seek_binary_2(RealStream, Flag, Offset, IO0, IO).
-
 io.seek_binary_input(binary_input_stream(Stream), Whence, Offset, !IO) :-
     whence_to_int(Whence, Flag),
     io.seek_binary_2(Stream, Flag, Offset, !IO).
@@ -7910,10 +7819,6 @@ io.seek_binary_output(binary_output_stream(Stream), Whence, Offset, !IO) :-
     }
     MR_update_io(IO0, IO);
 ").
-
-io.binary_stream_offset(Stream, Offset, !IO) :-
-    RealStream = extract_stream(Stream),
-    io.binary_stream_offset_2(RealStream, Offset, !IO).
 
 io.binary_input_stream_offset(binary_input_stream(Stream), Offset, !IO) :-
     io.binary_stream_offset_2(Stream, Offset, !IO).
@@ -8022,9 +7927,6 @@ io.write_byte(binary_output_stream(Stream), Byte, !IO) :-
     }
     MR_update_io(IO0, IO);
 ").
-
-io.write_bytes(binary_output_stream(Stream), Message, !IO) :-
-    io.write_bytes_2(Stream, Message, !IO).
 
 :- pred io.write_bytes_2(io.stream::in, string::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",

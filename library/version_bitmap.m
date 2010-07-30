@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2007 The University of Melbourne
+% Copyright (C) 2004-2007, 2010 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -110,15 +110,6 @@
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
-:- implementation.
-
-:- interface.
-
-    % get(BM, I) returns `yes' if is_set(BM, I) and `no' otherwise.
-    % Replaced by `BM ^ bit(I)'.
-:- func get(version_bitmap, int) = bool.
-:- pragma obsolete(get/2).
 
 :- implementation.
 
@@ -256,10 +247,6 @@ is_clear(BM, I) :-
       then BM ^ elem(int_offset(I)) /\ bitmask(I) = 0
       else throw(software_error("version_bitmap.is_clear: out of range"))
     ).
-
-%-----------------------------------------------------------------------------%
-
-get(BM, I) = ( if is_clear(BM, I) then no else yes ).
 
 %-----------------------------------------------------------------------------%
 

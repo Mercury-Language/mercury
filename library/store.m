@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 2000-2008 The University of Melbourne.
+% Copyright (C) 1994-1997, 2000-2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -228,12 +228,6 @@
 
 :- pred store.unsafe_new_arg_ref(T::di, int::in, generic_ref(ArgT, S)::out,
     S::di, S::uo) is det <= store(S).
-
-%-----------------------------------------------------------------------------%
-%
-% Interfaces retained only for backwards compatibility.
-% Some of these are unsafe.  All of them are deprecated.
-%
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
