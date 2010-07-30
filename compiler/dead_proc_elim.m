@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -150,8 +150,8 @@ dead_proc_analyze(!ModuleInfo, !:Needed) :-
 dead_proc_initialize(!ModuleInfo, !:Queue, !:Needed) :-
     !:Queue = queue.init,
     !:Needed = map.init,
-    module_info_predids(PredIds, !ModuleInfo),
-    module_info_preds(!.ModuleInfo, PredTable),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_preds(!.ModuleInfo, PredTable),
     dead_proc_initialize_preds(PredIds, PredTable, !Queue, !Needed),
 
     module_info_get_pragma_exported_procs(!.ModuleInfo, PragmaExports),
@@ -401,7 +401,7 @@ dead_proc_examine_refs([Ref | Refs], !Queue, !Needed) :-
 dead_proc_examine_proc(proc(PredId, ProcId), ModuleInfo,
         !Queue, !Needed) :-
     (
-        module_info_preds(ModuleInfo, PredTable),
+        module_info_get_preds(ModuleInfo, PredTable),
         map.lookup(PredTable, PredId, PredInfo),
         ProcIds = pred_info_non_imported_procids(PredInfo),
         list.member(ProcId, ProcIds),
@@ -655,8 +655,8 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
     module_info::in, module_info::out, list(error_spec)::out) is det.
 
 dead_proc_eliminate(ElimOptImported, !.Needed, !ModuleInfo, Specs) :-
-    module_info_predids(PredIds, !ModuleInfo),
-    module_info_preds(!.ModuleInfo, PredTable0),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
 
     Changed0 = no,
     ProcElimInfo0 = proc_elim_info(!.Needed, !.ModuleInfo, PredTable0,
@@ -906,7 +906,7 @@ dead_pred_elim(!ModuleInfo) :-
     list.foldl2(dead_pred_elim_add_entity, Entities, Queue1, Queue,
         NeededPreds0, NeededPreds1),
 
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
 
     Preds0 = set_tree234.init,
     Names0 = set_tree234.init,

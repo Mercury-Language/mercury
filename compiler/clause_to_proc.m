@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2009 The University of Melbourne.
+% Copyright (C) 1995-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -138,7 +138,7 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
     ).
 
 copy_module_clauses_to_procs(PredIds, !ModuleInfo) :-
-    module_info_preds(!.ModuleInfo, PredTable0),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
     list.foldl(copy_pred_clauses_to_procs_if_needed, PredIds,
         PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
@@ -318,7 +318,7 @@ get_clause_goals([Clause | Clauses], Goals) :-
 %-----------------------------------------------------------------------------%
 
 introduce_exists_casts(PredIds, !ModuleInfo) :-
-    module_info_preds(!.ModuleInfo, PredTable0),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
     list.foldl(introduce_exists_casts_pred(!.ModuleInfo), PredIds,
         PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).

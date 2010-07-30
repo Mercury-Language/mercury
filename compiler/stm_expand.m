@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2009 The University of Melbourne.
+% Copyright (C) 1995-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public Licence - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -250,7 +250,7 @@
 %-----------------------------------------------------------------------------%
 
 stm_process_module(!ModuleInfo) :-
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     list.foldl(stm_process_pred, PredIds, !ModuleInfo),
     module_info_clobber_dependency_info(!ModuleInfo).
 
@@ -263,7 +263,7 @@ stm_process_pred(PredId, !ModuleInfo) :-
     module_info::out) is det.
 
 stm_process_proc(PredId, ProcId, !ModuleInfo) :-
-    module_info_preds(!.ModuleInfo, PredTable0),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
@@ -274,7 +274,7 @@ stm_process_proc(PredId, ProcId, !ModuleInfo) :-
     pred_info_get_procedures(PredInfo1, ProcTable1),
     map.det_update(ProcTable1, ProcId, ProcInfo, ProcTable),
     pred_info_set_procedures(ProcTable, PredInfo1, PredInfo),
-    module_info_preds(!.ModuleInfo, PredTable1),
+    module_info_get_preds(!.ModuleInfo, PredTable1),
     map.det_update(PredTable1, PredId, PredInfo, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 

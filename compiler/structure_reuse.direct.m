@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2009 The University of Melbourne.
+% Copyright (C) 2006-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -73,8 +73,8 @@
 %-----------------------------------------------------------------------------%
 
 direct_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable) :-
-    % Gather the pred-ids of the preds that need to be analysed.
-    module_info_predids(AllPredIds, !ModuleInfo),
+    % Gather the pred_ids of the preds that need to be analysed.
+    module_info_get_valid_predids(AllPredIds, !ModuleInfo),
     list.filter(pred_requires_analysis(!.ModuleInfo), AllPredIds,
         ToBeAnalysedPredIds),
 
@@ -139,7 +139,7 @@ direct_reuse_process_ppid(SharingTable, proc(PredId, ProcId),
 
 direct_reuse_process_proc(SharingTable, PredId, ProcId,
         !ModuleInfo, !ReuseTable) :-
-    module_info_preds(!.ModuleInfo, Preds0),
+    module_info_get_preds(!.ModuleInfo, Preds0),
     map.lookup(Preds0, PredId, Pred0),
     pred_info_get_procedures(Pred0, Procs0),
     map.lookup(Procs0, ProcId, Proc0),

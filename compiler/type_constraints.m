@@ -226,7 +226,7 @@ typecheck_constraints(!HLDS, Specs) :-
     hlds_module.module_info_get_predicate_table(!.HLDS, PredEnv),
     Environment0 = tconstr_environment(EventEnv, ClassEnv, FuncEnv, PredEnv),
 
-    hlds_module.module_info_predids(PredIds, !HLDS),
+    module_info_get_valid_predids(PredIds, !HLDS),
     list.foldl3(typecheck_one_predicate_if_needed, PredIds,
         Environment0, _, !HLDS, [], Specs).
 

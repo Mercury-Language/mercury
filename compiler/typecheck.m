@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2009 The University of Melbourne.
+% Copyright (C) 1993-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,65 +13,60 @@
 %
 % The predicates in this module are named as follows:
 %
-%   Predicates that type check a particular language
-%   construct (goal, clause, etc.) are called typecheck_*.
-%   These will eventually have to iterate over every type
-%   assignment in the type assignment set.
+% - Predicates that type check a particular language construct
+%   (goal, clause, etc.) are called typecheck_*. These will eventually
+%   have to iterate over every type assignment in the type assignment set.
 %
-%   Predicates that unify two things with respect to a
-%   single type assignment, as opposed to a type assignment set
-%   are called type_assign_*.
+% - Predicates that unify two things with respect to a single type assignment,
+%   as opposed to a type assignment set are called type_assign_*.
 %
 %   Access predicates for the typecheck_info data structure are called
 %   typecheck_info_*.
 %
 % There are four sorts of types:
 %
-% 1) discriminated unions:
+% 1 discriminated unions:
 %   :- type tree(T) ---> nil ; t(tree(T), T, tree(T)).
 %
-% 2) equivalent types (treated identically, ie, same name.  Any number
-%   of types can be equivalent; the *canonical* one is the one
-%   which is not defined using ==):
+% 2 equivalent types (treated identically, ie, same name. Any number of types
+%   can be equivalent; the *canonical* one is the one which is not defined
+%   using ==):
 %   :- type real == float.
 %
-%   Currently references to equivalence types are expanded
-%   in a separate pass by mercury_compile.m.  It would be better
-%   to avoid expanding them (and instead modify the type unification
-%   algorithm to handle equivalent types) because this would
-%   give better error messages.  However, this is not a high
-%   priority.
+%   Currently references to equivalence types are expanded in a separate pass
+%   by mercury_compile_front_end.m. It would be better to avoid expanding them
+%   (and instead modify the type unification algorithm to handle equivalent
+%   types) because this would give better error messages. However, this is
+%   not a high priority.
 %
-% 3) higher-order predicate and function types
+% 3 higher-order predicate and function types
 %   pred, pred(T), pred(T1, T2), pred(T1, T2, T3), ...
 %   func(T1) = T2, func(T1, T2) = T3, ...
 %
-% 4) builtin types
-%   character, int, float, string
-%       These types have special syntax for constants.
-%   There may be other types (list(T), unit, univ,
-%   etc.) provided by the system, but they can just
-%   be part of the standard library.
+% 4 builtin types
+%   character, int, float, string; These types have special syntax
+%   for constants. There may be other types (list(T), unit, univ, etc.)
+%   provided by the system, but they can just be part of the standard library.
 %
 % Each exported predicate must have a `:- pred' declaration specifying the
-% types of the arguments for that predicate.  For predicates that are
+% types of the arguments for that predicate. For predicates that are
 % local to a module, we infer the types.
 %
 %-----------------------------------------------------------------------------%
 %
 % Known Bugs:
 %
-% XXX   Type inference doesn't handle ambiguity as well as it could do.
-%   We should do a topological sort, and then typecheck it all
-%   bottom-up.  If we infer an ambiguous type for a pred, we should
-%   not reject it immediately; instead we should give it an overloaded
-%   type, and keep going.  When we've finished type inference, we should
-%   then delete unused overloadings, and only then should we report
-%   ambiguity errors, if any overloading still remains.
+% XXX Type inference doesn't handle ambiguity as well as it could do.
+% We should do a topological sort, and then typecheck it all bottom-up.
+% If we infer an ambiguous type for a pred, we should not reject it
+% immediately; instead we should give it an overloaded type, and keep going.
+% When we've finished type inference, we should then delete unused
+% overloadings, and only then should we report ambiguity errors,
+% if any overloading still remains.
 %
 % Wish list:
 %
-%   we should handle equivalence types here
+% - We should handle equivalence types here.
 %
 %-----------------------------------------------------------------------------%
 
@@ -136,11 +131,13 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
+:- import_module assoc_list.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
+:- import_module set_tree234.
 :- import_module std_util.
 :- import_module string.
 :- import_module svmap.
@@ -153,70 +150,135 @@
 %-----------------------------------------------------------------------------%
 
 typecheck_module(!ModuleInfo, Specs, ExceededIterationLimit) :-
-    module_info_predids(PredIds, !ModuleInfo),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_int_option(Globals, type_inference_iteration_limit,
         MaxIterations),
-    typecheck_to_fixpoint(1, MaxIterations, PredIds, !ModuleInfo,
+
+    module_info_get_valid_predids(OrigValidPredIds, !ModuleInfo),
+    OrigValidPredIdSet = set_tree234.list_to_set(OrigValidPredIds),
+
+    module_info_get_preds(!.ModuleInfo, PredMap0),
+    map.to_assoc_list(PredMap0, PredIdsInfos0),
+
+    % We seem to need this prepass. Without it, the typechecker throws
+    % an exception for two test cases involving field access functions.
+    % The reason is almost certainly that some part of the typechecker
+    % inspects the definitions of callees (even though it shouldn't),
+    % and thus gets things wrong if field access functions haven't yet had
+    % their defining clauses added to their pred_infos. We cannot add the
+    % defining clauses to the pred_infos of field access functions when those
+    % pred_infos are created, since those clauses are only defaults; any
+    % clauses given by the user override them. This pass is the first chance
+    % to decide that there won't be any user-given clauses coming, and that
+    % therefore the default clauses should be the actual clauses.
+    prepare_for_typecheck(!.ModuleInfo, OrigValidPredIdSet,
+        PredIdsInfos0, PredIdsInfos),
+
+    map.from_sorted_assoc_list(PredIdsInfos, PredMap),
+    module_info_set_preds(PredMap, !ModuleInfo),
+
+    typecheck_to_fixpoint(1, MaxIterations, !ModuleInfo,
+        OrigValidPredIds, OrigValidPredIdSet, FinalValidPredIdSet,
         CheckSpecs, ExceededIterationLimit),
-    construct_type_inference_messages(PredIds, !ModuleInfo, [], InferSpecs),
+
+    construct_type_inference_messages(!.ModuleInfo, FinalValidPredIdSet,
+        OrigValidPredIds, [], InferSpecs),
     Specs = InferSpecs ++ CheckSpecs.
+
+:- pred prepare_for_typecheck(module_info::in, set_tree234(pred_id)::in,
+    assoc_list(pred_id, pred_info)::in, assoc_list(pred_id, pred_info)::out)
+    is det.
+
+prepare_for_typecheck(_, _, [], []).
+prepare_for_typecheck(ModuleInfo, ValidPredIdSet,
+        [PredIdInfo0 | PredIdsInfos0], [PredIdInfo | PredIdsInfos]) :-
+    some [!PredInfo] (
+        PredIdInfo0 = PredId - !:PredInfo,
+        ( set_tree234.member(ValidPredIdSet, PredId) ->
+            % Goal paths are used to identify typeclass constraints.
+            fill_goal_path_slots_in_clauses(ModuleInfo, no, !PredInfo),
+            maybe_add_field_access_function_clause(ModuleInfo, !PredInfo),
+            module_info_get_globals(ModuleInfo, Globals),
+            maybe_improve_headvar_names(Globals, !PredInfo),
+            PredIdInfo = PredId - !.PredInfo
+        ;
+            PredIdInfo = PredIdInfo0
+        )
+    ),
+    prepare_for_typecheck(ModuleInfo, ValidPredIdSet,
+        PredIdsInfos0, PredIdsInfos).
 
     % Repeatedly typecheck the code for a group of predicates
     % until a fixpoint is reached, or until some errors are detected.
     %
-:- pred typecheck_to_fixpoint(int::in, int::in, list(pred_id)::in,
-    module_info::in, module_info::out, list(error_spec)::out, bool::out)
-    is det.
+:- pred typecheck_to_fixpoint(int::in, int::in,
+    module_info::in, module_info::out,
+    list(pred_id)::in, set_tree234(pred_id)::in, set_tree234(pred_id)::out,
+    list(error_spec)::out, bool::out) is det.
 
-typecheck_to_fixpoint(Iteration, NumIterations, PredIds, !ModuleInfo,
+typecheck_to_fixpoint(Iteration, MaxIterations, !ModuleInfo,
+        OrigValidPredIds, OrigValidPredIdSet, FinalValidPredIdSet,
         Specs, ExceededIterationLimit) :-
-    typecheck_module_one_iteration(Iteration, PredIds, !ModuleInfo,
+    module_info_get_preds(!.ModuleInfo, PredMap0),
+    map.to_assoc_list(PredMap0, PredIdsInfos0),
+    typecheck_module_one_iteration(!.ModuleInfo, OrigValidPredIdSet,
+        PredIdsInfos0, PredIdsInfos, [], NewlyInvalidPredIds,
         [], CurSpecs, no, Changed),
+    map.from_sorted_assoc_list(PredIdsInfos, PredMap),
+    module_info_set_preds(PredMap, !ModuleInfo),
+
+    set_tree234.delete_list(NewlyInvalidPredIds,
+        OrigValidPredIdSet, NewValidPredIdSet),
+    NewValidPredIds = set_tree234.to_sorted_list(NewValidPredIdSet),
+    module_info_set_valid_predids(NewValidPredIds, !ModuleInfo),
+
     module_info_get_globals(!.ModuleInfo, Globals),
     (
         ( Changed = no
         ; contains_errors(Globals, CurSpecs) = yes
         )
     ->
+        FinalValidPredIdSet = NewValidPredIdSet,
         Specs = CurSpecs,
         ExceededIterationLimit = no
     ;
         globals.lookup_bool_option(Globals, debug_types, DebugTypes),
         (
             DebugTypes = yes,
-            construct_type_inference_messages(PredIds, !ModuleInfo,
-                [], ProgressSpecs),
+            construct_type_inference_messages(!.ModuleInfo, NewValidPredIdSet,
+                OrigValidPredIds, [], ProgressSpecs),
             trace [io(!IO)] (
                 write_error_specs(ProgressSpecs, Globals, 0, _, 0, _, !IO)
             )
         ;
             DebugTypes = no
         ),
-        ( Iteration < NumIterations ->
-            typecheck_to_fixpoint(Iteration + 1, NumIterations, PredIds,
-                !ModuleInfo, Specs, ExceededIterationLimit)
+        ( Iteration < MaxIterations ->
+            typecheck_to_fixpoint(Iteration + 1, MaxIterations, !ModuleInfo,
+                OrigValidPredIds, OrigValidPredIdSet, FinalValidPredIdSet,
+                Specs, ExceededIterationLimit)
         ;
-            Specs = [typecheck_report_max_iterations_exceeded(NumIterations)],
+            FinalValidPredIdSet = NewValidPredIdSet,
+            Specs = [typecheck_report_max_iterations_exceeded(MaxIterations)],
             ExceededIterationLimit = yes
         )
     ).
 
     % Write out the inferred `pred' or `func' declarations for a list of
-    % predicates.  Don't write out the inferred types for assertions.
+    % predicates. Don't write out the inferred types for assertions.
     %
-:- pred construct_type_inference_messages(list(pred_id)::in,
-    module_info::in, module_info::out,
+:- pred construct_type_inference_messages(module_info::in,
+    set_tree234(pred_id)::in, list(pred_id)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-construct_type_inference_messages([], !ModuleInfo, !Specs).
-construct_type_inference_messages([PredId | PredIds], !ModuleInfo, !Specs) :-
-    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+construct_type_inference_messages(_, _, [], !Specs).
+construct_type_inference_messages(ModuleInfo, ValidPredIdSet,
+        [PredId | PredIds], !Specs) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     (
         check_marker(Markers, marker_infer_type),
-        module_info_predids(ValidPredIds, !ModuleInfo),
-        list.member(PredId, ValidPredIds),
+        set_tree234.member(ValidPredIdSet, PredId),
         \+ pred_info_get_goal_type(PredInfo, goal_type_promise(_))
     ->
         Spec = construct_type_inference_message(PredInfo),
@@ -224,7 +286,8 @@ construct_type_inference_messages([PredId | PredIds], !ModuleInfo, !Specs) :-
     ;
         true
     ),
-    construct_type_inference_messages(PredIds, !ModuleInfo, !Specs).
+    construct_type_inference_messages(ModuleInfo, ValidPredIdSet,
+        PredIds, !Specs).
 
     % Construct a message containing the inferred `pred' or `func' declaration
     % for a single predicate.
@@ -274,66 +337,63 @@ typecheck_report_max_iterations_exceeded(MaxIterations) = Spec :-
 
     % Iterate over the list of pred_ids in a module.
     %
-:- pred typecheck_module_one_iteration(int::in, list(pred_id)::in,
-    module_info::in, module_info::out,
+:- pred typecheck_module_one_iteration(module_info::in,
+    set_tree234(pred_id)::in,
+    assoc_list(pred_id, pred_info)::in, assoc_list(pred_id, pred_info)::out,
+    list(pred_id)::in, list(pred_id)::out,
     list(error_spec)::in, list(error_spec)::out, bool::in, bool::out) is det.
 
-typecheck_module_one_iteration(_, [], !ModuleInfo, !Specs, !Changed).
-typecheck_module_one_iteration(Iteration, [PredId | PredIds], !ModuleInfo,
-        !Specs, !Changed) :-
-    module_info_preds(!.ModuleInfo, Preds0),
-    map.lookup(Preds0, PredId, PredInfo0),
-    ( pred_info_is_imported(PredInfo0) ->
-        true
+typecheck_module_one_iteration(_, _, [], [],
+        !NewlyInvalidPredIds, !Specs, !Changed).
+typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
+        [PredIdInfo0 | PredIdsInfos0], [PredIdInfo | PredIdsInfos],
+        !NewlyInvalidPredIds, !Specs, !Changed) :-
+    PredIdInfo0 = PredId - PredInfo0,
+    (
+        (
+            pred_info_is_imported(PredInfo0)
+        ;
+            not set_tree234.member(ValidPredIdSet, PredId)
+        )
+    ->
+        PredIdInfo = PredIdInfo0
     ;
-        typecheck_pred_if_needed(Iteration, PredId, PredInfo0, PredInfo1,
-            !ModuleInfo, PredSpecs, PredChanged),
-        module_info_get_globals(!.ModuleInfo, Globals),
+        typecheck_pred_if_needed(ModuleInfo, PredId, PredInfo0, PredInfo,
+            PredSpecs, PredChanged),
+
+        module_info_get_globals(ModuleInfo, Globals),
         ContainsErrors = contains_errors(Globals, PredSpecs),
         (
-            ContainsErrors = no,
-            map.det_update(Preds0, PredId, PredInfo1, Preds),
-            module_info_set_preds(Preds, !ModuleInfo)
+            ContainsErrors = no
         ;
             ContainsErrors = yes,
-
-%       This code is not needed at the moment,
-%       since currently we don't run mode analysis if
-%       there are any type errors.
-%       And this code also causes problems:
-%       if there are undefined modes,
-%       this code can end up calling error/1,
-%       since post_finish_ill_typed_pred
-%       assumes that there are no undefined modes.
-%           %
-%           % if we get an error, we need to call
-%           % post_finish_ill_typed_pred on the
-%           % pred, to ensure that its mode declaration gets
-%           % properly module qualified; then we call
-%           % `remove_predid', so that the predicate's definition
-%           % will be ignored by later passes (the declaration
-%           % will still be used to check any calls to it).
-%           %
-%           post_finish_ill_typed_pred(ModuleInfo0,
-%               PredId, PredInfo1, PredInfo),
-%           map.det_update(Preds0, PredId, PredInfo, Preds),
-
-            map.det_update(Preds0, PredId, PredInfo1, Preds),
-            module_info_set_preds(Preds, !ModuleInfo),
-            module_info_remove_predid(PredId, !ModuleInfo)
+            % This code is not needed at the moment, since currently we don't
+            % run mode analysis if there are any type errors. And this code
+            % also causes problems: if there are undefined modes, it can end up
+            % calling error/1, since post_finish_ill_typed_pred assumes that
+            % there are no undefined modes.
+            %
+            % % If we get an error, we need to call post_finish_ill_typed_pred
+            % on the pred, to ensure that its mode declaration gets properly
+            % module qualified; then we call `remove_predid', so that the
+            % predicate's definition will be ignored by later passes
+            % (the declaration will still be used to check any calls to it).
+            %
+            % post_finish_ill_typed_pred(ModuleInfo0, PredId,
+            %   PredInfo1, PredInfo)
+            !:NewlyInvalidPredIds = [PredId | !.NewlyInvalidPredIds]
         ),
+        PredIdInfo = PredId - PredInfo,
         !:Specs = PredSpecs ++ !.Specs,
         bool.or(PredChanged, !Changed)
     ),
-    typecheck_module_one_iteration(Iteration, PredIds, !ModuleInfo,
-        !Specs, !Changed).
+    typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
+        PredIdsInfos0, PredIdsInfos, !NewlyInvalidPredIds, !Specs, !Changed).
 
-:- pred typecheck_pred_if_needed(int::in, pred_id::in,
-    pred_info::in, pred_info::out, module_info::in, module_info::out,
-    list(error_spec)::out, bool::out) is det.
+:- pred typecheck_pred_if_needed(module_info::in, pred_id::in,
+    pred_info::in, pred_info::out, list(error_spec)::out, bool::out) is det.
 
-typecheck_pred_if_needed(Iteration, PredId, !PredInfo, !ModuleInfo,
-        Specs, Changed) :-
+typecheck_pred_if_needed(ModuleInfo, PredId, !PredInfo, Specs, Changed) :-
     (
         % Compiler-generated predicates are created already type-correct,
         % so there's no need to typecheck them. The same is true for builtins,
@@ -345,7 +405,7 @@ typecheck_pred_if_needed(Iteration, PredId, !PredInfo, !ModuleInfo,
         % data type.
         (
             is_unify_or_compare_pred(!.PredInfo),
-            \+ special_pred_needs_typecheck(!.PredInfo, !.ModuleInfo)
+            \+ special_pred_needs_typecheck(!.PredInfo, ModuleInfo)
         ;
             pred_info_is_builtin(!.PredInfo),
             pred_info_get_markers(!.PredInfo, Markers),
@@ -364,37 +424,23 @@ typecheck_pred_if_needed(Iteration, PredId, !PredInfo, !ModuleInfo,
         Specs = [],
         Changed = no
     ;
-        typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo,
-            Specs, Changed)
+        typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs, Changed)
     ).
 
-:- pred typecheck_pred(int::in, pred_id::in, pred_info::in, pred_info::out,
-    module_info::in, module_info::out, list(error_spec)::out, bool::out)
-    is det.
+:- pred typecheck_pred(module_info::in, pred_id::in,
+    pred_info::in, pred_info::out, list(error_spec)::out, bool::out) is det.
 
-typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
-    module_info_get_globals(!.ModuleInfo, Globals),
-    ( Iteration = 1 ->
-        % Goal paths are used to identify typeclass constraints.
-        fill_goal_path_slots_in_clauses(!.ModuleInfo, no, !PredInfo),
-        maybe_add_field_access_function_clause(!.ModuleInfo, !PredInfo),
-        maybe_improve_headvar_names(Globals, !PredInfo),
-
-        % The goal_type of the pred_info may have been changed
-        % by maybe_add_field_access_function_clause.
-        module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
-    ;
-        true
-    ),
+typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs, Changed) :-
+    module_info_get_globals(ModuleInfo, Globals),
     pred_info_get_arg_types(!.PredInfo, _ArgTypeVarSet, ExistQVars0,
         ArgTypes0),
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
     clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers0),
     pred_info_get_markers(!.PredInfo, Markers0),
-    % Handle the --allow-stubs and --warn-stubs options. If --allow-stubs
-    % is set, and there are no clauses, issue a warning (if --warn-stubs
-    % is set), and then generate a "stub" clause that just throws an
-    % exception.
+    % Handle the --allow-stubs and --warn-stubs options.
+    % If --allow-stubs is set, and there are no clauses, then
+    % - issue a warning (if --warn-stubs is set), and then
+    % - generate a "stub" clause that just throws an exception.
     clause_list_is_empty(ClausesRep0) = ClausesRep0IsEmpty,
     (
         ClausesRep0IsEmpty = yes,
@@ -402,14 +448,14 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
             globals.lookup_bool_option(Globals, allow_stubs, yes),
             \+ check_marker(Markers0, marker_class_method)
         ->
-            Spec = report_no_clauses_stub(!.ModuleInfo, PredId, !.PredInfo),
+            Spec = report_no_clauses_stub(ModuleInfo, PredId, !.PredInfo),
             StartingSpecs = [Spec],
-            generate_stub_clause(PredId, !PredInfo, !.ModuleInfo)
+            generate_stub_clause(PredId, !PredInfo, ModuleInfo)
         ;
             check_marker(Markers0, marker_builtin_stub)
         ->
             StartingSpecs = [],
-            generate_stub_clause(PredId, !PredInfo, !.ModuleInfo)
+            generate_stub_clause(PredId, !PredInfo, ModuleInfo)
         ;
             StartingSpecs = []
         )
@@ -419,7 +465,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
             WarnNonContiguousForeignProcs),
         (
             WarnNonContiguousForeignProcs = yes,
-            StartingSpecs = report_any_non_contiguous_clauses(!.ModuleInfo,
+            StartingSpecs = report_any_non_contiguous_clauses(ModuleInfo,
                 PredId, !.PredInfo, ItemNumbers0, clauses_and_foreign_procs)
         ;
             WarnNonContiguousForeignProcs = no,
@@ -427,7 +473,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
                 WarnNonContiguousClauses),
             (
                 WarnNonContiguousClauses = yes,
-                StartingSpecs = report_any_non_contiguous_clauses(!.ModuleInfo,
+                StartingSpecs = report_any_non_contiguous_clauses(ModuleInfo,
                     PredId, !.PredInfo, ItemNumbers0, only_clauses)
             ;
                 WarnNonContiguousClauses = no,
@@ -464,7 +510,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
                 Specs = [],
                 Changed = no
             ;
-                Specs = [report_no_clauses(!.ModuleInfo, PredId, !.PredInfo)],
+                Specs = [report_no_clauses(ModuleInfo, PredId, !.PredInfo)],
                 Changed = no
             )
         ;
@@ -480,7 +526,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
                 Inferring = yes,
                 trace [io(!IO)] (
                     write_pred_progress_message("% Inferring type of ",
-                        PredId, !.ModuleInfo, !IO)
+                        PredId, ModuleInfo, !IO)
                 ),
                 !:HeadTypeParams = [],
                 PredConstraints = constraints([], [])
@@ -488,7 +534,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
                 Inferring = no,
                 trace [io(!IO)] (
                     write_pred_progress_message("% Type-checking ", PredId,
-                        !.ModuleInfo, !IO)
+                        ModuleInfo, !IO)
                 ),
                 type_vars_list(ArgTypes0, !:HeadTypeParams),
                 pred_info_get_class_context(!.PredInfo, PredConstraints),
@@ -500,16 +546,16 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Specs, Changed) :-
                     !:HeadTypeParams)
             ),
 
-            module_info_get_class_table(!.ModuleInfo, ClassTable),
+            module_info_get_class_table(ModuleInfo, ClassTable),
             make_head_hlds_constraints(ClassTable, TypeVarSet0,
                 PredConstraints, Constraints),
-            ( pred_info_is_field_access_function(!.ModuleInfo, !.PredInfo) ->
+            ( pred_info_is_field_access_function(ModuleInfo, !.PredInfo) ->
                 IsFieldAccessFunction = yes
             ;
                 IsFieldAccessFunction = no
             ),
             pred_info_get_markers(!.PredInfo, PredMarkers0),
-            typecheck_info_init(!.ModuleInfo, PredId, IsFieldAccessFunction,
+            typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
                 TypeVarSet0, VarSet, ExplicitVarTypes0, !.HeadTypeParams,
                 Constraints, Status, PredMarkers0, StartingSpecs, !:Info),
             get_clause_list(ClausesRep1, Clauses1),
@@ -840,14 +886,14 @@ is_head_class_constraint(HeadTypeVars, constraint(_Name, Types)) :-
             list.member(TVar, HeadTypeVars)
     ).
 
-    % Check whether the argument types, type quantifiers, and type
-    % constraints are identical up to renaming.
+    % Check whether the argument types, type quantifiers, and type constraints
+    % are identical up to renaming.
     %
-    % Note that we can't compare each of the parts separately, since
-    % we need to ensure that the renaming (if any) is consistent
-    % over all the arguments and all the constraints.  So we need
-    % to append all the relevant types into one big type list and
-    % then compare them in a single call to identical_up_to_renaming.
+    % Note that we can't compare each of the parts separately, since we need
+    % to ensure that the renaming (if any) is consistent over all the arguments
+    % and all the constraints. So we need to append all the relevant types
+    % into one big type list and then compare them in a single call
+    % to identical_up_to_renaming.
     %
 :- pred argtypes_identical_up_to_renaming(tvar_kind_map::in,
     existq_tvars::in, list(mer_type)::in, prog_constraints::in,
@@ -864,9 +910,9 @@ argtypes_identical_up_to_renaming(KindMap, ExistQVarsA, ArgTypesA,
     identical_up_to_renaming(TypesListA, TypesListB).
 
     % Check if two sets of type class constraints have the same structure
-    % (i.e. they specify the same list of type classes with the same
-    % arities) and if so, concatenate the argument types for all the
-    % type classes in each set of type class constraints and return them.
+    % (i.e. they specify the same list of type classes with the same arities)
+    % and if so, concatenate the argument types for all the type classes
+    % in each set of type class constraints and return them.
     %
 :- pred same_structure(prog_constraints::in, prog_constraints::in,
     list(mer_type)::out, list(mer_type)::out) is semidet.
@@ -963,9 +1009,9 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
         adjust_func_arity(pf_function, FuncArity, PredArity),
         FuncSymName = qualified(FuncModule, FuncName),
         FuncConsId = cons(FuncSymName, FuncArity, cons_id_dummy_type_ctor),
+        FuncRHS = rhs_functor(FuncConsId, no, FuncArgs),
         create_pure_atomic_complicated_unification(FuncRetVal,
-            rhs_functor(FuncConsId, no, FuncArgs),
-            Context, umc_explicit, [], Goal0),
+            FuncRHS, Context, umc_explicit, [], Goal0),
         Goal0 = hlds_goal(GoalExpr, GoalInfo0),
         NonLocals = proc_arg_vector_to_set(HeadVars),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
@@ -1117,9 +1163,9 @@ typecheck_check_for_ambiguity(StuffToCheck, HeadVars, !Info) :-
 
     % Typecheck a goal.
     % Note that we save the context of the goal in the typecheck_info for
-    % use in error messages.  Also, if the context of the goal is empty,
+    % use in error messages. Also, if the context of the goal is empty,
     % we set the context of the goal to the surrounding context saved in
-    % the typecheck_info.  (That should probably be done in make_hlds,
+    % the typecheck_info. (That should probably be done in make_hlds,
     % but it was easier to do here.)
     %
 typecheck_goal(hlds_goal(GoalExpr0, GoalInfo0), hlds_goal(GoalExpr, GoalInfo),
@@ -2496,9 +2542,8 @@ builtin_atomic_type(impl_defined_const(Name), Type) :-
     % the output parameters, otherwise fails.
     %
     % Instantiates PredConsInfoList to the set of cons_type_info structures
-    % for each predicate with name `ConsId' and arity greater than
-    % or equal to Arity.  GoalPath is used to identify any constraints
-    % introduced.
+    % for each predicate with name `ConsId' and arity greater than or equal to
+    % Arity. GoalPath is used to identify any constraints introduced.
     %
     % For example, functor `map.search/1' has type `pred(K, V)'
     % (hence PredTypeParams = [K, V]) and argument types [map(K, V)].
@@ -2872,8 +2917,8 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
     ).
 
     % Add new universal constraints for constraints containing variables that
-    % have been renamed.  These new constraints are the ones that will need
-    % to be supplied by the caller.  The other constraints will be supplied
+    % have been renamed. These new constraints are the ones that will need
+    % to be supplied by the caller. The other constraints will be supplied
     % from non-updated fields.
     %
 :- pred project_and_rename_constraints(class_table::in, tvarset::in,
@@ -3207,7 +3252,7 @@ convert_cons_defn(Info, GoalPath, Action, HLDS_ConsDefn, ConsTypeInfo) :-
         ;
             Action = flip_constraints_for_field_set,
             % The constraints are existential for the deconstruction, and
-            % universal for the construction.  Even though all of the unproven
+            % universal for the construction. Even though all of the unproven
             % constraints here can be trivially reduced by the assumed ones,
             % we still need to process them so that the appropriate tables
             % get updated.

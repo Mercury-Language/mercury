@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -70,7 +70,7 @@
 
 live_variable_analysis(ModuleInfo, ExecPathTable, LVBeforeTable,
         LVAfterTable, VoidVarTable) :-
-    module_info_predids(PredIds, ModuleInfo, _ModuleInfo),
+    module_info_get_valid_predids(PredIds, ModuleInfo, _ModuleInfo),
     map.init(LVBeforeTable0),
     map.init(LVAfterTable0),
     map.init(VoidVarTable0),

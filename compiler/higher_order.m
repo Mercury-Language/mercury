@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -109,7 +109,7 @@ specialize_higher_order(!ModuleInfo, !IO) :-
         !:GlobalInfo = higher_order_global_info(Requests0, NewPreds0,
             VersionInfo0, !.ModuleInfo, GoalSizes0, Params, counter.init(1)),
 
-        module_info_predids(PredIds0, !ModuleInfo),
+        module_info_get_valid_predids(PredIds0, !ModuleInfo),
         module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo),
         TypeSpecInfo = type_spec_info(_, UserSpecPreds, _, _),
 

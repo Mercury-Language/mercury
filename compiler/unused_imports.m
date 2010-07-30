@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2009 The University of Melbourne.
+% Copyright (C) 2006-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -182,7 +182,7 @@ used_modules(ModuleInfo, !UsedModules) :-
     module_info_get_instance_table(ModuleInfo, InstanceTable),
     map.foldl(instance_used_modules, InstanceTable, !UsedModules),
 
-    module_info_preds(ModuleInfo, PredTable),
+    module_info_get_preds(ModuleInfo, PredTable),
     map.foldl(pred_info_used_modules, PredTable, !UsedModules).
 
 %-----------------------------------------------------------------------------%

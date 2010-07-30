@@ -106,7 +106,7 @@ apply_deep_profiling_transform(!ModuleInfo) :-
     ;
         TailRecursion = no
     ),
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     predicate_table_get_preds(PredTable0, PredMap0),
     list.foldl(deep_prof_transform_pred(!.ModuleInfo), PredIds,
@@ -137,7 +137,7 @@ apply_deep_prof_tail_rec_transform_to_scc(SCC, !ModuleInfo) :-
 
 apply_deep_prof_tail_rec_transform_to_proc(PredProcId, !ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
-    module_info_preds(!.ModuleInfo, PredTable0),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_arg_types(PredInfo0, Types),
     pred_info_get_procedures(PredInfo0, ProcTable0),

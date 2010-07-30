@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2009 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -477,7 +477,7 @@ insert_new_mode(PredId, ArgVars, MaybeDet, ProcId, !ModeInfo) :-
     % create a new mode for this predicate
     get_var_insts_and_lives(ArgVars, !.ModeInfo, InitialInsts, ArgLives),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
-    module_info_preds(ModuleInfo0, Preds0),
+    module_info_get_preds(ModuleInfo0, Preds0),
     map.lookup(Preds0, PredId, PredInfo0),
     pred_info_get_context(PredInfo0, Context),
     list.length(ArgVars, Arity),

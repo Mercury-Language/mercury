@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2008 The University of Melbourne.
+% Copyright (C) 2007-2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -150,7 +150,7 @@
 collect_non_local_and_in_cond_regions(ModuleInfo, RptaInfoTable,
         LRBeforeTable, LRAfterTable, ResurRenamingTable,
         ResurRenamingAnnoTable, NonLocalRegionsTable, InCondRegionsTable) :-
-    module_info_predids(PredIds, ModuleInfo, _),
+    module_info_get_valid_predids(PredIds, ModuleInfo, _),
     list.foldl2(collect_non_local_and_in_cond_regions_pred(ModuleInfo,
         RptaInfoTable, LRBeforeTable, LRAfterTable, ResurRenamingTable,
         ResurRenamingAnnoTable), PredIds,

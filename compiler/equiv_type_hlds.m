@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2009 The University of Melbourne.
+% Copyright (C) 2003-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -84,7 +84,7 @@ replace_in_hlds(!ModuleInfo) :-
     replace_in_cons_table(EqvMap, ConsTable0, ConsTable),
     module_info_set_cons_table(ConsTable, !ModuleInfo),
 
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     list.foldl2(replace_in_pred(EqvMap), PredIds, !ModuleInfo, InstCache, _).
 
 %-----------------------------------------------------------------------------%

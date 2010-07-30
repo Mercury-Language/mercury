@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -159,7 +159,7 @@ write_opt_file(!ModuleInfo, !IO) :-
     ;
         Result = ok(FileStream),
         io.set_output_stream(FileStream, OutputStream, !IO),
-        module_info_predids(RealPredIds, !ModuleInfo),
+        module_info_get_valid_predids(RealPredIds, !ModuleInfo),
         module_info_get_assertion_table(!.ModuleInfo, AssertionTable),
         assertion_table_pred_ids(AssertionTable, AssertPredIds),
         PredIds = AssertPredIds ++ RealPredIds,
@@ -228,7 +228,7 @@ gather_pred_list([], _, _, _, _, _, !Info).
 gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
         InlineThreshold, HigherOrderSizeLimit, Deforestation, !Info) :-
     intermod_info_get_module_info(!.Info, ModuleInfo0),
-    module_info_preds(ModuleInfo0, PredTable0),
+    module_info_get_preds(ModuleInfo0, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     module_info_get_type_spec_info(ModuleInfo0, TypeSpecInfo),
     TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
@@ -2141,7 +2141,7 @@ adjust_pred_import_status(!ModuleInfo) :-
             !IO)
     ),
 
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     globals.lookup_int_option(Globals, intermod_inline_simple_threshold,
         Threshold),
     globals.lookup_bool_option(Globals, deforestation, Deforestation),
@@ -2283,7 +2283,7 @@ adjust_instance_status_3(Instance0, Instance, !ModuleInfo) :-
         module_info::out) is det.
 
 set_list_of_preds_exported(PredIds, !ModuleInfo) :-
-    module_info_preds(!.ModuleInfo, Preds0),
+    module_info_get_preds(!.ModuleInfo, Preds0),
     set_list_of_preds_exported_2(PredIds, Preds0, Preds),
     module_info_set_preds(Preds, !ModuleInfo).
 

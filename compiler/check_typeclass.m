@@ -1539,7 +1539,7 @@ error_message_2(ClassId, InstanceDefn, N, Pieces) = Spec :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_typeclass_constraints(!ModuleInfo, !Specs) :-
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     list.foldl2(check_pred_constraints, PredIds, !ModuleInfo, !Specs),
     module_info_get_type_table(!.ModuleInfo, TypeTable),
     get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),

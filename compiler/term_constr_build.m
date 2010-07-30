@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %------------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2009 The University of Melbourne.
+% Copyright (C) 2003, 2005-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -139,7 +139,7 @@ term_constr_build_abstract_scc(DepOrder, SCC, Options, Errors,
         term_constr_build_abstract_proc(EntryProcs, Options, SCC,
             !.ModuleInfo),
         SCC, varset.init, SizeVarset, [], AbstractSCC, !IO),
-    module_info_preds(!.ModuleInfo, PredTable0),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
     RecordInfo = (pred(Info::in, !.Errors::in, !:Errors::out,
             !.PredTable::in, !:PredTable::out) is det :-
         Info = term_scc_info(proc(PredId, ProcId), AR0, VarMap, Status,
@@ -157,16 +157,15 @@ term_constr_build_abstract_scc(DepOrder, SCC, Options, Errors,
         map.lookup(ProcTable0, ProcId, ProcInfo0),
         some [!TermInfo] (
             proc_info_get_termination2_info(ProcInfo0, !:TermInfo),
-            !:TermInfo = !.TermInfo ^ intermod_status := yes(Status),
-            !:TermInfo = !.TermInfo ^ abstract_rep    := yes(AR),
-            !:TermInfo = !.TermInfo ^ size_var_map    := VarMap,
-            !:TermInfo = !.TermInfo ^ head_vars       := HeadSizeVars,
+            !TermInfo ^ intermod_status := yes(Status),
+            !TermInfo ^ abstract_rep    := yes(AR),
+            !TermInfo ^ size_var_map    := VarMap,
+            !TermInfo ^ head_vars       := HeadSizeVars,
 
             % If the remainder of the analysis is going to depend upon
             % higher order constructs, then set up the information accordingly.
             ( analysis_depends_on_ho(AR) ->
-                !:TermInfo = !.TermInfo ^ success_constrs :=
-                    yes(polyhedron.universe),
+                !TermInfo ^ success_constrs := yes(polyhedron.universe),
                 HorderErrors = list.map((func(ho_call(Context))
                     = Context - horder_call), AR ^ ap_ho_calls),
                 list.append(HorderErrors, !Errors)

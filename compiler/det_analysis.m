@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -141,7 +141,7 @@
 %-----------------------------------------------------------------------------%
 
 determinism_pass(!ModuleInfo, Specs) :-
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     determinism_declarations(!.ModuleInfo, PredIds,
         DeclaredProcs, UndeclaredProcs, NoInferProcs),
     list.foldl(set_non_inferred_proc_determinism, NoInferProcs, !ModuleInfo),
@@ -257,7 +257,7 @@ global_final_pass(!ModuleInfo, UndeclaredProcs, DeclaredProcs, Debug,
 
 det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     % Get the proc_info structure for this procedure.
-    module_info_preds(!.ModuleInfo, PredTable0),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
@@ -1739,7 +1739,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
 
 det_find_matching_non_cc_mode(DetInfo, PredId, !ProcId) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
-    module_info_preds(ModuleInfo, PredTable),
+    module_info_get_preds(ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     pred_info_get_procedures(PredInfo, ProcTable),
     map.to_assoc_list(ProcTable, ProcList),
@@ -1970,7 +1970,7 @@ determinism_declarations(ModuleInfo, PredIds,
     pred_proc_list::out) is det.
 
 get_all_pred_procs(ModuleInfo, PredIds, PredProcs) :-
-    module_info_preds(ModuleInfo, PredTable),
+    module_info_get_preds(ModuleInfo, PredTable),
     get_all_pred_procs_2(PredTable, PredIds, [], PredProcs).
 
 :- pred get_all_pred_procs_2(pred_table::in, list(pred_id)::in,
@@ -2024,7 +2024,7 @@ segregate_procs_2(_ModuleInfo, [], !DeclaredProcs,
 segregate_procs_2(ModuleInfo, [PredProcId | PredProcIds],
         !DeclaredProcs, !UndeclaredProcs, !NoInferProcs) :-
     PredProcId = proc(PredId, ProcId),
-    module_info_preds(ModuleInfo, Preds),
+    module_info_get_preds(ModuleInfo, Preds),
     map.lookup(Preds, PredId, Pred),
     (
         (

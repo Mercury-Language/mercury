@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -261,7 +261,7 @@ has_ptr_type(mlds_argument(_, mlds_ptr_type(_), _)).
     list(mlds_defn)::out, ml_global_data::out) is det.
 
 ml_gen_preds(!ModuleInfo, PredDefns, GlobalData) :-
-    module_info_preds(!.ModuleInfo, PredTable),
+    module_info_get_preds(!.ModuleInfo, PredTable),
     map.keys(PredTable, PredIds),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_target(Globals, Target),
@@ -288,7 +288,7 @@ ml_gen_preds(!ModuleInfo, PredDefns, GlobalData) :-
 ml_gen_preds_2(!ModuleInfo, PredIds0, !Defns, !GlobalDefns) :-
     (
         PredIds0 = [PredId | PredIds],
-        module_info_preds(!.ModuleInfo, PredTable),
+        module_info_get_preds(!.ModuleInfo, PredTable),
         map.lookup(PredTable, PredId, PredInfo),
         pred_info_get_import_status(PredInfo, ImportStatus),
         (

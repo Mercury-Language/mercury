@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2009 The University of Melbourne.
+% Copyright (C) 1995-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -436,10 +436,10 @@
 % sure we don't muck them up before we've finished the first pass.
 
 polymorphism_process_module(!ModuleInfo) :-
-    module_info_preds(!.ModuleInfo, Preds0),
+    module_info_get_preds(!.ModuleInfo, Preds0),
     map.keys(Preds0, PredIds0),
     list.foldl(maybe_polymorphism_process_pred, PredIds0, !ModuleInfo),
-    module_info_preds(!.ModuleInfo, Preds1),
+    module_info_get_preds(!.ModuleInfo, Preds1),
     map.keys(Preds1, PredIds1),
     list.foldl(fixup_pred_polymorphism, PredIds1, !ModuleInfo),
     expand_class_method_bodies(!ModuleInfo).
@@ -474,7 +474,7 @@ fixup_pred_polymorphism(PredId, !ModuleInfo) :-
     % otherwise we would stuff up the arg types for unification predicates for
     % equivalence types.
 
-    module_info_preds(!.ModuleInfo, PredTable0),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
     clauses_info_get_vartypes(ClausesInfo0, VarTypes0),
@@ -3547,7 +3547,7 @@ expand_class_method_bodies_2(ClassDefn, !ModuleInfo) :-
 
 expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
         !ModuleInfo) :-
-    module_info_preds(!.ModuleInfo, PredTable0),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),

@@ -2852,7 +2852,7 @@ add_pred_marker(PragmaName, Name, Arity, Status, Context, Marker,
     ),
     do_add_pred_marker(PragmaName, Name, Arity, Status, MustBeExported,
         Context, add_marker_pred_info(Marker), !ModuleInfo, PredIds, !Specs),
-    module_info_preds(!.ModuleInfo, Preds),
+    module_info_get_preds(!.ModuleInfo, Preds),
     pragma_check_markers(Preds, PredIds, ConflictMarkers, Conflict),
     (
         Conflict = yes,
@@ -2920,7 +2920,7 @@ module_mark_as_external(PredName, Arity, Context, !ModuleInfo, !Specs) :-
 
 module_mark_preds_as_external([], !ModuleInfo).
 module_mark_preds_as_external([PredId | PredIds], !ModuleInfo) :-
-    module_info_preds(!.ModuleInfo, Preds0),
+    module_info_get_preds(!.ModuleInfo, Preds0),
     map.lookup(Preds0, PredId, PredInfo0),
     pred_info_mark_as_external(PredInfo0, PredInfo),
     map.det_update(Preds0, PredId, PredInfo, Preds),

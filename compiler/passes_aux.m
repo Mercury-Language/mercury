@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2009 The University of Melbourne.
+% Copyright (C) 1995-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -93,7 +93,6 @@
 :- type pred_error_task ==
         pred(pred_id, module_info, module_info, pred_info, pred_info,
             list(error_spec), list(error_spec)).
-
 :- inst pred_error_task ==
     (pred(in, in, out, in, out, in, out) is det).
 
@@ -230,7 +229,7 @@ process_all_nonimported_procs_update(!Task, !ModuleInfo, !IO) :-
 
 process_matching_nonimported_procs_errors(Task, Filter, !ModuleInfo,
         !Specs, !IO) :-
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     ( Task = update_pred_error(Pred) ->
         list.foldl2(process_nonimported_pred(Pred, Filter), PredIds,
             !ModuleInfo, !Specs)
@@ -247,7 +246,7 @@ process_matching_nonimported_procs(Task, Filter, !ModuleInfo, !IO) :-
 
 process_matching_nonimported_procs_update_errors(Task0, Task, Filter,
         !ModuleInfo, !Specs, !IO) :-
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     process_nonimported_procs_in_preds(PredIds, Task0, Task, Filter,
         !ModuleInfo, !IO).
 
@@ -283,7 +282,7 @@ process_nonimported_pred(Task, Filter, PredId, !ModuleInfo, !Specs) :-
 process_nonimported_procs_in_preds([], !Task, _, !ModuleInfo, !IO).
 process_nonimported_procs_in_preds([PredId | PredIds], !Task, Filter,
         !ModuleInfo, !IO) :-
-    module_info_preds(!.ModuleInfo, PredTable),
+    module_info_get_preds(!.ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     ( call(Filter, PredInfo) ->
         ProcIds = pred_info_non_imported_procids(PredInfo),
@@ -301,7 +300,7 @@ process_nonimported_procs_in_preds([PredId | PredIds], !Task, Filter,
 process_nonimported_procs([], _PredId, !Task, !ModuleInfo, !IO).
 process_nonimported_procs([ProcId | ProcIds], PredId, !Task, !ModuleInfo,
         !IO) :-
-    module_info_preds(!.ModuleInfo, Preds0),
+    module_info_get_preds(!.ModuleInfo, Preds0),
     map.lookup(Preds0, PredId, Pred0),
     pred_info_get_procedures(Pred0, Procs0),
     map.lookup(Procs0, ProcId, Proc0),
@@ -341,7 +340,7 @@ process_nonimported_procs([ProcId | ProcIds], PredId, !Task, !ModuleInfo,
     % If the pass changed the module_info, it may have changed the pred table
     % or the proc table for this pred_id.  Don't take any chances.
 
-    module_info_preds(!.ModuleInfo, Preds8),
+    module_info_get_preds(!.ModuleInfo, Preds8),
     map.lookup(Preds8, PredId, Pred8),
     pred_info_get_procedures(Pred8, Procs8),
 
@@ -412,7 +411,7 @@ maybe_report_sizes(HLDS, !IO) :-
 :- pred report_sizes(module_info::in, io::di, io::uo) is det.
 
 report_sizes(ModuleInfo, !IO) :-
-    module_info_preds(ModuleInfo, PredTable),
+    module_info_get_preds(ModuleInfo, PredTable),
     io.format("Pred table size = %d\n", [i(map.count(PredTable))], !IO),
 
     module_info_get_type_table(ModuleInfo, TypeTable),

@@ -236,7 +236,7 @@ ssdebug.transform_module(!ModuleInfo, !IO) :-
 :- pred first_pass(module_info::in, module_info::out) is det.
 
 first_pass(!ModuleInfo) :-
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     list.foldl2(first_pass_in_pred, PredIds, map.init, _ProxyMap, !ModuleInfo).
 
 :- pred first_pass_in_pred(pred_id::in, proxy_map::in, proxy_map::out,

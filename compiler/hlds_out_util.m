@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -239,7 +239,7 @@ write_pred_id(ModuleInfo, PredId, !IO) :-
     io.write_string(pred_id_to_string(ModuleInfo, PredId), !IO).
 
 pred_id_to_string(ModuleInfo, PredId) = Str :-
-    module_info_preds(ModuleInfo, PredTable),
+    module_info_get_preds(ModuleInfo, PredTable),
     ( map.search(PredTable, PredId, PredInfo) ->
         Module = pred_info_module(PredInfo),
         Name = pred_info_name(PredInfo),

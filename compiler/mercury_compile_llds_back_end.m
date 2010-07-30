@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -189,7 +189,7 @@ llds_backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !DumpInfo, !IO) :-
     io::di, io::uo) is det.
 
 llds_backend_pass_by_preds(!HLDS, !GlobalData, LLDS, !IO) :-
-    module_info_predids(PredIds, !HLDS),
+    module_info_get_valid_predids(PredIds, !HLDS),
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, optimize_proc_dups, ProcDups),
     (
@@ -218,7 +218,7 @@ llds_backend_pass_by_preds(!HLDS, !GlobalData, LLDS, !IO) :-
 llds_backend_pass_by_preds_2([], !HLDS, !GlobalData, _, !RevCodes, !IO).
 llds_backend_pass_by_preds_2([PredId | PredIds], !HLDS, !GlobalData,
         !.MaybeDupProcMap, !RevCodes, !IO) :-
-    module_info_preds(!.HLDS, PredTable),
+    module_info_get_preds(!.HLDS, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
     (

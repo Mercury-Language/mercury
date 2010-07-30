@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -989,7 +989,7 @@ dump_entries(ModuleInfo, PPId, reuse_as_and_status(ReuseAs, _Status), !IO) :-
     io.nl(!IO).
 
 load_structure_reuse_table(ModuleInfo) = ReuseTable :- 
-    module_info_predids(PredIds, ModuleInfo, _ModuleInfo),
+    module_info_get_valid_predids(PredIds, ModuleInfo, _ModuleInfo),
     list.foldl(load_structure_reuse_table_2(ModuleInfo), PredIds,
         reuse_as_table_init, ReuseTable).
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2009 The University of Melbourne.
+% Copyright (C) 1997-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -150,7 +150,7 @@ write_trans_opt_file(ModuleInfo, !IO) :-
         % Select all the predicates for which something should be written
         % into the .trans_opt file.
 
-        module_info_predids(PredIds, ModuleInfo, _UpdatedModuleInfo),
+        module_info_get_valid_predids(PredIds, ModuleInfo, _UpdatedModuleInfo),
         PredIdsSet = set.from_list(PredIds),
         module_info_get_structure_reuse_preds(ModuleInfo, ReusePredsSet),
         PredIdsNoReusePredsSet = set.difference(PredIdsSet, ReusePredsSet),

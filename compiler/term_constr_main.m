@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997,2002-2009 The University of Melbourne.
+% Copyright (C) 1997,2002-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -468,7 +468,7 @@ maybe_make_optimization_interface(ModuleInfo, !IO) :-
         MakeOptInt),
     (
         MakeOptInt = yes,
-        module_info_predids(PredIds, ModuleInfo, _ModuleInfo),
+        module_info_get_valid_predids(PredIds, ModuleInfo, _ModuleInfo),
         make_opt_int(PredIds, ModuleInfo, !IO)
     ;
         MakeOptInt = no

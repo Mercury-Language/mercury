@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000,2002-2007 The University of Melbourne.
+% Copyright (C) 1994-2000,2002-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -127,7 +127,7 @@
 %
 
 generate_arg_info(ModuleInfo0, ModuleInfo) :-
-    module_info_preds(ModuleInfo0, Preds),
+    module_info_get_preds(ModuleInfo0, Preds),
     map.keys(Preds, PredIds),
     generate_pred_arg_info(PredIds, ModuleInfo0, ModuleInfo).
 
@@ -136,7 +136,7 @@ generate_arg_info(ModuleInfo0, ModuleInfo) :-
 
 generate_pred_arg_info([], !ModuleInfo).
 generate_pred_arg_info([PredId | PredIds], !ModuleInfo) :-
-    module_info_preds(!.ModuleInfo, PredTable),
+    module_info_get_preds(!.ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     generate_proc_list_arg_info(PredId, pred_info_procids(PredInfo),
         !ModuleInfo),
@@ -147,7 +147,7 @@ generate_pred_arg_info([PredId | PredIds], !ModuleInfo) :-
 
 generate_proc_list_arg_info(_PredId, [], !ModuleInfo).
 generate_proc_list_arg_info(PredId, [ProcId | ProcIds], !ModuleInfo) :-
-    module_info_preds(!.ModuleInfo, PredTable0),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_procedures(PredInfo0, ProcTable0),
     pred_info_get_arg_types(PredInfo0, ArgTypes),

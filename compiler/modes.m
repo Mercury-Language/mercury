@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -191,7 +191,7 @@ modecheck_module(ModuleInfo0, {ModuleInfo, SafeToContinue, Specs}) :-
 
 check_pred_modes(WhatToCheck, MayChangeCalledProc, !ModuleInfo,
         SafeToContinue, !:Specs) :-
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_int_option(Globals, mode_inference_iteration_limit,
         MaxIterations),
@@ -253,7 +253,7 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
         !ModuleInfo, SafeToContinue, !:Specs) :-
     % Save the old procedure bodies so that we can restore them for the
     % next pass.
-    module_info_preds(!.ModuleInfo, OldPredTable0),
+    module_info_get_preds(!.ModuleInfo, OldPredTable0),
 
     % Analyze everything which has the "can-process" flag set to `yes'.
     list.foldl3(maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc),
@@ -358,7 +358,7 @@ report_max_iterations_exceeded(ModuleInfo) = Spec :-
     module_info::in, module_info::out) is det.
 
 copy_pred_bodies(OldPredTable, PredIds, !ModuleInfo) :-
-    module_info_preds(!.ModuleInfo, PredTable0),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
     list.foldl(copy_pred_body(OldPredTable), PredIds, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
@@ -432,7 +432,7 @@ should_modecheck_pred(PredInfo) = ShouldModeCheck :-
 
 maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc, PredId,
         !ModuleInfo, !Changed, !Specs) :-
-    module_info_preds(!.ModuleInfo, Preds0),
+    module_info_get_preds(!.ModuleInfo, Preds0),
     map.lookup(Preds0, PredId, PredInfo0),
     ShouldModeCheck = should_modecheck_pred(PredInfo0),
     (
@@ -573,7 +573,7 @@ maybe_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         CanProcess = yes,
         do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
             !ModuleInfo, ProcInfo0, ProcInfo, !Changed, Specs),
-        module_info_preds(!.ModuleInfo, Preds1),
+        module_info_get_preds(!.ModuleInfo, Preds1),
         map.lookup(Preds1, PredId, PredInfo1),
         pred_info_get_procedures(PredInfo1, Procs1),
         map.set(Procs1, ProcId, ProcInfo, Procs),
@@ -880,7 +880,7 @@ modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo, Changed,
         % XXX inefficient! This is O(N*M).
 
         PredProcId = proc(PredId, _ProcId),
-        module_info_predids(ValidPredIds, !ModuleInfo),
+        module_info_get_valid_predids(ValidPredIds, !ModuleInfo),
         ( list.member(PredId, ValidPredIds) ->
             trace [io(!IO)] (
                 queued_proc_progress_message(!.ModuleInfo, PredProcId,
@@ -936,7 +936,7 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
         !:Changed, Specs) :-
     % Mark the procedure as ready to be processed.
     PredProcId = proc(PredId, ProcId),
-    module_info_preds(!.ModuleInfo, Preds0),
+    module_info_get_preds(!.ModuleInfo, Preds0),
     map.lookup(Preds0, PredId, PredInfo0),
     pred_info_get_procedures(PredInfo0, Procs0),
     map.lookup(Procs0, ProcId, ProcInfo0),
@@ -1257,7 +1257,7 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_eval_methods(!ModuleInfo, !Specs) :-
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     pred_check_eval_methods(!.ModuleInfo, PredIds, !Specs).
 
 :- pred pred_check_eval_methods(module_info::in, list(pred_id)::in,
@@ -1265,7 +1265,7 @@ check_eval_methods(!ModuleInfo, !Specs) :-
 
 pred_check_eval_methods(_, [], !Specs).
 pred_check_eval_methods(ModuleInfo, [PredId | PredIds], !Specs) :-
-    module_info_preds(ModuleInfo, Preds),
+    module_info_get_preds(ModuleInfo, Preds),
     map.lookup(Preds, PredId, PredInfo),
     ProcIds = pred_info_procids(PredInfo),
     proc_check_eval_methods(ModuleInfo, PredId, ProcIds, !Specs),

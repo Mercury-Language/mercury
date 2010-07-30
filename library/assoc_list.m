@@ -99,6 +99,42 @@
 :- func assoc_list.map_values(func(K, V) = W, assoc_list(K, V))
     = assoc_list(K, W).
 
+    % assoc_list.filter(Pred, List, TrueList) takes a closure with one
+    % input argument and for each member K - V of List X, calls the closure
+    % on the key. K - V is included in TrueList iff Pred(K) is true.
+    %
+:- pred assoc_list.filter(pred(K)::in(pred(in) is semidet),
+    assoc_list(K, V)::in, assoc_list(K, V)::out) is det.
+:- func assoc_list.filter(pred(K)::in(pred(in) is semidet),
+    assoc_list(K, V)::in) = (assoc_list(K, V)::out) is det.
+
+    % assoc_list.negated_filter(Pred, List, FalseList) takes a closure with one
+    % input argument and for each member K - V of List X, calls the closure
+    % on the key. K - V is included in FalseList iff Pred(K) is false.
+    %
+:- pred assoc_list.negated_filter(pred(K)::in(pred(in) is semidet),
+    assoc_list(K, V)::in, assoc_list(K, V)::out) is det.
+:- func assoc_list.negated_filter(pred(K)::in(pred(in) is semidet),
+    assoc_list(K, V)::in) = (assoc_list(K, V)::out) is det.
+
+    % assoc_list.filter(Pred, List, FalseList) takes a closure with one
+    % input argument and for each member K - V of List X, calls the closure
+    % on the key. K - V is included in TrueList iff Pred(K) is true.
+    % K - V is included in FalseList iff Pred(K) is false.
+    %
+:- pred assoc_list.filter(pred(K)::in(pred(in) is semidet),
+    assoc_list(K, V)::in, assoc_list(K, V)::out, assoc_list(K, V)::out) is det.
+
+    % assoc_list.merge(L1, L2, L):
+    %
+    % L is the result of merging the elements of L1 and L2, in ascending order.
+    % L1 and L2 must be sorted on the keys.
+    %
+:- pred assoc_list.merge(assoc_list(K, V)::in, assoc_list(K, V)::in,
+    assoc_list(K, V)::out) is det.
+:- func assoc_list.merge(assoc_list(K, V), assoc_list(K, V))
+    = assoc_list(K, V).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -159,6 +195,15 @@ assoc_list.search([K - V | KVs], Key, Value) :-
         assoc_list.search(KVs, Key, Value)
     ).
 
+AL ^ elem(K) = V :-
+    assoc_list.search(AL, K, V).
+
+AL ^ det_elem(K) = V :-
+    ( if   assoc_list.search(AL, K, V0)
+      then V = V0
+      else report_lookup_error("assoc_list.det_elem: key not found", K)
+    ).
+
 assoc_list.remove([K - V | KVs], Key, Value, Rest) :-
     ( K = Key ->
         Value = V,
@@ -215,11 +260,56 @@ assoc_list.map_values(F, [K - V0 | KVs0]) = [K - V | KVs] :-
     V = F(K, V0),
     KVs = assoc_list.map_values(F, KVs0).
 
-AL ^ elem(K) = V :-
-    assoc_list.search(AL, K, V).
+assoc_list.filter(_, [],  []).
+assoc_list.filter(P, [HK - HV | T], True) :-
+    ( P(HK) ->
+        assoc_list.filter(P, T, TrueTail),
+        True = [HK - HV | TrueTail]
+    ;
+        assoc_list.filter(P, T, True)
+    ).
 
-AL ^ det_elem(K) = V :-
-    ( if   assoc_list.search(AL, K, V0)
-      then V = V0
-      else report_lookup_error("assoc_list.det_elem: key not found", K)
+assoc_list.filter(P, List) = Trues :-
+    assoc_list.filter(P, List, Trues).
+
+assoc_list.negated_filter(_, [],  []).
+assoc_list.negated_filter(P, [HK - HV | T], False) :-
+    ( P(HK) ->
+        assoc_list.negated_filter(P, T, False)
+    ;
+        assoc_list.negated_filter(P, T, FalseTail),
+        False = [HK - HV | FalseTail]
+    ).
+
+assoc_list.negated_filter(P, List) = Falses :-
+    assoc_list.negated_filter(P, List, Falses).
+
+assoc_list.filter(_, [],  [], []).
+assoc_list.filter(P, [HK - HV | T], True, False) :-
+    ( P(HK) ->
+        assoc_list.filter(P, T, TrueTail, False),
+        True = [HK - HV | TrueTail]
+    ;
+        assoc_list.filter(P, T, True, FalseTail),
+        False = [HK - HV | FalseTail]
+    ).
+
+assoc_list.merge(As, Bs) = ABs :-
+    assoc_list.merge(As, Bs, ABs).
+
+assoc_list.merge([], [], []).
+assoc_list.merge([A | As], [], [A | As]).
+assoc_list.merge([], [B | Bs], [B | Bs]).
+assoc_list.merge([A | As], [B | Bs], Cs) :-
+    (
+        A = AK - _AV,
+        B = BK - _BV,
+        compare(>, AK, BK)
+    ->
+        assoc_list.merge([A | As], Bs, Cs0),
+        Cs = [B | Cs0]
+    ;
+        % If compare((=), AK, BK), take A first.
+        assoc_list.merge(As, [B | Bs], Cs0),
+        Cs = [A | Cs0]
     ).

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -326,7 +326,7 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         !ModuleInfo) :-
     some [!PredInfo, !ProcInfo, !PredMap, !ProcMap, !Goal] (
         % Create a new proc_info for this procedure.
-        module_info_preds(!.ModuleInfo, !:PredMap),
+        module_info_get_preds(!.ModuleInfo, !:PredMap),
         map.lookup(!.PredMap, PredId, !:PredInfo),
         list.length(ArgModes, Arity),
         DeclaredArgModes = no,

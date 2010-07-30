@@ -182,7 +182,7 @@ impl_dep_par_conjs_in_module(!ModuleInfo) :-
 
     % Phase one: insert synchronization code into all parallel conjunctions
     % in the module.
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     list.foldl2(maybe_sync_dep_par_conjs_in_pred, PredIds,
         !ModuleInfo, [], ProcsToScan),
 

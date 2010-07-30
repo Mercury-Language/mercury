@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -120,7 +120,7 @@
 
 generate_module_code(!ModuleInfo, !GlobalData, Procedures, !IO) :-
     % Get a list of all the predicate ids for which we will generate code.
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     % Check if we want to use parallel code generation.
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, parallel_code_gen, ParallelCodeGen),
@@ -217,7 +217,7 @@ interleave_2([H|T], As0, As, Bs0, Bs) :-
     % also need to be repeated there.
     %
 generate_maybe_pred_code(ModuleInfo, PredId, Predicates, !GlobalData, !IO) :-
-    module_info_preds(ModuleInfo, PredInfos),
+    module_info_get_preds(ModuleInfo, PredInfos),
     map.lookup(PredInfos, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
     (
@@ -246,7 +246,7 @@ generate_maybe_pred_code(ModuleInfo, PredId, Predicates, !GlobalData, !IO) :-
     list(c_procedure)::out, global_data::in, global_data::out) is det.
 
 generate_pred_code_par(ModuleInfo, PredId, Predicates, !GlobalData) :-
-    module_info_preds(ModuleInfo, PredInfos),
+    module_info_get_preds(ModuleInfo, PredInfos),
     map.lookup(PredInfos, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
     generate_pred_code(ModuleInfo, PredId, PredInfo, ProcIds, Predicates,

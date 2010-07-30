@@ -55,7 +55,7 @@ write_proc_stats_for_module(OutStream, Msg, ModuleInfo, !IO) :-
     ModuleName = sym_name_to_string(ModuleSymName),
     io.format(OutStream, "MODULE %s\n", [s(ModuleName)], !IO),
 
-    module_info_preds(ModuleInfo, PredTable),
+    module_info_get_preds(ModuleInfo, PredTable),
     map.to_assoc_list(PredTable, Preds),
     list.foldl(write_proc_stats_for_pred(OutStream, Msg, ModuleInfo),
         Preds, !IO).

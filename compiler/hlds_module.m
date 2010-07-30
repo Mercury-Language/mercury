@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -540,7 +540,9 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_info_preds(module_info::in, pred_table::out) is det.
+:- pred module_info_get_preds(module_info::in, pred_table::out) is det.
+:- pred module_info_set_preds(pred_table::in,
+    module_info::in, module_info::out) is det.
 
     % Given a pred_id, return the pred_info of the specified pred.
     %
@@ -563,7 +565,7 @@
 :- pred module_info_pred_proc_info(module_info::in, pred_proc_id::in,
     pred_info::out, proc_info::out) is det.
 
-    % Return a list of the pred_ids of all the "valid" predicates.
+    % Return a list of the pred_ids of all the valid predicates.
     % (Predicates whose definition contains a type error, etc.
     % get removed from this list, so that later passes can rely
     % on the predicates in this list being type-correct, etc.)
@@ -571,7 +573,15 @@
     % This operation does not logically change the module_info,
     % but does update it physically.
     %
-:- pred module_info_predids(list(pred_id)::out,
+:- pred module_info_get_valid_predids(list(pred_id)::out,
+    module_info::in, module_info::out) is det.
+
+    % Set the list of the pred_ids of all the "valid" predicates.
+    % NOTE: The only approved way to specify the list is to call
+    % module_info_get_valid_predids or predicate_table_get_valid_predids,
+    % and remove some pred_ids from that list.
+    %
+:- pred module_info_set_valid_predids(list(pred_id)::in,
     module_info::in, module_info::out) is det.
 
     % Remove a predicate from the list of pred_ids, to prevent
@@ -583,9 +593,6 @@
     % Completely remove a predicate from a module.
     %
 :- pred module_info_remove_predicate(pred_id::in,
-    module_info::in, module_info::out) is det.
-
-:- pred module_info_set_preds(pred_table::in,
     module_info::in, module_info::out) is det.
 
 :- pred module_info_set_pred_info(pred_id::in, pred_info::in,
@@ -1201,12 +1208,17 @@ module_info_set_exported_enums(ExportedEnums, !MI) :-
     % Various predicates which do simple things that are nevertheless
     % beyond the capability of an access predicate.
 
-module_info_preds(MI, Preds) :-
+module_info_get_preds(MI, Preds) :-
     module_info_get_predicate_table(MI, PredTable),
     predicate_table_get_preds(PredTable, Preds).
 
+module_info_set_preds(Preds, !MI) :-
+    module_info_get_predicate_table(!.MI, PredTable0),
+    predicate_table_set_preds(Preds, PredTable0, PredTable),
+    module_info_set_predicate_table(PredTable, !MI).
+
 module_info_pred_info(MI, PredId, PredInfo) :-
-    module_info_preds(MI, Preds),
+    module_info_get_preds(MI, Preds),
     ( map.search(Preds, PredId, PredInfoPrime) ->
         PredInfo = PredInfoPrime
     ;
@@ -1230,9 +1242,14 @@ module_info_pred_proc_info(MI, PredId, ProcId, PredInfo, ProcInfo) :-
 module_info_pred_proc_info(MI, proc(PredId, ProcId), PredInfo, ProcInfo) :-
     module_info_pred_proc_info(MI, PredId, ProcId, PredInfo, ProcInfo).
 
-module_info_predids(PredIds, !MI) :-
+module_info_get_valid_predids(PredIds, !MI) :-
     module_info_get_predicate_table(!.MI, PredTable0),
-    predicate_table_get_predids(PredIds, PredTable0, PredTable),
+    predicate_table_get_valid_predids(PredIds, PredTable0, PredTable),
+    module_info_set_predicate_table(PredTable, !MI).
+
+module_info_set_valid_predids(PredIds, !MI) :-
+    module_info_get_predicate_table(!.MI, PredTable0),
+    predicate_table_set_valid_predids(PredIds, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !MI).
 
 module_info_remove_predid(PredId, !MI) :-
@@ -1245,13 +1262,8 @@ module_info_remove_predicate(PredId, !MI) :-
     predicate_table_remove_predicate(PredId, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !MI).
 
-module_info_set_preds(Preds, !MI) :-
-    module_info_get_predicate_table(!.MI, PredTable0),
-    predicate_table_set_preds(Preds, PredTable0, PredTable),
-    module_info_set_predicate_table(PredTable, !MI).
-
 module_info_set_pred_info(PredId, PredInfo, !MI) :-
-    module_info_preds(!.MI, Preds0),
+    module_info_get_preds(!.MI, Preds0),
     map.set(Preds0, PredId, PredInfo, Preds),
     module_info_set_preds(Preds, !MI).
 

@@ -461,7 +461,7 @@ inline_in_proc(PredProcId, InlinedProcs, Params, !ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
 
     some [!PredInfo, !ProcInfo] (
-        module_info_preds(!.ModuleInfo, PredTable0),
+        module_info_get_preds(!.ModuleInfo, PredTable0),
         map.lookup(PredTable0, PredId, !:PredInfo),
         pred_info_get_procedures(!.PredInfo, ProcTable0),
         map.lookup(ProcTable0, ProcId, !:ProcInfo),

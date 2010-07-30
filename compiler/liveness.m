@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -235,7 +235,7 @@
 %-----------------------------------------------------------------------------%
 
 detect_liveness_preds_parallel(!HLDS) :-
-    module_info_predids(PredIds, !HLDS),
+    module_info_get_valid_predids(PredIds, !HLDS),
     detect_liveness_preds_parallel_2(PredIds, !.HLDS, !HLDS).
 
 :- pred detect_liveness_preds_parallel_2(list(pred_id)::in,

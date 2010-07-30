@@ -1276,8 +1276,8 @@
     X::out) is semidet.
 
     % list.filter(Pred, List, TrueList) takes a closure with one
-    % input argument and for each member of List `X', calls the closure.
-    % Iff Pred(X) is true, then X is included in TrueList.
+    % input argument and for each member X of List, calls the closure.
+    % X is included in TrueList iff Pred(X) is true.
     %
 :- pred list.filter(pred(X)::in(pred(in) is semidet), list(X)::in,
     list(X)::out) is det.
@@ -1286,7 +1286,7 @@
 
     % list.negated_filter(Pred, List, FalseList) takes a closure with one
     % input argument and for each member of List `X', calls the closure.
-    % Iff Pred(X) is false, then X is included in FalseList.
+    % X is included in FalseList iff Pred(X) is true.
     %
 :- pred list.negated_filter(pred(X)::in(pred(in) is semidet), list(X)::in,
     list(X)::out) is det.
@@ -1294,9 +1294,9 @@
     = (list(X)::out) is det.
 
     % list.filter(Pred, List, TrueList, FalseList) takes a closure with one
-    % input argument and for each member of List `X', calls the closure.
-    % Iff Pred(X) is true, then X is included in TrueList.
-    % Iff Pred(X) is false, then X is included in FalseList.
+    % input argument and for each member X of List, calls the closure.
+    % X is included in TrueList iff Pred(X) is true.
+    % X is included in FalseList iff Pred(X) is true.
     %
 :- pred list.filter(pred(X)::in(pred(in) is semidet), list(X)::in,
     list(X)::out, list(X)::out) is det.

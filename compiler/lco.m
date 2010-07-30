@@ -310,8 +310,7 @@ lco_scc(SCC, !VariantMap, !ModuleInfo) :-
 
 process_proc_update(PredProcId - NewProcInfo, !ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
-
-    module_info_preds(!.ModuleInfo, PredTable0),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_procedures(PredInfo0, Procs0),
     map.det_update(Procs0, ProcId, NewProcInfo, Procs),
@@ -338,7 +337,7 @@ process_proc_variant(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
     map.apply_to_list(HeadVars, VarTypes, ArgTypes),
 
     some [!VariantPredInfo, !PredTable] (
-        module_info_preds(!.ModuleInfo, !:PredTable),
+        module_info_get_preds(!.ModuleInfo, !:PredTable),
         map.lookup(!.PredTable, VariantPredId, !:VariantPredInfo),
         pred_info_set_name(VariantName, !VariantPredInfo),
         pred_info_set_is_pred_or_func(pf_predicate, !VariantPredInfo),

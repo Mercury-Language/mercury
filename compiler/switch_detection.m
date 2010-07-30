@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -116,7 +116,7 @@ detect_switches_in_module(!ModuleInfo) :-
     % Traverse the module structure, calling `detect_switches_in_goal'
     % for each procedure body.
     lookup_allow_multi_arm(!.ModuleInfo, AllowMulti),
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     detect_switches_in_preds_allow(PredIds, AllowMulti, !ModuleInfo).
 
 :- pred detect_switches_in_preds_allow(list(pred_id)::in, allow_multi_arm::in,
@@ -124,7 +124,7 @@ detect_switches_in_module(!ModuleInfo) :-
 
 detect_switches_in_preds_allow([], _, !ModuleInfo).
 detect_switches_in_preds_allow([PredId | PredIds], AllowMulti, !ModuleInfo) :-
-    module_info_preds(!.ModuleInfo, PredTable),
+    module_info_get_preds(!.ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     detect_switches_in_pred_allow(PredId, PredInfo, AllowMulti, !ModuleInfo),
     detect_switches_in_preds_allow(PredIds, AllowMulti, !ModuleInfo).
@@ -165,7 +165,7 @@ detect_switches_in_proc(ProcId, PredId, !ModuleInfo) :-
     allow_multi_arm::in, module_info::in, module_info::out) is det.
 
 detect_switches_in_proc_allow(ProcId, PredId, AllowMulti, !ModuleInfo) :-
-    module_info_preds(!.ModuleInfo, PredTable0),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),

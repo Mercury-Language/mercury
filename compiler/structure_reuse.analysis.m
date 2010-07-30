@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2009 The University of Melbourne.
+% Copyright (C) 2006-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -483,7 +483,7 @@ maybe_create_forwarding_procedures_intermod_analysis(ReuseTable, PredProcId,
 :- pred process_imported_reuse(module_info::in, module_info::out) is det.
 
 process_imported_reuse(!ModuleInfo):-
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     list.foldl(process_imported_reuse_in_pred, PredIds, !ModuleInfo).
 
 :- pred process_imported_reuse_in_pred(pred_id::in, module_info::in,
@@ -491,8 +491,8 @@ process_imported_reuse(!ModuleInfo):-
 
 process_imported_reuse_in_pred(PredId, !ModuleInfo) :-
     some [!PredTable] (
-        module_info_preds(!.ModuleInfo, !:PredTable),
-        PredInfo0 = !.PredTable ^ det_elem(PredId),
+        module_info_get_preds(!.ModuleInfo, !:PredTable),
+        map.lookup(!.PredTable, PredId, PredInfo0),
         process_imported_reuse_in_procs(PredInfo0, PredInfo),
         svmap.det_update(PredId, PredInfo, !PredTable),
         module_info_set_preds(!.PredTable, !ModuleInfo)
@@ -558,7 +558,7 @@ process_imported_reuse_in_proc(PredInfo, ProcId, !ProcTable) :-
 
 process_intermod_analysis_reuse(!ModuleInfo, ReuseTable, ExternalRequests,
         MustHaveReuseVersions) :-
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     list.foldl4(process_intermod_analysis_reuse_pred, PredIds,
         !ModuleInfo, reuse_as_table_init, ReuseTable, [], ExternalRequests0,
         [], MustHaveReuseVersions),
@@ -771,7 +771,7 @@ make_opt_int(!ModuleInfo, !IO) :-
     (
         OptFileRes = ok(OptFile),
         io.set_output_stream(OptFile, OldStream, !IO),
-        module_info_predids(PredIds, !ModuleInfo),
+        module_info_get_valid_predids(PredIds, !ModuleInfo),
         list.foldl(write_pred_reuse_info(!.ModuleInfo), PredIds, !IO),
         io.set_output_stream(OldStream, _, !IO),
         io.close_output(OptFile, !IO),

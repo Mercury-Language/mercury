@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2009 The University of Melbourne.
+% Copyright (C) 2007-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -134,7 +134,7 @@ filter_erlang_foreigns(ModuleInfo, ForeignDecls, ForeignBodies, PragmaExports,
     is det.
 
 erl_gen_preds(ModuleInfo, PredDefns, !IO) :-
-    module_info_preds(ModuleInfo, PredTable),
+    module_info_get_preds(ModuleInfo, PredTable),
     map.keys(PredTable, PredIds),
     erl_gen_preds_2(ModuleInfo, PredIds, PredTable, [], RevPredDefns, !IO),
     PredDefns = list.reverse(RevPredDefns).

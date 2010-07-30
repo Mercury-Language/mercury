@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2007 The University of Melbourne.
+% Copyright (C) 1997-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -301,7 +301,7 @@ remove_unused_args(Vars0, [ Arg | Args ], [ UsedVar | UsedVars ], Vars) :-
 set_pred_proc_ids_arg_size_info([], _ArgSize, !ModuleInfo).
 set_pred_proc_ids_arg_size_info([PPId | PPIds], ArgSize, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
-    module_info_preds(!.ModuleInfo, PredTable0),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
@@ -317,7 +317,7 @@ set_pred_proc_ids_arg_size_info([PPId | PPIds], ArgSize, !ModuleInfo) :-
 set_pred_proc_ids_termination_info([], _Termination, !ModuleInfo).
 set_pred_proc_ids_termination_info([PPId | PPIds], Termination, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
-    module_info_preds(!.ModuleInfo, PredTable0),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),

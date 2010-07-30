@@ -1894,7 +1894,7 @@ add_pragma_termination2_info(PredOrFunc, SymName, ModeList,
         PredIds = [_ | _]
     ->
         ( PredIds = [PredId] ->
-            module_info_preds(!.ModuleInfo, PredTable0),
+            module_info_get_preds(!.ModuleInfo, PredTable0),
             map.lookup(PredTable0, PredId, PredInfo0),
             pred_info_get_procedures(PredInfo0, ProcTable0),
             map.to_assoc_list(ProcTable0, ProcList),
@@ -1965,7 +1965,7 @@ add_pragma_structure_sharing(PredOrFunc, SymName, ModeList, HeadVars,
         PredIds = [_ | _]
     ->
         ( PredIds = [PredId] ->
-            module_info_preds(!.ModuleInfo, PredTable0),
+            module_info_get_preds(!.ModuleInfo, PredTable0),
             map.lookup(PredTable0, PredId, PredInfo0),
             pred_info_get_procedures(PredInfo0, ProcTable0),
             map.to_assoc_list(ProcTable0, ProcList),
@@ -2020,7 +2020,7 @@ add_pragma_structure_reuse(PredOrFunc, SymName, ModeList, HeadVars,
         PredIds = [_ | _]
     ->
         ( PredIds = [PredId] ->
-            module_info_preds(!.ModuleInfo, PredTable0),
+            module_info_get_preds(!.ModuleInfo, PredTable0),
             map.lookup(PredTable0, PredId, PredInfo0),
             pred_info_get_procedures(PredInfo0, ProcTable0),
             map.to_assoc_list(ProcTable0, ProcList),
@@ -2074,7 +2074,7 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList,
         PredIds = [_ | _]
     ->
         ( PredIds = [PredId] ->
-            module_info_preds(!.ModuleInfo, PredTable0),
+            module_info_get_preds(!.ModuleInfo, PredTable0),
             map.lookup(PredTable0, PredId, PredInfo0),
             pred_info_get_procedures(PredInfo0, ProcTable0),
             map.to_assoc_list(ProcTable0, ProcList),

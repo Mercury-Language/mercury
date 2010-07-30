@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2009 The University of Melbourne.
+% Copyright (C) 1995-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -142,14 +142,14 @@ module_info_ensure_dependency_info(!ModuleInfo) :-
         MaybeDepInfo = yes(_)
     ;
         MaybeDepInfo = no,
-        module_info_predids(PredIds, !ModuleInfo),
+        module_info_get_valid_predids(PredIds, !ModuleInfo),
         build_dependency_graph(!.ModuleInfo, PredIds, do_not_include_imported,
             DepInfo),
         module_info_set_dependency_info(DepInfo, !ModuleInfo)
     ).
 
 module_info_rebuild_dependency_info(!ModuleInfo, DepInfo) :-
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     build_dependency_graph(!.ModuleInfo, PredIds, do_not_include_imported,
         DepInfo),
     module_info_set_dependency_info(DepInfo, !ModuleInfo).
@@ -220,7 +220,7 @@ sets_to_lists([X | Xs], Ys, Zs) :-
 
 add_pred_proc_nodes([], _ModuleInfo, _, !DepGraph).
 add_pred_proc_nodes([PredId | PredIds], ModuleInfo, Imported, !DepGraph) :-
-    module_info_preds(ModuleInfo, PredTable),
+    module_info_get_preds(ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     (
         % Don't bother adding nodes (or arcs) for procedures which are imported
@@ -250,7 +250,7 @@ add_proc_nodes([ProcId | ProcIds], PredId, ModuleInfo, !DepGraph) :-
 
 add_pred_nodes([], _ModuleInfo, _, DepGraph, DepGraph).
 add_pred_nodes([PredId | PredIds], ModuleInfo, IncludeImported, !DepGraph) :-
-    module_info_preds(ModuleInfo, PredTable),
+    module_info_get_preds(ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     % Don't bother adding nodes (or arcs) for predicates
     % which are imported (i.e. which we don't have any `clauses' for).
@@ -272,7 +272,7 @@ add_pred_nodes([PredId | PredIds], ModuleInfo, IncludeImported, !DepGraph) :-
 
 add_pred_proc_arcs([], _ModuleInfo, _, !DepGraph).
 add_pred_proc_arcs([PredId | PredIds], ModuleInfo, Imported, !DepGraph) :-
-    module_info_preds(ModuleInfo, PredTable),
+    module_info_get_preds(ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     (
         % Don't bother adding nodes (or arcs) for procedures which are imported
@@ -292,7 +292,7 @@ add_pred_proc_arcs([PredId | PredIds], ModuleInfo, Imported, !DepGraph) :-
 add_proc_arcs([], _PredId, _ModuleInfo, _, !DepGraph).
 add_proc_arcs([ProcId | ProcIds], PredId, ModuleInfo, IncludeImported,
         !DepGraph) :-
-    module_info_preds(ModuleInfo, PredTable0),
+    module_info_get_preds(ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
@@ -324,7 +324,7 @@ add_proc_arcs([ProcId | ProcIds], PredId, ModuleInfo, IncludeImported,
 
 add_pred_arcs([], _ModuleInfo, _, !DepGraph).
 add_pred_arcs([PredId | PredIds], ModuleInfo, IncludeImported, !DepGraph) :-
-    module_info_preds(ModuleInfo, PredTable),
+    module_info_get_preds(ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     (
         IncludeImported = do_not_include_imported,

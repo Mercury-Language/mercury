@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2009 The University of Melbourne.
+% Copyright (C) 2006-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -157,7 +157,7 @@ analyse_mm_tabling_in_module(!ModuleInfo, !IO) :-
         (
             MakeAnalysisReg = yes,
             module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
-            module_info_predids(PredIds, !ModuleInfo),
+            module_info_get_valid_predids(PredIds, !ModuleInfo),
             list.foldl(maybe_record_mm_tabling_result(!.ModuleInfo),
                 PredIds, AnalysisInfo0, AnalysisInfo),
             module_info_set_analysis_info(AnalysisInfo, !ModuleInfo)
@@ -807,7 +807,7 @@ make_opt_int(ModuleInfo, !IO) :-
         OptFileRes = ok(OptFile),
         io.set_output_stream(OptFile, OldStream, !IO),
         module_info_get_mm_tabling_info(ModuleInfo, TablingInfo),
-        module_info_predids(PredIds, ModuleInfo, _ModuleInfo),
+        module_info_get_valid_predids(PredIds, ModuleInfo, _ModuleInfo),
         list.foldl(write_pragma_mm_tabling_info(ModuleInfo, TablingInfo),
             PredIds, !IO),
         io.set_output_stream(OldStream, _, !IO),

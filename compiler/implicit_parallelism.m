@@ -130,7 +130,7 @@ apply_new_implicit_parallelism_transformation(SourceFileMap, Specs,
             ParallelismInfo)
     ->
         % Retrieve and process predicates.
-        module_info_predids(PredIds, !ModuleInfo),
+        module_info_get_valid_predids(PredIds, !ModuleInfo),
         module_info_get_predicate_table(!.ModuleInfo, PredTable0),
         predicate_table_get_preds(PredTable0, PredMap0),
         list.foldl3(maybe_parallelise_pred(!.ModuleInfo, ParallelismInfo), 
@@ -893,7 +893,7 @@ apply_old_implicit_parallelism_transformation(ModuleInfo0, MaybeModuleInfo) :-
         some [!ModuleInfo]
         (
             !:ModuleInfo = ModuleInfo0,
-            module_info_predids(PredIds, !ModuleInfo),
+            module_info_get_valid_predids(PredIds, !ModuleInfo),
             FeedbackData =
                 feedback_data_calls_above_threshold_sorted(_, _, Calls),
             list.map(call_site_convert, Calls, CandidateCallSites),

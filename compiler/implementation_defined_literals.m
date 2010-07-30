@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2009 The University of Melbourne.
+% Copyright (C) 2008-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -56,7 +56,7 @@
 %-----------------------------------------------------------------------------%
 
 subst_impl_defined_literals(!ModuleInfo) :-
-    module_info_preds(!.ModuleInfo, Preds0),
+    module_info_get_preds(!.ModuleInfo, Preds0),
     map.map_values(subst_literals_in_pred(!.ModuleInfo), Preds0, Preds),
     module_info_set_preds(Preds, !ModuleInfo).
 

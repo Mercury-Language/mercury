@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2009 The University of Melbourne.
+% Copyright (C) 2001-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -115,7 +115,7 @@
 ].
 
 process_module(!ModuleInfo, !IO) :-
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, simple_mode_constraints, Simple),
     globals.lookup_bool_option(Globals, prop_mode_constraints, New),
@@ -1851,7 +1851,7 @@ keep_var(NonLocals, GoalVars, GoalPath, _AtomicGoals, InstGraph, RepVar) :-
     is det.
 
 get_predicate_sccs(!ModuleInfo, SCCs) :-
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     dependency_graph.build_pred_dependency_graph(!.ModuleInfo, PredIds,
         do_not_include_imported, DepInfo),
     hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs0),
@@ -1901,7 +1901,7 @@ pred_has_mode_decl(ModuleInfo, PredId) :-
 :- pred add_imported_preds(module_info::in, sccs::in, sccs::out) is det.
 
 add_imported_preds(ModuleInfo, SCCs0, SCCs) :-
-    module_info_predids(PredIds, ModuleInfo, _ModuleInfo),
+    module_info_get_valid_predids(PredIds, ModuleInfo, _ModuleInfo),
     list.filter_map(
         (pred(PredId::in, [PredId]::out) is semidet :-
             module_info_pred_info(ModuleInfo, PredId, PredInfo),

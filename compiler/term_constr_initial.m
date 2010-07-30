@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2009 The University of Melbourne.
+% Copyright (C) 2003, 2005-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -107,7 +107,7 @@
 % Also look at builtin_compound_eq, builtin_compound_lt.
 
 preprocess_module(!ModuleInfo, !IO) :-
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     process_builtin_preds(PredIds, !ModuleInfo, !IO),
     process_imported_preds(PredIds, !ModuleInfo).
 
@@ -144,11 +144,11 @@ process_imported_preds(PredIds, !ModuleInfo) :-
 
 process_imported_pred(PredId, !ModuleInfo) :-
     some [!PredTable] (
-        module_info_preds(!.ModuleInfo, !:PredTable),
+        module_info_get_preds(!.ModuleInfo, !:PredTable),
         module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo),
         TypeSpecInfo = type_spec_info(_, TypeSpecPredIds, _, _),
         ( not set.member(PredId, TypeSpecPredIds) ->
-            PredInfo0 = !.PredTable  ^ det_elem(PredId),
+            map.lookup(!.PredTable, PredId, PredInfo0),
             process_imported_procs(PredInfo0, PredInfo),
             svmap.det_update(PredId, PredInfo, !PredTable),
             module_info_set_preds(!.PredTable, !ModuleInfo)
@@ -172,7 +172,7 @@ process_imported_procs(!PredInfo) :-
 
 process_imported_proc(ProcId, !ProcTable) :-
     some [!ProcInfo] (
-        !:ProcInfo = !.ProcTable ^ det_elem(ProcId),
+        map.lookup(!.ProcTable, ProcId, !:ProcInfo),
         proc_info_get_termination2_info(!.ProcInfo, TermInfo0),
         (
             % Check that there is something to import.
@@ -201,15 +201,14 @@ process_imported_term_info(ProcInfo, !TermInfo) :-
     create_arg_size_polyhedron(SubstMap, !.TermInfo ^ import_failure,
         MaybeFailurePoly),
     SizeVars = prog_vars_to_size_vars(SizeVarMap, HeadVars),
-    !:TermInfo = !.TermInfo ^ size_var_map := SizeVarMap,
-    !:TermInfo = !.TermInfo ^ head_vars := SizeVars,
-    !:TermInfo = !.TermInfo ^ success_constrs := MaybeSuccessPoly,
-    !:TermInfo = !.TermInfo ^ failure_constrs := MaybeFailurePoly,
-    %
+    !TermInfo ^ size_var_map := SizeVarMap,
+    !TermInfo ^ head_vars := SizeVars,
+    !TermInfo ^ success_constrs := MaybeSuccessPoly,
+    !TermInfo ^ failure_constrs := MaybeFailurePoly,
+
     % We don't use these fields after this point.
-    %
-    !:TermInfo = !.TermInfo ^ import_success := no,
-    !:TermInfo = !.TermInfo ^ import_failure := no.
+    !TermInfo ^ import_success := no,
+    !TermInfo ^ import_failure := no.
 
 :- pred create_substitution_map(list(int)::in, map(int, prog_var)::in,
     size_var_map::in, map(int, size_var)::out) is det.
@@ -264,7 +263,7 @@ process_builtin_preds([PredId | PredIds], !ModuleInfo, !IO) :-
     globals.lookup_bool_option(Globals, make_optimization_interface,
         MakeOptInt),
     some [!PredTable] (
-        module_info_preds(!.ModuleInfo, !:PredTable),
+        module_info_get_preds(!.ModuleInfo, !:PredTable),
         PredInfo0 = !.PredTable ^ det_elem(PredId),
         process_builtin_procs(MakeOptInt, PredId, !.ModuleInfo,
             PredInfo0, PredInfo),
@@ -407,12 +406,12 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, ModuleInfo,
             VarTypes, ArgSize, Termination, VarMap, HeadSizeVars),
         some [!TermInfo] (
             proc_info_get_termination2_info(ProcInfo0, !:TermInfo),
-            !:TermInfo = !.TermInfo ^ success_constrs := yes(ArgSize),
-            !:TermInfo = !.TermInfo ^ term_status := yes(Termination),
+            !TermInfo ^ success_constrs := yes(ArgSize),
+            !TermInfo ^ term_status := yes(Termination),
             IntermodStatus = yes(not_mutually_recursive),
-            !:TermInfo = !.TermInfo ^ intermod_status := IntermodStatus,
-            !:TermInfo = !.TermInfo ^ size_var_map := VarMap,
-            !:TermInfo = !.TermInfo ^ head_vars := HeadSizeVars,
+            !TermInfo ^ intermod_status := IntermodStatus,
+            !TermInfo ^ size_var_map := VarMap,
+            !TermInfo ^ head_vars := HeadSizeVars,
             proc_info_set_termination2_info(!.TermInfo, ProcInfo0, ProcInfo)
         ),
         svmap.det_update(ProcId, ProcInfo, !ProcTable)
@@ -513,14 +512,10 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
     PredName   = pred_info_name(PredInfo),
     PredArity  = pred_info_orig_arity(PredInfo),
     make_size_var_map(HeadVars, _SizeVarset, SizeVarMap),
-    (
-        no_type_info_builtin(PredModule, PredName, PredArity)
-    ->
+    ( no_type_info_builtin(PredModule, PredName, PredArity) ->
         Constrs = process_no_type_info_builtin(PredName, HeadVars,
             SizeVarMap)
-    ;
-        all_args_input_or_zero_size(ModuleInfo, PredInfo, ProcInfo0)
-    ->
+    ; all_args_input_or_zero_size(ModuleInfo, PredInfo, ProcInfo0) ->
         Constrs = []
     ;
         unexpected(this_file, "builtin with non-zero size args.")
@@ -530,18 +525,15 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
     HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadVars),
     some [!TermInfo] (
         proc_info_get_termination2_info(ProcInfo0, !:TermInfo),
-        !:TermInfo = !.TermInfo ^ success_constrs := ArgSizeInfo,
-        !:TermInfo = !.TermInfo ^ term_status :=
-            yes(cannot_loop(term_reason_builtin)),
-        !:TermInfo = !.TermInfo ^ intermod_status :=
-            yes(not_mutually_recursive),
-        !:TermInfo = !.TermInfo ^ size_var_map := SizeVarMap,
-        !:TermInfo = !.TermInfo ^ head_vars := HeadSizeVars,
+        !TermInfo ^ success_constrs := ArgSizeInfo,
+        !TermInfo ^ term_status := yes(cannot_loop(term_reason_builtin)),
+        !TermInfo ^ intermod_status := yes(not_mutually_recursive),
+        !TermInfo ^ size_var_map := SizeVarMap,
+        !TermInfo ^ head_vars := HeadSizeVars,
         proc_info_set_termination2_info(!.TermInfo, ProcInfo0, ProcInfo)
     ),
     svmap.det_update(ProcId, ProcInfo, !ProcTable),
-    set_builtin_terminates(ProcIds, PredId, PredInfo, ModuleInfo,
-        !ProcTable).
+    set_builtin_terminates(ProcIds, PredId, PredInfo, ModuleInfo, !ProcTable).
 
 :- func process_no_type_info_builtin(string, prog_vars, size_var_map)
     = constraints.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %------------------------------------------------------------------------------%
-% Copyright (C) 1997-2003, 2005-2009 The University of Melbourne.
+% Copyright (C) 1997-2003, 2005-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -214,16 +214,16 @@
 set_pred_proc_ids_constr_arg_size_info([], _ArgSize, !ModuleInfo).
 set_pred_proc_ids_constr_arg_size_info([PPId | PPIds], ArgSize, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
-    module_info_preds(!.ModuleInfo, PredTable0),
-    PredInfo0 = PredTable0 ^ det_elem(PredId),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
+    map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_procedures(PredInfo0, ProcTable0),
-    ProcInfo0 = ProcTable0 ^ det_elem(ProcId),
+    map.lookup(ProcTable0, ProcId, ProcInfo0),
     proc_info_get_termination2_info(ProcInfo0, TermInfo0),
     TermInfo = TermInfo0 ^ success_constrs := yes(ArgSize),
     proc_info_set_termination2_info(TermInfo, ProcInfo0, ProcInfo),
-    ProcTable = ProcTable0 ^ det_elem(ProcId) := ProcInfo,
+    map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
     pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-    PredTable = PredTable0 ^ det_elem(PredId) := PredInfo,
+    map.det_update(PredTable0, PredId, PredInfo, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo),
     set_pred_proc_ids_constr_arg_size_info(PPIds, ArgSize, !ModuleInfo).
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2009 The University of Melbourne.
+% Copyright (C) 1997-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -205,7 +205,7 @@
 %-----------------------------------------------------------------------------%
 
 puritycheck_module(!ModuleInfo, !Specs) :-
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     check_preds_purity(PredIds, !ModuleInfo, !Specs).
 
 :- pred check_preds_purity(list(pred_id)::in,

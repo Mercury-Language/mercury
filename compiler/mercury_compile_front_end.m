@@ -56,7 +56,7 @@
     ;       simplify_pass_ll_backend.
             % The first stage of LLDS code generation.
 
-    % This predicate set up and maybe run the simplification pass.
+    % This predicate sets up and maybe runs the simplification pass.
     %
 :- pred maybe_simplify(bool::in, simplify_pass::in, bool::in, bool::in,
     module_info::in, module_info::out,
@@ -252,7 +252,7 @@ frontend_pass_after_typecheck(FoundUndefModeError, !FoundError,
         % get any type errors already; this avoids a lot of spurious
         % diagnostics.
         PostTypeCheckReportErrors = bool.not(FoundTypeError),
-        module_info_predids(PredIds, !HLDS),
+        module_info_get_valid_predids(PredIds, !HLDS),
         post_typecheck_finish_preds(PredIds, PostTypeCheckReportErrors,
             NumPostTypeCheckErrors, !HLDS, !Specs),
         maybe_dump_hlds(!.HLDS, 19, "post_typecheck", !DumpInfo, !IO),

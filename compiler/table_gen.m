@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2009 The University of Melbourne.
+% Copyright (C) 1997-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -107,7 +107,7 @@
     % polymorphism and getting an updated module_info back.
     %
 table_gen_process_module(!ModuleInfo, !Specs) :-
-    module_info_preds(!.ModuleInfo, Preds0),
+    module_info_get_preds(!.ModuleInfo, Preds0),
     map.keys(Preds0, PredIds),
     map.init(GenMap0),
     table_gen_process_preds(PredIds, !ModuleInfo, GenMap0, _, !Specs).
@@ -139,7 +139,7 @@ table_gen_process_pred(PredId, !ModuleInfo, !GenMap, !Specs) :-
 table_gen_process_procs(_PredId, [], !ModuleInfo, !GenMap, !Specs).
 table_gen_process_procs(PredId, [ProcId | ProcIds], !ModuleInfo, !GenMap,
         !Specs) :-
-    module_info_preds(!.ModuleInfo, PredTable),
+    module_info_get_preds(!.ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     pred_info_get_procedures(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo0),
@@ -563,7 +563,7 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
     % The transformation doesn't pay attention to the purity of compound goals,
     % so recompute the purity here.
     repuritycheck_proc(!.ModuleInfo, proc(PredId, ProcId), !PredInfo),
-    module_info_preds(!.ModuleInfo, PredTable1),
+    module_info_get_preds(!.ModuleInfo, PredTable1),
     map.det_update(PredTable1, PredId, !.PredInfo, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
@@ -1225,7 +1225,7 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         clone_proc_and_create_call(PredInfo, ProcId, CallExpr, ModuleInfo0,
             ModuleInfo),
         NewGoal = hlds_goal(CallExpr, OrigGoalInfo),
-        !:TableInfo = !.TableInfo ^ table_module_info := ModuleInfo
+        !TableInfo ^ table_module_info := ModuleInfo
     ;
         NewGoal = OrigGoal,
         ModuleInfo = ModuleInfo0
@@ -1722,8 +1722,7 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
         NumberedInputVars, NumberedOutputVars,
         OrigNonLocals, OrigInstMapDelta, !.VarTypes, !.VarSet,
         GeneratorTableInfo0, GeneratorTableInfo, InputSteps, OutputSteps),
-    !:TableInfo = !.TableInfo ^ table_module_info :=
-        GeneratorTableInfo ^ table_module_info.
+    !TableInfo ^ table_module_info := GeneratorTableInfo ^ table_module_info.
 
 :- pred generate_save_input_vars_code(assoc_list(foreign_arg, mer_mode)::in,
     module_info::in, int::in, list(foreign_arg)::out, string::out, string::out)
@@ -1839,10 +1838,10 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
     map.det_insert(ProcTable0, ProcId, !.ProcInfo, ProcTable),
     pred_info_set_procedures(ProcTable, !PredInfo),
 
-    module_info_preds(ModuleInfo1, PredTable0),
+    module_info_get_preds(ModuleInfo1, PredTable0),
     map.det_update(PredTable0, PredId, !.PredInfo, PredTable),
     module_info_set_preds(PredTable, ModuleInfo1, ModuleInfo),
-    !:TableInfo = !.TableInfo ^ table_module_info := ModuleInfo.
+    !TableInfo ^ table_module_info := ModuleInfo.
 
 :- pred clone_pred_info(pred_id::in, pred_info::in, list(prog_var)::in,
     list(var_mode_pos_method)::in, pred_id::out,
@@ -1891,7 +1890,7 @@ clone_pred_info(OrigPredId, PredInfo0, HeadVars, NumberedOutputVars,
     module_info_get_predicate_table(ModuleInfo0, PredTable0),
     predicate_table_insert(PredInfo, GeneratorPredId, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, ModuleInfo0, ModuleInfo),
-    !:TableInfo = !.TableInfo ^ table_module_info := ModuleInfo.
+    !TableInfo ^ table_module_info := ModuleInfo.
 
     % clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo).
     % This predicate creates a new procedure with the same body as the

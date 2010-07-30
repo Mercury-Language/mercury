@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001, 2003-2009 The University of Melbourne.
+% Copyright (C) 1994-2001, 2003-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -640,7 +640,7 @@ mode_info_set_in_dupl_for_switch(INFS, MI,
 
 mode_info_get_preds(ModeInfo, Preds) :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),
-    module_info_preds(ModuleInfo, Preds).
+    module_info_get_preds(ModuleInfo, Preds).
 
 mode_info_get_modes(ModeInfo, Modes) :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),

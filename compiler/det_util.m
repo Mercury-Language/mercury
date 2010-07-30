@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000,2002-2009 The University of Melbourne.
+% Copyright (C) 1996-2000,2002-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -175,7 +175,7 @@ interpret_unify(_X, rhs_lambda_goal(_, _, _, _, _, _, _, _, _), !Subst).
 
 det_lookup_pred_info_and_detism(DetInfo, PredId, ModeId, PredInfo, Detism) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
-    module_info_preds(ModuleInfo, PredTable),
+    module_info_get_preds(ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     pred_info_get_procedures(PredInfo, ProcTable),
     map.lookup(ProcTable, ModeId, ProcInfo),
@@ -185,7 +185,7 @@ det_get_proc_info(DetInfo, ProcInfo) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
     det_info_get_pred_id(DetInfo, PredId),
     det_info_get_proc_id(DetInfo, ProcId),
-    module_info_preds(ModuleInfo, PredTable),
+    module_info_get_preds(ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     pred_info_get_procedures(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo).

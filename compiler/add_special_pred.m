@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2009 The University of Melbourne.
+% Copyright (C) 1993-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -264,7 +264,7 @@ do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
     ),
     module_info_get_special_pred_map(!.ModuleInfo, SpecialPredMap1),
     map.lookup(SpecialPredMap1, SpecialPredId - TypeCtor, PredId),
-    module_info_preds(!.ModuleInfo, Preds0),
+    module_info_get_preds(!.ModuleInfo, Preds0),
     map.lookup(Preds0, PredId, PredInfo0),
     % If the type was imported, then the special preds for that
     % type should be imported too.

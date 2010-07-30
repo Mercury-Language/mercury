@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -498,7 +498,7 @@ get_call_info(!ModuleInfo, !:ProcCalls, !:HOInfo, !:CallsHO) :-
     map.init(!:ProcCalls),
     map.init(!:HOInfo),
     set.init(!:CallsHO),
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     expand_predids(PredIds, !.ModuleInfo, !ProcCalls, !HOInfo, !CallsHO).
 
     % Finds the transitive closure of a given list of procedures.

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------e
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -613,7 +613,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
 
 generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
     get_module_info(!.CI, ModuleInfo),
-    module_info_preds(ModuleInfo, Preds),
+    module_info_get_preds(ModuleInfo, Preds),
     map.lookup(Preds, PredId, PredInfo),
     pred_info_get_procedures(PredInfo, Procs),
     map.lookup(Procs, ProcId, ProcInfo),

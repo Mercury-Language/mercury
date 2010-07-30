@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001, 2003-2009 The University of Melbourne.
+% Copyright (C) 1997-2001, 2003-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -99,7 +99,7 @@ analyse_termination_in_module(!ModuleInfo, Specs, !IO) :-
 
     % Process builtin and compiler-generated predicates, and user-supplied
     % pragmas.
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     check_preds(PredIds, !ModuleInfo, !IO),
 
     % Process all the SCCs of the call graph in a bottom-up order.
@@ -436,7 +436,7 @@ set_finite_arg_size_infos([], _, !ModuleInfo).
 set_finite_arg_size_infos([Soln | Solns], OutputSupplierMap, !ModuleInfo) :-
     Soln = PPId - Gamma,
     PPId = proc(PredId, ProcId),
-    module_info_preds(!.ModuleInfo, PredTable0),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo),
     pred_info_get_procedures(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
@@ -456,7 +456,7 @@ set_finite_arg_size_infos([Soln | Solns], OutputSupplierMap, !ModuleInfo) :-
 set_infinite_arg_size_infos([], _, !ModuleInfo).
 set_infinite_arg_size_infos([PPId | PPIds], ArgSizeInfo, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
-    module_info_preds(!.ModuleInfo, PredTable0),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo),
     pred_info_get_procedures(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
@@ -476,7 +476,7 @@ set_infinite_arg_size_infos([PPId | PPIds], ArgSizeInfo, !ModuleInfo) :-
 set_termination_infos([], _, !ModuleInfo).
 set_termination_infos([PPId | PPIds], TerminationInfo, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
-    module_info_preds(!.ModuleInfo, PredTable0),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
@@ -608,7 +608,7 @@ check_preds([PredId | PredIds], !ModuleInfo, !IO) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, make_optimization_interface,
         MakeOptInt),
-    module_info_preds(!.ModuleInfo, PredTable0),
+    module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_import_status(PredInfo0, ImportStatus),
     pred_info_get_context(PredInfo0, Context),

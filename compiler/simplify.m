@@ -491,7 +491,7 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
             % transformation that inserts calls to these predicates,
             % there is no point in invoking find_format_call again later.
 
-            module_info_preds(!.ModuleInfo, PredTable1),
+            module_info_get_preds(!.ModuleInfo, PredTable1),
             map.lookup(PredTable1, PredId, PredInfo1),
             pred_info_get_procedures(PredInfo1, ProcTable1),
             map.det_update(ProcTable1, ProcId, !.ProcInfo, ProcTable),

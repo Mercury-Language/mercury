@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2009 The University of Melbourne.
+% Copyright (C) 1995-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -75,7 +75,7 @@
 detect_cse_in_module(!ModuleInfo) :-
     % Traverse the module structure, calling `detect_cse_in_goal'
     % for each procedure body.
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     detect_cse_in_preds(PredIds, !ModuleInfo).
 
 :- pred detect_cse_in_preds(list(pred_id)::in,
@@ -83,7 +83,7 @@ detect_cse_in_module(!ModuleInfo) :-
 
 detect_cse_in_preds([], !ModuleInfo).
 detect_cse_in_preds([PredId | PredIds], !ModuleInfo) :-
-    module_info_preds(!.ModuleInfo, PredTable),
+    module_info_get_preds(!.ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     detect_cse_in_pred(PredId, PredInfo, !ModuleInfo),
     detect_cse_in_preds(PredIds, !ModuleInfo).
@@ -189,7 +189,7 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo) :-
     module_info::in, module_info::out) is det.
 
 detect_cse_in_proc_pass(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
-    module_info_preds(ModuleInfo0, PredTable0),
+    module_info_get_preds(ModuleInfo0, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),

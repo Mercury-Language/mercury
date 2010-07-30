@@ -88,11 +88,22 @@
     predicate_table::in, predicate_table::out) is det.
 
     % Get a list of all the valid predids in the predicate_table.
+    % (Predicates whose definition contains a type error, etc.
+    % get removed from this list, so that later passes can rely
+    % on the predicates in this list being type-correct, etc.)
     %
     % This operation does not logically change the predicate table,
     % but does update it physically.
     %
-:- pred predicate_table_get_predids(list(pred_id)::out,
+:- pred predicate_table_get_valid_predids(list(pred_id)::out,
+    predicate_table::in, predicate_table::out) is det.
+
+    % Set the list of the pred_ids of all the valid predicates.
+    % NOTE: The only approved way to specify the list is to call
+    % module_info_get_valid_predids or predicate_table_get_valid_predids,
+    % and remove some pred_ids from that list.
+    %
+:- pred predicate_table_set_valid_predids(list(pred_id)::in,
     predicate_table::in, predicate_table::out) is det.
 
     % Remove a pred_id from the valid list.
@@ -251,7 +262,7 @@
     % Find a predicate which matches the given name and argument types.
     % Abort if there is no matching pred.
     % Abort if there are multiple matching preds.
-    % 
+    %
 :- pred resolve_pred_overloading(module_info::in, pred_markers::in,
     tvarset::in, existq_tvars::in, list(mer_type)::in, head_type_params::in,
     prog_context::in, sym_name::in, sym_name::out, pred_id::out) is det.
@@ -310,65 +321,52 @@
 
 :- type predicate_table
     --->    predicate_table(
-                preds               :: pred_table,
-                                    % Map from pred_id to pred_info.
+                % Map from pred_id to pred_info.
+                preds                           :: pred_table,
 
-                next_pred_id        :: pred_id,
-                                    % The next available pred_id.
+                % The next available pred_id.
+                next_pred_id                    :: pred_id,
 
-                old_pred_ids        :: list(pred_id),
-                new_rev_pred_ids    :: list(pred_id),
-                                    % The keys of the pred_table - cached
-                                    % here for efficiency. The old pred_ids
-                                    % are listed in order; the new pred_iss
-                                    % are listed in reverse order. You can get
-                                    % the full list with old_pred_ids ++
-                                    % reverse(new_rev_pred_ids).
+                % The keys of the pred_table - cached here for efficiency.
+                % The old pred_ids are listed in order; the new pred_ids
+                % are listed in reverse order. You can get the full list
+                % with old_pred_ids ++ reverse(new_rev_pred_ids).
+                old_pred_ids                    :: list(pred_id),
+                new_rev_pred_ids                :: list(pred_id),
 
-                accessibility_table :: accessibility_table,
-                                    % How is the predicate accessible?
+                % Maps each pred_id to its accessibility by (partially)
+                % unqualified names.
+                accessibility_table             :: accessibility_table,
 
-                % Indexes on predicates
-
-                pred_name_index     :: name_index,
-                                    % Map from pred name to pred_id.
-
-                pred_name_arity_index :: name_arity_index,
-                                    % Map from pred name & arity to pred_id.
-
-                pred_module_name_arity_index :: module_name_arity_index,
-                                    % Map from pred module, name & arity
-                                    % to pred_id.
-
-                % Indexes on functions
-
-                func_name_index     :: name_index,
-                                    % Map from func name to pred_id.
-
-                func_name_arity_index :: name_arity_index,
-                                    % Map from func name & arity to pred_id.
-
-                func_module_name_arity_index :: module_name_arity_index
-                                    % Map from func module, name & arity
-                                    % to pred_id.
+                % Indexes on predicates and on functions.
+                % - Map from pred/func name to pred_id.
+                % - Map from pred/func name & arity to pred_id.
+                % - Map from module, pred/func name & arity to pred_id.
+                pred_name_index                 :: name_index,
+                pred_name_arity_index           :: name_arity_index,
+                pred_module_name_arity_index    :: module_name_arity_index,
+                func_name_index                 :: name_index,
+                func_name_arity_index           :: name_arity_index,
+                func_module_name_arity_index    :: module_name_arity_index
             ).
 
 :- type accessibility_table == map(pred_id, name_accessibility).
 
 :- type name_accessibility
     --->    access(
-                % Is this predicate accessible by its unqualified name.
-                accessible_by_unqualifed_name       :: bool,
+                % Is this predicate accessible by its unqualified name?
+                accessible_by_unqualifed_name           :: bool,
 
                 % Is this predicate accessible by any partially qualified
-                % names.
+                % names?
                 accessible_by_partially_qualified_names :: bool
             ).
 
 :- type name_index  == map(string, list(pred_id)).
 
 :- type name_arity_index == map(name_arity, list(pred_id)).
-:- type name_arity ---> string / arity.
+:- type name_arity
+    --->    string / arity.
 
     % First search on module and name, then search on arity. The two levels
     % are needed because typecheck.m needs to be able to search on module
@@ -394,7 +392,8 @@ predicate_table_init(PredicateTable) :-
         Func_N_Index, Func_NA_Index, Func_MNA_Index).
 
 predicate_table_optimize(PredicateTable0, PredicateTable) :-
-    PredicateTable0 = predicate_table(A, B, C, D, E,
+    PredicateTable0 = predicate_table(Preds, NextPredId,
+        OldPredIds, NewRevPredIds, Accessibility,
         Pred_N_Index0, Pred_NA_Index0, Pred_MNA_Index0,
         Func_N_Index0, Func_NA_Index0, Func_MNA_Index0),
     map.optimize(Pred_N_Index0, Pred_N_Index),
@@ -403,16 +402,17 @@ predicate_table_optimize(PredicateTable0, PredicateTable) :-
     map.optimize(Func_N_Index0, Func_N_Index),
     map.optimize(Func_NA_Index0, Func_NA_Index),
     map.optimize(Func_MNA_Index0, Func_MNA_Index),
-    PredicateTable = predicate_table(A, B, C, D, E,
+    PredicateTable = predicate_table(Preds, NextPredId,
+        OldPredIds, NewRevPredIds, Accessibility,
         Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
         Func_N_Index, Func_NA_Index, Func_MNA_Index).
 
 predicate_table_get_preds(PredicateTable, PredicateTable ^ preds).
 
-predicate_table_set_preds(Preds, PredicateTable,
-    PredicateTable ^ preds := Preds).
+predicate_table_set_preds(Preds, !PredicateTable) :-
+    !PredicateTable ^ preds := Preds.
 
-predicate_table_get_predids(PredIds, !PredicateTable) :-
+predicate_table_get_valid_predids(PredIds, !PredicateTable) :-
     OldPredIds = !.PredicateTable ^ old_pred_ids,
     NewRevPredIds = !.PredicateTable ^ new_rev_pred_ids,
     (
@@ -422,6 +422,10 @@ predicate_table_get_predids(PredIds, !PredicateTable) :-
         NewRevPredIds = [_ | _],
         PredIds = OldPredIds ++ list.reverse(NewRevPredIds)
     ),
+    !PredicateTable ^ old_pred_ids := PredIds,
+    !PredicateTable ^ new_rev_pred_ids := [].
+
+predicate_table_set_valid_predids(PredIds, !PredicateTable) :-
     !PredicateTable ^ old_pred_ids := PredIds,
     !PredicateTable ^ new_rev_pred_ids := [].
 
@@ -786,7 +790,7 @@ predicate_table_restrict(PartialQualInfo, PredIds, OrigPredicateTable,
     list.foldl(
         reinsert_for_restrict(PartialQualInfo, Preds, AccessibilityTable),
         PredIds, !PredicateTable),
-    predicate_table_get_predids(NewPredIds, !PredicateTable),
+    predicate_table_get_valid_predids(NewPredIds, !PredicateTable),
     list.sort(NewPredIds, SortedNewPredIds),
     !PredicateTable ^ old_pred_ids := SortedNewPredIds,
     !PredicateTable ^ new_rev_pred_ids := [].

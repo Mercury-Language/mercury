@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2009 The University of Melbourne.
+% Copyright (C) 2005-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -158,7 +158,7 @@ structure_sharing_analysis(!ModuleInfo, !IO) :-
 :- pred process_imported_sharing(module_info::in, module_info::out) is det.
 
 process_imported_sharing(!ModuleInfo):-
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     list.foldl(process_imported_sharing_in_pred, PredIds, !ModuleInfo).
 
 :- pred process_imported_sharing_in_pred(pred_id::in, module_info::in,
@@ -166,7 +166,7 @@ process_imported_sharing(!ModuleInfo):-
 
 process_imported_sharing_in_pred(PredId, !ModuleInfo) :-
     some [!PredTable] (
-        module_info_preds(!.ModuleInfo, !:PredTable),
+        module_info_get_preds(!.ModuleInfo, !:PredTable),
         PredInfo0 = !.PredTable ^ det_elem(PredId),
         process_imported_sharing_in_procs(PredInfo0, PredInfo),
         svmap.det_update(PredId, PredInfo, !PredTable),
@@ -232,7 +232,7 @@ process_imported_sharing_in_proc(PredInfo, ProcId, !ProcTable) :-
     module_info::out) is det.
 
 process_intermod_analysis_imported_sharing(!ModuleInfo):-
-    module_info_predids(PredIds, !ModuleInfo),
+    module_info_get_valid_predids(PredIds, !ModuleInfo),
     list.foldl(process_intermod_analysis_imported_sharing_in_pred, PredIds,
         !ModuleInfo).
 
@@ -241,8 +241,8 @@ process_intermod_analysis_imported_sharing(!ModuleInfo):-
 
 process_intermod_analysis_imported_sharing_in_pred(PredId, !ModuleInfo) :-
     some [!PredTable] (
-        module_info_preds(!.ModuleInfo, !:PredTable),
-        PredInfo0 = !.PredTable ^ det_elem(PredId),
+        module_info_get_preds(!.ModuleInfo, !:PredTable),
+        map.lookup(!.PredTable, PredId, PredInfo0),
         ( pred_info_is_imported_not_external(PredInfo0) ->
             module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo),
             process_intermod_analysis_imported_sharing_in_procs(!.ModuleInfo,
@@ -393,7 +393,7 @@ sharing_analysis(!ModuleInfo, !.SharingTable, !IO) :-
         MakeAnalysisRegistry = yes,
         some [!AnalysisInfo] (
             module_info_get_analysis_info(!.ModuleInfo, !:AnalysisInfo),
-            module_info_predids(PredIds, !ModuleInfo),
+            module_info_get_valid_predids(PredIds, !ModuleInfo),
             list.foldl(maybe_record_sharing_analysis_result(!.ModuleInfo,
                 !.SharingTable), PredIds, !AnalysisInfo),
             list.foldl(handle_dep_procs(!.ModuleInfo), DepProcs,
@@ -934,7 +934,7 @@ make_opt_int(ModuleInfo, !IO) :-
     (
         OptFileRes = ok(OptFile),
         io.set_output_stream(OptFile, OldStream, !IO),
-        module_info_predids(PredIds, ModuleInfo, _ModuleInfo),
+        module_info_get_valid_predids(PredIds, ModuleInfo, _ModuleInfo),
         list.foldl(write_pred_sharing_info(ModuleInfo), PredIds, !IO),
         io.set_output_stream(OldStream, _, !IO),
         io.close_output(OptFile, !IO),
