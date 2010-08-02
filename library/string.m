@@ -1220,31 +1220,31 @@ string.int_to_base_string_1(N, Base, Str) :-
     % conversion of the absolute number into digits using negative numbers
     % (we can't use positive numbers, since -MININT overflows)
     ( N < 0 ->
-        string.int_to_base_string_2(N, Base, Str1),
-        string.append("-", Str1, Str)
+        string.int_to_base_string_2(N, Base, ['-'], RevChars)
     ;
         N1 = 0 - N,
-        string.int_to_base_string_2(N1, Base, Str)
-    ).
+        string.int_to_base_string_2(N1, Base, [], RevChars)
+    ),
+    string.from_rev_char_list(RevChars, Str).
 
-:- pred string.int_to_base_string_2(int::in, int::in, string::uo) is det.
+:- pred string.int_to_base_string_2(int::in, int::in,
+    list(char)::in, list(char)::out) is det.
 
     % string.int_to_base_string_2/3 is almost identical to
     % string.int_to_base_string_group_2/6 below so any changes here might
     % also need to be applied to string.int_to_base_string_group_2/3.
     %
-string.int_to_base_string_2(NegN, Base, Str) :-
+string.int_to_base_string_2(NegN, Base, !RevChars) :-
     ( NegN > -Base ->
         N = -NegN,
         char.det_int_to_digit(N, DigitChar),
-        string.char_to_string(DigitChar, Str)
+        !:RevChars = [DigitChar | !.RevChars]
     ;
         NegN1 = NegN // Base,
         N10 = (NegN1 * Base) - NegN,
         char.det_int_to_digit(N10, DigitChar),
-        string.char_to_string(DigitChar, DigitString),
-        string.int_to_base_string_2(NegN1, Base, Str1),
-        string.append(Str1, DigitString, Str)
+        string.int_to_base_string_2(NegN1, Base, !RevChars),
+        !:RevChars = [DigitChar | !.RevChars]
     ).
 
 string.c_pointer_to_string(C_Pointer, Str) :-
