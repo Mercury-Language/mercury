@@ -249,13 +249,13 @@ llds_backend_pass_by_preds_2([PredId | PredIds], !HLDS, !GlobalData,
             globals.get_trace_level(Globals0, TraceLevel),
             globals.set_trace_level_none(Globals0, Globals1),
             module_info_set_globals(Globals1, !HLDS),
-            llds_backend_pass_by_preds_3(ProcIds, PredId, PredInfo, !HLDS,
+            llds_backend_pass_for_pred(ProcIds, PredId, PredInfo, !HLDS,
                 !GlobalData, IdProcList, !IO),
             module_info_get_globals(!.HLDS, Globals2),
             globals.set_trace_level(TraceLevel, Globals2, Globals),
             module_info_set_globals(Globals, !HLDS)
         ;
-            llds_backend_pass_by_preds_3(ProcIds, PredId, PredInfo, !HLDS,
+            llds_backend_pass_for_pred(ProcIds, PredId, PredInfo, !HLDS,
                 !GlobalData, IdProcList, !IO)
         ),
         (
@@ -272,29 +272,29 @@ llds_backend_pass_by_preds_2([PredId | PredIds], !HLDS, !GlobalData,
     llds_backend_pass_by_preds_2(PredIds, !HLDS, !GlobalData,
         !.MaybeDupProcMap, !RevCodes, !IO).
 
-:- pred llds_backend_pass_by_preds_3(list(proc_id)::in, pred_id::in,
+:- pred llds_backend_pass_for_pred(list(proc_id)::in, pred_id::in,
     pred_info::in, module_info::in, module_info::out,
     global_data::in, global_data::out,
     assoc_list(mdbcomp.prim_data.proc_label, c_procedure)::out,
     io::di, io::uo) is det.
 
-llds_backend_pass_by_preds_3([], _, _, !HLDS, !GlobalData, [], !IO).
-llds_backend_pass_by_preds_3([ProcId | ProcIds], PredId, PredInfo, !HLDS,
+llds_backend_pass_for_pred([], _, _, !HLDS, !GlobalData, [], !IO).
+llds_backend_pass_for_pred([ProcId | ProcIds], PredId, PredInfo, !HLDS,
         !GlobalData, [ProcLabel - Proc | Procs], !IO) :-
     ProcLabel = make_proc_label(!.HLDS, PredId, ProcId),
     pred_info_get_procedures(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
-    llds_backend_pass_by_preds_4(PredInfo, ProcInfo, _, ProcId, PredId, !HLDS,
+    llds_backend_pass_for_procs(PredInfo, ProcInfo, _, ProcId, PredId, !HLDS,
         !GlobalData, Proc, !IO),
-    llds_backend_pass_by_preds_3(ProcIds, PredId, PredInfo, !HLDS, !GlobalData,
+    llds_backend_pass_for_pred(ProcIds, PredId, PredInfo, !HLDS, !GlobalData,
         Procs, !IO).
 
-:- pred llds_backend_pass_by_preds_4(pred_info::in,
+:- pred llds_backend_pass_for_procs(pred_info::in,
     proc_info::in, proc_info::out, proc_id::in, pred_id::in,
     module_info::in, module_info::out, global_data::in, global_data::out,
     c_procedure::out, io::di, io::uo) is det.
 
-llds_backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
+llds_backend_pass_for_procs(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
         !GlobalData, ProcCode, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, optimize_saved_vars_const,
