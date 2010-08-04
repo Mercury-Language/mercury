@@ -19,6 +19,8 @@
 
 :- import_module list.
 
+:- import_module mdbcomp.
+:- import_module mdbcomp.feedback.
 :- import_module measurement_units.
 
 %-----------------------------------------------------------------------------%
@@ -176,12 +178,59 @@
     is semidet.
 
 %-----------------------------------------------------------------------------%
+
+    % Represent the metrics of part of a parallel execution.
+    %
+:- type parallel_exec_metrics_incomplete.
+    
+    % ParMetrics = init_parallel_exec_metrics_incomplete(PartMetricsA,
+    %   TimeSignal, TimeBSeq, TimeBPar) 
+    %
+    % Use this function to build parallel execution metrics for a parallel
+    % conjunction of any size greater than one.
+    %
+    % Although the parallel conjunction operator is operationally
+    % right-associative, parallel overlap due in dependant parallel
+    % conjunctions is easier to model if we consider it to be left associative.
+    % That is the conjunction ( A & B & C ) should be modeled as two conjuncts
+    % (A & B) (which is a conjunction itself and C.  This is because how C
+    % waits for variables in either A or B may depend on How B waits for
+    % variables in A.
+    %
+:- func init_parallel_exec_metrics_incomplete(parallel_exec_metrics_incomplete,
+    float, float, float) = parallel_exec_metrics_incomplete.
+
+    % StartMetrics = init_empty_parallel_exec_metrics(CostBefore, NumCalls,
+    %   SparkCost, SparkDelay, ContextWakeupDelay).
+    %
+    % Use this function to start with an empty set of metrics for an empty
+    % conjunction.  Then use init_parallel_exec_metrics_incomplete to continue
+    % adding conjuncts on the right.
+    %
+:- func init_empty_parallel_exec_metrics(float, int, float, float, float) = 
+    parallel_exec_metrics_incomplete.
+
+    % Metrics = finalise_parallel_exec_metrics(IncompleteMetrics,
+    %   CostAfterConj).
+    %
+    % Make the metrics structure complete.
+    %
+    % RightConjDelay is the delay before the conjunct to the right of & will
+    % begin executing.  & is considered to be right-associative since that's
+    % how sparks are sparked.
+    %
+:- func finalise_parallel_exec_metrics(parallel_exec_metrics_incomplete, float)
+    = parallel_exec_metrics.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module bool.
 :- import_module float.
 :- import_module int.
+:- import_module maybe.
 :- import_module require.
 :- import_module string.
 
@@ -662,6 +711,178 @@ sub_computation_parallelism(ParentParallelism, Prob, Parallelism) :-
 exceeded_desired_parallelism(DesiredParallelism, Parallelism) :-
     Parallelism = parallelism_amount(LikelyParallelism),
     DesiredParallelism < LikelyParallelism.
+
+%----------------------------------------------------------------------------%
+
+:- type parallel_exec_metrics_incomplete
+    --->    pem_incomplete(
+                pemi_time_before_conj       :: float,
+
+                pemi_num_calls              :: int,
+
+                pemi_spark_cost             :: float,
+
+                pemi_spark_delay            :: float,
+
+                pemi_context_wakeup_delay   :: float,
+
+                pemi_internal               ::
+                        maybe(parallel_exec_metrics_internal)
+                    % If there are no internal conjuncts then the parallel
+                    % conjunction is empty.
+            ).
+
+:- type parallel_exec_metrics_internal
+    --->    pem_left_most(
+                pemi_time_seq               :: float,
+                pemi_time_par               :: float
+            )
+    ;       pem_additional(
+                pemi_time_left              :: parallel_exec_metrics_internal,
+                    % The time of the left conjunct (that may be a conjunction),
+
+                pemi_time_left_signals      :: float,
+                    % The additional cost of calling signal within the left
+                    % conjunct.
+                    % NOTE: Note that this should be added to each of the
+                    % individual conjuncts _where_ they call signal but thta is
+                    % more difficult and may not be required.  We may visit it
+                    % in the future.
+
+                pemi_time_right_seq         :: float,
+                    % The time of the right conjunct if it is running after
+                    % the left in normal sequential execution.
+
+                pemi_time_right_par         :: float
+                    % The time of the right conjunct if it is running in
+                    % parallel with the left conjunct.  It may have to stop and
+                    % wait for variables to be produced; therefore this time is
+                    % different to time_right_seq.  This time also includes
+                    % parallel execution overheads and delays.
+            ).
+
+init_parallel_exec_metrics_incomplete(Metrics0, TimeSignals, TimeBSeq, 
+        TimeBPar) = Metrics :-
+    MaybeInternal0 = Metrics0 ^ pemi_internal,
+    (
+        MaybeInternal0 = yes(Internal0),
+        Internal = pem_additional(Internal0, TimeSignals, TimeBSeq, TimeBPar)
+    ;
+        MaybeInternal0 = no,
+        Internal = pem_left_most(TimeBSeq, TimeBPar),
+        require(unify(TimeSignals, 0.0),
+            this_file ++ "TimeSignal != 0")
+    ),
+    Metrics = Metrics0 ^ pemi_internal := yes(Internal).
+
+init_empty_parallel_exec_metrics(TimeBefore, NumCalls, SparkCost, 
+        SparkDelay, ContextWakeupDelay) = 
+    pem_incomplete(TimeBefore, NumCalls, SparkCost, SparkDelay,
+        ContextWakeupDelay, no).
+
+finalise_parallel_exec_metrics(IncompleteMetrics, TimeAfter) = Metrics :-
+    IncompleteMetrics = pem_incomplete(TimeBefore, NumCalls, SparkCost,
+        SparkDelay, ContextWakeupDelay, MaybeInternal),
+    (
+        MaybeInternal = yes(Internal)
+    ;
+        MaybeInternal = no,
+        error(this_file ++ "Cannot finalise empty parallel metrics.")
+    ),
+    BeforeAndAfterTime = TimeBefore + TimeAfter,    
+
+    % Calculate par time.
+    InnerParTime = parallel_exec_metrics_internal_get_par_time(Internal),
+    FirstConjParTime = pem_get_first_conj_par_time(Internal),
+    ( FirstConjDeadTime > 0.0 ->
+        FirstConjWakeupPenalty = ContextWakeupDelay
+    ;
+        FirstConjWakeupPenalty = 0.0
+    ),
+    ParTime = InnerParTime + BeforeAndAfterTime + FirstConjWakeupPenalty,
+
+    % Calculate the sequential execution time.
+    InnerSeqTime = parallel_exec_metrics_internal_get_seq_time(Internal),
+    SeqTime = InnerSeqTime + BeforeAndAfterTime,
+    
+    % Calculate the amount of time that the first conjunct is blocked for.
+    FirstConjDeadTime = InnerParTime - FirstConjParTime,
+
+    % Calculate the amount of time that the conjunction spends blocking on
+    % futures.
+    FutureDeadTime = pem_get_future_dead_time(Internal, yes, SparkCost,
+        SparkDelay),
+
+    % Calculate the overheads of parallelisation.
+    ParOverheads = pem_get_par_overheads(Internal),
+
+    Metrics = parallel_exec_metrics(NumCalls, SeqTime, ParTime, ParOverheads,
+        FirstConjDeadTime, FutureDeadTime).
+
+    % The expected parallel execution time.
+    %
+:- func parallel_exec_metrics_internal_get_par_time(
+    parallel_exec_metrics_internal) = float.
+
+parallel_exec_metrics_internal_get_par_time(pem_left_most(_, Time)) = Time.
+parallel_exec_metrics_internal_get_par_time(pem_additional(MetricsLeft,
+        TimeLeftSignal, _, TimeRight)) = Time :-
+    TimeLeft = parallel_exec_metrics_internal_get_par_time(MetricsLeft) +
+        TimeLeftSignal,
+    Time = max(TimeLeft, TimeRight).
+
+    % The expected sequential execution time.
+    %
+:- func parallel_exec_metrics_internal_get_seq_time(
+    parallel_exec_metrics_internal) = float.
+
+parallel_exec_metrics_internal_get_seq_time(pem_left_most(Time, _)) = Time.
+parallel_exec_metrics_internal_get_seq_time(pem_additional(MetricsLeft, _,
+        TimeRight, _)) = Time :-
+    TimeLeft = parallel_exec_metrics_internal_get_seq_time(MetricsLeft),
+    Time = TimeLeft + TimeRight.
+
+    % Get the parallel execution time of the first conjunct.  This is used for
+    % calculating the first conjunct's dead time (above).
+    %
+:- func pem_get_first_conj_par_time(parallel_exec_metrics_internal) = float.
+
+pem_get_first_conj_par_time(pem_left_most(_, Time)) = Time.
+pem_get_first_conj_par_time(pem_additional(Left, LeftSignalTime0, _, _)) = 
+        Time :-
+    (
+        Left = pem_left_most(_, _),
+        LeftSignalTime = LeftSignalTime0
+    ;
+        Left = pem_additional(_, _, _, _),
+        LeftSignalTime = 0.0
+    ),
+    Time = pem_get_first_conj_par_time(Left) + LeftSignalTime.
+
+:- func pem_get_future_dead_time(parallel_exec_metrics_internal, bool,
+    float, float) = float.
+
+    % XXX: We should make this an attribute of pem_additional.
+pem_get_future_dead_time(pem_left_most(_, _), _, _, _) = 0.0.
+pem_get_future_dead_time(pem_additional(Left, _, Seq, Par), 
+        IsRightmostConj, ForkCost, ForkDelay) = DeadTime :-
+    DeadTime = ThisDeadTime + LeftDeadTime,
+    ThisDeadTime0 = Par - Seq - ForkDelay,
+    (
+        IsRightmostConj = yes,
+        ThisDeadTime = ThisDeadTime0
+    ;
+        IsRightmostConj = no,
+        ThisDeadTime = ThisDeadTime0 - ForkCost
+    ),
+    LeftDeadTime = pem_get_future_dead_time(Left, no, ForkCost, ForkDelay).
+
+:- func pem_get_par_overheads(parallel_exec_metrics_internal) = float.
+
+pem_get_par_overheads(pem_left_most(Seq, Par))= Par - Seq.
+pem_get_par_overheads(pem_additional(Left, Signals, Seq, Par)) = Overheads :-
+    Overheads = LeftOverheads + Signals + Par - Seq,
+    pem_get_par_overheads(Left) = LeftOverheads.
 
 %----------------------------------------------------------------------------%
 

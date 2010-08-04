@@ -129,7 +129,7 @@ topological_sort(Graph, Cliques) :-
 
     Visit = dense_bitset.init,
     tsort(Dfs, InvGraph, Visit, [], Cliques0),
-    list.reverse(Cliques0, Cliques),
+    reverse(Cliques0, [], Cliques),
 
     trace [compiletime(flag("tsort")), io(!IO)] (
         io.nl(!IO),
@@ -138,6 +138,16 @@ topological_sort(Graph, Cliques) :-
         io.nl(!IO),
         io.nl(!IO)
     ).
+
+    % This is a copy of list.reverse_2, we copy it here so that it can be
+    % compiled with --trace minimum even when the version in the standard
+    % library is compiled with --trace deep.
+    %
+:- pred reverse(list(T)::in, list(T)::in, list(T)::out) is det.
+
+reverse([], L, L).
+reverse([X | Xs], L0, L) :-
+    reverse(Xs, [X | L0], L).
 
 :- pred tsort(list(int)::in, graph::in, visit::array_di, list(set(int))::in,
     list(set(int))::out) is det.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2009 The University of Melbourne.
+% Copyright (C) 2008-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -24,6 +24,7 @@
 :- import_module report.
 
 :- import_module map.
+:- import_module maybe.
 
 :- type coverage_info
     --->    coverage_unknown
@@ -45,25 +46,26 @@
 
 %----------------------------------------------------------------------------%
 
-
     % Annotate the program representation structure with coverage information.
     %
 :- pred procrep_annotate_with_coverage(own_prof_info::in,
     map(goal_path, call_site_perf)::in, map(goal_path, coverage_point)::in,
     map(goal_path, coverage_point)::in, proc_rep::in,
-    proc_rep(coverage_info)::out) is det.
+    maybe_error(proc_rep(coverage_info))::out) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module message.
 :- import_module program_representation_utils.
 
 :- import_module bool.
+:- import_module cord.
+:- import_module exception.
 :- import_module int.
 :- import_module io.
 :- import_module list.
-:- import_module maybe.
 :- import_module require.
 :- import_module string.
 :- import_module unit.
@@ -107,7 +109,7 @@ get_coverage_before_and_after(coverage_known_same(Count), Count, Count).
     %       view erroneous output.
     %
 procrep_annotate_with_coverage(OwnProf, CallSites, SolnsCoveragePoints,
-        BranchCoveragePoints, !ProcRep) :-
+        BranchCoveragePoints, !.ProcRep, MaybeProcRep) :-
     some [!ProcDefn, !GoalRep] (
         !:ProcDefn = !.ProcRep ^ pr_defn,
         !:GoalRep = !.ProcDefn ^ pdr_goal,
@@ -117,12 +119,24 @@ procrep_annotate_with_coverage(OwnProf, CallSites, SolnsCoveragePoints,
         Before = before_known(Calls),
         CoverageReference = coverage_reference_info(ProcLabel, CallSites,
             SolnsCoveragePoints, BranchCoveragePoints),
-        goal_annotate_coverage(CoverageReference, empty_goal_path,
-            Before, After, !GoalRep),
-        require(unify(After, after_known(Exits)),
-            "Coverage after procedure not equal with exit count of procedure"),
-        !:ProcDefn = !.ProcDefn ^ pdr_goal := !.GoalRep,
-        !:ProcRep = !.ProcRep ^ pr_defn := !.ProcDefn
+        promise_equivalent_solutions [MaybeProcRep]
+        ( try []
+            goal_annotate_coverage(CoverageReference, empty_goal_path,
+                Before, After, !GoalRep)
+        then
+            require(unify(After, after_known(Exits)),
+                "Coverage after procedure not equal with exit count of" ++
+                " procedure"),
+            !:ProcDefn = !.ProcDefn ^ pdr_goal := !.GoalRep,
+            !:ProcRep = !.ProcRep ^ pr_defn := !.ProcDefn,
+            MaybeProcRep = ok(!.ProcRep)
+        catch software_error(Error) ->
+            location_to_string(0, proc(ProcLabel), ProcNameCord),
+            ProcName = string.append_list(list(ProcNameCord)),
+            MaybeProcRep = error(format(
+                "While calculating coverage for %s: %s",
+                [s(ProcName), s(Error)]))
+        )
     ).
 
     % These maps are keyed by goal_path, comparing these structures is less

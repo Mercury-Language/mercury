@@ -138,7 +138,9 @@
 
                 % An error in the generation of a coverage_procrep report.
                 %
-    ;       error_coverage_procrep_error(string).
+    ;       error_coverage_procrep_error(string)
+    
+    ;       error_exception_thrown(string).
 
 %-----------------------------------------------------------------------------%
 
@@ -150,6 +152,9 @@
     % Create a new line proceeded by an indentation.
     %
 :- func nl_indent(int) = cord(string).
+
+    % A newline symbol.
+:- func nl = cord(string).
 
     % The size of an indentation level.  2 x the input.
     %
@@ -244,6 +249,7 @@ message_type_to_level(error_extra_proc_dynamics_in_clique_proc) =
     message_error.
 message_type_to_level(error_coverage_procrep_error(_)) =
     message_error.
+message_type_to_level(error_exception_thrown(_)) = message_error.
 
 %-----------------------------------------------------------------------------%
 
@@ -295,9 +301,14 @@ message_type_to_string(MessageType) = Cord :-
         String = "extra proc dynamnics for a clique proc are not currenty"
             ++ " handled."
     ;
-        MessageType = error_coverage_procrep_error(ErrorStr),
-        string.format("Error generating coverage procedure report: %s",
-            [s(ErrorStr)], String)
+        (
+            MessageType = error_coverage_procrep_error(ErrorStr),
+            Template = "Error generating coverage procedure report: %s"
+        ;
+            MessageType = error_exception_thrown(ErrorStr),
+            Template = "Exception thrown: %s"
+        ),
+        string.format(Template, [s(ErrorStr)], String)
     ),
     Cord = singleton(String).
 
@@ -312,7 +323,9 @@ indent(N) = Indent :-
         Indent = snoc(indent(N - 1), "  ")
     ).
 
-nl_indent(N) = singleton("\n") ++ indent(N).
+nl_indent(N) = nl ++ indent(N).
+
+nl = singleton("\n").
 
 indent_size(N) = 2 * N.
 

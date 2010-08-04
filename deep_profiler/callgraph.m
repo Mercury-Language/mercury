@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2006, 2008 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2006, 2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -55,8 +55,38 @@ find_cliques(InitDeep, BottomUpPDPtrCliqueList) :-
     % because the list may be very long and map runs out of stack space, and
     % we want the final list in reverse order anyway because the propagation
     % algorithm works bottom up.
-    list.foldl(accumulate_pdptr_lists, TopDownPDICliqueList,
+    callgraph.foldl(accumulate_pdptr_lists, TopDownPDICliqueList,
         [], BottomUpPDPtrCliqueList).
+    
+    % This version of foldl is safer when tail recursion isn't available.
+    %
+:- pred foldl(pred(X, A, A), list(X), A, A).
+:- mode foldl(pred(in, in, out) is det, in, in, out) is det.
+
+foldl(P, !.L, !A) :-
+    foldl_2(100000, P, !L, !A),
+    (
+        !.L = []
+    ;
+        !.L = [_ | _],
+        callgraph.foldl(P, !.L, !A)
+    ).
+
+:- pred foldl_2(int, pred(X, A, A), list(X), list(X), A, A).
+:- mode foldl_2(in, pred(in, in, out) is det, in, out, in, out) is det.
+
+foldl_2(Depth, P, !Xs, !A) :-
+    ( Depth > 0 ->
+        (
+            !.Xs = []
+        ;
+            !.Xs = [X | !:Xs],
+            P(X, !A),
+            foldl_2(Depth - 1, P, !Xs, !A)
+        )
+    ;
+        true
+    ).
 
 :- pred accumulate_pdptr_lists(set(int)::in, list(list(proc_dynamic_ptr))::in,
     list(list(proc_dynamic_ptr))::out) is det.

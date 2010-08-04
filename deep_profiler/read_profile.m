@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2009 The University of Melbourne.
+% Copyright (C) 2001, 2004-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -225,7 +225,45 @@ init_deep(ProgName, MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
 :- pred read_nodes(initial_deep::in, maybe_error(initial_deep)::out,
     io::di, io::uo) is det.
 
-read_nodes(!.InitDeep, MaybeInitDeep, !IO) :-
+read_nodes(InitDeep0, MaybeInitDeep, !IO) :-
+    % Wrap the real function inside another loop.  This strategy ensures that
+    % this code works in grades that lack tail recursion such as debugging
+    % grades.  read_nodes_2 will return after it has exceeded a depth limit,
+    % unwinding it's stack.  The outer loop will continue as long as
+    % read_nodes_2 thinks that more work remains.
+    % The depth of 50,000 has been chosen as it is roughly less than half the
+    % stack depth that causes crashes during debugging.
+    read_nodes_2(50000, InitDeep0, MaybeInitDeep0, !IO),
+    (
+        MaybeInitDeep0 = init_deep_complete(InitDeep),
+        MaybeInitDeep = ok(InitDeep)
+    ;
+        MaybeInitDeep0 = error(Error),
+        MaybeInitDeep = error(Error)
+    ;
+        MaybeInitDeep0 = init_deep_incomplete(InitDeep1),
+        read_nodes(InitDeep1, MaybeInitDeep, !IO)
+    ).
+
+:- type maybe_init_deep_complete
+    --->    init_deep_complete(initial_deep)
+    ;       init_deep_incomplete(initial_deep)
+    ;       error(string).
+
+:- pred read_nodes_2(int::in, initial_deep::in, maybe_init_deep_complete::out,
+    io::di, io::uo) is det.
+
+read_nodes_2(Depth, !.InitDeep, MaybeInitDeep, !IO) :-
+    ( Depth < 1 ->
+        MaybeInitDeep = init_deep_incomplete(!.InitDeep)
+    ;
+        read_nodes_3(Depth - 1, !.InitDeep, MaybeInitDeep, !IO)
+    ).
+
+:- pred read_nodes_3(int::in, initial_deep::in, maybe_init_deep_complete::out,
+    io::di, io::uo) is det.
+
+read_nodes_3(Depth, !.InitDeep, MaybeInitDeep, !IO) :-
     read_byte(MaybeByte, !IO),
     (
         MaybeByte = ok(Byte),
@@ -238,7 +276,7 @@ read_nodes(!.InitDeep, MaybeInitDeep, !IO) :-
                     CSDs0 = !.InitDeep ^ init_call_site_dynamics,
                     deep_insert(CSDs0, CSDI, CallSiteDynamic, CSDs),
                     !InitDeep ^ init_call_site_dynamics := CSDs,
-                    read_nodes(!.InitDeep, MaybeInitDeep, !IO)
+                    read_nodes_2(Depth, !.InitDeep, MaybeInitDeep, !IO)
                 ;
                     MaybeCSD = error2(Error),
                     MaybeInitDeep = error(Error)
@@ -251,7 +289,7 @@ read_nodes(!.InitDeep, MaybeInitDeep, !IO) :-
                     PDs0 = !.InitDeep ^ init_proc_dynamics,
                     deep_insert(PDs0, PDI, ProcDynamic, PDs),
                     !InitDeep ^ init_proc_dynamics := PDs,
-                    read_nodes(!.InitDeep, MaybeInitDeep, !IO)
+                    read_nodes_2(Depth, !.InitDeep, MaybeInitDeep, !IO)
                 ;
                     MaybePD = error2(Error),
                     MaybeInitDeep = error(Error)
@@ -264,7 +302,7 @@ read_nodes(!.InitDeep, MaybeInitDeep, !IO) :-
                     CSSs0 = !.InitDeep ^ init_call_site_statics,
                     deep_insert(CSSs0, CSSI, CallSiteStatic, CSSs),
                     !InitDeep ^ init_call_site_statics := CSSs,
-                    read_nodes(!.InitDeep, MaybeInitDeep, !IO)
+                    read_nodes_2(Depth, !.InitDeep, MaybeInitDeep, !IO)
                 ;
                     MaybeCSS = error(Error),
                     MaybeInitDeep = error(Error)
@@ -277,14 +315,14 @@ read_nodes(!.InitDeep, MaybeInitDeep, !IO) :-
                     PSs0 = !.InitDeep ^ init_proc_statics,
                     deep_insert(PSs0, PSI, ProcStatic, PSs),
                     !InitDeep ^ init_proc_statics := PSs,
-                    read_nodes(!.InitDeep, MaybeInitDeep, !IO)
+                    read_nodes_2(Depth, !.InitDeep, MaybeInitDeep, !IO)
                 ;
                     MaybePS = error2(Error),
                     MaybeInitDeep = error(Error)
                 )
             ;
                 NextItem = deep_item_end,
-                MaybeInitDeep = ok(!.InitDeep)
+                MaybeInitDeep = init_deep_complete(!.InitDeep)
             )
         ;
             string.format("unexpected token %d", [i(Byte)], Msg),
@@ -292,7 +330,8 @@ read_nodes(!.InitDeep, MaybeInitDeep, !IO) :-
         )
     ;
         MaybeByte = eof,
-        MaybeInitDeep = ok(!.InitDeep)
+        % XXX: Shouldn't this be an error since there's a deep_item_end token?
+        MaybeInitDeep = init_deep_complete(!.InitDeep)
     ;
         MaybeByte = error(Error),
         io.error_message(Error, Msg),

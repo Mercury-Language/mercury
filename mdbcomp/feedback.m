@@ -26,6 +26,7 @@
 :- import_module int.
 :- import_module io.
 :- import_module list.
+:- import_module set.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -125,14 +126,43 @@
                     % The cost threshold in call sequence counts of a call site
                     % before it is considered for parallel execution.
 
-                cpcp_parallelise_dep_conjs  :: parallelise_dep_conjs
+                cpcp_parallelise_dep_conjs  :: parallelise_dep_conjs,
                     % Whether we will allow parallelisation to result in
                     % dependant parallel conjunctions.
+
+                cpcp_best_par_alg           :: best_par_algorithm
             ).
 
 :- type parallelise_dep_conjs
-    --->    parallelise_dep_conjs
+    --->    parallelise_dep_conjs_overlap
+                % Use the overlap calculation for dependant parallelism.
+
+    ;       parallelise_dep_conjs_num_vars
+                % Use the num vars approximation for how much conjuncts
+                % overlap.
+
+    ;       parallelise_dep_conjs_naive
+                % Be naive to dependant parallelism, pretend its independant.
+
     ;       do_not_parallelise_dep_conjs.
+
+    % This type is used to select which algorithm is used to find the most
+    % profitable parallelisation of a particular conjunction.
+    %
+    % TODO: The type name could be improved to make it distinct from the
+    % algorithm use use to search through the clique graph.
+    %
+:- type best_par_algorithm
+    --->    bpa_complete_bnb(
+                % Use a complete but exponential algorithm.
+                
+                int
+                    % If nonzero a conjunct with more than this many conjuncts
+                    % will be solved with the greedy algorithm instead of this
+                    % slower one.  (10 is the recommended value).
+            )
+    ;       bpa_greedy.
+                % Use a greedy and linear algorithm.
 
     % The set of candidate parallel conjunctions within a procedure.
     %
@@ -168,6 +198,11 @@
                     % Used to locate the goals to be parallelised within the
                     % conjunction.  Partitions are separated by non atomic
                     % goals, the first partition has the number 1.
+
+                cpc_first_conj_num      :: int,
+                    % The first conjunct number in the partition.  This is only
+                    % used for pretty-printing these reports with meaningful
+                    % goal paths.
 
                 cpc_is_dependant        :: conjuncts_are_dependant,
 
@@ -239,7 +274,7 @@
                 % compiler about _how_ to parallelise calls around it.
 
 :- type conjuncts_are_dependant
-    --->    conjuncts_are_dependant
+    --->    conjuncts_are_dependant(set(var_rep))
     ;       conjuncts_are_independent.
 
 :- pred convert_candidate_par_conjunctions_proc(pred(A, B),
@@ -258,85 +293,45 @@
 
     % Represent the metrics of a parallel execution.
     %
-:- type parallel_exec_metrics.
+:- type parallel_exec_metrics
+    --->    parallel_exec_metrics(
+                pem_num_calls               :: int,
+                    % The number of calls into this parallelisation.
 
-    % Represent the metrics of part of a parallel execution.
-    %
-:- type parallel_exec_metrics_incomplete.
-    
-    % ParMetrics = init_parallel_exec_metrics_incomplete(PartMetricsA,
-    %   TimeSignal, TimeBSeq, TimeBPar) 
-    %
-    % Use this function to build parallel execution metrics for a parallel
-    % conjunction of any size greater than one.
-    %
-    % Although the parallel conjunction operator is operationally
-    % right-associative, parallel overlap due in dependant parallel
-    % conjunctions is easier to model if we consider it to be left associative.
-    % That is the conjunction ( A & B & C ) should be modeled as two conjuncts
-    % (A & B) (which is a conjunction itself and C.  This is because how C
-    % waits for variables in either A or B may depend on How B waits for
-    % variables in A.
-    %
-:- func init_parallel_exec_metrics_incomplete(parallel_exec_metrics_incomplete,
-    float, float, float) = parallel_exec_metrics_incomplete.
+                pem_seq_time                :: float,
+                    % The elapsed time of the original sequential execution.
 
-    % StartMetrics = init_empty_parallel_exec_metrics(CostBefore, NumCalls,
-    %   SparkCost, SparkDelay, ContextWakeupDelay).
-    %
-    % Use this function to start with an empty set of metrics for an empty
-    % conjunction.  Then use init_parallel_exec_metrics_incomplete to continue
-    % adding conjuncts on the right.
-    %
-:- func init_empty_parallel_exec_metrics(float, int, float, float, float) = 
-    parallel_exec_metrics_incomplete.
+                pem_par_time                :: float,
+                    % The elapsed time of the parallel execution.
 
-    % Metrics = finalise_parallel_exec_metrics(IncompleteMetrics,
-    %   CostAfterConj).
-    %
-    % Make the metrics structure complete.
-    %
-    % RightConjDelay is the delay before the conjunct to the right of & will
-    % begin executing.  & is considered to be right-associative since that's
-    % how sparks are sparked.
-    %
-:- func finalise_parallel_exec_metrics(parallel_exec_metrics_incomplete, float)
-    = parallel_exec_metrics.
+                pem_par_overheads           :: float,
+                    % The overheads of parallel execution.  These are already
+                    % included in pem_par_time.
+                    % Add these to pem_seq_time to get the 'time on cpu' of
+                    % this execution.
 
-:- func parallel_exec_metrics_get_num_calls(parallel_exec_metrics) = int.
+                pem_first_conj_dead_time    :: float,
+                    % The amount of time the initial (left most) conjunct
+                    % spends waiting for the other conjuncts.  During this time
+                    % the context used by this conjunct must be kept alive
+                    % because it will resume executing sequential code after
+                    % the conjunct, however we know that it cannot be resumed
+                    % before it's children have completed.
+                    %
 
-:- func parallel_exec_metrics_get_seq_time(parallel_exec_metrics) = float.
-
-:- func parallel_exec_metrics_get_par_time(parallel_exec_metrics) = float.
-
-    % The amount of time saved per-call. SeqTime - ParTime.
-    %
-:- func parallel_exec_metrics_get_time_saving(parallel_exec_metrics) = float.
+                pem_future_dead_time        :: float
+                    % The amount of time all conjuncts spend blocked on the
+                    % production of futures.
+            ).
 
     % The speedup per call.  SeqTime / ParTime.  For example, a value of 2.0
     % means that this is twice as fast when parallelised.
     %
 :- func parallel_exec_metrics_get_speedup(parallel_exec_metrics) = float.
-
-    % The amount of time the initial (left most) conjunct spends waiting for
-    % the other conjuncts.  During this time the context used by this conjunct
-    % must be kept alive because it will resume executing sequential code after
-    % the conjunct, however we know that it cannot be resumed before it's
-    % children have completed.
+    
+    % The amount of time saved per-call. SeqTime - ParTime.
     %
-:- func parallel_exec_metrics_get_first_conj_dead_time(parallel_exec_metrics) =
-    float.
-
-    % The some of the amount of time spent waiting for variables to be produced
-    % throughout the whole conjunction.
-    %
-:- func parallel_exec_metrics_get_future_dead_time(parallel_exec_metrics) =
-    float.
-
-    % The sum of the above two times.
-    %
-:- func parallel_exec_metrics_get_total_dead_time(parallel_exec_metrics) =
-    float.
+:- func parallel_exec_metrics_get_time_saving(parallel_exec_metrics) = float.
 
 %-----------------------------------------------------------------------------%
 
@@ -789,13 +784,23 @@ write_feedback_file_2(Stream, ProgName, Feedback, unit, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
+parallel_exec_metrics_get_speedup(PEM) = SeqTime / ParTime :-
+    SeqTime = PEM ^ pem_seq_time,
+    ParTime = PEM ^ pem_par_time.
+
+parallel_exec_metrics_get_time_saving(PEM) = SeqTime - ParTime :-
+    SeqTime = PEM ^ pem_seq_time,
+    ParTime = PEM ^ pem_par_time.
+
+%-----------------------------------------------------------------------------%
+
 :- func feedback_first_line = string.
 
 feedback_first_line = "Mercury Compiler Feedback".
 
 :- func feedback_version = string.
 
-feedback_version = "10".
+feedback_version = "11".
 
 %-----------------------------------------------------------------------------%
 %
@@ -810,217 +815,16 @@ convert_candidate_par_conjunctions_proc(Conv, CPCProcA, CPCProcB) :-
     CPCProcB = candidate_par_conjunctions_proc(VarTable, CPCB).
 
 convert_candidate_par_conjunction(Conv, CPC0, CPC) :-
-    CPC0 = candidate_par_conjunction(GoalPath, PartNum, IsDependent, 
-        GoalsBefore0, Conjs0, GoalsAfter0, Metrics),
+    CPC0 = candidate_par_conjunction(GoalPath, PartNum, FirstGoalNum,
+        IsDependent, GoalsBefore0, Conjs0, GoalsAfter0, Metrics),
     map(convert_seq_conj(Conv), Conjs0, Conjs),
     map(Conv, GoalsBefore0, GoalsBefore),
     map(Conv, GoalsAfter0, GoalsAfter),
-    CPC = candidate_par_conjunction(GoalPath, PartNum, IsDependent, 
-        GoalsBefore, Conjs, GoalsAfter, Metrics).
+    CPC = candidate_par_conjunction(GoalPath, PartNum, FirstGoalNum,
+        IsDependent, GoalsBefore, Conjs, GoalsAfter, Metrics).
 
 convert_seq_conj(Conv, seq_conj(Conjs0), seq_conj(Conjs)) :-
     map(Conv, Conjs0, Conjs).
-
-%-----------------------------------------------------------------------------%
-
-:- type parallel_exec_metrics
-    --->    parallel_exec_metrics(
-                pem_inner_metrics           :: parallel_exec_metrics_internal,
-                pem_num_calls               :: int,
-                pem_time_before_conj        :: float,
-                pem_time_after_conj         :: float,
-                pem_left_conj_cost          :: float,
-                    % The cost of calling fork() in the conjunct to the left of
-                    % a & symbol.
-                pem_right_conj_delay        :: float,
-                    % The delay before a conjunct to the right of & begins
-                    % executing.
-
-                pem_context_wakeup_delay    :: float
-            ).
-
-:- type parallel_exec_metrics_incomplete
-    --->    pem_incomplete(
-                pemi_time_before_conj       :: float,
-
-                pemi_num_calls              :: int,
-
-                pemi_spark_cost             :: float,
-
-                pemi_spark_delay            :: float,
-
-                pemi_context_wakeup_delay   :: float,
-
-                pemi_internal               ::
-                        maybe(parallel_exec_metrics_internal)
-                    % If there are no internal conjuncts then the parallel
-                    % conjunction is empty.
-            ).
-
-:- type parallel_exec_metrics_internal
-    --->    pem_left_most(
-                pemi_time_seq               :: float,
-                pemi_time_par               :: float
-            )
-    ;       pem_additional(
-                pemi_time_left              :: parallel_exec_metrics_internal,
-                    % The time of the left conjunct (that may be a conjunction),
-
-                pemi_time_left_signals      :: float,
-                    % The additional cost of calling signal within the left
-                    % conjunct.
-                    % NOTE: Note that this should be added to each of the
-                    % individual conjuncts _where_ they call signal but thta is
-                    % more difficult and may not be required.  We may visit it
-                    % in the future.
-
-                pemi_time_right_seq         :: float,
-                    % The time of the right conjunct if it is running after
-                    % the left in normal sequential execution.
-
-                pemi_time_right_par         :: float
-                    % The time of the right conjunct if it is running in
-                    % parallel with the left conjunct.  It may have to stop and
-                    % wait for variables to be produced; therefore this time is
-                    % different to time_right_seq.  This time also includes
-                    % parallel execution overheads and delays.
-            ).
-
-init_parallel_exec_metrics_incomplete(Metrics0, TimeSignals, TimeBSeq, 
-        TimeBPar) = Metrics :-
-    MaybeInternal0 = Metrics0 ^ pemi_internal,
-    (
-        MaybeInternal0 = yes(Internal0),
-        Internal = pem_additional(Internal0, TimeSignals, TimeBSeq, TimeBPar)
-    ;
-        MaybeInternal0 = no,
-        Internal = pem_left_most(TimeBSeq, TimeBPar),
-        require(unify(TimeSignals, 0.0),
-            this_file ++ "TimeSignal != 0")
-    ),
-    Metrics = Metrics0 ^ pemi_internal := yes(Internal).
-
-init_empty_parallel_exec_metrics(TimeBefore, NumCalls, SparkCost, 
-        SparkDelay, ContextWakeupDelay) = 
-    pem_incomplete(TimeBefore, NumCalls, SparkCost, SparkDelay,
-        ContextWakeupDelay, no).
-
-finalise_parallel_exec_metrics(IncompleteMetrics, TimeAfter) = Metrics :-
-    IncompleteMetrics = pem_incomplete(TimeBefore, NumCalls, SparkCost,
-        SparkDelay, ContextWakeupDelay, MaybeInternal),
-    (
-        MaybeInternal = yes(Internal)
-    ;
-        MaybeInternal = no,
-        error(this_file ++ "Cannot finalise empty parallel metrics.")
-    ),
-    Metrics = parallel_exec_metrics(Internal, NumCalls, TimeBefore, TimeAfter,
-        SparkCost, SparkDelay, ContextWakeupDelay).
-
-parallel_exec_metrics_get_num_calls(PEM) = NumCalls :-
-    NumCalls = PEM ^ pem_num_calls.
-
-parallel_exec_metrics_get_par_time(PEM) = Time :-
-    Inner = PEM ^ pem_inner_metrics,
-    InnerTime = parallel_exec_metrics_internal_get_par_time(Inner),
-    FirstConjTime = pem_get_first_conj_time(Inner),
-    BeforeAndAfterTime = PEM ^ pem_time_before_conj + PEM ^ pem_time_after_conj,
-    ( FirstConjTime < InnerTime ->
-        FirstConjWakeupPenalty = PEM ^ pem_context_wakeup_delay
-    ;
-        FirstConjWakeupPenalty = 0.0
-    ),
-    Time = InnerTime + BeforeAndAfterTime + FirstConjWakeupPenalty.
-
-parallel_exec_metrics_get_seq_time(PEM) = Time :- 
-    Inner = PEM ^ pem_inner_metrics,
-    InnerTime = parallel_exec_metrics_internal_get_seq_time(Inner),
-    BeforeAndAfterTime = PEM ^ pem_time_before_conj + PEM ^ pem_time_after_conj,
-    Time = InnerTime + BeforeAndAfterTime.
-
-parallel_exec_metrics_get_speedup(Metrics) = SeqTime / ParTime :-
-    SeqTime = parallel_exec_metrics_get_seq_time(Metrics),
-    ParTime = parallel_exec_metrics_get_par_time(Metrics).
-
-    % The expected parallel execution time.
-    %
-:- func parallel_exec_metrics_internal_get_par_time(
-    parallel_exec_metrics_internal) = float.
-
-parallel_exec_metrics_internal_get_par_time(pem_left_most(_, Time)) = Time.
-parallel_exec_metrics_internal_get_par_time(pem_additional(MetricsLeft,
-        TimeLeftSignal, _, TimeRight)) = Time :-
-    TimeLeft = parallel_exec_metrics_internal_get_par_time(MetricsLeft) +
-        TimeLeftSignal,
-    Time = max(TimeLeft, TimeRight).
-
-    % The expected sequential execution time.
-    %
-:- func parallel_exec_metrics_internal_get_seq_time(
-    parallel_exec_metrics_internal) = float.
-
-parallel_exec_metrics_internal_get_seq_time(pem_left_most(Time, _)) = Time.
-parallel_exec_metrics_internal_get_seq_time(pem_additional(MetricsLeft, _,
-        TimeRight, _)) = Time :-
-    TimeLeft = parallel_exec_metrics_internal_get_seq_time(MetricsLeft),
-    Time = TimeLeft + TimeRight.
-
-parallel_exec_metrics_get_time_saving(Metrics) = SeqTime - ParTime :-
-    SeqTime = parallel_exec_metrics_get_seq_time(Metrics),
-    ParTime = parallel_exec_metrics_get_par_time(Metrics).
-
-parallel_exec_metrics_get_first_conj_dead_time(Metrics) = DeadTime :-
-    Inner = Metrics ^ pem_inner_metrics,
-    FirstConjTime = pem_get_first_conj_time(Inner),
-    ParTime = parallel_exec_metrics_get_par_time(Metrics),
-    DeadTime = ParTime - FirstConjTime.
-
-    % Get the parallel execution time of the first conjunct.  This is used for
-    % calculating the first conjunct's dead time (above).
-    %
-:- func pem_get_first_conj_time(parallel_exec_metrics_internal) = float.
-
-pem_get_first_conj_time(pem_left_most(_, Time)) = Time.
-pem_get_first_conj_time(pem_additional(Left, LeftSignalTime0, _, _)) = Time :-
-    (
-        Left = pem_left_most(_, _),
-        LeftSignalTime = LeftSignalTime0
-    ;
-        Left = pem_additional(_, _, _, _),
-        LeftSignalTime = 0.0
-    ),
-    Time = pem_get_first_conj_time(Left) + LeftSignalTime.
-
-parallel_exec_metrics_get_future_dead_time(Metrics) = DeadTime :-
-    Inner = Metrics ^ pem_inner_metrics,
-    RightConjDelay = Metrics ^ pem_right_conj_delay,
-    LeftConjCost = Metrics ^ pem_left_conj_cost,
-    DeadTime = pem_get_future_dead_time(Inner, yes, LeftConjCost,
-        RightConjDelay).
-
-:- func pem_get_future_dead_time(parallel_exec_metrics_internal, bool,
-    float, float) = float.
-
-    % XXX: Delays may new be build into the times.
-pem_get_future_dead_time(pem_left_most(_, _), _, _, _) = 0.0.
-pem_get_future_dead_time(pem_additional(Left, _, Seq, Par), 
-        IsRightmostConj, ForkCost, ForkDelay) = DeadTime :-
-    DeadTime = ThisDeadTime + LeftDeadTime,
-    ThisDeadTime0 = Par - Seq - ForkDelay,
-    (
-        IsRightmostConj = yes,
-        ThisDeadTime = ThisDeadTime0
-    ;
-        IsRightmostConj = no,
-        ThisDeadTime = ThisDeadTime0 + ForkCost
-    ),
-    LeftDeadTime = pem_get_future_dead_time(Left, no, ForkCost, ForkDelay).
-
-parallel_exec_metrics_get_total_dead_time(Metrics) = DeadTime :-
-    DeadTime = FirstConjDeadTime + FutureDeadTime,
-    FirstConjDeadTime = 
-        parallel_exec_metrics_get_first_conj_dead_time(Metrics),
-    FutureDeadTime = parallel_exec_metrics_get_future_dead_time(Metrics).
 
 %-----------------------------------------------------------------------------%
 

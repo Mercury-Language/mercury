@@ -50,8 +50,10 @@
     %
     % Print a goal (recursively) to a string representation.
     %
-:- pred print_goal_to_strings(var_table::in, int::in, goal_rep(GoalAnn)::in,
-    cord(string)::out) is det <= goal_annotation(GoalAnn).
+:- pred print_goal_to_strings(var_table::in, int::in, goal_path::in, 
+        goal_rep(GoalAnn)::in, cord(string)::out) is det 
+    <= goal_annotation(GoalAnn).
+
 
 %----------------------------------------------------------------------------%
 
@@ -206,7 +208,7 @@ print_proc_to_strings(ProcRep, Strings) :-
     ProcLabelString = DetismString ++ cord.singleton(" ") ++ 
         cord.singleton(ProcLabelString0),
     print_args_to_strings(print_head_var, VarTable, ArgVarReps, ArgsString),
-    print_goal_to_strings(VarTable, 1, GoalRep, GoalString),
+    print_goal_to_strings(VarTable, 1, empty_goal_path, GoalRep, GoalString),
     Strings = ProcLabelString ++ ArgsString ++ cord.singleton(" :-\n") ++
         GoalString ++ nl.
 
@@ -232,35 +234,16 @@ print_proc_label_to_string(ProcLabel, String) :-
 
 %-----------------------------------------------------------------------------%
 
-print_goal_to_strings(VarTable, Indent, GoalRep, Strings) :-
+print_goal_to_strings(VarTable, Indent, GoalPath, GoalRep, Strings) :-
     GoalRep = goal_rep(GoalExprRep, DetismRep, GoalAnnotation),
-    detism_to_string(DetismRep, DetismString0),
-    print_goal_annotation_to_strings(GoalAnnotation, GoalAnnotationString0),
-   
-    % Indicate which detisms and annotations apply to whole conjunctions.
-    ( GoalExprRep = conj_rep(_) ->
-        AnnotationPrefix = cord.singleton("% conj: ")
-    ;
-        AnnotationPrefix = cord.singleton("% ")
-    ),
-    GoalAnnotationString1 = AnnotationPrefix ++ GoalAnnotationString0,
-    DetismString = AnnotationPrefix ++ DetismString0,
-
-    % Don't print empty annotations, including their newline.
-    ( not is_empty(GoalAnnotationString0) ->
-        GoalAnnotationString = nl_indent(Indent) ++ GoalAnnotationString1
-    ;
-        GoalAnnotationString = cord.empty
-    ),
-    Strings = indent(Indent) ++ DetismString ++ 
-        GoalAnnotationString ++ 
-        nl ++ ExprString,
     (
         GoalExprRep = conj_rep(ConjGoalReps),
-        print_conj_to_strings(VarTable, Indent, ConjGoalReps, ExprString)
+        print_conj_to_strings(VarTable, Indent, GoalPath, ConjGoalReps, 
+            ExprString)
     ;
         GoalExprRep = disj_rep(DisjGoalReps),
-        print_disj_to_strings(VarTable, Indent, DisjGoalReps, no, DisjString),
+        print_disj_to_strings(VarTable, Indent, GoalPath, 1, DisjGoalReps, 
+            no, DisjString),
         ExprString = indent(Indent) ++ 
             cord.singleton("(\n") ++ DisjString ++ indent(Indent) ++
             cord.singleton(")\n")
@@ -269,15 +252,22 @@ print_goal_to_strings(VarTable, Indent, GoalRep, Strings) :-
         lookup_var_name(VarTable, SwitchVarRep, SwitchVarName),
         string.format("%s switch on %s\n",
             [s(string(CanFail)), s(SwitchVarName)], SwitchOnString),
-        print_switch_to_strings(VarTable, Indent, CasesRep, no, SwitchString),
+        print_switch_to_strings(VarTable, Indent, GoalPath, 1, CasesRep, 
+            no, SwitchString),
         ExprString = indent(Indent) ++ cord.singleton(SwitchOnString) ++ 
             indent(Indent) ++ cord.singleton("(\n") ++ SwitchString ++ 
             indent(Indent) ++ cord.singleton(")\n")
     ;
         GoalExprRep = ite_rep(CondRep, ThenRep, ElseRep),
-        print_goal_to_strings(VarTable, Indent + 1, CondRep, CondString),
-        print_goal_to_strings(VarTable, Indent + 1, ThenRep, ThenString),
-        print_goal_to_strings(VarTable, Indent + 1, ElseRep, ElseString),
+        GoalPathCond = goal_path_add_at_end(GoalPath, step_ite_cond),
+        GoalPathThen = goal_path_add_at_end(GoalPath, step_ite_then),
+        GoalPathElse = goal_path_add_at_end(GoalPath, step_ite_else),
+        print_goal_to_strings(VarTable, Indent + 1, GoalPathCond, CondRep, 
+            CondString),
+        print_goal_to_strings(VarTable, Indent + 1, GoalPathThen, ThenRep, 
+            ThenString),
+        print_goal_to_strings(VarTable, Indent + 1, GoalPathElse, ElseRep, 
+            ElseString),
         IndentString = indent(Indent),
         ExprString = IndentString ++ cord.singleton("(\n") ++ CondString ++ 
             IndentString ++ cord.singleton("->\n") ++ ThenString ++ 
@@ -285,7 +275,9 @@ print_goal_to_strings(VarTable, Indent, GoalRep, Strings) :-
             IndentString ++ cord.singleton(")\n")
     ;
         GoalExprRep = negation_rep(SubGoalRep),
-        print_goal_to_strings(VarTable, Indent + 1, SubGoalRep, SubGoalString),
+        SubGoalPath = goal_path_add_at_end(GoalPath, step_neg),
+        print_goal_to_strings(VarTable, Indent + 1, SubGoalPath, SubGoalRep,
+            SubGoalString),
         ExprString = indent(Indent) ++ cord.singleton("not (\n") ++ 
             SubGoalString ++ indent(Indent) ++ cord.singleton(")\n")
     ;
@@ -297,7 +289,9 @@ print_goal_to_strings(VarTable, Indent, GoalRep, Strings) :-
             MaybeCut = scope_is_no_cut,
             CutString = cord.empty
         ),
-        print_goal_to_strings(VarTable, Indent + 1, SubGoalRep, SubGoalString),
+        SubGoalPath = goal_path_add_at_end(GoalPath, step_scope(MaybeCut)),
+        print_goal_to_strings(VarTable, Indent + 1, SubGoalPath, SubGoalRep,
+            SubGoalString),
         ExprString = indent(Indent) ++ cord.singleton("scope") ++ CutString ++ 
             cord.singleton(" (\n") ++
             SubGoalString ++ indent(Indent) ++ cord.singleton(")\n")
@@ -306,43 +300,86 @@ print_goal_to_strings(VarTable, Indent, GoalRep, Strings) :-
             _BoundVars, AtomicGoalRep),
         print_atomic_goal_to_strings(VarTable, AtomicGoalRep, ExprString0),
         ExprString = indent(Indent) ++ ExprString0
+    ),
+    
+    detism_to_string(DetismRep, DetismString0),
+    print_goal_annotation_to_strings(GoalAnnotation, GoalAnnotationString0),
+   
+    AnnotationPrefix = cord.singleton("% "),
+    GoalPathString0 = goal_path_to_string(GoalPath),
+    ( GoalPathString0 = "" ->
+        GoalPathString1 = "root goal"
+    ;
+        GoalPathString1 = GoalPathString0
+    ),
+    GoalPathString = AnnotationPrefix ++ cord.singleton(GoalPathString1),
+    DetismString = AnnotationPrefix ++ DetismString0,
+
+    % Don't print empty annotations, including their newline.
+    ( not is_empty(GoalAnnotationString0) ->
+        ( GoalExprRep = conj_rep(_) ->
+            % If this annotation belongs to a conjunction make sure that this
+            % is clear.
+            GoalAnnotationString = indent(Indent) ++ AnnotationPrefix 
+                ++ cord.singleton("conjunction: ") ++ GoalAnnotationString0 
+                ++ nl
+        ;
+            GoalAnnotationString = indent(Indent) ++ AnnotationPrefix 
+                ++ GoalAnnotationString0 ++ nl
+        )
+    ;
+        GoalAnnotationString = cord.empty
+    ),
+    ( GoalExprRep = conj_rep(_) ->
+        % Don't print determinism information or the goal path for conjunctions.
+        Strings = GoalAnnotationString
+            ++ ExprString
+    ; 
+        Strings = indent(Indent) ++ GoalPathString ++ nl
+            ++ indent(Indent) ++ DetismString ++ nl 
+            ++ GoalAnnotationString
+            ++ ExprString
     ).
 
 :- pred print_conj_to_strings(var_table::in, int::in,
-    list(goal_rep(GoalAnn))::in, cord(string)::out) is det
+    goal_path::in, list(goal_rep(GoalAnn))::in, cord(string)::out) is det
     <= goal_annotation(GoalAnn).
 
-print_conj_to_strings(VarTable, Indent, GoalReps, Strings) :-
+print_conj_to_strings(VarTable, Indent, GoalPath, GoalReps, Strings) :-
     (
         GoalReps = [],
         Strings = cord.snoc(indent(Indent), "true\n")
     ;
         GoalReps = [_ | _],
-        print_conj_2_to_strings(VarTable, Indent, GoalReps, Strings)
+        print_conj_2_to_strings(VarTable, Indent, GoalPath, 1, GoalReps, 
+            Strings)
     ).
 
 :- pred print_conj_2_to_strings(var_table::in, int::in,
-    list(goal_rep(GoalAnn))::in, cord(string)::out) is det
-    <= goal_annotation(GoalAnn).
+    goal_path::in, int::in, list(goal_rep(GoalAnn))::in, cord(string)::out)
+    is det <= goal_annotation(GoalAnn).
 
-print_conj_2_to_strings(_, _Indent, [], cord.empty).
-print_conj_2_to_strings(VarTable, Indent, [GoalRep | GoalReps], Strings) :-
+print_conj_2_to_strings(_, _Indent, _, _, [], cord.empty).
+print_conj_2_to_strings(VarTable, Indent, GoalPath0, ConjNum, 
+        [GoalRep | GoalReps], Strings) :-
     % We use the absence of a separator to denote conjunction.
     %
     % We could try to append the comma at the end of each goal that is
     % not last in a conjunction, but that would be significant work,
     % and (at least for now) there is no real need for it.
-    print_goal_to_strings(VarTable, Indent, GoalRep, GoalString),
-    print_conj_2_to_strings(VarTable, Indent, GoalReps, ConjString),
+    GoalPath = goal_path_add_at_end(GoalPath0, step_conj(ConjNum)),
+    print_goal_to_strings(VarTable, Indent, GoalPath, GoalRep, GoalString),
+    print_conj_2_to_strings(VarTable, Indent, GoalPath0, ConjNum+1, 
+        GoalReps, ConjString),
     Strings = GoalString ++ ConjString.
 
-:- pred print_disj_to_strings(var_table::in, int::in,
-    list(goal_rep(GoalAnn))::in, bool::in, cord(string)::out) is det
-    <= goal_annotation(GoalAnn).
+:- pred print_disj_to_strings(var_table::in, int::in, goal_path::in, 
+    int::in, list(goal_rep(GoalAnn))::in, bool::in, cord(string)::out) 
+    is det <= goal_annotation(GoalAnn).
 
-print_disj_to_strings(_, _Indent, [], _PrintSemi, cord.empty).
-print_disj_to_strings(VarTable, Indent, [GoalRep | GoalReps], PrintSemi,
-        Strings) :-
+print_disj_to_strings(_, _Indent, _, _, [], _PrintSemi, cord.empty).
+print_disj_to_strings(VarTable, Indent, GoalPath0, DisjNum,
+        [GoalRep | GoalReps], PrintSemi, Strings) :-
     (
         PrintSemi = no,
         DelimString = cord.empty
@@ -350,17 +387,19 @@ print_disj_to_strings(VarTable, Indent, [GoalRep | GoalReps], PrintSemi,
         PrintSemi = yes,
         DelimString = indent(Indent) ++ cord.singleton(";\n")
     ),
-    print_goal_to_strings(VarTable, Indent + 1, GoalRep, GoalString),
-    print_disj_to_strings(VarTable, Indent, GoalReps, yes, DisjString),
+    GoalPath = goal_path_add_at_end(GoalPath0, step_disj(DisjNum)),
+    print_goal_to_strings(VarTable, Indent + 1, GoalPath, GoalRep, GoalString),
+    print_disj_to_strings(VarTable, Indent, GoalPath0, DisjNum+1, GoalReps,
+        yes, DisjString),
     Strings = DelimString ++ GoalString ++ DisjString.
 
-:- pred print_switch_to_strings(var_table::in, int::in,
-    list(case_rep(GoalAnn))::in, bool::in, cord(string)::out) is det
+:- pred print_switch_to_strings(var_table::in, int::in, goal_path::in, 
+    int::in, list(case_rep(GoalAnn))::in, bool::in, cord(string)::out) is det
     <= goal_annotation(GoalAnn).
 
-print_switch_to_strings(_, _Indent, [], _PrintSemi, cord.empty).
-print_switch_to_strings(VarTable, Indent, [CaseRep | CaseReps], PrintSemi,
-        Strings) :-
+print_switch_to_strings(_, _Indent, _, _, [], _PrintSemi, cord.empty).
+print_switch_to_strings(VarTable, Indent, GoalPath0, CaseNum, 
+        [CaseRep | CaseReps], PrintSemi, Strings) :-
     (
         PrintSemi = no,
         DelimString = cord.empty
@@ -373,8 +412,10 @@ print_switch_to_strings(VarTable, Indent, [CaseRep | CaseReps], PrintSemi,
         ConsIdArityString),
     list.map(print_cons_id_and_arity_to_strings(Indent + 1),
         OtherConsIdArityRep, OtherConsIdArityStrings),
-    print_goal_to_strings(VarTable, Indent + 1, GoalRep, GoalString),
-    print_switch_to_strings(VarTable, Indent, CaseReps, yes, CaseStrings),
+    GoalPath = goal_path_add_at_end(GoalPath0, step_switch(CaseNum, no)),
+    print_goal_to_strings(VarTable, Indent + 1, GoalPath, GoalRep, GoalString),
+    print_switch_to_strings(VarTable, Indent, GoalPath0, CaseNum+1, CaseReps,
+        yes, CaseStrings),
     Strings = DelimString ++ ConsIdArityString ++
         cord_list_to_cord(OtherConsIdArityStrings) ++ GoalString ++
         CaseStrings.

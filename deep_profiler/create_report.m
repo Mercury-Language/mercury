@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2009 The University of Melbourne.
+% Copyright (C) 2008-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1106,8 +1106,14 @@ create_procrep_coverage_report(Deep, PSPtr, MaybeReport) :-
 
                 procrep_annotate_with_coverage(Own, CallSitesMap,
                     SolnsCoveragePointMap, BranchCoveragePointMap,
-                    ProcRep0, ProcRep),
-                MaybeReport = ok(procrep_coverage_info(PSPtr, ProcRep))
+                    ProcRep0, MaybeProcRep),
+                (
+                    MaybeProcRep = ok(ProcRep),
+                    MaybeReport = ok(procrep_coverage_info(PSPtr, ProcRep))
+                ;
+                    MaybeProcRep = error(Error),
+                    MaybeReport = error(Error)
+                )
             ;
                 MaybeReport =
                     error("Program Representation doesn't contain procedure: "
@@ -1242,6 +1248,8 @@ create_clique_dump_report(Deep, CliquePtr, MaybeCliqueDumpInfo) :-
         MaybeCliqueDumpInfo = error("invalid clique_ptr")
     ).
 
+:- pragma memo(create_proc_var_use_dump_report/3,
+    [specified([addr, value, output])]).
 create_proc_var_use_dump_report(Deep, PSPtr, MaybeProcVarUseDump) :-
     generic_vars_first_use(head_vars_all, Deep, PSPtr, set.init,
         MaybeProcVarUseDump).

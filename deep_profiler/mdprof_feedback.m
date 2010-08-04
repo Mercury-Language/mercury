@@ -49,6 +49,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module parsing_utils.
 :- import_module require.
 :- import_module string.
 :- import_module svmap.
@@ -186,7 +187,8 @@ create_feedback_report(feedback_data_candidate_parallel_conjunctions(
     Parameters = candidate_par_conjunctions_params(DesiredParallelism,
         SparkingCost, SparkingDelay, SignalCost, WaitCost, 
         ContextWakeupDelay, CliqueThreshold, CallSiteThreshold,
-        ParalleliseDepConjs),
+        ParalleliseDepConjs, BestParAlgorithm),
+    best_par_algorithm_string(BestParAlgorithm, BestParAlgorithmStr),
     ReportHeader = singleton(format("  Candidate Parallel Conjunctions:\n" ++
             "    Desired parallelism: %f\n" ++
             "    Sparking cost: %d\n" ++
@@ -197,15 +199,23 @@ create_feedback_report(feedback_data_candidate_parallel_conjunctions(
             "    Clique threshold: %d\n" ++
             "    Call site threshold: %d\n" ++
             "    Parallelise dependant conjunctions: %s\n" ++
+            "    BestParallelisationAlgorithm: %s\n" ++
             "    Number of Parallel Conjunctions: %d\n" ++
             "    Parallel Conjunctions:\n\n",
         [f(DesiredParallelism), i(SparkingCost), i(SparkingDelay),
          i(SignalCost), i(WaitCost), i(ContextWakeupDelay), 
          i(CliqueThreshold), i(CallSiteThreshold), s(ParalleliseDepConjsStr),
-         i(NumConjs)])),
+         s(BestParAlgorithmStr), i(NumConjs)])),
     (
-        ParalleliseDepConjs = parallelise_dep_conjs,
-        ParalleliseDepConjsStr = "yes"
+        ParalleliseDepConjs = parallelise_dep_conjs_overlap,
+        ParalleliseDepConjsStr = "yes, use overlap calculation"
+    ;
+        ParalleliseDepConjs = parallelise_dep_conjs_num_vars,
+        ParalleliseDepConjsStr = 
+            "yes, the more shared variables then the less overlap there is"
+    ;
+        ParalleliseDepConjs = parallelise_dep_conjs_naive,
+        ParalleliseDepConjsStr = "yes, pretend they're independant"
     ;
         ParalleliseDepConjs = do_not_parallelise_dep_conjs,
         ParalleliseDepConjsStr = "no"
@@ -281,6 +291,26 @@ help_message =
                 Advise the compiler to parallelism dependant conjunctions.
                 This will become the default once the implementation is
                 complete. 
+    --implicit-parallelism-dependant-conjunctions-algorithm <option>
+                Choose the algorithm that is used to estimate the speedup for
+                dependant calculations.  The options are:
+                    overlap: Compute the 'overlap' between dependant
+                      conjunctions.
+                    num_vars: Use the number of shared variables as a proxy for
+                      the amount of overlap available.
+                    naive: Ignore dependencies.
+                The default is overlap.
+    --implicit-parallelism-best-parallelisation-algorithm <option>
+                Select which algorithm to use to find the best way to
+                parallelise a conjunction.  The options are:
+                    complete-bnb(N): A complete algorithm with a branch and
+                      bound search, this can be rather slow since it has an
+                      exponential time complexity.  This option allows a single
+                      parameter, N, Any conjunction with more than N conjuncts
+                      will be solved using the greedy algorithm instead.  If N
+                      is zero this check is disabled.
+                    greedy: A greedy algorithm with a linear time complexity.
+                The default is complete-bnb(10).
 
     The following options select specific types of feedback information
     and parameterise them:
@@ -374,7 +404,9 @@ read_deep_file(Input, Debug, MaybeDeep, !IO) :-
     ;       implicit_parallelism_context_wakeup_delay
     ;       implicit_parallelism_clique_cost_threshold
     ;       implicit_parallelism_call_site_cost_threshold
-    ;       implicit_parallelism_dependant_conjunctions.
+    ;       implicit_parallelism_dependant_conjunctions
+    ;       implicit_parallelism_dependant_conjunctions_algorithm
+    ;       implicit_parallelism_best_parallelisation_algorithm.
 
 % TODO: Introduce an option to disable parallelisation of dependant
 % conjunctions, or switch to the simple calculations for independent
@@ -418,6 +450,10 @@ long("implicit-parallelism-call-site-cost-threshold",
     implicit_parallelism_call_site_cost_threshold).
 long("implicit-parallelism-dependant-conjunctions",
     implicit_parallelism_dependant_conjunctions).
+long("implicit-parallelism-dependant-conjunctions-algorithm",
+    implicit_parallelism_dependant_conjunctions_algorithm).
+long("implicit-parallelism-best-parallelisation-algorithm",
+    implicit_parallelism_best_parallelisation_algorithm).
 
 :- pred defaults(option::out, option_data::out) is multi.
 
@@ -444,6 +480,10 @@ defaults(implicit_parallelism_context_wakeup_delay,         int(1000)).
 defaults(implicit_parallelism_clique_cost_threshold,        int(100000)).
 defaults(implicit_parallelism_call_site_cost_threshold,     int(50000)).
 defaults(implicit_parallelism_dependant_conjunctions,       bool(no)).
+defaults(implicit_parallelism_dependant_conjunctions_algorithm,
+    string("overlap")).
+defaults(implicit_parallelism_best_parallelisation_algorithm,
+    string("complete-bnb(10)")).
 
 :- pred construct_measure(string::in, stat_measure::out) is semidet.
 
@@ -551,12 +591,42 @@ check_options(Options0, RequestedFeedbackInfo) :-
         lookup_bool_option(Options,
             implicit_parallelism_dependant_conjunctions,
             ParalleliseDepConjsBool),
-        (
-            ParalleliseDepConjsBool = yes,
-            ParalleliseDepConjs = parallelise_dep_conjs
+        lookup_string_option(Options,
+            implicit_parallelism_dependant_conjunctions_algorithm,
+            ParalleliseDepConjsString),
+        ( 
+            parse_parallelise_dep_conjs_string(ParalleliseDepConjsBool,
+                ParalleliseDepConjsString, ParalleliseDepConjsPrime) 
+        ->
+            ParalleliseDepConjs = ParalleliseDepConjsPrime
         ;
-            ParalleliseDepConjsBool = no,
-            ParalleliseDepConjs = do_not_parallelise_dep_conjs
+            error(format(
+                "Couldn't parse '%s' into a parallelise dependant conjs "
+                    ++ "option",
+                [s(ParalleliseDepConjsString)]))
+        ),
+        lookup_string_option(Options,
+            implicit_parallelism_best_parallelisation_algorithm,
+            BestParAlgorithmStr),
+        parse_best_par_algorithm(BestParAlgorithmStr,
+            MaybeBestParAlgorithm),
+        (
+            MaybeBestParAlgorithm = ok(BestParAlgorithm)
+        ;
+            MaybeBestParAlgorithm = error(MaybeMessage, _Line, _Col),
+            (
+                MaybeMessage = yes(Message),
+                Error = format(
+                    "Couldn't parse %s as a best parallelsation algorithm:" ++
+                        " %s\n",
+                    [s(BestParAlgorithmStr), s(Message)])
+            ;
+                MaybeMessage = no,
+                Error = format(
+                    "Couldn't parse %s as a best parallelsation algorithm\n",
+                    [s(BestParAlgorithmStr)])
+            ),
+            error(Error)
         ),
         CandidateParallelConjunctionsOpts =
             candidate_par_conjunctions_params(DesiredParallelism, 
@@ -567,7 +637,8 @@ check_options(Options0, RequestedFeedbackInfo) :-
                 ContextWakeupDelay,
                 CPCCliqueThreshold,
                 CPCCallSiteThreshold,
-                ParalleliseDepConjs),
+                ParalleliseDepConjs,
+                BestParAlgorithm),
         MaybeCandidateParallelConjunctionsOpts =
             yes(CandidateParallelConjunctionsOpts)
     ;
@@ -577,6 +648,53 @@ check_options(Options0, RequestedFeedbackInfo) :-
     RequestedFeedbackInfo =
         requested_feedback_info(MaybeCallsAboveThresholdSortedOpts,
             MaybeCandidateParallelConjunctionsOpts).
+
+:- pred parse_best_par_algorithm(string::in,
+    parse_result(best_par_algorithm)::out) is det.
+
+parse_best_par_algorithm(String, Result) :-
+    promise_equivalent_solutions [Result]
+    (
+        parse(String, best_par_algorithm_parser, Result)
+    ).
+        
+:- pred best_par_algorithm_parser(src::in, best_par_algorithm::out, 
+    ps::in, ps::out) is semidet.
+
+best_par_algorithm_parser(Src, Algorithm, !PS) :-
+    whitespace(Src, _, !PS),
+    (
+        keyword(idchars, "greedy", Src, _, !PS)
+    ->
+        Algorithm = bpa_greedy
+    ;
+        keyword(idchars, "complete-bnb", Src, _, !PS),
+        brackets("(", ")", int_literal, Src, N, !PS),
+        N >= 0,
+        Algorithm = bpa_complete_bnb(N)
+    ),
+    eof(Src, _, !PS).
+
+:- func idchars = string.
+
+idchars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_".
+
+:- pred best_par_algorithm_string(best_par_algorithm::in, string::out) is det.
+
+best_par_algorithm_string(bpa_greedy, "greedy").
+best_par_algorithm_string(bpa_complete_bnb(N), 
+    format("complete_bnb(%d)", [i(N)])).
+
+:- pred parse_parallelise_dep_conjs_string(bool::in, string::in, 
+    parallelise_dep_conjs::out) is semidet.
+
+parse_parallelise_dep_conjs_string(no, _, do_not_parallelise_dep_conjs).
+parse_parallelise_dep_conjs_string(yes, "overlap", 
+    parallelise_dep_conjs_overlap).
+parse_parallelise_dep_conjs_string(yes, "num_vars", 
+    parallelise_dep_conjs_num_vars).
+parse_parallelise_dep_conjs_string(yes, "naive", 
+    parallelise_dep_conjs_naive).
 
     % Adjust command line options when one option implies other options.
     %
