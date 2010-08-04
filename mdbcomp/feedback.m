@@ -98,7 +98,7 @@
 
                 cpcp_future_signal_cost     :: int,
                 cpcp_future_wait_cost       :: int,
-                    % The costs of maintaining a lock on a single dependant
+                    % The costs of maintaining a lock on a single dependent
                     % variable in call sequence counts.  The first gives the
                     % cost of the call to signal and the second gives the cost
                     % of the call to wait assuming that the value is already
@@ -128,21 +128,21 @@
 
                 cpcp_parallelise_dep_conjs  :: parallelise_dep_conjs,
                     % Whether we will allow parallelisation to result in
-                    % dependant parallel conjunctions.
+                    % dependent parallel conjunctions.
 
                 cpcp_best_par_alg           :: best_par_algorithm
             ).
 
 :- type parallelise_dep_conjs
     --->    parallelise_dep_conjs_overlap
-                % Use the overlap calculation for dependant parallelism.
+                % Use the overlap calculation for dependent parallelism.
 
     ;       parallelise_dep_conjs_num_vars
                 % Use the num vars approximation for how much conjuncts
                 % overlap.
 
     ;       parallelise_dep_conjs_naive
-                % Be naive to dependant parallelism, pretend its independant.
+                % Be naive to dependent parallelism, pretend its independent.
 
     ;       do_not_parallelise_dep_conjs.
 
@@ -204,7 +204,7 @@
                     % used for pretty-printing these reports with meaningful
                     % goal paths.
 
-                cpc_is_dependant        :: conjuncts_are_dependant,
+                cpc_is_dependent        :: conjuncts_are_dependent,
 
                 cpc_goals_before        :: list(GoalType),
 
@@ -273,8 +273,8 @@
                 % we track it in the feedback information to help inform the
                 % compiler about _how_ to parallelise calls around it.
 
-:- type conjuncts_are_dependant
-    --->    conjuncts_are_dependant(set(var_rep))
+:- type conjuncts_are_dependent
+    --->    conjuncts_are_dependent(set(var_rep))
     ;       conjuncts_are_independent.
 
 :- pred convert_candidate_par_conjunctions_proc(pred(A, B),
@@ -800,7 +800,7 @@ feedback_first_line = "Mercury Compiler Feedback".
 
 :- func feedback_version = string.
 
-feedback_version = "11".
+feedback_version = "12".
 
 %-----------------------------------------------------------------------------%
 %

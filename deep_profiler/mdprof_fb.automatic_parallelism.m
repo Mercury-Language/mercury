@@ -503,7 +503,7 @@ parallelism_probability(Candidates, ConjGoalPath, ParallelismProbability,
                 )
             ->
                 % XXX: Wait until we have the new calculations for how
-                % dependant parallel conjuncts overlap before we bother to
+                % dependent parallel conjuncts overlap before we bother to
                 % calculate the probability of parallelisation.  For now assume
                 % a pesimistic default.
                 ParallelismProbability = certain,
@@ -1471,7 +1471,7 @@ pardgoals_build_candidate_conjunction(Info, Location, GoalPath, GoalsPartition,
     % conjunction.  Executing them during the parallel conjunction can be more
     % efficient.  However if goals within other parallel conjuncts depend on
     % them and don't depend upon the first costly call then this would make the
-    % conjunction dependant when it could be independent.
+    % conjunction dependent when it could be independent.
     pard_goals_partition(Goals, PartNum, FirstConjNum) = GoalsPartition,
     find_best_parallelisation(Info, Location, PartNum, Goals,
         BestParallelisation),
@@ -1512,7 +1512,7 @@ pardgoals_build_candidate_conjunction(Info, Location, GoalPath, GoalsPartition,
             create_candidate_parallel_conj_report(VarTable,
                 ProcLabel, FBCandidate, Report),
             io.write_string("Not parallelising conjunction, " ++ 
-                "insufficient speedup or too dependant:\n", !IO),
+                "insufficient speedup or too dependent:\n", !IO),
             io.write_string(append_list(cord.list(Report)), !IO),
             io.flush_output(!IO)
         )
@@ -1562,7 +1562,7 @@ find_costly_call(Goals, GoalsBefore0, Result) :-
                 bp_goals_before         :: list(pard_goal_detail),
                 bp_par_conjs            :: list(seq_conj(pard_goal_detail)),
                 bp_goals_after          :: list(pard_goal_detail),
-                bp_is_dependent         :: conjuncts_are_dependant,
+                bp_is_dependent         :: conjuncts_are_dependent,
                 bp_par_exec_metrics     :: parallel_exec_metrics
             ).
 
@@ -1794,7 +1794,7 @@ finalise_parallelisation(GoalsAfter, !Parallelisation) :-
         Overlap, Metrics0, _),
     foldl(pardgoal_calc_cost, GoalsAfter, 0.0, CostAfter),
     Metrics = finalise_parallel_exec_metrics(Metrics0, CostAfter),
-    par_conj_overlap_is_dependant(Overlap, IsDependent),
+    par_conj_overlap_is_dependent(Overlap, IsDependent),
     !:Parallelisation = bp_parallel_execution(GoalsBefore, Conjuncts,
         GoalsAfter, IsDependent, Metrics).
 
@@ -1849,7 +1849,7 @@ find_best_parallelisation_complete_bnb(Info, Location, PartNum,
             error(this_file ++ "Execpted at least one solution from bnb solver")
         ;
             ParalleliseDepConjs = do_not_parallelise_dep_conjs,
-            % Try again to get the best dependant parallelisation.  This is
+            % Try again to get the best dependent parallelisation.  This is
             % used for guided parallelisation.
             TempInfo = Info ^ ipi_opts ^ cpcp_parallelise_dep_conjs := 
                 parallelise_dep_conjs_overlap,
@@ -1968,10 +1968,10 @@ generate_parallelisations_body(Info, DependencyMaps, NumConjuncts0,
             ParConjGoals, !Parallelisation),
         Overlap = !.Parallelisation ^ ip_par_exec_overlap, 
         
-        % Reject parallelisations that have dependant variables if we're not
+        % Reject parallelisations that have dependent variables if we're not
         % allowed to create such parallelisations.
         ParalleliseDepConjs = Info ^ ipi_opts ^ cpcp_parallelise_dep_conjs,
-        par_conj_overlap_is_dependant(Overlap, IsDependent),
+        par_conj_overlap_is_dependent(Overlap, IsDependent),
         (
             ParalleliseDepConjs = do_not_parallelise_dep_conjs
         =>
@@ -2233,7 +2233,7 @@ build_parallel_conjuncts_greedy_pair(Info, InbetweenGoals,
             calculate_parallel_cost_step(Info, is_not_innermost_conjunct,
                 ConjunctNum, ParConjA, !.Parallelisation, Parallelisation0),
             Overlap0 = Parallelisation0 ^ ip_par_exec_overlap,
-            par_conj_overlap_is_dependant(Overlap0, IsDependent0),
+            par_conj_overlap_is_dependent(Overlap0, IsDependent0),
             (
                 ParalleliseDepConjs = do_not_parallelise_dep_conjs
             =>
@@ -2244,7 +2244,7 @@ build_parallel_conjuncts_greedy_pair(Info, InbetweenGoals,
             calculate_parallel_cost_step(Info, is_not_innermost_conjunct,
                 ConjunctNum + 1, ParConjB, Parallelisation0, Parallelisation1),
             Overlap1 = Parallelisation1 ^ ip_par_exec_overlap,
-            par_conj_overlap_is_dependant(Overlap1, IsDependent1),
+            par_conj_overlap_is_dependent(Overlap1, IsDependent1),
             (
                 ParalleliseDepConjs = do_not_parallelise_dep_conjs
             =>
@@ -2281,7 +2281,7 @@ build_parallel_conjuncts_greedy_pair(Info, InbetweenGoals,
             error(this_file ++ "Execpted at least one solution from bnb solver")
         ;
             ParalleliseDepConjs = do_not_parallelise_dep_conjs,
-            % Try again to get the best dependant parallelisation.  This is
+            % Try again to get the best dependent parallelisation.  This is
             % used for guided parallelisation.
             TempInfo = Info ^ ipi_opts ^ cpcp_parallelise_dep_conjs := 
                 parallelise_dep_conjs_overlap,
@@ -2307,7 +2307,7 @@ build_goals_after_greedy(Info, ConjunctNum, !.LastParConj, !LastGoals,
             calculate_parallel_cost_step(Info, is_innermost_conjunct,
                 ConjunctNum, ParConjTest, !.Parallelisation, Parallelisation0),
             Overlap0 = Parallelisation0 ^ ip_par_exec_overlap,
-            par_conj_overlap_is_dependant(Overlap0, IsDependent0),
+            par_conj_overlap_is_dependent(Overlap0, IsDependent0),
             (
                 ParalleliseDepConjs = do_not_parallelise_dep_conjs
             =>
@@ -2343,7 +2343,7 @@ build_goals_after_greedy(Info, ConjunctNum, !.LastParConj, !LastGoals,
             error(this_file ++ "Execpted at least one solution from bnb solver")
         ;
             ParalleliseDepConjs = do_not_parallelise_dep_conjs,
-            % Try again to get the best dependant parallelisation.  This is
+            % Try again to get the best dependent parallelisation.  This is
             % used for guided parallelisation.
             TempInfo = Info ^ ipi_opts ^ cpcp_parallelise_dep_conjs := 
                 parallelise_dep_conjs_overlap,
@@ -2354,7 +2354,7 @@ build_goals_after_greedy(Info, ConjunctNum, !.LastParConj, !LastGoals,
 
 %----------------------------------------------------------------------------%
 
-    % This datastructure represents the execution of dependant conjuncts, it
+    % This datastructure represents the execution of dependent conjuncts, it
     % tracks which variabes are produced and consumed.
     %
     % TODO: Implement a pretty printer for this data.
@@ -2363,21 +2363,21 @@ build_goals_after_greedy(Info, ConjunctNum, !.LastParConj, !LastGoals,
     --->    peo_empty_conjunct
     ;       peo_conjunction(
                 poec_left_conjunct      :: parallel_execution_overlap,
-                poec_right_conjunct     :: dependant_conjunct_execution,
-                poec_dependant_vars     :: set(var_rep)
+                poec_right_conjunct     :: dependent_conjunct_execution,
+                poec_dependent_vars     :: set(var_rep)
                     % The variables produced by the left conjunct and consumed
                     % by the right conjunct.
             ).
 
-:- type dependant_conjunct_execution
-    --->    dependant_conjunct_execution(
+:- type dependent_conjunct_execution
+    --->    dependent_conjunct_execution(
                 dce_execution           :: assoc_list(float, float),
                     % Pairs of start and stop times of the execution.  Assume
                     % that the list is not sorted.
 
                 dce_productions         :: map(var_rep, float),
                     % The variable productions.  This may be a superset of the
-                    % dependant variables.
+                    % dependent variables.
 
                 dce_consumptions        :: map(var_rep, float)
                     % The variable consumptions.  This will contain only
@@ -2456,7 +2456,7 @@ calculate_parallel_cost_step(Info, IsInnermostConjunct, NumConjuncts, Goals,
         reverse(ConsumptionsList0, ConsumptionsList),
 
         % Determine how the parallel conjuncts overlap.
-        foldl5(calculate_dependant_parallel_cost_2(Info, ProductionsMap0), 
+        foldl5(calculate_dependent_parallel_cost_2(Info, ProductionsMap0), 
             ConsumptionsList, 0.0, LastSeqConsumeTime, 
             StartTime, LastParConsumeTime, StartTime, LastResumeTime, 
             [], RevExecution0, map.init, ConsumptionsMap),
@@ -2488,18 +2488,18 @@ calculate_parallel_cost_step(Info, IsInnermostConjunct, NumConjuncts, Goals,
 
     % Build the productions map for our parent.  This map contains all
     % the variables produced by this code, not just that are used for
-    % dependant parallelisation.
+    % dependent parallelisation.
     foldl3(get_productions_map, Goals, StartTime, _, Execution, _,
         ProductionsMap0, ProductionsMap),
     !Parallelisation ^ ip_productions_map := ProductionsMap,
 
-    DepConjExec = dependant_conjunct_execution(Execution,
+    DepConjExec = dependent_conjunct_execution(Execution,
         ProductionsMap, ConsumptionsMap),
     Overlap0 = !.Parallelisation ^ ip_par_exec_overlap,
     Overlap = peo_conjunction(Overlap0, DepConjExec, Vars),
     !Parallelisation ^ ip_par_exec_overlap := Overlap.
 
-    % calculate_dependant_parallel_cost_2(Info, ProductionsMap, 
+    % calculate_dependent_parallel_cost_2(Info, ProductionsMap, 
     %   Var - SeqConsTime, !PrevSeqConsumeTime, !PrevParConsumeTime,
     %   !ResumeTime, !RevExecution, !ConsumptionsMap). 
     %
@@ -2532,13 +2532,13 @@ calculate_parallel_cost_step(Info, IsInnermostConjunct, NumConjuncts, Goals,
     %
     % * !ConsumptionsMap: Accumuates a map of variable consumptions.
     %
-:- pred calculate_dependant_parallel_cost_2(implicit_parallelism_info::in, 
+:- pred calculate_dependent_parallel_cost_2(implicit_parallelism_info::in, 
     map(var_rep, float)::in, pair(var_rep, float)::in, float::in, float::out,
     float::in, float::out, float::in, float::out,
     assoc_list(float, float)::in, assoc_list(float, float)::out, 
     map(var_rep, float)::in, map(var_rep, float)::out) is det.
 
-calculate_dependant_parallel_cost_2(Info, ProductionsMap, Var - SeqConsTime,
+calculate_dependent_parallel_cost_2(Info, ProductionsMap, Var - SeqConsTime,
         !PrevSeqConsumeTime, !PrevParConsumeTime, !ResumeTime,
         !RevExecution, !ConsumptionsMap) :-
     map.lookup(ProductionsMap, Var, ProdTime),
@@ -2581,22 +2581,22 @@ calculate_dependant_parallel_cost_2(Info, ProductionsMap, Var - SeqConsTime,
 
     svmap.det_insert(Var, ParConsTime, !ConsumptionsMap).
 
-:- pred par_conj_overlap_is_dependant(parallel_execution_overlap::in, 
-    conjuncts_are_dependant::out) is det.
+:- pred par_conj_overlap_is_dependent(parallel_execution_overlap::in, 
+    conjuncts_are_dependent::out) is det.
 
-par_conj_overlap_is_dependant(peo_empty_conjunct, conjuncts_are_independent).
-par_conj_overlap_is_dependant(peo_conjunction(Left, _, VarSet0), IsDependent) :-
-    par_conj_overlap_is_dependant(Left, IsDependent0),
+par_conj_overlap_is_dependent(peo_empty_conjunct, conjuncts_are_independent).
+par_conj_overlap_is_dependent(peo_conjunction(Left, _, VarSet0), IsDependent) :-
+    par_conj_overlap_is_dependent(Left, IsDependent0),
     (
-        IsDependent0 = conjuncts_are_dependant(VarSetLeft),
+        IsDependent0 = conjuncts_are_dependent(VarSetLeft),
         VarSet = union(VarSet0, VarSetLeft),
-        IsDependent = conjuncts_are_dependant(VarSet)
+        IsDependent = conjuncts_are_dependent(VarSet)
     ;
         IsDependent0 = conjuncts_are_independent,
         ( set.empty(VarSet0) ->
             IsDependent = conjuncts_are_independent
         ;
-            IsDependent = conjuncts_are_dependant(VarSet0)
+            IsDependent = conjuncts_are_dependent(VarSet0)
         )
     ).
 
@@ -2616,7 +2616,7 @@ pardgoal_calc_cost(Goal, !Cost) :-
     ;
         GoalType = pgt_other_atomic_goal,
         % Atomic goals are usually trivial but for the purposes of calculating
-        % the overlap of dependant conjunctions we'd like variable
+        % the overlap of dependent conjunctions we'd like variable
         % production/consumption information to be in order even among atomic
         % goals.  Therefore atomic goals have a cost of 1.0.  This must be
         % included here so we can compare costs properly.
@@ -3149,7 +3149,7 @@ case_to_pard_goal(Info, GoalPath0, !Case, !GoalNum) :-
         ( func(Num) = step_switch(Num, no) ), Goal0, Goal, !GoalNum),
     !:Case = case_rep(ConsId, OtherConsId, Goal).
 
-    % are_conjuncts_dependant(CallOutputs, InstMap, VarModeAndUse, !DepVars),
+    % are_conjuncts_dependent(CallOutputs, InstMap, VarModeAndUse, !DepVars),
     %
     % Determine if a variables depends on an output from an earlier call either
     % directly or indirectly.  If it does add it to the DepVars set.
@@ -3602,16 +3602,16 @@ create_candidate_parallel_conj_report(VarTable, Proc, CandidateParConjunction,
         Report) :-
     print_proc_label_to_string(Proc, ProcString),
     CandidateParConjunction = candidate_par_conjunction(GoalPathString,
-        PartNum, FirstConjNum, IsDependant, GoalsBefore, Conjs, GoalsAfter,
+        PartNum, FirstConjNum, IsDependent, GoalsBefore, Conjs, GoalsAfter,
         ParExecMetrics),
     ParExecMetrics = parallel_exec_metrics(NumCalls, SeqTime, ParTime,
         ParOverheads, FirstConjDeadTime, FutureDeadTime),
     
     (
-        IsDependant = conjuncts_are_independent,
+        IsDependent = conjuncts_are_independent,
         DependanceString = "no"
     ;
-        IsDependant = conjuncts_are_dependant(Vars),
+        IsDependent = conjuncts_are_dependent(Vars),
         map(lookup_var_name(VarTable), Vars, VarNames),
         VarsString = join_list(", ", to_sorted_list(VarNames)),
         DependanceString = format("on %s", [s(VarsString)])
@@ -3621,7 +3621,7 @@ create_candidate_parallel_conj_report(VarTable, Proc, CandidateParConjunction,
     TotalDeadTime = FirstConjDeadTime + FutureDeadTime,
     format("      %s\n" ++
            "      Path and Partition Num: %s, %d\n" ++
-           "      Dependant: %s\n" ++
+           "      Dependent: %s\n" ++
            "      NumCalls: %d\n" ++
            "      SeqTime: %f\n" ++
            "      ParTime: %f\n" ++
