@@ -1773,9 +1773,9 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
         ;
             Target = target_x86_64,
             llds_backend_pass(!HLDS, _GlobalData, LLDS, !DumpInfo, !IO),
-            % XXX Eventually we will call the LLDS->x86_64 asm code
-            % generator here and then output the assembler.  At the moment
-            % we just output the LLDS as C code.
+            % XXX Eventually we will call the LLDS->x86_64 asm code generator
+            % here and then output the assembler. At the moment, we just output
+            % the LLDS as C code.
             llds_to_x86_64_asm(!.HLDS, LLDS, X86_64_Asm),
             % XXX This should eventually be written to a file rather
             % than stdout.
