@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1351,7 +1351,19 @@ add_extra_attribute(NewAttribute, !Attrs) :-
     ;       trace_trace_level(trace_trace_level).
 
 :- type trace_grade
-    --->    trace_grade_debug.
+    --->    trace_grade_debug
+    ;       trace_grade_ssdebug
+    ;       trace_grade_prof
+    ;       trace_grade_profdeep
+    ;       trace_grade_par
+    ;       trace_grade_trail
+    ;       trace_grade_rbmm
+    ;       trace_grade_llds
+    ;       trace_grade_mlds
+    ;       trace_grade_c
+    ;       trace_grade_il
+    ;       trace_grade_java
+    ;       trace_grade_erlang.
 
 :- type trace_trace_level
     --->    trace_level_shallow
@@ -1385,6 +1397,34 @@ add_extra_attribute(NewAttribute, !Attrs) :-
     % A prog_context is just a term.context.
     %
 :- type prog_context    ==  term.context.
+
+:- pred parse_trace_grade_name(string, trace_grade).
+:- mode parse_trace_grade_name(in, out) is semidet.
+:- mode parse_trace_grade_name(out, in) is det.
+:- mode parse_trace_grade_name(out, out) is multi.
+
+:- pred valid_trace_grade_name(string::out) is multi.
+
+:- implementation.
+
+% If you update this, you also need to update the corresponding section
+% of doc/reference_manual.texi.
+parse_trace_grade_name("debug", trace_grade_debug).
+parse_trace_grade_name("ssdebug", trace_grade_ssdebug).
+parse_trace_grade_name("prof", trace_grade_prof).
+parse_trace_grade_name("profdeep", trace_grade_profdeep).
+parse_trace_grade_name("par", trace_grade_par).
+parse_trace_grade_name("trail", trace_grade_trail).
+parse_trace_grade_name("rbmm", trace_grade_rbmm).
+parse_trace_grade_name("llds", trace_grade_llds).
+parse_trace_grade_name("mlds", trace_grade_mlds).
+parse_trace_grade_name("c", trace_grade_c).
+parse_trace_grade_name("il", trace_grade_il).
+parse_trace_grade_name("java", trace_grade_java).
+parse_trace_grade_name("erlang", trace_grade_erlang).
+
+valid_trace_grade_name(GradeName) :-
+    parse_trace_grade_name(GradeName, _).
 
 %-----------------------------------------------------------------------------%
 %

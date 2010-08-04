@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -102,6 +102,7 @@
 :- import_module char.
 :- import_module maybe.
 :- import_module pair.
+:- import_module solutions.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -972,15 +973,16 @@ parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
             ( SubTerms = [SubTerm] ->
                 (
                     SubTerm = term.functor(term.atom(GradeName), [], _),
-                    GradeName = "debug"
+                    parse_trace_grade_name(GradeName, TraceGrade)
                 ->
-                    Compiletime = trace_grade(trace_grade_debug),
+                    Compiletime = trace_grade(TraceGrade),
                     MaybeCompiletime = ok1(Compiletime)
                 ;
-                    Pieces = [words("compile_time parameter"),
-                        quote("grade"), words("takes just"),
-                        quote("debug"), words("as argument (for now)."),
-                        nl],
+                    solutions(valid_trace_grade_name, ValidGradeNames),
+                    Pieces = [words("invalid grade test;"),
+                        words("valid grade tests are")] ++
+                        list_to_pieces(ValidGradeNames) ++
+                        [suffix("."), nl],
                     Spec = error_spec(severity_error,
                         phase_term_to_parse_tree,
                         [simple_msg(TermContext, [always(Pieces)])]),

@@ -2119,8 +2119,71 @@ evaluate_compile_time_condition(trace_base(Base), Info) = Result :-
         )
     ;
         Base = trace_grade(Grade),
-        Grade = trace_grade_debug,
-        globals.lookup_bool_option(Globals, exec_trace, Result)
+        (
+            Grade = trace_grade_debug,
+            globals.lookup_bool_option(Globals, exec_trace, Result)
+        ;
+            Grade = trace_grade_ssdebug,
+            globals.lookup_bool_option(Globals, source_to_source_debug, Result)
+            % XXX Should we take into account force_disable_ssdebug as well?
+        ;
+            Grade = trace_grade_prof,
+            globals.lookup_bool_option(Globals, profile_calls, ProfCalls),
+            globals.lookup_bool_option(Globals, profile_time, ProfTime),
+            globals.lookup_bool_option(Globals, profile_memory, ProfMem),
+            bool.or_list([ProfCalls, ProfTime, ProfMem], Result)
+        ;
+            Grade = trace_grade_profdeep,
+            globals.lookup_bool_option(Globals, profile_deep, Result)
+        ;
+            Grade = trace_grade_par,
+            globals.lookup_bool_option(Globals, parallel, Result)
+        ;
+            Grade = trace_grade_trail,
+            globals.lookup_bool_option(Globals, use_trail, Result)
+        ;
+            Grade = trace_grade_rbmm,
+            globals.lookup_bool_option(Globals, use_regions, Result)
+        ;
+            Grade = trace_grade_llds,
+            globals.lookup_bool_option(Globals, highlevel_code, NotResult),
+            bool.not(NotResult, Result)
+        ;
+            Grade = trace_grade_mlds,
+            globals.lookup_bool_option(Globals, highlevel_code, Result)
+        ;
+            Grade = trace_grade_c,
+            globals.get_target(Globals, Target),
+            ( Target = target_c ->
+                Result = yes
+            ;
+                Result = no
+            )
+        ;
+            Grade = trace_grade_il,
+            globals.get_target(Globals, Target),
+            ( Target = target_il ->
+                Result = yes
+            ;
+                Result = no
+            )
+        ;
+            Grade = trace_grade_java,
+            globals.get_target(Globals, Target),
+            ( Target = target_java ->
+                Result = yes
+            ;
+                Result = no
+            )
+        ;
+            Grade = trace_grade_erlang,
+            globals.get_target(Globals, Target),
+            ( Target = target_erlang ->
+                Result = yes
+            ;
+                Result = no
+            )
+        )
     ;
         Base = trace_trace_level(Level),
         globals.get_trace_level(Globals, TraceLevel),

@@ -9643,13 +9643,41 @@ The first has the form @samp{flag(@var{FlagName})},
 where @var{FlagName} is an arbitrary name picked by the programmer;
 this condition is true
 if the module is compiled with the option @samp{--trace-flag=@var{FlagName}}.
-The second has the form @samp{grade(debug)};
-this condition is true
-if the module is compiled in a debugging grade.
-(We may support the specification of other kinds of grades in the future.)
-The third has the form @samp{tracelevel(shallow)}, or @samp{tracelevel(deep)};
+The second has the form @samp{tracelevel(shallow)}, or @samp{tracelevel(deep)};
 this condition is true (irrespective of grade)
 if the module is compiled with at least the specified trace level.
+The third has the form @samp{grade(GradeTest)}.
+The supported @samp{GradeTests}s and their meanings are as follows.
+
+@table @asis
+@item @samp{debug}
+True if the module is compiled with execution tracing enabled.
+@item @samp{ssdebug}
+True if the module is compiled with source-to-source debugging enabled.
+@item @samp{prof}
+True if the module is compiled with non-deep profiling enabled.
+@item @samp{profdeep}
+True if the module is compiled with deep profiling enabled.
+@item @samp{par}
+True if the module is compiled with parallel execution enabled.
+@item @samp{trail}
+True if the module is compiled with trailing enabled.
+@item @samp{rbmm}
+True if the module is compiled with region based memory management enabled.
+@item @samp{llds}
+True if the module is compiled with --highlevel-code disabled.
+@item @samp{mlds}
+True if the module is compiled with --highlevel-code enabled.
+@item @samp{c}
+True if the target language of the compilation is C.
+@item @samp{il}
+True if the target language of the compilation is MS IL.
+@item @samp{java}
+True if the target language of the compilation is Java.
+@item @samp{erlang}
+True if the target language of the compilation is Erlang.
+@end table
+@c (We may support the specification of other kinds of grades in the future.)
 
 The @samp{run_time} parameter says under what circumstances the trace goal,
 if included in the executable program, should actually be executed.

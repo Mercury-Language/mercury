@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -3252,11 +3252,9 @@ mercury_output_trace_compiletime(trace_flag(FlagName), !IO) :-
     io.write_string(FlagName, !IO),
     io.write_string(")", !IO).
 mercury_output_trace_compiletime(trace_grade(Grade), !IO) :-
+    parse_trace_grade_name(GradeName, Grade),
     io.write_string("grade(", !IO),
-    (
-        Grade = trace_grade_debug,
-        io.write_string("debug", !IO)
-    ),
+    io.write_string(GradeName, !IO),
     io.write_string(")", !IO).
 mercury_output_trace_compiletime(trace_trace_level(Level), !IO) :-
     io.write_string("tracelevel(", !IO),
