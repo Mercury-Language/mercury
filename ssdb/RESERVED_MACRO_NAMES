@@ -63,7 +63,11 @@ __EXTENSIONS__
 __OPTIMIZE__
 __STRICT_ANSI__
 #-----------------------------------------------------------------------------#
-# These are defined in when threads are enabled.
+# These are defined when threads are enabled.
 _REENTRANT
 _THREAD_SAFE
+#-----------------------------------------------------------------------------#
+# These are defined in mercury_signal.h, which ssdb.m #includes.
+__KERNEL__
+sigcontext_struct
 #-----------------------------------------------------------------------------#
