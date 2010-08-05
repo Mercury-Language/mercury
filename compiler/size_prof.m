@@ -96,8 +96,7 @@
 
     % Perform the transformation on the specified predicate.
     %
-:- pred size_prof_process_proc_msg(construct_transform::in,
-    pred_id::in, proc_id::in, pred_info::in,
+:- pred size_prof_process_proc_msg(construct_transform::in, pred_proc_id::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -117,6 +116,7 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
+:- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
@@ -216,33 +216,23 @@
                 spi_module_info             :: module_info
             ).
 
-size_prof_process_proc_msg(Transform, PredId, ProcId, _PredInfo,
-        ProcInfo0, ProcInfo, !ModuleInfo) :-
-    module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-    (
-        VeryVerbose = yes,
-        trace [io(!IO)] (
-            io.write_string("% Adding typeinfos in ", !IO),
-            write_pred_proc_id_pair(!.ModuleInfo, PredId, ProcId, !IO),
-            io.write_string(": ", !IO)
-        ),
-        size_prof_process_proc(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
-            !ModuleInfo),
-        trace [io(!IO)] (
-            io.write_string("done.\n", !IO)
-        )
-    ;
-        VeryVerbose = no,
-        size_prof_process_proc(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
-            !ModuleInfo)
+size_prof_process_proc_msg(Transform, PredProcId, !ProcInfo, !ModuleInfo) :-
+    trace [io(!IO)] (
+        write_proc_progress_message("% Adding typeinfos in ",
+            PredProcId, !.ModuleInfo, !IO)
+    ),
+    size_prof_process_proc(Transform, PredProcId, !ProcInfo, !ModuleInfo),
+    trace [io(!IO)] (
+        write_proc_progress_message("done.\n",
+            PredProcId, !.ModuleInfo, !IO)
     ).
 
-:- pred size_prof_process_proc(construct_transform::in,
-    pred_id::in, proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
+:- pred size_prof_process_proc(construct_transform::in, pred_proc_id::in,
+    proc_info::in, proc_info::out,
+    module_info::in, module_info::out) is det.
 
-size_prof_process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo) :-
+size_prof_process_proc(Transform, proc(PredId, ProcId), !ProcInfo,
+        !ModuleInfo) :-
     Simplifications = list_to_simplifications([]),
     simplify_proc_return_msgs(Simplifications, PredId, ProcId,
         !ModuleInfo, !ProcInfo, _Msgs),

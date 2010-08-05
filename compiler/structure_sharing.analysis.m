@@ -340,26 +340,25 @@ structure_sharing_answer_to_domain(MaybePPId, HeadVarTypes, ProcInfo, Answer,
     % used by the liveness pass (liveness.m). This information is used to
     % eliminate useless sharing pairs during sharing analysis.
     %
-:- pred annotate_liveness(module_info::in, module_info::out, io::di,
-    io::uo) is det.
+:- pred annotate_liveness(module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
 annotate_liveness(!ModuleInfo, !IO) :-
     process_all_nonimported_procs(
-        update_module_io(simplify_and_detect_liveness_proc),
+        update_module(simplify_and_detect_liveness_proc),
         !ModuleInfo, !IO).
 
-:- pred simplify_and_detect_liveness_proc(pred_id::in, proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred simplify_and_detect_liveness_proc(pred_proc_id::in,
+    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
-simplify_and_detect_liveness_proc(PredId, ProcId, !ProcInfo, !ModuleInfo,
-        !IO) :-
-    % Liveness annotation expects the procedure to have been simplified.  For
-    % example, an if-then-else with an `erroneous' condition will cause an
-    % assertion failure if it is not simplified away.
+simplify_and_detect_liveness_proc(PredProcId, !ProcInfo, !ModuleInfo) :-
+    % Liveness annotation expects the procedure to have been simplified.
+    % For example, an if-then-else with an `erroneous' condition will cause
+    % an assertion failure if it is not simplified away.
     Simplifications = list_to_simplifications([]),
+    PredProcId = proc(PredId, ProcId),
     simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !ProcInfo),
-    detect_liveness_proc(PredId, ProcId, !.ModuleInfo, !ProcInfo, !IO).
+    detect_liveness_proc(!.ModuleInfo, PredProcId, !ProcInfo).
 
 %-----------------------------------------------------------------------------%
 

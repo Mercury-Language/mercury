@@ -50,7 +50,7 @@
     % Transform the given procedure if it is in the complexity map.
     %
 :- pred process_proc_msg(int::in, complexity_proc_map::in,
-    pred_id::in, proc_id::in, proc_info::in, proc_info::out,
+    pred_proc_id::in, proc_info::in, proc_info::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -157,8 +157,8 @@ is_in_complexity_proc_map(ProcMap, ModuleInfo, PredId, ProcId) = IsInMap :-
 
 %-----------------------------------------------------------------------------%
 
-process_proc_msg(NumProcs, ProcMap, PredId, ProcId, !ProcInfo, !ModuleInfo,
-        !IO) :-
+process_proc_msg(NumProcs, ProcMap, proc(PredId, ProcId), !ProcInfo,
+        !ModuleInfo, !IO) :-
     IsInMap = is_in_complexity_proc_map(ProcMap, !.ModuleInfo,
         PredId, ProcId),
     (

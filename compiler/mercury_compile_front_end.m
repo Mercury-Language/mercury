@@ -884,7 +884,7 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
         maybe_write_string(Verbose, "% Simplifying goals...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         Simplifications = list_to_simplifications(SimpList),
-        process_all_nonimported_procs_errors(
+        process_all_nonimported_preds_errors(
             update_pred_error(simplify_pred(Simplifications)),
             !HLDS, [], SimplifySpecs, !IO),
         (

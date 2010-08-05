@@ -25,7 +25,6 @@
 :- import_module transform_hlds.pd_info.
 
 :- import_module bool.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -41,7 +40,7 @@
     % can fail are executed as early as possible.
     %
 :- pred propagate_constraints(hlds_goal::in, hlds_goal::out,
-    pd_info::in, pd_info::out, io::di, io::uo) is det.
+    pd_info::in, pd_info::out) is det.
 
     % Apply simplify.m to the goal.
     %
@@ -51,21 +50,20 @@
     % Apply unique_modes.m to the goal.
     %
 :- pred unique_modecheck_goal(hlds_goal::in, hlds_goal::out,
-    list(mode_error_info)::out, pd_info::in, pd_info::out,
-    io::di, io::uo) is det.
+    list(mode_error_info)::out, pd_info::in, pd_info::out) is det.
 
     % Apply unique_modes.m to the goal.
     %
-:- pred unique_modecheck_goal(set(prog_var)::in,
+:- pred unique_modecheck_goal_live_vars(set(prog_var)::in,
     hlds_goal::in, hlds_goal::out, list(mode_error_info)::out,
-    pd_info::in, pd_info::out, io::di, io::uo) is det.
+    pd_info::in, pd_info::out) is det.
 
     % Find out which arguments of the procedure are interesting
     % for deforestation.
     %
 :- pred get_branch_vars_proc(pred_proc_id::in, proc_info::in,
-    pd_arg_info::in, pd_arg_info::out,
-    module_info::in, module_info::out) is det.
+    module_info::in, module_info::out, pd_arg_info::in, pd_arg_info::out)
+    is det.
 
     % Find out which variables of the goal are interesting
     % for deforestation.
@@ -176,6 +174,7 @@
 
 :- import_module assoc_list.
 :- import_module int.
+:- import_module io.
 :- import_module pair.
 :- import_module set.
 :- import_module term.
@@ -192,7 +191,7 @@ goal_get_calls(Goal0, CalledPreds) :-
 
 %-----------------------------------------------------------------------------%
 
-propagate_constraints(!Goal, !PDInfo, !IO) :-
+propagate_constraints(!Goal, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     module_info_get_globals(ModuleInfo0, Globals),
     globals.lookup_bool_option(Globals, local_constraint_propagation,
@@ -201,8 +200,10 @@ propagate_constraints(!Goal, !PDInfo, !IO) :-
     (
         ConstraintProp = yes,
         Goal0 = !.Goal,
-        pd_debug_message(DebugPD, "%% Propagating constraints\n", [], !IO),
-        pd_debug_output_goal(!.PDInfo, "before constraints\n", Goal0, !IO),
+        trace [io(!IO)] (
+            pd_debug_message(DebugPD, "%% Propagating constraints\n", [], !IO),
+            pd_debug_output_goal(!.PDInfo, "before constraints\n", Goal0, !IO)
+        ),
         pd_info_get_proc_info(!.PDInfo, ProcInfo0),
         pd_info_get_instmap(!.PDInfo, InstMap),
         proc_info_get_vartypes(ProcInfo0, VarTypes0),
@@ -219,11 +220,13 @@ propagate_constraints(!Goal, !PDInfo, !IO) :-
         pd_info_set_proc_info(ProcInfo, !PDInfo),
         (
             Changed = yes,
-            pd_debug_output_goal(!.PDInfo,
-                "after constraints, before recompute\n", !.Goal, !IO),
+            trace [io(!IO)] (
+                pd_debug_output_goal(!.PDInfo,
+                    "after constraints, before recompute\n", !.Goal, !IO)
+            ),
             pd_requantify_goal(NonLocals, !Goal, !PDInfo),
             pd_recompute_instmap_delta(!Goal, !PDInfo),
-            rerun_det_analysis(!Goal, !PDInfo, !IO),
+            rerun_det_analysis(!Goal, !PDInfo),
             simplify.find_simplifications(no, Globals, Simplifications),
             pd_simplify_goal(Simplifications, !Goal, !PDInfo)
         ;
@@ -271,12 +274,11 @@ pd_simplify_goal(Simplifications, Goal0, Goal, !PDInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-unique_modecheck_goal(Goal0, Goal, Errors, !PDInfo, !IO) :-
+unique_modecheck_goal(Goal0, Goal, Errors, !PDInfo) :-
     get_goal_live_vars(!.PDInfo, Goal0, LiveVars),
-    unique_modecheck_goal(LiveVars, Goal0, Goal, Errors,
-        !PDInfo, !IO).
+    unique_modecheck_goal_live_vars(LiveVars, Goal0, Goal, Errors, !PDInfo).
 
-unique_modecheck_goal(LiveVars, Goal0, Goal, Errors, !PDInfo, !IO) :-
+unique_modecheck_goal_live_vars(LiveVars, Goal0, Goal, Errors, !PDInfo) :-
     % Construct a mode_info.
     pd_info_get_pred_proc_id(!.PDInfo, PredProcId),
     PredProcId = proc(PredId, ProcId),
@@ -301,9 +303,11 @@ unique_modecheck_goal(LiveVars, Goal0, Goal, Errors, !PDInfo, !IO) :-
     mode_info_get_errors(ModeInfo, Errors),
     (
         Debug = yes,
-        ErrorSpecs = list.map(mode_error_info_to_spec(ModeInfo), Errors),
-        write_error_specs(ErrorSpecs, Globals, 0, _NumWarnings, 0, _NumErrors,
-            !IO)
+        trace [io(!IO)] (
+            ErrorSpecs = list.map(mode_error_info_to_spec(ModeInfo), Errors),
+            write_error_specs(ErrorSpecs, Globals,
+                0, _NumWarnings, 0, _NumErrors, !IO)
+        )
     ;
         Debug = no
     ),
@@ -357,9 +361,9 @@ get_goal_live_vars_2(ModuleInfo, [NonLocal | NonLocals],
 %-----------------------------------------------------------------------------%
 
 :- pred rerun_det_analysis(hlds_goal::in, hlds_goal::out,
-    pd_info::in, pd_info::out, io::di, io::uo) is det.
+    pd_info::in, pd_info::out) is det.
 
-rerun_det_analysis(Goal0, Goal, !PDInfo, !IO) :-
+rerun_det_analysis(Goal0, Goal, !PDInfo) :-
     Goal0 = hlds_goal(_, GoalInfo0),
 
     Detism = goal_info_get_determinism(GoalInfo0),
@@ -387,8 +391,8 @@ rerun_det_analysis(Goal0, Goal, !PDInfo, !IO) :-
     % Make sure there were no errors.
     module_info_get_globals(ModuleInfo, Globals),
     disable_det_warnings(_OptionsToRestore, Globals, GlobalsToUse),
-    write_error_specs(Specs, GlobalsToUse, 0, _NumWarnings, 0, NumErrors, !IO),
-    expect(unify(NumErrors, 0), this_file,
+    ContainsErrors = contains_errors(GlobalsToUse, Specs),
+    expect(unify(ContainsErrors, no), this_file,
         "rerun_det_analysis: determinism errors").
 
 %-----------------------------------------------------------------------------%
@@ -420,9 +424,9 @@ convert_branch_info_2([ArgNo - Branches | ArgInfos], Args, !VarInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- type pd_var_info     ==  branch_info_map(prog_var).
+:- type pd_var_info ==  branch_info_map(prog_var).
 
-get_branch_vars_proc(PredProcId, ProcInfo, !ArgInfo, !ModuleInfo) :-
+get_branch_vars_proc(PredProcId, ProcInfo, !ModuleInfo, !ArgInfo) :-
     proc_info_get_goal(ProcInfo, Goal),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     instmap.init_reachable(InstMap0),

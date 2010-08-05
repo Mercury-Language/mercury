@@ -139,7 +139,7 @@ llds_backend_pass(!HLDS, !:GlobalData, LLDS, !DumpInfo, !IO) :-
     global_data::in, global_data::out, list(c_procedure)::out,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
-llds_backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !DumpInfo, !IO) :-
+llds_backend_pass_by_phases(!HLDS, !GlobalData, !:LLDS, !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -174,15 +174,14 @@ llds_backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !DumpInfo, !IO) :-
     maybe_goal_paths(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 345, "precodegen", !DumpInfo, !IO),
 
-    generate_llds_code_for_module(!.HLDS, Verbose, Stats, !GlobalData, LLDS1,
+    generate_llds_code_for_module(!.HLDS, Verbose, Stats, !GlobalData, !:LLDS,
         !IO),
 
-    maybe_generate_stack_layouts(!.HLDS, LLDS1, Verbose, Stats, !GlobalData,
+    maybe_generate_stack_layouts(!.HLDS, !.LLDS, Verbose, Stats, !GlobalData,
         !IO),
     % maybe_dump_global_data(!.GlobalData, !IO),
 
-    maybe_optimize_llds(!.HLDS, !.GlobalData, Verbose, Stats, LLDS1, LLDS,
-        !IO).
+    maybe_optimize_llds(!.HLDS, !.GlobalData, Verbose, Stats, !LLDS, !IO).
 
 :- pred llds_backend_pass_by_preds(module_info::in, module_info::out,
     global_data::in, global_data::out, list(c_procedure)::out,
@@ -280,28 +279,29 @@ llds_backend_pass_by_preds_2([PredId | PredIds], !HLDS, !GlobalData,
 
 llds_backend_pass_for_pred([], _, _, !HLDS, !GlobalData, [], !IO).
 llds_backend_pass_for_pred([ProcId | ProcIds], PredId, PredInfo, !HLDS,
-        !GlobalData, [ProcLabel - Proc | Procs], !IO) :-
+        !GlobalData, [ProcLabel - ProcCode | ProcCodes], !IO) :-
     ProcLabel = make_proc_label(!.HLDS, PredId, ProcId),
     pred_info_get_procedures(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
-    llds_backend_pass_for_procs(PredInfo, ProcInfo, _, ProcId, PredId, !HLDS,
-        !GlobalData, Proc, !IO),
+    llds_backend_pass_for_proc(PredInfo, ProcInfo, ProcId, PredId, !HLDS,
+        !GlobalData, ProcCode, !IO),
     llds_backend_pass_for_pred(ProcIds, PredId, PredInfo, !HLDS, !GlobalData,
-        Procs, !IO).
+        ProcCodes, !IO).
 
-:- pred llds_backend_pass_for_procs(pred_info::in,
-    proc_info::in, proc_info::out, proc_id::in, pred_id::in,
-    module_info::in, module_info::out, global_data::in, global_data::out,
-    c_procedure::out, io::di, io::uo) is det.
+:- pred llds_backend_pass_for_proc(pred_info::in, proc_info::in,
+    proc_id::in, pred_id::in, module_info::in, module_info::out,
+    global_data::in, global_data::out, c_procedure::out, io::di, io::uo)
+    is det.
 
-llds_backend_pass_for_procs(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
+llds_backend_pass_for_proc(PredInfo, !.ProcInfo, ProcId, PredId, !HLDS,
         !GlobalData, ProcCode, !IO) :-
+    PredProcId = proc(PredId, ProcId),
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, optimize_saved_vars_const,
         SavedVarsConst),
     (
         SavedVarsConst = yes,
-        saved_vars_proc(PredId, ProcId, !ProcInfo, !HLDS, !IO)
+        saved_vars_proc(proc(PredId, ProcId), !ProcInfo, !HLDS)
     ;
         SavedVarsConst = no
     ),
@@ -309,14 +309,14 @@ llds_backend_pass_for_procs(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
         SavedVarsCell),
     (
         SavedVarsCell = yes,
-        stack_opt_cell(PredId, ProcId, !ProcInfo, !HLDS, !IO)
+        stack_opt_cell(PredProcId, !ProcInfo, !HLDS)
     ;
         SavedVarsCell = no
     ),
     globals.lookup_bool_option(Globals, follow_code, FollowCode),
     (
         FollowCode = yes,
-        move_follow_code_in_proc(PredId, ProcId, PredInfo, !ProcInfo, !HLDS)
+        move_follow_code_in_proc(PredProcId, !ProcInfo, !HLDS)
     ;
         FollowCode = no
     ),
@@ -351,25 +351,25 @@ llds_backend_pass_for_procs(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
     simplify_proc(Simplifications, PredId, ProcId, !HLDS, !ProcInfo),
     write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
         !.HLDS, !IO),
-    detect_liveness_proc(PredId, ProcId, !.HLDS, !ProcInfo, !IO),
+    detect_liveness_proc(!.HLDS, PredProcId, !ProcInfo),
     globals.lookup_bool_option(Globals, exec_trace_tail_rec, ExecTraceTailRec),
     (
         ExecTraceTailRec = yes,
         write_proc_progress_message(
             "% Marking directly tail recursive calls in ", PredId, ProcId,
             !.HLDS, !IO),
-        mark_tail_calls(feature_debug_tail_rec_call, PredId, ProcId,
-            !.HLDS, PredInfo, !ProcInfo)
+        mark_tail_calls(feature_debug_tail_rec_call, !.HLDS, PredProcId,
+            PredInfo, !ProcInfo)
     ;
         ExecTraceTailRec = no
     ),
     write_proc_progress_message("% Allocating stack slots in ", PredId,
         ProcId, !.HLDS, !IO),
-    allocate_stack_slots_in_proc(PredId, ProcId, !.HLDS, !ProcInfo, !IO),
+    allocate_stack_slots_in_proc(!.HLDS, PredProcId, !ProcInfo),
     write_proc_progress_message(
         "% Allocating storage locations for live vars in ",
         PredId, ProcId, !.HLDS, !IO),
-    allocate_store_maps(final_allocation, PredId, !.HLDS, !ProcInfo),
+    allocate_store_maps(final_allocation, !.HLDS, PredProcId, !ProcInfo),
     globals.get_trace_level(Globals, TraceLevel),
     ( given_trace_level_is_none(TraceLevel) = no ->
         write_proc_progress_message("% Calculating goal paths in ",
@@ -385,12 +385,11 @@ llds_backend_pass_for_procs(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
     globals.lookup_bool_option(Globals, optimize, Optimize),
     (
         Optimize = yes,
-        optimize_proc(Globals, !.GlobalData, ProcCode0, ProcCode, !IO)
+        optimize_proc(Globals, !.GlobalData, ProcCode0, ProcCode)
     ;
         Optimize = no,
         ProcCode = ProcCode0
     ),
-    PredProcId = ProcCode ^ cproc_id,
     Instructions = ProcCode ^ cproc_code,
     write_proc_progress_message(
         "% Generating call continuation information for ",
@@ -422,7 +421,7 @@ maybe_saved_vars(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Minimizing variable saves using constants...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(update_module_io(saved_vars_proc),
+        process_all_nonimported_procs(update_module(saved_vars_proc),
             !HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
@@ -441,7 +440,7 @@ maybe_stack_opt(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Minimizing variable saves using cells...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(update_module_io(stack_opt_cell),
+        process_all_nonimported_procs(update_module(stack_opt_cell),
             !HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
@@ -482,7 +481,7 @@ compute_liveness(Verbose, Stats, !HLDS, !IO) :-
     ->
         detect_liveness_preds_parallel(!HLDS)
     ;
-        process_all_nonimported_procs(update_proc_io(detect_liveness_proc),
+        process_all_nonimported_procs(update_proc_ids(detect_liveness_proc),
             !HLDS, !IO)
     ),
     maybe_write_string(Verbose, "% done.\n", !IO),
@@ -500,8 +499,7 @@ maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !IO) :-
             "% Marking directly tail recursive calls...", !IO),
         maybe_flush_output(Verbose, !IO),
         process_all_nonimported_procs(
-            update_proc_predprocid(
-                mark_tail_calls(feature_debug_tail_rec_call)),
+            update_proc_ids_pred(mark_tail_calls(feature_debug_tail_rec_call)),
             !HLDS, !IO),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
@@ -516,7 +514,7 @@ compute_stack_vars(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Computing stack vars...", !IO),
     maybe_flush_output(Verbose, !IO),
     process_all_nonimported_procs(
-        update_proc_io(allocate_stack_slots_in_proc), !HLDS, !IO),
+        update_proc_ids(allocate_stack_slots_in_proc), !HLDS, !IO),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -527,7 +525,7 @@ allocate_store_map(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Allocating store map...", !IO),
     maybe_flush_output(Verbose, !IO),
     process_all_nonimported_procs(
-        update_proc_predid(allocate_store_maps(final_allocation)), !HLDS, !IO),
+        update_proc_ids(allocate_store_maps(final_allocation)), !HLDS, !IO),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -570,7 +568,7 @@ maybe_optimize_llds(HLDS, GlobalData, Verbose, Stats, !LLDS, !IO) :-
         Optimize = yes,
         maybe_write_string(Verbose, "% Doing optimizations...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        optimize_procs(Globals, GlobalData, !LLDS, !IO),
+        optimize_procs(Globals, GlobalData, !LLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

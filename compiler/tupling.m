@@ -325,7 +325,7 @@ proc_has_local_callers(CalleeProc, DepGraph) :-
 
 maybe_tuple_scc_2(TraceCounts, TuningParams, PredProcIds, CandidateHeadVars,
         !ModuleInfo, !Counter, !TransformMap, !IO, VeryVerbose) :-
-    list.foldl2(prepare_proc_for_counting, PredProcIds, !ModuleInfo, !IO),
+    list.foldl(prepare_proc_for_counting, PredProcIds, !ModuleInfo),
     % Count the average number of loads/stores without any transformation.
     count_load_stores_for_scc(TraceCounts, TuningParams, !.ModuleInfo,
         map.init, PredProcIds, CostsWithoutTupling),
@@ -848,9 +848,9 @@ get_own_tupling_proposal(CountInfo) =
     % the count_load_stores_in_proc predicate to work.
     %
 :- pred prepare_proc_for_counting(pred_proc_id::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-prepare_proc_for_counting(PredProcId, !ModuleInfo, !IO) :-
+prepare_proc_for_counting(PredProcId, !ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
     some [!ProcInfo] (
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
@@ -858,7 +858,7 @@ prepare_proc_for_counting(PredProcId, !ModuleInfo, !IO) :-
         pred_info_get_arg_types(PredInfo, ArgTypes),
         generate_proc_arg_info(ArgTypes, !.ModuleInfo, !ProcInfo),
 
-        detect_liveness_proc(PredId, ProcId, !.ModuleInfo, !ProcInfo, !IO),
+        detect_liveness_proc(!.ModuleInfo, PredProcId, !ProcInfo),
         initial_liveness(!.ProcInfo, PredId, !.ModuleInfo, Liveness0),
         module_info_get_globals(!.ModuleInfo, Globals),
         body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),

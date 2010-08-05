@@ -30,13 +30,10 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
-:- import_module io.
-
 %-----------------------------------------------------------------------------%
 
-:- pred saved_vars_proc(pred_id::in, proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred saved_vars_proc(pred_proc_id::in,
+    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -47,6 +44,9 @@
 :- import_module check_hlds.polymorphism.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_goal.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
@@ -54,6 +54,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module pair.
@@ -63,18 +64,16 @@
 
 %-----------------------------------------------------------------------------%
 
-saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo, !ModuleInfo, !IO) :-
-    write_proc_progress_message("% Minimizing saved vars in ",
-        PredId, ProcId, !.ModuleInfo, !IO),
+saved_vars_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
+    trace [io(!IO)] (
+        write_proc_progress_message("% Minimizing saved vars in ",
+            PredId, ProcId, !.ModuleInfo, !IO)
+    ),
+
     module_info_get_globals(!.ModuleInfo, Globals),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
-    saved_vars_proc_no_io(TypeInfoLiveness, ProcInfo0, ProcInfo, !ModuleInfo).
 
-:- pred saved_vars_proc_no_io(bool::in, proc_info::in, proc_info::out,
-    module_info::in, module_info::out) is det.
-
-saved_vars_proc_no_io(TypeInfoLiveness, !ProcInfo, !ModuleInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_varset(!.ProcInfo, Varset0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
@@ -87,8 +86,6 @@ saved_vars_proc_no_io(TypeInfoLiveness, !ProcInfo, !ModuleInfo) :-
     final_slot_info(Varset1, VarTypes1, RttiVarMaps1, SlotInfo),
     proc_info_get_headvars(!.ProcInfo, HeadVars),
 
-    % hlds_out.write_goal(Goal1, !.ModuleInfo, Varset1, 0, "\n"),
-
     % Recompute the nonlocals for each goal.
     implicitly_quantify_clause_body_general(ordinary_nonlocals_no_lambda,
         HeadVars, _Warnings, Goal1, Goal2,
@@ -98,7 +95,18 @@ saved_vars_proc_no_io(TypeInfoLiveness, !ProcInfo, !ModuleInfo) :-
     recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
         Goal2, Goal, VarTypes, InstVarSet, InstMap0, !ModuleInfo),
 
-    % hlds_out.write_goal(Goal, !.ModuleInfo, Varset, 0, "\n"),
+    trace [io(!IO), compile_time(flag("debug_saved_vars"))] (
+        OutInfo = hlds_out_util.init_hlds_out_info(Globals),
+        io.write_string("initial version:\n", !IO),
+        hlds_out_goal.write_goal(OutInfo, Goal0, !.ModuleInfo, Varset0,
+            yes, 0, "\n", !IO),
+        io.write_string("after transformation:\n", !IO),
+        hlds_out_goal.write_goal(OutInfo, Goal1, !.ModuleInfo, Varset1,
+            yes, 0, "\n", !IO),
+        io.write_string("final version:\n", !IO),
+        hlds_out_goal.write_goal(OutInfo, Goal, !.ModuleInfo, Varset,
+            yes, 0, "\n", !IO)
+    ),
 
     proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_varset(Varset, !ProcInfo),

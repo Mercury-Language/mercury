@@ -74,12 +74,10 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
-:- import_module io.
-
 %-----------------------------------------------------------------------------%
 
-:- pred stack_opt_cell(pred_id::in, proc_id::in, proc_info::in, proc_info::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred stack_opt_cell(pred_proc_id::in, proc_info::in, proc_info::out,
+    module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -113,6 +111,7 @@
 :- import_module bool.
 :- import_module counter.
 :- import_module int.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -165,13 +164,14 @@
                 soi_matching_results    :: list(matching_result)
             ).
 
-stack_opt_cell(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
+stack_opt_cell(PredProcId, !ProcInfo, !ModuleInfo) :-
+    PredProcId = proc(PredId, ProcId),
     % This simplication is necessary to fix some bad inputs from
     % getting to the liveness computation.
     % (see tests/valid/stack_opt_simplify.m)
     Simplications = list_to_simplifications([]),
     simplify_proc(Simplications, PredId, ProcId, !ModuleInfo, !ProcInfo),
-    detect_liveness_proc(PredId, ProcId, !.ModuleInfo, !ProcInfo, !IO),
+    detect_liveness_proc(!.ModuleInfo, PredProcId, !ProcInfo),
     initial_liveness(!.ProcInfo, PredId, !.ModuleInfo, Liveness0),
     module_info_get_globals(!.ModuleInfo, Globals),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
@@ -189,24 +189,32 @@ stack_opt_cell(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         OptStackAlloc0, OptStackAlloc, Liveness0, _Liveness,
         NondetLiveness0, _NondetLiveness),
     proc_info_set_goal(Goal, !ProcInfo),
-    allocate_store_maps(for_stack_opt, PredId, !.ModuleInfo, !ProcInfo),
+    allocate_store_maps(for_stack_opt, !.ModuleInfo, PredProcId, !ProcInfo),
     globals.lookup_int_option(Globals, debug_stack_opt, DebugStackOpt),
     pred_id_to_int(PredId, PredIdInt),
-    maybe_write_progress_message("\nbefore stack opt cell",
-        DebugStackOpt, PredIdInt, !.ProcInfo, !.ModuleInfo, !IO),
+    trace [io(!IO)] (
+        maybe_write_progress_message("\nbefore stack opt cell",
+            DebugStackOpt, PredIdInt, !.ProcInfo, !.ModuleInfo, !IO)
+    ),
     optimize_live_sets(!.ModuleInfo, OptStackAlloc, !ProcInfo,
-        Changed, DebugStackOpt, PredIdInt, !IO),
+        Changed, DebugStackOpt, PredIdInt),
     (
         Changed = yes,
-        maybe_write_progress_message("\nafter stack opt transformation",
-            DebugStackOpt, PredIdInt, !.ProcInfo, !.ModuleInfo, !IO),
+        trace [io(!IO)] (
+            maybe_write_progress_message("\nafter stack opt transformation",
+                DebugStackOpt, PredIdInt, !.ProcInfo, !.ModuleInfo, !IO)
+        ),
         requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
-        maybe_write_progress_message("\nafter stack opt requantify",
-            DebugStackOpt, PredIdInt, !.ProcInfo, !.ModuleInfo, !IO),
+        trace [io(!IO)] (
+            maybe_write_progress_message("\nafter stack opt requantify",
+                DebugStackOpt, PredIdInt, !.ProcInfo, !.ModuleInfo, !IO)
+        ),
         recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
             !ProcInfo, !ModuleInfo),
-        maybe_write_progress_message("\nafter stack opt recompute instmaps",
-            DebugStackOpt, PredIdInt, !.ProcInfo, !.ModuleInfo, !IO)
+        trace [io(!IO)] (
+            maybe_write_progress_message("\nafter stack opt recompute instmaps",
+                DebugStackOpt, PredIdInt, !.ProcInfo, !.ModuleInfo, !IO)
+        )
     ;
         Changed = no
     ).
@@ -216,11 +224,10 @@ stack_opt_cell(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
 init_opt_stack_alloc = opt_stack_alloc(set.init).
 
 :- pred optimize_live_sets(module_info::in, opt_stack_alloc::in,
-    proc_info::in, proc_info::out, bool::out, int::in, int::in,
-    io::di, io::uo) is det.
+    proc_info::in, proc_info::out, bool::out, int::in, int::in) is det.
 
 optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
-        PredIdInt, !IO) :-
+        PredIdInt) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     proc_info_get_varset(!.ProcInfo, VarSet0),
@@ -286,8 +293,10 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
     build_interval_info_in_goal(Goal0, IntervalInfo0, IntervalInfo,
         StackOptInfo0, StackOptInfo),
     ( DebugStackOpt = PredIdInt ->
-        dump_interval_info(IntervalInfo, !IO),
-        dump_stack_opt_info(StackOptInfo, !IO)
+        trace [io(!IO)] (
+            dump_interval_info(IntervalInfo, !IO),
+            dump_stack_opt_info(StackOptInfo, !IO)
+        )
     ;
         true
     ),

@@ -25,7 +25,6 @@
 
 :- import_module bool.
 :- import_module counter.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -129,6 +128,7 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -389,14 +389,14 @@ pd_info_incr_size_delta(Delta1, !PDInfo) :-
 
 :- interface.
 
-    % Find the deforestation procedure which most closely
-    % matches the given goal.
+    % Find the deforestation procedure which most closely matches
+    % the given goal.
     %
-:- pred pd_info.search_version(pd_info::in, hlds_goal::in, maybe_version::out,
-    io::di, io::uo) is det.
+:- pred pd_info.search_version(pd_info::in, hlds_goal::in, maybe_version::out)
+    is det.
 
-    % Create a new predicate for the input goal, returning a
-    % goal which calls the new predicate.
+    % Create a new predicate for the input goal, returning a goal
+    % which calls the new predicate.
     %
 :- pred pd_info.define_new_pred(pred_origin::in, hlds_goal::in,
     pred_proc_id::out, hlds_goal::out, pd_info::in, pd_info::out) is det.
@@ -404,7 +404,7 @@ pd_info_incr_size_delta(Delta1, !PDInfo) :-
     % Add a version to the table.
     %
 :- pred pd_info.register_version(pred_proc_id::in, version_info::in,
-    pd_info::in, pd_info::out, io::di, io::uo) is det.
+    pd_info::in, pd_info::out) is det.
 
     % Remove a version and make sure it is never recreated.
     %
@@ -461,8 +461,10 @@ pd_info_incr_size_delta(Delta1, !PDInfo) :-
 
 :- implementation.
 
-pd_info.search_version(PDInfo, Goal, MaybeVersion, !IO) :-
-    pd_debug_output_goal(PDInfo, "Searching for version:\n", Goal, !IO),
+pd_info.search_version(PDInfo, Goal, MaybeVersion) :-
+    trace [io(!IO)] (
+        pd_debug_output_goal(PDInfo, "Searching for version:\n", Goal, !IO)
+    ),
     pd_util.goal_get_calls(Goal, CalledPreds),
     pd_info_get_versions(PDInfo, Versions),
     pd_info_get_goal_version_index(PDInfo, GoalVersionIndex),
@@ -479,7 +481,9 @@ pd_info.search_version(PDInfo, Goal, MaybeVersion, !IO) :-
     ;
         MaybeVersion = no_version
     ),
-    pd_debug_search_version_result(PDInfo, MaybeVersion, !IO).
+    trace [io(!IO)] (
+        pd_debug_search_version_result(PDInfo, MaybeVersion, !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -654,8 +658,10 @@ pd_info.define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-pd_info.register_version(PredProcId, Version, !PDInfo, !IO) :-
-    pd_debug_register_version(!.PDInfo, PredProcId, Version, !IO),
+pd_info.register_version(PredProcId, Version, !PDInfo) :-
+    trace [io(!IO)] (
+        pd_debug_register_version(!.PDInfo, PredProcId, Version, !IO)
+    ),
     pd_info_get_goal_version_index(!.PDInfo, GoalVersionIndex0),
     Goal = Version ^ version_orig_goal,
     pd_util.goal_get_calls(Goal, Calls),

@@ -25,8 +25,8 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
-:- pred mark_tail_calls(goal_feature::in, pred_id::in, proc_id::in,
-    module_info::in, pred_info::in, proc_info::in, proc_info::out) is det.
+:- pred mark_tail_calls(goal_feature::in, module_info::in, pred_proc_id::in,
+    pred_info::in, proc_info::in, proc_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -44,7 +44,8 @@
     --->    found_tail_calls
     ;       not_found_tail_calls.
 
-mark_tail_calls(Feature, PredId, ProcId, ModuleInfo, PredInfo, !ProcInfo) :-
+mark_tail_calls(Feature, ModuleInfo, proc(PredId, ProcId), PredInfo,
+        !ProcInfo) :-
     pred_info_get_arg_types(PredInfo, Types),
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_interface_determinism(!.ProcInfo, Detism),

@@ -102,13 +102,13 @@
 
 %-----------------------------------------------------------------------------%
 
-    % hoist_loop_invariants(PredId, ProcId, PredInfo,
+    % hoist_loop_invariants(PredProcId, PredInfo,
     %       ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo)
     %
     % Analyze the procedure identified by PredProcId and, if appropriate,
     % split it into two applying the loop invariant hoisting optimization.
     %
-:- pred hoist_loop_invariants(pred_id::in, proc_id::in, pred_info::in,
+:- pred hoist_loop_invariants(pred_proc_id::in, pred_info::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -141,7 +141,7 @@
 
 %-----------------------------------------------------------------------------%
 
-hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
+hoist_loop_invariants(PredProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
     (
 
         % We only want to apply this optimization to pure preds (e.g.
@@ -151,7 +151,6 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
         % Next, work out whether this predicate is optimizable and
         % compute some auxiliary results along the way.
 
-        PredProcId = proc(PredId, ProcId),
         proc_info_get_goal(!.ProcInfo, Body),
         proc_info_get_headvars(!.ProcInfo, HeadVars),
         proc_info_get_argmodes(!.ProcInfo, HeadVarModes),
@@ -236,9 +235,8 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
         % computed invariant vars to the argument list, replacing invariant
         % goals in InProc with `true', and recursive calls at the end of
         % recursive paths with calls to the auxiliary procedure.
-        gen_aux_proc(InvGoals, PredProcId,
-            AuxPredProcId, CallAux, Body, AuxPredInfo, AuxProcInfo,
-            !ModuleInfo),
+        gen_aux_proc(InvGoals, PredProcId, AuxPredProcId, CallAux, Body,
+            AuxPredInfo, AuxProcInfo, !ModuleInfo),
 
         % We construct OutProc by replacing recursive calls to the InProc
         % at the end of recursive paths with calls to the auxiliary procedure.

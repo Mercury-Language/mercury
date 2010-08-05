@@ -951,7 +951,8 @@ maybe_loop_inv(Verbose, Stats, !HLDS, !DumpInfo, !IO) :-
 
         maybe_write_string(Verbose, "% Hoisting loop invariants...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(update_module(hoist_loop_invariants),
+        process_all_nonimported_procs(
+            update_module_pred(hoist_loop_invariants),
             !HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
@@ -1015,7 +1016,7 @@ maybe_delay_construct(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Delaying construction unifications ...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(update_proc_io(delay_construct_proc),
+        process_all_nonimported_procs(update_proc_ids(delay_construct_proc),
             !HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
@@ -1117,8 +1118,8 @@ maybe_unneeded_code(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Removing unneeded code from procedure bodies...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(
-            update_module_io(unneeded_process_proc_msg), !HLDS, !IO),
+        process_all_nonimported_procs(update_module(unneeded_process_proc_msg),
+            !HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

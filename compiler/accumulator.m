@@ -150,7 +150,7 @@
 
 :- import_module io.
 
-:- pred accumulator.process_proc(pred_id::in, proc_id::in,
+:- pred accumulator.process_proc(pred_proc_id::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
@@ -230,7 +230,7 @@
 
     % Attempt to transform a procedure into accumulator recursive form.
     %
-process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
+process_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo, !IO) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals,
         optimize_constructor_last_call_accumulator, DoLCO),
@@ -243,9 +243,11 @@ process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         (
             VeryVerbose = yes,
-            io.write_string("% Accumulators introduced into ", !IO),
-            write_pred_id(!.ModuleInfo, PredId, !IO),
-            io.write_string("\n", !IO)
+            trace [io(!IO)] (
+                io.write_string("% Accumulators introduced into ", !IO),
+                write_pred_id(!.ModuleInfo, PredId, !IO),
+                io.write_string("\n", !IO)
+            )
         ;
             VeryVerbose = no
         ),

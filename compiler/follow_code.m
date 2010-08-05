@@ -36,7 +36,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred move_follow_code_in_proc(pred_id::in, proc_id::in, pred_info::in,
+:- pred move_follow_code_in_proc(pred_proc_id::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -63,8 +63,7 @@
 
 %-----------------------------------------------------------------------------%
 
-move_follow_code_in_proc(_PredId, _ProcId, _PredInfo, !ProcInfo,
-        !ModuleInfo) :-
+move_follow_code_in_proc(_PredProcId, !ProcInfo, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, follow_code, FollowCode),
     (

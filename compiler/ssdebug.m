@@ -470,13 +470,13 @@ insert_context_update_call(ModuleInfo, Goal0, Goal, !ProcInfo) :-
 
 %-----------------------------------------------------------------------------%
 %
-% The main transformation
+% The main transformation.
 %
 
-:- pred process_proc(pred_id::in, proc_id::in, pred_info::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
+:- pred process_proc(pred_proc_id::in, proc_info::in, proc_info::out,
+    module_info::in, module_info::out) is det.
 
-process_proc(PredId, ProcId, _PredInfo, !ProcInfo, !ModuleInfo) :-
+process_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
     proc_info_get_argmodes(!.ProcInfo, ArgModes),
     ( check_arguments_modes(!.ModuleInfo, ArgModes) ->
         % We have different transformations for procedures of different

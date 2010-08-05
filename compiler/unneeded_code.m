@@ -62,13 +62,10 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
-:- import_module io.
-
 %-----------------------------------------------------------------------------%
 
-:- pred unneeded_process_proc_msg(pred_id::in, proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred unneeded_process_proc_msg(pred_proc_id::in,
+    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -84,6 +81,7 @@
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.instmap.
+:- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -95,6 +93,7 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -216,7 +215,7 @@
 
 %-----------------------------------------------------------------------------%
 
-unneeded_process_proc_msg(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
+unneeded_process_proc_msg(PredProcId, !ProcInfo, !ModuleInfo) :-
     % The transformation considers every nonlocal variable of a goal
     % that is bound on entry to be consumed by that goal. If the nonlocal set
     % contains any such variables that are not actually needed by the goal,
@@ -224,26 +223,23 @@ unneeded_process_proc_msg(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
     % Therefore we preprocess the procedure body to ensure that the nonlocals
     % sets are accurate reflections of the true needs of goals.
 
-    module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-    (
-        VeryVerbose = yes,
-        io.write_string("% Removing dead code in ", !IO),
-        write_pred_proc_id_pair(!.ModuleInfo, PredId, ProcId, !IO),
-        io.write_string(" ...\n", !IO),
-        unneeded_pre_process_proc(!ProcInfo),
-        unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, 1, Successful),
+    trace [io(!IO)] (
+        write_proc_progress_message("% Removing dead code in ",
+            PredProcId, !.ModuleInfo, !IO)
+    ),
+    unneeded_pre_process_proc(!ProcInfo),
+    PredProcId = proc(PredId, _),
+    unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, 1, Successful),
+    trace [io(!IO)] (
         (
             Successful = yes,
-            io.write_string("% done.\n", !IO)
+            write_proc_progress_message("% done.\n",
+                PredProcId, !.ModuleInfo, !IO)
         ;
             Successful = no,
-            io.write_string("% none found.\n", !IO)
+            write_proc_progress_message("% none found.\n",
+                PredProcId, !.ModuleInfo, !IO)
         )
-    ;
-        VeryVerbose = no,
-        unneeded_pre_process_proc(!ProcInfo),
-        unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, 1, _)
     ).
 
 :- pred unneeded_pre_process_proc(proc_info::in, proc_info::out) is det.

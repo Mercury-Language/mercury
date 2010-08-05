@@ -37,8 +37,8 @@
     --->    final_allocation
     ;       for_stack_opt.
 
-:- pred allocate_store_maps(store_map_run_type::in, pred_id::in,
-    module_info::in, proc_info::in, proc_info::out) is det.
+:- pred allocate_store_maps(store_map_run_type::in, module_info::in,
+    pred_proc_id::in, proc_info::in, proc_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -70,7 +70,7 @@
 
 %-----------------------------------------------------------------------------%
 
-allocate_store_maps(RunType, PredId, ModuleInfo, !ProcInfo) :-
+allocate_store_maps(RunType, ModuleInfo, proc(PredId, _), !ProcInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     (
         RunType = final_allocation,

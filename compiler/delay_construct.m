@@ -30,12 +30,10 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
-:- import_module io.
-
 %-----------------------------------------------------------------------------%
 
-:- pred delay_construct_proc(pred_id::in, proc_id::in, module_info::in,
-    proc_info::in, proc_info::out, io::di, io::uo) is det.
+:- pred delay_construct_proc(module_info::in, pred_proc_id::in,
+    proc_info::in, proc_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -52,23 +50,20 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
+:- import_module io.
 :- import_module list.
 :- import_module pair.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
 
-delay_construct_proc(PredId, ProcId, ModuleInfo, !ProcInfo, !IO) :-
-    write_proc_progress_message("% Delaying construction unifications in ",
-        PredId, ProcId, ModuleInfo, !IO),
+delay_construct_proc(ModuleInfo, proc(PredId, ProcId), !ProcInfo) :-
+    trace [io(!IO)] (
+        write_proc_progress_message("% Delaying construction unifications in ",
+            PredId, ProcId, ModuleInfo, !IO)
+    ),
     module_info_get_globals(ModuleInfo, Globals),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    delay_construct_proc_no_io(PredInfo, ModuleInfo, Globals, !ProcInfo).
-
-:- pred delay_construct_proc_no_io(pred_info::in, module_info::in, globals::in,
-    proc_info::in, proc_info::out) is det.
-
-delay_construct_proc_no_io(PredInfo, ModuleInfo, Globals, !ProcInfo) :-
     body_should_use_typeinfo_liveness(PredInfo, Globals, BodyTypeinfoLiveness),
     proc_info_get_vartypes(!.ProcInfo, VarTypes),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps),

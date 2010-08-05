@@ -28,12 +28,10 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
-:- import_module io.
-
 %-----------------------------------------------------------------------------%
 
-:- pred allocate_stack_slots_in_proc(pred_id::in, proc_id::in, module_info::in,
-    proc_info::in, proc_info::out, io::di, io::uo) is det.
+:- pred allocate_stack_slots_in_proc(module_info::in, pred_proc_id::in,
+    proc_info::in, proc_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -54,6 +52,7 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -63,7 +62,7 @@
 
 %-----------------------------------------------------------------------------%
 
-allocate_stack_slots_in_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
+allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, _ProcId), !ProcInfo) :-
     initial_liveness(!.ProcInfo, PredId, ModuleInfo, Liveness0),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     module_info_get_globals(ModuleInfo, Globals),

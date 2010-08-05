@@ -158,7 +158,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.prog_data.
 
-:- import_module io.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
@@ -166,12 +165,12 @@
     % Add liveness annotations to the goal of the procedure. This consists of
     % the {pre,post}{birth,death} sets and resume point information.
     %
-:- pred detect_liveness_proc(pred_id::in, proc_id::in, module_info::in,
-    proc_info::in, proc_info::out, io::di, io::uo) is det.
+:- pred detect_liveness_proc(module_info::in, pred_proc_id::in,
+    proc_info::in, proc_info::out) is det.
 
     % Add liveness annotations to the goals of nonimported procedures in the
-    % module.  Attempt to do so in parallel.  Debugging liveness is not
-    % supported in this version.
+    % module. Attempt to do so in parallel. Debugging liveness is not supported
+    % in this version.
     %
 :- pred detect_liveness_preds_parallel(module_info::in, module_info::out)
     is det.
@@ -207,6 +206,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -218,19 +218,6 @@
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
-
-:- typeclass debug_liveness_io(T) where [
-    pred maybe_debug_liveness(string::in, int::in, int::in, hlds_goal::in,
-        prog_varset::in, module_info::in, T::di, T::uo) is det
-].
-
-:- instance debug_liveness_io(io) where [
-    pred(maybe_debug_liveness/8) is io_maybe_debug_liveness
-].
-
-:- instance debug_liveness_io(unit) where [
-    maybe_debug_liveness(_, _, _, _, _, _, unit, unit)
-].
 
 %-----------------------------------------------------------------------------%
 
@@ -273,19 +260,18 @@ detect_liveness_pred(ModuleInfo, PredId, PredInfo) :-
 
 detect_liveness_pred_proc(ModuleInfo, PredId, ProcId, !PredInfo) :-
     pred_info_proc_info(!.PredInfo, ProcId, ProcInfo0),
-    detect_liveness_proc_2(PredId, ModuleInfo, ProcInfo0, ProcInfo, unit, _),
+    detect_liveness_proc_2(ModuleInfo, PredId, ProcInfo0, ProcInfo),
     pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo).
 
 %-----------------------------------------------------------------------------%
 
-detect_liveness_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
-    detect_liveness_proc_2(PredId, ModuleInfo, !ProcInfo, !IO).
+detect_liveness_proc(ModuleInfo, proc(PredId, _ProcId), !ProcInfo) :-
+    detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo).
 
-:- pred detect_liveness_proc_2(pred_id::in, module_info::in,
-    proc_info::in, proc_info::out, IO::di, IO::uo) is det
-    <= debug_liveness_io(IO).
+:- pred detect_liveness_proc_2(module_info::in, pred_id::in, 
+    proc_info::in, proc_info::out) is det.
 
-detect_liveness_proc_2(PredId, ModuleInfo, !ProcInfo, !IO) :-
+detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
     requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
@@ -300,19 +286,25 @@ detect_liveness_proc_2(PredId, ModuleInfo, !ProcInfo, !IO) :-
 
     globals.lookup_int_option(Globals, debug_liveness, DebugLiveness),
     pred_id_to_int(PredId, PredIdInt),
-    maybe_debug_liveness("\nbefore liveness",
-        DebugLiveness, PredIdInt, Goal0, VarSet, ModuleInfo, !IO),
+    trace [io(!IO)] (
+        maybe_debug_liveness("\nbefore liveness",
+            DebugLiveness, PredIdInt, Goal0, VarSet, ModuleInfo, !IO)
+    ),
 
     initial_liveness(!.ProcInfo, PredId, ModuleInfo, Liveness0),
     detect_liveness_in_goal(Goal0, Goal1, Liveness0, _, LiveInfo),
 
-    maybe_debug_liveness("\nafter liveness",
-        DebugLiveness, PredIdInt, Goal1, VarSet, ModuleInfo, !IO),
+    trace [io(!IO)] (
+        maybe_debug_liveness("\nafter liveness",
+            DebugLiveness, PredIdInt, Goal1, VarSet, ModuleInfo, !IO)
+    ),
 
     initial_deadness(!.ProcInfo, LiveInfo, ModuleInfo, Deadness0),
     detect_deadness_in_goal(Goal1, Goal2, Deadness0, _, Liveness0, LiveInfo),
-    maybe_debug_liveness("\nafter deadness",
-        DebugLiveness, PredIdInt, Goal2, VarSet, ModuleInfo, !IO),
+    trace [io(!IO)] (
+        maybe_debug_liveness("\nafter deadness",
+            DebugLiveness, PredIdInt, Goal2, VarSet, ModuleInfo, !IO)
+    ),
 
     (
         globals.get_trace_level(Globals, TraceLevel),
@@ -322,8 +314,10 @@ detect_liveness_proc_2(PredId, ModuleInfo, !ProcInfo, !IO) :-
         DelayDeath = yes
     ->
         delay_death_proc_body(Goal2, Goal3, VarSet, Liveness0),
-        maybe_debug_liveness("\nafter delay death",
-            DebugLiveness, PredIdInt, Goal3, VarSet, ModuleInfo, !IO)
+        trace [io(!IO)] (
+            maybe_debug_liveness("\nafter delay death",
+                DebugLiveness, PredIdInt, Goal3, VarSet, ModuleInfo, !IO)
+        )
     ;
         Goal3 = Goal2
     ),
@@ -339,15 +333,17 @@ detect_liveness_proc_2(PredId, ModuleInfo, !ProcInfo, !IO) :-
     ),
     detect_resume_points_in_goal(Goal3, Goal, Liveness0, _,
         LiveInfo, ResumeVars0),
-    maybe_debug_liveness("\nafter resume point",
-        DebugLiveness, PredIdInt, Goal, VarSet, ModuleInfo, !IO),
+    trace [io(!IO)] (
+        maybe_debug_liveness("\nafter resume point",
+            DebugLiveness, PredIdInt, Goal, VarSet, ModuleInfo, !IO)
+    ),
     proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_liveness_info(Liveness0, !ProcInfo).
 
-:- pred io_maybe_debug_liveness(string::in, int::in, int::in,
+:- pred maybe_debug_liveness(string::in, int::in, int::in,
     hlds_goal::in, prog_varset::in, module_info::in, io::di, io::uo) is det.
 
-io_maybe_debug_liveness(Message, DebugLiveness, PredIdInt,
+maybe_debug_liveness(Message, DebugLiveness, PredIdInt,
         Goal, VarSet, ModuleInfo, !IO) :-
     ( DebugLiveness = PredIdInt ->
         io.write_string(Message, !IO),
