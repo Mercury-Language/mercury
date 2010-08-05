@@ -26,7 +26,7 @@
 % `System.String's.
 %
 % The builtin comparison operation on strings is also implementation dependent.
-% In the current implementation, when Mercury is compiled to C, string 
+% In the current implementation, when Mercury is compiled to C, string
 % comparison is implemented using C's strcmp() function.  When Mercury
 % is compiled to Java, string comparison is implemented using Java's
 % String.compareTo() method.  When Mercury is compiled to .NET IL code
@@ -392,7 +392,7 @@
     %
     % True if TestPred is true when applied to each character in
     % String or if String is the empty string.
-    % 
+    %
 :- pred string.all_match(pred(char)::in(pred(in) is semidet), string::in)
     is semidet.
 
@@ -1334,7 +1334,7 @@ string.int_to_base_string_group_2(NegN, Base, Curr, Period, Sep, Str) :-
 % :- pred string.to_char_list(string, list(char)).
 % :- mode string.to_char_list(in, uo) is det.
 % :- mode string.to_char_list(uo, in) is det.
-:- pragma promise_pure(string.to_char_list/2).
+:- pragma promise_equivalent_clauses(string.to_char_list/2).
 
 string.to_char_list(Str::in, CharList::out) :-
     string.to_char_list_2(Str, CharList).
@@ -1396,7 +1396,7 @@ string.to_char_list_3(Str, Index, CharList0, CharList) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma promise_pure(string.from_char_list/2).
+:- pragma promise_equivalent_clauses(string.from_char_list/2).
 
 string.from_char_list(Chars::out, Str::in) :-
     string.to_char_list(Str, Chars).
@@ -1725,7 +1725,7 @@ string.is_all_alnum_or_underscore(S) :-
         }
     }
 ").
-    
+
 string.is_all_digits(S) :-
     string.all_match(char.is_digit, S).
 

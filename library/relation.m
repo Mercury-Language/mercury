@@ -1,15 +1,15 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1999,2002-2006 The University of Melbourne.
+% Copyright (C) 1995-1999,2002-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
-% 
+%
 % File: relation.m.
 % Main author: bromage, petdr.
 % Stability: low.
-% 
+%
 % This module defines a data type for binary relations over a given domain.
 %
 %------------------------------------------------------------------------------%
@@ -786,22 +786,20 @@ relation.reachable_from(Rel, Q0, !Set) :-
 
 %------------------------------------------------------------------------------%
 
-    % relation cliques
-    %   take a relation and return the set of strongly connected
-    %   components
-    %
-    %   Works using the following algorith
-    %       1. Topologically sort the nodes.  Then number the nodes
-    %          so the highest num is the first node in the
-    %          topological sort.
-    %       2. Reverse the relation ie R'
-    %       3. Starting from the highest numbered node do a DFS on
-    %          R'.  All the nodes visited are a member of the cycle.
-    %       4. From the next highest non-visited node do a DFS on
-    %          R' (not including visited nodes).  This is the next
-    %          cycle.
-    %       5. Repeat step 4 until all nodes visited.
 relation.cliques(Rel, Cliques) :-
+    % Relation cliques takes a relation and returns the set of strongly
+    % connected components.
+    %
+    % It works using the following algorith.
+    % 1. Topologically sort the nodes.  Then number the nodes so the
+    %    highest num is the first node in the topological sort.
+    % 2. Reverse the relation, i.e. generate Rel'.
+    % 3. Starting from the highest numbered node do a DFS on Rel'.
+    %    All the nodes visited are a member of the cycle.
+    % 4. From the next highest non-visited node do a DFS on Rel'
+    %    (not including visited nodes). This is the next cycle.
+    % 5. Repeat step 4 until all nodes visited.
+
     % Effectively assigns a numbering to the nodes.
     relation.dfsrev(Rel, DfsRev),
     relation.inverse(Rel, RelInv),
@@ -810,24 +808,23 @@ relation.cliques(Rel, Cliques) :-
     relation.cliques_2(DfsRev, RelInv, Visit, Cliques0, Cliques1),
     Cliques = set.map(to_set, Cliques1).
 
-:- pred relation.cliques_2(list(relation_key), relation(T),
-    relation_key_set, set(relation_key_set),
-    set(relation_key_set)).
-:- mode relation.cliques_2(in, in, in, in, out) is det.
+:- pred relation.cliques_2(list(relation_key)::in, relation(T)::in,
+    relation_key_set::in,
+    set(relation_key_set)::in, set(relation_key_set)::out) is det.
 
-relation.cliques_2([], _, _, Cliques, Cliques).
-relation.cliques_2([H | T0], RelInv, Visit0, Cliques0, Cliques) :-
+relation.cliques_2([], _, _, !Cliques).
+relation.cliques_2([H | T0], RelInv, Visit0, !Cliques) :-
     % Do a DFS on R'
     relation.dfs_2(RelInv, H, Visit0, Visit, [], StrongComponent),
 
     % Insert the cycle into the clique set.
     list_to_set(StrongComponent, StrongComponentSet),
-    set.insert(Cliques0, StrongComponentSet, Cliques1),
+    set.insert(!.Cliques, StrongComponentSet, !:Cliques),
 
-    % Delete all the visited elements, so first element of the list
+    % Delete all the visited elements, so the first element of the list
     % is the next highest number node.
     list.delete_elems(T0, StrongComponent, T),
-    relation.cliques_2(T, RelInv, Visit, Cliques1, Cliques).
+    relation.cliques_2(T, RelInv, Visit, !Cliques).
 
 %------------------------------------------------------------------------------%
 
@@ -904,9 +901,9 @@ relation.atsort(Rel, ATsort) :-
     %
     % The algorithm used is described in:
     %
-    %   R. E. Tarjan, "Depth-first search and
-    %   linear graph algorithms,"  SIAM Journal
-    %   on Computing, 1, 2 (1972).
+    %   R. E. Tarjan, "Depth-first search and linear graph algorithms,"
+    %   SIAM Journal on Computing, 1, 2 (1972).
+
     relation.dfsrev(Rel, DfsRev),
     relation.inverse(Rel, RelInv),
     init(Visit),
@@ -940,15 +937,14 @@ relation.tc(Rel, Tc) :-
     % relation.tc returns the transitive closure of a relation.
     % We use this procedure:
     %
-    %   - Compute the reflexive transitive closure.
-    %   - Find the "fake reflexives", that is, the
-    %     set of elements x for which xR+x should
-    %     not be true.  This is done by noting that
-    %     R+ = R . R* (where '.' denotes composition).
-    %     Therefore x is a fake reflexive iff the set
-    %     { x | yRx and xR*y } is empty.
-    %   - Remove those elements from the reflexive
-    %     transitive closure computed above.
+    % 1 Compute the reflexive transitive closure.
+    % 2 Find the "fake reflexives", that is, the set of elements x
+    %   for which xR+x should not be true. This is done by noting that
+    %   R+ = R . R* (where '.' denotes composition). Therefore x is a
+    %   fake reflexive iff the set { x | yRx and xR*y } is empty.
+    % 3 Remove those elements from the reflexive transitive closure
+    %   computed above.
+
     relation.rtc(Rel, Rtc),
 
     % Find the fake reflexives.
@@ -988,7 +984,7 @@ relation.rtc(Rel, RTC) :-
     % element in that clique. So we visit each clique in reverse topological
     % sorted order, compute the RTC for each element in the clique and then
     % add the appropriate arcs.
-    %
+
     relation.dfs(Rel, Dfs),
     init(Visit),
 

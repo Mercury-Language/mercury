@@ -80,8 +80,6 @@
 %
 %-----------------------------------------------------------------------------%
 
-%-----------------------------------------------------------------------------%
-
 :- implementation.
 :- interface.
     
@@ -129,10 +127,8 @@ force(Lazy) = Value :-
             Lazy = closure(Func),
             Value = apply(Func),
 
-                % Destructively update the Lazy cell with the value
-                % to avoid having to recompute the same result
-                % next time.
-                %
+            % Destructively update the Lazy cell with the value to avoid
+            % having to recompute the same result next time.
             impure update_in_place(Lazy, value(Value))
         )
     ).

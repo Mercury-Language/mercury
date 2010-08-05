@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -59,92 +59,83 @@
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-
+    % Process any command line arguments.
+    io.command_line_arguments(Args, !IO),
+    OptionOps = option_ops_multi(short_option, long_option, option_default),
+    getopt.process_options(OptionOps, Args, _, Result),
+    (
+        Result = ok(OptionTable),
 
-		% Process any command line arguments.
-		%
-	io.command_line_arguments(Args, !IO),
-	OptionOps = option_ops_multi(short_option, long_option, option_default),
-	getopt.process_options(OptionOps, Args, _, Result),
-	(
-		Result = ok(OptionTable),
+        getopt.lookup_string_option(OptionTable, config_file,
+            PathToConfigFile),
+        getopt.lookup_string_option(OptionTable, genotypes, PathToGenotypes),
+        getopt.lookup_string_option(OptionTable, next_genotypes,
+            PathToNextGenotypes),
+        getopt.lookup_string_option(OptionTable, ladder, PathToLadder),
+        getopt.lookup_string_option(OptionTable, phenotypes, PathToPhenotypes),
 
-		getopt.lookup_string_option(OptionTable, config_file,
-                PathToConfigFile),
-		getopt.lookup_string_option(OptionTable, genotypes, PathToGenotypes),
-		getopt.lookup_string_option(OptionTable, next_genotypes,
-				PathToNextGenotypes),
-		getopt.lookup_string_option(OptionTable, ladder, PathToLadder),
-		getopt.lookup_string_option(OptionTable, phenotypes, PathToPhenotypes),
+        getopt.lookup_int_option(OptionTable, first_seed, FirstSeed),
+        getopt.lookup_int_option(OptionTable, second_seed, SecondSeed),
+        getopt.lookup_int_option(OptionTable, third_seed, ThirdSeed)
+    ;
+        Result = error(ErrorMessage),
+        require.error(ErrorMessage)
+    ),
 
-		getopt.lookup_int_option(OptionTable, first_seed, FirstSeed),
-		getopt.lookup_int_option(OptionTable, second_seed, SecondSeed),
-		getopt.lookup_int_option(OptionTable, third_seed, ThirdSeed)
-	;
-		Result = error(ErrorMessage),
-		require.error(ErrorMessage)
-	),
-
-		% Read the input files.
-		%
+    % Read the input files.
     read_config_file(PathToConfigFile, Weightings, Flags, !IO),
-	genotype.read_genotypes(PathToGenotypes, Genotypes, !IO),
-	phenotype.read_phenotypes(PathToPhenotypes, Phenotypes, !IO),
+    genotype.read_genotypes(PathToGenotypes, Genotypes, !IO),
+    phenotype.read_phenotypes(PathToPhenotypes, Phenotypes, !IO),
 
-		% Apply the genetic operators to the genotypes.
-		%
-	some [!RNG] (
-		Tausworthe3Seed = tausworthe3_seed(FirstSeed, SecondSeed, ThirdSeed),
-		!:RNG = init_tausworthe3,
-		seed(Tausworthe3Seed, !RNG),
+    % Apply the genetic operators to the genotypes.
+    some [!RNG] (
+        Tausworthe3Seed = tausworthe3_seed(FirstSeed, SecondSeed, ThirdSeed),
+        !:RNG = init_tausworthe3,
+        seed(Tausworthe3Seed, !RNG),
 
-			% We ensure that the following condition is held:
-			%
-			%	length(Genotypes) / 2 = length(Mothers) = length(Fathers).
-			%
-			% Since the crossover/6 predicate creates two children for
-			% every two parents, the population will remain constant
-			% over generations.  This is a simple way of avoiding
-			% extinction.
-			%
-			% Note that map_2in_2out_foldl/7 will simply ignore leftover
-			% elements if the two lists (Mothers and Fathers) are of
-			% unequal lengths.
-			%
-		Fitness = list.map(phenotype.fitness(Weightings), Phenotypes),
-		list.map_foldl(phenotype.selection(Genotypes, Fitness),
-				Genotypes, Parents, !RNG),
-		list.det_split_list(length(Parents) / 2, Parents, Mothers, Fathers),
-		map_2in_2out_foldl(genotype.crossover, Mothers, Fathers,
-				Sons, Daughters, !RNG),
-		list.append(Sons, Daughters, Children),
-		list.map_foldl(genotype.mutation(Flags), Children, NextGenotypes,
-                !.RNG, _)
-	),
+        % We ensure that the following condition holds:
+        %
+        %   length(Genotypes) / 2 = length(Mothers) = length(Fathers).
+        %
+        % Since the crossover/6 predicate creates two children for
+        % every two parents, the population will remain constant
+        % over generations. This is a simple way of avoiding extinction.
+        %
+        % Note that map_2in_2out_foldl/7 will simply ignore leftover elements
+        % if the two lists (Mothers and Fathers) are of unequal lengths.
+        %
+        Fitness = list.map(phenotype.fitness(Weightings), Phenotypes),
+        list.map_foldl(phenotype.selection(Genotypes, Fitness),
+            Genotypes, Parents, !RNG),
+        list.det_split_list(length(Parents) / 2, Parents, Mothers, Fathers),
+        map_2in_2out_foldl(genotype.crossover, Mothers, Fathers,
+            Sons, Daughters, !RNG),
+        list.append(Sons, Daughters, Children),
+        list.map_foldl(genotype.mutation(Flags), Children, NextGenotypes,
+            !.RNG, _)
+    ),
 
-		% Print the output files.
-		%
-	genotype.print_genotypes(PathToNextGenotypes, NextGenotypes, !IO),
+    % Print the output files.
+    genotype.print_genotypes(PathToNextGenotypes, NextGenotypes, !IO),
     print_ladder(PathToLadder, Fitness, Genotypes, !IO).
 
 %-----------------------------------------------------------------------------%
 %
 % Command line argument parsing.
 %
-
-%
 % This section contains all the code for the predicates required by
 % getopt.process_options.
 %
 
 :- type option
-	--->    config_file
+    --->    config_file
     ;       genotypes
-	;		next_genotypes
-	;		ladder
-	;		phenotypes
-	;		first_seed
-	;		second_seed
-	;		third_seed.
+    ;       next_genotypes
+    ;       ladder
+    ;       phenotypes
+    ;       first_seed
+    ;       second_seed
+    ;       third_seed.
 
 :- pred short_option(char::in, option::out) is semidet.
 
@@ -185,7 +176,7 @@ option_default(third_seed, int(0)).
 %
 
 :- pred read_config_file(string::in, list(weighting)::out, list(flag)::out,
-        io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 read_config_file(Path, Weightings, Flags, !IO) :-
     io.open_input(Path, OpenResult, !IO),
@@ -221,7 +212,7 @@ read_config_file(Path, Weightings, Flags, !IO) :-
     ).
 
 :- pred print_ladder(string::in, list(fitness)::in, list(genotype)::in,
-        io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 print_ladder(Path, Fitness, Genotypes, !IO) :-
     io.open_output(Path, OpenResult, !IO),
@@ -253,15 +244,15 @@ print_ladder(Path, Fitness, Genotypes, !IO) :-
     % two input lists and two output lists.
     %
 :- pred map_2in_2out_foldl(
-		pred(L, M, N, O, A, A)::(pred(in, in, out, out, in, out) is det),
-		list(L)::in, list(M)::in, list(N)::out, list(O)::out, A::in, A::out)
-		is det.
+    pred(L, M, N, O, A, A)::(pred(in, in, out, out, in, out) is det),
+    list(L)::in, list(M)::in, list(N)::out, list(O)::out, A::in, A::out)
+    is det.
 
 map_2in_2out_foldl(_, [],        [],        [],        [],        !A).
 map_2in_2out_foldl(_, [],        [_H | _T], [],        [],        !A).
 map_2in_2out_foldl(_, [_H | _T], [],        [],        [],        !A).
 map_2in_2out_foldl(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], !A) :-
-	P(H0, H1, H2, H3, !A),
-	map_2in_2out_foldl(P, T0, T1, T2, T3, !A).
+    P(H0, H1, H2, H3, !A),
+    map_2in_2out_foldl(P, T0, T1, T2, T3, !A).
 
 %-----------------------------------------------------------------------------%

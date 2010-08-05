@@ -1,8 +1,9 @@
 %-----------------------------------------------------------------------------%
-% lex.automata.m
 % vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
+%-----------------------------------------------------------------------------%
+% lex.automata.m
 % Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
-% Copyright (C) 2002 The University of Melbourne
+% Copyright (C) 2002, 2010 The University of Melbourne
 %
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.

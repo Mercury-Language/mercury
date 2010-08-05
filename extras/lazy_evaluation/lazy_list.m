@@ -1,4 +1,6 @@
 %-----------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%-----------------------------------------------------------------------------%
 %
 % This is an example of how to use the `lazy' module to define
 % a recursive lazy data type, in this case lazy lists.

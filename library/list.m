@@ -2732,9 +2732,8 @@ list.condense(Xss) = Ys :-
 list.chunk(Xs, N) = Ys :-
     list.chunk(Xs, N, Ys).
 
-list.map(F, Xs) = Ys :-
-    P = ( pred(X::in, Y::out) is det :- Y = F(X) ),
-    list.map(P, Xs, Ys).
+list.map(_F, []) = [].
+list.map(F, [H | T]) = [F(H) | list.map(F, T)].
 
 list.foldl(F, Xs, A) = B :-
     P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),

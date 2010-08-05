@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2007, 2009 The University of Melbourne.
+% Copyright (C) 2000-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -410,22 +410,22 @@ info_set_browse_param(OptionTable, Setting, !Info) :-
     CallerType = !.Info ^ caller_type,
     set_browser_param_from_option_table(CallerType, OptionTable, Setting,
         PersistentState0, PersistentState),
-    !:Info = !.Info ^ state := PersistentState.
+    !Info ^ state := PersistentState.
 
 info_set_num_io_actions(N, !Info) :-
     PersistentState0 = !.Info ^ state,
     set_num_io_actions(N, PersistentState0, PersistentState),
-    !:Info = !.Info ^ state := PersistentState.
+    !Info ^ state := PersistentState.
 
 info_set_xml_browser_cmd(Cmd, !Info) :-
     PersistentState0 = !.Info ^ state,
     set_xml_browser_cmd_from_mdb(Cmd, PersistentState0, PersistentState),
-    !:Info = !.Info ^ state := PersistentState.
+    !Info ^ state := PersistentState.
 
 info_set_xml_tmp_filename(FileName, !Info) :-
     PersistentState0 = !.Info ^ state,
     set_xml_tmp_filename_from_mdb(FileName, PersistentState0, PersistentState),
-    !:Info = !.Info ^ state := PersistentState.
+    !Info ^ state := PersistentState.
 
 :- pred set_format_from_mdb(bool::in, bool::in, bool::in, portray_format::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
@@ -450,7 +450,7 @@ get_num_io_actions(Browser, NumIOActions) :-
     "ML_BROWSE_set_num_io_actions").
 
 set_num_io_actions(NumIOActions, !Browser) :-
-    !:Browser = !.Browser ^ num_printed_io_actions := NumIOActions.
+    !Browser ^ num_printed_io_actions := NumIOActions.
 
 :- pred get_xml_browser_cmd_from_mdb(browser_persistent_state::in,
     string::out) is det.
@@ -475,9 +475,9 @@ get_xml_browser_cmd_from_mdb(Browser, Command) :-
 
 set_xml_browser_cmd_from_mdb(Command, !Browser) :-
     ( Command = "" ->
-        !:Browser = !.Browser ^ xml_browser_cmd := no
+        !Browser ^ xml_browser_cmd := no
     ;
-        !:Browser = !.Browser ^ xml_browser_cmd := yes(Command)
+        !Browser ^ xml_browser_cmd := yes(Command)
     ).
 
 :- pred get_xml_tmp_filename_from_mdb(browser_persistent_state::in,
@@ -503,9 +503,9 @@ get_xml_tmp_filename_from_mdb(Browser, FileName) :-
 
 set_xml_tmp_filename_from_mdb(FileName, !Browser) :-
     ( FileName = "" ->
-        !:Browser = !.Browser ^ xml_tmp_filename := no
+        !Browser ^ xml_tmp_filename := no
     ;
-        !:Browser = !.Browser ^ xml_tmp_filename := yes(FileName)
+        !Browser ^ xml_tmp_filename := yes(FileName)
     ).
 
 %
@@ -780,7 +780,7 @@ maybe_set_param(no, _, _, _, _, _, !Params).
 maybe_set_param(yes, F, Pr, V, NPr, Setting, !Params) :-
     (
         Setting = setting_format(NewFormat),
-        !:Params = !.Params ^ default_format := NewFormat
+        !Params ^ default_format := NewFormat
     ;
         ( Setting = setting_depth(_)
         ; Setting = setting_width(_)

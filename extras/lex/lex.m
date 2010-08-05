@@ -1,5 +1,6 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
+%-----------------------------------------------------------------------------%
 %
 % lex.m
 % Copyright (C) 2001-2002 Ralph Becket <rbeck@microsoft.com>
@@ -8,7 +9,7 @@
 %   The changes made by Rationalizer are contributed under the terms 
 %   of the GNU Lesser General Public License, see the file COPYING.LGPL
 %   in this directory.
-% Copyright (C) 2002, 2006 The University of Melbourne
+% Copyright (C) 2002, 2006, 2010 The University of Melbourne
 %
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.

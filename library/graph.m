@@ -1,19 +1,19 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999, 2003, 2005-2006 The University of Melbourne.
+% Copyright (C) 1994-1999, 2003, 2005-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
-% 
+%
 % File: graph.m.
 % Main author: conway.
 % Stability: low.
-% 
+%
 % This module defines a directed graph data type. The type graph(N, A)
 % stores information of type N in the nodes, and information of type A
 % in the arcs.
-% 
+%
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
@@ -209,16 +209,16 @@ graph.init(Graph) :-
 graph.set_node(!.G, NInfo, node(N), !:G) :-
     NS0 = !.G ^ node_supply,
     counter.allocate(N, NS0, NS),
-    !:G = !.G ^ node_supply := NS,
+    !G ^ node_supply := NS,
 
     Nodes0 = !.G ^ node_map,
     map.set(Nodes0, node(N), NInfo, Nodes),
-    !:G = !.G ^ node_map := Nodes,
+    !G ^ node_map := Nodes,
 
     Edges0 = !.G ^ edge_map,
     map.init(EdgeMap),
     map.set(Edges0, node(N), EdgeMap, Edges),
-    !:G = !.G ^ edge_map := Edges.
+    !G ^ edge_map := Edges.
 
 graph.det_insert_node(!.G, NInfo, N, !:G) :-
     ( graph.insert_node(!.G, NInfo, NPrime, !:G) ->
@@ -233,16 +233,16 @@ graph.insert_node(!.G, NInfo, node(N), !:G) :-
 
     NS0 = !.G ^ node_supply,
     counter.allocate(N, NS0, NS),
-    !:G = !.G ^ node_supply := NS,
+    !G ^ node_supply := NS,
 
     Nodes0 = !.G ^ node_map,
     map.set(Nodes0, node(N), NInfo, Nodes),
-    !:G = !.G ^ node_map := Nodes,
+    !G ^ node_map := Nodes,
 
     Edges0 = !.G ^ edge_map,
     map.init(EdgeSet),
     map.set(Edges0, node(N), EdgeSet, Edges),
-    !:G = !.G ^ edge_map := Edges.
+    !G ^ edge_map := Edges.
 
 %------------------------------------------------------------------------------%
 
@@ -289,17 +289,17 @@ graph.set_edge(!.G, Start, End, Info, Arc, !:G) :-
     AS0 = !.G ^ arc_supply,
     counter.allocate(A, AS0, AS),
     Arc = arc(A),
-    !:G = !.G ^ arc_supply := AS,
+    !G ^ arc_supply := AS,
 
     Arcs0 = !.G ^ arc_map,
     map.set(Arcs0, Arc, arc_info(Start, End, Info), Arcs),
-    !:G = !.G ^ arc_map := Arcs,
+    !G ^ arc_map := Arcs,
 
     Es0 = !.G ^ edge_map,
     map.lookup(Es0, Start, EdgeMap0),
     map.set(EdgeMap0, Arc, End, EdgeMap),
     map.set(Es0, Start, EdgeMap, Es),
-    !:G = !.G ^ edge_map := Es.
+    !G ^ edge_map := Es.
 
 %------------------------------------------------------------------------------%
 
@@ -314,17 +314,17 @@ graph.insert_edge(!.G, Start, End, Info, Arc, !:G) :-
     AS0 = !.G ^ arc_supply,
     counter.allocate(A, AS0, AS),
     Arc = arc(A),
-    !:G = !.G ^ arc_supply := AS,
+    !G ^ arc_supply := AS,
 
     Arcs0 = !.G ^ arc_map,
     map.insert(Arcs0, Arc, arc_info(Start, End, Info), Arcs),
-    !:G = !.G ^ arc_map := Arcs,
+    !G ^ arc_map := Arcs,
 
     Es0 = !.G ^ edge_map,
     map.lookup(Es0, Start, EdgeMap0),
     map.set(EdgeMap0, Arc, End, EdgeMap),
     map.set(Es0, Start, EdgeMap, Es),
-    !:G = !.G ^ edge_map := Es.
+    !G ^ edge_map := Es.
 
 %------------------------------------------------------------------------------%
 

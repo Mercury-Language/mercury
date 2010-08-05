@@ -1,8 +1,9 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 % regex.m
 % Ralph Becket <rafe@cs.mu.oz.au>
-% Copyright (C) 2002, 2006 The University of Melbourne
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% Copyright (C) 2002, 2006, 2010 The University of Melbourne
 %
 % This module provides basic string matching and search and replace
 % functionality using regular expressions defined as strings of the
@@ -541,7 +542,7 @@ matches_2(Length, LastEnd, State0) = Matches :-
 
                     % This is an empty match at the same point as the end
                     % of our last match.  We have to ignore it and move on.
-                    % 
+                    %
                 ( if   lex__read_char(ok(_), State3, State4)
                   then matches_2(Length, End, State4)
                   else []
