@@ -181,15 +181,19 @@
     mlds_vector_common::out, ml_global_data::in, ml_global_data::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module libs.compiler_util.
+:- import_module ml_backend.ml_type_gen.
 
 :- import_module int.
 :- import_module maybe.
 :- import_module string.
 :- import_module svmap.
+
+%-----------------------------------------------------------------------------%
 
 :- type ml_scalar_cell_type
     --->    ml_scalar_cell_type(mlds_type, initializer_array_size).
@@ -463,7 +467,28 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
         ml_gen_vector_cell_field_types(MLDS_Context, FieldFlags,
             FieldNamePrefix, 0, ArgTypes, FieldNames, FieldDefns),
 
-        ClassDefn = mlds_class_defn(mlds_struct, [], [], [], [], [],
+        (
+            Target = target_c,
+            ClassKind = mlds_struct,
+            CtorDefns = []
+        ;
+            Target = target_java,
+            ClassKind = mlds_class,
+            CtorDefn = ml_gen_constructor_function(Target, StructType,
+                StructType, MLDS_ModuleName, StructType, no, FieldDefns,
+                MLDS_Context),
+            CtorDefns = [CtorDefn]
+        ;
+            ( Target = target_asm
+            ; Target = target_il
+            ; Target = target_erlang
+            ; Target = target_x86_64
+            ),
+            unexpected(this_file,
+                "ml_gen_static_vector_type: unsupported target language")
+        ),
+
+        ClassDefn = mlds_class_defn(ClassKind, [], [], [], [], CtorDefns,
             FieldDefns),
         StructTypeName = "vector_common_type_" ++ TypeRawNumStr,
         StructTypeEntityName = entity_type(StructTypeName, 0),

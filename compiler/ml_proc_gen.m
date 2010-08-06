@@ -266,11 +266,12 @@ ml_gen_preds(!ModuleInfo, PredDefns, GlobalData) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
-        Target = target_c,
+        ( Target = target_c
+        ; Target = target_java
+        ),
         UseCommonCells = use_common_cells
     ;
         ( Target = target_asm
-        ; Target = target_java
         ; Target = target_il
         ; Target = target_erlang
         ; Target = target_x86_64

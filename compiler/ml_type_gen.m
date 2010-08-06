@@ -35,6 +35,7 @@
 
 :- import_module bool.
 :- import_module list.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -95,6 +96,13 @@
     %
 :- func ml_target_uses_constructors(compilation_target) = bool.
 
+    % Generate a constructor function to initialise the given fields in a
+    % class.
+    %
+:- func ml_gen_constructor_function(compilation_target, mlds_class_id,
+    mlds_type, mlds_module_name, mlds_class_id, maybe(int), list(mlds_defn),
+    mlds_context) = mlds_defn.
+
     % Exported enumeration info in the HLDS is converted into an MLDS
     % specific representation.  The target specific code generators may
     % further transform it.
@@ -122,7 +130,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module maybe.
 :- import_module pair.
 :- import_module set.
 :- import_module string.
@@ -762,7 +769,7 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
                 CtorClassQualifier = mlds_append_class_qualifier(Target,
                     BaseClassQualifier, type_qual, UnqualCtorName, CtorArity)
             ),
-            CtorFunction = gen_constructor_function(Target,
+            CtorFunction = ml_gen_constructor_function(Target,
                 BaseClassId, CtorClassType, CtorClassQualifier,
                 SecondaryTagClassId, MaybeSecTagVal, Members, MLDS_Context),
             % If this constructor is going to go in the base class, then we may
@@ -785,7 +792,7 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
                 ),
                 Members = [_ | _]
             ->
-                ZeroArgCtor = gen_constructor_function(Target, BaseClassId,
+                ZeroArgCtor = ml_gen_constructor_function(Target, BaseClassId,
                     CtorClassType, CtorClassQualifier, SecondaryTagClassId,
                     no, [], MLDS_Context),
                 Ctors = [ZeroArgCtor, CtorFunction]
@@ -911,11 +918,7 @@ target_requires_module_qualified_params(target_x86_64) =
 target_requires_module_qualified_params(target_erlang) =
     unexpected(this_file, "target erlang").
 
-:- func gen_constructor_function(compilation_target, mlds_class_id,
-    mlds_type, mlds_module_name, mlds_class_id, maybe(int), list(mlds_defn),
-    mlds_context) = mlds_defn.
-
-gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
+ml_gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
         SecondaryTagClassId, MaybeTag, Members, Context) = CtorDefn :-
     Args = list.map(make_arg, Members),
     ReturnValues = [],

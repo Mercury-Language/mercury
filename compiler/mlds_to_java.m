@@ -113,6 +113,8 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module char.
+:- import_module cord.
+:- import_module digraph.
 :- import_module int.
 :- import_module library.
 :- import_module list.
@@ -343,10 +345,6 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
         InitPreds, FinalPreds, ExportedEnums),
     ml_global_data_get_all_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap, GlobalDefns),
-    expect(map.is_empty(ScalarCellGroupMap), this_file,
-        "output_java_src_file: nonempty ScalarCellGroupMap"),
-    expect(map.is_empty(VectorCellGroupMap), this_file,
-        "output_java_src_file: nonempty VectorCellGroupMap"),
 
     % Do NOT enforce the outermost "mercury" qualifier here.  This module
     % name is compared with other module names in the MLDS, to avoid
@@ -355,10 +353,19 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
 
     % Find and build list of all methods which would have their addresses
     % taken to be used as a function pointer.
-    find_pointer_addressed_methods(GlobalDefns, [], CodeAddrs0),
-    find_pointer_addressed_methods(Defns0, CodeAddrs0, CodeAddrs),
-    make_code_addr_map(CodeAddrs, multi_map.init, CodeAddrsMap),
-    map.to_assoc_list(CodeAddrsMap, CodeAddrsAssocList),
+    some [!CodeAddrs] (
+        !:CodeAddrs = [],
+        find_pointer_addressed_methods(GlobalDefns, !CodeAddrs),
+        find_pointer_addressed_methods(Defns0, !CodeAddrs),
+
+        map.values(ScalarCellGroupMap, ScalarCellGroups),
+        ScalarCellRows = list.map(func(G) = G ^ mscg_rows, ScalarCellGroups),
+        list.foldl(find_pointer_addressed_methods_in_scalars,
+            ScalarCellRows, !CodeAddrs),
+
+        make_code_addr_map(!.CodeAddrs, multi_map.init, CodeAddrsMap),
+        map.to_assoc_list(CodeAddrsMap, CodeAddrsAssocList)
+    ),
 
     % Create wrappers in MLDS for all pointer addressed methods.
     list.map_foldl(generate_addr_wrapper_class(MLDS_ModuleName),
@@ -391,6 +398,7 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
         !IO),
 
     list.filter(defn_is_rtti_data, Defns, RttiDefns, NonRttiDefns),
+
     io.write_string("\n// RttiDefns\n", !IO),
     output_defns(Info, Indent + 1, alloc_only, RttiDefns, !IO),
     output_rtti_assignments(Info, Indent + 1, RttiDefns, !IO),
@@ -399,6 +407,14 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     io.write_string("\n// DataDefns\n", !IO),
     output_data_decls(Info, Indent + 1, DataDefns, !IO),
     output_data_assignments(Info, Indent + 1, DataDefns, !IO),
+
+    % Scalar common data must appear after the previous data definitions,
+    % and the vector common data after that.
+    io.write_string("\n// Scalar common data\n", !IO),
+    output_scalar_common_data(Info, Indent + 1, ScalarCellGroupMap, !IO),
+
+    io.write_string("\n// Vector common data\n", !IO),
+    output_vector_common_data(Info, Indent + 1, VectorCellGroupMap, !IO),
 
     io.write_string("\n// NonDataDefns\n", !IO),
     output_defns(Info, Indent + 1, none, NonDataDefns, !IO),
@@ -518,7 +534,7 @@ output_export(Info0, Indent, Export, !IO) :-
         io.write_string("void", !IO)
     ;
         ReturnTypes = [RetType],
-        output_type(Info, normal_style, RetType, !IO)
+        output_type(Info, RetType, !IO)
     ;
         ReturnTypes = [_, _ | _],
         % For multiple outputs, we return an array of objects.
@@ -561,7 +577,7 @@ output_export_no_ref_out(Info, Indent, Export, !IO) :-
         % The cast is required when the exported method uses generics but the
         % underlying method does not use generics (i.e. returns Object).
         io.write_string("return (", !IO),
-        output_type(Info, normal_style, RetType, !IO),
+        output_type(Info, RetType, !IO),
         io.write_string(") ", !IO)
     ;
         ReturnTypes = [_, _ | _],
@@ -631,11 +647,10 @@ output_export_param_ref_out(Info, Indent, Argument, !IO) :-
     Argument = mlds_argument(Name, Type, _),
     indent_line(Indent, !IO),
     ( Type = mlds_ptr_type(InnerType) ->
-        io.write_string("jmercury.runtime.Ref<", !IO),
-        output_boxed_type(Info, InnerType, !IO),
-        io.write_string("> ", !IO)
+        boxed_type_to_string(Info, InnerType, InnerTypeString),
+        io.format("jmercury.runtime.Ref<%s> ", [s(InnerTypeString)], !IO)
     ;
-        output_type(Info, normal_style, Type, !IO),
+        output_type(Info, Type, !IO),
         io.write_string(" ", !IO)
     ),
     output_name(Name, !IO).
@@ -644,7 +659,7 @@ output_export_param_ref_out(Info, Indent, Argument, !IO) :-
     list(mlds_argument)::in, io::di, io::uo) is det.
 
 write_export_call(MLDS_Name, Parameters, !IO) :-
-    output_fully_qualified_name(MLDS_Name, !IO),
+    output_fully_qualified_thing(MLDS_Name, output_name, !IO),
     io.write_char('(', !IO),
     io.write_list(Parameters, ", ", write_argument_name, !IO),
     io.write_string(");\n", !IO).
@@ -662,23 +677,12 @@ assign_ref_output(Info, Indent, Arg, N, N + 1, !IO) :-
     Arg = mlds_argument(Name, Type, _),
     indent_line(Indent, !IO),
     output_name(Name, !IO),
-    io.write_string(".val = (", !IO),
     ( Type = mlds_ptr_type(InnerType) ->
-        output_boxed_type(Info, InnerType, !IO)
+        boxed_type_to_string(Info, InnerType, TypeString)
     ;
-        output_boxed_type(Info, Type, !IO)
+        boxed_type_to_string(Info, Type, TypeString)
     ),
-    io.format(") results[%d];\n", [i(N)], !IO).
-
-:- pred output_boxed_type(java_out_info::in, mlds_type::in,
-    io::di, io::uo) is det.
-
-output_boxed_type(Info, Type, !IO) :-
-    ( java_builtin_type(Type, _, JavaBoxedName, _) ->
-        io.write_string(JavaBoxedName, !IO)
-    ;
-        output_type(Info, normal_style, Type, !IO)
-    ).
+    io.format(".val = (%s) results[%d];\n", [s(TypeString), i(N)], !IO).
 
 :- pred has_ptr_type(mlds_argument::in) is semidet.
 
@@ -724,7 +728,7 @@ output_exported_enum_constant(Info, Indent, MLDS_Type, ExportedConstant,
     ExportedConstant = mlds_exported_enum_constant(Name, Initializer),
     indent_line(Indent, !IO),
     io.write_string("public static final ", !IO),
-    output_type(Info, normal_style, MLDS_Type, !IO),
+    output_type(Info, MLDS_Type, !IO),
     io.write_string(" ", !IO),
     io.write_string(Name, !IO),
     io.write_string(" = ", !IO),
@@ -747,6 +751,12 @@ find_pointer_addressed_methods([Defn | Defns], !CodeAddrs) :-
     Defn  = mlds_defn(_Name, _Context, _Flags, Body),
     method_ptrs_in_entity_defn(Body, !CodeAddrs),
     find_pointer_addressed_methods(Defns, !CodeAddrs).
+
+:- pred find_pointer_addressed_methods_in_scalars(cord(mlds_initializer)::in,
+    list(mlds_code_addr)::in, list(mlds_code_addr)::out) is det.
+
+find_pointer_addressed_methods_in_scalars(Cord, !CodeAddrs) :-
+    cord.foldl_pred(method_ptrs_in_initializer, Cord, !CodeAddrs).
 
 :- pred method_ptrs_in_entity_defn(mlds_entity_defn::in,
     list(mlds_code_addr)::in, list(mlds_code_addr)::out) is det.
@@ -2211,7 +2221,7 @@ output_class(!.Info, Indent, UnqualName, ClassDefn, !IO) :-
     ),
 
     output_class_kind(Kind, !IO),
-    output_class_name_and_arity(ClassName, Arity, !IO),
+    output_unqual_class_name(ClassName, Arity, !IO),
     OutputGenerics = !.Info ^ joi_output_generics,
     (
         OutputGenerics = do_output_generics,
@@ -2261,8 +2271,13 @@ output_generic_tvars(Vars, !IO) :-
 :- pred output_generic_tvar(tvar::in, io::di, io::uo) is det.
 
 output_generic_tvar(Var, !IO) :-
-    varset.lookup_name(varset.init, Var, "MR_tvar_", VarName),
+    generic_tvar_to_string(Var, VarName),
     io.write_string(VarName, !IO).
+
+:- pred generic_tvar_to_string(tvar::in, string::out) is det.
+
+generic_tvar_to_string(Var, VarName) :-
+    varset.lookup_name(varset.init, Var, "MR_tvar_", VarName).
 
     % Output superclass that this class extends. Java does not support
     % multiple inheritance, so more than one superclass is an error.
@@ -2274,7 +2289,7 @@ output_extends_list(_, _, [], !IO).
 output_extends_list(Info, Indent, [SuperClass], !IO) :-
     indent_line(Indent, !IO),
     io.write_string("extends ", !IO),
-    output_type(Info, normal_style, SuperClass, !IO),
+    output_type(Info, SuperClass, !IO),
     io.nl(!IO).
 output_extends_list(_, _, [_, _ | _], _, _) :-
     unexpected(this_file,
@@ -2448,7 +2463,7 @@ output_data_decls(Info, Indent, [Defn | Defns], !IO) :-
     mlds_type::in, io::di, io::uo) is det.
 
 output_data_decl(Info, Name, Type, !IO) :-
-    output_type(Info, normal_style, Type, !IO),
+    output_type(Info, Type, !IO),
     io.write_char(' ', !IO),
     output_name(Name, !IO).
 
@@ -2511,6 +2526,194 @@ output_data_defn(Info, Name, OutputAux, Type, Initializer, !IO) :-
     output_data_decl(Info, Name, Type, !IO),
     output_initializer(Info, OutputAux, Type, Initializer, !IO),
     io.write_string(";\n", !IO).
+
+%-----------------------------------------------------------------------------%
+%
+% Code to output common data.
+%
+
+:- pred output_scalar_common_data(java_out_info::in, indent::in,
+    ml_scalar_cell_map::in, io::di, io::uo) is det.
+
+output_scalar_common_data(Info, Indent, ScalarCellGroupMap, !IO) :-
+    % Elements of scalar data arrays may reference elements in higher-numbered
+    % arrays, or elements of the same array, so we must initialise them
+    % separately in a static initialisation block, and we must ensure that
+    % elements which are referenced by other elements are initialised first.
+    map.foldl3(output_scalar_defns(Info, Indent), ScalarCellGroupMap,
+        digraph.init, Graph, map.init, Map, !IO),
+
+    ( digraph.tsort(Graph, SortedScalars0) ->
+        indent_line(Indent, !IO),
+        io.write_string("static {\n", !IO),
+        list.reverse(SortedScalars0, SortedScalars),
+        list.foldl(output_scalar_init(Info, Indent + 1, Map),
+            SortedScalars, !IO),
+        indent_line(Indent, !IO),
+        io.write_string("}\n", !IO)
+    ;
+        unexpected(this_file,
+            "output_scalar_common_data: digraph.tsort failed")
+    ).
+
+:- pred output_scalar_defns(java_out_info::in, indent::in,
+    ml_scalar_common_type_num::in, ml_scalar_cell_group::in,
+    digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out,
+    map(mlds_scalar_common, mlds_initializer)::in,
+    map(mlds_scalar_common, mlds_initializer)::out, io::di, io::uo) is det.
+
+output_scalar_defns(Info, Indent, TypeNum, CellGroup, !Graph, !Map, !IO) :-
+    TypeNum = ml_scalar_common_type_num(TypeRawNum),
+    CellGroup = ml_scalar_cell_group(Type, _InitArraySize, _Counter, _Members,
+        RowInitsCord),
+    ArrayType = mlds_array_type(Type),
+    RowInits = cord.list(RowInitsCord),
+
+    indent_line(Indent, !IO),
+    io.write_string("private static final ", !IO),
+    output_type(Info, Type, !IO),
+    io.format("[] MR_scalar_common_%d = ", [i(TypeRawNum)], !IO),
+    output_initializer_alloc_only(Info, init_array(RowInits), yes(ArrayType),
+        !IO),
+    io.write_string(";\n", !IO),
+
+    MLDS_ModuleName = Info ^ joi_module_name,
+    list.foldl3(add_scalar_inits(MLDS_ModuleName, Type, TypeNum),
+        RowInits, 0, _, !Graph, !Map).
+
+:- pred add_scalar_inits(mlds_module_name::in, mlds_type::in,
+    ml_scalar_common_type_num::in, mlds_initializer::in, int::in, int::out,
+    digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out,
+    map(mlds_scalar_common, mlds_initializer)::in,
+    map(mlds_scalar_common, mlds_initializer)::out) is det.
+
+add_scalar_inits(MLDS_ModuleName, Type, TypeNum, Initializer,
+        RowNum, RowNum + 1, !Graph, !Map) :-
+    Scalar = ml_scalar_common(MLDS_ModuleName, Type, TypeNum, RowNum),
+    svmap.det_insert(Scalar, Initializer, !Map),
+    digraph.add_vertex(Scalar, _Key, !Graph),
+    add_scalar_deps(Scalar, Initializer, !Graph).
+
+:- pred add_scalar_deps(mlds_scalar_common::in, mlds_initializer::in,
+    digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out) is det.
+
+add_scalar_deps(FromScalar, Initializer, !Graph) :-
+    (
+        Initializer = init_obj(Rval),
+        add_scalar_deps_rval(FromScalar, Rval, !Graph)
+    ;
+        Initializer = init_struct(_Type, Initializers),
+        list.foldl(add_scalar_deps(FromScalar), Initializers, !Graph)
+    ;
+        Initializer = init_array(Initializers),
+        list.foldl(add_scalar_deps(FromScalar), Initializers, !Graph)
+    ;
+        Initializer = no_initializer
+    ).
+
+:- pred add_scalar_deps_rval(mlds_scalar_common::in, mlds_rval::in,
+    digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out) is det.
+
+add_scalar_deps_rval(FromScalar, Rval, !Graph) :-
+    (
+        ( Rval = ml_mkword(_, RvalA)
+        ; Rval = ml_unop(_, RvalA)
+        ; Rval = ml_vector_common_row(_, RvalA)
+        ),
+        add_scalar_deps_rval(FromScalar, RvalA, !Graph)
+    ;
+        Rval = ml_binop(_, RvalA, RvalB),
+        add_scalar_deps_rval(FromScalar, RvalA, !Graph),
+        add_scalar_deps_rval(FromScalar, RvalB, !Graph)
+    ;
+        Rval = ml_const(RvalConst),
+        add_scalar_deps_rval_const(FromScalar, RvalConst, !Graph)
+    ;
+        Rval = ml_scalar_common(ToScalar),
+        digraph.add_vertices_and_edge(FromScalar, ToScalar, !Graph)
+    ;
+        Rval = ml_self(_)
+    ;
+        ( Rval = ml_lval(_Lval)
+        ; Rval = ml_mem_addr(_Lval)
+        ),
+        unexpected(this_file, "add_scalar_deps_rval: lval")
+    ).
+
+:- pred add_scalar_deps_rval_const(mlds_scalar_common::in, mlds_rval_const::in,
+    digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out) is det.
+
+add_scalar_deps_rval_const(FromScalar, RvalConst, !Graph) :-
+    (
+        RvalConst = mlconst_data_addr(data_addr(_, DataName)),
+        (
+            DataName = mlds_scalar_common_ref(ToScalar),
+            digraph.add_vertices_and_edge(FromScalar, ToScalar, !Graph)
+        ;
+            ( DataName = mlds_data_var(_)
+            ; DataName = mlds_rtti(_)
+            ; DataName = mlds_module_layout
+            ; DataName = mlds_proc_layout(_)
+            ; DataName = mlds_internal_layout(_, _)
+            ; DataName = mlds_tabling_ref(_, _)
+            )
+        )
+    ;
+        ( RvalConst = mlconst_true
+        ; RvalConst = mlconst_false
+        ; RvalConst = mlconst_int(_)
+        ; RvalConst = mlconst_enum(_, _)
+        ; RvalConst = mlconst_char(_)
+        ; RvalConst = mlconst_float(_)
+        ; RvalConst = mlconst_string(_)
+        ; RvalConst = mlconst_multi_string(_)
+        ; RvalConst = mlconst_foreign(_, _, _)
+        ; RvalConst = mlconst_named_const(_)
+        ; RvalConst = mlconst_code_addr(_)
+        ; RvalConst = mlconst_null(_)
+        )
+    ).
+
+:- pred output_scalar_init(java_out_info::in, indent::in,
+    map(mlds_scalar_common, mlds_initializer)::in, mlds_scalar_common::in,
+    io::di, io::uo) is det.
+
+output_scalar_init(Info, Indent, Map, Scalar, !IO) :-
+    map.lookup(Map, Scalar, Initializer),
+    Scalar = ml_scalar_common(_, Type, TypeNum, RowNum),
+    TypeNum = ml_scalar_common_type_num(TypeRawNum),
+    indent_line(Indent, !IO),
+    io.format("MR_scalar_common_%d[%d] = ", [i(TypeRawNum), i(RowNum)], !IO),
+    output_initializer_body(Info, Initializer, yes(Type), !IO),
+    io.write_string(";\n", !IO).
+
+:- pred output_vector_common_data(java_out_info::in, indent::in,
+    ml_vector_cell_map::in, io::di, io::uo) is det.
+
+output_vector_common_data(Info, Indent, VectorCellGroupMap, !IO) :-
+    map.foldl(output_vector_cell_group(Info, Indent), VectorCellGroupMap, !IO).
+
+:- pred output_vector_cell_group(java_out_info::in, indent::in,
+    ml_vector_common_type_num::in, ml_vector_cell_group::in,
+    io::di, io::uo) is det.
+
+output_vector_cell_group(Info, Indent, TypeNum, CellGroup, !IO) :-
+    TypeNum = ml_vector_common_type_num(TypeRawNum),
+    CellGroup = ml_vector_cell_group(Type, ClassDefn, _FieldIds, _NextRow,
+        RowInits),
+    output_defn(Info, Indent, none, ClassDefn, !IO),
+
+    indent_line(Indent, !IO),
+    io.write_string("private static final ", !IO),
+    output_type(Info, Type, !IO),
+    io.format(" MR_vector_common_%d[] = {\n", [i(TypeRawNum)], !IO),
+    indent_line(Indent + 1, !IO),
+    output_initializer_body_list(Info, cord.list(RowInits), !IO),
+    io.nl(!IO),
+    indent_line(Indent, !IO),
+    io.write_string("};\n", !IO).
+
+%-----------------------------------------------------------------------------%
 
     % We need to provide initializers for local variables to avoid problems
     % with Java's rules for definite assignment. This mirrors the default
@@ -2587,6 +2790,8 @@ output_maybe(MaybeValue, OutputAction, !IO) :-
         MaybeValue = no
     ).
 
+%-----------------------------------------------------------------------------%
+
 :- pred output_initializer(java_out_info::in, output_aux::in, mlds_type::in,
     mlds_initializer::in, io::di, io::uo) is det.
 
@@ -2642,22 +2847,37 @@ output_initializer_alloc_only(Info, Initializer, MaybeType, !IO) :-
         Initializer = init_obj(_),
         unexpected(this_file, "output_initializer_alloc_only: init_obj")
     ;
-        Initializer = init_struct(StructType, _FieldInits),
+        Initializer = init_struct(StructType, FieldInits),
         io.write_string("new ", !IO),
-        output_type(Info, normal_style, StructType, !IO),
-        io.write_string("()", !IO)
+        (
+            StructType = mercury_type(_Type, CtorCat, _),
+            type_category_is_array(CtorCat) = is_array
+        ->
+            Size = list.length(FieldInits),
+            io.format("java.lang.Object[%d]", [i(Size)], !IO)
+        ;
+            output_type(Info, StructType, !IO),
+            io.write_string("()", !IO)
+        )
     ;
         Initializer = init_array(ElementInits),
         Size = list.length(ElementInits),
         io.write_string("new ", !IO),
         (
             MaybeType = yes(Type),
-            output_type(Info, sized_array(Size), Type, !IO)
+            type_to_string(Info, Type, String, ArrayDims),
+            io.write_string(String, !IO),
+            % Replace the innermost array dimension by the known size.
+            ( list.split_last(ArrayDims, Heads, 0) ->
+                output_array_dimensions(Heads ++ [Size], !IO)
+            ;
+                unexpected(this_file,
+                    "output_initializer_alloc_only: missing array dimension")
+            )
         ;
             MaybeType = no,
             % XXX we need to know the type here
-            io.write_string("/* XXX init_array */ Object", !IO),
-            output_array_brackets(sized_array(Size), !IO)
+            io.format("/* XXX init_array */ Object[%d]", [i(Size)], !IO)
         )
     ).
 
@@ -2674,7 +2894,7 @@ output_initializer_body(Info, Initializer, MaybeType, !IO) :-
     ;
         Initializer = init_struct(StructType, FieldInits),
         io.write_string("new ", !IO),
-        output_type(Info, normal_style, StructType, !IO),
+        output_type(Info, StructType, !IO),
         IsArray = type_is_array(StructType),
         io.write_string(if IsArray = is_array then " {" else "(", !IO),
         output_initializer_body_list(Info, FieldInits, !IO),
@@ -2684,7 +2904,7 @@ output_initializer_body(Info, Initializer, MaybeType, !IO) :-
         io.write_string("new ", !IO),
         (
             MaybeType = yes(Type),
-            output_type(Info, normal_style, Type, !IO)
+            output_type(Info, Type, !IO)
         ;
             MaybeType = no,
             % XXX we need to know the type here
@@ -2866,7 +3086,7 @@ output_return_types(Info, RetTypes, !IO) :-
         io.write_string("void", !IO)
     ;
         RetTypes = [RetType],
-        output_type(Info, normal_style, RetType, !IO)
+        output_type(Info, RetType, !IO)
     ;
         RetTypes = [_, _ | _],
         % For multiple outputs, we return an array of objects.
@@ -2893,7 +3113,7 @@ output_params(Info, Indent, Parameters, !IO) :-
 output_param(Info, Indent, Arg, !IO) :-
     Arg = mlds_argument(Name, Type, _GCStatement),
     indent_line(Indent, !IO),
-    output_type(Info, normal_style, Type, !IO),
+    output_type(Info, Type, !IO),
     io.write_char(' ', !IO),
     output_name(Name, !IO).
 
@@ -2920,46 +3140,37 @@ output_maybe_qualified_name(Info, QualifiedName, !IO) :-
         output_fully_qualified_thing(QualifiedName, output_name, !IO)
     ).
 
-:- pred output_fully_qualified_name(mlds_qualified_entity_name::in,
-    io::di, io::uo) is det.
-
-output_fully_qualified_name(QualifiedName, !IO) :-
-    output_fully_qualified_thing(QualifiedName, output_name, !IO).
-
-:- pred output_fully_qualified_proc_label(mlds_qualified_proc_label::in,
-    io::di, io::uo) is det.
-
-output_fully_qualified_proc_label(QualifiedName, !IO) :-
-    output_fully_qualified_thing(QualifiedName, mlds_output_proc_label, !IO).
-
 :- pred output_fully_qualified_thing(mlds_fully_qualified_name(T)::in,
     pred(T, io, io)::pred(in, di, uo) is det, io::di, io::uo) is det.
 
-output_fully_qualified_thing(qual(MLDS_ModuleName, QualKind, Name), OutputFunc,
-        !IO) :-
-    % XXX These functions are named wrongly for Java.
+output_fully_qualified_thing(QualName, OutputFunc, !IO) :-
+    QualName = qual(MLDS_ModuleName, QualKind, UnqualName),
+    qualifier_to_string(MLDS_ModuleName, QualKind, QualifierString),
+    io.write_string(QualifierString, !IO),
+    io.write_string(".", !IO),
+    OutputFunc(UnqualName, !IO).
+
+:- pred qualifier_to_string(mlds_module_name::in, mlds_qual_kind::in,
+    string::out) is det.
+
+qualifier_to_string(MLDS_ModuleName, QualKind, String) :-
     mlds_module_name_to_package_name(MLDS_ModuleName) = OuterName,
     mlds_module_name_to_sym_name(MLDS_ModuleName) = InnerName,
 
-    % Write the part of the qualifier that corresponds to a top-level Java
-    % class.
+    % The part of the qualifier that corresponds to a top-level Java class.
     mangle_sym_name_for_java(OuterName, module_qual, "__", MangledOuterName),
-    io.write_string(MangledOuterName, !IO),
 
-    % Write the later parts of the qualifier correspond to nested Java classes.
+    % The later parts of the qualifier correspond to nested Java classes.
     ( OuterName = InnerName ->
-        true
+        MangledSuffix = ""
     ;
-        io.write_string(".", !IO),
         remove_sym_name_prefixes(InnerName, OuterName, Suffix),
         mangle_sym_name_for_java(Suffix, convert_qual_kind(QualKind), ".",
-            MangledSuffix),
-        io.write_string(MangledSuffix, !IO)
+            MangledSuffix0),
+        MangledSuffix = "." ++ MangledSuffix0
     ),
 
-    % Write the qualified thing.
-    io.write_string(".", !IO),
-    OutputFunc(Name, !IO).
+    String = MangledOuterName ++ MangledSuffix.
 
 :- pred remove_sym_name_prefixes(sym_name::in, sym_name::in, sym_name::out)
     is det.
@@ -2988,25 +3199,43 @@ convert_qual_kind(type_qual) = type_qual.
 output_module_name(ModuleName, !IO) :-
     io.write_string(sym_name_mangle(ModuleName), !IO).
 
-:- pred output_class_name_and_arity(mlds_class_name::in, arity::in,
+:- pred output_unqual_class_name(mlds_class_name::in, arity::in,
     io::di, io::uo) is det.
 
-output_class_name_and_arity(Name, Arity, !IO) :-
-    output_class_name(Name, !IO),
-    io.format("_%d", [i(Arity)], !IO).
+output_unqual_class_name(Name, Arity, !IO) :-
+    unqual_class_name_to_string(Name, Arity, String),
+    io.write_string(String, !IO).
 
-:- pred output_class_name(mlds_class_name::in, io::di, io::uo) is det.
+:- pred unqual_class_name_to_string(mlds_class_name::in, arity::in,
+    string::out) is det.
 
-output_class_name(Name, !IO) :-
+unqual_class_name_to_string(Name, Arity, String) :-
     MangledName = name_mangle_no_leading_digit(Name),
     % By convention, class names should start with a capital letter.
     UppercaseMangledName = flip_initial_case(MangledName),
-    io.write_string(UppercaseMangledName, !IO).
+    String = UppercaseMangledName ++ "_" ++ string.from_int(Arity).
+
+:- pred qual_class_name_to_string(mlds_class::in, arity::in, string::out)
+    is det.
+
+qual_class_name_to_string(QualName, Arity, String) :-
+    QualName = qual(MLDS_ModuleName, QualKind, ClassName),
+    (
+        SymName = mlds_module_name_to_sym_name(MLDS_ModuleName),
+        SymName = mercury_runtime_package_name
+    ->
+        % Don't mangle runtime class names.
+        String = "jmercury.runtime." ++ ClassName
+    ;
+        qualifier_to_string(MLDS_ModuleName, QualKind, QualString),
+        unqual_class_name_to_string(ClassName, Arity, UnqualString),
+        String = QualString ++ "." ++ UnqualString
+    ).
 
 :- pred output_name(mlds_entity_name::in, io::di, io::uo) is det.
 
 output_name(entity_type(Name, Arity), !IO) :-
-    output_class_name_and_arity(Name, Arity, !IO).
+    output_unqual_class_name(Name, Arity, !IO).
 output_name(entity_data(DataName), !IO) :-
     output_data_name(DataName, !IO).
 output_name(entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId), !IO) :-
@@ -3064,8 +3293,12 @@ output_pred_label(mlds_special_pred_label(PredName, MaybeTypeModule, TypeName,
 
 output_data_name(mlds_data_var(VarName), !IO) :-
     output_mlds_var_name(VarName, !IO).
-output_data_name(mlds_scalar_common_ref(_), !IO) :-
-    unexpected(this_file, "NYI: mlds_scalar_common_ref").
+
+output_data_name(mlds_scalar_common_ref(Common), !IO) :-
+    Common = ml_scalar_common(_ModuleName, _Type,
+        ml_scalar_common_type_num(TypeNum), RowNum),
+    io.format("MR_scalar_common_%d[%d]", [i(TypeNum), i(RowNum)], !IO).
+
 output_data_name(mlds_rtti(RttiId), !IO) :-
     rtti.id_to_c_identifier(RttiId, RttiAddrName),
     io.write_string(RttiAddrName, !IO).
@@ -3092,30 +3325,55 @@ output_mlds_var_name(mlds_var_name(Name, yes(Num)), !IO) :-
 % Code to output types.
 %
 
-:- type output_style
-    --->    normal_style
-    ;       sized_array(int).
-            % If writing an array type, include the integer within the
-            % square brackets.
+:- pred output_type(java_out_info::in, mlds_type::in, io::di, io::uo) is det.
 
-:- pred output_type(java_out_info::in, output_style::in, mlds_type::in,
+output_type(Info, MLDS_Type, !IO) :-
+    output_type(Info, MLDS_Type, [], !IO).
+
+:- pred output_type(java_out_info::in, mlds_type::in, list(int)::in,
     io::di, io::uo) is det.
 
-output_type(Info, Style, MLDS_Type, !IO) :-
+output_type(Info, MLDS_Type, ArrayDims0, !IO) :-
+    type_to_string(Info, MLDS_Type, String, ArrayDims),
+    io.write_string(String, !IO),
+    output_array_dimensions(ArrayDims ++ ArrayDims0, !IO).
+
+:- pred output_array_dimensions(list(int)::in, io::di, io::uo) is det.
+
+output_array_dimensions(ArrayDims, !IO) :-
+    list.map(array_dimension_to_string, ArrayDims, Strings),
+    list.foldr(io.write_string, Strings, !IO).
+
+    % type_to_string(Info, MLDS_Type, String, ArrayDims)
+    %
+    % Generate the Java name for a type.  ArrayDims are the array dimensions to
+    % be written after the type name, if any, in reverse order to that of Java
+    % syntax where a non-zero integer represents a known array size and zero
+    % represents an unknown array size.
+    %
+    % e.g. ArrayDims = [0, 3] represents the Java array `Object[3][]',
+    % which should be read as `(Object[])[3]'.
+    %
+:- pred type_to_string(java_out_info::in, mlds_type::in,
+    string::out, list(int)::out) is det.
+
+type_to_string(Info, MLDS_Type, String, ArrayDims) :-
     (
         MLDS_Type = mercury_type(Type, CtorCat, _),
         (
             % We need to handle type_info (etc.) types specially --
             % they get mapped to types in the runtime rather than
             % in private_builtin.
-            hand_defined_type(Type, CtorCat, SubstituteName)
+            hand_defined_type(Type, CtorCat, SubstituteName, ArrayDims0)
         ->
-            io.write_string(SubstituteName, !IO)
+            String = SubstituteName,
+            ArrayDims = ArrayDims0
         ;
             % io.state and store.store
             CtorCat = ctor_cat_builtin_dummy
         ->
-            io.write_string("/* builtin_dummy */ java.lang.Object", !IO)
+            String = "/* builtin_dummy */ java.lang.Object",
+            ArrayDims = []
         ;
             Type = c_pointer_type
         ->
@@ -3123,9 +3381,10 @@ output_type(Info, Style, MLDS_Type, !IO) :-
             % to pass foreign types to automatically generated Compare and
             % Unify code. When compiling to Java we must instead use
             % java.lang.Object.
-            io.write_string("/* c_pointer */ java.lang.Object", !IO)
+            String = "/* c_pointer */ java.lang.Object",
+            ArrayDims = []
         ;
-            output_mercury_type(Info, Style, Type, CtorCat, !IO)
+            mercury_type_to_string(Info, Type, CtorCat, String, ArrayDims)
         )
     ;
         MLDS_Type = mlds_mercury_array_type(ElementType),
@@ -3134,7 +3393,8 @@ output_type(Info, Style, MLDS_Type, !IO) :-
             % that is capable of holding any kind of array, including e.g.
             % `int []'. Java doesn't have any equivalent of .NET's System.Array
             % class, so we just use the universal base `java.lang.Object'.
-            io.write_string("/* Array */ java.lang.Object", !IO)
+            String = "/* Array */ java.lang.Object",
+            ArrayDims = []
         ;
             % For primitive element types we use arrays of the primitive type.
             % For non-primitive element types, we just use
@@ -3144,32 +3404,35 @@ output_type(Info, Style, MLDS_Type, !IO) :-
             % That doesn't work if the representative element is of a foreign
             % type, and has the value null.
             ( java_builtin_type(ElementType, _, _, _) ->
-                output_type(Info, Style, ElementType, !IO)
+                type_to_string(Info, ElementType, String, ArrayDims0),
+                ArrayDims = [0 | ArrayDims0]
             ;
-                io.write_string("/* ", !IO),
-                output_type(Info, Style, ElementType, !IO),
-                io.write_string("[] */ java.lang.Object", !IO)
-            ),
-            output_array_brackets(Style, !IO)
+                String = "java.lang.Object",
+                ArrayDims = [0]
+            )
         )
     ;
         MLDS_Type = mlds_native_int_type,
-        io.write_string("int", !IO)
+        String = "int",
+        ArrayDims = []
     ;
         MLDS_Type = mlds_native_float_type,
-        io.write_string("double", !IO)
+        String = "double",
+        ArrayDims = []
     ;
         MLDS_Type = mlds_native_bool_type,
-        io.write_string("boolean", !IO)
+        String = "boolean",
+        ArrayDims = []
     ;
         MLDS_Type = mlds_native_char_type,
-        io.write_string("char", !IO)
+        String = "char",
+        ArrayDims = []
     ;
         MLDS_Type = mlds_foreign_type(ForeignType),
         (
             ForeignType = java(java_type(Name)),
-            maybe_output_comment(Info, "foreign_type", !IO),
-            io.write_string(Name, !IO)
+            String = Name,
+            ArrayDims = []
         ;
             ForeignType = c(_),
             unexpected(this_file, "output_type: c foreign_type")
@@ -3182,96 +3445,95 @@ output_type(Info, Style, MLDS_Type, !IO) :-
         )
     ;
         MLDS_Type = mlds_class_type(Name, Arity, _ClassKind),
-        (
-            Name = qual(ModuleName, _, ClassName),
-            SymName = mlds_module_name_to_sym_name(ModuleName),
-            SymName = mercury_runtime_package_name
-        ->
-            % Don't mangle runtime class names.
-            io.write_string("jmercury.runtime.", !IO),
-            io.write_string(ClassName, !IO)
-        ;
-            % We used to treat enumerations specially here, outputting
-            % them as "int", but now we do the same for all classes.
-            output_fully_qualified_thing(Name, output_class_name, !IO),
-            io.format("_%d", [i(Arity)], !IO)
-        )
+        qual_class_name_to_string(Name, Arity, String),
+        ArrayDims = []
     ;
         MLDS_Type = mlds_ptr_type(Type),
         % XXX Should we report an error here, if the type pointed to
         % is not a class type?
-        output_type(Info, Style, Type, !IO)
+        type_to_string(Info, Type, String, ArrayDims)
     ;
         MLDS_Type = mlds_array_type(Type),
-        output_type(Info, Style, Type, !IO),
-        output_array_brackets(Style, !IO)
+        type_to_string(Info, Type, String, ArrayDims0),
+        ArrayDims = [0 | ArrayDims0]
     ;
         MLDS_Type = mlds_func_type(_FuncParams),
-        io.write_string("jmercury.runtime.MethodPtr", !IO)
+        String = "jmercury.runtime.MethodPtr",
+        ArrayDims = []
     ;
         MLDS_Type = mlds_generic_type,
-        io.write_string("/* generic_type */ java.lang.Object", !IO)
+        String = "/* generic_type */ java.lang.Object",
+        ArrayDims = []
     ;
         MLDS_Type = mlds_generic_env_ptr_type,
-        io.write_string("/* env_ptr */ java.lang.Object", !IO)
+        String = "/* env_ptr */ java.lang.Object",
+        ArrayDims = []
     ;
         MLDS_Type = mlds_type_info_type,
-        io.write_string("jmercury.runtime.TypeInfo", !IO)
+        String = "jmercury.runtime.TypeInfo",
+        ArrayDims = []
     ;
         MLDS_Type = mlds_pseudo_type_info_type,
-        io.write_string("jmercury.runtime.PseudoTypeInfo", !IO)
+        String = "jmercury.runtime.PseudoTypeInfo",
+        ArrayDims = []
     ;
         MLDS_Type = mlds_cont_type(_),
         % XXX Should this actually be a class that extends MethodPtr?
-        io.write_string("jmercury.runtime.MethodPtr", !IO)
+        String = "jmercury.runtime.MethodPtr",
+        ArrayDims = []
     ;
         MLDS_Type = mlds_commit_type,
-        io.write_string("jmercury.runtime.Commit", !IO)
+        String = "jmercury.runtime.Commit",
+        ArrayDims = []
     ;
         MLDS_Type = mlds_rtti_type(RttiIdMaybeElement),
-        rtti_id_maybe_element_java_type(RttiIdMaybeElement, JavaTypeName,
-            IsArray),
-        io.write_string(JavaTypeName, !IO),
+        rtti_id_maybe_element_java_type(RttiIdMaybeElement, String, IsArray),
         (
             IsArray = is_array,
-            output_array_brackets(Style, !IO)
+            ArrayDims = [0]
         ;
-            IsArray = not_array
+            IsArray = not_array,
+            ArrayDims = []
         )
     ;
         MLDS_Type = mlds_tabling_type(TablingId),
-        tabling_id_java_type(TablingId, JavaTypeName, IsArray),
-        io.write_string(JavaTypeName, !IO),
+        tabling_id_java_type(TablingId, String, IsArray),
         (
             IsArray = is_array,
-            output_array_brackets(Style, !IO)
+            ArrayDims = [0]
         ;
-            IsArray = not_array
+            IsArray = not_array,
+            ArrayDims = []
         )
     ;
         MLDS_Type = mlds_unknown_type,
         unexpected(this_file, "output_type: unknown type")
     ).
 
-:- pred output_mercury_type(java_out_info::in, output_style::in, mer_type::in,
-    type_ctor_category::in, io::di, io::uo) is det.
+:- pred mercury_type_to_string(java_out_info::in, mer_type::in,
+    type_ctor_category::in, string::out, list(int)::out) is det.
 
-output_mercury_type(Info, Style, Type, CtorCat, !IO) :-
+mercury_type_to_string(Info, Type, CtorCat, String, ArrayDims) :-
     (
         CtorCat = ctor_cat_builtin(cat_builtin_char),
-        io.write_string("char", !IO)
+        String = "char",
+        ArrayDims = []
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_int),
-        io.write_string("int", !IO)
+        String = "int",
+        ArrayDims = []
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_string),
-        io.write_string("java.lang.String", !IO)
+        String = "java.lang.String",
+        ArrayDims = []
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_float),
-        io.write_string("double", !IO)
+        String = "double",
+        ArrayDims = []
     ;
         CtorCat = ctor_cat_void,
-        io.write_string("builtin.Void_0", !IO)
+        String = "builtin.Void_0",
+        ArrayDims = []
     ;
         CtorCat = ctor_cat_variable,
         (
@@ -3279,34 +3541,35 @@ output_mercury_type(Info, Style, Type, CtorCat, !IO) :-
             Type = type_variable(TVar, kind_star),
             list.member(TVar, Info ^ joi_univ_tvars)
         ->
-            output_generic_tvar(TVar, !IO)
+            generic_tvar_to_string(TVar, String)
         ;
-            io.write_string("java.lang.Object", !IO)
-        )
+            String = "java.lang.Object"
+        ),
+        ArrayDims = []
     ;
         CtorCat = ctor_cat_tuple,
-        io.write_string("/* tuple */ java.lang.Object", !IO),
-        output_array_brackets(Style, !IO)
+        String = "/* tuple */ java.lang.Object",
+        ArrayDims = [0]
     ;
         CtorCat = ctor_cat_higher_order,
-        io.write_string("/* closure */ java.lang.Object", !IO),
-        output_array_brackets(Style, !IO)
+        String = "/* closure */ java.lang.Object",
+        ArrayDims = [0]
     ;
         CtorCat = ctor_cat_system(_),
-        output_mercury_user_type(Info, Style, Type,
-            ctor_cat_user(cat_user_general), !IO)
+        mercury_type_to_string(Info, Type, ctor_cat_user(cat_user_general),
+            String, ArrayDims)
     ;
         ( CtorCat = ctor_cat_enum(_)
         ; CtorCat = ctor_cat_user(_)
         ; CtorCat = ctor_cat_builtin_dummy
         ),
-        output_mercury_user_type(Info, Style, Type, CtorCat, !IO)
+        mercury_user_type_to_string(Info, Type, CtorCat, String, ArrayDims)
     ).
 
-:- pred output_mercury_user_type(java_out_info::in, output_style::in,
-    mer_type::in, type_ctor_category::in, io::di, io::uo) is det.
+:- pred mercury_user_type_to_string(java_out_info::in, mer_type::in,
+    type_ctor_category::in, string::out, list(int)::out) is det.
 
-output_mercury_user_type(Info, Style, Type, CtorCat, !IO) :-
+mercury_user_type_to_string(Info, Type, CtorCat, String, ArrayDims) :-
     ( type_to_ctor_and_args(Type, TypeCtor, ArgsTypes) ->
         ml_gen_type_name(TypeCtor, ClassName, ClassArity),
         ( CtorCat = ctor_cat_enum(_) ->
@@ -3314,47 +3577,38 @@ output_mercury_user_type(Info, Style, Type, CtorCat, !IO) :-
         ;
             MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_class)
         ),
-        output_type(Info, Style, MLDS_Type, !IO),
+        type_to_string(Info, MLDS_Type, TypeString, ArrayDims),
         OutputGenerics = Info ^ joi_output_generics,
         (
             OutputGenerics = do_output_generics,
-            output_generics_args_types(Info, ArgsTypes, !IO)
+            generic_args_types_to_string(Info, ArgsTypes, GenericsString),
+            String = TypeString ++ GenericsString
         ;
-            OutputGenerics = do_not_output_generics
+            OutputGenerics = do_not_output_generics,
+            String = TypeString
         )
     ;
         unexpected(this_file, "output_mercury_user_type: not a user type")
     ).
 
-:- pred output_generics_args_types(java_out_info::in, list(mer_type)::in,
-    io::di, io::uo) is det.
+:- pred generic_args_types_to_string(java_out_info::in, list(mer_type)::in,
+    string::out) is det.
 
-output_generics_args_types(Info, ArgsTypes, !IO) :-
+generic_args_types_to_string(Info, ArgsTypes, String) :-
     (
-        ArgsTypes = []
+        ArgsTypes = [],
+        String = ""
     ;
         ArgsTypes = [_ | _],
-        WriteType = (pred(ArgType::in, !.IO::di, !:IO::uo) is det :-
+        ToString = (pred(ArgType::in, ArgTypeString::out) is det :-
             ModuleInfo = Info ^ joi_module_info,
             MLDS_ArgType = mercury_type_to_mlds_type(ModuleInfo, ArgType),
-            output_boxed_type(Info, MLDS_ArgType, !IO)
+            boxed_type_to_string(Info, MLDS_ArgType, ArgTypeString)
         ),
-        io.write_string("<", !IO),
-        io.write_list(ArgsTypes, ", ", WriteType, !IO),
-        io.write_string(">", !IO)
+        list.map(ToString, ArgsTypes, ArgsTypesStrings),
+        ArgsTypesString = string.join_list(", ", ArgsTypesStrings),
+        String = "<" ++ ArgsTypesString ++ ">"
     ).
-
-:- pred output_array_brackets(output_style::in, io::di, io::uo) is det.
-
-output_array_brackets(Style, !IO) :-
-    io.write_string("[", !IO),
-    (
-        Style = normal_style
-    ;
-        Style = sized_array(Size),
-        io.write_int(Size, !IO)
-    ),
-    io.write_string("]", !IO).
 
     % Return is_array if the corresponding Java type is an array type.
     %
@@ -3399,27 +3653,31 @@ type_category_is_array(CtorCat) = IsArray :-
         IsArray = is_array
     ).
 
-    % hand_defined_type(Type, CtorCat, SubstituteName):
+    % hand_defined_type(Type, CtorCat, SubstituteName, ArrayDims):
     %
     % We need to handle type_info (etc.) types specially -- they get mapped
     % to types in the runtime rather than in private_builtin.
     %
-:- pred hand_defined_type(mer_type::in, type_ctor_category::in, string::out)
-    is semidet.
+:- pred hand_defined_type(mer_type::in, type_ctor_category::in, string::out,
+    list(int)::out) is semidet.
 
-hand_defined_type(Type, CtorCat, SubstituteName) :-
+hand_defined_type(Type, CtorCat, SubstituteName, ArrayDims) :-
     (
         CtorCat = ctor_cat_system(cat_system_type_info),
-        SubstituteName = "jmercury.runtime.TypeInfo_Struct"
+        SubstituteName = "jmercury.runtime.TypeInfo_Struct",
+        ArrayDims = []
     ;
         CtorCat = ctor_cat_system(cat_system_type_ctor_info),
-        SubstituteName = "jmercury.runtime.TypeCtorInfo_Struct"
+        SubstituteName = "jmercury.runtime.TypeCtorInfo_Struct",
+        ArrayDims = []
     ;
         CtorCat = ctor_cat_system(cat_system_typeclass_info),
-        SubstituteName = "/* typeclass_info */ java.lang.Object[]"
+        SubstituteName = "/* typeclass_info */ java.lang.Object",
+        ArrayDims = [0]
     ;
         CtorCat = ctor_cat_system(cat_system_base_typeclass_info),
-        SubstituteName = "/* base_typeclass_info */ java.lang.Object[]"
+        SubstituteName = "/* base_typeclass_info */ java.lang.Object",
+        ArrayDims = [0]
     ;
         CtorCat = ctor_cat_user(cat_user_general),
         ( Type = type_desc_type ->
@@ -3430,7 +3688,30 @@ hand_defined_type(Type, CtorCat, SubstituteName) :-
             SubstituteName = "jmercury.runtime.TypeCtorInfo_Struct"
         ;
             fail
-        )
+        ),
+        ArrayDims = []
+    ).
+
+:- pred boxed_type_to_string(java_out_info::in, mlds_type::in, string::out)
+    is det.
+
+boxed_type_to_string(Info, Type, String) :-
+    ( java_builtin_type(Type, _, JavaBoxedName, _) ->
+        String = JavaBoxedName
+    ;
+        type_to_string(Info, Type, String0, ArrayDims),
+        list.map(array_dimension_to_string, ArrayDims, RevBrackets),
+        list.reverse(RevBrackets, Brackets),
+        string.append_list([String0 | Brackets], String)
+    ).
+
+:- pred array_dimension_to_string(int::in, string::out) is det.
+
+array_dimension_to_string(N, String) :-
+    ( N = 0 ->
+        String = "[]"
+    ;
+        String = string.format("[%d]", [i(N)])
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3788,15 +4069,8 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
                 RetTypes = []
             ;
                 RetTypes = [RetType],
-                ( java_builtin_type(RetType, _, JavaBoxedName, _) ->
-                    io.write_string("((", !IO),
-                    io.write_string(JavaBoxedName, !IO),
-                    io.write_string(") ", !IO)
-                ;
-                    io.write_string("((", !IO),
-                    output_type(Info, normal_style, RetType, !IO),
-                    io.write_string(") ", !IO)
-                )
+                boxed_type_to_string(Info, RetType, RetTypeString),
+                io.format("((%s) ", [s(RetTypeString)], !IO)
             ;
                 RetTypes = [_, _ | _],
                 io.write_string("((java.lang.Object[]) ", !IO)
@@ -4039,7 +4313,7 @@ output_unboxed_result(Info, Type, ResultIndex, !IO) :-
         io.format("result[%d]).%s()", [i(ResultIndex), s(UnboxMethod)], !IO)
     ;
         io.write_string("(", !IO),
-        output_type(Info, normal_style, Type, !IO),
+        output_type(Info, Type, !IO),
         io.write_string(") ", !IO),
         io.format("result[%d]", [i(ResultIndex)], !IO)
     ).
@@ -4182,16 +4456,16 @@ output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
             MaybeCtorName = yes(QualifiedCtorId),
             \+ (
                 Type = mercury_type(MerType, CtorCat, _),
-                hand_defined_type(MerType, CtorCat, _)
+                hand_defined_type(MerType, CtorCat, _, _)
             )
         ->
-            output_type(Info, normal_style, Type, !IO),
+            output_type(Info, Type, !IO),
             io.write_char('.', !IO),
             QualifiedCtorId = qual(_ModuleName, _QualKind, CtorDefn),
             CtorDefn = ctor_id(CtorName, CtorArity),
-            output_class_name_and_arity(CtorName, CtorArity, !IO)
+            output_unqual_class_name(CtorName, CtorArity, !IO)
         ;
-            output_type(Info, normal_style, Type, !IO)
+            output_type(Info, Type, !IO)
         ),
         IsArray = type_is_array(Type),
         (
@@ -4269,7 +4543,7 @@ output_target_code_component(Info, TargetCode, !IO) :-
     ;
         TargetCode = target_code_type(Type),
         InfoGenerics = Info ^ joi_output_generics := do_output_generics,
-        output_type(InfoGenerics, normal_style, Type, !IO)
+        output_type(InfoGenerics, Type, !IO)
     ;
         TargetCode = target_code_name(Name),
         output_maybe_qualified_name(Info, Name, !IO)
@@ -4351,9 +4625,8 @@ output_lval(Info, Lval, !IO) :-
                 % in a derived class. Objects are manipulated as instances
                 % of their base class, so we need to downcast to the derived
                 % class to access some fields.
-
                 io.write_string("((", !IO),
-                output_type(Info, normal_style, CtorType, !IO),
+                output_type(Info, CtorType, !IO),
                 io.write_string(") ", !IO),
                 output_bracketed_rval(Info, PtrRval, !IO),
                 io.write_string(").", !IO)
@@ -4426,12 +4699,6 @@ output_rval(Info, Rval, !IO) :-
         Rval = ml_lval(Lval),
         output_lval(Info, Lval, !IO)
     ;
-        Rval = ml_scalar_common(_),
-        unexpected(this_file, "output_rval: ml_scalar_common")
-    ;
-        Rval = ml_vector_common_row(_, _),
-        unexpected(this_file, "output_rval: ml_vector_common_row")
-    ;
         Rval = ml_mkword(_, _),
         unexpected(this_file, "output_rval: tags not supported in Java")
     ;
@@ -4446,6 +4713,13 @@ output_rval(Info, Rval, !IO) :-
     ;
         Rval = ml_mem_addr(_Lval),
         unexpected(this_file, "output_rval: mem_addr(_) not supported")
+    ;
+        Rval = ml_scalar_common(_),
+        % This reference is not the same as a mlds_data_addr const.
+        unexpected(this_file, "output_rval: ml_scalar_common")
+    ;
+        Rval = ml_vector_common_row(VectorCommon, RowRval),
+        output_vector_common_row_rval(Info, VectorCommon, RowRval, !IO)
     ;
         Rval = ml_self(_),
         io.write_string("this", !IO)
@@ -4511,7 +4785,7 @@ output_cast_rval(Info, Type, Expr, !IO) :-
         output_rval_maybe_with_enum(Info, Expr, !IO)
     ;
         io.write_string("(", !IO),
-        output_type(Info, normal_style, Type, !IO),
+        output_type(Info, Type, !IO),
         io.write_string(") ", !IO),
         output_rval(Info, Expr, !IO)
     ).
@@ -4553,7 +4827,7 @@ output_unboxed_rval(Info, Type, Expr, !IO) :-
         io.write_string("()", !IO)
     ;
         io.write_string("((", !IO),
-        output_type(Info, normal_style, Type, !IO),
+        output_type(Info, Type, !IO),
         io.write_string(") ", !IO),
         output_rval(Info, Expr, !IO),
         io.write_string(")", !IO)
@@ -4711,7 +4985,7 @@ output_rval_const(Info, Const, !IO) :-
         io.write_string(")", !IO)
     ;
         Const = mlconst_enum(N, EnumType),
-        output_type(Info, normal_style, EnumType, !IO),
+        output_type(Info, EnumType, !IO),
         io.write_string(".K", !IO),
         output_int_const(N, !IO)
     ;
@@ -4771,6 +5045,16 @@ output_int_const(N, !IO) :-
         io.write_int(N, !IO)
     ).
 
+:- pred output_vector_common_row_rval(java_out_info::in,
+    mlds_vector_common::in, mlds_rval::in, io::di, io::uo) is det.
+
+output_vector_common_row_rval(Info, VectorCommon, RowRval, !IO) :-
+    VectorCommon = ml_vector_common(_ModuleName, _Type,
+        ml_vector_common_type_num(TypeNum), StartRowNum, _NumRows),
+    io.format("MR_vector_common_%d[%d + ", [i(TypeNum), i(StartRowNum)], !IO),
+    output_rval(Info, RowRval, !IO),
+    io.write_string("]", !IO).
+
 %-----------------------------------------------------------------------------%
 
 :- pred mlds_output_code_addr(java_out_info::in, mlds_code_addr::in, bool::in,
@@ -4798,10 +5082,10 @@ mlds_output_code_addr(Info, CodeAddr, IsCall, !IO) :-
         IsCall = yes,
         (
             CodeAddr = code_addr_proc(Label, _Sig),
-            output_fully_qualified_proc_label(Label, !IO)
+            output_fully_qualified_thing(Label, mlds_output_proc_label, !IO)
         ;
             CodeAddr = code_addr_internal(Label, SeqNum, _Sig),
-            output_fully_qualified_proc_label(Label, !IO),
+            output_fully_qualified_thing(Label, mlds_output_proc_label, !IO),
             io.write_string("_", !IO),
             io.write_int(SeqNum, !IO)
         )

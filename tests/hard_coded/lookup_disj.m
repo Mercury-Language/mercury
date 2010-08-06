@@ -10,6 +10,7 @@
 
 :- implementation.
 
+:- import_module int.
 :- import_module list.
 :- import_module solutions.
 :- import_module pair.
@@ -50,21 +51,13 @@ q(5.5 - "five",   5, g(a)).
 
 :- pred peek_at_solution(int::in, int::out) is det.
 
-:- pragma foreign_proc("C",
-    peek_at_solution(Int0::in, Int::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    printf(""peek %ld\\n"", (long) Int0);
-    Int = Int0 + 10;
-").
-
-:- pragma foreign_proc("Erlang",
-    peek_at_solution(Int0::in, Int::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    io:format(""peek ~B~n"", [Int0]),
-    Int = Int0 + 10
-").
+peek_at_solution(Int0, Int) :-
+    trace [io(!IO)] (
+        io.write_string("peek ", !IO),
+        io.write_int(Int0, !IO),
+        io.nl(!IO)
+    ),
+    Int = Int0 + 10.
 
 :- pred write_solution(soln::in, io::di, io::uo) is det.
 

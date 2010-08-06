@@ -943,9 +943,10 @@ get_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
         (
             % Check for type_infos and typeclass_infos, since these
             % need to be handled specially; their Mercury type definitions
-            % are lies.
+            % are lies on C backends.
             MLDS_Type = mercury_type(_, TypeCtorCategory, _),
-            TypeCtorCategory = ctor_cat_system(_)
+            TypeCtorCategory = ctor_cat_system(_),
+            Target = target_c
         ->
             ConstType = mlds_array_type(mlds_generic_type)
         ;

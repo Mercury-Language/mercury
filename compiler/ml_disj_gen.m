@@ -200,7 +200,7 @@ ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Statements, !Info) :-
 
 allow_lookup_disj(target_c) = yes.
 allow_lookup_disj(target_il) = no.
-allow_lookup_disj(target_java) = no.
+allow_lookup_disj(target_java) = yes.
 allow_lookup_disj(target_asm) = no.
 allow_lookup_disj(target_x86_64) = no.
 allow_lookup_disj(target_erlang) = no.
