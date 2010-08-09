@@ -37,7 +37,7 @@
 
 monte(Box, Shape, Precision, Volume) :-
     rnd.init(17, Rnd0),
-    monte_loop(Box, Shape, Precision, Rnd0, 0, Hits),
+    monte_outer_loop(Box, Shape, Precision, Rnd0, 0, Hits),
     Prop = float(Hits) / float(Precision),
     BoxVolume =
         (Box ^ xmax - Box ^ xmin) *
@@ -45,10 +45,21 @@ monte(Box, Shape, Precision, Volume) :-
         (Box ^ zmax - Box ^ zmin),
     Volume = BoxVolume * Prop.
 
-:- pred monte_loop(box::in, shape::in(shape), int::in, rnd::in,
+:- pred monte_outer_loop(box::in, shape::in(shape), int::in, rnd::in,
     int::in, int::out) is det.
 
-monte_loop(Box, Shape, N, !.Rnd, !Hits) :-
+monte_outer_loop(Box, Shape, N, !.Rnd, !Hits) :-
+    ( N > 10000 ->
+        monte_inner_loop(Box, Shape, 10000, !Rnd, !Hits),
+        monte_outer_loop(Box, Shape, N - 10000, !.Rnd, !Hits)
+    ;
+        monte_inner_loop(Box, Shape, N, !.Rnd, _, !Hits)
+    ).
+
+:- pred monte_inner_loop(box::in, shape::in(shape), int::in,
+    rnd::in, rnd::out, int::in, int::out) is det.
+
+monte_inner_loop(Box, Shape, N, !Rnd, !Hits) :-
     ( N > 0 ->
         frange(Box ^ xmin, Box ^ xmax, X, !Rnd),
         frange(Box ^ ymin, Box ^ ymax, Y, !Rnd),
@@ -58,7 +69,7 @@ monte_loop(Box, Shape, N, !.Rnd, !Hits) :-
         ;
             true
         ),
-        monte_loop(Box, Shape, N - 1, !.Rnd, !Hits)
+        monte_inner_loop(Box, Shape, N - 1, !Rnd, !Hits)
     ;
         true
     ).
