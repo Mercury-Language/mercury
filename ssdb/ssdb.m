@@ -127,6 +127,12 @@
 :- pred pause_debugging(debugging_paused::out, io::di, io::uo) is det.
 :- pred resume_debugging(debugging_paused::in, io::di, io::uo) is det.
 
+    % Enable the debugger in the calling thread.  You may want to start the
+    % program with debugging initialised but disabled by default, by setting
+    % the environment variable SSDB=0.
+    %
+:- pred enable_debugging(io::di, io::uo) is det.
+
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
 
@@ -354,7 +360,6 @@ init_debugger_state(!IO) :-
         ; MaybeTTY = yes(_)
         )
     ->
-        DebuggerState = debugger_on,
         (
             MaybeTTY = yes(FileName),
             io.open_input(FileName, InputRes, !IO),
@@ -376,11 +381,17 @@ init_debugger_state(!IO) :-
         ),
         install_sigint_handler(!IO),
         install_exception_hooks(!IO),
-        add_source_commands(!IO)
+        add_source_commands(!IO),
+        ( MaybeEnv = yes("0") ->
+            % Sometimes it is necessary to start the program with debugging
+            % disabled, then enable it later from within the program.
+            set_debugger_state(debugger_off, !IO)
+        ;
+            set_debugger_state(debugger_on, !IO)
+        )
     ;
-        DebuggerState = debugger_off
-    ),
-    set_debugger_state(DebuggerState, !IO).
+        set_debugger_state(debugger_off, !IO)
+    ).
 
 :- pred add_source_commands(io::di, io::uo) is det.
 
@@ -406,6 +417,35 @@ maybe_add_source_commands(FileName, !IO) :-
     ;
         Res = error(_)
     ).
+
+:- pred get_debugger_state_safer(debugger_state::out, io::di, io::uo)
+    is det.
+
+get_debugger_state_safer(DebuggerState, !IO) :-
+    get_debugger_state(DebuggerState, !IO).
+
+:- pragma foreign_proc("Java",
+    get_debugger_state_safer(DebuggerState::out, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    /*
+    ** Cope with non-standard ways of entering Mercury code.
+    ** If init_debugger_state was called in a thread that is not a parent of
+    ** the current thread, the current thread would inherit a value of null
+    ** in thread-local mutable debugger_state.
+    */
+    java.lang.Object X = ssdb__mutable_variable_debugger_state.get();
+    if (X == null) {
+        DebuggerState = ssdb.DEBUGGER_OFF;
+        ssdb__mutable_variable_debugger_state.set(DebuggerState);
+    } else {
+        DebuggerState = (ssdb.Debugger_state_0) X;
+    }
+    IO = IO0;
+").
+
+:- pragma foreign_export_enum("Java", debugger_state/0, [],
+    [debugger_off - "DEBUGGER_OFF"]).
 
 %-----------------------------------------------------------------------------%
 
@@ -465,7 +505,7 @@ step_next_stop(!IO) :-
 %-----------------------------------------------------------------------------%
 
 pause_debugging(Paused, !IO) :-
-    get_debugger_state(Paused, !IO),
+    get_debugger_state_safer(Paused, !IO),
     (
         Paused = debugger_off
     ;
@@ -481,6 +521,9 @@ resume_debugging(Paused, !IO) :-
         Paused = debugger_off
     ).
 
+enable_debugging(!IO) :-
+    set_debugger_state(debugger_on, !IO).
+
 %-----------------------------------------------------------------------------%
 
 set_context(FileName, Line) :-
@@ -492,7 +535,7 @@ set_context(FileName, Line) :-
 handle_event_call(ProcId, ListVarValue) :-
     some [!IO] (
         impure invent_io(!:IO),
-        get_debugger_state(DebuggerState, !IO),
+        get_debugger_state_safer(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
             handle_event_call_2(ssdb_call, ProcId, ListVarValue, !IO)
@@ -505,7 +548,7 @@ handle_event_call(ProcId, ListVarValue) :-
 handle_event_call_nondet(ProcId, ListVarValue) :-
     some [!IO] (
         impure invent_io(!:IO),
-        get_debugger_state(DebuggerState, !IO),
+        get_debugger_state_safer(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
             handle_event_call_2(ssdb_call_nondet, ProcId, ListVarValue, !IO)
@@ -557,7 +600,7 @@ handle_event_call_2(Event, ProcId, ListVarValue, !IO) :-
 handle_event_exit(ProcId, ListVarValue, Retry) :-
     some [!IO] (
         impure invent_io(!:IO),
-        get_debugger_state(DebuggerState, !IO),
+        get_debugger_state_safer(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
             handle_event_exit_2(ssdb_exit, ProcId, ListVarValue, Retry, !IO)
@@ -571,7 +614,7 @@ handle_event_exit(ProcId, ListVarValue, Retry) :-
 handle_event_exit_nondet(ProcId, ListVarValue) :-
     some [!IO] (
         impure invent_io(!:IO),
-        get_debugger_state(DebuggerState, !IO),
+        get_debugger_state_safer(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
             handle_event_exit_2(ssdb_exit_nondet, ProcId, ListVarValue,
@@ -619,7 +662,7 @@ handle_event_exit_2(Event, ProcId, ListVarValue, Retry, !IO) :-
 handle_event_fail(ProcId, _ListVarValue, Retry) :-
     some [!IO] (
         impure invent_io(!:IO),
-        get_debugger_state(DebuggerState, !IO),
+        get_debugger_state_safer(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
             handle_event_fail_2(ssdb_fail, ProcId, Retry, !IO)
@@ -633,7 +676,7 @@ handle_event_fail(ProcId, _ListVarValue, Retry) :-
 handle_event_fail_nondet(ProcId, _ListVarValue, Retry) :-
     some [!IO] (
         impure invent_io(!:IO),
-        get_debugger_state(DebuggerState, !IO),
+        get_debugger_state_safer(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
             handle_event_fail_2(ssdb_fail_nondet, ProcId, Retry, !IO)
@@ -682,7 +725,7 @@ handle_event_fail_2(Event, ProcId, Retry, !IO) :-
 handle_event_redo_nondet(ProcId, _ListVarValue) :-
     some [!IO] (
         impure invent_io(!:IO),
-        get_debugger_state(DebuggerState, !IO),
+        get_debugger_state_safer(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
             Event = ssdb_redo_nondet,
@@ -793,7 +836,7 @@ private static class SsdbHooks extends exception.SsdbHooks {
 handle_event_excp(ModuleName, ProcName, Univ) :-
     some [!IO] (
         impure invent_io(!:IO),
-        get_debugger_state(DebuggerState, !IO),
+        get_debugger_state_safer(DebuggerState, !IO),
         (
             DebuggerState = debugger_on,
             ProcId = ssdb_proc_id(ModuleName, ProcName),
