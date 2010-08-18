@@ -122,6 +122,7 @@ OTHER_PROGS= \
 	ho_unify \
 	id_type_bug \
 	implied_mode \
+	implied_mode_no_tag \
 	impure_lambda_bug \
 	indexing \
 	inhibit_warn_test \

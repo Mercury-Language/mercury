@@ -417,7 +417,12 @@ get_single_arg_inst(ModuleInfo, Inst, ConsId, ArgInst) :-
     is semidet.
 
 get_single_arg_inst_2([BoundInst | BoundInsts], ConsId, ArgInst) :-
-    ( BoundInst = bound_functor(ConsId, [ArgInst0]) ->
+    (
+        BoundInst = bound_functor(InstConsId, [ArgInst0]),
+        % The cons_ids for types and insts can differ in the type_ctor field
+        % so we must ignore them.
+        equivalent_cons_ids(ConsId, InstConsId)
+    ->
         ArgInst = ArgInst0
     ;
         get_single_arg_inst_2(BoundInsts, ConsId, ArgInst)
