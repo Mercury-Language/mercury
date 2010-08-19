@@ -21,6 +21,7 @@ ORDINARY_PROGS=	\
 	cc_and_non_cc_test \
 	cc_multi_bug \
 	cc_nondet_disj \
+	char_signed \
 	checked_nondet_tailcall \
 	checked_nondet_tailcall_noinline \
 	closure_extension \

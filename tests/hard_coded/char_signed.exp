@@ -1,0 +1,4 @@
+unify succeed
+'A' < 0xFF
+0xFF >= 'A'
+'A' < 0xFF
