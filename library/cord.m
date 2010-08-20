@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2002-2009 The University of Melbourne.
+% Copyright (C) 2002-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -198,70 +198,65 @@
 :- import_module int.
 :- import_module require.
 
-    % We impose the following invariants to ensure we have a unique
-    % representation for the empty cord (this makes the implementation
-    % simpler.)
-    %
-    %   all [C] not C = leaves([])
-    %   all [C] not C = branch(nil, _)
-    %   all [C] not C = branch(_, nil)
-    %
 :- type cord(T)
-    --->    nil
-    ;       leaf(T)
-    ;       leaves(list(T))
-    ;       branch(cord(T), cord(T)).
+    --->    empty_cord
+    ;       nonempty_cord(cord_node(T)).
+
+:- type cord_node(T)
+    --->    unit_node(T)
+    ;       list_node(T, list(T))
+    ;       branch_node(cord_node(T), cord_node(T)).
 
 %-----------------------------------------------------------------------------%
 
-empty = nil.
+empty = empty_cord.
 
 %-----------------------------------------------------------------------------%
 
-is_empty(nil).
+is_empty(empty_cord).
 
 %-----------------------------------------------------------------------------%
 
-singleton(X) = leaf(X).
+singleton(X) = nonempty_cord(unit_node(X)).
 
 %-----------------------------------------------------------------------------%
 
 from_list(Xs) = C :-
     (
         Xs = [],
-        C = nil
+        C = empty_cord
     ;
-        Xs = [_ | _],
-        C = leaves(Xs)
+        Xs = [H | T],
+        C = nonempty_cord(list_node(H, T))
     ).
 
 %-----------------------------------------------------------------------------%
 
-list(C) = list_2(C, []).
+list(empty_cord) = [].
+list(nonempty_cord(N)) = list_2(N, []).
 
-    % list_2(C, L0) = L:
+    % list_2(N, L0) = L:
     %
-    % L is the list of items in C appended in front of L0.
+    % L is the list of items in N appended in front of L0.
     %
-:- func list_2(cord(T), list(T)) = list(T).
+:- func list_2(cord_node(T), list(T)) = list(T).
 
-list_2(nil,            Xs) = Xs.
-list_2(leaf(Y),        Xs) = [Y | Xs].
-list_2(leaves(Ys),     Xs) = Ys ++ Xs.
-list_2(branch(CA, CB), Xs) = list_2(CA, list_2(CB, Xs)).
+list_2(unit_node(X),      L0) = [X | L0].
+list_2(list_node(H, T),   L0) = [H | T ++ L0].
+list_2(branch_node(A, B), L0) = list_2(A, list_2(B, L0)).
 
-rev_list(C) = rev_list_2(C, []).
+rev_list(empty_cord) = [].
+rev_list(nonempty_cord(N)) = rev_list_2(N, []).
 
-    % rev_list_2(C, L0) = L:
+    % rev_list_2(N, L0) = L:
     %
-    % L is the reverse list of items in C appended in front of L0.
+    % L is the reverse list of items in N appended in front of L0.
     %
-:- func rev_list_2(cord(T), list(T)) = list(T).
+:- func rev_list_2(cord_node(T), list(T)) = list(T).
 
-rev_list_2(nil,            Xs) = Xs.
-rev_list_2(leaf(Y),        Xs) = [Y | Xs].
-rev_list_2(leaves(Ys),     Xs) = list_reverse_2(Ys, Xs).
-rev_list_2(branch(CA, CB), Xs) = rev_list_2(CB, list_2(CA, Xs)).
+rev_list_2(unit_node(X),      L0) = [X | L0].
+rev_list_2(list_node(H, T),   L0) = list_reverse_2(T, [H | L0]).
+rev_list_2(branch_node(A, B), L0) = rev_list_2(B, list_2(A, L0)).
 
     % list_reverse_2(A, L0) = L:
     %
@@ -277,129 +272,165 @@ list_reverse_2([X | Xs], L0) =
 
 cons(X, C) = XC :-
     (
-        C = nil,
-        XC = leaf(X)
+        C = empty_cord,
+        XC = nonempty_cord(unit_node(X))
     ;
-        ( C = leaf(_)
-        ; C = leaves(_)
-        ; C = branch(_, _)
-        ),
-        XC = branch(leaf(X), C)
+        C = nonempty_cord(N),
+        XC = nonempty_cord(branch_node(unit_node(X), N))
     ).
 
 %-----------------------------------------------------------------------------%
 
 snoc(C, X) = CX :-
     (
-        C = nil,
-        CX = leaf(X)
+        C = empty_cord,
+        CX = nonempty_cord(unit_node(X))
     ;
-        ( C = leaf(_)
-        ; C = leaves(_)
-        ; C = branch(_, _)
-        ),
-        CX = branch(C, leaf(X))
+        C = nonempty_cord(N),
+        CX = nonempty_cord(branch_node(N, unit_node(X)))
     ).
 
 %-----------------------------------------------------------------------------%
 
-CA ++ CB = (      if CA = nil then CB
-             else if CB = nil then CA
-             else             branch(CA, CB)
-           ).
+A ++ B = C :-
+    (
+        A = empty_cord,
+        C = B
+    ;
+        A = nonempty_cord(_),
+        B = empty_cord,
+        C = A
+    ;
+        A = nonempty_cord(AN),
+        B = nonempty_cord(BN),
+        C = nonempty_cord(branch_node(AN, BN))
+    ).
 
 %-----------------------------------------------------------------------------%
 
-cord_list_to_cord([]) = nil.
+cord_list_to_cord([]) = empty_cord.
 cord_list_to_cord([HeadCord | TailCords]) =
     HeadCord ++ cord_list_to_cord(TailCords).
 
 cord_list_to_list([]) = [].
-cord_list_to_list([HeadCord | TailCords]) =
-    list(HeadCord) ++ cord_list_to_list(TailCords).
-
-%-----------------------------------------------------------------------------%
-
-head_tail(leaf(X),          X, nil).
-head_tail(leaves([X | Xs]), X, C  ) :-
+cord_list_to_list([HeadCord | TailCords]) = List :-
+    TailList = cord_list_to_list(TailCords),
     (
-        Xs = [],
-        C = nil
+        HeadCord = empty_cord,
+        List = TailList
     ;
-        Xs = [_ | _],
-        C = leaves(Xs)
-    ).
-head_tail(branch(CA0, CB),  X, C  ) :-
-    head_tail(CA0, X, CA),
-    C = CA ++ CB.
-
-%-----------------------------------------------------------------------------%
-
-split_last(leaf(X),         nil, X).
-split_last(leaves(Xs0),     C,   X) :-
-    split_list_last(Xs0, C, X).
-split_last(branch(CA, CB0), C,   X) :-
-    split_last(CB0, CB, X),
-    C = CA ++ CB.
-
-    % split_list_last(Xs0, C, X):
-    %
-    % Given a nonempty list Xs0, returns its last element as X and all the
-    % elements before it as the cord C. This has a similar effect to
-    %
-    %   list.split_last(Xs0, Xs, X),
-    %   C = ( if Xs = [] then nil else leaves(Xs) ).
-    %
-    % but while repeatedly taking the last element of a list is an O(n^2)
-    % operation (since a list is a right stick), we return C as a left stick,
-    % on which repeatedly taking the last element of a list is an O(n)
-    % operation. This ensures O(1) amortized cost for each call to
-    % split_last/3 when an entire cord is traversed with that predicate.
-    %
-:- pred split_list_last(list(T)::in, cord(T)::out, T::out) is det.
-
-split_list_last([], _, _) :-
-    % This violates the invariant that an empty cord is represented by nil,
-    % not by leaves([]).
-    error("cord.m: split_list_last finds []").
-split_list_last([H | T], InitialCord, Last) :-
-    (
-        T = [],
-        InitialCord = nil,
-        Last = H
-    ;
-        T = [TH | TT],
-        split_list_last_2(leaf(H), TH, TT, InitialCord, Last)
-    ).
-
-:- pred split_list_last_2(cord(T)::in, T::in, list(T)::in,
-    cord(T)::out, T::out) is det.
-
-split_list_last_2(BeforeCord, H, T, InitialCord, Last) :-
-    (
-        T = [],
-        InitialCord = BeforeCord,
-        Last = H
-    ;
-        T = [TH | TT],
-        split_list_last_2(BeforeCord ++ leaf(H), TH, TT, InitialCord, Last)
+        HeadCord = nonempty_cord(HeadNode),
+        List = list_2(HeadNode, TailList)
     ).
 
 %-----------------------------------------------------------------------------%
 
-get_first(leaf(X),         X).
-get_first(leaves(Xs),      X) :-
-    Xs = [X | _].
-get_first(branch(CA, _CB), X) :-
-    get_first(CA, X).
+head_tail(nonempty_cord(N), H, T) :-
+    head_tail_node(N, H, T).
+
+:- pred head_tail_node(cord_node(T)::in, T::out, cord(T)::out) is det.
+
+head_tail_node(Node, Head, Tail) :-
+    (
+        Node = unit_node(Head),
+        Tail = empty_cord
+    ;
+        Node = list_node(H, T),
+        Head = H,
+        (
+            T = [],
+            Tail = empty_cord
+        ;
+            T = [TH | TT],
+            Tail = nonempty_cord(list_node(TH, TT))
+        )
+    ;
+        Node = branch_node(A0, B),
+        head_tail_node(A0, Head, AC),
+        (
+            AC = empty_cord,
+            Tail = nonempty_cord(B)
+        ;
+            AC = nonempty_cord(A),
+            Tail = nonempty_cord(branch_node(A, B))
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 
-get_last(leaf(X),         X).
-get_last(leaves(Xs),      X) :-
-    list.last(Xs, X).
-get_last(branch(_CA, CB), X) :-
-    get_last(CB, X).
+split_last(nonempty_cord(N), AllButLast, Last) :-
+    split_last_node(N, AllButLast, Last).
+
+:- pred split_last_node(cord_node(T)::in, cord(T)::out, T::out) is det.
+
+split_last_node(Node, AllButLast, Last) :-
+    (
+        Node = unit_node(Last),
+        AllButLast = empty_cord
+    ;
+        Node = list_node(H, T),
+        split_list_last(H, T, AllButLastList, Last),
+        (
+            AllButLastList = [],
+            AllButLast = empty_cord
+        ;
+            AllButLastList = [AllButLastHead | AllButLastTail],
+            AllButLast = nonempty_cord(
+                list_node(AllButLastHead, AllButLastTail))
+        )
+    ;
+        Node = branch_node(A, B0),
+        split_last_node(B0, B, Last),
+        AllButLast = nonempty_cord(A) ++ B
+    ).
+
+:- pred split_list_last(T::in, list(T)::in, list(T)::out, T::out) is det.
+
+split_list_last(Prev, [], [], Prev).
+split_list_last(Prev, [H | T], AllButLast, Last) :-
+    split_list_last(H, T, AllButLast0, Last),
+    AllButLast = [Prev | AllButLast0].
+
+%-----------------------------------------------------------------------------%
+
+get_first(nonempty_cord(N), Head) :-
+    get_first_node(N, Head).
+
+:- pred get_first_node(cord_node(T)::in, T::out) is det.
+
+get_first_node(Node, Head) :-
+    (
+        Node = unit_node(Head)
+    ;
+        Node = list_node(Head, _)
+    ;
+        Node = branch_node(A, _),
+        get_first_node(A, Head)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+get_last(nonempty_cord(N), Last) :-
+    get_last_node(N, Last).
+
+:- pred get_last_node(cord_node(T)::in, T::out) is det.
+
+get_last_node(Node, Last) :-
+    (
+        Node = unit_node(Last)
+    ;
+        Node = list_node(Head, Tail),
+        (
+            Tail = [],
+            Last = Head
+        ;
+            Tail = [_ | _],
+            list.last_det(Tail, Last)
+        )
+    ;
+        Node = branch_node(_, B),
+        get_last_node(B, Last)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -407,158 +438,267 @@ length(C) = foldl(func(_, N) = N + 1, C, 0).
 
 %-----------------------------------------------------------------------------%
 
-member(X, leaf(X)).
-member(X, leaves(Xs)) :-
-    member(X, Xs).
-member(X, branch(CA, _)) :-
-    member(X, CA).
-member(X, branch(_, CB)) :-
-    member(X, CB).
+member(X, nonempty_cord(N)) :-
+    member_node(X, N).
+
+:- pred member_node(T::out, cord_node(T)::in) is nondet.
+
+member_node(X, Node) :-
+    (
+        Node = unit_node(X)
+    ;
+        Node = list_node(H, T),
+        (
+            X = H
+        ;
+            member(X, T)
+        )
+    ;
+        Node = branch_node(A, B),
+        (
+            member_node(X, A)
+        ;
+            member_node(X, B)
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 
-map(_, nil           ) = nil.
-map(F, leaf(X)       ) = leaf(F(X)).
-map(F, leaves(Xs)    ) = leaves(map(F, Xs)).
-map(F, branch(CA, CB)) = branch(map(F, CA), map(F, CB)).
+map(_, empty_cord) = empty_cord.
+map(F, nonempty_cord(N)) = nonempty_cord(map_node(F, N)).
 
-map_pred(P, !Cord) :-
+:- func map_node(func(T) = U, cord_node(T)) = cord_node(U).
+
+map_node(F, Node) = PNode :-
     (
-        !.Cord = nil,
-        !:Cord = nil
+        Node = unit_node(X),
+        PNode = unit_node(F(X))
     ;
-        !.Cord = leaf(X),
+        Node = list_node(H, T),
+        PNode = list_node(F(H), list.map(F, T))
+    ;
+        Node = branch_node(A, B),
+        PNode = branch_node(map_node(F, A), map_node(F, B))
+    ).
+
+map_pred(_, empty_cord, empty_cord).
+map_pred(P, nonempty_cord(N), nonempty_cord(PN)) :-
+    map_pred_node(P, N, PN).
+
+:- pred map_pred_node(pred(T, U)::in(pred(in, out) is det),
+    cord_node(T)::in, cord_node(U)::out) is det.
+
+map_pred_node(P, Node, PNode) :-
+    (
+        Node = unit_node(X),
         P(X, PX),
-        !:Cord = leaf(PX)
+        PNode = unit_node(PX)
     ;
-        !.Cord = leaves(Xs),
-        list.map(P, Xs, PXs),
-        !:Cord = leaves(PXs)
+        Node = list_node(H, T),
+        P(H, PH),
+        list.map(P, T, PT),
+        PNode = list_node(PH, PT)
     ;
-        !.Cord = branch(CA, CB),
-        cord.map_pred(P, CA, PCA),
-        cord.map_pred(P, CB, PCB),
-        !:Cord = branch(PCA, PCB)
+        Node = branch_node(A, B),
+        cord.map_pred_node(P, A, PA),
+        cord.map_pred_node(P, B, PB),
+        PNode = branch_node(PA, PB)
     ).
 
 %-----------------------------------------------------------------------------%
 
-filter(_P, nil, nil).
-filter(P, leaf(X), Trues) :-
-    ( P(X) ->
-        Trues = leaf(X)
-    ;
-        Trues = nil
-    ).
-filter(P, leaves(Xs), Trues) :-
-    list.filter(P, Xs, TrueList),
+filter(_, empty_cord, empty_cord).
+filter(P, nonempty_cord(N), Trues) :-
+    filter_node(P, N, Trues).
+
+:- pred filter_node(pred(T)::in(pred(in) is semidet),
+    cord_node(T)::in, cord(T)::out) is det.
+
+filter_node(P, Node, Trues) :-
     (
-        TrueList = [],
-        Trues = nil
+        Node = unit_node(X),
+        ( P(X) ->
+            Trues = nonempty_cord(unit_node(X))
+        ;
+            Trues = empty_cord
+        )
     ;
-        TrueList = [_ | _],
-        Trues = leaves(TrueList)
+        Node = list_node(H, T),
+        list.filter(P, [H | T], TrueList),
+        (
+            TrueList = [],
+            Trues = empty_cord
+        ;
+            TrueList = [TH | TT],
+            Trues = nonempty_cord(list_node(TH, TT))
+        )
+    ;
+        Node = branch_node(A, B),
+        filter_node(P, A, CATrues),
+        filter_node(P, B, CBTrues),
+        Trues = CATrues ++ CBTrues
     ).
-filter(P, branch(CA, CB), Trues) :-
-    filter(P, CA, CATrues),
-    filter(P, CB, CBTrues),
-    Trues = CATrues ++ CBTrues.
 
-filter(_P, nil, nil, nil).
-filter(P, leaf(X), Trues, Falses) :-
-    ( P(X) ->
-        Trues = leaf(X),
-        Falses = nil
-    ;
-        Trues = nil,
-        Falses = leaf(X)
-    ).
-filter(P, leaves(Xs), Trues, Falses) :-
-    list.filter(P, Xs, TrueList, FalseList),
+%-----------------------------------------------------------------------------%
+
+filter(_, empty_cord, empty_cord, empty_cord).
+filter(P, nonempty_cord(N), Trues, Falses) :-
+    filter_node(P, N, Trues, Falses).
+
+:- pred filter_node(pred(T)::in(pred(in) is semidet),
+    cord_node(T)::in, cord(T)::out, cord(T)::out) is det.
+
+filter_node(P, Node, Trues, Falses) :-
     (
-        TrueList = [],
-        Trues = nil
+        Node = unit_node(X),
+        ( P(X) ->
+            Trues = nonempty_cord(unit_node(X)),
+            Falses = empty_cord
+        ;
+            Trues = empty_cord,
+            Falses = nonempty_cord(unit_node(X))
+        )
     ;
-        TrueList = [_ | _],
-        Trues = leaves(TrueList)
-    ),
-    (
-        FalseList = [],
-        Falses = nil
+        Node = list_node(H, T),
+        list.filter(P, [H | T], TrueList, FalseList),
+        (
+            TrueList = [],
+            Trues = empty_cord
+        ;
+            TrueList = [TH | TT],
+            Trues = nonempty_cord(list_node(TH, TT))
+        ),
+        (
+            FalseList = [],
+            Falses = empty_cord
+        ;
+            FalseList = [FH | FT],
+            Falses = nonempty_cord(list_node(FH, FT))
+        )
     ;
-        FalseList = [_ | _],
-        Falses = leaves(FalseList)
+        Node = branch_node(A, B),
+        filter_node(P, A, CATrues, CAFalses),
+        filter_node(P, B, CBTrues, CBFalses),
+        Trues = CATrues ++ CBTrues,
+        Falses = CAFalses ++ CBFalses
     ).
-filter(P, branch(CA, CB), Trues, Falses) :-
-    filter(P, CA, CATrues, CAFalses),
-    filter(P, CB, CBTrues, CBFalses),
-    Trues = CATrues ++ CBTrues,
-    Falses = CAFalses ++ CBFalses.
 
 %-----------------------------------------------------------------------------%
 
-foldl(_, nil,            A) = A.
-foldl(F, leaf(X),        A) = F(X, A).
-foldl(F, leaves(Xs),     A) = foldl(F, Xs, A).
-foldl(F, branch(CA, CB), A) = foldl(F, CB, foldl(F, CA, A)).
+foldl(_, empty_cord, Acc) = Acc.
+foldl(F, nonempty_cord(N), Acc) = foldl_node(F, N, Acc).
 
-foldl_pred(_P, nil, !A).
-foldl_pred(P, leaf(X), !A) :-
-    P(X, !A).
-foldl_pred(P, leaves(Xs), !A) :-
-    list.foldl(P, Xs, !A).
-foldl_pred(P, branch(XA, XB), !A) :-
-    foldl_pred(P, XA, !A),
-    foldl_pred(P, XB, !A).
+:- func foldl_node(func(T, U) = U, cord_node(T), U) = U.
 
-%-----------------------------------------------------------------------------%
+foldl_node(F, unit_node(X), Acc) = F(X, Acc).
+foldl_node(F, list_node(H, T), Acc) = list.foldl(F, [H | T], Acc).
+foldl_node(F, branch_node(A, B), Acc) =
+    foldl_node(F, B, foldl_node(F, A, Acc)).
 
-foldr(_, nil,            A) = A.
-foldr(F, leaf(X),        A) = F(X, A).
-foldr(F, leaves(Xs),     A) = foldr(F, Xs, A).
-foldr(F, branch(CA, CB), A) = foldr(F, CA, foldr(F, CB, A)).
+foldl_pred(_P, empty_cord, !Acc).
+foldl_pred(P, nonempty_cord(N), !Acc) :-
+    foldl_node_pred(P, N, !Acc).
 
-foldr_pred(_P, nil, !A).
-foldr_pred(P, leaf(X), !A) :-
-    P(X, !A).
-foldr_pred(P, leaves(Xs), !A) :-
-    list.foldr(P, Xs, !A).
-foldr_pred(P, branch(XA, XB), !A) :-
-    foldr_pred(P, XB, !A),
-    foldr_pred(P, XA, !A).
+:- pred foldl_node_pred(pred(T, U, U), cord_node(T), U, U).
+:- mode foldl_node_pred(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldl_node_pred(in(pred(in, di, uo) is det), in, di, uo) is det.
+
+foldl_node_pred(P, unit_node(X), !Acc) :-
+    P(X, !Acc).
+foldl_node_pred(P, list_node(H, T), !Acc) :-
+    list.foldl(P, [H | T], !Acc).
+foldl_node_pred(P, branch_node(A, B), !Acc) :-
+    foldl_node_pred(P, A, !Acc),
+    foldl_node_pred(P, B, !Acc).
 
 %-----------------------------------------------------------------------------%
 
-map_foldl(_P, nil, nil, !A).
-map_foldl(P, leaf(X), leaf(Y), !A) :-
+foldr(_, empty_cord, Acc) = Acc.
+foldr(F, nonempty_cord(N), Acc) = foldr_node(F, N, Acc).
+
+:- func foldr_node(func(T, U) = U, cord_node(T), U) = U.
+
+foldr_node(F, unit_node(X), Acc) = F(X, Acc).
+foldr_node(F, list_node(H, T), Acc) = list.foldr(F, [H | T], Acc).
+foldr_node(F, branch_node(A, B), Acc) =
+    foldr_node(F, A, foldr_node(F, B, Acc)).
+
+foldr_pred(_P, empty_cord, !Acc).
+foldr_pred(P, nonempty_cord(N), !Acc) :-
+    foldr_node_pred(P, N, !Acc).
+
+:- pred foldr_node_pred(pred(T, U, U)::in(pred(in, in, out) is det),
+    cord_node(T)::in, U::in, U::out) is det.
+
+foldr_node_pred(P, unit_node(X), !Acc) :-
+    P(X, !Acc).
+foldr_node_pred(P, list_node(H, T), !Acc) :-
+    list.foldr(P, [H | T], !Acc).
+foldr_node_pred(P, branch_node(A, B), !Acc) :-
+    foldr_node_pred(P, B, !Acc),
+    foldr_node_pred(P, A, !Acc).
+
+%-----------------------------------------------------------------------------%
+
+map_foldl(_P, empty_cord, empty_cord, !A).
+map_foldl(P, nonempty_cord(NX), nonempty_cord(NY), !A) :-
+    map_foldl_node(P, NX, NY, !A).
+
+:- pred map_foldl_node(pred(A, B, C, C)::in(pred(in, out, in, out) is det),
+    cord_node(A)::in, cord_node(B)::out, C::in, C::out) is det.
+
+map_foldl_node(P, unit_node(X), unit_node(Y), !A) :-
     P(X, Y, !A).
-map_foldl(P, leaves(Xs), leaves(Ys), !A) :-
-    list.map_foldl(P, Xs, Ys, !A).
-map_foldl(P, branch(XA, XB), branch(YA, YB), !A) :-
-    map_foldl(P, XA, YA, !A),
-    map_foldl(P, XB, YB, !A).
+map_foldl_node(P, list_node(XH, XT), list_node(YH, YT), !A) :-
+    P(XH, YH, !A),
+    list.map_foldl(P, XT, YT, !A).
+map_foldl_node(P, branch_node(XA, XB), branch_node(YA, YB), !A) :-
+    map_foldl_node(P, XA, YA, !A),
+    map_foldl_node(P, XB, YB, !A).
 
-map_foldl2(_P, nil, nil, !A, !B).
-map_foldl2(P, leaf(X), leaf(Y), !A, !B) :-
+%-----------------------------------------------------------------------------%
+
+map_foldl2(_P, empty_cord, empty_cord, !A, !B).
+map_foldl2(P, nonempty_cord(NX), nonempty_cord(NY), !A, !B) :-
+    map_foldl2_node(P, NX, NY, !A, !B).
+
+:- pred map_foldl2_node(pred(A, B, C, C, D, D)::
+    in(pred(in, out, in, out, in, out) is det),
+    cord_node(A)::in, cord_node(B)::out, C::in, C::out, D::in, D::out) is det.
+
+map_foldl2_node(P, unit_node(X), unit_node(Y), !A, !B) :-
     P(X, Y, !A, !B).
-map_foldl2(P, leaves(Xs), leaves(Ys), !A, !B) :-
-    list.map_foldl2(P, Xs, Ys, !A, !B).
-map_foldl2(P, branch(XA, XB), branch(YA, YB), !A, !B) :-
-    map_foldl2(P, XA, YA, !A, !B),
-    map_foldl2(P, XB, YB, !A, !B).
+map_foldl2_node(P, list_node(XH, XT), list_node(YH, YT), !A, !B) :-
+    P(XH, YH, !A, !B),
+    list.map_foldl2(P, XT, YT, !A, !B).
+map_foldl2_node(P, branch_node(XA, XB), branch_node(YA, YB), !A, !B) :-
+    map_foldl2_node(P, XA, YA, !A, !B),
+    map_foldl2_node(P, XB, YB, !A, !B).
 
-map_foldl3(_P, nil, nil, !A, !B, !C).
-map_foldl3(P, leaf(X), leaf(Y), !A, !B, !C) :-
+%-----------------------------------------------------------------------------%
+
+map_foldl3(_P, empty_cord, empty_cord, !A, !B, !C).
+map_foldl3(P, nonempty_cord(NX), nonempty_cord(NY), !A, !B, !C) :-
+    map_foldl3_node(P, NX, NY, !A, !B, !C).
+
+:- pred map_foldl3_node(pred(A, B, C, C, D, D, E, E)::
+    in(pred(in, out, in, out, in, out, in, out) is det),
+    cord_node(A)::in, cord_node(B)::out, C::in, C::out, D::in, D::out,
+    E::in, E::out) is det.
+
+map_foldl3_node(P, unit_node(X), unit_node(Y), !A, !B, !C) :-
     P(X, Y, !A, !B, !C).
-map_foldl3(P, leaves(Xs), leaves(Ys), !A, !B, !C) :-
-    list.map_foldl3(P, Xs, Ys, !A, !B, !C).
-map_foldl3(P, branch(XA, XB), branch(YA, YB), !A, !B, !C) :-
-    map_foldl3(P, XA, YA, !A, !B, !C),
-    map_foldl3(P, XB, YB, !A, !B, !C).
+map_foldl3_node(P, list_node(XH, XT), list_node(YH, YT), !A, !B, !C) :-
+    P(XH, YH, !A, !B, !C),
+    list.map_foldl3(P, XT, YT, !A, !B, !C).
+map_foldl3_node(P, branch_node(XA, XB), branch_node(YA, YB), !A, !B, !C) :-
+    map_foldl3_node(P, XA, YA, !A, !B, !C),
+    map_foldl3_node(P, XB, YB, !A, !B, !C).
 
 %-----------------------------------------------------------------------------%
 
 equal(CA, CB) :-
+    % A more efficient algorithm would also be *much* more complex.
     list(CA) = list(CB).
 
 %-----------------------------------------------------------------------------%

@@ -1,16 +1,16 @@
 
 cords:
-Z    = nil
-A    = leaf('a')
-B    = leaves(['b'])
-AB   = branch(leaf('a'), leaves(['b']))
-BA   = branch(leaves(['b']), leaf('a'))
-ABA1 = branch(leaf('a'), branch(leaves(['b']), leaf('a')))
-ABA2 = branch(branch(leaf('a'), leaves(['b'])), leaf('a'))
-BAB1 = branch(leaves(['b']), branch(leaf('a'), leaves(['b'])))
-BAB2 = branch(branch(leaves(['b']), leaf('a')), leaves(['b']))
-ABBA = branch(branch(leaf('a'), leaves(['b'])), branch(leaves(['b']), leaf('a')))
-BAAB = branch(branch(leaves(['b']), leaf('a')), branch(leaf('a'), leaves(['b'])))
+Z    = empty_cord
+A    = nonempty_cord(unit_node('a'))
+B    = nonempty_cord(list_node('b', []))
+AB   = nonempty_cord(branch_node(unit_node('a'), list_node('b', [])))
+BA   = nonempty_cord(branch_node(list_node('b', []), unit_node('a')))
+ABA1 = nonempty_cord(branch_node(unit_node('a'), branch_node(list_node('b', []), unit_node('a'))))
+ABA2 = nonempty_cord(branch_node(branch_node(unit_node('a'), list_node('b', [])), unit_node('a')))
+BAB1 = nonempty_cord(branch_node(list_node('b', []), branch_node(unit_node('a'), list_node('b', []))))
+BAB2 = nonempty_cord(branch_node(branch_node(list_node('b', []), unit_node('a')), list_node('b', [])))
+ABBA = nonempty_cord(branch_node(branch_node(unit_node('a'), list_node('b', [])), branch_node(list_node('b', []), unit_node('a'))))
+BAAB = nonempty_cord(branch_node(branch_node(list_node('b', []), unit_node('a')), branch_node(unit_node('a'), list_node('b', []))))
 
 construction: ok
 
