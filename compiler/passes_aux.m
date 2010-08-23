@@ -89,11 +89,6 @@
 :- inst proc_ids_pred_task ==
     (pred(in, in, in, in, out) is det).
 
-:- type proc_ids_io_task ==
-    pred(module_info, pred_proc_id, proc_info, proc_info, io, io).
-:- inst proc_ids_io_task ==
-    (pred(in, in, in, out, di, uo) is det).
-
 :- type module_task ==
     pred(pred_proc_id, proc_info, proc_info,
         module_info, module_info).
@@ -106,17 +101,17 @@
 :- inst module_pred_task ==
     (pred(in, in, in, out, in, out) is det).
 
-:- type module_io_task ==
-    pred(pred_proc_id, proc_info, proc_info,
-        module_info, module_info, io, io).
-:- inst module_io_task ==
-    (pred(in, in, out, in, out, di, uo) is det).
-
 :- type module_cookie_task ==
     pred(pred_proc_id, proc_info, proc_info,
         module_info, module_info, univ, univ).
 :- inst module_cookie_task ==
     (pred(in, in, out, in, out, in, out) is det).
+
+:- type module_pred_cookie_task ==
+    pred(pred_proc_id, pred_info, proc_info, proc_info,
+        module_info, module_info, univ, univ).
+:- inst module_pred_cookie_task ==
+    (pred(in, in, in, out, in, out, in, out) is det).
 
 %-----------------------------------------------------------------------------%
 
@@ -124,32 +119,30 @@
     --->    update_proc(proc_task)
     ;       update_proc_ids(proc_ids_task)
     ;       update_proc_ids_pred(proc_ids_pred_task)
-    ;       update_proc_ids_io(proc_ids_io_task)
     ;       update_module(module_task)
     ;       update_module_pred(module_pred_task)
-    ;       update_module_io(module_io_task)
-    ;       update_module_cookie(module_cookie_task, univ).
+    ;       update_module_cookie(module_cookie_task, univ)
+    ;       update_module_pred_cookie(module_pred_cookie_task, univ).
 :- inst update_proc_task ==
     bound(
             update_proc(proc_task)
         ;   update_proc_ids(proc_ids_task)
         ;   update_proc_ids_pred(proc_ids_pred_task)
-        ;   update_proc_ids_io(proc_ids_io_task)
         ;   update_module(module_task)
         ;   update_module_pred(module_pred_task)
-        ;   update_module_io(module_io_task)
         ;   update_module_cookie(module_cookie_task, ground)
+        ;   update_module_pred_cookie(module_pred_cookie_task, ground)
     ).
 :- mode update_proc_task == update_proc_task >> update_proc_task.
 
 %-----------------------------------------------------------------------------%
 
 :- pred process_all_nonimported_procs(update_proc_task::update_proc_task,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
 :- pred process_all_nonimported_procs_update(
     update_proc_task::update_proc_task, update_proc_task::out(update_proc_task),
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -268,18 +261,17 @@ process_nonimported_pred(Task, PredId, !ModuleInfo, !Specs) :-
 
 :- inst seq_proc_task ==
     bound(
-            update_proc_ids_io(proc_ids_io_task)
-        ;   update_module(module_task)
+            update_module(module_task)
         ;   update_module_pred(module_pred_task)
-        ;   update_module_io(module_io_task)
         ;   update_module_cookie(module_cookie_task, ground)
+        ;   update_module_pred_cookie(module_pred_cookie_task, ground)
     ).
 :- mode seq_proc_task == seq_proc_task >> seq_proc_task.
 
-process_all_nonimported_procs(Task, !ModuleInfo, !IO) :-
-    process_all_nonimported_procs_update(Task, _, !ModuleInfo, !IO).
+process_all_nonimported_procs(Task, !ModuleInfo) :-
+    process_all_nonimported_procs_update(Task, _, !ModuleInfo).
 
-process_all_nonimported_procs_update(!Task, !ModuleInfo, !IO) :-
+process_all_nonimported_procs_update(!Task, !ModuleInfo) :-
     module_info_get_valid_predids(ValidPredIds, !ModuleInfo),
     (
         ( !.Task = update_proc(_)
@@ -294,14 +286,13 @@ process_all_nonimported_procs_update(!Task, !ModuleInfo, !IO) :-
         map.from_sorted_assoc_list(PredIdsInfos, PredMap),
         module_info_set_preds(PredMap, !ModuleInfo)
     ;
-        ( !.Task = update_proc_ids_io(_)
-        ; !.Task = update_module(_)
+        ( !.Task = update_module(_)
         ; !.Task = update_module_pred(_)
-        ; !.Task = update_module_io(_)
         ; !.Task = update_module_cookie(_, _)
+        ; !.Task = update_module_pred_cookie(_, _)
         ),
         seq_process_nonimported_procs_in_preds(ValidPredIds, !Task,
-            !ModuleInfo, !IO)
+            !ModuleInfo)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -358,24 +349,24 @@ par_process_nonimported_procs(ModuleInfo, Task, PredId, [ProcId | ProcIds],
 
 :- pred seq_process_nonimported_procs_in_preds(list(pred_id)::in,
     update_proc_task::seq_proc_task, update_proc_task::out(seq_proc_task),
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-seq_process_nonimported_procs_in_preds([], !Task, !ModuleInfo, !IO).
+seq_process_nonimported_procs_in_preds([], !Task, !ModuleInfo).
 seq_process_nonimported_procs_in_preds([PredId | PredIds], !Task,
-        !ModuleInfo, !IO) :-
+        !ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
-    seq_process_nonimported_procs(PredId, ProcIds, !Task, !ModuleInfo, !IO),
-    seq_process_nonimported_procs_in_preds(PredIds, !Task, !ModuleInfo, !IO).
+    seq_process_nonimported_procs(PredId, ProcIds, !Task, !ModuleInfo),
+    seq_process_nonimported_procs_in_preds(PredIds, !Task, !ModuleInfo).
 
 :- pred seq_process_nonimported_procs(pred_id::in, list(proc_id)::in,
     update_proc_task::seq_proc_task, update_proc_task::out(seq_proc_task),
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-seq_process_nonimported_procs(_PredId, [], !Task, !ModuleInfo, !IO).
-seq_process_nonimported_procs(PredId, [ProcId | ProcIds], !Task, !ModuleInfo,
-        !IO) :-
+seq_process_nonimported_procs(_PredId, [], !Task, !ModuleInfo).
+seq_process_nonimported_procs(PredId, [ProcId | ProcIds], !Task,
+        !ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, Preds0),
     map.lookup(Preds0, PredId, Pred0),
     pred_info_get_procedures(Pred0, Procs0),
@@ -383,21 +374,19 @@ seq_process_nonimported_procs(PredId, [ProcId | ProcIds], !Task, !ModuleInfo,
 
     PredProcId = proc(PredId, ProcId),
     (
-        !.Task = update_proc_ids_io(Closure),
-        Closure(!.ModuleInfo, PredProcId, Proc0, Proc, !IO)
-    ;
         !.Task = update_module(Closure),
         Closure(PredProcId, Proc0, Proc, !ModuleInfo)
     ;
         !.Task = update_module_pred(Closure),
         Closure(PredProcId, Pred0, Proc0, Proc, !ModuleInfo)
     ;
-        !.Task = update_module_io(Closure),
-        Closure(PredProcId, Proc0, Proc, !ModuleInfo, !IO)
-    ;
         !.Task = update_module_cookie(Closure, Cookie0),
         Closure(PredProcId, Proc0, Proc, !ModuleInfo, Cookie0, Cookie),
         !:Task = update_module_cookie(Closure, Cookie)
+    ;
+        !.Task = update_module_pred_cookie(Closure, Cookie0),
+        Closure(PredProcId, Pred0, Proc0, Proc, !ModuleInfo, Cookie0, Cookie),
+        !:Task = update_module_pred_cookie(Closure, Cookie)
     ),
 
     % If the pass changed the module_info, it may have changed the pred table
@@ -412,7 +401,7 @@ seq_process_nonimported_procs(PredId, [ProcId | ProcIds], !Task, !ModuleInfo,
     map.det_update(Preds8, PredId, Pred, Preds),
     module_info_set_preds(Preds, !ModuleInfo),
 
-    seq_process_nonimported_procs(PredId, ProcIds, !Task, !ModuleInfo, !IO).
+    seq_process_nonimported_procs(PredId, ProcIds, !Task, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 

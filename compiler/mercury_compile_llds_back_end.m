@@ -421,8 +421,7 @@ maybe_saved_vars(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Minimizing variable saves using constants...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(update_module(saved_vars_proc),
-            !HLDS, !IO),
+        process_all_nonimported_procs(update_module(saved_vars_proc), !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -440,8 +439,7 @@ maybe_stack_opt(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Minimizing variable saves using cells...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(update_module(stack_opt_cell),
-            !HLDS, !IO),
+        process_all_nonimported_procs(update_module(stack_opt_cell), !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -459,7 +457,7 @@ maybe_followcode(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% Migrating branch code...", !IO),
         maybe_flush_output(Verbose, !IO),
         process_all_nonimported_procs(update_module(move_follow_code_in_proc),
-            !HLDS, !IO),
+            !HLDS),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -482,7 +480,7 @@ compute_liveness(Verbose, Stats, !HLDS, !IO) :-
         detect_liveness_preds_parallel(!HLDS)
     ;
         process_all_nonimported_procs(update_proc_ids(detect_liveness_proc),
-            !HLDS, !IO)
+            !HLDS)
     ),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
@@ -500,7 +498,7 @@ maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !IO) :-
         maybe_flush_output(Verbose, !IO),
         process_all_nonimported_procs(
             update_proc_ids_pred(mark_tail_calls(feature_debug_tail_rec_call)),
-            !HLDS, !IO),
+            !HLDS),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -514,7 +512,7 @@ compute_stack_vars(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Computing stack vars...", !IO),
     maybe_flush_output(Verbose, !IO),
     process_all_nonimported_procs(
-        update_proc_ids(allocate_stack_slots_in_proc), !HLDS, !IO),
+        update_proc_ids(allocate_stack_slots_in_proc), !HLDS),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -525,7 +523,7 @@ allocate_store_map(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Allocating store map...", !IO),
     maybe_flush_output(Verbose, !IO),
     process_all_nonimported_procs(
-        update_proc_ids(allocate_store_maps(final_allocation)), !HLDS, !IO),
+        update_proc_ids(allocate_store_maps(final_allocation)), !HLDS),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -539,7 +537,7 @@ maybe_goal_paths(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% Calculating goal paths...", !IO),
         maybe_flush_output(Verbose, !IO),
         process_all_nonimported_procs(update_proc(fill_goal_path_slots),
-            !HLDS, !IO),
+            !HLDS),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

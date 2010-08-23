@@ -102,6 +102,7 @@
 :- import_module pair.
 :- import_module set.
 :- import_module string.
+:- import_module univ.
 
 %-----------------------------------------------------------------------------%
 
@@ -898,8 +899,19 @@ maybe_introduce_accumulators(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose,
             "% Attempting to introduce accumulators...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(
-            update_module_io(accumulator.process_proc), !HLDS, !IO),
+        type_to_univ([] : list(error_spec), Cookie0),
+        Task0 = update_module_pred_cookie(accumulator.process_proc, Cookie0),
+        process_all_nonimported_procs_update(Task0, Task, !HLDS),
+        (
+            Task = update_module_pred_cookie(_, Cookie),
+            univ_to_type(Cookie, SpecsPrime)
+        ->
+            Specs = SpecsPrime
+        ;
+            unexpected(this_file, "maybe_introduce_accumulators: bad task")
+        ),
+        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
+        module_info_incr_num_errors(NumErrors, !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -952,8 +964,7 @@ maybe_loop_inv(Verbose, Stats, !HLDS, !DumpInfo, !IO) :-
         maybe_write_string(Verbose, "% Hoisting loop invariants...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         process_all_nonimported_procs(
-            update_module_pred(hoist_loop_invariants),
-            !HLDS, !IO),
+            update_module_pred(hoist_loop_invariants), !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -1017,7 +1028,7 @@ maybe_delay_construct(Verbose, Stats, !HLDS, !IO) :-
             "% Delaying construction unifications ...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         process_all_nonimported_procs(update_proc_ids(delay_construct_proc),
-            !HLDS, !IO),
+            !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -1119,7 +1130,7 @@ maybe_unneeded_code(Verbose, Stats, !HLDS, !IO) :-
             "% Removing unneeded code from procedure bodies...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         process_all_nonimported_procs(update_module(unneeded_process_proc_msg),
-            !HLDS, !IO),
+            !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -1272,7 +1283,7 @@ maybe_impl_dependent_par_conjs(Verbose, Stats, !HLDS, !IO) :-
         (
             SupportsParConj = no,
             process_all_nonimported_procs(update_proc(parallel_to_plain_conjs),
-                !HLDS, !IO)
+                !HLDS)
         ;
             SupportsParConj = yes,
             maybe_write_string(Verbose,
@@ -1319,8 +1330,7 @@ maybe_term_size_prof(Verbose, Stats, !HLDS, !IO) :-
             "% Applying term size profiling transformation...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         process_all_nonimported_procs(
-            update_module(size_prof_process_proc_msg(Transform)),
-            !HLDS, !IO),
+            update_module(size_prof_process_proc_msg(Transform)), !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -1362,8 +1372,8 @@ maybe_experimental_complexity(Verbose, Stats, !HLDS, !IO) :-
             "% Applying complexity experiment transformation...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         process_all_nonimported_procs(
-            update_module_io(complexity.process_proc_msg(NumProcs, ProcMap)),
-            !HLDS, !IO),
+            update_module(complexity.process_proc_msg(NumProcs, ProcMap)),
+            !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ).

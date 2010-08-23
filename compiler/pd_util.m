@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2009 University of Melbourne.
+% Copyright (C) 1998-2010 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -448,8 +448,8 @@ get_branch_vars_proc(PredProcId, ProcInfo, !ModuleInfo, !ArgInfo) :-
             OpaqueArgs0),
         svmap.set(PredProcId, BranchInfo0, !ArgInfo),
 
-            % Look for opportunities for deforestation in
-            % the sub-branches of the top-level goal.
+        % Look for opportunities for deforestation in the sub-branches
+        % of the top-level goal.
         get_sub_branch_vars_goal(!.ArgInfo, GoalList,
             VarTypes, InstMap0, Vars, AllVars, !ModuleInfo),
         get_extra_info_headvars(HeadVars, 1, LeftVars0,
@@ -568,31 +568,37 @@ get_branch_vars_goal_2(ModuleInfo, [Goal | Goals], !.FoundBranch,
     get_branch_vars_goal_2(ModuleInfo, Goals, !.FoundBranch,
         VarTypes, InstMap, !LeftVars, !Vars).
 
-:- pred get_branch_instmap_deltas(hlds_goal::in,
-    list(instmap_delta)::out) is semidet.
+:- pred get_branch_instmap_deltas(hlds_goal::in, list(instmap_delta)::out)
+    is semidet.
 
-get_branch_instmap_deltas(Goal, [CondDelta, ThenDelta, ElseDelta]) :-
-    Goal = hlds_goal(if_then_else(_, Cond, Then, Else), _),
-    Cond = hlds_goal(_, CondInfo),
-    Then = hlds_goal(_, ThenInfo),
-    Else = hlds_goal(_, ElseInfo),
-    CondDelta = goal_info_get_instmap_delta(CondInfo),
-    ThenDelta = goal_info_get_instmap_delta(ThenInfo),
-    ElseDelta = goal_info_get_instmap_delta(ElseInfo).
-get_branch_instmap_deltas(hlds_goal(switch(_, _, Cases), _), InstMapDeltas) :-
-    GetCaseInstMapDelta =
-        (pred(Case::in, InstMapDelta::out) is det :-
-            Case = case(_, _, hlds_goal(_, CaseInfo)),
-            InstMapDelta = goal_info_get_instmap_delta(CaseInfo)
-        ),
-    list.map(GetCaseInstMapDelta, Cases, InstMapDeltas).
-get_branch_instmap_deltas(hlds_goal(disj(Disjuncts), _), InstMapDeltas) :-
-    GetDisjunctInstMapDelta =
-        (pred(Disjunct::in, InstMapDelta::out) is det :-
-            Disjunct = hlds_goal(_, DisjInfo),
-            InstMapDelta = goal_info_get_instmap_delta(DisjInfo)
-        ),
-    list.map(GetDisjunctInstMapDelta, Disjuncts, InstMapDeltas).
+get_branch_instmap_deltas(Goal, InstMapDeltas) :-
+    Goal = hlds_goal(GoalExpr, _),
+    (
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        Cond = hlds_goal(_, CondInfo),
+        Then = hlds_goal(_, ThenInfo),
+        Else = hlds_goal(_, ElseInfo),
+        CondDelta = goal_info_get_instmap_delta(CondInfo),
+        ThenDelta = goal_info_get_instmap_delta(ThenInfo),
+        ElseDelta = goal_info_get_instmap_delta(ElseInfo),
+        InstMapDeltas = [CondDelta, ThenDelta, ElseDelta]
+    ;
+        GoalExpr = switch(_, _, Cases),
+        GetCaseInstMapDelta =
+            (pred(Case::in, InstMapDelta::out) is det :-
+                Case = case(_, _, hlds_goal(_, CaseInfo)),
+                InstMapDelta = goal_info_get_instmap_delta(CaseInfo)
+            ),
+        list.map(GetCaseInstMapDelta, Cases, InstMapDeltas)
+    ;
+        GoalExpr = disj(Disjuncts),
+        GetDisjunctInstMapDelta =
+            (pred(Disjunct::in, InstMapDelta::out) is det :-
+                Disjunct = hlds_goal(_, DisjInfo),
+                InstMapDelta = goal_info_get_instmap_delta(DisjInfo)
+            ),
+        list.map(GetDisjunctInstMapDelta, Disjuncts, InstMapDeltas)
+    ).
 
     % Get the variables for which we can do unfolding if the goals to
     % the left supply the top-level functor. Eventually this should

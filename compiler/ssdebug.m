@@ -224,7 +224,7 @@
 ssdebug.transform_module(!ModuleInfo, !IO) :-
     ssdebug.first_pass(!ModuleInfo),
     process_all_nonimported_procs(update_module(ssdebug.process_proc),
-        !ModuleInfo, !IO).
+        !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %

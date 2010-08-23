@@ -178,9 +178,8 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
             maybe_write_string(VeryVerbose,
                 "% Annotating in use information...", !IO)
         ),
-        process_all_nonimported_procs(
-            update_proc(annotate_in_use_information),
-            !ModuleInfo, !IO),
+        process_all_nonimported_procs(update_proc(annotate_in_use_information),
+            !ModuleInfo),
         trace [io(!IO)] (
             maybe_write_string(VeryVerbose, "done.\n", !IO)
         ),

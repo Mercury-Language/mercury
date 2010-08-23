@@ -51,7 +51,7 @@
     %
 :- pred process_proc_msg(int::in, complexity_proc_map::in,
     pred_proc_id::in, proc_info::in, proc_info::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -64,6 +64,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.instmap.
+:- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -158,7 +159,7 @@ is_in_complexity_proc_map(ProcMap, ModuleInfo, PredId, ProcId) = IsInMap :-
 %-----------------------------------------------------------------------------%
 
 process_proc_msg(NumProcs, ProcMap, proc(PredId, ProcId), !ProcInfo,
-        !ModuleInfo, !IO) :-
+        !ModuleInfo) :-
     IsInMap = is_in_complexity_proc_map(ProcMap, !.ModuleInfo,
         PredId, ProcId),
     (
@@ -168,14 +169,11 @@ process_proc_msg(NumProcs, ProcMap, proc(PredId, ProcId), !ProcInfo,
         globals.lookup_bool_option(Globals, verbose, Verbose),
         (
             Verbose = yes,
-            pred_id_to_int(PredId, PredIdInt),
-            proc_id_to_int(ProcId, ProcIdInt),
-            Pieces =
-                [words("% Applying complexity experiment transformation to "),
-                fixed(FullName ++ ":"),
-                fixed(int_to_string(PredIdInt) ++ "/" ++
-                    int_to_string(ProcIdInt))],
-            write_error_pieces_plain(Globals, Pieces, !IO)
+            trace [io(!IO)] (
+                write_proc_progress_message(
+                    "% Applying complexity experiment transformation to ",
+                    PredId, ProcId, !.ModuleInfo, !IO)
+            )
         ;
             Verbose = no
         ),

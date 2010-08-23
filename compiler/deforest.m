@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2009 University of Melbourne.
+% Copyright (C) 1999-2010 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -99,7 +99,7 @@ deforestation(!ModuleInfo, !IO) :-
     % Find out which arguments of each procedure are switched on at the top
     % level or are constructed in a way which is possibly deforestable.
     Task0 = update_module_cookie(get_branch_vars_proc_univ, UnivProcArgInfo0),
-    process_all_nonimported_procs_update(Task0, Task, !ModuleInfo, !IO),
+    process_all_nonimported_procs_update(Task0, Task, !ModuleInfo),
     (
         Task = update_module_cookie(_, UnivProcArgInfo),
         univ_to_type(UnivProcArgInfo, ProcArgInfo1)
@@ -177,13 +177,10 @@ proc_arg_info_init(ProcArgInfo0) :-
 
 get_branch_vars_proc_univ(PredProcId, ProcInfo, ProcInfo,
         !ModuleInfo, UnivProcArgInfo0, UnivProcArgInfo) :-
-    ( univ_to_type(UnivProcArgInfo0, ProcArgInfo0) ->
-        pd_util.get_branch_vars_proc(PredProcId, ProcInfo,
-            !ModuleInfo, ProcArgInfo0, ProcArgInfo),
-        type_to_univ(ProcArgInfo, UnivProcArgInfo)
-    ;
-        unexpected(this_file, "get_branch_vars_proc_univ")
-    ).
+    det_univ_to_type(UnivProcArgInfo0, ProcArgInfo0),
+    pd_util.get_branch_vars_proc(PredProcId, ProcInfo, !ModuleInfo,
+        ProcArgInfo0, ProcArgInfo),
+    type_to_univ(ProcArgInfo, UnivProcArgInfo).
 
 :- pred deforest_proc(pred_proc_id::in, pd_info::in, pd_info::out) is det.
 

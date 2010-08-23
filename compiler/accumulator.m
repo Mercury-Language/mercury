@@ -148,11 +148,16 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
-:- import_module io.
+:- import_module univ.
 
-:- pred accumulator.process_proc(pred_proc_id::in,
+    % Attempt to transform a procedure into accumulator recursive form.
+    % If we succeed, we will add the recursive version of the procedure
+    % to the module_info. However, we may also encounter errors, which
+    % we will add to the list of error_specs in the univ accumulator.
+    %
+:- pred accumulator.process_proc(pred_proc_id::in, pred_info::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    univ::in, univ::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -182,8 +187,10 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module set.
 :- import_module solutions.
@@ -228,15 +235,13 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Attempt to transform a procedure into accumulator recursive form.
-    %
-process_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo, !IO) :-
+process_proc(proc(PredId, ProcId), PredInfo, !ProcInfo, !ModuleInfo,
+        !Cookie) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals,
         optimize_constructor_last_call_accumulator, DoLCO),
     globals.lookup_bool_option(Globals, fully_strict, FullyStrict),
     (
-        module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
         attempt_transform(ProcId, PredId, PredInfo, DoLCO, FullyStrict,
             !ProcInfo, !ModuleInfo, Warnings)
     ->
@@ -252,60 +257,61 @@ process_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo, !IO) :-
             VeryVerbose = no
         ),
 
-        globals.lookup_bool_option(Globals, inhibit_accumulator_warnings,
-            InhibitWarnings),
         (
-            ( InhibitWarnings = yes
-            ; Warnings = []
-            )
-        ->
-            true
+            Warnings = []
         ;
+            Warnings = [_ | _],
             pred_info_get_context(PredInfo, Context),
             PredPieces = describe_one_pred_name(!.ModuleInfo,
                 should_module_qualify, PredId),
-            write_error_pieces(Globals, Context, 0, [words("In") | PredPieces],
-                !IO),
+            InPieces = [words("In") | PredPieces] ++ [suffix(":"), nl],
+            InMsg = simple_msg(Context,
+                [option_is_set(inhibit_accumulator_warnings, no,
+                    [always(InPieces)])]),
 
             proc_info_get_varset(!.ProcInfo, VarSet),
-            output_warnings(Warnings, VarSet, !.ModuleInfo, !IO),
-
-            Pieces1 = [words("Please ensure that these"),
-                words("argument rearrangements do not introduce"),
-                words("performance problems."),
-                words("These warnings can be suppressed by"),
-                words("`--inhibit-accumulator-warnings'.")],
-            write_error_pieces(Globals, Context, 2, Pieces1, !IO),
-
-            globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
+            generate_warnings(!.ModuleInfo, VarSet, Warnings, WarnMsgs),
             (
-                VerboseErrors = yes,
-                Pieces2 = [words("If a predicate has been declared"),
-                    words("associative via a `promise' declaration,"),
-                    words("the compiler will rearrange the order of"),
-                    words("the arguments in calls to that predicate,"),
-                    words("if by so doing it makes the containing predicate"),
-                    words("tail recursive. In such situations, the compiler"),
-                    words("will issue this warning. If this reordering"),
-                    words("changes the performance characteristics"),
-                    words("of the call to the predicate, use"),
-                    words("`--no-accumulator-introduction' to turn"),
-                    words("the optimization off, or "),
-                    words("`--inhibit-accumulator-warnings' to turn off"),
-                    words("the warnings.")],
-                write_error_pieces(Globals, Context, 2, Pieces2, !IO)
+                Warnings = [_],
+                EnsurePieces = [words("Please ensure that this"),
+                    words("argument rearrangement does not introduce"),
+                    words("performance problems.")]
             ;
-                VerboseErrors = no,
-                globals.io_set_extra_error_info(yes, !IO)
+                Warnings = [_, _ | _],
+                EnsurePieces = [words("Please ensure that these"),
+                    words("argument rearrangements do not introduce"),
+                    words("performance problems.")]
             ),
-            globals.lookup_bool_option(Globals, halt_at_warn, HaltAtWarn),
-            (
-                HaltAtWarn = yes,
-                io.set_exit_status(1, !IO),
-                module_info_incr_errors(!ModuleInfo)
-            ;
-                HaltAtWarn = no
-            )
+            SuppressPieces =
+                [words("These warnings can be suppressed by"),
+                words("`--inhibit-accumulator-warnings'.")],
+            EnsureSuppressMsg = simple_msg(Context,
+                [option_is_set(inhibit_accumulator_warnings, no,
+                    [always(EnsurePieces), always(SuppressPieces)])]),
+
+            VerbosePieces = [words("If a predicate has been declared"),
+                words("associative via a `promise' declaration,"),
+                words("the compiler will rearrange the order of"),
+                words("the arguments in calls to that predicate,"),
+                words("if by so doing it makes the containing predicate"),
+                words("tail recursive. In such situations, the compiler"),
+                words("will issue this warning. If this reordering"),
+                words("changes the performance characteristics"),
+                words("of the call to the predicate, use"),
+                words("`--no-accumulator-introduction'"),
+                words("to turn the optimization off, or "),
+                words("`--inhibit-accumulator-warnings'"),
+                words("to turn off the warnings.")],
+            VerboseMsg = simple_msg(Context, [verbose_only(VerbosePieces)]),
+
+            Severity = severity_conditional(inhibit_accumulator_warnings, no,
+                severity_warning, no),
+            Msgs = [InMsg | WarnMsgs] ++ [EnsureSuppressMsg, VerboseMsg],
+            Spec = error_spec(Severity, phase_accumulator_intro, Msgs),
+
+            det_univ_to_type(!.Cookie, Specs0),
+            Specs = [Spec | Specs0],
+            type_to_univ(Specs, !:Cookie)
         )
     ;
         true
@@ -314,33 +320,30 @@ process_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo, !IO) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred output_warnings(list(warning)::in, prog_varset::in,
-    module_info::in, io::di, io::uo) is det.
+:- pred generate_warnings(module_info::in, prog_varset::in, list(warning)::in,
+    list(error_msg)::out) is det.
 
-output_warnings([], _, _, !IO).
-output_warnings([W | Ws], VarSet, ModuleInfo, !IO) :-
-    output_warning(W, VarSet, ModuleInfo, Context, Format),
-    module_info_get_globals(ModuleInfo, Globals),
-    write_error_pieces(Globals, Context, 2, Format, !IO),
-    output_warnings(Ws, VarSet, ModuleInfo, !IO).
+generate_warnings(_, _, [], []).
+generate_warnings(ModuleInfo, VarSet, [Warning | Warnings], [Msg | Msgs]) :-
+    generate_warning(ModuleInfo, VarSet, Warning, Msg),
+    generate_warnings(ModuleInfo, VarSet, Warnings, Msgs).
 
-:- pred output_warning(warning::in, prog_varset::in, module_info::in,
-    prog_context::out, list(format_component)::out) is det.
+:- pred generate_warning(module_info::in, prog_varset::in, warning::in,
+    error_msg::out) is det.
 
-output_warning(warn(Context, PredId, VarA, VarB), VarSet, ModuleInfo,
-        Context, Formats) :-
+generate_warning(ModuleInfo, VarSet, Warning, Msg) :-
+    Warning = warn(Context, PredId, VarA, VarB),
     PredPieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
         PredId),
 
-    varset.lookup_name(VarSet, VarA, VarAStr0),
-    varset.lookup_name(VarSet, VarB, VarBStr0),
-    VarAStr = string.append_list(["`", VarAStr0, "'"]),
-    VarBStr = string.append_list(["`", VarBStr0, "'"]),
+    varset.lookup_name(VarSet, VarA, VarAName),
+    varset.lookup_name(VarSet, VarB, VarBName),
 
-    Formats = [words("warning: the call to")] ++ PredPieces ++
+    Pieces = [words("warning: the call to")] ++ PredPieces ++
         [words("has had the location of the variables"),
-        words(VarAStr), words("and"), words(VarBStr),
-        words("swapped to allow accumulator introduction.")].
+        quote(VarAName), words("and"), quote(VarBName),
+        words("swapped to allow accumulator introduction."), nl],
+    Msg = simple_msg(Context, [always(Pieces)]).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -723,7 +726,7 @@ stage1_2(N - I, K, M, GoalStore, FullyStrict, VarTypes, ModuleInfo, !Sets) :-
             construct(N - I, K, GoalStore, !.Sets, FullyStrict, VarTypes,
                 ModuleInfo)
         ->
-            !:Sets = !.Sets ^ construct :=
+            !Sets ^ construct :=
                 set.insert(!.Sets ^ construct, N - I),
             stage1_2(N - (I+1), K, M, GoalStore, FullyStrict, VarTypes,
                 ModuleInfo, !Sets)
@@ -731,7 +734,7 @@ stage1_2(N - I, K, M, GoalStore, FullyStrict, VarTypes, ModuleInfo, !Sets) :-
             construct_assoc(N - I, K, GoalStore, !.Sets, FullyStrict, VarTypes,
                 ModuleInfo)
         ->
-            !:Sets = !.Sets ^ construct_assoc :=
+            !Sets ^ construct_assoc :=
                 set.insert(!.Sets ^ construct_assoc, N-I),
             stage1_2(N - (I+1), K, M, GoalStore, FullyStrict, VarTypes,
                 ModuleInfo, !Sets)
@@ -739,11 +742,11 @@ stage1_2(N - I, K, M, GoalStore, FullyStrict, VarTypes, ModuleInfo, !Sets) :-
             update(N - I, K, GoalStore, !.Sets, FullyStrict, VarTypes,
                 ModuleInfo)
         ->
-            !:Sets = !.Sets ^ update := set.insert(!.Sets ^ update, N - I),
+            !Sets ^ update := set.insert(!.Sets ^ update, N - I),
             stage1_2(N - (I+1), K, M, GoalStore, FullyStrict, VarTypes,
                 ModuleInfo, !Sets)
         ;
-            !:Sets = !.Sets ^ reject := set.insert(!.Sets ^ reject, N - I)
+            !Sets ^ reject := set.insert(!.Sets ^ reject, N - I)
         )
     ).
 
@@ -1395,9 +1398,8 @@ lookup_call(GoalStore, Id, stored_goal(Call, InstMap)) :-
 %-----------------------------------------------------------------------------%
 
     % stage3 creates the accumulator version of the predicate using
-    % the substitutions determined in stage2, it also redefines the
-    % original procedure to call the accumulator version of the
-    % procedure.
+    % the substitutions determined in stage2. It also redefines the
+    % original procedure to call the accumulator version of the procedure.
     %
 :- pred stage3(goal_id::in, prog_vars::in, prog_varset::in, vartypes::in,
     goal_store::in, goal_store::in, substs::in, subst::in,
