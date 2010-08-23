@@ -243,9 +243,14 @@
 % The store type itself is just a dummy type,
 % with no real representation.
 
-    % XXX We use `mkstore' here rather than `store' to work around a bug
-    % with the Java back-end: it generates invalid Java code if we use `store'.
-:- type store(S) ---> mkstore(c_pointer)
+:- type store(S).
+:- pragma foreign_type("C", store(S), "MR_Word", [can_pass_as_mercury_type])
+    where equality is store_equal, comparison is store_compare.
+:- pragma foreign_type("IL", store(S), "int32", [can_pass_as_mercury_type])
+    where equality is store_equal, comparison is store_compare.
+:- pragma foreign_type("Java", store(S), "int", [can_pass_as_mercury_type])
+    where equality is store_equal, comparison is store_compare.
+:- pragma foreign_type("Erlang", store(S), "", [can_pass_as_mercury_type])
     where equality is store_equal, comparison is store_compare.
 
 :- pred store_equal(store(S)::in, store(S)::in) is semidet.

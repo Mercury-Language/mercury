@@ -1694,10 +1694,14 @@
 
     % Values of type `io.state' are never really used:
     % instead we store data in global variables.
-    % The reason this is not defined simply as `io.state == c_pointer'
-    % is so that `type_name' produces more informative results
-    % for cases such as `type_name(main)'.
-:- type io.state ---> state(c_pointer).
+    % The reason this is defined as a foreign type is to prevent attempts
+    % to deconstruct values of the type.
+:- type io.state.
+:- pragma foreign_type("C", io.state, "MR_Word", [can_pass_as_mercury_type]).
+:- pragma foreign_type("IL", io.state, "int32", [can_pass_as_mercury_type]).
+:- pragma foreign_type("Java", io.state, "java.lang.Object",
+    [can_pass_as_mercury_type]).
+:- pragma foreign_type("Erlang", io.state, "", [can_pass_as_mercury_type]).
 
 :- pragma foreign_decl("C", "
     extern MR_Word      ML_io_stream_db;
