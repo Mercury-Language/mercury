@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2009 The University of Melbourne.
+% Copyright (C) 1993-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -332,6 +332,14 @@
     in, in, out, mdi, muo) is semidet.
 :- mode map.foldl2(pred(in, in, in, out, di, uo) is semidet,
     in, in, out, di, uo) is semidet.
+:- mode map.foldl2(pred(in, in, in, out, in, out) is cc_multi,
+    in, in, out, in, out) is cc_multi.
+:- mode map.foldl2(pred(in, in, in, out, mdi, muo) is cc_multi,
+    in, in, out, mdi, muo) is cc_multi.
+:- mode map.foldl2(pred(in, in, in, out, di, uo) is cc_multi,
+    in, in, out, di, uo) is cc_multi.
+:- mode map.foldl2(pred(in, in, di, uo, di, uo) is cc_multi,
+    in, di, uo, di, uo) is cc_multi.
 
     % Perform an inorder traversal of the map, applying an accumulator
     % predicate with three accumulators for each key-value pair.

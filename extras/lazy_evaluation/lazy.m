@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999, 2006, 2009 The University of Melbourne.
+% Copyright (C) 1999, 2006, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,6 +33,7 @@
     % demand.
     %
 :- type lazy(T).
+% :- inst lazy(I).
 
     % Convert a value from type T to lazy(T)
     %
@@ -79,20 +80,22 @@
 %
 %-----------------------------------------------------------------------------%
 
-%-----------------------------------------------------------------------------%
-
 :- implementation.
 :- interface.
-
-:- implementation.
-
+    
     % Note that we use a user-defined equality predicate to ensure
     % that unifying two lazy(T) values will do the right thing.
     %
 :- type lazy(T) ---> value(T) ; closure((func) = T)
     where equality is equal_values.
+    
+:- inst lazy(I)
+    --->    value(I)
+    ;       closure(((func) = out(I) is det)).
 
 :- pred equal_values(lazy(T)::in, lazy(T)::in) is semidet.
+
+:- implementation.
 
 equal_values(X, Y) :-
     force(X) = force(Y).
@@ -124,10 +127,8 @@ force(Lazy) = Value :-
             Lazy = closure(Func),
             Value = apply(Func),
 
-                % Destructively update the Lazy cell with the value
-                % to avoid having to recompute the same result
-                % next time.
-                %
+            % Destructively update the Lazy cell with the value to avoid
+            % having to recompute the same result next time.
             impure update_in_place(Lazy, value(Value))
         )
     ).
@@ -142,7 +143,7 @@ force(Lazy) = Value :-
     [will_not_call_mercury],
 "
     /* strip off tag bits */
-    Word *ptr = (Word *) MR_strip_tag(HeapCell);
+    MR_Word *ptr = (MR_Word *) MR_strip_tag(HeapCell);
     /* destructively update value */
     *ptr = NewValue;
 ").

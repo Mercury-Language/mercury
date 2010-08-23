@@ -1,4 +1,6 @@
 %-----------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%-----------------------------------------------------------------------------%
 %
 % This is an example of how to use the `lazy' module to define
 % a recursive lazy data type, in this case lazy lists.
@@ -85,14 +87,18 @@ force_list(Xs) = list_inst_cast(force(Xs)).
 
 % Because the Mercury mode system is not properly polymorphic,
 % it doesn't always infer the right inst.  We sometimes need
-% to use inst casts (which can be implemented using `pragma c_code').
+% to use inst casts (which can be implemented using `pragma foreign_proc').
 % :-(
 
 :- func list_inst_cast(lazy_list(T)) = lazy_list(T).
 :- mode list_inst_cast(in) = out(lazy_list) is det.
 
-:- pragma c_code(list_inst_cast(F::in) = (F2::out(lazy_list)),
-	[will_not_call_mercury, thread_safe], "F2 = F;").
+:- pragma foreign_proc("C",
+    list_inst_cast(F::in) = (F2::out(lazy_list)),
+    [promise_pure, will_not_call_mercury, thread_safe],
+" 
+    F2 = F;
+").
 
 %-----------------------------------------------------------------------------%
 

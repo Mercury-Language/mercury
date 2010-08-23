@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -335,6 +335,9 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
         % These will be recreated in the importing module.
         \+ set.member(PredId, TypeSpecForcePreds),
 
+        % Don't export non-inlinable predicates.
+        \+ check_marker(Markers, marker_user_marked_no_inline),
+
         % No point exporting code which isn't very inlinable.
         module_info_get_globals(ModuleInfo, Globals),
         globals.get_target(Globals, Target),
@@ -344,9 +347,7 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
         proc_info_get_eval_method(ProcInfo, eval_normal),
 
         (
-            inlining.is_simple_clause_list(Clauses, InlineThreshold + Arity),
-            pred_info_get_markers(PredInfo, Markers),
-            \+ check_marker(Markers, marker_user_marked_no_inline)
+            inlining.is_simple_clause_list(Clauses, InlineThreshold + Arity)
         ;
             pred_info_requested_inlining(PredInfo)
         ;

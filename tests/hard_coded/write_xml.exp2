@@ -25,7 +25,7 @@ is a &lt;string&gt;&amp;</String>
 			<Int type="int">123456</Int>
 			<Tuple--2--Tag_-123character-44-32float-125 functor="{}" type="{character, float}" arity="2">
 				<Char type="character">a</Char>
-				<Float type="float">1.23553225220000e-97</Float>
+				<Float type="float">1.2355322522e-97</Float>
 			</Tuple--2--Tag_-123character-44-32float-125>
 		</Tuple--3--Tag_-123string-44-32int-44-32-123character-44-32float-125-125>
 	</a_tuple--1--write_xml-46mytype>
@@ -404,7 +404,7 @@ is a &lt;string&gt;&amp;</String>
 						<Int type="int">123456</Int>
 						<Tuple functor="{}" type="{character, float}" arity="2">
 							<Char type="character">a</Char>
-							<Float type="float">1.23553225220000e-97</Float>
+							<Float type="float">1.2355322522e-97</Float>
 						</Tuple>
 					</Tuple>
 				</a_tuple>

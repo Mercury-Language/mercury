@@ -470,7 +470,7 @@ insert_context_update_call(ModuleInfo, Goal0, Goal, !ProcInfo) :-
 
 %-----------------------------------------------------------------------------%
 %
-% The main transformation
+% The main transformation.
 %
 
 :- pred process_proc(pred_id::in, proc_id::in, pred_info::in,
@@ -670,22 +670,21 @@ process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
         % The condition of the if-then-else is the original body with renamed
         % output variables.  Introduce a promise_equivalent_solutions scope to
         % put it into a single solution context if the procedure (which we call
-        % recursively later) was declared to have more solutions.
+        % recursively later) was _declared_ to have more solutions.
         determinism_components(ProcDetism, _CanFail, Solns),
         (
             Solns = at_most_one,
             CondGoal = RenamedBodyGoal
         ;
-            Solns = at_most_many_cc,
+            ( Solns = at_most_many_cc
+            ; Solns = at_most_many
+            ),
             map.apply_to_list(OutputVars, Renaming, RenamedOutputVars),
             add_promise_equivalent_solutions(RenamedOutputVars,
                 RenamedBodyGoal, CondGoal)
         ;
-            ( Solns = at_most_zero
-            ; Solns = at_most_many
-            ),
-            unexpected(this_file,
-                "process_proc_semi: wrong number of solutions")
+            Solns = at_most_zero,
+            unexpected(this_file, "process_proc_semi: zero solutions")
         ),
 
         % Create the `then' branch.

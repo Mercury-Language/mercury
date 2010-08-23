@@ -1276,8 +1276,8 @@
     X::out) is semidet.
 
     % list.filter(Pred, List, TrueList) takes a closure with one
-    % input argument and for each member of List `X', calls the closure.
-    % Iff Pred(X) is true, then X is included in TrueList.
+    % input argument and for each member X of List, calls the closure.
+    % X is included in TrueList iff Pred(X) is true.
     %
 :- pred list.filter(pred(X)::in(pred(in) is semidet), list(X)::in,
     list(X)::out) is det.
@@ -1286,7 +1286,7 @@
 
     % list.negated_filter(Pred, List, FalseList) takes a closure with one
     % input argument and for each member of List `X', calls the closure.
-    % Iff Pred(X) is false, then X is included in FalseList.
+    % X is included in FalseList iff Pred(X) is true.
     %
 :- pred list.negated_filter(pred(X)::in(pred(in) is semidet), list(X)::in,
     list(X)::out) is det.
@@ -1294,9 +1294,9 @@
     = (list(X)::out) is det.
 
     % list.filter(Pred, List, TrueList, FalseList) takes a closure with one
-    % input argument and for each member of List `X', calls the closure.
-    % Iff Pred(X) is true, then X is included in TrueList.
-    % Iff Pred(X) is false, then X is included in FalseList.
+    % input argument and for each member X of List, calls the closure.
+    % X is included in TrueList iff Pred(X) is true.
+    % X is included in FalseList iff Pred(X) is true.
     %
 :- pred list.filter(pred(X)::in(pred(in) is semidet), list(X)::in,
     list(X)::out, list(X)::out) is det.
@@ -2040,11 +2040,20 @@ list.last([H | T], Last) :-
         list.last(T, Last)
     ).
 
-list.last_det(List, Last) :-
-    ( list.last(List, LastPrime) ->
-        Last = LastPrime
+list.last_det([], _) :-
+    error("list.last_det: empty list").
+list.last_det([H | T], Last) :-
+    list.last_det_2(H, T, Last).
+
+:- pred list.last_det_2(T::in, list(T)::in, T::out) is det.
+
+list.last_det_2(H, T, Last) :-
+    (
+        T = [],
+        Last = H
     ;
-        error("list.last_det: empty list")
+        T = [TH | TT],
+        list.last_det_2(TH, TT, Last)
     ).
 
 list.det_last(List, Last) :-
@@ -2060,16 +2069,34 @@ list.split_last([H | T], AllButLast, Last) :-
         Last = H
     ;
         T = [_ | _],
-        list.split_last(T, AllButLast1, Last),
-        AllButLast = [H | AllButLast1]
+        list.split_last(T, AllButLastTail, Last),
+        AllButLast = [H | AllButLastTail]
     ).
 
-list.split_last_det(List, AllButLast, Last) :-
-    ( list.split_last(List, AllButLastPrime, LastPrime) ->
-        AllButLast = AllButLastPrime,
-        Last = LastPrime
+list.split_last_det([], _, _) :-
+    error("list.split_last_det: empty list").
+list.split_last_det([H | T], AllButLast, Last) :-
+    (
+        T = [],
+        AllButLast = [],
+        Last = H
     ;
-        error("list.split_last_det: empty list")
+        T = [TH | TT],
+        list.split_last_det_2(TH, TT, AllButLastTail, Last),
+        AllButLast = [H | AllButLastTail]
+    ).
+
+:- pred list.split_last_det_2(T::in, list(T)::in, list(T)::out, T::out) is det.
+
+list.split_last_det_2(H, T, AllButLast, Last) :-
+    (
+        T = [],
+        AllButLast = [],
+        Last = H
+    ;
+        T = [TH | TT],
+        list.split_last_det_2(TH, TT, AllButLastTail, Last),
+        AllButLast = [H | AllButLastTail]
     ).
 
 list.det_split_last(List, AllButLast, Last) :-
@@ -2732,9 +2759,8 @@ list.condense(Xss) = Ys :-
 list.chunk(Xs, N) = Ys :-
     list.chunk(Xs, N, Ys).
 
-list.map(F, Xs) = Ys :-
-    P = ( pred(X::in, Y::out) is det :- Y = F(X) ),
-    list.map(P, Xs, Ys).
+list.map(_F, []) = [].
+list.map(F, [H | T]) = [F(H) | list.map(F, T)].
 
 list.foldl(F, Xs, A) = B :-
     P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),

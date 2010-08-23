@@ -21,6 +21,7 @@ ORDINARY_PROGS=	\
 	cc_and_non_cc_test \
 	cc_multi_bug \
 	cc_nondet_disj \
+	char_signed \
 	checked_nondet_tailcall \
 	checked_nondet_tailcall_noinline \
 	closure_extension \
@@ -146,6 +147,7 @@ ORDINARY_PROGS=	\
 	join_list \
 	lco_no_inline \
 	list_series_int \
+	lookup_disj \
 	lookup_switch_simple \
 	lookup_switch_simple_bitvec \
 	lookup_switch_simple_non \
@@ -438,7 +440,6 @@ endif
 
 # Fact tables currently work only in the C grades.
 # The foreign_type_assertion test is currently meaningful only in C grades.
-# The lookup_disj test case uses C foreign_proc code to print progress reports.
 # Tests of the C foreign language interface only work in C grades.
 # Runtime options are specific to the C backend.
 ifeq "$(filter il% java% erlang%,$(GRADE))" ""
@@ -446,7 +447,6 @@ ifeq "$(filter il% java% erlang%,$(GRADE))" ""
 		factt \
 		factt_sort_test \
 		foreign_type_assertion \
-		lookup_disj \
 		pragma_export \
 		pragma_import \
 		runtime_opt

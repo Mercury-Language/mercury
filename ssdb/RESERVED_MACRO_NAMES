@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2007 The University of Melbourne.
+# Copyright (C) 2007, 2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -63,7 +63,11 @@ __EXTENSIONS__
 __OPTIMIZE__
 __STRICT_ANSI__
 #-----------------------------------------------------------------------------#
-# These are defined in when threads are enabled.
+# These are defined when threads are enabled.
 _REENTRANT
 _THREAD_SAFE
+#-----------------------------------------------------------------------------#
+# These are defined in mercury_signal.h, which ssdb.m #includes.
+__KERNEL__
+sigcontext_struct
 #-----------------------------------------------------------------------------#

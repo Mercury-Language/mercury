@@ -1,7 +1,7 @@
 %----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -1951,17 +1951,26 @@ output_foreign_proc_output(Info, Output, !IO) :-
             MaybeForeignType = no,
             output_lval_as_word(Info, Lval, !IO),
             io.write_string(" = ", !IO),
-            (
-                OrigType = builtin_type(builtin_type_string)
-            ->
-                output_llds_type_cast(lt_word, !IO),
-                io.write_string(VarName, !IO)
-            ;
-                OrigType = builtin_type(builtin_type_float)
-            ->
-                io.write_string("MR_float_to_word(", !IO),
-                io.write_string(VarName, !IO),
-                io.write_string(")", !IO)
+            ( OrigType = builtin_type(BuiltinType) ->
+                (
+                    BuiltinType = builtin_type_string,
+                    output_llds_type_cast(lt_word, !IO),
+                    io.write_string(VarName, !IO)
+                ;
+                    BuiltinType = builtin_type_float,
+                    io.write_string("MR_float_to_word(", !IO),
+                    io.write_string(VarName, !IO),
+                    io.write_string(")", !IO)
+                ;
+                    BuiltinType = builtin_type_char,
+                    % Characters must be cast to MR_UnsignedChar to
+                    % prevent sign-extension.
+                    io.write_string("(MR_UnsignedChar) ", !IO),
+                    io.write_string(VarName, !IO)
+                ;
+                    BuiltinType = builtin_type_int,
+                    io.write_string(VarName, !IO)
+                )
             ;
                 io.write_string(VarName, !IO)
             )
