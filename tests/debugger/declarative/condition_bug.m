@@ -18,7 +18,7 @@ main(!IO) :-
 		svmap.set("critical", "kritiek", !Map),
 		FinalMap = !.Map
 	),
-	write_xml_doc(translation(FinalMap), !IO),
+	write_xml_doc(io.stdout_stream, translation(FinalMap), !IO),
 	io.nl(!IO).
 
 :- type translation ---> translation(map(string, string)).
