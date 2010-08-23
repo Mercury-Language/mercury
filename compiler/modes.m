@@ -936,14 +936,17 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
         !:Changed, Specs) :-
     % Mark the procedure as ready to be processed.
     PredProcId = proc(PredId, ProcId),
+
     module_info_get_preds(!.ModuleInfo, Preds0),
     map.lookup(Preds0, PredId, PredInfo0),
     pred_info_get_procedures(PredInfo0, Procs0),
     map.lookup(Procs0, ProcId, ProcInfo0),
+
     proc_info_set_can_process(yes, ProcInfo0, ProcInfo1),
-    map.det_update(Procs0, ProcId, ProcInfo1, Procs1),
+
+    svmap.det_update(ProcId, ProcInfo1, Procs0, Procs1),
     pred_info_set_procedures(Procs1, PredInfo0, PredInfo1),
-    map.det_update(Preds0, PredId, PredInfo1, Preds1),
+    svmap.det_update(PredId, PredInfo1, Preds0, Preds1),
     module_info_set_preds(Preds1, !ModuleInfo),
 
     % Modecheck the procedure.
@@ -959,8 +962,21 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
         ModeErrors = no,
         (
             HowToCheckGoal = check_unique_modes,
-            detect_switches_in_proc(ProcId, PredId, !ModuleInfo),
-            detect_cse_in_proc(ProcId, PredId, !ModuleInfo),
+
+            module_info_get_preds(!.ModuleInfo, Preds2),
+            map.lookup(Preds2, PredId, PredInfo2),
+            pred_info_get_procedures(PredInfo2, Procs2),
+            map.lookup(Procs2, ProcId, ProcInfo2),
+
+            SwitchDetectInfo = init_switch_detect_info(!.ModuleInfo),
+            detect_switches_in_proc(SwitchDetectInfo, ProcInfo2, ProcInfo3),
+
+            svmap.det_update(ProcId, ProcInfo3, Procs2, Procs3),
+            pred_info_set_procedures(Procs3, PredInfo2, PredInfo3),
+            svmap.det_update(PredId, PredInfo3, Preds2, Preds3),
+            module_info_set_preds(Preds3, !ModuleInfo),
+
+            detect_cse_in_proc(PredId, ProcId, !ModuleInfo),
             determinism_check_proc(ProcId, PredId, !ModuleInfo, DetismSpecs),
             expect(unify(DetismSpecs, []), this_file,
                 "modecheck_queued_proc: found detism error"),

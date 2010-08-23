@@ -26,7 +26,7 @@
 
 :- pred detect_cse_in_module(module_info::in, module_info::out) is det.
 
-:- pred detect_cse_in_proc(proc_id::in, pred_id::in,
+:- pred detect_cse_in_proc(pred_id::in, proc_id::in,
     module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -93,17 +93,17 @@ detect_cse_in_preds([PredId | PredIds], !ModuleInfo) :-
 
 detect_cse_in_pred(PredId, PredInfo, !ModuleInfo) :-
     ProcIds = pred_info_non_imported_procids(PredInfo),
-    detect_cse_in_procs(ProcIds, PredId, !ModuleInfo).
+    detect_cse_in_procs(PredId, ProcIds, !ModuleInfo).
 
-:- pred detect_cse_in_procs(list(proc_id)::in, pred_id::in,
+:- pred detect_cse_in_procs(pred_id::in, list(proc_id)::in,
     module_info::in, module_info::out) is det.
 
-detect_cse_in_procs([], _PredId, !ModuleInfo).
-detect_cse_in_procs([ProcId | ProcIds], PredId, !ModuleInfo) :-
-    detect_cse_in_proc(ProcId, PredId, !ModuleInfo),
-    detect_cse_in_procs(ProcIds, PredId, !ModuleInfo).
+detect_cse_in_procs(_PredId, [], !ModuleInfo).
+detect_cse_in_procs(PredId, [ProcId | ProcIds], !ModuleInfo) :-
+    detect_cse_in_proc(PredId, ProcId, !ModuleInfo),
+    detect_cse_in_procs(PredId, ProcIds, !ModuleInfo).
 
-detect_cse_in_proc(ProcId, PredId, !ModuleInfo) :-
+detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
@@ -116,7 +116,21 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo) :-
     ;
         VeryVerbose = no
     ),
-    detect_cse_in_proc_pass(ProcId, PredId, Redo, !ModuleInfo),
+
+    % XXX We wouldn't have to keep getting the proc_info out of and back into
+    % the module_info if modecheck didn't take a whole module_info.
+    module_info_get_preds(!.ModuleInfo, PredTable0),
+    map.lookup(PredTable0, PredId, PredInfo0),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
+    map.lookup(ProcTable0, ProcId, ProcInfo0),
+
+    detect_cse_in_proc_pass(!.ModuleInfo, Redo, ProcInfo0, ProcInfo1),
+
+    svmap.det_update(ProcId, ProcInfo1, ProcTable0, ProcTable1),
+    pred_info_set_procedures(ProcTable1, PredInfo0, PredInfo1),
+    svmap.det_update(PredId, PredInfo1, PredTable0, PredTable1),
+    module_info_set_preds(PredTable1, !ModuleInfo),
+
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
     trace [io(!IO)] (
         maybe_report_stats(Statistics, !IO)
@@ -159,7 +173,20 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo) :-
         ;
             VeryVerbose = no
         ),
-        detect_switches_in_proc(ProcId, PredId, !ModuleInfo),
+
+        module_info_get_preds(!.ModuleInfo, PredTable2),
+        map.lookup(PredTable2, PredId, PredInfo2),
+        pred_info_get_procedures(PredInfo2, ProcTable2),
+        map.lookup(ProcTable2, ProcId, ProcInfo2),
+
+        SwitchDetectInfo = init_switch_detect_info(!.ModuleInfo),
+        detect_switches_in_proc(SwitchDetectInfo, ProcInfo2, ProcInfo),
+
+        svmap.det_update(ProcId, ProcInfo, ProcTable2, ProcTable3),
+        pred_info_set_procedures(ProcTable3, PredInfo2, PredInfo3),
+        svmap.det_update(PredId, PredInfo3, PredTable2, PredTable3),
+        module_info_set_preds(PredTable3, !ModuleInfo),
+
         trace [io(!IO)] (
             maybe_report_stats(Statistics, !IO)
         ),
@@ -174,7 +201,7 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo) :-
         ;
             VeryVerbose = no
         ),
-        detect_cse_in_proc(ProcId, PredId, !ModuleInfo)
+        detect_cse_in_proc(PredId, ProcId, !ModuleInfo)
     ).
 
 :- type cse_info
@@ -185,36 +212,30 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo) :-
                 csei_module_info    :: module_info
             ).
 
-:- pred detect_cse_in_proc_pass(proc_id::in, pred_id::in, bool::out,
-    module_info::in, module_info::out) is det.
+:- pred detect_cse_in_proc_pass(module_info::in, bool::out,
+    proc_info::in, proc_info::out) is det.
 
-detect_cse_in_proc_pass(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
-    module_info_get_preds(ModuleInfo0, PredTable0),
-    map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_procedures(PredInfo0, ProcTable0),
-    map.lookup(ProcTable0, ProcId, ProcInfo0),
-
+detect_cse_in_proc_pass(ModuleInfo, Redo, !ProcInfo) :-
     % To process each ProcInfo, we get the goal, initialize the instmap
     % based on the modes of the head vars, and pass these to
     % `detect_cse_in_goal'.
 
-    proc_info_get_goal(ProcInfo0, Goal0),
-    proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
-    proc_info_get_varset(ProcInfo0, Varset0),
-    proc_info_get_vartypes(ProcInfo0, VarTypes0),
-    proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps0),
-    CseInfo0 = cse_info(Varset0, VarTypes0, RttiVarMaps0, ModuleInfo0),
+    proc_info_get_goal(!.ProcInfo, Goal0),
+    proc_info_get_initial_instmap(!.ProcInfo, ModuleInfo, InstMap0),
+    proc_info_get_varset(!.ProcInfo, Varset0),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
+    CseInfo0 = cse_info(Varset0, VarTypes0, RttiVarMaps0, ModuleInfo),
     detect_cse_in_goal(Goal0, Goal1, CseInfo0, CseInfo, InstMap0, Redo),
 
     (
-        Redo = no,
-        ModuleInfo = ModuleInfo0
+        Redo = no
     ;
         Redo = yes,
 
         % ModuleInfo should not be changed by detect_cse_in_goal.
         CseInfo = cse_info(VarSet1, VarTypes1, RttiVarMaps1, _),
-        proc_info_get_headvars(ProcInfo0, HeadVars),
+        proc_info_get_headvars(!.ProcInfo, HeadVars),
 
         implicitly_quantify_clause_body_general(
             ordinary_nonlocals_maybe_lambda,
@@ -222,15 +243,10 @@ detect_cse_in_proc_pass(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
             Goal1, Goal, VarSet1, VarSet, VarTypes1, VarTypes,
             RttiVarMaps1, RttiVarMaps),
 
-        proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
-        proc_info_set_varset(VarSet, ProcInfo1, ProcInfo2),
-        proc_info_set_vartypes(VarTypes, ProcInfo2, ProcInfo3),
-        proc_info_set_rtti_varmaps(RttiVarMaps, ProcInfo3, ProcInfo),
-
-        map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
-        pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-        map.det_update(PredTable0, PredId, PredInfo, PredTable),
-        module_info_set_preds(PredTable, ModuleInfo0, ModuleInfo)
+        proc_info_set_goal(Goal, !ProcInfo),
+        proc_info_set_varset(VarSet, !ProcInfo),
+        proc_info_set_vartypes(VarTypes, !ProcInfo),
+        proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo)
     ).
 
 %-----------------------------------------------------------------------------%

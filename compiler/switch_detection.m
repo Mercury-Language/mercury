@@ -31,8 +31,12 @@
 
 :- pred detect_switches_in_module(module_info::in, module_info::out) is det.
 
-:- pred detect_switches_in_proc(proc_id::in, pred_id::in,
-    module_info::in, module_info::out) is det.
+:- type switch_detect_info.
+
+:- func init_switch_detect_info(module_info) = switch_detect_info.
+
+:- pred detect_switches_in_proc(switch_detect_info::in,
+    proc_info::in, proc_info::out) is det.
 
 :- type found_deconstruct
     --->    did_find_deconstruct
@@ -99,6 +103,12 @@
     --->    allow_multi_arm
     ;       dont_allow_multi_arm.
 
+:- type switch_detect_info
+    --->    switch_detect_info(
+                sdi_module_info     :: module_info,
+                sdi_allow_multi_arm :: allow_multi_arm
+            ).
+
 :- pred lookup_allow_multi_arm(module_info::in, allow_multi_arm::out) is det.
 
 lookup_allow_multi_arm(ModuleInfo, AllowMulti) :-
@@ -112,127 +122,152 @@ lookup_allow_multi_arm(ModuleInfo, AllowMulti) :-
         AllowMulti = dont_allow_multi_arm
     ).
 
+init_switch_detect_info(ModuleInfo) = Info :-
+    lookup_allow_multi_arm(ModuleInfo, AllowMulti),
+    Info = switch_detect_info(ModuleInfo, AllowMulti).
+
+%-----------------------------------------------------------------------------%
+
 detect_switches_in_module(!ModuleInfo) :-
     % Traverse the module structure, calling `detect_switches_in_goal'
     % for each procedure body.
-    lookup_allow_multi_arm(!.ModuleInfo, AllowMulti),
-    module_info_get_valid_predids(PredIds, !ModuleInfo),
-    detect_switches_in_preds_allow(PredIds, AllowMulti, !ModuleInfo).
+    Info = init_switch_detect_info(!.ModuleInfo),
+    module_info_get_valid_predids(ValidPredIds, !ModuleInfo),
+    ValidPredIdSet = set_tree234.list_to_set(ValidPredIds),
 
-:- pred detect_switches_in_preds_allow(list(pred_id)::in, allow_multi_arm::in,
-    module_info::in, module_info::out) is det.
+    module_info_get_preds(!.ModuleInfo, PredMap0),
+    map.to_assoc_list(PredMap0, PredIdsInfos0),
 
-detect_switches_in_preds_allow([], _, !ModuleInfo).
-detect_switches_in_preds_allow([PredId | PredIds], AllowMulti, !ModuleInfo) :-
-    module_info_get_preds(!.ModuleInfo, PredTable),
-    map.lookup(PredTable, PredId, PredInfo),
-    detect_switches_in_pred_allow(PredId, PredInfo, AllowMulti, !ModuleInfo),
-    detect_switches_in_preds_allow(PredIds, AllowMulti, !ModuleInfo).
+    detect_switches_in_preds(Info, ValidPredIdSet,
+        PredIdsInfos0, PredIdsInfos),
+    map.from_sorted_assoc_list(PredIdsInfos, PredMap),
+    module_info_set_preds(PredMap, !ModuleInfo).
 
-:- pred detect_switches_in_pred_allow(pred_id::in, pred_info::in,
-    allow_multi_arm::in, module_info::in, module_info::out) is det.
+:- pred detect_switches_in_preds(switch_detect_info::in,
+    set_tree234(pred_id)::in,
+    assoc_list(pred_id, pred_info)::in, assoc_list(pred_id, pred_info)::out)
+    is det.
 
-detect_switches_in_pred_allow(PredId, PredInfo0, AllowMulti, !ModuleInfo) :-
-    ProcIds = pred_info_non_imported_procids(PredInfo0),
+detect_switches_in_preds(_, _, [], []).
+detect_switches_in_preds(Info, ValidPredIdSet,
+        [PredIdInfo0 | PredIdsInfos0], [PredIdInfo | PredIdsInfos]) :-
+    PredIdInfo0 = PredId - PredInfo0,
+    ( set_tree234.member(ValidPredIdSet, PredId) ->
+        detect_switches_in_pred(Info, PredId, PredInfo0, PredInfo),
+        PredIdInfo = PredId - PredInfo
+    ;
+        PredIdInfo = PredIdInfo0
+    ),
+    detect_switches_in_preds(Info, ValidPredIdSet,
+        PredIdsInfos0, PredIdsInfos).
+
+:- pred detect_switches_in_pred(switch_detect_info::in, pred_id::in,
+    pred_info::in, pred_info::out) is det.
+
+detect_switches_in_pred(Info, PredId, !PredInfo) :-
+    NonImportedProcIds = pred_info_non_imported_procids(!.PredInfo),
     (
-        ProcIds = [_ | _],
+        NonImportedProcIds = [_ | _],
         trace [io(!IO)] (
+            ModuleInfo = Info ^ sdi_module_info,
             write_pred_progress_message("% Detecting switches in ", PredId,
-                !.ModuleInfo, !IO)
+                ModuleInfo, !IO)
         ),
-        detect_switches_in_procs_allow(ProcIds, PredId, AllowMulti,
-            !ModuleInfo)
+        pred_info_get_procedures(!.PredInfo, ProcTable0),
+        map.to_assoc_list(ProcTable0, ProcList0),
+        detect_switches_in_procs(Info, NonImportedProcIds,
+            ProcList0, ProcList),
+        map.from_sorted_assoc_list(ProcList, ProcTable),
+        pred_info_set_procedures(ProcTable, !PredInfo)
+
         % This is where we should print statistics, if we ever need
         % to debug the performance of switch detection.
     ;
-        ProcIds = []
+        NonImportedProcIds = []
     ).
 
-:- pred detect_switches_in_procs_allow(list(proc_id)::in, pred_id::in,
-    allow_multi_arm::in, module_info::in, module_info::out) is det.
+:- pred detect_switches_in_procs(switch_detect_info::in, list(proc_id)::in,
+    assoc_list(proc_id, proc_info)::in, assoc_list(proc_id, proc_info)::out)
+    is det.
 
-detect_switches_in_procs_allow([], _PredId, _AllowMulti, !ModuleInfo).
-detect_switches_in_procs_allow([ProcId | ProcIds], PredId, AllowMulti,
-        !ModuleInfo) :-
-    detect_switches_in_proc_allow(ProcId, PredId, AllowMulti, !ModuleInfo),
-    detect_switches_in_procs_allow(ProcIds, PredId, AllowMulti, !ModuleInfo).
+detect_switches_in_procs(_Info, _NonImportedProcIds, [], []).
+detect_switches_in_procs(Info, NonImportedProcIds,
+        [ProcIdInfo0 | ProcIdsInfos0], [ProcIdInfo | ProcIdsInfos]) :-
+    ProcIdInfo0 = ProcId - ProcInfo0,
+    ( list.member(ProcId, NonImportedProcIds) ->
+        detect_switches_in_proc(Info, ProcInfo0, ProcInfo),
+        ProcIdInfo = ProcId - ProcInfo
+    ;
+        ProcIdInfo = ProcIdInfo0
+    ),
+    detect_switches_in_procs(Info, NonImportedProcIds,
+        ProcIdsInfos0, ProcIdsInfos).
 
-detect_switches_in_proc(ProcId, PredId, !ModuleInfo) :-
-    lookup_allow_multi_arm(!.ModuleInfo, AllowMulti),
-    detect_switches_in_proc_allow(ProcId, PredId, AllowMulti, !ModuleInfo).
-
-:- pred detect_switches_in_proc_allow(proc_id::in, pred_id::in,
-    allow_multi_arm::in, module_info::in, module_info::out) is det.
-
-detect_switches_in_proc_allow(ProcId, PredId, AllowMulti, !ModuleInfo) :-
-    module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_procedures(PredInfo0, ProcTable0),
-    map.lookup(ProcTable0, ProcId, ProcInfo0),
-
+detect_switches_in_proc(Info, !ProcInfo) :-
     % To process each ProcInfo, we get the goal, initialize the instmap
     % based on the modes of the head vars, and pass these to
     % `detect_switches_in_goal'.
-    proc_info_get_goal(ProcInfo0, Goal0),
-    proc_info_get_vartypes(ProcInfo0, VarTypes),
-    proc_info_get_initial_instmap(ProcInfo0, !.ModuleInfo, InstMap0),
-    detect_switches_in_goal(VarTypes, AllowMulti, InstMap0,
-        Goal0, Goal, !ModuleInfo, do_not_need_to_requantify, Requant),
+    Info = switch_detect_info(ModuleInfo, AllowMulti),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes),
+    LocalInfo0 =  local_switch_detect_info(ModuleInfo, AllowMulti, VarTypes,
+        do_not_need_to_requantify),
 
-    proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
+    proc_info_get_goal(!.ProcInfo, Goal0),
+    proc_info_get_initial_instmap(!.ProcInfo, ModuleInfo, InstMap0),
+    detect_switches_in_goal(InstMap0, Goal0, Goal,
+        LocalInfo0, LocalInfo),
+    proc_info_set_goal(Goal, !ProcInfo),
+    Requant = LocalInfo ^ lsdi_requant,
     (
         Requant = need_to_requantify,
-        requantify_proc_general(ordinary_nonlocals_maybe_lambda,
-            ProcInfo1, ProcInfo)
+        requantify_proc_general(ordinary_nonlocals_maybe_lambda, !ProcInfo)
     ;
-        Requant = do_not_need_to_requantify,
-        ProcInfo = ProcInfo1
-    ),
-    map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
-    pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-    map.det_update(PredTable0, PredId, PredInfo, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo).
+        Requant = do_not_need_to_requantify
+    ).
 
 %-----------------------------------------------------------------------------%
+
+:- type local_switch_detect_info
+    --->    local_switch_detect_info(
+                lsdi_module_info        :: module_info,
+                lsdi_allow_multi_arm    :: allow_multi_arm,
+                lsdi_vartypes           :: vartypes,
+                lsdi_requant            :: need_to_requantify
+            ).
 
     % Given a goal, and the instmap on entry to that goal,
     % replace disjunctions with switches whereever possible.
     %
-:- pred detect_switches_in_goal(vartypes::in, allow_multi_arm::in, instmap::in,
-    hlds_goal::in, hlds_goal::out, module_info::in, module_info::out, 
-    need_to_requantify::in, need_to_requantify::out) is det.
+:- pred detect_switches_in_goal(instmap::in, hlds_goal::in, hlds_goal::out,
+    local_switch_detect_info::in, local_switch_detect_info::out) is det.
 
-detect_switches_in_goal(VarTypes, AllowMulti, InstMap0,
-        !Goal, !ModuleInfo, !Requant) :-
-    detect_switches_in_goal_update_instmap(VarTypes, AllowMulti,
-        InstMap0, _InstMap, !Goal, !ModuleInfo, !Requant).
+detect_switches_in_goal(InstMap0, !Goal, !LocalInfo) :-
+    detect_switches_in_goal_update_instmap(InstMap0, _InstMap, !Goal,
+        !LocalInfo).
 
     % This version is the same as the above except that it returns the
     % resulting instmap on exit from the goal, which is computed by applying
     % the instmap delta specified in the goal's goalinfo.
     %
-:- pred detect_switches_in_goal_update_instmap(vartypes::in,
-    allow_multi_arm::in, instmap::in, instmap::out,
-    hlds_goal::in, hlds_goal::out, module_info::in, module_info::out, 
-    need_to_requantify::in, need_to_requantify::out) is det.
+:- pred detect_switches_in_goal_update_instmap(instmap::in, instmap::out,
+    hlds_goal::in, hlds_goal::out,
+    local_switch_detect_info::in, local_switch_detect_info::out) is det.
 
-detect_switches_in_goal_update_instmap(VarTypes, AllowMulti,
-        !InstMap, Goal0, Goal, !ModuleInfo, !Requant) :-
+detect_switches_in_goal_update_instmap(!InstMap, Goal0, Goal, !LocalInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
-    detect_switches_in_goal_expr(VarTypes, AllowMulti, !.InstMap,
-        GoalInfo, GoalExpr0, GoalExpr, !ModuleInfo, !Requant),
+    detect_switches_in_goal_expr(!.InstMap, GoalInfo, GoalExpr0, GoalExpr,
+        !LocalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo),
     update_instmap(Goal0, !InstMap).
 
     % Here we process each of the different sorts of goals.
     %
-:- pred detect_switches_in_goal_expr(vartypes::in, allow_multi_arm::in,
-    instmap::in, hlds_goal_info::in, hlds_goal_expr::in, hlds_goal_expr::out,
-    module_info::in, module_info::out, 
-    need_to_requantify::in, need_to_requantify::out) is det.
+:- pred detect_switches_in_goal_expr(instmap::in, hlds_goal_info::in,
+    hlds_goal_expr::in, hlds_goal_expr::out,
+    local_switch_detect_info::in, local_switch_detect_info::out) is det.
 
-detect_switches_in_goal_expr(VarTypes, AllowMulti, InstMap0,
-        GoalInfo, GoalExpr0, GoalExpr, !ModuleInfo, !Requant) :-
+detect_switches_in_goal_expr(InstMap0, GoalInfo, GoalExpr0, GoalExpr,
+        !LocalInfo) :-
     (
         GoalExpr0 = disj(Disjuncts0),
         (
@@ -243,32 +278,26 @@ detect_switches_in_goal_expr(VarTypes, AllowMulti, InstMap0,
             NonLocals = goal_info_get_nonlocals(GoalInfo),
             set.to_sorted_list(NonLocals, NonLocalsList),
             detect_switches_in_disj(GoalInfo, NonLocalsList,
-                VarTypes, AllowMulti, Disjuncts0, NonLocalsList, InstMap0,
-                [], GoalExpr, !ModuleInfo, !Requant)
+                Disjuncts0, NonLocalsList, InstMap0, [], GoalExpr, !LocalInfo)
         )
     ;
         GoalExpr0 = conj(ConjType, Goals0),
-        detect_switches_in_conj(VarTypes, AllowMulti, InstMap0,
-            Goals0, Goals, !ModuleInfo, !Requant),
+        detect_switches_in_conj(InstMap0, Goals0, Goals, !LocalInfo),
         GoalExpr = conj(ConjType, Goals)
     ;
         GoalExpr0 = negation(SubGoal0),
-        detect_switches_in_goal(VarTypes, AllowMulti, InstMap0,
-            SubGoal0, SubGoal, !ModuleInfo, !Requant),
+        detect_switches_in_goal(InstMap0, SubGoal0, SubGoal, !LocalInfo),
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        detect_switches_in_goal_update_instmap(VarTypes, AllowMulti,
-            InstMap0, InstMap1, Cond0, Cond, !ModuleInfo, !Requant),
-        detect_switches_in_goal(VarTypes, AllowMulti,
-            InstMap1, Then0, Then, !ModuleInfo, !Requant),
-        detect_switches_in_goal(VarTypes, AllowMulti,
-            InstMap0, Else0, Else, !ModuleInfo, !Requant),
+        detect_switches_in_goal_update_instmap(InstMap0, InstMap1, Cond0, Cond,
+            !LocalInfo),
+        detect_switches_in_goal(InstMap1, Then0, Then, !LocalInfo),
+        detect_switches_in_goal(InstMap0, Else0, Else, !LocalInfo),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        detect_switches_in_cases(Var, VarTypes, AllowMulti, InstMap0,
-            Cases0, Cases,  !ModuleInfo, !Requant),
+        detect_switches_in_cases(Var, InstMap0, Cases0, Cases, !LocalInfo),
         GoalExpr = switch(Var, CanFail, Cases)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
@@ -277,8 +306,7 @@ detect_switches_in_goal_expr(VarTypes, AllowMulti, InstMap0,
             % inside these scopes.
             SubGoal = SubGoal0
         ;
-            detect_switches_in_goal(VarTypes, AllowMulti, InstMap0,
-                SubGoal0, SubGoal, !ModuleInfo, !Requant)
+            detect_switches_in_goal(InstMap0, SubGoal0, SubGoal, !LocalInfo)
         ),
         GoalExpr = scope(Reason, SubGoal)
     ;
@@ -287,10 +315,11 @@ detect_switches_in_goal_expr(VarTypes, AllowMulti, InstMap0,
             RHS0 = rhs_lambda_goal(_, _, _, _, _, Vars, Modes, _, LambdaGoal0),
             % We need to insert the initial insts for the lambda variables
             % in the instmap before processing the lambda goal.
-            instmap.pre_lambda_update(!.ModuleInfo, Vars, Modes,
+            ModuleInfo = !.LocalInfo ^ lsdi_module_info,
+            instmap.pre_lambda_update(ModuleInfo, Vars, Modes,
                 InstMap0, InstMap1),
-            detect_switches_in_goal(VarTypes, AllowMulti, InstMap1,
-                LambdaGoal0, LambdaGoal, !ModuleInfo, !Requant),
+            detect_switches_in_goal(InstMap1, LambdaGoal0, LambdaGoal,
+                !LocalInfo),
             RHS = RHS0 ^ rhs_lambda_goal := LambdaGoal,
             GoalExpr = GoalExpr0 ^ unify_rhs := RHS
         ;
@@ -310,24 +339,72 @@ detect_switches_in_goal_expr(VarTypes, AllowMulti, InstMap0,
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal0, OrElseGoals0, OrElseInners),
-            detect_switches_in_goal(VarTypes, AllowMulti, InstMap0,
-                MainGoal0, MainGoal, !ModuleInfo, !Requant),
-            detect_switches_in_orelse(VarTypes, AllowMulti, InstMap0,
-                OrElseGoals0, OrElseGoals, !ModuleInfo, !Requant),
+            detect_switches_in_goal(InstMap0, MainGoal0, MainGoal, !LocalInfo),
+            detect_switches_in_orelse(InstMap0, OrElseGoals0, OrElseGoals,
+                !LocalInfo),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal, OrElseGoals, OrElseInners)
         ;
             ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
-            detect_switches_in_goal(VarTypes, AllowMulti, InstMap0,
-                SubGoal0, SubGoal, !ModuleInfo, !Requant),
+            detect_switches_in_goal(InstMap0, SubGoal0, SubGoal, !LocalInfo),
             ShortHand = try_goal(MaybeIO, ResultVar, SubGoal)
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "detect_switches_in_goal_2: bi_implication")
+            unexpected(this_file,
+                "detect_switches_in_goal_expr: bi_implication")
         ),
         GoalExpr = shorthand(ShortHand)
     ).
+
+:- pred detect_sub_switches_in_disj(instmap::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    local_switch_detect_info::in, local_switch_detect_info::out) is det.
+
+detect_sub_switches_in_disj(_, [], [], !LocalInfo).
+detect_sub_switches_in_disj(InstMap, [Goal0 | Goals0], [Goal | Goals],
+        !LocalInfo) :-
+    detect_switches_in_goal(InstMap, Goal0, Goal, !LocalInfo),
+    detect_sub_switches_in_disj(InstMap, Goals0, Goals, !LocalInfo).
+
+:- pred detect_switches_in_cases(prog_var::in, instmap::in,
+    list(case)::in, list(case)::out,
+    local_switch_detect_info::in, local_switch_detect_info::out) is det.
+
+detect_switches_in_cases(_, _, [], [], !LocalInfo).
+detect_switches_in_cases(Var, InstMap0, [Case0 | Cases0], [Case | Cases],
+        !LocalInfo) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
+    VarTypes = !.LocalInfo ^ lsdi_vartypes,
+    ModuleInfo0 = !.LocalInfo ^ lsdi_module_info,
+    map.lookup(VarTypes, Var, VarType),
+    bind_var_to_functors(Var, VarType, MainConsId, OtherConsIds,
+        InstMap0, InstMap1, ModuleInfo0, ModuleInfo),
+    !LocalInfo ^ lsdi_module_info := ModuleInfo,
+    detect_switches_in_goal(InstMap1, Goal0, Goal, !LocalInfo),
+    Case = case(MainConsId, OtherConsIds, Goal),
+    detect_switches_in_cases(Var, InstMap0, Cases0, Cases, !LocalInfo).
+
+:- pred detect_switches_in_conj(instmap::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    local_switch_detect_info::in, local_switch_detect_info::out) is det.
+
+detect_switches_in_conj(_, [], [], !LocalInfo).
+detect_switches_in_conj(InstMap0,
+        [Goal0 | Goals0], [Goal | Goals], !LocalInfo) :-
+    detect_switches_in_goal_update_instmap(InstMap0, InstMap1, Goal0, Goal,
+        !LocalInfo),
+    detect_switches_in_conj(InstMap1, Goals0, Goals, !LocalInfo).
+
+:- pred detect_switches_in_orelse(instmap::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    local_switch_detect_info::in, local_switch_detect_info::out) is det.
+
+detect_switches_in_orelse(_, [], [], !LocalInfo).
+detect_switches_in_orelse(InstMap, [Goal0 | Goals0], [Goal | Goals],
+        !LocalInfo) :-
+    detect_switches_in_goal(InstMap, Goal0, Goal, !LocalInfo),
+    detect_switches_in_orelse(InstMap, Goals0, Goals, !LocalInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -524,20 +601,19 @@ add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
     % of the disjuncts such that each group of disjunctions can only succeed
     % if the variable is bound to a different functor.
     %
-:- pred detect_switches_in_disj(hlds_goal_info::in,
-    list(prog_var)::in, vartypes::in, allow_multi_arm::in,
+:- pred detect_switches_in_disj(hlds_goal_info::in, list(prog_var)::in,
     list(hlds_goal)::in, list(prog_var)::in, instmap::in, list(again)::in,
-    hlds_goal_expr::out, module_info::in, module_info::out,
-    need_to_requantify::in, need_to_requantify::out) is det.
+    hlds_goal_expr::out,
+    local_switch_detect_info::in, local_switch_detect_info::out) is det.
 
-detect_switches_in_disj(GoalInfo, AllVars, VarTypes, AllowMulti, Disjuncts0,
-        [Var | Vars], InstMap, AgainList0, GoalExpr, !ModuleInfo, !Requant) :-
+detect_switches_in_disj(GoalInfo, AllVars, Disjuncts0,
+        [Var | Vars], InstMap, AgainList0, GoalExpr, !LocalInfo) :-
     % Can we do at least a partial switch on this variable?
     (
         instmap_lookup_var(InstMap, Var, VarInst0),
-        inst_is_bound(!.ModuleInfo, VarInst0),
-        partition_disj(AllowMulti, Disjuncts0, Var, GoalInfo, Left, CasesList,
-            !Requant)
+        ModuleInfo = !.LocalInfo ^ lsdi_module_info,
+        inst_is_bound(ModuleInfo, VarInst0),
+        partition_disj(Disjuncts0, Var, GoalInfo, Left, CasesList, !LocalInfo)
     ->
         % A switch needs to have at least two cases.
         %
@@ -550,11 +626,10 @@ detect_switches_in_disj(GoalInfo, AllVars, VarTypes, AllowMulti, Disjuncts0,
             % Are there any disjuncts that are not part of the switch? No.
             Left = [],
             ( CasesList = [_, _ | _] ->
-                cases_to_switch(Var, VarTypes, AllowMulti,
-                    CasesList, InstMap, GoalExpr, !ModuleInfo, !Requant)
+                cases_to_switch(Var, CasesList, InstMap, GoalExpr, !LocalInfo)
             ;
-                detect_sub_switches_in_disj(VarTypes, AllowMulti,
-                    InstMap, Disjuncts0, Disjuncts, !ModuleInfo, !Requant),
+                detect_sub_switches_in_disj(InstMap, Disjuncts0, Disjuncts,
+                    !LocalInfo),
                 GoalExpr = disj(Disjuncts)
             )
         ;
@@ -568,29 +643,25 @@ detect_switches_in_disj(GoalInfo, AllVars, VarTypes, AllowMulti, Disjuncts0,
                 AgainList1 = AgainList0
             ),
             % Try to find a switch.
-            detect_switches_in_disj(GoalInfo, AllVars, VarTypes,
-                AllowMulti, Disjuncts0, Vars, InstMap, AgainList1, GoalExpr,
-                !ModuleInfo, !Requant)
+            detect_switches_in_disj(GoalInfo, AllVars, Disjuncts0,
+                Vars, InstMap, AgainList1, GoalExpr, !LocalInfo)
         )
     ;
-        detect_switches_in_disj(GoalInfo, AllVars, VarTypes,
-            AllowMulti, Disjuncts0, Vars, InstMap, AgainList0, GoalExpr,
-            !ModuleInfo, !Requant)
+        detect_switches_in_disj(GoalInfo, AllVars, Disjuncts0,
+            Vars, InstMap, AgainList0, GoalExpr, !LocalInfo)
     ).
-detect_switches_in_disj(GoalInfo, AllVars, VarTypes, AllowMulti, Disjuncts0,
-        [], InstMap, AgainList0, disj(Disjuncts), !ModuleInfo, !Requant) :-
+detect_switches_in_disj(GoalInfo, AllVars, Disjuncts0,
+        [], InstMap, AgainList0, disj(Disjuncts), !LocalInfo) :-
     (
         AgainList0 = [],
-        detect_sub_switches_in_disj(VarTypes, AllowMulti, InstMap,
-            Disjuncts0, Disjuncts, !ModuleInfo, !Requant)
+        detect_sub_switches_in_disj(InstMap, Disjuncts0, Disjuncts, !LocalInfo)
     ;
         AgainList0 = [Again | AgainList1],
         select_best_switch(AgainList1, Again, BestAgain),
         BestAgain = again(Var, Left0, CasesList),
-        cases_to_switch(Var, VarTypes, AllowMulti,
-            CasesList, InstMap, SwitchGoalExpr, !ModuleInfo, !Requant),
-        detect_switches_in_disj(GoalInfo, AllVars, VarTypes, AllowMulti,
-            Left0, AllVars, InstMap, [], Left, !ModuleInfo, !Requant),
+        cases_to_switch(Var, CasesList, InstMap, SwitchGoalExpr, !LocalInfo),
+        detect_switches_in_disj(GoalInfo, AllVars, Left0, AllVars, InstMap,
+            [], Left, !LocalInfo),
         goal_to_disj_list(hlds_goal(Left, GoalInfo), LeftList),
         Disjuncts = [hlds_goal(SwitchGoalExpr, GoalInfo) | LeftList]
     ).
@@ -612,69 +683,9 @@ select_best_switch([Again | AgainList], BestAgain0, BestAgain) :-
     ),
     select_best_switch(AgainList, BestAgain1, BestAgain).
 
-:- pred detect_sub_switches_in_disj(vartypes::in,
-    allow_multi_arm::in, instmap::in,
-    list(hlds_goal)::in, list(hlds_goal)::out,
-    module_info::in, module_info::out,
-    need_to_requantify::in, need_to_requantify::out) is det.
-
-detect_sub_switches_in_disj(_, _, _, [], [], !ModuleInfo, !Requant).
-detect_sub_switches_in_disj(VarTypes, AllowMulti, InstMap,
-        [Goal0 | Goals0], [Goal | Goals], !ModuleInfo, !Requant) :-
-    detect_switches_in_goal(VarTypes, AllowMulti, InstMap,
-        Goal0, Goal, !ModuleInfo, !Requant),
-    detect_sub_switches_in_disj(VarTypes, AllowMulti, InstMap,
-        Goals0, Goals, !ModuleInfo, !Requant).
-
-:- pred detect_switches_in_cases(prog_var::in, vartypes::in,
-    allow_multi_arm::in, instmap::in, list(case)::in, list(case)::out,
-    module_info::in, module_info::out,
-    need_to_requantify::in, need_to_requantify::out) is det.
-
-detect_switches_in_cases(_, _, _, _, [], [], !ModuleInfo, !Requant).
-detect_switches_in_cases(Var, VarTypes, AllowMulti, InstMap0,
-        [Case0 | Cases0], [Case | Cases], !ModuleInfo, !Requant) :-
-    Case0 = case(MainConsId, OtherConsIds, Goal0),
-    map.lookup(VarTypes, Var, VarType),
-    bind_var_to_functors(Var, VarType, MainConsId, OtherConsIds,
-        InstMap0, InstMap1, !ModuleInfo),
-    detect_switches_in_goal(VarTypes, AllowMulti, InstMap1,
-        Goal0, Goal, !ModuleInfo, !Requant),
-    Case = case(MainConsId, OtherConsIds, Goal),
-    detect_switches_in_cases(Var, VarTypes, AllowMulti, InstMap0,
-        Cases0, Cases, !ModuleInfo, !Requant).
-
-:- pred detect_switches_in_conj(vartypes::in,
-    allow_multi_arm::in, instmap::in,
-    list(hlds_goal)::in, list(hlds_goal)::out,
-    module_info::in, module_info::out,
-    need_to_requantify::in, need_to_requantify::out) is det.
-
-detect_switches_in_conj(_, _, _, [], [], !ModuleInfo, !Requant).
-detect_switches_in_conj(VarTypes, AllowMulti, InstMap0,
-        [Goal0 | Goals0], [Goal | Goals], !ModuleInfo, !Requant) :-
-    detect_switches_in_goal_update_instmap(VarTypes, AllowMulti,
-        InstMap0, InstMap1, Goal0, Goal, !ModuleInfo, !Requant),
-    detect_switches_in_conj(VarTypes, AllowMulti,
-        InstMap1, Goals0, Goals, !ModuleInfo, !Requant).
-
-:- pred detect_switches_in_orelse(vartypes::in, allow_multi_arm::in,
-    instmap::in, list(hlds_goal)::in, list(hlds_goal)::out,
-    module_info::in, module_info::out,
-    need_to_requantify::in, need_to_requantify::out) is det.
-
-detect_switches_in_orelse(_, _, _, [], [], !ModuleInfo, !Requant).
-detect_switches_in_orelse(VarTypes, AllowMulti, InstMap,
-        [Goal0 | Goals0], [Goal | Goals], !ModuleInfo, !Requant) :-
-    detect_switches_in_goal(VarTypes, AllowMulti, InstMap, Goal0, Goal,
-        !ModuleInfo, !Requant),
-    detect_switches_in_orelse(VarTypes, AllowMulti, InstMap, Goals0, Goals,
-        !ModuleInfo, !Requant).
-
 %-----------------------------------------------------------------------------%
 
-    % partition_disj(AllowMulti, Disjuncts, Var, GoalInfo, VarTypes,
-    %   ModuleInfo, Left, Cases):
+    % partition_disj(Disjuncts, Var, GoalInfo, Left, Cases, !LocalInfo):
     %
     % Attempts to partition the disjunction `Disjuncts' into a switch on `Var'.
     % If at least partially successful, returns the resulting `Cases', with
@@ -687,11 +698,11 @@ detect_switches_in_orelse(VarTypes, AllowMulti, InstMap,
     % unifications at the start of each disjunction, to build up a
     % substitution.
     %
-:- pred partition_disj(allow_multi_arm::in, list(hlds_goal)::in,
-    prog_var::in, hlds_goal_info::in, list(hlds_goal)::out, list(case)::out,
-    need_to_requantify::in, need_to_requantify::out) is semidet.
+:- pred partition_disj(list(hlds_goal)::in, prog_var::in, hlds_goal_info::in,
+    list(hlds_goal)::out, list(case)::out,
+    local_switch_detect_info::in, local_switch_detect_info::out) is semidet.
 
-partition_disj(AllowMulti, Disjuncts0, Var, GoalInfo, Left, Cases, !Requant) :-
+partition_disj(Disjuncts0, Var, GoalInfo, Left, Cases, !LocalInfo) :-
     CasesTable0 = cases_table(map.init, set_tree234.init),
     partition_disj_trial(Disjuncts0, Var, [], Left1, CasesTable0, CasesTable1),
     (
@@ -705,11 +716,12 @@ partition_disj(AllowMulti, Disjuncts0, Var, GoalInfo, Left, Cases, !Requant) :-
         % We don't insist on there being at least one case in CasesTable1,
         % to allow for switches in which *all* cases contain subsidiary
         % disjunctions.
+        AllowMulti = !.LocalInfo ^ lsdi_allow_multi_arm,
         ( expand_sub_disjs(AllowMulti, Var, Left1, CasesTable1, CasesTable) ->
             Left = [],
             num_cases_in_table(CasesTable) >= 1,
             Cases = convert_cases_table(GoalInfo, CasesTable),
-            !:Requant = need_to_requantify
+            !LocalInfo ^ lsdi_requant := need_to_requantify
         ;
             Left = Left1,
             Cases = convert_cases_table(GoalInfo, CasesTable1)
@@ -1019,23 +1031,23 @@ conj_find_bind_var(Var, ProcessUnify, [Goal0 | Goals0], [Goal | Goals],
 
 %-----------------------------------------------------------------------------%
 
-:- pred cases_to_switch(prog_var::in, vartypes::in, allow_multi_arm::in,
-    list(case)::in, instmap::in, hlds_goal_expr::out,
-    module_info::in, module_info::out, 
-    need_to_requantify::in, need_to_requantify::out) is det.
+:- pred cases_to_switch(prog_var::in, list(case)::in, instmap::in,
+    hlds_goal_expr::out,
+    local_switch_detect_info::in, local_switch_detect_info::out) is det.
 
-cases_to_switch(Var, VarTypes, AllowMulti, Cases0, InstMap, GoalExpr,
-        !ModuleInfo, !Requant) :-
+cases_to_switch(Var, Cases0, InstMap, GoalExpr, !LocalInfo) :-
+    ModuleInfo = !.LocalInfo ^ lsdi_module_info,
+    VarTypes = !.LocalInfo ^ lsdi_vartypes,
     instmap_lookup_var(InstMap, Var, VarInst),
     map.lookup(VarTypes, Var, Type),
-    ( inst_is_bound_to_functors(!.ModuleInfo, VarInst, Functors) ->
+    ( inst_is_bound_to_functors(ModuleInfo, VarInst, Functors) ->
         type_to_ctor_det(Type, TypeCtor),
         bound_insts_to_cons_ids(TypeCtor, Functors, ConsIds),
         delete_unreachable_cases(Cases0, ConsIds, Cases1),
         CanFail = compute_can_fail(ConsIds, Cases1)
     ;
         Cases1 = Cases0,
-        ( switch_type_num_functors(!.ModuleInfo, Type, NumFunctors) ->
+        ( switch_type_num_functors(ModuleInfo, Type, NumFunctors) ->
             % We could check for each cons_id of the type whether a case covers
             % it, but given that type checking ensures that the set of covered
             % cons_ids is a subset of the set of cons_ids of the type, checking
@@ -1048,8 +1060,7 @@ cases_to_switch(Var, VarTypes, AllowMulti, Cases0, InstMap, GoalExpr,
             CanFail = can_fail
         )
     ),
-    detect_switches_in_cases(Var, VarTypes, AllowMulti, InstMap,
-        Cases1, Cases, !ModuleInfo, !Requant),
+    detect_switches_in_cases(Var, InstMap, Cases1, Cases, !LocalInfo),
 
     % We turn switches with no arms into fail, since this avoids having
     % the code generator flush the control variable of the switch.
