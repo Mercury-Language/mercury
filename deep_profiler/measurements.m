@@ -21,6 +21,7 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
+:- import_module mdbcomp.feedback.automatic_parallelism.
 :- import_module measurement_units.
 
 %-----------------------------------------------------------------------------%

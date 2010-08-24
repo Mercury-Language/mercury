@@ -22,10 +22,10 @@
 :- import_module message.
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
+:- import_module mdbcomp.feedback.automatic_parallelism.
 :- import_module mdbcomp.program_representation.
 
 :- import_module cord.
-:- import_module int.
 :- import_module pair.
 
 %-----------------------------------------------------------------------------%
@@ -75,11 +75,11 @@
 :- import_module digraph.
 :- import_module float.
 :- import_module io.
+:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
-:- import_module pqueue.
 :- import_module require.
 :- import_module set.
 :- import_module set_tree234.
