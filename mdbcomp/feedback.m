@@ -20,7 +20,7 @@
 
 :- interface.
 
-% If you add any modules here, you should update the lists in 
+% If you add any modules here, you should update the lists in
 % deep_profiler/Mmakefile and slice/Mmakefile.
 :- include_module automatic_parallelism.
 
@@ -57,24 +57,24 @@
     %
 :- type feedback_data
     --->    feedback_data_calls_above_threshold_sorted(
-                    % Feedback data of this type represents a list of call
-                    % sites sorted in descending order of mean or median call
-                    % cost where that cost is greater than a given threshold.
- 
+                % Feedback data of this type represents a list of call sites
+                % sorted in descending order of mean or median call cost
+                % where that cost is greater than a given threshold.
+
                 threshold       :: int,
                 stat_measure    :: stat_measure,
                 calls           :: list(call_site)
             )
     ;       feedback_data_candidate_parallel_conjunctions(
-                    % Data of this type represents a list of candidate
-                    % conjunctions for implicit parallelism.
+                % Data of this type represents a list of candidate
+                % conjunctions for implicit parallelism.
 
                 parameters      :: candidate_par_conjunctions_params,
 
-                conjunctions    :: assoc_list(string_proc_label, 
+                % Assoclist of procedure labels and candidate parallel
+                % conjunctions.
+                conjunctions    :: assoc_list(string_proc_label,
                                         candidate_par_conjunctions_proc)
-                    % Assoclist of procedure labels and candidate parallel
-                    % conjunctions.
             ).
 
 :- inst feedback_data_query
@@ -95,12 +95,12 @@
 
 %-----------------------------------------------------------------------------%
 
-    % get_feedback_data(Info, Data).
+    % get_feedback_data(Info, Data):
     %
     % When given a partially instantiated Data term representing the query this
     % will either fully instantiate the term or fail.
     %
-:- pred get_feedback_data(feedback_info::in, 
+:- pred get_feedback_data(feedback_info::in,
     feedback_data::feedback_data_query) is semidet.
 
 :- mode feedback_data_query ==
@@ -115,7 +115,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % read_feedback_file(Path, FeedbackInfo, !IO)
+    % read_feedback_file(Path, FeedbackInfo, !IO):
     %
     % This predicate reads in feedback data from a specified file.
     % It should be called once per compiler invocation.
@@ -144,7 +144,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % read_error_message_string(File, Error, Message)
+    % read_error_message_string(File, Error, Message):
     %
     % Create a string describing the read error.
     %
@@ -153,7 +153,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % read_or_create(Path, ProgramName, Result, !IO).
+    % read_or_create(Path, ProgramName, Result, !IO):
     %
     % Try to read in a feedback file, if the file doesn't exist create a new
     % empty feedback state in memory.
@@ -167,7 +167,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % init_feedback_info(ProgramName) = FeedbackInfo
+    % init_feedback_info(ProgramName) = FeedbackInfo:
     %
     % Create a new empty feedback info structure.
     %
@@ -176,7 +176,7 @@
 %-----------------------------------------------------------------------------%
 
     % write_feedback_file(Path, ProgName, FeedbackInfo, FeedbackWriteResult,
-    %   !IO)
+    %   !IO):
     %
     % Write out the feedback data to a given file name.
     %
@@ -205,10 +205,10 @@
 
 :- type feedback_info
     --->    feedback_info(
-                fi_program_name                 :: string,
-                fi_map                          :: map(feedback_type, 
-                                                    feedback_data)
-                    % The actual feedback data as read from the feedback file.
+                fi_program_name :: string,
+
+                % The actual feedback data as read from the feedback file.
+                fi_map          :: map(feedback_type, feedback_data)
             ).
 
     % This type is used as a key for the data that may be fed back into the
@@ -232,8 +232,7 @@ get_feedback_data(Info, Data) :-
         Data = DataPrime
     ;
         impure impure_true,
-        feedback_data_mismatch_error("get_feedback_data/3: ", Type,
-            DataPrime)
+        feedback_data_mismatch_error("get_feedback_data/3: ", Type, DataPrime)
     ).
 
 get_all_feedback_data(Info, AllData) :-
@@ -248,7 +247,7 @@ put_feedback_data(Data, !Info) :-
     some [!Map] (
         !:Map = !.Info ^ fi_map,
         svmap.set(Type, Data, !Map),
-        !:Info = !.Info ^ fi_map := !.Map
+        !Info ^ fi_map := !.Map
     ).
 
 %----------------------------------------------------------------------------%
@@ -263,7 +262,7 @@ feedback_data_type(feedback_type_calls_above_threshold_sorted,
 feedback_data_type(feedback_type_candidate_parallel_conjunctions,
     feedback_data_candidate_parallel_conjunctions(_, _)).
 
-:- pred feedback_data_mismatch_error(string::in, feedback_type::in, 
+:- pred feedback_data_mismatch_error(string::in, feedback_type::in,
     feedback_data::in) is erroneous.
 
 feedback_data_mismatch_error(Predicate, Type, Data) :-
@@ -276,9 +275,8 @@ feedback_data_mismatch_error(Predicate, Type, Data) :-
 read_feedback_file(Path, ReadResultFeedbackInfo, !IO) :-
     io.open_input(Path, IOResStream, !IO),
     (
-        %
         % Set the data file as the current stream and call read2.
-        %
+
         IOResStream = ok(Stream),
         some [!Result] (
             % Read each part of the file and continue reading of this is
@@ -302,13 +300,14 @@ read_feedback_file(Path, ReadResultFeedbackInfo, !IO) :-
     ).
 
     % If the result so far is successful, call the closure and return its
-    % result.  Otherwise return the accumulated result without calling the
+    % result. Otherwise, return the accumulated result without calling the
     % closure.
     %
-:- pred maybe_read(pred(A, feedback_read_result(B), io, io),
-    feedback_read_result(A), feedback_read_result(B), io, io).
-:- mode maybe_read(pred(in, out, di, uo) is det,
-    in, out, di, uo) is det.
+:- pred maybe_read(
+    pred(A, feedback_read_result(B), io, io)::
+        in(pred(in, out, di, uo) is det),
+    feedback_read_result(A)::in, feedback_read_result(B)::out,
+    io::di, io::uo) is det.
 
 maybe_read(Pred, Result0, Result, !IO) :-
     (
