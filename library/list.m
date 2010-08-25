@@ -2867,14 +2867,18 @@ list_to_doc_2([X | Xs]) = Doc :-
 ** the interfaces would expect type_info arguments.
 */
 
+/*
+** If you need to specify the type parameter, you must use the qualified
+** method name, e.g. list.<Integer>empty_list()
+*/
 public static <E>
 List_1<E> empty_list()
 {
     return new List_1.F_nil_0<E>();
 }
 
-public static <E>
-List_1<E> cons(E head, List_1<E> tail)
+public static <E, F extends E>
+List_1<E> cons(F head, List_1<E> tail)
 {
     return new List_1.F_cons_2<E>(head, tail);
 }

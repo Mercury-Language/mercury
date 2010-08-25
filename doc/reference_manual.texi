@@ -7110,7 +7110,8 @@ boolean   list.is_empty(List_1<E> list)     // test if a list is empty
 E         list.det_head(List_1<E> list)     // get the head of a list
 List_1<E> list.det_tail(List_1<E> list)     // get the tail of a list
 List_1<E> list.empty_list()                 // create an empty list
-List_1<E> list.cons(E head, List_1<E> tail) // construct a list with
+<E, F extends E> List_1<E> list.cons(F head, List_1<E> tail)
+                                            // construct a list with
                                             //  the given head and tail
 @end example
 
