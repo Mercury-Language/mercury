@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2009 The University of Melbourne.
+% Copyright (C) 2008-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -133,6 +133,10 @@
     %
 :- func probability_to_float(probability) = float.
 
+    % Combine probabilities.
+:- func or(probability, probability) = probability.
+:- func and(probability, probability) = probability.
+
 %-----------------------------------------------------------------------------%
 %
 % Code for formatting numbers.
@@ -204,15 +208,7 @@ compare_memory(MemoryA, MemoryB, Result) :-
 :- type percent
     --->    percent_float(float).
 
-percent(P) = PF :-
-    (
-        0.0 =< P,
-        P =< 1.0
-    ->
-        PF = percent_float(P)
-    ;
-        error("Percentage value out of range 0.0 to 1.0 (inclusive)")
-    ).
+percent(P) = percent_float(P).
 
 format_percent(percent_float(P)) = String :-
     string.format("%.2f", [f(P * 100.0)], String).
@@ -303,6 +299,12 @@ probable(Prob) = Prob :-
     ).
 
 probability_to_float(Prob) = Prob.
+
+    % Combine disjoint probabilities with addition.
+or(A, B) = A + B.
+
+    % Combine conjoint probabilities with multiplication.
+and(A, B) = A * B.
 
 %-----------------------------------------------------------------------------%
 %

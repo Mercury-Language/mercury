@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 The University of Melbourne.
+% Copyright (C) 2002-2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -213,7 +213,11 @@ write_help_message(ProgName) -->
         "--test-dir <dirname>\n" ++
         "\t\t\tPut the generated web pages into <dirname>.\n" ++
         "--no-compress\n" ++
-        "\t\t\tDon't compress the resulting files, this speeds the test.").
+        "\t\t\tDon't compress the resulting files, this speeds the test.\n" ++
+        "--procrep-coverage\n" ++
+        "\t\t\tRun the procrep coverage query on every static procedure\n" ++
+        "--recursion-types-histogram\n" ++
+        "\t\t\tRun the recursion types histogram query\n").
     % --canonical-clique is not documented because it is not yet supported
 
 %-----------------------------------------------------------------------------%
@@ -225,15 +229,29 @@ test_server(Pref, Deep, Options, !IO) :-
     lookup_string_option(Options, test_dir, DirName),
     string.format("test -d %s || mkdir -p %s", [s(DirName), s(DirName)], Cmd),
     io.call_system(Cmd, _, !IO),
-    
+
     %XXX: These features have been disabled.  Configuration options should be
     % introduced to enable them as the user desires.
     % array.max(Deep ^ clique_members, NumCliques),
     % test_cliques(1, NumCliques, DirName, Pref, Deep, !IO),
     % test_procs(1, NumProcStatics, DirName, Pref, Deep, !IO).
     
-    array.max(Deep ^ proc_statics, NumProcStatics),
-    test_procrep_coverages(1, NumProcStatics, Pref, Deep, Options, !IO).
+    lookup_bool_option(Options, procrep_coverage, ProcrepCoverage),
+    (
+        ProcrepCoverage = yes,
+        array.max(Deep ^ proc_statics, NumProcStatics),
+        test_procrep_coverages(1, NumProcStatics, Pref, Deep, Options, !IO)
+    ;
+        ProcrepCoverage = no
+    ),
+
+    lookup_bool_option(Options, recursion_types_histogram, RecTypesHistogram),
+    (
+        RecTypesHistogram = yes,
+        test_recursion_types_histogram(Pref, Deep, Options, !IO)
+    ;
+        RecTypesHistogram = no
+    ).
 
 :- pred test_cliques(int::in, int::in, option_table::in, preferences::in,
     deep::in, io::di, io::uo) is cc_multi.
@@ -270,6 +288,15 @@ test_procrep_coverages(Cur, Max, Pref, Deep, Options, !IO) :-
         test_procrep_coverages(Cur + 1, Max, Pref, Deep, Options, !IO)
     ;
         true
+    ).
+
+:- pred test_recursion_types_histogram(preferences::in, deep::in, 
+    option_table::in, io::di, io::uo) is det.
+
+test_recursion_types_histogram(Pref, Deep, Options, !IO) :-
+    promise_equivalent_solutions [!:IO] (
+        try_exec(deep_cmd_recursion_types_frequency, Pref, Deep, HTML, !IO),
+        write_test_html(Options, "recursion_types_histogram", 1, HTML, !IO)
     ).
 
 :- func progrep_error = maybe_error(prog_rep).
@@ -331,7 +358,9 @@ write_test_html(Options, BaseName, Num, HTML, !IO) :-
     ;       test_dir
     ;       verbose
     ;       version
-    ;       verify_profile.
+    ;       verify_profile
+    ;       procrep_coverage
+    ;       recursion_types_histogram.
 
 :- type options ---> options.
 :- type option_table == (option_table(option)).
@@ -346,29 +375,33 @@ short('v',  verbose).
 
 :- pred long(string::in, option::out) is semidet.
 
-long("canonical-clique",    canonical_clique).
-long("compress",            compress).
-long("dump",                dump).
-long("dump-options",        dump_options).
-long("help",                help).
-long("test",                test).
-long("test-dir",            test_dir).
-long("verbose",             verbose).
-long("version",             version).
-long("verify-profile",      verify_profile).
+long("canonical-clique",            canonical_clique).
+long("compress",                    compress).
+long("dump",                        dump).
+long("dump-options",                dump_options).
+long("help",                        help).
+long("test",                        test).
+long("test-dir",                    test_dir).
+long("verbose",                     verbose).
+long("version",                     version).
+long("verify-profile",              verify_profile).
+long("procrep-coverage",            procrep_coverage).
+long("recursion-types-histogram",   recursion_types_histogram).
 
 :- pred defaults(option::out, option_data::out) is multi.
 
-defaults(canonical_clique,  bool(no)).
-defaults(compress,          bool(yes)).
-defaults(dump,              accumulating([])).
-defaults(dump_options,      accumulating([])).
-defaults(help,              bool(no)).
-defaults(test,              bool(no)).
-defaults(test_dir,          string("deep_test")).
-defaults(verbose,           bool(no)).
-defaults(version,           bool(no)).
-defaults(verify_profile,    bool(no)).
+defaults(canonical_clique,          bool(no)).
+defaults(compress,                  bool(yes)).
+defaults(dump,                      accumulating([])).
+defaults(dump_options,              accumulating([])).
+defaults(help,                      bool(no)).
+defaults(test,                      bool(no)).
+defaults(test_dir,                  string("deep_test")).
+defaults(verbose,                   bool(no)).
+defaults(version,                   bool(no)).
+defaults(verify_profile,            bool(no)).
+defaults(procrep_coverage,          bool(no)).
+defaults(recursion_types_histogram, bool(no)).
 
 %-----------------------------------------------------------------------------%
 :- end_module mdprof_test.

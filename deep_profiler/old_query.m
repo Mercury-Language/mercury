@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003, 2005-2009 The University of Melbourne.
+% Copyright (C) 2001-2003, 2005-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -148,6 +148,12 @@ old_exec(deep_cmd_dump_proc_var_use(_), _, _, HTML, !IO) :-
 old_exec(deep_cmd_module_getter_setters(_), _, _, HTML, !IO) :-
     HTML = "old_query.m: " ++
         "deep_cmd_module_getter_setters is unsupported by old_exec\n". 
+old_exec(deep_cmd_clique_recursive_costs(_), _, _, HTML, !IO) :-
+    HTML = "old_query.m: " ++
+        "deep_cmd_clique_recursive_costs is unsupported by old_exec\n".
+old_exec(deep_cmd_recursion_types_frequency, _, _, HTML, !IO) :-
+    HTML = "old_query.m: " ++
+        "deep_cmd_recursion_types_frequency is unsupported by old_exec\n".
 
 %-----------------------------------------------------------------------------%
 

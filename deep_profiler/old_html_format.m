@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2009 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -409,9 +409,12 @@ command_relevant_toggles(deep_cmd_dump_call_site_static(_)) = [].
 command_relevant_toggles(deep_cmd_dump_call_site_dynamic(_)) = [].
 command_relevant_toggles(deep_cmd_dump_clique(_)) = [].
 command_relevant_toggles(deep_cmd_dump_proc_var_use(_)) = [].
-command_relevant_toggles(deep_cmd_procrep_coverage(_)) = [] :-
-    error("unexpected command in command_relevant_toggles").
-command_relevant_toggles(deep_cmd_module_getter_setters(_)) = [] :-
+command_relevant_toggles(Cmd) = [] :-
+    ( Cmd = deep_cmd_procrep_coverage(_)
+    ; Cmd = deep_cmd_module_getter_setters(_)
+    ; Cmd = deep_cmd_clique_recursive_costs(_)
+    ; Cmd = deep_cmd_recursion_types_frequency
+    ),
     error("unexpected command in command_relevant_toggles").
 
 :- func footer_field_toggle(cmd, preferences, deep) = string.

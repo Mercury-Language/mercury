@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2009 The University of Melbourne.
+% Copyright (C) 2008-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -34,6 +34,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module set.
 :- import_module string.
 :- import_module unit.
 
@@ -48,6 +49,12 @@
             )
     ;       report_clique(
                 maybe_error(clique_report)
+            )
+    ;       report_clique_recursion_costs(
+                maybe_error(clique_recursion_report)
+            )
+    ;       report_recursion_types_frequency(
+                maybe_error(recursion_types_frequency_report)
             )
     ;       report_program_modules(
                 maybe_error(program_modules_report)
@@ -172,11 +179,11 @@
     --->    clique_proc_dynamic_report(
                 % Summary information for the cost of this proc _dynamic
                 % in this clique.
-                cpdr_proc_summary            :: perf_row_data(proc_desc),
+                cpdr_proc_summary           :: perf_row_data(proc_desc),
 
                 % Information about the costs of the call sites in this
                 % procedure in this clique.
-                cpdr_call_sites              :: list(clique_call_site_report)
+                cpdr_call_sites             :: list(clique_call_site_report)
             ).
 
 :- type clique_call_site_report
@@ -195,6 +202,88 @@
                 % some other kind of call site, the list may have any number
                 % of entries.
                 ccsr_callee_perfs           :: list(perf_row_data(clique_desc))
+            ).
+
+:- type clique_recursion_report
+    --->    clique_recursion_report(
+                % The clique the report is for.
+                crr_clique_ptr              :: clique_ptr,
+
+                % The type of recursion in this clique.
+                crr_recursion_type          :: recursion_type,
+
+                % The number of procuedures in the clique.
+                crr_num_procs               :: int
+            ).
+
+:- type recursion_type
+    --->    rt_not_recursive
+    ;       rt_single(
+                rts_base                    :: recursion_level_report,
+                rts_recursive               :: recursion_level_report
+            )
+    ;       rt_divide_and_conquer(
+                rtdsc_base                  :: recursion_level_report,
+                rtdsc_recursive             :: recursion_level_report
+            )
+    ;       rt_mutual_recursion(
+                rtml_num_procs              :: int
+            )
+    ;       rt_other(
+                rto_all_levels              :: list(recursion_level_report)
+            )
+    ;       rt_errors(
+                rte_errors                  :: list(string)
+            ).
+
+:- type recursion_level_report
+    --->    recursion_level_report(
+                rlr_level                       :: int,
+                rlr_calls                       :: int,
+                rlr_prob                        :: probability,
+                rlr_non_rec_calls_cost          :: float,
+                rlr_rec_calls_ex_chld_cost      :: float
+            ).
+ 
+:- type recursion_types_frequency_report
+    --->    recursion_types_frequency_report(
+                rtfr_histogram                  :: recursion_type_histogram
+            ).
+
+:- type recursion_type_histogram == 
+    map(recursion_type_simple, recursion_type_freq_data). 
+
+:- type recursion_type_simple
+    --->    rts_not_recursive
+    ;       rts_single
+    ;       rts_divide_and_conquer
+    ;       rts_mutual_recursion(
+                rtsmr_num_procs                 :: int
+            )
+    ;       rts_other(
+                rtso_levels                     :: set(int)
+            )
+    ;       rts_error(
+                rtse_error                      :: string
+            )
+    ;       rts_total_error_instances.
+
+:- type recursion_type_freq_data
+    --->    recursion_type_freq_data(
+                rtfd_freq                       :: int,
+                rtfd_percent                    :: percent,
+                rtfd_maybe_summary              :: maybe(perf_row_data(unit)),
+                rtfd_entry_procs                :: recursion_type_proc_map
+            ).
+
+:- type recursion_type_proc_map ==
+    map(proc_static_ptr, recursion_type_proc_freq_data).
+
+:- type recursion_type_proc_freq_data
+    --->    recursion_type_proc_freq_data(
+                rtpfd_freq                      :: int,
+                rtpfd_percent                   :: percent,
+                rtpfd_summary                   :: perf_row_data(proc_desc)
             ).
 
 :- type program_modules_report
@@ -552,6 +641,42 @@
                 cdesc_entry_member              :: proc_desc,
                 cdesc_other_members             :: list(proc_desc)
             ).
+
+%-----------------------------------------------------------------------------%
+%
+% Predicates to make common actions on these types easier.
+%
+
+:- pred proc_label_from_proc_desc(deep::in, proc_desc::in,
+    string_proc_label::out) is det.
+    
+    % foldl(add_call_site_report_to_map(CallSiteReports, map.init,
+    %   CallSitesMap).
+    %
+    % Build a map from goal paths to call site reports.
+    %
+:- pred add_call_site_report_to_map(clique_call_site_report::in, 
+    map(goal_path, clique_call_site_report)::in, 
+    map(goal_path, clique_call_site_report)::out) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module svmap.
+
+%----------------------------------------------------------------------------%
+
+proc_label_from_proc_desc(Deep, ProcDesc, ProcLabel) :-
+    PSPtr = ProcDesc ^ pdesc_ps_ptr,
+    deep_lookup_proc_statics(Deep, PSPtr, ProcStatic),
+    ProcLabel = ProcStatic ^ ps_id.
+
+add_call_site_report_to_map(CallSite, !Map) :-
+    GoalPath = CallSite ^ ccsr_call_site_summary ^ perf_row_subject 
+        ^ csdesc_goal_path,
+    svmap.det_insert(GoalPath, CallSite, !Map).
 
 %-----------------------------------------------------------------------------%
 :- end_module report.

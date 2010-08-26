@@ -16,10 +16,13 @@
 :- module create_report.
 :- interface.
 
-:- import_module maybe.
+:- import_module measurements.
 :- import_module profile.
 :- import_module query.
 :- import_module report.
+
+:- import_module list.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -55,18 +58,35 @@
 :- pred create_clique_report(deep::in, clique_ptr::in,
     maybe_error(clique_report)::out) is det.
 
+    % Instead of using the clique report above to find proc dynamics for a
+    % clique, use this as it is much faster.
+    %
+:- pred find_clique_first_and_other_procs(deep::in, clique_ptr::in, 
+    maybe(proc_dynamic_ptr)::out, list(proc_dynamic_ptr)::out) is det.
+    
+    % Create a proc_desc structure for a given proc static pointer.
+    %
+:- func describe_proc(deep, proc_static_ptr) = proc_desc.
+
+%----------------------------------------------------------------------------%
+
+    % Convert own and inherit perf information to row data used for reports.
+    %
+:- pred own_and_inherit_to_perf_row_data(deep::in, T::in,
+    own_prof_info::in, inherit_prof_info::in, perf_row_data(T)::out) is det.
+
 %----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module apply_exclusion.
-:- import_module exclude.
 :- import_module coverage.
+:- import_module exclude.
 :- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
 :- import_module measurement_units.
-:- import_module measurements.
 :- import_module program_representation_utils.
+:- import_module recursion_patterns.
 :- import_module top_procs.
 :- import_module var_use_analysis.
 
@@ -76,7 +96,6 @@
 :- import_module exception.
 :- import_module float.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module math.
 :- import_module pair.
@@ -120,6 +139,15 @@ create_report(Cmd, Deep, Report) :-
         Cmd = deep_cmd_clique(CliquePtr),
         create_clique_report(Deep, CliquePtr, MaybeCliqueReport),
         Report = report_clique(MaybeCliqueReport)
+    ;
+        Cmd = deep_cmd_clique_recursive_costs(CliquePtr),
+        create_clique_recursion_costs_report(Deep, CliquePtr,
+            MaybeCliqueRecursionReport),
+        Report = report_clique_recursion_costs(MaybeCliqueRecursionReport)
+    ;
+        Cmd = deep_cmd_recursion_types_frequency,
+        create_recursion_types_frequency_report(Deep, MaybeRecTypesFreqReport),
+        Report = report_recursion_types_frequency(MaybeRecTypesFreqReport)
     ;
         Cmd = deep_cmd_program_modules,
         create_program_modules_report(Deep, MaybeProgramModulesReport),
@@ -304,6 +332,21 @@ create_clique_report(Deep, CliquePtr, MaybeCliqueReport) :-
 
     CliqueReport = clique_report(CliquePtr, AncestorRowDatas, CliqueProcs),
     MaybeCliqueReport = ok(CliqueReport).
+
+find_clique_first_and_other_procs(Deep, CliquePtr, MaybeFirstPDPtr,
+        OtherPDPtrs) :-
+    deep_lookup_clique_members(Deep, CliquePtr, PDPtrs),
+    deep_lookup_clique_parents(Deep, CliquePtr, EntryCSDPtr),
+    ( valid_call_site_dynamic_ptr(Deep, EntryCSDPtr) ->
+        deep_lookup_call_site_dynamics(Deep, EntryCSDPtr, EntryCSD),
+        FirstPDPtr = EntryCSD ^ csd_callee,
+        MaybeFirstPDPtr = yes(FirstPDPtr),
+        list.negated_filter(unify(FirstPDPtr), PDPtrs,
+            OtherPDPtrs)
+    ;
+        MaybeFirstPDPtr = no,
+        OtherPDPtrs = PDPtrs
+    ).
 
 :- func find_clique_ancestors(deep, clique_ptr) =
     list(perf_row_data(ancestor_desc)).
@@ -1075,17 +1118,12 @@ create_proc_caller_cliques(Deep, CalleePSPtr, CliquePtr - CSDPtrs) =
 %
 
 create_procrep_coverage_report(Deep, PSPtr, MaybeReport) :-
-    MaybeProgRepResult = Deep ^ procrep_file,
+    deep_get_maybe_progrep(Deep, MaybeProgRep),
     (
-        MaybeProgRepResult = no,
-        MaybeReport = error("There is no readable " ++
-            "procedure representation information file.")
+        MaybeProgRep = error(Error),
+        MaybeReport = error(Error)
     ;
-        MaybeProgRepResult = yes(error(Error)),
-        MaybeReport = error("Error reading procedure representation " ++
-            "information file: " ++ Error)
-    ;
-        MaybeProgRepResult = yes(ok(ProgRep)),
+        MaybeProgRep = ok(ProgRep),
         ( valid_proc_static_ptr(Deep, PSPtr) ->
             deep_lookup_proc_statics(Deep, PSPtr, PS),
             ProcLabel = PS ^ ps_id,
@@ -1128,6 +1166,10 @@ create_procrep_coverage_report(Deep, PSPtr, MaybeReport) :-
     map(goal_path, call_site_perf)) =  map(goal_path, call_site_perf).
 
 create_cs_summary_add_to_map(Deep, CSStatic, Map0) = Map :-
+    % TODO: Most uses of this predicate don't need all the information that a
+    % call site summary provides.  Additionally creating a call site summary is
+    % reasonably expensive, consider using more specialised code instead as it
+    % will be faster.
     create_call_site_summary(Deep, CSStatic) = CSSummary,
     GoalPath = CSSummary ^ csf_summary_perf ^ perf_row_subject
         ^ csdesc_goal_path,
@@ -1269,9 +1311,6 @@ psi_to_perf_row_data(Deep, PSI, RowData) :-
     deep_lookup_ps_desc(Deep, PSPtr, Desc),
     own_and_inherit_to_perf_row_data(Deep, ProcDesc, Own, Desc, RowData).
 
-:- pred own_and_inherit_to_perf_row_data(deep::in, T::in,
-    own_prof_info::in, inherit_prof_info::in, perf_row_data(T)::out) is det.
-
 own_and_inherit_to_perf_row_data(Deep, Subject, Own, Desc, RowData) :-
     own_and_maybe_inherit_to_perf_row_data(Deep, Subject, Own, yes(Desc),
         RowData).
@@ -1393,10 +1432,6 @@ percent_from_ints(Nom, Denom) = Percent :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-    % Create a proc_desc structure for a given proc static pointer.
-    %
-:- func describe_proc(deep, proc_static_ptr) = proc_desc.
 
 describe_proc(Deep, PSPtr) = ProcDesc :-
     ( valid_proc_static_ptr(Deep, PSPtr) ->

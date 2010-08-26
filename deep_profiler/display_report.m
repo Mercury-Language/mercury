@@ -55,6 +55,8 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
+:- import_module solutions.
 :- import_module string.
 :- import_module unit.
 
@@ -80,6 +82,26 @@ report_to_display(Deep, Prefs, Report) = Display :-
             display_report_clique(Prefs, CliqueReport, Display)
         ;
             MaybeCliqueReport = error(Msg),
+            Display = display(no, [display_heading(Msg)])
+        )
+    ;
+        Report = report_clique_recursion_costs(MaybeCliqueRecursionReport),
+        (
+            MaybeCliqueRecursionReport = ok(CliqueRecursionReport),
+            display_report_clique_recursion(Prefs, CliqueRecursionReport,
+                Display)
+        ;
+            MaybeCliqueRecursionReport = error(Msg),
+            Display = display(no, [display_heading(Msg)])
+        )
+    ;
+        Report = report_recursion_types_frequency(MaybeRecTypesFreqReport),
+        (
+            MaybeRecTypesFreqReport = ok(RecTypesFreqReport),
+            display_report_recursion_types_frequency(Prefs, RecTypesFreqReport,
+                Display)
+        ;
+            MaybeRecTypesFreqReport = error(Msg),
             Display = display(no, [display_heading(Msg)])
         )
     ;
@@ -330,9 +352,17 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
             "Procedures above 2M words threshold: words, self+descendants.")
     ],
 
+    RecursionTypeFrequenciesCmd = deep_cmd_recursion_types_frequency,
+
+    LinksSummaryReports = [
+        link_base(RecursionTypeFrequenciesCmd, no,
+            "Frequencies of different types of recursion used in the program.")
+    ],
+
     LinkCmds = LinksExploration ++
         LinksTopProcsByLimitTime ++ LinksTopProcsByLimit ++
-        LinksTopProcsByPercentTime ++ LinksTopProcsByPercent,
+        LinksTopProcsByPercentTime ++ LinksTopProcsByPercent ++
+        LinksSummaryReports,
     list.map(make_link, LinkCmds, LinksList),
     Links = display_list(list_class_vertical_bullets,
         yes("You can start exploring the deep profile at the following" ++
@@ -460,6 +490,7 @@ display_report_clique(Prefs, CliqueReport, Display) :-
     ModuleQualControls = module_qual_controls(Prefs, Cmd),
     FieldControls = field_controls(Prefs, Cmd),
     FormatControls = format_controls(Prefs, Cmd),
+    CliqueReportControls = clique_reports_controls(Prefs, CliquePtr, Cmd),
     MenuRestartQuitControls = cmds_menu_restart_quit(yes(Prefs)),
 
     Display = display(yes(Title),
@@ -469,6 +500,7 @@ display_report_clique(Prefs, CliqueReport, Display) :-
         display_paragraph_break, ModuleQualControls,
         display_paragraph_break, FieldControls,
         display_paragraph_break, FormatControls,
+        display_paragraph_break, CliqueReportControls,
         display_paragraph_break, MenuRestartQuitControls]).
 
 :- func clique_proc_report_module_name(clique_proc_report) = string.
@@ -653,6 +685,302 @@ clique_call_site_callee_to_row(MaybeCurModuleName, ModuleQual, Prefs,
     EmptyCell = table_cell(td_s("")),
     Cells = [EmptyCell, CalleeProcCell] ++ PerfCells,
     Row = table_row(Cells).
+
+%-----------------------------------------------------------------------------%
+%
+% Code to display a clique recursion report.
+%
+
+:- pred display_report_clique_recursion(preferences::in,
+    clique_recursion_report::in, display::out) is det.
+
+display_report_clique_recursion(Prefs, CliqueRecursionReport, Display) :-
+    CliqueRecursionReport = clique_recursion_report(CliquePtr, RecursionType, 
+        _NumProcs),
+    Cmd = deep_cmd_clique_recursive_costs(CliquePtr),
+    CliquePtr = clique_ptr(CliqueNum),
+    Title = string.format("The recursion information for clique %d:",
+        [i(CliqueNum)]),
+
+    display_recursion_type(RecursionType, DisplayRecursionType),
+
+    CliqueReportsControls = clique_reports_controls(Prefs, CliquePtr, Cmd), 
+    
+    MenuRestartQuitControls = cmds_menu_restart_quit(yes(Prefs)),
+    Display = display(yes(Title), DisplayRecursionType ++
+        [display_paragraph_break, CliqueReportsControls,
+         display_paragraph_break, MenuRestartQuitControls]).
+
+:- pred display_recursion_type(recursion_type::in, list(display_item)::out) 
+    is det.
+
+display_recursion_type(RecursionType, Items) :-
+    (
+        (
+            RecursionType = rt_not_recursive,
+            Text = "Clique is non-recursive"
+        ;
+            RecursionType = rt_mutual_recursion(NumProcs),
+            Text = format("Mutual recursion between %d procedures", 
+                [i(NumProcs)])
+        ),
+        Items = [display_text(Text)]
+    ;
+        RecursionType = rt_errors(Errors),
+        ErrorItems = map((func(Text) = display_text(Text)), Errors),
+        Items = [display_list(list_class_vertical_no_bullets,
+            yes("Unknown, error(s) occured"), ErrorItems)]
+    ;
+        (
+            RecursionType = rt_single(BaseLevel, RecLevel),
+            RowData = [
+                {"Base case", BaseLevel}, 
+                {"Recursive case", RecLevel}],
+            Text = "Single-recursion:"
+        ;
+            RecursionType = rt_divide_and_conquer(BaseLevel, RecLevel),
+            RowData = [
+                {"Base case", BaseLevel},
+                {"Doubly-recursive case", RecLevel}],
+            Text = "Double-recursion (Probably Divide and Conquer):"
+        ; 
+            RecursionType = rt_other(Levels),
+            RowData = map((func(Level) = {Label, Level} :-
+                    Label = format("Case for %d recursive calls", 
+                        [i(Level ^ rlr_level)])
+                ), Levels), 
+            Text = "Unknown recursion type:"
+        ),
+        Rows = map(make_recursion_table_row, RowData),
+        Header = table_header(map(
+            (func({Name, Class}) = 
+                table_header_group(table_header_group_single(td_s(Name)),
+                    Class, column_do_not_colour)
+            ), 
+            [{"Recursion type", table_column_class_field_name},
+             {"Exec count", table_column_class_number},
+             {"Non recursive calls cost", table_column_class_callseqs},
+             {"Recursive calls cost (ex children)", 
+                table_column_class_callseqs}])),
+        Table = display_table(table(table_class_box_if_pref, 4, yes(Header), 
+            Rows)),
+        Description = display_text(Text),
+        Items = [Description, display_paragraph_break, Table]
+    ).
+
+:- func make_recursion_table_row({string, recursion_level_report}) = table_row.
+
+make_recursion_table_row({Label, Report}) = 
+    table_row([table_cell(td_s(Label)),
+        table_cell(td_i(Report ^ rlr_calls)),
+        table_cell(td_f(Report ^ rlr_non_rec_calls_cost)),
+        table_cell(td_f(Report ^ rlr_rec_calls_ex_chld_cost))]).
+
+:- pred display_report_recursion_types_frequency(preferences::in,
+    recursion_types_frequency_report::in, display::out) is det.
+
+display_report_recursion_types_frequency(Prefs, Report, Display) :-
+    Cmd = deep_cmd_recursion_types_frequency,
+    Report = recursion_types_frequency_report(Histogram0),
+
+    Title = "Frequencies of recognized recursion types",
+
+    % Build the table.
+    RecursionTypeLink = deep_link(Cmd, yes(Prefs ^ pref_criteria := by_context),
+        attr_str([], "Recursion Type"), link_class_link), 
+    RecursionTypeHeaderGroup = make_single_table_header_group(
+        td_l(RecursionTypeLink), table_column_class_no_class,
+        column_do_not_colour),
+    FreqHeaderGroup = make_single_table_header_group(
+        td_s("Frequency"), table_column_class_no_class,
+        column_do_not_colour),
+    PercentageHeaderGroup = make_single_table_header_group(
+        td_s("Percentage"), table_column_class_no_class,
+        column_do_not_colour),
+    perf_table_header(total_columns_meaningful, Prefs, 
+        override_order_criteria_header_data(Cmd), PerfHeaderGroups),
+    AllHeaderGroups = [RecursionTypeHeaderGroup, FreqHeaderGroup,
+        PercentageHeaderGroup] ++ PerfHeaderGroups,
+    header_groups_to_header(AllHeaderGroups, NumColumns, Header),
+
+    Histogram1 = map.to_assoc_list(Histogram0),
+    sort_recursion_types_by_preferences(Prefs, Histogram1, Histogram),
+    map(display_report_rec_type_freq_rows(Prefs, NumColumns), Histogram, Rowss),
+    list.condense(Rowss, Rows),
+    RecursionTypesTable = display_table(table(table_class_box_if_pref,
+        NumColumns, yes(Header), Rows)),
+
+    ModuleQualControls = module_qual_controls(Prefs, Cmd),
+    FieldControls = field_controls(Prefs, Cmd),
+    FormatControls = format_controls(Prefs, Cmd),
+    MenuRestartQuitControls = cmds_menu_restart_quit(yes(Prefs)),
+    
+    Display = display(yes(Title), [RecursionTypesTable,
+        display_paragraph_break, ModuleQualControls,
+        display_paragraph_break, FieldControls,
+        display_paragraph_break, FormatControls,
+        display_paragraph_break, MenuRestartQuitControls]).
+
+:- pred sort_recursion_types_by_preferences(preferences::in,
+    assoc_list(recursion_type_simple, recursion_type_freq_data)::in,
+    assoc_list(recursion_type_simple, recursion_type_freq_data)::out) is det.
+
+sort_recursion_types_by_preferences(Prefs, !RecursionTypes) :-
+    OrderCriteria = Prefs ^ pref_criteria,
+    (
+        ( OrderCriteria = by_context
+        ; OrderCriteria = by_name
+        ),
+        % Sort by the type of recursion.
+        list.sort(compare_recursion_type_row_by_rec_type, !RecursionTypes)
+    ;
+        OrderCriteria = by_cost(CostKind, InclDesc, Scope),
+        list.sort(compare_rec_type_row_datas_by_cost(CostKind, InclDesc, Scope),
+            !RecursionTypes),
+        % We want the most expensive rows to appear first.
+        list.reverse(!RecursionTypes)
+    ).
+
+:- pred sort_recursion_type_procs_by_preferences(preferences::in,
+    list(recursion_type_proc_freq_data)::in,
+    list(recursion_type_proc_freq_data)::out) is det. 
+
+sort_recursion_type_procs_by_preferences(Prefs, !RecursionTypeProcs) :-
+    OrderCriteria = Prefs ^ pref_criteria,
+    (
+        ( OrderCriteria = by_context
+        ; OrderCriteria = by_name
+        ),
+        % Since in this case we sort recursion type rows by their recursion
+        % type It makes sense to sort the procs within each type by their
+        % frequency.
+        sort(compare_recursion_proc_row_by_frequency_rev, !RecursionTypeProcs)
+    ;
+        OrderCriteria = by_cost(CostKind, InclDesc, Scope),
+        sort(compare_rec_proc_row_datas_by_cost(CostKind, InclDesc, Scope),
+            !RecursionTypeProcs),
+
+        % We want the most expensive rows to appear first.
+        reverse(!RecursionTypeProcs)
+    ).
+
+:- pred compare_recursion_type_row_by_rec_type(
+    pair(recursion_type_simple, T)::in,
+    pair(recursion_type_simple, T)::in, comparison_result::out) is det.
+
+compare_recursion_type_row_by_rec_type(RTA - _, RTB - _, Result) :-
+    compare(Result, RTA, RTB).
+
+    % This is reversed so that entries with larger frequencies are listed first.
+    %
+:- pred compare_recursion_proc_row_by_frequency_rev(
+    recursion_type_proc_freq_data::in, recursion_type_proc_freq_data::in,
+    comparison_result::out) is det.
+
+compare_recursion_proc_row_by_frequency_rev(
+        recursion_type_proc_freq_data(FreqA, _, _),
+        recursion_type_proc_freq_data(FreqB, _, _), Result) :-
+    compare(Result, FreqB, FreqA).
+
+:- pred compare_rec_type_row_datas_by_cost(cost_kind::in,
+    include_descendants::in, measurement_scope::in,
+    pair(T, recursion_type_freq_data)::in,
+    pair(T, recursion_type_freq_data)::in,
+    comparison_result::out) is det.
+
+compare_rec_type_row_datas_by_cost(CostKind, IncDesc, Scope, _ - DataA, 
+        _ - DataB, Result) :- 
+    MaybePerfA = DataA ^ rtfd_maybe_summary,
+    MaybePerfB = DataB ^ rtfd_maybe_summary,
+    (
+        MaybePerfA = yes(PerfA),
+        MaybePerfB = yes(PerfB),
+        compare_perf_row_datas_by_cost(CostKind, IncDesc, Scope, 
+            PerfA, PerfB, Result)
+    ;
+        MaybePerfA = yes(_),
+        MaybePerfB = no,
+        Result = (>)
+    ;
+        MaybePerfA = no,
+        MaybePerfB = yes(_),
+        Result = (=)
+    ;
+        MaybePerfA = no,
+        MaybePerfB = no,
+        Result = (=)
+    ).
+
+:- pred compare_rec_proc_row_datas_by_cost(cost_kind::in,
+    include_descendants::in, measurement_scope::in,
+    recursion_type_proc_freq_data::in, recursion_type_proc_freq_data::in,
+    comparison_result::out) is det.
+
+compare_rec_proc_row_datas_by_cost(CostKind, InclDesc, Scope, 
+        recursion_type_proc_freq_data(_, _, PerfA),
+        recursion_type_proc_freq_data(_, _, PerfB), Result) :-
+    compare_perf_row_datas_by_cost(CostKind, InclDesc, Scope, PerfA, PerfB,
+        Result).
+
+:- pred display_report_rec_type_freq_rows(preferences::in, int::in,
+    pair(recursion_type_simple, recursion_type_freq_data)::in, 
+    list(table_row)::out) is det.
+
+display_report_rec_type_freq_rows(Prefs, NumColumns, Type - FreqData, Rows) :-
+    FreqData = recursion_type_freq_data(Frequency, Percent, MaybeSummary, 
+        ProcsMap),
+
+    % Make the header row.
+    display_report_recursion_type_simple(Type, TypeStr),
+    HeaderRow = table_section_header(td_s(TypeStr)),
+
+    % Make the row summarising the recursion type.
+    (
+        MaybeSummary = yes(Summary),
+        perf_table_row(total_columns_meaningful, Prefs ^ pref_fields, Summary,
+            SummaryCells)  
+    ;
+        MaybeSummary = no,
+        duplicate(NumColumns - 3, table_empty_cell, SummaryCells)
+    ),
+    Row = table_row([table_cell(td_s("Totals")), table_cell(td_i(Frequency)),
+        table_cell(td_p(Percent))] ++ SummaryCells),
+
+    % Make rows for the top proc statics.
+    Procs0 = values(ProcsMap),
+    sort_recursion_type_procs_by_preferences(Prefs, Procs0, Procs1),
+    take_upto(Prefs ^ pref_proc_statics_per_rec_type, Procs1, Procs),
+    map(display_report_rec_type_proc_rows(Prefs), Procs, ProcRows),
+
+    Rows = [HeaderRow | [Row | ProcRows ++ 
+        [table_separator_row]]].
+
+:- pred display_report_rec_type_proc_rows(preferences::in,
+    recursion_type_proc_freq_data::in, table_row::out) is det.
+
+display_report_rec_type_proc_rows(Prefs, 
+        recursion_type_proc_freq_data(Freq, Percent, Summary), Row) :-
+    perf_table_row(total_columns_meaningful, Prefs ^ pref_fields, Summary,
+        SummaryCells),
+    ProcDesc = Summary ^ perf_row_subject,
+    ProcCell = proc_desc_to_proc_name_cell(no, Prefs ^ pref_module_qual, Prefs, 
+        ProcDesc),
+    Row = table_row([ProcCell, table_cell(td_i(Freq)),
+        table_cell(td_p(Percent))] ++ SummaryCells).
+
+:- pred display_report_recursion_type_simple(recursion_type_simple::in,
+    string::out) is det.
+
+display_report_recursion_type_simple(rts_not_recursive, "Not recursive").
+display_report_recursion_type_simple(rts_single, "Single-recursion").
+display_report_recursion_type_simple(rts_divide_and_conquer, "Divide and conquer").
+display_report_recursion_type_simple(rts_mutual_recursion(NumProcs), String) :-
+    format("Mutual recursion between %d procs", [i(NumProcs)], String).
+display_report_recursion_type_simple(rts_other(Levels), String) :-
+    LevelsStr = join_list(", ", map(string, set.to_sorted_list(Levels))),
+    format("Other recursion with levels: %s", [s(LevelsStr)], String).
+display_report_recursion_type_simple(rts_total_error_instances, "Total errors").
+display_report_recursion_type_simple(rts_error(Error), "Error: " ++ Error). 
 
 %-----------------------------------------------------------------------------%
 %
@@ -3392,36 +3720,42 @@ set_box_tables(Box, !Prefs) :-
 
 %----------------------------------------------------------------------------%
 %
-% Controls for related procedure reports.
+% Controls for related procedure and clique reports.
 %
 
 :- func proc_reports_controls(preferences, proc_static_ptr, cmd) = display_item.
 
 proc_reports_controls(Prefs, Proc, NotCmd) = ControlsItem :-
-    make_cmd_controls_item(Prefs, proc_reports(Proc, NotCmd),
-        ProcReportControls),
+    solutions((pred(Control::out) is nondet :-
+            (
+                Cmd = deep_cmd_proc(Proc),
+                Label = "Procedure"
+            ;
+                Cmd = deep_cmd_procrep_coverage(Proc),
+                Label = "Coverage annotated procedure representation"
+            ),
+            Cmd \= NotCmd,
+            make_control(yes(Prefs), Cmd - Label, Control)
+        ), ProcReportControls),
     ControlsItem = display_list(list_class_vertical_no_bullets,
-        yes("Related procedure reports:"), [ProcReportControls]).
+        yes("Related procedure reports:"), ProcReportControls).
 
-:- func proc_reports(proc_static_ptr, cmd) = assoc_list(cmd, string).
+:- func clique_reports_controls(preferences, clique_ptr, cmd) = display_item. 
 
-proc_reports(Proc, NotCmd) = Reports :-
-    Reports0 = [
-        deep_cmd_proc(Proc) -
-            "Procedure",
-        deep_cmd_procrep_coverage(Proc) -
-            "Coverage annotated procedure representation"
-    ],
-    list.filter((pred((Cmd - _)::in) is semidet :-
-            Cmd \= NotCmd
-        ), Reports0, Reports).
-
-:- pred make_cmd_controls_item(preferences::in, assoc_list(cmd, string)::in,
-    display_item::out) is det.
-
-make_cmd_controls_item(Prefs, LabeledCmds, Item) :-
-    list.map(make_control(yes(Prefs)), LabeledCmds, CmdItems),
-    Item = display_list(list_class_horizontal, no, CmdItems).
+clique_reports_controls(Perfs, CliquePtr, NotCmd) = ControlsItem :-
+    solutions((pred(Control::out) is nondet :-
+            (
+                Cmd = deep_cmd_clique(CliquePtr),
+                Label = "Clique"
+            ;
+                Cmd = deep_cmd_clique_recursive_costs(CliquePtr),
+                Label = "Clique's recursion information"
+            ),
+            Cmd \= NotCmd,
+            make_control(yes(Perfs), Cmd - Label, Control)
+        ), CliqueReportControls),
+    ControlsItem = display_list(list_class_vertical_no_bullets,
+        yes("Related clique reports:"), CliqueReportControls).
 
 %-----------------------------------------------------------------------------%
 %

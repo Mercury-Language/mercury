@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2009 The University of Melbourne.
+% Copyright (C) 2001, 2004-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -488,7 +488,7 @@
     %
 :- pred deep_get_progrep_det(deep::in, prog_rep::out) is det.
 
-:- pred deep_get_progrep(deep::in, prog_rep::out) is semidet.
+:- pred deep_get_maybe_progrep(deep::in, maybe_error(prog_rep)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1003,19 +1003,27 @@ root_own_info(Deep) = RootOwn :-
 %-----------------------------------------------------------------------------%
 
 deep_get_progrep_det(Deep, ProgRep) :-
-    ( deep_get_progrep(Deep, ProgRepPrime) ->
-        ProgRep = ProgRepPrime
+    deep_get_maybe_progrep(Deep, MaybeProgRep),
+    (
+        MaybeProgRep = ok(ProgRep)
     ;
-        error(this_file ++ "Could not open Deep.procrep")
+        MaybeProgRep = error(Error),
+        error(this_file ++ Error)
     ).
 
-deep_get_progrep(Deep, ProgRep) :-
-    Deep ^ procrep_file = yes(MaybeProgRep1),
+deep_get_maybe_progrep(Deep, MaybeProgRep) :-
+    MaybeProgRep0 = Deep ^ procrep_file,
     (
-        MaybeProgRep1 = ok(ProgRep)
+        MaybeProgRep0 = no,
+        MaybeProgRep = error("There is no readable " ++
+            "procedure representation information file.")
     ;
-        MaybeProgRep1 = error(Error),
-        error(this_file ++ Error)
+        MaybeProgRep0 = yes(error(Error)),
+        MaybeProgRep = error("Error reading procedure representation " ++
+            "information file: " ++ Error)
+    ;
+        MaybeProgRep0 = yes(ok(ProgRep)),
+        MaybeProgRep = ok(ProgRep)
     ).
 
 %-----------------------------------------------------------------------------%

@@ -224,6 +224,10 @@
     = parallel_exec_metrics.
 
 %-----------------------------------------------------------------------------%
+
+:- pred weighted_average(list(float)::in, list(float)::in, float::out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -884,6 +888,21 @@ pem_get_par_overheads(pem_left_most(Seq, Par))= Par - Seq.
 pem_get_par_overheads(pem_additional(Left, Signals, Seq, Par)) = Overheads :-
     Overheads = LeftOverheads + Signals + Par - Seq,
     pem_get_par_overheads(Left) = LeftOverheads.
+
+%----------------------------------------------------------------------------%
+
+weighted_average(Weights, Values, Average) :-
+    list.foldl2_corresponding(
+        (pred(Value::in, Weight::in, Sum0::in, Sum::out,
+                WeightSum0::in, WeightSum::out) is det :-
+            Sum = Sum0 + (Value * Weight),
+            WeightSum = WeightSum0 + Weight
+        ), Values, Weights, 0.0, Total, 0.0, TotalWeight),
+    ( abs(TotalWeight) < epsilon ->
+        Average = 0.0
+    ;
+        Average = Total / TotalWeight
+    ).
 
 %----------------------------------------------------------------------------%
 

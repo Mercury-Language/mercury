@@ -653,7 +653,8 @@ build_recursive_call_site_cost_map(Deep, CliqueProc, CliquePtr,
         (
             MaybeCoverageReport = ok(procrep_coverage_info(_, ProcRep)),
             Goal = ProcRep ^ pr_defn ^ pdr_goal,
-            foldl(add_call_site_to_map, CallSites, map.init, CallSiteMap),
+            foldl(add_call_site_report_to_map, CallSites,
+                map.init, CallSiteMap),
             goal_get_callsite_cost_info(CliquePtr, CallSiteMap, Goal,
                 empty_goal_path, Info),
             Info = callsite_cost_info(NonRecCSCost, RecursiveCSCalls,
@@ -703,15 +704,6 @@ format_recursive_call_site_cost(GoalPath, Cost, !Result) :-
     GoalPathString = goal_path_to_string(GoalPath),
     PerCallCost = cs_cost_get_percall(Cost),
     Calls = cs_cost_get_calls(Cost).
-
-:- pred add_call_site_to_map(clique_call_site_report::in, 
-    map(goal_path, clique_call_site_report)::in,
-    map(goal_path, clique_call_site_report)::out) is det.
-
-add_call_site_to_map(CallSite, !Map) :-
-    GoalPath = CallSite ^ ccsr_call_site_summary ^ perf_row_subject 
-        ^ csdesc_goal_path,
-    svmap.det_insert(GoalPath, CallSite, !Map).
 
     % The stateful data of the goal_get_callsite_cost_info code below.
     %
@@ -3522,23 +3514,6 @@ css_to_call(Deep, CSS, Call) :-
 %
 % Useful utility predicates.
 %
-
-:- pred proc_label_from_proc_desc(deep::in, proc_desc::in,
-    string_proc_label::out) is det.
-
-proc_label_from_proc_desc(Deep, ProcDesc, ProcLabel) :-
-    PSPtr = ProcDesc ^ pdesc_ps_ptr,
-    deep_lookup_proc_statics(Deep, PSPtr, ProcStatic),
-    ProcLabel = ProcStatic ^ ps_id.
-
-:- pred add_call_site_report_to_map(clique_call_site_report::in, 
-    map(goal_path, clique_call_site_report)::in, 
-    map(goal_path, clique_call_site_report)::out) is det.
-
-add_call_site_report_to_map(CallSite, !Map) :-
-    GoalPath = CallSite ^ ccsr_call_site_summary ^ perf_row_subject 
-        ^ csdesc_goal_path,
-    svmap.det_insert(GoalPath, CallSite, !Map).
 
 :- func this_file = string.
 

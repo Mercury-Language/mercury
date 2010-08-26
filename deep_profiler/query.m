@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003, 2005-2009 The University of Melbourne.
+% Copyright (C) 2001-2003, 2005-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -88,6 +88,17 @@
     ;       deep_cmd_clique(
                 cmd_clique_clique_id            :: clique_ptr
             )
+
+                % Construct formulas for calculating the costs of the recursive
+                % calls within this clique.
+                %
+    ;       deep_cmd_clique_recursive_costs(
+                cmd_crc_clique_id               :: clique_ptr
+            )
+                % Generate a frequency table about how often each recursion
+                % type occurs in the program.
+                %
+    ;       deep_cmd_recursion_types_frequency
     ;       deep_cmd_proc(
                 cmd_proc_proc_id                :: proc_static_ptr
             )
@@ -184,6 +195,11 @@
 
                 % The max number of ancestors to display.
                 pref_anc            :: maybe(int),
+
+                % The max number of proc statics to display for each recursion
+                % type group in the recursion type frequency report.
+                pref_proc_statics_per_rec_type 
+                                    :: int,
 
                 % Whether pages should summarize at higher order call sites.
                 pref_summarize      :: summarize_ho_call_sites,
@@ -319,6 +335,7 @@
 :- func default_box_tables = box_tables.
 :- func default_colour_column_groups = colour_column_groups.
 :- func default_ancestor_limit = maybe(int).
+:- func default_proc_statics_per_rec_type_limit = int.
 :- func default_summarize_ho_call_sites = summarize_ho_call_sites.
 :- func default_order_criteria = order_criteria.
 :- func default_cost_kind = cost_kind.
@@ -432,6 +449,8 @@ exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
         ( Cmd = deep_cmd_procrep_coverage(_)
         ; Cmd = deep_cmd_module_getter_setters(_)
         ; Cmd = deep_cmd_dump_proc_var_use(_)
+        ; Cmd = deep_cmd_clique_recursive_costs(_)
+        ; Cmd = deep_cmd_recursion_types_frequency
         ),
         new_exec(Cmd, Prefs, Deep, HTMLStr, !IO)
     ).
@@ -442,10 +461,28 @@ exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
     io::di, io::uo) is det.
 
 new_exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
-    create_report(Cmd, Deep, Report),
+    ( slow_cmd(Cmd) ->
+        create_and_memoize_report(Cmd, Deep, Report)
+    ;
+        create_report(Cmd, Deep, Report)
+    ),
     Display = report_to_display(Deep, Prefs, Report),
     HTML = htmlize_display(Deep, Prefs, Display),
     HTMLStr = html_to_string(HTML).
+
+    % slow_cmd(Cmd) is slow for any command that is slow and is probably going
+    % to be executed more than once.
+    %
+:- pred slow_cmd(cmd::in) is semidet.
+
+slow_cmd(deep_cmd_recursion_types_frequency).
+
+:- pragma memo(create_and_memoize_report(in, in, out), 
+    [specified([value, addr, output])]).
+:- pred create_and_memoize_report(cmd::in, deep::in, deep_report::out) is det.
+
+create_and_memoize_report(Cmd, Deep, Report) :-
+    create_report(Cmd, Deep, Report).
 
 %-----------------------------------------------------------------------------%
 
@@ -482,6 +519,7 @@ default_preferences(Deep) =
         default_box_tables,
         default_colour_column_groups,
         default_ancestor_limit,
+        default_proc_statics_per_rec_type_limit,
         default_summarize_ho_call_sites,
         default_order_criteria,
         default_contour_exclusion,
@@ -507,6 +545,7 @@ all_fields = fields(port, ticks_and_time_and_percall, callseqs_and_percall,
 default_box_tables = box_tables.
 default_colour_column_groups = colour_column_groups.
 default_ancestor_limit = yes(5).
+default_proc_statics_per_rec_type_limit = 20.
 default_summarize_ho_call_sites = do_not_summarize_ho_call_sites.
 default_order_criteria = by_context.
 default_cost_kind = cost_callseqs.
@@ -564,10 +603,19 @@ cmd_to_string(Cmd) = CmdStr :-
                 [s(cmd_str_root), c(cmd_separator_char), s("no")])
         )
     ;
-        Cmd = deep_cmd_clique(CliquePtr),
+        (
+            Cmd = deep_cmd_clique(CliquePtr),
+            Name = cmd_str_clique
+        ;
+            Cmd = deep_cmd_clique_recursive_costs(CliquePtr),
+            Name = cmd_str_clique_recursive_costs
+        ),
         CliquePtr = clique_ptr(CliqueNum),
         CmdStr = string.format("%s%c%d",
-            [s(cmd_str_clique), c(cmd_separator_char), i(CliqueNum)])
+            [s(Name), c(cmd_separator_char), i(CliqueNum)])
+    ;
+        Cmd = deep_cmd_recursion_types_frequency,
+        CmdStr = cmd_str_recursion_types_frequency
     ;
         Cmd = deep_cmd_proc(PSPtr),
         PSPtr = proc_static_ptr(PSI),
@@ -651,7 +699,8 @@ cmd_to_string(Cmd) = CmdStr :-
 
 preferences_to_string(Pref) = PrefStr :-
     Pref = preferences(Fields, Box, Colour, MaybeAncestorLimit,
-        SummarizeHoCallSites, Order, Contour, Time, ModuleQual, InactiveItems),
+        ProcStaticsPerRecTypeLimit, SummarizeHoCallSites, Order, Contour,
+        Time, ModuleQual, InactiveItems),
     (
         MaybeAncestorLimit = yes(AncestorLimit),
         MaybeAncestorLimitStr =
@@ -660,11 +709,12 @@ preferences_to_string(Pref) = PrefStr :-
         MaybeAncestorLimit = no,
         MaybeAncestorLimitStr = "no"
     ),
-    PrefStr = string.format("%s%c%s%c%s%c%s%c%s%c%s%c%s%c%s%c%s%c%s",
+    PrefStr = string.format("%s%c%s%c%s%c%s%c%d%c%s%c%s%c%s%c%s%c%s%c%s",
         [s(fields_to_string(Fields)),
         c(pref_separator_char), s(box_to_string(Box)),
         c(pref_separator_char), s(colour_scheme_to_string(Colour)),
         c(pref_separator_char), s(MaybeAncestorLimitStr),
+        c(pref_separator_char), i(ProcStaticsPerRecTypeLimit),
         c(pref_separator_char), s(summarize_to_string(SummarizeHoCallSites)),
         c(pref_separator_char), s(order_criteria_to_string(Order)),
         c(pref_separator_char), s(contour_exclusion_to_string(Contour)),
@@ -704,6 +754,18 @@ string_to_maybe_cmd(QueryString) = MaybeCmd :-
     ->
         CliquePtr = clique_ptr(CliqueNum),
         Cmd = deep_cmd_clique(CliquePtr),
+        MaybeCmd = yes(Cmd)
+    ;
+        Pieces = [cmd_str_clique_recursive_costs, CliqueNumStr],
+        string.to_int(CliqueNumStr, CliqueNum)
+    ->
+        CliquePtr = clique_ptr(CliqueNum),
+        Cmd = deep_cmd_clique_recursive_costs(CliquePtr),
+        MaybeCmd = yes(Cmd)
+    ;
+        Pieces = [cmd_str_recursion_types_frequency]
+    ->
+        Cmd = deep_cmd_recursion_types_frequency,
         MaybeCmd = yes(Cmd)
     ;
         Pieces = [cmd_str_proc, PSIStr],
@@ -826,7 +888,8 @@ string_to_maybe_cmd(QueryString) = MaybeCmd :-
 string_to_maybe_pref(QueryString) = MaybePreferences :-
     split(QueryString, pref_separator_char, Pieces),
     (
-        Pieces = [FieldsStr, BoxStr, ColourStr, MaybeAncestorLimitStr,
+        Pieces = [FieldsStr, BoxStr, ColourStr,
+            MaybeAncestorLimitStr, ProcStaticsPerRecTypeLimitStr, 
             SummarizeHoCallSitesStr, OrderStr, ContourStr, TimeStr,
             ModuleQualStr, InactiveItemsStr],
         string_to_fields(FieldsStr, Fields),
@@ -839,6 +902,8 @@ string_to_maybe_pref(QueryString) = MaybePreferences :-
         ;
             fail
         ),
+        string.to_int(ProcStaticsPerRecTypeLimitStr,
+            ProcStaticsPerRecTypeLimit),
         string_to_summarize(SummarizeHoCallSitesStr, SummarizeHoCallSites),
         string_to_order_criteria(OrderStr, Order),
         string_to_contour_exclusion(ContourStr, Contour),
@@ -847,8 +912,8 @@ string_to_maybe_pref(QueryString) = MaybePreferences :-
         string_to_inactive_items(InactiveItemsStr, InactiveItems)
     ->
         Preferences = preferences(Fields, Box, Colour, MaybeAncestorLimit,
-            SummarizeHoCallSites, Order, Contour, Time, ModuleQual,
-            InactiveItems),
+            ProcStaticsPerRecTypeLimit, SummarizeHoCallSites, Order, Contour,
+            Time, ModuleQual, InactiveItems),
         MaybePreferences = yes(Preferences)
     ;
         MaybePreferences = no
@@ -1255,6 +1320,12 @@ cmd_str_root = "root".
 
 :- func cmd_str_clique = string.
 cmd_str_clique = "clique".
+
+:- func cmd_str_clique_recursive_costs = string.
+cmd_str_clique_recursive_costs = "clique_rc".
+        
+:- func cmd_str_recursion_types_frequency = string.
+cmd_str_recursion_types_frequency = "recursion_type_freq".
 
 :- func cmd_str_proc = string.
 cmd_str_proc = "proc".

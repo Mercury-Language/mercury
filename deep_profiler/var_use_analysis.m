@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008 The University of Melbourne.
+% Copyright (C) 2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -77,6 +77,7 @@
 
 :- import_module coverage.
 :- import_module create_report.
+:- import_module measurements.
 :- import_module program_representation_utils.
 
 :- import_module float.
@@ -650,21 +651,6 @@ ite_var_first_use(GoalPath, Cond, Then, Else, StaticInfo,
                     !IO)
             )
         )
-    ).
-
-:- pred weighted_average(list(float)::in, list(float)::in, float::out) is det.
-
-weighted_average(Weights, Values, Average) :-
-    list.foldl2_corresponding(
-        (pred(Value::in, Weight::in, Sum0::in, Sum::out,
-                WeightSum0::in, WeightSum::out) is det :-
-            Sum = Sum0 + (Value * Weight),
-            WeightSum = WeightSum0 + Weight
-        ), Values, Weights, 0.0, Total, 0.0, TotalWeight),
-    ( abs(TotalWeight) < epsilon ->
-        Average = 0.0
-    ;
-        Average = Total / TotalWeight
     ).
 
 :- pred ffu_to_float(float::in, found_first_use::in, float::out) is det.
