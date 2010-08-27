@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 2000-2008 The University of Melbourne.
+% Copyright (C) 1994-1997, 2000-2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -249,9 +249,14 @@
 % The store type itself is just a dummy type,
 % with no real representation.
 
-    % XXX We use `mkstore' here rather than `store' to work around a bug
-    % with the Java back-end: it generates invalid Java code if we use `store'.
-:- type store(S) ---> mkstore(c_pointer)
+:- type store(S).
+:- pragma foreign_type("C", store(S), "MR_Word", [can_pass_as_mercury_type])
+    where equality is store_equal, comparison is store_compare.
+:- pragma foreign_type("IL", store(S), "int32", [can_pass_as_mercury_type])
+    where equality is store_equal, comparison is store_compare.
+:- pragma foreign_type("Java", store(S), "int", [can_pass_as_mercury_type])
+    where equality is store_equal, comparison is store_compare.
+:- pragma foreign_type("Erlang", store(S), "", [can_pass_as_mercury_type])
     where equality is store_equal, comparison is store_compare.
 
 :- pred store_equal(store(S)::in, store(S)::in) is semidet.
