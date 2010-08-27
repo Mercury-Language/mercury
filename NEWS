@@ -6,8 +6,6 @@ Changes to the Mercury standard library:
 * We have added semidet modes for array.foldl/4, array.foldl2/6,
   hash_table.fold/4, version_array.foldl/4, and version_hash_table.fold/4.
 
-* We have added cc_multi modes for map.foldl2/6, tree234.foldl2/6.
-
 * We have added new predicates and functions added to the assoc_list module.
   The predicates map_keys_only/3 map_values_only/3 and map_values/3 complement
   the functions of the same name. The predicates filter/3, negated_filter/3,
@@ -15,7 +13,18 @@ Changes to the Mercury standard library:
   to the predicates of the same name in the list module, but do the relevant
   operations on keys instead of entire list elements.
 
-* We have improved the performance of hash tables and version hash tables.
+
+NEWS for Mercury 10.04.1
+------------------------
+
+This release is primarily a bug-fix release.  It fixes some problems in
+the code generator and the source-to-source debugger.  In the addition,
+there are some changes to the standard library.
+
+Changes to the Mercury standard library:
+* We have added cc_multi modes for map.foldl2/6 and tree234.foldl2/6.
+* We have improved the performance of cords, hash tables and version hash tables.
+
 
 NEWS for Mercury 10.04
 ----------------------
