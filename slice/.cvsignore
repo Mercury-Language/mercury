@@ -23,6 +23,7 @@ mcov
 SLICE_FLAGS
 Mercury
 feedback.m
+feedback.automatic_parallelism.m
 mdbcomp.m
 prim_data.m
 program_representation.m
