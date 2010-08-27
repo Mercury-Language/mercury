@@ -1,9 +1,13 @@
-NEWS since Mercury 10.04.1-beta
--------------------------------
+NEWS for Mercury 10.04.1
+------------------------
+
+This release is primarily a bug-fix release.  It fixes some problems in
+the code generator and the source-to-source debugger.  In the addition,
+there are some changes to the standard library.
 
 Changes to the Mercury standard library:
-
-* We have improved the performance of hash tables and version hash tables.
+* We have added cc_multi modes for map.foldl2/6 and tree234.foldl2/6.
+* We have improved the performance of cords, hash tables and version hash tables.
 
 
 NEWS for Mercury 10.04
