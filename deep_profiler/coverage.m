@@ -21,13 +21,13 @@
 :- import_module mdbcomp.program_representation.
 :- import_module measurements.
 :- import_module profile.
-:- import_module report.
 
 :- import_module map.
 :- import_module maybe.
 
 :- type coverage_info
     --->    coverage_unknown
+    ;       coverage_known_zero
     ;       coverage_known_same(int)
             % Coverage is known both before and after the goal, and the
             % coverage is the same before as it is after.
@@ -49,7 +49,7 @@
     % Annotate the program representation structure with coverage information.
     %
 :- pred procrep_annotate_with_coverage(own_prof_info::in,
-    map(goal_path, call_site_perf)::in, map(goal_path, coverage_point)::in,
+    map(goal_path, own_prof_info)::in, map(goal_path, coverage_point)::in,
     map(goal_path, coverage_point)::in, proc_rep::in,
     maybe_error(proc_rep(coverage_info))::out) is det.
 
@@ -59,6 +59,7 @@
 
 :- import_module message.
 :- import_module program_representation_utils.
+:- import_module report.
 
 :- import_module bool.
 :- import_module cord.
@@ -71,28 +72,34 @@
 :- import_module unit.
 
 get_coverage_before(coverage_known(Before, _), Before).
+get_coverage_before(coverage_known_zero, 0).
 get_coverage_before(coverage_known_same(Before), Before).
 get_coverage_before(coverage_known_before(Before), Before).
 
 get_coverage_before_and_after(coverage_known(Before, After), Before, After).
 get_coverage_before_and_after(coverage_known_same(Count), Count, Count).
+get_coverage_before_and_after(coverage_known_zero, 0, 0).
 
 %-----------------------------------------------------------------------------%
 
 :- type coverage_before
     --->    before_unknown
+    ;       before_zero
     ;       before_known(int).
 
 :- type coverage_after
     --->    after_unknown
+    ;       after_zero
     ;       after_known(int).
 
 :- type sum_coverage_before
     --->    sum_before_unknown
+    ;       sum_before_zero
     ;       sum_before_known(int).
 
 :- type sum_coverage_after
     --->    sum_after_unknown
+    ;       sum_after_zero
     ;       sum_after_known(int).
 
     % Annotate a procedure representation structure with coverage information.
@@ -116,27 +123,17 @@ procrep_annotate_with_coverage(OwnProf, CallSites, SolnsCoveragePoints,
         ProcLabel = !.ProcRep ^ pr_id,
         Calls = calls(OwnProf),
         Exits = exits(OwnProf),
-        Before = before_known(Calls),
+        Before = before_coverage(Calls),
         CoverageReference = coverage_reference_info(ProcLabel, CallSites,
             SolnsCoveragePoints, BranchCoveragePoints),
-        promise_equivalent_solutions [MaybeProcRep]
-        ( try []
-            goal_annotate_coverage(CoverageReference, empty_goal_path,
-                Before, After, !GoalRep)
-        then
-            require(unify(After, after_known(Exits)),
-                "Coverage after procedure not equal with exit count of" ++
-                " procedure"),
-            !:ProcDefn = !.ProcDefn ^ pdr_goal := !.GoalRep,
-            !:ProcRep = !.ProcRep ^ pr_defn := !.ProcDefn,
-            MaybeProcRep = ok(!.ProcRep)
-        catch software_error(Error) ->
-            location_to_string(0, proc(ProcLabel), ProcNameCord),
-            ProcName = string.append_list(list(ProcNameCord)),
-            MaybeProcRep = error(format(
-                "While calculating coverage for %s: %s",
-                [s(ProcName), s(Error)]))
-        )
+        goal_annotate_coverage(CoverageReference, empty_goal_path,
+            Before, After, !GoalRep),
+        require(unify(After, after_coverage(Exits)),
+            "Coverage after procedure not equal with exit count of" ++
+            " procedure"),
+        !:ProcDefn = !.ProcDefn ^ pdr_goal := !.GoalRep,
+        !:ProcRep = !.ProcRep ^ pr_defn := !.ProcDefn,
+        MaybeProcRep = ok(!.ProcRep)
     ).
 
     % These maps are keyed by goal_path, comparing these structures is less
@@ -148,7 +145,7 @@ procrep_annotate_with_coverage(OwnProf, CallSites, SolnsCoveragePoints,
 :- type coverage_reference_info
     --->    coverage_reference_info(
                 cri_proc                    :: string_proc_label,
-                cri_call_sites              :: map(goal_path, call_site_perf),
+                cri_call_sites              :: map(goal_path, own_prof_info),
                 cri_solns_coverage_points   :: map(goal_path, coverage_point),
                 cri_branch_coverage_points  :: map(goal_path, coverage_point)
             ).
@@ -190,7 +187,7 @@ goal_annotate_coverage(Info, GoalPath, Before, After, Goal0, Goal) :-
         GoalExpr = negation_rep(NegGoal)
     ;
         GoalExpr0 = scope_rep(ScopedGoal0, MaybeCut),
-        scope_annotate_coverage(Info, GoalPath, MaybeCut,  Before, After0,
+        scope_annotate_coverage(Info, GoalPath, MaybeCut, Before, After0,
             ScopedGoal0, ScopedGoal),
         GoalExpr = scope_rep(ScopedGoal, MaybeCut)
     ;
@@ -202,17 +199,16 @@ goal_annotate_coverage(Info, GoalPath, Before, After, Goal0, Goal) :-
             ; AtomicGoal = higher_order_call_rep(_, _)
             ; AtomicGoal = method_call_rep(_, _, _)
             ),
-            ( map.search(Info ^ cri_call_sites, GoalPath, CallSite) ->
-                Summary = CallSite ^ csf_summary_perf,
+            ( map.search(Info ^ cri_call_sites, GoalPath, OwnProfInfo) ->
                 % Entry due to redo is not counted at the point before the
                 % goal, it is represented when the number of exists is greater
                 % than the number of calls. XXX This won't work with nondet
                 % code, which should be fixed in the future.
-                Calls = Summary ^ perf_row_calls,
-                Exits = Summary ^ perf_row_exits,
-                require(unify(Before, before_known(Calls)),
+                Calls = calls(OwnProfInfo),
+                Exits = exits(OwnProfInfo),
+                require(unify(Before, before_coverage(Calls)),
                   "Coverage before call doesn't match calls port on call site"),
-                After0 = after_known(Exits)
+                After0 = after_coverage(Exits)
             ;
                 error("Couldn't look up call site for port counts GP: " ++
                     goal_path_to_string(GoalPath))
@@ -239,7 +235,7 @@ goal_annotate_coverage(Info, GoalPath, Before, After, Goal0, Goal) :-
     % coverage after this goal.
     ( map.search(Info ^ cri_solns_coverage_points, GoalPath, CoveragePoint) ->
         CoveragePoint = coverage_point(CoverageAfterCount, _, _),
-        after_count_from_either_source(after_known(CoverageAfterCount),
+        after_count_from_either_source(after_coverage(CoverageAfterCount),
             After0, After)
     ;
         After0 = After
@@ -278,23 +274,43 @@ goal_annotate_coverage(Info, GoalPath, Before, After, Goal0, Goal) :-
 construct_before_after_coverage(Before, After) = Coverage :-
     (
         Before = before_unknown,
-        After = after_unknown,
-        Coverage = coverage_unknown
-    ;
-        Before = before_unknown,
-        After = after_known(AfterExecCount),
-        Coverage = coverage_known_after(AfterExecCount)
-    ;
-        Before = before_known(BeforeExecCount),
-        After = after_unknown,
-        Coverage = coverage_known_before(BeforeExecCount)
-    ;
-        Before = before_known(BeforeExecCount),
-        After = after_known(AfterExecCount),
-        ( BeforeExecCount = AfterExecCount ->
-            Coverage = coverage_known_same(BeforeExecCount)
+        (
+            After = after_unknown,
+            Coverage = coverage_unknown
         ;
-            Coverage = coverage_known(BeforeExecCount, AfterExecCount)
+            After = after_known(AfterExecCount),
+            Coverage = coverage_known_after(AfterExecCount)
+        ;
+            After = after_zero,
+            Coverage = coverage_known_after(0)
+        )
+    ;
+        Before = before_zero,
+        (
+            After = after_unknown,
+            Coverage = coverage_known_before(0)
+        ;
+            After = after_zero,
+            Coverage = coverage_known_zero
+        ;
+            After = after_known(AfterExecCount),
+            Coverage = coverage_known(0, AfterExecCount)
+        )
+    ;
+        Before = before_known(BeforeExecCount),
+        (
+            After = after_unknown,
+            Coverage = coverage_known_before(BeforeExecCount)
+        ;
+            After = after_known(AfterExecCount),
+            ( BeforeExecCount = AfterExecCount ->
+                Coverage = coverage_known_same(BeforeExecCount)
+            ;
+                Coverage = coverage_known(BeforeExecCount, AfterExecCount)
+            )
+        ;
+            After = after_zero,
+            Coverage = coverage_known(BeforeExecCount, 0)
         )
     ).
 
@@ -350,8 +366,8 @@ disj_annotate_coverage(Info, Detism, GoalPath, Before, After,
     % single solution context or committed-choice.
     Solutions = detism_get_solutions(Detism),
     disj_annotate_coverage_2(Info, GoalPath, 1, Solutions,
-        Before, sum_after_known(0), SumAfterDisjuncts, Disjs0, Disjs),
-    count_sum_to_count(SumAfterDisjuncts, After).
+        Before, sum_after_zero, SumAfterDisjuncts, Disjs0, Disjs),
+    after_count_sum_after_count(SumAfterDisjuncts, After).
 
 :- pred disj_annotate_coverage_2(coverage_reference_info::in,
     goal_path::in, int::in, solution_count_rep::in, coverage_before::in,
@@ -363,7 +379,9 @@ disj_annotate_coverage_2(Info, GoalPath, DisjNum, Solutions,
         Before0, !SumAfter, [Disj0 | Disjs0], [Disj | Disjs]) :-
     DisjGoalPath = goal_path_add_at_end(GoalPath, step_disj(DisjNum)),
     (
-        Before0 = before_known(_),
+        ( Before0 = before_known(_)
+        ; Before0 = before_zero
+        ),
         Before = Before0
     ;
         Before0 = before_unknown,
@@ -389,13 +407,13 @@ switch_annotate_coverage(Info, CanFail, GoalPath, Before, After,
     ),
 
     switch_annotate_coverage_2(Info, CanFail, GoalPath, 1,
-        sum_before_known(0), _SumBefore, sum_after_known(0), SumAfter,
+        sum_before_zero, _SumBefore, sum_after_zero, SumAfter,
         Before, Cases0, Cases),
     % For can_fail switches, the sum of the exec counts at the starts of the
     % arms may be less than the exec count at the start of the switch. However,
     % even for can_fail switches, the sum of the exec counts at the *ends* of
     % the arms will always equal the exec count at the end of the switch.
-    count_sum_to_count(SumAfter, After),
+    after_count_sum_after_count(SumAfter, After),
     % Note: This code was removed this while simplifying the algorithm, it does
     % not infer any extra coverage information since coverage is known before
     % all goals before goal_annotate_coverage is called, it may be useful if we
@@ -454,10 +472,20 @@ switch_annotate_coverage_2(Info, CanFail, GoalPath, CaseNum,
     (
         Cases0 = [],
         CanFail = switch_can_not_fail_rep,
-        SwitchBefore = before_known(SwitchBeforeExecCount),
-        !.SumBefore = sum_before_known(SumBeforeExecCount)
+        (
+            SwitchBefore = before_known(SwitchBeforeExecCount)
+        ; 
+            SwitchBefore = before_zero,
+            SwitchBeforeExecCount = 0
+        ),
+        (
+            !.SumBefore = sum_before_known(SumBeforeExecCount)
+        ;
+            !.SumBefore = sum_before_zero,
+            SumBeforeExecCount = 0
+        )
     ->
-        BeforeCase = before_known(SwitchBeforeExecCount - SumBeforeExecCount)
+        BeforeCase = before_coverage(SwitchBeforeExecCount - SumBeforeExecCount)
     ;
         % Search for a coverage point for this case.
         get_branch_start_coverage(Info, CaseGoalPath, BeforeCase)
@@ -500,7 +528,9 @@ ite_annotate_coverage(Info, GoalPath, Before, After,
     % Step 2:
     %   Lookup coverage information for the starts of the then and else goals.
     (
-        BeforeThen0 = before_known(_),
+        ( BeforeThen0 = before_known(_)
+        ; BeforeThen0 = before_zero
+        ),
         BeforeThen = BeforeThen0
     ;
         BeforeThen0 = before_unknown,
@@ -533,10 +563,30 @@ ite_annotate_coverage(Info, GoalPath, Before, After,
     %   Update what we know about the if-then-else as a whole.
     (
         AfterThen = after_known(AfterThenExecCount),
-        AfterElse = after_known(AfterElseExecCount)
-    ->
-        After = after_known(AfterThenExecCount + AfterElseExecCount)
+        (
+            AfterElse = after_known(AfterElseExecCount),
+            After = after_coverage(AfterThenExecCount + AfterElseExecCount)
+        ;
+            AfterElse = after_zero,
+            After = after_coverage(AfterThenExecCount)
+        ;
+            AfterElse = after_unknown,
+            After = after_unknown
+        )
     ;
+        AfterThen = after_zero,
+        (
+            AfterElse = after_known(AfterElseExecCount),
+            After = after_coverage(AfterElseExecCount)
+        ;
+            AfterElse = after_zero,
+            After = after_zero
+        ;
+            AfterElse = after_unknown,
+            After = after_unknown
+        )
+    ;
+        AfterThen = after_unknown,
         After = after_unknown
     ),
 
@@ -572,7 +622,7 @@ not_unify(A, B) :- not unify(A, B).
 get_branch_start_coverage(Info, GoalPath, Before) :-
     ( map.search(Info ^ cri_branch_coverage_points, GoalPath, CP) ->
         CP = coverage_point(ExecCount, _, _),
-        Before = before_known(ExecCount)
+        Before = before_coverage(ExecCount)
     ;
         Before = before_unknown
     ).
@@ -633,6 +683,7 @@ detism_coverage_ok(Coverage, Detism) = OK :-
         ),
         (
             ( Coverage = coverage_known_same(_)
+            ; Coverage = coverage_known_zero
             ; Coverage = coverage_unknown
             ),
             OK = yes
@@ -662,6 +713,7 @@ detism_coverage_ok(Coverage, Detism) = OK :-
             ( Coverage = coverage_known_before(_)
             ; Coverage = coverage_known_after(_)
             ; Coverage = coverage_known_same(_)
+            ; Coverage = coverage_known_zero
             ; Coverage = coverage_unknown
             ),
             OK = yes
@@ -679,6 +731,7 @@ detism_coverage_ok(Coverage, Detism) = OK :-
             ( Coverage = coverage_known_before(_)
             ; Coverage = coverage_known_after(_)
             ; Coverage = coverage_known_same(_)
+            ; Coverage = coverage_known_zero
             ; Coverage = coverage_unknown
             ),
             OK = yes
@@ -707,7 +760,9 @@ detism_coverage_ok(Coverage, Detism) = OK :-
                 OK = no
             )
         ;
-            Coverage = coverage_known_before(_),
+            ( Coverage = coverage_known_before(_)
+            ; Coverage = coverage_known_zero
+            ),
             OK = yes
         ;
             Coverage = coverage_unknown,
@@ -730,8 +785,13 @@ check_switch_coverage(CanFail, Cases, Before) :-
         (
             MaybeSum = yes(Sum),
             (
-                ( Before = before_known(Sum)
-                ; Before = before_unknown
+                ( 
+                    Before = before_known(Sum)
+                ; 
+                    Before = before_unknown
+                ;
+                    Before = before_zero,
+                    Sum = 0
                 )
             )
         ;
@@ -754,6 +814,8 @@ sum_switch_case_coverage(case_rep(_, _, Goal), !Acc) :-
             ; Coverage = coverage_known_before(Addend)
             ),
             !:Acc = yes(Count + Addend)
+        ;
+            Coverage = coverage_known_zero
         ;
             ( Coverage = coverage_unknown
             ; Coverage = coverage_known_after(_)
@@ -820,6 +882,7 @@ check_ite_coverage(Before, After, BeforeCond, AfterCond,
 
 check_coverage_complete(coverage_known(_, _), _GoalExpr).
 check_coverage_complete(coverage_known_same(_), _GoalExpr).
+check_coverage_complete(coverage_known_zero, _GoalExpr).
 % Uncomment this clause if, in the future, we allow coverage to be incomplete
 % for trivial goals.
 %check_coverage_complete(Coverage, GoalExpr) :-
@@ -889,7 +952,7 @@ goal_expr_is_trivial(GoalRep) = IsTrivial :-
 
     % The coverage before a det goal should always equal the coverage after.
     %
-:- pred propagate_det_coverage( coverage_before::in, coverage_after::out)
+:- pred propagate_det_coverage(coverage_before::in, coverage_after::out)
     is det.
 
 propagate_det_coverage(Before, After) :-
@@ -898,7 +961,10 @@ propagate_det_coverage(Before, After) :-
         After = after_unknown
     ;
         Before = before_known(Count),
-        After = after_known(Count)
+        After = after_coverage(Count)
+    ;
+        Before = before_zero,
+        After = after_zero
     ).
 
     % If the determinism is deterministic or cc_multi use
@@ -929,7 +995,7 @@ propagate_detism_coverage(Detism, Before, After) :-
         ; Detism = failure_rep
         ),
         % Execution never reaches the end of these goals.
-        After = after_known(0)
+        After = after_zero
     ;
         ( Detism = semidet_rep
         ; Detism = nondet_rep
@@ -950,6 +1016,9 @@ after_to_before_coverage(After, Before) :-
     ;
         After = after_known(ExecCount),
         Before = before_known(ExecCount)
+    ;
+        After = after_zero,
+        Before = before_zero
     ).
 
 :- pred after_count_from_either_source(coverage_after::in,
@@ -958,30 +1027,56 @@ after_to_before_coverage(After, Before) :-
 after_count_from_either_source(AfterA, AfterB, After) :-
     (
         AfterA = after_unknown,
-        AfterB = after_unknown,
-        After = after_unknown
-    ;
-        AfterA = after_unknown,
-        AfterB = after_known(AfterCount),
-        After = after_known(AfterCount)
-    ;
-        AfterA = after_known(AfterCount),
-        AfterB = after_unknown,
-        After = after_known(AfterCount)
+        (
+            AfterB = after_unknown,
+            After = after_unknown
+        ;
+            AfterB = after_known(AfterCount),
+            After = after_coverage(AfterCount)
+        ;
+            AfterB = after_zero,
+            After = after_zero
+        )
     ;
         AfterA = after_known(AfterCountA),
-        AfterB = after_known(AfterCountB),
-        require(unify(AfterCountA, AfterCountB),
-            "after_count_from_either_source: mismatch"),
-        After = after_known(AfterCountA)
+        (
+            AfterB = after_unknown,
+            After = after_coverage(AfterCountA)
+        ;
+            AfterB = after_known(AfterCountB),
+            require(unify(AfterCountA, AfterCountB),
+                "after_count_from_either_source: mismatch"),
+            After = after_coverage(AfterCountA)
+        ;
+            AfterB = after_zero,
+            require(unify(AfterCountA, 0),
+                "after_count_from_either_source: mismatch"),
+            After = after_zero
+        )
+    ;
+        AfterA = after_zero,
+        (
+            AfterB = after_unknown,
+            After = after_zero
+        ;
+            AfterB = after_known(AfterCountB),
+            require(unify(0, AfterCountB),
+                "after_count_from_either_source: mismatch"),
+            After = after_zero
+        ;
+            AfterB = after_zero,
+            After = after_zero
+        )
     ).
 
     % Convert a sum_coverage_after to a coverage_after.
     %
-:- pred count_sum_to_count(sum_coverage_after::in, coverage_after::out) is det.
+:- pred after_count_sum_after_count(sum_coverage_after::in,
+    coverage_after::out) is det.
 
-count_sum_to_count(sum_after_unknown, after_unknown).
-count_sum_to_count(sum_after_known(C), after_known(C)).
+after_count_sum_after_count(sum_after_unknown, after_unknown).
+after_count_sum_after_count(sum_after_zero, after_zero).
+after_count_sum_after_count(sum_after_known(C), after_coverage(C)).
 
 :- pred before_count_from_either_source(coverage_before::in,
     coverage_before::in, coverage_before::out) is det.
@@ -989,47 +1084,54 @@ count_sum_to_count(sum_after_known(C), after_known(C)).
 before_count_from_either_source(BeforeA, BeforeB, Before) :-
     (
         BeforeA = before_unknown,
-        BeforeB = before_unknown,
-        Before = before_unknown
-    ;
-        BeforeA = before_unknown,
-        BeforeB = before_known(BeforeCount),
-        Before = before_known(BeforeCount)
-    ;
-        BeforeA = before_known(BeforeCount),
-        BeforeB = before_unknown,
-        Before = before_known(BeforeCount)
+        (
+            BeforeB = before_unknown,
+            Before = before_unknown
+        ;
+            BeforeB = before_known(BeforeCount),
+            Before = before_coverage(BeforeCount)
+        ;
+            BeforeB = before_zero,
+            Before = before_zero
+        )
     ;
         BeforeA = before_known(BeforeCountA),
-        BeforeB = before_known(BeforeCountB),
-        require(unify(BeforeCountA, BeforeCountB),
-            "before_count_from_either_source: mismatch"),
-        Before = before_known(BeforeCountA)
+        (
+            BeforeB = before_unknown,
+            Before = before_coverage(BeforeCountA)
+        ;
+            BeforeB = before_known(BeforeCountB),
+            require(unify(BeforeCountA, BeforeCountB),
+                "before_count_from_either_source: mismatch"),
+            Before = before_coverage(BeforeCountA)
+        ;
+            BeforeB = before_zero,
+            require(unify(BeforeCountA, 0),
+                "before_count_from_either_source: mismatch"),
+            Before = before_zero
+        )
+    ;
+        BeforeA = before_zero,
+        (
+            BeforeB = before_unknown,
+            Before = before_zero
+        ;
+            BeforeB = before_known(BeforeCountB),
+            require(unify(0, BeforeCountB),
+                "before_count_from_either_source: mismatch"),
+            Before = before_zero
+        ; 
+            BeforeB = before_zero,
+            Before = before_zero
+        )
     ).
 
 :- pred before_count_from_either_source_sum(sum_coverage_before::in,
     coverage_before::in, coverage_before::out) is det.
 
-before_count_from_either_source_sum(BeforeA, BeforeB, Before) :-
-    (
-        BeforeA = sum_before_unknown,
-        BeforeB = before_unknown,
-        Before = before_unknown
-    ;
-        BeforeA = sum_before_unknown,
-        BeforeB = before_known(BeforeCount),
-        Before = before_known(BeforeCount)
-    ;
-        BeforeA = sum_before_known(BeforeCount),
-        BeforeB = before_unknown,
-        Before = before_known(BeforeCount)
-    ;
-        BeforeA = sum_before_known(BeforeCountA),
-        BeforeB = before_known(BeforeCountB),
-        require(unify(BeforeCountA, BeforeCountB),
-            "before_count_from_either_source: mismatch"),
-        Before = before_known(BeforeCountA)
-    ).
+before_count_from_either_source_sum(BeforeA0, BeforeB, Before) :-
+    before_count_sum_before_count(BeforeA0, BeforeA),
+    before_count_from_either_source(BeforeA, BeforeB, Before).
 
 :- pred sum_before_coverage(coverage_before::in,
     sum_coverage_before::in, sum_coverage_before::out) is det.
@@ -1037,11 +1139,28 @@ before_count_from_either_source_sum(BeforeA, BeforeB, Before) :-
 sum_before_coverage(Before, !SumBefore) :-
     (
         !.SumBefore = sum_before_known(SumExecCount),
-        Before = before_known(ExecCount)
-    ->
-        !:SumBefore = sum_before_known(SumExecCount + ExecCount)
+        (
+            Before = before_known(ExecCount),
+            !:SumBefore = sum_before_known(SumExecCount + ExecCount)
+        ;
+            Before = before_zero
+        ;
+            Before = before_unknown,
+            !:SumBefore = sum_before_unknown
+        )
     ;
-        !:SumBefore = sum_before_unknown
+        !.SumBefore = sum_before_zero,
+        (
+            Before = before_known(ExecCount),
+            !:SumBefore = sum_before_known(ExecCount)
+        ;
+            Before = before_zero
+        ;
+            Before = before_unknown,
+            !:SumBefore = sum_before_unknown
+        )
+    ;
+        !.SumBefore = sum_before_unknown
     ).
 
 :- pred sum_after_coverage(coverage_after::in,
@@ -1050,11 +1169,53 @@ sum_before_coverage(Before, !SumBefore) :-
 sum_after_coverage(After, !SumAfter) :-
     (
         !.SumAfter = sum_after_known(SumExecCount),
-        After = after_known(ExecCount)
-    ->
-        !:SumAfter = sum_after_known(SumExecCount + ExecCount)
+        (
+            After = after_known(ExecCount),
+            !:SumAfter = sum_after_known(SumExecCount + ExecCount)
+        ;
+            After = after_unknown,
+            !:SumAfter = sum_after_unknown
+        ;
+            After = after_zero
+        )
     ;
-        !:SumAfter = sum_after_unknown
+        !.SumAfter = sum_after_zero,
+        (
+            After = after_known(ExecCount),
+            !:SumAfter = sum_after_known(ExecCount)
+        ;
+            After = after_zero
+        ;
+            After = after_unknown,
+            !:SumAfter = sum_after_unknown
+        )
+    ;
+        !.SumAfter = sum_after_unknown
+    ).
+
+:- pred before_count_sum_before_count(sum_coverage_before::in,
+    coverage_before::out) is det.
+
+before_count_sum_before_count(sum_before_unknown, before_unknown).
+before_count_sum_before_count(sum_before_known(Num), before_coverage(Num)).
+before_count_sum_before_count(sum_before_zero, before_zero).
+
+:- func after_coverage(int) = coverage_after.
+
+after_coverage(Count) = 
+    ( Count = 0 ->
+        after_zero
+    ;
+        after_known(Count)
+    ).
+
+:- func before_coverage(int) = coverage_before.
+
+before_coverage(Count) = 
+    ( Count = 0 ->
+        before_zero
+    ;
+        before_known(Count)
     ).
 
 %----------------------------------------------------------------------------%

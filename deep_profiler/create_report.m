@@ -1133,7 +1133,7 @@ create_procrep_coverage_report(Deep, PSPtr, MaybeReport) :-
 
                 % Gather call site information.
                 CallSitesArray = PS ^ ps_sites,
-                CallSitesMap = array.foldl(create_cs_summary_add_to_map(Deep),
+                CallSitesMap = array.foldl(add_ps_own_info_to_map(Deep),
                     CallSitesArray, map.init),
 
                 % Gather information about coverage points.
@@ -1162,18 +1162,14 @@ create_procrep_coverage_report(Deep, PSPtr, MaybeReport) :-
         )
     ).
 
-:- func create_cs_summary_add_to_map(deep, call_site_static_ptr,
-    map(goal_path, call_site_perf)) =  map(goal_path, call_site_perf).
+:- func add_ps_own_info_to_map(deep, call_site_static_ptr,
+    map(goal_path, own_prof_info)) = map(goal_path, own_prof_info).
 
-create_cs_summary_add_to_map(Deep, CSStatic, Map0) = Map :-
-    % TODO: Most uses of this predicate don't need all the information that a
-    % call site summary provides.  Additionally creating a call site summary is
-    % reasonably expensive, consider using more specialised code instead as it
-    % will be faster.
-    create_call_site_summary(Deep, CSStatic) = CSSummary,
-    GoalPath = CSSummary ^ csf_summary_perf ^ perf_row_subject
-        ^ csdesc_goal_path,
-    map.det_insert(Map0, GoalPath, CSSummary, Map).
+add_ps_own_info_to_map(Deep, CSSPtr, !.Map) = !:Map :-
+    lookup_call_site_statics(Deep ^ call_site_statics, CSSPtr, CSS),
+    goal_path_from_string_det(CSS ^ css_goal_path, GoalPath),
+    lookup_css_own(Deep ^ css_own, CSSPtr, Own),
+    svmap.det_insert(GoalPath, Own, !Map).
 
 :- pred add_coverage_point_to_map(coverage_point::in,
     map(goal_path, coverage_point)::in, map(goal_path, coverage_point)::out,
