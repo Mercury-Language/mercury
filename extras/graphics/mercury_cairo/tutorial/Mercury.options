@@ -1,0 +1,13 @@
+include ../Cairo.options
+
+# Where is the mercury_cairo library installed?
+# The current value works when it is installed in the parent directory.
+# You will need to modify it if that is not the case.
+#
+MERCURY_CAIRO_DIR=../lib/mercury
+
+MCFLAGS = \
+	--ml mercury_cairo			\
+	--mld $(MERCURY_CAIRO_DIR)		\
+	--cflags $(CAIRO_CFLAGS)		\
+	--ld-flags $(CAIRO_LDFLAGS)

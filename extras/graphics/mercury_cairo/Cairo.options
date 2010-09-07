@@ -1,0 +1,25 @@
+# This file contains system-specific information about where to install the
+# Mercury cairo binding and how to compile and link it against the cairo
+# itself.  If your system has the pkg-config tool then you can use that as
+# shown below to find the necessary information.
+
+# NOTE: the current values of CAIRO_CFLAGS and CAIRO_LDFLAGS are for the
+# MacPorts (<http://www.macports.org/> port of cairo on Mac OS X.
+# They will probably not work on other systems.
+
+# Where are we going to install the Mercury cairo binding?
+#
+INSTALL_PREFIX=.
+
+# What flags do we need to pass to the C compiler in order to compile
+# against cairo?  
+# Use "pkg-config --cflags cairo" to work this and substitute the result
+# as the value of CAIRO_CFLAGS.
+#
+CAIRO_CFLAGS="-I/opt/local/include/cairo -I/opt/local/include/pixman-1 -I/opt/local/include -I/opt/local/include/freetype2 -I/opt/local/include/libpng12"
+
+# What flags do we need to pass to the linker in order to link against cairo?
+# Use "pkg-config --libs cairo" here and substitute the result as the value
+# of CAIRO_LDFLAGS.
+#
+CAIRO_LDFLAGS="-L/opt/local/lib -lcairo -lpixman-1 -lfontconfig -lexpat -liconv -lfreetype -lpng12 -lz -lXrender -lX11 -lxcb -lXau -lXdmcp"
