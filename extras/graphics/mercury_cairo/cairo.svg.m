@@ -54,6 +54,8 @@
 
 :- pragma foreign_decl("C", "
 
+#include \"cairo.mh\"
+
 #if defined(CAIRO_HAS_SVG_SURFACE)
   #include <cairo-svg.h>
 #endif

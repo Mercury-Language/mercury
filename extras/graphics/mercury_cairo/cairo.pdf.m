@@ -51,6 +51,8 @@
 
 :- pragma foreign_decl("C", "
 
+#include \"cairo.mh\"
+
 #if defined(CAIRO_HAS_PDF_SURFACE)
   #include <cairo-pdf.h>
 #endif

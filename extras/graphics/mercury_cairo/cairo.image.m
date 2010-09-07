@@ -56,6 +56,8 @@
 
 :- implementation.
 
+:- pragma foreign_decl("C", "#include \"cairo.mh\"").
+
 :- pragma foreign_type("C", image_surface, "MCAIRO_surface *",
 	[can_pass_as_mercury_type]).
 
