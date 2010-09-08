@@ -12,6 +12,9 @@
 %
 % Floating point support.
 %
+% Floats are double precision, except in .spf grades where they
+% are single precision.
+%
 % Note that implementations which support IEEE floating point
 % should ensure that in cases where the only valid answer is a "NaN"
 % (the IEEE float representation for "not a number"), the det
