@@ -31,6 +31,7 @@
 :- include_module pdf.
 :- include_module png.
 :- include_module ps.
+:- include_module region.
 :- include_module surface.
 :- include_module svg.
 :- include_module text.
@@ -61,11 +62,13 @@
 
 :- type cairo.font_options.
 
+:- type cairo.region.
+
     % TODO: scaled fonts are NYI.
     %
 :- type cairo.scaled_font(F).   % <= font_face(F).
 
-    % Values of this type descirbe that content that a surface will contain.
+    % Values of this type describe that content that a surface will contain.
     %
 :- type content
     --->    content_color
@@ -94,8 +97,22 @@
     ;       format_a8
             % Each pixel is a 8-bit quantity holding an alpha value.
 
-    ;       format_a1.
+    ;       format_a1
             % Each pixel is a 1-bit quantity holding an alpha value.
+
+    ;       format_rgb16_565.
+            % Each pixel is a 16-bit quantity with red in the upper 5 bits,
+            % then green in the middle 6 bits, and blue in the lower 5 bits.
+
+    % A rectangle with integer coordinates.
+    %
+:- type rectangle
+    --->    rectangle(
+                rect_x :: int,      % X coordinate of the LHS.
+                rect_y :: int,      % Y coordinate of the top.
+                rect_width  :: int, % Width.
+                rect_height :: int  % Height
+            ).
 
 %---------------------------------------------------------------------------%
 %
@@ -155,6 +172,12 @@
     --->    status_success
     ;       status_no_memory
     ;       status_pattern_type_mismatch.
+
+    % Status information for regions.
+    %
+:- inst cairo.region_status
+    --->    status_success
+    ;       status_no_memory.
 
     % Exceptions of this type are thrown to indicate a cairo error.
     %
@@ -350,17 +373,17 @@
     % cairo.get_line_width(Context, Width, !IO):
     % Width is the current line width for Context.
     %
-:- pred get_line_width(context(T)::in, float::out, io::di, io::uo) is det.
+:- pred get_line_width(context(S)::in, float::out, io::di, io::uo) is det.
 
     % cairo.set_miter_limit(Context, Limit, !IO):
     % Set the miter limit for Context to Limit.
     %
-:- pred set_miter_limit(context(T)::in, float::in, io::di, io::uo) is det.
+:- pred set_miter_limit(context(S)::in, float::in, io::di, io::uo) is det.
 
     % cairo.get_miter_limit(Context, Limit, !IO):
     % Limit is the miter limit for Context.
     %
-:- pred get_miter_limit(context(T)::in, float::out, io::di, io::uo) is det.
+:- pred get_miter_limit(context(S)::in, float::out, io::di, io::uo) is det.
 
     % Values of this type specify the compositing operator used for drawing
     % operations (See: <http://cairographics.org/operators/> for details.)
@@ -383,20 +406,20 @@
     % cairo.set_operator(Context, Operator, !IO):
     % Set the compositing operator for Context to Operator.
     %
-:- pred set_operator(context(T)::in, operator::in, io::di, io::uo) is det.
+:- pred set_operator(context(S)::in, operator::in, io::di, io::uo) is det.
 
     % cairo.get_operator(Context, Operator, !IO):
     % Operator is the current compositing operator for Context.
     %
-:- pred get_operator(context(T)::in, operator::out, io::di, io::uo) is det.
+:- pred get_operator(context(S)::in, operator::out, io::di, io::uo) is det.
 
     % cairo.set_tolerance(Context, Tolerance, !IO):
     %
-:- pred set_tolerance(context(T)::in, float::in, io::di, io::uo) is det.
+:- pred set_tolerance(context(S)::in, float::in, io::di, io::uo) is det.
 
     % cairo.get_tolerance(Context, Tolerance, !IO):
     %
-:- pred get_tolerance(context(T)::in, float::out, io::di, io::uo) is det.
+:- pred get_tolerance(context(S)::in, float::out, io::di, io::uo) is det.
 
     % cairo.clip(Context, !IO):
     % Establishes a new clip region by intersecting the current clip region
@@ -404,19 +427,26 @@
     % to the current fill rule.
     % The current path will be cleared from Context.
     %
-:- pred clip(context(T)::in, io::di, io::uo) is det.
+:- pred clip(context(S)::in, io::di, io::uo) is det.
 
     % cairo.clip_preserve(Context, !IO):
     % As above, but do not clear the current path from Context.
     %
-:- pred clip_preserve(context(T)::in, io::di, io::uo) is det.
+:- pred clip_preserve(context(S)::in, io::di, io::uo) is det.
 
     % cairo.clip_extents(Context, Left, Top, Right, Bottom, !IO):
     % Compute a bounding box in user coordinates covering the area inside the
     % current clip for Context.
     %
-:- pred clip_extents(context(T)::in, float::out, float::out,
+:- pred clip_extents(context(S)::in, float::out, float::out,
     float::out, float::out, io::di, io::uo) is det.
+
+    % cairo.in_clip(Context, X, Y Result, !IO):
+    % Result is "yes" if the point (X, Y) is inside the area that
+    % would be visible through the current clip for Context.
+    %
+:- pred in_clip(context(S)::in, float::in, float::in, bool::out,
+    io::di, io::uo) is det.
 
     % cairo.reset_clip(Context, !IO):
     % Reset the current clip region to its original, unrestricted state.
@@ -428,7 +458,7 @@
     % (Each sub-path is implicitly closed before being filled.)
     % The current path for Context will be cleared.
     %
-:- pred fill(context(T)::in, io::di, io::uo) is det.
+:- pred fill(context(S)::in, io::di, io::uo) is det.
 
     % cairo.fill_preserve(Context, !IO):
     % As above, but preserve the current path for Context.
@@ -442,7 +472,7 @@
     % an empty rectangle ((0,0), (0,0)). Surface dimensions and clipping are
     % not taken into account.
     %
-:- pred fill_extents(context(T)::in, float::out, float::out,
+:- pred fill_extents(context(S)::in, float::out, float::out,
     float::out, float::out, io::di, io::uo) is det.
 
     % cairo.in_fill(Context, X, Y, Result, !IO):
@@ -450,43 +480,43 @@
     % would be affected by a cairo.fill/3 operation given the current
     % path and filling parameters.  Result is "no" otherwise.
     %
-:- pred in_fill(context(T)::in, float::in, float::in, bool::out,
+:- pred in_fill(context(S)::in, float::in, float::in, bool::out,
     io::di, io::uo) is det.
 
     % cairo.mask(Context, Pattern, !IO):
     % Paint the current source using the alpha channel of Pattern as a mask.
     %
-:- pred mask(context(T)::in, pattern::in, io::di, io::uo) is det.
+:- pred mask(context(S)::in, pattern::in, io::di, io::uo) is det.
 
     % cairo.mask_surface(Context, Surface, X, Y, !IO):
     % Paint the current source using the alpha channel of Surface as a mask.
     % (X, Y) is coordinate at which to place the origin of Surface.
     %
-:- pred mask_surface(context(T)::in, S::in, float::in, float::in,
-    io::di, io::uo) is det <= surface(S).
+:- pred mask_surface(context(S)::in, Mask::in, float::in, float::in,
+    io::di, io::uo) is det <= surface(Mask).
 
     % cairo.paint(Context, !IO):
     % Paint the current source everywhere within the current clip region.
     %
-:- pred paint(context(T)::in, io::di, io::uo) is det.
+:- pred paint(context(S)::in, io::di, io::uo) is det.
 
     % cairo.paint_with_alpha(Context, Alpha, !IO):
     % Paint the current source everywhere within the current clip region using
     % a mask of constant alpha value Alpha.
     %
-:- pred paint_with_alpha(context(T)::in, float::in, io::di, io::uo) is det.
+:- pred paint_with_alpha(context(S)::in, float::in, io::di, io::uo) is det.
 
     % cairo.stroke(Context, !IO):
     % Stork the current path according to the current line width, line join,
     % line cap, and dash settings for Context.
     % The current path will be cleared.
     %
-:- pred stroke(context(T)::in, io::di, io::uo) is det.
+:- pred stroke(context(S)::in, io::di, io::uo) is det.
 
     % cairo.stroke_preserve(Context, !IO):
     % As above, but preserve the current path for Context.
     %
-:- pred stroke_preserve(context(T)::in, io::di, io::uo) is det.
+:- pred stroke_preserve(context(S)::in, io::di, io::uo) is det.
 
     % cairo.stroke_extents(Context, Left, Top, Right, Bottom, !IO):
     % Compute a bounding box in user coordinates covering the area that would
@@ -495,7 +525,7 @@
     % an empty rectangle ((0,0), (0,0)).
     % Surface dimensions and clipping are not taken into account.
     %
-:- pred stroke_extents(context(T)::in, float::out, float::out,
+:- pred stroke_extents(context(S)::in, float::out, float::out,
     float::out, float::out, io::di, io::uo) is det.
 
     % cairo.in_stroke(Context, X, Y, Result, !IO):
@@ -503,7 +533,7 @@
     % be affected by a cairo.stroke/3 operation given the current path and
     % stroking parameters.
     %
-:- pred in_stroke(context(T)::in, float::in, float::in, bool::out,
+:- pred in_stroke(context(S)::in, float::in, float::in, bool::out,
     io::di, io::uo) is det.
 
     % cairo.copy_page(Context, !IO):
@@ -512,13 +542,13 @@
     % for the next page too. Use cairo.show_page/3 if you want to get an empty
     % page after the emission.
     %
-:- pred copy_page(context(T)::in, io::di, io::uo) is det.
+:- pred copy_page(context(S)::in, io::di, io::uo) is det.
 
     % cairo.show_page(Context, !IO):
     % Emits and clears the current page for backends that support multiple
     % pages.
     %
-:- pred show_page(context(T)::in, io::di, io::uo) is det.
+:- pred show_page(context(S)::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -534,9 +564,15 @@
     io::di, io::uo) is det <= surface(S).
 
     % cairo.pattern_status(Pattern, Status, !IO):
-    % Satus is the current status of Pattern.
+    % Status is the current status of Pattern.
     %
 :- pred pattern_status(pattern::in, status::out(pattern_status),
+    io::di, io::uo) is det.
+
+    % cairo.region_status(Region, Status, !IO):
+    % Status is the current status of Region.
+    %
+:- pred region_status(region::in, status::out(region_status),
     io::di, io::uo) is det.
 
     % cairo.status_to_string(Status) = String:
@@ -592,6 +628,10 @@ typedef struct {
     cairo_scaled_font_t *mcairo_raw_scaled_font;
 } MCAIRO_scaled_font;
 
+typedef struct {
+    cairo_region_t      *mcairo_raw_region;
+} MCAIRO_region;
+
 extern void
 MCAIRO_finalize_context(void *context, void *client_data);
 
@@ -609,6 +649,9 @@ MCAIRO_finalize_font_face(void *font_face, void *client_data);
 
 extern void
 MCAIRO_finalize_font_options(void *font_options, void *client_data);
+
+extern void
+MCAIRO_finalize_region(void *region, void *client_data);
 
 extern void
 MCAIRO_finalize_scaled_font(void *scaled_font, void *client_data);
@@ -632,6 +675,9 @@ MCAIRO_finalize_scaled_font(void *scaled_font, void *client_data);
     [can_pass_as_mercury_type]).
 
 :- pragma foreign_type("C", cairo.font_options, "MCAIRO_font_options *",
+    [can_pass_as_mercury_type]).
+
+:- pragma foreign_type("C", cairo.region, "MCAIRO_region *",
     [can_pass_as_mercury_type]).
 
 :- pragma foreign_type("C", cairo.scaled_font(F), "MCAIRO_scaled_font *",
@@ -662,10 +708,11 @@ MCAIRO_finalize_scaled_font(void *scaled_font, void *client_data);
 ]).
 
 :- pragma foreign_enum("C", cairo.format/0, [
-    format_argb32 - "CAIRO_FORMAT_ARGB32",
-    format_rgb24  - "CAIRO_FORMAT_RGB24",
-    format_a8     - "CAIRO_FORMAT_A8",
-    format_a1     - "CAIRO_FORMAT_A1"
+    format_argb32    - "CAIRO_FORMAT_ARGB32",
+    format_rgb24     - "CAIRO_FORMAT_RGB24",
+    format_a8        - "CAIRO_FORMAT_A8",
+    format_a1        - "CAIRO_FORMAT_A1",
+    format_rgb16_565 - "CAIRO_FORMAT_RGB16_565"
 ]).
 
 :- pragma foreign_enum("C", cairo.status/0, [
@@ -740,6 +787,12 @@ MCAIRO_finalize_font_options(void *font_options, void *client_data)
 {
     cairo_font_options_destroy(
         ((MCAIRO_font_options *)font_options)->mcairo_raw_font_options);
+}
+
+void
+MCAIRO_finalize_region(void *region, void *client_data)
+{
+    cairo_region_destroy(((MCAIRO_region *)region)->mcairo_raw_region);
 }
 
 void
@@ -1122,6 +1175,17 @@ set_dash(Context, Dashes, OffSet, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
+    in_clip(Ctxt::in, X::in, Y::in, Result::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
+"
+    if (cairo_in_clip(Ctxt->mcairo_raw_context, X, Y)) {
+        Result = MR_YES;
+    } else {
+        Result = MR_NO;
+    }
+").
+
+:- pragma foreign_proc("C",
     reset_clip(Ctxt::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
@@ -1248,6 +1312,14 @@ set_dash(Context, Dashes, OffSet, !IO) :-
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     Status = cairo_pattern_status(Pattern->mcairo_raw_pattern);
+").
+
+:- pragma foreign_proc("C",
+    region_status(Region::in, Status::out(region_status),
+        _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
+"
+    Status = cairo_region_status(Region->mcairo_raw_region);
 ").
 
 :- pragma foreign_proc("C",
