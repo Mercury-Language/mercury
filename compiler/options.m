@@ -745,6 +745,7 @@
     ;       common_layout_data
     ;       optimize            % Also used for MLDS->MLDS optimizations.
     ;       optimize_peep
+    ;       optimize_peep_mkword
     ;       optimize_jumps
     ;       optimize_fulljumps
     ;       pessimize_tailcalls
@@ -1577,6 +1578,7 @@ option_defaults_2(optimization_option, [
     common_layout_data                  -   bool(yes),
     optimize                            -   bool(no),
     optimize_peep                       -   bool(no),
+    optimize_peep_mkword                -   bool(no),
     optimize_jumps                      -   bool(no),
     optimize_fulljumps                  -   bool(no),
     pessimize_tailcalls                 -   bool(no),
@@ -2474,6 +2476,8 @@ long_option("llds-optimize",        optimize).
 long_option("llds-optimise",        optimize).
 long_option("optimize-peep",        optimize_peep).
 long_option("optimise-peep",        optimize_peep).
+long_option("optimize-peep-mkword", optimize_peep_mkword).
+long_option("optimise-peep-mkword", optimize_peep_mkword).
 long_option("optimize-jumps",       optimize_jumps).
 long_option("optimise-jumps",       optimize_jumps).
 long_option("optimize-fulljumps",   optimize_fulljumps).
@@ -3041,6 +3045,7 @@ opt_level(0, _, [
     optimize                    -   bool(yes),
     optimize_repeat             -   int(1),
     optimize_peep               -   bool(yes),
+    optimize_peep_mkword        -   bool(yes),
     static_ground_cells         -   bool(yes),
     smart_indexing              -   bool(yes),
     optimize_jumps              -   bool(yes),
@@ -5034,6 +5039,9 @@ options_help_llds_llds_optimization -->
         "\tEnable dead predicate elimination.",
         "--no-optimize-peep",
         "\tDisable local peephole optimizations.",
+% This is useful for developers only, to test whether a gcc bug has been fixed.
+%       "--no-optimize-peep-mkword",
+%       "\tDisable peephole optimizations of words created by mkword.",
         "--no-optimize-jumps",
         "\tDisable elimination of jumps to jumps.",
         "--no-optimize-fulljumps",

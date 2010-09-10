@@ -382,7 +382,7 @@ EOF
 		echo "$JAVAC" conftest.java >&AC_FD_CC 2>&1 &&
 		"$JAVAC" conftest.java >&AC_FD_CC 2>&1 &&
 		echo "$JAVA_INTERPRETER" conftest > conftest.out 2>&AC_FD_CC &&
-		"$JAVA_INTERPRETER" conftest > conftest.out 2>&AC_FD_CC &&
+		CLASSPATH=. "$JAVA_INTERPRETER" conftest > conftest.out 2>&AC_FD_CC &&
 		test "`tr -d '\015' < conftest.out`" = "Hello, world"
 	then
 		mercury_cv_java="yes"

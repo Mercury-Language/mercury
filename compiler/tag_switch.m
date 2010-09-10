@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000,2002-2007, 2009 The University of Melbourne.
+% Copyright (C) 1994-2000,2002-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -839,7 +839,7 @@ generate_secondary_try_me_else_chain_case(CaseLabel, StagRval, Secondary,
         llds_instr(
             if_val(binop(ne, StagRval, const(llconst_int(Secondary))),
                 code_label(ElseLabel)),
-            "test remote sec tag only")
+            "test sec tag only")
     ),
     ElseLabelCode = singleton(
         llds_instr(label(ElseLabel), "handle next secondary tag")
@@ -894,7 +894,7 @@ generate_secondary_try_chain_case(CaseLabel, StagRval, Secondary,
         llds_instr(
             if_val(binop(eq, StagRval, const(llconst_int(Secondary))),
                 code_label(CaseLabel)),
-            "test remote sec tag only for " ++ Comment)
+            "test sec tag only for " ++ Comment)
     ),
     PrevTestsCode = PrevTestsCode0 ++ TestCode.
 

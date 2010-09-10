@@ -15,6 +15,7 @@ ORDINARY_PROGS=	\
 	bidirectional \
 	boyer \
 	brace \
+	bug160 \
 	builtin_inst_rename \
 	c_write_string \
 	calendar_test \
