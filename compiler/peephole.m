@@ -24,7 +24,7 @@
 
     % Peephole optimize a list of instructions.
     %
-:- pred peephole_optimize(gc_method::in, list(instruction)::in,
+:- pred peephole_optimize(gc_method::in, bool::in, list(instruction)::in,
     list(instruction)::out, bool::out) is det.
 
 :- pred combine_decr_sp(list(instruction)::in, list(instruction)::out) is det.
@@ -35,6 +35,7 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
+:- import_module libs.compiler_util.
 :- import_module ll_backend.opt_util.
 
 :- import_module int.
@@ -48,7 +49,8 @@
     % Patterns that can be switched off.
     %
 :- type pattern
-    --->    incr_sp.
+    --->    pattern_incr_sp
+    ;       pattern_mkword.
 
     % We zip down to the end of the instruction list, and start attempting
     % to optimize instruction sequences. As long as we can continue
@@ -56,8 +58,8 @@
     % when we find a sequence we can't optimize, we back up and try
     % to optimize the sequence starting with the previous instruction.
     %
-peephole_optimize(GC_Method, Instrs0, Instrs, Mod) :-
-    invalid_peephole_opts(GC_Method, InvalidPatterns),
+peephole_optimize(GC_Method, OptPeepMkword, Instrs0, Instrs, Mod) :-
+    invalid_peephole_opts(GC_Method, OptPeepMkword, InvalidPatterns),
     peephole_optimize_2(InvalidPatterns, Instrs0, Instrs, Mod).
 
 :- pred peephole_optimize_2(list(pattern)::in, list(instruction)::in,
@@ -80,10 +82,8 @@ peephole_optimize_2(InvalidPatterns, [Instr0 | Instrs0], Instrs, Mod) :-
     list(pattern)::in, list(instruction)::out, bool::out) is det.
 
 peephole_opt_instr(Instr0, Instrs0, InvalidPatterns, Instrs, Mod) :-
-    (
-        opt_util.skip_comments(Instrs0, Instrs1),
-        peephole_match(Instr0, Instrs1, InvalidPatterns, Instrs2)
-    ->
+    opt_util.skip_comments(Instrs0, Instrs1),
+    ( peephole_match(Instr0, Instrs1, InvalidPatterns, Instrs2) ->
         (
             Instrs2 = [Instr2 | Instrs3],
             peephole_opt_instr(Instr2, Instrs3, InvalidPatterns, Instrs, _)
@@ -91,6 +91,9 @@ peephole_opt_instr(Instr0, Instrs0, InvalidPatterns, Instrs, Mod) :-
             Instrs2 = [],
             Instrs = Instrs2
         ),
+        Mod = yes
+    ; peephole_match_norepeat(Instr0, Instrs1, InvalidPatterns, Instrs2) ->
+        Instrs = Instrs2,
         Mod = yes
     ;
         Instrs = [Instr0 | Instrs0],
@@ -138,7 +141,14 @@ peephole_pick_one_val_label(LabelVals1, LabelVals2, OneValLabel, Val,
         fail
     ).
 
+%-----------------------------------------------------------------------------%
+
     % Look for code patterns that can be optimized, and optimize them.
+    % Unlike peephole_match_norepeat, this predicate guarantees that the
+    % instruction sequence it returns on success won't be transformable
+    % by the same transformation as it applies. This allows peephole_opt_instr
+    % to call peephole_match repeatedly until it fails without the possibility
+    % of an infinite loop.
     %
 :- pred peephole_match(instruction::in, list(instruction)::in,
     list(pattern)::in, list(instruction)::out) is semidet.
@@ -427,7 +437,7 @@ peephole_match(Instr0, Instrs0, _, Instrs) :-
 peephole_match(Instr0, Instrs0, InvalidPatterns, Instrs) :-
     Instr0 = llds_instr(Uinstr0, _Comment0),
     Uinstr0 = incr_sp(N, _, _),
-    \+ list.member(incr_sp, InvalidPatterns),
+    \+ list.member(pattern_incr_sp, InvalidPatterns),
     ( opt_util.no_stackvars_til_decr_sp(Instrs0, N, Between, Remain) ->
         Instrs = Between ++ Remain
     ;
@@ -436,14 +446,236 @@ peephole_match(Instr0, Instrs0, InvalidPatterns, Instrs) :-
 
 %-----------------------------------------------------------------------------%
 
+    % Look for code patterns that can be optimized, and optimize them.
+    % See the comment at the top of peephole_match for the difference
+    % between the two predicates.
+    %
+:- pred peephole_match_norepeat(instruction::in, list(instruction)::in,
+    list(pattern)::in, list(instruction)::out) is semidet.
+
+    % If none of the instructions in brackets can affect Lval, then
+    % we can transform references to tag(Lval) to Tag and body(Lval, Tag)
+    % to Base.
+    %
+    %   Lval = mkword(Tag, Base)        Lval = mkword(Tag, Base)
+    %   <...>                       =>  <...>
+    %   ... tag(Lval) ...               ... Tag ...
+    %   ... body(Lval, Tag) ...         ... Base ...
+    %
+peephole_match_norepeat(Instr0, Instrs0, InvalidPatterns, Instrs) :-
+    Instr0 = llds_instr(Uinstr0, _),
+    Uinstr0 = assign(Lval, mkword(Tag, Base)),
+    \+ list.member(pattern_mkword, InvalidPatterns),
+    replace_tagged_ptr_components_in_instrs(Lval, Tag, Base, Instrs0, Instrs1),
+    Instrs = [Instr0 | Instrs1].
+
+%-----------------------------------------------------------------------------%
+
+:- pred replace_tagged_ptr_components_in_instrs(lval::in, tag::in, rval::in,
+    list(instruction)::in, list(instruction)::out) is det.
+
+replace_tagged_ptr_components_in_instrs(_, _, _, [], []).
+replace_tagged_ptr_components_in_instrs(Lval, Tag, Base, Instrs0, Instrs) :-
+    Instrs0 = [HeadInstr0 | TailInstrs0],
+    replace_tagged_ptr_components_in_instr(Lval, Tag, Base,
+        HeadInstr0, MaybeHeadInstr),
+    (
+        MaybeHeadInstr = no,
+        Instrs = Instrs0
+    ;
+        MaybeHeadInstr = yes(HeadInstr),
+        replace_tagged_ptr_components_in_instrs(Lval, Tag, Base,
+            TailInstrs0, TailInstrs),
+        Instrs = [HeadInstr | TailInstrs]
+    ).
+
+:- pred replace_tagged_ptr_components_in_instr(lval::in, tag::in, rval::in,
+    instruction::in, maybe(instruction)::out) is det.
+
+replace_tagged_ptr_components_in_instr(OldLval, OldTag, OldBase,
+        Instr0, MaybeInstr) :-
+    Instr0 = llds_instr(Uinstr0, Comment),
+    (
+        Uinstr0 = assign(Lval, Rval0),
+        ( Lval = OldLval ->
+            MaybeInstr = no
+        ; Lval = mem_ref(_) ->
+            MaybeInstr = no
+        ;
+            replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+                Rval0, Rval),
+            Uinstr = assign(Lval, Rval),
+            Instr = llds_instr(Uinstr, Comment),
+            MaybeInstr = yes(Instr)
+        )
+    ;
+        Uinstr0 = keep_assign(Lval, Rval0),
+        ( Lval = OldLval ->
+            MaybeInstr = no
+        ; Lval = mem_ref(_) ->
+            MaybeInstr = no
+        ;
+            replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+                Rval0, Rval),
+            Uinstr = keep_assign(Lval, Rval),
+            Instr = llds_instr(Uinstr, Comment),
+            MaybeInstr = yes(Instr)
+        )
+    ;
+        Uinstr0 = computed_goto(Rval0, Targets),
+        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+            Rval0, Rval),
+        Uinstr = computed_goto(Rval, Targets),
+        Instr = llds_instr(Uinstr, Comment),
+        MaybeInstr = yes(Instr)
+    ;
+        Uinstr0 = if_val(Rval0, Target),
+        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+            Rval0, Rval),
+        Uinstr = if_val(Rval, Target),
+        Instr = llds_instr(Uinstr, Comment),
+        MaybeInstr = yes(Instr)
+    ;
+        Uinstr0 = incr_hp(Target, MaybeTag, MaybeOffset, SizeRval0,
+            TypeMsg, MayUseAtomicAlloc, MaybeRegionId, MaybeReuse),
+        ( Target = OldLval ->
+            MaybeInstr = no
+        ;
+            replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+                SizeRval0, SizeRval),
+            Uinstr = incr_hp(Target, MaybeTag, MaybeOffset, SizeRval,
+                TypeMsg, MayUseAtomicAlloc, MaybeRegionId, MaybeReuse),
+            Instr = llds_instr(Uinstr, Comment),
+            MaybeInstr = yes(Instr)
+        )
+    ;
+        Uinstr0 = restore_hp(Rval0),
+        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+            Rval0, Rval),
+        Uinstr = restore_hp(Rval),
+        Instr = llds_instr(Uinstr, Comment),
+        MaybeInstr = yes(Instr)
+    ;
+        Uinstr0 = free_heap(Rval0),
+        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+            Rval0, Rval),
+        Uinstr = free_heap(Rval),
+        Instr = llds_instr(Uinstr, Comment),
+        MaybeInstr = yes(Instr)
+    ;
+        Uinstr0 = reset_ticket(Rval0, Reason),
+        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+            Rval0, Rval),
+        Uinstr = reset_ticket(Rval, Reason),
+        Instr = llds_instr(Uinstr, Comment),
+        MaybeInstr = yes(Instr)
+    ;
+        Uinstr0 = prune_tickets_to(Rval0),
+        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+            Rval0, Rval),
+        Uinstr = prune_tickets_to(Rval),
+        Instr = llds_instr(Uinstr, Comment),
+        MaybeInstr = yes(Instr)
+    ;
+        ( Uinstr0 = save_maxfr(Lval0)
+        ; Uinstr0 = mark_hp(Lval0)
+        ; Uinstr0 = store_ticket(Lval0)
+        ; Uinstr0 = mark_ticket_stack(Lval0)
+        ),
+        ( Lval0 = OldLval ->
+            MaybeInstr = no
+        ;
+            MaybeInstr = yes(Instr0)
+        )
+    ;
+        ( Uinstr0 = comment(_)
+        ; Uinstr0 = livevals(_)
+        ; Uinstr0 = restore_maxfr(_)
+        ; Uinstr0 = prune_ticket
+        ; Uinstr0 = discard_ticket
+        ),
+        Uinstr = Uinstr0,
+        Instr = llds_instr(Uinstr, Comment),
+        MaybeInstr = yes(Instr)
+    ;
+        ( Uinstr0 = block(_, _, _)
+        ; Uinstr0 = llcall(_, _, _, _, _, _)
+        ; Uinstr0 = mkframe(_, _)
+        ; Uinstr0 = label(_)
+        ; Uinstr0 = goto(_)
+        ; Uinstr0 = arbitrary_c_code(_, _, _)
+        ; Uinstr0 = foreign_proc_code(_, _, _, _, _, _, _, _, _, _)
+        ; Uinstr0 = push_region_frame(_, _)
+        ; Uinstr0 = region_fill_frame(_, _, _, _, _)
+        ; Uinstr0 = region_set_fixed_slot(_, _, _)
+        ; Uinstr0 = use_and_maybe_pop_region_frame(_, _)
+        ; Uinstr0 = incr_sp(_, _, _)
+        ; Uinstr0 = decr_sp(_)
+        ; Uinstr0 = decr_sp_and_return(_)
+        ; Uinstr0 = init_sync_term(_, _)
+        ; Uinstr0 = fork_new_child(_, _)
+        ; Uinstr0 = join_and_continue(_, _)
+        ),
+        MaybeInstr = no
+    ).
+
+:- pred replace_tagged_ptr_components_in_rval(lval::in, tag::in, rval::in,
+    rval::in, rval::out) is det.
+
+replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase, Rval0, Rval) :-
+    (
+        Rval0 = unop(UnOp, RvalA0),
+        (
+            UnOp = tag,
+            RvalA0 = lval(OldLval)
+        ->
+            Rval = unop(mktag, const(llconst_int(OldTag)))
+        ;
+            replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+                RvalA0, RvalA),
+            Rval = unop(UnOp, RvalA)
+        )
+    ;
+        Rval0 = binop(BinOp, RvalA0, RvalB0),
+        (
+            BinOp = body,
+            RvalA0 = lval(OldLval),
+            RvalB0 = unop(mktag, const(llconst_int(OldTag))),
+            OldBase = const(_)
+        ->
+            Rval = OldBase
+        ;
+            replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+                RvalA0, RvalA),
+            replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+                RvalB0, RvalB),
+            Rval = binop(BinOp, RvalA, RvalB)
+        )
+    ;
+        Rval0 = mkword(Tag, BaseRval0),
+        replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
+            BaseRval0, BaseRval),
+        Rval = mkword(Tag, BaseRval)
+    ;
+        ( Rval0 = lval(_)
+        ; Rval0 = var(_)
+        ; Rval0 = const(_)
+        ; Rval0 = mem_addr(_)
+        ),
+        Rval = Rval0
+    ).
+
+%-----------------------------------------------------------------------------%
+
     % Given a GC method, return the list of invalid peephole optimizations.
     %
-:- pred invalid_peephole_opts(gc_method::in, list(pattern)::out) is det.
+:- pred invalid_peephole_opts(gc_method::in, bool::in, list(pattern)::out)
+    is det.
 
-invalid_peephole_opts(GC_Method, InvalidPatterns) :-
+invalid_peephole_opts(GC_Method, OptPeepMkword, InvalidPatterns) :-
     (
         GC_Method = gc_accurate,
-        InvalidPatterns = [incr_sp]
+        InvalidPatterns0 = [pattern_incr_sp]
     ;
         ( GC_Method = gc_automatic
         ; GC_Method = gc_none
@@ -452,7 +684,14 @@ invalid_peephole_opts(GC_Method, InvalidPatterns) :-
         ; GC_Method = gc_mps
         ; GC_Method = gc_hgc
         ),
-        InvalidPatterns = []
+        InvalidPatterns0 = []
+    ),
+    (
+        OptPeepMkword = yes,
+        InvalidPatterns = InvalidPatterns0
+    ;
+        OptPeepMkword = no,
+        InvalidPatterns = [pattern_mkword | InvalidPatterns0]
     ).
 
 %-----------------------------------------------------------------------------%
@@ -474,6 +713,12 @@ combine_decr_sp([Instr0 | Instrs0], Instrs) :-
     ;
         Instrs = [Instr0 | Instrs1]
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "peephole.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module peephole.

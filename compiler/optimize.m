@@ -415,7 +415,8 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
             VeryVerbose = no
         ),
         GC_Method = Info ^ lopt_gc_method,
-        peephole_optimize(GC_Method, !Instrs, Mod2),
+        OptPeepMkword = Info ^ lopt_opt_peep_mkword,
+        peephole_optimize(GC_Method, OptPeepMkword, !Instrs, Mod2),
         maybe_opt_debug(Info, !.Instrs, !.C, "peep", "after peephole",
             ProcLabel, !OptDebugInfo)
     ;
@@ -570,7 +571,8 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
                 VeryVerbose = no
             ),
             GC_Method = Info ^ lopt_gc_method,
-            peephole_optimize(GC_Method, !Instrs, _Mod),
+            OptPeepMkword = Info ^ lopt_opt_peep_mkword,
+            peephole_optimize(GC_Method, OptPeepMkword, !Instrs, _Mod),
             maybe_opt_debug(Info, !.Instrs, !.C, "peep", "after peephole",
                 ProcLabel, !OptDebugInfo)
         ;
@@ -765,6 +767,7 @@ escape_dir_char(Char, !Str) :-
                 lopt_opt_fulljumps                  :: bool,
                 lopt_opt_labels                     :: bool,
                 lopt_opt_peep                       :: bool,
+                lopt_opt_peep_mkword                :: bool,
                 lopt_opt_reassign                   :: bool,
                 lopt_pes_tailcalls                  :: bool,
                 lopt_std_labels                     :: bool,
@@ -799,6 +802,7 @@ init_llds_opt_info(Globals) = Info :-
     globals.lookup_bool_option(Globals, optimize_fulljumps, OptFullJumps),
     globals.lookup_bool_option(Globals, optimize_labels, OptLabels),
     globals.lookup_bool_option(Globals, optimize_peep, OptPeep),
+    globals.lookup_bool_option(Globals, optimize_peep_mkword, OptPeepMkword),
     globals.lookup_bool_option(Globals, optimize_reassign, OptReassign),
     globals.lookup_bool_option(Globals, pessimize_tailcalls,
         PessimizeTailCalls),
@@ -817,7 +821,7 @@ init_llds_opt_info(Globals) = Info :-
     Info = llds_opt_info(AutoComments, DetailedStatistics, VeryVerbose,
         CheckedNondetTailCalls, NumRealRRegs, GCMethod,
         OptDelaySlots, OptDups, OptFrames, FrameOptComments,
-        OptJumps, OptFullJumps, OptLabels, OptPeep, OptReassign,
+        OptJumps, OptFullJumps, OptLabels, OptPeep, OptPeepMkword, OptReassign,
         PessimizeTailCalls, StdLabels, UseLocalVars, LocalVarAccessThreshold,
         OptRepeat, DebugOpt, DebugOptPredIdStrs, DebugOptPredNames).
 
