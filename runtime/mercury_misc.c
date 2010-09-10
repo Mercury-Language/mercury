@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1996-2000,2002, 2006 The University of Melbourne.
+** Copyright (C) 1996-2000,2002, 2006, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -92,6 +92,28 @@ MR_fatal_error(const char *fmt, ...)
     fflush(stdout);     /* in case stdout and stderr are the same */
 
     fprintf(stderr, "Mercury runtime: ");
+    va_start(args, fmt);
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+    fprintf(stderr, "\n");
+
+#ifndef MR_HIGHLEVEL_CODE
+    MR_trace_report(stderr);
+#endif
+
+    fflush(NULL);       /* flushes all stdio output streams */
+
+    exit(EXIT_FAILURE);
+}
+
+void
+MR_external_fatal_error(const char *locn, const char *fmt, ...)
+{
+    va_list args;
+
+    fflush(stdout);     /* in case stdout and stderr are the same */
+
+    fprintf(stderr, "%s: ", locn);
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);
     va_end(args);
