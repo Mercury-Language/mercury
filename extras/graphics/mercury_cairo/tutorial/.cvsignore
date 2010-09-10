@@ -1,6 +1,7 @@
 Mercury
 *.err
 *.mh
+*.png
 fill
 mask
 paint

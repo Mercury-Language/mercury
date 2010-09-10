@@ -55,6 +55,36 @@
 :- pred restrict_to_level(ps_surface::in, ps_level::in,
     io::di, io::uo) is det.
 
+    % ps.set_eps(Surface, EPS, !IO):
+    % If EPS is "yes" then Surface will output Encapsulated PostScript.
+    %
+:- pred set_eps(ps_surface::in, bool::in, io::di, io::uo) is det.
+
+    % ps.get_eps(Surface, EPS, !IO):
+    % EPS is "yes" if Surface is set to output Encapsulated PostScript.
+    %
+:- pred get_eps(ps_surface::in, bool::out, io::di, io::uo) is det.
+
+    % ps.set_size(Surface, Width, Height, !IO):
+    % Change the size of Surface for the current (and subsequent) pages.
+    %
+:- pred set_size(ps_surface::in, float::in, float::in, io::di, io::uo) is det.
+
+    % ps.dsc_begin_setup(Surface, !IO):
+    %
+:- pred dsc_begin_setup(ps_surface::in, io::di, io::uo) is det.
+
+    % ps.dsc_begin_page_setup(Surface, !IO):
+    %
+:- pred dsc_begin_page_setup(ps_surface::in, io::di, io::uo) is det.
+
+    % ps.dsc_comment(Surface, Comment, !IO):
+    % Emit Comment into the PostScript output as a comment for Surface.
+    % (See the cairo manual entry for cairo_ps_surface_dsc_comment() for
+    % further details.)
+    %
+:- pred dsc_comment(ps_surface::in, string::in, io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -184,8 +214,55 @@ create_surface(FileName, Height, Width, Surface, !IO) :-
 #if defined(CAIRO_HAS_PS_SURFACE)
     cairo_ps_surface_restrict_to_level(Surface->mcairo_raw_surface, Level);
 #else
-   MR_fatal_error(\"Cairo PDF surface not available\");
+   MR_fatal_error(\"Cairo PostScript surface not available\");
 #endif
+").
+
+:- pragma foreign_proc("C",
+    set_eps(Surface::in, EPS::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
+"
+    cairo_ps_surface_set_eps(Surface->mcairo_raw_surface,
+        (EPS = MR_YES ? 1 : 0));
+").
+
+:- pragma foreign_proc("C",
+    get_eps(Surface::in, EPS::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
+"
+    if (cairo_ps_surface_get_eps(Surface->mcairo_raw_surface)) {
+        EPS = MR_YES;
+    } else {
+        EPS = MR_NO;
+    }
+").
+
+:- pragma foreign_proc("C",
+    set_size(Surface::in, W::in, H::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
+"
+    cairo_ps_surface_set_size(Surface->mcairo_raw_surface, W, H);
+").    
+
+:- pragma foreign_proc("C",
+    dsc_begin_setup(Surface::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
+"
+    cairo_ps_surface_dsc_begin_setup(Surface->mcairo_raw_surface);
+").
+
+:- pragma foreign_proc("C",
+    dsc_begin_page_setup(Surface::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
+"
+    cairo_ps_surface_dsc_begin_page_setup(Surface->mcairo_raw_surface);
+").
+
+:- pragma foreign_proc("C",
+    dsc_comment(Surface::in, Comment::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
+"
+    cairo_ps_surface_dsc_comment(Surface->mcairo_raw_surface, Comment);
 ").
 
 %---------------------------------------------------------------------------%
