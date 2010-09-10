@@ -80,7 +80,7 @@ io_tab_goto.poly_test(Stream, Unused, SoFar, N) -->
 		{ N = SoFar }
 	).
 
-:- pragma c_header_code("#include <stdio.h>").
+:- pragma foreign_decl("C", "#include <stdio.h>").
 
 :- pred io_tab_goto.open_input(string::in, int::out, c_pointer::out,
 	io.state::di, io.state::uo) is det.

@@ -10,7 +10,7 @@
 
 foo.
 
-:- pragma export(return_yes(in) = out, "EXPORTED_return_yes"). 
+:- pragma foreign_export("C", return_yes(in) = out, "EXPORTED_return_yes"). 
 :- func return_yes(string) = maybe(string).
 
 return_yes(Str) = yes(Str).

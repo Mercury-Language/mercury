@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2009 The University of Melbourne.
+% Copyright (C) 1999-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -640,48 +640,22 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Statements,
     ;
         GoalExpr = call_foreign_proc(Attributes, PredId, ProcId,
             Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaImpl),
+        PragmaImpl = fc_impl_ordinary(ForeignCode, MaybeContext),
         (
-            PragmaImpl = fc_impl_ordinary(ForeignCode, MaybeContext),
-            (
-                MaybeContext = yes(ContextToUse)
-            ;
-                MaybeContext = no,
-                ContextToUse = Context
-            ),
-            (
-                MaybeTraceRuntimeCond = no,
-                ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
-                    PredId, ProcId, Args, ExtraArgs, ForeignCode,
-                    ContextToUse, Decls, Statements, !Info)
-            ;
-                MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
-                ml_gen_trace_runtime_cond(TraceRuntimeCond, ContextToUse,
-                    Decls, Statements, !Info)
-            )
+            MaybeContext = yes(ContextToUse)
         ;
-            PragmaImpl = fc_impl_model_non(LocalVarsDecls, LocalVarsContext,
-                FirstCode, FirstContext, LaterCode, LaterContext,
-                _Treatment, SharedCode, SharedContext),
-            expect(unify(ExtraArgs, []), this_file,
-                "ml_gen_goal_expr: extra args"),
-            expect(unify(MaybeTraceRuntimeCond, no), this_file,
-                "ml_gen_goal_expr: MaybeTraceRuntimeCond"),
-            ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
-                PredId, ProcId, Args, Context,
-                LocalVarsDecls, LocalVarsContext,
-                FirstCode, FirstContext, LaterCode, LaterContext,
-                SharedCode, SharedContext, Decls, Statements, !Info)
-        ;
-            PragmaImpl = fc_impl_import(Name, HandleReturn, Vars, _Context),
-            expect(unify(ExtraArgs, []), this_file,
-                "ml_gen_goal_expr: extra args"),
-            expect(unify(MaybeTraceRuntimeCond, no), this_file,
-                "ml_gen_goal_expr: MaybeTraceRuntimeCond"),
-            ForeignCode = string.append_list([HandleReturn, " ",
-                Name, "(", Vars, ");"]),
+            MaybeContext = no,
+            ContextToUse = Context
+        ),
+        (
+            MaybeTraceRuntimeCond = no,
             ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
                 PredId, ProcId, Args, ExtraArgs, ForeignCode,
-                Context, Decls, Statements, !Info)
+                ContextToUse, Decls, Statements, !Info)
+        ;
+            MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
+            ml_gen_trace_runtime_cond(TraceRuntimeCond, ContextToUse,
+                Decls, Statements, !Info)
         )
     ;
         GoalExpr = conj(_ConjType, Goals),

@@ -690,15 +690,6 @@ mercury_output_item_pragma(Info, ItemPragma, !IO) :-
         mercury_output_pragma_foreign_code(Attributes, Pred,
             PredOrFunc, Vars, ProgVarset, InstVarset, PragmaCode, !IO)
     ;
-        Pragma = pragma_import(Pred, PredOrFunc, ModeList, Attributes,
-            C_Function),
-        % XXX the varset is only used for writing some `sharing' annotations.
-        % It's unlikely anyone would write `sharing' annotations with `pragma
-        % import' (which is deprecated) so just make up a varset.
-        ProgVarset = varset.init,
-        mercury_format_pragma_import(Pred, PredOrFunc, ModeList,
-            Attributes, ProgVarset, C_Function, !IO)
-    ;
         Pragma = pragma_foreign_export(Lang, Pred, PredOrFunc, ModeList,
             ExportName),
         mercury_format_pragma_foreign_export(Lang, Pred, PredOrFunc, ModeList,
@@ -3548,24 +3539,9 @@ mercury_pragma_foreign_code_to_string(Attributes, PredName, PredOrFunc, Vars0,
 
 mercury_format_pragma_foreign_code(Attributes, PredName, PredOrFunc, Vars0,
         ProgVarset, InstVarset, PragmaCode, !U) :-
-    (
-        PragmaCode = fc_impl_import(C_Function, _, _, _),
-        % The predicate or function arguments in a `:- pragma import'
-        % declaration are not named.
-        ImportModes = list.map(
-            (func(pragma_var(_, _, ImportMode, _)) = ImportMode), Vars0),
-
-        mercury_format_pragma_import(PredName, PredOrFunc, ImportModes,
-            Attributes, ProgVarset, C_Function, !U)
-    ;
-        PragmaCode = fc_impl_ordinary(_, _),
-        mercury_format_pragma_foreign_code_2(Attributes, PredName,
-            PredOrFunc, Vars0, ProgVarset, InstVarset, PragmaCode, !U)
-    ;
-        PragmaCode = fc_impl_model_non(_, _, _, _, _, _, _, _, _),
-        mercury_format_pragma_foreign_code_2(Attributes, PredName,
-            PredOrFunc, Vars0, ProgVarset, InstVarset, PragmaCode, !U)
-    ).
+    PragmaCode = fc_impl_ordinary(_, _),
+    mercury_format_pragma_foreign_code_2(Attributes, PredName,
+        PredOrFunc, Vars0, ProgVarset, InstVarset, PragmaCode, !U).
 
 :- pred mercury_format_pragma_foreign_code_2(
     pragma_foreign_proc_attributes::in, sym_name::in, pred_or_func::in,
@@ -3609,38 +3585,8 @@ mercury_format_pragma_foreign_code_2(Attributes, PredName, PredOrFunc, Vars0,
     add_string(", ", !U),
     mercury_format_pragma_foreign_attributes(Attributes, ProgVarset, !U),
     add_string(", ", !U),
-    (
-        PragmaCode = fc_impl_ordinary(C_Code, _),
-        mercury_format_foreign_code_string(C_Code, !U)
-    ;
-        PragmaCode = fc_impl_model_non(Fields, _, First, _, Later, _,
-            Treat, Shared, _),
-        add_string("local_vars(", !U),
-        mercury_format_foreign_code_string(Fields, !U),
-        add_string("), ", !U),
-        add_string("first_code(", !U),
-        mercury_format_foreign_code_string(First, !U),
-        add_string("), ", !U),
-        add_string("retry_code(", !U),
-        mercury_format_foreign_code_string(Later, !U),
-        add_string("), ", !U),
-        (
-            Treat = shared_code_share,
-            add_string("shared_code(", !U)
-        ;
-            Treat = shared_code_duplicate,
-            add_string("duplicated_code(", !U)
-        ;
-            Treat = shared_code_automatic,
-            add_string("common_code(", !U)
-        ),
-        mercury_format_foreign_code_string(Shared, !U),
-        add_string(")", !U)
-    ;
-        PragmaCode = fc_impl_import(_, _, _, _),
-        % This should be handle in mercury_output_pragma_foreign_code.
-        unexpected(this_file, "mercury_output_pragma_foreign_code_2")
-    ),
+    PragmaCode = fc_impl_ordinary(C_Code, _),
+    mercury_format_foreign_code_string(C_Code, !U),
     add_string(").\n", !U).
 
 %-----------------------------------------------------------------------------%
@@ -3883,37 +3829,6 @@ mercury_format_pragma_decl(PredName, Arity, PredOrFunc, PragmaName, MaybeAfter,
         MaybeAfter = no
     ),
     add_string(").\n", !U).
-
-%-----------------------------------------------------------------------------%
-
-:- pred mercury_format_pragma_import(sym_name::in, pred_or_func::in,
-    list(mer_mode)::in, pragma_foreign_proc_attributes::in, prog_varset::in,
-    string::in, U::di, U::uo) is det <= output(U).
-
-mercury_format_pragma_import(Name, PredOrFunc, ModeList, Attributes,
-        ProgVarset, C_Function, !U) :-
-    varset.init(InstVarset), % the varset isn't really used.
-    InstInfo = simple_inst_info(InstVarset),
-    add_string(":- pragma import(", !U),
-    mercury_format_sym_name(Name, !U),
-    (
-        PredOrFunc = pf_function,
-        pred_args_to_func_args(ModeList, ArgModes, RetMode),
-        add_string("(", !U),
-        mercury_format_mode_list(ArgModes, InstInfo, !U),
-        add_string(") = ", !U),
-        mercury_format_mode(RetMode, InstInfo, !U)
-    ;
-        PredOrFunc = pf_predicate,
-        add_string("(", !U),
-        mercury_format_mode_list(ModeList, InstInfo, !U),
-        add_string(")", !U)
-    ),
-    add_string(", ", !U),
-    mercury_format_pragma_foreign_attributes(Attributes, ProgVarset, !U),
-    add_string(", """, !U),
-    add_string(C_Function, !U),
-    add_string(""").\n", !U).
 
 %-----------------------------------------------------------------------------%
 

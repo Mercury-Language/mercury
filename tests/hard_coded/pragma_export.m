@@ -1,4 +1,4 @@
-% This test case tests using `pragma export' on a procedure defined
+% This test case tests using `pragma foreign_export' on a procedure defined
 % in a different module (in this case, one from the standard library).
 % Previously the MLDS back-end was failing this test case.
 
@@ -15,7 +15,11 @@ main -->
 
 :- pred my_write_string(string::in, io__state::di, io__state::uo) is det.
 
-:- pragma import(my_write_string(in, di, uo),
-	[may_call_mercury, thread_safe], "write_str").
+:- pragma foreign_proc("C",
+	my_write_string(Str::in, _IO0::di, _IO::uo),
+	[promise_pure, may_call_mercury, thread_safe],
+"
+	write_str(Str);
+").
 
-:- pragma export(io__write_string(in, di, uo), "write_str").
+:- pragma foreign_export("C", io__write_string(in, di, uo), "write_str").

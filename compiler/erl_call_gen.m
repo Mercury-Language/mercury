@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2008 The University of Melbourne.
+% Copyright (C) 2007-2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -541,28 +541,20 @@ std_binop_to_elds(compound_lt, elds.(<)).
 erl_gen_foreign_code_call(ForeignArgs, MaybeTraceRuntimeCond,
         PragmaImpl, CodeModel, OuterContext, MaybeSuccessExpr, Statement,
         !Info) :-
+    PragmaImpl = fc_impl_ordinary(ForeignCode, MaybeContext),
     (
-        PragmaImpl = fc_impl_ordinary(ForeignCode, MaybeContext),
+        MaybeTraceRuntimeCond = no,
         (
-            MaybeTraceRuntimeCond = no,
-            (
-                MaybeContext = yes(Context)
-            ;
-                MaybeContext = no,
-                Context = OuterContext
-            ),
-            erl_gen_ordinary_pragma_foreign_code(ForeignArgs, ForeignCode,
-                CodeModel, Context, MaybeSuccessExpr, Statement, !Info)
+            MaybeContext = yes(Context)
         ;
-            MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
-            erl_gen_trace_runtime_cond(TraceRuntimeCond, Statement, !Info)
-        )
+            MaybeContext = no,
+            Context = OuterContext
+        ),
+        erl_gen_ordinary_pragma_foreign_code(ForeignArgs, ForeignCode,
+            CodeModel, Context, MaybeSuccessExpr, Statement, !Info)
     ;
-        PragmaImpl = fc_impl_model_non(_, _, _, _, _, _, _, _, _),
-        sorry(this_file, "erl_gen_goal_expr: fc_impl_model_non")
-    ;
-        PragmaImpl = fc_impl_import(_, _, _, _),
-        sorry(this_file, "erl_gen_goal_expr: fc_impl_import")
+        MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
+        erl_gen_trace_runtime_cond(TraceRuntimeCond, Statement, !Info)
     ).
 
 %-----------------------------------------------------------------------------%

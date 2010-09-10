@@ -1589,7 +1589,6 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
         ; Pragma = pragma_foreign_proc(_, _, _, _, _, _, _)
         ; Pragma = pragma_inline(_, _)
         ; Pragma = pragma_no_inline(_, _)
-        ; Pragma = pragma_import(_, _, _, _, _)
         ; Pragma = pragma_fact_table(_, _, _)
         ; Pragma = pragma_tabled(_, _, _, _, _, _)
         ; Pragma = pragma_promise_pure(_, _)
@@ -3768,10 +3767,6 @@ item_needs_foreign_imports(Item) = Langs :-
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(_, Pragma, _, _),
         (
-            Pragma = pragma_import(_, _, _, _, _),
-            % `:- pragma import' is only supported for C.
-            Langs = [lang_c]
-        ;
             ( Pragma = pragma_foreign_decl(Lang, _, _)
             ; Pragma = pragma_foreign_code(Lang, _)
             ; Pragma = pragma_foreign_enum(Lang, _, _, _)
@@ -3880,7 +3875,6 @@ include_in_int_file_implementation(Item) = Include :-
             ; Pragma = pragma_foreign_code(_, _)
             ; Pragma = pragma_foreign_proc(_, _, _, _, _, _, _)
             ; Pragma = pragma_foreign_export(_, _, _, _, _)
-            ; Pragma = pragma_import(_, _, _, _, _)
             ; Pragma = pragma_foreign_export_enum(_, _, _, _, _)
             ; Pragma = pragma_type_spec(_, _, _, _, _, _, _, _)
             ; Pragma = pragma_inline(_, _)
@@ -4287,7 +4281,6 @@ reorderable_pragma_type(Pragma) = Reorderable :-
     ; Pragma = pragma_foreign_decl(_, _, _), Reorderable = no
     ; Pragma = pragma_foreign_import_module(_, _), Reorderable = no
     ; Pragma = pragma_foreign_proc(_, _, _, _, _, _, _), Reorderable = no
-    ; Pragma = pragma_import(_, _, _, _, _), Reorderable = no
     ; Pragma = pragma_inline(_, _), Reorderable = yes
     ; Pragma = pragma_mode_check_clauses(_, _), Reorderable = yes
     ; Pragma = pragma_no_inline(_, _), Reorderable = yes
@@ -4388,7 +4381,6 @@ chunkable_pragma_type(Pragma) = Reorderable :-
     ; Pragma = pragma_foreign_proc(_, _, _, _, _, _, _), Reorderable = no
     ; Pragma = pragma_foreign_export_enum(_, _, _, _, _), Reorderable = yes
     ; Pragma = pragma_foreign_enum(_, _, _, _), Reorderable = yes
-    ; Pragma = pragma_import(_, _, _, _, _), Reorderable = no
     ; Pragma = pragma_inline(_, _), Reorderable = yes
     ; Pragma = pragma_mode_check_clauses(_, _), Reorderable = yes
     ; Pragma = pragma_no_inline(_, _), Reorderable = yes

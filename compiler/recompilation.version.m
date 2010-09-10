@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2009 The University of Melbourne.
+% Copyright (C) 2001-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -619,7 +619,6 @@ is_pred_pragma(pragma_foreign_export(_, Name, PredOrFunc, Modes, _),
         yes(yes(PredOrFunc) - Name / Arity)) :-
     adjust_func_arity(PredOrFunc, Arity, list.length(Modes)).
     % Pragma import declarations are never used directly by Mercury code.
-is_pred_pragma(pragma_import(_, _, _, _, _), no).
 is_pred_pragma(pragma_foreign_export_enum(_, _, _, _, _), no).
 is_pred_pragma(pragma_foreign_enum(_, _, _, _), no).
 is_pred_pragma(pragma_source_file(_), no).

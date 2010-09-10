@@ -78,21 +78,6 @@
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-    % module_add_pragma_import:
-    %
-    % Handles `pragma import' declarations, by figuring out which predicate
-    % the `pragma import' declaration applies to, and adding a clause
-    % for that predicate containing an appropriate HLDS `foreign_proc' goal.
-    %
-    % NB. Any changes here might also require similar changes to the
-    % handling of `pragma foreign_export' declarations, in export.m.
-    %
-:- pred module_add_pragma_import(sym_name::in, pred_or_func::in,
-    list(mer_mode)::in, pragma_foreign_proc_attributes::in, string::in,
-    import_status::in, prog_context::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
 :- pred module_add_pragma_foreign_proc(pragma_foreign_proc_attributes::in,
     sym_name::in, pred_or_func::in, list(pragma_var)::in, prog_varset::in,
     inst_varset::in, pragma_foreign_code_impl::in, import_status::in,
@@ -258,10 +243,6 @@ add_pragma(ItemPragma, !Status, !ModuleInfo, !Specs) :-
         Pragma = pragma_obsolete(Name, Arity),
         add_pred_marker("obsolete", Name, Arity, ImportStatus,
             Context, marker_obsolete, [], !ModuleInfo, !Specs)
-    ;
-        % Handle pragma import decls later on (when we process
-        % clauses and pragma c_code).
-        Pragma = pragma_import(_, _, _, _, _)
     ;
         % Handle pragma foreign_export decls later on, after default
         % function modes have been added.
@@ -2122,129 +2103,6 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList,
         %       "`:- pragma termination_info' declaration",
         %       !Specs
     ).
-
-module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
-        Status, Context, !ModuleInfo, !QualInfo, !Specs) :-
-    module_info_get_name(!.ModuleInfo, ModuleName),
-    list.length(Modes, Arity),
-
-    module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-    (
-        VeryVerbose = yes,
-        trace [io(!IO)] (
-            io.write_string("% Processing `:- pragma import' for ", !IO),
-            write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
-            io.write_string("...\n", !IO)
-        )
-    ;
-        VeryVerbose = no
-    ),
-
-    % Lookup the pred declaration in the predicate table. (If it's not there,
-    % print an error message and insert a dummy declaration for the predicate.)
-    module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-    (
-        predicate_table_search_pf_sym_arity(PredicateTable0,
-            is_fully_qualified, PredOrFunc, PredName, Arity, [PredId0])
-    ->
-        PredId = PredId0
-    ;
-        preds_add_implicit_report_error(ModuleName, PredOrFunc,
-            PredName, Arity, Status, no, Context, origin_user(PredName),
-            "`:- pragma import' declaration", PredId, !ModuleInfo, !Specs)
-    ),
-    % Lookup the pred_info for this pred, and check that it is valid.
-    module_info_get_predicate_table(!.ModuleInfo, PredicateTable2),
-    predicate_table_get_preds(PredicateTable2, Preds0),
-    map.lookup(Preds0, PredId, PredInfo0),
-    % Opt_imported preds are initially tagged as imported and are tagged as
-    % opt_imported only if/when we see a clause (including a `pragma import'
-    % clause) for them.
-    ( Status = status_opt_imported ->
-        pred_info_set_import_status(status_opt_imported, PredInfo0, PredInfo1)
-    ;
-        PredInfo1 = PredInfo0
-    ),
-    ( pred_info_is_imported(PredInfo1) ->
-        Pieces = [words("Error: `:- pragma import' declaration for imported"),
-            simple_call(simple_call_id(PredOrFunc, PredName, Arity)),
-            suffix("."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs]
-    ; pred_info_clause_goal_type(PredInfo1) ->
-        module_info_incr_errors(!ModuleInfo),
-        Pieces = [words("Error: `:- pragma import' declaration for"),
-            simple_call(simple_call_id(PredOrFunc, PredName, Arity)),
-            words("with preceding clauses."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs]
-    ;
-        pred_info_update_goal_type(goal_type_foreign, PredInfo1, PredInfo2),
-            % Add the pragma declaration to the proc_info for this procedure.
-        pred_info_get_procedures(PredInfo2, Procs),
-        map.to_assoc_list(Procs, ExistingProcs),
-        (
-            get_procedure_matching_argmodes(ExistingProcs, Modes,
-                !.ModuleInfo, ProcId)
-        ->
-            pred_add_pragma_import(PredId, ProcId, Attributes, C_Function,
-                Context, PredInfo2, PredInfo, !ModuleInfo, !QualInfo, !Specs),
-            map.det_update(Preds0, PredId, PredInfo, Preds),
-            predicate_table_set_preds(Preds,
-                PredicateTable2, PredicateTable),
-            module_info_set_predicate_table(PredicateTable, !ModuleInfo)
-        ;
-            Pieces = [words("Error: `:- pragma import' declaration"),
-                words("for undeclared mode of"),
-                simple_call(simple_call_id(PredOrFunc, PredName, Arity)),
-                suffix("."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-            !:Specs = [Spec | !.Specs]
-        )
-    ).
-
-    % Pred_add_pragma_import is a subroutine of module_add_pragma_import
-    % which adds the c_code for a `pragma import' declaration to a pred_info.
-    %
-:- pred pred_add_pragma_import(pred_id::in, proc_id::in,
-    pragma_foreign_proc_attributes::in, string::in, prog_context::in,
-    pred_info::in, pred_info::out, module_info::in, module_info::out,
-    qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-pred_add_pragma_import(PredId, ProcId, Attributes, C_Function, Context,
-        !PredInfo, !ModuleInfo, !QualInfo, !Specs) :-
-    pred_info_get_procedures(!.PredInfo, Procs),
-    map.lookup(Procs, ProcId, ProcInfo),
-    foreign.make_pragma_import(!.PredInfo, ProcInfo, C_Function, Context,
-        PragmaImpl, VarSet, PragmaVars, ArgTypes, Arity, PredOrFunc,
-        !ModuleInfo, !Specs),
-
-    % Lookup some information we need from the pred_info and proc_info.
-    PredName = pred_info_name(!.PredInfo),
-    PredModule = pred_info_module(!.PredInfo),
-    pred_info_get_purity(!.PredInfo, Purity),
-    pred_info_get_markers(!.PredInfo, Markers),
-
-    pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
-    ItemNumbers0 = ClausesInfo0 ^ cli_item_numbers,
-    add_clause_item_number(no, Context, item_is_foreign_proc,
-        ItemNumbers0, ItemNumbers),
-    ClausesInfo1 = ClausesInfo0 ^ cli_item_numbers := ItemNumbers,
-
-    % Add the code for this `pragma import' to the clauses_info.
-    clauses_info_add_pragma_foreign_proc(pragma_import_foreign_proc,
-        Purity, Attributes, PredId, ProcId,
-        VarSet, PragmaVars, ArgTypes, PragmaImpl, Context,
-        PredOrFunc, qualified(PredModule, PredName), Arity, Markers,
-        ClausesInfo1, ClausesInfo, !ModuleInfo, !Specs),
-
-    % Store the clauses_info etc. back into the pred_info.
-    pred_info_set_clauses_info(ClausesInfo, !PredInfo).
 
 %-----------------------------------------------------------------------------%
 

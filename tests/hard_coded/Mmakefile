@@ -450,7 +450,6 @@ ifeq "$(filter il% java% erlang%,$(GRADE))" ""
 		factt_sort_test \
 		foreign_type_assertion \
 		pragma_export \
-		pragma_import \
 		runtime_opt
 else
 	C_ONLY_PROGS =
@@ -622,34 +621,6 @@ else
 	BACKEND_PROGS =
 endif
 
-# The MLDS back-end doesn't support nondet C in trailing grades,
-# or in no-GC grades (except with --no-reclaim-heap-on-failure).
-# We also don't support nondet C in deep profiling grades.
-# These tests are also not supported in IL, Java and Erlang grades,
-# since those back-ends don't support the C interface at all.
-# (XXX perhaps we should add analogous tests of the nondet IL, C#, MC++,
-# and [eventually] Java interfaces?)
-ifneq "$(filter il% java% erlang%,$(GRADE))" ""
-	NONDET_C_PROGS =
-else
-  ifeq "$(findstring hl,$(GRADE))$(findstring .tr,$(GRADE))" "hl.tr"
-	NONDET_C_PROGS =
-  else
-    ifeq "$(findstring hl,$(GRADE))$(findstring .gc,$(GRADE))" "hl"
-	NONDET_C_PROGS =
-    else
-	ifneq "$(findstring profdeep,$(GRADE))" ""
-		NONDET_C_PROGS =
-	else
-		NONDET_C_PROGS = \
-			inline_nondet_pragma_c \
-			nondet_c \
-			nondet_pragma_c_bug
-	endif
-    endif
-  endif
-endif
-
 # string_hash tests features of the Mercury C runtime.
 # It requires too much memory to be used in non-GC grades.
 ifeq "$(filter il% java%,$(GRADE))$(findstring gc,$(GRADE))" "gc"
@@ -679,7 +650,7 @@ endif
 # We currently test only a limited selection in grade java on this directory.
 PROGS = $(ORDINARY_PROGS) $(PROF_PROGS) $(BROKEN_FOR_LCC_PROGS) \
 	$(CLOSURE_LAYOUT_PROGS) $(NON_PROFDEEP_PROGS) \
-	$(BACKEND_PROGS) $(NONDET_C_PROGS) \
+	$(BACKEND_PROGS) \
 	$(C_AND_GC_ONLY_PROGS) $(STATIC_LINK_PROGS) \
 	$(CHAR_REP_PROGS) $(C_ONLY_PROGS) \
 	$(DOTNET_PROGS) $(JAVA_PROGS) $(SOLVER_PROGS) \

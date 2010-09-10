@@ -1,5 +1,5 @@
 % Test errors for variables occurring multiple times in
-% a `:- pragma c_code' argument list.
+% a `:- pragma foreign_proc' argument list.
 :- module pragma_c_code_dup_var.
 
 :- interface.
@@ -16,8 +16,10 @@
 
 :- implementation.
 
-:- pragma c_code(bread_impl(MC_Object0::in, MC_Object::out, Buf::in, Buf::out, Nbyte::in, MC_IO0::di, MC_IO::uo) = (Mc_returnval::out),
-		will_not_call_mercury, "
+:- pragma foreign_proc("C",
+	bread_impl(MC_Object0::in, MC_Object::out, Buf::in, Buf::out, Nbyte::in, MC_IO0::di, MC_IO::uo) = (Mc_returnval::out),
+	[promise_pure, will_not_call_mercury],
+"
 	Mc_returnval = apache_gen__apache__request__bread(MC_Object0, &MC_Object, Buf, &Buf, Nbyte);
 	MC_IO = MC_IO0;
 ").

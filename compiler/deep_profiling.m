@@ -496,16 +496,8 @@ deep_prof_transform_pred(ModuleInfo, PredId, PredMap0, PredMap) :-
 
 deep_prof_maybe_transform_proc(ModuleInfo, PredId, ProcId, !ProcTable) :-
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
-    proc_info_get_goal(ProcInfo0, Goal0),
     PredModuleName = predicate_module(ModuleInfo, PredId),
     (
-        % XXX We need to eliminate nondet C code...
-        Goal0 = hlds_goal(call_foreign_proc(_, _, _, _, _, _, Impl), _),
-        Impl = fc_impl_model_non(_, _, _, _, _, _, _, _, _)
-    ->
-        unexpected(this_file,
-            "deep profiling is incompatible with nondet foreign code")
-    ;
         % We don't want to transform the procedures for managing the deep
         % profiling call graph, or we'd get infinite recursion.
         PredModuleName = mercury_profiling_builtin_module

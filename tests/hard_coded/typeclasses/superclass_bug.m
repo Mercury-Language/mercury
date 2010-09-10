@@ -90,11 +90,11 @@ ixmldomnode_replacechild(T, A, U, B, C, InTypeVar, OutTypeVar) = HResult :-
 :- mode ixmldomnode_replacechild_c_code(in, out, in, out, out, in, out) = out
 	is det.
 
-:- pragma c_code(ixmldomnode_replacechild_c_code(IntroducedIdlBug_1InPtr::in,
+:- pragma foreign_proc("C", ixmldomnode_replacechild_c_code(IntroducedIdlBug_1InPtr::in,
 	   IntroducedIdlBug_1OutPtr::out, IntroducedIdlBug_2InPtr::in,
 	   IntroducedIdlBug_2OutPtr::out, OutOldChildPtr::out,
 	   InTypeVarPtr::in, OutTypeVarPtr::out) = (HResult::out),
-      [will_not_call_mercury, thread_safe],
+      [promise_pure, will_not_call_mercury, thread_safe],
 "
       OutOldChildPtr = (MR_Word) NULL;
 

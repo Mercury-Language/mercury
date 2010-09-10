@@ -1790,44 +1790,19 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsConstruction,
     ground,ground,ground))), hlds_goal_info::in, hlds_goal::out,
     poly_info::in, poly_info::out) is det.
 
-polymorphism_process_foreign_proc(ModuleInfo, PredInfo, Goal0, GoalInfo0, Goal,
+polymorphism_process_foreign_proc(_ModuleInfo, PredInfo, Goal0, GoalInfo0, Goal,
         !Info) :-
     % Insert the type_info vars into the argname map, so that the foreign_proc
     % can refer to the type_info variable for type T as `TypeInfo_for_T'.
     Goal0 = call_foreign_proc(Attributes, PredId, ProcId, Args0, ProcExtraArgs,
-        MaybeTraceRuntimeCond, Impl0),
+        MaybeTraceRuntimeCond, Impl),
     ArgVars0 = list.map(foreign_arg_var, Args0),
     polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
         ExtraVars, ExtraGoals, !Info),
-    (
-        Impl0 = fc_impl_import(_, _, _, _),
-        % The reference manual guarantees a one-to-one correspondence between
-        % the arguments of the predicate (as augmented by with type_info and/or
-        % typeclass_info arguments by polymorphism.m) and the arguments of the
-        % imported function.
-        CanOptAwayUnnamed = no
-    ;
-        ( Impl0 = fc_impl_ordinary(_, _)
-        ; Impl0 = fc_impl_model_non(_, _, _, _, _, _, _, _, _)
-        ),
-        CanOptAwayUnnamed = yes
-    ),
-    polymorphism_process_foreign_proc_args(PredInfo, CanOptAwayUnnamed, Impl0,
+    CanOptAwayUnnamed = yes,
+    polymorphism_process_foreign_proc_args(PredInfo, CanOptAwayUnnamed, Impl,
         ExtraVars, ExtraArgs),
     Args = ExtraArgs ++ Args0,
-
-    % Add the type info arguments to the list of variables
-    % to call for a pragma import.
-    (
-        Impl0 = fc_impl_import(Name, HandleReturn, Variables0, MaybeContext),
-        Variables = type_info_vars(ModuleInfo, ExtraArgs, Variables0),
-        Impl = fc_impl_import(Name, HandleReturn, Variables, MaybeContext)
-    ;
-        ( Impl0 = fc_impl_ordinary(_, _)
-        ; Impl0 = fc_impl_model_non(_, _, _, _, _, _, _, _, _)
-        ),
-        Impl = Impl0
-    ),
 
     % Plug it all back together.
     CallExpr = call_foreign_proc(Attributes, PredId, ProcId,
@@ -1846,7 +1821,7 @@ polymorphism_process_foreign_proc_args(PredInfo, CanOptAwayUnnamed, Impl, Vars,
         PredArgTypes),
 
     % Find out which variables are constrained (so that we don't add
-    % type_infos for them.
+    % type_infos for them).
     pred_info_get_class_context(PredInfo, constraints(UnivCs, ExistCs)),
     UnivVars0 = list.map(get_constrained_vars, UnivCs),
     list.condense(UnivVars0, UnivConstrainedVars),

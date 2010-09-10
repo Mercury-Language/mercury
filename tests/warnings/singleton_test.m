@@ -26,7 +26,8 @@ my_append([H | T], L, [H | NT]) :-
 my_append_func([], L) = L :- L1 = L2.
 my_append_func([H | T], L) = [H | my_append_func(L, L)].
 
-:- pragma c_code(my_c_pred(X::in, Y::in, Z::out), will_not_call_mercury, "
+:- pragma foreign_proc("C", my_c_pred(X::in, Y::in, Z::out),
+	[promise_pure, will_not_call_mercury], "
 	Z = 2 * X;
 ").
 :- pragma foreign_proc("C#", my_c_pred(X::in, Y::in, Z::out),
@@ -42,7 +43,8 @@ my_append_func([H | T], L) = [H | my_append_func(L, L)].
 	Z = 2 * X
 ").
 
-:- pragma c_code(my_c_func(X::in, Y::in) = (Z::out), will_not_call_mercury, "
+:- pragma foreign_proc("C", my_c_func(X::in, Y::in) = (Z::out),
+	[promise_pure, will_not_call_mercury], "
 	Z = 2 * Y;
 ").
 :- pragma foreign_proc("C#", my_c_func(X::in, Y::in) = (Z::out),
@@ -58,10 +60,10 @@ my_append_func([H | T], L) = [H | my_append_func(L, L)].
 	Z = 2 * Y
 ").
 
-:- pragma c_header_code("#include <stdio.h>").
+:- pragma foreign_decl("C", "#include <stdio.h>").
 
-:- pragma c_code(c_hello_world(Msg::in, IO0::di, IO::uo),
-		will_not_call_mercury, "
+:- pragma foreign_proc("C", c_hello_world(Msg::in, IO0::di, IO::uo),
+		[promise_pure, will_not_call_mercury], "
 	printf(""Hello, world"");
 	IO = IO0;
 ").

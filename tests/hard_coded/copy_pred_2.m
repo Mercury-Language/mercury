@@ -29,8 +29,9 @@ make_closure(A, B, foo(A, B)).
 
 :- pred inst_cast(pred(string, string), pred(string, string)).
 :- mode inst_cast(in, out(pred(in, out) is det)) is det.
-:- pragma c_code(inst_cast(X::in, Y::out(pred(in, out) is det)),
-	[will_not_call_mercury, thread_safe], "Y = X").
+:- pragma foreign_proc("C",
+	inst_cast(X::in, Y::out(pred(in, out) is det)),
+	[will_not_call_mercury, thread_safe, promise_pure], "Y = X").
 :- pragma foreign_proc("C#",
 	inst_cast(X::in, Y::out(pred(in, out) is det)),
 	[will_not_call_mercury, thread_safe, promise_pure], "Y = X;").

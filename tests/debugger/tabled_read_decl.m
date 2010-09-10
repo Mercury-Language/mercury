@@ -70,7 +70,7 @@ tabled_read_decl__poly_test(Stream, Unused, SoFar, N) -->
 		{ N = SoFar }
 	).
 
-:- pragma c_header_code("#include <stdio.h>").
+:- pragma foreign_decl("C", "#include <stdio.h>").
 
 :- pred tabled_read_decl__open_input(string::in, int::out, c_pointer::out,
 	io__state::di, io__state::uo) is det.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2009 The University of Melbourne.
+% Copyright (C) 2000-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -24,12 +24,10 @@
 :- import_module hlds.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 
@@ -140,20 +138,6 @@
     pragma_foreign_proc_attributes::in, pragma_foreign_proc_attributes::out,
     pragma_foreign_code_impl::in, pragma_foreign_code_impl::out) is det.
 
-    % make_pragma_import turns pragma imports into pragma foreign_code.
-    % Given the pred and proc info for this predicate, the name
-    % of the function to import, the context of the import pragma
-    % and the module_info, create a pragma_foreign_code_impl
-    % which imports the foreign function, and return the varset,
-    % pragma_vars, argument types and other information about the
-    % generated predicate body.
-    %
-:- pred make_pragma_import(pred_info::in, proc_info::in, string::in,
-    prog_context::in, pragma_foreign_code_impl::out,
-    prog_varset::out, list(pragma_var)::out, list(mer_type)::out, arity::out,
-    pred_or_func::out, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
     % The name of the #define which can be used to guard declarations with
     % to prevent entities being declared twice.
     %
@@ -175,6 +159,7 @@
 :- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
@@ -342,43 +327,6 @@ make_pred_name_rest(lang_csharp, _SymName) = "some_csharp_name".
 make_pred_name_rest(lang_il, _SymName) = "some_il_name".
 make_pred_name_rest(lang_java, _SymName) = "some_java_name".
 make_pred_name_rest(lang_erlang, _SymName) = "some_erlang_name".
-
-make_pragma_import(PredInfo, ProcInfo, C_Function, Context, PragmaImpl, VarSet,
-        PragmaVars, ArgTypes, Arity, PredOrFunc, !ModuleInfo, !Specs) :-
-
-    % Lookup some information we need from the pred_info and proc_info.
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    pred_info_get_arg_types(PredInfo, ArgTypes),
-    proc_info_get_argmodes(ProcInfo, Modes),
-    CodeModel = proc_info_interface_code_model(ProcInfo),
-
-    % Build a list of argument variables, together with their names, modes,
-    % and types.
-    varset.init(VarSet0),
-    list.length(Modes, Arity),
-    varset.new_vars(VarSet0, Arity, Vars, VarSet),
-    create_pragma_vars(Vars, Modes, 0, PragmaVars),
-    assoc_list.from_corresponding_lists(PragmaVars, ArgTypes,
-        PragmaVarsAndTypes),
-
-    % Construct parts of the C_code string for calling a C_function.  This C
-    % code fragment invokes the specified C function with the appropriate
-    % arguments from the list constructed above, passed in the appropriate
-    % manner (by value, or by passing the address to simulate
-    % pass-by-reference), and assigns the return value (if any) to the
-    % appropriate place.  As this phase occurs before polymorphism, we don't
-    % know about the type-infos yet.  polymorphism.m is responsible for adding
-    % the type-info arguments to the list of variables.
-
-    proc_info_get_declared_determinism(ProcInfo, MaybeDeclaredDetism),
-    handle_return_value(Context, MaybeDeclaredDetism, CodeModel, PredOrFunc,
-        PragmaVarsAndTypes, ArgPragmaVarsAndTypes, Return, !ModuleInfo,
-        !Specs),
-    assoc_list.keys(ArgPragmaVarsAndTypes, ArgPragmaVars),
-    create_pragma_import_c_code(ArgPragmaVars, !.ModuleInfo, "", Variables),
-
-    % Make an import implementation.
-    PragmaImpl = fc_impl_import(C_Function, Return, Variables, yes(Context)).
 
     % handle_return_value(Contxt, DeclaredDetism, CodeModel, PredOrFunc, Args0,
     %   M, Args, C_Code0):

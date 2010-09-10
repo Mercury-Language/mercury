@@ -59,11 +59,11 @@ stringify_config(_Interp, command(_Closure), Str) -->
 stringify_config(_Interp, title(Text), Str, IO, IO) :-
 	string__format("-title ""%s""", [s(Text)], Str).
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	extern MR_Integer	tk_direct_thingy_counter;
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 	MR_Integer	tk_direct_thingy_counter = 0;
 ").
 

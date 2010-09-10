@@ -41,8 +41,12 @@ foo(Foo, IsFoo) :-
 :- pred foo_int(T, int).
 :- mode foo_int(in, out(bound(0))) is det.
 
-:- pragma c_code(foo_int(_V2::in, Res::out(bound(0))),
- 	will_not_call_mercury, "Res = 0").
+:- pragma foreign_proc("C",
+	foo_int(_V2::in, Res::out(bound(0))),
+	[promise_pure, will_not_call_mercury],
+"
+	Res = 0;
+").
 foo_int(_, 0).
 
 :- pred int_to_bool(int, bool).

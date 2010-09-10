@@ -39,7 +39,7 @@ test(3) :- impure puts("call to test").
 
 :- impure pred puts(string::in) is det.
 
-:- pragma c_code(puts(Str::in), "puts(Str);").
+:- pragma foreign_proc("C", puts(Str::in), [], "puts(Str);").
 :- pragma foreign_proc("C#", puts(Str::in), [],
 		"System.Console.WriteLine(Str);").
 :- pragma foreign_proc("Java", puts(Str::in), [],

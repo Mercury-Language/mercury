@@ -11,8 +11,9 @@
 
 :- implementation.
 
-:- pragma c_code(test(A::in, B::out, IO0::di, IO::uo),
-	[will_not_call_mercury, tabled_for_io],
+:- pragma foreign_proc("C",
+	test(A::in, B::out, IO0::di, IO::uo),
+	[promise_pure, will_not_call_mercury, tabled_for_io],
 "
 	B = A;
 	IO = IO0;

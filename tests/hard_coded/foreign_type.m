@@ -11,10 +11,10 @@
 :- type coord.
 
 :- func new(int, int) = coord.
-:- pragma export(new(in, in) = out, "exported_new").
+:- pragma foreign_export("C", new(in, in) = out, "exported_new").
 
 :- pred newpred(int::in, int::in, coord::out) is det.
-:- pragma export(newpred(in, in, out), "exported_newpred").
+:- pragma foreign_export("C", newpred(in, in, out), "exported_newpred").
 
 :- func export_new(int, int) = coord.
 :- pred export_newpred(int::in, int::in, coord::out) is det.

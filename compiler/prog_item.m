@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -493,19 +493,7 @@
                 exp_foreign_name        :: string
                 % Predname, Predicate/function, Modes, foreign function name.
             )
-
-    ;       pragma_import(
-                import_pred_name        :: sym_name,
-                import_p_or_f           :: pred_or_func,
-                import_modes            :: list(mer_mode),
-                import_attrs            :: pragma_foreign_proc_attributes,
-                import_foreign_name     :: string
-                % Predname, Predicate/function, Modes,
-                % Set of foreign proc attributes, eg.:
-                %    whether or not the foreign code may call Mercury,
-                %    whether or not the foreign code is thread-safe
-                % foreign function name.
-            )
+    
     ;
             pragma_foreign_export_enum(
                 export_enum_language   :: foreign_language,

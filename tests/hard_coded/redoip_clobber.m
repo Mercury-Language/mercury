@@ -39,8 +39,9 @@ bar(X) :- X = 1.
 :- pred use(int).
 :- mode use(in) is semidet.
 
-:- pragma c_code(use(X::in),
-	[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	use(X::in),
+	[will_not_call_mercury, promise_pure],
 "
 	/*
 	** To exhibit the bug, this predicate needs only to fail.

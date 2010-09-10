@@ -1103,7 +1103,7 @@ det_infer_generic_call(GenericCall, CallDetism, GoalInfo,
     list(failing_context)::in, determinism::out, list(failing_context)::out,
     det_info::in, det_info::out) is det.
 
-det_infer_foreign_proc(Attributes, PredId, ProcId, PragmaCode,
+det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
         GoalInfo, SolnContext, RightFailingContexts,
         Detism, GoalFailingContexts, !DetInfo) :-
     % Foreign_procs are handled in the same way as predicate calls.
@@ -1135,18 +1135,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, PragmaCode,
             true
         ),
         (
-            PragmaCode = fc_impl_model_non(_, _, _, _, _, _, _, _, _),
-            % Foreign_procs codes of this form can have more than one
-            % solution.
-            NumSolns1 = at_most_many
-        ;
-            ( PragmaCode = fc_impl_ordinary(_, _)
-            ; PragmaCode = fc_impl_import(_, _, _, _)
-            ),
-            NumSolns1 = NumSolns0
-        ),
-        (
-            NumSolns1 = at_most_many_cc,
+            NumSolns0 = at_most_many_cc,
             SolnContext = all_solns
         ->
             GoalContext = goal_info_get_context(GoalInfo),
@@ -1167,7 +1156,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, PragmaCode,
             det_info_add_error_spec(Spec, !DetInfo),
             NumSolns = at_most_many
         ;
-            NumSolns = NumSolns1
+            NumSolns = NumSolns0
         ),
         determinism_components(Detism, CanFail, NumSolns),
         (

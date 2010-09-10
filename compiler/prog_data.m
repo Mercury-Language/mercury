@@ -815,9 +815,6 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
     % code in the Mercury program. The context is missing if the foreign code
     % was constructed by the compiler.
     %
-    % NOTE: nondet pragma foreign definitions might not be possible in all
-    % foreign languages.
-    %
 :- type pragma_foreign_code_impl
     --->    fc_impl_ordinary(
                 % This is a foreign language definition of a model_det or
@@ -826,45 +823,6 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
                 % model_non pragmas.)
 
                 string,             % The code of the procedure.
-                maybe(prog_context)
-            )
-
-    ;       fc_impl_model_non(
-                % This is a foreign language definition of a model_non
-                % procedure.
-
-                % The info saved for the time when backtracking reenters
-                % this procedure is stored in a data structure.  This arg
-                % contains the field declarations.
-                string,
-                maybe(prog_context),
-
-                % Gives the code to be executed when the procedure is
-                % called for the first time. This code may access the
-                % input variables.
-                string,
-                maybe(prog_context),
-
-                % Gives the code to be executed when control backtracks
-                % into the procedure.  This code may not access the input
-                % variables.
-                string,
-                maybe(prog_context),
-
-                % How should the shared code be treated during code generation.
-                foreign_proc_shared_code_treatment,
-
-                % Shared code that is executed after both the previous
-                % code fragments. May not access the input variables.
-                string,
-                maybe(prog_context)
-            )
-
-    ;       fc_impl_import(
-                string,     % Pragma imported C func name
-                string,     % Code to handle return value
-                string,     % Comma separated variables which the import
-                            % function is called with.
                 maybe(prog_context)
             ).
 

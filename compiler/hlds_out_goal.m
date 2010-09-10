@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1466,42 +1466,10 @@ write_goal_foreign_proc(_Info, GoalExpr, ModuleInfo, VarSet,
             !IO),
         io.write_string("},\n", !IO)
     ),
-    (
-        PragmaCode = fc_impl_ordinary(C_Code, _),
-        io.write_string("""", !IO),
-        io.write_string(C_Code, !IO),
-        io.write_string("""", !IO)
-    ;
-        PragmaCode = fc_impl_model_non(Fields, _FieldsContext,
-            First, _FirstContext, Later, _LaterContext,
-            Treat, Shared, _SharedContext),
-        io.write_string("local_vars(""", !IO),
-        io.write_string(Fields, !IO),
-        io.write_string("""), ", !IO),
-        io.write_string("first_code(""", !IO),
-        io.write_string(First, !IO),
-        io.write_string("""), ", !IO),
-        io.write_string("retry_code(""", !IO),
-        io.write_string(Later, !IO),
-        io.write_string("""), ", !IO),
-        (
-            Treat = shared_code_share,
-            io.write_string("shared_code(""", !IO)
-        ;
-            Treat = shared_code_duplicate,
-            io.write_string("duplicated_code(""", !IO)
-        ;
-            Treat = shared_code_automatic,
-            io.write_string("common_code(""", !IO)
-        ),
-        io.write_string(Shared, !IO),
-        io.write_string(""")", !IO)
-    ;
-        PragmaCode = fc_impl_import(Name, _, _, _Context),
-        io.write_string("""", !IO),
-        io.write_string(Name, !IO),
-        io.write_string("""", !IO)
-    ),
+    PragmaCode = fc_impl_ordinary(C_Code, _),
+    io.write_string("""", !IO),
+    io.write_string(C_Code, !IO),
+    io.write_string("""", !IO),
     io.write_string(")", !IO),
     io.write_string(Follow, !IO).
 

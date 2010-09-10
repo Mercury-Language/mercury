@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -639,7 +639,6 @@ replace_in_pragma_info(ModuleName, Location, EqvMap, _EqvInstMap,
         ; Pragma0 = pragma_foreign_export(_, _, _, _, _)
         ; Pragma0 = pragma_foreign_export_enum(_, _, _, _, _)
         ; Pragma0 = pragma_foreign_import_module(_, _)
-        ; Pragma0 = pragma_import(_, _, _, _, _)
         ; Pragma0 = pragma_inline(_, _)
         ; Pragma0 = pragma_mm_tabling_info(_, _, _, _, _)
         ; Pragma0 = pragma_mode_check_clauses(_, _)

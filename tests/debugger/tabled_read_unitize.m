@@ -28,7 +28,7 @@ main -->
 		io__write_string("could not open tabled_read_unitize.data\n")
 	).
 
-:- pragma export(tabled_read_unitize__read_num(in, out, di, uo),
+:- pragma foreign_export("C", tabled_read_unitize__read_num(in, out, di, uo),
 	"MT_read_num").
 
 :- pred tabled_read_unitize__read_num(c_pointer::in, int::out,
@@ -72,7 +72,7 @@ tabled_read_unitize__read_num_2(Stream, SoFar, N) -->
 	N = int1 * 100 + int2;
 ").
 
-:- pragma c_header_code("#include <stdio.h>").
+:- pragma foreign_decl("C", "#include <stdio.h>").
 
 :- pred tabled_read_unitize__open_input(string::in, int::out, c_pointer::out,
 	io__state::di, io__state::uo) is det.

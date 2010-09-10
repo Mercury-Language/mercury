@@ -1861,17 +1861,8 @@ goal_is_atomic(Goal, GoalIsAtomic) :-
 %-----------------------------------------------------------------------------%
 
 foreign_code_uses_variable(Impl, VarName) :-
-    (
-        Impl = fc_impl_ordinary(ForeignBody, _),
-        string.sub_string_search(ForeignBody, VarName, _)
-    ;
-        Impl = fc_impl_model_non(FB1, _, FB2, _, FB3, _, _, FB4, _),
-        ( string.sub_string_search(FB1, VarName, _)
-        ; string.sub_string_search(FB2, VarName, _)
-        ; string.sub_string_search(FB3, VarName, _)
-        ; string.sub_string_search(FB4, VarName, _)
-        )
-    ).
+    Impl = fc_impl_ordinary(ForeignBody, _),
+    string.sub_string_search(ForeignBody, VarName, _).
 
 %-----------------------------------------------------------------------------%
 

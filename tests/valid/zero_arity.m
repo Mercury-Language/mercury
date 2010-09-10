@@ -37,7 +37,10 @@ foo :- X = 1, unify(X, _).
 
 quux :- semidet_fail.
 
-:- pragma c_code(use_asm_labels, [will_not_call_mercury, thread_safe], "
+:- pragma foreign_proc("C",
+	use_asm_labels,
+	[promise_pure, will_not_call_mercury, thread_safe],
+"
 #ifdef MR_USE_ASM_LABELS
 	SUCCESS_INDICATOR = MR_TRUE;
 #else

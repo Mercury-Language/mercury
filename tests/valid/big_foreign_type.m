@@ -40,7 +40,7 @@
 
 :- implementation.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	struct Foo {
 		int x, y, z;
 	};
@@ -105,7 +105,7 @@ baz2(X) = X.
 baz3(X) = X.
 baz4(X) = X.
 
-:- pragma export(baz(in) = out, "baz").
-:- pragma export(baz2(in) = out, "baz2").
-:- pragma export(baz3(in) = out, "baz3").
-:- pragma export(baz4(in) = out, "baz4").
+:- pragma foreign_export("C", baz(in) = out, "baz").
+:- pragma foreign_export("C", baz2(in) = out, "baz2").
+:- pragma foreign_export("C", baz3(in) = out, "baz3").
+:- pragma foreign_export("C", baz4(in) = out, "baz4").

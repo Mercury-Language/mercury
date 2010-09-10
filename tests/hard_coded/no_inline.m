@@ -25,7 +25,10 @@ main -->
 :- pragma no_inline(bar/1).
 :- impure pred bar(int::out) is det.
 
-:- pragma c_code(bar(Value::out), "
+:- pragma foreign_proc("C",
+    bar(Value::out),
+    [will_not_call_mercury],
+"
 {
 	static int counter = 0;
 

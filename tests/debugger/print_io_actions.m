@@ -46,7 +46,7 @@ fake_read_n_chars(Stream, N, Chars, !IO) :-
         )
     ).
 
-:- pragma c_header_code("#include <stdio.h>").
+:- pragma foreign_decl("C", "#include <stdio.h>").
 
 :- pred fake_open_input(string::in, int::out, c_pointer::out, io::di, io::uo)
     is det.

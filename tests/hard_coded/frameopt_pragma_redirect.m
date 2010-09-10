@@ -57,8 +57,8 @@ check_interval(S - E) :-
 
 :- pragma inline(is_invalid/1).
 
-:- pragma c_code(is_invalid(X :: in),
-	[will_not_call_mercury, thread_safe], 
+:- pragma foreign_proc("C", is_invalid(X :: in),
+	[will_not_call_mercury, thread_safe, promise_pure], 
 	"SUCCESS_INDICATOR = X > 50;").
 is_invalid(X) :- X > 50.
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2006, 2009 The University of Melbourne.
+% Copyright (C) 2001-2006, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -767,14 +767,20 @@ gcc.run_backend(CommandLine, ReturnValue, FrontEndCallBack, Output, !IO) :-
     % Returns `yes' iff we've already entered the gcc back-end.
     %
 :- pred in_gcc(bool::out, io::di, io::uo) is det.
-:- pragma import(in_gcc(out, di, uo),
-    [will_not_call_mercury, tabled_for_io],
-    "MC_in_gcc").
+:- pragma foreign_proc("C",
+    in_gcc(Result::out, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
+"
+    MC_in_gcc(&Result);
+").
 
 :- pred call_gcc_backend(string::in, int::out, io::di, io::uo) is det.
-:- pragma import(call_gcc_backend(in, out, di, uo),
-    [may_call_mercury, tabled_for_io],
-    "MC_call_gcc_backend").
+:- pragma foreign_proc("C",
+    call_gcc_backend(AllArgs::in, Result::out, _IO0::di, _IO::uo),
+    [promise_pure, may_call_mercury, tabled_for_io],
+"
+    MC_call_gcc_backend(AllArgs, &Result);
+").
 
 :- pragma foreign_decl("C", "
 /* We use an `MC_' prefix for C code in the mercury/compiler directory. */
@@ -880,7 +886,7 @@ MC_continue_frontend(void)
     gcc_frontend_callback(T)::in(gcc_frontend_callback), T::out,
     io::di, io::uo) is det.
 
-:- pragma export(
+:- pragma foreign_export("C",
     call_frontend_callback(in(gcc_frontend_callback), out, di, uo),
     "MC_call_frontend_callback").
 
@@ -1691,13 +1697,19 @@ gcc.struct_field_initializer(FieldDecl, FieldDecl) --> [].
 % collector (see gcc/ggc.h).
 %
 
-:- pragma import(push_gc_context(di, uo),
-    [will_not_call_mercury, tabled_for_io],
-    "ggc_push_context").
+:- pragma foreign_proc("C",
+    push_gc_context(_IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
+"
+    ggc_push_context();
+").
 
-:- pragma import(pop_gc_context(di, uo),
-    [will_not_call_mercury, tabled_for_io],
-    "ggc_pop_context").
+:- pragma foreign_proc("C",
+    pop_gc_context(_IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
+"
+    ggc_pop_context();
+").
 
 %-----------------------------------------------------------------------------%
 %
@@ -1711,9 +1723,12 @@ gcc.struct_field_initializer(FieldDecl, FieldDecl) --> [].
     merc_start_function((tree) FuncDecl);
 ").
 
-:- pragma import(end_function(di, uo),
-    [will_not_call_mercury, tabled_for_io],
-    "merc_end_function").
+:- pragma foreign_proc("C",
+    end_function(_IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"
+    merc_end_function();
+").
 
 :- pragma foreign_proc("C",
     set_context(FileName::in, LineNumber::in, _IO0::di, _IO::uo),
@@ -1765,13 +1780,19 @@ gcc.struct_field_initializer(FieldDecl, FieldDecl) --> [].
     expand_start_cond((tree) Cond, 0);
 ").
 
-:- pragma import(gen_start_else(di, uo),
-    [will_not_call_mercury, tabled_for_io],
-    "expand_start_else").
+:- pragma foreign_proc("C",
+    gen_start_else(_IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
+"
+    expand_start_else();
+").
 
-:- pragma import(gen_end_cond(di, uo),
-    [will_not_call_mercury, tabled_for_io],
-    "expand_end_cond").
+:- pragma foreign_proc("C",
+    gen_end_cond(_IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, tabled_for_io],
+"
+    expand_end_cond();
+").
 
 %
 % Switch statements.

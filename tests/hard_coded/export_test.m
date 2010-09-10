@@ -23,10 +23,12 @@ main -->
 
 foo(X, X+1).
 
-:- pragma export(foo(in, out), "foo").
+:- pragma foreign_export("C", foo(in, out), "foo").
 :- pragma foreign_export("Java", foo(in, out), "foo").
 
-:- pragma c_code(bar(X::in, Y::out), may_call_mercury,
+:- pragma foreign_proc("C",
+	bar(X::in, Y::out),
+	[promise_pure, may_call_mercury],
 "
 	foo(X, &Y);
 ").

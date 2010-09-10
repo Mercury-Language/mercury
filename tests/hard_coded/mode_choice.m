@@ -60,7 +60,10 @@ main -->
 
 	
 :- pragma promise_pure(test1/3).
-:- pragma c_code(test1(_A::in, B::out, C::out), will_not_call_mercury, "
+:- pragma foreign_proc("C",
+    test1(_A::in, B::out, C::out),
+    [promise_pure, will_not_call_mercury],
+"
 	MR_make_aligned_string_copy(B, ""test1(in, out, out)"");
 	C = B;
 	SUCCESS_INDICATOR = MR_TRUE;
@@ -69,7 +72,10 @@ test1(_A::in, B::out, C::out) :-
 	B = C,
 	B = "test1(in, out, out)".
 
-:- pragma c_code(test1(_A::in, _B::in, C::out), will_not_call_mercury, "
+:- pragma foreign_proc("C",
+	test1(_A::in, _B::in, C::out),
+	[promise_pure, will_not_call_mercury],
+"
 	MR_make_aligned_string_copy(C, ""test1(in, in, out)"");
 	SUCCESS_INDICATOR = MR_TRUE;
 "). 
@@ -84,13 +90,19 @@ test1(_A::in, _B::in, C::out) :-
 :- mode test2(di, uo) is det.
 
 :- pragma promise_pure(test2/2).
-:- pragma c_code(test2(_A::in, B::out), will_not_call_mercury, "
+:- pragma foreign_proc("C",
+	test2(_A::in, B::out),
+	[promise_pure, will_not_call_mercury],
+"
 	MR_make_aligned_string_copy(B, ""test2(in, out)"");
 ").
 test2(_A::in, B::out) :-
 	B = "test2(in, out)".
 
-:- pragma c_code(test2(_A::di, B::uo), will_not_call_mercury, "
+:- pragma foreign_proc("C",
+	test2(_A::di, B::uo),
+	[promise_pure, will_not_call_mercury],
+"
 	MR_make_aligned_string_copy(B, ""test2(di, uo)"");
 ").
 test2(_A::di, B::uo) :-
@@ -113,7 +125,7 @@ test2(_A::di, B::uo) :-
 *******/
 
 :- pred mkany(string::out(any)) is det.
-:- pragma c_code(mkany(S::out(any)), will_not_call_mercury, "
+:- pragma foreign_proc("C", mkany(S::out(any)), [promise_pure, will_not_call_mercury], "
 	S = NULL;
 ").
 :- pragma foreign_proc("C#", mkany(S::out(any)), [promise_pure], "
@@ -134,13 +146,19 @@ test2(_A::di, B::uo) :-
 :- mode test3(out(any), out) is det.
 
 :- pragma promise_pure(test3/2).
-:- pragma c_code(test3(_A::in(any), B::out), will_not_call_mercury, "
+:- pragma foreign_proc("C",
+	test3(_A::in(any), B::out),
+	[promise_pure, will_not_call_mercury],
+"
 	MR_make_aligned_string_copy(B, ""test3(in(any), out)"");
 ").
 test3(_A::in(any), B::out) :-
 	B = "test3(in(any), out)".
 
-:- pragma c_code(test3(A::out(any), B::out), will_not_call_mercury, "
+:- pragma foreign_proc("C",
+	test3(A::out(any), B::out),
+	[promise_pure,  will_not_call_mercury],
+"
 	A = NULL;
 	MR_make_aligned_string_copy(B, ""test3(out(any), out)"");
 ").
@@ -155,7 +173,10 @@ test3(A::out(any), B::out) :-
 :- mode test4(out, in, out) is det.
 
 :- pragma promise_pure(test4/3).
-:- pragma c_code(test4(_A::in, B::out, C::out), will_not_call_mercury, "
+:- pragma foreign_proc("C",
+	test4(_A::in, B::out, C::out),
+	[promise_pure, will_not_call_mercury],
+"
 	MR_make_aligned_string_copy(B, """");
 	MR_make_aligned_string_copy(C, ""test4(in, out, out)"");
 ").
@@ -163,7 +184,9 @@ test4(_A::in, B::out, C::out) :-
 	B = "",
 	C = "test4(in, out, out)".
 
-:- pragma c_code(test4(A::out, _B::in, C::out), will_not_call_mercury, "
+:- pragma foreign_proc("C", test4(A::out, _B::in, C::out),
+	[promise_pure, will_not_call_mercury],
+"
 	MR_make_aligned_string_copy(A, """");
 	MR_make_aligned_string_copy(C, ""test4(out, in, out)"");
 ").
@@ -182,14 +205,20 @@ test4(A::out, _B::in, C::out) :-
 :- mode test5(in(ab), in(b), out) is det.
 
 :- pragma promise_pure(test5/3).
-:- pragma c_code(test5(_A::in(a), _B::in(ab), C::out), will_not_call_mercury, "
+:- pragma foreign_proc("C",
+	test5(_A::in(a), _B::in(ab), C::out), 
+	[promise_pure, will_not_call_mercury],
+"
 	MR_make_aligned_string_copy(C, ""test5(in(a), in(ab), out)"");
 ").
 test5(_A::in(a), _B::in(ab), C::out) :-
 	C = "test5(in(a), in(ab), out)".
 	
 
-:- pragma c_code(test5(_A::in(ab), _B::in(b), C::out), will_not_call_mercury, "
+:- pragma foreign_proc("C",
+	test5(_A::in(ab), _B::in(b), C::out),
+	[promise_pure, will_not_call_mercury],
+"
 	MR_make_aligned_string_copy(C, ""test5(in(ab), in(b), out)"");
 ").
 test5(_A::in(ab), _B::in(b), C::out) :-

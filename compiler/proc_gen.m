@@ -883,47 +883,17 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
         MaybeTraceInfo = no,
         TraceFillCode = empty
     ),
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ModuleName = pred_info_module(PredInfo),
-    PredName = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
 
     PushMsg = push_msg(ModuleInfo, PredId, ProcId),
     (
         CodeModel = model_non,
         resume_point_stack_addr(OutsideResumePoint, OutsideResumeAddress),
-        (
-            Goal = hlds_goal(call_foreign_proc(_, _, _, _, _, _, PragmaCode),
-                _),
-            PragmaCode = fc_impl_model_non(Fields, FieldsContext,
-                _, _, _, _, _, _, _)
-        ->
-            StructName = foreign_proc_struct_name(ModuleName, PredName, Arity,
-                ProcId),
-            Struct = foreign_proc_struct(StructName, Fields, FieldsContext),
-            string.format("#define\tMR_ORDINARY_SLOTS\t%d\n",
-                [i(TotalSlots)], DefineStr),
-            DefineComponents = [foreign_proc_raw_code(cannot_branch_away,
-                proc_does_not_affect_liveness, live_lvals_info(set.init),
-                DefineStr)],
-            NondetFrameInfo = ordinary_frame(PushMsg, TotalSlots, yes(Struct)),
-            MD = proc_may_not_duplicate,
-            AllocCode = from_list([
-                llds_instr(mkframe(NondetFrameInfo, yes(OutsideResumeAddress)),
-                    "Allocate stack frame"),
-                llds_instr(foreign_proc_code([], DefineComponents,
-                    proc_will_not_call_mercury, no, no, no, no, no, no, MD),
-                    "")
-            ]),
-            NondetPragma = yes
-        ;
-            NondetFrameInfo = ordinary_frame(PushMsg, TotalSlots, no),
-            AllocCode = singleton(
-                llds_instr(mkframe(NondetFrameInfo, yes(OutsideResumeAddress)),
-                    "Allocate stack frame")
-            ),
-            NondetPragma = no
-        )
+        NondetFrameInfo = ordinary_frame(PushMsg, TotalSlots, no),
+        AllocCode = singleton(
+            llds_instr(mkframe(NondetFrameInfo, yes(OutsideResumeAddress)),
+                "Allocate stack frame")
+        ),
+        NondetPragma = no
     ;
         ( CodeModel = model_det
         ; CodeModel = model_semi

@@ -26,7 +26,7 @@ main --> foo(_).
 :- type my_foreign_type.
 :- pragma foreign_type("C", my_foreign_type, "int").
 
-:- pragma export(bar(out,di,uo), "bar").
+:- pragma foreign_export("C", bar(out,di,uo), "bar").
 :- pred bar(my_foreign_type::out, io::di,io::uo) is det.
 bar(X) --> foo(X).
 

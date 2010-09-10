@@ -70,8 +70,8 @@ impure_method2a_impl -->
 semipure_method_a_impl -->
 	semipure print("semipure_method_a_impl\n").	% warn
 
-:- pragma c_header_code("extern int x;").
-:- pragma c_code("int x = 0;").
+:- pragma foreign_decl("C", "extern int x;").
+:- pragma foreign_code("C", "int x = 0;").
 :- pragma foreign_code("C#", "
 static int x = 0;
 ").

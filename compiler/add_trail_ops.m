@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2009 The University of Melbourne.
+% Copyright (C) 2000-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -341,27 +341,8 @@ goal_expr_add_trail_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
         ),
         Goal = hlds_goal(GoalExpr0, GoalInfo0)
     ;
-        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, Impl),
-        (
-            Impl = fc_impl_model_non(_, _, _, _, _, _, _, _, _),
-            % XXX Implementing trailing for nondet pragma foreign_code via
-            % transformation is difficult, because there's nowhere in the HLDS
-            % pragma_foreign_code goal where we can insert trailing operations.
-            % For now, we don't support this. Instead, we just generate a call
-            % to a procedure which will at runtime call error/1 with an
-            % appropriate "Sorry, not implemented" error message.
-            ModuleInfo = !.Info ^ trail_module_info,
-            Context = goal_info_get_context(GoalInfo0),
-            trail_generate_call("trailed_nondet_pragma_foreign_code",
-                detism_erroneous, purity_pure, [], instmap_delta_bind_no_var,
-                ModuleInfo, Context, SorryNotImplementedCode),
-            Goal = SorryNotImplementedCode
-        ;
-            ( Impl = fc_impl_ordinary(_, _)
-            ; Impl = fc_impl_import(_, _, _, _)
-            ),
-            Goal = hlds_goal(GoalExpr0, GoalInfo0)
-        )
+        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
+        Goal = hlds_goal(GoalExpr0, GoalInfo0)
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.

@@ -1199,11 +1199,6 @@ add_pass_3_pragma(ItemPragma, !Status, !ModuleInfo, !QualInfo, !Specs) :-
             Vars, ProgVarSet, InstVarSet, PragmaImpl, !.Status, Context,
             yes(SeqNum), !ModuleInfo, !QualInfo, !Specs)
     ;
-        Pragma = pragma_import(Name, PredOrFunc, Modes, Attributes,
-            C_Function),
-        module_add_pragma_import(Name, PredOrFunc, Modes, Attributes,
-            C_Function, !.Status, Context, !ModuleInfo, !QualInfo, !Specs)
-    ;
         Pragma = pragma_fact_table(Pred, Arity, File),
         module_add_pragma_fact_table(Pred, Arity, File, !.Status,
             Context, !ModuleInfo, !QualInfo, !Specs)

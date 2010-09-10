@@ -403,99 +403,28 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet,
 warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
         PredOrFuncCallId, PredId, ProcId, ModuleInfo, !Specs) :-
     LangStr = foreign_language_string(Lang),
+    PragmaImpl = fc_impl_ordinary(C_Code, _),
+    c_code_to_name_list(C_Code, C_CodeList),
+    list.filter_map(var_is_unmentioned(C_CodeList), Args, UnmentionedVars),
     (
-        PragmaImpl = fc_impl_ordinary(C_Code, _),
-        c_code_to_name_list(C_Code, C_CodeList),
-        list.filter_map(var_is_unmentioned(C_CodeList), Args, UnmentionedVars),
-        (
-            UnmentionedVars = []
-        ;
-            UnmentionedVars = [_ | _],
-            Pieces1 = [words("In the"), words(LangStr), words("code for"),
-                simple_call(PredOrFuncCallId), suffix(":"), nl] ++
-                variable_warning_start(UnmentionedVars) ++
-                [words("not occur in the"), words(LangStr), words("code."),
-                nl],
-            Msg1 = simple_msg(Context,
-                [option_is_set(warn_singleton_vars, yes, [always(Pieces1)])]),
-            Severity1 = severity_conditional(warn_singleton_vars, yes,
-                severity_warning, no),
-            Spec1 = error_spec(Severity1, phase_parse_tree_to_hlds,
-                [Msg1]),
-            !:Specs = [Spec1 | !.Specs]
-        ),
-        pragma_foreign_proc_body_checks(Lang, Context, PredOrFuncCallId,
-            PredId, ProcId, ModuleInfo, C_CodeList, !Specs)
+        UnmentionedVars = []
     ;
-        PragmaImpl = fc_impl_model_non(_, _, FirstCode, _, LaterCode,
-            _, _, SharedCode, _),
-        c_code_to_name_list(FirstCode, FirstCodeList),
-        c_code_to_name_list(LaterCode, LaterCodeList),
-        c_code_to_name_list(SharedCode, SharedCodeList),
-        list.filter_map(input_var_is_unmentioned(ModuleInfo, FirstCodeList),
-            Args, UnmentionedInputVars),
-        (
-            UnmentionedInputVars = []
-        ;
-            UnmentionedInputVars = [_ | _],
-            Pieces2 = [words("In the"), words(LangStr), words("code for"),
-                simple_call(PredOrFuncCallId), suffix(":"), nl] ++
-                variable_warning_start(UnmentionedInputVars) ++
-                [words("not occur in the first"), words(LangStr),
-                words("code."), nl],
-            Msg2 = simple_msg(Context,
-                [option_is_set(warn_singleton_vars, yes, [always(Pieces2)])]),
-            Severity2 = severity_conditional(warn_singleton_vars, yes,
-                severity_warning, no),
-            Spec2 = error_spec(Severity2, phase_parse_tree_to_hlds,
-                [Msg2]),
-            !:Specs = [Spec2 | !.Specs]
-        ),
-        list.filter_map(output_var_is_unmentioned(ModuleInfo,
-            FirstCodeList, SharedCodeList), Args, UnmentionedFirstOutputVars),
-        (
-            UnmentionedFirstOutputVars = []
-        ;
-            UnmentionedFirstOutputVars = [_ | _],
-            Pieces3 = [words("In the"), words(LangStr), words("code for"),
-                simple_call(PredOrFuncCallId), suffix(":"), nl] ++
-                variable_warning_start(UnmentionedFirstOutputVars) ++
-                [words("not occur in the first"), words(LangStr),
-                words("code or the shared"), words(LangStr), words("code."),
-                nl],
-            Msg3 = simple_msg(Context,
-                [option_is_set(warn_singleton_vars, yes, [always(Pieces3)])]),
-            Severity3 = severity_conditional(warn_singleton_vars, yes,
-                severity_warning, no),
-            Spec3 = error_spec(Severity3, phase_parse_tree_to_hlds,
-                [Msg3]),
-            !:Specs = [Spec3 | !.Specs]
-        ),
-        list.filter_map(output_var_is_unmentioned(ModuleInfo,
-            LaterCodeList, SharedCodeList), Args, UnmentionedLaterOutputVars),
-        (
-            UnmentionedLaterOutputVars = []
-        ;
-            UnmentionedLaterOutputVars = [_ | _],
-            list.sort(UnmentionedLaterOutputVars,
-                SortedUnmentionedLaterOutputVars),
-            Pieces4 = [words("In the"), words(LangStr), words("code for"),
-                simple_call(PredOrFuncCallId), suffix(":"), nl] ++
-                variable_warning_start(SortedUnmentionedLaterOutputVars) ++
-                [words("not occur in the retry"), words(LangStr),
-                words("code or the shared"), words(LangStr), words("code."),
-                nl],
-            Msg4 = simple_msg(Context,
-                [option_is_set(warn_singleton_vars, yes, [always(Pieces4)])]),
-            Severity4 = severity_conditional(warn_singleton_vars, yes,
-                severity_warning, no),
-            Spec4 = error_spec(Severity4, phase_parse_tree_to_hlds,
-                [Msg4]),
-            !:Specs = [Spec4 | !.Specs]
-        )
-    ;
-        PragmaImpl = fc_impl_import(_, _, _, _)
-    ).
+        UnmentionedVars = [_ | _],
+        Pieces1 = [words("In the"), words(LangStr), words("code for"),
+            simple_call(PredOrFuncCallId), suffix(":"), nl] ++
+            variable_warning_start(UnmentionedVars) ++
+            [words("not occur in the"), words(LangStr), words("code."),
+            nl],
+        Msg1 = simple_msg(Context,
+            [option_is_set(warn_singleton_vars, yes, [always(Pieces1)])]),
+        Severity1 = severity_conditional(warn_singleton_vars, yes,
+            severity_warning, no),
+        Spec1 = error_spec(Severity1, phase_parse_tree_to_hlds,
+            [Msg1]),
+        !:Specs = [Spec1 | !.Specs]
+    ),
+    pragma_foreign_proc_body_checks(Lang, Context, PredOrFuncCallId,
+        PredId, ProcId, ModuleInfo, C_CodeList, !Specs).
 
 :- pred var_is_unmentioned(list(string)::in, maybe(pair(string, mer_mode))::in,
     string::out) is semidet.

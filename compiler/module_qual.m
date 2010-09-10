@@ -1374,10 +1374,6 @@ qualify_pragma(X @ pragma_inline(_, _), X, !Info, !Specs).
 qualify_pragma(X @ pragma_no_inline(_, _), X, !Info, !Specs).
 qualify_pragma(X @ pragma_obsolete(_, _), X, !Info, !Specs).
 qualify_pragma(X, Y, !Info, !Specs) :-
-    X = pragma_import(Name, PredOrFunc, Modes0, Attributes, CFunc),
-    qualify_mode_list(Modes0, Modes, !Info, !Specs),
-    Y = pragma_import(Name, PredOrFunc, Modes, Attributes, CFunc).
-qualify_pragma(X, Y, !Info, !Specs) :-
     X = pragma_foreign_export(Lang, Name, PredOrFunc, Modes0, CFunc),
     qualify_mode_list(Modes0, Modes, !Info, !Specs),
     Y = pragma_foreign_export(Lang, Name, PredOrFunc, Modes, CFunc).

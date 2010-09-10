@@ -102,8 +102,6 @@ into another language, under the above conditions for modified versions.
                       programs.
 * Foreign language interface:: Calling code written in other programming
                       languages from Mercury code
-* C interface::       The C interface allows C code to be called
-                      from Mercury code, and vice versa.
 * Impurity::          Users can write impure Mercury code.
 * Trace goals::       Trace goals allow programmers to add debugging and
                       logging code to their programs.
@@ -594,7 +592,7 @@ The allowed declarations are:
 The @samp{type}, @samp{pred} and @samp{func} declarations are used for the
 type system,
 the @samp{inst} and @samp{mode} declarations are for the mode system,
-the @samp{pragma} declarations are for the C interface, and for
+the @samp{pragma} declarations are for the foreign language interface, and for
 compiler hints about inlining, and the remainder are for the module system. 
 They are described in more detail in their respective chapters.
 
@@ -6464,15 +6462,10 @@ fair search rule; and so forth.
 				       languages.
 * Language specific bindings::         Information specific to each
   				       foreign language.
+
 @end menu
 
 This chapter documents the foreign language interface.
-The current implementation also supports an old C interface for
-Mercury, which is documented in @ref{C interface}.
-Note that the old C interface is deprecated and will be removed in a
-future version.
-We recommend that code written using the old interface be updated to
-use the interface described in this chapter instead.
 
 @node Calling foreign code from Mercury
 @section Calling foreign code from Mercury
@@ -6537,7 +6530,6 @@ Mercury User's Guide.
 If there is a @code{pragma foreign_proc} declaration for any
 mode of a predicate or function, then there must be either a
 clause or a @code{pragma foreign_proc} 
-@c or @code{pragma import} 
 declaration for every mode of that predicate or function.
 
 Here's an example of code using @samp{pragma foreign_proc}:
@@ -6562,16 +6554,62 @@ If there are both Mercury definitions and foreign_proc definitions for
 a procedure and/or foreign_proc definitions for different languages,
 it is implementation defined which definition is used.
 
-For pure and semipure procedures, the declarative semantics of the
-foreign_proc definitions must be the same as that of the Mercury code.
-The only thing that is allowed to differ is the efficiency (including
-the possibility of non-termination) and the order of solutions.
+For pure and semipure procedures, the declarative semantics of the foreign_proc
+definitions must be the same as that of the Mercury code.
+The only thing that is allowed to differ is the efficiency (including the
+possibility of non-termination) and the order of solutions.
+
+It is an error for a procedure with a @samp{pragma foreign_proc} declaration to
+have a determinism of @samp{multi} or @samp{nondet}.
+
+Since foreign_procs with the determinism @samp{multi} or @samp{nondet} cannot
+be defined directly, procedures with those determinisms that require foreign
+code in their implementation must be defined using a combination of Mercury
+clauses and (semi)deterministic foreign_procs.
+The following implementation for the standard library predicate
+@samp{string.append/3} in the mode @samp{append(out, out, in) is multi}
+illustrates this technique:
+
+@example
+:- pred append(string, string, string).
+:- mode append(out, out, in) is multi.
+
+append(S1, S2, S3) :-
+    S3Len = string.length(S3),
+    append_2(0, S3Len, S1, S2, S3).
+
+:- pred append_2(int::in, int::in, string::out, string::out, string::in) is multi.
+
+append_2(NextS1Len, S3Len, S1, S2, S3) :-
+    ( NextS1Len = S3Len ->
+        append_3(NextS1Len, S3Len, S1, S2, S3)
+    ;
+        (
+            append_3(NextS1Len, S3Len, S1, S2, S3)
+        ;
+            append_2(NextS1Len + 1, S3Len, S1, S2, S3)
+        )
+    ).
+
+:- pred append_3(int::inb, int::in, string::out, string::out, string::in) is det.
+
+:- pragma foreign_proc("C",
+    append_3(S1Len::in, S3Len::in, S1::out, S2::out, S3::in),
+    [will_not_call_mercury, promise_pure],
+"
+    S1 = allocate_string(S1Len);   /* Allocate a new string of length S1Len */
+    memcpy(S1, S3, S1Len);
+    S1[S1Len] = '\\0';
+    S2 = allocate_string(S2, S3Len - S1Len);
+    strcpy(S2, S3Len + S1Len);
+"). 
+
+@end example
 
 @node Foreign code attributes
 @subsection Foreign code attributes
 
 As described above, 
-@c @samp{pragma import} and 
 @samp{pragma foreign_proc}
 declarations may include a list of attributes describing properties
 of the given foreign function or code.
@@ -6640,8 +6678,7 @@ This allows the debugger to safely retry across such calls and also
 allows safe declarative debugging of code containing such calls.
 For more information see the I/O tabling section of the Mercury user guide.
 If the foreign procedure contains gotos or static variables then the
-@samp{pragma no_inline} directive should also be given 
-(see @ref{pragma c_code}).
+@samp{pragma no_inline} directive should also be given.
 Note that currently I/O tabling will only be done for foreign procedures
 that take a pair of I/O state arguments.  Impure foreign procedures that
 perform I/O will not be made idempotent, even if the tabled_for_io
@@ -7568,6 +7605,9 @@ Use the string @code{"Erlang"} to set the foreign language to Erlang.
 * Using pragma foreign_code for C 	 :: Including C code in Mercury
 * Memory management for C                :: Caveats about passing dynamically
                                             allocated memory to or from C.
+* Linking with C object files            :: Linking with C object files and
+                                            libraries.
+
 @end menu
 
 @node Using pragma foreign_type for C
@@ -7612,10 +7652,51 @@ Furthermore, any Mercury procedure exported with @samp{pragma foreign_export}
 will use @var{CForeignType} as the type for any
 parameters whose Mercury type is @var{MercuryTypeName}.
 
-Also see the section on using C pointers (@pxref{Using C pointers}) for
-information on how to use the c_pointer type with the C interface.
-@c XXX we should eventually just move that section to here,
-@c presenting it as an alternative to pragma foreign_type.
+The builtin Mercury type @code{c_pointer} may be used to pass C pointers
+between C functions which are called from Mercury.  For example:
+
+@example
+:- module pointer_example.
+:- interface.
+
+:- type complicated_c_structure.
+
+% Initialise the abstract C structure that we pass around in Mercury.
+:- pred initialise_complicated_structure(complicated_c_structure::uo) is det.
+
+% Perform a calculation on the C structure.
+:- pred do_calculation(int::in, complicated_c_structure::di, 
+        complicated_c_structure::uo) is det.
+
+:- implementation.
+
+% Our C structure is implemented as a c_pointer.
+:- type complicated_c_structure
+    --->    complicated_c_structure(c_pointer).
+
+:- pragma foreign_decl("C",
+   extern struct foo *init_struct(void);
+   extern struct foo *perform_calculation(int, struct foo *);
+");
+
+:- pragma foreign_proc("C",
+    initialise_complicated_structure(Structure::uo),
+    [will_not_call_mercury, may_call_mercury],
+"
+    Structure = init_struct();
+").
+
+:- pragma foreign_proc("C",
+    do_calculation(Value::in, Structure0::di, Structure::uo),
+    [will_not_call_mercury, may_call_mercury],
+"
+    Structure = perform_calculation(Value, Structure0);
+").
+@end example
+
+We strongly recommend the use of @samp{pragma foreign_type} instead of
+@code{c_pointer} as the use of @samp{pragma foreign_type} results in
+more type-safe code.
 
 @node Using pragma foreign_export_enum for C
 @subsubsection Using pragma foreign_export_enum for C
@@ -7871,6 +7952,41 @@ It would be desirable to provide a single memory management interface
 for use when interfacing with other languages that can work for all
 methods of memory management, but more implementation experience is
 needed before we can formulate such an interface.
+
+@node Linking with C object files 
+@subsubsection Linking with C object files 
+
+A Mercury implementation should allow you to link with object files or
+libraries that were produced by compiling C code.
+The exact mechanism for linking with C object files is
+implementation-dependent.
+The following text describes how it is done for the University of Melbourne
+Mercury implementation.
+
+To link an existing object file into your Mercury code, use the command line
+option @samp{--link-object}.
+For example, the following will link the object file @samp{my_function.o} from
+the current directory when compiling the program @samp{prog}:
+
+@example
+mmc --link-object my_functions.o prog
+@end example
+
+The command line option @samp{--library} (or @samp{-l} for short)
+can be used to link an existing library into your Mercury code.
+For example, the following will link the library file @samp{libfancy_library.a},
+or perhaps the shared version @samp{libfancy_library.so}, from the directory
+@samp{/usr/local/contrib/lib}, when compiling the program @samp{prog}:
+
+@example
+mmc -R/usr/local/contrib/lib -L/usr/local/contrib/lib --lfancy_library prog
+@end example
+
+As illustred by the example, the command line options @samp{-R}, @samp{-L}
+and @samp{-l}, have the same meaning as they do with the Unix linker.
+
+For more information, see the ``Libraries'' chapter of the
+Mercury User's Guide.
 
 @c ----------------------------------------------------------------------------
 
@@ -8518,669 +8634,20 @@ For example:
 
 @c ----------------------------------------------------------------------------
 
-@node C interface
-@chapter C interface
-
-@menu
-* Calling C code from Mercury::         How to implement a Mercury predicate
-                                        or function as a call to C code.
-* Including C headers::                 Using functions with prototypes from a
-                                        non-standard header file.
-* Including C code::                    Including definitions of C
-                                        functions in your Mercury code.
-* Linking with C object files::         Linking with C object files and 
-                                        libraries.
-* Calling Mercury code from C::         How to export a Mercury function or
-                                        predicate for use by C code.
-* Passing data to and from C::          Exchanging simple data types between
-                                        Mercury and C.
-* Using C pointers::                    Maintaining a reference to C data
-                                        structures in Mercury code.
-@end menu
-
-This chapter documents the original C interface.
-It has been deprecated in favour of the of the new foreign language interface
-documented in @ref{Foreign language interface}.
-Support for this interface will be removed in a future version.
-
-@node Calling C code from Mercury
-@section Calling C code from Mercury
-
-There are two slightly different mechanisms for calling C code from Mercury:
-@samp{pragma import} and @samp{pragma c_code}.  @samp{pragma import}
-allows you to call C functions from Mercury.  @samp{pragma c_code}
-allows you to implement Mercury procedures using arbitrary fragments
-of C code.  @samp{pragma import} is usually simpler, but
-@samp{pragma c_code} is a bit more flexible.
-
-@c
-@c We can't use "@samp" or even "`...'" in node names -- if we use
-@c either, then texi2dvi barfs.  So the node names are
-@c e.g. "pragma import" rather than "@samp{pragma import}".
-@c
-@menu
-* pragma import::             Importing C functions.
-* pragma c_code::             Defining Mercury procedures using C code.
-* Nondet pragma c_code::      Using @samp{pragma c_code} for Mercury procedures
-                              that can have more than one solution.
-* C code attributes::         Describing properties of C functions or C code.
-* Purity and side effects::   Explains when side effects are allowed.
-@end menu
-
-@node pragma import
-@subsection pragma import
-
-A declaration of the form
-
-@example
-:- pragma import(@var{Pred}(@var{Mode1}, @var{Mode2}, @dots{}),
-                 @var{Attributes}, "@var{C_Name}").
-@end example
-
-@noindent
-or
-
-@example
-:- pragma import(@var{Func}(@var{Mode1}, @var{Mode2}, @dots{}) = @var{Mode},
-                 @var{Attributes}, "@var{C_Name}").
-@end example
-
-@noindent
-imports a C function for use by Mercury.
-@var{Pred} or @var{Func} must specify the name of a previously declared
-Mercury predicate or function, and @var{Mode1}, @var{Mode2}, @dots{},
-and (for functions) @var{Mode} must specify one of the
-modes of that predicate or function.  There must be no clauses
-for the specified Mercury procedure; instead, any calls to that
-procedure will be executed by calling the C function named
-@var{C_Name}.  The @var{Attributes} argument is optional; if present,
-it specifies properties of the given C function (@pxref{C code attributes}).
-
-For example, the following code imports the C function @samp{cos()}
-as the Mercury function @samp{cos/1}:
-
-@example
-:- func cos(float) = float.
-:- pragma import(cos(in) = out, [will_not_call_mercury], "cos").
-@end example
-
-The interface to the C function for a given Mercury procedure is
-determined as follows.  Mercury types are converted to C types and
-passed according to the rules in @ref{Passing data to and from C}.
-
-If you use @samp{pragma import} for a polymorphically typed Mercury procedure,
-the compiler will prepend one @samp{type_info} argument to the parameters
-passed to the C function for each polymorphic type variable in the
-Mercury procedure's type signature.  The values passed in these arguments
-will be the same as the values that would be obtained using the Mercury
-@samp{type_of} function in the Mercury standard library module @samp{type_desc}.
-These values may be useful in case the C function wishes to in turn call
-another polymorphic Mercury procedure (@pxref{Calling Mercury code from C}).
-
-You may not give a @samp{pragma import} declaration for a procedure
-with determinism @samp{nondet} or @samp{multi}.
-(It is however possible to define a @samp{nondet} or @samp{multi} procedure
-using @samp{pragma c_code}.  @xref{Nondet pragma c_code}.)
-
-@node pragma c_code
-@subsection pragma c_code
-
-A declaration of the form
-
-@example
-:- pragma c_code(@var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, @dots{}),
-        @var{Attributes}, @var{C_Code}).
-@end example
-
-@noindent
-or
-
-@example
-:- pragma c_code(@var{Func}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, @dots{}) = (@var{Var}::@var{Mode}),
-        @var{Attributes}, @var{C_Code}).
-@end example
-
-@noindent
-means that any calls to the specified mode of @var{Pred} or @var{Func}
-will result in execution of the C code given in @var{C_Code}.
-The C code fragment may refer to the specified variables
-(@var{Var1}, @var{Var2}, @dots{}, and @var{Var})
-directly by name.  These variables will have C types corresponding
-to their Mercury types, as determined by the rules specified in
-@ref{Passing data to and from C}.  It is an error for a variable
-to occur more than once in the argument list.
-
-The C code fragment may declare local variables, but it should not
-declare any labels or static variables unless there is also a Mercury
-@samp{pragma no_inline} declaration (@pxref{Inlining}) for the procedure.
-The reason for this is that otherwise the Mercury implementation may
-inline the procedure by duplicating the C code fragment for each call.
-If the C code fragment declared a static variable, inlining it in this
-way could result in the program having multiple instances of the static
-variable, rather than a single shared instance.  If the C code fragment
-declared a label, inlining it in this way could result in an error due
-to the same label being defined twice inside a single C function.
-
-If there is a @code{pragma import} or @code{pragma c_code} declaration for a
-mode of a predicate or function, then there must not be any clauses for that
-predicate or function, and there must be a @code{pragma c_code} 
-or @code{pragma import} declaration for every mode of the predicate or function.
-
-For example, the following piece of code defines a Mercury function
-@samp{sin/1} which calls the C function @samp{sin()} of the same name.
-
-@example
-:- func sin(float) = float.
-:- pragma c_code(sin(X::in) = (Sin::out),
-        [may_call_mercury],
-        "Sin = sin(X);").
-@end example
-
-If the C code does not recursively invoke Mercury code,
-as in the above example, then you can use @samp{will_not_call_mercury}
-in place of @samp{may_call_mercury} in the declarations above.
-This allows the compiler to use a slightly more efficient calling convention.
-(If you use this form, and the C code @emph{does} invoke Mercury code,
-then the behaviour is undefined --- your program may misbehave or crash.)
-
-The C code in a @code{pragma c_code} declaration
-for any procedure whose determinism indicates that it can fail
-must assign a truth value to the macro @samp{SUCCESS_INDICATOR}.
-For example:
-
-@example
-:- pred string.contains_char(string, character).
-:- mode string.contains_char(in, in) is semidet.
-
-:- pragma c_code(string.contains_char(Str::in, Ch::in),
-        [will_not_call_mercury],
-        "SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL);").
-@end example
-
-@code{SUCCESS_INDICATOR} should not be used other than as the target of
-an assignment.
-(For example, it may be @code{#define}d to a register, so you should not
-try to take its address.) 
-Procedures whose determinism indicates that they cannot fail
-should not access @code{SUCCESS_INDICATOR}.
-
-Arguments whose mode is input will have their values set by the
-Mercury implementation on entry to the C code.  If the procedure
-succeeds, the C code must set the values of all output arguments.
-If the procedure fails, the C code need only
-set @code{SUCCESS_INDICATOR} to false (zero).
-
-@node Nondet pragma c_code
-@subsection Nondet pragma c_code
-
-For procedures that can return more than one result on backtracking,
-i.e.@: those with determinism @samp{nondet} or @samp{multi},
-the form of @samp{pragma c_code} declaration described previously
-does not suffice.  Instead, you should use a declaration of the form
-shown below:
-
-@example
-:- pragma c_code(@var{Pred}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, @dots{}),
-        @var{Attributes}, local_vars(@var{LocalVars}), first_code(@var{FirstCode}),
-        retry_code(@var{RetryCode}), common_code(@var{CommonCode})).
-@end example
-
-@noindent
-or
-
-@example
-:- pragma c_code(@var{Func}(@var{Var1}::@var{Mode1}, @var{Var2}::@var{Mode2}, @dots{}) = (@var{Var}::@var{Mode}),
-        @var{Attributes}, local_vars(@var{LocalVars}), first_code(@var{FirstCode}),
-        retry_code(@var{RetryCode}), common_code(@var{CommonCode})).
-@end example
-
-@noindent
-Here @var{FirstCode}, @var{RetryCode}, and @var{CommonCode} are all
-Mercury strings containing C code.
-@var{FirstCode} will be executed whenever the Mercury procedure is called.
-@var{RetryCode} will be executed whenever a given call to the procedure
-is re-entered on backtracking to find subsequent solutions.
-The @samp{common_code(@var{CommonCode})} argument is optional; if present,
-@var{CommonCode} will be executed after each execution of
-@var{FirstCode} or @var{RetryCode}.
-
-The code that is executed on each call or retry should finish by
-executing one of the three macros @samp{FAIL}, @samp{SUCCEED}, or
-@samp{SUCCEED_LAST}.  The @samp{FAIL} macro indicates that the call has
-failed; the call will not be retried.  The @samp{SUCCEED} macro
-indicates that the call has succeeded, and that there may be more
-solutions; the call may be retried on backtracking.  The
-@samp{SUCCEED_LAST} macro indicates that the call has succeeded, but
-that there are no more solutions after this one; the call will not be
-retried.
-
-@var{LocalVars} is a sequence of struct member declarations which are
-used to hold any state which needs to be preserved in case of backtracking
-or passed between the different C code fragments.
-The code fragments @var{FirstCode}, @var{RetryCode}, and @var{CommonCode}
-may use the macro @samp{LOCALS}, which is defined to be a pointer to a struct
-containing the fields specified by @var{LocalVars}, to access this saved state.
-
-Note @var{RetryCode} and @var{CommonCode} may not access the input
-variables --- only @var{FirstCode} should access the input variables.
-If @var{RetryCode} or @var{CommonCode} need to access any of the input
-variables, then @var{FirstCode} should copy the values needed to the
-@var{LocalVars}.
-
-The following example shows how you can use a state variable to
-keep track of the next alternative to return.
-
-@example
-%
-% This example implements the equivalent of
-%     foo(X) :- X = 20 ; X = 10 ; X = 42 ; X = 99 ; fail.
-%
-:- pred foo(int).
-:- mode foo(out) is multi.
-:- pragma c_code(foo(X::out), [will_not_call_mercury, thread_safe],
-        local_vars("
-                int state;
-        "),
-        first_code("
-                LOCALS->state = 1;
-        "),
-        retry_code("
-                LOCALS->state++;
-        "),
-        common_code("
-                switch (LOCALS->state) @{
-                        case 1: X = 20; SUCCEED; break;
-                        case 2: X = 10; SUCCEED; break;
-                        case 3: X = 42; SUCCEED; break;
-                        case 4: X = 99; SUCCEED; break;
-                        case 5: FAIL; break;
-                @}
-        ")
-).
-@end example
-
-@noindent
-The next example is a more realistic example;
-it shows how you could implement the reverse
-mode of @samp{string.append}, which returns
-all possible ways of splitting a string into
-two pieces, using @samp{pragma c_code}.
-
-@example
-:- pred string.append(string, string, string).
-:- mode string.append(out, out, in) is multi.
-:- pragma c_code(string.append(S1::out, S2::out, S3::in),
-                [will_not_call_mercury, thread_safe],
-        local_vars("
-                String s;
-                size_t len;
-                size_t count;
-        "),
-        first_code("
-                LOCALS->s = S3;
-                LOCALS->len = strlen(S3);
-                LOCALS->count = 0;
-        "),
-        retry_code("
-                LOCALS->count++;
-        "),
-        common_code("
-                S1 = copy_substring(LOCALS->s, 0, LOCALS->count);
-                S2 = copy_substring(LOCALS->s, LOCALS->count,
-                                               LOCALS->len);
-                if (LOCALS->count < LOCALS->len) @{
-                        SUCCEED;
-                @} else @{
-                        SUCCEED_LAST;
-                @}
-        ")
-).
-@end example
-
-@node C code attributes
-@subsection C code attributes
-
-As described above, @samp{pragma import} and @samp{pragma c_code}
-declarations may include a list of attributes describing properties
-of the given C function or C code.
-All Mercury implementations must support the attributes listed below.
-They may also support additional attributes.
-
-The attributes which must be supported by all implementations
-are as follows:
-
-@table @asis
-
-@item @samp{may_call_mercury}/@samp{will_not_call_mercury}
-This attribute declares whether or not execution inside this C code may
-call back into Mercury or not.  The default, in case neither is specified,
-is @samp{may_call_mercury}.  Specifying @samp{will_not_call_mercury}
-may allow the compiler to generate more efficient code.
-If you specify @samp{will_not_call_mercury},
-but the C code @emph{does} invoke Mercury code, then the behaviour is
-undefined.
-
-@item @samp{thread_safe}/@samp{not_thread_safe}
-This attribute declares whether or not it is safe for multiple threads
-to execute this C code concurrently.
-The default, in case neither is specified, is @samp{not_thread_safe}.
-If the C code is declared @samp{thread_safe}, then the Mercury implementation
-is permitted to execute the code concurrently from multiple threads without
-taking any special precautions.  If the C code is declared
-@samp{not_thread_safe},
-then the Mercury implementation must not invoke the code concurrently from
-multiple threads.  If the Mercury implementation does use multithreading,
-then it must take appropriate steps to prevent this.
-(The experimental multithreaded version of the current
-University of Melbourne Mercury implementation protects
-@samp{not_thread_safe} code using a mutex:
-C code that is not thread-safe has code inserted around it to obtain
-and release a mutex.  All non-thread-safe C code shares a single mutex.)
-@c XXX this can cause deadlocks if not_thread_safe C code calls
-@c     Mercury which calls C
-
-@end table
-
-@node Purity and side effects
-@subsection Purity and side effects
-
-Note that procedures implemented in C using either
-@samp{pragma import} or @samp{pragma c_code} must still be ``pure'',
-unless declared otherwise (@pxref{Impurity}), and they must
-be type-correct and mode-correct.  (Determinism-correctness
-is also required, but it follows from the rules already stated
-above.)  Pure or semipure procedures may perform destructive update on their
-arguments only if those arguments have an appropriate
-unique mode declaration.
-Impure predicates may perform destructive update on data pointed to by
-C pointer arguments, even without unique modes.  But they cannot
-destructively update the arguments themselves.
-Procedures may perform I/O only if their arguments
-include an @samp{io.state} pair (see the @samp{io} chapter
-of the Mercury Library Reference Manual), or if they are declared impure
-(@pxref{Impurity}).
-The Mercury implementation is allowed to assume that
-these rules are followed, and to optimize accordingly.
-If the C code is not type-correct, mode-correct,
-determinism-correct, and purity-correct with respect
-to its Mercury declaration, then the behaviour is
-undefined.
-
-For example, the following code defines a predicate
-@samp{c_write_string/3}, which has a similar effect to
-the Mercury library predicate @samp{io.write_string/3}:
-
-@example
-:- pred c_write_string(string, io.state, io.state).
-:- mode c_write_string(in, di, uo) is det.
-
-:- pragma c_code(c_write_string(S::in, IO0::di, IO::uo),
-        [may_call_mercury],
-        "puts(S); IO = IO0;").
-@end example
-
-@noindent
-In this example, the I/O is done via side effects inside the C code,
-but the Mercury interface includes @samp{io.state} arguments
-to ensure that the predicate has a proper declarative
-semantics.  If the @samp{io.state} arguments were
-left off, then the Mercury implementation might apply
-undesirable optimizations (e.g.@: reordering, duplicate
-call elimination, tabling, lazy evaluation, @dots{})
-to this procedure, which could effect the behaviour
-of the program in unpredictable ways.
-
-Impure C code relaxes some of these restrictions.  
-Impure C code may perform I/O and although it cannot update its
-arguments directly (unless they have an appropriate unique mode, e.g.@: 
-@samp{di}) it may update something pointed to by its arguments.
-Impure C code procedures must still be type correct and mode correct.
-
-@node Including C headers
-@section Including C headers
-
-Any macros, function prototypes, or other C declarations
-that are used in @samp{c_code} pragmas must be included using a
-@samp{c_header_code} declaration of the form
-
-@example
-:- pragma c_header_code(@var{HeaderCode}).
-@end example
-
-@noindent
-@var{HeaderCode} can be a C @samp{#include} line, for example
-
-@example
-:- pragma c_header_code("#include <math.h>")
-@end example
-
-@noindent
-or
-
-@example
-:- pragma c_header_code("#include ""tcl.h""").
-@end example
-
-@noindent
-or it may contain any C declarations, for example
-
-@example
-:- pragma c_header_code("
-        extern int errno;
-        #define SIZE 200
-        struct Employee @{
-                char name[SIZE];
-        @}
-        extern int bar;
-        extern void foo(void);
-").
-@end example
-
-Mercury automatically includes certain headers such as @code{<stdlib.h>},
-but you should not rely on this, as the set of headers which Mercury
-automatically includes is subject to change.
-
-@node Including C code
-@section Including C code
-
-Definitions of C functions or global variables may be
-included using a declaration of the form
-
-@example
-:- pragma c_code(@var{Code}).
-@end example
-
-For example,
-
-@example
-:- pragma c_code("
-        int bar = 42;
-        void foo(void) @{@}
-").
-@end example
-
-Such code is copied verbatim into the generated C file.
-
-@node Calling Mercury code from C
-@section Calling Mercury code from C
-
-It is also possible to export Mercury procedures to C,
-so that you can call Mercury code from C (or from
-other languages that can interface to C, e.g.@: C++).
-
-A declaration of the form
-
-@example
-:- pragma export(@var{Pred}(@var{Mode1}, @var{Mode2}, @dots{}), "@var{C_Name_1}").
-@end example
-
-@noindent
-or
-
-@example
-:- pragma export(@var{Func}(@var{Mode1}, @var{Mode2}, @dots{}) = @var{Mode}, "@var{C_Name_2}").
-@end example
-
-@noindent
-exports a procedure for use by C.
-
-For each Mercury module containing @samp{pragma export} declarations,
-the Mercury implementation will automatically create a header file
-for that module which declares a C function @var{C_Name}()
-for each of the @samp{pragma export} declarations.
-Each such C function is the C interface to the specified mode of
-the specified Mercury predicate or function.
-
-The interface to a Mercury procedure is determined as follows.
-(The rules here are just the converse of the rules for @samp{pragma import}).
-Mercury types are converted to C types according to the rules in
-@ref{Passing data to and from C}.
-Input arguments are passed by value.  For output arguments, the
-caller must pass the address in which to store the result.
-If the Mercury procedure can fail, then its C interface function
-returns a truth value indicating success or failure.
-If the Mercury procedure is a Mercury function that cannot fail, and
-the function result has an output mode, then the C interface
-function will return the Mercury function result value.
-Otherwise the function result is appended as an extra argument.
-Arguments of type @samp{io.state} or @samp{store.store(_)}
-are not passed at all.  (The reason for this is that these types
-represent mutable state, and in C modifications to mutable state
-are done via side effects, rather than argument passing.)
-
-Calling polymorphically typed Mercury procedures from C is a little bit
-more difficult than calling ordinary (monomorphically typed) Mercury procedures.
-The simplest method is to just create monomorphic forwarding
-procedures that call the polymorphic procedures, and export them,
-rather than exporting the polymorphic procedures.
-
-If you do export a polymorphically typed Mercury procedure, the compiler
-will prepend one @samp{type_info} argument to the parameter list of
-the C interface function for each polymorphic type variable in the
-Mercury procedure's type signature.  The caller must arrange to pass
-in appropriate @samp{type_info} values corresponding to the types
-of the other arguments passed.  These @samp{type_info} arguments can
-be obtained using the Mercury @samp{type_of} function in the Mercury
-standard library module @samp{type_desc}.
-
-It is an error to export Mercury procedures that have a determinism
-of multi or nondet to C.
-
-To use the C declarations produced for @samp{pragma export} declarations
-in C code within a Mercury module, use a @samp{pragma c_import_module}
-declaration, for example 
-
-@example
-:- pragma c_import_module(imported_module).
-@end example
-
-This is equivalent to
-
-@example
-:- pragma c_header_code("#include ""imported_module.h""").
-@end example
-
-@noindent
-but it tells the implementation that the object file for the
-module containing the @samp{pragma c_import_module} declaration
-should not be built before @file{imported_module.h} is built.
-
-@node Linking with C object files 
-@section Linking with C object files 
-
-A Mercury implementation should allow you to link with
-object files or libraries that were produced by compiling C code.
-The exact mechanism for linking with C object files is
-implementation-dependent.  The following text describes how
-it is done for the University of Melbourne Mercury implementation.
-
-To link an existing object file into your Mercury code,
-set the @samp{Mmake} variable @samp{MLOBJS} in the
-@samp{Mmake} file in the directory in which you are working.
-To link an existing library into your Mercury code,
-set the @samp{Mmake} variable @samp{MLLIBS}.
-For example, the following will link in the object file
-@samp{my_functions.o} from the current directory and
-the library file @samp{libfancy_library.a}, or perhaps its
-shared version @samp{fancy_library.so}, from the directory
-@samp{/usr/local/contrib/lib}.
-
-@example
-MLOBJS = my_functions.o
-MLFLAGS = -R/usr/local/contrib/lib -L/usr/local/contrib/lib
-MLLIBS = -lfancy_library
-@end example
-
-As illustrated by the example, the values for @samp{MLFLAGS} and
-@samp{MLLIBS} variables are similar to those taken by the Unix linker.
-
-For more information, see the ``Libraries'' chapter of the
-Mercury User's Guide, and the @samp{man} pages for @samp{mmc} and @samp{ml}.
-
-@node Passing data to and from C
-@section Passing data to and from C
-
-This is documented in @ref{C data passing conventions}.
-
-@node Using C pointers
-@section Using C pointers
-
-The inbuilt Mercury type @code{c_pointer} can be used to pass C pointers
-between C functions which are called from Mercury.  For example:
-
-@example
-:- module pointer_example.
-
-:- interface.
-
-:- type complicated_c_structure.
-
-% Initialise the abstract C structure that we pass around in Mercury.
-:- pred initialise_complicated_structure(complicated_c_structure::uo) is det.
-
-% Perform a calculation on the C structure.
-:- pred do_calculation(int::in, complicated_c_structure::di, 
-        complicated_c_structure::uo) is det.
-
-:- implementation.
-
-% Our C structure is implemented as a c_pointer.
-:- type complicated_c_structure --->
-        complicated_c_structure(c_pointer).
-
-:- pragma c_header_code("
-        extern struct foo *init_struct(void);
-        extern struct foo *perform_calculation(int, struct foo *);
-");
-
-:- pragma c_code(initialise_complicated_structure(Structure::uo),
-        [may_call_mercury],
-        "Structure = init_struct();").
-
-:- pragma c_code(do_calculation(Value::in, Structure0::di, Structure::uo),
-        [may_call_mercury],
-        "Structure = perform_calculation(Value, Structure0);").
-@end example
-
-We strong recommend the use of @samp{pragma foreign_type} instead of
-@code{c_pointer} as the use of @samp{pragma foreign_type} results in
-more type-safe code.  (@pxref{Using pragma foreign_type for C}.)
-
-
 @node Impurity
 @chapter Impurity declarations
 
 In order to efficiently implement certain predicates, it is occasionally
-necessary to venture outside pure logic programming.  Other predicates
-cannot be implemented at all within the paradigm of logic programming,
-for example, all solutions predicates.  Such predicates are often
-written using the C interface.  Sometimes, however, it would be more
-convenient, or more efficient, to write such predicates using the
-facilities of Mercury.  For example, it is much more convenient to
-access arguments of compound Mercury terms in Mercury than in C, and the
-ability of the Mercury compiler to specialize code can make higher-order
-predicates written in Mercury significantly more efficient than similar
-C code.
+necessary to venture outside pure logic programming.
+Other predicates cannot be implemented at all within the paradigm of logic
+programming, for example, all solutions predicates.
+Such predicates are often written using the foreign language interface.
+Sometimes, however, it would be more convenient, or more efficient, to write
+such predicates using the facilities of Mercury.
+For example, it is much more convenient to access arguments of compound Mercury
+terms in Mercury than in C, and the ability of the Mercury compiler to
+specialize code can make higher-order predicates written in Mercury
+significantly more efficient than similar C code.
 
 One important aim of Mercury's impurity system is to make the
 distinction between the pure and impure code very clear.  This is done
@@ -9794,9 +9261,9 @@ but one with an implicit promise_pure around the clause in which they occur.
 @node Pragmas
 @chapter Pragmas
 
-The pragma declarations described below are a standard part of the
-Mercury language, as are the pragmas for controlling the C interface
-(@pxref{C interface}) and impurity (@pxref{Impurity}).
+The pragma declarations described below are a standard part of the Mercury
+language, as are the pragmas for controlling the foreign language interface
+(@pxref{Foreign language interface}) and impurity (@pxref{Impurity}).
 As an extension, implementations may also choose to support additional
 pragmas with implementation-dependent semantics
 (@pxref{Implementation-dependent extensions}).

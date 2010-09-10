@@ -28,7 +28,7 @@
 main -->
 	[].
 
-:- pragma c_header_code("int foo_counter = 0;").
+:- pragma foreign_code("C", "int foo_counter = 0;").
 
 foo_m1(_, "forty two").
 

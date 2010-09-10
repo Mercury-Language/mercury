@@ -10,5 +10,11 @@
 
 p(_, 4).
 
-:- pragma import(implemented_as_pragma_import(in, out), "imported").
-:- pragma export(p(in, out), "imported").
+:- pragma foreign_proc("C",
+	implemented_as_pragma_import(I::in, O::out),
+	[promise_pure, will_not_call_mercury],
+"
+	imported(TypeInfo_for_T, I, &O);
+").
+
+:- pragma foreign_export("C", p(in, out), "imported").
