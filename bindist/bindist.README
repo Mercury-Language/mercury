@@ -6,10 +6,11 @@ Mercury compiler, version <VERSION>, built on a `<FULLARCH>' system.
 	under the terms of the GNU General Public License.  See the file
 	COPYING for copying permission.
 
-	The Mercury library and runtime (libmer_std.* and libmer_rt.*)
-	runtime subdirectories) are distributed under the terms of the
-	GNU Library General Public License.  See the file COPYING.LIB for
-	copying permissions for those files.
+	The Mercury libraries and runtime (libmer_browser.*, libmer_std.*,
+	libmer_eventspec.*, libmer_trace.*, libmer_ssdb.*, libmer_mdbcomp.*,
+	libmer_rt.*) are distributed under the terms of the GNU Library
+	General Public License.  See the file COPYING.LIB for copying
+	permissions for those files.
 
 	If those licencing arrangements are not satisfactory, please
 	contact us!  We are willing to offer alternative arrangements,
