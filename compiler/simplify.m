@@ -3169,8 +3169,8 @@ find_excess_assigns_in_conj(Trace, TraceOptimized, VarSet, ConjNonLocals,
         Goals, !RevGoals, !Subn).
 
 :- pred goal_is_excess_assign(trace_level::in, bool::in, prog_varset::in,
-    set(prog_var)::in, hlds_goal::in, var_renaming::in,
-    var_renaming::out) is semidet.
+    set(prog_var)::in, hlds_goal::in,
+    var_renaming::in, var_renaming::out) is semidet.
 
 goal_is_excess_assign(Trace, TraceOptimized, VarSet, ConjNonLocals, Goal0,
         !Subn) :-
