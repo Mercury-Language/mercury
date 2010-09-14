@@ -12,14 +12,12 @@
 % This module is an HLDS-to-HLDS transformation that inserts code to
 % handle heap reclamation on backtracking, by saving and restoring
 % the values of the heap pointer.
-% The transformation involves adding calls to impure
-% predicates defined in library/private_builtin.m, which in turn call
-% the MR_mark_hp() and MR_restore_hp() macros defined in
-% runtime/mercury_heap.h.
+% The transformation involves adding calls to impure predicates defined in
+% library/private_builtin.m, which in turn call the MR_mark_hp() and
+% MR_restore_hp() macros defined in runtime/mercury_heap.h.
 %
-% This pass is currently only used for the MLDS back-end.
-% For some reason (perhaps efficiency?? or more likely just historical?),
-% the LLDS back-end inserts the heap operations as it is generating
+% This pass is currently only used for the MLDS back-end. For historical
+% reasons, the LLDS back-end inserts the heap operations as it is generating
 % LLDS code, rather than via an HLDS to HLDS transformation.
 %
 % This module is very similar to add_trail_ops.m.
@@ -68,12 +66,12 @@
 %-----------------------------------------------------------------------------%
 
     % As we traverse the goal, we add new variables to hold the saved values
-    % of the heap pointer. So we need to thread a varset and a vartypes mapping
-    % through, to record the names and types of the new variables.
+    % of the heap pointer. So we need the varset and the vartypes map to record
+    % the names and types of the new variables.
     %
     % We also keep the module_info around, so that we can use the predicate
     % table that it contains to lookup the pred_ids for the builtin procedures
-    % that we insert calls to. We do not update the module_info as we're
+    % that we insert calls to. We do not update the module_info as we are
     % traversing the goal.
     %
 :- type heap_ops_info
@@ -141,9 +139,13 @@ goal_expr_add_heap_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
                     !Info),
                 disj_add_heap_ops(Disjuncts0, Disjuncts, is_first_disjunct,
                     yes(SavedHeapPointerVar), GoalInfo0, !Info),
-                GoalExpr = conj(plain_conj,
-                    [MarkHeapPointerGoal,
-                        hlds_goal(disj(Disjuncts), GoalInfo0)])
+                DisjGoalExpr = disj(Disjuncts),
+                DisjGoal = hlds_goal(DisjGoalExpr, GoalInfo0),
+                ConjGoalExpr = conj(plain_conj,
+                    [MarkHeapPointerGoal, DisjGoal]),
+                ConjGoal = hlds_goal(ConjGoalExpr, GoalInfo0),
+                Purity0 = goal_info_get_purity(GoalInfo0),
+                GoalExpr = scope(promise_purity(Purity0), ConjGoal)
             ;
                 disj_add_heap_ops(Disjuncts0, Disjuncts, is_first_disjunct,
                     no, GoalInfo0, !Info),
@@ -197,14 +199,14 @@ goal_expr_add_heap_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
         GoalExpr = scope(Reason, SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
-        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        goal_add_heap_ops(Cond0, Cond, !Info),
-        goal_add_heap_ops(Then0, Then, !Info),
-        goal_add_heap_ops(Else0, Else1, !Info),
+        GoalExpr0 = if_then_else(Vars, CondGoal0, ThenGoal0, ElseGoal0),
+        goal_add_heap_ops(CondGoal0, CondGoal, !Info),
+        goal_add_heap_ops(ThenGoal0, ThenGoal, !Info),
+        goal_add_heap_ops(ElseGoal0, ElseGoal1, !Info),
 
         % If the condition can allocate heap space, save the heap pointer
         % so that we can restore it if the condition fails.
-        ( goal_may_allocate_heap(Cond0) ->
+        ( goal_may_allocate_heap(CondGoal0) ->
             new_saved_hp_var(SavedHeapPointerVar, !Info),
             Context = goal_info_get_context(GoalInfo0),
             gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal,
@@ -214,15 +216,18 @@ goal_expr_add_heap_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
             % at the start of the Else branch.
             gen_restore_hp(SavedHeapPointerVar, Context,
                 RestoreHeapPointerGoal, !Info),
-            Else1 = hlds_goal(_, Else1GoalInfo),
-            Else = hlds_goal(
-                conj(plain_conj, [RestoreHeapPointerGoal, Else1]),
-                Else1GoalInfo),
-            IfThenElseExpr = if_then_else(Vars, Cond, Then, Else),
-            IfThenElse = hlds_goal(IfThenElseExpr, GoalInfo0),
-            GoalExpr = conj(plain_conj, [MarkHeapPointerGoal, IfThenElse])
+            ElseGoal1 = hlds_goal(_, ElseGoal1Info),
+            ElseGoalExpr = conj(plain_conj,
+                [RestoreHeapPointerGoal, ElseGoal1]),
+            ElseGoal = hlds_goal(ElseGoalExpr, ElseGoal1Info),
+            ITEGoalExpr = if_then_else(Vars, CondGoal, ThenGoal, ElseGoal),
+            ITEGoal = hlds_goal(ITEGoalExpr, GoalInfo0),
+            ConjGoalExpr = conj(plain_conj, [MarkHeapPointerGoal, ITEGoal]),
+            ConjGoal = hlds_goal(ConjGoalExpr, GoalInfo0),
+            Purity0 = goal_info_get_purity(GoalInfo0),
+            GoalExpr = scope(promise_purity(Purity0), ConjGoal)
         ;
-            GoalExpr = if_then_else(Vars, Cond, Then, Else1)
+            GoalExpr = if_then_else(Vars, CondGoal, ThenGoal, ElseGoal1)
         ),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -247,7 +252,7 @@ conj_add_heap_ops(Goals0, Goals, !Info) :-
     list.map_foldl(goal_add_heap_ops, Goals0, Goals, !Info).
 
 :- pred disj_add_heap_ops(list(hlds_goal)::in, list(hlds_goal)::out,
-    is_first_disjunct::in, maybe(prog_var)::in, hlds_goal_info::in, 
+    is_first_disjunct::in, maybe(prog_var)::in, hlds_goal_info::in,
     heap_ops_info::in, heap_ops_info::out) is det.
 
 disj_add_heap_ops([], [], _, _, _, !Info).
@@ -270,11 +275,15 @@ disj_add_heap_ops([Goal0 | Goals0], DisjGoals, IsFirstBranch,
         Goal = Goal1
     ),
 
-    % Save the heap pointer, if we haven't already done so, and if this
-    % disjunct might allocate heap space.
+    % Save the heap pointer,
+    % - if we haven't already done so,
+    % - if this disjunct might allocate heap space, and
+    % - if a next disjunct exists to give us a chance to recover
+    %   that heap space.
     (
         MaybeSavedHeapPointerVar = no,
-        goal_may_allocate_heap(Goal)
+        goal_may_allocate_heap(Goal),
+        Goals0 = [_ | _]
     ->
         % Generate code to save the heap pointer.
         new_saved_hp_var(SavedHeapPointerVar, !Info),
@@ -285,12 +294,15 @@ disj_add_heap_ops([Goal0 | Goals0], DisjGoals, IsFirstBranch,
             yes(SavedHeapPointerVar), DisjGoalInfo, !Info),
         % Put this disjunct and the remaining disjuncts in a nested
         % disjunction, so that the heap pointer variable can scope over
-        % these disjuncts.
-        Disj = hlds_goal(disj([Goal | Goals1]), DisjGoalInfo),
-        DisjGoal = hlds_goal(
-            conj(plain_conj, [MarkHeapPointerGoal, Disj]),
-            DisjGoalInfo),
-        DisjGoals = [DisjGoal]
+        % these disjuncts. (This wouldn't work if Goals0 were [].)
+        InnerDisjGoalExpr = disj([Goal | Goals1]),
+        InnerDisjGoal = hlds_goal(InnerDisjGoalExpr, DisjGoalInfo),
+        ConjGoalExpr = conj(plain_conj, [MarkHeapPointerGoal, InnerDisjGoal]),
+        ConjGoal = hlds_goal(ConjGoalExpr, DisjGoalInfo),
+        Purity = goal_info_get_purity(DisjGoalInfo),
+        ScopeGoalExpr = scope(promise_purity(Purity), ConjGoal),
+        ScopeGoal = hlds_goal(ScopeGoalExpr, DisjGoalInfo),
+        DisjGoals = [ScopeGoal]
     ;
         % Just recursively handle the remaining disjuncts.
         disj_add_heap_ops(Goals0, Goals, is_not_first_disjunct,

@@ -22,21 +22,23 @@ GRADEFLAGS-csharp_hello		=  --grade il
 GRADEFLAGS-foreign_type_spec	=  --grade il
 GRADEFLAGS-foreign_type_spec.foreign_type = --grade il
 
+# The bug that this test looks for exists only in MLDS grades without any gc.
+GRADEFLAGS-bug109		= --grade hlc
+
 # The following test cases check for bugs that can only occur in the
 # presence of automatic solver type intialisation.
 MCFLAGS-fz_conf                 = --solver-type-auto-init
 MCFLAGS-solver_type_bug_2       = --solver-type-auto-init
 MCFLAGS-solver_type_mutable_bug = --solver-type-auto-init
 
-
-MCFLAGS-ambig_confuse1      = --type-check-constraints
-MCFLAGS-ambig_confuse2      = --type-check-constraints
-MCFLAGS-ambig_confuse3      = --type-check-constraints
-MCFLAGS-ambig_functor       = --type-check-constraints
-MCFLAGS-ambig_high_level    = --type-check-constraints
-MCFLAGS-ambig_pred          = --type-check-constraints
-MCFLAGS-ambig_types         = --type-check-constraints
-MCFLAGS-ambig_stress_test   = --type-check-constraints
+MCFLAGS-ambig_confuse1		= --type-check-constraints
+MCFLAGS-ambig_confuse2		= --type-check-constraints
+MCFLAGS-ambig_confuse3		= --type-check-constraints
+MCFLAGS-ambig_functor		= --type-check-constraints
+MCFLAGS-ambig_high_level	= --type-check-constraints
+MCFLAGS-ambig_pred		= --type-check-constraints
+MCFLAGS-ambig_types		= --type-check-constraints
+MCFLAGS-ambig_stress_test	= --type-check-constraints
 MCFLAGS-builtin_false		= --intermodule-optimization
 MCFLAGS-bug85			= -O0 --deforestation
 MCFLAGS-bug100                  = --halt-at-warn
@@ -101,7 +103,7 @@ MCFLAGS-intermod_user_equality_nested	= --intermodule-optimization
 MCFLAGS-intermod_user_sharing	= --intermodule-optimization
 MCFLAGS-intermod_user_sharing_2	= --intermodule-optimization
 MCFLAGS-lambda_inference	= --infer-all
-MCFLAGS-liveness_ite     	= --no-intermodule-optimization --grade none --trace shallow
+MCFLAGS-liveness_ite		= --no-intermodule-optimization --grade none --trace shallow
 MCFLAGS-livevals_seq		= -O5 --opt-space
 MCFLAGS-livevars_shallow	= --no-intermodule-optimization --grade none --trace shallow
 MCFLAGS-livevars_shallow2	= --no-intermodule-optimization --grade none --trace shallow
@@ -121,13 +123,13 @@ MCFLAGS-no_warn_unresolved_poly = --no-warn-unresolved-polymorphism
 MCFLAGS-opt_det_warn            = --intermodule-optimization --halt-at-warn
 MCFLAGS-opt_det_warn2		= --intermodule-optimization --halt-at-warn --no-warn-inferred-erroneous
 MCFLAGS-par_dupelim		= --optimize-dups
-MCFLAGS-par_saved_const 	= -O3 --optimize-saved-vars-const
+MCFLAGS-par_saved_const		= -O3 --optimize-saved-vars-const
 MCFLAGS-pred_with_no_modes	= --infer-all
 MCFLAGS-quantifier_warning	= --halt-at-warn
 MCFLAGS-reuse_static		= --ctgc --deforestation
 MCFLAGS-sharing_exist		= --ctgc --structure-sharing-widening 1
-MCFLAGS-sharing_loop 		= --ctgc --structure-sharing-widening 8
-MCFLAGS-sharing_loop2 		= --ctgc --structure-sharing-widening 10
+MCFLAGS-sharing_loop		= --ctgc --structure-sharing-widening 8
+MCFLAGS-sharing_loop2		= --ctgc --structure-sharing-widening 10
 MCFLAGS-sharing_loop3		= --ctgc --structure-sharing-widening 10
 MCFLAGS-simplify_bug2		= -O3
 MCFLAGS-simplify_bug		= -O-1
