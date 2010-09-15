@@ -724,7 +724,7 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
             OldPredInfo::in, NewPredInfo::out) is det :-
         ModeAndDet = modes_and_detism(Modes, InstVarSet, MaybeDet),
         add_new_proc(InstVarSet, PredArity, Modes, yes(Modes), no,
-            MaybeDet, Context, address_is_taken,
+            detism_decl_implicit, MaybeDet, Context, address_is_taken,
             OldPredInfo, NewPredInfo, NewProcId)
     ),
     list.map_foldl(AddProc, ArgModes, InstanceProcIds, PredInfo1, PredInfo),

@@ -127,9 +127,9 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
         pred_info_get_context(PredInfo0, Context),
         MaybePredArgLives = no,
         varset.init(InstVarSet),
-            % No inst_vars in default func mode.
-        add_new_proc(InstVarSet, PredArity, PredArgModes,
-            yes(PredArgModes), MaybePredArgLives, yes(Determinism),
+        % No inst_vars in default func mode.
+        add_new_proc(InstVarSet, PredArity, PredArgModes, yes(PredArgModes),
+            MaybePredArgLives, detism_decl_implicit, yes(Determinism),
             Context, address_is_not_taken, PredInfo0, PredInfo, ProcId),
         MaybeProcId = yes(ProcId)
     ;

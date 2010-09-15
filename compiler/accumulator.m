@@ -1476,8 +1476,8 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs, OrigProcInfo,
     list.map(map.lookup(VarTypes), Accs, AccTypes),
 
     proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet,
-        HeadModes, Detism, Goal, RttiVarMaps, IsAddressTaken, VarNameRemap,
-        AccProcInfo).
+        HeadModes, detism_decl_none, Detism, Goal, RttiVarMaps,
+        IsAddressTaken, VarNameRemap, AccProcInfo).
 
 %-----------------------------------------------------------------------------%
 

@@ -331,7 +331,8 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         list.length(ArgModes, Arity),
         DeclaredArgModes = no,
         add_new_proc(InstVarSet, Arity, ArgModes, DeclaredArgModes, ArgLives,
-            MaybeDet, Context, address_is_not_taken, !PredInfo, ProcId),
+            detism_decl_implicit, MaybeDet, Context, address_is_not_taken,
+            !PredInfo, ProcId),
 
         % Copy the clauses for the procedure from the pred_info
         % to the proc_info, and mark the procedure as one that

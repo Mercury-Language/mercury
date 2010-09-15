@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2009 The University of Melbourne.
+% Copyright (C) 1993-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -41,8 +41,8 @@
 
 :- pred do_add_new_proc(inst_varset::in, arity::in, list(mer_mode)::in,
     maybe(list(mer_mode))::in, maybe(list(is_live))::in,
-    maybe(determinism)::in, prog_context::in, is_address_taken::in,
-    pred_info::in, pred_info::out, proc_id::out) is det.
+    detism_decl::in, maybe(determinism)::in, prog_context::in,
+    is_address_taken::in, pred_info::in, pred_info::out, proc_id::out) is det.
 
     % Add a mode declaration for a predicate.
     %
@@ -378,14 +378,15 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
 %-----------------------------------------------------------------------------%
 
 do_add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
-        MaybeArgLives, MaybeDet, Context, IsAddressTaken, PredInfo0, PredInfo,
-        ModeId) :-
+        MaybeArgLives, DetismDecl, MaybeDet, Context, IsAddressTaken,
+        PredInfo0, PredInfo, ModeId) :-
     pred_info_get_procedures(PredInfo0, Procs0),
     pred_info_get_arg_types(PredInfo0, ArgTypes),
     pred_info_get_var_name_remap(PredInfo0, VarNameRemap),
     next_mode_id(Procs0, ModeId),
     proc_info_init(Context, Arity, ArgTypes, MaybeDeclaredArgModes, ArgModes,
-        MaybeArgLives, MaybeDet, IsAddressTaken, VarNameRemap, NewProc0),
+        MaybeArgLives, DetismDecl, MaybeDet, IsAddressTaken, VarNameRemap,
+        NewProc0),
     proc_info_set_inst_varset(InstVarSet, NewProc0, NewProc),
     map.det_insert(Procs0, ModeId, NewProc, Procs),
     pred_info_set_procedures(Procs, PredInfo0, PredInfo).
@@ -438,6 +439,7 @@ module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
     % Check that the determinism was specified.
     (
         MaybeDet = no,
+        DetismDecl = detism_decl_none,
         pred_info_get_import_status(!.PredInfo, ImportStatus),
         PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
         PredModule = pred_info_module(!.PredInfo),
@@ -461,12 +463,14 @@ module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
             )
         )
     ;
-        MaybeDet = yes(_)
+        MaybeDet = yes(_),
+        DetismDecl = detism_decl_explicit
     ),
     % Add the mode declaration to the pred_info for this procedure.
     ArgLives = no,
     do_add_new_proc(InstVarSet, Arity, Modes, yes(Modes), ArgLives,
-        MaybeDet, MContext, address_is_not_taken, !PredInfo, ProcId).
+        DetismDecl, MaybeDet, MContext, address_is_not_taken,
+        !PredInfo, ProcId).
 
 preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName, Arity,
         Status, IsClassMethod, Context, Origin, Description, PredId,

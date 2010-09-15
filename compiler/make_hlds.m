@@ -63,8 +63,8 @@
 
 :- pred add_new_proc(inst_varset::in, arity::in, list(mer_mode)::in,
     maybe(list(mer_mode))::in, maybe(list(is_live))::in,
-    maybe(determinism)::in, prog_context::in, is_address_taken::in,
-    pred_info::in, pred_info::out, proc_id::out) is det.
+    detism_decl::in, maybe(determinism)::in, prog_context::in,
+    is_address_taken::in, pred_info::in, pred_info::out, proc_id::out) is det.
 
     % add_special_pred_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
     %   TypeBody, TypeContext, TypeStatus, !ModuleInfo).
@@ -147,11 +147,11 @@ parse_tree_to_hlds(Globals, DumpBaseFileName, ParseTree, MQInfo0, EqvMap,
         Specs).
 
 add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
-        MaybeArgLives, MaybeDet, Context, IsAddressTaken, PredInfo0, PredInfo,
-        ModeId) :-
+        MaybeArgLives, DetismDecl, MaybeDet, Context, IsAddressTaken,
+        PredInfo0, PredInfo, ModeId) :-
     do_add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
-        MaybeArgLives, MaybeDet, Context, IsAddressTaken, PredInfo0, PredInfo,
-        ModeId).
+        MaybeArgLives, DetismDecl, MaybeDet, Context, IsAddressTaken,
+        PredInfo0, PredInfo, ModeId).
 
 add_special_pred_for_real(SpecialPredId, TVarSet,
         Type0, TypeCtor, TypeBody, Context, Status0, !ModuleInfo) :-
