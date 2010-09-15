@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -153,8 +153,7 @@ unique_modes_check_goal_2(GoalExpr0, GoalInfo0, Goal, !ModeInfo) :-
         mode_info_set_nondet_live_vars(bag.init, !ModeInfo)
     ),
 
-    unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, GoalExpr,
-        !ModeInfo),
+    unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo),
     % Restore the original bag of nondet-live vars.
     mode_info_set_nondet_live_vars(NondetLiveVars0, !ModeInfo),
 
@@ -307,8 +306,7 @@ unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
             !ModeInfo)
     ;
         GoalExpr0 = scope(Reason0, SubGoal0),
-        unique_modes_check_goal_scope(Reason0, SubGoal0, GoalExpr,
-            !ModeInfo)
+        unique_modes_check_goal_scope(Reason0, SubGoal0, GoalExpr, !ModeInfo)
     ;
         GoalExpr0 = shorthand(ShortHand0),
         (
@@ -504,24 +502,33 @@ unique_modes_check_goal_negation(SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
 unique_modes_check_goal_scope(Reason, SubGoal0, GoalExpr, !ModeInfo) :-
     mode_checkpoint(enter, "scope", !ModeInfo),
     ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
-        % The subgoal was left in its final state during (non-unique) mode
-        % checking. All we need to do here is to add the relevant information
-        % in the goal to ModeInfo.
-        SubGoal = SubGoal0,
-        SubGoal = hlds_goal(_, SubGoalInfo),
-        InstMapDelta = goal_info_get_instmap_delta(SubGoalInfo),
-        ( instmap_delta_search_var(InstMapDelta, TermVar, TermVarInst) ->
-            mode_info_get_instmap(!.ModeInfo, InstMap0),
-            instmap_set_var(TermVar, TermVarInst, InstMap0, InstMap),
-            mode_info_set_instmap(InstMap, !ModeInfo)
+        mode_info_var_is_live(!.ModeInfo, TermVar, LiveTermVar),
+        (
+            LiveTermVar = is_live,
+            % The subgoal was left in its final state during (non-unique) mode
+            % checking. All we need to do here is to add the relevant
+            % information in the goal to ModeInfo.
+            SubGoal = SubGoal0,
+            SubGoal = hlds_goal(_, SubGoalInfo),
+            InstMapDelta = goal_info_get_instmap_delta(SubGoalInfo),
+            ( instmap_delta_search_var(InstMapDelta, TermVar, TermVarInst) ->
+                mode_info_get_instmap(!.ModeInfo, InstMap0),
+                instmap_set_var(TermVar, TermVarInst, InstMap0, InstMap),
+                mode_info_set_instmap(InstMap, !ModeInfo)
+            ;
+                unexpected(this_file,
+                    "unique_modes_check_goal_scope: bad InstMapDelta")
+            ),
+            GoalExpr = scope(Reason, SubGoal)
         ;
-            unexpected(this_file,
-                "unique_modes_check_goal_scope: term var not in InstMapDelta")
+            LiveTermVar = is_dead,
+            % The term constructed by the scope is not used anywhere.
+            GoalExpr = conj(plain_conj, [])
         )
     ;
-        unique_modes_check_goal(SubGoal0, SubGoal, !ModeInfo)
+        unique_modes_check_goal(SubGoal0, SubGoal, !ModeInfo),
+        GoalExpr = scope(Reason, SubGoal)
     ),
-    GoalExpr = scope(Reason, SubGoal),
     mode_checkpoint(exit, "scope", !ModeInfo).
 
 :- pred unique_modes_check_goal_generic_call(generic_call::in,

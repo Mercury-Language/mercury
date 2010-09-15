@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -803,31 +803,37 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
         Reason = from_ground_term(TermVar, _),
         mode_checkpoint(enter, "scope", !ModeInfo),
         modecheck_goal_from_ground_term_scope(TermVar, SubGoal0, GoalInfo0,
-            Kind1, SubGoal1, !ModeInfo),
+            MaybeKind1AndSubGoal1, !ModeInfo),
         mode_checkpoint(exit, "scope", !ModeInfo),
-        mode_info_set_had_from_ground_term(had_from_ground_term_scope,
-            !ModeInfo),
-
-        mode_info_get_make_ground_terms_unique(!.ModeInfo,
-            MakeGroundTermsUnique),
         (
-            MakeGroundTermsUnique = do_not_make_ground_terms_unique,
-            UpdatedReason1 = from_ground_term(TermVar, Kind1),
-            GoalExpr = scope(UpdatedReason1, SubGoal1)
-        ;
-            MakeGroundTermsUnique = make_ground_terms_unique,
+            MaybeKind1AndSubGoal1 = yes(Kind1 - SubGoal1),
+            mode_info_set_had_from_ground_term(had_from_ground_term_scope,
+                !ModeInfo),
+
+            mode_info_get_make_ground_terms_unique(!.ModeInfo,
+                MakeGroundTermsUnique),
             (
-                Kind1 = from_ground_term_construct,
-                modecheck_goal_make_ground_term_unique(TermVar,
-                    SubGoal1, GoalInfo0, GoalExpr, !ModeInfo)
+                MakeGroundTermsUnique = do_not_make_ground_terms_unique,
+                UpdatedReason1 = from_ground_term(TermVar, Kind1),
+                GoalExpr = scope(UpdatedReason1, SubGoal1)
             ;
-                ( Kind1 = from_ground_term_deconstruct
-                ; Kind1 = from_ground_term_other
-                ),
-                % Do not wrap the subgoal up in a scope, since these scopes
-                % do not get useful any special treatment.
-                SubGoal1 = hlds_goal(GoalExpr, _)
+                MakeGroundTermsUnique = make_ground_terms_unique,
+                (
+                    Kind1 = from_ground_term_construct,
+                    modecheck_goal_make_ground_term_unique(TermVar,
+                        SubGoal1, GoalInfo0, GoalExpr, !ModeInfo)
+                ;
+                    ( Kind1 = from_ground_term_deconstruct
+                    ; Kind1 = from_ground_term_other
+                    ),
+                    % Do not wrap the subgoal up in a scope, since these scopes
+                    % do not get useful any special treatment.
+                    SubGoal1 = hlds_goal(GoalExpr, _)
+                )
             )
+        ;
+            MaybeKind1AndSubGoal1 = no,
+            GoalExpr = conj(plain_conj, [])
         )
     ;
         Reason = promise_purity(_Purity),
@@ -976,11 +982,12 @@ modecheck_make_type_info_var_for_type(Type, Context, TypeInfoVar,
     mode_info_set_module_info(ModuleInfo, !ModeInfo).
 
 :- pred modecheck_goal_from_ground_term_scope(prog_var::in,
-    hlds_goal::in, hlds_goal_info::in, from_ground_term_kind::out,
-    hlds_goal::out, mode_info::in, mode_info::out) is det.
+    hlds_goal::in, hlds_goal_info::in,
+    maybe(pair(from_ground_term_kind, hlds_goal))::out,
+    mode_info::in, mode_info::out) is det.
 
 modecheck_goal_from_ground_term_scope(TermVar, SubGoal0, GoalInfo0,
-        Kind, SubGoal, !ModeInfo) :-
+        MaybeKindAndSubGoal, !ModeInfo) :-
     % The original goal does no quantification, so deleting the `scope'
     % would be OK. However, deleting it during mode analysis would mean
     % we don't have it during unique mode analysis and other later compiler
@@ -992,10 +999,19 @@ modecheck_goal_from_ground_term_scope(TermVar, SubGoal0, GoalInfo0,
         MaybeGroundTermMode),
     (
         MaybeGroundTermMode = yes(construct_ground_term(RevConj0)),
-        SubGoal0 = hlds_goal(_, SubGoalInfo0),
-        modecheck_ground_term_construct(TermVar, RevConj0,
-            SubGoalInfo0, VarSet, SubGoal, !ModeInfo),
-        Kind = from_ground_term_construct
+        mode_info_var_is_live(!.ModeInfo, TermVar, LiveTermVar),
+        (
+            LiveTermVar = is_live,
+            SubGoal0 = hlds_goal(_, SubGoalInfo0),
+            modecheck_ground_term_construct(TermVar, RevConj0,
+                SubGoalInfo0, VarSet, SubGoal, !ModeInfo),
+            Kind = from_ground_term_construct,
+            MaybeKindAndSubGoal = yes(Kind - SubGoal)
+        ;
+            LiveTermVar = is_dead,
+            % The term constructed by the scope is not used anywhere.
+            MaybeKindAndSubGoal = no
+        )
     ;
         (
             MaybeGroundTermMode = yes(deconstruct_ground_term(_)),
@@ -1030,7 +1046,8 @@ modecheck_goal_from_ground_term_scope(TermVar, SubGoal0, GoalInfo0,
         ),
         mode_checkpoint(enter, "scope", !ModeInfo),
         modecheck_goal(SubGoal2, SubGoal, !ModeInfo),
-        mode_checkpoint(exit, "scope", !ModeInfo)
+        mode_checkpoint(exit, "scope", !ModeInfo),
+        MaybeKindAndSubGoal = yes(Kind - SubGoal)
     ).
 
 :- type ground_term_mode

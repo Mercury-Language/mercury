@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -225,15 +225,15 @@ modecheck_unification_var(X, Y, Unification0, UnifyContext,
         )
     ;
         set.list_to_set([X, Y], WaitingVars),
-        mode_info_error(WaitingVars,
-            mode_error_unify_var_var(X, Y, InstOfX, InstOfY), !ModeInfo),
-            % If we get an error, set the inst to not_reached to suppress
-            % follow-on errors. But don't call categorize_unification, because
-            % that could cause an invalid call to `unify_proc.request_unify'
+        ModeError = mode_error_unify_var_var(X, Y, InstOfX, InstOfY),
+        mode_info_error(WaitingVars, ModeError, !ModeInfo),
+        % If we get an error, set the inst to not_reached to suppress
+        % follow-on errors. But don't call categorize_unification, because
+        % that could cause an invalid call to `unify_proc.request_unify'
         Inst = not_reached,
         modecheck_set_var_inst(X, Inst, no, !ModeInfo),
         modecheck_set_var_inst(Y, Inst, no, !ModeInfo),
-            % Return any old garbage.
+        % Return any old garbage.
         Unification = assign(X, Y),
         ModeOfX = (InstOfX -> Inst),
         ModeOfY = (InstOfY -> Inst),
@@ -468,8 +468,8 @@ modecheck_unification_rhs_lambda(X, LambdaGoal, Unification0, UnifyContext, _,
             NonGroundNonLocals = [BadVar | _],
             instmap_lookup_var(InstMap1, BadVar, BadInst),
             set.singleton_set(WaitingVars, BadVar),
-            mode_info_error(WaitingVars,
-                mode_error_non_local_lambda_var(BadVar, BadInst), !ModeInfo)
+            ModeError = mode_error_non_local_lambda_var(BadVar, BadInst),
+            mode_info_error(WaitingVars, ModeError, !ModeInfo)
         ;
             NonGroundNonLocals = [],
             unexpected(this_file,
@@ -512,9 +512,8 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
         modecheck_set_var_inst(X, Inst, no, !ModeInfo)
     ;
         set.list_to_set([X], WaitingVars),
-        mode_info_error(WaitingVars,
-            mode_error_unify_var_lambda(X, InstOfX, InstOfY),
-            !ModeInfo),
+        ModeError = mode_error_unify_var_lambda(X, InstOfX, InstOfY),
+        mode_info_error(WaitingVars, ModeError, !ModeInfo),
         % If we get an error, set the inst to not_reached to avoid cascading
         % errors. But don't call categorize_unification, because that could
         % cause an invalid call to `unify_proc.request_unify'
@@ -549,8 +548,8 @@ modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
             ( MatchResult = possible_modes([])
             ; MatchResult = ho_arg_not_ground
             ),
-            mode_info_error(set.make_singleton_set(X),
-                mode_error_unify_var_multimode_pred(X, PredId), !ModeInfo),
+            ModeError = mode_error_unify_var_multimode_pred(X, PredId),
+            mode_info_error(set.make_singleton_set(X), ModeError, !ModeInfo),
             % Return any old garbage.
             Goal = true_goal_expr
         ;
@@ -563,9 +562,9 @@ modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
                 GoalInfo, Goal, !ModeInfo)
         ;
             MatchResult = possible_modes([_, _ | _]),
-            mode_info_error(set.make_singleton_set(X),
+            ModeError =
                 mode_error_unify_var_multimode_pred_undetermined(X, PredId),
-                !ModeInfo),
+            mode_info_error(set.make_singleton_set(X), ModeError, !ModeInfo),
             % Return any old garbage.
             Goal = true_goal_expr
         )
@@ -658,10 +657,9 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         \+ inst_is_ground(ModuleInfo0, InstOfX)
     ->
         set.list_to_set([X], WaitingVars),
-        mode_info_error(WaitingVars,
-            mode_error_unify_var_functor(X, InstConsId, ArgVars0,
-                InstOfX, InstArgs),
-            !ModeInfo),
+        ModeError = mode_error_unify_var_functor(X, InstConsId, ArgVars0,
+            InstOfX, InstArgs),
+        mode_info_error(WaitingVars, ModeError, !ModeInfo),
         Inst = not_reached,
         Det = detism_erroneous,
         % If we get an error, set the inst to not_reached to avoid cascading
@@ -746,10 +744,9 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         )
     ;
         set.list_to_set([X | ArgVars0], WaitingVars), % conservative
-        mode_info_error(WaitingVars,
-            mode_error_unify_var_functor(X, InstConsId, ArgVars0,
-                InstOfX, InstArgs),
-            !ModeInfo),
+        ModeError = mode_error_unify_var_functor(X, InstConsId, ArgVars0,
+            InstOfX, InstArgs),
+        mode_info_error(WaitingVars, ModeError, !ModeInfo),
         % If we get an error, set the inst to not_reached to avoid cascading
         % errors. But don't call categorize_unification, because that could
         % cause an invalid call to `unify_proc.request_unify'.
@@ -1200,15 +1197,15 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
         \+ inst_is_ground_or_any(ModuleInfo3, InitialInstX)
     ->
         set.singleton_set(WaitingVars, X),
-        mode_info_error(WaitingVars, mode_error_poly_unify(X, InitialInstX),
-            !ModeInfo)
+        ModeError = mode_error_poly_unify(X, InitialInstX),
+        mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ;
         Type = type_variable(_, _),
         \+ inst_is_ground_or_any(ModuleInfo3, InitialInstY)
     ->
         set.singleton_set(WaitingVars, Y),
-        mode_info_error(WaitingVars, mode_error_poly_unify(Y, InitialInstY),
-            !ModeInfo)
+        ModeError = mode_error_poly_unify(Y, InitialInstY),
+        mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ;
         % Check that we're not trying to do a higher-order unification.
         type_is_higher_order_details(Type, _, PredOrFunc, _, _)
@@ -1229,9 +1226,9 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
             true
         ;
             set.init(WaitingVars),
-            mode_info_error(WaitingVars,
+            ModeError =
                 mode_error_unify_pred(X, error_at_var(Y), Type, PredOrFunc),
-                !ModeInfo)
+            mode_info_error(WaitingVars, ModeError, !ModeInfo)
         )
     ;
         % Ensure that we will generate code for the unification procedure
@@ -1342,10 +1339,9 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
         set.init(WaitingVars),
         mode_info_get_var_types(!.ModeInfo, VarTypes0),
         map.lookup(VarTypes0, X, Type),
-        mode_info_error(WaitingVars,
-            mode_error_unify_pred(X, error_at_lambda(ArgVars, ArgModes0),
-                Type, PredOrFunc),
-            !ModeInfo),
+        ModeError = mode_error_unify_pred(X,
+            error_at_lambda(ArgVars, ArgModes0), Type, PredOrFunc),
+        mode_info_error(WaitingVars, ModeError, !ModeInfo),
         % Return any old garbage.
         Unification = Unification0,
         RHS = RHS0
@@ -1439,10 +1435,9 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
                 instmap_is_reachable(InstMap0)
             ->
                 set.init(WaitingVars),
-                mode_info_error(WaitingVars,
-                    mode_error_unify_pred(X, error_at_functor(ConsId, ArgVars),
-                        TypeOfX, PredOrFunc),
-                    !ModeInfo)
+                ModeError = mode_error_unify_pred(X,
+                    error_at_functor(ConsId, ArgVars), TypeOfX, PredOrFunc),
+                mode_info_error(WaitingVars, ModeError, !ModeInfo)
             ;
                 true
             )
