@@ -69,6 +69,7 @@ OTHER_PROGS= \
 	big_foreign_type \
 	bug85 \
 	bug100 \
+	bug128 \
 	bug134 \
 	bug142 \
 	bug159 \
