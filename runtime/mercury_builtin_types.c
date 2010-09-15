@@ -289,8 +289,10 @@ void MR_CALL
 mercury__builtin____Compare____character_0_0(
     MR_Comparison_Result *result, MR_Char x, MR_Char y)
 {
-    *result = (x > y ? MR_COMPARE_GREATER :
-          x == y ? MR_COMPARE_EQUAL :
+    MR_Integer xi = (MR_UnsignedChar)x;
+    MR_Integer yi = (MR_UnsignedChar)y;
+    *result = (xi > yi ? MR_COMPARE_GREATER :
+          xi == yi ? MR_COMPARE_EQUAL :
           MR_COMPARE_LESS);
 }
 
