@@ -1200,8 +1200,8 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 
     MaybeDeclaredDetism = no,
     proc_info_create_with_declared_detism(Context, VarSet, VarTypes, ArgVars,
-        InstVarSet, ArgModes, MaybeDeclaredDetism, Detism, Goal0,
-        RttiVarMaps, IsAddressTaken, VarNameRemap, ProcInfo0),
+        InstVarSet, ArgModes, detism_decl_none, MaybeDeclaredDetism,
+        Detism, Goal0, RttiVarMaps, IsAddressTaken, VarNameRemap, ProcInfo0),
     proc_info_set_maybe_termination_info(TermInfo, ProcInfo0, ProcInfo),
 
     set.init(Assertions),
@@ -1904,15 +1904,21 @@ attribute_list_to_attributes(Attributes, Attributes).
                 map(prog_var, prog_vars)
             ).
 
+:- type detism_decl
+    --->    detism_decl_explicit
+    ;       detism_decl_implicit
+    ;       detism_decl_none.
+            % The determinism of the procedure is not declared.
+
 :- pred proc_info_init(prog_context::in, arity::in, list(mer_type)::in,
     maybe(list(mer_mode))::in, list(mer_mode)::in, maybe(list(is_live))::in,
-    maybe(determinism)::in, is_address_taken::in, map(prog_var, string)::in,
-    proc_info::out) is det.
+    detism_decl::in, maybe(determinism)::in, is_address_taken::in,
+    map(prog_var, string)::in, proc_info::out) is det.
 
 :- pred proc_info_create(prog_context::in,
     prog_varset::in, vartypes::in, list(prog_var)::in,
     inst_varset::in, list(mer_mode)::in,
-    determinism::in, hlds_goal::in,
+    detism_decl::in, determinism::in, hlds_goal::in,
     rtti_varmaps::in, is_address_taken::in, map(prog_var, string)::in,
     proc_info::out) is det.
 
@@ -1940,6 +1946,7 @@ attribute_list_to_attributes(Attributes, Attributes).
     maybe(determinism)::out) is det.
 :- pred proc_info_get_inferred_determinism(proc_info::in, determinism::out)
     is det.
+:- pred proc_info_get_detism_decl(proc_info::in, detism_decl::out) is det.
 :- pred proc_info_get_goal(proc_info::in, hlds_goal::out) is det.
 :- pred proc_info_get_can_process(proc_info::in, bool::out) is det.
 :- pred proc_info_get_rtti_varmaps(proc_info::in, rtti_varmaps::out) is det.
@@ -1991,6 +1998,8 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_set_maybe_arglives(maybe(list(is_live))::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_inferred_determinism(determinism::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_detism_decl(detism_decl::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_goal(hlds_goal::in,
     proc_info::in, proc_info::out) is det.
@@ -2084,6 +2093,7 @@ attribute_list_to_attributes(Attributes, Attributes).
     proc_info::in, proc_info::out) is det.
 
     % See also proc_info_interface_code_model in code_model.m.
+    %
 :- pred proc_info_interface_determinism(proc_info::in, determinism::out)
     is det.
 
@@ -2254,6 +2264,10 @@ attribute_list_to_attributes(Attributes, Attributes).
 
 :- type proc_sub_info
     --->    proc_sub_info(
+                % Was the determinism declaration explicit, or was it implicit,
+                % as for functions?
+                detism_decl                 :: detism_decl,
+
                 % Information about the relative sizes of the input and output
                 % args of the procedure. Set by termination analysis.
                 maybe_arg_sizes             :: maybe(arg_size_info),
@@ -2368,7 +2382,7 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- type structure_sharing_info
     --->    structure_sharing_info(
                 maybe_sharing   :: maybe(structure_sharing_domain_and_status),
-                maybe_imported_sharing :: maybe(imported_sharing)
+                maybe_imported_sharing      :: maybe(imported_sharing)
                 % Records the sharing information from any `.opt' or
                 % `.trans_opt' file. This information needs to be processed at
                 % the beginning of structure sharing analysis. After that,
@@ -2466,7 +2480,7 @@ table_step_stats_kind(Step) = KindStr :-
     ).
 
 proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
-        MaybeDet, IsAddressTaken, VarNameRemap, ProcInfo) :-
+        DetismDecl, MaybeDet, IsAddressTaken, VarNameRemap, ProcInfo) :-
     % Some parts of the procedure aren't known yet. We initialize them
     % to any old garbage which we will later throw away.
 
@@ -2489,8 +2503,8 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     Term2Info = term_constr_main.term2_info_init,
     SharingInfo = structure_sharing_info_init,
     ReuseInfo = structure_reuse_info_init,
-    ProcSubInfo = proc_sub_info(no, no, Term2Info, IsAddressTaken, StackSlots,
-        ArgInfo, InitialLiveness, no, no, no, no_tail_call_events,
+    ProcSubInfo = proc_sub_info(DetismDecl, no, no, Term2Info, IsAddressTaken,
+        StackSlots, ArgInfo, InitialLiveness, no, no, no, no_tail_call_events,
         no, no, no, no, no, no, VarNameRemap, SharingInfo, ReuseInfo),
     ProcInfo = proc_info(MContext, BodyVarSet, BodyTypes, HeadVars, InstVarSet,
         DeclaredModes, Modes, no, MaybeArgLives, MaybeDet, InferredDet,
@@ -2498,21 +2512,22 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
         ProcSubInfo).
 
 proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet, HeadModes,
-        Detism, Goal, RttiVarMaps, IsAddressTaken, VarNameRemap, ProcInfo) :-
+        DetismDecl, Detism, Goal, RttiVarMaps, IsAddressTaken, VarNameRemap,
+        ProcInfo) :-
     proc_info_create_with_declared_detism(Context, VarSet, VarTypes, HeadVars,
-        InstVarSet, HeadModes, yes(Detism), Detism, Goal, RttiVarMaps,
-        IsAddressTaken, VarNameRemap, ProcInfo).
+        InstVarSet, HeadModes, DetismDecl, yes(Detism), Detism, Goal,
+        RttiVarMaps, IsAddressTaken, VarNameRemap, ProcInfo).
 
 :- pred proc_info_create_with_declared_detism(prog_context::in,
     prog_varset::in, vartypes::in, list(prog_var)::in,
     inst_varset::in, list(mer_mode)::in,
-    maybe(determinism)::in, determinism::in, hlds_goal::in,
+    detism_decl::in, maybe(determinism)::in, determinism::in, hlds_goal::in,
     rtti_varmaps::in, is_address_taken::in, map(prog_var, string)::in,
     proc_info::out) is det.
 
 proc_info_create_with_declared_detism(Context, VarSet, VarTypes, HeadVars,
-        InstVarSet, HeadModes, MaybeDeclaredDetism, Detism, Goal, RttiVarMaps,
-        IsAddressTaken, VarNameRemap, ProcInfo) :-
+        InstVarSet, HeadModes, DetismDecl, MaybeDeclaredDetism, Detism,
+        Goal, RttiVarMaps, IsAddressTaken, VarNameRemap, ProcInfo) :-
     map.init(StackSlots),
     set.init(Liveness),
     MaybeHeadLives = no,
@@ -2520,7 +2535,7 @@ proc_info_create_with_declared_detism(Context, VarSet, VarTypes, HeadVars,
     Term2Info = term_constr_main.term2_info_init,
     SharingInfo = structure_sharing_info_init,
     ReuseInfo = structure_reuse_info_init,
-    ProcSubInfo = proc_sub_info(no, no, Term2Info, IsAddressTaken,
+    ProcSubInfo = proc_sub_info(DetismDecl, no, no, Term2Info, IsAddressTaken,
         StackSlots, no, Liveness, no, no, no, no_tail_call_events,
         no, no, no, no, no, no, VarNameRemap, SharingInfo, ReuseInfo),
     ProcInfo = proc_info(Context, VarSet, VarTypes, HeadVars,
@@ -2545,6 +2560,7 @@ proc_info_get_argmodes(PI, PI ^ actual_head_modes).
 proc_info_get_maybe_arglives(PI, PI ^ head_var_caller_liveness).
 proc_info_get_declared_determinism(PI, PI ^ declared_detism).
 proc_info_get_inferred_determinism(PI, PI ^ inferred_detism).
+proc_info_get_detism_decl(PI, PI ^ proc_sub_info ^ detism_decl).
 proc_info_get_goal(PI, PI ^ body).
 proc_info_get_can_process(PI, PI ^ can_process).
 proc_info_get_rtti_varmaps(PI, PI ^ proc_rtti_varmaps).
@@ -2573,51 +2589,66 @@ proc_info_get_maybe_deep_profile_info(PI,
 proc_info_get_maybe_untuple_info(PI, PI ^ proc_sub_info ^ maybe_untuple_info).
 proc_info_get_var_name_remap(PI, PI ^ proc_sub_info ^ proc_var_name_remap).
 
-proc_info_set_varset(VS, PI, PI ^ prog_varset := VS).
-proc_info_set_vartypes(VT, PI, PI ^ var_types := VT).
-proc_info_set_headvars(HV, PI, PI ^ head_vars := HV).
-proc_info_set_inst_varset(IV, PI, PI ^ inst_varset := IV).
-proc_info_set_maybe_declared_argmodes(AM, PI,
-    PI ^ maybe_declared_head_modes := AM).
-proc_info_set_argmodes(AM, PI, PI ^ actual_head_modes := AM).
-proc_info_set_maybe_arglives(CL, PI, PI ^ head_var_caller_liveness := CL).
-proc_info_set_inferred_determinism(ID, PI, PI ^ inferred_detism := ID).
-proc_info_set_goal(G, PI, PI ^ body := G).
-proc_info_set_can_process(CP, PI, PI ^ can_process := CP).
-proc_info_set_rtti_varmaps(RI, PI, PI ^ proc_rtti_varmaps := RI).
-proc_info_set_eval_method(EM, PI, PI ^ eval_method := EM).
-proc_info_set_maybe_arg_size_info(MAS, PI,
-    PI ^ proc_sub_info ^ maybe_arg_sizes := MAS).
-proc_info_set_maybe_termination_info(MT, PI,
-    PI ^ proc_sub_info ^ maybe_termination := MT).
-proc_info_set_address_taken(AT, PI,
-    PI ^ proc_sub_info ^ is_address_taken := AT).
-proc_info_set_stack_slots(SS, PI, PI ^ proc_sub_info ^ stack_slots := SS).
-proc_info_set_arg_info(AP, PI, PI ^ proc_sub_info ^ arg_pass_info := yes(AP)).
-proc_info_set_liveness_info(IL, PI,
-    PI ^ proc_sub_info ^ initial_liveness := IL).
-proc_info_set_need_maxfr_slot(NMS, PI,
-    PI ^ proc_sub_info ^ need_maxfr_slot := NMS).
-proc_info_set_has_user_event(HUE, PI,
-    PI ^ proc_sub_info ^ proc_has_user_event := HUE).
-proc_info_set_has_parallel_conj(HPC, PI,
-    PI ^ proc_sub_info ^ proc_has_parallel_conj := HPC).
-proc_info_set_has_tail_call_events(HPC, PI,
-    PI ^ proc_sub_info ^ proc_has_tail_call_events := HPC).
-proc_info_set_call_table_tip(CTT, PI,
-    PI ^ proc_sub_info ^ call_table_tip := CTT).
-proc_info_set_maybe_proc_table_io_info(MTI, PI,
-    PI ^ proc_sub_info ^ maybe_table_io_info := MTI).
-proc_info_set_table_attributes(TA, PI,
-    PI ^ proc_sub_info ^ table_attributes := TA).
-proc_info_set_maybe_special_return(MSR, PI,
-    PI ^ proc_sub_info ^ maybe_special_return := MSR).
-proc_info_set_maybe_deep_profile_info(DPI, PI,
-    PI ^ proc_sub_info ^ maybe_deep_profile_proc_info := DPI).
-proc_info_set_maybe_untuple_info(MUI, PI,
-    PI ^ proc_sub_info ^ maybe_untuple_info := MUI).
-proc_info_set_var_name_remap(VNR, PI,
-    PI ^ proc_sub_info ^ proc_var_name_remap := VNR).
+proc_info_set_varset(VS, !PI) :-
+    !PI ^ prog_varset := VS.
+proc_info_set_vartypes(VT, !PI) :-
+    !PI ^ var_types := VT.
+proc_info_set_headvars(HV, !PI) :-
+    !PI ^ head_vars := HV.
+proc_info_set_inst_varset(IV, !PI) :-
+    !PI ^ inst_varset := IV.
+proc_info_set_maybe_declared_argmodes(AM, !PI) :-
+    !PI ^ maybe_declared_head_modes := AM.
+proc_info_set_argmodes(AM, !PI) :-
+    !PI ^ actual_head_modes := AM.
+proc_info_set_maybe_arglives(CL, !PI) :-
+    !PI ^ head_var_caller_liveness := CL.
+proc_info_set_inferred_determinism(ID, !PI) :-
+    !PI ^ inferred_detism := ID.
+proc_info_set_detism_decl(ID, !PI) :-
+    !PI ^ proc_sub_info ^ detism_decl := ID.
+proc_info_set_goal(G, !PI) :-
+    !PI ^ body := G.
+proc_info_set_can_process(CP, !PI) :-
+    !PI ^ can_process := CP.
+proc_info_set_rtti_varmaps(RI, !PI) :-
+    !PI ^ proc_rtti_varmaps := RI.
+proc_info_set_eval_method(EM, !PI) :-
+    !PI ^ eval_method := EM.
+proc_info_set_maybe_arg_size_info(MAS, !PI) :-
+    !PI ^ proc_sub_info ^ maybe_arg_sizes := MAS.
+proc_info_set_maybe_termination_info(MT, !PI) :-
+    !PI ^ proc_sub_info ^ maybe_termination := MT.
+proc_info_set_address_taken(AT, !PI) :-
+    !PI ^ proc_sub_info ^ is_address_taken := AT.
+proc_info_set_stack_slots(SS, !PI) :-
+    !PI ^ proc_sub_info ^ stack_slots := SS.
+proc_info_set_arg_info(AP, !PI) :-
+    !PI ^ proc_sub_info ^ arg_pass_info := yes(AP).
+proc_info_set_liveness_info(IL, !PI) :-
+    !PI ^ proc_sub_info ^ initial_liveness := IL.
+proc_info_set_need_maxfr_slot(NMS, !PI) :-
+    !PI ^ proc_sub_info ^ need_maxfr_slot := NMS.
+proc_info_set_has_user_event(HUE, !PI) :-
+    !PI ^ proc_sub_info ^ proc_has_user_event := HUE.
+proc_info_set_has_parallel_conj(HPC, !PI) :-
+    !PI ^ proc_sub_info ^ proc_has_parallel_conj := HPC.
+proc_info_set_has_tail_call_events(HPC, !PI) :-
+    !PI ^ proc_sub_info ^ proc_has_tail_call_events := HPC.
+proc_info_set_call_table_tip(CTT, !PI) :-
+    !PI ^ proc_sub_info ^ call_table_tip := CTT.
+proc_info_set_maybe_proc_table_io_info(MTI, !PI) :-
+    !PI ^ proc_sub_info ^ maybe_table_io_info := MTI.
+proc_info_set_table_attributes(TA, !PI) :-
+    !PI ^ proc_sub_info ^ table_attributes := TA.
+proc_info_set_maybe_special_return(MSR, !PI) :-
+    !PI ^ proc_sub_info ^ maybe_special_return := MSR.
+proc_info_set_maybe_deep_profile_info(DPI, !PI) :-
+    !PI ^ proc_sub_info ^ maybe_deep_profile_proc_info := DPI.
+proc_info_set_maybe_untuple_info(MUI, !PI) :-
+    !PI ^ proc_sub_info ^ maybe_untuple_info := MUI.
+proc_info_set_var_name_remap(VNR, !PI) :-
+    !PI ^ proc_sub_info ^ proc_var_name_remap := VNR.
 
 proc_info_head_modes_constraint(ProcInfo, HeadModesConstraint) :-
     MaybeHeadModesConstraint = ProcInfo ^ maybe_head_modes_constraint,

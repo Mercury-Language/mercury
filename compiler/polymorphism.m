@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2009 The University of Melbourne.
+% Copyright (C) 1995-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -3083,10 +3083,11 @@ get_special_proc_det(Type, SpecialPredId, ModuleInfo, PredName,
 
 get_category_name(CtorCat) = MaybeName :-
     (
-        ( CtorCat = ctor_cat_builtin(cat_builtin_int)
-        ; CtorCat = ctor_cat_builtin(cat_builtin_char)
-        ),
+        CtorCat = ctor_cat_builtin(cat_builtin_int),
         MaybeName = yes("int")
+    ;
+        CtorCat = ctor_cat_builtin(cat_builtin_char),
+        MaybeName = yes("character")
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_float),
         MaybeName = yes("float")

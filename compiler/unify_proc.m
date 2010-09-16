@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -331,7 +331,8 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         list.length(ArgModes, Arity),
         DeclaredArgModes = no,
         add_new_proc(InstVarSet, Arity, ArgModes, DeclaredArgModes, ArgLives,
-            MaybeDet, Context, address_is_not_taken, !PredInfo, ProcId),
+            detism_decl_implicit, MaybeDet, Context, address_is_not_taken,
+            !PredInfo, ProcId),
 
         % Copy the clauses for the procedure from the pred_info
         % to the proc_info, and mark the procedure as one that

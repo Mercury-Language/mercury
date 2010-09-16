@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2009 The University of Melbourne.
+% Copyright (C) 1995-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -541,8 +541,9 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
         restrict_var_maps(AllArgVars, LambdaGoal, VarSet, LambdaVarSet,
             VarTypes, LambdaVarTypes, RttiVarMaps, LambdaRttiVarMaps),
         proc_info_create(LambdaContext, LambdaVarSet, LambdaVarTypes,
-            AllArgVars, InstVarSet, AllArgModes, Detism, LambdaGoal,
-            LambdaRttiVarMaps, address_is_taken, VarNameRemap, ProcInfo0),
+            AllArgVars, InstVarSet, AllArgModes, detism_decl_explicit, Detism,
+            LambdaGoal, LambdaRttiVarMaps, address_is_taken, VarNameRemap,
+            ProcInfo0),
 
         % The debugger ignores unnamed variables.
         ensure_all_headvars_are_named(ProcInfo0, ProcInfo1),
@@ -558,7 +559,6 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
         % that we just created.
         (
             MustRecomputeNonLocals0 = yes,
-            % ZZZ
             requantify_proc_general(ordinary_nonlocals_maybe_lambda,
                 ProcInfo2, ProcInfo)
         ;

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2009 The University of Melbourne.
+% Copyright (C) 1995-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -127,9 +127,9 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
         pred_info_get_context(PredInfo0, Context),
         MaybePredArgLives = no,
         varset.init(InstVarSet),
-            % No inst_vars in default func mode.
-        add_new_proc(InstVarSet, PredArity, PredArgModes,
-            yes(PredArgModes), MaybePredArgLives, yes(Determinism),
+        % No inst_vars in default func mode.
+        add_new_proc(InstVarSet, PredArity, PredArgModes, yes(PredArgModes),
+            MaybePredArgLives, detism_decl_implicit, yes(Determinism),
             Context, address_is_not_taken, PredInfo0, PredInfo, ProcId),
         MaybeProcId = yes(ProcId)
     ;

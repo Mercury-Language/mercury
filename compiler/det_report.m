@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2009 The University of Melbourne.
+% Copyright (C) 1995-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -239,8 +239,9 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !Specs) :-
                 pred_info_get_import_status(PredInfo0, ImportStatus),
                 status_defined_in_this_module(ImportStatus) = yes
             ->
-                Message = "warning: determinism declaration " ++
-                    "could be tighter.\n",
+                proc_info_get_detism_decl(ProcInfo0, DetismDecl),
+                Message = "warning: " ++ detism_decl_name(DetismDecl) ++
+                    " could be tighter.\n",
                 report_determinism_problem(PredId, ProcId, !.ModuleInfo,
                     Message, DeclaredDetism, InferredDetism, ReportMsgs),
                 ReportSpec = error_spec(severity_warning, phase_detism_check,
@@ -251,7 +252,9 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !Specs) :-
             )
         ;
             Cmp = tighter,
-            Message = "error: determinism declaration not satisfied.\n",
+            proc_info_get_detism_decl(ProcInfo0, DetismDecl),
+            Message = "error: " ++ detism_decl_name(DetismDecl) ++
+                " not satisfied.\n",
             report_determinism_problem(PredId, ProcId, !.ModuleInfo, Message,
                 DeclaredDetism, InferredDetism, ReportMsgs),
             proc_info_get_goal(ProcInfo0, Goal),
@@ -298,6 +301,24 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !Specs) :-
             [simple_msg(Context,
                 [always(MainPieces), verbose_only(VerbosePieces)])]),
         !:Specs = [ValidSpec | !.Specs]
+    ).
+
+:- func detism_decl_name(detism_decl) = string.
+
+detism_decl_name(DetismDecl) = Name :-
+    (
+        DetismDecl = detism_decl_explicit,
+        Name = "determinism declaration"
+    ;
+        DetismDecl = detism_decl_implicit,
+        Name = "implicit determinism declaration"
+    ;
+        DetismDecl = detism_decl_none,
+        Name = "nonexistent determinism declaration"
+        % This shouldn't happen, but if it does, it is better to get an
+        % error message that puts you on the right track than to get
+        % a compiler abort.
+        % unexpected(this_file, "detism_decl_name: detism_decl_none")
     ).
 
 :- pred get_valid_dets(eval_method::in, determinism::out) is nondet.

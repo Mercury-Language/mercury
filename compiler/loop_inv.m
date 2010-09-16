@@ -132,6 +132,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
@@ -169,7 +170,8 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
         %
         % The recursive calls are the set of calls at the end of each
         % recursive path.
-        invariant_goal_candidates(PredProcId, Body, InvGoals0, RecCalls),
+        invariant_goal_candidates_in_proc(!.ModuleInfo, PredProcId, Body,
+            InvGoals0, RecCalls),
 
         % We can calculate the set of invariant args from the set of
         % recursive calls.
@@ -197,7 +199,7 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
         %
         % So here we compute the subset of InvGoals (and the corresponding
         % InvVars) that should not be hoisted.
-        dont_hoist(!.ModuleInfo, InvGoals1, DontHoistGoals, DontHoistVars),
+        do_not_hoist(!.ModuleInfo, InvGoals1, DontHoistGoals, DontHoistVars),
 
         InvGoals = InvGoals1 `delete_elems` DontHoistGoals,
         InvVars  = InvVars1  `delete_elems` DontHoistVars,
@@ -213,7 +215,6 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
         %   the InvGoals;
         % - all non-local vars in InvGoals are also in InvVars.
     ->
-
         % The set of computed invariant vars is the difference between
         % the whole invariant var set and the set of invariant args.
         ComputedInvVars = InvVars `delete_elems` InvArgs,
@@ -257,159 +258,189 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
                                    %    for this recursive call.
             ).
 
-:- type rec_calls == list(rec_call).
+:- type igc_info
+    --->    igc_info(
+                igc_module_info             :: module_info,
 
-:- type invariant_goal_candidates_acc
-    --->    invariant_goal_candidates_acc(
                 % path_candidates is the list of accumulated invariant
                 % goal candidates.
-                path_candidates         :: hlds_goals,
+                igc_path_candidates         :: cord(hlds_goal),
 
-                % rec_calls is the list of pairs of recursive calls
-                % with the path_candidates up to that point. This is
-                % extended whenever a recursive call is identified.
-                rec_calls               :: rec_calls
+                % rec_calls pairs each recursive call with the list of
+                % path_candidates up to that call. We extend this list
+                % whenever we identify a new recursive call.
+                igc_rec_calls               :: list(rec_call)
             ).
 
-    % invariant_goal_candidates(PredProcId, Body, CandidateInvGoals,
+    % invariant_goal_candidates_in_proc(PredProcId, Body, CandidateInvGoals,
     %   RecCallGoals):
     %
     % Computes (a conservative approximation to) the set of candidate
     % invariant atomic goals in Body and the set of recursive calls
     % in Body identified via PredProcId.
     %
-:- pred invariant_goal_candidates(pred_proc_id::in, hlds_goal::in,
-    hlds_goals::out, hlds_goals::out) is det.
+:- pred invariant_goal_candidates_in_proc(module_info::in, pred_proc_id::in,
+    hlds_goal::in, hlds_goals::out, hlds_goals::out) is det.
 
-invariant_goal_candidates(PredProcId, Body, CandidateInvGoals, RecCallGoals) :-
-    GoalCandidates0 = invariant_goal_candidates_acc([], []),
-    invariant_goal_candidates_2(PredProcId, Body,
+invariant_goal_candidates_in_proc(ModuleInfo, PredProcId, Body,
+        CandidateInvGoals, RecCallGoals) :-
+    GoalCandidates0 = igc_info(ModuleInfo, cord.empty, []),
+    invariant_goal_candidates_in_goal(PredProcId, Body,
         GoalCandidates0, GoalCandidates),
-    GoalCandidates = invariant_goal_candidates_acc(_, RecCalls),
+    GoalCandidates = igc_info(_, _, RecCalls),
     assoc_list.keys_and_values(RecCalls, RecCallGoals, CandidateInvGoalsList),
     CandidateInvGoals = intersect_candidate_inv_goals(CandidateInvGoalsList).
 
 %-----------------------------------------------------------------------------%
 
-:- pred invariant_goal_candidates_2(pred_proc_id::in, hlds_goal::in,
-    invariant_goal_candidates_acc::in, invariant_goal_candidates_acc::out)
-    is det.
+:- pred invariant_goal_candidates_in_goal(pred_proc_id::in, hlds_goal::in,
+    igc_info::in, igc_info::out) is det.
 
-invariant_goal_candidates_2(PPId, Goal, !IGCs) :-
-    Goal = hlds_goal(GoalExpr, GoalInfo),
+invariant_goal_candidates_in_goal(PPId, Goal, !IGCs) :-
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
         GoalExpr = plain_call(PredId, ProcId, _, _, _, _),
         ( proc(PredId, ProcId) = PPId ->
             add_recursive_call(Goal, !IGCs)
         ;
-            invariant_goal_candidates_handle_non_recursive_call(Goal, !IGCs)
+            invariant_goal_candidates_handle_primitive_goal(Goal, !IGCs)
         )
     ;
         ( GoalExpr = generic_call(_, _, _, _)
         ; GoalExpr = unify(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ),
-        invariant_goal_candidates_handle_non_recursive_call(Goal, !IGCs)
+        invariant_goal_candidates_handle_primitive_goal(Goal, !IGCs)
     ;
         GoalExpr = conj(ConjType, Conjuncts),
         (
             ConjType = plain_conj,
-            list.foldl(invariant_goal_candidates_2(PPId), Conjuncts, !IGCs)
+            invariant_goal_candidates_in_plain_conj(PPId, Conjuncts, !IGCs)
         ;
             ConjType = parallel_conj,
-            list.foldl(invariant_goal_candidates_keeping_path_candidates(PPId),
-                Conjuncts, !IGCs)
+            invariant_goal_candidates_in_parallel_conj(PPId, Conjuncts, !IGCs)
         )
     ;
         GoalExpr = disj(Disjuncts),
-        list.foldl(invariant_goal_candidates_keeping_path_candidates(PPId),
-            Disjuncts, !IGCs)
+        invariant_goal_candidates_in_disj(PPId, Disjuncts, !IGCs)
     ;
         GoalExpr = switch(_, _, Cases),
-        list.foldl(invariant_goal_candidates_keeping_path_candidates(PPId),
-            case_goals(Cases), !IGCs)
+        invariant_goal_candidates_in_switch(PPId, Cases, !IGCs)
     ;
-        GoalExpr = negation(SubdGoal),
-        invariant_goal_candidates_keeping_path_candidates(PPId, SubdGoal,
-            !IGCs)
+        GoalExpr = negation(SubGoal),
+        invariant_goal_candidates_keeping_path_candidates(PPId, SubGoal, !IGCs)
     ;
-        GoalExpr = scope(_Reason, SubdGoal),
+        GoalExpr = scope(_Reason, SubGoal),
         % XXX We should specialize the handling of from_ground_term_construct
         % scopes here.
-        invariant_goal_candidates_keeping_path_candidates(PPId, SubdGoal,
-            !IGCs)
+        invariant_goal_candidates_keeping_path_candidates(PPId, SubGoal, !IGCs)
     ;
         GoalExpr = if_then_else(_XVs, Cond, Then, Else),
-        CoTe = hlds_goal(conj(plain_conj, [Cond, Then]), GoalInfo),
-        invariant_goal_candidates_keeping_path_candidates(PPId, CoTe, !IGCs),
+        PathCandidates0 = !.IGCs ^ igc_path_candidates,
+        invariant_goal_candidates_in_goal(PPId, Cond, !IGCs),
+        invariant_goal_candidates_in_goal(PPId, Then, !IGCs),
+        !IGCs ^ igc_path_candidates := PathCandidates0,
         invariant_goal_candidates_keeping_path_candidates(PPId, Else, !IGCs)
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "invariant_goal_candidates_2: shorthand")
+        unexpected(this_file, "invariant_goal_candidates_in_goal: shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
 
 :- pred invariant_goal_candidates_keeping_path_candidates(pred_proc_id::in,
-    hlds_goal::in,
-    invariant_goal_candidates_acc::in, invariant_goal_candidates_acc::out)
-    is det.
+    hlds_goal::in, igc_info::in, igc_info::out) is det.
 
 invariant_goal_candidates_keeping_path_candidates(PPId, Goal, !IGCs) :-
-    PathCandidates0 = !.IGCs ^ path_candidates,
-    invariant_goal_candidates_2(PPId, Goal, !IGCs),
-    !IGCs ^ path_candidates := PathCandidates0.
+    PathCandidates0 = !.IGCs ^ igc_path_candidates,
+    invariant_goal_candidates_in_goal(PPId, Goal, !IGCs),
+    !IGCs ^ igc_path_candidates := PathCandidates0.
 
 %-----------------------------------------------------------------------------%
 
-:- func case_goals(list(case)) = hlds_goals.
+:- pred invariant_goal_candidates_in_plain_conj(pred_proc_id::in,
+    list(hlds_goal)::in, igc_info::in, igc_info::out) is det.
 
-case_goals(Cases) =
-    list.map(func(case(_MainConsId, _OtherConsIds, Goal)) = Goal, Cases).
+invariant_goal_candidates_in_plain_conj(_, [], !IGCs).
+invariant_goal_candidates_in_plain_conj(PPId, [Goal | Goals], !IGCs) :-
+    invariant_goal_candidates_in_goal(PPId, Goal, !IGCs),
+    invariant_goal_candidates_in_plain_conj(PPId, Goals, !IGCs).
+
+:- pred invariant_goal_candidates_in_parallel_conj(pred_proc_id::in,
+    list(hlds_goal)::in, igc_info::in, igc_info::out) is det.
+
+invariant_goal_candidates_in_parallel_conj(_, [], !IGCs).
+invariant_goal_candidates_in_parallel_conj(PPId, [Goal | Goals], !IGCs) :-
+    invariant_goal_candidates_keeping_path_candidates(PPId, Goal, !IGCs),
+    invariant_goal_candidates_in_parallel_conj(PPId, Goals, !IGCs).
+
+:- pred invariant_goal_candidates_in_disj(pred_proc_id::in,
+    list(hlds_goal)::in, igc_info::in, igc_info::out) is det.
+
+invariant_goal_candidates_in_disj(_, [], !IGCs).
+invariant_goal_candidates_in_disj(PPId, [Goal | Goals], !IGCs) :-
+    invariant_goal_candidates_keeping_path_candidates(PPId, Goal, !IGCs),
+    invariant_goal_candidates_in_disj(PPId, Goals, !IGCs).
+
+:- pred invariant_goal_candidates_in_switch(pred_proc_id::in,
+    list(case)::in, igc_info::in, igc_info::out) is det.
+
+invariant_goal_candidates_in_switch(_, [], !IGCs).
+invariant_goal_candidates_in_switch(PPId, [Case | Cases], !IGCs) :-
+    Case = case(_, _, Goal),
+    invariant_goal_candidates_keeping_path_candidates(PPId, Goal, !IGCs),
+    invariant_goal_candidates_in_switch(PPId, Cases, !IGCs).
 
 %-----------------------------------------------------------------------------%
 
 :- pred add_recursive_call(hlds_goal::in,
-    invariant_goal_candidates_acc::in, invariant_goal_candidates_acc::out)
-    is det.
+    igc_info::in, igc_info::out) is det.
 
-    % We have to reverse the path_candidates because they are accumulated
-    % in reverse order, whereas we need them in producer-consumer order
-    % as they appear in the procedure.
-    %
 add_recursive_call(Goal, !IGCs) :-
-    !IGCs ^ rec_calls :=
-        [Goal - list.reverse(!.IGCs ^ path_candidates) | !.IGCs ^ rec_calls].
+    RecCall = Goal - cord.list(!.IGCs ^ igc_path_candidates),
+    !IGCs ^ igc_rec_calls := [RecCall | !.IGCs ^ igc_rec_calls].
 
 %-----------------------------------------------------------------------------%
 
     % NOTE: We could hoist semipure goals that have no preceeding impure goals,
-    % but that's a very low-level optimization that is not entirely trivial
+    % but that is a very low-level optimization that is not entirely trivial
     % to implement.
     %
-:- pred invariant_goal_candidates_handle_non_recursive_call(hlds_goal::in,
-    invariant_goal_candidates_acc::in, invariant_goal_candidates_acc::out)
-    is det.
+:- pred invariant_goal_candidates_handle_primitive_goal(hlds_goal::in,
+    igc_info::in, igc_info::out) is det.
 
-invariant_goal_candidates_handle_non_recursive_call(Goal, !IGCs) :-
+invariant_goal_candidates_handle_primitive_goal(Goal, !IGCs) :-
     Goal = hlds_goal(_GoalExpr, GoalInfo),
     (
-        not model_non(GoalInfo),
-        goal_info_get_purity(GoalInfo) = purity_pure
+        Detism = hlds_goal.goal_info_get_determinism(GoalInfo),
+        code_model.determinism_to_code_model(Detism, CodeModel),
+        ( CodeModel = model_det
+        ; CodeModel = model_semi
+        ),
+
+        goal_info_get_purity(GoalInfo) = purity_pure,
+
+        InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
+        instmap_delta_to_assoc_list(InstMapDelta, InstMapDeltaPairs),
+        ModuleInfo = !.IGCs ^ igc_module_info,
+        all_instmap_deltas_are_ground(ModuleInfo, InstMapDeltaPairs)
     ->
-        !IGCs ^ path_candidates := [Goal | !.IGCs ^ path_candidates]
+        !IGCs ^ igc_path_candidates :=
+            snoc(!.IGCs ^ igc_path_candidates, Goal)
     ;
         true
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred model_non(hlds_goal_info::in) is semidet.
+:- pred all_instmap_deltas_are_ground(module_info::in,
+    assoc_list(prog_var, mer_inst)::in) is semidet.
 
-model_non(GoalInfo) :-
-    Detism = hlds_goal.goal_info_get_determinism(GoalInfo),
-    code_model.determinism_to_code_model(Detism, model_non).
+all_instmap_deltas_are_ground(_, []).
+all_instmap_deltas_are_ground(ModuleInfo, [_Var - Inst | VarInsts]) :-
+    inst_is_ground(ModuleInfo, Inst),
+    all_instmap_deltas_are_ground(ModuleInfo, VarInsts).
 
 %-----------------------------------------------------------------------------%
 
@@ -571,17 +602,17 @@ input_args_are_invariant(ModuleInfo, Goal, InvVars) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred dont_hoist(module_info::in, hlds_goals::in,
+:- pred do_not_hoist(module_info::in, hlds_goals::in,
     hlds_goals::out, prog_vars::out) is det.
 
-dont_hoist(ModuleInfo, InvGoals, DontHoistGoals, DontHoistVars) :-
-    list.foldl2(dont_hoist_2(ModuleInfo), InvGoals,
+do_not_hoist(ModuleInfo, InvGoals, DontHoistGoals, DontHoistVars) :-
+    list.foldl2(do_not_hoist_2(ModuleInfo), InvGoals,
         [], DontHoistGoals, [], DontHoistVars).
 
-:- pred dont_hoist_2(module_info::in, hlds_goal::in,
+:- pred do_not_hoist_2(module_info::in, hlds_goal::in,
     hlds_goals::in, hlds_goals::out, prog_vars::in, prog_vars::out) is det.
 
-dont_hoist_2(ModuleInfo, Goal, !DHGs, !DHVs) :-
+do_not_hoist_2(ModuleInfo, Goal, !DHGs, !DHVs) :-
     (
         ( const_construction(Goal)
         ; deconstruction(Goal)
@@ -1115,6 +1146,11 @@ used_vars(ModuleInfo, Goal) = UsedVars :-
         GoalExpr = shorthand(_),
         unexpected(this_file, "used_vars: shorthand")
     ).
+
+:- func case_goals(list(case)) = list(hlds_goal).
+
+case_goals(Cases) =
+    list.map(func(case(_MainConsId, _OtherConsIds, Goal)) = Goal, Cases).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2009 The University of Melbourne.
+% Copyright (C) 1995-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public Licence - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2421,8 +2421,9 @@ create_cloned_pred(ProcHeadVars, PredArgTypes, ProcHeadModes,
     proc_info_get_rtti_varmaps(ProcInfo, ProcRttiVarMaps),
     proc_info_get_var_name_remap(ProcInfo, VarNameRemap),
     proc_info_create(ProcContext, ProcVarSet, ProcVarTypes, ProcHeadVars,
-        ProcInstVarSet, ProcHeadModes, ProcDetism, ProcGoal, ProcRttiVarMaps,
-        address_is_not_taken, VarNameRemap, NewProcInfo),
+        ProcInstVarSet, ProcHeadModes, detism_decl_none, ProcDetism,
+        ProcGoal, ProcRttiVarMaps, address_is_not_taken, VarNameRemap,
+        NewProcInfo),
     ModuleName = pred_info_module(PredInfo),
     OrigPredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),

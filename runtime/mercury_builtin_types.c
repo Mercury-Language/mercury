@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002-2007 The University of Melbourne.
+** Copyright (C) 2002-2007, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -289,8 +289,10 @@ void MR_CALL
 mercury__builtin____Compare____character_0_0(
     MR_Comparison_Result *result, MR_Char x, MR_Char y)
 {
-    *result = (x > y ? MR_COMPARE_GREATER :
-          x == y ? MR_COMPARE_EQUAL :
+    MR_Integer xi = (MR_UnsignedChar) x;
+    MR_Integer yi = (MR_UnsignedChar) y;
+    *result = (xi > yi ? MR_COMPARE_GREATER :
+          xi == yi ? MR_COMPARE_EQUAL :
           MR_COMPARE_LESS);
 }
 
