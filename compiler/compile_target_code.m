@@ -119,6 +119,7 @@
     --->    executable
     ;       static_library
     ;       shared_library
+    ;       csharp_library
     ;       java_archive
     ;       erlang_archive.
 
@@ -1330,6 +1331,7 @@ link_module_list(Modules, ExtraObjFiles, Globals, Succeeded, !IO) :-
     ;
         ( Target = target_c
         ; Target = target_java
+        ; Target = target_csharp
         ; Target = target_il
         ; Target = target_x86_64
         ; Target = target_erlang
@@ -1695,6 +1697,11 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Globals, Succeeded,
         create_archive(Globals, ErrorStream, OutputFileName, yes, ObjectsList,
             LinkSucceeded, !IO)
     ;
+        LinkTargetType = csharp_library,
+        % XXX C# see also older predicate compile_csharp_file
+        create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType,
+            OutputFileName, ObjectsList, LinkSucceeded, !IO)
+    ;
         LinkTargetType = java_archive,
         create_java_archive(Globals, ErrorStream, OutputFileName, ObjectsList,
             LinkSucceeded, !IO)
@@ -1710,6 +1717,10 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Globals, Succeeded,
         ;
             Target = target_java,
             create_java_shell_script(Globals, ModuleName, LinkSucceeded, !IO)
+        ;
+            Target = target_csharp,
+            create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType,
+                OutputFileName, ObjectsList, LinkSucceeded, !IO)
         ;
             ( Target = target_c
             ; Target = target_il
@@ -1750,6 +1761,11 @@ link_output_filename(Globals, LinkTargetType, ModuleName, Ext, OutputFileName,
         module_name_to_lib_file_name(Globals, "lib", ModuleName, Ext,
             do_create_dirs, OutputFileName, !IO)
     ;
+        LinkTargetType = csharp_library,
+        Ext = ".dll",
+        module_name_to_file_name(Globals, ModuleName, Ext,
+            do_create_dirs, OutputFileName, !IO)
+    ;
         LinkTargetType = java_archive,
         Ext = ".jar",
         module_name_to_file_name(Globals, ModuleName, Ext,
@@ -1768,6 +1784,9 @@ link_output_filename(Globals, LinkTargetType, ModuleName, Ext, OutputFileName,
             ),
             % These are shell scripts.
             Ext = ""
+        ;
+            Target = target_csharp,
+            Ext = ".exe"
         ;
             ( Target = target_c
             ; Target = target_il
@@ -2012,6 +2031,9 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
             ),
             globals.lookup_string_option(Globals, library_extension, LibExt)
         ;
+            TargetType = csharp_library,
+            unexpected(this_file, "get_mercury_std_libs: csharp_library")
+        ;
             TargetType = java_archive,
             unexpected(this_file, "get_mercury_std_libs: java_archive")
         ;
@@ -2196,6 +2218,9 @@ make_link_lib(Globals, TargetType, LibName, LinkOpt) :-
         globals.lookup_string_option(Globals, LinkLibSuffix, Suffix),
         LinkOpt = quote_arg(LinkLibOpt ++ LibName ++ Suffix)
     ;
+        TargetType = csharp_library,
+        unexpected(this_file, "make_link_lib: csharp_library")
+    ;
         TargetType = java_archive,
         unexpected(this_file, "make_link_lib: java_archive")
     ;
@@ -2280,6 +2305,9 @@ get_system_libs(Globals, TargetType, SystemLibs) :-
         TargetType = static_library,
         unexpected(this_file, "get_std_libs: static library")
     ;
+        TargetType = csharp_library,
+        unexpected(this_file, "get_std_libs: csharp library")
+    ;
         TargetType = java_archive,
         unexpected(this_file, "get_std_libs: java archive")
     ;
@@ -2319,6 +2347,7 @@ post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
         ;
             ( LinkTargetType = static_library
             ; LinkTargetType = shared_library
+            ; LinkTargetType = csharp_library
             ; LinkTargetType = java_archive
             ; LinkTargetType = erlang_archive
             ),
@@ -2447,6 +2476,42 @@ create_archive(Globals, ErrorStream, LibFileName, Quote, ObjectList,
         invoke_system_command(Globals, ErrorStream, cmd_verbose_commands,
             RanLibCmd, Succeeded, !IO)
     ).
+
+:- pred create_csharp_exe_or_lib(globals::in, io.output_stream::in,
+    linked_target_type::in, file_name::in, list(file_name)::in, bool::out,
+    io::di, io::uo) is det.
+
+create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, OutputFileName,
+        SourceList, Succeeded, !IO) :-
+    globals.lookup_string_option(Globals, csharp_compiler, CSharpCompiler),
+    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
+    (
+        HighLevelData = yes,
+        HighLevelDataOpt = "/define:MR_HIGHLEVEL_DATA"
+    ;
+        HighLevelData = no,
+        HighLevelDataOpt = ""
+    ),
+    globals.lookup_accumulating_option(Globals, csharp_flags, CSCFlagsList),
+    (
+        LinkTargetType = executable,
+        TargetOption = "/target:exe"
+    ;
+        LinkTargetType = csharp_library,
+        TargetOption = "/target:library"
+    ;
+        ( LinkTargetType = static_library
+        ; LinkTargetType = shared_library
+        ; LinkTargetType = java_archive
+        ; LinkTargetType = erlang_archive
+        ),
+        unexpected(this_file, "create_csharp_exe_or_lib: wrong target type")
+    ),
+    Cmd = string.join_list(" ", [CSharpCompiler, HighLevelDataOpt,
+        TargetOption, "/out:" ++ OutputFileName
+        | CSCFlagsList ++ SourceList]),
+    invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Cmd,
+        Succeeded, !IO).
 
 :- pred create_java_archive(globals::in, io.output_stream::in, file_name::in,
     list(file_name)::in, bool::out, io::di, io::uo) is det.
@@ -2588,6 +2653,7 @@ get_object_code_type(Globals, FileType, ObjectCodeType) :-
         PIC = no,
         (
             ( FileType = static_library
+            ; FileType = csharp_library
             ; FileType = java_archive
             ; FileType = erlang_archive
             ),

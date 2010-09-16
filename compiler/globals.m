@@ -41,8 +41,8 @@
     --->    target_c        % Generate C code (including GNU C).
     ;       target_il       % Generate IL assembler code.
                             % IL is the Microsoft .NET Intermediate Language.
+    ;       target_csharp   % Generate C#.
     ;       target_java     % Generate Java.
-                            % (Work in progress)
     ;       target_asm      % Compile directly to assembler via the GCC
                             % back-end. Do not go via C, instead generate GCC's
                             % internal `tree' data structure.
@@ -50,7 +50,6 @@
     ;       target_x86_64   % Compile directly to x86_64 assembler.
                             % (Work in progress.)
     ;       target_erlang.  % Generate Erlang.
-                            % (Work in progress)
 
 :- type foreign_language
     --->    lang_c
@@ -309,6 +308,7 @@ convert_target(String, Target) :-
 
 :- pred convert_target_2(string::in, compilation_target::out) is semidet.
 
+convert_target_2("csharp", target_csharp).
 convert_target_2("java", target_java).
 convert_target_2("asm", target_asm).
 convert_target_2("il", target_il).
@@ -440,6 +440,7 @@ convert_reuse_strategy("within_n_cells_difference", NCells,
     within_n_cells_difference(NCells)).
 
 compilation_target_string(target_c)    = "C".
+compilation_target_string(target_csharp) = "C#".
 compilation_target_string(target_il)   = "IL".
 compilation_target_string(target_java) = "Java".
 compilation_target_string(target_asm)  = "asm".
@@ -658,13 +659,14 @@ current_grade_supports_concurrency(Globals, ThreadsSupported) :-
     ;
         ( Target = target_erlang
         ; Target = target_il
+        ; Target = target_java
+        ; Target = target_csharp
         ),
         ThreadsSupported = yes
     ;
-        % Threads are not yet supported in the Java or x86_64 backends.
+        % Threads are not yet supported in the x86_64 backend.
         % XXX I'm not sure what their status in the gcc backend is.
-        ( Target = target_java
-        ; Target = target_asm
+        ( Target = target_asm
         ; Target = target_x86_64
         ),
         ThreadsSupported = no

@@ -395,6 +395,7 @@ main_after_setup(OptionVariables, OptionArgs, Args, Link, Globals, !IO) :-
         globals.get_target(Globals, Target),
         (
             ( Target = target_il
+            ; Target = target_csharp
             ; Target = target_java
             ; Target = target_erlang
             ),
@@ -439,6 +440,7 @@ main_after_setup(OptionVariables, OptionArgs, Args, Link, Globals, !IO) :-
                         Succeeded, !IO)
                 ;
                     ( Target = target_c
+                    ; Target = target_csharp
                     ; Target = target_il
                     ; Target = target_asm
                     ; Target = target_x86_64
@@ -1382,6 +1384,7 @@ find_smart_recompilation_target_files(TopLevelModuleName,
     globals.get_target(Globals, CompilationTarget),
     ( CompilationTarget = target_c, TargetSuffix = ".c"
     ; CompilationTarget = target_il, TargetSuffix = ".il"
+    ; CompilationTarget = target_csharp, TargetSuffix = ".cs"
     ; CompilationTarget = target_java, TargetSuffix = ".java"
     ; CompilationTarget = target_asm, TargetSuffix = ".s"
     ; CompilationTarget = target_x86_64, TargetSuffix = ".s"
@@ -1422,6 +1425,9 @@ find_timestamp_files(TopLevelModuleName, Globals, FindTimestampFiles) :-
     ;
         CompilationTarget = target_il,
         TimestampSuffix = ".il_date"
+    ;
+        CompilationTarget = target_csharp,
+        TimestampSuffix = ".cs_date"
     ;
         CompilationTarget = target_java,
         TimestampSuffix = ".java_date"
@@ -1679,6 +1685,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             export.produce_header_file(!.HLDS, ExportDecls, ModuleName, !IO)
         ;
             ( Target = target_java
+            ; Target = target_csharp
             ; Target = target_il
             ; Target = target_erlang
             )
@@ -1698,6 +1705,11 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
                     Globals, Succeeded, !IO),
                 maybe_set_exit_status(Succeeded, !IO)
             ),
+            ExtraObjFiles = []
+        ;
+            Target = target_csharp,
+            mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
+            mlds_to_csharp(!.HLDS, MLDS, !IO),
             ExtraObjFiles = []
         ;
             Target = target_java,

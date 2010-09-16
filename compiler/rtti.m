@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007, 2009 The University of Melbourne.
+% Copyright (C) 2000-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -846,6 +846,16 @@
 :- pred ctor_rtti_name_java_type(ctor_rtti_name::in, string::out,
     is_array::out) is det.
 :- pred tc_rtti_name_java_type(tc_rtti_name::in, string::out, is_array::out)
+    is det.
+
+    % Analogous to rtti_id_c_type.
+    %
+:- pred rtti_id_maybe_element_csharp_type(rtti_id_maybe_element::in, string::out,
+    is_array::out) is det.
+:- pred rtti_id_csharp_type(rtti_id::in, string::out, is_array::out) is det.
+:- pred ctor_rtti_name_csharp_type(ctor_rtti_name::in, string::out,
+    is_array::out) is det.
+:- pred tc_rtti_name_csharp_type(tc_rtti_name::in, string::out, is_array::out)
     is det.
 
     % Given a type in a type vector in a type class instance declaration,
@@ -1930,6 +1940,58 @@ tc_rtti_name_java_type(TCRttiName, JavaTypeName, IsArray) :-
         % The rest are all defined in Mercury's Java runtime
         % (java/runtime/*.java).
         JavaTypeName = "jmercury.runtime." ++ GenTypeName
+    ).
+
+rtti_id_maybe_element_csharp_type(item_type(RttiId), CTypeName, IsArray) :-
+    rtti_id_csharp_type(RttiId, CTypeName, IsArray).
+rtti_id_maybe_element_csharp_type(element_type(RttiId), CTypeName, IsArray) :-
+    rtti_id_csharp_type(RttiId, CTypeName, IsArray0),
+    (
+        IsArray0 = not_array,
+        unexpected(this_file,
+            "rtti_id_maybe_element_csharp_type: base is not array")
+    ;
+        IsArray0 = is_array,
+        IsArray = not_array
+    ).
+
+rtti_id_csharp_type(ctor_rtti_id(_, RttiName), CsharpTypeName, IsArray) :-
+    ctor_rtti_name_csharp_type(RttiName, CsharpTypeName, IsArray).
+rtti_id_csharp_type(tc_rtti_id(_, TCRttiName), CsharpTypeName, IsArray) :-
+    tc_rtti_name_csharp_type(TCRttiName, CsharpTypeName, IsArray).
+
+ctor_rtti_name_csharp_type(RttiName, CsharpTypeName, IsArray) :-
+    ctor_rtti_name_type(RttiName, GenTypeName0, IsArray),
+    ( GenTypeName0 = "ConstString" ->
+        CsharpTypeName = "string"
+    ; GenTypeName0 = "Integer" ->
+        CsharpTypeName = "int"
+    ; string.remove_suffix(GenTypeName0, "Ptr", GenTypeName1) ->
+        CsharpTypeName = "runtime." ++ GenTypeName1
+    ; string.prefix(GenTypeName0, "TypeClassConstraint_") ->
+        CsharpTypeName = "runtime.TypeClassConstraint"
+    ;
+        ( string.prefix(GenTypeName0, "FA_PseudoTypeInfo_Struct")
+        ; string.prefix(GenTypeName0, "FA_TypeInfo_Struct")
+        ; string.prefix(GenTypeName0, "VA_PseudoTypeInfo_Struct")
+        ; string.prefix(GenTypeName0, "VA_TypeInfo_Struct")
+        )
+    ->
+        CsharpTypeName = "runtime.TypeInfo_Struct"
+    ;
+        CsharpTypeName = "runtime." ++ GenTypeName0
+    ).
+
+tc_rtti_name_csharp_type(TCRttiName, CsharpTypeName, IsArray) :-
+    tc_rtti_name_type(TCRttiName, GenTypeName, IsArray),
+    ( GenTypeName = "BaseTypeclassInfo" ->
+        CsharpTypeName = "object" /* & IsArray = yes */
+    ; GenTypeName = "ConstString" ->
+        CsharpTypeName = "string"
+    ; string.prefix(GenTypeName, "TypeClassConstraint_") ->
+        CsharpTypeName = "runtime.TypeClassConstraint"
+    ;
+        CsharpTypeName = "runtime." ++ GenTypeName
     ).
 
     % ctor_rtti_name_type(RttiName, Type, IsArray)

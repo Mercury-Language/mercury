@@ -469,38 +469,11 @@ add_pragma_foreign_export_2(Arity, PredTable, Origin, Lang, Name, PredId,
                 [Msg]),
             !:Specs = [Spec | !.Specs]
         ;
-            % Emit a warning about using pragma foreign_export with
-            % a foreign language that is not supported.
-            % XXX That's currently C#.
-            (
-                Lang = lang_csharp,
-                Pieces = [words("Warning:"),
-                    fixed("`:- pragma foreign_export' declarations"),
-                    words("are not yet implemented for language"),
-                    words(foreign_language_string(Lang)), suffix("."), nl],
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_warning,
-                    phase_parse_tree_to_hlds, [Msg]),
-                !:Specs = [Spec | !.Specs]
-            ;
-                ( Lang = lang_c
-                ; Lang = lang_il
-                ; Lang = lang_java
-                ; Lang = lang_erlang
-                )
-            ),
-
             % Only add the foreign export if the specified language matches
             % one of the foreign languages available for this backend.
             module_info_get_globals(!.ModuleInfo, Globals),
             globals.get_backend_foreign_languages(Globals, ForeignLanguages),
-            (
-                % XXX C# exports currently cause an
-                % assertion failure in the MLDS->IL code generator.
-
-                Lang \= lang_csharp,
-                list.member(Lang, ForeignLanguages)
-            ->
+            ( list.member(Lang, ForeignLanguages) ->
                 module_info_get_pragma_exported_procs(!.ModuleInfo,
                     PragmaExportedProcs0),
                 NewExportedProc = pragma_exported_proc(Lang,
@@ -978,17 +951,16 @@ add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, _TypeModQual, Ctor,
     ),
     ForeignName = Prefix ++ ForeignNameTail,
     (
-        Lang = lang_c,
+        ( Lang = lang_c
+        ; Lang = lang_java
+        ; Lang = lang_csharp
+        ),
         IsValidForeignName = pred_to_bool(is_valid_c_identifier(ForeignName))
     ;
-        Lang = lang_java,
-        IsValidForeignName = pred_to_bool(is_valid_c_identifier(ForeignName))
-    ;
-        ( Lang = lang_csharp
-        ; Lang = lang_il
+        ( Lang = lang_il
         ; Lang = lang_erlang
         ),
-        sorry(this_file, "foreign_export_enum for language other than C")
+        sorry(this_file, "foreign_export_enum for target language")
     ),
     (
         IsValidForeignName = yes,
@@ -1221,6 +1193,7 @@ fixup_foreign_tag_val_qualification(TypeModuleName, !NamesAndTags,
 
 target_lang_to_foreign_enum_lang(target_c)    = lang_c.
 target_lang_to_foreign_enum_lang(target_il)   = lang_il.
+target_lang_to_foreign_enum_lang(target_csharp) = lang_csharp.
 target_lang_to_foreign_enum_lang(target_java) = lang_java.
 target_lang_to_foreign_enum_lang(target_asm) =
     sorry(this_file, "pragma foreign_enum and --target `asm'.").
@@ -2750,6 +2723,9 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
             ForeignLang = lang_c
         ;
             TargetLang = target_il,
+            ForeignLang = lang_csharp
+        ;
+            TargetLang = target_csharp,
             ForeignLang = lang_csharp
         ;
             TargetLang = target_java,

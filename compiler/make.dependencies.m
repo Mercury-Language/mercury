@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2009 The University of Melbourne.
+% Copyright (C) 2002-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -410,6 +410,8 @@ target_dependencies(_, module_target_il_asm) =
     combine_deps_list([
         module_target_il_code `of` self
     ]).
+target_dependencies(Globals, module_target_csharp_code) =
+        compiled_code_dependencies(Globals).
 target_dependencies(Globals, module_target_java_code) =
         compiled_code_dependencies(Globals).
 target_dependencies(_, module_target_java_class_code) =
@@ -514,6 +516,7 @@ target_to_module_target_code(CompilationTarget, PIC) = TargetCode :-
     ;
         ( CompilationTarget = target_c
         ; CompilationTarget = target_il
+        ; CompilationTarget = target_csharp
         ; CompilationTarget = target_java
         ; CompilationTarget = target_x86_64
         ; CompilationTarget = target_erlang

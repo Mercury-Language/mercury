@@ -4,7 +4,7 @@
 % Originally written in 1999 by Tomas By <T.By@dcs.shef.ac.uk>
 % "Feel free to use this code or parts of it any way you want."
 %
-% Some portions are Copyright (C) 1999-2007,2009 The University of Melbourne.
+% Some portions are Copyright (C) 1999-2007,2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -234,8 +234,11 @@
     where comparison is compare_time_t_reps.
 
     % The System.DateTime will hold the value in UTC.
-:- pragma foreign_type(il, time_t_rep, "valuetype [mscorlib]System.DateTime")
+:- pragma foreign_type("IL", time_t_rep, "valuetype [mscorlib]System.DateTime")
     where comparison is compare_time_t_reps.
+
+% :- pragma foreign_type("C#", time_t_rep, "valuetype System.DateTime")
+%     where comparison is compare_time_t_reps.
 
 :- pragma foreign_type("Java", time_t_rep, "java.util.Date")
     where comparison is compare_time_t_reps.
@@ -1007,6 +1010,8 @@ time.ctime(Time) = asctime(localtime(Time)).
     "ML_construct_time_t").
 :- pragma foreign_export("IL", construct_time_t(in) = out,
     "ML_construct_time_t").
+% :- pragma foreign_export("C#", construct_time_t(in) = out,
+%     "ML_construct_time_t").
 :- pragma foreign_export("Java", construct_time_t(in) = out,
     "ML_construct_time_t").
 

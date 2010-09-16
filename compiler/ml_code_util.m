@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2009 The University of Melbourne.
+% Copyright (C) 1999-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -826,13 +826,13 @@ ml_make_boxed_types(Arity) = BoxedTypes :-
 
 ml_java_mercury_type_interface = TypeInterfaceDefn :-
     InterfaceModuleName = mercury_module_name_to_mlds(
-        java_names.mercury_runtime_package_name),
+        java_mercury_runtime_package_name),
     TypeInterface = qual(InterfaceModuleName, module_qual, "MercuryType"),
     TypeInterfaceDefn = mlds_class_type(TypeInterface, 0, mlds_interface).
 
 ml_java_mercury_enum_class = EnumClassDefn :-
     InterfaceModuleName = mercury_module_name_to_mlds(
-        java_names.mercury_runtime_package_name),
+        java_mercury_runtime_package_name),
     EnumClass = qual(InterfaceModuleName, module_qual, "MercuryEnum"),
     EnumClassDefn = mlds_class_type(EnumClass, 0, mlds_class).
 
@@ -1393,6 +1393,7 @@ ml_must_box_field_type(ModuleInfo, Type) :-
     globals.get_target(Globals, Target),
     (
         ( Target = target_c
+        ; Target = target_csharp
         ; Target = target_il
         ; Target = target_asm
         ; Target = target_x86_64

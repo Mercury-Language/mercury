@@ -259,6 +259,7 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
             ; Name = "store_at_ref"
             ),
             ( CompilationTarget = target_java
+            ; CompilationTarget = target_csharp
             ; CompilationTarget = target_erlang
             )
         )

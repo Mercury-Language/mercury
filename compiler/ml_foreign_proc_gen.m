@@ -245,6 +245,7 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
         ;
             ( Target = target_c
             ; Target = target_java
+            ; Target = target_csharp
             ; Target = target_asm
             ),
             ml_gen_call_current_success_cont(Context, CallCont, !Info)
@@ -330,9 +331,27 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
             Foreign_Code, Context, Decls, Statements, !Info)
     ;
         Lang = lang_csharp,
-        ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes,
-            PredId, ProcId, Args, ExtraArgs,
-            Foreign_Code, Context, Decls, Statements, !Info)
+        ml_gen_info_get_target(!.Info, Target),
+        (
+            Target = target_csharp,
+            ml_gen_ordinary_pragma_csharp_java_proc(ml_target_csharp,
+                OrdinaryKind, Attributes, PredId, ProcId, Args, ExtraArgs,
+                Foreign_Code, Context, Decls, Statements, !Info)
+        ;
+            Target = target_il,
+            ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes,
+                PredId, ProcId, Args, ExtraArgs,
+                Foreign_Code, Context, Decls, Statements, !Info)
+        ;
+            ( Target = target_c
+            ; Target = target_java
+            ; Target = target_asm
+            ; Target = target_x86_64
+            ; Target = target_erlang
+            ),
+            unexpected(this_file,
+                "C# foreign code not supported for compilation target")
+        )
     ;
         Lang = lang_il,
         % XXX should pass OrdinaryKind
@@ -341,8 +360,8 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
             Foreign_Code, Context, Decls, Statements, !Info)
     ;
         Lang = lang_java,
-        ml_gen_ordinary_pragma_java_proc(OrdinaryKind, Attributes,
-            PredId, ProcId, Args, ExtraArgs,
+        ml_gen_ordinary_pragma_csharp_java_proc(ml_target_java, OrdinaryKind,
+            Attributes, PredId, ProcId, Args, ExtraArgs,
             Foreign_Code, Context, Decls, Statements, !Info)
     ;
         Lang = lang_erlang,
@@ -350,14 +369,20 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
             "ml_gen_ordinary_pragma_foreign_proc: unexpected language Erlang")
     ).
 
-:- pred ml_gen_ordinary_pragma_java_proc(ordinary_pragma_kind::in,
+:- inst java_or_csharp
+    --->    ml_target_java
+    ;       ml_target_csharp.
+
+:- pred ml_gen_ordinary_pragma_csharp_java_proc(
+    mlds_target_lang::in(java_or_csharp), ordinary_pragma_kind::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
     prog_context::in, list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_ordinary_pragma_java_proc(OrdinaryKind, Attributes, PredId, _ProcId,
-        Args, ExtraArgs, JavaCode, Context, Decls, Statements, !Info) :-
+ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
+        PredId, _ProcId, Args, ExtraArgs, JavaCode, Context, Decls, Statements,
+        !Info) :-
     Lang = get_foreign_language(Attributes),
 
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
@@ -372,13 +397,13 @@ ml_gen_ordinary_pragma_java_proc(OrdinaryKind, Attributes, PredId, _ProcId,
     % Generate <declaration of one local variable for each arg>
     ml_gen_pragma_java_decls(!.Info, MutableSpecial, Args, ArgDeclsList),
     expect(unify(ExtraArgs, []), this_file,
-        "ml_gen_ordinary_pragma_java_proc: extra args"),
+        "ml_gen_ordinary_pragma_csharp_java_proc: extra args"),
 
     % Generate code to set the values of the input variables.
     ml_gen_pragma_c_java_input_arg_list(Lang, Args, AssignInputsList, !Info),
 
     % Generate MLDS statements to assign the values of the output variables.
-    ml_gen_pragma_java_output_arg_list(MutableSpecial, Args, Context,
+    ml_gen_pragma_csharp_java_output_arg_list(MutableSpecial, Args, Context,
         AssignOutputsList, ConvDecls, ConvStatements, !Info),
 
     % Put it all together.
@@ -390,8 +415,15 @@ ml_gen_ordinary_pragma_java_proc(OrdinaryKind, Attributes, PredId, _ProcId,
     ;
         OrdinaryKind = kind_semi,
         ml_success_lval(!.Info, SucceededLval),
+        (
+            TargetLang = ml_target_java,
+            BoolType = "boolean"
+        ;
+            TargetLang = ml_target_csharp,
+            BoolType = "bool"
+        ),
         SucceededDecl = [
-            raw_target_code("\tboolean SUCCESS_INDICATOR;\n", [])],
+            raw_target_code("\t" ++ BoolType ++ " SUCCESS_INDICATOR;\n", [])],
         AssignSucceeded = [
             raw_target_code("\t", []),
             target_code_output(SucceededLval),
@@ -415,7 +447,7 @@ ml_gen_ordinary_pragma_java_proc(OrdinaryKind, Attributes, PredId, _ProcId,
         AssignInputsList,
         [user_target_code(JavaCode, yes(Context), [])]
     ]),
-    Starting_Code_Stmt = inline_target_code(ml_target_java, Starting_Code),
+    Starting_Code_Stmt = inline_target_code(TargetLang, Starting_Code),
     Starting_Code_Statement = statement(ml_stmt_atomic(Starting_Code_Stmt),
         mlds_make_context(Context)),
 
@@ -423,7 +455,7 @@ ml_gen_ordinary_pragma_java_proc(OrdinaryKind, Attributes, PredId, _ProcId,
         AssignSucceeded,
         [raw_target_code("\t}\n", [])]
     ]),
-    Ending_Code_Stmt = inline_target_code(ml_target_java, Ending_Code),
+    Ending_Code_Stmt = inline_target_code(TargetLang, Ending_Code),
     Ending_Code_Statement = statement(ml_stmt_atomic(Ending_Code_Stmt),
         mlds_make_context(Context)),
 
@@ -1187,39 +1219,41 @@ input_arg_assignable_with_cast(Lang, HighLevelData, OrigType, ExportedType,
         % and the generated code.
         Cast = ""
     ;
-        ( Lang = lang_csharp
-        ; Lang = lang_il
+        Lang = lang_csharp,
+        Cast = ""
+    ;
+        ( Lang = lang_il
         ; Lang = lang_erlang
         ),
         unexpected(this_file,
             "input_arg_assignable_with_cast: unexpected language")
     ).
 
-:- pred ml_gen_pragma_java_output_arg_list(mutable_special_case::in,
+:- pred ml_gen_pragma_csharp_java_output_arg_list(mutable_special_case::in,
     list(foreign_arg)::in, prog_context::in, list(statement)::out,
     list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_java_output_arg_list(_, [], _, [], [], [], !Info).
-ml_gen_pragma_java_output_arg_list(MutableSpecial, [JavaArg | JavaArgs],
+ml_gen_pragma_csharp_java_output_arg_list(_, [], _, [], [], [], !Info).
+ml_gen_pragma_csharp_java_output_arg_list(MutableSpecial, [JavaArg | JavaArgs],
         Context, Statements, ConvDecls, ConvStatements, !Info) :-
-    ml_gen_pragma_java_output_arg(MutableSpecial, JavaArg, Context,
+    ml_gen_pragma_csharp_java_output_arg(MutableSpecial, JavaArg, Context,
         Statements1, ConvDecls1, ConvStatements1, !Info),
-    ml_gen_pragma_java_output_arg_list(MutableSpecial, JavaArgs, Context,
-        Statements2, ConvDecls2, ConvStatements2, !Info),
+    ml_gen_pragma_csharp_java_output_arg_list(MutableSpecial, JavaArgs,
+        Context, Statements2, ConvDecls2, ConvStatements2, !Info),
     Statements = Statements1 ++ Statements2,
     ConvDecls = ConvDecls1 ++ ConvDecls2,
     ConvStatements = ConvStatements1 ++ ConvStatements2.
 
-    % ml_gen_pragma_java_output_arg generates MLDS statements to assign the
+    % ml_gen_pragma_csharp_java_output_arg generates MLDS statements to assign the
     % value of an output arg for a `pragma foreign_proc' declaration.
     %
-:- pred ml_gen_pragma_java_output_arg(mutable_special_case::in,
+:- pred ml_gen_pragma_csharp_java_output_arg(mutable_special_case::in,
     foreign_arg::in, prog_context::in, list(statement)::out,
     list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_java_output_arg(MutableSpecial, ForeignArg, Context,
+ml_gen_pragma_csharp_java_output_arg(MutableSpecial, ForeignArg, Context,
         AssignOutput, ConvDecls, ConvOutputStatements, !Info) :-
     ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),

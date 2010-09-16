@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997,2000,2002-2007,2009 The University of Melbourne.
+% Copyright (C) 1996-1997,2000,2002-2007,2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -76,6 +76,12 @@
 % Important:
 % The representation of bool values should correspond with the definitions of
 % MR_TRUE and MR_FALSE in runtime/mercury_std.h.
+
+% :- pragma foreign_export_enum("C#", bool/0, [],
+%     [
+%         no  - "NO",
+%         yes - "YES"
+%     ]).
 
 :- pragma foreign_export_enum("Java", bool/0, [],
     [

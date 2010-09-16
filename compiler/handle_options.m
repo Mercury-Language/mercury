@@ -250,7 +250,8 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         Target = target_c,     % dummy
         % XXX When the x86_64 backend is documented modify the line below.
         add_error("Invalid target option " ++
-            "(must be `c', `asm', `il', `java', or `erlang')", !Errors)
+            "(must be `c', `asm', `il', `java', 'csharp', or `erlang')",
+            !Errors)
     ),
 
     map.lookup(!.OptionTable, gc, GC_Method0),
@@ -670,6 +671,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         )
     ;
         ( Target = target_c
+        ; Target = target_csharp
         ; Target = target_java
         ; Target = target_asm
         ; Target = target_x86_64
@@ -728,9 +730,13 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     %   - cross compiling
     %     Because ints in Java are 32-bits wide which may be different to
     %     that of the host compiler.
+    %
+    % C# should be the same as Java.
 
     (
-        Target = target_java,
+        ( Target = target_java
+        ; Target = target_csharp
+        ),
         globals.set_gc_method(gc_automatic, !Globals),
         globals.set_option(gc, string("automatic"), !Globals),
         globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
@@ -748,7 +754,14 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         globals.set_option(pretest_equality_cast_pointers, bool(yes),
             !Globals),
         globals.set_option(libgrade_install_check, bool(no), !Globals),
-        globals.set_option(cross_compiling, bool(yes), !Globals)
+        globals.set_option(cross_compiling, bool(yes), !Globals),
+        % XXX C# static data support not yet implemented
+        (
+            Target = target_csharp,
+            globals.set_option(static_ground_cells, bool(no), !Globals)
+        ;
+            Target = target_java
+        )
     ;
         ( Target = target_c
         ; Target = target_il
@@ -795,6 +808,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         ; Target = target_asm
         ; Target = target_x86_64
         ; Target = target_java
+        ; Target = target_csharp
         )
     ),
 
@@ -807,6 +821,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     ;
         ( Target = target_c
         ; Target = target_il
+        ; Target = target_csharp
         ; Target = target_java
         ; Target = target_x86_64
         ; Target = target_erlang
@@ -835,6 +850,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         ( Target = target_asm
         ; Target = target_c
         ; Target = target_il
+        ; Target = target_csharp
         ; Target = target_java
         ; Target = target_erlang
         )
@@ -1228,6 +1244,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     % it is generating C or Java code.
     (
         ( Target = target_c
+        ; Target = target_csharp
         ; Target = target_java
         )
     ;
@@ -1380,6 +1397,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
                 globals.set_option(optimize_peep, bool(no), !Globals)
             ;
                 ( Target = target_c
+                ; Target = target_csharp
                 ; Target = target_java
                 ; Target = target_asm
                 ; Target = target_x86_64
@@ -2050,6 +2068,9 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         Target = target_il,
         BackendForeignLanguages = ["il", "csharp"],
         set_option(optimize_constructor_last_call, bool(no), !Globals)
+    ;
+        Target = target_csharp,
+        BackendForeignLanguages = ["csharp"]
     ;
         Target = target_asm,
         % XXX This is wrong!  It should be asm.
@@ -2762,6 +2783,14 @@ grade_component_table("java", comp_gcc_ext, [
         highlevel_code          - bool(yes),
         highlevel_data          - bool(yes)],
         yes([string("java")]), yes).
+grade_component_table("csharp", comp_gcc_ext, [
+        asm_labels              - bool(no),
+        gcc_non_local_gotos     - bool(no),
+        gcc_global_registers    - bool(no),
+        gcc_nested_functions    - bool(no),
+        highlevel_code          - bool(yes),
+        highlevel_data          - bool(yes)],
+        yes([string("csharp")]), yes).
 grade_component_table("erlang", comp_gcc_ext, [],
         yes([string("erlang")]), yes).
 

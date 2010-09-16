@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001,2003-2004, 2006-2007, 2009 The University of Melbourne.
+% Copyright (C) 2000-2001,2003-2004, 2006-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -95,6 +95,7 @@ public class ML_Semaphore {
     [can_pass_as_mercury_type]).
 :- pragma foreign_type("IL", semaphore,
     "class [mercury]mercury.thread.semaphore__csharp_code.mercury_code.ML_Semaphore").
+% :- pragma foreign_type("C#", semaphore, "thread__semaphore.ML_Semaphore").
 :- pragma foreign_type("Erlang", semaphore, "").
 :- pragma foreign_type("Java", semaphore, "java.util.concurrent.Semaphore").
 

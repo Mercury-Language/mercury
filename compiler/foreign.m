@@ -470,6 +470,8 @@ have_foreign_type_for_backend(target_il, ForeignTypeBody,
         ( ForeignTypeBody ^ il = yes(_) -> yes ; no )).
 have_foreign_type_for_backend(target_java, ForeignTypeBody,
         ( ForeignTypeBody ^ java = yes(_) -> yes ; no )).
+have_foreign_type_for_backend(target_csharp, ForeignTypeBody,
+        ( ForeignTypeBody ^ csharp = yes(_) -> yes ; no )).
 have_foreign_type_for_backend(target_erlang, ForeignTypeBody,
         ( ForeignTypeBody ^ erlang = yes(_) -> yes ; no )).
 have_foreign_type_for_backend(target_asm, ForeignTypeBody, Result) :-
@@ -524,7 +526,7 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
     % Any changes here may require changes there as well.
 
     ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava,
-        MaybeErlang),
+        MaybeCSharp, MaybeErlang),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
@@ -547,6 +549,17 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
         ;
             MaybeIL = no,
             unexpected(this_file, "to_exported_type: no IL type")
+        )
+    ;
+        Target = target_csharp,
+        (
+            MaybeCSharp = yes(Data),
+            Data = foreign_type_lang_data(csharp_type(NameStr),
+                MaybeUserEqComp, Assertions),
+            Name = unqualified(NameStr)
+        ;
+            MaybeCSharp = no,
+            unexpected(this_file, "to_exported_type: no C# type")
         )
     ;
         Target = target_java,
@@ -669,10 +682,33 @@ exported_type_to_string(Lang, ExportedType) = Result :-
             )
         ;
             Lang = lang_csharp,
-            sorry(this_file, "exported_type_to_string for csharp")
-        ;
-            Lang = lang_il,
-            sorry(this_file, "exported_type_to_string for il")
+            (
+                Type = builtin_type(BuiltinType),
+                (
+                    BuiltinType = builtin_type_int,
+                    Result = "int"
+                ;
+                    BuiltinType = builtin_type_float,
+                    Result = "double"
+                ;
+                    BuiltinType = builtin_type_string,
+                    Result = "string"
+                ;
+                    BuiltinType = builtin_type_char,
+                    Result = "char"
+                )
+            ;
+                ( Type = tuple_type(_, _)
+                ; Type = defined_type(_, _, _)
+                ; Type = higher_order_type(_, _, _, _)
+                ; Type = apply_n_type(_, _, _)
+                ; Type = type_variable(_, _)
+                ; Type = kinded_type(_, _)
+                ),
+                % This is here so we can share some code between C/C#/Java
+                % backends.  This is not the correct type to use in general.
+                Result = "object"
+            )
         ;
             Lang = lang_java,
             (
@@ -698,10 +734,13 @@ exported_type_to_string(Lang, ExportedType) = Result :-
                 ; Type = type_variable(_, _)
                 ; Type = kinded_type(_, _)
                 ),
-                % This is here so we can share some code between C and Java
+                % This is here so we can share some code between C/C#/Java
                 % backends.  This is not the correct type to use in general.
                 Result = "java.lang.Object"
             )
+        ;
+            Lang = lang_il,
+            sorry(this_file, "exported_type_to_string for il")
         ;
             Lang = lang_erlang,
             sorry(this_file, "exported_type_to_string for erlang")

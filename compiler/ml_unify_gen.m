@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2009 The University of Melbourne.
+% Copyright (C) 1999-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -542,6 +542,7 @@ ml_gen_reserved_address(ModuleInfo, ResAddr, MLDS_Type) = Rval :-
 
 target_supports_inheritence(target_c) = no.
 target_supports_inheritence(target_il) = yes.
+target_supports_inheritence(target_csharp) = yes.
 target_supports_inheritence(target_java) = yes.
 target_supports_inheritence(target_asm) = no.
 target_supports_inheritence(target_x86_64) =

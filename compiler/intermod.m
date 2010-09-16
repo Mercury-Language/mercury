@@ -1096,9 +1096,9 @@ gather_types_2(TypeCtor, TypeDefn0, !Info) :-
     intermod_info::in, intermod_info::out) is det.
 
 resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
-        foreign_type_body(MaybeIL0, MaybeC0, MaybeJava0, MaybeErlang0),
-        foreign_type_body(MaybeIL, MaybeC, MaybeJava, MaybeErlang),
-        !Info) :-
+        ForeignTypeBody0, ForeignTypeBody, !Info) :-
+    ForeignTypeBody0 = foreign_type_body(MaybeIL0, MaybeC0, MaybeJava0,
+        MaybeCSharp0, MaybeErlang0),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
 
@@ -1119,6 +1119,7 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
             MaybeC0, MaybeC, !Info)
     ;
         ( Target = target_il
+        ; Target = target_csharp
         ; Target = target_java
         ),
         MaybeC = MaybeC0
@@ -1130,11 +1131,26 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
     ;
         ( Target = target_c
         ; Target = target_asm
+        ; Target = target_csharp
         ; Target = target_java
         ; Target = target_x86_64
         ; Target = target_erlang
         ),
         MaybeIL = MaybeIL0
+    ),
+    (
+        Target = target_csharp,
+        resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
+            MaybeCSharp0, MaybeCSharp, !Info)
+    ;
+        ( Target = target_c
+        ; Target = target_asm
+        ; Target = target_il
+        ; Target = target_java
+        ; Target = target_x86_64
+        ; Target = target_erlang
+        ),
+        MaybeCSharp = MaybeCSharp0
     ),
     (
         Target = target_java,
@@ -1144,6 +1160,7 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
         ( Target = target_c
         ; Target = target_asm
         ; Target = target_il
+        ; Target = target_csharp
         ; Target = target_x86_64
         ; Target = target_erlang
         ),
@@ -1157,11 +1174,14 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
         ( Target = target_c
         ; Target = target_asm
         ; Target = target_il
+        ; Target = target_csharp
         ; Target = target_x86_64
         ; Target = target_java
         ),
         MaybeErlang = MaybeErlang0
-    ).
+    ),
+    ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava,
+        MaybeCSharp, MaybeErlang).
 
 :- pred resolve_foreign_type_body_overloading_2(module_info::in, type_ctor::in,
     foreign_type_lang_body(T)::in, foreign_type_lang_body(T)::out,
@@ -1368,7 +1388,7 @@ write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
         ; Body ^ du_type_is_foreign_type = yes(ForeignTypeBody)
         ),
         ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava,
-            MaybeErlang)
+            MaybeCSharp, MaybeErlang)
     ->
         (
             MaybeIL = yes(DataIL),
@@ -1408,6 +1428,19 @@ write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
             mercury_output_item(MercInfo, JavaItem, !IO)
         ;
             MaybeJava = no
+        ),
+        (
+            MaybeCSharp = yes(DataCSharp),
+            DataCSharp = foreign_type_lang_data(CSharpForeignType,
+                CSharpMaybeUserEqComp, AssertionsCSharp),
+            CSharpItemTypeDefn = item_type_defn_info(VarSet, Name, Args,
+                parse_tree_foreign_type(csharp(CSharpForeignType),
+                    CSharpMaybeUserEqComp, AssertionsCSharp),
+                cond_true, Context, -1),
+            CSharpItem = item_type_defn(CSharpItemTypeDefn),
+            mercury_output_item(MercInfo, CSharpItem, !IO)
+        ;
+            MaybeCSharp = no
         ),
         (
             MaybeErlang = yes(DataErlang),

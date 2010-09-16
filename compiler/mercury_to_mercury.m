@@ -1957,6 +1957,9 @@ mercury_output_type_defn(Info, TVarSet, Name, TParams, TypeDefn, Context,
             ForeignType = java(_),
             io.write_string("java, ", !IO)
         ;
+            ForeignType = csharp(_),
+            io.write_string("csharp, ", !IO)
+        ;
             ForeignType = erlang(_),
             io.write_string("erlang, ", !IO)
         ),
@@ -1981,6 +1984,8 @@ mercury_output_type_defn(Info, TVarSet, Name, TParams, TypeDefn, Context,
             ForeignType = c(c_type(ForeignTypeStr))
         ;
             ForeignType = java(java_type(ForeignTypeStr))
+        ;
+            ForeignType = csharp(csharp_type(ForeignTypeStr))
         ;
             ForeignType = erlang(erlang_type),
             ForeignTypeStr = ""

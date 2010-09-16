@@ -292,6 +292,8 @@
     ;       compile_to_c        % target c + target_code_only
     ;       java                % target java
     ;       java_only           % target java + target_code_only
+    ;       csharp              % target csharp
+    ;       csharp_only         % target csharp + target_code_only
     % XXX The following options need to be documented.
     ;       x86_64              % target x86_64
     ;       x86_64_only         % target x86_64 + target_code_only
@@ -1210,6 +1212,8 @@ option_defaults_2(compilation_model_option, [
     il                                  -   special,
     il_only                             -   special,
     compile_to_c                        -   special,
+    csharp                              -   special,
+    csharp_only                         -   special,
     java                                -   special,
     java_only                           -   special,
     x86_64                              -   special,
@@ -2063,6 +2067,10 @@ long_option("java",                 java).
 long_option("Java",                 java).
 long_option("java-only",            java_only).
 long_option("Java-only",            java_only).
+long_option("csharp",               csharp).
+long_option("C#",                   csharp).
+long_option("csharp-only",          csharp_only).
+long_option("C#-only",              csharp_only).
 long_option("x86_64",               x86_64).
 long_option("x86-64",               x86_64).
 long_option("x86_64-only",          x86_64_only).
@@ -2768,6 +2776,11 @@ special_handler(java, none, OptionTable0, ok(OptionTable)) :-
     map.set(OptionTable0, target, string("java"), OptionTable).
 special_handler(java_only, none, OptionTable0, ok(OptionTable)) :-
     map.set(OptionTable0, target, string("java"), OptionTable1),
+    map.set(OptionTable1, target_code_only, bool(yes), OptionTable).
+special_handler(csharp, none, OptionTable0, ok(OptionTable)) :-
+    map.set(OptionTable0, target, string("csharp"), OptionTable).
+special_handler(csharp_only, none, OptionTable0, ok(OptionTable)) :-
+    map.set(OptionTable0, target, string("csharp"), OptionTable1),
     map.set(OptionTable1, target_code_only, bool(yes), OptionTable).
 special_handler(x86_64, none, OptionTable0, ok(OptionTable)) :-
     map.set(OptionTable0, target, string("x86_64"), OptionTable).

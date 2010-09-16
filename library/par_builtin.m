@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=8 sw=4 sts=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2006-2009 The University of Melbourne.
+% Copyright (C) 2006-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -122,6 +122,7 @@
     % Placeholder only.
 :- pragma foreign_type(il, future(T), "class [mscorlib]System.Object").
 :- pragma foreign_type("Erlang", future(T), "").
+% :- pragma foreign_type("C#", future(T), "object").
 :- pragma foreign_type("Java", future(T), "java.lang.Object").
 
 %-----------------------------------------------------------------------------%

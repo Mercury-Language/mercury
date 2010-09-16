@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2009 The University of Melbourne.
+% Copyright (C) 1993-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -447,6 +447,7 @@ check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
     ;
         ( Target = target_c, LangStr = "C"
         ; Target = target_il, LangStr = "IL"
+        ; Target = target_csharp, LangStr = "C#"
         ; Target = target_java, LangStr = "Java"
         ; Target = target_asm, LangStr = "C"
         ; Target = target_x86_64, LangStr = "C"
@@ -483,7 +484,7 @@ merge_foreign_type_bodies(Target, MakeOptInterface,
         MaybeForeignTypeBody1 = yes(ForeignTypeBody1)
     ;
         MaybeForeignTypeBody1 = no,
-        ForeignTypeBody1 = foreign_type_body(no, no, no, no)
+        ForeignTypeBody1 = foreign_type_body(no, no, no, no, no)
     ),
     merge_foreign_type_bodies_2(ForeignTypeBody0, ForeignTypeBody1,
         ForeignTypeBody),
@@ -506,14 +507,18 @@ merge_foreign_type_bodies(_, _, hlds_foreign_type(Body0),
 :- pred merge_foreign_type_bodies_2(foreign_type_body::in,
     foreign_type_body::in, foreign_type_body::out) is semidet.
 
-merge_foreign_type_bodies_2(
-        foreign_type_body(MaybeILA, MaybeCA, MaybeJavaA, MaybeErlangA),
-        foreign_type_body(MaybeILB, MaybeCB, MaybeJavaB, MaybeErlangB),
-        foreign_type_body(MaybeIL, MaybeC, MaybeJava, MaybeErlang)) :-
+merge_foreign_type_bodies_2(TypeBodyA, TypeBodyB, TypeBody) :-
+    TypeBodyA = foreign_type_body(MaybeILA, MaybeCA, MaybeJavaA, MaybeCSharpA,
+        MaybeErlangA),
+    TypeBodyB = foreign_type_body(MaybeILB, MaybeCB, MaybeJavaB, MaybeCSharpB,
+        MaybeErlangB),
     merge_maybe(MaybeILA, MaybeILB, MaybeIL),
     merge_maybe(MaybeCA, MaybeCB, MaybeC),
     merge_maybe(MaybeJavaA, MaybeJavaB, MaybeJava),
-    merge_maybe(MaybeErlangA, MaybeErlangB, MaybeErlang).
+    merge_maybe(MaybeCSharpA, MaybeCSharpB, MaybeCSharp),
+    merge_maybe(MaybeErlangA, MaybeErlangB, MaybeErlang),
+    TypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava, MaybeCSharp,
+        MaybeErlang).
 
 :- pred merge_maybe(maybe(T)::in, maybe(T)::in, maybe(T)::out) is semidet.
 
@@ -654,22 +659,27 @@ convert_type_defn(parse_tree_foreign_type(ForeignType, MaybeUserEqComp,
         ForeignType = il(ILForeignType),
         Data = foreign_type_lang_data(ILForeignType, MaybeUserEqComp,
             Assertions),
-        Body = foreign_type_body(yes(Data), no, no, no)
+        Body = foreign_type_body(yes(Data), no, no, no, no)
     ;
         ForeignType = c(CForeignType),
         Data = foreign_type_lang_data(CForeignType, MaybeUserEqComp,
             Assertions),
-        Body = foreign_type_body(no, yes(Data), no, no)
+        Body = foreign_type_body(no, yes(Data), no, no, no)
     ;
         ForeignType = java(JavaForeignType),
         Data = foreign_type_lang_data(JavaForeignType, MaybeUserEqComp,
             Assertions),
-        Body = foreign_type_body(no, no, yes(Data), no)
+        Body = foreign_type_body(no, no, yes(Data), no, no)
+    ;
+        ForeignType = csharp(CSharpForeignType),
+        Data = foreign_type_lang_data(CSharpForeignType, MaybeUserEqComp,
+            Assertions),
+        Body = foreign_type_body(no, no, no, yes(Data), no)
     ;
         ForeignType = erlang(ErlangForeignType),
         Data = foreign_type_lang_data(ErlangForeignType, MaybeUserEqComp,
             Assertions),
-        Body = foreign_type_body(no, no, no, yes(Data))
+        Body = foreign_type_body(no, no, no, no, yes(Data))
     ).
 
 :- pred ctors_add(list(constructor)::in, type_ctor::in, module_name::in,

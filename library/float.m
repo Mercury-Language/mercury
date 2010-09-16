@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2001-2008 The University of Melbourne.
+% Copyright (C) 1994-1998,2001-2008,2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -620,13 +620,19 @@ is_nan_or_inf(Float) :-
 "
 	SUCCESS_INDICATOR = MR_is_nan(Flt);
 ").
-:- pragma foreign_proc(il,
+:- pragma foreign_proc("IL",
 	is_nan(Flt::in),
 	[will_not_call_mercury, promise_pure, thread_safe, max_stack_size(1)],
 "
 	ldloc 'Flt'
 	call bool [mscorlib]System.Double::IsNaN(float64)
 	stloc 'succeeded'
+").
+:- pragma foreign_proc("C#",
+	is_nan(Flt::in),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	SUCCESS_INDICATOR = System.Double.IsNaN(Flt);
 ").
 :- pragma foreign_proc("Java",
 	is_nan(Flt::in),
@@ -650,13 +656,19 @@ is_nan_or_inf(Float) :-
 "
 	SUCCESS_INDICATOR = MR_is_inf(Flt);
 ").
-:- pragma foreign_proc(il,
+:- pragma foreign_proc("IL",
 	is_inf(Flt::in),
 	[will_not_call_mercury, promise_pure, thread_safe, max_stack_size(1)],
 "
 	ldloc 'Flt'
 	call bool [mscorlib]System.Double::IsInfinity(float64)
 	stloc 'succeeded'
+").
+:- pragma foreign_proc("C#",
+	is_inf(Flt::in),
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	SUCCESS_INDICATOR = System.Double.IsInfinity(Flt);
 ").
 :- pragma foreign_proc("Java",
 	is_inf(Flt::in),

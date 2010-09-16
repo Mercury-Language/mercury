@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2009 The University of Melbourne.
+% Copyright (C) 2000-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1988,6 +1988,9 @@ atomic_statement_to_il(inline_target_code(ml_target_il, Code), Instrs,
 atomic_statement_to_il(inline_target_code(ml_target_c, _Code), _Instrs,
         !Info) :-
     unexpected(this_file, "ml_target_c").
+atomic_statement_to_il(inline_target_code(ml_target_csharp, _Code), _Instrs,
+        !Info) :-
+    unexpected(this_file, "ml_target_csharp").
 atomic_statement_to_il(inline_target_code(ml_target_java, _Code), _Instrs,
         !Info) :-
     unexpected(this_file, "ml_target_java").
@@ -3167,6 +3170,9 @@ mlds_type_to_ilds_type(_, mlds_foreign_type(ForeignType))
     ;
         ForeignType = java(_),
         unexpected(this_file, "java foreign type")
+    ;
+        ForeignType = csharp(_),
+        unexpected(this_file, "csharp foreign type")
     ;
         ForeignType = erlang(_),
         unexpected(this_file, "erlang foreign type")

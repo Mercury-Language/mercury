@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -409,20 +409,22 @@ typed_compare(R, X, Y) :-
 
 :- pragma foreign_code("C#", "
 
-public static object[] MR_typeclass_info_param_type_info(object[] tcinfo,
-    int index)
+public static runtime.TypeInfo_Struct
+MR_typeclass_info_param_type_info(object[] tcinfo, int index)
 {
     object[] tmp;
     int t1;
 
     tmp = (object[]) tcinfo[0];
     t1 = System.Convert.ToInt32(tmp[0]) + index;
-    return (object[]) tcinfo[t1];
+    return (runtime.TypeInfo_Struct) tcinfo[t1];
 }
-public static object[] MR_typeclass_info_instance_tvar_type_info(
+
+public static runtime.TypeInfo_Struct
+MR_typeclass_info_instance_tvar_type_info(
     object[] tcinfo, int index) 
 {
-    return (object[]) tcinfo[index];
+    return (runtime.TypeInfo_Struct) tcinfo[index];
 }
 
 public static object[] MR_typeclass_info_superclass_info(
@@ -488,131 +490,182 @@ MR_typeclass_info_arg_typeclass_info(
 
 :- pragma foreign_code("C#", "
 
-    // XXX These static constants are duplicated both here and in
-    // mercury_dotnet.cs.in.
+public class Ref_1
+{
+    // XXX stub only
+}
 
-    // This is because other library modules reference them
-    // from .NET code (so they depend on the versions in the runtime to
-    // make the dependencies simple) whereas the compiler generates
-    // references to the ones here. 
-
-    // See runtime/mercury_dotnet.cs.in for discussion of why we aren't
-    // using enums or const static ints here.
-
-public static int MR_TYPECTOR_REP_ENUM                  = 0;
-public static int MR_TYPECTOR_REP_ENUM_USEREQ           = 1;
-public static int MR_TYPECTOR_REP_DU                    = 2;
-public static int MR_TYPECTOR_REP_DU_USEREQ             = 3;
-public static int MR_TYPECTOR_REP_NOTAG                 = 4;
-public static int MR_TYPECTOR_REP_NOTAG_USEREQ          = 5;
-public static int MR_TYPECTOR_REP_EQUIV                 = 6;
-public static int MR_TYPECTOR_REP_FUNC                  = 7;
-public static int MR_TYPECTOR_REP_INT                   = 8;
-public static int MR_TYPECTOR_REP_CHAR                  = 9;
-public static int MR_TYPECTOR_REP_FLOAT                 =10;
-public static int MR_TYPECTOR_REP_STRING                =11;
-public static int MR_TYPECTOR_REP_PRED                  =12;
-public static int MR_TYPECTOR_REP_SUBGOAL               =13;
-public static int MR_TYPECTOR_REP_VOID                  =14;
-public static int MR_TYPECTOR_REP_C_POINTER             =15;
-public static int MR_TYPECTOR_REP_TYPEINFO              =16;
-public static int MR_TYPECTOR_REP_TYPECLASSINFO         =17;
-public static int MR_TYPECTOR_REP_ARRAY                 =18;
-public static int MR_TYPECTOR_REP_SUCCIP                =19;
-public static int MR_TYPECTOR_REP_HP                    =20;
-public static int MR_TYPECTOR_REP_CURFR                 =21;
-public static int MR_TYPECTOR_REP_MAXFR                 =22;
-public static int MR_TYPECTOR_REP_REDOFR                =23;
-public static int MR_TYPECTOR_REP_REDOIP                =24;
-public static int MR_TYPECTOR_REP_TRAIL_PTR             =25;
-public static int MR_TYPECTOR_REP_TICKET                =26;
-public static int MR_TYPECTOR_REP_NOTAG_GROUND          =27;
-public static int MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ   =28;
-public static int MR_TYPECTOR_REP_EQUIV_GROUND          =29;
-public static int MR_TYPECTOR_REP_TUPLE                 =30;
-public static int MR_TYPECTOR_REP_RESERVED_ADDR         =31;
-public static int MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ  =32;
-public static int MR_TYPECTOR_REP_TYPECTORINFO          =33;
-public static int MR_TYPECTOR_REP_BASETYPECLASSINFO     =34;
-public static int MR_TYPECTOR_REP_TYPEDESC              =35;
-public static int MR_TYPECTOR_REP_TYPECTORDESC          =36;
-public static int MR_TYPECTOR_REP_FOREIGN               =37;
-public static int MR_TYPECTOR_REP_REFERENCE             =38;
-public static int MR_TYPECTOR_REP_STABLE_C_POINTER      =39;
-public static int MR_TYPECTOR_REP_STABLE_FOREIGN        =40;
-public static int MR_TYPECTOR_REP_PSEUDOTYPEDESC        =41;
-public static int MR_TYPECTOR_REP_DUMMY                 =42;
-public static int MR_TYPECTOR_REP_BITMAP                =43;
-public static int MR_TYPECTOR_REP_FOREIGN_ENUM          =44;
-public static int MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ   =45;
-public static int MR_TYPECTOR_REP_UNKNOWN               =46;
-
-public static int MR_SECTAG_NONE                        = 0;
-public static int MR_SECTAG_LOCAL                       = 1;
-public static int MR_SECTAG_REMOTE                      = 2;
-public static int MR_SECTAG_VARIABLE                    = 3;
-
-public static int MR_PREDICATE                          = 0;
-public static int MR_FUNCTION                           = 1;
+public class Heap_pointer_0
+{
+    // XXX stub only
+}
 
 public static bool
-special__Unify____type_info_1_0(
-    object[] type_info, object[] x, object[] y)
+__Unify____ref_1_0(runtime.TypeInfo_Struct ti,
+    private_builtin.Ref_1 x, private_builtin.Ref_1 y)
 {
-    mercury.runtime.Errors.SORRY(""unify for type_info"");
+    runtime.Errors.SORRY(""unify for ref"");
+    return false;
+}
+
+public static builtin.Comparison_result_0
+__Compare____ref_1_0(runtime.TypeInfo_Struct ti,
+    private_builtin.Ref_1 x, private_builtin.Ref_1 y)
+{
+    runtime.Errors.SORRY(""compare for ref"");
+    return builtin.Comparison_result_0.f_equal;
+}
+
+public static bool
+__Unify____heap_pointer_0_0(
+    private_builtin.Heap_pointer_0 x, private_builtin.Heap_pointer_0 y)
+{
+    runtime.Errors.SORRY(""unify for heap_pointer"");
+    return false;
+}
+
+public static builtin.Comparison_result_0
+__Compare____heap_pointer_0_0(
+    private_builtin.Heap_pointer_0 x, private_builtin.Heap_pointer_0 y)
+{
+    runtime.Errors.SORRY(""unify for heap_pointer"");
+    return builtin.Comparison_result_0.f_equal;
+}
+
+public static bool
+__Unify____type_info_0_0(
+    runtime.TypeInfo_Struct x,
+    runtime.TypeInfo_Struct y)
+{
+    runtime.Errors.SORRY(""unify for type_info"");
     return false;
 }
 
 public static bool
-special__Unify____typeclass_info_1_0(
-    object[] type_info, object[] x, object[] y)
+__Unify____type_info_1_0(
+    object[] type_info,
+    runtime.TypeInfo_Struct x,
+    runtime.TypeInfo_Struct y)
 {
-    mercury.runtime.Errors.SORRY(""unify for typeclass_info"");
+    runtime.Errors.SORRY(""unify for type_info"");
     return false;
 }
 
 public static bool
-special__Unify____base_typeclass_info_1_0(
-    object[] type_info, object[] x, object[] y)
+__Unify____typeclass_info_0_0(
+    object[] x, object[] y)
 {
-    mercury.runtime.Errors.SORRY(""unify for base_typeclass_info"");
+    runtime.Errors.SORRY(""unify for typeclass_info"");
     return false;
 }
 
 public static bool
-special__Unify____type_ctor_info_1_0(
+__Unify____typeclass_info_1_0(
     object[] type_info, object[] x, object[] y)
 {
-    mercury.runtime.Errors.SORRY(""unify for type_ctor_info"");
+    runtime.Errors.SORRY(""unify for typeclass_info"");
     return false;
 }
 
-public static void
-special__Compare____type_ctor_info_1_0(
-    object[] type_info, ref object[] result, object[] x, object[] y)
+public static bool
+__Unify____base_typeclass_info_0_0(
+    object[] x, object[] y)
 {
-    mercury.runtime.Errors.SORRY(""compare for type_ctor_info"");
+    runtime.Errors.SORRY(""unify for base_typeclass_info"");
+    return false;
 }
 
-public static void
-special__Compare____type_info_1_0(
-    object[] type_info, ref object[] result, object[] x, object[] y)
+public static bool
+__Unify____base_typeclass_info_1_0(
+    object[] type_info, object[] x, object[] y)
 {
-    mercury.runtime.Errors.SORRY(""compare for type_info"");
+    runtime.Errors.SORRY(""unify for base_typeclass_info"");
+    return false;
 }
 
-public static void
-special__Compare____typeclass_info_1_0(
-    object[] type_info, ref object[] result, object[] x, object[] y)
+public static bool
+__Unify____type_ctor_info_0_0(
+    runtime.TypeCtorInfo_Struct x,
+    runtime.TypeCtorInfo_Struct y)
 {
-    mercury.runtime.Errors.SORRY(""compare for typeclass_info"");
+    runtime.Errors.SORRY(""unify for type_ctor_info"");
+    return false;
 }
 
-public static void
-special__Compare____base_typeclass_info_1_0(
-    object[] type_info, ref object[] result, object[] x, object[] y)
+public static bool
+__Unify____type_ctor_info_1_0(
+    object[] type_info, object[] x, object[] y)
 {
-    mercury.runtime.Errors.SORRY(""compare for base_typeclass_info"");
+    runtime.Errors.SORRY(""unify for type_ctor_info"");
+    return false;
+}
+
+public static builtin.Comparison_result_0
+__Compare____type_ctor_info_0_0(
+    runtime.TypeCtorInfo_Struct x,
+    runtime.TypeCtorInfo_Struct y)
+{
+    runtime.Errors.SORRY(""compare for type_ctor_info"");
+    return builtin.Comparison_result_0.f_equal;
+}
+
+public static builtin.Comparison_result_0
+__Compare____type_ctor_info_1_0(
+    object[] type_info, object[] x, object[] y)
+{
+    runtime.Errors.SORRY(""compare for type_ctor_info"");
+    return builtin.Comparison_result_0.f_equal;
+}
+
+public static builtin.Comparison_result_0
+__Compare____type_info_0_0(
+    runtime.TypeInfo_Struct x,
+    runtime.TypeInfo_Struct y)
+{
+    runtime.Errors.SORRY(""compare for type_info"");
+    return builtin.Comparison_result_0.f_equal;
+}
+
+public static builtin.Comparison_result_0
+__Compare____type_info_1_0(
+    object[] type_info,
+    runtime.TypeInfo_Struct x,
+    runtime.TypeInfo_Struct y)
+{
+    runtime.Errors.SORRY(""compare for type_info"");
+    return builtin.Comparison_result_0.f_equal;
+}
+
+public static builtin.Comparison_result_0
+__Compare____typeclass_info_0_0(
+    object[] x, object[] y)
+{
+    runtime.Errors.SORRY(""compare for typeclass_info"");
+    return builtin.Comparison_result_0.f_equal;
+}
+
+public static builtin.Comparison_result_0
+__Compare____typeclass_info_1_0(
+    object[] type_info, object[] x, object[] y)
+{
+    runtime.Errors.SORRY(""compare for typeclass_info"");
+    return builtin.Comparison_result_0.f_equal;
+}
+
+public static builtin.Comparison_result_0
+__Compare____base_typeclass_info_0_0(
+    object[] x, object[] y)
+{
+    runtime.Errors.SORRY(""compare for base_typeclass_info"");
+    return builtin.Comparison_result_0.f_equal;
+}
+
+public static builtin.Comparison_result_0
+__Compare____base_typeclass_info_1_0(
+    object[] type_info, object[] x, object[] y)
+{
+    runtime.Errors.SORRY(""compare for base_typeclass_info"");
+    return builtin.Comparison_result_0.f_equal;
 }
 
 ").
@@ -687,7 +740,8 @@ special__Compare____base_typeclass_info_1_0(
         TypeInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeInfo = MR_typeclass_info_param_type_info(TypeClassInfo, Index);
+    TypeInfo = private_builtin.MR_typeclass_info_param_type_info(
+        TypeClassInfo, Index);
 ").
 
 :- pragma foreign_proc("C#",
@@ -695,7 +749,8 @@ special__Compare____base_typeclass_info_1_0(
         Index::in, TypeInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeInfo = MR_typeclass_info_instance_tvar_type_info(TypeClassInfo, Index);
+    TypeInfo = private_builtin.MR_typeclass_info_instance_tvar_type_info(
+        TypeClassInfo, Index);
 ").
 
 :- pragma foreign_proc("C#",
@@ -703,7 +758,8 @@ special__Compare____base_typeclass_info_1_0(
         TypeClassInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeClassInfo = MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
+    TypeClassInfo = private_builtin.MR_typeclass_info_superclass_info(
+        TypeClassInfo0, Index);
 ").
 
 :- pragma foreign_proc("C#",
@@ -711,8 +767,8 @@ special__Compare____base_typeclass_info_1_0(
         Index::in, TypeClassInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    TypeClassInfo =
-        MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
+    TypeClassInfo = private_builtin.MR_typeclass_info_arg_typeclass_info(
+        TypeClassInfo0, Index);
 ").
 
 :- pragma foreign_proc("Java",
@@ -912,7 +968,7 @@ special__Compare____base_typeclass_info_1_0(
     [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL
-    mercury.runtime.Errors.SORRY(""foreign code for this function"");
+    runtime.Errors.SORRY(""foreign code for this function"");
     // MR_store_ticket(Ticket);
 #else
     Ticket = null;
@@ -924,7 +980,7 @@ special__Compare____base_typeclass_info_1_0(
     [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL
-    mercury.runtime.Errors.SORRY(""foreign code for this function"");
+    runtime.Errors.SORRY(""foreign code for this function"");
     // MR_reset_ticket(Ticket, MR_undo);
 #endif
 ").
@@ -934,7 +990,7 @@ special__Compare____base_typeclass_info_1_0(
     [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL
-    mercury.runtime.Errors.SORRY(""foreign code for this function"");
+    runtime.Errors.SORRY(""foreign code for this function"");
     // MR_reset_ticket(Ticket, MR_commit);
 #endif
 ").
@@ -944,7 +1000,7 @@ special__Compare____base_typeclass_info_1_0(
     [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL
-    mercury.runtime.Errors.SORRY(""foreign code for this function"");
+    runtime.Errors.SORRY(""foreign code for this function"");
     // MR_reset_ticket(Ticket, MR_solve);
 #endif
 ").
@@ -954,7 +1010,7 @@ special__Compare____base_typeclass_info_1_0(
     [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL
-    mercury.runtime.Errors.SORRY(""foreign code for this function"");
+    runtime.Errors.SORRY(""foreign code for this function"");
     // MR_discard_ticket();
 #endif
 ").
@@ -964,7 +1020,7 @@ special__Compare____base_typeclass_info_1_0(
     [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL
-    mercury.runtime.Errors.SORRY(""foreign code for this function"");
+    runtime.Errors.SORRY(""foreign code for this function"");
     // MR_prune_ticket();
 #endif
 ").
@@ -974,7 +1030,7 @@ special__Compare____base_typeclass_info_1_0(
     [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL
-    mercury.runtime.Errors.SORRY(""foreign code for this function"");
+    runtime.Errors.SORRY(""foreign code for this function"");
     // MR_mark_ticket_stack(TicketCounter);
 #else
     TicketCounter = null;
@@ -986,7 +1042,7 @@ special__Compare____base_typeclass_info_1_0(
     [will_not_call_mercury, thread_safe],
 "
 #if MR_USE_TRAIL
-    mercury.runtime.Errors.SORRY(""foreign code for this function"");
+    runtime.Errors.SORRY(""foreign code for this function"");
     // MR_prune_tickets_to(TicketCounter);
 #endif
 ").
@@ -1341,33 +1397,33 @@ reclaim_heap_nondet_pragma_foreign_code :-
 :- pragma foreign_code("C#", "
     
 public static bool
-special__Unify__private_builtin__heap_pointer_0_0(object[] x, object[] y)
+__Unify__private_builtin__heap_pointer_0_0(object[] x, object[] y)
 {
-    mercury.runtime.Errors.fatal_error(
+    runtime.Errors.fatal_error(
         ""called unify for type `private_builtin:heap_pointer'"");
     return false;
 }
 
 public static void
-special__Compare__private_builtin__heap_pointer_0_0(
+__Compare__private_builtin__heap_pointer_0_0(
     ref object[] result, object[] x, object[] y)
 {
-    mercury.runtime.Errors.fatal_error(
+    runtime.Errors.fatal_error(
         ""called compare/3 for type `private_builtin:heap_pointer'"");
 }
 
 public static bool
-special__Unify__private_builtin__ref_1_0(
+__Unify__private_builtin__ref_1_0(
     object[] type_info, object[] x, object[] y)
 {
     return x == y;
 }
 
 public static void
-special__Compare__private_builtin__ref_1_0(
+__Compare__private_builtin__ref_1_0(
     object[] type_info, ref object[] result, object[] x, object[] y)
 {
-    mercury.runtime.Errors.fatal_error(
+    runtime.Errors.fatal_error(
         ""called compare/3 for type `private_builtin.ref'"");
 }
 

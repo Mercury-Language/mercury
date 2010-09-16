@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2009 The University of Melbourne.
+% Copyright (C) 2002-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -69,7 +69,7 @@
 :- include_module source_file_map.
 :- include_module write_deps_file.
 
-% Java-related utilities.
+% Java and C# related utilities.
 :- include_module java_names.
 
 % (Note that intermod and trans_opt also contain routines that

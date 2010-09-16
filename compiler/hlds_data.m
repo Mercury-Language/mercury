@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -272,6 +272,7 @@
                 il      :: foreign_type_lang_body(il_foreign_type),
                 c       :: foreign_type_lang_body(c_foreign_type),
                 java    :: foreign_type_lang_body(java_foreign_type),
+                csharp  :: foreign_type_lang_body(csharp_foreign_type),
                 erlang  :: foreign_type_lang_body(erlang_foreign_type)
             ).
 

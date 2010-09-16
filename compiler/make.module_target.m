@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2009 The University of Melbourne.
+% Copyright (C) 2002-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -537,6 +537,9 @@ build_object_code(Globals, ModuleName, Target, PIC, ErrorStream, Imports,
             JavaFile, !IO),
         compile_java_files(ErrorStream, [JavaFile], Globals, Succeeded, !IO)
     ;
+        Target = target_csharp,
+        sorry(this_file, "NYI mmc --make and target csharp")
+    ;
         Target = target_il,
         il_assemble(ErrorStream, ModuleName, Imports ^ mai_has_main,
             Globals, Succeeded, !IO)
@@ -635,6 +638,9 @@ get_object_extension(Globals, PIC) = Ext :-
     ;
         CompilationTarget = target_il,
         Ext = ".dll"
+    ;
+        CompilationTarget = target_csharp,
+        sorry(this_file, "object extension for csharp")
     ;
         CompilationTarget = target_java,
         sorry(this_file, "object extension for java")
@@ -836,6 +842,8 @@ compilation_task(_, module_target_il_code) =
     process_module(task_compile_to_target_code) - ["--il-only"].
 compilation_task(_, module_target_il_asm) =
         target_code_to_object_code(non_pic) - [].
+compilation_task(_, module_target_csharp_code) =
+    process_module(task_compile_to_target_code) - ["--csharp-only"].
 compilation_task(_, module_target_java_code) =
     process_module(task_compile_to_target_code) - ["--java-only"].
 compilation_task(_, module_target_java_class_code) =
@@ -990,6 +998,7 @@ touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
                 module_target_c_header(header_mih))
         ;
             ( CompilationTarget = target_il
+            ; CompilationTarget = target_csharp
             ; CompilationTarget = target_java
             ),
             HeaderTargets0 = []
@@ -1014,6 +1023,7 @@ touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
                 ++ HeaderTargets0
         ;
             ( CompilationTarget = target_il
+            ; CompilationTarget = target_csharp
             ; CompilationTarget = target_java
             ; CompilationTarget = target_erlang
             ),
@@ -1108,6 +1118,7 @@ external_foreign_code_files(Globals, PIC, Imports, ForeignFiles, !IO) :-
         ForeignFiles = ForeignFiles0 ++ FactTableForeignFiles
     ;
         ( CompilationTarget = target_java
+        ; CompilationTarget = target_csharp
         ; CompilationTarget = target_il
         ; CompilationTarget = target_x86_64
         ; CompilationTarget = target_erlang
@@ -1158,6 +1169,7 @@ target_type_to_pic(TargetType) = Result :-
         ; TargetType = module_target_c_code
         ; TargetType = module_target_il_code
         ; TargetType = module_target_il_asm
+        ; TargetType = module_target_csharp_code
         ; TargetType = module_target_java_code
         ; TargetType = module_target_java_class_code
         ; TargetType = module_target_erlang_header

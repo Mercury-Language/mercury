@@ -378,6 +378,7 @@ det_negation_det(detism_failure,   yes(detism_det)).
     --->    il(il_foreign_type)
     ;       c(c_foreign_type)
     ;       java(java_foreign_type)
+    ;       csharp(csharp_foreign_type)
     ;       erlang(erlang_foreign_type).
 
 :- type il_foreign_type
@@ -396,6 +397,11 @@ det_negation_det(detism_failure,   yes(detism_det)).
 :- type java_foreign_type
     --->    java_type(
                 string      % The Java type name
+            ).
+
+:- type csharp_foreign_type
+    --->    csharp_type(
+                string      % The C# type name
             ).
 
 :- type erlang_foreign_type
@@ -1320,6 +1326,7 @@ add_extra_attribute(NewAttribute, !Attrs) :-
     ;       trace_grade_mlds
     ;       trace_grade_c
     ;       trace_grade_il
+    ;       trace_grade_csharp
     ;       trace_grade_java
     ;       trace_grade_erlang.
 
@@ -1378,6 +1385,7 @@ parse_trace_grade_name("llds", trace_grade_llds).
 parse_trace_grade_name("mlds", trace_grade_mlds).
 parse_trace_grade_name("c", trace_grade_c).
 parse_trace_grade_name("il", trace_grade_il).
+parse_trace_grade_name("csharp", trace_grade_csharp).
 parse_trace_grade_name("java", trace_grade_java).
 parse_trace_grade_name("erlang", trace_grade_erlang).
 

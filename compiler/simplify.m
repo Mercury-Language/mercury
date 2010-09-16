@@ -2011,6 +2011,9 @@ simplify_goal_trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr, SubGoal,
                 Target = target_java,
                 !:EvalAttributes = default_attributes(lang_java)
             ;
+                Target = target_csharp,
+                !:EvalAttributes = default_attributes(lang_csharp)
+            ;
                 ( Target = target_il
                 ; Target = target_asm
                 ; Target = target_x86_64
@@ -2163,6 +2166,14 @@ evaluate_compile_time_condition(trace_base(Base), Info) = Result :-
             Grade = trace_grade_il,
             globals.get_target(Globals, Target),
             ( Target = target_il ->
+                Result = yes
+            ;
+                Result = no
+            )
+        ;
+            Grade = trace_grade_csharp,
+            globals.get_target(Globals, Target),
+            ( Target = target_csharp ->
                 Result = yes
             ;
                 Result = no

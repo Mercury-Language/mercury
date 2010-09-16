@@ -1210,6 +1210,7 @@ maybe_control_granularity(Verbose, Stats, !HLDS, !IO) :-
             maybe_report_stats(Stats, !IO)
         ;
             ( Target = target_il
+            ; Target = target_csharp
             ; Target = target_java
             ; Target = target_asm
             ; Target = target_x86_64
@@ -1257,6 +1258,7 @@ maybe_control_distance_granularity(Verbose, Stats, !HLDS, !IO) :-
             maybe_report_stats(Stats, !IO)
         ;
             ( Target = target_il
+            ; Target = target_csharp
             ; Target = target_java
             ; Target = target_asm
             ; Target = target_x86_64

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -481,6 +481,7 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
         ;
             ( Target = target_asm
             ; Target = target_il
+            ; Target = target_csharp
             ; Target = target_erlang
             ; Target = target_x86_64
             ),

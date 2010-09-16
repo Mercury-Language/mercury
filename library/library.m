@@ -192,8 +192,8 @@
     library.version(Version::out),
     [will_not_call_mercury, promise_pure],
 "
-    Version = mercury.runtime.Constants.MR_VERSION + "" configured for ""
-        + mercury.runtime.Constants.MR_FULLARCH;
+    Version = runtime.Constants.MR_VERSION + "" configured for ""
+        + runtime.Constants.MR_FULLARCH;
 ").
 
 :- pragma foreign_proc("Java",

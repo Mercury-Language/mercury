@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2009 The University of Melbourne.
+% Copyright (C) 1999-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1416,6 +1416,7 @@
 %   ;       ml_target_c_minus_minus
     ;       ml_target_asm
     ;       ml_target_il
+    ;       ml_target_csharp
     ;       ml_target_java.
 %   ;       ml_target_java_asm
 %   ;       ml_target_java_bytecode.
@@ -1933,7 +1934,7 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
     % Any changes here may require changes there as well.
 
     ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava,
-        _MaybeErlang),
+        MaybeCSharp, _MaybeErlang),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
@@ -1959,6 +1960,18 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
             % This is checked by check_foreign_type in make_hlds.
             unexpected(this_file,
                 "mercury_type_to_mlds_type: No IL foreign type")
+        )
+    ;
+        Target = target_csharp,
+        (
+            MaybeCSharp = yes(Data),
+            Data = foreign_type_lang_data(CSharpForeignType, _, _),
+            ForeignType = csharp(CSharpForeignType)
+        ;
+            MaybeCSharp = no,
+            % This is checked by check_foreign_type in make_hlds.
+            unexpected(this_file,
+                "mercury_type_to_mlds_type: no C# foreign type")
         )
     ;
         Target = target_java,

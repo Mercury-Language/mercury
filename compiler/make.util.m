@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2010 University of Melbourne.
+% Copyright (C) 2002-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1385,6 +1385,7 @@ target_extension(_, module_target_il_code) = yes(".il").
 
     % XXX ".exe" if the module contains main.
 target_extension(_, module_target_il_asm) = yes(".dll").
+target_extension(_, module_target_csharp_code) = yes(".cs").
 target_extension(_, module_target_java_code) = yes(".java").
 target_extension(_, module_target_java_class_code) = yes(".class").
 target_extension(_, module_target_erlang_header) = yes(".hrl").
@@ -1415,6 +1416,7 @@ linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
         ;
             ( Target = target_c
             ; Target = target_il
+            ; Target = target_csharp
             ; Target = target_asm
             ; Target = target_x86_64
             ),
@@ -1432,6 +1434,10 @@ linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
         TargetType = shared_library,
         globals.lookup_string_option(Globals, shared_library_extension, Ext),
         module_name_to_lib_file_name(Globals, "lib", ModuleName, Ext,
+            do_not_create_dirs, FileName, !IO)
+    ;
+        TargetType = csharp_library,
+        module_name_to_file_name(Globals, ModuleName, ".dll",
             do_not_create_dirs, FileName, !IO)
     ;
         TargetType = java_archive,
@@ -1521,6 +1527,7 @@ module_target_to_file_name_maybe_search(Globals, ModuleName, TargetType,
             ; TargetType = make.module_target_il_asm
             ; TargetType = module_target_il_code
             ; TargetType = module_target_intermodule_interface
+            ; TargetType = module_target_csharp_code
             ; TargetType = module_target_java_code
             ; TargetType = module_target_java_class_code
             ; TargetType = module_target_long_interface
@@ -1566,6 +1573,7 @@ timestamp_extension(Globals, module_target_c_header(_)) = Ext :-
         ( Target = target_c
         ; Target = target_x86_64
         ; Target = target_il
+        ; Target = target_csharp
         ; Target = target_java
         ; Target = target_erlang
         ),
@@ -1573,6 +1581,7 @@ timestamp_extension(Globals, module_target_c_header(_)) = Ext :-
     ),
     Ext = timestamp_extension(Globals, ModuleTargetType).
 timestamp_extension(_, module_target_il_code) = ".il_date".
+timestamp_extension(_, module_target_csharp_code) = ".cs_date".
 timestamp_extension(_, module_target_java_code) = ".java_date".
 timestamp_extension(_, module_target_erlang_code) = ".erl_date".
 timestamp_extension(Globals, module_target_erlang_header) =
@@ -1600,6 +1609,7 @@ search_for_file_type(module_target_c_header(_)) = yes(c_include_directory).
 search_for_file_type(module_target_c_code) = no.
 search_for_file_type(module_target_il_code) = no.
 search_for_file_type(module_target_il_asm) = no.
+search_for_file_type(module_target_csharp_code) = no.
 search_for_file_type(module_target_java_code) = no.
 search_for_file_type(module_target_java_class_code) = no.
 search_for_file_type(module_target_erlang_header) =
@@ -1638,6 +1648,7 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
         ; Target = module_target_c_code
         ; Target = module_target_il_code
         ; Target = module_target_il_asm
+        ; Target = module_target_csharp_code
         ; Target = module_target_java_code
         ; Target = module_target_java_class_code
         ; Target = module_target_erlang_code
@@ -1924,6 +1935,9 @@ module_target_type_to_nonce(Type) = X :-
     ;
         Type = module_target_java_class_code,
         X = 25
+    ;
+        Type = module_target_csharp_code,
+        X = 26
     ).
 
 :- func pic_to_nonce(pic) = int.

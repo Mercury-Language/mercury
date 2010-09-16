@@ -1051,6 +1051,7 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
 ok_to_inline_language(lang_c, target_c).
 ok_to_inline_language(lang_erlang, target_erlang).
 ok_to_inline_language(lang_java, target_java).
+ok_to_inline_language(lang_csharp, target_csharp).
 
 % ok_to_inline_language(il, il). %
 % XXX we need to fix the handling of parameter marshalling for inlined code

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006, 2009 The University of Melbourne.
+% Copyright (C) 2002-2006, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -75,6 +75,9 @@
 % MLDS->Java back-end
 :- include_module mlds_to_java.
 :- include_module java_util.
+
+% MLDS->C# back-end.
+:- include_module mlds_to_cs.
 
 % MLDS->.NET CLR back-end
 :- include_module il_peephole.

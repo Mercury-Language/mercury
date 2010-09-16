@@ -152,6 +152,7 @@ foreign_type_required_imports(Target, _TypeCtor - TypeDefn) = Imports :-
     (
         ( Target = target_c
         ; Target = target_java
+        ; Target = target_csharp
         ; Target = target_asm
         ),
         Imports = []
@@ -161,7 +162,7 @@ foreign_type_required_imports(Target, _TypeCtor - TypeDefn) = Imports :-
         (
             TypeBody = hlds_foreign_type(ForeignTypeBody),
             ForeignTypeBody = foreign_type_body(MaybeIL,
-                _MaybeC, _MaybeJava, _MaybeErlang),
+                _MaybeC, _MaybeJava, _MaybeCSharp, _MaybeErlang),
             (
                 MaybeIL = yes(Data),
                 Data = foreign_type_lang_data(il_type(_, Location, _), _, _)
@@ -266,6 +267,7 @@ ml_gen_preds(!ModuleInfo, PredDefns, GlobalData) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
+        % XXX common cells not yet implemented for C#
         ( Target = target_c
         ; Target = target_java
         ),
@@ -273,6 +275,7 @@ ml_gen_preds(!ModuleInfo, PredDefns, GlobalData) :-
     ;
         ( Target = target_asm
         ; Target = target_il
+        ; Target = target_csharp
         ; Target = target_erlang
         ; Target = target_x86_64
         ),

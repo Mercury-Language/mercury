@@ -2945,4 +2945,33 @@ public static class ListIterator<E>
 ").
 
 %-----------------------------------------------------------------------------%
+
+:- pragma foreign_code("C#", "
+public static List_1 empty_list()
+{
+    return new List_1.F_nil_0();
+}
+
+public static List_1 cons(object head, List_1 tail)
+{
+    return new List_1.F_cons_2(head, tail);
+}
+
+public static bool is_empty(List_1 lst)
+{
+    return (lst is List_1.F_nil_0);
+}
+
+public static object det_head(List_1 lst)
+{
+    return ((List_1.F_cons_2) lst).F1;
+}
+
+public static List_1 det_tail(List_1 lst)
+{
+    return ((List_1.F_cons_2) lst).F2;
+}
+").
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

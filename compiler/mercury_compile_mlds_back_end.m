@@ -42,6 +42,8 @@
 
 :- pred mlds_to_java(module_info::in, mlds::in, io::di, io::uo) is det.
 
+:- pred mlds_to_csharp(module_info::in, mlds::in, io::di, io::uo) is det.
+
 :- pred maybe_mlds_to_gcc(globals::in, mlds::in, bool::out, io::di, io::uo)
     is det.
 
@@ -70,6 +72,7 @@
 :- import_module ml_backend.ml_optimize.            % MLDS -> MLDS
 :- import_module ml_backend.mlds_to_c.              % MLDS -> C
 :- import_module ml_backend.mlds_to_java.           % MLDS -> Java
+:- import_module ml_backend.mlds_to_cs.             % MLDS -> C#
 :- import_module ml_backend.mlds_to_ilasm.          % MLDS -> IL assembler
 :- import_module ml_backend.maybe_mlds_to_gcc.      % MLDS -> GCC back-end
 :- import_module ml_backend.ml_util.                % MLDS utility predicates
@@ -301,6 +304,7 @@ maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
             % the C backends.
             %
             ( Target = target_il
+            ; Target = target_csharp
             ; Target = target_java
             ; Target = target_asm
             ; Target = target_x86_64
@@ -396,6 +400,16 @@ mlds_to_java(HLDS, MLDS, !IO) :-
     maybe_write_string(Verbose, "% Converting MLDS to Java...\n", !IO),
     output_java_mlds(HLDS, MLDS, !IO),
     maybe_write_string(Verbose, "% Finished converting MLDS to Java.\n", !IO),
+    maybe_report_stats(Stats, !IO).
+
+mlds_to_csharp(HLDS, MLDS, !IO) :-
+    module_info_get_globals(HLDS, Globals),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
+
+    maybe_write_string(Verbose, "% Converting MLDS to C#...\n", !IO),
+    output_csharp_mlds(HLDS, MLDS, !IO),
+    maybe_write_string(Verbose, "% Finished converting MLDS to C#.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
 maybe_mlds_to_gcc(Globals, MLDS, ContainsCCode, !IO) :-

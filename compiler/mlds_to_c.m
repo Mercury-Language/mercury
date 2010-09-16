@@ -308,6 +308,7 @@ mlds_output_src_imports(Opts, Indent, Imports, !IO) :-
         list.foldl(mlds_output_src_import(Opts, Indent), Imports, !IO)
     ;
         ( Target = target_java
+        ; Target = target_csharp
         ; Target = target_il
         ; Target = target_x86_64
         ; Target = target_erlang
@@ -500,6 +501,7 @@ mlds_output_hdr_start(Opts, Indent, ModuleName, !IO) :-
     ;
         ( Target = target_il
         ; Target = target_java
+        ; Target = target_csharp
         ; Target = target_asm
         ; Target = target_x86_64
         ; Target = target_erlang
@@ -611,6 +613,7 @@ mlds_output_hdr_end(Opts, Indent, ModuleName, !IO) :-
         io.nl(!IO)
     ;
         ( Target = target_il
+        ; Target = target_csharp
         ; Target = target_java
         ; Target = target_asm
         ; Target = target_x86_64
@@ -1099,6 +1102,10 @@ mlds_output_pragma_export_type(PrefixSuffix, MLDS_Type, !IO) :-
                 ForeignType = java(_),
                 unexpected(this_file,
                     "mlds_output_type_prefix: java foreign_type")
+            ;
+                ForeignType = csharp(_),
+                unexpected(this_file,
+                    "mlds_output_type_prefix: csharp foreign_type")
             ;
                 ForeignType = erlang(_),
                 unexpected(this_file,
@@ -3803,6 +3810,7 @@ mlds_output_atomic_stmt(Opts, Indent, FuncInfo, Statement, Context, !IO) :-
             ( TargetLang = ml_target_gnu_c
             ; TargetLang = ml_target_asm
             ; TargetLang = ml_target_il
+            ; TargetLang = ml_target_csharp
             ; TargetLang = ml_target_java
             ),
             sorry(this_file, "inline_target_code only works for language C")

@@ -445,6 +445,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, Vars, Modes,
         (
             ( Target = target_c
             ; Target = target_il
+            ; Target = target_csharp
             ; Target = target_java
             ; Target = target_asm
             ; Target = target_x86_64

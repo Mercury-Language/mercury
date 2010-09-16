@@ -482,7 +482,11 @@
     where equality is array.array_equal,
     comparison is array.array_compare.
 
-:- pragma foreign_type(il,  array(T), "class [mscorlib]System.Array")
+% :- pragma foreign_type("C#",  array(T), "System.Array")
+%     where equality is array.array_equal,
+%     comparison is array.array_compare.
+
+:- pragma foreign_type("IL",  array(T), "class [mscorlib]System.Array")
     where equality is array.array_equal,
     comparison is array.array_compare.
 
@@ -490,7 +494,7 @@
     % that is capable of holding any kind of array, including e.g. `int []'.
     % Java doesn't have any equivalent of .NET's System.Array class,
     % so we just use the universal base `java.lang.Object'.
-:- pragma foreign_type(java,  array(T), "/* Array */ java.lang.Object")
+:- pragma foreign_type("Java",  array(T), "/* Array */ java.lang.Object")
     where equality is array.array_equal,
     comparison is array.array_compare.
 
@@ -664,6 +668,97 @@ ML_init_array(MR_ArrayPtr array, MR_Integer size, MR_Word item)
 }
 ").
 
+:- pragma foreign_code("C#", "
+public static System.Array
+ML_new_array(int Size, object Item, bool fill)
+{
+    System.Array arr;
+    if (Size == 0) {
+        return null;
+    }
+    if (Item is int || Item is double || Item is char || Item is bool) {
+        arr = System.Array.CreateInstance(Item.GetType(), Size);
+    } else {
+        arr = new object[Size];
+    }
+    for (int i = 0; i < Size; i++) {
+        arr.SetValue(Item, i);
+    }
+    return arr;
+}
+
+public static System.Array
+ML_array_resize(System.Array arr0, int Size, object Item)
+{
+    if (Size == 0) {
+        return null;
+    }
+    if (arr0 == null) {
+        return ML_new_array(Size, Item, true);
+    }
+    if (arr0.Length == Size) {
+        return arr0;
+    }
+
+    int OldSize = arr0.Length;
+    System.Array arr;
+    if (Item is int) {
+        int[] tmp = (int[]) arr0;
+        System.Array.Resize(ref tmp, Size);
+        arr = tmp;
+    } else if (Item is double) {
+        double[] tmp = (double[]) arr0;
+        System.Array.Resize(ref tmp, Size);
+        arr = tmp;
+    } else if (Item is char) {
+        char[] tmp = (char[]) arr0;
+        System.Array.Resize(ref tmp, Size);
+        arr = tmp;
+    } else if (Item is bool) {
+        bool[] tmp = (bool[]) arr0;
+        System.Array.Resize(ref tmp, Size);
+        arr = tmp;
+    } else {
+        object[] tmp = (object[]) arr0;
+        System.Array.Resize(ref tmp, Size);
+        arr = tmp;
+    }
+    for (int i = OldSize; i < Size; i++) {
+        arr.SetValue(Item, i);
+    }
+    return arr;
+}
+
+public static System.Array
+ML_shrink_array(System.Array arr, int Size)
+{
+    if (arr == null) {
+        return null;
+    } else if (arr is int[]) {
+        int[] tmp = (int[]) arr;
+        System.Array.Resize(ref tmp, Size);
+        return tmp;
+    } else if (arr is double[]) {
+        double[] tmp = (double[]) arr;
+        System.Array.Resize(ref tmp, Size);
+        return tmp;
+    } else if (arr is char[]) {
+        char[] tmp = (char[]) arr;
+        System.Array.Resize(ref tmp, Size);
+        return tmp;
+    } else if (arr is bool[]) {
+        bool[] tmp = (bool[]) arr;
+        System.Array.Resize(ref tmp, Size);
+        return tmp;
+    } else {
+        object[] tmp = (object[]) arr;
+        System.Array.Resize(ref tmp, Size);
+        return tmp;
+    }
+}
+
+").
+
 :- pragma foreign_code("Java", "
 public static Object
 ML_new_array(int Size, Object Item, boolean fill)
@@ -823,10 +918,7 @@ array.init(Size, Item, Array) :-
     array.init_2(Size::in, Item::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Array = System.Array.CreateInstance(Item.GetType(), Size);
-    for (int i = 0; i < Size; i++) {
-        Array.SetValue(Item, i);
-    }
+    Array = array.ML_new_array(Size, Item, true);
 ").
 :- pragma foreign_proc("C#",
     array.make_empty_array(Array::array_uo),
@@ -1190,24 +1282,7 @@ ML_resize_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
     array.resize(Array0::array_di, Size::in, Item::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    if (Array0 == null) {
-        Array = System.Array.CreateInstance(Item.GetType(), Size);
-        for (int i = 0; i < Size; i++) {
-            Array.SetValue(Item, i);
-        }
-    }
-    else if (Array0.Length == Size) {
-        Array = Array0;
-    } else if (Array0.Length > Size) {
-        Array = System.Array.CreateInstance(Item.GetType(), Size);
-        System.Array.Copy(Array0, Array, Size);
-    } else {
-        Array = System.Array.CreateInstance(Item.GetType(), Size);
-        System.Array.Copy(Array0, Array, Array0.Length);
-        for (int i = Array0.Length; i < Size; i++) {
-            Array.SetValue(Item, i);
-        }
-    }
+    Array = array.ML_array_resize(Array0, Size, Item);
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -1298,9 +1373,7 @@ array.shrink(Array0, Size, Array) :-
     array.shrink_2(Array0::array_di, Size::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Array = System.Array.CreateInstance(Array0.GetType().GetElementType(),
-        Size);
-    System.Array.Copy(Array0, Array, Size);
+    Array = array.ML_shrink_array(Array0, Size);
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -1380,11 +1453,7 @@ ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array)
     array.copy(Array0::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    // XXX we implement the same as ML_copy_array, which doesn't appear
-    // to deep copy the array elements
-    Array = System.Array.CreateInstance(Array0.GetType().GetElementType(),
-        Array0.Length);
-    System.Array.Copy(Array0, Array, Array0.Length);
+    Array = (System.Array) Array0.Clone();
 ").
 
 :- pragma foreign_proc("Erlang",

@@ -248,6 +248,8 @@
     where equality is store_equal, comparison is store_compare.
 :- pragma foreign_type("IL", store(S), "int32", [can_pass_as_mercury_type])
     where equality is store_equal, comparison is store_compare.
+% :- pragma foreign_type("C#", store(S), "int32", [can_pass_as_mercury_type])
+%     where equality is store_equal, comparison is store_compare.
 :- pragma foreign_type("Java", store(S), "int", [can_pass_as_mercury_type])
     where equality is store_equal, comparison is store_compare.
 :- pragma foreign_type("Erlang", store(S), "", [can_pass_as_mercury_type])
@@ -284,7 +286,7 @@ store.new(S) :-
     store.do_init(_S0::uo),
     [will_not_call_mercury, promise_pure],
 "
-    // TypeInfo_for_S
+    TypeInfo_for_S = null;
 ").
 :- pragma foreign_proc("Java",
     store.do_init(_S0::uo),

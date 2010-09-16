@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2003-2004 The University of Melbourne.
+// Copyright (C) 2003-2004, 2010 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -11,9 +11,561 @@
 // C# compiler
 using System.Runtime.InteropServices;
 
-namespace mercury {
+namespace mercury.runtime {
 
-namespace runtime {
+/*---------------------------------------------------------------------------*/
+
+public delegate void MethodPtr1_r0<A>(A a1);
+public delegate Z    MethodPtr1<A, Z>(A a1);
+
+public delegate void MethodPtr2_r0<A,B>(A a1, B a2);
+public delegate Z    MethodPtr2<A,B, Z>(A a1, B a2);
+
+public delegate void MethodPtr3_r0<A,B,C>(A a1, B a2, C a3);
+public delegate Z    MethodPtr3<A,B,C, Z>(A a1, B a2, C a3);
+
+public delegate void MethodPtr4_r0<A,B,C,D>(A a1, B a2, C a3, D a4);
+public delegate Z    MethodPtr4<A,B,C,D, Z>(A a1, B a2, C a3, D a4);
+
+public delegate void MethodPtr5_r0<A,B,C,D,E>(A a1, B a2, C a3, D a4, E a5);
+public delegate Z    MethodPtr5<A,B,C,D,E, Z>(A a1, B a2, C a3, D a4, E a5);
+
+public delegate void MethodPtr6_r0<A,B,C,D,E,F>(A a1, B a2, C a3, D a4, E a5,
+                        F a6);
+public delegate Z    MethodPtr6<A,B,C,D,E,F, Z>(A a1, B a2, C a3, D a4, E a5,
+                        F a6);
+
+public delegate void MethodPtr7_r0<A,B,C,D,E,F,G>(A a1, B a2, C a3, D a4,
+                        E a5, F a6, G a7);
+public delegate Z    MethodPtr7<A,B,C,D,E,F,G, Z>(A a1, B a2, C a3, D a4,
+                        E a5, F a6, G a7);
+
+public delegate void MethodPtr8_r0<A,B,C,D,E,F,G,H>(A a1, B a2, C a3, D a4,
+                        E a5, F a6, G a7, H a8);
+public delegate Z    MethodPtr8<A,B,C,D,E,F,G,H, Z>(A a1, B a2, C a3, D a4,
+                        E a5, F a6, G a7, H a8);
+
+public delegate void MethodPtr9_r0<A,B,C,D,E,F,G,H,I>(A a1, B a2, C a3, D a4,
+                        E a5, F a6, G a7, H a8, I a9);
+public delegate Z    MethodPtr9<A,B,C,D,E,F,G,H,I, Z>(A a1, B a2, C a3, D a4,
+                        E a5, F a6, G a7, H a8, I a9);
+
+public delegate void MethodPtr10_r0<A,B,C,D,E,F,G,H,I,J>(A a1, B a2, C a3,
+                        D a4, E a5, F a6, G a7, H a8, I a9, J a10);
+public delegate Z    MethodPtr10<A,B,C,D,E,F,G,H,I,J, Z>(A a1, B a2, C a3,
+                        D a4, E a5, F a6, G a7, H a8, I a9, J a10);
+
+/*---------------------------------------------------------------------------*/
+
+public enum TypeCtorRep {
+    MR_TYPECTOR_REP_ENUM                    = 0,
+    MR_TYPECTOR_REP_ENUM_USEREQ             = 1,
+    MR_TYPECTOR_REP_DU                      = 2,
+    MR_TYPECTOR_REP_DU_USEREQ               = 3,
+    MR_TYPECTOR_REP_NOTAG                   = 4,
+    MR_TYPECTOR_REP_NOTAG_USEREQ            = 5,
+    MR_TYPECTOR_REP_EQUIV                   = 6,
+    MR_TYPECTOR_REP_FUNC                    = 7,
+    MR_TYPECTOR_REP_INT                     = 8,
+    MR_TYPECTOR_REP_CHAR                    = 9,
+    MR_TYPECTOR_REP_FLOAT                   = 10,
+    MR_TYPECTOR_REP_STRING                  = 11,
+    MR_TYPECTOR_REP_PRED                    = 12,
+    MR_TYPECTOR_REP_SUBGOAL                 = 13,
+    MR_TYPECTOR_REP_VOID                    = 14,
+    MR_TYPECTOR_REP_C_POINTER               = 15,
+    MR_TYPECTOR_REP_TYPEINFO                = 16,
+    MR_TYPECTOR_REP_TYPECLASSINFO           = 17,
+    MR_TYPECTOR_REP_ARRAY                   = 18,
+    MR_TYPECTOR_REP_SUCCIP                  = 19,
+    MR_TYPECTOR_REP_HP                      = 20,
+    MR_TYPECTOR_REP_CURFR                   = 21,
+    MR_TYPECTOR_REP_MAXFR                   = 22,
+    MR_TYPECTOR_REP_REDOFR                  = 23,
+    MR_TYPECTOR_REP_REDOIP                  = 24,
+    MR_TYPECTOR_REP_TRAIL_PTR               = 25,
+    MR_TYPECTOR_REP_TICKET                  = 26,
+    MR_TYPECTOR_REP_NOTAG_GROUND            = 27,
+    MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ     = 28,
+    MR_TYPECTOR_REP_EQUIV_GROUND            = 29,
+    MR_TYPECTOR_REP_TUPLE                   = 30,
+    MR_TYPECTOR_REP_RESERVED_ADDR           = 31,
+    MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ    = 32,
+    MR_TYPECTOR_REP_TYPECTORINFO            = 33,
+    MR_TYPECTOR_REP_BASETYPECLASSINFO       = 34,
+    MR_TYPECTOR_REP_TYPEDESC                = 35,
+    MR_TYPECTOR_REP_TYPECTORDESC            = 36,
+    MR_TYPECTOR_REP_FOREIGN                 = 37,
+    MR_TYPECTOR_REP_REFERENCE               = 38,
+    MR_TYPECTOR_REP_STABLE_C_POINTER        = 39,
+    MR_TYPECTOR_REP_STABLE_FOREIGN          = 40,
+    MR_TYPECTOR_REP_PSEUDOTYPEDESC          = 41,
+    MR_TYPECTOR_REP_DUMMY                   = 42,
+    MR_TYPECTOR_REP_BITMAP                  = 43,
+    MR_TYPECTOR_REP_FOREIGN_ENUM            = 44,
+    MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ     = 45,
+    MR_TYPECTOR_REP_UNKNOWN                 = 46,
+    MR_TYPECTOR_REP_MAX                     = 47
+}
+
+public class PseudoTypeInfo {
+    public readonly int variable_number;
+
+    public static PseudoTypeInfo K1 = new PseudoTypeInfo(1);
+    public static PseudoTypeInfo K2 = new PseudoTypeInfo(2);
+    public static PseudoTypeInfo K3 = new PseudoTypeInfo(3);
+    public static PseudoTypeInfo K4 = new PseudoTypeInfo(4);
+    public static PseudoTypeInfo K5 = new PseudoTypeInfo(5);
+
+    public PseudoTypeInfo() {
+        this.variable_number = -1;
+    }
+    public PseudoTypeInfo(int variable_number) {
+        this.variable_number = variable_number;
+    }
+}
+
+public class TypeCtorInfo_Struct : PseudoTypeInfo {
+    public int              arity;
+    public int              type_ctor_version;
+    public int              type_ctor_num_ptags;
+    public TypeCtorRep      type_ctor_rep;
+    public object           unify_pred;
+    public object           compare_pred;
+    public string           type_ctor_module_name;
+    public string           type_ctor_name;
+    public TypeFunctors     type_functors;
+    public TypeLayout       type_layout;
+    public int              type_ctor_num_functors;
+    public short            type_ctor_flags;
+    public int[]            type_functor_number_map;
+
+    public TypeCtorInfo_Struct() {
+    }
+
+    public TypeCtorInfo_Struct(TypeCtorInfo_Struct other, int arity) {
+        this.init(
+            arity,
+            other.type_ctor_version,
+            other.type_ctor_num_ptags,
+            other.type_ctor_rep,
+            other.unify_pred,
+            other.compare_pred,
+            other.type_ctor_module_name,
+            other.type_ctor_name,
+            other.type_functors,
+            other.type_layout,
+            other.type_ctor_num_functors,
+            other.type_ctor_flags,
+            other.type_functor_number_map
+        );
+    }
+
+    public void init(
+        int type_arity,
+        int version,
+        int num_ptags,
+        TypeCtorRep rep,
+        object unify_proc,
+        object compare_proc,
+        string module,
+        string name,
+        object name_ordered_functor_descs, // TypeFunctors
+        object value_ordered_functor_descs, // TypeLayout
+        int num_functors,
+        short flags,
+        int[] functor_number_map)
+    {
+        arity = type_arity;
+        type_ctor_version = version;
+        type_ctor_num_ptags = num_ptags;
+        type_ctor_rep = rep;
+        unify_pred = unify_proc;
+        compare_pred = compare_proc;
+        type_ctor_module_name = module;
+        type_ctor_name = name;
+        type_functors = (TypeFunctors) name_ordered_functor_descs;
+        type_layout = (TypeLayout) value_ordered_functor_descs;
+        type_ctor_num_functors = num_functors;
+        type_ctor_flags = flags;
+        type_functor_number_map = functor_number_map;
+    }
+
+    public bool Equals(TypeCtorInfo_Struct tci) {
+        if (this == tci) {
+            return true;
+        }
+        return type_ctor_module_name.Equals(tci.type_ctor_module_name)
+            && type_ctor_name.Equals(tci.type_ctor_name)
+            && arity == tci.arity;
+    }
+}
+
+public class TypeInfo_Struct : PseudoTypeInfo {
+    public TypeCtorInfo_Struct  type_ctor;
+    public PseudoTypeInfo[]     args;
+
+    public TypeInfo_Struct() {
+    }
+
+    public TypeInfo_Struct(TypeCtorInfo_Struct tc) {
+        type_ctor = tc;
+    }
+
+    public TypeInfo_Struct(TypeInfo_Struct ti, int arity, params object[] args)
+    {
+        init(ti.type_ctor, arity, args);
+    }
+
+    public TypeInfo_Struct(TypeInfo_Struct ti, params object[] args) {
+        init(ti.type_ctor, args.Length, args);
+    }
+
+    public static TypeInfo_Struct maybe_new(object obj) {
+        if (obj == null) {
+            return null;
+        }
+        TypeCtorInfo_Struct tc = obj as TypeCtorInfo_Struct;
+        if (tc != null) {
+            return new TypeInfo_Struct(tc);
+        }
+        TypeInfo_Struct ti = obj as TypeInfo_Struct;
+        if (ti != null) {
+            return ti;
+        }
+        // XXX throw exception
+        return null;
+    }
+
+    public void init(TypeCtorInfo_Struct tc, PseudoTypeInfo[] args) {
+        this.type_ctor = tc;
+        this.args = args;
+    }
+
+    // XXX "as" should have type PseudoTypeInfo[],
+    //     but because init_array/1 does not store the type.
+    public void init(TypeCtorInfo_Struct tc, object[] os) {
+        init(tc, os.Length, os);
+    }
+
+    // XXX "as" should have type PseudoTypeInfo[],
+    //     but because init_array/1 does not store the type.
+    public void init(TypeCtorInfo_Struct tc, int arity, object[] os) {
+        PseudoTypeInfo[] ptis = new PseudoTypeInfo[arity];
+        for (int i = 0; i < arity; i++) {
+            ptis[i] = (PseudoTypeInfo) os[i];
+        }
+        init(tc, ptis);
+    }
+
+    public TypeInfo_Struct copy() {
+        TypeInfo_Struct ti = new TypeInfo_Struct(type_ctor);
+        if (args != null) {
+            ti.args = (PseudoTypeInfo[]) args.Clone();
+        }
+        return ti;
+    }
+
+    public bool Equals(TypeInfo_Struct ti) {
+        if (this == ti) {
+            return true;
+        }
+        if (!type_ctor.Equals(ti.type_ctor)) {
+            return false;
+        }
+
+        int len1 = 0;
+        int len2 = 0;
+        if (args != null) {
+            len1 = args.Length;
+        }
+        if (ti.args != null) {
+            len2 = ti.args.Length;
+        }
+        if (len1 != len2) {
+            return false;
+        }
+
+        for (int i = 0; i < len1; i++) {
+            if (!args[i].Equals(ti.args[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
+public class TypeLayout {
+    private readonly object layout_init;
+    public TypeLayout(object init) {
+        layout_init = init;
+    }
+    public DuPtagLayout[] layout_du() {
+        return (DuPtagLayout[]) layout_init;
+    }
+    public EnumFunctorDesc[] layout_enum() {
+        return (EnumFunctorDesc[]) layout_init;
+    }
+    public NotagFunctorDesc[] layout_notag() {
+        return (NotagFunctorDesc[]) layout_init;
+    }
+    public PseudoTypeInfo layout_equiv() {
+        return (PseudoTypeInfo) layout_init;
+    }
+}
+
+public class TypeFunctors {
+    private readonly object functors_init;
+    public TypeFunctors(object init) {
+        functors_init = init;
+    }
+    public DuFunctorDesc[] functors_du() {
+        return (DuFunctorDesc[]) functors_init;
+    }
+    public EnumFunctorDesc[] functors_enum() {
+        return (EnumFunctorDesc[]) functors_init;
+    }
+    public ForeignEnumFunctorDesc[] functors_foreign_enum() {
+        return (ForeignEnumFunctorDesc[]) functors_init;
+    }
+    public NotagFunctorDesc functors_notag() {
+        return (NotagFunctorDesc) functors_init;
+    }
+}
+
+public class DuFunctorDesc {
+    public string           du_functor_name;
+    public int              du_functor_orig_arity;
+    public int              du_functor_arg_type_contains_var;
+    public Sectag_Locn      du_functor_sectag_locn;
+    public int              du_functor_primary;
+    public int              du_functor_secondary;
+    public int              du_functor_ordinal;
+    public PseudoTypeInfo[] du_functor_arg_types;
+    public string[]         du_functor_arg_names;
+    public DuExistInfo      du_functor_exist_info;
+
+    public DuFunctorDesc() {
+    }
+
+    public void init(
+        string functor_name,
+        int orig_arity,
+        int arg_type_contains_var,
+        Sectag_Locn sectag_locn,
+        int primary,
+        int secondary,
+        int ordinal,
+        // XXX why do we need to use object here?
+        object arg_types,
+        object arg_names,
+        object exist_info)
+    {
+        du_functor_name = functor_name;
+        du_functor_orig_arity = orig_arity;
+        du_functor_ordinal = ordinal;
+        du_functor_arg_type_contains_var = arg_type_contains_var;
+        du_functor_sectag_locn = sectag_locn;
+        du_functor_primary = primary;
+        du_functor_secondary = secondary;
+        du_functor_ordinal = ordinal;
+        du_functor_arg_types = (PseudoTypeInfo []) arg_types;
+        du_functor_arg_names = (string[]) arg_names;
+        du_functor_exist_info = (DuExistInfo) exist_info;
+    }
+}
+
+public enum Sectag_Locn {
+    MR_SECTAG_NONE      = 0,
+    MR_SECTAG_LOCAL     = 1,
+    MR_SECTAG_REMOTE    = 2
+}
+
+public class DuPtagLayout {
+    public int          sectag_sharers;
+    public Sectag_Locn  sectag_locn;
+    public /* final */ DuFunctorDesc[] sectag_alternatives;
+
+    public DuPtagLayout(int sharers, Sectag_Locn locn, DuFunctorDesc[] alts) {
+        sectag_sharers = sharers;
+        sectag_locn = locn;
+        sectag_alternatives = alts;
+    }
+
+    public DuPtagLayout(int sharers, int locn, DuFunctorDesc[] alts)
+        : this(sharers, (Sectag_Locn)locn, alts)
+    {
+    }
+}
+
+public class DuExistInfo {
+    public int exist_typeinfos_plain;
+    public int exist_typeinfos_in_tci;
+    public int exist_tcis;
+    public /* final */ DuExistLocn[] exist_typeinfo_locns;
+    public /* final */ TypeClassConstraint[] exist_constraints;
+
+    public DuExistInfo() {
+    }
+
+    public void init(
+        int typeinfos_plain,
+        int typeinfos_in_tci,
+        int tcis,
+        DuExistLocn[] typeinfo_locns,
+        TypeClassConstraint[] constraints)
+    {
+        exist_typeinfos_plain = typeinfos_plain;
+        exist_typeinfos_in_tci = typeinfos_in_tci;
+        exist_tcis = tcis;
+        exist_typeinfo_locns = typeinfo_locns;
+        exist_constraints = constraints;
+    }
+}
+
+public class DuExistLocn {
+    public int exist_arg_num;
+    public int exist_offset_in_tci;
+
+    public DuExistLocn(int arg_num, int offset_in_tci) {
+        exist_arg_num = arg_num;
+        exist_offset_in_tci = offset_in_tci;
+    }
+}
+
+public class TypeClassConstraint {
+    public TypeClassDeclStruct  tc_constr_type_class;
+    public PseudoTypeInfo[]     tc_constr_arg_ptis;
+
+    public TypeClassConstraint() {
+    }
+
+    public void init(
+        TypeClassDeclStruct type_class,
+        // XXX object[] should be PseudoTypeInfo[],
+        //     but mlds_to_csharp.m generates Object[] since
+        //     init_array/1 doesn't give type info
+        object[] ptis)
+    {
+        tc_constr_type_class = type_class;
+        tc_constr_arg_ptis = new PseudoTypeInfo[ptis.Length];
+        for (int i = 0; i < ptis.Length; i++) {
+            tc_constr_arg_ptis[i] = (PseudoTypeInfo) ptis[i];
+        }
+    }
+}
+
+public class TypeClassDeclStruct {
+    public TypeClassId          tc_decl_id;
+    public int                  tc_decl_version_number;
+    public int                  tc_decl_num_supers; // redundant
+    public TypeClassConstraint  tc_decl_supers;
+
+    public TypeClassDeclStruct() {
+    }
+
+    public void init(
+        TypeClassId id,
+        int version_number,
+        int num_supers,
+        TypeClassConstraint supers)
+    {
+        tc_decl_id = id;
+        tc_decl_version_number = version_number;
+        tc_decl_num_supers = num_supers;
+        tc_decl_supers = supers;
+    }
+}
+
+public class TypeClassId {
+    public string               tc_id_module_name;
+    public string               tc_id_name;
+    public int                  tc_id_arity;
+    public int                  tc_id_num_type_vars; // XXX redundant
+    public int                  tc_id_num_methods;   // XXX redundant
+    public string[]             tc_id_var_names;
+    public TypeClassMethod[]    tc_id_methods;
+
+    public TypeClassId() {
+    }
+
+    public void init(
+        string module_name,
+        string name,
+        int arity,
+        int num_type_vars,
+        int num_methods,
+        string[] var_names,
+        TypeClassMethod[] methods)
+    {
+        tc_id_module_name = module_name;
+        tc_id_name = name;
+        tc_id_arity = arity;
+        tc_id_num_type_vars = num_type_vars;
+        tc_id_num_methods = num_methods;
+        tc_id_var_names = var_names;
+        tc_id_methods = methods;
+    }
+}
+
+public class TypeClassMethod {
+    public string               tc_method_name;
+    public int                  tc_method_arity;
+    public int /* PredFunc */   tc_method_pred_func;
+
+    public TypeClassMethod(string name, int arity, int pred_func) {
+        tc_method_name = name;
+        tc_method_arity = arity;
+        tc_method_pred_func = pred_func;
+    }
+}
+
+public class EnumFunctorDesc {
+    public string   enum_functor_name;
+    public int      enum_functor_ordinal;
+
+    public EnumFunctorDesc() {
+    }
+
+    public void init(string name, int ordinal) {
+        enum_functor_name = name;
+        enum_functor_ordinal = ordinal;
+    }
+}
+
+public class NotagFunctorDesc {
+    public string           no_tag_functor_name;
+    public PseudoTypeInfo   no_tag_functor_arg_type;
+    public string           no_tag_functor_arg_name;
+
+    public NotagFunctorDesc(
+        string functor_name,
+        PseudoTypeInfo functor_arg_type,
+        object functor_arg_name)
+    {
+        no_tag_functor_name = functor_name;
+        no_tag_functor_arg_type = functor_arg_type;
+        // XXX cast might fail
+        no_tag_functor_arg_name = (string) functor_arg_name;
+    }
+}
+
+public class ForeignEnumFunctorDesc {
+    public string   foreign_enum_functor_name;
+    public int      foreign_enum_functor_ordinal;
+    public int      foreign_enum_functor_value;
+
+    public ForeignEnumFunctorDesc() {
+    }
+
+    public void init(string name, int ordinal, int val) {
+        foreign_enum_functor_name = name;
+        foreign_enum_functor_ordinal = ordinal;
+        foreign_enum_functor_value = val;
+    }
+}
+
+/*---------------------------------------------------------------------------*/
 
 public class SystemException : System.Exception
 {
@@ -40,72 +592,42 @@ public class Errors
     }
 }
 
-public class Environment
+public class Exception : System.Exception
 {
-}
+    private object _exception; // univ.Univ_0
+
+    public Exception(object exception) {
+        this._exception = exception;
+    }
+
+    public object exception {
+        get { return _exception; }
+    }
+};
 
 public class Commit : System.Exception
 {
 }
 
+public class UnreachableDefault : System.Exception {
+}
+
+/*---------------------------------------------------------------------------*/
+
 public class Constants
 {
-    // These constants are duplicated in library/private_builtin.m.
-    // They must be kept sychronized.
+    public static readonly int MR_PREDICATE     = 0;
+    public static readonly int MR_FUNCTION      = 1;
 
-	// XXX It would be nice if these could be const or an enum, but
-	// there are some problems with accessing the values from IL if we do
-	// that because neither alternatives seem to define field names we
-	// can reference from IL.
+    public static readonly string MR_VERSION    = "@VERSION@";
+    public static readonly string MR_FULLARCH   = "@FULLARCH@";
+}
 
-    public static int MR_TYPECTOR_REP_ENUM			= 0;
-    public static int MR_TYPECTOR_REP_ENUM_USEREQ 		= 1;
-    public static int MR_TYPECTOR_REP_DU			= 2;
-    public static int MR_TYPECTOR_REP_DU_USEREQ			= 3;
-    public static int MR_TYPECTOR_REP_NOTAG			= 4;
-    public static int MR_TYPECTOR_REP_NOTAG_USEREQ		= 5;
-    public static int MR_TYPECTOR_REP_EQUIV			= 6;
-    public static int MR_TYPECTOR_REP_FUNC			= 7;
-    public static int MR_TYPECTOR_REP_INT		   	= 8;
-    public static int MR_TYPECTOR_REP_CHAR		   	= 9;
-    public static int MR_TYPECTOR_REP_FLOAT			=10;
-    public static int MR_TYPECTOR_REP_STRING			=11;
-    public static int MR_TYPECTOR_REP_PRED		   	=12;
-    public static int MR_TYPECTOR_REP_SUBGOAL	   		=13;
-    public static int MR_TYPECTOR_REP_VOID		  	=14;
-    public static int MR_TYPECTOR_REP_C_POINTER			=15;
-    public static int MR_TYPECTOR_REP_TYPEINFO			=16;
-    public static int MR_TYPECTOR_REP_TYPECLASSINFO		=17;
-    public static int MR_TYPECTOR_REP_ARRAY			=18;
-    public static int MR_TYPECTOR_REP_SUCCIP			=19;
-    public static int MR_TYPECTOR_REP_HP			=20;
-    public static int MR_TYPECTOR_REP_CURFR			=21;
-    public static int MR_TYPECTOR_REP_MAXFR			=22;
-    public static int MR_TYPECTOR_REP_REDOFR			=23;
-    public static int MR_TYPECTOR_REP_REDOIP			=24;
-    public static int MR_TYPECTOR_REP_TRAIL_PTR			=25;
-    public static int MR_TYPECTOR_REP_TICKET			=26;
-    public static int MR_TYPECTOR_REP_NOTAG_GROUND		=27;
-    public static int MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ	=28;
-    public static int MR_TYPECTOR_REP_EQUIV_GROUND		=29;
-    public static int MR_TYPECTOR_REP_TUPLE			=30;
-    public static int MR_TYPECTOR_REP_RESERVED_ADDR		=31;
-    public static int MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ	=32;
-    public static int MR_TYPECTOR_REP_TYPECTORINFO		=33;
-    public static int MR_TYPECTOR_REP_BASETYPECLASSINFO		=34;
-    public static int MR_TYPECTOR_REP_TYPEDESC			=35;
-    public static int MR_TYPECTOR_REP_TYPECTORDESC		=36;
-    public static int MR_TYPECTOR_REP_FOREIGN			=37;
-    public static int MR_TYPECTOR_REP_REFERENCE			=38;
-    public static int MR_TYPECTOR_REP_STABLE_C_POINTER		=39;
-    public static int MR_TYPECTOR_REP_UNKNOWN			=40;
+/*---------------------------------------------------------------------------*/
 
-    public static int MR_SECTAG_NONE				= 0;
-    public static int MR_SECTAG_LOCAL				= 1;
-    public static int MR_SECTAG_REMOTE				= 2;
-
-    public static string MR_VERSION	= "@VERSION@";
-    public static string MR_FULLARCH	= "@FULLARCH@";
+#if !MR_HIGHLEVEL_DATA
+public class Environment
+{
 }
 
 public class LowLevelData
@@ -155,6 +677,7 @@ public class LowLevelData
         return ((object[]) w[2]);
     }
 }
+#endif
 
 class PInvoke {
     [System.Runtime.InteropServices.DllImport("msvcrt.dll")]
@@ -162,4 +685,5 @@ class PInvoke {
 }
 
 }
-}
+
+/* vim: set sts=4 sw=4 et: */

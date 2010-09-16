@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007, 2009 The University of Melbourne.
+% Copyright (C) 1999-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -68,7 +68,8 @@
     %
 :- type literal_language
     --->    literal_c
-    ;       literal_java.
+    ;       literal_java
+    ;       literal_csharp.
 
     % Print out a string suitably escaped for use as a C string literal.
     % This doesn't actually print out the enclosing double quotes --
@@ -421,7 +422,16 @@ quote_one_char(Lang, Char, RevChars0, RevChars) :-
     ->
         RevChars = ['0', '\\' | RevChars0]
     ;
-        escape_any_char(Char, EscapeChars),
+        (
+            Lang = literal_c,
+            octal_escape_any_char(Char, EscapeChars)
+        ;
+            Lang = literal_java,
+            octal_escape_any_char(Char, EscapeChars)
+        ;
+            Lang = literal_csharp,
+            hex_escape_any_char(Char, EscapeChars)
+        ),
         reverse_append(EscapeChars, RevChars0, RevChars)
     ).
 
@@ -483,17 +493,28 @@ reverse_append([], L, L).
 reverse_append([X | Xs], L0, L) :-
     reverse_append(Xs, [X | L0], L).
 
-:- pred escape_any_char(char::in, list(char)::out) is det.
+:- pred octal_escape_any_char(char::in, list(char)::out) is det.
 
     % Convert a character to the corresponding C octal escape code.
     % XXX This assumes that the target language compiler's representation
     % of characters is the same as the Mercury compiler's.
     %
-escape_any_char(Char, EscapeCodeChars) :-
+octal_escape_any_char(Char, EscapeCodeChars) :-
     char.to_int(Char, Int),
     string.int_to_base_string(Int, 8, OctalString0),
     string.pad_left(OctalString0, '0', 3, OctalString),
     EscapeCodeChars = ['\\' | string.to_char_list(OctalString)].
+
+:- pred hex_escape_any_char(char::in, list(char)::out) is det.
+
+    % Convert a character to the corresponding hexadeciaml escape code.
+    % XXX This assumes that the target language compiler's representation
+    % of characters is the same as the Mercury compiler's.
+    %
+hex_escape_any_char(Char, EscapeCodeChars) :-
+    char.to_int(Char, Int),
+    string.format("\\x%04x", [i(Int)], HexString),
+    string.to_char_list(HexString, EscapeCodeChars).
 
 %-----------------------------------------------------------------------------%
 %

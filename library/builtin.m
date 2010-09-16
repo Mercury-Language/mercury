@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -642,30 +642,54 @@ call_rtti_generic_compare(Res, X, Y) :-
     rtti_implementation.generic_compare(Res, X, Y).
 
 :- pragma foreign_code("C#", "
-public static void compare_3(object[] TypeInfo_for_T, ref object[] Res,
-    object X, object Y)
-{
-    mercury.builtin.mercury_code.call_rtti_generic_compare_3(TypeInfo_for_T,
-        ref Res, X, Y);
-}
+    //
+    // Generic unification/comparison routines
+    //
 
-public static void compare_3_m1(object[] TypeInfo_for_T, ref object[] Res,
-    object X, object Y)
-{
-    compare_3(TypeInfo_for_T, ref Res, X, Y);
-}
+    public static bool
+    unify_2_p_0(runtime.TypeInfo_Struct ti,
+        object x, object y)
+    {
+        return rtti_implementation.generic_unify_2_p_0(ti, x, y);
+    }
 
-public static void compare_3_m2(object[] TypeInfo_for_T, ref object[] Res,
-    object X, object Y)
-{
-    compare_3(TypeInfo_for_T, ref Res, X, Y);
-}
+    public static Comparison_result_0
+    compare_3_p_0(runtime.TypeInfo_Struct ti,
+        object x, object y)
+    {
+        return rtti_implementation.generic_compare_3_p_0(ti, x, y);
+    }
 
-public static void compare_3_m3(object[] TypeInfo_for_T, ref object[] Res,
-    object X, object Y)
-{
-    compare_3(TypeInfo_for_T, ref Res, X, Y);
-}
+    public static Comparison_result_0
+    compare_3_p_1(runtime.TypeInfo_Struct ti,
+        object x, object y)
+    {
+        return compare_3_p_0(ti, x, y);
+    }
+
+    public static Comparison_result_0
+    compare_3_p_2(runtime.TypeInfo_Struct ti,
+        object x, object y)
+    {
+        return compare_3_p_0(ti, x, y);
+    }
+
+    public static Comparison_result_0
+    compare_3_p_3(runtime.TypeInfo_Struct ti,
+        object x, object y)
+    {
+        return compare_3_p_0(ti, x, y);
+    }
+
+    public static Comparison_result_0
+    compare_representation_3_p_0(runtime.TypeInfo_Struct ti,
+        object x, object y)
+    {
+        // stub only
+        runtime.Errors.SORRY(
+            ""compare_representation_3_p_0/3 not implemented"");
+        return Comparison_result_0.f_equal;
+    }
 ").
 
 :- pragma foreign_code("C#", "
@@ -723,68 +747,62 @@ public static void deep_copy_fields(System.Reflection.FieldInfo[] fields,
 ").
 
 :- pragma foreign_code("C#", "
-public static bool unify_2_p(object[] ti, object X, object Y)
-{
-    return mercury.builtin.mercury_code.call_rtti_generic_unify_2_p(ti, X, Y);
-}
-
-").
-
-:- pragma foreign_code("C#", "
 
 public static bool
-special__Unify____void_0_0(object[] x, object[] y)
+__Unify____void_0_0(object x, object y)
 {
-    mercury.runtime.Errors.fatal_error(""called unify for type `void'"");
+    runtime.Errors.fatal_error(""called unify for type `void'"");
     return false;
 }
 
 public static bool
-special__Unify____c_pointer_0_0(object[] x, object[] y)
+__Unify____c_pointer_0_0(object x, object y)
 {
-    mercury.runtime.Errors.fatal_error(""called unify for type `c_pointer'"");
+    runtime.Errors.fatal_error(""called unify for type `c_pointer'"");
     return false;
 }
 
 public static bool
-special__Unify____func_0_0(object[] x, object[] y)
+__Unify____func_0_0(object[] x, object[] y)
 {
-    mercury.runtime.Errors.fatal_error(""called unify for `func' type"");
+    runtime.Errors.fatal_error(""called unify for `func' type"");
     return false;
 }
 
 public static bool
-special__Unify____tuple_0_0(object[] x, object[] y)
+__Unify____tuple_0_0(object[] x, object[] y)
 {
-    mercury.runtime.Errors.fatal_error(""called unify for `tuple' type"");
+    runtime.Errors.fatal_error(""called unify for `tuple' type"");
     return false;
 }
 
-public static void
-special__Compare____void_0_0(ref object[] result, object[] x, object[] y)
+public static Comparison_result_0
+__Compare____void_0_0(object x, object y)
 {
-    mercury.runtime.Errors.fatal_error(""called compare/3 for type `void'"");
+    runtime.Errors.fatal_error(""called compare for type `void'"");
+    return Comparison_result_0.f_equal;
 }
 
-public static void
-special__Compare____c_pointer_0_0(
-    ref object[] result, object[] x, object[] y)
+public static Comparison_result_0
+__Compare____c_pointer_0_0(object x, object y)
 {
-    mercury.runtime.Errors.fatal_error(
+    runtime.Errors.fatal_error(
         ""called compare/3 for type `c_pointer'"");
+    return Comparison_result_0.f_equal;
 }
 
-public static void
-special__Compare____func_0_0(ref object[] result, object[] x, object[] y)
+public static Comparison_result_0
+__Compare____func_0_0(object x, object y)
 {
-    mercury.runtime.Errors.fatal_error(""called compare/3 for `func' type"");
+    runtime.Errors.fatal_error(""called compare for `func' type"");
+    return Comparison_result_0.f_equal;
 }
 
-public static void
-special__Compare____tuple_0_0(ref object[] result,
-    object[] x, object[] y)
+public static Comparison_result_0
+__Compare____tuple_0_0(object x, object y)
 {
-    mercury.runtime.Errors.fatal_error(""called compare/3 for `tuple' type"");
+    runtime.Errors.fatal_error(""called compare for `tuple' type"");
+    return Comparison_result_0.f_equal;
 }
 ").
 
@@ -932,14 +950,14 @@ special__Compare____tuple_0_0(ref object[] result,
     copy(X::ui, Y::uo),
     [may_call_mercury, thread_safe, promise_pure, terminates],
 "
-    Y = deep_copy(X);
+    Y = builtin.deep_copy(X);
 ").
 
 :- pragma foreign_proc("C#",
     copy(X::in, Y::uo),
     [may_call_mercury, thread_safe, promise_pure, terminates],
 "
-    Y = deep_copy(X);
+    Y = builtin.deep_copy(X);
 ").
 
 :- pragma foreign_proc("Java",
@@ -989,17 +1007,15 @@ special__Compare____tuple_0_0(ref object[] result,
 % references to it in code.  See tests/hard_coded/nullary_ho_func.m for an
 % example of code which does.
 %
-:- pragma foreign_decl("C#", "
-namespace mercury.builtin {
-    public class void_0
+:- pragma foreign_code("C#", "
+    public class Void_0
     {
         // Make the constructor private to ensure that we can
         // never create an instance of this class.
-        private void_0()
+        private Void_0()
         {
         }
     }
-}
 ").
 :- pragma foreign_code("Java", "
     public static class Void_0

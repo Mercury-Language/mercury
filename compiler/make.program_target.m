@@ -68,6 +68,7 @@ make_linked_target(Globals, LinkedTargetFile, LinkedTargetSucceeded,
         ExtraOptions = ["--compile-to-shared-lib"]
     ;
         ( FileType = executable
+        ; FileType = csharp_library
         ; FileType = java_archive
         ; FileType = erlang_archive
         ; FileType = static_library
@@ -170,6 +171,10 @@ make_linked_target_2(LinkedTargetFile, Globals, _, Succeeded, !Info, !IO) :-
             CompilationTarget = target_il,
             IntermediateTargetType = module_target_il_code,
             ObjectTargetType = module_target_il_asm
+        ;
+            CompilationTarget = target_csharp,
+            IntermediateTargetType = module_target_csharp_code,
+            ObjectTargetType = module_target_csharp_code
         ;
             CompilationTarget = target_java,
             IntermediateTargetType = module_target_java_code,
@@ -412,6 +417,7 @@ get_foreign_object_targets(Globals, PIC, ModuleName, ObjectTargets,
         ObjectTargets = FactObjectTargets ++ ForeignObjectTargets
     ;
         ( CompilationTarget = target_java
+        ; CompilationTarget = target_csharp
         ; CompilationTarget = target_il
         ; CompilationTarget = target_x86_64
         ; CompilationTarget = target_erlang
@@ -485,6 +491,7 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
             MaybeInitObjectResult = yes(InitObjectResult)
         ;
             ( CompilationTarget = target_il
+            ; CompilationTarget = target_csharp
             ; CompilationTarget = target_java
             ; CompilationTarget = target_x86_64
             ),
@@ -513,6 +520,7 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
     ;
         ( FileType = static_library
         ; FileType = shared_library
+        ; FileType = csharp_library
         ; FileType = java_archive
         ; FileType = erlang_archive
         ),
@@ -619,6 +627,10 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
             CompilationTarget = target_il,
             ObjExtToUse = ".dll"
         ;
+            CompilationTarget = target_csharp,
+            % There is no separate object code step.
+            ObjExtToUse = ".cs"
+        ;
             CompilationTarget = target_java,
             globals.lookup_string_option(NoLinkObjsGlobals,
                 java_object_file_extension, ObjExtToUse)
@@ -641,6 +653,7 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
             ; CompilationTarget = target_asm
             ; CompilationTarget = target_erlang
             ; CompilationTarget = target_java
+            ; CompilationTarget = target_csharp
             ),
             % Run the link in a separate process so it can be killed
             % if an interrupt is received.
@@ -1229,6 +1242,9 @@ build_library(MainModuleName, AllModules, Globals, Succeeded, !Info, !IO) :-
         Target = target_il,
         sorry(this_file, "build_library: target IL not supported yet")
     ;
+        Target = target_csharp,
+        build_csharp_library(Globals, MainModuleName, Succeeded, !Info, !IO)
+    ;
         Target = target_java,
         build_java_library(Globals, MainModuleName, Succeeded, !Info, !IO)
     ;
@@ -1275,6 +1291,14 @@ build_c_library(Globals, MainModuleName, AllModules, Succeeded, !Info, !IO) :-
         StaticSucceeded = no,
         Succeeded = no
     ).
+
+:- pred build_csharp_library(globals::in, module_name::in, bool::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+build_csharp_library(Globals, MainModuleName, Succeeded, !Info, !IO) :-
+    make_linked_target(Globals,
+        linked_target_file(MainModuleName, csharp_library),
+        Succeeded, !Info, !IO).
 
 :- pred build_java_library(globals::in, module_name::in, bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -1407,6 +1431,7 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
             install_file(Globals, FileName, LibDir/"inc", HeaderSucceeded, !IO)
         ;
             ( Target = target_java
+            ; Target = target_csharp
             ; Target = target_il
             ; Target = target_x86_64
             ),
@@ -2006,6 +2031,7 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
         module_target_c_code,
         module_target_c_header(header_mih),
         module_target_il_code,
+        module_target_csharp_code,
         module_target_java_code,
         module_target_java_class_code,
         module_target_erlang_code,

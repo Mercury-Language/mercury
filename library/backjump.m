@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2009 The University of Melbourne.
+% Copyright (C) 2007-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -420,6 +420,24 @@ mercury_sys_init_backjumps_write_out_proc_statics(FILE *deep_fp,
         &MR_proc_layout_user_name(backjump, builtin_backjump, 1, 0));
 }
 #endif /* MR_DEEP_PROFILING */
+
+").
+
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_code("C#", "
+
+    public static void
+    builtin_choice_id_1_p_0(object cont, /* env_ptr */ object cont_env_ptr)
+    {
+        throw new System.Exception(""builtin_choice_id/1 not implemented"");
+    }
+
+    public static void
+    builtin_backjump_1_p_0(int Id_2)
+    {
+        throw new System.Exception(""builtin_backjump/1 not implemented"");
+    }
 
 ").
 

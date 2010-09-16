@@ -1358,6 +1358,19 @@ string.to_char_list(Str::uo, CharList::in) :-
     }
 }").
 
+:- pragma foreign_proc("C#",
+    string.to_char_list_2(Str::in, CharList::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    list.List_1 lst = list.empty_list();
+    for (int i = Str.Length - 1; i >= 0; i--) {
+        char c = Str[i];
+        lst = list.cons(c, lst);
+    }
+    CharList = lst;
+").
+
 :- pragma foreign_proc("Java",
     string.to_char_list_2(Str::in, CharList::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -1455,6 +1468,20 @@ string.from_char_list(Chars::in, Str::uo) :-
 
     Str[size] = '\\0';
 }").
+
+:- pragma foreign_proc("C#",
+    string.semidet_from_char_list(CharList::in, Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    System.Text.StringBuilder sb = new System.Text.StringBuilder();
+    while (!list.is_empty(CharList)) {
+        sb.Append((char) list.det_head(CharList));
+        CharList = list.det_tail(CharList);
+    }
+    Str = sb.ToString();
+    SUCCESS_INDICATOR = true;
+").
 
 :- pragma foreign_proc("Java",
     string.semidet_from_char_list(CharList::in, Str::uo),
@@ -1811,6 +1838,19 @@ string.append_list(Lists, string.append_list(Lists)).
     Str[len] = '\\0';
 }").
 
+:- pragma foreign_proc("C#",
+    string.append_list(Strs::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    System.Text.StringBuilder sb = new System.Text.StringBuilder();
+    while (!list.is_empty(Strs)) {
+        sb.Append((string) list.det_head(Strs));
+        Strs = list.det_tail(Strs);
+    }
+    Str = sb.ToString();
+").
+
 :- pragma foreign_proc("Java",
     string.append_list(Strs::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -1893,6 +1933,26 @@ string.append_list(Strs::in) = (Str::uo) :-
 
     Str[len] = '\\0';
 }").
+
+:- pragma foreign_proc("C#",
+    string.join_list(Sep::in, Strs::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    System.Text.StringBuilder sb = new System.Text.StringBuilder();
+    bool add_sep = false;
+
+    while (!list.is_empty(Strs)) {
+        if (add_sep) {
+            sb.Append(Sep);
+        }
+        sb.Append((string) list.det_head(Strs));
+        add_sep = true;
+        Strs = list.det_tail(Strs);
+    }
+
+    Str = sb.ToString();
+").
 
 :- pragma foreign_proc("Java",
     string.join_list(Sep::in, Strs::in) = (Str::uo),
@@ -3490,6 +3550,26 @@ string.from_float(Flt) = string.float_to_string(Flt).
     MR_float_to_string(Flt, Str);
 }").
 
+:- pragma foreign_proc("C#",
+    string.float_to_string(Flt::in, Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    Str = Flt.ToString(""R"");
+
+    /* Append '.0' if there is no 'e' or '.' in the string. */
+    bool contains = false;
+    foreach (char c in Str) {
+        if (c == 'e' || c == 'E' || c == '.') {
+            contains = true;
+            break;
+        }
+    }
+    if (!contains) {
+        Str = Str + "".0"";
+    }
+").
+
 :- pragma foreign_proc("Java",
     string.float_to_string(Flt::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -3617,6 +3697,9 @@ string.det_to_float(FloatString) =
     string.to_float(FloatString::in, FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
+    FloatVal = 0.0;     // FloatVal must be initialized to suppress
+                        // error messages when the predicate fails.
+
     // leading or trailing whitespace is not allowed
     if (FloatString.Length == 0 ||
         System.Char.IsWhiteSpace(FloatString, 0) ||
@@ -3630,7 +3713,7 @@ string.det_to_float(FloatString) =
         try {
             FloatVal = System.Convert.ToDouble(FloatString);
             SUCCESS_INDICATOR = true;
-        } catch (System.FormatException e) {
+        } catch (System.FormatException) {
             SUCCESS_INDICATOR = false;
         }
     }
@@ -3919,6 +4002,7 @@ string.set_char(Char, Index, !Str) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Index >= Str0.Length) {
+        Str = null;
         SUCCESS_INDICATOR = false;
     } else {
         Str = System.String.Concat(Str0.Substring(0, Index),
@@ -4200,9 +4284,11 @@ string.append_iii(X, Y, Z) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     if (S3.StartsWith(S1)) {
+        // .Substring() better?
         S2 = S3.Remove(0, S1.Length);
         SUCCESS_INDICATOR = true;
     } else {
+        S2 = null;
         SUCCESS_INDICATOR = false;
     }
 }").
@@ -4385,6 +4471,26 @@ strchars(I, End, Str) = Chars :-
         SubString[Count] = '\\0';
     }
 }").
+
+:- pragma foreign_proc("C#",
+    string.substring(Str::in, Start::in, Count::in, SubString::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, may_not_duplicate, no_sharing],
+"
+    if (Start < 0) Start = 0;
+    if (Count <= 0) {
+        SubString = """";
+    } else {
+        int len = Str.Length;
+        if (Start > len) {
+            Start = len;
+        }
+        if (Count > len - Start) {
+            Count = len - Start;
+        }
+        SubString = Str.Substring(Start, Count);
+    }
+").
 
 :- pragma foreign_proc("Java",
     string.substring(Str::in, Start::in, Count::in, SubString::uo),
@@ -4624,6 +4730,7 @@ string.split(Str, Count, Left, Right) :-
         First = Str[0];
     } else {
         SUCCESS_INDICATOR = false;
+        First = (char) 0;
     }
 ").
 :- pragma foreign_proc("Java",
@@ -4680,6 +4787,7 @@ string.split(Str, Count, Left, Right) :-
         Rest = Str.Substring(1);
     } else {
         SUCCESS_INDICATOR = false;
+        Rest = null;
     }
 }").
 :- pragma foreign_proc("Java",
@@ -4734,6 +4842,8 @@ string.split(Str, Count, Left, Right) :-
 "{
     if (Str.Length == 0) {
         SUCCESS_INDICATOR = false;
+        First = (char) 0;
+        Rest = null;
     } else {
         First = Str[0];
         Rest = Str.Substring(1);

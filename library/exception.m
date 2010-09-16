@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2008 The University of Melbourne.
+% Copyright (C) 1997-2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1441,29 +1441,13 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 #endif /* MR_HIGHLEVEL_CODE */
 ").
 
-    % For the .NET backend we override throw_impl as it is easier to
-    % implement these things using foreign_proc.
-
-:- pragma foreign_decl("C#", "
-namespace mercury {
-    namespace runtime {
-        public class Exception : System.Exception
-        {
-            public Exception(object[] data)
-            {
-                mercury_exception = data;
-            }
-            public object[] mercury_exception;
-        };
-    }
-}
-").
+%-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C#",
     throw_impl(T::in),
     [will_not_call_mercury, promise_pure],
 "
-    throw new mercury.runtime.Exception(T);
+    throw new runtime.Exception(T);
 ").
 
 :- pragma foreign_proc("C#",
@@ -1471,12 +1455,11 @@ namespace mercury {
     [will_not_call_mercury, promise_pure],
 "
     try {
-        mercury.exception.mercury_code.ML_call_goal_det(
-            TypeInfo_for_T, Pred, ref T);
+        T = exception.ML_call_goal_det(TypeInfo_for_T, Pred);
     }
-    catch (mercury.runtime.Exception ex) {
-        mercury.exception.mercury_code.ML_call_handler_det(
-            TypeInfo_for_T, Handler, ex.mercury_exception, ref T);
+    catch (runtime.Exception ex) {
+        T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
+            (univ.Univ_0) ex.exception);
     }
 ").
 :- pragma foreign_proc("C#",
@@ -1484,57 +1467,49 @@ namespace mercury {
     [will_not_call_mercury, promise_pure],
 "
     try {
-        mercury.exception.mercury_code.ML_call_goal_det(
-            TypeInfo_for_T, Pred, ref T);
+        T = exception.ML_call_goal_det(TypeInfo_for_T, Pred);
     }
-    catch (mercury.runtime.Exception ex) {
-        mercury.exception.mercury_code.ML_call_handler_det(
-            TypeInfo_for_T, Handler, ex.mercury_exception, ref T);
+    catch (runtime.Exception ex) {
+        T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
+            (univ.Univ_0) ex.exception);
     }
-").
-
-/*
-    % We can't implement these until we implement semidet procedures
-    % for the C# interface.
-
-:- pragma foreign_proc("C#",
-    catch_impl(Pred::pred(out) is semidet, Handler::in(handler), T::out),
-    [will_not_call_mercury, promise_pure],
-"
-    mercury.runtime.Errors.SORRY(""foreign code for this function"");
 ").
 
 :- pragma foreign_proc("C#",
-    catch_impl(Pred::pred(out) is cc_nondet, Handler::in(handler), T::out),
+    catch_impl(_Pred::pred(out) is semidet, _Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
 "
-    mercury.runtime.Errors.SORRY(""foreign code for this function"");
+    runtime.Errors.SORRY(""foreign code for this function"");
+    T = null;
+    SUCCESS_INDICATOR = false;
 ").
 
-    % We can't implement these because nondet C# foreign_proc for C#
-    % is not possible.
+:- pragma foreign_proc("C#",
+    catch_impl(_Pred::pred(out) is cc_nondet, _Handler::in(handler), T::out),
+    [will_not_call_mercury, promise_pure],
+"
+    runtime.Errors.SORRY(""foreign code for this function"");
+    T = null;
+    SUCCESS_INDICATOR = false;
+").
 
 :- pragma foreign_proc("C#",
     catch_impl(_Pred::pred(out) is multi, _Handler::in(handler), _T::out),
     [will_not_call_mercury, promise_pure, ordinary_despite_detism],
-    local_vars(""),
-    first_code(""),
-    retry_code(""),
-    common_code("
-    mercury.runtime.Errors.SORRY(""foreign code for this function"");
-    ")
-).
+"
+    runtime.Errors.SORRY(""foreign code for this function"");
+    SUCCESS_INDICATOR = false;
+").
+
 :- pragma foreign_proc("C#",
     catch_impl(_Pred::pred(out) is nondet, _Handler::in(handler), _T::out),
     [will_not_call_mercury, promise_pure, ordinary_despite_detism],
-    local_vars(""),
-    first_code(""),
-    retry_code(""),
-    common_code("
-    mercury.runtime.Errors.SORRY(""foreign code for this function"");
-    ")
-).
-*/
+"
+    runtime.Errors.SORRY(""foreign code for this function"");
+    SUCCESS_INDICATOR = false;
+").
+
+%-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("Erlang",
     throw_impl(T::in),
@@ -1596,6 +1571,8 @@ namespace mercury {
         end.
 ").
 
+%-----------------------------------------------------------------------------%
+
 :- pred call_goal(pred(T), T).
 :- mode call_goal(pred(out) is det, out) is det.
 :- mode call_goal(pred(out) is semidet, out) is semidet.
@@ -1614,12 +1591,16 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     "ML_call_goal_det").
 :- pragma foreign_export("IL", call_goal(pred(out) is det, out),
     "ML_call_goal_det").
+% :- pragma foreign_export("C#", call_goal(pred(out) is det, out),
+%     "ML_call_goal_det").
 :- pragma foreign_export("Java", call_goal(pred(out) is det, out),
     "ML_call_goal_det").
 :- pragma foreign_export("C", call_goal(pred(out) is semidet, out),
     "ML_call_goal_semidet").
 :- pragma foreign_export("IL", call_goal(pred(out) is semidet, out),
     "ML_call_goal_semidet").
+% :- pragma foreign_export("C#", call_goal(pred(out) is semidet, out),
+%     "ML_call_goal_semidet").
 :- pragma foreign_export("Java", call_goal(pred(out) is semidet, out),
     "ML_call_goal_semidet").
 
@@ -1638,8 +1619,12 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     "ML_call_handler_det").
 :- pragma foreign_export("IL", call_handler(pred(in, out) is det, in, out),
     "ML_call_handler_det").
+% :- pragma foreign_export("C#", call_handler(pred(in, out) is det, in, out),
+%     "ML_call_handler_det").
 :- pragma foreign_export("Java", call_handler(pred(in, out) is det, in, out),
     "ML_call_handler_det").
+
+%-----------------------------------------------------------------------------%
 
 :- pragma foreign_code("Java", "
 /*
@@ -2788,6 +2773,8 @@ mercury_sys_init_exceptions_write_out_proc_statics(FILE *deep_fp,
     "ML_report_uncaught_exception").
 :- pragma foreign_export("IL", report_uncaught_exception(in, di, uo),
     "ML_report_uncaught_exception").
+% :- pragma foreign_export("C#", report_uncaught_exception(in, di, uo),
+%     "ML_report_uncaught_exception").
 :- pragma foreign_export("Java", report_uncaught_exception(in, di, uo),
     "ML_report_uncaught_exception").
 :- pragma foreign_export("Erlang", report_uncaught_exception(in, di, uo),

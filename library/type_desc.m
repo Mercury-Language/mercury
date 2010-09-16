@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007, 2009 The University of Melbourne.
+% Copyright (C) 2002-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -329,69 +329,6 @@ type_info_desc_same_representation :-
 call_rtti_compare_type_infos(Res, T1, T2) :-
     rtti_implementation.compare_type_infos(Res, T1, T2).
 
-:- pragma foreign_code("C#", "
-
-public static int MR_compare_type_info(object[] t1, object[] t2) {
-    object[] res = null;
-
-    mercury.type_desc.mercury_code.ML_call_rtti_compare_type_infos(
-        ref res, t1, t2);
-// currently comparison_results are always built using low-level data.
-//#ifdef MR_HIGHLEVEL_DATA
-//  return res.data_tag;
-//#else
-    return System.Convert.ToInt32(res[0]);
-// #endif
-}
-
-public static void
-special___Compare___type_ctor_desc_0_0(
-    ref object[] result, object[] x, object[] y)
-{
-    mercury.runtime.Errors.SORRY(
-        ""foreign code for comparing type_ctor_descs"");
-}
-
-public static bool
-special___Unify___type_ctor_desc_0_0(object[] x, object[] y)
-{
-    mercury.runtime.Errors.SORRY(
-        ""foreign code for unifying type_ctor_descs"");
-    return false;
-}
-
-public static void
-special___Compare___type_desc_0_0(
-    ref object[] result, object[] x, object[] y)
-{
-    mercury.type_desc.mercury_code.ML_call_rtti_compare_type_infos(
-        ref result, x, y);
-}
-
-public static bool
-special___Unify___type_desc_0_0(object[] x, object[] y)
-{
-    return (MR_compare_type_info(x, y) == 0);
-}
-
-public static void
-special___Compare___pseudo_type_desc_0_0(
-    ref object[] result, object[] x, object[] y)
-{
-    mercury.runtime.Errors.SORRY(
-        ""foreign code for comparing pseudo_type_desc"");
-}
-
-public static bool
-special___Unify___pseudo_type_desc_0_0(object[] x, object[] y)
-{
-    mercury.runtime.Errors.SORRY(
-        ""foreign code for unifying pseudo_type_desc"");
-    return false;
-}
-
-").
-
 %-----------------------------------------------------------------------------%
 %
 % Code for type manipulation
@@ -469,6 +406,13 @@ is_exist_pseudo_type_desc(PTD, N) :-
     ).
 
 :- pragma foreign_proc("C",
+    type_desc_to_pseudo_type_desc(TypeDesc::in) = (PseudoTypeDesc::out),
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
+"
+    PseudoTypeDesc = TypeDesc;
+").
+
+:- pragma foreign_proc("C#",
     type_desc_to_pseudo_type_desc(TypeDesc::in) = (PseudoTypeDesc::out),
     [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "
@@ -808,6 +752,27 @@ pseudo_type_ctor_and_args(PseudoTypeDesc, TypeCtorDesc, ArgPseudoTypeDescs) :-
 :- pred make_type_ctor_desc(rtti_implementation.type_info::in,
     rtti_implementation.type_ctor_info::in, type_ctor_desc::out) is det.
 
+:- pragma foreign_proc("C#",
+    make_type_ctor_desc(TypeInfo::in, TypeCtorInfo::in, TypeCtorDesc::out),
+    [will_not_call_mercury, promise_pure, thread_safe,
+        may_not_duplicate],
+"
+    runtime.TypeCtorInfo_Struct tci = TypeCtorInfo;
+
+    /* Handle variable arity types. */
+    switch (tci.type_ctor_rep) {
+        case runtime.TypeCtorRep.MR_TYPECTOR_REP_PRED:
+        case runtime.TypeCtorRep.MR_TYPECTOR_REP_FUNC:
+        case runtime.TypeCtorRep.MR_TYPECTOR_REP_TUPLE:
+            tci = new runtime.TypeCtorInfo_Struct(tci, TypeInfo.args.Length);
+            break;
+        default:
+            break;
+    }
+
+    TypeCtorDesc = tci;
+").
+
 :- pragma foreign_proc("Java",
     make_type_ctor_desc(TypeInfo::in, TypeCtorInfo::in, TypeCtorDesc::out),
     [will_not_call_mercury, promise_pure, thread_safe,
@@ -834,6 +799,28 @@ make_type_ctor_desc(_, _, _) :-
 
 :- pred make_type_ctor_desc_with_arity(int::in,
     rtti_implementation.type_ctor_info::in, type_ctor_desc::out) is det.
+
+:- pragma foreign_proc("C#",
+    make_type_ctor_desc_with_arity(Arity::in, TypeCtorInfo::in,
+        TypeCtorDesc::out),
+    [will_not_call_mercury, promise_pure, thread_safe,
+        may_not_duplicate],
+"
+    runtime.TypeCtorInfo_Struct tci = TypeCtorInfo;
+
+    /* Handle variable arity types. */
+    switch (tci.type_ctor_rep) {
+        case runtime.TypeCtorRep.MR_TYPECTOR_REP_PRED:
+        case runtime.TypeCtorRep.MR_TYPECTOR_REP_FUNC:
+        case runtime.TypeCtorRep.MR_TYPECTOR_REP_TUPLE:
+            tci = new runtime.TypeCtorInfo_Struct(tci, Arity);
+            break;
+        default:
+            break;
+    }
+
+    TypeCtorDesc = tci;
+").
 
 :- pragma foreign_proc("Java",
     make_type_ctor_desc_with_arity(Arity::in, TypeCtorInfo::in,
@@ -1028,6 +1015,58 @@ get_type_info_for_type_info = TypeDesc :-
     TypeDesc = type_of(Type).
 
 %-----------------------------------------------------------------------------%
+
+:- pragma foreign_code("C#", "
+    public static bool
+    __Unify____type_desc_0_0(
+        runtime.TypeInfo_Struct x,
+        runtime.TypeInfo_Struct y)
+    {
+        return x.Equals(y);
+    }
+
+    public static bool
+    __Unify____type_ctor_desc_0_0(
+        runtime.TypeCtorInfo_Struct x,
+        runtime.TypeCtorInfo_Struct y)
+    {
+        return x.Equals(y);
+    }
+
+    public static builtin.Comparison_result_0
+    __Compare____type_desc_0_0(
+        runtime.TypeInfo_Struct x,
+        runtime.TypeInfo_Struct y)
+    {
+        return rtti_implementation.ML_compare_type_infos(x, y);
+    }
+
+    public static builtin.Comparison_result_0
+    __Compare____type_ctor_desc_0_0(
+        runtime.TypeCtorInfo_Struct x,
+        runtime.TypeCtorInfo_Struct y)
+    {
+        return rtti_implementation.ML_compare_type_ctor_infos(x, y);
+    }
+
+    public static bool
+    __Unify____pseudo_type_desc_0_0(
+        runtime.PseudoTypeInfo x,
+        runtime.PseudoTypeInfo y)
+    {
+        return x.Equals(y);
+    }
+
+    public static builtin.Comparison_result_0
+    __Compare____pseudo_type_desc_0_0(
+        runtime.PseudoTypeInfo x,
+        runtime.PseudoTypeInfo y)
+    {
+        runtime.Errors.SORRY(
+            ""foreign code for comparing pseudo_type_desc"");
+        return builtin.Comparison_result_0.f_equal;
+    }
+").
 
 :- pragma foreign_code("Java", "
     public static boolean

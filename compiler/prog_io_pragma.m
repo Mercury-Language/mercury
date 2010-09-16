@@ -1455,6 +1455,18 @@ parse_foreign_language_type(InputTerm, VarSet, Language,
             MaybeForeignLangType = error1([Spec])
         )
     ;
+        Language = lang_csharp,
+        ( InputTerm = term.functor(term.string(CSharpTypeName), [], _) ->
+            MaybeForeignLangType = ok1(csharp(csharp_type(CSharpTypeName)))
+        ;
+            InputTermStr = describe_error_term(VarSet, InputTerm),
+            Pieces = [words("Error: invalid backend specification"),
+                quote(InputTermStr), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(InputTerm), [always(Pieces)])]),
+            MaybeForeignLangType = error1([Spec])
+        )
+    ;
         Language = lang_erlang,
         ( InputTerm = term.functor(term.string(_ErlangTypeName), [], _) ->
             % XXX should we check if the type is blank?
@@ -1467,13 +1479,6 @@ parse_foreign_language_type(InputTerm, VarSet, Language,
                 [simple_msg(get_term_context(InputTerm), [always(Pieces)])]),
             MaybeForeignLangType = error1([Spec])
         )
-    ;
-        Language = lang_csharp,
-        Pieces = [words("Error: unsupported language specified,"),
-            words("unable to parse backend type."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(InputTerm), [always(Pieces)])]),
-        MaybeForeignLangType = error1([Spec])
     ).
 
 :- pred parse_il_type_name(string::in, term::in, varset::in,

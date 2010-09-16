@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001,2003-2004, 2006-2008 The University of Melbourne.
+% Copyright (C) 2000-2001,2003-2004, 2006-2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -389,6 +389,9 @@ INIT mercury_sys_init_thread_modules
 :- pragma foreign_export("IL",
     call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
     "ML_call_back_to_mercury_cc_multi").
+% :- pragma foreign_export("C#",
+%     call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
+%     "ML_call_back_to_mercury_cc_multi").
 :- pragma foreign_export("Java",
     call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
     "ML_call_back_to_mercury_cc_multi").
@@ -409,7 +412,7 @@ public class MercuryThread {
 
     public void execute_goal()
     {
-        mercury.thread.mercury_code.ML_call_back_to_mercury_cc_multi(Goal);
+        thread.ML_call_back_to_mercury_cc_multi(Goal);
     }
 }").
 

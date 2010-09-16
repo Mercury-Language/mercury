@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2009 The University of Melbourne.
+% Copyright (C) 2008-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -565,6 +565,11 @@ write_dependency_file(Globals, Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                 Target = target_il,
                 ForeignImportTargets = [DllFileName],
                 ForeignImportExt = ".dll"
+            ;
+                Target = target_csharp,
+                % XXX don't know enough about C# yet
+                ForeignImportTargets = [],
+                ForeignImportExt = ".cs"
             ;
                 Target = target_java,
                 ForeignImportTargets = [ClassFileName],
@@ -1132,6 +1137,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
         ForeignModulesAndExts = foreign_modules(Modules, DepsMap)
     ;
         ( Target = target_c
+        ; Target = target_csharp
         ; Target = target_java
         ; Target = target_asm
         ; Target = target_x86_64
@@ -1472,6 +1478,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
             % For the IL and Java targets, currently we don't generate
             % `.mih' files at all; although perhaps we should...
             ( Target = target_il
+            ; Target = target_csharp
             ; Target = target_java
             ; Target = target_erlang
             )
@@ -1496,6 +1503,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
             DepStream, !IO)
     ;
         ( Target = target_il
+        ; Target = target_csharp
         ; Target = target_java
         ; Target = target_erlang
         )
@@ -1844,6 +1852,10 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
             Target = target_il,
             Rules = ILMainRule
         ;
+            Target = target_csharp,
+            % XXX not yet
+            Rules = []
+        ;
             Target = target_java,
             Rules = JavaMainRule
         ;
@@ -1936,6 +1948,10 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
         (
             Target = target_il,
             LibRules = ILLibRule
+        ;
+            Target = target_csharp,
+            % XXX not done yet
+            LibRules = []
         ;
             Target = target_java,
             LibRules = JavaLibRule

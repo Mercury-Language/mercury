@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2009 The University of Melbourne.
+% Copyright (C) 2002-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -9,7 +9,7 @@
 % File: java_names.m.
 % Main authors: juliensf, mjwybrow, wangp.
 %
-% This module contains utility routines related to naming things in Java,
+% This module contains utility routines related to naming things in Java/C#
 % which are also required in the frontend.
 %
 %-----------------------------------------------------------------------------%
@@ -21,20 +21,20 @@
 
 %-----------------------------------------------------------------------------%
 
-    % For the Java back-end, we need to distinguish between module qualifiers
-    % and type qualifiers, because type names get the case of their initial
-    % letter inverted (i.e. lowercase => uppercase).
+    % For the C# and Java back-ends, we need to distinguish between module
+    % qualifiers and type qualifiers, because type names get the case of their
+    % initial letter inverted (i.e. lowercase => uppercase).
     %
     % This duplicates mlds_qual_kind so as not to introduce unwanted
     % dependencies in either direction.
     %
-:- type java_qual_kind
+:- type csj_qual_kind
     --->    module_qual
     ;       type_qual.
 
     % Mangle a name so that it is suitable for Java.
     %
-:- pred mangle_sym_name_for_java(sym_name::in, java_qual_kind::in,
+:- pred mangle_sym_name_for_java(sym_name::in, csj_qual_kind::in,
     string::in, string::out) is det.
 
     % If the given name conficts with a reserved Java word we must add a
@@ -46,6 +46,32 @@
     %
 :- pred java_is_keyword(string::in) is semidet.
 
+    % The package containing the Mercury Java runtime classes.
+    %
+:- func java_mercury_runtime_package_name = sym_name.
+
+%-----------------------------------------------------------------------------%
+
+    % Mangle a name so that it is suitable for C#.
+    %
+:- pred mangle_sym_name_for_csharp(sym_name::in, csj_qual_kind::in,
+    string::in, string::out) is det.
+
+    % If the given name conficts with a reserved C# word we must add a
+    % prefix to it to avoid compilation errors.
+    %
+:- func valid_csharp_symbol_name(string) = string.
+
+    % Succeeds iff the given string matches a reserved word in C#.
+    %
+:- pred csharp_is_keyword(string::in) is semidet.
+
+    % The package containing the Mercury C# runtime classes.
+    %
+:- func csharp_mercury_runtime_package_name = sym_name.
+
+%-----------------------------------------------------------------------------%
+
     % Invert the case of the first letter of the string.
     %
 :- func flip_initial_case(string) = string.
@@ -54,10 +80,6 @@
     % a (possibly) qualified name.
     %
 :- func flip_initial_case_of_final_part(sym_name) = sym_name.
-
-    % The package containing the Mercury Java runtime classes.
-    %
-:- func mercury_runtime_package_name = sym_name.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -71,6 +93,9 @@
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
+%
+% Java naming
+%
 
 mangle_sym_name_for_java(SymName0, QualKind, QualifierOp, JavaSafeName) :-
     % Modules in the Mercury standard library get a `mercury' prefix when
@@ -84,7 +109,7 @@ mangle_sym_name_for_java(SymName0, QualKind, QualifierOp, JavaSafeName) :-
     mangle_sym_name_for_java_2(SymName, QualKind, MangledSymName),
     JavaSafeName = sym_name_to_string_sep(MangledSymName, QualifierOp).
 
-:- pred mangle_sym_name_for_java_2(sym_name::in, java_qual_kind::in,
+:- pred mangle_sym_name_for_java_2(sym_name::in, csj_qual_kind::in,
     sym_name::out) is det.
 
 mangle_sym_name_for_java_2(SymName, QualKind, MangledSymName) :-
@@ -100,7 +125,7 @@ mangle_sym_name_for_java_2(SymName, QualKind, MangledSymName) :-
         MangledSymName = qualified(MangledModuleName, JavaSafePlainName)
     ).
 
-:- func java_safe_name_component(java_qual_kind, string) = string.
+:- func java_safe_name_component(csj_qual_kind, string) = string.
 
 java_safe_name_component(QualKind, Name) = JavaSafeName :-
     MangledName = name_mangle_no_leading_digit(Name),
@@ -112,8 +137,6 @@ java_safe_name_component(QualKind, Name) = JavaSafeName :-
         FlippedName = flip_initial_case(MangledName)
     ),
     JavaSafeName = valid_java_symbol_name(FlippedName).
-
-%-----------------------------------------------------------------------------%
 
 valid_java_symbol_name(SymName) = ValidSymName :-
     Prefix = "mr_",
@@ -128,8 +151,6 @@ valid_java_symbol_name(SymName) = ValidSymName :-
         % Normal name; do nothing.
         ValidSymName = SymName
     ).
-
-%-----------------------------------------------------------------------------%
 
 java_is_keyword("abstract").
 java_is_keyword("boolean").
@@ -184,6 +205,144 @@ java_is_keyword("void").
 java_is_keyword("volatile").
 java_is_keyword("while").
 
+java_mercury_runtime_package_name =
+    qualified(unqualified("jmercury"), "runtime").
+
+%-----------------------------------------------------------------------------%
+%
+% C# naming
+%
+
+% XXX Reduce code duplication between C# and Java routines.
+
+mangle_sym_name_for_csharp(SymName, QualKind, QualifierOp, SafeName) :-
+    mangle_sym_name_for_csharp_2(SymName, QualKind, MangledSymName),
+    SafeName = sym_name_to_string_sep(MangledSymName, QualifierOp).
+
+:- pred mangle_sym_name_for_csharp_2(sym_name::in, csj_qual_kind::in,
+    sym_name::out) is det.
+
+mangle_sym_name_for_csharp_2(SymName, QualKind, MangledSymName) :-
+    (
+        SymName = unqualified(Name),
+        SafeName = csharp_safe_name_component(QualKind, Name),
+        MangledSymName = unqualified(SafeName)
+    ;
+        SymName = qualified(ModuleName0, PlainName),
+        mangle_sym_name_for_csharp_2(ModuleName0, module_qual,
+            MangledModuleName),
+        SafePlainName = csharp_safe_name_component(QualKind, PlainName),
+        MangledSymName = qualified(MangledModuleName, SafePlainName)
+    ).
+
+:- func csharp_safe_name_component(csj_qual_kind, string) = string.
+
+csharp_safe_name_component(QualKind, Name) = SafeName :-
+    MangledName = name_mangle_no_leading_digit(Name),
+    (
+        QualKind = module_qual,
+        FlippedName = MangledName
+    ;
+        QualKind = type_qual,
+        FlippedName = flip_initial_case(MangledName)
+    ),
+    SafeName = valid_csharp_symbol_name(FlippedName).
+
+valid_csharp_symbol_name(SymName) = ValidSymName :-
+    Prefix = "mr_",
+    ( csharp_is_keyword(SymName) ->
+        % This is a reserved word, add the above prefix.
+        ValidSymName = Prefix ++ SymName
+    ; string.append(Prefix, Suffix, SymName) ->
+        % This name already contains the prefix we are adding to
+        % variables to avoid conficts, so add an additional '_'.
+        ValidSymName = Prefix ++ "_" ++ Suffix
+    ;
+        % Normal name; do nothing.
+        ValidSymName = SymName
+    ).
+
+csharp_is_keyword("abstract").
+csharp_is_keyword("as").
+csharp_is_keyword("base").
+csharp_is_keyword("bool").
+csharp_is_keyword("break").
+csharp_is_keyword("byte").
+csharp_is_keyword("case").
+csharp_is_keyword("catch").
+csharp_is_keyword("char").
+csharp_is_keyword("checked").
+csharp_is_keyword("class").
+csharp_is_keyword("const").
+csharp_is_keyword("continue").
+csharp_is_keyword("decimal").
+csharp_is_keyword("default").
+csharp_is_keyword("delegate").
+csharp_is_keyword("do").
+csharp_is_keyword("double").
+csharp_is_keyword("else").
+csharp_is_keyword("enum").
+csharp_is_keyword("event").
+csharp_is_keyword("explicit").
+csharp_is_keyword("extern").
+csharp_is_keyword("false").
+csharp_is_keyword("finally").
+csharp_is_keyword("fixed").
+csharp_is_keyword("float").
+csharp_is_keyword("for").
+csharp_is_keyword("foreach").
+csharp_is_keyword("goto").
+csharp_is_keyword("if").
+csharp_is_keyword("implicit").
+csharp_is_keyword("in").
+csharp_is_keyword("int").
+csharp_is_keyword("interface").
+csharp_is_keyword("internal").
+csharp_is_keyword("is").
+csharp_is_keyword("lock").
+csharp_is_keyword("long").
+csharp_is_keyword("namespace").
+csharp_is_keyword("new").
+csharp_is_keyword("null").
+csharp_is_keyword("object").
+csharp_is_keyword("operator").
+csharp_is_keyword("out").
+csharp_is_keyword("override").
+csharp_is_keyword("params").
+csharp_is_keyword("private").
+csharp_is_keyword("protected").
+csharp_is_keyword("public").
+csharp_is_keyword("readonly").
+csharp_is_keyword("ref").
+csharp_is_keyword("return").
+csharp_is_keyword("sbyte").
+csharp_is_keyword("sealed").
+csharp_is_keyword("short").
+csharp_is_keyword("sizeof").
+csharp_is_keyword("stackalloc").
+csharp_is_keyword("static").
+csharp_is_keyword("string").
+csharp_is_keyword("struct").
+csharp_is_keyword("switch").
+csharp_is_keyword("this").
+csharp_is_keyword("throw").
+csharp_is_keyword("true").
+csharp_is_keyword("try").
+csharp_is_keyword("typeof").
+csharp_is_keyword("uint").
+csharp_is_keyword("ulong").
+csharp_is_keyword("unchecked").
+csharp_is_keyword("unsafe").
+csharp_is_keyword("ushort").
+csharp_is_keyword("using").
+csharp_is_keyword("virtual").
+csharp_is_keyword("volatile").
+csharp_is_keyword("void").
+csharp_is_keyword("while").
+
+csharp_mercury_runtime_package_name =
+    qualified(unqualified("mercury"), "runtime").
+
 %-----------------------------------------------------------------------------%
 
 flip_initial_case(S0) = S :-
@@ -204,10 +363,6 @@ flip_initial_case_of_final_part(unqualified(Name)) =
     unqualified(flip_initial_case(Name)).
 flip_initial_case_of_final_part(qualified(Qual, Name)) =
     qualified(Qual, flip_initial_case(Name)).
-
-%-----------------------------------------------------------------------------%
-
-mercury_runtime_package_name = qualified(unqualified("jmercury"), "runtime").
 
 %-----------------------------------------------------------------------------%
 

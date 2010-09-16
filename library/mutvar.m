@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007 The University of Melbourne.
+% Copyright (C) 1994-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -111,6 +111,8 @@ new_mutvar(X, Ref) :-
 %
 % C# implementation
 %
+
+% :- pragma foreign_type("C#", mutvar(T), "object[]").
 
 :- pragma foreign_proc("C#",
     new_mutvar0(Ref::uo),

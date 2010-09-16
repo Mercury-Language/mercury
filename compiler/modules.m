@@ -2602,6 +2602,7 @@ generate_dependencies_write_d_files(Globals, [Dep | Deps],
         ( Target = target_c, Lang = lang_c
         ; Target = target_asm, Lang = lang_c
         ; Target = target_java, Lang = lang_java
+        ; Target = target_csharp, Lang = lang_csharp
         ; Target = target_il, Lang = lang_il
         ; Target = target_x86_64, Lang = lang_c
         ; Target = target_erlang, Lang = lang_erlang
