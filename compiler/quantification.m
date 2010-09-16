@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -119,13 +119,42 @@
 
 %-----------------------------------------------------------------------------%
 
+    % `OutsideVars' are the variables that have occurred free outside
+    % this goal, not counting occurrences in parallel goals and not
+    % counting occurrences in lambda goals, or which have been explicitly
+    % existentially quantified over a scope which includes the current
+    % goal in a negated context.
+    %
+    % `QuantVars' are the variables not in `OutsideVars' that have been
+    % explicitly existentially quantified over a scope which includes the
+    % current goal in a positive (non-negated) context.
+    %
+    % `OutsideLambdaVars' are the variables that have occurred free in
+    % a lambda expression outside this goal, not counting occurrences in
+    % parallel goals (and if this goal is itself inside a lambda
+    % expression, not counting occurrences outside that lambda expression).
+    %
+    % For example, consider
+    %
+    %   test :- some [X] (p(X) ; not q(X) ; r(X), s(X)).
+    %
+    % When processing `r(X), s(X)':
+    %   OutsideVars will be [] and QuantifiedVars will be [X].
+    % When processing `r(X)':
+    %   OutsideVars will be [X] and QuantifiedVars will be [],
+    %   since now [X] has occured in a goal (`s(X)') outside of `r(X)'.
+    % When processing `not q(X)':
+    %   OutsideVars will be [] and QuantifiedVars will be [X].
+    % When processing `q(X)':
+    %   OutsideVars will be [X] and QuantifiedVars will be [],
+    %   since the quantification can't be pushed inside the negation.
+    %
     % The `outside vars', `lambda outside vars', and `quant vars'
     % fields are inputs; the `nonlocals' field is output; and
     % the `seen so far', the varset, the types, rtti_varmaps, and the
     % warnings fields are threaded (i.e. both input and output).
     % We use the convention that the input fields are callee save,
     % and the outputs are caller save.
-    % The nonlocals_to_recompute field is constant.
     %
 :- type quant_info
     --->    quant_info(
@@ -149,40 +178,15 @@
     % If you want to debug a new set representation, just import a version
     % of the bitset_tester module from tests/hard_coded, and make set_of_var
     % equivalent to the bitset_tester type.
-% :- type set_of_var == set(prog_var).
-:- type set_of_var == tree_bitset(prog_var).
+:- type set_of_var == set(prog_var).
+% :- type set_of_var == tree_bitset(prog_var).
 
-    % `OutsideVars' are the variables that have occurred free outside
-    % this goal, not counting occurrences in parallel goals and not
-    % counting occurrences in lambda goals, or which have been explicitly
-    % existentially quantified over a scope which includes the current
-    % goal in a negated context.
-    %
-    % `QuantVars' are the variables not in `OutsideVars' that have been
-    % explicitly existentially quantified over a scope which includes the
-    % current goal in a positive (non-negated) context.
-    %
-    % `OutsideLambdaVars' are the variables that have occurred free in
-    % a lambda expression outside this goal, not counting occurrences in
-    % parallel goals (and if this goal is itself inside a lambda
-    % expression, not counting occurrences outside that lambda expression).
-    %
-    % For example, for
-    %
-    %   test :- some [X] (p(X) ; not q(X) ; r(X), s(X)).
-    %
-    % when processing `r(X), s(X)', OutsideVars will be [] and
-    % QuantifiedVars will be [X]; when processing `r(X)',
-    % OutsideVars will be [X] and QuantifiedVars will be [],
-    % since now [X] has occured in a goal (`s(X)') outside of `r(X)'.
-    % When processing `not q(X)', OutsideVars will be [] and
-    % QuantifiedVars will be [X]; when processing `q(X)',
-    % OutsideVars will be [X] and QuantifiedVars will be [],
-    % since the quantification can't be pushed inside the negation.
-
-:- inst ordinary_nonlocals_maybe_lambda ---> ordinary_nonlocals_maybe_lambda.
-:- inst ordinary_nonlocals_no_lambda ---> ordinary_nonlocals_no_lambda.
-:- inst code_gen_nonlocals_no_lambda ---> code_gen_nonlocals_no_lambda.
+:- inst ordinary_nonlocals_maybe_lambda
+    --->    ordinary_nonlocals_maybe_lambda.
+:- inst ordinary_nonlocals_no_lambda
+    --->    ordinary_nonlocals_no_lambda.
+:- inst code_gen_nonlocals_no_lambda
+    --->    code_gen_nonlocals_no_lambda.
 
 %-----------------------------------------------------------------------------%
 
@@ -2502,15 +2506,24 @@ get_vartypes(Q, Q ^ qi_vartypes).
 get_warnings(Q, Q ^ qi_warnings).
 get_rtti_varmaps(Q, Q ^ qi_rtti_varmaps).
 
-set_outside(Outside, Q, Q ^ qi_outside := Outside).
-set_quant_vars(QuantVars, Q, Q ^ qi_quant_vars := QuantVars).
-set_lambda_outside(LambdaOutside, Q, Q ^ qi_lambda_outside := LambdaOutside).
-set_nonlocals(NonLocals, Q, Q ^ qi_nonlocals := NonLocals).
-set_seen(Seen, Q, Q ^ qi_seen := Seen).
-set_varset(Varset, Q, Q ^ qi_varset := Varset).
-set_vartypes(VarTypes, Q, Q ^ qi_vartypes := VarTypes).
-set_warnings(Warnings, Q, Q ^ qi_warnings := Warnings).
-set_rtti_varmaps(RttiVarMaps, Q, Q ^ qi_rtti_varmaps := RttiVarMaps).
+set_outside(Outside, !Q) :-
+    !Q ^ qi_outside := Outside.
+set_quant_vars(QuantVars, !Q) :-
+    !Q ^ qi_quant_vars := QuantVars.
+set_lambda_outside(LambdaOutside, !Q) :-
+    !Q ^ qi_lambda_outside := LambdaOutside.
+set_nonlocals(NonLocals, !Q) :-
+    !Q ^ qi_nonlocals := NonLocals.
+set_seen(Seen, !Q) :-
+    !Q ^ qi_seen := Seen.
+set_varset(Varset, !Q) :-
+    !Q ^ qi_varset := Varset.
+set_vartypes(VarTypes, !Q) :-
+    !Q ^ qi_vartypes := VarTypes.
+set_warnings(Warnings, !Q) :-
+    !Q ^ qi_warnings := Warnings.
+set_rtti_varmaps(RttiVarMaps, !Q) :-
+    !Q ^ qi_rtti_varmaps := RttiVarMaps.
 
 %-----------------------------------------------------------------------------%
 
