@@ -520,7 +520,7 @@ case $HOST in
             hlc.gc.trseg"
         ;;
     goliath)
-        CONFIG_OPTS=""
+        CONFIG_OPTS="--with-cc=/usr/bin/gcc-4.1"
         INSTALL_LIBGRADES="asm_fast.gc  \
             hlc.gc                      \
             hlc.gc.trseg                \
