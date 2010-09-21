@@ -341,6 +341,12 @@ choose_file_name(Globals, _ModuleName, BaseParentDirs, BaseName, Ext,
             ; Ext = ".beams"
             ; Ext = ".opts"
             ; Ext = ".trans_opts"
+            ; Ext = ".all_ints"
+            ; Ext = ".all_int3s"
+            ; Ext = ".all_ss"
+            ; Ext = ".all_pic_ss"
+            ; Ext = ".all_opts"
+            ; Ext = ".all_trans_opts"
             )
         ;
             % Output files intended for use by the user.

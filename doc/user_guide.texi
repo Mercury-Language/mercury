@@ -538,7 +538,7 @@ This step must be performed first.
 It is also required whenever you wish to change the level of
 inter-module optimization performed (@pxref{Overall optimization options}).
 
-@item @var{main-module}.ints
+@item @var{main-module}.all_ints
 Ensure that the interface files for @var{main-module}
 and its imported modules are up-to-date.
 (If the underlying @samp{make} program does not handle transitive dependencies,
@@ -554,23 +554,7 @@ Error messages are placed in @file{.err} files.
 Compiles and links @var{main-module} using the Mercury compiler.
 Error messages are placed in @file{.err} files.
 
-@item @var{main-module}.javas
-Compiles @var{main-module} to Java source files (@file{*.java}).
-
-@item @var{main-module}.classes
-Compiles @var{main-module} to Java bytecode files (@file{*.class}).
-
-@item @var{main-module}.ils
-Compiles @var{main-module} to IL files (@file{*.il})
-for the .NET Common Language Runtime.
-
 @c XXX mention .dlls and .exe targets?
-
-@item @var{main-module}.erls
-Compiles @var{main-module} to Erlang source files (@file{*.erl}).
-
-@item @var{main-module}.beams
-Compiles @var{main-module} to Erlang bytecode (object) files (@file{*.beam}).
 
 @item lib@var{main-module}
 Builds a library whose top-level module is @var{main-module}.

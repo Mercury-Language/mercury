@@ -2237,55 +2237,45 @@ generate_dep_file_install_targets(Globals, DepStream, ModuleName, DepsMap,
 
 generate_dep_file_collective_targets(Globals, DepStream, ModuleName,
         MakeVarName, !IO) :-
-    module_name_to_file_name(Globals, ModuleName, ".check",
-        do_not_create_dirs, CheckTargetName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".ints",
-        do_not_create_dirs, IntsTargetName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".int3s",
-        do_not_create_dirs, Int3sTargetName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".opts",
-        do_not_create_dirs, OptsTargetName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".trans_opts",
-        do_not_create_dirs, TransOptsTargetName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".ss",
-        do_not_create_dirs, SsTargetName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".pic_ss",
-        do_not_create_dirs, PicSsTargetName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".ils",
-        do_not_create_dirs, ILsTargetName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".javas",
-        do_not_create_dirs, JavasTargetName, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".classes",
-        do_not_create_dirs, ClassesTargetName, !IO),
-
     % We need to explicitly mention $(foo.pic_ss) somewhere in the Mmakefile,
     % otherwise it won't build properly with --target asm: GNU Make's pattern
     % rule algorithm will try to use the .m -> .c_date -> .c -> .pic_o rule
     % chain rather than the .m -> .pic_s_date -> .pic_s -> .pic_o chain.
     % So don't remove the pic_ss target here.
 
+    list.foldl(
+        generate_dep_file_collective_target(Globals, DepStream, ModuleName,
+            MakeVarName),
+        [
+            ".check" - ".errs",
+            ".ints" - ".dates",
+            ".int3s" - ".date3s",
+            ".opts" - ".optdates",
+            ".trans_opts" - ".trans_opt_dates",
+            ".ss" - ".ss",
+            ".pic_ss" - ".pic_ss",
+            ".ils" - ".ils",
+            ".javas" - ".javas",
+            ".classes" - ".classes",
+            ".all_ints" - ".dates",
+            ".all_int3s" - ".date3s",
+            ".all_opts" - ".optdates",
+            ".all_trans_opts" - ".trans_opt_dates",
+            ".all_ss" - ".ss",
+            ".all_pic_ss" - ".pic_ss"
+        ], !IO).
+
+:- pred generate_dep_file_collective_target(globals::in, io.output_stream::in,
+    module_name::in, string::in, pair(string, string)::in,
+    io::di, io::uo) is det.
+
+generate_dep_file_collective_target(Globals, DepStream, ModuleName,
+        MakeVarName, Extension - VarExtension, !IO) :-
+    module_name_to_file_name(Globals, ModuleName, Extension,
+        do_not_create_dirs, TargetName, !IO),
     io.write_strings(DepStream, [
-        ".PHONY : ", CheckTargetName, "\n",
-        CheckTargetName, " : $(", MakeVarName, ".errs)\n\n",
-        ".PHONY : ", IntsTargetName, "\n",
-        IntsTargetName, " : $(", MakeVarName, ".dates)\n\n",
-        ".PHONY : ", Int3sTargetName, "\n",
-        Int3sTargetName, " : $(", MakeVarName, ".date3s)\n\n",
-        ".PHONY : ", OptsTargetName, "\n",
-        OptsTargetName, " : $(", MakeVarName, ".optdates)\n\n",
-        ".PHONY : ", TransOptsTargetName, "\n",
-        TransOptsTargetName, " : $(", MakeVarName,
-            ".trans_opt_dates)\n\n",
-        ".PHONY : ", SsTargetName, "\n",
-        SsTargetName, " : $(", MakeVarName, ".ss)\n\n",
-        ".PHONY : ", PicSsTargetName, "\n",
-        PicSsTargetName, " : $(", MakeVarName, ".pic_ss)\n\n",
-        ".PHONY : ", ILsTargetName, "\n",
-        ILsTargetName, " : $(", MakeVarName, ".ils)\n\n",
-        ".PHONY : ", JavasTargetName, "\n",
-        JavasTargetName, " : $(", MakeVarName, ".javas)\n\n",
-        ".PHONY : ", ClassesTargetName, "\n",
-        ClassesTargetName, " : $(", MakeVarName, ".classes)\n\n"
+        ".PHONY : ", TargetName, "\n",
+        TargetName, " : $(", MakeVarName, VarExtension, ")\n\n"
     ], !IO).
 
 :- pred generate_dep_file_clean_targets(globals::in, io.output_stream::in,

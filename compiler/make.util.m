@@ -222,6 +222,9 @@
 :- mode target_extension(in, in) = out is det.
 :- mode target_extension(in, out) = in(bound(yes(ground))) is nondet.
 
+:- pred target_extension_synonym(string::in, module_target_type::out)
+    is semidet.
+
 :- pred linked_target_file_name(globals::in, module_name::in,
     linked_target_type::in, file_name::out, io::di, io::uo) is det.
 
@@ -1402,6 +1405,10 @@ target_extension(_, module_target_xml_doc) = yes(".xml").
 target_extension(_, module_target_foreign_object(_, _)) = no.
 target_extension(_, module_target_foreign_il_asm(_)) = no.
 target_extension(_, module_target_fact_table_object(_, _)) = no.
+
+    % Currently the .cs extension is still treated as the build-all target for
+    % C files, so we accept .csharp for C# files.
+target_extension_synonym(".csharp", module_target_csharp_code).
 
 linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
     (

@@ -450,7 +450,16 @@ classify_target(Globals, FileName, ModuleName - TargetType) :-
 
 classify_target_2(Globals, ModuleNameStr0, Suffix, ModuleName - TargetType) :-
     (
-        yes(Suffix) = target_extension(Globals, ModuleTargetType)
+        yes(Suffix) = target_extension(Globals, ModuleTargetType),
+        % The .cs extension was used to build all C target files, but .cs is
+        % also the file name extension for a C# file. The former use is being
+        % migrated over to the .all_cs target but we still accept it for now.
+        Suffix \= ".cs"
+    ->
+        ModuleNameStr = ModuleNameStr0,
+        TargetType = module_target(ModuleTargetType)
+    ;
+        target_extension_synonym(Suffix, ModuleTargetType)
     ->
         ModuleNameStr = ModuleNameStr0,
         TargetType = module_target(ModuleTargetType)
@@ -480,8 +489,19 @@ classify_target_2(Globals, ModuleNameStr0, Suffix, ModuleName - TargetType) :-
         ModuleNameStr = ModuleNameStr1,
         TargetType = linked_target(erlang_archive)
     ;
-        string.append(Suffix1, "s", Suffix),
-        yes(Suffix1) = target_extension(Globals, ModuleTargetType),
+        (
+            string.append(".all_", Rest, Suffix),
+            string.append(DotlessSuffix1, "s", Rest),
+            Suffix1 = "." ++ DotlessSuffix1
+        ;
+            % Deprecated.
+            string.append(Suffix1, "s", Suffix)
+        ),
+        (
+            yes(Suffix1) = target_extension(Globals, ModuleTargetType)
+        ;
+            target_extension_synonym(Suffix1, ModuleTargetType)
+        ),
         % Not yet implemented. `build_all' targets are only used by
         % tools/bootcheck, so it doesn't really matter.
         ModuleTargetType \= module_target_c_header(_)
