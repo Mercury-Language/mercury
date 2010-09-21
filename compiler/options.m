@@ -334,7 +334,8 @@
             % grades.
     ;       coverage_profiling
     ;       coverage_profiling_via_calls
-   
+    ;       coverage_profiling_static
+
             % What types of coverage points to instrument the code with.
     ;       profile_deep_coverage_after_goal
     ;       profile_deep_coverage_branch_ite
@@ -1238,6 +1239,7 @@ option_defaults_2(compilation_model_option, [
     pre_prof_transforms_simplify        -   bool(no),
     coverage_profiling                  -   bool(no),
     coverage_profiling_via_calls        -   bool(no),
+    coverage_profiling_static           -   bool(no),
     profile_deep_coverage_after_goal    -   bool(yes),
     profile_deep_coverage_branch_ite    -   bool(yes),
     profile_deep_coverage_branch_switch -   bool(yes),
@@ -2101,6 +2103,8 @@ long_option("coverage-profiling",
                     coverage_profiling).
 long_option("coverage-profiling-via-calls", 
                     coverage_profiling_via_calls).
+long_option("coverage-profiling-static",
+                    coverage_profiling_static).
 long_option("profile-deep-coverage-after-goal",
                     profile_deep_coverage_after_goal).
 long_option("profile-deep-coverage-branch-ite",
@@ -4152,7 +4156,11 @@ options_help_compilation_model -->
         "\tEnable coverage profiling, implies --deep-profiling (above).",
 % The following options are for implementors only (intended for experiments).
 %       "--coverage-profiling-via-calls",
-%       "\tUse calls for coverage profiling, not foreign code.",
+%       "\tUse calls to implement coverage points, not inline foreign code.",
+
+%       "--no-coverage-profiling-dynamic",
+%       "\tDisable dynamic coverage profiling, this uses less memory and may ",
+%       "\tbe faster.",
 
 %       "Switches to effect coverage profiling (part of deep profiling). ",
 %       "they enable different types of coverage points.",

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2009 The University of Melbourne.
+% Copyright (C) 2005-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -123,6 +123,7 @@
 
 :- implementation.
 
+:- import_module coverage.
 :- import_module array_util.
 :- import_module measurements.
 :- import_module mdbcomp.
@@ -274,7 +275,7 @@ get_static_ptrs_from_dynamic_procs(ProcDynamics, ProcStatics, PS_Ptrs,
 
 get_static_ptrs_from_dynamic_proc(ProcStatics, _, ProcDynamic, !PS_Ptrs,
         !CSS_Ptrs) :-
-    ProcDynamic = proc_dynamic(ProcStaticPtr, _PDSites),
+    ProcStaticPtr = ProcDynamic ^ pd_proc_static,
     svset.insert(ProcStaticPtr, !PS_Ptrs),
     lookup_proc_statics(ProcStatics, ProcStaticPtr, ProcStatic),
     CSSs = array.to_list(ProcStatic ^ ps_sites),
@@ -290,7 +291,7 @@ get_static_ptrs_from_dynamic_proc(ProcStatics, _, ProcDynamic, !PS_Ptrs,
 dump_init_profile_stats(Stats, !IO) :-
     Stats = profile_stats(ProgramName, MaxCSD, MaxCSS, MaxPD, MaxPS,
         TicksPerSec, InstrumentQuanta, UserQuanta, NumCallSeqs, WordSize,
-        Canonical),
+        CoverageDataType, Canonical),
     io.write_string("SECTION PROFILING STATS:\n\n", !IO),
     io.write_string("\tprogram_name = " ++ ProgramName ++ "\n", !IO),
     io.format("\tmax_csd = %d\n", [i(MaxCSD)], !IO),
@@ -302,6 +303,8 @@ dump_init_profile_stats(Stats, !IO) :-
     io.format("\tuser_quanta = %d\n", [i(UserQuanta)], !IO),
     io.format("\tnum_callseqs = %d\n", [i(NumCallSeqs)], !IO),
     io.format("\tword_size   = %d\n", [i(WordSize)], !IO),
+    io.format("\tcoverage_data_type = %s\n", [s(string(CoverageDataType))], 
+        !IO),
     io.write_string("\tcanonical = ", !IO),
     (
         Canonical = yes,
@@ -435,7 +438,7 @@ dump_init_proc_dynamics(ProcDynamics, ProcStatics, !IO) :-
     io::di, io::uo) is det.
 
 dump_proc_dynamic(ProcStatics, Index, ProcDynamic, !IO) :-
-    ProcDynamic = proc_dynamic(PSPtr, Sites),
+    ProcDynamic = proc_dynamic(PSPtr, Sites, MaybeCPs),
     PSPtr = proc_static_ptr(PSI),
     lookup_proc_statics(ProcStatics, PSPtr, PS),
     ( PS ^ ps_q_refined_id = "" ->
@@ -447,6 +450,15 @@ dump_proc_dynamic(ProcStatics, Index, ProcDynamic, !IO) :-
     io.format("\tpd_proc_static = %d (%s)\n",
         [i(PSI), s(QualRefinedPSId)], !IO),
     array_foldl_from_0(dump_call_site_array_slot, Sites, !IO),
+    (
+        MaybeCPs = yes(CPCounts),
+        CPInfos = PS ^ ps_coverage_point_infos,
+        coverage_point_arrays_to_list(CPInfos, CPCounts, CPs),
+        io.write_string("Coverage points:\n", !IO),
+        foldl2(dump_coverage_point, CPs, 0, _, !IO)
+    ;
+        MaybeCPs = no
+    ),
     io.nl(!IO).
 
 :- pred dump_call_site_array_slot(int::in, call_site_array_slot::in,
@@ -523,7 +535,8 @@ dump_proc_static(Restriction, Index, ProcStatic, !IO) :-
     ->
         ProcStatic = proc_static(Id, DeclModule,
             _UnQualRefinedId, QualRefinedId, RawId, FileName, LineNumber,
-            InInterface, Sites, CoveragePoints, IsZeroed),
+            InInterface, Sites, CoveragePointInfos, MaybeCoveragePoints, 
+            IsZeroed),
         IdStr = dump_proc_id(Id),
         io.format("ps%d:\n", [i(Index)], !IO),
         io.format("\tps_id\t\t= %s", [s(IdStr)], !IO),
@@ -559,7 +572,18 @@ dump_proc_static(Restriction, Index, ProcStatic, !IO) :-
         ),
         io.format("\t%s\n", [s(IsZeroStr)], !IO),
         array_foldl_from_0(dump_proc_static_call_sites, Sites, !IO),
-        array_foldl_from_0(dump_coverage_point, CoveragePoints, !IO),
+        (
+            MaybeCoveragePoints = yes(CoveragePointsArray),
+            coverage_point_arrays_to_list(CoveragePointInfos,
+                CoveragePointsArray, CoveragePoints),
+            list.foldl2(dump_coverage_point, CoveragePoints, 0, _, !IO)
+        ;
+            MaybeCoveragePoints = no,
+            io.write_string("\tCoverage counts not present in proc static\n",
+                !IO),
+            array_foldl_from_0(dump_coverage_point_info, CoveragePointInfos, 
+                !IO)
+        ),
         io.nl(!IO)
     ;
         true
@@ -572,14 +596,29 @@ dump_proc_static_call_sites(Slot, CSSPtr, !IO) :-
     CSSPtr = call_site_static_ptr(CSSI),
     io.format("\tps_site[%d]: css%d\n", [i(Slot), i(CSSI)], !IO).
 
-:- pred dump_coverage_point(int::in, coverage_point::in, io::di, io::uo)
-    is det.
+:- pred dump_coverage_point(coverage_point::in, int::in, int::out,
+    io::di, io::uo) is det.
 
-dump_coverage_point(Num, CoveragePoint, !IO) :-
+dump_coverage_point(CoveragePoint, !Num, !IO) :-
     CoveragePoint = coverage_point(Count, Path, Type),
+    CPInfo = coverage_point_info(Path, Type),
+    format_cp_info(!.Num, CPInfo, CPInfoStr),
+    io.format("\t%s: %d\n", [s(CPInfoStr), i(Count)], !IO),
+    !:Num = !.Num + 1.
+
+:- pred dump_coverage_point_info(int::in, coverage_point_info::in, 
+    io::di, io::uo) is det.
+
+dump_coverage_point_info(Num, CoveragePointInfo, !IO) :-
+    format_cp_info(Num, CoveragePointInfo, CPInfoStr),
+    io.format("\t%s\n", [s(CPInfoStr)], !IO).
+
+:- pred format_cp_info(int::in, coverage_point_info::in, string::out) is det.
+
+format_cp_info(Num, coverage_point_info(Path, CPType), String) :-
     goal_path_to_string(Path) = PathString,
-    io.format("\tcoverage_point[%d]: %s, %s: %d\n",
-        [i(Num), s(string(Type)), s(PathString), i(Count)], !IO).
+    format("coverage_point[%d]: %s, %s", 
+        [i(Num), s(string(CPType)), s(PathString)], String).
 
 %----------------------------------------------------------------------------%
 

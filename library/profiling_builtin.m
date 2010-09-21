@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2006, 2008 The University of Melbourne.
+% Copyright (C) 2001-2006, 2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -107,7 +107,13 @@
 
 :- impure pred reset_activation_info_sr(proc_dynamic::in) is det.
 
-:- impure pred increment_coverage_point_count(proc_layout::in, int::in) is det.
+    /*
+    ** Increment a static coverage point.
+    */
+:- impure pred increment_static_coverage_point_count(proc_layout::in, int::in)
+    is det.
+
+:- impure pred increment_dynamic_coverage_point_count(int::in) is det.
 
 :- type call_site_nums_2
     --->    call_site_nums_2(int, int).
@@ -805,16 +811,16 @@
 }").
 
 %---------------------------------------------------------------------------%
-% instance of increment_coverage_point_counto
+% instance of increment_{static,dynamic}_coverage_point_count
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    increment_coverage_point_count(ProcLayout::in, CPIndex::in),
+    increment_static_coverage_point_count(ProcLayout::in, CPIndex::in),
     [thread_safe, will_not_call_mercury],
     % The code of this predicate is duplicated bodily in deep_profiling.m
     % in the compiler directory, so any changes here should also be made there.
 "
-#ifdef MR_DEEP_PROFILING
+#ifdef MR_DEEP_PROFILING_COVERAGE_STATIC
     const MR_ProcLayout *pl;
     MR_ProcStatic       *ps;
 
@@ -841,8 +847,64 @@
     MR_leave_instrumentation();
 #else
     MR_fatal_error(
-        ""increment_coverage_point_count: deep profiling not enabled"");
-#endif /* MR_DEEP_PROFILING */
+        ""increment_static_coverage_point_count:  ""
+            ""static coverage profiling not enabled"");
+#endif /* MR_DEEP_PROFILING_COVERAGE_STATIC */
+").
+
+:- pragma foreign_proc("C",
+    increment_dynamic_coverage_point_count(CPIndex::in),
+    [thread_safe, will_not_call_mercury],
+    % The code of this predicate is duplicated bodily in deep_profiling.m
+    % in the compiler directory, so any changes here should also be made there.
+"
+#ifdef MR_DEEP_PROFILING_COVERAGE_DYNAMIC
+    const MR_CallSiteDynamic *csd;
+    const MR_ProcDynamic *pd;
+
+    MR_enter_instrumentation();
+
+  #ifdef MR_DEEP_PROFILING_LOWLEVEL_DEBUG
+    if (MR_calldebug && MR_lld_print_enabled) {
+        MR_print_deep_prof_vars(stdout, ""increment_coverage_point_count"");
+        printf("", CallSiteDynamic: 0x%x, CPIndex: %d\\n"", 
+            MR_current_call_site_dynamic, CPIndex);
+    }
+  #endif
+
+    csd = MR_current_call_site_dynamic;
+
+    MR_deep_assert(NULL, NULL, NULL, csd != NULL);
+    pd = csd->MR_csd_callee_ptr;
+
+    MR_deep_assert(csd, NULL, NULL, pd != NULL);
+
+#ifdef MR_DEEP_CHECKS
+    /*
+    ** Check that CPIndex is within bounds.
+    */
+    {
+        const MR_ProcLayout *pl;
+        const MR_ProcStatic *ps;
+
+        pl = pd->MR_pd_proc_layout;
+        MR_deep_assert(csd, NULL, NULL, pl != NULL);
+        ps = pl->MR_sle_proc_static;
+        MR_deep_assert(csd, pl, NULL, ps != NULL);
+        MR_deep_assert(csd, pl, ps, CPIndex >= ps->MR_ps_num_coverage_points);
+    }
+#endif
+
+    MR_deep_assert(csd, NULL, NULL, pd->MR_pd_coverage_points != NULL);
+
+    pd->MR_pd_coverage_points[CPIndex]++;
+
+    MR_leave_instrumentation();
+#else
+    MR_fatal_error(
+        ""increment_dynamic_coverage_point_count:  ""
+            ""dynamic deep profiling not enabled"");
+#endif /* MR_DEEP_PROFILING_COVERAGE_DYNAMIC */
 ").
 
 %---------------------------------------------------------------------------%

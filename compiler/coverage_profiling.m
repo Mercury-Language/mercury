@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2009 The University of Melbourne.
+% Copyright (C) 2001-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -35,8 +35,8 @@
     % and return a list of the coverage points created.
     %
 :- pred coverage_prof_transform_goal(module_info::in, pred_proc_id::in,
-    maybe(deep_recursion_info)::in, hlds_goal::in, hlds_goal::out,
-    prog_var_set_types::in, prog_var_set_types::out,
+    maybe(deep_recursion_info)::in, hlds_goal::in, hlds_goal::out, 
+    prog_var_set_types::in, prog_var_set_types::out, 
     list(coverage_point_info)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -82,13 +82,23 @@
                 ci_coverage_profiling_opts  :: coverage_profiling_options
             ).
 
+:- type coverage_data_type
+    --->    static_coverage_data
+    ;       dynamic_coverage_data.
+
     % Store what coverage profiling options have been selected.
     %
 :- type coverage_profiling_options
     --->    coverage_profiling_options(
                 % These fields correspond to coverage profiling options that
                 % may be specified on the command line.
+                
+                % Use per ProcDynamic coverage rather than per ProcStatic.
+                cpo_dynamic_coverage        :: coverage_data_type,
+
+                % Use calls to library code rather than inline foreign code.
                 cpo_use_calls               :: bool,
+
                 cpo_coverage_after_goal     :: bool,
                 cpo_branch_ite              :: bool,
                 cpo_branch_switch           :: bool,
@@ -105,6 +115,15 @@ coverage_profiling_options(ModuleInfo, CoveragePointOptions) :-
     module_info_get_globals(ModuleInfo, Globals),
 
     % Options controlling what instrumentation code we generate.
+    globals.lookup_bool_option(Globals, coverage_profiling_static,
+        Static),
+    (
+        Static = yes,
+        DataType = static_coverage_data
+    ;
+        Static = no,
+        DataType = dynamic_coverage_data
+    ),
     globals.lookup_bool_option(Globals, coverage_profiling_via_calls,
         UseCalls),
 
@@ -125,11 +144,11 @@ coverage_profiling_options(ModuleInfo, CoveragePointOptions) :-
         UseTrivial),
     bool.or(UsePortCounts, UseTrivial, RunFirstPass),
 
-    CoveragePointOptions = coverage_profiling_options(UseCalls,
+    CoveragePointOptions = coverage_profiling_options(DataType, UseCalls,
         CoverageAfterGoal, BranchIf, BranchSwitch, BranchDisj,
         UsePortCounts, UseTrivial, RunFirstPass).
 
-coverage_prof_transform_goal(ModuleInfo, PredProcId, MaybeRecInfo, !Goal,
+coverage_prof_transform_goal(ModuleInfo, PredProcId, MaybeRecInfo, !Goal, 
         !VarInfo, CoveragePoints) :-
     coverage_profiling_options(ModuleInfo, CoverageProfilingOptions),
     CoverageInfo0 = init_proc_coverage_info(!.VarInfo, ModuleInfo,
@@ -162,7 +181,7 @@ coverage_prof_transform_goal(ModuleInfo, PredProcId, MaybeRecInfo, !Goal,
     coverage_before_known::in, coverage_before_known::out,
     proc_coverage_info::in, proc_coverage_info::out, bool::out) is det.
 
-coverage_prof_second_pass_goal(Goal0, Goal,
+coverage_prof_second_pass_goal(Goal0, Goal, 
         CoverageBeforeKnown, NextCoverageBeforeKnown, !Info, AddedImpurity) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     Detism = GoalInfo0 ^ goal_info_get_determinism,
@@ -1082,6 +1101,8 @@ make_coverage_point(CPOptions, CoveragePointInfo, Goals, !CoverageInfo) :-
         generate_var("CPIndex", int_type, CPIndexVar, !VarInfo),
         generate_deep_const_unify(int_const(CPIndex), CPIndexVar,
             GoalUnifyIndex),
+        % When using dynamic coverage profiling we really on this variable
+        % being optimised away later.
         generate_var("ProcLayout", c_pointer_type, ProcLayoutVar, !VarInfo),
         proc_static_cons_id(!.CoverageInfo, ProcStaticConsId),
         generate_deep_const_unify(ProcStaticConsId, ProcLayoutVar,
@@ -1094,9 +1115,26 @@ make_coverage_point(CPOptions, CoveragePointInfo, Goals, !CoverageInfo) :-
 
     UseCalls = CPOptions ^ cpo_use_calls,
     ModuleInfo = !.CoverageInfo ^ ci_module_info,
-    PredName = "increment_coverage_point_count",
-    PredArity = 2,
-    ArgVars = [ProcLayoutVar, CPIndexVar],
+    Ground = ground(shared, none),
+    DataType = CPOptions ^ cpo_dynamic_coverage,
+    (
+        DataType = dynamic_coverage_data,
+        PredName = "increment_dynamic_coverage_point_count",
+        ArgVars = [CPIndexVar],
+        make_foreign_args(ArgVars,
+            [(yes("CPIndex" - (Ground -> Ground)) - native_if_possible)],
+            [int_type], ForeignArgVars),
+        PredArity = 1
+    ;
+        DataType = static_coverage_data,
+        PredName = "increment_static_coverage_point_count",
+        ArgVars = [ProcLayoutVar, CPIndexVar],
+        make_foreign_args(ArgVars,
+            [(yes("ProcLayout" - (Ground -> Ground)) - native_if_possible),
+             (yes("CPIndex" - (Ground -> Ground)) - native_if_possible)],
+            [c_pointer_type, int_type], ForeignArgVars),
+        PredArity = 2
+    ),
     % Note: The body of increment_coverage_point_count includes several
     % assertions. If these are enabled, then bodily including the C code
     % at EVERY coverage point will cause significant code bloat. Generating
@@ -1107,12 +1145,7 @@ make_coverage_point(CPOptions, CoveragePointInfo, Goals, !CoverageInfo) :-
         UseCalls = no,
         get_deep_profile_builtin_ppid(ModuleInfo, PredName, PredArity,
             PredId, ProcId),
-        Ground = ground(shared, none),
-        make_foreign_args([ProcLayoutVar, CPIndexVar],
-            [(yes("ProcLayout" - (Ground -> Ground)) - native_if_possible),
-            (yes("CPIndex" - (Ground -> Ground)) - native_if_possible)],
-            [c_pointer_type, int_type], ForeignArgVars),
-        coverage_point_ll_code(ForeignCallAttrs, ForeignCode),
+        coverage_point_ll_code(DataType, ForeignCallAttrs, ForeignCode),
         CallGoalExpr = call_foreign_proc(ForeignCallAttrs, PredId, ProcId,
             ForeignArgVars, [], no, ForeignCode),
         NonLocals = list_to_set(ArgVars),
@@ -1168,10 +1201,10 @@ proc_static_cons_id(CoverageInfo, ProcStaticConsId) :-
 
     % Returns a string containing the Low Level C code for a coverage point.
     %
-:- pred coverage_point_ll_code(pragma_foreign_proc_attributes::out,
-    pragma_foreign_code_impl::out) is det.
+:- pred coverage_point_ll_code(coverage_data_type::in, 
+    pragma_foreign_proc_attributes::out, pragma_foreign_code_impl::out) is det.
 
-coverage_point_ll_code(ForeignProcAttrs, ForeignCodeImpl) :-
+coverage_point_ll_code(CoverageDataType, ForeignProcAttrs, ForeignCodeImpl) :-
     some [!ForeignProcAttrs] (
         % XXX When running this code in a parallel grade, the contention for
         % the foreign code mutex may be very expensive. To improve this, we
@@ -1189,11 +1222,15 @@ coverage_point_ll_code(ForeignProcAttrs, ForeignCodeImpl) :-
         ForeignProcAttrs = !.ForeignProcAttrs
     ),
     ForeignCodeImpl = fc_impl_ordinary(Code, no),
-    Code =
+    Code = coverage_point_ll_code(CoverageDataType).
+
+:- func coverage_point_ll_code(coverage_data_type) = string.
+
+coverage_point_ll_code(static_coverage_data) = 
     % The code of this predicate is duplicated bodily in profiling_builtin.m
     % in the library directory, so any changes here should also be made there.
 "
-#ifdef MR_DEEP_PROFILING
+#ifdef MR_DEEP_PROFILING_COVERAGE_STATIC
     const MR_ProcLayout *pl;
     MR_ProcStatic       *ps;
 
@@ -1220,8 +1257,62 @@ coverage_point_ll_code(ForeignProcAttrs, ForeignCodeImpl) :-
     MR_leave_instrumentation();
 #else
     MR_fatal_error(
-        ""increment_coverage_point_count: deep profiling not enabled"");
-#endif /* MR_DEEP_PROFILING */
+        ""increment_static_coverage_point_count:  ""
+            ""static coverage profiling not enabled"");
+#endif /* MR_DEEP_PROFILING_COVERAGE_STATIC */
+".
+
+coverage_point_ll_code(dynamic_coverage_data) = 
+    % The code of this predicate is duplicated bodily in profiling_builtin.m
+    % in the library directory, so any changes here should also be made there.
+"
+#ifdef MR_DEEP_PROFILING_COVERAGE_DYNAMIC
+    const MR_CallSiteDynamic *csd;
+    const MR_ProcDynamic *pd;
+
+    MR_enter_instrumentation();
+
+  #ifdef MR_DEEP_PROFILING_LOWLEVEL_DEBUG
+    if (MR_calldebug && MR_lld_print_enabled) {
+        MR_print_deep_prof_vars(stdout, ""increment_coverage_point_count"");
+        printf("", CallSiteDynamic: 0x%x, CPIndex: %d\\n"", 
+            MR_current_call_site_dynamic, CPIndex);
+    }
+  #endif
+
+    csd = MR_current_call_site_dynamic;
+
+    MR_deep_assert(NULL, NULL, NULL, csd != NULL);
+    pd = csd->MR_csd_callee_ptr;
+
+    MR_deep_assert(csd, NULL, NULL, pd != NULL);
+
+#ifdef MR_DEEP_CHECKS
+    /*
+    ** Check that CPIndex is within bounds.
+    */
+    {
+        const MR_ProcLayout *pl;
+        const MR_ProcStatic *ps;
+
+        pl = pd->MR_pd_proc_layout;
+        MR_deep_assert(csd, NULL, NULL, pl != NULL);
+        ps = pl->MR_sle_proc_static;
+        MR_deep_assert(csd, pl, NULL, ps != NULL);
+        MR_deep_assert(csd, pl, ps, CPIndex >= ps->MR_ps_num_coverage_points);
+    }
+#endif
+
+    MR_deep_assert(csd, NULL, NULL, pd->MR_pd_coverage_points != NULL);
+
+    pd->MR_pd_coverage_points[CPIndex]++;
+
+    MR_leave_instrumentation();
+#else
+    MR_fatal_error(
+        ""increment_dynamic_coverage_point_count:  ""
+            ""dynamic deep profiling not enabled"");
+#endif /* MR_DEEP_PROFILING_COVERAGE_DYNAMIC */
 ".
 
 %-----------------------------------------------------------------------------%

@@ -48,6 +48,7 @@
                 user_quanta             :: int,
                 num_callseqs            :: int,
                 word_size               :: int,
+                coverage_data_type      :: coverage_data_type,
                 canonical               :: bool
             ).
 
@@ -174,23 +175,46 @@
 
 :- type proc_dynamic
     --->    proc_dynamic(
-                pd_proc_static  :: proc_static_ptr,
-                pd_sites        :: array(call_site_array_slot)
+                pd_proc_static              :: proc_static_ptr,
+                pd_sites                    :: array(call_site_array_slot),
+
+                % An array of coverage points. If present then coverage points
+                % for this procedure are dynamic and the corresponding static
+                % info can be found in the proc_static.  If no, then coverage
+                % points aren't available or are stored in the proc static.
+                pd_maybe_coverage_points    :: maybe(array(int))
             ).
 
 :- type proc_static
     --->    proc_static(
-                ps_id               :: string_proc_label, % procedure ID
-                ps_decl_module      :: string,      % declaring module
-                ps_uq_refined_id    :: string,      % unqualified refined id
-                ps_q_refined_id     :: string,      % qualied refined id
-                ps_raw_id           :: string,      % raw procedure id
-                ps_file_name        :: string,      % file name of proc
-                ps_line_number      :: int,         % line number of proc
-                ps_in_interface     :: bool,        % is in interface?
-                ps_sites            :: array(call_site_static_ptr),
-                ps_coverage_points  :: array(coverage_point),
-                ps_is_zeroed        :: is_zeroed
+                % procedure ID
+                ps_id                       :: string_proc_label,
+                
+                % declaring module
+                ps_decl_module              :: string,
+                
+                % unqualified refined id
+                ps_uq_refined_id            :: string,
+                
+                % qualified refined id
+                ps_q_refined_id             :: string,
+                
+                % raw procedure id
+                ps_raw_id                   :: string,
+                
+                % file name of proc
+                ps_file_name                :: string,
+                
+                % line number of proc
+                ps_line_number              :: int,
+                
+                % is in interface?
+                ps_in_interface             :: bool,
+                
+                ps_sites                    :: array(call_site_static_ptr),
+                ps_coverage_point_infos     :: array(coverage_point_info),
+                ps_maybe_coverage_points    :: maybe(array(int)),
+                ps_is_zeroed                :: is_zeroed
             ).
 
 :- type call_site_dynamic
@@ -261,25 +285,12 @@
                 call_site_static_ptr
             ).
 
-    % This is similar to the coverage_point type in
-    % mdbcomp/program_representation.m, however it includes an integer count
-    % of how often execution reached this point in the program.
+    % The type of coverage data available in a profile.
     %
-:- type coverage_point
-    --->    coverage_point(
-                % The number of times execution reached this point,
-                int,
-
-                % Identifies the goal that this coverage point is near.
-                % If cp_type is cp_type_branch_arm the coverage point is
-                % immediately before this goal, otherwise it is immediately
-                % after.
-
-                goal_path,
-
-                % The type of this coverage point.
-                cp_type
-            ).
+:- type coverage_data_type
+    --->    no_coverage_data
+    ;       static_coverage_data
+    ;       dynamic_coverage_data.
 
 :- pred is_call_site_kind(int::in, call_site_kind::out) is semidet.
 

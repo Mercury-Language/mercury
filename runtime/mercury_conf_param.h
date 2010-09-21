@@ -645,6 +645,20 @@
 **
 ** MR_DEEP_PROFILING_MEMORY.
 ** Enables deep profiling of memory usage.
+**
+** MR_DEEP_PROFILING_COVERAGE,
+** Enables deep profiling code coverage support. (required for
+** auto-parallelisation).
+**
+** MR_DEEP_PROFILING_COVERAGE_STATIC,
+** Enables the outmoded static coverage profiling code.  This disables the new
+** dynamic coverage profiling code.
+**
+** MR_DEEP_PROFILING_COVERAGE_DYNAMIC,
+** Enabled unless MR_DEEP_PROFILING_COVERAGE_STATIC is enabled.  This is the
+** normal option, coverage information is per procedure and it's context rather
+** than just per static procedure.
+** Don't specify this option directly, just specifiy the STATIC option.
 */
 
 #ifdef	MR_DEEP_PROFILING
@@ -654,12 +668,32 @@
     #define MR_DEEP_PROFILING_TIMING
     #define MR_DEEP_PROFILING_CALL_SEQ
     #define MR_DEEP_PROFILING_MEMORY
+    #define MR_DEEP_PROFILING_COVERAGE
+    #ifndef MR_DEEP_PROFILING_COVERAGE_STATIC
+      #define MR_DEEP_PROFILING_COVERAGE_DYNAMIC
+    #else
+      #undef MR_DEEP_PROFILING_COVERAGE_DYNAMIC
+    #endif
+  #else
+    #ifdef MR_DEEP_PROFILING_COVERAGE
+      #ifndef MR_DEEP_PROFILING_COVERAGE_STATIC
+        #define MR_DEEP_PROFILING_COVERAGE_DYNAMIC
+      #else
+        #undef MR_DEEP_PROFILING_COVERAGE_DYNAMIC
+      #endif
+    #else
+      #undef MR_DEEP_PROFILING_COVERAGE_DYNAMIC
+      #undef MR_DEEP_PROFILING_COVERAGE_STATIC
+    #endif
   #endif
 #else
   #undef  MR_DEEP_PROFILING_PORT_COUNTS
   #undef  MR_DEEP_PROFILING_TIMING
   #undef  MR_DEEP_PROFILING_CALL_SEQ
   #undef  MR_DEEP_PROFILING_MEMORY
+  #undef  MR_DEEP_PROFILING_COVERAGE
+  #undef  MR_DEEP_PROFILING_COVERAGE_DYNAMIC
+  #undef  MR_DEEP_PROFILING_COVERAGE_STATIC
 #endif
 
 #if !defined(MR_DISABLE_CHECK_DU_EQ)

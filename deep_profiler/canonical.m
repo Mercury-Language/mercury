@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2008 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -765,9 +765,9 @@ subst_in_call_site_dynamic(Redirect, !CSD) :-
     proc_dynamic::out) is det.
 
 subst_in_proc_dynamic(Redirect, !PD) :-
-    !.PD = proc_dynamic(PDPtr, Slots0),
+    !.PD = proc_dynamic(PDPtr, Slots0, MaybeCPs),
     array.map(subst_in_slot(Redirect), u(Slots0), Slots),
-    !:PD = proc_dynamic(PDPtr, Slots).
+    !:PD = proc_dynamic(PDPtr, Slots, MaybeCPs).
 
 :- pred subst_in_slot(redirect::in, call_site_array_slot::in,
     call_site_array_slot::out) is det.
@@ -856,9 +856,12 @@ do_merge_profiles(BaseInitDeep, OtherInitDeeps, MergedInitDeep) :-
     % The program names are not checked. The new profile is named after the
     % base profile.
     BaseProgramName = BaseInitDeep ^ init_profile_stats ^ program_name,
+    % Similarly the coverage data types are not checked.
+    CoverageDataType = BaseInitDeep ^ init_profile_stats ^ coverage_data_type, 
     ConcatProfileStats = profile_stats(BaseProgramName,
         ConcatMaxCSD, BaseMaxCSS, ConcatMaxPD, BaseMaxPS, ConcatNumCallSeqs,
-        BaseTicksPerSec, InstrumentQuanta, UserQuanta, WordSize, yes),
+        BaseTicksPerSec, InstrumentQuanta, UserQuanta, WordSize, 
+        CoverageDataType, yes),
     % The root part is a temporary lie.
     MergedInitDeep = initial_deep(ConcatProfileStats,
         BaseInitDeep ^ init_root,
@@ -925,11 +928,11 @@ concatenate_profile_pds(Cur, Max, PrevMaxCSD, PrevMaxPD, ProcDynamics,
         !ConcatProcDynamics) :-
     ( Cur =< Max ->
         array.lookup(ProcDynamics, Cur, PD0),
-        PD0 = proc_dynamic(PSPtr, Sites0),
+        PD0 = proc_dynamic(PSPtr, Sites0, MaybeCPs),
         array.max(Sites0, MaxSite),
         concatenate_profile_slots(0, MaxSite, PrevMaxCSD, PrevMaxPD,
             u(Sites0), Sites),
-        PD = proc_dynamic(PSPtr, Sites),
+        PD = proc_dynamic(PSPtr, Sites, MaybeCPs),
         svarray.set(PrevMaxPD + Cur, PD, !ConcatProcDynamics),
         concatenate_profile_pds(Cur + 1, Max, PrevMaxCSD, PrevMaxPD,
             ProcDynamics, !ConcatProcDynamics)

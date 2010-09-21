@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001-2004, 2006-2008 The University of Melbourne.
+** Copyright (C) 2001-2004, 2006-2008, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -48,9 +48,11 @@ struct MR_ProfilingMetrics_Struct {
 	unsigned				MR_own_allocs;
 	unsigned				MR_own_words;
 #endif
+
 	/* ANSI/ISO C requires non-empty structs */
 #if !defined(MR_DEEP_PROFILING_PORT_COUNTS) && \
-	!defined(MR_DEEP_PROFILING_TIMING) && !defined(MR_DEEP_PROFILING_MEMORY)
+	!defined(MR_DEEP_PROFILING_TIMING) && \
+	!defined(MR_DEEP_PROFILING_MEMORY)
 	unsigned				dummy;
 #endif
 };
@@ -93,6 +95,7 @@ struct MR_ProcStatic_Struct {
 	int					MR_ps_next_csd_stack_slot;
 	int					MR_ps_old_outermost_stack_slot;
 
+#ifdef MR_DEEP_PROFILING_COVERAGE
 	/*
 	** The number of coverage points in a procedure and static information
 	** about them are fixed at compile time, so they are associated with
@@ -100,13 +103,15 @@ struct MR_ProcStatic_Struct {
 	*/
 	const MR_Unsigned			MR_ps_num_coverage_points;
 	const MR_CoveragePointStatic * const	MR_ps_coverage_points_static;
-	
+
+#ifdef MR_DEEP_PROFILING_COVERAGE_STATIC
 	/*
-	** Coverage data is kept in the ProcStatic structure initially, at a
-	** later stage more fine-grained coverage idata may be associated with
-	** ProcDynamic if performance is not affected too much.
+	** Coverage data is kept in the ProcStatic structure if we're
+	** collecting it statically.  See also MR_dyn_coverage_points
 	*/
 	MR_Unsigned * const			MR_ps_coverage_points;
+#endif
+#endif
 };
 
 struct MR_CallSiteDynamic_Struct {
@@ -118,6 +123,14 @@ struct MR_CallSiteDynamic_Struct {
 struct MR_ProcDynamic_Struct {
 	const MR_ProcLayout			*MR_pd_proc_layout;
 	MR_CallSiteDynamic			**MR_pd_call_site_ptr_ptrs;
+#ifdef MR_DEEP_PROFILING_COVERAGE_DYNAMIC
+	/*
+	** Coverage data is kept in the ProcStatic structure initially, at a
+	** later stage more fine-grained coverage data may be associated with
+	** ProcDynamic if performance is not affected too much.
+	*/
+	MR_Unsigned 				*MR_pd_coverage_points;
+#endif
 };
 
 struct MR_CallSiteDynList_Struct {
@@ -222,7 +235,7 @@ typedef enum {
 
 #define	MR_new_call_site_dynamic(newcsd)				\
 	do {								\
-		newcsd = MR_PROFILING_MALLOC(MR_CallSiteDynamic);	\
+		newcsd = MR_PROFILING_NEW(MR_CallSiteDynamic);		\
 									\
 		newcsd->MR_csd_callee_ptr = NULL;			\
 		MR_init_own_ports(newcsd);				\
@@ -232,21 +245,46 @@ typedef enum {
 		MR_init_depth_count(newcsd);				\
 	} while (0)
 
+#ifdef MR_DEEP_PROFILING_COVERAGE_DYNAMIC
+  #define MR_pd_init_coverage_points(pd, ps)				\
+  	do {								\
+		int	num_cps;					\
+		int	cp_i;						\
+									\
+		num_cps = (ps)->MR_ps_num_coverage_points;		\
+		if (num_cps) {						\
+			(pd)->MR_pd_coverage_points = 			\
+			  MR_PROFILING_NEW_ARRAY(MR_Unsigned, num_cps); \
+			for (cp_i = 0; cp_i < num_cps; cp_i++) {	\
+				(pd)->MR_pd_coverage_points[cp_i] = 0;	\
+			}						\
+		}							\
+	} while (0)
+#else
+  #define MR_pd_init_coverage_points(pd, ps)				\
+ 	((void) 0)
+#endif
+
+/*
+** TODO: Consider merging these mallocs into one, this should improve
+** efficiency.
+*/
 #define	MR_new_proc_dynamic(pd, pl)					\
 	do {								\
 		MR_ProcStatic	*psl;					\
 		int		npdi;					\
 									\
-		(pd) = MR_PROFILING_MALLOC(MR_ProcDynamic);		\
+		(pd) = MR_PROFILING_NEW(MR_ProcDynamic);		\
 		(pd)->MR_pd_proc_layout = (pl);				\
 		psl = (pl)->MR_sle_proc_static;				\
 		(pd)->MR_pd_call_site_ptr_ptrs =			\
-			MR_PROFILING_MALLOC_ARRAY(MR_CallSiteDynamic *,	\
+			MR_PROFILING_NEW_ARRAY(MR_CallSiteDynamic *,	\
 				psl->MR_ps_num_call_sites);		\
 									\
 		for (npdi = 0; npdi < psl->MR_ps_num_call_sites; npdi++) { \
 			(pd)->MR_pd_call_site_ptr_ptrs[npdi] = NULL;	\
 		}							\
+		MR_pd_init_coverage_points(pd, psl);			\
 	} while (0)
 
 #ifdef	MR_DEEP_PROFILING_STATISTICS
@@ -317,7 +355,7 @@ typedef enum {
 
 #define	MR_make_and_link_csdlist(csdlist, newcsd, pd, csn, void_key)	\
 	do {								\
-		(csdlist) = MR_PROFILING_MALLOC(MR_CallSiteDynList);	\
+		(csdlist) = MR_PROFILING_NEW(MR_CallSiteDynList);	\
 		(csdlist)->MR_csdlist_key = (void_key);			\
 		(csdlist)->MR_csdlist_call_site = (newcsd);		\
 		(csdlist)->MR_csdlist_next = (MR_CallSiteDynList *)	\
@@ -328,7 +366,7 @@ typedef enum {
 
 #define	MR_make_and_link_csdlist_callback(csdlist, newcsd, void_key)	\
 	do {								\
-		(csdlist) = MR_PROFILING_MALLOC(MR_CallSiteDynList);	\
+		(csdlist) = MR_PROFILING_NEW(MR_CallSiteDynList);	\
 		(csdlist)->MR_csdlist_key = (void_key);			\
 		(csdlist)->MR_csdlist_call_site = (newcsd);		\
 		(csdlist)->MR_csdlist_next = *MR_current_callback_site;	\
@@ -420,7 +458,8 @@ extern	void	MR_deep_prof_init(void);
 extern	void	MR_deep_prof_turn_on_time_profiling(void);
 extern	void	MR_deep_prof_turn_off_time_profiling(void);
 
-#define MR_PROFILING_MALLOC(type)		MR_NEW(type)
-#define MR_PROFILING_MALLOC_ARRAY(type, nelems) MR_NEW_ARRAY(type, nelems)
+#define MR_PROFILING_MALLOC(size)		MR_GC_malloc(size)
+#define MR_PROFILING_NEW(type)			MR_NEW(type)
+#define MR_PROFILING_NEW_ARRAY(type, nelems) 	MR_NEW_ARRAY(type, nelems)
 
 #endif	/* not MERCURY_DEEP_PROFILING_H */

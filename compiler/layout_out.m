@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2009 The University of Melbourne.
+% Copyright (C) 2001-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1200,6 +1200,11 @@ output_proc_static_slot(Info, ProcStatic, !Slot, !IO) :-
     io.write_string(",", !IO),
     (
         MaybeCoveragePoints = yes({CoveragePointsSlot, NumCoveragePoints}),
+        /*
+        ** If MR_DEEP_PROFILING_COVERAGE is not defined but
+        ** --deep-profiling-coverage is this generated code will not compile, as
+        ** these fields in this structure will not be present.
+        */
         io.write_int(NumCoveragePoints, !IO),
         io.write_string(",\n", !IO),
         CoveragePointsStaticSlotName =
@@ -1207,14 +1212,20 @@ output_proc_static_slot(Info, ProcStatic, !Slot, !IO) :-
         output_layout_slot_addr(use_layout_macro, MangledModuleName,
             CoveragePointsStaticSlotName, !IO),
         io.write_string(",\n", !IO),
+        io.write_string("#ifdef MR_DEEP_PROFILING_COVERAGE_STATIC\n", !IO),
         CoveragePointsDynamicSlotName =
             layout_slot(proc_static_cp_dynamic_array, CoveragePointsSlot),
         output_layout_slot_addr(use_layout_macro, MangledModuleName,
             CoveragePointsDynamicSlotName, !IO),
+        io.write_string("\n#endif\n", !IO),
         io.write_string(" },\n", !IO)
     ;
         MaybeCoveragePoints = no,
-        io.write_string("0,NULL,NULL },\n", !IO)
+        io.write_string("0,NULL,\n", !IO),
+        io.write_string("#ifdef MR_DEEP_PROFILING_COVERAGE_STATIC\n", !IO),
+        io.write_string("NULL\n", !IO),
+        io.write_string("#endif\n", !IO),
+        io.write_string(" },\n", !IO)
     ),
     !:Slot = !.Slot + 1.
 

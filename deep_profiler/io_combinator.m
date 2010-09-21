@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2001, 2005-2006 The University of Melbourne.
+% Copyright (C) 1993-2001, 2005-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -678,6 +678,41 @@
     pred(out, di, uo) is det,
     pred(in, in, in, in, in, in, in, in, in, in, in, in, out) is det,
     out, di, uo) is det.
+
+:- pred io_combinator.maybe_error_sequence_13(
+    pred(maybe_error(T1), io, io),
+    pred(maybe_error(T2), io, io),
+    pred(maybe_error(T3), io, io),
+    pred(maybe_error(T4), io, io),
+    pred(maybe_error(T5), io, io),
+    pred(maybe_error(T6), io, io),
+    pred(maybe_error(T7), io, io),
+    pred(maybe_error(T8), io, io),
+    pred(maybe_error(T9), io, io),
+    pred(maybe_error(T10), io, io),
+    pred(maybe_error(T11), io, io),
+    pred(maybe_error(T12), io, io),
+    pred(maybe_error(T13), io, io),
+    pred(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, 
+        maybe_error(T)),
+    maybe_error(T), io, io).
+:- mode io_combinator.maybe_error_sequence_13(
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(out, di, uo) is det,
+    pred(in, in, in, in, in, in, in, in, in, in, in, in, in, out) is det,
+    out, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -2408,6 +2443,104 @@ io_combinator.maybe_error_sequence_12(P1, P2, P3, P4, P5, P6, P7, P8, P9, P10,
                                                     call(Combine, T1, T2, T3,
                                                         T4, T5, T6, T7, T8, T9,
                                                         T10, T11, T12, Res)
+                                                ;
+                                                    Res12 = error(Err),
+                                                    Res = error(Err)
+                                                )
+                                            ;
+                                                Res11 = error(Err),
+                                                Res = error(Err)
+                                            )
+                                        ;
+                                            Res10 = error(Err),
+                                            Res = error(Err)
+                                        )
+                                    ;
+                                        Res9 = error(Err),
+                                        Res = error(Err)
+                                    )
+                                ;
+                                    Res8 = error(Err),
+                                    Res = error(Err)
+                                )
+                            ;
+                                Res7 = error(Err),
+                                Res = error(Err)
+                            )
+                        ;
+                            Res6 = error(Err),
+                            Res = error(Err)
+                        )
+                    ;
+                        Res5 = error(Err),
+                        Res = error(Err)
+                    )
+                ;
+                    Res4 = error(Err),
+                    Res = error(Err)
+                )
+            ;
+                Res3 = error(Err),
+                Res = error(Err)
+            )
+        ;
+            Res2 = error(Err),
+            Res = error(Err)
+        )
+    ;
+        Res1 = error(Err),
+        Res = error(Err)
+    ).
+
+io_combinator.maybe_error_sequence_13(P1, P2, P3, P4, P5, P6, P7, P8, P9, P10,
+        P11, P12, P13, Combine, Res, !IO) :-
+    call(P1, Res1, !IO),
+    (
+        Res1 = ok(T1),
+        call(P2, Res2, !IO),
+        (
+            Res2 = ok(T2),
+            call(P3, Res3, !IO),
+            (
+                Res3 = ok(T3),
+                call(P4, Res4, !IO),
+                (
+                    Res4 = ok(T4),
+                    call(P5, Res5, !IO),
+                    (
+                        Res5 = ok(T5),
+                        call(P6, Res6, !IO),
+                        (
+                            Res6 = ok(T6),
+                            call(P7, Res7, !IO),
+                            (
+                                Res7 = ok(T7),
+                                call(P8, Res8, !IO),
+                                (
+                                    Res8 = ok(T8),
+                                    call(P9, Res9, !IO),
+                                    (
+                                        Res9 = ok(T9),
+                                        call(P10, Res10, !IO),
+                                        (
+                                            Res10 = ok(T10),
+                                            call(P11, Res11, !IO),
+                                            (
+                                                Res11 = ok(T11),
+                                                call(P12, Res12, !IO),
+                                                (
+                                                    Res12 = ok(T12),
+                                                    call(P13, Res13, !IO),
+                                                    (
+                                                        Res13 = ok(T13),
+                                                        call(Combine, T1, T2,
+                                                            T3, T4, T5, T6, T7,
+                                                            T8, T9, T10, T11,
+                                                            T12, T13, Res)
+                                                    ;
+                                                        Res13 = error(Err),
+                                                        Res = error(Err)
+                                                    )
                                                 ;
                                                     Res12 = error(Err),
                                                     Res = error(Err)

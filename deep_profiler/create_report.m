@@ -125,7 +125,7 @@ create_report(Cmd, Deep, Report) :-
         Deep ^ profile_stats = profile_stats(ProgramName,
             NumCSD, NumCSS, NumPD, NumPS,
             QuantaPerSec, InstrumentationQuanta, UserQuanta, NumCallseqs,
-            _, _),
+            _, _, _),
         NumCliques = array.max(Deep ^ clique_members),
         MenuReport = menu_report(ProgramName, QuantaPerSec,
             UserQuanta, InstrumentationQuanta,
@@ -1137,10 +1137,22 @@ create_procrep_coverage_report(Deep, PSPtr, MaybeReport) :-
                     CallSitesArray, map.init),
 
                 % Gather information about coverage points.
-                CoveragePointsArray = PS ^ ps_coverage_points,
-                array.foldl2(add_coverage_point_to_map, CoveragePointsArray,
-                    map.init, SolnsCoveragePointMap,
-                    map.init, BranchCoveragePointMap),
+                MaybeCoveragePoints = PS ^ ps_maybe_coverage_points,
+                (
+                    MaybeCoveragePoints = yes(CoveragePointsArray),
+                    coverage_point_arrays_to_list(PS ^ ps_coverage_point_infos,
+                        CoveragePointsArray, CoveragePoints),
+                    foldl2(add_coverage_point_to_map, 
+                        CoveragePoints, map.init, SolnsCoveragePointMap,
+                        map.init, BranchCoveragePointMap)
+                ;
+                    MaybeCoveragePoints = no,
+                    
+                    % No static coverage data available.
+                    % XXX: Try to get dynamic coverage data.
+                    SolnsCoveragePointMap = map.init,
+                    BranchCoveragePointMap = map.init
+                ),
 
                 procrep_annotate_with_coverage(Own, CallSitesMap,
                     SolnsCoveragePointMap, BranchCoveragePointMap,
@@ -1200,10 +1212,11 @@ create_proc_static_dump_report(Deep, PSPtr, MaybeProcStaticDumpInfo) :-
         % Should we dump some other fields?
         PS = proc_static(_ProcId, _DeclModule,
             UnQualRefinedName, QualRefinedName, RawName, FileName, LineNumber,
-            _InInterface, CallSites, CoveragePoints, _IsZeroed),
+            _InInterface, CallSites, CoveragePointInfos, _MaybeCoveragePoints, 
+            _IsZeroed),
         array.max(CallSites, MaxCallSiteIdx),
         NumCallSites = MaxCallSiteIdx + 1,
-        array.max(CoveragePoints, MaxCoveragePointIdx),
+        array.max(CoveragePointInfos, MaxCoveragePointIdx),
         NumCoveragePoints = MaxCoveragePointIdx + 1,
         ProcStaticDumpInfo = proc_static_dump_info(PSPtr, RawName,
             UnQualRefinedName, QualRefinedName,
@@ -1219,16 +1232,25 @@ create_proc_static_dump_report(Deep, PSPtr, MaybeProcStaticDumpInfo) :-
 create_proc_dynamic_dump_report(Deep, PDPtr, MaybeProcDynamicDumpInfo) :-
     ( valid_proc_dynamic_ptr(Deep, PDPtr) ->
         deep_lookup_proc_dynamics(Deep, PDPtr, PD),
-        PD = proc_dynamic(PSPtr, CallSiteArray),
+        PD = proc_dynamic(PSPtr, CallSiteArray, MaybeCPCounts),
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         RawName = PS ^ ps_raw_id,
         ModuleName = PS ^ ps_decl_module,
         UnQualRefinedName = PS ^ ps_uq_refined_id,
         QualRefinedName = PS ^ ps_q_refined_id,
         array.to_list(CallSiteArray, CallSites),
+        (
+            MaybeCPCounts = yes(CPCounts),
+            CPInfos = PS ^ ps_coverage_point_infos,
+            coverage_point_arrays_to_list(CPInfos, CPCounts, CPs),
+            MaybeCPs = yes(CPs)
+        ;
+            MaybeCPCounts = no,
+            MaybeCPs = no
+        ),
         ProcDynamicDumpInfo = proc_dynamic_dump_info(PDPtr, PSPtr,
             RawName, ModuleName, UnQualRefinedName, QualRefinedName,
-            CallSites),
+            CallSites, MaybeCPs),
         MaybeProcDynamicDumpInfo = ok(ProcDynamicDumpInfo)
     ;
         MaybeProcDynamicDumpInfo = error("invalid proc_dynamic index")

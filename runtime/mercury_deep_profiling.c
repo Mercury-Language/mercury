@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 2001-2008 The University of Melbourne.
+** Copyright (C) 2001-2008, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -60,7 +60,7 @@ MR_ProcStatic   MR_main_parent_proc_static =
 
 MR_ProcLayoutUser MR_main_parent_proc_layout =
 {
-    { MR_do_not_reached, { MR_LONG_LVAL_TYPE_UNKNOWN }, -1, MR_DETISM_DET },
+    { MR_do_not_reached, MR_LONG_LVAL_TYPE_UNKNOWN, -1, MR_DETISM_DET },
     { MR_PREDICATE, "Mercury runtime", "Mercury runtime",
         "Mercury runtime", 0, 0 },
     NULL,
@@ -94,7 +94,10 @@ MR_CallSiteDynamic  MR_main_grandparent_call_site_dynamic =
     0,
 #endif
 #ifdef MR_DEEP_PROFILING_MEMORY
-    0, 0
+    0, 0,
+#endif
+#ifdef MR_DEEP_PROFILING_COVERAGE_DYNAMIC
+    NULL
 #endif
     },
     0
@@ -210,7 +213,7 @@ MR_setup_callback(void *entry)
 
     MR_new_call_site_dynamic(csd);
 
-    csd_list = MR_PROFILING_MALLOC(MR_CallSiteDynList);
+    csd_list = MR_PROFILING_NEW(MR_CallSiteDynList);
     csd_list->MR_csdlist_key = entry;
     csd_list->MR_csdlist_call_site = csd;
     csd_list->MR_csdlist_next = *MR_current_callback_site;
@@ -262,6 +265,7 @@ static  void    MR_write_out_profiling_tree_check_unwritten(FILE *check_fp);
 static  void    MR_write_out_deep_id_string(FILE *fp);
 static  void    MR_write_out_procrep_id_string(FILE *fp);
 static  void    MR_write_out_program_name(FILE *fp);
+static  void    MR_write_out_deep_flags(FILE *fp);
 
 static  void    MR_write_out_call_site_static(FILE *fp,
                     const MR_CallSiteStatic *css);
@@ -285,17 +289,20 @@ typedef enum node_kind {
 } MR_NodeKind;
 
 /* must correspond to fixed_size_int_bytes in deep_profiler/read_profile.m */
-#define MR_FIXED_SIZE_INT_BYTES 4
+#define MR_FIXED_SIZE_INT_BYTES 8
 
 static  void    MR_write_csd_ptr(FILE *fp, const MR_CallSiteDynamic *csd);
-static  void    MR_write_out_coverage_point(FILE *fp, 
-                    const MR_CoveragePointStatic *cp_static, 
-                    const MR_Unsigned *cp);
+#ifdef MR_DEEP_PROFILING_COVERAGE
+static  void    MR_write_out_coverage_points_static(FILE *fp, 
+                    const MR_ProcStatic *ps);
+static  void    MR_write_out_coverage_points_dynamic(FILE *fp,
+                    const MR_ProcDynamic *pd);
+#endif
 static  void    MR_write_ptr(FILE *fp, MR_NodeKind kind, const int node_id);
 static  void    MR_write_kind(FILE *fp, MR_CallSiteKind kind);
 static  void    MR_write_byte(FILE *fp, const char byte);
 static  void    MR_write_num(FILE *fp, unsigned long num);
-static  void    MR_write_fixed_size_int(FILE *fp, unsigned long num);
+static  void    MR_write_fixed_size_int(FILE *fp, MR_uint_least64_t num);
 static  void    MR_write_string(FILE *fp, const char *ptr);
 
 /*----------------------------------------------------------------------------*/
@@ -413,6 +420,8 @@ MR_write_out_profiling_tree(void)
 
     MR_write_out_deep_id_string(deep_fp);
     MR_write_out_program_name(deep_fp);
+  
+    MR_write_out_deep_flags(deep_fp);
 
     /* We overwrite these zeros after seeking back to table_sizes_offset */
     table_sizes_offset = ftell(deep_fp);
@@ -444,9 +453,7 @@ MR_write_out_profiling_tree(void)
     MR_write_num(deep_fp, MR_quanta_inside_deep_profiling_code);
     MR_write_num(deep_fp, MR_quanta_outside_deep_profiling_code);
     MR_write_num(deep_fp, num_call_seqs);
-    MR_write_byte(deep_fp, sizeof(MR_Word));
-    MR_write_byte(deep_fp, 0); /* the canonical flag is MR_FALSE = 0 */
-
+    
     MR_call_site_dynamic_table = MR_create_hash_table(MR_hash_table_size);
     MR_call_site_static_table  = MR_create_hash_table(MR_hash_table_size);
     MR_proc_dynamic_table = MR_create_hash_table(MR_hash_table_size);
@@ -693,7 +700,7 @@ static void
 MR_write_out_deep_id_string(FILE *fp)
 {
     /* Must be the same as deep_id_string in deep_profiler/read_profile.m */
-    const char  *id_string = "Mercury deep profiler data version 6\n";
+    const char  *id_string = "Mercury deep profiler data version 7\n";
 
     fputs(id_string, fp);
 }
@@ -703,6 +710,58 @@ MR_write_out_program_name(FILE *fp)
 {
     MR_write_string(fp, MR_progname);
 }
+
+/*
+** Flags in the deep profiler data file's header.  Any bit without a meaning
+** here must be set to zero as it it may be used in the future.  The next
+** line marks 16 bit boundaries in the 64bit flags value:
+**
+**       48  32  16   0
+*/
+#define MR_DEEP_FLAG_WORDSIZE_MASK \
+    (0x00000000000000FF)
+#define MR_DEEP_FLAG_WORDSIZE_SHIFT \
+    (0)
+#define MR_DEEP_FLAG_CANONICAL_MASK \
+    (0x0000000000000100)
+#define MR_DEEP_FLAG_CANONICAL_SHIFT \
+    (8)
+/* This flag is not yet implemented */
+#define MR_DEEP_FLAG_COMPRESSION_MASK \
+    (0x0000000000000200)
+#define MR_DEEP_FLAG_COMPRESSION_SHIFT \
+    (9)
+/* This flag is two bits wide had has three valid values */
+#define MR_DEEP_FLAG_COVERAGE_DATA_TYPE_MASK \
+    (0x0000000000000B00)
+#define MR_DEEP_FLAG_COVERAGE_DATA_TYPE_SHIFT \
+    (10)
+
+#if !defined(MR_DEEP_PROFILING_COVERAGE)
+    #define MR_DEEP_FLAG_COVERAGE_DATA_TYPE_VALUE 0
+#elif defined(MR_DEEP_PROFILING_COVERAGE_STATIC)
+    #define MR_DEEP_FLAG_COVERAGE_DATA_TYPE_VALUE 1
+#elif defined(MR_DEEP_PROFILING_COVERAGE_DYNAMIC)
+    #define MR_DEEP_FLAG_COVERAGE_DATA_TYPE_VALUE 2
+#endif
+
+static void
+MR_write_out_deep_flags(FILE *fp)
+{
+    MR_uint_least64_t       flags = 0;
+
+    flags |= MR_DEEP_FLAG_WORDSIZE_MASK & 
+        (sizeof(MR_Word) << MR_DEEP_FLAG_WORDSIZE_SHIFT);
+
+    flags |= MR_DEEP_FLAG_CANONICAL_MASK & 
+        (1 << MR_DEEP_FLAG_CANONICAL_SHIFT);
+    
+    flags |= MR_DEEP_FLAG_COVERAGE_DATA_TYPE_MASK & 
+        (MR_DEEP_FLAG_COVERAGE_DATA_TYPE_VALUE <<
+            MR_DEEP_FLAG_COVERAGE_DATA_TYPE_SHIFT);
+
+    MR_write_fixed_size_int(fp, flags);
+} 
 
 static void
 MR_write_out_procrep_id_string(FILE *fp)
@@ -914,7 +973,6 @@ MR_write_out_proc_static(FILE *deep_fp, FILE *procrep_fp,
     MR_write_num(deep_fp, ps->MR_ps_line_number);
     MR_write_byte(deep_fp, ps->MR_ps_is_in_interface);
     MR_write_num(deep_fp, ps->MR_ps_num_call_sites);
-    MR_write_num(deep_fp, ps->MR_ps_num_coverage_points);
 
     /*
     ** Write out pointers to Call Site Statics.  These are read in with the
@@ -937,24 +995,11 @@ MR_write_out_proc_static(FILE *deep_fp, FILE *procrep_fp,
 
     /*
     ** Write out coverage points.  This is read in as part of the proc static.
-    **/
-    /* TODO: Don't know if MR_Unsigned will work with MR_write_num() will work
-    ** on 64bit machines, depends on size of unsigned.
     */
-    for (i = 0; i < ps->MR_ps_num_coverage_points; i++)
-    {
-#ifdef MR_DEEP_PROFILING_DEBUG
-        if (debug_fp != NULL) {
-            fprintf(debug_fp, "in proc_static %p/%p/%d, coverage point %d\n",
-                proc_layout, ps, ps_id, i);
-        }
+#ifdef MR_DEEP_PROFILING_COVERAGE
+    MR_write_out_coverage_points_static(deep_fp, ps);
 #endif
-        
-        MR_write_out_coverage_point(deep_fp, 
-            &ps->MR_ps_coverage_points_static[i], &ps->MR_ps_coverage_points[i]);
-    }
-    
-    
+
     /*
     ** Write out the actual call site statics,  These are read in after the
     ** proc static, not as part of it.
@@ -1290,6 +1335,10 @@ MR_write_out_proc_dynamic(FILE *fp, const MR_ProcDynamic *pd)
     }
 #endif
 
+#ifdef MR_DEEP_PROFILING_COVERAGE
+    MR_write_out_coverage_points_dynamic(fp, pd);
+#endif
+
     for (i = 0; i < ps->MR_ps_num_call_sites; i++) {
         MR_write_kind(fp, ps->MR_ps_call_sites[i].MR_css_kind);
         switch (ps->MR_ps_call_sites[i].MR_css_kind)
@@ -1377,23 +1426,66 @@ MR_write_csd_ptr(FILE *fp, const MR_CallSiteDynamic *csd)
     MR_write_ptr(fp, kind_csd, csd_id);
 }
 
-
+#ifdef MR_DEEP_PROFILING_COVERAGE
 static void
-MR_write_out_coverage_point(FILE *fp, const MR_CoveragePointStatic *cp_static,
-    const MR_Unsigned *cp)
+MR_write_out_coverage_points_static(FILE *fp, const MR_ProcStatic *ps)
 {
+    const MR_CoveragePointStatic *cps_static;
+    cps_static = ps->MR_ps_coverage_points_static;
+#ifdef MR_DEEP_PROFILING_COVERAGE_STATIC
+    const MR_Unsigned *cps;
+    cps = ps->MR_ps_coverage_points;
+#endif
+    unsigned int i;
+
+    MR_write_num(fp, ps->MR_ps_num_coverage_points);
+    for (i = 0; i < ps->MR_ps_num_coverage_points; i++) {
+
 #ifdef  MR_DEEP_PROFILING_DETAIL_DEBUG
-    if (debug_fp != NULL) {
-        fprintf(debug_fp, "coverage point: %s,%d: %d\n", 
-            cp_static->MR_cp_goal_path, cp_static->MR_cp_type, *cp);
-    }
+        if (debug_fp != NULL) {
+            fprintf(debug_fp, "coverage point: %s,%d",
+                cps_static[i].MR_cp_goal_path, cps_static[i].MR_cp_type);
+#ifdef  MR_DEEP_PROFILING_COVERAGE_STATIC
+            fprintf(debug_fp, ": %d\n", cps[i]);
+#else
+            fprintf(debug_fp, "\n");
+#endif
+        }
 #endif
 
-    MR_write_string(fp, cp_static->MR_cp_goal_path),
-    MR_write_num(fp, cp_static->MR_cp_type),
-    MR_write_num(fp, *cp);
+        MR_write_string(fp, cps_static[i].MR_cp_goal_path);
+        MR_write_num(fp, cps_static[i].MR_cp_type);
+#ifdef MR_DEEP_PROFILING_COVERAGE_STATIC
+        MR_write_num(fp, cps[i]);
+#endif
+    }
 }
 
+static void
+MR_write_out_coverage_points_dynamic(FILE *fp, const MR_ProcDynamic *pd)
+{
+#ifdef MR_DEEP_PROFILING_COVERAGE_DYNAMIC
+    const MR_Unsigned *cps;
+    unsigned int i;
+    unsigned int ncps;
+
+    cps = pd->MR_pd_coverage_points;
+    ncps = pd->MR_pd_proc_layout->MR_sle_proc_static->
+        MR_ps_num_coverage_points;
+
+    MR_write_num(fp, ncps);
+    for (i = 0; i < ncps; i++) {
+#ifdef  MR_DEEP_PROFILING_DETAIL_DEBUG
+        if (debug_fp != NULL) {
+            fprintf(debug_fp, "coverage point: %d",
+                cps[i]);
+        }
+#endif
+        MR_write_num(fp, cps[i]);
+    }
+#endif
+};
+#endif
 
 static void
 MR_write_ptr(FILE *fp, MR_NodeKind kind, int node_id)
@@ -1470,7 +1562,7 @@ MR_write_num(FILE *fp, unsigned long num)
 }
 
 static void
-MR_write_fixed_size_int(FILE *fp, unsigned long num)
+MR_write_fixed_size_int(FILE *fp, MR_uint_least64_t num)
 {
     int i;
 
@@ -1479,8 +1571,6 @@ MR_write_fixed_size_int(FILE *fp, unsigned long num)
         fprintf(debug_fp, "fixed_size_int: %ld\n", num);
     }
 #endif
-
-    MR_deep_assert(NULL, NULL, NULL, (MR_Integer) num >= 0);
 
     for (i = 0; i < MR_FIXED_SIZE_INT_BYTES; i++) {
         putc(num & ((1 << 8) - 1), fp);

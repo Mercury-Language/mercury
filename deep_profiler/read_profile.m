@@ -38,11 +38,13 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 
+:- import_module assoc_list.
 :- import_module array.
 :- import_module bool.
 :- import_module char.
 :- import_module int.
 :- import_module list.
+:- import_module pair.
 :- import_module require.
 :- import_module string.
 
@@ -65,39 +67,19 @@ read_call_graph(FileName, MaybeInitDeep, !IO) :-
         read_deep_id_string(MaybeIdStr, !IO),
         (
             MaybeIdStr = ok(_),
-            io_combinator.maybe_error_sequence_12(
+            io_combinator.maybe_error_sequence_11(
                 read_string,
                 read_fixed_size_int,
                 read_fixed_size_int,
                 read_fixed_size_int,
                 read_fixed_size_int,
+                read_fixed_size_int,
                 read_num,
                 read_num,
                 read_num,
                 read_num,
-                read_deep_byte,
-                read_deep_byte,
                 read_ptr(pd),
-                (pred(ProgName::in,
-                        MaxCSD::in, MaxCSS::in,
-                        MaxPD::in, MaxPS::in,
-                        TicksPerSec::in,
-                        InstrumentQuanta::in,
-                        UserQuanta::in,
-                        NumCallSeqs::in,
-                        WordSize::in,
-                        CanonicalFlag::in,
-                        RootPDI::in,
-                        ResInitDeep::out) is det :-
-                    InitDeep0 = init_deep(basename(ProgName),
-                        MaxCSD, MaxCSS, MaxPD, MaxPS,
-                        TicksPerSec, InstrumentQuanta, UserQuanta,
-                        NumCallSeqs,
-                        WordSize, CanonicalFlag,
-                        RootPDI),
-                    ResInitDeep = ok(InitDeep0)
-                ),
-                MaybeInitDeepHeader, !IO),
+                maybe_init_deep, MaybeInitDeepHeader, !IO),
             (
                 MaybeInitDeepHeader = ok(InitDeep),
                 read_nodes(InitDeep, MaybeInitDeep, !IO),
@@ -141,7 +123,7 @@ read_deep_id_string(MaybeIdStr, !IO) :-
     %
 :- func deep_id_string = string.
 
-deep_id_string = deep_id_prefix ++ " 6\n".
+deep_id_string = deep_id_prefix ++ " 7\n".
 
     % Return the part of deep_id_string that is version independent.
     %
@@ -188,39 +170,114 @@ basename_chars([Char | Chars], MaybeChars) :-
 path_separator('/').
 path_separator('\\').
 
-:- func init_deep(string, int, int, int, int, int, int, int, int, int, int,
-    int) = initial_deep.
+:- pred maybe_init_deep(string::in, int::in, int::in, int::in, int::in,
+    int::in, int::in, int::in, int::in, int::in, int::in, 
+    maybe_error(initial_deep)::out) is det.
 
-init_deep(ProgName, MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
-        InstrumentQuanta, UserQuanta, NumCallSeqs, WordSize, CanonicalByte,
-        RootPDI) = InitDeep :-
-    ( CanonicalByte = 0 ->
-        CanonicalFlag = no
+maybe_init_deep(ProgName, FlagsInt, MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
+        InstrumentQuanta, UserQuanta, NumCallSeqs, RootPDI, MaybeInitDeep) :-
+    maybe_deep_flags(FlagsInt, MaybeFlags),
+    (
+        MaybeFlags = ok(Flags),
+        Flags = deep_flags(WordSize, CanonicalFlag, CoverageDataType),
+        InitStats = profile_stats(ProgName, MaxCSD, MaxCSS, MaxPD, MaxPS,
+            TicksPerSec, InstrumentQuanta, UserQuanta, NumCallSeqs, WordSize,
+            CoverageDataType, CanonicalFlag),
+        InitDeep = initial_deep(
+            InitStats,
+            make_pdptr(RootPDI),
+            array.init(MaxCSD + 1,
+                call_site_dynamic(
+                    make_dummy_pdptr,
+                    make_dummy_pdptr,
+                    zero_own_prof_info
+                )),
+            array.init(MaxPD + 1, proc_dynamic(make_dummy_psptr, array([]),
+                no)),
+            array.init(MaxCSS + 1,
+                call_site_static(
+                    make_dummy_psptr, -1,
+                    normal_call_and_callee(make_dummy_psptr, ""), -1, ""
+                )),
+            array.init(MaxPS + 1,
+                proc_static(dummy_proc_id, "", "", "", "", "", -1, no,
+                    array([]), array([]), no, not_zeroed))
+        ),
+        MaybeInitDeep = ok(InitDeep)
     ;
-        CanonicalFlag = yes
-    ),
-    InitStats = profile_stats(ProgName, MaxCSD, MaxCSS, MaxPD, MaxPS,
-        TicksPerSec, InstrumentQuanta, UserQuanta, NumCallSeqs, WordSize,
-        CanonicalFlag),
-    InitDeep = initial_deep(
-        InitStats,
-        make_pdptr(RootPDI),
-        array.init(MaxCSD + 1,
-            call_site_dynamic(
-                make_dummy_pdptr,
-                make_dummy_pdptr,
-                zero_own_prof_info
-            )),
-        array.init(MaxPD + 1, proc_dynamic(make_dummy_psptr, array([]))),
-        array.init(MaxCSS + 1,
-            call_site_static(
-                make_dummy_psptr, -1,
-                normal_call_and_callee(make_dummy_psptr, ""), -1, ""
-            )),
-        array.init(MaxPS + 1,
-            proc_static(dummy_proc_id, "", "", "", "", "", -1, no,
-                array([]), array([]), not_zeroed))
+        MaybeFlags = error(Error),
+        MaybeInitDeep = error(Error)
     ).
+
+:- type deep_flags
+    --->    deep_flags(
+                df_bytes_per_int        :: int,
+                df_canonical_flag       :: bool,
+                df_coverage_data_type   :: coverage_data_type
+            ).
+
+:- pred maybe_deep_flags(int::in, maybe_error(deep_flags)::out) is det.
+
+maybe_deep_flags(FlagsInt, MaybeFlags) :-
+    BytesPerInt = (FlagsInt /\ deep_flag_bytes_per_int_mask)
+        >> deep_flag_bytes_per_int_shift,
+    Canonical = (FlagsInt /\ deep_flag_canonical_mask)
+        >> deep_flag_canonical_shift,
+    Coverage = (FlagsInt /\ deep_flag_coverage_mask)
+        >> deep_flag_coverage_shift,
+    (
+        ( 
+            Coverage = 0, 
+            CoverageFlag = no_coverage_data
+        ; 
+            Coverage = 1, 
+            CoverageFlag = static_coverage_data
+        ; 
+            Coverage = 2, 
+            CoverageFlag = dynamic_coverage_data
+        ),
+        (
+            Canonical = 0,
+            CanonicalFlag = no
+        ;
+            Canonical = 1,
+            CanonicalFlag = yes
+        ),
+        0 = ((\ deep_flag_all_fields_mask) /\ FlagsInt)
+    ->
+        MaybeFlags = ok(deep_flags(BytesPerInt, CanonicalFlag, CoverageFlag))
+    ;
+        MaybeFlags = error(
+            format("Error parsing flags in file header, flags are 0x%x",
+                [i(FlagsInt)]))
+    ).
+
+    % Flags masks and shifts.
+    % The following line provides a ruler to line up the hexadecimal values
+    % with.
+    % 
+    %                              48  32  16   0
+    %
+:- func deep_flag_bytes_per_int_mask = int.
+deep_flag_bytes_per_int_mask = 0x00000000000000FF.
+:- func deep_flag_bytes_per_int_shift = int.
+deep_flag_bytes_per_int_shift = 0.
+
+:- func deep_flag_canonical_mask = int.
+deep_flag_canonical_mask =     0x0000000000000100.
+:- func deep_flag_canonical_shift = int.
+deep_flag_canonical_shift = 8.
+
+:- func deep_flag_coverage_mask = int.
+deep_flag_coverage_mask =      0x0000000000000B00.
+:- func deep_flag_coverage_shift = int.
+deep_flag_coverage_shift = 10.
+
+:- func deep_flag_all_fields_mask = int.
+deep_flag_all_fields_mask = 
+    deep_flag_bytes_per_int_mask \/
+    deep_flag_canonical_mask \/
+    deep_flag_coverage_mask.
 
 :- pred read_nodes(initial_deep::in, maybe_error(initial_deep)::out,
     io::di, io::uo) is det.
@@ -264,6 +321,7 @@ read_nodes_2(Depth, !.InitDeep, MaybeInitDeep, !IO) :-
     io::di, io::uo) is det.
 
 read_nodes_3(Depth, !.InitDeep, MaybeInitDeep, !IO) :-
+    ProfileStats = !.InitDeep ^ init_profile_stats,
     read_byte(MaybeByte, !IO),
     (
         MaybeByte = ok(Byte),
@@ -283,7 +341,7 @@ read_nodes_3(Depth, !.InitDeep, MaybeInitDeep, !IO) :-
                 )
             ;
                 NextItem = deep_item_proc_dynamic,
-                read_proc_dynamic(MaybePD, !IO),
+                read_proc_dynamic(ProfileStats, MaybePD, !IO),
                 (
                     MaybePD = ok2(ProcDynamic, PDI),
                     PDs0 = !.InitDeep ^ init_proc_dynamics,
@@ -309,7 +367,7 @@ read_nodes_3(Depth, !.InitDeep, MaybeInitDeep, !IO) :-
                 )
             ;
                 NextItem = deep_item_proc_static,
-                read_proc_static(MaybePS, !IO),
+                read_proc_static(ProfileStats, MaybePS, !IO),
                 (
                     MaybePS = ok2(ProcStatic, PSI),
                     PSs0 = !.InitDeep ^ init_proc_statics,
@@ -372,34 +430,34 @@ read_call_site_static(MaybeCSS, !IO) :-
         MaybeCSS = error(_)
     ).
 
-:- pred read_proc_static(maybe_error2(proc_static, int)::out,
-    io::di, io::uo) is det.
+:- pred read_proc_static(profile_stats::in, 
+    maybe_error2(proc_static, int)::out, io::di, io::uo) is det.
 
-read_proc_static(MaybePS, !IO) :-
+read_proc_static(ProfileStats, MaybePS, !IO) :-
     trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("reading proc_static.\n", !IO)
     ),
-    io_combinator.maybe_error_sequence_7(
+    io_combinator.maybe_error_sequence_6(
         read_ptr(ps),
         read_proc_id,
         read_string,
         read_num,
         read_deep_byte,
         read_num,
-        read_num,
         (pred(PSI0::in, Id0::in, F0::in, L0::in, I0::in,
-                NCS0::in, NCP0::in, ProcId::out) is det :-
-            ProcId = ok({PSI0, Id0, F0, L0, I0, NCS0, NCP0})
+                NCS0::in, ProcId::out) is det :-
+            ProcId = ok({PSI0, Id0, F0, L0, I0, NCS0})
         ),
         MaybeProcId, !IO),
     (
-        MaybeProcId = ok({PSI, Id, FileName, LineNumber, Interface, NCS, NCP}),
+        MaybeProcId = ok({PSI, Id, FileName, LineNumber, Interface, NCS}),
         read_n_things(NCS, read_ptr(css), MaybeCSSIs, !IO),
         (
             MaybeCSSIs = ok(CSSIs),
-            read_n_things(NCP, read_coverage_point, MaybeCoveragePoints, !IO),
+            maybe_read_ps_coverage_points(ProfileStats, MaybeCoveragePoints,
+                !IO),
             (
-                MaybeCoveragePoints = ok(CoveragePoints),
+                MaybeCoveragePoints = ok(CPInfos - MaybeCPs),
                 CSSPtrs = list.map(make_cssptr, CSSIs),
                 DeclModule = decl_module(Id),
                 create_refined_proc_ids(Id, UnQualRefinedStr, QualRefinedStr),
@@ -415,7 +473,7 @@ read_proc_static(MaybePS, !IO) :-
                 ProcStatic = proc_static(Id, DeclModule,
                     UnQualRefinedStr, QualRefinedStr, RawStr,
                     FileName, LineNumber, IsInInterface,
-                    array(CSSPtrs), array(CoveragePoints), not_zeroed),
+                    array(CSSPtrs), CPInfos, MaybeCPs, not_zeroed),
                 MaybePS = ok2(ProcStatic, PSI),
                 trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
                     io.write_string("read proc_static ", !IO),
@@ -435,6 +493,90 @@ read_proc_static(MaybePS, !IO) :-
     ;
         MaybeProcId = error(Error),
         MaybePS = error2(Error)
+    ).
+
+:- pred maybe_read_ps_coverage_points(profile_stats::in, 
+    maybe_error(pair(array(coverage_point_info), maybe(array(int))))::out,
+    io::di, io::uo) is det.
+
+maybe_read_ps_coverage_points(ProfileStats, MaybeCoveragePoints, !IO) :-
+    CoverageDataType = ProfileStats ^ coverage_data_type,
+    (
+        CoverageDataType = no_coverage_data,
+        MaybeCoveragePoints0 = ok([] - no)
+    ;
+        ( CoverageDataType = static_coverage_data
+        ; CoverageDataType = dynamic_coverage_data
+        ),
+        read_num(MaybeNCP, !IO),
+        (
+            MaybeNCP = ok(NCP),
+            (
+                CoverageDataType = static_coverage_data, 
+                read_n_things(NCP, read_coverage_point,
+                    MaybeCPPairs, !IO),
+                (
+                    MaybeCPPairs = ok(CPPairs),
+                    keys_and_values(CPPairs, CPInfos, CPs),
+                    MaybeCoveragePoints0 = ok(CPInfos - yes(CPs))
+                ;
+                    MaybeCPPairs = error(Error0),
+                    MaybeCoveragePoints0 = error(Error0)
+                )
+            ;
+                CoverageDataType = dynamic_coverage_data,
+                read_n_things(NCP, read_coverage_point_static,
+                    MaybeCPInfos, !IO),
+                (
+                    MaybeCPInfos = ok(CPInfos),
+                    MaybeCoveragePoints0 = ok(CPInfos - no)
+                ;
+                    MaybeCPInfos = error(Error0),
+                    MaybeCoveragePoints0 = error(Error0)
+                )
+            )
+        ;
+            MaybeNCP = error(Error0),
+            MaybeCoveragePoints0 = error(Error0)
+        )
+    ),
+    (
+        MaybeCoveragePoints0 = ok(CPInfosList - MaybeCPsList),
+        CPInfosArray = array(CPInfosList),
+        MaybeCPsArray = map_maybe(array, MaybeCPsList),
+        MaybeCoveragePoints = ok(CPInfosArray - MaybeCPsArray)
+    ;
+        MaybeCoveragePoints0 = error(Error),
+        MaybeCoveragePoints = error(Error)
+    ).
+
+:- pred maybe_read_pd_coverage_points(profile_stats::in,
+    maybe_error(maybe(array(int)))::out, io::di, io::uo) is det.
+
+maybe_read_pd_coverage_points(ProfileStats, MaybeCoveragePoints, !IO) :-
+    CoverageDataType = ProfileStats ^ coverage_data_type,
+    (
+        ( CoverageDataType = no_coverage_data
+        ; CoverageDataType = static_coverage_data
+        ),
+        MaybeCoveragePoints = ok(no)
+    ;
+        CoverageDataType = dynamic_coverage_data,
+        read_num(ResN, !IO),
+        (
+            ResN = ok(N),
+            read_n_things(N, read_num, MaybeCPs, !IO),
+            (
+                MaybeCPs = ok(CPsList),
+                MaybeCoveragePoints = ok(yes(array(CPsList)))
+            ;
+                MaybeCPs = error(Error),
+                MaybeCoveragePoints = error(Error)
+            )
+        ;
+            ResN = error(Error),
+            MaybeCoveragePoints = error(Error)
+        )
     ).
 
 :- pred read_proc_id(maybe_error(string_proc_label)::out, io::di, io::uo)
@@ -500,19 +642,39 @@ read_proc_id_user_defined(PredOrFunc, MaybeProcLabel, !IO) :-
         ),
         MaybeProcLabel, !IO).
 
-:- pred read_coverage_point(maybe_error(coverage_point)::out, io::di, io::uo)
-    is det.
+    % Read a full coverage point.
+    %
+    % A full coverage point is that static data followed by a number indicating
+    % how many times that point was covered.  This is used when coverage data
+    % is per proc-static.
+    %
+:- pred read_coverage_point(maybe_error(pair(coverage_point_info, int))::out,
+    io::di, io::uo) is det.
 
-read_coverage_point(MaybeCoveragePoint, !IO) :-
-    io_combinator.maybe_error_sequence_3(
+read_coverage_point(MaybeCP, !IO) :-
+    io_combinator.maybe_error_sequence_2(
+        read_coverage_point_static,
+        read_num,
+        (pred(CPInfo::in, Count::in, ok(CPI)::out) is det :-
+            CPI = CPInfo - Count
+        ), MaybeCP, !IO).
+
+    % Read the static data for coverage points.
+    %
+    % This data is always present in the proc static even when dynamic coverage
+    % profiling is used. 
+    %
+:- pred read_coverage_point_static(maybe_error(coverage_point_info)::out, 
+    io::di, io::uo) is det.
+
+read_coverage_point_static(MaybeCP, !IO) :-
+    io_combinator.maybe_error_sequence_2(
         read_string,
         read_cp_type,
-        read_num,
-        (pred(GoalPathString::in, CPType::in, CPCount::in, CP::out) is det :-
+        (pred(GoalPathString::in, CPType::in, MaybeCPI::out) is det :-
             goal_path_from_string_det(GoalPathString, GoalPath),
-            CP = ok(coverage_point(CPCount, GoalPath, CPType))
-        ),
-        MaybeCoveragePoint, !IO).
+            MaybeCPI = ok(coverage_point_info(GoalPath, CPType))
+        ), MaybeCP, !IO).
 
 :- func raw_proc_id_to_string(string_proc_label) = string.
 
@@ -681,10 +843,10 @@ glue_lambda_name(Segments, PredName, LineNumber) :-
         fail
     ).
 
-:- pred read_proc_dynamic(maybe_error2(proc_dynamic, int)::out,
-    io::di, io::uo) is det.
+:- pred read_proc_dynamic(profile_stats::in,
+    maybe_error2(proc_dynamic, int)::out, io::di, io::uo) is det.
 
-read_proc_dynamic(MaybePD, !IO) :-
+read_proc_dynamic(ProfileStats, MaybePD, !IO) :-
     trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("reading proc_dynamic.\n", !IO)
     ),
@@ -698,11 +860,17 @@ read_proc_dynamic(MaybePD, !IO) :-
         MaybePDHeader, !IO),
     (
         MaybePDHeader = ok({PDI, PSI, N}),
-        read_n_things(N, read_call_site_slot, MaybeSlots, !IO),
+        io_combinator.maybe_error_sequence_2(
+            maybe_read_pd_coverage_points(ProfileStats),
+            read_n_things(N, read_call_site_slot),
+            (pred(MaybeCPs0::in, Slots0::in, CPsAndSlots0::out) is det :-
+                CPsAndSlots0 = ok({MaybeCPs0, Slots0})
+            ),
+            MaybeCPsAndSlots, !IO),
         (
-            MaybeSlots = ok(Refs),
+            MaybeCPsAndSlots = ok({MaybeCPs, Refs}),
             PSPtr = make_psptr(PSI),
-            ProcDynamic = proc_dynamic(PSPtr, array(Refs)),
+            ProcDynamic = proc_dynamic(PSPtr, array(Refs), MaybeCPs),
             MaybePD = ok2(ProcDynamic, PDI),
             trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
                 io.write_string("read proc_dynamic ", !IO),
@@ -712,7 +880,7 @@ read_proc_dynamic(MaybePD, !IO) :-
                 io.write_string("\n", !IO)
             )
         ;
-            MaybeSlots = error(Error),
+            MaybeCPsAndSlots = error(Error),
             MaybePD = error2(Error)
         )
     ;
@@ -1199,13 +1367,16 @@ read_num_acc(Num0, MaybeNum, !IO) :-
 % Must correspond to MR_FIXED_SIZE_INT_BYTES
 % in runtime/mercury_deep_profiling.c.
 
-fixed_size_int_bytes = 4.
+fixed_size_int_bytes = 8.
 
 :- pred read_fixed_size_int(maybe_error(int)::out,
     io::di, io::uo) is det.
 
-read_fixed_size_int(MaybeByte, !IO) :-
-    read_fixed_size_int_acc(fixed_size_int_bytes, 0, 0, MaybeByte, !IO).
+read_fixed_size_int(MaybeInt, !IO) :-
+    read_fixed_size_int_acc(fixed_size_int_bytes, 0, 0, MaybeInt, !IO),
+    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
+        io.format("fixed size int %s\n", [s(string(MaybeInt))], !IO)
+    ).
 
 :- pred read_fixed_size_int_acc(int::in, int::in, int::in,
     maybe_error(int)::out, io::di, io::uo) is det.
@@ -1357,6 +1528,12 @@ make_dummy_psptr = proc_static_ptr(-1).
             break;
     }
 ").
+
+%------------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "read_profile.m: ".
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%

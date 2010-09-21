@@ -19,3 +19,8 @@ MCFLAGS-read_profile = --trace minimum
 #	--trace-flag=debug_recursive_costs \
 #	--trace-flag=debug_parallel_conjunction_speedup \
 #	--trace-flag=debug_branch_and_bound
+
+# Uncomment this to see debug messages from the code that reads the Deep.data
+# files.
+#MCFLAGS-read_profile = --trace-flag debug_read_profdeep
+

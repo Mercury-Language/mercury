@@ -463,7 +463,8 @@
                 pddi_ps_module_name         :: string,
                 pddi_ps_uq_refined_name     :: string,
                 pddi_ps_q_refined_name      :: string,
-                pddi_call_sites             :: list(call_site_array_slot)
+                pddi_call_sites             :: list(call_site_array_slot),
+                pddi_coverage_points        :: maybe(list(coverage_point))
             ).
 
 :- type call_site_static_dump_info

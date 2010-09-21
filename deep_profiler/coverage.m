@@ -20,8 +20,9 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
 :- import_module measurements.
-:- import_module profile.
 
+:- import_module array.
+:- import_module list.
 :- import_module map.
 :- import_module maybe.
 
@@ -45,6 +46,34 @@
     is semidet.
 
 %----------------------------------------------------------------------------%
+    
+    % This is similar to the coverage_point type in
+    % mdbcomp/program_representation.m, however it includes an integer count
+    % of how often execution reached this point in the program.
+    %
+:- type coverage_point
+    --->    coverage_point(
+                % The number of times execution reached this point,
+                int,
+
+                % Identifies the goal that this coverage point is near.
+                % If cp_type is cp_type_branch_arm the coverage point is
+                % immediately before this goal, otherwise it is immediately
+                % after.
+
+                goal_path,
+
+                % The type of this coverage point.
+                cp_type
+            ).
+
+    % Produce a list of coverage points from an array of static data and an
+    % array of coverage points.
+    %
+:- pred coverage_point_arrays_to_list(array(coverage_point_info)::in, 
+    array(int)::in, list(coverage_point)::out) is det.
+
+%----------------------------------------------------------------------------%
 
     % Annotate the program representation structure with coverage information.
     %
@@ -58,6 +87,7 @@
 :- implementation.
 
 :- import_module message.
+:- import_module profile.
 :- import_module program_representation_utils.
 :- import_module report.
 
@@ -66,7 +96,6 @@
 :- import_module exception.
 :- import_module int.
 :- import_module io.
-:- import_module list.
 :- import_module require.
 :- import_module string.
 :- import_module unit.
@@ -79,6 +108,35 @@ get_coverage_before(coverage_known_before(Before), Before).
 get_coverage_before_and_after(coverage_known(Before, After), Before, After).
 get_coverage_before_and_after(coverage_known_same(Count), Count, Count).
 get_coverage_before_and_after(coverage_known_zero, 0, 0).
+
+%-----------------------------------------------------------------------------%
+
+coverage_point_arrays_to_list(StaticArray, DynamicArray, CoveragePoints) :-
+    array.bounds(StaticArray, Min, Max),
+    ( array.bounds(DynamicArray, Min, Max) ->
+        true
+    ;
+        error("coverage_point_arrays_to_list: Bounds do not match")
+    ),
+    coverage_point_arrays_to_list_2(Min, Max, StaticArray, DynamicArray,
+        [], CoveragePoints).
+
+:- pred coverage_point_arrays_to_list_2(int::in, int::in, 
+    array(coverage_point_info)::in, array(int)::in, 
+    list(coverage_point)::in, list(coverage_point)::out) is det.
+
+coverage_point_arrays_to_list_2(Num, Max, StaticArray, DynamicArray, 
+        !CoveragePoints) :-
+    ( Num =< Max -> 
+        array.lookup(StaticArray, Num, coverage_point_info(GoalPath, CPType)),
+        array.lookup(DynamicArray, Num, Count),
+        CP = coverage_point(Count, GoalPath, CPType),
+        !:CoveragePoints = [CP | !.CoveragePoints],
+        coverage_point_arrays_to_list_2(Num + 1, Max, StaticArray, DynamicArray,
+            !CoveragePoints)
+    ;
+        true
+    ).
 
 %-----------------------------------------------------------------------------%
 

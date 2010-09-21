@@ -1265,6 +1265,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     (
         ProfForImplicitParallelism = yes,
         globals.set_option(coverage_profiling, bool(yes), !Globals),
+        globals.set_option(coverage_profiling_static, bool(no), !Globals),
         globals.set_option(profile_deep_coverage_after_goal, bool(yes),
             !Globals), 
         globals.set_option(profile_deep_coverage_branch_ite, bool(yes),

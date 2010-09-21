@@ -2054,7 +2054,8 @@ display_report_proc_static_dump(ProcStaticDumpInfo, Display) :-
 
 display_report_proc_dynamic_dump(_Deep, Prefs, ProcDynamicDumpInfo, Display) :-
     ProcDynamicDumpInfo = proc_dynamic_dump_info(PDPtr, PSPtr, RawName,
-        ModuleName, UnQualRefinedName, QualRefinedName, CallSites),
+        ModuleName, UnQualRefinedName, QualRefinedName, CallSites,
+        MaybeCoveragePoints),
     PDPtr = proc_dynamic_ptr(PDI),
     PSPtr = proc_static_ptr(PSI),
     string.format("Dump of proc_dynamic %d", [i(PDI)], Title),
@@ -2081,8 +2082,33 @@ display_report_proc_dynamic_dump(_Deep, Prefs, ProcDynamicDumpInfo, Display) :-
     CallSitesTable = table(table_class_box_if_pref, 2, no, CallSitesRows),
     CallSitesTableItem = display_table(CallSitesTable),
 
+    (
+        MaybeCoveragePoints = yes(CoveragePoints),
+        CoveragePointsTitle = "Coverage points:",
+        CoveragePointsTitleItem = display_heading(CoveragePointsTitle),
+
+        list.map(format_coverage_point_row, CoveragePoints,
+            CoveragePointsRows),
+        CoveragePointsTableHeader = table_header([
+            table_header_group(table_header_group_single(td_s("Goal Path")), 
+                table_column_class_no_class, column_do_not_colour),
+            table_header_group(table_header_group_single(td_s("Type")),
+                table_column_class_no_class, column_do_not_colour),
+            table_header_group(table_header_group_single(td_s("Count")),
+                table_column_class_number, column_do_not_colour)]),
+        CoveragePointsTable = table(table_class_box_if_pref, 3,
+            yes(CoveragePointsTableHeader), CoveragePointsRows),
+        CoveragePointsTableItem = display_table(CoveragePointsTable),
+
+        CoveragePointsItems = [CoveragePointsTitleItem, CoveragePointsTableItem]
+    ;
+        MaybeCoveragePoints = no,
+        CoveragePointsItems = []
+    ),
+
     Display = display(yes(Title),
-        [MainTableItem, CallSitesTitleItem, CallSitesTableItem]).
+        [MainTableItem, CallSitesTitleItem, CallSitesTableItem] ++
+        CoveragePointsItems).
 
 :- pred dump_psd_call_site(preferences::in,
     call_site_array_slot::in, list(table_row)::out,
@@ -2129,6 +2155,16 @@ dump_psd_call_site_multi_entry(Prefs, CSDPtr, Row) :-
     CSDCell = table_cell(td_l(CSDLink)),
     EmptyCell = table_cell(td_s("")),
     Row = table_row([EmptyCell, CSDCell]).
+
+:- pred format_coverage_point_row(coverage_point::in, table_row::out) is det.
+
+format_coverage_point_row(CoveragePoint, Row) :-
+    CoveragePoint = coverage_point(Count, GoalPath, CPType),
+    GoalPathString = goal_path_to_string(GoalPath),
+    GoalPathCell = table_cell(td_s(GoalPathString)),
+    TypeCell = table_cell(td_s(string(CPType))),
+    CountCell = table_cell(td_i(Count)),
+    Row = table_row([GoalPathCell, TypeCell, CountCell]).
 
     % Create a display_report structure for a call_site_static_dump report.
     %
