@@ -35,34 +35,34 @@ main(!IO) :-
         count(["C","C1"], !S)
         ), construct_bug_submodule.init, Map),
 
-    io.open_binary_output(FileName, Result, !IO),
+    io.open_output(FileName, Result, !IO),
     ( Result = ok(Temp_ORDIE_Out_OutStream) ->
         OutStream = Temp_ORDIE_Out_OutStream
     ;
         error( "Failed to write to '" ++ FileName ++ "'.")
     ),
-    io.write_binary(OutStream, Map, !IO),
-    close_binary_output(OutStream, !IO),
+    io.write(OutStream, Map, !IO),
+    io.write_string(OutStream, ".", !IO),
+    close_output(OutStream, !IO),
 
     io.write_string("Saved the map to file: " ++ FileName ++ "\n", !IO),
 
-    io.open_binary_input(FileName, Result2, !IO),
+    io.open_input(FileName, Result2, !IO),
     ( Result2 = ok(Temp_ORDIE_Out_InStream) ->
         InStream = Temp_ORDIE_Out_InStream
     ;
         error( "Failed to open '" ++ FileName ++ "'.")
     ),
-    io.read_binary(InStream, MayDataTerm, !IO),
-    io.close_binary_input(InStream, !IO),
+    io.read(InStream, MayDataTerm, !IO),
+    io.close_input(InStream, !IO),
     (
         MayDataTerm = ok(ReadMap `with_type` stat)
     ;
         MayDataTerm = eof,
         error("Unexpected end of file: '" ++ FileName ++ "'.")
     ;
-        MayDataTerm = error(E),
-        error("Error reading term from: '" ++ FileName ++ "': "
-            ++ io.error_message(E) ++ ".")
+        MayDataTerm = error(E, _),
+        error("Error reading term from: '" ++ FileName ++ "': " ++ E ++ ".")
     ),
 
     io.write_string("Loaded the map from file: " ++ FileName ++ "\n", !IO),

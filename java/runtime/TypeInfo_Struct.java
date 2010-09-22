@@ -115,14 +115,21 @@ public class TypeInfo_Struct extends PseudoTypeInfo
 			return true;
 		}
 
-		if (!type_ctor.unify(ti.type_ctor)) {
+		TypeInfo_Struct self = this.collapse_equivalences();
+		ti = ti.collapse_equivalences();
+
+		if (self == ti) {
+			return true;
+		}
+
+		if (!self.type_ctor.unify(ti.type_ctor)) {
 			return false;
 		}
 
 		int len1 = 0;
 		int len2 = 0;
-		if (args != null) {
-			len1 = args.length;
+		if (self.args != null) {
+			len1 = self.args.length;
 		}
 		if (ti.args != null) {
 			len2 = ti.args.length;
@@ -132,11 +139,27 @@ public class TypeInfo_Struct extends PseudoTypeInfo
 		}
 
 		for (int i = 0; i < len1; i++) {
-			if (!args[i].unify(ti.args[i])) {
+			if (!self.args[i].unify(ti.args[i])) {
 				return false;
 			}
 		}
 		return true;
+	}
+
+	private TypeInfo_Struct collapse_equivalences() {
+		TypeInfo_Struct ti = this;
+
+		/* Look past equivalences */
+		while (ti.type_ctor.type_ctor_rep.value ==
+				TypeCtorRep.MR_TYPECTOR_REP_EQUIV_GROUND
+			|| ti.type_ctor.type_ctor_rep.value ==
+				TypeCtorRep.MR_TYPECTOR_REP_EQUIV)
+		{
+			ti = TypeInfo_Struct.maybe_new(
+				ti.type_ctor.type_layout.layout_equiv());
+		}
+
+		return ti;
 	}
 
 	private void sanity_check() {

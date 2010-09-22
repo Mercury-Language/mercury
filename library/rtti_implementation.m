@@ -269,11 +269,11 @@ type_info_num_functors(TypeInfo, NumFunctors) :-
         ),
         NumFunctors = 1
     ;
-        TypeCtorRep = tcr_equiv_ground,
-        error("rtti_implementation num_functors for equiv_ground type")
-    ;
-        TypeCtorRep = tcr_equiv,
-        error("rtti_implementation num_functors for equiv type")
+        ( TypeCtorRep = tcr_equiv_ground
+        ; TypeCtorRep = tcr_equiv
+        ),
+        NewTypeInfo = collapse_equivalences(TypeInfo),
+        type_info_num_functors(NewTypeInfo, NumFunctors)
     ;
         ( TypeCtorRep = tcr_subgoal
         ; TypeCtorRep = tcr_int
