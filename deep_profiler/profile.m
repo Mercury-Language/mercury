@@ -119,6 +119,9 @@
                 % Information about modules.
                 module_data             :: map(string, module_data),
 
+                % Static coverage information.
+                maybe_static_coverage   :: maybe(array(static_coverage_info)),
+
                 % If this field is `no', then there is no (readable) contour
                 % exclusion file. If this field is yes(MaybeExcludeFile),
                 % then there are again two possibilities. The normal case is
@@ -367,6 +370,8 @@
     proc_dynamic_ptr::in, compensation_table::out) is det.
 :- pred lookup_csd_comp_table(array(compensation_table)::in,
     call_site_dynamic_ptr::in, compensation_table::out) is det.
+:- pred lookup_ps_coverage(array(static_coverage_info)::in,
+    proc_static_ptr::in, static_coverage_info::out) is det.
 
 :- pred deep_lookup_call_site_dynamics(deep::in, call_site_dynamic_ptr::in,
     call_site_dynamic::out) is det.
@@ -413,6 +418,8 @@
     own_prof_info::out) is det.
 :- pred deep_lookup_css_desc(deep::in, call_site_static_ptr::in,
     inherit_prof_info::out) is det.
+:- pred deep_lookup_ps_coverage(deep::in, proc_static_ptr::in,
+    static_coverage_info::out) is det.
 
 :- pred update_call_site_dynamics(call_site_dynamic_ptr::in,
     call_site_dynamic::in,
@@ -441,6 +448,9 @@
 :- pred update_css_desc(call_site_static_ptr::in, inherit_prof_info::in,
     array(inherit_prof_info)::array_di, array(inherit_prof_info)::array_uo)
     is det.
+:- pred update_ps_coverage(proc_static_ptr::in, static_coverage_info::in,
+    array(static_coverage_info)::array_di, 
+    array(static_coverage_info)::array_uo) is det.
 
 :- pred deep_update_csd_desc(call_site_dynamic_ptr::in, inherit_prof_info::in,
     deep::in, deep::out) is det.
@@ -780,6 +790,14 @@ lookup_csd_comp_table(CSDCompTables, CSDPtr, CompTable) :-
         error("lookup_csd_comp_table: bounds error")
     ).
 
+lookup_ps_coverage(PSCoverageArrays, PSPtr, PSCoverageArray) :-
+    PSPtr = proc_static_ptr(PSI),
+    ( PSI > 0, array.in_bounds(PSCoverageArrays, PSI) ->
+        array.lookup(PSCoverageArrays, PSI, PSCoverageArray)
+    ;
+        error("lookup_ps_coverage: bounds error")
+    ).
+
 %-----------------------------------------------------------------------------%
 
 deep_lookup_call_site_dynamics(Deep, CSDPtr, CSD) :-
@@ -862,6 +880,16 @@ deep_lookup_css_desc(Deep, CSSPtr, Desc) :-
     CSSPtr = call_site_static_ptr(CSSI),
     array.lookup(Deep ^ css_desc, CSSI, Desc).
 
+deep_lookup_ps_coverage(Deep, PSPtr, Coverage) :-
+    MaybeCoverageTables = Deep ^ maybe_static_coverage,
+    (
+        MaybeCoverageTables = yes(CoverageTables),
+        lookup_ps_coverage(CoverageTables, PSPtr, Coverage)
+    ;
+        MaybeCoverageTables = no,
+        Coverage = zero_static_coverage
+    ).
+
 %-----------------------------------------------------------------------------%
 
 update_call_site_dynamics(CSDPtr, CSD, CallSiteDynamics0, CallSiteDynamics) :-
@@ -904,6 +932,10 @@ update_css_own(CSSPtr, Own, CSSOwns0, CSSOwns) :-
 update_css_desc(CSSPtr, Desc, CSSDescs0, CSSDescs) :-
     CSSPtr = call_site_static_ptr(CSSI),
     array.set(CSSDescs0, CSSI, Desc, CSSDescs).
+
+update_ps_coverage(PSPtr, Coverage, !Coverages) :-
+    PSPtr = proc_static_ptr(PSI),
+    array.set(!.Coverages, PSI, Coverage, !:Coverages).
 
 %-----------------------------------------------------------------------------%
 

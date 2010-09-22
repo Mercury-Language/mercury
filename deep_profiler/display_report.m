@@ -263,6 +263,7 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
 
     (
         ShouldDisplayTimes = yes,
+    
         Top100SelfCmd = deep_cmd_top_procs(rank_range(1, 100),
             cost_time, self, overall),
         Top100SelfAndDescCmd = deep_cmd_top_procs(rank_range(1, 100),
@@ -276,7 +277,7 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
         ]
     ;
         ShouldDisplayTimes = no,
-        LinksTopProcsByLimitTime = []
+        LinksTopProcsByLimitTime = [] 
     ),
 
     TopLimitCallSeqsSelf = deep_cmd_top_procs(rank_range(1, 100),
@@ -351,22 +352,28 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
         link_base(WordsAbove2Megawords, no,
             "Procedures above 2M words threshold: words, self+descendants.")
     ],
-
-    RecursionTypeFrequenciesCmd = deep_cmd_recursion_types_frequency,
-
-    LinksSummaryReports = [
-        link_base(RecursionTypeFrequenciesCmd, no,
-            "Frequencies of different types of recursion used in the program.")
-    ],
-
+    
     LinkCmds = LinksExploration ++
         LinksTopProcsByLimitTime ++ LinksTopProcsByLimit ++
-        LinksTopProcsByPercentTime ++ LinksTopProcsByPercent ++
-        LinksSummaryReports,
+        LinksTopProcsByPercentTime ++ LinksTopProcsByPercent,
     list.map(make_link, LinkCmds, LinksList),
     Links = display_list(list_class_vertical_bullets,
         yes("You can start exploring the deep profile at the following" ++
             " points."), LinksList),
+
+    %
+    % Produce the developer-only options list.
+    %
+    RecursionTypeFrequenciesCmd = deep_cmd_recursion_types_frequency,
+    
+    LinksDeveloperCmds = [
+        link_base(RecursionTypeFrequenciesCmd, no,
+            "Frequencies of different types of recursion used in the program.")
+    ],
+    list.map(make_link, LinksDeveloperCmds, DeveloperLinksList),
+    DeveloperLinks = display_developer(display_list(list_class_vertical_bullets,
+        yes("Options that are only useful to Mercury developers"), 
+        DeveloperLinksList)),
 
     % Display the table section of the report.
     ProfilingStatistics =
@@ -386,12 +393,15 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
     Rows = list.map(make_labelled_table_row, ProfilingStatistics),
     Table = table(table_class_do_not_box, 2, no, Rows),
 
+    OptionsControls = general_options_controls(deep_cmd_menu, Prefs),
+
     MenuRestartQuitControls = cmds_menu_restart_quit(yes(Prefs)),
 
     % Construct the complete representation of what to display.
     Display = display(yes("Deep profiler menu"),
-        [Links, display_table(Table),
-        display_paragraph_break, MenuRestartQuitControls]).
+        [Links, DeveloperLinks, display_table(Table),
+        display_paragraph_break, MenuRestartQuitControls,
+        display_paragraph_break, OptionsControls]).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1974,7 +1984,7 @@ display_report_procrep_coverage_info(Prefs, ProcrepCoverageReport, Display) :-
     string.append_list(list(ProcRepStrings), ProcRepString),
     CoverageInfoItem = display_verbatim(ProcRepString),
 
-    Cmd = deep_cmd_procrep_coverage(PSPtr),
+    Cmd = deep_cmd_static_procrep_coverage(PSPtr),
     ProcReportControls = proc_reports_controls(Prefs, PSPtr, Cmd),
     MenuResetQuitControls = cmds_menu_restart_quit(yes(Prefs)),
     Controls =
@@ -2106,9 +2116,16 @@ display_report_proc_dynamic_dump(_Deep, Prefs, ProcDynamicDumpInfo, Display) :-
         CoveragePointsItems = []
     ),
 
+    make_link(link_base(deep_cmd_dynamic_procrep_coverage(PDPtr), yes(Prefs),
+            "Dynamic coverage annotated procedure representation"),
+        CoverageAnnotatedProcrepItem),
+    RelatedReportsList = display_list(list_class_horizontal_except_title, 
+        yes("Related reports:"), [CoverageAnnotatedProcrepItem]),
+
     Display = display(yes(Title),
         [MainTableItem, CallSitesTitleItem, CallSitesTableItem] ++
-        CoveragePointsItems).
+        CoveragePointsItems ++
+        [display_paragraph_break, RelatedReportsList]).
 
 :- pred dump_psd_call_site(preferences::in,
     call_site_array_slot::in, list(table_row)::out,
@@ -3770,13 +3787,25 @@ proc_reports_controls(Prefs, Proc, NotCmd) = ControlsItem :-
     solutions((pred(Control::out) is nondet :-
             (
                 Cmd = deep_cmd_proc(Proc),
-                Label = "Procedure"
+                Label = "Procedure",
+                Developer = no
             ;
-                Cmd = deep_cmd_procrep_coverage(Proc),
-                Label = "Coverage annotated procedure representation"
+                Cmd = deep_cmd_static_procrep_coverage(Proc),
+                Label = "Coverage annotated procedure representation",
+                % XXX: Should this option be considered a developer-only
+                % option?
+                Developer = no
+            ;
+                Cmd = deep_cmd_dump_proc_static(Proc),
+                Label = "Unprocessed proc static data",
+                Developer = yes
+            ;
+                Cmd = deep_cmd_dump_proc_var_use(Proc),
+                Label = "Var use report",
+                Developer = yes
             ),
             Cmd \= NotCmd,
-            make_control(yes(Prefs), Cmd - Label, Control)
+            make_control(yes(Prefs), Cmd, Label, Developer, Control)
         ), ProcReportControls),
     ControlsItem = display_list(list_class_vertical_no_bullets,
         yes("Related procedure reports:"), ProcReportControls).
@@ -3787,13 +3816,19 @@ clique_reports_controls(Perfs, CliquePtr, NotCmd) = ControlsItem :-
     solutions((pred(Control::out) is nondet :-
             (
                 Cmd = deep_cmd_clique(CliquePtr),
-                Label = "Clique"
+                Label = "Clique",
+                Developer = no
             ;
                 Cmd = deep_cmd_clique_recursive_costs(CliquePtr),
-                Label = "Clique's recursion information"
+                Label = "Clique's recursion information",
+                Developer = yes
+            ;
+                Cmd = deep_cmd_dump_clique(CliquePtr),
+                Label = "Unprocessed clique data",
+                Developer = yes
             ),
             Cmd \= NotCmd,
-            make_control(yes(Perfs), Cmd - Label, Control)
+            make_control(yes(Perfs), Cmd, Label, Developer, Control)
         ), CliqueReportControls),
     ControlsItem = display_list(list_class_vertical_no_bullets,
         yes("Related clique reports:"), CliqueReportControls).
@@ -4106,10 +4141,30 @@ cmds_menu_restart_quit(MaybePrefs) = ControlsItem :-
         attr_str([], "Restart"), link_class_control)),
     Quit = display_link(deep_link(deep_cmd_quit, MaybePrefs,
         attr_str([], "Quit"), link_class_control)),
-    List = display_list(list_class_horizontal, no,
-        [Menu, Restart, Quit]),
-    ControlsItem = display_list(list_class_vertical_no_bullets,
-        yes("General commands:"), [List]).
+    List = [Menu, Restart, Quit],
+    ControlsItem = display_list(list_class_horizontal_except_title,
+        yes("General commands:"), List).
+
+:- func general_options_controls(cmd, preferences) = display_item.
+
+general_options_controls(Cmd, Prefs) = ControlsItem :-
+    DeveloperMode = Prefs ^ pref_developer_mode,
+    (
+        DeveloperMode = developer_options_visible,
+        DeveloperText = "Disable developer options",
+        DeveloperPrefs = 
+            Prefs ^ pref_developer_mode := developer_options_invisible
+    ;
+        DeveloperMode = developer_options_invisible,
+        DeveloperText = "Enable developer options",
+        DeveloperPrefs = 
+            Prefs ^ pref_developer_mode := developer_options_visible
+    ),
+    DeveloperControl = display_link(deep_link(Cmd, yes(DeveloperPrefs),
+        attr_str([], DeveloperText), link_class_control)),
+    List = [DeveloperControl], 
+    ControlsItem = display_list(list_class_horizontal_except_title,
+        yes("General options:"), List).
 
 %-----------------------------------------------------------------------------%
 %
@@ -4264,12 +4319,19 @@ make_link(link_base(Cmd, MaybePrefs, Label), Item) :-
     % Make a control from a command and label and optional preferences
     % structure.
     %
-:- pred make_control(maybe(preferences)::in, pair(cmd, string)::in,
+:- pred make_control(maybe(preferences)::in, cmd::in, string::in, bool::in,
     display_item::out) is det.
 
-make_control(MaybePrefs, Cmd - Label, Item) :-
-    Item = display_link(deep_link(Cmd, MaybePrefs, attr_str([], Label),
-        link_class_control)).
+make_control(MaybePrefs, Cmd, Label, Developer, Item) :-
+    Item0 = display_link(deep_link(Cmd, MaybePrefs, attr_str([], Label),
+        link_class_control)),
+    (
+        Developer = yes,
+        Item = display_developer(Item0)
+    ;
+        Developer = no,
+        Item = Item0
+    ).
 
 %-----------------------------------------------------------------------------%
 %

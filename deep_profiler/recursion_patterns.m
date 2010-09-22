@@ -106,7 +106,7 @@ proc_get_recursion_type(Deep, ThisClique, PDPtr, MaybeRecursionType) :-
     % TODO: Don't use coverage information here, it's computationally expensive
     % and shouldn't be necessary.  But more importantly it is per proc static
     % and therefore not suitable for calculating the depths of recursion.
-    create_procrep_coverage_report(Deep, PSPtr, MaybeCoverageReport),
+    create_static_procrep_coverage_report(Deep, PSPtr, MaybeCoverageReport),
     (
         MaybeCoverageReport = ok(CoverageReport),
         ProcRep = CoverageReport ^ prci_proc_rep, 

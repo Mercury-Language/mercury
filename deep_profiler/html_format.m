@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2009 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -183,61 +183,39 @@ item_to_html(StartTag, EndTag, FormatInfo, !StyleControlMap, Item, HTML) :-
         HTML = wrap_tags(StartTag, EndTag, TableHTML)
     ;
         Item = display_list(Class, MaybeTitle, Items),
+        DeveloperMode = FormatInfo ^ fi_pref_developer,
         (
-            MaybeTitle = yes(Title),
-            TitleStartTag = "<span id=\"list_title\">",
-            TitleEndTag = "</span>\n",
-            TitleHTML = wrap_tags(TitleStartTag, TitleEndTag,
-                str_to_html(Title)),
-            (
-                Class = list_class_horizontal,
-                PostTitleHTML = empty_html
-            ;
-                ( Class = list_class_horizontal_except_title
-                ; Class = list_class_vertical_bullets
-                ; Class = list_class_vertical_no_bullets
-                ),
-                PostTitleHTML = str_to_html("<br>\n")
+            % If developer only items are invisible and all the items in the
+            % list are developer items, then don't display the list at all.
+            DeveloperMode = developer_options_invisible,
+            not (
+                some [ListItem] (
+                    member(ListItem, Items),
+                    not ListItem = display_developer(_)
+                )
             )
+        ->
+            HTML = empty
         ;
-            MaybeTitle = no,
-            TitleHTML = empty_html,
-            PostTitleHTML = empty_html
-        ),
-        (
-            ( Class = list_class_horizontal
-            ; Class = list_class_horizontal_except_title
-            ),
-            OutsideStartTag = "",
-            OutsideEndTag = "\n",
-            InnerStartTag = "",
-            InnerEndTag = "\n",
-            Separator = str_to_html("")
-        ;
-            Class = list_class_vertical_no_bullets,
-            OutsideStartTag = "",
-            OutsideEndTag = "\n",
-            InnerStartTag = "",
-            InnerEndTag = "\n",
-            Separator = str_to_html("<br>\n")
-        ;
-            Class = list_class_vertical_bullets,
-            OutsideStartTag = "<ul>\n",
-            OutsideEndTag = "</ul>\n",
-            InnerStartTag = "<li>\n",
-            InnerEndTag = "</li>\n",
-            Separator = empty_html
-        ),
-        sep_map_join_html(Separator,
-            item_to_html(InnerStartTag, InnerEndTag, FormatInfo),
-            !StyleControlMap, Items, InnerItemsHTML),
-        ItemsHTML = wrap_tags(OutsideStartTag, OutsideEndTag, InnerItemsHTML),
-        HTML = wrap_tags(StartTag, EndTag,
-            TitleHTML ++ PostTitleHTML ++ ItemsHTML)
+            list_to_html(FormatInfo, !StyleControlMap, Class, MaybeTitle, Items,
+                TableHTML),
+            HTML = wrap_tags(StartTag, EndTag, TableHTML)
+        )
     ;
         Item = display_verbatim(Text),
         HTML = wrap_tags(StartTag, EndTag,
             wrap_tags("<pre>", "</pre>", str_to_html(Text)))
+    ;
+        Item = display_developer(SubItem),
+        DeveloperMode = FormatInfo ^ fi_pref_developer,
+        (
+            DeveloperMode = developer_options_visible,
+            item_to_html(StartTag, EndTag, FormatInfo, !StyleControlMap,
+                SubItem, HTML)
+        ;
+            DeveloperMode = developer_options_invisible,
+            HTML = empty
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -745,6 +723,68 @@ default_style_control_map =
 
 %-----------------------------------------------------------------------------%
 
+    % Transform a list of items into HTML.
+    %
+:- pred list_to_html(format_info::in, 
+    style_control_map::in, style_control_map::out,
+    list_class::in, maybe(string)::in, list(display_item)::in, html::out)
+    is det.
+
+list_to_html(FormatInfo, !StyleControlMap, Class, MaybeTitle, Items, HTML) :-
+    (
+        MaybeTitle = yes(Title),
+        TitleStartTag = "<span id=\"list_title\">",
+        TitleEndTag = "</span>\n",
+        TitleHTML = wrap_tags(TitleStartTag, TitleEndTag,
+            str_to_html(Title)),
+        (
+            Class = list_class_horizontal,
+            PostTitleHTML = empty_html
+        ;
+            ( Class = list_class_horizontal_except_title
+            ; Class = list_class_vertical_bullets
+            ; Class = list_class_vertical_no_bullets
+            ),
+            PostTitleHTML = str_to_html("<br>\n")
+        )
+    ;
+        MaybeTitle = no,
+        TitleHTML = empty_html,
+        PostTitleHTML = empty_html
+    ),
+    (
+        ( Class = list_class_horizontal
+        ; Class = list_class_horizontal_except_title
+        ),
+        OutsideStartTag = "",
+        OutsideEndTag = "\n",
+        InnerStartTag = "",
+        InnerEndTag = "\n",
+        Separator = str_to_html("")
+    ;
+        Class = list_class_vertical_no_bullets,
+        OutsideStartTag = "",
+        OutsideEndTag = "\n",
+        InnerStartTag = "",
+        InnerEndTag = "\n",
+        Separator = str_to_html("<br>\n")
+    ;
+        Class = list_class_vertical_bullets,
+        OutsideStartTag = "<ul>\n",
+        OutsideEndTag = "</ul>\n",
+        InnerStartTag = "<li>\n",
+        InnerEndTag = "</li>\n",
+        Separator = empty_html
+    ),
+    sep_map_join_html(Separator,
+        item_to_html(InnerStartTag, InnerEndTag, FormatInfo),
+        !StyleControlMap, Items, InnerItemsHTML),
+    ItemsHTML = wrap_tags(OutsideStartTag, OutsideEndTag,
+        InnerItemsHTML),
+    HTML = TitleHTML ++ PostTitleHTML ++ ItemsHTML.
+
+%-----------------------------------------------------------------------------%
+
     % Transform a deep link into HTML.
     %
 :- func link_to_html(format_info, deep_link) = html.
@@ -790,6 +830,7 @@ pseudo_link_to_html(_FormatInfo, PseudoLink) = HTML :-
                 % Information about preferences.
                 fi_pref_colour_scheme   :: colour_column_groups,
                 fi_pref_box             :: box_tables,
+                fi_pref_developer       :: developer_mode,
 
                 % Information about the current HTTP session, which we use
                 % to create links.
@@ -801,7 +842,8 @@ pseudo_link_to_html(_FormatInfo, PseudoLink) = HTML :-
 :- func init_format_info(deep, preferences) = format_info.
 
 init_format_info(Deep, Prefs) = FormatInfo :-
-    FormatInfo = format_info(Prefs ^ pref_colour, Prefs ^ pref_box,
+    FormatInfo = format_info(Prefs ^ pref_colour, Prefs ^ pref_box, 
+        Prefs ^ pref_developer_mode,
         Deep ^ server_name_port, Deep ^ script_name, Deep ^ data_file_name).
 
 %-----------------------------------------------------------------------------%

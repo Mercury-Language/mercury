@@ -139,21 +139,16 @@ old_exec(Cmd, Pref, Deep, HTML, !IO) :-
     ).
 old_exec(deep_cmd_dump_clique(CliquePtr), _Pref, Deep, HTML, !IO) :-
     HTML = generate_clique_debug_page(CliquePtr, Deep).
-old_exec(deep_cmd_procrep_coverage(_), _, _, HTML, !IO) :-
-    HTML = 
-        "old_query.m: deep_cmd_procrep_coverage is unsupported by old_exec\n". 
-old_exec(deep_cmd_dump_proc_var_use(_), _, _, HTML, !IO) :-
-    HTML = 
-        "old_query.m: deep_cmd_dump_proc_var_use is unsupported by old_exec\n".
-old_exec(deep_cmd_module_getter_setters(_), _, _, HTML, !IO) :-
-    HTML = "old_query.m: " ++
-        "deep_cmd_module_getter_setters is unsupported by old_exec\n". 
-old_exec(deep_cmd_clique_recursive_costs(_), _, _, HTML, !IO) :-
-    HTML = "old_query.m: " ++
-        "deep_cmd_clique_recursive_costs is unsupported by old_exec\n".
-old_exec(deep_cmd_recursion_types_frequency, _, _, HTML, !IO) :-
-    HTML = "old_query.m: " ++
-        "deep_cmd_recursion_types_frequency is unsupported by old_exec\n".
+old_exec(Cmd, _, _, HTML, !IO) :-
+    ( Cmd = deep_cmd_static_procrep_coverage(_)
+    ; Cmd = deep_cmd_dynamic_procrep_coverage(_)
+    ; Cmd = deep_cmd_dump_proc_var_use(_)
+    ; Cmd = deep_cmd_module_getter_setters(_)
+    ; Cmd = deep_cmd_clique_recursive_costs(_)
+    ; Cmd = deep_cmd_recursion_types_frequency
+    ),
+    format("old_query.m: %s is unsupported by old_exec\n", [s(string(Cmd))], 
+        HTML).
 
 %-----------------------------------------------------------------------------%
 

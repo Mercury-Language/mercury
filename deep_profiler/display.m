@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2009 The University of Melbourne.
+% Copyright (C) 2008-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -68,6 +68,11 @@
                 % A string to be displayed verbatim.  It should be displayed
                 % with a fixed width font and line breaks should be honoured.
                 string
+            )
+    ;       display_developer(
+                % A display item intended for developers only.  These are
+                % displayed only when in developer mode.
+                display_item
             ).
 
 %-----------------------------------------------------------------------------%

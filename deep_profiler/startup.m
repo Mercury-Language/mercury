@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2009 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -294,6 +294,17 @@ startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
     array.init(NCSSs, zero_inherit_prof_info, CSSDesc0),
     array.init(NPDs, map.init, PDCompTable0),
     array.init(NCSDs, map.init, CSDCompTable0),
+    CoverageDataType = InitStats ^ coverage_data_type, 
+    (
+        CoverageDataType = no_coverage_data,
+        MaybeStaticCoverage0 = no
+    ;
+        ( CoverageDataType = static_coverage_data
+        ; CoverageDataType = dynamic_coverage_data
+        ),
+        array.init(NPSs, zero_static_coverage, StaticCoverage0),
+        MaybeStaticCoverage0 = yes(StaticCoverage0)
+    ),
 
     !:Deep = deep(InitStats, Machine, ScriptName, DataFileName, Root,
         CallSiteDynamics, ProcDynamics, CallSiteStatics, ProcStatics,
@@ -301,7 +312,7 @@ startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
         ProcCallers, CallSiteStaticMap, CallSiteCalls,
         PDOwn, PDDesc0, CSDDesc0,
         PSOwn0, PSDesc0, CSSOwn0, CSSDesc0,
-        PDCompTable0, CSDCompTable0, ModuleDataMap,
+        PDCompTable0, CSDCompTable0, ModuleDataMap, MaybeStaticCoverage0, 
         ExcludeFile, MaybeProcRepFile),
 
     array_foldl_from_1(propagate_to_clique, Cliques, !Deep),
@@ -314,8 +325,32 @@ startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
 
     maybe_report_msg(MaybeOutputStream,
         "% Summarizing information...\n", !IO),
-    summarize_proc_dynamics(!Deep),
+    (
+        ( CoverageDataType = no_coverage_data
+        ; CoverageDataType = static_coverage_data
+        ),
+        (
+            CoverageDataType = static_coverage_data,
+            maybe_report_msg(MaybeOutputStream,
+                "\t% Summarizing static coverage...\n", !IO),
+            summarize_proc_statics_coverage(!Deep)
+        ;
+            CoverageDataType = no_coverage_data
+        ),
+        maybe_report_msg(MaybeOutputStream,
+            "\t% Summarizing proc dynamics...\n", !IO),
+        summarize_proc_dynamics(!Deep)
+    ;
+        CoverageDataType = dynamic_coverage_data,
+        maybe_report_msg(MaybeOutputStream,
+            "\t% Summarizing proc dynamics with coverage...\n", !IO),
+        summarize_proc_dynamics_with_coverage_data(!Deep)
+    ),
+    maybe_report_msg(MaybeOutputStream,
+        "\t% Summarizing call site dynamics...\n", !IO),
     summarize_call_site_dynamics(!Deep),
+    maybe_report_msg(MaybeOutputStream,
+        "\t% Summarizing modules...\n", !IO),
     summarize_modules(!Deep),
     maybe_report_msg(MaybeOutputStream,
         "% Done.\n", !IO),
@@ -724,6 +759,50 @@ summarize_proc_dynamic(PDOwnArray, PDDescArray, PDCompTableArray, PDI, PD,
     update_ps_own(PSPtr, PSOwn, u(PSOwnArray0), PSOwnArray),
     update_ps_desc(PSPtr, PSDesc, u(PSDescArray0), PSDescArray).
 
+:- pred summarize_proc_dynamics_with_coverage_data(deep::in, deep::out) is det.
+
+summarize_proc_dynamics_with_coverage_data(!Deep) :-
+    % These arrays are one based, the +1 here is necessary to allocate the
+    % correect amount of storage.
+    NPS = !.Deep ^ profile_stats ^ num_ps + 1,
+    array_foldl3_from_1(
+        summarize_proc_dynamic_with_coverage(!.Deep ^ pd_own, 
+            !.Deep ^ pd_desc, !.Deep ^ pd_comp_table),
+        !.Deep ^ proc_dynamics,
+        init(NPS, zero_own_prof_info), PSOwnArray,
+        init(NPS, zero_inherit_prof_info), PSDescArray,
+        init(NPS, zero_static_coverage), CoverageArray),
+    !Deep ^ ps_own := PSOwnArray,
+    !Deep ^ ps_desc := PSDescArray,
+    !Deep ^ maybe_static_coverage := yes(CoverageArray).
+
+:- pred summarize_proc_dynamic_with_coverage(array(own_prof_info)::in,
+    array(inherit_prof_info)::in, array(compensation_table)::in,
+    int::in, proc_dynamic::in,
+    array(own_prof_info)::array_di, array(own_prof_info)::array_uo,
+    array(inherit_prof_info)::array_di, array(inherit_prof_info)::array_uo,
+    array(static_coverage_info)::array_di,
+    array(static_coverage_info)::array_uo)
+    is det.
+
+summarize_proc_dynamic_with_coverage(PDOwnArray, PDDescArray, PDCompTableArray,
+        PDI, PD, !PSOwnArray, !PSDescArray, !CoverageArray) :-
+    summarize_proc_dynamic(PDOwnArray, PDDescArray, PDCompTableArray,
+        PDI, PD, !PSOwnArray, !PSDescArray),
+    PSPtr = PD ^ pd_proc_static,
+    MaybeDynamicCoverage = PD ^ pd_maybe_coverage_points,
+    (
+        MaybeDynamicCoverage = yes(DynamicCoverage),
+        some [!StaticCoverage] (
+            lookup_ps_coverage(!.CoverageArray, PSPtr, !:StaticCoverage),
+            add_coverage_arrays(DynamicCoverage, !StaticCoverage),
+            update_ps_coverage(PSPtr, !.StaticCoverage, !CoverageArray)
+        )
+    ;
+        MaybeDynamicCoverage = no,
+        error(this_file ++ "No coverage point array in proc dynamic")
+    ).
+
 %-----------------------------------------------------------------------------%
 
 :- pred summarize_call_site_dynamics(deep::in, deep::out) is det.
@@ -792,6 +871,35 @@ summarize_module_costs(Deep, ModuleData0) = ModuleData :-
     ModuleData0 = module_data(Own0, Desc0, PSPtrs),
     list.foldl2(accumulate_ps_costs(Deep), PSPtrs, Own0, Own, Desc0, Desc),
     ModuleData = module_data(Own, Desc, PSPtrs).
+
+%----------------------------------------------------------------------------%
+
+:- pred summarize_proc_statics_coverage(deep::in, deep::out) is det.
+
+summarize_proc_statics_coverage(!Deep) :-
+    NPS = !.Deep ^ profile_stats ^ num_ps,
+    array_foldl_from_1(
+        summarize_proc_static_coverage,
+        !.Deep ^ proc_statics,
+        init(NPS, zero_static_coverage), CoverageArray),
+    !Deep ^ maybe_static_coverage := yes(CoverageArray).
+
+:- pred summarize_proc_static_coverage(int::in, proc_static::in, 
+    array(static_coverage_info)::array_di,
+    array(static_coverage_info)::array_uo) is det.
+
+summarize_proc_static_coverage(Index, PS, !CoverageArray) :-
+    MaybeCoverage = PS ^ ps_maybe_coverage_points,
+    (
+        MaybeCoverage = yes(Coverage0),
+        array_to_static_coverage(Coverage0, Coverage),
+        array.set(!.CoverageArray, Index, Coverage, !:CoverageArray)
+    ;
+        MaybeCoverage = no,
+        error(this_file ++ "No coverage data in proc static.")
+    ).
+
+%----------------------------------------------------------------------------%
 
 :- pred accumulate_ps_costs(deep::in, proc_static_ptr::in,
     own_prof_info::in, own_prof_info::out,
@@ -997,6 +1105,12 @@ maybe_report_msg(yes(OutputStream), Msg, !IO) :-
     io.write_string(OutputStream, Msg, !IO),
     flush_output(OutputStream, !IO).
 maybe_report_msg(no, _, !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "startup.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module startup.

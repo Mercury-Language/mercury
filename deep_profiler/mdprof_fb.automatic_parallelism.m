@@ -649,7 +649,7 @@ build_recursive_call_site_cost_map(Deep, CliqueProc, CliquePtr,
         CallSites = CliqueProc ^ cpr_first_proc_dynamic ^ cpdr_call_sites,
        
         PSPtr = ProcDesc ^ pdesc_ps_ptr,
-        create_procrep_coverage_report(Deep, PSPtr, MaybeCoverageReport),
+        create_static_procrep_coverage_report(Deep, PSPtr, MaybeCoverageReport),
         (
             MaybeCoverageReport = ok(procrep_coverage_info(_, ProcRep)),
             Goal = ProcRep ^ pr_defn ^ pdr_goal,

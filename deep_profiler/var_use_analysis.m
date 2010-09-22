@@ -740,7 +740,7 @@ generic_vars_first_use(VarsPred, Deep, PSPtr, CallStack, MaybeResult) :-
     create_proc_report(Deep, PSPtr, MaybeProcReport),
     (
         MaybeProcReport = ok(ProcReport),
-        create_procrep_coverage_report(Deep, PSPtr, MaybeProcRepCoverage),
+        create_static_procrep_coverage_report(Deep, PSPtr, MaybeProcRepCoverage),
         (
             MaybeProcRepCoverage = ok(ProcRepCoverageInfo),
             ProcRepCoverageInfo = procrep_coverage_info(_, ProcRep),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2005-2006, 2008 The University of Melbourne.
+% Copyright (C) 2001, 2005-2006, 2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -86,6 +86,15 @@
     in, out, di, uo) is det.
 :- mode array_foldl2(in, in, pred(in, in, in, out, in, out) is det, in,
     in, out, in, out) is det.
+
+    % Performs a foldl3 on all the elements of the given array, starting at
+    % index 1.
+    %
+:- pred array_foldl3_from_1(pred(int, T, U, U, V, V, W, W), array(T), U, U, 
+    V, V, W, W).
+:- mode array_foldl3_from_1(pred(in, in, array_di, array_uo,
+    array_di, array_uo, array_di, array_uo) is det,
+    in, array_di, array_uo, array_di, array_uo, array_di, array_uo) is det.
 
     % Performs the same computation as list.foldl; the only difference is
     % that the accumulator is an array and has an array mode.
@@ -196,6 +205,29 @@ do_array_foldl2(N, Max, P, A, !AccU, !AccV) :-
     ;
         true
     ).
+
+%----------------------------------------------------------------------------%
+
+array_foldl3_from_1(P, Array, !A, !B, !C) :-
+    array.max(Array, Max),
+    do_array_foldl3(1, Max, P, Array, !A, !B, !C).
+
+:- pred do_array_foldl3(int, int, pred(int, T, U, U, V, V, W, W), array(T),
+    U, U, V, V, W, W).
+:- mode do_array_foldl3(in, in, pred(in, in, array_di, array_uo, 
+    array_di, array_uo, array_di, array_uo) is det, in,
+    array_di, array_uo, array_di, array_uo, array_di, array_uo) is det.
+
+do_array_foldl3(N, Max, P, Array, !A, !B, !C) :-
+    ( N =< Max ->
+        array.lookup(Array, N, E),
+        P(N, E, !A, !B, !C),
+        do_array_foldl3(N + 1, Max, P, Array, !A, !B, !C)
+    ;
+        true
+    ).
+
+%----------------------------------------------------------------------------%
 
 array_list_foldl(_, [], !Acc).
 array_list_foldl(P, [X | Xs], !Acc) :-

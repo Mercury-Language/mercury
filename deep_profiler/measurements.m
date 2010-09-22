@@ -17,7 +17,9 @@
 
 :- interface.
 
+:- import_module array.
 :- import_module list.
+:- import_module maybe.
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
@@ -143,6 +145,21 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type static_coverage_info.
+
+:- func zero_static_coverage = static_coverage_info.
+
+:- pred add_coverage_arrays(array(int)::in, 
+    static_coverage_info::in, static_coverage_info::out) is det.
+
+:- pred array_to_static_coverage(array(int)::in, static_coverage_info::out) 
+    is det.
+
+:- func static_coverage_maybe_get_coverage_points(static_coverage_info) =
+    maybe(array(int)).
+
+%-----------------------------------------------------------------------------%
+
     % The amount of parallelism either available or exploited.
     %
 :- type parallelism_amount.
@@ -235,9 +252,10 @@
 :- import_module bool.
 :- import_module float.
 :- import_module int.
-:- import_module maybe.
 :- import_module require.
 :- import_module string.
+
+:- import_module array_util.
 
 %----------------------------------------------------------------------------%
 
@@ -667,6 +685,32 @@ Cost0 / Denom = Cost :-
         Cost0 = cost_per_call(Percall),
         Cost = cost_per_call(Percall / float(Denom))
     ).
+
+%----------------------------------------------------------------------------%
+
+:- type static_coverage_info == maybe(array(int)).
+
+zero_static_coverage = no.
+
+add_coverage_arrays(Array, no, yes(Array)).
+add_coverage_arrays(NewArray, yes(!.Array), yes(!:Array)) :-
+    ( 
+        bounds(NewArray, Min, Max),
+        bounds(!.Array, Min, Max)
+    ->
+        !:Array = copy(!.Array),
+        array_foldl_from_0(
+            (pred(Index::in, E::in, A0::array_di, A::array_uo) is det :-
+                lookup(A0, Index, Value),
+                set(A0, Index, Value + E, A)
+            ), NewArray, !Array)
+    ;
+        error(this_file ++ "Arrays' bounds do not match")
+    ).
+
+array_to_static_coverage(Array, yes(Array)).
+
+static_coverage_maybe_get_coverage_points(MaybeCoverage) = MaybeCoverage.
 
 %----------------------------------------------------------------------------%
 

@@ -119,8 +119,11 @@
                 cmd_tp_incl_desc                :: include_descendants,
                 cmd_tp_scope                    :: measurement_scope
             )
-    ;       deep_cmd_procrep_coverage(
-                cmd_procrep_coverage_proc_id    :: proc_static_ptr
+    ;       deep_cmd_static_procrep_coverage(
+                cmd_static_coverage_ps          :: proc_static_ptr
+            )
+    ;       deep_cmd_dynamic_procrep_coverage(
+                cmd_dynamic_coverage_pd         :: proc_dynamic_ptr
             )
     ;       deep_cmd_module_getter_setters(
                 cmd_mgs_module_name             :: string
@@ -224,7 +227,10 @@
 
                 % Whether we should show modules/procs that haven't been
                 % called.
-                pref_inactive       :: inactive_items
+                pref_inactive       :: inactive_items,
+
+                % Whether to show developer-only options.
+                pref_developer_mode :: developer_mode
             ).
 
 :- type preferences_indication
@@ -318,6 +324,10 @@
                 inactive_modules    :: inactive_status
             ).
 
+:- type developer_mode
+    --->    developer_options_visible
+    ;       developer_options_invisible.
+
 %-----------------------------------------------------------------------------%
 
     % Return "yes" if it is worth displaying times for this profile.
@@ -345,6 +355,7 @@
 :- func default_time_format = time_format.
 :- func default_module_qual = module_qual.
 :- func default_inactive_items = inactive_items.
+:- func default_developer_mode = developer_mode.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -446,7 +457,8 @@ exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
             new_exec(Cmd, Prefs, Deep, HTMLStr, !IO)
         )
     ;
-        ( Cmd = deep_cmd_procrep_coverage(_)
+        ( Cmd = deep_cmd_static_procrep_coverage(_)
+        ; Cmd = deep_cmd_dynamic_procrep_coverage(_)
         ; Cmd = deep_cmd_module_getter_setters(_)
         ; Cmd = deep_cmd_dump_proc_var_use(_)
         ; Cmd = deep_cmd_clique_recursive_costs(_)
@@ -525,7 +537,8 @@ default_preferences(Deep) =
         default_contour_exclusion,
         default_time_format,
         default_module_qual,
-        default_inactive_items
+        default_inactive_items,
+        default_developer_mode
     ).
 
 default_fields(Deep) = Fields :-
@@ -556,6 +569,7 @@ default_time_format = scale_by_thousands.
 default_module_qual = module_qual_when_diff.
 default_inactive_items =
     inactive_items(inactive_hide, inactive_hide, inactive_hide).
+default_developer_mode = developer_options_invisible.
 
 %-----------------------------------------------------------------------------%
 
@@ -659,10 +673,15 @@ cmd_to_string(Cmd) = CmdStr :-
             c(cmd_separator_char), s(InclDescStr),
             c(cmd_separator_char), s(ScopeStr)])
     ;
-        Cmd = deep_cmd_procrep_coverage(PSPtr),
+        Cmd = deep_cmd_static_procrep_coverage(PSPtr),
         PSPtr = proc_static_ptr(PSI),
         CmdStr = string.format("%s%c%d",
-            [s(cmd_str_procrep_coverage), c(cmd_separator_char), i(PSI)])
+            [s(cmd_str_static_coverage), c(cmd_separator_char), i(PSI)])
+    ;
+        Cmd = deep_cmd_dynamic_procrep_coverage(PDPtr),
+        PDPtr = proc_dynamic_ptr(PDI),
+        CmdStr = string.format("%s%c%d",
+            [s(cmd_str_dynamic_coverage), c(cmd_separator_char), i(PDI)])
     ;
         Cmd = deep_cmd_dump_proc_static(PSPtr),
         PSPtr = proc_static_ptr(PSI),
@@ -700,7 +719,7 @@ cmd_to_string(Cmd) = CmdStr :-
 preferences_to_string(Pref) = PrefStr :-
     Pref = preferences(Fields, Box, Colour, MaybeAncestorLimit,
         ProcStaticsPerRecTypeLimit, SummarizeHoCallSites, Order, Contour,
-        Time, ModuleQual, InactiveItems),
+        Time, ModuleQual, InactiveItems, DeveloperMode),
     (
         MaybeAncestorLimit = yes(AncestorLimit),
         MaybeAncestorLimitStr =
@@ -709,7 +728,7 @@ preferences_to_string(Pref) = PrefStr :-
         MaybeAncestorLimit = no,
         MaybeAncestorLimitStr = "no"
     ),
-    PrefStr = string.format("%s%c%s%c%s%c%s%c%d%c%s%c%s%c%s%c%s%c%s%c%s",
+    PrefStr = string.format("%s%c%s%c%s%c%s%c%d%c%s%c%s%c%s%c%s%c%s%c%s%c%s",
         [s(fields_to_string(Fields)),
         c(pref_separator_char), s(box_to_string(Box)),
         c(pref_separator_char), s(colour_scheme_to_string(Colour)),
@@ -720,7 +739,8 @@ preferences_to_string(Pref) = PrefStr :-
         c(pref_separator_char), s(contour_exclusion_to_string(Contour)),
         c(pref_separator_char), s(time_format_to_string(Time)),
         c(pref_separator_char), s(module_qual_to_string(ModuleQual)),
-        c(pref_separator_char), s(inactive_items_to_string(InactiveItems))
+        c(pref_separator_char), s(inactive_items_to_string(InactiveItems)),
+        c(pref_separator_char), s(developer_mode_to_string(DeveloperMode))
     ]).
 
 :- func string_to_cmd(string, cmd) = cmd.
@@ -813,11 +833,17 @@ string_to_maybe_cmd(QueryString) = MaybeCmd :-
         Cmd = deep_cmd_top_procs(Limit, CostKind, InclDesc, Scope),
         MaybeCmd = yes(Cmd)
     ;
-        Pieces = [cmd_str_procrep_coverage, PSIStr],
+        Pieces = [cmd_str_static_coverage, PSIStr],
         string.to_int(PSIStr, PSI)
     ->
         PSPtr = proc_static_ptr(PSI),
-        MaybeCmd = yes(deep_cmd_procrep_coverage(PSPtr))
+        MaybeCmd = yes(deep_cmd_static_procrep_coverage(PSPtr))
+    ;
+        Pieces = [cmd_str_dynamic_coverage, PDIStr],
+        string.to_int(PDIStr, PDI)
+    ->
+        PDPtr = proc_dynamic_ptr(PDI),
+        MaybeCmd = yes(deep_cmd_dynamic_procrep_coverage(PDPtr))
     ;
         Pieces = [cmd_str_menu]
     ->
@@ -891,7 +917,7 @@ string_to_maybe_pref(QueryString) = MaybePreferences :-
         Pieces = [FieldsStr, BoxStr, ColourStr,
             MaybeAncestorLimitStr, ProcStaticsPerRecTypeLimitStr, 
             SummarizeHoCallSitesStr, OrderStr, ContourStr, TimeStr,
-            ModuleQualStr, InactiveItemsStr],
+            ModuleQualStr, InactiveItemsStr, DeveloperModeStr],
         string_to_fields(FieldsStr, Fields),
         string_to_box(BoxStr, Box),
         string_to_colour_scheme(ColourStr, Colour),
@@ -909,11 +935,12 @@ string_to_maybe_pref(QueryString) = MaybePreferences :-
         string_to_contour_exclusion(ContourStr, Contour),
         string_to_time_format(TimeStr, Time),
         string_to_module_qual(ModuleQualStr, ModuleQual),
-        string_to_inactive_items(InactiveItemsStr, InactiveItems)
+        string_to_inactive_items(InactiveItemsStr, InactiveItems),
+        string_to_developer_mode(DeveloperModeStr, DeveloperMode)
     ->
         Preferences = preferences(Fields, Box, Colour, MaybeAncestorLimit,
             ProcStaticsPerRecTypeLimit, SummarizeHoCallSites, Order, Contour,
-            Time, ModuleQual, InactiveItems),
+            Time, ModuleQual, InactiveItems, DeveloperMode),
         MaybePreferences = yes(Preferences)
     ;
         MaybePreferences = no
@@ -1277,6 +1304,18 @@ string_to_inactive_items("ssh",
 string_to_inactive_items("sss",
     inactive_items(inactive_show, inactive_show, inactive_show)).
 
+:- func developer_mode_to_string(developer_mode) = string.
+
+developer_mode_to_string(DevMode) = String :-
+    string_to_developer_mode(String, DevMode).
+
+:- pred string_to_developer_mode(string, developer_mode).
+:- mode string_to_developer_mode(in, out) is semidet.
+:- mode string_to_developer_mode(out, in) is det.
+
+string_to_developer_mode("dev", developer_options_visible).
+string_to_developer_mode("nodev", developer_options_invisible).
+
 :- func colour_scheme_to_string(colour_column_groups) = string.
 
 colour_scheme_to_string(Scheme) = String :-
@@ -1345,8 +1384,11 @@ cmd_str_module_getter_setters = "module_getter_setters".
 :- func cmd_str_top_procs = string.
 cmd_str_top_procs = "top_procs".
 
-:- func cmd_str_procrep_coverage = string.
-cmd_str_procrep_coverage = "procrep_coverage".
+:- func cmd_str_static_coverage = string.
+cmd_str_static_coverage = "proc_static_coverage".
+
+:- func cmd_str_dynamic_coverage = string.
+cmd_str_dynamic_coverage = "proc_dynamic_coverage".
 
 :- func cmd_str_dump_proc_static = string.
 cmd_str_dump_proc_static = "dump_proc_static".
