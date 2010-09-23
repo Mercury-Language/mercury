@@ -236,13 +236,25 @@ test_server(Pref, Deep, Options, !IO) :-
     % test_cliques(1, NumCliques, DirName, Pref, Deep, !IO),
     % test_procs(1, NumProcStatics, DirName, Pref, Deep, !IO).
     
-    lookup_bool_option(Options, procrep_coverage, ProcrepCoverage),
+    lookup_bool_option(Options, static_procrep_coverage, StaticProcrepCoverage),
     (
-        ProcrepCoverage = yes,
+        StaticProcrepCoverage = yes,
         array.max(Deep ^ proc_statics, NumProcStatics),
-        test_procrep_coverages(1, NumProcStatics, Pref, Deep, Options, !IO)
+        test_procrep_static_coverages(1, NumProcStatics, Pref, Deep, Options, 
+            !IO)
     ;
-        ProcrepCoverage = no
+        StaticProcrepCoverage = no
+    ),
+
+    lookup_bool_option(Options, dynamic_procrep_coverage,
+        DynamicProcrepCoverage),
+    (
+        DynamicProcrepCoverage = yes,
+        array.max(Deep ^ proc_dynamics, NumProcDynamics),
+        test_procrep_dynamic_coverages(1, NumProcDynamics, Pref, Deep, Options,
+            !IO)
+    ;
+        DynamicProcrepCoverage = no
     ),
 
     lookup_bool_option(Options, recursion_types_histogram, RecTypesHistogram),
@@ -277,15 +289,28 @@ test_procs(Cur, Max, Options, Pref, Deep, !IO) :-
         true
     ).
 
-:- pred test_procrep_coverages(int::in, int::in, preferences::in, deep::in,
-    option_table::in, io::di, io::uo) is cc_multi.
+:- pred test_procrep_static_coverages(int::in, int::in, preferences::in,
+    deep::in, option_table::in, io::di, io::uo) is cc_multi.
 
-test_procrep_coverages(Cur, Max, Pref, Deep, Options, !IO) :-
+test_procrep_static_coverages(Cur, Max, Pref, Deep, Options, !IO) :-
     ( Cur =< Max ->
         try_exec(deep_cmd_static_procrep_coverage(proc_static_ptr(Cur)), Pref, 
             Deep, HTML, !IO),
-        write_test_html(Options, "procrep_coverage", Cur, HTML, !IO),
-        test_procrep_coverages(Cur + 1, Max, Pref, Deep, Options, !IO)
+        write_test_html(Options, "procrep_dynamic_coverage", Cur, HTML, !IO),
+        test_procrep_static_coverages(Cur + 1, Max, Pref, Deep, Options, !IO)
+    ;
+        true
+    ).
+
+:- pred test_procrep_dynamic_coverages(int::in, int::in, preferences::in,
+    deep::in, option_table::in, io::di, io::uo) is cc_multi.
+
+test_procrep_dynamic_coverages(Cur, Max, Pref, Deep, Options, !IO) :-
+    ( Cur =< Max ->
+        try_exec(deep_cmd_dynamic_procrep_coverage(proc_dynamic_ptr(Cur)), Pref,
+            Deep, HTML, !IO),
+        write_test_html(Options, "procrep_static_coverage", Cur, HTML, !IO),
+        test_procrep_dynamic_coverages(Cur + 1, Max, Pref, Deep, Options, !IO)
     ;
         true
     ).
@@ -359,7 +384,8 @@ write_test_html(Options, BaseName, Num, HTML, !IO) :-
     ;       verbose
     ;       version
     ;       verify_profile
-    ;       procrep_coverage
+    ;       static_procrep_coverage
+    ;       dynamic_procrep_coverage
     ;       recursion_types_histogram.
 
 :- type options ---> options.
@@ -385,7 +411,8 @@ long("test-dir",                    test_dir).
 long("verbose",                     verbose).
 long("version",                     version).
 long("verify-profile",              verify_profile).
-long("procrep-coverage",            procrep_coverage).
+long("static-procrep-coverage",     static_procrep_coverage).
+long("dynamic-procrep-coverage",    dynamic_procrep_coverage).
 long("recursion-types-histogram",   recursion_types_histogram).
 
 :- pred defaults(option::out, option_data::out) is multi.
@@ -400,7 +427,8 @@ defaults(test_dir,                  string("deep_test")).
 defaults(verbose,                   bool(no)).
 defaults(version,                   bool(no)).
 defaults(verify_profile,            bool(no)).
-defaults(procrep_coverage,          bool(no)).
+defaults(static_procrep_coverage,   bool(no)).
+defaults(dynamic_procrep_coverage,  bool(no)).
 defaults(recursion_types_histogram, bool(no)).
 
 %-----------------------------------------------------------------------------%

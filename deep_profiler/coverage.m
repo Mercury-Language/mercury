@@ -75,10 +75,19 @@
 
 %----------------------------------------------------------------------------%
 
+    % The coverage of a call site can be expressed as the number of calls and
+    % exits at that call site.
+    %
+:- type calls_and_exits
+    --->    calls_and_exits(
+                cae_calls           :: int,
+                cae_exits           :: int
+            ).
+
     % Annotate the program representation structure with coverage information.
     %
 :- pred procrep_annotate_with_coverage(own_prof_info::in,
-    map(goal_path, own_prof_info)::in, map(goal_path, coverage_point)::in,
+    map(goal_path, calls_and_exits)::in, map(goal_path, coverage_point)::in,
     map(goal_path, coverage_point)::in, proc_rep::in,
     maybe_error(proc_rep(coverage_info))::out) is det.
 
@@ -203,7 +212,7 @@ procrep_annotate_with_coverage(OwnProf, CallSites, SolnsCoveragePoints,
 :- type coverage_reference_info
     --->    coverage_reference_info(
                 cri_proc                    :: string_proc_label,
-                cri_call_sites              :: map(goal_path, own_prof_info),
+                cri_call_sites              :: map(goal_path, calls_and_exits),
                 cri_solns_coverage_points   :: map(goal_path, coverage_point),
                 cri_branch_coverage_points  :: map(goal_path, coverage_point)
             ).
@@ -257,13 +266,12 @@ goal_annotate_coverage(Info, GoalPath, Before, After, Goal0, Goal) :-
             ; AtomicGoal = higher_order_call_rep(_, _)
             ; AtomicGoal = method_call_rep(_, _, _)
             ),
-            ( map.search(Info ^ cri_call_sites, GoalPath, OwnProfInfo) ->
+            ( map.search(Info ^ cri_call_sites, GoalPath, CallsAndExits) ->
                 % Entry due to redo is not counted at the point before the
                 % goal, it is represented when the number of exists is greater
                 % than the number of calls. XXX This won't work with nondet
                 % code, which should be fixed in the future.
-                Calls = calls(OwnProfInfo),
-                Exits = exits(OwnProfInfo),
+                CallsAndExits = calls_and_exits(Calls, Exits),
                 require(unify(Before, before_coverage(Calls)),
                   "Coverage before call doesn't match calls port on call site"),
                 After0 = after_coverage(Exits)
