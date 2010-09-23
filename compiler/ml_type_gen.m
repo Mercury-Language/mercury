@@ -71,9 +71,9 @@
 :- func ml_gen_member_decl_flags = mlds_decl_flags.
 
     % Return the declaration flags appropriate for a member variable
-    % with finality `final'.
+    % which is read-only after initialisation.
     %
-:- func ml_gen_final_member_decl_flags = mlds_decl_flags.
+:- func ml_gen_const_member_decl_flags = mlds_decl_flags.
 
     % ml_uses_secondary_tag(TypeCtor, ConsTagValues, Ctor, SecondaryTag):
     % Check if this constructor uses a secondary tag,
@@ -316,7 +316,7 @@ ml_gen_enum_constant(Context, TypeCtor, ConsTagValues, MLDS_Type, Ctor)
     ;
         TagVal = foreign_tag(ForeignLang, ForeignTagValue),
         ConstValue = ml_const(mlconst_foreign(ForeignLang, ForeignTagValue,
-            mlds_native_int_type))
+            MLDS_Type))
     ;
         ( TagVal = string_tag(_)
         ; TagVal = float_tag(_)
@@ -1148,41 +1148,41 @@ ml_gen_type_decl_flags = MLDS_DeclFlags :-
     Access = acc_public,
     PerInstance = one_copy,
     Virtuality = non_virtual,
-    Finality = overridable,
+    Overridability = overridable,
     Constness = modifiable,
     Abstractness = concrete,
     MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Finality, Constness, Abstractness).
+        Virtuality, Overridability, Constness, Abstractness).
 
 ml_gen_member_decl_flags = MLDS_DeclFlags :-
     Access = acc_public,
     PerInstance = per_instance,
     Virtuality = non_virtual,
-    Finality = overridable,
+    Overridability = overridable,
     Constness = modifiable,
     Abstractness = concrete,
     MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Finality, Constness, Abstractness).
+        Virtuality, Overridability, Constness, Abstractness).
 
-ml_gen_final_member_decl_flags = MLDS_DeclFlags :-
+ml_gen_const_member_decl_flags = MLDS_DeclFlags :-
     Access = acc_public,
     PerInstance = per_instance,
     Virtuality = non_virtual,
-    Finality = final,
+    Overridability = overridable,
     Constness = const,
     Abstractness = concrete,
     MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Finality, Constness, Abstractness).
+        Virtuality, Overridability, Constness, Abstractness).
 
 ml_gen_enum_constant_decl_flags = MLDS_DeclFlags :-
     Access = acc_public,
     PerInstance = one_copy,
     Virtuality = non_virtual,
-    Finality = final,
+    Overridability = overridable,
     Constness = const,
     Abstractness = concrete,
     MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Finality, Constness, Abstractness).
+        Virtuality, Overridability, Constness, Abstractness).
 
 %----------------------------------------------------------------------------%
 
@@ -1238,8 +1238,7 @@ generate_foreign_enum_constant(TypeCtor, Mapping, TagValues, MLDS_Type, Ctor,
         ConstValue = ml_const(mlconst_enum(Int, MLDS_Type))
     ;
         TagVal = foreign_tag(Lang, String),
-        ConstValue = ml_const(mlconst_foreign(Lang, String,
-            mlds_native_int_type))
+        ConstValue = ml_const(mlconst_foreign(Lang, String, MLDS_Type))
     ;
         ( TagVal = string_tag(_)
         ; TagVal = float_tag(_)

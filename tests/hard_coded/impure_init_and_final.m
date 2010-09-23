@@ -22,6 +22,12 @@ main(!IO) :- io.write_string("This is main...\n", !IO).
 "
 	puts(S);
 ").
+:- pragma foreign_proc("C#",
+	puts(S::in),
+	[will_not_call_mercury],
+"
+	System.Console.WriteLine(S);
+").
 :- pragma foreign_proc("Java",
 	puts(S::in),
 	[will_not_call_mercury],

@@ -28,6 +28,17 @@ main(!IO) :-
 		SUCCESS_INDICATOR = MR_FALSE;	
 	}
 ").
+:- pragma foreign_proc("C#",
+	test(FOO::in),
+	[will_not_call_mercury, promise_pure],
+"
+	if (FOO == 561) {
+		SUCCESS_INDICATOR = true;
+	} else {
+		SUCCESS_INDICATOR = false;
+	}
+").
 
 :- type foo ---> foo.
 :- pragma foreign_enum("C", foo/0, [foo - "561"]).
+:- pragma foreign_enum("C#", foo/0, [foo - "561"]).

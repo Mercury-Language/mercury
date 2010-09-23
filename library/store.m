@@ -343,7 +343,30 @@ store.new(S) :-
     S = S0;
 ").
 
-:- pragma foreign_type(java, generic_mutvar(T, S), "mutvar.Mutvar").
+% :- pragma foreign_type("C#", generic_mutvar(T, S), "object[]").
+
+:- pragma foreign_proc("C#",
+    new_mutvar(Val::in, Mutvar::out, _S0::di, _S::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    Mutvar = new object[] { Val };
+").
+
+:- pragma foreign_proc("C#",
+    get_mutvar(Mutvar::in, Val::out, _S0::di, _S::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    Val = Mutvar[0];
+").
+
+:- pragma foreign_proc("C#",
+    set_mutvar(Mutvar::in, Val::in, _S0::di, _S::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    Mutvar[0] = Val;
+").
+
+:- pragma foreign_type("Java", generic_mutvar(T, S), "mutvar.Mutvar").
 
 :- pragma foreign_proc("Java",
     new_mutvar(Val::in, Mutvar::out, _S0::di, _S::uo),
@@ -427,6 +450,50 @@ store.new_cyclic_mutvar(Func, MutVar, !Store) :-
 
 %-----------------------------------------------------------------------------%
 
+% :- pragma foreign_type("C#", generic_ref(T, S), "store.Ref").
+:- pragma foreign_code("C#",
+"
+    public class Ref {
+        // Object referenced.
+        public object   obj;
+
+        // Specific field of object referenced, or null to
+        // specify the object itself.
+        // XXX GetFields does not return fields in any particular order so
+        // this is not really usable.
+        public System.Reflection.FieldInfo  field;
+
+        // Constructors
+        public Ref(object init) {
+            obj     = init;
+            field   = null;
+        }
+        public Ref(object init, int num) {
+            obj = init;
+            setField(num);
+        }
+
+        // Set the field according to a given index.
+        public void setField(int num) {
+            field = obj.GetType().GetFields()[num];
+        }
+
+        // Return the value of the reference.
+        public object getValue() {
+            if (field == null) {
+                return obj;
+            } else {
+                return field.GetValue(obj);
+            }
+        }
+
+        // Update the value of the reference.
+        public void setValue(object value) {
+            field.SetValue(obj, value);
+        }
+    } // class Ref
+").
+
 :- pragma foreign_type(java, generic_ref(T, S), "store.Ref").
 :- pragma foreign_code("Java",
 "
@@ -436,6 +503,8 @@ store.new_cyclic_mutvar(Func, MutVar, !Store) :-
 
         // Specific field of object referenced, or null to
         // specify the object itself.
+        // XXX getDeclaredFields does not return fields in any particular
+        // order so this is not really usable.
         public java.lang.reflect.Field  field;
 
         // Constructors
@@ -518,6 +587,13 @@ store.new_cyclic_mutvar(Func, MutVar, !Store) :-
     S = S0;
 ").
 
+:- pragma foreign_proc("C#",
+    new_ref(Val::di, Ref::out, _S0::di, _S::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    Ref = new store.Ref(Val);
+").
+
 :- pragma foreign_proc("Java",
     new_ref(Val::di, Ref::out, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure],
@@ -551,6 +627,13 @@ copy_ref_value(Ref, Val) -->
 "
     Val = * (MR_Word *) Ref;
     S = S0;
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_ref_value(Ref::in, Val::uo, _S0::di, _S::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    Val = Ref.getValue();
 ").
 
 :- pragma foreign_proc("Java",
@@ -612,6 +695,19 @@ ref_functor(Ref, Functor, Arity, !Store) :-
     S = S0;
 }").
 
+:- pragma foreign_proc("C#",
+    arg_ref(Ref::in, ArgNum::in, ArgRef::out, _S0::di, _S::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    /*
+    ** XXX Some dynamic type-checking should be done here to check that
+    ** the type of the specified Arg matches the type supplied by the caller.
+    ** This will require RTTI.
+    */
+
+    ArgRef = new store.Ref(Ref.getValue(), ArgNum);
+").
+
 :- pragma foreign_proc("Java",
     arg_ref(Ref::in, ArgNum::in, ArgRef::out, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure],
@@ -671,6 +767,19 @@ ref_functor(Ref, Functor, Arity, !Store) :-
     S = S0;
 }").
 
+:- pragma foreign_proc("C#",
+    new_arg_ref(Val::di, ArgNum::in, ArgRef::out, _S0::di, _S::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    /*
+    ** XXX Some dynamic type-checking should be done here to check that
+    ** the type of the specified Arg matches the type supplied by the caller.
+    ** This will require RTTI.
+    */
+
+    ArgRef = new store.Ref(Val, ArgNum);
+").
+
 :- pragma foreign_proc("Java",
     new_arg_ref(Val::di, ArgNum::in, ArgRef::out, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure],
@@ -690,6 +799,13 @@ ref_functor(Ref, Functor, Arity, !Store) :-
 "
     * (MR_Word *) Ref = * (MR_Word *) ValRef;
     S = S0;
+").
+
+:- pragma foreign_proc("C#",
+    set_ref(Ref::in, ValRef::in, _S0::di, _S::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    Ref.setValue(ValRef.getValue());
 ").
 
 :- pragma foreign_proc("Java",
@@ -721,6 +837,13 @@ ref_functor(Ref, Functor, Arity, !Store) :-
     Val = * (MR_Word *) Ref;
 ").
 
+:- pragma foreign_proc("C#",
+    extract_ref_value(_S::di, Ref::in, Val::out),
+    [will_not_call_mercury, promise_pure],
+"
+    Val = Ref.getValue();
+").
+
 :- pragma foreign_proc("Java",
     extract_ref_value(_S::di, Ref::in, Val::out),
     [will_not_call_mercury, promise_pure],
@@ -742,6 +865,13 @@ ref_functor(Ref, Functor, Arity, !Store) :-
     S = S0;
 }").
 
+:- pragma foreign_proc("C#",
+    unsafe_arg_ref(Ref::in, Arg::in, ArgRef::out, _S0::di, _S::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    ArgRef = new store.Ref(Ref.getValue(), Arg);
+").
+
 :- pragma foreign_proc("Java",
     unsafe_arg_ref(Ref::in, Arg::in, ArgRef::out, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure],
@@ -760,6 +890,13 @@ ref_functor(Ref, Functor, Arity, !Store) :-
     ArgRef = (MR_Word) &Ptr[Arg];
     S = S0;
 }").
+
+:- pragma foreign_proc("C#",
+    unsafe_new_arg_ref(Val::di, Arg::in, ArgRef::out, _S0::di, _S::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    ArgRef = new store.Ref(Val, Arg);
+").
 
 :- pragma foreign_proc("Java",
     unsafe_new_arg_ref(Val::di, Arg::in, ArgRef::out, _S0::di, _S::uo),

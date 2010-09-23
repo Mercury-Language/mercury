@@ -125,7 +125,7 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     MLDS = mlds(ModuleName, AllForeignCode, Imports, GlobalData, Defns0,
         InitPreds, _FinalPreds, ExportedEnums),
     ml_global_data_get_all_global_defns(GlobalData,
-        _ScalarCellGroupMap, _VectorCellGroupMap, GlobalDefns),
+        ScalarCellGroupMap, VectorCellGroupMap, GlobalDefns),
     Defns = GlobalDefns ++ Defns0,
 
     % Get the foreign code for C#
@@ -158,10 +158,10 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     % Scalar common data must appear after the previous data definitions,
     % and the vector common data after that.
     io.write_string("\n// Scalar common data\n", !IO),
-    % output_scalar_common_data(Info, Indent + 1, ScalarCellGroupMap, !IO),
+    output_scalar_common_data(Info, Indent + 1, ScalarCellGroupMap, !IO),
 
     io.write_string("\n// Vector common data\n", !IO),
-    % output_vector_common_data(Info, Indent + 1, VectorCellGroupMap, !IO),
+    output_vector_common_data(Info, Indent + 1, VectorCellGroupMap, !IO),
 
     io.write_string("\n// NonDataDefns\n", !IO),
     output_defns(Info, Indent + 1, none, NonDataDefns, !IO),
@@ -178,7 +178,13 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     io.write_string("\n// EnvVarNames\n", !IO),
     output_env_vars(Indent + 1, NonRttiDefns, !IO),
 
-    StaticCtorCalls = ["MR_init_rtti", "MR_init_data" | InitPreds],
+    StaticCtorCalls = [
+        "MR_init_rtti",
+        "MR_init_data",
+        "MR_init_scalar_common_data",
+        "MR_init_vector_common_data"
+        | InitPreds
+    ],
     output_static_constructor(ModuleName, Indent + 1, StaticCtorCalls, !IO),
 
     output_src_end(Indent, ModuleName, !IO).
@@ -605,6 +611,14 @@ output_defn(Info, Indent, OutputAux, Defn, !IO) :-
         ->
             OverrideFlags = set_per_instance(Flags, per_instance)
         ;
+            % `static' and `sealed' not wanted or allowed on structs.
+            DefnBody = mlds_class(ClassDefn),
+            Kind = ClassDefn ^ mcd_kind,
+            Kind = mlds_struct
+        ->
+            OverrideFlags0 = set_per_instance(Flags, per_instance),
+            OverrideFlags = set_overridability(OverrideFlags0, overridable)
+        ;
             OverrideFlags = Flags
         ),
         output_decl_flags(Info, OverrideFlags, !IO),
@@ -686,9 +700,11 @@ output_class_kind(Kind, !IO) :-
     ;
         ( Kind = mlds_class
         ; Kind = mlds_package
-        ; Kind = mlds_struct
         ),
         io.write_string("class ", !IO)
+    ;
+        Kind = mlds_struct,
+        io.write_string("struct ", !IO)
     ;
         Kind = mlds_enum,
         io.write_string("enum ", !IO)
@@ -776,19 +792,14 @@ interface_to_string(Interface, String) :-
 
 output_class_body(Info, Indent, Kind, UnqualName, AllMembers, !IO) :-
     (
-        Kind = mlds_class,
+        ( Kind = mlds_class
+        ; Kind = mlds_interface
+        ; Kind = mlds_struct
+        ),
         output_defns(Info, Indent, none, AllMembers, !IO)
     ;
         Kind = mlds_package,
         unexpected(this_file, "cannot use package as a type.")
-    ;
-        Kind = mlds_interface,
-        output_defns(Info, Indent, none, AllMembers, !IO)
-    ;
-        Kind = mlds_struct,
-        % XXX C# is not Java
-        unexpected(this_file,
-            "output_class_body: structs not supported in Java.")
     ;
         Kind = mlds_enum,
         list.filter(defn_is_const, AllMembers, EnumConsts),
@@ -817,25 +828,34 @@ output_enum_constants(Info, Indent, EnumName, EnumConsts, !IO) :-
 :- pred output_enum_constant(csharp_out_info::in, indent::in,
     mlds_entity_name::in, mlds_defn::in, io::di, io::uo) is det.
 
-output_enum_constant(_Info, Indent, _EnumName, Defn, !IO) :-
+output_enum_constant(Info, Indent, _EnumName, Defn, !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
     ( DefnBody = mlds_data(_Type, Initializer, _GCStatement) ->
         (
             Initializer = init_obj(Rval),
+            % The name might require mangling.
+            indent_line(Indent, !IO),
+            output_name(Name, !IO),
+            io.write_string(" = ", !IO),
             ( Rval = ml_const(mlconst_enum(N, _)) ->
-                % The name might require mangling.
-                indent_line(Indent, !IO),
-                output_name(Name, !IO),
-                io.format(" = %d,", [i(N)], !IO)
+                io.write_int(N, !IO)
+            ; Rval = ml_const(mlconst_foreign(lang_csharp, String, Type)) ->
+                io.write_string("(", !IO),
+                output_type(Info, Type, !IO),
+                io.write_string(") ", !IO),
+                io.write_string(String, !IO)
             ;
-                unexpected(this_file, "output_enum_constant: not mlconst_enum")
-            )
+                unexpected(this_file,
+                    "output_enum_constant: " ++ string(Rval))
+            ),
+            io.write_string(",", !IO)
         ;
             ( Initializer = no_initializer
             ; Initializer = init_struct(_, _)
             ; Initializer = init_array(_)
             ),
-            unexpected(this_file, "output_enum_constant: not mlconst_enum")
+            unexpected(this_file,
+                "output_enum_constant: " ++ string(Initializer))
         )
     ;
         unexpected(this_file,
@@ -855,10 +875,9 @@ output_data_decls(Info, Indent, [Defn | Defns], !IO) :-
     Defn = mlds_defn(Name, _Context, Flags, DefnBody),
     ( DefnBody = mlds_data(Type, _Initializer, _GCStatement) ->
         indent_line(Indent, !IO),
-        % We can't honour `final' here as the variable is assigned separately.
-        % XXX does this make any sense for C#?
-        NonFinalFlags = set_finality(Flags, overridable),
-        output_decl_flags(Info, NonFinalFlags, !IO),
+        % We can't honour `readonly' here as the variable is assigned separately.
+        NonReadonlyFlags = set_constness(Flags, modifiable),
+        output_decl_flags(Info, NonReadonlyFlags, !IO),
         output_data_decl(Info, Name, Type, !IO),
         io.write_string(";\n", !IO)
     ;
@@ -927,7 +946,8 @@ output_scalar_common_data(Info, Indent, ScalarCellGroupMap, !IO) :-
 
     ( digraph.tsort(Graph, SortedScalars0) ->
         indent_line(Indent, !IO),
-        io.write_string("static {\n", !IO),
+        io.write_string("private static void MR_init_scalar_common_data() {\n",
+            !IO),
         list.reverse(SortedScalars0, SortedScalars),
         list.foldl(output_scalar_init(Info, Indent + 1, Map),
             SortedScalars, !IO),
@@ -952,7 +972,7 @@ output_scalar_defns(Info, Indent, TypeNum, CellGroup, !Graph, !Map, !IO) :-
     RowInits = cord.list(RowInitsCord),
 
     indent_line(Indent, !IO),
-    io.write_string("private static final ", !IO),
+    io.write_string("private static readonly ", !IO),
     output_type(Info, Type, !IO),
     io.format("[] MR_scalar_common_%d = ", [i(TypeRawNum)], !IO),
     output_initializer_alloc_only(Info, init_array(RowInits), yes(ArrayType),
@@ -1073,22 +1093,43 @@ output_scalar_init(Info, Indent, Map, Scalar, !IO) :-
     ml_vector_cell_map::in, io::di, io::uo) is det.
 
 output_vector_common_data(Info, Indent, VectorCellGroupMap, !IO) :-
-    map.foldl(output_vector_cell_group(Info, Indent), VectorCellGroupMap, !IO).
+    map.foldl(output_vector_cell_decl(Info, Indent), VectorCellGroupMap, !IO),
+    indent_line(Indent, !IO),
+    io.write_string("private static void MR_init_vector_common_data() {\n",
+        !IO),
+    map.foldl(output_vector_cell_init(Info, Indent + 1), VectorCellGroupMap,
+        !IO),
+    indent_line(Indent, !IO),
+    io.write_string("}\n", !IO).
 
-:- pred output_vector_cell_group(csharp_out_info::in, indent::in,
+:- pred output_vector_cell_decl(csharp_out_info::in, indent::in,
     ml_vector_common_type_num::in, ml_vector_cell_group::in,
     io::di, io::uo) is det.
 
-output_vector_cell_group(Info, Indent, TypeNum, CellGroup, !IO) :-
+output_vector_cell_decl(Info, Indent, TypeNum, CellGroup, !IO) :-
     TypeNum = ml_vector_common_type_num(TypeRawNum),
     CellGroup = ml_vector_cell_group(Type, ClassDefn, _FieldIds, _NextRow,
-        RowInits),
+        _RowInits),
     output_defn(Info, Indent, none, ClassDefn, !IO),
 
     indent_line(Indent, !IO),
-    io.write_string("private static final ", !IO),
+    io.write_string("private static /* readonly */ ", !IO),
     output_type(Info, Type, !IO),
-    io.format(" MR_vector_common_%d[] = {\n", [i(TypeRawNum)], !IO),
+    io.format("[] MR_vector_common_%d;\n", [i(TypeRawNum)], !IO).
+
+:- pred output_vector_cell_init(csharp_out_info::in, indent::in,
+    ml_vector_common_type_num::in, ml_vector_cell_group::in,
+    io::di, io::uo) is det.
+
+output_vector_cell_init(Info, Indent, TypeNum, CellGroup, !IO) :-
+    TypeNum = ml_vector_common_type_num(TypeRawNum),
+    CellGroup = ml_vector_cell_group(Type, _ClassDefn, _FieldIds, _NextRow,
+        RowInits),
+
+    indent_line(Indent, !IO),
+    io.format("MR_vector_common_%d = new ", [i(TypeRawNum)], !IO),
+    output_type(Info, Type, !IO),
+    io.write_string("[] {\n", !IO),
     indent_line(Indent + 1, !IO),
     output_initializer_body_list(Info, cord.list(RowInits), !IO),
     io.nl(!IO),
@@ -1100,16 +1141,14 @@ output_vector_cell_group(Info, Indent, TypeNum, CellGroup, !IO) :-
     % We need to provide initializers for local variables to avoid problems
     % with undefined variables.
     %
-:- func get_type_initializer(mlds_type) = string.
+:- func get_type_initializer(csharp_out_info, mlds_type) = string.
 
-get_type_initializer(Type) = Initializer :-
+get_type_initializer(Info, Type) = Initializer :-
     (
         Type = mercury_type(_, CtorCat, _),
         (
             ( CtorCat = ctor_cat_builtin(cat_builtin_int)
             ; CtorCat = ctor_cat_builtin(cat_builtin_float)
-            ; CtorCat = ctor_cat_enum(_)
-            ; CtorCat = ctor_cat_user(cat_user_direct_dummy)
             ),
             Initializer = "0"
         ;
@@ -1120,13 +1159,17 @@ get_type_initializer(Type) = Initializer :-
             ; CtorCat = ctor_cat_system(_)
             ; CtorCat = ctor_cat_higher_order
             ; CtorCat = ctor_cat_tuple
-            ; CtorCat = ctor_cat_builtin_dummy  % XXX might need to be 0
             ; CtorCat = ctor_cat_variable
             ; CtorCat = ctor_cat_void
-            ; CtorCat = ctor_cat_user(cat_user_notag)
-            ; CtorCat = ctor_cat_user(cat_user_general)
             ),
             Initializer = "null"
+        ;
+            ( CtorCat = ctor_cat_enum(_)
+            ; CtorCat = ctor_cat_user(_)
+            ; CtorCat = ctor_cat_builtin_dummy
+            ),
+            type_to_string(Info, Type, TypeString, _),
+            Initializer = "default(" ++ TypeString ++ ")"
         )
     ;
         ( Type = mlds_native_int_type
@@ -1158,16 +1201,8 @@ get_type_initializer(Type) = Initializer :-
     ;
         Type = mlds_foreign_type(ForeignType),
         (
-            % XXX Value types must be initialised differently to reference
-            % types. Here we support a "valuetype" prefix in foreign types,
-            % even though it is not valid C# syntax. In the future, we may
-            % want to introduce a foreign_type attribute instead.
             ForeignType = csharp(csharp_type(CsharpType)),
-            ( string.append("valuetype ", Name, CsharpType) ->
-                Initializer = "new " ++ Name ++ "()"
-            ;
-                Initializer = "null"
-            )
+            Initializer = "default(" ++ CsharpType ++ ")"
         ;
             ( ForeignType = il(_)
             ; ForeignType = c(_)
@@ -1224,7 +1259,7 @@ output_initializer(Info, OutputAux, Type, Initializer, !IO) :-
             OutputAux = force_init,
             % Local variables need to be initialised to avoid warnings.
             io.write_string(" = ", !IO),
-            io.write_string(get_type_initializer(Type), !IO)
+            io.write_string(get_type_initializer(Info, Type), !IO)
         ;
             ( OutputAux = none
             ; OutputAux = cname(_)
@@ -1835,12 +1870,7 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
     ;
         MLDS_Type = mlds_foreign_type(ForeignType),
         (
-            ForeignType = csharp(csharp_type(CsharpType)),
-            ( string.append("valuetype ", Name, CsharpType) ->
-                String = Name
-            ;
-                String = CsharpType
-            ),
+            ForeignType = csharp(csharp_type(String)),
             ArrayDims = []
         ;
             ForeignType = c(_),
@@ -2128,9 +2158,9 @@ array_dimension_to_string(N, String) :-
 output_decl_flags(Info, Flags, !IO) :-
     output_access(Info, access(Flags), !IO),
     output_per_instance(per_instance(Flags), !IO),
-    output_virtuality(Info, virtuality(Flags), !IO),
-    output_finality(finality(Flags), !IO),
-    output_constness(Info, constness(Flags), !IO),
+    output_virtuality(virtuality(Flags), !IO),
+    output_overridability(overridability(Flags), !IO),
+    output_constness(constness(Flags), !IO),
     output_abstractness(abstractness(Flags), !IO).
 
 :- pred output_access(csharp_out_info::in, access::in, io::di, io::uo) is det.
@@ -2162,34 +2192,33 @@ output_per_instance(PerInstance, !IO) :-
         io.write_string("static ", !IO)
     ).
 
-:- pred output_virtuality(csharp_out_info::in, virtuality::in,
-    io::di, io::uo) is det.
+:- pred output_virtuality(virtuality::in, io::di, io::uo) is det.
 
-output_virtuality(Info, Virtual, !IO) :-
+output_virtuality(Virtual, !IO) :-
     (
         Virtual = virtual,
-        maybe_output_comment(Info, "virtual", !IO)
+        % In C#, methods are non-virtual by default.
+        io.write_string("virtual ", !IO)
     ;
         Virtual = non_virtual
     ).
 
-:- pred output_finality(finality::in, io::di, io::uo) is det.
+:- pred output_overridability(overridability::in, io::di, io::uo) is det.
 
-output_finality(Finality, !IO) :-
+output_overridability(Overridability, !IO) :-
     (
-        Finality = final,
-        io.write_string("readonly ", !IO)
+        Overridability = sealed,
+        io.write_string("sealed ", !IO)
     ;
-        Finality = overridable
+        Overridability = overridable
     ).
 
-:- pred output_constness(csharp_out_info::in, constness::in,
-    io::di, io::uo) is det.
+:- pred output_constness(constness::in, io::di, io::uo) is det.
 
-output_constness(Info, Constness, !IO) :-
+output_constness(Constness, !IO) :-
     (
         Constness = const,
-        maybe_output_comment(Info, "const", !IO)
+        io.write_string("readonly ", !IO)
     ;
         Constness = modifiable
     ).
@@ -3352,10 +3381,13 @@ output_rval_const(Info, Const, !IO) :-
         % Explicit cast required.
         output_cast_rval(Info, EnumType, ml_const(mlconst_int(N)), !IO)
     ;
-        Const = mlconst_foreign(Lang, Value, _Type),
+        Const = mlconst_foreign(Lang, Value, Type),
         expect(unify(Lang, lang_csharp), this_file,
             "output_rval_const: language other than C#."),
         % XXX Should we parenthesize this?
+        io.write_string("(", !IO),
+        output_type(Info, Type, !IO),
+        io.write_string(") ", !IO),
         io.write_string(Value, !IO)
     ;
         Const = mlconst_float(FloatVal),
@@ -3382,7 +3414,7 @@ output_rval_const(Info, Const, !IO) :-
         mlds_output_data_addr(DataAddr, !IO)
     ;
         Const = mlconst_null(Type),
-        Initializer = get_type_initializer(Type),
+        Initializer = get_type_initializer(Info, Type),
         io.write_string(Initializer, !IO)
     ).
 

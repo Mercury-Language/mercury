@@ -60,6 +60,8 @@ main -->
 :- pragma foreign_type(il, coord,
 	"class [foreign_type__csharp_code]coord").
 
+:- pragma foreign_type("C#", coord, "coord").
+
 :- pragma foreign_decl("C#", "
 public class coord {
 	public int x;

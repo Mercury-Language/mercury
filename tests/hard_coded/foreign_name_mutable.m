@@ -11,6 +11,7 @@
 :- mutable(foo, int, 42, ground, [
 	untrailed,
 	foreign_name("C", "FOO"),
+	foreign_name("C#", "FOO"),
 	foreign_name("Java", "FOO")
 ]).
 
@@ -30,6 +31,15 @@ main(!IO) :-
 	[will_not_call_mercury, promise_pure],
 "
 	FOO++;
+	IO = IO0;
+").
+
+:- pragma foreign_proc("C#",
+	increment_global(IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+        int x = (int) FOO;
+        FOO = (object) (x + 1);
 	IO = IO0;
 ").
 

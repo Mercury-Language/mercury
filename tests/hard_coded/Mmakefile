@@ -353,7 +353,7 @@ JAVA_PASS_PROGS= \
 	value_enum
 
 # Solver types only work in C grades
-ifeq "$(filter il% java% erlang%,$(GRADE))" ""
+ifeq "$(filter il% csharp% java% erlang%,$(GRADE))" ""
 	SOLVER_PROGS = \
 		any_call_hoist_bug \
 		any_free_unify \
@@ -444,7 +444,7 @@ endif
 # The foreign_type_assertion test is currently meaningful only in C grades.
 # Tests of the C foreign language interface only work in C grades.
 # Runtime options are specific to the C backend.
-ifeq "$(filter il% java% erlang%,$(GRADE))" ""
+ifeq "$(filter il% csharp% java% erlang%,$(GRADE))" ""
 	C_ONLY_PROGS = \
 		factt \
 		factt_sort_test \
@@ -504,7 +504,7 @@ CLOSURE_LAYOUT_PROGS = \
 # This test requires the implementation's representation of characters
 # to be the same as their representation in files, which is not true
 # for the IL and Java back-ends, which use Unicode internally.
-ifeq "$(filter il% java%,$(GRADE))" ""
+ifeq "$(filter il% csharp% java%,$(GRADE))" ""
 	CHAR_REP_PROGS = special_char
 else
 	CHAR_REP_PROGS =
@@ -602,7 +602,7 @@ endif
 # be replaced by a test that exercises functionality enabled by type tables.
 # However, this must wait for the implementation of that functionality.
 
-ifeq "$(filter hl% il% java% erlang%,$(GRADE))" ""
+ifeq "$(filter hl% il% csharp% java% erlang%,$(GRADE))" ""
 	ifeq "$(findstring profdeep,$(GRADE))" ""
 		BACKEND_PROGS_2 = \
 			factt_non
@@ -641,7 +641,7 @@ ifneq "$(findstring apple-darwin,$(FULLARCH))" "apple-darwin"
   ifneq "$(findstring solaris,$(FULLARCH))" "solaris"
 	# The `parse' test also links with the debug libraries,
 	# so it only works in LLDS grades.
-	ifeq "$(filter hl% java% il% erlang%,$(GRADE))" ""
+	ifeq "$(filter hl% csharp% java% il% erlang%,$(GRADE))" ""
 		STATIC_LINK_PROGS = parse
 	endif
   endif

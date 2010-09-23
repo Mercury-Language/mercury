@@ -761,11 +761,11 @@ ml_gen_label_func_decl_flags = DeclFlags :-
     Access = acc_local,
     PerInstance = per_instance,
     Virtuality = non_virtual,
-    Finality = overridable,
+    Overridability = overridable,
     Constness = modifiable,
     Abstractness = concrete,
-    DeclFlags = init_decl_flags(Access, PerInstance, Virtuality, Finality,
-        Constness, Abstractness).
+    DeclFlags = init_decl_flags(Access, PerInstance, Virtuality,
+        Overridability, Constness, Abstractness).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1342,21 +1342,21 @@ ml_gen_public_field_decl_flags = DeclFlags :-
     Access = acc_public,
     PerInstance = per_instance,
     Virtuality = non_virtual,
-    Finality = overridable,
+    Overridability = overridable,
     Constness = modifiable,
     Abstractness = concrete,
     DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Finality, Constness, Abstractness).
+        Virtuality, Overridability, Constness, Abstractness).
 
 ml_gen_local_var_decl_flags = DeclFlags :-
     Access = acc_local,
     PerInstance = per_instance,
     Virtuality = non_virtual,
-    Finality = overridable,
+    Overridability = overridable,
     Constness = modifiable,
     Abstractness = concrete,
     DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Finality, Constness, Abstractness).
+        Virtuality, Overridability, Constness, Abstractness).
 
 ml_var_name_to_string(mlds_var_name(Var, yes(Num))) =
     Var ++ "_" ++ string.int_to_string(Num).

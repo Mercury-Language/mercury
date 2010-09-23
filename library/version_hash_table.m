@@ -278,6 +278,13 @@ find_slot_2(HashPred, K, NumBuckets, H) :-
     HashPred = HashPred0;
 ").
 
+:- pragma foreign_proc("C#",
+    unsafe_hash_pred_cast(HashPred0::in, HashPred::out(hash_pred)),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    HashPred = HashPred0;
+").
+
 :- pragma foreign_proc("Java",
     unsafe_hash_pred_cast(HashPred0::in, HashPred::out(hash_pred)),
     [will_not_call_mercury, promise_pure, thread_safe],

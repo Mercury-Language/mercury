@@ -500,7 +500,7 @@
                 % access,               % public/private/protected
                 % member_type,          % static/per_instance
                 % virtuality,           % virtual/non_virtual
-                % finality,             % final/overridable (funcs only)
+                % overridability,       % sealed/overridable (class/funcs only)
                 % constness,            % const/modifiable  (data only)
                 % is_abstract,          % abstract/concrete
                 % etc.
@@ -899,9 +899,10 @@
     --->    non_virtual
     ;       virtual.
 
-:- type finality
+:- type overridability
     --->    overridable
-    ;       final.
+    ;       sealed.     % i.e. the class cannot be inherited from,
+                        % or the virtual method is not overridable.
 
 :- type constness
     --->    modifiable
@@ -914,18 +915,18 @@
 :- func access(mlds_decl_flags) = access.
 :- func per_instance(mlds_decl_flags) = per_instance.
 :- func virtuality(mlds_decl_flags) = virtuality.
-:- func finality(mlds_decl_flags) = finality.
+:- func overridability(mlds_decl_flags) = overridability.
 :- func constness(mlds_decl_flags) = constness.
 :- func abstractness(mlds_decl_flags) = abstractness.
 
 :- func set_access(mlds_decl_flags, access) = mlds_decl_flags.
 :- func set_per_instance(mlds_decl_flags, per_instance) = mlds_decl_flags.
 :- func set_virtuality(mlds_decl_flags, virtuality) = mlds_decl_flags.
-:- func set_finality(mlds_decl_flags, finality) = mlds_decl_flags.
+:- func set_overridability(mlds_decl_flags, overridability) = mlds_decl_flags.
 :- func set_constness(mlds_decl_flags, constness) = mlds_decl_flags.
 :- func set_abstractness(mlds_decl_flags, abstractness) = mlds_decl_flags.
 
-:- func init_decl_flags(access, per_instance, virtuality, finality,
+:- func init_decl_flags(access, per_instance, virtuality, overridability,
     constness, abstractness) = mlds_decl_flags.
 
     % Return the declaration flags appropriate for an initialized
@@ -2165,14 +2166,14 @@ virtuality_bits(virtual)     = 0x10.
 :- func virtuality_mask = int.
 virtuality_mask = virtuality_bits(virtual).
 
-:- func finality_bits(finality) = int.
-:- mode finality_bits(in) = out is det.
-:- mode finality_bits(out) = in is semidet.
-finality_bits(overridable) = 0x00.
-finality_bits(final)       = 0x20.
+:- func overridability_bits(overridability) = int.
+:- mode overridability_bits(in) = out is det.
+:- mode overridability_bits(out) = in is semidet.
+overridability_bits(overridable) = 0x00.
+overridability_bits(sealed)      = 0x20.
 
-:- func finality_mask = int.
-finality_mask = finality_bits(final).
+:- func overridability_mask = int.
+overridability_mask = overridability_bits(sealed).
 
 :- func constness_bits(constness) = int.
 :- mode constness_bits(in) = out is det.
@@ -2217,9 +2218,9 @@ virtuality(Flags) = Virtuality :-
         unexpected(this_file, "virtuality: unknown bits")
     ).
 
-finality(Flags) = Finality :-
-    ( Flags /\ finality_mask = finality_bits(FinalityPrime) ->
-        Finality = FinalityPrime
+overridability(Flags) = Overridability :-
+    ( Flags /\ overridability_mask = overridability_bits(Overridability0) ->
+        Overridability = Overridability0
     ;
         unexpected(this_file, "per_instance: unknown bits")
     ).
@@ -2251,8 +2252,8 @@ set_per_instance(Flags, PerInstance) =
 set_virtuality(Flags, Virtuality) =
     Flags /\ \virtuality_mask \/ virtuality_bits(Virtuality).
 
-set_finality(Flags, Finality) =
-    Flags /\ \finality_mask \/ finality_bits(Finality).
+set_overridability(Flags, Overridability) =
+    Flags /\ \overridability_mask \/ overridability_bits(Overridability).
 
 set_constness(Flags, Constness) =
     Flags /\ \constness_mask \/ constness_bits(Constness).
@@ -2260,12 +2261,12 @@ set_constness(Flags, Constness) =
 set_abstractness(Flags, Abstractness) =
     Flags /\ \abstractness_mask \/ abstractness_bits(Abstractness).
 
-init_decl_flags(Access, PerInstance, Virtuality, Finality, Constness,
+init_decl_flags(Access, PerInstance, Virtuality, Overridability, Constness,
         Abstractness) =
     access_bits(Access) \/
     per_instance_bits(PerInstance) \/
     virtuality_bits(Virtuality) \/
-    finality_bits(Finality) \/
+    overridability_bits(Overridability) \/
     constness_bits(Constness) \/
     abstractness_bits(Abstractness).
 
@@ -2275,11 +2276,11 @@ ml_static_const_decl_flags = DeclFlags :-
     Access = acc_local,
     PerInstance = one_copy,
     Virtuality = non_virtual,
-    Finality = final,
+    Overridability = overridable,
     Constness = const,
     Abstractness = concrete,
     DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Finality, Constness, Abstractness).
+        Virtuality, Overridability, Constness, Abstractness).
 
 %-----------------------------------------------------------------------------%
 

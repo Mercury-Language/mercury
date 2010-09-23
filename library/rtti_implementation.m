@@ -3795,6 +3795,23 @@ get_type_info_from_term(_, _) = _ :-
 get_typeclass_info_from_term(_, _) = _ :-
     private_builtin.sorry("get_type_info_from_term").
 
+:- pragma foreign_proc("C#",
+    get_typeclass_info_from_term(Term::in, Index::in) = (TypeClassInfo::out),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+    if (Term is object[]) {
+        TypeClassInfo = /*typeclass_info*/ (object[]) ((object[]) Term)[Index];
+    } else {
+        // The F<i> field variables are numbered from 1.
+        string fieldName = ""F"" + (1 + Index);
+        System.Reflection.FieldInfo f = Term.GetType().GetField(fieldName);
+        if (f == null) {
+            throw new System.Exception(""no such field: "" + fieldName);
+        }
+        TypeClassInfo = /*typeclass_info*/ (object[]) f.GetValue(Term);
+    }
+").
+
 :- pragma foreign_proc("Java",
     get_typeclass_info_from_term(Term::in, Index::in) = (TypeClassInfo::out),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],

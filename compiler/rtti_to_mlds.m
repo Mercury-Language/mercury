@@ -147,11 +147,11 @@ rtti_data_decl_flags(Exported) = MLDS_DeclFlags :-
     ),
     PerInstance = one_copy,
     Virtuality = non_virtual,
-    Finality = final,
+    Overridability = overridable,
     Constness = const,
     Abstractness = concrete,
     MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Finality, Constness, Abstractness).
+        Virtuality, Overridability, Constness, Abstractness).
 
 %-----------------------------------------------------------------------------%
 

@@ -1031,7 +1031,7 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
         % Create the member variable.
         DataDefn = mlds_defn(
             entity_data(mlds_data_var(mlds_var_name("ptr_num", no))),
-            Context, ml_gen_final_member_decl_flags,
+            Context, ml_gen_const_member_decl_flags,
             mlds_data(mlds_native_int_type, no_initializer, gc_no_stmt)),
         DataDefns = [DataDefn],
 
@@ -1176,7 +1176,7 @@ generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn) :-
     MethodEnvVarNames = set.init,
     MethodBody   = mlds_function(MethodMaybeID, MethodParams,
         body_defined_here(Statement), MethodAttribs, MethodEnvVarNames),
-    MethodFlags  = ml_gen_final_member_decl_flags,
+    MethodFlags  = ml_gen_member_decl_flags,
     MethodDefn   = mlds_defn(MethodName, Context, MethodFlags, MethodBody).
 
 :- pred create_generic_arg(int::in, mlds_var_name::out, mlds_argument::out)
@@ -1294,11 +1294,11 @@ addr_wrapper_decl_flags = MLDS_DeclFlags :-
     Access = acc_private,
     PerInstance = one_copy,
     Virtuality = non_virtual,
-    Finality = final,
+    Overridability = sealed,
     Constness = const,
     Abstractness = concrete,
     MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Finality, Constness, Abstractness).
+        Virtuality, Overridability, Constness, Abstractness).
 
 :- pred add_to_address_map(string::in, list(mlds_code_addr)::in,
     map(mlds_code_addr, code_addr_wrapper)::in,
@@ -2450,9 +2450,7 @@ output_data_decls(Info, Indent, [Defn | Defns], !IO) :-
     Defn = mlds_defn(Name, _Context, Flags, DefnBody),
     ( DefnBody = mlds_data(Type, _Initializer, _GCStatement) ->
         indent_line(Indent, !IO),
-        % We can't honour `final' here as the variable is assigned separately.
-        NonFinalFlags = set_finality(Flags, overridable),
-        output_decl_flags(Info, NonFinalFlags, !IO),
+        output_decl_flags(Info, Flags, !IO),
         output_data_decl(Info, Name, Type, !IO),
         io.write_string(";\n", !IO)
     ;
@@ -3730,8 +3728,8 @@ output_decl_flags(Info, Flags, !IO) :-
     output_access(Info, access(Flags), !IO),
     output_per_instance(per_instance(Flags), !IO),
     output_virtuality(Info, virtuality(Flags), !IO),
-    output_finality(finality(Flags), !IO),
-    output_constness(Info, constness(Flags), !IO),
+    output_overridability_constness(overridability(Flags), constness(Flags),
+        !IO),
     output_abstractness(abstractness(Flags), !IO).
 
 :- pred output_access(java_out_info::in, access::in, io::di, io::uo) is det.
@@ -3774,25 +3772,18 @@ output_virtuality(Info, Virtual, !IO) :-
         Virtual = non_virtual
     ).
 
-:- pred output_finality(finality::in, io::di, io::uo) is det.
-
-output_finality(Finality, !IO) :-
-    (
-        Finality = final,
-        io.write_string("final ", !IO)
-    ;
-        Finality = overridable
-    ).
-
-:- pred output_constness(java_out_info::in, constness::in,
+:- pred output_overridability_constness(overridability::in, constness::in,
     io::di, io::uo) is det.
 
-output_constness(Info, Constness, !IO) :-
+output_overridability_constness(Overridability, Constness, !IO) :-
     (
-        Constness = const,
-        maybe_output_comment(Info, "const", !IO)
+        ( Overridability = sealed
+        ; Constness = const
+        )
+    ->
+        io.write_string("final ", !IO)
     ;
-        Constness = modifiable
+        true
     ).
 
 :- pred output_abstractness(abstractness::in, io::di, io::uo) is det.

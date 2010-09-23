@@ -414,8 +414,7 @@ ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
         Rval = ml_const(mlconst_string(String))
     ;
         Tag = foreign_tag(ForeignLang, ForeignTag),
-        Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag,
-            mlds_native_int_type))
+        Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag, MLDS_VarType))
     ;
         Tag = shared_local_tag(Bits1, Num1),
         Rval = ml_unop(cast(MLDS_VarType), ml_mkword(Bits1,
@@ -1797,8 +1796,8 @@ ml_gen_tag_test_rval(Tag, Type, ModuleInfo, Rval) = TagTestRval :-
         TagTestRval = ml_binop(eq, Rval, ConstRval)
     ;
         Tag = foreign_tag(ForeignLang, ForeignVal),
-        Const = ml_const(mlconst_foreign(ForeignLang, ForeignVal,
-            mlds_native_int_type)),
+        MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
+        Const = ml_const(mlconst_foreign(ForeignLang, ForeignVal, MLDS_Type)),
         TagTestRval = ml_binop(eq, Rval, Const)
     ;
         ( Tag = closure_tag(_, _, _)
@@ -2107,7 +2106,7 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
         ;
             ConsTag = foreign_tag(ForeignLang, ForeignTag),
             ConstRval = ml_const(mlconst_foreign(ForeignLang, ForeignTag,
-                mlds_native_int_type))
+                MLDS_Type))
         ),
         expect(unify(Args, []), this_file,
             "ml_gen_ground_term_conjunct_tag: constant tag with args"),

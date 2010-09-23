@@ -1405,8 +1405,7 @@ mlds_output_exported_enum_constant(ExportedConstant, !IO) :-
     ->
         io.write_int(Value, !IO)
     ;
-        Initializer = init_obj(ml_const(mlconst_foreign(Lang, Value,
-            mlds_native_int_type)))
+        Initializer = init_obj(ml_const(mlconst_foreign(Lang, Value, _)))
     ->
         expect(unify(Lang, lang_c), this_file,
             "mlconst_foreign for language other than C."),
@@ -2948,7 +2947,7 @@ mlds_output_decl_flags(Opts, Flags, DeclOrDefn, Name, DefnBody, !IO) :-
     mlds_output_extern_or_static(access(Flags), per_instance(Flags),
         DeclOrDefn, Name, DefnBody, !IO),
     mlds_output_virtuality(virtuality(Flags), !IO),
-    mlds_output_finality(finality(Flags), !IO),
+    mlds_output_overridability(overridability(Flags), !IO),
     mlds_output_constness(constness(Flags), !IO),
     mlds_output_abstractness(abstractness(Flags), !IO).
 
@@ -3014,11 +3013,11 @@ mlds_output_virtuality(virtual, !IO) :-
     io.write_string("virtual ", !IO).
 mlds_output_virtuality(non_virtual, !IO).
 
-:- pred mlds_output_finality(finality::in, io::di, io::uo) is det.
+:- pred mlds_output_overridability(overridability::in, io::di, io::uo) is det.
 
-mlds_output_finality(final, !IO) :-
-    io.write_string("/* final */ ", !IO).
-mlds_output_finality(overridable, !IO).
+mlds_output_overridability(sealed, !IO) :-
+    io.write_string("/* sealed */ ", !IO).
+mlds_output_overridability(overridable, !IO).
 
 :- pred mlds_output_constness(constness::in, io::di, io::uo) is det.
 
@@ -4428,7 +4427,7 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
 :- pred mlds_output_rval_const(mlds_to_c_opts::in, mlds_rval_const::in,
     io::di, io::uo) is det.
 
-mlds_output_rval_const(Opts, Const, !IO) :-
+mlds_output_rval_const(_Opts, Const, !IO) :-
     (
         Const = mlconst_true,
         io.write_string("MR_TRUE", !IO)
@@ -4448,12 +4447,10 @@ mlds_output_rval_const(Opts, Const, !IO) :-
         io.write_string("(MR_Char) ", !IO),
         io.write_int(C, !IO)
     ;
-        Const = mlconst_foreign(Lang, Value, Type),
+        Const = mlconst_foreign(Lang, Value, _Type),
         expect(unify(Lang, lang_c), this_file,
             "output_rval_const - mlconst_foreign for language other than C."),
-        io.write_string("((", !IO),
-        mlds_output_type(Opts, Type, !IO),
-        io.write_string(") ", !IO),
+        io.write_string("((int) ", !IO),
         io.write_string(Value, !IO),
         io.write_string(")", !IO)
     ;

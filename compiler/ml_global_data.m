@@ -461,8 +461,8 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
         map.det_insert(TypeNumMap0, ArgTypes, TypeNum, TypeNumMap),
         !GlobalData ^ mgd_vector_type_num_map := TypeNumMap,
 
-        FieldFlags = init_decl_flags(acc_local, per_instance, non_virtual,
-            final, const, concrete),
+        FieldFlags = init_decl_flags(acc_public, per_instance, non_virtual,
+            overridable, const, concrete),
         FieldNamePrefix = "vct_" ++ TypeRawNumStr,
         ml_gen_vector_cell_field_types(MLDS_Context, FieldFlags,
             FieldNamePrefix, 0, ArgTypes, FieldNames, FieldDefns),
@@ -472,8 +472,13 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
             ClassKind = mlds_struct,
             CtorDefns = []
         ;
-            Target = target_java,
-            ClassKind = mlds_class,
+            (
+                Target = target_java,
+                ClassKind = mlds_class
+            ;
+                Target = target_csharp,
+                ClassKind = mlds_struct
+            ),
             CtorDefn = ml_gen_constructor_function(Target, StructType,
                 StructType, MLDS_ModuleName, StructType, no, FieldDefns,
                 MLDS_Context),
@@ -481,7 +486,6 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
         ;
             ( Target = target_asm
             ; Target = target_il
-            ; Target = target_csharp
             ; Target = target_erlang
             ; Target = target_x86_64
             ),
@@ -497,7 +501,7 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
         % The "modifiable" is only to shut up a gcc warning about constant
         % fields.
         StructTypeFlags = init_decl_flags(acc_private, one_copy,
-            non_virtual, final, modifiable, concrete),
+            non_virtual, sealed, modifiable, concrete),
         StructTypeDefn = mlds_defn(StructTypeEntityName, MLDS_Context,
             StructTypeFlags, StructTypeEntityDefn),
         QualStructTypeName =

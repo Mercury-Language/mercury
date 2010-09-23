@@ -270,14 +270,22 @@ public class TypeInfo_Struct : PseudoTypeInfo {
         if (this == ti) {
             return true;
         }
-        if (!type_ctor.Equals(ti.type_ctor)) {
+
+        TypeInfo_Struct self = this.collapse_equivalences();
+        ti = ti.collapse_equivalences();
+
+        if (self == ti) {
+            return true;
+        }
+
+        if (!self.type_ctor.Equals(ti.type_ctor)) {
             return false;
         }
 
         int len1 = 0;
         int len2 = 0;
-        if (args != null) {
-            len1 = args.Length;
+        if (self.args != null) {
+            len1 = self.args.Length;
         }
         if (ti.args != null) {
             len2 = ti.args.Length;
@@ -287,11 +295,27 @@ public class TypeInfo_Struct : PseudoTypeInfo {
         }
 
         for (int i = 0; i < len1; i++) {
-            if (!args[i].Equals(ti.args[i])) {
+            if (!self.args[i].Equals(ti.args[i])) {
                 return false;
             }
         }
         return true;
+    }
+
+    private TypeInfo_Struct collapse_equivalences() {
+        TypeInfo_Struct ti = this;
+
+        /* Look past equivalences */
+        while (ti.type_ctor.type_ctor_rep ==
+                TypeCtorRep.MR_TYPECTOR_REP_EQUIV_GROUND
+            || ti.type_ctor.type_ctor_rep ==
+                TypeCtorRep.MR_TYPECTOR_REP_EQUIV)
+        {
+            ti = TypeInfo_Struct.maybe_new(
+                ti.type_ctor.type_layout.layout_equiv());
+        }
+
+        return ti;
     }
 }
 

@@ -4005,9 +4005,9 @@ string.set_char(Char, Index, !Str) :-
         Str = null;
         SUCCESS_INDICATOR = false;
     } else {
-        Str = System.String.Concat(Str0.Substring(0, Index),
-            System.Convert.ToString(Ch),
-            Str0.Substring(Index + 1));
+        System.Text.StringBuilder sb = new System.Text.StringBuilder(Str0);
+        sb[Index] = Ch;
+        Str = sb.ToString();
         SUCCESS_INDICATOR = true;
     }
 ").

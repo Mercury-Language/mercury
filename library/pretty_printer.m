@@ -912,6 +912,12 @@ decrement_limit(triangular(N), triangular(N - 1)).
     MR_Word ML_pretty_printer_default_formatter_map = 0;
 ").
 
+:- pragma foreign_code("C#",
+"
+    static mr_bool.Bool_0 isInitialised = mr_bool.NO;
+    static tree234.Tree234_2 defaultFormatterMap = null;
+").
+
 :- pragma foreign_code("Java",
 "
     static bool.Bool_0 isInitialised = bool.NO;
@@ -931,6 +937,13 @@ decrement_limit(triangular(N), triangular(N - 1)).
         [promise_pure, will_not_call_mercury, thread_safe],
 "
     Okay = ML_pretty_printer_is_initialised;
+").
+
+:- pragma foreign_proc("C#",
+        pretty_printer_is_initialised(Okay::out, _IO0::di, _IO::uo),
+        [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
+"
+    Okay = pretty_printer.isInitialised;
 ").
 
 :- pragma foreign_proc("Java",
@@ -966,6 +979,13 @@ decrement_limit(triangular(N), triangular(N - 1)).
         [promise_pure, will_not_call_mercury, thread_safe],
 "
     FMap = ML_pretty_printer_default_formatter_map;
+").
+
+:- pragma foreign_proc("C#",
+        unsafe_get_default_formatter_map(FMap::out, _IO0::di, _IO::uo),
+        [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
+"
+    FMap = pretty_printer.defaultFormatterMap;
 ").
 
 :- pragma foreign_proc("Java",
@@ -1007,6 +1027,14 @@ get_default_formatter_map(FMap, !IO) :-
 "
     ML_pretty_printer_default_formatter_map = FMap;
     ML_pretty_printer_is_initialised = MR_TRUE;
+").
+
+:- pragma foreign_proc("C#",
+        set_default_formatter_map(FMap::in, _IO0::di, _IO::uo),
+        [promise_pure, will_not_call_mercury, may_not_duplicate],
+"
+    pretty_printer.isInitialised = mr_bool.YES;
+    pretty_printer.defaultFormatterMap = FMap;
 ").
 
 :- pragma foreign_proc("Java",

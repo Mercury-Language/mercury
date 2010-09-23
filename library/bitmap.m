@@ -1125,6 +1125,17 @@ copy_bytes(SameBM, SrcBM, SrcStartByte, DestBM, DestStartByte, NumBytes) =
     }
 ").
 
+:- pragma foreign_proc("C#",
+    unsafe_copy_bytes(_SameBM::in, SrcBM::in, SrcFirstByteIndex::in,
+        DestBM0::bitmap_di, DestFirstByteIndex::in,
+        NumBytes::in) = (DestBM::bitmap_uo),
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
+"
+    DestBM = DestBM0;
+    System.Array.Copy(SrcBM.elements, SrcFirstByteIndex,
+        DestBM.elements, DestFirstByteIndex, NumBytes);
+").
+
 :- pragma foreign_proc("Java",
     unsafe_copy_bytes(_SameBM::in, SrcBM::in, SrcFirstByteIndex::in,
         DestBM0::bitmap_di, DestFirstByteIndex::in,
@@ -1560,6 +1571,26 @@ public class MercuryBitmap {
         num_bits = numBits;
         elements = new byte[numBits / 8 + (((numBits % 8) != 0) ? 1: 0)];
     }
+
+    public override bool Equals(object that) {
+        MercuryBitmap other = that as MercuryBitmap;
+        if (other == null) {
+            return false;
+        }
+        if (num_bits != other.num_bits) {
+            return false;
+        }
+        for (int i = 0; i < elements.Length; i++) {
+            if (elements[i] != other.elements[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public override int GetHashCode() {
+        return num_bits ^ elements.GetHashCode();
+    }
 }
 ").
 
@@ -1585,6 +1616,13 @@ public class MercuryBitmap {
     [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "
     SUCCESS_INDICATOR = MR_bitmap_eq(BM1, BM2);
+").
+
+:- pragma foreign_proc("C#",
+    bitmap_equal(BM1::in, BM2::in),
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
+"
+    SUCCESS_INDICATOR = BM1.Equals(BM2);
 ").
 
 :- pragma foreign_proc("Java",
@@ -1643,6 +1681,33 @@ bytes_equal(Index, MaxIndex, BM1, BM2) :-
     } else {
         Result = builtin.COMPARE_EQUAL;
         for (int i = 0; i < BM1.elements.length; i++) {
+            // Mask off sign bits.
+            int b1 = ((int) BM1.elements[i]) & 0xff;
+            int b2 = ((int) BM2.elements[i]) & 0xff;
+            if (b1 < b2) {
+                Result = builtin.COMPARE_LESS;
+                break;
+            }
+            if (b1 > b2) {
+                Result = builtin.COMPARE_GREATER;
+                break;
+            }
+        }
+    }
+").
+
+:- pragma foreign_proc("C#",
+    bitmap_compare(Result::uo, BM1::in, BM2::in),
+    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail,
+        may_not_duplicate],
+"
+    if (BM1.num_bits < BM2.num_bits) {
+        Result = builtin.COMPARE_LESS;
+    } else if (BM1.num_bits > BM2.num_bits) {
+        Result = builtin.COMPARE_GREATER;
+    } else {
+        Result = builtin.COMPARE_EQUAL;
+        for (int i = 0; i < BM1.elements.Length; i++) {
             // Mask off sign bits.
             int b1 = ((int) BM1.elements[i]) & 0xff;
             int b2 = ((int) BM2.elements[i]) & 0xff;
@@ -1925,6 +1990,14 @@ resize_bitmap(OldBM, N) =
 "
     MR_allocate_bitmap_msg(BM, BM0->num_bits, MR_PROC_LABEL);
     MR_copy_bitmap(BM, BM0);
+").
+
+:- pragma foreign_proc("C#",
+    copy(BM0::in) = (BM::bitmap_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    BM = new bitmap.MercuryBitmap(BM0.num_bits);
+    System.Array.Copy(BM0.elements, 0, BM.elements, 0, BM0.elements.Length);
 ").
 
 :- pragma foreign_proc("Java",

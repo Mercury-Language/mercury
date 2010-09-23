@@ -1048,11 +1048,11 @@ ml_gen_gc_trace_func_decl_flags = MLDS_DeclFlags :-
     Access = acc_private,
     PerInstance = one_copy,
     Virtuality = non_virtual,
-    Finality = overridable,
+    Overridability = overridable,
     Constness = modifiable,
     Abstractness = concrete,
     MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Finality, Constness, Abstractness).
+        Virtuality, Overridability, Constness, Abstractness).
 
 :- pred extract_gc_statements(mlds_defn::in, mlds_defn::out,
     list(statement)::out, list(statement)::out) is det.
@@ -1234,11 +1234,11 @@ env_type_decl_flags = MLDS_DeclFlags :-
     Access = acc_private,
     PerInstance = one_copy,
     Virtuality = non_virtual,
-    Finality = overridable,
+    Overridability = overridable,
     Constness = modifiable,
     Abstractness = concrete,
     MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Finality, Constness, Abstractness).
+        Virtuality, Overridability, Constness, Abstractness).
 
     % Generate a block statement, i.e. `{ <Decls>; <Statements>; }'.
     % But if the block consists only of a single statement with no

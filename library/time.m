@@ -237,7 +237,7 @@
 :- pragma foreign_type("IL", time_t_rep, "valuetype [mscorlib]System.DateTime")
     where comparison is compare_time_t_reps.
 
-% :- pragma foreign_type("C#", time_t_rep, "valuetype System.DateTime")
+% :- pragma foreign_type("C#", time_t_rep, "System.DateTime")
 %     where comparison is compare_time_t_reps.
 
 :- pragma foreign_type("Java", time_t_rep, "java.util.Date")

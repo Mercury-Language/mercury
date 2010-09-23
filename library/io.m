@@ -3756,6 +3756,8 @@ make_io_res_1_error_file_type(Error, Msg0, error(make_io_error(Msg)), !IO) :-
 :- func make_io_res_1_ok_string(string) = io.res(string).
 :- pragma foreign_export("C", (make_io_res_1_ok_string(in) = out),
     "ML_make_io_res_1_ok_string").
+% :- pragma foreign_export("C#", (make_io_res_1_ok_string(in) = out),
+%     "ML_make_io_res_1_ok_string").
 :- pragma foreign_export("Java", (make_io_res_1_ok_string(in) = out),
     "ML_make_io_res_1_ok_string").
 :- pragma foreign_export("Erlang", (make_io_res_1_ok_string(in) = out),
@@ -3768,6 +3770,9 @@ make_io_res_1_ok_string(String) = ok(String).
 :- pragma foreign_export("C",
     make_io_res_1_error_string(in, in, out, di, uo),
     "ML_make_io_res_1_error_string").
+% :- pragma foreign_export("C#",
+%     make_io_res_1_error_string(in, in, out, di, uo),
+%     "ML_make_io_res_1_error_string").
 :- pragma foreign_export("Java",
     make_io_res_1_error_string(in, in, out, di, uo),
     "ML_make_io_res_1_error_string").

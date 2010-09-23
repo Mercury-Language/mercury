@@ -63,7 +63,7 @@ bar(X) :- X = 1.
 :- pragma foreign_proc("C#", use(_X::in),
 	[will_not_call_mercury, promise_pure],
 "
-	SUCCESS_INDICATOR = false
+	SUCCESS_INDICATOR = false;
 ").
 :- pragma foreign_proc("Java", use(_X::in),
 	[will_not_call_mercury, promise_pure],

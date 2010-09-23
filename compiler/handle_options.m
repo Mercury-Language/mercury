@@ -754,14 +754,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         globals.set_option(pretest_equality_cast_pointers, bool(yes),
             !Globals),
         globals.set_option(libgrade_install_check, bool(no), !Globals),
-        globals.set_option(cross_compiling, bool(yes), !Globals),
-        % XXX C# static data support not yet implemented
-        (
-            Target = target_csharp,
-            globals.set_option(static_ground_cells, bool(no), !Globals)
-        ;
-            Target = target_java
-        )
+        globals.set_option(cross_compiling, bool(yes), !Globals)
     ;
         ( Target = target_c
         ; Target = target_il

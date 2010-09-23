@@ -22,4 +22,12 @@ main -->
 	write_str(Str);
 ").
 
+:- pragma foreign_proc("C#",
+	my_write_string(Str::in, _IO0::di, _IO::uo),
+	[promise_pure, may_call_mercury, thread_safe],
+"
+	write_str(Str);
+").
+
 :- pragma foreign_export("C", io__write_string(in, di, uo), "write_str").
+:- pragma foreign_export("C#", io__write_string(in, di, uo), "write_str").

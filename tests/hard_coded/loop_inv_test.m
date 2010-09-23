@@ -77,12 +77,12 @@ loop2(N, Inv, Acc0, Acc) :-
 
     X = Inv + 42;
 ").
+:- pragma foreign_code("C#", "static int p_num_calls = 0;").
 :- pragma foreign_proc("C#", p(Inv::in, X::out),
     [will_not_call_mercury, promise_pure],
 "
     /* Test that p/1 only gets called once. */
-    static int num_calls = 0;
-    if (num_calls++) { 
+    if (p_num_calls++) {
         mercury.runtime.Errors.fatal_error(""p/1 called more than once"");
     }
 
@@ -125,12 +125,12 @@ loop2(N, Inv, Acc0, Acc) :-
 
     X = Inv + 53;
 ").
+:- pragma foreign_code("C#", "static int q_num_calls = 0;").
 :- pragma foreign_proc("C#", q(Inv::in, X::out),
     [will_not_call_mercury, promise_pure],
 "
     /* Test that q/1 only gets called once. */
-    static int num_calls = 0;
-    if (num_calls++) { 
+    if (q_num_calls++) {
         mercury.runtime.Errors.fatal_error(""q/1 called more than once"");
     }
 

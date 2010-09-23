@@ -566,8 +566,7 @@ ml_tagged_cons_id_to_match_cond(MLDS_Type, TaggedConsId, MatchCond) :-
         Rval = ml_const(mlconst_string(String))
     ;
         Tag = foreign_tag(ForeignLang, ForeignTag),
-        Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag,
-            mlds_native_int_type))
+        Rval = ml_const(mlconst_foreign(ForeignLang, ForeignTag, MLDS_Type))
     ;
         ( Tag = float_tag(_)
         ; Tag = closure_tag(_, _, _)

@@ -267,15 +267,14 @@ ml_gen_preds(!ModuleInfo, PredDefns, GlobalData) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
-        % XXX common cells not yet implemented for C#
         ( Target = target_c
+        ; Target = target_csharp
         ; Target = target_java
         ),
         UseCommonCells = use_common_cells
     ;
         ( Target = target_asm
         ; Target = target_il
-        ; Target = target_csharp
         ; Target = target_erlang
         ; Target = target_x86_64
         ),
@@ -494,11 +493,11 @@ ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = DeclFlags :-
     ),
     PerInstance = one_copy,
     Virtuality = non_virtual,
-    Finality = overridable,
+    Overridability = overridable,
     Constness = modifiable,
     Abstractness = concrete,
     DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Finality, Constness, Abstractness).
+        Virtuality, Overridability, Constness, Abstractness).
 
     % For model_det and model_semi procedures, figure out which output
     % variables are returned by value (rather than being passed by reference)
@@ -977,10 +976,10 @@ tabling_data_decl_flags(Constness) = MLDS_DeclFlags :-
     Access = acc_private,
     PerInstance = one_copy,
     Virtuality = non_virtual,
-    Finality = final,
+    Overridability = sealed,
     Abstractness = concrete,
     MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
-        Virtuality, Finality, Constness, Abstractness).
+        Virtuality, Overridability, Constness, Abstractness).
 
 %-----------------------------------------------------------------------------%
 %

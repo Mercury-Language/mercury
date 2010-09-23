@@ -1479,7 +1479,7 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
     catch_impl(_Pred::pred(out) is semidet, _Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
 "
-    runtime.Errors.SORRY(""foreign code for this function"");
+    runtime.Errors.SORRY(""catch_impl(semidet)"");
     T = null;
     SUCCESS_INDICATOR = false;
 ").
@@ -1488,24 +1488,46 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
     catch_impl(_Pred::pred(out) is cc_nondet, _Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
 "
-    runtime.Errors.SORRY(""foreign code for this function"");
+    runtime.Errors.SORRY(""catch_impl(cc_nondet)"");
     T = null;
     SUCCESS_INDICATOR = false;
 ").
 
 :- pragma foreign_proc("C#",
-    catch_impl(_Pred::pred(out) is multi, _Handler::in(handler), _T::out),
+    catch_impl(Pred::pred(out) is multi, Handler::in(handler), _T::out),
     [will_not_call_mercury, promise_pure, ordinary_despite_detism],
 "
-    runtime.Errors.SORRY(""foreign code for this function"");
+    try {
+        runtime.MethodPtr3_r0<object, object, object> pred =
+            (runtime.MethodPtr3_r0<object, object, object>) Pred[1];
+        pred(Pred, cont, cont_env_ptr);
+    }
+    catch (runtime.Exception ex) {
+        object T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
+            (univ.Univ_0) ex.exception);
+        ((runtime.MethodPtr2_r0<object, object>) cont)(T, cont_env_ptr);
+    }
+
+    // Not really used.
     SUCCESS_INDICATOR = false;
 ").
 
 :- pragma foreign_proc("C#",
-    catch_impl(_Pred::pred(out) is nondet, _Handler::in(handler), _T::out),
+    catch_impl(Pred::pred(out) is nondet, Handler::in(handler), _T::out),
     [will_not_call_mercury, promise_pure, ordinary_despite_detism],
 "
-    runtime.Errors.SORRY(""foreign code for this function"");
+    try {
+        runtime.MethodPtr3_r0<object, object, object> pred =
+            (runtime.MethodPtr3_r0<object, object, object>) Pred[1];
+        pred(Pred, cont, cont_env_ptr);
+    }
+    catch (runtime.Exception ex) {
+        object T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
+            (univ.Univ_0) ex.exception);
+        ((runtime.MethodPtr2_r0<object, object>) cont)(T, cont_env_ptr);
+    }
+
+    // Not really used.
     SUCCESS_INDICATOR = false;
 ").
 

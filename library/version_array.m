@@ -285,6 +285,11 @@ unsafe_rewind(VA, unsafe_rewind(VA)).
         equality   is eq_version_array,
         comparison is cmp_version_array.
 
+% :- pragma foreign_type("C#", version_array(T), "version_array.ML_va")
+%     where
+%         equality   is eq_version_array,
+%         comparison is cmp_version_array.
+
 :- pragma foreign_type("Java", version_array(T),
     "jmercury.version_array.ML_va")
     where
@@ -371,6 +376,14 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
 #endif
 ").
 
+:- pragma foreign_proc("C#",
+    version_array.empty = (VA::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    VA = new version_array.ML_sva(version_array.ML_uva.empty());
+").
+
 :- pragma foreign_proc("Java",
     version_array.empty = (VA::out),
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
@@ -394,6 +407,14 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
 #ifdef MR_THREAD_SAFE
     VA->lock             = NULL;
 #endif
+").
+
+:- pragma foreign_proc("C#",
+    version_array.unsafe_empty = (VA::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    VA = version_array.ML_uva.empty();
 ").
 
 :- pragma foreign_proc("Java",
@@ -427,6 +448,14 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
 #endif
 ").
 
+:- pragma foreign_proc("C#",
+    version_array.new(N::in, X::in) = (VA::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness, may_not_duplicate],
+"
+    VA = new version_array.ML_sva(version_array.ML_uva.init(N, X));
+").
+
 :- pragma foreign_proc("Java",
     version_array.new(N::in, X::in) = (VA::out),
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
@@ -457,6 +486,14 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
 #endif
 ").
 
+:- pragma foreign_proc("C#",
+    version_array.unsafe_new(N::in, X::in) = (VA::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness, may_not_duplicate],
+"
+    VA = version_array.ML_uva.init(N, X);
+").
+
 :- pragma foreign_proc("Java",
     version_array.unsafe_new(N::in, X::in) = (VA::out),
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
@@ -471,6 +508,14 @@ cmp_version_array_2(I, Size, VAa, VAb, R) :-
         does_not_affect_liveness],
 "
     VA = ML_va_resize_dolock(VA0, N, X);
+").
+
+:- pragma foreign_proc("C#",
+    resize(VA0::in, N::in, X::in) = (VA::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness, may_not_duplicate],
+"
+    VA = VA0.resize(N, X);
 ").
 
 :- pragma foreign_proc("Java",
@@ -491,6 +536,14 @@ resize(N, X, VA, resize(VA, N, X)).
     N = ML_va_size_dolock(VA);
 ").
 
+:- pragma foreign_proc("C#",
+    size(VA::in) = (N::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    N = VA.size();
+").
+
 :- pragma foreign_proc("Java",
     size(VA::in) = (N::out),
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
@@ -507,6 +560,20 @@ resize(N, X, VA, resize(VA, N, X)).
         does_not_affect_liveness],
 "
     SUCCESS_INDICATOR = ML_va_get_dolock(VA, I, &X);
+").
+
+:- pragma foreign_proc("C#",
+    get_if_in_range(VA::in, I::in, X::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    try {
+        X = VA.get(I);
+        SUCCESS_INDICATOR = true;
+    } catch (System.IndexOutOfRangeException) {
+        X = null;
+        SUCCESS_INDICATOR = false;
+    }
 ").
 
 :- pragma foreign_proc("Java",
@@ -534,6 +601,20 @@ resize(N, X, VA, resize(VA, N, X)).
     SUCCESS_INDICATOR = ML_va_set_dolock(VA0, I, X, &VA);
 ").
 
+:- pragma foreign_proc("C#",
+    set_if_in_range(VA0::in, I::in, X::in, VA::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    try {
+        VA = VA0.set(I, X);
+        SUCCESS_INDICATOR = true;
+    } catch (System.IndexOutOfRangeException) {
+        VA = null;
+        SUCCESS_INDICATOR = false;
+    }
+").
+
 :- pragma foreign_proc("Java",
     set_if_in_range(VA0::in, I::in, X::in, VA::out),
     [will_not_call_mercury, promise_pure, will_not_modify_trail,
@@ -554,6 +635,14 @@ resize(N, X, VA, resize(VA, N, X)).
         does_not_affect_liveness],
 "
     VA = ML_va_rewind_dolock(VA0);
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_rewind(VA0::in) = (VA::out),
+    [will_not_call_mercury, promise_pure, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    VA = VA0.rewind();
 ").
 
 :- pragma foreign_proc("Java",
@@ -934,6 +1023,290 @@ ML_va_resize(ML_va_ptr VA0, MR_Integer N, MR_Word X)
     }
 
     return VA;
+}
+
+").
+
+:- pragma foreign_code("C#", "
+
+public interface ML_va {
+    object get(int I);
+    ML_va set(int I, object X);
+    ML_va resize(int N, object X);
+    ML_va rewind();
+    int size();
+}
+
+// An implementation of version arrays that is safe when used in multiple
+// threads.
+//
+// It just wraps the unsafe version is some synchronization logic so
+// that only one thread can be accessing the array at one instant.
+public class ML_sva : ML_va {
+    private ML_uva version_array;
+    private object va_lock;
+
+    public ML_sva(ML_uva va) {
+        version_array = va;
+        va_lock = new object();
+    }
+
+    private ML_sva() {}
+
+    public object get(int I) {
+        lock (va_lock) {
+            return version_array.get(I);
+        }
+    }
+
+    public ML_va set(int I, object X) {
+        lock (va_lock) {
+            ML_sva result = new ML_sva();
+
+            result.version_array = version_array.set_uva(I, X);
+
+            if (result.version_array.isClone()) {
+                result.version_array.resetIsClone();
+                result.va_lock = new object();
+            } else {
+                result.va_lock = this.va_lock;
+            }
+
+            return result;
+        }
+    }
+
+    public ML_va resize(int N, object X) {
+        lock (va_lock) {
+            ML_sva result = new ML_sva();
+            result.version_array = version_array.resize_uva(N, X);
+            result.va_lock = new object();
+            return result;
+        }
+    }
+
+    public ML_va rewind()
+    {
+        lock (va_lock) {
+            ML_sva result = new ML_sva();
+            result.version_array = version_array.rewind_uva();
+            result.va_lock = this.va_lock;
+            return result;
+        }
+    }
+
+    public int size()
+    {
+        lock (va_lock) {
+            return version_array.size();
+        }
+    }
+}
+
+// An implementation of version arrays that is only safe when used from
+// a single thread, but *much* faster than the synchronized version.
+public class ML_uva : ML_va {
+    private int                 index;  /* -1 for latest, >= 0 for older */
+    private object              value;  /* Valid if index >= 0           */
+    private object              rest;   /* array if index == -1          */
+                                        /* next if index >= 0            */
+
+    private bool                clone = false;
+
+    public ML_uva() {}
+
+    public static ML_uva empty() {
+        ML_uva va = new ML_uva();
+        va.index = -1;
+        va.value = null;
+        va.rest  = new object[0];
+        return va;
+    }
+
+    public static ML_uva init(int N, object X) {
+        ML_uva va = new ML_uva();
+        va.index = -1;
+        va.value = null;
+        va.rest  = new object[N];
+        for (int i = 0; i < N; i++) {
+            va.array()[i] = X;
+        }
+        return va;
+    }
+
+    public ML_va resize(int N, object X) {
+        return resize_uva(N, X);
+    }
+
+    public ML_uva resize_uva(int N, object X) {
+        ML_uva  VA0 = this;
+        ML_uva  latest;
+        int     size_VA0;
+        int     min;
+
+        latest = VA0.latest();
+
+        size_VA0 = latest.size();
+        min      = (N <= size_VA0 ? N : size_VA0);
+        ML_uva VA = new ML_uva();
+
+        VA.index = -1;
+        VA.value = null;
+        VA.rest  = new object[N];
+
+        System.Array.Copy(latest.array(), 0, VA.array(), 0, min);
+
+        VA0.rewind_into(VA);
+
+        for (int i = min; i < N; i++) {
+            VA.array()[i] = X;
+        }
+        return VA;
+    }
+
+    private bool is_latest()
+    {
+        return index == -1;
+    }
+
+    private ML_uva latest()
+    {
+        ML_uva VA = this;
+        while (!VA.is_latest()) {
+            VA = VA.next();
+        }
+        return VA;
+    }
+
+    private object[] array()
+    {
+        return (object[]) rest;
+    }
+
+    private ML_uva next()
+    {
+        return (ML_uva) rest;
+    }
+
+    public int size()
+    {
+        return latest().array().Length;
+    }
+
+    public object get(int I)
+    {
+        ML_uva VA = this;
+
+        while (!VA.is_latest()) {
+            if (I == VA.index) {
+                return VA.value;
+            }
+
+            VA = VA.next();
+        }
+
+        return VA.array()[I];
+    }
+
+    public ML_va set(int I, object X)
+    {
+        return set_uva(I, X);
+    }
+
+    public ML_uva set_uva(int I, object X)
+    {
+        ML_uva VA0 = this;
+        ML_uva VA1;
+
+        if (VA0.is_latest()) {
+            VA1 = new ML_uva();
+            VA1.index   = -1;
+            VA1.value   = null;
+            VA1.rest    = VA0.array();
+
+            VA0.index   = I;
+            VA0.value   = VA0.array()[I];
+            VA0.rest    = VA1;
+
+            VA1.array()[I] = X;
+        } else {
+            VA1 = VA0.flat_copy();
+
+            VA1.array()[I] = X;
+        }
+
+        return VA1;
+    }
+
+    private ML_uva flat_copy()
+    {
+        ML_uva  VA0 = this;
+        ML_uva  latest;
+        ML_uva  VA;
+        int     N;
+
+        latest = VA0.latest();
+        N = latest.size();
+
+        VA = new ML_uva();
+        VA.index = -1;
+        VA.value = null;
+        VA.rest  = latest.array().Clone();
+        VA.clone = true;
+
+        VA0.rewind_into(VA);
+
+        return VA;
+    }
+
+    public bool isClone() {
+        return clone;
+    }
+
+    public void resetIsClone() {
+        this.clone = false;
+    }
+
+    private void rewind_into(ML_uva VA)
+    {
+        int     I;
+        object  X;
+
+        if (this.is_latest()) {
+            return;
+        }
+
+        this.next().rewind_into(VA);
+
+        I = this.index;
+        X = this.value;
+        if (I < VA.size()) {
+            VA.array()[I] = X;
+        }
+    }
+
+    public ML_va rewind()
+    {
+        return rewind_uva();
+    }
+
+    public ML_uva rewind_uva()
+    {
+        ML_uva VA = this;
+        int     I;
+        object  X;
+
+        if (VA.is_latest()) {
+            return VA;
+        }
+
+        I  = VA.index;
+        X  = VA.value;
+        VA = VA.next().rewind_uva();
+        VA.array()[I] = X;
+
+        return VA;
+    }
 }
 
 ").

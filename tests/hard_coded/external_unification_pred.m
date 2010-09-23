@@ -22,6 +22,7 @@
     :- pragma foreign_type(c, ft, "int") where equality is unify_ft.
     :- pragma foreign_type(il, ft, "valuetype [mscorlib]System.Int32")
 		    where equality is unify_ft.
+    :- pragma foreign_type("C#", ft, "int") where equality is unify_ft.
     :- pragma foreign_type(java, ft, "Integer") where equality is unify_ft.
     :- pragma foreign_type(erlang, ft, "") where equality is unify_ft.
 

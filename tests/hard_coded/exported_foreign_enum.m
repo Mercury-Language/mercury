@@ -28,7 +28,19 @@ main(!IO) :-
 	}
 ").
 
+:- pragma foreign_proc("C#",
+	test(X::in),
+	[will_not_call_mercury, promise_pure],
+"
+	if (X == FOO_bar) {
+		SUCCESS_INDICATOR = true;
+	} else {
+		SUCCESS_INDICATOR = false;
+	}
+").
+
 :- pragma foreign_export_enum("C", foo/0, [prefix("FOO_")]).
+:- pragma foreign_export_enum("C#", foo/0, [prefix("FOO_")]).
 
 :- type foo
 	--->	foo
@@ -36,6 +48,12 @@ main(!IO) :-
 	;	baz.
 
 :- pragma foreign_enum("C", foo/0, [
+	foo - "400",
+	bar - "500",
+	baz - "600"
+]).
+
+:- pragma foreign_enum("C#", foo/0, [
 	foo - "400",
 	bar - "500",
 	baz - "600"

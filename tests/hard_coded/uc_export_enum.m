@@ -39,6 +39,12 @@ main(!IO) :-
 "
     X = UC_foo_FOO;
 ").
+:- pragma foreign_proc("C#",
+    test_uc(X::out),
+    [will_not_call_mercury, promise_pure],
+"
+    X = UC_foo_FOO;
+").
 :- pragma foreign_proc("Java",
     test_uc(X::out),
     [will_not_call_mercury, promise_pure],
@@ -53,6 +59,12 @@ main(!IO) :-
 "
     X = LC_foo_foo;
 ").
+:- pragma foreign_proc("C#",
+    test_lc(X::out),
+    [will_not_call_mercury, promise_pure],
+"
+    X = LC_foo_foo;
+").
 :- pragma foreign_proc("Java",
     test_lc(X::out),
     [will_not_call_mercury, promise_pure],
@@ -62,6 +74,14 @@ main(!IO) :-
 
 :- pred test_or(foo::out, foo::out, foo::out) is det.
 :- pragma foreign_proc("C",
+    test_or(X::out, Y::out, Z::out),
+    [will_not_call_mercury, promise_pure],
+"
+    X = OR_foo_lowercase_foo;
+    Y = OR_foo_mixed1234_bAr;
+    Z = OR_foo_BAZ;
+").
+:- pragma foreign_proc("C#",
     test_or(X::out, Y::out, Z::out),
     [will_not_call_mercury, promise_pure],
 "
@@ -88,17 +108,23 @@ main(!IO) :-
     % Check that uppercase applies only the constructors and not to the prefix.
     %
 :- pragma foreign_export_enum("C", foo/0, [prefix("UC_foo_"), uppercase]).
+:- pragma foreign_export_enum("C#", foo/0, [prefix("UC_foo_"), uppercase]).
 :- pragma foreign_export_enum("Java", foo/0, [prefix("UC_foo_"), uppercase]).
 
     % Check that uppercase applies only when the uppercase attribute is specified.
     %
 :- pragma foreign_export_enum("C", foo/0, [prefix("LC_foo_")]).
+:- pragma foreign_export_enum("C#", foo/0, [prefix("LC_foo_")]).
 :- pragma foreign_export_enum("Java", foo/0, [prefix("LC_foo_")]).
 
     % Check that the uppercase attribute does not apply to user supplied foreign
     % names.
     %
 :- pragma foreign_export_enum("C", foo/0, [prefix("OR_foo_"), uppercase], [
+    foo  - "lowercase_foo",
+    bar  - "mixed1234_bAr"
+]).
+:- pragma foreign_export_enum("C#", foo/0, [prefix("OR_foo_"), uppercase], [
     foo  - "lowercase_foo",
     bar  - "mixed1234_bAr"
 ]).

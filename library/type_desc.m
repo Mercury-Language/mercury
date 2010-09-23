@@ -890,6 +890,33 @@ make_type_ctor_desc_with_arity(_, _, _) :-
     }
 }").
 
+:- pragma foreign_proc("C#",
+    make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out),
+    [will_not_call_mercury, thread_safe, will_not_modify_trail,
+        may_not_duplicate],
+"{
+    runtime.PseudoTypeInfo[] args =
+        new runtime.PseudoTypeInfo[TypeCtorDesc.arity];
+
+    SUCCESS_INDICATOR = true;
+    list.List_1 arg_types = ArgTypes;
+    for (int i = 0; i < TypeCtorDesc.arity; i++) {
+        if (list.is_empty(arg_types)) {
+            SUCCESS_INDICATOR = false;
+            break;
+        }
+        args[i] = (runtime.PseudoTypeInfo) list.det_head(arg_types);
+        arg_types = list.det_tail(arg_types);
+    }
+
+    if (SUCCESS_INDICATOR) {
+        TypeDesc = new runtime.TypeInfo_Struct();
+        TypeDesc.init(TypeCtorDesc, args);
+    } else {
+        TypeDesc = null;
+    }
+}").
+
 :- pragma foreign_proc("Java",
     make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out),
     [will_not_call_mercury, thread_safe, will_not_modify_trail,

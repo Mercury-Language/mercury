@@ -55,6 +55,8 @@ compare_foo(Res, Foo1, Foo2) :-
 		 equality is foreign_equals, comparison is foreign_compare.
 :- pragma foreign_type(il, foreign, "int32") where
 		 equality is foreign_equals, comparison is foreign_compare.
+:- pragma foreign_type("C#", foreign, "int") where
+		 equality is foreign_equals, comparison is foreign_compare.
 :- pragma foreign_type("Java", foreign, "Integer") where
 		 equality is foreign_equals, comparison is foreign_compare.
 :- pragma foreign_type(erlang, foreign, "") where

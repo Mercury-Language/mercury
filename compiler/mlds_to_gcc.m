@@ -893,7 +893,7 @@ add_var_decl_flags(Flags, GCC_Defn, !IO) :-
     % note that the per_instance flag is handled separately,
     % by calling build_local_var or build_static_var
     add_var_virtuality_flag(virtuality(Flags), GCC_Defn, !IO),
-    add_var_finality_flag(finality(Flags), GCC_Defn, !IO),
+    add_var_overridability_flag(overridability(Flags), GCC_Defn, !IO),
     add_var_constness_flag(constness(Flags), GCC_Defn, !IO),
     add_var_abstractness_flag(abstractness(Flags), GCC_Defn, !IO).
 
@@ -929,12 +929,12 @@ add_var_constness_flag(const, GCC_Defn, !IO) :-
 add_var_constness_flag(modifiable, _GCC_Defn, !IO).
     % This is the default.
 
-:- pred add_var_finality_flag(finality::in, gcc.var_decl::in,
+:- pred add_var_overridability_flag(overridability::in, gcc.var_decl::in,
     io::di, io::uo) is det.
 
-add_var_finality_flag(final, GCC_Defn, !IO) :-
-    gcc.set_var_decl_readonly(GCC_Defn, !IO).
-add_var_finality_flag(overridable, _GCC_Defn, !IO).
+add_var_overridability_flag(sealed, _GCC_Defn, !IO) :-
+    unexpected(this_file, "`sealed' variable").
+add_var_overridability_flag(overridable, _GCC_Defn, !IO).
     % This is the default.
 
 :- pred add_var_abstractness_flag(mlds.abstractness::in, gcc.var_decl::in,
@@ -957,7 +957,7 @@ add_field_decl_flags(Flags, GCC_Defn, !IO) :-
     add_field_access_flag(access(Flags), GCC_Defn, !IO),
     add_field_per_instance_flag(per_instance(Flags), GCC_Defn, !IO),
     add_field_virtuality_flag(virtuality(Flags), GCC_Defn, !IO),
-    add_field_finality_flag(finality(Flags), GCC_Defn, !IO),
+    add_field_overridability_flag(overridability(Flags), GCC_Defn, !IO),
     add_field_constness_flag(constness(Flags), GCC_Defn, !IO),
     add_field_abstractness_flag(abstractness(Flags), GCC_Defn, !IO).
 
@@ -1000,12 +1000,12 @@ add_field_constness_flag(const, _GCC_Defn, !IO) :-
 add_field_constness_flag(modifiable, _GCC_Defn, !IO).
     % This is the default.
 
-:- pred add_field_finality_flag(finality::in, gcc.field_decl::in,
+:- pred add_field_overridability_flag(overridability::in, gcc.field_decl::in,
     io::di, io::uo) is det.
 
-add_field_finality_flag(final, _GCC_Defn, !IO) :-
-    sorry(this_file, "`final' field").
-add_field_finality_flag(overridable, _GCC_Defn, !IO).
+add_field_overridability_flag(sealed, _GCC_Defn, !IO) :-
+    sorry(this_file, "`sealed' field").
+add_field_overridability_flag(overridable, _GCC_Defn, !IO).
     % This is the default.
 
 :- pred add_field_abstractness_flag(mlds.abstractness::in, gcc.field_decl::in,
@@ -1027,7 +1027,7 @@ add_func_decl_flags(Flags, GCC_Defn, !IO) :-
     add_func_access_flag(access(Flags), GCC_Defn, !IO),
     add_func_per_instance_flag(per_instance(Flags), GCC_Defn, !IO),
     add_func_virtuality_flag(virtuality(Flags), GCC_Defn, !IO),
-    add_func_finality_flag(finality(Flags), GCC_Defn, !IO),
+    add_func_overridability_flag(overridability(Flags), GCC_Defn, !IO),
     add_func_constness_flag(constness(Flags), GCC_Defn, !IO),
     add_func_abstractness_flag(abstractness(Flags), GCC_Defn, !IO).
 
@@ -1072,12 +1072,12 @@ add_func_constness_flag(const, _GCC_Defn, !IO) :-
 add_func_constness_flag(modifiable, _GCC_Defn, !IO).
     % This is the default.
 
-:- pred add_func_finality_flag(finality::in, gcc.func_decl::in,
+:- pred add_func_overridability_flag(overridability::in, gcc.func_decl::in,
     io::di, io::uo) is det.
 
-add_func_finality_flag(final, _GCC_Defn, !IO) :-
-    sorry(this_file, "`final' function").
-add_func_finality_flag(overridable, _GCC_Defn, !IO).
+add_func_overridability_flag(sealed, _GCC_Defn, !IO) :-
+    sorry(this_file, "`sealed' function").
+add_func_overridability_flag(overridable, _GCC_Defn, !IO).
     % This is the default.
 
 :- pred add_func_abstractness_flag(mlds.abstractness::in, gcc.func_decl::in,

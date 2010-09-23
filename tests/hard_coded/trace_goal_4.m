@@ -29,6 +29,13 @@ main(!IO) :-
     printf(""Progress reported %d\\n"", X);
 ").
 
+:- pragma foreign_proc("C#",
+    progress_report(X::in),
+    [will_not_call_mercury, thread_safe, tabled_for_io],
+"
+    System.Console.WriteLine(""Progress reported "" + X);
+").
+
 :- pragma foreign_proc("Java",
     progress_report(X::in),
     [will_not_call_mercury, thread_safe, tabled_for_io],

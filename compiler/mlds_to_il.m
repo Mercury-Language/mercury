@@ -842,14 +842,14 @@ decl_flags_to_nestedclassattrs(Flags)
 
 :- func decl_flags_to_classattrs_2(mlds_decl_flags) = list(ilasm.classattr).
 
-decl_flags_to_classattrs_2(Flags) = list.condense([Finality, Abstractness]) :-
-    FinalityFlag = finality(Flags),
+decl_flags_to_classattrs_2(Flags) = ClassAttrs :-
+    OverridabilityFlag = overridability(Flags),
     (
-        FinalityFlag = overridable,
-        Finality = []
+        OverridabilityFlag = overridable,
+        Overridability = []
     ;
-        FinalityFlag = final,
-        Finality = [sealed]
+        OverridabilityFlag = sealed,
+        Overridability = [sealed]
     ),
     AbstractnessFlag = abstractness(Flags),
     (
@@ -858,13 +858,14 @@ decl_flags_to_classattrs_2(Flags) = list.condense([Finality, Abstractness]) :-
     ;
         AbstractnessFlag = abstract,
         Abstractness = [abstract]
-    ).
+    ),
+    ClassAttrs = list.condense([Overridability, Abstractness]).
 
 :- func decl_flags_to_methattrs(mlds_decl_flags) = list(ilasm.methattr).
 
 decl_flags_to_methattrs(Flags)
         = list.condense([Access, PerInstance, Virtuality,
-            Finality, Abstractness]) :-
+            Overridability, Abstractness]) :-
     AccessFlag = access(Flags),
     (
         AccessFlag = acc_public,
@@ -899,13 +900,13 @@ decl_flags_to_methattrs(Flags)
         VirtualityFlag = virtual,
         Virtuality = [virtual]
     ),
-    FinalityFlag = finality(Flags),
+    OverridabilityFlag = overridability(Flags),
     (
-        FinalityFlag = overridable,
-        Finality = []
+        OverridabilityFlag = overridable,
+        Overridability = []
     ;
-        FinalityFlag = final,
-        Finality = [final]
+        OverridabilityFlag = sealed,
+        Overridability = [final]
     ),
     AbstractnessFlag = abstractness(Flags),
     (

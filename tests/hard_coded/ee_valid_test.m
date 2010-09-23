@@ -38,11 +38,13 @@ main(!IO) :-
     % Default mapping.
     % 
 :- pragma foreign_export_enum("C", fruit/0).
+:- pragma foreign_export_enum("C#", fruit/0).
 :- pragma foreign_export_enum("Java", fruit/0).
 
     % Default mapping with prefix.
     %
 :- pragma foreign_export_enum("C", fruit/0, [prefix("PREFIX_")]).
+:- pragma foreign_export_enum("C#", fruit/0, [prefix("PREFIX_")]).
 :- pragma foreign_export_enum("Java", fruit/0, [prefix("PREFIX_")]).
 
     % User-specified mapping.
@@ -53,6 +55,14 @@ main(!IO) :-
         ee_valid_test.apple - "APPLE",
         orange - "ORANGE", 
         ee_valid_test.pear - "PEAR", 
+        ee_valid_test.lemon - "LEMON"
+    ]).
+
+:- pragma foreign_export_enum("C#", fruit/0, [prefix("USER_")],
+    [
+        ee_valid_test.apple - "APPLE",
+        orange - "ORANGE",
+        ee_valid_test.pear - "PEAR",
         ee_valid_test.lemon - "LEMON"
     ]).
 
@@ -67,10 +77,17 @@ main(!IO) :-
     % Default mapping for quoted Mercury names.
     %
 :- pragma foreign_export_enum("C", foo/0).
+:- pragma foreign_export_enum("C#", foo/0).
 :- pragma foreign_export_enum("Java", foo/0).
 
 :- func get_default_apple = fruit.
 :- pragma foreign_proc("C",
+    get_default_apple = (X::out),
+    [will_not_call_mercury, promise_pure],
+"
+    X = apple;
+").
+:- pragma foreign_proc("C#",
     get_default_apple = (X::out),
     [will_not_call_mercury, promise_pure],
 "
@@ -90,6 +107,12 @@ main(!IO) :-
 "
     X = orange;
 ").
+:- pragma foreign_proc("C#",
+    get_default_orange = (X::out),
+    [will_not_call_mercury, promise_pure],
+"
+    X = orange;
+").
 :- pragma foreign_proc("Java",
     get_default_orange = (X::out),
     [will_not_call_mercury, promise_pure],
@@ -99,6 +122,12 @@ main(!IO) :-
 
 :- func get_prefix_pear = fruit.
 :- pragma foreign_proc("C",
+    get_prefix_pear = (X::out),
+    [will_not_call_mercury, promise_pure],
+"
+    X = PREFIX_pear;
+").
+:- pragma foreign_proc("C#",
     get_prefix_pear = (X::out),
     [will_not_call_mercury, promise_pure],
 "
@@ -118,6 +147,12 @@ main(!IO) :-
 "
     X = USER_LEMON;
 ").
+:- pragma foreign_proc("C#",
+    get_user_lemon = (X::out),
+    [will_not_call_mercury, promise_pure],
+"
+    X = USER_LEMON;
+").
 :- pragma foreign_proc("Java",
     get_user_lemon = (X::out),
     [will_not_call_mercury, promise_pure],
@@ -127,6 +162,12 @@ main(!IO) :-
 
 :- func get_bar = foo.
 :- pragma foreign_proc("C",
+    get_bar = (X::out),
+    [will_not_call_mercury, promise_pure],
+"
+    X = BAR;
+").
+:- pragma foreign_proc("C#",
     get_bar = (X::out),
     [will_not_call_mercury, promise_pure],
 "
