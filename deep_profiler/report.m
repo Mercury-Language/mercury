@@ -220,7 +220,12 @@
     --->    rt_not_recursive
     ;       rt_single(
                 rts_base                    :: recursion_level_report,
-                rts_recursive               :: recursion_level_report
+                rts_recursive               :: recursion_level_report,
+                rts_avg_max_depth           :: float,
+                rts_avg_rec_cost            :: float,
+
+                % The cost at any level is Cost = func(Level).
+                rts_any_rec_cost            :: (func(int) = float)
             )
     ;       rt_divide_and_conquer(
                 rtdsc_base                  :: recursion_level_report,

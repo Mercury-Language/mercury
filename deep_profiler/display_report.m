@@ -257,7 +257,7 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
             "Exploring the call graph, starting at the root."),
         link_base(deep_cmd_root(yes(90)), yes(ActionPrefs),
             "Exploring the call graph, starting at the action."),
-        link_base(deep_cmd_program_modules, no,
+        link_base(deep_cmd_program_modules, yes(Prefs),
             "Exploring the program module by module.")
     ],
 
@@ -270,9 +270,9 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
             cost_time, self_and_desc, overall),
 
         LinksTopProcsByLimitTime = [
-            link_base(Top100SelfCmd, no,
+            link_base(Top100SelfCmd, yes(Prefs),
                 "Top 100 most expensive procedures: time, self."),
-            link_base(Top100SelfAndDescCmd, no,
+            link_base(Top100SelfAndDescCmd, yes(Prefs),
                 "Top 100 most expensive procedures: time, self+descendants.")
         ]
     ;
@@ -290,13 +290,13 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
         cost_words, self_and_desc, overall),
 
     LinksTopProcsByLimit = [
-        link_base(TopLimitCallSeqsSelf, no,
+        link_base(TopLimitCallSeqsSelf, yes(Prefs),
             "Top 100 most expensive procedures: callseqs, self."),
-        link_base(TopLimitCallSeqsSelfAndDesc, no,
+        link_base(TopLimitCallSeqsSelfAndDesc, yes(Prefs),
             "Top 100 most expensive procedures: callseqs, self+descendants."),
-        link_base(TopLimitWordsSelf, no,
+        link_base(TopLimitWordsSelf, yes(Prefs),
             "Top 100 most expensive procedures: words, self."),
-        link_base(TopLimitWordsSelfAndDesc, no,
+        link_base(TopLimitWordsSelfAndDesc, yes(Prefs),
             "Top 100 most expensive procedures: words, self+descendants.")
     ],
 
@@ -310,11 +310,11 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
             cost_time, self_and_desc, overall),
 
         LinksTopProcsByPercentTime = [
-            link_base(TimeAbove01PercentCmd, no,
+            link_base(TimeAbove01PercentCmd, yes(Prefs),
                 "Procedures above 0.1% threshold: time, self."),
-            link_base(TimeAbove1PercentCmd, no,
+            link_base(TimeAbove1PercentCmd, yes(Prefs),
                 "Procedures above 1% threshold: time, self+descendants."),
-            link_base(TimeAbove1SecondCmd, no,
+            link_base(TimeAbove1SecondCmd, yes(Prefs),
                 "Procedures above 1 second threshold: time, self+descendants.")
         ]
     ;
@@ -338,18 +338,18 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
         cost_words, self_and_desc, overall),
 
     LinksTopProcsByPercent = [
-        link_base(CallSeqsAbove01PercentCmd, no,
+        link_base(CallSeqsAbove01PercentCmd, yes(Prefs),
             "Procedures above 0.1% threshold: callseqs, self."),
-        link_base(CallSeqsAbove1PercentCmd, no,
+        link_base(CallSeqsAbove1PercentCmd, yes(Prefs),
             "Procedures above 1% threshold: callseqs, self+descendants."),
-        link_base(CallSeqsAboveMillionCmd, no,
+        link_base(CallSeqsAboveMillionCmd, yes(Prefs),
             ("Procedures above 1,000,000 callseqs threshold: callseqs, " ++
                 "self+descendants.")),
-        link_base(WordsAbove01PercentCmd, no,
+        link_base(WordsAbove01PercentCmd, yes(Prefs),
             "Procedures above 0.1% threshold: words, self."),
-        link_base(WordsAbove1PercentCmd, no,
+        link_base(WordsAbove1PercentCmd, yes(Prefs),
             "Procedures above 1% threshold: words, self+descendants."),
-        link_base(WordsAbove2Megawords, no,
+        link_base(WordsAbove2Megawords, yes(Prefs),
             "Procedures above 2M words threshold: words, self+descendants.")
     ],
     
@@ -367,7 +367,7 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
     RecursionTypeFrequenciesCmd = deep_cmd_recursion_types_frequency,
     
     LinksDeveloperCmds = [
-        link_base(RecursionTypeFrequenciesCmd, no,
+        link_base(RecursionTypeFrequenciesCmd, yes(Prefs),
             "Frequencies of different types of recursion used in the program.")
     ],
     list.map(make_link, LinksDeveloperCmds, DeveloperLinksList),
@@ -742,26 +742,50 @@ display_recursion_type(RecursionType, Items) :-
             yes("Unknown, error(s) occured"), ErrorItems)]
     ;
         (
-            RecursionType = rt_single(BaseLevel, RecLevel),
+            RecursionType = rt_single(BaseLevel, RecLevel, AvgDepth, 
+                AvgRecCost, AnyRecCost),
             RowData = [
                 {"Base case", BaseLevel}, 
                 {"Recursive case", RecLevel}],
-            Text = "Single-recursion:"
+            Text = "Single-recursion:",
+
+            MaxDepthI = round_to_int(AvgDepth),
+            ExtraTableRows0 = 
+                [{"Average recursion depth:", AvgDepth}, 
+                 {"Average recursive call cost (excluding the call it's self):",
+                    AvgRecCost}] ++
+                map(
+                    (func(Level) =
+                        {format("Cost at depth %d:", [i(Level)]), 
+                            AnyRecCost(Level)}),
+                    [0, 1, 2, round_to_int(AvgDepth / 2.0),
+                     MaxDepthI - 2, MaxDepthI - 1, MaxDepthI]),
+            ExtraTableRows = map((func({Label, Value}) = table_row(
+                    [table_cell(td_s(Label)), table_cell(td_f(Value))])),
+                ExtraTableRows0)
         ;
             RecursionType = rt_divide_and_conquer(BaseLevel, RecLevel),
             RowData = [
                 {"Base case", BaseLevel},
                 {"Doubly-recursive case", RecLevel}],
-            Text = "Double-recursion (Probably Divide and Conquer):"
+            Text = "Double-recursion (Probably Divide and Conquer):",
+
+            ExtraTableRows = []
         ; 
             RecursionType = rt_other(Levels),
             RowData = map((func(Level) = {Label, Level} :-
                     Label = format("Case for %d recursive calls", 
                         [i(Level ^ rlr_level)])
                 ), Levels), 
-            Text = "Unknown recursion type:"
+            Text = "Unknown recursion type:",
+
+            ExtraTableRows = []
         ),
         Rows = map(make_recursion_table_row, RowData),
+            
+        ExtraTable = display_table(table(table_class_do_not_box, 2, no, 
+            ExtraTableRows)),
+
         Header = table_header(map(
             (func({Name, Class}) = 
                 table_header_group(table_header_group_single(td_s(Name)),
@@ -769,13 +793,15 @@ display_recursion_type(RecursionType, Items) :-
             ), 
             [{"Recursion type", table_column_class_field_name},
              {"Exec count", table_column_class_number},
-             {"Non recursive calls cost", table_column_class_callseqs},
-             {"Recursive calls cost (ex children)", 
+             {"Non recursive calls per-call cost", table_column_class_callseqs},
+             {"Recursive calls per-call cost (ex children)", 
                 table_column_class_callseqs}])),
         Table = display_table(table(table_class_box_if_pref, 4, yes(Header), 
             Rows)),
         Description = display_text(Text),
-        Items = [Description, display_paragraph_break, Table]
+        Items = [Description, 
+            display_paragraph_break, Table,
+            display_paragraph_break, ExtraTable]
     ).
 
 :- func make_recursion_table_row({string, recursion_level_report}) = table_row.

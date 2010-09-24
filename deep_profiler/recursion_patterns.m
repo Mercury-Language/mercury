@@ -102,17 +102,13 @@ proc_get_recursion_type(Deep, ThisClique, PDPtr, MaybeRecursionType) :-
     lookup_pd_own(Deep ^ pd_own, PDPtr, PDOwn),
     Calls = calls(PDOwn),
     lookup_proc_dynamics(Deep ^ proc_dynamics, PDPtr, PD), 
-    PSPtr = PD ^ pd_proc_static, 
-    % TODO: Don't use coverage information here, it's computationally expensive
-    % and shouldn't be necessary.  But more importantly it is per proc static
-    % and therefore not suitable for calculating the depths of recursion.
-    create_static_procrep_coverage_report(Deep, PSPtr, MaybeCoverageReport),
+    create_dynamic_procrep_coverage_report(Deep, PDPtr, MaybeCoverageReport),
     (
         MaybeCoverageReport = ok(CoverageReport),
         ProcRep = CoverageReport ^ prci_proc_rep, 
         Goal = ProcRep ^ pr_defn ^ pdr_goal,
         array.foldl(build_call_site_cost_and_callee_map(Deep), 
-        PD ^ pd_sites, map.init, CallSitesMap),
+            PD ^ pd_sites, map.init, CallSitesMap),
         goal_recursion_data(ThisClique, CallSitesMap, empty_goal_path,
             Goal, RecursionData),
         recursion_data_to_recursion_type(Calls, RecursionData,
@@ -125,7 +121,7 @@ proc_get_recursion_type(Deep, ThisClique, PDPtr, MaybeRecursionType) :-
 
 :- type cost_and_callees
     --->    cost_and_callees(
-                cac_cost            :: int,
+                cac_cost            :: cs_cost_csq,
                 cac_callees         :: set(clique_ptr)
             ).
 
@@ -139,10 +135,11 @@ build_call_site_cost_and_callee_map(Deep, slot_normal(CSDPtr), !CallSitesMap)
     ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
         call_site_dynamic_get_callee_and_costs(Deep, CSDPtr, CalleeCliquePtr, 
             Own, Inherit),
-        % XXX: Should this be per call?
-        Cost = callseqs(Own) + inherit_callseqs(Inherit),
-        CostAndCallees = cost_and_callees(Cost, set([CalleeCliquePtr])),
-        lookup_call_site_static_map(Deep ^ call_site_static_map, CSDPtr, CSSPtr),
+        CostCsq = build_cs_cost_csq(calls(Own), 
+            float(callseqs(Own) + inherit_callseqs(Inherit))),
+        CostAndCallees = cost_and_callees(CostCsq, set([CalleeCliquePtr])),
+        lookup_call_site_static_map(Deep ^ call_site_static_map, CSDPtr,
+            CSSPtr),
         lookup_call_site_statics(Deep ^ call_site_statics, CSSPtr, CSS),
         goal_path_from_string_det(CSS ^ css_goal_path, GoalPath),
         svmap.det_insert(GoalPath, CostAndCallees, !CallSitesMap)
@@ -163,8 +160,9 @@ build_call_site_cost_and_callee_map(Deep, slot_multi(_, CSDPtrsArray),
             CalleeCliquePtrs, Owns, Inherits),
         Own = sum_own_infos(Owns),
         Inherit = sum_inherit_infos(Inherits),
-        Cost = callseqs(Own) + inherit_callseqs(Inherit),
-        CostAndCallees = cost_and_callees(Cost, set(CalleeCliquePtrs)),
+        CostCsq = build_cs_cost_csq(calls(Own), 
+            float(callseqs(Own) + inherit_callseqs(Inherit))),
+        CostAndCallees = cost_and_callees(CostCsq, set(CalleeCliquePtrs)),
 
         % The goal path of the call site will be the same regardless of the
         % callee, so we get it from the first.
@@ -196,9 +194,11 @@ recursion_data_to_recursion_type(CallsI,
     Calls = float(CallsI),
     ( search(Levels, 0, RLBase) ->
         RLBase = recursion_level(BaseCost, BaseProb),
-        BaseCount = round_to_int(probability_to_float(BaseProb) * Calls)
+        BaseCountF = probability_to_float(BaseProb) * Calls,
+        BaseCount = round_to_int(BaseCountF)
     ;
         BaseCost = 0.0,
+        BaseCountF = 0.0,
         BaseCount = 0,
         BaseProb = impossible
     ),
@@ -213,12 +213,17 @@ recursion_data_to_recursion_type(CallsI,
                 RLRec = recursion_level(RecCost, RecProb),
                 RecCountF = probability_to_float(RecProb) * Calls,
                 RecLevel = recursion_level_report(1, round_to_int(RecCountF),
-                    RecProb, RecCost, RecCountF)
+                    RecProb, RecCost, 1.0)
             ;
                 error(format("%smaximum level %d not found", 
                     [s(this_file), i(1)]))
             ),
-            Type = rt_single(BaseLevel, RecLevel)
+            AvgMaxDepth = RecCountF / BaseCountF,
+            AvgRecCost = single_rec_average_recursion_cost(BaseCost, RecCost,
+                AvgMaxDepth),
+            AnyRecCost = single_rec_recursion_cost(BaseCost, RecCost),
+            Type = rt_single(BaseLevel, RecLevel, AvgMaxDepth, AvgRecCost,
+                AnyRecCost)
         ;
             Maximum = 2,
             not search(Levels, 1, _)
@@ -252,6 +257,53 @@ recursion_level_report(TotalCalls, Level - recursion_level(NonRecCost, Prob),
     CallsF = probability_to_float(Prob) * TotalCalls,
     Calls = round_to_int(CallsF),
     CostExChild = float(Level) * CallsF.
+
+    % This uses the formula.
+    %
+    % Base + Shared + Level (Rec + Shared) = Cost.
+    %
+    % To calculate the Cost of a recursive call at a depth of Level in a singly
+    % recursive procedure from:
+    %   Base - The cost of the base case.
+    %   Rec - The cost of the recursive call except for the recursive call
+    %         itself.
+    %   Shared - The cost of code common to both cases.
+    %
+    % The + 1.0 counts for the cost of the recursive call itself, The Shared
+    % variable has already been factored into BaseCost and RecCost.
+    %
+:- func single_rec_recursion_cost(float, float, int) = float.
+
+single_rec_recursion_cost(BaseCost, RecCost, LevelI) = 
+        BaseCost + (Level * (RecCost + 1.0)) :-
+    Level = float(LevelI).
+    
+    % This formula is derived as follows.
+    %
+    % It's the average (sum of all recursion levels divided by number of
+    % levels).
+    %
+    %   Sum l in 0..MaxLevel ( Base + l * Rec ) / ( MaxLevel + 1 )
+    %
+    % Factor out the cost of the base case and start the sum from level 1 in
+    % the recursive case. 
+    %
+    %   ( Base(MaxLevel + 1) + Sum l in 1..MaxLevel ( l * Rec ) ) /
+    %     ( MaxLevel + 1 )
+    %
+    % Simplify.
+    %
+    %   Base + Sum l in 1..MaxLevel ( i * Rec ) / (MaxLevel + 1)
+    %
+    % Recall that Sum i in 1..N (i) = (N^2 + N) / 2
+    %
+    %   Base + (((L^2 + L) * Rec) / 2) / (MaxLevel + 1)
+    %
+:- func single_rec_average_recursion_cost(float, float, float) = float.
+
+single_rec_average_recursion_cost(BaseCost, RecCost, AvgMaxDepth) = 
+        BaseCost + ( (Sum) / (AvgMaxDepth + 1.0) ) :-
+    Sum = 0.5 * RecCost * ((AvgMaxDepth * AvgMaxDepth) + AvgMaxDepth).
 
 %----------------------------------------------------------------------------%
 
@@ -493,9 +545,10 @@ atomic_goal_recursion_data(ThisClique, CallSiteMap, GoalPath, AtomicGoal,
 
         % Get the cost of the call.
         ( map.search(CallSiteMap, GoalPath, CostAndCallees) ->
-            CostAndCallees = cost_and_callees(Cost, Callees)
+            CostAndCallees = cost_and_callees(Cost, Callees),
+            CostPercall = cs_cost_get_percall(Cost)
         ;
-            Cost = 0,
+            CostPercall = 0.0,
             set.init(Callees)
         ),
 
@@ -504,7 +557,7 @@ atomic_goal_recursion_data(ThisClique, CallSiteMap, GoalPath, AtomicGoal,
             % calculate this later.
             RecursionLevel = 1 - recursion_level(0.0, certain)
         ;
-            RecursionLevel = 0 - recursion_level(float(Cost), certain)
+            RecursionLevel = 0 - recursion_level(CostPercall, certain)
         )
     ),
     RecursionLevel = RecursiveCalls - _,
@@ -873,7 +926,7 @@ update_procs_map(FirstProcInfo, !Map) :-
     recursion_type_simple::out) is multi.
 
 recursion_type_to_simple_type(rt_not_recursive, rts_not_recursive).
-recursion_type_to_simple_type(rt_single(_, _), rts_single).
+recursion_type_to_simple_type(rt_single(_, _, _, _, _), rts_single).
 recursion_type_to_simple_type(rt_divide_and_conquer(_, _),
     rts_divide_and_conquer).
 recursion_type_to_simple_type(rt_mutual_recursion(NumProcs),
