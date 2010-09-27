@@ -67,13 +67,21 @@ create_clique_recursion_costs_report(Deep, CliquePtr,
         MaybeCliqueRecursionReport) :-
     find_clique_first_and_other_procs(Deep, CliquePtr, MaybeFirstPDPtr, 
         OtherPDPtrs),
+    deep_lookup_clique_parents(Deep, CliquePtr, ParentCallPtr),
+    ( valid_call_site_dynamic_ptr(Deep, ParentCallPtr) ->
+        deep_lookup_call_site_dynamics(Deep, ParentCallPtr, ParentCall),
+        ParentCalls = calls(ParentCall ^ csd_own_prof)
+    ;
+        % The first call from the runtime doesn't have a valid CSD.
+        ParentCalls = 1
+    ),
     (
         MaybeFirstPDPtr = yes(FirstPDPtr),
         NumProcs = length(OtherPDPtrs) + 1,
         (
             OtherPDPtrs = [],
             % Exaclty one procedure
-            proc_get_recursion_type(Deep, CliquePtr, FirstPDPtr, 
+            proc_get_recursion_type(Deep, CliquePtr, FirstPDPtr, ParentCalls, 
                 MaybeRecursionType)
         ;
             OtherPDPtrs = [_ | _],
@@ -96,12 +104,13 @@ create_clique_recursion_costs_report(Deep, CliquePtr,
     ).
 
 :- pred proc_get_recursion_type(deep::in, clique_ptr::in, 
-    proc_dynamic_ptr::in, maybe_error(recursion_type)::out) is det.
+    proc_dynamic_ptr::in, int::in, maybe_error(recursion_type)::out) is det.
 
-proc_get_recursion_type(Deep, ThisClique, PDPtr, MaybeRecursionType) :-
-    lookup_pd_own(Deep ^ pd_own, PDPtr, PDOwn),
-    Calls = calls(PDOwn),
-    lookup_proc_dynamics(Deep ^ proc_dynamics, PDPtr, PD), 
+proc_get_recursion_type(Deep, ThisClique, PDPtr, ParentCalls,
+        MaybeRecursionType) :-
+    lookup_proc_dynamics(Deep ^ proc_dynamics, PDPtr, PD),
+    deep_lookup_pd_own(Deep, PDPtr, PDOwn),
+    TotalCalls = calls(PDOwn),
     create_dynamic_procrep_coverage_report(Deep, PDPtr, MaybeCoverageReport),
     (
         MaybeCoverageReport = ok(CoverageReport),
@@ -111,8 +120,8 @@ proc_get_recursion_type(Deep, ThisClique, PDPtr, MaybeRecursionType) :-
             PD ^ pd_sites, map.init, CallSitesMap),
         goal_recursion_data(ThisClique, CallSitesMap, empty_goal_path,
             Goal, RecursionData),
-        recursion_data_to_recursion_type(Calls, RecursionData,
-            RecursionType),
+        recursion_data_to_recursion_type(ParentCalls, TotalCalls,
+            RecursionData, RecursionType),
         MaybeRecursionType = ok(RecursionType)
     ;
         MaybeCoverageReport = error(Error), 
@@ -186,19 +195,19 @@ call_site_dynamic_get_callee_and_costs(Deep, CSDPtr, CalleeCliquePtr, Own,
     lookup_clique_index(Deep ^ clique_index, PDPtr, CalleeCliquePtr), 
     Own = CSD ^ csd_own_prof.
 
-:- pred recursion_data_to_recursion_type(int::in, recursion_data::in,
+:- pred recursion_data_to_recursion_type(int::in, int::in, recursion_data::in,
     recursion_type::out) is det.
 
-recursion_data_to_recursion_type(CallsI, 
+recursion_data_to_recursion_type(ParentCallsI, TotalCallsI, 
         recursion_data(Levels, Maximum, Errors), Type) :-
-    Calls = float(CallsI),
+    ParentCalls = float(ParentCallsI),
+    TotalCalls = float(TotalCallsI),
     ( search(Levels, 0, RLBase) ->
         RLBase = recursion_level(BaseCost, BaseProb),
-        BaseCountF = probability_to_float(BaseProb) * Calls,
+        BaseCountF = probability_to_float(BaseProb) * TotalCalls,
         BaseCount = round_to_int(BaseCountF)
     ;
         BaseCost = 0.0,
-        BaseCountF = 0.0,
         BaseCount = 0,
         BaseProb = impossible
     ),
@@ -211,14 +220,14 @@ recursion_data_to_recursion_type(CallsI,
         ; Maximum = 1 ->
             ( search(Levels, 1, RLRec) ->
                 RLRec = recursion_level(RecCost, RecProb),
-                RecCountF = probability_to_float(RecProb) * Calls,
+                RecCountF = probability_to_float(RecProb) * TotalCalls,
                 RecLevel = recursion_level_report(1, round_to_int(RecCountF),
                     RecProb, RecCost, 1.0)
             ;
                 error(format("%smaximum level %d not found", 
                     [s(this_file), i(1)]))
             ),
-            AvgMaxDepth = RecCountF / BaseCountF,
+            AvgMaxDepth = TotalCalls / ParentCalls,
             AvgRecCost = single_rec_average_recursion_cost(BaseCost, RecCost,
                 AvgMaxDepth),
             AnyRecCost = single_rec_recursion_cost(BaseCost, RecCost),
@@ -230,7 +239,7 @@ recursion_data_to_recursion_type(CallsI,
         ->
             ( search(Levels, 2, RLRec) ->
                 RLRec = recursion_level(RecCost, RecProb),
-                RecCountF = probability_to_float(RecProb) * Calls,
+                RecCountF = probability_to_float(RecProb) * ParentCalls,
                 RecLevel = recursion_level_report(2, round_to_int(RecCountF),
                     RecProb, RecCost, RecCountF*2.0)
             ;
@@ -239,7 +248,7 @@ recursion_data_to_recursion_type(CallsI,
             ),
             Type = rt_divide_and_conquer(BaseLevel, RecLevel)
         ;
-            map(recursion_level_report(Calls), Levels, LevelsReport),
+            map(recursion_level_report(TotalCalls), Levels, LevelsReport),
             Type = rt_other(LevelsReport)
         )
     ;
@@ -247,7 +256,7 @@ recursion_data_to_recursion_type(CallsI,
         Type = rt_errors(Messages)
     ).
 % A procedure that is never called never recurses.
-recursion_data_to_recursion_type(_, proc_dead_code, rt_not_recursive).
+recursion_data_to_recursion_type(_, _, proc_dead_code, rt_not_recursive).
 
 :- pred recursion_level_report(float::in, pair(int, recursion_level)::in, 
     recursion_level_report::out) is det.

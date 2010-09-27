@@ -533,6 +533,14 @@
     %
 :- pred goal_path_inside(goal_path::in, goal_path::in) is semidet.
 
+    % goal_path_inside(PathA, PathB, Relative):
+    %
+    % As above, except that Releative denotes the same goal that PathB denotes,
+    % only from GoalA's perspective.
+    %
+:- pred goal_path_inside(goal_path::in, goal_path::in, goal_path::out) 
+    is semidet.
+
     % Converts a string to a goal path, failing if the string is not a valid
     % goal path.
     %
@@ -910,8 +918,12 @@ empty_goal_path(goal_path([])).
 
 singleton_goal_path(Step) = goal_path([Step]).
 
+goal_path_inside(PathA, PathB, Relative) :-
+    list.remove_suffix(PathB ^ gp_steps, PathA ^ gp_steps, RelativeSteps),
+    Relative = goal_path(RelativeSteps).
+
 goal_path_inside(PathA, PathB) :-
-    list.append(_, PathA ^ gp_steps, PathB ^ gp_steps).
+    goal_path_inside(PathA, PathB, _).
 
 goal_path_add_at_end(GoalPath0, GoalPathStep) = GoalPath :-
     goal_path_snoc(GoalPath, GoalPath0, GoalPathStep).

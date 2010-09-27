@@ -222,6 +222,8 @@
                 rts_base                    :: recursion_level_report,
                 rts_recursive               :: recursion_level_report,
                 rts_avg_max_depth           :: float,
+
+                % These costs are per-call.
                 rts_avg_rec_cost            :: float,
 
                 % The cost at any level is Cost = func(Level).

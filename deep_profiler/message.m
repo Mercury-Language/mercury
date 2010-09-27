@@ -131,6 +131,12 @@
                 %
     ;       warning_cannot_compute_procrep_coverage_fallback(string)
 
+                % Couldn't compute the cost of recursive calls.
+                %
+                % The parameter contains extra information about this error.
+                %
+    ;       warning_cannot_compute_cost_of_recursive_calls(string)
+
                 % We don't yet handle clique_proc_reports with multiple proc
                 % dynamics.
                 %
@@ -245,6 +251,8 @@ message_type_to_level(notice_partition_does_not_have_costly_calls(_, _)) =
 message_type_to_level(warning_cannot_lookup_proc_defn) = message_warning.
 message_type_to_level(warning_cannot_compute_procrep_coverage_fallback(_)) =
     message_warning.
+message_type_to_level(warning_cannot_compute_cost_of_recursive_calls(_)) = 
+    message_warning.
 message_type_to_level(error_extra_proc_dynamics_in_clique_proc) = 
     message_error.
 message_type_to_level(error_coverage_procrep_error(_)) =
@@ -252,6 +260,7 @@ message_type_to_level(error_coverage_procrep_error(_)) =
 message_type_to_level(error_exception_thrown(_)) = message_error.
 
 %-----------------------------------------------------------------------------%
+
 
 :- func message_type_to_string(message_type) = cord(string).
 
@@ -307,6 +316,10 @@ message_type_to_string(MessageType) = Cord :-
         ;
             MessageType = error_exception_thrown(ErrorStr),
             Template = "Exception thrown: %s"
+        ;
+            MessageType =
+                warning_cannot_compute_cost_of_recursive_calls(ErrorStr),
+            Template = "Cannot compute cost of recursive calls: %s"
         ),
         string.format(Template, [s(ErrorStr)], String)
     ),
