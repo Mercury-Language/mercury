@@ -2035,23 +2035,35 @@ is_exist_pseudo_type_info(_, _) :-
             IllegalAccessException, InstantiationException,
             InvocationTargetException
     {
-        Class<?> cls;
-
+        String clsname;
         if (tc.type_ctor_num_functors == 1) {
-            cls = Class.forName(
-                ""jmercury."" + ML_name_mangle(tc.type_ctor_module_name)
+            clsname = ""jmercury."" + ML_name_mangle(tc.type_ctor_module_name)
                 + ""$"" + ML_flipInitialCase(ML_name_mangle(tc.type_ctor_name))
-                + ""_"" + tc.arity);
+                + ""_"" + tc.arity;
         } else {
-            cls = Class.forName(
-                ""jmercury."" + ML_name_mangle(tc.type_ctor_module_name)
-                + ""$"" + ML_flipInitialCase(
-                            ML_name_mangle(tc.type_ctor_name))
-                + ""_"" + tc.arity
-                + ""$"" + ML_flipInitialCase(
-                            ML_name_mangle(functor_desc.du_functor_name))
-                + ""_"" + functor_desc.du_functor_orig_arity);
+            String mangled_mod_name = ML_name_mangle(tc.type_ctor_module_name);
+            String mangled_ctor_name = ML_name_mangle(tc.type_ctor_name) +
+                ""_"" + tc.arity;
+
+            String mangled_functor_name;
+            if (tc.type_ctor_name.equals(functor_desc.du_functor_name) &&
+                tc.arity == functor_desc.du_functor_orig_arity)
+            {
+                mangled_functor_name =
+                    ML_name_mangle(""mr_"" + functor_desc.du_functor_name) +
+                    ""_"" + functor_desc.du_functor_orig_arity;
+            } else {
+                mangled_functor_name =
+                    ML_name_mangle(functor_desc.du_functor_name) +
+                    ""_"" + functor_desc.du_functor_orig_arity;
+            }
+
+            clsname = ""jmercury."" + mangled_mod_name + ""$"" +
+                ML_flipInitialCase(mangled_ctor_name) + ""$"" +
+                ML_flipInitialCase(mangled_functor_name);
         }
+
+        final Class<?> cls = Class.forName(clsname);
 
         final int arity = functor_desc.du_functor_orig_arity;
         final Object[] args = ML_univ_list_to_array(arg_list, arity);

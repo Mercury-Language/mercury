@@ -23,12 +23,8 @@
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-
-    Type = type_of(_ : requires_mangling),
-    ( NumFunctors = num_functors(Type) ->
-        list.foldl(test_functor(Type), 0 .. NumFunctors - 1, !IO)
-    ;
-        io.write_string("failed\n", !IO)
-    ).
+    test_type(type_of(_ : requires_mangling), !IO),
+    test_type(type_of(_ : '$singleton'(int)), !IO).
 
     % This must not be an enumeration as enumerations on Java are represented
     % in a way such that name mangling doesn't apply.
@@ -85,33 +81,54 @@ main(!IO) :-
     ;       ('[]')
     ;       ('abc~!@#$%^&*()_+|xyz')
     ;       f_this_also_requires_mangling
-    ;       force_non_enum(int).
+    ;       force_non_enum(int)
+    ;       requires_mangling       % functor has same name/arity as type
+    ;       requires_mangling(int). % same name, different arity
+
+:- type '$singleton'(T)
+    --->    '$singleton'(T).
+
+% XXX the Java backend currently generates invalid code for this type
+% :- type '$blah'
+%     --->    '$blah'(int)
+%     ;       '$blah2'.
+
+:- pred test_type(type_desc::in, io::di, io::uo) is det.
+
+test_type(Type, !IO) :-
+    ( NumFunctors = num_functors(Type) ->
+        list.foldl(test_functor(Type), 0 .. NumFunctors - 1, !IO)
+    ;
+        io.write_string("failed\n", !IO)
+    ),
+    io.write_string("----\n", !IO).
 
 :- pred test_functor(type_desc::in, int::in, io::di, io::uo) is det.
 
 test_functor(Type, FunctorNumber, !IO) :-
-    ( get_functor(Type, FunctorNumber, Name, Arity, ArgTypes) ->
+    ( get_functor(Type, FunctorNumber, Name, Arity, _ArgTypes) ->
+        % Assume that any arguments are ints.
+        ArgUnivs = list.map(int_univ, 1 .. Arity),
         (
-            ArgTypes = [],
-            (
-                find_functor(Type, Name, Arity, FunctorNumber, _),
-                Univ = construct(Type, FunctorNumber, [])
-            ->
-                io.write(Univ, !IO),
-                io.nl(!IO)
-            ;
-                io.write_string("failed FunctorNumber = ", !IO),
-                io.write_int(FunctorNumber, !IO),
-                io.nl(!IO)
-            )
+            find_functor(Type, Name, Arity, FunctorNumber, _),
+            Univ = construct(Type, FunctorNumber, ArgUnivs)
+        ->
+            io.write(Univ, !IO),
+            io.nl(!IO)
         ;
-            ArgTypes = [_ | _]
+            io.write_string("failed FunctorNumber = ", !IO),
+            io.write_int(FunctorNumber, !IO),
+            io.nl(!IO)
         )
     ;
         io.write_string("failed FunctorNumber = ", !IO),
         io.write_int(FunctorNumber, !IO),
         io.nl(!IO)
     ).
+
+:- func int_univ(int) = univ.
+
+int_univ(I) = univ(I).
 
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=8 sts=4 sw=4 et
