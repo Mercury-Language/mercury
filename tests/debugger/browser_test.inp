@@ -5,7 +5,7 @@ break big_data
 continue
 finish
 delete *
-dump 1 browser_test.save.1
+dump -q 1 browser_test.save.1
 format raw_pretty
 print *
 format -A verbose

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2008 The University of Melbourne.
+** Copyright (C) 1998-2008, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -79,7 +79,7 @@ static  MR_bool     MR_trace_options_view(const char **window_cmd,
                         int *word_count);
 static  MR_bool     MR_trace_options_diff(MR_Unsigned *start,
                         MR_Unsigned *max, char ***words, int *word_count);
-static  MR_bool     MR_trace_options_dump(MR_bool *xml,
+static  MR_bool     MR_trace_options_dump(MR_bool *quiet, MR_bool *xml,
                         char ***words, int *word_count);
 
 /****************************************************************************/
@@ -651,6 +651,7 @@ MR_trace_cmd_dump(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_bool         verbose = MR_FALSE;
     MR_Word         browser_term;
     const char      *problem = NULL;
+    MR_bool         quiet = MR_FALSE;
     MR_bool         xml = MR_FALSE;
 
     /*
@@ -658,7 +659,7 @@ MR_trace_cmd_dump(char **words, int word_count, MR_TraceCmdInfo *cmd,
     */
     browser_term = (MR_Word) NULL;
 
-    if (! MR_trace_options_dump(&xml, &words, &word_count)) {
+    if (! MR_trace_options_dump(&quiet, &xml, &words, &word_count)) {
         ; /* the usage message has already been printed */
     } else if (word_count != 3) {
         MR_trace_usage_cur_cmd();
@@ -721,6 +722,10 @@ MR_trace_cmd_dump(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 MR_trace_save_term_xml(words[2], browser_term);
             } else {
                 MR_trace_save_term(words[2], browser_term);
+            }
+
+            if (!quiet) {
+                fprintf(MR_mdb_out, "Dumped %s to %s\n", words[1], words[2]);
             }
         }
     }
@@ -1389,20 +1394,26 @@ MR_trace_options_diff(MR_Unsigned *start, MR_Unsigned *max,
 
 static struct MR_option MR_trace_dump_opts[] =
 {
+    { "quiet",      MR_no_argument,     NULL,   'q' },
     { "xml",        MR_no_argument,     NULL,   'x' },
     { NULL,         MR_no_argument,     NULL,   0   }
 };
 
 static MR_bool
-MR_trace_options_dump(MR_bool *xml, char ***words, int *word_count)
+MR_trace_options_dump(MR_bool *quiet, MR_bool *xml,
+    char ***words, int *word_count)
 {
     int c;
 
     MR_optind = 0;
-    while ((c = MR_getopt_long(*word_count, *words, "x",
+    while ((c = MR_getopt_long(*word_count, *words, "qx",
         MR_trace_dump_opts, NULL)) != EOF)
     {
         switch (c) {
+
+            case 'q':
+                *quiet = MR_TRUE;
+                break;
 
             case 'x':
                 *xml = MR_TRUE;

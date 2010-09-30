@@ -3187,47 +3187,50 @@ specifies how many of the initial differences to skip.
 The option @samp{-m} (or @samp{--max}), if present,
 specifies how many differences to print.
 @sp 1
-@item dump [-x] goal @var{filename}
+@item dump [-qx] goal @var{filename}
 @kindex dump (mdb command)
 Writes the goal of the current call in its present state of instantiation
-to the specified file.
+to the specified file,
+and outputs a message announcing this fact
+unless the option @samp{-q} (or @samp{--quiet}) was given.
 The option @samp{-x} (or @samp{--xml}) causes the output to be in XML.
 @sp 1
-@item dump [-x] exception @var{filename}
-Writes the value of the exception at an EXCP port
-to the specified file.
+@item dump [-qx] exception @var{filename}
+Writes the value of the exception at an EXCP port to the specified file,
+and outputs a message announcing this fact
+unless the option @samp{-q} (or @samp{--quiet}) was given.
 Reports an error if the current event does not refer to such a port.
-The option @samp{-x} (or @samp{--xml}) causes the
-output to be in XML.
+The option @samp{-x} (or @samp{--xml}) causes the output to be in XML.
 @sp 1
-@item dump [-x] @var{name} @var{filename}
-@itemx dump [-x] @var{num} @var{filename}
+@item dump [-qx] @var{name} @var{filename}
+@itemx dump [-qx] @var{num} @var{filename}
 Writes the value of the variable in the current environment
-with the given ordinal number or with the given name
-to the specified file. The option @samp{-x} (or @samp{--xml}) causes the
-output to be in XML.
+with the given ordinal number or with the given name to the specified file,
+and outputs a message announcing this fact
+unless the option @samp{-q} (or @samp{--quiet}) was given.
+The option @samp{-x} (or @samp{--xml}) causes the output to be in XML.
 @sp 1
 @item open @var{term}
 Save @var{term} to a temporary file and open the file in an editor.
-The environment variable EDITOR is consulted to determine what editor to
-use.
+The environment variable EDITOR is consulted to determine what editor to use.
 If this environment variable is not set then @samp{vi} is used.
 @var{term} may be any term that can be saved to a file with the
 @samp{save_to_file} command.
 @sp 1
 @item grep @var{pattern} @var{term}
-Save the given term to a temporary file and perform a grep on the
-file using @var{pattern}.
-@var{term} may be any term that can be saved to a file with the
-@samp{save_to_file} command.
-The unix `grep' command must be available from the shell for this command
-to work.
+Saves the given term to a temporary file
+and invokes grep on the file using @var{pattern}.
+@var{term} may be any term that can be saved to a file
+with the @samp{save_to_file} command.
+The unix `grep' command must be available from the shell
+for this command to work.
 @c @sp 1
-@c @item dump [-x] proc_body @var{filename}
+@c @item dump [-qx] proc_body @var{filename}
 @c Writes the representation of the body of the current procedure,
-@c if it is available,
-@c to the specified file. The option @samp{-x} (or @samp{--xml}) causes the
-@c output to be in XML.
+@c if it is available, to the specified file,
+@c and outputs a message announcing this fact
+@c unless the option @samp{-q} (or @samp{--quiet}) was given.
+@c The option @samp{-x} (or @samp{--xml}) causes the output to be in XML.
 @sp 1
 @item list [@var{num}]
 @kindex list (mdb command)

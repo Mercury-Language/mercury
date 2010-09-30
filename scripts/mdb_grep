@@ -3,6 +3,6 @@
 # $1 is a regular expression to search for.
 # $2 is any valid term reference accepted by the dump command.
 #
-dump $2 .mdb_grep_tmp
+dump -q $2 .mdb_grep_tmp
 shell grep $1 .mdb_grep_tmp
 shell rm .mdb_grep_tmp
