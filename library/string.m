@@ -117,8 +117,7 @@
 
     % string.remove_prefix(Prefix, String, Suffix):
     % This is a synonym for string.append(Prefix, Suffix, String) but with
-    % the arguments in a more convenient order for use with higher-order
-    % code.
+    % the arguments in a more convenient order for use with higher-order code.
     %
 :- pred string.remove_prefix(string::in, string::in, string::out) is semidet.
 
