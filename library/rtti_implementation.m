@@ -183,30 +183,30 @@
     % We keep all the other types abstract.
 
 :- type type_ctor_info ---> type_ctor_info(c_pointer).
-% :- pragma foreign_type("C#", type_ctor_info,
-%     "runtime.TypeCtorInfo_Struct").
+:- pragma foreign_type("C#", type_ctor_info,
+    "runtime.TypeCtorInfo_Struct").
 :- pragma foreign_type("Java", type_ctor_info,
     "jmercury.runtime.TypeCtorInfo_Struct").
 
 :- type type_info ---> type_info(c_pointer).
-% :- pragma foreign_type("C#", type_info, "runtime.TypeInfo_Struct").
+:- pragma foreign_type("C#", type_info, "runtime.TypeInfo_Struct").
 :- pragma foreign_type("Java", type_info, "jmercury.runtime.TypeInfo_Struct").
 
 :- type type_layout ---> type_layout(c_pointer).
-% :- pragma foreign_type("C#", type_layout, "runtime.TypeLayout").
+:- pragma foreign_type("C#", type_layout, "runtime.TypeLayout").
 :- pragma foreign_type("Java", type_layout, "jmercury.runtime.TypeLayout").
 
 :- type pseudo_type_info ---> pseudo_type_info(int).
     % This should be a dummy type. The non-dummy definition is a workaround
     % for a bug in the Erlang backend that generates invalid code for the
     % dummy type.
-% :- pragma foreign_type("C#", pseudo_type_info,
-%     "runtime.PseudoTypeInfo").
+:- pragma foreign_type("C#", pseudo_type_info,
+    "runtime.PseudoTypeInfo").
 :- pragma foreign_type("Java", pseudo_type_info,
     "jmercury.runtime.PseudoTypeInfo").
 
 :- type typeclass_info ---> typeclass_info(c_pointer).
-% :- pragma foreign_type("C#", typeclass_info, "object[]").
+:- pragma foreign_type("C#", typeclass_info, "object[]").
 :- pragma foreign_type("Java", typeclass_info, "java.lang.Object[]").
 
 :- pragma foreign_decl("C#", local,
@@ -843,7 +843,7 @@ compare_tuple_pos(Loc, TupleArity, TypeInfo, Result, TermA, TermB) :-
 :- type unify_or_compare_pred
     --->    unify_or_compare_pred.
 
-% :- pragma foreign_type("C#", unify_or_compare_pred, "object").
+:- pragma foreign_type("C#", unify_or_compare_pred, "object").
 :- pragma foreign_type("Java", unify_or_compare_pred,
     "jmercury.runtime.MethodPtr").
 
@@ -1118,8 +1118,8 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-% :- pragma foreign_export("C#", compare_type_infos(out, in, in),
-%     "ML_compare_type_infos").
+:- pragma foreign_export("C#", compare_type_infos(out, in, in),
+    "ML_compare_type_infos").
 :- pragma foreign_export("Java", compare_type_infos(out, in, in),
     "ML_compare_type_infos").
 
@@ -1185,8 +1185,8 @@ compare_collapsed_type_infos(Res, TypeInfo1, TypeInfo2) :-
 :- pred compare_type_ctor_infos(comparison_result::out,
     type_ctor_info::in, type_ctor_info::in) is det.
 
-% :- pragma foreign_export("C#", compare_type_ctor_infos(out, in, in),
-%     "ML_compare_type_ctor_infos").
+:- pragma foreign_export("C#", compare_type_ctor_infos(out, in, in),
+    "ML_compare_type_ctor_infos").
 :- pragma foreign_export("Java", compare_type_ctor_infos(out, in, in),
     "ML_compare_type_ctor_infos").
 
@@ -1254,8 +1254,8 @@ type_ctor_is_variable_arity(TypeCtorInfo) :-
 %-----------------------------------------------------------------------------%
 
 :- func collapse_equivalences(type_info) = type_info.
-% :- pragma foreign_export("C#", collapse_equivalences(in) = out,
-%     "ML_collapse_equivalences").
+:- pragma foreign_export("C#", collapse_equivalences(in) = out,
+    "ML_collapse_equivalences").
 :- pragma foreign_export("Java", collapse_equivalences(in) = out,
     "ML_collapse_equivalences").
 
@@ -1656,22 +1656,24 @@ is_exist_pseudo_type_info(_, _) :-
     ML_construct_du(runtime.TypeCtorInfo_Struct tc,
         runtime.DuFunctorDesc functor_desc, list.List_1 arg_list)
     {
+        string typename;
         System.Type type;
 
         if (tc.type_ctor_num_functors == 1) {
-            type = System.Type.GetType(
+            typename =
                 ""mercury."" + ML_name_mangle(tc.type_ctor_module_name)
                 + ""+"" + ML_flipInitialCase(ML_name_mangle(tc.type_ctor_name))
-                + ""_"" + tc.arity);
+                + ""_"" + tc.arity;
         } else {
-            type = System.Type.GetType(
+            typename =
                 ""mercury."" + ML_name_mangle(tc.type_ctor_module_name)
                 + ""+"" + ML_flipInitialCase(ML_name_mangle(tc.type_ctor_name))
                 + ""_"" + tc.arity
                 + ""+"" + ML_flipInitialCase(ML_name_mangle(
                             functor_desc.du_functor_name))
-                + ""_"" + functor_desc.du_functor_orig_arity);
+                + ""_"" + functor_desc.du_functor_orig_arity;
         }
+        type = ML_search_type(typename);
 
         int arity = functor_desc.du_functor_orig_arity;
         object[] args = ML_univ_list_to_array(arg_list, arity);
@@ -1707,11 +1709,27 @@ is_exist_pseudo_type_info(_, _) :-
     private static object
     ML_construct_static_member(runtime.TypeCtorInfo_Struct tc, int i)
     {
-        System.Type type = System.Type.GetType(
+        string typename =
             ""mercury."" + ML_name_mangle(tc.type_ctor_module_name)
             + ""+"" + ML_flipInitialCase(ML_name_mangle(tc.type_ctor_name))
-            + ""_"" + tc.arity);
+            + ""_"" + tc.arity;
+        System.Type type = ML_search_type(typename);
         return System.Enum.ToObject(type, i);
+    }
+
+    private static System.Type ML_search_type(string typename)
+    {
+        // Do we need to optimise this?  e.g. search the current assembly,
+        // then that which contains the standard library, or cache old results.
+        System.Reflection.Assembly[] av =
+            System.AppDomain.CurrentDomain.GetAssemblies();
+        foreach (System.Reflection.Assembly a in av) {
+            System.Type t = a.GetType(typename);
+            if (t != null) {
+                return t;
+            }
+        }
+        return null;
     }
 
     private static string
@@ -3528,29 +3546,29 @@ get_remote_secondary_tag(_::in) = (0::out) :-
 % :- pragma foreign_type("Java", sectag_locn, "jmercury.runtime.Sectag_Locn").
 
 :- type du_sectag_alternatives ---> du_sectag_alternatives(c_pointer).
-% :- pragma foreign_type("C#", du_sectag_alternatives,
-%     "runtime.DuFunctorDesc[]").
+:- pragma foreign_type("C#", du_sectag_alternatives,
+    "runtime.DuFunctorDesc[]").
 :- pragma foreign_type("Java", du_sectag_alternatives,
     "jmercury.runtime.DuFunctorDesc[]").
 
 :- type ptag_entry ---> ptag_entry(c_pointer).
-% :- pragma foreign_type("C#", ptag_entry, "runtime.DuPtagLayout").
+:- pragma foreign_type("C#", ptag_entry, "runtime.DuPtagLayout").
 :- pragma foreign_type("Java", ptag_entry, "jmercury.runtime.DuPtagLayout").
 
 :- type arg_types ---> arg_types(c_pointer).
-% :- pragma foreign_type("C#", arg_types, "runtime.PseudoTypeInfo[]").
+:- pragma foreign_type("C#", arg_types, "runtime.PseudoTypeInfo[]").
 :- pragma foreign_type("Java", arg_types, "jmercury.runtime.PseudoTypeInfo[]").
 
 :- type arg_names ---> arg_names(c_pointer).
-% :- pragma foreign_type("C#", arg_names, "string[]").
+:- pragma foreign_type("C#", arg_names, "string[]").
 :- pragma foreign_type("Java", arg_names, "java.lang.String[]").
 
 :- type exist_info ---> exist_info(c_pointer).
-% :- pragma foreign_type("C#", exist_info, "runtime.DuExistInfo").
+:- pragma foreign_type("C#", exist_info, "runtime.DuExistInfo").
 :- pragma foreign_type("Java", exist_info, "jmercury.runtime.DuExistInfo").
 
 :- type typeinfo_locn ---> typeinfo_locn(c_pointer).
-% :- pragma foreign_type("C#", typeinfo_locn, "runtime.DuExistLocn").
+:- pragma foreign_type("C#", typeinfo_locn, "runtime.DuExistLocn").
 :- pragma foreign_type("Java", typeinfo_locn, "jmercury.runtime.DuExistLocn").
 
 :- func ptag_index(int, type_layout) = ptag_entry.
@@ -4366,32 +4384,32 @@ type_ctor_search_functor_number_map(_, _, _) :-
 %
 
 :- type type_functors ---> type_functors(c_pointer).
-% :- pragma foreign_type("C#", type_functors,
-%     "runtime.TypeFunctors").
+:- pragma foreign_type("C#", type_functors,
+    "runtime.TypeFunctors").
 :- pragma foreign_type("Java", type_functors,
     "jmercury.runtime.TypeFunctors").
 
 :- type du_functor_desc ---> du_functor_desc(c_pointer).
-% :- pragma foreign_type("C#", du_functor_desc,
-%     "runtime.DuFunctorDesc").
+:- pragma foreign_type("C#", du_functor_desc,
+    "runtime.DuFunctorDesc").
 :- pragma foreign_type("Java", du_functor_desc,
     "jmercury.runtime.DuFunctorDesc").
 
 :- type enum_functor_desc ---> enum_functor_desc(c_pointer).
-% :- pragma foreign_type("C#", enum_functor_desc,
-%     "runtime.EnumFunctorDesc").
+:- pragma foreign_type("C#", enum_functor_desc,
+    "runtime.EnumFunctorDesc").
 :- pragma foreign_type("Java", enum_functor_desc,
     "jmercury.runtime.EnumFunctorDesc").
 
 :- type foreign_enum_functor_desc ---> foreign_enum_functor_desc(c_pointer).
-% :- pragma foreign_type("C#", foreign_enum_functor_desc,
-%     "runtime.ForeignEnumFunctorDesc").
+:- pragma foreign_type("C#", foreign_enum_functor_desc,
+    "runtime.ForeignEnumFunctorDesc").
 :- pragma foreign_type("Java", foreign_enum_functor_desc,
     "jmercury.runtime.ForeignEnumFunctorDesc").
 
 :- type notag_functor_desc ---> notag_functor_desc(c_pointer).
-% :- pragma foreign_type("C#", notag_functor_desc,
-%     "runtime.NotagFunctorDesc").
+:- pragma foreign_type("C#", notag_functor_desc,
+    "runtime.NotagFunctorDesc").
 :- pragma foreign_type("Java", notag_functor_desc,
     "jmercury.runtime.NotagFunctorDesc").
 

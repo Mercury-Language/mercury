@@ -30,6 +30,8 @@
                 target=c ;;
             il|IL)
                 target=il ;;
+            csharp|'C#')
+                target=csharp ;;
             java|Java)
                 target=java ;;
             erlang|Erlang)
@@ -43,6 +45,9 @@
 
     --il|--IL|--il-only|--IL-only)
         target=il ;;
+
+    --csharp|'--C#'|--csharp-only|'--C#-only')
+        target=csharp ;;
 
     --java|--Java|--java-only|--Java-only)
         target=java ;;
@@ -289,6 +294,15 @@
                     gcc_nested_functions=false
                     highlevel_data=false
                     ;;
+                csharp)
+                    target=csharp
+                    asm_labels=false
+                    non_local_gotos=false
+                    global_regs=false
+                    highlevel_code=true
+                    gcc_nested_functions=false
+                    highlevel_data=true
+                    ;;
                 java)
                     target=java
                     asm_labels=false
@@ -300,6 +314,12 @@
                     ;;
                 erlang)
                     target=erlang
+                    asm_labels=false
+                    non_local_gotos=false
+                    global_regs=false
+                    highlevel_code=true
+                    gcc_nested_functions=false
+                    highlevel_data=true
                     ;;
                 hl)
                     asm_labels=false

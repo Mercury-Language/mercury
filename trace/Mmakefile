@@ -221,7 +221,7 @@ mercury_event_spec.$(EXT_FOR_PIC_OBJECTS): $(GEN_EVENTSPEC_HDRS)
 
 .PHONY: all
 .PHONY: trace
-ifneq ("$(filter il% java% erlang%,$(GRADE))","")        
+ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
 # there is no tracing in the .NET, Java, Erlang backends
 
 all:
@@ -320,7 +320,7 @@ tags_file_exists:
 .PHONY: install
 install: install_headers install_lib
 
-ifneq ("$(filter il% java% erlang%,$(GRADE))","")        
+ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
 
 # there is no tracing in the .NET, Java, Erlang backends
 

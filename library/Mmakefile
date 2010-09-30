@@ -98,11 +98,11 @@ endif
 MCFLAGS += --flags LIB_FLAGS $(CONFIG_OVERRIDE)
 MCFLAGS += $(LIBRARY_TRACE_LEVEL) $(INTER_FLAGS)
 
-# The IL, Java and Erlang implementations of the standard library are not yet
-# complete, so we need to pass `--allow-stubs' to get them to compile.
+# The IL, C#, Java and Erlang implementations of the standard library are not
+# yet complete, so we need to pass `--allow-stubs' to get them to compile.
 # Since the standard library is compiled with `--halt-at-warn',
 # we also need `--no-warn-stubs'.
-ifneq ("$(filter il% java% erlang%,$(GRADE))","")
+ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
 MCFLAGS += --allow-stubs --no-warn-stubs
 endif
 
@@ -307,7 +307,7 @@ lib_std: mercury.dll lib$(STD_LIB_NAME)
 # We have to hardcode the names of the runtime DLL files.
 RUNTIME_DLLS=mercury_dotnet.dll mercury_il.dll
 
-MS_CSCFLAGS=/t:module
+CSCFLAGS=/t:module
 
 # If you do generate a new strong name, you had better update
 # compiler/mlds_to_il.m to generate references to it.  It is also hard-coded
@@ -355,6 +355,17 @@ endif
 
 #-----------------------------------------------------------------------------#
 
+# For C# we include the runtime module directly into mer_std.dll.
+ifneq ("$(filter csharp%,$(GRADE))","")
+LINK_LIB_OPTS :=
+MLOBJS += ../runtime/mercury_dotnet.cs
+
+# Suppress warnings about unused variables.
+CSCFLAGS += /nowarn:0219
+endif
+
+#-----------------------------------------------------------------------------#
+
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 ifeq ("$(findstring java,$(GRADE))","java")
 lib_std: $(STD_LIB_NAME).jar $(RT_LIB_NAME).jar $(NATIVE_SO)
@@ -365,7 +376,7 @@ endif
 #
 # Some extra rules that we need for the C and asm back-ends
 #
-ifeq ("$(filter il% java% erlang%,$(GRADE))","")
+ifeq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
 
 # The following dependency is just there to improve compilation speed;
 # making tree234.$O first improves effective parallelism with parallel makes.
@@ -503,8 +514,8 @@ install_library: mercury.dll install_grade_dirs install_gac \
 # To build the .NET library with debugging information, add
 # the following to ../Mmake.params:
 #
-#	EXTRA_MS_ILASMFLAGS=/debug
-#	EXTRA_MS_CSCFLAGS=/debug+ /debug:full
+#	EXTRA_ILASMFLAGS=/debug
+#	EXTRA_CSCFLAGS=/debug+ /debug:full
 #
 # XXX Unfortunately, however, this is a problem with AL, which prohibits
 # linking debuggable C# code with IL code.  The following

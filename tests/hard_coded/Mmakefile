@@ -623,7 +623,7 @@ endif
 
 # string_hash tests features of the Mercury C runtime.
 # It requires too much memory to be used in non-GC grades.
-ifeq "$(filter il% java%,$(GRADE))$(findstring gc,$(GRADE))" "gc"
+ifeq "$(filter il% csharp% java%,$(GRADE))$(findstring gc,$(GRADE))" "gc"
 	C_AND_GC_ONLY_PROGS =string_hash
 else
 	C_AND_GC_ONLY_PROGS =

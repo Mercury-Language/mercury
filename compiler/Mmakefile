@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2003, 2005-2009 The University of Melbourne. 
+# Copyright (C) 1995-2003, 2005-2010 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -218,7 +218,7 @@ mercury_compile_init.$O: $(MC_PROG)_init.$O
 # (We used to just build mlds_to_gcc.err, but that caused bootstrapping problems
 # with the source distribution; using the .c files is little more robust.)
 
-ifeq ("$(filter il% java% erlang%,$(GRADE))","")
+ifeq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
 
 .PHONY: depend
 depend:		COMP_FLAGS mlds_to_gcc.depend
@@ -239,7 +239,7 @@ endif
 # compiler if one of the libraries changes.
 
 ifeq ($(findstring il,$(GRADE)),il)        
-MS_CSCFLAGS=/lib
+CSCFLAGS=/lib
 
 # This line works around an Mmake bug: mmake doesn't record
 # dependencies properly with --transitive-intermodule-optimization

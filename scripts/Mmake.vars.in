@@ -132,7 +132,8 @@ ECHO_MERCURY_OPTIONS = { \
 	echo MCFLAGS += '$(MC_MAKE_FLAGS) $(EXTRA_MC_MAKE_FLAGS)'; \
 	echo CFLAGS += '$(ALL_CFLAGS)'; \
 	echo JAVACFLAGS += '$(ALL_JAVACFLAGS)'; \
-	echo MS_ILASMFLAGS += '$(ALL_MS_ILASMFLAGS)'; \
+	echo CSCFLAGS += '$(ALL_CSCFLAGS)'; \
+	echo ILASMFLAGS += '$(ALL_ILASMFLAGS)'; \
 	echo C2INITARGS += '$(ALL_C2INITARGS)'; \
 	echo MLLIBS += '$(ALL_MLLIBS)'; \
 	echo MLOBJS += '$(ALL_MLOBJS)'; \
@@ -230,33 +231,33 @@ MS_DOTNET_SDK_DIR=@MS_DOTNET_SDK_DIR@
 MERC_C_INCL_DIR = $(MERCURY_STDLIB_DIR)/inc
 MERC_DLL_DIR    = $(MERCURY_STDLIB_DIR)/lib/$(GRADESTRING)
 
-# MS_ILASM is the Microsoft IL assembler, which turns IL assembly code
+# ILASM is the Microsoft IL assembler, which turns IL assembly code
 # into bytecode.
 # XXX we should also support the Portable.NET version of ILASM,
 # which has a different command-line interface. 
 # (Is there a Mono ILASM too?  What about Rotor?)
-MS_ILASM	= @ILASM@
-ALL_MS_ILASMFLAGS= $(MS_ILASMFLAGS) $(EXTRA_MS_ILASMFLAGS) \
-		$(TARGET_MS_ILASMFLAGS) $(LIB_MS_ILASMFLAGS) $(ILASM_KEYFLAG)
-MS_ILASMFLAGS	=
-EXTRA_MS_ILASMFLAGS =
-LIB_MS_ILASMFLAGS= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
+ILASM		= @ILASM@
+ALL_ILASMFLAGS= $(ILASMFLAGS) $(EXTRA_ILASMFLAGS) \
+		$(TARGET_ILASMFLAGS) $(LIB_ILASMFLAGS) $(ILASM_KEYFLAG)
+ILASMFLAGS	=
+EXTRA_ILASMFLAGS =
+LIB_ILASMFLAGS= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
 
 # MS_AL is the Microsoft assembly linker, which creates assemblies.
 MS_AL		= @MS_AL@ 
 
-# MS_CSC is the command line version of C# compiler
+# CSC is the command line version of C# compiler
 # XXX we should also support the Portable.NET and Mono C# compilers,
 # which have a different command-line interface. 
 # (What about Rotor?)
 
 FIX_PATH_FOR_CSC = @CYGPATH@
-MS_CSC		= @MS_CSC@ 
-ALL_MS_CSCFLAGS	= $(MS_CSCFLAGS) $(EXTRA_MS_CSCFLAGS) $(TARGET_MS_CSCFLAGS) \
-		$(LIB_MS_CSCFLAGS)
-MS_CSCFLAGS	=
-EXTRA_MS_CSCFLAGS =
-LIB_MS_CSCFLAGS	= 
+CSC		= @CSC@
+ALL_CSCFLAGS	= $(CSCFLAGS) $(EXTRA_CSCFLAGS) $(TARGET_CSCFLAGS) \
+		$(LIB_CSCFLAGS)
+CSCFLAGS	=
+EXTRA_CSCFLAGS =
+LIB_CSCFLAGS	=
 
 #-----------------------------------------------------------------------------#
 #
@@ -522,15 +523,15 @@ EXTRA_TARGET_LIBGRADES = \
 maybe-base-EXTRA_LIBGRADES- = $(EXTRA_LIBGRADES-$*)
 maybe-base-EXTRA_LIBGRADES-undefined =
 
-TARGET_MS_CSCFLAGS = \
-  $(maybe-base-MS_CSCFLAGS-$(findstring undefined,$(origin MS_CSCFLAGS-$*)))
-maybe-base-MS_CSCFLAGS- = $(MS_CSCFLAGS-$*)
-maybe-base-MS_CSCFLAGS-undefined =
+TARGET_CSCFLAGS = \
+  $(maybe-base-CSCFLAGS-$(findstring undefined,$(origin CSCFLAGS-$*)))
+maybe-base-CSCFLAGS- = $(CSCFLAGS-$*)
+maybe-base-CSCFLAGS-undefined =
 
-TARGET_MS_ILASMFLAGS = \
-   $(maybe-base-MS_ILASMFLAGS-$(findstring undefined,$(origin MS_ILASMFLAGS-$*)))
-maybe-base-MS_ILASMFLAGS- = $(MS_ILASMFLAGS-$*)
-maybe-base-MS_ILASMFLAGS-undefined =
+TARGET_ILASMFLAGS = \
+   $(maybe-base-ILASMFLAGS-$(findstring undefined,$(origin ILASMFLAGS-$*)))
+maybe-base-ILASMFLAGS- = $(ILASMFLAGS-$*)
+maybe-base-ILASMFLAGS-undefined =
 
 ILASM_KEYFLAG = \
   $(maybe-target-ILASM_KEYFLAG-$(findstring undefined,$(origin ILASM_KEYFLAG-$*)))

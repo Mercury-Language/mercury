@@ -68,10 +68,13 @@ make_linked_target(Globals, LinkedTargetFile, LinkedTargetSucceeded,
         ExtraOptions = ["--compile-to-shared-lib"]
     ;
         ( FileType = executable
-        ; FileType = csharp_library
-        ; FileType = java_archive
-        ; FileType = erlang_archive
         ; FileType = static_library
+        ; FileType = csharp_executable
+        ; FileType = csharp_library
+        ; FileType = java_launcher
+        ; FileType = java_archive
+        ; FileType = erlang_launcher
+        ; FileType = erlang_archive
         ),
         ExtraOptions = []
     ),
@@ -268,7 +271,7 @@ make_linked_target_2(LinkedTargetFile, Globals, _, Succeeded, !Info, !IO) :-
                         CompilationTarget, PIC, DepsSuccess, BuildDepsResult)
                     ),
                 linked_target_cleanup(Globals, MainModuleName, FileType,
-                    OutputFileName, CompilationTarget),
+                    OutputFileName),
                 Succeeded, !Info, !IO)
         ;
             Succeeded = no
@@ -477,53 +480,42 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
     AllModulesList = set.to_sorted_list(AllModules),
     (
         FileType = executable,
-        (
-            ( CompilationTarget = target_c
-            ; CompilationTarget = target_asm
-            ),
-            make_init_obj_file(NoLinkObjsGlobals, ErrorStream, MainModuleName,
-                AllModulesList, InitObjectResult, !IO),
-            MaybeInitObjectResult = yes(InitObjectResult)
-        ;
-            CompilationTarget = target_erlang,
-            make_erlang_program_init_file(NoLinkObjsGlobals, ErrorStream,
-                MainModuleName, AllModulesList, InitObjectResult, !IO),
-            MaybeInitObjectResult = yes(InitObjectResult)
-        ;
-            ( CompilationTarget = target_il
-            ; CompilationTarget = target_csharp
-            ; CompilationTarget = target_java
-            ; CompilationTarget = target_x86_64
-            ),
-            MaybeInitObjectResult = no
-        ),
-        (
-            MaybeInitObjectResult = yes(InitObjectResult1),
-            (
-                InitObjectResult1 = yes(InitObject),
-                % We may need to update the timestamp of the `_init.o'
-                % or `_init.beam' file.
-                !:Info = !.Info ^ file_timestamps :=
-                    map.delete(!.Info ^ file_timestamps, InitObject),
-                InitObjects = [InitObject],
-                DepsResult2 = BuildDepsResult
-            ;
-                InitObjectResult1 = no,
-                DepsResult2 = deps_error,
-                InitObjects = []
-            )
-        ;
-            MaybeInitObjectResult = no,
-            DepsResult2 = BuildDepsResult,
-            InitObjects = []
-        )
+        make_init_obj_file(NoLinkObjsGlobals, ErrorStream, MainModuleName,
+            AllModulesList, InitObjectResult, !IO),
+        MaybeInitObjectResult = yes(InitObjectResult)
+    ;
+        FileType = erlang_launcher,
+        make_erlang_program_init_file(NoLinkObjsGlobals, ErrorStream,
+            MainModuleName, AllModulesList, InitObjectResult, !IO),
+        MaybeInitObjectResult = yes(InitObjectResult)
     ;
         ( FileType = static_library
         ; FileType = shared_library
+        ; FileType = csharp_executable
         ; FileType = csharp_library
+        ; FileType = java_launcher
         ; FileType = java_archive
         ; FileType = erlang_archive
         ),
+        MaybeInitObjectResult = no
+    ),
+    (
+        MaybeInitObjectResult = yes(InitObjectResult1),
+        (
+            InitObjectResult1 = yes(InitObject),
+            % We may need to update the timestamp of the `_init.o'
+            % or `_init.beam' file.
+            !Info ^ file_timestamps :=
+                map.delete(!.Info ^ file_timestamps, InitObject),
+            InitObjects = [InitObject],
+            DepsResult2 = BuildDepsResult
+        ;
+            InitObjectResult1 = no,
+            DepsResult2 = deps_error,
+            InitObjects = []
+        )
+    ;
+        MaybeInitObjectResult = no,
         DepsResult2 = BuildDepsResult,
         InitObjects = []
     ),
@@ -702,21 +694,25 @@ join_string_list([String | Strings], Prefix, Suffix, Separator, Result) :-
     ).
 
 :- pred linked_target_cleanup(globals::in, module_name::in,
-    linked_target_type::in, file_name::in, compilation_target::in,
+    linked_target_type::in, file_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 linked_target_cleanup(Globals, MainModuleName, FileType, OutputFileName,
-        CompilationTarget, !Info, !IO) :-
+        !Info, !IO) :-
     make_remove_file(Globals, verbose_make, OutputFileName, !Info, !IO),
     (
         FileType = executable,
-        ( CompilationTarget = target_c
-        ; CompilationTarget = target_asm
-        )
-    ->
         remove_init_files(Globals, verbose_make, MainModuleName, !Info, !IO)
     ;
-        true
+        ( FileType = static_library
+        ; FileType = shared_library
+        ; FileType = csharp_executable
+        ; FileType = csharp_library
+        ; FileType = java_launcher
+        ; FileType = java_archive
+        ; FileType = erlang_launcher
+        ; FileType = erlang_archive
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1589,6 +1585,8 @@ install_library_grade_files(Globals, LinkSucceeded0, GradeDir, ModuleName,
             LibFileName, !IO),
         linked_target_file_name(Globals, ModuleName, shared_library,
             SharedLibFileName, !IO),
+        linked_target_file_name(Globals, ModuleName, csharp_library,
+            DllFileName, !IO),
         linked_target_file_name(Globals, ModuleName, java_archive,
             JarFileName, !IO),
         linked_target_file_name(Globals, ModuleName, erlang_archive,
@@ -1596,7 +1594,12 @@ install_library_grade_files(Globals, LinkSucceeded0, GradeDir, ModuleName,
 
         globals.lookup_string_option(Globals, install_prefix, Prefix),
 
-        ( string.prefix(GradeDir, "java") ->
+        ( string.prefix(GradeDir, "csharp") ->
+            GradeLibDir = Prefix/"lib"/"mercury"/"lib"/GradeDir,
+            install_file(Globals, DllFileName, GradeLibDir, LibsSucceeded,
+                !IO),
+            InitSucceeded = yes
+        ; string.prefix(GradeDir, "java") ->
             GradeLibDir = Prefix/"lib"/"mercury"/"lib"/GradeDir,
             install_file(Globals, JarFileName, GradeLibDir, LibsSucceeded,
                 !IO),
@@ -1959,39 +1962,30 @@ make_main_module_realclean(Globals, ModuleName, !Info, !IO) :-
             write_sym_name(ModuleName, !IO),
             io.write_string("'.\n", !IO)
         ), !IO),
-    linked_target_file_name(Globals, ModuleName, executable,
-        ExeFileName, !IO),
-    linked_target_file_name(Globals, ModuleName, static_library,
-        LibFileName, !IO),
-    linked_target_file_name(Globals, ModuleName, shared_library,
-        SharedLibFileName, !IO),
-    linked_target_file_name(Globals, ModuleName, java_archive,
-        JarFileName, !IO),
-    linked_target_file_name(Globals, ModuleName, erlang_archive,
-        ErlangArchiveFileName, !IO),
 
+    LinkedTargetTypes = [
+        executable,
+        static_library,
+        shared_library,
+        csharp_executable,
+        csharp_library,
+        java_launcher,
+        java_archive,
+        erlang_launcher,
+        erlang_archive
+    ],
+    list.map_foldl(linked_target_file_name(Globals, ModuleName),
+        LinkedTargetTypes, FileNames, !IO),
     % Remove the symlinks created for `--use-grade-subdirs'.
     globals.set_option(use_grade_subdirs, bool(no), Globals, NoSubdirGlobals),
-    linked_target_file_name(NoSubdirGlobals, ModuleName, executable,
-        ThisDirExeFileName, !IO),
-    linked_target_file_name(NoSubdirGlobals, ModuleName, static_library,
-        ThisDirLibFileName, !IO),
-    linked_target_file_name(NoSubdirGlobals, ModuleName, shared_library,
-        ThisDirSharedLibFileName, !IO),
-    linked_target_file_name(NoSubdirGlobals, ModuleName, java_archive,
-        ThisDirJarFileName, !IO),
-    linked_target_file_name(NoSubdirGlobals, ModuleName, erlang_archive,
-        ThisDirErlangArchiveFileName, !IO),
+    list.map_foldl(linked_target_file_name(NoSubdirGlobals, ModuleName),
+        LinkedTargetTypes, ThisDirFileNames, !IO),
     % XXX This symlink should not be necessary anymore for `mmc --make'.
     module_name_to_file_name(NoSubdirGlobals, ModuleName, ".init",
         do_not_create_dirs, ThisDirInitFileName, !IO),
 
     list.foldl2(make_remove_file(Globals, very_verbose),
-        [ExeFileName, LibFileName, SharedLibFileName, JarFileName,
-        ErlangArchiveFileName,
-        ThisDirExeFileName, ThisDirLibFileName,
-        ThisDirSharedLibFileName, ThisDirJarFileName,
-        ThisDirErlangArchiveFileName, ThisDirInitFileName],
+        FileNames ++ ThisDirFileNames ++ [ThisDirInitFileName],
         !Info, !IO),
     make_remove_module_file(Globals, very_verbose, ModuleName, ".init",
         !Info, !IO),

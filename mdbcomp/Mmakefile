@@ -88,7 +88,7 @@ LN	= ln
 # complete, so we need to pass `--allow-stubs' to get them to compile.
 # Since the standard library is compiled with `--halt-at-warn',
 # we also need `--no-warn-stubs'.
-ifneq ("$(filter il% java% erlang%,$(GRADE))","")
+ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
 MCFLAGS += --allow-stubs --no-warn-stubs
 endif
 
@@ -211,7 +211,7 @@ realclean_local:
 .PHONY: install
 install: install_library
 
-ifneq ("$(filter il% erlang%,$(GRADE))","")
+ifneq ("$(filter il% csharp% erlang%,$(GRADE))","")
 
 # there is no debugger in the .NET or Erlang backends
 

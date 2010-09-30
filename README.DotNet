@@ -158,9 +158,9 @@ C++, C#, Visual Basic, Cobol, Eiffel, SmallTalk, ML, Haskell, Scheme,
 Python, Perl, Component Pascal and others).  
 
 Add a 
-	MS_CSCFLAGS-<modulename>_csharp_code=/reference:<foreignmodulename>.dll
+	CSCFLAGS-<modulename>_csharp_code=/reference:<foreignmodulename>.dll
 or
-	MS_CSCFLAGS-<modulename>_csharp_code=/addmodule:<foreignmodulename>.dll
+	CSCFLAGS-<modulename>_csharp_code=/addmodule:<foreignmodulename>.dll
 
 to your Mmakefile to pass the appropriate flag to the C# compiler so
 that you can reference another DLL from the C# code.

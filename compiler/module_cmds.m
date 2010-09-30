@@ -182,6 +182,12 @@
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+
+:- pred create_launcher_shell_script(globals::in, module_name::in,
+    pred(io.output_stream, io, io)::in(pred(in, di, uo) is det),
+    bool::out, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -672,15 +678,14 @@ use_win32 :-
 
 create_java_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
     % XXX We should also create a ".bat" on Windows.
+    create_launcher_shell_script(Globals, MainModuleName,
+        write_java_shell_script(Globals, MainModuleName),
+        Succeeded, !IO).
 
-    Extension = "",
-    module_name_to_file_name(Globals, MainModuleName, Extension,
-        do_not_create_dirs, FileName, !IO),
+:- pred write_java_shell_script(globals::in, module_name::in,
+    io.output_stream::in, io::di, io::uo) is det.
 
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Generating shell script `" ++
-        FileName ++ "'...\n", !IO),
-
+write_java_shell_script(Globals, MainModuleName, Stream, !IO) :-
     % In shell scripts always use / separators, even on Windows.
     get_class_dir_name(Globals, ClassDirName),
     string.replace_all(ClassDirName, "\\", "/", ClassDirNameUnix),
@@ -696,44 +701,18 @@ create_java_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, java_interpreter, Java),
     mangle_sym_name_for_java(MainModuleName, module_qual, ".", ClassName),
 
-    % Remove symlink in the way, if any.
-    io.remove_file(FileName, _, !IO),
-    io.open_output(FileName, OpenResult, !IO),
-    (
-        OpenResult = ok(ShellScript),
-        list.foldl(io.write_string(ShellScript), [
-            "#!/bin/sh\n",
-            "DIR=${0%/*}\n",
-            "case $WINDIR in\n",
-            "   '') SEP=':' ;;\n",
-            "   *)  SEP=';' ;;\n",
-            "esac\n",
-            "CLASSPATH=", ClassPath, "\n",
-            "export CLASSPATH\n",
-            "JAVA=${JAVA:-", Java, "}\n",
-            "exec $JAVA jmercury.", ClassName, " \"$@\"\n"
-        ], !IO),
-        io.close_output(ShellScript, !IO),
-        io.call_system("chmod a+x " ++ FileName, ChmodResult, !IO),
-        (
-            ChmodResult = ok(Status),
-            ( Status = 0 ->
-                Succeeded = yes,
-                maybe_write_string(Verbose, "% done.\n", !IO)
-            ;
-                unexpected(this_file, "chmod exit status != 0"),
-                Succeeded = no
-            )
-        ;
-            ChmodResult = error(Message),
-            unexpected(this_file, io.error_message(Message)),
-            Succeeded = no
-        )
-    ;
-        OpenResult = error(Message),
-        unexpected(this_file, io.error_message(Message)),
-        Succeeded = no
-    ).
+    list.foldl(io.write_string(Stream), [
+        "#!/bin/sh\n",
+        "DIR=${0%/*}\n",
+        "case $WINDIR in\n",
+        "   '') SEP=':' ;;\n",
+        "   *)  SEP=';' ;;\n",
+        "esac\n",
+        "CLASSPATH=", ClassPath, "\n",
+        "export CLASSPATH\n",
+        "JAVA=${JAVA:-", Java, "}\n",
+        "exec $JAVA jmercury.", ClassName, " \"$@\"\n"
+    ], !IO).
 
     % NOTE: changes here may require changes to get_mercury_std_libs.
 get_mercury_std_libs_for_java(Globals, !:StdLibs) :-
@@ -867,15 +846,14 @@ get_env_classpath(Classpath, !IO) :-
 %
 
 create_erlang_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
-    Extension = "",
-    module_name_to_file_name(Globals, MainModuleName, Extension,
-        do_not_create_dirs, ScriptFileName, !IO),
-    grade_directory_component(Globals, GradeDir),
+    create_launcher_shell_script(Globals, MainModuleName,
+        write_erlang_shell_script(Globals, MainModuleName),
+        Succeeded, !IO).
 
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Generating shell script `" ++
-        ScriptFileName ++ "'...\n", !IO),
+:- pred write_erlang_shell_script(globals::in, module_name::in,
+    io.output_stream::in, io::di, io::uo) is det.
 
+write_erlang_shell_script(Globals, MainModuleName, Stream, !IO) :-
     globals.lookup_string_option(Globals, erlang_object_file_extension,
         BeamExt),
     module_name_to_file_name(Globals, MainModuleName, BeamExt,
@@ -886,6 +864,7 @@ create_erlang_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
     % Add `-pa <dir>' option to find the standard library.
     % (-pa adds the directory to the beginning of the list of paths to search
     % for .beam files)
+    grade_directory_component(Globals, GradeDir),
     globals.lookup_maybe_string_option(Globals,
         mercury_standard_library_directory, MaybeStdLibDir),
     (
@@ -907,70 +886,34 @@ create_erlang_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
         MercuryLibDirs0),
     globals.lookup_accumulating_option(Globals, link_libraries,
         LinkLibrariesList0),
-    list.map_foldl2(find_erlang_library_path(Globals, MercuryLibDirs),
-        LinkLibrariesList0, LinkLibrariesList, yes, LibrariesSucceeded,
-        !IO),
-    (
-        LibrariesSucceeded = yes,
-        % Remove symlink in the way, if any.
-        io.remove_file(ScriptFileName, _, !IO),
-        io.open_output(ScriptFileName, OpenResult, !IO),
-        (
-            OpenResult = ok(ShellScript),
+    list.map_foldl(find_erlang_library_path(Globals, MercuryLibDirs),
+        LinkLibrariesList0, LinkLibrariesList, !IO),
 
-            globals.lookup_string_option(Globals, erlang_interpreter, Erlang),
-            SearchLibs = string.append_list(list.map(pa_option(yes),
-                list.sort_and_remove_dups(LinkLibrariesList))),
+    globals.lookup_string_option(Globals, erlang_interpreter, Erlang),
+    SearchLibs = string.append_list(list.map(pa_option(yes),
+        list.sort_and_remove_dups(LinkLibrariesList))),
 
-            % XXX main_2_p_0 is not necessarily in the main module itself and
-            % could be in a submodule.  We don't handle that yet.
-            SearchProg = pa_option(no, """$DIR""/" ++ quote_arg(BeamDirName)),
+    % XXX main_2_p_0 is not necessarily in the main module itself and
+    % could be in a submodule.  We don't handle that yet.
+    SearchProg = pa_option(no, """$DIR""/" ++ quote_arg(BeamDirName)),
 
-            % Write the shell script.
-            % Note we need to use '-extra' instead of '--' for "-flag" and
-            % "+flag" arguments to be pass through to the Mercury program.
-            io.write_strings(ShellScript, [
-                "#!/bin/sh\n",
-                "# Generated by the Mercury compiler.\n",
-                "DIR=`dirname ""$0""`\n",
-                "exec ", Erlang, " -noshell \\\n",
-                SearchStdLib, SearchLibs, SearchProg,
-                " -s ", BeamBaseNameNoExt, " ", MainFunc,
-                " -s init stop -extra ""$@""\n"
-            ], !IO),
-            io.close_output(ShellScript, !IO),
-
-            % Set executable bit.
-            io.call_system("chmod a+x " ++ ScriptFileName, ChmodResult, !IO),
-            (
-                ChmodResult = ok(Status),
-                ( Status = 0 ->
-                    Succeeded = yes,
-                    maybe_write_string(Verbose, "% done.\n", !IO)
-                ;
-                    unexpected(this_file, "chmod exit status != 0"),
-                    Succeeded = no
-                )
-            ;
-                ChmodResult = error(Message),
-                unexpected(this_file, io.error_message(Message)),
-                Succeeded = no
-            )
-        ;
-            OpenResult = error(Message),
-            unexpected(this_file, io.error_message(Message)),
-            Succeeded = no
-        )
-    ;
-        LibrariesSucceeded = no,
-        Succeeded = no
-    ).
+    % Write the shell script.
+    % Note we need to use '-extra' instead of '--' for "-flag" and
+    % "+flag" arguments to be pass through to the Mercury program.
+    io.write_strings(Stream, [
+        "#!/bin/sh\n",
+        "# Generated by the Mercury compiler.\n",
+        "DIR=`dirname ""$0""`\n",
+        "exec ", Erlang, " -noshell \\\n",
+        SearchStdLib, SearchLibs, SearchProg,
+        " -s ", BeamBaseNameNoExt, " ", MainFunc,
+        " -s init stop -extra ""$@""\n"
+    ], !IO).
 
 :- pred find_erlang_library_path(globals::in, list(dir_name)::in, string::in,
-    string::out, bool::in, bool::out, io::di, io::uo) is det.
+    string::out, io::di, io::uo) is det.
 
-find_erlang_library_path(Globals, MercuryLibDirs, LibName, LibPath,
-        !Succeeded, !IO) :-
+find_erlang_library_path(Globals, MercuryLibDirs, LibName, LibPath, !IO) :-
     file_name_to_module_name(LibName, LibModuleName),
     globals.set_option(use_grade_subdirs, bool(no), Globals, NoSubdirsGlobals),
     module_name_to_lib_file_name(NoSubdirsGlobals, "lib", LibModuleName,
@@ -985,8 +928,7 @@ find_erlang_library_path(Globals, MercuryLibDirs, LibName, LibPath,
         SearchResult = error(Error),
         LibPath = "",
         write_error_pieces_maybe_with_context(Globals, no, 0, [words(Error)],
-            !IO),
-        !:Succeeded = no
+            !IO)
     ).
 
 :- func pa_option(bool, dir_name) = string.
@@ -998,6 +940,45 @@ pa_option(Quote, Dir0) = " -pa " ++ Dir ++ " \\\n" :-
     ;
         Quote = no,
         Dir = Dir0
+    ).
+
+%-----------------------------------------------------------------------------%
+
+create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
+    Extension = "",
+    module_name_to_file_name(Globals, MainModuleName, Extension,
+        do_not_create_dirs, FileName, !IO),
+
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    maybe_write_string(Verbose, "% Generating shell script `" ++
+        FileName ++ "'...\n", !IO),
+
+    % Remove symlink in the way, if any.
+    io.remove_file(FileName, _, !IO),
+    io.open_output(FileName, OpenResult, !IO),
+    (
+        OpenResult = ok(Stream),
+        Pred(Stream, !IO),
+        io.close_output(Stream, !IO),
+        io.call_system("chmod a+x " ++ FileName, ChmodResult, !IO),
+        (
+            ChmodResult = ok(Status),
+            ( Status = 0 ->
+                Succeeded = yes,
+                maybe_write_string(Verbose, "% done.\n", !IO)
+            ;
+                unexpected(this_file, "chmod exit status != 0"),
+                Succeeded = no
+            )
+        ;
+            ChmodResult = error(Message),
+            unexpected(this_file, io.error_message(Message)),
+            Succeeded = no
+        )
+    ;
+        OpenResult = error(Message),
+        unexpected(this_file, io.error_message(Message)),
+        Succeeded = no
     ).
 
 %-----------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2009 The University of Melbourne.
+% Copyright (C) 2008-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -548,6 +548,8 @@ file_is_arch_or_grade_dependent_2(".pic_s").
 file_is_arch_or_grade_dependent_2(".pic_s_date").
 file_is_arch_or_grade_dependent_2(".il").
 file_is_arch_or_grade_dependent_2(".il_date").
+file_is_arch_or_grade_dependent_2(".cs").
+file_is_arch_or_grade_dependent_2(".cs_date").
 file_is_arch_or_grade_dependent_2(".java").
 file_is_arch_or_grade_dependent_2(".java_date").
 file_is_arch_or_grade_dependent_2(".class").

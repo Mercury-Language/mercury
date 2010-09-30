@@ -349,10 +349,10 @@ CONSTRAINT_TYPECHECK_PROGS = \
 ifeq "$(findstring hl,$(GRADE))$(findstring .agc,$(GRADE))" "hl"
 	PROGS0 = $(TYPECLASS_PROGS) $(OTHER_PROGS)
 else
-	# The agc.* tests don't work in the il, java or erlang grades.
+	# The agc.* tests don't work in the il, java, csharp or erlang grades.
 	# The agc.* tests also don't work in minimal model grades,
 	# because the collector doesn't scan the copied areas of the stacks.
-    	ifneq "$(filter java% il% erlang%,$(GRADE))$(findstring mm,$(GRADE))" ""
+	ifneq "$(filter java% csharp% il% erlang%,$(GRADE))$(findstring mm,$(GRADE))" ""
 		PROGS0 = $(TYPECLASS_PROGS) $(OTHER_PROGS)
 	else
 		PROGS0 = $(AGC_PROGS) $(TYPECLASS_PROGS) $(OTHER_PROGS)
@@ -382,13 +382,13 @@ else
 	PROGS2=$(PROGS1) $(TRAIL_PROGS)
 endif
 
-ifneq "$(filter java% il% erlang%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
+ifneq "$(filter java% csharp% il% erlang%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
 	PROGS3 = $(PROGS2)
 else
 	PROGS3 = $(PROGS2) $(TABLE_PROGS)
 endif
 
-ifeq "$(filter hl% java% il% erlang%,$(GRADE))" ""
+ifeq "$(filter hl% java% csharp% il% erlang%,$(GRADE))" ""
 	PROGS4 = $(PROGS3) $(C_INTERFACE_PROGS) $(SOLVER_PROGS) \
 		$(DEEP_PROF_CAPABLE_PROGS) $(LLDS_PROGS)
 else
@@ -407,7 +407,7 @@ else
 	PROGS6 = $(PROGS5)
 endif
 
-ifeq "$(filter java% il% erlang%,$(GRADE))" ""
+ifeq "$(filter java% csharp% il% erlang%,$(GRADE))" ""
 	OBJ_PROGS = $(PROGS6) $(RESERVE_TAG_PROGS)
 else
 	OBJ_PROGS = $(PROGS6)
@@ -436,6 +436,11 @@ ifeq ($(findstring il,$(GRADE)),il)
 	TARGET_OBJ_EXT=dll
 	TARGET_OBJ_SUBDIR=$(DLLS_SUBDIR)
 else
+ifeq ($(findstring csharp,$(GRADE)),csharp)
+	# XXX we should produce DLLs but currently that invokes the IL backend
+	TARGET_OBJ_EXT=cs
+	TARGET_OBJ_SUBDIR=$(DLLS_SUBDIR)
+else
 ifeq ($(findstring erlang,$(GRADE)),erlang)
 	TARGET_OBJ_EXT=beam
 	# Erlang backend currently requires `mmc --make'.
@@ -447,6 +452,7 @@ ifeq ($(findstring java,$(GRADE)),java)
 else
 	TARGET_OBJ_EXT=$(O)
 	TARGET_OBJ_SUBDIR=$(OS_SUBDIR)
+endif
 endif
 endif
 endif

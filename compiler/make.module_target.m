@@ -538,7 +538,10 @@ build_object_code(Globals, ModuleName, Target, PIC, ErrorStream, Imports,
         compile_java_files(ErrorStream, [JavaFile], Globals, Succeeded, !IO)
     ;
         Target = target_csharp,
-        sorry(this_file, "NYI mmc --make and target csharp")
+        module_name_to_file_name(Globals, ModuleName, ".cs", do_create_dirs,
+            CsharpFile, !IO),
+        compile_target_code.link(ErrorStream, csharp_library, ModuleName,
+            [CsharpFile], Globals, Succeeded, !IO)
     ;
         Target = target_il,
         il_assemble(ErrorStream, ModuleName, Imports ^ mai_has_main,

@@ -122,7 +122,7 @@
     % Placeholder only.
 :- pragma foreign_type(il, future(T), "class [mscorlib]System.Object").
 :- pragma foreign_type("Erlang", future(T), "").
-% :- pragma foreign_type("C#", future(T), "object").
+:- pragma foreign_type("C#", future(T), "object").
 :- pragma foreign_type("Java", future(T), "java.lang.Object").
 
 %-----------------------------------------------------------------------------%

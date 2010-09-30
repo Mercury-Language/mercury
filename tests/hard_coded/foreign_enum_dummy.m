@@ -32,7 +32,7 @@ main(!IO) :-
 	test(FOO::in),
 	[will_not_call_mercury, promise_pure],
 "
-	if (FOO == 561) {
+	if ((int) FOO == 561) {
 		SUCCESS_INDICATOR = true;
 	} else {
 		SUCCESS_INDICATOR = false;

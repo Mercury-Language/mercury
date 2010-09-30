@@ -52,7 +52,7 @@
 :- pragma foreign_type("C", region, "MR_RegionHeader *",
     [can_pass_as_mercury_type]).
 
-% :- pragma foreign_type("C#", region, "object"). % dummy
+:- pragma foreign_type("C#", region, "object"). % dummy
 
 :- pragma foreign_type("Java", region, "java.lang.Object"). % dummy
 

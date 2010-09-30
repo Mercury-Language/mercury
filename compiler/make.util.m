@@ -734,6 +734,7 @@ MC_unlock_job_ctl(MC_JobCtl *job_ctl)
 
 :- type job_ctl.
 :- pragma foreign_type("C", job_ctl, "MC_JobCtl *").
+:- pragma foreign_type("C#", job_ctl, "object"). % stub
 :- pragma foreign_type("Java", job_ctl, "java.lang.Object"). % stub
 
 :- pred have_job_ctl_ipc is semidet.
@@ -1413,23 +1414,7 @@ target_extension_synonym(".csharp", module_target_csharp_code).
 linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
     (
         TargetType = executable,
-        globals.get_target(Globals, Target),
-        (
-            ( Target = target_erlang
-            ; Target = target_java
-            ),
-            % These are shell scripts.
-            Ext = ""
-        ;
-            ( Target = target_c
-            ; Target = target_il
-            ; Target = target_csharp
-            ; Target = target_asm
-            ; Target = target_x86_64
-            ),
-            globals.lookup_string_option(Globals, executable_file_extension,
-                Ext)
-        ),
+        globals.lookup_string_option(Globals, executable_file_extension, Ext),
         module_name_to_file_name(Globals, ModuleName, Ext,
             do_not_create_dirs, FileName, !IO)
     ;
@@ -1443,8 +1428,19 @@ linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
         module_name_to_lib_file_name(Globals, "lib", ModuleName, Ext,
             do_not_create_dirs, FileName, !IO)
     ;
+        TargetType = csharp_executable,
+        module_name_to_file_name(Globals, ModuleName, ".exe",
+            do_not_create_dirs, FileName, !IO)
+    ;
         TargetType = csharp_library,
         module_name_to_file_name(Globals, ModuleName, ".dll",
+            do_not_create_dirs, FileName, !IO)
+    ;
+        ( TargetType = java_launcher
+        ; TargetType = erlang_launcher
+        ),
+        % These are shell scripts.
+        module_name_to_file_name(Globals, ModuleName, "",
             do_not_create_dirs, FileName, !IO)
     ;
         TargetType = java_archive,

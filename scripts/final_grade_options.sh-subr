@@ -57,23 +57,23 @@ case $decl_debug in true)
 esac
 
 #
-# --target asm, IL or Java implies --high-level-code
+# --target asm, IL, C#, Java, Erlang implies --high-level-code
 #
-case $target in asm|il|java)
+case $target in asm|il|csharp|java|erlang)
 	highlevel_code=true ;;
 esac
 
 #
-# --target IL or Java implies --high-level-data
+# --target IL, C#, Java, Erlang implies --high-level-data
 #
-case $target in il|java)
+case $target in il|csharp|java|erlang)
 	highlevel_data=true ;;
 esac
 
 #
-# --target IL or Java or Erlang implies --gc automatic
+# --target IL, C#, Java, Erlang implies --gc automatic
 #
-case $target in il|java|erlang)
+case $target in il|csharp|java|erlang)
 	gc_method=automatic ;;
 esac
 

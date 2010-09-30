@@ -77,11 +77,11 @@
 % The representation of bool values should correspond with the definitions of
 % MR_TRUE and MR_FALSE in runtime/mercury_std.h.
 
-% :- pragma foreign_export_enum("C#", bool/0, [],
-%     [
-%         no  - "NO",
-%         yes - "YES"
-%     ]).
+:- pragma foreign_export_enum("C#", bool/0, [],
+    [
+        no  - "NO",
+        yes - "YES"
+    ]).
 
 :- pragma foreign_export_enum("Java", bool/0, [],
     [

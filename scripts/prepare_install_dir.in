@@ -66,6 +66,7 @@ cp runtime/Mmake* ${installdir}/runtime
 cp runtime/.mgnuc* ${installdir}/runtime
 cp runtime/*.in ${installdir}/runtime
 cp runtime/*.[ch] ${installdir}/runtime
+cp runtime/*.cs ${installdir}/runtime
 cp runtime/*.il ${installdir}/runtime
 cp runtime/machdeps/*.h ${installdir}/runtime/machdeps
 mkdir ${installdir}/trace

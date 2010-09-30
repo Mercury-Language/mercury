@@ -441,7 +441,8 @@ classify_target(Globals, FileName, ModuleName - TargetType) :-
         TargetType = misc_target(misc_target_build_library),
         file_name_to_module_name(ModuleNameStr, ModuleName)
     ;
-        TargetType = linked_target(executable),
+        ExecutableType = get_executable_type(Globals),
+        TargetType = linked_target(ExecutableType),
         file_name_to_module_name(FileName, ModuleName)
     ).
 
@@ -481,7 +482,8 @@ classify_target_2(Globals, ModuleNameStr0, Suffix, ModuleName - TargetType) :-
             Suffix)
     ->
         ModuleNameStr = ModuleNameStr0,
-        TargetType = linked_target(executable)
+        ExecutableType = get_executable_type(Globals),
+        TargetType = linked_target(ExecutableType)
     ;
         Suffix = ".beams",
         string.append("lib", ModuleNameStr1, ModuleNameStr0)
@@ -552,6 +554,28 @@ search_backwards_for_dot(String, Index, DotIndex) :-
         DotIndex = Index
     ;
         search_backwards_for_dot(String, Index - 1, DotIndex)
+    ).
+
+:- func get_executable_type(globals) = linked_target_type.
+
+get_executable_type(Globals) = ExecutableType :-
+    globals.get_target(Globals, CompilationTarget),
+    (
+        ( CompilationTarget = target_c
+        ; CompilationTarget = target_il
+        ; CompilationTarget = target_asm
+        ; CompilationTarget = target_x86_64
+        ),
+        ExecutableType = executable
+    ;
+        CompilationTarget = target_csharp,
+        ExecutableType = csharp_executable
+    ;
+        CompilationTarget = target_java,
+        ExecutableType = java_launcher
+    ;
+        CompilationTarget = target_erlang,
+        ExecutableType = erlang_launcher
     ).
 
 %-----------------------------------------------------------------------------%

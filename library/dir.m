@@ -323,8 +323,8 @@ use_windows_paths :- dir.directory_separator = ('\\').
     "ML_dir_this_directory").
 :- pragma foreign_export("IL", (dir.this_directory = out),
     "ML_dir_this_directory").
-% :- pragma foreign_export("C#", (dir.this_directory = out),
-%     "ML_dir_this_directory").
+:- pragma foreign_export("C#", (dir.this_directory = out),
+    "ML_dir_this_directory").
 
 dir.this_directory = ".".
 
@@ -772,8 +772,8 @@ dir.make_path_name(DirName, FileName) = DirName/FileName.
     "ML_make_path_name").
 :- pragma foreign_export("IL", dir.make_path_name(in, in) = out,
     "ML_make_path_name").
-% :- pragma foreign_export("C#", dir.make_path_name(in, in) = out,
-%     "ML_make_path_name").
+:- pragma foreign_export("C#", dir.make_path_name(in, in) = out,
+    "ML_make_path_name").
 
 DirName0/FileName0 = PathName :-
     DirName = string.from_char_list(canonicalize_path_chars(
@@ -1193,8 +1193,8 @@ dir.make_single_directory(DirName, Result, !IO) :-
     "ML_make_mkdir_res_ok").
 :- pragma foreign_export("IL", (dir.make_mkdir_res_ok = out),
     "ML_make_mkdir_res_ok").
-% :- pragma foreign_export("C#", (dir.make_mkdir_res_ok = out),
-%     "ML_make_mkdir_res_ok").
+:- pragma foreign_export("C#", (dir.make_mkdir_res_ok = out),
+    "ML_make_mkdir_res_ok").
 :- pragma foreign_export("Java", (dir.make_mkdir_res_ok = out),
     "ML_make_mkdir_res_ok").
 :- pragma foreign_export("Erlang", (dir.make_mkdir_res_ok = out),
@@ -1208,8 +1208,8 @@ dir.make_mkdir_res_ok = ok.
     "ML_make_mkdir_res_error").
 :- pragma foreign_export("IL", dir.make_mkdir_res_error(in, out, di, uo),
     "ML_make_mkdir_res_error").
-% :- pragma foreign_export("C#", dir.make_mkdir_res_error(in, out, di, uo),
-%     "ML_make_mkdir_res_error").
+:- pragma foreign_export("C#", dir.make_mkdir_res_error(in, out, di, uo),
+    "ML_make_mkdir_res_error").
 :- pragma foreign_export("Java", dir.make_mkdir_res_error(in, out, di, uo),
     "ML_make_mkdir_res_error").
 :- pragma foreign_export("Erlang", dir.make_mkdir_res_error(in, out, di, uo),
@@ -1227,9 +1227,9 @@ dir.make_mkdir_res_error(Error, error(make_io_error(Msg)), !IO) :-
 :- pragma foreign_export("IL",
     dir.make_mkdir_res_exists(in, in, out, di, uo),
     "ML_make_mkdir_res_exists").
-% :- pragma foreign_export("C#",
-%     dir.make_mkdir_res_exists(in, in, out, di, uo),
-%     "ML_make_mkdir_res_exists").
+:- pragma foreign_export("C#",
+    dir.make_mkdir_res_exists(in, in, out, di, uo),
+    "ML_make_mkdir_res_exists").
 :- pragma foreign_export("Java",
     dir.make_mkdir_res_exists(in, in, out, di, uo),
     "ML_make_mkdir_res_exists").
@@ -1251,8 +1251,8 @@ dir.make_mkdir_res_exists(Error, DirName, Res, !IO) :-
     "ML_check_dir_accessibility").
 :- pragma foreign_export("IL", dir.check_dir_accessibility(in, out, di, uo),
     "ML_check_dir_accessibility").
-% :- pragma foreign_export("C#", dir.check_dir_accessibility(in, out, di, uo),
-%     "ML_check_dir_accessibility").
+:- pragma foreign_export("C#", dir.check_dir_accessibility(in, out, di, uo),
+    "ML_check_dir_accessibility").
 :- pragma foreign_export("Java", dir.check_dir_accessibility(in, out, di, uo),
     "ML_check_dir_accessibility").
 :- pragma foreign_export("Erlang", dir.check_dir_accessibility(in, out, di, uo),
@@ -1549,7 +1549,7 @@ check_for_symlink_loop(SymLinkParent, DirName, LoopRes, !ParentIds, !IO) :-
 :- pragma foreign_type("C", dir.stream, "ML_DIR_STREAM").
 :- pragma foreign_type("IL", dir.stream,
     "class [mscorlib]System.Collections.IEnumerator").
-% :- pragma foreign_type("C#", dir.stream, "System.Collections.IEnumerator").
+:- pragma foreign_type("C#", dir.stream, "System.Collections.IEnumerator").
 :- pragma foreign_type("Java", dir.stream, "java.util.Iterator").
 :- pragma foreign_type("Erlang", dir.stream, "").
 
@@ -1744,8 +1744,8 @@ dir.check_dir_readable(DirName, IsReadable, Result, !IO) :-
     "ML_dir_read_first_entry").
 :- pragma foreign_export("IL", dir.read_first_entry(in, out, di, uo),
     "ML_dir_read_first_entry").
-% :- pragma foreign_export("C#", dir.read_first_entry(in, out, di, uo),
-%     "ML_dir_read_first_entry").
+:- pragma foreign_export("C#", dir.read_first_entry(in, out, di, uo),
+    "ML_dir_read_first_entry").
 :- pragma foreign_export("Java", dir.read_first_entry(in, out, di, uo),
     "ML_dir_read_first_entry").
 :- pragma foreign_export("Erlang", dir.read_first_entry(in, out, di, uo),
@@ -1762,9 +1762,9 @@ dir.read_first_entry(Dir, Result, !IO) :-
 :- pragma foreign_export("IL",
     make_win32_dir_open_result_ok(in, in, out, di, uo),
     "ML_make_win32_dir_open_result_ok").
-% :- pragma foreign_export("C#",
-%     make_win32_dir_open_result_ok(in, in, out, di, uo),
-%     "ML_make_win32_dir_open_result_ok").
+:- pragma foreign_export("C#",
+    make_win32_dir_open_result_ok(in, in, out, di, uo),
+    "ML_make_win32_dir_open_result_ok").
 :- pragma foreign_export("Java",
     make_win32_dir_open_result_ok(in, in, out, di, uo),
     "ML_make_win32_dir_open_result_ok").
@@ -1821,8 +1821,8 @@ copy_c_string(_) = _ :-
     "ML_make_dir_open_result_eof").
 :- pragma foreign_export("IL", (make_dir_open_result_eof = out),
     "ML_make_dir_open_result_eof").
-% :- pragma foreign_export("C#", (make_dir_open_result_eof = out),
-%     "ML_make_dir_open_result_eof").
+:- pragma foreign_export("C#", (make_dir_open_result_eof = out),
+    "ML_make_dir_open_result_eof").
 :- pragma foreign_export("Java", (make_dir_open_result_eof = out),
     "ML_make_dir_open_result_eof").
 
@@ -1834,8 +1834,8 @@ make_dir_open_result_eof = eof.
     "ML_make_dir_open_result_error").
 :- pragma foreign_export("IL", make_dir_open_result_error(in, out, di, uo),
     "ML_make_dir_open_result_error").
-% :- pragma foreign_export("C#", make_dir_open_result_error(in, out, di, uo),
-%     "ML_make_dir_open_result_error").
+:- pragma foreign_export("C#", make_dir_open_result_error(in, out, di, uo),
+    "ML_make_dir_open_result_error").
 :- pragma foreign_export("Java", make_dir_open_result_error(in, out, di, uo),
     "ML_make_dir_open_result_error").
 :- pragma foreign_export("Erlang", make_dir_open_result_error(in, out, di, uo),

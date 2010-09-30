@@ -482,9 +482,9 @@
     where equality is array.array_equal,
     comparison is array.array_compare.
 
-% :- pragma foreign_type("C#",  array(T), "System.Array")
-%     where equality is array.array_equal,
-%     comparison is array.array_compare.
+:- pragma foreign_type("C#",  array(T), "System.Array")
+    where equality is array.array_equal,
+    comparison is array.array_compare.
 
 :- pragma foreign_type("IL",  array(T), "class [mscorlib]System.Array")
     where equality is array.array_equal,

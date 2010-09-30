@@ -248,15 +248,15 @@ ILASM=`basename "$ILASM"`
 GACUTIL=`basename "$GACUTIL"`
 
 # Check for the C# (C sharp) compiler.
+# gmcs is the Mono C# compiler targeting the 2.0 runtime (with generics).
 # cscc is the DotGNU C# compiler.
-# mcs is the mono C# compiler.
-AC_PATH_PROGS(MS_CSC, csc cscc mcs)
-MS_CSC=`basename "$MS_CSC"`
+AC_PATH_PROGS(CSC, csc gmcs cscc)
+CSC=`basename "$CSC"`
 
 # We default to the Beta 2 version of the library
 mercury_cv_microsoft_dotnet_library_version=1.0.2411.0
 if	test $mercury_cv_microsoft_dotnet = "yes" &&
-	test "$MS_CSC" != "";
+	test "$CSC" != "";
 then
 	AC_MSG_CHECKING(version of .NET libraries)
 	cat > conftest.cs << EOF
@@ -274,8 +274,8 @@ then
 	}
 EOF
 	if
-		echo $MS_CSC conftest.cs >&AC_FD_CC 2>&1 && \
-			$MS_CSC conftest.cs  >&AC_FD_CC 2>&1 && \
+		echo $CSC conftest.cs >&AC_FD_CC 2>&1 && \
+			$CSC conftest.cs  >&AC_FD_CC 2>&1 && \
 			./conftest > conftest.out 2>&1
 	then
 		mercury_cv_microsoft_dotnet_library_version=`cat conftest.out`
@@ -298,13 +298,18 @@ MS_DOTNET_LIBRARY_VERSION=$mercury_cv_microsoft_dotnet_library_version
 AC_PATH_PROGS(MS_AL, al ilalink)
 MS_AL=`basename "$MS_AL"`
 
+# Check for an implementation of the Common Language Infrastructure.
+AC_PATH_PROGS(CLI_INTERPRETER, mono)
+MONO=`basename "$CLI_INTERPRETER"`
+
 AC_SUBST(ILASM)
 AC_SUBST(GACUTIL)
-AC_SUBST(MS_CSC)
+AC_SUBST(CSC)
 AC_SUBST(MS_AL)
 AC_SUBST(MS_DOTNET_SDK_DIR)
 AC_SUBST(MS_DOTNET_LIBRARY_VERSION)
 AC_SUBST(MS_VISUALCPP_DIR)
+AC_SUBST(CLI_INTERPRETER)
 ])
 
 #-----------------------------------------------------------------------------#

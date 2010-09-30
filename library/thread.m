@@ -389,9 +389,9 @@ INIT mercury_sys_init_thread_modules
 :- pragma foreign_export("IL",
     call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
     "ML_call_back_to_mercury_cc_multi").
-% :- pragma foreign_export("C#",
-%     call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
-%     "ML_call_back_to_mercury_cc_multi").
+:- pragma foreign_export("C#",
+    call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
+    "ML_call_back_to_mercury_cc_multi").
 :- pragma foreign_export("Java",
     call_back_to_mercury(pred(di, uo) is cc_multi, di, uo),
     "ML_call_back_to_mercury_cc_multi").

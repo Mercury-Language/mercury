@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2007 The University of Melbourne.
+# Copyright (C) 1995-2007, 2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -278,11 +278,11 @@ $(il_dates_subdir)%.il_date : %.m
 ifeq ($(findstring il,$(GRADE)),il)
 
 $(os_subdir)%.dll : %.cs
-	$(MS_CSC) /t:library /lib:`$(FIX_PATH_FOR_CSC) $(MERC_DLL_DIR)` \
-		/out:$@ $(CSHARP_ASSEMBLY_REFS-$*) $(ALL_MS_CSCFLAGS) $<
+	$(CSC) /t:library /lib:`$(FIX_PATH_FOR_CSC) $(MERC_DLL_DIR)` \
+		/out:$@ $(CSHARP_ASSEMBLY_REFS-$*) $(ALL_CSCFLAGS) $<
 
 $(os_subdir)%.dll : %.il
-	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /dll /quiet /OUT=$@ $<
+	$(ILASM) $(ALL_ILASMFLAGS) /dll /quiet /OUT=$@ $<
 
 mercury.sn:
 	cp $(MERC_DLL_DIR)/mercury.sn .
@@ -378,17 +378,17 @@ endif # $(MMAKE_USE_MMC_MAKE) != yes
 ifeq ($(findstring il,$(GRADE)),il)
 
 .il.dll:
-	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /dll /quiet /OUT=$@ $<
+	$(ILASM) $(ALL_ILASMFLAGS) /dll /quiet /OUT=$@ $<
 
 .il.exe:
-	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /quiet /OUT=$@ $<
+	$(ILASM) $(ALL_ILASMFLAGS) /quiet /OUT=$@ $<
 
 .cs.dll:
-	$(MS_CSC) /t:library /lib:`$(FIX_PATH_FOR_CSC) $(MERC_DLL_DIR)` \
+	$(CSC) /t:library /lib:`$(FIX_PATH_FOR_CSC) $(MERC_DLL_DIR)` \
 		/out:$@ $(CSHARP_ASSEMBLY_REFS-$*) $(EXTRA_CSCFLAGS) $<
 
 .cs.exe:
-	$(MS_CSC) /lib:`$(FIX_PATH_FOR_CSC) $(MERC_DLL_DIR)` /out:$@ \
+	$(CSC) /lib:`$(FIX_PATH_FOR_CSC) $(MERC_DLL_DIR)` /out:$@ \
 		$(CSHARP_ASSEMBLY_REFS-$*) $(EXTRA_CSCFLAGS) $<
 
 endif # $(findstring il,$(GRADE)) != ""

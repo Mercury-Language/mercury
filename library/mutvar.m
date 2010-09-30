@@ -112,7 +112,7 @@ new_mutvar(X, Ref) :-
 % C# implementation
 %
 
-% :- pragma foreign_type("C#", mutvar(T), "object[]").
+:- pragma foreign_type("C#", mutvar(T), "object[]").
 
 :- pragma foreign_proc("C#",
     new_mutvar0(Ref::uo),

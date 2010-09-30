@@ -285,10 +285,10 @@ unsafe_rewind(VA, unsafe_rewind(VA)).
         equality   is eq_version_array,
         comparison is cmp_version_array.
 
-% :- pragma foreign_type("C#", version_array(T), "version_array.ML_va")
-%     where
-%         equality   is eq_version_array,
-%         comparison is cmp_version_array.
+:- pragma foreign_type("C#", version_array(T), "version_array.ML_va")
+    where
+        equality   is eq_version_array,
+        comparison is cmp_version_array.
 
 :- pragma foreign_type("Java", version_array(T),
     "jmercury.version_array.ML_va")

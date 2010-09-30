@@ -248,8 +248,8 @@
     where equality is store_equal, comparison is store_compare.
 :- pragma foreign_type("IL", store(S), "int32", [can_pass_as_mercury_type])
     where equality is store_equal, comparison is store_compare.
-% :- pragma foreign_type("C#", store(S), "int32", [can_pass_as_mercury_type])
-%     where equality is store_equal, comparison is store_compare.
+:- pragma foreign_type("C#", store(S), "int", [can_pass_as_mercury_type])
+    where equality is store_equal, comparison is store_compare.
 :- pragma foreign_type("Java", store(S), "int", [can_pass_as_mercury_type])
     where equality is store_equal, comparison is store_compare.
 :- pragma foreign_type("Erlang", store(S), "", [can_pass_as_mercury_type])
@@ -343,7 +343,7 @@ store.new(S) :-
     S = S0;
 ").
 
-% :- pragma foreign_type("C#", generic_mutvar(T, S), "object[]").
+:- pragma foreign_type("C#", generic_mutvar(T, S), "object[]").
 
 :- pragma foreign_proc("C#",
     new_mutvar(Val::in, Mutvar::out, _S0::di, _S::uo),
@@ -450,7 +450,7 @@ store.new_cyclic_mutvar(Func, MutVar, !Store) :-
 
 %-----------------------------------------------------------------------------%
 
-% :- pragma foreign_type("C#", generic_ref(T, S), "store.Ref").
+:- pragma foreign_type("C#", generic_ref(T, S), "store.Ref").
 :- pragma foreign_code("C#",
 "
     public class Ref {

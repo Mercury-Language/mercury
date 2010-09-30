@@ -754,7 +754,14 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         globals.set_option(pretest_equality_cast_pointers, bool(yes),
             !Globals),
         globals.set_option(libgrade_install_check, bool(no), !Globals),
-        globals.set_option(cross_compiling, bool(yes), !Globals)
+        globals.set_option(cross_compiling, bool(yes), !Globals),
+        (
+            Target = target_csharp,
+            globals.set_option(executable_file_extension, string(".exe"),
+                !Globals)
+        ;
+            Target = target_java
+        )
     ;
         ( Target = target_c
         ; Target = target_il
@@ -2785,7 +2792,13 @@ grade_component_table("csharp", comp_gcc_ext, [
         highlevel_code          - bool(yes),
         highlevel_data          - bool(yes)],
         yes([string("csharp")]), yes).
-grade_component_table("erlang", comp_gcc_ext, [],
+grade_component_table("erlang", comp_gcc_ext, [
+        asm_labels              - bool(no),
+        gcc_non_local_gotos     - bool(no),
+        gcc_global_registers    - bool(no),
+        gcc_nested_functions    - bool(no),
+        highlevel_code          - bool(yes),
+        highlevel_data          - bool(yes)],
         yes([string("erlang")]), yes).
 
     % Parallelism/multithreading components.

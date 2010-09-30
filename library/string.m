@@ -30,7 +30,7 @@
 % comparison is implemented using C's strcmp() function.  When Mercury
 % is compiled to Java, string comparison is implemented using Java's
 % String.compareTo() method.  When Mercury is compiled to .NET IL code
-% string comparison is implemented using C#'s System.String.Compare()
+% string comparison is implemented using C#'s System.String.CompareOrdinal()
 % method.
 %
 %-----------------------------------------------------------------------------%
@@ -4000,7 +4000,7 @@ string.set_char(Char, Index, !Str) :-
     string.set_char_2(Ch::in, Index::in, Str0::in, Str::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    if (Index >= Str0.Length) {
+    if (Index < 0 || Index >= Str0.Length) {
         Str = null;
         SUCCESS_INDICATOR = false;
     } else {
@@ -4688,7 +4688,7 @@ string.split(Str, Count, Left, Right) :-
     SUCCESS_INDICATOR = (
         len > 0 &&
         Str[0] == First &&
-        System.String.Compare(Str, 1, Rest, 0, len) == 0
+        System.String.CompareOrdinal(Str, 1, Rest, 0, len) == 0
     );
 ").
 :- pragma foreign_proc("Java",
@@ -4725,7 +4725,8 @@ string.split(Str, Count, Left, Right) :-
 "
     int len = Str.Length;
     if (len > 0) {
-        SUCCESS_INDICATOR = (System.String.Compare(Str, 1, Rest, 0, len) == 0);
+        SUCCESS_INDICATOR = (System.String.CompareOrdinal(Str, 1, Rest, 0, len)
+            == 0);
         First = Str[0];
     } else {
         SUCCESS_INDICATOR = false;

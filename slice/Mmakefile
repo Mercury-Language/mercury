@@ -92,7 +92,7 @@ $(MDBCOMP_MODULES): $(MDBCOMP_ORIG_MODULES)
 # Add some additional dependencies, so that Mmake knows to remake the
 # slicer and dicer if one of the libraries changes.
 
-ifeq ("$(filter il% java% erlang%,$(GRADE))","")        
+ifeq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
 mslice: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 mslice: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 mslice: $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A

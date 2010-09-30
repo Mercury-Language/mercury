@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007, 2009 The University of Melbourne.
+% Copyright (C) 2005-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -105,8 +105,10 @@
 
 :- pragma foreign_type("C", bytecode_bytes, "const MR_uint_least8_t *",
     [can_pass_as_mercury_type, stable]).
+    % The following definitions are only stubs.
+:- pragma foreign_type("C#", bytecode_bytes, "object", []).
 :- pragma foreign_type("Java", bytecode_bytes, "java.lang.Object", []).
-    % stub only
+:- pragma foreign_type("Erlang", bytecode_bytes, "").
 
     % read_byte(ByteCode, Byte, !Pos):
     %
@@ -176,7 +178,8 @@
 
 :- pragma foreign_type("C", label_layout, "const MR_LabelLayout *",
     [can_pass_as_mercury_type, stable]).
-    % The Java and Erlang definitions are only stubs.
+    % The following definitions are only stubs.
+:- pragma foreign_type("C#", label_layout, "object", []).
 :- pragma foreign_type("Java", label_layout, "java.lang.Object", []).
 :- pragma foreign_type("Erlang", label_layout, "").
 
@@ -229,7 +232,8 @@ get_path_port_from_label_layout(Label) = PathPort :-
 
 :- pragma foreign_type("C", proc_layout, "const MR_ProcLayout *",
     [can_pass_as_mercury_type, stable]).
-    % The Java and Erlang definitions are only stubs.
+    % The following definitions are only stubs.
+:- pragma foreign_type("C#", proc_layout, "object", []).
 :- pragma foreign_type("Java", proc_layout, "java.lang.Object", []).
 :- pragma foreign_type("Erlang", proc_layout, "").
 
@@ -546,6 +550,13 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
 #endif
 ").
 
+:- pragma foreign_proc("C#",
+    proc_bytecode_bytes(_ProcLayout::in) = (_ByteCodeBytes::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    throw new System.Exception(\"not supported in C# grade\");
+").
+
 :- pragma foreign_proc("Java",
     proc_bytecode_bytes(_ProcLayout::in) = (_ByteCodeBytes::out),
     [will_not_call_mercury, thread_safe, promise_pure],
@@ -561,13 +572,15 @@ proc_bytecode_bytes(_) = dummy_bytecode_bytes.
 :- pragma foreign_type("C", module_common_layout,
     "const MR_ModuleCommonLayout *",
     [can_pass_as_mercury_type, stable]).
-    % The Java and Erlang definitions are only stubs.
+    % The following definitions are only stubs.
+:- pragma foreign_type("C#", module_common_layout, "object", []).
 :- pragma foreign_type("Java", module_common_layout, "java.lang.Object", []).
 :- pragma foreign_type("Erlang", module_common_layout, "").
 
 :- pragma foreign_type("C", string_table_chars, "MR_ConstString",
     [can_pass_as_mercury_type, stable]).
-    % The Java and Erlang definitions are only stubs.
+    % The following definitions are only stubs.
+:- pragma foreign_type("C#", string_table_chars, "object", []).
 :- pragma foreign_type("Java", string_table_chars, "java.lang.Object", []).
 :- pragma foreign_type("Erlang", string_table_chars, "").
 

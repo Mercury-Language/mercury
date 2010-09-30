@@ -198,7 +198,7 @@ builtin_compare_string(R, S1, S2) :-
     builtin_strcmp(Res::out, S1::in, S2::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Res = System.String.Compare(S1, S2);
+    Res = System.String.CompareOrdinal(S1, S2);
 ").
 :- pragma foreign_proc("Java",
     builtin_strcmp(Res::out, S1::in, S2::in),

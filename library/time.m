@@ -237,8 +237,8 @@
 :- pragma foreign_type("IL", time_t_rep, "valuetype [mscorlib]System.DateTime")
     where comparison is compare_time_t_reps.
 
-% :- pragma foreign_type("C#", time_t_rep, "System.DateTime")
-%     where comparison is compare_time_t_reps.
+:- pragma foreign_type("C#", time_t_rep, "System.DateTime")
+    where comparison is compare_time_t_reps.
 
 :- pragma foreign_type("Java", time_t_rep, "java.util.Date")
     where comparison is compare_time_t_reps.
@@ -1010,8 +1010,8 @@ time.ctime(Time) = asctime(localtime(Time)).
     "ML_construct_time_t").
 :- pragma foreign_export("IL", construct_time_t(in) = out,
     "ML_construct_time_t").
-% :- pragma foreign_export("C#", construct_time_t(in) = out,
-%     "ML_construct_time_t").
+:- pragma foreign_export("C#", construct_time_t(in) = out,
+    "ML_construct_time_t").
 :- pragma foreign_export("Java", construct_time_t(in) = out,
     "ML_construct_time_t").
 

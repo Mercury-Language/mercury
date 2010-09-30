@@ -22,6 +22,7 @@
 
 :- type coord.
 :- pragma foreign_type(c, coord, "coord *").
+:- pragma foreign_type("C#", coord, "coord").
 :- pragma foreign_type("Java", coord, "coord").
 :- pragma foreign_type("Erlang", coord, "").
 
@@ -29,6 +30,12 @@
 typedef struct {
     int x, y;
 } coord;
+").
+
+:- pragma foreign_decl("C#", "
+public class coord {
+    public int x, y;
+}
 ").
 
 :- pragma foreign_decl("Java", "
@@ -62,6 +69,29 @@ class coord {
     [will_not_call_mercury, promise_pure],
 "
     Y = C->y;
+").
+
+:- pragma foreign_proc("C#",
+    new_coord(X::in, Y::in) = (C::out),
+    [will_not_call_mercury, promise_pure],
+"
+    C = new coord();
+    C.x = X;
+    C.y = Y;
+").
+
+:- pragma foreign_proc("C#",
+    x(C::in) = (X::out),
+    [will_not_call_mercury, promise_pure],
+"
+    X = C.x;
+").
+
+:- pragma foreign_proc("C#",
+    y(C::in) = (Y::out),
+    [will_not_call_mercury, promise_pure],
+"
+    Y = C.y;
 ").
 
 :- pragma foreign_proc("Java",

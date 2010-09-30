@@ -95,7 +95,7 @@ public class ML_Semaphore {
     [can_pass_as_mercury_type]).
 :- pragma foreign_type("IL", semaphore,
     "class [mercury]mercury.thread.semaphore__csharp_code.mercury_code.ML_Semaphore").
-% :- pragma foreign_type("C#", semaphore, "thread__semaphore.ML_Semaphore").
+:- pragma foreign_type("C#", semaphore, "thread__semaphore.ML_Semaphore").
 :- pragma foreign_type("Erlang", semaphore, "").
 :- pragma foreign_type("Java", semaphore, "java.util.concurrent.Semaphore").
 
@@ -145,7 +145,7 @@ new(Semaphore, !IO) :-
     new(Count::in) = (Semaphore::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    Semaphore = new ML_Semaphore();
+    Semaphore = new thread__semaphore.ML_Semaphore();
     Semaphore.count = Count;
 ").
 

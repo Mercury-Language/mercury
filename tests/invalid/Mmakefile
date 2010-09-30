@@ -300,14 +300,14 @@ NON_PROFDEEP_MODULES = \
 
 # These tests test things which only work for back-ends which support
 # the C interface.
-ifneq "$(filter java% il% erlang%,$(GRADE))" ""
+ifneq "$(filter java% csharp% il% erlang%,$(GRADE))" ""
 	C_INTERFACE_PROGS=
 else
 	C_INTERFACE_PROGS=$(C_INTERFACE_MODULES)
 endif
 
 # The java and il grades compile with num_tag_bits = 0.
-ifneq "$(filter java% il% erlang%,$(GRADE))" ""
+ifneq "$(filter java% csharp% il% erlang%,$(GRADE))" ""
 	RESERVE_TAG_PROGS =
 else
 	RESERVE_TAG_PROGS = $(RESERVE_TAG_MODULES)
@@ -325,14 +325,7 @@ else
 	NON_PROFDEEP_PROGS = 
 endif
 
-# The java back-end ignores pragma type_spec, so it doesn't diagnose errors
-# in them. (XXX Perhaps the code to ignore them in make_hlds.m should be moved
-# to after the error-checking?)
-ifneq "$(filter java%,$(GRADE))" ""
-	TYPE_SPEC_PROGS =
-else
-	TYPE_SPEC_PROGS = $(TYPE_SPEC_MODULES)
-endif
+TYPE_SPEC_PROGS = $(TYPE_SPEC_MODULES)
 
 SINGLEMODULE_PROGS = $(SINGLEMODULE) \
 	$(C_INTERFACE_PROGS) \

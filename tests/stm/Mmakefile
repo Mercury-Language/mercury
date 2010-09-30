@@ -40,7 +40,7 @@ MULTI_PROGS =			\
 #
 LLDS_PROGS = 
 
-ifeq "$(filter hl% java% il% erlang%,$(GRADE))" ""
+ifeq "$(filter hl% java% csharp% il% erlang%,$(GRADE))" ""
 	PROGS0 = $(LLDS_PROGS)
 else
 	PROGS0 =
@@ -119,7 +119,7 @@ endif
 
 # Exercise multiple Mercury engines in lowlevel grades.
 ENGINES :=
-ifeq "$(filter hl% java% il% erlang%,$(GRADE))" ""
+ifeq "$(filter hl% java% csharp% il% erlang%,$(GRADE))" ""
 	ENGINES := MERCURY_OPTIONS=-P8
 endif
 

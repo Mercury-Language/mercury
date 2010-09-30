@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2009 The University of Melbourne.
+# Copyright (C) 1995-2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -622,7 +622,7 @@ install_grades: install_main
 	    IWS=`/bin/pwd`/install_grade_dir.$${grade};                       \
 	    (                                                                 \
 		case $${grade} in                                             \
-			java*|erlang*) MMAKE_USE_MMC_MAKE=yes;                \
+			csharp*|java*|erlang*) MMAKE_USE_MMC_MAKE=yes;        \
 		esac;                                                         \
 		scripts/prepare_install_dir $${IWS} &&                        \
 		( cd $${IWS}/boehm_gc &&                                      \

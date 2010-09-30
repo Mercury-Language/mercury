@@ -370,6 +370,7 @@ then
         :- pragma foreign_type("C", x, "MR_Integer",
             [[can_pass_as_mercury_type, stable]]).
         :- pragma foreign_type("Erlang", x, "").
+        :- pragma foreign_type("C#", x, "object").
 
         :- pragma foreign_proc("C", return_rtti_version(Version::out),
             [[may_call_mercury, promise_pure, terminates,

@@ -1512,7 +1512,7 @@
 :- pragma foreign_type(c, io.system_error, "MR_Integer").
 :- pragma foreign_type(il, io.system_error,
     "class [mscorlib]System.Exception").
-% :- pragma foreign_type("C#", io.system_error, "System.Exception").
+:- pragma foreign_type("C#", io.system_error, "System.Exception").
 :- pragma foreign_type(java, io.system_error, "java.lang.Exception").
 :- pragma foreign_type(erlang, io.system_error, "").
 
@@ -1700,7 +1700,7 @@
 :- type io.state.
 :- pragma foreign_type("C", io.state, "MR_Word", [can_pass_as_mercury_type]).
 :- pragma foreign_type("IL", io.state, "int32", [can_pass_as_mercury_type]).
-% :- pragma foreign_type("C#", io.state, "int", [can_pass_as_mercury_type]).
+:- pragma foreign_type("C#", io.state, "int", [can_pass_as_mercury_type]).
 :- pragma foreign_type("Java", io.state, "java.lang.Object",
     [can_pass_as_mercury_type]).
 :- pragma foreign_type("Erlang", io.state, "", [can_pass_as_mercury_type]).
@@ -1787,7 +1787,7 @@
     [can_pass_as_mercury_type]).
 :- pragma foreign_type("IL", io.stream,
     "class [mercury]mercury.io__csharp_code.MR_MercuryFileStruct").
-% :- pragma foreign_type("C#", io.stream, "io.MR_MercuryFileStruct").
+:- pragma foreign_type("C#", io.stream, "io.MR_MercuryFileStruct").
 :- pragma foreign_type("Java", io.stream, "io.MR_MercuryFileStruct").
 :- pragma foreign_type("Erlang", io.stream, "").
 
@@ -2627,8 +2627,8 @@ io.make_err_msg(Msg0, Msg, !IO) :-
     "ML_make_err_msg").
 :- pragma foreign_export("IL", make_err_msg(in, in, out, di, uo),
     "ML_make_err_msg").
-% :- pragma foreign_export("C#", make_err_msg(in, in, out, di, uo),
-%     "ML_make_err_msg").
+:- pragma foreign_export("C#", make_err_msg(in, in, out, di, uo),
+    "ML_make_err_msg").
 
 :- pragma foreign_proc("C",
     make_err_msg(Error::in, Msg0::in, Msg::out, IO0::di, IO::uo),
@@ -2711,8 +2711,8 @@ have_dotnet :-
     "ML_make_win32_err_msg").
 :- pragma foreign_export("IL", make_win32_err_msg(in, in, out, di, uo),
     "ML_make_win32_err_msg").
-% :- pragma foreign_export("C#", make_win32_err_msg(in, in, out, di, uo),
-%     "ML_make_win32_err_msg").
+:- pragma foreign_export("C#", make_win32_err_msg(in, in, out, di, uo),
+    "ML_make_win32_err_msg").
 
 make_win32_err_msg(_, _, "", !IO) :-
     ( semidet_succeed ->
@@ -3238,28 +3238,28 @@ file_type_unknown = unknown.
     "ML_file_type_character_device").
 :- pragma foreign_export("IL", file_type_character_device = out,
     "ML_file_type_character_device").
-% :- pragma foreign_export("C#", file_type_character_device = out,
-%     "ML_file_type_character_device").
+:- pragma foreign_export("C#", file_type_character_device = out,
+    "ML_file_type_character_device").
 :- pragma foreign_export("Erlang", file_type_character_device = out,
     "ML_file_type_character_device").
 :- pragma foreign_export("C", file_type_block_device = out,
     "ML_file_type_block_device").
 :- pragma foreign_export("IL", file_type_block_device = out,
     "ML_file_type_block_device").
-% :- pragma foreign_export("C#", file_type_block_device = out,
-%     "ML_file_type_block_device").
+:- pragma foreign_export("C#", file_type_block_device = out,
+    "ML_file_type_block_device").
 :- pragma foreign_export("C", file_type_fifo = out,
     "ML_file_type_fifo").
 :- pragma foreign_export("IL", file_type_fifo = out,
     "ML_file_type_fifo").
-% :- pragma foreign_export("C#", file_type_fifo = out,
-%     "ML_file_type_fifo").
+:- pragma foreign_export("C#", file_type_fifo = out,
+    "ML_file_type_fifo").
 :- pragma foreign_export("C", file_type_directory = out,
     "ML_file_type_directory").
 :- pragma foreign_export("IL", file_type_directory = out,
     "ML_file_type_directory").
-% :- pragma foreign_export("C#", file_type_directory = out,
-%     "ML_file_type_directory").
+:- pragma foreign_export("C#", file_type_directory = out,
+    "ML_file_type_directory").
 :- pragma foreign_export("Java", file_type_directory = out,
     "ML_file_type_directory").
 :- pragma foreign_export("Erlang", file_type_directory = out,
@@ -3268,22 +3268,22 @@ file_type_unknown = unknown.
     "ML_file_type_socket").
 :- pragma foreign_export("IL", file_type_socket = out,
     "ML_file_type_socket").
-% :- pragma foreign_export("C#", file_type_socket = out,
-%     "ML_file_type_socket").
+:- pragma foreign_export("C#", file_type_socket = out,
+    "ML_file_type_socket").
 :- pragma foreign_export("C", file_type_symbolic_link = out,
     "ML_file_type_symbolic_link").
 :- pragma foreign_export("IL", file_type_symbolic_link = out,
     "ML_file_type_symbolic_link").
-% :- pragma foreign_export("C#", file_type_symbolic_link = out,
-%     "ML_file_type_symbolic_link").
+:- pragma foreign_export("C#", file_type_symbolic_link = out,
+    "ML_file_type_symbolic_link").
 :- pragma foreign_export("Erlang", file_type_symbolic_link = out,
     "ML_file_type_symbolic_link").
 :- pragma foreign_export("C", file_type_regular = out,
     "ML_file_type_regular").
 :- pragma foreign_export("IL", file_type_regular = out,
     "ML_file_type_regular").
-% :- pragma foreign_export("C#", file_type_regular = out,
-%     "ML_file_type_regular").
+:- pragma foreign_export("C#", file_type_regular = out,
+    "ML_file_type_regular").
 :- pragma foreign_export("Java", file_type_regular = out,
     "ML_file_type_regular").
 :- pragma foreign_export("Erlang", file_type_regular = out,
@@ -3292,26 +3292,26 @@ file_type_unknown = unknown.
     "ML_file_type_message_queue").
 :- pragma foreign_export("IL", file_type_message_queue = out,
     "ML_file_type_message_queue").
-% :- pragma foreign_export("C#", file_type_message_queue = out,
-%     "ML_file_type_message_queue").
+:- pragma foreign_export("C#", file_type_message_queue = out,
+    "ML_file_type_message_queue").
 :- pragma foreign_export("C", file_type_semaphore = out,
     "ML_file_type_semaphore").
 :- pragma foreign_export("IL", file_type_semaphore = out,
     "ML_file_type_semaphore").
-% :- pragma foreign_export("C#", file_type_semaphore = out,
-%     "ML_file_type_semaphore").
+:- pragma foreign_export("C#", file_type_semaphore = out,
+    "ML_file_type_semaphore").
 :- pragma foreign_export("C", file_type_shared_memory = out,
     "ML_file_type_shared_memory").
 :- pragma foreign_export("IL", file_type_shared_memory = out,
     "ML_file_type_shared_memory").
-% :- pragma foreign_export("C#", file_type_shared_memory = out,
-%     "ML_file_type_shared_memory").
+:- pragma foreign_export("C#", file_type_shared_memory = out,
+    "ML_file_type_shared_memory").
 :- pragma foreign_export("C", file_type_unknown = out,
     "ML_file_type_unknown").
 :- pragma foreign_export("IL", file_type_unknown = out,
     "ML_file_type_unknown").
-% :- pragma foreign_export("C#", file_type_unknown = out,
-%     "ML_file_type_unknown").
+:- pragma foreign_export("C#", file_type_unknown = out,
+    "ML_file_type_unknown").
 :- pragma foreign_export("Java", file_type_unknown = out,
     "ML_file_type_unknown").
 :- pragma foreign_export("Erlang", file_type_unknown = out,
@@ -3636,8 +3636,8 @@ check_directory_accessibility_dotnet(_, _, _, Res, !IO) :-
     "ML_access_types_includes_read").
 :- pragma foreign_export("IL", access_types_includes_read(in),
     "ML_access_types_includes_read").
-% :- pragma foreign_export("C#", access_types_includes_read(in),
-%     "ML_access_types_includes_read").
+:- pragma foreign_export("C#", access_types_includes_read(in),
+    "ML_access_types_includes_read").
 :- pragma foreign_export("Java", access_types_includes_read(in),
     "ML_access_types_includes_read").
 :- pragma foreign_export("Erlang", access_types_includes_read(in),
@@ -3651,8 +3651,8 @@ access_types_includes_read(Access) :-
     "ML_access_types_includes_write").
 :- pragma foreign_export("IL", access_types_includes_write(in),
     "ML_access_types_includes_write").
-% :- pragma foreign_export("C#", access_types_includes_write(in),
-%     "ML_access_types_includes_write").
+:- pragma foreign_export("C#", access_types_includes_write(in),
+    "ML_access_types_includes_write").
 :- pragma foreign_export("Java", access_types_includes_write(in),
     "ML_access_types_includes_write").
 :- pragma foreign_export("Erlang", access_types_includes_write(in),
@@ -3666,8 +3666,8 @@ access_types_includes_write(Access) :-
     "ML_access_types_includes_execute").
 :- pragma foreign_export("IL", access_types_includes_execute(in),
     "ML_access_types_includes_execute").
-% :- pragma foreign_export("C#", access_types_includes_execute(in),
-%     "ML_access_types_includes_execute").
+:- pragma foreign_export("C#", access_types_includes_execute(in),
+    "ML_access_types_includes_execute").
 :- pragma foreign_export("Java", access_types_includes_execute(in),
     "ML_access_types_includes_execute").
 :- pragma foreign_export("Erlang", access_types_includes_execute(in),
@@ -3681,8 +3681,8 @@ access_types_includes_execute(Access) :-
     "ML_make_io_res_0_ok").
 :- pragma foreign_export("IL", (make_io_res_0_ok = out),
     "ML_make_io_res_0_ok").
-% :- pragma foreign_export("C#", (make_io_res_0_ok = out),
-%     "ML_make_io_res_0_ok").
+:- pragma foreign_export("C#", (make_io_res_0_ok = out),
+    "ML_make_io_res_0_ok").
 :- pragma foreign_export("Java", (make_io_res_0_ok = out),
     "ML_make_io_res_0_ok").
 :- pragma foreign_export("Erlang", (make_io_res_0_ok = out),
@@ -3696,8 +3696,8 @@ make_io_res_0_ok = ok.
     "ML_make_io_res_0_error").
 :- pragma foreign_export("IL", make_io_res_0_error(in, in, out, di, uo),
     "ML_make_io_res_0_error").
-% :- pragma foreign_export("C#", make_io_res_0_error(in, in, out, di, uo),
-%     "ML_make_io_res_0_error").
+:- pragma foreign_export("C#", make_io_res_0_error(in, in, out, di, uo),
+    "ML_make_io_res_0_error").
 :- pragma foreign_export("Java", make_io_res_0_error(in, in, out, di, uo),
     "ML_make_io_res_0_error").
 :- pragma foreign_export("Erlang", make_io_res_0_error(in, in, out, di, uo),
@@ -3711,8 +3711,8 @@ make_io_res_0_error(Error, Msg0, error(make_io_error(Msg)), !IO) :-
     "ML_make_io_res_0_error_msg").
 :- pragma foreign_export("IL", (make_io_res_0_error_msg(in) = out),
     "ML_make_io_res_0_error_msg").
-% :- pragma foreign_export("C#", (make_io_res_0_error_msg(in) = out),
-%     "ML_make_io_res_0_error_msg").
+:- pragma foreign_export("C#", (make_io_res_0_error_msg(in) = out),
+    "ML_make_io_res_0_error_msg").
 :- pragma foreign_export("Java", (make_io_res_0_error_msg(in) = out),
     "ML_make_io_res_0_error_msg").
 
@@ -3723,8 +3723,8 @@ make_io_res_0_error_msg(Msg) = error(make_io_error(Msg)).
     "ML_make_io_res_1_ok_file_type").
 :- pragma foreign_export("IL", (make_io_res_1_ok_file_type(in) = out),
     "ML_make_io_res_1_ok_file_type").
-% :- pragma foreign_export("C#", (make_io_res_1_ok_file_type(in) = out),
-%     "ML_make_io_res_1_ok_file_type").
+:- pragma foreign_export("C#", (make_io_res_1_ok_file_type(in) = out),
+    "ML_make_io_res_1_ok_file_type").
 :- pragma foreign_export("Java", (make_io_res_1_ok_file_type(in) = out),
     "ML_make_io_res_1_ok_file_type").
 :- pragma foreign_export("Erlang", (make_io_res_1_ok_file_type(in) = out),
@@ -3740,9 +3740,9 @@ make_io_res_1_ok_file_type(FileType) = ok(FileType).
 :- pragma foreign_export("IL",
     make_io_res_1_error_file_type(in, in, out, di, uo),
     "ML_make_io_res_1_error_file_type").
-% :- pragma foreign_export("C#",
-%     make_io_res_1_error_file_type(in, in, out, di, uo),
-%     "ML_make_io_res_1_error_file_type").
+:- pragma foreign_export("C#",
+    make_io_res_1_error_file_type(in, in, out, di, uo),
+    "ML_make_io_res_1_error_file_type").
 :- pragma foreign_export("Java",
     make_io_res_1_error_file_type(in, in, out, di, uo),
     "ML_make_io_res_1_error_file_type").
@@ -3756,8 +3756,8 @@ make_io_res_1_error_file_type(Error, Msg0, error(make_io_error(Msg)), !IO) :-
 :- func make_io_res_1_ok_string(string) = io.res(string).
 :- pragma foreign_export("C", (make_io_res_1_ok_string(in) = out),
     "ML_make_io_res_1_ok_string").
-% :- pragma foreign_export("C#", (make_io_res_1_ok_string(in) = out),
-%     "ML_make_io_res_1_ok_string").
+:- pragma foreign_export("C#", (make_io_res_1_ok_string(in) = out),
+    "ML_make_io_res_1_ok_string").
 :- pragma foreign_export("Java", (make_io_res_1_ok_string(in) = out),
     "ML_make_io_res_1_ok_string").
 :- pragma foreign_export("Erlang", (make_io_res_1_ok_string(in) = out),
@@ -3770,9 +3770,9 @@ make_io_res_1_ok_string(String) = ok(String).
 :- pragma foreign_export("C",
     make_io_res_1_error_string(in, in, out, di, uo),
     "ML_make_io_res_1_error_string").
-% :- pragma foreign_export("C#",
-%     make_io_res_1_error_string(in, in, out, di, uo),
-%     "ML_make_io_res_1_error_string").
+:- pragma foreign_export("C#",
+    make_io_res_1_error_string(in, in, out, di, uo),
+    "ML_make_io_res_1_error_string").
 :- pragma foreign_export("Java",
     make_io_res_1_error_string(in, in, out, di, uo),
     "ML_make_io_res_1_error_string").
@@ -4638,8 +4638,8 @@ io.write_many(Stream, [f(F) | Rest], !IO) :-
     "ML_io_print_to_cur_stream").
 :- pragma foreign_export("IL", io.print(in, di, uo),
     "ML_io_print_to_cur_stream").
-% :- pragma foreign_export("C#", io.print(in, di, uo),
-%     "ML_io_print_to_cur_stream").
+:- pragma foreign_export("C#", io.print(in, di, uo),
+    "ML_io_print_to_cur_stream").
 :- pragma foreign_export("Java", io.print(in, di, uo),
     "ML_io_print_to_cur_stream").
 

@@ -127,7 +127,7 @@ univ_type(Univ) = type_of(univ_value(Univ)).
 :- pred construct_univ(T::in, univ::out) is det.
 :- pragma foreign_export("C", construct_univ(in, out), "ML_construct_univ").
 :- pragma foreign_export("IL", construct_univ(in, out), "ML_construct_univ").
-% :- pragma foreign_export("C#", construct_univ(in, out), "ML_construct_univ").
+:- pragma foreign_export("C#", construct_univ(in, out), "ML_construct_univ").
 :- pragma foreign_export("Java", construct_univ(in, out), "ML_construct_univ").
 
 construct_univ(X, Univ) :-
@@ -136,7 +136,7 @@ construct_univ(X, Univ) :-
 :- some [T] pred unravel_univ(univ::in, T::out) is det.
 :- pragma foreign_export("C", unravel_univ(in, out), "ML_unravel_univ").
 :- pragma foreign_export("IL", unravel_univ(in, out), "ML_unravel_univ").
-% :- pragma foreign_export("C#", unravel_univ(in, out), "ML_unravel_univ").
+:- pragma foreign_export("C#", unravel_univ(in, out), "ML_unravel_univ").
 :- pragma foreign_export("Java", unravel_univ(in, out), "ML_unravel_univ").
 
 unravel_univ(Univ, X) :-

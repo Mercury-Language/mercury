@@ -191,13 +191,34 @@ public class TypeCtorInfo_Struct : PseudoTypeInfo {
         type_functor_number_map = functor_number_map;
     }
 
+    public override bool Equals(object other) {
+        TypeCtorInfo_Struct tci = other as TypeCtorInfo_Struct;
+        if ((System.Object)tci == null) {
+            return false;
+        }
+        return this.Equals(tci);
+    }
+
     public bool Equals(TypeCtorInfo_Struct tci) {
+        if (tci == null) {
+            return false;
+        }
         if (this == tci) {
             return true;
         }
         return type_ctor_module_name.Equals(tci.type_ctor_module_name)
             && type_ctor_name.Equals(tci.type_ctor_name)
             && arity == tci.arity;
+    }
+
+    public override int GetHashCode() {
+        return type_ctor_module_name.GetHashCode()
+            ^ type_ctor_name.GetHashCode()
+            ^ arity;
+    }
+
+    public override string ToString() {
+        return type_ctor_module_name + "." + type_ctor_name + "/" + arity;
     }
 }
 
@@ -266,7 +287,19 @@ public class TypeInfo_Struct : PseudoTypeInfo {
         return ti;
     }
 
+    public override bool Equals(object other) {
+        TypeInfo_Struct ti = other as TypeInfo_Struct;
+        if ((System.Object)ti == null) {
+            return false;
+        }
+        return this.Equals(ti);
+    }
+
     public bool Equals(TypeInfo_Struct ti) {
+        if (ti == null) {
+            return false;
+        }
+
         if (this == ti) {
             return true;
         }
@@ -317,6 +350,29 @@ public class TypeInfo_Struct : PseudoTypeInfo {
 
         return ti;
     }
+
+    public override int GetHashCode() {
+        int hash = type_ctor.GetHashCode();
+        if (args != null) {
+            foreach (PseudoTypeInfo a in args) {
+                hash ^= a.GetHashCode();
+            }
+        }
+        return hash;
+    }
+
+    /* Useful for debugging.
+    public override string ToString() {
+        string s = type_ctor.ToString() + "(";
+        if (args != null) {
+            foreach (PseudoTypeInfo a in args) {
+                s += a.ToString() + ",";
+            }
+        }
+        s += ")";
+        return s;
+    }
+    */
 }
 
 public class TypeLayout {

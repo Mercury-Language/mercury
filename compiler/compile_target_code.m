@@ -119,8 +119,11 @@
     --->    executable
     ;       static_library
     ;       shared_library
+    ;       csharp_executable
     ;       csharp_library
+    ;       java_launcher
     ;       java_archive
+    ;       erlang_launcher
     ;       erlang_archive.
 
     % link(TargetType, MainModuleName, ObjectFileNames, Globals, Succeeded,
@@ -1687,53 +1690,43 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Globals, Succeeded,
         !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
-    globals.get_target(Globals, Target),
 
     maybe_write_string(Verbose, "% Linking...\n", !IO),
     link_output_filename(Globals, LinkTargetType, ModuleName, _Ext,
         OutputFileName, !IO),
     (
+        LinkTargetType = executable,
+        link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType,
+            ModuleName, OutputFileName, ObjectsList, LinkSucceeded, !IO)
+    ;
         LinkTargetType = static_library,
         create_archive(Globals, ErrorStream, OutputFileName, yes, ObjectsList,
             LinkSucceeded, !IO)
     ;
-        LinkTargetType = csharp_library,
+        LinkTargetType = shared_library,
+        link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType,
+            ModuleName, OutputFileName, ObjectsList, LinkSucceeded, !IO)
+    ;
+        ( LinkTargetType = csharp_executable
+        ; LinkTargetType = csharp_library
+        ),
         % XXX C# see also older predicate compile_csharp_file
         create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType,
-            OutputFileName, ObjectsList, LinkSucceeded, !IO)
+            ModuleName, OutputFileName, ObjectsList, LinkSucceeded, !IO)
+    ;
+        LinkTargetType = java_launcher,
+        create_java_shell_script(Globals, ModuleName, LinkSucceeded, !IO)
     ;
         LinkTargetType = java_archive,
         create_java_archive(Globals, ErrorStream, OutputFileName, ObjectsList,
             LinkSucceeded, !IO)
     ;
+        LinkTargetType = erlang_launcher,
+        create_erlang_shell_script(Globals, ModuleName, LinkSucceeded, !IO)
+    ;
         LinkTargetType = erlang_archive,
         create_erlang_archive(Globals, ErrorStream, ModuleName, OutputFileName,
             ObjectsList, LinkSucceeded, !IO)
-    ;
-        LinkTargetType = executable,
-        (
-            Target = target_erlang,
-            create_erlang_shell_script(Globals, ModuleName, LinkSucceeded, !IO)
-        ;
-            Target = target_java,
-            create_java_shell_script(Globals, ModuleName, LinkSucceeded, !IO)
-        ;
-            Target = target_csharp,
-            create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType,
-                OutputFileName, ObjectsList, LinkSucceeded, !IO)
-        ;
-            ( Target = target_c
-            ; Target = target_il
-            ; Target = target_asm
-            ; Target = target_x86_64
-            ),
-            link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType,
-                ModuleName, OutputFileName, ObjectsList, LinkSucceeded, !IO)
-        )
-    ;
-        LinkTargetType = shared_library,
-        link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType,
-            ModuleName, OutputFileName, ObjectsList, LinkSucceeded, !IO)
     ),
     maybe_report_stats(Stats, !IO),
     (
@@ -1751,6 +1744,11 @@ link(ErrorStream, LinkTargetType, ModuleName, ObjectsList, Globals, Succeeded,
 link_output_filename(Globals, LinkTargetType, ModuleName, Ext, OutputFileName,
         !IO) :-
     (
+        LinkTargetType = executable,
+        globals.lookup_string_option(Globals, executable_file_extension, Ext),
+        module_name_to_file_name(Globals, ModuleName, Ext, do_create_dirs,
+            OutputFileName, !IO)
+    ;
         LinkTargetType = static_library,
         globals.lookup_string_option(Globals, library_extension, Ext),
         module_name_to_lib_file_name(Globals, "lib", ModuleName, Ext,
@@ -1761,8 +1759,21 @@ link_output_filename(Globals, LinkTargetType, ModuleName, Ext, OutputFileName,
         module_name_to_lib_file_name(Globals, "lib", ModuleName, Ext,
             do_create_dirs, OutputFileName, !IO)
     ;
+        LinkTargetType = csharp_executable,
+        Ext = ".exe",
+        module_name_to_file_name(Globals, ModuleName, Ext,
+            do_create_dirs, OutputFileName, !IO)
+    ;
         LinkTargetType = csharp_library,
         Ext = ".dll",
+        module_name_to_file_name(Globals, ModuleName, Ext,
+            do_create_dirs, OutputFileName, !IO)
+    ;
+        ( LinkTargetType = java_launcher
+        ; LinkTargetType = erlang_launcher
+        ),
+        % These are shell scripts.
+        Ext = "",
         module_name_to_file_name(Globals, ModuleName, Ext,
             do_create_dirs, OutputFileName, !IO)
     ;
@@ -1775,29 +1786,6 @@ link_output_filename(Globals, LinkTargetType, ModuleName, Ext, OutputFileName,
         Ext = ".beams",
         module_name_to_lib_file_name(Globals, "lib", ModuleName, Ext,
             do_create_dirs, OutputFileName, !IO)
-    ;
-        LinkTargetType = executable,
-        globals.get_target(Globals, Target),
-        (
-            ( Target = target_erlang
-            ; Target = target_java
-            ),
-            % These are shell scripts.
-            Ext = ""
-        ;
-            Target = target_csharp,
-            Ext = ".exe"
-        ;
-            ( Target = target_c
-            ; Target = target_il
-            ; Target = target_asm
-            ; Target = target_x86_64
-            ),
-            globals.lookup_string_option(Globals, executable_file_extension,
-                Ext)
-        ),
-        module_name_to_file_name(Globals, ModuleName, Ext, do_create_dirs,
-            OutputFileName, !IO)
     ).
 
 :- pred link_exe_or_shared_lib(globals::in, io.output_stream::in,
@@ -2029,16 +2017,23 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
             ; TargetType = static_library
             ; TargetType = shared_library
             ),
-            globals.lookup_string_option(Globals, library_extension, LibExt)
+            globals.lookup_string_option(Globals, library_extension, LibExt),
+            globals.lookup_string_option(Globals, mercury_linkage,
+                MercuryLinkage)
         ;
-            TargetType = csharp_library,
-            unexpected(this_file, "get_mercury_std_libs: csharp_library")
+            ( TargetType = csharp_executable
+            ; TargetType = csharp_library
+            ),
+            LibExt = ".dll",
+            MercuryLinkage = "csharp"
         ;
-            TargetType = java_archive,
-            unexpected(this_file, "get_mercury_std_libs: java_archive")
-        ;
-            TargetType = erlang_archive,
-            unexpected(this_file, "get_mercury_std_libs: erlang_archive")
+            ( TargetType = java_launcher
+            ; TargetType = java_archive
+            ; TargetType = erlang_launcher
+            ; TargetType = erlang_archive
+            ),
+            unexpected(this_file,
+                "get_mercury_std_libs: " ++ string(TargetType))
         ),
         grade_directory_component(Globals, GradeDir),
 
@@ -2137,7 +2132,6 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
             SharedSourceDebugLibs = ""
         ),
 
-        globals.lookup_string_option(Globals, mercury_linkage, MercuryLinkage),
         link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
             "mer_std", StaticStdLib, StdLib),
         link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt,
@@ -2158,6 +2152,12 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
                 RuntimeLib,
                 SharedGCLibs
             ])
+        ; MercuryLinkage = "csharp" ->
+            StdLibs = string.join_list(" ", [
+                SharedTraceLibs,
+                SharedSourceDebugLibs,
+                StdLib
+            ])
         ;
             unexpected(this_file, "unknown linkage " ++ MercuryLinkage)
         )
@@ -2171,7 +2171,26 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
 
 link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibExt, Name,
         StaticArg, SharedArg) :-
-    StaticLibName = "lib" ++ Name ++ LibExt,
+    (
+        ( TargetType = executable
+        ; TargetType = shared_library
+        ; TargetType = static_library
+        ),
+        LibPrefix = "lib"
+    ;
+        ( TargetType = csharp_executable
+        ; TargetType = csharp_library
+        ),
+        LibPrefix = ""
+    ;
+        ( TargetType = java_launcher
+        ; TargetType = java_archive
+        ; TargetType = erlang_launcher
+        ; TargetType = erlang_archive
+        ),
+        unexpected(this_file, "link_lib_args: " ++ string(TargetType))
+    ),
+    StaticLibName = LibPrefix ++ Name ++ LibExt,
     StaticArg = quote_arg(StdLibDir/"lib"/GradeDir/StaticLibName),
     make_link_lib(Globals, TargetType, Name, SharedArg).
 
@@ -2218,17 +2237,20 @@ make_link_lib(Globals, TargetType, LibName, LinkOpt) :-
         globals.lookup_string_option(Globals, LinkLibSuffix, Suffix),
         LinkOpt = quote_arg(LinkLibOpt ++ LibName ++ Suffix)
     ;
-        TargetType = csharp_library,
-        unexpected(this_file, "make_link_lib: csharp_library")
+        ( TargetType = csharp_executable
+        ; TargetType = csharp_library
+        ),
+        LinkLibOpt = "/r:",
+        Suffix = ".dll",
+        LinkOpt = quote_arg(LinkLibOpt ++ LibName ++ Suffix)
     ;
-        TargetType = java_archive,
-        unexpected(this_file, "make_link_lib: java_archive")
-    ;
-        TargetType = erlang_archive,
-        unexpected(this_file, "make_link_lib: erlang_archive")
-    ;
-        TargetType = static_library,
-        unexpected(this_file, "make_link_lib: static_library")
+        ( TargetType = static_library
+        ; TargetType = java_launcher
+        ; TargetType = java_archive
+        ; TargetType = erlang_launcher
+        ; TargetType = erlang_archive
+        ),
+        unexpected(this_file, "make_link_lib: " ++ string(TargetType))
     ).
 
 :- pred get_runtime_library_path_opts(globals::in, linked_target_type::in,
@@ -2302,20 +2324,18 @@ get_system_libs(Globals, TargetType, SystemLibs) :-
         TargetType = shared_library,
         globals.lookup_string_option(Globals, shared_libs, OtherSystemLibs)
     ;
-        TargetType = static_library,
-        unexpected(this_file, "get_std_libs: static library")
-    ;
-        TargetType = csharp_library,
-        unexpected(this_file, "get_std_libs: csharp library")
-    ;
-        TargetType = java_archive,
-        unexpected(this_file, "get_std_libs: java archive")
-    ;
-        TargetType = erlang_archive,
-        unexpected(this_file, "get_std_libs: erlang archive")
-    ;
         TargetType = executable,
         globals.lookup_string_option(Globals, math_lib, OtherSystemLibs)
+    ;
+        ( TargetType = static_library
+        ; TargetType = csharp_executable
+        ; TargetType = csharp_library
+        ; TargetType = java_launcher
+        ; TargetType = java_archive
+        ; TargetType = erlang_launcher
+        ; TargetType = erlang_archive
+        ),
+        unexpected(this_file, "get_std_libs: " ++ string(TargetType))
     ),
 
     SystemLibs = string.join_list(" ",
@@ -2341,14 +2361,18 @@ post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
         globals.set_option(use_grade_subdirs, bool(no),
             NoSubdirGlobals0, NoSubdirGlobals),
         ( 
-            LinkTargetType = executable,
+            ( LinkTargetType = executable
+            ; LinkTargetType = csharp_executable
+            ; LinkTargetType = csharp_library
+            ; LinkTargetType = java_launcher
+            ; LinkTargetType = java_archive
+            ; LinkTargetType = erlang_launcher
+            ),
             module_name_to_file_name(NoSubdirGlobals, ModuleName, Ext,
                 do_not_create_dirs, UserDirFileName, !IO)
         ;
             ( LinkTargetType = static_library
             ; LinkTargetType = shared_library
-            ; LinkTargetType = csharp_library
-            ; LinkTargetType = java_archive
             ; LinkTargetType = erlang_archive
             ),
             module_name_to_lib_file_name(NoSubdirGlobals, "lib", ModuleName,
@@ -2402,7 +2426,29 @@ shared_libraries_supported(Globals, Supported) :-
 
 process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
         !IO) :-
-    globals.lookup_string_option(Globals, mercury_linkage, MercuryLinkage),
+    globals.get_target(Globals, Target),
+    (
+        ( Target = target_c
+        ; Target = target_asm
+        ; Target = target_x86_64
+        ),
+        globals.lookup_string_option(Globals, mercury_linkage, MercuryLinkage),
+        LinkOpt = "-l"
+    ;
+        Target = target_csharp,
+        MercuryLinkage = "shared",
+        LinkOpt = "/r:"
+    ;
+        Target = target_il,
+        unexpected(this_file, "process_link_library: target_java")
+    ;
+        Target = target_java,
+        unexpected(this_file, "process_link_library: target_java")
+    ;
+        Target = target_erlang,
+        unexpected(this_file, "process_link_library: target_erlang")
+    ),
+
     globals.lookup_accumulating_option(Globals, mercury_libraries,
         MercuryLibs),
     (
@@ -2432,7 +2478,7 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
             !:Succeeded = no
         )
     ;
-        LinkerOpt = "-l" ++ LibName
+        LinkerOpt = LinkOpt ++ LibName
     ).
 
 :- pred create_archive(globals::in, io.output_stream::in, file_name::in,
@@ -2478,11 +2524,11 @@ create_archive(Globals, ErrorStream, LibFileName, Quote, ObjectList,
     ).
 
 :- pred create_csharp_exe_or_lib(globals::in, io.output_stream::in,
-    linked_target_type::in, file_name::in, list(file_name)::in, bool::out,
-    io::di, io::uo) is det.
+    linked_target_type::in, module_name::in, file_name::in, list(file_name)::in,
+    bool::out, io::di, io::uo) is det.
 
-create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, OutputFileName,
-        SourceList, Succeeded, !IO) :-
+create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
+        OutputFileName, SourceList, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, csharp_compiler, CSharpCompiler),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     (
@@ -2492,26 +2538,95 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, OutputFileName,
         HighLevelData = no,
         HighLevelDataOpt = ""
     ),
+    globals.lookup_bool_option(Globals, target_debug, Debug),
+    (
+        Debug = yes,
+        DebugOpt = "/debug "
+    ;
+        Debug = no,
+        DebugOpt = ""
+    ),
     globals.lookup_accumulating_option(Globals, csharp_flags, CSCFlagsList),
     (
-        LinkTargetType = executable,
+        LinkTargetType = csharp_executable,
         TargetOption = "/target:exe"
     ;
         LinkTargetType = csharp_library,
         TargetOption = "/target:library"
     ;
-        ( LinkTargetType = static_library
+        ( LinkTargetType = executable
+        ; LinkTargetType = static_library
         ; LinkTargetType = shared_library
+        ; LinkTargetType = java_launcher
         ; LinkTargetType = java_archive
+        ; LinkTargetType = erlang_launcher
         ; LinkTargetType = erlang_archive
         ),
         unexpected(this_file, "create_csharp_exe_or_lib: wrong target type")
     ),
-    Cmd = string.join_list(" ", [CSharpCompiler, HighLevelDataOpt,
-        TargetOption, "/out:" ++ OutputFileName
-        | CSCFlagsList ++ SourceList]),
+
+    globals.lookup_accumulating_option(Globals, link_library_directories,
+        LinkLibraryDirectoriesList),
+    LinkerPathFlag = "/lib:",
+    join_quoted_string_list(LinkLibraryDirectoriesList, LinkerPathFlag, "",
+        " ", LinkLibraryDirectories),
+
+    get_link_libraries(Globals, MaybeLinkLibraries, !IO),
+    (   
+        MaybeLinkLibraries = yes(LinkLibrariesList),
+        join_quoted_string_list(LinkLibrariesList, "", "", " ",
+            LinkLibraries)
+    ;
+        MaybeLinkLibraries = no,
+        LinkLibraries = ""
+    ),
+
+    get_mercury_std_libs(Globals, LinkTargetType, MercuryStdLibs),
+
+    Cmd = string.join_list(" ", [
+        CSharpCompiler,
+        HighLevelDataOpt,
+        DebugOpt,
+        TargetOption,
+        "/out:" ++ OutputFileName,
+        LinkLibraryDirectories,
+        LinkLibraries,
+        MercuryStdLibs] ++
+        CSCFlagsList ++
+        SourceList),
     invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Cmd,
-        Succeeded, !IO).
+        Succeeded0, !IO),
+
+    % Also create a shell script to launch it if necessary.
+    (
+        Succeeded0 = yes,
+        LinkTargetType = csharp_executable,
+        globals.lookup_string_option(Globals, cli_interpreter, CLI),
+        CLI \= ""
+    ->
+        create_launcher_shell_script(Globals, MainModuleName,
+            write_cli_shell_script(Globals, OutputFileName),
+            Succeeded, !IO)
+    ;
+        Succeeded = Succeeded0
+    ).
+
+:- pred write_cli_shell_script(globals::in, string::in, io.output_stream::in,
+    io::di, io::uo) is det.
+
+write_cli_shell_script(Globals, ExeFileName, Stream, !IO) :-
+    globals.lookup_string_option(Globals, cli_interpreter, CLI),
+    globals.lookup_accumulating_option(Globals, link_library_directories,
+        LinkLibraryDirectoriesList),
+    join_quoted_string_list(LinkLibraryDirectoriesList, "", "",
+        ":", LinkLibraryDirectories),
+    list.foldl(io.write_string(Stream), [
+        "#!/bin/sh\n",
+        "MONO_PATH=$MONO_PATH:", LinkLibraryDirectories, "\n",
+        "export MONO_PATH\n",
+        "CLI_INTERPRETER=${CLI_INTERPRETER:-", CLI, "}\n",
+        "exec $CLI_INTERPRETER ", ExeFileName, " \"$@\"\n"
+    ], !IO).
 
 :- pred create_java_archive(globals::in, io.output_stream::in, file_name::in,
     list(file_name)::in, bool::out, io::di, io::uo) is det.
@@ -2653,8 +2768,11 @@ get_object_code_type(Globals, FileType, ObjectCodeType) :-
         PIC = no,
         (
             ( FileType = static_library
+            ; FileType = csharp_executable
             ; FileType = csharp_library
+            ; FileType = java_launcher
             ; FileType = java_archive
+            ; FileType = erlang_launcher
             ; FileType = erlang_archive
             ),
             ObjectCodeType = non_pic
@@ -2698,33 +2816,6 @@ get_linked_target_type(Globals, LinkedTargetType) :-
     ;
         MakeSharedLib = no,
         LinkedTargetType = executable
-    ).
-
-%-----------------------------------------------------------------------------%
-
-:- pred standard_library_directory_option(globals::in, string::out,
-    io::di, io::uo) is det.
-
-standard_library_directory_option(Globals, Opt, !IO) :-
-    globals.lookup_maybe_string_option(Globals,
-        mercury_standard_library_directory, MaybeStdLibDir),
-    globals.lookup_maybe_string_option(Globals,
-        mercury_configuration_directory, MaybeConfDir),
-    (
-        MaybeStdLibDir = yes(StdLibDir),
-        Opt0 = "--mercury-standard-library-directory " ++ StdLibDir ++ " ",
-        (
-            MaybeConfDir = yes(ConfDir),
-            ConfDir \= StdLibDir
-        ->
-            Opt = Opt0 ++
-                "--mercury-configuration-directory " ++ ConfDir ++ " "
-        ;
-            Opt = Opt0
-        )
-    ;
-        MaybeStdLibDir = no,
-        Opt = "--no-mercury-standard-library-directory "
     ).
 
 %-----------------------------------------------------------------------------%

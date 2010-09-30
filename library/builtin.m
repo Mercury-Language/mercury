@@ -602,12 +602,12 @@ get_one_solution_io(Pred, X, !IO) :-
 :- external(compare/3).
 :- external(compare_representation/3).
 
-% :- pragma foreign_export_enum("C#", comparison_result/0, [],
-%     [
-%         (=) - "COMPARE_EQUAL",
-%         (<) - "COMPARE_LESS",
-%         (>) - "COMPARE_GREATER"
-%     ]).
+:- pragma foreign_export_enum("C#", comparison_result/0, [],
+    [
+        (=) - "COMPARE_EQUAL",
+        (<) - "COMPARE_LESS",
+        (>) - "COMPARE_GREATER"
+    ]).
 
 :- pragma foreign_export_enum("Java", comparison_result/0, [],
     [
@@ -702,6 +702,10 @@ call_rtti_generic_compare(Res, X, Y) :-
 :- pragma foreign_code("C#", "
 public static object deep_copy(object o)
 {
+    if (o == null) {
+        return null;
+    }
+
     System.Type t = o.GetType();
     System.Array arr;
 
