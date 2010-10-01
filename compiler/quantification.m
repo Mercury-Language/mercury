@@ -178,8 +178,8 @@
     % If you want to debug a new set representation, just import a version
     % of the bitset_tester module from tests/hard_coded, and make set_of_var
     % equivalent to the bitset_tester type.
-:- type set_of_var == set(prog_var).
-% :- type set_of_var == tree_bitset(prog_var).
+% :- type set_of_var == set(prog_var).
+:- type set_of_var == tree_bitset(prog_var).
 
 :- inst ordinary_nonlocals_maybe_lambda
     --->    ordinary_nonlocals_maybe_lambda.
