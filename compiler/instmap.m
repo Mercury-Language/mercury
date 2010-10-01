@@ -932,7 +932,7 @@ merge_insts_of_vars([Var | Vars], InstMapList, VarTypes, !InstMapping,
 lookup_var_in_instmap(Var, InstMap, Inst) :-
     instmap_lookup_var(InstMap, Var, Inst).
 
-    % merge_var_insts:(Insts, Type, !ModuleInfo, MaybeMergedInst):
+    % merge_var_insts(Insts, Type, !ModuleInfo, MaybeMergedInst):
     %
     % Given a list of insts of a given variable that reflect the inst of that
     % variable at the ends of a branched control structure such as a
