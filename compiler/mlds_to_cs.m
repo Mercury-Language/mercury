@@ -500,13 +500,22 @@ write_main_driver(Indent, ClassName, !IO) :-
     io.write_string("(string[] args)\n", !IO),
     indent_line(Indent, !IO),
     io.write_string("{\n", !IO),
-
-    % XXX handle command line arguments and exit status
     Body = [
-        "   " ++ ClassName ++ ".main_2_p_0();"
+        "try {",
+        "   " ++ ClassName ++ ".main_2_p_0();",
+        "} catch (runtime.Exception e) {",
+        "   exception.ML_report_uncaught_exception(",
+        "       (univ.Univ_0) e.exception);",
+        "   if (System.Environment.GetEnvironmentVariable(",
+        "           ""MERCURY_SUPPRESS_STACK_TRACE"") == null) {",
+        "       System.Console.Error.WriteLine(e.StackTrace);",
+        "   }",
+        "   if (System.Environment.ExitCode == 0) {",
+        "       System.Environment.ExitCode = 1;",
+        "   }",
+        "}"
     ],
     list.foldl(write_indented_line(Indent + 1), Body, !IO),
-
     indent_line(Indent, !IO),
     io.write_string("}\n", !IO).
 
@@ -1636,17 +1645,12 @@ remove_sym_name_prefixes(SymName0, Prefix, SymName) :-
 convert_qual_kind(module_qual) = module_qual.
 convert_qual_kind(type_qual) = type_qual.
 
-:- pred output_module_name(mercury_module_name::in, io::di, io::uo) is det.
-
-output_module_name(ModuleName, !IO) :-
-    io.write_string(sym_name_mangle(ModuleName), !IO).
-
 :- pred output_unqual_class_name(mlds_class_name::in, arity::in,
     io::di, io::uo) is det.
 
 output_unqual_class_name(Name, Arity, !IO) :-
     unqual_class_name_to_string(Name, Arity, String),
-    io.write_string(String, !IO).
+    write_identifier_string(String, !IO).
 
 :- pred unqual_class_name_to_string(mlds_class_name::in, arity::in,
     string::out) is det.
@@ -1676,27 +1680,55 @@ qual_class_name_to_string(QualName, Arity, String) :-
 
 :- pred output_name(mlds_entity_name::in, io::di, io::uo) is det.
 
-output_name(entity_type(Name, Arity), !IO) :-
-    output_unqual_class_name(Name, Arity, !IO).
-output_name(entity_data(DataName), !IO) :-
-    output_data_name(DataName, !IO).
-output_name(entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId), !IO) :-
-    output_pred_label(PredLabel, !IO),
-    proc_id_to_int(ProcId, ModeNum),
-    io.format("_%d", [i(ModeNum)], !IO),
-    (
-        MaybeSeqNum = yes(SeqNum),
-        io.format("_%d", [i(SeqNum)], !IO)
+output_name(EntityName, !IO) :-
+    entity_name_to_string(EntityName, EntityNameStr),
+    write_identifier_string(EntityNameStr, !IO).
+
+:- pred write_identifier_string(string::in, io::di, io::uo) is det.
+
+write_identifier_string(String, !IO) :-
+    % Although the C# spec does not limit identifier lengths, both the
+    % Microsoft and Mono compilers restrict identifiers to 512 characters.
+    Length = string.length(String),
+    ( Length > 511 ->
+        Left = string.left(String, 251),
+        Right = string.right(String, 251),
+        Hash = string.hash(String) /\ 0xffffffff,
+        io.format("%s_%08x_%s", [s(Left), i(Hash), s(Right)], !IO)
     ;
-        MaybeSeqNum = no
+        io.write_string(String, !IO)
     ).
-output_name(entity_export(Name), !IO) :-
-    io.write_string(Name, !IO).
 
-:- pred output_pred_label(mlds_pred_label::in, io::di, io::uo) is det.
+:- pred entity_name_to_string(mlds_entity_name::in, string::out) is det.
 
-output_pred_label(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
-        PredArity, _, _), !IO) :-
+entity_name_to_string(EntityName, String) :-
+    (
+        EntityName = entity_type(Name, Arity),
+        unqual_class_name_to_string(Name, Arity, String)
+    ;
+        EntityName = entity_data(DataName),
+        data_name_to_string(DataName, String)
+    ;
+        EntityName = entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId),
+        pred_label_to_string(PredLabel, PredLabelStr),
+        proc_id_to_int(ProcId, ModeNum),
+        (
+            MaybeSeqNum = yes(SeqNum),
+            string.format("%s_%d_%d", [s(PredLabelStr), i(ModeNum), i(SeqNum)],
+                String)
+        ;
+            MaybeSeqNum = no,
+            string.format("%s_%d", [s(PredLabelStr), i(ModeNum)], String)
+        )
+    ;
+        EntityName = entity_export(Name),
+        String = Name
+    ).
+
+:- pred pred_label_to_string(mlds_pred_label::in, string::out) is det.
+
+pred_label_to_string(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
+        Name, PredArity, _, _), String) :-
     (
         PredOrFunc = pf_predicate,
         Suffix = "p",
@@ -1707,60 +1739,78 @@ output_pred_label(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
         OrigArity = PredArity - 1
     ),
     MangledName = name_mangle_no_leading_digit(Name),
-    io.format("%s_%d_%s", [s(MangledName), i(OrigArity), s(Suffix)], !IO),
     (
         MaybeDefiningModule = yes(DefiningModule),
-        io.write_string("_in__", !IO),
-        output_module_name(DefiningModule, !IO)
+        DefiningModuleStr = sym_name_mangle(DefiningModule),
+        string.format("%s_%d_%s_in__%s",
+            [s(MangledName), i(OrigArity), s(Suffix), s(DefiningModuleStr)],
+            String)
     ;
-        MaybeDefiningModule = no
+        MaybeDefiningModule = no,
+        string.format("%s_%d_%s",
+            [s(MangledName), i(OrigArity), s(Suffix)], String)
     ).
 
-output_pred_label(mlds_special_pred_label(PredName, MaybeTypeModule, TypeName,
-        TypeArity), !IO) :-
+pred_label_to_string(mlds_special_pred_label(PredName, MaybeTypeModule,
+        TypeName, TypeArity), String) :-
     MangledPredName = name_mangle_no_leading_digit(PredName),
     MangledTypeName = name_mangle(TypeName),
-    io.write_string(MangledPredName, !IO),
-    io.write_string("__", !IO),
     (
         MaybeTypeModule = yes(TypeModule),
-        output_module_name(TypeModule, !IO),
-        io.write_string("__", !IO)
+        TypeModuleStr = sym_name_mangle(TypeModule),
+        string.format("%s__%s__%s_%d",
+            [s(TypeModuleStr), s(MangledPredName), s(MangledTypeName),
+                i(TypeArity)],
+            String)
     ;
-        MaybeTypeModule = no
-    ),
-    io.format("%s_%d", [s(MangledTypeName), i(TypeArity)], !IO).
+        MaybeTypeModule = no,
+        string.format("%s__%s_%d",
+            [s(MangledPredName), s(MangledTypeName), i(TypeArity)],
+            String)
+    ).
 
-:- pred output_data_name(mlds_data_name::in, io::di, io::uo) is det.
+:- pred data_name_to_string(mlds_data_name::in, string::out) is det.
 
-output_data_name(mlds_data_var(VarName), !IO) :-
-    output_mlds_var_name(VarName, !IO).
+data_name_to_string(DataName, String) :-
+    (
+        DataName = mlds_data_var(VarName),
+        var_name_to_string(VarName, String)
+    ;
+        DataName = mlds_scalar_common_ref(Common),
+        Common = ml_scalar_common(_ModuleName, _Type,
+            ml_scalar_common_type_num(TypeNum), RowNum),
+        string.format("MR_scalar_common_%d[%d]", [i(TypeNum), i(RowNum)],
+            String)
+    ;
+        DataName = mlds_rtti(RttiId),
+        rtti.id_to_c_identifier(RttiId, RttiAddrName),
+        String = RttiAddrName
+    ;
+        DataName = mlds_module_layout,
+        unexpected(this_file, "NYI: mlds_module_layout")
+    ;
+        DataName = mlds_proc_layout(_ProcLabel),
+        unexpected(this_file, "NYI: mlds_proc_layout")
+    ;
+        DataName = mlds_internal_layout(_ProcLabel, _FuncSeqNum),
+        unexpected(this_file, "NYI: mlds_internal_layout")
+    ;
+        DataName = mlds_tabling_ref(_ProcLabel, _Id),
+        unexpected(this_file, "NYI: mlds_tabling_ref")
+    ).
 
-output_data_name(mlds_scalar_common_ref(Common), !IO) :-
-    Common = ml_scalar_common(_ModuleName, _Type,
-        ml_scalar_common_type_num(TypeNum), RowNum),
-    io.format("MR_scalar_common_%d[%d]", [i(TypeNum), i(RowNum)], !IO).
+:- pred var_name_to_string(mlds_var_name::in, string::out) is det.
 
-output_data_name(mlds_rtti(RttiId), !IO) :-
-    rtti.id_to_c_identifier(RttiId, RttiAddrName),
-    io.write_string(RttiAddrName, !IO).
-output_data_name(mlds_module_layout, !IO) :-
-    unexpected(this_file, "NYI: mlds_module_layout").
-output_data_name(mlds_proc_layout(_ProcLabel), !IO) :-
-    unexpected(this_file, "NYI: mlds_proc_layout").
-output_data_name(mlds_internal_layout(_ProcLabel, _FuncSeqNum), !IO) :-
-    unexpected(this_file, "NYI: mlds_internal_layout").
-output_data_name(mlds_tabling_ref(ProcLabel, Id), !IO) :-
-    Prefix = tabling_info_id_str(Id) ++ "_",
-    io.write_string(Prefix, !IO),
-    mlds_output_proc_label(mlds_std_tabling_proc_label(ProcLabel), !IO).
-
-:- pred output_mlds_var_name(mlds_var_name::in, io::di, io::uo) is det.
-
-output_mlds_var_name(mlds_var_name(Name, no), !IO) :-
-    output_valid_mangled_name(Name, !IO).
-output_mlds_var_name(mlds_var_name(Name, yes(Num)), !IO) :-
-    output_mangled_name(string.format("%s_%d", [s(Name), i(Num)]), !IO).
+var_name_to_string(VarName, String) :-
+    (
+        VarName = mlds_var_name(Name, no),
+        MangledName = name_mangle(Name),
+        String = valid_csharp_symbol_name(MangledName)
+    ;
+        VarName = mlds_var_name(Name, yes(Num)),
+        string.format("%s_%d", [s(Name), i(Num)], UnmangledName),
+        String = name_mangle(UnmangledName)
+    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -3089,18 +3139,12 @@ output_lval(Info, Lval, !IO) :-
         )
     ).
 
-:- pred output_mangled_name(string::in, io::di, io::uo) is det.
-
-output_mangled_name(Name, !IO) :-
-    MangledName = name_mangle(Name),
-    io.write_string(MangledName, !IO).
-
 :- pred output_valid_mangled_name(string::in, io::di, io::uo) is det.
 
 output_valid_mangled_name(Name, !IO) :-
     MangledName = name_mangle(Name),
     JavaSafeName = valid_csharp_symbol_name(MangledName),
-    io.write_string(JavaSafeName, !IO).
+    write_identifier_string(JavaSafeName, !IO).
 
 :- pred output_call_rval(csharp_out_info::in, mlds_rval::in, io::di, io::uo)
     is det.
@@ -3421,22 +3465,16 @@ output_rval_const(Info, Const, !IO) :-
 :- pred output_int_const(int::in, io::di, io::uo) is det.
 
 output_int_const(N, !IO) :-
-    % The Mercury compiler could be using 64-bit integers but Java has 32-bit
-    % ints.  A literal 0xffffffff in a source file would be interpreted by a
-    % 64-bit Mercury compiler as 4294967295.  If it is written out in decimal a
-    % Java compiler would rightly complain because the integer is too large to
-    % fit in a 32-bit int.  However, it won't complain if the literal is
-    % expressed in hexadecimal (nor as the negative decimal -1).
-    % XXX check this for C#
     ( N < 0 ->
         io.write_int(N, !IO)
     ;
         N >> 32 = 0,
         N /\ 0x80000000 = 0x80000000
     ->
-        % The bit pattern fits in 32 bits, but is too large to write as a
-        % positive decimal.  This branch is unreachable on a 32-bit compiler.
-        io.format("0x%x", [i(N /\ 0xffffffff)], !IO)
+        % The bit pattern fits in 32 bits, but is too big for a positive
+        % integer. The C# compiler will give an error about this, unless we
+        % tell it otherwise.
+        io.format("unchecked((int) 0x%x)", [i(N /\ 0xffffffff)], !IO)
     ;
         io.write_int(N, !IO)
     ).
@@ -3472,13 +3510,12 @@ mlds_output_code_addr(Info, CodeAddr, IsCall, !IO) :-
     ),
     (
         CodeAddr = code_addr_proc(Label, _Sig),
-        output_fully_qualified_thing(Label, mlds_output_proc_label, !IO)
+        Suffix = ""
     ;
         CodeAddr = code_addr_internal(Label, SeqNum, _Sig),
-        output_fully_qualified_thing(Label, mlds_output_proc_label, !IO),
-        io.write_string("_", !IO),
-        io.write_int(SeqNum, !IO)
-    ).
+        string.format("_%d", [i(SeqNum)], Suffix)
+    ),
+    output_fully_qualified_thing(Label, mlds_output_proc_label(Suffix), !IO).
 
 :- func method_ptr_type_to_string(csharp_out_info, mlds_arg_types,
     mlds_return_types) = string.
@@ -3506,12 +3543,14 @@ method_ptr_type_to_string(Info, ArgTypes, RetTypes) = String :-
     String = "runtime.MethodPtr" ++ string.from_int(Arity) ++
         VoidRet ++ "<" ++ TypesString ++ ">".
 
-:- pred mlds_output_proc_label(mlds_proc_label::in, io::di, io::uo) is det.
+:- pred mlds_output_proc_label(string::in, mlds_proc_label::in, io::di, io::uo)
+    is det.
 
-mlds_output_proc_label(mlds_proc_label(PredLabel, ProcId), !IO) :-
-    output_pred_label(PredLabel, !IO),
+mlds_output_proc_label(Suffix, mlds_proc_label(PredLabel, ProcId), !IO) :-
+    pred_label_to_string(PredLabel, PredLabelStr),
     proc_id_to_int(ProcId, ModeNum),
-    io.format("_%d", [i(ModeNum)], !IO).
+    string.format("%s_%d%s", [s(PredLabelStr), i(ModeNum), s(Suffix)], String),
+    write_identifier_string(String, !IO).
 
 :- pred mlds_output_data_addr(mlds_data_addr::in, io::di, io::uo) is det.
 
@@ -3526,7 +3565,8 @@ mlds_output_data_addr(data_addr(ModuleQualifier, DataName), !IO) :-
     ),
     io.write_string(ModuleName, !IO),
     io.write_string(".", !IO),
-    output_data_name(DataName, !IO).
+    data_name_to_string(DataName, DataNameStr),
+    write_identifier_string(DataNameStr, !IO).
 
 %-----------------------------------------------------------------------------%
 %

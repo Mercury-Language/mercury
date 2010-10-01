@@ -1819,6 +1819,14 @@ make_write_module_or_linked_target(Globals, ModuleName - FileType, !IO) :-
     IO = IO0;
 ").
 
+:- pragma foreign_proc("C#",
+    get_real_milliseconds(Time::out, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    Time = System.Environment.TickCount;
+    IO = IO0;
+").
+
 :- pragma foreign_proc("Java",
     get_real_milliseconds(Time::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
