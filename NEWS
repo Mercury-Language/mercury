@@ -1,8 +1,17 @@
+NEWS for Mercury 10.04.2
+------------------------
+
+This release is a bug-fix release.  A number of problems that caused
+the compiler to abort have been fixed, some broken RTTI operations
+in the java grade have been fixed, and we have added a workaround
+for a problem with GCC version 4.4.
+
+
 NEWS for Mercury 10.04.1
 ------------------------
 
 This release is primarily a bug-fix release.  It fixes some problems in
-the code generator and the source-to-source debugger.  In the addition,
+the code generator and the source-to-source debugger.  In addition,
 there are some changes to the standard library.
 
 Changes to the Mercury standard library:
