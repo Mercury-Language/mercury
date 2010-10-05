@@ -152,7 +152,8 @@ create_surface(FileName, Height, Width, Surface, !IO) :-
             break;
 
         default:
-            MR_fatal_error(\"cairo: unknown PDF surface status\");
+            MR_external_fatal_error(\"Mercury cairo\",
+                \"unknown PDF surface status\");
     }
 #else
     MaybeSurface = MCAIRO_pdf_surface_unsupported();
@@ -167,7 +168,8 @@ create_surface(FileName, Height, Width, Surface, !IO) :-
     cairo_pdf_surface_set_size(Surface->mcairo_raw_surface,
         Height, Width);
 #else
-    MR_fatal_error(\"Cairo PDF surface not available\");
+    MR_external_fatal_error(\"Mercury cairo\",
+        \"PDF surfaces not supported by this installation\");
 #endif
 ").
 

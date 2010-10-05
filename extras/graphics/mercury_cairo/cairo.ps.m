@@ -198,7 +198,8 @@ create_surface(FileName, Height, Width, Surface, !IO) :-
             break;
 
         default:
-            MR_fatal_error(\"cairo: unknown PostScript surface status\");
+            MR_external_fatal_error(\"Mercury cairo\",
+                \"unknown PostScript surface status\");
     }
 
 #else
@@ -214,7 +215,8 @@ create_surface(FileName, Height, Width, Surface, !IO) :-
 #if defined(CAIRO_HAS_PS_SURFACE)
     cairo_ps_surface_restrict_to_level(Surface->mcairo_raw_surface, Level);
 #else
-   MR_fatal_error(\"Cairo PostScript surface not available\");
+   MR_external_fatal_error(\"Mercury cairo\",
+        \" PostScript surfaces are not supported by this installation\");
 #endif
 ").
 

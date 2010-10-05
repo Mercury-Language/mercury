@@ -127,7 +127,7 @@ create_surface(Format, Height, Width, Surface, !IO) :-
             break;
         
         default:
-            MR_fatal_error(\"invalid status\");
+            MR_external_fatal_error(\"Mercury cairo\", \"invalid status\");
     }
 ").
 

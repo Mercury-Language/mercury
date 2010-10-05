@@ -160,7 +160,8 @@ create_surface(FileName, Height, Width, Surface, !IO) :-
             break;
         
         default:
-            MR_fatal_error(\"cairo: unknown SVG surface status\");
+            MR_external_fatal_error(\"Mercury cairo\",
+                \"unknown SVG surface status\");
     }
 #else
     MaybeSurface = MCAIRO_svg_surface_unsupported();
