@@ -437,6 +437,9 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         C_Incl_Dirs),
     InclOpt = string.append_list(list.condense(list.map(
         (func(C_INCL) = ["-I", quote_arg(C_INCL), " "]), C_Incl_Dirs))),
+
+    get_framework_directories(Globals, FrameworkInclOpt),
+
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     (
         HighLevelCode = yes,
@@ -889,7 +892,8 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     % listed after CFLAGS.
     %
     string.append_list([
-        SubDirInclOpt, InclOpt,
+        SubDirInclOpt, InclOpt, " ",
+        FrameworkInclOpt, " ",
         OptimizeOpt, " ",
         HighLevelCodeOpt, 
         NestedFunctionsOpt, 
@@ -1885,6 +1889,9 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
     get_runtime_library_path_opts(Globals, LinkTargetType,
         RpathFlagOpt, RpathSepOpt, RpathOpts),
 
+    % Set up any framework search paths.
+    get_framework_directories(Globals, FrameworkDirectories),
+    
     % Set up the install name for shared libraries.
     globals.lookup_bool_option(Globals, shlib_linker_use_install_name,
         UseInstallName),
@@ -1913,6 +1920,7 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
         globals.lookup_string_option(Globals, TraceFlagsOpt, TraceOpts)
     ),
 
+    get_frameworks(Globals, Frameworks),
     get_link_libraries(Globals, MaybeLinkLibraries, !IO),
     globals.lookup_string_option(Globals, linker_opt_separator, LinkOptSep),
     (
@@ -1961,8 +1969,10 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
                     LinkOptSep, " ",
                     LinkLibraryDirectories, " ",
                     RpathOpts, " ",
+                    FrameworkDirectories, " ",
                     InstallNameOpt, " ",
                     DebugOpts, " ",
+                    Frameworks, " ",
                     LDFlags, " ",
                     LinkLibraries, " ",
                     MercuryStdLibs, " ",
@@ -2399,6 +2409,19 @@ post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
         Succeeded = yes,
         MadeSymlinkOrCopy = no
     ).
+
+:- pred get_framework_directories(globals::in, string::out) is det.
+
+get_framework_directories(Globals, FrameworkDirs) :-
+    globals.lookup_accumulating_option(Globals, framework_directories,
+        FrameworkDirs0),
+    join_quoted_string_list(FrameworkDirs0, "-F", "", " ", FrameworkDirs).
+        
+:- pred get_frameworks(globals::in, string::out) is det.
+
+get_frameworks(Globals, FrameworkOpts) :-
+    globals.lookup_accumulating_option(Globals, frameworks, Frameworks),
+    join_quoted_string_list(Frameworks, "-framework ", "", " ", FrameworkOpts).
 
 :- pred same_timestamp(string::in, string::in, bool::out, io::di, io::uo)
     is det.

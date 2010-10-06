@@ -868,6 +868,8 @@
     ;       use_readline
     ;       runtime_flags
     ;       extra_initialization_functions
+    ;       frameworks
+    ;       framework_directories
 
     % Auto-configured options.
     ;       shared_library_extension
@@ -1721,6 +1723,8 @@ option_defaults_2(link_option, [
     use_readline                        -   bool(yes),
     runtime_flags                       -   accumulating([]),
     extra_initialization_functions      -   bool(no),
+    frameworks                          -   accumulating([]),
+    framework_directories               -   accumulating([]),
 
     shared_library_extension            -   string(".so"),
                                         % The `mmc' script will override the
@@ -1834,6 +1838,7 @@ short_option('D', dump_hlds_alias).
 short_option('e', errorcheck_only).
 short_option('E', verbose_errors).
 short_option('f', generate_source_file_mapping).
+short_option('F', framework_directories).
 short_option('h', help).
 short_option('H', highlevel_code).
 short_option('i', make_interface).
@@ -2635,6 +2640,9 @@ long_option("runtime-flags",        runtime_flags).
 long_option("extra-initialization-functions",
                     extra_initialization_functions).
 long_option("extra-inits",      extra_initialization_functions).
+long_option("framework",        frameworks).
+long_option("framework-directory", framework_directories).
+
 long_option("shared-library-extension", shared_library_extension).
 long_option("library-extension",    library_extension).
 long_option("executable-file-extension", executable_file_extension).
@@ -5406,7 +5414,14 @@ options_help_link -->
         "\ta shared library.",
 
         "--java-archive-command <command>",
-        "\tSpecify the command used to produce Java archive (JAR) files."
+        "\tSpecify the command used to produce Java archive (JAR) files.",
+
+        "--framework <framework>",
+        "\tBuild and link against the specified framework.",
+        "\t(Mac OS X only.)",
+        "-F <directory>, --framework-directory <directory>",
+        "\tAppend the specified directory to the framework search path.",
+        "\t(Mac OS X only.)"
 
         % The --shared-library-extension,
         % --library-extension, --executable-file-extension

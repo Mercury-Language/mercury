@@ -9772,6 +9772,24 @@ Specify the command used to invoke the linker when linking a shared library.
 @findex --java-archive-command
 Specify the command used to produce Java archive (JAR) files.
 
+@sp 1
+@item --framework @var{framework}
+@findex --framework
+@cindex Mac OS X, Using Frameworks
+Build and link against the specified framework.
+(Mac OS X only.)
+
+@sp 1
+@item -F @var{directory}
+@itemx --framework-directory @var{directory}
+@findex -F
+@findex --framework-directory
+@cindex Directories for libraries
+@cindex Search path for libraries
+@cindex Mac OS X, Using Frameworks
+Append the specified directory to the framework search path.
+(Mac OS X only.)
+
 @end table
 
 @c ----------------------------------------------------------------------------

@@ -1,6 +1,9 @@
 NEWS since Mercury 10.04
 ------------------------
 
+HIGHLIGHTS
+==========
+
 Changes to the Mercury standard library:
 
 * We have added semidet modes for array.foldl/4, array.foldl2/6,
@@ -12,6 +15,21 @@ Changes to the Mercury standard library:
   filter/4, merge/3, which also have function versions, do jobs very similar
   to the predicates of the same name in the list module, but do the relevant
   operations on keys instead of entire list elements.
+
+Changes to the Mercury compiler:
+
+* Support for building and linking against frameworks on Mac OS X has
+  been improved.
+
+
+DETAILED LISTING
+================
+
+Changes to the Mercury compiler:
+
+* We have added two new options, --framework and --framework-directory
+  in order to simplify building and linking against frameworks on Mac OS X.
+  (-F is supported as a synonym for --framework-directory.)
 
 
 NEWS for Mercury 10.04.2
