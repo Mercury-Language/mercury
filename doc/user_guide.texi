@@ -8733,7 +8733,9 @@ This information is used to reduce the overhead of minimal model tabling.
 @item --control-granularity
 @findex --control-granularity
 Don't try to generate more parallelism than the machine can handle,
-which is specified using --parallelism-target.
+which may be specified at runtime or detected automatically.
+(see the @samp{-P} option in the @samp{MERCURY_OPTIONS} environment 
+variable.)
 
 @sp 1
 @item --distance-granularity @var{distance_value}
@@ -9908,6 +9910,14 @@ can consume excess memory.
 This only has an effect if the executable was built in a low-level C parallel
 grade.
 
+@c @sp 1
+@c @item --runtime-granularity-wsdeque-length-factor @var{factor}
+@c @findex --runtime-granularity-wsdeque-length-factor (runtime option)
+@c Configures the runtime granularity control method not to create sparks if a
+@c context's local spark wsdeque is longer than 
+@c @math{ @var{factor} * @var{num_engines}}.
+@c @var{num_engines} is configured with the @samp{-P} runtime option.
+@c 
 @c @sp 1
 @c @item --profile-parallel-execution
 @c @findex --profile-parallel-execution

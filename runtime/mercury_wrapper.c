@@ -309,6 +309,11 @@ static  int         MR_num_output_args = 0;
 */
 MR_Unsigned         MR_num_threads = 0;
 
+#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
+MR_Unsigned         MR_granularity_wsdeque_length_factor = 8;
+MR_Unsigned         MR_granularity_wsdeque_length = 0;
+#endif
+
 static  MR_bool     MR_print_table_statistics = MR_FALSE;
 
 /* timing */
@@ -602,6 +607,9 @@ mercury_runtime_init(int argc, char **argv)
     /* MR_init_thread_stuff() must be called prior to MR_init_memory() */
     MR_init_thread_stuff();
     MR_max_outstanding_contexts = MR_max_contexts_per_thread * MR_num_threads;
+#ifdef MR_LL_PARALLEL_CONJ
+    MR_granularity_wsdeque_length = MR_granularity_wsdeque_length_factor * MR_num_threads;
+#endif
     MR_primordial_thread = pthread_self();
 #endif
 
@@ -1266,6 +1274,7 @@ enum MR_long_option {
     MR_GEN_NONDETSTACK_REDZONE_SIZE,
     MR_GEN_NONDETSTACK_REDZONE_SIZE_KWORDS,
     MR_MAX_CONTEXTS_PER_THREAD,
+    MR_RUNTIME_GRANULAITY_WSDEQUE_LENGTH_FACTOR,
     MR_WORKSTEAL_MAX_ATTEMPTS,
     MR_WORKSTEAL_SLEEP_MSECS,
     MR_THREAD_PINNING,
@@ -1367,6 +1376,8 @@ struct MR_option MR_long_opts[] = {
     { "gen-nondetstack-zone-size-kwords",
         1, 0, MR_GEN_NONDETSTACK_REDZONE_SIZE_KWORDS },
     { "max-contexts-per-thread",        1, 0, MR_MAX_CONTEXTS_PER_THREAD },
+    { "runtime-granularity-wsdeque-length-factor", 1, 0, 
+        MR_RUNTIME_GRANULAITY_WSDEQUE_LENGTH_FACTOR },
     { "worksteal-max-attempts",         1, 0, MR_WORKSTEAL_MAX_ATTEMPTS },
     { "worksteal-max-attempts",         1, 0, MR_WORKSTEAL_SLEEP_MSECS },
     { "thread-pinning",                 0, 0, MR_THREAD_PINNING },
@@ -1782,6 +1793,19 @@ MR_process_options(int argc, char **argv)
                 }
 
                 MR_max_contexts_per_thread = size;
+                break;
+
+            case MR_RUNTIME_GRANULAITY_WSDEQUE_LENGTH_FACTOR:
+#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
+                if (sscanf(MR_optarg, "%lu",
+                        &MR_granularity_wsdeque_length_factor) != 1)
+                {
+                    MR_usage();
+                }
+                if (MR_granularity_wsdeque_length_factor < 1) {
+                    MR_usage();
+                }
+#endif
                 break;
 
             case MR_WORKSTEAL_MAX_ATTEMPTS:

@@ -677,7 +677,6 @@
     ;       allow_some_paths_only_waits
     ;       control_granularity
     ;       distance_granularity
-    ;       parallelism_target
     ;       implicit_parallelism
     ;       old_implicit_parallelism
             % implicit_parallelism_old enables Jerome's implementation,
@@ -1547,7 +1546,6 @@ option_defaults_2(optimization_option, [
     allow_some_paths_only_waits         -   bool(yes),
     control_granularity                 -   bool(no),
     distance_granularity                -   int(0),
-    parallelism_target                  -   int(4),
     implicit_parallelism                -   bool(no),
     old_implicit_parallelism            -   bool(no),
     region_analysis                     -   bool(no),
@@ -2437,7 +2435,6 @@ long_option("allow-some-paths-only-waits",
                                     allow_some_paths_only_waits).
 long_option("control-granularity",  control_granularity).
 long_option("distance-granularity", distance_granularity).
-long_option("parallelism-target",   parallelism_target).
 long_option("implicit-parallelism", implicit_parallelism).
 long_option("old-implicit-parallelism", old_implicit_parallelism).
 
@@ -4984,10 +4981,8 @@ options_help_hlds_hlds_optimization -->
 %       "\tversion of the called procedure, even if this is not profitable.",
         "--control-granularity",
         "\tDon't try to generate more parallelism than the machine can",
-        "\thandle, which is specified using --parallelism-target.",
-        "--parallelism-target <n>",
-        "\tSpecify the number of CPUs of the target machine, for use by",
-        "\tthe --control-granularity option.",
+        "\thandle, which may be specified at runtime or detected",
+        "\tautomatically.",
         "--distance-granularity <distance>",
         "\tControl the granularity of parallel execution using the",
         "\tspecified distance value.", 

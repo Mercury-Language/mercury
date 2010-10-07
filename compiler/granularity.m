@@ -112,12 +112,8 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
             ;
                 CalledSCCPredProcIds = [_ | _],
                 ProcName = "evaluate_parallelism_condition",
-                globals.lookup_int_option(Globals, parallelism_target,
-                    NumCPUs),
-                NumCPUsStr = string.int_to_string(NumCPUs),
                 Code = "SUCCESS_INDICATOR = " ++
-                    "MR_par_cond_contexts_and_global_sparks_vs_num_cpus(" ++
-                    NumCPUsStr ++ ");",
+                    "MR_par_cond_local_wsdeque_length;",
                 Args = [],
                 ExtraArgs = [],
                 MaybeRuntimeCond = no,
@@ -125,6 +121,7 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
                 Context = goal_info_get_context(GoalInfo),
                 some [!Attributes] (
                     !:Attributes = default_attributes(lang_c),
+                    set_thread_safe(proc_thread_safe, !Attributes),
                     set_purity(purity_impure, !Attributes),
                     set_may_call_mercury(proc_will_not_call_mercury,
                         !Attributes),

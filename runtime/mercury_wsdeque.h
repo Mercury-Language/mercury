@@ -97,6 +97,14 @@ extern  int     MR_wsdeque_take_top(MR_SparkDeque *dq, MR_Spark *ret_spark);
 extern  MR_SparkArray * MR_grow_spark_array(const MR_SparkArray *old_arr,
                             MR_Integer bot, MR_Integer top);
 
+/*
+** Return the current length of the dequeue.
+**
+** This is safe from the owner's perspective.
+*/
+MR_INLINE int
+MR_wsdeque_length(MR_SparkDeque *dq);
+
 /*---------------------------------------------------------------------------*/
 
 MR_INLINE void
@@ -152,6 +160,20 @@ MR_wsdeque_pop_bottom(MR_SparkDeque *dq, MR_Code **ret_spark_resume)
     success = MR_compare_and_swap_int(&dq->MR_sd_top, top, top + 1);
     dq->MR_sd_bottom = top + 1;
     return success;
+}
+
+MR_INLINE int
+MR_wsdeque_length(MR_SparkDeque *dq)
+{
+    int length;
+    int top;
+    int bot;
+
+    top = dq->MR_sd_top;
+    bot = dq->MR_sd_bottom;
+    length = bot - top;
+
+    return length;
 }
 
 #endif /* !MR_LL_PARALLEL_CONJ */

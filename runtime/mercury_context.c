@@ -248,6 +248,9 @@ MR_init_thread_stuff(void)
         MR_num_threads = 1;
 #endif /* ! defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN) */ 
     }
+#ifdef MR_LL_PARALLEL_CONJ
+    MR_granularity_wsdeque_length = MR_granularity_wsdeque_length_factor * MR_num_threads;
+#endif
 #endif /* MR_THREAD_SAFE */
 }
 

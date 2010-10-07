@@ -785,6 +785,23 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
   #define MR_par_cond_contexts_and_all_sparks_vs_num_cpus(target_cpus)        \
       (MR_num_outstanding_contexts_and_all_sparks < target_cpus)
 
+  /*
+  ** This test calculates the length of a wsdeque each time it is called.
+  ** The test will usually execute more often than the length of the
+  ** queue changes.  Therefore, it makes sense to update a protected counter
+  ** each time a spark is pushed, popped or stolen from the queue.  However I
+  ** believe that these atomic operations could be more expensive than
+  ** necessary.
+  **
+  ** The current implementation computes the length of the queue each time this
+  ** macro is evaluated, this requires no atomic operations and contains only
+  ** one extra memory dereference whose cache line is probably already hot in
+  ** the first-level cache.
+  */
+  #define MR_par_cond_local_wsdeque_length                                    \
+      (MR_wsdeque_length(&MR_ENGINE(MR_eng_this_context)->MR_ctxt_spark_deque) < \
+        MR_granularity_wsdeque_length)
+
 extern MR_Code* 
 MR_do_join_and_continue(MR_SyncTerm *sync_term, MR_Code *join_label);
 

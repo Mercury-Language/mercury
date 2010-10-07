@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2009 The University of Melbourne.
+** Copyright (C) 1994-2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -261,6 +261,21 @@ extern	MR_Unsigned MR_worksteal_max_attempts;
 extern	MR_Unsigned MR_worksteal_sleep_msecs;
 
 extern  MR_Unsigned MR_num_threads;
+
+#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
+/*
+** This is used to set MR_granularity_wsdeque_length based on the value of
+** MR_num_threads.  A value of 2 says, allow twice as many threads in a
+** context's wsdeque than mercury engines before granularity control has an
+** effect.
+*/
+extern MR_Unsigned MR_granularity_wsdeque_length_factor;
+
+/*
+** The length of a context's wsdeque before granularity control has an effect.
+*/
+extern MR_Unsigned MR_granularity_wsdeque_length;
+#endif
 
 /* file names for the mdb debugging streams */
 extern	const char	*MR_mdb_in_filename;
