@@ -131,17 +131,8 @@ main(!IO) :-
                             [s(OutputFileName), s(ErrorMessage)], !IO),
                         io.set_exit_status(1, !IO)
                     ),
-                    cord.foldl_pred(
-                        (pred(Message::in, IO0::di, IO::uo) is det :-
-                            Level = message_get_level(Message),
-                            ( message_level_to_int(Level) =< VerbosityLevel ->
-                                message_to_string(Message, MessageStr),
-                                io.write_string(Stderr, MessageStr, IO0, IO1),
-                                io.nl(Stderr, IO1, IO)
-                            ;
-                                IO = IO0
-                            )
-                        ), Messages, !IO)
+                    set_verbosity_level(VerbosityLevel, !IO),
+                    write_out_messages(Stderr, Messages, !IO)
                 ;
                     FeedbackReadResult = error(FeedbackReadError),
                     feedback.read_error_message_string(OutputFileName,

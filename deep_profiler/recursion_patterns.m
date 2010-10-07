@@ -20,6 +20,7 @@
 :- import_module report.
 :- import_module profile.
 
+:- import_module float.
 :- import_module maybe.
             
 %----------------------------------------------------------------------------%
@@ -31,10 +32,16 @@
     maybe_error(recursion_types_frequency_report)::out) is det.
 
 %----------------------------------------------------------------------------%
+
+:- pred recursion_type_get_maybe_avg_max_depth(recursion_type::in,
+    maybe(float)::out) is det.
+
+%----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module analysis_utils.
 :- import_module array_util.
 :- import_module coverage.
 :- import_module create_report.
@@ -108,7 +115,6 @@ create_clique_recursion_costs_report(Deep, CliquePtr,
 
 proc_get_recursion_type(Deep, ThisClique, PDPtr, ParentCalls,
         MaybeRecursionType) :-
-    lookup_proc_dynamics(Deep ^ proc_dynamics, PDPtr, PD),
     deep_lookup_pd_own(Deep, PDPtr, PDOwn),
     TotalCalls = calls(PDOwn),
     create_dynamic_procrep_coverage_report(Deep, PDPtr, MaybeCoverageReport),
@@ -116,8 +122,9 @@ proc_get_recursion_type(Deep, ThisClique, PDPtr, ParentCalls,
         MaybeCoverageReport = ok(CoverageReport),
         ProcRep = CoverageReport ^ prci_proc_rep, 
         Goal = ProcRep ^ pr_defn ^ pdr_goal,
-        array.foldl(build_call_site_cost_and_callee_map(Deep), 
-            PD ^ pd_sites, map.init, CallSitesMap),
+        proc_dynamic_paired_call_site_slots(Deep, PDPtr, Slots),
+        foldl(build_call_site_cost_and_callee_map(Deep), 
+            Slots, map.init, CallSitesMap),
         goal_recursion_data(ThisClique, CallSitesMap, empty_goal_path,
             Goal, RecursionData),
         recursion_data_to_recursion_type(ParentCalls, TotalCalls,
@@ -127,73 +134,6 @@ proc_get_recursion_type(Deep, ThisClique, PDPtr, ParentCalls,
         MaybeCoverageReport = error(Error), 
         MaybeRecursionType = error(Error)
     ).
-
-:- type cost_and_callees
-    --->    cost_and_callees(
-                cac_cost            :: cs_cost_csq,
-                cac_callees         :: set(clique_ptr)
-            ).
-
-:- pred build_call_site_cost_and_callee_map(deep::in, 
-    call_site_array_slot::in,
-    map(goal_path, cost_and_callees)::in, map(goal_path, cost_and_callees)::out)
-    is det.
-
-build_call_site_cost_and_callee_map(Deep, slot_normal(CSDPtr), !CallSitesMap)
-        :-
-    ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
-        call_site_dynamic_get_callee_and_costs(Deep, CSDPtr, CalleeCliquePtr, 
-            Own, Inherit),
-        CostCsq = build_cs_cost_csq(calls(Own), 
-            float(callseqs(Own) + inherit_callseqs(Inherit))),
-        CostAndCallees = cost_and_callees(CostCsq, set([CalleeCliquePtr])),
-        lookup_call_site_static_map(Deep ^ call_site_static_map, CSDPtr,
-            CSSPtr),
-        lookup_call_site_statics(Deep ^ call_site_statics, CSSPtr, CSS),
-        goal_path_from_string_det(CSS ^ css_goal_path, GoalPath),
-        svmap.det_insert(GoalPath, CostAndCallees, !CallSitesMap)
-    ;
-        true
-    ).
-build_call_site_cost_and_callee_map(Deep, slot_multi(_, CSDPtrsArray),
-        !CallSitesMap) :-
-    to_list(CSDPtrsArray, CSDPtrs),
-    (
-        CSDPtrs = []
-        % There is no way of finding the goal path, so we can't put such a goal
-        % in our map.  This probably can't happen in reality anyway.
-    ;
-        CSDPtrs = [FirstCSDPtr | _],
-
-        map3(call_site_dynamic_get_callee_and_costs(Deep), CSDPtrs, 
-            CalleeCliquePtrs, Owns, Inherits),
-        Own = sum_own_infos(Owns),
-        Inherit = sum_inherit_infos(Inherits),
-        CostCsq = build_cs_cost_csq(calls(Own), 
-            float(callseqs(Own) + inherit_callseqs(Inherit))),
-        CostAndCallees = cost_and_callees(CostCsq, set(CalleeCliquePtrs)),
-
-        % The goal path of the call site will be the same regardless of the
-        % callee, so we get it from the first.
-        lookup_call_site_static_map(Deep ^ call_site_static_map, FirstCSDPtr,
-            FirstCSSPtr),
-        lookup_call_site_statics(Deep ^ call_site_statics, FirstCSSPtr,
-            FirstCSS),
-        goal_path_from_string_det(FirstCSS ^ css_goal_path, GoalPath),
-        svmap.det_insert(GoalPath, CostAndCallees, !CallSitesMap)
-    ).
-
-:- pred call_site_dynamic_get_callee_and_costs(deep::in, 
-    call_site_dynamic_ptr::in, clique_ptr::out, own_prof_info::out, 
-    inherit_prof_info::out) is det.
-
-call_site_dynamic_get_callee_and_costs(Deep, CSDPtr, CalleeCliquePtr, Own,
-        Inherit) :-
-    lookup_call_site_dynamics(Deep ^ call_site_dynamics, CSDPtr, CSD),
-    lookup_csd_desc(Deep ^ csd_desc, CSDPtr, Inherit),
-    PDPtr = CSD ^ csd_callee,
-    lookup_clique_index(Deep ^ clique_index, PDPtr, CalleeCliquePtr), 
-    Own = CSD ^ csd_own_prof.
 
 :- pred recursion_data_to_recursion_type(int::in, int::in, recursion_data::in,
     recursion_type::out) is det.
@@ -553,19 +493,13 @@ atomic_goal_recursion_data(ThisClique, CallSiteMap, GoalPath, AtomicGoal,
         ),
 
         % Get the cost of the call.
-        ( map.search(CallSiteMap, GoalPath, CostAndCallees) ->
-            CostAndCallees = cost_and_callees(Cost, Callees),
-            CostPercall = cs_cost_get_percall(Cost)
-        ;
-            CostPercall = 0.0,
-            set.init(Callees)
-        ),
-
-        ( member(ThisClique, Callees) ->
+        map.lookup(CallSiteMap, GoalPath, CostAndCallees),
+        ( cost_and_callees_is_recursive(ThisClique, CostAndCallees) ->
             % Cost will be 1.0 for for each call to recursive calls but we
             % calculate this later.
             RecursionLevel = 1 - recursion_level(0.0, certain)
         ;
+            CostPercall = cs_cost_get_percall(CostAndCallees ^ cac_cost),
             RecursionLevel = 0 - recursion_level(CostPercall, certain)
         )
     ),
@@ -985,6 +919,17 @@ finalize_histogram_proc_rec_type(Deep, NumCliques, _PSPtr,
     Percent = percent(float(Freq) / NumCliques),
     ProfInfo = own_and_inherit_prof_info(Own, Inherit),
     own_and_inherit_to_perf_row_data(Deep, ProcDesc, Own, Inherit, Summary).
+
+%----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
+
+recursion_type_get_maybe_avg_max_depth(rt_not_recursive, yes(0.0)).
+recursion_type_get_maybe_avg_max_depth(rt_single(_, _, Depth, _, _),
+    yes(Depth)).
+recursion_type_get_maybe_avg_max_depth(rt_divide_and_conquer(_, _), no).
+recursion_type_get_maybe_avg_max_depth(rt_mutual_recursion(_), no).
+recursion_type_get_maybe_avg_max_depth(rt_other(_), no).
+recursion_type_get_maybe_avg_max_depth(rt_errors(_), no).
 
 %----------------------------------------------------------------------------%
 

@@ -162,6 +162,15 @@
     %
 :- pred list.member(T::out, list(T)::in, list(T)::out) is nondet.
 
+    % list.member_index0(Elem, List, Index).
+    %
+    % True iff `List' contains `Elem' at the zero-based index `Index'.
+    %
+:- pred list.member_index0(T, list(T), int).
+:- mode list.member_index0(in, in, in) is semidet.
+:- mode list.member_index0(in, in, out) is nondet.
+:- mode list.member_index0(out, in, out) is nondet.
+
     % list.contains(List, Elem) iff list.member(Elem, List).
     % Sometimes you need the arguments in this order, because you want to
     % construct a closure with only the list.
@@ -1707,6 +1716,10 @@ list.member(X, [_ | Xs]) :-
 list.member(Element, List, SubList) :-
     SubList = [Element | _],
     list.append(_, SubList, List).
+
+list.member_index0(X, [X | _], 0).
+list.member_index0(X, [_ | Xs], Index + 1) :-
+    list.member_index0(X, Xs, Index).
 
 list.contains(List, Elem) :-
     list.member(Elem, List).

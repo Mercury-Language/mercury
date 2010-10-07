@@ -79,6 +79,7 @@
 :- import_module int.
 :- import_module integer.
 :- import_module io.
+:- import_module lazy.
 :- import_module lexer.
 :- import_module list.
 :- import_module map.
@@ -251,6 +252,7 @@ mercury_std_library_module("injection").
 mercury_std_library_module("int").
 mercury_std_library_module("integer").
 mercury_std_library_module("io").
+mercury_std_library_module("lazy").
 mercury_std_library_module("lexer").
 mercury_std_library_module("library").
 mercury_std_library_module("list").

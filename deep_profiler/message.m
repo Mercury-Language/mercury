@@ -24,6 +24,7 @@
 
 :- import_module cord.
 :- import_module int.
+:- import_module io.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -49,7 +50,8 @@
 :- type program_location
     --->    proc(string_proc_label)
     ;       goal(string_proc_label, goal_path)
-    ;       clique(clique_ptr).
+    ;       clique(clique_ptr)
+    ;       call_site_dynamic(call_site_dynamic_ptr).
 
 %-----------------------------------------------------------------------------%
 
@@ -136,6 +138,12 @@
                 % The parameter contains extra information about this error.
                 %
     ;       warning_cannot_compute_cost_of_recursive_calls(string)
+            
+                % Couldn't compute the time at which a call site's argument is
+                % produced or consumed.
+                %
+                % The parameter contains extra information about this error.
+    ;       warning_cannot_compute_arg_first_use_time(string)
 
                 % We don't yet handle clique_proc_reports with multiple proc
                 % dynamics.
@@ -165,6 +173,22 @@
     % The size of an indentation level.  2 x the input.
     %
 :- func indent_size(int) = int.
+
+%-----------------------------------------------------------------------------%
+    
+    % Write out messages.
+    %
+:- pred write_out_messages(io.output_stream::in, cord(message)::in, 
+    io::di, io::uo) is det.
+
+    % Set the verbosity level to use above.  Higher levels print out more
+    % information.  Levels are in the inclusive range 0..4.
+    %
+:- pred set_verbosity_level(int::in, io::di, io::uo) is det.
+
+    % The default verbosity level if set_verbosity_level is never called.
+    %
+:- func default_verbosity_level = int.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -208,6 +232,10 @@ location_to_string(Level, goal(ProcLabel, GoalPath), String) :-
     String = FirstLine ++ SecondLine.
 location_to_string(Level, clique(clique_ptr(Id)), String) :-
     format("clique %d", [i(Id)], String0),
+    String = indent(Level) ++ singleton(String0).
+location_to_string(Level, call_site_dynamic(CSDPtr), String) :-
+    CSDPtr = call_site_dynamic_ptr(CSDNum),
+    format("call site dynamic %d", [i(CSDNum)], String0),
     String = indent(Level) ++ singleton(String0).
 
 %-----------------------------------------------------------------------------%
@@ -253,6 +281,8 @@ message_type_to_level(warning_cannot_compute_procrep_coverage_fallback(_)) =
     message_warning.
 message_type_to_level(warning_cannot_compute_cost_of_recursive_calls(_)) = 
     message_warning.
+message_type_to_level(warning_cannot_compute_arg_first_use_time(_)) = 
+    message_warning.
 message_type_to_level(error_extra_proc_dynamics_in_clique_proc) = 
     message_error.
 message_type_to_level(error_coverage_procrep_error(_)) =
@@ -260,7 +290,6 @@ message_type_to_level(error_coverage_procrep_error(_)) =
 message_type_to_level(error_exception_thrown(_)) = message_error.
 
 %-----------------------------------------------------------------------------%
-
 
 :- func message_type_to_string(message_type) = cord(string).
 
@@ -320,6 +349,11 @@ message_type_to_string(MessageType) = Cord :-
             MessageType =
                 warning_cannot_compute_cost_of_recursive_calls(ErrorStr),
             Template = "Cannot compute cost of recursive calls: %s"
+        ;
+            MessageType = 
+                warning_cannot_compute_arg_first_use_time(ErrorStr),
+            Template = "Cannot compute the production or consumption time of a"
+                ++ " call site's argument: %s"
         ),
         string.format(Template, [s(ErrorStr)], String)
     ),
@@ -341,6 +375,33 @@ nl_indent(N) = nl ++ indent(N).
 nl = singleton("\n").
 
 indent_size(N) = 2 * N.
+
+%----------------------------------------------------------------------------%
+
+:- mutable(verbosity_level_mut, int, default_verbosity_level, ground, 
+    [attach_to_io_state, untrailed]).
+
+write_out_messages(Stream, Messages, !IO) :-
+    cord.foldl_pred(write_out_message(Stream), Messages, !IO).
+
+:- pred write_out_message(output_stream::in, message::in, io::di, io::uo) 
+    is det.
+
+write_out_message(Stream, Message, !IO) :-
+    Level = message_get_level(Message),
+    get_verbosity_level_mut(VerbosityLevel, !IO),
+    ( message_level_to_int(Level) =< VerbosityLevel ->
+        message_to_string(Message, MessageStr),
+        io.write_string(Stream, MessageStr, !IO),
+        io.nl(Stream, !IO)
+    ;
+        true
+    ).
+
+set_verbosity_level(VerbosityLevel, !IO) :-
+    set_verbosity_level_mut(VerbosityLevel, !IO).
+
+default_verbosity_level = 2.
 
 %-----------------------------------------------------------------------------%
 :- end_module message.

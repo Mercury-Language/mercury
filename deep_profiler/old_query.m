@@ -142,7 +142,7 @@ old_exec(deep_cmd_dump_clique(CliquePtr), _Pref, Deep, HTML, !IO) :-
 old_exec(Cmd, _, _, HTML, !IO) :-
     ( Cmd = deep_cmd_static_procrep_coverage(_)
     ; Cmd = deep_cmd_dynamic_procrep_coverage(_)
-    ; Cmd = deep_cmd_dump_proc_var_use(_)
+    ; Cmd = deep_cmd_call_site_dynamic_var_use(_)
     ; Cmd = deep_cmd_module_getter_setters(_)
     ; Cmd = deep_cmd_clique_recursive_costs(_)
     ; Cmd = deep_cmd_recursion_types_frequency

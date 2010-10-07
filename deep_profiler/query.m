@@ -146,8 +146,8 @@
     ;       deep_cmd_dump_clique(
                 cmd_dcl_id                      :: clique_ptr
             )
-    ;       deep_cmd_dump_proc_var_use(
-                cmd_dpvu_id                     :: proc_static_ptr
+    ;       deep_cmd_call_site_dynamic_var_use(
+                cmd_csdvu_id                    :: call_site_dynamic_ptr 
             ).
 
 :- type caller_groups
@@ -460,7 +460,7 @@ exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
         ( Cmd = deep_cmd_static_procrep_coverage(_)
         ; Cmd = deep_cmd_dynamic_procrep_coverage(_)
         ; Cmd = deep_cmd_module_getter_setters(_)
-        ; Cmd = deep_cmd_dump_proc_var_use(_)
+        ; Cmd = deep_cmd_call_site_dynamic_var_use(_)
         ; Cmd = deep_cmd_clique_recursive_costs(_)
         ; Cmd = deep_cmd_recursion_types_frequency
         ),
@@ -708,10 +708,11 @@ cmd_to_string(Cmd) = CmdStr :-
         CmdStr = string.format("%s%c%d",
             [s(cmd_str_dump_raw_clique), c(cmd_separator_char), i(CliqueNum)])
     ;
-        Cmd = deep_cmd_dump_proc_var_use(PSPtr),
-        PSPtr = proc_static_ptr(PSI),
+        Cmd = deep_cmd_call_site_dynamic_var_use(CSDPtr),
+        CSDPtr = call_site_dynamic_ptr(CSDI),
         CmdStr = string.format("%s%c%d",
-            [s(cmd_str_dump_proc_var_use), c(cmd_separator_char), i(PSI)])
+            [s(cmd_str_call_site_dynamic_var_use), c(cmd_separator_char),
+             i(CSDI)])
     ).
 
 :- func preferences_to_string(preferences) = string.
@@ -885,11 +886,11 @@ string_to_maybe_cmd(QueryString) = MaybeCmd :-
         Cmd = deep_cmd_dump_clique(CliquePtr),
         MaybeCmd = yes(Cmd)
     ;
-        Pieces = [cmd_str_dump_proc_var_use, PSIStr],
-        string.to_int(PSIStr, PSI)
+        Pieces = [cmd_str_call_site_dynamic_var_use, CSDIStr],
+        string.to_int(CSDIStr, CSDI)
     ->
-        PSPtr = proc_static_ptr(PSI),
-        Cmd = deep_cmd_dump_proc_var_use(PSPtr),
+        CSDPtr = call_site_dynamic_ptr(CSDI),
+        Cmd = deep_cmd_call_site_dynamic_var_use(CSDPtr),
         MaybeCmd = yes(Cmd)
     ;
         Pieces = [cmd_str_timeout, TimeOutStr],
@@ -1405,8 +1406,8 @@ cmd_str_dump_call_site_dynamic = "dump_call_site_dynamic".
 :- func cmd_str_dump_raw_clique = string.
 cmd_str_dump_raw_clique = "dump_raw_clique".
 
-:- func cmd_str_dump_proc_var_use = string.
-cmd_str_dump_proc_var_use = "dump_proc_var_use".
+:- func cmd_str_call_site_dynamic_var_use = string.
+cmd_str_call_site_dynamic_var_use = "call_site_dynamic_var_use".
 
 %----------------------------------------------------------------------------%
 :- end_module query.

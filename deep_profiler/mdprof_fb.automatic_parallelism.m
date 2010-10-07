@@ -61,14 +61,14 @@
 
 :- implementation.
 
+:- import_module analysis_utils.
 :- import_module branch_and_bound.
-:- import_module coverage.
-:- import_module create_report.
 :- import_module measurement_units.
 :- import_module measurements.
 :- import_module program_representation_utils.
 :- import_module recursion_patterns.
 :- import_module report.
+:- import_module solutions.
 :- import_module var_use_analysis.
 
 :- import_module array.
@@ -78,25 +78,20 @@
 :- import_module float.
 :- import_module io.
 :- import_module int.
+:- import_module lazy.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module multi_map.
 :- import_module require.
 :- import_module set.
-:- import_module set_tree234.
 :- import_module string.
 :- import_module svmap.
-:- import_module svset.
 
 %----------------------------------------------------------------------------%
 %
 % The code in this section has some trace goals that can be enabled with:
-%	--trace-flag=debug_cpc_search
-%	  Debug the traversal through the clique tree.
-%
-%	--trace-flag=debug_recursive_costs 
-%     Debug the calculation of the costs of recursive call sites.
+%   --trace-flag=debug_cpc_search
+%     Debug the traversal through the clique tree.
 %
 %   --trace-flag=debug_parallel_conjunction_speedup
 %     Print candidate parallel conjunctions that are pessimisations.
@@ -114,7 +109,7 @@ candidate_parallel_conjunctions(Params, Deep, Messages, !Feedback) :-
     % exist.
     RootParallelism = no_parallelism,
     candidate_parallel_conjunctions_clique(Params, Deep,
-        RootParallelism, RootCliquePtr, ConjunctionsMap, Messages, init, _),
+        RootParallelism, RootCliquePtr, ConjunctionsMap, Messages),
 
     map.to_assoc_list(ConjunctionsMap, ConjunctionsAssocList0),
     map_values_only(convert_candidate_par_conjunctions_proc(
@@ -155,8 +150,10 @@ pard_goal_detail_annon_to_pard_goal_annon(PGD, PG) :-
                 ipi_deep            :: deep,
                 ipi_progrep         :: prog_rep,
                 ipi_opts            :: candidate_par_conjunctions_params,
-                ipi_call_sites      :: map(goal_path, clique_call_site_report),
+                ipi_clique          :: clique_ptr,
+                ipi_call_sites      :: map(goal_path, cost_and_callees),
                 ipi_rec_call_sites  :: map(goal_path, cs_cost_csq),
+                ipi_recursion_type  :: recursion_type,
                 ipi_var_table       :: var_table,
                 ipi_proc_label      :: string_proc_label
             ).
@@ -190,11 +187,11 @@ pard_goal_detail_annon_to_pard_goal_annon(PGD, PG) :-
                     % The per-call cost of this call in call sequence counts.
                 
                 pgtc_coat_above_threshold   :: cost_above_par_threshold,
-             
+            
                 pgtc_args                   :: list(var_mode_and_use),
                     % The argument modes and use information.
 
-                pgtc_call_site              :: clique_call_site_report
+                pgtc_call_site              :: cost_and_callees
                     % The call site report from the deep profiler.
             )
     ;       pgt_other_atomic_goal
@@ -215,7 +212,7 @@ pard_goal_detail_annon_to_pard_goal_annon(PGD, PG) :-
     --->    var_mode_and_use(
                 vmu_var                 :: var_rep,
                 vmu_mode                :: var_mode_rep,
-                vmu_use                 :: var_use_info
+                vmu_use                 :: lazy(var_use_info)
             ).
 
 :- type candidate_par_conjunctions ==
@@ -245,21 +242,28 @@ pard_goal_detail_annon_to_pard_goal_annon(PGD, PG) :-
 :- pred candidate_parallel_conjunctions_clique(
     candidate_par_conjunctions_params::in, deep::in, 
     parallelism_amount::in, clique_ptr::in, candidate_par_conjunctions::out,
-    cord(message)::out,
-    set_tree234(proc_static_ptr)::in, set_tree234(proc_static_ptr)::out) 
-    is det.
+    cord(message)::out) is det.
 
 candidate_parallel_conjunctions_clique(Opts, Deep, ParentParallelism,
-        CliquePtr, Candidates, Messages, !VisitedProcs) :-
-    create_clique_report(Deep, CliquePtr, MaybeCliqueReport),
+        CliquePtr, Candidates, Messages) :-
+    find_clique_first_and_other_procs(Deep, CliquePtr, MaybeFirstPDPtr,
+        OtherPDPtrs),
     (
-        MaybeCliqueReport = ok(CliqueReport)
+        MaybeFirstPDPtr = yes(FirstPDPtr),
+        PDPtrs = [FirstPDPtr | OtherPDPtrs]
     ;
-        MaybeCliqueReport = error(ErrorA),
-        error(this_file ++ ErrorA)
+        MaybeFirstPDPtr = no,
+        deep_lookup_clique_index(Deep, Deep ^ root, RootCliquePtr),
+        ( CliquePtr = RootCliquePtr ->
+            % It's okay, this clique never has an entry procedure.
+            PDPtrs = OtherPDPtrs
+        ;
+            CliquePtr = clique_ptr(CliqueNum),
+            error(format("%sClique %d has no entry proc", 
+                [s(this_file), i(CliqueNum)]))
+        )
     ),
-    
-    CliqueProcs = CliqueReport ^ cr_clique_procs,
+        
     create_clique_recursion_costs_report(Deep, CliquePtr,
         MaybeRecursiveCostsReport),
     (
@@ -271,21 +275,21 @@ candidate_parallel_conjunctions_clique(Opts, Deep, ParentParallelism,
     ),
     
     % Look for parallelisation opportunities in this clique.
-    map2_foldl(candidate_parallel_conjunctions_clique_proc(Opts, Deep,
-            RecursionType, ParentParallelism, CliquePtr), 
-        CliqueProcs, Candidatess, Messagess, !VisitedProcs),
+    map2(candidate_parallel_conjunctions_clique_proc(Opts, Deep,
+            RecursionType, CliquePtr), 
+        PDPtrs, Candidatess, Messagess),
     foldl(union(merge_candidate_par_conjs_proc), Candidatess,
         map.init, CliqueCandidates), 
     CliqueMessages = cord_list_to_cord(Messagess),
 
     % Look in descendent cliques.
     some [!ChildCliques] (
-        map(clique_proc_callees(Deep, ParentParallelism), CliqueProcs,
+        map(proc_dynamic_callees(Deep, ParentParallelism), PDPtrs,
             ChildCliquess),
         !:ChildCliques = cord_list_to_cord(ChildCliquess),
-        map2_foldl(candidate_parallel_conjunctions_callee(Opts, Deep,
+        map2(candidate_parallel_conjunctions_callee(Opts, Deep,
                 CliquePtr, CliqueCandidates),
-            list(!.ChildCliques), CSCandidatess, CSMessagess, !VisitedProcs)
+            list(!.ChildCliques), CSCandidatess, CSMessagess)
     ),
     foldl(union(merge_candidate_par_conjs_proc), CSCandidatess,
         map.init, CSCandidates), 
@@ -297,7 +301,8 @@ candidate_parallel_conjunctions_clique(Opts, Deep, ParentParallelism,
     
 :- type candidate_child_clique
     --->    candidate_child_clique(
-                ccc_perf                :: perf_row_data(clique_desc),
+                ccc_clique              :: clique_ptr,
+                ccc_cs_cost             :: cs_cost_csq,
 
                 % The context of the call site that calls this clique.
                 ccc_proc                :: string_proc_label,
@@ -308,47 +313,70 @@ candidate_parallel_conjunctions_clique(Opts, Deep, ParentParallelism,
                 ccc_parallelism         :: parallelism_amount
             ).
 
-:- pred clique_proc_callees(deep::in, parallelism_amount::in,
-    clique_proc_report::in, cord(candidate_child_clique)::out) is det.
+:- pred proc_dynamic_callees(deep::in, parallelism_amount::in,
+    proc_dynamic_ptr::in, cord(candidate_child_clique)::out) is det.
 
-clique_proc_callees(Deep, Parallelism, CliqueProc, ChildCliques) :-
-    FirstProcDynamic = CliqueProc ^ cpr_first_proc_dynamic,
-    OtherProcDynamics = CliqueProc ^ cpr_other_proc_dynamics,
-    ProcDynamics = [FirstProcDynamic | OtherProcDynamics],
-    map(proc_dynamic_callees(Deep, Parallelism), ProcDynamics, ChildCliquess),
+proc_dynamic_callees(Deep, Parallelism, PDPtr, ChildCliques) :-
+    deep_lookup_proc_dynamics(Deep, PDPtr, PD),
+    PSPtr = PD ^ pd_proc_static,
+    deep_lookup_proc_statics(Deep, PSPtr, PS),
+    ProcLabel = PS ^ ps_id, 
+    proc_dynamic_paired_call_site_slots(Deep, PDPtr, Slots),
+    map(pd_slot_callees(Deep, Parallelism, ProcLabel), Slots, ChildCliquess),
     ChildCliques = cord_list_to_cord(ChildCliquess).
 
-:- pred proc_dynamic_callees(deep::in, parallelism_amount::in, 
-    clique_proc_dynamic_report::in, cord(candidate_child_clique)::out) is det.
+:- pred pd_slot_callees(deep::in, parallelism_amount::in,
+    string_proc_label::in, 
+    pair(call_site_static_ptr, call_site_array_slot)::in, 
+    cord(candidate_child_clique)::out) is det.
 
-proc_dynamic_callees(Deep, Parallelism, PD, ChildCliques) :-
-    CCSRs = PD ^ cpdr_call_sites,
-    ProcDesc = PD ^ cpdr_proc_summary ^ perf_row_subject,
-    proc_label_from_proc_desc(Deep, ProcDesc, ProcLabel),
-    map(call_site_callees(ProcLabel, Parallelism), CCSRs, ChildCliquess),
-    ChildCliques = cord_list_to_cord(ChildCliquess).
+pd_slot_callees(Deep, Parallelism, ProcLabel, CSSPtr - Slot, ChildCliques) :-
+    deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
+    goal_path_from_string_det(CSS ^ css_goal_path, GoalPath),
+    (
+        Slot = slot_normal(CSDPtr),
+        call_site_dynamic_callees(Deep, Parallelism, ProcLabel, GoalPath,
+            CSDPtr, ChildCliques)
+    ;
+        Slot = slot_multi(_, CSDPtrs),
+        map(call_site_dynamic_callees(Deep, Parallelism, ProcLabel, GoalPath),
+            to_list(CSDPtrs), ChildCliquess),
+        ChildCliques = cord_list_to_cord(ChildCliquess)
+    ).
 
-:- pred call_site_callees(string_proc_label::in, parallelism_amount::in, 
-    clique_call_site_report::in, cord(candidate_child_clique)::out) is det.
+:- pred call_site_dynamic_callees(deep::in, parallelism_amount::in,
+    string_proc_label::in, goal_path::in, call_site_dynamic_ptr::in,
+    cord(candidate_child_clique)::out) is det.
 
-call_site_callees(ProcLabel, Parallelism, CCSR, ChildCliques) :-
-    GoalPath = CCSR ^ ccsr_call_site_summary ^ perf_row_subject ^
-        csdesc_goal_path, 
-    ChildCliquess = map(
-        (func(Callee) = 
-            candidate_child_clique(Callee, ProcLabel, GoalPath, Parallelism)),
-        CCSR ^ ccsr_callee_perfs),
-    ChildCliques = from_list(ChildCliquess).
+call_site_dynamic_callees(Deep, Parallelism, ProcLabel, GoalPath, CSDPtr,
+        ChildCliques) :-
+    ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
+        deep_lookup_clique_maybe_child(Deep, CSDPtr, MaybeClique),
+        (
+            MaybeClique = yes(CliquePtr),
+            deep_lookup_csd_own(Deep, CSDPtr, Own),
+            deep_lookup_csd_desc(Deep, CSDPtr, Desc),
+            Cost = build_cs_cost_csq(calls(Own), 
+                float(callseqs(Own) + inherit_callseqs(Desc))),
+            ChildCliques = singleton(
+                candidate_child_clique(CliquePtr, Cost, ProcLabel, GoalPath,
+                    Parallelism))
+        ;
+            MaybeClique = no,
+            ChildCliques = empty 
+        )
+    ;
+        ChildCliques = empty 
+    ).
 
 :- pred candidate_parallel_conjunctions_callee(
     candidate_par_conjunctions_params::in, deep::in,
     clique_ptr::in, candidate_par_conjunctions::in, 
     candidate_child_clique::in, candidate_par_conjunctions::out,
-    cord(message)::out,
-    set_tree234(proc_static_ptr)::in, set_tree234(proc_static_ptr)::out) is det.
+    cord(message)::out) is det.
 
 candidate_parallel_conjunctions_callee(Opts, Deep, CliquePtr, CliqueCandidates,
-        !.Callee, Candidates, Messages, !VisitedProcs) :-
+        !.Callee, Candidates, Messages) :-
     ( not_callee(CliquePtr, !.Callee) -> 
         ( cost_threshold(Opts, !.Callee) -> 
             update_parallelism_available(CliqueCandidates, !Callee),
@@ -374,9 +402,9 @@ candidate_parallel_conjunctions_callee(Opts, Deep, CliquePtr, CliqueCandidates,
         AnalyzeChild = yes,
         Parallelism = !.Callee ^ ccc_parallelism,
         ChildCliquePtr = 
-            !.Callee ^ ccc_perf ^ perf_row_subject ^ cdesc_clique_ptr,
+            !.Callee ^ ccc_clique,
         candidate_parallel_conjunctions_clique(Opts, Deep, Parallelism,
-            ChildCliquePtr, Candidates, Messages, !VisitedProcs)
+            ChildCliquePtr, Candidates, Messages)
     ;
         AnalyzeChild = no,
         Candidates = map.init,
@@ -388,20 +416,13 @@ candidate_parallel_conjunctions_callee(Opts, Deep, CliquePtr, CliqueCandidates,
 
 cost_threshold(Opts, ChildClique) :-
     Threshold = Opts ^ cpcp_clique_threshold,
-    Pref = ChildClique ^ ccc_perf,
-    MaybeCostChildren = Pref ^ perf_row_maybe_total,
-    (
-        MaybeCostChildren = yes(CostChildren),
-        CostChildren ^ perf_row_callseqs_percall >= float(Threshold)
-    ;
-        MaybeCostChildren = no
-        % What does this mean?  For now we recurse into these call sites.
-    ).
+    Cost = ChildClique ^ ccc_cs_cost,
+    cs_cost_get_percall(Cost) >= float(Threshold).
 
 :- pred not_callee(clique_ptr::in, candidate_child_clique::in) is semidet.
 
 not_callee(CliquePtr, ChildClique) :-
-    CliquePtr \= ChildClique ^ ccc_perf ^ perf_row_subject ^ cdesc_clique_ptr.
+    CliquePtr \= ChildClique ^ ccc_clique.
 
 :- pred exceeded_parallelism(candidate_par_conjunctions_params::in,
     candidate_child_clique::in) is semidet.
@@ -449,10 +470,10 @@ update_parallelism_available_conj(Conj, !ChildClique) :-
         % we use as many cores as the loop has iterations.  (Except for dead
         % time).
         Metrics = Conj ^ cpc_par_exec_metrics,
-        SeqTime = Metrics ^ pem_seq_time,
+        CPUTime = parallel_exec_metrics_get_cpu_time(Metrics),
         DeadTime = Metrics ^ pem_first_conj_dead_time + 
             Metrics ^ pem_future_dead_time,
-        Efficiency = (SeqTime - DeadTime) / SeqTime,
+        Efficiency = CPUTime / (CPUTime + DeadTime),
         Parallelism0 = !.ChildClique ^ ccc_parallelism,
         sub_computation_parallelism(Parallelism0, probable(Efficiency),
             Parallelism),
@@ -462,67 +483,44 @@ update_parallelism_available_conj(Conj, !ChildClique) :-
     ).
 
     % candidate_parallel_conjunctions_clique_proc(Opts, Deep, 
-    %   CliqueIsRecursive, ParentCostInfo, ProcsAnalysed, CliquePtr,
-    %   CliqueProc, Candidates, Messages) :-
+    %   RecursionType, CliquePtr, PDPtr, Candidates, Messages).
     %
-    % Find candidate parallel conjunctions within a clique_proc_report.
+    % Find candidate parallel conjunctions within a proc dynamic.
     %
-    % ParentCostInfo gives the cost of the call site calling this clique so
-    % that we may correctly calculate the per-call costs of recursive cliques
-    % and their call sites.
+    % RecursionType: The type of recursion used in the current clique.
     %
-    % ProcsAnalysed keeps a set of procs we've visited to prevent unbound
-    % recursion in this algorithm.
-    %
-    % CliqueProcMap is a map of proc_desc to clique_proc_report structures
-    % extracted from the clique_report.
-    %
-    % CliquePtr is the clique that this proc belongs to.
+    % CliquePtr: The current clique, 
     %
 :- pred candidate_parallel_conjunctions_clique_proc(
     candidate_par_conjunctions_params::in, deep::in, recursion_type::in,
-    parallelism_amount::in, clique_ptr::in, clique_proc_report::in, 
-    candidate_par_conjunctions::out, cord(message)::out,
-    set_tree234(proc_static_ptr)::in, set_tree234(proc_static_ptr)::out) 
-    is det.
+    clique_ptr::in, proc_dynamic_ptr::in, candidate_par_conjunctions::out,
+    cord(message)::out) is det.
 
 candidate_parallel_conjunctions_clique_proc(Opts, Deep, RecursionType,
-        _ParentParallelism, CliquePtr, CliqueProc, Candidates, Messages,
-        !VisitedProcs) :-
+        CliquePtr, PDPtr, Candidates, Messages) :-
     some [!Messages]
     (
         !:Messages = cord.empty,
             
         % Determine the costs of the call sites in the procedure.
-        build_recursive_call_site_cost_map(Deep, CliquePtr, CliqueProc,
-            RecursionType, RecursiveCallSiteCostMap, CSCMMessages),
-        !:Messages = !.Messages ++ CSCMMessages,
-        trace [compile_time(flag("debug_cpc_search")), io(!IO)] (
-            format_recursive_call_site_cost_map(
-                RecursiveCallSiteCostMap, PrettyCostMapCord),
-            PrettyCostMap = append_list(cord.list(PrettyCostMapCord)),
-            io.format("D: In clique %s recursive call site cost map"
-                    ++ " is:\n%s\n",
-                [s(string(CliquePtr)), s(PrettyCostMap)],
-                !IO),
-            io.flush_output(!IO)
-        ),
-
-        ProcDesc = CliqueProc ^ cpr_proc_summary ^ perf_row_subject,
-        PsPtr = ProcDesc ^ pdesc_ps_ptr,
+        recursion_type_get_interesting_parallelisation_depth(RecursionType,
+            MaybeDepth), 
+        build_recursive_call_site_cost_map(Deep, CliquePtr, PDPtr,
+            RecursionType, MaybeDepth, MaybeRecursiveCallSiteCostMap),
         (
-            not member(!.VisitedProcs, PsPtr)
-        ->
-            insert(PsPtr, !VisitedProcs),
-
-            % Analyse this procedure for parallelism opportunities.
-            candidate_parallel_conjunctions_proc(Opts, Deep, CliqueProc,
-                RecursiveCallSiteCostMap, Candidates,
-                _ProcCandidatesByGoalPath, ProcMessages),
-            !:Messages = !.Messages ++ ProcMessages
+            MaybeRecursiveCallSiteCostMap = ok(RecursiveCallSiteCostMap)
         ;
-            Candidates = map.init
+            MaybeRecursiveCallSiteCostMap = error(Error),
+            append_message(clique(CliquePtr),
+                warning_cannot_compute_cost_of_recursive_calls(Error),
+                !Messages),
+            RecursiveCallSiteCostMap = map.init
         ),
+
+        % Analyse this procedure for parallelism opportunities.
+        candidate_parallel_conjunctions_proc(Opts, Deep, PDPtr, RecursionType,
+            RecursiveCallSiteCostMap, Candidates, ProcMessages),
+        !:Messages = !.Messages ++ ProcMessages,
         Messages = !.Messages
     ).
 
@@ -545,200 +543,53 @@ merge_candidate_par_conjs_proc(A, B, Result) :-
 
 %----------------------------------------------------------------------------%
 %
-% Estimate the cost of the recursive calls under the assumption that current
-% call to this procedure had a particular cost.
-%
-
-:- pred build_recursive_call_site_cost_map(deep::in, clique_ptr::in, 
-    clique_proc_report::in, recursion_type::in, 
-    map(goal_path, cs_cost_csq)::out, cord(message)::out)
-    is det.
-
-build_recursive_call_site_cost_map(Deep, CliquePtr, CliqueProc, RecursionType,
-        RecursiveCallSiteCostMap, Messages) :-
-    some [!Messages] (
-        !:Messages = cord.empty,
-
-        (
-            RecursionType = rt_not_recursive,
-            RecursiveCallSiteCostMap = map.init
-        ;
-            RecursionType = rt_single(_, _, _AvgMaxDepth, AvgRecCost, _),
-        
-            get_recursive_calls_and_counts(Deep, CliquePtr, CliqueProc,
-                CallCountsMap, NewMessagesA),
-            !:Messages = !.Messages ++ NewMessagesA,
-            RecursiveCallSiteCostMap = map_values_only(
-                (func(Count) = 
-                    build_cs_cost_csq_percall(float(Count), AvgRecCost)),
-                CallCountsMap)
-        ;
-            ( RecursionType = rt_divide_and_conquer(_, _)
-            ; RecursionType = rt_mutual_recursion(_)
-            ; RecursionType = rt_other(_)
-            ; RecursionType = rt_errors(_)
-            ),
-            (
-                ( RecursionType = rt_divide_and_conquer(_, _)
-                ; RecursionType = rt_mutual_recursion(_)
-                ),
-                Error = "No average recursion depth for this recursion type"
-            ;
-                RecursionType = rt_other(_),
-                Error = "Could not detect recursion type"
-            ;
-                RecursionType = rt_errors(Errors),
-                Error = join_list("; and ", Errors)
-            ),
-            RecursiveCallSiteCostMap = map.init,
-        
-            % Lookup the proc static to find the ProcLabel.
-            PerfRowData = CliqueProc ^ cpr_proc_summary,
-            ProcDesc = PerfRowData ^ perf_row_subject,
-            proc_label_from_proc_desc(Deep, ProcDesc, ProcLabel),
-
-            append_message(proc(ProcLabel),
-                warning_cannot_compute_cost_of_recursive_calls(Error),
-                !Messages)
-        ),
-        Messages = !.Messages
-    ).
-
-:- pred get_recursive_calls_and_counts(deep::in, clique_ptr::in, 
-    clique_proc_report::in, map(goal_path, int)::out, cord(message)::out) 
-    is det.
-
-get_recursive_calls_and_counts(Deep, CliquePtr, CliqueProc, CallCountsMap,
-        !:Messages) :-
-    !:Messages = cord.empty,
-    % XXX: Handle mutual recursion for the cases that we know how to
-    % analyse.
-    OtherProcDynamics = CliqueProc ^ cpr_other_proc_dynamics,
-    (
-        OtherProcDynamics = [_ | _],
-        % We don't yet handle mutual recursion, and this can only occur during
-        % mutual recursion for the non-entry procedure.
-        
-        % Lookup the proc static to find the ProcLabel.
-        PerfRowData = CliqueProc ^ cpr_proc_summary,
-        ProcDesc = PerfRowData ^ perf_row_subject,
-        proc_label_from_proc_desc(Deep, ProcDesc, ProcLabel),
-        
-        append_message(proc(ProcLabel),
-            error_extra_proc_dynamics_in_clique_proc, !Messages)
-    ;
-        OtherProcDynamics = []
-    ),
-    CallSites = CliqueProc ^ cpr_first_proc_dynamic ^ cpdr_call_sites,
-    foldl(build_recursive_call_site_counts_map(CliquePtr), CallSites, map.init, 
-        CallCountsMap).
-
-:- pred build_recursive_call_site_counts_map(clique_ptr::in, 
-    clique_call_site_report::in,
-    map(goal_path, int)::in, map(goal_path, int)::out) is det.
-
-build_recursive_call_site_counts_map(CliquePtr, CallSite, !Map) :-
-    Callees = CallSite ^ ccsr_callee_perfs,
-    (
-        some [Callee, CalleeClique] (
-            member(Callee, Callees),
-            CalleeClique = Callee ^ perf_row_subject ^ cdesc_clique_ptr,
-            CalleeClique = CliquePtr
-        )
-    ->
-        % This call site calls the same clique at least once, therefore we
-        % treat it as recursive.  Usually a call site has exactly one callee,
-        % the exception is higher order and method calls, and I've never seen a
-        % recursive higher order or method call.
-        GoalPath = CallSite ^ ccsr_call_site_summary ^ perf_row_subject ^
-            csdesc_goal_path,
-        Count = CallSite ^ ccsr_call_site_summary ^ perf_row_calls,
-        svmap.det_insert(GoalPath, Count, !Map)
-    ;
-        true
-    ).
-
-:- pred format_recursive_call_site_cost_map(map(goal_path, cs_cost_csq)::in, 
-    cord(string)::out) is det.
-
-format_recursive_call_site_cost_map(Map, Result) :-
-    map.foldl(format_recursive_call_site_cost, Map, cord.empty, Result).
-
-:- pred format_recursive_call_site_cost(goal_path::in, cs_cost_csq::in, 
-    cord(string)::in, cord(string)::out) is det.
-
-format_recursive_call_site_cost(GoalPath, Cost, !Result) :-
-    !:Result = cord.snoc(!.Result ++ indent(1), String),
-    String = format("%s -> Percall cost: %f Calls: %f\n",
-        [s(GoalPathString), f(PerCallCost), f(Calls)]),
-    GoalPathString = goal_path_to_string(GoalPath),
-    PerCallCost = cs_cost_get_percall(Cost),
-    Calls = cs_cost_get_calls(Cost).
-
-    % The stateful data of the goal_get_callsite_cost_info code below.
-    %
-:- type callsite_cost_info
-    --->    callsite_cost_info(
-                csci_non_rec_cs_cost    :: float,
-                csci_rec_calls          :: float,
-                csci_rec_cs             :: set(clique_call_site_report),
-                csci_cs_prob_map        :: map(goal_path, float)
-            ).
-
-%----------------------------------------------------------------------------%
-%
 % Search for paralleliation opportunities within a procedure.
 %
 
     % Find candidate parallel conjunctions within the given procedure.
     %
 :- pred candidate_parallel_conjunctions_proc(
-    candidate_par_conjunctions_params::in, deep::in, clique_proc_report::in,
-    map(goal_path, cs_cost_csq)::in, candidate_par_conjunctions::out,
-    multi_map(goal_path_string, 
-        candidate_par_conjunction(pard_goal_detail))::out,
-    cord(message)::out) is det.
+    candidate_par_conjunctions_params::in, deep::in, proc_dynamic_ptr::in,
+    recursion_type::in, map(goal_path, cs_cost_csq)::in,
+    candidate_par_conjunctions::out, cord(message)::out) is det.
 
-candidate_parallel_conjunctions_proc(Opts, Deep, CliqueProc,
-        RecursiveCallSiteCostMap, Candidates, CandidatesByGoalPath,
-        Messages) :-
+candidate_parallel_conjunctions_proc(Opts, Deep, PDPtr, RecursionType,
+        RecursiveCallSiteCostMap, Candidates, Messages) :-
     some [!Messages] (
         !:Messages = cord.empty,
 
         % Lookup the proc static to find the ProcLabel.
-        PerfRowData = CliqueProc ^ cpr_proc_summary,
-        ProcDesc = PerfRowData ^ perf_row_subject,
-        proc_label_from_proc_desc(Deep, ProcDesc, ProcLabel),
-        
-        CallSites = CliqueProc ^ cpr_first_proc_dynamic ^ cpdr_call_sites,
-        ( CliqueProc ^ cpr_other_proc_dynamics = [_ | _] ->
-            append_message(proc(ProcLabel), 
-                error_extra_proc_dynamics_in_clique_proc,
-                !Messages)
-        ;
-            true
-        ),
-        list.foldl(add_call_site_report_to_map,
-            CallSites, map.init, CallSitesMap),
-        deep_get_progrep_det(Deep, ProgRep),
+        deep_lookup_proc_dynamics(Deep, PDPtr, PD),
+        deep_lookup_proc_statics(Deep, PD ^ pd_proc_static, PS),
+        ProcLabel = PS ^ ps_id,
         ( ProcLabel = str_ordinary_proc_label(_, ModuleName, _, _, _, _)
         ; ProcLabel = str_special_proc_label(_, ModuleName, _, _, _, _)
         ),
+        
+        deep_get_progrep_det(Deep, ProgRep),
+        
         (
-            ModuleName = "Mercury runtime"
+            ( ModuleName = "Mercury runtime"
+            ; ModuleName = "exception"
+            )
         ->
             % Silently skip over any code from the runtime, we can't expect to
             % find it's procedure representation.
-            Candidates = map.init,
-            CandidatesByGoalPath = map.init
+            Candidates = map.init
         ;
             progrep_search_proc(ProgRep, ProcLabel, ProcRep) 
         ->
             ProcRep ^ pr_defn = ProcDefnRep,
             ProcDefnRep ^ pdr_goal = Goal0,
             ProcDefnRep ^ pdr_var_table = VarTable,
-            Info = implicit_parallelism_info(Deep, ProgRep, Opts,
-                CallSitesMap, RecursiveCallSiteCostMap, VarTable, ProcLabel),
+           
+            deep_lookup_clique_index(Deep, PDPtr, CliquePtr),
+            proc_dynamic_paired_call_site_slots(Deep, PDPtr, Slots),
+            foldl(build_call_site_cost_and_callee_map(Deep), Slots, 
+                map.init, CallSitesMap), 
+            Info = implicit_parallelism_info(Deep, ProgRep, Opts, CliquePtr,
+                CallSitesMap, RecursiveCallSiteCostMap, RecursionType,
+                VarTable, ProcLabel),
             goal_annotate_with_instmap(Goal0, Goal,
                 initial_inst_map(ProcDefnRep), _FinalInstMap,
                 SeenDuplicateInstantiation, _ConsumedVars, _BoundVars),
@@ -748,14 +599,12 @@ candidate_parallel_conjunctions_proc(Opts, Deep, CliqueProc,
             (
                 SeenDuplicateInstantiation =
                     have_not_seen_duplicate_instantiation,
-                list.foldl2(
+                list.foldl(
                     build_candidate_par_conjunction_maps(ProcLabel, VarTable),
-                    Candidates0, map.init, Candidates, 
-                    multi_map.init, CandidatesByGoalPath)
+                    Candidates0, map.init, Candidates)
             ;
                 SeenDuplicateInstantiation = seen_duplicate_instantiation,
                 Candidates = map.init,
-                CandidatesByGoalPath = map.init,
                 append_message(proc(ProcLabel), 
                     notice_duplicate_instantiation(length(Candidates0)),
                     !Messages)
@@ -764,7 +613,6 @@ candidate_parallel_conjunctions_proc(Opts, Deep, CliqueProc,
             % Builtin procedures cannot be found in the program representation,
             % and cannot be parallelised either.
             Candidates = map.init,
-            CandidatesByGoalPath = map.init,
             append_message(proc(ProcLabel), warning_cannot_lookup_proc_defn,
                 !Messages)
         ),
@@ -773,14 +621,9 @@ candidate_parallel_conjunctions_proc(Opts, Deep, CliqueProc,
 
 :- pred build_candidate_par_conjunction_maps(string_proc_label::in,
     var_table::in, candidate_par_conjunction(pard_goal_detail)::in, 
-    candidate_par_conjunctions::in, candidate_par_conjunctions::out,
-    multi_map(goal_path_string, 
-        candidate_par_conjunction(pard_goal_detail))::in,
-    multi_map(goal_path_string, 
-        candidate_par_conjunction(pard_goal_detail))::out)
-    is det.
+    candidate_par_conjunctions::in, candidate_par_conjunctions::out) is det.
 
-build_candidate_par_conjunction_maps(ProcLabel, VarTable, Candidate, !Map, !GPMap) :-
+build_candidate_par_conjunction_maps(ProcLabel, VarTable, Candidate, !Map) :-
     ( map.search(!.Map, ProcLabel, CandidateProc0) ->
         CandidateProc0 = candidate_par_conjunctions_proc(VarTablePrime, CPCs0),
         CPCs = [ Candidate | CPCs0 ],
@@ -794,13 +637,10 @@ build_candidate_par_conjunction_maps(ProcLabel, VarTable, Candidate, !Map, !GPMa
         CPCs = [ Candidate ]
     ),
     CandidateProc = candidate_par_conjunctions_proc(VarTable, CPCs),
-    svmap.set(ProcLabel, CandidateProc, !Map),
-    GoalPath = Candidate ^ cpc_goal_path,
-    multi_map.set(!.GPMap, GoalPath, Candidate, !:GPMap).
+    svmap.set(ProcLabel, CandidateProc, !Map).
 
 :- pred goal_get_conjunctions_worth_parallelising(
-    implicit_parallelism_info::in,
-    goal_rep(inst_map_info)::in, goal_path::in, 
+    implicit_parallelism_info::in, goal_rep(inst_map_info)::in, goal_path::in,
     list(candidate_par_conjunction(pard_goal_detail))::out,
     cord(message)::out) is det.
 
@@ -924,7 +764,7 @@ ite_get_conjunctions_worth_parallelising(Info, Cond, Then, Else, GoalPath,
     % At the end of every conjunction we call this predicate to check the list
     % of calls we've found and make any parallelisation decisions.
     %
-:- pred conj_build_candidate_conjunctions( implicit_parallelism_info::in,
+:- pred conj_build_candidate_conjunctions(implicit_parallelism_info::in,
     list(goal_rep(inst_map_info))::in, goal_path::in,
     cord(message)::out, 
     list(candidate_par_conjunction(pard_goal_detail))::out) is det.
@@ -933,13 +773,13 @@ conj_build_candidate_conjunctions(Info, Conjs, GoalPath, Messages,
         Candidates) :-
     ProcLabel = Info ^ ipi_proc_label,
     Location = goal(ProcLabel, GoalPath),
-    promise_equivalent_solutions [Messages, Candidates]
     some [!Messages] 
     (
         !:Messages = cord.empty,
 
-        map_foldl(goal_to_pard_goal(Info, GoalPath, 
-            ( func(Num) = step_conj(Num) ) ), Conjs, PardGoals, 1, _),
+        map_foldl2(goal_to_pard_goal(Info, GoalPath, 
+            ( func(Num) = step_conj(Num) ) ), Conjs, PardGoals, 1, _,
+            !Messages),
         foldl(count_costly_calls, PardGoals, 0, NumCostlyCalls),
         ( NumCostlyCalls > 1 -> 
             append_message(Location,
@@ -1098,8 +938,10 @@ pardgoals_build_candidate_conjunction(Info, Location, GoalPath, GoalsPartition,
                 ; Location = goal(ProcLabel, _)
                 )
             ;
-                Location = clique(_),
-                error("Location is a clique when it should be a proc " ++
+                ( Location = clique(_)
+                ; Location = call_site_dynamic(_)
+                ),
+                error("Location is a clique or CSD when it should be a proc " ++
                     "or goal")
             ),
 
@@ -1231,7 +1073,7 @@ new_group([G | Gs], P) = GoalGroup :-
 
                 gfp_dependency_graphs       :: dependency_graphs,
                 gfp_costly_call_indexes     :: list(int),
-                gfp_num_calls               :: int
+                gfp_num_calls               :: float
             ).
 
 :- inst goals_for_parallelisation
@@ -1258,7 +1100,7 @@ preprocess_conjunction(Goals0, Algorithm, GoalsForParallelisation) :-
         GoalType = FirstCostlyCall ^ goal_annotation ^ pgd_pg_type,
         GoalType = pgt_call(_, _, _, CallSite)
     ->
-        NumCalls = CallSite ^ ccsr_call_site_summary ^ perf_row_calls
+        NumCalls = cs_cost_get_calls(CallSite ^ cac_cost)
     ;
         error(this_file ++ "Expected call goal")
     ),
@@ -1376,7 +1218,7 @@ find_best_parallelisation_complete_bnb(Info, Location, PartNum,
     
     branch_and_bound(
         generate_parallelisations(Info, Location, PartNum, LastCostlyCallIndex, 
-            NumCalls, DependencyMaps, GoalGroups),
+            round_to_int(NumCalls), DependencyMaps, GoalGroups),
         parallelisation_get_objective_value,
         Solutions, Profile),
     
@@ -1611,8 +1453,8 @@ find_best_parallelisation_greedy(Info, _Location, _PartNum,
             !:GoalGroups = [ FirstGroup | !.GoalGroups ],
             GoalsBeforeConj = []
         ),
-        start_building_parallelisation(Info, NumCalls, GoalsBeforeConj,
-            !:Parallelisation),
+        start_building_parallelisation(Info, round_to_int(NumCalls), 
+            GoalsBeforeConj, !:Parallelisation),
 
         build_parallel_conjuncts_greedy(Info, DependencyMaps,
             CostlyCallIndexes, 0, [], [], LastParConj, !ConjNum,
@@ -2319,10 +2161,13 @@ adjust_time_for_waits_2(LastEnd, !Time, !Executions) :-
         % Do the adjustment.
         !:Time = !.Time + (Start - LastEnd),
 
-        ( !.Time < Start ->
-            error("adjust_time_for_waits: Adjustment didn't work, " ++
-                "time occurs before the current execution")
-        ; !.Time < End ->
+% This has been commented out as it is easily triggered by floating point
+% rounding errors and I don't know enough about ieee754 to fix it.
+%        ( !.Time < Start ->
+%            error(format("adjust_time_for_waits: Adjustment didn't work, " ++
+%                "time occurs before the current execution. " ++
+%                "Time: %f, Start: %f.", [f(!.Time), f(Start)]))
+        ( !.Time < End ->
             % The adjustment worked.
             true
         ;
@@ -2345,8 +2190,18 @@ adjust_time_for_waits_2(LastEnd, !Time, !Executions) :-
     var_rep::in, map(var_rep, float)::in, map(var_rep, float)::out) is det.
 
 var_production_time_to_map(TimeBefore, Goal, Var, !Map) :-
-    var_first_use_time(find_production, TimeBefore, Goal, Var, Time),
-    svmap.det_insert(Var, Time, !Map).
+    solutions(var_first_use_time(find_production, TimeBefore, Goal, Var), 
+        Times),
+    (
+        Times = [Time],
+        % A production can only occur once in a call's arguments, therefore
+        % there is only one solution here.
+        svmap.det_insert(Var, Time, !Map)
+    ;
+        Times = [_, _ | _],
+        error(this_file ++ 
+            "Too many solutions for var_first_use_time for a production")
+    ).
 
     % foldl(get_consumptions_list(Vars), Goals, 0.0, _, [], RevConsumptions),
     %
@@ -2379,7 +2234,15 @@ get_consumptions_list(Goal, !Vars, !Time, !List) :-
     pair.pair(var_rep, float)::out) is det.
 
 var_consumptions(TimeBefore, Goal, Var, Var - Time) :-
-    var_first_use_time(find_consumption, TimeBefore, Goal, Var, Time).
+    % This will only have multiple solutions where one variable appears a list
+    % of call arguments more than once.
+    solutions(var_first_use_time(find_consumption, TimeBefore, Goal, Var),
+        Times),
+    % The earliest consumption is the consumption that matters.  solutions/2
+    % returns the solutions in ascending sorted order so the first one will be
+    % the earliest one.
+    Times = [FirstTime | OtherTimes],
+    Time = foldl(float.min, OtherTimes, FirstTime).
 
 :- type find_production_or_consumption
     --->    find_production
@@ -2393,17 +2256,18 @@ var_consumptions(TimeBefore, Goal, Var, Var - Time) :-
     %   Time is Time0 + the time that Goal first consumes Var.
     %
 :- pred var_first_use_time(find_production_or_consumption::in, 
-    float::in, pard_goal_detail::in, var_rep::in, float::out) is det.
+    float::in, pard_goal_detail::in, var_rep::in, float::out) is multi.
 
 var_first_use_time(FindProdOrCons, TimeBefore, Goal, Var, Time) :-
     GoalType = Goal ^ goal_annotation ^ pgd_pg_type,
     (
         GoalType = pgt_call(Cost, _, Args, _),
-        CostPercall = cs_cost_get_percall(Cost),
-        find_arg_by_var(Args, Var, MaybeArg),
         (
-            MaybeArg = yes(Arg),
-            Use = Arg ^ vmu_use,
+            member(Arg, Args),
+            Arg = var_mode_and_use(Var, _, LazyUse)
+        ->
+            CostPercall = cs_cost_get_percall(Cost),
+            Use = force(LazyUse),
             UseType = Use ^ vui_use_type,
             (
                 (
@@ -2425,19 +2289,7 @@ var_first_use_time(FindProdOrCons, TimeBefore, Goal, Var, Time) :-
                         FindProdOrCons = find_consumption
                     )
                 ),
-                CostUntilUse = Use ^ vui_cost_until_use,
-                (
-                    CostUntilUse = cost_since_proc_start(UseTime)
-                ;
-                    CostUntilUse = cost_before_proc_end(CostBeforeProcEnd),
-                    UseTime = CostPercall - CostBeforeProcEnd,
-                    ( UseTime < 0.0 ->
-                        error("var_first_use_time: "
-                            ++ "CostPercall - CostBeforeProcEnd < 0.0")
-                    ;
-                        true
-                    )
-                )
+                UseTime = Use ^ vui_cost_until_use
             ;
                 UseType = var_use_other,
                 % The analysis didn't recognise the instantiation here, so use a
@@ -2452,7 +2304,6 @@ var_first_use_time(FindProdOrCons, TimeBefore, Goal, Var, Time) :-
                 )
             )
         ;
-            MaybeArg = no,
             (
                 FindProdOrCons = find_production,
                 error("var_first_use_time: "
@@ -2479,17 +2330,6 @@ var_first_use_time(FindProdOrCons, TimeBefore, Goal, Var, Time) :-
     ),
     Time = TimeBefore + UseTime.
 
-:- pred find_arg_by_var(list(var_mode_and_use)::in, var_rep::in,
-    maybe(var_mode_and_use)::out) is det. 
-
-find_arg_by_var([], _, no).
-find_arg_by_var([Arg | Args], Var, MaybeArg) :-
-    ( Arg = var_mode_and_use(Var, _, _) ->
-        MaybeArg = yes(Arg)
-    ;
-        find_arg_by_var(Args, Var, MaybeArg)
-    ).
-
 %----------------------------------------------------------------------------%
 
 :- pred pardgoal_consumed_vars_accum(pard_goal_detail::in,
@@ -2503,16 +2343,15 @@ pardgoal_consumed_vars_accum(Goal, !Vars) :-
     % model_det and have a cost above the call site cost threshold.
     %
 :- pred can_parallelise_call(implicit_parallelism_info::in,
-    detism_rep::in, clique_call_site_report::in) is semidet.
+    detism_rep::in, cs_cost_csq::in) is semidet.
 
-can_parallelise_call(Info, Detism, CallSiteReport) :-
+can_parallelise_call(Info, Detism, Cost) :-
     ( Detism = det_rep
     ; Detism = cc_multidet_rep ),
-    CallSiteCost = get_call_site_cost(Info, CallSiteReport),
-    ( cs_cost_get_calls(CallSiteCost) > 0.0 ->
+    ( cs_cost_get_calls(Cost) > 0.0 ->
         % This is conditional so that we can gauretee that it never causes a
         % divide by zero error,
-        PercallCost = cs_cost_get_percall(CallSiteCost),
+        PercallCost = cs_cost_get_percall(Cost),
         PercallCost > float(Info ^ ipi_opts ^ cpcp_call_site_threshold)
     ;
         fail 
@@ -2520,10 +2359,11 @@ can_parallelise_call(Info, Detism, CallSiteReport) :-
 
 :- pred maybe_costly_call(implicit_parallelism_info::in, goal_path::in,
     atomic_goal_rep::in, detism_rep::in, inst_map_info::in,
-    pard_goal_type::out(pgt_atomic_goal)) is det.
+    pard_goal_type::out(pgt_atomic_goal), cord(message)::out) is det.
 
 maybe_costly_call(Info, GoalPath, AtomicGoal, Detism,
-        InstMapInfo, GoalType) :-
+        InstMapInfo, GoalType, !:Messages) :-
+    !:Messages = cord.empty,
     InstMapBefore = InstMapInfo ^ im_before,
     InstMapAfter = InstMapInfo ^ im_after,
     (
@@ -2545,45 +2385,130 @@ maybe_costly_call(Info, GoalPath, AtomicGoal, Detism,
         ; AtomicGoal = method_call_rep(_, _, Args)
         ; AtomicGoal = plain_call_rep(_, _, Args)
         ),
-        map.lookup(Info ^ ipi_call_sites, GoalPath, CallSite),
+        
         % Lookup var use information.
-        CallSiteKind = CallSite ^ ccsr_kind_and_callee,
-        (
-            CallSiteKind = normal_call_and_callee(NormalCalleeId, _),
-            PSPtr = NormalCalleeId ^ pdesc_ps_ptr,
-            Deep = Info ^ ipi_deep,
-            create_proc_var_use_dump_report(Deep, PSPtr,
-                MaybeVarUseDumpInfo),
-            MaybeVarUseDumpInfo = ok(VarUseDumpInfo)
-        ->
-            VarUseInfos = VarUseDumpInfo ^ pvui_var_uses, 
-            list.map_corresponding((pred(Arg::in, VarUseInfo::in, 
-                        VarModeAndUse::out) is det :-
-                    var_get_mode(InstMapBefore, InstMapAfter, Arg, ArgMode),
-                    VarModeAndUse = var_mode_and_use(Arg, ArgMode,
-                        VarUseInfo)
-                ), Args, VarUseInfos, VarModeAndUses)
-        ;
-            list.map((pred(Arg::in, VarModeAndUse::out) is det :-
-                    var_get_mode(InstMapBefore, InstMapAfter, Arg, ArgMode),
-                    var_mode_to_var_use(ArgMode, VarUseType),
-                    pessimistic_var_use_info(VarUseType, VarUseInfo),
-                    VarModeAndUse = var_mode_and_use(Arg, ArgMode,
-                        VarUseInfo)
-                ), Args, VarModeAndUses)
-        ),
+        map.lookup(Info ^ ipi_call_sites, GoalPath, CallSite),
+        map_foldl(compute_var_modes_and_uses(Info, GoalPath, CallSite, 
+                InstMapBefore, InstMapAfter),
+            Args, VarsModesAndUses, 0, _),
 
-        % XXX: The goal annotations cannot represent reasons why a goal can't
-        % be parallelised, for example it could be nondet, semidet or
+        (
+            cost_and_callees_is_recursive(Info ^ ipi_clique, CallSite), 
+            map.search(Info ^ ipi_rec_call_sites, GoalPath, RecCost) 
+        ->
+            Cost = RecCost
+        ;
+            Cost = CallSite ^ cac_cost
+        ),
+        % XXX: The goal annotations cannot represent reasons why a goal
+        % can't be parallelised, for example it could be nondet, semidet or
         % impure.
-        ( can_parallelise_call(Info, Detism, CallSite) ->
+        ( can_parallelise_call(Info, Detism, Cost) ->
             CostAboveThreshold = cost_above_par_threshold
         ;
             CostAboveThreshold = cost_not_above_par_threshold
         ),
-        CallSiteCost = get_call_site_cost(Info, CallSite),
-        GoalType = pgt_call(CallSiteCost, CostAboveThreshold, VarModeAndUses,
+        GoalType = pgt_call(Cost, CostAboveThreshold, VarsModesAndUses,
             CallSite) 
+    ).
+
+:- pred compute_var_modes_and_uses(implicit_parallelism_info::in,
+    goal_path::in, cost_and_callees::in, inst_map::in, inst_map::in, 
+    var_rep::in, var_mode_and_use::out, int::in, int::out) is det.
+
+compute_var_modes_and_uses(Info, GoalPath, CostAndCallee, InstMapBefore, InstMapAfter, Arg,
+        VarModeAndUse, !ArgNum) :-
+    var_get_mode(InstMapBefore, InstMapAfter, Arg, Mode),
+    var_mode_to_var_use_type(Mode, VarUseType),
+    ArgNum = !.ArgNum,
+    LazyUse = delay((func) = compute_var_modes_and_uses_lazy(Info, GoalPath,
+        CostAndCallee, ArgNum, VarUseType)),
+    VarModeAndUse = var_mode_and_use(Arg, Mode, LazyUse),
+    !:ArgNum = !.ArgNum + 1.
+
+:- func compute_var_modes_and_uses_lazy(implicit_parallelism_info, 
+    goal_path, cost_and_callees, int, var_use_type) = var_use_info.
+
+compute_var_modes_and_uses_lazy(Info, GoalPath, CostAndCallee, ArgNum,
+        VarUseType) = Use :-
+    % Get cost
+    (
+        cost_and_callees_is_recursive(Info ^ ipi_clique, CostAndCallee),
+        map.search(Info ^ ipi_rec_call_sites, GoalPath, RecCost)
+    ->
+        % THe callsite is recursive and we know the cost of the
+        % recursive call.
+        Cost0 = RecCost
+    ;
+        Cost0 = CostAndCallee ^ cac_cost
+    ),
+    Cost = cs_cost_get_percall(Cost0),
+
+    HigherOrder = CostAndCallee ^ cac_call_site_is_ho,
+    (
+        HigherOrder = higher_order_call,
+        % We cannot push signals or waits into higher order calls.
+        pessimistic_var_use_info(VarUseType, Cost, Use)
+    ;
+        HigherOrder = first_order_call,
+        Callees = CostAndCallee ^ cac_callees,
+        ( singleton_set(Callees, Callee) ->
+            CSDPtr = Callee ^ c_csd
+        ;
+            error(this_file ++ 
+                "First-order call site has wrong number of CSDs")
+        ),
+        RecursionType = Info ^ ipi_recursion_type,
+        recursion_type_get_interesting_parallelisation_depth(
+            RecursionType, MaybeCurDepth),
+        compute_var_modes_and_uses_2(Info, ArgNum, RecursionType,
+            MaybeCurDepth, VarUseType, Cost, CSDPtr, Use, Messages),
+        trace [io(!IO)] (
+            stderr_stream(Stderr, !IO),
+            write_out_messages(Stderr, Messages, !IO)
+        )
+    ).
+
+:- pred compute_var_modes_and_uses_2(implicit_parallelism_info::in,
+    int::in, recursion_type::in, maybe(float)::in, var_use_type::in,
+    float::in, call_site_dynamic_ptr::in, var_use_info::out, 
+    cord(message)::out) is det.
+
+compute_var_modes_and_uses_2(Info, ArgNum, RecursionType, MaybeCurDepth,
+        VarUseType, Cost, CSDPtr, Use, !:Messages) :-
+    !:Messages = empty,
+    Deep = Info ^ ipi_deep,
+    CliquePtr = Info ^ ipi_clique,
+    call_site_dynamic_var_use_info(Deep, CliquePtr, CSDPtr, ArgNum,
+        RecursionType, MaybeCurDepth, Cost, set.init, VarUseType, MaybeUse),
+    (
+        MaybeUse = ok(Use)
+    ;
+        MaybeUse = error(Error),
+        pessimistic_var_use_info(VarUseType, Cost, Use),
+        append_message(call_site_dynamic(CSDPtr), 
+            warning_cannot_compute_arg_first_use_time(Error),
+            !Messages)
+    ).
+
+:- pred recursion_type_get_interesting_parallelisation_depth(
+    recursion_type::in, maybe(float)::out) is det.
+
+recursion_type_get_interesting_parallelisation_depth(RecursionType,
+        MaybeDepth) :-
+    (
+        RecursionType = rt_not_recursive,
+        MaybeDepth = yes(0.0)
+    ;
+        RecursionType = rt_single(_, _, Depth, _, _),
+        MaybeDepth = yes(Depth / 2.0)
+    ;
+        ( RecursionType = rt_divide_and_conquer(_, _)
+        ; RecursionType = rt_mutual_recursion(_)
+        ; RecursionType = rt_other(_)
+        ; RecursionType = rt_errors(_)
+        ),
+        MaybeDepth = no
     ).
 
 :- type is_costly_goal
@@ -2625,45 +2550,49 @@ var_get_mode(InstMapBefore, InstMapAfter, VarRep, VarModeRep) :-
 :- pred goal_to_pard_goal(implicit_parallelism_info::in, goal_path::in,
     (func(int) = goal_path_step)::in,
     goal_rep(inst_map_info)::in, pard_goal_detail::out,
-    int::in, int::out) is det.
+    int::in, int::out,
+    cord(message)::in, cord(message)::out) is det.
 
-goal_to_pard_goal(Info, GoalPath0, Step, !Goal, !GoalNum) :-
+goal_to_pard_goal(Info, GoalPath0, Step, !Goal, !GoalNum, !Messages) :-
     !.Goal = goal_rep(GoalExpr0, Detism, InstMapInfo),
     GoalPath = goal_path_add_at_end(GoalPath0, Step(!.GoalNum)),
     !:GoalNum = !.GoalNum + 1,
     (
         (
             GoalExpr0 = conj_rep(Conjs0),
-            map_foldl(goal_to_pard_goal(Info, GoalPath, 
-                ( func(Num) = step_conj(Num) ) ), Conjs0, Conjs, 1, _),
+            map_foldl2(goal_to_pard_goal(Info, GoalPath, 
+                ( func(Num) = step_conj(Num) ) ), Conjs0, Conjs, 1, _,
+                !Messages),
             GoalExpr = conj_rep(Conjs)
         ;
             GoalExpr0 = disj_rep(Disjs0),
-            map_foldl(goal_to_pard_goal(Info, GoalPath,
-                ( func(Num) = step_disj(Num) ) ), Disjs0, Disjs, 1, _),
+            map_foldl2(goal_to_pard_goal(Info, GoalPath,
+                ( func(Num) = step_disj(Num) ) ), Disjs0, Disjs, 1, _,
+                !Messages),
             GoalExpr = disj_rep(Disjs)
         ;
             GoalExpr0 = switch_rep(Var, CanFail, Cases0),
-            map_foldl(case_to_pard_goal(Info, GoalPath), Cases0, Cases, 1, _),
+            map_foldl2(case_to_pard_goal(Info, GoalPath), Cases0, Cases, 1, _,
+                !Messages),
             GoalExpr = switch_rep(Var, CanFail, Cases)
         ; 
             GoalExpr0 = ite_rep(Cond0, Then0, Else0),
             goal_to_pard_goal(Info, GoalPath, func(_) = step_ite_cond, 
-                Cond0, Cond, 1, _),
+                Cond0, Cond, 1, _, !Messages),
             goal_to_pard_goal(Info, GoalPath, func(_) = step_ite_then, 
-                Then0, Then, 1, _),
+                Then0, Then, 1, _, !Messages),
             goal_to_pard_goal(Info, GoalPath, func(_) = step_ite_else, 
-                Else0, Else, 1, _),
+                Else0, Else, 1, _, !Messages),
             GoalExpr = ite_rep(Cond, Then, Else)
         ; 
             GoalExpr0 = negation_rep(SubGoal0),
             goal_to_pard_goal(Info, GoalPath, func(_) = step_neg,
-                SubGoal0, SubGoal, 1, _),
+                SubGoal0, SubGoal, 1, _, !Messages),
             GoalExpr = negation_rep(SubGoal)
         ; 
             GoalExpr0 = scope_rep(SubGoal0, MaybeCut),
             goal_to_pard_goal(Info, GoalPath, func(_) = step_scope(MaybeCut),
-                SubGoal0, SubGoal, 1, _),
+                SubGoal0, SubGoal, 1, _, !Messages),
             GoalExpr = scope_rep(SubGoal, MaybeCut)
         ),
         % XXX: We my consider lifting calls out of non-atomic goals so that
@@ -2674,49 +2603,21 @@ goal_to_pard_goal(Info, GoalPath0, Step, !Goal, !GoalNum) :-
         GoalExpr0 = atomic_goal_rep(Context, Line, BoundVars, AtomicGoal),
         GoalExpr = atomic_goal_rep(Context, Line, BoundVars, AtomicGoal),
         maybe_costly_call(Info, GoalPath, AtomicGoal, Detism,
-            InstMapInfo, PardGoalType)
+            InstMapInfo, PardGoalType, Messages),
+        !:Messages = !.Messages ++ Messages
     ),
     PardGoalAnnotation = pard_goal_detail(PardGoalType, InstMapInfo, GoalPath),
     !:Goal = goal_rep(GoalExpr, Detism, PardGoalAnnotation).
 
 :- pred case_to_pard_goal(implicit_parallelism_info::in, goal_path::in,
     case_rep(inst_map_info)::in, case_rep(pard_goal_detail_annotation)::out, 
-    int::in, int::out) is det.
+    int::in, int::out, cord(message)::in, cord(message)::out) is det.
 
-case_to_pard_goal(Info, GoalPath0, !Case, !GoalNum) :-
+case_to_pard_goal(Info, GoalPath0, !Case, !GoalNum, !Messages) :-
     !.Case = case_rep(ConsId, OtherConsId, Goal0),
     goal_to_pard_goal(Info, GoalPath0, 
-        ( func(Num) = step_switch(Num, no) ), Goal0, Goal, !GoalNum),
+        ( func(Num) = step_switch(Num, no) ), Goal0, Goal, !GoalNum, !Messages),
     !:Case = case_rep(ConsId, OtherConsId, Goal).
-
-    % are_conjuncts_dependent(CallOutputs, InstMap, VarModeAndUse, !DepVars),
-    %
-    % Determine if a variables depends on an output from an earlier call either
-    % directly or indirectly.  If it does add it to the DepVars set.
-    %
-    % Retrieve the average cost of a call site.
-    %
-:- func get_call_site_cost(implicit_parallelism_info, clique_call_site_report) 
-    = cs_cost_csq.
-
-get_call_site_cost(Info, CallSite) = Cost :-
-    CSSummary = CallSite ^ ccsr_call_site_summary,
-    GoalPath = CSSummary ^ perf_row_subject ^ csdesc_goal_path,
-    ( map.search(Info ^ ipi_rec_call_sites, GoalPath, CostPrime) ->
-        Cost = CostPrime
-    ;
-        MaybePerfTotal = CSSummary ^ perf_row_maybe_total, 
-        (
-            MaybePerfTotal = yes(PerfTotal),
-            TotalCost = PerfTotal ^ perf_row_callseqs
-        ;
-            MaybePerfTotal = no,
-            error(this_file ++ 
-                "Could not retrieve total callseqs cost from call site")
-        ),
-        Calls = CSSummary ^ perf_row_calls,
-        Cost = build_cs_cost_csq(Calls, float(TotalCost))
-    ).
 
 %----------------------------------------------------------------------------%
 %
@@ -3251,28 +3152,20 @@ format_pard_goal_annotation(GoalAnnotation, Report) :-
     io::di, io::uo) is det.
 
 debug_cliques_below_threshold(Clique, !IO) :-
-    Perf = Clique ^ ccc_perf,
-    CliquePtr = Perf ^ perf_row_subject ^ cdesc_clique_ptr,
+    CliquePtr = Clique ^ ccc_clique,
     CliquePtr = clique_ptr(CliqueNum),
-    Calls = Perf ^ perf_row_calls,
-    MaybeTotals = Perf ^ perf_row_maybe_total,
-    (
-        MaybeTotals = yes(Totals),
-        PercallCost = Totals ^ perf_row_callseqs_percall
-    ;
-        MaybeTotals = no,
-        PercallCost = Perf ^ perf_row_self ^ perf_row_callseqs_percall
-    ),
+    Calls = cs_cost_get_calls(Clique ^ ccc_cs_cost),
+    PercallCost = cs_cost_get_percall(Clique ^ ccc_cs_cost),
     io.format("D: Not entering clique: %d, " ++
         "it is below the clique threashold\n  " ++
-        "It has per-call cost %f and is called %d times\n\n",
-        [i(CliqueNum), f(PercallCost), i(Calls)], !IO).
+        "It has per-call cost %f and is called %f times\n\n",
+        [i(CliqueNum), f(PercallCost), f(Calls)], !IO).
 
 :- pred debug_cliques_exeeded_parallelism(candidate_child_clique::in,
     io::di, io::uo) is det.
 
 debug_cliques_exeeded_parallelism(Clique, !IO) :-
-    CliquePtr = Clique ^ ccc_perf ^ perf_row_subject ^ cdesc_clique_ptr,
+    CliquePtr = Clique ^ ccc_clique,
     CliquePtr = clique_ptr(CliqueNum),
     io.format("D: Not entiring clique %d, " ++
         "no-more parallelisation resources available at this context\n\n",

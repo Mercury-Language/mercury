@@ -44,6 +44,7 @@
 :- pred get_coverage_before(coverage_info::in, int::out) is semidet.
 :- pred get_coverage_before_and_after(coverage_info::in, int::out, int::out)
     is semidet.
+:- pred get_coverage_after(coverage_info::in, int::out) is semidet.
 
 %----------------------------------------------------------------------------%
     
@@ -95,14 +96,7 @@
 
 :- implementation.
 
-:- import_module message.
-:- import_module profile.
-:- import_module program_representation_utils.
-:- import_module report.
-
 :- import_module bool.
-:- import_module cord.
-:- import_module exception.
 :- import_module int.
 :- import_module io.
 :- import_module require.
@@ -117,6 +111,11 @@ get_coverage_before(coverage_known_before(Before), Before).
 get_coverage_before_and_after(coverage_known(Before, After), Before, After).
 get_coverage_before_and_after(coverage_known_same(Count), Count, Count).
 get_coverage_before_and_after(coverage_known_zero, 0, 0).
+
+get_coverage_after(coverage_known(_, After), After).
+get_coverage_after(coverage_known_zero, 0).
+get_coverage_after(coverage_known_same(After), After).
+get_coverage_after(coverage_known_after(After), After).
 
 %-----------------------------------------------------------------------------%
 
@@ -675,10 +674,6 @@ ite_annotate_coverage(Info, GoalPath, Before, After,
         )
     ).
 
-:- pred not_unify(T::in, T::in) is semidet.
-
-not_unify(A, B) :- not unify(A, B).
-
     % Get the coverage information from a coverage point about the branch
     % referenced by the given goal path.
     %
@@ -957,59 +952,6 @@ check_coverage_complete(coverage_known_zero, _GoalExpr).
 %    ; Coverage = coverage_unknown
 %    ),
 %    goal_expr_is_trivial(GoalExpr).
-
-:- func goal_is_trivial(goal_rep(T)) = bool.
-
-goal_is_trivial(Goal) = IsTrivial:-
-    GoalExpr = Goal ^ goal_expr_rep,
-    IsTrivial = goal_expr_is_trivial(GoalExpr).
-
-:- func goal_expr_is_trivial(goal_expr_rep(T)) = bool.
-
-goal_expr_is_trivial(GoalRep) = IsTrivial :-
-    (
-        (
-            GoalRep = conj_rep(SubGoalReps)
-        ;
-            GoalRep = disj_rep(SubGoalReps)
-        ;
-            GoalRep = switch_rep(_, _, CaseReps),
-            SubGoalReps = list.map(project_case_rep_goal, CaseReps)
-        ;
-            GoalRep = ite_rep(CondRep, ThenRep, ElseRep),
-            SubGoalReps = [CondRep, ThenRep, ElseRep]
-        ),
-        SubGoalIsTrivials = list.map(goal_is_trivial, SubGoalReps),
-        bool.and_list(SubGoalIsTrivials, IsTrivial)
-    ;
-        ( GoalRep = negation_rep(SubGoalRep)
-        ; GoalRep = scope_rep(SubGoalRep, _)
-        ),
-        IsTrivial = goal_is_trivial(SubGoalRep)
-    ;
-        GoalRep = atomic_goal_rep(_, _, _, AtomicGoalRep),
-        (
-            ( AtomicGoalRep = plain_call_rep(_, _, _)
-            ; AtomicGoalRep = higher_order_call_rep(_, _)
-            ; AtomicGoalRep = method_call_rep(_, _, _)
-            ),
-            IsTrivial = no
-        ;
-            ( AtomicGoalRep = unify_construct_rep(_, _, _)
-            ; AtomicGoalRep = unify_deconstruct_rep(_, _, _)
-            ; AtomicGoalRep = partial_deconstruct_rep(_, _, _)
-            ; AtomicGoalRep = partial_construct_rep(_, _, _)
-            ; AtomicGoalRep = unify_assign_rep(_, _)
-            ; AtomicGoalRep = cast_rep(_, _)
-            ; AtomicGoalRep = unify_simple_test_rep(_, _)
-            % Built-in calls are cheap enough to consider to be trivial.
-            ; AtomicGoalRep = builtin_call_rep(_, _, _)
-            ; AtomicGoalRep = pragma_foreign_code_rep(_)
-            ; AtomicGoalRep = event_call_rep(_, _)
-            ),
-            IsTrivial = yes
-        )
-    ).
 
 %----------------------------------------------------------------------------%
 %

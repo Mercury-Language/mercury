@@ -31,6 +31,7 @@ DEEP_FLAGS
 *.opt
 *.optdate
 config.log
+feedback.automatic_parallelism.m
 feedback.m
 mdbcomp.m
 prim_data.m

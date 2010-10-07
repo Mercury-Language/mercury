@@ -16,14 +16,11 @@
 :- module create_report.
 :- interface.
 
-:- import_module mdbcomp.
-:- import_module mdbcomp.program_representation.
 :- import_module measurements.
 :- import_module profile.
 :- import_module query.
 :- import_module report.
 
-:- import_module list.
 :- import_module maybe.
 
 %-----------------------------------------------------------------------------%
@@ -32,10 +29,11 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Create a proc var use dump report.
+    % Create a CSD var use report.
     %
-:- pred create_proc_var_use_dump_report(deep::in, proc_static_ptr::in,
-    maybe_error(proc_var_use_dump_info)::out) is det.
+:- pred create_call_site_dynamic_var_use_report(deep::in,
+    call_site_dynamic_ptr::in,
+    maybe_error(call_site_dynamic_var_use_info)::out) is det.
 
     % Create a proc report.
     %
@@ -68,12 +66,6 @@
 :- pred create_clique_report(deep::in, clique_ptr::in,
     maybe_error(clique_report)::out) is det.
 
-    % Instead of using the clique report above to find proc dynamics for a
-    % clique, use this as it is much faster.
-    %
-:- pred find_clique_first_and_other_procs(deep::in, clique_ptr::in, 
-    maybe(proc_dynamic_ptr)::out, list(proc_dynamic_ptr)::out) is det.
-    
     % Create a proc_desc structure for a given proc static pointer.
     %
 :- func describe_proc(deep, proc_static_ptr) = proc_desc.
@@ -85,41 +77,33 @@
 :- pred own_and_inherit_to_perf_row_data(deep::in, T::in,
     own_prof_info::in, inherit_prof_info::in, perf_row_data(T)::out) is det.
 
-    % Lookup a procedure representation from the deep structure.
-    %
-    % (Perhaps this should be a new report).
-    %
-:- pred deep_get_maybe_procrep(deep::in, proc_static_ptr::in, 
-    maybe_error(proc_rep)::out) is det.
-
 %----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module analysis_utils.
 :- import_module apply_exclusion.
 :- import_module coverage.
 :- import_module exclude.
+:- import_module mdbcomp.
+:- import_module mdbcomp.program_representation.
 :- import_module measurement_units.
-:- import_module program_representation_utils.
 :- import_module recursion_patterns.
 :- import_module top_procs.
 :- import_module var_use_analysis.
 
 :- import_module array.
-:- import_module assoc_list.
 :- import_module char.
 :- import_module exception.
 :- import_module float.
 :- import_module int.
+:- import_module list.
 :- import_module map.
-:- import_module math.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module svmap.
 :- import_module unit.
-:- import_module univ.
 
 %-----------------------------------------------------------------------------%
 
@@ -225,9 +209,10 @@ create_report(Cmd, Deep, Report) :-
         create_clique_dump_report(Deep, CliquePtr, MaybeCliqueDump),
         Report = report_clique_dump(MaybeCliqueDump)
     ;
-        Cmd = deep_cmd_dump_proc_var_use(PSPtr),
-        create_proc_var_use_dump_report(Deep, PSPtr, MaybeProcVarUseDump),
-        Report = report_proc_var_use_dump(MaybeProcVarUseDump)
+        Cmd = deep_cmd_call_site_dynamic_var_use(CSDPtr),
+        create_call_site_dynamic_var_use_report(Deep, CSDPtr,
+            MaybeVarUse),
+        Report = report_call_site_dynamic_var_use(MaybeVarUse)
     ;
         Cmd = deep_cmd_restart,
         error("create_report/3", "unexpected restart command")
@@ -354,21 +339,6 @@ create_clique_report(Deep, CliquePtr, MaybeCliqueReport) :-
     CliqueReport = clique_report(CliquePtr, AncestorRowDatas, CliqueProcs),
     MaybeCliqueReport = ok(CliqueReport).
 
-find_clique_first_and_other_procs(Deep, CliquePtr, MaybeFirstPDPtr,
-        OtherPDPtrs) :-
-    deep_lookup_clique_members(Deep, CliquePtr, PDPtrs),
-    deep_lookup_clique_parents(Deep, CliquePtr, EntryCSDPtr),
-    ( valid_call_site_dynamic_ptr(Deep, EntryCSDPtr) ->
-        deep_lookup_call_site_dynamics(Deep, EntryCSDPtr, EntryCSD),
-        FirstPDPtr = EntryCSD ^ csd_callee,
-        MaybeFirstPDPtr = yes(FirstPDPtr),
-        list.negated_filter(unify(FirstPDPtr), PDPtrs,
-            OtherPDPtrs)
-    ;
-        MaybeFirstPDPtr = no,
-        OtherPDPtrs = PDPtrs
-    ).
-
 :- func find_clique_ancestors(deep, clique_ptr) =
     list(perf_row_data(ancestor_desc)).
 
@@ -474,14 +444,7 @@ create_clique_proc_dynamic_report(Deep, _CliquePtr, ProcDesc, PDPtr,
     list(clique_call_site_report)::out) is det.
 
 create_child_call_site_reports(Deep, PDPtr, CliqueCallSiteReports) :-
-    deep_lookup_proc_dynamics(Deep, PDPtr, PD),
-    PSPtr = PD ^ pd_proc_static,
-    CSDArray = PD ^ pd_sites,
-    deep_lookup_proc_statics(Deep, PSPtr, PS),
-    CSSArray = PS ^ ps_sites,
-    array.to_list(CSDArray, CSDSlots),
-    array.to_list(CSSArray, CSSSlots),
-    assoc_list.from_corresponding_lists(CSSSlots, CSDSlots, PairedSlots),
+    proc_dynamic_paired_call_site_slots(Deep, PDPtr, PairedSlots),
     list.map(create_child_call_site_report(Deep), PairedSlots,
         CliqueCallSiteReports).
 
@@ -1396,11 +1359,125 @@ create_clique_dump_report(Deep, CliquePtr, MaybeCliqueDumpInfo) :-
         MaybeCliqueDumpInfo = error("invalid clique_ptr")
     ).
 
-:- pragma memo(create_proc_var_use_dump_report/3,
-    [specified([addr, value, output])]).
-create_proc_var_use_dump_report(Deep, PSPtr, MaybeProcVarUseDump) :-
-    generic_vars_first_use(head_vars_all, Deep, PSPtr, set.init,
-        MaybeProcVarUseDump).
+create_call_site_dynamic_var_use_report(Deep, CSDPtr, MaybeVarUseInfo) :-
+    ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
+        deep_lookup_call_site_dynamics(Deep, CSDPtr, CSD),
+        CalleePDPtr = CSD ^ csd_callee,
+        CallerPDPtr = CSD ^ csd_caller,
+        deep_lookup_proc_dynamics(Deep, CalleePDPtr, CalleePD),
+        CalleePSPtr = CalleePD ^ pd_proc_static,
+        deep_get_maybe_procrep(Deep, CalleePSPtr, MaybeProcrep),
+        (
+            MaybeProcrep = ok(Procrep),
+            HeadVars = Procrep ^ pr_defn ^ pdr_head_vars,
+            VarTable = Procrep ^ pr_defn ^ pdr_var_table,
+            deep_lookup_clique_index(Deep, CallerPDPtr, ParentCliquePtr),
+            deep_lookup_clique_index(Deep, CalleePDPtr, CalleeCliquePtr),
+            create_clique_recursion_costs_report(Deep, ParentCliquePtr,
+                MaybeRecursiveCostsReport),
+            (
+                MaybeRecursiveCostsReport = ok(RecursiveCostsReport),
+                RecursionType = RecursiveCostsReport ^ crr_recursion_type,
+                ( ParentCliquePtr = CalleeCliquePtr ->
+                    get_recursive_csd_cost(Deep, CSDPtr, RecursionType,
+                        MaybeCost)
+                ;
+                    deep_lookup_csd_desc(Deep, CSDPtr, Desc),
+                    deep_lookup_csd_own(Deep, CSDPtr, Own),
+                    Cost0 = callseqs(Own) + inherit_callseqs(Desc),
+                    MaybeCost = ok(float(Cost0))
+                ),
+                (
+                    MaybeCost = ok(Cost),
+                    map_foldl(call_site_dynamic_var_use_arg(Deep, CSDPtr,
+                            RecursionType, Cost, VarTable), 
+                        HeadVars, Uses0, 0, _),
+                    list_maybe_error_to_maybe_error_list(Uses0, MaybeUses),
+                    (
+                        MaybeUses = ok(Uses),
+                        VarUseInfo = call_site_dynamic_var_use_info(Cost, Uses),
+                        MaybeVarUseInfo = ok(VarUseInfo)
+                    ;
+                        MaybeUses = error(Error),
+                        MaybeVarUseInfo = error(Error)
+                    )
+                ;
+                    MaybeCost = error(Error),
+                    MaybeVarUseInfo = error(Error)
+                )
+            ;
+                MaybeRecursiveCostsReport = error(Error),
+                MaybeVarUseInfo = error(Error)
+            )
+        ;
+            MaybeProcrep = error(Error),
+            MaybeVarUseInfo = error(Error)
+        )
+    ;
+        CSDPtr = call_site_dynamic_ptr(CSDNum),
+        MaybeVarUseInfo = error(format(
+            "Invalid call site dynamic %d", [i(CSDNum)]))
+    ).
+
+:- pred call_site_dynamic_var_use_arg(deep::in, call_site_dynamic_ptr::in,
+    recursion_type::in, float::in, var_table::in, head_var_rep::in,
+    maybe_error(var_use_and_name)::out, int::in, int::out) is det.
+
+call_site_dynamic_var_use_arg(Deep, CSDPtr, RecursionType, Cost, VarTable,
+        HeadVar, MaybeUseAndName, !ArgNum) :-
+    HeadVar = head_var_rep(Var, Mode),
+    var_mode_to_var_use_type(Mode, UseType),
+    call_site_dynamic_var_use_info(Deep, CSDPtr, !.ArgNum, RecursionType, 
+        Cost, UseType, MaybeUse),
+    (
+        MaybeUse = ok(Use),
+        lookup_var_name(VarTable, Var, Name),
+        MaybeUseAndName = ok(var_use_and_name(Name, Use))
+    ;
+        MaybeUse = error(Error),
+        MaybeUseAndName = error(Error)
+    ),
+    !:ArgNum = !.ArgNum + 1.
+
+:- pred list_maybe_error_to_maybe_error_list(list(maybe_error(T))::in,
+    maybe_error(list(T))::out) is det.
+
+list_maybe_error_to_maybe_error_list([], ok([])).
+list_maybe_error_to_maybe_error_list([error(E) | _], error(E)).
+list_maybe_error_to_maybe_error_list([ok(X) | MaybeXs0], MaybeXs) :-
+    list_maybe_error_to_maybe_error_list(MaybeXs0, MaybeXs1),
+    (
+        MaybeXs1 = ok(Xs1),
+        MaybeXs = ok([X | Xs1])
+    ;
+        MaybeXs1 = error(E),
+        MaybeXs = error(E)
+    ).
+
+:- pred get_recursive_csd_cost(deep::in, call_site_dynamic_ptr::in,
+    recursion_type::in, maybe_error(float)::out) is det.
+
+get_recursive_csd_cost(Deep, CSDPtr, RecursionType, MaybeCost) :-
+    (
+        RecursionType = rt_not_recursive,
+        MaybeCost = error(
+            "get_recursive_csd_cost called for non-recursive clique")
+    ;
+        RecursionType = rt_single(_, _, AvgMaxDepth, _, CostFn),
+        deep_lookup_csd_own(Deep, CSDPtr, Own),
+        Calls = float(calls(Own)),
+        MaybeCost = ok(CostFn(round_to_int(AvgMaxDepth) - 1) * Calls)
+    ;
+        ( RecursionType = rt_divide_and_conquer(_, _)
+        ; RecursionType = rt_mutual_recursion(_)
+        ; RecursionType = rt_other(_)
+        ),
+        MaybeCost = error(
+            "get_recursive_csd_cost: Unhandled recursion type")
+    ;
+        RecursionType = rt_errors(Errors),
+        MaybeCost = error(join_list("\n", Errors))
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1513,24 +1590,6 @@ own_and_maybe_inherit_to_perf_row_data(Deep, Subject, Own, MaybeDesc,
         WordSize, SelfPerf, MaybeTotalPerf).
 
 %----------------------------------------------------------------------------%
-
-deep_get_maybe_procrep(Deep, PSPtr, MaybeProcRep) :-
-    deep_get_maybe_progrep(Deep, MaybeProgRep),
-    (
-        MaybeProgRep = ok(ProgRep),
-        deep_lookup_proc_statics(Deep, PSPtr, PS),
-        ProcLabel = PS ^ ps_id,
-        ( progrep_search_proc(ProgRep, ProcLabel, ProcRep) ->
-            MaybeProcRep = ok(ProcRep)
-        ;
-            MaybeProcRep = error("Cannot find procedure representation")
-        )
-    ;
-        MaybeProgRep = error(Error),
-        MaybeProcRep = error(Error)
-    ).
-
-%-----------------------------------------------------------------------------%
 
     % int_per_call(Num, Calls) is the quotient of Nom and Calls, after they've
     % both been cast to float.

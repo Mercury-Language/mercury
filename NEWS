@@ -16,6 +16,13 @@ Changes to the Mercury standard library:
   to the predicates of the same name in the list module, but do the relevant
   operations on keys instead of entire list elements.
 
+* We have added a new module, lazy,to the standard library.  It facilitates
+  the construction of lazy data structures.
+
+* We have added a new predicate to the list module of the standard library.
+  list.member_index0/3.  It is like list.member/2 except that it also takes a
+  parameter representing the zero-based index of the element within the list.
+
 Changes to the Mercury compiler:
 
 * Support for building and linking against frameworks on Mac OS X has

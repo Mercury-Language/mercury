@@ -28,6 +28,9 @@
     --->    no
     ;       yes(I).
 
+:- inst maybe_yes(I)
+    --->    yes(I).
+
 :- type maybe_error
     --->    ok
     ;       error(string).
@@ -39,6 +42,9 @@
 :- inst maybe_error(I)
     --->    ok(I)
     ;       error(ground).
+
+:- inst maybe_error_ok(I)
+    --->    ok(I).
 
     % map_maybe(P, yes(Value0), yes(Value)) :- P(Value, Value).
     % map_maybe(_, no, no).

@@ -21,7 +21,6 @@
 
 :- import_module mdbcomp.program_representation.
 
-:- import_module int.
 :- import_module list.
 :- import_module set.
 :- import_module string.
@@ -281,16 +280,18 @@
     %
 :- func parallel_exec_metrics_get_time_saving(parallel_exec_metrics) = float.
 
+    % The amount of time spent 'on cpu', (seq time plus non-dead overheads).
+    %
+:- func parallel_exec_metrics_get_cpu_time(parallel_exec_metrics) = float.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module bool.
 :- import_module exception.
 :- import_module float.
 :- import_module map.
-:- import_module maybe.
 :- import_module require.
 :- import_module svmap.
 :- import_module unit.
@@ -305,6 +306,10 @@ parallel_exec_metrics_get_speedup(PEM) = SeqTime / ParTime :-
 parallel_exec_metrics_get_time_saving(PEM) = SeqTime - ParTime :-
     SeqTime = PEM ^ pem_seq_time,
     ParTime = PEM ^ pem_par_time.
+
+parallel_exec_metrics_get_cpu_time(PEM) = SeqTime + Overheads :-
+    SeqTime = PEM ^ pem_seq_time,
+    Overheads = PEM ^ pem_par_overheads.
 
 %-----------------------------------------------------------------------------%
 %

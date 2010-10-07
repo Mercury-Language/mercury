@@ -35,7 +35,6 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module set.
-:- import_module string.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%
@@ -92,8 +91,8 @@
     ;       report_clique_dump(
                 maybe_error(clique_dump_info)
             )
-    ;       report_proc_var_use_dump(
-                maybe_error(proc_var_use_dump_info)
+    ;       report_call_site_dynamic_var_use(
+                maybe_error(call_site_dynamic_var_use_info)
             ).
 
 :- type message_report
@@ -242,6 +241,20 @@
     ;       rt_errors(
                 rte_errors                  :: list(string)
             ).
+
+    % Recursion types for which call costs at any level can be calculated.
+    %
+:- inst recursion_type_known_costs
+    --->    rt_not_recursive
+    ;       rt_single(ground, ground, ground, ground, ground).
+
+    % Recursion types for which call costs at any level can not be calculated.
+    %
+:- inst recursion_type_unknown_costs
+    --->    rt_divide_and_conquer(ground, ground)
+    ;       rt_mutual_recursion(ground)
+    ;       rt_other(ground)
+    ;       rt_errors(ground).
 
 :- type recursion_level_report
     --->    recursion_level_report(
@@ -499,10 +512,16 @@
                 cdi_member_pdptrs           :: list(proc_dynamic_ptr)
             ).
 
-:- type proc_var_use_dump_info
-    --->    proc_var_use_dump_info(
-                pvui_total_proc_time        :: float,
-                pvui_var_uses               :: list(var_use_info)
+:- type call_site_dynamic_var_use_info
+    --->    call_site_dynamic_var_use_info(
+                csdvui_total_cost           :: float,
+                csdvui_var_uses             :: list(var_use_and_name)
+            ).
+
+:- type var_use_and_name
+    --->    var_use_and_name(
+                vun_var_name                :: string,
+                vun_use                     :: var_use_info
             ).
 
     % This type represents information about the performance of the subject.

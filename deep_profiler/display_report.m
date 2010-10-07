@@ -219,12 +219,12 @@ report_to_display(Deep, Prefs, Report) = Display :-
             Display = display(no, [display_heading(Msg)])
         )
     ;
-        Report = report_proc_var_use_dump(MaybeProcVarUseDumpInfo),
+        Report = report_call_site_dynamic_var_use(MaybeVarUseInfo),
         (
-            MaybeProcVarUseDumpInfo = ok(ProcVarUseDumpInfo),
-            display_report_proc_var_use_dump(Prefs, ProcVarUseDumpInfo, Display)
+            MaybeVarUseInfo = ok(VarUseInfo),
+            display_report_call_site_dynamic_var_use(Prefs, VarUseInfo, Display)
         ;
-            MaybeProcVarUseDumpInfo = error(Msg),
+            MaybeVarUseInfo = error(Msg),
             Display = display(no, [display_heading(Msg)])
         )
     ).
@@ -2346,61 +2346,53 @@ display_report_clique_dump_member(Prefs, PDPtr, Pair, !Label) :-
     PDData = td_l(Link),
     Pair = PDLabel - PDData.
 
-:- pred display_report_proc_var_use_dump(preferences::in,
-    proc_var_use_dump_info::in, display::out) is det.
+:- pred display_report_call_site_dynamic_var_use(preferences::in,
+    call_site_dynamic_var_use_info::in, display::out) is det.
 
-display_report_proc_var_use_dump(_Prefs, ProcVarUseDumpInfo, Display) :-
-    ProcVarUseDumpInfo = proc_var_use_dump_info(AverageProcCost, VarUses),
-    HeaderCell = table_cell(td_s("Average Proc Cost: ")),
-    DataCell = table_cell(td_f(AverageProcCost)),
-    ProcCostRow = table_row([HeaderCell, DataCell]),
-    format_proc_var_uses(VarUses, 1, VarUseRows),
-    Rows = [ProcCostRow | VarUseRows],
-    Table = table(table_class_do_not_box, 2, no, Rows),
-    Title = "Dump of procedure's var use info",
-    Display = display(yes(Title), [display_table(Table)]).
+display_report_call_site_dynamic_var_use(_Prefs, CSDVarUseInfo, Display) :-
+    CSDVarUseInfo = call_site_dynamic_var_use_info(AverageCost, VarUses),
+    AverageCostItem = display_text(
+        format("Average Cost: %f", [f(AverageCost)])),
 
-:- pred format_proc_var_uses(list(var_use_info)::in, int::in,
+    format_var_uses(VarUses, 1, VarUseRows),
+    Header = table_header(
+        map((func({Text, Class}) = table_header_group(
+                table_header_group_single(td_s(Text)),
+                Class, column_do_not_colour)
+            ), [{"Argument", table_column_class_ordinal_rank},
+                {"Name", table_column_class_no_class},
+                {"Type", table_column_class_no_class},
+                {"Percent into proc", table_column_class_no_class},
+                {"Time into proc (Callseqs)", table_column_class_callseqs}])), 
+    Table = table(table_class_box_if_pref, 5, yes(Header), VarUseRows),
+
+    Title = "Dump of var use info",
+    Display = display(yes(Title), [AverageCostItem, display_table(Table)]).
+
+:- pred format_var_uses(list(var_use_and_name)::in, int::in,
     list(table_row)::out) is det.
 
-format_proc_var_uses([], _, []).
-format_proc_var_uses([VarUse | VarUses], RowNum, [Row | Rows]) :-
+format_var_uses([], _, []).
+format_var_uses([VarUse | VarUses], RowNum, [Row | Rows]) :-
     HeaderCell = table_cell(td_s(format("Argument: %i", [i(RowNum)]))),
-    VarUse = var_use_info(CostUntilUse, UseType),
+    VarUse = var_use_and_name(Name, 
+        var_use_info(CostUntilUse, ProcCost, UseType)),
+    NameCell = table_cell(td_s(Name)),
     (
-        CostUntilUse = cost_since_proc_start(CostSince),
-        (
-            UseType = var_use_production,
-            string.format("%f from start until production",
-                [f(CostSince)], UseStr)
-        ;
-            UseType = var_use_consumption,
-            string.format("%f from start until consumption",
-                [f(CostSince)], UseStr)
-        ;
-            UseType = var_use_other,
-            string.format("%f from start until other use",
-                [f(CostSince)], UseStr)
-        )
+        UseType = var_use_production,
+        TypeText = "production"
     ;
-        CostUntilUse = cost_before_proc_end(CostBefore),
-        (
-            UseType = var_use_production,
-            string.format("%f from production until end",
-                [f(CostBefore)], UseStr)
-        ;
-            UseType = var_use_consumption,
-            string.format("%f from consumption until end",
-                [f(CostBefore)], UseStr)
-        ;
-            UseType = var_use_other,
-            string.format("%f from other use until end",
-                [f(CostBefore)], UseStr)
-        )
+        UseType = var_use_consumption,
+        TypeText = "consumption"
+    ;
+        UseType = var_use_other,
+        TypeText = "other/unknown"
     ),
-    DataCell = table_cell(td_s(UseStr)),
-    Row = table_row([HeaderCell, DataCell]),
-    format_proc_var_uses(VarUses, RowNum + 1, Rows).
+    TypeCell = table_cell(td_s(TypeText)),
+    PercentCell = table_cell(td_p(percent(CostUntilUse / ProcCost))),
+    TimeCell = table_cell(td_f(CostUntilUse)),
+    Row = table_row([HeaderCell, NameCell, TypeCell, PercentCell, TimeCell]),
+    format_var_uses(VarUses, RowNum + 1, Rows).
 
 %-----------------------------------------------------------------------------%
 %
@@ -3824,10 +3816,6 @@ proc_reports_controls(Prefs, Proc, NotCmd) = ControlsItem :-
             ;
                 Cmd = deep_cmd_dump_proc_static(Proc),
                 Label = "Unprocessed proc static data",
-                Developer = yes
-            ;
-                Cmd = deep_cmd_dump_proc_var_use(Proc),
-                Label = "Var use report",
                 Developer = yes
             ),
             Cmd \= NotCmd,
