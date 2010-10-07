@@ -1326,7 +1326,7 @@ public interface ML_va {
 //
 // It just wraps the unsafe version is some synchronization logic so
 // that only one thread can be accessing the array at one instant.
-public static class ML_sva implements ML_va {
+public static class ML_sva implements ML_va, java.io.Serializable {
     private ML_uva version_array;
     private Object lock;
 
@@ -1389,7 +1389,7 @@ public static class ML_sva implements ML_va {
 
 // An implementation of version arrays that is only safe when used from
 // a single thread, but *much* faster than the synchronized version.
-public static class ML_uva implements ML_va {
+public static class ML_uva implements ML_va, java.io.Serializable {
     private int                 index;  /* -1 for latest, >= 0 for older */
     private Object              value;  /* Valid if index >= 0           */
     private Object              rest;   /* array if index == -1          */

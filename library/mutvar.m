@@ -142,7 +142,7 @@ new_mutvar(X, Ref) :-
 
 :- pragma foreign_code("Java",
 "
-    public static class Mutvar {
+    public static class Mutvar implements java.io.Serializable {
         public Object object;
 
         public Mutvar() {
