@@ -9,10 +9,6 @@ lazy evaluation requires the creation or evaluation of closures.
 
 This directory contains the following files:
 
-	lazy.m:
-		This module defines the lazy(T) type, and the force/1
-		and delay/1 functions.
-
 	lazy_list.m:
 		This module defines a type lazy_list(T) using the lazy(T) type,
 		and also defines a few functions and predicates that operate
@@ -21,6 +17,12 @@ This directory contains the following files:
 	lazy_list_test.m:
 		This is just a very simple example showing the use of lazy
 		lists.
+
+Mercury's standard library contains.
+    
+    lazy.m:
+		This module defines the lazy(T) type, and the force/1
+		and delay/1 functions.
 
 In comparison with lazy functional languages, the disadvantage of our
 approach is that inserting the lazy(T) types and the explicit calls to

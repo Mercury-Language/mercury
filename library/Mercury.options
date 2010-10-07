@@ -92,5 +92,5 @@ MCFLAGS-bitmap += --no-erlang-native-code
 
 # Work around a warning for termination analysis of the user defined equality
 # and comparison code for lazy values.
-MCFLAGS-lazy += --no-halt-at-warn
+MCFLAGS-lazy += --no-warn-non-term-special-preds
 
