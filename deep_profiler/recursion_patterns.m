@@ -276,8 +276,7 @@ single_rec_average_recursion_cost(BaseCost, RecCost, AvgMaxDepth) =
             ).
 
 :- type recursion_error
-    --->    re_unhandled_determinism(detism_rep)
-    ;       re_unhandled_disjunction.
+    --->    re_unhandled_determinism(detism_rep).
 
     % goal_recursion_data(RecursiveCallees, Goal, GoalPath,
     %   init_recursion_data, RecursionData)
@@ -306,8 +305,8 @@ goal_recursion_data(ThisClique, CallSiteMap, GoalPath, GoalRep,
                 Conjs, !:RecursionData)
         ;
             GoalExpr = disj_rep(Disjs),
-            disj_recursion_data(ThisClique, CallSiteMap, GoalPath, 1, Disjs,
-                !:RecursionData)
+            disj_recursion_data(ThisClique, CallSiteMap, GoalPath, 1, certain, 
+                Disjs, !:RecursionData)
         ;
             GoalExpr = switch_rep(_, _, Cases),
             switch_recursion_data(ThisClique, CallSiteMap, GoalPath, 1, Cases,
@@ -370,18 +369,8 @@ conj_recursion_data(ThisClique, CallSiteMap, GoalPath, ConjNum, SuccessProb0,
         RecursionData = proc_dead_code
     ;
         ConjRecursionData = recursion_data(_, _, _), 
-        ( 
-            get_coverage_before_and_after(Conj ^ goal_annotation, Before, After)
-        ->
-            ( After > Before ->
-                % Nondet code can overflow this probability.
-                ConjSuccessProb = certain
-            ;
-                ConjSuccessProb = probable(float(After) / float(Before))
-            )
-        ;
-            error(this_file ++ "expected complete coverage information")
-        ), 
+        success_probability_from_coverage(Conj ^ goal_annotation,
+            ConjSuccessProb),
         SuccessProb = and(SuccessProb0, ConjSuccessProb),
         conj_recursion_data(ThisClique, CallSiteMap, GoalPath, ConjNum + 1,
             SuccessProb, Conjs, ConjsRecursionData),
@@ -391,11 +380,52 @@ conj_recursion_data(ThisClique, CallSiteMap, GoalPath, ConjNum, SuccessProb0,
 
 :- pred disj_recursion_data(clique_ptr::in, 
     map(goal_path, cost_and_callees)::in, goal_path::in, int::in, 
-    list(goal_rep(coverage_info))::in, recursion_data::out) is det.
+    probability::in, list(goal_rep(coverage_info))::in, recursion_data::out)
+    is det.
 
-disj_recursion_data(_, _, _, _, _, !:RecursionData) :-
-    !:RecursionData = simple_recursion_data(0.0, 0),
-    recursion_data_add_error(re_unhandled_disjunction, !RecursionData).
+disj_recursion_data(_, _, _, _, _, [], simple_recursion_data(0.0, 0)).
+disj_recursion_data(ThisClique, CallSiteMap, GoalPath, DisjNum, FailureProb0, 
+        [Disj | Disjs], RecursionData) :-
+    % Handle only semidet and committed-choice disjunctions, once a goal
+    % succeeds it cannot be re-entered.
+    goal_recursion_data(ThisClique, CallSiteMap,
+        goal_path_add_at_end(GoalPath, step_disj(DisjNum)), Disj,
+        DisjRecursionData),
+    (
+        DisjRecursionData = proc_dead_code,
+        % If the first disjunct was never tried then no other disjuncts will
+        % ever be tried.
+        RecursionData = proc_dead_code
+    ;
+        DisjRecursionData = recursion_data(_, _, _),
+        % Handle this just like a semidet conjunction, except that we go to the
+        % next disjunct if it _fails_.
+        success_probability_from_coverage(Disj ^ goal_annotation,
+            ConjSuccessProb),
+        ConjFailureProb = not_probability(ConjSuccessProb), 
+        FailureProb = and(FailureProb0, ConjFailureProb),
+        disj_recursion_data(ThisClique, CallSiteMap, GoalPath, DisjNum + 1,
+            FailureProb, Disjs, DisjsRecursionData),
+        merge_recursion_data_sequence(DisjRecursionData, DisjsRecursionData,
+            RecursionData)
+    ).
+
+:- pred success_probability_from_coverage(coverage_info::in, probability::out)
+    is det.
+
+success_probability_from_coverage(Coverage, SuccessProb) :-
+    ( 
+        get_coverage_before_and_after(Coverage, Before, After)
+    ->
+        ( After > Before ->
+            % Nondet code can overflow this probability.
+            SuccessProb = certain
+        ;
+            SuccessProb = probable(float(After) / float(Before))
+        )
+    ;
+        error(this_file ++ "expected complete coverage information")
+    ). 
 
 :- pred ite_recursion_data(clique_ptr::in, 
     map(goal_path, cost_and_callees)::in, goal_path::in, 
@@ -700,8 +730,6 @@ simple_recursion_data(Cost, Calls) =
 
 error_to_string(re_unhandled_determinism(Detism)) = 
     format("%s code is not handled", [s(string(Detism))]).
-error_to_string(re_unhandled_disjunction) = 
-    "Disjunctions are not currently handled".
 
 %----------------------------------------------------------------------------%
 

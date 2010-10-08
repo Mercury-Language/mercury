@@ -137,6 +137,9 @@
 :- func or(probability, probability) = probability.
 :- func and(probability, probability) = probability.
 
+    % The probability of the given probability not occuring.
+:- func not_probability(probability) = probability.
+
 %-----------------------------------------------------------------------------%
 %
 % Code for formatting numbers.
@@ -305,6 +308,8 @@ or(A, B) = A + B.
 
     % Combine conjoint probabilities with multiplication.
 and(A, B) = A * B.
+
+not_probability(X) = 1.0 - X.
 
 %-----------------------------------------------------------------------------%
 %
