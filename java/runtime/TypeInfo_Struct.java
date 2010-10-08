@@ -23,21 +23,22 @@ public class TypeInfo_Struct extends PseudoTypeInfo
 		sanity_check();
 	}
 
-	public static TypeInfo_Struct maybe_new(final Object obj)
+	public static TypeInfo_Struct maybe_new(final TypeInfo_Struct ti)
 	{
-		// In at least one place in the standard library we make up a
-		// TypeInfo out of thin air to satisfy the compiler.
-		if (obj == null) {
-			return null;
-		}
+		return ti;
+	}
+
+	public static TypeInfo_Struct maybe_new(final TypeCtorInfo_Struct tci)
+	{
+		return new TypeInfo_Struct(tci);
+	}
+
+	public static TypeInfo_Struct maybe_new(final PseudoTypeInfo obj)
+	{
 		if (obj instanceof TypeCtorInfo_Struct) {
 			return new TypeInfo_Struct((TypeCtorInfo_Struct) obj);
 		}
-		if (obj instanceof TypeInfo_Struct) {
-			return (TypeInfo_Struct) obj;
-		}
-		throw new java.lang.Error(
-			"expected TypeInfo_Struct or TypeCtorInfo_Struct");
+		return (TypeInfo_Struct) obj;
 	}
 
 	public void init(TypeCtorInfo_Struct tc, PseudoTypeInfo[] as)

@@ -242,20 +242,20 @@ public class TypeInfo_Struct : PseudoTypeInfo {
         init(ti.type_ctor, args.Length, args);
     }
 
-    public static TypeInfo_Struct maybe_new(object obj) {
-        if (obj == null) {
-            return null;
-        }
+    public static TypeInfo_Struct maybe_new(TypeInfo_Struct ti) {
+        return ti;
+    }
+
+    public static TypeInfo_Struct maybe_new(TypeCtorInfo_Struct tc) {
+        return new TypeInfo_Struct(tc);
+    }
+
+    public static TypeInfo_Struct maybe_new(PseudoTypeInfo obj) {
         TypeCtorInfo_Struct tc = obj as TypeCtorInfo_Struct;
         if (tc != null) {
             return new TypeInfo_Struct(tc);
         }
-        TypeInfo_Struct ti = obj as TypeInfo_Struct;
-        if (ti != null) {
-            return ti;
-        }
-        // XXX throw exception
-        return null;
+        return (TypeInfo_Struct) obj;
     }
 
     public void init(TypeCtorInfo_Struct tc, PseudoTypeInfo[] args) {
