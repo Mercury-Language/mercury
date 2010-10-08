@@ -1687,12 +1687,13 @@ output_name(EntityName, !IO) :-
 :- pred write_identifier_string(string::in, io::di, io::uo) is det.
 
 write_identifier_string(String, !IO) :-
-    % Although the C# spec does not limit identifier lengths, both the
-    % Microsoft and Mono compilers restrict identifiers to 512 characters.
+    % Although the C# spec does not limit identifier lengths, the Microsoft
+    % compiler restricts identifiers to 511 characters and Mono restricts
+    % identifiers to 512 characters.
     Length = string.length(String),
     ( Length > 511 ->
         Left = string.left(String, 251),
-        Right = string.right(String, 251),
+        Right = string.right(String, 250),
         Hash = string.hash(String) /\ 0xffffffff,
         io.format("%s_%08x_%s", [s(Left), i(Hash), s(Right)], !IO)
     ;
