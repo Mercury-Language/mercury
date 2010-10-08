@@ -1620,7 +1620,11 @@ no_clauses(PredName) :-
     imp,
     [will_not_call_mercury, thread_safe, will_not_modify_trail],
 "").
-:- pragma foreign_proc(il,  
+:- pragma foreign_proc("IL",
+    imp,
+    [will_not_call_mercury, thread_safe, max_stack_size(0)],
+"").
+:- pragma foreign_proc("C#",
     imp,
     [will_not_call_mercury, thread_safe, max_stack_size(0)],
 "").
@@ -1638,9 +1642,13 @@ no_clauses(PredName) :-
     [will_not_call_mercury, thread_safe, promise_semipure,
         will_not_modify_trail],
 "").
-:- pragma foreign_proc(il,  
+:- pragma foreign_proc("IL",
     semip,
     [will_not_call_mercury, thread_safe, promise_semipure, max_stack_size(0)],
+"").
+:- pragma foreign_proc("C#",
+    semip,
+    [will_not_call_mercury, thread_safe, promise_semipure],
 "").
 :- pragma foreign_proc("Java",
     semip,
@@ -1965,6 +1973,16 @@ no_clauses(PredName) :-
     % All uses of this predicate should override the body.
     throw(""trace_evaluate_runtime_condition called""),
     SUCCESS_INDICATOR = false
+").
+
+:- pragma foreign_proc("C#",
+    trace_evaluate_runtime_condition,
+    [will_not_call_mercury, thread_safe, promise_semipure,
+        does_not_affect_liveness],
+"
+    // All uses of this predicate should override the body.
+    throw new System.Exception(
+        ""trace_evaluate_runtime_condition called"");
 ").
 
 :- pragma foreign_proc("Java",

@@ -436,6 +436,13 @@ copy_mutvar(Mutvar, Copy, !S) :-
     S = S0;
 ").
 
+:- pragma foreign_proc("C#",
+    unsafe_new_uninitialized_mutvar(Mutvar::out, _S0::di, _S::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    Mutvar = new object[1];
+").
+
 :- pragma foreign_proc("Java",
     unsafe_new_uninitialized_mutvar(Mutvar::out, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure],
