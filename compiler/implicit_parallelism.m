@@ -426,7 +426,9 @@ report_failed_parallelisation(PredInfo, GoalPath, Error) = Spec :-
         words("Warning: could not auto-parallelise"), quote(GoalPath), 
         suffix(":"), words(Error)],
     pred_info_get_context(PredInfo, Context),
-    Spec = error_spec(severity_warning, phase_auto_parallelism,
+    % XXX Make this a warning or error if the user wants compilation to 
+    % abort.
+    Spec = error_spec(severity_informational, phase_auto_parallelism,
         [simple_msg(Context, [always(Peices)])]).
 
 :- func report_already_parallelised(pred_info) = error_spec.

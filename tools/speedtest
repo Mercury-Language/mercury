@@ -2,8 +2,9 @@
 #
 # A program to test different versions of the compiler.
 
-usage="Usage: speedtest [-dhlstz] [-c cmd] [-nN] [-ON] [-fFILE] batchname"
+usage="Usage: speedtest [-dhstz] [-l | -1] [-c cmd] [-nN] [-ON] [-fFILE] batchname"
 
+single_modulelist="typecheck.m"
 short_modulelist="llds_out.m typecheck.m mercury_compile.m modules.m code_info.m polymorphism.m"
 long_modulelist="$short_modulelist options.m add_pragma.m simplify.m table_gen.m mlds_to_java.m mlds_to_il.m"
 
@@ -40,6 +41,9 @@ do
 
 	-l)
 		modulelist="$long_modulelist" ;;
+
+	-1)
+		modulelist="$single_modulelist" ;;
 
 	-n)
 		limit="$2" ; shift ;;
