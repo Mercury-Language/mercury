@@ -2,7 +2,7 @@
 vim: ft=c ts=4 sw=4 et
 */
 /*
-** Copyright (C) 2009 The University of Melbourne.
+** Copyright (C) 2009-2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -20,6 +20,7 @@ vim: ft=c ts=4 sw=4 et
 
 #include "mercury_context.h"
 #include "mercury_thread.h"
+#include "mercury_threadscope.h"
 
 #ifdef MR_THREAD_SAFE
 
@@ -131,10 +132,23 @@ vim: ft=c ts=4 sw=4 et
                                                                             \
                 MR_UNLOCK(&(Future->MR_fut_lock), "future.wait");           \
                                                                             \
+                MR_maybe_post_stop_context;                                 \
                 MR_ENGINE(MR_eng_this_context) = NULL;                      \
                 MR_runnext();                                               \
             }                                                               \
         } while (0)
+
+#ifdef MR_THREADSCOPE
+    #define MR_maybe_post_stop_context                                      \
+        do {                                                                \
+            MR_threadscope_post_stop_context(MR_TS_STOP_REASON_BLOCKED);    \
+        } while (0)
+
+#else
+    #define MR_maybe_post_stop_context                                      \
+        do {                                                                \
+        } while (0)
+#endif
 
     #define MR_par_builtin_get_future(Future, Value)                        \
         do {                                                                \
