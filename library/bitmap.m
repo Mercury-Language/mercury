@@ -1545,7 +1545,7 @@ combine_hash(X, H0, H) :-
 ").
 
 :- pragma foreign_code("Java", "
-public static class MercuryBitmap {
+public static class MercuryBitmap implements java.io.Serializable {
     public int num_bits;
     public byte[] elements;
 

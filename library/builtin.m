@@ -1002,7 +1002,7 @@ namespace mercury.builtin {
 }
 ").
 :- pragma foreign_code("Java", "
-    public static class Void_0
+    public static class Void_0 implements java.io.Serializable
     {
         // Make the constructor private to ensure that we can
         // never create an instance of this class.

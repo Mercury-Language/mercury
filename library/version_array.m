@@ -942,18 +942,22 @@ public interface ML_va {
     public int size();
 }
 
+public static class Lock implements java.io.Serializable {
+    public Lock() { return; }
+}
+
 // An implementation of version arrays that is safe when used in multiple
 // threads.
 //
 // It just wraps the unsafe version is some synchronization logic so
 // that only one thread can be accessing the array at one instant.
-public static class ML_sva implements ML_va {
+public static class ML_sva implements ML_va, java.io.Serializable {
     private ML_uva version_array;
-    private Object lock;
+    private Lock lock;
 
     public ML_sva(ML_uva va) {
         version_array = va;
-        lock = new Object();
+        lock = new Lock();
     }
 
     private ML_sva() {};
@@ -972,7 +976,7 @@ public static class ML_sva implements ML_va {
 
             if (result.version_array.isClone()) {
                 result.version_array.resetIsClone();
-                result.lock = new Object();
+                result.lock = new Lock();
             } else {
                 result.lock = this.lock;
             }
@@ -985,7 +989,7 @@ public static class ML_sva implements ML_va {
         synchronized (lock) {
             ML_sva result = new ML_sva();
             result.version_array = version_array.resize(N, X);
-            result.lock = new Object();
+            result.lock = new Lock();
             return result;
         }
     }
@@ -1010,7 +1014,7 @@ public static class ML_sva implements ML_va {
 
 // An implementation of version arrays that is only safe when used from
 // a single thread, but *much* faster than the synchronized version.
-public static class ML_uva implements ML_va {
+public static class ML_uva implements ML_va, java.io.Serializable {
     private int                 index;  /* -1 for latest, >= 0 for older */
     private Object              value;  /* Valid if index >= 0           */
     private Object              rest;   /* array if index == -1          */
