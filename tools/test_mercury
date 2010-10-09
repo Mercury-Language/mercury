@@ -186,22 +186,31 @@ case $BRANCH in
         ;;
 
     10.04)
-        # This is for the 10.04 betas.
-        #CHECKOUT_OPTS=-rversion-10_04-branch
-        #BASE_TAG_NAME=version-10_04-branch
-        #FTP_DIR_NAME=10.04.2-beta
-        #RELEASE_VERSION=10.04.2-beta-$DATE
-        #RELEASE_VERSION_PATTERN=10.04.2-beta-*
+        # This is for the 10.04.3 betas.
+        CHECKOUT_OPTS=-rversion-10_04-branch
+        BASE_TAG_NAME=version-10_04-branch
+        FTP_DIR_NAME=10.04.3-beta
+        RELEASE_VERSION=10.04.3-beta-$DATE
+        RELEASE_VERSION_PATTERN=10.04.3-beta-*
+        ;;
+        
+        # This is for the 10.04.3 release itself.
+        #
+        #CHECKOUT_OPTS=-rversion-10_04_3
+        #BASE_TAG_NAME=version-10_04_3
+        #FTP_DIR_NAME=10.04.3
+        #RELEASE_VERSION=10.04.3
+        #RELEASE_VERSION_PATTERN=10.04.3
         #;;
         
-        # This is for the 10.04.2 release itself.
+        # This is for the 10.04.2 release.
         #
-        CHECKOUT_OPTS=-rversion-10_04_2
-        BASE_TAG_NAME=version-10_04_2
-        FTP_DIR_NAME=10.04.2
-        RELEASE_VERSION=10.04.2
-        RELEASE_VERSION_PATTERN=10.04.2
-        ;;
+        #CHECKOUT_OPTS=-rversion-10_04_2
+        #BASE_TAG_NAME=version-10_04_2
+        #FTP_DIR_NAME=10.04.2
+        #RELEASE_VERSION=10.04.2
+        #RELEASE_VERSION_PATTERN=10.04.2
+        #;;
         
         # This is for the 10.04.1 release.
         #
