@@ -145,6 +145,18 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type recursion_depth.
+
+:- func recursion_depth_from_float(float) = recursion_depth.
+
+:- func recursion_depth_to_float(recursion_depth) = float.
+:- func recursion_depth_to_int(recursion_depth) = int.
+
+:- pred recursion_depth_descend(recursion_depth, recursion_depth).
+:- mode recursion_depth_descend(in, out) is det.
+
+%-----------------------------------------------------------------------------%
+
 :- type static_coverage_info.
 
 :- func zero_static_coverage = static_coverage_info.
@@ -685,6 +697,19 @@ Cost0 / Denom = Cost :-
         Cost0 = cost_per_call(Percall),
         Cost = cost_per_call(Percall / float(Denom))
     ).
+
+%----------------------------------------------------------------------------%
+
+:- type recursion_depth
+    --->    recursion_depth(float).
+
+recursion_depth_from_float(F) = recursion_depth(F).
+
+recursion_depth_to_float(recursion_depth(F)) = F.
+recursion_depth_to_int(D) = 
+    round_to_int(recursion_depth_to_float(D)).
+
+recursion_depth_descend(recursion_depth(D), recursion_depth(D - 1.0)).
 
 %----------------------------------------------------------------------------%
 

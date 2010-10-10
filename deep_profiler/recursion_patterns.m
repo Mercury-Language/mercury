@@ -18,9 +18,9 @@
 :- interface.
 
 :- import_module report.
+:- import_module measurements.
 :- import_module profile.
 
-:- import_module float.
 :- import_module maybe.
             
 %----------------------------------------------------------------------------%
@@ -33,8 +33,11 @@
 
 %----------------------------------------------------------------------------%
 
-:- pred recursion_type_get_maybe_avg_max_depth(recursion_type::in,
-    maybe(float)::out) is det.
+:- pred recursion_type_get_maybe_avg_max_depth(recursion_type,
+    maybe(recursion_depth)).
+:- mode recursion_type_get_maybe_avg_max_depth(in(recursion_type_known_costs),
+    out(maybe_yes(ground))) is det.
+:- mode recursion_type_get_maybe_avg_max_depth(in, out) is det.
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
@@ -301,12 +304,12 @@ goal_recursion_data(ThisClique, CallSiteMap, GoalPath, GoalRep,
     ;
         (
             GoalExpr = conj_rep(Conjs),
-            conj_recursion_data(ThisClique, CallSiteMap, GoalPath, 1, certain,
-                Conjs, !:RecursionData)
+            conj_recursion_data(ThisClique, CallSiteMap, GoalPath, 1, Conjs, 
+                !:RecursionData)
         ;
             GoalExpr = disj_rep(Disjs),
-            disj_recursion_data(ThisClique, CallSiteMap, GoalPath, 1, certain, 
-                Disjs, !:RecursionData)
+            disj_recursion_data(ThisClique, CallSiteMap, GoalPath, 1, Disjs, 
+                !:RecursionData)
         ;
             GoalExpr = switch_rep(_, _, Cases),
             switch_recursion_data(ThisClique, CallSiteMap, GoalPath, 1, Cases,
@@ -350,13 +353,12 @@ goal_recursion_data(ThisClique, CallSiteMap, GoalPath, GoalRep,
 
 :- pred conj_recursion_data(clique_ptr::in, 
     map(goal_path, cost_and_callees)::in, goal_path::in, int::in,
-    probability::in, list(goal_rep(coverage_info))::in, recursion_data::out)
-    is det.
+    list(goal_rep(coverage_info))::in, recursion_data::out) is det.
 
     % An empty conjunction is true, there is exactly one trival path through it
     % with 0 recursive calls.
-conj_recursion_data(_, _, _, _, _, [], simple_recursion_data(0.0, 0)).
-conj_recursion_data(ThisClique, CallSiteMap, GoalPath, ConjNum, SuccessProb0, 
+conj_recursion_data(_, _, _, _, [], simple_recursion_data(0.0, 0)).
+conj_recursion_data(ThisClique, CallSiteMap, GoalPath, ConjNum, 
         [Conj | Conjs], RecursionData) :- 
     goal_recursion_data(ThisClique, CallSiteMap, 
         goal_path_add_at_end(GoalPath, step_conj(ConjNum)), Conj, 
@@ -369,22 +371,42 @@ conj_recursion_data(ThisClique, CallSiteMap, GoalPath, ConjNum, SuccessProb0,
         RecursionData = proc_dead_code
     ;
         ConjRecursionData = recursion_data(_, _, _), 
-        success_probability_from_coverage(Conj ^ goal_annotation,
-            ConjSuccessProb),
-        SuccessProb = and(SuccessProb0, ConjSuccessProb),
+        
         conj_recursion_data(ThisClique, CallSiteMap, GoalPath, ConjNum + 1,
-            SuccessProb, Conjs, ConjsRecursionData),
-        merge_recursion_data_sequence(ConjRecursionData, ConjsRecursionData,
-            RecursionData)
+            Conjs, ConjsRecursionData0),
+        CanFail = detism_get_can_fail(Conj ^ goal_detism_rep),
+        (
+            CanFail = cannot_fail_rep,
+            merge_recursion_data_sequence(ConjRecursionData, 
+                ConjsRecursionData0, RecursionData)
+        ;
+            CanFail = can_fail_rep,
+            % It's possible that the conjunct can fail, in that case the code
+            % branches into one branch that continues with the conjunction and
+            % one that doesn't.
+
+            success_probability_from_coverage(Conj ^ goal_annotation,
+                ConjSuccessProb),
+            recursion_data_and_probability(ConjSuccessProb, ConjsRecursionData0,
+                ConjsRecursionData),
+            
+            ConjFailureProb = not_probability(ConjSuccessProb),
+            Failure0 = simple_recursion_data(0.0, 0),
+            recursion_data_and_probability(ConjFailureProb, Failure0, Failure),
+            merge_recursion_data_after_branch(ConjsRecursionData, Failure,
+                BranchRecursionData),
+            merge_recursion_data_sequence(ConjRecursionData,
+                BranchRecursionData, RecursionData)
+        )
     ).
 
 :- pred disj_recursion_data(clique_ptr::in, 
     map(goal_path, cost_and_callees)::in, goal_path::in, int::in, 
-    probability::in, list(goal_rep(coverage_info))::in, recursion_data::out)
+    list(goal_rep(coverage_info))::in, recursion_data::out)
     is det.
 
-disj_recursion_data(_, _, _, _, _, [], simple_recursion_data(0.0, 0)).
-disj_recursion_data(ThisClique, CallSiteMap, GoalPath, DisjNum, FailureProb0, 
+disj_recursion_data(_, _, _, _, [], simple_recursion_data(0.0, 0)).
+disj_recursion_data(ThisClique, CallSiteMap, GoalPath, DisjNum, 
         [Disj | Disjs], RecursionData) :-
     % Handle only semidet and committed-choice disjunctions, once a goal
     % succeeds it cannot be re-entered.
@@ -398,15 +420,26 @@ disj_recursion_data(ThisClique, CallSiteMap, GoalPath, DisjNum, FailureProb0,
         RecursionData = proc_dead_code
     ;
         DisjRecursionData = recursion_data(_, _, _),
-        % Handle this just like a semidet conjunction, except that we go to the
-        % next disjunct if it _fails_.
         success_probability_from_coverage(Disj ^ goal_annotation,
-            ConjSuccessProb),
-        ConjFailureProb = not_probability(ConjSuccessProb), 
-        FailureProb = and(FailureProb0, ConjFailureProb),
+            DisjSuccessProb),
+        DisjFailureProb = not_probability(DisjSuccessProb), 
+        
+        % The code can branch here, either it tries the next disjuct, which we
+        % represent as DisjsRecursionData.
         disj_recursion_data(ThisClique, CallSiteMap, GoalPath, DisjNum + 1,
-            FailureProb, Disjs, DisjsRecursionData),
-        merge_recursion_data_sequence(DisjRecursionData, DisjsRecursionData,
+            Disjs, DisjsRecursionData0),
+        recursion_data_and_probability(DisjFailureProb, DisjsRecursionData0,
+            DisjsRecursionData),
+
+        % Or it succeeds which we represent as finished.
+        Finish0 = simple_recursion_data(0.0, 0),
+        recursion_data_and_probability(DisjSuccessProb, Finish0, Finish),
+
+        % Then the result the branch of (DisjsRecursionData or finish) appended
+        % to DisjRecursionData.
+        merge_recursion_data_after_branch(Finish, DisjsRecursionData,
+            BranchRecursionData),
+        merge_recursion_data_sequence(DisjRecursionData, BranchRecursionData,
             RecursionData)
     ).
 
@@ -951,9 +984,10 @@ finalize_histogram_proc_rec_type(Deep, NumCliques, _PSPtr,
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
 
-recursion_type_get_maybe_avg_max_depth(rt_not_recursive, yes(0.0)).
+recursion_type_get_maybe_avg_max_depth(rt_not_recursive, 
+    yes(recursion_depth_from_float(0.0))).
 recursion_type_get_maybe_avg_max_depth(rt_single(_, _, Depth, _, _),
-    yes(Depth)).
+    yes(recursion_depth_from_float(Depth))).
 recursion_type_get_maybe_avg_max_depth(rt_divide_and_conquer(_, _), no).
 recursion_type_get_maybe_avg_max_depth(rt_mutual_recursion(_), no).
 recursion_type_get_maybe_avg_max_depth(rt_other(_), no).

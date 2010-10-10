@@ -2470,8 +2470,8 @@ compute_var_modes_and_uses_lazy(Info, GoalPath, CostAndCallee, ArgNum,
     ).
 
 :- pred compute_var_modes_and_uses_2(implicit_parallelism_info::in,
-    int::in, recursion_type::in, maybe(float)::in, var_use_type::in,
-    float::in, call_site_dynamic_ptr::in, var_use_info::out, 
+    int::in, recursion_type::in, maybe(recursion_depth)::in, var_use_type::in,
+    float::in, call_site_dynamic_ptr::in, var_use_info::out,
     cord(message)::out) is det.
 
 compute_var_modes_and_uses_2(Info, ArgNum, RecursionType, MaybeCurDepth,
@@ -2492,16 +2492,16 @@ compute_var_modes_and_uses_2(Info, ArgNum, RecursionType, MaybeCurDepth,
     ).
 
 :- pred recursion_type_get_interesting_parallelisation_depth(
-    recursion_type::in, maybe(float)::out) is det.
+    recursion_type::in, maybe(recursion_depth)::out) is det.
 
 recursion_type_get_interesting_parallelisation_depth(RecursionType,
         MaybeDepth) :-
     (
         RecursionType = rt_not_recursive,
-        MaybeDepth = yes(0.0)
+        MaybeDepth = yes(recursion_depth_from_float(0.0))
     ;
-        RecursionType = rt_single(_, _, Depth, _, _),
-        MaybeDepth = yes(Depth / 2.0)
+        RecursionType = rt_single(_, _, DepthF, _, _),
+        MaybeDepth = yes(recursion_depth_from_float(DepthF / 2.0))
     ;
         ( RecursionType = rt_divide_and_conquer(_, _)
         ; RecursionType = rt_mutual_recursion(_)

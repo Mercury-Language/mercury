@@ -77,8 +77,8 @@
     % current call to this procedure had a particular cost.
     %
 :- pred build_recursive_call_site_cost_map(deep, clique_ptr,
-    proc_dynamic_ptr, recursion_type, maybe(float), maybe_error(map(goal_path,
-    cs_cost_csq))) is det.
+    proc_dynamic_ptr, recursion_type, maybe(recursion_depth), 
+    maybe_error(map(goal_path, cs_cost_csq))) is det.
 :- mode build_recursive_call_site_cost_map(in, in, in,
     in(recursion_type_known_costs), in(maybe_yes(ground)), 
     out(maybe_error_ok(ground))) is det.
@@ -218,8 +218,8 @@ build_recursive_call_site_cost_map(Deep, CliquePtr, PDPtr, RecursionType,
     ;
         RecursionType = rt_single(_, _, _AvgMaxDepth, _AvgRecCost, CostFn),
         (
-            MaybeDepth = yes(DepthF),
-            Depth = round_to_int(DepthF)
+            MaybeDepth = yes(Depth),
+            DepthI = recursion_depth_to_int(Depth)
         ;
             MaybeDepth = no,
             error(this_file ++ "Expected valid depth for known recursion type")
@@ -229,7 +229,7 @@ build_recursive_call_site_cost_map(Deep, CliquePtr, PDPtr, RecursionType,
             CallCountsMap),
         RecursiveCallSiteCostMap = map_values_only(
             (func(Count) = 
-                build_cs_cost_csq_percall(float(Count), CostFn(Depth))),
+                build_cs_cost_csq_percall(float(Count), CostFn(DepthI))),
             CallCountsMap),
         MaybeRecursiveCallSiteCostMap = ok(RecursiveCallSiteCostMap),
         
