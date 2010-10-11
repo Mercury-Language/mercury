@@ -45,8 +45,7 @@ MR_print_warning(const char *prog, const char *fmt, va_list args)
 {
     fflush(stdout);     /* in case stdout and stderr are the same */
 
-    fprintf(stderr, prog);
-    fprintf(stderr, ": ");
+    fprintf(stderr, "%s:", prog);
     vfprintf(stderr, fmt, args);
     fprintf(stderr, "\n");
 
@@ -73,8 +72,7 @@ MR_do_perror(const char *prog, const char *message)
     saved_errno = errno;
     fflush(stdout);     /* in case stdout and stderr are the same */
 
-    fprintf(stderr, prog);
-    fprintf(stderr, ": ");
+    fprintf(stderr, "%s:", prog);
     errno = saved_errno;
     perror(message);
 }
