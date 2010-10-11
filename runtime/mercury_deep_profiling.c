@@ -265,7 +265,7 @@ static  void    MR_write_out_profiling_tree_check_unwritten(FILE *check_fp);
 static  void    MR_write_out_deep_id_string(FILE *fp);
 static  void    MR_write_out_procrep_id_string(FILE *fp);
 static  void    MR_write_out_program_name(FILE *fp);
-static  void    MR_write_out_deep_flags(FILE *fp);
+static  void    MR_write_out_deep_flags(FILE *fp, MR_bool compress);
 
 static  void    MR_write_out_call_site_static(FILE *fp,
                     const MR_CallSiteStatic *css);
@@ -293,7 +293,7 @@ typedef enum node_kind {
 
 static  void    MR_write_csd_ptr(FILE *fp, const MR_CallSiteDynamic *csd);
 #ifdef MR_DEEP_PROFILING_COVERAGE
-static  void    MR_write_out_coverage_points_static(FILE *fp, 
+static  void    MR_write_out_coverage_points_static(FILE *fp,
                     const MR_ProcStatic *ps);
 static  void    MR_write_out_coverage_points_dynamic(FILE *fp,
                     const MR_ProcDynamic *pd);
@@ -420,8 +420,8 @@ MR_write_out_profiling_tree(void)
 
     MR_write_out_deep_id_string(deep_fp);
     MR_write_out_program_name(deep_fp);
-  
-    MR_write_out_deep_flags(deep_fp);
+
+    MR_write_out_deep_flags(deep_fp, MR_FALSE);
 
     /* We overwrite these zeros after seeking back to table_sizes_offset */
     table_sizes_offset = ftell(deep_fp);
@@ -453,7 +453,7 @@ MR_write_out_profiling_tree(void)
     MR_write_num(deep_fp, MR_quanta_inside_deep_profiling_code);
     MR_write_num(deep_fp, MR_quanta_outside_deep_profiling_code);
     MR_write_num(deep_fp, num_call_seqs);
-    
+
     MR_call_site_dynamic_table = MR_create_hash_table(MR_hash_table_size);
     MR_call_site_static_table  = MR_create_hash_table(MR_hash_table_size);
     MR_proc_dynamic_table = MR_create_hash_table(MR_hash_table_size);
@@ -700,7 +700,7 @@ static void
 MR_write_out_deep_id_string(FILE *fp)
 {
     /* Must be the same as deep_id_string in deep_profiler/read_profile.m */
-    const char  *id_string = "Mercury deep profiler data version 7\n";
+    const char  *id_string = "Mercury deep profiler data version 8\n";
 
     fputs(id_string, fp);
 }
@@ -712,9 +712,9 @@ MR_write_out_program_name(FILE *fp)
 }
 
 /*
-** Flags in the deep profiler data file's header.  Any bit without a meaning
-** here must be set to zero as it it may be used in the future.  The next
-** line marks 16 bit boundaries in the 64bit flags value:
+** Flags in the deep profiler data file's header. Any bit without a meaning
+** here must be set to zero as it it may be used in the future. The next line
+** marks 16 bit boundaries in the 64 bit flags value:
 **
 **       48  32  16   0
 */
@@ -723,19 +723,18 @@ MR_write_out_program_name(FILE *fp)
 #define MR_DEEP_FLAG_WORDSIZE_SHIFT \
     (0)
 #define MR_DEEP_FLAG_CANONICAL_MASK \
-    (0x0000000000000100)
+    (0x0000000000000300)
 #define MR_DEEP_FLAG_CANONICAL_SHIFT \
     (8)
-/* This flag is not yet implemented */
 #define MR_DEEP_FLAG_COMPRESSION_MASK \
-    (0x0000000000000200)
+    (0x0000000000000C00)
 #define MR_DEEP_FLAG_COMPRESSION_SHIFT \
-    (9)
+    (10)
 /* This flag is two bits wide had has three valid values */
 #define MR_DEEP_FLAG_COVERAGE_DATA_TYPE_MASK \
-    (0x0000000000000B00)
+    (0x0000000000003000)
 #define MR_DEEP_FLAG_COVERAGE_DATA_TYPE_SHIFT \
-    (10)
+    (12)
 
 #if !defined(MR_DEEP_PROFILING_COVERAGE)
     #define MR_DEEP_FLAG_COVERAGE_DATA_TYPE_VALUE 0
@@ -746,22 +745,24 @@ MR_write_out_program_name(FILE *fp)
 #endif
 
 static void
-MR_write_out_deep_flags(FILE *fp)
+MR_write_out_deep_flags(FILE *fp, MR_bool compress)
 {
     MR_uint_least64_t       flags = 0;
 
-    flags |= MR_DEEP_FLAG_WORDSIZE_MASK & 
+    flags |= MR_DEEP_FLAG_WORDSIZE_MASK &
         (sizeof(MR_Word) << MR_DEEP_FLAG_WORDSIZE_SHIFT);
 
-    flags |= MR_DEEP_FLAG_CANONICAL_MASK & 
+    flags |= MR_DEEP_FLAG_CANONICAL_MASK &
         (1 << MR_DEEP_FLAG_CANONICAL_SHIFT);
-    
-    flags |= MR_DEEP_FLAG_COVERAGE_DATA_TYPE_MASK & 
+
+    /* ignore compress for now */
+
+    flags |= MR_DEEP_FLAG_COVERAGE_DATA_TYPE_MASK &
         (MR_DEEP_FLAG_COVERAGE_DATA_TYPE_VALUE <<
             MR_DEEP_FLAG_COVERAGE_DATA_TYPE_SHIFT);
 
     MR_write_fixed_size_int(fp, flags);
-} 
+}
 
 static void
 MR_write_out_procrep_id_string(FILE *fp)
@@ -1021,8 +1022,8 @@ MR_write_out_proc_static(FILE *deep_fp, FILE *procrep_fp,
         /*
         ** Some predicates in the Mercury standard library, such as
         ** exception.builtin_catch, have Mercury declarations but no Mercury
-        ** implementation (even as foreign_proc code). We do still generate
-        ** proc_static structures for them (since we *want* the hand-written
+        ** implementation, even as foreign_proc code. We do still generate
+        ** proc_static structures for them, since we *want* the hand-written
         ** C code to be able to collect deep profiling data (in this case,
         ** to count the number of executions of the EXCP port). This means that
         ** (a) they will have proc_layout structures, and (b) the bytecode

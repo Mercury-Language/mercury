@@ -848,20 +848,21 @@ do_merge_profiles(BaseInitDeep, OtherInitDeeps, MergedInitDeep) :-
     list.map(extract_user_quanta, AllInitDeeps, UserQuantas),
     list.foldl(int_add, InstrumentQuantas, 0, InstrumentQuanta),
     list.foldl(int_add, UserQuantas, 0, UserQuanta),
-    WordSize = BaseInitDeep ^ init_profile_stats ^ word_size,
     extract_num_callseqs(BaseInitDeep, BaseNumCallSeqs),
     list.map(extract_num_callseqs, OtherInitDeeps, OtherNumCallSeqs),
     list.foldl(int_add, OtherNumCallSeqs, BaseNumCallSeqs, ConcatNumCallSeqs),
     
     % The program names are not checked. The new profile is named after the
     % base profile.
-    BaseProgramName = BaseInitDeep ^ init_profile_stats ^ program_name,
-    % Similarly the coverage data types are not checked.
-    CoverageDataType = BaseInitDeep ^ init_profile_stats ^ coverage_data_type, 
+    BaseProgramName = BaseInitDeep ^ init_profile_stats ^ prs_program_name,
+
+    % With the exception of the canonical flags, we get the flags from
+    % the base profile also.
+    BaseFlags = BaseInitDeep ^ init_profile_stats ^ prs_deep_flags,
+    ConcatFlags = BaseFlags ^ df_canonical_flag := is_canonical,
     ConcatProfileStats = profile_stats(BaseProgramName,
         ConcatMaxCSD, BaseMaxCSS, ConcatMaxPD, BaseMaxPS, ConcatNumCallSeqs,
-        BaseTicksPerSec, InstrumentQuanta, UserQuanta, WordSize, 
-        CoverageDataType, yes),
+        BaseTicksPerSec, InstrumentQuanta, UserQuanta, ConcatFlags), 
     % The root part is a temporary lie.
     MergedInitDeep = initial_deep(ConcatProfileStats,
         BaseInitDeep ^ init_root,

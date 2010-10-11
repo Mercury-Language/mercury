@@ -61,12 +61,15 @@
     ;       csd.
 
 read_call_graph(FileName, MaybeInitDeep, !IO) :-
-    io.see_binary(FileName, SeeResult, !IO),
+    io.open_binary_input(FileName, OpenResult, !IO),
     (
-        SeeResult = ok,
-        read_deep_id_string(MaybeIdStr, !IO),
+        OpenResult = ok(FileStream),
+        io.set_binary_input_stream(FileStream, OldStream, !IO),
+        read_deep_id_string(MaybeVersionNumber, !IO),
         (
-            MaybeIdStr = ok(_),
+            MaybeVersionNumber = ok(_VersionNumber),
+            % In the future, we could use different code to read in
+            % profiling data files with different version numbers.
             io_combinator.maybe_error_sequence_11(
                 read_string,
                 read_fixed_size_int,
@@ -82,54 +85,66 @@ read_call_graph(FileName, MaybeInitDeep, !IO) :-
                 maybe_init_deep, MaybeInitDeepHeader, !IO),
             (
                 MaybeInitDeepHeader = ok(InitDeep),
-                read_nodes(InitDeep, MaybeInitDeep, !IO),
-                io.seen_binary(!IO)
+                % When we implement compression of data files, we would
+                % want to pipe the rest of the input stream through the
+                % decompression mechanism.
+                read_nodes(InitDeep, MaybeInitDeep, !IO)
             ;
                 MaybeInitDeepHeader = error(Error),
                 MaybeInitDeep = error(Error)
             )
         ;
-            MaybeIdStr = error(Msg),
+            MaybeVersionNumber = error(Msg),
             MaybeInitDeep = error(Msg)
-        )
+        ),
+        io.set_binary_input_stream(OldStream, _, !IO)
     ;
-        SeeResult = error(Error),
+        OpenResult = error(Error),
         io.error_message(Error, Msg),
         MaybeInitDeep = error(Msg)
     ).
 
-:- pred read_deep_id_string(maybe_error(string)::out,
-    io::di, io::uo) is det.
+:- pred read_deep_id_string(maybe_error(int)::out, io::di, io::uo) is det.
 
-read_deep_id_string(MaybeIdStr, !IO) :-
-    read_line(string.length(deep_id_string), MaybeLine, !IO),
+read_deep_id_string(MaybeVersionNumber, !IO) :-
+    % The 10 extra chars should be ample for the version number and newline.
+    FirstLineLenLimit = string.length(deep_id_prefix) + 10,
+    read_line(FirstLineLenLimit, MaybeLine, !IO),
     (
-        MaybeLine = ok(Line),
-        ( Line = deep_id_string ->
-            MaybeIdStr = ok(deep_id_string)
-        ; string.prefix(Line, deep_id_prefix) ->
-            MaybeIdStr = error("version number mismatch")
+        MaybeLine = ok(Line0),
+        Line = string.chomp(Line0),
+        (
+            string.append(deep_id_prefix, Suffix, Line),
+            string.to_int(Suffix, VersionNumber)
+        ->
+            ( acceptable_version(VersionNumber) ->
+                MaybeVersionNumber = ok(VersionNumber)
+            ;
+                MaybeVersionNumber = error("version number mismatch")
+            )
         ;
-            MaybeIdStr = error("not a deep profiling data file")
+            MaybeVersionNumber = error("not a deep profiling data file")
         )
     ;
         MaybeLine = error(Error),
-        MaybeIdStr = error(Error)
+        MaybeVersionNumber = error(Error)
     ).
 
-    % Return the string identifying a file as a deep profiling data file.
-    % This must the same string as the one written by the function
-    % MR_write_out_deep_id_string in runtime/mercury_deep_profiling.c.
+    % Return the constant prefix of the string identifying a file
+    % as a deep profiling data file. The first line of a profiling data file
+    % should contain this prefix and the version number of format used by the
+    % file.
     %
-:- func deep_id_string = string.
-
-deep_id_string = deep_id_prefix ++ " 7\n".
-
-    % Return the part of deep_id_string that is version independent.
+    % This string must match the string written by the function
+    % MR_write_out_deep_id_string in runtime/mercury_deep_profiling.c.
     %
 :- func deep_id_prefix = string.
 
-deep_id_prefix = "Mercury deep profiler data version".
+deep_id_prefix = "Mercury deep profiler data version ".
+
+:- pred acceptable_version(int::in) is semidet.
+
+acceptable_version(8).
 
     % Strip the directory paths off the given string.
     %
@@ -171,7 +186,7 @@ path_separator('/').
 path_separator('\\').
 
 :- pred maybe_init_deep(string::in, int::in, int::in, int::in, int::in,
-    int::in, int::in, int::in, int::in, int::in, int::in, 
+    int::in, int::in, int::in, int::in, int::in, int::in,
     maybe_error(initial_deep)::out) is det.
 
 maybe_init_deep(ProgName, FlagsInt, MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
@@ -179,10 +194,8 @@ maybe_init_deep(ProgName, FlagsInt, MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
     maybe_deep_flags(FlagsInt, MaybeFlags),
     (
         MaybeFlags = ok(Flags),
-        Flags = deep_flags(WordSize, CanonicalFlag, CoverageDataType),
         InitStats = profile_stats(ProgName, MaxCSD, MaxCSS, MaxPD, MaxPS,
-            TicksPerSec, InstrumentQuanta, UserQuanta, NumCallSeqs, WordSize,
-            CoverageDataType, CanonicalFlag),
+            TicksPerSec, InstrumentQuanta, UserQuanta, NumCallSeqs, Flags),
         InitDeep = initial_deep(
             InitStats,
             make_pdptr(RootPDI),
@@ -209,13 +222,6 @@ maybe_init_deep(ProgName, FlagsInt, MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
         MaybeInitDeep = error(Error)
     ).
 
-:- type deep_flags
-    --->    deep_flags(
-                df_bytes_per_int        :: int,
-                df_canonical_flag       :: bool,
-                df_coverage_data_type   :: coverage_data_type
-            ).
-
 :- pred maybe_deep_flags(int::in, maybe_error(deep_flags)::out) is det.
 
 maybe_deep_flags(FlagsInt, MaybeFlags) :-
@@ -223,29 +229,37 @@ maybe_deep_flags(FlagsInt, MaybeFlags) :-
         >> deep_flag_bytes_per_int_shift,
     Canonical = (FlagsInt /\ deep_flag_canonical_mask)
         >> deep_flag_canonical_shift,
+    Compression = (FlagsInt /\ deep_flag_compression_mask)
+        >> deep_flag_compression_shift,
     Coverage = (FlagsInt /\ deep_flag_coverage_mask)
         >> deep_flag_coverage_shift,
     (
-        ( 
-            Coverage = 0, 
-            CoverageFlag = no_coverage_data
-        ; 
-            Coverage = 1, 
-            CoverageFlag = static_coverage_data
-        ; 
-            Coverage = 2, 
-            CoverageFlag = dynamic_coverage_data
-        ),
         (
             Canonical = 0,
-            CanonicalFlag = no
+            CanonicalFlag = maybe_not_canonical
         ;
             Canonical = 1,
-            CanonicalFlag = yes
+            CanonicalFlag = is_canonical
+        ),
+        (
+            Compression = 0,
+            CompressionFlag = no_compression
+            % There is no compression alternative yet
+        ),
+        (
+            Coverage = 0,
+            CoverageFlag = no_coverage_data
+        ;
+            Coverage = 1,
+            CoverageFlag = static_coverage_data
+        ;
+            Coverage = 2,
+            CoverageFlag = dynamic_coverage_data
         ),
         0 = ((\ deep_flag_all_fields_mask) /\ FlagsInt)
     ->
-        MaybeFlags = ok(deep_flags(BytesPerInt, CanonicalFlag, CoverageFlag))
+        MaybeFlags = ok(deep_flags(BytesPerInt, CanonicalFlag, CompressionFlag,
+            CoverageFlag))
     ;
         MaybeFlags = error(
             format("Error parsing flags in file header, flags are 0x%x",
@@ -255,39 +269,54 @@ maybe_deep_flags(FlagsInt, MaybeFlags) :-
     % Flags masks and shifts.
     % The following line provides a ruler to line up the hexadecimal values
     % with.
-    % 
+    %
     %                              48  32  16   0
     %
+    % Bytes_per_int occupies the bottom 8 bits, bit 0 to 7.
+    % The canonical flag occupies the next 2 bits, bit 8 to 9.
+    % The compression flag occupies the next 2 bits, bit 10 to 11.
+    % The coverage indication occupies the next 2 bits, bit 12 to 13.
+    %
+    % Some of these have more bits than they currently need, in order to
+    % accommodate possible future growth.
+
 :- func deep_flag_bytes_per_int_mask = int.
 deep_flag_bytes_per_int_mask = 0x00000000000000FF.
 :- func deep_flag_bytes_per_int_shift = int.
 deep_flag_bytes_per_int_shift = 0.
 
 :- func deep_flag_canonical_mask = int.
-deep_flag_canonical_mask =     0x0000000000000100.
+deep_flag_canonical_mask =     0x0000000000000300.
 :- func deep_flag_canonical_shift = int.
 deep_flag_canonical_shift = 8.
 
+:- func deep_flag_compression_mask = int.
+deep_flag_compression_mask =   0x0000000000000C00.
+:- func deep_flag_compression_shift = int.
+deep_flag_compression_shift = 10.
+
 :- func deep_flag_coverage_mask = int.
-deep_flag_coverage_mask =      0x0000000000000B00.
+deep_flag_coverage_mask =      0x0000000000003000.
 :- func deep_flag_coverage_shift = int.
-deep_flag_coverage_shift = 10.
+deep_flag_coverage_shift = 12.
 
 :- func deep_flag_all_fields_mask = int.
-deep_flag_all_fields_mask = 
+deep_flag_all_fields_mask =
     deep_flag_bytes_per_int_mask \/
     deep_flag_canonical_mask \/
+    deep_flag_compression_mask \/
     deep_flag_coverage_mask.
 
 :- pred read_nodes(initial_deep::in, maybe_error(initial_deep)::out,
     io::di, io::uo) is det.
 
 read_nodes(InitDeep0, MaybeInitDeep, !IO) :-
-    % Wrap the real function inside another loop.  This strategy ensures that
-    % this code works in grades that lack tail recursion such as debugging
-    % grades.  read_nodes_2 will return after it has exceeded a depth limit,
-    % unwinding it's stack.  The outer loop will continue as long as
-    % read_nodes_2 thinks that more work remains.
+    % Wrap the real function inside another loop. This strategy ensures that
+    % this code works in grades that lack tail recursion, such as debugging
+    % grades. read_nodes_2 will return after it has exceeded a depth limit,
+    % unwinding its stack. The outer loop will continue as long as read_nodes_2
+    % thinks that more work remains.
+    %
     % The depth of 50,000 has been chosen as it is roughly less than half the
     % stack depth that causes crashes during debugging.
     read_nodes_2(50000, InitDeep0, MaybeInitDeep0, !IO),
@@ -430,7 +459,7 @@ read_call_site_static(MaybeCSS, !IO) :-
         MaybeCSS = error(_)
     ).
 
-:- pred read_proc_static(profile_stats::in, 
+:- pred read_proc_static(profile_stats::in,
     maybe_error2(proc_static, int)::out, io::di, io::uo) is det.
 
 read_proc_static(ProfileStats, MaybePS, !IO) :-
@@ -495,12 +524,12 @@ read_proc_static(ProfileStats, MaybePS, !IO) :-
         MaybePS = error2(Error)
     ).
 
-:- pred maybe_read_ps_coverage_points(profile_stats::in, 
+:- pred maybe_read_ps_coverage_points(profile_stats::in,
     maybe_error(pair(array(coverage_point_info), maybe(array(int))))::out,
     io::di, io::uo) is det.
 
 maybe_read_ps_coverage_points(ProfileStats, MaybeCoveragePoints, !IO) :-
-    CoverageDataType = ProfileStats ^ coverage_data_type,
+    CoverageDataType = ProfileStats ^ prs_deep_flags ^ df_coverage_data_type,
     (
         CoverageDataType = no_coverage_data,
         MaybeCoveragePoints0 = ok([] - no)
@@ -512,8 +541,8 @@ maybe_read_ps_coverage_points(ProfileStats, MaybeCoveragePoints, !IO) :-
         (
             MaybeNCP = ok(NCP),
             (
-                CoverageDataType = static_coverage_data, 
-                read_n_things(NCP, read_coverage_point,
+                CoverageDataType = static_coverage_data,
+                read_n_things(NCP, read_coverage_point_static_and_num,
                     MaybeCPPairs, !IO),
                 (
                     MaybeCPPairs = ok(CPPairs),
@@ -554,7 +583,7 @@ maybe_read_ps_coverage_points(ProfileStats, MaybeCoveragePoints, !IO) :-
     maybe_error(maybe(array(int)))::out, io::di, io::uo) is det.
 
 maybe_read_pd_coverage_points(ProfileStats, MaybeCoveragePoints, !IO) :-
-    CoverageDataType = ProfileStats ^ coverage_data_type,
+    CoverageDataType = ProfileStats ^ prs_deep_flags ^ df_coverage_data_type,
     (
         ( CoverageDataType = no_coverage_data
         ; CoverageDataType = static_coverage_data
@@ -642,16 +671,18 @@ read_proc_id_user_defined(PredOrFunc, MaybeProcLabel, !IO) :-
         ),
         MaybeProcLabel, !IO).
 
-    % Read a full coverage point.
+    % Read the description of a coverage point, and its execution count.
     %
-    % A full coverage point is that static data followed by a number indicating
-    % how many times that point was covered.  This is used when coverage data
-    % is per proc-static.
+    % The description of a coverage point is stored in the proc static
+    % regardless of whether we are using static or dynamic coverage profiling.
+    % If we are using static coverage profiling, then this description will be
+    % immediately followed in the profiling data file by the number of times
+    % that the coverage point was executed.
     %
-:- pred read_coverage_point(maybe_error(pair(coverage_point_info, int))::out,
-    io::di, io::uo) is det.
+:- pred read_coverage_point_static_and_num(
+    maybe_error(pair(coverage_point_info, int))::out, io::di, io::uo) is det.
 
-read_coverage_point(MaybeCP, !IO) :-
+read_coverage_point_static_and_num(MaybeCP, !IO) :-
     io_combinator.maybe_error_sequence_2(
         read_coverage_point_static,
         read_num,
@@ -659,12 +690,12 @@ read_coverage_point(MaybeCP, !IO) :-
             CPI = CPInfo - Count
         ), MaybeCP, !IO).
 
-    % Read the static data for coverage points.
+    % Read the description of a coverage point.
     %
-    % This data is always present in the proc static even when dynamic coverage
-    % profiling is used. 
+    % The description of a coverage point is stored in the proc static
+    % regardless of whether we are using static or dynamic coverage profiling.
     %
-:- pred read_coverage_point_static(maybe_error(coverage_point_info)::out, 
+:- pred read_coverage_point_static(maybe_error(coverage_point_info)::out,
     io::di, io::uo) is det.
 
 read_coverage_point_static(MaybeCP, !IO) :-

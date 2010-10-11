@@ -294,7 +294,7 @@ startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
     array.init(NCSSs, zero_inherit_prof_info, CSSDesc0),
     array.init(NPDs, map.init, PDCompTable0),
     array.init(NCSDs, map.init, CSDCompTable0),
-    CoverageDataType = InitStats ^ coverage_data_type, 
+    CoverageDataType = InitStats ^ prs_deep_flags ^ df_coverage_data_type, 
     (
         CoverageDataType = no_coverage_data,
         MaybeStaticCoverage0 = no
@@ -764,7 +764,7 @@ summarize_proc_dynamic(PDOwnArray, PDDescArray, PDCompTableArray, PDI, PD,
 summarize_proc_dynamics_with_coverage_data(!Deep) :-
     % These arrays are one based, the +1 here is necessary to allocate the
     % correect amount of storage.
-    NPS = !.Deep ^ profile_stats ^ num_ps + 1,
+    NPS = !.Deep ^ profile_stats ^ prs_num_ps + 1,
     array_foldl3_from_1(
         summarize_proc_dynamic_with_coverage(!.Deep ^ pd_own, 
             !.Deep ^ pd_desc, !.Deep ^ pd_comp_table),
@@ -877,7 +877,7 @@ summarize_module_costs(Deep, ModuleData0) = ModuleData :-
 :- pred summarize_proc_statics_coverage(deep::in, deep::out) is det.
 
 summarize_proc_statics_coverage(!Deep) :-
-    NPS = !.Deep ^ profile_stats ^ num_ps,
+    NPS = !.Deep ^ profile_stats ^ prs_num_ps,
     array_foldl_from_1(
         summarize_proc_static_coverage,
         !.Deep ^ proc_statics,

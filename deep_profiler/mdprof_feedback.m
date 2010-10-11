@@ -105,7 +105,7 @@ main(!IO) :-
             read_deep_file(InputFileName, DebugReadProfile, MaybeDeep, !IO),
             (
                 MaybeDeep = ok(Deep),
-                ProfileProgName = Deep ^ profile_stats ^ program_name, 
+                ProfileProgName = Deep ^ profile_stats ^ prs_program_name, 
                 feedback.read_or_create(OutputFileName, ProfileProgName,
                     FeedbackReadResult, !IO),
                 (

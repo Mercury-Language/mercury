@@ -290,8 +290,7 @@ get_static_ptrs_from_dynamic_proc(ProcStatics, _, ProcDynamic, !PS_Ptrs,
 
 dump_init_profile_stats(Stats, !IO) :-
     Stats = profile_stats(ProgramName, MaxCSD, MaxCSS, MaxPD, MaxPS,
-        TicksPerSec, InstrumentQuanta, UserQuanta, NumCallSeqs, WordSize,
-        CoverageDataType, Canonical),
+        TicksPerSec, InstrumentQuanta, UserQuanta, NumCallSeqs, DeepFlags),
     io.write_string("SECTION PROFILING STATS:\n\n", !IO),
     io.write_string("\tprogram_name = " ++ ProgramName ++ "\n", !IO),
     io.format("\tmax_csd = %d\n", [i(MaxCSD)], !IO),
@@ -302,17 +301,23 @@ dump_init_profile_stats(Stats, !IO) :-
     io.format("\tinstrument_quanta = %d\n", [i(InstrumentQuanta)], !IO),
     io.format("\tuser_quanta = %d\n", [i(UserQuanta)], !IO),
     io.format("\tnum_callseqs = %d\n", [i(NumCallSeqs)], !IO),
+    DeepFlags = deep_flags(WordSize, Canonical, Compression, CoverageDataType),
     io.format("\tword_size   = %d\n", [i(WordSize)], !IO),
-    io.format("\tcoverage_data_type = %s\n", [s(string(CoverageDataType))], 
-        !IO),
     io.write_string("\tcanonical = ", !IO),
     (
-        Canonical = yes,
+        Canonical = is_canonical,
         io.write_string("yes\n", !IO)
     ;
-        Canonical = no,
+        Canonical = maybe_not_canonical,
         io.write_string("no\n", !IO)
     ),
+    io.write_string("\tcompression = ", !IO),
+    (
+        Compression = no_compression,
+        io.write_string("none\n", !IO)
+    ),
+    io.format("\tcoverage_data_type = %s\n", [s(string(CoverageDataType))], 
+        !IO),
     io.nl(!IO).
 
 %----------------------------------------------------------------------------%

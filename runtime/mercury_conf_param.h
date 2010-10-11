@@ -334,6 +334,10 @@
 **	transactions used by software transactional memory.
 */
 
+#ifdef MR_DEEP_PROFILING_DETAIL_DEBUG
+  #define MR_DEEP_PROFILING_DEBUG
+#endif
+
 /*
 ** Runtime code alternatives. --- Sometimes there is more than one way to do
 ** something, a more efficient/optimal way, and a more portable way.  Use these

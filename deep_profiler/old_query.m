@@ -462,25 +462,25 @@ present_stats(Deep) = HTML :-
             [i(TicksPerSec), s(AssumedStr)]) ++
         "<TR><TD ALIGN=left>Quanta in user code:</TD>\n" ++
         string.format("<TD ALIGN=right>%d</TD></TR>\n",
-            [i(Stats ^ user_quanta)]) ++
+            [i(Stats ^ prs_user_quanta)]) ++
         "<TR><TD ALIGN=left>Quanta in instrumentation:</TD>\n" ++
         string.format("<TD ALIGN=right>%d</TD></TR>\n",
-            [i(Stats ^ instrument_quanta)]) ++
+            [i(Stats ^ prs_instrument_quanta)]) ++
         "<TR><TD ALIGN=left>Call sequence numbers:</TD>\n" ++
         string.format("<TD ALIGN=right>%d</TD></TR>\n",
-            [i(Stats ^ num_callseqs)]) ++
+            [i(Stats ^ prs_num_callseqs)]) ++
         "<TR><TD ALIGN=left>CallSiteDynamic structures:</TD>\n" ++
         string.format("<TD ALIGN=right>%d</TD></TR>\n",
-            [i(Stats ^ num_csd)]) ++
+            [i(Stats ^ prs_num_csd)]) ++
         "<TR><TD ALIGN=left>ProcDynamic structures:</TD>\n" ++
         string.format("<TD ALIGN=right>%d</TD></TR>\n",
-            [i(Stats ^ num_pd)]) ++
+            [i(Stats ^ prs_num_pd)]) ++
         "<TR><TD ALIGN=left>CallSiteStatic structures:</TD>\n" ++
         string.format("<TD ALIGN=right>%d</TD></TR>\n",
-            [i(Stats ^ num_css)]) ++
+            [i(Stats ^ prs_num_css)]) ++
         "<TR><TD ALIGN=left>ProcStatic structures:</TD>\n" ++
         string.format("<TD ALIGN=right>%d</TD></TR>\n",
-            [i(Stats ^ num_ps)]) ++
+            [i(Stats ^ prs_num_ps)]) ++
         "<TR><TD ALIGN=left>Cliques:</TD>\n" ++
         string.format("<TD ALIGN=right>%d</TD></TR>\n",
             [i(array.max(Deep ^ clique_members))]) ++

@@ -282,9 +282,9 @@ maybe_parallelise_proc(ModuleInfo, ParallelismInfo, PredId, ProcId, !ProcTable,
             Context = goal_info_get_context(Goal0 ^ hlds_goal_info),
             term.context_file(Context, FileName),
             proc_info_get_vartypes(ProcInfo0, VarTypes),
-            % VarNumRep is not used by goal_to_goal_rep, byte is an arbitrary
-            % value.
-            VarNumRep = byte,
+            % VarNumRep is not used by goal_to_goal_rep, var_num_1_byte
+            % is an arbitrary value. XXX zs: I don't think this is true.
+            VarNumRep = var_num_1_byte,
             proc_info_get_headvars(ProcInfo0, HeadVars),
             proc_info_get_varset(ProcInfo0, VarSet),
             compute_var_number_map(HeadVars, VarSet, [], Goal0, VarNumMap),

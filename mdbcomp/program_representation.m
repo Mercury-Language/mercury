@@ -95,8 +95,8 @@
     %
     % When procedures are imported from one module to another, for example for
     % inter-module optimisations the def_module field may be different to the
-    % decl_module feild.  In this case a procedure has been imported into the
-    % def_module from the decl_module.  This is also true for the type_module
+    % decl_module feild. In this case a procedure has been imported into the
+    % def_module from the decl_module. This is also true for the type_module
     % and def_module fields in the str_special_proc_label constructor.
     %
 :- type string_proc_label
@@ -153,16 +153,16 @@
 
 :- type goal_rep(GoalAnnotation)
     --->    goal_rep(
+                % The expression this goal represents.
                 goal_expr_rep       :: goal_expr_rep(GoalAnnotation),
-                    % The expression this goal represents.
 
+                % The determinism of this goal.
                 goal_detism_rep     :: detism_rep,
-                    % The determinism of this goal.
 
+                % This slot may be used to annotate the goal with some extra
+                % information. The deep profiling tools make use of this
+                % to associate coverage profiling data with goals.
                 goal_annotation     :: GoalAnnotation
-                    % This slot may be used to annotate the goal with some
-                    % extra information.  The deep profiling tools make use of
-                    % this to associate coverage profiling data with goals.
             ).
 
 :- type goal_rep == goal_rep(unit).
@@ -264,7 +264,7 @@
                 var_rep,            % X
                 cons_id_rep,        % f
                 list(maybe(var_rep))
-                                    % The list of Y_i's.  Y_i's which are input
+                                    % The list of Y_i's. Y_i's which are input
                                     % are wrapped in `yes', while the other
                                     % Y_i positions are `no'.
             )
@@ -362,13 +362,13 @@
 
     % A table of var_rep to string mappings.
     %
-    % This table may not contain all the variables in the procedure.  Variables
-    % created by the compiler are not included.  The table may be empty if it's
+    % This table may not contain all the variables in the procedure. Variables
+    % created by the compiler are not included. The table may be empty if it is
     % not required, such as when used with the declarative debugger.
     %
 :- type var_table.
 
-    % Lookup the name of a variable within the variable table.  If the variable
+    % Lookup the name of a variable within the variable table. If the variable
     % is unknown a distinct name is automatically generated.
     %
 :- pred lookup_var_name(var_table::in, var_rep::in, string::out) is det.
@@ -433,8 +433,7 @@
                 call_type_and_callee    :: call_type_and_callee
             ).
 
-    % The type and callee of call.  The callee is only availbie for plain
-    % calls.
+    % The type and callee of call. The callee is known only for plain calls.
     %
 :- type call_type_and_callee
     --->    callback_call
@@ -458,9 +457,8 @@
 % goal. We use a cord instead of a list because most operations on goal paths
 % focus on the last element, not the first.
 %
-% The goal_path type is safe for use in maps and sets.  However compare/3 and
+% The goal_path type is safe for use in maps and sets. However compare/3 and
 % unify/2 are faster for goal_path_string.
-%
 
 :- type goal_path.
 
@@ -670,12 +668,17 @@
 
 :- pred byte_to_goal_type(int::in, bytecode_goal_type::out) is semidet.
 
-    % We represent a variable number as a byte if there are no more than
-    % 255 variables in the procedure; otherwise, we use two bytes.
+    % We represent a variable number as
+    % - one byte if all variable numbers fit into one byte,
+    % - two bytes if all variable numbers fit into two bytes, but
+    %   some do not fit into one byte, and
+    % - four bytes if some variable numbers do not fit into two bytes.
+    % This assumes that all variable numbers fit into four bytes.
     %
 :- type var_num_rep
-    --->    byte
-    ;       short.
+    --->    var_num_1_byte
+    ;       var_num_2_bytes
+    ;       var_num_4_bytes.
 
 :- pred var_num_rep_byte(var_num_rep, int).
 :- mode var_num_rep_byte(in, out) is det.
@@ -734,8 +737,8 @@
                 cp_type
             ).
 
-% This enumeration specifies the type of coverage point.  A branch arm is an
-% arm of an if-then-else, switch or disj goal.  The coverage_after type is used
+% This enumeration specifies the type of coverage point. A branch arm is an
+% arm of an if-then-else, switch or disj goal. The coverage_after type is used
 % to measure the coverage after the goal it's coverage point referrs to.
 :- type cp_type
     --->    cp_type_coverage_after
@@ -858,8 +861,8 @@ transform_goal_rep(Pred, Goal0, Goal) :-
     Pred(A, B),
     Goal = goal_rep(Expr, Detism, B).
 
-:- pred transform_goal_expr(pred(T, U), goal_expr_rep(T), goal_expr_rep(U)).
-:- mode transform_goal_expr(pred(in, out) is det, in, out) is det.
+:- pred transform_goal_expr(pred(T, U)::in(pred(in, out) is det),
+    goal_expr_rep(T)::in, goal_expr_rep(U)::out) is det.
 
 transform_goal_expr(Pred, Expr0, Expr) :-
     (
@@ -893,8 +896,8 @@ transform_goal_expr(Pred, Expr0, Expr) :-
         Expr = atomic_goal_rep(Filename, Lineno, BoundVars, AtomicGoal)
     ).
         
-:- pred transform_switch_case(pred(T, U), case_rep(T), case_rep(U)).
-:- mode transform_switch_case(pred(in, out) is det, in, out) is det.
+:- pred transform_switch_case(pred(T, U)::in(pred(in, out) is det),
+    case_rep(T)::in, case_rep(U)::out) is det.
 
 transform_switch_case(Pred, Case0, Case) :-
     Case0 = case_rep(ConsId, OtherConsIds, Goal0),
@@ -1126,8 +1129,9 @@ detism_get_can_fail(failure_rep) =      can_fail_rep.
 
 %-----------------------------------------------------------------------------%
 
-var_num_rep_byte(byte, 0).
-var_num_rep_byte(short, 1).
+var_num_rep_byte(var_num_1_byte, 0).
+var_num_rep_byte(var_num_2_bytes, 1).
+var_num_rep_byte(var_num_4_bytes, 2).
 
 :- type var_table == map(var_rep, string).
 
@@ -1346,7 +1350,7 @@ read_string_proc_label(ByteCode, ProcLabel, !Pos) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Read the var table from the bytecode.  The var table names all the
+    % Read the var table from the bytecode. The var table names all the
     % variables used in the procedure representation.
     %
     % The representation of variables and the variable table restricts the
@@ -1357,7 +1361,7 @@ read_string_proc_label(ByteCode, ProcLabel, !Pos) :-
 
 read_var_table(ByteCode, StringTable, VarNumRep, VarTable, !Pos) :-
     read_var_num_rep(ByteCode, VarNumRep, !Pos),
-    read_short(ByteCode, NumVarsInTable, !Pos),
+    read_int32(ByteCode, NumVarsInTable, !Pos),
     read_var_table_entries(NumVarsInTable, VarNumRep, ByteCode, StringTable,
         map.init, VarTable, !Pos).
 
@@ -1625,11 +1629,14 @@ read_vars(VarNumRep, ByteCode, Vars, !Pos) :-
 
 read_var(VarNumRep, ByteCode, Var, !Pos) :-
     (
-        VarNumRep = byte,
+        VarNumRep = var_num_1_byte,
         read_byte(ByteCode, Var, !Pos)
     ;
-        VarNumRep = short,
+        VarNumRep = var_num_2_bytes,
         read_short(ByteCode, Var, !Pos)
+    ;
+        VarNumRep = var_num_4_bytes,
+        read_int32(ByteCode, Var, !Pos)
     ).
 
 :- pred read_maybe_vars(var_num_rep::in, bytecode::in,
@@ -1678,12 +1685,12 @@ read_inst(ByteCode, Inst, !Pos) :-
 :- pred read_length(bytecode::in, var_rep::out, int::in, int::out) is semidet.
 
 read_length(ByteCode, Len, !Pos) :-
-    read_short(ByteCode, Len, !Pos).
+    read_int32(ByteCode, Len, !Pos).
 
 :- pred read_lineno(bytecode::in, int::out, int::in, int::out) is semidet.
 
 read_lineno(ByteCode, LineNo, !Pos) :-
-    read_short(ByteCode, LineNo, !Pos).
+    read_int32(ByteCode, LineNo, !Pos).
 
 :- pred read_method_num(bytecode::in, int::out, int::in, int::out) is semidet.
 
@@ -1832,9 +1839,9 @@ no_type_info_builtin_2(rtti_implementation_builtin, "result_call_7", 7).
 no_type_info_builtin_2(rtti_implementation_builtin, "result_call_8", 8).
 no_type_info_builtin_2(rtti_implementation_builtin, "result_call_9", 9).
 
-    % True iff the given predicate is defined with an :- external
-    % declaration.  Note that the arity includes the hidden type info
-    % arguments for polymorphic predicates.
+    % True iff the given predicate is defined with an :- external declaration.
+    % Note that the arity includes the hidden type info arguments for
+    % polymorphic predicates.
     %
 :- pred pred_is_external(string::in, string::in, int::in) is semidet.
 

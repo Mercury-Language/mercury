@@ -36,20 +36,33 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type deep_compression_flag
+    --->    no_compression.
+
+:- type canonical_flag
+    --->    is_canonical
+    ;       maybe_not_canonical.
+
+:- type deep_flags
+    --->    deep_flags(
+                df_bytes_per_int        :: int,
+                df_canonical_flag       :: canonical_flag,
+                df_compression_flag     :: deep_compression_flag,
+                df_coverage_data_type   :: coverage_data_type
+            ).
+
 :- type profile_stats
     --->    profile_stats(
-                program_name            :: string,
-                num_csd                 :: int,
-                num_css                 :: int,
-                num_pd                  :: int,
-                num_ps                  :: int,
-                ticks_per_sec           :: int,
-                instrument_quanta       :: int,
-                user_quanta             :: int,
-                num_callseqs            :: int,
-                word_size               :: int,
-                coverage_data_type      :: coverage_data_type,
-                canonical               :: bool
+                prs_program_name        :: string,
+                prs_num_csd             :: int,
+                prs_num_css             :: int,
+                prs_num_pd              :: int,
+                prs_num_ps              :: int,
+                prs_ticks_per_sec       :: int,
+                prs_instrument_quanta   :: int,
+                prs_user_quanta         :: int,
+                prs_num_callseqs        :: int,
+                prs_deep_flags          :: deep_flags
             ).
 
 :- type initial_deep
@@ -983,16 +996,16 @@ extract_csdptr_callee(InitDeep, CSDPtr, CalleePDPtr) :-
     CalleePDPtr = CSD ^ csd_callee.
 
 extract_ticks_per_sec(InitDeep,
-    InitDeep ^ init_profile_stats ^ ticks_per_sec).
+    InitDeep ^ init_profile_stats ^ prs_ticks_per_sec).
 
 extract_instrument_quanta(InitDeep,
-    InitDeep ^ init_profile_stats ^ instrument_quanta).
+    InitDeep ^ init_profile_stats ^ prs_instrument_quanta).
 
 extract_user_quanta(InitDeep,
-    InitDeep ^ init_profile_stats ^ user_quanta).
+    InitDeep ^ init_profile_stats ^ prs_user_quanta).
 
 extract_num_callseqs(InitDeep,
-    InitDeep ^ init_profile_stats ^ num_callseqs).
+    InitDeep ^ init_profile_stats ^ prs_num_callseqs).
 
 extract_max_css(InitDeep, MaxCSS) :-
     array.max(InitDeep ^ init_call_site_statics, MaxCSS).

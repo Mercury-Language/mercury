@@ -123,12 +123,12 @@ represent_proc_as_bytecodes(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
 
     % Create bytecodes for the variable table.
     %
-    % If a variable table is not requested, an empty table is created.  The
-    % variable table also includes information about the representation of
-    % variable numbers within the bytecode.
+    % If a variable table is not requested, an empty table is created.
+    % The variable table also includes information about the representation
+    % of variable numbers within the bytecode.
     %
     % The representation of variables and the variable table restricts the
-    % number of possible variables in a procedure to 2^15.
+    % number of possible variables in a procedure to 2^31.
     %
 :- pred represent_var_table_as_bytecode(include_variable_table::in,
     var_num_map::in, var_num_rep::out, list(int)::out, 
@@ -137,10 +137,12 @@ represent_proc_as_bytecodes(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
 represent_var_table_as_bytecode(IncludeVarTable, VarNumMap, VarNumRep,
         ByteList, !StringTable) :-
     map.foldl(max_var_num, VarNumMap, 0) = MaxVarNum,
-    ( MaxVarNum =< 255 ->
-        VarNumRep = byte
+    ( MaxVarNum =< 127 ->
+        VarNumRep = var_num_1_byte
+    ; MaxVarNum =< 32767 ->
+        VarNumRep = var_num_2_bytes
     ;
-        VarNumRep = short
+        VarNumRep = var_num_4_bytes
     ),
     var_num_rep_byte(VarNumRep, VarNumRepByte),
     (
@@ -152,7 +154,7 @@ represent_var_table_as_bytecode(IncludeVarTable, VarNumMap, VarNumRep,
         NumVars = 0,
         VarTableEntriesBytes = []
     ),
-    short_to_byte_list(NumVars, NumVarsBytes),
+    int32_to_byte_list(NumVars, NumVarsBytes),
     ByteList = [VarNumRepByte] ++ NumVarsBytes ++ VarTableEntriesBytes.
 
 :- func max_var_num(prog_var, pair(int, string), int) = int.
@@ -169,7 +171,7 @@ var_table_entry_bytelist(VarNumRep, _ProgVar, VarNum - VarName,
         !NumVars, !VarTableBytes, !StringTable) :-
     (
         % Some variables that the compiler creates are named automatically,
-        % these and unamed variables should not be included in the variable
+        % these and unnamed variables should not be included in the variable
         % table.
         compiler_introduced_varname(VarName)
     ->
@@ -177,11 +179,14 @@ var_table_entry_bytelist(VarNumRep, _ProgVar, VarNum - VarName,
     ;
         !:NumVars = !.NumVars + 1,
         (
-            VarNumRep = byte,
+            VarNumRep = var_num_1_byte,
             VarBytes = [VarNum]
         ;
-            VarNumRep = short,
+            VarNumRep = var_num_2_bytes,
             short_to_byte_list(VarNum, VarBytes)
+        ;
+            VarNumRep = var_num_4_bytes,
+            int32_to_byte_list(VarNum, VarBytes)
         ),
         string_to_byte_list(VarName, VarNameBytes, !StringTable),
         !:VarTableBytes = VarBytes ++ VarNameBytes ++ !.VarTableBytes
@@ -697,11 +702,14 @@ var_to_var_rep(Info, Var) = Num :-
 
 var_rep_to_byte_list(Info, Var) = Bytes :-
     (
-        Info ^ pri_var_num_rep = byte,
+        Info ^ pri_var_num_rep = var_num_1_byte,
         Bytes = [Var]
     ; 
-        Info ^ pri_var_num_rep = short,
+        Info ^ pri_var_num_rep = var_num_2_bytes,
         short_to_byte_list(Var, Bytes)
+    ; 
+        Info ^ pri_var_num_rep = var_num_4_bytes,
+        int32_to_byte_list(Var, Bytes)
     ).
 
 :- func maybe_var_reps_to_byte_list(prog_rep_info, list(maybe(var_rep))) =
@@ -771,12 +779,12 @@ inst_to_byte(ModuleInfo, MerInst) = Byte :-
 :- func length_to_byte_list(list(T)) = list(int).
 
 length_to_byte_list(List) = Bytes :-
-    short_to_byte_list(list.length(List), Bytes).
+    int32_to_byte_list(list.length(List), Bytes).
 
 :- func lineno_to_byte_list(int) = list(int).
 
 lineno_to_byte_list(VarNum) = Bytes :-
-    short_to_byte_list(VarNum, Bytes).
+    int32_to_byte_list(VarNum, Bytes).
 
 :- func method_num_to_byte_list(int) = list(int).
 

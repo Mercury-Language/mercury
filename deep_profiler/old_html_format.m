@@ -1862,7 +1862,8 @@ own_and_desc_to_html(Own, Desc, Pref, Deep, TotalsDisp) = HTML :-
             TotalMemory = TotalWords
         ;
             Unit = units_bytes,
-            WordSize = Deep ^ profile_stats ^ word_size,
+            WordSize = Deep ^ profile_stats ^ prs_deep_flags
+                ^ df_bytes_per_int,
             OwnMemory = OwnWords * WordSize,
             TotalMemory = TotalWords * WordSize
         )
@@ -2027,7 +2028,7 @@ percentage(Fraction, Whole) = PercentageStr :-
     ).
 
 lookup_ticks_per_sec(Stats, TicksPerSec, Assumed) :-
-    TicksPerSec0 = Stats ^ ticks_per_sec,
+    TicksPerSec0 = Stats ^ prs_ticks_per_sec,
     ( TicksPerSec0 = 0 ->
         TicksPerSec = default_ticks_per_sec,
         Assumed = yes

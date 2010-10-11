@@ -506,7 +506,7 @@ create_and_memoize_report(Cmd, Deep, Report) :-
 minimum_meaningful_quanta = 10.
 
 should_display_times(Deep) =
-    ( Deep ^ profile_stats ^ user_quanta > minimum_meaningful_quanta ->
+    ( Deep ^ profile_stats ^ prs_user_quanta > minimum_meaningful_quanta ->
         yes
     ;
         no

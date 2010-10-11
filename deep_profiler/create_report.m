@@ -123,8 +123,7 @@ create_report(Cmd, Deep, Report) :-
         Cmd = deep_cmd_menu,
         Deep ^ profile_stats = profile_stats(ProgramName,
             NumCSD, NumCSS, NumPD, NumPS,
-            QuantaPerSec, InstrumentationQuanta, UserQuanta, NumCallseqs,
-            _, _, _),
+            QuantaPerSec, InstrumentationQuanta, UserQuanta, NumCallseqs, _),
         NumCliques = array.max(Deep ^ clique_members),
         MenuReport = menu_report(ProgramName, QuantaPerSec,
             UserQuanta, InstrumentationQuanta,
@@ -1506,8 +1505,8 @@ own_and_maybe_inherit_to_perf_row_data(Deep, Subject, Own, MaybeDesc,
         RowData) :-
     % Look up global parameters and totals.
     ProfileStats = Deep ^ profile_stats,
-    TicksPerSec = ProfileStats ^ ticks_per_sec,
-    WordSize = ProfileStats ^ word_size,
+    TicksPerSec = ProfileStats ^ prs_ticks_per_sec,
+    WordSize = ProfileStats ^ prs_deep_flags ^ df_bytes_per_int,
 
     Root = root_total_info(Deep),
     RootQuanta = inherit_quanta(Root),
