@@ -191,6 +191,12 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
                 ml_generate_string_switch(TaggedCases, SwitchVar,
                     CodeModel, CanFail, Context, Decls, Statements, !Info)
             ;
+                target_supports_string_switch(Globals)
+            ->
+                ml_switch_generate_mlds_switch(TaggedCases, SwitchVar,
+                    CodeModel, CanFail, Context, Statements, !Info),
+                Decls = []
+            ;
                 ml_switch_generate_if_then_else_chain(TaggedCases,
                     SwitchVar, CodeModel, CanFail, Context, Statements, !Info),
                 Decls = []
@@ -303,7 +309,6 @@ target_supports_int_switch_2(target_asm) = yes.
 target_supports_int_switch_2(target_il) = no.
 target_supports_int_switch_2(target_csharp) = yes.
 target_supports_int_switch_2(target_java) = yes.
-% target_supports_int_switch_2(c_sharp) = yes.
 target_supports_int_switch_2(target_x86_64) =
     unexpected(this_file, "target x86_64 with --high-level code").
 target_supports_int_switch_2(target_erlang) =
@@ -314,7 +319,6 @@ target_supports_string_switch_2(target_asm) = no.
 target_supports_string_switch_2(target_il) = no.
 target_supports_string_switch_2(target_csharp) = yes.
 target_supports_string_switch_2(target_java) = no.
-% target_supports_string_switch_2(c_sharp) = yes.
 target_supports_string_switch_2(target_x86_64) =
     unexpected(this_file, "target x86_64 with --high-level code").
 target_supports_string_switch_2(target_erlang) =
@@ -338,7 +342,6 @@ target_supports_goto_2(target_asm) = yes.
 target_supports_goto_2(target_il) = yes.
 target_supports_goto_2(target_csharp) = yes.
 target_supports_goto_2(target_java) = no.
-% target_supports_goto_2(c_sharp) = yes.
 target_supports_goto_2(target_x86_64) =
     unexpected(this_file, "target x86_64 with --high-level code").
 target_supports_goto_2(target_erlang) =

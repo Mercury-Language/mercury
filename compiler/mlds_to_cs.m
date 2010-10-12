@@ -3220,7 +3220,13 @@ output_unop(Info, Unop, Expr, !IO) :-
         output_cast_rval(Info, Type, Expr, !IO)
     ;
         Unop = box(Type),
-        output_boxed_rval(Info, Type, Expr, !IO)
+        ( Type = mercury_type(comparison_result_type, _, _) ->
+            io.write_string("builtin.comparison_result_object[(int) ", !IO),
+            output_rval(Info, Expr, !IO),
+            io.write_string("]", !IO)
+        ;
+            output_boxed_rval(Info, Type, Expr, !IO)
+        )
     ;
         Unop = unbox(Type),
         output_unboxed_rval(Info, Type, Expr, !IO)
@@ -3372,7 +3378,7 @@ output_binop(Info, Op, X, Y, !IO) :-
         ;
             io.write_string("(", !IO),
             output_rval(Info, X, !IO),
-            io.write_string(".CompareTo(", !IO),
+            io.write_string(".CompareOrdinal(", !IO),
             output_rval(Info, Y, !IO),
             io.write_string(") ", !IO),
             io.write_string(OpStr, !IO),

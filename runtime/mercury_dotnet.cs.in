@@ -139,6 +139,7 @@ public class TypeCtorInfo_Struct : PseudoTypeInfo {
     public int              type_ctor_num_functors;
     public short            type_ctor_flags;
     public int[]            type_functor_number_map;
+    private TypeInfo_Struct cached_type_info;
 
     public TypeCtorInfo_Struct() {
     }
@@ -220,6 +221,13 @@ public class TypeCtorInfo_Struct : PseudoTypeInfo {
     public override string ToString() {
         return type_ctor_module_name + "." + type_ctor_name + "/" + arity;
     }
+
+    public TypeInfo_Struct ToTypeInfo() {
+        if (cached_type_info == null) {
+            cached_type_info = new TypeInfo_Struct(this);
+        }
+        return cached_type_info;
+    }
 }
 
 public class TypeInfo_Struct : PseudoTypeInfo {
@@ -247,13 +255,13 @@ public class TypeInfo_Struct : PseudoTypeInfo {
     }
 
     public static TypeInfo_Struct maybe_new(TypeCtorInfo_Struct tc) {
-        return new TypeInfo_Struct(tc);
+        return tc.ToTypeInfo();
     }
 
     public static TypeInfo_Struct maybe_new(PseudoTypeInfo obj) {
         TypeCtorInfo_Struct tc = obj as TypeCtorInfo_Struct;
         if (tc != null) {
-            return new TypeInfo_Struct(tc);
+            return tc.ToTypeInfo();
         }
         return (TypeInfo_Struct) obj;
     }

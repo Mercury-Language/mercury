@@ -616,6 +616,14 @@ get_one_solution_io(Pred, X, !IO) :-
         (>) - "COMPARE_GREATER"
     ]).
 
+:- pragma foreign_code("C#", "
+    public static readonly object[] comparison_result_object = new object[] {
+        (Comparison_result_0) 0,
+        (Comparison_result_0) 1,
+        (Comparison_result_0) 2
+    };
+").
+
 ordering(X, Y) = R :-
     compare(R, X, Y).
 

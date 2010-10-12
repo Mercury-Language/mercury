@@ -7108,6 +7108,8 @@ mercury_print_binary_string(MR_MercuryFileStruct mf, string s)
 // converting the bytes from the system's default encoding to Unicode,
 // and possibly converting CR-LF to newline. Returns -1 on error or EOF.
 
+private static readonly string NewLine = System.Environment.NewLine;
+
 public static int
 mercury_getc(MR_MercuryFileStruct mf)
 {
@@ -7140,7 +7142,7 @@ mercury_getc(MR_MercuryFileStruct mf)
         // System.Environment.NewLine.
         // We assume that System.Environment.NewLine is non-null
         // and that System.Environment.NewLine.Length > 0.
-        if (c != System.Environment.NewLine[0]) {
+        if (c != io.NewLine[0]) {
             if (c == '\\n') {
                 // the input file was ill-formed, e.g. it contained only raw
                 // LFs rather than CR-LF. Perhaps we should throw an exception?
@@ -7149,13 +7151,13 @@ mercury_getc(MR_MercuryFileStruct mf)
                 mf.line_number++;
             }
         } else /* c == NewLine[0] */ {
-            switch (System.Environment.NewLine.Length) {
+            switch (io.NewLine.Length) {
             case 1:
                 mf.line_number++;
                 c = '\\n';
                 break;
             case 2:
-                if (mf.reader.Peek() == System.Environment.NewLine[1]) {
+                if (mf.reader.Peek() == io.NewLine[1]) {
                     mf.reader.Read();
                     mf.line_number++;
                     c = '\\n';
