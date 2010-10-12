@@ -77,11 +77,17 @@ clean_local:
 	rm -rf Release/ Debug/
 	rm -f *.obj gc.lib libgc.lib libpar_gc.lib libpar_gc.dll libgc_debug.lib
 	cd libatomic_ops-1.2 && $(MAKE) clean
+	cd libatomic_ops && $(MAKE) clean
 	rm -f libatomic_ops-1.2/Makefile libatomic_ops-1.2/tests/Makefile
 	rm -f libatomic_ops-1.2/src/Makefile
 	rm -f libatomic_ops-1.2/src/atomic_ops/Makefile
 	rm -f libatomic_ops-1.2/src/config.h
 	rm -f libatomic_ops-1.2/src/atomic_ops/sysdeps/Makefile
+	rm -f libatomic_ops/Makefile libatomic_ops/tests/Makefile
+	rm -f libatomic_ops/src/Makefile
+	rm -f libatomic_ops/src/atomic_ops/Makefile
+	rm -f libatomic_ops/src/config.h
+	rm -f libatomic_ops/src/atomic_ops/sysdeps/Makefile
 	rm -rf libatomic_ops-install
 else 
 
@@ -96,12 +102,18 @@ clean_local:
 	MAKEFLAGS=""; export MAKEFLAGS; \
 	$(MAKE) $(BOEHMGC_MAKEFILE) $(MMAKEFLAGS) clean
 	-cd libatomic_ops-1.2 && $(MAKE) $(MMAKEFLAGS) clean
-	rm -f libgc.$A libgc.so libpar_gc.$A libpar_gc.dll
+	-cd libatomic_ops && $(MAKE) $(MMAKEFLAGS) clean
+	rm -f libgc.$A libgc.so libgc.dylib libpar_gc.$A libpar_gc.dll
 	rm -f libatomic_ops-1.2/Makefile libatomic_ops-1.2/tests/Makefile
 	rm -f libatomic_ops-1.2/src/Makefile
 	rm -f libatomic_ops-1.2/src/atomic_ops/Makefile
 	rm -f libatomic_ops-1.2/src/config.h
 	rm -f libatomic_ops-1.2/src/atomic_ops/sysdeps/Makefile
+	rm -f libatomic_ops/Makefile libatomic_ops/tests/Makefile
+	rm -f libatomic_ops/src/Makefile
+	rm -f libatomic_ops/src/atomic_ops/Makefile
+	rm -f libatomic_ops/src/config.h
+	rm -f libatomic_ops/src/atomic_ops/sysdeps/Makefile
 	rm -rf libatomic_ops-install
 	rm -f Makefile
 
