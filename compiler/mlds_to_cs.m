@@ -123,7 +123,7 @@ interface_is_special("MercuryType").
 output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     % Run further transformations on the MLDS.
     MLDS = mlds(ModuleName, AllForeignCode, Imports, GlobalData, Defns0,
-        InitPreds, _FinalPreds, ExportedEnums),
+        InitPreds, FinalPreds, ExportedEnums),
     ml_global_data_get_all_global_defns(GlobalData,
         ScalarCellGroupMap, VectorCellGroupMap, GlobalDefns),
     Defns = GlobalDefns ++ Defns0,
@@ -172,9 +172,6 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     io.write_string("\n// ExportedEnums\n", !IO),
     output_exported_enums(Info, Indent + 1, ExportedEnums, !IO),
 
-    % io.write_string("\n// FinalPreds\n", !IO),
-    % output_finals(Indent + 1, FinalPreds, !IO),
-
     io.write_string("\n// EnvVarNames\n", !IO),
     output_env_vars(Indent + 1, NonRttiDefns, !IO),
 
@@ -185,7 +182,8 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
         "MR_init_vector_common_data"
         | InitPreds
     ],
-    output_static_constructor(ModuleName, Indent + 1, StaticCtorCalls, !IO),
+    output_static_constructor(ModuleName, Indent + 1, StaticCtorCalls,
+        FinalPreds, !IO),
 
     output_src_end(Indent, ModuleName, !IO).
 
@@ -473,10 +471,10 @@ output_src_start(Globals, Info, Indent, MercuryModuleName, _Imports,
     % methods that we generated earlier.
     %
 :- pred output_static_constructor(mercury_module_name::in, indent::in,
-    list(string)::in, io::di, io::uo) is det.
+    list(string)::in, list(string)::in, io::di, io::uo) is det.
 
 output_static_constructor(MercuryModuleName, Indent, StaticConstructors,
-        !IO) :-
+        FinalPreds, !IO) :-
     indent_line(Indent, !IO),
     io.write_string("static ", !IO),
     mangle_sym_name_for_csharp(MercuryModuleName, module_qual, "__",
@@ -489,6 +487,14 @@ output_static_constructor(MercuryModuleName, Indent, StaticConstructors,
         io.write_string("();\n", !IO)
     ),
     list.foldl(WriteCall, StaticConstructors, !IO),
+    WriteFinal = (pred(FinalPred::in, !.IO::di, !:IO::uo) is det :-
+        indent_line(Indent + 1, !IO),
+        list.foldl(io.write_string, [
+            "System.AppDomain.CurrentDomain.ProcessExit += ",
+            "(sender, ev) => ", FinalPred, "();\n"
+        ], !IO)
+    ),
+    list.foldl(WriteFinal, FinalPreds, !IO),
     indent_line(Indent, !IO),
     io.write_string("}\n", !IO).
 

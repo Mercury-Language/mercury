@@ -139,6 +139,9 @@ public class TypeCtorInfo_Struct : PseudoTypeInfo {
     public int              type_ctor_num_functors;
     public short            type_ctor_flags;
     public int[]            type_functor_number_map;
+
+    // This attribute is also to to prevent cyclic copying in deep_copy.
+    [System.NonSerialized]
     private TypeInfo_Struct cached_type_info;
 
     public TypeCtorInfo_Struct() {

@@ -763,7 +763,9 @@ public static void deep_copy_fields(System.Reflection.FieldInfo[] fields,
     // XXX We don't handle init-only fields, but I can't think of a way.
     foreach (System.Reflection.FieldInfo f in fields)
     {
-        f.SetValue(dest, deep_copy(f.GetValue(src)));
+        if (!f.IsNotSerialized) {
+            f.SetValue(dest, deep_copy(f.GetValue(src)));
+        }
     }
 }
 ").

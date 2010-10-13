@@ -82,7 +82,7 @@ loop2(N, Inv, Acc0, Acc) :-
     [will_not_call_mercury, promise_pure],
 "
     /* Test that p/1 only gets called once. */
-    if (p_num_calls++) {
+    if (p_num_calls++ > 0) {
         mercury.runtime.Errors.fatal_error(""p/1 called more than once"");
     }
 
@@ -130,7 +130,7 @@ loop2(N, Inv, Acc0, Acc) :-
     [will_not_call_mercury, promise_pure],
 "
     /* Test that q/1 only gets called once. */
-    if (q_num_calls++) {
+    if (q_num_calls++ > 0) {
         mercury.runtime.Errors.fatal_error(""q/1 called more than once"");
     }
 
