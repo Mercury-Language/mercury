@@ -248,29 +248,47 @@ frontend_pass_after_typecheck(FoundUndefModeError, !FoundError,
         !:FoundError = yes,
         io.set_exit_status(1, !IO)
     ;
-        % Only report error messages for unbound type variables if we didn't
-        % get any type errors already; this avoids a lot of spurious
-        % diagnostics.
-        PostTypeCheckReportErrors = bool.not(FoundTypeError),
-        module_info_get_valid_predids(PredIds, !HLDS),
-        post_typecheck_finish_preds(PredIds, PostTypeCheckReportErrors,
-            NumPostTypeCheckErrors, !HLDS, !Specs),
+        check_for_missing_type_defns(!.HLDS, MissingTypeDefnSpecs),
+        !:Specs = !.Specs ++ MissingTypeDefnSpecs,
+        SomeMissingTypeDefns = contains_errors(Globals, MissingTypeDefnSpecs),
+
+        post_typecheck_finish_preds(!HLDS, NumPostTypeCheckErrors,
+            PostTypeCheckAlwaysSpecs, PostTypeCheckNoTypeErrorSpecs),
+        % If the main part of typecheck detected some errors, then some of
+        % the errors we detect during post-typecheck could be avalanche
+        % messages. We get post_typecheck to put all such messages into
+        % PostTypeCheckNoTypeErrorSpecs, and we report them only if did not
+        % find any errors during typecheck.
+        (
+            FoundTypeError = no,
+            PostTypeCheckSpecs = PostTypeCheckAlwaysSpecs
+                ++ PostTypeCheckNoTypeErrorSpecs,
+            !:Specs = !.Specs ++ PostTypeCheckSpecs
+        ;
+            FoundTypeError = yes,
+            !:Specs = !.Specs ++ PostTypeCheckAlwaysSpecs
+        ),
+        (
+            ( SomeMissingTypeDefns = yes
+            ; NumPostTypeCheckErrors > 0
+            )
+        ->
+            PostTypeCheckErrors = yes
+        ;
+            PostTypeCheckErrors = no
+        ),
         maybe_dump_hlds(!.HLDS, 19, "post_typecheck", !DumpInfo, !IO),
 
         % Stop here if `--typecheck-only' was specified.
         globals.lookup_bool_option(Globals, typecheck_only, TypecheckOnly),
         (
             TypecheckOnly = yes,
-            ( NumPostTypeCheckErrors > 0 ->
-                !:FoundError = yes
-            ;
-                true
-            )
+            !:FoundError = bool.or(!.FoundError, PostTypeCheckErrors)
         ;
             TypecheckOnly = no,
             (
                 ( FoundTypeError = yes
-                ; NumPostTypeCheckErrors > 0
+                ; PostTypeCheckErrors = yes
                 )
             ->
                 % XXX It would be nice if we could go on and mode-check the
