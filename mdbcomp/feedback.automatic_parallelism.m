@@ -139,15 +139,9 @@
     --->    candidate_par_conjunction(
                 % The path within the procedure to this conjunuction.
                 cpc_goal_path           :: goal_path_string,
-               
-                % Used to locate the goals to be parallelised within the
-                % conjunction. Partitions are separated by non-atomic goals,
-                % the first partition has the number 1.
-                cpc_partition_number    :: int,
 
-                % The first conjunct number in the partition. This is only
-                % used for pretty-printing these reports with meaningful
-                % goal paths.
+                % The position within the original conjunction that this
+                % parallelisation starts.
                 cpc_first_conj_num      :: int,
 
                 cpc_is_dependent        :: conjuncts_are_dependent,
@@ -322,12 +316,12 @@ convert_candidate_par_conjunctions_proc(Conv, CPCProcA, CPCProcB) :-
     CPCProcB = candidate_par_conjunctions_proc(VarTable, CPCB).
 
 convert_candidate_par_conjunction(Conv, CPC0, CPC) :-
-    CPC0 = candidate_par_conjunction(GoalPath, PartNum, FirstGoalNum,
+    CPC0 = candidate_par_conjunction(GoalPath, FirstGoalNum,
         IsDependent, GoalsBefore0, Conjs0, GoalsAfter0, Metrics),
     map(convert_seq_conj(Conv), Conjs0, Conjs),
     map(Conv, GoalsBefore0, GoalsBefore),
     map(Conv, GoalsAfter0, GoalsAfter),
-    CPC = candidate_par_conjunction(GoalPath, PartNum, FirstGoalNum,
+    CPC = candidate_par_conjunction(GoalPath, FirstGoalNum,
         IsDependent, GoalsBefore, Conjs, GoalsAfter, Metrics).
 
 convert_seq_conj(Conv, seq_conj(Conjs0), seq_conj(Conjs)) :-

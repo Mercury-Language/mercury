@@ -46,6 +46,11 @@
     is semidet.
 :- pred get_coverage_after(coverage_info::in, int::out) is semidet.
 
+:- pred get_coverage_before_det(coverage_info::in, int::out) is det.
+:- pred get_coverage_before_and_after_det(coverage_info::in, 
+    int::out, int::out) is det.
+:- pred get_coverage_after_det(coverage_info::in, int::out) is det.
+
 %----------------------------------------------------------------------------%
     
     % This is similar to the coverage_point type in
@@ -116,6 +121,33 @@ get_coverage_after(coverage_known(_, After), After).
 get_coverage_after(coverage_known_zero, 0).
 get_coverage_after(coverage_known_same(After), After).
 get_coverage_after(coverage_known_after(After), After).
+
+get_coverage_before_det(Coverage, Before) :-
+    ( get_coverage_before(Coverage, BeforePrime) ->
+        Before = BeforePrime
+    ;
+        complete_coverage_error
+    ).
+
+get_coverage_before_and_after_det(Coverage, Before, After) :-
+    ( get_coverage_before_and_after(Coverage, BeforePrime, AfterPrime) ->
+        Before = BeforePrime,
+        After = AfterPrime
+    ;
+        complete_coverage_error
+    ).
+
+get_coverage_after_det(Coverage, After) :-
+    ( get_coverage_after(Coverage, AfterPrime) ->
+        After = AfterPrime
+    ;
+        complete_coverage_error
+    ).
+
+:- pred complete_coverage_error is erroneous.
+
+complete_coverage_error :-
+    error(this_file ++ "Expected complete coverage information").
 
 %-----------------------------------------------------------------------------%
 
@@ -1225,5 +1257,11 @@ before_coverage(Count) =
     ;
         before_known(Count)
     ).
+
+%----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "coverage.m: ".
 
 %----------------------------------------------------------------------------%

@@ -86,7 +86,7 @@
 
     % Build the initial inst for a procedure.
     %
-:- func initial_inst_map(proc_defn_rep) = inst_map.
+:- func initial_inst_map(proc_defn_rep(T)) = inst_map.
 
     % inst_map_ground_vars(Vars, DepVars, !InstMap, SeenDuplicateInstantiaton).
     %
@@ -167,9 +167,17 @@
 
 %----------------------------------------------------------------------------%
 
+:- type atomic_goal_is_call
+    --->    atomic_goal_is_call(list(var_rep))
+    ;       atomic_goal_is_trivial.
+
+:- pred atomic_goal_is_call(atomic_goal_rep::in, atomic_goal_is_call::out) 
+    is det.
+
+%----------------------------------------------------------------------------%
+
 :- implementation.
 
-% :- import_module create_report.
 :- import_module mdbcomp.prim_data.
 
 :- import_module array.
@@ -914,6 +922,30 @@ merge_seen_duplicate_instantiation(A, B) = R :-
         R = have_not_seen_duplicate_instantiation
     ;
         R = seen_duplicate_instantiation
+    ).
+
+%----------------------------------------------------------------------------%
+
+atomic_goal_is_call(AtomicGoal, IsCall) :-
+    (
+        ( AtomicGoal = unify_construct_rep(_, _, _)
+        ; AtomicGoal = unify_deconstruct_rep(_, _, _)
+        ; AtomicGoal = partial_construct_rep(_, _, _)
+        ; AtomicGoal = partial_deconstruct_rep(_, _, _)
+        ; AtomicGoal = unify_assign_rep(_, _)
+        ; AtomicGoal = cast_rep(_, _)
+        ; AtomicGoal = unify_simple_test_rep(_, _)
+        ; AtomicGoal = pragma_foreign_code_rep(_)
+        ; AtomicGoal = builtin_call_rep(_, _, _)
+        ; AtomicGoal = event_call_rep(_, _)
+        ),
+        IsCall = atomic_goal_is_trivial
+    ;
+        ( AtomicGoal = higher_order_call_rep(_, Args)
+        ; AtomicGoal = method_call_rep(_, _, Args)
+        ; AtomicGoal = plain_call_rep(_, _, Args)
+        ),
+        IsCall = atomic_goal_is_call(Args)
     ).
 
 %----------------------------------------------------------------------------%

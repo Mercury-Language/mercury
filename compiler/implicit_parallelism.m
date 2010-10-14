@@ -456,26 +456,25 @@ maybe_parallelise_conj(ProgRepInfo, VarTable, CPC, Instmap0, Goal0, MaybeGoal) :
     Goal0 = hlds_goal(GoalExpr0, _GoalInfo0),
     % We've reached the point indicated by the goal path, Find the
     % conjuncts that we wish to parallelise.
-    PartitionNum = CPC ^ cpc_partition_number,
+    cpc_get_first_goal(CPC, FirstGoalRep),
     (
         GoalExpr0 = conj(plain_conj, Conjs0),
         flatten_conj(Conjs0, Conjs1),
-        find_partition(PartitionNum, Conjs1, yes(PartitionInConj))
+        find_first_goal(FirstGoalRep, Conjs1, ProgRepInfo, VarTable, Instmap0, 
+            found_first_goal(GoalsBefore, FirstGoal, OtherGoals))
     ->
-        GoalsBeforePartition = PartitionInConj ^ pic_goals_before,
         GoalsBeforeInstDeltas = map(
             (func(G) = goal_info_get_instmap_delta(G ^ hlds_goal_info)),
-            GoalsBeforePartition),
+            GoalsBefore),
         foldl(apply_instmap_delta_sv, GoalsBeforeInstDeltas,
             Instmap0, Instmap),
-        Partition0 = PartitionInConj ^ pic_partition,
-        build_par_conjunction(ProgRepInfo, VarTable, Instmap, Partition0, CPC,
-            MaybeParConjunction),
+        build_par_conjunction(ProgRepInfo, VarTable, Instmap, 
+            [FirstGoal | OtherGoals], CPC, MaybeParConjunction),
         (
-            MaybeParConjunction = ok(ParConjunction),
-            GoalsAfterPartition = PartitionInConj ^ pic_goals_after,
-            Conjs = GoalsBeforePartition ++ ParConjunction ++
-                GoalsAfterPartition, 
+            MaybeParConjunction = ok(
+                par_conjunction_and_remaining_goals(ParConjunction,
+                RemainingGoals)),
+            Conjs = GoalsBefore ++ ParConjunction ++ RemainingGoals, 
             GoalExpr = conj(plain_conj, Conjs),
             MaybeGoal = ok(hlds_goal(GoalExpr, Goal0 ^ hlds_goal_info))
         ;
@@ -487,65 +486,69 @@ maybe_parallelise_conj(ProgRepInfo, VarTable, CPC, Instmap0, Goal0, MaybeGoal) :
                 ++ "perhaps the program has changed")
     ).
 
-:- type partition_in_conj
-    --->    partition_in_conj(
-                pic_goals_before        :: hlds_goals,
-                pic_partition           :: hlds_goals,
-                pic_goals_after         :: hlds_goals
-            ).
+:- pred cpc_get_first_goal(candidate_par_conjunction::in, pard_goal::out) 
+    is det.
 
-:- pred find_partition(int::in, list(hlds_goal)::in,
-    maybe(partition_in_conj)::out) is det.
-
-find_partition(_, [], no).
-find_partition(PartitionNum0, [Goal | Goals], MaybePartition) :-
-    ( PartitionNum0 = 1 ->
-        % We've found the correct partition.
-        find_end_of_partition(Goals, Partition, GoalsAfter),
-        MaybePartition = yes(
-            partition_in_conj([], [ Goal | Partition ], GoalsAfter))
+cpc_get_first_goal(CPC, FirstGoal) :-
+    GoalsBefore = CPC ^ cpc_goals_before,
+    (
+        GoalsBefore = [FirstGoal | _]
     ;
-        goal_is_atomic(Goal, GoalIsAtomic),
+        GoalsBefore = [],
+        ParConj = CPC ^ cpc_conjs,
         (
-            GoalIsAtomic = goal_is_atomic,
-            PartitionNum = PartitionNum0
+            ParConj = [FirstParConj | _],
+            FirstParConj = seq_conj([FirstGoalPrime | _])
+        ->
+            FirstGoal = FirstGoalPrime
         ;
-            GoalIsAtomic = goal_is_nonatomic,
-            PartitionNum = PartitionNum0 - 1
-        ),
-        find_partition(PartitionNum, Goals, MaybePartition0),
-        (
-            MaybePartition0 = yes(PartitionInConj0),
-            PartitionInConj0 = 
-                partition_in_conj(GoalsBefore0, Partition, GoalsAfter),
-            PartitionInConj = 
-                partition_in_conj([Goal | GoalsBefore0], Partition, GoalsAfter),
-            MaybePartition = yes(PartitionInConj)
-        ;
-            MaybePartition0 = no,
-            MaybePartition = MaybePartition0
+            error(this_file ++ "Candidate parallel conjunction is empty")
         )
     ).
 
-:- pred find_end_of_partition(list(hlds_goal)::in, list(hlds_goal)::out, 
-    list(hlds_goal)::out) is det.
+:- type find_first_goal_result
+    --->    did_not_find_first_goal
+    ;       found_first_goal(
+                ffg_goals_before        :: hlds_goals,
+                ffg_goal                :: hlds_goal,
+                ffg_goals_after         :: hlds_goals
+            ).
 
-find_end_of_partition([], [], []).
-find_end_of_partition([ Goal | Goals ], Partition, GoalsAfter) :-
-    goal_is_atomic(Goal, GoalIsAtomic),
+:- pred find_first_goal(pard_goal::in, list(hlds_goal)::in,
+    prog_rep_info::in, var_table::in, instmap::in,
+    find_first_goal_result::out) is det.
+
+find_first_goal(_, [], _, _, _, did_not_find_first_goal).
+find_first_goal(GoalRep, [Goal | Goals], ProcRepInfo, VarTable, !.Instmap,
+        Result) :-
     (
-        GoalIsAtomic = goal_is_atomic,
-        find_end_of_partition(Goals, Partition0, GoalsAfter),
-        Partition = [ Goal | Partition0 ]
+        pard_goal_match_hlds_goal(ProcRepInfo, VarTable, !.Instmap, GoalRep, 
+            Goal) 
+    ->
+        Result = found_first_goal([], Goal, Goals)
     ;
-        GoalIsAtomic = goal_is_nonatomic,
-        Partition = [],
-        GoalsAfter = [Goal | Goals]
+        InstmapDelta = goal_info_get_instmap_delta(Goal ^ hlds_goal_info),
+        apply_instmap_delta_sv(InstmapDelta, !Instmap),
+        find_first_goal(GoalRep, Goals, ProcRepInfo, VarTable, !.Instmap,
+            Result0),
+        (
+            Result0 = did_not_find_first_goal,
+            Result = did_not_find_first_goal
+        ;
+            Result0 = found_first_goal(GoalsBefore0, _, _),
+            Result = Result0 ^ ffg_goals_before := [Goal | GoalsBefore0]
+        )
     ).
 
+:- type par_conjunction_and_remaining_goals
+    --->    par_conjunction_and_remaining_goals(
+                pcrg_par_conjunction            :: hlds_goals,
+                pcrg_remaining_goals            :: hlds_goals
+            ).
+
 :- pred build_par_conjunction(prog_rep_info::in, var_table::in, instmap::in,
-    hlds_goals::in, candidate_par_conjunction::in, 
-    maybe_error(hlds_goals)::out) is det.
+    hlds_goals::in, candidate_par_conjunction::in,
+    maybe_error(par_conjunction_and_remaining_goals)::out) is det.
 
 build_par_conjunction(ProcRepInfo, VarTable, Instmap0, !.Goals, CPC,
         MaybeParConjunction) :-
@@ -568,16 +571,12 @@ build_par_conjunction(ProcRepInfo, VarTable, Instmap0, !.Goals, CPC,
             MaybeParConjuncts = yes(ParConjuncts),
             (
                 MaybeGoalsAfter = yes(GoalsAfter),
-                ( !.Goals = [] ->
-
-                    create_conj_from_list(ParConjuncts, parallel_conj,
-                        ParConjunction),
-                    MaybeParConjunction = ok(GoalsBefore ++ 
-                        [ParConjunction | GoalsAfter])
-                ;
-                    MaybeParConjunction = error("There where goals left-over after "
-                        ++ "constructing the parallel conjunction")
-                )
+                create_conj_from_list(ParConjuncts, parallel_conj,
+                    ParConjunction0),
+                ParConjunction = GoalsBefore ++ [ParConjunction0 | GoalsAfter],
+                MaybeParConjunction = ok(
+                    par_conjunction_and_remaining_goals(ParConjunction,
+                    !.Goals))
             ;
                 MaybeGoalsAfter = no,
                 MaybeParConjunction = error("The goals after the parallel "

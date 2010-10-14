@@ -535,7 +535,7 @@ feedback_first_line = "Mercury Compiler Feedback".
 
 :- func feedback_version = string.
 
-feedback_version = "12".
+feedback_version = "13".
 
 %-----------------------------------------------------------------------------%
 

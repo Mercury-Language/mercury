@@ -143,6 +143,35 @@
 
 :- func cs_cost_per_proc_call(cs_cost_csq, proc_cost_csq) = cs_cost_csq.
 
+%----------------------------------------------------------------------------%
+
+    % The cost of a goal.
+    %
+:- type goal_cost_csq.
+
+:- func atomic_goal_cost = goal_cost_csq.
+
+:- func zero_goal_cost = goal_cost_csq.
+
+    % call_goal_cost(NumCalls, PerCallCost) = Cost
+    %
+:- func call_goal_cost(int, float) = goal_cost_csq.
+
+:- func call_goal_cost(cs_cost_csq) = goal_cost_csq.
+
+:- func add_goal_costs(goal_cost_csq, goal_cost_csq) = goal_cost_csq.
+
+    % add_goal_costs_branch(TotalCalls, BranchA, BranchB) = Cost.
+    %
+    % Add the costs of goal accross the arms of a branch.
+    %
+:- func add_goal_costs_branch(int, goal_cost_csq, goal_cost_csq) = 
+    goal_cost_csq.
+
+:- func goal_cost_get_percall(goal_cost_csq) = float.
+
+:- func goal_cost_get_calls(goal_cost_csq) = int.
+
 %-----------------------------------------------------------------------------%
 
 :- type recursion_depth.
@@ -673,6 +702,76 @@ cs_cost_per_proc_call(cs_cost_csq(CSCalls0, CSCost0), ParentCost) =
 
 %----------------------------------------------------------------------------%
 
+:- type goal_cost_csq
+    --->    trivial_goal
+    ;       non_trivial_goal(
+                tg_avg_cost             :: cost,
+                tg_calls                :: int
+            ).
+
+atomic_goal_cost = trivial_goal.
+
+zero_goal_cost = trivial_goal.
+
+call_goal_cost(Calls, PercallCost) = non_trivial_goal(Cost, Calls) :-
+    Cost = cost_per_call(PercallCost).
+
+call_goal_cost(CSCost) = non_trivial_goal(Cost, Calls) :-
+    Calls = round_to_int(cs_cost_get_calls(CSCost)),
+    Cost = CSCost ^ cscc_csq_cost. 
+
+add_goal_costs(trivial_goal, trivial_goal) = 
+    trivial_goal.
+add_goal_costs(trivial_goal, R@non_trivial_goal(_, _)) = R.
+add_goal_costs(R@non_trivial_goal(_, _), trivial_goal) = R.
+add_goal_costs(non_trivial_goal(CostA, CallsA), non_trivial_goal(CostB, CallsB)) 
+        = non_trivial_goal(Cost, Calls) :-
+    Calls = max(CallsA, CallsB),
+    Cost = cost_total(cost_get_total(float(CallsA), CostA) + 
+        cost_get_total(float(CallsB), CostB)).
+
+add_goal_costs_branch(TotalCalls, A, B) = R :-
+    ( TotalCalls = 0 ->
+        R = zero_goal_cost
+    ;
+        (
+            A = trivial_goal,
+            (
+                B = trivial_goal,
+                R = trivial_goal
+            ;
+                B = non_trivial_goal(Cost, _),
+                R = non_trivial_goal(Cost, TotalCalls)
+            )
+        ;
+            A = non_trivial_goal(CostA, CallsA),
+            (
+                B = trivial_goal,
+                R = non_trivial_goal(CostA, TotalCalls)
+            ;
+                B = non_trivial_goal(CostB, CallsB),
+                Cost = sum_costs(float(CallsA), CostA, float(CallsB), CostB),
+                Calls = CallsA + CallsB,
+                require(unify(Calls, TotalCalls), 
+                    this_file ++ "TotalCalls \\= CallsA + CallsB"),
+                R = non_trivial_goal(Cost, Calls)
+            )
+        )
+    ).
+
+goal_cost_get_percall(trivial_goal) = 0.0.
+goal_cost_get_percall(non_trivial_goal(Cost, Calls)) =
+    ( Calls = 0 ->
+        0.0
+    ;
+        cost_get_percall(float(Calls), Cost)
+    ).
+
+goal_cost_get_calls(trivial_goal) = 0.
+goal_cost_get_calls(non_trivial_goal(_, Calls)) = Calls.
+
+%----------------------------------------------------------------------------%
+
 :- type cost
     --->    cost_per_call(float)
     ;       cost_total(float).
@@ -697,6 +796,18 @@ Cost0 / Denom = Cost :-
         Cost0 = cost_per_call(Percall),
         Cost = cost_per_call(Percall / float(Denom))
     ).
+
+:- func cost_by_weight(float, cost) = cost.
+
+cost_by_weight(Weight, cost_total(Total)) = cost_total(Total * Weight).
+cost_by_weight(Weight, cost_per_call(PC)) = cost_per_call(PC * Weight).
+
+:- func sum_costs(float, cost, float, cost) = cost.
+
+sum_costs(CallsA, CostA, CallsB, CostB) = cost_total(Sum) :-
+    Sum = CostTotalA + CostTotalB,
+    CostTotalA = cost_get_total(CallsA, CostA),
+    CostTotalB = cost_get_total(CallsB, CostB).
 
 %----------------------------------------------------------------------------%
 

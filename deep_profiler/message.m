@@ -139,11 +139,11 @@
                 %
     ;       warning_cannot_compute_cost_of_recursive_calls(string)
             
-                % Couldn't compute the time at which a call site's argument is
-                % produced or consumed.
+                % Couldn't compute the time at which a variable is produced or
+                % consumed.
                 %
                 % The parameter contains extra information about this error.
-    ;       warning_cannot_compute_arg_first_use_time(string)
+    ;       warning_cannot_compute_first_use_time(string)
 
                 % We don't yet handle clique_proc_reports with multiple proc
                 % dynamics.
@@ -281,7 +281,7 @@ message_type_to_level(warning_cannot_compute_procrep_coverage_fallback(_)) =
     message_warning.
 message_type_to_level(warning_cannot_compute_cost_of_recursive_calls(_)) = 
     message_warning.
-message_type_to_level(warning_cannot_compute_arg_first_use_time(_)) = 
+message_type_to_level(warning_cannot_compute_first_use_time(_)) = 
     message_warning.
 message_type_to_level(error_extra_proc_dynamics_in_clique_proc) = 
     message_error.
@@ -351,9 +351,9 @@ message_type_to_string(MessageType) = Cord :-
             Template = "Cannot compute cost of recursive calls: %s"
         ;
             MessageType = 
-                warning_cannot_compute_arg_first_use_time(ErrorStr),
+                warning_cannot_compute_first_use_time(ErrorStr),
             Template = "Cannot compute the production or consumption time of a"
-                ++ " call site's argument: %s"
+                ++ " variable: %s"
         ),
         string.format(Template, [s(ErrorStr)], String)
     ),

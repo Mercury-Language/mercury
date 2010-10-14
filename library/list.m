@@ -1097,6 +1097,31 @@
 :- mode list.map2_foldl(pred(in, out, out, di, uo) is cc_multi, in, out, out,
     di, uo) is cc_multi.
 
+    % Same as list.map2_foldl, but with three mapped outputs.
+    %
+:- pred list.map3_foldl(pred(L, M, N, O, A, A), list(L), list(M), list(N),
+    list(O), A, A).
+:- mode list.map3_foldl(pred(in, out, out, out, in, out) is det, in, out, out,
+    out, in, out) is det.
+:- mode list.map3_foldl(pred(in, out, out, out, mdi, muo) is det, in, out, out,
+    out, mdi, muo) is det.
+:- mode list.map3_foldl(pred(in, out, out, out, di, uo) is det, in, out, out,
+    out, di, uo) is det.
+:- mode list.map3_foldl(pred(in, out, out, out, in, out) is semidet, in, out, 
+    out, out, in, out) is semidet.
+:- mode list.map3_foldl(pred(in, out, out, out, mdi, muo) is semidet, in, out,
+    out, out, mdi, muo) is semidet.
+:- mode list.map3_foldl(pred(in, out, out, out, di, uo) is semidet, in, out, 
+    out, out, di, uo) is semidet.
+:- mode list.map3_foldl(pred(in, out, out, out, in, out) is nondet, in, out, 
+    out, out, in, out) is nondet.
+:- mode list.map3_foldl(pred(in, out, out, out, mdi, muo) is nondet, in, out,
+    out, out, mdi, muo) is nondet.
+:- mode list.map3_foldl(pred(in, out, out, out, in, out) is cc_multi, in, out, 
+    out, out, in, out) is cc_multi.
+:- mode list.map3_foldl(pred(in, out, out, out, di, uo) is cc_multi, in, out, 
+    out, out, di, uo) is cc_multi.
+
     % Same as list.map_foldl, but with two accumulators.
     %
 :- pred list.map_foldl2(pred(L, M, A, A, B, B), list(L), list(M), A, A, B, B).
@@ -2415,6 +2440,11 @@ list.map2_foldl(_, [], [], [], !A).
 list.map2_foldl(P, [H0 | T0], [H1 | T1], [H2 | T2], !A) :-
     P(H0, H1, H2, !A),
     list.map2_foldl(P, T0, T1, T2, !A).
+
+list.map3_foldl(_, [], [], [], [], !A).
+list.map3_foldl(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], !A) :-
+    P(H0, H1, H2, H3, !A),
+    list.map3_foldl(P, T0, T1, T2, T3, !A).
 
 list.map_foldl2(_, [], [], !A, !B).
 list.map_foldl2(P, [H0 | T0], [H | T], !A, !B) :-
