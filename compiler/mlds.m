@@ -1898,7 +1898,24 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
             TypeArgs = [RefType]
         ->
             MLDSRefType = mercury_type_to_mlds_type(ModuleInfo, RefType),
-            MLDSType = mlds_ptr_type(MLDSRefType)
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.get_target(Globals, Target),
+            (
+                Target = target_csharp,
+                % `mlds_ptr_type' confuses the C# backend because it is also
+                % used for `out' parameters. `store_at_ref_type' is not
+                % applicable on that backend anyway.
+                MLDSType = MLDSRefType
+            ;
+                ( Target = target_c
+                ; Target = target_il
+                ; Target = target_java
+                ; Target = target_asm
+                ; Target = target_x86_64
+                ; Target = target_erlang
+                ),
+                MLDSType = mlds_ptr_type(MLDSRefType)
+            )
         ;
             module_info_get_type_table(ModuleInfo, TypeTable),
             ( search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) ->

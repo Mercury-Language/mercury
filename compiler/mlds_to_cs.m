@@ -11,6 +11,19 @@
 %
 % Convert MLDS to C# code.
 %
+% About multiple outputs: C# supports pass-by-reference so the first thought is
+% to just let the MLDS code generator use `out' parameters to handle multiple
+% outputs. But to reference a method, we have to assign it to a delegate with a
+% matching signature, which needs to be declared.  Although we can parameterise
+% the types, we cannot parameterise the argument modes (in/out), so we would
+% need 2^n delegates to cover all methods of arity n.
+%
+% Instead, we generate code as if C# supported multiple return values.
+% The first return value is returned as usual.  The second and later return
+% values are assigned to `out' parameters, which we always place after any
+% input arguments.  That way we don't need to declare delegates with all
+% possible permuations of in/out parameters.
+%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.mlds_to_cs.
@@ -128,6 +141,20 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
         ScalarCellGroupMap, VectorCellGroupMap, GlobalDefns),
     Defns = GlobalDefns ++ Defns0,
 
+    % Find all methods which would have their addresses taken to be used as a
+    % function pointer.
+    some [!CodeAddrs] (
+        !:CodeAddrs = code_addr_map(0, map.init),
+        find_pointer_addressed_methods(Defns, !CodeAddrs),
+
+        map.values(ScalarCellGroupMap, ScalarCellGroups),
+        ScalarCellRows = list.map(func(G) = G ^ mscg_rows, ScalarCellGroups),
+        list.foldl(find_pointer_addressed_methods_in_scalars,
+            ScalarCellRows, !CodeAddrs),
+
+        !.CodeAddrs = code_addr_map(_, CodeAddrs)
+    ),
+
     % Get the foreign code for C#
     % XXX We should not ignore _RevImports.
     ForeignCode = mlds_get_csharp_foreign_code(AllForeignCode),
@@ -138,7 +165,7 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
 
     % Output transformed MLDS as C# source.
     module_info_get_globals(ModuleInfo, Globals),
-    Info = init_csharp_out_info(ModuleInfo),
+    Info = init_csharp_out_info(ModuleInfo, CodeAddrs),
     output_src_start(Globals, Info, Indent, ModuleName, Imports, ForeignDecls,
         Defns, !IO),
     io.write_list(ForeignBodyCode, "\n", output_csharp_body_code(Info, Indent),
@@ -162,6 +189,9 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
 
     io.write_string("\n// Vector common data\n", !IO),
     output_vector_common_data(Info, Indent + 1, VectorCellGroupMap, !IO),
+
+    io.write_string("\n// Method pointers\n", !IO),
+    output_method_ptr_constants(Info, Indent + 1, CodeAddrs, !IO),
 
     io.write_string("\n// NonDataDefns\n", !IO),
     output_defns(Info, Indent + 1, none, NonDataDefns, !IO),
@@ -259,12 +289,14 @@ mlds_get_csharp_foreign_code(AllForeignCode) = ForeignCode :-
 output_exports(Info, Indent, Exports, !IO) :-
     list.foldl(output_export(Info, Indent), Exports, !IO).
 
+    % XXX it would be better to present exports with the original argument order
 :- pred output_export(csharp_out_info::in, indent::in, mlds_pragma_export::in,
     io::di, io::uo) is det.
 
-output_export(Info0, Indent, Export, !IO) :-
-    Export = ml_pragma_export(Lang, ExportName, _, MLDS_Signature,
+output_export(Info, Indent, Export, !IO) :-
+    Export = ml_pragma_export(Lang, ExportName, MLDS_Name, MLDS_Signature,
         _UnivQTVars, _),
+    MLDS_Signature = mlds_func_params(Parameters, ReturnTypes),
     expect(unify(Lang, lang_csharp), this_file,
         "foreign_export for language other than C#."),
 
@@ -275,31 +307,18 @@ output_export(Info0, Indent, Export, !IO) :-
     io.nl(!IO),
     indent_line(Indent, !IO),
 
-    MLDS_Signature = mlds_func_params(_Parameters, ReturnTypes),
-    Info = Info0,
     (
         ReturnTypes = [],
-        io.write_string("void", !IO)
+        io.write_string("void ", !IO),
+        OutParams = []
     ;
-        ReturnTypes = [RetType],
-        output_type(Info, RetType, !IO)
-    ;
-        ReturnTypes = [_, _ | _],
-        % For multiple outputs, we return an array of objects.
-        % XXX C# has output parameters
-        io.write_string("object []", !IO)
+        ReturnTypes = [RetType | OutParamTypes],
+        output_type(Info, RetType, !IO),
+        io.write_string(" ", !IO),
+        list.map_foldl(make_out_param, OutParamTypes, OutParams, 2, _)
     ),
-    io.write_string(" " ++ ExportName, !IO),
-    output_export_no_ref_out(Info, Indent, Export, !IO).
-
-:- pred output_export_no_ref_out(csharp_out_info::in, indent::in,
-    mlds_pragma_export::in, io::di, io::uo) is det.
-
-output_export_no_ref_out(Info, Indent, Export, !IO) :-
-    Export = ml_pragma_export(_Lang, _ExportName, MLDS_Name, MLDS_Signature,
-        _UnivQTVars, _MLDS_Context),
-    MLDS_Signature = mlds_func_params(Parameters, ReturnTypes),
-    output_params(Info, Indent + 1, Parameters, !IO),
+    io.write_string(ExportName, !IO),
+    output_params(Info, Indent + 1, Parameters ++ OutParams, !IO),
     io.nl(!IO),
     indent_line(Indent, !IO),
     io.write_string("{\n", !IO),
@@ -307,17 +326,14 @@ output_export_no_ref_out(Info, Indent, Export, !IO) :-
     (
         ReturnTypes = []
     ;
-        ReturnTypes = [RetType],
+        ReturnTypes = [RetTypeB | _],
         % The cast is required when the exported method uses generics but the
         % underlying method does not use generics (i.e. returns Object).
         io.write_string("return (", !IO),
-        output_type(Info, RetType, !IO),
+        output_type(Info, RetTypeB, !IO),
         io.write_string(") ", !IO)
-    ;
-        ReturnTypes = [_, _ | _],
-        io.write_string("return ", !IO)
     ),
-    write_export_call(MLDS_Name, Parameters, !IO),
+    write_export_call(MLDS_Name, Parameters ++ OutParams, !IO),
     indent_line(Indent, !IO),
     io.write_string("}\n", !IO).
 
@@ -333,7 +349,12 @@ write_export_call(MLDS_Name, Parameters, !IO) :-
 :- pred write_argument_name(mlds_argument::in, io::di, io::uo) is det.
 
 write_argument_name(Arg, !IO) :-
-    Arg = mlds_argument(Name, _, _),
+    Arg = mlds_argument(Name, Type, _),
+    ( Type = mlds_ptr_type(_) ->
+        io.write_string("out ", !IO)
+    ;
+        true
+    ),
     output_name(Name, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -381,6 +402,270 @@ output_exported_enum_constant(Info, Indent, MLDS_Type, ExportedConstant,
     io.write_string(Name, !IO),
     io.write_string(" = ", !IO),
     output_initializer_body(Info, Initializer, no, !IO),
+    io.write_string(";\n", !IO).
+
+%-----------------------------------------------------------------------------%
+%
+% Code to search MLDS for all uses of function pointers.
+%
+
+:- type code_addr_map
+    --->    code_addr_map(
+                ca_counter  :: int,
+                ca_map      :: map(mlds_code_addr, string)
+            ).
+
+:- pred find_pointer_addressed_methods(list(mlds_defn)::in,
+    code_addr_map::in, code_addr_map::out) is det.
+
+find_pointer_addressed_methods([], !CodeAddrs).
+find_pointer_addressed_methods([Defn | Defns], !CodeAddrs) :-
+    Defn  = mlds_defn(_Name, _Context, _Flags, Body),
+    method_ptrs_in_entity_defn(Body, !CodeAddrs),
+    find_pointer_addressed_methods(Defns, !CodeAddrs).
+
+:- pred find_pointer_addressed_methods_in_scalars(cord(mlds_initializer)::in,
+    code_addr_map::in, code_addr_map::out) is det.
+
+find_pointer_addressed_methods_in_scalars(Cord, !CodeAddrs) :-
+    cord.foldl_pred(method_ptrs_in_initializer, Cord, !CodeAddrs).
+
+:- pred method_ptrs_in_entity_defn(mlds_entity_defn::in,
+    code_addr_map::in, code_addr_map::out) is det.
+
+method_ptrs_in_entity_defn(mlds_function(_MaybeID, _Params, Body,
+        _Attributes, _EnvVars), !CodeAddrs) :-
+    (
+        Body = body_defined_here(Statement),
+        method_ptrs_in_statement(Statement, !CodeAddrs)
+    ;
+        Body = body_external
+    ).
+method_ptrs_in_entity_defn(mlds_data(_Type, Initializer, _GCStatement),
+        !CodeAddrs) :-
+    method_ptrs_in_initializer(Initializer, !CodeAddrs).
+method_ptrs_in_entity_defn(mlds_class(ClassDefn), !CodeAddrs) :-
+    ClassDefn = mlds_class_defn(_, _, _, _, _, Ctors, Members),
+    method_ptrs_in_defns(Ctors, !CodeAddrs),
+    method_ptrs_in_defns(Members, !CodeAddrs).
+
+:- pred method_ptrs_in_statements(list(statement)::in,
+    code_addr_map::in, code_addr_map::out) is det.
+
+method_ptrs_in_statements([], !CodeAddrs).
+method_ptrs_in_statements([Statement | Statements], !CodeAddrs) :-
+    method_ptrs_in_statement(Statement, !CodeAddrs),
+    method_ptrs_in_statements(Statements, !CodeAddrs).
+
+:- pred method_ptrs_in_statement(statement::in,
+    code_addr_map::in, code_addr_map::out) is det.
+
+method_ptrs_in_statement(statement(Stmt, _Context), !CodeAddrs) :-
+    method_ptrs_in_stmt(Stmt, !CodeAddrs).
+
+:- pred method_ptrs_in_stmt(mlds_stmt::in,
+    code_addr_map::in, code_addr_map::out) is det.
+
+method_ptrs_in_stmt(ml_stmt_block(Defns, Statements), !CodeAddrs) :-
+    method_ptrs_in_defns(Defns, !CodeAddrs),
+    method_ptrs_in_statements(Statements, !CodeAddrs).
+method_ptrs_in_stmt(ml_stmt_while(_Kind, Rval, Statement), !CodeAddrs) :-
+    method_ptrs_in_rval(Rval, !CodeAddrs),
+    method_ptrs_in_statement(Statement, !CodeAddrs).
+method_ptrs_in_stmt(ml_stmt_if_then_else(Rval, StatementThen,
+        MaybeStatementElse), !CodeAddrs) :-
+    method_ptrs_in_rval(Rval, !CodeAddrs),
+    method_ptrs_in_statement(StatementThen, !CodeAddrs),
+    (
+        MaybeStatementElse = yes(StatementElse),
+        method_ptrs_in_statement(StatementElse, !CodeAddrs)
+    ;
+        MaybeStatementElse = no
+    ).
+method_ptrs_in_stmt(ml_stmt_switch(_Type, Rval, _Range, Cases, Default),
+        !CodeAddrs) :-
+    method_ptrs_in_rval(Rval, !CodeAddrs),
+    method_ptrs_in_switch_cases(Cases, !CodeAddrs),
+    method_ptrs_in_switch_default(Default, !CodeAddrs).
+method_ptrs_in_stmt(ml_stmt_label(_), _, _) :-
+    unexpected(this_file,
+        "method_ptrs_in_stmt: labels not supported in Java.").
+method_ptrs_in_stmt(ml_stmt_goto(goto_break), !CodeAddrs).
+method_ptrs_in_stmt(ml_stmt_goto(goto_continue), !CodeAddrs).
+method_ptrs_in_stmt(ml_stmt_goto(goto_label(_)), _, _) :-
+    unexpected(this_file,
+        "method_ptrs_in_stmt: goto label not supported in Java.").
+method_ptrs_in_stmt(ml_stmt_computed_goto(_, _), _, _) :-
+    unexpected(this_file,
+        "method_ptrs_in_stmt: computed gotos not supported in Java.").
+method_ptrs_in_stmt(ml_stmt_try_commit(_Lval, StatementGoal,
+        StatementHandler), !CodeAddrs) :-
+    % We don't check "_Lval" here as we expect it to be a local variable
+    % of type mlds_commit_type.
+    method_ptrs_in_statement(StatementGoal, !CodeAddrs),
+    method_ptrs_in_statement(StatementHandler, !CodeAddrs).
+method_ptrs_in_stmt(ml_stmt_do_commit(_Rval), !CodeAddrs).
+    % We don't check "_Rval" here as we expect it to be a local variable
+    % of type mlds_commit_type.
+method_ptrs_in_stmt(ml_stmt_return(Rvals), !CodeAddrs) :-
+    method_ptrs_in_rvals(Rvals, !CodeAddrs).
+method_ptrs_in_stmt(CallStmt, !CodeAddrs) :-
+    CallStmt = ml_stmt_call(_FuncSig, _Rval, _MaybeThis, Rvals, _ReturnVars,
+        _IsTailCall),
+    % We don't check "_Rval" - it may be a code address but is a
+    % standard call rather than a function pointer use.
+    method_ptrs_in_rvals(Rvals, !CodeAddrs).
+method_ptrs_in_stmt(ml_stmt_atomic(AtomicStatement), !CodeAddrs) :-
+    (
+        AtomicStatement = new_object(Lval, _MaybeTag, _Bool,
+            _Type, _MemRval, _MaybeCtorName, Rvals, _Types, _MayUseAtomic)
+    ->
+        % We don't need to check "_MemRval" since this just stores
+        % the amount of memory needed for the new object.
+        method_ptrs_in_lval(Lval, !CodeAddrs),
+        method_ptrs_in_rvals(Rvals, !CodeAddrs)
+    ; AtomicStatement = assign(Lval, Rval) ->
+        method_ptrs_in_lval(Lval, !CodeAddrs),
+        method_ptrs_in_rval(Rval, !CodeAddrs)
+    ;
+        true
+    ).
+
+:- pred method_ptrs_in_switch_default(mlds_switch_default::in,
+    code_addr_map::in, code_addr_map::out) is det.
+
+method_ptrs_in_switch_default(default_is_unreachable, !CodeAddrs).
+method_ptrs_in_switch_default(default_do_nothing, !CodeAddrs).
+method_ptrs_in_switch_default(default_case(Statement), !CodeAddrs) :-
+    method_ptrs_in_statement(Statement, !CodeAddrs).
+
+:- pred method_ptrs_in_switch_cases(list(mlds_switch_case)::in,
+    code_addr_map::in, code_addr_map::out) is det.
+
+method_ptrs_in_switch_cases([], !CodeAddrs).
+method_ptrs_in_switch_cases([Case | Cases], !CodeAddrs) :-
+    Case = mlds_switch_case(_FirstCond, _LaterConds, Statement),
+    method_ptrs_in_statement(Statement, !CodeAddrs),
+    method_ptrs_in_switch_cases(Cases, !CodeAddrs).
+
+:- pred method_ptrs_in_defns(list(mlds_defn)::in,
+    code_addr_map::in, code_addr_map::out) is det.
+
+method_ptrs_in_defns([], !CodeAddrs).
+method_ptrs_in_defns([Defn | Defns], !CodeAddrs) :-
+    method_ptrs_in_defn(Defn, !CodeAddrs),
+    method_ptrs_in_defns(Defns, !CodeAddrs).
+
+:- pred method_ptrs_in_defn(mlds_defn::in,
+    code_addr_map::in, code_addr_map::out) is det.
+
+method_ptrs_in_defn(mlds_defn(_Name, _Context, _Flags, Body), !CodeAddrs) :-
+    method_ptrs_in_entity_defn(Body, !CodeAddrs).
+
+:- pred method_ptrs_in_initializer(mlds_initializer::in,
+    code_addr_map::in, code_addr_map::out) is det.
+
+method_ptrs_in_initializer(no_initializer, !CodeAddrs).
+method_ptrs_in_initializer(init_struct(_Type, Initializers),
+        !CodeAddrs) :-
+    method_ptrs_in_initializers(Initializers, !CodeAddrs).
+method_ptrs_in_initializer(init_array(Initializers), !CodeAddrs) :-
+    method_ptrs_in_initializers(Initializers, !CodeAddrs).
+method_ptrs_in_initializer(init_obj(Rval), !CodeAddrs) :-
+    method_ptrs_in_rval(Rval, !CodeAddrs).
+
+:- pred method_ptrs_in_initializers(list(mlds_initializer)::in,
+    code_addr_map::in, code_addr_map::out) is det.
+
+method_ptrs_in_initializers([], !CodeAddrs).
+method_ptrs_in_initializers([Initializer | Initializers], !CodeAddrs) :-
+    method_ptrs_in_initializer(Initializer, !CodeAddrs),
+    method_ptrs_in_initializers(Initializers, !CodeAddrs).
+
+:- pred method_ptrs_in_rvals(list(mlds_rval)::in,
+    code_addr_map::in, code_addr_map::out) is det.
+
+method_ptrs_in_rvals([], !CodeAddrs).
+method_ptrs_in_rvals([Rval | Rvals], !CodeAddrs) :-
+    method_ptrs_in_rval(Rval, !CodeAddrs),
+    method_ptrs_in_rvals(Rvals, !CodeAddrs).
+
+:- pred method_ptrs_in_rval(mlds_rval::in,
+    code_addr_map::in, code_addr_map::out) is det.
+
+method_ptrs_in_rval(ml_lval(Lval), !CodeAddrs) :-
+    method_ptrs_in_lval(Lval, !CodeAddrs).
+method_ptrs_in_rval(ml_mkword(_Tag, Rval), !CodeAddrs) :-
+    method_ptrs_in_rval(Rval, !CodeAddrs).
+method_ptrs_in_rval(ml_const(RvalConst), !CodeAddrs) :-
+    (
+        RvalConst = mlconst_code_addr(CodeAddr),
+        !.CodeAddrs = code_addr_map(Counter, Map0),
+        ( map.contains(Map0, CodeAddr) ->
+            true
+        ;
+            Name = "MR_method_ptr_" ++ string.from_int(Counter),
+            map.det_insert(Map0, CodeAddr, Name, Map),
+            !:CodeAddrs = code_addr_map(Counter + 1, Map)
+        )
+    ;
+        ( RvalConst = mlconst_true
+        ; RvalConst = mlconst_false
+        ; RvalConst = mlconst_int(_)
+        ; RvalConst = mlconst_char(_)
+        ; RvalConst = mlconst_enum(_, _)
+        ; RvalConst = mlconst_foreign(_, _, _)
+        ; RvalConst = mlconst_float(_)
+        ; RvalConst = mlconst_string(_)
+        ; RvalConst = mlconst_multi_string(_)
+        ; RvalConst = mlconst_named_const(_)
+        ; RvalConst = mlconst_data_addr(_)
+        ; RvalConst = mlconst_null(_)
+        )
+    ).
+method_ptrs_in_rval(ml_unop(_UnaryOp, Rval), !CodeAddrs) :-
+    method_ptrs_in_rval(Rval, !CodeAddrs).
+method_ptrs_in_rval(ml_binop(_BinaryOp, RvalA, RvalB), !CodeAddrs) :-
+    method_ptrs_in_rval(RvalA, !CodeAddrs),
+    method_ptrs_in_rval(RvalB, !CodeAddrs).
+method_ptrs_in_rval(ml_scalar_common(_), !CodeAddrs).
+method_ptrs_in_rval(ml_vector_common_row(_, RowRval), !CodeAddrs) :-
+    method_ptrs_in_rval(RowRval, !CodeAddrs).
+method_ptrs_in_rval(ml_mem_addr(_Address), !CodeAddrs).
+method_ptrs_in_rval(ml_self(_Type), !CodeAddrs).
+
+:- pred method_ptrs_in_lval(mlds_lval::in,
+    code_addr_map::in, code_addr_map::out) is det.
+
+    % Here, "_Rval" is the address of a variable so we don't check it.
+method_ptrs_in_lval(ml_mem_ref(_Rval, _Type), !CodeAddrs).
+    % Here, "_Rval" is a pointer to a cell on the heap, and doesn't need
+    % to be considered.
+method_ptrs_in_lval(ml_field(_MaybeTag, _Rval, _FieldId, _FieldType, _PtrType),
+        !CodeAddrs).
+method_ptrs_in_lval(ml_var(_Variable, _Type), !CodeAddrs).
+method_ptrs_in_lval(ml_global_var_ref(_), !CodeAddrs).
+
+:- pred output_method_ptr_constants(csharp_out_info::in, indent::in,
+    map(mlds_code_addr, string)::in, io::di, io::uo) is det.
+
+output_method_ptr_constants(Info, Indent, CodeAddrs, !IO) :-
+    map.foldl(output_method_ptr_constant(Info, Indent), CodeAddrs, !IO).
+
+:- pred output_method_ptr_constant(csharp_out_info::in, indent::in,
+    mlds_code_addr::in, string::in, io::di, io::uo) is det.
+
+output_method_ptr_constant(Info, Indent, CodeAddr, Name, !IO) :-
+    ( CodeAddr = code_addr_proc(_, Sig)
+    ; CodeAddr = code_addr_internal(_, _, Sig)
+    ),
+    Sig = mlds_func_signature(ArgTypes, RetTypes),
+    TypeString = method_ptr_type_to_string(Info, ArgTypes, RetTypes),
+    indent_line(Indent, !IO),
+    io.format("private static readonly %s %s = ",
+        [s(TypeString), s(Name)], !IO),
+    IsCall = no,
+    mlds_output_code_addr(Info, CodeAddr, IsCall, !IO),
     io.write_string(";\n", !IO).
 
 %-----------------------------------------------------------------------------%
@@ -1518,29 +1803,36 @@ output_func_decl(Info, Indent, Name, OutputAux, Signature, !IO) :-
         OutputAux = cname(CtorName),
         Name = entity_export("<constructor>")
     ->
-        output_name(CtorName, !IO)
+        output_name(CtorName, !IO),
+        OutParams = []
     ;
-        output_return_types(Info, RetTypes, !IO),
+        output_return_types(Info, RetTypes, RestRetTypes, !IO),
         io.write_char(' ', !IO),
-        output_name(Name, !IO)
+        output_name(Name, !IO),
+        list.map_foldl(make_out_param, RestRetTypes, OutParams, 2, _)
     ),
-    output_params(Info, Indent, Parameters, !IO).
+    output_params(Info, Indent, Parameters ++ OutParams, !IO).
+
+:- pred make_out_param(mlds_type::in, mlds_argument::out, int::in, int::out)
+    is det.
+
+make_out_param(Type, Argument, Num, Num + 1) :-
+    Argument = mlds_argument(Name, mlds_ptr_type(Type), gc_no_stmt),
+    Name = entity_data(mlds_data_var(mlds_var_name("out_param", yes(Num)))).
 
 :- pred output_return_types(csharp_out_info::in, mlds_return_types::in,
-    io::di, io::uo) is det.
+    list(mlds_type)::out, io::di, io::uo) is det.
 
-output_return_types(Info, RetTypes, !IO) :-
+output_return_types(Info, RetTypes, OutParams, !IO) :-
     (
         RetTypes = [],
-        io.write_string("void", !IO)
+        io.write_string("void", !IO),
+        OutParams = []
     ;
-        RetTypes = [RetType],
+        RetTypes = [RetType | OutParams],
+        % The first return value is returned directly.  Any further return
+        % values are returned via out parameters.
         output_type(Info, RetType, !IO)
-    ;
-        RetTypes = [_, _ | _],
-        % For multiple outputs, we return an array of objects.
-        % XXX C# has output parameters
-        io.write_string("object []", !IO)
     ).
 
 :- pred output_params(csharp_out_info::in, indent::in, mlds_arguments::in,
@@ -1563,6 +1855,11 @@ output_params(Info, Indent, Parameters, !IO) :-
 output_param(Info, Indent, Arg, !IO) :-
     Arg = mlds_argument(Name, Type, _GCStatement),
     indent_line(Indent, !IO),
+    ( Type = mlds_ptr_type(_) ->
+        io.write_string("out ", !IO)
+    ;
+        true
+    ),
     output_type(Info, Type, !IO),
     io.write_char(' ', !IO),
     output_name(Name, !IO).
@@ -2327,12 +2624,6 @@ maybe_output_comment(Info, Comment, !IO) :-
                                 % normally and execution can continue
                                 % with the following statement.
 
-:- type code_addr_wrapper
-    --->    code_addr_wrapper(
-                caw_class           :: string,
-                caw_ptr_num         :: maybe(int)
-            ).
-
 :- type func_info
     --->    func_info(
                 func_info_params    :: mlds_func_params
@@ -2510,104 +2801,35 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         io.write_string("{\n", !IO),
         indent_line(Info, Context, Indent + 1, !IO),
         (
-            Results = []
+            Results = [],
+            OutArgs = []
         ;
-            Results = [Lval],
+            Results = [Lval | Lvals],
             output_lval(Info, Lval, !IO),
-            io.write_string(" = ", !IO)
-        ;
-            Results = [_, _ | _],
-            % for multiple return values,
-            % we generate the following code:
-            %   { object [] result = <func>(<args>);
-            %     <output1> = (<type1>) result[0];
-            %     <output2> = (<type2>) result[1];
-            %     ...
-            %   }
-            %
-            io.write_string("object [] result = ", !IO)
+            io.write_string(" = ", !IO),
+            OutArgs = list.map(func(X) = ml_mem_addr(X), Lvals)
         ),
         ( FuncRval = ml_const(mlconst_code_addr(_)) ->
             % This is a standard method call.
-            (
-                MaybeObject = yes(Object),
-                output_bracketed_rval(Info, Object, !IO),
-                io.write_string(".", !IO)
-            ;
-                MaybeObject = no
-            ),
-            % This is a standard function call.
-            output_call_rval(Info, FuncRval, !IO),
-            io.write_string("(", !IO),
-            io.write_list(CallArgs, ", ", output_rval(Info), !IO),
-            io.write_string(")", !IO)
+            CloseBracket = ""
         ;
             % This is a call using a method pointer.
-            %
-            % Here we do downcasting, as a call will always return
-            % something of type object
-            %
-            % XXX This is a hack, I can't see any way to do this downcasting
-            % nicely, as it needs to effectively be wrapped around the method
-            % call itself, so it acts before this predicate's solution to
-            % multiple return values, see above.
-
-            (
-                RetTypes = []
-            ;
-                RetTypes = [RetType],
-                boxed_type_to_string(Info, RetType, RetTypeString),
-                io.format("((%s) ", [s(RetTypeString)], !IO)
-            ;
-                RetTypes = [_, _ | _],
-                io.write_string("((object[]) ", !IO)
-            ),
-            (
-                MaybeObject = yes(Object),
-                output_bracketed_rval(Info, Object, !IO),
-                io.write_string(".", !IO)
-            ;
-                MaybeObject = no
-            ),
-
-%             list.length(CallArgs, Arity),
-%             list.length(RetTypes, NumRetTypes),
-            io.format("((%s) ", [s(method_ptr_type_to_string(Info, ArgTypes, RetTypes))], !IO),
-            output_bracketed_rval(Info, FuncRval, !IO),
-            io.write_string(")(", !IO),
-            output_boxed_args(Info, CallArgs, ArgTypes, !IO),
-            % Closes brackets, and calls unbox methods for downcasting.
-            % XXX This is a hack, see the above comment.
-            io.write_string(")", !IO),
-            (
-                RetTypes = []
-            ;
-                RetTypes = [_RetType2],
-                io.write_string(")", !IO)
-            ;
-                RetTypes = [_, _ | _],
-                io.write_string(")", !IO)
-            )
+            TypeString = method_ptr_type_to_string(Info, ArgTypes, RetTypes),
+            io.format("((%s) ", [s(TypeString)], !IO),
+            CloseBracket = ")"
         ),
-        io.write_string(";\n", !IO),
-
-        ( Results = [_, _ | _] ->
-            % Copy the results from the "result" array into the Result
-            % lvals (unboxing them as we go).
-            output_assign_results(Info, Results, RetTypes, 0, Indent + 1,
-                Context, !IO)
+        (
+            MaybeObject = yes(Object),
+            output_bracketed_rval(Info, Object, !IO),
+            io.write_string(".", !IO)
         ;
-            true
+            MaybeObject = no
         ),
-        % XXX Is this needed? If present, it causes compiler errors for a
-        %     couple of files in the benchmarks directory.  -mjwybrow
-        %
-        % ( IsTailCall = tail_call, Results = [] ->
-        %   indent_line(Context, Indent + 1, !IO),
-        %   io.write_string("return;\n", !IO)
-        % ;
-        %   true
-        % ),
+        output_call_rval(Info, FuncRval, !IO),
+        io.write_string(CloseBracket, !IO),
+        io.write_string("(", !IO),
+        io.write_list(CallArgs ++ OutArgs, ", ", output_rval(Info), !IO),
+        io.write_string(");\n", !IO),
 
         % This is to tell the C# compiler that a call to an erroneous procedure
         % will not fall through. --pw
@@ -2631,27 +2853,15 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
             indent_line(Indent, !IO),
             io.write_string("return;\n", !IO)
         ;
-            Results = [Rval],
+            Results = [Rval | Rvals],
+            % The first return value is returned directly.
+            % Subsequent return values are assigned to out parameters.
+            list.foldl2(output_assign_out_params(Info, Indent),
+                Rvals, 2, _, !IO),
             indent_line(Indent, !IO),
             io.write_string("return ", !IO),
             output_rval(Info, Rval, !IO),
             io.write_string(";\n", !IO)
-        ;
-            Results = [_, _ | _],
-            FuncInfo = func_info(Params),
-            Params = mlds_func_params(_Args, ReturnTypes),
-            TypesAndResults = assoc_list.from_corresponding_lists(
-                ReturnTypes, Results),
-            io.write_string("return new object[] {\n", !IO),
-            indent_line(Indent + 1, !IO),
-            Separator = ",\n" ++ duplicate_char(' ', (Indent + 1) * 2),
-            io.write_list(TypesAndResults, Separator,
-                (pred((Type - Result)::in, !.IO::di, !:IO::uo) is det :-
-                    output_boxed_rval(Info, Type, Result, !IO)),
-                !IO),
-            io.write_string("\n", !IO),
-            indent_line(Indent, !IO),
-            io.write_string("};\n", !IO)
         ),
         ExitMethods = set.make_singleton_set(can_return)
     ;
@@ -2721,71 +2931,17 @@ while_exit_methods(Cond, BlockExitMethods) = ExitMethods :-
 
 %-----------------------------------------------------------------------------%
 %
-% Extra code for handling function calls/returns.
-%
-
-:- pred output_boxed_args(csharp_out_info::in, list(mlds_rval)::in,
-    list(mlds_type)::in, io::di, io::uo) is det.
-
-output_boxed_args(_, [], [], !IO).
-output_boxed_args(_, [_ | _], [], !IO) :-
-    unexpected(this_file, "output_boxed_args: length mismatch.").
-output_boxed_args(_, [], [_ | _], !IO) :-
-    unexpected(this_file, "output_boxed_args: length mismatch.").
-output_boxed_args(Info, [CallArg | CallArgs], [CallArgType | CallArgTypes],
-        !IO) :-
-    output_boxed_rval(Info, CallArgType, CallArg, !IO),
-    (
-        CallArgs = []
-    ;
-        CallArgs = [_ | _],
-        io.write_string(", ", !IO),
-        output_boxed_args(Info, CallArgs, CallArgTypes, !IO)
-    ).
-
-%-----------------------------------------------------------------------------%
-%
 % Code for handling multiple return values.
 %
 
-% When returning multiple values,
-% we generate the following code:
-%   { object [] result = <func>(<args>);
-%     <output1> = (<type1>) result[0];
-%     <output2> = (<type2>) result[1];
-%     ...
-%   }
-%
+:- pred output_assign_out_params(csharp_out_info::in, indent::in,
+    mlds_rval::in, int::in, int::out, io::di, io::uo) is det.
 
-    % This procedure generates the assignments to the outputs.
-    %
-:- pred output_assign_results(csharp_out_info::in, list(mlds_lval)::in,
-    list(mlds_type)::in, int::in, indent::in, mlds_context::in,
-    io::di, io::uo) is det.
-
-output_assign_results(_, [], [], _, _, _, !IO).
-output_assign_results(Info, [Lval | Lvals], [Type | Types], ResultIndex,
-        Indent, Context, !IO) :-
-    indent_line(Info, Context, Indent, !IO),
-    output_lval(Info, Lval, !IO),
-    io.write_string(" = ", !IO),
-    output_unboxed_result(Info, Type, ResultIndex, !IO),
-    io.write_string(";\n", !IO),
-    output_assign_results(Info, Lvals, Types, ResultIndex + 1,
-        Indent, Context, !IO).
-output_assign_results(_, [_ | _], [], _, _, _, _, _) :-
-    unexpected(this_file, "output_assign_results: list length mismatch.").
-output_assign_results(_, [], [_ | _], _, _, _, _, _) :-
-    unexpected(this_file, "output_assign_results: list length mismatch.").
-
-:- pred output_unboxed_result(csharp_out_info::in, mlds_type::in, int::in,
-    io::di, io::uo) is det.
-
-output_unboxed_result(Info, Type, ResultIndex, !IO) :-
-    io.write_string("(", !IO),
-    output_type(Info, Type, !IO),
-    io.write_string(") ", !IO),
-    io.format("result[%d]", [i(ResultIndex)], !IO).
+output_assign_out_params(Info, Indent, Rval, Num, Num + 1, !IO) :-
+    indent_line(Indent, !IO),
+    io.format("out_param_%d = ", [i(Num)], !IO),
+    output_rval(Info, Rval, !IO),
+    io.write_string(";\n", !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -3203,8 +3359,9 @@ output_rval(Info, Rval, !IO) :-
         Rval = ml_binop(Op, RvalA, RvalB),
         output_binop(Info, Op, RvalA, RvalB, !IO)
     ;
-        Rval = ml_mem_addr(_Lval),
-        unexpected(this_file, "output_rval: mem_addr(_) not supported")
+        Rval = ml_mem_addr(Lval),
+        io.write_string("out ", !IO),
+        output_lval(Info, Lval, !IO)
     ;
         Rval = ml_scalar_common(_),
         % This reference is not the same as a mlds_data_addr const.
@@ -3464,8 +3621,8 @@ output_rval_const(Info, Const, !IO) :-
         io.write_string(NamedConst, !IO)
     ;
         Const = mlconst_code_addr(CodeAddr),
-        IsCall = no,
-        mlds_output_code_addr(Info, CodeAddr, IsCall, !IO)
+        map.lookup(Info ^ oi_code_addrs, CodeAddr, Name),
+        io.write_string(Name, !IO)
     ;
         Const = mlconst_data_addr(DataAddr),
         mlds_output_data_addr(DataAddr, !IO)
@@ -3535,26 +3692,12 @@ mlds_output_code_addr(Info, CodeAddr, IsCall, !IO) :-
 
 method_ptr_type_to_string(Info, ArgTypes, RetTypes) = String :-
     Arity = list.length(ArgTypes),
-    (
-        RetTypes = [],
-        VoidRet = "_r0",
-        RetTypesStrings = []
-    ;
-        RetTypes = [R1 | Rs],
-        VoidRet = "",
-        (
-            Rs = [],
-            boxed_type_to_string(Info, R1, R1_string),
-            RetTypesStrings = [R1_string]
-        ;
-            Rs = [_ | _],
-            RetTypesStrings = ["object[]"] % for now
-        )
-    ),
+    NumRets = list.length(RetTypes),
     list.map(boxed_type_to_string(Info), ArgTypes, ArgTypesStrings),
+    list.map(boxed_type_to_string(Info), RetTypes, RetTypesStrings),
     TypesString = string.join_list(", ", ArgTypesStrings ++ RetTypesStrings),
-    String = "runtime.MethodPtr" ++ string.from_int(Arity) ++
-        VoidRet ++ "<" ++ TypesString ++ ">".
+    string.format("runtime.MethodPtr%d_r%d<%s>",
+        [i(Arity), i(NumRets), s(TypesString)], String).
 
 :- pred mlds_output_proc_label(string::in, mlds_proc_label::in, io::di, io::uo)
     is det.
@@ -3655,6 +3798,7 @@ indent_line(N, !IO) :-
                 oi_auto_comments    :: bool,
                 oi_line_numbers     :: bool,
                 oi_module_name      :: mlds_module_name,
+                oi_code_addrs       :: map(mlds_code_addr, string),
 
                 % These are dynamic.
                 oi_output_generics  :: output_generics,
@@ -3665,16 +3809,17 @@ indent_line(N, !IO) :-
     --->    do_output_generics
     ;       do_not_output_generics.
 
-:- func init_csharp_out_info(module_info) = csharp_out_info.
+:- func init_csharp_out_info(module_info, map(mlds_code_addr, string))
+    = csharp_out_info.
 
-init_csharp_out_info(ModuleInfo) = Info :-
+init_csharp_out_info(ModuleInfo, CodeAddrs) = Info :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, auto_comments, AutoComments),
     globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     Info = csharp_out_info(ModuleInfo, AutoComments, LineNumbers,
-        MLDS_ModuleName, do_not_output_generics, []).
+        MLDS_ModuleName, CodeAddrs, do_not_output_generics, []).
 
 %-----------------------------------------------------------------------------%
 

@@ -913,32 +913,32 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     semidet_call_3(Pred::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    runtime.MethodPtr2<object, object, bool> pred
-        = (runtime.MethodPtr2<object, object, bool>) Pred;
+    runtime.MethodPtr2_r1<object, object, bool> pred
+        = (runtime.MethodPtr2_r1<object, object, bool>) Pred;
     SUCCESS_INDICATOR = pred(X, Y);
 ").
 :- pragma foreign_proc("C#",
     semidet_call_4(Pred::in, A::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    runtime.MethodPtr3<object, object, object, bool> pred
-        = (runtime.MethodPtr3<object, object, object, bool>) Pred;
+    runtime.MethodPtr3_r1<object, object, object, bool> pred
+        = (runtime.MethodPtr3_r1<object, object, object, bool>) Pred;
     SUCCESS_INDICATOR = pred(A, X, Y);
 ").
 :- pragma foreign_proc("C#",
     semidet_call_5(Pred::in, A::in, B::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    runtime.MethodPtr4<object, object, object, object, bool> pred
-        = (runtime.MethodPtr4<object, object, object, object, bool>) Pred;
+    runtime.MethodPtr4_r1<object, object, object, object, bool> pred
+        = (runtime.MethodPtr4_r1<object, object, object, object, bool>) Pred;
     SUCCESS_INDICATOR = pred(A, B, X, Y);
 ").
 :- pragma foreign_proc("C#",
     semidet_call_6(Pred::in, A::in, B::in, C::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    runtime.MethodPtr5<object, object, object, object, object, bool> pred
-        = (runtime.MethodPtr5<object, object, object, object, object, bool>)
+    runtime.MethodPtr5_r1<object, object, object, object, object, bool> pred
+        = (runtime.MethodPtr5_r1<object, object, object, object, object, bool>)
             Pred;
     SUCCESS_INDICATOR = pred(A, B, C, X, Y);
 ").
@@ -946,9 +946,9 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     semidet_call_7(Pred::in, A::in, B::in, C::in, D::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    runtime.MethodPtr6<object, object, object, object, object, object, bool>
+    runtime.MethodPtr6_r1<object, object, object, object, object, object, bool>
         pred
-        = (runtime.MethodPtr6<object, object, object, object, object, object,
+        = (runtime.MethodPtr6_r1<object, object, object, object, object, object,
             bool>) Pred;
     SUCCESS_INDICATOR = pred(A, B, C, D, X, Y);
 ").
@@ -957,9 +957,9 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
         X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    runtime.MethodPtr7<object, object, object, object, object, object, object,
+    runtime.MethodPtr7_r1<object, object, object, object, object, object, object,
         bool> pred =
-        (runtime.MethodPtr7<object, object, object, object, object, object,
+        (runtime.MethodPtr7_r1<object, object, object, object, object, object,
             object, bool>) Pred;
     SUCCESS_INDICATOR = pred(A, B, C, D, E, X, Y);
 ").
@@ -969,8 +969,9 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     // XXX C# should the return type be object of Comparison_result_0?
-    runtime.MethodPtr2<object, object, object> pred
-        = (runtime.MethodPtr2<object, object, object>) Pred;
+    // Indeed; this is causing unnecessary boxing.
+    runtime.MethodPtr2_r1<object, object, object> pred
+        = (runtime.MethodPtr2_r1<object, object, object>) Pred;
     Res = (builtin.Comparison_result_0) pred(X, Y);
 ").
 
@@ -978,24 +979,24 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     result_call_5(Pred::in, Res::out, A::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    runtime.MethodPtr3<object, object, object, object> pred
-        = (runtime.MethodPtr3<object, object, object, object>) Pred;
+    runtime.MethodPtr3_r1<object, object, object, object> pred
+        = (runtime.MethodPtr3_r1<object, object, object, object>) Pred;
     Res = (builtin.Comparison_result_0) pred(A, X, Y);
 ").
 :- pragma foreign_proc("C#",
     result_call_6(Pred::in, Res::out, A::in, B::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    runtime.MethodPtr4<object, object, object, object, object> pred
-        = (runtime.MethodPtr4<object, object, object, object, object>) Pred;
+    runtime.MethodPtr4_r1<object, object, object, object, object> pred
+        = (runtime.MethodPtr4_r1<object, object, object, object, object>) Pred;
     Res = (builtin.Comparison_result_0) pred(A, B, X, Y);
 ").
 :- pragma foreign_proc("C#",
     result_call_7(Pred::in, Res::out, A::in, B::in, C::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    runtime.MethodPtr5<object, object, object, object, object, object> pred
-        = (runtime.MethodPtr5<object, object, object, object, object, object>)
+    runtime.MethodPtr5_r1<object, object, object, object, object, object> pred
+        = (runtime.MethodPtr5_r1<object, object, object, object, object, object>)
             Pred;
     Res = (builtin.Comparison_result_0) pred(A, B, C, X, Y);
 ").
@@ -1003,9 +1004,9 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     result_call_8(Pred::in, Res::out, A::in, B::in, C::in, D::in, X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    runtime.MethodPtr6<object, object, object, object, object, object,
+    runtime.MethodPtr6_r1<object, object, object, object, object, object,
             object> pred
-        = (runtime.MethodPtr6<object, object, object, object, object, object,
+        = (runtime.MethodPtr6_r1<object, object, object, object, object, object,
             object>) Pred;
     Res = (builtin.Comparison_result_0) pred(A, B, C, D, X, Y);
 
@@ -1015,9 +1016,9 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
         X::in, Y::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    runtime.MethodPtr7<object, object, object, object, object, object,
+    runtime.MethodPtr7_r1<object, object, object, object, object, object,
             object, object> pred
-        = (runtime.MethodPtr7<object, object, object, object, object, object,
+        = (runtime.MethodPtr7_r1<object, object, object, object, object, object,
             object, object>) Pred;
     Res = (builtin.Comparison_result_0) pred(A, B, C, D, E, X, Y);
 ").
@@ -1693,9 +1694,7 @@ is_exist_pseudo_type_info(_, _) :-
         object[] args = new object[arity];
 
         for (int i = 0; i < arity; i++) {
-            object[] rc;
-            rc = univ.ML_unravel_univ((univ.Univ_0) list.det_head(lst));
-            args[i] = rc[1];
+            univ.ML_unravel_univ((univ.Univ_0) list.det_head(lst), out args[i]);
             lst = list.det_tail(lst);
         }
 
@@ -2242,9 +2241,8 @@ construct(_, _, _) = _ :-
     object[] args_array = new object[Arity];
 
     for (int i = 0; i < Arity; i++) {
-        object[] rc = univ.ML_unravel_univ(
-            (univ.Univ_0) list.det_head(args_list));
-        args_array[i] = rc[1];
+        univ.ML_unravel_univ((univ.Univ_0) list.det_head(args_list),
+            out args_array[i]);
         args_list = list.det_tail(args_list);
     }
 

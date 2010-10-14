@@ -721,17 +721,15 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     %         can be successfully cast to and then cast back from.
     %   - store nondet environments on the heap
     %         Because Java has no way of allocating structs on the stack.
-    %   - no static ground terms
-    %         XXX Previously static ground terms used to not work with
-    %             --high-level-data. But this has been (mostly?) fixed now.
-    %             So we should investigate re-enabling static ground terms.
     %   - pretest-equality-cast-pointers
     %   - no library grade installation check with `mmc --make'. 
     %   - cross compiling
     %     Because ints in Java are 32-bits wide which may be different to
     %     that of the host compiler.
     %
-    % C# should be the same as Java.
+    % C# should be the same as Java, except that:
+    %   - C# supports pass-by-reference, but for reasons explained in
+    %     mlds_to_cs.m, we pretend it doesn't at the MLDS level
 
     (
         ( Target = target_java
