@@ -306,16 +306,22 @@ par_process_nonimported_procs_in_preds(_, _, _, [], []).
 par_process_nonimported_procs_in_preds(ModuleInfo, Task, ValidPredIdSet,
         [PredIdInfo0 | PredIdsInfos0], [PredIdInfo | PredIdsInfos]) :-
     PredIdInfo0 = PredId - PredInfo0,
-    ( set_tree234.member(ValidPredIdSet, PredId) ->
+    (
+        set_tree234.member(ValidPredIdSet, PredId),
         ProcIds = pred_info_non_imported_procids(PredInfo0),
+        ProcIds = [_ | _]
+    ->
+        % Potential parallelization site.
         par_process_nonimported_procs(ModuleInfo, Task, PredId, ProcIds,
             PredInfo0, PredInfo),
-        PredIdInfo = PredId - PredInfo
+        PredIdInfo = PredId - PredInfo,
+        par_process_nonimported_procs_in_preds(ModuleInfo, Task,
+            ValidPredIdSet, PredIdsInfos0, PredIdsInfos)
     ;
-        PredIdInfo = PredIdInfo0
-    ),
-    par_process_nonimported_procs_in_preds(ModuleInfo, Task, ValidPredIdSet,
-        PredIdsInfos0, PredIdsInfos).
+        PredIdInfo = PredIdInfo0,
+        par_process_nonimported_procs_in_preds(ModuleInfo, Task,
+            ValidPredIdSet, PredIdsInfos0, PredIdsInfos)
+    ).
 
 :- pred par_process_nonimported_procs(module_info::in,
     update_proc_task::par_proc_task, pred_id::in, list(proc_id)::in,

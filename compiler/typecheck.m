@@ -356,8 +356,12 @@ typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
             not set_tree234.member(ValidPredIdSet, PredId)
         )
     ->
-        PredIdInfo = PredIdInfo0
+        PredIdInfo = PredIdInfo0,
+        typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
+            PredIdsInfos0, PredIdsInfos, !NewlyInvalidPredIds,
+            !Specs, !Changed)
     ;
+        % Potential parallelization site.
         typecheck_pred_if_needed(ModuleInfo, PredId, PredInfo0, PredInfo,
             PredSpecs, PredChanged),
 
@@ -385,10 +389,11 @@ typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
         ),
         PredIdInfo = PredId - PredInfo,
         !:Specs = PredSpecs ++ !.Specs,
-        bool.or(PredChanged, !Changed)
-    ),
-    typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
-        PredIdsInfos0, PredIdsInfos, !NewlyInvalidPredIds, !Specs, !Changed).
+        bool.or(PredChanged, !Changed),
+        typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
+            PredIdsInfos0, PredIdsInfos, !NewlyInvalidPredIds,
+            !Specs, !Changed)
+    ).
 
 :- pred typecheck_pred_if_needed(module_info::in, pred_id::in,
     pred_info::in, pred_info::out, list(error_spec)::out, bool::out) is det.
