@@ -1694,7 +1694,9 @@ is_exist_pseudo_type_info(_, _) :-
         object[] args = new object[arity];
 
         for (int i = 0; i < arity; i++) {
-            univ.ML_unravel_univ((univ.Univ_0) list.det_head(lst), out args[i]);
+            TypeInfo_Struct ti;
+            univ.ML_unravel_univ(out ti,
+                (univ.Univ_0) list.det_head(lst), out args[i]);
             lst = list.det_tail(lst);
         }
 
@@ -2241,8 +2243,9 @@ construct(_, _, _) = _ :-
     object[] args_array = new object[Arity];
 
     for (int i = 0; i < Arity; i++) {
-        univ.ML_unravel_univ((univ.Univ_0) list.det_head(args_list),
-            out args_array[i]);
+        TypeInfo_Struct ti_tmp;
+        univ.ML_unravel_univ(out ti_tmp,
+            (univ.Univ_0) list.det_head(args_list), out args_array[i]);
         args_list = list.det_tail(args_list);
     }
 

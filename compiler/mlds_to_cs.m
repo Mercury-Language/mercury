@@ -289,7 +289,6 @@ mlds_get_csharp_foreign_code(AllForeignCode) = ForeignCode :-
 output_exports(Info, Indent, Exports, !IO) :-
     list.foldl(output_export(Info, Indent), Exports, !IO).
 
-    % XXX it would be better to present exports with the original argument order
 :- pred output_export(csharp_out_info::in, indent::in, mlds_pragma_export::in,
     io::di, io::uo) is det.
 
@@ -309,33 +308,51 @@ output_export(Info, Indent, Export, !IO) :-
 
     (
         ReturnTypes = [],
-        io.write_string("void ", !IO),
-        OutParams = []
+        io.write_string("void ", !IO)
     ;
-        ReturnTypes = [RetType | OutParamTypes],
+        ReturnTypes = [RetType],
         output_type(Info, RetType, !IO),
-        io.write_string(" ", !IO),
-        list.map_foldl(make_out_param, OutParamTypes, OutParams, 2, _)
+        io.write_string(" ", !IO)
+    ;
+        ReturnTypes = [_, _ | _],
+        unexpected(this_file,
+            "output_export: multiple return values in export method")
     ),
     io.write_string(ExportName, !IO),
-    output_params(Info, Indent + 1, Parameters ++ OutParams, !IO),
+    output_params(Info, Indent + 1, Parameters, !IO),
     io.nl(!IO),
     indent_line(Indent, !IO),
     io.write_string("{\n", !IO),
     indent_line(Indent + 1, !IO),
+    list.filter(is_out_argument, Parameters, OutArgs, InArgs),
     (
-        ReturnTypes = []
+        ReturnTypes = [],
+        (
+            OutArgs = [],
+            RestOutArgs = []
+        ;
+            OutArgs = [FirstOutArg | RestOutArgs],
+            FirstOutArg = mlds_argument(FirstOutArgName, _, _),
+            output_name(FirstOutArgName, !IO),
+            io.write_string(" = ", !IO)
+        )
     ;
         ReturnTypes = [RetTypeB | _],
         % The cast is required when the exported method uses generics but the
         % underlying method does not use generics (i.e. returns Object).
         io.write_string("return (", !IO),
         output_type(Info, RetTypeB, !IO),
-        io.write_string(") ", !IO)
+        io.write_string(") ", !IO),
+        RestOutArgs = OutArgs
     ),
-    write_export_call(MLDS_Name, Parameters ++ OutParams, !IO),
+    write_export_call(MLDS_Name, InArgs ++ RestOutArgs, !IO),
     indent_line(Indent, !IO),
     io.write_string("}\n", !IO).
+
+:- pred is_out_argument(mlds_argument::in) is semidet.
+
+is_out_argument(mlds_argument(_, Type, _)) :-
+    Type = mlds_ptr_type(_).
 
 :- pred write_export_call(mlds_qualified_entity_name::in,
     list(mlds_argument)::in, io::di, io::uo) is det.

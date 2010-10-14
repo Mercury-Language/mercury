@@ -226,7 +226,9 @@ ml_gen_export_proc_params(ModuleInfo, PredId, ProcId, FuncParams) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
-        Target = target_java,
+        ( Target = target_java
+        ; Target = target_csharp
+        ),
         globals.set_option(det_copy_out, bool(no), Globals, GlobalsByRef),
         module_info_set_globals(GlobalsByRef, ModuleInfo, ModuleInfoByRef),
         FuncParamsByRef = ml_gen_proc_params(ModuleInfoByRef, PredId, ProcId),
