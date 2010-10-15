@@ -1762,8 +1762,13 @@
     // by an environment variable.  (This might require moving
     // the code which initializes mercury_stdin, etc.)
     //
-    static ML_file_encoding_kind ML_default_text_encoding =
-        ML_file_encoding_kind.ML_OS_text_encoding;
+    static readonly ML_line_ending_kind ML_default_line_ending =
+        ML_line_ending_kind.ML_OS_line_ending;
+
+    // Assume UTF-8 encoding on files.  When writing a file, don't emit
+    // a byte order mark.
+    static readonly System.Text.Encoding text_encoding =
+        new System.Text.UTF8Encoding(false);
 ").
 
 :- pragma foreign_code("Java",
@@ -5696,7 +5701,6 @@ MercuryFilePtr  mercury_open(const char *filename, const char *openmode);
 void            mercury_io_error(MercuryFilePtr mf, const char *format, ...);
 void            mercury_output_error(MercuryFilePtr mf);
 void            mercury_print_string(MercuryFilePtr mf, const char *s);
-void            mercury_print_binary_string(MercuryFilePtr mf, const char *s);
 int             mercury_getc(MercuryFilePtr mf);
 void            mercury_close(MercuryFilePtr mf);
 int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
@@ -5704,17 +5708,11 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
 
 :- pragma foreign_code("C#", "
 
-    public enum ML_file_encoding_kind {
-        ML_OS_text_encoding,    // file stores characters,
-                                // using the operating system's
-                                // default encoding, and OS's
-                                // usual line-ending convention
-                                // (e.g. CR-LF for DOS/Windows).
+    public enum ML_line_ending_kind {
+        ML_OS_line_ending,      // file uses the usual line-ending convention
+                                // for the OS (e.g. CR-LF for DOS/Windows).
 
-        ML_Unix_text_encoding,  // file stores characters,
-                                // using the operating system's
-                                // default encoding, but with the
-                                // Unix line-ending convention.
+        ML_Unix_line_ending,    // file uses the Unix line-encoding convention.
 
         ML_raw_binary           // file stores bytes
     };
@@ -5733,7 +5731,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
                                     // the next character or byte to read,
                                     // or -1 if no putback char/byte is stored
 
-        public ML_file_encoding_kind    file_encoding;
+        public ML_line_ending_kind  line_ending;
                                     // DOS, Unix, or raw binary
 
         public int                  line_number;
@@ -6363,14 +6361,14 @@ mercury_next_stream_id(void)
 static MR_MercuryFileStruct
 mercury_file_init(System.IO.Stream stream,
     System.IO.TextReader reader, System.IO.TextWriter writer,
-    ML_file_encoding_kind file_encoding)
+    ML_line_ending_kind line_ending)
 {
     MR_MercuryFileStruct mf = new MR_MercuryFileStruct();
     mf.stream = stream;
     mf.reader = reader;
     mf.putback = -1;
     mf.writer = writer;
-    mf.file_encoding = file_encoding;
+    mf.line_ending = line_ending;
     mf.line_number = 1;
     mf.id = ML_next_stream_id++;
     return mf;
@@ -6383,21 +6381,21 @@ mercury_file_init(System.IO.Stream stream,
 
 public static MR_MercuryFileStruct mercury_stdin =
     mercury_file_init(System.Console.OpenStandardInput(),
-        System.Console.In, null, ML_default_text_encoding);
+        System.Console.In, null, ML_default_line_ending);
 public static MR_MercuryFileStruct mercury_stdout =
     mercury_file_init(System.Console.OpenStandardOutput(),
-        null, System.Console.Out, ML_default_text_encoding);
+        null, System.Console.Out, ML_default_line_ending);
 public static MR_MercuryFileStruct mercury_stderr =
     mercury_file_init(System.Console.OpenStandardError(),
-        null, System.Console.Error, ML_default_text_encoding);
+        null, System.Console.Error, ML_default_line_ending);
 
     // XXX should we use BufferedStreams here?
 public static MR_MercuryFileStruct mercury_stdin_binary =
     mercury_file_init(System.Console.OpenStandardInput(),
-        System.Console.In, null, ML_file_encoding_kind.ML_raw_binary);
+        System.Console.In, null, ML_line_ending_kind.ML_raw_binary);
 public static MR_MercuryFileStruct mercury_stdout_binary =
     mercury_file_init(System.Console.OpenStandardOutput(),
-        null, System.Console.Out, ML_file_encoding_kind.ML_raw_binary);
+        null, System.Console.Out, ML_line_ending_kind.ML_raw_binary);
 
 // Note: these are set again in io.init_state.
 public static MR_MercuryFileStruct mercury_current_text_input =
@@ -6840,7 +6838,7 @@ mercury_open(const char *filename, const char *openmode)
 
 public static
 MR_MercuryFileStruct mercury_open(string filename, string openmode,
-    ML_file_encoding_kind file_encoding)
+    ML_line_ending_kind line_ending)
 {
     System.IO.FileMode      mode;
     System.IO.FileAccess    access;
@@ -6889,7 +6887,7 @@ MR_MercuryFileStruct mercury_open(string filename, string openmode,
         // we initialize the `reader' and `writer' fields to null;
         // they will be filled in later if they are needed.
         return mercury_file_init(new System.IO.BufferedStream(stream),
-            null, null, file_encoding);
+            null, null, line_ending);
     }
 }
 
@@ -6966,31 +6964,13 @@ mercury_print_string(MercuryFilePtr mf, const char *s)
 public static void
 mercury_print_string(MR_MercuryFileStruct mf, string s)
 {
-    //
-    // For the .NET back-end, strings are represented as Unicode. Text output
-    // streams (which may be connected to text files, or to the console)
-    // require a byte stream. This raises the question: how should we convert
-    // from Unicode to the byte sequence?
-    //
-    // We leave this up to the system, by just using the TextWriter associated
-    // with the file. For the console, this will be System.Console.Out, which
-    // will use whatever encoding is appropriate for the console. For a file,
-    // the TextWriter will use the System.Encoding.Default encoding, which
-    // will normally be an 8-bit national character set. If the Unicode string
-    // contains characters which can't be represented in this set, then the
-    // encoder will throw an exception.
-    //
-    // For files, we construct the TextWriter here, rather than at file open
-    // time, so that we don't try to construct TextWriters for input streams.
-
     if (mf.writer == null) {
-        mf.writer = new System.IO.StreamWriter(mf.stream,
-            System.Text.Encoding.Default);
+        mf.writer = new System.IO.StreamWriter(mf.stream, text_encoding);
     }
 
-    switch (mf.file_encoding) {
-    case ML_file_encoding_kind.ML_raw_binary:
-    case ML_file_encoding_kind.ML_Unix_text_encoding:
+    switch (mf.line_ending) {
+    case ML_line_ending_kind.ML_raw_binary:
+    case ML_line_ending_kind.ML_Unix_line_ending:
         mf.writer.Write(s);
         for (int i = 0; i < s.Length; i++) {
             if (s[i] == '\\n') {
@@ -6998,7 +6978,7 @@ mercury_print_string(MR_MercuryFileStruct mf, string s)
             }
         }
         break;
-    case ML_file_encoding_kind.ML_OS_text_encoding:
+    case ML_line_ending_kind.ML_OS_line_ending:
         // We can't just use the System.TextWriter.Write(String) method,
         // since that method doesn't convert newline characters to the
         // system's newline convention (e.g. CR-LF on Windows).
@@ -7021,18 +7001,6 @@ mercury_print_string(MR_MercuryFileStruct mf, string s)
 
 :- pragma foreign_code("C", "
 
-void
-mercury_print_binary_string(MercuryFilePtr mf, const char *s)
-{
-    if (ML_fprintf(mf, ""%s"", s) < 0) {
-        mercury_output_error(mf);
-    }
-}
-
-").
-
-:- pragma foreign_code("C", "
-
 int
 mercury_getc(MercuryFilePtr mf)
 {
@@ -7041,63 +7009,6 @@ mercury_getc(MercuryFilePtr mf)
         MR_line_number(*mf)++;
     }
     return c;
-}
-
-").
-
-:- pragma foreign_code("C#", "
-
-public static void
-mercury_print_binary_string(MR_MercuryFileStruct mf, string s)
-{
-    // sanity check
-    if (mf.file_encoding != ML_file_encoding_kind.ML_raw_binary) {
-        runtime.Errors.fatal_error(
-            ""mercury_print_binary_string: file encoding is not raw binary"");
-    }
-
-    //
-    // For the .NET back-end, strings are represented as Unicode.
-    // Binary files are stored as byte sequences.  This raises the
-    // question: how should we convert from Unicode to the byte sequence?
-    //
-    // If the string that we are writing is a genuine character string,
-    // then probably the best thing to do is the same thing that we do
-    // for mercury_print_string(): do the conversion using
-    // the System.Encoding.Default encoding, which is the encoding
-    // corresponding to the system's code page (character set), which
-    // will normally be an 8-bit national character set.  If the Unicode
-    // string contains characters which can't be represented in this set,
-    // then the encoder will throw an exception.
-    //
-    // On the other hand, if the string contains binary values which
-    // are supposed to be used only for their binary value -- which may
-    // be the case if it was constructed using characters which have
-    // been obtained using `enum.from_int' (i.e. the reverse mode of
-    // `char.to_int'), then probably it would be better to just
-    // take the lower 8 bits of the Unicode values, and throw an
-    // exception if any of the other bits are set.
-    //
-    // The documentation for io.write_bytes doesn't make it clear
-    // which of these is the case.  It says ``the bytes are taken
-    // from a string'', but it doesn't say how.  I will assume
-    // that it means the bottom 8 bits of the Unicode value,
-    // just like io.write_byte takes the byte from the bottom 8 bits
-    // of the int value.
-
-// XXX possible alternative implementation.
-//  byte[] byte_array = System.Text.Encoding.Default().GetBytes(s);
-
-    int len = s.Length;
-    byte[] byte_array = new byte[len];
-    for (int i = 0; i < len; i++) {
-        byte_array[i] = (byte) s[i];
-        if (byte_array[i] != s[i]) {
-            runtime.Errors.SORRY(
-                ""write_bytes: Unicode char does not fit in a byte"");
-        }
-    }
-    mf.stream.Write(byte_array, 0, byte_array.Length);
 }
 
 ").
@@ -7125,19 +7036,18 @@ mercury_getc(MR_MercuryFileStruct mf)
     }
 
     if (mf.reader == null) {
-        mf.reader = new System.IO.StreamReader(mf.stream,
-            System.Text.Encoding.Default);
+        mf.reader = new System.IO.StreamReader(mf.stream, text_encoding);
     }
 
     c = mf.reader.Read();
-    switch (mf.file_encoding) {
-    case ML_file_encoding_kind.ML_raw_binary:
-    case ML_file_encoding_kind.ML_Unix_text_encoding:
+    switch (mf.line_ending) {
+    case ML_line_ending_kind.ML_raw_binary:
+    case ML_line_ending_kind.ML_Unix_line_ending:
         if (c == '\\n') {
             mf.line_number++;
         }
         break;
-    case ML_file_encoding_kind.ML_OS_text_encoding:
+    case ML_line_ending_kind.ML_OS_line_ending:
         // First, check if the character we've read matches
         // System.Environment.NewLine.
         // We assume that System.Environment.NewLine is non-null
@@ -7684,22 +7594,23 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
 
 :- pragma foreign_proc("C#",
     io.write_char(Character::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
+    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates,
+        may_not_duplicate],
 "
     /* See mercury_output_string() for comments */
     if (io.mercury_current_text_output.writer == null) {
         io.mercury_current_text_output.writer =
             new System.IO.StreamWriter(io.mercury_current_text_output.stream,
-                System.Text.Encoding.Default);
+                text_encoding);
     }
     System.IO.TextWriter w = io.mercury_current_text_output.writer;
     if (Character == '\\n') {
-        switch (io.mercury_current_text_output.file_encoding) {
-        case io.ML_file_encoding_kind.ML_raw_binary:
-        case io.ML_file_encoding_kind.ML_Unix_text_encoding:
+        switch (io.mercury_current_text_output.line_ending) {
+        case io.ML_line_ending_kind.ML_raw_binary:
+        case io.ML_line_ending_kind.ML_Unix_line_ending:
             w.Write(Character);
             break;
-        case io.ML_file_encoding_kind.ML_OS_text_encoding:
+        case io.ML_line_ending_kind.ML_OS_line_ending:
             w.WriteLine("""");
             break;
         }
@@ -7985,16 +7896,6 @@ io.write_byte(binary_output_stream(Stream), Byte, !IO) :-
     MR_update_io(IO0, IO);
 ").
 
-:- pred io.write_bytes_2(io.stream::in, string::in, io::di, io::uo) is det.
-:- pragma foreign_proc("C",
-    io.write_bytes_2(Stream::in, Message::in, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness, no_sharing],
-"
-    mercury_print_binary_string(Stream, Message);
-    MR_update_io(IO0, IO);
-").
-
 io.write_bitmap(binary_output_stream(Stream), Bitmap, !IO) :-
     ( NumBytes = Bitmap ^ num_bytes ->
         io.do_write_bitmap(Stream, Bitmap, 0, NumBytes, !IO)
@@ -8081,22 +7982,23 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
 
 :- pragma foreign_proc("C#",
     io.write_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
+    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates,
+        may_not_duplicate],
 "
     io.MR_MercuryFileStruct stream = Stream;
     /* See mercury_output_string() for comments */
     if (stream.writer == null) {
         stream.writer = new System.IO.StreamWriter(stream.stream,
-            System.Text.Encoding.Default);
+            text_encoding);
     }
     System.IO.TextWriter w = stream.writer;
     if (Character == '\\n') {
-        switch (stream.file_encoding) {
-        case io.ML_file_encoding_kind.ML_raw_binary:
-        case io.ML_file_encoding_kind.ML_Unix_text_encoding:
+        switch (stream.line_ending) {
+        case io.ML_line_ending_kind.ML_raw_binary:
+        case io.ML_line_ending_kind.ML_Unix_line_ending:
             w.Write(Character);
             break;
-        case io.ML_file_encoding_kind.ML_OS_text_encoding:
+        case io.ML_line_ending_kind.ML_OS_line_ending:
             w.WriteLine("""");
             break;
         }
@@ -8118,13 +8020,6 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "{
     Stream.stream.WriteByte(System.Convert.ToByte(Byte));
-}").
-
-:- pragma foreign_proc("C#",
-    io.write_bytes_2(Stream::in, Message::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"{
-    io.mercury_print_binary_string(Stream, Message);
 }").
 
 :- pragma foreign_proc("C#",
@@ -8201,13 +8096,6 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    io.write_bytes_2(Stream::in, Message::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"
-    ((io.MR_BinaryOutputFile) Stream).write_or_throw(Message);
-").
-
-:- pragma foreign_proc("Java",
     io.flush_output_2(Stream::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
@@ -8272,13 +8160,6 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
     mercury__io:mercury_write_char(Stream, Byte)
-").
-
-:- pragma foreign_proc("Erlang",
-    io.write_bytes_2(Stream::in, Message::in, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
-"
-    mercury__io:mercury_write_string(Stream, Message)
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -9248,7 +9129,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     io.MR_MercuryFileStruct mf = io.mercury_open(FileName, Mode,
-        io.ML_default_text_encoding);
+        io.ML_default_line_ending);
     Stream = mf;
     if (mf != null) {
         ResultCode = 0;
@@ -9265,7 +9146,7 @@ io.set_binary_output_stream(binary_output_stream(NewStream),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     io.MR_MercuryFileStruct mf = io.mercury_open(FileName, Mode,
-        io.ML_file_encoding_kind.ML_raw_binary);
+        io.ML_line_ending_kind.ML_raw_binary);
     Stream = mf;
     if (mf != null) {
         ResultCode = 0;

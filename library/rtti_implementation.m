@@ -222,6 +222,7 @@
 
     import jmercury.runtime.DuFunctorDesc;
     import jmercury.runtime.EnumFunctorDesc;
+    import jmercury.runtime.ForeignEnumFunctorDesc;
     import jmercury.runtime.PseudoTypeInfo;
     import jmercury.runtime.Ref;
     import jmercury.runtime.TypeCtorInfo_Struct;
@@ -1251,6 +1252,109 @@ type_ctor_is_variable_arity(TypeCtorInfo) :-
     ; TypeCtorRep = tcr_tuple
     ).
 
+:- pred compare_pseudo_type_infos(comparison_result::out,
+    pseudo_type_info::in, pseudo_type_info::in) is det.
+
+:- pragma foreign_export("C#", compare_pseudo_type_infos(out, in, in),
+    "ML_compare_pseudo_type_infos").
+:- pragma foreign_export("Java", compare_pseudo_type_infos(out, in, in),
+    "ML_compare_pseudo_type_infos").
+
+compare_pseudo_type_infos(Res, PTI1, PTI2) :-
+    % Try to optimize a common case:
+    % If type_info addresses are equal, they must represent the same type.
+    ( same_pointer_value(PTI1, PTI2) ->
+        Res = (=)
+    ;
+        % Otherwise, we need to expand equivalence types, if any.
+        NewPTI1 = collapse_equivalences_pseudo(PTI1),
+        NewPTI2 = collapse_equivalences_pseudo(PTI2),
+
+        % Perhaps they are equal now...
+        ( same_pointer_value(NewPTI1, NewPTI2) ->
+            Res = (=)
+        ;
+            % Handle the comparison if either pseudo_type_info is a variable.
+            % Any non-variable is greater than a variable.
+            (
+                pseudo_type_info_is_variable(NewPTI1, VarNum1),
+                pseudo_type_info_is_variable(NewPTI2, VarNum2)
+            ->
+                compare(Res, VarNum1, VarNum2)
+            ;
+                pseudo_type_info_is_variable(NewPTI1, _)
+            ->
+                Res = (<)
+            ;
+                pseudo_type_info_is_variable(NewPTI2, _)
+            ->
+                Res = (>)
+            ;
+                % Otherwise find the type_ctor_infos, and compare those.
+                pseudo_type_ctor_and_args(NewPTI1, TypeCtorInfo1, Args1),
+                pseudo_type_ctor_and_args(NewPTI2, TypeCtorInfo2, Args2)
+            ->
+                compare_type_ctor_infos(ResTCI, TypeCtorInfo1, TypeCtorInfo2),
+                (
+                    ResTCI = (<),
+                    Res = (<)
+                ;
+                    ResTCI = (>),
+                    Res = (>)
+                ;
+                    ResTCI = (=),
+                    list.length(Args1, NumArgs1),
+                    list.length(Args2, NumArgs2),
+                    compare(ResNumArgs, NumArgs1, NumArgs2),
+                    (
+                        ResNumArgs = (<),
+                        Res = (<)
+                    ;
+                        ResNumArgs = (>),
+                        Res = (>)
+                    ;
+                        ResNumArgs = (=),
+                        compare_pseudo_type_info_args(Res, Args1, Args2)
+                    )
+                )
+            ;
+                error("compare_pseudo_type_infos")
+            )
+        )
+    ).
+
+:- pred compare_pseudo_type_info_args(comparison_result::out,
+    list(pseudo_type_info)::in, list(pseudo_type_info)::in) is det.
+
+compare_pseudo_type_info_args(Res, Args1, Args2) :-
+    (
+        Args1 = [],
+        Args2 = [],
+        Res = (=)
+    ;
+        Args1 = [H1 | T1],
+        Args2 = [H2 | T2],
+        compare_pseudo_type_infos(ResPTI, H1, H2),
+        (
+            ResPTI = (<),
+            Res = (<)
+        ;
+            ResPTI = (>),
+            Res = (>)
+        ;
+            ResPTI = (=),
+            compare_pseudo_type_info_args(Res, T1, T2)
+        )
+    ;
+        Args1 = [_ | _],
+        Args2 = [],
+        error("compare_pseudo_type_info_args: argument list mismatch")
+    ;
+        Args1 = [],
+        Args2 = [_ | _],
+        error("compare_pseudo_type_info_args: argument list mismatch")
+    ).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1265,10 +1369,8 @@ collapse_equivalences(TypeInfo) = NewTypeInfo :-
     TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
     (
         % Look past equivalences.
-        (
-            TypeCtorRep = tcr_equiv_ground
-        ;
-            TypeCtorRep = tcr_equiv
+        ( TypeCtorRep = tcr_equiv_ground
+        ; TypeCtorRep = tcr_equiv
         )
     ->
         TypeLayout = get_type_layout(TypeCtorInfo),
@@ -1276,6 +1378,25 @@ collapse_equivalences(TypeInfo) = NewTypeInfo :-
         NewTypeInfo = collapse_equivalences(EquivTypeInfo)
     ;
         NewTypeInfo = TypeInfo
+    ).
+
+:- func collapse_equivalences_pseudo(pseudo_type_info) = pseudo_type_info.
+
+collapse_equivalences_pseudo(PTI) = NewPTI :-
+    (
+        pseudo_type_ctor_and_args(PTI, TypeCtorInfo, _Args),
+        TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
+        % Look past equivalences.
+        ( TypeCtorRep = tcr_equiv_ground
+        ; TypeCtorRep = tcr_equiv
+        )
+    ->
+        TypeLayout = get_type_layout(TypeCtorInfo),
+        EquivTypeInfo = get_layout_equiv(TypeLayout),
+        NewPTI0 = create_pseudo_type_info(EquivTypeInfo, PTI),
+        NewPTI = collapse_equivalences_pseudo(NewPTI0)
+    ;
+        NewPTI = PTI
     ).
 
 :- func get_layout_equiv(type_layout) = type_info.
@@ -2349,7 +2470,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         ForeignEnumFunctorDesc = foreign_enum_functor_desc(TypeCtorRep,
             unsafe_get_foreign_enum_value(Term), TypeFunctors),
         Functor = foreign_enum_functor_name(ForeignEnumFunctorDesc),
-        Ordinal = -1,
+        Ordinal = foreign_enum_functor_ordinal(ForeignEnumFunctorDesc),
         Arity = 0,
         Arguments = []
     ;
@@ -4757,15 +4878,23 @@ enum_functor_ordinal(EnumFunctorDesc) = EnumFunctorDesc ^ unsafe_index(1).
     = foreign_enum_functor_desc.
 :- mode foreign_enum_functor_desc(in(foreign_enum), in, in) = out is det.
 
-foreign_enum_functor_desc(_, Num, TypeFunctors) = ForeignEnumFunctorDesc :-
-    ForeignEnumFunctorDesc = TypeFunctors ^ unsafe_index(Num).
+foreign_enum_functor_desc(_, _, _) = _ :-
+    error("foreign_enum_functor_desc").
 
 :- pragma foreign_proc("C#",
     foreign_enum_functor_desc(_TypeCtorRep::in(foreign_enum), X::in,
         TypeFunctors::in) = (ForeignEnumFunctorDesc::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    ForeignEnumFunctorDesc = (TypeFunctors.functors_foreign_enum())[X];
+    ForeignEnumFunctorDesc = null;
+    foreach (ForeignEnumFunctorDesc desc
+        in TypeFunctors.functors_foreign_enum())
+    {
+        if (desc.foreign_enum_functor_value == X) {
+            ForeignEnumFunctorDesc = desc;
+            break;
+        }
+    }
 ").
 
 :- pragma foreign_proc("Java",
@@ -4773,7 +4902,13 @@ foreign_enum_functor_desc(_, Num, TypeFunctors) = ForeignEnumFunctorDesc :-
         TypeFunctors::in) = (ForeignEnumFunctorDesc::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    ForeignEnumFunctorDesc = (TypeFunctors.functors_foreign_enum())[X];
+    ForeignEnumFunctorDesc = null;
+    for (ForeignEnumFunctorDesc desc : TypeFunctors.functors_foreign_enum()) {
+        if (desc.foreign_enum_functor_value == X) {
+            ForeignEnumFunctorDesc = desc;
+            break;
+        }
+    }
 "). 
 
 :- func foreign_enum_functor_name(foreign_enum_functor_desc) = string.
@@ -4793,6 +4928,24 @@ foreign_enum_functor_name(ForeignEnumFunctorDesc) =
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Name = ForeignEnumFunctorDesc.foreign_enum_functor_name;
+").
+
+:- func foreign_enum_functor_ordinal(foreign_enum_functor_desc) = int.
+
+foreign_enum_functor_ordinal(_) = -1.
+
+:- pragma foreign_proc("C#",
+    foreign_enum_functor_ordinal(ForeignEnumFunctorDesc::in) = (Ordinal::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Ordinal = ForeignEnumFunctorDesc.foreign_enum_functor_ordinal;
+").
+
+:- pragma foreign_proc("Java",
+    foreign_enum_functor_ordinal(ForeignEnumFunctorDesc::in) = (Ordinal::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Ordinal = ForeignEnumFunctorDesc.foreign_enum_functor_ordinal;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -4990,6 +5143,13 @@ unsafe_get_enum_value(_) = _ :-
 %-----------------------------------------------------------------------------%
 
 :- func unsafe_get_foreign_enum_value(T) = int.
+
+:- pragma foreign_proc("C#",
+    unsafe_get_foreign_enum_value(T::in) = (Value::out),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+    Value = (int) T;
+").
 
 % XXX We cannot provide a Java version of this until mlds_to_java.m is
 %     updated to support foreign enumerations.

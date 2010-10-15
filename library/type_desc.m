@@ -1089,9 +1089,7 @@ get_type_info_for_type_info = TypeDesc :-
         runtime.PseudoTypeInfo x,
         runtime.PseudoTypeInfo y)
     {
-        runtime.Errors.SORRY(
-            ""foreign code for comparing pseudo_type_desc"");
-        return builtin.Comparison_result_0.f_equal;
+        return rtti_implementation.ML_compare_pseudo_type_infos(x, y);
     }
 ").
 
@@ -1130,9 +1128,7 @@ get_type_info_for_type_info = TypeDesc :-
     public static builtin.Comparison_result_0
     __Compare____pseudo_type_desc_0_0(PseudoTypeInfo x, PseudoTypeInfo y)
     {
-        // stub only
-        throw new java.lang.Error(
-            ""__Compare____pseudo_type_desc_0_0 not implemented"");
+        return rtti_implementation.ML_compare_pseudo_type_infos(x, y);
     }
 ").
 

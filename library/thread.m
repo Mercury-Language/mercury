@@ -95,6 +95,13 @@
 #endif
 ").
 
+:- pragma foreign_proc("C#",
+    can_spawn,
+    [will_not_call_mercury, promise_pure],
+"
+    SUCCESS_INDICATOR = true;
+").
+
 :- pragma foreign_proc("Java",
     can_spawn,
     [will_not_call_mercury, promise_pure],
@@ -190,6 +197,16 @@
     yield_skip_to_the_end:
   #endif
 #endif
+    IO = IO0;
+").
+
+:- pragma foreign_proc("C#",
+    yield(IO0::di, IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+    // Only available in .NET 4.0.
+    // System.Threading.Yield();
     IO = IO0;
 ").
 

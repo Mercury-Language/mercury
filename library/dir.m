@@ -1759,15 +1759,6 @@ dir.read_first_entry(Dir, Result, !IO) :-
 :- pragma foreign_export("C",
     make_win32_dir_open_result_ok(in, in, out, di, uo),
     "ML_make_win32_dir_open_result_ok").
-:- pragma foreign_export("IL",
-    make_win32_dir_open_result_ok(in, in, out, di, uo),
-    "ML_make_win32_dir_open_result_ok").
-:- pragma foreign_export("C#",
-    make_win32_dir_open_result_ok(in, in, out, di, uo),
-    "ML_make_win32_dir_open_result_ok").
-:- pragma foreign_export("Java",
-    make_win32_dir_open_result_ok(in, in, out, di, uo),
-    "ML_make_win32_dir_open_result_ok").
 
 make_win32_dir_open_result_ok(Dir, FirstFilePtr, Result, !IO) :-
     FirstFile0 = copy_c_string(FirstFilePtr),

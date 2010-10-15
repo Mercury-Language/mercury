@@ -172,6 +172,20 @@ extern void ML_report_full_memory_stats(void);
 #endif
 ").
 
+:- pragma foreign_proc("C#",
+    report_stats,
+    [may_call_mercury, terminates],
+"
+    ML_report_stats();
+").
+
+:- pragma foreign_proc("C#",
+    report_full_memory_stats,
+    [will_not_call_mercury],
+"
+    ML_report_full_memory_stats();
+").
+
 :- pragma foreign_proc("Java",
     report_stats,
     [may_call_mercury, terminates],
@@ -695,6 +709,58 @@ ML_memory_profile_compare_final(const void *i1, const void *i2)
 #endif /* MR_MPROF_PROFILE_MEMORY */
 ").
 
+:- pragma foreign_code("C#",
+"
+private static double user_time_at_start
+    = System.Diagnostics.Process.GetCurrentProcess().UserProcessorTime
+        .TotalSeconds;
+private static double user_time_at_last_stat;
+
+private static long real_time_at_start
+    = real_time_at_last_stat = System.DateTime.Now.Ticks;
+private static long real_time_at_last_stat;
+
+private static void
+ML_report_stats()
+{
+    double user_time_at_prev_stat = user_time_at_last_stat;
+    user_time_at_last_stat = System.Diagnostics.Process.GetCurrentProcess()
+        .UserProcessorTime.TotalSeconds;
+
+    long real_time_at_prev_stat = real_time_at_last_stat;
+    real_time_at_last_stat = System.DateTime.Now.Ticks;
+
+    System.Console.WriteLine(System.String.Format(
+        ""[User time: +{0:F2}s, {1:F2}s Real time: +{2:F2}s, {3:F2}s]"",
+        (user_time_at_last_stat - user_time_at_prev_stat),
+        (user_time_at_last_stat - user_time_at_start),
+        ((real_time_at_last_stat - real_time_at_prev_stat)
+            / (double) System.TimeSpan.TicksPerSecond),
+        ((real_time_at_last_stat - real_time_at_start)
+            / (double) System.TimeSpan.TicksPerSecond)
+    ));
+
+    /*
+    ** XXX At this point there should be a whole bunch of memory usage
+    ** statistics.
+    */
+}
+
+private static void
+ML_report_full_memory_stats()
+{
+    /*
+    ** XXX The support for this predicate is even worse.  Since we don't have
+    ** access to memory usage statistics, all you get here is an apology.
+    ** But at least it doesn't just crash with an error.
+    */
+
+    System.Console.Error.WriteLine(
+        ""Sorry, report_full_memory_stats is not yet "" +
+        ""implemented for the C# back-end."");
+}
+").
+
 :- pragma foreign_code("Java",
 "
 private static int user_time_at_start = 0;
@@ -882,6 +948,8 @@ repeat(N) :-
 
 :- impure pred get_user_cpu_milliseconds(int::out) is det.
 
+:- pragma foreign_export("C#", get_user_cpu_milliseconds(out),
+    "ML_get_user_cpu_milliseconds").
 :- pragma foreign_export("Java", get_user_cpu_milliseconds(out),
     "ML_get_user_cpu_milliseconds").
 
@@ -892,17 +960,16 @@ repeat(N) :-
     Time = MR_get_user_cpu_milliseconds();
 ").
 
-% XXX Can't seem to get this to work -- perhaps Diagnostics isn't yet
-% available in Beta 1 of the .NET framework.
-% :- pragma foreign_proc("MC++",
-%     get_user_cpu_milliseconds(_Time::out),
-%     [will_not_call_mercury],
-% "
-%     // This won't return the elapsed time since program start,
-%     // as it begins timing after the first call.
-%     // For computing time differences it should be fine.
-%     Time = (int) (1000 * System::Diagnostics::Counter::GetElapsed());
-% ").
+:- pragma foreign_proc("C#",
+    get_user_cpu_milliseconds(Time::out),
+    [will_not_call_mercury],
+"
+    // This won't return the elapsed time since program start,
+    // as it begins timing after the first call.
+    // For computing time differences it should be fine.
+    Time = (int) System.Diagnostics.Process.GetCurrentProcess()
+        .UserProcessorTime.TotalMilliseconds;
+").
 
 :- pragma foreign_proc("Java",
     get_user_cpu_milliseconds(Time::out),
@@ -949,21 +1016,12 @@ repeat(N) :-
 "
     ML_benchmarking_dummy_word = (MR_Word) X;
 ").
-/*
-** To prevent the MC++ compiler from optimizing the benchmark code away,
-** we assign the benchmark output to a volatile static variable.
-** XXX at least, we should do this but it doesn't seem to work.
-*/
-/*
-:- pragma foreign_proc("MC++",
-    do_nothing(X::in),
+
+:- pragma foreign_proc("C#",
+    do_nothing(_X::in),
     [will_not_call_mercury, thread_safe],
 "
-    mercury::runtime::Errors::SORRY(""foreign code for this function"");
-    static volatile MR_Word ML_benchmarking_dummy_word;
-    ML_benchmarking_dummy_word = (MR_Word) X;
 ").
-*/
 
 :- pragma foreign_code("Java",
 "

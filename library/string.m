@@ -1250,6 +1250,18 @@ string.c_pointer_to_string(C_Pointer, Str) :-
     private_builtin.unsafe_type_cast(C_Pointer, Int),
     Str = "c_pointer(0x" ++ string.int_to_base_string(Int, 16) ++ ")".
 
+:- pragma foreign_proc("C#",
+    string.c_pointer_to_string(C_Pointer::in, Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    /* Within the spirit of the function, at least. */
+    if (C_Pointer == null) {
+        Str = ""null"";
+    } else {
+        Str = C_Pointer.ToString();
+    }
+").
+
 :- pragma foreign_proc("Java",
     string.c_pointer_to_string(C_Pointer::in, Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -1577,6 +1589,29 @@ string.from_rev_char_list(Chars, Str) :-
         list_ptr = MR_list_tail(list_ptr);
     }
 }").
+
+:- pragma foreign_proc("C#",
+    string.semidet_from_rev_char_list(Chars::in, Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, may_not_duplicate, no_sharing],
+"
+    int size = 0;
+    list.List_1 list_ptr = Chars;
+    while (!list.is_empty(list_ptr)) {
+        size++;
+        list_ptr = list.det_tail(list_ptr);
+    }
+
+    char[] arr = new char[size];
+    list_ptr = Chars;
+    while (!list.is_empty(list_ptr)) {
+        arr[--size] = (char) list.det_head(list_ptr);
+        list_ptr = list.det_tail(list_ptr);
+    }
+
+    Str = new string(arr);
+    SUCCESS_INDICATOR = true;
+").
 
 string.semidet_from_rev_char_list(Chars::in, Str::uo) :-
     string.semidet_from_char_list(list.reverse(Chars), Str).
