@@ -313,7 +313,7 @@ goal_recursion_data(ThisClique, CallSiteMap, GoalPath, GoalRep,
         ;
             GoalExpr = switch_rep(_, _, Cases),
             switch_recursion_data(ThisClique, CallSiteMap, GoalPath, 1, Cases,
-                float(Calls), !:RecursionData)
+                float(Calls), Calls, !:RecursionData)
         ;
             GoalExpr = ite_rep(Cond, Then, Else),
             ite_recursion_data(ThisClique, CallSiteMap, GoalPath, 
@@ -504,12 +504,17 @@ ite_recursion_data(ThisClique, CallSiteMap, GoalPath, Cond, Then, Else,
 
 :- pred switch_recursion_data(clique_ptr::in, 
     map(goal_path, cost_and_callees)::in, goal_path::in, int::in, 
-    list(case_rep(coverage_info))::in, float::in,
+    list(case_rep(coverage_info))::in, float::in, int::in,
     recursion_data::out) is det.
 
-switch_recursion_data(_, _, _, _, [], _, proc_dead_code).
+switch_recursion_data(_, _, _, _, [], TotalCalls, CallsRemaining,
+        RecursionData) :-
+    % Can fail switches will have a nonzero probability of reaching this case.
+    FailProb = probable(float(CallsRemaining) / TotalCalls),
+    RecursionData0 = simple_recursion_data(0.0, 0),
+    recursion_data_and_probability(FailProb, RecursionData0, RecursionData).
 switch_recursion_data(ThisClique, CallSiteMap, GoalPath, CaseNum, 
-        [Case | Cases], TotalCalls, RecursionData) :-
+        [Case | Cases], TotalCalls, CallsRemaining, RecursionData) :-
     Case = case_rep(_, _, Goal),
     goal_recursion_data(ThisClique, CallSiteMap, 
         goal_path_add_at_end(GoalPath, step_switch(CaseNum, no)), Goal, 
@@ -523,7 +528,7 @@ switch_recursion_data(ThisClique, CallSiteMap, GoalPath, CaseNum,
     recursion_data_and_probability(CaseProb, CaseRecursionData0,
         CaseRecursionData),
     switch_recursion_data(ThisClique, CallSiteMap, GoalPath, CaseNum+1,
-        Cases, TotalCalls, CasesRecursionData),
+        Cases, TotalCalls, CallsRemaining - Calls, CasesRecursionData),
     merge_recursion_data_after_branch(CaseRecursionData, CasesRecursionData,
         RecursionData).
 

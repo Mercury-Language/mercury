@@ -122,28 +122,56 @@ candidate_parallel_conjunctions(Params, Deep, Messages, !Feedback) :-
             ConjunctionsAssocList),
     put_feedback_data(CandidateParallelConjunctions, !Feedback).
 
-:- pred pard_goal_detail_to_pard_goal(pard_goal_detail::in, pard_goal::out) 
-    is det.
+:- pred pard_goal_detail_to_pard_goal(
+    candidate_par_conjunction(pard_goal_detail)::in,
+    pard_goal_detail::in, pard_goal::out) is det.
 
-pard_goal_detail_to_pard_goal(!Goal) :-
-    transform_goal_rep(pard_goal_detail_annon_to_pard_goal_annon, !Goal).
+pard_goal_detail_to_pard_goal(CPC, !Goal) :-
+    IsDependent = CPC ^ cpc_is_dependent,
+    (
+        IsDependent = conjuncts_are_dependent(SharedVars)
+    ;
+        IsDependent = conjuncts_are_independent,
+        SharedVars = set.init
+    ),
+    transform_goal_rep(pard_goal_detail_annon_to_pard_goal_annon(SharedVars), 
+        !Goal).
 
-:- pred pard_goal_detail_annon_to_pard_goal_annon(
+:- pred pard_goal_detail_annon_to_pard_goal_annon(set(var_rep)::in,
     pard_goal_detail_annotation::in, pard_goal_annotation::out) is det.
 
-pard_goal_detail_annon_to_pard_goal_annon(PGD, PG) :-
-    PGT = PGD ^ pgd_pg_type,
+pard_goal_detail_annon_to_pard_goal_annon(SharedVarsSet, PGD, PG) :-
+    CostPercall = goal_cost_get_percall(PGD ^ pgd_cost),
+    CostAboveThreshold = PGD ^ pgd_cost_above_threshold,
+    SharedVars = to_sorted_list(SharedVarsSet),
+   
+    Coverage = PGD ^ pgd_coverage,
+    get_coverage_before_det(Coverage, Calls),
+    ( Calls > 0 ->
+        foldl(build_var_use_list(PGD ^ pgd_var_production_map), SharedVars, 
+            [], Productions),
+        foldl(build_var_use_list(PGD ^ pgd_var_consumption_map), SharedVars, 
+            [], Consumptions)
+    ;
+        Productions = [],
+        Consumptions = []
+    ),
+
+    PG = pard_goal_annotation(CostPercall, CostAboveThreshold, Productions,
+        Consumptions).
+
+:- pred build_var_use_list(map(var_rep, lazy(var_use_info))::in, var_rep::in,
+    assoc_list(var_rep, float)::in, assoc_list(var_rep, float)::out) is det.
+
+build_var_use_list(Map, Var, !List) :-
     (
-        PGT = pgt_call(_, _),
-        CostPercall = goal_cost_get_percall(PGD ^ pgd_cost),
-        CostAboveThreshold = PGD ^ pgd_cost_above_threshold,
-        PG = pard_goal_call(CostPercall, CostAboveThreshold)
+        map.search(Map, Var, LazyUse),
+        read_if_val(LazyUse, Use)
+    ->
+        UseTime = Use ^ vui_cost_until_use,
+        !:List = [Var - UseTime | !.List]
     ;
-        PGT = pgt_other_atomic_goal,
-        PG = pard_goal_other_atomic
-    ;
-        PGT = pgt_non_atomic_goal,
-        PG = pard_goal_non_atomic
+        true
     ).
 
 %----------------------------------------------------------------------------%
@@ -894,9 +922,13 @@ pardgoals_build_candidate_conjunction(Info, Location, GoalPath, Goals,
     BestParallelisation = bp_parallel_execution(GoalsBefore, ParConjs,
         GoalsAfter, IsDependent, Metrics),
     Speedup = parallel_exec_metrics_get_speedup(Metrics),
+    conj_calc_cost(GoalsBefore, GoalsBeforeCost0),
+    GoalsBeforeCost = goal_cost_get_percall(GoalsBeforeCost0),
+    conj_calc_cost(GoalsAfter, GoalsAfterCost0),
+    GoalsAfterCost = goal_cost_get_percall(GoalsAfterCost0),
     Candidate = candidate_par_conjunction(goal_path_to_string(GoalPath),
-        FirstConjNum, IsDependent, GoalsBefore, ParConjs, GoalsAfter,
-        Metrics),
+        FirstConjNum, IsDependent, GoalsBefore, GoalsBeforeCost, ParConjs,
+        GoalsAfter, GoalsAfterCost, Metrics),
     (
         Speedup > 1.0,
         (
@@ -2048,9 +2080,12 @@ build_dependency_graph([PG | PGs], ConjNum, !VarDepMap, !Graph) :-
     % and not those that are set.  This is safe because we only bother
     % analysing single assignment code.
     RefedVars = InstMapInfo ^ im_consumed_vars,
+    digraph.add_vertex(ConjNum, ThisConjKey, !Graph),
     list.foldl((pred(RefedVar::in, GraphI0::in, GraphI::out) is det :-
         map.search(!.VarDepMap, RefedVar, DepConj) ->
-            digraph.add_vertices_and_edge(DepConj, ConjNum, GraphI0, GraphI)
+            % DepConj should already be in the graph.
+            digraph.lookup_key(GraphI0, DepConj, DepConjKey),
+            digraph.add_edge(DepConjKey, ThisConjKey, GraphI0, GraphI)
         ;
             GraphI = GraphI0
         ), to_sorted_list(RefedVars), !Graph),
@@ -2397,36 +2432,41 @@ earliest_use(A, B, Ealiest) :-
     var_use_info::out) is multi.
 
 compute_var_use_lazy_arg(Info, Var, Args, CostAndCallee, Cost, VarUseType, Use) :-
-    CostPercall = cs_cost_get_percall(Cost),
-    ( member_index0(Var, Args, ArgNum) ->
-        HigherOrder = CostAndCallee ^ cac_call_site_is_ho,
-        (
-            HigherOrder = higher_order_call,
-            % We cannot push signals or waits into higher order calls.
-            pessimistic_var_use_info(VarUseType, CostPercall, Use)
-        ;
-            HigherOrder = first_order_call,
-            ( singleton_set(CostAndCallee ^ cac_callees, CalleePrime) ->
-                Callee = CalleePrime
+    ( 0.0 < cs_cost_get_calls(Cost) ->
+        CostPercall = cs_cost_get_percall(Cost),
+        ( member_index0(Var, Args, ArgNum) ->
+            HigherOrder = CostAndCallee ^ cac_call_site_is_ho,
+            (
+                HigherOrder = higher_order_call,
+                % We cannot push signals or waits into higher order calls.
+                pessimistic_var_use_info(VarUseType, CostPercall, Use)
             ;
-                error(this_file ++ 
-                    "First-order call site has wrong number of CSDs")
-            ),
-            CSDPtr = Callee ^ c_csd,
-            RecursionType = Info ^ ipi_recursion_type,
-            recursion_type_get_interesting_parallelisation_depth(
-                RecursionType, MaybeCurDepth),
-            compute_var_use_2(Info, ArgNum, RecursionType, MaybeCurDepth,
-                VarUseType, CostPercall, CSDPtr, Use, Messages),
-            trace [io(!IO)] (
-                stderr_stream(Stderr, !IO),
-                write_out_messages(Stderr, Messages, !IO)
+                HigherOrder = first_order_call,
+                ( singleton_set(CostAndCallee ^ cac_callees, CalleePrime) ->
+                    Callee = CalleePrime
+                ;
+                    error(this_file ++ 
+                        "First-order call site has wrong number of CSDs")
+                ),
+                CSDPtr = Callee ^ c_csd,
+                RecursionType = Info ^ ipi_recursion_type,
+                recursion_type_get_interesting_parallelisation_depth(
+                    RecursionType, MaybeCurDepth),
+                compute_var_use_2(Info, ArgNum, RecursionType, MaybeCurDepth,
+                    VarUseType, CostPercall, CSDPtr, Use, Messages),
+                trace [io(!IO)] (
+                    stderr_stream(Stderr, !IO),
+                    write_out_messages(Stderr, Messages, !IO)
+                )
             )
+        ;
+            Use = var_use_info(0.0, CostPercall, VarUseType),
+            require(unify(VarUseType, var_use_consumption), this_file ++ 
+                "Var use type most be consumption if \\+ member(Var, Args)")
         )
     ;
-        Use = var_use_info(0.0, CostPercall, VarUseType),
-        require(unify(VarUseType, var_use_consumption), this_file ++ 
-            "Var use type most be consumption if \\+ member(Var, Args)")
+        % This call site is never called.
+        pessimistic_var_use_info(VarUseType, 0.0, Use)
     ).
 
 :- pred compute_var_use_2(implicit_parallelism_info::in, int::in,
@@ -2439,8 +2479,11 @@ compute_var_use_2(Info, ArgNum, RecursionType, MaybeCurDepth, VarUseType, Cost,
     !:Messages = empty,
     Deep = Info ^ ipi_deep,
     CliquePtr = Info ^ ipi_clique,
-    call_site_dynamic_var_use_info(Deep, CliquePtr, CSDPtr, ArgNum,
-        RecursionType, MaybeCurDepth, Cost, set.init, VarUseType, MaybeUse),
+    implicit_par_info_intermodule_var_use(Info, FollowCallsAcrossModules),
+    VarUseOptions = var_use_options(Deep, FollowCallsAcrossModules,
+        VarUseType),
+    call_site_dynamic_var_use_info(CliquePtr, CSDPtr, ArgNum,
+        RecursionType, MaybeCurDepth, Cost, set.init, VarUseOptions, MaybeUse),
     (
         MaybeUse = ok(Use)
     ;
@@ -2477,9 +2520,12 @@ compute_goal_var_use_lazy(Goal, GoalPath, Cost, Info, VarUseType, Var) = Use :-
         ),
         recursion_type_get_interesting_parallelisation_depth(RecursionType,
             yes(RecDepth)),
-        var_first_use(Deep, CliquePtr, CallSiteMap, RecursiveCallSiteMap,
+        implicit_par_info_intermodule_var_use(Info, FollowCallsAcrossModules),
+        VarUseOptions = var_use_options(Deep, FollowCallsAcrossModules,
+            VarUseType),
+        var_first_use(CliquePtr, CallSiteMap, RecursiveCallSiteMap,
             RecursionType, RecDepth, Goal, GoalPath, CostPercall, Var,
-            VarUseType, Use)
+            VarUseOptions, Use)
     ;
         ( RecursionType = rt_divide_and_conquer(_, _)
         ; RecursionType = rt_mutual_recursion(_)
@@ -2500,6 +2546,23 @@ compute_goal_var_use_lazy(Goal, GoalPath, Cost, Info, VarUseType, Var) = Use :-
 :- instance goal_annotation_with_coverage(coverage_and_instmap_info) where [
         (get_coverage(Goal) = Goal ^ goal_annotation ^ cai_coverage)
     ].
+
+:- pred implicit_par_info_intermodule_var_use(implicit_parallelism_info::in,
+    intermodule_var_use::out) is det.
+
+implicit_par_info_intermodule_var_use(Info, FollowCallsAcrossModules) :-
+    IntermoduleVarUse = Info ^ ipi_opts ^ cpcp_intermodule_var_use,
+    (
+        IntermoduleVarUse = yes,
+        FollowCallsAcrossModules = follow_any_call
+    ;
+        IntermoduleVarUse = no,
+        ProcLabel = Info ^ ipi_proc_label,
+        ( ProcLabel = str_ordinary_proc_label(_, _, Module, _, _, _)
+        ; ProcLabel = str_special_proc_label(_, _, Module, _, _, _)
+        ),
+        FollowCallsAcrossModules = follow_calls_into_module(Module)
+    ).
 
 :- pred recursion_type_get_interesting_parallelisation_depth(
     recursion_type, maybe(recursion_depth)).
@@ -3123,8 +3186,8 @@ create_candidate_parallel_conj_report(VarTable, Proc, CandidateParConjunction,
         Report) :-
     print_proc_label_to_string(Proc, ProcString),
     CandidateParConjunction = candidate_par_conjunction(GoalPathString,
-        FirstConjNum, IsDependent, GoalsBefore, Conjs, GoalsAfter,
-        ParExecMetrics),
+        FirstConjNum, IsDependent, GoalsBefore, GoalsBeforeCost, Conjs,
+        GoalsAfter, GoalsAfterCost, ParExecMetrics),
     ParExecMetrics = parallel_exec_metrics(NumCalls, SeqTime, ParTime,
         ParOverheads, FirstConjDeadTime, FutureDeadTime),
     
@@ -3174,18 +3237,25 @@ create_candidate_parallel_conj_report(VarTable, Proc, CandidateParConjunction,
     ),
     some [!ConjNum] (
         !:ConjNum = FirstConjNum,
-        format_sequential_conjuncts(VarTable, 3, GoalPath, GoalsBefore, 
-            !ConjNum, empty, ReportGoalsBefore),
-        format_parallel_conjunction(VarTable, 3, GoalPath, !.ConjNum, Conjs,
-            ReportParConj),
+        format_sequential_conjunction(VarTable, 4, GoalPath, GoalsBefore, 
+            GoalsBeforeCost, !.ConjNum, ReportGoalsBefore0),
+        ReportGoalsBefore = indent(3) ++ singleton("Goals before:\n") ++
+            ReportGoalsBefore0,
+        
+        !:ConjNum = !.ConjNum + length(GoalsBefore),
+        format_parallel_conjunction(VarTable, 4, GoalPath, !.ConjNum, Conjs,
+            ReportParConj0),
+        ReportParConj = indent(3) ++ singleton("Parallel conjunction:\n") ++
+            ReportParConj0,
+        
         !:ConjNum = !.ConjNum + 1,
-        format_sequential_conjuncts(VarTable, 3, GoalPath, GoalsAfter,
-            !ConjNum, empty, ReportGoalsAfter),
-        _ = !.ConjNum
+        format_sequential_conjunction(VarTable, 4, GoalPath, GoalsAfter,
+            GoalsAfterCost, !.ConjNum, ReportGoalsAfter0),
+        ReportGoalsAfter = indent(3) ++ singleton("Goals after:\n") ++
+            ReportGoalsAfter0
     ),
-
-    Report = snoc(ReportHeader ++ ReportGoalsBefore ++ ReportParConj ++ 
-        ReportGoalsAfter, "\n").
+    Report = ReportHeader ++ ReportGoalsBefore ++ nl ++ ReportParConj ++ nl ++
+        ReportGoalsAfter ++ nl.
 
 :- pred format_parallel_conjunction(var_table::in, int::in,
     goal_path::in, int::in,
@@ -3222,8 +3292,12 @@ format_parallel_conjuncts(VarTable, Indent, GoalPath0, ConjNum0,
                 ConjReport) 
         ;
             GoalsTail = [_ | _],
+            Cost = foldl(
+                (func(GoalI, Acc) = 
+                    Acc + GoalI ^ goal_annotation ^ pga_cost_percall),
+                Goals, 0.0),
             format_sequential_conjunction(VarTable, Indent + 1, GoalPath,
-                Goals, ConjReport)
+                Goals, Cost, 1, ConjReport)
         )
     ),
     !:Report = !.Report ++ ConjReport,
@@ -3238,11 +3312,24 @@ format_parallel_conjuncts(VarTable, Indent, GoalPath0, ConjNum0,
         !Report).
 
 :- pred format_sequential_conjunction(var_table::in, int::in, goal_path::in,
-    list(pard_goal)::in, cord(string)::out) is det.
+    list(pard_goal)::in, float::in, int::in, cord(string)::out) is det.
 
-format_sequential_conjunction(VarTable, Indent, GoalPath, Goals, Report) :-
-    format_sequential_conjuncts(VarTable, Indent, GoalPath, Goals, 1, _,
-        empty, Report).
+format_sequential_conjunction(VarTable, Indent, GoalPath, Goals, Cost,
+        FirstConjNum, !:Report) :-
+    !:Report = empty,
+    ( FirstConjNum = 1 ->
+        !:Report = !.Report ++
+            indent(Indent) ++
+            singleton(format("%% conjunction: %s",
+                [s(goal_path_to_string(GoalPath))])) ++
+            nl_indent(Indent) ++ 
+            singleton(format("%% Cost: %s", [s(two_decimal_fraction(Cost))])) ++
+            nl ++ nl
+    ;
+        true
+    ),
+    format_sequential_conjuncts(VarTable, Indent, GoalPath, Goals, 
+        FirstConjNum, _, !Report).
 
 :- pred format_sequential_conjuncts(var_table::in, int::in, goal_path::in,
     list(pard_goal)::in, int::in, int::out, 
@@ -3259,38 +3346,65 @@ format_sequential_conjuncts(VarTable, Indent, GoalPath0, [Conj | Conjs],
         Conjs = []
     ;
         Conjs = [_ | _],
-        !:Report = !.Report ++ nl,
+        !:Report = !.Report ++ indent(Indent) ++ singleton(",\n"),
         format_sequential_conjuncts(VarTable, Indent, GoalPath0, Conjs,
             !ConjNum, !Report)
     ).
 
 :- instance goal_annotation(pard_goal_annotation) where [
-        pred(print_goal_annotation_to_strings/2) is 
+        pred(print_goal_annotation_to_strings/3) is 
             format_pard_goal_annotation
     ].
 
-:- pred format_pard_goal_annotation(pard_goal_annotation::in, 
+:- pred format_pard_goal_annotation(var_table::in, pard_goal_annotation::in, 
+    cord(cord(string))::out) is det.
+
+format_pard_goal_annotation(VarTable, GoalAnnotation, Report) :-
+    GoalAnnotation = pard_goal_annotation(CostPercall, CostAboveThreshold,
+        Productions, Consumptions),
+    (
+        CostAboveThreshold = cost_above_par_threshold,
+        CostAboveThresholdStr = "above threshold"
+    ;
+        CostAboveThreshold = cost_not_above_par_threshold,
+        CostAboveThresholdStr = "not above threshold"
+    ),
+    CostLine = singleton(format("cost: %s (%s)", 
+            [s(two_decimal_fraction(CostPercall)),
+             s(CostAboveThresholdStr)])),
+    format_var_use_report(VarTable, productions, Productions,
+        ProductionsReport), 
+    format_var_use_report(VarTable, consumptions, Consumptions,
+        ConsumptionsReport), 
+    Report = singleton(CostLine) ++ ProductionsReport ++ ConsumptionsReport.
+
+:- func productions = string.
+
+productions = "Productions".
+
+:- func consumptions = string.
+
+consumptions = "Consumptions".
+
+:- pred format_var_use_report(var_table::in, string::in, 
+    assoc_list(var_rep, float)::in, cord(cord(string))::out) is det.
+
+format_var_use_report(VarTable, Label, List, Report) :-
+    (
+        List = [_ | _],
+        map(format_var_use_line(VarTable), List, Lines),
+        Report = singleton(singleton(Label ++ ":")) ++ cord.from_list(Lines)
+    ;
+        List = [],
+        Report = empty
+    ).
+
+:- pred format_var_use_line(var_table::in, pair(var_rep, float)::in,
     cord(string)::out) is det.
 
-format_pard_goal_annotation(GoalAnnotation, Report) :-
-    (
-        GoalAnnotation = pard_goal_call(CostPercall, CostAboveThreshold),
-        (
-            CostAboveThreshold = cost_above_par_threshold,
-            CostAboveThresholdStr = "above threshold"
-        ;
-            CostAboveThreshold = cost_not_above_par_threshold,
-            CostAboveThresholdStr = "not above threshold"
-        ),
-        Report = singleton(format("cost: %s ", 
-                [s(two_decimal_fraction(CostPercall))])) ++ 
-            singleton(CostAboveThresholdStr) ++ singleton(")")
-    ;
-        ( GoalAnnotation = pard_goal_other_atomic
-        ; GoalAnnotation = pard_goal_non_atomic
-        ),
-        Report = cord.empty
-    ).
+format_var_use_line(VarTable, Var - Use, singleton(String)) :-
+    format("    %s: %s", [s(VarName), s(two_decimal_fraction(Use))], String),
+    lookup_var_name(VarTable, Var, VarName).
 
 %-----------------------------------------------------------------------------%
 

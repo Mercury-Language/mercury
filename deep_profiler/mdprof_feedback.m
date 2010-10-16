@@ -177,12 +177,13 @@ create_feedback_report(feedback_data_candidate_parallel_conjunctions(
         Parameters, Conjs), Report) :-
     NumConjs = length(Conjs),
     Parameters = candidate_par_conjunctions_params(DesiredParallelism,
-        SparkingCost, SparkingDelay, SignalCost, WaitCost, 
+        IntermoduleVarUse, SparkingCost, SparkingDelay, SignalCost, WaitCost, 
         ContextWakeupDelay, CliqueThreshold, CallSiteThreshold,
         ParalleliseDepConjs, BestParAlgorithm),
     best_par_algorithm_string(BestParAlgorithm, BestParAlgorithmStr),
     ReportHeader = singleton(format("  Candidate Parallel Conjunctions:\n" ++
             "    Desired parallelism: %f\n" ++
+            "    Intermodule var use: %s\n" ++
             "    Sparking cost: %d\n" ++
             "    Sparking delay: %d\n" ++
             "    Future signal cost: %d\n" ++
@@ -194,8 +195,8 @@ create_feedback_report(feedback_data_candidate_parallel_conjunctions(
             "    BestParallelisationAlgorithm: %s\n" ++
             "    Number of Parallel Conjunctions: %d\n" ++
             "    Parallel Conjunctions:\n\n",
-        [f(DesiredParallelism), i(SparkingCost), i(SparkingDelay),
-         i(SignalCost), i(WaitCost), i(ContextWakeupDelay), 
+        [f(DesiredParallelism), s(string(IntermoduleVarUse)), i(SparkingCost),
+         i(SparkingDelay), i(SignalCost), i(WaitCost), i(ContextWakeupDelay),
          i(CliqueThreshold), i(CallSiteThreshold), s(ParalleliseDepConjsStr),
          s(BestParAlgorithmStr), i(NumConjs)])),
     (
@@ -255,6 +256,9 @@ help_message =
                 The amount of desired parallelism for implicit parallelism,
                 value must be a floating point number above 1.0.
                 Note: This option is currently ignored.
+    --implicit-parallelism-intermodule-var-use
+                Assume that the compiler will be able to push signals and waits
+                for futures across module boundaries. 
     --implicit-parallelism-sparking-cost <value>
                 The cost of creating a spark, measured in the deep profiler's
                 call sequence counts.
@@ -389,6 +393,7 @@ read_deep_file(Input, Debug, MaybeDeep, !IO) :-
             % Provide suitable feedback information for implicit parallelism
     ;       implicit_parallelism
     ;       desired_parallelism
+    ;       implicit_parallelism_intermodule_var_use
     ;       implicit_parallelism_sparking_cost
     ;       implicit_parallelism_sparking_delay
     ;       implicit_parallelism_future_signal_cost
@@ -428,6 +433,8 @@ long("candidate-parallel-conjunctions",     candidate_parallel_conjunctions).
 long("implicit-parallelism",                implicit_parallelism).
 
 long("desired-parallelism",                 desired_parallelism).
+long("implicit-parallelism-intermodule-var-use",
+    implicit_parallelism_intermodule_var_use).
 long("implicit-parallelism-sparking-cost",  implicit_parallelism_sparking_cost).
 long("implicit-parallelism-sparking-delay", implicit_parallelism_sparking_delay).
 long("implicit-parallelism-future-signal-cost",
@@ -464,6 +471,7 @@ defaults(implicit_parallelism,                              bool(no)).
 defaults(desired_parallelism,                               string("4.0")).
 % XXX: These values have been chosen arbitrarily, appropriately values should
 % be tested for.
+defaults(implicit_parallelism_intermodule_var_use,          bool(no)).
 defaults(implicit_parallelism_sparking_cost,                int(100)).
 defaults(implicit_parallelism_sparking_delay,               int(1000)).
 defaults(implicit_parallelism_future_signal_cost,           int(100)).
@@ -565,6 +573,8 @@ check_options(Options0, RequestedFeedbackInfo) :-
             error("Invalid value for desired_parallelism: " ++ 
                 DesiredParallelismStr)
         ),
+        lookup_bool_option(Options, implicit_parallelism_intermodule_var_use,
+            IntermoduleVarUse),
         lookup_int_option(Options, implicit_parallelism_sparking_cost,
             SparkingCost),
         lookup_int_option(Options, implicit_parallelism_sparking_delay,
@@ -621,7 +631,8 @@ check_options(Options0, RequestedFeedbackInfo) :-
             error(Error)
         ),
         CandidateParallelConjunctionsOpts =
-            candidate_par_conjunctions_params(DesiredParallelism, 
+            candidate_par_conjunctions_params(DesiredParallelism,
+                IntermoduleVarUse,
                 SparkingCost,
                 SparkingDelay,
                 FutureSignalCost,

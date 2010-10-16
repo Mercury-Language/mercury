@@ -1426,8 +1426,10 @@ call_site_dynamic_var_use_arg(Deep, CSDPtr, RecursionType, Cost, VarTable,
         HeadVar, MaybeUseAndName, !ArgNum) :-
     HeadVar = head_var_rep(Var, Mode),
     var_mode_to_var_use_type(Mode, UseType),
-    call_site_dynamic_var_use_info(Deep, CSDPtr, !.ArgNum, RecursionType, 
-        Cost, UseType, MaybeUse),
+    % XXX: Allow user to configure var use options.
+    UseOptions = var_use_options(Deep, follow_any_call, UseType),
+    call_site_dynamic_var_use_info(CSDPtr, !.ArgNum, RecursionType, 
+        Cost, UseOptions, MaybeUse),
     (
         MaybeUse = ok(Use),
         lookup_var_name(VarTable, Var, Name),

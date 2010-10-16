@@ -2021,15 +2021,16 @@ display_report_procrep_coverage_info(Prefs, ProcrepCoverageReport, Display) :-
     Display = display(yes(Title), [CoverageInfoItem] ++ Controls).
 
 :- instance goal_annotation(coverage_info) where [
-        pred(print_goal_annotation_to_strings/2) is coverage_to_cord_string
+        pred(print_goal_annotation_to_strings/3) is coverage_to_cord_string
     ].
 
     % Print the coverage information for a goal, this is used by
     % print_proc_to_strings.
     %
-:- pred coverage_to_cord_string(coverage_info::in, cord(string)::out) is det.
+:- pred coverage_to_cord_string(var_table::in, coverage_info::in, 
+    cord(cord(string))::out) is det.
 
-coverage_to_cord_string(Coverage, cord.singleton(String)) :-
+coverage_to_cord_string(_, Coverage, singleton(singleton(String))) :-
     (
         Coverage = coverage_unknown,
         String0 = "_ - _"

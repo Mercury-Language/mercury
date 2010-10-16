@@ -61,7 +61,8 @@
     % Print the goal annotation for inclusion by print_proc_to_strings
     % above.
     %
-    pred print_goal_annotation_to_strings(T::in, cord(string)::out) is det
+    pred print_goal_annotation_to_strings(var_table::in, T::in, 
+        cord(cord(string))::out) is det
 ].
 
     % A goal with no particular annotation has empty strings printed for goal
@@ -310,44 +311,38 @@ print_goal_to_strings(VarTable, Indent, GoalPath, GoalRep, Strings) :-
         ExprString = indent(Indent) ++ ExprString0
     ),
     
-    detism_to_string(DetismRep, DetismString0),
-    print_goal_annotation_to_strings(GoalAnnotation, GoalAnnotationString0),
-   
-    AnnotationPrefix = cord.singleton("% "),
+    ( GoalExprRep = conj_rep(_) ->
+        LinePrefix = indent(Indent) ++ singleton("% conjunction: "),
+        ExtraLineForConjunctions = nl
+    ;
+        LinePrefix = indent(Indent) ++ singleton("% "),
+        ExtraLineForConjunctions = empty
+    ),
+    detism_to_string(DetismRep, DetismString),
+    DetismLine = LinePrefix ++ DetismString ++ nl,
+    print_goal_annotation_to_strings(VarTable, GoalAnnotation,
+        GoalAnnotationLines0),
+    ( is_empty(GoalAnnotationLines0) ->
+        GoalAnnotationLines = empty
+    ;
+        GoalAnnotationLines1 = map((func(Line) = LinePrefix ++ Line ++ nl),
+            GoalAnnotationLines0),
+        GoalAnnotationLines = foldr(++, GoalAnnotationLines1, empty)
+    ),
+
     GoalPathString0 = goal_path_to_string(GoalPath),
     ( GoalPathString0 = "" ->
-        GoalPathString1 = "root goal"
+        GoalPathString = "root goal"
     ;
-        GoalPathString1 = GoalPathString0
+        GoalPathString = GoalPathString0
     ),
-    GoalPathString = AnnotationPrefix ++ cord.singleton(GoalPathString1),
-    DetismString = AnnotationPrefix ++ DetismString0,
+    GoalPathLine = LinePrefix ++ cord.singleton(GoalPathString) ++ nl,
 
-    % Don't print empty annotations, including their newline.
-    ( not is_empty(GoalAnnotationString0) ->
-        ( GoalExprRep = conj_rep(_) ->
-            % If this annotation belongs to a conjunction make sure that this
-            % is clear.
-            GoalAnnotationString = indent(Indent) ++ AnnotationPrefix 
-                ++ cord.singleton("conjunction: ") ++ GoalAnnotationString0 
-                ++ nl
-        ;
-            GoalAnnotationString = indent(Indent) ++ AnnotationPrefix 
-                ++ GoalAnnotationString0 ++ nl
-        )
-    ;
-        GoalAnnotationString = cord.empty
-    ),
-    ( GoalExprRep = conj_rep(_) ->
-        % Don't print determinism information or the goal path for conjunctions.
-        Strings = GoalAnnotationString
-            ++ ExprString
-    ; 
-        Strings = indent(Indent) ++ GoalPathString ++ nl
-            ++ indent(Indent) ++ DetismString ++ nl 
-            ++ GoalAnnotationString
-            ++ ExprString
-    ).
+    Strings = GoalPathLine
+        ++ DetismLine
+        ++ GoalAnnotationLines
+        ++ ExtraLineForConjunctions
+        ++ ExprString.
 
 :- pred print_conj_to_strings(var_table::in, int::in,
     goal_path::in, list(goal_rep(GoalAnn))::in, cord(string)::out) is det
@@ -379,7 +374,14 @@ print_conj_2_to_strings(VarTable, Indent, GoalPath0, ConjNum,
     print_goal_to_strings(VarTable, Indent, GoalPath, GoalRep, GoalString),
     print_conj_2_to_strings(VarTable, Indent, GoalPath0, ConjNum+1, 
         GoalReps, ConjString),
-    Strings = GoalString ++ ConjString.
+    (
+        GoalReps = [],
+        Seperator = empty
+    ;
+        GoalReps = [_ | _],
+        Seperator = indent(Indent) ++ singleton(",\n")
+    ),
+    Strings = GoalString ++ Seperator ++ ConjString.
 
 :- pred print_disj_to_strings(var_table::in, int::in, goal_path::in, 
     int::in, list(goal_rep(GoalAnn))::in, bool::in, cord(string)::out) 
@@ -629,12 +631,13 @@ nl = cord.singleton("\n").
 %----------------------------------------------------------------------------%
 
 :- instance goal_annotation(unit) where [
-    pred(print_goal_annotation_to_strings/2) is print_unit_to_strings
+    pred(print_goal_annotation_to_strings/3) is print_unit_to_strings
 ].
 
-:- pred print_unit_to_strings(unit::in, cord(string)::out) is det.
+:- pred print_unit_to_strings(var_table::in, unit::in, cord(cord(string))::out)
+    is det.
 
-print_unit_to_strings(_, cord.empty).
+print_unit_to_strings(_, _, cord.empty).
 
 %----------------------------------------------------------------------------%
 

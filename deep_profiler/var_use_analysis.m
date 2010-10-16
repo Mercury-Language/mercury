@@ -40,6 +40,17 @@
                 vui_use_type                :: var_use_type
             ).
 
+:- type var_use_options
+    --->    var_use_options(
+                vuo_deep                    :: deep,
+                vuo_intermodule_var_use     :: intermodule_var_use,
+                vuo_var_use_type            :: var_use_type
+            ).
+
+:- type intermodule_var_use
+    --->    follow_calls_into_module(string)
+    ;       follow_any_call.
+
 :- type var_use_type
     --->    var_use_production
             % The variable is produced: free >> ground
@@ -73,11 +84,11 @@
     % The first mode avoids a check to ensure that this recursion type provides
     % enough information.
     %
-:- pred call_site_dynamic_var_use_info(deep, call_site_dynamic_ptr, int,
-    recursion_type, float, var_use_type, maybe_error(var_use_info)).
-:- mode call_site_dynamic_var_use_info(in, in, in,
+:- pred call_site_dynamic_var_use_info(call_site_dynamic_ptr, int,
+    recursion_type, float, var_use_options, maybe_error(var_use_info)).
+:- mode call_site_dynamic_var_use_info(in, in,
     in(recursion_type_known_costs), in, in, out) is det.
-:- mode call_site_dynamic_var_use_info(in, in, in,
+:- mode call_site_dynamic_var_use_info(in, in,
     in, in, in, out) is det.
 
     % call_site_dynamic_var_use_info(Deep, CliquePtr, CSDPtr, ArgPos, RT,
@@ -92,22 +103,22 @@
     %
     % Cost is the cost of the call.
     %
-:- pred call_site_dynamic_var_use_info(deep, clique_ptr, call_site_dynamic_ptr,
+:- pred call_site_dynamic_var_use_info(clique_ptr, call_site_dynamic_ptr,
     int, recursion_type, maybe(recursion_depth), float, set(proc_dynamic_ptr),
-    var_use_type, maybe_error(var_use_info)).
-:- mode call_site_dynamic_var_use_info(in, in, in, in,
+    var_use_options, maybe_error(var_use_info)).
+:- mode call_site_dynamic_var_use_info(in, in, in,
     in(recursion_type_known_costs), in(maybe_yes(ground)), in, in, in, out) 
     is det. 
-:- mode call_site_dynamic_var_use_info(in, in, in, in, 
+:- mode call_site_dynamic_var_use_info(in, in, in, 
     in, in, in, in, in, out) is det.
 
-:- pred clique_var_use_info(deep::in, clique_ptr::in, int::in,
-    var_use_type::in, maybe_error(var_use_info)::out) is det.
+:- pred clique_var_use_info(clique_ptr::in, int::in,
+    var_use_options::in, maybe_error(var_use_info)::out) is det.
 
-:- pred proc_dynamic_var_use_info(deep::in, clique_ptr::in,
+:- pred proc_dynamic_var_use_info(clique_ptr::in,
     proc_dynamic_ptr::in, int::in, 
     recursion_type::in(recursion_type_known_costs), recursion_depth::in,
-    float::in, set(proc_dynamic_ptr)::in, var_use_type::in,
+    float::in, set(proc_dynamic_ptr)::in, var_use_options::in,
     maybe_error(var_use_info)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -120,11 +131,11 @@
 
     % Find the first use of a variable in an arbitrary goal.
     %
-:- pred var_first_use(deep::in, clique_ptr::in,
+:- pred var_first_use(clique_ptr::in,
     map(goal_path, cost_and_callees)::in, map(goal_path, cs_cost_csq)::in, 
     recursion_type::in(recursion_type_known_costs), recursion_depth::in,
     goal_rep(T)::in, goal_path::in, float::in, var_rep::in, 
-    var_use_type::in, var_use_info::out) is det 
+    var_use_options::in, var_use_info::out) is det 
     <= goal_annotation_with_coverage(T).
 
 %-----------------------------------------------------------------------------%
@@ -208,33 +219,43 @@ pessimistic_var_use_time(VarUseType, ProcCost, CostUntilUse) :-
     % compiler will not push signals and waits into higher order calls.
     % Therefore this should never be called for a higher order call site.
     %
-call_site_dynamic_var_use_info(Deep, CSDPtr, ArgPos, RT, Cost, VarUseType,
+call_site_dynamic_var_use_info(CSDPtr, ArgPos, RT, Cost, VarUseOptions,
         MaybeVarUseInfo) :-
+    Deep = VarUseOptions ^ vuo_deep,
     deep_lookup_call_site_dynamics(Deep, CSDPtr, CSD),
     deep_lookup_clique_index(Deep, CSD ^ csd_caller, ParentCliquePtr),
     recursion_type_get_maybe_avg_max_depth(RT, MaybeCurDepth),
-    call_site_dynamic_var_use_info(Deep, ParentCliquePtr, CSDPtr, ArgPos, RT, 
-        MaybeCurDepth, Cost, set.init, VarUseType, MaybeVarUseInfo).
+    call_site_dynamic_var_use_info(ParentCliquePtr, CSDPtr, ArgPos, RT, 
+        MaybeCurDepth, Cost, set.init, VarUseOptions, MaybeVarUseInfo).
 
-call_site_dynamic_var_use_info(Deep, ParentCliquePtr, CSDPtr, ArgNum,
-        RecursionType, MaybeDepth0, Cost, CallStack, VarUseType,
+call_site_dynamic_var_use_info(ParentCliquePtr, CSDPtr, ArgNum,
+        RecursionType, MaybeDepth0, Cost, CallStack, VarUseOptions,
         MaybeVarUseInfo) :-
+    Deep = VarUseOptions ^ vuo_deep,
     deep_lookup_clique_maybe_child(Deep, CSDPtr, MaybeCalleeCliquePtr),
     ( 
         MaybeCalleeCliquePtr = yes(CalleeCliquePtr),
         % This is a non-recursive call site.
-        clique_var_use_info(Deep, CalleeCliquePtr, ArgNum, VarUseType,
+        clique_var_use_info(CalleeCliquePtr, ArgNum, VarUseOptions,
             MaybeVarUseInfo)
     ;
         MaybeCalleeCliquePtr = no,
         % This is a recursive call site.
         deep_lookup_call_site_dynamics(Deep, CSDPtr, CSD),
         CalleePDPtr = CSD ^ csd_callee,
-        ( member(CalleePDPtr, CallStack) ->
-            % Don't follow this recursive call, doing so would make this
-            % analysis recurse forever.  XXX: There should be a way to
-            % compute and solve a finite series for this.
-            pessimistic_var_use_info(VarUseType, Cost, VarUseInfo),
+        (
+            (
+                % Don't follow this recursive call, doing so would make this
+                % analysis recurse forever.  XXX: There should be a way to
+                % compute and solve a finite series for this.
+                member(CalleePDPtr, CallStack)
+            ;
+                not intermodule_var_use_should_follow_call(VarUseOptions,
+                    CSDPtr)
+            )
+        ->
+            pessimistic_var_use_info(VarUseOptions ^ vuo_var_use_type, Cost,
+                VarUseInfo), 
             MaybeVarUseInfo = ok(VarUseInfo)
         ;
             (
@@ -248,9 +269,9 @@ call_site_dynamic_var_use_info(Deep, ParentCliquePtr, CSDPtr, ArgNum,
                         "A depth must be provided for known recursion types")
                 ),
                 recursion_depth_descend(Depth0, Depth),
-                proc_dynamic_var_use_info(Deep, ParentCliquePtr, CalleePDPtr,
+                proc_dynamic_var_use_info(ParentCliquePtr, CalleePDPtr,
                     ArgNum, RecursionType, Depth, Cost, CallStack,
-                    VarUseType, MaybeVarUseInfo)
+                    VarUseOptions, MaybeVarUseInfo)
             ;
                 ( RecursionType = rt_divide_and_conquer(_, _)
                 ; RecursionType = rt_mutual_recursion(_)
@@ -264,7 +285,8 @@ call_site_dynamic_var_use_info(Deep, ParentCliquePtr, CSDPtr, ArgNum,
         )
     ).
 
-clique_var_use_info(Deep, CliquePtr, ArgNum, VarUseType, MaybeVarUseInfo) :-
+clique_var_use_info(CliquePtr, ArgNum, VarUseOptions, MaybeVarUseInfo) :-
+    Deep = VarUseOptions ^ vuo_deep,
     deep_lookup_clique_parents(Deep, CliquePtr, CSDPtr),
     deep_lookup_csd_desc(Deep, CSDPtr, CSDDesc),
     Cost = float(inherit_callseqs(CSDDesc)),
@@ -286,8 +308,8 @@ clique_var_use_info(Deep, CliquePtr, ArgNum, VarUseType, MaybeVarUseInfo) :-
             ; RecursionType = rt_single(_, _, _, _, _)
             ),
             recursion_type_get_maybe_avg_max_depth(RecursionType, yes(Depth)),
-            proc_dynamic_var_use_info(Deep, CliquePtr, FirstPDPtr, ArgNum,
-                RecursionType, Depth, Cost, set.init, VarUseType,
+            proc_dynamic_var_use_info(CliquePtr, FirstPDPtr, ArgNum,
+                RecursionType, Depth, Cost, set.init, VarUseOptions,
                 MaybeVarUseInfo)
         ;
             ( RecursionType = rt_divide_and_conquer(_, _)
@@ -295,6 +317,7 @@ clique_var_use_info(Deep, CliquePtr, ArgNum, VarUseType, MaybeVarUseInfo) :-
             ; RecursionType = rt_other(_)
             ; RecursionType = rt_errors(_)
             ),
+            VarUseType = VarUseOptions ^ vuo_var_use_type,
             pessimistic_var_use_info(VarUseType, Cost, VarUseInfo),
             MaybeVarUseInfo = ok(VarUseInfo)
         )
@@ -303,9 +326,10 @@ clique_var_use_info(Deep, CliquePtr, ArgNum, VarUseType, MaybeVarUseInfo) :-
         error(this_file ++ "Clique has no first procedure")
     ).
 
-proc_dynamic_var_use_info(Deep, CliquePtr, PDPtr, ArgNum, RecursionType,
-        Depth0, ProcCost, CallStack0, VarUseType, MaybeVarUseInfo) :-
+proc_dynamic_var_use_info(CliquePtr, PDPtr, ArgNum, RecursionType,
+        Depth0, ProcCost, CallStack0, VarUseOptions, MaybeVarUseInfo) :-
     set.insert(CallStack0, PDPtr, CallStack),
+    Deep = VarUseOptions ^ vuo_deep,
     create_dynamic_procrep_coverage_report(Deep, PDPtr, MaybeProcrepCoverage),
     (
         MaybeProcrepCoverage = ok(ProcrepCoverage),
@@ -313,6 +337,7 @@ proc_dynamic_var_use_info(Deep, CliquePtr, PDPtr, ArgNum, RecursionType,
         HeadVars = ProcDefn ^ pdr_head_vars,
         ( index0(HeadVars, ArgNum, head_var_rep(Var, Mode)) ->
             var_mode_to_var_use_type(Mode, ComputedUse),
+            VarUseType = VarUseOptions ^ vuo_var_use_type,
             ( VarUseType = ComputedUse ->
                 true
             ;
@@ -337,9 +362,9 @@ proc_dynamic_var_use_info(Deep, CliquePtr, PDPtr, ArgNum, RecursionType,
 
             % Do the actual computation.
             Goal = ProcDefn ^ pdr_goal,
-            goal_var_first_use_wrapper(Deep, CliquePtr, CallStack,
+            goal_var_first_use_wrapper(CliquePtr, CallStack,
                 CallSiteCostMap, RecursiveCallSiteCostMap, RecursionType,
-                Depth, Goal, ProcCost, Var, VarUseType, VarUseInfo),
+                Depth, Goal, ProcCost, Var, VarUseOptions, VarUseInfo),
             MaybeVarUseInfo = ok(VarUseInfo)
         ;
             PDPtr = proc_dynamic_ptr(PDNum),
@@ -369,12 +394,11 @@ proc_dynamic_var_use_info(Deep, CliquePtr, PDPtr, ArgNum, RecursionType,
 
 :- type var_first_use_static_info
     --->    var_first_use_static_info(
-                fui_deep                :: deep,
                 fui_clique              :: clique_ptr,
                 fui_call_site_map       :: map(goal_path, cost_and_callees),
                 fui_rec_call_site_map   :: map(goal_path, cs_cost_csq),
                 fui_var                 :: var_rep,
-                fui_var_use             :: var_use_type,
+                fui_var_use_opts        :: var_use_options,
 
                 % A set of call sites whose analysis has started but not yet
                 % completed. We keep this set to prevent infinite recursion
@@ -387,7 +411,7 @@ proc_dynamic_var_use_info(Deep, CliquePtr, PDPtr, ArgNum, RecursionType,
 
 :- inst var_first_use_static_info
     --->    var_first_use_static_info(
-                ground, ground, ground, ground, ground, ground, ground,
+                ground, ground, ground, ground, ground, ground,
                 recursion_type_known_costs,
                 ground
             ).
@@ -415,7 +439,8 @@ goal_var_first_use(GoalPath, Goal, StaticInfo, !CostSoFar, FoundFirstUse) :-
         (
             get_coverage_before(Coverage, 0)
         ;
-            StaticInfo ^ fui_var_use = var_use_production, 
+            VarUseType = StaticInfo ^ fui_var_use_opts ^ vuo_var_use_type,
+            VarUseType = var_use_production, 
             (
                 Detism = erroneous_rep
             ;
@@ -498,9 +523,10 @@ goal_var_first_use(GoalPath, Goal, StaticInfo, !CostSoFar, FoundFirstUse) :-
 
 call_var_first_use(AtomicGoal, BoundVars, GoalPath, StaticInfo,
         CostSoFar, NextCostSoFar, FoundFirstUse) :-
-    StaticInfo = var_first_use_static_info(_Deep, CliquePtr, CostMap,
-        RecCostMap, Var, VarUseType, _CallStack, _RecursionType,
+    StaticInfo = var_first_use_static_info(CliquePtr, CostMap,
+        RecCostMap, Var, VarUseOptions, _CallStack, _RecursionType,
         _MaybeCurDepth),
+    VarUseType = VarUseOptions ^ vuo_var_use_type,
     map.lookup(CostMap, GoalPath, CostAndCallees),
 
     % Get the cost of the call.
@@ -607,8 +633,9 @@ consume_ho_arg(method_call_rep(Var, _, _), Var, 0.0).
     cost_and_callees::in, float::out) is nondet.
 
 call_args_first_use(Args, Cost, StaticInfo, CostAndCallees, Time) :-
-    StaticInfo = var_first_use_static_info(Deep, CliquePtr, _CostMap,
-        _RecCostMap, Var, VarUseType, CallStack, RecursionType, CurDepth),
+    StaticInfo = var_first_use_static_info(CliquePtr, _CostMap,
+        _RecCostMap, Var, VarUseOptions, CallStack, RecursionType, CurDepth),
+    VarUseType = VarUseOptions ^ vuo_var_use_type,
     HigherOrder = CostAndCallees ^ cac_call_site_is_ho,
     Callees = CostAndCallees ^ cac_callees,
     member_index0(Var, Args, ArgNum), 
@@ -619,9 +646,9 @@ call_args_first_use(Args, Cost, StaticInfo, CostAndCallees, Time) :-
             pessimistic_var_use_time(VarUseType, Cost, Time)
         ; singleton_set(Callees, SingletonCallee) ->
             CSDPtr = SingletonCallee ^ c_csd,
-            call_site_dynamic_var_use_info(Deep, CliquePtr, CSDPtr,
+            call_site_dynamic_var_use_info(CliquePtr, CSDPtr,
                 ArgNum, RecursionType, yes(CurDepth), Cost, CallStack,
-                VarUseType, MaybeVarUseInfo),
+                VarUseOptions, MaybeVarUseInfo),
             (
                 MaybeVarUseInfo = ok(VarUseInfo),
                 VarUseInfo = var_use_info(Time, _, _)
@@ -659,7 +686,7 @@ call_args_first_use(Args, Cost, StaticInfo, CostAndCallees, Time) :-
 atomic_trivial_var_first_use(AtomicGoal, BoundVars, CostSoFar, StaticInfo,
         FoundFirstUse) :-
     Var = StaticInfo ^ fui_var,
-    VarUseType = StaticInfo ^ fui_var_use,
+    VarUseType = StaticInfo ^ fui_var_use_opts ^ vuo_var_use_type,
     atomic_goal_get_vars(AtomicGoal, Vars),
     (
         member(Var, Vars),
@@ -729,7 +756,7 @@ disj_var_first_use(GoalPath, Disjuncts, Detism, StaticInfo,
         detism_get_solutions(Detism) = at_most_many_rep,
         FoundFirstUse0 = found_first_use(_)
     ->
-        VarUseType = StaticInfo ^ fui_var_use,
+        VarUseType = StaticInfo ^ fui_var_use_opts ^ vuo_var_use_type,
         (
             VarUseType = var_use_consumption,
             FoundFirstUse = found_first_use(CostBeforeConsumption)
@@ -753,7 +780,7 @@ disj_var_first_use_2(_, _, [], _, !CostSoFar, have_not_found_first_use).
 disj_var_first_use_2(GoalPath, DisjNum, [Disj | Disjs], StaticInfo, !CostSoFar,
         FoundFirstUse) :-
     DisjGoalPath = goal_path_add_at_end(GoalPath, step_disj(DisjNum)),
-    VarUseType = StaticInfo ^ fui_var_use,
+    VarUseType = StaticInfo ^ fui_var_use_opts ^ vuo_var_use_type,
     goal_var_first_use(DisjGoalPath, Disj, StaticInfo, !CostSoFar,
         HeadFoundFirstUse),
     disj_var_first_use_2(GoalPath, DisjNum + 1, Disjs, StaticInfo,
@@ -827,7 +854,7 @@ switch_var_first_use(GoalPath, SwitchedOnVar, Cases, StaticInfo,
             % No case contained a first-use of this variable.
             FoundFirstUse = have_not_found_first_use
         ;
-            VarUseType = StaticInfo ^ fui_var_use,
+            VarUseType = StaticInfo ^ fui_var_use_opts ^ vuo_var_use_type,
             (
                 VarUseType = var_use_consumption,
                 DefaultCost = CostAfterSwitch
@@ -886,7 +913,7 @@ ite_var_first_use(GoalPath, Cond, Then, Else, StaticInfo,
     CondGoalPath = goal_path_add_at_end(GoalPath, step_ite_cond),
     ThenGoalPath = goal_path_add_at_end(GoalPath, step_ite_then),
     ElseGoalPath = goal_path_add_at_end(GoalPath, step_ite_else),
-    VarUseType = StaticInfo ^ fui_var_use,
+    VarUseType = StaticInfo ^ fui_var_use_opts ^ vuo_var_use_type,
     CostBeforeITE = !.CostSoFar,
     goal_var_first_use(CondGoalPath, Cond, StaticInfo,
         CostBeforeITE, CostAfterCond, CondFoundFirstUse),
@@ -939,21 +966,20 @@ ffu_to_float(_, found_first_use(CostBeforeUse), CostBeforeUse).
 
 %----------------------------------------------------------------------------%
 
-:- pred goal_var_first_use_wrapper(deep::in, clique_ptr::in,
-    set(proc_dynamic_ptr)::in, 
+:- pred goal_var_first_use_wrapper(clique_ptr::in, set(proc_dynamic_ptr)::in, 
     map(goal_path, cost_and_callees)::in, map(goal_path, cs_cost_csq)::in, 
     recursion_type::in(recursion_type_known_costs), recursion_depth::in,
     goal_rep(coverage_info)::in, float::in, var_rep::in, 
-    var_use_type::in, var_use_info::out) is det.
+    var_use_options::in, var_use_info::out) is det.
 
-goal_var_first_use_wrapper(Deep, CliquePtr, CallStack, CallSiteMap,
+goal_var_first_use_wrapper(CliquePtr, CallStack, CallSiteMap,
         RecursiveCallSiteMap, RT, CurDepth, Goal, ProcCost, Var,
-        VarUseType, VarUseInfo) :-
+        VarUseOptions, VarUseInfo) :-
     goal_var_first_use(empty_goal_path, Goal,
-        var_first_use_static_info(Deep, CliquePtr, CallSiteMap,
-            RecursiveCallSiteMap, Var, VarUseType, CallStack, RT,
-            CurDepth),
+        var_first_use_static_info(CliquePtr, CallSiteMap, RecursiveCallSiteMap,
+            Var, VarUseOptions, CallStack, RT, CurDepth),
         0.0, _Cost, FoundFirstUse),
+    VarUseType = VarUseOptions ^ vuo_var_use_type,
     found_first_use_to_use_info(FoundFirstUse, ProcCost, VarUseType,
         VarUseInfo).
 
@@ -961,12 +987,13 @@ goal_var_first_use_wrapper(Deep, CliquePtr, CallStack, CallSiteMap,
         (get_coverage(Goal) = Goal ^ goal_annotation)
     ].
 
-var_first_use(Deep, CliquePtr, CallSiteMap, RecursiveCallSiteMap, RT, CurDepth,
-        Goal, GoalPath, Cost, Var, VarUseType, VarUseInfo) :-
+var_first_use(CliquePtr, CallSiteMap, RecursiveCallSiteMap, RT, CurDepth,
+        Goal, GoalPath, Cost, Var, VarUseOptions, VarUseInfo) :-
     goal_var_first_use(GoalPath, Goal,
-        var_first_use_static_info(Deep, CliquePtr, CallSiteMap,
-            RecursiveCallSiteMap, Var, VarUseType, set.init, RT, CurDepth), 
+        var_first_use_static_info(CliquePtr, CallSiteMap, RecursiveCallSiteMap,
+            Var, VarUseOptions, set.init, RT, CurDepth), 
         0.0, _, FoundFirstUse),
+    VarUseType = VarUseOptions ^ vuo_var_use_type,
     found_first_use_to_use_info(FoundFirstUse, Cost, VarUseType, VarUseInfo).
 
 :- pred found_first_use_to_use_info(found_first_use::in, float::in,
@@ -979,8 +1006,8 @@ found_first_use_to_use_info(FoundFirstUse, Cost, VarUseType, VarUseInfo) :-
     ;
         FoundFirstUse = have_not_found_first_use,
         % If the first use has not been found then:
-        %  a) for productions, they must have been produced, this is an error.
-        %  b) For consumptions. the compiler will insert a wait so any calls
+        %  a) for productions: they must have been produced, this is an error.
+        %  b) For consumptions: the compiler will insert a wait so any calls
         %     following this one can assume that a wait has already been
         %     performed.
         (
@@ -994,6 +1021,29 @@ found_first_use_to_use_info(FoundFirstUse, Cost, VarUseType, VarUseInfo) :-
             VarUseType = var_use_other,
             pessimistic_var_use_info(VarUseType, Cost, VarUseInfo)
         )
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred intermodule_var_use_should_follow_call(var_use_options::in,
+    call_site_dynamic_ptr::in) is semidet.
+
+intermodule_var_use_should_follow_call(VarUseOptions, CSDPtr) :-
+    FollowCall = VarUseOptions ^ vuo_intermodule_var_use,
+    (
+        FollowCall = follow_calls_into_module(Module),
+        Deep = VarUseOptions ^ vuo_deep,
+        deep_lookup_call_site_dynamics(Deep, CSDPtr, CSD),
+        PDPtr = CSD ^ csd_callee,
+        deep_lookup_proc_dynamics(Deep, PDPtr, PD),
+        PSPtr = PD ^ pd_proc_static,
+        deep_lookup_proc_statics(Deep, PSPtr, PS),
+        Label = PS ^ ps_id,
+        ( Label = str_ordinary_proc_label(_, _, Module, _, _, _)
+        ; Label = str_special_proc_label(_, _, Module, _, _, _)
+        )
+    ;
+        FollowCall = follow_any_call
     ).
 
 %-----------------------------------------------------------------------------%

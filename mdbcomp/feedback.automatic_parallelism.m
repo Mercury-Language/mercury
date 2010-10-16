@@ -21,6 +21,7 @@
 
 :- import_module mdbcomp.program_representation.
 
+:- import_module bool.
 :- import_module list.
 :- import_module set.
 :- import_module string.
@@ -35,6 +36,9 @@
     --->    candidate_par_conjunctions_params(
                 % The number of desired busy sparks.
                 cpcp_desired_parallelism    :: float,
+
+                % Follow variable use across module boundaries.
+                cpcp_intermodule_var_use    :: bool,
 
                 % The cost of creating a spark and adding it to the local
                 % work queue, measured in call sequence counts.
@@ -147,6 +151,7 @@
                 cpc_is_dependent        :: conjuncts_are_dependent,
 
                 cpc_goals_before        :: list(GoalType),
+                cpc_goals_before_cost   :: float,
 
                 % A list of parallel conjuncts, each is a sequential
                 % conjunction of inner goals. All inner goals that are
@@ -162,6 +167,7 @@
                 cpc_conjs               :: list(seq_conj(GoalType)),
 
                 cpc_goals_after         :: list(GoalType),
+                cpc_goals_after_cost    :: float,
 
                 cpc_par_exec_metrics    :: parallel_exec_metrics
             ).
@@ -189,20 +195,16 @@
 :- type pard_goal == goal_rep(pard_goal_annotation).
 
 :- type pard_goal_annotation
-    --->    pard_goal_call(
-                % A call goal,  These are the most interesting goals WRT
-                % parallelisation.
-
+    --->    pard_goal_annotation(
                 % The per-call cost of this call in call sequence counts.
-                pgc_cost_percall            :: float,
+                pga_cost_percall            :: float,
 
-                pgc_coat_above_threshold    :: cost_above_par_threshold
-            )
-    ;       pard_goal_other_atomic
-            % Some other (cheap) atomic goal.
-
-    ;       pard_goal_non_atomic.
-            % A non-atomic goal.
+                pga_coat_above_threshold    :: cost_above_par_threshold,
+            
+                % Variable use information.
+                pga_var_productions         :: assoc_list(var_rep, float),
+                pga_var_consumptions        :: assoc_list(var_rep, float)
+            ).
 
 :- type cost_above_par_threshold
     --->    cost_above_par_threshold
@@ -219,16 +221,17 @@
     ;       conjuncts_are_independent.
 
 :- pred convert_candidate_par_conjunctions_proc(
-    pred(A, B)::in(pred(in, out) is det), 
+    pred(candidate_par_conjunction(A), A, B)::in(pred(in, in, out) is det), 
     candidate_par_conjunctions_proc(A)::in,
     candidate_par_conjunctions_proc(B)::out) is det.
 
 :- pred convert_candidate_par_conjunction(
-    pred(A, B)::in(pred(in, out) is det),
+    pred(candidate_par_conjunction(A), A, B)::in(pred(in, in, out) is det), 
     candidate_par_conjunction(A)::in, candidate_par_conjunction(B)::out)
     is det.
 
-:- pred convert_seq_conj(pred(A, B)::in(pred(in, out) is det),
+:- pred convert_seq_conj(
+    pred(A, B)::in(pred(in, out) is det), 
     seq_conj(A)::in, seq_conj(B)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -315,14 +318,19 @@ convert_candidate_par_conjunctions_proc(Conv, CPCProcA, CPCProcB) :-
     map(convert_candidate_par_conjunction(Conv), CPCA, CPCB),
     CPCProcB = candidate_par_conjunctions_proc(VarTable, CPCB).
 
-convert_candidate_par_conjunction(Conv, CPC0, CPC) :-
+convert_candidate_par_conjunction(Conv0, CPC0, CPC) :-
     CPC0 = candidate_par_conjunction(GoalPath, FirstGoalNum,
-        IsDependent, GoalsBefore0, Conjs0, GoalsAfter0, Metrics),
+        IsDependent, GoalsBefore0, GoalsBeforeCost, Conjs0, GoalsAfter0,
+        GoalsAfterCost, Metrics),
+    Conv = (pred(A::in, B::out) is det :-
+            Conv0(CPC0, A, B)
+        ),
     map(convert_seq_conj(Conv), Conjs0, Conjs),
     map(Conv, GoalsBefore0, GoalsBefore),
     map(Conv, GoalsAfter0, GoalsAfter),
     CPC = candidate_par_conjunction(GoalPath, FirstGoalNum,
-        IsDependent, GoalsBefore, Conjs, GoalsAfter, Metrics).
+        IsDependent, GoalsBefore, GoalsBeforeCost, Conjs, GoalsAfter,
+        GoalsAfterCost, Metrics).
 
 convert_seq_conj(Conv, seq_conj(Conjs0), seq_conj(Conjs)) :-
     map(Conv, Conjs0, Conjs).

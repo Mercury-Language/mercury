@@ -65,6 +65,12 @@
     %
 :- func force(lazy(T)) = T.
 
+    % Get the value of a lazy expression if it has already been made available
+    % with force/1 This is useful as it can provide information without
+    % incurring (much) cost.
+    %
+:- pred read_if_val(lazy(T)::in, T::out) is semidet.
+
     % Test lazy values for equality.
     %
 :- pred equal_values(lazy(T)::in, lazy(T)::in) is semidet.
@@ -155,6 +161,17 @@ force(Lazy) = Value :-
             Value = apply(Thunk),
             impure set_mutvar(Mutvar, value(Value))
         )
+    ).
+
+%-----------------------------------------------------------------------------%
+
+read_if_val(Lazy, Value) :-
+    promise_equivalent_solutions [Mutvar] (
+        Lazy = lazy(Mutvar)
+    ),
+    promise_pure (
+        impure get_mutvar(Mutvar, State),
+        State = value(Value)
     ).
 
 %-----------------------------------------------------------------------------%
