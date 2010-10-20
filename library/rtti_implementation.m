@@ -1160,7 +1160,7 @@ compare_collapsed_type_infos(Res, TypeInfo1, TypeInfo2) :-
                 compare(ArityRes, Arity1, Arity2),
                 (
                     ArityRes = (=),
-                    compare_var_arity_typeinfos(1, Arity1, Res,
+                    compare_var_arity_type_info_args(1, Arity1, Res,
                         TypeInfo1, TypeInfo2)
                 ;
                     ( ArityRes = (<)
@@ -1169,7 +1169,19 @@ compare_collapsed_type_infos(Res, TypeInfo1, TypeInfo2) :-
                     Res = ArityRes
                 )
             ;
-                Res = (=)
+                Arity1 = type_ctor_arity(TypeCtorInfo1),
+                Arity2 = type_ctor_arity(TypeCtorInfo2),
+                compare(ArityRes, Arity1, Arity2),
+                (
+                    ArityRes = (=),
+                    compare_type_info_args(1, Arity1, Res,
+                        TypeInfo1, TypeInfo2)
+                ;
+                    ( ArityRes = (<)
+                    ; ArityRes = (>)
+                    ),
+                    Res = ArityRes
+                )
             )
         ;
             ( NameRes = (<)
@@ -1220,10 +1232,33 @@ compare_type_ctor_infos(Res, TypeCtorInfo1, TypeCtorInfo2) :-
         Res = ModNameRes
     ).
 
-:- pred compare_var_arity_typeinfos(int::in, int::in,
+:- pred compare_type_info_args(int::in, int::in, comparison_result::out,
+    type_info::in, type_info::in) is det.
+
+compare_type_info_args(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
+    ( Loc > Arity ->
+        Result = (=)
+    ;
+        SubTypeInfoA = type_info_index_as_ti(TypeInfoA, Loc),
+        SubTypeInfoB = type_info_index_as_ti(TypeInfoB, Loc),
+
+        compare_collapsed_type_infos(SubResult, SubTypeInfoA, SubTypeInfoB),
+        (
+            SubResult = (=),
+            compare_type_info_args(Loc + 1, Arity, Result,
+                TypeInfoA, TypeInfoB)
+        ;
+            ( SubResult = (<)
+            ; SubResult = (>)
+            ),
+            Result = SubResult
+        )
+    ).
+
+:- pred compare_var_arity_type_info_args(int::in, int::in,
     comparison_result::out, type_info::in, type_info::in) is det.
 
-compare_var_arity_typeinfos(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
+compare_var_arity_type_info_args(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
     ( Loc > Arity ->
         Result = (=)
     ;
@@ -1233,7 +1268,7 @@ compare_var_arity_typeinfos(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
         compare_collapsed_type_infos(SubResult, SubTypeInfoA, SubTypeInfoB),
         (
             SubResult = (=),
-            compare_var_arity_typeinfos(Loc + 1, Arity, Result,
+            compare_var_arity_type_info_args(Loc + 1, Arity, Result,
                 TypeInfoA, TypeInfoB)
         ;
             ( SubResult = (<)
@@ -4330,7 +4365,12 @@ type_ctor_module_name(_) = _ :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
 #if MR_HIGHLEVEL_DATA
-    Name = TypeCtorInfo.type_ctor_name;
+    if (TypeCtorInfo.type_ctor_rep
+            == runtime.TypeCtorRep.MR_TYPECTOR_REP_TUPLE) {
+        Name = ""{}"";
+    } else {
+        Name = TypeCtorInfo.type_ctor_name;
+    }
 #else
     Name = (string)
         TypeCtorInfo[(int) type_ctor_info_field_nums.type_ctor_name];
@@ -4340,7 +4380,12 @@ type_ctor_module_name(_) = _ :-
     type_ctor_name(TypeCtorInfo::in) = (Name::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Name = TypeCtorInfo.type_ctor_name;
+    if (TypeCtorInfo.type_ctor_rep.value
+            == private_builtin.MR_TYPECTOR_REP_TUPLE) {
+        Name = ""{}"";
+    } else {
+        Name = TypeCtorInfo.type_ctor_name;
+    }
 ").
 :- pragma foreign_proc("C",
     type_ctor_name(TypeCtorInfo::in) = (Name::out),

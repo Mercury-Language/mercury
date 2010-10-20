@@ -380,13 +380,13 @@ compare_type_infos(Res, TypeInfoA, TypeInfoB) :-
     TCA = TA ^ type_ctor_info_evaled,
     TCB = TB ^ type_ctor_info_evaled,
 
-    compare(NameRes, TCA ^ type_ctor_type_name, TCB ^ type_ctor_type_name),
+    compare(ModuleRes,
+        TCA ^ type_ctor_module_name, TCB ^ type_ctor_module_name),
     (
-        NameRes = (=),
-        compare(ModuleRes,
-            TCA ^ type_ctor_module_name, TCB ^ type_ctor_module_name),
+        ModuleRes = (=),
+        compare(NameRes, TCA ^ type_ctor_type_name, TCB ^ type_ctor_type_name),
         (
-            ModuleRes = (=),
+            NameRes = (=),
             ( type_ctor_is_variable_arity(TCA) ->
                 ArityA = TA ^ var_arity_type_info_arity,
                 ArityB = TB ^ var_arity_type_info_arity,
@@ -415,16 +415,16 @@ compare_type_infos(Res, TypeInfoA, TypeInfoB) :-
                 )
             )
         ;
-            ( ModuleRes = (<)
-            ; ModuleRes = (>)
+            ( NameRes = (<)
+            ; NameRes = (>)
             ),
-            Res = ModuleRes
+            Res = NameRes
         )
     ;
-        ( NameRes = (<)
-        ; NameRes = (>)
+        ( ModuleRes = (<)
+        ; ModuleRes = (>)
         ),
-        Res = NameRes
+        Res = ModuleRes
     ).
 
 :- pred compare_sub_typeinfos(int::in, int::in,
