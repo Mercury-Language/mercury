@@ -231,7 +231,8 @@ output_csharp_decl(Info, Indent, DeclCode, !IO) :-
         Lang = lang_csharp,
         indent_line(Info, mlds_make_context(Context), Indent, !IO),
         io.write_string(Code, !IO),
-        io.nl(!IO)
+        io.nl(!IO),
+        output_default_context(Info, !IO)
     ;
         ( Lang = lang_c
         ; Lang = lang_java
@@ -251,7 +252,8 @@ output_csharp_body_code(Info, Indent, UserForeignCode, !IO) :-
         Lang = lang_csharp,
         indent_line(Info, mlds_make_context(Context), Indent, !IO),
         io.write_string(Code, !IO),
-        io.nl(!IO)
+        io.nl(!IO),
+        output_default_context(Info, !IO)
     ;
         ( Lang = lang_c
         ; Lang = lang_java
@@ -902,7 +904,7 @@ output_defns(Info, Indent, OutputAux, Defns, !IO) :-
 
 output_defn(Info, Indent, OutputAux, Defn, !IO) :-
     Defn = mlds_defn(Name, Context, Flags, DefnBody),
-    indent_line(Info, Context, Indent, !IO),
+    indent_line(Indent, !IO),
     ( DefnBody = mlds_function(_, _, body_external, _, _) ->
         % This is just a function declaration, with no body.
         % C# doesn't support separate declarations and definitions,
@@ -1795,17 +1797,17 @@ output_pred_proc_id(Info, proc(PredId, ProcId), !IO) :-
     output_aux::in, mlds_context::in,
     mlds_func_params::in, mlds_function_body::in, io::di, io::uo) is det.
 
-output_func(Info, Indent, Name, OutputAux, Context, Signature, MaybeBody,
+output_func(Info, Indent, Name, OutputAux, _Context, Signature, MaybeBody,
         !IO) :-
     (
         MaybeBody = body_defined_here(Body),
         output_func_decl(Info, Indent, Name, OutputAux, Signature, !IO),
         io.write_string("\n", !IO),
-        indent_line(Info, Context, Indent, !IO),
+        indent_line(Indent, !IO),
         io.write_string("{\n", !IO),
         FuncInfo = func_info(Signature),
         output_statement(Info, Indent + 1, FuncInfo, Body, _ExitMethods, !IO),
-        indent_line(Info, Context, Indent, !IO),
+        indent_line(Indent, !IO),
         io.write_string("}\n", !IO)    % end the function
     ;
         MaybeBody = body_external
@@ -2677,7 +2679,6 @@ output_statements(Info, Indent, FuncInfo, [Statement | Statements],
 
 output_statement(Info, Indent, FuncInfo,
         statement(Statement, Context), ExitMethods, !IO) :-
-    output_context(Info, Context, !IO),
     output_stmt(Info, Indent, FuncInfo, Statement, Context,
         ExitMethods, !IO).
 
@@ -2698,7 +2699,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         ),
         output_statements(Info, Indent + 1, FuncInfo, Statements,
             ExitMethods, !IO),
-        indent_line(Info, Context, Indent, !IO),
+        indent_line(Indent, !IO),
         io.write_string("}\n", !IO)
     ;
         Statement = ml_stmt_while(Kind, Cond, BodyStatement),
@@ -2726,7 +2727,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         io.write_string("do\n", !IO),
         output_statement(Info, Indent + 1, FuncInfo, BodyStatement,
             StmtExitMethods, !IO),
-        indent_line(Info, Context, Indent, !IO),
+        indent_line(Indent, !IO),
         io.write_string("while (", !IO),
         output_rval(Info, Cond, !IO),
         io.write_string(");\n", !IO),
@@ -2763,7 +2764,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
             ThenExitMethods, !IO),
         (
             MaybeElse = yes(Else),
-            indent_line(Info, Context, Indent, !IO),
+            indent_line(Indent, !IO),
             io.write_string("else\n", !IO),
             output_statement(Info, Indent + 1, FuncInfo, Else,
                 ElseExitMethods, !IO),
@@ -2779,13 +2780,13 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         )
     ;
         Statement = ml_stmt_switch(_Type, Val, _Range, Cases, Default),
-        indent_line(Info, Context, Indent, !IO),
+        indent_line(Indent, !IO),
         io.write_string("switch (", !IO),
         output_rval(Info, Val, !IO),
         io.write_string(") {\n", !IO),
         output_switch_cases(Info, Indent + 1, FuncInfo, Context, Cases,
             Default, ExitMethods, !IO),
-        indent_line(Info, Context, Indent, !IO),
+        indent_line(Indent, !IO),
         io.write_string("}\n", !IO)
     ;
         Statement = ml_stmt_label(_),
@@ -2816,7 +2817,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         Signature = mlds_func_signature(ArgTypes, RetTypes),
         indent_line(Indent, !IO),
         io.write_string("{\n", !IO),
-        indent_line(Info, Context, Indent + 1, !IO),
+        indent_line(Indent + 1, !IO),
         (
             Results = [],
             OutArgs = []
@@ -2998,7 +2999,7 @@ output_switch_case(Info, Indent, FuncInfo, Context, Case, ExitMethods, !IO) :-
     output_statement(Info, Indent + 1, FuncInfo, Statement,
         StmtExitMethods, !IO),
     ( set.member(can_fall_through, StmtExitMethods) ->
-        indent_line(Info, Context, Indent + 1, !IO),
+        indent_line(Indent + 1, !IO),
         io.write_string("break;\n", !IO),
         ExitMethods = (StmtExitMethods `set.insert` can_break)
             `set.delete` can_fall_through
@@ -3010,10 +3011,10 @@ output_switch_case(Info, Indent, FuncInfo, Context, Case, ExitMethods, !IO) :-
 :- pred output_case_cond(csharp_out_info::in, indent::in, mlds_context::in,
     mlds_case_match_cond::in, io::di, io::uo) is det.
 
-output_case_cond(Info, Indent, Context, Match, !IO) :-
+output_case_cond(Info, Indent, _Context, Match, !IO) :-
     (
         Match = match_value(Val),
-        indent_line(Info, Context, Indent, !IO),
+        indent_line(Indent, !IO),
         io.write_string("case ", !IO),
         output_rval(Info, Val, !IO),
         io.write_string(":\n", !IO)
@@ -3027,24 +3028,24 @@ output_case_cond(Info, Indent, Context, Match, !IO) :-
     mlds_context::in, mlds_switch_default::in, exit_methods::out,
     io::di, io::uo) is det.
 
-output_switch_default(Info, Indent, FuncInfo, Context, Default,
+output_switch_default(Info, Indent, FuncInfo, _Context, Default,
         ExitMethods, !IO) :-
     (
         Default = default_do_nothing,
         ExitMethods = set.make_singleton_set(can_fall_through)
     ;
         Default = default_case(Statement),
-        indent_line(Info, Context, Indent, !IO),
+        indent_line(Indent, !IO),
         io.write_string("default:\n", !IO),
         output_statement(Info, Indent + 1, FuncInfo, Statement, ExitMethods,
             !IO),
-        indent_line(Info, Context, Indent, !IO),
+        indent_line(Indent, !IO),
         io.write_string("break;\n", !IO)
     ;
         Default = default_is_unreachable,
-        indent_line(Info, Context, Indent, !IO),
+        indent_line(Indent, !IO),
         io.write_string("default: /*NOTREACHED*/\n", !IO),
-        indent_line(Info, Context, Indent + 1, !IO),
+        indent_line(Indent + 1, !IO),
         io.write_string("throw new runtime.UnreachableDefault();\n",
             !IO),
         ExitMethods = set.make_singleton_set(can_throw)
@@ -3058,7 +3059,7 @@ output_switch_default(Info, Indent, FuncInfo, Context, Default,
 :- pred output_atomic_stmt(csharp_out_info::in, indent::in,
     mlds_atomic_statement::in, mlds_context::in, io::di, io::uo) is det.
 
-output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
+output_atomic_stmt(Info, Indent, AtomicStmt, _Context, !IO) :-
     (
         AtomicStmt = comment(Comment),
         % XXX We should escape any "*/"'s in the Comment. We should also split
@@ -3092,7 +3093,7 @@ output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
 
         indent_line(Indent, !IO),
         io.write_string("{\n", !IO),
-        indent_line(Info, Context, Indent + 1, !IO),
+        indent_line(Indent + 1, !IO),
         output_lval(Info, Target, !IO),
         io.write_string(" = new ", !IO),
         % Generate class constructor name.
@@ -3144,7 +3145,6 @@ output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
         AtomicStmt = inline_target_code(TargetLang, Components),
         (
             TargetLang = ml_target_csharp,
-            indent_line(Indent, !IO),
             list.foldl(output_target_code_component(Info), Components, !IO)
         ;
             ( TargetLang = ml_target_c
@@ -3169,13 +3169,16 @@ output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
 output_target_code_component(Info, TargetCode, !IO) :-
     (
         TargetCode = user_target_code(CodeString, MaybeUserContext, _Attrs),
+        io.write_string("{\n", !IO),
         (
             MaybeUserContext = yes(ProgContext),
             output_context(Info, mlds_make_context(ProgContext), !IO)
         ;
             MaybeUserContext = no
         ),
-        io.write_string(CodeString, !IO)
+        io.write_string(CodeString, !IO),
+        io.write_string("}\n", !IO),
+        output_default_context(Info, !IO)
     ;
         TargetCode = raw_target_code(CodeString, _Attrs),
         io.write_string(CodeString, !IO)
@@ -3747,9 +3750,6 @@ mlds_output_data_addr(data_addr(ModuleQualifier, DataName), !IO) :-
 % source context annotations.
 %
 
-:- mutable(last_context, prog_context, context_init, ground,
-    [untrailed, attach_to_io_state]).
-
 :- pred output_context(csharp_out_info::in, mlds_context::in,
     io::di, io::uo) is det.
 
@@ -3758,27 +3758,26 @@ output_context(Info, Context, !IO) :-
     (
         LineNumbers = yes,
         ProgContext = mlds_get_prog_context(Context),
-        get_last_context(LastContext, !IO),
-        term.context_file(ProgContext, File),
-        term.context_line(ProgContext, Line),
+        ProgContext = term.context(File, Line),
         (
-            ProgContext \= LastContext,
             Line > 0,
             File \= ""
         ->
-            % Java doesn't have an equivalent of #line directives.
-            % \u is treated as a Unicode escape even with comments.
-            % XXX update for C#
-            io.write_string("// ", !IO),
-            string.replace_all(File, "\\u", "\\\\u", SafePath),
-            io.write_string(SafePath, !IO),
-            io.write_string(":", !IO),
-            io.write_int(Line, !IO),
-            io.nl(!IO),
-            set_last_context(ProgContext, !IO)
+            io.format("#line %d %s\n", [i(Line), s(File)], !IO)
         ;
             true
         )
+    ;
+        LineNumbers = no
+    ).
+
+:- pred output_default_context(csharp_out_info::in, io::di, io::uo) is det.
+
+output_default_context(Info, !IO) :-
+    LineNumbers = Info ^ oi_line_numbers,
+    (
+        LineNumbers = yes,
+        io.write_string("#line default\n", !IO)
     ;
         LineNumbers = no
     ).
