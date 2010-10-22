@@ -9837,8 +9837,7 @@ io.setenv(Var, Value) :-
 
     % io.putenv(VarString): If VarString is a string of the form "name=value",
     % sets the environment variable name to the specified value. Fails if
-    % the operation does not work. Not supported for .NET. This should only be
-    % called from io.setenv.
+    % the operation does not work. This should only be called from io.setenv.
     %
 :- impure pred io.putenv(string::in) is semidet.
 
@@ -9851,18 +9850,26 @@ io.setenv(Var, Value) :-
 ").
 
 :- pragma foreign_proc("C#",
+    io.setenv(Var::in, Value::in),
+    [will_not_call_mercury, tabled_for_io],
+"
+    try {
+        System.Environment.SetEnvironmentVariable(Var, Value);
+        SUCCESS_INDICATOR = true;
+    } catch (System.Exception) {
+        SUCCESS_INDICATOR = false;
+    }
+").
+
+:- pragma foreign_proc("C#",
     io.putenv(VarAndValue::in),
     [will_not_call_mercury, tabled_for_io],
 "
-    /*
-    ** Unfortunately there is no API in the .NET standard library for setting
-    ** environment variables. So we need to use platform-specific methods.
-    ** Currently we use the Posix function putenv(), which is also supported
-    ** on Windows.
-    */
-    // XXX C# todo
-    // SUCCESS_INDICATOR = (runtime.PInvoke._putenv(VarAndValue) == 0);
-    SUCCESS_INDICATOR = false;
+    // This procedure should never be called, as io.setenv/2 has been
+    // implemented directly for C#.
+    // This implementation is included only to suppress warnings.
+
+    throw new System.Exception(""io.putenv/1 not implemented for C#"");
 ").
 
 :- pragma foreign_proc("Java",
