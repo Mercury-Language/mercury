@@ -3168,8 +3168,12 @@ file_type_implemented :-
         Result = new io.Res_1.Ok_1(ML_file_type_regular());
     } else if (file.isDirectory()) {
         Result = new io.Res_1.Ok_1(ML_file_type_directory());
-    } else {
+    } else if (file.exists()) {
         Result = new io.Res_1.Ok_1(ML_file_type_unknown());
+    } else {
+        Result = io.ML_make_io_res_1_error_file_type(
+            new java.lang.Exception(""No such file or directory""),
+            ""io.file_type failed: "");
     }
 ").
 
