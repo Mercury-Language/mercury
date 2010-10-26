@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -538,6 +538,13 @@ call_node_bytecode_layout(_, _) :-
     }
 ").
 
+:- pragma foreign_proc("C#",
+    call_node_bytecode_layout(_CallLabelLayout::in, _ProcLayout::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    if (1 == 1) throw new System.Exception(\"not supported in csharp grade\");
+").
+
 :- pragma foreign_proc("Java",
     call_node_bytecode_layout(_CallLabelLayout::in, _ProcLayout::out),
     [will_not_call_mercury, thread_safe, promise_pure],
@@ -568,6 +575,13 @@ have_cached_proc_defn_rep(_, _) :-
 #endif
         SUCCESS_INDICATOR = MR_FALSE;
     }
+").
+
+:- pragma foreign_proc("C#",
+    have_cached_proc_defn_rep(_ProcLayout::in, _ProcDefnRep::out),
+    [will_not_call_mercury, thread_safe, promise_semipure],
+"
+    if (1 == 1) throw new System.Exception(\"not supported in csharp grade\");
 ").
 
 :- pragma foreign_proc("Java",

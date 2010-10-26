@@ -19,16 +19,6 @@ In order to try this system you will need
           downloaded from
                 <http://www.erlang.org/download.html>
 
-        - The Mercury source distribution.  See below for installation
-          instructions.
-
-          If you're reading this file from somewhere other than the
-          Mercury distribution, try the Mercury homepage at
-                <http://www.mercury.csse.unimelb.edu.au>
-
-        - An installed Mercury compiler.  You must use `mmc --make' to
-          install the standard library for Erlang.  See below.
-
         - A Unix-like environment.  The Erlang support has not been
           tested on Windows, but you will need a shell script
           interpreter.

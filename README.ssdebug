@@ -18,7 +18,8 @@ INSTALLATION
 To use the source-to-source debugger you must install grades containing the
 ".ssdebug" grade component.  One way to do this is to invoke configure
 with the option `--enable-ssdebug-grades'.  This will add the grades
-hlc.gc.ssdebug and java.ssdebug to the set of library grades to install.
+hlc.gc.ssdebug, csharp.ssdebug and java.ssdebug to the set of library grades
+to install.
 
 -----------------------------------------------------------------------------
 
@@ -59,7 +60,7 @@ increase the stack size, e.g.
 LIMITATIONS
 
 - There are no internal events.  The only events are CALL, EXIT, REDO, FAIL,
-  and, for Java grades, EXCP.
+  and, for Java and C# grades, EXCP.
 
 - Standard library procedures are treated specially.  Events will only be
   generated at the boundaries at which a user procedure calls and returns
@@ -72,13 +73,16 @@ LIMITATIONS
   reach the end of the procedure to retry, the program will simply keep
   executing.  Press ^C to get back the debugger prompt.
 
-- Exceptions are only handled in Java grades.  Only a single EXCP event is
-  generated when an exception is thrown, instead of propagating EXCP events
+- When running on Mono, ^C sometimes causes the program to hang.
+  This appears to be a bug in Mono.
+
+- Exceptions are only handled in Java and C# grades.  Only a single EXCP event
+  is generated when an exception is thrown, instead of propagating EXCP events
   up the call stack to the nearest exception handler.
 
-- In non-Java grades, the debugger's internal state will be inconsistent with
-  the program's execution after an exception, so you had better quit the
-  program and restart.
+- In grades which don't handle exceptions, the debugger's internal state will
+  be inconsistent with the program's execution after an exception, so you had
+  better quit the program and restart.
 
 - Breakpoints currently match procedures by module and name only.  Predicates
   or functions with the same name but different arities will still match.

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2007 University of Melbourne.
+# Copyright (C) 2007, 2010 University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -10,7 +10,7 @@ MCFLAGS-mer_ssdb = --no-warn-nothing-exported --no-warn-unused-imports
 
 # XXX This line is needed so that `mmake --use-mmc-make libmer_ssdb'
 # passes `-lmer_mdbcomp' to `mmc --make' in the MLLIBS variable.
-EXTRA_LIBRARIES-libmer_ssdb = mer_mdbcomp mer_browser
+LIBRARIES-mer_ssdb = mer_mdbcomp mer_browser
 
 # Whereas these lines are needed for plain `mmake'.
 EXTRA_LIBRARIES-libmer_ssdb.so = mer_mdbcomp mer_browser

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002-2008 The University of Melbourne.
+# Copyright (C) 2002-2008, 2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -211,7 +211,12 @@ LINK_RT_LIB_OPTS=
 LINK_STD_LIB_OPTS=
 LINK_TRACE_SSDB_LIB_OPTS=
 ifneq ($(LINK_BOEHM_GC_ONLY),yes)
+ifneq ("$(filter csharp%,$(GRADE))","")
+# There is no separate runtime library for C# grades.
+LINK_RT_LIB_OPTS =
+else
 LINK_RT_LIB_OPTS = -l$(RT_LIB_NAME)
+endif
 ifneq ($(LINK_RUNTIME_ONLY),yes)
 LINK_STD_LIB_OPTS = -l$(STD_LIB_NAME)
 ifneq ($(LINK_STDLIB_ONLY),yes)

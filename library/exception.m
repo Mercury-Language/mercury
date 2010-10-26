@@ -1443,10 +1443,24 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 
 %-----------------------------------------------------------------------------%
 
+:- pragma foreign_code("C#", "
+/*
+ * The ssdb module may supply its implementation of these methods at runtime.
+ */
+public class SsdbHooks {
+    public virtual void on_throw_impl(univ.Univ_0 univ) {}
+    public virtual int on_catch_impl() { return 0; }
+    public virtual void on_catch_impl_exception(int CSN) {}
+}
+
+public static SsdbHooks ssdb_hooks = new SsdbHooks();
+").
+
 :- pragma foreign_proc("C#",
     throw_impl(T::in),
     [will_not_call_mercury, promise_pure],
 "
+    exception.ssdb_hooks.on_throw_impl(T);
     throw new runtime.Exception(T);
 ").
 
@@ -1454,22 +1468,27 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
     catch_impl(Pred::pred(out) is det, Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
 "
+    int CSN = ssdb_hooks.on_catch_impl();
     try {
         T = exception.ML_call_goal_det(TypeInfo_for_T, Pred);
     }
     catch (runtime.Exception ex) {
+        exception.ssdb_hooks.on_catch_impl_exception(CSN);
         T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
             (univ.Univ_0) ex.exception);
     }
 ").
+
 :- pragma foreign_proc("C#",
     catch_impl(Pred::pred(out) is cc_multi, Handler::in(handler), T::out),
     [will_not_call_mercury, promise_pure],
 "
+    int CSN = ssdb_hooks.on_catch_impl();
     try {
         T = exception.ML_call_goal_det(TypeInfo_for_T, Pred);
     }
     catch (runtime.Exception ex) {
+        exception.ssdb_hooks.on_catch_impl_exception(CSN);
         T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
             (univ.Univ_0) ex.exception);
     }
@@ -1497,12 +1516,14 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
     catch_impl(Pred::pred(out) is multi, Handler::in(handler), _T::out),
     [will_not_call_mercury, promise_pure, ordinary_despite_detism],
 "
+    int CSN = ssdb_hooks.on_catch_impl();
     try {
         runtime.MethodPtr3_r0<object, object, object> pred =
             (runtime.MethodPtr3_r0<object, object, object>) Pred[1];
         pred(Pred, cont, cont_env_ptr);
     }
     catch (runtime.Exception ex) {
+        ssdb_hooks.on_catch_impl_exception(CSN);
         object T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
             (univ.Univ_0) ex.exception);
         ((runtime.MethodPtr2_r0<object, object>) cont)(T, cont_env_ptr);
@@ -1516,12 +1537,14 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
     catch_impl(Pred::pred(out) is nondet, Handler::in(handler), _T::out),
     [will_not_call_mercury, promise_pure, ordinary_despite_detism],
 "
+    int CSN = ssdb_hooks.on_catch_impl();
     try {
         runtime.MethodPtr3_r0<object, object, object> pred =
             (runtime.MethodPtr3_r0<object, object, object>) Pred[1];
         pred(Pred, cont, cont_env_ptr);
     }
     catch (runtime.Exception ex) {
+        ssdb_hooks.on_catch_impl_exception(CSN);
         object T = exception.ML_call_handler_det(TypeInfo_for_T, Handler,
             (univ.Univ_0) ex.exception);
         ((runtime.MethodPtr2_r0<object, object>) cont)(T, cont_env_ptr);

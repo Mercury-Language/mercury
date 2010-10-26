@@ -104,6 +104,7 @@
 
 :- pragma foreign_type("C", c_file_ptr, "FILE *", [can_pass_as_mercury_type]).
     % stub.
+:- pragma foreign_type("C#", c_file_ptr, "object").
 :- pragma foreign_type("Java", c_file_ptr, "java.lang.Object").
 
     % These predicates are called from trace/mercury_trace_internal.c.

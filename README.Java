@@ -21,13 +21,6 @@ In order to try this system you will need
 
 	  OR any other compatible Java implementation.
 
-	- The Mercury distribution -- installed as usual.  You can install
-	  from either the source or binary distribution.
-
-	  If you're reading this file from somewhere other than the
-	  Mercury distribution, try the Mercury homepage at
-	  	<http://www.mercury.csse.unimelb.edu.au>
-
 WARNING
 
 Please note that the Java backend is still an experimental feature.

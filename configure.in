@@ -3345,6 +3345,11 @@ AC_ARG_ENABLE(dotnet-grades,
     AC_HELP_STRING([--enable-dotnet-grades], [install the .NET grades]),
     enable_dotnet_grades="$enableval",enable_dotnet_grades=no)
 
+# We don't enable the csharp grade by default.
+AC_ARG_ENABLE(csharp-grade,
+   AC_HELP_STRING([--enable-csharp-grade], [install the C# grade]),
+   enable_csharp_grade="$enableval",enable_csharp_grade=no)
+
 # We don't enable the java grade by default.
 AC_ARG_ENABLE(java-grade,
    AC_HELP_STRING([--enable-java-grade], [install the Java grade]),
@@ -3378,6 +3383,7 @@ if test "$enable_most_grades" = no; then
     enable_par_grades=no
     enable_stseg_grades=no
     enable_dotnet_grades=no
+    enable_csharp_grade=no
     enable_java_grade=no
     enable_erlang_grade=no
 fi
@@ -3601,6 +3607,12 @@ then
     LIBGRADES="$LIBGRADES il"
 fi
 
+# Add C# back-end grade, if a C# compiler is installed.
+if test "$CSC" != "" -a "$enable_csharp_grade" = yes
+then
+    LIBGRADES="$LIBGRADES csharp"
+fi
+
 # Add Java back-end grade, if Java is installed.
 if test $mercury_cv_java = yes -a "$enable_java_grade" = yes
 then
@@ -3625,6 +3637,9 @@ if test "$enable_ssdebug_grades" = yes; then
     # LLDS has better debug grades available.
     case "$LIBGRADES" in
         *hlc.gc*) LIBGRADES="$LIBGRADES hlc.gc.ssdebug" ;;
+    esac
+    case "$LIBGRADES" in
+        *csharp*) LIBGRADES="$LIBGRADES csharp.ssdebug" ;;
     esac
     case "$LIBGRADES" in
         *java*) LIBGRADES="$LIBGRADES java.ssdebug" ;;

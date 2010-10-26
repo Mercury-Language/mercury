@@ -470,6 +470,27 @@ static void MR_ssdb_sigint_handler(void)
 }
 ").
 
+:- pragma foreign_proc("C#",
+    install_sigint_handler(IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+    System.Console.TreatControlCAsInput = false;
+    System.Console.CancelKeyPress += new System.ConsoleCancelEventHandler(
+        ssdb.sigint_handler
+    );
+    IO = IO0;
+").
+
+:- pragma foreign_code("C#",
+"
+static void sigint_handler(object sender, System.ConsoleCancelEventArgs args)
+{
+    SSDB_step_next_stop();
+    // Don't terminate the process.
+    args.Cancel = true;
+}
+").
+
 :- pragma foreign_proc("Java",
     install_sigint_handler(IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
@@ -495,6 +516,8 @@ public static class SigIntHandler implements sun.misc.SignalHandler {
 :- pred step_next_stop(io::di, io::uo) is det.
 
 :- pragma foreign_export("C", step_next_stop(di, uo),
+    "SSDB_step_next_stop").
+:- pragma foreign_export("C#", step_next_stop(di, uo),
     "SSDB_step_next_stop").
 :- pragma foreign_export("Java", step_next_stop(di, uo),
     "SSDB_step_next_stop").
@@ -802,6 +825,30 @@ search_nondet_stack_frame_2(ProcId, Depth, N, StackDepth, MaybeStackFrame,
 
 install_exception_hooks(!IO).
 
+:- pragma foreign_proc("C#",
+    install_exception_hooks(_IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+    exception.ssdb_hooks = new ssdb.SsdbHooks();
+").
+
+:- pragma foreign_code("C#", "
+private class SsdbHooks : exception.SsdbHooks {
+    public override void on_throw_impl(univ.Univ_0 univ) {
+        ssdb.SSDB_handle_event_excp(""exception"", ""throw_impl"", univ);
+    }
+
+    public override int on_catch_impl() {
+        return ssdb.SSDB_get_cur_ssdb_csn();
+    }
+
+    public override void on_catch_impl_exception(int CSN) {
+        ssdb.SSDB_rollback_stack(CSN);
+        ssdb.SSDB_rollback_nondet_stack(CSN);
+    }
+}
+").
+
 :- pragma foreign_proc("Java",
     install_exception_hooks(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
@@ -830,6 +877,8 @@ private static class SsdbHooks extends exception.SsdbHooks {
 ").
 
 :- impure pred handle_event_excp(string::in, string::in, univ::in) is det.
+:- pragma foreign_export("C#", handle_event_excp(in, in, in),
+    "SSDB_handle_event_excp").
 :- pragma foreign_export("Java", handle_event_excp(in, in, in),
     "SSDB_handle_event_excp").
 
@@ -880,6 +929,8 @@ handle_event_excp_2(ProcId, ListVarValue, !IO) :-
 
 %----------------------------------------------------------------------------%
 
+:- pragma foreign_export("C#", get_cur_ssdb_csn(out),
+    "SSDB_get_cur_ssdb_csn").
 :- pragma foreign_export("Java", get_cur_ssdb_csn(out),
     "SSDB_get_cur_ssdb_csn").
 
@@ -1004,6 +1055,8 @@ nondet_stack_pop(!IO) :-
     ).
 
 :- pred rollback_stack(int::in, io::di, io::uo) is det.
+:- pragma foreign_export("C#", rollback_stack(in, di, uo),
+    "SSDB_rollback_stack").
 :- pragma foreign_export("Java", rollback_stack(in, di, uo),
     "SSDB_rollback_stack").
 
@@ -1017,6 +1070,8 @@ rollback_stack(TargetCSN, !IO) :-
     ).
 
 :- pred rollback_nondet_stack(int::in, io::di, io::uo) is det.
+:- pragma foreign_export("C#", rollback_nondet_stack(in, di, uo),
+    "SSDB_rollback_nondet_stack").
 :- pragma foreign_export("Java", rollback_nondet_stack(in, di, uo),
     "SSDB_rollback_nondet_stack").
 
@@ -3363,6 +3418,13 @@ restore_streams(!IO) :-
 "
     exit(0);
     IO = IO0;
+").
+
+:- pragma foreign_proc("C#",
+    exit_process(_IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io],
+"
+    System.Environment.Exit(0);
 ").
 
 :- pragma foreign_proc("Java",
