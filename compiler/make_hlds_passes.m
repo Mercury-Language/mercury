@@ -543,7 +543,14 @@ add_pass_1_mutable(Item, Status, !ModuleInfo, !Specs) :-
             WantUnsafeAccessDecls = yes
         ;
             CompilationTarget = target_csharp,
-            WantPreInitDecl = yes,
+            IsThreadLocal = mutable_var_thread_local(MutAttrs),
+            (
+                IsThreadLocal = mutable_thread_local,
+                WantPreInitDecl = yes
+            ;
+                IsThreadLocal = mutable_not_thread_local,
+                WantPreInitDecl = no
+            ),
             WantLockDecls = no,
             WantUnsafeAccessDecls = yes
         ;
