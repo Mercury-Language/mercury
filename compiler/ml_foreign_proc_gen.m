@@ -57,6 +57,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ml_backend.ml_code_util.
+:- import_module parse_tree.builtin_lib_types.
 
 :- import_module bool.
 :- import_module map.
@@ -186,7 +187,7 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
         ], HashUndefs),
 
     % Generate code to set the values of the input variables.
-    ml_gen_pragma_c_java_input_arg_list(Lang, Args, AssignInputsList, !Info),
+    ml_gen_pragma_ccsj_input_arg_list(Lang, Args, AssignInputsList, !Info),
 
     % Generate code to assign the values of the output variables.
     ml_gen_pragma_c_output_arg_list(Args, Context,
@@ -395,12 +396,12 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
     ),
 
     % Generate <declaration of one local variable for each arg>
-    ml_gen_pragma_java_decls(!.Info, MutableSpecial, Args, ArgDeclsList),
+    ml_gen_pragma_csharp_java_decls(!.Info, MutableSpecial, Args, ArgDeclsList),
     expect(unify(ExtraArgs, []), this_file,
         "ml_gen_ordinary_pragma_csharp_java_proc: extra args"),
 
     % Generate code to set the values of the input variables.
-    ml_gen_pragma_c_java_input_arg_list(Lang, Args, AssignInputsList, !Info),
+    ml_gen_pragma_ccsj_input_arg_list(Lang, Args, AssignInputsList, !Info),
 
     % Generate MLDS statements to assign the values of the output variables.
     ml_gen_pragma_csharp_java_output_arg_list(MutableSpecial, Args, Context,
@@ -804,7 +805,7 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
     ml_gen_pragma_c_decls(!.Info, Lang, Args, ArgDeclsList),
 
     % Generate code to set the values of the input variables.
-    ml_gen_pragma_c_java_input_arg_list(Lang, Args, AssignInputsList, !Info),
+    ml_gen_pragma_ccsj_input_arg_list(Lang, Args, AssignInputsList, !Info),
 
     % Generate code to assign the values of the output variables.
     ml_gen_pragma_c_output_arg_list(Args, Context,
@@ -1018,24 +1019,27 @@ ml_gen_pragma_c_decl(Info, Lang, Arg, Decl) :-
     --->    mutable_special_case
     ;       not_mutable_special_case.
 
-    % ml_gen_pragma_java_decls generates Java code to declare the arguments
-    % for a `pragma foreign_proc' declaration.
+    % ml_gen_pragma_csharp_java_decls generates C# or Java code to declare the
+    % arguments for a `pragma foreign_proc' declaration.
     %
-:- pred ml_gen_pragma_java_decls(ml_gen_info::in, mutable_special_case::in,
-    list(foreign_arg)::in, list(target_code_component)::out) is det.
+:- pred ml_gen_pragma_csharp_java_decls(ml_gen_info::in,
+    mutable_special_case::in, list(foreign_arg)::in,
+    list(target_code_component)::out) is det.
 
-ml_gen_pragma_java_decls(_, _, [], []).
-ml_gen_pragma_java_decls(Info, MutableSpecial, [Arg | Args], Decl ++ Decls) :-
-    ml_gen_pragma_java_decl(Info, MutableSpecial, Arg, Decl),
-    ml_gen_pragma_java_decls(Info, MutableSpecial, Args, Decls).
+ml_gen_pragma_csharp_java_decls(_, _, [], []).
+ml_gen_pragma_csharp_java_decls(Info, MutableSpecial, [Arg | Args],
+        Decl ++ Decls) :-
+    ml_gen_pragma_csharp_java_decl(Info, MutableSpecial, Arg, Decl),
+    ml_gen_pragma_csharp_java_decls(Info, MutableSpecial, Args, Decls).
 
-    % ml_gen_pragma_java_decl generates Java code to declare an argument
-    % of a `pragma foreign_proc' declaration.
+    % ml_gen_pragma_csharp_java_decl generates C# or Java code to declare an
+    % argument of a `pragma foreign_proc' declaration.
     %
-:- pred ml_gen_pragma_java_decl(ml_gen_info::in, mutable_special_case::in,
-    foreign_arg::in, list(target_code_component)::out) is det.
+:- pred ml_gen_pragma_csharp_java_decl(ml_gen_info::in,
+    mutable_special_case::in, foreign_arg::in,
+    list(target_code_component)::out) is det.
 
-ml_gen_pragma_java_decl(Info, MutableSpecial, Arg, Decl) :-
+ml_gen_pragma_csharp_java_decl(Info, MutableSpecial, Arg, Decl) :-
     Arg = foreign_arg(_Var, MaybeNameAndMode, Type, _BoxPolicy),
     ml_gen_info_get_module_info(Info, ModuleInfo),
     (
@@ -1048,8 +1052,11 @@ ml_gen_pragma_java_decl(Info, MutableSpecial, Arg, Decl) :-
         ;
             MutableSpecial = mutable_special_case,
             % The code for mutables is generated in the frontend.
-            % All mutable variables have the type `java.lang.Object'.
-            MLDS_Type = mlds_generic_type
+            ( Type = int_type ->
+                MLDS_Type = mlds_native_int_type
+            ;
+                MLDS_Type = mlds_generic_type
+            )
         ),
         TypeDecl = target_code_type(MLDS_Type),
         string.format(" %s;\n", [s(ArgName)], VarDeclString),
@@ -1079,25 +1086,25 @@ var_is_singleton(Name) :-
 
 %-----------------------------------------------------------------------------%
 
-    % For both C and Java.
+    % For C, C# and Java.
     %
-:- pred ml_gen_pragma_c_java_input_arg_list(foreign_language::in,
+:- pred ml_gen_pragma_ccsj_input_arg_list(foreign_language::in,
     list(foreign_arg)::in, list(target_code_component)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_java_input_arg_list(Lang, ArgList, AssignInputs, !Info) :-
-    list.map_foldl(ml_gen_pragma_c_java_input_arg(Lang), ArgList,
+ml_gen_pragma_ccsj_input_arg_list(Lang, ArgList, AssignInputs, !Info) :-
+    list.map_foldl(ml_gen_pragma_ccsj_input_arg(Lang), ArgList,
         AssignInputsList, !Info),
     list.condense(AssignInputsList, AssignInputs).
 
-    % ml_gen_pragma_c_input_arg generates C or Java code to assign the value of
-    % an input arg for a `pragma foreign_proc' declaration.
+    % ml_gen_pragma_c_input_arg generates C, C# or Java code to assign the
+    % value of an input arg for a `pragma foreign_proc' declaration.
     %
-:- pred ml_gen_pragma_c_java_input_arg(foreign_language::in, foreign_arg::in,
+:- pred ml_gen_pragma_ccsj_input_arg(foreign_language::in, foreign_arg::in,
     list(target_code_component)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_java_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
+ml_gen_pragma_ccsj_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     (
         ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
@@ -1105,7 +1112,7 @@ ml_gen_pragma_c_java_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
         not var_is_singleton(ArgName),
         mode_to_arg_mode(ModuleInfo, Mode, OrigType, top_in)
     ->
-        ml_gen_pragma_c_java_gen_input_arg(Lang, Var, ArgName, OrigType,
+        ml_gen_pragma_ccsj_gen_input_arg(Lang, Var, ArgName, OrigType,
             BoxPolicy, AssignInput, !Info)
     ;
         % If the variable doesn't occur in the ArgNames list,
@@ -1113,11 +1120,11 @@ ml_gen_pragma_c_java_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
         AssignInput = []
     ).
 
-:- pred ml_gen_pragma_c_java_gen_input_arg(foreign_language::in, prog_var::in,
+:- pred ml_gen_pragma_ccsj_gen_input_arg(foreign_language::in, prog_var::in,
     string::in, mer_type::in, box_policy::in, list(target_code_component)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_java_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
+ml_gen_pragma_ccsj_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
         AssignInput, !Info) :-
     ml_variable_type(!.Info, Var, VarType),
     ml_gen_var(!.Info, Var, VarLval),
@@ -1284,10 +1291,11 @@ ml_gen_pragma_csharp_java_output_arg(MutableSpecial, ForeignArg, Context,
         ;
             MutableSpecial = mutable_special_case,
             % The code for mutables is generated in the frontend.
-            % All mutable variables have the type `java.lang.Object'
-            % so we need to cast the variable or extract the primitive
-            % value from the box.
-            Rval = ml_unop(unbox(MLDSType), ml_lval(LocalVarLval))
+            ( OrigType = int_type ->
+                Rval = ml_lval(LocalVarLval)
+            ;
+                Rval = ml_unop(unbox(MLDSType), ml_lval(LocalVarLval))
+            )
         ),
         AssignOutput = [ml_gen_assign(ArgLval, Rval, Context)]
     ;

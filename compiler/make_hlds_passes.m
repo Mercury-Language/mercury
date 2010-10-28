@@ -118,6 +118,7 @@
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_mutable.
@@ -2334,10 +2335,10 @@ add_c_mutable_initialisation(IsConstant, IsThreadLocal, TargetMutableName,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_csharp_java_mutable_defn(Lang, TargetMutableName, _Type, IsThreadLocal,
+add_csharp_java_mutable_defn(Lang, TargetMutableName, Type, IsThreadLocal,
         Context, !ModuleInfo, !QualInfo, !Specs) :-
     get_csharp_java_mutable_global_foreign_defn(Lang, TargetMutableName,
-        IsThreadLocal, Context, DefnBody),
+        Type, IsThreadLocal, Context, DefnBody),
     DefnPragma = pragma_foreign_code(Lang, DefnBody),
     DefnItemPragma = item_pragma_info(compiler(mutable_decl), DefnPragma,
         Context, -1),
@@ -2346,10 +2347,10 @@ add_csharp_java_mutable_defn(Lang, TargetMutableName, _Type, IsThreadLocal,
     add_item_decl_pass_2(ForeignDefn, ItemStatus0, _, !ModuleInfo, !Specs).
 
 :- pred get_csharp_java_mutable_global_foreign_defn(
-    foreign_language::in(lang_csharp_java), string::in,
+    foreign_language::in(lang_csharp_java), string::in, mer_type::in,
     mutable_thread_local::in, prog_context::in, string::out) is det.
 
-get_csharp_java_mutable_global_foreign_defn(Lang, TargetMutableName,
+get_csharp_java_mutable_global_foreign_defn(Lang, TargetMutableName, Type,
         IsThreadLocal, _Context, DefnBody) :-
     (
         Lang = lang_csharp,
@@ -2362,23 +2363,38 @@ get_csharp_java_mutable_global_foreign_defn(Lang, TargetMutableName,
             % We will probably need to use the ThreadLocal<T> class instead.
             ThreadStaticAttribute = "[System.ThreadStatic] "
         ),
+        ( Type = int_type ->
+            TypeStr = "int"
+        ;
+            TypeStr = "object"
+        ),
         DefnBody = string.append_list([ThreadStaticAttribute,
-            "static object ", TargetMutableName, ";\n"])
+            "static ", TypeStr, " ", TargetMutableName, ";\n"])
     ;
         Lang = lang_java,
         IsThreadLocal = mutable_not_thread_local,
         % Synchronization is only required for double and long values, which
         % Mercury does not expose. We could also use the volatile keyword.
         % (Java Language Specification, 2nd Ed., 17.4).
+        ( Type = int_type ->
+            TypeStr = "int"
+        ;
+            TypeStr = "java.lang.Object"
+        ),
         DefnBody = string.append_list([
-            "static java.lang.Object ", TargetMutableName, ";\n"])
+            "static ", TypeStr, " ", TargetMutableName, ";\n"])
     ;
         Lang = lang_java,
         IsThreadLocal = mutable_thread_local,
+        ( Type = int_type ->
+            TypeStr = "java.lang.Integer"
+        ;
+            TypeStr = "java.lang.Object"
+        ),
         DefnBody = string.append_list([
-            "static java.lang.ThreadLocal<java.lang.Object> ",
+            "static java.lang.ThreadLocal<", TypeStr, "> ",
             TargetMutableName,
-            " = new java.lang.InheritableThreadLocal<java.lang.Object>();\n"
+            " = new java.lang.InheritableThreadLocal<", TypeStr, ">();\n"
         ])
     ).
 

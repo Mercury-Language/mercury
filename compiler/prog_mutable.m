@@ -222,7 +222,7 @@
 % ===>
 %
 %   :- pragma foreign_code("Java", "
-%       static java.lang.Object mutable_<varname>;
+%       static <JType> mutable_<varname>;
 %   ").
 %
 %   :- initialise initialise_mutable_<varname>/0.
@@ -231,6 +231,8 @@
 %
 %   initialise_mutable_<varname> :-
 %       impure set_<varname>(<initval>).
+%
+% <JType> is either `int' or `java.lang.Object' (all other types).
 %
 % Operations on mutables are defined in terms of the following two predicates.
 % They are actually "safe": by the Java specification, 32-bit variables are
@@ -254,7 +256,7 @@
 %       X = mutable_<varname>;
 %   ").
 %
-% As mutable_<varname> has the type `java.lang.Object' a cast is required
+% If mutable_<varname> has the type `java.lang.Object' a cast is required
 % after the code above, to cast X to the correct type.  This is handled by
 % the MLDS code generator.
 %
@@ -265,8 +267,8 @@
 % ===>
 %
 %   :- pragma foreign_code("Java", "
-%       static java.lang.ThreadLocal<java.lang.Object> mutable_<varname> =
-%           new java.lang.InheritableThreadLocal<java.lang.Object>();
+%       static java.lang.ThreadLocal<JType> mutable_<varname> =
+%           new java.lang.InheritableThreadLocal<JType>();
 %   ").
 %
 %   :- pragma foreign_proc("Java",
@@ -282,6 +284,8 @@
 %   "
 %       X = mutable_<varname>.get();
 %   ").
+%
+% <JType> is `java.lang.Integer' or `java.lang.Object'.
 %
 % The above prediates are called by these predicates, again to minimise
 % differences with the C backends:
@@ -303,7 +307,7 @@
 % ===>
 %
 %   :- pragma foreign_code("Java", "
-%       static java.lang.Object mutable_<varname>;
+%       static <JType> mutable_<varname>;
 %   ").
 %
 %   :- pred get_<varname>(<vartype>::out(<varinst>)) is det.
