@@ -2996,6 +2996,12 @@ AC_SUBST(LD_LIBFLAGS_FOR_THREADS)
 AC_SUBST(ENABLE_BOEHM_THREAD_LOCAL_ALLOC)
 AC_SUBST(ENABLE_BOEHM_PARALLEL_MARK)
 
+save_LIBS="$LIBS"
+LIBS="$THREAD_LIBS"
+mercury_check_for_functions \
+        pthread_mutexattr_setpshared
+LIBS="$save_LIBS"
+
 #-----------------------------------------------------------------------------#
 
 AC_MSG_CHECKING(whether we can use thread-local storage class extension)

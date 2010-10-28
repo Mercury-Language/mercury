@@ -572,7 +572,8 @@ typedef struct MC_JobCtl MC_JobCtl;
   ** POSIX mutexes; the functions fail when you try to create them.
   ** System V semaphores do work however.
   */
-  #if !defined(__APPLE__) && defined(MR_HAVE_PTHREAD_H)
+  #if !defined(__APPLE__) && defined(MR_HAVE_PTHREAD_H) && \
+        defined(MR_HAVE_PTHREAD_MUTEXATTR_SETPSHARED)
     #include <pthread.h>
 
     #define MC_HAVE_JOBCTL_IPC 1
