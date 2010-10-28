@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2009 The University of Melbourne.
+% Copyright (C) 2005-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -84,7 +84,7 @@
 %
 %   :- semipure pred unsafe_get_<varname>(<vartype>::out(<varinst>)) is det.
 %   :- pragma foreign_proc("C",
-%       unsafe_get_varname(X::out(<varinst>)),
+%       unsafe_get_<varname>(X::out(<varinst>)),
 %       [promise_semipure, will_not_call_mercury, thread_safe],
 %   "
 %        X = mutable_<varname>;
@@ -148,14 +148,14 @@
 %   ").
 %
 %   :- pragma foreign_proc("C",
-%       unsafe_set_<varname)(X::in(<varinst>)),
+%       unsafe_set_<varname>(X::in(<varinst>)),
 %       [will_not_call_mercury, thread_safe],
 %   "
 %       MR_set_thread_local_mutable(<type>, X, mutable_<varname>);
 %   ").
 %
 %   :- pragma foreign_proc("C",
-%       unsafe_get_varname(X::out(<varinst>)),
+%       unsafe_get_<varname>(X::out(<varinst>)),
 %       [promise_semipure, will_not_call_mercury, thread_safe],
 %   "
 %        MR_get_thread_local_mutable(<type>, X, mutable_<varname>);
@@ -250,7 +250,7 @@
 %
 %   :- semipure pred unsafe_get_<varname>(<vartype>::out(<varinst>)) is det.
 %   :- pragma foreign_proc("Java",
-%       unsafe_get_varname(X::out(<varinst>)),
+%       unsafe_get_<varname>(X::out(<varinst>)),
 %       [promise_semipure, will_not_call_mercury, thread_safe],
 %   "
 %       X = mutable_<varname>;
@@ -272,14 +272,14 @@
 %   ").
 %
 %   :- pragma foreign_proc("Java",
-%       unsafe_set_<varname)(X::in(<varinst>)),
+%       unsafe_set_<varname>(X::in(<varinst>)),
 %       [will_not_call_mercury, thread_safe],
 %   "
 %       mutable_<varname>.set(X);
 %   ").
 %
 %   :- pragma foreign_proc("Java",
-%       unsafe_get_varname(X::out(<varinst>)),
+%       unsafe_get_<varname>(X::out(<varinst>)),
 %       [promise_semipure, will_not_call_mercury, thread_safe],
 %   "
 %       X = mutable_<varname>.get();
@@ -339,6 +339,50 @@
 %
 %-----------------------------------------------------------------------------%
 %
+% C# BACKEND
+%
+% The C# implementation is analogous to the Java implementation, except for
+% thread-local mutables, which are transformed as follows:
+%
+%   :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [attributes]).
+%
+% ===>
+%
+%   :- pragma foreign_code("C#", "
+%       private static int mutable_<varname>;
+%   ").
+%
+%   :- initialise initialise_mutable_<varname>/0.
+%
+%   :- impure pred initialise_mutable_<varname> is det.
+%
+%   initialise_mutable_<varname> :-
+%       impure pre_initialise_mutable_<varname>,
+%       impure set_<varname>(<initvalue>).
+%
+%   :- pragma foreign_proc("C#",
+%       pre_initialise_mutable_<varname>,
+%       [will_not_call_mercury],
+%   "
+%       mutable_<varname> = runtime.ThreadLocalMutables.new_index();
+%   ").
+%
+%   :- pragma foreign_proc("C#",
+%       unsafe_set_<varname>(X::in(<varinst>)),
+%       [will_not_call_mercury, thread_safe],
+%   "
+%       runtime.ThreadLocalMutables.set(mutable_<varname>, X);
+%   ").
+%
+%   :- pragma foreign_proc("C#",
+%       unsafe_get_<varname>(X::out(<varinst>)),
+%       [promise_semipure, will_not_call_mercury, thread_safe],
+%   "
+%       X = runtime.ThreadLocalMutables.get(mutable_<varname>);
+%   ").
+%
+%-----------------------------------------------------------------------------%
+%
 % ERLANG BACKEND
 %
 % Every Erlang "process" has an associated process dictionary, which we can use
@@ -367,7 +411,7 @@
 %
 %   :- impure pred set_<varname>(<vartype>::in(<varinst>)) is det.
 %   :- pragma foreign_proc("Erlang",
-%       set_<varname)(X::in(<varinst>)),
+%       set_<varname>(X::in(<varinst>)),
 %       [will_not_call_mercury, thread_safe],
 %   "
 %       'ML_erlang_global_server' ! {set_mutable, <varname>, X}
@@ -375,7 +419,7 @@
 %
 %   :- semipure pred get_<varname>(<vartype>::out(<varinst>)) is det.
 %   :- pragma foreign_proc("Erlang",
-%       get_varname(X::out(<varinst>)),
+%       get_<varname>(X::out(<varinst>)),
 %       [promise_semipure, will_not_call_mercury, thread_safe],
 %   "
 %       'ML_erlang_global_server' ! {get_mutable, <varname>, self()}},

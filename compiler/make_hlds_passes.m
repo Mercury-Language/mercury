@@ -542,9 +542,12 @@ add_pass_1_mutable(Item, Status, !ModuleInfo, !Specs) :-
             WantLockDecls = yes,
             WantUnsafeAccessDecls = yes
         ;
-            ( CompilationTarget = target_java
-            ; CompilationTarget = target_csharp
-            ),
+            CompilationTarget = target_csharp,
+            WantPreInitDecl = yes,
+            WantLockDecls = no,
+            WantUnsafeAccessDecls = yes
+        ;
+            CompilationTarget = target_java,
             WantPreInitDecl = no,
             WantLockDecls = no,
             WantUnsafeAccessDecls = yes
@@ -2356,19 +2359,16 @@ get_csharp_java_mutable_global_foreign_defn(Lang, TargetMutableName, Type,
         Lang = lang_csharp,
         (
             IsThreadLocal = mutable_not_thread_local,
-            ThreadStaticAttribute = ""
+            ( Type = int_type ->
+                TypeStr = "int"
+            ;
+                TypeStr = "object"
+            )
         ;
             IsThreadLocal = mutable_thread_local,
-            % XXX C#: This does not inherit the value from the parent thread.
-            % We will probably need to use the ThreadLocal<T> class instead.
-            ThreadStaticAttribute = "[System.ThreadStatic] "
-        ),
-        ( Type = int_type ->
             TypeStr = "int"
-        ;
-            TypeStr = "object"
         ),
-        DefnBody = string.append_list([ThreadStaticAttribute,
+        DefnBody = string.append_list([
             "static ", TypeStr, " ", TargetMutableName, ";\n"])
     ;
         Lang = lang_java,
@@ -2407,7 +2407,7 @@ get_csharp_java_mutable_global_foreign_defn(Lang, TargetMutableName, Type,
 add_csharp_java_mutable_preds(ItemMutable, Lang, TargetMutableName,
         !Status, !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
-    ItemMutable = item_mutable_info(MercuryMutableName, _Type, InitTerm, Inst,
+    ItemMutable = item_mutable_info(MercuryMutableName, Type, InitTerm, Inst,
         MutAttrs, MutVarset, Context, _SeqNum),
     IsConstant = mutable_var_constant(MutAttrs),
     Attrs0 = default_attributes(Lang),
@@ -2436,29 +2436,71 @@ add_csharp_java_mutable_preds(ItemMutable, Lang, TargetMutableName,
         InitSetPredName = mutable_set_pred_sym_name(ModuleName,
             MercuryMutableName),
         add_csharp_java_mutable_primitive_preds(Lang, TargetMutableName,
-            ModuleName, MercuryMutableName, MutAttrs, Attrs, Inst, BoxPolicy,
-            Context, !Status, !ModuleInfo, !QualInfo, !Specs),
+            ModuleName, MercuryMutableName, Type, MutAttrs, Attrs, Inst,
+            BoxPolicy, Context, !Status, !ModuleInfo, !QualInfo, !Specs),
         add_ccsj_mutable_user_access_preds(ModuleName, MercuryMutableName,
             MutAttrs, Lang,
             Context, !Status, !ModuleInfo, !QualInfo, !Specs)
     ),
+    % The C# thread-local mutable implementation requires array indices to be
+    % allocated in pre-init predicates.
+    (
+        Lang = lang_csharp,
+        mutable_var_thread_local(MutAttrs) = mutable_thread_local
+    ->
+        add_csharp_thread_local_mutable_pre_init_pred(TargetMutableName,
+            ModuleName, MercuryMutableName, Attrs, CallPreInitExpr,
+            Context, !Status, !ModuleInfo, !QualInfo, !Specs)
+    ;
+        CallPreInitExpr = true_expr - Context
+    ),
     add_csharp_java_mutable_initialisation(ModuleName, MercuryMutableName,
-        MutVarset, InitSetPredName, InitTerm,
+        MutVarset, CallPreInitExpr, InitSetPredName, InitTerm,
         Context, !Status, !ModuleInfo, !QualInfo, !Specs).
+
+:- pred add_csharp_thread_local_mutable_pre_init_pred(string::in,
+    module_name::in, string::in, pragma_foreign_proc_attributes::in, goal::out,
+    prog_context::in, import_status::in, import_status::out,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_csharp_thread_local_mutable_pre_init_pred(TargetMutableName,
+        ModuleName, MutableName, Attrs, CallPreInitExpr,
+        Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
+    PreInitCode = string.append_list([
+        TargetMutableName, " = runtime.ThreadLocalMutables.new_index();\n"
+    ]),
+    PreInitPredName = mutable_pre_init_pred_sym_name(ModuleName,
+        MutableName),
+    PreInitForeignProc = pragma_foreign_proc(Attrs,
+        PreInitPredName,
+        pf_predicate,
+        [],
+        varset.init,    % ProgVarSet
+        varset.init,    % InstVarSet
+        fc_impl_ordinary(PreInitCode, yes(Context))
+    ),
+    PreInitItemPragma = item_pragma_info(compiler(mutable_decl),
+        PreInitForeignProc, Context, -1),
+    PreInitItem = item_pragma(PreInitItemPragma),
+    add_item_pass_3(PreInitItem, !Status, !ModuleInfo, !QualInfo,
+        !Specs),
+    CallPreInitExpr =
+        call_expr(PreInitPredName, [], purity_impure) - Context.
 
     % Add the foreign clauses for the mutable's primitive access and
     % locking predicates.
     %
 :- pred add_csharp_java_mutable_primitive_preds(
     foreign_language::in(lang_csharp_java), string::in, module_name::in,
-    string::in, mutable_var_attributes::in, pragma_foreign_proc_attributes::in,
-    mer_inst::in, box_policy::in,
+    string::in, mer_type::in, mutable_var_attributes::in,
+    pragma_foreign_proc_attributes::in, mer_inst::in, box_policy::in,
     prog_context::in, import_status::in, import_status::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_csharp_java_mutable_primitive_preds(Lang, TargetMutableName, ModuleName,
-        MutableName, MutAttrs, Attrs, Inst, BoxPolicy,
+        MutableName, Type, MutAttrs, Attrs, Inst, BoxPolicy,
         Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
     IsThreadLocal = mutable_var_thread_local(MutAttrs),
 
@@ -2468,16 +2510,25 @@ add_csharp_java_mutable_primitive_preds(Lang, TargetMutableName, ModuleName,
     set_thread_safe(proc_thread_safe, GetAttrs0, GetAttrs),
     varset.new_named_var(varset.init, "X", X, ProgVarSet),
     (
-        Lang = lang_csharp,
-        GetCode = "\tX = " ++ TargetMutableName ++ ";\n"
-    ;
-        Lang = lang_java,
         IsThreadLocal = mutable_not_thread_local,
         GetCode = "\tX = " ++ TargetMutableName ++ ";\n"
     ;
+        IsThreadLocal = mutable_thread_local,
         Lang = lang_java,
         IsThreadLocal = mutable_thread_local,
         GetCode = "\tX = " ++ TargetMutableName ++ ".get();\n"
+    ;
+        IsThreadLocal = mutable_thread_local,
+        Lang = lang_csharp,
+        ( Type = int_type ->
+            Cast = "(int) "
+        ;
+            Cast = ""
+        ),
+        GetCode = string.append_list([
+            "\tX = ", Cast, "runtime.ThreadLocalMutables.get(",
+            TargetMutableName, ");\n"
+        ])
     ),
     GetForeignProc = pragma_foreign_proc(GetAttrs,
         mutable_unsafe_get_pred_sym_name(ModuleName, MutableName),
@@ -2509,16 +2560,17 @@ add_csharp_java_mutable_primitive_preds(Lang, TargetMutableName, ModuleName,
         TrailCode = ""
     ),
     (
-        Lang = lang_csharp,
-        SetCode = "\t" ++ TargetMutableName ++ " = X;\n"
-    ;
-        Lang = lang_java,
         IsThreadLocal = mutable_not_thread_local,
         SetCode = "\t" ++ TargetMutableName ++ " = X;\n"
     ;
-        Lang = lang_java,
         IsThreadLocal = mutable_thread_local,
+        Lang = lang_java,
         SetCode = "\t" ++ TargetMutableName ++ ".set(X);\n"
+    ;
+        IsThreadLocal = mutable_thread_local,
+        Lang = lang_csharp,
+        SetCode = "\truntime.ThreadLocalMutables.set(" ++
+            TargetMutableName ++ ", X);\n"
     ),
     SetForeignProc = pragma_foreign_proc(SetAttrs,
         mutable_unsafe_set_pred_sym_name(ModuleName, MutableName),
@@ -2536,13 +2588,13 @@ add_csharp_java_mutable_primitive_preds(Lang, TargetMutableName, ModuleName,
     % Add the code required to initialise a mutable.
     %
 :- pred add_csharp_java_mutable_initialisation(module_name::in, string::in,
-    prog_varset::in, sym_name::in, prog_term::in,
+    prog_varset::in, goal::in, sym_name::in, prog_term::in,
     prog_context::in, import_status::in, import_status::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_csharp_java_mutable_initialisation(ModuleName, MutableName, MutVarset,
-        InitSetPredName, InitTerm,
+        CallPreInitExpr, InitSetPredName, InitTerm,
         Context, !Status, !ModuleInfo, !QualInfo, !Specs) :-
     % Add the `:- initialise' declaration for the mutable initialisation
     % predicate.
@@ -2555,8 +2607,11 @@ add_csharp_java_mutable_initialisation(ModuleName, MutableName, MutVarset,
     add_item_pass_3(InitItem, !Status, !ModuleInfo, !QualInfo, !Specs),
 
     % Add the clause for the mutable initialisation predicate.
-    InitClauseExpr =
+    CallSetPredExpr =
         call_expr(InitSetPredName, [InitTerm], purity_impure)
+            - Context,
+    InitClauseExpr =
+        conj_expr(CallPreInitExpr, CallSetPredExpr)
             - Context,
 
     % See the comments for prog_io.parse_mutable_decl for the reason

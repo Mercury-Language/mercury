@@ -153,12 +153,11 @@
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
-    System.Threading.Thread t;
-    MercuryThread mt = new MercuryThread(Goal);
-    
-    t = new System.Threading.Thread(
-            new System.Threading.ThreadStart(mt.execute_goal));
-    t.Start();
+    object[] thread_locals = runtime.ThreadLocalMutables.clone();
+    MercuryThread mt = new MercuryThread(Goal, thread_locals);
+    System.Threading.Thread thread = new System.Threading.Thread(
+        new System.Threading.ThreadStart(mt.execute_goal));
+    thread.Start();
 ").
 
 :- pragma foreign_proc("Java",
@@ -421,14 +420,17 @@ call_back_to_mercury(Goal, !IO) :-
 :- pragma foreign_code("C#", "
 public class MercuryThread {
     object[] Goal;
+    object[] thread_local_mutables;
 
-    public MercuryThread(object[] g)
+    public MercuryThread(object[] g, object[] tlmuts)
     {
         Goal = g;
+        thread_local_mutables = tlmuts;
     }
 
     public void execute_goal()
     {
+        runtime.ThreadLocalMutables.set_array(thread_local_mutables);
         thread.ML_call_back_to_mercury_cc_multi(Goal);
     }
 }").

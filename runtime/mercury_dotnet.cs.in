@@ -938,6 +938,55 @@ public class UnreachableDefault : System.Exception {
 
 /*---------------------------------------------------------------------------*/
 
+public class ThreadLocalMutables
+{
+    // Child threads do not inherit [ThreadStatic] values so we cannot use the
+    // attribute to implement `thread_local' mutables directly.  Instead, all
+    // thread-local mutables are stored in a single array, which is copied from
+    // the parent thread when a new thread is spawned.  The array indices are
+    // allocated by module initialisation predicates.
+    [System.ThreadStatic]
+    private static object[] array = null;
+
+    public static int new_index()
+    {
+        if (array == null) {
+            array = new object[1];
+            return 0;
+        } else {
+            int i = array.Length;
+            System.Array.Resize(ref array, i + 1);
+            return i;
+        }
+    }
+
+    public static void set(int i, object val)
+    {
+        array[i] = val;
+    }
+
+    public static object get(int i)
+    {
+        return array[i];
+    }
+
+    public static object[] clone()
+    {
+        if (array == null) {
+            return null;
+        } else {
+            return (object[]) array.Clone();
+        }
+    }
+
+    public static void set_array(object[] arr)
+    {
+        array = arr;
+    }
+}
+
+/*---------------------------------------------------------------------------*/
+
 public class Constants
 {
     public static readonly int MR_PREDICATE     = 0;
