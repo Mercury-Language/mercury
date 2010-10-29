@@ -2840,6 +2840,34 @@ AC_SUBST(CGIDIR)
 
 #-----------------------------------------------------------------------------#
 
+# Allow the use of pthreads-win32 instead of native Win32 threads on Windows.
+# XXX it should also be possible to use pthreads-win32 with MSVC.
+
+AC_ARG_WITH([pthreads-win32],
+   AC_HELP_STRING([--with-pthreads-win32]
+      [use the pthreads-win32 library instead of Win32 threads (GCC only)]
+   ),
+   [with_pthreads_win32="$withval"],[with_pthreads_win32="no"])
+
+case "$with_pthreads_win32" in
+
+    yes)
+        # Use the pthreads-win32 library.
+        WIN32_GC_THREADLIB="-DGC_WIN32_PTHREADS"
+    ;;
+        
+    no)
+        # Use native Win32 threads.
+        WIN32_GC_THREADLIB="-DGC_WIN32_THREADS"
+    ;;
+
+    *)
+        AC_MSG_ERROR([unexpected argument to --with-pthreads-win32])
+    ;;
+esac
+
+#-----------------------------------------------------------------------------#
+
 # Figure out which flavour of pthreads to use, since none of the
 # implementations seem to be exactly the same
 case "$host" in
@@ -2905,7 +2933,7 @@ case "$host" in
                 LD_LIBFLAGS_FOR_THREADS="/MD"
                 ;;
             *)
-                CFLAGS_FOR_THREADS="-DGC_WIN32_THREADS -DMR_THREAD_SAFE" ;;
+                CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB -DMR_THREAD_SAFE" ;;
         esac
         ;;
 
@@ -2919,7 +2947,7 @@ case "$host" in
                 LD_LIBFLAGS_FOR_THREADS="/MD"
                 ;;
             *)
-                CFLAGS_FOR_THREADS="-DGC_WIN32_THREADS -DMR_THREAD_SAFE" ;;
+                CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB -DMR_THREAD_SAFE" ;;
         esac
         ;;
 
@@ -2966,6 +2994,12 @@ AC_SUBST(LDFLAGS_FOR_THREADS)
 AC_SUBST(LD_LIBFLAGS_FOR_THREADS)
 AC_SUBST(ENABLE_BOEHM_THREAD_LOCAL_ALLOC)
 AC_SUBST(ENABLE_BOEHM_PARALLEL_MARK)
+
+save_LIBS="$LIBS"
+LIBS="$THREAD_LIBS"
+mercury_check_for_functions \
+        pthread_mutexattr_setpshared
+LIBS="$save_LIBS"
 
 #-----------------------------------------------------------------------------#
 

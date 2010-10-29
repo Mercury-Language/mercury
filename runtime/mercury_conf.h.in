@@ -2,7 +2,7 @@
 ** vim:ts=8 sw=8 noexpandtab
 */
 /*
-** Copyright (C) 1995-2003, 2005-2009 The University of Melbourne.
+** Copyright (C) 1995-2003, 2005-2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -273,6 +273,8 @@
 **	MR_HAVE_SCHED_SETAFFINITY we have the sched_setaffinity() function.
 **	MR_HAVE_SCHED_GETCPU	we have the sched_getcpu() function (glibc specific).
 **	MR_HAVE_SCHED_YIELD	we have the sched_yield() function.
+**	MR_HAVE_PTHREAD_MUTEXATTR_SETPSHARED we have the
+**				pthread_mutexattr_setpshared() function.
 */
 #undef	MR_HAVE_GETPID
 #undef	MR_HAVE_SETPGID
@@ -337,6 +339,7 @@
 #undef	MR_HAVE_SCHED_SETAFFINITY
 #undef	MR_HAVE_SCHED_GETCPU
 #undef	MR_HAVE_SCHED_YIELD
+#undef	MR_HAVE_PTHREAD_MUTEXATTR_SETPSHARED
 
 /*
 ** We use mprotect() and signals to catch stack and heap overflows.
