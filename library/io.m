@@ -5789,7 +5789,12 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
         public  int                         line_number = 1;
 
         public MR_TextInputFile(java.io.InputStream stream) {
-            input = new java.io.InputStreamReader(stream);
+            try {
+                input = new java.io.InputStreamReader(stream, ""UTF-8"");
+            } catch (java.io.UnsupportedEncodingException e) {
+                // This will never happen.
+                throw new Error(e.toString());
+            }
         }
 
         /*
@@ -5948,8 +5953,14 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
         public  int                     line_number = 1;
 
         public MR_TextOutputFile(java.io.OutputStream stream) {
-            output = new java.io.BufferedWriter(
-                new java.io.OutputStreamWriter(stream));
+            try {
+                output = new java.io.BufferedWriter(
+                    new java.io.OutputStreamWriter(stream, ""UTF-8""));
+            }
+            catch (java.io.UnsupportedEncodingException e) {
+                // This will never happen.
+                throw new Error(e.toString());
+            }
         }
 
         public void put(char c)
