@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007, 2009 The University of Melbourne.
+% Copyright (C) 2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -58,13 +58,13 @@
     % code (starting with the label instruction for Label and ending with
     % the jump to the end label of the switch), and an indication that this
     % code has not yet been included anywhere.
-    % 
+    %
 :- pred represent_tagged_case_for_llds(represent_params::in,
     tagged_case::in, label::out, case_label_map::in, case_label_map::out,
     branch_end::in, branch_end::out, code_info::in, code_info::out) is det.
 
     % generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap):
-    % 
+    %
 :- pred generate_case_code_or_jump(label::in, llds_code::out,
     case_label_map::in, case_label_map::out) is det.
 

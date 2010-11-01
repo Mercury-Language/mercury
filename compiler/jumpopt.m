@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007, 2009 The University of Melbourne.
+% Copyright (C) 1994-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -168,7 +168,7 @@ jump_opt_build_maps([], _, !InstrMap, !BlockMap,
         !LvalMap, !ProcMap, !SdprocMap, !SuccMap).
 jump_opt_build_maps([Instr0 | Instrs0], Recjump, !InstrMap, !BlockMap,
         !LvalMap, !ProcMap, !SdprocMap, !SuccMap) :-
-    Instr0 = llds_instr(Uinstr0, _),
+    Instr0 = llds_instr(Uinstr0, Comment0),
     ( Uinstr0 = label(Label) ->
         opt_util.skip_comments(Instrs0, Instrs1),
         ( Instrs1 = [Instr1 | _], Instr1 = llds_instr(livevals(_), _) ->
@@ -200,8 +200,15 @@ jump_opt_build_maps([Instr0 | Instrs0], Recjump, !InstrMap, !BlockMap,
         % Put the start of the procedure into Blockmap only after
         % frameopt has had a shot at it.
         (
-            ( Label = internal_label(_, _)
-            ; Recjump = yes
+            (
+                Label = internal_label(_, _),
+                % We put entry labels into !BlockMap only if the comment
+                % does NOT end with "nofulljump".
+                not string.suffix(Comment0, "nofulljump")
+            ;
+                Label = entry_label(_, _),
+                % We put entry labels into !BlockMap only if Recjump = yes.
+                Recjump = yes
             )
         ->
             opt_util.find_no_fallthrough(Instrs1, Block),
@@ -493,7 +500,8 @@ jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
             PrevInstr = livevals(Livevals)
         ->
             opt_util.filter_out_livevals(Between0, Between1),
-            NewInstrs = Between1 ++ [llds_instr(livevals(Livevals), ""),
+            NewInstrs = Between1 ++
+                [llds_instr(livevals(Livevals), ""),
                 llds_instr(goto(Proc), redirect_comment(Comment0))],
             NewRemain = specified(NewInstrs, Instrs0)
         ;
@@ -503,7 +511,8 @@ jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
             map.search(ForkMap, RetLabel, Between),
             PrevInstr = livevals(Livevals)
         ->
-            NewInstrs = Between ++ [llds_instr(livevals(Livevals), ""),
+            NewInstrs = Between ++
+                [llds_instr(livevals(Livevals), ""),
                 llds_instr(goto(Proc), redirect_comment(Comment0))],
             NewRemain = specified(NewInstrs, Instrs0)
         ;
@@ -533,8 +542,7 @@ jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
             !.CheckedNondetTailCallInfo = yes(ProcLabel - Counter0),
             SuccMap = JumpOptInfo ^ joi_succ_map,
             map.search(SuccMap, RetLabel, BetweenIncl),
-            BetweenIncl = [llds_instr(livevals(_), _),
-                llds_instr(goto(_), _)],
+            BetweenIncl = [llds_instr(livevals(_), _), llds_instr(goto(_), _)],
             PrevInstr = livevals(Livevals)
         ->
             counter.allocate(LabelNum, Counter0, Counter1),

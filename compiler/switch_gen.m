@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -10,22 +10,25 @@
 % Authors: conway, fjh, zs.
 %
 % This module handles the generation of code for switches, which are
-% disjunctions that do not require backtracking.  Switches are detected
-% in switch_detection.m.  This is the module that determines what
-% sort of indexing to use for each switch and then actually generates the
-% code.
+% disjunctions that do not require backtracking. Switches are detected
+% in switch_detection.m. This module determines what sort of indexing to use
+% for each switch and then actually generates the code.
 %
 % Currently the following forms of indexing are used:
 %
 % For switches on atomic data types (int, char, enums), if the cases are not
 % sparse, we use the value of the switch variable to index into a jump table.
 %
-% If all the alternative goals for a switch on an atomic data type
-% contain only construction unifications of constants, then we generate
+% If all the alternative goals for a switch on an atomic data type or a string
+% contain only constructions of constant data structures, then we generate
 % a dense lookup table (an array) for the output variables of the switch,
-% rather than a dense jump table, so that executing the switch becomes
-% a matter of doing an array index for each output variable - avoiding
-% the branch overhead of the jump-table.
+% rather than a jump table, so that executing the switch becomes
+% a matter of doing an array lookup for each output variable, avoiding
+% the branch overhead of the jump table.
+%
+% For switches on strings, we can use binary search in a table, or we can
+% look up the address to jump to in a hash table, using open addressing
+% to resolve hash collisions.
 %
 % For switches on discriminated union types, we generate code that does
 % indexing first on the primary tag, and then on the secondary tag (if
@@ -33,9 +36,6 @@
 % indexing code for switches on both primary and secondary tags can be
 % in the form of a try-me-else chain, a try chain, a dense jump table
 % or a binary search.
-%
-% For switches on strings, we look up the address to jump to in a hash table,
-% using open addressing to resolve hash collisions.
 %
 % For all other cases (or if the --smart-indexing option was disabled),
 % we just generate a chain of if-then-elses.
@@ -125,8 +125,7 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
         )
     ->
         order_and_generate_cases(TaggedCases, VarRval, VarType, VarName,
-            CodeModel, CanFail, GoalInfo, EndLabel, no, MaybeEnd, SwitchCode,
-            !CI)
+            CodeModel, CanFail, GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI)
     ;
         (
             SwitchCategory = atomic_switch,
@@ -153,17 +152,23 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
                 NumArms > 1,
                 globals.lookup_int_option(Globals, lookup_switch_req_density,
                     ReqDensity),
-                find_lookup_switch_params(ModuleInfo, VarType, CodeModel,
-                    CanFail, TaggedCases, FilteredTaggedCases,
-                    LowerLimit, UpperLimit, NumValues, ReqDensity,
-                    NeedBitVecCheck, NeedRangeCheck, FirstVal, LastVal),
-                is_lookup_switch(FilteredTaggedCases, GoalInfo, StoreMap,
-                    no, MaybeEndPrime, LookupSwitchInfo, !CI)
+                filter_out_failing_cases_if_needed(CodeModel,
+                    TaggedCases, FilteredTaggedCases,
+                    CanFail, FilteredCanFail),
+                find_int_lookup_switch_params(ModuleInfo, VarType,
+                    FilteredCanFail, LowerLimit, UpperLimit, NumValues,
+                    ReqDensity, NeedBitVecCheck, NeedRangeCheck,
+                    FirstVal, LastVal),
+                is_lookup_switch(record_lookup_for_tagged_cons_id_int,
+                    FilteredTaggedCases, GoalInfo, StoreMap,
+                    no, MaybeEnd1, LookupSwitchInfo, !CI)
             ->
-                MaybeEnd = MaybeEndPrime,
-                generate_lookup_switch(VarRval, StoreMap, no, LookupSwitchInfo,
-                    FirstVal, LastVal, NeedBitVecCheck, NeedRangeCheck,
-                    SwitchCode, !CI)
+                % We update MaybeEnd1 to MaybeEnd to account for the possible
+                % reservation of temp slots for nondet switches.
+                generate_int_lookup_switch(VarRval, LookupSwitchInfo,
+                    EndLabel, StoreMap, FirstVal, LastVal,
+                    NeedBitVecCheck, NeedRangeCheck,
+                    MaybeEnd1, MaybeEnd, SwitchCode, !CI)
             ;
                 MaybeIntSwitchInfo =
                     int_switch(LowerLimit, UpperLimit, NumValues),
@@ -183,20 +188,54 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
             ;
                 order_and_generate_cases(TaggedCases, VarRval, VarType,
                     VarName, CodeModel, CanFail, GoalInfo, EndLabel,
-                    no, MaybeEnd, SwitchCode, !CI)
+                    MaybeEnd, SwitchCode, !CI)
             )
         ;
             SwitchCategory = string_switch,
-            num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
-            globals.lookup_int_option(Globals, string_switch_size, StringSize),
-            ( NumConsIds >= StringSize, NumArms > 1 ->
-                generate_string_switch(TaggedCases, VarRval, VarName,
-                    CodeModel, CanFail, GoalInfo, EndLabel,
-                    no, MaybeEnd, SwitchCode, !CI)
+            filter_out_failing_cases_if_needed(CodeModel,
+                TaggedCases, FilteredTaggedCases, CanFail, FilteredCanFail),
+            num_cons_ids_in_tagged_cases(FilteredTaggedCases,
+                NumConsIds, NumArms),
+            globals.lookup_int_option(Globals, string_hash_switch_size,
+                StringHashSwitchSize),
+            globals.lookup_int_option(Globals, string_binary_switch_size,
+                StringBinarySwitchSize),
+            ( NumConsIds >= StringHashSwitchSize, NumArms > 1 ->
+                (
+                    is_lookup_switch(record_lookup_for_tagged_cons_id_string,
+                        FilteredTaggedCases, GoalInfo, StoreMap,
+                        no, MaybeEnd1, LookupSwitchInfo, !CI)
+                ->
+                    % We update MaybeEnd1 to MaybeEnd to account for the
+                    % possible reservation of temp slots for nondet switches.
+                    generate_string_hash_lookup_switch(VarRval,
+                        LookupSwitchInfo, FilteredCanFail, EndLabel, StoreMap,
+                        MaybeEnd1, MaybeEnd, SwitchCode, !CI)
+                ;
+                    generate_string_hash_switch(TaggedCases, VarRval,
+                        VarName, CodeModel, CanFail, GoalInfo, EndLabel,
+                        MaybeEnd, SwitchCode, !CI)
+                )
+            ; NumConsIds >= StringBinarySwitchSize, NumArms > 1 ->
+                (
+                    is_lookup_switch(record_lookup_for_tagged_cons_id_string,
+                        FilteredTaggedCases, GoalInfo, StoreMap,
+                        no, MaybeEnd1, LookupSwitchInfo, !CI)
+                ->
+                    % We update MaybeEnd1 to MaybeEnd to account for the
+                    % possible reservation of temp slots for nondet switches.
+                    generate_string_binary_lookup_switch(VarRval,
+                        LookupSwitchInfo, FilteredCanFail, EndLabel, StoreMap,
+                        MaybeEnd1, MaybeEnd, SwitchCode, !CI)
+                ;
+                    generate_string_binary_switch(TaggedCases, VarRval,
+                        VarName, CodeModel, CanFail, GoalInfo, EndLabel,
+                        MaybeEnd, SwitchCode, !CI)
+                )
             ;
                 order_and_generate_cases(TaggedCases, VarRval, VarType,
                     VarName, CodeModel, CanFail, GoalInfo, EndLabel,
-                    no, MaybeEnd, SwitchCode, !CI)
+                    MaybeEnd, SwitchCode, !CI)
             )
         ;
             SwitchCategory = tag_switch,
@@ -209,13 +248,13 @@ generate_switch(CodeModel, Var, CanFail, Cases, GoalInfo, Code, !CI) :-
             ;
                 order_and_generate_cases(TaggedCases, VarRval, VarType,
                     VarName, CodeModel, CanFail, GoalInfo, EndLabel,
-                    no, MaybeEnd, SwitchCode, !CI)
+                    MaybeEnd, SwitchCode, !CI)
             )
         ;
             SwitchCategory = other_switch,
             order_and_generate_cases(TaggedCases, VarRval, VarType,
                 VarName, CodeModel, CanFail, GoalInfo, EndLabel,
-                no, MaybeEnd, SwitchCode, !CI)
+                MaybeEnd, SwitchCode, !CI)
         )
     ),
     Code = VarCode ++ SwitchCode,
@@ -264,11 +303,10 @@ determine_switch_category(CI, Var) = SwitchCategory :-
     %
 :- pred order_and_generate_cases(list(tagged_case)::in, rval::in, mer_type::in,
     string::in, code_model::in, can_fail::in, hlds_goal_info::in, label::in,
-    branch_end::in, branch_end::out, llds_code::out,
-    code_info::in, code_info::out) is det.
+    branch_end::out, llds_code::out, code_info::in, code_info::out) is det.
 
 order_and_generate_cases(TaggedCases, VarRval, VarType, VarName, CodeModel,
-        CanFail, GoalInfo, EndLabel, !MaybeEnd, Code, !CI) :-
+        CanFail, GoalInfo, EndLabel, MaybeEnd, Code, !CI) :-
     order_cases(TaggedCases, OrderedTaggedCases, VarType, CodeModel, CanFail,
         !.CI),
     type_to_ctor_det(VarType, TypeCtor),
@@ -282,7 +320,7 @@ order_and_generate_cases(TaggedCases, VarRval, VarType, VarName, CodeModel,
     ),
     generate_if_then_else_chain_cases(OrderedTaggedCases, VarRval, VarType,
         VarName, CheaperTagTest, CodeModel, CanFail, GoalInfo, EndLabel,
-        !MaybeEnd, Code, !CI).
+        no, MaybeEnd, Code, !CI).
 
 :- pred order_cases(list(tagged_case)::in, list(tagged_case)::out,
     mer_type::in, code_model::in, can_fail::in, code_info::in) is det.

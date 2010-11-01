@@ -295,7 +295,8 @@ frameopt_keep_nondet_frame(ProcLabel, LayoutLabels, !C, Instrs0, Instrs,
     ->
         list.condense([[LabelInstr], Comments0,
             [llds_instr(mkframe(FrameInfo, no), MkframeComment),
-            llds_instr(label(KeepFrameLabel), "tail recursion target"),
+            llds_instr(label(KeepFrameLabel),
+                "tail recursion target, nofulljump"),
             llds_instr(assign(redoip_slot(lval(curfr)),
                 const(llconst_code_addr(Redoip))), "")],
             Instrs2], Instrs),
@@ -1051,7 +1052,6 @@ nondetstack_teardown_2(Instrs0, !Extra, !SuccipRestore, !Maxfr, !Curfr,
 :- pred compute_block_needs_frame(label::in, list(instruction)::in,
     block_needs_frame::out) is det.
 
-% ZZZ
 compute_block_needs_frame(_Label, Instrs, NeedsFrame) :-
     opt_util.block_refers_to_stack(Instrs) = ReferStackVars,
     (

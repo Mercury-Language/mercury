@@ -720,7 +720,8 @@
     ;         lookup_switch_req_density
     ;         dense_switch_size
     ;         lookup_switch_size
-    ;         string_switch_size
+    ;         string_hash_switch_size
+    ;         string_binary_switch_size
     ;         tag_switch_size
     ;         try_switch_size
     ;         binary_switch_size
@@ -1560,7 +1561,8 @@ option_defaults_2(optimization_option, [
                                         % a lookup switch.
     dense_switch_size                   -   int(4),
     lookup_switch_size                  -   int(4),
-    string_switch_size                  -   int(8),
+    string_hash_switch_size             -   int(8),
+    string_binary_switch_size           -   int(4),
     tag_switch_size                     -   int(3),
     try_switch_size                     -   int(3),
     binary_switch_size                  -   int(4),
@@ -2457,7 +2459,9 @@ long_option("dense-switch-req-density", dense_switch_req_density).
 long_option("lookup-switch-req-density",lookup_switch_req_density).
 long_option("dense-switch-size",    dense_switch_size).
 long_option("lookup-switch-size",   lookup_switch_size).
-long_option("string-switch-size",   string_switch_size).
+long_option("string-switch-size",   string_hash_switch_size).
+long_option("string-hash-switch-size",      string_hash_switch_size).
+long_option("string-binary-switch-size",    string_binary_switch_size).
 long_option("tag-switch-size",      tag_switch_size).
 long_option("try-switch-size",      try_switch_size).
 long_option("binary-switch-size",   binary_switch_size).
@@ -5020,9 +5024,12 @@ options_help_hlds_llds_optimization -->
         "--lookup-switch-size <n>",
         "\tThe lookup table generated for an atomic switch",
         "\tmust have at least this many entries (default: 4).",
-        "--string-switch-size <n>",
+        "--string-hash-switch-size <n>",
         "\tThe hash table generated for a string switch",
         "\tmust have at least this many entries (default: 8).",
+        "--string-binary-switch-size <n>",
+        "\tThe binary search table generated for a string switch",
+        "\tmust have at least this many entries (default: 4).",
         "--tag-switch-size <n>",
         "\tThe number of alternatives in a tag switch",
         "\tmust be at least this number (default: 3).",

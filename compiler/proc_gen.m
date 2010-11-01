@@ -642,7 +642,8 @@ generate_category_code(model_det, ProcContext, Goal, ResumePoint,
             (
                 MaybeTailRecInfo = yes(_TailRecLval - TailRecLabel),
                 TailRecLabelCode = singleton(
-                    llds_instr(label(TailRecLabel), "tail recursion label")
+                    llds_instr(label(TailRecLabel),
+                        "tail recursion label, nofulljump")
                 )
             ;
                 MaybeTailRecInfo = no,
@@ -1198,7 +1199,6 @@ add_saved_succip([Instr0 | Instrs0], StackLoc, [Instr | Instrs]) :-
     list(instruction)::out) is det.
 
 bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ModuleSymName = pred_info_module(PredInfo),
 

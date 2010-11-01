@@ -1,11 +1,8 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-%
-% The code of this test is identical to the code of string_switch2 and
-% string_switch3, but we compile them with different compilation options.
 
-:- module string_switch.
+:- module int_switch.
 
 :- interface.
 
@@ -24,10 +21,10 @@
 
 main(!IO) :-
     Keys =
-        ["a", "b", "c",
-        "aa", "ab", "ac",
-        "ba", "bb", "bc",
-        "ca", "cb", "cc"],
+        [1, 2, 3,
+        11, 12, 13,
+        21, 22, 23,
+        31, 32, 33],
 
     % Test jump tables.
     list.foldl(test_jump, Keys, !IO),
@@ -43,208 +40,208 @@ main(!IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred test_jump(string::in, io::di, io::uo) is det.
+:- pred test_jump(int::in, io::di, io::uo) is det.
 
 test_jump(S, !IO) :-
     ( jump(S, 50, N) ->
-        io.format("jump %s -> %d\n", [s(S), i(N)], !IO)
+        io.format("jump %d -> %d\n", [i(S), i(N)], !IO)
     ;
-        io.format("jump %s failed\n", [s(S)], !IO)
+        io.format("jump %d failed\n", [i(S)], !IO)
     ).
 
-:- pred test_one(string::in, io::di, io::uo) is det.
+:- pred test_one(int::in, io::di, io::uo) is det.
 
 test_one(S, !IO) :-
     ( one(S, N) ->
-        io.format("one %s -> %d\n", [s(S), i(N)], !IO)
+        io.format("one %d -> %d\n", [i(S), i(N)], !IO)
     ;
-        io.format("one %s failed\n", [s(S)], !IO)
+        io.format("one %d failed\n", [i(S)], !IO)
     ).
 
-:- pred test_one_known(string::in, io::di, io::uo) is det.
+:- pred test_one_known(int::in, io::di, io::uo) is det.
 
 test_one_known(S, !IO) :-
     (
-        ( S = "aa"
-        ; S = "bb"
+        ( S = 11
+        ; S = 22
         ),
         one(S, N)
     ->
-        io.format("one known %s -> %d\n", [s(S), i(N)], !IO)
+        io.format("one known %d -> %d\n", [i(S), i(N)], !IO)
     ;
-        io.format("one known %s failed\n", [s(S)], !IO)
+        io.format("one known %d failed\n", [i(S)], !IO)
     ).
 
-:- pred test_several(string::in, io::di, io::uo) is det.
+:- pred test_several(int::in, io::di, io::uo) is det.
 
 test_several(S, !IO) :-
     solutions(several_unknown(S), Solns),
-    io.format("several %s -> ", [s(S)], !IO),
+    io.format("several %d -> ", [i(S)], !IO),
     io.write(Solns, !IO),
     io.nl(!IO).
 
-:- pred test_several_known(string::in, io::di, io::uo) is det.
+:- pred test_several_known(int::in, io::di, io::uo) is det.
 
 test_several_known(S, !IO) :-
     solutions(several_known(S), Solns),
-    io.format("several known %s -> ", [s(S)], !IO),
+    io.format("several known %d -> ", [i(S)], !IO),
     io.write(Solns, !IO),
     io.nl(!IO).
 
-:- pred test_several_nested(string::in, io::di, io::uo) is det.
+:- pred test_several_nested(int::in, io::di, io::uo) is det.
 
 test_several_nested(S, !IO) :-
     solutions(several_nested(S), Solns),
-    io.format("several nested %s -> ", [s(S)], !IO),
+    io.format("several nested %d -> ", [i(S)], !IO),
     io.write(Solns, !IO),
     io.nl(!IO).
 
 %-----------------------------------------------------------------------------%
 
-:- pred jump(string::in, int::in, int::out) is semidet.
+:- pred jump(int::in, int::in, int::out) is semidet.
 
 jump(S, N0, N) :-
     (
-        S = "a",
+        S = 1,
         N = N0 + 1
     ;
-        S = "b",
+        S = 2,
         N = N0 + 2
     ;
-        ( S = "aa"
-        ; S = "ab"
+        ( S = 11
+        ; S = 12
         ),
         N = 11
     ;
-        ( S = "ba"
-        ; S = "bb"
+        ( S = 21
+        ; S = 22
         ),
         N = N0 + 12
     ;
-        ( S = "ca"
-        ; S = "cd"
-        ; S = "ce"
+        ( S = 31
+        ; S = 34
+        ; S = 35
         ),
         N = 13
     ;
-        S = "xxx",
+        S = 77,
         N = 21
     ;
-        S = "xxy",
+        S = 78,
         N = 22
     ;
-        S = "xxz",
+        S = 79,
         N = 23
     ;
-        S = "xyx",
+        S = 87,
         N = 24
     ).
 
 %-----------------------------------------------------------------------------%
 
 :- inst aa_bb
-    --->    "aa" ; "bb".
+    --->    11 ; 22.
 
-:- pred one(string, int).
+:- pred one(int, int).
 :- mode one(in(aa_bb), out) is det.
 :- mode one(in, out) is semidet.
 
 one(S, N) :-
     (
-        S = "a",
+        S = 1,
         N = 1
     ;
-        S = "b",
+        S = 2,
         N = 2
     ;
-        ( S = "aa"
-        ; S = "ab"
+        ( S = 11
+        ; S = 12
         ),
         N = 11
     ;
-        ( S = "ba"
-        ; S = "bb"
+        ( S = 21
+        ; S = 22
         ),
         N = 12
     ;
-        ( S = "ca"
-        ; S = "cd"
-        ; S = "ce"
+        ( S = 31
+        ; S = 34
+        ; S = 35
         ),
         N = 13
     ;
-        S = "xxx",
+        S = 77,
         N = 21
     ;
-        S = "xxy",
+        S = 78,
         N = 22
     ;
-        S = "xxz",
+        S = 79,
         N = 23
     ;
-        S = "xyx",
+        S = 87,
         N = 24
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred several_unknown(string::in, int::out) is nondet.
+:- pred several_unknown(int::in, int::out) is nondet.
 
 several_unknown(S, N) :-
     several(S, N).
 
-:- pred several_known(string::in, int::out) is nondet.
+:- pred several_known(int::in, int::out) is nondet.
 
 several_known(S, N) :-
-    ( S = "aa"
-    ; S = "bb"
+    ( S = 11
+    ; S = 22
     ),
     several(S, N).
 
-:- pred several(string, int).
+:- pred several(int, int).
 :- mode several(in(aa_bb), out) is multi.
 :- mode several(in, out) is nondet.
 
 several(S, N) :-
     (
-        S = "a",
+        S = 1,
         N = 1
     ;
-        S = "b",
+        S = 2,
         N = 2
     ;
-        ( S = "aa"
-        ; S = "ab"
+        ( S = 11
+        ; S = 12
         ),
         ( N = 11
         ; N = 12
         )
     ;
-        ( S = "ba"
-        ; S = "bb"
+        ( S = 21
+        ; S = 22
         ),
         ( N = 13
         ; N = 14
         ; N = 15
         )
     ;
-        ( S = "ca"
-        ; S = "cb"
-        ; S = "cd"
-        ; S = "ce"
+        ( S = 31
+        ; S = 32
+        ; S = 34
+        ; S = 35
         ),
         N = 16
     ;
-        S = "xxx",
+        S = 77,
         N = 21
     ;
-        S = "xxy",
+        S = 78,
         N = 22
     ;
-        S = "xxz",
+        S = 79,
         N = 23
     ;
-        S = "xyx",
+        S = 87,
         ( N = 24
         ; N = 25
         ; N = 26
@@ -253,97 +250,101 @@ several(S, N) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred several_nested(string::in, int::out) is nondet.
+:- pred several_nested(int::in, int::out) is nondet.
 
 several_nested(S0, R) :-
     (
         S = S0
     ;
-        S = "a" ++ S0
+        ( S0 < 10 ->
+            S = 10 + S0
+        ;
+            S = 100 + S0
+        )
     ),
     (
-        S = "a",
+        S = 1,
         N = 1
     ;
-        S = "b",
+        S = 3,
         N = 2
     ;
-        ( S = "aa"
-        ; S = "ab"
+        ( S = 11
+        ; S = 12
         ),
         ( N = 11
         ; N = 12
         )
     ;
-        ( S = "ba"
-        ; S = "bb"
+        ( S = 21
+        ; S = 22
         ),
         ( N = 13
         ; N = 14
         ; N = 15
         )
     ;
-        ( S = "ca"
-        ; S = "cb"
-        ; S = "cd"
-        ; S = "ce"
+        ( S = 31
+        ; S = 32
+        ; S = 34
+        ; S = 35
         ),
         N = 16
     ;
-        S = "xxx",
+        S = 77,
         N = 21
     ;
-        S = "xxy",
+        S = 78,
         N = 22
     ;
-        S = "xxz",
+        S = 79,
         N = 23
     ;
-        S = "xyx",
+        S = 87,
         ( N = 24
         ; N = 25
         ; N = 26
         )
     ),
     (
-        S0 = "a",
+        S0 = 1,
         M = 1
     ;
-        S0 = "b",
+        S0 = 2,
         M = 2
     ;
-        ( S0 = "aa"
-        ; S0 = "ab"
+        ( S0 = 11
+        ; S0 = 12
         ),
         ( M = 11
         ; M = 12
         )
     ;
-        ( S0 = "ba"
-        ; S0 = "bb"
+        ( S0 = 21
+        ; S0 = 22
         ),
         ( M = 13
         ; M = 14
         ; M = 15
         )
     ;
-        ( S0 = "ca"
-        ; S0 = "cb"
-        ; S0 = "cd"
-        ; S0 = "ce"
+        ( S0 = 31
+        ; S0 = 32
+        ; S0 = 34
+        ; S0 = 35
         ),
         M = 16
     ;
-        S0 = "xxx",
+        S0 = 77,
         M = 21
     ;
-        S0 = "xxy",
+        S0 = 78,
         M = 22
     ;
-        S0 = "xxz",
+        S0 = 79,
         M = 23
     ;
-        S0 = "xyx",
+        S0 = 87,
         ( M = 24
         ; M = 25
         ; M = 26

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000,2002-2009 The University of Melbourne.
+% Copyright (C) 1994-2000,2002-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -199,7 +199,7 @@ is_lookup_disj(AddTrailOps, AddRegionOps, ResumeVars, Disjuncts, DisjGoalInfo,
     llds_code::out, code_info::in, code_info::out) is det.
 
 generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
-    LookupDisjInfo = lookup_disj_info(OutVars, StoreMap, MaybeEnd, Liveness,
+    LookupDisjInfo = lookup_disj_info(OutVars, StoreMap, MaybeEnd0, Liveness,
         CurSlot, ResumeMap, FlushCode, SaveTicketCode, MaybeTicketSlot,
         SaveHpCode, MaybeHpSlot, HijackInfo, PrepareHijackCode,
         Solns, LLDSTypes),
@@ -243,7 +243,7 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
     pickup_zombies(FirstZombies, !CI),
     make_vars_forward_dead(FirstZombies, !CI),
 
-    set_liveness_and_end_branch(StoreMap, MaybeEnd, Liveness,
+    set_liveness_and_end_branch(StoreMap, Liveness, MaybeEnd0, MaybeEnd1,
         FirstBranchEndCode, !CI),
     release_reg(BaseReg, !CI),
 
@@ -302,7 +302,7 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
     pickup_zombies(LaterZombies, !CI),
     make_vars_forward_dead(LaterZombies, !CI),
 
-    set_liveness_and_end_branch(StoreMap, MaybeEnd, Liveness,
+    set_liveness_and_end_branch(StoreMap, Liveness, MaybeEnd1, MaybeEnd,
         LaterBranchEndCode, !CI),
 
     after_all_branches(StoreMap, MaybeEnd, !CI),

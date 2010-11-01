@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2009 The University of Melbourne.
+% Copyright (C) 2000-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1734,6 +1734,7 @@ substitute_lval_in_lval(Old, New, Lval0) = Lval :-
 
 %----------------------------------------------------------------------------%
 
+var_locn_var_becomes_dead(Var, FirstTime, !VLI) :-
     % Var has become dead. If there are no expressions that depend on its
     % value, delete the record of its state, thus freeing up the resources
     % it has tied down: the locations it occupies, or the variables whose
@@ -1746,8 +1747,7 @@ substitute_lval_in_lval(Old, New, Lval0) = Lval :-
     % been called for Var, if FirstTime = yes, then as a consistency check
     % we would like to insist on Var being alive (but don't (yet) due to bugs
     % in liveness).
-    %
-var_locn_var_becomes_dead(Var, FirstTime, !VLI) :-
+
     var_locn_get_var_state_map(!.VLI, VarStateMap0),
     ( map.search(VarStateMap0, Var, State0) ->
         State0 = var_state(Lvals, MaybeConstRval, MaybeExprRval, Using,

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -337,11 +337,12 @@ dump_rval(MaybeProcLabel, binop(O, N1, N2)) =
         ; N2 = binop(_, _, _)
         )
     ->
-        "binop(" ++ dump_binop(O) ++ ", "
-            ++ dump_rval(MaybeProcLabel, N1) ++ ", " ++
-            dump_rval(MaybeProcLabel, N2) ++ ")"
+        "(" ++ dump_rval(MaybeProcLabel, N1) ++ ")" ++
+        " " ++ dump_binop(O) ++ " " ++
+        "(" ++ dump_rval(MaybeProcLabel, N2) ++ ")"
     ;
-        dump_rval(MaybeProcLabel, N1) ++ " " ++ dump_binop(O) ++ " " ++
+        dump_rval(MaybeProcLabel, N1) ++
+        " " ++ dump_binop(O) ++ " " ++
         dump_rval(MaybeProcLabel, N2)
     ).
 dump_rval(MaybeProcLabel, mem_addr(M)) =
@@ -630,8 +631,46 @@ dump_unop(logical_not) = "not".
 dump_unop(hash_string) = "hash_string".
 dump_unop(bitwise_complement) = "bitwise_complement".
 
-dump_binop(Op) = OpStr :-
-    c_util.binop_category_string(Op, _Category, OpStr).
+dump_binop(array_index(_)) = "array_index".
+dump_binop(compound_lt) = "compound<".
+dump_binop(compound_eq) = "compound=".
+dump_binop(str_eq) = "str==".
+dump_binop(str_ne) = "str!=".
+dump_binop(str_le) = "str<=".
+dump_binop(str_ge) = "str>=".
+dump_binop(str_lt) = "str<".
+dump_binop(str_gt) = "str>".
+dump_binop(unsigned_le) = "unsigned<=".
+dump_binop(float_plus) = "fl+".
+dump_binop(float_minus) = "fl-".
+dump_binop(float_times) = "fl*".
+dump_binop(float_divide) = "fl/".
+dump_binop(float_eq) = "fl==".
+dump_binop(float_ne) = "fl!=".
+dump_binop(float_le) = "fl<=".
+dump_binop(float_ge) = "fl>=".
+dump_binop(float_lt) = "fl<".
+dump_binop(float_gt) = "fl>".
+dump_binop(int_add) = "+".
+dump_binop(int_sub) = "-".
+dump_binop(int_mul) = "*".
+dump_binop(int_div) = "/".
+dump_binop(unchecked_left_shift) = "unchecked<<".
+dump_binop(unchecked_right_shift) = "unchecked>>".
+dump_binop(bitwise_and) = "&".
+dump_binop(bitwise_or) = "|".
+dump_binop(bitwise_xor) = "^".
+dump_binop(int_mod) = "%".
+dump_binop(eq) = "==".
+dump_binop(ne) = "!=".
+dump_binop(logical_and) = "&&".
+dump_binop(logical_or) = "||".
+dump_binop(int_lt) = "<".
+dump_binop(int_gt) = ">".
+dump_binop(int_le) = "<=".
+dump_binop(int_ge) = ">=".
+dump_binop(str_cmp) = "strcmp".
+dump_binop(body) = "body".
 
 dump_maybe_rvals(_, [], _) = "".
 dump_maybe_rvals(MaybeProcLabel, [MR | MRs], N) = Str :-

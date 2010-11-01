@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007, 2009 The University of Melbourne.
+% Copyright (C) 2005-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -118,11 +118,11 @@ find_matching_model_proc([ModelId - ModelStdProc | ModelIdProcs], Id, Proc,
 :- pred maybe_redirect_proc(c_procedure::in, proc_label::in,
     maybe(c_procedure)::out) is det.
 
-maybe_redirect_proc(Proc0, Target, MaybeProc) :-
+maybe_redirect_proc(Proc0, TargetProcLabel, MaybeProc) :-
     Instrs0 = Proc0 ^ cproc_code,
     get_prologue(Instrs0, LabelInstr, _Comments, LaterInstrs),
-    Redirect = llds_instr(
-        goto(code_label(entry_label(entry_label_local, Target))),
+    TargetLabel = entry_label(entry_label_local, TargetProcLabel),
+    Redirect = llds_instr(goto(code_label(TargetLabel)),
         "Redirect to procedure with identical body"),
     list.filter(disallowed_instr, LaterInstrs, DisallowedInstrs),
     list.length(LaterInstrs, NumLaterInstrs),

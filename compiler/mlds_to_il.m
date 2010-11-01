@@ -2762,6 +2762,8 @@ binaryop_to_il(str_ge, from_list([
         ldc(int32, i(-1)),
         cgt(signed)
     ]), !Info).
+binaryop_to_il(str_cmp, _, !Info) :-
+    unexpected(this_file, "binop: str_cmp").
 
     % Integer comparison
 binaryop_to_il(int_lt, singleton(clt(signed)), !Info).

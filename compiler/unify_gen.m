@@ -720,7 +720,8 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
                 % at all. This is why we jump to the loop condition test.
                 llds_instr(goto(code_label(LoopTest)),
                     "enter the copy loop at the conceptual top"),
-                llds_instr(label(LoopStart), "start of loop"),
+                llds_instr(label(LoopStart),
+                    "start of loop, nofulljump"),
                 llds_instr(
                     assign(field(yes(0), lval(NewClosure), lval(LoopCounter)),
                         lval(field(yes(0), OldClosure, lval(LoopCounter)))),
@@ -730,7 +731,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
                         binop(int_add, lval(LoopCounter), One)),
                     "increment loop counter"),
                 llds_instr(label(LoopTest),
-                    "do we have more old arguments to copy?"),
+                    "do we have more old arguments to copy? nofulljump"),
                 llds_instr(
                     if_val(binop(int_lt, lval(LoopCounter), lval(NumOldArgs)),
                         code_label(LoopStart)),

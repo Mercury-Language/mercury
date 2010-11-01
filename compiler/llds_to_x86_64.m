@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007, 2009 The University of Melbourne.
+% Copyright (C) 2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -868,6 +868,7 @@ binop_instr(str_lt, _, _, [x86_64_comment("<<str_lt>>")]).
 binop_instr(str_gt, _, _, [x86_64_comment("<<str_gt>>")]).
 binop_instr(str_le, _, _, [x86_64_comment("<<str_le>>")]).
 binop_instr(str_ge, _, _, [x86_64_comment("<<str_ge>>")]).
+binop_instr(str_cmp, _, _, [x86_64_comment("<<str_cmp>>")]).
 binop_instr(int_lt, Op1, Op2, [x86_64_instr(cmp(Op1, Op2))]).
 binop_instr(int_gt, Op1, Op2, [x86_64_instr(cmp(Op1, Op2))]).
 binop_instr(int_le, Op1, Op2, [x86_64_instr(cmp(Op1, Op2))]).

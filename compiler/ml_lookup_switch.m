@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -89,8 +89,7 @@ ml_gen_lookup_switch(SwitchVar, TaggedCases, NonLocals, CodeModel, Context,
     ),
 
     map.to_assoc_list(CaseSolnMap, CaseSolns),
-    ( project_all_to_one_solution(CaseSolns, [], RevCaseValuePairs) ->
-        list.reverse(RevCaseValuePairs, CaseValuePairs),
+    ( project_all_to_one_solution(CaseSolns, CaseValuePairs) ->
         ml_gen_simple_lookup_switch(IndexRval, OutVars, CaseValuePairs,
             CodeModel, Context, StartVal, EndVal,
             NeedBitVecCheck, NeedRangeCheck, Statement, !Info)

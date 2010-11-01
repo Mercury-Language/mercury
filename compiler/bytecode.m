@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2007, 2009 The University of Melbourne.
+% Copyright (C) 1996-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1069,6 +1069,7 @@ binop_code(body,                    35).
 binop_code(unsigned_le,             36).
 binop_code(compound_eq,             37).
 binop_code(compound_lt,             38).
+binop_code(str_cmp,                 39).
 
 :- pred binop_debug(binary_op::in, string::out) is det.
 
@@ -1111,6 +1112,7 @@ binop_debug(body,                   "body").
 binop_debug(unsigned_le,            "unsigned_le").
 binop_debug(compound_eq,            "compound_eq").
 binop_debug(compound_lt,            "compound_lt").
+binop_debug(str_cmp,                "strcmp").
 
 :- pred unop_code(unary_op::in, int::out) is det.
 

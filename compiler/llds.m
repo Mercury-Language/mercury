@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2009 The University of Melbourne.
+% Copyright (C) 1993-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -329,13 +329,14 @@
 
     ;       label(label)
             % Defines a label that can be used as the target of calls, gotos,
-            % etc.
+            % etc. If the comment associated with the instruction ends with
+            % "nofulljump", then gotos ending at this label will not be
+            % replaced by the code starting at this label.
 
     ;       goto(code_addr)
-            % goto(Target)
             % Branch to the specified address. Note that jumps to do_fail,
-            % do_redo, etc., can get optimized into the invocations of macros
-            % fail(), redo(), etc..
+            % do_redo, etc can get optimized into invocations of the macros
+            % fail(), redo(), etc.
 
     ;       computed_goto(rval, list(maybe(label)))
             % Evaluate rval, which should be an integer, and jump to the
@@ -1593,6 +1594,7 @@ binop_return_type(str_lt, lt_bool).
 binop_return_type(str_gt, lt_bool).
 binop_return_type(str_le, lt_bool).
 binop_return_type(str_ge, lt_bool).
+binop_return_type(str_cmp, lt_integer).
 binop_return_type(int_lt, lt_bool).
 binop_return_type(int_gt, lt_bool).
 binop_return_type(int_le, lt_bool).

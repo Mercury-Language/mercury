@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2009 The University of Melbourne.
+% Copyright (C) 1999-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -3544,6 +3544,8 @@ convert_binary_op(str_lt, _, _) :- unexpected(this_file, "str_lt").
 convert_binary_op(str_gt, _, _) :- unexpected(this_file, "str_gt").
 convert_binary_op(str_le, _, _) :- unexpected(this_file, "str_le").
 convert_binary_op(str_ge, _, _) :- unexpected(this_file, "str_ge").
+convert_binary_op(str_cmp, _, _) :-
+    unexpected(this_file, "str_cmp").
 convert_binary_op(int_lt,   gcc.lt_expr,        gcc.boolean_type_node).
 convert_binary_op(int_gt,   gcc.gt_expr,        gcc.boolean_type_node).
 convert_binary_op(int_le,   gcc.le_expr,        gcc.boolean_type_node).

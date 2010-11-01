@@ -1,0 +1,72 @@
+jump 1 -> 51
+jump 2 -> 52
+jump 3 failed
+jump 11 -> 11
+jump 12 -> 11
+jump 13 failed
+jump 21 -> 62
+jump 22 -> 62
+jump 23 failed
+jump 31 -> 13
+jump 32 failed
+jump 33 failed
+one 1 -> 1
+one 2 -> 2
+one 3 failed
+one 11 -> 11
+one 12 -> 11
+one 13 failed
+one 21 -> 12
+one 22 -> 12
+one 23 failed
+one 31 -> 13
+one 32 failed
+one 33 failed
+one known 1 failed
+one known 2 failed
+one known 3 failed
+one known 11 -> 11
+one known 12 failed
+one known 13 failed
+one known 21 failed
+one known 22 -> 12
+one known 23 failed
+one known 31 failed
+one known 32 failed
+one known 33 failed
+several 1 -> [1]
+several 2 -> [2]
+several 3 -> []
+several 11 -> [11, 12]
+several 12 -> [11, 12]
+several 13 -> []
+several 21 -> [13, 14, 15]
+several 22 -> [13, 14, 15]
+several 23 -> []
+several 31 -> [16]
+several 32 -> [16]
+several 33 -> []
+several known 1 -> []
+several known 2 -> []
+several known 3 -> []
+several known 11 -> [11, 12]
+several known 12 -> []
+several known 13 -> []
+several known 21 -> []
+several known 22 -> [13, 14, 15]
+several known 23 -> []
+several known 31 -> []
+several known 32 -> []
+several known 33 -> []
+several nested 1 -> [1001, 11001, 12001]
+several nested 2 -> [11002, 12002]
+several nested 3 -> []
+several nested 11 -> [11011, 11012, 12011, 12012]
+several nested 12 -> [11011, 11012, 12011, 12012]
+several nested 13 -> []
+several nested 21 -> [13013, 13014, 13015, 14013, 14014, 14015, 15013, 15014, 15015]
+several nested 22 -> [13013, 13014, 13015, 14013, 14014, 14015, 15013, 15014, 15015]
+several nested 23 -> []
+several nested 31 -> [16016]
+several nested 32 -> [16016]
+several nested 33 -> []

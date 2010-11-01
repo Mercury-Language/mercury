@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: lookup_switch.m.
 % Authors: conway, zs.
-% 
+%
 % For switches on atomic types in which the cases contain only the
 % construction of constants, generate code which just assigns the values of
 % the output variables by indexing into an array of values for the output
@@ -16,7 +16,7 @@
 %
 % For switches that can fail, the generated code does a range check on the
 % index, and then does a lookup in a bit-vector to see if there is a value for
-% the appropriate case. If there is, then it does a lookup (using the field
+% the appropriate case. If there is, then it does a lookup (using the MR_field
 % macro) in the array of results. The array is padded with "0"s for cases that
 % are not covered. This is fine, since we do the lookup after we check the
 % bit-vector for the appropriate case.
@@ -29,17 +29,13 @@
 % then may throw it away if a subsequent case generates actual code, or non
 % constant outputs.
 %
-% A potential improvement would be to make a single array for each switch,
-% since putting the values produced for each tag value side-by-side in memory
-% will tend to lead to fewer cache misses.
-%
 % The number of bits per word is taken from the bits_per_word option which
-% uses a flag in the mc script with a value from configuration. This is used
+% uses a flag in the mmc script with a value from configuration. This is used
 % when generating bit-vectors.
-% 
+%
 % The implementation of lookup switches is further documented in the paper
 % Dealing with large predicates: exo-compilation in the WAM and in Mercury,
-% by Bart Demoen Phuong-Lan Nguyen, Vi'tor Santos Costa, Zoltan Somogyi.
+% by Bart Demoen, Phuong-Lan Nguyen, Vi'tor Santos Costa and Zoltan Somogyi.
 %
 % The module ml_lookup_switch.m implements lookup switches for the MLDS
 % backend. Any changes here may need to be reflected there as well.
@@ -50,67 +46,24 @@
 :- interface.
 
 :- import_module backend_libs.switch_util.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.llds.
-
-:- import_module list.
-
-%-----------------------------------------------------------------------------%
-
-:- type lookup_switch_info.
-
-    % Decide whether we can generate code for this switch using a lookup table.
-    %
-:- pred is_lookup_switch(list(tagged_case)::in, hlds_goal_info::in,
-    abs_store_map::in, branch_end::in, branch_end::out,
-    lookup_switch_info::out, code_info::in, code_info::out) is semidet.
-
-    % Generate code for the switch that the lookup_switch_info came from.
-    %
-:- pred generate_lookup_switch(rval::in, abs_store_map::in, branch_end::in,
-    lookup_switch_info::in, int::in, int::in,
-    need_bit_vec_check::in, need_range_check::in, llds_code::out,
-    code_info::in, code_info::out) is det.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- implementation.
-
-:- import_module backend_libs.builtin_ops.
-:- import_module check_hlds.type_util.
-:- import_module hlds.code_model.
-:- import_module hlds.goal_form.
-:- import_module hlds.hlds_data.
-:- import_module libs.compiler_util.
-:- import_module libs.globals.
-:- import_module libs.options.
-:- import_module ll_backend.continuation_info.
-:- import_module ll_backend.dense_switch.
-:- import_module ll_backend.global_data.
-:- import_module ll_backend.lookup_util.
 :- import_module parse_tree.prog_data.
 
-:- import_module assoc_list.
-:- import_module bool.
-:- import_module cord.
-:- import_module int.
+:- import_module list.
 :- import_module map.
-:- import_module maybe.
-:- import_module pair.
 :- import_module set.
-:- import_module string.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
-:- type lookup_switch_info
+:- type lookup_switch_info(Key)
     --->    lookup_switch_info(
                 % The map from the switched-on value to the values of the
                 % variables in each solution.
-                lsi_cases               :: case_consts(rval),
+                lsi_cases               :: case_consts(Key, rval),
 
                 % The output variables.
                 lsi_variables           :: list(prog_var),
@@ -122,12 +75,125 @@
                 lsi_liveness            :: set(prog_var)
             ).
 
+:- pred record_lookup_for_tagged_cons_id_int(soln_consts(rval)::in,
+    tagged_cons_id::in,
+    map(int, soln_consts(rval))::in, map(int, soln_consts(rval))::out) is det.
+
+:- pred record_lookup_for_tagged_cons_id_string(soln_consts(rval)::in,
+    tagged_cons_id::in,
+    map(string, soln_consts(rval))::in, map(string, soln_consts(rval))::out)
+    is det.
+
+:- type record_switch_lookup(Key) ==
+    pred(soln_consts(rval), tagged_cons_id,
+    map(Key, soln_consts(rval)), map(Key, soln_consts(rval))).
+:- inst record_switch_lookup ==
+    (pred(in, in, in, out) is det).
+
+    % Decide whether we can generate code for this switch using a lookup table.
+    %
+:- pred is_lookup_switch(record_switch_lookup(Key)::in(record_switch_lookup),
+    list(tagged_case)::in, hlds_goal_info::in, abs_store_map::in,
+    branch_end::in, branch_end::out, lookup_switch_info(Key)::out,
+    code_info::in, code_info::out) is semidet.
+
+    % Generate code for the switch that the lookup_switch_info came from.
+    %
+:- pred generate_int_lookup_switch(rval::in, lookup_switch_info(int)::in,
+    label::in, abs_store_map::in, int::in, int::in,
+    need_bit_vec_check::in, need_range_check::in,
+    branch_end::in, branch_end::out, llds_code::out,
+    code_info::in, code_info::out) is det.
+
+:- type case_kind
+    --->    kind_zero_solns
+    ;       kind_one_soln
+    ;       kind_several_solns.
+
+    % generate_code_for_all_kinds(Kinds, NumPrevColumns, OutVars, ResumeVars,
+    %   EndLabel, StoreMap, Liveness, AddTrailOps,
+    %   BaseReg, LaterVectorAddrRval, Code, !CI):
+    %
+    % Generate code for the kinds of solution cardinalities listed in Kinds.
+    %
+    % - For kind_zero_solns, generate code that performs failure.
+    % - For kind_one_solution, generate code that looks up the main table
+    %   at row BaseReg and then goes to EndLabel.
+    % - For kind_several_solns, generate code that looks up the main table
+    %   at row BaseReg, sets up a resume point that stores ResumeVars,
+    %   succeeds by going to EndLabel. On backtracking, the generated code
+    %   will keep returning rows from the later solution table until there are
+    %   no more later solutions associated with row BaseReg.
+    %
+    % The definition of EndLabel is up to the caller.
+    %
+    % For this predicate, the main table's columns form three groups.
+    %
+    % - The first group of NumPrevColumns columns are ignored by this
+    %   predicate.
+    %   - For int switches, there will be no previous columns.
+    %   - For binary string switches, there is one containing the string.
+    %   - For hash string switches, there are two, containing the string,
+    %     and the number of the next slot in the open addressing sequence.
+    %
+    % - The second group contains two columns, which contain respectively
+    %   the offsets of the first and last later solutions in the later
+    %   solutions table. Each of these offsets is the offset of the first
+    %   column of the selected row. An offset of zero indicates there is
+    %   no later solution, which means that the first row of the later solution
+    %   table can never be referred to, and must therefore be a dummy.
+    %
+    % - The third group consists of the values of OutVars.
+    %
+    % Therefore each row of the main table has NumPrevColumns + 2 + |OutVars|
+    % columns, while the later solutions table has |OutVars| columns.
+    %
+    % This predicate assumes that the caller has already set BaseReg to point
+    % to the start of the relevant row in the main solutions table.
+    % LaterVectorAddrRval should be the address of the start of the later
+    % solutions table.
+    %
+:- pred generate_code_for_all_kinds(list(case_kind)::in, int::in,
+    list(prog_var)::in, set(prog_var)::in, label::in, abs_store_map::in,
+    set(prog_var)::in, add_trail_ops::in, lval::in, rval::in,
+    branch_end::in, branch_end::out, llds_code::out,
+    code_info::in, code_info::out) is det.
+
+:- func default_value_for_type(llds_type) = rval.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+:- implementation.
+
+:- import_module backend_libs.builtin_ops.
+:- import_module check_hlds.type_util.
+:- import_module hlds.code_model.
+:- import_module hlds.goal_form.
+:- import_module libs.compiler_util.
+:- import_module libs.globals.
+:- import_module libs.options.
+:- import_module ll_backend.continuation_info.
+:- import_module ll_backend.dense_switch.
+:- import_module ll_backend.global_data.
+:- import_module ll_backend.lookup_util.
+
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module cord.
+:- import_module int.
+:- import_module maybe.
+:- import_module pair.
+:- import_module std_util.
+:- import_module string.
+:- import_module svmap.
+
+%-----------------------------------------------------------------------------%
+
+is_lookup_switch(RecordLookupForTaggedConsId, TaggedCases, GoalInfo, StoreMap,
+        !MaybeEnd, LookupSwitchInfo, !CI) :-
     % Most of this predicate is taken from dense_switch.m.
-    %
-is_lookup_switch(TaggedCases, GoalInfo, StoreMap, !MaybeEnd, LookupSwitchInfo,
-        !CI) :-
+
     % We need the code_info structure to generate code for the cases to
     % get the constants (if they exist). We can't throw it away at the
     % end because we may have allocated some new static ground terms.
@@ -135,45 +201,47 @@ is_lookup_switch(TaggedCases, GoalInfo, StoreMap, !MaybeEnd, LookupSwitchInfo,
     figure_out_output_vars(!.CI, GoalInfo, OutVars),
     set.list_to_set(OutVars, ArmNonLocals),
     remember_position(!.CI, CurPos),
-    generate_constants_for_lookup_switch(TaggedCases, OutVars, ArmNonLocals,
-        StoreMap, Liveness, map.init, CaseSolnMap, !MaybeEnd,
-        set.init, ResumeVars, no, GoalsMayModifyTrail, !CI),
+    generate_constants_for_lookup_switch(RecordLookupForTaggedConsId,
+        TaggedCases, OutVars, ArmNonLocals, StoreMap, Liveness,
+        map.init, CaseSolnMap, !MaybeEnd, set.init, ResumeVars,
+        no, GoalsMayModifyTrail, !CI),
     map.to_assoc_list(CaseSolnMap, CaseSolns),
     reset_to_position(CurPos, !CI),
     VarTypes = get_var_types(!.CI),
     list.map(map.lookup(VarTypes), OutVars, OutTypes),
-    ( project_all_to_one_solution(CaseSolns, [], RevCaseValuePairs) ->
-        list.reverse(RevCaseValuePairs, CaseValuePairs),
+    ( project_all_to_one_solution(CaseSolns, CaseValuePairs) ->
         CaseConsts = all_one_soln(CaseValuePairs),
         assoc_list.values(CaseValuePairs, CaseValues)
     ;
         CaseConsts = some_several_solns(CaseSolns, ResumeVars,
             GoalsMayModifyTrail),
         % This generates CaseValues in reverse order of index, but given that
-        % we only use CaseValues to find out the right LLDSTypes, this is OK.
+        % we only use CaseValues to find out the right OutLLDSTypes,
+        % this is OK.
         project_solns_to_rval_lists(CaseSolns, [], CaseValues)
     ),
     get_exprn_opts(!.CI, ExprnOpts),
     UnboxFloats = get_unboxed_floats(ExprnOpts),
-    find_general_llds_types(UnboxFloats, OutTypes, CaseValues, LLDSTypes),
-    LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, LLDSTypes,
+    find_general_llds_types(UnboxFloats, OutTypes, CaseValues, OutLLDSTypes),
+    LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, OutLLDSTypes,
         Liveness).
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_constants_for_lookup_switch(list(tagged_case)::in,
-    list(prog_var)::in, set(prog_var)::in, abs_store_map::in,
-    set(prog_var)::out,
-    map(int, soln_consts(rval))::in, map(int, soln_consts(rval))::out,
+:- pred generate_constants_for_lookup_switch(
+    record_switch_lookup(Key)::in(record_switch_lookup),
+    list(tagged_case)::in, list(prog_var)::in, set(prog_var)::in,
+    abs_store_map::in, set(prog_var)::out,
+    map(Key, soln_consts(rval))::in, map(Key, soln_consts(rval))::out,
     branch_end::in, branch_end::out, set(prog_var)::in, set(prog_var)::out,
     bool::in, bool::out, code_info::in, code_info::out) is semidet.
 
-generate_constants_for_lookup_switch([], _Vars, _ArmNonLocals, _StoreMap,
-        set.init, !IndexMap,
+generate_constants_for_lookup_switch(_RecordLookupForTaggedConsId,
+        [], _Vars, _ArmNonLocals, _StoreMap, set.init, !IndexMap,
         !MaybeEnd, !ResumeVars, !GoalsMayModifyTrail, !CI).
-generate_constants_for_lookup_switch([TaggedCase | TaggedCases], Vars,
-        ArmNonLocals, StoreMap, Liveness, !IndexMap, !MaybeEnd, !ResumeVars,
-        !GoalsMayModifyTrail, !CI) :-
+generate_constants_for_lookup_switch(RecordLookupForTaggedConsId,
+        [TaggedCase | TaggedCases], Vars, ArmNonLocals, StoreMap, Liveness,
+        !IndexMap, !MaybeEnd, !ResumeVars, !GoalsMayModifyTrail, !CI) :-
     TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, _, Goal),
     Goal = hlds_goal(GoalExpr, GoalInfo),
 
@@ -227,18 +295,27 @@ generate_constants_for_lookup_switch([TaggedCase | TaggedCases], Vars,
             !MaybeEnd, Liveness, !CI),
         SolnConsts = one_soln(Soln)
     ),
-    record_lookup_for_tagged_cons_id(SolnConsts, TaggedMainConsId, !IndexMap),
-    list.foldl(record_lookup_for_tagged_cons_id(SolnConsts),
+    RecordLookupForTaggedConsId(SolnConsts, TaggedMainConsId, !IndexMap),
+    record_lookup_for_tagged_cons_ids(RecordLookupForTaggedConsId, SolnConsts,
         TaggedOtherConsIds, !IndexMap),
-    generate_constants_for_lookup_switch(TaggedCases, Vars, ArmNonLocals,
-        StoreMap, _LivenessRest, !IndexMap, !MaybeEnd, !ResumeVars,
-        !GoalsMayModifyTrail, !CI).
+    generate_constants_for_lookup_switch(RecordLookupForTaggedConsId,
+        TaggedCases, Vars, ArmNonLocals, StoreMap, _LivenessRest,
+        !IndexMap, !MaybeEnd, !ResumeVars, !GoalsMayModifyTrail, !CI).
 
-:- pred record_lookup_for_tagged_cons_id(soln_consts(rval)::in,
-    tagged_cons_id::in,
-    map(int, soln_consts(rval))::in, map(int, soln_consts(rval))::out) is det.
+:- pred record_lookup_for_tagged_cons_ids(
+    record_switch_lookup(Key)::in(record_switch_lookup),
+    soln_consts(rval)::in, list(tagged_cons_id)::in,
+    map(Key, soln_consts(rval))::in, map(Key, soln_consts(rval))::out) is det.
 
-record_lookup_for_tagged_cons_id(SolnConsts, TaggedConsId, !IndexMap) :-
+record_lookup_for_tagged_cons_ids(_RecordLookupForTaggedConsId, _SolnConsts,
+        [], !IndexMap).
+record_lookup_for_tagged_cons_ids(RecordLookupForTaggedConsId, SolnConsts,
+        [TaggedConsId | TaggedConsIds], !IndexMap) :-
+    RecordLookupForTaggedConsId(SolnConsts, TaggedConsId, !IndexMap),
+    record_lookup_for_tagged_cons_ids(RecordLookupForTaggedConsId, SolnConsts,
+        TaggedConsIds, !IndexMap).
+
+record_lookup_for_tagged_cons_id_int(SolnConsts, TaggedConsId, !IndexMap) :-
     TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
     ( ConsTag = int_tag(Index) ->
         svmap.det_insert(Index, SolnConsts, !IndexMap)
@@ -246,11 +323,20 @@ record_lookup_for_tagged_cons_id(SolnConsts, TaggedConsId, !IndexMap) :-
         unexpected(this_file, "record_lookup_for_tagged_cons_id: not int_tag")
     ).
 
+record_lookup_for_tagged_cons_id_string(SolnConsts, TaggedConsId, !IndexMap) :-
+    TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
+    ( ConsTag = string_tag(Index) ->
+        svmap.det_insert(Index, SolnConsts, !IndexMap)
+    ;
+        unexpected(this_file, "record_lookup_for_tagged_cons_id: not int_tag")
+    ).
+
 %---------------------------------------------------------------------------%
 
-generate_lookup_switch(VarRval, StoreMap, MaybeEnd0, LookupSwitchInfo,
-        StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck, Code, !CI) :-
-    LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, LLDSTypes,
+generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
+        StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck, !MaybeEnd,
+        Code, !CI) :-
+    LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, OutTypes,
         Liveness),
 
     % If the case values start at some number other than 0,
@@ -279,15 +365,15 @@ generate_lookup_switch(VarRval, StoreMap, MaybeEnd0, LookupSwitchInfo,
         Comment = singleton(
             llds_instr(comment("simple lookup switch"), "")
         ),
-        generate_simple_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
-            StartVal, EndVal, CaseValues, OutVars, LLDSTypes,
+        generate_simple_int_lookup_switch(IndexRval, StoreMap,
+            StartVal, EndVal, CaseValues, OutVars, OutTypes,
             NeedBitVecCheck, Liveness, RestCode, !CI)
     ;
         CaseConsts = some_several_solns(CaseSolns, ResumeVars,
             GoalsMayModifyTrail),
-        get_emit_trail_ops(!.CI, EmitTrailOps),
         (
             GoalsMayModifyTrail = yes,
+            get_emit_trail_ops(!.CI, EmitTrailOps),
             AddTrailOps = EmitTrailOps
         ;
             GoalsMayModifyTrail = no,
@@ -296,20 +382,19 @@ generate_lookup_switch(VarRval, StoreMap, MaybeEnd0, LookupSwitchInfo,
         Comment = singleton(
             llds_instr(comment("several soln lookup switch"), "")
         ),
-        generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
+        generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
             StartVal, EndVal, CaseSolns, ResumeVars, AddTrailOps, OutVars,
-            LLDSTypes, NeedBitVecCheck, Liveness, RestCode, !CI)
+            OutTypes, NeedBitVecCheck, Liveness, !MaybeEnd, RestCode, !CI)
     ),
     Code = Comment ++ RangeCheckCode ++ RestCode.
 
-:- pred generate_simple_lookup_switch(rval::in, abs_store_map::in,
-    branch_end::in, int::in, int::in, assoc_list(int, list(rval))::in,
+:- pred generate_simple_int_lookup_switch(rval::in, abs_store_map::in,
+    int::in, int::in, assoc_list(int, list(rval))::in,
     list(prog_var)::in, list(llds_type)::in, need_bit_vec_check::in,
     set(prog_var)::in, llds_code::out, code_info::in, code_info::out) is det.
 
-generate_simple_lookup_switch(IndexRval, StoreMap, MaybeEnd0, StartVal, EndVal,
-        CaseValues, OutVars, LLDSTypes, NeedBitVecCheck, Liveness, Code,
-        !CI) :-
+generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
+        CaseValues, OutVars, OutTypes, NeedBitVecCheck, Liveness, Code, !CI) :-
     (
         NeedBitVecCheck = need_bit_vec_check,
         generate_bitvec_test(IndexRval, CaseValues, StartVal, EndVal,
@@ -324,6 +409,7 @@ generate_simple_lookup_switch(IndexRval, StoreMap, MaybeEnd0, StartVal, EndVal,
     %
     % Note that invoking generate_simple_terms when OutVars = [] would lead to
     % a compiler abort, since we cannot create C structures with zero fields.
+    % This can happen for semidet switches.
     (
         OutVars = [],
         BaseRegInitCode = empty,
@@ -335,15 +421,40 @@ generate_simple_lookup_switch(IndexRval, StoreMap, MaybeEnd0, StartVal, EndVal,
         % BaseReg.
         acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
         MaybeBaseReg = yes(BaseReg),
-        generate_simple_terms(IndexRval, OutVars, LLDSTypes, CaseValues,
-            StartVal, BaseReg, BaseRegInitCode, !CI)
+
+        % Generate the static lookup table for this switch.
+        list.length(OutVars, NumOutVars),
+        construct_simple_int_lookup_vector(CaseValues, StartVal, OutTypes,
+            [], RevVectorRvals),
+        list.reverse(RevVectorRvals, VectorRvals),
+        add_vector_static_cell(OutTypes, VectorRvals, VectorAddr, !CI),
+        VectorAddrRval = const(llconst_data_addr(VectorAddr, no)),
+
+        % Generate code to look up each of the variables in OutVars
+        % in its slot in the table row IndexRval (which will be row
+        % VarRval - StartVal). Most of the change is done by
+        % generate_offset_assigns associating each var with the relevant field
+        % in !CI.
+        ( NumOutVars = 1 ->
+            BaseRval = IndexRval
+        ;
+            BaseRval = binop(int_mul,
+                IndexRval, const(llconst_int(NumOutVars)))
+        ),
+        BaseRegInitCode = singleton(
+            llds_instr(
+                assign(BaseReg,
+                    mem_addr(heap_ref(VectorAddrRval, 0, BaseRval))),
+                "Compute base address for this case")
+        ),
+        generate_offset_assigns(OutVars, 0, BaseReg, !CI)
     ),
 
     % We keep track of what variables are supposed to be live at the end
     % of cases. We have to do this explicitly because generating a `fail' slot
     % last would yield the wrong liveness.
     set_forward_live_vars(Liveness, !CI),
-    generate_branch_end(StoreMap, MaybeEnd0, _MaybeEnd, BranchEndCode, !CI),
+    generate_branch_end(StoreMap, no, _MaybeEnd, BranchEndCode, !CI),
     (
         MaybeBaseReg = no
     ;
@@ -352,84 +463,61 @@ generate_simple_lookup_switch(IndexRval, StoreMap, MaybeEnd0, StartVal, EndVal,
     ),
     Code = CheckBitVecCode ++ BaseRegInitCode ++ BranchEndCode.
 
-    % Add an expression to the expression cache in the code_info structure
-    % for each of the output variables of the lookup switch. This is done by
-    % creating a static term for the array, and generating an expression
-    % for the variable to get the IndexRval'th field of that term.
-    %
-:- pred generate_simple_terms(rval::in, list(prog_var)::in,
-    list(llds_type)::in, assoc_list(int, list(rval))::in, int::in,
-    lval::in, llds_code::out, code_info::in, code_info::out) is det.
+%-----------------------------------------------------------------------------%
 
-generate_simple_terms(IndexRval, OutVars, OutTypes, CaseVals, Start, BaseReg,
-        Code, !CI) :-
-    list.length(OutVars, NumOutVars),
-    construct_simple_vector(Start, OutTypes, CaseVals, VectorRvals),
-    add_vector_static_cell(OutTypes, VectorRvals, VectorAddr, !CI),
+:- pred construct_simple_int_lookup_vector(assoc_list(int, list(rval))::in,
+    int::in, list(llds_type)::in,
+    list(list(rval))::in, list(list(rval))::out) is det.
 
-    VectorAddrRval = const(llconst_data_addr(VectorAddr, no)),
-    % IndexRval has already had Start subtracted from it.
-    ( NumOutVars = 1 ->
-        BaseRval = IndexRval
-    ;
-        BaseRval = binop(int_mul, IndexRval, const(llconst_int(NumOutVars)))
-    ),
-    Code = singleton(
-        llds_instr(
-            assign(BaseReg, mem_addr(heap_ref(VectorAddrRval, 0, BaseRval))),
-            "Compute base address for this case")
-    ),
-    generate_offset_assigns(OutVars, 0, BaseReg, !CI).
-
-:- pred construct_simple_vector(int::in, list(llds_type)::in,
-    assoc_list(int, list(rval))::in, list(list(rval))::out) is det.
-
-construct_simple_vector(_, _, [], []).
-construct_simple_vector(CurIndex, LLDSTypes, [Index - Rvals | Rest],
-        [Row | Rows]) :-
+construct_simple_int_lookup_vector([], _, _, !RevRows).
+construct_simple_int_lookup_vector([Index - Rvals | Rest], CurIndex, OutTypes,
+        !RevRows) :-
     ( CurIndex < Index ->
         % If this argument (array element) is a place-holder and
         % will never be referenced, just fill it in with a dummy entry.
-        Row = list.map(default_value_for_type, LLDSTypes),
+        Row = list.map(default_value_for_type, OutTypes),
         Remainder = [Index - Rvals | Rest]
     ;
         Row = Rvals,
         Remainder = Rest
     ),
-    construct_simple_vector(CurIndex + 1, LLDSTypes, Remainder, Rows).
+    !:RevRows = [Row | !.RevRows],
+    construct_simple_int_lookup_vector( Remainder, CurIndex + 1, OutTypes,
+        !RevRows).
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_several_soln_lookup_switch(rval::in, abs_store_map::in,
-    branch_end::in, int::in, int::in, assoc_list(int, soln_consts(rval))::in,
-    set(prog_var)::in, add_trail_ops::in, list(prog_var)::in,
-    list(llds_type)::in, need_bit_vec_check::in, set(prog_var)::in,
-    llds_code::out, code_info::in, code_info::out) is det.
+:- pred generate_several_soln_int_lookup_switch(rval::in, label::in,
+    abs_store_map::in, int::in, int::in,
+    assoc_list(int, soln_consts(rval))::in, set(prog_var)::in,
+    add_trail_ops::in, list(prog_var)::in, list(llds_type)::in,
+    need_bit_vec_check::in, set(prog_var)::in,
+    branch_end::in, branch_end::out, llds_code::out,
+    code_info::in, code_info::out) is det.
 
-generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
-        StartVal, EndVal, CaseSolns, ResumeVars, AddTrailOps, OutVars,
-        LLDSTypes, NeedBitVecCheck, Liveness, Code, !CI) :-
-    (
-        OutVars = [],
-        % If there are no output variables, then how can the individual
-        % solutions differ from each other?
-        unexpected(this_file,
-            "generate_several_soln_lookup_switch: no OutVars")
-    ;
-        OutVars = [_ | _]
-    ),
+generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
+        StartVal, EndVal, CaseSolns, ResumeVars, AddTrailOps,
+        OutVars, OutTypes, NeedBitVecCheck, Liveness, !MaybeEnd, Code, !CI) :-
+    % If there are no output variables, then how can the individual solutions
+    % differ from each other?
+    expect(negate(unify(OutVars, [])), this_file,
+        "generate_several_soln_int_lookup_switch: no OutVars"),
 
     % Now generate the static cells into which we do the lookups of the values
     % of the output variables, if there are any.
     %
-    % We put a dummy row at the start.
-    list.length(LLDSTypes, NumLLDSTypes),
-    InitRowNumber = 1,
-    DummyLaterSolnRow = list.map(default_value_for_type, LLDSTypes),
-    construct_several_soln_vector(StartVal, EndVal, InitRowNumber,
-        LLDSTypes, NumLLDSTypes, CaseSolns, MainRows,
-        [DummyLaterSolnRow], RevLaterSolnArray,
+    % We put a dummy row at the start of the later solns table, so that
+    % a zero in the "later solns start row" column of the main table can mean
+    % "no later solutions".
+    list.length(OutTypes, NumOutTypes),
+    InitLaterSolnRowNumber = 1,
+    DummyLaterSolnRow = list.map(default_value_for_type, OutTypes),
+    LaterSolnArrayCord0 = singleton(DummyLaterSolnRow),
+    construct_several_soln_int_lookup_vector(StartVal, EndVal,
+        OutTypes, NumOutTypes, CaseSolns, MainRows,
+        InitLaterSolnRowNumber, LaterSolnArrayCord0, LaterSolnArrayCord,
         0, FailCaseCount, 0, OneSolnCaseCount, 0, SeveralSolnCaseCount),
+    LaterSolnArray = cord.list(LaterSolnArrayCord),
     (
         (
             NeedBitVecCheck = need_bit_vec_check
@@ -440,21 +528,49 @@ generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
         true
     ;
         unexpected(this_file,
-            "generate_several_soln_lookup_switch: bad FailCaseCount")
+            "generate_several_soln_int_lookup_switch: bad FailCaseCount")
     ),
 
-    list.reverse(RevLaterSolnArray, LaterSolnArray),
-    MainRowTypes = [lt_integer, lt_integer | LLDSTypes],
-    list.length(MainRowTypes, MainRowWidth),
+    MainRowTypes = [lt_integer, lt_integer | OutTypes],
+    list.length(MainRowTypes, MainNumColumns),
     add_vector_static_cell(MainRowTypes, MainRows, MainVectorAddr, !CI),
     MainVectorAddrRval = const(llconst_data_addr(MainVectorAddr, no)),
-    add_vector_static_cell(LLDSTypes, LaterSolnArray, LaterVectorAddr, !CI),
+    add_vector_static_cell(OutTypes, LaterSolnArray, LaterVectorAddr, !CI),
     LaterVectorAddrRval = const(llconst_data_addr(LaterVectorAddr, no)),
+
+    list.sort([FailCaseCount - kind_zero_solns,
+        OneSolnCaseCount - kind_one_soln,
+        SeveralSolnCaseCount - kind_several_solns], AscendingSortedCountKinds),
+    list.reverse(AscendingSortedCountKinds, DescendingSortedCountKinds),
+    assoc_list.values(DescendingSortedCountKinds, DescendingSortedKinds),
 
     % Since we release BaseReg only after the calls to generate_branch_end,
     % we must make sure that generate_branch_end won't want to overwrite
     % BaseReg.
-    %
+    acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
+    % IndexRval has already had Start subtracted from it.
+    BaseRegInitCode = singleton(
+        llds_instr(
+            assign(BaseReg,
+                mem_addr(heap_ref(MainVectorAddrRval, 0,
+                    binop(int_mul,
+                        IndexRval,
+                        const(llconst_int(MainNumColumns)))))),
+            "Compute base address for this case")
+    ),
+
+    generate_code_for_all_kinds(DescendingSortedKinds, 0, OutVars, ResumeVars,
+        EndLabel, StoreMap, Liveness, AddTrailOps,
+        BaseReg, LaterVectorAddrRval, !MaybeEnd, KindsCode, !CI),
+    EndLabelCode = singleton(
+        llds_instr(label(EndLabel),
+            "end of int several soln lookup switch")
+    ),
+    Code = BaseRegInitCode ++ KindsCode ++ EndLabelCode.
+
+generate_code_for_all_kinds(Kinds, NumPrevColumns, OutVars, ResumeVars,
+        EndLabel, StoreMap, Liveness, AddTrailOps,
+        BaseReg, LaterVectorAddrRval, !MaybeEnd, Code, !CI) :-
     % We release BaseReg in each arm of generate_code_for_each_kind below.
     % We cannot release it at the bottom of this predicate, because in the
     % kind_several_solns arm of generate_code_for_each_kind the generation
@@ -462,42 +578,16 @@ generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
     %
     % We cannot release the stack slots anywhere, since they will be needed
     % after backtracking to later alternatives of any model_non switch arm.
-    acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
-    acquire_temp_slot(slot_lookup_switch_cur,
-        non_persistent_temp_slot, CurSlot, !CI),
-    acquire_temp_slot(slot_lookup_switch_max,
-        non_persistent_temp_slot, MaxSlot, !CI),
-    % IndexRval has already had Start subtracted from it.
-    BaseRval = binop(int_mul, IndexRval, const(llconst_int(MainRowWidth))),
-    BaseRegInitCode = singleton(
-        llds_instr(
-            assign(BaseReg,
-                mem_addr(heap_ref(MainVectorAddrRval, 0, BaseRval))),
-            "Compute base address for this case")
-    ),
+    acquire_temp_slot(slot_lookup_switch_cur, non_persistent_temp_slot,
+        CurSlot, !CI),
+    acquire_temp_slot(slot_lookup_switch_max, non_persistent_temp_slot,
+        MaxSlot, !CI),
 
-    list.sort([FailCaseCount - kind_zero_solns,
-        OneSolnCaseCount - kind_one_soln,
-        SeveralSolnCaseCount - kind_several_solns], AscendingSortedKinds),
-    list.reverse(AscendingSortedKinds, DescendingSortedKinds),
-
-    get_next_label(EndLabel, !CI),
     remember_position(!.CI, BranchStart),
-    generate_code_for_each_kind(DescendingSortedKinds, BaseReg,
-        CurSlot, MaxSlot, LaterVectorAddrRval, EndLabel, BranchStart,
-        ResumeVars, AddTrailOps, OutVars, StoreMap, MaybeEnd0, Liveness,
-        KindsCode, !CI),
-
-    set_resume_point_to_unknown(!CI),
-    EndLabelCode = singleton(
-        llds_instr(label(EndLabel), "end of several_soln lookup switch")
-    ),
-    Code = BaseRegInitCode ++ KindsCode ++ EndLabelCode.
-
-:- type case_kind
-    --->    kind_zero_solns
-    ;       kind_one_soln
-    ;       kind_several_solns.
+    generate_code_for_each_kind(Kinds, NumPrevColumns,OutVars, ResumeVars,
+        BranchStart, EndLabel, StoreMap, Liveness, AddTrailOps, BaseReg,
+        CurSlot, MaxSlot, LaterVectorAddrRval, !MaybeEnd, Code, !CI),
+    set_resume_point_to_unknown(!CI).
 
 :- func case_kind_to_string(case_kind) = string.
 
@@ -505,17 +595,20 @@ case_kind_to_string(kind_zero_solns) = "kind_zero_solns".
 case_kind_to_string(kind_one_soln) = "kind_one_soln".
 case_kind_to_string(kind_several_solns) = "kind_several_solns".
 
-:- pred generate_code_for_each_kind(assoc_list(int, case_kind)::in,
-    lval::in, lval::in, lval::in, rval::in, label::in, position_info::in,
-    set(prog_var)::in, add_trail_ops::in, list(prog_var)::in,
-    abs_store_map::in, branch_end::in, set(prog_var)::in, llds_code::out,
+:- pred generate_code_for_each_kind(list(case_kind)::in, int::in,
+    list(prog_var)::in, set(prog_var)::in, position_info::in,
+    label::in, abs_store_map::in, set(prog_var)::in, add_trail_ops::in,
+    lval::in, lval::in, lval::in, rval::in,
+    branch_end::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out) is det.
 
-generate_code_for_each_kind([], _, _, _, _, _, _, _, _, _, _, _, _, _, !CI) :-
+generate_code_for_each_kind([], _, _, _, _, _, _, _, _, _, _, _, _,
+        !MaybeEnd, _, !CI) :-
     unexpected(this_file, "generate_code_for_each_kind: no kinds").
-generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
-        LaterVectorAddrRval, EndLabel, BranchStart, ResumeVars, AddTrailOps,
-        OutVars, StoreMap, MaybeEnd0, Liveness, Code, !CI) :-
+generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
+        OutVars, ResumeVars, BranchStart, EndLabel, StoreMap, Liveness,
+        AddTrailOps, BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval,
+        !MaybeEnd, Code, !CI) :-
     (
         Kind = kind_zero_solns,
         TestOp = int_ge,
@@ -526,8 +619,8 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         Kind = kind_one_soln,
         TestOp = ne,
         reset_to_position(BranchStart, !CI),
-        generate_offset_assigns(OutVars, 2, BaseReg, !CI),
-        set_liveness_and_end_branch(StoreMap, MaybeEnd0, Liveness,
+        generate_offset_assigns(OutVars, NumPrevColumns + 2, BaseReg, !CI),
+        set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
             BranchEndCode, !CI),
         release_reg(BaseReg, !CI),
         GotoEndCode = singleton(
@@ -545,16 +638,17 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         % specialized for the situation here.
 
         produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
+        MinOffsetColumnRval = const(llconst_int(NumPrevColumns)),
+        MaxOffsetColumnRval = const(llconst_int(NumPrevColumns + 1)),
         SaveSlotsCode = from_list([
             llds_instr(assign(CurSlot,
-                lval(field(yes(0), lval(BaseReg), const(llconst_int(0))))),
+                lval(field(yes(0), lval(BaseReg), MinOffsetColumnRval))),
                 "Setup current slot in the later solution array"),
             llds_instr(assign(MaxSlot,
-                lval(field(yes(0), lval(BaseReg), const(llconst_int(1))))),
+                lval(field(yes(0), lval(BaseReg), MaxOffsetColumnRval))),
                 "Setup maximum slot in the later solution array")
         ]),
-        maybe_save_ticket(AddTrailOps, SaveTicketCode,
-            MaybeTicketSlot, !CI),
+        maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot, !CI),
         globals.lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
             ReclaimHeap),
         maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
@@ -567,7 +661,7 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         make_resume_point(ResumeVars, resume_locs_stack_only,
             ResumeMap, ResumePoint, !CI),
         effect_resume_point(ResumePoint, model_non, UpdateRedoipCode, !CI),
-        generate_offset_assigns(OutVars, 2, BaseReg, !CI),
+        generate_offset_assigns(OutVars, NumPrevColumns + 2, BaseReg, !CI),
         flush_resume_vars_to_stack(FirstFlushResumeVarsCode, !CI),
 
         % Forget the variables that are needed only at the resumption point at
@@ -578,7 +672,7 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         pickup_zombies(FirstZombies, !CI),
         make_vars_forward_dead(FirstZombies, !CI),
 
-        set_liveness_and_end_branch(StoreMap, MaybeEnd0, Liveness,
+        set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
             FirstBranchEndCode, !CI),
         release_reg(BaseReg, !CI),
 
@@ -640,7 +734,7 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         pickup_zombies(LaterZombies, !CI),
         make_vars_forward_dead(LaterZombies, !CI),
 
-        set_liveness_and_end_branch(StoreMap, MaybeEnd0, Liveness,
+        set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
             LaterBranchEndCode, !CI),
 
         KindCode = FlushCode ++ SaveSlotsCode ++
@@ -655,10 +749,11 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         Kinds = [],
         Code = KindCode
     ;
-        Kinds = [_ - NextKind | _],
+        Kinds = [NextKind | _],
         get_next_label(NextKindLabel, !CI),
         TestRval = binop(TestOp,
-            lval(field(yes(0), lval(BaseReg), const(llconst_int(0)))),
+            lval(field(yes(0), lval(BaseReg),
+                const(llconst_int(NumPrevColumns)))),
             const(llconst_int(0))),
         TestCode = from_list([
             llds_instr(if_val(TestRval, code_label(NextKindLabel)),
@@ -666,10 +761,6 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
             llds_instr(comment("This kind is " ++ case_kind_to_string(Kind)),
                 "")
         ]),
-        generate_code_for_each_kind(Kinds, BaseReg, CurSlot, MaxSlot,
-            LaterVectorAddrRval, EndLabel, BranchStart, ResumeVars,
-            AddTrailOps, OutVars, StoreMap, MaybeEnd0, Liveness,
-            LaterKindsCode, !CI),
         NextKindLabelCode = from_list([
             llds_instr(label(NextKindLabel),
                 "next kind in several_soln lookup switch"),
@@ -677,76 +768,81 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
                 ++ case_kind_to_string(NextKind)),
                 "")
         ]),
+        generate_code_for_each_kind(Kinds, NumPrevColumns, OutVars, ResumeVars,
+            BranchStart, EndLabel, StoreMap, Liveness, AddTrailOps,
+            BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval,
+            !MaybeEnd, LaterKindsCode, !CI),
         Code = TestCode ++ KindCode ++ NextKindLabelCode ++ LaterKindsCode
     ).
 
     % Note that we specify --optimise-constructor-last-call for this module
     % in order to make this predicate tail recursive.
     %
-:- pred construct_several_soln_vector(int::in, int::in, int::in,
+:- pred construct_several_soln_int_lookup_vector(int::in, int::in,
     list(llds_type)::in, int::in, assoc_list(int, soln_consts(rval))::in,
     list(list(rval))::out,
-    list(list(rval))::in, list(list(rval))::out,
+    int::in, cord(list(rval))::in, cord(list(rval))::out,
     int::in, int::out, int::in, int::out, int::in, int::out) is det.
 
-construct_several_soln_vector(CurIndex, EndVal, !.LaterNextRow, LLDSTypes,
-        NumLLDSTypes, [], MainRows, !RevLaterSolnArray,
+construct_several_soln_int_lookup_vector(CurIndex, EndVal,
+        OutTypes, NumOutTypes, [], MainRows,
+        !.LaterNextRow, !LaterSolnArray,
         !FailCaseCount, !OneSolnCaseCount, !SeveralSolnCaseCount) :-
     ( CurIndex > EndVal ->
         MainRows = []
     ;
-        construct_fail_row(LLDSTypes, MainRow, !FailCaseCount),
-        construct_several_soln_vector(CurIndex + 1, EndVal, !.LaterNextRow,
-            LLDSTypes, NumLLDSTypes, [], MoreMainRows, !RevLaterSolnArray,
+        construct_fail_row(OutTypes, MainRow, !FailCaseCount),
+        construct_several_soln_int_lookup_vector(CurIndex + 1, EndVal,
+            OutTypes, NumOutTypes, [], MoreMainRows,
+            !.LaterNextRow, !LaterSolnArray,
             !FailCaseCount, !OneSolnCaseCount, !SeveralSolnCaseCount),
         MainRows = [MainRow | MoreMainRows]
     ).
-construct_several_soln_vector(CurIndex, EndVal, !.LaterNextRow, LLDSTypes,
-        NumLLDSTypes, [Index - Soln | Rest], [MainRow | MainRows],
-        !RevLaterSolnArray,
+construct_several_soln_int_lookup_vector(CurIndex, EndVal,
+        OutTypes, NumOutTypes, [Index - Soln | Rest], [MainRow | MainRows],
+        !.LaterNextRow, !LaterSolnArray,
         !FailCaseCount, !OneSolnCaseCount, !SeveralSolnCaseCount) :-
     ( CurIndex < Index ->
-        construct_fail_row(LLDSTypes, MainRow, !FailCaseCount),
+        construct_fail_row(OutTypes, MainRow, !FailCaseCount),
         Remainder = [Index - Soln | Rest]
     ;
         (
-            Soln = one_soln(Rvals),
+            Soln = one_soln(OutRvals),
             !:OneSolnCaseCount = !.OneSolnCaseCount + 1,
+            ZeroRval = const(llconst_int(0)),
             % The first 0 means there is exactly one solution for this case;
             % the second 0 is a dummy that won't be referenced.
-            ControlRvals = [const(llconst_int(0)), const(llconst_int(0))],
-            MainRow = ControlRvals ++ Rvals
+            MainRow = [ZeroRval, ZeroRval | OutRvals]
         ;
-            Soln = several_solns(FirstSoln, LaterSolns),
+            Soln = several_solns(FirstSolnRvals, LaterSolns),
             !:SeveralSolnCaseCount = !.SeveralSolnCaseCount + 1,
             list.length(LaterSolns, NumLaterSolns),
-            FirstRowOffset = !.LaterNextRow * NumLLDSTypes,
-            LastRowOffset = (!.LaterNextRow + NumLaterSolns - 1)
-                * NumLLDSTypes,
-            ControlRvals = [const(llconst_int(FirstRowOffset)),
-                const(llconst_int(LastRowOffset))],
-            MainRow = ControlRvals ++ FirstSoln,
-            list.reverse(LaterSolns, RevLaterSolns),
-            !:RevLaterSolnArray = RevLaterSolns ++ !.RevLaterSolnArray,
-            !:LaterNextRow = !.LaterNextRow + NumLaterSolns
+            FirstRowOffset = !.LaterNextRow * NumOutTypes,
+            LastRowOffset = (!.LaterNextRow + NumLaterSolns - 1) * NumOutTypes,
+            FirstRowRval = const(llconst_int(FirstRowOffset)),
+            LastRowRval = const(llconst_int(LastRowOffset)),
+            MainRow = [FirstRowRval, LastRowRval | FirstSolnRvals],
+            !:LaterNextRow = !.LaterNextRow + NumLaterSolns,
+            !:LaterSolnArray = !.LaterSolnArray ++ from_list(LaterSolns)
         ),
         Remainder = Rest
     ),
-    construct_several_soln_vector(CurIndex + 1, EndVal, !.LaterNextRow,
-        LLDSTypes, NumLLDSTypes, Remainder, MainRows, !RevLaterSolnArray,
+    construct_several_soln_int_lookup_vector(CurIndex + 1, EndVal,
+        OutTypes, NumOutTypes, Remainder, MainRows,
+        !.LaterNextRow, !LaterSolnArray,
         !FailCaseCount, !OneSolnCaseCount, !SeveralSolnCaseCount).
 
 :- pred construct_fail_row(list(llds_type)::in, list(rval)::out,
     int::in, int::out) is det.
 
-construct_fail_row(LLDSTypes, MainRow, !FailCaseCount) :-
+construct_fail_row(OutTypes, MainRow, !FailCaseCount) :-
     % The -1 means no solutions for this case; the 0 is a dummy that
     % won't be referenced.
     ControlRvals = [const(llconst_int(-1)), const(llconst_int(0))],
 
     % Since this argument (array element) is a place-holder and will never be
     % referenced, just fill it in with a dummy entry.
-    VarRvals = list.map(default_value_for_type, LLDSTypes),
+    VarRvals = list.map(default_value_for_type, OutTypes),
 
     MainRow = ControlRvals ++ VarRvals,
     !:FailCaseCount = !.FailCaseCount + 1.
@@ -840,8 +936,6 @@ generate_bit_vec_args([Word - Bits | Rest], Count, [Rval | Rvals]) :-
     generate_bit_vec_args(Remainder, Count1, Rvals).
 
 %-----------------------------------------------------------------------------%
-
-:- func default_value_for_type(llds_type) = rval.
 
 default_value_for_type(lt_bool) = const(llconst_int(0)).
 default_value_for_type(lt_int_least8) = const(llconst_int(0)).

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1260,7 +1260,7 @@ generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, !CI) :-
     EndCodeInfo1 = !.CI,
     (
         MaybeEnd0 = no,
-        EndCodeInfo = EndCodeInfo1
+        MaybeEnd = yes(branch_end_info(EndCodeInfo1))
     ;
         MaybeEnd0 = yes(branch_end_info(EndCodeInfo0)),
 
@@ -1306,9 +1306,10 @@ generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, !CI) :-
         get_temps_in_use(EndCodeInfo0, TempsInUse0),
         get_temps_in_use(EndCodeInfo1, TempsInUse1),
         set.union(TempsInUse0, TempsInUse1, TempsInUse),
-        set_temps_in_use(TempsInUse, EndCodeInfoA, EndCodeInfo)
-    ),
-    MaybeEnd = yes(branch_end_info(EndCodeInfo)).
+        set_temps_in_use(TempsInUse, EndCodeInfoA, EndCodeInfo),
+
+        MaybeEnd = yes(branch_end_info(EndCodeInfo))
+    ).
 
 after_all_branches(StoreMap, MaybeEnd, !CI) :-
     (
@@ -3209,6 +3210,9 @@ clone_resume_point(ResumePoint0, ResumePoint, !CI) :-
 :- pred make_vars_forward_dead(set(prog_var)::in,
     code_info::in, code_info::out) is det.
 
+:- pred maybe_make_vars_forward_dead(set(prog_var)::in, bool::in,
+    code_info::in, code_info::out) is det.
+
 :- pred pickup_zombies(set(prog_var)::out,
     code_info::in, code_info::out) is det.
 
@@ -3281,9 +3285,6 @@ find_unused_reg(VLI, N0, N) :-
 make_vars_forward_dead(Vars, !CI) :-
     maybe_make_vars_forward_dead(Vars, yes, !CI).
 
-:- pred maybe_make_vars_forward_dead(set(prog_var)::in, bool::in,
-    code_info::in, code_info::out) is det.
-
 maybe_make_vars_forward_dead(Vars0, FirstTime, !CI) :-
     ResumeVars = current_resume_point_vars(!.CI),
     set.intersect(Vars0, ResumeVars, FlushVars),
@@ -3292,17 +3293,18 @@ maybe_make_vars_forward_dead(Vars0, FirstTime, !CI) :-
     set_zombies(Zombies, !CI),
     set.difference(Vars0, Zombies, Vars),
     set.to_sorted_list(Vars, VarList),
-    maybe_make_vars_forward_dead_2(VarList, FirstTime, !CI).
+    get_var_locn_info(!.CI, VarLocnInfo0),
+    maybe_make_vars_forward_dead_2(VarList, FirstTime,
+        VarLocnInfo0, VarLocnInfo),
+    set_var_locn_info(VarLocnInfo, !CI).
 
 :- pred maybe_make_vars_forward_dead_2(list(prog_var)::in, bool::in,
-    code_info::in, code_info::out) is det.
+    var_locn_info::in, var_locn_info::out) is det.
 
-maybe_make_vars_forward_dead_2([], _, !CI).
-maybe_make_vars_forward_dead_2([V | Vs], FirstTime, !CI) :-
-    get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn_var_becomes_dead(V, FirstTime, VarLocnInfo0, VarLocnInfo),
-    set_var_locn_info(VarLocnInfo, !CI),
-    maybe_make_vars_forward_dead_2(Vs, FirstTime, !CI).
+maybe_make_vars_forward_dead_2([], _, !VLI).
+maybe_make_vars_forward_dead_2([Var | Vars], FirstTime, !VLI) :-
+    var_locn_var_becomes_dead(Var, FirstTime, !VLI),
+    maybe_make_vars_forward_dead_2(Vars, FirstTime, !VLI).
 
 pickup_zombies(Zombies, !CI) :-
     get_zombies(!.CI, Zombies),

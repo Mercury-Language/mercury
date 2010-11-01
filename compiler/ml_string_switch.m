@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -105,11 +105,9 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
     HashMask = TableSize - 1,
 
     % Compute the hash table.
-    string_hash_cases(Cases, HashMask,
+    construct_string_hash_jump_cases(Cases, TableSize, HashMask,
         gen_tagged_case_code_for_string_switch(CodeModel),
-        map.init, CodeMap, unit, _, !Info, HashValsMap),
-    map.to_assoc_list(HashValsMap, HashValsList),
-    calc_string_hash_slots(HashValsList, HashValsMap, HashSlotsMap),
+        map.init, CodeMap, unit, _, !Info, HashSlotsMap),
 
     % Generate the code for when the hash lookup fails.
     (
@@ -326,7 +324,7 @@ ml_gen_string_hash_slots(Slot, TableSize, RowType, HashSlotMap,
 
 ml_gen_string_hash_slot(Slot, StructType, HashSlotMap, RowInitializer,
         !RevMap) :-
-    ( map.search(HashSlotMap, Slot, string_hash_slot(Next, String, CaseNum)) ->
+    ( map.search(HashSlotMap, Slot, string_hash_slot(String, Next, CaseNum)) ->
         StringRval = ml_const(mlconst_string(String)),
         NextSlotRval = ml_const(mlconst_int(Next)),
         ( map.search(!.RevMap, CaseNum, OldEntry) ->

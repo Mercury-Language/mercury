@@ -8866,10 +8866,16 @@ in which all the outputs are constant terms
 must have at least this many entries (default: 4).
 
 @sp 1
-@item --string-switch-size @var{size}
+@item --string-hash-switch-size @var{size}
 @findex --string-switch-size
 The hash table generated for a string switch
 must have at least this many entries (default: 8).
+
+@sp 1
+@item --string-binary-switch-size @var{size}
+@findex --string-switch-size
+The binary search table generated for a string switch
+must have at least this many entries (default: 4).
 
 @sp 1
 @item --tag-switch-size @var{size}

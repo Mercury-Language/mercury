@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2009 The University of Melbourne.
+% Copyright (C) 2000-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -113,12 +113,12 @@
 % Stuff for lookup switches.
 %
 
-:- type case_consts(Rval)
+:- type case_consts(Key, Rval)
     --->    all_one_soln(
-                assoc_list(int, list(Rval))
+                assoc_list(Key, list(Rval))
             )
     ;       some_several_solns(
-                assoc_list(int, soln_consts(Rval)),
+                assoc_list(Key, soln_consts(Rval)),
                 set(prog_var),          % The resume vars.
                 bool                    % The Boolean "or" of the result
                                         % of invoking goal_may_modify_trail
@@ -139,22 +139,23 @@
     --->    need_bit_vec_check
     ;       dont_need_bit_vec_check.
 
-:- pred find_lookup_switch_params(module_info::in, mer_type::in,
-    code_model::in, can_fail::in,
+:- pred filter_out_failing_cases_if_needed(code_model::in,
     list(tagged_case)::in, list(tagged_case)::out,
-    int::in, int::in, int::in, int::in, 
+    can_fail::in, can_fail::out) is det.
+
+:- pred find_int_lookup_switch_params(module_info::in, mer_type::in,
+    can_fail::in, int::in, int::in, int::in, int::in,
     need_bit_vec_check::out, need_range_check::out, int::out, int::out)
     is semidet.
 
-:- pred project_all_to_one_solution(assoc_list(int, soln_consts(Rval))::in,
-    assoc_list(int, list(Rval))::in, assoc_list(int, list(Rval))::out)
-    is semidet.
+:- pred project_all_to_one_solution(assoc_list(T, soln_consts(Rval))::in,
+    assoc_list(T, list(Rval))::out) is semidet.
 
-:- pred project_solns_to_rval_lists(assoc_list(int, soln_consts(Rval))::in,
+:- pred project_solns_to_rval_lists(assoc_list(T, soln_consts(Rval))::in,
     list(list(Rval))::in, list(list(Rval))::out) is det.
 
     % get_word_bits(Globals, WordBits, Log2WordBits):
-    % 
+    %
     % Return in WordBits the largest number of bits that
     % - fits into a word on the host machine
     % - fits into a word on the target machine
@@ -176,32 +177,38 @@
 % Stuff for string hash switches.
 %
 
-    % For a string switch, compute the hash value for each case in the list
-    % of cases, and store the cases in a map from hash values to cases.
+:- type string_hash_slot(CaseRep)
+    --->    string_hash_slot(string, int, CaseRep).
+
+    % For a string jump switch, compute the hash value for each case in the
+    % list of cases, and store the cases in a map from hash values to cases.
     %
-:- pred string_hash_cases(list(tagged_case)::in, int::in,
+:- pred construct_string_hash_jump_cases(list(tagged_case)::in,
+    int::in, int::in,
     pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB, StateC, StateC)
         ::in(pred(in, out, in, out, in, out, in, out) is det),
     StateA::in, StateA::out, StateB::in, StateB::out, StateC::in, StateC::out,
-    map(int, assoc_list(string, CaseRep))::out) is det.
-
-:- type string_hash_slot(CaseRep)
-    --->    string_hash_slot(int, string, CaseRep).
-
-    % calc_string_hash_slots(AssocList, HashMap, Map):
-    %
-    % For each (HashVal - Case) pair in AssocList, allocate a hash slot in Map
-    % for the case. If the hash slot corresponding to HashVal is not already
-    % used, then use that one. Otherwise, find the next spare slot (making sure
-    % that we don't use slots which can be used for a direct match with the
-    % hash value for one of the other cases), and use it instead.
-    % Keep track of the hash chains as we do this.
-    %
-    % XXX
-:- pred calc_string_hash_slots(
-    assoc_list(int, assoc_list(string, CaseRep))::in,
-    map(int, assoc_list(string, CaseRep))::in,
     map(int, string_hash_slot(CaseRep))::out) is det.
+
+    % For a string lookup switch, compute the hash value for each string,
+    % and store the associated data in a map from the hash values.
+    %
+:- pred construct_string_hash_lookup_cases(assoc_list(string, CaseRep)::in,
+    int::in, int::in, map(int, string_hash_slot(CaseRep))::out) is det.
+
+%-----------------------------------------------------------------------------%
+%
+% Stuff for string binary switches.
+%
+
+    % For a string switch, compute the hash value for each case in the list
+    % of cases, and store the cases in a map from hash values to cases.
+    %
+:- pred string_binary_cases(list(tagged_case)::in,
+    pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB, StateC, StateC)
+        ::in(pred(in, out, in, out, in, out, in, out) is det),
+    StateA::in, StateA::out, StateB::in, StateB::out, StateC::in, StateC::out,
+    assoc_list(string, CaseRep)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -250,7 +257,7 @@
                 % It is possible for two or more primary tag values
                 % to have exactly the same action, if those ptags represent
                 % cons_ids that share the same arm of the switch.
-                % The primary tag values 
+                % The primary tag values
 
                 % The first and any later ptag values that have this code.
                 tag_bits,
@@ -341,9 +348,11 @@
 :- import_module char.
 :- import_module cord.
 :- import_module int.
+:- import_module io.
 :- import_module string.
 :- import_module svmap.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
 % General stuff, for adding tags to cons_ids in switches and for representing
@@ -463,6 +472,7 @@ num_cons_ids_in_tagged_cases_2([TaggedCase | TaggedCases],
     num_cons_ids_in_tagged_cases_2(TaggedCases, !NumConsIds, !NumArms).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Stuff for categorizing switches.
 %
@@ -552,6 +562,7 @@ estimate_switch_tag_test_cost(Tag) = Cost :-
     ).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Stuff for dense switches.
 %
@@ -592,13 +603,12 @@ switch_density(NumCases, Range) = Density :-
     Density = (NumCases * 100) // Range.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Stuff for lookup switches.
 %
 
-find_lookup_switch_params(ModuleInfo, SwitchVarType, CodeModel,
-        !.SwitchCanFail, !TaggedCases, LowerLimit, UpperLimit, NumValues,
-        ReqDensity, NeedBitVecCheck, NeedRangeCheck, FirstVal, LastVal) :-
+filter_out_failing_cases_if_needed(CodeModel, !TaggedCases, !SwitchCanFail) :-
     (
         ( CodeModel = model_non
         ; CodeModel = model_semi
@@ -606,53 +616,6 @@ find_lookup_switch_params(ModuleInfo, SwitchVarType, CodeModel,
         filter_out_failing_cases(!TaggedCases, !SwitchCanFail)
     ;
         CodeModel = model_det
-    ),
-
-    % We want to generate a lookup switch for any switch that is dense enough
-    % - we don't care how many cases it has. A memory lookup tends to be
-    % cheaper than a branch.
-    Span = UpperLimit - LowerLimit,
-    Range = Span + 1,
-    Density = switch_density(NumValues, Range),
-    Density > ReqDensity,
-
-    % If there are going to be no gaps in the lookup table then we won't need
-    % a bitvector test to see if this switch has a value for this case.
-    ( NumValues = Range ->
-        NeedBitVecCheck0 = dont_need_bit_vec_check
-    ;
-        NeedBitVecCheck0 = need_bit_vec_check
-    ),
-    (
-        !.SwitchCanFail = can_fail,
-        % For can_fail switches, we normally need to check that the variable
-        % is in range before we index into the jump table. However, if the
-        % range of the type is sufficiently small, we can make the jump table
-        % large enough to hold all of the values for the type, but then we
-        % will need to do the bitvector test.
-        classify_type(ModuleInfo, SwitchVarType) = TypeCategory,
-        (
-            type_range(ModuleInfo, TypeCategory, SwitchVarType, _, _,
-                TypeRange),
-            DetDensity = switch_density(NumValues, TypeRange),
-            DetDensity > ReqDensity
-        ->
-            NeedRangeCheck = dont_need_range_check,
-            NeedBitVecCheck = need_bit_vec_check,
-            FirstVal = 0,
-            LastVal = TypeRange - 1
-        ;
-            NeedRangeCheck = need_range_check,
-            NeedBitVecCheck = NeedBitVecCheck0,
-            FirstVal = LowerLimit,
-            LastVal = UpperLimit
-        )
-    ;
-        !.SwitchCanFail = cannot_fail,
-        NeedRangeCheck = dont_need_range_check,
-        NeedBitVecCheck = NeedBitVecCheck0,
-        FirstVal = LowerLimit,
-        LastVal = UpperLimit
     ).
 
 :- pred filter_out_failing_cases(list(tagged_case)::in, list(tagged_case)::out,
@@ -679,11 +642,69 @@ filter_out_failing_cases_2([TaggedCase | TaggedCases], !RevTaggedCases,
     ),
     filter_out_failing_cases_2(TaggedCases, !RevTaggedCases, !SwitchCanFail).
 
-project_all_to_one_solution([], !RevCaseValuePairs).
-project_all_to_one_solution([Case - Solns | CaseSolns], !RevCaseValuePairs) :-
+find_int_lookup_switch_params(ModuleInfo, SwitchVarType, SwitchCanFail,
+        LowerLimit, UpperLimit, NumValues, ReqDensity,
+        NeedBitVecCheck, NeedRangeCheck, FirstVal, LastVal) :-
+    % We want to generate a lookup switch for any switch that is dense enough
+    % - we don't care how many cases it has. A memory lookup tends to be
+    % cheaper than a branch.
+    Span = UpperLimit - LowerLimit,
+    Range = Span + 1,
+    Density = switch_density(NumValues, Range),
+    Density > ReqDensity,
+
+    % If there are going to be no gaps in the lookup table then we won't need
+    % a bitvector test to see if this switch has a value for this case.
+    ( NumValues = Range ->
+        NeedBitVecCheck0 = dont_need_bit_vec_check
+    ;
+        NeedBitVecCheck0 = need_bit_vec_check
+    ),
+    (
+        SwitchCanFail = can_fail,
+        % For can_fail switches, we normally need to check that the variable
+        % is in range before we index into the jump table. However, if the
+        % range of the type is sufficiently small, we can make the jump table
+        % large enough to hold all of the values for the type, but then we
+        % will need to do the bitvector test.
+        classify_type(ModuleInfo, SwitchVarType) = TypeCategory,
+        (
+            type_range(ModuleInfo, TypeCategory, SwitchVarType, _, _,
+                TypeRange),
+            DetDensity = switch_density(NumValues, TypeRange),
+            DetDensity > ReqDensity
+        ->
+            NeedRangeCheck = dont_need_range_check,
+            NeedBitVecCheck = need_bit_vec_check,
+            FirstVal = 0,
+            LastVal = TypeRange - 1
+        ;
+            NeedRangeCheck = need_range_check,
+            NeedBitVecCheck = NeedBitVecCheck0,
+            FirstVal = LowerLimit,
+            LastVal = UpperLimit
+        )
+    ;
+        SwitchCanFail = cannot_fail,
+        NeedRangeCheck = dont_need_range_check,
+        NeedBitVecCheck = NeedBitVecCheck0,
+        FirstVal = LowerLimit,
+        LastVal = UpperLimit
+    ).
+
+project_all_to_one_solution(CaseSolns, CaseValuePairs) :-
+    do_project_all_to_one_solution(CaseSolns, [], RevCaseValuePairs),
+    list.reverse(RevCaseValuePairs, CaseValuePairs).
+
+:- pred do_project_all_to_one_solution(assoc_list(T, soln_consts(Rval))::in,
+    assoc_list(T, list(Rval))::in, assoc_list(T, list(Rval))::out) is semidet.
+
+do_project_all_to_one_solution([], !RevCaseValuePairs).
+do_project_all_to_one_solution([Case - Solns | CaseSolns],
+        !RevCaseValuePairs) :-
     Solns = one_soln(Values),
     !:RevCaseValuePairs = [Case - Values | !.RevCaseValuePairs],
-    project_all_to_one_solution(CaseSolns, !RevCaseValuePairs).
+    do_project_all_to_one_solution(CaseSolns, !RevCaseValuePairs).
 
 project_solns_to_rval_lists([], !RvalsList).
 project_solns_to_rval_lists([Case | Cases], !RvalsList) :-
@@ -711,21 +732,35 @@ log2_rounded_down(X) = Log :-
     int.log2(X + 1, Log + 1).  % int.log2 rounds up
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % Stuff for string hash switches.
 %
 
-string_hash_cases([], _, _, !StateA, !StateB, !StateC, !:HashMap) :-
-    map.init(!:HashMap).
-string_hash_cases([TaggedCase | TaggedCases], HashMask, RepresentCase,
-        !StateA, !StateB, !StateC, !:HashMap) :-
-    string_hash_cases(TaggedCases, HashMask, RepresentCase,
-        !StateA, !StateB, !StateC, !:HashMap),
+construct_string_hash_jump_cases(TaggedCases, TableSize, HashMask,
+        RepresentCase, !StateA, !StateB, !StateC, HashSlotsMap) :-
+    string_hash_jump_cases(TaggedCases, HashMask, RepresentCase,
+        !StateA, !StateB, !StateC, map.init, HashValsMap),
+    map.to_assoc_list(HashValsMap, HashValsList),
+    calc_string_hash_slots(TableSize, HashValsList, HashValsMap, HashSlotsMap).
+
+:- pred string_hash_jump_cases(list(tagged_case)::in, int::in,
+    pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB, StateC, StateC)
+        ::in(pred(in, out, in, out, in, out, in, out) is det),
+    StateA::in, StateA::out, StateB::in, StateB::out, StateC::in, StateC::out,
+    map(int, assoc_list(string, CaseRep))::in,
+    map(int, assoc_list(string, CaseRep))::out) is det.
+
+string_hash_jump_cases([], _, _, !StateA, !StateB, !StateC, !HashMap).
+string_hash_jump_cases([TaggedCase | TaggedCases], HashMask, RepresentCase,
+        !StateA, !StateB, !StateC, !HashMap) :-
     RepresentCase(TaggedCase, CaseRep, !StateA, !StateB, !StateC),
     TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, _),
     string_hash_cons_id(CaseRep, HashMask, MainTaggedConsId, !HashMap),
     list.foldl(string_hash_cons_id(CaseRep, HashMask), OtherTaggedConsIds,
-        !HashMap).
+        !HashMap),
+    string_hash_jump_cases(TaggedCases, HashMask, RepresentCase,
+        !StateA, !StateB, !StateC, !HashMap).
 
 :- pred string_hash_cons_id(CaseRep::in, int::in, tagged_cons_id::in,
     map(int, assoc_list(string, CaseRep))::in,
@@ -747,53 +782,109 @@ string_hash_cons_id(CaseRep, HashMask, TaggedConsId, !HashMap) :-
         svmap.det_insert(HashVal, [String - CaseRep], !HashMap)
     ).
 
-calc_string_hash_slots(HashValList, HashMap, SlotMap) :-
-    calc_string_hash_slots_1(HashValList, HashMap, map.init, SlotMap, 0, _).
+%-----------------------------------------------------------------------------%
 
-:- pred calc_string_hash_slots_1(
+construct_string_hash_lookup_cases(StrsDatas, TableSize, HashMask,
+        HashSlotsMap) :-
+    string_hash_lookup_cases(StrsDatas, HashMask, map.init, HashValsMap),
+    map.to_assoc_list(HashValsMap, HashValsList),
+    calc_string_hash_slots(TableSize, HashValsList, HashValsMap, HashSlotsMap).
+
+:- pred string_hash_lookup_cases(assoc_list(string, CaseRep)::in, int::in,
+    map(int, assoc_list(string, CaseRep))::in,
+    map(int, assoc_list(string, CaseRep))::out) is det.
+
+string_hash_lookup_cases([], _, !HashMap).
+string_hash_lookup_cases([Str - Data | StrsDatas], HashMask, !HashMap) :-
+    string.hash(Str, StringHashVal),
+    HashVal = StringHashVal /\ HashMask,
+    ( map.search(!.HashMap, HashVal, OldStringDatas) ->
+        svmap.det_update(HashVal, [Str - Data | OldStringDatas], !HashMap)
+    ;
+        svmap.det_insert(HashVal, [Str - Data], !HashMap)
+    ),
+    string_hash_lookup_cases(StrsDatas, HashMask, !HashMap).
+
+%-----------------------------------------------------------------------------%
+
+    % calc_string_hash_slots(AssocList, HashMap, Map):
+    %
+    % For each (HashVal - Case) pair in AssocList, allocate a hash slot in Map
+    % for the case. If the hash slot corresponding to HashVal is not already
+    % used, then use that one. Otherwise, find the next spare slot (making sure
+    % that we don't use slots which can be used for a direct match with the
+    % hash value for one of the other cases), and use it instead.
+    % Keep track of the hash chains as we do this.
+    %
+:- pred calc_string_hash_slots(int::in,
     assoc_list(int, assoc_list(string, CaseRep))::in,
     map(int, assoc_list(string, CaseRep))::in,
-    map(int, string_hash_slot(CaseRep))::in,
-    map(int, string_hash_slot(CaseRep))::out,
-    int::in, int::out) is det.
+    map(int, string_hash_slot(CaseRep))::out) is det.
 
-calc_string_hash_slots_1([], _, !SlotMap, !LastUsed).
-calc_string_hash_slots_1([HashVal - StringCaseReps | Rest], HashMap,
-        !SlotMap, !LastUsed) :-
-    calc_string_hash_slots_2(StringCaseReps, HashVal, HashMap,
-        !SlotMap, !LastUsed),
-    calc_string_hash_slots_1(Rest, HashMap, !SlotMap, !LastUsed).
+calc_string_hash_slots(TableSize, HashValList, HashMap, SlotMap) :-
+    trace [compile_time(flag("hash_slots")), io(!IO)] (
+        io.write_string("CALCULATING HASH SLOTS START\n", !IO)
+    ),
+    calc_string_hash_slots_loop_over_hashes(HashValList, TableSize, HashMap,
+        map.init, SlotMap, 0, _),
+    trace [compile_time(flag("hash_slots")), io(!IO)] (
+        io.write_string("CALCULATING HASH SLOTS END\n", !IO)
+    ).
 
-:- pred calc_string_hash_slots_2(assoc_list(string, CaseRep)::in, int::in,
+:- pred calc_string_hash_slots_loop_over_hashes(
+    assoc_list(int, assoc_list(string, CaseRep))::in, int::in,
     map(int, assoc_list(string, CaseRep))::in,
     map(int, string_hash_slot(CaseRep))::in,
     map(int, string_hash_slot(CaseRep))::out,
     int::in, int::out) is det.
 
-calc_string_hash_slots_2([], _HashVal, _HashMap, !SlotMap, !LastUsed).
-calc_string_hash_slots_2([StringCaseRep | StringCaseReps], HashVal, HashMap,
-        !SlotMap, !LastUsed) :-
-    calc_string_hash_slots_2(StringCaseReps, HashVal, HashMap,
-        !SlotMap, !LastUsed),
+calc_string_hash_slots_loop_over_hashes([], _, _, !SlotMap, !LastUsed).
+calc_string_hash_slots_loop_over_hashes([HashVal - StringCaseReps | Rest],
+        TableSize, HashMap, !SlotMap, !LastUsed) :-
+    calc_string_hash_slots_loop_over_hash_strings(StringCaseReps, TableSize,
+        HashVal, HashMap, !SlotMap, !LastUsed),
+    calc_string_hash_slots_loop_over_hashes(Rest, TableSize,
+        HashMap, !SlotMap, !LastUsed).
+
+:- pred calc_string_hash_slots_loop_over_hash_strings(
+    assoc_list(string, CaseRep)::in, int::in, int::in,
+    map(int, assoc_list(string, CaseRep))::in,
+    map(int, string_hash_slot(CaseRep))::in,
+    map(int, string_hash_slot(CaseRep))::out,
+    int::in, int::out) is det.
+
+calc_string_hash_slots_loop_over_hash_strings([],
+        _TableSize, _HashVal, _HashMap, !SlotMap, !LastUsed).
+calc_string_hash_slots_loop_over_hash_strings([StringCaseRep | StringCaseReps],
+        TableSize, HashVal, HashMap, !SlotMap, !LastUsed) :-
+    calc_string_hash_slots_loop_over_hash_strings(StringCaseReps,
+        TableSize, HashVal, HashMap, !SlotMap, !LastUsed),
     StringCaseRep = String - CaseRep,
-    NewSlot = string_hash_slot(-1, String, CaseRep),
+    NewSlot = string_hash_slot(String, -1, CaseRep),
     ( map.contains(!.SlotMap, HashVal) ->
         follow_hash_chain(!.SlotMap, HashVal, ChainEnd),
-        next_free_hash_slot(!.SlotMap, HashMap, !LastUsed),
+        next_free_hash_slot(!.SlotMap, HashMap, TableSize, !LastUsed),
         map.lookup(!.SlotMap, ChainEnd, ChainEndSlot0),
-        ChainEndSlot0 = string_hash_slot(_, PrevString, PrevCaseRep),
-        ChainEndSlot = string_hash_slot(!.LastUsed, PrevString, PrevCaseRep),
+        ChainEndSlot0 = string_hash_slot(PrevString, _, PrevCaseRep),
+        ChainEndSlot = string_hash_slot(PrevString, !.LastUsed, PrevCaseRep),
         svmap.det_update(ChainEnd, ChainEndSlot, !SlotMap),
-        svmap.det_insert(!.LastUsed, NewSlot, !SlotMap)
+        svmap.det_insert(!.LastUsed, NewSlot, !SlotMap),
+        trace [compile_time(flag("hash_slots")), io(!IO)] (
+            io.format("%s: home %d, remapped slot %d\n",
+                [s(String), i(HashVal), i(!.LastUsed)], !IO)
+        )
     ;
-        svmap.det_insert(HashVal, NewSlot, !SlotMap)
+        svmap.det_insert(HashVal, NewSlot, !SlotMap),
+        trace [compile_time(flag("hash_slots")), io(!IO)] (
+            io.format("%s: native slot %d\n", [s(String), i(HashVal)], !IO)
+        )
     ).
 
 :- pred follow_hash_chain(map(int, string_hash_slot(CaseRep))::in,
     int::in, int::out) is det.
 
 follow_hash_chain(Map, Slot, LastSlot) :-
-    map.lookup(Map, Slot, string_hash_slot(NextSlot, _, _)),
+    map.lookup(Map, Slot, string_hash_slot(_, NextSlot, _)),
     (
         NextSlot >= 0,
         map.contains(Map, NextSlot)
@@ -806,23 +897,67 @@ follow_hash_chain(Map, Slot, LastSlot) :-
     % next_free_hash_slot(M, H_M, LastUsed, FreeSlot):
     %
     % Find the next available slot FreeSlot in the hash table which is not
-    % already used (contained in M) and which is not going to be used a
-    % primary slot (contained in H_M), starting at the slot after LastUsed.
+    % already used (contained in Map) and which is not going to be used as a
+    % primary slot (contained in HomeMap), starting at the slot after LastUsed.
     %
 :- pred next_free_hash_slot(map(int, string_hash_slot(CaseRep))::in,
-    map(int, assoc_list(string, CaseRep))::in, int::in, int::out) is det.
+    map(int, assoc_list(string, CaseRep))::in, int::in, int::in, int::out)
+    is det.
 
-next_free_hash_slot(Map, H_Map, LastUsed, FreeSlot) :-
+next_free_hash_slot(Map, HomeMap, TableSize, LastUsed, FreeSlot) :-
     NextSlot = LastUsed + 1,
+    expect(NextSlot < TableSize, this_file, "next_free_hash_slot: overflow"),
     (
         \+ map.contains(Map, NextSlot),
-        \+ map.contains(H_Map, NextSlot)
+        \+ map.contains(HomeMap, NextSlot)
     ->
         FreeSlot = NextSlot
     ;
-        next_free_hash_slot(Map, H_Map, NextSlot, FreeSlot)
+        next_free_hash_slot(Map, HomeMap, TableSize, NextSlot, FreeSlot)
     ).
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%
+% Stuff for string binary switches.
+%
+
+string_binary_cases(TaggedCases, RepresentCase,
+        !StateA, !StateB, !StateC, SortedTable) :-
+    string_binary_entries(TaggedCases, RepresentCase,
+        !StateA, !StateB, !StateC, [], UnsortedTable),
+    list.sort(UnsortedTable, SortedTable).
+
+:- pred string_binary_entries(list(tagged_case)::in,
+    pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB, StateC, StateC)
+        ::in(pred(in, out, in, out, in, out, in, out) is det),
+    StateA::in, StateA::out, StateB::in, StateB::out, StateC::in, StateC::out,
+    assoc_list(string, CaseRep)::in, assoc_list(string, CaseRep)::out) is det.
+
+string_binary_entries([], _, !StateA, !StateB, !StateC, !UnsortedTable).
+string_binary_entries([TaggedCase | TaggedCases], RepresentCase,
+        !StateA, !StateB, !StateC, !UnsortedTable) :-
+    string_binary_entries(TaggedCases, RepresentCase,
+        !StateA, !StateB, !StateC, !UnsortedTable),
+    RepresentCase(TaggedCase, CaseRep, !StateA, !StateB, !StateC),
+    TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, _),
+    add_string_binary_entry(CaseRep, MainTaggedConsId, !UnsortedTable),
+    list.foldl(add_string_binary_entry(CaseRep), OtherTaggedConsIds,
+        !UnsortedTable).
+
+:- pred add_string_binary_entry(CaseRep::in, tagged_cons_id::in,
+    assoc_list(string, CaseRep)::in, assoc_list(string, CaseRep)::out) is det.
+
+add_string_binary_entry(CaseRep, TaggedConsId, !UnsortedTable) :-
+    TaggedConsId = tagged_cons_id(_ConsId, Tag),
+    ( Tag = string_tag(StringPrime) ->
+        String = StringPrime
+    ;
+        unexpected(this_file, "string_hash_cases: non-string case?")
+    ),
+    !:UnsortedTable = [String - CaseRep | !.UnsortedTable].
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
 % Stuff for tag switches.
@@ -1087,7 +1222,7 @@ build_ptag_case_rev_map([Entry | Entries], PtagCountMap, !RevMap) :-
         % There will only ever be at most one primary tag value with
         % a shared local tag, and there will only ever be at most one primary
         % tag value with a shared remote tag, so we can never have
-        % 
+        %
         % - two ptags with CountSecTagLocn = sectag_local
         % - two ptags with CountSecTagLocn = sectag_remote
         %
@@ -1125,9 +1260,11 @@ order_ptags_by_value(Ptag, MaxPtag, PtagCaseMap0, PtagCaseList) :-
     ).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- func this_file = string.
 
 this_file = "switch_util.m".
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

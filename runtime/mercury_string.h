@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2005, 2007 The University of Melbourne.
+** Copyright (C) 1995-2005, 2007, 2010 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -238,6 +238,13 @@ MR_Integer	MR_hash_string(MR_ConstString);
 	   MR_Integer hash_string_result;				\
 	   MR_do_hash_string(hash_string_result, s);			\
 	   return hash_string_result;
+
+/*
+** A version of strcmp to which we can pass Mercury words
+** without having to cast the arguments first.
+*/
+
+#define MR_strcmp(s, t) 	strcmp((const char *)(s), (const char *)(t))
 
 /*
 ** Return an MR_String which has been created using the format string,

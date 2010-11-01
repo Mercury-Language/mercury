@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001, 2003-2006, 2009 The University of Melbourne.
+% Copyright (C) 1999-2001, 2003-2006, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -63,7 +63,8 @@
     ;       str_gt
     ;       str_le
     ;       str_ge
-    ;       int_lt     % signed integer comparions
+    ;       str_cmp % returns -ve, 0, or +ve
+    ;       int_lt  % signed integer comparions
     ;       int_gt
     ;       int_le
     ;       int_ge

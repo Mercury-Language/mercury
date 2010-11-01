@@ -44,6 +44,10 @@ Changes to the Mercury compiler:
   in order to simplify building and linking against frameworks on Mac OS X.
   (-F is supported as a synonym for --framework-directory.)
 
+* Switches on strings in which all output arguments in all switch arms are
+  bound to constants are now implemented using lookup tables on the LLDS
+  back end. This should make the generated code more compact as well as faster.
+
 
 NEWS for Mercury 10.04.2
 ------------------------

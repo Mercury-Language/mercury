@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -61,8 +61,15 @@
     list(prog_var)::in, abs_store_map::in, list(list(rval))::out,
     branch_end::in, branch_end::out, code_info::in, code_info::out) is semidet.
 
-:- pred set_liveness_and_end_branch(abs_store_map::in, branch_end::in,
-    set(prog_var)::in, llds_code::out, code_info::in, code_info::out) is det.
+    % set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd, Code, !CI):
+    %
+    % Set the liveness to Liveness, move all the variables listed in StoreMap
+    % to their indicated locations, and end the current branch, updating
+    % !MaybeEnd in the process.
+    %
+:- pred set_liveness_and_end_branch(abs_store_map::in, set(prog_var)::in,
+    branch_end::in, branch_end::out, llds_code::out,
+    code_info::in, code_info::out) is det.
 
 :- pred generate_offset_assigns(list(prog_var)::in, int::in, lval::in,
     code_info::in, code_info::out) is det.
@@ -192,13 +199,18 @@ rval_is_constant(mkword(_, Exprn0), ExprnOpts) :-
 
 %---------------------------------------------------------------------------%
 
-set_liveness_and_end_branch(StoreMap, MaybeEnd0, Liveness, BranchEndCode,
+set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd, BranchEndCode,
         !CI) :-
     % We keep track of what variables are supposed to be live at the end
     % of cases. We have to do this explicitly because generating a `fail' slot
-    % last would yield the wrong liveness.
+    % last would yield the wrong liveness. Also, by killing the variables
+    % that are not live anymore, we avoid generating code that moves their
+    % values aside.
+    get_forward_live_vars(!.CI, OldLiveness),
     set_forward_live_vars(Liveness, !CI),
-    generate_branch_end(StoreMap, MaybeEnd0, _MaybeEnd, BranchEndCode, !CI).
+    set.difference(OldLiveness, Liveness, DeadVars),
+    maybe_make_vars_forward_dead(DeadVars, no, !CI),
+    generate_branch_end(StoreMap, !MaybeEnd, BranchEndCode, !CI).
 
 generate_offset_assigns([], _, _, !CI).
 generate_offset_assigns([Var | Vars], Offset, BaseReg, !CI) :-

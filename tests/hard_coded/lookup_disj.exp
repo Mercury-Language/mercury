@@ -1,10 +1,60 @@
-peek 1
-peek 2
-peek 3
-peek 4
-peek 5
-solution 1.10 -   one, 11, a
-solution 2.20 -   two, 12, b
-solution 3.30 - three, 13, c
-solution 4.40 -  four, 14, f(a)
-solution 5.50 -  five, 15, g(a)
+peek p 1
+peek p 2
+peek p 3
+peek p 4
+peek p 5
+p soln 1.10 -   one, 11, a
+p soln 2.20 -   two, 12, b
+p soln 3.30 - three, 13, c
+p soln 4.40 -  four, 14, f(a)
+p soln 5.50 -  five, 15, g(a)
+peek q 1 11
+peek q 1 22
+peek q 1 33
+peek q 1 44
+peek q 1 55
+peek q 2 11
+peek q 2 22
+peek q 2 33
+peek q 2 44
+peek q 2 55
+peek q 3 11
+peek q 3 22
+peek q 3 33
+peek q 3 44
+peek q 3 55
+peek q 4 11
+peek q 4 22
+peek q 4 33
+peek q 4 44
+peek q 4 55
+peek q 5 11
+peek q 5 22
+peek q 5 33
+peek q 5 44
+peek q 5 55
+q soln 1.10 -   one, 11, a, 111, a
+q soln 1.10 -   one, 11, a, 122, b
+q soln 1.10 -   one, 11, a, 133, c
+q soln 1.10 -   one, 11, a, 144, f(a)
+q soln 1.10 -   one, 11, a, 155, g(a)
+q soln 2.20 -   two, 12, b, 111, a
+q soln 2.20 -   two, 12, b, 122, b
+q soln 2.20 -   two, 12, b, 133, c
+q soln 2.20 -   two, 12, b, 144, f(a)
+q soln 2.20 -   two, 12, b, 155, g(a)
+q soln 3.30 - three, 13, c, 111, a
+q soln 3.30 - three, 13, c, 122, b
+q soln 3.30 - three, 13, c, 133, c
+q soln 3.30 - three, 13, c, 144, f(a)
+q soln 3.30 - three, 13, c, 155, g(a)
+q soln 4.40 -  four, 14, f(a), 111, a
+q soln 4.40 -  four, 14, f(a), 122, b
+q soln 4.40 -  four, 14, f(a), 133, c
+q soln 4.40 -  four, 14, f(a), 144, f(a)
+q soln 4.40 -  four, 14, f(a), 155, g(a)
+q soln 5.50 -  five, 15, g(a), 111, a
+q soln 5.50 -  five, 15, g(a), 122, b
+q soln 5.50 -  five, 15, g(a), 133, c
+q soln 5.50 -  five, 15, g(a), 144, f(a)
+q soln 5.50 -  five, 15, g(a), 155, g(a)
