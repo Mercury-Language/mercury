@@ -5,9 +5,28 @@
 usage="Usage: speedtest [-dhstz] [-l | -1] [-c cmd] [-nN] [-ON] [-fFILE] batchname"
 
 single_modulelist="typecheck.m"
-short_modulelist="llds_out.m typecheck.m mercury_compile.m modules.m code_info.m polymorphism.m"
-long_modulelist="$short_modulelist options.m add_pragma.m simplify.m table_gen.m mlds_to_java.m mlds_to_il.m"
-
+# As of 13 oct 2010, these are the eight largest modules of the compiler.
+short_modulelist="
+	options.m
+	mercury_to_mercury.m
+	mlds_to_java.m
+	modules.m
+	code_info.m
+	mlds_to_il.m
+	table_gen.m
+	mlds_to_c.m
+"
+# As of 13 oct 2010, these are the eight next largest modules of the compiler.
+long_modulelist="$short_modulelist
+	simplify.m
+	polymorphism.m
+	add_pragma.m
+	higher_order.m
+	typecheck.m
+	dep_par_conj.m
+	hlds_pred.m
+	prog_io_pragma.m
+"
 cmd=""
 debug=false
 grade="--grade asm_fast.gc"
