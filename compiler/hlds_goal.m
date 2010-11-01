@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2154,7 +2154,7 @@ goal_info_set_occurring_vars(OccurringVars, !GoalInfo) :-
         MCI = mode_constr_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
-    !:GoalInfo = !.GoalInfo ^ gi_extra ^ egi_maybe_mode_constr := yes(MCI).
+    !GoalInfo ^ gi_extra ^ egi_maybe_mode_constr := yes(MCI).
 
 goal_info_set_producing_vars(ProducingVars, !GoalInfo) :-
     MMCI0 = !.GoalInfo ^ gi_extra ^ egi_maybe_mode_constr,
@@ -2170,7 +2170,7 @@ goal_info_set_producing_vars(ProducingVars, !GoalInfo) :-
         MCI = mode_constr_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
-    !:GoalInfo = !.GoalInfo ^ gi_extra ^ egi_maybe_mode_constr := yes(MCI).
+    !GoalInfo ^ gi_extra ^ egi_maybe_mode_constr := yes(MCI).
 
 goal_info_set_consuming_vars(ConsumingVars, !GoalInfo) :-
     MMCI0 = !.GoalInfo ^ gi_extra ^ egi_maybe_mode_constr,
@@ -2186,7 +2186,7 @@ goal_info_set_consuming_vars(ConsumingVars, !GoalInfo) :-
         MCI = mode_constr_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
-    !:GoalInfo = !.GoalInfo ^ gi_extra ^ egi_maybe_mode_constr := yes(MCI).
+    !GoalInfo ^ gi_extra ^ egi_maybe_mode_constr := yes(MCI).
 
 goal_info_set_make_visible_vars(MakeVisibleVars, !GoalInfo) :-
     MMCI0 = !.GoalInfo ^ gi_extra ^ egi_maybe_mode_constr,
@@ -2202,7 +2202,7 @@ goal_info_set_make_visible_vars(MakeVisibleVars, !GoalInfo) :-
         MCI = mode_constr_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
-    !:GoalInfo = !.GoalInfo ^ gi_extra ^ egi_maybe_mode_constr := yes(MCI).
+    !GoalInfo ^ gi_extra ^ egi_maybe_mode_constr := yes(MCI).
 
 goal_info_set_need_visible_vars(NeedVisibleVars, !GoalInfo) :-
     MMCI0 = !.GoalInfo ^ gi_extra ^ egi_maybe_mode_constr,
@@ -2218,7 +2218,7 @@ goal_info_set_need_visible_vars(NeedVisibleVars, !GoalInfo) :-
         MCI = mode_constr_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
-    !:GoalInfo = !.GoalInfo ^ gi_extra ^ egi_maybe_mode_constr := yes(MCI).
+    !GoalInfo ^ gi_extra ^ egi_maybe_mode_constr := yes(MCI).
 
 producing_vars(GoalInfo) = ProducingVars :-
     goal_info_get_producing_vars(GoalInfo, ProducingVars).
@@ -2284,7 +2284,7 @@ goal_info_set_lfu(LFU, !GoalInfo) :-
     ),
     CTGC = CTGC0 ^ ctgc_lfu := LFU,
     MaybeCTGC = yes(CTGC),
-    !:GoalInfo = !.GoalInfo ^ gi_extra ^ egi_maybe_ctgc := MaybeCTGC.
+    !GoalInfo ^ gi_extra ^ egi_maybe_ctgc := MaybeCTGC.
 
 goal_info_set_lbu(LBU, !GoalInfo) :-
     MaybeCTGC0 = !.GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
@@ -2296,7 +2296,7 @@ goal_info_set_lbu(LBU, !GoalInfo) :-
     ),
     CTGC = CTGC0 ^ ctgc_lbu := LBU,
     MaybeCTGC = yes(CTGC),
-    !:GoalInfo = !.GoalInfo ^ gi_extra ^ egi_maybe_ctgc := MaybeCTGC.
+    !GoalInfo ^ gi_extra ^ egi_maybe_ctgc := MaybeCTGC.
 
 goal_info_set_reuse(Reuse, !GoalInfo) :-
     MaybeCTGC0 = !.GoalInfo ^ gi_extra ^ egi_maybe_ctgc,
@@ -2308,7 +2308,7 @@ goal_info_set_reuse(Reuse, !GoalInfo) :-
     ),
     CTGC = CTGC0 ^ ctgc_reuse := Reuse,
     MaybeCTGC = yes(CTGC),
-    !:GoalInfo = !.GoalInfo ^ gi_extra ^ egi_maybe_ctgc := MaybeCTGC.
+    !GoalInfo ^ gi_extra ^ egi_maybe_ctgc := MaybeCTGC.
 
 goal_info_get_lfu(GoalInfo) = LFU :-
     MaybeLFU = goal_info_get_maybe_lfu(GoalInfo),
