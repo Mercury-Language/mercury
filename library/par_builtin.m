@@ -11,9 +11,9 @@
 % Stability: low.
 %
 % This file is automatically imported, as if via `use_module', into every
-% module in lowlevel parallel grades.  It is intended for the builtin procedures
-% that the compiler generates implicit calls to when implementing parallel
-% conjunctions.
+% module in lowlevel parallel grades. It is intended to hold the builtin
+% procedures that the compiler generates implicit calls to when implementing
+% parallel conjunctions.
 %
 % This module is a private part of the Mercury implementation; user modules
 % should never explicitly import this module. The interface for this module
@@ -60,16 +60,18 @@
     %
 :- impure pred signal_future(future(T)::in, T::in) is det.
 
-% The following predicates are intended to be used as conditions to decide if
-% something should be done in parallel or sequence. Success should indicate
-% a preference for parallel execution, failure a preference for sequential
-% execution.
+%---------------------------------------------------------------------------%
+
+% The following predicates are intended to be used as conditions to decide
+% whether the conjuncts of a conjunction should be executed in parallel or
+% in sequence. Success should indicate a preference for parallel execution,
+% failure a preference for sequential execution.
 %
 % They can be used both by compiler transformations and directly in user code.
-% The latter is is useful for testing.
+% The latter is useful for testing.
 
     % A hook for the compiler's granularity transformation to hang
-    % an arbitrary teston.  This predicate does not have a definition;
+    % an arbitrary test on. This predicate does not have a definition;
     % it is simply used as a hook by the compiler.
     %
 :- impure pred evaluate_parallelism_condition is semidet.
@@ -80,34 +82,35 @@
     %
     % XXX We should consider passing MR_num_threads as the argument.
     %
-:- impure pred par_cond_contexts_and_global_sparks_vs_num_cpus(int::in) 
+:- impure pred par_cond_contexts_and_global_sparks_vs_num_cpus(int::in)
     is semidet.
-    
+
     % par_cond_contexts_and_all_sparks_vs_num_cpus(NumCPUs)
     %
     % True iff NumCPUs > executable contexts + global sparks + local sparks.
     %
-    % Consider passing MR_num_threads as the argument.
+    % XXX We should consider passing MR_num_threads as the argument.
     %
-:- impure pred par_cond_contexts_and_all_sparks_vs_num_cpus(int::in) is semidet.
+:- impure pred par_cond_contexts_and_all_sparks_vs_num_cpus(int::in)
+    is semidet.
 
     % num_os_threads(Num)
     %
-    % Num is the number of OS threads the runtime is configured to use, it is
-    % the value of MR_num_threads.  This is the value given to -P in the
-    % MERCURY_OPTIONS environment variable.
+    % Num is the number of OS threads the runtime is configured to use, which
+    % the runtime records in the variable MR_num_threads. This is the value
+    % given by the user as the argument of the -P option in the MERCURY_OPTIONS
+    % environment variable.
     %
 :- pred num_os_threads(int::out) is det.
 
     % Close the file that was used to log the parallel condition decisions.
     %
     % The parallel condition stats file is opened the first time it is
-    % required.  If it is not open this predicate will do nothing.  The
-    % recording of statistics and managment of the parallel condition stats
-    % file is enabled by a C compiler macro
-    % 'MR_DEBUG_RUNTIME_GRANULARITY_CONTRO' as well as the
-    % 'MR_LL_PARALLEL_CONJ' macro.  If either of these is not set this
-    % predicate will throw an exception.
+    % required. If it is not open this predicate will do nothing. The recording
+    % of statistics and the management of the parallel condition stats file
+    % is enabled only if both of the following C compiler macros are set:
+    % MR_LL_PARALLEL_CONJ and MR_DEBUG_RUNTIME_GRANULARITY_CONTROL.
+    % This predicate will throw an exception unless both of these are set.
     %
 :- pred par_cond_close_stats_file(io::di, io::uo) is det.
 
@@ -119,7 +122,7 @@
 :- pragma foreign_type("C", future(T), "MR_Future *",
     [can_pass_as_mercury_type]).
 
-    % Placeholder only.
+    % Placeholders only.
 :- pragma foreign_type(il, future(T), "class [mscorlib]System.Object").
 :- pragma foreign_type("Erlang", future(T), "").
 :- pragma foreign_type("C#", future(T), "object").
@@ -274,14 +277,14 @@ INIT mercury_sys_init_par_builtin_modules
 
 :- pragma foreign_proc("C",
     num_os_threads(NThreads::out),
-    [will_not_call_mercury, will_not_throw_exception, thread_safe, 
-     promise_pure],
+    [will_not_call_mercury, will_not_throw_exception, thread_safe,
+        promise_pure],
 "
     /*
-     * MR_num_threads is available in all grades, although it won't make sense
-     * for non-parallel grades it will still reflect the value configured by
-     * the user.
-     */
+    ** MR_num_threads is available in all grades. Although it won't make sense
+    ** for non-parallel grades, it will still reflect the value configured by
+    ** the user.
+    */
     NThreads = MR_num_threads
 ").
 
