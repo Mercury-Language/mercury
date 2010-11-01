@@ -219,9 +219,6 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_builtin(pred_id::in, list(mer_type)::in, compilation_target::in,
-    pred_info::in, pred_info::out) is det.
-
     % For most builtin predicates, say foo/2, we add a clause
     %
     %   foo(H1, H2) :- foo(H1, H2).
@@ -233,6 +230,9 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
     %
     % A few builtins are treated specially.
     %
+:- pred add_builtin(pred_id::in, list(mer_type)::in, compilation_target::in,
+    pred_info::in, pred_info::out) is det.
+
 add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
     Module = pred_info_module(!.PredInfo),
     Name = pred_info_name(!.PredInfo),
@@ -240,8 +240,8 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
     clauses_info_get_varset(ClausesInfo0, VarSet0),
     clauses_info_get_headvars(ClausesInfo0, HeadVars),
-    % XXX ARGVEC - clean this up after the pred_info is converted to
-    %     use the arg_vector structure.
+    % XXX ARGVEC - clean this up after the pred_info is converted to use
+    % the arg_vector structure.
     clauses_info_get_headvar_list(ClausesInfo0, HeadVarList),
 
     goal_info_init(Context, GoalInfo0),
@@ -394,16 +394,15 @@ do_add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
 
 %-----------------------------------------------------------------------------%
 
-    % We should store the mode varset and the mode condition in the HLDS
-    % - at the moment we just ignore those two arguments.
-    %
 module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, MContext,
         PredOrFunc, IsClassMethod, PredProcId, !ModuleInfo, !Specs) :-
+    % We should store the mode varset and the mode condition in the HLDS
+    % - at the moment we just ignore those two arguments.
+
     % Lookup the pred or func declaration in the predicate table.
-    % If it's not there (or if it is ambiguous), optionally print a
-    % warning message and insert an implicit definition for the
-    % predicate; it is presumed to be local, and its type
-    % will be inferred automatically.
+    % If it is not there (or if it is ambiguous), optionally print a warning
+    % message and insert an implicit definition for the predicate;
+    % it is presumed to be local, and its type will be inferred automatically.
 
     module_info_get_name(!.ModuleInfo, ModuleName0),
     sym_name_get_module_name_default(PredName, ModuleName0, ModuleName),
@@ -525,11 +524,11 @@ preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
     prog_type.var_list_to_type_list(map.init, TypeVars, Types),
     map.init(Proofs),
     map.init(ConstraintMap),
-        % The class context is empty since this is an implicit
-        % definition. Inference will fill it in.
+    % The class context is empty since this is an implicit definition.
+    % Inference will fill it in.
     ClassContext = constraints([], []),
-        % We assume none of the arguments are existentially typed.
-        % Existential types must be declared, they won't be inferred.
+    % We assume none of the arguments are existentially typed.
+    % Existential types must be declared, they won't be inferred.
     ExistQVars = [],
     init_markers(Markers0),
     map.init(VarNameRemap),
@@ -540,14 +539,14 @@ preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
     add_marker(marker_infer_type, Markers0, Markers),
     pred_info_set_markers(Markers, PredInfo0, PredInfo),
     (
-        \+ predicate_table_search_pf_sym_arity(!.PredicateTable,
+        predicate_table_search_pf_sym_arity(!.PredicateTable,
             is_fully_qualified, PredOrFunc, PredName, Arity, _)
     ->
+        unexpected(this_file, "preds_add_implicit")
+    ;
         module_info_get_partial_qualifier_info(ModuleInfo, MQInfo),
         predicate_table_insert_qual(PredInfo, may_be_unqualified, MQInfo,
             PredId, !PredicateTable)
-    ;
-        unexpected(this_file, "preds_add_implicit")
     ).
 
 %-----------------------------------------------------------------------------%
