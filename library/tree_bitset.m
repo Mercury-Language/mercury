@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006, 2009 The University of Melbourne.
+% Copyright (C) 2006, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -205,6 +205,20 @@
 :- pred difference(tree_bitset(T)::in, tree_bitset(T)::in, tree_bitset(T)::out)
     is det.
 
+    % divide(Pred, Set, InPart, OutPart):
+    % InPart consists of those elements of Set for which Pred succeeds;
+    % OutPart consists of those elements of Set for which Pred fails.
+    %
+:- pred divide(pred(T)::in(pred(in) is semidet), tree_bitset(T)::in,
+    tree_bitset(T)::out, tree_bitset(T)::out) is det <= enum(T).
+
+    % divide_by_set(DivideBySet, Set, InPart, OutPart):
+    % InPart consists of those elements of Set which are also in DivideBySet;
+    % OutPart consists of those elements of Set which are not in DivideBySet.
+    %
+:- pred divide_by_set(tree_bitset(T)::in, tree_bitset(T)::in,
+    tree_bitset(T)::out, tree_bitset(T)::out) is det <= enum(T).
+
     % `count(Set)' returns the number of elements in `Set'.
     % Takes O(card(Set)) time.
     %
@@ -285,11 +299,23 @@
 
 :- interface.
 
+:- pragma type_spec(init/0, T = var(_)).
+:- pragma type_spec(init/0, T = int).
+
+:- pragma type_spec(empty/1, T = var(_)).
+:- pragma type_spec(empty/1, T = int).
+
+:- pragma type_spec(equal/2, T = var(_)).
+:- pragma type_spec(equal/2, T = int).
+
 :- pragma type_spec(list_to_set/1, T = var(_)).
 :- pragma type_spec(list_to_set/1, T = int).
 
 :- pragma type_spec(sorted_list_to_set/1, T = var(_)).
 :- pragma type_spec(sorted_list_to_set/1, T = int).
+
+:- pragma type_spec(from_set/1, T = var(_)).
+:- pragma type_spec(from_set/1, T = int).
 
 :- pragma type_spec(to_sorted_list/1, T = var(_)).
 :- pragma type_spec(to_sorted_list/1, T = int).
@@ -297,14 +323,20 @@
 :- pragma type_spec(to_set/1, T = var(_)).
 :- pragma type_spec(to_set/1, T = int).
 
-:- pragma type_spec(from_set/1, T = var(_)).
-:- pragma type_spec(from_set/1, T = int).
-
 :- pragma type_spec(make_singleton_set/1, T = var(_)).
 :- pragma type_spec(make_singleton_set/1, T = int).
 
+:- pragma type_spec(subset/2, T = var(_)).
+:- pragma type_spec(subset/2, T = int).
+
+:- pragma type_spec(superset/2, T = var(_)).
+:- pragma type_spec(superset/2, T = int).
+
 :- pragma type_spec(contains/2, T = var(_)).
 :- pragma type_spec(contains/2, T = int).
+
+:- pragma type_spec(member/2, T = var(_)).
+:- pragma type_spec(member/2, T = int).
 
 :- pragma type_spec(insert/2, T = var(_)).
 :- pragma type_spec(insert/2, T = int).
@@ -498,8 +530,8 @@ index_to_enum(Index) = Elem :-
 :- pragma inline(wrap_tree_bitset/1).
 
 wrap_tree_bitset(NodeList) = Set :-
-    trace [compile_time(flag("tree-bitset-interity"))] (
-        ( integrity(no, NodeList) = no -> 
+    trace [compile_time(flag("tree-bitset-integrity"))] (
+        ( integrity(no, NodeList) = no ->
             error("wrap_tree_bitset: integrity failed")
         ;
             true
@@ -678,7 +710,7 @@ expand_range(Index, SubNodes, CurLevel, CurInitOffset, CurLimitOffset,
                 CurLevel * bits_per_level),
             ( CurLimitOffset - CurInitOffset = Range ->
                 true
-            ;    
+            ;
                 error("tree_bitset.m: expand_range: bad range for level")
             )
         ;
@@ -710,8 +742,7 @@ raise_leaves_to_interior(LeafNode, LeafNodes, InteriorNode) :-
     InteriorNode = interior_node(ParentInitOffset, ParentLimitOffset,
         NodeList).
 
-:- pred raise_leaf_to_level(int::in, leaf_node::in, interior_node::out)
-    is det.
+:- pred raise_leaf_to_level(int::in, leaf_node::in, interior_node::out) is det.
 :- pragma inline(raise_leaf_to_level/3).
 
 raise_leaf_to_level(TargetLevel, LeafNode, TopNode) :-
@@ -821,7 +852,7 @@ init = wrap_tree_bitset(leaf_list([])).
 empty(init).
 
 equal(SetA, SetB) :-
-    trace [compile_time(flag("tree-bitset-interity"))] (
+    trace [compile_time(flag("tree-bitset-integrity"))] (
         (
             ListA = to_sorted_list(SetA),
             ListB = to_sorted_list(SetB),
@@ -1058,8 +1089,8 @@ remove_leq_interior([Head0 | Tail0], Index, Result) :-
         Result = [Head0 | Tail0]
     ).
 
-:- pred remove_leq_leaf(list(leaf_node)::in, int::in,
-    list(leaf_node)::out) is det.
+:- pred remove_leq_leaf(list(leaf_node)::in, int::in, list(leaf_node)::out)
+    is det.
 
 remove_leq_leaf([], _, []).
 remove_leq_leaf([Head0 | Tail0], Index, Result) :-
@@ -1067,11 +1098,9 @@ remove_leq_leaf([Head0 | Tail0], Index, Result) :-
     ( Offset + bits_per_int =< Index ->
         remove_leq_leaf(Tail0, Index, Result)
     ; Offset =< Index ->
-        (
-            Bits = Head0 ^ leaf_bits /\
-                unchecked_left_shift(\ 0, Index - Offset + 1),
-            Bits \= 0
-        ->
+        Bits = Head0 ^ leaf_bits /\
+            unchecked_left_shift(\ 0, Index - Offset + 1),
+        ( Bits \= 0 ->
             Result = [make_leaf_node(Offset, Bits) | Tail0]
         ;
             Result = Tail0
@@ -1809,6 +1838,30 @@ intersect(SetA, SetB) = Set :-
     prune_top_levels(List, PrunedList),
     Set = wrap_tree_bitset(PrunedList).
 
+:- pred leaflist_intersect(list(leaf_node)::in, list(leaf_node)::in,
+    list(leaf_node)::out) is det.
+
+leaflist_intersect([], [], []).
+leaflist_intersect([], [_ | _], []).
+leaflist_intersect([_ | _], [], []).
+leaflist_intersect(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB], List) :-
+    OffsetA = HeadA ^ leaf_offset,
+    OffsetB = HeadB ^ leaf_offset,
+    ( OffsetA = OffsetB ->
+        Bits = HeadA ^ leaf_bits /\ HeadB ^ leaf_bits,
+        ( Bits = 0 ->
+            leaflist_intersect(TailA, TailB, List)
+        ;
+            Head = make_leaf_node(OffsetA, Bits),
+            leaflist_intersect(TailA, TailB, Tail),
+            List = [Head | Tail]
+        )
+    ; OffsetA < OffsetB ->
+        leaflist_intersect(TailA, ListB, List)
+    ;
+        leaflist_intersect(ListA, TailB, List)
+    ).
+
 :- pred descend_and_intersect(int::in, interior_node::in,
     int::in, list(interior_node)::in, node_list::out) is det.
 
@@ -1882,30 +1935,6 @@ interiornode_intersect(LevelA, HeadA, TailA, LevelB, HeadB, TailB,
         RaisedHeadA, RaisedTailA, RaisedHeadB, RaisedTailB,
         TopHeadA, TopTailA, TopHeadB, TopTailB, Level),
     interiorlist_intersect([TopHeadA | TopTailA], [TopHeadB | TopTailB], List).
-
-:- pred leaflist_intersect(list(leaf_node)::in, list(leaf_node)::in,
-    list(leaf_node)::out) is det.
-
-leaflist_intersect([], [], []).
-leaflist_intersect([], [_ | _], []).
-leaflist_intersect([_ | _], [], []).
-leaflist_intersect(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB], List) :-
-    OffsetA = HeadA ^ leaf_offset,
-    OffsetB = HeadB ^ leaf_offset,
-    ( OffsetA = OffsetB ->
-        Bits = HeadA ^ leaf_bits /\ HeadB ^ leaf_bits,
-        ( Bits = 0 ->
-            leaflist_intersect(TailA, TailB, List)
-        ;
-            Head = make_leaf_node(OffsetA, Bits),
-            leaflist_intersect(TailA, TailB, Tail),
-            List = [Head | Tail]
-        )
-    ; OffsetA < OffsetB ->
-        leaflist_intersect(TailA, ListB, List)
-    ;
-        leaflist_intersect(ListA, TailB, List)
-    ).
 
 :- pred interiorlist_intersect(
     list(interior_node)::in, list(interior_node)::in,
@@ -2203,6 +2232,370 @@ interiorlist_difference(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB],
     ;
         interiorlist_difference(ListA, TailB, List)
     ).
+
+%-----------------------------------------------------------------------------%
+
+divide(Pred, Set, InSet, OutSet) :-
+    Set = tree_bitset(List),
+    (
+        List = leaf_list(LeafNodes),
+        leaflist_divide(Pred, LeafNodes, InList, OutList),
+        InSet = wrap_tree_bitset(leaf_list(InList)),
+        OutSet = wrap_tree_bitset(leaf_list(OutList))
+    ;
+        List = interior_list(Level, InteriorNodes),
+        interiornode_divide(Pred, InteriorNodes,
+            InInteriorNodes, OutInteriorNodes),
+
+        InList = interior_list(Level, InInteriorNodes),
+        prune_top_levels(InList, PrunedInList),
+        InSet = wrap_tree_bitset(PrunedInList),
+
+        OutList = interior_list(Level, OutInteriorNodes),
+        prune_top_levels(OutList, PrunedOutList),
+        OutSet = wrap_tree_bitset(PrunedOutList)
+    ).
+
+:- pred leaflist_divide(pred(T)::in(pred(in) is semidet), list(leaf_node)::in,
+    list(leaf_node)::out, list(leaf_node)::out) is det <= enum(T).
+
+leaflist_divide(_Pred, [], [], []).
+leaflist_divide(Pred, [Head | Tail], InList, OutList) :-
+    leaflist_divide(Pred, Tail, InTail, OutTail),
+    Head = leaf_node(Offset, Bits),
+    leafnode_divide(Pred, Offset, 0, Bits, 0, InBits, 0, OutBits),
+    ( InBits = 0 ->
+        InList = InTail
+    ;
+        InHead = make_leaf_node(Offset, InBits),
+        InList = [InHead | InTail]
+    ),
+    ( OutBits = 0 ->
+        OutList = OutTail
+    ;
+        OutHead = make_leaf_node(Offset, OutBits),
+        OutList = [OutHead | OutTail]
+    ).
+
+:- pred leafnode_divide(pred(T)::in(pred(in) is semidet), int::in, int::in,
+    int::in, int::in, int::out, int::in, int::out) is det <= enum(T).
+
+leafnode_divide(Pred, Offset, WhichBit, Bits, !InBits, !OutBits) :-
+    ( WhichBit < bits_per_int ->
+        SelectedBit = get_bit(Bits, WhichBit),
+        ( SelectedBit = 0 ->
+            true
+        ;
+            Elem = index_to_enum(Offset + WhichBit),
+            ( Pred(Elem) ->
+                !:InBits = set_bit(!.InBits, WhichBit)
+            ;
+                !:OutBits = set_bit(!.OutBits, WhichBit)
+            )
+        ),
+        leafnode_divide(Pred, Offset, WhichBit + 1, Bits, !InBits, !OutBits)
+    ;
+        true
+    ).
+
+:- pred interiornode_divide(pred(T)::in(pred(in) is semidet),
+    list(interior_node)::in,
+    list(interior_node)::out, list(interior_node)::out) is det <= enum(T).
+
+interiornode_divide(_Pred, [], [], []).
+interiornode_divide(Pred, [Head | Tail], InNodes, OutNodes) :-
+    interiornode_divide(Pred, Tail, InTail, OutTail),
+    Head = interior_node(InitOffset, LimitOffset, SubNodes),
+    (
+        SubNodes = leaf_list(SubLeafNodes),
+        leaflist_divide(Pred, SubLeafNodes, InLeafNodes, OutLeafNodes),
+        (
+            InLeafNodes = [],
+            InNodes = InTail
+        ;
+            InLeafNodes = [_ | _],
+            InHead = interior_node(InitOffset, LimitOffset,
+                leaf_list(InLeafNodes)),
+            InNodes = [InHead | InTail]
+        ),
+        (
+            OutLeafNodes = [],
+            OutNodes = OutTail
+        ;
+            OutLeafNodes = [_ | _],
+            OutHead = interior_node(InitOffset, LimitOffset,
+                leaf_list(OutLeafNodes)),
+            OutNodes = [OutHead | OutTail]
+        )
+    ;
+        SubNodes = interior_list(Level, SubInteriorNodes),
+        interiornode_divide(Pred, SubInteriorNodes,
+            InSubInteriorNodes, OutSubInteriorNodes),
+        (
+            InSubInteriorNodes = [],
+            InNodes = InTail
+        ;
+            InSubInteriorNodes = [_ | _],
+            InHead = interior_node(InitOffset, LimitOffset,
+                interior_list(Level, InSubInteriorNodes)),
+            InNodes = [InHead | InTail]
+        ),
+        (
+            OutSubInteriorNodes = [],
+            OutNodes = OutTail
+        ;
+            OutSubInteriorNodes = [_ | _],
+            OutHead = interior_node(InitOffset, LimitOffset,
+                interior_list(Level, OutSubInteriorNodes)),
+            OutNodes = [OutHead | OutTail]
+        )
+    ).
+
+%-----------------------------------------------------------------------------%
+
+divide_by_set(DivideBySet, Set, InSet, OutSet) :-
+    Pred = (pred(Element::in) is semidet :-
+        contains(DivideBySet, Element)
+    ),
+    divide(Pred, Set, InSet, OutSet).
+
+% This is the beginning of a more efficient version of divide_by_set.
+
+% divide_by_set(DivideBySet, Set, InSet, OutSet) :-
+%     DivideBySet = tree_bitset(DivideByList),
+%     Set = tree_bitset(List),
+%     % Our basic approach of raising both operands to the same level simplifies
+%     % the code (by allowing the reuse of the basic pattern and the helper
+%     % predicates of the union predicate), but searching the larger set for the
+%     % range of the smaller set and starting the operation there would be more
+%     % efficient in both time and space.
+%     (
+%         DivideByList = leaf_list(DivideByLeafNodes),
+%         List = leaf_list(LeafNodes),
+%         (
+%             LeafNodes = [],
+%             InList = List,
+%             OutList = List
+%         ;
+%             LeafNodes = [_ | _],
+%             DivideByLeafNodes = [],
+%             InList = [],
+%             OutList = List
+%         ;
+%             LeafNodes = [FirstNode | _LaterNodes],
+%             DivideByLeafNodes = [DivideByFirstNode | _DivideByLaterNodes],
+%             range_of_parent_node(FirstNode ^ leaf_offset, 0,
+%                 ParentInitOffset, ParentLimitOffset),
+%             range_of_parent_node(DivideByFirstNode ^ leaf_offset, 0,
+%                 DivideByParentInitOffset, DivideByParentLimitOffset),
+%             ( DivideByParentInitOffset = ParentInitOffset ->
+%                 require(unify(DivideByParentLimitOffset, ParentLimitOffset),
+%                     "tree_bitset.m: divide_by_set: limit mismatch"),
+%                 leaflist_divide_by_set(DivideByLeafNodes, LeafNodes,
+%                     InLeafNodes, OutLeafNodes),
+%                 InList = leaf_list(InLeafNodes),
+%                 OutList = leaf_list(OutLeafNodes)
+%             ;
+%                 % The ranges of the two sets do not overlap.
+%                 InList = [],
+%                 OutList = List
+%             )
+%         )
+%     ;
+%         ListA = leaf_list(LeafNodesA),
+%         ListB = interior_list(LevelB, InteriorNodesB),
+%         (
+%             LeafNodesA = [],
+%             List = ListB
+%         ;
+%             LeafNodesA = [FirstNodeA | LaterNodesA],
+%             raise_leaves_to_interior(FirstNodeA, LaterNodesA, InteriorNodeA),
+%             head_and_tail(InteriorNodesB, InteriorHeadB, InteriorTailB),
+%             interiornode_difference(1, InteriorNodeA, [],
+%                 LevelB, InteriorHeadB, InteriorTailB, Level, InteriorNodes),
+%             List = interior_list(Level, InteriorNodes)
+%         )
+%     ;
+%         ListA = interior_list(LevelA, InteriorNodesA),
+%         ListB = leaf_list(LeafNodesB),
+%         (
+%             LeafNodesB = [],
+%             List = ListA
+%         ;
+%             LeafNodesB = [FirstNodeB | LaterNodesB],
+%             raise_leaves_to_interior(FirstNodeB, LaterNodesB, InteriorNodeB),
+%             head_and_tail(InteriorNodesA, InteriorHeadA, InteriorTailA),
+%             interiornode_difference(LevelA, InteriorHeadA, InteriorTailA,
+%                 1, InteriorNodeB, [], Level, InteriorNodes),
+%             List = interior_list(Level, InteriorNodes)
+%         )
+%     ;
+%         ListA = interior_list(LevelA, InteriorNodesA),
+%         ListB = interior_list(LevelB, InteriorNodesB),
+%         head_and_tail(InteriorNodesA, InteriorHeadA, InteriorTailA),
+%         head_and_tail(InteriorNodesB, InteriorHeadB, InteriorTailB),
+%         interiornode_difference(LevelA, InteriorHeadA, InteriorTailA,
+%             LevelB, InteriorHeadB, InteriorTailB, Level, InteriorNodes),
+%         List = interior_list(Level, InteriorNodes)
+%     ),
+%     prune_top_levels(List, PrunedList),
+%     Set = wrap_tree_bitset(PrunedList).
+% 
+% :- pred interiornode_difference(
+%     int::in, interior_node::in, list(interior_node)::in,
+%     int::in, interior_node::in, list(interior_node)::in,
+%     int::out, list(interior_node)::out) is det.
+% 
+% interiornode_difference(LevelA, HeadA, TailA, LevelB, HeadB, TailB,
+%         Level, List) :-
+%     ( LevelA < LevelB ->
+%         range_of_parent_node(HeadA ^ init_offset, LevelA + 1,
+%             ParentInitOffsetA, ParentLimitOffsetA),
+%         (
+%             find_containing_node(ParentInitOffsetA, ParentLimitOffsetA,
+%                 [HeadB | TailB], ChosenB)
+%         ->
+%             ComponentsB = ChosenB ^ components,
+%             (
+%                 ComponentsB = leaf_list(_),
+%                 require(unify(LevelA, 1),
+%                     "tree_bitset.m: interiornode_difference: bad leaf level"),
+%                 interiorlist_difference([HeadA | TailA], [ChosenB], List),
+%                 Level = LevelA
+%             ;
+%                 ComponentsB = interior_list(SubLevelB, SubNodesB),
+%                 require(unify(LevelB, SubLevelB + 1),
+%                     "tree_bitset.m: interiornode_difference: bad levels"),
+%                 head_and_tail(SubNodesB, SubHeadB, SubTailB),
+%                 interiornode_difference(LevelA, HeadA, TailA,
+%                     SubLevelB, SubHeadB, SubTailB, Level, List)
+%             )
+%         ;
+%             Level = 1,
+%             List = []
+%         )
+%     ;
+%         raise_interiors_to_level(LevelA, LevelB, HeadB, TailB,
+%             RaisedHeadB, RaisedTailB),
+%         range_of_parent_node(HeadA ^ init_offset, LevelA,
+%             ParentInitOffsetA, ParentLimitOffsetA),
+%         range_of_parent_node(RaisedHeadB ^ init_offset, LevelA,
+%             ParentInitOffsetB, ParentLimitOffsetB),
+%         ( ParentInitOffsetA = ParentInitOffsetB ->
+%             require(unify(ParentLimitOffsetA, ParentLimitOffsetB),
+%                 "tree_bitset.m: interiornode_difference: limit mismatch"),
+%             interiorlist_difference([HeadA | TailA],
+%                 [RaisedHeadB | RaisedTailB], List),
+%             Level = LevelA
+%         ;
+%             Level = 1,
+%             List = []
+%         )
+%     ).
+% 
+% :- pred find_containing_node(int::in, int::in, list(interior_node)::in,
+%     interior_node::out) is semidet.
+% 
+% find_containing_node(InitOffsetA, LimitOffsetA, [HeadB | TailB], ChosenB) :-
+%     (
+%         HeadB ^ init_offset =< InitOffsetA,
+%         LimitOffsetA =< HeadB ^ limit_offset
+%     ->
+%         ChosenB = HeadB
+%     ;
+%         find_containing_node(InitOffsetA, LimitOffsetA, TailB, ChosenB)
+%     ).
+% 
+% :- pred leaflist_difference(list(leaf_node)::in, list(leaf_node)::in,
+%     list(leaf_node)::out) is det.
+% 
+% leaflist_difference([], [], []).
+% leaflist_difference([], [_ | _], []).
+% leaflist_difference(ListA @ [_ | _], [], ListA).
+% leaflist_difference(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB], List) :-
+%     OffsetA = HeadA ^ leaf_offset,
+%     OffsetB = HeadB ^ leaf_offset,
+%     ( OffsetA = OffsetB ->
+%         Bits = (HeadA ^ leaf_bits) /\ \ (HeadB ^ leaf_bits),
+%         ( Bits = 0 ->
+%             leaflist_difference(TailA, TailB, List)
+%         ;
+%             Head = make_leaf_node(OffsetA, Bits),
+%             leaflist_difference(TailA, TailB, Tail),
+%             List = [Head | Tail]
+%         )
+%     ; OffsetA < OffsetB ->
+%         leaflist_difference(TailA, ListB, Tail),
+%         List = [HeadA | Tail]
+%     ;
+%         leaflist_difference(ListA, TailB, List)
+%     ).
+% 
+% :- pred interiorlist_difference(
+%     list(interior_node)::in, list(interior_node)::in,
+%     list(interior_node)::out) is det.
+% 
+% interiorlist_difference([], [], []).
+% interiorlist_difference([], [_ | _], []).
+% interiorlist_difference(ListA @ [_ | _], [], ListA).
+% interiorlist_difference(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB],
+%         List) :-
+%     OffsetA = HeadA ^ init_offset,
+%     OffsetB = HeadB ^ init_offset,
+%     ( OffsetA = OffsetB ->
+%         ComponentsA = HeadA ^ components,
+%         ComponentsB = HeadB ^ components,
+%         (
+%             ComponentsA = leaf_list(LeafNodesA),
+%             ComponentsB = leaf_list(LeafNodesB),
+%             leaflist_difference(LeafNodesA, LeafNodesB, LeafNodes),
+%             (
+%                 LeafNodes = [],
+%                 interiorlist_difference(TailA, TailB, List)
+%             ;
+%                 LeafNodes = [_ | _],
+%                 Components = leaf_list(LeafNodes),
+%                 interiorlist_difference(TailA, TailB, Tail),
+%                 Head = interior_node(HeadA ^ init_offset, HeadA ^ limit_offset,
+%                     Components),
+%                 List = [Head | Tail]
+%             )
+%         ;
+%             ComponentsA = interior_list(_LevelA, _InteriorNodesA),
+%             ComponentsB = leaf_list(_LeafNodesB),
+%             error("tree_bitset.m: " ++
+%                 "inconsistent components in interiorlist_difference")
+%         ;
+%             ComponentsB = interior_list(_LevelB, _InteriorNodesB),
+%             ComponentsA = leaf_list(_LeafNodesA),
+%             error("tree_bitset.m: " ++
+%                 "inconsistent components in interiorlist_difference")
+%         ;
+%             ComponentsA = interior_list(LevelA, InteriorNodesA),
+%             ComponentsB = interior_list(LevelB, InteriorNodesB),
+%             require(unify(LevelA, LevelB),
+%                 "tree_bitset.m: " ++
+%                 "inconsistent levels in interiorlist_difference"),
+%             interiorlist_difference(InteriorNodesA, InteriorNodesB,
+%                 InteriorNodes),
+%             (
+%                 InteriorNodes = [],
+%                 interiorlist_difference(TailA, TailB, List)
+%             ;
+%                 InteriorNodes = [_ | _],
+%                 Components = interior_list(LevelA, InteriorNodes),
+%                 interiorlist_difference(TailA, TailB, Tail),
+%                 Head = interior_node(HeadA ^ init_offset, HeadA ^ limit_offset,
+%                     Components),
+%                 List = [Head | Tail]
+%             )
+%         )
+%     ; OffsetA < OffsetB ->
+%         interiorlist_difference(TailA, ListB, Tail),
+%         List = [HeadA | Tail]
+%     ;
+%         interiorlist_difference(ListA, TailB, List)
+%     ).
 
 %-----------------------------------------------------------------------------%
 

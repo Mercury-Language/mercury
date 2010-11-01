@@ -20,7 +20,7 @@ Changes to the Mercury standard library:
   into a new standard library module called `lazy'.  It has also been made
   backend-agnostic.
 
-* We have made changes to the list. module of the standard library:
+* We have made changes to the list module of the standard library:
 
   + We added a new predicate list.member_index0/3.  It is like list.member/2
     except that it also takes a parameter representing the zero-based index of
@@ -28,6 +28,9 @@ Changes to the Mercury standard library:
 
   + We added a new predicate list.map3_foldl/7 which maps over a list producing
     three lists and one folded value.
+
+* We have added the predicates divide/4 and divide_by_set/4 to the tree_bitset
+  module of the standard library.
 
 Changes to the Mercury compiler:
 
