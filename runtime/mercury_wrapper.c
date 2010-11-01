@@ -302,10 +302,10 @@ static  char        *MR_mem_usage_report_prefix = NULL;
 static  int         MR_num_output_args = 0;
 
 /*
-** This is initialized to zero.  If it is still zero after configuration of the
-** runtime but before threads are started then the number of processors on the
-** system is detected and used if support is available.  Otherwise we fall back
-** to 1 
+** This is initialized to zero. If it is still zero after configuration of the
+** runtime but before threads are started, then we set it to the number of
+** processors on the system (if support is available to detect this).
+** Otherwise, we fall back to 1.
 */
 MR_Unsigned         MR_num_threads = 0;
 
@@ -553,7 +553,7 @@ mercury_runtime_init(int argc, char **argv)
     ** no-op.
     */
     MR_do_cpu_feature_detection();
-#endif 
+#endif
 
     /*
     ** This must be done before MR_init_conservative_GC(),
@@ -662,20 +662,20 @@ mercury_runtime_init(int argc, char **argv)
     MR_init_thread(MR_use_now);
     MR_SET_THREAD_LOCAL_MUTABLES(
         MR_create_thread_local_mutables(MR_MAX_THREAD_LOCAL_MUTABLES));
- 
+
   #ifdef MR_LL_PARALLEL_CONJ
     {
         int i;
 
         MR_exit_now = MR_FALSE;
-        
+
         for (i = 1; i < MR_num_threads; i++) {
             MR_create_thread(NULL);
         }
     #ifdef MR_THREADSCOPE
     /*
-    ** TSC Synchronization is not used, support is commented out.  See
-    ** runtime/mercury_threadscope.h for an explanation.
+    ** TSC Synchronization is not used, support is commented out.
+    ** See runtime/mercury_threadscope.h for an explanation.
     **
         for (i = 1; i < MR_num_threads; i++) {
             MR_threadscope_sync_tsc_master();
@@ -1376,7 +1376,7 @@ struct MR_option MR_long_opts[] = {
     { "gen-nondetstack-zone-size-kwords",
         1, 0, MR_GEN_NONDETSTACK_REDZONE_SIZE_KWORDS },
     { "max-contexts-per-thread",        1, 0, MR_MAX_CONTEXTS_PER_THREAD },
-    { "runtime-granularity-wsdeque-length-factor", 1, 0, 
+    { "runtime-granularity-wsdeque-length-factor", 1, 0,
         MR_RUNTIME_GRANULAITY_WSDEQUE_LENGTH_FACTOR },
     { "worksteal-max-attempts",         1, 0, MR_WORKSTEAL_MAX_ATTEMPTS },
     { "worksteal-max-attempts",         1, 0, MR_WORKSTEAL_SLEEP_MSECS },
@@ -1419,7 +1419,7 @@ struct MR_option MR_long_opts[] = {
     { "mem-usage-report",               1, 0, MR_MEM_USAGE_REPORT },
     { "boehm-gc-free-space-divisor",    1, 0, MR_BOEHM_GC_FREE_SPACE_DIVISOR },
     { "boehm-gc-calc-time",             0, 0, MR_BOEHM_GC_CALC_TIME },
-    { "fp-rounding-mode",               1, 0, MR_FP_ROUNDING_MODE }, 
+    { "fp-rounding-mode",               1, 0, MR_FP_ROUNDING_MODE },
 
     /* This needs to be kept at the end. */
     { NULL,                             0, 0, 0 }
@@ -1547,7 +1547,7 @@ MR_process_options(int argc, char **argv)
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
                     MR_usage();
                 }
-                
+
                 #if !defined(MR_TRAIL_SEGMENTS)
                     MR_trail_size = size * sizeof(MR_Word);
                 #endif
@@ -1571,7 +1571,7 @@ MR_process_options(int argc, char **argv)
                 #if defined(MR_TRAIL_SEGMENTS)
                     MR_trail_size = size * sizeof(MR_Word);
                 #endif
-                break; 
+                break;
 
             case MR_HEAP_REDZONE_SIZE:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
@@ -2033,7 +2033,7 @@ MR_process_options(int argc, char **argv)
 #if defined(MR_HAVE_FENV_H) && defined(MR_HAVE_FESETROUND)
                 {
                     int     rounding_mode;
-                   
+
                     /*
                     ** Particular rounding modes are only supported if the
                     ** corresponding FE_* macro is defined.  The four below are
@@ -2053,7 +2053,7 @@ MR_process_options(int argc, char **argv)
                             rounding_mode = FE_UPWARD;
                         #else
                             rounding_mode = -1;
-                        #endif 
+                        #endif
                     } else if (MR_streq(MR_optarg, "toward_zero")) {
                         #if defined(FE_TOWARDZERO)
                             rounding_mode = FE_TOWARDZERO;
@@ -3023,7 +3023,7 @@ mercury_runtime_terminate(void)
     MR_exit_now = MR_TRUE;
     pthread_cond_broadcast(&MR_runqueue_cond);
     MR_UNLOCK(&MR_runqueue_lock, "exit_now");
-   
+
     while (MR_num_exited_engines < MR_num_threads - 1) {
         MR_ATOMIC_PAUSE;
     }
@@ -3034,10 +3034,10 @@ mercury_runtime_terminate(void)
     }
     MR_finalize_threadscope();
 #endif
-    
+
     assert(MR_primordial_thread == pthread_self());
     MR_primordial_thread = (MercuryThread) 0;
-    
+
     MR_finalize_thread_stuff();
 #endif
 
