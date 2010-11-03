@@ -102,14 +102,26 @@ name(descartes, "Descartes").
 name(russell,   "Russell").
 name(sartre,    "Sartre").
 
+%---------------------------------------------------------------------------%
+
 :- pragma foreign_code("C#", "
     public static System.Random rng = new System.Random();
+").
+
+:- pragma foreign_decl("Java", "
+
+import java.util.Random;
+
+").
+
+:- pragma foreign_code("Java", "
+    public static Random rng = new Random();
 ").
 
 :- pred rand_sleep(int::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    rand_sleep(Int::in, IO0::di, IO::uo),
+    rand_sleep(Int::in, _IO0::di, _IO::uo),
     [promise_pure, thread_safe, will_not_call_mercury],
 "
 #ifdef _MSC_VER
@@ -117,7 +129,6 @@ name(sartre,    "Sartre").
 #else
     sleep((rand() % Int));
 #endif
-    IO =  IO0;
 ").
 
 :- pragma foreign_proc("C#",
@@ -127,5 +138,17 @@ name(sartre,    "Sartre").
     System.Threading.Thread.Sleep(rng.Next(Int) * 1000);
 ").
 
+:- pragma foreign_proc("Java",
+    rand_sleep(Int::in, _IO0::di, _IO::uo),
+    [promise_pure, thread_safe, will_not_call_mercury],
+"
+    try {
+        Thread.sleep(rng.nextInt(Int) * 1000);
+    } catch ( InterruptedException e ) {
+        /* Just return if we are interrupted.*/
+    }
+").
+
 %---------------------------------------------------------------------------%
+:- end_module philo2.
 %---------------------------------------------------------------------------%

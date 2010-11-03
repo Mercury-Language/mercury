@@ -1,8 +1,10 @@
 %-----------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix ft=mercury
+%-----------------------------------------------------------------------------%
+%
 % philo3.m
 % Copyright (C) 2001-2002 Ralph Becket <rbeck@microsoft.com>
 % Mon May 14 14:32:29 BST 2001
-% vim: ts=4 sw=4 et tw=0 wm=0 ff=unix ft=mercury
 %
 % RELEASED TO THE MERCURY PROJECT FOR DISTRIBUTION UNDER
 % WHATEVER LICENCE IS DEEMED APPROPRIATE BY THE PROJECT
@@ -81,6 +83,16 @@ philosopher(Name, A, ForkA, B, ForkB, !IO) :-
 	public static System.Random rng = new System.Random();
 ").
 
+:- pragma foreign_decl("Java", "
+
+import java.util.Random;
+
+").
+
+:- pragma foreign_code("Java", "
+    public static Random rng = new Random();
+").
+
 :- pred rand_sleep(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     rand_sleep(Int::in, IO0::di, IO::uo),
@@ -101,5 +113,17 @@ philosopher(Name, A, ForkA, B, ForkB, !IO) :-
 	System.Threading.Thread.Sleep(rng.Next(Int) * 1000);
 ").
 
+:- pragma foreign_proc("Java",
+    rand_sleep(Int::in, _IO0::di, _IO::uo),
+    [promise_pure, thread_safe, will_not_call_mercury],
+"
+    try {
+        Thread.sleep(rng.nextInt(Int) * 1000);
+    } catch ( InterruptedException e ) {
+        /* Just return if we are interrupted.*/
+    }
+").
+
 %-----------------------------------------------------------------------------%
+:- end_module philo3.
 %-----------------------------------------------------------------------------%

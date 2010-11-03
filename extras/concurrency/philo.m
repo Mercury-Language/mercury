@@ -28,7 +28,6 @@
 
 :- implementation.
 
-:- import_module global.
 :- import_module thread.
 :- import_module thread.semaphore.
 
@@ -36,6 +35,11 @@
 :- import_module list.
 :- import_module require.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
+
+:- mutable(fork_global, forks, forks(yes, yes, yes, yes, yes), ground,
+    [untrailed, attach_to_io_state]).
 
 %-----------------------------------------------------------------------------%
 
@@ -50,32 +54,30 @@
     ;       sartre.
 
 main(!IO) :-
-    new(Lock, !IO),
-    signal(Lock, !IO),
-    new(forks(yes, yes, yes, yes, yes), ForkGlob, !IO),
-    spawn(philosopher(plato, Lock, ForkGlob), !IO),
-    spawn(philosopher(aristotle, Lock, ForkGlob), !IO),
-    spawn(philosopher(descartes, Lock, ForkGlob), !IO),
-    spawn(philosopher(russell, Lock, ForkGlob), !IO),
-    philosopher(sartre, Lock, ForkGlob, !IO).
+    semaphore.new(Lock, !IO),
+    semaphore.signal(Lock, !IO),
+    spawn(philosopher(plato, Lock), !IO),
+    spawn(philosopher(aristotle, Lock), !IO),
+    spawn(philosopher(descartes, Lock), !IO),
+    spawn(philosopher(russell, Lock), !IO),
+    philosopher(sartre, Lock, !IO).
 
-:- pred philosopher(philosopher::in, semaphore::in, global(forks)::in,
-    io::di, io::uo) is cc_multi.
+:- pred philosopher(philosopher::in, semaphore::in, io::di, io::uo) is cc_multi.
 
-philosopher(Who, Lock, ForkGlob, !IO) :-
+philosopher(Who, Lock, !IO) :-
     name(Who, Name),
     io.format("%s is thinking.\n", [s(Name)], !IO),
-    wait(Lock, !IO),
-    get(ForkGlob, Forks0, !IO),
+    semaphore.wait(Lock, !IO),
+    get_fork_global(Forks0, !IO), 
     ( forks(Who, Forks0, Forks1) ->
-        set(ForkGlob, Forks1, !IO),
-        signal(Lock, !IO),
+        set_fork_global(Forks1, !IO),
+        semaphore.signal(Lock, !IO),
         io.format("%s is eating.\n", [s(Name)], !IO),
-        wait(Lock, !IO),
-        get(ForkGlob, Forks2, !IO),
+        semaphore.wait(Lock, !IO),
+        get_fork_global(Forks2, !IO),
         ( forks(Who, Forks3, Forks2) ->
-            set(ForkGlob, Forks3, !IO),
-            signal(Lock, !IO)
+            set_fork_global(Forks3, !IO),
+            semaphore.signal(Lock, !IO)
         ;
             error("all forked up")
         )
@@ -83,7 +85,7 @@ philosopher(Who, Lock, ForkGlob, !IO) :-
         % Our 2 forks were not available
         signal(Lock, !IO)
     ),
-    philosopher(Who, Lock, ForkGlob, !IO).
+    philosopher(Who, Lock, !IO).
 
 :- pred forks(philosopher, forks, forks).
 :- mode forks(in, in, out) is semidet.
@@ -104,4 +106,5 @@ name(russell,   "Russell").
 name(sartre,    "Sartre").
 
 %-----------------------------------------------------------------------------%
+:- end_module philo.
 %-----------------------------------------------------------------------------%
