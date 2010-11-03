@@ -1042,6 +1042,7 @@ public interface ML_va {
 //
 // It just wraps the unsafe version is some synchronization logic so
 // that only one thread can be accessing the array at one instant.
+[System.Serializable]
 public class ML_sva : ML_va {
     private ML_uva version_array;
     private object va_lock;
@@ -1105,6 +1106,7 @@ public class ML_sva : ML_va {
 
 // An implementation of version arrays that is only safe when used from
 // a single thread, but *much* faster than the synchronized version.
+[System.Serializable]
 public class ML_uva : ML_va {
     private int                 index;  /* -1 for latest, >= 0 for older */
     private object              value;  /* Valid if index >= 0           */

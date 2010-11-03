@@ -928,7 +928,9 @@ output_defn(Info, Indent, OutputAux, Defn, !IO) :-
                 Kind = mlds_class
             )
         ->
-            OverrideFlags = set_per_instance(Flags, per_instance)
+            OverrideFlags = set_per_instance(Flags, per_instance),
+            io.write_string("[System.Serializable]\n", !IO),
+            indent_line(Indent, !IO)
         ;
             % `static' and `sealed' not wanted or allowed on structs.
             DefnBody = mlds_class(ClassDefn),

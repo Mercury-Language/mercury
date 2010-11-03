@@ -1563,6 +1563,7 @@ public static class MercuryBitmap implements java.io.Serializable {
 ").
 
 :- pragma foreign_code("C#", "
+[System.Serializable]
 public class MercuryBitmap {
     public int num_bits;
     public byte[] elements;

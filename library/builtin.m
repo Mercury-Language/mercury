@@ -1032,6 +1032,7 @@ __Compare____tuple_0_0(object x, object y)
 % example of code which does.
 %
 :- pragma foreign_code("C#", "
+    [System.Serializable]
     public class Void_0
     {
         // Make the constructor private to ensure that we can
