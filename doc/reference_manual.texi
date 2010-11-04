@@ -104,6 +104,7 @@ into another language, under the above conditions for modified versions.
 * Foreign language interface:: Calling code written in other programming
                       languages from Mercury code
 * Impurity::          Users can write impure Mercury code.
+* Solver types::      Support for constraint logic programming
 * Trace goals::       Trace goals allow programmers to add debugging and
                       logging code to their programs.
 * Pragmas::           Various compiler directives, used for example to
@@ -1769,7 +1770,6 @@ type classes (@pxref{Type classes}), and existentially quantified types
 * User-defined types::
 * Predicate and function type declarations::
 * Field access functions::
-* Solver types::
 @end menu
 
 @node Builtin types
@@ -2308,283 +2308,6 @@ module @samp{map} can be used as follows:
 update_field_in_map(Map, Index, Value) =
                 Map ^ elem(Index) ^ field2 := Value.
 @end example
-
-@node Solver types
-@section Solver types
-
-@menu
-* The any inst::
-* Abstract solver type declarations::
-* Solver type definitions::
-* Implementing solver types::
-* Solver types and negated contexts::
-@end menu
-
-Solver types are an experimental addition to the language supporting the
-implementation of constraint solvers.  A program may place constraints
-on and between variables of a solver type, limiting the values those
-variables may take on before they are actually bound.  For example, if
-@code{X} and @code{Y} are variables belonging to a constrained integer
-solver type, we might place constraints upon them such that @code{X > 3
-+ Y} and @code{Y =< 7}.  A later attempt to unify @code{Y} with
-@code{10} will fail (it would violate the second constraint); similarly
-an attempt to unify @code{X} with @code{5} and @code{Y} with @code{4}
-would fail (it would violate the first constraint).
-
-@node The any inst
-@subsection The @samp{any} inst
-
-Variables with solver types can have one of three possible insts: @code{free},
-@code{ground} or @code{any}.
-A variable with a solver type with inst @code{any} may not (yet) be
-semantically ground, in the following sense: if a variable is semantically
-ground then the set of values it unifies with form an equivalence class; if a
-variable is non-ground then the set of values it unifies with do not form an
-equivalence class.
-
-More formally, @code{X} is ground if for values @code{Y} and
-@code{Z} that unify with @code{X}, it is the case that @code{Y} and
-@code{Z} also unify with each other.  @code{X} is non-ground if there
-are values @code{Y} and @code{Z} that unify with @code{X}, but which do
-not unify with each other.
-
-A non-solver type value will have inst @code{any} if it is constructed using
-one or more inst @code{any} values.
-
-The built-in modes @code{ia} and @code{oa} are equivalent to @code{in(any)}
-and @code{out(any)} respectively.
-
-@node Abstract solver type declarations
-@subsection Abstract solver type declarations
-
-The type declarations
-
-@example
-:- solver type t1.
-:- solver type t2(T1, T2).
-@end example
-
-@noindent
-declare types @code{t1/0} and @code{t2/2} to be abstract solver types.
-Abstract solver type declarations are identical to ordinary abstract
-type declarations except for the solver keyword.
-
-@node Solver type definitions
-@subsection Solver type definitions
-
-A solver type definition takes the following form:
-
-@example
-:- solver type solver_type
-        where   representation   is representation_type,
-                ground           is ground_inst,
-                any              is any_inst,
-                constraint_store is mutable_decls,
-                equality         is equality_pred,
-                comparison       is comparison_pred.
-@end example
-
-The @samp{representation} attribute is mandatory
-@samp{ground_inst} and @samp{any_inst} default to @samp{ground},
-@samp{mutable_decls} is either a single mutable declaration
-(@pxref{Module-local mutable variables})
-or a comma separated list of mutable declarations in brackets,
-the equality and comparison attributes are optional (although a solver type
-without equality would not be very useful), and attributes must appear in the
-order shown.
-
-The @code{representation_type} is the type used to implement the
-@code{solver_type}.  A two-tier scheme of this kind is necessary for a
-number of reasons, including
-@itemize @bullet
-@item
-a semantic gap is necessary to accommodate the fact that non-ground
-@code{solver_type} values may be represented by ground
-@code{representation_type} values (in the context of the corresponding
-constraint solver state);
-@item
-this approach greatly simplifies the definition of equality and
-comparison predicates for the @code{solver_type}.
-@end itemize
-
-@c XXX The following paragraph describes the old support for automatic
-@c     initialisation of solver types.  We no longer officially support
-@c     automatic initialisation as part of the language but the compiler
-@c     still contains the code necessary to implement it.
-@c
-@c The @code{initialisation_pred} is the name of a predicate defined in the
-@c same module as the solver type, with the following signature:
-@c 
-@c @example
-@c :- pred initialisation_pred(solver_type::out(any)) is det.
-@c @end example
-@c 
-@c Calls to this predicate are inserted automatically by the compiler when a
-@c @code{free} @code{solver_type} variable has to be given inst @code{any}.
-@c (The initialisation predicate is responsible for registering the new,
-@c unbound variable with the corresponding constraint solver state.)
-
-The @code{ground_inst} is the inst associated with
-@code{representation_type} values denoting @code{ground}
-@code{solver_type} values.
-
-The @code{any_inst} is the inst associated with
-@code{representation_type} values denoting @code{any} @code{solver_type}
-values.
-
-The compiler constructs four impure functions for converting between
-@code{solver_type} values and @code{representation_type} values
-(@samp{name} is the function symbol used to name @code{solver_type} and
-@samp{arity} is the number of type parameters it takes):
-
-@example
-:- impure func 'representation of ground name/arity'(solver_type) =
-                        representation_type.
-:-        mode 'representation of ground name/arity'(in) =
-                        out(ground_inst) is det.
-
-:- impure func 'representation of any name/arity'(solver_type) =
-                        representation_type.
-:-        mode 'representation of any name/arity'(in(any)) =
-                        out(any_inst) is det.
-
-:- impure func 'representation to ground name/arity'(representation_type) =
-                        solver_type.
-:-        mode 'representation to ground name/arity'(in(ground_inst)) =
-                        out is det.
-
-:- impure func 'representation to any name/arity'(representation_type) =
-                        solver_type.
-:-        mode 'representation to any name/arity'(in(any_inst)) =
-                        out(any) is det.
-@end example
-
-These functions are impure because of the semantic gap issue mentioned
-above.
-
-These functions are constructed in-line as part of a source-to-source
-transformation, hence it is an error to define a solver type in the
-interface section of a module.
-
-If @code{solver_type} is exported then it is a requirement that
-@code{representation_type}, @code{initialisation_pred}, and, if
-specified, @code{equality_pred} and @code{comparison_pred} are also
-exported from the same module.
-
-If @code{equality_pred} is not specified then the compiler will
-generate an equality predicate that throws an exception of type
-@samp{exception.software_error/0} when called.
-
-Likewise, if @code{comparison_pred} is not specified then the compiler
-will generate a comparison predicate that throws an exception of
-type @samp{exception.software_error/0} when called.
-
-If provided, any mutable declarations given for the @code{constraint_store}
-attribute are equivalent to separate mutable declarations; their association
-with the solver type is for the purposes of documentation.  That is,
-
-@example
-:- solver type t
-	where ... constraint_store is [ mutable(a, int, 42, ground, []),
-					mutable(b, string, "Hi", ground, [])
-		  ],
-	      ...
-@end example
-
-@noindent
-is equivalent to
-
-@example
-:- solver type t
-	where ...
-:- mutable(a, int, 42, ground, []).
-:- mutable(b, string, "Hi", ground, []).
-@end example
-
-@node Implementing solver types
-@subsection Implementing solver types
-
-A solver type is an abstraction, implemented using a combination of a
-private representation type and a constraint store.
-
-The constraint store is an (impure) piece of state used to keep track of
-the extant constraints on variables of the solver type.  This will
-typically be implemented using foreign code.
-
-It is important that changes to the constraint store are properly 
-trailed (see @ref{Trailing}) so that changes can be undone on
-backtracking.
-
-The solver type implementation should provide functions and predicates
-to
-@itemize @bullet
-@item
-construct and deconstruct solver type values,
-@item
-to place constraints on solver type variables,
-@item
-to convert @code{any} solver type variables to @code{ground} if possible
-(this is obviously an impure operation --- see @ref{Impurity}),
-@item
-to convert solver type values to non-solver type values (again, this is
-impure and requires the argument solver type values be
-sufficiently ground),
-@item 
-to ask questions about the extant constraints on solver type variables
-without constraining them further (this too is impure because the set
-of constraints on a variable may change during execution of the
-program).
-@end itemize
-
-@node Solver types and negated contexts
-@subsection Solver types and negated contexts
-
-Mercury's negation and if-then-else goals
-(and hence also inequalities and universal quantifications)
-are implemented using @emph{negation as failure},
-meaning that the failure to find a proof of one statement is regarded as a
-proof of its negation.
-Negation as failure is sound provided that no non-local variable
-becomes further bound during the execution of a goal which may be negated.
-This includes negated goals themselves, as well as the conditions of
-if-then-elses, which are negated iff they fail without producing any solution,
-and the bodies of pred or func expressions, which may be called or applied
-in one of the other contexts, or indeed in another pred or func expression.
-
-Mercury checks that any solver variables that are used in the above contexts
-are used in such a way that negation as failure remains sound.
-In the case of negation and if-then-else goals,
-if any non-local solver type variable or higher order variable
-with inst @code{any} is used in a negated context,
-the goal must be placed inside a @code{promise_pure}, @code{promise_semipure},
-or @code{promise_impure} scope.
-The first two promises assert that (among other things)
-no solver variable becomes further bound in the negated context.
-The third promise makes the weaker assertion that the goal satisfies
-the requirements of all impure goals (namely, that it doesn't interfere
-with the semantics of other pure goals).
-
-In the case of pred and func expressions, Mercury allows three possibilities.
-The higher order value may be considered @code{ground}, which means that
-all non-local variables used in the body of the expression
-(including those with other higher order values) must themselves be ground.
-Higher order values that are ground can be safely called or applied
-in any context, including negated contexts, since none of their (ground)
-non-local variables can become further bound by doing so.
-Alternatively, the higher order value may be considered to have inst
-@code{any}, which allows non-local variables used in the body of the
-expression to have inst @code{any}.
-Calling or applying these values @emph{may} further bind non-local variables,
-so if this occurs in a negated context then,
-as in the case of solver variables, a promise will be required around the
-negation or if-then-else.
-
-Pred and func expressions with inst @code{any} are written using
-@code{any_pred} and @code{any_func} in place of @code{pred} and @code{func},
-respectively.
-
-The third possibility is that the higher order value can be given an
-impure type (@pxref{Higher-order impurity}).
 
 @node Modes
 @chapter Modes
@@ -9211,6 +8934,284 @@ For example:
 		impure Y = impure_apply(ImpureFunc, X),
 		impure Ys = map(ImpureFunc, Ys).
 @end example
+
+@node Solver types
+@chapter Solver types
+
+@menu
+* The any inst::
+* Abstract solver type declarations::
+* Solver type definitions::
+* Implementing solver types::
+* Solver types and negated contexts::
+@end menu
+
+Solver types are an experimental addition to the language supporting the
+implementation of constraint solvers.  A program may place constraints
+on and between variables of a solver type, limiting the values those
+variables may take on before they are actually bound.  For example, if
+@code{X} and @code{Y} are variables belonging to a constrained integer
+solver type, we might place constraints upon them such that @code{X > 3
++ Y} and @code{Y =< 7}.  A later attempt to unify @code{Y} with
+@code{10} will fail (it would violate the second constraint); similarly
+an attempt to unify @code{X} with @code{5} and @code{Y} with @code{4}
+would fail (it would violate the first constraint).
+
+@node The any inst
+@section The @samp{any} inst
+
+Variables with solver types can have one of three possible insts: @code{free},
+@code{ground} or @code{any}.
+A variable with a solver type with inst @code{any} may not (yet) be
+semantically ground, in the following sense: if a variable is semantically
+ground then the set of values it unifies with form an equivalence class; if a
+variable is non-ground then the set of values it unifies with do not form an
+equivalence class.
+
+More formally, @code{X} is ground if for values @code{Y} and
+@code{Z} that unify with @code{X}, it is the case that @code{Y} and
+@code{Z} also unify with each other.  @code{X} is non-ground if there
+are values @code{Y} and @code{Z} that unify with @code{X}, but which do
+not unify with each other.
+
+A non-solver type value will have inst @code{any} if it is constructed using
+one or more inst @code{any} values.
+
+The built-in modes @code{ia} and @code{oa} are equivalent to @code{in(any)}
+and @code{out(any)} respectively.
+
+@node Abstract solver type declarations
+@section Abstract solver type declarations
+
+The type declarations
+
+@example
+:- solver type t1.
+:- solver type t2(T1, T2).
+@end example
+
+@noindent
+declare types @code{t1/0} and @code{t2/2} to be abstract solver types.
+Abstract solver type declarations are identical to ordinary abstract
+type declarations except for the solver keyword.
+
+@node Solver type definitions
+@section Solver type definitions
+
+A solver type definition takes the following form:
+
+@example
+:- solver type solver_type
+        where   representation   is representation_type,
+                ground           is ground_inst,
+                any              is any_inst,
+                constraint_store is mutable_decls,
+                equality         is equality_pred,
+                comparison       is comparison_pred.
+@end example
+
+The @samp{representation} attribute is mandatory
+@samp{ground_inst} and @samp{any_inst} default to @samp{ground},
+@samp{mutable_decls} is either a single mutable declaration
+(@pxref{Module-local mutable variables})
+or a comma separated list of mutable declarations in brackets,
+the equality and comparison attributes are optional (although a solver type
+without equality would not be very useful), and attributes must appear in the
+order shown.
+
+The @code{representation_type} is the type used to implement the
+@code{solver_type}.  A two-tier scheme of this kind is necessary for a
+number of reasons, including
+@itemize @bullet
+@item
+a semantic gap is necessary to accommodate the fact that non-ground
+@code{solver_type} values may be represented by ground
+@code{representation_type} values (in the context of the corresponding
+constraint solver state);
+@item
+this approach greatly simplifies the definition of equality and
+comparison predicates for the @code{solver_type}.
+@end itemize
+
+@c XXX The following paragraph describes the old support for automatic
+@c     initialisation of solver types.  We no longer officially support
+@c     automatic initialisation as part of the language but the compiler
+@c     still contains the code necessary to implement it.
+@c
+@c The @code{initialisation_pred} is the name of a predicate defined in the
+@c same module as the solver type, with the following signature:
+@c 
+@c @example
+@c :- pred initialisation_pred(solver_type::out(any)) is det.
+@c @end example
+@c 
+@c Calls to this predicate are inserted automatically by the compiler when a
+@c @code{free} @code{solver_type} variable has to be given inst @code{any}.
+@c (The initialisation predicate is responsible for registering the new,
+@c unbound variable with the corresponding constraint solver state.)
+
+The @code{ground_inst} is the inst associated with
+@code{representation_type} values denoting @code{ground}
+@code{solver_type} values.
+
+The @code{any_inst} is the inst associated with
+@code{representation_type} values denoting @code{any} @code{solver_type}
+values.
+
+The compiler constructs four impure functions for converting between
+@code{solver_type} values and @code{representation_type} values
+(@samp{name} is the function symbol used to name @code{solver_type} and
+@samp{arity} is the number of type parameters it takes):
+
+@example
+:- impure func 'representation of ground name/arity'(solver_type) =
+                        representation_type.
+:-        mode 'representation of ground name/arity'(in) =
+                        out(ground_inst) is det.
+
+:- impure func 'representation of any name/arity'(solver_type) =
+                        representation_type.
+:-        mode 'representation of any name/arity'(in(any)) =
+                        out(any_inst) is det.
+
+:- impure func 'representation to ground name/arity'(representation_type) =
+                        solver_type.
+:-        mode 'representation to ground name/arity'(in(ground_inst)) =
+                        out is det.
+
+:- impure func 'representation to any name/arity'(representation_type) =
+                        solver_type.
+:-        mode 'representation to any name/arity'(in(any_inst)) =
+                        out(any) is det.
+@end example
+
+These functions are impure because of the semantic gap issue mentioned
+above.
+
+These functions are constructed in-line as part of a source-to-source
+transformation, hence it is an error to define a solver type in the
+interface section of a module.
+
+If @code{solver_type} is exported then it is a requirement that
+@code{representation_type}, @code{initialisation_pred}, and, if
+specified, @code{equality_pred} and @code{comparison_pred} are also
+exported from the same module.
+
+If @code{equality_pred} is not specified then the compiler will
+generate an equality predicate that throws an exception of type
+@samp{exception.software_error/0} when called.
+
+Likewise, if @code{comparison_pred} is not specified then the compiler
+will generate a comparison predicate that throws an exception of
+type @samp{exception.software_error/0} when called.
+
+If provided, any mutable declarations given for the @code{constraint_store}
+attribute are equivalent to separate mutable declarations; their association
+with the solver type is for the purposes of documentation.  That is,
+
+@example
+:- solver type t
+	where ... constraint_store is [ mutable(a, int, 42, ground, []),
+					mutable(b, string, "Hi", ground, [])
+		  ],
+	      ...
+@end example
+
+@noindent
+is equivalent to
+
+@example
+:- solver type t
+	where ...
+:- mutable(a, int, 42, ground, []).
+:- mutable(b, string, "Hi", ground, []).
+@end example
+
+@node Implementing solver types
+@section Implementing solver types
+
+A solver type is an abstraction, implemented using a combination of a
+private representation type and a constraint store.
+
+The constraint store is an (impure) piece of state used to keep track of
+the extant constraints on variables of the solver type.  This will
+typically be implemented using foreign code.
+
+It is important that changes to the constraint store are properly 
+trailed (see @ref{Trailing}) so that changes can be undone on
+backtracking.
+
+The solver type implementation should provide functions and predicates
+to
+@itemize @bullet
+@item
+construct and deconstruct solver type values,
+@item
+to place constraints on solver type variables,
+@item
+to convert @code{any} solver type variables to @code{ground} if possible
+(this is obviously an impure operation --- see @ref{Impurity}),
+@item
+to convert solver type values to non-solver type values (again, this is
+impure and requires the argument solver type values be
+sufficiently ground),
+@item 
+to ask questions about the extant constraints on solver type variables
+without constraining them further (this too is impure because the set
+of constraints on a variable may change during execution of the
+program).
+@end itemize
+
+@node Solver types and negated contexts
+@section Solver types and negated contexts
+
+Mercury's negation and if-then-else goals
+(and hence also inequalities and universal quantifications)
+are implemented using @emph{negation as failure},
+meaning that the failure to find a proof of one statement is regarded as a
+proof of its negation.
+Negation as failure is sound provided that no non-local variable
+becomes further bound during the execution of a goal which may be negated.
+This includes negated goals themselves, as well as the conditions of
+if-then-elses, which are negated iff they fail without producing any solution,
+and the bodies of pred or func expressions, which may be called or applied
+in one of the other contexts, or indeed in another pred or func expression.
+
+Mercury checks that any solver variables that are used in the above contexts
+are used in such a way that negation as failure remains sound.
+In the case of negation and if-then-else goals,
+if any non-local solver type variable or higher order variable
+with inst @code{any} is used in a negated context,
+the goal must be placed inside a @code{promise_pure}, @code{promise_semipure},
+or @code{promise_impure} scope.
+The first two promises assert that (among other things)
+no solver variable becomes further bound in the negated context.
+The third promise makes the weaker assertion that the goal satisfies
+the requirements of all impure goals (namely, that it doesn't interfere
+with the semantics of other pure goals).
+
+In the case of pred and func expressions, Mercury allows three possibilities.
+The higher order value may be considered @code{ground}, which means that
+all non-local variables used in the body of the expression
+(including those with other higher order values) must themselves be ground.
+Higher order values that are ground can be safely called or applied
+in any context, including negated contexts, since none of their (ground)
+non-local variables can become further bound by doing so.
+Alternatively, the higher order value may be considered to have inst
+@code{any}, which allows non-local variables used in the body of the
+expression to have inst @code{any}.
+Calling or applying these values @emph{may} further bind non-local variables,
+so if this occurs in a negated context then,
+as in the case of solver variables, a promise will be required around the
+negation or if-then-else.
+
+Pred and func expressions with inst @code{any} are written using
+@code{any_pred} and @code{any_func} in place of @code{pred} and @code{func},
+respectively.
+
+The third possibility is that the higher order value can be given an
+impure type (@pxref{Higher-order impurity}).
+
 
 @node Trace goals
 @chapter Trace goals
