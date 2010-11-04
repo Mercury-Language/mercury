@@ -73,8 +73,8 @@ LIMITATIONS
   reach the end of the procedure to retry, the program will simply keep
   executing.  Press ^C to get back the debugger prompt.
 
-- When running on Mono, ^C sometimes causes the program to hang.
-  This appears to be a bug in Mono.
+- When running on Mono 2.8 and earlier, ^C can cause the program to hang.
+  This is fixed in later versions.
 
 - Exceptions are only handled in Java and C# grades.  Only a single EXCP event
   is generated when an exception is thrown, instead of propagating EXCP events
