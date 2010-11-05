@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim:ts=4 sw=4 expandtab
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -50,7 +50,13 @@
     %
 :- pred set_ctree234.empty(set_ctree234(_T)::in) is semidet.
 
-    % `set_ctree234.one_member(X, Set)' is true iff `X' is a member of `Set'.
+    % `set_ctree234.member(X, Set)' is true iff `X' is a member of `Set'.
+    %
+:- pred set_ctree234.member(T, set_ctree234(T)).
+:- mode set_ctree234.member(in, in) is semidet.
+:- mode set_ctree234.member(out, in) is nondet.
+
+    % `set_ctree234.one_member(Set, X)' is true iff `X' is a member of `Set'.
     %
 :- pred set_ctree234.one_member(set_ctree234(T)::in, T::out) is nondet.
 
@@ -311,6 +317,13 @@ set_ctree234.singleton_set(X, ct(1, two(X, empty, empty))).
 set_ctree234.make_singleton_set(X) = ct(1, two(X, empty, empty)).
 
 set_ctree234.empty(ct(0, _)).
+
+:- pragma promise_equivalent_clauses(set_ctree234.member/2).
+
+set_ctree234.member(E::in, Set::in) :-
+    set_ctree234.contains(Set, E).
+set_ctree234.member(E::out, Set::in) :-
+    set_ctree234.one_member(Set, E).
 
 set_ctree234.one_member(ct(_, Tin), E) :-
     set_ctree234.do_one_member(Tin, E).

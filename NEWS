@@ -32,6 +32,8 @@ Changes to the Mercury standard library:
 * We have added the predicates divide/4 and divide_by_set/4 to the tree_bitset
   module of the standard library.
 
+* We have added the predicate set_ctree234.member/2.
+
 Changes to the Mercury compiler:
 
 * Support for building and linking against frameworks on Mac OS X has
