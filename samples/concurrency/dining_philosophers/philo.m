@@ -28,6 +28,8 @@
 
 :- implementation.
 
+:- pragma require_feature_set([concurrency]).
+
 :- import_module thread.
 :- import_module thread.semaphore.
 
