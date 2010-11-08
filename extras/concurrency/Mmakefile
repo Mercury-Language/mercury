@@ -1,23 +1,23 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2000-2003, 2006 The University of Melbourne.
+# Copyright (C) 2000-2003, 2006, 2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
 INSTALL_PREFIX := $(INSTALL_PREFIX)/extras
 
-TESTS = philo philo2 philo3 midimon
+TESTS = midimon
 
 -include ../Mmake.params
 include Mercury.options
 
 default_target: all
 
-depend:		concurrency.depend $(TESTS:%=%.depend)
-all:		libconcurrency tests
-install:	libconcurrency.install
-clean:		concurrency.clean $(TESTS:%=%.clean)
-realclean:	concurrency.realclean $(TESTS:%=%.realclean)
+depend:		$(TESTS:%=%.depend)
+all:		tests
+install:
+clean:		$(TESTS:%=%.clean)
+realclean:	$(TESTS:%=%.realclean)
 tests:		$(TESTS)
 
 .PHONY: check
