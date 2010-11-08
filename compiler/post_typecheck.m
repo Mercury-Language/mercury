@@ -187,7 +187,7 @@ post_typecheck_do_finish_preds(ModuleInfo, ValidPredIdSet,
         NumBadErrors, [HeadAlwaysSpecs | TailAlwaysSpecs],
         [HeadNoTypeErrorSpecs | TailNoTypeErrorSpecs]) :-
     PredIdInfo0 = PredId - PredInfo0,
-    ( set_tree234.member(ValidPredIdSet, PredId) ->
+    ( set_tree234.contains(ValidPredIdSet, PredId) ->
         post_typecheck_do_finish_pred(ModuleInfo, PredId, PredInfo0, PredInfo,
             HeadNumBadErrors, HeadAlwaysSpecs, HeadNoTypeErrorSpecs)
     ;

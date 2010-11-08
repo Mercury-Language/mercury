@@ -169,7 +169,7 @@
 :- pred set_unordlist.remove_least(set_unordlist(T)::in, T::out,
     set_unordlist(T)::out) is semidet.
 
-    % `set_unordlist_union(SetA, SetB, Set)' is true iff `Set' is the union
+    % `set_unordlist.union(SetA, SetB, Set)' is true iff `Set' is the union
     % of `SetA' and `SetB'.  If the sets are known to be of different
     % sizes, then for efficiency make `SetA' the larger of the two.
     %

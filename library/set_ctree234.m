@@ -157,7 +157,7 @@
 :- pred set_ctree234.remove_least(T::out,
     set_ctree234(T)::in, set_ctree234(T)::out) is semidet.
 
-    % `set_ctree234(SetA, SetB) = Set' is true iff `Set' is the union
+    % `set_ctree234.union(SetA, SetB) = Set' is true iff `Set' is the union
     % of `SetA' and `SetB'.
     %
 :- pred set_ctree234.union(set_ctree234(T)::in, set_ctree234(T)::in,
@@ -193,7 +193,7 @@
 :- func set_ctree234.power_intersect(set_ctree234(set_ctree234(T)))
     = set_ctree234(T).
 
-    % `set_ctree234.intersect_list(A, B)' is true iff `B' is the
+    % `set_ctree234.intersect_list(A) = B' is true iff `B' is the
     % intersection of all the sets in `A'.
     %
 :- func set_ctree234.intersect_list(list(set_ctree234(T))) = set_ctree234(T).

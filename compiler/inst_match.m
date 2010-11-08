@@ -1372,7 +1372,7 @@ inst_is_ground(ModuleInfo, MaybeType, Inst) :-
     set_tree234(mer_inst)::in, set_tree234(mer_inst)::out) is semidet.
 
 inst_is_ground_1(ModuleInfo, MaybeType, Inst, !Expansions) :-
-    ( set_tree234.member(!.Expansions, Inst) ->
+    ( set_tree234.contains(!.Expansions, Inst) ->
         true
     ;
         ( Inst \= any(_, _) ->

@@ -168,7 +168,7 @@
     %
 :- pred set.remove_least(set(T)::in, T::out, set(T)::out) is semidet.
 
-    % `set_union(SetA, SetB, Set)' is true iff `Set' is the union of
+    % `set.union(SetA, SetB, Set)' is true iff `Set' is the union of
     % `SetA' and `SetB'.  If the sets are known to be of different
     % sizes, then for efficiency make `SetA' the larger of the two.
     % (The current implementation using sorted lists with duplicates

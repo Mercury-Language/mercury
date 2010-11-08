@@ -307,7 +307,7 @@ par_process_nonimported_procs_in_preds(ModuleInfo, Task, ValidPredIdSet,
         [PredIdInfo0 | PredIdsInfos0], [PredIdInfo | PredIdsInfos]) :-
     PredIdInfo0 = PredId - PredInfo0,
     (
-        set_tree234.member(ValidPredIdSet, PredId),
+        set_tree234.contains(ValidPredIdSet, PredId),
         ProcIds = pred_info_non_imported_procids(PredInfo0),
         ProcIds = [_ | _]
     ->

@@ -1310,7 +1310,7 @@ maybe_output_update_prof_counter(Info, Label, CallerLabel - ContLabelSet,
     % is empty anyway.
     ProfileTime = Info ^ lout_profile_time,
     (
-        set_tree234.member(ContLabelSet, Label),
+        set_tree234.contains(ContLabelSet, Label),
         ProfileTime = yes
     ->
         io.write_string("\tMR_update_prof_current_proc(MR_LABEL_AP(", !IO),

@@ -194,7 +194,7 @@ prepare_for_typecheck(ModuleInfo, ValidPredIdSet,
         [PredIdInfo0 | PredIdsInfos0], [PredIdInfo | PredIdsInfos]) :-
     some [!PredInfo] (
         PredIdInfo0 = PredId - !:PredInfo,
-        ( set_tree234.member(ValidPredIdSet, PredId) ->
+        ( set_tree234.contains(ValidPredIdSet, PredId) ->
             % Goal paths are used to identify typeclass constraints.
             fill_goal_path_slots_in_clauses(ModuleInfo, no, !PredInfo),
             maybe_add_field_access_function_clause(ModuleInfo, !PredInfo),
@@ -278,7 +278,7 @@ construct_type_inference_messages(ModuleInfo, ValidPredIdSet,
     pred_info_get_markers(PredInfo, Markers),
     (
         check_marker(Markers, marker_infer_type),
-        set_tree234.member(ValidPredIdSet, PredId),
+        set_tree234.contains(ValidPredIdSet, PredId),
         \+ pred_info_get_goal_type(PredInfo, goal_type_promise(_))
     ->
         Spec = construct_type_inference_message(PredInfo),
@@ -353,7 +353,7 @@ typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
         (
             pred_info_is_imported(PredInfo0)
         ;
-            not set_tree234.member(ValidPredIdSet, PredId)
+            not set_tree234.contains(ValidPredIdSet, PredId)
         )
     ->
         PredIdInfo = PredIdInfo0,

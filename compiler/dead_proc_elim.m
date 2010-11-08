@@ -318,7 +318,7 @@ dead_proc_examine(!.Queue, !.Examined, ModuleInfo, !Needed) :-
     % See if the queue is empty.
     ( svqueue.get(Entity, !Queue) ->
         % See if the next element has been examined before.
-        ( set_tree234.member(!.Examined, Entity) ->
+        ( set_tree234.contains(!.Examined, Entity) ->
             dead_proc_examine(!.Queue, !.Examined, ModuleInfo, !Needed)
         ;
             set_tree234.insert(Entity, !Examined),
@@ -1030,7 +1030,7 @@ dead_pred_elim_analyze(!DeadInfo) :-
         !.DeadInfo = pred_elim_info(ModuleInfo, !:Queue, !:Examined,
             !:Needed, NeededNames),
         ( svqueue.get(PredId, !Queue) ->
-            ( set_tree234.member(!.Examined, PredId) ->
+            ( set_tree234.contains(!.Examined, PredId) ->
                 !:DeadInfo = pred_elim_info(ModuleInfo, !.Queue, !.Examined,
                     !.Needed, NeededNames)
             ;
@@ -1131,7 +1131,7 @@ dead_pred_info_add_pred_name(Name, !DeadInfo) :-
     some [!Queue, !NeededNames] (
         !.DeadInfo = pred_elim_info(ModuleInfo, !:Queue, Examined,
             Needed, !:NeededNames),
-        ( set_tree234.member(!.NeededNames, Name) ->
+        ( set_tree234.contains(!.NeededNames, Name) ->
             true
         ;
             module_info_get_predicate_table(ModuleInfo, PredicateTable),

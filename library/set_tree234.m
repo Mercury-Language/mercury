@@ -42,11 +42,11 @@
     %
 :- pred set_tree234.empty(set_tree234(_T)::in) is semidet.
 
-    % `set_tree234.member(Set, X)' is true iff `X' is a member of `Set'.
+    % `set_tree234.member(X, Set)' is true iff `X' is a member of `Set'.
     %
-:- pred set_tree234.member(set_tree234(T), T).
+:- pred set_tree234.member(T, set_tree234(T)).
 :- mode set_tree234.member(in, in) is semidet.
-:- mode set_tree234.member(in, out) is nondet.
+:- mode set_tree234.member(out, in) is nondet.
 
     % `set_tree234.is_member(Set, X, Result)' returns
     % `Result = yes' iff `X' is a member of `Set'.
@@ -143,7 +143,7 @@
 :- pred set_tree234.remove_least(T::out,
     set_tree234(T)::in, set_tree234(T)::out) is semidet.
 
-    % `set_tree234_union(SetA, SetB) = Set' is true iff `Set' is the union
+    % `set_tree234.union(SetA, SetB) = Set' is true iff `Set' is the union
     % of `SetA' and `SetB'.
     %
 :- pred set_tree234.union(set_tree234(T)::in, set_tree234(T)::in,
@@ -303,9 +303,9 @@ set_tree234.empty(empty).
 
 :- pragma promise_equivalent_clauses(set_tree234.member/2).
 
-set_tree234.member(Set::in, Element::out) :-
+set_tree234.member(Element::out, Set::in) :-
     set_tree234.all_members(Set, Element).
-set_tree234.member(Set::in, Element::in) :-
+set_tree234.member(Element::in, Set::in) :-
     set_tree234.is_member(Set, Element) = yes.
 
 :- pred set_tree234.all_members(set_tree234(T)::in, T::out) is nondet.

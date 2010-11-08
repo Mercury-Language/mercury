@@ -43,7 +43,7 @@
     is det.
 :- func set_ordlist.sorted_list_to_set(list(T)) = set_ordlist(T).
 
-    % A synonym for set_ordrlist.sorted_list_to_set/1.
+    % A synonym for set_ordlist.sorted_list_to_set/1.
     %
 :- func set_ordlist.from_sorted_list(list(T)) = set_ordlist(T).
 
@@ -157,7 +157,7 @@
 :- pred set_ordlist.remove_least(set_ordlist(T)::in, T::out,
     set_ordlist(T)::out) is semidet.
 
-    % `set_ordlist_union(SetA, SetB, Set)' is true iff `Set' is the union
+    % `set_ordlist.union(SetA, SetB, Set)' is true iff `Set' is the union
     % of `SetA' and `SetB'. The efficiency of the union operation is
     % O(card(SetA)+card(SetB)) and is not sensitive to the argument
     % ordering.
@@ -199,9 +199,9 @@
 :- func set_ordlist.power_intersect(set_ordlist(set_ordlist(T)))
     = set_ordlist(T).
 
-    % `set_ordlist.intersect_list(A, B)' is true iff `B' is the
+    % `set_ordlist.intersect_list(A) = B' is true iff `B' is the
     % intersection of all the sets in `A'.
-
+    %
 :- func set_ordlist.intersect_list(list(set_ordlist(T))) = set_ordlist(T).
 
     % `set_ordlist.difference(SetA, SetB, Set)' is true iff `Set' is the

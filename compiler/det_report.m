@@ -902,7 +902,7 @@ det_diagnose_missing_consids(ConsIds, Cases, MissingConsIds) :-
 find_uncovered_consids([], _, !RevMissingConsIds).
 find_uncovered_consids([ConsId | ConsIds], CoveredConsIds,
         !RevMissingConsIds) :-
-    ( set_tree234.member(CoveredConsIds, ConsId) ->
+    ( set_tree234.contains(CoveredConsIds, ConsId) ->
         true
     ;
         !:RevMissingConsIds = [ConsId | !.RevMissingConsIds]

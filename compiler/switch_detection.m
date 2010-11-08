@@ -152,7 +152,7 @@ detect_switches_in_preds(_, _, [], []).
 detect_switches_in_preds(Info, ValidPredIdSet,
         [PredIdInfo0 | PredIdsInfos0], [PredIdInfo | PredIdsInfos]) :-
     PredIdInfo0 = PredId - PredInfo0,
-    ( set_tree234.member(ValidPredIdSet, PredId) ->
+    ( set_tree234.contains(ValidPredIdSet, PredId) ->
         detect_switches_in_pred(Info, PredId, PredInfo0, PredInfo),
         PredIdInfo = PredId - PredInfo
     ;
@@ -444,7 +444,7 @@ convert_cases_table(GoalInfo, CasesTable) = SortedCases :-
 
 convert_case(GoalInfo, ConflictConsIds, ConsId - Entry, !Cases,
         !AlreadyHandledConsIds) :-
-    ( set_tree234.member(!.AlreadyHandledConsIds, ConsId) ->
+    ( set_tree234.contains(!.AlreadyHandledConsIds, ConsId) ->
         Entry = cons_id_entry(State, _ArmCord),
         expect(unify(State, cons_id_has_one_multi), this_file,
             "convert_case: already handled but not cons_id_has_one_multi")

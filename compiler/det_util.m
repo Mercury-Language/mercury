@@ -143,7 +143,7 @@ delete_unreachable_cases(Cases0, PossibleConsIds, Cases) :-
 delete_unreachable_cases_2([], _PossibleConsIdSet, !RevCases).
 delete_unreachable_cases_2([Case0 | Cases0], PossibleConsIdSet, !RevCases) :-
     Case0 = case(MainConsId0, OtherConsIds0, Goal),
-    ( set_tree234.member(PossibleConsIdSet, MainConsId0) ->
+    ( set_tree234.contains(PossibleConsIdSet, MainConsId0) ->
         list.filter(set_tree234.contains(PossibleConsIdSet),
             OtherConsIds0, OtherConsIds),
         Case = case(MainConsId0, OtherConsIds, Goal),

@@ -737,7 +737,7 @@ format_call_traverse_unify(Unification, CurId, !ConjMaps, !PredMap,
         !RelevantVars) :-
     (
         Unification = assign(TargetVar, SourceVar),
-        ( set_tree234.member(!.RelevantVars, TargetVar) ->
+        ( set_tree234.contains(!.RelevantVars, TargetVar) ->
             set_tree234.delete(TargetVar, !RelevantVars),
             set_tree234.insert(SourceVar, !RelevantVars),
             ConjMap0 = get_conj_map(!.ConjMaps, CurId),
@@ -750,7 +750,7 @@ format_call_traverse_unify(Unification, CurId, !ConjMaps, !PredMap,
         )
     ;
         Unification = construct(CellVar, ConsId, ArgVars, _, _, _, _),
-        ( set_tree234.member(!.RelevantVars, CellVar) ->
+        ( set_tree234.contains(!.RelevantVars, CellVar) ->
             ConjMap0 = get_conj_map(!.ConjMaps, CurId),
             ConjMap0 = conj_map(StringMap0, ListMap0, ElementMap0, EqvMap0),
             (

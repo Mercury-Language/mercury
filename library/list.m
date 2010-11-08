@@ -1890,7 +1890,7 @@ list.remove_dups(Xs, Ys) :-
 
 list.remove_dups_2([], _SoFar, []).
 list.remove_dups_2([X | Xs], SoFar0, Zs) :-
-    ( set_tree234.member(SoFar0, X) ->
+    ( set_tree234.contains(SoFar0, X) ->
         list.remove_dups_2(Xs, SoFar0, Zs)
     ;
         set_tree234.insert(X, SoFar0, SoFar),
