@@ -803,6 +803,8 @@
     in, in, out, in, out, in, out) is semidet.
 :- mode list.foldl3(pred(in, in, out, in, out, mdi, muo) is semidet,
     in, in, out, in, out, mdi, muo) is semidet.
+:- mode list.foldl3(pred(in, in, out, in, out, di, uo) is semidet,
+    in, in, out, in, out, di, uo) is semidet.
 :- mode list.foldl3(pred(in, in, out, in, out, in, out) is nondet,
     in, in, out, in, out, in, out) is nondet.
 :- mode list.foldl3(pred(in, in, out, in, out, mdi, muo) is nondet,
@@ -833,6 +835,8 @@
     in, in, out, in, out, in, out, in, out) is semidet.
 :- mode list.foldl4(pred(in, in, out, in, out, in, out, mdi, muo) is semidet,
     in, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode list.foldl4(pred(in, in, out, in, out, in, out, di, uo) is semidet,
+    in, in, out, in, out, in, out, di, uo) is semidet.
 :- mode list.foldl4(pred(in, in, out, in, out, in, out, in, out) is nondet,
     in, in, out, in, out, in, out, in, out) is nondet.
 :- mode list.foldl4(pred(in, in, out, in, out, in, out, mdi, muo) is nondet,
@@ -860,6 +864,9 @@
 :- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, mdi, muo)
     is semidet,
     in, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, di, uo)
+    is semidet,
+    in, in, out, in, out, in, out, in, out, di, uo) is semidet.
 :- mode list.foldl5(pred(in, in, out, in, out, in, out, in, out, in, out)
     is nondet,
     in, in, out, in, out, in, out, in, out, in, out) is nondet.

@@ -1,10 +1,10 @@
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
-%------------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999-2006 The University of Melbourne.
+%-----------------------------------------------------------------------------%
+% Copyright (C) 1995-1997, 1999-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % 
 % File: set_bbbtree.m.
 % Main authors: benyi.
@@ -12,8 +12,8 @@
 % 
 % This module implements sets using bounded balanced binary trees.
 % 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module set_bbbtree.
 :- interface.
@@ -21,14 +21,14 @@
 :- import_module bool.
 :- import_module list.
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- type set_bbbtree(T).
 
     % `set_bbbtree.init(Set)' returns an initialized empty set.
     %
-:- pred set_bbbtree.init(set_bbbtree(T)::uo) is det.
 :- func set_bbbtree.init = set_bbbtree(T).
+:- pred set_bbbtree.init(set_bbbtree(T)::uo) is det.
 
     % `set_bbbtree.empty(Set) is true iff `Set' is contains no elements.
     %
@@ -268,6 +268,89 @@
 :- mode set_bbbtree.filter_map(func(in) = out is semidet, in) = out is det.
 
 :- func set_bbbtree.fold(func(T1, T2) = T2, set_bbbtree(T1), T2) = T2.
+:- pred set_bbbtree.fold(pred(T1, T2, T2), set_bbbtree(T1), T2, T2).
+:- mode set_bbbtree.fold(pred(in, in, out) is det, in, in, out) is det.
+:- mode set_bbbtree.fold(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode set_bbbtree.fold(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode set_bbbtree.fold(pred(in, in, out) is semidet, in, in, out)
+    is semidet.
+:- mode set_bbbtree.fold(pred(in, mdi, muo) is semidet, in, mdi, muo)
+    is semidet.
+:- mode set_bbbtree.fold(pred(in, di, uo) is semidet, in, di, uo)
+    is semidet.
+
+:- pred set_bbbtree.fold2(pred(T1, T2, T2, T3, T3), set_bbbtree(T1),
+    T2, T2, T3, T3).
+:- mode set_bbbtree.fold2(pred(in, in, out, in, out) is det, in,
+    in, out, in, out) is det.
+:- mode set_bbbtree.fold2(pred(in, in, out, mdi, muo) is det, in,
+    in, out, mdi, muo) is det.
+:- mode set_bbbtree.fold2(pred(in, in, out, di, uo) is det, in,
+    in, out, di, uo) is det.
+:- mode set_bbbtree.fold2(pred(in, in, out, in, out) is semidet, in,
+    in, out, in, out) is semidet.
+:- mode set_bbbtree.fold2(pred(in, in, out, mdi, muo) is semidet, in,
+    in, out, mdi, muo) is semidet.
+:- mode set_bbbtree.fold2(pred(in, in, out, di, uo) is semidet, in,
+    in, out, di, uo) is semidet.
+
+:- pred set_bbbtree.fold3(pred(T1, T2, T2, T3, T3, T4, T4),
+    set_bbbtree(T1), T2, T2, T3, T3, T4, T4).
+:- mode set_bbbtree.fold3(pred(in, in, out, in, out, in, out) is det, in,
+    in, out, in, out, in, out) is det.
+:- mode set_bbbtree.fold3(pred(in, in, out, in, out, mdi, muo) is det, in,
+    in, out, in, out, mdi, muo) is det.
+:- mode set_bbbtree.fold3(pred(in, in, out, in, out, di, uo) is det, in,
+    in, out, in, out, di, uo) is det.
+:- mode set_bbbtree.fold3(pred(in, in, out, in, out, in, out) is semidet, in,
+    in, out, in, out, in, out) is semidet.
+:- mode set_bbbtree.fold3(pred(in, in, out, in, out, mdi, muo) is semidet, in,
+    in, out, in, out, mdi, muo) is semidet.
+:- mode set_bbbtree.fold3(pred(in, in, out, in, out, di, uo) is semidet, in,
+    in, out, in, out, di, uo) is semidet.
+
+:- pred set_bbbtree.fold4(pred(T1, T2, T2, T3, T3, T4, T4, T5, T5),
+    set_bbbtree(T1), T2, T2, T3, T3, T4, T4, T5, T5).
+:- mode set_bbbtree.fold4(
+    pred(in, in, out, in, out, in, out, in, out) is det, in,
+    in, out, in, out, in, out, in, out) is det.
+:- mode set_bbbtree.fold4(
+    pred(in, in, out, in, out, in, out, mdi, muo) is det, in,
+    in, out, in, out, in, out, mdi, muo) is det.
+:- mode set_bbbtree.fold4(
+    pred(in, in, out, in, out, in, out, di, uo) is det, in,
+    in, out, in, out, in, out, di, uo) is det.
+:- mode set_bbbtree.fold4(
+    pred(in, in, out, in, out, in, out, in, out) is semidet, in,
+    in, out, in, out, in, out, in, out) is semidet.
+:- mode set_bbbtree.fold4(
+    pred(in, in, out, in, out, in, out, mdi, muo) is semidet, in,
+    in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode set_bbbtree.fold4(
+    pred(in, in, out, in, out, in, out, di, uo) is semidet, in,
+    in, out, in, out, in, out, di, uo) is semidet.
+
+:- pred set_bbbtree.fold5(
+    pred(T1, T2, T2, T3, T3, T4, T4, T5, T5, T6, T6),
+    set_bbbtree(T1), T2, T2, T3, T3, T4, T4, T5, T5, T6, T6).
+:- mode set_bbbtree.fold5(
+    pred(in, in, out, in, out, in, out, in, out, in, out) is det, in,
+    in, out, in, out, in, out, in, out, in, out) is det.
+:- mode set_bbbtree.fold5(
+    pred(in, in, out, in, out, in, out, in, out, mdi, muo) is det, in,
+    in, out, in, out, in, out, in, out, mdi, muo) is det.
+:- mode set_bbbtree.fold5(
+    pred(in, in, out, in, out, in, out, in, out, di, uo) is det, in,
+    in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode set_bbbtree.fold5(
+    pred(in, in, out, in, out, in, out, in, out, in, out) is semidet, in,
+    in, out, in, out, in, out, in, out, in, out) is semidet.
+:- mode set_bbbtree.fold5(
+    pred(in, in, out, in, out, in, out, in, out, mdi, muo) is semidet, in,
+    in, out, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode set_bbbtree.fold5(
+    pred(in, in, out, in, out, in, out, in, out, di, uo) is semidet, in,
+    in, out, in, out, in, out, in, out, di, uo) is semidet.
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -319,7 +402,7 @@
 
 :- type set_bbbtree(T)
     --->    empty
-    ;   tree(T, int, set_bbbtree(T), set_bbbtree(T)).
+    ;       tree(T, int, set_bbbtree(T), set_bbbtree(T)).
 
     % `set_bbbtree.def_ratio(Ratio)' returns the ratio that is used in
     % deciding whether two trees require re-balancing.
@@ -825,14 +908,14 @@ set_bbbtree.intersect_list_r(Intersect0, [Set | Sets], Ratio) =
         set_bbbtree.intersect_list_r(Intersect1, Sets, Ratio) :-
     set_bbbtree.intersect_r(Intersect0, Set, Intersect1, Ratio).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 % elem(x, A) and not elem(x, B) implies
 %
 % A difference B =
-%                   ( { elem(x, A) | x < a } difference { elem(x, B) | x < a } )
-%             union ( { a } )
-%             union ( { elem(x, A) | x > a } difference { elem(x, B) | x > a } )
+%               ( { elem(x, A) | x < a } difference { elem(x, B) | x < a } )
+%         union ( { a } )
+%         union ( { elem(x, A) | x > a } difference { elem(x, B) | x > a } )
 
 set_bbbtree.difference(SetA, SetB, Set) :-
     set_bbbtree.def_ratio(Ratio),
@@ -853,19 +936,19 @@ set_bbbtree.difference_r(tree(V, _N, LL, LR), R, Set, Ratio) :-
         set_bbbtree.concat4(LSet, RSet, V, Set, Ratio)
     ).
 
-%------------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
 
 set_bbbtree.subset(SetA, SetB) :-
     set_bbbtree.difference(SetA, SetB, Set),
     set_bbbtree.empty(Set).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 set_bbbtree.superset(SetA, SetB) :-
     set_bbbtree.subset(SetB, SetA).
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % Given X, L and R create a new tree who's root is X,
     % left subtree is L and right subtree is R.
@@ -880,7 +963,7 @@ set_bbbtree.build_node(X, L, R, Tree) :-
     Tree0 = tree(X, N, L, R),
     unsafe_promise_unique(Tree0, Tree).
 
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
     % Single rotation to the left.
     %
@@ -1144,6 +1227,29 @@ set_bbbtree.split_gt(tree(V, _N, L, R), X, Set, Ratio) :-
         Set = R
     ).
 
+%-----------------------------------------------------------------------------%
+
+% XXX we should just traverse the tree directly instead of converting
+%     to a sorted list first.
+
+set_bbbtree.fold(F, S, A) = B :-
+    B = list.foldl(F, set_bbbtree.to_sorted_list(S), A).
+
+set_bbbtree.fold(P, S, !A) :-
+    list.foldl(P, set_bbbtree.to_sorted_list(S), !A).
+
+set_bbbtree.fold2(P, S, !A, !B) :-
+    list.foldl2(P, set_bbbtree.to_sorted_list(S), !A, !B).
+
+set_bbbtree.fold3(P, S, !A, !B, !C) :-
+    list.foldl3(P, set_bbbtree.to_sorted_list(S), !A, !B, !C).
+
+set_bbbtree.fold4(P, S, !A, !B, !C, !D) :-
+    list.foldl4(P, set_bbbtree.to_sorted_list(S), !A, !B, !C, !D).
+
+set_bbbtree.fold5(P, S, !A, !B, !C, !D, !E) :-
+    list.foldl5(P, set_bbbtree.to_sorted_list(S), !A, !B, !C, !D, !E).
+
 %--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cam.sri.com> 24/04/99
@@ -1199,5 +1305,6 @@ set_bbbtree.filter_map(PF, S1) = S2 :-
     S2 = set_bbbtree.list_to_set(list.filter_map(PF,
         set_bbbtree.to_sorted_list(S1))).
 
-set_bbbtree.fold(F, S, A) = B :-
-    B = list.foldl(F, set_bbbtree.to_sorted_list(S), A).
+%-----------------------------------------------------------------------------%
+:- end_module set_bbbtree.
+%-----------------------------------------------------------------------------%

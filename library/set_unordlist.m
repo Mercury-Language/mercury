@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997,1999-2002, 2004-2006 The University of Melbourne.
+% Copyright (C) 1995-1997,1999-2002, 2004-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -235,6 +235,89 @@
 :- mode set_unordlist.filter_map(func(in) = out is semidet, in) = out is det.
 
 :- func set_unordlist.fold(func(T1, T2) = T2, set_unordlist(T1), T2) = T2.
+:- pred set_unordlist.fold(pred(T1, T2, T2), set_unordlist(T1), T2, T2).
+:- mode set_unordlist.fold(pred(in, in, out) is det, in, in, out) is det.
+:- mode set_unordlist.fold(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode set_unordlist.fold(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode set_unordlist.fold(pred(in, in, out) is semidet, in, in, out)
+    is semidet.
+:- mode set_unordlist.fold(pred(in, mdi, muo) is semidet, in, mdi, muo)
+    is semidet.
+:- mode set_unordlist.fold(pred(in, di, uo) is semidet, in, di, uo)
+    is semidet.
+
+:- pred set_unordlist.fold2(pred(T1, T2, T2, T3, T3), set_unordlist(T1),
+    T2, T2, T3, T3).
+:- mode set_unordlist.fold2(pred(in, in, out, in, out) is det, in,
+    in, out, in, out) is det.
+:- mode set_unordlist.fold2(pred(in, in, out, mdi, muo) is det, in,
+    in, out, mdi, muo) is det.
+:- mode set_unordlist.fold2(pred(in, in, out, di, uo) is det, in,
+    in, out, di, uo) is det.
+:- mode set_unordlist.fold2(pred(in, in, out, in, out) is semidet, in,
+    in, out, in, out) is semidet.
+:- mode set_unordlist.fold2(pred(in, in, out, mdi, muo) is semidet, in,
+    in, out, mdi, muo) is semidet.
+:- mode set_unordlist.fold2(pred(in, in, out, di, uo) is semidet, in,
+    in, out, di, uo) is semidet.
+
+:- pred set_unordlist.fold3(pred(T1, T2, T2, T3, T3, T4, T4),
+    set_unordlist(T1), T2, T2, T3, T3, T4, T4).
+:- mode set_unordlist.fold3(pred(in, in, out, in, out, in, out) is det, in,
+    in, out, in, out, in, out) is det.
+:- mode set_unordlist.fold3(pred(in, in, out, in, out, mdi, muo) is det, in,
+    in, out, in, out, mdi, muo) is det.
+:- mode set_unordlist.fold3(pred(in, in, out, in, out, di, uo) is det, in,
+    in, out, in, out, di, uo) is det.
+:- mode set_unordlist.fold3(pred(in, in, out, in, out, in, out) is semidet, in,
+    in, out, in, out, in, out) is semidet.
+:- mode set_unordlist.fold3(pred(in, in, out, in, out, mdi, muo) is semidet, in,
+    in, out, in, out, mdi, muo) is semidet.
+:- mode set_unordlist.fold3(pred(in, in, out, in, out, di, uo) is semidet, in,
+    in, out, in, out, di, uo) is semidet.
+
+:- pred set_unordlist.fold4(pred(T1, T2, T2, T3, T3, T4, T4, T5, T5),
+    set_unordlist(T1), T2, T2, T3, T3, T4, T4, T5, T5).
+:- mode set_unordlist.fold4(
+    pred(in, in, out, in, out, in, out, in, out) is det, in,
+    in, out, in, out, in, out, in, out) is det.
+:- mode set_unordlist.fold4(
+    pred(in, in, out, in, out, in, out, mdi, muo) is det, in,
+    in, out, in, out, in, out, mdi, muo) is det.
+:- mode set_unordlist.fold4(
+    pred(in, in, out, in, out, in, out, di, uo) is det, in,
+    in, out, in, out, in, out, di, uo) is det.
+:- mode set_unordlist.fold4(
+    pred(in, in, out, in, out, in, out, in, out) is semidet, in,
+    in, out, in, out, in, out, in, out) is semidet.
+:- mode set_unordlist.fold4(
+    pred(in, in, out, in, out, in, out, mdi, muo) is semidet, in,
+    in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode set_unordlist.fold4(
+    pred(in, in, out, in, out, in, out, di, uo) is semidet, in,
+    in, out, in, out, in, out, di, uo) is semidet.
+
+:- pred set_unordlist.fold5(
+    pred(T1, T2, T2, T3, T3, T4, T4, T5, T5, T6, T6),
+    set_unordlist(T1), T2, T2, T3, T3, T4, T4, T5, T5, T6, T6).
+:- mode set_unordlist.fold5(
+    pred(in, in, out, in, out, in, out, in, out, in, out) is det, in,
+    in, out, in, out, in, out, in, out, in, out) is det.
+:- mode set_unordlist.fold5(
+    pred(in, in, out, in, out, in, out, in, out, mdi, muo) is det, in,
+    in, out, in, out, in, out, in, out, mdi, muo) is det.
+:- mode set_unordlist.fold5(
+    pred(in, in, out, in, out, in, out, in, out, di, uo) is det, in,
+    in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode set_unordlist.fold5(
+    pred(in, in, out, in, out, in, out, in, out, in, out) is semidet, in,
+    in, out, in, out, in, out, in, out, in, out) is semidet.
+:- mode set_unordlist.fold5(
+    pred(in, in, out, in, out, in, out, in, out, mdi, muo) is semidet, in,
+    in, out, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode set_unordlist.fold5(
+    pred(in, in, out, in, out, in, out, in, out, di, uo) is semidet, in,
+    in, out, in, out, in, out, in, out, di, uo) is semidet.
 
     % set_unordlist.divide(Pred, Set, TruePart, FalsePart):
     % TruePart consists of those elements of Set for which Pred succeeds;
@@ -383,6 +466,26 @@ set_unordlist.difference_2([E | Es], A, C) :-
     set_unordlist.difference_2(Es, B, C).
 
 %-----------------------------------------------------------------------------%
+
+set_unordlist.fold(F, S, A) = B :-
+    B = list.foldl(F, set_unordlist.to_sorted_list(S), A).
+
+set_unordlist.fold(P, S, !A) :-
+    list.foldl(P, set_unordlist.to_sorted_list(S), !A).
+
+set_unordlist.fold2(P, S, !A, !B) :-
+    list.foldl2(P, set_unordlist.to_sorted_list(S), !A, !B).
+
+set_unordlist.fold3(P, S, !A, !B, !C) :-
+    list.foldl3(P, set_unordlist.to_sorted_list(S), !A, !B, !C).
+
+set_unordlist.fold4(P, S, !A, !B, !C, !D) :-
+    list.foldl4(P, set_unordlist.to_sorted_list(S), !A, !B, !C, !D).
+
+set_unordlist.fold5(P, S, !A, !B, !C, !D, !E) :-
+    list.foldl5(P, set_unordlist.to_sorted_list(S), !A, !B, !C, !D, !E).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cam.sri.com> 24/04/99
 %   Function forms added.
@@ -437,9 +540,6 @@ set_unordlist.filter_map(PF, S1) = S2 :-
     S2 = set_unordlist.list_to_set(list.filter_map(PF,
         set_unordlist.to_sorted_list(S1))).
 
-set_unordlist.fold(F, S, A) = B :-
-    B = list.foldl(F, set_unordlist.to_sorted_list(S), A).
-
 set_unordlist.divide(Pred, Set, RevTruePart, RevFalsePart) :-
     set_unordlist.divide_2(Pred, Set, [], RevTruePart, [], RevFalsePart).
 
@@ -456,3 +556,7 @@ set_unordlist.divide_2(Pred, [H | T], !RevTrue, !RevFalse) :-
         !:RevFalse = [H | !.RevFalse]
     ),
     set_unordlist.divide_2(Pred, T, !RevTrue, !RevFalse).
+
+%-----------------------------------------------------------------------------%
+:- end_module set_unordlist.
+%-----------------------------------------------------------------------------%

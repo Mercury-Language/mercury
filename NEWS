@@ -28,11 +28,20 @@ Changes to the Mercury standard library:
 
   + We added a new predicate list.map3_foldl/7 which maps over a list producing
     three lists and one folded value.
+  
+  + We added semidet modes with unique accumulators for list.foldl3/8,
+    list.foldl4/10, and list.foldl5/12.
 
 * We have added the predicates divide/4 and divide_by_set/4 to the tree_bitset
   module of the standard library.
 
 * We have added the predicate set_ctree234.member/2.
+
+* All of the modules in the standard library that implement the set ADT,
+  (set, set_ordlist, set_unordlist, set_bbbtree, set_tree234,
+  and set_ctree234), now support folding over sets with up to five
+  accumulators.  Modes that provide unique and mostly-unique accumulators
+  for set fold have also been added.
 
 Changes to the Mercury compiler:
 

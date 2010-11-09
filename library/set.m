@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999-2009 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -29,8 +29,8 @@
 
     % `set.init(Set)' is true iff `Set' is an empty set.
     %
-:- pred set.init(set(T)::uo) is det.
 :- func set.init = set(T).
+:- pred set.init(set(T)::uo) is det.
 
     % `set.list_to_set(List, Set)' is true iff `Set' is the set
     % containing only the members of `List'.
@@ -281,24 +281,61 @@
     in, out, di, uo) is det.
 :- mode set.fold2(pred(in, in, out, in, out) is semidet,
     in, in, out, in, out) is semidet.
+:- mode set.fold2(pred(in, in, out, mdi, muo) is semidet,
+    in, in, out, mdi, muo) is semidet.
+:- mode set.fold2(pred(in, in, out, di, uo) is semidet,
+    in, in, out, di, uo) is semidet.
 
 :- pred set.fold3(pred(T, A, A, B, B, C, C), set(T), A, A, B, B, C, C).
-:- mode set.fold3(pred(in, in, out, in, out, di, uo) is det, in,
-    in, out, in, out, di, uo) is det.
 :- mode set.fold3(pred(in, in, out, in, out, in, out) is det, in,
     in, out, in, out, in, out) is det.
+:- mode set.fold3(pred(in, in, out, in, out, mdi, muo) is det, in,
+    in, out, in, out, mdi, muo) is det.
+:- mode set.fold3(pred(in, in, out, in, out, di, uo) is det, in,
+    in, out, in, out, di, uo) is det.
 :- mode set.fold3(pred(in, in, out, in, out, in, out) is semidet, in,
     in, out, in, out, in, out) is semidet.
+:- mode set.fold3(pred(in, in, out, in, out, mdi, muo) is semidet, in,
+    in, out, in, out, mdi, muo) is semidet.
+:- mode set.fold3(pred(in, in, out, in, out, di, uo) is semidet, in,
+    in, out, in, out, di, uo) is semidet.
 
 :- pred set.fold4(pred(T, A, A, B, B, C, C, D, D), set(T), A, A, B, B,
-        C, C, D, D).
+    C, C, D, D).
 :- mode set.fold4(pred(in, in, out, in, out, in, out, in, out) is det, in,
     in, out, in, out, in, out, in, out) is det.
+:- mode set.fold4(pred(in, in, out, in, out, in, out, mdi, muo) is det, in,
+    in, out, in, out, in, out, mdi, muo) is det.
 :- mode set.fold4(pred(in, in, out, in, out, in, out, di, uo) is det, in,
     in, out, in, out, in, out, di, uo) is det.
 :- mode set.fold4(pred(in, in, out, in, out, in, out, in, out) is semidet, in,
     in, out, in, out, in, out, in, out) is semidet.
-    
+:- mode set.fold4(pred(in, in, out, in, out, in, out, mdi, muo) is semidet, in,
+    in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode set.fold4(pred(in, in, out, in, out, in, out, di, uo) is semidet, in,
+    in, out, in, out, in, out, di, uo) is semidet.
+
+:- pred set.fold5(pred(T, A, A, B, B, C, C, D, D, E, E), set(T), A, A, B, B,
+    C, C, D, D, E, E).
+:- mode set.fold5(
+    pred(in, in, out, in, out, in, out, in, out, in, out) is det, 
+    in, in, out, in, out, in, out, in, out, in, out) is det.
+:- mode set.fold5(
+    pred(in, in, out, in, out, in, out, in, out, mdi, muo) is det, 
+    in, in, out, in, out, in, out, in, out, mdi, muo) is det.
+:- mode set.fold5(
+    pred(in, in, out, in, out, in, out, in, out, di, uo) is det, 
+    in, in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode set.fold5(
+    pred(in, in, out, in, out, in, out, in, out, in, out) is semidet, 
+    in, in, out, in, out, in, out, in, out, in, out) is semidet.
+:- mode set.fold5(
+    pred(in, in, out, in, out, in, out, in, out, mdi, muo) is semidet, 
+    in, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode set.fold5(
+    pred(in, in, out, in, out, in, out, in, out, di, uo) is semidet, 
+    in, in, out, in, out, in, out, in, out, di, uo) is semidet.
+ 
     % set.divide(Pred, Set, TruePart, FalsePart):
     % TruePart consists of those elements of Set for which Pred succeeds;
     % FalsePart consists of those elements of Set for which Pred fails.
@@ -535,6 +572,9 @@ set.fold3(F, S, !A, !B, !C) :-
 
 set.fold4(F, S, !A, !B, !C, !D) :-
     list.foldl4(F, set.to_sorted_list(S), !A, !B, !C, !D).
+
+set.fold5(F, S, !A, !B, !C, !D, !E) :-
+    list.foldl5(F, set.to_sorted_list(S), !A, !B, !C, !D, !E).
 
 set.divide(P, Set, TruePart, FalsePart) :-
     set_ordlist.divide(P, Set, TruePart, FalsePart).
