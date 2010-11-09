@@ -14,10 +14,10 @@
 
 :- implementation.
 
-:- import_module global.
+:- pragma require_feature_set([concurrency]).
+
+:- import_module concurrent_stream.
 :- import_module midi.
-:- import_module spawn.
-:- import_module stream.
 
 :- import_module bool.
 :- import_module char.
@@ -27,6 +27,7 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
+:- import_module thread.
 
 %----------------------------------------------------------------------------%
 
@@ -63,7 +64,8 @@ main(!IO) :-
     ;
         MOpts = error(Msg),
         io.stderr_stream(StdErr, !IO),
-        io.format(StdErr, "%s\n", [s(Msg)], !IO)
+        io.format(StdErr, "%s\n", [s(Msg)], !IO),
+        io.set_exit_status(1, !IO)
     ).
 
 :- pred open_input(maybe(string)::in, bool::out, io::di, io::uo) is det.
@@ -99,7 +101,8 @@ open_input(yes(FileName), Opened, !IO) :-
         )
     ).
 
-:- pred read_input(stream(byte)::in, io::di, io::uo) is det.
+:- pred read_input(concurrent_stream(byte)::in,
+    io::di, io::uo) is det.
 
 read_input(Stream, !IO) :-
     io.read_byte(Res0, !IO),
@@ -116,19 +119,22 @@ read_input(Stream, !IO) :-
         read_input(Stream, !IO)
     ).
 
-:- pred print_messages(stream(message)::in, io::di, io::uo) is det.
+:- pred print_messages(concurrent_stream(message)::in,
+    io::di, io::uo) is det.
 
-print_messages(Stream) -->
-    get(Stream, Res0),
+print_messages(Stream, !IO) :-
+    get(Stream, Res0, !IO),
     (
-        { Res0 = ok(Msg) },
-        write(Msg), write_string(".\n"),
-        print_messages(Stream)
+        Res0 = ok(Msg),
+        io.write(Msg, !IO),
+        io.write_string(".\n", !IO),
+        print_messages(Stream, !IO)
     ;
-        { Res0 = end }
+        Res0 = end 
     ;
-        { Res0 = error(Msg) },
-        write_string(Msg), nl
+        Res0 = error(Msg),
+        io.write_string(Msg, !IO),
+        io.nl(!IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -168,4 +174,5 @@ help(!IO) :-
     ], !IO).
 
 %-----------------------------------------------------------------------------%
+:- end_module midimon.
 %-----------------------------------------------------------------------------%

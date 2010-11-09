@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000, 2006 The University of Melbourne.
+% Copyright (C) 2000, 2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,7 +20,7 @@
 :- module midi.
 :- interface.
 
-:- import_module stream.
+:- import_module concurrent_stream.
 
 :- import_module io.
 :- import_module list.
@@ -80,14 +80,14 @@
     % Reads from a concurrent stream of bytes and puts its outputs
     % on to a concurrent stream of midi messages.
     %
-:- pred read_midi(stream(byte)::in, stream(message)::in, io::di, io::uo)
-    is det.
+:- pred read_midi(concurrent_stream(byte)::in, concurrent_stream(message)::in,
+    io::di, io::uo) is det.
 
     % Reads from a concurrent stream of messages, and puts the messages
     % on to a concurrent stream of bytes.
     %
-:- pred write_midi(stream(message)::in, stream(byte)::in, io::di, io::uo)
-    is det.
+:- pred write_midi(concurrent_stream(message)::in, concurrent_stream(byte)::in,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -160,8 +160,8 @@
 read_midi(Ins, Outs, !IO) :-
     byte0(none, Ins, Outs, !IO).
 
-:- pred byte0(status::in, stream(byte)::in, stream(message)::in,
-    io::di, io::uo) is det.
+:- pred byte0(status::in, concurrent_stream(byte)::in,
+    concurrent_stream(message)::in, io::di, io::uo) is det.
 
 byte0(Status, Ins, Outs, !IO) :-
     get(Ins, Res0, !IO),
@@ -177,8 +177,9 @@ byte0(Status, Ins, Outs, !IO) :-
         byte0a(MSN, LSN, Status, Ins, Outs, !IO)
     ).
 
-:- pred byte0a(hex::in, hex::in, status::in, stream(byte)::in,
-    stream(message)::in, io::di, io::uo) is det.
+:- pred byte0a(hex::in, hex::in, status::in,
+    concurrent_stream(byte)::in, concurrent_stream(message)::in,
+    io::di, io::uo) is det.
 
 byte0a(x0, LSN, Status, Ins, Outs, !IO) :-
     hex2byte(x0, LSN, Byte),
@@ -272,8 +273,8 @@ byte0a(xF, xF, Status, Ins, Outs, !IO) :-
     put(Outs, rt(reset), !IO),
     byte0(Status, Ins, Outs, !IO).
 
-:- pred byte1(status::in, stream(byte)::in, stream(message)::in,
-    io::di, io::uo) is det.
+:- pred byte1(status::in, concurrent_stream(byte)::in,
+    concurrent_stream(message)::in, io::di, io::uo) is det.
 
 byte1(Status, Ins, Outs, !IO) :-
     get(Ins, Res0, !IO),
@@ -289,8 +290,9 @@ byte1(Status, Ins, Outs, !IO) :-
         byte1a(MSN, LSN, Status, Ins, Outs, !IO)
     ).
 
-:- pred byte1a(hex::in, hex::in, status::in, stream(byte)::in,
-    stream(message)::in, io::di, io::uo) is det.
+:- pred byte1a(hex::in, hex::in, status::in,
+    concurrent_stream(byte)::in, concurrent_stream(message)::in,
+    io::di, io::uo) is det.
 
 byte1a(x0, LSN, Status, Ins, Outs, !IO) :-
     hex2byte(x0, LSN, Byte),
@@ -370,8 +372,8 @@ byte1a(xF, xF, Status, Ins, Outs, !IO) :-
     put(Outs, rt(reset), !IO),
     byte1(Status, Ins, Outs, !IO).
 
-:- pred byte1b(status::in, byte::in, stream(byte)::in, stream(message)::in,
-    io::di, io::uo) is det.
+:- pred byte1b(status::in, byte::in, concurrent_stream(byte)::in,
+    concurrent_stream(message)::in, io::di, io::uo) is det.
 
 byte1b(none, _Byte, Ins, Outs, !IO) :-
     byte0(none, Ins, Outs, !IO).
@@ -388,8 +390,8 @@ byte1b(status(one(Kind), Chan), Byte, Ins, Outs, !IO) :-
 byte1b(status(two(Kind), Chan), Byte1, Ins, Outs, !IO) :-
     byte2(status(two(Kind), Chan), Byte1, Ins, Outs, !IO).
 
-:- pred byte2(status::in, byte::in, stream(byte)::in, stream(message)::in,
-    io::di, io::uo) is det.
+:- pred byte2(status::in, byte::in, concurrent_stream(byte)::in,
+    concurrent_stream(message)::in, io::di, io::uo) is det.
 
 byte2(Status, Byte1, Ins, Outs, !IO) :-
     get(Ins, Res0, !IO),
@@ -405,8 +407,9 @@ byte2(Status, Byte1, Ins, Outs, !IO) :-
         byte2a(MSN2, LSN2, Byte1, Status, Ins, Outs, !IO)
     ).
 
-:- pred byte2a(hex::in, hex::in, byte::in, status::in, stream(byte)::in,
-    stream(message)::in, io::di, io::uo) is det.
+:- pred byte2a(hex::in, hex::in, byte::in, status::in,
+    concurrent_stream(byte)::in, concurrent_stream(message)::in,
+    io::di, io::uo) is det.
 
 byte2a(x0, LSN, Byte1, Status, Ins, Outs, !IO) :-
     hex2byte(x0, LSN, Byte2),
@@ -486,8 +489,9 @@ byte2a(xF, xF, Byte1, Status, Ins, Outs, !IO) :-
     put(Outs, rt(reset), !IO),
     byte2(Status, Byte1, Ins, Outs, !IO).
 
-:- pred byte2b(status::in, byte::in, byte::in, stream(byte)::in,
-    stream(message)::in, io::di, io::uo) is det.
+:- pred byte2b(status::in, byte::in, byte::in,
+    concurrent_stream(byte)::in, concurrent_stream(message)::in,
+    io::di, io::uo) is det.
 
 byte2b(none, _Byte1, _Byte2, Ins, Outs, !IO) :-
     byte0(none, Ins, Outs, !IO).
@@ -539,14 +543,14 @@ byte2b(status(two(Kind), Chan), Byte1, Byte2, Ins, Outs, !IO) :-
     put(Outs, Msg, !IO),
     byte0(status(two(Kind), Chan), Ins, Outs, !IO).
 
-:- pred sysex0(status::in, stream(byte)::in, stream(message)::in,
-    io::di, io::uo) is det.
+:- pred sysex0(status::in, concurrent_stream(byte)::in,
+    concurrent_stream(message)::in, io::di, io::uo) is det.
 
 sysex0(Status, Ins, Outs, !IO) :-
     sysex1([], Status, Ins, Outs, !IO).
 
-:- pred sysex1(list(byte)::in, status::in, stream(byte)::in,
-    stream(message)::in, io::di, io::uo) is det.
+:- pred sysex1(list(byte)::in, status::in, concurrent_stream(byte)::in,
+    concurrent_stream(message)::in, io::di, io::uo) is det.
 
 sysex1(Bytes0, Status, Ins, Outs, !IO) :-
     get(Ins, Res0, !IO),
@@ -572,8 +576,8 @@ sysex1(Bytes0, Status, Ins, Outs, !IO) :-
         )
     ).
 
-:- pred pos0(status::in, stream(byte)::in, stream(message)::in,
-    io::di, io::uo) is det.
+:- pred pos0(status::in, concurrent_stream(byte)::in,
+    concurrent_stream(message)::in, io::di, io::uo) is det.
 
 pos0(Status, Ins, Outs, !IO) :-
     get(Ins, Res0, !IO),
@@ -588,8 +592,8 @@ pos0(Status, Ins, Outs, !IO) :-
         pos1(Byte, Status, Ins, Outs, !IO)
     ).
 
-:- pred pos1(byte::in, status::in, stream(byte)::in, stream(message)::in,
-    io::di, io::uo) is det.
+:- pred pos1(byte::in, status::in, concurrent_stream(byte)::in,
+    concurrent_stream(message)::in, io::di, io::uo) is det.
 
 pos1(Byte1, Status, Ins, Outs, !IO) :-
     get(Ins, Res0, !IO),
@@ -606,8 +610,8 @@ pos1(Byte1, Status, Ins, Outs, !IO) :-
         byte0(Status, Ins, Outs, !IO)
     ).
 
-:- pred sel0(status::in, stream(byte)::in, stream(message)::in,
-    io::di, io::uo) is det.
+:- pred sel0(status::in, concurrent_stream(byte)::in,
+    concurrent_stream(message)::in, io::di, io::uo) is det.
 
 sel0(Status, Ins, Outs, !IO) :-
     get(Ins, Res0, !IO),
@@ -629,8 +633,8 @@ sel0(Status, Ins, Outs, !IO) :-
 write_midi(Ins, Outs, !IO) :-
     write_midi(none, Ins, Outs, !IO).
 
-:- pred write_midi(status::in, stream(message)::in, stream(byte)::in,
-    io::di, io::uo) is det.
+:- pred write_midi(status::in, concurrent_stream(message)::in,
+    concurrent_stream(byte)::in, io::di, io::uo) is det.
 
 write_midi(Status, Ins, Outs, !IO) :-
     get(Ins, Res0, !IO),
@@ -645,8 +649,8 @@ write_midi(Status, Ins, Outs, !IO) :-
         write_midi(Msg, Status, Ins, Outs, !IO)
     ).
 
-:- pred write_midi(message::in, status::in, stream(message)::in,
-    stream(byte)::in, io::di, io::uo) is det.
+:- pred write_midi(message::in, status::in, concurrent_stream(message)::in,
+    concurrent_stream(byte)::in, io::di, io::uo) is det.
 
 write_midi(off(Chan, Note, Vel), Status0, Ins, Outs, !IO) :-
     Status1 = status(two(off), Chan),
@@ -741,8 +745,9 @@ write_midi(rt(reset), Status, Ins, Outs, !IO) :-
     put(Outs, 0xFF, !IO),
     write_midi(Status, Ins, Outs, !IO).
 
-:- pred write_one(status::in, status::in, byte::in, stream(message)::in,
-    stream(byte)::in, io::di, io::uo) is det.
+:- pred write_one(status::in, status::in, byte::in,
+    concurrent_stream(message)::in, concurrent_stream(byte)::in,
+    io::di, io::uo) is det.
 
 write_one(Status0, Status1, Byte1, Ins, Outs, !IO) :-
     ( Status0 = Status1 ->
@@ -763,7 +768,8 @@ write_one(Status0, Status1, Byte1, Ins, Outs, !IO) :-
     write_midi(Status, Ins, Outs, !IO).
 
 :- pred write_two(status::in, status::in, byte::in, byte::in,
-    stream(message)::in, stream(byte)::in, io::di, io::uo) is det.
+    concurrent_stream(message)::in,
+    concurrent_stream(byte)::in, io::di, io::uo) is det.
 
 write_two(Status0, Status1, Byte1, Byte2, Ins, Outs, !IO) :-
     ( Status0 = Status1 ->
@@ -849,4 +855,5 @@ nibble2hex(0xE, xE).
 nibble2hex(0xF, xF).
 
 %-----------------------------------------------------------------------------%
+:- end_module midi.
 %-----------------------------------------------------------------------------%
