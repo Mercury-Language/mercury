@@ -493,7 +493,7 @@ dir.split_name_dotnet(_, "", "") :- semidet_fail.
             BaseName = System.IO.Path.GetFileName(FileName);
             SUCCESS_INDICATOR = (BaseName != null);
         }
-    } catch (System.Exception e) {
+    } catch (System.Exception) {
         BaseName = null;
         DirName = null;
         SUCCESS_INDICATOR = false;
@@ -698,7 +698,7 @@ is_dotnet_root_directory_2(_) :-
     try {
         SUCCESS_INDICATOR =
             (System.IO.Path.GetDirectoryName(FileName) == null);
-    } catch (System.Exception e) {
+    } catch (System.Exception) {
         SUCCESS_INDICATOR = false;
     }
 }").
@@ -759,7 +759,7 @@ dir.dotnet_path_name_is_absolute_2(_) :-
 "
     try {
         SUCCESS_INDICATOR = System.IO.Path.IsPathRooted(FileName);
-    } catch (System.Exception e) {
+    } catch (System.Exception) {
         SUCCESS_INDICATOR = false;
     }
 ").

@@ -171,6 +171,8 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     io.write_list(ForeignBodyCode, "\n", output_csharp_body_code(Info, Indent),
         !IO),
 
+    output_pragma_warning_disable(!IO),
+
     list.filter(defn_is_rtti_data, Defns, RttiDefns, NonRttiDefns),
 
     io.write_string("\n// RttiDefns\n", !IO),
@@ -759,8 +761,6 @@ output_src_start(Globals, Info, Indent, MercuryModuleName, _Imports,
         ClassName),
     io.write_string(ClassName, !IO),
     io.write_string(" {\n", !IO),
-
-    % output_debug_class_init(MercuryModuleName, "start", !IO),
 
     % Check if this module contains a `main' predicate and if it does insert
     % a `main' method in the resulting source file that calls the `main'
@@ -3147,7 +3147,9 @@ output_atomic_stmt(Info, Indent, AtomicStmt, _Context, !IO) :-
         AtomicStmt = inline_target_code(TargetLang, Components),
         (
             TargetLang = ml_target_csharp,
-            list.foldl(output_target_code_component(Info), Components, !IO)
+            output_pragma_warning_restore(!IO),
+            list.foldl(output_target_code_component(Info), Components, !IO),
+            output_pragma_warning_disable(!IO)
         ;
             ( TargetLang = ml_target_c
             ; TargetLang = ml_target_gnu_c
@@ -3806,6 +3808,21 @@ indent_line(N, !IO) :-
         io.write_string("  ", !IO),
         indent_line(N - 1, !IO)
     ).
+
+:- pred output_pragma_warning_disable(io::di, io::uo) is det.
+
+output_pragma_warning_disable(!IO) :-
+    % CS0162: Unreachable code detected
+    % CS0168: The variable `foo' is declared but never used
+    % CS0169: The private method `foo' is never used
+    % CS0219: The variable `foo' is assigned but its value is never used
+    % CS1717: Assignment made to same variable
+    io.write_string("#pragma warning disable 162, 168, 169, 219, 1717\n", !IO).
+
+:- pred output_pragma_warning_restore(io::di, io::uo) is det.
+
+output_pragma_warning_restore(!IO) :-
+    io.write_string("#pragma warning restore\n", !IO).
 
 %-----------------------------------------------------------------------------%
 

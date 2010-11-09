@@ -471,14 +471,13 @@ static void MR_ssdb_sigint_handler(void)
 ").
 
 :- pragma foreign_proc("C#",
-    install_sigint_handler(IO0::di, IO::uo),
+    install_sigint_handler(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     System.Console.TreatControlCAsInput = false;
     System.Console.CancelKeyPress += new System.ConsoleCancelEventHandler(
         ssdb.sigint_handler
     );
-    IO = IO0;
 ").
 
 :- pragma foreign_code("C#",

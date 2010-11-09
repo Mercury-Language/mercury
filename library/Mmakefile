@@ -359,9 +359,6 @@ endif
 ifneq ("$(filter csharp%,$(GRADE))","")
 LINK_LIB_OPTS :=
 MLOBJS += ../runtime/mercury_dotnet.cs
-
-# Suppress warnings about unused variables.
-CSCFLAGS += /nowarn:0219
 endif
 
 #-----------------------------------------------------------------------------#

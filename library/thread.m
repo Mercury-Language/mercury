@@ -200,13 +200,12 @@
 ").
 
 :- pragma foreign_proc("C#",
-    yield(IO0::di, IO::uo),
+    yield(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
     // Only available in .NET 4.0.
     // System.Threading.Yield();
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("Java",

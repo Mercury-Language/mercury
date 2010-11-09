@@ -1245,10 +1245,8 @@ public class ML_uva : ML_va {
         ML_uva  VA0 = this;
         ML_uva  latest;
         ML_uva  VA;
-        int     N;
 
         latest = VA0.latest();
-        N = latest.size();
 
         VA = new ML_uva();
         VA.index = -1;
@@ -1521,10 +1519,8 @@ public static class ML_uva implements ML_va, java.io.Serializable {
         ML_uva  VA0 = this;
         ML_uva  latest;
         ML_uva  VA;
-        int     N;
 
         latest = VA0.latest();
-        N = latest.size();
 
         VA = new ML_uva();
         VA.index = -1;

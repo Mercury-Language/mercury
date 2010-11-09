@@ -10044,7 +10044,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
 }").
 
 :- pragma foreign_proc("C#",
-    io.do_make_temp(Dir::in, Prefix::in, _Sep::in, FileName::out,
+    io.do_make_temp(_Dir::in, _Prefix::in, _Sep::in, FileName::out,
         Error::out, ErrorMessage::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{

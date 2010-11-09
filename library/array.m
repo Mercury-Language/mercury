@@ -973,7 +973,7 @@ array.init(Size, Item, Array) :-
 ").
 
 :- pragma foreign_proc("C#",
-    array.min(Array::in, Min::out),
+    array.min(_Array::in, Min::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     /* Array not used */
