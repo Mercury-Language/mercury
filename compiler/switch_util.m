@@ -18,6 +18,7 @@
 :- interface.
 
 :- import_module backend_libs.rtti.         % for sectag_locn
+:- import_module backend_libs.builtin_ops.
 :- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
@@ -188,13 +189,14 @@
     pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB, StateC, StateC)
         ::in(pred(in, out, in, out, in, out, in, out) is det),
     StateA::in, StateA::out, StateB::in, StateB::out, StateC::in, StateC::out,
-    map(int, string_hash_slot(CaseRep))::out) is det.
+    map(int, string_hash_slot(CaseRep))::out, unary_op::out) is det.
 
     % For a string lookup switch, compute the hash value for each string,
     % and store the associated data in a map from the hash values.
     %
 :- pred construct_string_hash_lookup_cases(assoc_list(string, CaseRep)::in,
-    int::in, int::in, map(int, string_hash_slot(CaseRep))::out) is det.
+    int::in, int::in, map(int, string_hash_slot(CaseRep))::out, unary_op::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -738,9 +740,25 @@ log2_rounded_down(X) = Log :-
 %
 
 construct_string_hash_jump_cases(TaggedCases, TableSize, HashMask,
-        RepresentCase, !StateA, !StateB, !StateC, HashSlotsMap) :-
+        RepresentCase, !StateA, !StateB, !StateC, HashSlotsMap, HashOp) :-
     string_hash_jump_cases(TaggedCases, HashMask, RepresentCase,
-        !StateA, !StateB, !StateC, map.init, HashValsMap),
+        !StateA, !StateB, !StateC,
+        map.init, HashValsMap1, map.init, HashValsMap2, map.init, HashValsMap3,
+        0, NumCollisions1, 0, NumCollisions2, 0, NumCollisions3),
+    trace [compiletime(flag("hashcollisions")), io(!IO)] (
+        io.format("string jump hash collisions: %d %d %d\n",
+            [i(NumCollisions1), i(NumCollisions2), i(NumCollisions3)], !IO)
+    ),
+    ( NumCollisions1 =< NumCollisions2, NumCollisions1 =< NumCollisions3 ->
+        HashValsMap = HashValsMap1,
+        HashOp = hash_string
+    ; NumCollisions2 =< NumCollisions3 ->
+        HashValsMap = HashValsMap2,
+        HashOp = hash_string2
+    ;
+        HashValsMap = HashValsMap3,
+        HashOp = hash_string3
+    ),
     map.to_assoc_list(HashValsMap, HashValsList),
     calc_string_hash_slots(TableSize, HashValsList, HashValsMap, HashSlotsMap).
 
@@ -749,61 +767,135 @@ construct_string_hash_jump_cases(TaggedCases, TableSize, HashMask,
         ::in(pred(in, out, in, out, in, out, in, out) is det),
     StateA::in, StateA::out, StateB::in, StateB::out, StateC::in, StateC::out,
     map(int, assoc_list(string, CaseRep))::in,
-    map(int, assoc_list(string, CaseRep))::out) is det.
+    map(int, assoc_list(string, CaseRep))::out,
+    map(int, assoc_list(string, CaseRep))::in,
+    map(int, assoc_list(string, CaseRep))::out,
+    map(int, assoc_list(string, CaseRep))::in,
+    map(int, assoc_list(string, CaseRep))::out,
+    int::in, int::out, int::in, int::out, int::in, int::out) is det.
 
-string_hash_jump_cases([], _, _, !StateA, !StateB, !StateC, !HashMap).
+string_hash_jump_cases([], _, _,
+        !StateA, !StateB, !StateC, !HashMap1, !HashMap2, !HashMap3,
+        !NumCollisions1, !NumCollisions2, !NumCollisions3).
 string_hash_jump_cases([TaggedCase | TaggedCases], HashMask, RepresentCase,
-        !StateA, !StateB, !StateC, !HashMap) :-
+        !StateA, !StateB, !StateC, !HashMap1, !HashMap2, !HashMap3,
+        !NumCollisions1, !NumCollisions2, !NumCollisions3) :-
     RepresentCase(TaggedCase, CaseRep, !StateA, !StateB, !StateC),
     TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, _),
-    string_hash_cons_id(CaseRep, HashMask, MainTaggedConsId, !HashMap),
-    list.foldl(string_hash_cons_id(CaseRep, HashMask), OtherTaggedConsIds,
-        !HashMap),
+    string_hash_cons_id(CaseRep, HashMask, MainTaggedConsId,
+        !HashMap1, !HashMap2, !HashMap3,
+        !NumCollisions1, !NumCollisions2, !NumCollisions3),
+    list.foldl6(string_hash_cons_id(CaseRep, HashMask), OtherTaggedConsIds,
+        !HashMap1, !HashMap2, !HashMap3,
+        !NumCollisions1, !NumCollisions2, !NumCollisions3),
     string_hash_jump_cases(TaggedCases, HashMask, RepresentCase,
-        !StateA, !StateB, !StateC, !HashMap).
+        !StateA, !StateB, !StateC, !HashMap1, !HashMap2, !HashMap3,
+        !NumCollisions1, !NumCollisions2, !NumCollisions3).
 
 :- pred string_hash_cons_id(CaseRep::in, int::in, tagged_cons_id::in,
     map(int, assoc_list(string, CaseRep))::in,
-    map(int, assoc_list(string, CaseRep))::out) is det.
+    map(int, assoc_list(string, CaseRep))::out,
+    map(int, assoc_list(string, CaseRep))::in,
+    map(int, assoc_list(string, CaseRep))::out,
+    map(int, assoc_list(string, CaseRep))::in,
+    map(int, assoc_list(string, CaseRep))::out,
+    int::in, int::out, int::in, int::out, int::in, int::out) is det.
 
-string_hash_cons_id(CaseRep, HashMask, TaggedConsId, !HashMap) :-
+string_hash_cons_id(CaseRep, HashMask, TaggedConsId,
+        !HashMap1, !HashMap2, !HashMap3,
+        !NumCollisions1, !NumCollisions2, !NumCollisions3) :-
     TaggedConsId = tagged_cons_id(_ConsId, Tag),
     ( Tag = string_tag(StringPrime) ->
         String = StringPrime
     ;
         unexpected(this_file, "string_hash_cases: non-string case?")
     ),
-    string.hash(String, StringHashVal),
-    HashVal = StringHashVal /\ HashMask,
-    ( map.search(!.HashMap, HashVal, OldStringCaseReps) ->
-        svmap.det_update(HashVal, [String - CaseRep | OldStringCaseReps],
-            !HashMap)
+    StringCaseRep = String - CaseRep,
+    HashVal1 = string.hash(String) /\ HashMask,
+    HashVal2 = string.hash2(String) /\ HashMask,
+    HashVal3 = string.hash3(String) /\ HashMask,
+    ( map.search(!.HashMap1, HashVal1, OldEntries1) ->
+        svmap.det_update(HashVal1, [StringCaseRep | OldEntries1], !HashMap1),
+        !:NumCollisions1 = !.NumCollisions1 + 1
     ;
-        svmap.det_insert(HashVal, [String - CaseRep], !HashMap)
+        svmap.det_insert(HashVal1, [StringCaseRep], !HashMap1)
+    ),
+    ( map.search(!.HashMap2, HashVal2, OldEntries2) ->
+        svmap.det_update(HashVal2, [StringCaseRep | OldEntries2], !HashMap2),
+        !:NumCollisions2 = !.NumCollisions2 + 1
+    ;
+        svmap.det_insert(HashVal2, [StringCaseRep], !HashMap2)
+    ),
+    ( map.search(!.HashMap3, HashVal3, OldEntries3) ->
+        svmap.det_update(HashVal3, [StringCaseRep | OldEntries3], !HashMap3),
+        !:NumCollisions3 = !.NumCollisions3 + 1
+    ;
+        svmap.det_insert(HashVal3, [StringCaseRep], !HashMap3)
     ).
 
 %-----------------------------------------------------------------------------%
 
 construct_string_hash_lookup_cases(StrsDatas, TableSize, HashMask,
-        HashSlotsMap) :-
-    string_hash_lookup_cases(StrsDatas, HashMask, map.init, HashValsMap),
+        HashSlotsMap, HashOp) :-
+    string_hash_lookup_cases(StrsDatas, HashMask,
+        map.init, HashValsMap1, map.init, HashValsMap2, map.init, HashValsMap3,
+        0, NumCollisions1, 0, NumCollisions2, 0, NumCollisions3),
+    trace [compiletime(flag("hash_collisions")), io(!IO)] (
+        io.format("string lookup hash collisions: %d %d %d\n",
+            [i(NumCollisions1), i(NumCollisions2), i(NumCollisions3)], !IO)
+    ),
+    ( NumCollisions1 =< NumCollisions2, NumCollisions1 =< NumCollisions3 ->
+        HashValsMap = HashValsMap1,
+        HashOp = hash_string
+    ; NumCollisions2 =< NumCollisions3 ->
+        HashValsMap = HashValsMap2,
+        HashOp = hash_string2
+    ;
+        HashValsMap = HashValsMap3,
+        HashOp = hash_string3
+    ),
     map.to_assoc_list(HashValsMap, HashValsList),
     calc_string_hash_slots(TableSize, HashValsList, HashValsMap, HashSlotsMap).
 
 :- pred string_hash_lookup_cases(assoc_list(string, CaseRep)::in, int::in,
     map(int, assoc_list(string, CaseRep))::in,
-    map(int, assoc_list(string, CaseRep))::out) is det.
+    map(int, assoc_list(string, CaseRep))::out,
+    map(int, assoc_list(string, CaseRep))::in,
+    map(int, assoc_list(string, CaseRep))::out,
+    map(int, assoc_list(string, CaseRep))::in,
+    map(int, assoc_list(string, CaseRep))::out,
+    int::in, int::out, int::in, int::out, int::in, int::out) is det.
 
-string_hash_lookup_cases([], _, !HashMap).
-string_hash_lookup_cases([Str - Data | StrsDatas], HashMask, !HashMap) :-
-    string.hash(Str, StringHashVal),
-    HashVal = StringHashVal /\ HashMask,
-    ( map.search(!.HashMap, HashVal, OldStringDatas) ->
-        svmap.det_update(HashVal, [Str - Data | OldStringDatas], !HashMap)
+string_hash_lookup_cases([], _, !HashMap1, !HashMap2, !HashMap3,
+        !NumCollisions1, !NumCollisions2, !NumCollisions3).
+string_hash_lookup_cases([StrData | StrsDatas], HashMask,
+        !HashMap1, !HashMap2, !HashMap3,
+        !NumCollisions1, !NumCollisions2, !NumCollisions3) :-
+    StrData = Str - _Data,
+    HashVal1 = string.hash(Str) /\ HashMask,
+    HashVal2 = string.hash(Str) /\ HashMask,
+    HashVal3 = string.hash(Str) /\ HashMask,
+    ( map.search(!.HashMap1, HashVal1, OldEntries1) ->
+        svmap.det_update(HashVal1, [StrData | OldEntries1], !HashMap1),
+        !:NumCollisions1 = !.NumCollisions1 + 1
     ;
-        svmap.det_insert(HashVal, [Str - Data], !HashMap)
+        svmap.det_insert(HashVal1, [StrData], !HashMap1)
     ),
-    string_hash_lookup_cases(StrsDatas, HashMask, !HashMap).
+    ( map.search(!.HashMap2, HashVal2, OldEntries2) ->
+        svmap.det_update(HashVal2, [StrData | OldEntries2], !HashMap2),
+        !:NumCollisions2 = !.NumCollisions2 + 1
+    ;
+        svmap.det_insert(HashVal2, [StrData], !HashMap2)
+    ),
+    ( map.search(!.HashMap3, HashVal3, OldEntries3) ->
+        svmap.det_update(HashVal3, [StrData | OldEntries3], !HashMap3),
+        !:NumCollisions3 = !.NumCollisions3 + 1
+    ;
+        svmap.det_insert(HashVal3, [StrData], !HashMap3)
+    ),
+    string_hash_lookup_cases(StrsDatas, HashMask,
+        !HashMap1, !HashMap2, !HashMap3,
+        !NumCollisions1, !NumCollisions2, !NumCollisions3).
 
 %-----------------------------------------------------------------------------%
 

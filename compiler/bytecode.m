@@ -1122,9 +1122,11 @@ unop_code(unmktag,              2).
 unop_code(mkbody,               3).
 unop_code(unmkbody,             4).
 unop_code(strip_tag,            5).
-unop_code(hash_string,          6).
-unop_code(bitwise_complement,   7).
-unop_code(logical_not,          8).
+unop_code(bitwise_complement,   6).
+unop_code(logical_not,          7).
+unop_code(hash_string,          8).
+unop_code(hash_string2,         9).
+unop_code(hash_string3,        10).
 
 :- pred unop_debug(unary_op::in, string::out) is det.
 
@@ -1134,9 +1136,11 @@ unop_debug(unmktag,             "unmktag").
 unop_debug(mkbody,              "mkbody").
 unop_debug(unmkbody,            "unmkbody").
 unop_debug(strip_tag,           "strip_tag").
-unop_debug(hash_string,         "hash_string").
 unop_debug(bitwise_complement,  "bitwise_complement").
 unop_debug(logical_not,         "not").
+unop_debug(hash_string,         "hash_string").
+unop_debug(hash_string2,        "hash_string2").
+unop_debug(hash_string3,        "hash_string3").
 
 %---------------------------------------------------------------------------%
 

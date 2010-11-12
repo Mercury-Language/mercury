@@ -35,9 +35,11 @@
     ;       strip_tag
     ;       mkbody
     ;       unmkbody
-    ;       hash_string
     ;       bitwise_complement
-    ;       logical_not.
+    ;       logical_not
+    ;       hash_string
+    ;       hash_string2
+    ;       hash_string3.
 
 :- type binary_op
     --->    int_add

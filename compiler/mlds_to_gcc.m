@@ -3433,6 +3433,13 @@ build_unop_expr(Unop, Arg, DefnInfo, Expr, !IO) :-
         gcc.build_binop(gcc.bit_and_expr, 'MR_intptr_t',
             Arg, InvertedMask, Expr, !IO)
     ;
+        Unop = bitwise_complement,
+        gcc.build_unop(gcc.bit_not_expr, 'MR_Integer', Arg, Expr, !IO)
+    ;
+        Unop = logical_not,
+        gcc.build_unop(gcc.truth_not_expr, gcc.boolean_type_node,
+            Arg, Expr, !IO)
+    ;
         Unop = hash_string,
         gcc.build_func_addr_expr(gcc.hash_string_func_decl,
             HashStringFuncExpr, !IO),
@@ -3442,12 +3449,10 @@ build_unop_expr(Unop, Arg, DefnInfo, Expr, !IO) :-
         gcc.build_call_expr(HashStringFuncExpr, GCC_ArgList, IsTailCall,
             Expr, !IO)
     ;
-        Unop = bitwise_complement,
-        gcc.build_unop(gcc.bit_not_expr, 'MR_Integer', Arg, Expr, !IO)
-    ;
-        Unop = logical_not,
-        gcc.build_unop(gcc.truth_not_expr, gcc.boolean_type_node,
-            Arg, Expr, !IO)
+        ( Unop = hash_string2
+        ; Unop = hash_string3
+        ),
+        unexpected(this_file, "build_unop_expr: hash_string2/3")
     ).
 
 :- pred build_std_binop(builtin_ops.binary_op::in,

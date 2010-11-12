@@ -544,9 +544,11 @@ unary_prefix_op(unmktag,            "MR_unmktag").
 unary_prefix_op(strip_tag,          "MR_strip_tag").
 unary_prefix_op(mkbody,             "MR_mkbody").
 unary_prefix_op(unmkbody,           "MR_unmkbody").
-unary_prefix_op(hash_string,        "MR_hash_string").
 unary_prefix_op(bitwise_complement, "~").
 unary_prefix_op(logical_not,        "!").
+unary_prefix_op(hash_string,        "MR_hash_string").
+unary_prefix_op(hash_string2,       "MR_hash_string2").
+unary_prefix_op(hash_string3,       "MR_hash_string3").
 
 % The operator strings for array_index, compound_lt and compound_eq are
 % dummies; they should never be used.

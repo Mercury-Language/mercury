@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2006 The University of Melbourne.
+% Copyright (C) 2002-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -69,10 +69,12 @@ java_unary_prefix_op(unmktag,         "/* unmktag */ ").
 java_unary_prefix_op(strip_tag,       "/* strip_tag */ ").
 java_unary_prefix_op(mkbody,          "/* mkbody */ ").
 java_unary_prefix_op(unmkbody,        "/* unmkbody */ ").
-java_unary_prefix_op(hash_string,     "mercury.String.hash_1_f_0").
 java_unary_prefix_op(bitwise_complement,  "~").
 java_unary_prefix_op(logical_not,      "!").
 java_unary_prefix_op(tag, "").    % This case is never used.
+java_unary_prefix_op(hash_string,     "mercury.String.hash_1_f_0").
+java_unary_prefix_op(hash_string2,    "mercury.String.hash2_1_f_0").
+java_unary_prefix_op(hash_string3,    "mercury.String.hash3_1_f_0").
 
 java_string_compare_op(str_eq, "==").
 java_string_compare_op(str_ne, "!=").

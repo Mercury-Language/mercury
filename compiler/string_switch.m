@@ -120,7 +120,7 @@ generate_string_hash_switch(Cases, VarRval, VarName, CodeModel, CanFail,
     map.init(CaseLabelMap0),
     construct_string_hash_jump_cases(Cases, TableSize, HashMask,
         represent_tagged_case_for_llds(Params),
-        CaseLabelMap0, CaseLabelMap, no, MaybeEnd, !CI, HashSlotsMap),
+        CaseLabelMap0, CaseLabelMap, no, MaybeEnd, !CI, HashSlotsMap, HashOp),
 
     % Generate the data structures for the hash table.
     FailLabel = HashSwitchInfo ^ shsi_fail_label,
@@ -144,7 +144,8 @@ generate_string_hash_switch(Cases, VarRval, VarName, CodeModel, CanFail,
     ]),
 
     generate_string_hash_switch_search(HashSwitchInfo, VarRval, TableAddrRval,
-        ArrayElemType, HashMask, NumColumns, MatchCode, HashLookupCode),
+        ArrayElemType, NumColumns, HashOp, HashMask, MatchCode,
+        HashLookupCode),
 
     % Generate the code for the cases.
     map.foldl(add_remaining_case, CaseLabelMap, empty, CasesCode),
@@ -239,7 +240,7 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
 
     % Compute the hash table.
     construct_string_hash_lookup_cases(CaseValues, TableSize, HashMask,
-        HashSlotsMap),
+        HashSlotsMap, HashOp),
 
     % Generate the static lookup table for this switch.
     DummyOutRvals = list.map(default_value_for_type, OutTypes),
@@ -293,7 +294,7 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
     ),
     MatchCode = SetBaseRegCode ++ BranchEndCode ++ GotoEndLabelCode,
     generate_string_hash_switch_search(HashSwitchInfo,
-        VarRval, VectorAddrRval, ArrayElemType, HashMask, NumColumns,
+        VarRval, VectorAddrRval, ArrayElemType, NumColumns, HashOp, HashMask,
         MatchCode, HashSearchCode),
 
     EndLabelCode = singleton(
@@ -379,7 +380,7 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
 
     % Compute the hash table.
     construct_string_hash_lookup_cases(CaseSolns, TableSize, HashMask,
-        HashSlotsMap),
+        HashSlotsMap, HashOp),
 
     % Generate the static lookup table for this switch.
     InitLaterSolnRowNumber = 1,
@@ -425,8 +426,8 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     MatchCode = SetBaseRegCode ++ LookupResultsCode,
 
     generate_string_hash_switch_search(HashSwitchInfo,
-        VarRval, MainVectorAddrRval, ArrayElemType, HashMask, NumColumns,
-        MatchCode, HashSearchCode),
+        VarRval, MainVectorAddrRval, ArrayElemType, NumColumns,
+        HashOp, HashMask, MatchCode, HashSearchCode),
     EndLabelCode = singleton(
         llds_instr(label(EndLabel),
             "end of simple hash string lookup switch")
@@ -538,11 +539,11 @@ init_string_hash_switch_info(CanFail, Info, !CI) :-
         LoopStartLabel, NoMatchLabel, FailLabel, BranchStart, FailCode).
 
 :- pred generate_string_hash_switch_search(string_hash_switch_info::in,
-    rval::in, rval::in, array_elem_type::in, int::in, int::in,
+    rval::in, rval::in, array_elem_type::in, int::in, unary_op::in, int::in,
     llds_code::in, llds_code::out) is det.
 
 generate_string_hash_switch_search(Info, VarRval, TableAddrRval,
-        ArrayElemType, HashMask, NumColumns, MatchCode, Code) :-
+        ArrayElemType, NumColumns, HashOp, HashMask, MatchCode, Code) :-
     SlotReg = Info ^ shsi_slot_reg,
     RowStartReg = Info ^ shsi_row_start_reg,
     StringReg = Info ^ shsi_string_reg,
@@ -553,7 +554,7 @@ generate_string_hash_switch_search(Info, VarRval, TableAddrRval,
 
     Code = from_list([
         llds_instr(assign(SlotReg,
-            binop(bitwise_and, unop(hash_string, VarRval),
+            binop(bitwise_and, unop(HashOp, VarRval),
                 const(llconst_int(HashMask)))),
             "compute the hash value of the input string"),
         llds_instr(label(LoopStartLabel),

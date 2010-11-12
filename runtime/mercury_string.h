@@ -184,16 +184,15 @@
 	} while(0)
 
 /*
-** MR_do_hash_string(int & hash, MR_Word string):
+** MR_do_hash_string{,2,3}(int & hash, MR_Word string):
 ** Given a Mercury string `string', set `hash' to the hash value
 ** for that string.  (`hash' must be an lvalue.)
 **
-** This is an implementation detail used to implement MR_hash_string().
-** It should not be used directly.  Use MR_hash_string() instead.
+** This is an implementation detail used to implement MR_hash_string{,2,3}().
+** It should not be used directly. Use MR_hash_string{,2,3}() instead.
 **
-** Note that hash_string is also defined in library/string.m.
-** The definition here and the definition in string.m
-** must be kept equivalent.
+** Note that these functions are also defined in library/string.m.
+** The definition heres and in string.m must be kept equivalent.
 */
 
 #define MR_do_hash_string(hash, s)					\
@@ -211,12 +210,44 @@
 		hash ^= len;						\
 	}
 
+#define MR_do_hash_string2(hash, s)					\
+	{								\
+		int len;						\
+		MR_CHECK_EXPR_TYPE(hash, int);				\
+		MR_CHECK_EXPR_TYPE(s, MR_ConstString);			\
+		len = 0;						\
+		hash = 0;						\
+		while(((MR_ConstString)(s))[len]) {			\
+			hash = hash * 37;				\
+			hash += (MR_UnsignedChar) ((MR_ConstString)(s))[len]; \
+			len++;						\
+		}							\
+		hash ^= len;						\
+	}
+
+#define MR_do_hash_string3(hash, s)					\
+	{								\
+		int len;						\
+		MR_CHECK_EXPR_TYPE(hash, int);				\
+		MR_CHECK_EXPR_TYPE(s, MR_ConstString);			\
+		len = 0;						\
+		hash = 0;						\
+		while(((MR_ConstString)(s))[len]) {			\
+			hash = hash * 49;				\
+			hash += (MR_UnsignedChar) ((MR_ConstString)(s))[len]; \
+			len++;						\
+		}							\
+		hash ^= len;						\
+	}
+
 /*
-** MR_hash_string(s):
+** MR_hash_string{,2,3}(s):
 **	Given a Mercury string `s', return a hash value for that string.
 */
 
 MR_Integer	MR_hash_string(MR_ConstString);
+MR_Integer	MR_hash_string2(MR_ConstString);
+MR_Integer	MR_hash_string3(MR_ConstString);
 
 #ifdef __GNUC__
 #define MR_hash_string(s)						\
@@ -226,18 +257,39 @@ MR_Integer	MR_hash_string(MR_ConstString);
 		MR_do_hash_string(hash_string_result, s);		\
 		hash_string_result;					\
 	})
+
+#define MR_hash_string2(s)						\
+	({								\
+	 	MR_Integer hash_string_result;				\
+		MR_CHECK_EXPR_TYPE(s, MR_ConstString);			\
+		MR_do_hash_string2(hash_string_result, s);		\
+		hash_string_result;					\
+	})
+
+#define MR_hash_string3(s)						\
+	({								\
+	 	MR_Integer hash_string_result;				\
+		MR_CHECK_EXPR_TYPE(s, MR_ConstString);			\
+		MR_do_hash_string3(hash_string_result, s);		\
+		hash_string_result;					\
+	})
 #endif
 
 /*
-** If we're not using gcc, the actual definition of MR_hash_string is in
-** runtime/mercury_misc.c;
-** it uses the macro MR_HASH_STRING_FUNC_BODY below.
+** If we are not using gcc, the actual definitions of these functions
+** are runtime/mercury_misc.c; they use the macros below.
 */
 
 #define MR_HASH_STRING_FUNC_BODY					\
 	   MR_Integer hash_string_result;				\
 	   MR_do_hash_string(hash_string_result, s);			\
 	   return hash_string_result;
+#define MR_HASH_STRING2_FUNC_BODY					\
+	   MR_Integer hash_string_result;				\
+	   MR_do_hash_string2(hash_string_result, s);			\
+#define MR_HASH_STRING3_FUNC_BODY					\
+	   MR_Integer hash_string_result;				\
+	   MR_do_hash_string3(hash_string_result, s);			\
 
 /*
 ** A version of strcmp to which we can pass Mercury words

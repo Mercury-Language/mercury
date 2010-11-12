@@ -752,6 +752,10 @@
 :- func string.hash(string) = int.
 :- pred string.hash(string::in, int::out) is det.
 
+    % Two other hash functions for strings.
+:- func string.hash2(string) = int.
+:- func string.hash3(string) = int.
+
     % string.sub_string_search(String, SubString, Index).
     % `Index' is the position in `String' where the first occurrence of
     % `SubString' begins. Indices start at zero, so if `SubString' is a prefix
@@ -2017,31 +2021,67 @@ join_list_2(_, []) = "".
 join_list_2(Sep, [H | T]) = Sep ++ H ++ join_list_2(Sep, T).
 
 %-----------------------------------------------------------------------------%
+%
+% NOTE: string.hash, hash2 and hash3 are also defined as MR_hash_string,
+% MR_hash_string2 and MR_hash_string3 in runtime/mercury_string.h.
+% The corresponding definitions must be kept identical.
 
-    % NOTE: string.hash is also defined as MR_hash_string in
-    % runtime/mercury_string.h. The two definitions must be kept identical.
-    %
 string.hash(String, HashVal) :-
+    HashVal = string.hash(String).
+
+string.hash(String) = HashVal :-
     string.length(String, Length),
-    string.hash_2(String, 0, Length, 0, HashVal0),
-    HashVal = HashVal0 `xor` Length.
+    string.hash_loop(String, 0, Length, 0, HashVal1),
+    HashVal = HashVal1 `xor` Length.
 
-:- pred string.hash_2(string::in, int::in, int::in, int::in, int::out) is det.
+:- pred string.hash_loop(string::in, int::in, int::in, int::in, int::out)
+    is det.
 
-string.hash_2(String, Index, Length, !HashVal) :-
+string.hash_loop(String, Index, Length, !HashVal) :-
     ( Index < Length ->
-        string.combine_hash(char.to_int(string.unsafe_index(String, Index)),
-            !HashVal),
-        string.hash_2(String, Index + 1, Length, !HashVal)
+        C = char.to_int(string.unsafe_index(String, Index)),
+        !:HashVal = !.HashVal `xor` (!.HashVal `unchecked_left_shift` 5),
+        !:HashVal= !.HashVal `xor` C,
+        string.hash_loop(String, Index + 1, Length, !HashVal)
     ;
         true
     ).
 
-:- pred string.combine_hash(int::in, int::in, int::out) is det.
+string.hash2(String) = HashVal :-
+    string.length(String, Length),
+    string.hash2_loop(String, 0, Length, 0, HashVal1),
+    HashVal = HashVal1 `xor` Length.
 
-string.combine_hash(X, H0, H) :-
-    H1 = H0 `xor` (H0 `unchecked_left_shift` 5),
-    H = H1 `xor` X.
+:- pred string.hash2_loop(string::in, int::in, int::in, int::in, int::out)
+    is det.
+
+string.hash2_loop(String, Index, Length, !HashVal) :-
+    ( Index < Length ->
+        C = char.to_int(string.unsafe_index(String, Index)),
+        !:HashVal = !.HashVal * 37,
+        !:HashVal= !.HashVal + C,
+        string.hash2_loop(String, Index + 1, Length, !HashVal)
+    ;
+        true
+    ).
+
+string.hash3(String) = HashVal :-
+    string.length(String, Length),
+    string.hash3_loop(String, 0, Length, 0, HashVal1),
+    HashVal = HashVal1 `xor` Length.
+
+:- pred string.hash3_loop(string::in, int::in, int::in, int::in, int::out)
+    is det.
+
+string.hash3_loop(String, Index, Length, !HashVal) :-
+    ( Index < Length ->
+        C = char.to_int(string.unsafe_index(String, Index)),
+        !:HashVal = !.HashVal * 49,
+        !:HashVal= !.HashVal + C,
+        string.hash3_loop(String, Index + 1, Length, !HashVal)
+    ;
+        true
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -5039,9 +5079,6 @@ string.substring(S1, N1, N2) = S2 :-
 
 string.unsafe_substring(S1, N1, N2) = S2 :-
     string.unsafe_substring(S1, N1, N2, S2).
-
-string.hash(S) = N :-
-    string.hash(S, N).
 
 string.format(S1, PT) = S2 :-
     string.format(S1, PT, S2).

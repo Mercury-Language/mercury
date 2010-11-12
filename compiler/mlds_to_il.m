@@ -2517,14 +2517,18 @@ unaryop_to_il(std_unop(strip_tag),_,comment_node("strip_tag (a no-op)"),
 unaryop_to_il(std_unop(mkbody), _, comment_node("mkbody (a no-op)"), !Info).
 unaryop_to_il(std_unop(unmkbody), _, comment_node("unmkbody (a no-op)"),
         !Info).
-unaryop_to_il(std_unop(hash_string), _,
-        singleton(call(il_mercury_string_hash)), !Info).
 unaryop_to_il(std_unop(bitwise_complement), _, singleton(bitwise_not), !Info).
 
     % Might want to revisit this and define not to be only valid on 1 or 0,
     % then we can use ldc.i4.1 and xor, which might be more efficient.
 unaryop_to_il(std_unop(logical_not), _,
         from_list([ldc(int32, i(1)), clt(unsigned)]), !Info).
+unaryop_to_il(std_unop(hash_string), _,
+        singleton(call(il_mercury_string_hash)), !Info).
+unaryop_to_il(std_unop(hash_string2), _, _, !Info) :-
+    unexpected(this_file, "unaryop_to_il: hash_string2").
+unaryop_to_il(std_unop(hash_string3), _, _, !Info) :-
+    unexpected(this_file, "unaryop_to_il: hash_string3").
 
     % XXX Should detect casts to System.Array from array types
     % and ignore them, as they are not necessary.

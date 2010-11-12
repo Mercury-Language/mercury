@@ -107,7 +107,7 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
     % Compute the hash table.
     construct_string_hash_jump_cases(Cases, TableSize, HashMask,
         gen_tagged_case_code_for_string_switch(CodeModel),
-        map.init, CodeMap, unit, _, !Info, HashSlotsMap),
+        map.init, CodeMap, unit, _, !Info, HashSlotsMap, HashOp),
 
     % Generate the code for when the hash lookup fails.
     (
@@ -220,7 +220,7 @@ ml_generate_string_switch(Cases, Var, CodeModel, _CanFail, Context,
         statement(
             ml_stmt_atomic(assign(SlotVarLval,
                 ml_binop(bitwise_and,
-                    ml_unop(std_unop(hash_string), VarRval),
+                    ml_unop(std_unop(HashOp), VarRval),
                     ml_const(mlconst_int(HashMask))))),
             MLDS_Context),
         statement(ml_stmt_atomic(comment("hash chain loop")), MLDS_Context),

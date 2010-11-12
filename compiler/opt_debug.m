@@ -628,8 +628,10 @@ dump_unop(strip_tag) = "strip_tag".
 dump_unop(mkbody) = "mkbody".
 dump_unop(unmkbody) = "unmkbody".
 dump_unop(logical_not) = "not".
-dump_unop(hash_string) = "hash_string".
 dump_unop(bitwise_complement) = "bitwise_complement".
+dump_unop(hash_string) = "hash_string".
+dump_unop(hash_string2) = "hash_string2".
+dump_unop(hash_string3) = "hash_string3".
 
 dump_binop(array_index(_)) = "array_index".
 dump_binop(compound_lt) = "compound<".

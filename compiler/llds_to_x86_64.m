@@ -819,7 +819,6 @@ unop_instrs(unmktag, _, _, [x86_64_comment("<<unmktag>>")]).
 unop_instrs(strip_tag, _, _, [x86_64_comment("<<strip_tag>>")]).
 unop_instrs(mkbody, _, _, [x86_64_comment("<<mkbody>>")]).
 unop_instrs(unmkbody, _, _, [x86_64_comment("<<unmkbody>>")]).
-unop_instrs(hash_string, _, _, [x86_64_comment("<<hash_string>>")]).
 unop_instrs(bitwise_complement, Op, Instrs0, Instrs) :-
     (
         Op = yes(OpRes),
@@ -838,6 +837,9 @@ unop_instrs(bitwise_complement, Op, Instrs0, Instrs) :-
         )
     ).
 unop_instrs(logical_not, _, _, [x86_64_comment("<<logical_not>>")]).
+unop_instrs(hash_string, _, _, [x86_64_comment("<<hash_string>>")]).
+unop_instrs(hash_string2, _, _, [x86_64_comment("<<hash_string2>>")]).
+unop_instrs(hash_string3, _, _, [x86_64_comment("<<hash_string3>>")]).
 
     % Equivalent x86_64 instructions for a binary operation.
     %
