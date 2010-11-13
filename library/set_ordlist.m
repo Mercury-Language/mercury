@@ -310,6 +310,27 @@
     pred(in, in, out, in, out, in, out, in, out, di, uo) is semidet, in,
     in, out, in, out, in, out, in, out, di, uo) is semidet.
 
+:- pred set_ordlist.fold6(pred(T, A, A, B, B, C, C, D, D, E, E, F, F),
+    set_ordlist(T), A, A, B, B, C, C, D, D, E, E, F, F).
+:- mode set_ordlist.fold6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is det, 
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is det.
+:- mode set_ordlist.fold6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det, 
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det.
+:- mode set_ordlist.fold6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is det, 
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode set_ordlist.fold6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet, 
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
+:- mode set_ordlist.fold6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet, 
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode set_ordlist.fold6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet, 
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
+
     % set_ordlist.divide(Pred, Set, TruePart, FalsePart):
     % TruePart consists of those elements of Set for which Pred succeeds;
     % FalsePart consists of those elements of Set for which Pred fails.
@@ -593,6 +614,9 @@ set_ordlist.fold4(P, S, !A, !B, !C, !D) :-
 
 set_ordlist.fold5(P, S, !A, !B, !C, !D, !E) :-
     list.foldl5(P, set_ordlist.to_sorted_list(S), !A, !B, !C, !D, !E).
+
+set_ordlist.fold6(P, S, !A, !B, !C, !D, !E, !F) :-
+    list.foldl6(P, set_ordlist.to_sorted_list(S), !A, !B, !C, !D, !E, !F).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

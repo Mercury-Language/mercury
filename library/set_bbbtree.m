@@ -352,6 +352,28 @@
     pred(in, in, out, in, out, in, out, in, out, di, uo) is semidet, in,
     in, out, in, out, in, out, in, out, di, uo) is semidet.
 
+:- pred set_bbbtree.fold6(
+    pred(T1, T2, T2, T3, T3, T4, T4, T5, T5, T6, T6, T7, T7),
+    set_bbbtree(T1), T2, T2, T3, T3, T4, T4, T5, T5, T6, T6, T7, T7).
+:- mode set_bbbtree.fold6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is det, 
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is det.
+:- mode set_bbbtree.fold6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det, 
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det.
+:- mode set_bbbtree.fold6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is det, 
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode set_bbbtree.fold6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet, 
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
+:- mode set_bbbtree.fold6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet, 
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode set_bbbtree.fold6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet, 
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
+
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
@@ -1249,6 +1271,9 @@ set_bbbtree.fold4(P, S, !A, !B, !C, !D) :-
 
 set_bbbtree.fold5(P, S, !A, !B, !C, !D, !E) :-
     list.foldl5(P, set_bbbtree.to_sorted_list(S), !A, !B, !C, !D, !E).
+
+set_bbbtree.fold6(P, S, !A, !B, !C, !D, !E, !F) :-
+    list.foldl6(P, set_bbbtree.to_sorted_list(S), !A, !B, !C, !D, !E, !F).
 
 %--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%

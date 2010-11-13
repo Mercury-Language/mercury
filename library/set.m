@@ -335,6 +335,27 @@
 :- mode set.fold5(
     pred(in, in, out, in, out, in, out, in, out, di, uo) is semidet, 
     in, in, out, in, out, in, out, in, out, di, uo) is semidet.
+
+:- pred set.fold6(pred(T, A, A, B, B, C, C, D, D, E, E, F, F), set(T),
+    A, A, B, B, C, C, D, D, E, E, F, F).
+:- mode set.fold6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is det, 
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is det.
+:- mode set.fold6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det, 
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det.
+:- mode set.fold6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is det, 
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode set.fold6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet, 
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
+:- mode set.fold6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet, 
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode set.fold6(
+    pred(in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet, 
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
  
     % set.divide(Pred, Set, TruePart, FalsePart):
     % TruePart consists of those elements of Set for which Pred succeeds;
@@ -575,6 +596,9 @@ set.fold4(F, S, !A, !B, !C, !D) :-
 
 set.fold5(F, S, !A, !B, !C, !D, !E) :-
     list.foldl5(F, set.to_sorted_list(S), !A, !B, !C, !D, !E).
+
+set.fold6(F, S, !A, !B, !C, !D, !E, !F) :-
+    list.foldl6(F, set.to_sorted_list(S), !A, !B, !C, !D, !E, !F).
 
 set.divide(P, Set, TruePart, FalsePart) :-
     set_ordlist.divide(P, Set, TruePart, FalsePart).

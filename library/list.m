@@ -891,20 +891,29 @@
     in, out) is det,
     in, in, out, in, out, in, out, in, out, in, out, in, out) is det.
 :- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
-    in, out) is cc_multi,
-    in, in, out, in, out, in, out, in, out, in, out, in, out) is cc_multi.
-:- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
-    in, out) is semidet,
-    in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
-:- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
-    in, out) is nondet,
-    in, in, out, in, out, in, out, in, out, in, out, in, out) is nondet.
+    mdi, muo) is det,
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det.
 :- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
     di, uo) is det,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is det.
 :- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out) is cc_multi,
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is cc_multi.
+:- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
     di, uo) is cc_multi,
     in, in, out, in, out, in, out, in, out, in, out, di, uo) is cc_multi.
+:- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
+:- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+    mdi, muo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+    di, uo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
+:- mode list.foldl6(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out) is nondet,
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is nondet.
 
     % list.foldl_corresponding(F, As, Bs, !Acc):
     % Does the same job as list.foldl, but works on two lists in
