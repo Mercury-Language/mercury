@@ -261,6 +261,7 @@ case "$host" in
     *solaris2.10)       link_static_opt= ;;
     *apple*darwin*)     link_static_opt= ;;
     *linux*)            link_static_opt= ;;
+    *cygwin*)           link_static_opt= ;;
     *)                  link_static_opt="--linkage static" ;;
 esac
 
