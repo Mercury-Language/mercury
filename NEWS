@@ -43,6 +43,13 @@ Changes to the Mercury standard library:
   accumulators.  Modes that provide unique and mostly-unique accumulators
   for set fold have also been added.
 
+* We have made the following changes to the array module of the standard
+  library:
+
+  + The function array.unsafe_elem2/ has been added.
+
+  + The predicates array.foldr/4 and array.foldr2/6 have been added.
+
 Changes to the Mercury compiler:
 
 * Support for building and linking against frameworks on Mac OS X has

@@ -258,6 +258,12 @@
 %:- mode array.elem(in, array_ui) = out is det.
 :- mode array.elem(in, in) = out is det.
 
+    % As above, but omit the bounds check.
+    %
+:- func array.unsafe_elem(int, array(T)) = T.
+%:- mode array.unsafe_elem(in, array_ui) = out is det.
+:- mode array.unsafe_elem(in, in) = out is det.
+
     % Field update for arrays.
     % (Array ^ elem(Index) := Value) = array.set(Array, Index, Value).
     %
@@ -444,6 +450,36 @@
 :- mode array.foldr(func(in, in) = out is det, in, in) = out is det.
 %:- mode array.foldr(func(in, di) = uo is det, array_ui, di) = uo is det.
 :- mode array.foldr(func(in, di) = uo is det, in, di) = uo is det.
+
+    % array.foldr(P, Array, !Acc) is equivalent to
+    %   list.foldr(P, array.to_list(Array), !Acc)
+    % but more efficient.
+    %
+:- pred array.foldr(pred(T1, T2, T2), array(T1), T2, T2).
+:- mode array.foldr(pred(in, in, out) is det, in, in, out) is det.
+:- mode array.foldr(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode array.foldr(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode array.foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode array.foldr(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode array.foldr(pred(in, di, uo) is semidet, in, di, uo) is semidet.
+
+    % array.foldr2(P, Array, !Acc1, !Acc2) is equivalent to
+    %   list.foldr2(P, array.to_list(Array), !Acc1, !Acc2)
+    % but more efficient.
+    %
+:- pred array.foldr2(pred(T1, T2, T2, T3, T3), array(T1), T2, T2, T3, T3).
+:- mode array.foldr2(pred(in, in, out, in, out) is det, in, in, out, in, out)
+    is det.
+:- mode array.foldr2(pred(in, in, out, mdi, muo) is det, in, in, out, mdi, muo)
+    is det.
+:- mode array.foldr2(pred(in, in, out, di, uo) is det, in, in, out, di, uo)
+    is det.
+:- mode array.foldr2(pred(in, in, out, in, out) is semidet, in,
+    in, out, in, out) is semidet.
+:- mode array.foldr2(pred(in, in, out, mdi, muo) is semidet, in,
+    in, out, mdi, muo) is semidet.
+:- mode array.foldr2(pred(in, in, out, di, uo) is semidet, in,
+    in, out, di, uo) is semidet.
 
     % array.random_permutation(A0, A, RS0, RS) permutes the elements in
     % A0 given random seed RS0 and returns the permuted array in A
@@ -1526,7 +1562,7 @@ array.to_list(Array, List) :-
 %-----------------------------------------------------------------------------%
 
 array.fetch_items(Array, Low, High, List) :-
-    List = foldr_0(func(X, Xs) = [X | Xs], Array, [], Low, High).
+    List = do_foldr_func(func(X, Xs) = [X | Xs], Array, [], Low, High).
 
 %-----------------------------------------------------------------------------%
 
@@ -1661,6 +1697,9 @@ array_compare(A1, A2) = C :-
 
 array.elem(Index, Array) = array.lookup(Array, Index).
 
+array.unsafe_elem(Index, Array) = Elem :-
+    array.unsafe_lookup(Array, Index, Elem).
+
 'elem :='(Index, Array, Value) = array.set(Array, Index, Value).
 
 % ---------------------------------------------------------------------------- %
@@ -1752,87 +1791,145 @@ swap_elems(A0, I, J) = A :-
 % ---------------------------------------------------------------------------- %
 
 array.foldl(Fn, A, X) =
-    foldl_0(Fn, A, X, array.min(A), array.max(A)).
+    do_foldl_func(Fn, A, X, array.min(A), array.max(A)).
 
-:- func foldl_0(func(T1, T2) = T2, array(T1), T2, int, int) = T2.
-%:- mode foldl_0(func(in, in) = out is det, array_ui, in, in, in) = out is det.
-:- mode foldl_0(func(in, in) = out is det, in, in, in, in) = out is det.
-%:- mode foldl_0(func(in, di) = uo is det, array_ui, di, in, in) = uo is det.
-:- mode foldl_0(func(in, di) = uo is det, in, di, in, in) = uo is det.
+:- func do_foldl_func(func(T1, T2) = T2, array(T1), T2, int, int) = T2.
+%:- mode do_foldl_func(func(in, in) = out is det, array_ui, in, in, in)
+%   = out is det.
+:- mode do_foldl_func(func(in, in) = out is det, in, in, in, in) = out is det.
+%:- mode do_foldl_func(func(in, di) = uo is det, array_ui, di, in, in)
+%   = uo is det.
+:- mode do_foldl_func(func(in, di) = uo is det, in, di, in, in) = uo is det.
 
-foldl_0(Fn, A, X, I, Max) =
+do_foldl_func(Fn, A, X, I, Max) =
     ( Max < I ->
         X
     ;
-        foldl_0(Fn, A, Fn(A ^ elem(I), X), I + 1, Max)
+        do_foldl_func(Fn, A, Fn(A ^ unsafe_elem(I), X), I + 1, Max)
     ).
 
 % ---------------------------------------------------------------------------- %
 
-array.foldl(P, A, !X) :-
-    array.foldl_0(P, A, array.min(A), array.max(A), !X).
+array.foldl(P, A, !Acc) :-
+    do_foldl_pred(P, A, array.min(A), array.max(A), !Acc).
 
-:- pred foldl_0(pred(T1, T2, T2), array(T1), int, int, T2, T2).
-:- mode foldl_0(pred(in, in, out) is det, in, in, in, in, out) is det.
-:- mode foldl_0(pred(in, mdi, muo) is det, in, in, in, mdi, muo) is det.
-:- mode foldl_0(pred(in, di, uo) is det, in, in, in, di, uo) is det.
-:- mode foldl_0(pred(in, in, out) is semidet, in, in, in, in, out) is semidet.
-:- mode foldl_0(pred(in, mdi, muo) is semidet, in, in, in, mdi, muo) is semidet.
-:- mode foldl_0(pred(in, di, uo) is semidet, in, in, in, di, uo) is semidet.
+:- pred do_foldl_pred(pred(T1, T2, T2), array(T1), int, int, T2, T2).
+:- mode do_foldl_pred(pred(in, in, out) is det, in, in, in, in, out) is det.
+:- mode do_foldl_pred(pred(in, mdi, muo) is det, in, in, in, mdi, muo) is det.
+:- mode do_foldl_pred(pred(in, di, uo) is det, in, in, in, di, uo) is det.
+:- mode do_foldl_pred(pred(in, in, out) is semidet, in, in, in, in, out)
+    is semidet.
+:- mode do_foldl_pred(pred(in, mdi, muo) is semidet, in, in, in, mdi, muo)
+    is semidet.
+:- mode do_foldl_pred(pred(in, di, uo) is semidet, in, in, in, di, uo)
+    is semidet.
 
-foldl_0(P, A, I, Max, !X) :-
+do_foldl_pred(P, A, I, Max, !Acc) :-
     ( Max < I ->
         true
     ;
-        P(A ^ elem(I), !X),
-        foldl_0(P, A, I+1, Max, !X)
+        P(A ^ unsafe_elem(I), !Acc),
+        do_foldl_pred(P, A, I + 1, Max, !Acc)
     ).
 
 %-----------------------------------------------------------------------------%
 
-array.foldl2(P, A, X0, X, Y0, Y) :-
-    array.foldl2_0(P, A, array.min(A), array.max(A), X0, X, Y0, Y).
+array.foldl2(P, A, !Acc1, !Acc2) :-
+    do_foldl2(P, array.min(A), array.max(A), A, !Acc1, !Acc2).
 
-:- pred foldl2_0(pred(T1, T2, T2, T3, T3), array(T1), int, int, T2, T2,
+:- pred do_foldl2(pred(T1, T2, T2, T3, T3), int, int, array(T1), T2, T2,
     T3, T3).
-:- mode foldl2_0(pred(in, in, out, in, out) is det, in, in, in, in, out,
+:- mode do_foldl2(pred(in, in, out, in, out) is det, in, in, in, in, out,
     in, out) is det.
-:- mode foldl2_0(pred(in, in, out, mdi, muo) is det, in, in, in, in, out,
+:- mode do_foldl2(pred(in, in, out, mdi, muo) is det, in, in, in, in, out,
     mdi, muo) is det.
-:- mode foldl2_0(pred(in, in, out, di, uo) is det, in, in, in, in, out,
+:- mode do_foldl2(pred(in, in, out, di, uo) is det, in, in, in, in, out,
     di, uo) is det.
-:- mode foldl2_0(pred(in, in, out, in, out) is semidet, in, in, in, in, out,
+:- mode do_foldl2(pred(in, in, out, in, out) is semidet, in, in, in, in, out,
     in, out) is semidet.
-:- mode foldl2_0(pred(in, in, out, mdi, muo) is semidet, in, in, in, in, out,
+:- mode do_foldl2(pred(in, in, out, mdi, muo) is semidet, in, in, in, in, out,
     mdi, muo) is semidet.
-:- mode foldl2_0(pred(in, in, out, di, uo) is semidet, in, in, in, in, out,
+:- mode do_foldl2(pred(in, in, out, di, uo) is semidet, in, in, in, in, out,
     di, uo) is semidet.
 
-foldl2_0(P, A, I, Max, X0, X, Y0, Y) :-
+do_foldl2(P, I, Max, A, !Acc1, !Acc2) :-
     ( Max < I ->
-        X = X0,
-        Y = Y0
+        true
     ;
-        P(A ^ elem(I), X0, X1, Y0, Y1),
-        foldl2_0(P, A, I+1, Max, X1, X, Y1, Y)
+        P(A ^ unsafe_elem(I), !Acc1, !Acc2),
+        do_foldl2(P, I + 1, Max, A, !Acc1, !Acc2)
     ).
 
 %-----------------------------------------------------------------------------%
 
 array.foldr(Fn, A, X) =
-    foldr_0(Fn, A, X, array.min(A), array.max(A)).
+    do_foldr_func(Fn, A, X, array.min(A), array.max(A)).
 
-:- func foldr_0(func(T1, T2) = T2, array(T1), T2, int, int) = T2.
-%:- mode foldr_0(func(in, in) = out is det, array_ui, in, in, in) = out is det.
-:- mode foldr_0(func(in, in) = out is det, in, in, in, in) = out is det.
-%:- mode foldr_0(func(in, di) = uo is det, array_ui, di, in, in) = uo is det.
-:- mode foldr_0(func(in, di) = uo is det, in, di, in, in) = uo is det.
+:- func do_foldr_func(func(T1, T2) = T2, array(T1), T2, int, int) = T2.
+%:- mode do_foldr_func(func(in, in) = out is det, array_ui, in, in, in)
+%   = out is det.
+:- mode do_foldr_func(func(in, in) = out is det, in, in, in, in) = out is det.
+%:- mode do_foldr_func(func(in, di) = uo is det, array_ui, di, in, in)
+%   = uo is det.
+:- mode do_foldr_func(func(in, di) = uo is det, in, di, in, in) = uo is det.
 
-foldr_0(Fn, A, X, Min, I) =
+do_foldr_func(Fn, A, X, Min, I) =
     ( I < Min ->
         X
     ;
-        foldr_0(Fn, A, Fn(A ^ elem(I), X), Min, I - 1)
+        do_foldr_func(Fn, A, Fn(A ^ unsafe_elem(I), X), Min, I - 1)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+array.foldr(P, A, !Acc) :-
+    do_foldr_pred(P, array.min(A), array.max(A), A, !Acc).
+
+:- pred do_foldr_pred(pred(T1, T2, T2), int, int, array(T1), T2, T2).
+:- mode do_foldr_pred(pred(in, in, out) is det, in, in, in, in, out) is det.
+:- mode do_foldr_pred(pred(in, mdi, muo) is det, in, in, in, mdi, muo) is det.
+:- mode do_foldr_pred(pred(in, di, uo) is det, in, in, in, di, uo) is det.
+:- mode do_foldr_pred(pred(in, in, out) is semidet, in, in, in, in, out)
+    is semidet.
+:- mode do_foldr_pred(pred(in, mdi, muo) is semidet, in, in, in, mdi, muo)
+    is semidet.
+:- mode do_foldr_pred(pred(in, di, uo) is semidet, in, in, in, di, uo)
+    is semidet.
+
+do_foldr_pred(P, Min, I, A, !Acc) :-
+    ( I < Min ->
+        true
+    ;
+        P(A ^ unsafe_elem(I), !Acc),
+        do_foldr_pred(P, Min, I - 1, A, !Acc)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+array.foldr2(P, A, !Acc1, !Acc2) :-
+    do_foldr2(P, array.min(A), array.max(A), A, !Acc1, !Acc2).
+
+:- pred do_foldr2(pred(T1, T2, T2, T3, T3), int, int, array(T1), T2, T2,
+    T3, T3).
+:- mode do_foldr2(pred(in, in, out, in, out) is det, in, in, in, in, out,
+    in, out) is det.
+:- mode do_foldr2(pred(in, in, out, mdi, muo) is det, in, in, in, in, out,
+    mdi, muo) is det.
+:- mode do_foldr2(pred(in, in, out, di, uo) is det, in, in, in, in, out,
+    di, uo) is det.
+:- mode do_foldr2(pred(in, in, out, in, out) is semidet, in, in, in, in, out,
+    in, out) is semidet.
+:- mode do_foldr2(pred(in, in, out, mdi, muo) is semidet, in, in, in, in, out,
+    mdi, muo) is semidet.
+:- mode do_foldr2(pred(in, in, out, di, uo) is semidet, in, in, in, in, out,
+    di, uo) is semidet.
+
+do_foldr2(P, Min, I, A, !Acc1, !Acc2) :-
+    ( I < Min ->
+        true
+    ;
+        P(A ^ unsafe_elem(I), !Acc1, !Acc2),
+        do_foldr2(P, Min, I - 1, A, !Acc1, !Acc2)
     ).
 
 %-----------------------------------------------------------------------------%
