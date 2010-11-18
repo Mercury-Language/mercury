@@ -50,6 +50,9 @@ Changes to the Mercury standard library:
 
   + The predicates array.foldr/4 and array.foldr2/6 have been added.
 
+* We have added the predicates version_array.foldl2/6, version_array.foldr/4,
+  and version_array.foldr2/6 to the standard library.
+
 Changes to the Mercury compiler:
 
 * Support for building and linking against frameworks on Mac OS X has

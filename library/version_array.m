@@ -138,10 +138,49 @@
 :- mode foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode foldl(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
 :- mode foldl(pred(in, di, uo) is semidet, in, di, uo) is semidet.
+   
+    % foldl2(P, A, !Acc1, !Acc2) is equivalent to
+    % list.foldl2(P, list(A), !Acc1, !Acc2) but more efficient.
+    %
+:- pred foldl2(pred(T1, T2, T2, T3, T3), version_array(T1), T2, T2, T3, T3).
+:- mode foldl2(pred(in, in, out, in, out) is det, in, in, out, in, out)
+    is det.
+:- mode foldl2(pred(in, in, out, mdi, muo) is det, in, in, out, mdi, muo)
+    is det.
+:- mode foldl2(pred(in, in, out, di, uo) is det, in, in, out, di, uo)
+    is det.
+:- mode foldl2(pred(in, in, out, in, out) is semidet, in,
+    in, out, in, out) is semidet.
+:- mode foldl2(pred(in, in, out, mdi, muo) is semidet, in,
+    in, out, mdi, muo) is semidet.
+:- mode foldl2(pred(in, in, out, di, uo) is semidet, in,
+    in, out, di, uo) is semidet.
 
     % foldr(F, A, X) is equivalent to list.foldr(F, list(A), Xs).
     %
 :- func foldr(func(T1, T2) = T2, version_array(T1), T2) = T2.
+    
+:- pred foldr(pred(T1, T2, T2), version_array(T1), T2, T2).
+:- mode foldr(pred(in, in, out) is det, in, in, out) is det.
+:- mode foldr(pred(in, mdi, muo) is det, in, mdi, muo) is det.
+:- mode foldr(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- mode foldr(pred(in, mdi, muo) is semidet, in, mdi, muo) is semidet.
+:- mode foldr(pred(in, di, uo) is semidet, in, di, uo) is semidet.
+
+:- pred foldr2(pred(T1, T2, T2, T3, T3), version_array(T1), T2, T2, T3, T3).
+:- mode foldr2(pred(in, in, out, in, out) is det, in, in, out, in, out)
+    is det.
+:- mode foldr2(pred(in, in, out, mdi, muo) is det, in, in, out, mdi, muo)
+    is det.
+:- mode foldr2(pred(in, in, out, di, uo) is det, in, in, out, di, uo)
+    is det.
+:- mode foldr2(pred(in, in, out, in, out) is semidet, in,
+    in, out, in, out) is semidet.
+:- mode foldr2(pred(in, in, out, mdi, muo) is semidet, in,
+    in, out, mdi, muo) is semidet.
+:- mode foldr2(pred(in, in, out, di, uo) is semidet, in,
+    in, out, di, uo) is semidet.
 
     % copy(A) is a copy of array A.  Access to the copy is O(1).
     %
@@ -228,45 +267,128 @@ to_list(VA) = list(VA).
 
 %-----------------------------------------------------------------------------%
 
-foldl(F, VA, Acc) = foldl_2(F, VA, Acc, 0, size(VA)).
+foldl(F, VA, Acc) = do_foldl_func(F, VA, Acc, 0, size(VA)).
 
-:- func foldl_2(func(T1, T2) = T2, version_array(T1), T2, int, int) = T2.
+:- func do_foldl_func(func(T1, T2) = T2, version_array(T1), T2, int, int) = T2.
 
-foldl_2(F, VA, Acc, Lo, Hi) =
-    ( if Lo < Hi then foldl_2(F, VA, F(VA ^ elem(Lo), Acc), Lo + 1, Hi)
+do_foldl_func(F, VA, Acc, Lo, Hi) =
+    ( if Lo < Hi then do_foldl_func(F, VA, F(VA ^ elem(Lo), Acc), Lo + 1, Hi)
                  else Acc
     ).
 
 %-----------------------------------------------------------------------------%
 
 foldl(P, VA, !Acc) :-
-    foldl_2(P, VA, 0, size(VA), !Acc).
+    do_foldl_pred(P, VA, 0, size(VA), !Acc).
 
-:- pred foldl_2(pred(T1, T2, T2), version_array(T1), int, int, T2, T2).
-:- mode foldl_2(pred(in, in, out) is det, in, in, in, in, out) is det.
-:- mode foldl_2(pred(in, mdi, muo) is det, in, in, in, mdi, muo) is det.
-:- mode foldl_2(pred(in, di, uo) is det, in, in, in, di, uo) is det.
-:- mode foldl_2(pred(in, in, out) is semidet, in, in, in, in, out) is semidet.
-:- mode foldl_2(pred(in, mdi, muo) is semidet, in, in, in, mdi, muo) is semidet.
-:- mode foldl_2(pred(in, di, uo) is semidet, in, in, in, di, uo) is semidet.
+:- pred do_foldl_pred(pred(T1, T2, T2), version_array(T1), int, int, T2, T2).
+:- mode do_foldl_pred(pred(in, in, out) is det, in, in, in, in, out) is det.
+:- mode do_foldl_pred(pred(in, mdi, muo) is det, in, in, in, mdi, muo) is det.
+:- mode do_foldl_pred(pred(in, di, uo) is det, in, in, in, di, uo) is det.
+:- mode do_foldl_pred(pred(in, in, out) is semidet, in, in, in, in, out)
+    is semidet.
+:- mode do_foldl_pred(pred(in, mdi, muo) is semidet, in, in, in, mdi, muo)
+    is semidet.
+:- mode do_foldl_pred(pred(in, di, uo) is semidet, in, in, in, di, uo)
+    is semidet.
 
-foldl_2(P, VA, Lo, Hi, !Acc) :-
+do_foldl_pred(P, VA, Lo, Hi, !Acc) :-
     ( if Lo < Hi then
         P(VA ^ elem(Lo), !Acc),
-        foldl_2(P, VA, Lo + 1, Hi, !Acc)
+        do_foldl_pred(P, VA, Lo + 1, Hi, !Acc)
       else
         true
     ).
 
 %-----------------------------------------------------------------------------%
 
-foldr(F, VA, Acc) = foldr_2(F, VA, Acc, size(VA) - 1).
+foldl2(P, VA, !Acc1, !Acc2) :-
+    do_foldl2(P, VA, 0, size(VA), !Acc1, !Acc2).
 
-:- func foldr_2(func(T1, T2) = T2, version_array(T1), T2, int) = T2.
+:- pred do_foldl2(pred(T1, T2, T2, T3, T3), version_array(T1), int, int,
+    T2, T2, T3, T3).
+:- mode do_foldl2(pred(in, in, out, in, out) is det, in, in, in,
+    in, out, in, out) is det.
+:- mode do_foldl2(pred(in, in, out, mdi, muo) is det, in, in, in,
+    in, out, mdi, muo) is det.
+:- mode do_foldl2(pred(in, in, out, di, uo) is det, in, in, in,
+    in, out, di, uo) is det.
+:- mode do_foldl2(pred(in, in, out, in, out) is semidet, in, in, in,
+    in, out, in, out) is semidet.
+:- mode do_foldl2(pred(in, in, out, mdi, muo) is semidet, in, in, in,
+    in, out, mdi, muo) is semidet.
+:- mode do_foldl2(pred(in, in, out, di, uo) is semidet, in, in, in,
+    in, out, di, uo) is semidet.
 
-foldr_2(F, VA, Acc, Hi) =
-    ( if 0 =< Hi then foldr_2(F, VA, F(VA ^ elem(Hi), Acc), Hi - 1)
+do_foldl2(P, VA, Lo, Hi, !Acc1, !Acc2) :-
+    ( if Lo < Hi then
+        P(VA ^ elem(Lo), !Acc1, !Acc2),
+        do_foldl2(P, VA, Lo + 1, Hi, !Acc1, !Acc2)
+      else
+        true
+    ).
+
+%-----------------------------------------------------------------------------%
+
+foldr(F, VA, Acc) = do_foldr_func(F, VA, Acc, version_array.max(VA)).
+
+:- func do_foldr_func(func(T1, T2) = T2, version_array(T1), T2, int) = T2.
+
+do_foldr_func(F, VA, Acc, Hi) =
+    ( if 0 =< Hi then do_foldr_func(F, VA, F(VA ^ elem(Hi), Acc), Hi - 1)
                  else Acc
+    ).
+
+%-----------------------------------------------------------------------------%
+
+foldr(P, VA, !Acc) :-
+    do_foldr_pred(P, VA, version_array.max(VA), !Acc).
+
+:- pred do_foldr_pred(pred(T1, T2, T2), version_array(T1), int, T2, T2).
+:- mode do_foldr_pred(pred(in, in, out) is det, in, in, in, out) is det.
+:- mode do_foldr_pred(pred(in, mdi, muo) is det, in, in, mdi, muo) is det.
+:- mode do_foldr_pred(pred(in, di, uo) is det,  in, in, di, uo) is det.
+:- mode do_foldr_pred(pred(in, in, out) is semidet, in, in, in, out)
+    is semidet.
+:- mode do_foldr_pred(pred(in, mdi, muo) is semidet, in, in, mdi, muo)
+    is semidet.
+:- mode do_foldr_pred(pred(in, di, uo) is semidet, in, in, di, uo)
+    is semidet.
+
+do_foldr_pred(P, VA, I, !Acc) :-
+    ( if I >= 0 then
+        P(VA ^ elem(I), !Acc),
+        do_foldr_pred(P, VA, I - 1, !Acc)
+      else
+        true
+    ).
+
+%-----------------------------------------------------------------------------%
+
+foldr2(P, VA, !Acc1, !Acc2) :-
+    do_foldr2(P, VA, version_array.max(VA), !Acc1, !Acc2).
+
+:- pred do_foldr2(pred(T1, T2, T2, T3, T3), version_array(T1), int,
+    T2, T2, T3, T3).
+:- mode do_foldr2(pred(in, in, out, in, out) is det, in, in,
+    in, out, in, out) is det.
+:- mode do_foldr2(pred(in, in, out, mdi, muo) is det, in, in,
+    in, out, mdi, muo) is det.
+:- mode do_foldr2(pred(in, in, out, di, uo) is det, in, in,
+    in, out, di, uo) is det.
+:- mode do_foldr2(pred(in, in, out, in, out) is semidet, in, in,
+    in, out, in, out) is semidet.
+:- mode do_foldr2(pred(in, in, out, mdi, muo) is semidet, in, in,
+    in, out, mdi, muo) is semidet.
+:- mode do_foldr2(pred(in, in, out, di, uo) is semidet, in, in,
+    in, out, di, uo) is semidet.
+
+do_foldr2(P, VA, I, !Acc1, !Acc2) :-
+    ( if I >= 0 then
+        P(VA ^ elem(I), !Acc1, !Acc2),
+        do_foldr2(P, VA, I - 1, !Acc1, !Acc2)
+      else
+        true
     ).
 
 %-----------------------------------------------------------------------------%
@@ -654,13 +776,13 @@ resize(N, X, VA, resize(VA, N, X)).
 ").
 
 :- pragma foreign_decl("C", "
-    /*
-    ** If index is -1 then value is undefined and rest is the latest
-    ** array value.
-    **
-    ** Otherwise value is the overwritten value at index and rest is
-    ** a pointer to the next version in the chain.
-    */
+/*
+** If index is -1 then value is undefined and rest is the latest
+** array value.
+**
+** Otherwise value is the overwritten value at index and rest is
+** a pointer to the next version in the chain.
+*/
 
 typedef struct ML_va    *ML_va_ptr;
 
@@ -676,57 +798,98 @@ struct ML_va {
 #endif
 };
 
-    /*
-    ** Returns a pointer to the latest version of the array.
-    */
-extern ML_va_ptr    ML_va_get_latest(ML_va_ptr VA);
+/*
+** Returns a pointer to the latest version of the array.
+*/
+extern ML_va_ptr
+ML_va_get_latest(ML_va_ptr VA);
 
-    /*
-    ** Returns the number of items in a version array.
-    */
-extern MR_Integer   ML_va_size_dolock(ML_va_ptr);
-static MR_Integer   ML_va_size(ML_va_ptr);
+/*
+** Returns the number of items in a version array.
+*/
+extern MR_Integer
+ML_va_size_dolock(ML_va_ptr);
 
-    /*
-    ** If I is in range then ML_va_get(VA, I, &X) sets X to the Ith item
-    ** in VA (counting from zero) and returns MR_TRUE.  Otherwise it
-    ** returns MR_FALSE.
-    */
-extern int          ML_va_get_dolock(ML_va_ptr, MR_Integer, MR_Word *);
-static int          ML_va_get(ML_va_ptr VA, MR_Integer I, MR_Word *Xptr);
+/*
+** If I is in range then ML_va_get(VA, I, &X) sets X to the Ith item
+** in VA (counting from zero) and returns MR_TRUE.  Otherwise it
+** returns MR_FALSE.
+*/
+extern MR_bool
+ML_va_get_dolock(ML_va_ptr, MR_Integer, MR_Word *);
 
-    /*
-    ** If I is in range then ML_va_set(VA0, I, X, VA) sets VA to be VA0
-    ** updated with the Ith item as X (counting from zero) and
-    ** returns MR_TRUE.  Otherwise it returns MR_FALSE.
-    */
-extern int          ML_va_set_dolock(ML_va_ptr, MR_Integer, MR_Word,
-                        ML_va_ptr *);
-static int          ML_va_set(ML_va_ptr, MR_Integer, MR_Word, ML_va_ptr *);
+/*
+** If I is in range then ML_va_set(VA0, I, X, VA) sets VA to be VA0
+** updated with the Ith item as X (counting from zero) and
+** returns MR_TRUE.  Otherwise it returns MR_FALSE.
+*/
+extern MR_bool
+ML_va_set_dolock(ML_va_ptr, MR_Integer, MR_Word, ML_va_ptr *);
 
-    /*
-    ** Create a copy of VA0 as a new array.
-    */
-static ML_va_ptr    ML_va_flat_copy(const ML_va_ptr VA0);
+/*
+** `Rewinds' a version array, invalidating all extant successors
+** including the argument.
+*/
+extern ML_va_ptr
+ML_va_rewind_dolock(ML_va_ptr);
 
-    /*
-    ** Update the array VA using the override values in VA0
-    ** i.e. recreate the state of the version array as captured in VA0.
-    */
-static void         ML_va_rewind_into(ML_va_ptr VA, const ML_va_ptr VA0);
+/*
+** Resize a version array.
+*/
+extern ML_va_ptr
+ML_va_resize_dolock(ML_va_ptr, MR_Integer, MR_Word);
 
-    /*
-    ** `Rewinds' a version array, invalidating all extant successors
-    ** including the argument.
-    */
-extern ML_va_ptr    ML_va_rewind_dolock(ML_va_ptr);
-static ML_va_ptr    ML_va_rewind(ML_va_ptr VA);
+").
 
-    /*
-    ** Resize a version array.
-    */
-extern ML_va_ptr    ML_va_resize_dolock(ML_va_ptr, MR_Integer, MR_Word);
-static ML_va_ptr    ML_va_resize(ML_va_ptr, MR_Integer, MR_Word);
+:- pragma foreign_decl("C", local, "
+
+/*
+** Returns the number of items in a version array.
+*/
+static MR_Integer
+ML_va_size(ML_va_ptr);
+
+/*
+** If I is in range then ML_va_get(VA, I, &X) sets X to the Ith item
+** in VA (counting from zero) and returns MR_TRUE.  Otherwise it
+** returns MR_FALSE.
+*/
+static MR_bool
+ML_va_get(ML_va_ptr VA, MR_Integer I, MR_Word *Xptr);
+
+/*
+** If I is in range then ML_va_set(VA0, I, X, VA) sets VA to be VA0
+** updated with the Ith item as X (counting from zero) and
+** returns MR_TRUE.  Otherwise it returns MR_FALSE.
+*/
+static MR_bool
+ML_va_set(ML_va_ptr, MR_Integer, MR_Word, ML_va_ptr *);
+    
+/*
+** Create a copy of VA0 as a new array.
+*/
+static ML_va_ptr
+ML_va_flat_copy(const ML_va_ptr VA0);
+    
+/*
+** Update the array VA using the override values in VA0
+** i.e. recreate the state of the version array as captured in VA0.
+*/
+static void
+ML_va_rewind_into(ML_va_ptr VA, const ML_va_ptr VA0);
+
+/*
+** `Rewinds' a version array, invalidating all extant successors
+** including the argument.
+*/
+static ML_va_ptr
+ML_va_rewind(ML_va_ptr VA);
+
+/*
+** Resize a version array.
+*/
+static ML_va_ptr
+ML_va_resize(ML_va_ptr, MR_Integer, MR_Word);
 
 ").
 
@@ -1581,4 +1744,5 @@ public static class ML_uva implements ML_va, java.io.Serializable {
 ").
 
 %-----------------------------------------------------------------------------%
+:- end_module version_array.
 %-----------------------------------------------------------------------------%
