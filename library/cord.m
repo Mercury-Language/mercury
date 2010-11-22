@@ -158,26 +158,52 @@
 :- func foldl(func(T, U) = U, cord(T), U) = U.
 :- pred foldl_pred(pred(T, U, U), cord(T), U, U).
 :- mode foldl_pred(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldl_pred(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
 :- mode foldl_pred(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode foldl_pred(in(pred(in, in, out) is semidet), in, in, out) is semidet.
+:- mode foldl_pred(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
+:- mode foldl_pred(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
 
     % foldr(F, C, A) = list.foldr(F, list(C), A).
     %
 :- func foldr(func(T, U) = U, cord(T), U) = U.
-:- pred foldr_pred(pred(T, U, U)::in(pred(in, in, out) is det), cord(T)::in,
-    U::in, U::out) is det.
+:- pred foldr_pred(pred(T, U, U), cord(T), U, U).
+:- mode foldr_pred(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldr_pred(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode foldr_pred(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode foldr_pred(in(pred(in, in, out) is semidet), in, in, out) is semidet.
+:- mode foldr_pred(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
+:- mode foldr_pred(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
 
     % map_foldl(P, CA, CB, !Acc):
     %
     % This predicate calls P on each element of the input cord, working
     % left to right. Each call to P transforms an element of the input cord
     % to the corresponding element of the output cord, and updates the
-    % accumulator(s).
+    % accumulator.
     %
-:- pred map_foldl(pred(A, B, C, C)::in(pred(in, out, in, out) is det),
-    cord(A)::in, cord(B)::out, C::in, C::out) is det.
+:- pred map_foldl(pred(A, B, C, C), cord(A), cord(B), C, C).
+:- mode map_foldl(in(pred(in, out, in, out) is det), in, out, in, out)
+    is det.
+:- mode map_foldl(in(pred(in, out, mdi, muo) is det), in, out, mdi, muo)
+    is det.
+:- mode map_foldl(in(pred(in, out, di, uo) is det), in, out, di, uo)
+    is det.
+:- mode map_foldl(in(pred(in, out, in, out) is semidet), in, out, in, out)
+    is semidet.
+:- mode map_foldl(in(pred(in, out, mdi, muo) is semidet), in, out, mdi, muo)
+    is semidet.
+:- mode map_foldl(in(pred(in, out, di, uo) is semidet), in, out, di, uo)
+    is semidet.
+
+    % As above, but with two accumulators.
+    %
 :- pred map_foldl2(pred(A, B, C, C, D, D)::
     in(pred(in, out, in, out, in, out) is det),
     cord(A)::in, cord(B)::out, C::in, C::out, D::in, D::out) is det.
+
+    % As above, but with three accumulators.
+    %
 :- pred map_foldl3(pred(A, B, C, C, D, D, E, E)::
     in(pred(in, out, in, out, in, out, in, out) is det),
     cord(A)::in, cord(B)::out, C::in, C::out, D::in, D::out, E::in, E::out)
@@ -601,7 +627,14 @@ foldl_pred(P, nonempty_cord(N), !Acc) :-
 
 :- pred foldl_node_pred(pred(T, U, U), cord_node(T), U, U).
 :- mode foldl_node_pred(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldl_node_pred(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
 :- mode foldl_node_pred(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode foldl_node_pred(in(pred(in, in, out) is semidet), in, in, out)
+    is semidet.
+:- mode foldl_node_pred(in(pred(in, mdi, muo) is semidet), in, mdi, muo)
+    is semidet.
+:- mode foldl_node_pred(in(pred(in, di, uo) is semidet), in, di, uo)
+    is semidet.
 
 foldl_node_pred(P, unit_node(X), !Acc) :-
     P(X, !Acc).
@@ -627,8 +660,16 @@ foldr_pred(_P, empty_cord, !Acc).
 foldr_pred(P, nonempty_cord(N), !Acc) :-
     foldr_node_pred(P, N, !Acc).
 
-:- pred foldr_node_pred(pred(T, U, U)::in(pred(in, in, out) is det),
-    cord_node(T)::in, U::in, U::out) is det.
+:- pred foldr_node_pred(pred(T, U, U), cord_node(T), U, U).
+:- mode foldr_node_pred(in(pred(in, in, out) is det), in, in, out) is det.
+:- mode foldr_node_pred(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
+:- mode foldr_node_pred(in(pred(in, di, uo) is det), in, di, uo) is det.
+:- mode foldr_node_pred(in(pred(in, in, out) is semidet), in, in, out)
+    is semidet.
+:- mode foldr_node_pred(in(pred(in, mdi, muo) is semidet), in, mdi, muo)
+    is semidet.
+:- mode foldr_node_pred(in(pred(in, di, uo) is semidet), in, di, uo)
+    is semidet.
 
 foldr_node_pred(P, unit_node(X), !Acc) :-
     P(X, !Acc).
@@ -644,8 +685,19 @@ map_foldl(_P, empty_cord, empty_cord, !A).
 map_foldl(P, nonempty_cord(NX), nonempty_cord(NY), !A) :-
     map_foldl_node(P, NX, NY, !A).
 
-:- pred map_foldl_node(pred(A, B, C, C)::in(pred(in, out, in, out) is det),
-    cord_node(A)::in, cord_node(B)::out, C::in, C::out) is det.
+:- pred map_foldl_node(pred(A, B, C, C), cord_node(A), cord_node(B), C, C).
+:- mode map_foldl_node(in(pred(in, out, in, out) is det), in, out, in, out)
+    is det.
+:- mode map_foldl_node(in(pred(in, out, mdi, muo) is det), in, out, mdi, muo)
+    is det.
+:- mode map_foldl_node(in(pred(in, out, di, uo) is det), in, out, di, uo)
+    is det.
+:- mode map_foldl_node(in(pred(in, out, in, out) is semidet), in, out,
+    in, out) is semidet.
+:- mode map_foldl_node(in(pred(in, out, mdi, muo) is semidet), in, out,
+    mdi, muo) is semidet.
+:- mode map_foldl_node(in(pred(in, out, di, uo) is semidet), in, out,
+    di, uo) is semidet.
 
 map_foldl_node(P, unit_node(X), unit_node(Y), !A) :-
     P(X, Y, !A).

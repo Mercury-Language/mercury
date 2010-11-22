@@ -264,12 +264,18 @@
 :- pred bimap.foldl2(pred(K, V, A, A, B, B), bimap(K, V), A, A, B, B).
 :- mode bimap.foldl2(pred(in, in, in, out, in, out) is det,
     in, in, out, in, out) is det.
-:- mode bimap.foldl2(pred(in, in, in, out, in, out) is semidet,
-    in, in, out, in, out) is semidet.
+:- mode bimap.foldl2(pred(in, in, in, out, mdi, muo) is det,
+    in, in, out, mdi, muo) is det.
 :- mode bimap.foldl2(pred(in, in, in, out, di, uo) is det,
     in, in, out, di, uo) is det.
 :- mode bimap.foldl2(pred(in, in, di, uo, di, uo) is det,
     in, di, uo, di, uo) is det.
+:- mode bimap.foldl2(pred(in, in, in, out, in, out) is semidet,
+    in, in, out, in, out) is semidet.
+:- mode bimap.foldl2(pred(in, in, in, out, mdi, muo) is semidet,
+    in, in, out, mdi, muo) is semidet.
+:- mode bimap.foldl2(pred(in, in, in, out, di, uo) is semidet,
+    in, in, out, di, uo) is semidet.
 
     % Perform a traversal of the bimap, applying an accumulator predicate
     % with three accumulators for each key-value pair. (Although no more
@@ -280,14 +286,20 @@
     A, A, B, B, C, C).
 :- mode bimap.foldl3(pred(in, in, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out) is det.
-:- mode bimap.foldl3(pred(in, in, in, out, in, out, in, out) is semidet,
-    in, in, out, in, out, in, out) is semidet.
+:- mode bimap.foldl3(pred(in, in, in, out, in, out, mdi, muo) is det,
+    in, in, out, in, out, mdi, muo) is det.
 :- mode bimap.foldl3(pred(in, in, in, out, in, out, di, uo) is det,
     in, in, out, in, out, di, uo) is det.
 :- mode bimap.foldl3(pred(in, in, in, out, di, uo, di, uo) is det,
     in, in, out, di, uo, di, uo) is det.
 :- mode bimap.foldl3(pred(in, in, di, uo, di, uo, di, uo) is det,
     in, di, uo, di, uo, di, uo) is det.
+:- mode bimap.foldl3(pred(in, in, in, out, in, out, in, out) is semidet,
+    in, in, out, in, out, in, out) is semidet.
+:- mode bimap.foldl3(pred(in, in, in, out, in, out, mdi, muo) is semidet,
+    in, in, out, in, out, mdi, muo) is semidet.
+:- mode bimap.foldl3(pred(in, in, in, out, in, out, di, uo) is semidet,
+    in, in, out, in, out, di, uo) is semidet.
 
     % Extract a the forward map from the bimap, the map from key to value.
     %

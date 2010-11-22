@@ -171,14 +171,20 @@
 	A, A, B, B, C, C).
 :- mode tree234.foldl3(pred(in, in, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out) is det.
-:- mode tree234.foldl3(pred(in, in, in, out, in, out, in, out) is semidet,
-    in, in, out, in, out, in, out) is semidet.
+:- mode tree234.foldl3(pred(in, in, in, out, in, out, mdi, muo) is det,
+    in, in, out, in, out, mdi, muo) is det.
 :- mode tree234.foldl3(pred(in, in, in, out, in, out, di, uo) is det,
     in, in, out, in, out, di, uo) is det.
 :- mode tree234.foldl3(pred(in, in, in, out, di, uo, di, uo) is det,
     in, in, out, di, uo, di, uo) is det.
 :- mode tree234.foldl3(pred(in, in, di, uo, di, uo, di, uo) is det,
     in, di, uo, di, uo, di, uo) is det.
+:- mode tree234.foldl3(pred(in, in, in, out, in, out, in, out) is semidet,
+    in, in, out, in, out, in, out) is semidet.
+:- mode tree234.foldl3(pred(in, in, in, out, in, out, mdi, muo) is semidet,
+    in, in, out, in, out, mdi, muo) is semidet.
+:- mode tree234.foldl3(pred(in, in, in, out, in, out, di, uo) is semidet,
+    in, in, out, in, out, di, uo) is semidet.
 
 :- pred tree234.foldl4(pred(K, V, A, A, B, B, C, C, D, D), tree234(K, V),
 	A, A, B, B, C, C, D, D).

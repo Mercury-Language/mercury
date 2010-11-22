@@ -685,11 +685,23 @@
 :- pred list.map_corresponding_foldl2(pred(A, B, C, D, D, E, E),
     list(A), list(B), list(C), D, D, E, E).
 :- mode list.map_corresponding_foldl2(
-    pred(in, in, out, in, out, in, out) is det, in, in, out, in, out, in, out)
-    is det.
+    pred(in, in, out, in, out, in, out) is det, in, in, out, in, out,
+    in, out) is det.
 :- mode list.map_corresponding_foldl2(
-    pred(in, in, out, in, out, di, uo) is det, in, in, out, in, out, di, uo)
-    is det.
+    pred(in, in, out, in, out, mdi, muo) is det, in, in, out, in, out,
+    mdi, muo) is det.
+:- mode list.map_corresponding_foldl2(
+    pred(in, in, out, in, out, di, uo) is det, in, in, out, in, out,
+    di, uo) is det.
+:- mode list.map_corresponding_foldl2(
+    pred(in, in, out, in, out, in, out) is semidet, in, in, out, in, out,
+    in, out) is semidet.
+:- mode list.map_corresponding_foldl2(
+    pred(in, in, out, in, out, mdi, muo) is semidet, in, in, out, in, out,
+    mdi, muo) is semidet.
+:- mode list.map_corresponding_foldl2(
+    pred(in, in, out, in, out, di, uo) is semidet, in, in, out, in, out,
+    di, uo) is semidet.
 
     % Like list.map_corresponding_foldl/6 except that it has three
     % accumulators.
@@ -700,8 +712,20 @@
     pred(in, in, out, in, out, in, out, in, out) is det, in, in, out, in, out,
     in, out, in, out) is det.
 :- mode list.map_corresponding_foldl3(
+    pred(in, in, out, in, out, in, out, mdi, muo) is det, in, in, out, in, out,
+    in, out, mdi, muo) is det.
+:- mode list.map_corresponding_foldl3(
     pred(in, in, out, in, out, in, out, di, uo) is det, in, in, out, in, out,
     in, out, di, uo) is det.
+:- mode list.map_corresponding_foldl3(
+    pred(in, in, out, in, out, in, out, in, out) is semidet, in, in, out,
+    in, out, in, out, in, out) is semidet.
+:- mode list.map_corresponding_foldl3(
+    pred(in, in, out, in, out, in, out, mdi, muo) is semidet, in, in, out,
+    in, out, in, out, mdi, muo) is semidet.
+:- mode list.map_corresponding_foldl3(
+    pred(in, in, out, in, out, in, out, di, uo) is semidet, in, in, out,
+    in, out, in, out, di, uo) is semidet.
 
     % list.map_corresponding3_foldl/7 is like list.map_corresponding3 except
     % that it has an accumulator threaded through it.
@@ -710,8 +734,19 @@
     list(A), list(B), list(C), list(D), E, E).
 :- mode list.map_corresponding3_foldl(pred(in, in, in, out, in, out) is det,
     in, in, in, out, in, out) is det.
+:- mode list.map_corresponding3_foldl(pred(in, in, in, out, mdi, muo) is det,
+    in, in, in, out, mdi, muo) is det.
 :- mode list.map_corresponding3_foldl(pred(in, in, in, out, di, uo) is det,
     in, in, in, out, di, uo) is det.
+:- mode list.map_corresponding3_foldl(
+    pred(in, in, in, out, in, out) is semidet,
+    in, in, in, out, in, out) is semidet.
+:- mode list.map_corresponding3_foldl(
+    pred(in, in, in, out, mdi, muo) is semidet,
+    in, in, in, out, mdi, muo) is semidet.
+:- mode list.map_corresponding3_foldl(
+    pred(in, in, in, out, di, uo) is semidet,
+    in, in, in, out, di, uo) is semidet.
 
     % list.foldl(Pred, List, Start, End) calls Pred with each
     % element of List (working left-to-right) and an accumulator
@@ -797,8 +832,8 @@
     in, in, out, in, out, in, out) is det.
 :- mode list.foldl3(pred(in, in, out, in, out, mdi, muo) is det,
     in, in, out, in, out, mdi, muo) is det.
-:- mode list.foldl3(pred(in, in, out, in, out, in, out) is cc_multi,
-    in, in, out, in, out, in, out) is cc_multi.
+:- mode list.foldl3(pred(in, in, out, in, out, di, uo) is det,
+    in, in, out, in, out, di, uo) is det.
 :- mode list.foldl3(pred(in, in, out, in, out, in, out) is semidet,
     in, in, out, in, out, in, out) is semidet.
 :- mode list.foldl3(pred(in, in, out, in, out, mdi, muo) is semidet,
@@ -809,8 +844,8 @@
     in, in, out, in, out, in, out) is nondet.
 :- mode list.foldl3(pred(in, in, out, in, out, mdi, muo) is nondet,
     in, in, out, in, out, mdi, muo) is nondet.
-:- mode list.foldl3(pred(in, in, out, in, out, di, uo) is det,
-    in, in, out, in, out, di, uo) is det.
+:- mode list.foldl3(pred(in, in, out, in, out, in, out) is cc_multi,
+    in, in, out, in, out, in, out) is cc_multi.
 :- mode list.foldl3(pred(in, in, out, in, out, di, uo) is cc_multi,
     in, in, out, in, out, di, uo) is cc_multi.
 

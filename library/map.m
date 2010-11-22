@@ -349,19 +349,26 @@
 :- pred map.foldl3(pred(K, V, A, A, B, B, C, C), map(K, V), A, A, B, B, C, C).
 :- mode map.foldl3(pred(in, in, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out) is det.
-:- mode map.foldl3(pred(in, in, in, out, in, out, in, out) is semidet,
-    in, in, out, in, out, in, out) is semidet.
+:- mode map.foldl3(pred(in, in, in, out, in, out, mdi, muo) is det,
+    in, in, out, in, out, mdi, muo) is det.
 :- mode map.foldl3(pred(in, in, in, out, in, out, di, uo) is det,
     in, in, out, in, out, di, uo) is det.
 :- mode map.foldl3(pred(in, in, in, out, di, uo, di, uo) is det,
     in, in, out, di, uo, di, uo) is det.
 :- mode map.foldl3(pred(in, in, di, uo, di, uo, di, uo) is det,
     in, di, uo, di, uo, di, uo) is det.
+:- mode map.foldl3(pred(in, in, in, out, in, out, in, out) is semidet,
+    in, in, out, in, out, in, out) is semidet.
+:- mode map.foldl3(pred(in, in, in, out, in, out, mdi, muo) is semidet,
+    in, in, out, in, out, mdi, muo) is semidet.
+:- mode map.foldl3(pred(in, in, in, out, in, out, di, uo) is semidet,
+    in, in, out, in, out, di, uo) is semidet.
 
     % Perform an inorder traversal of the map, applying an accumulator
     % predicate with four accumulators for each key-value pair.
     % (Although no more expressive than map.foldl, this is often
     % a more convenient format, and a little more efficient).
+    %
 :- pred map.foldl4(pred(K, V, A, A, B, B, C, C, D, D), map(K, V),
     A, A, B, B, C, C, D, D).
 :- mode map.foldl4(pred(in, in, in, out, in, out, in, out, in, out) is det,

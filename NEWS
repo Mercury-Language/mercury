@@ -53,6 +53,17 @@ Changes to the Mercury standard library:
 * We have added the predicates version_array.foldl2/6, version_array.foldr/4,
   and version_array.foldr2/6 to the standard library.
 
+* We have added semidet modes with unique and mostly-unique accumulators for
+  the following predicates:
+	bimap.foldl2/6
+	bimap.foldl3/8
+	cord.foldl_pred/4
+  	cord.map_foldl/5
+	list.map_corresponding_foldl2/8
+	list.map_corresponding_foldl3/10
+	list.map_corresponding3_foldl/7
+	map.foldl3/8
+
 Changes to the Mercury compiler:
 
 * Support for building and linking against frameworks on Mac OS X has
