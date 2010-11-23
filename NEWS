@@ -66,6 +66,8 @@ Changes to the Mercury standard library:
 
 Changes to the Mercury compiler:
 
+* We have added a new backend that generates C#.
+
 * Support for building and linking against frameworks on Mac OS X has
   been improved.
 
@@ -74,6 +76,12 @@ DETAILED LISTING
 ================
 
 Changes to the Mercury compiler:
+
+* We have added a new backend that generates C#.
+  For more details, see the README.CSharp.
+
+  The new backend was contributed by Mission Critical IT
+  <http://www.missioncriticalit.com/>.
 
 * We have added two new options, --framework and --framework-directory
   in order to simplify building and linking against frameworks on Mac OS X.

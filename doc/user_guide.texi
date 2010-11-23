@@ -7592,28 +7592,28 @@ IL means the Intermediate Language of the .NET Common Language Runtime.
 (IL is sometimes also known as "CIL" or "MSIL".)
 Targets other than C and Erlang imply @samp{--high-level-code}.
 
-@sp 1
-@item @code{--il-only}
-@findex --il-only
-An abbreviation for @samp{--target il --target-code-only}.
-Generate IL assembler code in @file{@var{module}.il}, but do not invoke
-ilasm to produce IL object code.
-
-@sp 1
-@item @code{--dotnet-library-version @var{version-number}}
-@findex --dotnet-library-version
-The version number for the mscorlib assembly distributed with the
-Microsoft .NET SDK.
-
-@sp 1
-@item @code{--no-support-ms-clr}
-@findex --no-support-ms-clr
-Don't use Microsoft CLR specific workarounds in the generated code.
-
-@sp 1
-@item @code{--support-rotor-clr}
-@findex --support-rotor-clr
-Use ROTOR CLR specific workarounds in the generated code.
+@c @sp 1
+@c @item @code{--il-only}
+@c @findex --il-only
+@c An abbreviation for @samp{--target il --target-code-only}.
+@c Generate IL assembler code in @file{@var{module}.il}, but do not invoke
+@c ilasm to produce IL object code.
+@c
+@c @sp 1
+@c @item @code{--dotnet-library-version @var{version-number}}
+@c @findex --dotnet-library-version
+@c The version number for the mscorlib assembly distributed with the
+@c Microsoft .NET SDK.
+@c
+@c @sp 1
+@c @item @code{--no-support-ms-clr}
+@c @findex --no-support-ms-clr
+@c Don't use Microsoft CLR specific workarounds in the generated code.
+@c
+@c @sp 1
+@c @item @code{--support-rotor-clr}
+@c @findex --support-rotor-clr
+@c Use ROTOR CLR specific workarounds in the generated code.
 
 @sp 1
 @item @code{--compile-to-c}
@@ -7923,7 +7923,7 @@ It requires @samp{--high-level-code}.
 @samp{mps} is another conservative collector based on Ravenbrook Limited's
 MPS (Memory Pool System) kit.
 @samp{automatic} means the target language provides it.
-This is the case for the IL, Java and Erlang back-ends, which always use
+This is the case for the IL, C#, Java and Erlang back-ends, which always use
 the underlying implementation's garbage collector.
 
 @sp 1
@@ -7967,7 +7967,7 @@ accessible via the @samp{thread} module in the standard library.
 The runtime uses POSIX threads to achieve this, therefore it may also support
 parallel execution of threads.
 
-The Java, IL and Erlang grades support concurrency without this option.
+The Java, C#, IL and Erlang grades support concurrency without this option.
 Parallel execution may also be available depending on the target's runtime. 
 
 @sp 1
@@ -7995,7 +7995,7 @@ attribute.  The default is @samp{no}.
 Use single precision floats so that, on 32-bit machines
 floating point values don't need to be boxed.  Double
 precision floats are used by default.
-This option is not yet supported for the IL or Java back-ends.
+This option is not yet supported for the IL, C# or Java back-ends.
 This option will not be supported for the Erlang back-end.
 
 @c RBMM is undocumented since it is still experimental.
@@ -9373,8 +9373,8 @@ than to @samp{mmc}.
 Enable debugging of the generated target code.
 If the target language is C, this has the same effect as
 @samp{--c-debug} (see below).
-If the target language is IL, this causes the compiler to
-pass @samp{/debug} to the IL assembler.
+If the target language is IL or C#, this causes the compiler to
+pass @samp{/debug} to the IL assembler or C# compiler.
 
 @sp 1
 @item --cc @var{compiler-name}

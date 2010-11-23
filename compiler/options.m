@@ -3821,7 +3821,7 @@ options_help_aux_output -->
         "\tMultiple dump options accumulate.",
         "--verbose-dump-mlds <stage number or name>",
         "\tDump the internal compiler representation of the MLDS, after",
-        "\tthe specified stage, to `<module>.mlds_dump.<num>-<name>'.",
+        "\tthe specified stage, to `<module>.mlds_dump.<num>-<name>'."
 % The mode constraints code is still experimental so these options are
 % currently commented out.
 %       "--mode-constraints"
@@ -3834,12 +3834,13 @@ options_help_aux_output -->
 %       "--prop-mode-constraints",
 %       "\tUse the new propagation solver for constraints based",
 %       "\tmode analysis.",
-        "--sign-assembly",
-        "\tSign the current assembly with the Mercury strong name.",
-        "\tTo use assemblies created with this command all the Mercury",
-        "\tmodules must be compiled with this option enabled.",
-        "\tThis option is specific to the IL backend, and is likely",
-        "\tto be deprecated at a later date."
+% IL options are commented out to reduce confusion.
+%       "--sign-assembly",
+%       "\tSign the current assembly with the Mercury strong name.",
+%       "\tTo use assemblies created with this command all the Mercury",
+%       "\tmodules must be compiled with this option enabled.",
+%       "\tThis option is specific to the IL backend, and is likely",
+%       "\tto be deprecated at a later date."
 
         /* XXX currently broken.
         "--separate-assemblies",
@@ -4042,9 +4043,10 @@ options_help_compilation_model -->
         "\t\t\t\t\tasm_jump, asm_fast, hl, hlc)",
         "--target asm\t\t\t(grades: hlc)",
         "--target il\t\t\t(grades: il)",
+        "--target csharp\t\t\t(grades: csharp)",
         "--target java\t\t\t(grades: java)",
         "--target erlang\t\t\t(grades: erlang)",
-        "\tSpecify the target language: C, assembler, IL, Java or Erlang.",
+        "\tSpecify the target language: C, assembler, IL, C#, Java or Erlang.",
         "\tThe default is C.  ""IL"" (also known as ""CIL"" or ""MSIL"")",
         "\tis the Intermediate Language for the .NET Common Language",
         "\tRuntime.",
@@ -4054,23 +4056,25 @@ options_help_compilation_model -->
         "\tABIs, code generated using `--target asm' is binary compatible",
         "\twith code generated using `--target c --high-level-code', so",
         "\tthese both use grade `hlc'.",
-        "--il",
-        "\tAn abbreviation for `--target il'.",
-        "--il-only",
-        "\tAn abbreviation for `--target il --target-code-only'.",
-        "\tGenerate IL code in `<module>.il', but do not generate",
-        "\tobject code.",
 
-        "--dotnet-library-version <version-number>",
-        "\tThe version number for the mscorlib assembly distributed",
-        "\twith the Microsoft .NET SDK.",
-
-        "--no-support-ms-clr",
-        "\tDon't use MS CLR specific workarounds in the generated code.",
-
-        "--support-rotor-clr",
-        "\tUse specific workarounds for the ROTOR CLR in the generated",
-        "\tcode.",
+% IL options are commented out to reduce confusion.
+%       "--il",
+%       "\tAn abbreviation for `--target il'.",
+%       "--il-only",
+%       "\tAn abbreviation for `--target il --target-code-only'.",
+%       "\tGenerate IL code in `<module>.il', but do not generate",
+%       "\tobject code.",
+%
+%       "--dotnet-library-version <version-number>",
+%       "\tThe version number for the mscorlib assembly distributed",
+%       "\twith the Microsoft .NET SDK.",
+%
+%       "--no-support-ms-clr",
+%       "\tDon't use MS CLR specific workarounds in the generated code.",
+%
+%       "--support-rotor-clr",
+%       "\tUse specific workarounds for the ROTOR CLR in the generated",
+%       "\tcode.",
 
         "--csharp",
         "\tAn abbreviation for `--target csharp'.",
@@ -4129,13 +4133,13 @@ options_help_compilation_model -->
         "\tgenerated code, and also output some profiling",
         "\tinformation (the static call graph) to the file",
         "\t`<module>.prof'.",
-        "\tThis option is not supported for the IL or Java back-ends.",
+        "\tThis option is not supported for the IL, C# or Java back-ends.",
         "--memory-profiling\t\t(grade modifier: `.memprof')",
         "\tEnable memory and call profiling.",
-        "\tThis option is not supported for the IL or Java back-ends.",
+        "\tThis option is not supported for the IL, C# or Java back-ends.",
         "--deep-profiling\t\t(grade modifier: `.profdeep')",
         "\tEnable deep profiling.",
-        "\tThis option is not supported for the high-level C, IL",
+        "\tThis option is not supported for the high-level C, IL, C#",
         "\tor Java back-ends.",
 
 % This option is not documented, it is intended for use by developers only.
@@ -4248,14 +4252,14 @@ options_help_compilation_model -->
         "\t`mps' is a different conservative collector, based on",
         "\tRavenbrook Limited's MPS (Memory Pool System) kit.",
         "\t`automatic' means the target language provides it.",
-        "\tThis is the case for the IL and Java back-ends,",
+        "\tThis is the case for the IL, C#, Java and Erlang back-ends,",
         "\twhich always use the garbage collector of the underlying",
-        "\tIL or Java implementation.",
+        "\timplementation.",
         "--use-trail\t\t\t(grade modifier: `.tr')",
         "\tEnable use of a trail.",
         "\tThis is necessary for interfacing with constraint solvers,",
         "\tor for backtrackable destructive update.",
-        "\tThis option is not yet supported for the IL or Java back-ends.",
+        "\tThis option is not yet supported for the IL, C# or Java back-ends.",
         "--trail-segments\t\t\t(grade modifier: `.trseg')",
         "\tAs above, but use a dynamically sized trail that is composed",
         "\tof small segments.  This can help to avoid trail exhaustion",
@@ -5194,8 +5198,8 @@ options_help_target_code_compilation -->
         "\tEnable debugging of the generated target code.",
         "\tIf the target language is C, this has the same effect as",
         "\t`--c-debug' (see below).",
-                "\tIf the target language is IL, this causes the compiler to",
-        "\tpass `/debug' to the IL assembler.)",
+        "\tIf the target language is IL or C#, this causes the compiler to",
+        "\tpass `/debug' to the IL assembler or C# compiler.)",
 
         "--cc <compiler-name>",
         "\tSpecify which C compiler to use.",
@@ -5261,12 +5265,13 @@ options_help_target_code_compilation -->
         "\tSpecify an extension for Java object (bytecode) files",
         "\tBy default this is `.class'.",
 
-        "--il-assembler <ilasm>",
-        "\tSpecify the name of the .NET IL Assembler command.",
-        "--ilasm-flags <options>, --ilasm-flag <options>",
-        "\tSpecify options to be passed to the IL assembler.",
-        "\t`--ilasm-flag' should be used for single words which need",
-        "\tto be quoted when passed to the shell.",
+% IL options are commented out to reduce confusion.
+%       "--il-assembler <ilasm>",
+%       "\tSpecify the name of the .NET IL Assembler command.",
+%       "--ilasm-flags <options>, --ilasm-flag <options>",
+%       "\tSpecify options to be passed to the IL assembler.",
+%       "\t`--ilasm-flag' should be used for single words which need",
+%       "\tto be quoted when passed to the shell.",
 
         "--csharp-compiler <csc>",
         "\tSpecify the name of the C# Compiler.  The default is `csc'.",

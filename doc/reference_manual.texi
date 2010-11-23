@@ -253,7 +253,7 @@ of octal digits must be terminated with a closing backslash.
 @c hexadecimal digits.
 @c The encoding used for Unicode characters is implementation dependent.
 @c For the Melbourne Mercury compiler, it is UTF-8 for the C backends and UTF-16
-@c for the Java and IL backends.
+@c for the Java, C# and IL backends.
 
 A backslash followed immediately by a newline is deleted; thus an
 escaped newline can be used to continue a string over more than one
@@ -6599,7 +6599,6 @@ to the foreign language's parameter passing convention.
 @menu
 * C data passing conventions ::
 * C# data passing conventions ::
-* IL data passing conventions ::
 * Java data passing conventions ::
 * Erlang data passing conventions ::
 @end menu
@@ -6802,63 +6801,6 @@ List_1    list.cons(object head, List_1 tail)
                                          // construct a list with
                                          //  the given head and tail
 @end example
-
-@node IL data passing conventions
-@subsection IL data passing conventions
-
-The Mercury types @code{int}, @code{float}, @code{char},
-and @code{string} are mapped to the Common Language Infrastructure (CLI) types
-@code{System.Int32}, @code{System.Double}, @code{System.Char} and
-@code{System.String} respectively, which correspond
-to the IL assembler types
-@samp{int}, @samp{float64}, @samp{char} and @samp{string}.
-
-Mercury variables whose type is a type variable will be passed as
-@code{System.Object}.
-Mercury array types are mapped to CLR array types.
-When compiling with @samp{--no-high-level-data}, all other Mercury variables
-are passed as @code{System.Object[]}.
-When compiling with @samp{--high-level-data},
-Mercury variables whose type is a Mercury discriminated union type
-will be passed as a CLR type whose type name is determined from
-the Mercury type name (ignoring any type parameters) followed by
-an underscore and then the type arity,
-expressed as a decimal integer.
-Mercury module qualifiers are converted to CLR namespace qualifiers.
-For example the Mercury type @samp{foo.bar.baz/1} will be passed as the CLR
-type @samp{foo.bar.baz_1}.
-Note an extra namespace qualifier, @samp{mercury}, will be prepended to the
-beginning of names residing in the Mercury standard library.
-Mercury variables whose type is a Mercury equivalence type
-will be passed as the representation of the right hand side of the
-equivalence type.
-
-This mapping is subject to change and you should try to avoid writing
-code that relies heavily upon a particular representation of Mercury
-terms.
-
-Mercury arguments declared with input modes are passed by value to the
-IL or C# function.
-For output arguments,
-the Mercury implementation will pass to the IL or C# function a reference to
-the location in which to store the result; for example, a Mercury output
-argument of type @samp{int} would map to a C# @samp{ref int}
-function parameter.  (Note that we map to @samp{ref int}, not @samp{out int};
-for procedures that can fail, output arguments only need to be set if the
-procedure succeeds.)
-If the Mercury procedure can fail,
-then its IL or C# function should return a truth value of type
-@samp{bool} (i.e.@: @samp{System.Bool}) indicating success or failure:
-@code{true} indicates success, and @code{false} indicates failure.
-If the Mercury procedure is a Mercury function that cannot fail,
-and the function result has an output mode,
-then the IL function should return the Mercury function result value.
-Otherwise the function result is appended as an extra argument.
-Arguments of type @samp{io.state} or @samp{store.store(_)} are not
-passed or returned at all.
-(The reason for this is that these types represent mutable state,
-and in IL modifications to mutable state are done via side effects,
-rather than argument passing.)
 
 @node Java data passing conventions
 @subsection Java data passing conventions
@@ -7384,7 +7326,6 @@ foreign language and occur in the same Mercury module.
 @menu
 * Interfacing with C 		:: How to write code to interface with C
 * Interfacing with C# 		:: How to write code to interface with C#
-* Interfacing with IL 		:: How to write code to interface with IL
 * Interfacing with Java 	:: How to write code to interface with Java
 * Interfacing with Erlang 	:: How to write code to interface with Erlang
 @end menu
@@ -7407,11 +7348,6 @@ Use the string @code{"C"} to set the foreign language to C.
 @item @samp{C#}
 Use the string @code{"C#"} to set the foreign language to C#.
       
-@item @samp{IL}
-Use the string @code{"IL"} to set the foreign language to IL.
-IL (sometimes also known as CIL or MSIL) is the Intermediate Language
-for the .NET Common Language Runtime.
-
 @item @samp{Java}
 Use the string @code{"Java"} to set the foreign language to Java.
 
@@ -7995,196 +7931,6 @@ For example:
 	[will_not_call_mercury, promise_semipure],
 	"Result = counter;").
 @end example
-
-@c ----------------------------------------------------------------------------
-
-@node Interfacing with IL
-@subsection Interfacing with IL
-
-@menu
-* Using pragma foreign_type for IL	:: Declaring IL types in Mercury
-* Using pragma foreign_proc for IL 	:: Calling IL code from Mercury
-* Using pragma foreign_export for IL    :: Calling Mercury code from IL
-* Using pragma foreign_decl for IL 	:: Including IL declarations in Mercury
-* Using pragma foreign_code for IL 	:: Including IL code in Mercury
-@end menu
-
-@node Using pragma foreign_type for IL
-@subsubsection Using pragma foreign_type for IL
-
-The IL @samp{pragma foreign_type} declaration has the form:
-
-@example
-:- pragma foreign_type("IL", @var{MercuryTypeName}, @var{DotNetForeignType}).
-@end example
-
-If the @var{MercuryTypeName} is the type of a parameter of a procedure
-defined using @samp{pragma foreign_proc} for any of the .NET CLR
-languages, it will be passed to the foreign_proc's foreign language code
-as @var{DotNetForeignType}.
-
-Furthermore, any Mercury procedure exported with @samp{pragma foreign_export}
-will use @var{DotNetForeignType} as the .NET CLR parameter type for
-parameters whose Mercury type is @var{MercuryTypeName}.
-
-The IL assembler syntax is used to specify type names for all the .NET CLR
-languages (IL and C#) supported by Mercury's
-@samp{foreign_proc} mechanism.  
-This syntax is documented in the ECMA specifications for .NET.
-The .NET CLR backend supports reference and value types 
-using @samp{pragma foreign_type}, where DotNetForeignType is
-specified using the syntax 
-@samp{"class [AssemblyName]ReferenceTypeName"} for reference types and
-@samp{"valuetype [AssemblyName]ValueTypeName"} for value types.
-Note that extra whitespace is not handled --- there should only be a single
-space between the class keyword and the assembly specifier.
-@c XXX we should handle whitespace better
-Value types which have a special name (such as @samp{int32}) can be
-named using their valuetype syntax or their special name;
-they will be marshalled using their special name
-(as is required by section 7.2 of Partition II of the ECMA CLI documentation).
-
-For example:
-
-@example
-:- type xmldoc.
-:- pragma foreign_type("IL", xmldoc,
-	"class [System.Xml]System.Xml.XmlDocument").
-:- type int32.
-:- pragma foreign_type("IL", int32,
-	"valuetype [mscorlib]System.Int32").
-@end example
-
-ensures that on the .NET CLR backend the Mercury type @samp{xmldoc} is
-marshalled by the backend as @samp{System.Xml.XmlDocument} from assembly
-@samp{System.Xml}, and that the Mercury type @samp{int32} will be
-marshalled by the backend as the CLR type @samp{int32}.
-
-The following example shows how one can use the marshalled data from C#. 
-
-@example
-:- pred loadxml(string::in, xmldoc::di, xmldoc::uo) is det.
-
-:- pragma foreign_proc("C#", load(String::in, XML0::di, XML::uo),
-        [will_not_call_mercury, promise_pure],
-"
-    XML0.LoadXml(String);
-    XML = XML0;
-").
-@end example
-
-@node Using pragma foreign_proc for IL
-@subsubsection Using pragma foreign_proc for IL
-
-Variables can be accessed from IL by using ldloc (for input parameters) 
-and stloc (for output parameters).
-Do not use ret or jmp instructions or tail calls within the handwritten
-IL code.
-The stack must be empty at the end of the IL code.
-
-@example
-:- pred add(int::in, int::in, int::out) det.
-:- pragma foreign_proc("IL", add(X::in, Y::in, Z::out), [max_stack_size(2)], "
-	ldloc X
-	ldloc Y
-	add
-	stloc Z
-").
-@end example
-
-IL code for procedures whose determinism indicates they can fail 
-is currently not supported.
-
-@c XXX document how semidet works -- but get it working first.
-@c
-@c The IL code in a @code{pragma foreign_proc} declaration
-@c for any procedure whose determinism indicates that it can fail
-@c must assign a truth value to the local variable @samp{SUCCESS_INDICATOR}.
-@c For example:
-@c
-@c @example
-@c :- pred same(int::in, int::in) is semidet.
-@c :- pragma foreign_proc("IL", same(X::in, Y::in), [max_stack_size(2)], "
-@c 	ldloc X
-@c 	ldloc Y
-@c 	ceq
-@c 	stloc SUCCESS_INDICATOR
-@c ").
-@c @end example
-
-Arguments whose mode is input will have their values set by the
-Mercury implementation on entry to the IL code.  If the procedure
-succeeds, the IL code must set the values of all output arguments.
-
-@c If the procedure fails, the IL code need only
-@c set @code{success} to false (zero).
-
-Each of the head variables will be represented by the Common Language
-Runtime types as specified in @ref{IL data passing conventions}.
-
-@node Using pragma foreign_export for IL
-@subsubsection Using pragma foreign_export for IL
-
-A @samp{pragma foreign_export} declaration for IL has the form:
-
-@example
-:- pragma foreign_export("IL", @var{MercuryMode}, "@var{IL_Name}").
-@end example
-
-For example,
-
-@example
-:- pragma foreign_export("IL", foo(in, in, out), "foo").
-@end example
-
-For each Mercury module containing @samp{pragma foreign_export} declarations
-for IL, the Mercury implementation will automatically create a static method
-@var{IL_Name}() in the <module_name>.mercury_code class for each of the
-@samp{pragma foreign_export} declarations.  Each such IL method is a .NET
-interface to the specified Mercury procedure, and should be usable from
-any .NET language.
-
-The type signature of the IL interface to a Mercury procedure is determined as
-follows.  Mercury types are converted to IL types according to the rules in
-@ref{IL data passing conventions}.  Input arguments are passed by value.
-For output arguments, the caller must pass the address in which to store the
-result.  If the Mercury procedure can fail, then its IL interface method
-returns a truth value indicating success or failure.  If the Mercury procedure
-is a Mercury function that cannot fail, and the function result has an output
-mode, then the IL interface method will return the Mercury function result
-value.  Otherwise the function result is appended as an extra argument.
-@c XXX We need to update this for dummy unit types.
-Arguments of type @samp{io.state} or @samp{store.store(_)} are not passed
-at all.  (The reason for this is that these types represent mutable state,
-and in .NET modifications to mutable state are done via side effects, rather
-than argument passing.)
-
-Calling polymorphically typed Mercury procedures from .NET is a little bit more
-difficult than calling ordinary (monomorphically typed) Mercury procedures.
-The simplest method is to just create monomorphic forwarding procedures that
-call the polymorphic procedures, and export them, rather than exporting the
-polymorphic procedures.
-
-If you do export a polymorphically typed Mercury procedure, the compiler
-will prepend one @samp{type_info} argument to the parameter list of
-the IL interface method for each polymorphic type variable in the
-Mercury procedure's type signature.  The caller must arrange to pass
-in appropriate @samp{type_info} values corresponding to the types
-of the other arguments passed.  These @samp{type_info} arguments can
-be obtained using the Mercury @samp{type_of} function in the Mercury
-standard library module @samp{type_desc}.
-
-@node Using pragma foreign_decl for IL
-@subsubsection Using pragma foreign_decl for IL
-
-@samp{pragma foreign_decl} is currently not supported for IL.
-@c XXX
-
-@node Using pragma foreign_code for IL
-@subsubsection Using pragma foreign_code for IL
-
-@samp{pragma foreign_code} is currently not supported for IL.
-@c XXX
 
 @c ----------------------------------------------------------------------------
 
