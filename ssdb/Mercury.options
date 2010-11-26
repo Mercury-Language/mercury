@@ -6,6 +6,10 @@
 # Mercury.options - module-specific flags for Mmake and `mmc --make'.
 #-----------------------------------------------------------------------------#
 
+# Workaround for bug #170.
+#
+MCFLAGS-ssdb = --inline-compound-threshold 20
+
 MCFLAGS-mer_ssdb = --no-warn-nothing-exported --no-warn-unused-imports
 
 # XXX This line is needed so that `mmake --use-mmc-make libmer_ssdb'
