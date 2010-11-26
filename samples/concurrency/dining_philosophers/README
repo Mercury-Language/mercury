@@ -1,0 +1,7 @@
+This directory contains several variants on the dining philosophers example.
+
+  philo    - uses a single semaphore for synchronization.
+
+  philo2   - uses a single mvar.
+
+  philo3   - uses one semaphore per thread.

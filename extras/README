@@ -14,10 +14,6 @@ complex_numbers
 		A Mercury library package containing support for
 		complex and imaginary numbers.
 
-concurrency	Support for coroutining and concurrent execution of
-		deterministic (or cc_multi) goals, and some data structures
-		for communicating between different concurrent threads.
-
 curs		A Mercury library providing a somewhat more complete
 		and more faithful binding to the curses and panel
 		libraries (the latter is used to provide elementary

@@ -1,0 +1,6 @@
+This directory contains a MIDI data monitor that concurrently reads the
+bytestream, parses the MIDI messages, and writes out the results.
+A file `midi_data' has been included which contains some MIDI data that
+you can test the program with.  MIDI (Musical Instrument Digital Interface)
+is a hardware and software protocol for electronic musical instruments (e.g.
+synthesizers) to talk to each other.
