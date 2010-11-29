@@ -1115,11 +1115,13 @@ ml_gen_du_ctor_name_unqual_type(CompilationTarget, UnqualTypeName, TypeArity,
         Name, Arity) = CtorName :-
     UnqualName = unqualify_name(Name),
     (
-        CompilationTarget = target_java,
+        ( CompilationTarget = target_java
+        ; CompilationTarget = target_csharp
+        ),
         UnqualName = UnqualTypeName,
         Arity = TypeArity
     ->
-        % In Java we must not generate a class with the same name as its
+        % In Java and C# we must not generate a class with the same name as its
         % enclosing class.  We add the prefix to avoid that situation arising.
         % (A user may name another functor of the same type with "mr_" to
         % trigger the problem.)
