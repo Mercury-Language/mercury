@@ -419,23 +419,22 @@
 
 :- type var_state
     --->    var_state(
+                % Must not contain any rval of the form var(_).
                 locs            :: set(lval),
-                                % Must not contain var(_).
 
+                % Must not contain any rval of the form var(_);
+                % must be constant.
                 const_rval      :: maybe(rval),
-                                % Must not contain var(_), must be constant.
 
+                % Will contain var(_), must not contain lvals.
                 expr_rval       :: maybe(rval),
-                                % Will contain var(_), must not contain lvals.
 
+                % The set of vars whose expr_rval field refers to this var.
                 using_vars      :: set(prog_var),
-                                % The set of vars whose expr_rval field refers
-                                % to this var.
 
+                % A dead variable should be removed from var_state_map
+                % when its using_vars field becomes empty.
                 dead_or_alive   :: dead_or_alive
-                                % A dead variable should be removed from
-                                % var_state_map when its using_vars field
-                                % becomes empty.
             ).
 
 :- type var_state_map   ==  map(prog_var, var_state).

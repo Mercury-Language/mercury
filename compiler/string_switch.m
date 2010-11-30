@@ -29,7 +29,7 @@
 % and optimizations that manipulate labels (such as frameopt, which can
 % duplicate them, and dupelim, which can replace them with other labels)
 % would have to be taught to reflect any changes they make in the global
-% data. It is the last step that is the killer in the terms of difficulty
+% data. It is the last step that is the killer in terms of difficulty
 % of implementation.
 %
 %-----------------------------------------------------------------------------%
@@ -279,8 +279,8 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
     % We keep track of what variables are supposed to be live at the end
     % of cases. We have to do this explicitly because generating a `fail'
     % slot last would yield the wrong liveness.
-    set_forward_live_vars(Liveness, !CI),
-    generate_branch_end(StoreMap, !MaybeEnd, BranchEndCode, !CI),
+    set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd, BranchEndCode,
+        !CI),
     (
         MaybeBaseReg = no
     ;
@@ -756,8 +756,8 @@ generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
     % We keep track of what variables are supposed to be live at the end
     % of cases. We have to do this explicitly because generating a `fail'
     % slot last would yield the wrong liveness.
-    set_forward_live_vars(Liveness, !CI),
-    generate_branch_end(StoreMap, no, _MaybeEnd, BranchEndCode, !CI),
+    set_liveness_and_end_branch(StoreMap, Liveness, no, _MaybeEnd,
+        BranchEndCode, !CI),
     (
         MaybeBaseReg = no
     ;

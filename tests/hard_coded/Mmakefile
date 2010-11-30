@@ -150,6 +150,7 @@ ORDINARY_PROGS=	\
 	list_series_int \
 	lookup_disj \
 	lookup_switch_simple \
+	lookup_switch_simple_cond \
 	lookup_switch_simple_bitvec \
 	lookup_switch_simple_non \
 	lookup_switch_simple_opt \

@@ -453,8 +453,8 @@ generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
     % We keep track of what variables are supposed to be live at the end
     % of cases. We have to do this explicitly because generating a `fail' slot
     % last would yield the wrong liveness.
-    set_forward_live_vars(Liveness, !CI),
-    generate_branch_end(StoreMap, no, _MaybeEnd, BranchEndCode, !CI),
+    set_liveness_and_end_branch(StoreMap, Liveness, no, _MaybeEnd,
+        BranchEndCode, !CI),
     (
         MaybeBaseReg = no
     ;
