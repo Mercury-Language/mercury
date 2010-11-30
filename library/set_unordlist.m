@@ -25,12 +25,17 @@
 %--------------------------------------------------------------------------%
 
 :- type set_unordlist(_T).
+    
+    % `set_unordlist.init(Set)' is true iff `Set' is an empty set.
+    %
+:- func set_unordlist.init = set_unordlist(T).
+:- pred set_unordlist.init(set_unordlist(_T)::uo) is det.
 
     % `set_unordlist.list_to_set(List, Set)' is true iff `Set' is the set
     % containing only the members of `List'.
     %
-:- pred set_unordlist.list_to_set(list(T)::in, set_unordlist(T)::out) is det.
 :- func set_unordlist.list_to_set(list(T)) = set_unordlist(T).
+:- pred set_unordlist.list_to_set(list(T)::in, set_unordlist(T)::out) is det.
 
     % A synonym for set_unordlist.list_to_set/1.
     %
@@ -54,11 +59,6 @@
     is det.
 :- func set_unordlist.to_sorted_list(set_unordlist(T)) = list(T).
 
-    % `set_unordlist.init(Set)' is true iff `Set' is an empty set.
-    %
-:- pred set_unordlist.init(set_unordlist(_T)::uo) is det.
-:- func set_unordlist.init = set_unordlist(T).
-
     % `set_unordlist.singleton_set(Set, Elem)' is true iff `Set' is the set
     % containing just the single element `Elem'.
     %
@@ -77,6 +77,8 @@
     % `set_unordlist.empty(Set)' is true iff `Set' is an empty set.
     %
 :- pred set_unordlist.empty(set_unordlist(_T)::in) is semidet.
+
+:- pred set_unordlist.non_empty(set_unordlist(_T)::in) is semidet.
 
     % `set_unordlist.subset(SetA, SetB)' is true iff `SetA' is a subset of
     % `SetB'.
@@ -226,6 +228,9 @@
 
 :- func set_unordlist.difference(set_unordlist(T), set_unordlist(T))
     = set_unordlist(T).
+    
+:- func set_unordlist.count(set_unordlist(T)) = int.
+:- pred set_unordlist.count(set_unordlist(T)::in, int::out) is det.
 
 :- func set_unordlist.map(func(T1) = T2, set_unordlist(T1))
     = set_unordlist(T2).
@@ -384,6 +389,8 @@ set_unordlist.equal(SetA, SetB) :-
 
 set_unordlist.empty([]).
 
+set_unordlist.non_empty([_ | _]).
+
 set_unordlist.subset([], _).
 set_unordlist.subset([E | S0], S1) :-
     set_unordlist.member(E, S1),
@@ -486,6 +493,15 @@ set_unordlist.difference_2([], C, C).
 set_unordlist.difference_2([E | Es], A, C) :-
     set_unordlist.delete(A, E, B),
     set_unordlist.difference_2(Es, B, C).
+
+%-----------------------------------------------------------------------------%
+
+set_unordlist.count(Set) = Count :-
+    set_unordlist.count(Set, Count).
+
+set_unordlist.count(Set, Count) :-
+    list.remove_dups(Set, Elems),
+    list.length(Elems, Count).    
 
 %-----------------------------------------------------------------------------%
 

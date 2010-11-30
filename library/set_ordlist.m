@@ -25,6 +25,11 @@
 %--------------------------------------------------------------------------%
 
 :- type set_ordlist(_T).
+    
+    % `set_ordlist.init(Set)' is true iff `Set' is an empty set.
+    %
+:- pred set_ordlist.init(set_ordlist(_T)::uo) is det.
+:- func set_ordlist.init = set_ordlist(T).
 
     % `set_ordlist.list_to_set(List, Set)' is true iff `Set' is the set
     % containing only the members of `List'.
@@ -53,11 +58,6 @@
 :- pred set_ordlist.to_sorted_list(set_ordlist(T)::in, list(T)::out) is det.
 :- func set_ordlist.to_sorted_list(set_ordlist(T)) = list(T).
 
-    % `set_ordlist.init(Set)' is true iff `Set' is an empty set.
-    %
-:- pred set_ordlist.init(set_ordlist(_T)::uo) is det.
-:- func set_ordlist.init = set_ordlist(T).
-
     % `set_ordlist.singleton_set(Set, Elem)' is true iff `Set' is the set
     % containing just the single element `Elem'.
     %
@@ -75,6 +75,8 @@
     % `set_ordlist.empty(Set)' is true iff `Set' is an empty set.
     %
 :- pred set_ordlist.empty(set_ordlist(_T)::in) is semidet.
+
+:- pred set_ordlist.non_empty(set_ordlist(T)::in) is semidet.
 
     % `set_ordlist.subset(SetA, SetB)' is true iff `SetA' is a subset of
     % `SetB'.
@@ -433,6 +435,8 @@ set_ordlist.singleton_set(sol([X]), X).
 set_ordlist.equal(Set, Set).
 
 set_ordlist.empty(sol([])).
+
+set_ordlist.non_empty(sol([_ | _])).
 
 set_ordlist.subset(Subset, Set) :-
     set_ordlist.intersect(Set, Subset, Subset).

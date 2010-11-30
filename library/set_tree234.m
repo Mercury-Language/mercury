@@ -42,6 +42,8 @@
     %
 :- pred set_tree234.empty(set_tree234(_T)::in) is semidet.
 
+:- pred set_tree234.non_empty(set_tree234(T)::in) is semidet.
+
     % `set_tree234.member(X, Set)' is true iff `X' is a member of `Set'.
     %
 :- pred set_tree234.member(T, set_tree234(T)).
@@ -62,6 +64,8 @@
     % containing only the members of `List'.
     %
 :- func set_tree234.list_to_set(list(T)) = set_tree234(T).
+
+:- func set_tree234.from_list(list(T)) = set_tree234(T).
 
     % `set_tree234.sorted_list_to_set(List) = Set' is true iff `Set' is
     % the set containing only the members of `List'. `List' must be sorted.
@@ -398,6 +402,10 @@ set_tree234.make_singleton_set(X) = two(X, empty, empty).
 
 set_tree234.empty(empty).
 
+set_tree234.non_empty(two(_, _, _)).
+set_tree234.non_empty(three(_, _, _, _, _)).
+set_tree234.non_empty(four(_, _, _, _, _, _, _)).
+
 :- pragma promise_equivalent_clauses(set_tree234.member/2).
 
 set_tree234.member(Element::out, Set::in) :-
@@ -530,6 +538,8 @@ set_tree234.contains(T, E) :-
 
 set_tree234.list_to_set(List) = Tree :-
     set_tree234.list_to_set_2(List, empty, Tree).
+
+set_tree234.from_list(List) = set_tree234.list_to_set(List).
 
 set_tree234.sorted_list_to_set(List) = Tree :-
         % XXX We should exploit the sortedness of List.

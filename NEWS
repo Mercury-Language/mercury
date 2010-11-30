@@ -35,7 +35,21 @@ Changes to the Mercury standard library:
 * We have added the predicates divide/4 and divide_by_set/4 to the tree_bitset
   module of the standard library.
 
-* We have added the predicate set_ctree234.member/2.
+* We have added the predicates set_ctree234.member/2 and
+  set_ctree234.non_empty/1.  We have add the function
+  set_ctree234.from_list/1.
+
+* We have added the the predicate set_bbbtree.count/2 and the
+  function set_bbbtree.count/1.  These replace the predicate
+  set_bbbtree.size/2 which is now deprecated.  
+
+* We have added the predicate set_ordlist.non_empty/1.
+
+* We have added the predicate set_tree234.non_empty/1 and the
+  function set_tree234.from_list/1.
+
+* We have added the predicates set_unordlist.non_empty/1 and
+  set_unordlist.count/2, and the function set_unordlist.count/1. 
 
 * All of the modules in the standard library that implement the set ADT,
   (set, set_ordlist, set_unordlist, set_bbbtree, set_tree234,

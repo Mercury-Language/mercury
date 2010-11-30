@@ -34,10 +34,20 @@
     %
 :- pred set_bbbtree.empty(set_bbbtree(T)::in) is semidet.
 
+:- pred set_bbbtree.non_empty(set_bbbtree(T)::in) is semidet.
+
     % `set_bbbtree.size(Set, Size)' is true iff `Size' is the cardinality
     % of `Set'.
+    % This predicate is obsolete; use set_bbbtree.count/2 instead.
     %
+:- pragma obsolete(set_bbbtree.size/2).
 :- pred set_bbbtree.size(set_bbbtree(T)::in, int::out) is det.
+
+    % `set_bbbtree.count(Set, Count)' is true iff `Set' has `Count' elements.
+    % i.e. `Count' is the cardinality (size) of the set. 
+    %
+:- func set_bbbtree.count(set_bbbtree(T)) = int.
+:- pred set_bbbtree.count(set_bbbtree(T)::in, int::out) is det.
 
     % `set_bbbtree.member(X, Set)' is true iff `X' is a member of `Set'.
     % O(lg n) for (in, in) and O(1) for (out, in).
@@ -441,10 +451,18 @@ set_bbbtree.init(empty).
 
 set_bbbtree.empty(empty).
 
+set_bbbtree.non_empty(tree(_, _, _, _)).
+
 %------------------------------------------------------------------------------%
 
 set_bbbtree.size(empty, 0).
 set_bbbtree.size(tree(_V, N, _L, _R), N).
+
+set_bbbtree.count(Set) = Count :-
+    set_bbbtree.count(Set, Count).
+
+set_bbbtree.count(empty, 0).
+set_bbbtree.count(tree(_V, N, _L, _R), N).
 
 %------------------------------------------------------------------------------%
 
@@ -979,8 +997,8 @@ set_bbbtree.superset(SetA, SetB) :-
     set_bbbtree(T)::out) is det.
 
 set_bbbtree.build_node(X, L, R, Tree) :-
-    set_bbbtree.size(L, LSize),
-    set_bbbtree.size(R, RSize),
+    set_bbbtree.count(L, LSize),
+    set_bbbtree.count(R, RSize),
     N = 1 + LSize + RSize,
     Tree0 = tree(X, N, L, R),
     unsafe_promise_unique(Tree0, Tree).
@@ -1076,8 +1094,8 @@ set_bbbtree.double_rot_r(C, tree(A, _N0, X, Y), Z, Set) :-
     set_bbbtree(T)::out, int::in) is det.
 
 set_bbbtree.balance(V, L, R, Set, Ratio) :-
-    set_bbbtree.size(L, LSize),
-    set_bbbtree.size(R, RSize),
+    set_bbbtree.count(L, LSize),
+    set_bbbtree.count(R, RSize),
     (
         Val = LSize + RSize,
         Val < 2
@@ -1090,8 +1108,8 @@ set_bbbtree.balance(V, L, R, Set, Ratio) :-
     ->
         (
             R = tree(_V0, _N0, RL, RR),
-            set_bbbtree.size(RL, RLSize),  % Right side too big.
-            set_bbbtree.size(RR, RRSize),
+            set_bbbtree.count(RL, RLSize),  % Right side too big.
+            set_bbbtree.count(RR, RRSize),
             ( RLSize < RRSize ->
                 set_bbbtree.single_rot_l(V, L, R, Set)
             ;
@@ -1107,8 +1125,8 @@ set_bbbtree.balance(V, L, R, Set, Ratio) :-
     ->
         (
             L = tree(_V1, _N1, LL, LR),
-            set_bbbtree.size(LL, LLSize),  % Left side too big.
-            set_bbbtree.size(LR, LRSize),
+            set_bbbtree.count(LL, LLSize),  % Left side too big.
+            set_bbbtree.count(LR, LRSize),
             ( LRSize < LLSize ->
                 set_bbbtree.single_rot_r(V, L, R, Set)
             ;
@@ -1137,12 +1155,12 @@ set_bbbtree.balance(V, L, R, Set, Ratio) :-
     set_bbbtree(T)::out) is det.
 
 set_bbbtree.concat3(L, R, Set) :-
-    set_bbbtree.size(L, LSize),
+    set_bbbtree.count(L, LSize),
     ( LSize = 0 ->
         % Left tree empty so just return the right tree.
         Set = R
     ;
-        set_bbbtree.size(R, RSize),
+        set_bbbtree.count(R, RSize),
         ( RSize = 0 ->
             % Right tree empty so just return the left tree.
             Set = L

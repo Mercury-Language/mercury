@@ -50,6 +50,8 @@
     %
 :- pred set_ctree234.empty(set_ctree234(_T)::in) is semidet.
 
+:- pred set_ctree234.non_empty(set_ctree234(T)::in) is semidet.
+
     % `set_ctree234.member(X, Set)' is true iff `X' is a member of `Set'.
     %
 :- pred set_ctree234.member(T, set_ctree234(T)).
@@ -74,6 +76,8 @@
     % containing only the members of `List'.
     %
 :- func set_ctree234.list_to_set(list(T)) = set_ctree234(T).
+
+:- func set_ctree234.from_list(list(T)) = set_ctree234(T).
 
     % `set_ctree234.sorted_list_to_set(List) = Set' is true iff `Set' is
     % the set containing only the members of `List'. `List' must be sorted.
@@ -416,6 +420,8 @@ set_ctree234.make_singleton_set(X) = ct(1, two(X, empty, empty)).
 
 set_ctree234.empty(ct(0, _)).
 
+set_ctree234.non_empty(ct(N, _)) :- N \= 0.
+
 :- pragma promise_equivalent_clauses(set_ctree234.member/2).
 
 set_ctree234.member(E::in, Set::in) :-
@@ -572,6 +578,8 @@ set_ctree234.do_list_to_set([E | Es], !Size, !Tree) :-
     set_ctree234.do_insert(E, Incr, !Tree),
     !:Size = !.Size + Incr,
     set_ctree234.do_list_to_set(Es, !Size, !Tree).
+
+set_ctree234.from_list(List) = set_ctree234.list_to_set(List).
 
 :- pred max_level_sizes(int::in, int::in, int::in,
     list(int)::in, list(int)::out) is det.
