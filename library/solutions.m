@@ -300,14 +300,14 @@ builtin_solutions(Generator, UnsortedList) :-
 
 :- pragma promise_pure(builtin_aggregate/4).
 
-builtin_aggregate(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
+builtin_aggregate(GeneratorPred, CollectorPred, !Accumulator) :-
     % Save some of the Mercury virtual machine registers
     impure get_registers(HeapPtr, SolutionsHeapPtr, TrailPtr),
     impure start_all_soln_neg_context,
 
     % Initialize the accumulator
-    % /* Mutvar := Accumulator0 */
-    impure new_mutvar(Accumulator0, Mutvar),
+    % /* Mutvar := !.Accumulator */
+    impure new_mutvar(!.Accumulator, Mutvar),
 
     (
         % Get a solution.
@@ -317,7 +317,7 @@ builtin_aggregate(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
         impure check_for_floundering(TrailPtr),
 
         % Update the accumulator.
-        % /* MutVar := CollectorPred(MutVar) */
+        % /* Mutvar := CollectorPred(MutVar) */
         impure swap_heap_and_solutions_heap,
         impure partial_deep_copy(HeapPtr, Answer0, Answer),
         impure get_mutvar(Mutvar, Acc0),
@@ -336,9 +336,9 @@ builtin_aggregate(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
         % from the solutions heap back onto the ordinary heap, and then we can
         % reset the solutions heap pointer. We also need to discard the trail
         % ticket created by get_registers/3.
-        % /* Accumulator := MutVar */
-        impure get_mutvar(Mutvar, Accumulator1),
-        impure partial_deep_copy(SolutionsHeapPtr, Accumulator1, Accumulator),
+        % /* !:Accumulator := Mutvar */
+        impure get_mutvar(Mutvar, !:Accumulator),
+        impure partial_deep_copy(SolutionsHeapPtr, !Accumulator),
         impure reset_solutions_heap(SolutionsHeapPtr),
         impure discard_trail_ticket
     ).
@@ -356,9 +356,9 @@ builtin_aggregate(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 
 :- pragma promise_pure(do_while/4).
 
-do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
+do_while(GeneratorPred, CollectorPred, !Accumulator) :-
     impure get_registers(HeapPtr, SolutionsHeapPtr, TrailPtr),
-    impure new_mutvar(Accumulator0, Mutvar),
+    impure new_mutvar(!.Accumulator, Mutvar),
     impure start_all_soln_neg_context,
     (
         GeneratorPred(Answer0),
@@ -379,8 +379,8 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
     ;
         impure end_all_soln_neg_context_no_more
     ),
-    impure get_mutvar(Mutvar, Accumulator1),
-    impure partial_deep_copy(SolutionsHeapPtr, Accumulator1, Accumulator),
+    impure get_mutvar(Mutvar, !:Accumulator),
+    impure partial_deep_copy(SolutionsHeapPtr, !Accumulator),
     impure reset_solutions_heap(SolutionsHeapPtr),
     impure discard_trail_ticket.
 
@@ -393,19 +393,22 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 :- mode non_cc_call(pred(in, di, uo) is cc_multi, in, di, uo) is det.
 :- mode non_cc_call(pred(mdi, di, uo) is det, mdi, di, uo) is det.
 
-non_cc_call(P::pred(in, in, out) is det, X::in, Acc0::in, Acc::out) :-
-    P(X, Acc0, Acc).
-non_cc_call(P::pred(in, in, out) is cc_multi, X::in, Acc0::in, Acc::out) :-
-    Pred = (pred(Soln::out) is cc_multi :- P(X, Acc0, Soln)),
-    impure Acc = builtin.get_one_solution(Pred).
-non_cc_call(P::pred(in, di, uo) is cc_multi, X::in, Acc0::di, Acc::uo) :-
-    impure builtin.get_one_solution_io(
-        (pred({}::out, di, uo) is cc_multi --> P(X)),
-        _, Acc0, Acc).
-non_cc_call(P::pred(in, di, uo) is det, X::in, Acc0::di, Acc::uo) :-
-    P(X, Acc0, Acc).
-non_cc_call(P::pred(mdi, di, uo) is det, X::mdi, Acc0::di, Acc::uo) :-
-    P(X, Acc0, Acc).
+non_cc_call(P::pred(in, in, out) is det, X::in, !.Acc::in, !:Acc::out) :-
+    P(X, !Acc).
+non_cc_call(P::pred(in, in, out) is cc_multi, X::in, !.Acc::in, !:Acc::out) :-
+    Pred = (pred(Soln::out) is cc_multi :-
+        P(X, !.Acc, Soln)
+    ),
+    impure !:Acc = builtin.get_one_solution(Pred).
+non_cc_call(P::pred(in, di, uo) is cc_multi, X::in, !.Acc::di, !:Acc::uo) :-
+    Pred = (pred({}::out, !.Acc::di, !:Acc::uo) is cc_multi :-
+        P(X, !Acc)
+    ),
+    impure builtin.get_one_solution_io(Pred, _, !Acc).
+non_cc_call(P::pred(in, di, uo) is det, X::in, !.Acc::di, !:Acc::uo) :-
+    P(X, !Acc).
+non_cc_call(P::pred(mdi, di, uo) is det, X::mdi, !.Acc::di, !:Acc::uo) :-
+    P(X, !Acc).
 
     % This is the same as call/5, except that it is not cc_multi
     % even when the called predicate is cc_multi.
@@ -415,16 +418,17 @@ non_cc_call(P::pred(mdi, di, uo) is det, X::mdi, Acc0::di, Acc::uo) :-
 :- mode non_cc_call(pred(in, out, di, uo) is cc_multi, in, out, di, uo) is det.
 
 non_cc_call(P::pred(in, out, di, uo) is det, X::in, More::out,
-        Acc0::di, Acc::uo) :-
-    P(X, More, Acc0, Acc).
+        !.Acc::di, !:Acc::uo) :-
+    P(X, More, !Acc).
 non_cc_call(P::pred(in, out, in, out) is det, X::in, More::out,
         Acc0::in, Acc::out) :-
     P(X, More, Acc0, Acc).
 non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
-        Acc0::di, Acc::uo) :-
-    impure builtin.get_one_solution_io(
-        (pred(M::out, di, uo) is cc_multi --> P(X, M)),
-        More, Acc0, Acc).
+        !.Acc::di, !:Acc::uo) :-
+    Pred = (pred(M::out, !.Acc::di, !:Acc::uo) is cc_multi :-
+        P(X, M, !Acc)
+    ),
+    impure builtin.get_one_solution_io(Pred, More, !Acc).
 
 :- type heap_ptr == private_builtin.heap_pointer.
 :- type trail_ptr ---> trail_ptr(c_pointer).
@@ -796,8 +800,6 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 ").
 
 :- impure pred start_all_soln_neg_context is det.
-:- impure pred end_all_soln_neg_context_more is det.
-:- impure pred end_all_soln_neg_context_no_more is det.
 
 :- pragma foreign_proc("C",
     start_all_soln_neg_context,
@@ -810,6 +812,10 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 #endif
 ").
 
+start_all_soln_neg_context.
+
+:- impure pred end_all_soln_neg_context_more is det.
+
 :- pragma foreign_proc("C",
     end_all_soln_neg_context_more,
     % In minimal model tabling grades, there are no threads.
@@ -820,6 +826,10 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
     MR_pneg_enter_then();
 #endif
 ").
+
+end_all_soln_neg_context_more.
+
+:- impure pred end_all_soln_neg_context_no_more is det.
 
 :- pragma foreign_proc("C",
     end_all_soln_neg_context_no_more,
@@ -832,8 +842,6 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 #endif
 ").
 
-start_all_soln_neg_context.
-end_all_soln_neg_context_more.
 end_all_soln_neg_context_no_more.
 
 %-----------------------------------------------------------------------------%
