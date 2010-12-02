@@ -261,7 +261,7 @@ while test $# -gt 0; do
     -d|--test-dir)
         testdirs="$testdirs $2"; shift ;;
     -d*)
-        testdirs="$testdirs ` expr $1 : '-d\(.*\)' `"; ;;
+        testdirs="$testdirs ` expr X$1 : 'X-d\(.*\)' `"; ;;
 
     -e|--extras)
         extras=true ;;
@@ -285,9 +285,9 @@ while test $# -gt 0; do
     -j|--jobs)
         jfactor="-j$2"; shift ;;
     -j*)
-        jfactor="-j` expr $1 : '-j\(.*\)' `" ;;
+        jfactor="-j` expr X$1 : X'-j\(.*\)' `" ;;
     --jobs*)
-        jfactor="--jobs` expr $1 : '--jobs\(.*\)' `" ;;
+        jfactor="--jobs` expr X$1 : 'X--jobs\(.*\)' `" ;;
 
     -k|--keep-objs)
         keep_objs=true ;;
@@ -298,7 +298,7 @@ while test $# -gt 0; do
     -o|--output-file)
         outfile="$2"; shift ;;
     -o*)
-        outfile="` expr $1 : '-o\(.*\)' `"; ;;
+        outfile="` expr X$1 : 'X-o\(.*\)' `"; ;;
 
     --target)
         case "$2" in
@@ -310,7 +310,7 @@ while test $# -gt 0; do
     -G|--grade)
         grade="$2"; shift ;;
     -G*)
-        grade="` expr $1 : '-G\(.*\)' `"; ;;
+        grade="` expr X$1 : 'X-G\(.*\)' `"; ;;
 
     --gradedir)
         use_gradedir=true; grade="$2"; shift ;;
