@@ -373,7 +373,7 @@ EOF
 		shift
 		;;
 	-R*)
-		dir="` expr $1 : '-R\(.*\)' `"
+		dir="` expr X$1 : 'X-R\(.*\)' `"
 		case $leave_shlib_dirs_relative in false)
 			case "$dir" in
 				/*) ;;
