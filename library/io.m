@@ -2881,10 +2881,16 @@ io.file_modification_time(File, Result, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
     try {
-        System.DateTime t = System.IO.File.GetLastWriteTime(FileName);
-        Time = time.ML_construct_time_t(t);
-        Msg = """";
-        Status = 1;
+        if (System.IO.File.Exists(FileName)) {
+            System.DateTime t = System.IO.File.GetLastWriteTime(FileName);
+            Time = time.ML_construct_time_t(t);
+            Msg = """";
+            Status = 1;
+        } else {
+            Msg = ""File not found"";
+            Time = null;
+            Status = 0;
+        }
 
     } catch (System.Exception e) {
         Msg = ""GetLastWriteTime() failed: "" + e.Message;
