@@ -396,15 +396,15 @@ do_while(GeneratorPred, CollectorPred, !Accumulator) :-
 non_cc_call(P::pred(in, in, out) is det, X::in, !.Acc::in, !:Acc::out) :-
     P(X, !Acc).
 non_cc_call(P::pred(in, in, out) is cc_multi, X::in, !.Acc::in, !:Acc::out) :-
-    Pred = (pred(Soln::out) is cc_multi :-
-        P(X, !.Acc, Soln)
-    ),
-    impure !:Acc = builtin.get_one_solution(Pred).
+    promise_equivalent_solutions [!:Acc] (
+        P(X, !Acc),
+        impure impure_true
+    ).
 non_cc_call(P::pred(in, di, uo) is cc_multi, X::in, !.Acc::di, !:Acc::uo) :-
-    Pred = (pred({}::out, !.Acc::di, !:Acc::uo) is cc_multi :-
-        P(X, !Acc)
-    ),
-    impure builtin.get_one_solution_io(Pred, _, !Acc).
+    promise_equivalent_solutions [!:Acc] (
+        P(X, !Acc),
+        impure impure_true
+    ).
 non_cc_call(P::pred(in, di, uo) is det, X::in, !.Acc::di, !:Acc::uo) :-
     P(X, !Acc).
 non_cc_call(P::pred(mdi, di, uo) is det, X::mdi, !.Acc::di, !:Acc::uo) :-
@@ -421,14 +421,14 @@ non_cc_call(P::pred(in, out, di, uo) is det, X::in, More::out,
         !.Acc::di, !:Acc::uo) :-
     P(X, More, !Acc).
 non_cc_call(P::pred(in, out, in, out) is det, X::in, More::out,
-        Acc0::in, Acc::out) :-
-    P(X, More, Acc0, Acc).
+        !.Acc::in, !:Acc::out) :-
+    P(X, More, !Acc).
 non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
         !.Acc::di, !:Acc::uo) :-
-    Pred = (pred(M::out, !.Acc::di, !:Acc::uo) is cc_multi :-
-        P(X, M, !Acc)
-    ),
-    impure builtin.get_one_solution_io(Pred, More, !Acc).
+    promise_equivalent_solutions [More, !:Acc] (
+        P(X, More, !Acc),
+        impure impure_true
+    ).
 
 :- type heap_ptr == private_builtin.heap_pointer.
 :- type trail_ptr ---> trail_ptr(c_pointer).
