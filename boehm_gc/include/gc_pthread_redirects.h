@@ -31,7 +31,7 @@
 
 #include <pthread.h>
 
-#ifndef GC_DARWIN_THREADS
+#if !defined(GC_DARWIN_THREADS) && !defined(GC_WIN32_PTHREADS)
 # include <signal.h>
 # include <dlfcn.h>
 
