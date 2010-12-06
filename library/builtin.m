@@ -488,106 +488,20 @@ promise_only_solution(CCPred::(pred(uo) is cc_nondet)) = (OutVal::uo) :-
     OutVal = unsafe_promise_unique(OutVal0).
 
 get_one_solution(CCPred) = OutVal :-
-    impure Pred = cc_cast(CCPred),
-    Pred(OutVal).
-
-:- impure func cc_cast(pred(T)) = pred(T).
-:- mode cc_cast(pred(out) is cc_nondet) = out(pred(out) is semidet) is det.
-:- mode cc_cast(pred(out) is cc_multi) = out(pred(out) is det) is det.
-
-:- pragma foreign_proc("C",
-    cc_cast(X :: (pred(out) is cc_multi)) = (Y :: out(pred(out) is det)),
-    [will_not_call_mercury, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    Y = X;
-").
-:- pragma foreign_proc("C",
-    cc_cast(X :: (pred(out) is cc_nondet)) = (Y :: out(pred(out) is semidet)),
-    [will_not_call_mercury, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    Y = X;
-").
-:- pragma foreign_proc("C#",
-    cc_cast(X :: (pred(out) is cc_multi)) = (Y :: out(pred(out) is det)),
-    [will_not_call_mercury, thread_safe],
-"
-    Y = X;
-").
-:- pragma foreign_proc("C#",
-    cc_cast(X :: (pred(out) is cc_nondet)) =
-        (Y :: out(pred(out) is semidet)),
-    [will_not_call_mercury, thread_safe],
-"
-    Y = X;
-").
-:- pragma foreign_proc("Java",
-    cc_cast(X :: (pred(out) is cc_multi)) = (Y :: out(pred(out) is det)),
-    [will_not_call_mercury, thread_safe],
-"
-    Y = X;
-").
-:- pragma foreign_proc("Java",
-    cc_cast(X :: (pred(out) is cc_nondet)) = (Y :: out(pred(out) is semidet)),
-    [will_not_call_mercury, thread_safe],
-"
-    Y = X;
-").
-:- pragma foreign_proc("Erlang",
-    cc_cast(X :: (pred(out) is cc_multi)) = (Y :: out(pred(out) is det)),
-    [will_not_call_mercury, thread_safe],
-"
-    Y = X
-").
-:- pragma foreign_proc("Erlang",
-    cc_cast(X :: (pred(out) is cc_nondet)) = (Y :: out(pred(out) is semidet)),
-    [will_not_call_mercury, thread_safe],
-"
-    Y = X
-").
+    promise_equivalent_solutions [OutVal] (
+        CCPred(OutVal),
+        impure impure_true
+    ).
 
 :- pragma promise_pure(promise_only_solution_io/4).
 promise_only_solution_io(Pred, X, !IO) :-
     impure get_one_solution_io(Pred, X, !IO).
 
 get_one_solution_io(Pred, X, !IO) :-
-    impure DetPred = cc_cast_io(Pred),
-    DetPred(X, !IO).
-
-:- impure func cc_cast_io(pred(T, IO, IO)) = pred(T, IO, IO).
-:- mode cc_cast_io(pred(out, di, uo) is cc_multi) =
-    out(pred(out, di, uo) is det) is det.
-
-:- pragma foreign_proc("C",
-    cc_cast_io(X :: (pred(out, di, uo) is cc_multi)) =
-        (Y :: out(pred(out, di, uo) is det)),
-    [will_not_call_mercury, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    Y = X;
-").
-:- pragma foreign_proc("C#",
-    cc_cast_io(X :: (pred(out, di, uo) is cc_multi)) =
-        (Y :: out(pred(out, di, uo) is det)),
-    [will_not_call_mercury, thread_safe],
-"
-    Y = X;
-").
-:- pragma foreign_proc("Java",
-    cc_cast_io(X :: (pred(out, di, uo) is cc_multi)) =
-        (Y :: out(pred(out, di, uo) is det)),
-    [will_not_call_mercury, thread_safe],
-"
-    Y = X;
-").
-:- pragma foreign_proc("Erlang",
-    cc_cast_io(X :: (pred(out, di, uo) is cc_multi)) =
-        (Y :: out(pred(out, di, uo) is det)),
-    [will_not_call_mercury, thread_safe],
-"
-    Y = X
-").
+    promise_equivalent_solutions [!:IO, X] (
+        Pred(X, !IO),
+        impure impure_true
+    ).
 
 %-----------------------------------------------------------------------------%
 %
