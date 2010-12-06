@@ -9971,8 +9971,6 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
 % We should be using conditional compilation here to avoid these POSIX
 % dependencies.
 
-%#include <stdio.h>
-
 :- pragma foreign_decl("C", "
 #ifdef MR_HAVE_UNISTD_H
     #include <unistd.h>
@@ -9996,6 +9994,27 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness],
 "{
+#ifdef MR_HAVE_MKSTEMP
+    int err, fd;
+
+    FileName = MR_make_string(MR_PROC_LABEL, ""%s%s%.5sXXXXXX"",
+        Dir, Sep, Prefix);
+    fd = mkstemp(FileName);
+    if (fd == -1) {
+        ML_maybe_make_err_msg(MR_TRUE, errno,
+            ""error opening temporary file: "", MR_PROC_LABEL, MR_TRUE,
+            ErrorMessage);
+        Error = -1;
+    } else {
+        do {
+            err = close(fd);
+        } while (err == -1 && MR_is_eintr(errno));
+        ML_maybe_make_err_msg(err, errno,
+            ""error closing temporary file: "", MR_PROC_LABEL, MR_TRUE,
+            ErrorMessage);
+        Error = err;
+    }
+#else
     /*
     ** Constructs a temporary name by concatenating Dir, `/', the first 5 chars
     ** of Prefix, three hex digits, '.', and 3 more hex digits. The six digit
@@ -10046,6 +10065,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
             ErrorMessage);
         Error = err;
     }
+#endif
     MR_update_io(IO0, IO);
 }").
 

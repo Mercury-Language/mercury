@@ -275,6 +275,7 @@
 **	MR_HAVE_SCHED_YIELD	we have the sched_yield() function.
 **	MR_HAVE_PTHREAD_MUTEXATTR_SETPSHARED we have the
 **				pthread_mutexattr_setpshared() function.
+**	MR_HAVE_MKSTEMP		we have the mkstemp() function.
 */
 #undef	MR_HAVE_GETPID
 #undef	MR_HAVE_SETPGID
@@ -310,6 +311,7 @@
 #undef	MR_HAVE_DUP
 #undef	MR_HAVE_DUP2
 #undef	MR_HAVE_FILENO
+#undef	MR_HAVE_MKSTEMP
 #undef	MR_HAVE_ISATTY
 #undef	MR_HAVE_GRANTPT
 #undef	MR_HAVE_UNLOCKPT
@@ -340,6 +342,7 @@
 #undef	MR_HAVE_SCHED_GETCPU
 #undef	MR_HAVE_SCHED_YIELD
 #undef	MR_HAVE_PTHREAD_MUTEXATTR_SETPSHARED
+#undef	MR_HAVE_MKSTEMP
 
 /*
 ** We use mprotect() and signals to catch stack and heap overflows.
