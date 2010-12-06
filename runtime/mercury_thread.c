@@ -51,7 +51,8 @@ MR_Integer          MR_thread_barrier_count;
 
 #ifdef MR_THREAD_SAFE
 
-static void         *MR_create_thread_2(void *goal);
+static void *
+MR_create_thread_2(void *goal);
 
 MercuryThread *
 MR_create_thread(MR_ThreadGoal *goal)

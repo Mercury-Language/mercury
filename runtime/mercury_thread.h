@@ -41,7 +41,7 @@ extern int
 MR_cond_broadcast(MercuryCond *cond, const char *from);
 extern int
 MR_cond_wait(MercuryCond *cond, MercuryLock *lock, const char *from);
-int
+extern int
 MR_cond_timed_wait(MercuryCond *cond, MercuryLock *lock, 
     const struct timespec *abstime, const char *from);
 
@@ -226,8 +226,8 @@ typedef enum { MR_use_now, MR_use_later } MR_when_to_use;
 ** intended that the caller can store the return value and call
 ** finalize_thread_engine if it is true).
 */
-
-extern  MR_bool MR_init_thread(MR_when_to_use);
+extern MR_bool
+MR_init_thread(MR_when_to_use);
 
 /*
 ** Finalize the thread engine running in the current POSIX thread.
@@ -235,8 +235,8 @@ extern  MR_bool MR_init_thread(MR_when_to_use);
 ** important because the memory used for the det stack for each thread
 ** can be re-used by the next init_thread.
 */
-
-extern  void    MR_finalize_thread_engine(void);
+extern void
+MR_finalize_thread_engine(void);
 
 /*
 ** The values of thread-local mutables are stored in an array per Mercury
@@ -260,25 +260,25 @@ struct MR_ThreadLocalMuts {
 };
 
 #define MR_MAX_THREAD_LOCAL_MUTABLES    128
-extern MR_Unsigned  MR_num_thread_local_mutables;
+extern MR_Unsigned MR_num_thread_local_mutables;
 
 /*
 ** Allocate an index into the thread-local mutable array for a mutable.
 */
-extern MR_Unsigned  MR_new_thread_local_mutable_index(void);
+extern MR_Unsigned
+MR_new_thread_local_mutable_index(void);
 
 /*
 ** Allocate a thread-local mutable array.
 */
-extern MR_ThreadLocalMuts
-                    *MR_create_thread_local_mutables(MR_Unsigned numslots);
+extern MR_ThreadLocalMuts *
+MR_create_thread_local_mutables(MR_Unsigned numslots);
 
 /*
 ** Make a copy of a thread-local mutable array.
 */
 extern MR_ThreadLocalMuts *
-                    MR_clone_thread_local_mutables(
-                        const MR_ThreadLocalMuts *old_muts);
+MR_clone_thread_local_mutables(const MR_ThreadLocalMuts *old_muts);
 
 #define MR_THREAD_LOCAL_MUTABLES                                        \
     (MR_ENGINE(MR_eng_this_context)->MR_ctxt_thread_local_mutables)
