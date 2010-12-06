@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 2001-2007 The University of Melbourne.
+# Copyright (C) 2001-2007, 2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -373,7 +373,7 @@ EOF
 		shift
 		;;
 	-R*)
-		dir="` expr $1 : '-R\(.*\)' `"
+		dir="` expr X$1 : 'X-R\(.*\)' `"
 		case $leave_shlib_dirs_relative in false)
 			case "$dir" in
 				/*) ;;

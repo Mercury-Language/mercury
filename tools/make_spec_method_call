@@ -132,7 +132,13 @@ do
 
     variants="$variants $variant"
 
-    spec_explicit_arg=`expr $spec_explicit_arg + 1`
+    # On some systems, e.g. FreeBSD, expr will treat a leading argument
+    # beginning with a minus sign as an option to the program rather than
+    # as a negative number.  Since the value of $spec_explicit_arg may be
+    # negative we arrange the arguments in the following so that first
+    # argument position is occupied by a positive number.
+    #
+    spec_explicit_arg=`expr 1 + $spec_explicit_arg`
 done
 
 # Create these files atomically.
