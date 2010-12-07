@@ -125,6 +125,10 @@ make install
 #          The option --disable-prof-grades prevents the installation
 #          of grades that support profiling.
 #
+#          The option --disable-old-prof-grades prevents the installation
+#          of the old style profiling grades, i.e. all profiling grades
+#          except the ones that do deep profiling.
+#
 #          The option --disable-trail-grades prevents the installation
 #          of grades that support trailing.
 #
@@ -151,9 +155,9 @@ make install
 #          The option --enable-java-grade causes the installation of the Java
 #          grade.  This grade is only installed if the Java SDK is found.
 #
-#          The option --enable-erlang-grade causes the installation of the Erlang
-#          grade.  This grade is only installed if the Erlang/OTP distribution is
-#          found.
+#          The option --enable-erlang-grade causes the installation of the
+#          Erlang grade.  This grade is only installed if the Erlang/OTP
+#          distribution is found.
 #
 #          The option --enable-ssdebug-grades adds source-to-source debugging
 #          grades hlc.gc.ssdebug and java.ssdebug, if hlc.gc or java grades
