@@ -10,6 +10,11 @@
 %	The source code for autotest generator similar to Haskell's quickcheck. 
 %	A user guide should be available at ./tutes/ in html format.
 %
+% NOTE: this code has not compiled since Mercury 0.13 because it uses
+% type class instance whose arguments have higher-order types. As such,
+% we do not currently include this in the extras distribution or maintain
+% it.
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 

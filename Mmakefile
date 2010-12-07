@@ -475,6 +475,7 @@ tar: 	$(GENERATED_DOCS)
 		mv $$ROOTNAME/extras/opium_m	stuff-to-exclude;	\
 		mv $$ROOTNAME/extras/aditi stuff-to-exclude;		\
 		mv $$ROOTNAME/extras/stream stuff-to-exclude;		\
+		mv $$ROOTNAME/extras/quickcheck stuff-to-exclude;	\
 		mv $$ROOTNAME/extras	mercury-extras-$(VERSION);	\
 		mv $$ROOTNAME		mercury-compiler-$(VERSION);	\
 		mv tests		mercury-tests-$(VERSION);	\
@@ -489,6 +490,7 @@ tar: 	$(GENERATED_DOCS)
 		mv mercury-tests-$(VERSION)	tests;			\
 		mv stuff-to-exclude/opium_m	$$ROOTNAME/extras/opium_m;\
 		mv stuff-to-exclude/aditi	$$ROOTNAME/extras/aditi;\
+		mv stuff-to-exclude/quickcheck  $$ROOTNAME/extras/quickcheck; \
 		mv stuff-to-exclude/*		$$ROOTNAME;		\
 		rmdir stuff-to-exclude;					\
 	)

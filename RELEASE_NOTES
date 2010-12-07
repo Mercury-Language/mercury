@@ -140,8 +140,9 @@ inline assembler.  Using these extensions, it generates code that is
 significantly better than all previous Prolog systems known to us.  However,
 the system does not need these extensions, and will work in their absence.
 
-The Mercury compiler can also compile Mercury programs to either Java or
-Erlang.  See README.Java and README.Erlang for further details.
+The Mercury compiler can also compile Mercury programs to Java, C# or
+Erlang.  See README.Java, README.CSharp, and README.Erlang respectively
+for further details.
 
 The current Mercury system has been tested on Linux (x86), Linux (x86_64),
 Mac OS X (x86 and x86_64), and Windows (x86).
@@ -184,12 +185,10 @@ The "mercury-compiler" distribution contains:
      o  some sample Mercury programs
 
 The "mercury-extras" distribution contains some extra libraries for:
-     o  lazy evaluation
      o  dynamic linking
      o  backtrackable (trailed) destructive update
      o  arithmetic
         -  arithmetic on complex and imaginary numbers
-     o	an autotesting tool similar to Haskell's QuickCheck
      o  UIs:
         -  graphics using Tk, OpenGL/GLUT, Xlib or Allegro.
         -  text interfaces using curses
@@ -202,7 +201,6 @@ and
      o  the Morphine trace analysis system
      o  a general purpose lexer
      o  Moose, a parser generator for Mercury.
-     o  quickcheck, an autotesting tool similar to Haskell's QuickCheck.
 
 The "mercury-tests" distribution contains a test suite.
 

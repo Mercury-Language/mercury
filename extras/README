@@ -70,8 +70,6 @@ odbc		A Mercury interface to ODBC (Open Database Connectivity),
 posix		A Mercury interface to some of the POSIX
 		(Portable Operating System Interface) APIs.
 
-quickcheck	An autotesting tool similar to Haskell's QuickCheck.
-
 references	A library package containing modules for manipulating
 		ML-style references (mutable state).
 
