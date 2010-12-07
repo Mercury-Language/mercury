@@ -126,6 +126,36 @@
 :- mode unsorted_aggregate(pred(muo) is nondet, pred(mdi, di, uo) is det,
     di, uo) is cc_multi.
 
+    % unsorted_aggregate2/6 generates all the solutions to a predicate
+    % and applies an accumulator predicate to each solution in turn.
+    % Declaratively, the specification is as follows:
+    %
+    % unsorted_aggregate2(Generator, Accumulator, !Acc1, !Acc2) <=>
+    %   unsorted_solutions(Generator, Solutions),
+    %   list.foldl2(Accumulator, Solutions, !Acc1, !Acc2).
+    %
+    % Operationally, however, unsorted_aggregate2/6 will call the
+    % Accumulator for each solution as it is obtained, rather than
+    % first building a list of all the solutions.
+    %
+:- pred unsorted_aggregate2(pred(T), pred(T, U, U, V, V), U, U, V, V).
+:- mode unsorted_aggregate2(pred(out) is multi,
+    pred(in, in, out, in, out) is det, in, out, in, out) is cc_multi.
+:- mode unsorted_aggregate2(pred(out) is multi,
+    pred(in, in, out, in, out) is cc_multi, in, out, in, out) is cc_multi.
+:- mode unsorted_aggregate2(pred(out) is multi,
+    pred(in, in, out, di, uo) is det, in, out, di, uo) is cc_multi.
+:- mode unsorted_aggregate2(pred(out) is multi,
+    pred(in, in, out, di, uo) is cc_multi, in, out, di, uo) is cc_multi.
+:- mode unsorted_aggregate2(pred(out) is nondet,
+    pred(in, in, out, in, out) is det, in, out, in, out) is cc_multi.
+:- mode unsorted_aggregate2(pred(out) is nondet,
+    pred(in, in, out, in, out) is cc_multi, in, out, in, out) is cc_multi.
+:- mode unsorted_aggregate2(pred(out) is nondet,
+    pred(in, in, out, di, uo) is det, in, out, di, uo) is cc_multi.
+:- mode unsorted_aggregate2(pred(out) is nondet,
+    pred(in, in, out, di, uo) is cc_multi, in, out, di, uo) is cc_multi.
+
     % This is a generalization of unsorted_aggregate which allows the
     % iteration to stop before all solutions have been found.
     % Declaratively, the specification is as follows:
@@ -209,6 +239,11 @@ aggregate2(Generator, Accumulator, !Acc1, !Acc2) :-
 unsorted_aggregate(Generator, Accumulator, !Acc) :-
     builtin_aggregate(Generator, Accumulator, !Acc),
     cc_multi_equal(!Acc).
+
+unsorted_aggregate2(Generator, Accumulator, !Acc1, !Acc2) :-
+    builtin_aggregate2(Generator, Accumulator, !Acc1, !Acc2),
+    cc_multi_equal(!Acc1),
+    cc_multi_equal(!Acc2).
 
 %-----------------------------------------------------------------------------%
 
@@ -345,6 +380,83 @@ builtin_aggregate(GeneratorPred, CollectorPred, !Accumulator) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pragma promise_pure(builtin_aggregate2/6).
+
+:- pred builtin_aggregate2(pred(T), pred(T, U, U, V, V), U, U, V, V).
+:- mode builtin_aggregate2(pred(out) is multi,
+    pred(in, in, out, in, out) is det,
+    in, out, in, out) is det. % really cc_multi
+:- mode builtin_aggregate2(pred(out) is multi,
+    pred(in, in, out, in, out) is cc_multi,
+    in, out, in, out) is det. % really cc_multi
+:- mode builtin_aggregate2(pred(out) is multi,
+    pred(in, in, out, di, uo) is det,
+    in, out, di, uo) is det. % really cc_multi
+:- mode builtin_aggregate2(pred(out) is multi,
+    pred(in, in, out, di, uo) is cc_multi,
+    in, out, di, uo) is det. % really cc_multi
+:- mode builtin_aggregate2(pred(out) is nondet,
+    pred(in, in, out, in, out) is det,
+    in, out, in, out) is det. % really cc_multi
+:- mode builtin_aggregate2(pred(out) is nondet,
+    pred(in, in, out, in, out) is cc_multi,
+    in, out, in, out) is det. % really cc_multi
+:- mode builtin_aggregate2(pred(out) is nondet,
+    pred(in, in, out, di, uo) is det,
+    in, out, di, uo) is det. % really cc_multi
+:- mode builtin_aggregate2(pred(out) is nondet,
+    pred(in, in, out, di, uo) is cc_multi,
+    in, out, di, uo) is det. % really cc_multi
+
+builtin_aggregate2(GeneratorPred, CollectorPred, !Accumulator1, !Accumulator2) :-
+    % Save some of the Mercury virtual machine registers
+    impure get_registers(HeapPtr, SolutionsHeapPtr, TrailPtr),
+    impure start_all_soln_neg_context,
+
+    % Initialize the accumulator
+    impure new_mutvar(!.Accumulator1, Mutvar1),
+    impure new_mutvar(!.Accumulator2, Mutvar2),
+
+    (
+        % Get a solution.
+        GeneratorPred(Answer0),
+
+        % Check that the generator didn't leave any delayed goals outstanding.
+        impure check_for_floundering(TrailPtr),
+
+        % Update the accumulators.
+        impure swap_heap_and_solutions_heap,
+        impure partial_deep_copy(HeapPtr, Answer0, Answer),
+        some [!Acc1, !Acc2] (
+            impure get_mutvar(Mutvar1, !:Acc1),
+            impure get_mutvar(Mutvar2, !:Acc2),
+            impure non_cc_call(CollectorPred, Answer, !Acc1, !Acc2),
+            impure set_mutvar(Mutvar1, !.Acc1),
+            impure set_mutvar(Mutvar2, !.Acc2)
+        ),
+        impure swap_heap_and_solutions_heap,
+
+        % Force backtracking, so that we get the next solution.
+        % This will automatically reset the heap and trail.
+        fail
+    ;
+        % There are no more solutions.
+        impure end_all_soln_neg_context_no_more,
+
+        % So now we just need to copy the final value of the accumulators
+        % from the solutions heap back onto the ordinary heap, and then we can
+        % reset the solutions heap pointer. We also need to discard the trail
+        % ticket created by get_registers/3.
+        impure get_mutvar(Mutvar1, !:Accumulator1),
+        impure get_mutvar(Mutvar2, !:Accumulator2),
+        impure partial_deep_copy(SolutionsHeapPtr, !Accumulator1),
+        impure partial_deep_copy(SolutionsHeapPtr, !Accumulator2),
+        impure reset_solutions_heap(SolutionsHeapPtr),
+        impure discard_trail_ticket
+    ).
+
+%-----------------------------------------------------------------------------%
+
 % The code for do_while/4 is essentially the same as the code for
 % builtin_aggregate (above).  See the detailed comments above.
 %
@@ -427,6 +539,32 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
         !.Acc::di, !:Acc::uo) :-
     promise_equivalent_solutions [More, !:Acc] (
         P(X, More, !Acc),
+        impure impure_true
+    ).
+
+:- impure pred non_cc_call(pred(T1, Acc1, Acc1, Acc2, Acc2), T1,
+    Acc1, Acc1, Acc2, Acc2).
+:- mode non_cc_call(pred(in, in, out, in, out) is det, in, in, out, in, out) is det.
+:- mode non_cc_call(pred(in, in, out, in, out) is cc_multi, in, in, out, in, out) is det.
+:- mode non_cc_call(pred(in, in, out, di, uo) is det, in, in, out, di, uo) is det.
+:- mode non_cc_call(pred(in, in, out, di, uo) is cc_multi, in, in, out, di, uo) is det.
+
+non_cc_call(P::pred(in, in, out, in, out) is det, X::in,
+        !.Acc1::in, !:Acc1::out, !.Acc2::in, !:Acc2::out) :-
+    P(X, !Acc1, !Acc2).
+non_cc_call(P::pred(in, in, out, in, out) is cc_multi, X::in,
+        !.Acc1::in, !:Acc1::out, !.Acc2::in, !:Acc2::out) :-
+    promise_equivalent_solutions [!:Acc1, !:Acc2] (
+        P(X, !Acc1, !Acc2),
+        impure impure_true
+    ).
+non_cc_call(P::pred(in, in, out, di, uo) is det, X::in,
+        !.Acc1::in, !:Acc1::out, !.Acc2::di, !:Acc2::uo) :-
+    P(X, !Acc1, !Acc2).
+non_cc_call(P::pred(in, in, out, di, uo) is cc_multi, X::in,
+        !.Acc1::in, !:Acc1::out, !.Acc2::di, !:Acc2::uo) :-
+    promise_equivalent_solutions [!:Acc1, !:Acc2] (
+        P(X, !Acc1, !Acc2),
         impure impure_true
     ).
 

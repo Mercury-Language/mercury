@@ -78,6 +78,9 @@ Changes to the Mercury standard library:
 	list.map_corresponding3_foldl/7
 	map.foldl3/8
 
+* We have added the predicate unsorted_aggregate2/6 to the solutions module
+  of the standard library.
+
 Changes to the Mercury compiler:
 
 * We have added a new backend that generates C#.
