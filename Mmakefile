@@ -213,8 +213,20 @@ depend_deep_profiler:
 
 #-----------------------------------------------------------------------------#
 
+# NOTE: there are two targets that concern the util directory here.  The first
+# is the "util_no_rt" target (short for "util no runtime") and the second is the
+# "util" target.  The first target builds thaose programs in the util directory
+# that do *not* depend on the runtime directory, at present just mfiltercc.
+# The second target builds the rest.  Things are arranged in this fashion so
+# that when building the source distribution we can build mfiltercc before
+# it is required.
+
 .PHONY: all
-all: 	$(GENERATED_DOCS) mercury-compiler.spec $(SUBDIRS)
+all: 	$(GENERATED_DOCS) mercury-compiler.spec util_no_rt $(SUBDIRS)
+
+.PHONY: util_no_rt
+util_no_rt: scripts
+	+cd util && $(SUBDIR_MMAKE) mfiltercc
 
 .PHONY: util
 util: 	scripts runtime
@@ -225,12 +237,12 @@ scripts:
 	+cd scripts && $(SUBDIR_MMAKE)
 
 .PHONY: boehm_gc
-boehm_gc: scripts
+boehm_gc: scripts util_no_rt
 	+gc_grade=`scripts/ml --grade $(GRADE) --print-gc-grade`; \
 	cd boehm_gc && $(SUBDIR_MMAKE) GC_GRADE=$$gc_grade
 
 .PHONY: runtime
-runtime: scripts boehm_gc
+runtime: scripts util_no_rt boehm_gc
 	+cd runtime && $(SUBDIR_MMAKE)
 
 .PHONY: robdd

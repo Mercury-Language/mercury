@@ -35,6 +35,10 @@ endif
 MGNUCFLAGS-mkinit = --no-ansi
 MGNUCFLAGS-mkinit_erl = --no-ansi
 
+# For the C distribution mfiltercc may not be available until after we build
+# it here.
+MGNUCFLAGS-mfiltercc = --no-filter-cc
+
 #-----------------------------------------------------------------------------#
 
 all:	$(PROGS) $(TAGS_FILE_EXISTS)

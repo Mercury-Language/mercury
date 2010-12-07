@@ -96,6 +96,7 @@ preserve_tail_recursion=true
 mercury_config_dir=${MERCURY_STDLIB_DIR-@LIBDIR@}
 mercury_config_dir=${MERCURY_CONFIG_DIR=$mercury_config_dir}
 mercury_stdlib_dir=${MERCURY_STDLIB_DIR=@LIBDIR@}
+do_filter_cc=true
 
 # include the file `init_grade_options.sh-subr'
 @INIT_GRADE_OPTIONS@
@@ -125,6 +126,8 @@ Options:
         The directory containing the installed Mercury standard library.
     --no-mercury-standard-library-directory, --no-mercury-stdlib-dir
         Don't use an installed Mercury standard library.
+    --no-filter-cc
+        Do not filter warnings from the C compiler.
 
 $grade_usage
 
@@ -641,7 +644,7 @@ else
 fi
 
 FILTERCC=""
-case $asm_labels in true)
+case $asm_labels,$do_filter_cc in true,true)
     # Check if mfiltercc is available as we may be bootstrapping with
     # an older compiler which did not have it.
     if test -n "$MKTEMP" && mfiltercc=`which mfiltercc`

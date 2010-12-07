@@ -15,6 +15,10 @@
 **
 ** This is a last ditch effort to filter out warning messages from the
 ** C compiler that we cannot (yet) figure out how to silence in a better way.
+**
+** This program must *not* #include any of the header files in the runtime
+** directory.
+**
 */
 
 #include <string.h>

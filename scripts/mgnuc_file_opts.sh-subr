@@ -71,3 +71,6 @@
             unset mercury_stdlib_dir
             unset mercury_config_dir
             ;;
+ 
+	--no-filter-cc)
+	    do_filter_cc=false ;;
