@@ -1,20 +1,19 @@
 %-----------------------------------------------------------------------------%
-% eqneq.m
-% Ralph Becket <rafe@csse.unimelb.edu.au>
-% Fri Feb  9 13:31:22 EST 2007
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%-----------------------------------------------------------------------------%
+%
+% Author: Ralph Becket
 %
 % Simple solver type supporting equality and disequality constraints.
 %
 %-----------------------------------------------------------------------------%
 
 :- module eqneq.
-
 :- interface.
 
 :- import_module list.
 
-
+%-----------------------------------------------------------------------------%
 
     % An eqneq(T) variable may be bound to a ground value of type T or it may
     % be unbound.  Equality and disequality constraints may be posted between
@@ -57,6 +56,10 @@
 :- import_module map.
 :- import_module set.
 :- import_module univ.
+
+:- pragma require_feature_set([trailing]).
+
+%-----------------------------------------------------------------------------%
 
     % An eqneq is represented by an eqneq_id, which is a key in the
     % mutable constraint_store map.
@@ -126,14 +129,13 @@ n_new(N, EqNeqs) :-
     % short).
     %
 :- pred deref(constraint_store::in, eqneq_id::in, eqneq_id::out,
-        eqneq_rep::out, int::out) is det.
+    eqneq_rep::out, int::out) is det.
 
 deref(ConstraintStore, EqNeqId0, EqNeqId, EqNeqRep, Depth) :-
     deref_2(ConstraintStore, EqNeqId0, EqNeqId, EqNeqRep, 0, Depth).
 
-
 :- pred deref_2(constraint_store::in, eqneq_id::in, eqneq_id::out,
-        eqneq_rep::out, int::in, int::out) is det.
+    eqneq_rep::out, int::in, int::out) is det.
 
 deref_2(ConstraintStore, EqNeqId0, EqNeqId, EqNeqRep, Depth0, Depth) :-
     EqNeqRep0 = ConstraintStore ^ det_elem(EqNeqId0),
@@ -354,19 +356,17 @@ ask_value(EqNeq, Value) :-
 %-----------------------------------------------------------------------------%
 
 all_different([]).
-
 all_different([X | Xs]) :-
     all_different_2(X, Xs),
     all_different(Xs).
 
-
 :- pred all_different_2(eqneq(T)::ia, list(eqneq(T))::ia) is semidet.
 
 all_different_2(_, []).
-
 all_different_2(X, [Y | Ys]) :-
     neq(X, Y),
     all_different_2(X, Ys).
 
 %-----------------------------------------------------------------------------%
+:- end_module eqneq.
 %-----------------------------------------------------------------------------%
