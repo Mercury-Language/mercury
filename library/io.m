@@ -9616,8 +9616,14 @@ io.handle_system_command_exit_code(Status0::in) = (Status::out) :-
         // XXX This could be better... need to handle embedded spaces
         // in the command name.
         int index = Command.IndexOf("" "");
-        string command = Command.Substring(0, index);
-        string arguments = Command.Remove(0, index + 1);
+        string command, arguments;
+        if (index > 0) {
+            command = Command.Substring(0, index);
+            arguments = Command.Remove(0, index + 1);
+        } else {
+            command = Command;
+            arguments = """";
+        }
 
         // debugging...
         // System.Console.Out.WriteLine(
@@ -9625,8 +9631,11 @@ io.handle_system_command_exit_code(Status0::in) = (Status::out) :-
         // System.Console.Out.WriteLine(
         //  ""[arguments = "" + arguments + ""]"");
 
-        System.Diagnostics.Process process =
-            System.Diagnostics.Process.Start(command, arguments);
+        System.Diagnostics.Process process = new System.Diagnostics.Process();
+        process.StartInfo.UseShellExecute = false;
+        process.StartInfo.FileName = command;
+        process.StartInfo.Arguments = arguments;
+        process.Start();
         process.WaitForExit();
         Status = process.ExitCode;
         Msg = """";
