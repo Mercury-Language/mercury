@@ -59,6 +59,7 @@ AC_PREREQ(2.58)
 # Strip out any site or system specific configuration files since their
 # presence when reconfiguring will result in the command line used to invoke
 # configure being invalid.
+	
 # Also quote any args containing shell metacharacters.
 #
 # NOTE: Some macros, e.g. AC_CHECK_PROG, overwrite the argument list,
@@ -1220,6 +1221,19 @@ AC_SUBST(GETOPT_H_AVAILABLE)
 
 if test "$MR_HAVE_UCONTEXT_H" != 1; then
     MERCURY_CHECK_FOR_HEADERS(sys/ucontext.h)
+fi
+
+if test "$MR_HAVE_PTHREAD_H" = 1
+then
+    case "$host" in
+        *mingw*)
+            MERCURY_HAVE_PTHREADS_WIN32
+            if test $mercury_cv_have_pthreads_win32 = "yes"
+            then
+                AC_DEFINE([MR_PTHREADS_WIN32])
+            fi 
+        ;;
+    esac
 fi
 
 #-----------------------------------------------------------------------------#
