@@ -9632,6 +9632,9 @@ io.handle_system_command_exit_code(Status0::in) = (Status::out) :-
         //  ""[arguments = "" + arguments + ""]"");
 
         System.Diagnostics.Process process = new System.Diagnostics.Process();
+        // Never interpret the command as a document to open with whatever
+        // application is registered for that document type.  This also
+        // prevents creating a new window for console programs on Windows.
         process.StartInfo.UseShellExecute = false;
         process.StartInfo.FileName = command;
         process.StartInfo.Arguments = arguments;
