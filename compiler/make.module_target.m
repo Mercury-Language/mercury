@@ -440,7 +440,7 @@ build_target_2(ModuleName, Task, ArgFileName, Imports, Globals, AllOptionArgs,
         (
             Verbose = yes,
             AllArgs = list.append(AllOptionArgs, [ModuleArg]),
-            io.write_string("Invoking command `mmc ", !IO),
+            io.write_string("Invoking self `mmc ", !IO),
             % XXX Don't write the default options.
             io.write_list(list.map(quote_arg, AllArgs), " ", io.write_string,
                 !IO),
