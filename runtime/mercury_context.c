@@ -35,6 +35,10 @@ ENDINIT
 #include <sched.h>
 #endif
 
+#ifdef MR_MINGW
+  #include <sys/time.h>     /* for gettimeofday() */
+#endif
+
 #ifdef MR_WIN32
   #include <sys/timeb.h>    /* for _ftime() */
 #endif
