@@ -9396,11 +9396,28 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
 
 :- pragma foreign_decl("C", "
 
+/*
+** A note regarding the declaration of the environ global variable
+** that follows:
+**
+** The man page (on Linux) says that it should be declared by the user
+** program.
+**
+** On MinGW, environ is a macro (defined in stdlib.h) that expands to a
+** function call that returns the user environment; no additional
+** declaration is required.
+**
+** On Mac OS X shared libraries do not have direct access to environ.
+** The man page for environ(7) says that we should look it up at
+** runtime using _NSGetEnviron().
+*/
+
 #if defined(MR_HAVE_ENVIRON) && !defined(MR_MAC_OSX)
     #include <unistd.h>
-
-    /* The man page says that this should be declared by the user program. */
-    extern char **environ;
+    
+    #if !defined(MR_MINGW)
+        extern char **environ;
+    #endif
 #endif
 
 #if defined(MR_MAC_OSX)
@@ -9440,9 +9457,8 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
     MR_OBTAIN_GLOBAL_LOCK(MR_PROC_LABEL);
 
     /*
-    ** On Mac OS X shared libraries do not have direct access to environ.
-    ** The man page for environ(7) says that we should look it up at
-    ** runtime using _NSGetEnviron().
+    ** See the comment at the head of the body of preceding foreign_decl
+    ** for details of why Mac OS X is different here.
     */
     #if defined(MR_MAC_OSX)
         err = posix_spawn(&pid, ""/bin/sh"", NULL, NULL, argv,
