@@ -1562,7 +1562,20 @@ array.to_list(Array, List) :-
 %-----------------------------------------------------------------------------%
 
 array.fetch_items(Array, Low, High, List) :-
-    List = do_foldr_func(func(X, Xs) = [X | Xs], Array, [], Low, High).
+    ( High < Low ->
+        % If High is less than Low then there cannot be any array indexes
+        % within the range Low -> High (inclusive).  This can happen when
+        % calling to_list/2 on the empty array.  Testing for this condition
+        % here rather than in to_list/2 is more general.
+        List = []
+    ;
+        array.in_bounds(Array, Low),
+        array.in_bounds(Array, High)
+    ->
+        List = do_foldr_func(func(X, Xs) = [X | Xs], Array, [], Low, High)
+    ;
+        error("array.fetch_items/4: One or more index is out of bounds")
+    ).
 
 %-----------------------------------------------------------------------------%
 

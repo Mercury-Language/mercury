@@ -122,6 +122,11 @@
                 %
     ;       notice_partition_does_not_have_costly_calls(int, int)
 
+                % The candidate conjunction has goals that arn't
+                % determinstic or cc_multi amongst the costly calls.
+                %
+    ;       notice_candidate_conjunction_not_det(detism_rep)
+
                 % Couldn't find the proc defn in the progrep data, maybe the
                 % procedure is built-in.
                 %
@@ -276,6 +281,8 @@ message_type_to_level(notice_callpair_has_more_than_one_dependant_var) =
     message_notice.
 message_type_to_level(notice_partition_does_not_have_costly_calls(_, _)) =
     message_notice.
+message_type_to_level(notice_candidate_conjunction_not_det(_)) =
+    message_notice.
 message_type_to_level(warning_cannot_lookup_proc_defn) = message_warning.
 message_type_to_level(warning_cannot_compute_procrep_coverage_fallback(_)) =
     message_warning.
@@ -326,6 +333,11 @@ message_type_to_string(MessageType) = Cord :-
         string.format("Partition %d has only %d costly calls and cannot be"
                 ++ " parallelised", 
             [i(PartNum), i(NumCalls)], String)
+    ;
+        MessageType = notice_candidate_conjunction_not_det(Detism),
+        string.format("There are %d goals amoungst goals above the "
+                ++ "parallelisation overhead.",
+            [s(string(Detism))], String)
     ;
         MessageType = warning_cannot_lookup_proc_defn,
         String = "Could not look up proc defn, perhaps this procedure is"

@@ -356,9 +356,21 @@
     --->    can_fail_rep
     ;       cannot_fail_rep.
 
+:- type committed_choice
+    --->    committed_choice
+    ;       not_committed_cnoice.
+
 :- func detism_get_solutions(detism_rep) = solution_count_rep.
 
 :- func detism_get_can_fail(detism_rep) = can_fail_rep.
+
+:- pred detism_components(detism_rep, solution_count_rep, can_fail_rep).
+:- mode detism_components(in, out, out) is det.
+:- mode detism_components(out, in, in) is multi.
+
+:- pred detism_committed_choice(detism_rep, committed_choice).
+:- mode detism_committed_choice(in, out) is det.
+:- mode detism_committed_choice(out, in) is multi.
 
     % A table of var_rep to string mappings.
     %
@@ -536,7 +548,7 @@
     % As above, except that Releative denotes the same goal that PathB denotes,
     % only from GoalA's perspective.
     %
-:- pred goal_path_inside(goal_path::in, goal_path::in, goal_path::out) 
+:- pred goal_path_inside(goal_path::in, goal_path::in, goal_path::out)
     is semidet.
 
     % Converts a string to a goal path, failing if the string is not a valid
@@ -582,7 +594,7 @@
     % GPHead is the first goal path step in the GP, GPTail is the tail (the
     % goals other than the first).  This predicate is false if GP is empty.
     %
-:- pred goal_path_consable_remove_first(goal_path_consable::in, 
+:- pred goal_path_consable_remove_first(goal_path_consable::in,
     goal_path_step::out, goal_path_consable::out) is semidet.
 
 %----------------------------------------------------------------------------%
@@ -895,7 +907,7 @@ transform_goal_expr(Pred, Expr0, Expr) :-
         Expr0 = atomic_goal_rep(Filename, Lineno, BoundVars, AtomicGoal),
         Expr = atomic_goal_rep(Filename, Lineno, BoundVars, AtomicGoal)
     ).
-        
+
 :- pred transform_switch_case(pred(T, U)::in(pred(in, out) is det),
     case_rep(T)::in, case_rep(U)::out) is det.
 
@@ -1109,23 +1121,29 @@ project_case_rep_goal(Case) = Case ^ cr_case_goal.
 
 %-----------------------------------------------------------------------------%
 
-detism_get_solutions(det_rep) =         at_most_one_rep.
-detism_get_solutions(semidet_rep) =     at_most_one_rep.
-detism_get_solutions(multidet_rep) =    at_most_many_rep.
-detism_get_solutions(nondet_rep) =      at_most_many_rep.
-detism_get_solutions(cc_multidet_rep) = at_most_one_rep.
-detism_get_solutions(cc_nondet_rep) =   at_most_one_rep.
-detism_get_solutions(erroneous_rep) =   at_most_zero_rep.
-detism_get_solutions(failure_rep) =     at_most_zero_rep.
+detism_get_solutions(Detism) = Solutions :-
+    detism_components(Detism, Solutions, _).
 
-detism_get_can_fail(det_rep) =          cannot_fail_rep.
-detism_get_can_fail(semidet_rep) =      can_fail_rep.
-detism_get_can_fail(multidet_rep) =     cannot_fail_rep.
-detism_get_can_fail(nondet_rep) =       can_fail_rep.
-detism_get_can_fail(cc_multidet_rep) =  cannot_fail_rep.
-detism_get_can_fail(cc_nondet_rep) =    can_fail_rep.
-detism_get_can_fail(erroneous_rep) =    cannot_fail_rep.
-detism_get_can_fail(failure_rep) =      can_fail_rep.
+detism_get_can_fail(Detism) = CanFail :-
+    detism_components(Detism, _, CanFail).
+
+detism_components(det_rep,          at_most_one_rep,    cannot_fail_rep).
+detism_components(semidet_rep,      at_most_one_rep,    can_fail_rep).
+detism_components(multidet_rep,     at_most_many_rep,   cannot_fail_rep).
+detism_components(nondet_rep,       at_most_many_rep,   can_fail_rep).
+detism_components(cc_multidet_rep,  at_most_one_rep,    cannot_fail_rep).
+detism_components(cc_nondet_rep,    at_most_one_rep,    can_fail_rep).
+detism_components(erroneous_rep,    at_most_zero_rep,   cannot_fail_rep).
+detism_components(failure_rep,      at_most_zero_rep,   can_fail_rep).
+
+detism_committed_choice(det_rep,            not_committed_cnoice).
+detism_committed_choice(semidet_rep,        not_committed_cnoice).
+detism_committed_choice(multidet_rep,       not_committed_cnoice).
+detism_committed_choice(nondet_rep,         not_committed_cnoice).
+detism_committed_choice(cc_multidet_rep,    committed_choice).
+detism_committed_choice(cc_nondet_rep,      committed_choice).
+detism_committed_choice(erroneous_rep,      not_committed_cnoice).
+detism_committed_choice(failure_rep,        not_committed_cnoice).
 
 %-----------------------------------------------------------------------------%
 

@@ -104,7 +104,7 @@
     % build_cs_cost_csq(Calls, TotalCost) = CallSiteCost.
     %
 :- func build_cs_cost_csq(int, float) = cs_cost_csq.
-    
+
     % build_cs_cost_csq_percall(Calls, PercallCost) = CallSiteCost.
     %
 :- func build_cs_cost_csq_percall(float, float) = cs_cost_csq.
@@ -138,7 +138,7 @@
 
     % Convert a call site cost to a proc cost.
     %
-:- pred cs_cost_to_proc_cost(cs_cost_csq::in, int::in, 
+:- pred cs_cost_to_proc_cost(cs_cost_csq::in, int::in,
     proc_cost_csq::out) is det.
 
 :- func cs_cost_per_proc_call(cs_cost_csq, proc_cost_csq) = cs_cost_csq.
@@ -149,9 +149,17 @@
     %
 :- type goal_cost_csq.
 
-:- func atomic_goal_cost = goal_cost_csq.
+    % atomic_goal_cost(Calls) = Cost.
+    %
+    % Cost is the cost of an atomic goal called Calls times.
+    %
+:- func atomic_goal_cost(int) = goal_cost_csq.
 
-:- func zero_goal_cost = goal_cost_csq.
+    % dead_goal_cost = Cost.
+    %
+    % Cost is the cost of a goal that is never called.
+    %
+:- func dead_goal_cost = goal_cost_csq.
 
     % call_goal_cost(NumCalls, PerCallCost) = Cost
     %
@@ -159,13 +167,20 @@
 
 :- func call_goal_cost(cs_cost_csq) = goal_cost_csq.
 
-:- func add_goal_costs(goal_cost_csq, goal_cost_csq) = goal_cost_csq.
+    % add_goal_costs_seq(Earlier, Later) = Cost.
+    %
+    % Add goal costs that form a sequence with Earlier being the cost of goals
+    % earlier in the sequence and Later being the cost of goals later in the
+    % sequence.  This operation is associative provided that the above
+    % condition is met.
+    %
+:- func add_goal_costs_seq(goal_cost_csq, goal_cost_csq) = goal_cost_csq.
 
     % add_goal_costs_branch(TotalCalls, BranchA, BranchB) = Cost.
     %
     % Add the costs of goal accross the arms of a branch.
     %
-:- func add_goal_costs_branch(int, goal_cost_csq, goal_cost_csq) = 
+:- func add_goal_costs_branch(int, goal_cost_csq, goal_cost_csq) =
     goal_cost_csq.
 
 :- func goal_cost_get_percall(goal_cost_csq) = float.
@@ -190,10 +205,10 @@
 
 :- func zero_static_coverage = static_coverage_info.
 
-:- pred add_coverage_arrays(array(int)::in, 
+:- pred add_coverage_arrays(array(int)::in,
     static_coverage_info::in, static_coverage_info::out) is det.
 
-:- pred array_to_static_coverage(array(int)::in, static_coverage_info::out) 
+:- pred array_to_static_coverage(array(int)::in, static_coverage_info::out)
     is det.
 
 :- func static_coverage_maybe_get_coverage_points(static_coverage_info) =
@@ -209,9 +224,9 @@
 
 :- func some_parallelism(float) = parallelism_amount.
 
-    % sub_computation_parallelism(ParentParallelism, ChildRunnableProb, 
+    % sub_computation_parallelism(ParentParallelism, ChildRunnableProb,
     %   ChildParallelism, Parallelism).
-    % sub_computation_parallelism(ParentParallelism, ChildRunnableProb, 
+    % sub_computation_parallelism(ParentParallelism, ChildRunnableProb,
     %   Parallelism).
     %
     % Compute the total parallelism seen during the child's execution if the
@@ -224,16 +239,16 @@
     % chance a forked off child (of a pair of two) will be 'runnable' during
     % the execution of it's sibling.
     %
-:- pred sub_computation_parallelism(parallelism_amount::in, probability::in, 
+:- pred sub_computation_parallelism(parallelism_amount::in, probability::in,
     parallelism_amount::in, parallelism_amount::out) is det.
-:- pred sub_computation_parallelism(parallelism_amount::in, probability::in, 
+:- pred sub_computation_parallelism(parallelism_amount::in, probability::in,
     parallelism_amount::out) is det.
 
     % exceeded_desired_parallelism(DesiredParallelism, Parallelism)
     %
     % True iff Parallelism > DesiredParallelism
-    % 
-:- pred exceeded_desired_parallelism(float::in, parallelism_amount::in) 
+    %
+:- pred exceeded_desired_parallelism(float::in, parallelism_amount::in)
     is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -241,9 +256,9 @@
     % Represent the metrics of part of a parallel execution.
     %
 :- type parallel_exec_metrics_incomplete.
-    
+
     % ParMetrics = init_parallel_exec_metrics_incomplete(PartMetricsA,
-    %   TimeSignal, TimeBSeq, TimeBPar) 
+    %   TimeSignal, TimeBSeq, TimeBPar)
     %
     % Use this function to build parallel execution metrics for a parallel
     % conjunction of any size greater than one.
@@ -259,27 +274,29 @@
 :- func init_parallel_exec_metrics_incomplete(parallel_exec_metrics_incomplete,
     float, float, float) = parallel_exec_metrics_incomplete.
 
-    % StartMetrics = init_empty_parallel_exec_metrics(CostBefore, NumCalls,
-    %   SparkCost, SparkDelay, ContextWakeupDelay).
+    % StartMetrics = init_empty_parallel_exec_metrics(CostBefore, CostAfter,
+    %   NumCalls, SparkCost, SparkDelay, ContextWakeupDelay).
     %
     % Use this function to start with an empty set of metrics for an empty
     % conjunction.  Then use init_parallel_exec_metrics_incomplete to continue
     % adding conjuncts on the right.
     %
-:- func init_empty_parallel_exec_metrics(float, int, float, float, float) = 
-    parallel_exec_metrics_incomplete.
+:- func init_empty_parallel_exec_metrics(float, float, int, float, float,
+    float) = parallel_exec_metrics_incomplete.
 
-    % Metrics = finalise_parallel_exec_metrics(IncompleteMetrics,
-    %   CostAfterConj).
+    % Metrics = finalise_parallel_exec_metrics(IncompleteMetrics).
     %
     % Make the metrics structure complete.
     %
-    % RightConjDelay is the delay before the conjunct to the right of & will
-    % begin executing.  & is considered to be right-associative since that's
-    % how sparks are sparked.
-    %
-:- func finalise_parallel_exec_metrics(parallel_exec_metrics_incomplete, float)
+:- func finalise_parallel_exec_metrics(parallel_exec_metrics_incomplete)
     = parallel_exec_metrics.
+
+    % Calls = parallel_exec_metrics_get_num_calls(IncompleteMetrics).
+    %
+    % Get the number of calls.
+    %
+:- func parallel_exec_metrics_get_num_calls(parallel_exec_metrics_incomplete)
+    = int.
 
 %-----------------------------------------------------------------------------%
 
@@ -628,12 +645,12 @@ compute_is_active(Own) = IsActive :-
                     % The number of non-recursive calls into this context.  For
                     % example if this is a clique this is the number of calls
                     % made from the parent' clique to this one.
-                
+
                 pcc_r_calls         :: int,
                     % The number of recursive calls into this context.  This
                     % includes mutual recursion.
-                
-                pcc_csq             :: cost 
+
+                pcc_csq             :: cost
                     % The number of callseq counts per call,
             ).
 
@@ -642,21 +659,21 @@ compute_is_active(Own) = IsActive :-
                 cscc_calls          :: float,
                     % The number of calls (per parent invocation) through this
                     % call site.
-                
-                cscc_csq_cost       :: cost 
+
+                cscc_csq_cost       :: cost
                     % The cost of the call site per call.
             ).
 
 %----------------------------------------------------------------------------%
 
-build_proc_cost_csq(NonRecursiveCalls, RecursiveCalls, TotalCost) = 
-    proc_cost_csq(NonRecursiveCalls, RecursiveCalls, 
+build_proc_cost_csq(NonRecursiveCalls, RecursiveCalls, TotalCost) =
+    proc_cost_csq(NonRecursiveCalls, RecursiveCalls,
         cost_total(float(TotalCost))).
 
 proc_cost_get_total(proc_cost_csq(NRCalls, RCalls, Cost)) =
     cost_get_total(float(NRCalls + RCalls), Cost).
 
-proc_cost_get_calls_total(proc_cost_csq(NRCalls, RCalls, _)) = 
+proc_cost_get_calls_total(proc_cost_csq(NRCalls, RCalls, _)) =
     NRCalls + RCalls.
 
 proc_cost_get_calls_nonrec(proc_cost_csq(NRCalls, _, _)) = NRCalls.
@@ -665,7 +682,7 @@ proc_cost_get_calls_rec(proc_cost_csq(_, RCalls, _)) = RCalls.
 
 %----------------------------------------------------------------------------%
 
-build_cs_cost_csq(Calls, TotalCost) = 
+build_cs_cost_csq(Calls, TotalCost) =
     cs_cost_csq(float(Calls), cost_total(TotalCost)).
 
 build_cs_cost_csq_percall(Calls, PercallCost) =
@@ -677,7 +694,7 @@ zero_cs_cost =
     % solution.
     build_cs_cost_csq_percall(0.0, 0.0).
 
-cs_cost_get_total(cs_cost_csq(Calls, Cost)) = 
+cs_cost_get_total(cs_cost_csq(Calls, Cost)) =
     cost_get_total(Calls, Cost).
 
 cs_cost_get_percall(cs_cost_csq(Calls, Cost)) =
@@ -687,14 +704,14 @@ cs_cost_get_calls(cs_cost_csq(Calls, _)) = Calls.
 
 %----------------------------------------------------------------------------%
 
-cs_cost_to_proc_cost(cs_cost_csq(CSCalls, CSCost), TotalCalls, 
+cs_cost_to_proc_cost(cs_cost_csq(CSCalls, CSCost), TotalCalls,
         proc_cost_csq(NRCalls, RCalls, PCost)) :-
     NRCalls = round_to_int(CSCalls),
     RCalls = TotalCalls - round_to_int(CSCalls),
     % The negative one represents the cost of the callsite itsself.
     PCost = cost_total(cost_get_total(CSCalls, CSCost) - 1.0 * CSCalls).
 
-cs_cost_per_proc_call(cs_cost_csq(CSCalls0, CSCost0), ParentCost) = 
+cs_cost_per_proc_call(cs_cost_csq(CSCalls0, CSCost0), ParentCost) =
         cs_cost_csq(CSCalls, CSCost) :-
     TotalParentCalls = proc_cost_get_calls_nonrec(ParentCost),
     CSCalls = CSCalls0 / float(TotalParentCalls),
@@ -703,63 +720,111 @@ cs_cost_per_proc_call(cs_cost_csq(CSCalls0, CSCost0), ParentCost) =
 %----------------------------------------------------------------------------%
 
 :- type goal_cost_csq
-    --->    trivial_goal
-    ;       non_trivial_goal(
-                tg_avg_cost             :: cost,
+    --->    dead_goal
+    ;       trivial_goal(
                 tg_calls                :: int
+            )
+    ;       non_trivial_goal(
+                ntg_avg_cost            :: cost,
+                ntg_calls               :: int
             ).
 
-atomic_goal_cost = trivial_goal.
+atomic_goal_cost(Calls) = trivial_goal(Calls).
 
-zero_goal_cost = trivial_goal.
+dead_goal_cost = dead_goal.
 
 call_goal_cost(Calls, PercallCost) = non_trivial_goal(Cost, Calls) :-
     Cost = cost_per_call(PercallCost).
 
 call_goal_cost(CSCost) = non_trivial_goal(Cost, Calls) :-
     Calls = round_to_int(cs_cost_get_calls(CSCost)),
-    Cost = CSCost ^ cscc_csq_cost. 
+    Cost = CSCost ^ cscc_csq_cost.
 
-add_goal_costs(trivial_goal, trivial_goal) = 
-    trivial_goal.
-add_goal_costs(trivial_goal, R@non_trivial_goal(_, _)) = R.
-add_goal_costs(R@non_trivial_goal(_, _), trivial_goal) = R.
-add_goal_costs(non_trivial_goal(CostA, CallsA), non_trivial_goal(CostB, CallsB)) 
+add_goal_costs_seq(dead_goal, dead_goal) = dead_goal.
+add_goal_costs_seq(dead_goal, R@trivial_goal(_)) = R.
+add_goal_costs_seq(dead_goal, R@non_trivial_goal(_, _)) = R.
+add_goal_costs_seq(R@trivial_goal(_), dead_goal) = R.
+add_goal_costs_seq(trivial_goal(CallsA), trivial_goal(_CallsB)) =
+    trivial_goal(CallsA).
+add_goal_costs_seq(trivial_goal(Calls), non_trivial_goal(CostB, CallsB)) =
+        non_trivial_goal(Cost, Calls) :-
+    CostTotal = cost_get_total(float(CallsB), CostB),
+    Cost = cost_total(CostTotal).
+add_goal_costs_seq(R@non_trivial_goal(_, _), dead_goal) = R.
+add_goal_costs_seq(R@non_trivial_goal(_, _), trivial_goal(_)) = R.
+add_goal_costs_seq(non_trivial_goal(CostA, CallsA),
+        non_trivial_goal(CostB, CallsB))
         = non_trivial_goal(Cost, Calls) :-
-    Calls = max(CallsA, CallsB),
-    Cost = cost_total(cost_get_total(float(CallsA), CostA) + 
-        cost_get_total(float(CallsB), CostB)).
+    Calls = CallsA,
+    CostTotal = cost_get_total(float(CallsA), CostA) +
+        cost_get_total(float(CallsB), CostB),
+    Cost = cost_total(CostTotal),
+    (
+        Calls = 0,
+        CostTotal \= 0.0
+    ->
+        error(this_file ++ "add_goal_costs_seq/2: Calls = 0, Cost \\= 0")
+    ;
+        true
+    ).
 
 add_goal_costs_branch(TotalCalls, A, B) = R :-
     ( TotalCalls = 0 ->
-        R = zero_goal_cost
+        R = dead_goal
     ;
         (
-            A = trivial_goal,
+            A = dead_goal,
+            CallsA = 0,
             (
-                B = trivial_goal,
-                R = trivial_goal
+                B = dead_goal,
+                error("TotalCalls \\= 0 for a dead goal")
             ;
-                B = non_trivial_goal(Cost, _),
+                B = trivial_goal(CallsB),
+                R = trivial_goal(TotalCalls)
+            ;
+                B = non_trivial_goal(Cost, CallsB),
+                R = non_trivial_goal(Cost, TotalCalls)
+            )
+        ;
+            A = trivial_goal(CallsA),
+            (
+                B = dead_goal,
+                CallsB = 0,
+                R = trivial_goal(TotalCalls)
+            ;
+                B = trivial_goal(CallsB),
+                R = trivial_goal(TotalCalls)
+            ;
+                B = non_trivial_goal(Cost, CallsB),
                 R = non_trivial_goal(Cost, TotalCalls)
             )
         ;
             A = non_trivial_goal(CostA, CallsA),
             (
-                B = trivial_goal,
+                B = dead_goal,
+                CallsB = 0,
+                R = non_trivial_goal(CostA, TotalCalls)
+            ;
+                B = trivial_goal(CallsB),
                 R = non_trivial_goal(CostA, TotalCalls)
             ;
                 B = non_trivial_goal(CostB, CallsB),
                 Cost = sum_costs(float(CallsA), CostA, float(CallsB), CostB),
-                Calls = CallsA + CallsB,
-                require(unify(Calls, TotalCalls), 
-                    this_file ++ "TotalCalls \\= CallsA + CallsB"),
-                R = non_trivial_goal(Cost, Calls)
+                R = non_trivial_goal(Cost, CallsA + CallsB)
             )
-        )
+        ),
+        check_total_calls(CallsA, CallsB, TotalCalls)
     ).
 
-goal_cost_get_percall(trivial_goal) = 0.0.
+:- pred check_total_calls(int::in, int::in, int::in) is det.
+
+check_total_calls(CallsA, CallsB, TotalCalls) :-
+    Calls = CallsA + CallsB,
+    require(unify(Calls, TotalCalls),
+        this_file ++ "TotalCalls \\= CallsA + CallsB").
+
+goal_cost_get_percall(dead_goal) = 0.0.
+goal_cost_get_percall(trivial_goal(_)) = 0.0.
 goal_cost_get_percall(non_trivial_goal(Cost, Calls)) =
     ( Calls = 0 ->
         0.0
@@ -767,7 +832,8 @@ goal_cost_get_percall(non_trivial_goal(Cost, Calls)) =
         cost_get_percall(float(Calls), Cost)
     ).
 
-goal_cost_get_calls(trivial_goal) = 0.
+goal_cost_get_calls(dead_goal) = 0.
+goal_cost_get_calls(trivial_goal(Calls)) = Calls.
 goal_cost_get_calls(non_trivial_goal(_, Calls)) = Calls.
 
 %----------------------------------------------------------------------------%
@@ -817,7 +883,7 @@ sum_costs(CallsA, CostA, CallsB, CostB) = cost_total(Sum) :-
 recursion_depth_from_float(F) = recursion_depth(F).
 
 recursion_depth_to_float(recursion_depth(F)) = F.
-recursion_depth_to_int(D) = 
+recursion_depth_to_int(D) =
     round_to_int(recursion_depth_to_float(D)).
 
 recursion_depth_descend(recursion_depth(D), recursion_depth(D - 1.0)).
@@ -830,7 +896,7 @@ zero_static_coverage = no.
 
 add_coverage_arrays(Array, no, yes(Array)).
 add_coverage_arrays(NewArray, yes(!.Array), yes(!:Array)) :-
-    ( 
+    (
         bounds(NewArray, Min, Max),
         bounds(!.Array, Min, Max)
     ->
@@ -875,7 +941,7 @@ no_parallelism = parallelism_amount(1.0).
 
 some_parallelism(Num) = parallelism_amount(Num) :-
     ( Num < 1.0 ->
-        error(this_file ++ "some_parallelism/1+1: " ++ 
+        error(this_file ++ "some_parallelism/1+1: " ++
             "Parallelism amount cannot ever be less than 1.0")
     ;
         true
@@ -902,6 +968,7 @@ exceeded_desired_parallelism(DesiredParallelism, Parallelism) :-
 :- type parallel_exec_metrics_incomplete
     --->    pem_incomplete(
                 pemi_time_before_conj       :: float,
+                pemi_time_after_conj        :: float,
 
                 pemi_num_calls              :: int,
 
@@ -946,7 +1013,7 @@ exceeded_desired_parallelism(DesiredParallelism, Parallelism) :-
                     % parallel execution overheads and delays.
             ).
 
-init_parallel_exec_metrics_incomplete(Metrics0, TimeSignals, TimeBSeq, 
+init_parallel_exec_metrics_incomplete(Metrics0, TimeSignals, TimeBSeq,
         TimeBPar) = Metrics :-
     MaybeInternal0 = Metrics0 ^ pemi_internal,
     (
@@ -960,21 +1027,21 @@ init_parallel_exec_metrics_incomplete(Metrics0, TimeSignals, TimeBSeq,
     ),
     Metrics = Metrics0 ^ pemi_internal := yes(Internal).
 
-init_empty_parallel_exec_metrics(TimeBefore, NumCalls, SparkCost, 
-        SparkDelay, ContextWakeupDelay) = 
-    pem_incomplete(TimeBefore, NumCalls, SparkCost, SparkDelay,
+init_empty_parallel_exec_metrics(TimeBefore, TimeAfter, NumCalls, SparkCost,
+        SparkDelay, ContextWakeupDelay) =
+    pem_incomplete(TimeBefore, TimeAfter, NumCalls, SparkCost, SparkDelay,
         ContextWakeupDelay, no).
 
-finalise_parallel_exec_metrics(IncompleteMetrics, TimeAfter) = Metrics :-
-    IncompleteMetrics = pem_incomplete(TimeBefore, NumCalls, SparkCost,
-        SparkDelay, ContextWakeupDelay, MaybeInternal),
+finalise_parallel_exec_metrics(IncompleteMetrics) = Metrics :-
+    IncompleteMetrics = pem_incomplete(TimeBefore, TimeAfter, NumCalls,
+        SparkCost, SparkDelay, ContextWakeupDelay, MaybeInternal),
     (
         MaybeInternal = yes(Internal)
     ;
         MaybeInternal = no,
         error(this_file ++ "Cannot finalise empty parallel metrics.")
     ),
-    BeforeAndAfterTime = TimeBefore + TimeAfter,    
+    BeforeAndAfterTime = TimeBefore + TimeAfter,
 
     % Calculate par time.
     InnerParTime = parallel_exec_metrics_internal_get_par_time(Internal),
@@ -989,7 +1056,7 @@ finalise_parallel_exec_metrics(IncompleteMetrics, TimeAfter) = Metrics :-
     % Calculate the sequential execution time.
     InnerSeqTime = parallel_exec_metrics_internal_get_seq_time(Internal),
     SeqTime = InnerSeqTime + BeforeAndAfterTime,
-    
+
     % Calculate the amount of time that the first conjunct is blocked for.
     FirstConjDeadTime = InnerParTime - FirstConjParTime,
 
@@ -1003,6 +1070,9 @@ finalise_parallel_exec_metrics(IncompleteMetrics, TimeAfter) = Metrics :-
 
     Metrics = parallel_exec_metrics(NumCalls, SeqTime, ParTime, ParOverheads,
         FirstConjDeadTime, FutureDeadTime).
+
+parallel_exec_metrics_get_num_calls(Pem) =
+    Pem ^ pemi_num_calls.
 
     % The expected parallel execution time.
     %
@@ -1033,7 +1103,7 @@ parallel_exec_metrics_internal_get_seq_time(pem_additional(MetricsLeft, _,
 :- func pem_get_first_conj_par_time(parallel_exec_metrics_internal) = float.
 
 pem_get_first_conj_par_time(pem_left_most(_, Time)) = Time.
-pem_get_first_conj_par_time(pem_additional(Left, LeftSignalTime0, _, _)) = 
+pem_get_first_conj_par_time(pem_additional(Left, LeftSignalTime0, _, _)) =
         Time :-
     (
         Left = pem_left_most(_, _),
@@ -1049,7 +1119,7 @@ pem_get_first_conj_par_time(pem_additional(Left, LeftSignalTime0, _, _)) =
 
     % XXX: We should make this an attribute of pem_additional.
 pem_get_future_dead_time(pem_left_most(_, _), _, _, _) = 0.0.
-pem_get_future_dead_time(pem_additional(Left, _, Seq, Par), 
+pem_get_future_dead_time(pem_additional(Left, _, Seq, Par),
         IsRightmostConj, ForkCost, ForkDelay) = DeadTime :-
     DeadTime = ThisDeadTime + LeftDeadTime,
     ThisDeadTime0 = Par - Seq - ForkDelay,
@@ -1088,7 +1158,7 @@ weighted_average(Weights, Values, Average) :-
 
 :- func this_file = string.
 
-this_file = "measurements.m".
+this_file = "measurements.m: ".
 
 %----------------------------------------------------------------------------%
 :- end_module measurements.

@@ -45,6 +45,8 @@
                 bnbp_new_best_solution      :: int,
                 bnbp_new_equal_solution     :: int,
                 bnbp_not_best_solution      :: int,
+                bnbp_open_branches          :: int,
+                bnbp_closed_branches        :: int,
                 bnbp_time_msecs             :: int
             ).
 
@@ -58,7 +60,7 @@
     % The set of best solutions is returned, it is up to the caller to break
     % ties if necessary.
     %
-:- pred branch_and_bound(semipure pred(bnb_state(T), T),
+:- pred branch_and_bound(impure pred(bnb_state(T), T),
     func(T) = float, set(T), bnb_profile).
 :- mode branch_and_bound(pred(in, out) is nondet, 
     func(in) = out is det, out, out) is det.
@@ -71,6 +73,31 @@
     % their search tree.
     %
 :- semipure pred test_incomplete_solution(bnb_state(T)::in, T::in) is semidet.
+
+    % score_solution(State, Solution, Score).
+    %
+    % Score the complete or partial solution without comparing it to the best
+    % solution.
+    %
+:- pred score_solution(bnb_state(T)::in, T::in, float::out) is det.
+
+    % add_alternative(State).
+    %
+    % Record that a new alternative is being added to the search.
+    %
+:- impure pred add_alternative(bnb_state(T)::in) is det.
+
+    % close_alternative(State).
+    %
+    % Note that a branch failed such that we're now executing it's alternative.
+    %
+:- impure pred close_alternative(bnb_state(T)::in) is det.
+
+    % num_alternatives(State, Open, Closed).
+    %
+    % Retrive the number of alternative branches both opened and closed.
+    %
+:- semipure pred num_alternatives(bnb_state(T)::in, int::out, int::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -121,7 +148,7 @@ branch_and_bound(Generator, ObjectiveFn, BestSolutions, Profile) :-
     ),
     Profile = Profile0 ^ bnbp_time_msecs := Time.
 
-:- pred branch_and_bound_2(semipure pred(bnb_state(T), T), 
+:- pred branch_and_bound_2(impure pred(bnb_state(T), T), 
     func(T) = float, unit, 
     pair(set(T), bnb_profile)).
 :- mode branch_and_bound_2(pred(in, out) is nondet, 
@@ -131,20 +158,22 @@ branch_and_bound_2(Generator, ObjectiveFn, unit, FinalBestSolutions - FinalProfi
     % Use a failure driven loop to implement a branch and bound solver.
     promise_pure (
         trace [compile_time(flag("debug_branch_and_bound")), io(!IO)] (
-            io.write_string("D: Branch and bound loop starting\n", !IO)
+            io.write_string("D: Branch and bound loop starting\n", !IO),
+            io.flush_output(!IO)
         ),
         impure new_mutvar(no_best_solutions, BestSolutionsMutvar),
         impure new_mutvar(new_bnb_profile, ProfileMutvar),
         State = bnb_state(BestSolutionsMutvar, ObjectiveFn, ProfileMutvar),
         (
-            semipure Generator(State, CurrentSolution),
+            impure Generator(State, CurrentSolution),
 
             impure test_complete_solution(State, CurrentSolution), 
             trace [compile_time(flag("debug_branch_and_bound")), io(!IO)] (
                 CurrentObjective = ObjectiveFn(CurrentSolution),
                 io.format(
                     "D: Branch and bound: Solution found with objective: %f\n",
-                    [f(CurrentObjective)], !IO)
+                    [f(CurrentObjective)], !IO),
+                io.flush_output(!IO)
             ),
 
             semidet_fail
@@ -158,7 +187,8 @@ branch_and_bound_2(Generator, ObjectiveFn, unit, FinalBestSolutions - FinalProfi
         impure get_mutvar(BestSolutionsMutvar, FinalBestSolutions0), 
         impure get_mutvar(ProfileMutvar, FinalProfile),
         trace [compile_time(flag("debug_branch_and_bound")), io(!IO)] (
-            io.write_string("D: Branch and bound loop finished\n", !IO)
+            io.write_string("D: Branch and bound loop finished\n", !IO),
+            io.flush_output(!IO)
         ),
         (
             FinalBestSolutions0 = no_best_solutions,
@@ -243,39 +273,84 @@ test_incomplete_solution(State, Solution) :-
 
 %-----------------------------------------------------------------------------%
 
+score_solution(State, Solution, Score) :-
+    ObjectiveFn = State ^ objective_function,
+    Score = ObjectiveFn(Solution).
+
+%----------------------------------------------------------------------------%
+
+add_alternative(State) :-
+    ProfileMutvar = State ^ profile,
+    impure get_mutvar(ProfileMutvar, Profile0),
+    profile_add_alternative(Profile0, Profile),
+    impure set_mutvar(ProfileMutvar, Profile).
+
+close_alternative(State) :-
+    ProfileMutvar = State ^ profile,
+    impure get_mutvar(ProfileMutvar, Profile0),
+    profile_close_alternative(Profile0, Profile),
+    impure set_mutvar(ProfileMutvar, Profile).
+
+num_alternatives(State, Open, Closed) :-
+    ProfileMutvar = State ^ profile,
+    promise_semipure (
+        impure get_mutvar(ProfileMutvar, Profile)
+    ),
+    profile_num_alternatives(Profile, Open, Closed).
+
+%-----------------------------------------------------------------------------%
+
 :- func new_bnb_profile = bnb_profile.
 
-new_bnb_profile = bnb_profile(0, 0, 0, 0, 0, 0).
+new_bnb_profile = bnb_profile(0, 0, 0, 0, 0, 1, 0, 0).
 
 :- pred profile_new_best_solution(bnb_profile::in, bnb_profile::out) is det.
 
-profile_new_best_solution(Profile0, Profile) :-
-    Profile = Profile0 ^ bnbp_new_best_solution :=
-        Profile0 ^ bnbp_new_best_solution + 1.
+profile_new_best_solution(!Profile) :-
+    !Profile ^ bnbp_new_best_solution :=
+        !.Profile ^ bnbp_new_best_solution + 1.
 
 :- pred profile_equal_best_solution(bnb_profile::in, bnb_profile::out) is det.
 
-profile_equal_best_solution(Profile0, Profile) :-
-    Profile = Profile0 ^ bnbp_new_equal_solution :=
-        Profile0 ^ bnbp_new_equal_solution + 1.
+profile_equal_best_solution(!Profile) :-
+    !Profile ^ bnbp_new_equal_solution :=
+        !.Profile ^ bnbp_new_equal_solution + 1.
 
 :- pred profile_not_best_solution(bnb_profile::in, bnb_profile::out) is det.
 
-profile_not_best_solution(Profile0, Profile) :-
-    Profile = Profile0 ^ bnbp_not_best_solution :=
-        Profile0 ^ bnbp_not_best_solution + 1.
+profile_not_best_solution(!Profile) :-
+    !Profile ^ bnbp_not_best_solution :=
+        !.Profile ^ bnbp_not_best_solution + 1.
 
 :- pred profile_test_succeeded(bnb_profile::in, bnb_profile::out) is det.
 
-profile_test_succeeded(Profile0, Profile) :-
-    Profile = Profile0 ^ bnbp_tests_succeeded :=
-        Profile0 ^ bnbp_tests_succeeded + 1.
+profile_test_succeeded(!Profile) :-
+    !Profile ^ bnbp_tests_succeeded :=
+        !.Profile ^ bnbp_tests_succeeded + 1.
 
 :- pred profile_test_failed(bnb_profile::in, bnb_profile::out) is det.
 
-profile_test_failed(Profile0, Profile) :-
-    Profile = Profile0 ^ bnbp_tests_failed :=
-        Profile0 ^ bnbp_tests_failed + 1.
+profile_test_failed(!Profile) :-
+    !Profile ^ bnbp_tests_failed :=
+        !.Profile ^ bnbp_tests_failed + 1.
+
+:- pred profile_add_alternative(bnb_profile::in, bnb_profile::out) is det.
+
+profile_add_alternative(!Profile) :-
+    !Profile ^ bnbp_open_branches :=
+        !.Profile ^ bnbp_open_branches + 1.
+
+:- pred profile_close_alternative(bnb_profile::in, bnb_profile::out) is det.
+
+profile_close_alternative(!Profile) :-
+    !Profile ^ bnbp_closed_branches :=
+        !.Profile ^ bnbp_closed_branches + 1.
+
+:- pred profile_num_alternatives(bnb_profile::in, int::out, int::out) is det.
+
+profile_num_alternatives(Profile, Open, Closed) :-
+    Open = Profile ^ bnbp_open_branches,
+    Closed = Profile ^ bnbp_closed_branches.
 
 %-----------------------------------------------------------------------------%
 

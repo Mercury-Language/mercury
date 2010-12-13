@@ -105,7 +105,7 @@ main(!IO) :-
             read_deep_file(InputFileName, DebugReadProfile, MaybeDeep, !IO),
             (
                 MaybeDeep = ok(Deep),
-                ProfileProgName = Deep ^ profile_stats ^ prs_program_name, 
+                ProfileProgName = Deep ^ profile_stats ^ prs_program_name,
                 feedback.read_or_create(OutputFileName, ProfileProgName,
                     FeedbackReadResult, !IO),
                 (
@@ -158,26 +158,26 @@ main(!IO) :-
         write_help_message(ProgName, !IO)
     ).
 
-:- pred print_feedback_report(string::in, feedback_info::in, io::di, io::uo) 
+:- pred print_feedback_report(string::in, feedback_info::in, io::di, io::uo)
     is det.
 
 print_feedback_report(ProgName, Feedback, !IO) :-
     get_all_feedback_data(Feedback, AllFeedback),
     map(create_feedback_report, AllFeedback, Reports),
     ReportStr = string.append_list(Reports),
-    io.format("Feedback report for %s:\n\n%s", [s(ProgName), s(ReportStr)], 
+    io.format("Feedback report for %s:\n\n%s", [s(ProgName), s(ReportStr)],
         !IO).
 
-:- pred create_feedback_report(feedback_data::in, string::out) is det. 
+:- pred create_feedback_report(feedback_data::in, string::out) is det.
 
-create_feedback_report(feedback_data_calls_above_threshold_sorted(_, _, _), 
+create_feedback_report(feedback_data_calls_above_threshold_sorted(_, _, _),
         Report) :-
    Report = "  feedback_data_calls_above_threshold_sorted is deprecated\n".
 create_feedback_report(feedback_data_candidate_parallel_conjunctions(
         Parameters, Conjs), Report) :-
     NumConjs = length(Conjs),
     Parameters = candidate_par_conjunctions_params(DesiredParallelism,
-        IntermoduleVarUse, SparkingCost, SparkingDelay, SignalCost, WaitCost, 
+        IntermoduleVarUse, SparkingCost, SparkingDelay, SignalCost, WaitCost,
         ContextWakeupDelay, CliqueThreshold, CallSiteThreshold,
         ParalleliseDepConjs, BestParAlgorithm),
     best_par_algorithm_string(BestParAlgorithm, BestParAlgorithmStr),
@@ -204,7 +204,7 @@ create_feedback_report(feedback_data_candidate_parallel_conjunctions(
         ParalleliseDepConjsStr = "yes, use overlap calculation"
     ;
         ParalleliseDepConjs = parallelise_dep_conjs_num_vars,
-        ParalleliseDepConjsStr = 
+        ParalleliseDepConjsStr =
             "yes, the more shared variables then the less overlap there is"
     ;
         ParalleliseDepConjs = parallelise_dep_conjs_naive,
@@ -258,7 +258,7 @@ help_message =
                 Note: This option is currently ignored.
     --implicit-parallelism-intermodule-var-use
                 Assume that the compiler will be able to push signals and waits
-                for futures across module boundaries. 
+                for futures across module boundaries.
     --implicit-parallelism-sparking-cost <value>
                 The cost of creating a spark, measured in the deep profiler's
                 call sequence counts.
@@ -286,7 +286,7 @@ help_message =
     --implicit-parallelism-dependant-conjunctions
                 Advise the compiler to parallelism dependant conjunctions.
                 This will become the default once the implementation is
-                complete. 
+                complete.
     --implicit-parallelism-dependant-conjunctions-algorithm <option>
                 Choose the algorithm that is used to estimate the speedup for
                 dependant calculations.  The options are:
@@ -299,14 +299,18 @@ help_message =
     --implicit-parallelism-best-parallelisation-algorithm <option>
                 Select which algorithm to use to find the best way to
                 parallelise a conjunction.  The options are:
-                    complete-bnb(N): A complete algorithm with a branch and
-                      bound search, this can be rather slow since it has an
-                      exponential time complexity.  This option allows a single
-                      parameter, N, Any conjunction with more than N conjuncts
-                      will be solved using the greedy algorithm instead.  If N
-                      is zero this check is disabled.
                     greedy: A greedy algorithm with a linear time complexity.
-                The default is complete-bnb(10).
+                    complete: A complete algorithm with a branch and bound
+                      search, this can be slow for problems larger then 50
+                      conjuncts, it has an exponential xomplexity.
+                    complete-size(N): As above exept that it takes a single
+                      parameter, N.  A conjunction has more than N conjuncts
+                      then the greedy algorithm will be used.
+                    complete-branches(N): The same as the complete algorithm,
+                      except that it allows at most N branches to be created
+                      during the search.  Once N branches have been created a
+                      greedy search is used on each open branch.
+                The default is complete-branches(1000).
 
     The following options select specific types of feedback information
     and parameterise them:
@@ -443,7 +447,7 @@ long("implicit-parallelism-future-wait-cost",
     implicit_parallelism_future_wait_cost).
 long("implicit-parallelism-context-wakeup-delay",
     implicit_parallelism_context_wakeup_delay).
-long("implicit-parallelism-clique-cost-threshold", 
+long("implicit-parallelism-clique-cost-threshold",
     implicit_parallelism_clique_cost_threshold).
 long("implicit-parallelism-call-site-cost-threshold",
     implicit_parallelism_call_site_cost_threshold).
@@ -483,7 +487,7 @@ defaults(implicit_parallelism_dependant_conjunctions,       bool(no)).
 defaults(implicit_parallelism_dependant_conjunctions_algorithm,
     string("overlap")).
 defaults(implicit_parallelism_best_parallelisation_algorithm,
-    string("complete-bnb(10)")).
+    string("complete-branches(1000)")).
 
 :- pred construct_measure(string::in, stat_measure::out) is semidet.
 
@@ -506,7 +510,7 @@ construct_measure("median",     stat_median).
 
 check_verbosity_option(Options, VerbosityLevel) :-
     lookup_int_option(Options, verbosity, VerbosityLevel),
-    VerbosityLevel >= 0, 
+    VerbosityLevel >= 0,
     VerbosityLevel =< 4.
 
     % Check all the command line options and return a well-typed representation
@@ -532,7 +536,7 @@ check_options(Options0, RequestedFeedbackInfo) :-
         ),
         Options = !.Options
     ),
-    
+
     % For each feedback type, determine if it is requested and fill in the
     % field in the RequestedFeedbackInfo structure.
     lookup_bool_option(Options, calls_above_threshold_sorted,
@@ -570,7 +574,7 @@ check_options(Options0, RequestedFeedbackInfo) :-
         ->
             DesiredParallelism = DesiredParallelismPrime
         ;
-            error("Invalid value for desired_parallelism: " ++ 
+            error("Invalid value for desired_parallelism: " ++
                 DesiredParallelismStr)
         ),
         lookup_bool_option(Options, implicit_parallelism_intermodule_var_use,
@@ -587,7 +591,7 @@ check_options(Options0, RequestedFeedbackInfo) :-
             ContextWakeupDelay),
         lookup_int_option(Options, implicit_parallelism_clique_cost_threshold,
             CPCCliqueThreshold),
-        lookup_int_option(Options, 
+        lookup_int_option(Options,
             implicit_parallelism_call_site_cost_threshold,
             CPCCallSiteThreshold),
         lookup_bool_option(Options,
@@ -596,9 +600,9 @@ check_options(Options0, RequestedFeedbackInfo) :-
         lookup_string_option(Options,
             implicit_parallelism_dependant_conjunctions_algorithm,
             ParalleliseDepConjsString),
-        ( 
+        (
             parse_parallelise_dep_conjs_string(ParalleliseDepConjsBool,
-                ParalleliseDepConjsString, ParalleliseDepConjsPrime) 
+                ParalleliseDepConjsString, ParalleliseDepConjsPrime)
         ->
             ParalleliseDepConjs = ParalleliseDepConjsPrime
         ;
@@ -660,8 +664,8 @@ parse_best_par_algorithm(String, Result) :-
     (
         parse(String, best_par_algorithm_parser, Result)
     ).
-        
-:- pred best_par_algorithm_parser(src::in, best_par_algorithm::out, 
+
+:- pred best_par_algorithm_parser(src::in, best_par_algorithm::out,
     ps::in, ps::out) is semidet.
 
 best_par_algorithm_parser(Src, Algorithm, !PS) :-
@@ -671,10 +675,20 @@ best_par_algorithm_parser(Src, Algorithm, !PS) :-
     ->
         Algorithm = bpa_greedy
     ;
-        keyword(idchars, "complete-bnb", Src, _, !PS),
+        keyword(idchars, "complete-branches", Src, _, !PS),
         brackets("(", ")", int_literal, Src, N, !PS),
-        N >= 0,
-        Algorithm = bpa_complete_bnb(N)
+        N >= 0
+    ->
+        Algorithm = bpa_complete_branches(N)
+    ;
+        keyword(idchars, "complete-size", Src, _, !PS),
+        brackets("(", ")", int_literal, Src, N, !PS),
+        N >= 0
+    ->
+        Algorithm = bpa_complete_size(N)
+    ;
+        keyword(idchars, "complete", Src, _, !PS),
+        Algorithm = bpa_complete
     ),
     eof(Src, _, !PS).
 
@@ -685,18 +699,21 @@ idchars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_".
 :- pred best_par_algorithm_string(best_par_algorithm::in, string::out) is det.
 
 best_par_algorithm_string(bpa_greedy, "greedy").
-best_par_algorithm_string(bpa_complete_bnb(N), 
-    format("complete_bnb(%d)", [i(N)])).
+best_par_algorithm_string(bpa_complete_branches(N),
+    format("complete-branches(%d)", [i(N)])).
+best_par_algorithm_string(bpa_complete_size(N),
+    format("complete-size(%d)", [i(N)])).
+best_par_algorithm_string(bpa_complete, "complete").
 
-:- pred parse_parallelise_dep_conjs_string(bool::in, string::in, 
+:- pred parse_parallelise_dep_conjs_string(bool::in, string::in,
     parallelise_dep_conjs::out) is semidet.
 
 parse_parallelise_dep_conjs_string(no, _, do_not_parallelise_dep_conjs).
-parse_parallelise_dep_conjs_string(yes, "overlap", 
+parse_parallelise_dep_conjs_string(yes, "overlap",
     parallelise_dep_conjs_overlap).
-parse_parallelise_dep_conjs_string(yes, "num_vars", 
+parse_parallelise_dep_conjs_string(yes, "num_vars",
     parallelise_dep_conjs_num_vars).
-parse_parallelise_dep_conjs_string(yes, "naive", 
+parse_parallelise_dep_conjs_string(yes, "naive",
     parallelise_dep_conjs_naive).
 
     % Adjust command line options when one option implies other options.
@@ -734,7 +751,7 @@ process_deep_to_feedback(RequestedFeedbackInfo, Deep, Messages, !Feedback) :-
     MaybeCallsAboveThresholdSortedOpts =
         RequestedFeedbackInfo ^ maybe_calls_above_threshold_sorted,
     (
-        MaybeCallsAboveThresholdSortedOpts = 
+        MaybeCallsAboveThresholdSortedOpts =
             yes(CallsAboveThresholdSortedOpts),
         css_list_above_threshold(CallsAboveThresholdSortedOpts, Deep,
             !Feedback)
@@ -745,7 +762,7 @@ process_deep_to_feedback(RequestedFeedbackInfo, Deep, Messages, !Feedback) :-
     MaybeCandidateParallelConjunctionsOpts =
         RequestedFeedbackInfo ^ maybe_candidate_parallel_conjunctions,
     (
-        MaybeCandidateParallelConjunctionsOpts = 
+        MaybeCandidateParallelConjunctionsOpts =
             yes(CandidateParallelConjunctionsOpts),
         candidate_parallel_conjunctions(CandidateParallelConjunctionsOpts,
             Deep, Messages, !Feedback)

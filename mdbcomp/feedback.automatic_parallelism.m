@@ -104,13 +104,22 @@
     % algorithm use use to search through the clique graph.
     %
 :- type best_par_algorithm
-    --->    bpa_complete_bnb(
-                % If nonzero, a conjunction with more than this many conjuncts
-                % will be solved with the greedy algorithm instead of a
-                % complete but exponential algorithm. The recommended value
-                % is 10.
+    --->    bpa_complete_branches(
+                % Use the complete algorithm until this many branches have been
+                % created during the search.  Once this many evaluations have
+                % occurred the greedy algorithm is used; that is to say that
+                % once this fallsback, all existing alternatives will be
+                % explored but no new ones will be generated.
                 int
             )
+    ;       bpa_complete_size(
+                % Use the complete algorithm for conjunctions with fewer than
+                % this many conjuncts, or a greedy algorithm.  The recommended
+                % value is 50.
+                int
+            )
+    ;       bpa_complete
+            % The complete (bnb) algorithm with no fallback.
     ;       bpa_greedy.
             % Always use a greedy and linear algorithm.
 
