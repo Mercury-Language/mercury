@@ -525,7 +525,7 @@ MR_define_label(engine_done);
         owner = this_ctxt->MR_ctxt_saved_owners;
         this_ctxt->MR_ctxt_saved_owners = owner->MR_saved_owner_next;
 
-        if (owner->MR_saved_owner_thread == MR_ENGINE(MR_eng_owner_thread) &&
+        if (MR_thread_equal(owner->MR_saved_owner_thread, MR_ENGINE(MR_eng_owner_thread)) &&
             owner->MR_saved_owner_c_depth == MR_ENGINE(MR_eng_c_depth))
         {
             MR_GC_free(owner);

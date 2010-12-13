@@ -2758,7 +2758,7 @@ MR_do_interpreter(void)
     }
 
   #if defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
-    assert(pthread_self() == MR_primordial_thread);
+    assert(MR_thread_equal(pthread_self(), MR_primordial_thread));
     MR_LOCK(&MR_thread_barrier_lock, "MR_do_interpreter");
     while (MR_thread_barrier_count > 0) {
         while (MR_WAIT(&MR_thread_barrier_cond, &MR_thread_barrier_lock,
@@ -3035,8 +3035,8 @@ mercury_runtime_terminate(void)
     MR_finalize_threadscope();
 #endif
 
-    assert(MR_primordial_thread == pthread_self());
-    MR_primordial_thread = (MercuryThread) 0;
+    assert(MR_thread_equal(MR_primordial_thread, pthread_self()));
+    MR_primordial_thread = MR_null_thread();
 
     MR_finalize_thread_stuff();
 #endif

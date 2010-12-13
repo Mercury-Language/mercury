@@ -491,7 +491,7 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
     c->MR_ctxt_next = NULL;
     c->MR_ctxt_resume = NULL;
 #ifdef  MR_THREAD_SAFE
-    c->MR_ctxt_resume_owner_thread = (MercuryThread) NULL;
+    c->MR_ctxt_resume_owner_thread = MR_null_thread();
     c->MR_ctxt_resume_c_depth = 0;
     c->MR_ctxt_saved_owners = NULL;
 #endif
@@ -852,15 +852,15 @@ MR_find_ready_context(MercuryThread thd, MR_Unsigned depth)
     /* XXX check pending io */
     prev = NULL;
     while (cur != NULL) {
-        if (cur->MR_ctxt_resume_owner_thread == thd &&
+        if (MR_thread_equal(cur->MR_ctxt_resume_owner_thread, thd) &&
             cur->MR_ctxt_resume_c_depth == depth)
         {
-            cur->MR_ctxt_resume_owner_thread = (MercuryThread) NULL;
+            cur->MR_ctxt_resume_owner_thread = MR_null_thread();
             cur->MR_ctxt_resume_c_depth = 0;
             break;
         }
 
-        if (cur->MR_ctxt_resume_owner_thread == (MercuryThread) NULL) {
+        if (MR_thread_equal(cur->MR_ctxt_resume_owner_thread, MR_null_thread())) {
             break;
         }
 
@@ -1108,7 +1108,7 @@ MR_schedule_context(MR_Context *ctxt)
     ** possibility that a woken thread might not accept this context then
     ** we wake up all the waiting threads.
     */
-    if (ctxt->MR_ctxt_resume_owner_thread == (MercuryThread) NULL) {
+    if (MR_thread_equal(ctxt->MR_ctxt_resume_owner_thread, MR_null_thread())) {
         MR_SIGNAL(&MR_runqueue_cond, "schedule_context");
     } else {
         MR_BROADCAST(&MR_runqueue_cond, "schedule_context");
@@ -1173,7 +1173,7 @@ MR_define_entry(MR_do_runnext);
             ** The primordial thread has the responsibility of cleaning
             ** up the Mercury runtime. It cannot exit by this route.
             */
-            assert(thd != MR_primordial_thread);
+            assert(!MR_thread_equal(thd, MR_primordial_thread));
             MR_destroy_thread(MR_cur_engine());
             MR_num_exited_engines++;
             MR_UNLOCK(&MR_runqueue_lock, "MR_do_runnext (ii)");

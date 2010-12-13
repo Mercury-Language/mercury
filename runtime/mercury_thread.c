@@ -51,6 +51,12 @@ MR_Integer          MR_thread_barrier_count;
 
 #ifdef MR_THREAD_SAFE
 
+  #if defined(MR_PTHREADS_WIN32)
+    #define SELF_THREAD_ID ((long) pthread_self().p)
+  #else
+    #define SELF_THREAD_ID ((long) pthread_self())
+  #endif
+
 static void *
 MR_create_thread_2(void *goal);
 
@@ -61,7 +67,7 @@ MR_create_thread(MR_ThreadGoal *goal)
     pthread_attr_t  attrs;
     int             err;
 
-    assert(MR_primordial_thread != (MercuryThread) 0);
+    assert(!MR_thread_equal(MR_primordial_thread, MR_null_thread()));
 
     /*
     ** Create threads in the detached state so that resources will be
@@ -238,7 +244,7 @@ MR_mutex_lock(MercuryLock *lock, const char *from)
     int err;
 
     fprintf(stderr, "%ld locking on %p (%s)\n",
-        (long) pthread_self(), lock, from);
+        SELF_THREAD_ID, lock, from);
     err = pthread_mutex_lock(lock);
     assert(err == 0);
     return err;
@@ -250,7 +256,7 @@ MR_mutex_unlock(MercuryLock *lock, const char *from)
     int err;
 
     fprintf(stderr, "%ld unlocking on %p (%s)\n",
-        (long) pthread_self(), lock, from);
+        SELF_THREAD_ID, lock, from);
     err = pthread_mutex_unlock(lock);
     assert(err == 0);
     return err;
@@ -262,7 +268,7 @@ MR_cond_signal(MercuryCond *cond, const char *from)
     int err;
 
     fprintf(stderr, "%ld signaling %p (%s)\n", 
-        (long) pthread_self(), cond, from);
+        SELF_THREAD_ID, cond, from);
     err = pthread_cond_signal(cond);
     assert(err == 0);
     return err;
@@ -274,7 +280,7 @@ MR_cond_broadcast(MercuryCond *cond, const char *from)
     int err;
 
     fprintf(stderr, "%ld broadcasting %p (%s)\n", 
-        (long) pthread_self(), cond, from);
+        SELF_THREAD_ID, cond, from);
     err = pthread_cond_broadcast(cond);
     assert(err == 0);
     return err;
@@ -286,7 +292,7 @@ MR_cond_wait(MercuryCond *cond, MercuryLock *lock, const char *from)
     int err;
 
     fprintf(stderr, "%ld waiting on cond: %p lock: %p (%s)\n", 
-        (long) pthread_self(), cond, lock, from);
+        SELF_THREAD_ID, cond, lock, from);
     err = pthread_cond_wait(cond, lock);
     assert(err == 0);
     return err;
@@ -299,12 +305,25 @@ MR_cond_timed_wait(MercuryCond *cond, MercuryLock *lock,
     int err;
     
     fprintf(stderr, "%ld timed-waiting on cond: %p lock: %p (%s)\n",
-        (long)pthread_self(), cond, lock, from);
+        SELF_THREAD_ID, cond, lock, from);
     err = pthread_cond_timedwait(cond, lock, abstime);
     fprintf(stderr, "%ld timed-wait returned %d\n",
-        (long)pthread_self(), err);
+        SELF_THREAD_ID, err);
     return err;
 }
+
+/*
+** For pthreads-win32 MR_null_thread() is defined as follows.  For other
+** pthread implementations it is defined as a macro in mercury_thread.h.
+*/
+#if defined(MR_PTHREADS_WIN32)
+MercuryThread
+MR_null_thread(void)
+{
+    const MercuryThread null_thread = {NULL, 0};
+    return null_thread;
+}
+#endif /* MR_PTHREADS_WIN32 */
 
 #endif  /* MR_THREAD_SAFE */
 

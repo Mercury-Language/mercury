@@ -45,6 +45,15 @@ extern int
 MR_cond_timed_wait(MercuryCond *cond, MercuryLock *lock, 
     const struct timespec *abstime, const char *from);
 
+   #if defined(MR_PTHREADS_WIN32)
+extern MercuryThread
+MR_null_thread(void);
+  #else
+    #define MR_null_thread() ((MercuryThread) 0)
+  #endif
+
+  #define MR_thread_equal(a, b)       pthread_equal((a), (b))
+
   extern MR_bool    MR_debug_threads;
 
   #ifndef MR_DEBUG_THREADS

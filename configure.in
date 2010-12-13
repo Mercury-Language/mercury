@@ -1223,19 +1223,6 @@ if test "$MR_HAVE_UCONTEXT_H" != 1; then
     MERCURY_CHECK_FOR_HEADERS(sys/ucontext.h)
 fi
 
-if test "$MR_HAVE_PTHREAD_H" = 1
-then
-    case "$host" in
-        *mingw*)
-            MERCURY_HAVE_PTHREADS_WIN32
-            if test $mercury_cv_have_pthreads_win32 = "yes"
-            then
-                AC_DEFINE([MR_PTHREADS_WIN32])
-            fi 
-        ;;
-    esac
-fi
-
 #-----------------------------------------------------------------------------#
 #
 # Check whether we can set the FP rounding mode
@@ -2856,29 +2843,49 @@ AC_SUBST(CGIDIR)
 
 #-----------------------------------------------------------------------------#
 
-# Allow the use of pthreads-win32 instead of native Win32 threads on Windows.
-# XXX it should also be possible to use pthreads-win32 with MSVC.
+# Check if we are using the pthreads-win32 library.
+# NOTE: we currently only support this on MinGW.
 
-AC_ARG_WITH([pthreads-win32],
-   AC_HELP_STRING([--with-pthreads-win32]
-      [use the pthreads-win32 library instead of Win32 threads (GCC only)]
-   ),
-   [with_pthreads_win32="$withval"],[with_pthreads_win32="no"])
+if test "$MR_HAVE_PTHREAD_H" = 1
+then
+    case "$host" in
+        *mingw*)
+            MERCURY_HAVE_PTHREADS_WIN32
+            if test $mercury_cv_have_pthreads_win32 = "yes"
+            then
+                AC_DEFINE([MR_PTHREADS_WIN32])
+                WIN32_GC_THREADLIB="-DGC_WIN32_PTHREADS"
+            else
+                WIN32_GC_THREADLIB="-DGC_WIN32_THREADS"
+            fi 
+        ;;
 
-case "$with_pthreads_win32" in
+        *)
+            WIN32_GC_THREADLIB="-DGC_WIN32_THREADS"
+        ;;
+    esac
+else
+    WIN32_GC_THREADLIB="-DGC_WIN32_THREADS"
+fi
+
+AC_ARG_WITH([gc-pthreads-win32],
+   AC_HELP_STRING([--with-gc-pthreads-win32]
+          [Force the use of the pthreads-win32 library with the Boehm GC.
+           This is the default for MinGW]),
+   [with_gc_pthreads_win32="$withval"],[with_gc_pthreads_win32="no"])
+
+case "$with_gc_pthreads_win32" in
 
     yes)
-        # Use the pthreads-win32 library.
+        # Force the use of the pthreads-win32 library with the Boehm GC.
         WIN32_GC_THREADLIB="-DGC_WIN32_PTHREADS"
     ;;
         
-    no)
-        # Use native Win32 threads.
-        WIN32_GC_THREADLIB="-DGC_WIN32_THREADS"
+    no) 
     ;;
 
     *)
-        AC_MSG_ERROR([unexpected argument to --with-pthreads-win32])
+        AC_MSG_ERROR([unexpected argument to --with-gc-pthreads-win32])
     ;;
 esac
 
@@ -2963,7 +2970,9 @@ case "$host" in
                 LD_LIBFLAGS_FOR_THREADS="/MD"
                 ;;
             *)
-                CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB -DMR_THREAD_SAFE" ;;
+                CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE $WIN32_GC_THREADLIB"
+                THREAD_LIBS="-lpthread"
+                ;;
         esac
         ;;
 
