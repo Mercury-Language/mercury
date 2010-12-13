@@ -6,8 +6,8 @@ HIGHLIGHTS
 
 Changes to the Mercury standard library:
 
-* We have added semidet modes for array.foldl/4, array.foldl2/6,
-  hash_table.fold/4, version_array.foldl/4, and version_hash_table.fold/4.
+* We have added semidet modes for hash_table.fold/4 and
+  version_hash_table.fold/4.
 
 * We have added new predicates and functions added to the assoc_list module.
   The predicates map_keys_only/3 map_values_only/3 and map_values/3 complement
@@ -60,9 +60,10 @@ Changes to the Mercury standard library:
 * We have made the following changes to the array module of the standard
   library:
 
-  + The function array.unsafe_elem2/ has been added.
+  + We have added the functions unsafe_elem/2 and append/2.
 
-  + The predicates array.foldr/4 and array.foldr2/6 have been added.
+  + We have added the predicates svset/4, unsafe_svset/4, foldl2/4, foldl2/6,
+    foldr/4, foldr2/6, map_foldl/5, map_corresponding_foldl/6, and member/2.
 
 * We have added the predicates version_array.foldl2/6, version_array.foldr/4,
   and version_array.foldr2/6 to the standard library.
@@ -127,7 +128,8 @@ there are some changes to the standard library.
 
 Changes to the Mercury standard library:
 * We have added cc_multi modes for map.foldl2/6 and tree234.foldl2/6.
-* We have improved the performance of cords, hash tables and version hash tables.
+* We have improved the performance of cords, hash tables and
+version hash tables.
 
 
 NEWS for Mercury 10.04
@@ -213,7 +215,10 @@ Changes to the Mercury standard library:
   and just plain foldl* in which the higher order argument does not take
   the key as an argument.
 
-* The following functions have been added to the integer module:
+* We have added the following predicate to the int module:
+	int.nondet_int_in_range/2.
+
+* We have added the following functions to the integer module:
 	integer.from_base_string/2
 	integer.det_from_base_string/2
 
@@ -221,13 +226,13 @@ Changes to the Mercury standard library:
   can be useful when manipulating polymorphic values that have inst any.
 
 * Predicates and functions which create strings from lists of characters
-  now fail, throw an exception or return an error value if a null character
-  is found.  Unexpected null characters in strings are a potential source of
-  security vulnerabilities.
+  now fail, throw an exception or return an error value if they find
+  a null character. Unexpected null characters in strings are a potential
+  source of security vulnerabilities.
 
-  Predicates string.semidet_from_char_list/2 and
-  string.semidet_from_rev_char_list/2 have been added.  These fail rather
-  than throwing an exception if a null character is found.
+  We have added the predicates string.semidet_from_char_list/2 and
+  string.semidet_from_rev_char_list/2. These fail rather than throwing
+  an exception if they find a null character.
 
 * We have added string.remove_suffix_det, a version of string.remove_suffix
   that throws an exception if the suffix is not there.

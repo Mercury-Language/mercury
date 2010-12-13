@@ -31,13 +31,12 @@
 %
 % WARNING!
 %
-% Arrays are currently not unique objects - until this situation is
-% resolved it is up to the programmer to ensure that arrays are used
-% in such a way as to preserve correctness.  In the absence of mode
-% reordering, one should therefore assume that evaluation will take
-% place in left-to-right order.  For example, the following code will
-% probably not work as expected (f is a function, A an array, I an
-% index, and X an appropriate value):
+% Arrays are currently not unique objects. until this situation is resolved,
+% it is up to the programmer to ensure that arrays are used in ways that
+% preserve correctness. In the absence of mode reordering, one should therefore
+% assume that evaluation will take place in left-to-right order. For example,
+% the following code will probably not work as expected (f is a function,
+% A an array, I an index, and X an appropriate value):
 %
 %       Y = f(A ^ elem(I) := X, A ^ elem(I))
 %
@@ -47,9 +46,8 @@
 %       V1 = A ^ elem(I),
 %       Y  = f(V0, V1)
 %
-% and will be unaware that the first line should be ordered
-% *after* the second.  The safest thing to do is write things out
-% by hand in the form
+% and will be unaware that the first line should be ordered *after* the second.
+% The safest thing to do is write things out by hand in the form
 %
 %       A0I = A0 ^ elem(I),
 %       A1  = A0 ^ elem(I) := X,
@@ -97,7 +95,7 @@
     % on out-of-bounds array accesses. The string describes
     % the predicate or function reporting the error.
 :- type array.index_out_of_bounds
-    ---> array.index_out_of_bounds(string).
+    --->    array.index_out_of_bounds(string).
 
 %-----------------------------------------------------------------------------%
 
@@ -214,6 +212,12 @@
 :- pred array.set(array(T), int, T, array(T)).
 :- mode array.set(array_di, in, in, array_uo) is det.
 
+    % The same as array.set, except the arguments are in an order
+    % that allows the use of state variables.
+    %
+:- pred array.svset(int, T, array(T), array(T)).
+:- mode array.svset(in, in, array_di, array_uo) is det.
+
 :- func array.set(array(T), int, T) = array(T).
 :- mode array.set(array_di, in, in) = array_uo is det.
 
@@ -228,6 +232,12 @@
     %
 :- pred array.unsafe_set(array(T), int, T, array(T)).
 :- mode array.unsafe_set(array_di, in, in, array_uo) is det.
+
+    % The same as array.unsafe_set, except the arguments are in an order
+    % that allows the use of state variables.
+    %
+:- pred array.unsafe_svset(int, T, array(T), array(T)).
+:- mode array.unsafe_svset(in, in, array_di, array_uo) is det.
 
     % array.slow_set sets the nth element of an array, and returns the
     % resulting array. The initial array is not required to be unique,
@@ -269,6 +279,10 @@
     %
 :- func 'elem :='(int, array(T), T) = array(T).
 :- mode 'elem :='(in, array_di, in) = array_uo is det.
+
+    % Returns every element of the array, one by one.
+    %
+:- pred array.member(array(T)::in, T::out) is nondet.
 
 %-----------------------------------------------------------------------------%
 
@@ -481,13 +495,47 @@
 :- mode array.foldr2(pred(in, in, out, di, uo) is semidet, in,
     in, out, di, uo) is semidet.
 
+    % array.map_foldl(P, A, B, !Acc):
+    % Invoke P(Aelt, Belt, !Acc) on each element of the A array,
+    % and construct array B from the resulting values of Belt.
+    %
+:- pred map_foldl(pred(T1, T2, T3, T3), array(T1), array(T2), T3, T3).
+:- mode map_foldl(in(pred(in, out, in, out) is det),
+    in, array_uo, in, out) is det.
+:- mode map_foldl(in(pred(in, out, in, out) is semidet),
+    in, array_uo, in, out) is semidet.
+
+    % array.map_corresponding_foldl(P, A, B, C, !Acc):
+    %
+    % Given two arrays A and B, invoke P(Aelt, Belt, Celt, !Acc) on
+    % each corresponding pair of elements Aelt and Belt. Build up the array C
+    % from the result Celt values. Return C and the final value of the
+    % accumulator.
+    %
+    % C will have as many elements as A does. In most uses, B will also have
+    % this many elements, but may have more; it may NOT have fewer.
+    %
+:- pred array.map_corresponding_foldl(pred(T1, T2, T3, T4, T4),
+    array(T1), array(T2), array(T3), T4, T4).
+:- mode array.map_corresponding_foldl(
+    in(pred(in, in, out, in, out) is det),
+    in, in, array_uo, in, out) is det.
+:- mode array.map_corresponding_foldl(
+    in(pred(in, in, out, in, out) is semidet),
+    in, in, array_uo, in, out) is semidet.
+
+    % array.append(A, B) = C:
+    %
+    % Make C a concatenation of the arrays A and B.
+    %
+:- func array.append(array(T)::in, array(T)::in) = (array(T)::array_uo) is det.
+
     % array.random_permutation(A0, A, RS0, RS) permutes the elements in
     % A0 given random seed RS0 and returns the permuted array in A
     % and the next random seed in RS.
     %
-:- pred array.random_permutation(array(T), array(T),
-    random.supply, random.supply).
-:- mode array.random_permutation(array_di, array_uo, mdi, muo) is det.
+:- pred array.random_permutation(array(T)::array_di, array(T)::array_uo,
+    random.supply::mdi, random.supply::muo) is det.
 
     % Convert an array to a pretty_printer.doc for formatting.
     %
@@ -658,7 +706,7 @@ array.compare_elements(N, Size, Array1, Array2, Result) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
-#include ""mercury_heap.h""     /* for MR_maybe_record_allocation() */
+#include ""mercury_heap.h""             /* for MR_maybe_record_allocation() */
 #include ""mercury_library_types.h""    /* for MR_ArrayPtr */
 
 /*
@@ -1198,8 +1246,29 @@ array.set(Array0, Index, Item, Array) :-
         array.unsafe_set(Array0, Index, Item, Array)
     ).
 
+array.svset(Index, Item, Array0, Array) :-
+    ( bounds_checks, \+ array.in_bounds(Array0, Index) ->
+        out_of_bounds_error(Array0, Index, "array.set")
+    ;
+        array.unsafe_svset(Index, Item, Array0, Array)
+    ).
+
 :- pragma foreign_proc("C",
     array.unsafe_set(Array0::array_di, Index::in, Item::in, Array::array_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness,
+        sharing(yes(array(T), int, T, array(T)), [
+            cel(Array0, []) - cel(Array, []),
+            cel(Item, [])   - cel(Array, [T])
+        ])
+    ],
+"
+    Array0->elements[Index] = Item; /* destructive update! */
+    Array = Array0;
+").
+
+:- pragma foreign_proc("C",
+    array.unsafe_svset(Index::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness,
         sharing(yes(array(T), int, T, array(T)), [
@@ -1220,6 +1289,14 @@ array.set(Array0, Index, Item, Array) :-
     Array = Array0;
 }").
 
+:- pragma foreign_proc("C#",
+    array.unsafe_svset(Index::in, Item::in, Array0::array_di, Array::array_uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"{
+    Array0.SetValue(Item, Index);   /* destructive update! */
+    Array = Array0;
+}").
+
 :- pragma foreign_proc("Erlang",
     array.unsafe_set(Array0::array_di, Index::in, Item::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -1227,8 +1304,33 @@ array.set(Array0, Index, Item, Array) :-
     Array = setelement(Index + 1, Array0, Item)
 ").
 
+:- pragma foreign_proc("Erlang",
+    array.unsafe_svset(Index::in, Item::in, Array0::array_di, Array::array_uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Array = setelement(Index + 1, Array0, Item)
+").
+
 :- pragma foreign_proc("Java",
     array.unsafe_set(Array0::array_di, Index::in, Item::in, Array::array_uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (Array0 instanceof int[]) {
+        ((int[]) Array0)[Index] = (Integer) Item;
+    } else if (Array0 instanceof double[]) {
+        ((double[]) Array0)[Index] = (Double) Item;
+    } else if (Array0 instanceof char[]) {
+        ((char[]) Array0)[Index] = (Character) Item;
+    } else if (Array0 instanceof boolean[]) {
+        ((boolean[]) Array0)[Index] = (Boolean) Item;
+    } else {
+        ((Object[]) Array0)[Index] = Item;
+    }
+    Array = Array0;         /* destructive update! */
+").
+
+:- pragma foreign_proc("Java",
+    array.unsafe_svset(Index::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Array0 instanceof int[]) {
@@ -1457,8 +1559,9 @@ void
 ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array)
 {
     /*
-    ** Any changes to this function will probably also require
-    ** changes to deepcopy() in runtime/deep_copy.c.
+    ** Any changes to this function will probably also require changes to
+    ** - array.append below, and
+    ** - MR_deep_copy() in runtime/mercury_deep_copy.[ch].
     */
 
     MR_Integer i;
@@ -1715,6 +1818,10 @@ array.unsafe_elem(Index, Array) = Elem :-
 
 'elem :='(Index, Array, Value) = array.set(Array, Index, Value).
 
+member(A, X) :-
+    nondet_int_in_range(0, array.size(A) - 1, I0),
+    X = A ^ elem(I0).
+
 % ---------------------------------------------------------------------------- %
 
     % array.sort/1 has type specialised versions for arrays of
@@ -1746,8 +1853,8 @@ array.approx_binary_search(Cmp, A, X, I) :-
     Hi = array.size(A) - 1,
     approx_binary_search_2(Cmp, A, X, Lo, Hi, I).
 
-:- pred approx_binary_search_2(comparison_func(T), array(T), T, int, int, int).
-:- mode approx_binary_search_2(in, array_ui, in, in, in, out) is semidet.
+:- pred approx_binary_search_2(comparison_func(T)::in, array(T)::array_ui,
+    T::in, int::in, int::in, int::out) is semidet.
 
 approx_binary_search_2(Cmp, A, X, Lo, Hi, I) :-
     Lo =< Hi,
@@ -1770,15 +1877,66 @@ approx_binary_search_2(Cmp, A, X, Lo, Hi, I) :-
 
 %-----------------------------------------------------------------------------%
 
+array.append(A, B) = C :-
+    SizeA = array.size(A),
+    SizeB = array.size(B),
+    SizeC = SizeA + SizeB,
+    ( if
+        ( if SizeA > 0 then
+            InitElem = A ^ elem(0)
+          else if SizeB > 0 then
+            InitElem = B ^ elem(0)
+          else
+            fail
+        )
+      then
+        C0 = array.init(SizeC, InitElem),
+        copy_subarray(A, 0, SizeA - 1, 0, C0, C1),
+        copy_subarray(B, 0, SizeB - 1, SizeA, C1, C)
+      else
+        C = array.make_empty_array
+    ).
+
+:- pragma foreign_proc("C",
+    array.append(ArrayA::in, ArrayB::in) = (ArrayC::array_uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness,
+        % XXX zs: I am not sure about the sharing annotation.
+        sharing(yes(array(T), array(T)), [
+            cel(ArrayA, [T]) - cel(ArrayC, [T]),
+            cel(ArrayB, [T]) - cel(ArrayC, [T])
+        ])
+    ],
+"
+    MR_Integer sizeC;
+    MR_Integer i;
+    MR_Integer offset;
+
+    sizeC = ArrayA->size + ArrayB->size;
+    ML_alloc_array(ArrayC, sizeC + 1, MR_PROC_LABEL);
+
+    ArrayC->size = sizeC;
+    for (i = 0; i < ArrayA->size; i++) {
+        ArrayC->elements[i] = ArrayA->elements[i];
+    }
+
+    offset = ArrayA->size;
+    for (i = 0; i < ArrayB->size; i++) {
+        ArrayC->elements[offset + i] = ArrayB->elements[i];
+    }
+").
+
+%-----------------------------------------------------------------------------%
+
 array.random_permutation(A0, A, RS0, RS) :-
     Lo = array.min(A0),
     Hi = array.max(A0),
     Sz = array.size(A0),
     permutation_2(Lo, Lo, Hi, Sz, A0, A, RS0, RS).
 
-:- pred permutation_2(int, int, int, int, array(T), array(T),
-        random.supply, random.supply).
-:- mode permutation_2(in, in, in, in, array_di, array_uo, mdi, muo) is det.
+:- pred permutation_2(int::in, int::in, int::in, int::in,
+    array(T)::array_di, array(T)::array_uo,
+    random.supply::mdi, random.supply::muo) is det.
 
 permutation_2(I, Lo, Hi, Sz, A0, A, RS0, RS) :-
     ( I > Hi ->
@@ -1919,30 +2077,90 @@ do_foldr_pred(P, Min, I, A, !Acc) :-
 
 %-----------------------------------------------------------------------------%
 
-array.foldr2(P, A, !Acc1, !Acc2) :-
-    do_foldr2(P, array.min(A), array.max(A), A, !Acc1, !Acc2).
+foldr2(P, A, !Acc1, !Acc2) :-
+    do_foldr_2(P, array.min(A), array.max(A), A, !Acc1, !Acc2).
 
-:- pred do_foldr2(pred(T1, T2, T2, T3, T3), int, int, array(T1), T2, T2,
+:- pred do_foldr_2(pred(T1, T2, T2, T3, T3), int, int, array(T1), T2, T2,
     T3, T3).
-:- mode do_foldr2(pred(in, in, out, in, out) is det, in, in, in, in, out,
+:- mode do_foldr_2(pred(in, in, out, in, out) is det, in, in, in, in, out,
     in, out) is det.
-:- mode do_foldr2(pred(in, in, out, mdi, muo) is det, in, in, in, in, out,
+:- mode do_foldr_2(pred(in, in, out, mdi, muo) is det, in, in, in, in, out,
     mdi, muo) is det.
-:- mode do_foldr2(pred(in, in, out, di, uo) is det, in, in, in, in, out,
+:- mode do_foldr_2(pred(in, in, out, di, uo) is det, in, in, in, in, out,
     di, uo) is det.
-:- mode do_foldr2(pred(in, in, out, in, out) is semidet, in, in, in, in, out,
+:- mode do_foldr_2(pred(in, in, out, in, out) is semidet, in, in, in, in, out,
     in, out) is semidet.
-:- mode do_foldr2(pred(in, in, out, mdi, muo) is semidet, in, in, in, in, out,
+:- mode do_foldr_2(pred(in, in, out, mdi, muo) is semidet, in, in, in, in, out,
     mdi, muo) is semidet.
-:- mode do_foldr2(pred(in, in, out, di, uo) is semidet, in, in, in, in, out,
+:- mode do_foldr_2(pred(in, in, out, di, uo) is semidet, in, in, in, in, out,
     di, uo) is semidet.
 
-do_foldr2(P, Min, I, A, !Acc1, !Acc2) :-
+do_foldr_2(P, Min, I, A, !Acc1, !Acc2) :-
     ( I < Min ->
         true
     ;
         P(A ^ unsafe_elem(I), !Acc1, !Acc2),
-        do_foldr2(P, Min, I - 1, A, !Acc1, !Acc2)
+        do_foldr_2(P, Min, I - 1, A, !Acc1, !Acc2)
+    ).
+
+map_foldl(P, A, B, !C) :-
+    N = array.size(A),
+    ( if N =< 0 then
+        B = array.make_empty_array
+      else
+        X = A ^ elem(0),
+        P(X, Y, !.C, _),
+        B0 = array.init(N, Y),
+        map_foldl_2(P, 0, A, B0, B, !C)
+    ).
+
+:- pred map_foldl_2(pred(T1, T2, T3, T3),
+    int, array(T1), array(T2), array(T2), T3, T3).
+:- mode map_foldl_2(in(pred(in, out, in, out) is det),
+    in, in, array_di, array_uo, in, out) is det.
+:- mode map_foldl_2(in(pred(in, out, in, out) is semidet),
+    in, in, array_di, array_uo, in, out) is semidet.
+
+map_foldl_2(P, I, A, B0, B, !C) :-
+    ( if I < array.size(A) then
+        X = A ^ elem(I),
+        P(X, Y, !C),
+        B1 = B0 ^ elem(I) := Y,
+        map_foldl_2(P, I + 1, A, B1, B, !C)
+      else
+        B = B0
+    ).
+
+array.map_corresponding_foldl(P, A, B, C, !D) :-
+    N = array.size(A),
+    ( if N =< 0 then
+        C = array.make_empty_array
+      else
+        X = A ^ elem(0),
+        Y = B ^ elem(0),
+        P(X, Y, Z, !.D, _),
+        C0 = array.init(N, Z),
+        array.map_corresponding_foldl_2(P, 1, N, A, B, C0, C, !D)
+    ).
+
+:- pred array.map_corresponding_foldl_2(pred(T1, T2, T3, T4, T4),
+    int, int, array(T1), array(T2), array(T3), array(T3), T4, T4).
+:- mode array.map_corresponding_foldl_2(
+    in(pred(in, in, out, in, out) is det),
+    in, in, in, in, array_di, array_uo, in, out) is det.
+:- mode array.map_corresponding_foldl_2(
+    in(pred(in, in, out, in, out) is semidet),
+    in, in, in, in, array_di, array_uo, in, out) is semidet.
+
+array.map_corresponding_foldl_2(P, I, N, A, B, C0, C, !D) :-
+    ( if I < N then
+        X = A ^ elem(I),
+        Y = B ^ elem(I),
+        P(X, Y, Z, !D),
+        C1 = C0 ^ elem(I) := Z,
+        array.map_corresponding_foldl_2(P, I + 1, N, A, B, C1, C, !D)
+      else
+        C = C0
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1985,7 +2203,7 @@ samsort_up(N, A0, A, B0, B, Lo, Hi, I) :-
         samsort_down(N - 1, B0, B1, A0, A1, I, Hi, J),
         % A1 is sorted from I .. J - 1.
         % A1 and B1 are identical from J .. Hi.
-        B2 = merge_subarrays(A1, B1, Lo, I - 1, I, J - 1, Lo),
+        merge_subarrays(A1, Lo, I - 1, I, J - 1, Lo, B1, B2),
         A2 = A1,
         % B2 is sorted from Lo .. J - 1.
         samsort_up(N + 1, B2, B, A2, A, Lo, Hi, J)
@@ -2020,7 +2238,7 @@ samsort_down(N, A0, A, B0, B, Lo, Hi, I) :-
         % A2 is sorted from Lo .. J - 1.
         % A2 is sorted from J  .. I - 1.
         A = A2,
-        B = merge_subarrays(A2, B2, Lo, J - 1, J, I - 1, Lo)
+        merge_subarrays(A2, Lo, J - 1, J, I - 1, Lo, B2, B)
         % B is sorted from Lo .. I - 1.
     ;
         A = A0,
@@ -2042,10 +2260,10 @@ copy_run_ascending(A, B0, B, Lo, Hi, I) :-
         compare((>), A ^ elem(Lo), A ^ elem(Lo + 1))
     ->
         I = search_until((<), A, Lo, Hi),
-        B = copy_subarray_reverse(A, B0, Lo, I - 1, I - 1)
+        copy_subarray_reverse(A, Lo, I - 1, I - 1, B0, B)
     ;
         I = search_until((>), A, Lo, Hi),
-        B = copy_subarray(A, B0, Lo, I - 1, Lo)
+        copy_subarray(A, Lo, I - 1, Lo, B0, B)
     ).
 
 %------------------------------------------------------------------------------%
@@ -2068,33 +2286,40 @@ search_until(R, A, Lo, Hi) =
 
 %------------------------------------------------------------------------------%
 
-:- func copy_subarray(array(T)::array_ui, array(T)::array_di, int::in, int::in,
-    int::in) = (array(T)::array_uo) is det.
+    % Assigns the subarray A[Lo..Hi] to B[InitI..Final], where InitI
+    % is the initial value of I, and FinalI = InitI + (Ho - Lo + 1).
+    % In this version, I is ascending, so B[InitI] gets A[Lo]
+    %
+:- pred copy_subarray(array(T)::array_ui, int::in, int::in, int::in,
+    array(T)::array_di, array(T)::array_uo) is det.
 
-:- pragma type_spec(copy_subarray/5, T = int).
-:- pragma type_spec(copy_subarray/5, T = string).
+:- pragma type_spec(copy_subarray/6, T = int).
+:- pragma type_spec(copy_subarray/6, T = string).
 
-copy_subarray(A, B, Lo, Hi, I) =
+copy_subarray(A, Lo, Hi, I, B0, B) :-
     ( Lo =< Hi ->
-        copy_subarray(A, B ^ elem(I) := A ^ elem(Lo), Lo + 1, Hi, I + 1)
+        B1 = B0 ^ elem(I) := A ^ elem(Lo),
+        copy_subarray(A, Lo + 1, Hi, I + 1, B1, B)
     ;
-        B
+        B = B0
     ).
 
-%------------------------------------------------------------------------------%
+    % Assigns the subarray A[Lo..Hi] to B[InitI..Final], where InitI
+    % is the initial value of I, and FinalI = InitI - (Ho - Lo + 1).
+    % In this version, I is descending, so B[InitI] gets A[Hi].
+    %
+:- pred copy_subarray_reverse(array(T)::array_ui, int::in, int::in, int::in,
+    array(T)::array_di, array(T)::array_uo) is det.
 
-:- func copy_subarray_reverse(array(T)::array_ui, array(T)::array_di,
-    int::in, int::in, int::in) = (array(T)::array_uo) is det.
+:- pragma type_spec(copy_subarray_reverse/6, T = int).
+:- pragma type_spec(copy_subarray_reverse/6, T = string).
 
-:- pragma type_spec(copy_subarray_reverse/5, T = int).
-:- pragma type_spec(copy_subarray_reverse/5, T = string).
-
-copy_subarray_reverse(A, B, Lo, Hi, I) =
+copy_subarray_reverse(A, Lo, Hi, I, B0, B) :-
     ( Lo =< Hi ->
-        copy_subarray_reverse(A, B ^ elem(I) := A ^ elem(Lo),
-            Lo + 1, Hi, I - 1)
+        B1 = B0 ^ elem(I) := A ^ elem(Lo),
+        copy_subarray_reverse(A, Lo + 1, Hi, I - 1, B1, B)
     ;
-        B
+        B = B0
     ).
 
 %------------------------------------------------------------------------------%
@@ -2102,33 +2327,34 @@ copy_subarray_reverse(A, B, Lo, Hi, I) =
     % merges the two sorted consecutive subarrays Lo1 .. Hi1 and
     % Lo2 .. Hi2 from A into the subarray starting at I in B.
     %
-:- func merge_subarrays(array(T)::array_ui, array(T)::array_di,
-    int::in, int::in, int::in, int::in, int::in) = (array(T)::array_uo) is det.
+:- pred merge_subarrays(array(T)::array_ui,
+    int::in, int::in, int::in, int::in, int::in,
+    array(T)::array_di, array(T)::array_uo) is det.
 
-:- pragma type_spec(merge_subarrays/7, T = int).
-:- pragma type_spec(merge_subarrays/7, T = string).
+:- pragma type_spec(merge_subarrays/8, T = int).
+:- pragma type_spec(merge_subarrays/8, T = string).
 
-merge_subarrays(A, B0, Lo1, Hi1, Lo2, Hi2, I) = B :-
+merge_subarrays(A, Lo1, Hi1, Lo2, Hi2, I, B0, B) :-
     ( Lo1 > Hi1 ->
-        B = copy_subarray(A, B0, Lo2, Hi2, I)
+        copy_subarray(A, Lo2, Hi2, I, B0, B)
     ; Lo2 > Hi2 ->
-        B = copy_subarray(A, B0, Lo1, Hi1, I)
+        copy_subarray(A, Lo1, Hi1, I, B0, B)
     ;
         X1 = A ^ elem(Lo1),
         X2 = A ^ elem(Lo2),
         compare(R, X1, X2),
         (
             R = (<),
-            B = merge_subarrays(A, B0 ^ elem(I) := X1,
-                Lo1 + 1, Hi1, Lo2, Hi2, I + 1)
+            array.svset(I, X1, B0, B1),
+            merge_subarrays(A, Lo1 + 1, Hi1, Lo2, Hi2, I + 1, B1, B)
         ;
             R = (=),
-            B = merge_subarrays(A, B0 ^ elem(I) := X1,
-                Lo1 + 1, Hi1, Lo2, Hi2, I + 1)
+            array.svset(I, X1, B0, B1),
+            merge_subarrays(A, Lo1 + 1, Hi1, Lo2, Hi2, I + 1, B1, B)
         ;
             R = (>),
-            B = merge_subarrays(A, B0 ^ elem(I) := X2,
-                Lo1, Hi1, Lo2 + 1, Hi2, I + 1)
+            array.svset(I, X2, B0, B1),
+            merge_subarrays(A, Lo1, Hi1, Lo2 + 1, Hi2, I + 1, B1, B)
         )
     ).
 

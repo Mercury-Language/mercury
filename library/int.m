@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2009 The University of Melbourne.
+% Copyright (C) 1994-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -345,6 +345,12 @@
     in, out, in, out) is nondet.
 :- mode int.fold_down2(pred(in, in, out, mdi, muo) is nondet, in, in,
     in, out, mdi, muo) is nondet.
+
+    % nondet_int_in_range(Lo, Hi, I):
+    %
+    % On successive successes, set I to every integer from Lo to Hi.
+    %
+:- pred nondet_int_in_range(int::in, int::in, int::out) is nondet.
 
     % Convert an int to a pretty_printer.doc for formatting.
     %
@@ -833,6 +839,20 @@ int.fold_down2(P, Lo, Hi, !A, !B) :-
     ( if    Lo =< Hi
       then  P(Hi, !A, !B), int.fold_down2(P, Lo, Hi - 1, !A, !B)
       else  true
+    ).
+
+nondet_int_in_range(Lo, Hi, I) :-
+    % Leave a choice point only if there is at least one solution
+    % to find on backtracking.
+    ( Lo < Hi ->
+        (
+            I = Lo
+        ;
+            nondet_int_in_range(Lo + 1, Hi, I)
+        )
+    ;
+        Lo = Hi,
+        I = Lo
     ).
 
 %-----------------------------------------------------------------------------%
