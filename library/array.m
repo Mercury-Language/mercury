@@ -502,6 +502,10 @@
 :- pred map_foldl(pred(T1, T2, T3, T3), array(T1), array(T2), T3, T3).
 :- mode map_foldl(in(pred(in, out, in, out) is det),
     in, array_uo, in, out) is det.
+:- mode map_foldl(in(pred(in, out, mdi, muo) is det),
+    in, array_uo, mdi, muo) is det.
+:- mode map_foldl(in(pred(in, out, di, uo) is det),
+    in, array_uo, di, uo) is det.
 :- mode map_foldl(in(pred(in, out, in, out) is semidet),
     in, array_uo, in, out) is semidet.
 
@@ -520,6 +524,12 @@
 :- mode array.map_corresponding_foldl(
     in(pred(in, in, out, in, out) is det),
     in, in, array_uo, in, out) is det.
+:- mode array.map_corresponding_foldl(
+    in(pred(in, in, out, mdi, muo) is det),
+    in, in, array_uo, mdi, muo) is det.
+:- mode array.map_corresponding_foldl(
+    in(pred(in, in, out, di, uo) is det),
+    in, in, array_uo, di, uo) is det.
 :- mode array.map_corresponding_foldl(
     in(pred(in, in, out, in, out) is semidet),
     in, in, array_uo, in, out) is semidet.
@@ -2078,69 +2088,73 @@ do_foldr_pred(P, Min, I, A, !Acc) :-
 %-----------------------------------------------------------------------------%
 
 foldr2(P, A, !Acc1, !Acc2) :-
-    do_foldr_2(P, array.min(A), array.max(A), A, !Acc1, !Acc2).
+    do_foldr2(P, array.min(A), array.max(A), A, !Acc1, !Acc2).
 
-:- pred do_foldr_2(pred(T1, T2, T2, T3, T3), int, int, array(T1), T2, T2,
+:- pred do_foldr2(pred(T1, T2, T2, T3, T3), int, int, array(T1), T2, T2,
     T3, T3).
-:- mode do_foldr_2(pred(in, in, out, in, out) is det, in, in, in, in, out,
+:- mode do_foldr2(pred(in, in, out, in, out) is det, in, in, in, in, out,
     in, out) is det.
-:- mode do_foldr_2(pred(in, in, out, mdi, muo) is det, in, in, in, in, out,
+:- mode do_foldr2(pred(in, in, out, mdi, muo) is det, in, in, in, in, out,
     mdi, muo) is det.
-:- mode do_foldr_2(pred(in, in, out, di, uo) is det, in, in, in, in, out,
+:- mode do_foldr2(pred(in, in, out, di, uo) is det, in, in, in, in, out,
     di, uo) is det.
-:- mode do_foldr_2(pred(in, in, out, in, out) is semidet, in, in, in, in, out,
+:- mode do_foldr2(pred(in, in, out, in, out) is semidet, in, in, in, in, out,
     in, out) is semidet.
-:- mode do_foldr_2(pred(in, in, out, mdi, muo) is semidet, in, in, in, in, out,
+:- mode do_foldr2(pred(in, in, out, mdi, muo) is semidet, in, in, in, in, out,
     mdi, muo) is semidet.
-:- mode do_foldr_2(pred(in, in, out, di, uo) is semidet, in, in, in, in, out,
+:- mode do_foldr2(pred(in, in, out, di, uo) is semidet, in, in, in, in, out,
     di, uo) is semidet.
 
-do_foldr_2(P, Min, I, A, !Acc1, !Acc2) :-
+do_foldr2(P, Min, I, A, !Acc1, !Acc2) :-
     ( I < Min ->
         true
     ;
         P(A ^ unsafe_elem(I), !Acc1, !Acc2),
-        do_foldr_2(P, Min, I - 1, A, !Acc1, !Acc2)
+        do_foldr2(P, Min, I - 1, A, !Acc1, !Acc2)
     ).
 
-map_foldl(P, A, B, !C) :-
+map_foldl(P, A, B, !Acc) :-
     N = array.size(A),
     ( if N =< 0 then
         B = array.make_empty_array
       else
         X = A ^ elem(0),
-        P(X, Y, !.C, _),
-        B0 = array.init(N, Y),
-        map_foldl_2(P, 0, A, B0, B, !C)
+        P(X, Y, !Acc),
+        B1 = array.init(N, Y),
+        map_foldl_2(P, 1, A, B1, B, !Acc)
     ).
 
 :- pred map_foldl_2(pred(T1, T2, T3, T3),
     int, array(T1), array(T2), array(T2), T3, T3).
 :- mode map_foldl_2(in(pred(in, out, in, out) is det),
     in, in, array_di, array_uo, in, out) is det.
+:- mode map_foldl_2(in(pred(in, out, mdi, muo) is det),
+    in, in, array_di, array_uo, mdi, muo) is det.
+:- mode map_foldl_2(in(pred(in, out, di, uo) is det),
+    in, in, array_di, array_uo, di, uo) is det.
 :- mode map_foldl_2(in(pred(in, out, in, out) is semidet),
     in, in, array_di, array_uo, in, out) is semidet.
 
-map_foldl_2(P, I, A, B0, B, !C) :-
+map_foldl_2(P, I, A, B0, B, !Acc) :-
     ( if I < array.size(A) then
         X = A ^ elem(I),
-        P(X, Y, !C),
+        P(X, Y, !Acc),
         B1 = B0 ^ elem(I) := Y,
-        map_foldl_2(P, I + 1, A, B1, B, !C)
+        map_foldl_2(P, I + 1, A, B1, B, !Acc)
       else
         B = B0
     ).
 
-array.map_corresponding_foldl(P, A, B, C, !D) :-
+array.map_corresponding_foldl(P, A, B, C, !Acc) :-
     N = array.size(A),
     ( if N =< 0 then
         C = array.make_empty_array
       else
         X = A ^ elem(0),
         Y = B ^ elem(0),
-        P(X, Y, Z, !.D, _),
-        C0 = array.init(N, Z),
-        array.map_corresponding_foldl_2(P, 1, N, A, B, C0, C, !D)
+        P(X, Y, Z, !Acc),
+        C1 = array.init(N, Z),
+        array.map_corresponding_foldl_2(P, 1, N, A, B, C1, C, !Acc)
     ).
 
 :- pred array.map_corresponding_foldl_2(pred(T1, T2, T3, T4, T4),
@@ -2148,6 +2162,12 @@ array.map_corresponding_foldl(P, A, B, C, !D) :-
 :- mode array.map_corresponding_foldl_2(
     in(pred(in, in, out, in, out) is det),
     in, in, in, in, array_di, array_uo, in, out) is det.
+:- mode array.map_corresponding_foldl_2(
+    in(pred(in, in, out, mdi, muo) is det),
+    in, in, in, in, array_di, array_uo, mdi, muo) is det.
+:- mode array.map_corresponding_foldl_2(
+    in(pred(in, in, out, di, uo) is det),
+    in, in, in, in, array_di, array_uo, di, uo) is det.
 :- mode array.map_corresponding_foldl_2(
     in(pred(in, in, out, in, out) is semidet),
     in, in, in, in, array_di, array_uo, in, out) is semidet.
