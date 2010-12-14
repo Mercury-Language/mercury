@@ -126,7 +126,7 @@ import java.util.Random;
     rand_sleep(Int::in, _IO0::di, _IO::uo),
     [promise_pure, thread_safe, will_not_call_mercury],
 "
-#ifdef _MSC_VER
+#if defined(MR_WIN32)
     Sleep(1000 * (rand() % Int));
 #else
     sleep((rand() % Int));
