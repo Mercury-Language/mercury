@@ -74,14 +74,28 @@
 
 /*---------------------------------------------------------------------------*/
 
+/*
+** NOTE: getpagesize() is not officially supported on MinGW (there is no
+** declaration in the system headers), but one of the supporting libraries
+** used by GCC does define a symbol with that name.  Consequently on MinGW,
+** we need to use GetSystemInfo() even though MR_HAVE_GETPAGESIZE is
+** defined.
+*/
+
 #if defined(MR_HAVE_SYSCONF) && defined(_SC_PAGESIZE)
   #define   getpagesize()   sysconf(_SC_PAGESIZE)
-#elif !defined(MR_HAVE_GETPAGESIZE)
+#elif !defined(MR_HAVE_GETPAGESIZE) || defined(MR_MINGW)
   #if defined(MR_WIN32_GETSYSTEMINFO)
     #include <windows.h>
-
+    
+    #define getpagesize() MR_win32_getpagesize()
+   
+    /*
+    ** NOTE: we avoid naming the following getpagesize() since that
+    ** name is already used on MinGW.
+    */ 
     static size_t
-    getpagesize(void)
+    MR_win32_getpagesize(void)
     {
         SYSTEM_INFO SysInfo;
         GetSystemInfo(&SysInfo);
