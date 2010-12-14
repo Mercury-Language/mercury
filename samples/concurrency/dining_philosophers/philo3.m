@@ -97,15 +97,14 @@ import java.util.Random;
 
 :- pred rand_sleep(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    rand_sleep(Int::in, IO0::di, IO::uo),
+    rand_sleep(Int::in, _IO0::di, _IO::uo),
 	[promise_pure, thread_safe, will_not_call_mercury],
 "
-#ifdef _MSC_VER
+#if defined(MR_WIN32)
 	Sleep(1000 * (rand() % Int));
 #else
 	sleep((rand() % Int));
 #endif
-	IO =  IO0;
 ").
 
 :- pragma foreign_proc("C#",
