@@ -34,7 +34,7 @@ libmmc:
 
 .PHONY: install
 install:
-	$(MMAKE) MMAKEFLAGS=$(PARALLEL) install
+	$(MMAKE) MMAKEFLAGS=$(PARALLEL) DESTDIR=$(DESTDIR) install
 
 # `mmake clean' has a different meaning to the usual GNU standard `make clean':
 # it removes the .c files, which makes bootstrapping impossible unless you

@@ -52,11 +52,13 @@ MMAKEFLAGS =
 SUBDIR_MMAKE =	PATH=../scripts:../util:$$PATH \
 		MMAKE_VPATH=. \
 		MMAKE_DIR=../scripts \
+		DESTDIR=$(DESTDIR) \
 		../scripts/mmake $(MMAKEFLAGS)
 
 SUBSUBDIR_MMAKE = PATH=../../scripts:../../util:$$PATH \
 		MMAKE_VPATH=. \
 		MMAKE_DIR=../../scripts \
+		DESTDIR=$(DESTDIR) \
 		../../scripts/mmake $(MMAKEFLAGS)
 
 GENERATED_DOCS = README INSTALL WORK_IN_PROGRESS TODO

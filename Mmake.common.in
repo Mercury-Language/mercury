@@ -118,8 +118,8 @@ SHARED_LIBS		= @SHARED_LIBS@
 # Set the installation prefix. This is done here as well as
 # in scripts/Mmake.vars to avoid accidentally overwriting an
 # existing installation when using an installed mmake.
-INSTALL_PREFIX		= @prefix@
-FINAL_INSTALL_PREFIX	= @prefix@
+INSTALL_PREFIX          = $(DESTDIR)/@prefix@
+FINAL_INSTALL_PREFIX    = @prefix@
 
 INSTALLABLE_PREFIX	= @INSTALLABLE_PREFIX@
 

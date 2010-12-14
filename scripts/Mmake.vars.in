@@ -686,7 +686,7 @@ INSTALL_MKDIR = mkdir -p
 # script (e.g. in the shell scripts mmc, ml, mmake, etc) that will not
 # be updated simply by overriding INSTALL_PREFIX.
 
-INSTALL_PREFIX		= @prefix@
+INSTALL_PREFIX		= $(DESTDIR)/@prefix@
 FINAL_INSTALL_PREFIX	= @prefix@
 INSTALL_BINDIR		= $(INSTALL_PREFIX)/bin
 INSTALL_LIBDIR		= $(INSTALL_PREFIX)/lib/mercury
@@ -700,7 +700,7 @@ INSTALL_MAN_DIR		= $(INSTALL_PREFIX)/man
 INSTALL_HTML_DIR	= $(INSTALL_PREFIX)/lib/mercury/html
 INSTALL_MDB_DOC_DIR	= $(INSTALL_PREFIX)/lib/mercury/mdb
 INSTALL_ELISP_DIR	= $(INSTALL_PREFIX)/lib/mercury/elisp
-INSTALL_CGI_DIR		= @CGIDIR@
+INSTALL_CGI_DIR		= $(DESTDIR)/@CGIDIR@
 
 # You should not need to override anything below here
 

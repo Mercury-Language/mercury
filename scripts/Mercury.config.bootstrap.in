@@ -1,4 +1,7 @@
-#! /bin/sh
+#
+# This file has no hash-bang line since it isn't intended to be executable,
+# instead it is 'sourced' by other scripts.
+#
 # @configure_input@
 #---------------------------------------------------------------------------#
 # Copyright (C) 2003-2004, 2006-2007, 2010 The University of Melbourne.
