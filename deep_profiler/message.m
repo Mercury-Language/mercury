@@ -28,15 +28,15 @@
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
-    
+
 	% A message to be displayed to the user.
     %
-:- type message 
+:- type message
     --->    message(
                 message_location    :: program_location,
-                message_type        :: message_type 
+                message_type        :: message_type
             ).
-    
+
     % The 'importance' of a message,  Debug messages are not covered here since
     % they should be implemented via trace goals. neither are critical messages
     % since we use exceptions in that case.
@@ -65,100 +65,91 @@
     %
     % Pretty-print a location to a cord of strings.
     %
-:- pred location_to_string(int::in, program_location::in, cord(string)::out) 
+:- pred location_to_string(int::in, program_location::in, cord(string)::out)
     is det.
 
 :- pred append_message(program_location::in, message_type::in,
     cord(message)::in, cord(message)::out) is det.
 
 %-----------------------------------------------------------------------------%
-    
+
 	% A type of message, values of type 'message' are instances of values of
     % type 'message_type'.
     %
 :- type message_type
 
-                % A candidate parallel conjunction has been found.
     --->    info_found_candidate_conjunction
+            % A candidate parallel conjunction has been found.
 
-                % There are a number of conjuncts containing calls above the
-                % configured call site threshold, we're considering them for
-                % parallelisation against one another.
-                %
     ;       info_found_conjs_above_callsite_threshold(int)
+            % There are a number of conjuncts containing calls above the
+            % configured call site threshold, we're considering them for
+            % parallelisation against one another.
 
-                % The conjunction being consdered for parallelisation had to be
-                % split into several 'partitions' because it contains some non
-                % atomic goals, this can limit the amount of parallelism
-                % available.
     ;       info_split_conjunction_into_partitions(int)
+            % The conjunction being consdered for parallelisation had to be
+            % split into several 'partitions' because it contains some non
+            % atomic goals, this can limit the amount of parallelism
+            % available.
 
-                % There are N conjunctions whose speedup due to parallelisation
-                % is positive.
     ;       info_found_n_conjunctions_with_positive_speedup(int)
+            % There are N conjunctions whose speedup due to parallelisation
+            % is positive.
 
-                % This occurs when a variable is instantiated twice in a
-                % procedure body (different instantiation states are used).  We
-                % don't bother parallelising such procedures.
-                %
     ;       notice_duplicate_instantiation(
+                % This occurs when a variable is instantiated twice in a
+                % procedure body (different instantiation states are used).
+                % We don't bother parallelising such procedures.
+                %
+                % The number of conjunctions that could have been
+                % parallelised.
                 int
-                    % The number of conjunctions that could have been
-                    % parallelised.
             )
 
-                % A pair of calls that could be parallelised have many
-                % dependant variables.  We don't yet calculate the speedup in
-                % these situations.
-                %
     ;       notice_callpair_has_more_than_one_dependant_var
+            % A pair of calls that could be parallelised have many
+            % dependent variables. We don't yet calculate the speedup in
+            % these situations.
 
-                % A partition does not enough enough costly calls (>1) and
-                % could not be parallelised, we could have parallelised them if
-                % we could parallelise over non-atomic code.
-                % 
-                % The parameters are the partition number and the number of
-                % costly calls found.
-                %
     ;       notice_partition_does_not_have_costly_calls(int, int)
+            % A partition does not enough enough costly calls (>1) and
+            % could not be parallelised, we could have parallelised them
+            % if we could parallelise over non-atomic code.
+            %
+            % The parameters are the partition number and the number of
+            % costly calls found.
 
-                % The candidate conjunction has goals that arn't
-                % determinstic or cc_multi amongst the costly calls.
-                %
     ;       notice_candidate_conjunction_not_det(detism_rep)
+            % The candidate conjunction has goals that are not
+            % determinstic or cc_multi amongst the costly calls.
 
-                % Couldn't find the proc defn in the progrep data, maybe the
-                % procedure is built-in.
-                %
     ;       warning_cannot_lookup_proc_defn
+            % Couldn't find the proc defn in the progrep data, maybe the
+            % procedure is built-in.
 
-                % Couldn't compute the coverage annotation for a procedure
-                % representation.  A fallback method will be used but whithout
-                % this information it may be less accurate.
-                %
     ;       warning_cannot_compute_procrep_coverage_fallback(string)
+            % Couldn't compute the coverage annotation for a procedure
+            % representation. A fallback method will be used but without
+            % this information it may be less accurate.
 
-                % Couldn't compute the cost of recursive calls.
-                %
-                % The parameter contains extra information about this error.
-                %
     ;       warning_cannot_compute_cost_of_recursive_calls(string)
-            
-                % Couldn't compute the time at which a variable is produced or
-                % consumed.
-                %
-                % The parameter contains extra information about this error.
+            % Couldn't compute the cost of recursive calls.
+            %
+            % The parameter contains extra information about this error.
+
     ;       warning_cannot_compute_first_use_time(string)
+            % Couldn't compute the time at which a variable is produced
+            % or consumed.
+            %
+            % The parameter contains extra information about this error.
 
-                % We don't yet handle clique_proc_reports with multiple proc
-                % dynamics.
-                %
     ;       error_extra_proc_dynamics_in_clique_proc
+            % We don't yet handle clique_proc_reports with multiple proc
+            % dynamics.
 
-                % An error in the generation of a coverage_procrep report.
-                %
     ;       error_coverage_procrep_error(string)
-    
+            % An error in the generation of a coverage_procrep report.
+
     ;       error_exception_thrown(string).
 
 %-----------------------------------------------------------------------------%
@@ -180,10 +171,10 @@
 :- func indent_size(int) = int.
 
 %-----------------------------------------------------------------------------%
-    
+
     % Write out messages.
     %
-:- pred write_out_messages(io.output_stream::in, cord(message)::in, 
+:- pred write_out_messages(io.output_stream::in, cord(message)::in,
     io::di, io::uo) is det.
 
     % Set the verbosity level to use above.  Higher levels print out more
@@ -223,13 +214,13 @@ message_to_string(message(Location, MessageType), String) :-
 
 location_to_string(Level, proc(ProcLabel), String) :-
     print_proc_label_to_string(ProcLabel, ProcLabelString),
-    String = indent(Level) ++ singleton("Proc: ") ++ 
+    String = indent(Level) ++ singleton("Proc: ") ++
         singleton(ProcLabelString) ++ singleton("\n").
 location_to_string(Level, goal(ProcLabel, GoalPath), String) :-
     ( empty_goal_path(GoalPath) ->
         GoalPathString = singleton("Root goal")
     ;
-        GoalPathString = 
+        GoalPathString =
             singleton("Goal: ") ++ singleton(goal_path_to_string(GoalPath))
     ),
     location_to_string(Level, proc(ProcLabel), FirstLine),
@@ -286,11 +277,11 @@ message_type_to_level(notice_candidate_conjunction_not_det(_)) =
 message_type_to_level(warning_cannot_lookup_proc_defn) = message_warning.
 message_type_to_level(warning_cannot_compute_procrep_coverage_fallback(_)) =
     message_warning.
-message_type_to_level(warning_cannot_compute_cost_of_recursive_calls(_)) = 
+message_type_to_level(warning_cannot_compute_cost_of_recursive_calls(_)) =
     message_warning.
-message_type_to_level(warning_cannot_compute_first_use_time(_)) = 
+message_type_to_level(warning_cannot_compute_first_use_time(_)) =
     message_warning.
-message_type_to_level(error_extra_proc_dynamics_in_clique_proc) = 
+message_type_to_level(error_extra_proc_dynamics_in_clique_proc) =
     message_error.
 message_type_to_level(error_coverage_procrep_error(_)) =
     message_error.
@@ -302,7 +293,7 @@ message_type_to_level(error_exception_thrown(_)) = message_error.
 
 message_type_to_string(MessageType) = Cord :-
     (
-        MessageType = info_found_candidate_conjunction, 
+        MessageType = info_found_candidate_conjunction,
         String = "Found candidate conjunction"
     ;
         (
@@ -314,24 +305,24 @@ message_type_to_string(MessageType) = Cord :-
                 ++ " to parallelisation"
         ;
             MessageType = info_split_conjunction_into_partitions(Num),
-            MessageStr = "Split conjunction into %d partitions, this may reduce"
-                ++ " parallelism"
+            MessageStr = "Split conjunction into %d partitions, "
+                ++ "this may reduce parallelism"
         ),
         string.format(MessageStr, [i(Num)], String)
     ;
-        MessageType = notice_duplicate_instantiation(CandidateConjuncts), 
+        MessageType = notice_duplicate_instantiation(CandidateConjuncts),
         string.format(
             "%d conjunctions not parallelised: Seen duplicate instantiations",
             [i(CandidateConjuncts)], String)
     ;
         MessageType = notice_callpair_has_more_than_one_dependant_var,
-        String = "Parallelising call pairs that have more than one dependant"
-            ++ " variable is not yet supported."
+        String = "Parallelising call pairs that have more than one "
+            ++ "dependent variable is not yet supported."
     ;
         MessageType = notice_partition_does_not_have_costly_calls(PartNum,
             NumCalls),
         string.format("Partition %d has only %d costly calls and cannot be"
-                ++ " parallelised", 
+                ++ " parallelised",
             [i(PartNum), i(NumCalls)], String)
     ;
         MessageType = notice_candidate_conjunction_not_det(Detism),
@@ -344,10 +335,10 @@ message_type_to_string(MessageType) = Cord :-
             ++ " built-in"
     ;
         MessageType = warning_cannot_compute_procrep_coverage_fallback(Error),
-        String = "Cannot compute procrep coverage annotation: " ++ Error 
+        String = "Cannot compute procrep coverage annotation: " ++ Error
             ++ "\n  falling back to some other method"
     ;
-        MessageType = error_extra_proc_dynamics_in_clique_proc, 
+        MessageType = error_extra_proc_dynamics_in_clique_proc,
         String = "extra proc dynamnics for a clique proc are not currenty"
             ++ " handled."
     ;
@@ -362,10 +353,10 @@ message_type_to_string(MessageType) = Cord :-
                 warning_cannot_compute_cost_of_recursive_calls(ErrorStr),
             Template = "Cannot compute cost of recursive calls: %s"
         ;
-            MessageType = 
+            MessageType =
                 warning_cannot_compute_first_use_time(ErrorStr),
-            Template = "Cannot compute the production or consumption time of a"
-                ++ " variable: %s"
+            Template = "Cannot compute the production or consumption time "
+                ++ "of a variable: %s"
         ),
         string.format(Template, [s(ErrorStr)], String)
     ),
@@ -377,7 +368,7 @@ indent(N) = Indent :-
     ( N < 0 ->
         error("automatic_parallelism: Negative indent")
     ; N = 0 ->
-        Indent = empty 
+        Indent = empty
     ;
         Indent = snoc(indent(N - 1), "  ")
     ).
@@ -390,13 +381,13 @@ indent_size(N) = 2 * N.
 
 %----------------------------------------------------------------------------%
 
-:- mutable(verbosity_level_mut, int, default_verbosity_level, ground, 
+:- mutable(verbosity_level_mut, int, default_verbosity_level, ground,
     [attach_to_io_state, untrailed]).
 
 write_out_messages(Stream, Messages, !IO) :-
     cord.foldl_pred(write_out_message(Stream), Messages, !IO).
 
-:- pred write_out_message(output_stream::in, message::in, io::di, io::uo) 
+:- pred write_out_message(output_stream::in, message::in, io::di, io::uo)
     is det.
 
 write_out_message(Stream, Message, !IO) :-

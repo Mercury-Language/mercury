@@ -54,10 +54,10 @@
 
 :- type redirect
     --->    redirect(
-                csd_redirect :: array(call_site_dynamic_ptr),
-                             % index: call_site_dynamic_ptr
-                pd_redirect  :: array(proc_dynamic_ptr)
-                             % index: proc_dynamic_ptr
+                csd_redirect        :: array(call_site_dynamic_ptr),
+                                    % index: call_site_dynamic_ptr
+                pd_redirect         :: array(proc_dynamic_ptr)
+                                    % index: proc_dynamic_ptr
             ).
 
 canonicalize_cliques(!InitDeep) :-
@@ -262,7 +262,7 @@ merge_proc_dynamics(MergeInfo, Clique, CandidatePDPtrs, ChosenPDPtr,
         % special calls, but only before we added callcode to the
         % unify/compare routines of builtin types.
         % ChosenPDPtr = proc_dynamic_ptr(0),
-        error("merge_proc_dynamics: no valid pdptrs")
+        unexpected($module, $pred, "no valid pdptrs")
     ).
 
 :- pred merge_proc_dynamic_slots(merge_info::in, int::in,
@@ -496,7 +496,7 @@ lookup_normal_sites([RestArray | RestArrays], SlotNum, [CSDPtr | CSDPtrs]) :-
         Slot = slot_normal(CSDPtr)
     ;
         Slot = slot_multi(_, _),
-        error("lookup_normal_sites: found slot_multi")
+        unexpected($module, $pred, "found slot_multi")
     ),
     lookup_normal_sites(RestArrays, SlotNum, CSDPtrs).
 
@@ -508,7 +508,7 @@ lookup_multi_sites([RestArray | RestArrays], SlotNum, [CSDList | CSDLists]) :-
     array.lookup(RestArray, SlotNum, Slot),
     (
         Slot = slot_normal(_),
-        error("lookup_multi_sites: found normal")
+        unexpected($module, $pred, "found normal")
     ;
         Slot = slot_multi(_, CSDArray),
         array.to_list(CSDArray, CSDList)
@@ -531,7 +531,7 @@ record_pd_redirect(RestPDPtrs, PrimePDPtr, !Redirect) :-
     ( OldRedirect = proc_dynamic_ptr(0) ->
         record_pd_redirect_2(RestPDPtrs, PrimePDPtr, !Redirect)
     ;
-        error("record_pd_redirect: prime is redirected")
+        unexpected($module, $pred, "prime is redirected")
     ).
 
 :- pred record_pd_redirect_2(list(proc_dynamic_ptr)::in, proc_dynamic_ptr::in,
@@ -545,7 +545,7 @@ record_pd_redirect_2([RestPDPtr | RestPDPtrs], PrimePDPtr, !Redirect) :-
         set_pd_redirect(u(ProcRedirect0), RestPDPtr, PrimePDPtr,
             ProcRedirect)
     ;
-        error("record_pd_redirect_2: already redirected")
+        unexpected($module, $pred, "already redirected")
     ),
     !:Redirect = !.Redirect ^ pd_redirect := ProcRedirect,
     record_pd_redirect_2(RestPDPtrs, PrimePDPtr, !Redirect).
@@ -566,7 +566,7 @@ record_csd_redirect(RestCSDPtrs, PrimeCSDPtr, !Redirect) :-
     ( OldRedirect = call_site_dynamic_ptr(0) ->
         record_csd_redirect_2(RestCSDPtrs, PrimeCSDPtr, !Redirect)
     ;
-        error("record_pd_redirect: prime is redirected")
+        unexpected($module, $pred, "prime is redirected")
     ).
 
 :- pred record_csd_redirect_2(list(call_site_dynamic_ptr)::in,
@@ -580,7 +580,7 @@ record_csd_redirect_2([RestCSDPtr | RestCSDPtrs], PrimeCSDPtr, !Redirect) :-
         set_csd_redirect(u(CallSiteRedirect0), RestCSDPtr, PrimeCSDPtr,
             CallSiteRedirect)
     ;
-        error("record_csd_redirect_2: already redirected")
+        unexpected($module, $pred, "already redirected")
     ),
     !:Redirect = !.Redirect ^ csd_redirect := CallSiteRedirect,
     record_csd_redirect_2(RestCSDPtrs, PrimeCSDPtr, !Redirect).
@@ -851,7 +851,7 @@ do_merge_profiles(BaseInitDeep, OtherInitDeeps, MergedInitDeep) :-
     extract_num_callseqs(BaseInitDeep, BaseNumCallSeqs),
     list.map(extract_num_callseqs, OtherInitDeeps, OtherNumCallSeqs),
     list.foldl(int_add, OtherNumCallSeqs, BaseNumCallSeqs, ConcatNumCallSeqs),
-    
+
     % The program names are not checked. The new profile is named after the
     % base profile.
     BaseProgramName = BaseInitDeep ^ init_profile_stats ^ prs_program_name,
@@ -862,7 +862,7 @@ do_merge_profiles(BaseInitDeep, OtherInitDeeps, MergedInitDeep) :-
     ConcatFlags = BaseFlags ^ df_canonical_flag := is_canonical,
     ConcatProfileStats = profile_stats(BaseProgramName,
         ConcatMaxCSD, BaseMaxCSS, ConcatMaxPD, BaseMaxPS, ConcatNumCallSeqs,
-        BaseTicksPerSec, InstrumentQuanta, UserQuanta, ConcatFlags), 
+        BaseTicksPerSec, InstrumentQuanta, UserQuanta, ConcatFlags),
     % The root part is a temporary lie.
     MergedInitDeep = initial_deep(ConcatProfileStats,
         BaseInitDeep ^ init_root,

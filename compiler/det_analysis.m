@@ -122,7 +122,6 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
-:- import_module libs.compiler_util.
 :- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
@@ -134,6 +133,7 @@
 :- import_module io.
 :- import_module map.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term.

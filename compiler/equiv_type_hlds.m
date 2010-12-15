@@ -41,7 +41,6 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
-:- import_module libs.compiler_util.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.prog_data.
@@ -54,6 +53,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module svmap.
 :- import_module svset.

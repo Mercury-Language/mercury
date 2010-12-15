@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2008 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -52,7 +52,7 @@
 make_pipe_cmd(PipeName) = Cmd :-
     mkfifo_cmd(CmdName),
     ( CmdName = "" ->
-        error("make_pipe_cmd: do not know what command to use")
+        unexpected($module, $pred, "do not know what command to use")
     ;
         string.format("%s %s", [s(CmdName), s(PipeName)], Cmd)
     ).
@@ -102,24 +102,27 @@ server_name_2(ServerName, !IO) :-
                     ->
                         ServerName = ServerNamePrime
                     ;
-                        error("malformed server name")
+                        unexpected($module, $pred, "malformed server name")
                     )
                 ;
                     TmpReadRes = error(_, _),
-                    error("cannot read server's name")
+                    unexpected($module, $pred, "cannot read server's name")
                 ),
                 io.close_input(TmpStream, !IO)
             ;
                 TmpRes = error(_),
-                error("cannot open file to find the server's name")
+                unexpected($module, $pred,
+                    "cannot open file to find the server's name")
             ),
             io.remove_file(TmpFile, _, !IO)
         ;
-            error("cannot execute cmd to find the server's name")
+            unexpected($module, $pred,
+                "cannot execute cmd to find the server's name")
         )
     ;
         Res1 = error(_),
-        error("cannot execute cmd to find the server's name")
+        unexpected($module, $pred,
+            "cannot execute cmd to find the server's name")
     ).
 
 :- pred maybe_server_port(maybe(string)::out, io::di, io::uo) is det.

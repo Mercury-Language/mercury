@@ -113,12 +113,11 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
-:- import_module libs.
-:- import_module libs.compiler_util.
 :- import_module transform_hlds.rbmm.points_to_graph.
 
 :- import_module bool.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module svmap.
 :- import_module svset.

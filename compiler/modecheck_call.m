@@ -88,14 +88,13 @@
 :- import_module check_hlds.modes.
 :- import_module check_hlds.unify_proc.
 :- import_module hlds.instmap.
-:- import_module libs.
-:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
 :- import_module map.
+:- import_module require.
 :- import_module set.
 :- import_module term.
 

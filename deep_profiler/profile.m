@@ -205,28 +205,28 @@
     --->    proc_static(
                 % procedure ID
                 ps_id                       :: string_proc_label,
-                
+
                 % declaring module
                 ps_decl_module              :: string,
-                
+
                 % unqualified refined id
                 ps_uq_refined_id            :: string,
-                
+
                 % qualified refined id
                 ps_q_refined_id             :: string,
-                
+
                 % raw procedure id
                 ps_raw_id                   :: string,
-                
+
                 % file name of proc
                 ps_file_name                :: string,
-                
+
                 % line number of proc
                 ps_line_number              :: int,
-                
+
                 % is in interface?
                 ps_in_interface             :: bool,
-                
+
                 ps_sites                    :: array(call_site_static_ptr),
                 ps_coverage_point_infos     :: array(coverage_point_info),
                 ps_maybe_coverage_points    :: maybe(array(int)),
@@ -462,7 +462,7 @@
     array(inherit_prof_info)::array_di, array(inherit_prof_info)::array_uo)
     is det.
 :- pred update_ps_coverage(proc_static_ptr::in, static_coverage_info::in,
-    array(static_coverage_info)::array_di, 
+    array(static_coverage_info)::array_di,
     array(static_coverage_info)::array_uo) is det.
 
 :- pred deep_update_csd_desc(call_site_dynamic_ptr::in, inherit_prof_info::in,
@@ -1055,7 +1055,7 @@ root_desc_info(Deep) = RootDesc :-
 
 root_own_info(Deep) = RootOwn :-
     deep_lookup_pd_own(Deep, Deep ^ root, RootOwn).
-    
+
 %-----------------------------------------------------------------------------%
 
 deep_get_progrep_det(Deep, ProgRep) :-
@@ -1064,7 +1064,7 @@ deep_get_progrep_det(Deep, ProgRep) :-
         MaybeProgRep = ok(ProgRep)
     ;
         MaybeProgRep = error(Error),
-        error(this_file ++ Error)
+        unexpected($module, $pred, Error)
     ).
 
 deep_get_maybe_progrep(Deep, MaybeProgRep) :-
@@ -1081,12 +1081,6 @@ deep_get_maybe_progrep(Deep, MaybeProgRep) :-
         MaybeProgRep0 = yes(ok(ProgRep)),
         MaybeProgRep = ok(ProgRep)
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "profile.m: ".
 
 %-----------------------------------------------------------------------------%
 :- end_module profile.

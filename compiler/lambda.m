@@ -92,7 +92,6 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
@@ -109,6 +108,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module term.
 :- import_module varset.

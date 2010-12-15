@@ -175,7 +175,6 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.special_pred.
-:- import_module libs.compiler_util.
 :- import_module libs.trace_params.
 :- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module ll_backend.llds_out.llds_out_data.
@@ -188,6 +187,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module pair.
+:- import_module require.
 :- import_module string.
 :- import_module varset.
 

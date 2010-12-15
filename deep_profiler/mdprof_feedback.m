@@ -9,10 +9,11 @@
 % File: mdprof_feedback.m.
 % Author: tannier, pbone.
 %
-% This module contains the code for writing to a file the CSSs whose CSDs'
+% This module contains the code for writing to a file the CSSs whose CSD's
 % mean/median call sequence counts (own and desc) exceed the given threshold.
 %
-% The generated file will then be used by the compiler for implicit parallelism.
+% The generated file will then be used by the compiler for
+% implicit parallelism.
 %
 %-----------------------------------------------------------------------------%
 
@@ -181,24 +182,33 @@ create_feedback_report(feedback_data_candidate_parallel_conjunctions(
         ContextWakeupDelay, CliqueThreshold, CallSiteThreshold,
         ParalleliseDepConjs, BestParAlgorithm),
     best_par_algorithm_string(BestParAlgorithm, BestParAlgorithmStr),
-    ReportHeader = singleton(format("  Candidate Parallel Conjunctions:\n" ++
-            "    Desired parallelism: %f\n" ++
-            "    Intermodule var use: %s\n" ++
-            "    Sparking cost: %d\n" ++
-            "    Sparking delay: %d\n" ++
-            "    Future signal cost: %d\n" ++
-            "    Future wait cost: %d\n" ++
-            "    Context wakeup delay: %d\n" ++
-            "    Clique threshold: %d\n" ++
-            "    Call site threshold: %d\n" ++
-            "    Parallelise dependant conjunctions: %s\n" ++
-            "    BestParallelisationAlgorithm: %s\n" ++
-            "    Number of Parallel Conjunctions: %d\n" ++
-            "    Parallel Conjunctions:\n\n",
-        [f(DesiredParallelism), s(string(IntermoduleVarUse)), i(SparkingCost),
-         i(SparkingDelay), i(SignalCost), i(WaitCost), i(ContextWakeupDelay),
-         i(CliqueThreshold), i(CallSiteThreshold), s(ParalleliseDepConjsStr),
-         s(BestParAlgorithmStr), i(NumConjs)])),
+    ReportHeader = singleton(format(
+        "  Candidate Parallel Conjunctions:\n" ++
+        "    Desired parallelism: %f\n" ++
+        "    Intermodule var use: %s\n" ++
+        "    Sparking cost: %d\n" ++
+        "    Sparking delay: %d\n" ++
+        "    Future signal cost: %d\n" ++
+        "    Future wait cost: %d\n" ++
+        "    Context wakeup delay: %d\n" ++
+        "    Clique threshold: %d\n" ++
+        "    Call site threshold: %d\n" ++
+        "    Parallelise dependant conjunctions: %s\n" ++
+        "    BestParallelisationAlgorithm: %s\n" ++
+        "    Number of Parallel Conjunctions: %d\n" ++
+        "    Parallel Conjunctions:\n\n",
+        [f(DesiredParallelism),
+         s(string(IntermoduleVarUse)),
+         i(SparkingCost),
+         i(SparkingDelay),
+         i(SignalCost),
+         i(WaitCost),
+         i(ContextWakeupDelay),
+         i(CliqueThreshold),
+         i(CallSiteThreshold),
+         s(ParalleliseDepConjsStr),
+         s(BestParAlgorithmStr),
+         i(NumConjs)])),
     (
         ParalleliseDepConjs = parallelise_dep_conjs_overlap,
         ParalleliseDepConjsStr = "yes, use overlap calculation"
@@ -264,7 +274,7 @@ help_message =
                 call sequence counts.
     --implicit-parallelism-sparking-delay <value>
                 The time taken from the time a spark is created until the spark
-                is executed by another processor assuming that there is a free
+                is executed by another processor, assuming that there is a free
                 processor.
     --implicit-parallelism-future-signal-cost <value>
                 The cost of the signal() call for the producer of a shared
@@ -284,25 +294,25 @@ help_message =
                 The cost of a call site to be considered for parallelism
                 against another call site.
     --implicit-parallelism-dependant-conjunctions
-                Advise the compiler to parallelism dependant conjunctions.
+                Advise the compiler to parallelise dependant conjunctions.
                 This will become the default once the implementation is
                 complete.
-    --implicit-parallelism-dependant-conjunctions-algorithm <option>
+    --implicit-parallelism-dependant-conjunctions-algorithm <alg>
                 Choose the algorithm that is used to estimate the speedup for
-                dependant calculations.  The options are:
+                dependant calculations.  The algorithms are:
                     overlap: Compute the 'overlap' between dependant
                       conjunctions.
                     num_vars: Use the number of shared variables as a proxy for
                       the amount of overlap available.
                     naive: Ignore dependencies.
                 The default is overlap.
-    --implicit-parallelism-best-parallelisation-algorithm <option>
+    --implicit-parallelism-best-parallelisation-algorithm <algorithm>
                 Select which algorithm to use to find the best way to
-                parallelise a conjunction.  The options are:
+                parallelise a conjunction.  The algorithms are:
                     greedy: A greedy algorithm with a linear time complexity.
                     complete: A complete algorithm with a branch and bound
-                      search, this can be slow for problems larger then 50
-                      conjuncts, it has an exponential xomplexity.
+                      search. This can be slow for problems larger than 50
+                      conjuncts, since it has an exponential complexity.
                     complete-size(N): As above exept that it takes a single
                       parameter, N.  A conjunction has more than N conjuncts
                       then the greedy algorithm will be used.
@@ -422,25 +432,32 @@ short('r',  report).
 
 :- pred long(string::in, option::out) is semidet.
 
-long("help",                                help).
-long("verbosity",                           verbosity).
-long("version",                             version).
-long("debug-read-profile",                  debug_read_profile).
-long("report",                              report).
-
-long("calls-above-threshold-sorted",        calls_above_threshold_sorted).
+long("help",
+    help).
+long("verbosity",
+    verbosity).
+long("version",
+    version).
+long("debug-read-profile",
+    debug_read_profile).
+long("report",
+    report).
+long("calls-above-threshold-sorted",
+    calls_above_threshold_sorted).
 long("calls-above-threshold-sorted-measure",
     calls_above_threshold_sorted_measure).
-
-long("candidate-parallel-conjunctions",     candidate_parallel_conjunctions).
-
-long("implicit-parallelism",                implicit_parallelism).
-
-long("desired-parallelism",                 desired_parallelism).
+long("candidate-parallel-conjunctions",
+    candidate_parallel_conjunctions).
+long("implicit-parallelism",
+    implicit_parallelism).
+long("desired-parallelism",
+    desired_parallelism).
 long("implicit-parallelism-intermodule-var-use",
     implicit_parallelism_intermodule_var_use).
-long("implicit-parallelism-sparking-cost",  implicit_parallelism_sparking_cost).
-long("implicit-parallelism-sparking-delay", implicit_parallelism_sparking_delay).
+long("implicit-parallelism-sparking-cost",
+    implicit_parallelism_sparking_cost).
+long("implicit-parallelism-sparking-delay",
+    implicit_parallelism_sparking_delay).
 long("implicit-parallelism-future-signal-cost",
     implicit_parallelism_future_signal_cost).
 long("implicit-parallelism-future-wait-cost",
@@ -660,8 +677,7 @@ check_options(Options0, RequestedFeedbackInfo) :-
     parse_result(best_par_algorithm)::out) is det.
 
 parse_best_par_algorithm(String, Result) :-
-    promise_equivalent_solutions [Result]
-    (
+    promise_equivalent_solutions [Result] (
         parse(String, best_par_algorithm_parser, Result)
     ).
 
@@ -770,12 +786,6 @@ process_deep_to_feedback(RequestedFeedbackInfo, Deep, Messages, !Feedback) :-
         MaybeCandidateParallelConjunctionsOpts = no,
         Messages = cord.empty
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "mdprof_feedback: ".
 
 %-----------------------------------------------------------------------------%
 :- end_module mdprof_feedback.

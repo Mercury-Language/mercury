@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -72,13 +72,13 @@
 
 :- import_module check_hlds.mode_util.
 :- import_module hlds.instmap.
-:- import_module libs.compiler_util.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_util.
 
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module term.
 :- import_module varset.

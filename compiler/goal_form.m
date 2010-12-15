@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2009 The University of Melbourne.
+% Copyright (C) 2002-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -186,7 +186,6 @@
 
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
-:- import_module libs.compiler_util.
 :- import_module transform_hlds.exception_analysis.
 :- import_module transform_hlds.term_constr_main.
 
@@ -195,6 +194,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 
 %-----------------------------------------------------------------------------%
 

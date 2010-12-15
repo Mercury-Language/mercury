@@ -81,7 +81,6 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
 :- import_module libs.options.
 :- import_module make.                      % undesirable dependency
 :- import_module parse_tree.file_names.
@@ -97,8 +96,9 @@
 :- import_module dir.
 :- import_module library.
 :- import_module map.
-:- import_module string.
 :- import_module pair.
+:- import_module require.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

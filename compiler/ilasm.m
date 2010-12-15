@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007, 2009 The University of Melbourne.
+% Copyright (C) 1999-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -343,7 +343,6 @@
 :- implementation.
 
 :- import_module backend_libs.c_util. % for output_float_literal
-:- import_module libs.compiler_util.
 :- import_module libs.options.
 
 :- import_module char.
@@ -351,6 +350,7 @@
 :- import_module int.
 :- import_module pair.
 :- import_module pprint.
+:- import_module require.
 :- import_module string.
 :- import_module term_io.
 :- import_module varset.

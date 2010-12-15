@@ -207,7 +207,6 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_module.
 :- import_module hlds.hlds_out.hlds_out_util.
-:- import_module libs.compiler_util.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -223,6 +222,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module pair.
+:- import_module require.
 :- import_module set_tree234.
 :- import_module string.
 :- import_module varset.

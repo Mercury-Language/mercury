@@ -47,19 +47,24 @@
 
 :- implementation.
 
+:- import_module backend_libs.
+:- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.inst_match.
+:- import_module check_hlds.mode_errors.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_rtti.
-:- import_module libs.compiler_util.
+:- import_module hlds.special_pred.
 :- import_module libs.options.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
 :- import_module int.
+:- import_module require.
 :- import_module string.
 :- import_module term.
 :- import_module unit.
@@ -2215,9 +2220,6 @@ attribute_list_to_attributes(Attributes, Attributes).
 
 :- implementation.
 
-:- import_module check_hlds.mode_errors.
-:- import_module mdbcomp.program_representation.
-
 :- type proc_info
     --->    proc_info(
                 % The context of the `:- mode' decl (or the context of the
@@ -3113,10 +3115,6 @@ pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
 :- func builtin_state(module_info, pred_id, pred_id, proc_id) = builtin_state.
 
 :- implementation.
-
-:- import_module backend_libs.
-:- import_module backend_libs.builtin_ops.
-:- import_module hlds.special_pred.
 
 pred_info_is_builtin(PredInfo) :-
     ModuleName = pred_info_module(PredInfo),

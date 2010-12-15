@@ -22,7 +22,7 @@
 :- import_module report.
 
 % XXX: This include should be removed or replaced.  Some data structures
-% such as preferences are currently defined in query, they should be moved
+% such as preferences are currently defined in query; they should be moved
 % into a different module so that this module doesn't need to include
 % the whole of query.
 :- import_module query.
@@ -165,7 +165,8 @@ report_to_display(Deep, Prefs, Report) = Display :-
         Report = report_proc_callers(MaybeProcCallersReport),
         (
             MaybeProcCallersReport = ok(ProcCallersReport),
-            display_report_proc_callers(Deep, Prefs, ProcCallersReport, Display)
+            display_report_proc_callers(Deep, Prefs, ProcCallersReport,
+                Display)
         ;
             MaybeProcCallersReport = error(Msg),
             Display = display(no, [display_heading(Msg)])
@@ -222,7 +223,8 @@ report_to_display(Deep, Prefs, Report) = Display :-
         Report = report_call_site_dynamic_var_use(MaybeVarUseInfo),
         (
             MaybeVarUseInfo = ok(VarUseInfo),
-            display_report_call_site_dynamic_var_use(Prefs, VarUseInfo, Display)
+            display_report_call_site_dynamic_var_use(Prefs, VarUseInfo,
+                Display)
         ;
             MaybeVarUseInfo = error(Msg),
             Display = display(no, [display_heading(Msg)])
@@ -263,7 +265,7 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
 
     (
         ShouldDisplayTimes = yes,
-    
+
         Top100SelfCmd = deep_cmd_top_procs(rank_range(1, 100),
             cost_time, self, overall),
         Top100SelfAndDescCmd = deep_cmd_top_procs(rank_range(1, 100),
@@ -277,7 +279,7 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
         ]
     ;
         ShouldDisplayTimes = no,
-        LinksTopProcsByLimitTime = [] 
+        LinksTopProcsByLimitTime = []
     ),
 
     TopLimitCallSeqsSelf = deep_cmd_top_procs(rank_range(1, 100),
@@ -352,7 +354,7 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
         link_base(WordsAbove2Megawords, yes(Prefs),
             "Procedures above 2M words threshold: words, self+descendants.")
     ],
-    
+
     LinkCmds = LinksExploration ++
         LinksTopProcsByLimitTime ++ LinksTopProcsByLimit ++
         LinksTopProcsByPercentTime ++ LinksTopProcsByPercent,
@@ -365,15 +367,16 @@ display_report_menu(Deep, Prefs, MenuReport, Display) :-
     % Produce the developer-only options list.
     %
     RecursionTypeFrequenciesCmd = deep_cmd_recursion_types_frequency,
-    
+
     LinksDeveloperCmds = [
         link_base(RecursionTypeFrequenciesCmd, yes(Prefs),
             "Frequencies of different types of recursion used in the program.")
     ],
     list.map(make_link, LinksDeveloperCmds, DeveloperLinksList),
-    DeveloperLinks = display_developer(display_list(list_class_vertical_bullets,
-        yes("Options that are only useful to Mercury developers"), 
-        DeveloperLinksList)),
+    DeveloperLinks = display_developer(
+        display_list(list_class_vertical_bullets,
+            yes("Options that are only useful to Mercury developers"),
+            DeveloperLinksList)),
 
     % Display the table section of the report.
     ProfilingStatistics =
@@ -639,7 +642,7 @@ clique_call_site_to_rows(MaybeCurModuleName, ModuleQual, Prefs,
             Rows = [Row]
         ;
             CalleePerfs = [_, _ | _],
-            error("clique_call_site_to_rows: more than one callee at normal")
+            unexpected($module, $pred, "more than one callee at normal")
         )
     ;
         (
@@ -705,7 +708,7 @@ clique_call_site_callee_to_row(MaybeCurModuleName, ModuleQual, Prefs,
     clique_recursion_report::in, display::out) is det.
 
 display_report_clique_recursion(Prefs, CliqueRecursionReport, Display) :-
-    CliqueRecursionReport = clique_recursion_report(CliquePtr, RecursionType, 
+    CliqueRecursionReport = clique_recursion_report(CliquePtr, RecursionType,
         _NumProcs),
     Cmd = deep_cmd_clique_recursive_costs(CliquePtr),
     CliquePtr = clique_ptr(CliqueNum),
@@ -714,14 +717,14 @@ display_report_clique_recursion(Prefs, CliqueRecursionReport, Display) :-
 
     display_recursion_type(RecursionType, DisplayRecursionType),
 
-    CliqueReportsControls = clique_reports_controls(Prefs, CliquePtr, Cmd), 
-    
+    CliqueReportsControls = clique_reports_controls(Prefs, CliquePtr, Cmd),
+
     MenuRestartQuitControls = cmds_menu_restart_quit(yes(Prefs)),
     Display = display(yes(Title), DisplayRecursionType ++
         [display_paragraph_break, CliqueReportsControls,
          display_paragraph_break, MenuRestartQuitControls]).
 
-:- pred display_recursion_type(recursion_type::in, list(display_item)::out) 
+:- pred display_recursion_type(recursion_type::in, list(display_item)::out)
     is det.
 
 display_recursion_type(RecursionType, Items) :-
@@ -731,7 +734,7 @@ display_recursion_type(RecursionType, Items) :-
             Text = "Clique is non-recursive"
         ;
             RecursionType = rt_mutual_recursion(NumProcs),
-            Text = format("Mutual recursion between %d procedures", 
+            Text = format("Mutual recursion between %d procedures",
                 [i(NumProcs)])
         ),
         Items = [display_text(Text)]
@@ -742,21 +745,21 @@ display_recursion_type(RecursionType, Items) :-
             yes("Unknown, error(s) occured"), ErrorItems)]
     ;
         (
-            RecursionType = rt_single(BaseLevel, RecLevel, AvgDepth, 
+            RecursionType = rt_single(BaseLevel, RecLevel, AvgDepth,
                 AvgRecCost, AnyRecCost),
             RowData = [
-                {"Base case", BaseLevel}, 
+                {"Base case", BaseLevel},
                 {"Recursive case", RecLevel}],
             Text = "Single-recursion:",
 
             MaxDepthI = round_to_int(AvgDepth),
-            ExtraTableRows0 = 
-                [{"Average recursion depth:", AvgDepth}, 
-                 {"Average recursive call cost (excluding the call it's self):",
+            ExtraTableRows0 =
+                [{"Average recursion depth:", AvgDepth},
+                 {"Average recursive call cost (excluding the call itself):",
                     AvgRecCost}] ++
                 map(
                     (func(Level) =
-                        {format("Cost at depth %d:", [i(Level)]), 
+                        {string.format("Cost at depth %d:", [i(Level)]),
                             AnyRecCost(Level)}),
                     [0, 1, 2, round_to_int(AvgDepth / 2.0),
                      MaxDepthI - 2, MaxDepthI - 1, MaxDepthI]),
@@ -771,42 +774,43 @@ display_recursion_type(RecursionType, Items) :-
             Text = "Double-recursion (Probably Divide and Conquer):",
 
             ExtraTableRows = []
-        ; 
+        ;
             RecursionType = rt_other(Levels),
             RowData = map((func(Level) = {Label, Level} :-
-                    Label = format("Case for %d recursive calls", 
+                    Label = string.format("Case for %d recursive calls",
                         [i(Level ^ rlr_level)])
-                ), Levels), 
+                ), Levels),
             Text = "Unknown recursion type:",
 
             ExtraTableRows = []
         ),
         Rows = map(make_recursion_table_row, RowData),
-            
-        ExtraTable = display_table(table(table_class_do_not_box, 2, no, 
+
+        ExtraTable = display_table(table(table_class_do_not_box, 2, no,
             ExtraTableRows)),
 
         Header = table_header(map(
-            (func({Name, Class}) = 
+            (func({Name, Class}) =
                 table_header_group(table_header_group_single(td_s(Name)),
                     Class, column_do_not_colour)
-            ), 
+            ),
             [{"Recursion type", table_column_class_field_name},
              {"Exec count", table_column_class_number},
-             {"Non recursive calls per-call cost", table_column_class_callseqs},
-             {"Recursive calls per-call cost (ex children)", 
+             {"Non recursive calls per-call cost",
+                table_column_class_callseqs},
+             {"Recursive calls per-call cost (ex children)",
                 table_column_class_callseqs}])),
-        Table = display_table(table(table_class_box_if_pref, 4, yes(Header), 
+        Table = display_table(table(table_class_box_if_pref, 4, yes(Header),
             Rows)),
         Description = display_text(Text),
-        Items = [Description, 
+        Items = [Description,
             display_paragraph_break, Table,
             display_paragraph_break, ExtraTable]
     ).
 
 :- func make_recursion_table_row({string, recursion_level_report}) = table_row.
 
-make_recursion_table_row({Label, Report}) = 
+make_recursion_table_row({Label, Report}) =
     table_row([table_cell(td_s(Label)),
         table_cell(td_i(Report ^ rlr_calls)),
         table_cell(td_f(Report ^ rlr_non_rec_calls_cost)),
@@ -822,8 +826,9 @@ display_report_recursion_types_frequency(Prefs, Report, Display) :-
     Title = "Frequencies of recognized recursion types",
 
     % Build the table.
-    RecursionTypeLink = deep_link(Cmd, yes(Prefs ^ pref_criteria := by_context),
-        attr_str([], "Recursion Type"), link_class_link), 
+    RecursionTypeLink = deep_link(Cmd,
+        yes(Prefs ^ pref_criteria := by_context),
+        attr_str([], "Recursion Type"), link_class_link),
     RecursionTypeHeaderGroup = make_single_table_header_group(
         td_l(RecursionTypeLink), table_column_class_no_class,
         column_do_not_colour),
@@ -833,7 +838,7 @@ display_report_recursion_types_frequency(Prefs, Report, Display) :-
     PercentageHeaderGroup = make_single_table_header_group(
         td_s("Percentage"), table_column_class_no_class,
         column_do_not_colour),
-    perf_table_header(total_columns_meaningful, Prefs, 
+    perf_table_header(total_columns_meaningful, Prefs,
         override_order_criteria_header_data(Cmd), PerfHeaderGroups),
     AllHeaderGroups = [RecursionTypeHeaderGroup, FreqHeaderGroup,
         PercentageHeaderGroup] ++ PerfHeaderGroups,
@@ -841,7 +846,8 @@ display_report_recursion_types_frequency(Prefs, Report, Display) :-
 
     Histogram1 = map.to_assoc_list(Histogram0),
     sort_recursion_types_by_preferences(Prefs, Histogram1, Histogram),
-    map(display_report_rec_type_freq_rows(Prefs, NumColumns), Histogram, Rowss),
+    list.map(display_report_rec_type_freq_rows(Prefs, NumColumns),
+        Histogram, Rowss),
     list.condense(Rowss, Rows),
     RecursionTypesTable = display_table(table(table_class_box_if_pref,
         NumColumns, yes(Header), Rows)),
@@ -850,7 +856,7 @@ display_report_recursion_types_frequency(Prefs, Report, Display) :-
     FieldControls = field_controls(Prefs, Cmd),
     FormatControls = format_controls(Prefs, Cmd),
     MenuRestartQuitControls = cmds_menu_restart_quit(yes(Prefs)),
-    
+
     Display = display(yes(Title), [RecursionTypesTable,
         display_paragraph_break, ModuleQualControls,
         display_paragraph_break, FieldControls,
@@ -871,7 +877,8 @@ sort_recursion_types_by_preferences(Prefs, !RecursionTypes) :-
         list.sort(compare_recursion_type_row_by_rec_type, !RecursionTypes)
     ;
         OrderCriteria = by_cost(CostKind, InclDesc, Scope),
-        list.sort(compare_rec_type_row_datas_by_cost(CostKind, InclDesc, Scope),
+        list.sort(
+            compare_rec_type_row_datas_by_cost(CostKind, InclDesc, Scope),
             !RecursionTypes),
         % We want the most expensive rows to appear first.
         list.reverse(!RecursionTypes)
@@ -879,7 +886,7 @@ sort_recursion_types_by_preferences(Prefs, !RecursionTypes) :-
 
 :- pred sort_recursion_type_procs_by_preferences(preferences::in,
     list(recursion_type_proc_freq_data)::in,
-    list(recursion_type_proc_freq_data)::out) is det. 
+    list(recursion_type_proc_freq_data)::out) is det.
 
 sort_recursion_type_procs_by_preferences(Prefs, !RecursionTypeProcs) :-
     OrderCriteria = Prefs ^ pref_criteria,
@@ -907,8 +914,6 @@ sort_recursion_type_procs_by_preferences(Prefs, !RecursionTypeProcs) :-
 compare_recursion_type_row_by_rec_type(RTA - _, RTB - _, Result) :-
     compare(Result, RTA, RTB).
 
-    % This is reversed so that entries with larger frequencies are listed first.
-    %
 :- pred compare_recursion_proc_row_by_frequency_rev(
     recursion_type_proc_freq_data::in, recursion_type_proc_freq_data::in,
     comparison_result::out) is det.
@@ -916,6 +921,7 @@ compare_recursion_type_row_by_rec_type(RTA - _, RTB - _, Result) :-
 compare_recursion_proc_row_by_frequency_rev(
         recursion_type_proc_freq_data(FreqA, _, _),
         recursion_type_proc_freq_data(FreqB, _, _), Result) :-
+    % The reverse is so that entries with larger frequencies are listed first.
     compare(Result, FreqB, FreqA).
 
 :- pred compare_rec_type_row_datas_by_cost(cost_kind::in,
@@ -924,14 +930,14 @@ compare_recursion_proc_row_by_frequency_rev(
     pair(T, recursion_type_freq_data)::in,
     comparison_result::out) is det.
 
-compare_rec_type_row_datas_by_cost(CostKind, IncDesc, Scope, _ - DataA, 
-        _ - DataB, Result) :- 
+compare_rec_type_row_datas_by_cost(CostKind, IncDesc, Scope, _ - DataA,
+        _ - DataB, Result) :-
     MaybePerfA = DataA ^ rtfd_maybe_summary,
     MaybePerfB = DataB ^ rtfd_maybe_summary,
     (
         MaybePerfA = yes(PerfA),
         MaybePerfB = yes(PerfB),
-        compare_perf_row_datas_by_cost(CostKind, IncDesc, Scope, 
+        compare_perf_row_datas_by_cost(CostKind, IncDesc, Scope,
             PerfA, PerfB, Result)
     ;
         MaybePerfA = yes(_),
@@ -952,18 +958,18 @@ compare_rec_type_row_datas_by_cost(CostKind, IncDesc, Scope, _ - DataA,
     recursion_type_proc_freq_data::in, recursion_type_proc_freq_data::in,
     comparison_result::out) is det.
 
-compare_rec_proc_row_datas_by_cost(CostKind, InclDesc, Scope, 
+compare_rec_proc_row_datas_by_cost(CostKind, InclDesc, Scope,
         recursion_type_proc_freq_data(_, _, PerfA),
         recursion_type_proc_freq_data(_, _, PerfB), Result) :-
     compare_perf_row_datas_by_cost(CostKind, InclDesc, Scope, PerfA, PerfB,
         Result).
 
 :- pred display_report_rec_type_freq_rows(preferences::in, int::in,
-    pair(recursion_type_simple, recursion_type_freq_data)::in, 
+    pair(recursion_type_simple, recursion_type_freq_data)::in,
     list(table_row)::out) is det.
 
 display_report_rec_type_freq_rows(Prefs, NumColumns, Type - FreqData, Rows) :-
-    FreqData = recursion_type_freq_data(Frequency, Percent, MaybeSummary, 
+    FreqData = recursion_type_freq_data(Frequency, Percent, MaybeSummary,
         ProcsMap),
 
     % Make the header row.
@@ -974,7 +980,7 @@ display_report_rec_type_freq_rows(Prefs, NumColumns, Type - FreqData, Rows) :-
     (
         MaybeSummary = yes(Summary),
         perf_table_row(total_columns_meaningful, Prefs ^ pref_fields, Summary,
-            SummaryCells)  
+            SummaryCells)
     ;
         MaybeSummary = no,
         duplicate(NumColumns - 3, table_empty_cell, SummaryCells)
@@ -988,18 +994,18 @@ display_report_rec_type_freq_rows(Prefs, NumColumns, Type - FreqData, Rows) :-
     take_upto(Prefs ^ pref_proc_statics_per_rec_type, Procs1, Procs),
     map(display_report_rec_type_proc_rows(Prefs), Procs, ProcRows),
 
-    Rows = [HeaderRow | [Row | ProcRows ++ 
+    Rows = [HeaderRow | [Row | ProcRows ++
         [table_separator_row]]].
 
 :- pred display_report_rec_type_proc_rows(preferences::in,
     recursion_type_proc_freq_data::in, table_row::out) is det.
 
-display_report_rec_type_proc_rows(Prefs, 
+display_report_rec_type_proc_rows(Prefs,
         recursion_type_proc_freq_data(Freq, Percent, Summary), Row) :-
     perf_table_row(total_columns_meaningful, Prefs ^ pref_fields, Summary,
         SummaryCells),
     ProcDesc = Summary ^ perf_row_subject,
-    ProcCell = proc_desc_to_proc_name_cell(no, Prefs ^ pref_module_qual, Prefs, 
+    ProcCell = proc_desc_to_proc_name_cell(no, Prefs ^ pref_module_qual, Prefs,
         ProcDesc),
     Row = table_row([ProcCell, table_cell(td_i(Freq)),
         table_cell(td_p(Percent))] ++ SummaryCells).
@@ -1009,14 +1015,16 @@ display_report_rec_type_proc_rows(Prefs,
 
 display_report_recursion_type_simple(rts_not_recursive, "Not recursive").
 display_report_recursion_type_simple(rts_single, "Single-recursion").
-display_report_recursion_type_simple(rts_divide_and_conquer, "Divide and conquer").
+display_report_recursion_type_simple(rts_divide_and_conquer,
+        "Divide and conquer").
 display_report_recursion_type_simple(rts_mutual_recursion(NumProcs), String) :-
     format("Mutual recursion between %d procs", [i(NumProcs)], String).
 display_report_recursion_type_simple(rts_other(Levels), String) :-
     LevelsStr = join_list(", ", map(string, set.to_sorted_list(Levels))),
     format("Other recursion with levels: %s", [s(LevelsStr)], String).
-display_report_recursion_type_simple(rts_total_error_instances, "Total errors").
-display_report_recursion_type_simple(rts_error(Error), "Error: " ++ Error). 
+display_report_recursion_type_simple(rts_total_error_instances,
+        "Total errors").
+display_report_recursion_type_simple(rts_error(Error), "Error: " ++ Error).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2027,7 +2035,7 @@ display_report_procrep_coverage_info(Prefs, ProcrepCoverageReport, Display) :-
     % Print the coverage information for a goal, this is used by
     % print_proc_to_strings.
     %
-:- pred coverage_to_cord_string(var_table::in, coverage_info::in, 
+:- pred coverage_to_cord_string(var_table::in, coverage_info::in,
     cord(cord(string))::out) is det.
 
 coverage_to_cord_string(_, Coverage, singleton(singleton(String))) :-
@@ -2127,7 +2135,7 @@ display_report_proc_dynamic_dump(_Deep, Prefs, ProcDynamicDumpInfo, Display) :-
         list.map(format_coverage_point_row, CoveragePoints,
             CoveragePointsRows),
         CoveragePointsTableHeader = table_header([
-            table_header_group(table_header_group_single(td_s("Goal Path")), 
+            table_header_group(table_header_group_single(td_s("Goal Path")),
                 table_column_class_no_class, column_do_not_colour),
             table_header_group(table_header_group_single(td_s("Type")),
                 table_column_class_no_class, column_do_not_colour),
@@ -2137,7 +2145,8 @@ display_report_proc_dynamic_dump(_Deep, Prefs, ProcDynamicDumpInfo, Display) :-
             yes(CoveragePointsTableHeader), CoveragePointsRows),
         CoveragePointsTableItem = display_table(CoveragePointsTable),
 
-        CoveragePointsItems = [CoveragePointsTitleItem, CoveragePointsTableItem]
+        CoveragePointsItems =
+            [CoveragePointsTitleItem, CoveragePointsTableItem]
     ;
         MaybeCoveragePoints = no,
         CoveragePointsItems = []
@@ -2146,7 +2155,7 @@ display_report_proc_dynamic_dump(_Deep, Prefs, ProcDynamicDumpInfo, Display) :-
     make_link(link_base(deep_cmd_dynamic_procrep_coverage(PDPtr), yes(Prefs),
             "Dynamic coverage annotated procedure representation"),
         CoverageAnnotatedProcrepItem),
-    RelatedReportsList = display_list(list_class_horizontal_except_title, 
+    RelatedReportsList = display_list(list_class_horizontal_except_title,
         yes("Related reports:"), [CoverageAnnotatedProcrepItem]),
 
     Display = display(yes(Title),
@@ -2364,7 +2373,7 @@ display_report_call_site_dynamic_var_use(_Prefs, CSDVarUseInfo, Display) :-
                 {"Name", table_column_class_no_class},
                 {"Type", table_column_class_no_class},
                 {"Percent into proc", table_column_class_no_class},
-                {"Time into proc (Callseqs)", table_column_class_callseqs}])), 
+                {"Time into proc (Callseqs)", table_column_class_callseqs}])),
     Table = table(table_class_box_if_pref, 5, yes(Header), VarUseRows),
 
     Title = "Dump of var use info",
@@ -2376,7 +2385,7 @@ display_report_call_site_dynamic_var_use(_Prefs, CSDVarUseInfo, Display) :-
 format_var_uses([], _, []).
 format_var_uses([VarUse | VarUses], RowNum, [Row | Rows]) :-
     HeaderCell = table_cell(td_s(format("Argument: %i", [i(RowNum)]))),
-    VarUse = var_use_and_name(Name, 
+    VarUse = var_use_and_name(Name,
         var_use_info(CostUntilUse, ProcCost, UseType)),
     NameCell = table_cell(td_s(Name)),
     (
@@ -2438,6 +2447,7 @@ dummy_order_criteria_header_data(_, _, Label) = td_s(Label).
 %
 % Each pair of predicates should follow the exact same logic when selecting
 % what columns to display, and in what order.
+%
 
 :- type total_columns_meaning
     --->    total_columns_meaningful
@@ -2600,7 +2610,7 @@ perf_table_row_time(TotalsMeaningful, Fields, RowData, TimeCells) :-
                 MaybeTotal = yes(Total)
             ;
                 MaybeTotal = no,
-                error("perf_table_row_time: no total")
+                unexpected($module, $pred, "no total")
             ),
             TotalTicks =            Total ^ perf_row_ticks,
             TotalTime =             Total ^ perf_row_time,
@@ -2799,7 +2809,7 @@ perf_table_row_callseqs(TotalsMeaningful, Fields, RowData, CallSeqsCells) :-
                 MaybeTotal = yes(Total)
             ;
                 MaybeTotal = no,
-                error("perf_table_row_callseqs: no total")
+                unexpected($module, $pred, "no total")
             ),
             TotalCallSeqs =             Total ^ perf_row_callseqs,
             TotalCallSeqsPercent =      Total ^ perf_row_callseqs_percent,
@@ -2926,7 +2936,7 @@ perf_table_row_allocs(TotalsMeaningful, Fields, RowData, AllocCells) :-
                 MaybeTotal = yes(Total)
             ;
                 MaybeTotal = no,
-                error("perf_table_row_allocs: no total")
+                unexpected($module, $pred, "no total")
             ),
             TotalAllocs =               Total ^ perf_row_allocs,
             TotalAllocsPercent =        Total ^ perf_row_allocs_percent,
@@ -3053,7 +3063,7 @@ perf_table_row_memory(TotalsMeaningful, Fields, RowData, MemoryCells) :-
                 MaybeTotal = yes(Total)
             ;
                 MaybeTotal = no,
-                error("perf_table_row_memory: no total")
+                unexpected($module, $pred, "no total")
             ),
             TotalMem =              Total ^ perf_row_mem,
             TotalMemPerCall =       Total ^ perf_row_mem_percall,
@@ -3800,7 +3810,8 @@ set_box_tables(Box, !Prefs) :-
 % Controls for related procedure and clique reports.
 %
 
-:- func proc_reports_controls(preferences, proc_static_ptr, cmd) = display_item.
+:- func proc_reports_controls(preferences, proc_static_ptr, cmd)
+    = display_item.
 
 proc_reports_controls(Prefs, Proc, NotCmd) = ControlsItem :-
     solutions((pred(Control::out) is nondet :-
@@ -3825,10 +3836,11 @@ proc_reports_controls(Prefs, Proc, NotCmd) = ControlsItem :-
     ControlsItem = display_list(list_class_vertical_no_bullets,
         yes("Related procedure reports:"), ProcReportControls).
 
-:- func clique_reports_controls(preferences, clique_ptr, cmd) = display_item. 
+:- func clique_reports_controls(preferences, clique_ptr, cmd) = display_item.
 
 clique_reports_controls(Perfs, CliquePtr, NotCmd) = ControlsItem :-
-    solutions((pred(Control::out) is nondet :-
+    MakeControls =
+        ( pred(Control::out) is nondet :-
             (
                 Cmd = deep_cmd_clique(CliquePtr),
                 Label = "Clique",
@@ -3844,7 +3856,8 @@ clique_reports_controls(Perfs, CliquePtr, NotCmd) = ControlsItem :-
             ),
             Cmd \= NotCmd,
             make_control(yes(Perfs), Cmd, Label, Developer, Control)
-        ), CliqueReportControls),
+        ),
+    solutions(MakeControls, CliqueReportControls),
     ControlsItem = display_list(list_class_vertical_no_bullets,
         yes("Related clique reports:"), CliqueReportControls).
 
@@ -4167,17 +4180,17 @@ general_options_controls(Cmd, Prefs) = ControlsItem :-
     (
         DeveloperMode = developer_options_visible,
         DeveloperText = "Disable developer options",
-        DeveloperPrefs = 
+        DeveloperPrefs =
             Prefs ^ pref_developer_mode := developer_options_invisible
     ;
         DeveloperMode = developer_options_invisible,
         DeveloperText = "Enable developer options",
-        DeveloperPrefs = 
+        DeveloperPrefs =
             Prefs ^ pref_developer_mode := developer_options_visible
     ),
     DeveloperControl = display_link(deep_link(Cmd, yes(DeveloperPrefs),
         attr_str([], DeveloperText), link_class_control)),
-    List = [DeveloperControl], 
+    List = [DeveloperControl],
     ControlsItem = display_list(list_class_horizontal_except_title,
         yes("General options:"), List).
 
@@ -4883,8 +4896,8 @@ compare_module_name_rows_by_name(ModuleRowDataA, ModuleRowDataB, Result) :-
 %
 
 :- pred sort_clique_rows_by_preferences(preferences::in,
-    list(perf_row_data(clique_desc))::in, list(perf_row_data(clique_desc))::out)
-    is det.
+    list(perf_row_data(clique_desc))::in,
+    list(perf_row_data(clique_desc))::out) is det.
 
 sort_clique_rows_by_preferences(Prefs, !CliqueRowDatas) :-
     OrderCriteria = Prefs ^ pref_criteria,
@@ -5107,7 +5120,7 @@ compare_perf_row_datas_by_time(InclDesc, Scope, PerfA, PerfB, Result) :-
                 compare(Result, TimeA, TimeB)
             )
         ;
-            error("compare_perf_row_datas_by_cost: self_and_desc")
+            unexpected($module, $pred, "self_and_desc")
         )
     ).
 
@@ -5151,7 +5164,7 @@ compare_perf_row_datas_by_callseqs(InclDesc, Scope, PerfA, PerfB, Result) :-
                 compare(Result, CallSeqsA, CallSeqsB)
             )
         ;
-            error("compare_perf_row_datas_by_cost: self_and_desc")
+            unexpected($module, $pred, "self_and_desc")
         )
     ).
 
@@ -5195,7 +5208,7 @@ compare_perf_row_datas_by_allocs(InclDesc, Scope, PerfA, PerfB, Result) :-
                 compare(Result, AllocsA, AllocsB)
             )
         ;
-            error("compare_perf_row_datas_by_cost: self_and_desc")
+            unexpected($module, $pred, "self_and_desc")
         )
     ).
 
@@ -5239,7 +5252,7 @@ compare_perf_row_datas_by_words(InclDesc, Scope, PerfA, PerfB, Result) :-
                 compare_memory(MemoryA, MemoryB, Result)
             )
         ;
-            error("compare_perf_row_datas_by_cost: self_and_desc")
+            unexpected($module, $pred, "self_and_desc")
         )
     ).
 

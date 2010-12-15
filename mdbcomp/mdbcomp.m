@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2006 The University of Melbourne.
+% Copyright (C) 2003, 2005-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -22,7 +22,7 @@
 
 :- pred mdbcomp.version(string::out) is det.
 
-% If you add any modules here, you should update the lists in 
+% If you add any modules here, you should update the lists in
 % deep_profiler/Mmakefile and slice/Mmakefile.
 :- include_module feedback.
 :- include_module prim_data.

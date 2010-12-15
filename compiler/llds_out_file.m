@@ -1,7 +1,7 @@
 %----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -18,7 +18,6 @@
 :- module ll_backend.llds_out.llds_out_file.
 :- interface.
 
-% :- import_module hlds.hlds_llds.
 :- import_module libs.globals.
 :- import_module ll_backend.llds.
 
@@ -73,7 +72,6 @@
 :- import_module backend_libs.rtti.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module libs.compiler_util.
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module ll_backend.layout.
@@ -97,6 +95,7 @@
 :- import_module maybe.
 :- import_module multi_map.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module set_tree234.
 :- import_module string.

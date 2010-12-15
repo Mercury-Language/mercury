@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -45,13 +45,14 @@
     % is the slot in the fake reg array given by the argument.
     %
 :- type reg_locn
-	--->	actual(x86_64_reg)
-	;		virtual(int).		% Index into fake reg array.
+    --->    actual(x86_64_reg)
+    ;       virtual(int).       % Index into fake reg array.
 
     % Create an association list of lvals and reg_lcons. This is identical to 
     % the one defined in runtime/machdeps/x86_64_regs.h.
     %
-:- pred default_x86_64_reg_mapping(assoc_list(llds.lval, reg_locn)::out) is det. 
+:- pred default_x86_64_reg_mapping(assoc_list(llds.lval, reg_locn)::out)
+    is det. 
 
     % Create a reg_map given an association list of lvals and reg_locns.
     % Throws an exception if an l-value in the association list does not
@@ -89,15 +90,13 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
-
 :- import_module bool.
+:- import_module io.
 :- import_module list. 
 :- import_module map.
 :- import_module pair. 
+:- import_module require.
 :- import_module string. 
-
-:- import_module io.
 
 %----------------------------------------------------------------------------%
 % 
@@ -105,11 +104,12 @@
 %
 
 :- type reg_map
-	--->	reg_map(
-				scratch_reg_info        :: list(x86_64_reg), 
+    --->    reg_map(
                 % A list of unused scratch registers.
-				map(llds.lval, reg_locn)
-			    % Mapping lval to an actual or virtual register. 
+                scratch_reg_info        :: list(x86_64_reg), 
+
+                % Mapping lval to an actual or virtual register. 
+                lval_reg_map            :: map(llds.lval, reg_locn)
             ).
 
 %----------------------------------------------------------------------------%

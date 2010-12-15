@@ -332,12 +332,12 @@
 :- implementation.
 
 :- import_module check_hlds.mode_util.
-:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 
 :- import_module map.
 :- import_module pair.
+:- import_module require.
 :- import_module set_tree234.
 :- import_module string.
 :- import_module svmap.

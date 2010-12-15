@@ -135,7 +135,6 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.pred_table.
 :- import_module libs.
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.program_representation.
@@ -151,6 +150,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module solutions.
 :- import_module string.

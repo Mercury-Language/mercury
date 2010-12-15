@@ -53,7 +53,6 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_module.
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ml_backend.ml_code_util.
@@ -62,6 +61,7 @@
 :- import_module bool.
 :- import_module map.
 :- import_module pair.
+:- import_module require.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

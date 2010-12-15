@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997,2002-2007 The University of Melbourne.
+% Copyright (C) 1997,2002-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -88,12 +88,11 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
-
 :- import_module bool.
 :- import_module float.
 :- import_module int.
 :- import_module maybe.
+:- import_module require.
 :- import_module set.
 :- import_module solutions.
 :- import_module string.
@@ -104,15 +103,16 @@
 %-----------------------------------------------------------------------------%
 
 :- type lp_info
-    --->    lp(
-                varset  :: varset,
-                urs_map :: map(var, pair(var)),
-                            % Map from variables with URS to the
-                            % corresponding pair of variables that
-                            % represent that variable in the standard
-                            % form (x = x' - x'', x', x'' >= 0).
-                slack_vars :: list(var),      % slack variables
-                artificial_vars :: list(var)  % artificial variables
+    --->    lp_info(
+                lpi_varset                  :: varset,
+
+                % Map from variables with URS to the corresponding pair
+                % of variables that represent that variable in the standard
+                % form (x = x' - x'', x', x'' >= 0).
+                lpi_urs_map                 :: map(var, pair(var)),
+
+                lpi_slack_vars              :: list(var),
+                lpi_art_vars                :: list(var)
             ).
 
 %-----------------------------------------------------------------------------%
@@ -152,7 +152,7 @@ lp_solve_2(Eqns0, Dir, Obj0, Result, !Info, !IO) :-
     ),
     simplify_coeffs(Obj1, Obj2),
 
-    get_urs_vars(URS, !.Info, _),
+    get_urs_vars(!.Info, URS),
     expand_urs_vars(Obj2, URS, Obj),
     list.length(Eqns, Rows),
     collect_vars(Eqns, Obj, Vars),
@@ -160,7 +160,7 @@ lp_solve_2(Eqns0, Dir, Obj0, Result, !Info, !IO) :-
     list.length(VarList, Cols),
     map.init(VarNums0),
     number_vars(VarList, 0, VarNums0, VarNums),
-    get_art_vars(ArtVars, !Info),
+    get_art_vars(!.Info, ArtVars),
     some [!Tableau] (
         init_tableau(Rows, Cols, VarNums, URS, !:Tableau),
         insert_equations(Eqns, 1, Cols, VarNums, !Tableau),
@@ -287,7 +287,7 @@ standardize_equation(Eqn0, Eqn, !Info) :-
         new_slack_var(Var, !Info),
         Coeffs = [Var - 1.0 | Coeffs0],
         simplify_eq(eqn(Coeffs, (=<), Const0), Eqn1),
-        get_urs_vars(URS, !Info),
+        get_urs_vars(!.Info, URS),
         expand_urs_vars_e(Eqn1, URS, Eqn)
     ).
 
@@ -300,7 +300,7 @@ standardize_equation(Eqn0, Eqn, !Info) :-
         new_art_var(Var, !Info),
         Coeffs = [Var - 1.0 | Coeffs0],
         simplify_eq(eqn(Coeffs, (=<), Const0), Eqn1),
-        get_urs_vars(URS, !Info),
+        get_urs_vars(!.Info, URS),
         expand_urs_vars_e(Eqn1, URS, Eqn)
     ).
 
@@ -314,7 +314,7 @@ standardize_equation(Eqn0, Eqn, !Info) :-
         new_art_var(AVar, !Info),
         Coeffs = [SVar - (-1.0), AVar - (1.0) | Coeffs0],
         simplify_eq(eqn(Coeffs, (>=), Const0), Eqn1),
-        get_urs_vars(URS, !Info),
+        get_urs_vars(!.Info, URS),
         expand_urs_vars_e(Eqn1, URS, Eqn)
     ).
 
@@ -603,9 +603,7 @@ fix_basis_and_rem_cols([V | Vs], !Tableau) :-
         )
     ),
     solutions.aggregate(all_rows(!.Tableau), BasisAgg, [], Res),
-    (
-        Res = [1.0 - Row]
-    ->
+    ( Res = [1.0 - Row] ->
         PivGoal = (pred(Col1::out) is nondet :-
             all_cols(!.Tableau, Col1),
             Col \= Col1,
@@ -630,7 +628,8 @@ fix_basis_and_rem_cols([V | Vs], !Tableau) :-
 
 %-----------------------------------------------------------------------------%
 
-:- type cell ---> cell(int, int).
+:- type cell
+    --->    cell(int, int).
 
 :- pred pivot(int::in, int::in, tableau::in, tableau::out) is det.
 
@@ -686,15 +685,15 @@ row_op(Scale, From, To, !Tableau) :-
 %-----------------------------------------------------------------------------%
 
 :- type tableau
-    ---> tableau(
-        rows         :: int,
-        cols         :: int,
-        var_nums     :: map(var, int),
-        urs_vars     :: map(var, pair(var)),
-        shunned_rows :: list(int),
-        shunned_cols :: list(int),
-        cells        :: map(pair(int), float)
-    ).
+    --->    tableau(
+                rows         :: int,
+                cols         :: int,
+                var_nums     :: map(var, int),
+                urs_vars     :: map(var, pair(var)),
+                shunned_rows :: list(int),
+                shunned_cols :: list(int),
+                cells        :: map(pair(int), float)
+            ).
 
 :- pred init_tableau(int::in, int::in, map(var, int)::in,
         map(var, pair(var))::in, tableau::out) is det.
@@ -832,75 +831,54 @@ lp_info_init(Varset0, URSVars, LPInfo) :-
     ),
     map.init(URSMap0),
     list.foldl(Introduce, URSVars, Varset0 - URSMap0, Varset - URSMap),
-    LPInfo = lp(Varset, URSMap, [], []).
+    LPInfo = lp_info(Varset, URSMap, [], []).
 
 :- pred new_slack_var(var::out, lp_info::in, lp_info::out) is det.
 
 new_slack_var(Var, !Info) :-
     some [!Varset] (
-        get_varset(!:Varset, !Info),
+        get_varset(!.Info, !:Varset),
         svvarset.new_var(Var, !Varset),
         set_varset(!.Varset, !Info)
     ),
-    get_slack_vars(Vars, !Info),
+    get_slack_vars(!.Info, Vars),
     set_slack_vars([Var | Vars], !Info).
 
 :- pred new_art_var(var::out, lp_info::in, lp_info::out) is det.
 
 new_art_var(Var, !Info) :-
     some [!Varset] (
-        get_varset(!:Varset, !Info),
+        get_varset(!.Info, !:Varset),
         svvarset.new_var(Var, !Varset),
         set_varset(!.Varset, !Info)
     ),
-    get_art_vars(Vars, !Info),
+    get_art_vars(!.Info, Vars),
     set_art_vars([Var | Vars], !Info).
 
-:- pred get_varset(varset::out, lp_info::in, lp_info::out) is det.
+:- pred get_varset(lp_info::in, varset::out) is det.
+:- pred get_urs_vars(lp_info::in, map(var, pair(var))::out) is det.
+:- pred get_slack_vars(lp_info::in, list(var)::out) is det.
+:- pred get_art_vars(lp_info::in, list(var)::out) is det.
 
-get_varset(Varset, Info, Info) :-
-    Info = lp(Varset, _URSVars, _Slack, _Art).
+get_varset(Info, Info ^ lpi_varset).
+get_urs_vars(Info, Info ^ lpi_urs_map).
+get_slack_vars(Info, Info ^ lpi_slack_vars).
+get_art_vars(Info, Info ^ lpi_art_vars).
 
 :- pred set_varset(varset::in, lp_info::in, lp_info::out) is det.
-
-set_varset(Varset, Info0, Info) :-
-    Info0 = lp(_Varset, URSVars, Slack, Art),
-    Info  = lp(Varset, URSVars, Slack, Art).
-
-:- pred get_urs_vars(map(var, pair(var))::out, lp_info::in, lp_info::out)
-    is det.
-
-get_urs_vars(URSVars, Info, Info) :-
-    Info = lp(_Varset, URSVars, _Slack, _Art).
-
 :- pred set_urs_vars(map(var, pair(var))::in, lp_info::in, lp_info::out)
     is det.
-
-set_urs_vars(URSVars, Info0, Info) :-
-    Info0 = lp(Varset, _URSVars, Slack, Art),
-    Info  = lp(Varset, URSVars, Slack, Art).
-
-:- pred get_slack_vars(list(var)::out, lp_info::in, lp_info::out) is det.
-
-get_slack_vars(Slack, Info, Info) :-
-    Info = lp(_Varset, _URSVars, Slack, _Art).
-
 :- pred set_slack_vars(list(var)::in, lp_info::in, lp_info::out) is det.
-
-set_slack_vars(Slack, Info0, Info) :-
-    Info0 = lp(Varset, URSVars, _Slack, Art),
-    Info  = lp(Varset, URSVars, Slack, Art).
-
-:- pred get_art_vars(list(var)::out, lp_info::in, lp_info::out) is det.
-
-get_art_vars(Art, Info, Info) :-
-    Info = lp(_Varset, _URSVars, _Slack, Art).
-
 :- pred set_art_vars(list(var)::in, lp_info::in, lp_info::out) is det.
 
-set_art_vars(Art, Info0, Info) :-
-    Info0 = lp(Varset, URSVars, Slack, _Art),
-    Info  = lp(Varset, URSVars, Slack, Art).
+set_varset(Varset, !Info) :-
+    !Info ^ lpi_varset := Varset.
+set_urs_vars(URSVars, !Info) :-
+    !Info ^ lpi_urs_map := URSVars.
+set_slack_vars(Slack, !Info) :-
+    !Info ^ lpi_slack_vars := Slack.
+set_art_vars(Art, !Info) :-
+    !Info ^ lpi_art_vars := Art.
 
 %-----------------------------------------------------------------------------%
 

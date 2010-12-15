@@ -79,7 +79,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.make_hlds_error.
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.builtin_lib_types.
@@ -90,6 +89,7 @@
 
 :- import_module map.
 :- import_module set.
+:- import_module require.
 :- import_module term.
 :- import_module varset.
 

@@ -48,7 +48,6 @@
 
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_mode.
-:- import_module libs.compiler_util.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_io_sym_name.
@@ -59,6 +58,7 @@
 :- import_module bool.
 :- import_module list.
 :- import_module map.
+:- import_module require.
 :- import_module string.
 :- import_module varset.
 

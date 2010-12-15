@@ -661,13 +661,13 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_imports.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module counter.
+:- import_module require.
 
 :- pred module_info_get_lambdas_per_context(module_info::in,
     map(prog_context, counter)::out) is det.

@@ -173,10 +173,10 @@
 
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
-:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_type.
 
 :- import_module pair.
+:- import_module require.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

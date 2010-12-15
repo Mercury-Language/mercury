@@ -336,7 +336,6 @@
 :- implementation.
 
 :- import_module analysis.
-:- import_module libs.compiler_util.
 :- import_module libs.handle_options.
 :- import_module libs.process_util.
 :- import_module parse_tree.file_names.
@@ -350,6 +349,7 @@
 :- import_module exception.
 :- import_module getopt_io.
 :- import_module maybe.
+:- import_module require.
 :- import_module set.
 :- import_module thread.
 :- import_module thread.channel.

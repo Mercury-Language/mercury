@@ -53,7 +53,6 @@
 :- import_module check_hlds.inst_match.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 
@@ -61,6 +60,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module term.
 :- import_module varset.

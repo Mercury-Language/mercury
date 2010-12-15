@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2007, 2009 The University of Melbourne.
+% Copyright (C) 2004-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -123,14 +123,12 @@
 
 :- implementation.
 
-:- import_module libs.
-:- import_module libs.compiler_util.
-
 :- import_module eqvclass.
 :- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module multi_map.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term.
@@ -264,7 +262,7 @@ prepare_abstract_constraint(Constraint, !PCs) :-
         ->
             disjunction_of_assignments(DisjOfAssgts, !PCs)
         ;
-            compiler_util.sorry(this_file,
+            sorry(this_file,
                 "Disjuction of constraints - general case.")
         )
     ).
@@ -277,19 +275,14 @@ prepare_abstract_constraint(Constraint, !PCs) :-
 
 prepare_var_constraint(equiv_bool(Var, Value), !PCs) :-
     assign(Var, Value, !PCs).
-
 prepare_var_constraint(equivalent(Vars), !PCs) :-
     equivalent(Vars, !PCs).
-
 prepare_var_constraint(implies(Var1, Var2), !PCs) :-
     implies(Var1, Var2, !PCs).
-
 prepare_var_constraint(equiv_disj(X, Ys), !PCs) :-
     equivalent_to_disjunction(X, Ys, !PCs).
-
 prepare_var_constraint(at_most_one(Vars), !PCs) :-
     at_most_one(Vars, !PCs).
-
 prepare_var_constraint(exactly_one(Vars), !PCs) :-
     exactly_one(Vars, !PCs).
 

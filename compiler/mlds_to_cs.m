@@ -50,7 +50,6 @@
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.rtti.
 :- import_module hlds.hlds_pred.           % for pred_proc_id.
-:- import_module libs.compiler_util.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -79,6 +78,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.

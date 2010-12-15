@@ -192,7 +192,6 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
 :- import_module libs.process_util.
 :- import_module libs.handle_options.   % for grade_directory_component
 :- import_module libs.options.
@@ -204,6 +203,7 @@
 :- import_module dir.
 :- import_module getopt_io.
 :- import_module int.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 

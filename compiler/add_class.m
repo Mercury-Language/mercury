@@ -60,7 +60,6 @@
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds.state_var.
 :- import_module hlds.pred_table.
-:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
@@ -69,6 +68,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module solutions.
 :- import_module string.

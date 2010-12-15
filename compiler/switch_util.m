@@ -343,7 +343,6 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_out.
-:- import_module libs.compiler_util.
 :- import_module libs.options.
 :- import_module parse_tree.prog_type.
 
@@ -351,6 +350,7 @@
 :- import_module cord.
 :- import_module int.
 :- import_module io.
+:- import_module require.
 :- import_module string.
 :- import_module svmap.
 

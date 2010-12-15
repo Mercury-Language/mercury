@@ -59,7 +59,6 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.special_pred.
-:- import_module libs.compiler_util.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -79,6 +78,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.
@@ -88,10 +88,10 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Iterate collecting requests and processing them until there are no more
-    % requests remaining.
-    %
 specialize_higher_order(!ModuleInfo, !IO) :-
+    % Iterate collecting requests and process them until there are no more
+    % requests remaining.
+
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, optimize_higher_order, HigherOrder),
     globals.lookup_bool_option(Globals, type_specialization, TypeSpec),

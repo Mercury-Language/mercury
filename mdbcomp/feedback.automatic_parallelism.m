@@ -130,7 +130,7 @@
                 % A variable name table for the variables that have
                 % sensible names.
                 cpcp_var_table  :: var_table,
-                                        
+
                 cpcp_par_conjs  :: list(candidate_par_conjunction(GoalType))
             ).
 
@@ -189,11 +189,11 @@
 :- type callee_rep
     --->    unknown_callee
             % An unknown callee such as a higher order or method call.
-                
+
     ;       named_callee(
                 % A known callee. Note that arity and mode are not stored at
                 % all. XXX why?
-               
+
                 nc_module_name  :: string,
                 nc_proc_name    :: string
             ).
@@ -209,7 +209,7 @@
                 pga_cost_percall            :: float,
 
                 pga_coat_above_threshold    :: cost_above_par_threshold,
-            
+
                 % Variable use information.
                 pga_var_productions         :: assoc_list(var_rep, float),
                 pga_var_consumptions        :: assoc_list(var_rep, float)
@@ -230,17 +230,17 @@
     ;       conjuncts_are_independent.
 
 :- pred convert_candidate_par_conjunctions_proc(
-    pred(candidate_par_conjunction(A), A, B)::in(pred(in, in, out) is det), 
+    pred(candidate_par_conjunction(A), A, B)::in(pred(in, in, out) is det),
     candidate_par_conjunctions_proc(A)::in,
     candidate_par_conjunctions_proc(B)::out) is det.
 
 :- pred convert_candidate_par_conjunction(
-    pred(candidate_par_conjunction(A), A, B)::in(pred(in, in, out) is det), 
+    pred(candidate_par_conjunction(A), A, B)::in(pred(in, in, out) is det),
     candidate_par_conjunction(A)::in, candidate_par_conjunction(B)::out)
     is det.
 
 :- pred convert_seq_conj(
-    pred(A, B)::in(pred(in, out) is det), 
+    pred(A, B)::in(pred(in, out) is det),
     seq_conj(A)::in, seq_conj(B)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -281,7 +281,7 @@
     % means that the goal is twice as fast when parallelised.
     %
 :- func parallel_exec_metrics_get_speedup(parallel_exec_metrics) = float.
-    
+
     % The amount of time saved per-call: SeqTime - ParTime.
     %
 :- func parallel_exec_metrics_get_time_saving(parallel_exec_metrics) = float.

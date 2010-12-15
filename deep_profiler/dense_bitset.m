@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2003, 2005-2006 The University of Melbourne.
+% Copyright (C) 2001, 2003, 2005-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -87,7 +87,7 @@ insert(A0, I) = A :-
         Word = Word0 \/ bit(I),
         set(A0, word(I), Word, A)
     ;
-        error("insert: cannot use indexes < 0")
+        unexpected($module, $pred, "cannot use indexes < 0")
     ).
 
 delete(A0, I) = A :-
@@ -99,7 +99,7 @@ delete(A0, I) = A :-
         Word = Word0 /\ \ bit(I),
         set(A0, word(I), Word, A)
     ;
-        error("delete: cannot use indexes < 0")
+        unexpected($module, $pred, "cannot use indexes < 0")
     ).
 
 union(A, B) = C :-

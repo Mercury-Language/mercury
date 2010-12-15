@@ -116,11 +116,11 @@
 
 :- type probability.
 
-    % A certain thing,  A probability of 1.0
+    % A certain thing,  A probability of 1.0.
     %
 :- func certain = probability.
 
-    % An impossible thing.  A probability of 0.0
+    % An impossible thing.  A probability of 0.0.
     %
 :- func impossible = probability.
 
@@ -134,10 +134,12 @@
 :- func probability_to_float(probability) = float.
 
     % Combine probabilities.
+    %
 :- func or(probability, probability) = probability.
 :- func and(probability, probability) = probability.
 
     % The probability of the given probability not occuring.
+    %
 :- func not_probability(probability) = probability.
 
 %-----------------------------------------------------------------------------%
@@ -205,7 +207,7 @@ compare_memory(MemoryA, MemoryB, Result) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Percent
+% Percentages.
 %
 
 :- type percent
@@ -281,7 +283,7 @@ format_time(time_sec(F)) = String :-
 
 %-----------------------------------------------------------------------------%
 %
-% Probability
+% Probabilities.
 %
 
 :- type probability == float.
@@ -297,7 +299,7 @@ probable(Prob) = Prob :-
     ->
         true
     ;
-        error(format("Probability %f out of range 0.0 to 1.0 inclusive", 
+        error(format("Probability %f out of range 0.0 to 1.0 inclusive",
             [f(Prob)]))
     ).
 

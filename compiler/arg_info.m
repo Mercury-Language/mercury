@@ -114,10 +114,10 @@
 :- implementation.
 
 :- import_module check_hlds.mode_util.
-:- import_module libs.compiler_util.
 
 :- import_module map.
 :- import_module pair.
+:- import_module require.
 :- import_module int.
 :- import_module svset.
 

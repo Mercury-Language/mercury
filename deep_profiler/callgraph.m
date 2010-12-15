@@ -57,11 +57,11 @@ find_cliques(InitDeep, BottomUpPDPtrCliqueList) :-
     % algorithm works bottom up.
     callgraph.foldl(accumulate_pdptr_lists, TopDownPDICliqueList,
         [], BottomUpPDPtrCliqueList).
-    
+
     % This version of foldl is safer when tail recursion isn't available.
     %
-:- pred foldl(pred(X, A, A), list(X), A, A).
-:- mode foldl(pred(in, in, out) is det, in, in, out) is det.
+:- pred foldl(pred(X, A, A)::in(pred(in, in, out) is det), list(X)::in,
+    A::in, A::out) is det.
 
 foldl(P, !.L, !A) :-
     foldl_2(100000, P, !L, !A),
@@ -72,8 +72,8 @@ foldl(P, !.L, !A) :-
         callgraph.foldl(P, !.L, !A)
     ).
 
-:- pred foldl_2(int, pred(X, A, A), list(X), list(X), A, A).
-:- mode foldl_2(in, pred(in, in, out) is det, in, out, in, out) is det.
+:- pred foldl_2(int::in, pred(X, A, A)::in(pred(in, in, out) is det),
+    list(X)::in, list(X)::out, A::in, A::out) is det.
 
 foldl_2(Depth, P, !Xs, !A) :-
     ( Depth > 0 ->

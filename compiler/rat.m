@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003, 2005-2006 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003, 2005-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -79,9 +79,8 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
-
 :- import_module int.
+:- import_module require.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -244,5 +243,4 @@ this_file = "rat.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module rat.
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

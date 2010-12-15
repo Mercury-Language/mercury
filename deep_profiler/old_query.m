@@ -30,7 +30,7 @@
     % Old deep profiler cgi code.  This should remain supported until all cmds
     % have been updated to use the data structures in report.m.
     %
-:- pred old_exec(cmd::in, preferences::in, deep::in, string::out, 
+:- pred old_exec(cmd::in, preferences::in, deep::in, string::out,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -147,7 +147,7 @@ old_exec(Cmd, _, _, HTML, !IO) :-
     ; Cmd = deep_cmd_clique_recursive_costs(_)
     ; Cmd = deep_cmd_recursion_types_frequency
     ),
-    format("old_query.m: %s is unsupported by old_exec\n", [s(string(Cmd))], 
+    format("old_query.m: %s is unsupported by old_exec\n", [s(string(Cmd))],
         HTML).
 
 %-----------------------------------------------------------------------------%

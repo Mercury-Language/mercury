@@ -212,7 +212,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% List specific structures
+% List specific structures.
 %
 
 :- type list_class
@@ -223,7 +223,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Link specific structures
+% Link specific structures.
 %
 
 :- type deep_link

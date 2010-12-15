@@ -43,8 +43,7 @@
 :- implementation.
 
 :- import_module library.
-:- import_module libs.compiler_util.
-
+:- import_module require.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

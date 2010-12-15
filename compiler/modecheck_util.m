@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -206,7 +206,6 @@
 :- import_module hlds.quantification.
 :- import_module hlds.special_pred.
 :- import_module libs.
-:- import_module libs.compiler_util.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -229,6 +228,7 @@
 :- import_module map.
 :- import_module pair.
 :- import_module queue.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.

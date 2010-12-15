@@ -371,7 +371,6 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.type_util.
-:- import_module libs.compiler_util.
 :- import_module libs.options.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.exprn_aux.
@@ -380,6 +379,7 @@
 :- import_module getopt_io.
 :- import_module int.
 :- import_module pair.
+:- import_module require.
 :- import_module string.
 :- import_module svmap.
 :- import_module term.

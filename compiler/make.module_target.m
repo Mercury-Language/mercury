@@ -50,13 +50,13 @@
     --->    foreign_code_file(
                 foreign_language    :: foreign_language,
 
+                % Name of the file produced by the Mercury compiler,
+                % e.g. module_c_code.c.
                 target_file         :: file_name,
-                                    % Name of the file produced by the Mercury
-                                    % compiler, e.g. module_c_code.c.
 
+                % Name of the file produced by the foreign language compiler,
+                % e.g. module_c_code.o.
                 object_file         :: file_name
-                                    % Name of the file produced by the foreign
-                                    % language compiler, e.g. module_c_code.o.
             ).
 
     % Find the foreign code files generated when a module is processed.
@@ -72,7 +72,6 @@
 :- implementation.
 
 :- import_module analysis.
-:- import_module libs.compiler_util.
 :- import_module libs.process_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
@@ -84,6 +83,7 @@
 
 :- import_module dir.
 :- import_module float.
+:- import_module require.
 :- import_module svmap.
 
 %-----------------------------------------------------------------------------%

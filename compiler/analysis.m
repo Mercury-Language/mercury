@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2004, 2006-2009 The University of Melbourne.
+% Copyright (C) 2003-2004, 2006-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -319,11 +319,11 @@
 
 :- import_module analysis.file.
 :- import_module libs.
-:- import_module libs.compiler_util.
 :- import_module parse_tree.                % XXX unwanted dependency
 :- import_module parse_tree.module_cmds.    % XXX unwanted dependency
 
 :- import_module map.
+:- import_module require.
 :- import_module string.
 :- import_module type_desc.
 :- import_module univ.

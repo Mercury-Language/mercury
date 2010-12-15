@@ -85,13 +85,13 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
-:- import_module libs.compiler_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_util.
 
 :- import_module int.
 :- import_module maybe.
+:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.

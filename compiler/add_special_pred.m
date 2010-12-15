@@ -70,7 +70,6 @@
 :- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.prog_type.
@@ -80,6 +79,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module pair.
+:- import_module require.
 :- import_module string.
 :- import_module varset.
 

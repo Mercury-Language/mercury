@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998, 2003-2007, 2009 The University of Melbourne.
+% Copyright (C) 1994-1998, 2003-2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -90,13 +90,12 @@
 :- implementation.
 
 :- import_module check_hlds.mode_errors.   % for the mode_error_info
-                                            % and delay_info types.
-:- import_module libs.
-:- import_module libs.compiler_util.
+                                           % and delay_info types.
 
 :- import_module int.
 :- import_module map.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module stack.
 :- import_module svmap.

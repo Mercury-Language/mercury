@@ -985,7 +985,6 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
 :- import_module libs.handle_options.
 
 :- import_module assoc_list.
@@ -996,6 +995,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module string.
 :- import_module svmap.
 

@@ -1432,9 +1432,8 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
-
 :- import_module int.
+:- import_module require.
 
 %-----------------------------------------------------------------------------%
 

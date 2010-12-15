@@ -27,6 +27,7 @@
 :- module parse_tree.prog_foreign.
 :- interface.
 
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module parse_tree.prog_data.
 :- import_module mdbcomp.prim_data.

@@ -105,13 +105,13 @@
 
 :- import_module hlds.goal_util.
 :- import_module hlds.instmap.
-:- import_module libs.compiler_util.
 
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module string.
 :- import_module tree_bitset.
 :- import_module term.
@@ -2235,7 +2235,7 @@ goal_expr_vars_no_lambda_2(NonLocalsToRecompute, GoalExpr, !Set) :-
 
 unify_rhs_vars_maybe_lambda(NonLocalsToRecompute, RHS, !Set, !LambdaSet) :-
     (
-        RHS = rhs_var(Y), 
+        RHS = rhs_var(Y),
         insert(!.Set, Y, !:Set)
     ;
         RHS = rhs_functor(_, _, ArgVars),
@@ -2256,7 +2256,7 @@ unify_rhs_vars_maybe_lambda(NonLocalsToRecompute, RHS, !Set, !LambdaSet) :-
 
 unify_rhs_vars_maybe_lambda_and_bi_impl(RHS, !Set, !LambdaSet) :-
     (
-        RHS = rhs_var(Y), 
+        RHS = rhs_var(Y),
         insert(!.Set, Y, !:Set)
     ;
         RHS = rhs_functor(_, _, ArgVars),
@@ -2279,7 +2279,7 @@ unify_rhs_vars_maybe_lambda_and_bi_impl(RHS, !Set, !LambdaSet) :-
 
 unify_rhs_vars_no_lambda(NonLocalsToRecompute, RHS, MaybeSetArgs, !Set) :-
     (
-        RHS = rhs_var(Y), 
+        RHS = rhs_var(Y),
         insert(!.Set, Y, !:Set)
     ;
         RHS = rhs_functor(_, _, ArgVars),

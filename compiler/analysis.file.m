@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2009 The University of Melbourne.
+% Copyright (C) 2003, 2005-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -101,18 +101,6 @@
 
 :- implementation.
 
-:- import_module bool.
-:- import_module char.
-:- import_module dir.
-:- import_module exception.
-:- import_module parser.
-:- import_module term.
-:- import_module term_io.
-:- import_module type_desc.
-:- import_module univ.
-:- import_module varset.
-
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.pickle.
@@ -120,6 +108,18 @@
 :- import_module parse_tree.module_cmds.        % XXX unwanted dependency
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_out.
+
+:- import_module bool.
+:- import_module char.
+:- import_module dir.
+:- import_module exception.
+:- import_module parser.
+:- import_module require.
+:- import_module term.
+:- import_module term_io.
+:- import_module type_desc.
+:- import_module univ.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003-2008 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -57,7 +57,6 @@
 
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
-:- import_module libs.compiler_util.
 :- import_module libs.lp.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.term_traversal.
@@ -67,6 +66,7 @@
 :- import_module float.
 :- import_module map.
 :- import_module maybe.
+:- import_module require.
 :- import_module set.
 :- import_module svmap.
 :- import_module svset.
@@ -78,15 +78,16 @@
 
 :- type pass1_result
     --->    term_pass1_ok(
+                % One entry for each path through the code.
                 list(term_path_info),
-                        % One entry for each path through the
-                        % code.
+
+                % The next output_supplier map.
                 used_args,
-                        % The next output_supplier map.
+
+                % There is an entry in this list for each procedure in the SCC
+                % in which the set of active vars is not a subset of the
+                % input arguments.
                 list(termination_error_context)
-                        % There is an entry in this list for each procedure in
-                        % the SCC in which the set of active vars is not a
-                        % subset of the input arguments.
             )
     ;       term_pass1_error(
                 list(termination_error_context)

@@ -69,7 +69,6 @@
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_desc.
 :- import_module hlds.hlds_rtti.
-:- import_module libs.compiler_util.
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module ll_backend.code_util.
@@ -82,6 +81,7 @@
 :- import_module cord.
 :- import_module int.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module stack.
 :- import_module string.

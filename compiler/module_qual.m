@@ -128,7 +128,6 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
 :- import_module libs.options.
 :- import_module parse_tree.module_imports.
 :- import_module parse_tree.prog_io_sym_name.
@@ -138,6 +137,7 @@
 :- import_module assoc_list.
 :- import_module map.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module solutions.
 :- import_module svmap.

@@ -49,7 +49,6 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.name_mangle.
-:- import_module libs.compiler_util.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module ll_backend.x86_64_out.
@@ -60,6 +59,7 @@
 :- import_module int.
 :- import_module io.
 :- import_module maybe.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 

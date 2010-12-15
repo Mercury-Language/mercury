@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2009 The University of Melbourne.
+% Copyright (C) 2001-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -54,7 +54,6 @@
 :- import_module backend_libs.type_ctor_info.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_rtti.
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_closure_gen.
@@ -73,6 +72,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module svmap.
 :- import_module term.

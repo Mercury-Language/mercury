@@ -763,7 +763,7 @@ add_goal_costs_seq(non_trivial_goal(CostA, CallsA),
         Calls = 0,
         CostTotal \= 0.0
     ->
-        error(this_file ++ "add_goal_costs_seq/2: Calls = 0, Cost \\= 0")
+        unexpected($module, $pred, "Calls = 0, Cost \\= 0")
     ;
         true
     ).
@@ -777,7 +777,7 @@ add_goal_costs_branch(TotalCalls, A, B) = R :-
             CallsA = 0,
             (
                 B = dead_goal,
-                error("TotalCalls \\= 0 for a dead goal")
+                unexpected($module, $pred, "TotalCalls \\= 0 for a dead goal")
             ;
                 B = trivial_goal(CallsB),
                 R = trivial_goal(TotalCalls)
@@ -820,8 +820,11 @@ add_goal_costs_branch(TotalCalls, A, B) = R :-
 
 check_total_calls(CallsA, CallsB, TotalCalls) :-
     Calls = CallsA + CallsB,
-    require(unify(Calls, TotalCalls),
-        this_file ++ "TotalCalls \\= CallsA + CallsB").
+    ( unify(Calls, TotalCalls) ->
+        true
+    ;
+        unexpected($module, $pred, "TotalCalls \\= CallsA + CallsB")
+    ).
 
 goal_cost_get_percall(dead_goal) = 0.0.
 goal_cost_get_percall(trivial_goal(_)) = 0.0.
@@ -907,7 +910,7 @@ add_coverage_arrays(NewArray, yes(!.Array), yes(!:Array)) :-
                 set(A0, Index, Value + E, A)
             ), NewArray, !Array)
     ;
-        error(this_file ++ "Arrays' bounds do not match")
+        unexpected($module, $pred, "arrays' bounds do not match")
     ).
 
 array_to_static_coverage(Array, yes(Array)).
@@ -941,7 +944,7 @@ no_parallelism = parallelism_amount(1.0).
 
 some_parallelism(Num) = parallelism_amount(Num) :-
     ( Num < 1.0 ->
-        error(this_file ++ "some_parallelism/1+1: " ++
+        unexpected($module, $pred,
             "Parallelism amount cannot ever be less than 1.0")
     ;
         true
@@ -978,10 +981,10 @@ exceeded_desired_parallelism(DesiredParallelism, Parallelism) :-
 
                 pemi_context_wakeup_delay   :: float,
 
+                % If there are no internal conjuncts then the parallel
+                % conjunction is empty.
                 pemi_internal               ::
                         maybe(parallel_exec_metrics_internal)
-                    % If there are no internal conjuncts then the parallel
-                    % conjunction is empty.
             ).
 
 :- type parallel_exec_metrics_internal
@@ -990,27 +993,27 @@ exceeded_desired_parallelism(DesiredParallelism, Parallelism) :-
                 pemi_time_par               :: float
             )
     ;       pem_additional(
+                % The time of the left conjunct (that may be a conjunction).
                 pemi_time_left              :: parallel_exec_metrics_internal,
-                    % The time of the left conjunct (that may be a conjunction),
 
+                % The additional cost of calling signal within the left
+                % conjunct.
+                % NOTE: Note that this should be added to each of the
+                % individual conjuncts _where_ they call signal but thta is
+                % more difficult and may not be required.  We may visit it
+                % in the future.
                 pemi_time_left_signals      :: float,
-                    % The additional cost of calling signal within the left
-                    % conjunct.
-                    % NOTE: Note that this should be added to each of the
-                    % individual conjuncts _where_ they call signal but thta is
-                    % more difficult and may not be required.  We may visit it
-                    % in the future.
 
+                % The time of the right conjunct if it is running after
+                % the left in normal sequential execution.
                 pemi_time_right_seq         :: float,
-                    % The time of the right conjunct if it is running after
-                    % the left in normal sequential execution.
 
+                % The time of the right conjunct if it is running in
+                % parallel with the left conjunct.  It may have to stop and
+                % wait for variables to be produced; therefore this time is
+                % different to time_right_seq.  This time also includes
+                % parallel execution overheads and delays.
                 pemi_time_right_par         :: float
-                    % The time of the right conjunct if it is running in
-                    % parallel with the left conjunct.  It may have to stop and
-                    % wait for variables to be produced; therefore this time is
-                    % different to time_right_seq.  This time also includes
-                    % parallel execution overheads and delays.
             ).
 
 init_parallel_exec_metrics_incomplete(Metrics0, TimeSignals, TimeBSeq,
@@ -1022,8 +1025,11 @@ init_parallel_exec_metrics_incomplete(Metrics0, TimeSignals, TimeBSeq,
     ;
         MaybeInternal0 = no,
         Internal = pem_left_most(TimeBSeq, TimeBPar),
-        require(unify(TimeSignals, 0.0),
-            this_file ++ "TimeSignal != 0")
+        ( unify(TimeSignals, 0.0) ->
+            true
+        ;
+            unexpected($module, $pred, "TimeSignal != 0")
+        )
     ),
     Metrics = Metrics0 ^ pemi_internal := yes(Internal).
 
@@ -1039,7 +1045,7 @@ finalise_parallel_exec_metrics(IncompleteMetrics) = Metrics :-
         MaybeInternal = yes(Internal)
     ;
         MaybeInternal = no,
-        error(this_file ++ "Cannot finalise empty parallel metrics.")
+        unexpected($module, $pred, "cannot finalise empty parallel metrics")
     ),
     BeforeAndAfterTime = TimeBefore + TimeAfter,
 
@@ -1153,12 +1159,6 @@ weighted_average(Weights, Values, Average) :-
     ;
         Average = Total / TotalWeight
     ).
-
-%----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "measurements.m: ".
 
 %----------------------------------------------------------------------------%
 :- end_module measurements.

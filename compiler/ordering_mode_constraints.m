@@ -107,7 +107,6 @@
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module libs.
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
@@ -123,6 +122,7 @@
 :- import_module maybe.
 :- import_module multi_map.
 :- import_module pair.
+:- import_module require.
 :- import_module string.
 :- import_module svset.
 

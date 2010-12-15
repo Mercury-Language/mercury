@@ -556,7 +556,6 @@
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.type_util.
 :- import_module hlds.instmap.
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.program_representation.
@@ -573,6 +572,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module stack.
 :- import_module string.

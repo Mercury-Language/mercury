@@ -429,7 +429,7 @@ update_style_control_map(ColumnClassStr, !HeaderGroupNumber,
         Colour = "White"
     ),
     ( set.member(ColumnClassStr, !.ColouredClassStrs) ->
-        error("update_style_control_map: repeated table_column_class")
+        unexpected($module, $pred, "repeated table_column_class")
     ;
         set.insert(!.ColouredClassStrs, ColumnClassStr, !:ColouredClassStrs)
     ),
@@ -498,7 +498,7 @@ table_cell_to_html(FormatInfo, MaybeClassMap, !StyleControlMap, !ColumnNum,
                 Msg = string.format(
                     "Class map had no class for col %d, check table structure",
                     [i(!.ColumnNum)]),
-                error(Msg)
+                unexpected($module, $pred, Msg)
             )
         ;
             MaybeClassMap = no,
@@ -725,7 +725,7 @@ default_style_control_map =
 
     % Transform a list of items into HTML.
     %
-:- pred list_to_html(format_info::in, 
+:- pred list_to_html(format_info::in,
     style_control_map::in, style_control_map::out,
     list_class::in, maybe(string)::in, list(display_item)::in, html::out)
     is det.
@@ -842,7 +842,7 @@ pseudo_link_to_html(_FormatInfo, PseudoLink) = HTML :-
 :- func init_format_info(deep, preferences) = format_info.
 
 init_format_info(Deep, Prefs) = FormatInfo :-
-    FormatInfo = format_info(Prefs ^ pref_colour, Prefs ^ pref_box, 
+    FormatInfo = format_info(Prefs ^ pref_colour, Prefs ^ pref_box,
         Prefs ^ pref_developer_mode,
         Deep ^ server_name_port, Deep ^ script_name, Deep ^ data_file_name).
 

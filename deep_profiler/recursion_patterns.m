@@ -22,13 +22,13 @@
 :- import_module profile.
 
 :- import_module maybe.
-            
+
 %----------------------------------------------------------------------------%
 
 :- pred create_clique_recursion_costs_report(deep::in, clique_ptr::in,
     maybe_error(clique_recursion_report)::out) is det.
 
-:- pred create_recursion_types_frequency_report(deep::in, 
+:- pred create_recursion_types_frequency_report(deep::in,
     maybe_error(recursion_types_frequency_report)::out) is det.
 
 %----------------------------------------------------------------------------%
@@ -75,7 +75,7 @@
 
 create_clique_recursion_costs_report(Deep, CliquePtr,
         MaybeCliqueRecursionReport) :-
-    find_clique_first_and_other_procs(Deep, CliquePtr, MaybeFirstPDPtr, 
+    find_clique_first_and_other_procs(Deep, CliquePtr, MaybeFirstPDPtr,
         OtherPDPtrs),
     deep_lookup_clique_parents(Deep, CliquePtr, ParentCallPtr),
     ( valid_call_site_dynamic_ptr(Deep, ParentCallPtr) ->
@@ -91,7 +91,7 @@ create_clique_recursion_costs_report(Deep, CliquePtr,
         (
             OtherPDPtrs = [],
             % Exaclty one procedure
-            proc_get_recursion_type(Deep, CliquePtr, FirstPDPtr, ParentCalls, 
+            proc_get_recursion_type(Deep, CliquePtr, FirstPDPtr, ParentCalls,
                 MaybeRecursionType)
         ;
             OtherPDPtrs = [_ | _],
@@ -113,7 +113,7 @@ create_clique_recursion_costs_report(Deep, CliquePtr,
             "This clique doesn't appear to have an entry procedure")
     ).
 
-:- pred proc_get_recursion_type(deep::in, clique_ptr::in, 
+:- pred proc_get_recursion_type(deep::in, clique_ptr::in,
     proc_dynamic_ptr::in, int::in, maybe_error(recursion_type)::out) is det.
 
 proc_get_recursion_type(Deep, ThisClique, PDPtr, ParentCalls,
@@ -123,10 +123,10 @@ proc_get_recursion_type(Deep, ThisClique, PDPtr, ParentCalls,
     create_dynamic_procrep_coverage_report(Deep, PDPtr, MaybeCoverageReport),
     (
         MaybeCoverageReport = ok(CoverageReport),
-        ProcRep = CoverageReport ^ prci_proc_rep, 
+        ProcRep = CoverageReport ^ prci_proc_rep,
         Goal = ProcRep ^ pr_defn ^ pdr_goal,
         proc_dynamic_paired_call_site_slots(Deep, PDPtr, Slots),
-        foldl(build_call_site_cost_and_callee_map(Deep), 
+        foldl(build_call_site_cost_and_callee_map(Deep),
             Slots, map.init, CallSitesMap),
         goal_recursion_data(ThisClique, CallSitesMap, empty_goal_path,
             Goal, RecursionData),
@@ -134,14 +134,14 @@ proc_get_recursion_type(Deep, ThisClique, PDPtr, ParentCalls,
             RecursionData, RecursionType),
         MaybeRecursionType = ok(RecursionType)
     ;
-        MaybeCoverageReport = error(Error), 
+        MaybeCoverageReport = error(Error),
         MaybeRecursionType = error(Error)
     ).
 
 :- pred recursion_data_to_recursion_type(int::in, int::in, recursion_data::in,
     recursion_type::out) is det.
 
-recursion_data_to_recursion_type(ParentCallsI, TotalCallsI, 
+recursion_data_to_recursion_type(ParentCallsI, TotalCallsI,
         recursion_data(Levels, Maximum, Errors), Type) :-
     ParentCalls = float(ParentCallsI),
     TotalCalls = float(TotalCallsI),
@@ -154,10 +154,10 @@ recursion_data_to_recursion_type(ParentCallsI, TotalCallsI,
         BaseCount = 0,
         BaseProb = impossible
     ),
-    BaseLevel = recursion_level_report(0, BaseCount, BaseProb, BaseCost, 0.0), 
+    BaseLevel = recursion_level_report(0, BaseCount, BaseProb, BaseCost, 0.0),
     ( empty(Errors) ->
         ( Maximum < 0 ->
-            error(this_file ++ "negative number of recursive calls")
+            unexpected($module, $pred, "negative number of recursive calls")
         ; Maximum = 0 ->
             Type = rt_not_recursive
         ; Maximum = 1 ->
@@ -167,8 +167,8 @@ recursion_data_to_recursion_type(ParentCallsI, TotalCallsI,
                 RecLevel = recursion_level_report(1, round_to_int(RecCountF),
                     RecProb, RecCost, 1.0)
             ;
-                error(format("%smaximum level %d not found", 
-                    [s(this_file), i(1)]))
+                string.format("maximum level %d not found", [i(1)], Msg),
+                unexpected($module, $pred, Msg)
             ),
             AvgMaxDepth = TotalCalls / ParentCalls,
             AvgRecCost = single_rec_average_recursion_cost(BaseCost, RecCost,
@@ -186,8 +186,8 @@ recursion_data_to_recursion_type(ParentCallsI, TotalCallsI,
                 RecLevel = recursion_level_report(2, round_to_int(RecCountF),
                     RecProb, RecCost, RecCountF*2.0)
             ;
-                error(format("%smaximum level %d not found", 
-                    [s(this_file), i(1)]))
+                string.format("maximum level %d not found", [i(1)], Msg),
+                unexpected($module, $pred, Msg)
             ),
             Type = rt_divide_and_conquer(BaseLevel, RecLevel)
         ;
@@ -201,10 +201,10 @@ recursion_data_to_recursion_type(ParentCallsI, TotalCallsI,
 % A procedure that is never called never recurses.
 recursion_data_to_recursion_type(_, _, proc_dead_code, rt_not_recursive).
 
-:- pred recursion_level_report(float::in, pair(int, recursion_level)::in, 
+:- pred recursion_level_report(float::in, pair(int, recursion_level)::in,
     recursion_level_report::out) is det.
 
-recursion_level_report(TotalCalls, Level - recursion_level(NonRecCost, Prob), 
+recursion_level_report(TotalCalls, Level - recursion_level(NonRecCost, Prob),
         recursion_level_report(Level, Calls, Prob, NonRecCost, CostExChild)) :-
     CallsF = probability_to_float(Prob) * TotalCalls,
     Calls = round_to_int(CallsF),
@@ -226,10 +226,9 @@ recursion_level_report(TotalCalls, Level - recursion_level(NonRecCost, Prob),
     %
 :- func single_rec_recursion_cost(float, float, int) = float.
 
-single_rec_recursion_cost(BaseCost, RecCost, LevelI) = 
-        BaseCost + (Level * (RecCost + 1.0)) :-
-    Level = float(LevelI).
-    
+single_rec_recursion_cost(BaseCost, RecCost, LevelI) = Cost :-
+    Cost = BaseCost + (float(LevelI) * (RecCost + 1.0)).
+
     % This formula is derived as follows.
     %
     % It's the average (sum of all recursion levels divided by number of
@@ -238,7 +237,7 @@ single_rec_recursion_cost(BaseCost, RecCost, LevelI) =
     %   Sum l in 0..MaxLevel ( Base + l * Rec ) / ( MaxLevel + 1 )
     %
     % Factor out the cost of the base case and start the sum from level 1 in
-    % the recursive case. 
+    % the recursive case.
     %
     %   ( Base(MaxLevel + 1) + Sum l in 1..MaxLevel ( l * Rec ) ) /
     %     ( MaxLevel + 1 )
@@ -253,9 +252,9 @@ single_rec_recursion_cost(BaseCost, RecCost, LevelI) =
     %
 :- func single_rec_average_recursion_cost(float, float, float) = float.
 
-single_rec_average_recursion_cost(BaseCost, RecCost, AvgMaxDepth) = 
-        BaseCost + ( (Sum) / (AvgMaxDepth + 1.0) ) :-
-    Sum = 0.5 * RecCost * ((AvgMaxDepth * AvgMaxDepth) + AvgMaxDepth).
+single_rec_average_recursion_cost(BaseCost, RecCost, AvgMaxDepth) = Cost :-
+    Sum = 0.5 * RecCost * ((AvgMaxDepth * AvgMaxDepth) + AvgMaxDepth),
+    Cost = BaseCost + ((Sum) / (AvgMaxDepth + 1.0)).
 
 %----------------------------------------------------------------------------%
 
@@ -265,7 +264,7 @@ single_rec_average_recursion_cost(BaseCost, RecCost, AvgMaxDepth) =
                 rd_maximum              :: int,
                 rd_errors               :: set(recursion_error)
             )
-                
+
                 % This code is dead, it is never entered.
     ;       proc_dead_code.
 
@@ -284,31 +283,31 @@ single_rec_average_recursion_cost(BaseCost, RecCost, AvgMaxDepth) =
     % goal_recursion_data(RecursiveCallees, Goal, GoalPath,
     %   init_recursion_data, RecursionData)
     %
-    % Compute RecursionData about Goal if RecursiveCalls are calls that may
-    % eventually lead to Goal.
+    % Compute RecursionData about Goal if RecursiveCalls are calls
+    % that may eventually lead to Goal.
     %
-:- pred goal_recursion_data(clique_ptr::in, 
+:- pred goal_recursion_data(clique_ptr::in,
     map(goal_path, cost_and_callees)::in, goal_path::in,
     goal_rep(coverage_info)::in, recursion_data::out) is det.
 
-goal_recursion_data(ThisClique, CallSiteMap, GoalPath, GoalRep, 
+goal_recursion_data(ThisClique, CallSiteMap, GoalPath, GoalRep,
         !:RecursionData) :-
     GoalRep = goal_rep(GoalExpr, Detism, CoverageInfo),
     ( get_coverage_before(CoverageInfo, CallsPrime) ->
         Calls = CallsPrime
     ;
-        error(this_file ++ "couldn't retrive coverage information")
+        unexpected($module, $pred, "couldn't retrive coverage information")
     ),
     ( Calls = 0 ->
         !:RecursionData = proc_dead_code
     ;
         (
             GoalExpr = conj_rep(Conjs),
-            conj_recursion_data(ThisClique, CallSiteMap, GoalPath, 1, Conjs, 
+            conj_recursion_data(ThisClique, CallSiteMap, GoalPath, 1, Conjs,
                 !:RecursionData)
         ;
             GoalExpr = disj_rep(Disjs),
-            disj_recursion_data(ThisClique, CallSiteMap, GoalPath, 1, Disjs, 
+            disj_recursion_data(ThisClique, CallSiteMap, GoalPath, 1, Disjs,
                 !:RecursionData)
         ;
             GoalExpr = switch_rep(_, _, Cases),
@@ -316,13 +315,13 @@ goal_recursion_data(ThisClique, CallSiteMap, GoalPath, GoalRep,
                 float(Calls), Calls, !:RecursionData)
         ;
             GoalExpr = ite_rep(Cond, Then, Else),
-            ite_recursion_data(ThisClique, CallSiteMap, GoalPath, 
-                Cond, Then, Else, Calls, !:RecursionData) 
+            ite_recursion_data(ThisClique, CallSiteMap, GoalPath,
+                Cond, Then, Else, Calls, !:RecursionData)
         ;
-            ( 
+            (
                 GoalExpr = negation_rep(SubGoal),
                 GoalPathStep = step_neg
-            ; 
+            ;
                 GoalExpr = scope_rep(SubGoal, MaybeCut),
                 GoalPathStep = step_scope(MaybeCut)
             ),
@@ -351,33 +350,33 @@ goal_recursion_data(ThisClique, CallSiteMap, GoalPath, GoalRep,
             !RecursionData)
     ).
 
-:- pred conj_recursion_data(clique_ptr::in, 
+:- pred conj_recursion_data(clique_ptr::in,
     map(goal_path, cost_and_callees)::in, goal_path::in, int::in,
     list(goal_rep(coverage_info))::in, recursion_data::out) is det.
 
-    % An empty conjunction is true, there is exactly one trival path through it
-    % with 0 recursive calls.
 conj_recursion_data(_, _, _, _, [], simple_recursion_data(0.0, 0)).
-conj_recursion_data(ThisClique, CallSiteMap, GoalPath, ConjNum, 
-        [Conj | Conjs], RecursionData) :- 
-    goal_recursion_data(ThisClique, CallSiteMap, 
-        goal_path_add_at_end(GoalPath, step_conj(ConjNum)), Conj, 
+    % An empty conjunction is true, there is exactly one trivial path
+    % through it with 0 recursive calls.
+conj_recursion_data(ThisClique, CallSiteMap, GoalPath, ConjNum,
+        [Conj | Conjs], RecursionData) :-
+    goal_recursion_data(ThisClique, CallSiteMap,
+        goal_path_add_at_end(GoalPath, step_conj(ConjNum)), Conj,
         ConjRecursionData),
     (
         ConjRecursionData = proc_dead_code,
-        % If the first conjunct is dead then the remaining ones will also be
-        % dead.  This speeds up execution and avoids a divide by zero when
-        % calculating ConjSuccessProb below.
+        % If the first conjunct is dead then the remaining ones will
+        % also be dead. This speeds up execution and avoids a divide by zero
+        % when calculating ConjSuccessProb below.
         RecursionData = proc_dead_code
     ;
-        ConjRecursionData = recursion_data(_, _, _), 
-        
+        ConjRecursionData = recursion_data(_, _, _),
+
         conj_recursion_data(ThisClique, CallSiteMap, GoalPath, ConjNum + 1,
             Conjs, ConjsRecursionData0),
         CanFail = detism_get_can_fail(Conj ^ goal_detism_rep),
         (
             CanFail = cannot_fail_rep,
-            merge_recursion_data_sequence(ConjRecursionData, 
+            merge_recursion_data_sequence(ConjRecursionData,
                 ConjsRecursionData0, RecursionData)
         ;
             CanFail = can_fail_rep,
@@ -387,9 +386,9 @@ conj_recursion_data(ThisClique, CallSiteMap, GoalPath, ConjNum,
 
             success_probability_from_coverage(Conj ^ goal_annotation,
                 ConjSuccessProb),
-            recursion_data_and_probability(ConjSuccessProb, ConjsRecursionData0,
-                ConjsRecursionData),
-            
+            recursion_data_and_probability(ConjSuccessProb,
+                ConjsRecursionData0, ConjsRecursionData),
+
             ConjFailureProb = not_probability(ConjSuccessProb),
             Failure0 = simple_recursion_data(0.0, 0),
             recursion_data_and_probability(ConjFailureProb, Failure0, Failure),
@@ -400,38 +399,37 @@ conj_recursion_data(ThisClique, CallSiteMap, GoalPath, ConjNum,
         )
     ).
 
-:- pred disj_recursion_data(clique_ptr::in, 
-    map(goal_path, cost_and_callees)::in, goal_path::in, int::in, 
-    list(goal_rep(coverage_info))::in, recursion_data::out)
-    is det.
+:- pred disj_recursion_data(clique_ptr::in,
+    map(goal_path, cost_and_callees)::in, goal_path::in, int::in,
+    list(goal_rep(coverage_info))::in, recursion_data::out) is det.
 
 disj_recursion_data(_, _, _, _, [], simple_recursion_data(0.0, 0)).
-disj_recursion_data(ThisClique, CallSiteMap, GoalPath, DisjNum, 
+disj_recursion_data(ThisClique, CallSiteMap, GoalPath, DisjNum,
         [Disj | Disjs], RecursionData) :-
-    % Handle only semidet and committed-choice disjunctions, once a goal
-    % succeeds it cannot be re-entered.
+    % Handle only semidet and committed-choice disjunctions, which cannot be
+    % re-entered once a disjunct succeeds.
     goal_recursion_data(ThisClique, CallSiteMap,
         goal_path_add_at_end(GoalPath, step_disj(DisjNum)), Disj,
         DisjRecursionData),
     (
         DisjRecursionData = proc_dead_code,
-        % If the first disjunct was never tried then no other disjuncts will
+        % If the first disjunct was never tried, then no other disjuncts will
         % ever be tried.
         RecursionData = proc_dead_code
     ;
         DisjRecursionData = recursion_data(_, _, _),
         success_probability_from_coverage(Disj ^ goal_annotation,
             DisjSuccessProb),
-        DisjFailureProb = not_probability(DisjSuccessProb), 
-        
+        DisjFailureProb = not_probability(DisjSuccessProb),
+
         % The code can branch here, either it tries the next disjuct, which we
-        % represent as DisjsRecursionData.
+        % represent as DisjsRecursionData, ...
         disj_recursion_data(ThisClique, CallSiteMap, GoalPath, DisjNum + 1,
             Disjs, DisjsRecursionData0),
         recursion_data_and_probability(DisjFailureProb, DisjsRecursionData0,
             DisjsRecursionData),
 
-        % Or it succeeds which we represent as finished.
+        % ... or it succeeds, which we represent as finished.
         Finish0 = simple_recursion_data(0.0, 0),
         recursion_data_and_probability(DisjSuccessProb, Finish0, Finish),
 
@@ -447,7 +445,7 @@ disj_recursion_data(ThisClique, CallSiteMap, GoalPath, DisjNum,
     is det.
 
 success_probability_from_coverage(Coverage, SuccessProb) :-
-    ( 
+    (
         get_coverage_before_and_after(Coverage, Before, After)
     ->
         ( After > Before ->
@@ -457,20 +455,20 @@ success_probability_from_coverage(Coverage, SuccessProb) :-
             SuccessProb = probable(float(After) / float(Before))
         )
     ;
-        error(this_file ++ "expected complete coverage information")
-    ). 
+        unexpected($module, $pred, "expected complete coverage information")
+    ).
 
-:- pred ite_recursion_data(clique_ptr::in, 
-    map(goal_path, cost_and_callees)::in, goal_path::in, 
+:- pred ite_recursion_data(clique_ptr::in,
+    map(goal_path, cost_and_callees)::in, goal_path::in,
     goal_rep(coverage_info)::in, goal_rep(coverage_info)::in,
     goal_rep(coverage_info)::in, int::in, recursion_data::out) is det.
 
 ite_recursion_data(ThisClique, CallSiteMap, GoalPath, Cond, Then, Else,
         Calls, !:RecursionData) :-
-    goal_recursion_data(ThisClique, CallSiteMap, 
+    goal_recursion_data(ThisClique, CallSiteMap,
         goal_path_add_at_end(GoalPath, step_ite_cond), Cond,
         CondRecursionData),
-    goal_recursion_data(ThisClique, CallSiteMap, 
+    goal_recursion_data(ThisClique, CallSiteMap,
         goal_path_add_at_end(GoalPath, step_ite_then), Then,
         ThenRecursionData0),
     goal_recursion_data(ThisClique, CallSiteMap,
@@ -486,24 +484,23 @@ ite_recursion_data(ThisClique, CallSiteMap, GoalPath, Cond, Then, Else,
         ThenProb = probable(float(ThenCalls) / CallsF),
         ElseProb = probable(float(ElseCalls) / CallsF)
     ;
-        error(this_file ++ "couldn't retrive coverage information")
+        unexpected($module, $pred, "couldn't retrive coverage information")
     ),
-    recursion_data_and_probability(ThenProb, ThenRecursionData0,
-        ThenRecursionData),
-    recursion_data_and_probability(ElseProb, ElseRecursionData0,
-        ElseRecursionData),
+    recursion_data_and_probability(ThenProb,
+        ThenRecursionData0, ThenRecursionData),
+    recursion_data_and_probability(ElseProb,
+        ElseRecursionData0, ElseRecursionData),
 
     % Because the condition goal has coverage information as if it is
-    % entered before either branch, we have to model it in the same way
-    % here, even though it would be fesable to model it sas something
-    % that happens in sequence with both the then and else branches
-    % (within each branch).
-    merge_recursion_data_after_branch(ThenRecursionData, 
+    % entered before either branch, we have to model it in the same way here,
+    % even though it would be fesable to model it sas something that happens
+    % in sequence with both the then and else branches (within each branch).
+    merge_recursion_data_after_branch(ThenRecursionData,
         ElseRecursionData, !:RecursionData),
     merge_recursion_data_sequence(CondRecursionData, !RecursionData).
 
-:- pred switch_recursion_data(clique_ptr::in, 
-    map(goal_path, cost_and_callees)::in, goal_path::in, int::in, 
+:- pred switch_recursion_data(clique_ptr::in,
+    map(goal_path, cost_and_callees)::in, goal_path::in, int::in,
     list(case_rep(coverage_info))::in, float::in, int::in,
     recursion_data::out) is det.
 
@@ -513,16 +510,16 @@ switch_recursion_data(_, _, _, _, [], TotalCalls, CallsRemaining,
     FailProb = probable(float(CallsRemaining) / TotalCalls),
     RecursionData0 = simple_recursion_data(0.0, 0),
     recursion_data_and_probability(FailProb, RecursionData0, RecursionData).
-switch_recursion_data(ThisClique, CallSiteMap, GoalPath, CaseNum, 
+switch_recursion_data(ThisClique, CallSiteMap, GoalPath, CaseNum,
         [Case | Cases], TotalCalls, CallsRemaining, RecursionData) :-
     Case = case_rep(_, _, Goal),
-    goal_recursion_data(ThisClique, CallSiteMap, 
-        goal_path_add_at_end(GoalPath, step_switch(CaseNum, no)), Goal, 
+    goal_recursion_data(ThisClique, CallSiteMap,
+        goal_path_add_at_end(GoalPath, step_switch(CaseNum, no)), Goal,
         CaseRecursionData0),
     ( get_coverage_before(Goal ^ goal_annotation, CallsPrime) ->
         Calls = CallsPrime
     ;
-        error(this_file ++ "expected coverage information")
+        unexpected($module, $pred, "expected coverage information")
     ),
     CaseProb = probable(float(Calls) / TotalCalls),
     recursion_data_and_probability(CaseProb, CaseRecursionData0,
@@ -532,11 +529,11 @@ switch_recursion_data(ThisClique, CallSiteMap, GoalPath, CaseNum,
     merge_recursion_data_after_branch(CaseRecursionData, CasesRecursionData,
         RecursionData).
 
-:- pred atomic_goal_recursion_data(clique_ptr::in, 
+:- pred atomic_goal_recursion_data(clique_ptr::in,
     map(goal_path, cost_and_callees)::in, goal_path::in,
     atomic_goal_rep::in, recursion_data::out) is det.
 
-atomic_goal_recursion_data(ThisClique, CallSiteMap, GoalPath, AtomicGoal, 
+atomic_goal_recursion_data(ThisClique, CallSiteMap, GoalPath, AtomicGoal,
         RecursionData) :-
     (
         % All these things have trivial cost except for foreign code whose cost
@@ -589,27 +586,38 @@ atomic_goal_recursion_data(ThisClique, CallSiteMap, GoalPath, AtomicGoal,
     %         rec2
     %     )
     % )
-    % 
+    %
     % + The cost of entering a base case is the weighted average of the costs
     %   of the two base cases.
-    % + The number of times one enteres a base case is the sum of the
+    % + The number of times one enters a base case is the sum of the
     %   individual counts.
     % + The above two rules are also true for recursive cases.
     %
-:- pred merge_recursion_data_after_branch(recursion_data::in, 
+:- pred merge_recursion_data_after_branch(recursion_data::in,
     recursion_data::in, recursion_data::out) is det.
 
 merge_recursion_data_after_branch(A, B, Result) :-
-    A = recursion_data(RecursionsA, MaxLevelA, ErrorsA),
-    B = recursion_data(RecursionsB, MaxLevelB, ErrorsB),
-    Recursions0 = assoc_list.merge(RecursionsA, RecursionsB),
-    condense_recursions(Recursions0, Recursions),
-    MaxLevel = max(MaxLevelA, MaxLevelB),
-    Errors = union(ErrorsA, ErrorsB),
-    Result = recursion_data(Recursions, MaxLevel, Errors).
-merge_recursion_data_after_branch(A, proc_dead_code, A) :-
-    A = recursion_data(_, _, _).
-merge_recursion_data_after_branch(proc_dead_code, A, A).
+    (
+        A = recursion_data(RecursionsA, MaxLevelA, ErrorsA),
+        B = recursion_data(RecursionsB, MaxLevelB, ErrorsB),
+        Recursions0 = assoc_list.merge(RecursionsA, RecursionsB),
+        condense_recursions(Recursions0, Recursions),
+        MaxLevel = max(MaxLevelA, MaxLevelB),
+        Errors = union(ErrorsA, ErrorsB),
+        Result = recursion_data(Recursions, MaxLevel, Errors)
+    ;
+        A = recursion_data(_, _, _),
+        B = proc_dead_code,
+        Result = A
+    ;
+        A = proc_dead_code,
+        B = recursion_data(_, _, _),
+        Result = B
+    ;
+        A = proc_dead_code,
+        B = proc_dead_code,
+        Result = proc_dead_code
+    ).
 
     % merge_recursion_data_sequence(A, B, Merged).
     %
@@ -628,11 +636,11 @@ merge_recursion_data_after_branch(proc_dead_code, A, A).
     % ;
     %     rec2
     % )
-    % 
-    % It's like algabra!  Teating the conjunction as multiplication and
+    %
+    % It's like algabra! Treating the conjunction as multiplication and
     % disjunction as addition we might factorise it as:
     % Note that this is just to show the pattern I can see here.
-    % 
+    %
     % base1*base2 + base1*rec2 + base2*rec1 + rec1*rec2.
     %
     % That is, there is one base case, two recursive cases, and a doubly
@@ -648,24 +656,30 @@ merge_recursion_data_after_branch(proc_dead_code, A, A).
     %   components.
     % + Similarly for the other cases.
     %
-:- pred merge_recursion_data_sequence(recursion_data::in, 
+:- pred merge_recursion_data_sequence(recursion_data::in,
     recursion_data::in, recursion_data::out) is det.
 
 merge_recursion_data_sequence(A, B, Result) :-
-    A = recursion_data(RecursionsA, MaxLevelA, ErrorsA),
-    B = recursion_data(RecursionsB, MaxLevelB, ErrorsB),
-    recursions_cross_product(RecursionsA, RecursionsB, Recursions0),
-    sort(Recursions0, Recursions1),
-    condense_recursions(Recursions1, Recursions),
-    % The maximum number of recursions on any path will be the some of the
-    % maximum number of recursions on two conjoined paths since all paths are
-    % conjoined in the cross product.
-    MaxLevel = MaxLevelA + MaxLevelB,
-    Errors = union(ErrorsA, ErrorsB),
-    Result = recursion_data(Recursions, MaxLevel, Errors).
-merge_recursion_data_sequence(A, proc_dead_code, proc_dead_code) :-
-    A = recursion_data(_, _, _).
-merge_recursion_data_sequence(proc_dead_code, _, proc_dead_code).
+    (
+        A = recursion_data(RecursionsA, MaxLevelA, ErrorsA),
+        B = recursion_data(RecursionsB, MaxLevelB, ErrorsB),
+        recursions_cross_product(RecursionsA, RecursionsB, Recursions0),
+        sort(Recursions0, Recursions1),
+        condense_recursions(Recursions1, Recursions),
+        % The maximum number of recursions on any path will be the sum of
+        % the maximum number of recursions on the two conjoined paths,
+        % since all paths are conjoined in the cross product.
+        MaxLevel = MaxLevelA + MaxLevelB,
+        Errors = union(ErrorsA, ErrorsB),
+        Result = recursion_data(Recursions, MaxLevel, Errors)
+    ;
+        A = recursion_data(_, _, _),
+        B = proc_dead_code,
+        Result = proc_dead_code
+    ;
+        A = proc_dead_code,
+        Result = proc_dead_code
+    ).
 
 :- pred condense_recursions(assoc_list(int, recursion_level)::in,
     assoc_list(int, recursion_level)::out) is det.
@@ -674,7 +688,7 @@ condense_recursions([], []).
 condense_recursions([Num - Rec | Pairs0], Pairs) :-
     condense_recursions_2(Num - Rec, Pairs0, Pairs).
 
-:- pred condense_recursions_2(pair(int, recursion_level)::in, 
+:- pred condense_recursions_2(pair(int, recursion_level)::in,
     assoc_list(int, recursion_level)::in,
     assoc_list(int, recursion_level)::out) is det.
 
@@ -684,7 +698,8 @@ condense_recursions_2(NumA - RecA, [NumB - RecB | Pairs0], Pairs) :-
         RecA = recursion_level(CostA, ProbabilityA),
         RecB = recursion_level(CostB, ProbabilityB),
         weighted_average(
-            map(probability_to_float, [ProbabilityA, ProbabilityB]),
+            [probability_to_float(ProbabilityA),
+            probability_to_float(ProbabilityB)],
             [CostA, CostB], Cost),
         Probability = or(ProbabilityA, ProbabilityB),
         Rec = recursion_level(Cost, Probability),
@@ -705,7 +720,7 @@ condense_recursions_2(NumA - RecA, [NumB - RecB | Pairs0], Pairs) :-
     assoc_list(int, recursion_level)::in,
     assoc_list(int, recursion_level)::out) is det.
 
-recursions_cross_product([], _, []). 
+recursions_cross_product([], _, []).
 recursions_cross_product([NumA - RecA | PairsA], PairsB, Pairs) :-
     recursions_cross_product_2(NumA, RecA, PairsB, InnerLoop),
     recursions_cross_product(PairsA, PairsB, OuterLoopTail),
@@ -716,7 +731,7 @@ recursions_cross_product([NumA - RecA | PairsA], PairsB, Pairs) :-
     assoc_list(int, recursion_level)::out) is det.
 
 recursions_cross_product_2(_Num, _Rec, [], []).
-recursions_cross_product_2(NumA, RecA@recursion_level(CostA, ProbA), 
+recursions_cross_product_2(NumA, RecA@recursion_level(CostA, ProbA),
         [NumB - recursion_level(CostB, ProbB) | PairsB], Pairs) :-
     recursions_cross_product_2(NumA, RecA, PairsB, Pairs0),
     Num = NumA + NumB,
@@ -734,11 +749,11 @@ recursion_data_and_probability(Prob,
     map_values(recursion_level_and_probability(Prob), !Recursions).
 recursion_data_and_probability(_, proc_dead_code, proc_dead_code).
 
-:- pred recursion_level_and_probability(probability::in, T::in, 
+:- pred recursion_level_and_probability(probability::in, T::in,
     recursion_level::in, recursion_level::out) is det.
 
-recursion_level_and_probability(AndProb, _, recursion_level(Cost, Prob0), 
-        recursion_level(Cost, Prob)) :-
+recursion_level_and_probability(AndProb, _,
+        recursion_level(Cost, Prob0), recursion_level(Cost, Prob)) :-
     Prob = and(Prob0, AndProb).
 
 :- pred recursion_data_add_error(recursion_error::in, recursion_data::in,
@@ -761,12 +776,12 @@ recursion_data_add_error(Error, !RecursionData) :-
     %
 :- func simple_recursion_data(float, int) = recursion_data.
 
-simple_recursion_data(Cost, Calls) = 
+simple_recursion_data(Cost, Calls) =
     recursion_data([Calls - recursion_level(Cost, certain)], Calls, init).
 
 :- func error_to_string(recursion_error) = string.
 
-error_to_string(re_unhandled_determinism(Detism)) = 
+error_to_string(re_unhandled_determinism(Detism)) =
     format("%s code is not handled", [s(string(Detism))]).
 
 %----------------------------------------------------------------------------%
@@ -786,16 +801,16 @@ create_recursion_types_frequency_report(Deep, MaybeReport) :-
     ;
         MaybeProgRepResult = yes(ok(_)),
         Cliques = Deep ^ clique_index,
-        size(Cliques, NumCliques),  
-        array_foldl_from_1(rec_types_freq_build_histogram(Deep), Cliques, 
+        size(Cliques, NumCliques),
+        array_foldl_from_1(rec_types_freq_build_histogram(Deep), Cliques,
             map.init, Histogram0),
         finalize_histogram(Deep, NumCliques, Histogram0, Histogram),
         MaybeReport = ok(recursion_types_frequency_report(Histogram))
     ).
 
 :- pred rec_types_freq_build_histogram(deep::in, int::in, clique_ptr::in,
-    map(recursion_type_simple, recursion_type_raw_freq_data)::in, 
-    map(recursion_type_simple, recursion_type_raw_freq_data)::out) is det. 
+    map(recursion_type_simple, recursion_type_raw_freq_data)::in,
+    map(recursion_type_simple, recursion_type_raw_freq_data)::out) is det.
 
 rec_types_freq_build_histogram(Deep, _, CliquePtr, !Histogram) :-
     trace [io(!IO)] (
@@ -817,11 +832,11 @@ rec_types_freq_build_histogram(Deep, _, CliquePtr, !Histogram) :-
     (
         MaybeFirstPDPtr = yes(FirstPDPtr),
         lookup_proc_dynamics(Deep ^ proc_dynamics, FirstPDPtr, FirstPD),
-        FirstPSPtr = FirstPD ^ pd_proc_static,  
-        PDesc = describe_proc(Deep, FirstPSPtr), 
+        FirstPSPtr = FirstPD ^ pd_proc_static,
+        PDesc = describe_proc(Deep, FirstPSPtr),
         lookup_pd_own(Deep ^ pd_own, FirstPDPtr, ProcOwn),
         lookup_pd_desc(Deep ^ pd_desc, FirstPDPtr, ProcInherit),
-        FirstProcInfo = first_proc_info(PDesc, 
+        FirstProcInfo = first_proc_info(PDesc,
             own_and_inherit_prof_info(ProcOwn, ProcInherit)),
         MaybeFirstProcInfo = yes(FirstProcInfo)
     ;
@@ -829,7 +844,7 @@ rec_types_freq_build_histogram(Deep, _, CliquePtr, !Histogram) :-
         MaybeFirstProcInfo = no
     ),
     foldl(update_histogram(MaybeFirstProcInfo), SimpleTypes, !Histogram).
-            
+
 :- type first_proc_info
     --->    first_proc_info(
                 fpi_pdesc               :: proc_desc,
@@ -858,7 +873,7 @@ add_own_and_inherit_prof_info(
     --->    recursion_type_raw_freq_data(
                 rtrfd_freq              :: int,
                 rtrfd_maybe_prof_info   :: maybe(own_and_inherit_prof_info),
-                rtrfd_entry_procs       :: map(proc_static_ptr, 
+                rtrfd_entry_procs       :: map(proc_static_ptr,
                     recursion_type_raw_proc_freq_data)
             ).
 
@@ -870,8 +885,8 @@ add_own_and_inherit_prof_info(
             ).
 
 :- pred update_histogram(maybe(first_proc_info)::in,
-    recursion_type_simple::in, 
-    map(recursion_type_simple, recursion_type_raw_freq_data)::in, 
+    recursion_type_simple::in,
+    map(recursion_type_simple, recursion_type_raw_freq_data)::in,
     map(recursion_type_simple, recursion_type_raw_freq_data)::out) is det.
 
 update_histogram(MaybeFirstProcInfo, SimpleType, !Histogram) :-
@@ -881,7 +896,7 @@ update_histogram(MaybeFirstProcInfo, SimpleType, !Histogram) :-
             MaybeFirstProcInfo = yes(FirstProcInfo),
             (
                 MaybeProfInfo0 = yes(ProfInfo0),
-                add_own_and_inherit_prof_info(FirstProcInfo ^ fpi_prof_info, 
+                add_own_and_inherit_prof_info(FirstProcInfo ^ fpi_prof_info,
                     ProfInfo0, ProfInfo)
             ;
                 MaybeProfInfo0 = no,
@@ -912,26 +927,26 @@ update_histogram(MaybeFirstProcInfo, SimpleType, !Histogram) :-
     svmap.set(SimpleType, Data, !Histogram).
 
 :- pred update_procs_map(first_proc_info::in,
-    map(proc_static_ptr, recursion_type_raw_proc_freq_data)::in, 
+    map(proc_static_ptr, recursion_type_raw_proc_freq_data)::in,
     map(proc_static_ptr, recursion_type_raw_proc_freq_data)::out) is det.
 
 update_procs_map(FirstProcInfo, !Map) :-
     FirstProcInfo = first_proc_info(PSDesc, FirstProfInfo),
     PsPtr = PSDesc ^ pdesc_ps_ptr,
     ( map.search(!.Map, PsPtr, ProcFreqData0) ->
-        ProcFreqData0 = 
+        ProcFreqData0 =
             recursion_type_raw_proc_freq_data(Count0, ProfInfo0, ProcDesc),
         add_own_and_inherit_prof_info(FirstProfInfo, ProfInfo0, ProfInfo),
         Count = Count0 + 1,
-        ProcFreqData = 
+        ProcFreqData =
             recursion_type_raw_proc_freq_data(Count, ProfInfo, ProcDesc)
     ;
-        ProcFreqData = 
+        ProcFreqData =
             recursion_type_raw_proc_freq_data(1, FirstProfInfo, PSDesc)
     ),
     svmap.set(PsPtr, ProcFreqData, !Map).
 
-:- pred recursion_type_to_simple_type(recursion_type::in, 
+:- pred recursion_type_to_simple_type(recursion_type::in,
     recursion_type_simple::out) is multi.
 
 recursion_type_to_simple_type(rt_not_recursive, rts_not_recursive).
@@ -947,19 +962,19 @@ recursion_type_to_simple_type(rt_errors(Errors), rts_error(Error)) :-
     member(Error, Errors).
 recursion_type_to_simple_type(rt_errors(_), rts_total_error_instances).
 
-:- pred finalize_histogram(deep::in, int::in, 
+:- pred finalize_histogram(deep::in, int::in,
     map(recursion_type_simple, recursion_type_raw_freq_data)::in,
-    map(recursion_type_simple, recursion_type_freq_data)::out) is det. 
+    map(recursion_type_simple, recursion_type_freq_data)::out) is det.
 
 finalize_histogram(Deep, NumCliques, !Histogram) :-
-    map_values(finalize_histogram_rec_type(Deep, float(NumCliques)), 
+    map_values(finalize_histogram_rec_type(Deep, float(NumCliques)),
         !Histogram).
 
-:- pred finalize_histogram_rec_type(deep::in, float::in, 
+:- pred finalize_histogram_rec_type(deep::in, float::in,
     recursion_type_simple::in,
     recursion_type_raw_freq_data::in, recursion_type_freq_data::out) is det.
 
-finalize_histogram_rec_type(Deep, NumCliques, _RecursionType, 
+finalize_histogram_rec_type(Deep, NumCliques, _RecursionType,
         recursion_type_raw_freq_data(Freq, MaybeProfInfo, !.EntryProcs),
         recursion_type_freq_data(Freq, Percent, MaybeSummary, !:EntryProcs)) :-
     Percent = percent(float(Freq) / NumCliques),
@@ -969,7 +984,7 @@ finalize_histogram_rec_type(Deep, NumCliques, _RecursionType,
     ;
         MaybeProfInfo = yes(ProfInfo),
         ProfInfo = own_and_inherit_prof_info(Own, Inherit),
-        own_and_inherit_to_perf_row_data(Deep, unit, Own, Inherit, Summary), 
+        own_and_inherit_to_perf_row_data(Deep, unit, Own, Inherit, Summary),
         MaybeSummary = yes(Summary)
     ),
     map_values(finalize_histogram_proc_rec_type(Deep, NumCliques), !EntryProcs).
@@ -989,7 +1004,7 @@ finalize_histogram_proc_rec_type(Deep, NumCliques, _PSPtr,
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
 
-recursion_type_get_maybe_avg_max_depth(rt_not_recursive, 
+recursion_type_get_maybe_avg_max_depth(rt_not_recursive,
     yes(recursion_depth_from_float(0.0))).
 recursion_type_get_maybe_avg_max_depth(rt_single(_, _, Depth, _, _),
     yes(recursion_depth_from_float(Depth))).
@@ -997,12 +1012,6 @@ recursion_type_get_maybe_avg_max_depth(rt_divide_and_conquer(_, _), no).
 recursion_type_get_maybe_avg_max_depth(rt_mutual_recursion(_), no).
 recursion_type_get_maybe_avg_max_depth(rt_other(_), no).
 recursion_type_get_maybe_avg_max_depth(rt_errors(_), no).
-
-%----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "recursion_patterns.m: ".
 
 %----------------------------------------------------------------------------%
 :- end_module recursion_patterns.

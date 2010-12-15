@@ -147,7 +147,7 @@ get_coverage_after_det(Coverage, After) :-
 :- pred complete_coverage_error is erroneous.
 
 complete_coverage_error :-
-    error(this_file ++ "Expected complete coverage information").
+    unexpected($module, $pred, "Expected complete coverage information").
 
 %-----------------------------------------------------------------------------%
 
@@ -156,7 +156,7 @@ coverage_point_arrays_to_list(StaticArray, DynamicArray, CoveragePoints) :-
     ( array.bounds(DynamicArray, Min, Max) ->
         true
     ;
-        error("coverage_point_arrays_to_list: Bounds do not match")
+        unexpected($module, $pred, "bounds do not match")
     ),
     coverage_point_arrays_to_list_2(Min, Max, StaticArray, DynamicArray,
         [], CoveragePoints).
@@ -307,7 +307,8 @@ goal_annotate_coverage(Info, GoalPath, Before, After, Goal0, Goal) :-
                   "Coverage before call doesn't match calls port on call site"),
                 After0 = after_coverage(Exits)
             ;
-                error("Couldn't look up call site for port counts GP: " ++
+                unexpected($module, $pred,
+                    "Couldn't look up call site for port counts GP: " ++
                     goal_path_to_string(GoalPath))
             )
         ;
@@ -351,16 +352,18 @@ goal_annotate_coverage(Info, GoalPath, Before, After, Goal0, Goal) :-
         ( check_coverage_complete(GoalCoverage, GoalExpr) ->
             true
         ;
-            error(string.format("check_coverage_complete failed\n" ++
-                "\tCoverage: %s\n\tGoalPath: %s\n\tProc: %s\n",
-                [s(string(GoalCoverage)), 
-                 s(goal_path_to_string(GoalPath)),
-                 s(string(Info ^ cri_proc))]))
+            error(
+                string.format("check_coverage_complete failed\n" ++
+                    "\tCoverage: %s\n\tGoalPath: %s\n\tProc: %s\n",
+                    [s(string(GoalCoverage)), 
+                     s(goal_path_to_string(GoalPath)),
+                     s(string(Info ^ cri_proc))]))
         ),
         ( check_coverage_regarding_detism(GoalCoverage, Detism) ->
             true
         ;
-            error(string.format("check_coverage_regarding_detism failed: %s %s",
+            error(
+                string.format("check_coverage_regarding_detism failed: %s %s",
                     [s(string(GoalCoverage)), s(string(Detism))]))
         )
     ).

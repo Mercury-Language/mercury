@@ -109,7 +109,6 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_util.
@@ -119,6 +118,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module svmap.
 :- import_module term.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2005-2008 The University of Melbourne.
+% Copyright (C) 2001, 2005-2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -702,7 +702,8 @@ threshold_value_ps_callseqs_both(Deep, Threshold, PSI) :-
     TotalCallSeqs = OwnCallSeqs + DescCallSeqs,
     float(TotalCallSeqs) > Threshold.
 
-:- pred threshold_value_ps_allocs_self(deep::in, float::in, int::in) is semidet.
+:- pred threshold_value_ps_allocs_self(deep::in, float::in, int::in)
+    is semidet.
 
 threshold_value_ps_allocs_self(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
@@ -710,7 +711,8 @@ threshold_value_ps_allocs_self(Deep, Threshold, PSI) :-
     OwnAlloc = allocs(Own),
     float(OwnAlloc) > Threshold.
 
-:- pred threshold_value_ps_allocs_both(deep::in, float::in, int::in) is semidet.
+:- pred threshold_value_ps_allocs_both(deep::in, float::in, int::in)
+    is semidet.
 
 threshold_value_ps_allocs_both(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
@@ -722,7 +724,8 @@ threshold_value_ps_allocs_both(Deep, Threshold, PSI) :-
     TotalAlloc = OwnAlloc + DescAlloc,
     float(TotalAlloc) > Threshold.
 
-:- pred threshold_value_ps_words_self(deep::in, float::in, int::in) is semidet.
+:- pred threshold_value_ps_words_self(deep::in, float::in, int::in)
+    is semidet.
 
 threshold_value_ps_words_self(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
@@ -744,7 +747,8 @@ threshold_value_ps_words_both(Deep, Threshold, PSI) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred threshold_percent_ps_time_self(deep::in, float::in, int::in) is semidet.
+:- pred threshold_percent_ps_time_self(deep::in, float::in, int::in)
+    is semidet.
 
 threshold_percent_ps_time_self(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
@@ -757,7 +761,8 @@ threshold_percent_ps_time_self(Deep, Threshold, PSI) :-
     RootTotalQuanta = RootOwnQuanta + RootDescQuanta,
     100.0 * float(OwnQuanta) > Threshold * float(RootTotalQuanta).
 
-:- pred threshold_percent_ps_time_both(deep::in, float::in, int::in) is semidet.
+:- pred threshold_percent_ps_time_both(deep::in, float::in, int::in)
+    is semidet.
 
 threshold_percent_ps_time_both(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
@@ -774,7 +779,8 @@ threshold_percent_ps_time_both(Deep, Threshold, PSI) :-
     RootTotalQuanta = RootOwnQuanta + RootDescQuanta,
     100.0 * float(TotalQuanta) > Threshold * float(RootTotalQuanta).
 
-:- pred threshold_percent_ps_callseqs_self(deep::in, float::in, int::in) is semidet.
+:- pred threshold_percent_ps_callseqs_self(deep::in, float::in, int::in)
+    is semidet.
 
 threshold_percent_ps_callseqs_self(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
@@ -787,7 +793,8 @@ threshold_percent_ps_callseqs_self(Deep, Threshold, PSI) :-
     RootTotalCallSeqs = RootOwnCallSeqs + RootDescCallSeqs,
     100.0 * float(OwnCallSeqs) > Threshold * float(RootTotalCallSeqs).
 
-:- pred threshold_percent_ps_callseqs_both(deep::in, float::in, int::in) is semidet.
+:- pred threshold_percent_ps_callseqs_both(deep::in, float::in, int::in)
+    is semidet.
 
 threshold_percent_ps_callseqs_both(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
@@ -804,7 +811,8 @@ threshold_percent_ps_callseqs_both(Deep, Threshold, PSI) :-
     RootTotalCallSeqs = RootOwnCallSeqs + RootDescCallSeqs,
     100.0 * float(TotalCallSeqs) > Threshold * float(RootTotalCallSeqs).
 
-:- pred threshold_percent_ps_allocs_self(deep::in, float::in, int::in) is semidet.
+:- pred threshold_percent_ps_allocs_self(deep::in, float::in, int::in)
+    is semidet.
 
 threshold_percent_ps_allocs_self(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
@@ -817,7 +825,8 @@ threshold_percent_ps_allocs_self(Deep, Threshold, PSI) :-
     RootTotalAlloc = RootOwnAlloc + RootDescAlloc,
     100.0 * float(OwnAlloc) > Threshold * float(RootTotalAlloc).
 
-:- pred threshold_percent_ps_allocs_both(deep::in, float::in, int::in) is semidet.
+:- pred threshold_percent_ps_allocs_both(deep::in, float::in, int::in)
+    is semidet.
 
 threshold_percent_ps_allocs_both(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
@@ -834,7 +843,8 @@ threshold_percent_ps_allocs_both(Deep, Threshold, PSI) :-
     RootTotalAlloc = RootOwnAlloc + RootDescAlloc,
     100.0 * float(TotalAlloc) > Threshold * float(RootTotalAlloc).
 
-:- pred threshold_percent_ps_words_self(deep::in, float::in, int::in) is semidet.
+:- pred threshold_percent_ps_words_self(deep::in, float::in, int::in)
+    is semidet.
 
 threshold_percent_ps_words_self(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
@@ -847,7 +857,8 @@ threshold_percent_ps_words_self(Deep, Threshold, PSI) :-
     RootTotalWords = RootOwnWords + RootDescWords,
     100.0 * float(OwnWords) > Threshold * float(RootTotalWords).
 
-:- pred threshold_percent_ps_words_both(deep::in, float::in, int::in) is semidet.
+:- pred threshold_percent_ps_words_both(deep::in, float::in, int::in)
+    is semidet.
 
 threshold_percent_ps_words_both(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,

@@ -370,7 +370,6 @@
 
 :- import_module check_hlds.type_util.
 :- import_module libs.
-:- import_module libs.compiler_util.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -381,6 +380,7 @@
 :- import_module assoc_list.
 :- import_module int.
 :- import_module pair.
+:- import_module require.
 :- import_module string.
 :- import_module set.
 :- import_module svmap.

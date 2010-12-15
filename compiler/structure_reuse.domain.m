@@ -271,13 +271,13 @@
 
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
-:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_ctgc.
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.util.
 
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module solutions.
 :- import_module string.

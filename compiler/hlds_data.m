@@ -34,13 +34,13 @@
 :- implementation.
 
 :- import_module check_hlds.type_util.
-:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
 :- import_module cord.
 :- import_module int.
 :- import_module multi_map.
+:- import_module require.
 :- import_module svmap.
 :- import_module varset.
 

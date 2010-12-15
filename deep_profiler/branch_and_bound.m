@@ -12,7 +12,7 @@
 % This module contains a generic branch and bound solver.  It is designed to be
 % generic and easy to use.  To use it write non-deterministic search code that
 % uses test_incomplete_solution after every choice point.  Call this code using
-% branch_and_bound. 
+% branch_and_bound.
 %
 % This module may be compiled with the debug_branch_and_bound trace flag to
 % enable the debugging trace goals.
@@ -62,7 +62,7 @@
     %
 :- pred branch_and_bound(impure pred(bnb_state(T), T),
     func(T) = float, set(T), bnb_profile).
-:- mode branch_and_bound(pred(in, out) is nondet, 
+:- mode branch_and_bound(pred(in, out) is nondet,
     func(in) = out is det, out, out) is det.
 
     % test_incomplete_solution(State, PartialSolution).
@@ -114,7 +114,7 @@
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%
-    
+
     % The best solutions found so far and the value of the objective
     % function for these solutions.
     %
@@ -148,13 +148,14 @@ branch_and_bound(Generator, ObjectiveFn, BestSolutions, Profile) :-
     ),
     Profile = Profile0 ^ bnbp_time_msecs := Time.
 
-:- pred branch_and_bound_2(impure pred(bnb_state(T), T), 
-    func(T) = float, unit, 
+:- pred branch_and_bound_2(impure pred(bnb_state(T), T),
+    func(T) = float, unit,
     pair(set(T), bnb_profile)).
-:- mode branch_and_bound_2(pred(in, out) is nondet, 
+:- mode branch_and_bound_2(pred(in, out) is nondet,
     func(in) = out is det, in, out) is det.
 
-branch_and_bound_2(Generator, ObjectiveFn, unit, FinalBestSolutions - FinalProfile) :-
+branch_and_bound_2(Generator, ObjectiveFn, unit,
+        FinalBestSolutions - FinalProfile) :-
     % Use a failure driven loop to implement a branch and bound solver.
     promise_pure (
         trace [compile_time(flag("debug_branch_and_bound")), io(!IO)] (
@@ -167,7 +168,7 @@ branch_and_bound_2(Generator, ObjectiveFn, unit, FinalBestSolutions - FinalProfi
         (
             impure Generator(State, CurrentSolution),
 
-            impure test_complete_solution(State, CurrentSolution), 
+            impure test_complete_solution(State, CurrentSolution),
             trace [compile_time(flag("debug_branch_and_bound")), io(!IO)] (
                 CurrentObjective = ObjectiveFn(CurrentSolution),
                 io.format(
@@ -178,13 +179,13 @@ branch_and_bound_2(Generator, ObjectiveFn, unit, FinalBestSolutions - FinalProfi
 
             semidet_fail
         ->
-            error(this_file ++ "Failure driven loop must fail")
+            unexpected($module, "Failure driven loop must fail")
         ;
             true
         ),
 
         % Return results.
-        impure get_mutvar(BestSolutionsMutvar, FinalBestSolutions0), 
+        impure get_mutvar(BestSolutionsMutvar, FinalBestSolutions0),
         impure get_mutvar(ProfileMutvar, FinalProfile),
         trace [compile_time(flag("debug_branch_and_bound")), io(!IO)] (
             io.write_string("D: Branch and bound loop finished\n", !IO),
@@ -206,13 +207,13 @@ branch_and_bound_2(Generator, ObjectiveFn, unit, FinalBestSolutions - FinalProfi
     % True of Solution is the best or equal best solution so far.
     %
     % The current best solutions are updated.
-    % 
+    %
 :- impure pred test_complete_solution(bnb_state(T)::in, T::in) is semidet.
 
-test_complete_solution(State, CurrentSolution) :- 
+test_complete_solution(State, CurrentSolution) :-
     State = bnb_state(BestSolutionsMutvar, ObjectiveFn, ProfileMutvar),
     CurrentObjective = ObjectiveFn(CurrentSolution),
-   
+
     impure get_mutvar(BestSolutionsMutvar, BestSolutions0),
     impure get_mutvar(ProfileMutvar, Profile0),
     (
@@ -356,7 +357,7 @@ profile_num_alternatives(Profile, Open, Closed) :-
 
 :- func this_file = string.
 
-this_file = "branch_and_bound.m: ".
+this_file = "branch_and_bound.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module branch_and_bound.

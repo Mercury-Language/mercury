@@ -73,11 +73,11 @@
 :- import_module check_hlds.goal_path.
 :- import_module hlds.hlds_goal.
 :- import_module libs.
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 
 :- import_module bool.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.

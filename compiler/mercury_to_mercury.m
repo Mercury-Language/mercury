@@ -414,7 +414,6 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.rat.
@@ -430,6 +429,7 @@
 :- import_module map.
 :- import_module pair.
 :- import_module ops.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term.

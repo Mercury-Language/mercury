@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2009 The University of Melbourne.
+% Copyright (C) 2002-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -192,13 +192,12 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.instmap.
-:- import_module libs.
-:- import_module libs.compiler_util.
 :- import_module ll_backend.
 :- import_module ll_backend.call_gen.
 
 :- import_module assoc_list.
 :- import_module pair.
+:- import_module require.
 :- import_module svmap.
 :- import_module svset.
 :- import_module svvarset.

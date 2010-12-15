@@ -67,7 +67,6 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.quantification.
-:- import_module libs.compiler_util.
 :- import_module libs.lp_rational.
 :- import_module libs.polyhedron.
 :- import_module libs.rat.
@@ -83,6 +82,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.

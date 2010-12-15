@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2009 The University of Melbourne.
+% Copyright (C) 1996-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -81,20 +81,18 @@
 
 :- implementation.
 
-:- import_module check_hlds.        % needed for type_util, mode_util
-:- import_module libs.
-
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.name_mangle.
 :- import_module backend_libs.proc_label.
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
-:- import_module libs.compiler_util.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
@@ -109,6 +107,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module string.
 :- import_module term.
 

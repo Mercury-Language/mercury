@@ -294,7 +294,7 @@ startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
     array.init(NCSSs, zero_inherit_prof_info, CSSDesc0),
     array.init(NPDs, map.init, PDCompTable0),
     array.init(NCSDs, map.init, CSDCompTable0),
-    CoverageDataType = InitStats ^ prs_deep_flags ^ df_coverage_data_type, 
+    CoverageDataType = InitStats ^ prs_deep_flags ^ df_coverage_data_type,
     (
         CoverageDataType = no_coverage_data,
         MaybeStaticCoverage0 = no
@@ -312,7 +312,7 @@ startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
         ProcCallers, CallSiteStaticMap, CallSiteCalls,
         PDOwn, PDDesc0, CSDDesc0,
         PSOwn0, PSDesc0, CSSOwn0, CSSDesc0,
-        PDCompTable0, CSDCompTable0, ModuleDataMap, MaybeStaticCoverage0, 
+        PDCompTable0, CSDCompTable0, ModuleDataMap, MaybeStaticCoverage0,
         ExcludeFile, MaybeProcRepFile),
 
     array_foldl_from_1(propagate_to_clique, Cliques, !Deep),
@@ -766,7 +766,7 @@ summarize_proc_dynamics_with_coverage_data(!Deep) :-
     % correect amount of storage.
     NPS = !.Deep ^ profile_stats ^ prs_num_ps + 1,
     array_foldl3_from_1(
-        summarize_proc_dynamic_with_coverage(!.Deep ^ pd_own, 
+        summarize_proc_dynamic_with_coverage(!.Deep ^ pd_own,
             !.Deep ^ pd_desc, !.Deep ^ pd_comp_table),
         !.Deep ^ proc_dynamics,
         init(NPS, zero_own_prof_info), PSOwnArray,
@@ -800,27 +800,25 @@ summarize_proc_dynamic_with_coverage(PDOwnArray, PDDescArray, PDCompTableArray,
         )
     ;
         MaybeDynamicCoverage = no,
-        error(this_file ++ "No coverage point array in proc dynamic")
+        unexpected($module, $pred, "no coverage point array in proc dynamic")
     ).
 
 %-----------------------------------------------------------------------------%
 
 :- pred summarize_call_site_dynamics(deep::in, deep::out) is det.
 
-summarize_call_site_dynamics(Deep0, Deep) :-
-    CSSOwnArray0 = Deep0 ^ css_own,
-    CSSDescArray0 = Deep0 ^ css_desc,
+summarize_call_site_dynamics(!Deep) :-
+    CSSOwnArray0 = !.Deep ^ css_own,
+    CSSDescArray0 = !.Deep ^ css_desc,
     array_foldl2_from_1(
         summarize_call_site_dynamic(
-            Deep0 ^ call_site_static_map,
-            Deep0 ^ call_site_statics, Deep0 ^ csd_desc,
-            Deep0 ^ csd_comp_table),
-        Deep0 ^ call_site_dynamics,
+            !.Deep ^ call_site_static_map, !.Deep ^ call_site_statics,
+            !.Deep ^ csd_desc, !.Deep ^ csd_comp_table),
+        !.Deep ^ call_site_dynamics,
         copy(CSSOwnArray0), CSSOwnArray,
         copy(CSSDescArray0), CSSDescArray),
-    Deep = ((Deep0
-        ^ css_own := CSSOwnArray)
-        ^ css_desc := CSSDescArray).
+    !Deep ^ css_own := CSSOwnArray,
+    !Deep ^ css_desc := CSSDescArray.
 
 :- pred summarize_call_site_dynamic(call_site_static_map::in,
     call_site_statics::in, array(inherit_prof_info)::in,
@@ -884,7 +882,7 @@ summarize_proc_statics_coverage(!Deep) :-
         init(NPS, zero_static_coverage), CoverageArray),
     !Deep ^ maybe_static_coverage := yes(CoverageArray).
 
-:- pred summarize_proc_static_coverage(int::in, proc_static::in, 
+:- pred summarize_proc_static_coverage(int::in, proc_static::in,
     array(static_coverage_info)::array_di,
     array(static_coverage_info)::array_uo) is det.
 
@@ -896,7 +894,7 @@ summarize_proc_static_coverage(Index, PS, !CoverageArray) :-
         array.set(!.CoverageArray, Index, Coverage, !:CoverageArray)
     ;
         MaybeCoverage = no,
-        error(this_file ++ "No coverage data in proc static.")
+        unexpected($module, $pred, "no coverage data in proc static")
     ).
 
 %----------------------------------------------------------------------------%
@@ -1105,12 +1103,6 @@ maybe_report_msg(yes(OutputStream), Msg, !IO) :-
     io.write_string(OutputStream, Msg, !IO),
     flush_output(OutputStream, !IO).
 maybe_report_msg(no, _, !IO).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "startup.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module startup.

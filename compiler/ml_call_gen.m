@@ -92,7 +92,6 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_module.
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
@@ -105,6 +104,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
+:- import_module require.
 :- import_module string.
 :- import_module term.
 

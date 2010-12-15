@@ -316,7 +316,7 @@ dump_init_profile_stats(Stats, !IO) :-
         Compression = no_compression,
         io.write_string("none\n", !IO)
     ),
-    io.format("\tcoverage_data_type = %s\n", [s(string(CoverageDataType))], 
+    io.format("\tcoverage_data_type = %s\n", [s(string(CoverageDataType))],
         !IO),
     io.nl(!IO).
 
@@ -540,7 +540,7 @@ dump_proc_static(Restriction, Index, ProcStatic, !IO) :-
     ->
         ProcStatic = proc_static(Id, DeclModule,
             _UnQualRefinedId, QualRefinedId, RawId, FileName, LineNumber,
-            InInterface, Sites, CoveragePointInfos, MaybeCoveragePoints, 
+            InInterface, Sites, CoveragePointInfos, MaybeCoveragePoints,
             IsZeroed),
         IdStr = dump_proc_id(Id),
         io.format("ps%d:\n", [i(Index)], !IO),
@@ -586,7 +586,7 @@ dump_proc_static(Restriction, Index, ProcStatic, !IO) :-
             MaybeCoveragePoints = no,
             io.write_string("\tCoverage counts not present in proc static\n",
                 !IO),
-            array_foldl_from_0(dump_coverage_point_info, CoveragePointInfos, 
+            array_foldl_from_0(dump_coverage_point_info, CoveragePointInfos,
                 !IO)
         ),
         io.nl(!IO)
@@ -611,7 +611,7 @@ dump_coverage_point(CoveragePoint, !Num, !IO) :-
     io.format("\t%s: %d\n", [s(CPInfoStr), i(Count)], !IO),
     !:Num = !.Num + 1.
 
-:- pred dump_coverage_point_info(int::in, coverage_point_info::in, 
+:- pred dump_coverage_point_info(int::in, coverage_point_info::in,
     io::di, io::uo) is det.
 
 dump_coverage_point_info(Num, CoveragePointInfo, !IO) :-
@@ -622,7 +622,7 @@ dump_coverage_point_info(Num, CoveragePointInfo, !IO) :-
 
 format_cp_info(Num, coverage_point_info(Path, CPType), String) :-
     goal_path_to_string(Path) = PathString,
-    format("coverage_point[%d]: %s, %s", 
+    format("coverage_point[%d]: %s, %s",
         [i(Num), s(string(CPType)), s(PathString)], String).
 
 %----------------------------------------------------------------------------%
@@ -766,7 +766,8 @@ dump_deep_rev_links(Deep, !IO) :-
     io.nl(!IO),
 
     CallSiteStaticMap = Deep ^ call_site_static_map,
-    io.write_string("SECTION MAP FROM CALL SITE DYNAMICS TO STATICS:\n\n", !IO),
+    io.write_string("SECTION MAP FROM CALL SITE DYNAMICS TO STATICS:\n\n",
+        !IO),
     array_foldl_from_1(dump_call_site_dynamic_to_static, CallSiteStaticMap,
         !IO),
     io.nl(!IO),

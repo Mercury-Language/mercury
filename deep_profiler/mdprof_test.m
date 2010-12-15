@@ -10,6 +10,7 @@
 % Author: zs.
 %
 % This file contains a tool for testing the behavior of the deep profiler.
+%
 %-----------------------------------------------------------------------------%
 
 :- module mdprof_test.
@@ -206,7 +207,7 @@ write_help_message(ProgName) -->
         "--test      Test the deep profiler, generating all\n" ++
         "\t\t\tpossible web pages of the popular types.\n" ++
         "--verify-profile\n" ++
-        "\t\t\tVerify that <filename> is a well-formed deep profiling\n" ++ 
+        "\t\t\tVerify that <filename> is a well-formed deep profiling\n" ++
         "\t\t\tdata file.\n" ++
         "\n" ++
         "You may also specify the following options:.\n" ++
@@ -235,12 +236,13 @@ test_server(Pref, Deep, Options, !IO) :-
     % array.max(Deep ^ clique_members, NumCliques),
     % test_cliques(1, NumCliques, DirName, Pref, Deep, !IO),
     % test_procs(1, NumProcStatics, DirName, Pref, Deep, !IO).
-    
-    lookup_bool_option(Options, static_procrep_coverage, StaticProcrepCoverage),
+
+    lookup_bool_option(Options, static_procrep_coverage,
+        StaticProcrepCoverage),
     (
         StaticProcrepCoverage = yes,
         array.max(Deep ^ proc_statics, NumProcStatics),
-        test_procrep_static_coverages(1, NumProcStatics, Pref, Deep, Options, 
+        test_procrep_static_coverages(1, NumProcStatics, Pref, Deep, Options,
             !IO)
     ;
         StaticProcrepCoverage = no
@@ -294,7 +296,7 @@ test_procs(Cur, Max, Options, Pref, Deep, !IO) :-
 
 test_procrep_static_coverages(Cur, Max, Pref, Deep, Options, !IO) :-
     ( Cur =< Max ->
-        try_exec(deep_cmd_static_procrep_coverage(proc_static_ptr(Cur)), Pref, 
+        try_exec(deep_cmd_static_procrep_coverage(proc_static_ptr(Cur)), Pref,
             Deep, HTML, !IO),
         write_test_html(Options, "procrep_dynamic_coverage", Cur, HTML, !IO),
         test_procrep_static_coverages(Cur + 1, Max, Pref, Deep, Options, !IO)
@@ -315,7 +317,7 @@ test_procrep_dynamic_coverages(Cur, Max, Pref, Deep, Options, !IO) :-
         true
     ).
 
-:- pred test_recursion_types_histogram(preferences::in, deep::in, 
+:- pred test_recursion_types_histogram(preferences::in, deep::in,
     option_table::in, io::di, io::uo) is det.
 
 test_recursion_types_histogram(Pref, Deep, Options, !IO) :-
@@ -326,7 +328,7 @@ test_recursion_types_histogram(Pref, Deep, Options, !IO) :-
 
 :- func progrep_error = maybe_error(prog_rep).
 
-progrep_error = 
+progrep_error =
     error("No Program Representation available when using mdprof_test").
 
 :- pred write_test_html(option_table::in, string::in, int::in, string::in,

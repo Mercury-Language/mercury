@@ -1847,7 +1847,6 @@
 :- import_module backend_libs.foreign.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_type.
@@ -1856,6 +1855,7 @@
 
 :- import_module char.
 :- import_module int.
+:- import_module require.
 :- import_module string.
 :- import_module term.
 

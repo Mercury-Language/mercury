@@ -520,7 +520,6 @@
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ml_backend.ml_call_gen.
@@ -541,6 +540,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 

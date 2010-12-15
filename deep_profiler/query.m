@@ -147,7 +147,7 @@
                 cmd_dcl_id                      :: clique_ptr
             )
     ;       deep_cmd_call_site_dynamic_var_use(
-                cmd_csdvu_id                    :: call_site_dynamic_ptr 
+                cmd_csdvu_id                    :: call_site_dynamic_ptr
             ).
 
 :- type caller_groups
@@ -201,7 +201,7 @@
 
                 % The max number of proc statics to display for each recursion
                 % type group in the recursion type frequency report.
-                pref_proc_statics_per_rec_type 
+                pref_proc_statics_per_rec_type
                                     :: int,
 
                 % Whether pages should summarize at higher order call sites.
@@ -489,7 +489,7 @@ new_exec(Cmd, Prefs, Deep, HTMLStr, !IO) :-
 
 slow_cmd(deep_cmd_recursion_types_frequency).
 
-:- pragma memo(create_and_memoize_report(in, in, out), 
+:- pragma memo(create_and_memoize_report(in, in, out),
     [specified([value, addr, output])]).
 :- pred create_and_memoize_report(cmd::in, deep::in, deep_report::out) is det.
 
@@ -594,7 +594,7 @@ limit_separator_char = ('-').
 cmd_to_string(Cmd) = CmdStr :-
     (
         Cmd = deep_cmd_quit,
-        CmdStr = cmd_str_quit 
+        CmdStr = cmd_str_quit
     ;
         Cmd = deep_cmd_restart,
         CmdStr = cmd_str_restart
@@ -796,7 +796,7 @@ string_to_maybe_cmd(QueryString) = MaybeCmd :-
         Cmd = deep_cmd_proc(PSPtr),
         MaybeCmd = yes(Cmd)
     ;
-        Pieces = [cmd_str_proc_callers, PSIStr, GroupCallersStr, BunchNumStr, 
+        Pieces = [cmd_str_proc_callers, PSIStr, GroupCallersStr, BunchNumStr,
             CallersPerBunchStr, ContourStr],
         string.to_int(PSIStr, PSI),
         string_to_caller_groups(GroupCallersStr, GroupCallers),
@@ -824,7 +824,7 @@ string_to_maybe_cmd(QueryString) = MaybeCmd :-
         Cmd = deep_cmd_module_getter_setters(ModuleName),
         MaybeCmd = yes(Cmd)
     ;
-        Pieces = [cmd_str_top_procs, LimitStr, CostKindStr, InclDescStr, 
+        Pieces = [cmd_str_top_procs, LimitStr, CostKindStr, InclDescStr,
             ScopeStr],
         string_to_limit(LimitStr, Limit),
         string_to_cost_kind(CostKindStr, CostKind),
@@ -916,7 +916,7 @@ string_to_maybe_pref(QueryString) = MaybePreferences :-
     split(QueryString, pref_separator_char, Pieces),
     (
         Pieces = [FieldsStr, BoxStr, ColourStr,
-            MaybeAncestorLimitStr, ProcStaticsPerRecTypeLimitStr, 
+            MaybeAncestorLimitStr, ProcStaticsPerRecTypeLimitStr,
             SummarizeHoCallSitesStr, OrderStr, ContourStr, TimeStr,
             ModuleQualStr, InactiveItemsStr, DeveloperModeStr],
         string_to_fields(FieldsStr, Fields),
@@ -948,7 +948,7 @@ string_to_maybe_pref(QueryString) = MaybePreferences :-
     ).
 
 query_to_string(DeepQuery) = String :-
-    DeepQuery = deep_query(yes(Cmd), DeepFileName, MaybePreferences), 
+    DeepQuery = deep_query(yes(Cmd), DeepFileName, MaybePreferences),
     (
         MaybePreferences = yes(Preferences),
         PreferencesString = preferences_to_string(Preferences)
@@ -981,8 +981,8 @@ string_to_maybe_query(String) = MaybeDeepQuery :-
             MaybePrefStr = no,
             MaybePreferences = no
         ),
-        MaybeDeepQuery = 
-            yes(deep_query(MaybeCmd, DeepFileName, MaybePreferences)) 
+        MaybeDeepQuery =
+            yes(deep_query(MaybeCmd, DeepFileName, MaybePreferences))
     ;
         MaybeDeepQuery = no
     ).
@@ -1363,7 +1363,7 @@ cmd_str_clique = "clique".
 
 :- func cmd_str_clique_recursive_costs = string.
 cmd_str_clique_recursive_costs = "clique_rc".
-        
+
 :- func cmd_str_recursion_types_frequency = string.
 cmd_str_recursion_types_frequency = "recursion_type_freq".
 

@@ -90,7 +90,7 @@
     % Performs a foldl3 on all the elements of the given array, starting at
     % index 1.
     %
-:- pred array_foldl3_from_1(pred(int, T, U, U, V, V, W, W), array(T), U, U, 
+:- pred array_foldl3_from_1(pred(int, T, U, U, V, V, W, W), array(T), U, U,
     V, V, W, W).
 :- mode array_foldl3_from_1(pred(in, in, array_di, array_uo,
     array_di, array_uo, array_di, array_uo) is det,
@@ -214,7 +214,7 @@ array_foldl3_from_1(P, Array, !A, !B, !C) :-
 
 :- pred do_array_foldl3(int, int, pred(int, T, U, U, V, V, W, W), array(T),
     U, U, V, V, W, W).
-:- mode do_array_foldl3(in, in, pred(in, in, array_di, array_uo, 
+:- mode do_array_foldl3(in, in, pred(in, in, array_di, array_uo,
     array_di, array_uo, array_di, array_uo) is det, in,
     array_di, array_uo, array_di, array_uo, array_di, array_uo) is det.
 

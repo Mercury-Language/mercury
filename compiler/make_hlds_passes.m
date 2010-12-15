@@ -114,7 +114,6 @@
 :- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
-:- import_module libs.compiler_util.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -129,6 +128,7 @@
 
 :- import_module map.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module solutions.
 :- import_module string.

@@ -78,7 +78,6 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.         % for pred_proc_id.
-:- import_module libs.compiler_util.
 :- import_module libs.file_util.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
@@ -107,6 +106,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module solutions.
 :- import_module string.

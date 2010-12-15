@@ -367,7 +367,6 @@
 :- implementation.
 
 :- import_module hlds.passes_aux.
-:- import_module libs.compiler_util.
 :- import_module libs.handle_options.
 :- import_module libs.options.
 :- import_module make.              % XXX undesirable dependency
@@ -395,6 +394,7 @@
 :- import_module map.
 :- import_module multi_map.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module solutions.
 :- import_module sparse_bitset.

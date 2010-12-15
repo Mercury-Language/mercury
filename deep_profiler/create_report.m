@@ -52,14 +52,14 @@
     %
 :- pred create_dynamic_procrep_coverage_report(deep::in,
     proc_dynamic_ptr::in, maybe_error(procrep_coverage_info)::out) is det.
-    
+
     % Create a top procs report, from the given data with the specified
     % parameters.
     %
 :- pred create_top_procs_report(deep::in, display_limit::in, cost_kind::in,
     include_descendants::in, measurement_scope::in,
     maybe_error(top_procs_report)::out) is det.
-    
+
     % Create a clique report, from the given data with the specified
     % parameters.
     %
@@ -214,7 +214,7 @@ create_report(Cmd, Deep, Report) :-
         Report = report_call_site_dynamic_var_use(MaybeVarUse)
     ;
         Cmd = deep_cmd_restart,
-        error("create_report/3", "unexpected restart command")
+        unexpected($module, $pred, "restart command")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -297,7 +297,7 @@ find_start_of_action_callee(Percent, RowData, !ActionCliquePtrs) :-
     MaybeTotalPerf = RowData ^ perf_row_maybe_total,
     (
         MaybeTotalPerf = no,
-        error("find_start_of_action_callee: no total perf")
+        unexpected($module, $pred, "no total perf")
     ;
         MaybeTotalPerf = yes(TotalPerf),
         CallSeqsPercent = TotalPerf ^ perf_row_callseqs_percent,
@@ -400,7 +400,7 @@ proc_group_contains(EntryPDPtr, _ - PDPtrs) :-
 create_clique_proc_report(Deep, CliquePtr, PSPtr - PDPtrs, CliqueProcReport) :-
     (
         PDPtrs = [],
-        error("create_clique_proc_report", "PDPtrs = []")
+        unexpected($module, $pred, "PDPtrs = []")
     ;
         PDPtrs = [FirstPDPtr | LaterPDPtrs],
         ProcDesc = describe_proc(Deep, PSPtr),
@@ -436,7 +436,7 @@ create_clique_proc_dynamic_report(Deep, _CliquePtr, ProcDesc, PDPtr,
         CliquePDReport = clique_proc_dynamic_report(PDRowData,
             CliqueCallSiteReports)
     ;
-        error("invalid proc_dynamic index")
+        unexpected($module, $pred, "invalid proc_dynamic index")
     ).
 
 :- pred create_child_call_site_reports(deep::in, proc_dynamic_ptr::in,
@@ -464,7 +464,7 @@ create_child_call_site_report(Deep, Pair, CliqueCallSiteReport) :-
             CallSiteArraySlot = slot_normal(CSDPtr)
         ;
             CallSiteArraySlot = slot_multi(_, _),
-            error("create_child_call_site_report: normal_call error")
+            unexpected($module, $pred, "normal_call is multi")
         ),
         ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
             create_callee_clique_perf_row_data(Deep, CSDPtr, Own, Desc,
@@ -491,7 +491,7 @@ create_child_call_site_report(Deep, Pair, CliqueCallSiteReport) :-
         ),
         (
             CallSiteArraySlot = slot_normal(_),
-            error("create_child_call_site_report: non-normal_call error")
+            unexpected($module, $pred, "non-normal_call is normal")
         ;
             CallSiteArraySlot = slot_multi(_IsZeroed, CSDPtrsArray),
             array.to_list(CSDPtrsArray, CSDPtrs)
@@ -704,7 +704,7 @@ gather_getters_setters(Deep, PSPtr, !GSDSRawMap) :-
                         ( FieldData0 = gs_field_both(_, _, _)
                         ; FieldData0 = gs_field_getter(_)
                         ),
-                        error("gather_getters_setters: redundant getter")
+                        unexpected($module, $pred, "redundant getter")
                     ;
                         FieldData0 = gs_field_setter(SetterRawData),
                         FieldData = gs_field_both(RawData, SetterRawData, unit)
@@ -715,7 +715,7 @@ gather_getters_setters(Deep, PSPtr, !GSDSRawMap) :-
                         ( FieldData0 = gs_field_both(_, _, _)
                         ; FieldData0 = gs_field_setter(_)
                         ),
-                        error("gather_getters_setters: redundant setter")
+                        unexpected($module, $pred, "redundant setter")
                     ;
                         FieldData0 = gs_field_getter(GetterRawData),
                         FieldData = gs_field_both(GetterRawData, RawData, unit)
@@ -743,7 +743,8 @@ gather_getters_setters(Deep, PSPtr, !GSDSRawMap) :-
 :- pred is_getter_or_setter(string_proc_label::in, getter_or_setter::out,
     data_struct_name::out, field_name::out) is semidet.
 
-is_getter_or_setter(StringProcLabel, GetterSetter, DataStructName, FieldName) :-
+is_getter_or_setter(StringProcLabel, GetterSetter, DataStructName,
+        FieldName) :-
     StringProcLabel = str_ordinary_proc_label(_PorF, DeclModule, DefModule,
         Name, Arity, _Mode),
     DeclModule = DefModule,
@@ -874,7 +875,7 @@ create_call_site_summary(Deep, CSSPtr) = CallSitePerf :-
             CallSiteCalleePerf = call_site_callee_perf(_, Own, Desc)
         ;
             CallSiteCalls = [_, _ | _],
-            error("create_call_site_summary: >1 proc called at site")
+            unexpected($module, $pred, ">1 proc called at normal site")
         ),
         own_and_inherit_to_perf_row_data(Deep, CallSiteDesc, Own, Desc,
             SummaryRowData),
@@ -1105,13 +1106,13 @@ create_static_procrep_coverage_report(Deep, PSPtr, MaybeReport) :-
         deep_lookup_ps_coverage(Deep, PSPtr, StaticCoverage),
         MaybeCoveragePoints =
             static_coverage_maybe_get_coverage_points(StaticCoverage),
-        
+
         % Gather call site information.
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         CallSitesArray = PS ^ ps_sites,
         CallSitesMap = array.foldl(add_ps_calls_and_exits_to_map(Deep),
             CallSitesArray, map.init),
-        
+
         % Gather information about the procedure.
         deep_lookup_ps_own(Deep, PSPtr, Own),
 
@@ -1120,7 +1121,7 @@ create_static_procrep_coverage_report(Deep, PSPtr, MaybeReport) :-
     ;
         PSPtr = proc_static_ptr(PSId),
         MaybeReport = error(
-            format("Proc static pointer is invalid %d", [i(PSId)]))
+            string.format("Proc static pointer is invalid %d", [i(PSId)]))
     ).
 
 create_dynamic_procrep_coverage_report(Deep, PDPtr, MaybeReport) :-
@@ -1128,16 +1129,16 @@ create_dynamic_procrep_coverage_report(Deep, PDPtr, MaybeReport) :-
         deep_lookup_proc_dynamics(Deep, PDPtr, PD),
         PSPtr = PD ^ pd_proc_static,
         MaybeCoveragePoints = PD ^ pd_maybe_coverage_points,
-        
+
         % Gather call site information.
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         StaticCallSitesArray = PS ^ ps_sites,
         DynamicCallSitesArray = PD ^ pd_sites,
         foldl_corresponding(
             add_pd_calls_and_exits_to_map(Deep),
-            to_list(StaticCallSitesArray), to_list(DynamicCallSitesArray), 
+            to_list(StaticCallSitesArray), to_list(DynamicCallSitesArray),
             map.init, CallSitesMap),
-        
+
         % Gather information about the procedure.
         deep_lookup_pd_own(Deep, PDPtr, Own),
 
@@ -1146,18 +1147,18 @@ create_dynamic_procrep_coverage_report(Deep, PDPtr, MaybeReport) :-
     ;
         PDPtr = proc_dynamic_ptr(PDId),
         MaybeReport = error(
-            format("Proc dynamic pointer is invalid %d", [i(PDId)]))
+            string.format("Proc dynamic pointer is invalid %d", [i(PDId)]))
     ).
 
 :- pred maybe_create_procrep_coverage_report(deep::in, proc_static_ptr::in,
-    own_prof_info::in, maybe(array(int))::in, 
+    own_prof_info::in, maybe(array(int))::in,
     map(goal_path, calls_and_exits)::in,
     maybe_error(procrep_coverage_info)::out) is det.
 
 maybe_create_procrep_coverage_report(_, _, _, no, _, error(Error)) :-
     Error = "No coverage information available".
-maybe_create_procrep_coverage_report(Deep, PSPtr, Own, yes(CoveragePointsArray),
-        CallSitesMap, MaybeReport) :-
+maybe_create_procrep_coverage_report(Deep, PSPtr, Own,
+        yes(CoveragePointsArray), CallSitesMap, MaybeReport) :-
     deep_lookup_proc_statics(Deep, PSPtr, PS),
     coverage_point_arrays_to_list(PS ^ ps_coverage_point_infos,
         CoveragePointsArray, CoveragePoints),
@@ -1168,7 +1169,7 @@ maybe_create_procrep_coverage_report(Deep, PSPtr, Own, yes(CoveragePointsArray),
     ;
         MaybeProcRep0 = ok(ProcRep0),
 
-        foldl2(add_coverage_point_to_map, 
+        foldl2(add_coverage_point_to_map,
             CoveragePoints, map.init, SolnsCoveragePointMap,
             map.init, BranchCoveragePointMap),
 
@@ -1194,7 +1195,7 @@ add_ps_calls_and_exits_to_map(Deep, CSSPtr, !.Map) = !:Map :-
     svmap.det_insert(GoalPath, calls_and_exits(calls(Own), exits(Own)), !Map).
 
 :- pred add_pd_calls_and_exits_to_map(deep::in, call_site_static_ptr::in,
-    call_site_array_slot::in, 
+    call_site_array_slot::in,
     map(goal_path, calls_and_exits)::in, map(goal_path, calls_and_exits)::out)
     is det.
 
@@ -1204,14 +1205,14 @@ add_pd_calls_and_exits_to_map(Deep, CSSPtr, Slot, !Map) :-
         csd_get_calls_and_exits(Deep, CSDPtr, Calls, Exits)
     ;
         Slot = slot_multi(_, CSDs),
-        foldl2(csd_get_calls_and_exits_accum(Deep), CSDs, 
+        foldl2(csd_get_calls_and_exits_accum(Deep), CSDs,
             0, Calls, 0, Exits)
     ),
     deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
     goal_path_from_string_det(CSS ^ css_goal_path, GoalPath),
     svmap.det_insert(GoalPath, calls_and_exits(Calls, Exits), !Map).
 
-:- pred csd_get_calls_and_exits(deep::in, call_site_dynamic_ptr::in, 
+:- pred csd_get_calls_and_exits(deep::in, call_site_dynamic_ptr::in,
     int::out, int::out) is det.
 
 csd_get_calls_and_exits(Deep, CSDPtr, Calls, Exits) :-
@@ -1229,7 +1230,7 @@ csd_get_calls_and_exits(Deep, CSDPtr, Calls, Exits) :-
 :- pred csd_get_calls_and_exits_accum(deep::in, call_site_dynamic_ptr::in,
     int::in, int::out, int::in, int::out) is det.
 
-csd_get_calls_and_exits_accum(Deep, CSDPtr, Calls0, Calls0 + NewCalls, 
+csd_get_calls_and_exits_accum(Deep, CSDPtr, Calls0, Calls0 + NewCalls,
         Exits0, Exits0 + NewExits) :-
     csd_get_calls_and_exits(Deep, CSDPtr, NewCalls, NewExits).
 
@@ -1262,7 +1263,7 @@ create_proc_static_dump_report(Deep, PSPtr, MaybeProcStaticDumpInfo) :-
         % Should we dump some other fields?
         PS = proc_static(_ProcId, _DeclModule,
             UnQualRefinedName, QualRefinedName, RawName, FileName, LineNumber,
-            _InInterface, CallSites, CoveragePointInfos, _MaybeCoveragePoints, 
+            _InInterface, CallSites, CoveragePointInfos, _MaybeCoveragePoints,
             _IsZeroed),
         array.max(CallSites, MaxCallSiteIdx),
         NumCallSites = MaxCallSiteIdx + 1,
@@ -1389,12 +1390,13 @@ create_call_site_dynamic_var_use_report(Deep, CSDPtr, MaybeVarUseInfo) :-
                 (
                     MaybeCost = ok(Cost),
                     map_foldl(call_site_dynamic_var_use_arg(Deep, CSDPtr,
-                            RecursionType, Cost, VarTable), 
+                            RecursionType, Cost, VarTable),
                         HeadVars, Uses0, 0, _),
                     list_maybe_error_to_maybe_error_list(Uses0, MaybeUses),
                     (
                         MaybeUses = ok(Uses),
-                        VarUseInfo = call_site_dynamic_var_use_info(Cost, Uses),
+                        VarUseInfo =
+                            call_site_dynamic_var_use_info(Cost, Uses),
                         MaybeVarUseInfo = ok(VarUseInfo)
                     ;
                         MaybeUses = error(Error),
@@ -1414,8 +1416,8 @@ create_call_site_dynamic_var_use_report(Deep, CSDPtr, MaybeVarUseInfo) :-
         )
     ;
         CSDPtr = call_site_dynamic_ptr(CSDNum),
-        MaybeVarUseInfo = error(format(
-            "Invalid call site dynamic %d", [i(CSDNum)]))
+        MaybeVarUseInfo = error(
+            string.format("Invalid call site dynamic %d", [i(CSDNum)]))
     ).
 
 :- pred call_site_dynamic_var_use_arg(deep::in, call_site_dynamic_ptr::in,
@@ -1428,7 +1430,7 @@ call_site_dynamic_var_use_arg(Deep, CSDPtr, RecursionType, Cost, VarTable,
     var_mode_to_var_use_type(Mode, UseType),
     % XXX: Allow user to configure var use options.
     UseOptions = var_use_options(Deep, follow_any_call, UseType),
-    call_site_dynamic_var_use_info(CSDPtr, !.ArgNum, RecursionType, 
+    call_site_dynamic_var_use_info(CSDPtr, !.ArgNum, RecursionType,
         Cost, UseOptions, MaybeUse),
     (
         MaybeUse = ok(Use),
@@ -1461,8 +1463,8 @@ list_maybe_error_to_maybe_error_list([ok(X) | MaybeXs0], MaybeXs) :-
 get_recursive_csd_cost(Deep, CSDPtr, RecursionType, MaybeCost) :-
     (
         RecursionType = rt_not_recursive,
-        MaybeCost = error(
-            "get_recursive_csd_cost called for non-recursive clique")
+        MaybeCost =
+            error("get_recursive_csd_cost called for non-recursive clique")
     ;
         RecursionType = rt_single(_, _, AvgMaxDepth, _, CostFn),
         deep_lookup_csd_own(Deep, CSDPtr, Own),
@@ -1473,8 +1475,7 @@ get_recursive_csd_cost(Deep, CSDPtr, RecursionType, MaybeCost) :-
         ; RecursionType = rt_mutual_recursion(_)
         ; RecursionType = rt_other(_)
         ),
-        MaybeCost = error(
-            "get_recursive_csd_cost: Unhandled recursion type")
+        MaybeCost = error("get_recursive_csd_cost: unhandled recursion type")
     ;
         RecursionType = rt_errors(Errors),
         MaybeCost = error(join_list("\n", Errors))
@@ -1704,10 +1705,10 @@ describe_clique(Deep, CliquePtr, MaybeEntryPDPtr) = CliqueDesc :-
                 list.map(describe_clique_member(Deep), OtherPDPtrs),
             CliqueDesc = clique_desc(CliquePtr, EntryProcDesc, OtherProcDescs)
         ;
-            error("describe_clique", "entry pdptr not a member")
+            unexpected($module, $pred, "entry pdptr not a member")
         )
     ;
-        error("describe_clique", "invalid clique_ptr")
+        unexpected($module, $pred, "invalid clique_ptr")
     ).
 
 :- func describe_clique_member(deep, proc_dynamic_ptr) = proc_desc.
@@ -1715,29 +1716,6 @@ describe_clique(Deep, CliquePtr, MaybeEntryPDPtr) = CliqueDesc :-
 describe_clique_member(Deep, PDPtr) = ProcDesc :-
     deep_lookup_proc_dynamics(Deep, PDPtr, PD),
     ProcDesc = describe_proc(Deep, PD ^ pd_proc_static).
-
-%-----------------------------------------------------------------------------%
-%
-% Code shared across entire module.
-%
-
-:- func this_file = string.
-
-this_file = "create_report.m".
-
-%-----------------------------------------------------------------------------%
-
-:- func error_message(string, string) = string.
-
-error_message(Pred, Message) = Error :-
-    Error = this_file ++ ": " ++ Pred ++ ": " ++ Message.
-
-%-----------------------------------------------------------------------------%
-
-:- pred error(string::in, string::in) is erroneous.
-
-error(Pred, Message) :-
-    throw(software_error(error_message(Pred, Message))).
 
 %-----------------------------------------------------------------------------%
 :- end_module create_report.

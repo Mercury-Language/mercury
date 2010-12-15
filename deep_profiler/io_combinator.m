@@ -693,7 +693,7 @@
     pred(maybe_error(T11), io, io),
     pred(maybe_error(T12), io, io),
     pred(maybe_error(T13), io, io),
-    pred(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, 
+    pred(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13,
         maybe_error(T)),
     maybe_error(T), io, io).
 :- mode io_combinator.maybe_error_sequence_13(

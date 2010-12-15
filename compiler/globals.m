@@ -295,9 +295,8 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
-
 :- import_module int.
+:- import_module require.
 :- import_module string.
 :- import_module univ.
 

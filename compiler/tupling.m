@@ -114,11 +114,11 @@
 :- import_module libs.options.
 :- import_module ll_backend.
 :- import_module ll_backend.call_gen.
-:- import_module ll_backend.liveness.
 :- import_module ll_backend.live_vars.
+:- import_module ll_backend.liveness.
 :- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.trace_counts.
 :- import_module mdbcomp.program_representation.
+:- import_module mdbcomp.trace_counts.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
@@ -137,6 +137,7 @@
 :- import_module maybe.
 :- import_module multi_map.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.

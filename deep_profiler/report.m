@@ -159,7 +159,7 @@
                 % since it will not find an existing one it can reuse;
                 % q's proc_static won't point to an active proc_dynamic, and
                 % the call site will not supply one either.
-                % 
+                %
                 % We could modify the code we invoke at call ports to keep a
                 % list of the proc_dynamics of the procedures known to be in
                 % the current clique, and to reuse the proc_dynamic of the
@@ -264,14 +264,14 @@
                 rlr_non_rec_calls_cost          :: float,
                 rlr_rec_calls_ex_chld_cost      :: float
             ).
- 
+
 :- type recursion_types_frequency_report
     --->    recursion_types_frequency_report(
                 rtfr_histogram                  :: recursion_type_histogram
             ).
 
-:- type recursion_type_histogram == 
-    map(recursion_type_simple, recursion_type_freq_data). 
+:- type recursion_type_histogram ==
+    map(recursion_type_simple, recursion_type_freq_data).
 
 :- type recursion_type_simple
     --->    rts_not_recursive
@@ -676,14 +676,14 @@
 
 :- pred proc_label_from_proc_desc(deep::in, proc_desc::in,
     string_proc_label::out) is det.
-    
+
     % foldl(add_call_site_report_to_map(CallSiteReports, map.init,
     %   CallSitesMap).
     %
     % Build a map from goal paths to call site reports.
     %
-:- pred add_call_site_report_to_map(clique_call_site_report::in, 
-    map(goal_path, clique_call_site_report)::in, 
+:- pred add_call_site_report_to_map(clique_call_site_report::in,
+    map(goal_path, clique_call_site_report)::in,
     map(goal_path, clique_call_site_report)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -701,7 +701,7 @@ proc_label_from_proc_desc(Deep, ProcDesc, ProcLabel) :-
     ProcLabel = ProcStatic ^ ps_id.
 
 add_call_site_report_to_map(CallSite, !Map) :-
-    GoalPath = CallSite ^ ccsr_call_site_summary ^ perf_row_subject 
+    GoalPath = CallSite ^ ccsr_call_site_summary ^ perf_row_subject
         ^ csdesc_goal_path,
     svmap.det_insert(GoalPath, CallSite, !Map).
 

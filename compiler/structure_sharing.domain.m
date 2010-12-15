@@ -5,18 +5,18 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: structure_sharing.domain.m.
 % Main author: nancy.
-% 
+%
 % This module defines the abstract domain for representing structure sharing
 % between data structures.
-% 
+%
 % This domain forms a complete lattice. It has a bottom element (representing
 % the definite absence of any possible structure sharing), and a top element
 % (that represents any possible structure sharing), a least upper bound
 % operation, and a comparison predicate (is_subsumed_by).
-% 
+%
 % The auxiliary functions needed for using the domain within the abstract
 % semantics on which the implementation of the analysis is based are:
 %
@@ -36,7 +36,7 @@
 %
 %   * add: add the sharing created by a primitive operation (unification)
 %     to any existing sharing.
-% 
+%
 % Additional operations:
 %
 %   * extend_datastruct: compute the set of datastructures referring to the
@@ -46,7 +46,7 @@
 %
 %   * conversion operations between the public and private representation
 %     for sharing sets.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.structure_sharing.domain.
@@ -118,7 +118,7 @@
     %
     % Renaming of the formal description of data structure sharing to the
     % actual description of the sharing. The information about the formal
-    % variables needs to be extracted from the module information. 
+    % variables needs to be extracted from the module information.
     % A list of variables and types is used as the actual variables and types.
     % The type variables set in the actual context must also be specified.
     %
@@ -151,8 +151,8 @@
 
     % Add the sharing created by a call to some foreign code. This
     % sharing corresponds to the sharing information with which the
-    % foreign code was manually annotated, or can be predicted to 
-    % "bottom", and in the worst case to "top". 
+    % foreign code was manually annotated, or can be predicted to
+    % "bottom", and in the worst case to "top".
     %
 :- pred add_foreign_proc_sharing(module_info::in, pred_info::in, proc_info::in,
     pred_proc_id::in, pragma_foreign_proc_attributes::in,
@@ -187,7 +187,7 @@
     %
 :- func extend_datastruct(module_info, proc_info, sharing_as, datastruct)
     = list(datastruct).
-:- func extend_datastructs(module_info, proc_info, sharing_as, 
+:- func extend_datastructs(module_info, proc_info, sharing_as,
     list(datastruct)) = list(datastruct).
 
     % apply_widening(ModuleInfo, ProcInfo, WideningLimit, WideningDone,
@@ -259,8 +259,8 @@
     sharing_as::in, sharing_as::out) is det.
 
     % Lookup the sharing information in the sharing table, or if it is not
-    % in there, try to predict it using the information available in the 
-    % module_info. 
+    % in there, try to predict it using the information available in the
+    % module_info.
     %
     % Lookup the sharing information of a procedure identified by its
     % pred_proc_id.
@@ -290,7 +290,7 @@
     list(mer_mode)::in, list(mer_type)::in) is semidet.
 
     % Load all the structure sharing information present in the HLDS into
-    % a sharing table. 
+    % a sharing table.
     %
 :- func load_structure_sharing_table(module_info) = sharing_as_table.
 
@@ -303,7 +303,6 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_llds.
-:- import_module libs.compiler_util.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_out.
@@ -317,6 +316,7 @@
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module solutions.
 :- import_module string.
 :- import_module svmap.
@@ -376,7 +376,7 @@ sharing_as_short_description(sharing_as_real_as(SharingSet)) =
 
 sharing_as_project(ListVars, !SharingAs) :-
     sharing_as_project_with_type(inproject, ListVars, !SharingAs).
-sharing_as_project(ListVars, SharingAs) = NewSharingAs :- 
+sharing_as_project(ListVars, SharingAs) = NewSharingAs :-
     sharing_as_project(ListVars, SharingAs, NewSharingAs).
 
 :- pred sharing_as_project_with_type(projection_type::in, prog_vars::in,
@@ -630,9 +630,9 @@ optimization_remove_deaths(ProcInfo, GoalInfo, Sharing0) = Sharing :-
     set.to_sorted_list(Deaths, DeathsList),
     sharing_as_project_with_type(outproject, DeathsList, Sharing0, Sharing).
 
-add_foreign_proc_sharing(ModuleInfo, PredInfo, ProcInfo, ForeignPPId, 
-        Attributes, Args, GoalContext, OldSharing, NewSharing) :- 
-    ForeignSharing = sharing_as_for_foreign_proc(ModuleInfo, 
+add_foreign_proc_sharing(ModuleInfo, PredInfo, ProcInfo, ForeignPPId,
+        Attributes, Args, GoalContext, OldSharing, NewSharing) :-
+    ForeignSharing = sharing_as_for_foreign_proc(ModuleInfo,
         Attributes, ForeignPPId, GoalContext),
 
     ActualVars = list.map(foreign_arg_var, Args),
@@ -645,13 +645,13 @@ add_foreign_proc_sharing(ModuleInfo, PredInfo, ProcInfo, ForeignPPId,
         ActualVars, ActualTypes, CallerTypeVarSet,
         CallerHeadTypeParams, ForeignSharing, ActualSharing),
 
-    NewSharing = sharing_as_comb(ModuleInfo, ProcInfo, ActualSharing, 
+    NewSharing = sharing_as_comb(ModuleInfo, ProcInfo, ActualSharing,
         OldSharing).
 
-:- func sharing_as_for_foreign_proc(module_info, 
+:- func sharing_as_for_foreign_proc(module_info,
     pragma_foreign_proc_attributes, pred_proc_id, prog_context) = sharing_as.
 
-sharing_as_for_foreign_proc(ModuleInfo, Attributes, ForeignPPId, 
+sharing_as_for_foreign_proc(ModuleInfo, Attributes, ForeignPPId,
         ProgContext) = SharingAs :-
     (
         sharing_as_from_user_annotated_sharing(Attributes, SharingAs0)
@@ -662,8 +662,8 @@ sharing_as_for_foreign_proc(ModuleInfo, Attributes, ForeignPPId,
     ->
         SharingAs = sharing_as_bottom
     ;
-        context_to_string(ProgContext, ContextString), 
-        Msg = "foreign proc with unknown sharing (" 
+        context_to_string(ProgContext, ContextString),
+        Msg = "foreign proc with unknown sharing ("
             ++ ContextString ++ ")",
         SharingAs = sharing_as_top_sharing(top_cannot_improve(Msg))
     ).
@@ -671,9 +671,9 @@ sharing_as_for_foreign_proc(ModuleInfo, Attributes, ForeignPPId,
 :- pred sharing_as_from_user_annotated_sharing(
     pragma_foreign_proc_attributes::in, sharing_as::out) is semidet.
 
-sharing_as_from_user_annotated_sharing(Attributes, UserSharingAs) :- 
+sharing_as_from_user_annotated_sharing(Attributes, UserSharingAs) :-
     UserSharing = get_user_annotated_sharing(Attributes),
-    UserSharing = user_sharing(SharingDomain, _MaybeTypes), 
+    UserSharing = user_sharing(SharingDomain, _MaybeTypes),
     % Accept only the value "bottom" and "real" for the structure sharing.
     % If the user has annotated the sharing with unknown sharing, we might
     % try to predict bottom anyway.
@@ -685,11 +685,11 @@ sharing_as_from_user_annotated_sharing(Attributes, UserSharingAs) :-
             SharingDomain = structure_sharing_real(_SharingPairs),
             !:SharingAs = from_structure_sharing_domain(SharingDomain)
 
-            % XXX 
+            % XXX
             % I have the feeling that renaming should not be needed at this
             % place anymore, assuming that every foreign_proc call is
-            % correctly handled at the add_pragma stage? 
-        ), 
+            % correctly handled at the add_pragma stage?
+        ),
         UserSharingAs = !.SharingAs
     ).
 
@@ -773,12 +773,12 @@ extend_datastruct(ModuleInfo, ProcInfo, SharingAs, Datastruct)
         unexpected(this_file, "extend_datastruct with top sharing set.")
     ).
 
-extend_datastructs(ModuleInfo, ProcInfo, SharingAs, Datastructs) 
-        = ExtendedDatastructs :- 
-    DataLists = list.map(extend_datastruct(ModuleInfo, ProcInfo, 
+extend_datastructs(ModuleInfo, ProcInfo, SharingAs, Datastructs)
+        = ExtendedDatastructs :-
+    DataLists = list.map(extend_datastruct(ModuleInfo, ProcInfo,
         SharingAs), Datastructs),
     ExtendedDatastructs = list.foldl(
-        datastruct_lists_least_upper_bound(ModuleInfo, ProcInfo), 
+        datastruct_lists_least_upper_bound(ModuleInfo, ProcInfo),
         DataLists, []).
 
 apply_widening(ModuleInfo, ProcInfo, WideningLimit, WideningDone, !Sharing):-
@@ -843,8 +843,8 @@ sharing_as_table_set(PPId, SharingAs_Status, !Table) :-
 
 %-----------------------------------------------------------------------------%
 
-lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable, 
-        PredId, ProcId, ActualVars, !Sharing):- 
+lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable,
+        PredId, ProcId, ActualVars, !Sharing):-
     PPId = proc(PredId, ProcId),
 
     % XXX do we need to combine the analysis status of sharing information we
@@ -852,16 +852,16 @@ lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable,
     lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, FormalSharing,
         _Status, _IsPredicted),
 
-    proc_info_get_vartypes(ProcInfo, VarTypes), 
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     map.apply_to_list(ActualVars, VarTypes, ActualTypes),
-       
-    pred_info_get_typevarset(PredInfo, CallerTypeVarSet), 
-    pred_info_get_univ_quant_tvars(PredInfo, CallerHeadTypeParams), 
-    sharing_as_rename_using_module_info(ModuleInfo, PPId, 
+
+    pred_info_get_typevarset(PredInfo, CallerTypeVarSet),
+    pred_info_get_univ_quant_tvars(PredInfo, CallerHeadTypeParams),
+    sharing_as_rename_using_module_info(ModuleInfo, PPId,
         ActualVars, ActualTypes, CallerTypeVarSet, CallerHeadTypeParams,
         FormalSharing, ActualSharing),
 
-    !:Sharing = sharing_as_comb(ModuleInfo, ProcInfo, 
+    !:Sharing = sharing_as_comb(ModuleInfo, ProcInfo,
         ActualSharing, !.Sharing).
 
 lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, SharingAs, Status,
@@ -932,7 +932,7 @@ top_sharing_not_found(PPId) = TopSharing :-
     ShroudedPredProcId = shroud_pred_proc_id(PPId),
     Reason = top_failed_lookup(ShroudedPredProcId),
     TopSharing = sharing_as_top_sharing(Reason).
-    
+
 %-----------------------------------------------------------------------------%
 
 load_structure_sharing_table(ModuleInfo) = SharingTable :-
@@ -1147,7 +1147,7 @@ sharing_set_project(ProjectionType, Vars, SharingSet0, SharingSet) :-
 :- pred project_and_update_sharing_set(projection_type::in, prog_vars::in,
     prog_var::in, selector_sharing_set::in, sharing_set::in, sharing_set::out)
     is det.
- 
+
 project_and_update_sharing_set(ProjectionType, Vars, Var, SelSet0, !SS) :-
     selector_sharing_set_project(ProjectionType, Vars, SelSet0, SelSet),
     ( selector_sharing_set_is_empty(SelSet) ->

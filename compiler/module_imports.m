@@ -251,12 +251,12 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
 :- import_module libs.options.
 :- import_module parse_tree.modules.    % undesirable dependency
 
 :- import_module bool.
 :- import_module dir.
+:- import_module require.
 :- import_module set.
 :- import_module svset.
 :- import_module term.

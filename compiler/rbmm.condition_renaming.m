@@ -132,8 +132,6 @@
 :- import_module check_hlds.
 :- import_module check_hlds.goal_path.
 :- import_module hlds.hlds_goal.
-:- import_module libs.
-:- import_module libs.compiler_util.
 :- import_module transform_hlds.rbmm.points_to_graph.
 :- import_module transform_hlds.smm_common.
 
@@ -141,6 +139,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module svmap.
 :- import_module svset.

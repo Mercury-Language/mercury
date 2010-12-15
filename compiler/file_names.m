@@ -133,7 +133,6 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.handle_options.
 :- import_module libs.options.
@@ -146,6 +145,7 @@
 :- import_module dir.
 :- import_module library.
 :- import_module list.
+:- import_module require.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

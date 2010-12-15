@@ -149,7 +149,6 @@
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.rtti.
 :- import_module hlds.code_model.
-:- import_module libs.compiler_util.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_code_util.
@@ -169,6 +168,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module pair.
+:- import_module require.
 :- import_module string.
 :- import_module term.
 

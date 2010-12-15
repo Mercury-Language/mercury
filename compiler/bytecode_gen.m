@@ -57,8 +57,6 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
-:- import_module libs.
-:- import_module libs.compiler_util.
 :- import_module ll_backend.
 :- import_module ll_backend.call_gen.  % XXX for arg passing convention
 :- import_module mdbcomp.
@@ -75,6 +73,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term.

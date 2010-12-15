@@ -31,22 +31,22 @@
 :- import_module set.
 
 %----------------------------------------------------------------------------%
-    
+
     % Instead of using the clique report above to find proc dynamics for a
     % clique, use this as it is much faster.
     %
-:- pred find_clique_first_and_other_procs(deep::in, clique_ptr::in, 
+:- pred find_clique_first_and_other_procs(deep::in, clique_ptr::in,
     maybe(proc_dynamic_ptr)::out, list(proc_dynamic_ptr)::out) is det.
 
 %----------------------------------------------------------------------------%
-    
+
     % Lookup a procedure representation from the deep structure.
     %
     % (Perhaps this should be a new report).
     %
-:- pred deep_get_maybe_procrep(deep::in, proc_static_ptr::in, 
+:- pred deep_get_maybe_procrep(deep::in, proc_static_ptr::in,
     maybe_error(proc_rep)::out) is det.
-    
+
 %----------------------------------------------------------------------------%
 
 :- type cost_and_callees
@@ -66,7 +66,7 @@
     --->    first_order_call
     ;       higher_order_call.
 
-:- pred build_call_site_cost_and_callee_map(deep::in, 
+:- pred build_call_site_cost_and_callee_map(deep::in,
     pair(call_site_static_ptr, call_site_array_slot)::in,
     map(goal_path, cost_and_callees)::in, map(goal_path, cost_and_callees)::out)
     is det.
@@ -77,10 +77,10 @@
     % current call to this procedure had a particular cost.
     %
 :- pred build_recursive_call_site_cost_map(deep, clique_ptr,
-    proc_dynamic_ptr, recursion_type, maybe(recursion_depth), 
+    proc_dynamic_ptr, recursion_type, maybe(recursion_depth),
     maybe_error(map(goal_path, cs_cost_csq))) is det.
 :- mode build_recursive_call_site_cost_map(in, in, in,
-    in(recursion_type_known_costs), in(maybe_yes(ground)), 
+    in(recursion_type_known_costs), in(maybe_yes(ground)),
     out(maybe_error_ok(ground))) is det.
 :- mode build_recursive_call_site_cost_map(in, in, in, in, in, out) is det.
 
@@ -90,8 +90,8 @@
     assoc_list(call_site_static_ptr, call_site_array_slot)::out) is det.
 
 %----------------------------------------------------------------------------%
-            
-:- pred cost_and_callees_is_recursive(clique_ptr::in, cost_and_callees::in) 
+
+:- pred cost_and_callees_is_recursive(clique_ptr::in, cost_and_callees::in)
     is semidet.
 
 %----------------------------------------------------------------------------%
@@ -154,9 +154,9 @@ build_call_site_cost_and_callee_map(Deep, CSSPtr - Slot, !CallSitesMap) :-
     (
         Slot = slot_normal(CSDPtr),
         ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
-            call_site_dynamic_get_callee_and_costs(Deep, CSDPtr, Callee, 
+            call_site_dynamic_get_callee_and_costs(Deep, CSDPtr, Callee,
                 Own, Inherit),
-            CostCsq = build_cs_cost_csq(calls(Own), 
+            CostCsq = build_cs_cost_csq(calls(Own),
                 float(callseqs(Own) + inherit_callseqs(Inherit))),
             Callees = [Callee]
         ;
@@ -166,11 +166,11 @@ build_call_site_cost_and_callee_map(Deep, CSSPtr - Slot, !CallSitesMap) :-
     ;
         Slot = slot_multi(_, CSDPtrsArray),
         to_list(CSDPtrsArray, CSDPtrs),
-        map3(call_site_dynamic_get_callee_and_costs(Deep), CSDPtrs, 
+        map3(call_site_dynamic_get_callee_and_costs(Deep), CSDPtrs,
             Callees, Owns, Inherits),
         Own = sum_own_infos(Owns),
         Inherit = sum_inherit_infos(Inherits),
-        CostCsq = build_cs_cost_csq(calls(Own), 
+        CostCsq = build_cs_cost_csq(calls(Own),
             float(callseqs(Own) + inherit_callseqs(Inherit)))
     ),
     CostAndCallees = cost_and_callees(CostCsq, set(Callees), HigherOrder),
@@ -179,16 +179,16 @@ build_call_site_cost_and_callee_map(Deep, CSSPtr - Slot, !CallSitesMap) :-
     goal_path_from_string_det(CSS ^ css_goal_path, GoalPath),
     svmap.det_insert(GoalPath, CostAndCallees, !CallSitesMap).
 
-:- pred call_site_dynamic_get_callee_and_costs(deep::in, 
-    call_site_dynamic_ptr::in, callee::out, own_prof_info::out, 
+:- pred call_site_dynamic_get_callee_and_costs(deep::in,
+    call_site_dynamic_ptr::in, callee::out, own_prof_info::out,
     inherit_prof_info::out) is det.
 
-call_site_dynamic_get_callee_and_costs(Deep, CSDPtr, 
+call_site_dynamic_get_callee_and_costs(Deep, CSDPtr,
         callee(CalleeCliquePtr, CSDPtr), Own, Inherit) :-
     lookup_call_site_dynamics(Deep ^ call_site_dynamics, CSDPtr, CSD),
     lookup_csd_desc(Deep ^ csd_desc, CSDPtr, Inherit),
     PDPtr = CSD ^ csd_callee,
-    lookup_clique_index(Deep ^ clique_index, PDPtr, CalleeCliquePtr), 
+    lookup_clique_index(Deep ^ clique_index, PDPtr, CalleeCliquePtr),
     Own = CSD ^ csd_own_prof.
 
 :- pred call_site_kind_to_higher_order(call_site_kind_and_callee::in,
@@ -222,25 +222,25 @@ build_recursive_call_site_cost_map(Deep, CliquePtr, PDPtr, RecursionType,
             DepthI = recursion_depth_to_int(Depth)
         ;
             MaybeDepth = no,
-            error(this_file ++ "Expected valid depth for known recursion type")
+            unexpected($module,
+                "Expected valid depth for known recursion type")
         ),
-    
+
         get_recursive_calls_and_counts(Deep, CliquePtr, PDPtr,
             CallCountsMap),
         RecursiveCallSiteCostMap = map_values_only(
-            (func(Count) = 
+            (func(Count) =
                 build_cs_cost_csq_percall(float(Count), CostFn(DepthI))),
             CallCountsMap),
         MaybeRecursiveCallSiteCostMap = ok(RecursiveCallSiteCostMap),
-        
+
         trace [compile_time(flag("debug_recursive_call_costs")), io(!IO)] (
             format_recursive_call_site_cost_map(
                 RecursiveCallSiteCostMap, PrettyCostMapCord),
             PrettyCostMap = append_list(cord.list(PrettyCostMapCord)),
-            io.format("D: In clique %s recursive call site cost map"
-                    ++ " is:\n%s\n",
-                [s(string(CliquePtr)), s(PrettyCostMap)],
-                !IO),
+            io.format(
+                "D: In clique %s recursive call site cost map is:\n%s\n",
+                [s(string(CliquePtr)), s(PrettyCostMap)], !IO),
             io.flush_output(!IO)
         )
     ;
@@ -264,19 +264,20 @@ build_recursive_call_site_cost_map(Deep, CliquePtr, PDPtr, RecursionType,
         MaybeRecursiveCallSiteCostMap = error(Error)
     ).
 
-:- pred get_recursive_calls_and_counts(deep::in, clique_ptr::in, 
+:- pred get_recursive_calls_and_counts(deep::in, clique_ptr::in,
     proc_dynamic_ptr::in, map(goal_path, int)::out) is det.
 
 get_recursive_calls_and_counts(Deep, CliquePtr, PDPtr, CallCountsMap) :-
     proc_dynamic_paired_call_site_slots(Deep, PDPtr, SiteSlots),
-    foldl(build_recursive_call_site_counts_map(Deep, CliquePtr), SiteSlots, 
+    foldl(build_recursive_call_site_counts_map(Deep, CliquePtr), SiteSlots,
         map.init, CallCountsMap).
 
-:- pred build_recursive_call_site_counts_map(deep::in, clique_ptr::in, 
+:- pred build_recursive_call_site_counts_map(deep::in, clique_ptr::in,
     pair(call_site_static_ptr, call_site_array_slot)::in,
     map(goal_path, int)::in, map(goal_path, int)::out) is det.
 
-build_recursive_call_site_counts_map(Deep, CliquePtr, CSSPtr - CSDSlot, !Map) :-
+build_recursive_call_site_counts_map(Deep, CliquePtr, CSSPtr - CSDSlot,
+        !Map) :-
     (
         CSDSlot = slot_normal(CSDPtr),
         ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
@@ -289,7 +290,7 @@ build_recursive_call_site_counts_map(Deep, CliquePtr, CSSPtr - CSDSlot, !Map) :-
             )
         ;
             Recursive = no,
-            Count = 0 
+            Count = 0
         )
     ;
         CSDSlot = slot_multi(_, CSDPtrs),
@@ -319,7 +320,7 @@ build_recursive_call_site_counts_map(Deep, CliquePtr, CSSPtr - CSDSlot, !Map) :-
 maybe_equals_or_is_no(_, no).
 maybe_equals_or_is_no(X, yes(X)).
 
-:- pred call_site_dynamic_get_count_and_callee(deep::in, 
+:- pred call_site_dynamic_get_count_and_callee(deep::in,
     call_site_dynamic_ptr::in, int::out, maybe(clique_ptr)::out) is det.
 
 call_site_dynamic_get_count_and_callee(Deep, CSDPtr, Count, MaybeCallee) :-
@@ -332,13 +333,13 @@ call_site_dynamic_get_count_and_callee(Deep, CSDPtr, Count, MaybeCallee) :-
         MaybeCallee = no
     ).
 
-:- pred format_recursive_call_site_cost_map(map(goal_path, cs_cost_csq)::in, 
+:- pred format_recursive_call_site_cost_map(map(goal_path, cs_cost_csq)::in,
     cord(string)::out) is det.
 
 format_recursive_call_site_cost_map(Map, Result) :-
     map.foldl(format_recursive_call_site_cost, Map, cord.empty, Result).
 
-:- pred format_recursive_call_site_cost(goal_path::in, cs_cost_csq::in, 
+:- pred format_recursive_call_site_cost(goal_path::in, cs_cost_csq::in,
     cord(string)::in, cord(string)::out) is det.
 
 format_recursive_call_site_cost(GoalPath, Cost, !Result) :-
@@ -372,6 +373,6 @@ cost_and_callees_is_recursive(ParentCliquePtr, CostAndCallees) :-
 
 :- func this_file = string.
 
-this_file = "analysis_utils.m: ".
+this_file = "analysis_utils.m".
 
 %----------------------------------------------------------------------------%

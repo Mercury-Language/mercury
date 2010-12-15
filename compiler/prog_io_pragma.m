@@ -43,7 +43,6 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
 :- import_module libs.rat.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
@@ -59,6 +58,7 @@
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module unit.

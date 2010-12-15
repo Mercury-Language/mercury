@@ -185,11 +185,11 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
 :- import_module ml_backend.ml_type_gen.
 
 :- import_module int.
 :- import_module maybe.
+:- import_module require.
 :- import_module string.
 :- import_module svmap.
 

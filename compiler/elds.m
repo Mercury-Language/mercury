@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007 The University of Melbourne.
+% Copyright (C) 2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -99,7 +99,7 @@
     %
 :- type elds_rtti_defn
     --->    elds_rtti_defn(
-                rtti_defn_id        :: elds_rtti_id, 
+                rtti_defn_id        :: elds_rtti_id,
                 rtti_defn_exported  :: bool,
                 rtti_defn_varset    :: prog_varset,
                 rtti_defn_clause    :: elds_clause
@@ -256,7 +256,7 @@
     --->    elds_case(elds_term, elds_expr).
 
 :- type elds_catch
-    --->    elds_catch(elds_term, elds_term, elds_expr). 
+    --->    elds_catch(elds_term, elds_term, elds_expr).
 
 :- type elds_unop
     --->    plus
@@ -385,7 +385,7 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
+:- import_module require.
 
 %-----------------------------------------------------------------------------%
 

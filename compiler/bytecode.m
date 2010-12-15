@@ -152,10 +152,9 @@
 
 :- import_module backend_libs.bytecode_data.
 :- import_module backend_libs.c_util.
-:- import_module libs.
-:- import_module libs.compiler_util.
 
 :- import_module assoc_list.
+:- import_module require.
 :- import_module string.
 
 %---------------------------------------------------------------------------%

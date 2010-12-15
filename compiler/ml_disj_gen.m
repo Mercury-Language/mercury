@@ -123,7 +123,6 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_module.
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ml_backend.ml_code_gen.
@@ -135,6 +134,7 @@
 :- import_module bool.
 :- import_module map.
 :- import_module maybe.
+:- import_module require.
 :- import_module set.
 
 ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Statements, !Info) :-

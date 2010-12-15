@@ -35,7 +35,6 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module libs.
-:- import_module libs.compiler_util.
 :- import_module libs.handle_options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -44,6 +43,7 @@
 
 :- import_module list.
 :- import_module map.
+:- import_module require.
 :- import_module term.
 
 :- type subst_literals_info
