@@ -82,7 +82,7 @@ Changes to the Mercury standard library:
 * We have added the predicate unsorted_aggregate2/6 to the solutions module
   of the standard library.
 
-* We have added several predicates and functions to the error module
+* We have added several predicates and functions to the require module
   of the standard library. The predicates sorry/2 and sorry/3 report
   the absence of a feature, while the predicates unexpected/2 and unexpected/3
   report an internal error in the program; all have function versions too.
