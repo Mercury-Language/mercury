@@ -6,11 +6,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+%
 % File: odbc.m.
 % Authors: Renaud Paquay (rpa@miscrit.be), stayl.
 % ODBC version: 2.0.
-
+%
 % The transaction interface used here is described in the following paper:
 %
 %   Kemp, Conway, Harris, Henderson, Ramamohanarao and Somogyi,
@@ -293,6 +293,8 @@
 :- import_module unit.
 :- import_module univ.
 
+:- pragma require_feature_set([conservative_gc]).
+
 %-----------------------------------------------------------------------------%
 
     % We don't actually store anything in the odbc.state, since that
@@ -434,37 +436,55 @@ typedef double          MODBC_C_FLOAT;
 ** to be used by odbc_throw (longjmp) when a database exception is 
 ** found.
 */
-static MR_jmp_buf odbc_trans_jmp_buf;
+extern MR_jmp_buf odbc_trans_jmp_buf;
 
 /*
 ** odbc_env_handle is the output of SQLAllocEnv. SQLAllocEnv must
 ** be called before attempting to open any connections. 
 */
-static SQLHENV  odbc_env_handle = SQL_NULL_HENV;    
+extern SQLHENV odbc_env_handle;
 
 /*
 ** The connection being acted on by the current transaction.
 */
-static SQLHDBC  odbc_connection = SQL_NULL_HDBC;
+extern SQLHDBC odbc_connection;
 
 /*
 ** The last return code from an ODBC system call.
 */
-static SQLRETURN odbc_ret_code = SQL_SUCCESS;       
+extern SQLRETURN odbc_ret_code;
 
 /* 
 ** The list of accumulated warnings and errors for the transaction 
 ** in reverse order.
 */
-static MR_Word  odbc_message_list;
+extern MR_Word odbc_message_list;
 
-static void odbc_transaction_c_code(MR_Word type_info, MR_Word Connection, 
+extern void
+odbc_transaction_c_code(MR_Word type_info, MR_Word Connection, 
     MR_Word Closure, MR_Word *Results, MR_Word *GotMercuryException,
     MR_Word *Exception, MR_Word *Status, MR_Word *Msgs);
 
-static MR_bool odbc_check(SQLHENV, SQLHDBC, SQLHSTMT, SQLRETURN);
+extern MR_bool
+odbc_check(SQLHENV, SQLHDBC, SQLHSTMT, SQLRETURN);
 
 ").
+
+
+:- pragma foreign_code("C", "
+
+MR_jmp_buf odbc_trans_jmp_buf;
+
+SQLHENV  odbc_env_handle = SQL_NULL_HENV;    
+
+SQLHDBC  odbc_connection = SQL_NULL_HDBC;
+
+SQLRETURN odbc_ret_code = SQL_SUCCESS;       
+
+MR_Word  odbc_message_list;
+
+").
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -540,7 +560,7 @@ transaction(Source, User, Password, Closure, Result, !IO) :-
 
 :- pragma foreign_code("C", 
 "
-static void 
+void 
 odbc_transaction_c_code(MR_Word TypeInfo_for_T, MR_Word Connection, 
         MR_Word Closure, MR_Word *Results, MR_Word *GotMercuryException,
         MR_Word *Exception, MR_Word *Status, MR_Word *Msgs)
@@ -740,7 +760,7 @@ open_connection(Source, User, Password, Result - Messages, !IO) :-
 
 :- pragma foreign_proc("C",
     do_open_connection(Source::in, User::in, Password::in, Handle::uo,
-        Status::out, Messages::out, IO0::di, IO::uo),
+        Status::out, Messages::out, _IO0::di, _IO::uo),
     [promise_pure, may_call_mercury], 
 "
     SQLHDBC connect_handle;
@@ -788,7 +808,6 @@ open_connection(Source, User, Password, Result - Messages, !IO) :-
 
     Handle = (MR_Word) connect_handle;
     odbc_connection = SQL_NULL_HDBC;
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -807,7 +826,7 @@ close_connection(Connection, Result, !IO) :-
 
 :- pragma foreign_proc("C", 
     do_close_connection(Handle::in, Status::out, Messages::out,
-        IO0::di, IO::uo),
+        _IO0::di, _IO::uo),
     [promise_pure, may_call_mercury],
 "
     Status = SQLDisconnect((SQLHDBC) Handle);
@@ -820,8 +839,6 @@ close_connection(Connection, Result, !IO) :-
 
     Messages = odbc_message_list;
     odbc_message_list = MR_list_empty();
-
-    IO = IO0;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -1996,12 +2013,13 @@ odbc_do_get_data_sources(MR_Word *SourceNames, MR_Word *SourceDescs,
         MR_Word *Messages)
 {
     char dsn[SQL_MAX_DSN_LENGTH];
-    char desc[128]; /*
-            ** Arbitrary size, only needs to hold a 
-            ** descriptive string like ""SQL Server"".
-            */
-    String new_dsn;
-    String new_desc;
+    char desc[128];
+    /*
+    ** Arbitrary size, only needs to hold a 
+    ** descriptive string like ""SQL Server"".
+    */
+    MR_String new_dsn;
+    MR_String new_desc;
     SWORD dsn_len;
     SWORD desc_len;
     SQLRETURN rc;
@@ -2326,7 +2344,7 @@ sql_state_to_error("S1", SubClass, Error) :-
 ** Return MR_FALSE if the ODBC call failed.
 ** Add any error messages to odbc_message_list.
 */
-static MR_bool
+MR_bool
 odbc_check(SQLHENV env_handle, SQLHDBC connection_handle, 
         SQLHSTMT statement_handle, SQLRETURN rc)
 {
@@ -2335,7 +2353,7 @@ odbc_check(SQLHENV env_handle, SQLHDBC connection_handle,
     SQLSMALLINT msg_len;
     UCHAR       message[SQL_MAX_MESSAGE_LENGTH];
     UCHAR       sql_state[SQL_SQLSTATE_SIZE + 1];
-    String      mercury_message;
+    MR_String   mercury_message;
     MR_Word     new_message;
 
     MR_ASSERT_IMPLY(connection_handle == SQL_NULL_HDBC, 
