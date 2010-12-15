@@ -212,7 +212,8 @@ static int MOPENSSL_password_cb(char *buf, int size, int rwflag, void *userData)
 ").
 
 :- pred call_password_cb(password_cb::in, string::out, io::di, io::uo) is det.
-:- pragma export(call_password_cb(in, out, di, uo), "MOPENSSL_call_password_cb").
+:- pragma foreign_export("C", call_password_cb(in, out, di, uo),
+    "MOPENSSL_call_password_cb").
 call_password_cb(password_cb(P), Password, !IO) :-
     password_cb(P, Password, !IO).
 
@@ -249,15 +250,16 @@ void MOPENSSL_throw_error()
 ").
 
 :- func empty = list(string).
-:- pragma export(empty = out, "MOPENSSL_empty").
+:- pragma foreign_export("C", empty = out, "MOPENSSL_empty").
 empty = [].
 
 :- func mycons(string, list(string)) = list(string).
-:- pragma export(mycons(in, in) = (out), "MOPENSSL_cons").
+:- pragma foreign_export("C", mycons(in, in) = (out), "MOPENSSL_cons").
 mycons(H, T) = [H|T].
 
 :- pred throw_ssl_exception(list(string)::in) is erroneous.
-:- pragma export(throw_ssl_exception(in), "MOPENSSL_throw_exception").
+:- pragma foreign_export("C", throw_ssl_exception(in),
+    "MOPENSSL_throw_exception").
 throw_ssl_exception(L) :-
     throw(ssl_exception(L)).
 
