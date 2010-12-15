@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2006, 2009-2010 The University of Melbourne. 
+# Copyright (C) 1995-2006, 2009-2010 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -106,7 +106,7 @@ EXE_RPATH_OPT	= @EXE_RPATH_OPT@''
 EXE_RPATH_SEP	= ''@EXE_RPATH_SEP@''
 
 # These variables can be used to set the install-name for the mercury
-# shared libraries on systems that use the install-name option (such as 
+# shared libraries on systems that use the install-name option (such as
 # Darwin).
 SHLIB_USE_INSTALL_NAME = @SHLIB_USE_INSTALL_NAME@
 SHLIB_INSTALL_NAME_FLAG = @SHLIB_INSTALL_NAME_FLAG@''
@@ -118,7 +118,18 @@ SHARED_LIBS		= @SHARED_LIBS@
 # Set the installation prefix. This is done here as well as
 # in scripts/Mmake.vars to avoid accidentally overwriting an
 # existing installation when using an installed mmake.
-INSTALL_PREFIX          = $(DESTDIR)/@prefix@
+ifeq ($(DESTDIR),)
+	# DESTDIR is The empty string, DESTDIR_AND_SLASH is therefore empty. since
+	# the slash can change a relative path into an absolute one; or on Windows,
+	# from an invalid path name.
+	DESTDIR_AND_SLASH=
+else
+	# We cannot append paths like this in Windows, but we don't think anyone
+	# will use DESTDIR on Windows.
+	DESTDIR_AND_SLASH=$(DESTDIR)/
+endif
+
+INSTALL_PREFIX          = $(DESTDIR_AND_SLASH)@prefix@
 FINAL_INSTALL_PREFIX    = @prefix@
 
 INSTALLABLE_PREFIX	= @INSTALLABLE_PREFIX@
@@ -135,7 +146,7 @@ FINAL_INSTALL_MERC_GC_LIB_DIR = $(FINAL_INSTALL_MERC_GRADELESS_LIB_DIR)
 # that doesn't require invoking mmc.
 #
 # Note that the definition below does _not_ include GRADEFLAGS.
-# So any changes to the grade flags for the standard library or 
+# So any changes to the grade flags for the standard library or
 # compiler itself should be done by setting GRADE, not GRADEFLAGS.
 GRADESTRING = $(shell $(SCRIPTS_DIR)/canonical_grade $(ALL_GRADEFLAGS))
 
