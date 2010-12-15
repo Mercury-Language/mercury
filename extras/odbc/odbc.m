@@ -287,6 +287,7 @@
 :- implementation.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module exception.
 :- import_module int.
 :- import_module require.
@@ -461,15 +462,14 @@ extern SQLRETURN odbc_ret_code;
 extern MR_Word odbc_message_list;
 
 extern void
-odbc_transaction_c_code(MR_Word type_info, MR_Word Connection, 
-    MR_Word Closure, MR_Word *Results, MR_Word *GotMercuryException,
-    MR_Word *Exception, MR_Word *Status, MR_Word *Msgs);
+odbc_transaction_c_code(MR_Word type_info, SQLHDBC Connection, 
+    MR_Word Closure, MR_Word *Results, MR_Bool *GotMercuryException,
+    MR_Word *Exception, MR_Integer *Status, MR_Word *Msgs);
 
 extern MR_bool
 odbc_check(SQLHENV, SQLHDBC, SQLHSTMT, SQLRETURN);
 
 ").
-
 
 :- pragma foreign_code("C", "
 
@@ -485,8 +485,6 @@ MR_Word  odbc_message_list;
 
 ").
 
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 transaction(Source, User, Password, Closure, Result, !IO) :-
@@ -512,18 +510,18 @@ transaction(Source, User, Password, Closure, Result, !IO) :-
         % Pass on any exception that was found while
         % processing the transaction.
         %
-        ( GotMercuryException = 1 ->
+        (
+            GotMercuryException = yes,
             rethrow(exception(Exception))
         ;
-            true 
-        ),
-
-        list.condense([ConnectMessages, TransMessages, CloseMessages],
-            Messages),
-        ( odbc.ok(Status), CloseStatus = ok ->
-            Result = ok(Data) - Messages
-        ;
-            Result = error - Messages
+            GotMercuryException = no,
+            list.condense([ConnectMessages, TransMessages, CloseMessages],
+                Messages),
+            ( odbc.ok(Status), CloseStatus = ok ->
+                Result = ok(Data) - Messages
+            ;
+                Result = error - Messages
+            )
         )
     ;
         ConnectStatus = error,
@@ -532,7 +530,7 @@ transaction(Source, User, Password, Closure, Result, !IO) :-
 
 :- pred transaction_2(connection::in,
     pred(T, odbc.state, odbc.state)::in(pred(out, di, uo) is det),
-    T::out, int::out, univ::out, int::out, list(odbc.message)::out,
+    T::out, bool::out, univ::out, int::out, list(odbc.message)::out,
     io::di, io::uo) is det. 
 
 :- pragma foreign_proc("C",
@@ -561,9 +559,9 @@ transaction(Source, User, Password, Closure, Result, !IO) :-
 :- pragma foreign_code("C", 
 "
 void 
-odbc_transaction_c_code(MR_Word TypeInfo_for_T, MR_Word Connection, 
-        MR_Word Closure, MR_Word *Results, MR_Word *GotMercuryException,
-        MR_Word *Exception, MR_Word *Status, MR_Word *Msgs)
+odbc_transaction_c_code(MR_Word TypeInfo_for_T, SQLHDBC Connection, 
+        MR_Word Closure, MR_Word *Results, MR_Bool *GotMercuryException,
+        MR_Word *Exception, MR_Integer *Status, MR_Word *Msgs)
 {
     MR_Word DB0 = (MR_Word) 0;
     MR_Word DB = (MR_Word) 0;
@@ -574,7 +572,7 @@ odbc_transaction_c_code(MR_Word TypeInfo_for_T, MR_Word Connection,
     /*
     ** Mercury state to restore on rollback. 
     */
-    odbc_connection = (SQLHDBC) Connection;
+    odbc_connection = Connection;
     odbc_message_list = MR_list_empty();
 
     /*
@@ -595,7 +593,7 @@ odbc_transaction_c_code(MR_Word TypeInfo_for_T, MR_Word Connection,
     ** MR_longjmp() cannot be called after here.
     */
 
-    if (*GotMercuryException == 0) {
+    if (*GotMercuryException == MR_NO) {
 
         rc = SQLTransact(odbc_env_handle, odbc_connection, SQL_COMMIT);
 
@@ -654,7 +652,7 @@ transaction_done:
 % Call the transaction closure
 %
 
-:- pred do_transaction(transaction(T)::transaction, int::out, T::out,
+:- pred do_transaction(transaction(T)::transaction, bool::out, T::out,
     univ::out, odbc.state::di, odbc.state::uo) is cc_multi.
 
 :- pragma foreign_export("C",
@@ -671,12 +669,12 @@ do_transaction(Closure, GotException, Results, Exception, State0, State) :-
         ExceptResult = succeeded(Results - State2),
         unsafe_promise_unique(State2, State),
         make_dummy_value(Exception),
-        GotException = 0
+        GotException = no
     ;
         ExceptResult = exception(Exception),
         make_dummy_value(Results),
         unsafe_promise_unique(State0, State),
-        GotException = 1
+        GotException = yes
     ).
 
     % Produce a value which is never looked at, for returning
@@ -740,7 +738,7 @@ rollback(Error, !DB) :-
 
 %-----------------------------------------------------------------------------%
 
-:- type odbc.connection == c_pointer.
+:- pragma foreign_type("C", odbc.connection, "SQLHDBC").
 
 open_connection(Source, User, Password, Result - Messages, !IO) :-
     do_open_connection(Source, User, Password, Handle, ConnectStatus,
@@ -806,7 +804,7 @@ open_connection(Source, User, Password, Result - Messages, !IO) :-
     Messages = odbc_message_list;
     odbc_message_list = MR_list_empty();
 
-    Handle = (MR_Word) connect_handle;
+    Handle = connect_handle;
     odbc_connection = SQL_NULL_HDBC;
 ").
 
@@ -829,11 +827,11 @@ close_connection(Connection, Result, !IO) :-
         _IO0::di, _IO::uo),
     [promise_pure, may_call_mercury],
 "
-    Status = SQLDisconnect((SQLHDBC) Handle);
-    if (odbc_check(odbc_env_handle, (SQLHDBC) Handle, 
+    Status = SQLDisconnect(Handle);
+    if (odbc_check(odbc_env_handle, Handle, 
             SQL_NULL_HSTMT, Status)) {
-        Status = SQLFreeConnect((SQLHDBC) Handle);
-        odbc_check(odbc_env_handle, (SQLHDBC) Handle, 
+        Status = SQLFreeConnect(Handle);
+        odbc_check(odbc_env_handle, Handle, 
             SQL_NULL_HSTMT, Status);
     }
 
@@ -992,7 +990,8 @@ int_to_attribute_type_2(5, null).
 
 :- type odbc.statement.
 
-:- pragma foreign_type("C", odbc.statement, "MODBC_Statement *").
+:- pragma foreign_type("C", odbc.statement, "MODBC_Statement *",
+    [can_pass_as_mercury_type]).
 
 :- pragma foreign_decl("C", "
 
@@ -1076,15 +1075,30 @@ typedef struct {
                                         */
 } MODBC_Statement;
 
-static SQLRETURN odbc_do_cleanup_statement(MODBC_Statement *statement);
-static size_t sql_type_to_size(SWORD sql_type, UDWORD cbColDef, 
-        SWORD ibScale, SWORD fNullable);
-static MODBC_AttrType sql_type_to_attribute_type(SWORD sql_type);
-static SWORD attribute_type_to_sql_c_type(MODBC_AttrType AttrType);
-static MR_bool is_variable_length_sql_type(SWORD);
-void odbc_do_get_data(MODBC_Statement *statement, int column_id);
-void odbc_get_data_in_chunks(MODBC_Statement *statement, int column_id);
-void odbc_get_data_in_one_go(MODBC_Statement *statement, int column_id);
+extern SQLRETURN
+odbc_do_cleanup_statement(MODBC_Statement *statement);
+
+extern size_t
+odbc_sql_type_to_size(SWORD sql_type, UDWORD cbColDef, SWORD ibScale,
+    SWORD fNullable);
+
+extern MODBC_AttrType
+odbc_sql_type_to_attribute_type(SWORD sql_type);
+
+extern SWORD
+odbc_attribute_type_to_sql_c_type(MODBC_AttrType AttrType);
+
+extern MR_bool
+odbc_is_variable_length_sql_type(SWORD);
+
+extern void
+odbc_do_get_data(MODBC_Statement *statement, int column_id);
+
+extern void
+odbc_get_data_in_chunks(MODBC_Statement *statement, int column_id);
+
+extern void
+odbc_get_data_in_one_go(MODBC_Statement *statement, int column_id);
 
 ").
 
@@ -1138,7 +1152,7 @@ void odbc_get_data_in_one_go(MODBC_Statement *statement, int column_id);
 
     MR_DEBUG(printf(""executing SQL string: %s\\n"", SQLString));
 
-    rc = SQLPrepare(stat_handle, SQLString, strlen(SQLString));
+    rc = SQLPrepare(stat_handle, (SQLCHAR *)SQLString, strlen(SQLString));
 
     if (! odbc_check(odbc_env_handle, odbc_connection, stat_handle, rc)) {
 
@@ -1272,20 +1286,20 @@ void odbc_get_data_in_one_go(MODBC_Statement *statement, int column_id);
         }
 
         column->sql_type = col_type;
-        column->size = sql_type_to_size(col_type, pcbColDef,
+        column->size = odbc_sql_type_to_size(col_type, pcbColDef,
                 pibScale, pfNullable);
 
-        column->attr_type = sql_type_to_attribute_type(col_type);
+        column->attr_type = odbc_sql_type_to_attribute_type(col_type);
 
         /* Request a conversion into one of the supported types. */
         column->conversion_type =
-            attribute_type_to_sql_c_type(column->attr_type);
+            odbc_attribute_type_to_sql_c_type(column->attr_type);
 
         MR_DEBUG(printf(""Column %i: size %i - sql_type %i - attr_type %i - conversion_type %i\\n"",
             column_no, column->size, column->sql_type,
             column->attr_type, column->conversion_type));
             
-        if (is_variable_length_sql_type(col_type)) {
+        if (odbc_is_variable_length_sql_type(col_type)) {
             Statement->binding_type = MODBC_GET_DATA;
         } else {
             /* 
@@ -1418,66 +1432,66 @@ void odbc_get_data_in_one_go(MODBC_Statement *statement, int column_id);
     switch ((int) Type) {
 
         case MODBC_NULL:
-        break;
+            break;
 
         case MODBC_INT: {
 
-        MODBC_C_INT data = *(MODBC_C_INT *)(col->data);
+            MODBC_C_INT data = *(MODBC_C_INT *)(col->data);
 
-        Int = (MR_Integer) data;
+            Int = (MR_Integer) data;
 
-        MR_DEBUG(printf(""got integer %ld\\n"", (long) Int));
+            MR_DEBUG(printf(""got integer %ld\\n"", (long) Int));
 
-            /* Check for overflow */
-        if (Int != data) {
-            MR_Word overflow_message;
-            MODBC_overflow_message(&overflow_message);
-            odbc_message_list =
-                MR_list_cons(overflow_message,
-                    odbc_message_list);
-            odbc_do_cleanup_statement(Statement);
-            odbc_throw();
-        }
-        break;
+                /* Check for overflow */
+            if (Int != data) {
+                MR_Word overflow_message;
+                MODBC_overflow_message(&overflow_message);
+                odbc_message_list =
+                    MR_list_cons(overflow_message,
+                        odbc_message_list);
+                odbc_do_cleanup_statement(Statement);
+                odbc_throw();
+            }
+            break;
         }
 
         case MODBC_FLOAT:
 
-        Flt = (MR_Float) *(MODBC_C_FLOAT *)(col->data);
+            Flt = (MR_Float) *(MODBC_C_FLOAT *)(col->data);
 
-        MR_DEBUG(printf(""got float %f\\n"", Flt));
+            MR_DEBUG(printf(""got float %f\\n"", Flt));
 
-        break;
+            break;
 
         case MODBC_STRING:
         case MODBC_TIME:
 
-        MR_assert(col->data);
-        MR_make_aligned_string_copy(Str, (char *) col->data);
+            MR_assert(col->data);
+            MR_make_aligned_string_copy(Str, (char *) col->data);
 
-        MR_DEBUG(printf(""got string %s\\n"", (char *) Str));
+            MR_DEBUG(printf(""got string %s\\n"", (char *) Str));
 
-        break;
+            break;
     
         case MODBC_VAR_STRING:
-        /*
-        ** The data was allocated on the Mercury heap, 
-        ** get it then kill the pointer so it can be GC'ed.
-        */
-        MR_make_aligned_string(Str, (char *) col->data);
+            /*
+            ** The data was allocated on the Mercury heap, 
+            ** get it then kill the pointer so it can be GC'ed.
+            */
+            MR_make_aligned_string(Str, (char *) col->data);
 
-        MR_DEBUG(printf(""got var string %s\\n"", (char *) col->data));
+            MR_DEBUG(printf(""got var string %s\\n"", (char *) col->data));
 
-        col->data = NULL;
+            col->data = NULL;
 
-        /* As far as Mercury is concerned it's an ordinary string */
-        Type = MODBC_STRING;
-        break;
+            /* As far as Mercury is concerned it's an ordinary string */
+            Type = MODBC_STRING;
+            break;
 
         default:
-        MR_fatal_error(
-            ""odbc.m: invalid attribute type in odbc.get_data"");
-        break;
+            MR_external_fatal_error(\"odbc.m\",
+                \"invalid attribute type in odbc.get_data\");
+            break;
     } /* end switch (Type) */
 
     DB = DB0;
@@ -1672,7 +1686,7 @@ condense_chunks(RevChunks, String) :-
 
 :- pragma foreign_code("C", "
 
-static SQLRETURN
+SQLRETURN
 odbc_do_cleanup_statement(MODBC_Statement *statement)
 {
     int i;
@@ -1686,8 +1700,8 @@ odbc_do_cleanup_statement(MODBC_Statement *statement)
                 ** Variable length types are allocated directly
                 ** onto the Mercury heap, so don't free them here. 
                 */
-                if (! is_variable_length_sql_type(
-                            statement->row[i].sql_type)) 
+                if (!odbc_is_variable_length_sql_type(
+                        statement->row[i].sql_type)) 
                 {
                     MR_GC_free(statement->row[i].data);
                 }
@@ -1715,8 +1729,8 @@ odbc_do_cleanup_statement(MODBC_Statement *statement)
 **  conversion from SQL types to supported types.
 **  Binary types are currently converted to strings. 
 */
-static MODBC_AttrType 
-sql_type_to_attribute_type(SWORD sql_type)
+MODBC_AttrType 
+odbc_sql_type_to_attribute_type(SWORD sql_type)
 {
     switch (sql_type) {
         case SQL_BIGINT:        return MODBC_STRING;
@@ -1753,16 +1767,16 @@ sql_type_to_attribute_type(SWORD sql_type)
         case SQL_VARBINARY:     return MODBC_STRING;
         case SQL_VARCHAR:       return MODBC_STRING;
         default:
-            MR_fatal_error(
-                ""odbc.m: sql_type_to_attribute_type: unknown type"");
+            MR_external_fatal_error(\"odbc.m\",
+                \"sql_type_to_attribute_type: unknown type\");
     }
 }
 
 /*
 ** Return the SQL_C type corresponding to a supported attribute type.
 */
-static SWORD 
-attribute_type_to_sql_c_type(MODBC_AttrType AttrType)
+SWORD 
+odbc_attribute_type_to_sql_c_type(MODBC_AttrType AttrType)
 {
     switch (AttrType) {
         case MODBC_FLOAT:       return SQL_C_DOUBLE;
@@ -1772,8 +1786,8 @@ attribute_type_to_sql_c_type(MODBC_AttrType AttrType)
         case MODBC_VAR_STRING:      return SQL_C_CHAR;
         default:
             /* Unsupported MODBC_xxx type */
-            MR_fatal_error(
-                ""odbc.m: attribute_type_to_sql_c_type: unknown type"");
+            MR_external_fatal_error(\"odbc.m\",
+                \"attribute_type_to_sql_c_type: unknown type\");
     }
 }
 
@@ -1786,8 +1800,8 @@ attribute_type_to_sql_c_type(MODBC_AttrType AttrType)
 ** variable length data. SQL_NO_TOTAL, which should be returned if the length
 ** cannot be determined, is not defined by the iODBC header files. 
 */
-static MR_bool 
-is_variable_length_sql_type(SWORD sql_type) {
+MR_bool 
+odbc_is_variable_length_sql_type(SWORD sql_type) {
 
 #ifdef MODBC_MYSQL
 
@@ -1812,8 +1826,8 @@ is_variable_length_sql_type(SWORD sql_type) {
 ** [ibScaler] is the scale returned by SQLDescribeCol
 ** [fNullable] is whether the column can be NULL
 */
-static size_t 
-sql_type_to_size(SWORD sql_type, UDWORD cbColDef, 
+size_t 
+odbc_sql_type_to_size(SWORD sql_type, UDWORD cbColDef, 
         SWORD ibScale, SWORD fNullable)
 {
     switch (sql_type)
@@ -1951,7 +1965,8 @@ sql_type_to_size(SWORD sql_type, UDWORD cbColDef,
             return cbColDef + 1;  /* 1 for NUL */
 
         default:
-            MR_fatal_error(""odbc.m: sql_type_to_size: unknown type"");
+            MR_external_fatal_error(\"odbc.m\",
+                \"sql_type_to_size: unknown type\");
     }
 }
 ").
@@ -2012,8 +2027,8 @@ SQLRETURN
 odbc_do_get_data_sources(MR_Word *SourceNames, MR_Word *SourceDescs,
         MR_Word *Messages)
 {
-    char dsn[SQL_MAX_DSN_LENGTH];
-    char desc[128];
+    SQLCHAR dsn[SQL_MAX_DSN_LENGTH];
+    SQLCHAR desc[128];
     /*
     ** Arbitrary size, only needs to hold a 
     ** descriptive string like ""SQL Server"".
@@ -2036,8 +2051,7 @@ odbc_do_get_data_sources(MR_Word *SourceNames, MR_Word *SourceDescs,
 
     MR_DEBUG(printf(""SQLAllocEnv status: %d\\n"", rc));
 
-    if (odbc_check(odbc_env_handle, SQL_NULL_HDBC, 
-            SQL_NULL_HSTMT, rc)) {
+    if (odbc_check(odbc_env_handle, SQL_NULL_HDBC, SQL_NULL_HSTMT, rc)) {
 
         rc = SQLDataSources(odbc_env_handle, SQL_FETCH_FIRST,
                 dsn, SQL_MAX_DSN_LENGTH - 1,
@@ -2056,10 +2070,10 @@ odbc_do_get_data_sources(MR_Word *SourceNames, MR_Word *SourceDescs,
             /* 
             ** Copy the new data onto the Mercury heap
             */
-            MR_make_aligned_string_copy(new_dsn, dsn);
-            *SourceNames = MR_list_cons(new_dsn, *SourceNames);
-            MR_make_aligned_string_copy(new_desc, desc);
-            *SourceDescs = MR_list_cons(new_desc, *SourceDescs);
+            MR_make_aligned_string_copy(new_dsn, (MR_String)dsn);
+            *SourceNames = MR_list_cons((MR_Word)new_dsn, *SourceNames);
+            MR_make_aligned_string_copy(new_desc, (MR_String)desc);
+            *SourceDescs = MR_list_cons((MR_Word)new_desc, *SourceDescs);
     
             rc = SQLDataSources(odbc_env_handle,
                     SQL_FETCH_NEXT, dsn,
@@ -2158,9 +2172,9 @@ convert_pattern_argument(pattern(Str), Str, 1).
         table_len = strlen(table_str);  
     }
 
-    rc = SQLTables(Statement->stat_handle, qualifier_str, 
-            qualifier_len, owner_str, owner_len,
-            table_str, table_len, NULL, 0);
+    rc = SQLTables(Statement->stat_handle, (SQLCHAR *)qualifier_str, 
+            qualifier_len, (SQLCHAR *)owner_str, owner_len,
+            (SQLCHAR *)table_str, table_len, NULL, 0);
     if (! odbc_check(odbc_env_handle, odbc_connection, 
             Statement->stat_handle, rc)) {
         odbc_do_cleanup_statement(Statement);
@@ -2384,10 +2398,10 @@ odbc_check(SQLHENV env_handle, SQLHDBC connection_handle,
 
 
             /* Copy the error string to the Mercury heap. */
-            MR_make_aligned_string_copy(mercury_message, message);
+            MR_make_aligned_string_copy(mercury_message, (char *)message);
 
             /* Convert the SQL state to an odbc__message. */
-            MODBC_odbc_sql_state_to_message(sql_state,
+            MODBC_odbc_sql_state_to_message((MR_String)sql_state,
                 mercury_message, &new_message);
 
             /* Append the message onto the list. */
