@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2002-2003, 2005-2007 The University of Melbourne.
+% Copyright (C) 1998-2000, 2002-2003, 2005-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -92,8 +92,8 @@
     % future releases.
     %
 :- pred freeze(var(T1),  pred(T1, T2), var(T2)).
-:- mode freeze(in,   pred(in, out) is det, out) is semidet. % really det
-:- mode freeze(in,   pred(in, out) is semidet, out) is semidet.
+:- mode freeze(in, pred(in, out) is det, out) is semidet. % really det
+:- mode freeze(in, pred(in, out) is semidet, out) is semidet.
 :- mode freeze(oa, pred(in, out) is det, oa) is semidet.
 :- mode freeze(oa, pred(in, out) is semidet, oa) is semidet.
 
@@ -175,7 +175,6 @@
     %
 :- solver type var(T)
     where   representation  is var_rep(T),
-            initialisation  is init,
             ground          is ground,
             any             is any,
             equality        is (==).

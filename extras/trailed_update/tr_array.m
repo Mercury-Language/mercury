@@ -1,8 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997, 1999, 2002, 2005-2006
-% The University of Melbourne.
+% Copyright (C) 1993-1995, 1997, 1999, 2002, 2005-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -178,7 +177,10 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
 :- import_module int.
+
+:- pragma require_feature_set([trailing]).
 
 /****
 lower bounds other than zero are not supported
@@ -402,7 +404,7 @@ ML_tr_shrink_array(MR_ArrayType *array, const MR_ArrayType *old_array,
 	tr_array.shrink(Array0::array_mui, Size::in, Array::array_uo),
 	[promise_pure, will_not_call_mercury],
 "
-	MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL, ""array:array/1"");
+	MR_incr_hp_msg(Array, Size + 1, MR_PROC_LABEL, ""array.array/1"");
 	ML_tr_shrink_array((MR_ArrayType *) Array,
 		(const MR_ArrayType *) Array0, Size);
 ").
