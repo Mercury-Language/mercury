@@ -664,43 +664,60 @@ INSTALL_MKDIR = mkdir -p
 # HTML files.
 
 # FINAL_INSTALL_PREFIX describes the directory that the installation
-# will finally end up in.  When building the Mercury compiler, it
-# should only be set by the configure script.  Other
-# FINAL_INSTALL_* variables have a similar meaning.
+# will finally end up in.  When building the Mercury compiler, it should
+# only be set by the configure script.  Other FINAL_INSTALL_* variables
+# have a similar meaning.
 #
-# If you want to install to a different directory temporarily (e.g.
-# to build a package, or if you don't have the permissions to install
-# to a final directory), override INSTALL_PREFIX on the command-line.
-# If you have previously configured to the directory you want to
-# finally install to, you will then be able to move the files safely,
-# since any hard-coded paths will be set to their final destination
-# already (note that the installation in the temporary directory may
-# not work until moved into its final destination).
-# e.g.
+# If you want to install to a different directory temporarily (e.g.  to
+# build a package, or if you don't have the permissions to install to a
+# final directory), set DESTDIR on the command-line.  If you have
+# previously configured to the directory you want to finally install to,
+# you will then be able to move the files safely, since any hard-coded
+# paths will be set to their final destination already (note that the
+# installation in the temporary directory may not work until moved into
+# its final destination).  e.g.
+#
 #      configure --prefix /usr
-#      make INSTALL_PREFIX=/some/temporary/directory/usr
+#      make DESTDIR=/some/temporary/directory
 
 # If you don't intend to install to a temporary directory, rather than
-# overriding INSTALL_PREFIX you should reconfigure using the configure
-# script, since there are some hardcoded paths created by the configure
-# script (e.g. in the shell scripts mmc, ml, mmake, etc) that will not
-# be updated simply by overriding INSTALL_PREFIX.
+# setting DESTDIR you should reconfigure using the configure script,
+# since there are some hardcoded paths created by the configure script
+# (e.g. in the shell scripts mmc, ml, mmake, etc) that will not be
+# updated simply by overriding INSTALL_PREFIX.
 
-INSTALL_PREFIX		= $(DESTDIR)/@prefix@
-FINAL_INSTALL_PREFIX	= @prefix@
+ifeq ($(DESTDIR),)
+    # DESTDIR is the empty string, DESTDIR_AND_SLASH must therefore be empty.
+    # Otherwise the slash can change a relative path into an absolute one; or
+    # on Windows, it can create an invalid path name.
+    DESTDIR_AND_SLASH=
+else
+    # We cannot append paths like this in Windows, but we don't think anyone
+    # will use DESTDIR on Windows.
+    DESTDIR_AND_SLASH=$(DESTDIR)/
+endif
+
+INSTALL_PREFIX		= $(DESTDIR_AND_SLASH)@prefix@
 INSTALL_BINDIR		= $(INSTALL_PREFIX)/bin
 INSTALL_LIBDIR		= $(INSTALL_PREFIX)/lib/mercury
-FINAL_INSTALL_LIBDIR	= $(FINAL_INSTALL_PREFIX)/lib/mercury
 INSTALL_INFO_DIR	= $(INSTALL_PREFIX)/info
 INSTALL_DVI_DIR		= $(INSTALL_PREFIX)/lib/mercury/doc
 INSTALL_TEXT_DIR	= $(INSTALL_PREFIX)/lib/mercury/doc
 INSTALL_PS_DIR		= $(INSTALL_PREFIX)/lib/mercury/doc
 INSTALL_PDF_DIR		= $(INSTALL_PREFIX)/lib/mercury/doc
-INSTALL_MAN_DIR		= $(INSTALL_PREFIX)/man
+INSTALL_MAN_DIR		= $(INSTALL_PREFIX)/Man
 INSTALL_HTML_DIR	= $(INSTALL_PREFIX)/lib/mercury/html
 INSTALL_MDB_DOC_DIR	= $(INSTALL_PREFIX)/lib/mercury/mdb
 INSTALL_ELISP_DIR	= $(INSTALL_PREFIX)/lib/mercury/elisp
-INSTALL_CGI_DIR		= $(DESTDIR)/@CGIDIR@
+INSTALL_CGI_DIR		= $(DESTDIR_AND_SLASH)@CGIDIR@
+
+FINAL_INSTALL_PREFIX	= @prefix@
+FINAL_INSTALL_BINDIR 	= $(FINAL_INSTALL_PREFIX)/bin
+FINAL_INSTALL_LIBDIR	= $(FINAL_INSTALL_PREFIX)/lib/mercury
+FINAL_INSTALL_INFO_DIR	= $(FINAL_INSTALL_PREFIX)/info
+FINAL_INSTALL_MAN_DIR	= $(FINAL_INSTALL_PREFIX)/man
+FINAL_INSTALL_ELISP_DIR	= $(FINAL_INSTALL_PREFIX)/lib/mercury/elisp
+FINAL_INSTALL_CGI_DIR	= @CGIDIR@
 
 # You should not need to override anything below here
 

@@ -518,20 +518,26 @@ install: install_main install_grades
 	@echo
 	@echo "-- Installation complete."
 	@echo
-	@echo "-- Don't forget to add $(INSTALL_BINDIR) to your PATH,"
-	@echo "-- $(INSTALL_MAN_DIR) to your MANPATH,"
-	@echo "-- and $(INSTALL_INFO_DIR) to your INFOPATH,"
+	@if test -n "$(DESTDIR)"; then \
+		echo "-- The installation was placed in $(DESTDIR)."; \
+		echo "-- to complete installation copy the contents of"; \
+		echo "-- $(DESTDIR) to the root directory of your system(s)."; \
+		echo; \
+	fi
+	@echo "-- Don't forget to add $(FINAL_INSTALL_BINDIR) to your PATH,"
+	@echo "-- $(FINAL_INSTALL_MAN_DIR) to your MANPATH,"
+	@echo "-- and $(FINAL_INSTALL_INFO_DIR) to your INFOPATH,"
 	@if test $(ENABLE_DEEP_PROFILER) != yes || \
 		cmp -s deep_profiler/mdprof_cgi \
 			$(INSTALL_CGI_DIR)/mdprof_cgi; \
 	then true ; else \
 		echo "-- to copy deep_profiler/mdprof_cgi" \
-			"to $(INSTALL_CGI_DIR),"; \
+			"to $(FINAL_INSTALL_CGI_DIR),"; \
 	fi
 	@echo "-- and to add the following lines to the \`.emacs' file"
 	@echo "-- in your home directory:"
 	@echo "	(add-to-list 'load-path "
-	@echo "		\"$(INSTALL_ELISP_DIR)\")"
+	@echo "		\"$(FINAL_INSTALL_ELISP_DIR)\")"
 	@echo "	(autoload 'mdb \"gud\" \"Invoke the Mercury debugger\" t)"
 
 .PHONY: install_main

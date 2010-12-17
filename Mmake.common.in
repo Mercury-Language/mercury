@@ -119,9 +119,9 @@ SHARED_LIBS		= @SHARED_LIBS@
 # in scripts/Mmake.vars to avoid accidentally overwriting an
 # existing installation when using an installed mmake.
 ifeq ($(DESTDIR),)
-	# DESTDIR is The empty string, DESTDIR_AND_SLASH is therefore empty. since
-	# the slash can change a relative path into an absolute one; or on Windows,
-	# from an invalid path name.
+	# DESTDIR is the empty string, DESTDIR_AND_SLASH must therefore be empty.
+	# Otherwise the slash can change a relative path into an absolute one; or
+	# on Windows, it can create an invalid path name.
 	DESTDIR_AND_SLASH=
 else
 	# We cannot append paths like this in Windows, but we don't think anyone
