@@ -2907,11 +2907,10 @@ if test $mercury_cv_use_digital_unix_threads = yes; then
     AC_DEFINE(MR_DIGITAL_UNIX_PTHREADS)
 fi
 
-# Figure out what options we need to pass to the C compiler
-# for multithreading.   We may need to pass different
-# options to tell (a) the Mercury runtime & library
-# (b) the boehm collector and (c) the C library
-# that they need to be thread-safe.
+# Figure out what options we need to pass to the C compiler for multithreading.
+# We may need to pass different options to tell (a) the Mercury runtime and
+# library (b) the Boehm collector and (c) the C library that they need to be
+# thread-safe.
 #
 # For Linux, Irix, Solaris, and HPUX,
 # the thread-enabled version of the Boehm
@@ -2923,10 +2922,17 @@ fi
 #     is enabled.
 #
 # Note that changes here may require changes in scripts/ml.in.
+#
 LDFLAGS_FOR_THREADS=
 LD_LIBFLAGS_FOR_THREADS=
 ENABLE_BOEHM_THREAD_LOCAL_ALLOC=
 ENABLE_BOEHM_PARALLEL_MARK=
+
+# This following variable is used for passing any other C compiler
+# flags to the version of the Boehm GC built in parallel grades.
+# 
+BOEHM_MISC_CFLAGS_FOR_THREADS=
+
 case "$host" in
     *solaris*)
         CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE \
@@ -2944,6 +2950,13 @@ case "$host" in
         THREAD_LIBS="-lpthread -ldl"
         ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
         ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
+        # HBLKSIZE and CPP_LOG_HBLKSIZE control a poorly-documented parameter
+        # in the Boehm GC, this parameter indirectly controls the size of
+        # thread-local free lists among other things.
+        # CPP_LOG_HBLKSIZE must always be the base-2 log of HBLKSIZE.
+        # (With the current collector these settings only appear to work
+        # correctly on Linux.)
+        BOEHM_MISC_CFLAGS_FOR_THREADS="-DHBLKSIZE=32768 -DCPP_LOG_HBLKSIZE=15"
         ;;
 
     *cygwin*)
@@ -3019,6 +3032,7 @@ AC_SUBST(LDFLAGS_FOR_THREADS)
 AC_SUBST(LD_LIBFLAGS_FOR_THREADS)
 AC_SUBST(ENABLE_BOEHM_THREAD_LOCAL_ALLOC)
 AC_SUBST(ENABLE_BOEHM_PARALLEL_MARK)
+AC_SUBST(BOEHM_MISC_CFLAGS_FOR_THREADS)
 
 save_LIBS="$LIBS"
 LIBS="$THREAD_LIBS"

@@ -87,7 +87,7 @@ ifeq "$(findstring .par,$(GRADE))$(findstring .gc,$(GRADE))" ".par.gc"
 ERROR_UNDEFINED	= $(ALLOW_UNDEFINED)
 endif
 
-# The following variables specify how to pass options to the # $(CC) or
+# The following variables specify how to pass options to the $(CC) or
 # $(LINK_SHARED_OBJ) command to specify directories to be searched at
 # runtime for shared libraries.
 # Normally RPATH_OPT is either "-R" or "-rpath ", but you may need to
@@ -161,13 +161,9 @@ BOEHM_CFLAGS = @ENABLE_BOEHM_LARGE_CONFIG@ @ENABLE_BOEHM_USE_MUNMAP@ \
 # Additional options to pass to the C compiler when building Boehm-GC for
 # threads.
 #
-# HBLKSIZE and CPP_LOG_HBLKSIZE control a poorly-documented parameter in the
-# Boehm-GC, this parameter indirectly controls the size of thread-local free
-# lists among other things.
-# CPP_LOG_HBLKSIZE must always be the base-2 log of HBLKSIZE
 BOEHM_CFLAGS_FOR_THREADS = @ENABLE_BOEHM_THREAD_LOCAL_ALLOC@ \
 	@ENABLE_BOEHM_PARALLEL_MARK@ \
-	-DHBLKSIZE=32768 -DCPP_LOG_HBLKSIZE=15
+	@BOEHM_MISC_CFLAGS_FOR_THREADS@
 
 # Do we want to deal with intermodule information when building the library?
 # By default yes, since this way we note immediately when intermodule
