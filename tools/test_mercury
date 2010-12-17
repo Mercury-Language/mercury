@@ -194,7 +194,7 @@ case $BRANCH in
         RELEASE_VERSION_PATTERN=11.01-beta-*
         ;;
         
-        # This was for the 11.01 release.
+        # This is for the 11.01 release.
         #
         #CHECKOUT_OPTS=-rversion-11_01
         #BASE_TAG_NAME=version-11_01
