@@ -495,15 +495,19 @@ wakeup_delayed_goals((GoalsX, GoalsY), Value) :-
 :- pragma foreign_decl("C", "
     #include ""mercury_trail.h""
 
-    void ML_var_untrail_func(
-        ML_var_delayed_conj *old_delayed_goals,
-        MR_untrail_reason reason);
+extern void
+ML_var_untrail_func(ML_var_delayed_conj *old_delayed_goals,
+    MR_untrail_reason reason);
 ").
 
-:- pragma foreign_code("C", "
+:- pragma foreign_decl("C", local, "
 
 static void
 ML_var_report_goal_floundered(ML_var_delayed_conj *old_goal);
+
+").
+
+:- pragma foreign_code("C", "
 
 void
 ML_var_untrail_func(ML_var_delayed_conj *old_goal, MR_untrail_reason reason)
