@@ -13,5 +13,6 @@ libgc.lib
 *.pdb
 gc_cpp.cpp
 libgc.dylib
+libpar_gc.dylib
 libatomic_ops-install
 Makefile
