@@ -55,9 +55,9 @@ cp boehm_gc/include/*.[ch] ${installdir}/boehm_gc/include
 cp boehm_gc/include/private/*.[ch] ${installdir}/boehm_gc/include/private
 cp boehm_gc/configure_atomic_ops.sh ${installdir}/boehm_gc
 cp boehm_gc/build_atomic_ops.sh* ${installdir}/boehm_gc
-cp -r boehm_gc/libatomic_ops-*[0-9] ${installdir}/boehm_gc
-cp -r boehm_gc/libatomic_ops ${installdir}/boehm_gc
-cp -r boehm_gc/extra ${installdir}/boehm_gc
+cp -Rp boehm_gc/libatomic_ops-*[0-9] ${installdir}/boehm_gc
+cp -Rp boehm_gc/libatomic_ops ${installdir}/boehm_gc
+cp -Rp boehm_gc/extra ${installdir}/boehm_gc
 rm -fr ${installdir}/boehm_gc/libatomic_ops-*[0-9]/src/*.o
 rm -fr ${installdir}/boehm_gc/libatomic_ops-*[0-9]/src/*.a
 mkdir ${installdir}/runtime
