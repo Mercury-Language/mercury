@@ -3269,6 +3269,669 @@ Changes to the Mercury standard library:
   These are a standard data structure for querying spatial information.
 
 
+NEWS for Mercury 10.04.2, 5 October 2010
+-----------------------------------------
+
+This release is a bug-fix release.  A number of problems that caused
+the compiler to abort have been fixed, some broken RTTI operations
+in the java grade have been fixed, and we have added a workaround
+for a problem with GCC version 4.4.
+
+
+NEWS for Mercury 10.04.1, 30 August 2010
+----------------------------------------
+
+This release is primarily a bug-fix release.  It fixes some problems in
+the code generator and the source-to-source debugger.  In addition,
+there are some changes to the standard library.
+
+Changes to the Mercury standard library:
+* We have added cc_multi modes for map.foldl2/6 and tree234.foldl2/6.
+* We have improved the performance of cords, hash tables and
+version hash tables.
+
+
+NEWS for Mercury 10.04, 19 July 2010
+------------------------------------
+
+Changes to the release numbering:
+
+Stable releases are now numbered according to the year and month the
+release was made, eg 10.04 is the release made in April 2010.
+Previously the release naming scheme was 0.x where x was the x'th
+major release of the system.
+
+Changes to the Mercury language:
+
+* We have removed support for automatic initialisation of solver variables.
+
+* A new pragma, foreign_enum, allows the constructors of Mercury 
+  enumeration types to be assigned values from foreign language code.
+
+* A new pragma, foreign_export_enum, allows the constructors of Mercury
+  enumeration types to be referred to in foreign language code.
+
+* Some of the restrictions on typeclass instances have been relaxed, allowing
+  support for polymorphic instances with functional dependencies.
+
+* We now support trace goals, which can be used to print progress messages or
+  log messages in the middle of arbitrary computations.
+
+* Mutables can now be marked as constant, which is useful when working with
+  constant data structures that cannot be conveniently represented as constant
+  terms.
+
+* Mutables can now be marked as thread-local, which can take on different
+  values for each thread.
+
+* promise_equivalent_solutions scopes (et al.) must now also list variables
+  with inst any that may be constrained by the goal.
+
+* We now support !X ^ field_list := Term as a synonym for
+  !:X = !.X ^ field_list := Term.
+
+* We now support higher-order `any' insts.
+
+* We now support "implementation-defined literals", such as `$file', `$line',
+  `$pred', which are useful for producing better run-time error messages.
+
+* We now support currying of multi-moded predicates or functions when the
+  mode to curry can be determined from the insts of the higher-order
+  arguments.
+
+* We now support `try' goals for catching exceptions.
+
+Changes to the Mercury standard library:
+
+* A new module, parsing_utils, has been added to provide support for
+  implementing recursive descent parsers.
+
+* The string.to_int family of predicates now fails (or throws an exception
+  for the det_ versions) on base 10 numbers that do not fit in the range
+  [int.min_int+1, int.max_int].  Numbers outside this range lead to overflow.
+  Numbers not in base 10 are assumed to denote bit patterns and are not
+  checked for overflow.
+
+* A module for handling directed graphs, digraph.m, has been added.  This
+  supersedes relation.m and svrelation.m in that it has a more consistent
+  interface (which supports state variable notation), provides more type
+  safety by using phantom types, and has a number of efficiency improvements.
+  Further use of relation.m and svrelation.m is deprecated.
+
+* An improved pretty printer module, pretty_printer.m, has been added.  This
+  supersedes pprint.m in that it is more economical, produces better
+  quality output (line overruns are completely avoided wherever possible),
+  has better control over the amount of output produced, and supports
+  user-specifiable formatting for arbitrary types.  Further use of pprint is
+  deprecated.
+
+* We have added extra modes to many of the fold style predicates in the
+  library in order to better support (mostly-)unique accumulators.
+
+* The foldr family of functions and predicates has been added to the map
+  and tree234 modules. We have also extended the arities for map_foldl
+  to map_foldl3 in both modules, and added versions of both map_foldl*
+  and just plain foldl* in which the higher order argument does not take
+  the key as an argument.
+
+* We have added the following predicate to the int module:
+	int.nondet_int_in_range/2.
+
+* We have added the following functions to the integer module:
+	integer.from_base_string/2
+	integer.det_from_base_string/2
+
+* We have added a new builtin predicate, unsafe_cast_any_to_ground/1, that
+  can be useful when manipulating polymorphic values that have inst any.
+
+* Predicates and functions which create strings from lists of characters
+  now fail, throw an exception or return an error value if they find
+  a null character. Unexpected null characters in strings are a potential
+  source of security vulnerabilities.
+
+  We have added the predicates string.semidet_from_char_list/2 and
+  string.semidet_from_rev_char_list/2. These fail rather than throwing
+  an exception if they find a null character.
+
+* We have added string.remove_suffix_det, a version of string.remove_suffix
+  that throws an exception if the suffix is not there.
+
+* string.float_to_string now trims redundant trailing zeroes (although
+  at least one fractional digit is always present).  This change affects the
+  output from the debugger and io.print etc.
+
+* The globals field in the I/O state is no longer unique.  The modes of
+  the access predicates, io.set_globals/3 and io.get_globals/3 have been
+  changed accordingly.
+
+* We have added io.update_globals/3 which allows for atomic updates to
+  the globals field in the I/O state in the presence of multiple threads.
+
+* We have moved some of the concurrency primitives out of the extras
+  distribution and into a new standard library module called `thread',
+  and its submodules `thread.channel', `thread.mvar', and `thread.semaphore'.
+  The predicates `thread.can_spawn', `thread.channel.try_take'
+  and `thread.mvar.try_take' have also been added.
+
+* Processes no longer terminate until all threads have finished.  Previously
+  a process would terminate as soon as the original thread finished.
+
+* The following predicate has been added to the set module:
+	set.filter_map/3
+
+* The following predicates have been added to the array modules:
+	array.fold/4
+	array.foldl2/6
+	version_array.foldl/4
+
+* The following predicates have been added to the list module:
+	list.filter_map_foldl/5
+	list.map_corresponding/4
+	list.map2_foldl3/10
+	list.map_corresponding_foldl/6
+	list.map_corresponding_foldl2/8
+	list.map_corresponding_foldl3/10
+	list.map_corresponding3_foldl/7
+	list.negated_filter/3
+	list.foldl3_corresponding/9
+	list.foldl_corresponding3/6
+	list.foldl2_corresponding3/8
+	list.foldl3_corresponding3/10
+	list.foldl4_corresponding3/12
+	list.split_upto/4
+	list.contains/2
+	list.find_index_of_match/4
+	list.find_first_match/3
+
+   We have also added versions of list.foldl/4 and list.foldr/4 that have
+   determinism multi.
+
+* The following functions have been added to the string module:
+	string.split_at_separator/2
+	string.split_at_char/2
+	string.split_at_string/2
+	string.remove_suffix_if_present/2
+	string.remove_prefix_if_present/2
+	string.is_all_digits/1
+	string.all_match/2
+	string.remove_prefix/3
+
+* The following functions and predicates have been added to the bag module:
+	bag.count/1
+	bag.count_unique/1
+	bag.member/2
+	bag.member/3
+
+* A unique mode has been added to cord.foldl_pred/4
+
+* The following function has been added to the pqueue module
+	pqueue.length/1
+
+* The following predicate has been added to the maybe module
+	maybe_is_yes/2
+
+* We have changed the interface of the ops module to make lookups of operators
+  more efficient.
+
+* We have added string.c_pointer_to_string/{1,2} and string.from_c_pointer/1
+  to convert c_pointers to a human readable form.
+
+* The bitmap module has been modified and extended to make it more suitable
+  for use as a general container for binary data.  See runtime/mercury_types.h
+  for the new definition of the bitmap type for interoperability with C code.
+
+  Bitmaps now have fields `bit', `bits' and `byte' for getting and
+  setting a single bit, a group of bits (up to machine word size),
+  and an aligned eight bit byte respectively.
+
+  bitmap.get/2 has been deprecated; use bitmap.bit/2 instead.
+
+  There is a new type bitmap.slice/0 to represent segments of bitmaps.
+
+  There are new functions to move data around in bulk:
+	copy_bits/5
+	copy_bits_in_bitmap/4
+	copy_bytes/5
+	copy_bytes_in_bitmap/4
+
+  Other added functions include:
+  	shrink_without_copying/2
+	append_list/1
+	to_byte_string/1
+
+* The operations in bitmap.m and version_bitmap.m which treat bitmaps
+  as sets have been modified to throw an exception when the input
+  bitmaps are not the same size.  Before this change bitmap.intersect/2
+  computed the wrong answer when the input bitmaps were of different sizes.
+
+* bitmap.difference/2 and version_bitmap.difference/2 now compute difference,
+  not xor.  bitmap.xor/2 and version_bitmap.xor/2 have been added.
+
+* bitmap.to_string(BM) now returns "<0:>" for an empty bitmap BM.
+  Previously it returned "<0:00>".
+
+* Version bitmaps now have a field `bit' for getting and setting a single bit.
+
+  version_bitmap.get/2 has been deprecated; use version_bitmap.bit/2 instead.
+
+* The io module now contains predicates io.read_bitmap/{4,5,6,7},
+  io.write_bitmap{3,4,5,6} and io.read_file_as_bitmap/{3,4}.
+  io.write_bytes/{3,4} are now marked as obsolete.  Note that the
+  interface of io.read_bitmap/* has changed since the first release
+  of the day implementation.
+
+* There are new modules bit_buffer, bit_buffer.write and bit_buffer.read
+  which give a bit-oriented interface to byte-oriented streams.
+
+* There is a new typeclass stream.bulk_reader/5.  Instances of
+  stream.bulk_reader/5 support reading of multiple items at once
+  into a container such as an array or a bitmap.
+
+* Comparison of version_arrays is now the same as for arrays.
+
+* We have added predicates char.is_hex_digit/2 and char.int_to_hex_char/2.
+
+* We have changed term.variable so that it records the context where
+  the variable was used.  This required the backward mode of
+  term.var_list_to_term_list to be removed.  The backwards mode is
+  now accessed via term.term_list_to_var_list.
+
+  There is a new function, get_term_context, to return the context of any term.
+
+* We have renamed some library predicates whose names were ambiguous.
+
+* The type software_error/0 has been moved from the require module into
+  the exception module.
+
+* construct.num_functors/1 now fails rather than returning -1 for types
+  with no functors.  There is a new function construct.det_num_functors/1
+  which aborts for types which do not have functors.
+
+* We have added predicates deconstruct.functor_number/3 and
+  deconstruct.deconstruct_du/4 which return functor numbers suitable
+  for use by construct.construct, rather than functor strings.
+
+* We have added a function construct.get_functor_lex/2 which converts
+  an ordinal functor number into a lexicographic functor number.
+
+* A new module string.builder has been added to the standard library.
+  The new module provides instances of the stream typeclasses that can
+  be used to build up a string using char and string writers.
+
+* We have added the types `string.line' and `string.text_file' and made
+  input streams instances of stream.reader/4 with those unit types.
+  This means stream.get/4 can be used to efficiently read lines
+  and files as string.
+
+* We have added a predicate io.remove_file_recursively/4
+  which can remove non-empty directories.
+
+* We have added the predicates `dir.current_directory',
+  `dir.relative_path_name_from_components'.
+
+* We have added the predicates rev_list, split_last, get_first, get_last,
+  filter, foldl_pred, foldr_pred, map_foldl, map_foldl[23], cord_list_to_cord
+  and cord_list_to_list to the cord module.
+
+* We have added two predicates that are useful for custom term construction:
+	construct.find_functor/5
+	type_desc.same_type/2 
+
+* We have added new predicates to the tree234 and map modules for constructing
+  2-3-4 trees and maps directly (without the creation of intermediate trees)
+  from sorted lists:
+	tree234.from_sorted_assoc_list/2
+	tree234.from_rev_sorted_assoc_list/2
+	map.from_rev_sorted_assoc_list/2
+  map.from_sorted_assoc_list now also constructs the tree directly, so now
+  it requires its input list to be duplicate-free.
+
+* We have added tree234.map_values_only and map.map_values_only, which are
+  versions of tree234.map_values and map.map_values which do not give the
+  higher order argument the key associated with the value being transformed.
+
+* We have replaced the hash_table and version_hash_table implementations
+  with separate chaining schemes.  Consequently delete works, and double
+  hashing predicates are not required.
+
+* We have added optional synchronisation to the version_array and
+  version_hash_table implementations.  They are now thread safe, but slower,
+  by default.
+
+* We have added a calendar module to the standard library. This module
+  contains utilities for working with the Gregorian calendar.
+
+Changes to the Mercury compiler:
+
+* The Java backend has been substantially improved and now supports
+  all the core features of the language and most of the standard library.
+  The Java backend is roughly three times slower (after allowing for JIT)
+  than the C backends.
+
+  The Java backend improvements were contributed by Mission Critical IT
+  <http://www.missioncriticalit.com/>.
+
+* Interfacing with Mercury code from Java is also improved:
+    * Polymorphic Mercury types are now translated to Java classes
+      with generics, allowing for greater type safety in the Java code.
+    * Exported Mercury procedures retain their argument order in the
+      corresponding Java versions (output arguments are handled with a new
+      Ref Java type).
+
+* We have added support for trail segments, which allow programs to grow
+  the trail on demand.
+
+* Shared libraries are now used by default on Linux/x86 systems.
+
+* Support for the reserve tag grades has been removed.
+
+* We have added an Erlang back-end.
+
+  The Erlang back-end was contributed by Mission Critical IT
+  <http://www.missioncriticalit.com/>.
+
+* In parallel grades we now support thread-local trailing.
+
+* The compiler now issues a warning when an inst declaration is not
+  consistent with any of the types in scope.
+
+* We have added support for simultaneous execution of jobs with `mmc --make'.
+
+* We have added support for `mmc --make' to recompile modules if options have
+  changed.
+
+* We have added an option for `mmc --make' to compile more recently modified
+  source files first.
+
+* We have added support for stack segments, which allows programs to grow
+  stacks on demand.
+
+* We have made it easier to use single-precision floats, which do not need
+  to be boxed on 32-bit machines.
+
+* A new option, `--generate-standalone-interface', simplifies the task
+  of calling Mercury procedures from programs written in other languages.
+
+* We have added a new option, `--inform-ite-instead-of-switch'. If this is
+  enabled, the compiler will generate informational messages about
+  if-then-elses that it thinks should be converted to switches for the
+  sake of program reliability.
+
+* We have removed support for Managed C++ as a foreign language for the IL
+  backend.
+
+* The width of error message lines can be adjusted with a new option,
+  `--max-error-line-width'.
+
+* Generation of 64-bit code on Mac OS X is now supported,
+  i.e. the x86_64*apple*darwin* architecture is now supported.
+
+* We have added another debugger, called the source-to-source debugger (ssdb).
+  It is more limited than mdb, but it does work with backends other than the
+  low-level C backend, e.g. the Java backend.
+
+Changes to the Mercury deep profiler:
+
+* The deep profiler now supports measuring a proxy for time: a counter that
+  is incremented at each call. Since calls happen a lot more frequently than
+  clock interrupts, this can yield useful profiles for shorter-running
+  programs.
+
+Changes to the samples directory:
+
+* The samples directory now includes an example of how to implement a
+  solver type.
+
+Changes to the extras distribution:
+
+* The extras distribution now includes a binding to the Allegro and
+  AllegroGL game programming libraries.
+
+* `mtogl', the Mercury binding to the Tk widget `togl' has been removed
+  from the distribution.
+
+Changes to the Mercury debugger:
+
+* A `track' mdb command has been added.
+
+* The `dd' command now accepts a `--reset-knowledge-base' option.
+
+* You can now put breakpoints on individual events inside procedures.
+
+* mdb now ignores lines beginning with a `#' character
+  in sourced files.  This is useful for commenting mdb scripts.
+
+DETAILED LISTING
+================
+
+Changes to the Mercury language:
+
+* Support for the automatic initialisation of solver variables has been
+  removed because it was source of confusing errors and was not used in
+  practice anyway.
+
+  A consequence of this is that solver types are now properly polymorphic,
+  i.e. types like `foo(bar)' where:
+
+  	:- solver type foo(T).
+	:- solver type bar.
+  
+  are now supported.
+
+* The new pragma, foreign_enum, can be used to establish a 
+  mapping between values in a foreign language and the constructors
+  of a Mercury enumeration type.  This can be useful when writing
+  Mercury bindings to foreign code libraries.
+
+  For example, 
+
+  	:- type matrix_mode
+		--->	texture
+		;	modelview
+		;	projection.
+
+	:- pragma foreign_enum("C", matrix_mode/0, [
+		texture    - "GL_TEXTURE" 
+		modelview  - "GL_MODELVIEW"
+		projection - "GL_PROJECTION"
+	]).
+  
+  When passed to C foreign clauses, values of type matrix_mode/0 will have
+  the corresponding C value specified by the foreign_enum pragma.
+
+* The new pragma, foreign_export_enum, can be used to establish a
+  mapping between the constructors of a Mercury enumeration type and
+  a symbolic name for values of that type in the foreign language.
+
+  For example, given the type
+
+  	:- type status ---> ok ; error.
+
+  the declaration
+
+  	:- pragma foreign_export_enum("C", status/0, [prefix("STATUS_")]).
+  
+  allows code in C foreign_proc and foreign_code pragma bodies to refer
+  to the value `ok' via the name `STATUS_ok' and to the value `error'
+  via the name `STATUS_error'.
+
+* The restriction on typeclass instances that all type variables appearing in
+  the range of a functional dependency must be monomorphic has been relaxed.
+  We now support cases where the type variables in the range are determined
+  by the type variables in the domain, using the functional dependency
+  information from any instance constraints.
+
+  For example, given the typeclass
+
+	:- typeclass foo(A, B) <= (A -> B).
+
+  the following instance is now valid:
+
+	:- instance foo(list(S), list(T)) <= foo(S, T).
+
+  since the variable T, in the range, is determined from the variable S by the
+  functional dependencies on the foo(S, T) constraint.
+
+* A new language construct allows programmers to include debugging and/or
+  logging code in the middle of arbitrary computations. Trace goals
+  may have both compile time and run time conditions placed on their execution.
+  However, if they are enabled, then they can perform I/O (even if the
+  surrounding code can't); they can also access the values of mutables.
+
+  Their capabilities, syntax and intended use are shown by the following
+  example.
+
+	:- mutable(logging_level, int, 0, ground, []).
+
+	:- pred time_consuming_task(data::in, result::out) is det.
+
+	time_consuming_task(In, Out) :-
+		trace [
+			compile_time(flag("do_logging") or grade(debug)),
+			run_time(env("VERBOSE")),
+			io(!IO),
+			state(logging_level, !LoggingLevel)
+		] (
+			io.write_string("Time_consuming_task start\n", !IO),
+			( !.LoggingLevel > 1 ->
+				io.write_string("Input is ", !IO),
+				io.write(In, !IO),
+				io.nl(!IO)
+			;
+				true
+			)
+		),
+		...
+		% perform the actual task
+
+* Higher-order terms can now have an `any' inst, which means that they can
+  legally use non-local solver variables even though these variables may
+  become further bound when in it is called.  Higher-order terms with an
+  `any' inst cannot be called or applied in a negated context (a negation,
+  the condition of an if-then-else, or the body of a higher-order expression
+  that does not itself have an `any' inst).
+
+  Such terms can be expressed by using `any_pred' and `any_func' in place of
+  `pred' and `func', as in the following examples:
+
+	AnyPred = (any_pred(X::ia, C::in) is semidet :-
+			geqc(X, A, C)		% X >= A + C
+		),
+	...
+	call(AnyPred, Z, 5)			% Z >= A + 5
+
+	AnyFunc = (any_func(X::ia) = (Y::ia) is semidet :-
+			X = Y + A
+		),
+	...
+	Z = apply(AnyFunc, W)			% W = Z + A
+
+* Try goals provide syntactic sugar for catching exceptions. An example is:
+
+	:- pred p_carefully(io::di, io::uo) is det.
+
+	p_carefully(!IO) :-
+		(try [io(!IO)] (
+			io.write_string("Calling p\n", !IO),
+			p(Output, !IO)
+		)
+		then
+			io.write_string("p returned: ", !IO),
+			io.write(Output, !IO),
+			io.nl(!IO)
+		catch S ->
+			io.write_string("p threw a string: ", !IO),
+			io.write_string(S, !IO),
+			io.nl(!IO)
+		catch 42 ->
+			io.write_string("p threw 42\n", !IO)
+		catch_any Other ->
+			io.write_string("p threw something: ", !IO),
+			io.write(Other, !IO),
+			% Rethrow the object.
+			throw(X)
+		).
+
+Changes to the Mercury compiler:
+
+* The option `--trail-segments', or grade component `.trseg', causes
+  programs to execute using trail segments, where segments can be allocated
+  at runtime, instead of using a fixed size trail.  This can prevent trail
+  exhaustion, but execution time will be increased.
+
+* There's a new back-end that targets Erlang.
+
+  Compiler support for this new back-end is mostly complete,
+  but large parts of the standard library are still not yet
+  implemented for this new port.
+
+  For more details, see the README.Erlang.
+
+* The compiler now issues a warning when an inst declaration isn't
+  consistent with any of the types in scope.
+
+  This makes it easier to diagnose mode errors caused by insts that are not
+  consistent with the type they are intended to be consistent with.
+
+* Simultaneous execution of jobs with `mmc --make' can be enabled with
+  the `--jobs <n>' option.
+
+* `mmc --make' can record what compiler options were used for each module
+  by enabling the `--track-flags' option.  Then `mmc --make' can know to
+  recompile modules whose options have changed, even if the files haven't
+  been touched.
+
+* `mmc --make' can compile more recently modified files first, if the option
+  `--order-make-by-timestamp' is enabled.
+
+* The option `--stack-segments', or grade component `.stseg', causes
+  programs to execute using stack segments, where segments can be allocated
+  at runtime, instead of using fixed sized stacks.  The program won't run out
+  of stack space and stack sizes can be much smaller, but execution time will
+  be increased.
+
+* Single-precision floats can now be selected for the C backends by using the
+  `.spf' grade component, or passing the `--single-prec-float' option to the
+  compiler.
+
+* The option `--generate-standalone-interface', causes the compiler to
+  create a "stand-alone" interface to the Mercury runtime and a set of
+  Mercury libraries.  This interface allows programs written in languages
+  such as C or C++ to initialise the Mercury runtime and libraries prior to
+  calling any foreign exported procedures defined in those libraries.
+
+* We have removed support for Managed C++ as a foreign language for the IL
+  backend.  This was desirable because it wasn't used, because it has been
+  deprecated by Microsoft, and because it complicated the dependencies for the
+  IL backend.
+
+Changes to the Mercury standard library:
+
+* The predicates io.seek_binary/5 and io.binary_stream_offset/4 have been
+  deprecated.  They have been replaced by the predicates:
+  io.seek_binary_input/5, io.seek_binary_output/5,
+  io.binary_input_stream_offset/4 and io.binary_output_stream_offset/4.
+
+Changes to the Mercury debugger:
+
+* A `track' mdb command has been added.  This command invokes the declarative
+  debugger and executes it's `track' command, before returning to the mdb
+  prompt.
+
+* The `dd' command now accepts a `--reset-knowledge-base' option. 
+  This option resets the declarative debugger's knowledge base of previous
+  question answers.
+
+* You can now put breakpoints on individual events inside procedures.
+  Commands of the form "break <procedure-specification> <portname>"
+  will cause execution to stop only at the specified port in the specified
+  procedure. If there is more than event of the given port type in the
+  procedure, mdb will prompt the user to select one.
+
+* mdb now ignores lines beginning with a `#' character
+  in sourced files.  This is useful for commenting mdb scripts.
+
+
 .NET CLR back-end history
 -------------------------
 As mentioned above, we started working on the MLDS back-end in July 1999.
