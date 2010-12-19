@@ -102,3 +102,4 @@ typd_mlc.c
 version.h
 weakpointer.h
 win32_threads.c
+.cvsignore
