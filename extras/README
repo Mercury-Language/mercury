@@ -33,8 +33,8 @@ fixed		An implementation of fixed-point arithmetic with
 graphics	Some packages for doing graphics programming
 		and GUIs in Mercury: a Mercury interface to Tcl/Tk,
 		a Mercury binding to OpenGL, a Mercury binding to
-		GLUT, a simplified binding to Xlib and a binding
-		to Allegro/AllegroGL.
+		GLUT, a simplified binding to Xlib, a binding
+		to Allegro/AllegroGL and a Mercury binding to Cairo.
 
 lazy_evaluation
 		A library module `lazy' containing support for optional
@@ -42,7 +42,7 @@ lazy_evaluation
 		of its use, including a module `lazy_list' that defines
 		a lazy list data type.
 
-lex		A lexer package for Mercury that works over the IO state,
+lex		A lexer package for Mercury that works over the I/O state,
 		strings, and so forth.  It comes with a rich set of
 		standard regular expressions and the user is free to add
 		their own.                                                      
@@ -82,7 +82,7 @@ trailed_update	Some library modules that make use of backtrackable
 		some support for Prolog-style unification constraints.
 
 windows_installer_generator
-		A library for generating Wix source files.  WiX is an XML
+		A library for generating WiX source files.  WiX is an XML
 		language that is used to generate Microsoft Windows Installer
 		(.msi) packages.
 

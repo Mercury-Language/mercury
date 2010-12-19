@@ -190,7 +190,7 @@ The "mercury-extras" distribution contains some extra libraries for:
      o  arithmetic
         -  arithmetic on complex and imaginary numbers
      o  UIs:
-        -  graphics using Tk, OpenGL/GLUT, Xlib or Allegro.
+        -  graphics using Tk, OpenGL/GLUT, Xlib, Allegro or Cairo.
         -  text interfaces using curses
         -  processing HTML forms using the CGI interface
      o  interfacing:

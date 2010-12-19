@@ -13,7 +13,7 @@ INSTALL_PREFIX=.
 
 # What flags do we need to pass to the C compiler in order to compile
 # against cairo?  
-# Use "pkg-config --cflags cairo" to work this and substitute the result
+# Use "pkg-config --cflags cairo" to determine this and substitute the result
 # as the value of CAIRO_CFLAGS.
 #
 CAIRO_CFLAGS="-I/opt/local/include/cairo -I/opt/local/include/pixman-1 -I/opt/local/include -I/opt/local/include/freetype2 -I/opt/local/include/libpng12"

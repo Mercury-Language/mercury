@@ -1,6 +1,4 @@
 This directory contains stuff for doing graphics with Mercury.
-We have created bindings to Tcl/Tk and OpenGL. Neither are complete,
-but both are complete *enough* to be very useful.
 
 If you add missing functionality to any of these modules, let us know,
 and we'll see about incorporating enhancements in the main distribution.
@@ -21,15 +19,18 @@ and we'll see about incorporating enhancements in the main distribution.
                                 for OpenGL.
 	
 	mercury_glut/		A Mercury binding to GLUT.
+
+        mercury_cairo/		A Mercury binding to the Cairo 2D graphics
+                                library.
 					
 	samples/
 		calc/		A calculator that uses mercury_tcltk
 
 		maze/		Draws pretty mazes in 3D using OpenGL
-				and Togl.
+				and GLUT.
 
 		pent/		Places pentominoes on a board in 3D 
-				using OpenGL and Togl.
+				using OpenGL and GLUT.
 
 We haven't worked out how to prevent the Tcl/Tk library from giving a
 tcl prompt when it enters the event loop. If you know how, let us know!
