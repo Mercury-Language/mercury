@@ -266,7 +266,7 @@ get_install_name_option(Globals, OutputFileName, InstallNameOpt) :-
         InstallNamePath = InstallNamePath0
     ),
     InstallNameOpt = InstallNameFlag ++
-        quote_arg(InstallNamePath / OutputFileName).
+        quote_arg(InstallNamePath) / OutputFileName.
 
 %-----------------------------------------------------------------------------%
 
