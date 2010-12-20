@@ -1,12 +1,12 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: mode_robdd.implications.m.
 % Main author: dmo.
-% 
+%
 %---------------------------------------------------------------------------%
 
 :- module mode_robdd.implications.
@@ -118,7 +118,7 @@ filter(P, ImpVars) = apply_to_imp_maps(filter_imp_map(P), ImpVars).
 :- mode filter_imp_map(pred(in) is semidet, in) = out is det.
 
 filter_imp_map(P, IM) =
-	map__foldl(func(V, Vs, M) =
+	map.foldl(func(V, Vs, M) =
 		( P(V) ->
 		    M ^ entry(V) := filter(P, Vs)
 		;
@@ -195,7 +195,7 @@ normalise_true_false_implication_vars(Changed, TrueVars0, TrueVars,
 
 normalise_true_false_imp_map(IsDisImp, Changed, TrueVars0, TrueVars,
 		FalseVars0, FalseVars, ImpMap0, ImpMap) :-
-	{TrueVars, FalseVars, ImpMap, Changed} = map__foldl(
+	{TrueVars, FalseVars, ImpMap, Changed} = map.foldl(
 	    ( func(V, Vs, {Ts0, Fs0, IMs0, C0}) = {Ts, Fs, IMs, C} :-
 		(
 		    ( IsDisImp = yes -> Fs0 ; Ts0 ) `contains` V
@@ -258,11 +258,10 @@ normalise_pairs(Extract, Imps, DisImps, Changed, FalseVars0, FalseVars) :-
 			Intersect ^ sorted_keys ^ sorted_list_to_set
 	    ;
 		Extract = values,
-		Values = list__foldl(union, Intersect ^ values, init),
+		Values = list.foldl(union, Intersect ^ values, init),
 		FalseVars = FalseVars0 `union` Values
 	    )
 	).
-
 
 %------------------------------------------------------------------------%
 
@@ -278,13 +277,13 @@ propagate_equivalences_into_implications(EQVars, Changed, ImpVars0, ImpVars) :-
 	    RevImps0, RevImps),
 
 	ImpVars = imp_vars(Imps, RevImps, DisImps, RevDisImps),
-	Changed = Changed0 `bool__or` Changed1.
+	Changed = Changed0 `bool.or` Changed1.
 
 :- pred propagate_equivalences_into_implications_2(equiv_vars(T)::in,
 	bool::out, imp_map(T)::in, imp_map(T)::out) is det.
 
 propagate_equivalences_into_implications_2(EQVars, Changed, ImpMap0, ImpMap) :-
-	{ImpMap, Changed} = map__foldl((func(V, Vs0, {IM, C}) =
+	{ImpMap, Changed} = map.foldl((func(V, Vs0, {IM, C}) =
 		{ IM ^ entry(V) := Vs, ( Vs = Vs0 -> C ; yes ) } :-
 		Vs = filter(vars_are_not_equivalent(EQVars, V), Vs0)
 	    ), ImpMap0, {init, no}).
@@ -345,7 +344,7 @@ extract_implication_vars_from_robdd(Changed, Robdd0, Robdd,
 
 	% XXX
 	% P = (pred(V::in, di, uo) is det -->
-	%	io__write_int(var_to_int(V))), % XXX
+	%	io.write_int(var_to_int(V))), % XXX
 	% impure unsafe_perform_io(robdd_to_dot(Robdd0, P,
 	%	"extract_impl_before.dot")), % XXX
 
@@ -359,7 +358,7 @@ extract_implication_vars_from_robdd(Changed, Robdd0, Robdd,
 %------------------------------------------------------------------------%
 
 add_equalities_to_imp_vars(EQVars, ImpVars) =
-	map__foldl(func(VA, VB, IVs) =
+	map.foldl(func(VA, VB, IVs) =
 		IVs ^ imp_vars(VA, VB) ^ imp_vars(VB, VA),
 	    EQVars ^ leader_map, ImpVars).
 
@@ -451,7 +450,7 @@ IMA `imp_map_difference` IMB =
 	( is_empty(IMA) ->
 	    IMA
 	;
-	    map__foldl(func(V, VsB, M) =
+	    map.foldl(func(V, VsB, M) =
 		    ( VsA = M ^ elem(V) ->
 			M ^ entry(V) := VsA `difference` VsB
 		    ;
@@ -463,7 +462,7 @@ IMA `imp_map_difference` IMB =
 :- func remove_empty_sets(imp_map(T)) = imp_map(T).
 
 remove_empty_sets(IM) =
-	map__foldl(func(V, Vs, M) =
+	map.foldl(func(V, Vs, M) =
 		( empty(Vs) ->
 		    M `delete` V
 		;
@@ -474,7 +473,7 @@ remove_empty_sets(IM) =
 :- func delete_var_from_imp_map(var(T), imp_map(T)) = imp_map(T).
 
 delete_var_from_imp_map(Var, IM0) =
-	map__foldl(func(V, Vs, M) =
+	map.foldl(func(V, Vs, M) =
 		( Vs `contains` Var ->
 		    M ^ entry(V) := Vs `delete` Var
 		;
@@ -498,7 +497,7 @@ add_backwards_relations(imp_vars(Is0, RIs0, DIs0, RDIs0)) =
 :- func add_backwards_to_imp_map(imp_map(T), imp_map(T)) = imp_map(T).
 
 add_backwards_to_imp_map(IM, RIM) =
-	map__foldl(func(VA, Vs, M0) =
+	map.foldl(func(VA, Vs, M0) =
 		foldl(func(VB, M1) =
 			M1 ^ new_relation(VB) := VA,
 		    Vs, M0),
@@ -562,7 +561,7 @@ get_resolvents({LitA, LitB}, ImpVars) =
 
 get_resolvents_2(LitA, LitB, ImpVars) = Clauses :-
 	Literals = get_literals(LitA, ImpVars),
-	Clauses = list__map(func(NewLit) = {NewLit, LitB}, Literals).
+	Clauses = list.map(func(NewLit) = {NewLit, LitB}, Literals).
 
 :- func get_literals(literal(T), imp_vars(T)) = list(literal(T)).
 
@@ -583,7 +582,7 @@ get_literals(LitA, ImpVars) =
 		imp_vars(T).
 
 add_imp_map_clauses(MkLitA, MkLitB, IM, ImpVars) =
-	map__foldl(func(VarA, Vars, IVs0) =
+	map.foldl(func(VarA, Vars, IVs0) =
 		foldl(func(VarB, IVs1) =
 			add_clause({MkLitA(VarA), MkLitB(VarB)}, IVs1),
 		    Vars, IVs0),

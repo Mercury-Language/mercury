@@ -15,6 +15,7 @@
 
 :- interface.
 
+:- import_module hlds.goal_path.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -34,9 +35,10 @@
     % Perform the coverage profiling transformation on the given goal,
     % and return a list of the coverage points created.
     %
-:- pred coverage_prof_transform_goal(module_info::in, pred_proc_id::in,
-    maybe(deep_recursion_info)::in, hlds_goal::in, hlds_goal::out, 
-    prog_var_set_types::in, prog_var_set_types::out, 
+:- pred coverage_prof_transform_proc_body(module_info::in, pred_proc_id::in,
+    containing_goal_map::in, maybe(deep_recursion_info)::in,
+    hlds_goal::in, hlds_goal::out,
+    prog_var_set_types::in, prog_var_set_types::out,
     list(coverage_point_info)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -79,7 +81,9 @@
                 ci_module_info              :: module_info,
                 ci_pred_proc_id             :: pred_proc_id,
                 ci_maybe_rec_info           :: maybe(deep_recursion_info),
-                ci_coverage_profiling_opts  :: coverage_profiling_options
+                ci_coverage_profiling_opts  :: coverage_profiling_options,
+
+                ci_containing_goal_map      :: containing_goal_map
             ).
 
 :- type coverage_data_type
@@ -148,11 +152,11 @@ coverage_profiling_options(ModuleInfo, CoveragePointOptions) :-
         CoverageAfterGoal, BranchIf, BranchSwitch, BranchDisj,
         UsePortCounts, UseTrivial, RunFirstPass).
 
-coverage_prof_transform_goal(ModuleInfo, PredProcId, MaybeRecInfo, !Goal, 
-        !VarInfo, CoveragePoints) :-
+coverage_prof_transform_proc_body(ModuleInfo, PredProcId, ContainingGoalMap,
+        MaybeRecInfo, !Goal, !VarInfo, CoveragePoints) :-
     coverage_profiling_options(ModuleInfo, CoverageProfilingOptions),
     CoverageInfo0 = init_proc_coverage_info(!.VarInfo, ModuleInfo,
-        PredProcId, MaybeRecInfo, CoverageProfilingOptions),
+        PredProcId, MaybeRecInfo, CoverageProfilingOptions, ContainingGoalMap),
     RunFirstPass = CoverageProfilingOptions ^ cpo_run_first_pass,
     (
         RunFirstPass = yes,
@@ -184,9 +188,9 @@ coverage_prof_transform_goal(ModuleInfo, PredProcId, MaybeRecInfo, !Goal,
 coverage_prof_second_pass_goal(Goal0, Goal, 
         CoverageBeforeKnown, NextCoverageBeforeKnown, !Info, AddedImpurity) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    Detism = GoalInfo0 ^ goal_info_get_determinism,
+    Detism = goal_info_get_determinism(GoalInfo0),
+    GoalId = goal_info_get_goal_id(GoalInfo0),
     CPOptions = !.Info ^ ci_coverage_profiling_opts,
-    GoalPath = goal_info_get_goal_path(GoalInfo0),
 
     % Currently the first pass is unsupported, we don't make use of the
     % information it provides in IsMDProfInst.
@@ -197,10 +201,11 @@ coverage_prof_second_pass_goal(Goal0, Goal,
         IsMDProfInst = goal_is_not_mdprof_inst,
         CoverageBeforeKnown = coverage_before_unknown
     ->
+        GoalId = goal_id(GoalNum),
         UnknownMsg = string.format(
-            "coverage_prof_second_pass_goal: Coverage information is unknown\n"
-            ++ "\tGoalPath: %s",
-            [s(goal_path_to_string(GoalPath))]),
+            "coverage_prof_second_pass_goal: " ++
+            "Coverage information is unknown for goal_id %d\n",
+            [i(GoalNum)]),
         unexpected(this_file, UnknownMsg)
     ;
         true
@@ -350,7 +355,9 @@ coverage_prof_second_pass_goal(Goal0, Goal,
     Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
     (
         MaybeAddCP = yes(CPType),
-        CPInfo = coverage_point_info(GoalPath, CPType),
+        ContainingGoalMap = !.Info ^ ci_containing_goal_map,
+        RevGoalPath = goal_id_to_reverse_path(ContainingGoalMap, GoalId),
+        CPInfo = coverage_point_info(RevGoalPath, CPType),
 
         make_coverage_point(CPOptions, CPInfo, CPGoals, !Info),
         create_conj_from_list([Goal1 | CPGoals], plain_conj, Goal),
@@ -489,7 +496,9 @@ coverage_prof_second_pass_disj_2(DPInfo,
     % Insert the coverage point if we decided to above.
     (
         InsertCP = yes,
-        DisjPath = goal_info_get_goal_path(HeadDisjunct0 ^ hlds_goal_info),
+        DisjId = goal_info_get_goal_id(HeadDisjunct0 ^ hlds_goal_info),
+        ContainingGoalMap = !.Info ^ ci_containing_goal_map,
+        DisjPath = goal_id_to_reverse_path(ContainingGoalMap, DisjId),
         HeadCoveragePoint = coverage_point_info(DisjPath, cp_type_branch_arm),
         insert_coverage_point_before(CPOptions, HeadCoveragePoint,
             HeadDisjunct1, HeadDisjunct, !Info),
@@ -585,7 +594,9 @@ coverage_prof_second_pass_switchcase_2(DPInfo, SwitchCanFail,
     % Possibly insert coverage point at the start of the case.
     (
         InsertCP = yes,
-        CasePath = goal_info_get_goal_path(Goal0 ^ hlds_goal_info),
+        CaseId = goal_info_get_goal_id(Goal0 ^ hlds_goal_info),
+        ContainingGoalMap = !.Info ^ ci_containing_goal_map,
+        CasePath = goal_id_to_reverse_path(ContainingGoalMap, CaseId),
         CoveragePoint = coverage_point_info(CasePath, cp_type_branch_arm),
         insert_coverage_point_before(CPOptions, CoveragePoint, Goal1, Goal,
             !Info),
@@ -648,9 +659,11 @@ coverage_prof_second_pass_ite(DPInfo, ITEExistVars, Cond0, Then0, Else0,
         CPOBranchIf = yes,
         IsMDProfInst = goal_is_not_mdprof_inst
     ->
+        ContainingGoalMap = !.Info ^ ci_containing_goal_map,
         (
             CoverageKnownBeforeThen0 = coverage_before_unknown,
-            ThenPath = goal_info_get_goal_path(Then0 ^ hlds_goal_info),
+            ThenId = goal_info_get_goal_id(Then0 ^ hlds_goal_info),
+            ThenPath = goal_id_to_reverse_path(ContainingGoalMap, ThenId),
             InsertCPThen = yes(coverage_point_info(ThenPath,
                 cp_type_branch_arm))
         ;
@@ -658,7 +671,8 @@ coverage_prof_second_pass_ite(DPInfo, ITEExistVars, Cond0, Then0, Else0,
             InsertCPThen = no
         ),
         % Always insert a coverage point for the else branch.
-        ElsePath = goal_info_get_goal_path(Else0 ^ hlds_goal_info),
+        ElseId = goal_info_get_goal_id(Else0 ^ hlds_goal_info),
+        ElsePath = goal_id_to_reverse_path(ContainingGoalMap, ElseId),
         InsertCPElse = yes(coverage_point_info(ElsePath, cp_type_branch_arm)),
         CoverageKnownBeforeThen = coverage_before_known,
         CoverageKnownBeforeElse = coverage_before_known
@@ -713,13 +727,14 @@ coverage_prof_second_pass_ite(DPInfo, ITEExistVars, Cond0, Then0, Else0,
     % defaults.
     %
 :- func init_proc_coverage_info(prog_var_set_types, module_info, pred_proc_id,
-    maybe(deep_recursion_info), coverage_profiling_options) =
-    proc_coverage_info.
+    maybe(deep_recursion_info), coverage_profiling_options,
+    containing_goal_map) = proc_coverage_info.
 
 init_proc_coverage_info(VarInfo, ModuleInfo, PredProcId, MaybeRecInfo,
-        CoverageProfilingOptions) = CoverageInfo :-
+        CoverageProfilingOptions, ContainingGoalMap) = CoverageInfo :-
     CoverageInfo = proc_coverage_info(map.init, counter.init(0), VarInfo,
-        ModuleInfo, PredProcId, MaybeRecInfo, CoverageProfilingOptions).
+        ModuleInfo, PredProcId, MaybeRecInfo, CoverageProfilingOptions,
+        ContainingGoalMap).
 
     % Used to describe if coverage information is known at a partiular point
     % within a procedure.

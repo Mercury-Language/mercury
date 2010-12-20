@@ -97,11 +97,11 @@
 
 :- implementation.
 
-:- import_module check_hlds.goal_path.
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.typecheck_errors.
 :- import_module check_hlds.typecheck_info.
 :- import_module check_hlds.typeclasses.
+:- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
 :- import_module hlds.headvar_names.
 :- import_module hlds.hlds_args.
@@ -195,9 +195,14 @@ prepare_for_typecheck(ModuleInfo, ValidPredIdSet,
     some [!PredInfo] (
         PredIdInfo0 = PredId - !:PredInfo,
         ( set_tree234.contains(ValidPredIdSet, PredId) ->
-            % Goal paths are used to identify typeclass constraints.
-            fill_goal_path_slots_in_clauses(ModuleInfo, no, !PredInfo),
+            % Goal ids are used to identify typeclass constraints.
+            pred_info_get_clauses_info(!.PredInfo, GoalIdClausesInfo0),
+            fill_goal_id_slots_in_clauses(ModuleInfo, _ContainingGoalMap,
+                GoalIdClausesInfo0, GoalIdClausesInfo),
+            pred_info_set_clauses_info(GoalIdClausesInfo, !PredInfo),
+
             maybe_add_field_access_function_clause(ModuleInfo, !PredInfo),
+
             module_info_get_globals(ModuleInfo, Globals),
             maybe_improve_headvar_names(Globals, !PredInfo),
             PredIdInfo = PredId - !.PredInfo
@@ -1297,8 +1302,8 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         list.length(Args, Arity),
         CurCall = simple_call_id(pf_predicate, Name, Arity),
         typecheck_info_set_called_predid(plain_call_id(CurCall), !Info),
-        GoalPath = goal_info_get_goal_path(GoalInfo),
-        typecheck_call_pred(CurCall, Args, GoalPath, PredId, !Info),
+        GoalId = goal_info_get_goal_id(GoalInfo),
+        typecheck_call_pred(CurCall, Args, GoalId, PredId, !Info),
         GoalExpr = plain_call(PredId, ProcId, Args, BI, UC, Name)
     ;
         GoalExpr0 = generic_call(GenericCall0, Args, Modes, Detism),
@@ -1336,8 +1341,8 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         ),
         !:Info = !.Info ^ tc_info_arg_num := 0,
         !:Info = !.Info ^ tc_info_unify_context := UnifyContext,
-        GoalPath = goal_info_get_goal_path(GoalInfo),
-        typecheck_unification(LHS, RHS0, RHS, GoalPath, !Info),
+        GoalId = goal_info_get_goal_id(GoalInfo),
+        typecheck_unification(LHS, RHS0, RHS, GoalId, !Info),
         GoalExpr = unify(LHS, RHS, UnifyMode, Unification, UnifyContext)
     ;
         GoalExpr0 = switch(_, _, _),
@@ -1350,8 +1355,8 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         % typed foreign_procs. (We could probably do that more efficiently
         % than the way it is done below, though.)
         ArgVars = list.map(foreign_arg_var, Args),
-        GoalPath = goal_info_get_goal_path(GoalInfo),
-        typecheck_call_pred_id(PredId, ArgVars, GoalPath, !Info),
+        GoalId = goal_info_get_goal_id(GoalInfo),
+        typecheck_call_pred_id(PredId, ArgVars, GoalId, !Info),
         perform_context_reduction(!Info),
         GoalExpr = GoalExpr0
     ;
@@ -1563,10 +1568,9 @@ typecheck_event_call(EventName, Args, !Info) :-
 %-----------------------------------------------------------------------------%
 
 :- pred typecheck_call_pred(simple_call_id::in, list(prog_var)::in,
-    goal_path::in, pred_id::out, typecheck_info::in, typecheck_info::out)
-    is det.
+    goal_id::in, pred_id::out, typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_call_pred(CallId, Args, GoalPath, PredId, !Info) :-
+typecheck_call_pred(CallId, Args, GoalId, PredId, !Info) :-
     % Look up the called predicate's arg types.
     ModuleInfo = !.Info ^ tc_info_module_info,
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
@@ -1582,10 +1586,10 @@ typecheck_call_pred(CallId, Args, GoalPath, PredId, !Info) :-
         % non-polymorphic predicate).
         ( PredIdList = [PredId0] ->
             PredId = PredId0,
-            typecheck_call_pred_id(PredId, Args, GoalPath, !Info)
+            typecheck_call_pred_id(PredId, Args, GoalId, !Info)
         ;
             typecheck_call_overloaded_pred(CallId, PredIdList, Args,
-                GoalPath, !Info),
+                GoalId, !Info),
 
             % In general, we can't figure out which predicate it is until
             % after we have resolved any overloading, which may require
@@ -1609,10 +1613,10 @@ typecheck_call_pred(CallId, Args, GoalPath, PredId, !Info) :-
 
     % Typecheck a call to a specific predicate.
     %
-:- pred typecheck_call_pred_id(pred_id::in, list(prog_var)::in, goal_path::in,
+:- pred typecheck_call_pred_id(pred_id::in, list(prog_var)::in, goal_id::in,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_call_pred_id(PredId, Args, GoalPath, !Info) :-
+typecheck_call_pred_id(PredId, Args, GoalId, !Info) :-
     ModuleInfo = !.Info ^ tc_info_module_info,
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     predicate_table_get_preds(PredicateTable, Preds),
@@ -1633,16 +1637,16 @@ typecheck_call_pred_id(PredId, Args, GoalPath, !Info) :-
     ;
         module_info_get_class_table(ModuleInfo, ClassTable),
         make_body_hlds_constraints(ClassTable, PredTypeVarSet,
-            GoalPath, PredClassContext, PredConstraints),
+            GoalId, PredClassContext, PredConstraints),
         typecheck_var_has_polymorphic_type_list(Args, PredTypeVarSet,
             PredExistQVars, PredArgTypes, PredConstraints, !Info)
     ).
 
 :- pred typecheck_call_overloaded_pred(simple_call_id::in, list(pred_id)::in,
-    list(prog_var)::in, goal_path::in, typecheck_info::in, typecheck_info::out)
+    list(prog_var)::in, goal_id::in, typecheck_info::in, typecheck_info::out)
     is det.
 
-typecheck_call_overloaded_pred(CallId, PredIdList, Args, GoalPath, !Info) :-
+typecheck_call_overloaded_pred(CallId, PredIdList, Args, GoalId, !Info) :-
     Context = !.Info ^ tc_info_context,
     Symbol = overloaded_pred(CallId, PredIdList),
     typecheck_info_add_overloaded_symbol(Symbol, Context, !Info),
@@ -1655,7 +1659,7 @@ typecheck_call_overloaded_pred(CallId, PredIdList, Args, GoalPath, !Info) :-
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     predicate_table_get_preds(PredicateTable, Preds),
     TypeAssignSet0 = !.Info ^ tc_info_type_assign_set,
-    get_overloaded_pred_arg_types(PredIdList, Preds, ClassTable, GoalPath,
+    get_overloaded_pred_arg_types(PredIdList, Preds, ClassTable, GoalId,
         TypeAssignSet0, [], ArgsTypeAssignSet),
 
     % Then unify the types of the call arguments with the
@@ -1663,23 +1667,23 @@ typecheck_call_overloaded_pred(CallId, PredIdList, Args, GoalPath, !Info) :-
     typecheck_var_has_arg_type_list(Args, 1, ArgsTypeAssignSet, !Info).
 
 :- pred get_overloaded_pred_arg_types(list(pred_id)::in, pred_table::in,
-    class_table::in, goal_path::in, type_assign_set::in,
+    class_table::in, goal_id::in, type_assign_set::in,
     args_type_assign_set::in, args_type_assign_set::out) is det.
 
-get_overloaded_pred_arg_types([], _Preds, _ClassTable, _GoalPath,
+get_overloaded_pred_arg_types([], _Preds, _ClassTable, _GoalId,
         _TypeAssignSet0, !ArgsTypeAssignSet).
-get_overloaded_pred_arg_types([PredId | PredIds], Preds, ClassTable, GoalPath,
+get_overloaded_pred_arg_types([PredId | PredIds], Preds, ClassTable, GoalId,
         TypeAssignSet0, !ArgsTypeAssignSet) :-
     map.lookup(Preds, PredId, PredInfo),
     pred_info_get_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
         PredArgTypes),
     pred_info_get_class_context(PredInfo, PredClassContext),
     pred_info_get_typevarset(PredInfo, TVarSet),
-    make_body_hlds_constraints(ClassTable, TVarSet, GoalPath,
+    make_body_hlds_constraints(ClassTable, TVarSet, GoalId,
         PredClassContext, PredConstraints),
     rename_apart(TypeAssignSet0, PredTypeVarSet, PredExistQVars,
         PredArgTypes, PredConstraints, !ArgsTypeAssignSet),
-    get_overloaded_pred_arg_types(PredIds, Preds, ClassTable, GoalPath,
+    get_overloaded_pred_arg_types(PredIds, Preds, ClassTable, GoalId,
         TypeAssignSet0, !ArgsTypeAssignSet).
 
 %-----------------------------------------------------------------------------%
@@ -1976,13 +1980,13 @@ type_assign_list_var_has_type_list([TA | TAs], Args, Types, Info,
     % iterate over all the possible type assignments.
     %
 :- pred typecheck_unification(prog_var::in, unify_rhs::in, unify_rhs::out,
-    goal_path::in, typecheck_info::in, typecheck_info::out) is det.
+    goal_id::in, typecheck_info::in, typecheck_info::out) is det.
 
 typecheck_unification(X, rhs_var(Y), rhs_var(Y), _, !Info) :-
     typecheck_unify_var_var(X, Y, !Info).
 typecheck_unification(X, rhs_functor(Functor, ExistConstraints, Args),
-        rhs_functor(Functor, ExistConstraints, Args), GoalPath, !Info) :-
-    typecheck_unify_var_functor(X, Functor, Args, GoalPath, !Info),
+        rhs_functor(Functor, ExistConstraints, Args), GoalId, !Info) :-
+    typecheck_unify_var_functor(X, Functor, Args, GoalId, !Info),
     perform_context_reduction(!Info).
 typecheck_unification(X,
         rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
@@ -2029,10 +2033,10 @@ cons_id_must_be_builtin_type(ConsId, ConsType, BuiltinTypeName) :-
     ConsType = builtin_type(BuiltinType).
 
 :- pred typecheck_unify_var_functor(prog_var::in, cons_id::in,
-    list(prog_var)::in, goal_path::in,
+    list(prog_var)::in, goal_id::in,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_unify_var_functor(Var, ConsId, Args, GoalPath, !Info) :-
+typecheck_unify_var_functor(Var, ConsId, Args, GoalId, !Info) :-
     ( cons_id_must_be_builtin_type(ConsId, ConsType, BuiltinTypeName) ->
         TypeAssignSet0 = !.Info ^ tc_info_type_assign_set,
         list.foldl(
@@ -2065,7 +2069,7 @@ typecheck_unify_var_functor(Var, ConsId, Args, GoalPath, !Info) :-
         % Get the list of possible constructors that match this functor/arity.
         % If there aren't any, report an undefined constructor error.
         list.length(Args, Arity),
-        typecheck_info_get_ctor_list(!.Info, ConsId, Arity, GoalPath,
+        typecheck_info_get_ctor_list(!.Info, ConsId, Arity, GoalId,
             ConsDefns, ConsErrors),
         (
             ConsDefns = [],
@@ -2541,22 +2545,22 @@ builtin_atomic_type(impl_defined_const(Name), Type) :-
         Type = "int"
     ).
 
-    % builtin_pred_type(Info, ConsId, Arity, GoalPath, PredConsInfoList):
+    % builtin_pred_type(Info, ConsId, Arity, GoalId, PredConsInfoList):
     %
     % If ConsId/Arity is a constant of a pred type, instantiates
     % the output parameters, otherwise fails.
     %
     % Instantiates PredConsInfoList to the set of cons_type_info structures
     % for each predicate with name `ConsId' and arity greater than or equal to
-    % Arity. GoalPath is used to identify any constraints introduced.
+    % Arity. GoalId is used to identify any constraints introduced.
     %
     % For example, functor `map.search/1' has type `pred(K, V)'
     % (hence PredTypeParams = [K, V]) and argument types [map(K, V)].
     %
 :- pred builtin_pred_type(typecheck_info::in, cons_id::in, int::in,
-    goal_path::in, list(cons_type_info)::out) is semidet.
+    goal_id::in, list(cons_type_info)::out) is semidet.
 
-builtin_pred_type(Info, ConsId, Arity, GoalPath, PredConsInfoList) :-
+builtin_pred_type(Info, ConsId, Arity, GoalId, PredConsInfoList) :-
     ConsId = cons(SymName, _, _),
     ModuleInfo = Info ^ tc_info_module_info,
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
@@ -2567,28 +2571,28 @@ builtin_pred_type(Info, ConsId, Arity, GoalPath, PredConsInfoList) :-
     ->
         predicate_table_get_preds(PredicateTable, Preds),
         make_pred_cons_info_list(Info, PredIdList, Preds, Arity,
-            GoalPath, [], PredConsInfoList)
+            GoalId, [], PredConsInfoList)
     ;
         PredConsInfoList = []
     ).
 
 :- pred make_pred_cons_info_list(typecheck_info::in, list(pred_id)::in,
-    pred_table::in, int::in, goal_path::in,
+    pred_table::in, int::in, goal_id::in,
     list(cons_type_info)::in, list(cons_type_info)::out) is det.
 
 make_pred_cons_info_list(_, [], _, _, _, !ConsTypeInfos).
 make_pred_cons_info_list(Info, [PredId | PredIds], PredTable, Arity,
-        GoalPath, !ConsTypeInfos) :-
+        GoalId, !ConsTypeInfos) :-
     make_pred_cons_info(Info, PredId, PredTable, Arity,
-        GoalPath, !ConsTypeInfos),
+        GoalId, !ConsTypeInfos),
     make_pred_cons_info_list(Info, PredIds, PredTable, Arity,
-        GoalPath, !ConsTypeInfos).
+        GoalId, !ConsTypeInfos).
 
 :- pred make_pred_cons_info(typecheck_info::in, pred_id::in, pred_table::in,
-    int::in, goal_path::in,
+    int::in, goal_id::in,
     list(cons_type_info)::in, list(cons_type_info)::out) is det.
 
-make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
+make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalId,
         !ConsInfos) :-
     ModuleInfo = Info ^ tc_info_module_info,
     module_info_get_class_table(ModuleInfo, ClassTable),
@@ -2613,7 +2617,7 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
             construct_higher_order_pred_type(Purity, lambda_normal,
                 PredTypeParams, PredType),
             make_body_hlds_constraints(ClassTable, PredTypeVarSet,
-                GoalPath, PredClassContext, PredConstraints),
+                GoalId, PredClassContext, PredConstraints),
             ConsInfo = cons_type_info(PredTypeVarSet, PredExistQVars,
                 PredType, ArgTypes, PredConstraints, source_pred(PredId)),
             !:ConsInfos = [ConsInfo | !.ConsInfos]
@@ -2646,7 +2650,7 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
                     FuncArgTypeParams, FuncReturnTypeParam, FuncType)
             ),
             make_body_hlds_constraints(ClassTable, PredTypeVarSet,
-                GoalPath, PredClassContext, PredConstraints),
+                GoalId, PredClassContext, PredConstraints),
             ConsInfo = cons_type_info(PredTypeVarSet,
                 PredExistQVars, FuncType, FuncArgTypes, PredConstraints,
                 source_pred(PredId)),
@@ -2698,16 +2702,16 @@ builtin_apply_type(_Info, ConsId, Arity, ConsTypeInfos) :-
         [FuncType | ArgTypes], EmptyConstraints,
         source_apply(ApplyNameToUse))].
 
-    % builtin_field_access_function_type(Info, GoalPath, ConsId,
+    % builtin_field_access_function_type(Info, GoalId, ConsId,
     %   Arity, ConsTypeInfos):
     %
     % Succeed if ConsId is the name of one the automatically
     % generated field access functions (fieldname, '<fieldname> :=').
     %
-:- pred builtin_field_access_function_type(typecheck_info::in, goal_path::in,
+:- pred builtin_field_access_function_type(typecheck_info::in, goal_id::in,
     cons_id::in, arity::in, list(maybe_cons_type_info)::out) is semidet.
 
-builtin_field_access_function_type(Info, GoalPath, ConsId, Arity,
+builtin_field_access_function_type(Info, GoalId, ConsId, Arity,
         MaybeConsTypeInfos) :-
     % Taking the address of automatically generated field access functions
     % is not allowed, so currying does have to be considered here.
@@ -2720,18 +2724,18 @@ builtin_field_access_function_type(Info, GoalPath, ConsId, Arity,
     map.search(CtorFieldTable, FieldName, FieldDefns),
 
     list.filter_map(
-        make_field_access_function_cons_type_info(Info, GoalPath, Name,
+        make_field_access_function_cons_type_info(Info, GoalId, Name,
             Arity, AccessType, FieldName),
         FieldDefns, MaybeConsTypeInfos).
 
 :- pred make_field_access_function_cons_type_info(typecheck_info::in,
-    goal_path::in, sym_name::in, arity::in, field_access_type::in,
+    goal_id::in, sym_name::in, arity::in, field_access_type::in,
     ctor_field_name::in, hlds_ctor_field_defn::in,
     maybe_cons_type_info::out) is semidet.
 
-make_field_access_function_cons_type_info(Info, GoalPath, FuncName, Arity,
+make_field_access_function_cons_type_info(Info, GoalId, FuncName, Arity,
         AccessType, FieldName, FieldDefn, ConsTypeInfo) :-
-    get_field_access_constructor(Info, GoalPath, FuncName, Arity,
+    get_field_access_constructor(Info, GoalId, FuncName, Arity,
         AccessType, FieldDefn, OrigExistTVars,
         MaybeFunctorConsTypeInfo),
     (
@@ -2746,11 +2750,11 @@ make_field_access_function_cons_type_info(Info, GoalPath, FuncName, Arity,
         ConsTypeInfo = MaybeFunctorConsTypeInfo
     ).
 
-:- pred get_field_access_constructor(typecheck_info::in, goal_path::in,
+:- pred get_field_access_constructor(typecheck_info::in, goal_id::in,
     sym_name::in, arity::in, field_access_type::in, hlds_ctor_field_defn::in,
     existq_tvars::out, maybe_cons_type_info::out) is semidet.
 
-get_field_access_constructor(Info, GoalPath, FuncName, Arity, AccessType,
+get_field_access_constructor(Info, GoalId, FuncName, Arity, AccessType,
         FieldDefn, OrigExistTVars, FunctorConsTypeInfo) :-
     FieldDefn = hlds_ctor_field_defn(_, _, TypeCtor, ConsId, _),
     TypeCtor = type_ctor(qualified(TypeModule, _), _),
@@ -2786,7 +2790,7 @@ get_field_access_constructor(Info, GoalPath, FuncName, Arity, AccessType,
         ConsAction = flip_constraints_for_field_set
     ),
     OrigExistTVars = ConsDefn ^ cons_exist_tvars,
-    convert_cons_defn(Info, GoalPath, ConsAction, ConsDefn,
+    convert_cons_defn(Info, GoalId, ConsAction, ConsDefn,
         FunctorConsTypeInfo).
 
 :- type maybe_cons_type_info
@@ -2974,9 +2978,9 @@ rename_constraint(TVarRenaming, Constraint0, Constraint) :-
     % and recompilation.check.check_functor_ambiguities.
     %
 :- pred typecheck_info_get_ctor_list(typecheck_info::in, cons_id::in, int::in,
-    goal_path::in, list(cons_type_info)::out, list(cons_error)::out) is det.
+    goal_id::in, list(cons_type_info)::out, list(cons_error)::out) is det.
 
-typecheck_info_get_ctor_list(Info, Functor, Arity, GoalPath, ConsInfos,
+typecheck_info_get_ctor_list(Info, Functor, Arity, GoalId, ConsInfos,
         ConsErrors) :-
     typecheck_info_get_is_field_access_function(Info, IsFieldAccessFunc),
     (
@@ -2990,7 +2994,7 @@ typecheck_info_get_ctor_list(Info, Functor, Arity, GoalPath, ConsInfos,
         ImportStatus \= status_opt_imported
     ->
         (
-            builtin_field_access_function_type(Info, GoalPath,
+            builtin_field_access_function_type(Info, GoalId,
                 Functor, Arity, FieldAccessConsInfos)
         ->
             split_cons_errors(FieldAccessConsInfos, ConsInfos, ConsErrors)
@@ -2999,15 +3003,15 @@ typecheck_info_get_ctor_list(Info, Functor, Arity, GoalPath, ConsInfos,
             ConsErrors = []
         )
     ;
-        typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath,
+        typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalId,
             ConsInfos, ConsErrors)
     ).
 
 :- pred typecheck_info_get_ctor_list_2(typecheck_info::in, cons_id::in,
-    int::in, goal_path::in, list(cons_type_info)::out, list(cons_error)::out)
+    int::in, goal_id::in, list(cons_type_info)::out, list(cons_error)::out)
     is det.
 
-typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfos,
+typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalId, ConsInfos,
         DataConsErrors) :-
     empty_hlds_constraints(EmptyConstraints),
 
@@ -3019,7 +3023,7 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfos,
         Functor = cons(_, _, _),
         map.search(Ctors, Functor, HLDS_ConsDefns)
     ->
-        convert_cons_defn_list(Info, GoalPath, do_not_flip_constraints,
+        convert_cons_defn_list(Info, GoalId, do_not_flip_constraints,
             HLDS_ConsDefns, PlainMaybeConsInfos)
     ;
         PlainMaybeConsInfos = []
@@ -3047,7 +3051,7 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfos,
         OrigFunctor = cons(OrigName, Arity, FunctorTypeCtor),
         map.search(Ctors, OrigFunctor, HLDS_ExistQConsDefns)
     ->
-        convert_cons_defn_list(Info, GoalPath, flip_constraints_for_new,
+        convert_cons_defn_list(Info, GoalId, flip_constraints_for_new,
             HLDS_ExistQConsDefns, UnivQuantifiedMaybeConsInfos)
     ;
         UnivQuantifiedMaybeConsInfos = []
@@ -3056,7 +3060,7 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfos,
     % Check if Functor is a field access function for which the user
     % has not supplied a declaration.
     (
-        builtin_field_access_function_type(Info, GoalPath, Functor,
+        builtin_field_access_function_type(Info, GoalId, Functor,
             Arity, FieldAccessMaybeConsInfosPrime)
     ->
         FieldAccessMaybeConsInfos = FieldAccessMaybeConsInfosPrime
@@ -3117,7 +3121,7 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfos,
     % Check if Functor is the name of a predicate which takes at least
     % Arity arguments. If so, insert the resulting cons_type_info
     % at the start of the list.
-    ( builtin_pred_type(Info, Functor, Arity, GoalPath, PredConsInfosPrime) ->
+    ( builtin_pred_type(Info, Functor, Arity, GoalId, PredConsInfosPrime) ->
         PredConsInfos = PredConsInfosPrime
     ;
         PredConsInfos = []
@@ -3160,22 +3164,22 @@ split_cons_errors([MaybeConsInfo | MaybeConsInfos], Infos, Errors) :-
     ;       flip_constraints_for_field_set
     ;       do_not_flip_constraints.
 
-:- pred convert_cons_defn_list(typecheck_info::in, goal_path::in,
+:- pred convert_cons_defn_list(typecheck_info::in, goal_id::in,
     cons_constraints_action::in, list(hlds_cons_defn)::in,
     list(maybe_cons_type_info)::out) is det.
 
-convert_cons_defn_list(_Info, _GoalPath, _Action, [], []).
-convert_cons_defn_list(Info, GoalPath, Action, [X | Xs], [Y | Ys]) :-
-    convert_cons_defn(Info, GoalPath, Action, X, Y),
-    convert_cons_defn_list(Info, GoalPath, Action, Xs, Ys).
+convert_cons_defn_list(_Info, _GoalId, _Action, [], []).
+convert_cons_defn_list(Info, GoalId, Action, [X | Xs], [Y | Ys]) :-
+    convert_cons_defn(Info, GoalId, Action, X, Y),
+    convert_cons_defn_list(Info, GoalId, Action, Xs, Ys).
 
-:- pred convert_cons_defn(typecheck_info, goal_path,
+:- pred convert_cons_defn(typecheck_info, goal_id,
     cons_constraints_action, hlds_cons_defn, maybe_cons_type_info).
 :- mode convert_cons_defn(in, in, in(bound(do_not_flip_constraints)), in, out)
     is det.
 :- mode convert_cons_defn(in, in, in, in, out) is det.
 
-convert_cons_defn(Info, GoalPath, Action, HLDS_ConsDefn, ConsTypeInfo) :-
+convert_cons_defn(Info, GoalId, Action, HLDS_ConsDefn, ConsTypeInfo) :-
     % XXX We should investigate whether the job done by this predicate
     % on demand and therefore possibly lots of times for the same type,
     % would be better done just once, either by invoking it (at least with
@@ -3266,7 +3270,7 @@ convert_cons_defn(Info, GoalPath, Action, HLDS_ConsDefn, ConsTypeInfo) :-
             ExistQVars = ExistQVars0
         ),
         make_body_hlds_constraints(ClassTable, ConsTypeVarSet,
-            GoalPath, ProgConstraints, Constraints),
+            GoalId, ProgConstraints, Constraints),
         ConsTypeInfo = ok(cons_type_info(ConsTypeVarSet, ExistQVars,
             ConsType, ArgTypes, Constraints, source_type(TypeCtor)))
     ).

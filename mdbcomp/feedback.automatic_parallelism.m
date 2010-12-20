@@ -150,7 +150,7 @@
     %
 :- type candidate_par_conjunction(GoalType)
     --->    candidate_par_conjunction(
-                % The path within the procedure to this conjunuction.
+                % The path within the procedure to this conjunction.
                 cpc_goal_path           :: goal_path_string,
 
                 % The position within the original conjunction that this

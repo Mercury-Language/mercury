@@ -75,6 +75,7 @@
 :- import_module backend_libs.proc_label.
 :- import_module backend_libs.rtti.
 :- import_module hlds.code_model.
+:- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_goal.
@@ -300,11 +301,23 @@ generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
 %---------------------------------------------------------------------------%
 
 generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
-        !GlobalData, Proc) :-
+        !GlobalData, CProc) :-
     % The modified module_info and proc_info are both discarded
     % on return from generate_proc_code.
     maybe_set_trace_level(PredInfo, ModuleInfo0, ModuleInfo),
-    ensure_all_headvars_are_named(ProcInfo0, ProcInfo),
+    ensure_all_headvars_are_named(ProcInfo0, ProcInfo1),
+
+    % We use the globals from the original module info, so that
+    module_info_get_globals(ModuleInfo0, Globals0),
+    globals.get_trace_level(Globals0, TraceLevel0),
+    ( given_trace_level_is_none(TraceLevel0) = no ->
+        fill_goal_id_slots_in_proc(ModuleInfo, ContainingGoalMap,
+            ProcInfo1, ProcInfo),
+        MaybeContainingGoalMap = yes(ContainingGoalMap)
+    ;
+        MaybeContainingGoalMap = no,
+        ProcInfo = ProcInfo1
+    ),
 
     proc_info_interface_determinism(ProcInfo, Detism),
     CodeModel = proc_info_interface_code_model(ProcInfo),
@@ -319,8 +332,8 @@ generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
         FollowVars = abs_follow_vars(FollowVarsMap, 1)
     ),
     module_info_get_globals(ModuleInfo, Globals),
-    continuation_info.basic_stack_layout_for_proc(PredInfo, Globals,
-        BasicStackLayout, ForceProcId),
+    basic_stack_layout_for_proc(PredInfo, Globals, BasicStackLayout,
+        ForceProcId),
     SaveSuccip = BasicStackLayout,
 
     % Initialise the code_info structure. Generate_category_code below will use
@@ -331,7 +344,7 @@ generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
     global_data_get_static_cell_info(!.GlobalData, StaticCellInfo0),
     code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo,
         ProcInfo, FollowVars, ModuleInfo, StaticCellInfo0,
-        OutsideResumePoint, TraceSlotInfo, CodeInfo0),
+        OutsideResumePoint, TraceSlotInfo, MaybeContainingGoalMap, CodeInfo0),
 
     % Find out the approriate context for the predicate's interface events.
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
@@ -499,7 +512,7 @@ generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
         ProcLabelCounter = LabelCounter
     ),
     get_used_env_vars(CodeInfo, UsedEnvVars),
-    Proc = c_procedure(Name, Arity, proc(PredId, ProcId), CodeModel,
+    CProc = c_procedure(Name, Arity, proc(PredId, ProcId), CodeModel,
         ProcInstructions, ProcLabel, ProcLabelCounter, MayAlterRtti,
         UsedEnvVars).
 

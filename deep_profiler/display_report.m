@@ -2212,8 +2212,8 @@ dump_psd_call_site_multi_entry(Prefs, CSDPtr, Row) :-
 :- pred format_coverage_point_row(coverage_point::in, table_row::out) is det.
 
 format_coverage_point_row(CoveragePoint, Row) :-
-    CoveragePoint = coverage_point(Count, GoalPath, CPType),
-    GoalPathString = goal_path_to_string(GoalPath),
+    CoveragePoint = coverage_point(Count, RevGoalPath, CPType),
+    GoalPathString = rev_goal_path_to_string(RevGoalPath),
     GoalPathCell = table_cell(td_s(GoalPathString)),
     TypeCell = table_cell(td_s(string(CPType))),
     CountCell = table_cell(td_i(Count)),
@@ -4272,10 +4272,10 @@ call_site_desc_to_name_path_slot_cell(MaybeCurModuleName, ModuleQual,
     CallSiteDesc = call_site_desc(CSSPtr, _ContainerPSPtr,
         _FileName, _LineNumber, _ModuleName,
         _UnQualRefinedName, _QualRefinedName,
-        SlotNumber, GoalPath, _MaybeCallee),
+        SlotNumber, RevGoalPath, _MaybeCallee),
     RefinedName = call_site_desc_get_caller_refined_id(MaybeCurModuleName,
         ModuleQual, CallSiteDesc),
-    GoalPathStr = goal_path_to_string(GoalPath),
+    GoalPathStr = rev_goal_path_to_string(RevGoalPath),
     string.format("%s @ %s #%d",
         [s(RefinedName), s(GoalPathStr), i(SlotNumber)], Name),
     Cmd = deep_cmd_dump_call_site_static(CSSPtr),

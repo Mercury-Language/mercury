@@ -47,8 +47,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.goal_path.
+:- import_module hlds.goal_path.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
@@ -335,7 +334,7 @@ inter_analyse_proc(ModuleInfo, InfoTable, PPId, !FPTable) :-
     % XXX we should only fill goal path slots once, not once per iteration.
     %
     module_info_proc_info(ModuleInfo, PPId, ProcInfo0),
-    fill_goal_path_slots(ModuleInfo, ProcInfo0, ProcInfo),
+    fill_goal_path_slots_in_proc(ModuleInfo, ProcInfo0, ProcInfo),
 
     proc_info_get_goal(ProcInfo, Goal),
     inter_analyse_goal(ModuleInfo, InfoTable, Goal, !FPTable,

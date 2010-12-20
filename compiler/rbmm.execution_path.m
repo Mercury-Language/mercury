@@ -30,8 +30,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.goal_path.
+:- import_module hlds.goal_path.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
@@ -86,8 +85,8 @@ execution_path_analysis_proc(ModuleInfo, PredId, ProcId, !ExecPathTable) :-
     list(execution_path)::out) is det.
 
 compute_execution_paths(ProcInfo0, ModuleInfo, ExecPaths) :-
-    % Fill the goals with program point information
-    fill_goal_path_slots(ModuleInfo, ProcInfo0, ProcInfo),
+    % Fill the goals with program point information.
+    fill_goal_path_slots_in_proc(ModuleInfo, ProcInfo0, ProcInfo),
     proc_info_get_goal(ProcInfo, Goal),
     ExecPaths0 = [[]],
     execution_paths_covered_goal(ProcInfo, Goal, ExecPaths0, ExecPaths).

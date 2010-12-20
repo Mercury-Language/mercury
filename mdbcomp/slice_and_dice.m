@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007 The University of Melbourne.
+% Copyright (C) 2005-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -906,7 +906,8 @@ format_proc_label(ProcLabel) = Str :-
 
 format_path_port(port_only(Port)) = Str :-
     mdbcomp.trace_counts.string_to_trace_port(Str, Port).
-format_path_port(path_only(Path)) = "<" ++ goal_path_to_string(Path) ++ ">".
+format_path_port(path_only(Path)) =
+    "<" ++ rev_goal_path_to_string(Path) ++ ">".
 format_path_port(port_and_path(Port, Path)) =
     format_path_port(port_only(Port)) ++ " " ++
         format_path_port(path_only(Path)).

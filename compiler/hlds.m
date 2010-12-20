@@ -34,10 +34,10 @@
 :- include_module special_pred.
 
 % Modules for creating the HLDS
+:- include_module hhf.
 :- include_module make_hlds.
 :- include_module make_tags.
 :- include_module quantification.
-:- include_module hhf.
 
 % Modules for pretty-printing it.
 :- include_module hlds_desc.
@@ -47,14 +47,15 @@
 :- include_module arg_info.
 :- include_module code_model.
 :- include_module goal_form.
+:- include_module goal_path.
 :- include_module goal_util.
 :- include_module headvar_names.
 :- include_module hlds_code_util.
 :- include_module hlds_error_util.
+:- include_module hlds_statistics.
 :- include_module mark_static_terms.
 :- include_module mark_tail_calls.
 :- include_module passes_aux.
-:- include_module hlds_statistics.
 
 %-----------------------------------------------------------------------------%
 

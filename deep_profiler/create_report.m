@@ -1152,7 +1152,7 @@ create_dynamic_procrep_coverage_report(Deep, PDPtr, MaybeReport) :-
 
 :- pred maybe_create_procrep_coverage_report(deep::in, proc_static_ptr::in,
     own_prof_info::in, maybe(array(int))::in,
-    map(goal_path, calls_and_exits)::in,
+    map(reverse_goal_path, calls_and_exits)::in,
     maybe_error(procrep_coverage_info)::out) is det.
 
 maybe_create_procrep_coverage_report(_, _, _, no, _, error(Error)) :-
@@ -1186,18 +1186,20 @@ maybe_create_procrep_coverage_report(Deep, PSPtr, Own,
     ).
 
 :- func add_ps_calls_and_exits_to_map(deep, call_site_static_ptr,
-    map(goal_path, calls_and_exits)) = map(goal_path, calls_and_exits).
+    map(reverse_goal_path, calls_and_exits)) =
+    map(reverse_goal_path, calls_and_exits).
 
 add_ps_calls_and_exits_to_map(Deep, CSSPtr, !.Map) = !:Map :-
     lookup_call_site_statics(Deep ^ call_site_statics, CSSPtr, CSS),
-    goal_path_from_string_det(CSS ^ css_goal_path, GoalPath),
+    rev_goal_path_from_string_det(CSS ^ css_goal_path, RevGoalPath),
     lookup_css_own(Deep ^ css_own, CSSPtr, Own),
-    svmap.det_insert(GoalPath, calls_and_exits(calls(Own), exits(Own)), !Map).
+    svmap.det_insert(RevGoalPath, calls_and_exits(calls(Own), exits(Own)),
+        !Map).
 
 :- pred add_pd_calls_and_exits_to_map(deep::in, call_site_static_ptr::in,
     call_site_array_slot::in,
-    map(goal_path, calls_and_exits)::in, map(goal_path, calls_and_exits)::out)
-    is det.
+    map(reverse_goal_path, calls_and_exits)::in,
+    map(reverse_goal_path, calls_and_exits)::out) is det.
 
 add_pd_calls_and_exits_to_map(Deep, CSSPtr, Slot, !Map) :-
     (
@@ -1209,8 +1211,8 @@ add_pd_calls_and_exits_to_map(Deep, CSSPtr, Slot, !Map) :-
             0, Calls, 0, Exits)
     ),
     deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
-    goal_path_from_string_det(CSS ^ css_goal_path, GoalPath),
-    svmap.det_insert(GoalPath, calls_and_exits(Calls, Exits), !Map).
+    rev_goal_path_from_string_det(CSS ^ css_goal_path, RevGoalPath),
+    svmap.det_insert(RevGoalPath, calls_and_exits(Calls, Exits), !Map).
 
 :- pred csd_get_calls_and_exits(deep::in, call_site_dynamic_ptr::in,
     int::out, int::out) is det.
@@ -1235,9 +1237,10 @@ csd_get_calls_and_exits_accum(Deep, CSDPtr, Calls0, Calls0 + NewCalls,
     csd_get_calls_and_exits(Deep, CSDPtr, NewCalls, NewExits).
 
 :- pred add_coverage_point_to_map(coverage_point::in,
-    map(goal_path, coverage_point)::in, map(goal_path, coverage_point)::out,
-    map(goal_path, coverage_point)::in, map(goal_path, coverage_point)::out)
-    is det.
+    map(reverse_goal_path, coverage_point)::in,
+    map(reverse_goal_path, coverage_point)::out,
+    map(reverse_goal_path, coverage_point)::in,
+    map(reverse_goal_path, coverage_point)::out) is det.
 
 add_coverage_point_to_map(CoveragePoint, !SolnsMap, !BranchMap) :-
     CoveragePoint = coverage_point(_, GoalPath, CPType),
@@ -1650,7 +1653,7 @@ describe_call_site(Deep, CSSPtr) = CallSiteDesc :-
         ModuleName = ContainingPS ^ ps_decl_module,
         UnQualRefinedName = ContainingPS ^ ps_uq_refined_id,
         QualRefinedName = ContainingPS ^ ps_q_refined_id,
-        goal_path_from_string_det(GoalPathString, GoalPath),
+        rev_goal_path_from_string_det(GoalPathString, RevGoalPath),
         (
             Kind = normal_call_and_callee(CalleePSPtr, _TypeSubst),
             CalleeDesc = describe_proc(Deep, CalleePSPtr),
@@ -1671,12 +1674,12 @@ describe_call_site(Deep, CSSPtr) = CallSiteDesc :-
         UnQualRefinedName = "mercury_runtime",
         QualRefinedName = "mercury_runtime",
         SlotNumber = -1,
-        GoalPath = empty_goal_path,
+        RevGoalPath = rgp([]),
         MaybeCalleeDesc = no
     ),
     CallSiteDesc = call_site_desc(CSSPtr, ContainingPSPtr,
         FileName, LineNumber, ModuleName, UnQualRefinedName, QualRefinedName,
-        SlotNumber, GoalPath, MaybeCalleeDesc).
+        SlotNumber, RevGoalPath, MaybeCalleeDesc).
 
     % describe_clique(Deep, CliquePtr, MaybeEntryPDPtr) = CliqueDesc
     %

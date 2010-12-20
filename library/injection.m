@@ -1,15 +1,15 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: injection.m.
 % Author: mark.
 % Stability: low.
-% 
+%
 % This module provides the `injection' ADT.  An injection is like a `map'
 % (see map.m) but it allows efficient reverse lookups, similarly to `bimap'.
 % This time efficiency comes at the expense of using twice as much space
@@ -25,7 +25,7 @@
 %
 % 2) For any value V, if a reverse lookup succeeds with key K then a forward
 % lookup of key K will succeed with some value (not necessarily V).
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -63,8 +63,8 @@
 :- pred injection.reverse_search(injection(K, V)::in, K::out, V::in)
     is semidet.
 
-    % Combined forward/reverse search.  (Declaratively equivalent to
-    % reverse_search.)
+    % Combined forward/reverse search.
+    % (Declaratively equivalent to reverse_search.)
     %
 :- pred injection.search(injection(K, V), K, V).
 :- mode injection.search(in, in, out) is cc_nondet.
@@ -122,8 +122,8 @@
 :- pred injection.update(injection(K, V)::in, K::in, V::in,
     injection(K, V)::out) is semidet.
 
-    % As above, but throws an exception if the key does not already
-    % exist, or if the value is already associated with a key.
+    % As above, but throws an exception if the key does not already exist,
+    % or if the value is already associated with a key.
     %
 :- func injection.det_update(injection(K, V), K, V) = injection(K, V).
 :- pred injection.det_update(injection(K, V)::in, K::in, V::in,

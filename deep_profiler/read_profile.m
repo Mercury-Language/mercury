@@ -703,8 +703,8 @@ read_coverage_point_static(MaybeCP, !IO) :-
         read_string,
         read_cp_type,
         (pred(GoalPathString::in, CPType::in, MaybeCPI::out) is det :-
-            goal_path_from_string_det(GoalPathString, GoalPath),
-            MaybeCPI = ok(coverage_point_info(GoalPath, CPType))
+            rev_goal_path_from_string_det(GoalPathString, RevGoalPath),
+            MaybeCPI = ok(coverage_point_info(RevGoalPath, CPType))
         ), MaybeCP, !IO).
 
 :- func raw_proc_id_to_string(string_proc_label) = string.

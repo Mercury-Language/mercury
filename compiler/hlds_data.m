@@ -845,6 +845,7 @@ set_type_defn_in_exported_eqv(InExportedEqv, !Defn) :-
 
     % Optimize the user_inst_table for lookups. This just sorts
     % the cached list of inst_ids.
+    %
 :- pred user_inst_table_optimize(user_inst_table::in, user_inst_table::out)
     is det.
 
@@ -989,28 +990,35 @@ mode_table_optimize(ModeDefns0, ModeDefns) :-
 :- type hlds_class_defn
     --->    hlds_class_defn(
                 class_status            :: import_status,
+
+                % SuperClasses.
                 class_supers            :: list(prog_constraint),
-                                        % SuperClasses
+
+                % Functional dependencies.
                 class_fundeps           :: hlds_class_fundeps,
-                                        % Functional dependencies
+
+                % All ancestors which have fundeps on them.
                 class_fundep_ancestors  :: list(prog_constraint),
-                                        % All ancestors which have fundeps
-                                        % on them.
+
+                % ClassVars.
                 class_vars              :: list(tvar),
-                                        % ClassVars
+
+                % Kinds of class_vars.
                 class_kinds             :: tvar_kind_map,
-                                        % Kinds of class_vars.
+
+                % The interface from the original declaration, used by
+                % intermod.m to % write out the interface for a local typeclass
+                % to the `.opt' file.
                 class_interface         :: class_interface,
-                                        % The interface from the original
-                                        % declaration, used by intermod.m to
-                                        % write out the interface for a local
-                                        % typeclass to the `.opt' file.
+
+                % Methods.
                 class_hlds_interface    :: hlds_class_interface,
-                                        % Methods
+
+                % VarNames.
                 class_tvarset           :: tvarset,
-                                        % VarNames
+
+                % Location of declaration.
                 class_context           :: prog_context
-                                        % Location of declaration
             ).
 
     % In the HLDS, functional dependencies are represented using
@@ -1050,32 +1058,35 @@ mode_table_optimize(ModeDefns0, ModeDefns) :-
     %
 :- type hlds_instance_defn
     --->    hlds_instance_defn(
+                % Module of the instance declaration.
                 instance_module         :: module_name,
-                                        % module of the instance decl
+
+                % Import status of the instance declaration.
                 instance_status         :: import_status,
-                                        % import status of the instance
-                                        % declaration
+
+                % Context of declaration.
                 instance_context        :: prog_context,
-                                        % context of declaration
+
+                % Constraints on the instance declaration.
                 instance_constraints    :: list(prog_constraint),
-                                        % Constraints on the instance
-                                        % declaration.
+
+                % ClassTypes
                 instance_types          :: list(mer_type),
-                                        % ClassTypes
+
+                % Methods
                 instance_body           :: instance_body,
-                                        % Methods
+
+                % After check_typeclass, we will know the pred_ids and proc_ids
+                % of all the methods.
                 instance_hlds_interface :: maybe(hlds_class_interface),
-                                        % After check_typeclass, we will know
-                                        % the pred_ids and proc_ids of all
-                                        % the methods.
+
+                % VarNames
                 instance_tvarset        :: tvarset,
-                                        % VarNames
+
+                % "Proofs" of how to build the typeclass_infos for the
+                % superclasses of this class (that is, the constraints
+                % on the class declaration), for this instance.
                 instance_proofs         :: constraint_proof_map
-                                        % "Proofs" of how to build the
-                                        % typeclass_infos for the superclasses
-                                        % of this class (that is, the
-                                        % constraints on the class
-                                        % declaration), for this instance.
             ).
 
 %-----------------------------------------------------------------------------%
@@ -1114,13 +1125,14 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
     %
 :- type constraint_id
     --->    constraint_id(
+                % Assumed or unproven.
                 constraint_type,
-                    % Assumed or unproven.
 
-                goal_path,
-                    % The location of the atomic goal which is constrained.
+                % The id of the atomic goal which is constrained.
+                goal_id,
 
-                int % The position of the constraint.
+                % The position of the constraint.
+                int
             ).
 
 :- type constraint_type
@@ -1141,29 +1153,26 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
 
 :- type hlds_constraints
     --->    constraints(
+                % Unproven constraints. These are the constraints that we must
+                % prove (that is, universal constraints from the goal being
+                % checked, or existential constraints on the head).
                 unproven    :: list(hlds_constraint),
-                            % Unproven constraints. These are the constraints
-                            % that we must prove (that is, universal
-                            % constraints from the goal being checked, or
-                            % existential constraints on the head).
 
+                % Assumed constraints. These are constraints we can use in
+                % proofs (that is, existential constraints from the goal being
+                % checked, or universal constraints on the head).
                 assumed     :: list(hlds_constraint),
-                            % Assumed constraints. These are constraints
-                            % we can use in proofs (that is, existential
-                            % constraints from the goal being checked, or
-                            % universal constraints on the head).
 
+                % Constraints that are known to be redundant. This includes
+                % constraints that have already been proved as well as
+                % constraints that are ancestors of other unproven, assumed
+                % or redundant constraints. Not all such constraints are
+                % included, only those which may be used for the purposes
+                % of improvement.
                 redundant   :: redundant_constraints,
-                            % Constraints that are known to be redundant.
-                            % This includes constraints that have already been
-                            % proved as well as constraints that are ancestors
-                            % of other unproven, assumed or redundant
-                            % constraints.  Not all such constraints are
-                            % included, only those which may be used for
-                            % the purposes of improvement.
 
+                % Ancestors of assumed constraints.
                 ancestors   :: ancestor_constraints
-                            % Ancestors of assumed constraints.
             ).
 
     % Redundant constraints are partitioned by class, which helps us
@@ -1221,7 +1230,7 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
 :- pred make_head_hlds_constraints(class_table::in, tvarset::in,
     prog_constraints::in, hlds_constraints::out) is det.
 
-:- pred make_body_hlds_constraints(class_table::in, tvarset::in, goal_path::in,
+:- pred make_body_hlds_constraints(class_table::in, tvarset::in, goal_id::in,
     prog_constraints::in, hlds_constraints::out) is det.
 
     % make_hlds_constraints(ClassTable, TVarSet, UnprovenConstraints,
@@ -1240,7 +1249,7 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
     hlds_constraints::out) is det.
 
 :- pred make_hlds_constraint_list(list(prog_constraint)::in,
-    constraint_type::in, goal_path::in, list(hlds_constraint)::out) is det.
+    constraint_type::in, goal_id::in, list(hlds_constraint)::out) is det.
 
 :- pred merge_hlds_constraints(hlds_constraints::in, hlds_constraints::in,
     hlds_constraints::out) is det.
@@ -1268,10 +1277,10 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
     redundant_constraints::in, redundant_constraints::out) is det.
 
 :- pred lookup_hlds_constraint_list(constraint_map::in, constraint_type::in,
-    goal_path::in, int::in, list(prog_constraint)::out) is det.
+    goal_id::in, int::in, list(prog_constraint)::out) is det.
 
 :- pred search_hlds_constraint_list(constraint_map::in, constraint_type::in,
-    goal_path::in, int::in, list(prog_constraint)::out) is semidet.
+    goal_id::in, int::in, list(prog_constraint)::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -1290,20 +1299,20 @@ init_hlds_constraint(constraint(Name, Types), constraint([], Name, Types)).
 make_head_hlds_constraints(ClassTable, TVarSet, ProgConstraints,
         Constraints) :-
     ProgConstraints = constraints(UnivConstraints, ExistConstraints),
-    GoalPath = empty_goal_path,
-    make_hlds_constraint_list(UnivConstraints, assumed, GoalPath,
+    GoalId = goal_id(0),
+    make_hlds_constraint_list(UnivConstraints, assumed, GoalId,
         AssumedConstraints),
-    make_hlds_constraint_list(ExistConstraints, unproven, GoalPath,
+    make_hlds_constraint_list(ExistConstraints, unproven, GoalId,
         UnprovenConstraints),
     make_hlds_constraints(ClassTable, TVarSet, UnprovenConstraints,
         AssumedConstraints, Constraints).
 
-make_body_hlds_constraints(ClassTable, TVarSet, GoalPath, ProgConstraints,
+make_body_hlds_constraints(ClassTable, TVarSet, GoalId, ProgConstraints,
         Constraints) :-
     ProgConstraints = constraints(UnivConstraints, ExistConstraints),
-    make_hlds_constraint_list(UnivConstraints, unproven, GoalPath,
+    make_hlds_constraint_list(UnivConstraints, unproven, GoalId,
         UnprovenConstraints),
-    make_hlds_constraint_list(ExistConstraints, assumed, GoalPath,
+    make_hlds_constraint_list(ExistConstraints, assumed, GoalId,
         AssumedConstraints),
     make_hlds_constraints(ClassTable, TVarSet, UnprovenConstraints,
         AssumedConstraints, Constraints).
@@ -1317,22 +1326,22 @@ make_hlds_constraints(ClassTable, TVarSet, Unproven, Assumed, Constraints) :-
         Assumed, map.init, Ancestors),
     Constraints = constraints(Unproven, Assumed, Redundant, Ancestors).
 
-make_hlds_constraint_list(ProgConstraints, ConstraintType, GoalPath,
+make_hlds_constraint_list(ProgConstraints, ConstraintType, GoalId,
         Constraints) :-
-    make_hlds_constraint_list_2(ProgConstraints, ConstraintType, GoalPath,
+    make_hlds_constraint_list_2(ProgConstraints, ConstraintType, GoalId,
         1, Constraints).
 
 :- pred make_hlds_constraint_list_2(list(prog_constraint)::in,
-    constraint_type::in, goal_path::in, int::in,
-    list(hlds_constraint)::out) is det.
+    constraint_type::in, goal_id::in, int::in, list(hlds_constraint)::out)
+    is det.
 
 make_hlds_constraint_list_2([], _, _, _, []).
 make_hlds_constraint_list_2([ProgConstraint | ProgConstraints], ConstraintType,
-        GoalPath, N, [HLDSConstraint | HLDSConstraints]) :-
+        GoalId, N, [HLDSConstraint | HLDSConstraints]) :-
     ProgConstraint = constraint(Name, Types),
-    Id = constraint_id(ConstraintType, GoalPath, N),
+    Id = constraint_id(ConstraintType, GoalId, N),
     HLDSConstraint = constraint([Id], Name, Types),
-    make_hlds_constraint_list_2(ProgConstraints, ConstraintType, GoalPath,
+    make_hlds_constraint_list_2(ProgConstraints, ConstraintType, GoalId,
         N + 1, HLDSConstraints).
 
 merge_hlds_constraints(ConstraintsA, ConstraintsB, Constraints) :-
@@ -1450,10 +1459,10 @@ add_redundant_constraint(Constraint, !Redundant) :-
     ),
     svmap.set(ClassId, Constraints, !Redundant).
 
-lookup_hlds_constraint_list(ConstraintMap, ConstraintType, GoalPath, Count,
+lookup_hlds_constraint_list(ConstraintMap, ConstraintType, GoalId, Count,
         Constraints) :-
     (
-        search_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalPath,
+        search_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalId,
             Count, [], Constraints0)
     ->
         Constraints = Constraints0
@@ -1461,25 +1470,25 @@ lookup_hlds_constraint_list(ConstraintMap, ConstraintType, GoalPath, Count,
         unexpected(this_file, "lookup_hlds_constraint_list: not found")
     ).
 
-search_hlds_constraint_list(ConstraintMap, ConstraintType, GoalPath, Count,
+search_hlds_constraint_list(ConstraintMap, ConstraintType, GoalId, Count,
         Constraints) :-
-    search_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalPath,
+    search_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalId,
         Count, [], Constraints).
 
 :- pred search_hlds_constraint_list_2(constraint_map::in, constraint_type::in,
-    goal_path::in, int::in, list(prog_constraint)::in,
+    goal_id::in, int::in, list(prog_constraint)::in,
     list(prog_constraint)::out) is semidet.
 
-search_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalPath, Count,
+search_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalId, Count,
         !Constraints) :-
     ( Count = 0 ->
         true
     ;
-        ConstraintId = constraint_id(ConstraintType, GoalPath, Count),
+        ConstraintId = constraint_id(ConstraintType, GoalId, Count),
         map.search(ConstraintMap, ConstraintId, Constraint),
         !:Constraints = [Constraint | !.Constraints],
         search_hlds_constraint_list_2(ConstraintMap, ConstraintType,
-            GoalPath, Count - 1, !Constraints)
+            GoalId, Count - 1, !Constraints)
     ).
 
 %-----------------------------------------------------------------------------%

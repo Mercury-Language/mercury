@@ -26,7 +26,7 @@
 % The second method is less flexible than the first, but it allows for the
 % automatic generation of a DTD.
 % Each functor in a term is given a corresponding well-formed element name in
-% the XML document according to a mapping.  Some predefined mappings are
+% the XML document according to a mapping. Some predefined mappings are
 % provided, but user defined mappings may also be used.
 %
 % Method 1 vs. Method 2
@@ -36,7 +36,7 @@
 % elements with arbitrary children and arbitrary attributes.
 % In method 2 each functor in a term can be mapped to only one XML element.
 % Method 2 also only allows a selected set of attributes.
-% In method 2 a DTD can be automatically generated.  In method 1 DTDs cannot
+% In method 2 a DTD can be automatically generated. In method 1 DTDs cannot
 % be automatically generated.
 %
 % Method 1 is useful for mapping a specific type to XML,
@@ -83,7 +83,7 @@
             )
 
     ;       data(string)
-            % Textual data.  `<', `>', `&', `'' and `"' characters
+            % Textual data. `<', `>', `&', `'' and `"' characters
             % will be replaced by `&lt;', `&gt;', `&amp;', `&apos;'
             % and `&quot;' respectively.
 
@@ -93,18 +93,18 @@
             % If it does then invalid XML will be generated.
 
     ;       comment(string)
-            % An XML comment.  The comment should not
-            % include the `<!--' and `-->'.  Any occurrences of
+            % An XML comment. The comment should not
+            % include the `<!--' and `-->'. Any occurrences of
             % the substring "--" will be replaced by " - ",
             % since "--" is not allowed in XML comments.
 
     ;       entity(string)
-            % An entity reference.  The string will
+            % An entity reference. The string will
             % have `&' prepended and `;' appended before being
             % output.
 
     ;       raw(string).
-            % Raw XML data.  The data will be written out verbatim.
+            % Raw XML data. The data will be written out verbatim.
 
     % An XML document must have an element at the top-level.
     % The following inst is used to enforce this restriction.
@@ -207,7 +207,7 @@
 %
 
     % Values of this type specify which mapping from functors to elements
-    % to use when generating XML.  The role of a mapping is twofold:
+    % to use when generating XML. The role of a mapping is twofold:
     %   1. To map functors to elements, and
     %   2. To map functors to a set of attributes that should be
     %      generated for the corresponding element.
@@ -215,17 +215,17 @@
     % We provide two predefined mappings:
     %
     %   1. simple: The functors `[]', `[|]' and `{}' are mapped to the
-    %   elements `List', `Nil' and `Tuple' respectively.  Arrays are
-    %   assigned the `Array' element.  The builtin types are assigned
-    %   the elements `Int', `String', `Float' and `Char'.  All other
+    %   elements `List', `Nil' and `Tuple' respectively. Arrays are
+    %   assigned the `Array' element. The builtin types are assigned
+    %   the elements `Int', `String', `Float' and `Char'. All other
     %   functors are assigned elements with the same name as the
     %   functor provided the functor name is well formed and does
-    %   not start with a capital letter.  Otherwise a mangled
+    %   not start with a capital letter. Otherwise a mangled
     %   version of the functor name is used.
     %
     %   All elements except `Int', `String', `Float' and `Char'
     %   will have their `functor', `arity', `type' and `field' (if
-    %   there is a field name) attributes set.  `Int', `String',
+    %   there is a field name) attributes set. `Int', `String',
     %   `Float' and `Char' elements will just have their `type' and
     %   possibly their `field' attributes set.
     %
@@ -235,15 +235,15 @@
     %
     %   2. unique: Here we use the same mapping as `simple' except
     %   we append the functor arity for discriminated unions and
-    %   a mangled version of the type name for every element.  The same
-    %   attributes as the `simple' scheme are provided.  The advantage
+    %   a mangled version of the type name for every element. The same
+    %   attributes as the `simple' scheme are provided. The advantage
     %   of this scheme is that it maps each functor to a unique
-    %   element.  This means that it will always be possible to
+    %   element. This means that it will always be possible to
     %   generate a DTD using this mapping so long as there is only
     %   one top level functor and no unsupported types can appear in
     %   terms of the type.
     %
-    % A custom mapping can be provided using the `custom' functor.  See the
+    % A custom mapping can be provided using the `custom' functor. See the
     % documentation for the element_pred type below for more information.
     %
 :- type element_mapping
@@ -257,11 +257,11 @@
     ;       custom(element_pred).
 
     % Deterministic procedures with the following signature can be used as
-    % custom functor to element mappings.  The inputs to the procedure are
+    % custom functor to element mappings. The inputs to the procedure are
     % a type and some information about a functor for that type
-    % if the type is a discriminated union.  The output should be a well
+    % if the type is a discriminated union. The output should be a well
     % formed XML element name and a list of attributes that should be set
-    % for that element.  See the types `maybe_functor_info' and
+    % for that element. See the types `maybe_functor_info' and
     % `attr_from_source' below.
     %
 :- type element_pred == (pred(type_desc, maybe_functor_info, string,
@@ -271,7 +271,7 @@
 
     % Values of this type are passed to custom functor-to-element
     % mapping predicates to tell the predicate which functor to generate
-    % an element name for if the type is a discriminated union.  If the
+    % an element name for if the type is a discriminated union. If the
     % type is not a discriminated union, then non_du is passed to
     % the predicate when requesting an element for the type.
     %
@@ -286,7 +286,7 @@
             % The type is not a discriminated union.
 
     % Values of this type specify attributes that should be set from
-    % a particular source.  The attribute_name field specifies the name
+    % a particular source. The attribute_name field specifies the name
     % of the attribute in the generated XML and the attribute_source
     % field indicates where the attribute's value should come from.
     %
@@ -317,11 +317,11 @@
 
     % To support third parties generating XML which is compatible with the
     % XML generated using method 2, a DTD for a Mercury type can also be
-    % generated.  A DTD for a given type and functor-to-element mapping may
+    % generated. A DTD for a given type and functor-to-element mapping may
     % be generated provided the following conditions hold:
     %
     %   1. If the type is a discriminated union then there must be only
-    %   one top-level functor for the type.  This is because the top
+    %   one top-level functor for the type. This is because the top
     %   level functor will be used to generate the document type name.
     %
     %   2. The functor to element mapping must map each functor to a
@@ -349,7 +349,7 @@
 
     ;       duplicate_elements(
                 % The functor-to-element mapping maps different
-                % functors to the same element.  The duplicate element
+                % functors to the same element. The duplicate element
                 % and a list of types whose functors map to that
                 % element is given.
                 duplicate_element   :: string,
@@ -377,11 +377,11 @@
     % Write Term to the given stream as an XML document using
     % ElementMapping as the scheme to map functors to elements.
     % MaybeStyleSheet and MaybeDTD specify whether or not a stylesheet
-    % reference and/or a DTD should be included.  Any non-canonical terms
-    % will be canonicalized.  If an embedded DTD is requested, but it is
+    % reference and/or a DTD should be included. Any non-canonical terms
+    % will be canonicalized. If an embedded DTD is requested, but it is
     % not possible to generate a DTD for Term using ElementMapping, then a
     % value other than `ok' is returned in DTDResult and nothing is written
-    % out.  See the dtd_generation_result type for a list of the other
+    % out. See the dtd_generation_result type for a list of the other
     % possible values of DTDResult and their meanings.
     %
 :- pred write_xml_doc_general(Stream::in, T::in,
@@ -395,11 +395,11 @@
     % Write Term to the current file output stream as an XML document using
     % ElementMapping as the scheme to map functors to elements.
     % MaybeStyleSheet and MaybeDTD specify whether or not a stylesheet
-    % reference and/or a DTD should be included.  Any non-canonical terms
-    % will be written out in full.  If an embedded DTD is requested, but
+    % reference and/or a DTD should be included. Any non-canonical terms
+    % will be written out in full. If an embedded DTD is requested, but
     % it is not possible to generate a DTD for Term using ElementMapping,
     % then a value other than `ok' is returned in DTDResult and nothing is
-    % written out.  See the dtd_generation_result type for a list of the
+    % written out. See the dtd_generation_result type for a list of the
     % other possible values of DTDResult and their meanings.
     %
 :- pred write_xml_doc_general_cc(Stream::in, T::in,
@@ -410,8 +410,8 @@
     % can_generate_dtd(ElementMapping, Type) = Result:
     %
     % Check if a DTD can be generated for the given Type using the
-    % functor-to-element mapping scheme ElementMapping.  Return `ok' if it
-    % is possible to generate a DTD.  See the documentation of the
+    % functor-to-element mapping scheme ElementMapping. Return `ok' if it
+    % is possible to generate a DTD. See the documentation of the
     % dtd_generation_result type for the meaning of the return value when
     % it is not `ok'.
     %
@@ -421,7 +421,7 @@
     % write_dtd(Stream, Term, ElementMapping, DTDResult, !State):
     %
     % Write a DTD for the given term to the current file output stream using
-    % ElementMapping to map functors to elements.  If a DTD
+    % ElementMapping to map functors to elements. If a DTD
     % cannot be generated for Term using ElementMapping then a value
     % other than `ok' is returned in DTDResult and nothing is written.
     % See the dtd_generation_result type for a list of the other
@@ -432,8 +432,7 @@
     State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
 
-    % write_dtd_for_type(Stream, Type, ElementMapping, DTDResult,
-    %   !State):
+    % write_dtd_for_type(Stream, Type, ElementMapping, DTDResult, !State):
     %
     % Write a DTD for the given type to the given stream. If a
     % DTD cannot be generated for Type using ElementMapping then a value
@@ -443,8 +442,7 @@
     %
 :- pred write_dtd_from_type(Stream::in, type_desc::in,
     element_mapping::in(element_mapping), dtd_generation_result::out,
-    State::di, State::uo) is det
-    <= stream.writer(Stream, string, State).
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
     % write_xml_element_general(Stream, NonCanon, MakeElement, IndentLevel,
     %   Term, !State):
@@ -452,9 +450,9 @@
     % Write XML elements for the given term and all its descendents,
     % using IndentLevel as the initial indentation level (each
     % indentation level is one tab character) and using the MakeElement
-    % predicate to map functors to elements.  No <?xml ... ?>
-    % header will be written.  Non-canonical terms will be handled
-    % according to the value of NonCanon.  See the deconstruct
+    % predicate to map functors to elements. No <?xml ... ?>
+    % header will be written. Non-canonical terms will be handled
+    % according to the value of NonCanon. See the deconstruct
     % module in the standard library for more information on this argument.
     %
 :- pred write_xml_element_general(Stream, deconstruct.noncanon_handling,
@@ -710,7 +708,7 @@ get_element_pred(custom(P), P).
 
 %-----------------------------------------------------------------------------%
 %
-% Some reserved element names for the predefined mapping schemes.  Reserved
+% Some reserved element names for the predefined mapping schemes. Reserved
 % element names all start with a capital letter so as not to conflict with a
 % mangled element name.
 %
@@ -758,7 +756,7 @@ is_primitive_type(TypeDesc, Element) :-
 % elements).
 %
 % If the string to be mangled begins with a capital letter then we prefix it
-% with another string reserved for this purpose.  Then we replace all
+% with another string reserved for this purpose. Then we replace all
 % characters which aren't alpha numeric or underscores with '-' followed by
 % the character code.
 %
@@ -786,9 +784,8 @@ mangle(Functor) = Element :-
 
 :- pred mangle_char(char::in, list(char)::in, list(char)::out) is det.
 
-    % XXX This is system dependent since char.to_int is system dependent.
-    %
 mangle_char(Chr, PrevChrs, list.append(PrevChrs, Chrs)) :-
+    % XXX This is system dependent since char.to_int is system dependent.
     (
         char.is_alnum_or_underscore(Chr)
     ->
@@ -976,10 +973,10 @@ maybe_indent(Stream, Format, Indent, !State) :-
 :- mode write_xml_element_univ(in, in, in(element_pred), in, in, in, out, di,
     uo) is cc_multi.
 
-    % Write an element and all its descendents to the current output
-    % stream.  If MaybeFields isn't empty then its head is used for the
-    % `field' attribute and the Tail is returned in
-    % RemainingMaybeFieldNames.  This is so it can be called using foldl2.
+    % Write an element and all its descendents to the current output stream.
+    % If MaybeFields isn't empty then its head is used for the `field'
+    % attribute and the Tail is returned in RemainingMaybeFieldNames.
+    % This is so it can be called using foldl2.
     %
 write_xml_element_univ(Stream, NonCanon, MakeElement, IndentLevel, Univ,
         MaybeFieldNames, RemainingMaybeFieldNames, !State) :-
@@ -1073,11 +1070,6 @@ find_field_names(TypeDesc, [FunctorNum | FunctorNums], Functor, Arity,
     ).
 
 %-----------------------------------------------------------------------------%
-%
-% XXX The following is done to get around an unimplemented feature where higher
-% order terms with more than one mode can't be passed as arguments (so we can't
-% just pass write_xml_element_univ to foldl).
-%
 
 :- pred write_child_xml_elements(Stream, deconstruct.noncanon_handling,
     element_pred, int, list(univ), list(maybe(string)), State, State)
@@ -1093,6 +1085,9 @@ find_field_names(TypeDesc, [FunctorNum | FunctorNums], Functor, Arity,
 
 write_child_xml_elements(Stream, NonCanon, MakeElement, IndentLevel, Args,
         MaybeFieldNames, !State) :-
+    % The switch is needed because we can't pass write_xml_element_univ
+    % to foldl, since higher order terms with more than one mode can't be
+    % passed as arguments.
     (
         NonCanon = do_not_allow,
         list.foldl2(
@@ -1145,7 +1140,7 @@ write_xml_element_univ_include_details_cc(Stream, MakeElement, IndentLevel,
 
 %-----------------------------------------------------------------------------%
 %
-% Predicates for writing elements
+% Predicates for writing elements.
 %
 
 :- pred indent(Stream::in, int::in, State::di, State::uo) is det
@@ -1427,8 +1422,8 @@ can_generate_dtd_for_types(MakeElement, [PseudoTypeDesc | PseudoTypeDescs],
     ).
 
     % Write out the DTD entries for all the given types and add the written
-    % types to AlreadyDone.  Children types found along the way are added
-    % to the first argument.  We stop when all the types have had their DTD
+    % types to AlreadyDone. Children types found along the way are added
+    % to the first argument. We stop when all the types have had their DTD
     % entry written.
     %
 :- pred write_dtd_types(Stream::in, element_pred::in(element_pred),
@@ -1600,8 +1595,10 @@ write_dtd_entries(Stream, MakeElement, TypeDesc, [Element | Elements],
                 Braces = no
             ),
 
-            AllowedFunctorsRegexs = list.map(dtd_allowed_functors_regex(MakeElement), ArgTypeList),
-            AllowedFunctorsRegex = string.join_list(",", AllowedFunctorsRegexs),
+            AllowedFunctorsRegexs = list.map(
+                dtd_allowed_functors_regex(MakeElement), ArgTypeList),
+            AllowedFunctorsRegex =
+                string.join_list(",", AllowedFunctorsRegexs),
             put(Stream, AllowedFunctorsRegex, !State),
 
             (

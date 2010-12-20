@@ -399,8 +399,8 @@ constraint_to_error_piece(TVarset, Constraint) =
 
     % A prog_constraint cannot contain context information (see the comment on
     % the type definition). However, a constraint_id happens to contain a
-    % goal_path so we can look up a constraint_id for a prog_constraint, then
-    % use the goal_path to reach the goal.
+    % goal_id so we can look up a constraint_id for a prog_constraint, then
+    % use the goal_id to reach the goal.
     %
 :- func find_constrained_goals(pred_info, list(prog_constraint))
     = list(hlds_goal).
@@ -418,13 +418,13 @@ find_constrained_goals(PredInfo, Constraints) = Goals :-
     % This could be more efficient.
     FindGoals = (pred(Goal::out) is nondet :-
         set.member(ConstraintId, ConstraintIds),
-        ConstraintId = constraint_id(_, ConstraintGoalPath, _),
+        ConstraintId = constraint_id(_, ConstraintGoalId, _),
         promise_equivalent_solutions [Goal] (
             list.member(Clause, Clauses),
             goal_contains_goal(Clause ^ clause_body, Goal),
             Goal = hlds_goal(_, GoalInfo),
-            GoalPath = goal_info_get_goal_path(GoalInfo),
-            GoalPath = ConstraintGoalPath
+            GoalId = goal_info_get_goal_id(GoalInfo),
+            GoalId = ConstraintGoalId
         )
     ),
     solutions(FindGoals, Goals).
@@ -1087,9 +1087,9 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         map.apply_to_list(ArgVars0, !.VarTypes, ArgTypes0),
         ArgTypes = ArgTypes0 ++ [TypeOfX],
         pred_info_get_constraint_map(!.PredInfo, ConstraintMap),
-        GoalPath = goal_info_get_goal_path(GoalInfo0),
+        GoalId = goal_info_get_goal_id(GoalInfo0),
         ConstraintSearch =
-            search_hlds_constraint_list(ConstraintMap, unproven, GoalPath),
+            search_hlds_constraint_list(ConstraintMap, unproven, GoalId),
         Context = goal_info_get_context(GoalInfo0),
         find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
             ArgTypes, HeadTypeParams, yes(ConstraintSearch), Context,
@@ -1286,8 +1286,8 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
     get_constructor_containing_field(ModuleInfo, TermType, FieldName,
         ConsId, FieldNumber),
 
-    GoalPath = goal_info_get_goal_path(OldGoalInfo),
-    get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId,
+    GoalId = goal_info_get_goal_id(OldGoalInfo),
+    get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, ConsId,
         TermType, ArgTypes0, ExistQVars, !PredInfo),
 
     % If the type of the field we are extracting contains existentially
@@ -1340,8 +1340,8 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
     get_constructor_containing_field(ModuleInfo, TermType, FieldName,
         ConsId0, FieldNumber),
 
-    GoalPath = goal_info_get_goal_path(OldGoalInfo),
-    get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId0,
+    GoalId = goal_info_get_goal_id(OldGoalInfo),
+    get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, ConsId0,
         TermType, ArgTypes, ExistQVars, !PredInfo),
 
     split_list_at_index(FieldNumber, ArgTypes,
@@ -1394,10 +1394,10 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
     Goal = scope(barrier(removable), Conj).
 
 :- pred get_cons_id_arg_types_adding_existq_tvars(module_info::in,
-    goal_path::in, cons_id::in, mer_type::in, list(mer_type)::out,
+    goal_id::in, cons_id::in, mer_type::in, list(mer_type)::out,
     list(tvar)::out, pred_info::in, pred_info::out) is det.
 
-get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId,
+get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, ConsId,
         TermType, ActualArgTypes, ActualExistQVars, !PredInfo) :-
     % Split the list of argument types at the named field.
     type_to_ctor_det(TermType, TypeCtor),
@@ -1431,7 +1431,7 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId,
 
         pred_info_get_constraint_map(!.PredInfo, ConstraintMap),
         list.length(ConsConstraints, NumConstraints),
-        lookup_hlds_constraint_list(ConstraintMap, assumed, GoalPath,
+        lookup_hlds_constraint_list(ConstraintMap, assumed, GoalId,
             NumConstraints, ActualConstraints),
         constraint_list_subsumes_det(ParentConstraints, ActualConstraints,
             ExistTSubst),
@@ -1572,7 +1572,7 @@ get_constructor_containing_field_3([CtorArg | CtorArgs],
 create_pure_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
         RestrictNonLocals, VarsList, UnifyContext, Goal) :-
     Context = goal_info_get_context(OldGoalInfo),
-    GoalPath = goal_info_get_goal_path(OldGoalInfo),
+    GoalId = goal_info_get_goal_id(OldGoalInfo),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
     create_pure_atomic_complicated_unification(Var, RHS,
         Context, UnifyMainContext, UnifySubContext, Goal0),
@@ -1583,10 +1583,10 @@ create_pure_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
     set.intersect(RestrictNonLocals, NonLocals1, NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
 
-    % Use the goal path from the original goal, so that the constraint_ids
+    % Use the goal id from the original goal, so that the constraint_ids
     % will be as expected.  (See the XXX comment near the definition of
     % constraint_id in hlds_data.m for more info.)
-    goal_info_set_goal_path(GoalPath, GoalInfo1, GoalInfo),
+    goal_info_set_goal_id(GoalId, GoalInfo1, GoalInfo),
     Goal = hlds_goal(GoalExpr0, GoalInfo).
 
 :- pred make_new_vars(list(mer_type)::in, list(prog_var)::out,

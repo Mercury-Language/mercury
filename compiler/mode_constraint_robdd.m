@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2008 The University of Melbourne.
+% Copyright (C) 2001-2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -26,6 +26,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module hlds.
+:- import_module hlds.goal_path.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
@@ -48,12 +49,12 @@
 :- type threshold.
 
 :- func init_mode_constraint_info(bool) = mode_constraint_info.
-:- func 'pred_id :='(mode_constraint_info, pred_id) = mode_constraint_info.
+:- func mci_set_pred_id(mode_constraint_info, pred_id) = mode_constraint_info.
 
 :- type rep_var
     --->    in(prog_var)
-    ;   out(prog_var)
-    ;   prog_var `at` goal_path.
+    ;       out(prog_var)
+    ;       prog_var `at` goal_id.
 
     % Lookup a var in the mode_constraint_info. If the var is not found,
     % insert it.
@@ -69,29 +70,29 @@
 :- func mode_constraint_var(mode_constraint_info, rep_var) =
     mode_constraint_var.
 
-:- pred enter_lambda_goal(goal_path::in, mode_constraint_info::in,
+:- pred enter_lambda_goal(goal_id::in, mode_constraint_info::in,
     mode_constraint_info::out) is det.
 
 :- pred leave_lambda_goal(mode_constraint_info::in, mode_constraint_info::out)
     is det.
 
-    % lambda_path extends the idea of the goal_path to allow describing the
+    % lambda_path extends the idea of the goal_id to allow describing the
     % location of a goal within nested lambda goals.
-:- type lambda_path == stack(goal_path).
+:- type lambda_path == stack(goal_id).
 
     % Describes a var, its pred-id and lambda-nesting level.
     % XXX think up a better name for this.
 :- type prog_var_and_level.
 
-:- pred get_prog_var_level(prog_var::in, prog_var_and_level::out,
-    mode_constraint_info::in, mode_constraint_info::out) is det.
+:- pred get_prog_var_level(mode_constraint_info::in, prog_var::in,
+    prog_var_and_level::out) is det.
 
 :- pred set_level_from_var(prog_var_and_level::in,
     mode_constraint_info::in, mode_constraint_info::out) is det.
 
     % Return the current max var for later use by restrict_threshold.
-:- pred save_threshold(threshold::out, mode_constraint_info::in,
-    mode_constraint_info::out) is det.
+    %
+:- pred save_threshold(mode_constraint_info::in, threshold::out) is det.
 
 :- func restrict_threshold(threshold, mode_constraint) = mode_constraint.
 
@@ -99,18 +100,18 @@
     mode_constraint) = mode_constraint.
 :- mode restrict_filter(pred(in) is semidet, in, in) = out is det.
 
-:- pred save_min_var_for_pred(pred_id::in, mode_constraint_info::in,
-    mode_constraint_info::out) is det.
+:- pred save_min_var_for_pred(pred_id::in,
+    mode_constraint_info::in, mode_constraint_info::out) is det.
 
 :- pred save_max_var_for_pred(pred_id::in, mode_constraint_info::in,
     mode_constraint_info::out) is det.
 
-:- pred get_interesting_vars_for_pred(pred_id::in,
-    set(mode_constraint_var)::out, mode_constraint_info::in,
-    mode_constraint_info::out) is det.
+:- pred get_interesting_vars_for_pred(mode_constraint_info::in, pred_id::in,
+    set(mode_constraint_var)::out) is det.
 
     % Set the input_nodes field of the mode_constraint_info and make sure
     % the zero_var is constrained to be zero in the mode_constraint.
+    %
 :- pred set_input_nodes(mode_constraint::in, mode_constraint::out,
     mode_constraint_info::in, mode_constraint_info::out) is det.
 
@@ -120,8 +121,16 @@
 :- pred unset_simple_mode_constraints(mode_constraint_info::in,
     mode_constraint_info::out) is det.
 
-:- pred using_simple_mode_constraints(mode_constraint_info::in,
-    mode_constraint_info::out) is semidet.
+:- pred using_simple_mode_constraints(mode_constraint_info::in) is semidet.
+
+:- pred get_forward_goal_path_map(mode_constraint_info::in,
+    goal_forward_path_map::out) is det.
+
+:- pred get_forward_goal_path_map_for_pred(mode_constraint_info::in,
+    pred_id::in, goal_forward_path_map::out) is det.
+
+:- pred add_forward_goal_path_map(pred_id::in, goal_forward_path_map::in,
+    mode_constraint_info::in, mode_constraint_info::out) is det.
 
 % Remove the comments here and on the definition if you want to debug
 % the mode constraint system.
@@ -169,29 +178,34 @@
 
 :- type mode_constraint_info
     --->    mode_constraint_info(
-                varset              :: varset(mc_type),
-                varmap              :: mode_constraint_varmap,
-                pred_id             :: pred_id,
-                lambda_path         :: lambda_path,
-                min_vars            :: map(pred_id, mode_constraint_var),
-                max_vars            :: map(pred_id, mode_constraint_var),
-                input_nodes         :: sparse_bitset(prog_var),
-                zero_var            :: robdd_var,
-                                    % A var that is always zero.
-                simple_constraints  :: bool
-                                    % Are we using the simplified constraint
-                                    % model.
+                mci_varset              :: varset(mc_type),
+                mci_varmap              :: mode_constraint_varmap,
+                mci_pred_id             :: pred_id,
+                mci_lambda_path         :: lambda_path,
+                mci_min_vars            :: map(pred_id, mode_constraint_var),
+                mci_max_vars            :: map(pred_id, mode_constraint_var),
+                mci_input_nodes         :: sparse_bitset(prog_var),
+
+                % A var that is always zero.
+                mci_zero_var            :: robdd_var,
+
+                % Are we using the simplified constraint model.
+                mci_simple_constraints  :: bool,
+
+                mci_goal_path_map       :: map(pred_id, goal_forward_path_map)
             ).
+
+mci_set_pred_id(MCI, PredId) = MCI ^ mci_pred_id := PredId.
 
 :- type threshold
     --->    threshold(mode_constraint_var).
 
-init_mode_constraint_info(Simple) = Info :-
+init_mode_constraint_info(Simple) = MCI :-
     VarSet0 = varset.init,
     varset.new_var(VarSet0, ZeroVar, VarSet),
     PredId = hlds_pred.initial_pred_id,
-    Info = mode_constraint_info(VarSet, bimap.init, PredId, stack.init,
-        map.init, map.init, sparse_bitset.init, ZeroVar, Simple).
+    MCI = mode_constraint_info(VarSet, bimap.init, PredId, stack.init,
+        map.init, map.init, sparse_bitset.init, ZeroVar, Simple, map.init).
 
 :- type robdd_var == var(mc_type).
 
@@ -201,45 +215,50 @@ init_mode_constraint_info(Simple) = Info :-
     % `pred_id' is the predicate the variable belongs to.
     % `lambda_path' describes the location of the lambda_goal
     % we are referring to.
-:- type varmap_key ---> key(rep_var, pred_id, lambda_path).
+:- type varmap_key
+    --->    key(
+                rep_var,
+                pred_id,
+                lambda_path
+            ).
 
-mode_constraint_var(RepVar0, RobddVar, Info0, Info) :-
-    mode_constraint_var(Info0 ^ pred_id, RepVar0, RobddVar, Info0, Info).
+mode_constraint_var(RepVar0, RobddVar, !MCI) :-
+    mode_constraint_var(!.MCI ^ mci_pred_id, RepVar0, RobddVar, !MCI).
 
-mode_constraint_var(PredId, RepVar0, RobddVar, Info0, Info) :-
+mode_constraint_var(PredId, RepVar0, RobddVar, !MCI) :-
     (
         RepVar0 = ProgVar `at` _,
-        Info0 ^ input_nodes `contains` ProgVar
+        !.MCI ^ mci_input_nodes `contains` ProgVar
     ->
         % This RepVar must be false since the corresponding input var
         % is true.  We can just return the zero var.
-        RobddVar = Info0 ^ zero_var,
-        Info = Info0
+        RobddVar = !.MCI ^ mci_zero_var
     ;
         RepVar = RepVar0,
-        LambdaPath = Info0 ^ lambda_path,
-        Key = key(RepVar, PredId, LambdaPath),
-        ( bimap.search(Info0 ^ varmap, Key, RobddVar0) ->
-            RobddVar = RobddVar0,
-            Info = Info0
+        LambdaId = !.MCI ^ mci_lambda_path,
+        Key = key(RepVar, PredId, LambdaId),
+        ( bimap.search(!.MCI ^ mci_varmap, Key, RobddVar0) ->
+            RobddVar = RobddVar0
         ;
-            varset.new_var(Info0 ^ varset, RobddVar, NewVarSet),
-            bimap.set(Info0 ^ varmap, Key, RobddVar, NewVarMap),
-            Info = (Info0 ^ varset := NewVarSet) ^ varmap := NewVarMap
+            varset.new_var(!.MCI ^ mci_varset, RobddVar, NewVarSet),
+            bimap.set(!.MCI ^ mci_varmap, Key, RobddVar, NewVarMap),
+            !MCI ^ mci_varset := NewVarSet,
+            !MCI ^ mci_varmap := NewVarMap
         )
     ).
 
-mode_constraint_var(Info, RepVar) = bimap.lookup(Info ^ varmap, Key) :-
-    Key = key(RepVar, Info ^ pred_id, Info ^ lambda_path).
+mode_constraint_var(MCI, RepVar) = Var :-
+    Key = key(RepVar, MCI ^ mci_pred_id, MCI ^ mci_lambda_path),
+    bimap.lookup(MCI ^ mci_varmap, Key, Var).
 
-enter_lambda_goal(GoalPath, !Info) :-
-    LambdaPath0 = !.Info ^ lambda_path,
-    !:Info = !.Info ^ lambda_path := stack.push(LambdaPath0, GoalPath).
+enter_lambda_goal(GoalId, !MCI) :-
+    LambdaPath0 = !.MCI ^ mci_lambda_path,
+    !MCI ^ mci_lambda_path := stack.push(LambdaPath0, GoalId).
 
-leave_lambda_goal -->
-    LambdaPath0 =^ lambda_path,
-    { stack.pop_det(LambdaPath0, _GoalPath, LambdaPath) },
-    ^ lambda_path := LambdaPath.
+leave_lambda_goal(!MCI) :-
+    LambdaPath0 = !.MCI ^ mci_lambda_path,
+    stack.pop_det(LambdaPath0, _GoalPath, LambdaPath),
+    !MCI ^ mci_lambda_path := LambdaPath.
 
 :- type prog_var_and_level
     --->    prog_var_and_level(
@@ -248,53 +267,57 @@ leave_lambda_goal -->
                 lambda_path
             ).
 
-get_prog_var_level(Var, prog_var_and_level(Var, PredId, LambdaPath)) -->
-    PredId =^ pred_id,
-    LambdaPath =^ lambda_path.
+get_prog_var_level(MCI, Var, prog_var_and_level(Var, PredId, LambdaPath)) :-
+    PredId = MCI ^ mci_pred_id,
+    LambdaPath = MCI ^ mci_lambda_path.
 
-set_level_from_var(prog_var_and_level(_Var, PredId, LambdaPath)) -->
-    ^ pred_id := PredId,
-    ^ lambda_path := LambdaPath.
+set_level_from_var(prog_var_and_level(_Var, PredId, LambdaPath), !MCI) :-
+    !MCI ^ mci_pred_id := PredId,
+    !MCI ^ mci_lambda_path := LambdaPath.
 
-save_threshold(threshold(varset.max_var(VarSet))) -->
-    VarSet =^ varset.
+save_threshold(MCI, threshold(varset.max_var(VarSet))) :-
+    VarSet = MCI ^ mci_varset.
 
 restrict_threshold(threshold(Threshold), Constraint) =
     restrict_threshold(Threshold, ensure_normalised(Constraint)).
 
-restrict_filter(P0, Info, M) = restrict_filter(P, ensure_normalised(M)) :-
+restrict_filter(P0, MCI, M) = restrict_filter(P, ensure_normalised(M)) :-
     P = (pred(MCV::in) is semidet :-
-        bimap.reverse_lookup(Info ^ varmap, key(RV, PredId, _), MCV),
-        ( PredId \= Info ^ pred_id ; P0(RV) )
+        bimap.reverse_lookup(MCI ^ mci_varmap, key(RV, PredId, _), MCV),
+        (
+            PredId \= MCI ^ mci_pred_id
+        ;
+            P0(RV)
+        )
     ).
 
-save_min_var_for_pred(PredId) -->
-    save_threshold(threshold(Threshold)),
-    MinVars0 =^ min_vars,
-    { map.set(MinVars0, PredId, Threshold, MinVars) },
-    ^ min_vars := MinVars.
+save_min_var_for_pred(PredId, !MCI) :-
+    save_threshold(!.MCI, threshold(Threshold)),
+    MinVars0 = !.MCI ^ mci_min_vars,
+    map.set(MinVars0, PredId, Threshold, MinVars),
+    !MCI ^ mci_min_vars := MinVars.
 
-save_max_var_for_pred(PredId) -->
-    save_threshold(threshold(Threshold)),
-    MaxVars0 =^ max_vars,
-    { map.set(MaxVars0, PredId, Threshold, MaxVars) },
-    ^ max_vars := MaxVars.
+save_max_var_for_pred(PredId, !MCI) :-
+    save_threshold(!.MCI, threshold(Threshold)),
+    MaxVars0 = !.MCI ^ mci_max_vars,
+    map.set(MaxVars0, PredId, Threshold, MaxVars),
+    !MCI ^ mci_max_vars := MaxVars.
 
-get_interesting_vars_for_pred(PredId, Vars) -->
-    MinVars =^ min_vars,
-    MaxVars =^ max_vars,
-    VarSet =^ varset,
-    { Vars = ( set.sorted_list_to_set `compose`
+get_interesting_vars_for_pred(MCI, PredId, Vars) :-
+    MinVars = MCI ^ mci_min_vars,
+    MaxVars = MCI ^ mci_max_vars,
+    VarSet = MCI ^ mci_varset,
+    Vars = ( set.sorted_list_to_set `compose`
         list.filter((pred(V::in) is semidet :-
-        compare(<, map.lookup(MinVars, PredId), V),
-        \+ compare(<, map.lookup(MaxVars, PredId), V))) `compose`
-        varset.vars
-    )(VarSet) }.
+            compare(<, map.lookup(MinVars, PredId), V),
+            \+ compare(<, map.lookup(MaxVars, PredId), V)
+        )) `compose` varset.vars
+    )(VarSet).
 
-set_input_nodes(Constraint0, Constraint, Info0, Info) :-
-    VarMap = Info0 ^ varmap,
-    LambdaPath = Info0 ^ lambda_path,
-    PredId = Info0 ^ pred_id,
+set_input_nodes(Constraint0, Constraint, !MCI) :-
+    VarMap = !.MCI ^ mci_varmap,
+    LambdaPath = !.MCI ^ mci_lambda_path,
+    PredId = !.MCI ^ mci_pred_id,
     bimap.ordinates(VarMap, Keys),
     Constraint1 = ensure_normalised(Constraint0),
     solutions.solutions((pred(ProgVar::out) is nondet :-
@@ -303,22 +326,34 @@ set_input_nodes(Constraint0, Constraint, Info0, Info) :-
             bimap.lookup(VarMap, Key, RobddVar),
             var_entailed(Constraint1, RobddVar)
         ), InputNodes),
-    Info = Info0 ^ input_nodes := sorted_list_to_set(InputNodes),
-    Constraint = Constraint0 ^ not_var(Info ^ zero_var).
+    !MCI ^ mci_input_nodes := sorted_list_to_set(InputNodes),
+    Constraint = Constraint0 ^ not_var(!.MCI ^ mci_zero_var).
 
-set_simple_mode_constraints -->
-    ^ simple_constraints := yes.
+set_simple_mode_constraints(!MCI) :-
+    !MCI ^ mci_simple_constraints := yes.
 
-unset_simple_mode_constraints -->
-    ^ simple_constraints := no.
+unset_simple_mode_constraints(!MCI) :-
+    !MCI ^ mci_simple_constraints := no.
 
-using_simple_mode_constraints -->
-    yes =^ simple_constraints.
+using_simple_mode_constraints(MCI) :-
+    MCI ^ mci_simple_constraints = yes.
 
-% dump_mode_constraints(_ModuleInfo, _PredInfo, _InstGraph, ROBDD, Info) -->
+get_forward_goal_path_map(MCI, ForwardGoalPathMap) :-
+    map.lookup(MCI ^ mci_goal_path_map, MCI ^ mci_pred_id, ForwardGoalPathMap).
+
+get_forward_goal_path_map_for_pred(MCI, PredId, ForwardGoalPathMap) :-
+    map.lookup(MCI ^ mci_goal_path_map, PredId, ForwardGoalPathMap).
+
+add_forward_goal_path_map(PredId, ForwardGoalPathMap, !MCI) :-
+    ForwardGoalPathMapMap0 = !.MCI ^ mci_goal_path_map,
+    map.det_insert(ForwardGoalPathMapMap0, PredId, ForwardGoalPathMap,
+        ForwardGoalPathMapMap),
+    !MCI ^ mci_goal_path_map := ForwardGoalPathMapMap.
+
+% dump_mode_constraints(_ModuleInfo, _PredInfo, _InstGraph, ROBDD, MCI) -->
 %   { AL = (list.sort `compose`
 %       assoc_list.reverse_members `compose`
-%       bimap.to_assoc_list)(Info ^ varmap) },
+%       bimap.to_assoc_list)(MCI ^ mci_varmap) },
 %   list.foldl((pred((MCV - key(RV, _, _))::in, di, uo) is det -->
 %       print(MCV), write_string("\t"), print(RV), nl), AL),
 %
@@ -346,82 +381,50 @@ dump_mode_constraint_var(VarSet, out(V), !IO) :-
     varset.lookup_name(VarSet, V, Name),
     io.write_string(Name, !IO),
     io.write_string("_out", !IO).
-dump_mode_constraint_var(VarSet, V `at` Path, !IO) :-
+dump_mode_constraint_var(VarSet, V `at` Id, !IO) :-
     varset.lookup_name(VarSet, V, Name),
     io.write_string(Name, !IO),
     io.write_char('_', !IO),
-    PathSteps = goal_path_to_list(Path),
-    list.foldl(dump_goal_path_step, PathSteps, !IO).
+    Id = goal_id(IdNum),
+    io.write_int(IdNum, !IO).
 
-:- pred dump_goal_path_step(goal_path_step::in, io::di, io::uo) is det.
-
-dump_goal_path_step(step_conj(N), !IO) :-
-    io.write_char('c', !IO),
-    io.write_int(N, !IO).
-dump_goal_path_step(step_disj(N), !IO) :-
-    io.write_char('d', !IO),
-    io.write_int(N, !IO).
-dump_goal_path_step(step_switch(N, _), !IO) :-
-    io.write_char('s', !IO),
-    io.write_int(N, !IO).
-dump_goal_path_step(step_ite_cond, !IO) :-
-    io.write_char('c', !IO).
-dump_goal_path_step(step_ite_then, !IO) :-
-    io.write_char('t', !IO).
-dump_goal_path_step(step_ite_else, !IO) :-
-    io.write_char('e', !IO).
-dump_goal_path_step(step_neg, !IO) :-
-    io.write_char('n', !IO).
-dump_goal_path_step(step_scope(_), !IO) :-
-    io.write_char('q', !IO).
-dump_goal_path_step(step_first, !IO) :-
-    io.write_char('f', !IO).
-dump_goal_path_step(step_later, !IO) :-
-    io.write_char('l', !IO).
-dump_goal_path_step(step_atomic_main, !IO) :-
-    io.write_char('a', !IO).
-dump_goal_path_step(step_atomic_orelse(N), !IO) :-
-    io.write_char('o', !IO),
-    io.write_int(N, !IO).
-
-robdd_to_dot(Constraint, ProgVarSet, Info, FileName, !IO) :-
-    robdd_to_dot(Constraint ^ robdd, P, FileName, !IO),
-    VarMap = Info ^ varmap,
+robdd_to_dot(Constraint, ProgVarSet, MCI, FileName, !IO) :-
+    VarMap = MCI ^ mci_varmap,
     P = (pred(RobddVar::in, di, uo) is det -->
-        { bimap.reverse_lookup(VarMap, key(RepVar, PredId, LambdaPath),
+        { bimap.reverse_lookup(VarMap, key(RepVar, PredId, LambdaId),
             RobddVar) },
         dump_mode_constraint_var(ProgVarSet, RepVar),
         io.write_string(" "),
         { pred_id_to_int(PredId, PredIdNum) },
         io.write_int(PredIdNum),
         io.write_string(" "),
-        io.write_int(stack.depth(LambdaPath)),
+        io.write_int(stack.depth(LambdaId)),
         io.write_string(" ("),
         io.write_int(term.var_to_int(RobddVar)),
         io.write_string(")")
-    ).
+    ),
+    robdd_to_dot(Constraint ^ robdd, P, FileName, !IO).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-atomic_prodvars_map(Constraint, MCInfo) =
+atomic_prodvars_map(Constraint, MCI) =
     (
         some_vars(VarsEntailed) = vars_entailed(ensure_normalised(Constraint))
     ->
         list.foldl(
             (func(MCVar, PVM) =
                 (
-                    bimap.reverse_lookup(MCInfo ^ varmap, Key, MCVar),
-                    Key = key(RepVar, PredId, LambdaPath0),
-                    PredId = MCInfo ^ pred_id,
-                    RepVar = ProgVar `at` GoalPath,
-                    LambdaPath = stack.push(LambdaPath0, GoalPath)
+                    bimap.reverse_lookup(MCI ^ mci_varmap, Key, MCVar),
+                    Key = key(RepVar, PredId, LambdaId0),
+                    PredId = MCI ^ mci_pred_id,
+                    RepVar = ProgVar `at` GoalId,
+                    LambdaId = stack.push(LambdaId0, GoalId)
                 ->
-                    ( Vs = map.search(PVM, LambdaPath) ->
-                    map.det_update(PVM, LambdaPath,
-                        Vs `insert` ProgVar)
+                    ( Vs = map.search(PVM, LambdaId) ->
+                        map.det_update(PVM, LambdaId, Vs `insert` ProgVar)
                     ;
-                    map.det_insert(PVM, LambdaPath,
-                        make_singleton_set(ProgVar))
+                        map.det_insert(PVM, LambdaId,
+                            make_singleton_set(ProgVar))
                     )
                 ;
                     PVM

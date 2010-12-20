@@ -1,15 +1,15 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999, 2003, 2005-2007 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999, 2003, 2005-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: group.m.
 % Main author: conway.
 % Stability: low (obsolete).
-% 
+%
 % This module is probably not terribly useful, and it may not be supported
 % in future releases.
 %
@@ -17,7 +17,7 @@
 % A group is a set of sets of elements, where each element is unique within
 % the scope of the group. The module provides moderately efficient ways for
 % manipulating groups and elements.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -152,8 +152,8 @@ group.remove_group(!.G, GK, S, !:G) :-
     ),
     set.to_sorted_list(S, SL),
     group.remove_elements(SL, Es0, Es),
-    !:G = !.G ^ sets := Ss,
-    !:G = !.G ^ elements := Es.
+    !G ^ sets := Ss,
+    !G ^ elements := Es.
 
 :- pred group.remove_elements(list(T)::in,
     map(T, group.key)::in, map(T, group.key)::out) is det.

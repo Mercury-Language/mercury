@@ -1260,7 +1260,8 @@
 :- func goal_info_get_code_gen_nonlocals(hlds_goal_info) = set(prog_var).
 :- func goal_info_get_purity(hlds_goal_info) = purity.
 :- func goal_info_get_features(hlds_goal_info) = set(goal_feature).
-:- func goal_info_get_goal_path(hlds_goal_info) = goal_path.
+:- func goal_info_get_goal_id(hlds_goal_info) = goal_id.
+:- func goal_info_get_reverse_goal_path(hlds_goal_info) = reverse_goal_path.
 :- func goal_info_get_code_gen_info(hlds_goal_info) = hlds_goal_code_gen_info.
 :- func goal_info_get_ho_values(hlds_goal_info) = ho_values.
 :- func goal_info_get_maybe_rbmm(hlds_goal_info) = maybe(rbmm_goal_info).
@@ -1286,7 +1287,9 @@
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_features(set(goal_feature)::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
-:- pred goal_info_set_goal_path(goal_path::in,
+:- pred goal_info_set_goal_id(goal_id::in,
+    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred goal_info_set_reverse_goal_path(reverse_goal_path::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_set_code_gen_info(hlds_goal_code_gen_info::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
@@ -1903,8 +1906,8 @@ simple_call_id_pred_or_func(simple_call_id(PredOrFunc, _, _)) = PredOrFunc.
                 % which optimisers may wish to know about.
 /*  5 */        gi_features         :: set(goal_feature),
 
-                % The path to this goal from the root.
-/*  6 */        gi_goal_path        :: goal_path,
+                % An value that uniquely identifies this goal in its procedure.
+/*  6 */        gi_goal_id          :: goal_id,
 
 /*  7 */        gi_code_gen_info    :: hlds_goal_code_gen_info,
 
@@ -1917,6 +1920,8 @@ simple_call_id_pred_or_func(simple_call_id(PredOrFunc, _, _)) = PredOrFunc.
 :- type hlds_goal_extra_info
     --->    extra_goal_info(
                 egi_context             :: prog_context,
+
+                egi_rev_goal_path       :: reverse_goal_path,
 
                 egi_ho_vals             :: ho_values,
 
@@ -1938,9 +1943,9 @@ goal_info_init(GoalInfo) :-
     set.init(NonLocals),
     term.context_init(Context),
     set.init(Features),
-    GoalPath = empty_goal_path,
+    GoalId = goal_id(-1),
     GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, purity_pure,
-        Features, GoalPath, no_code_gen_info,
+        Features, GoalId, no_code_gen_info,
         hlds_goal_extra_info_init(Context)).
 
 :- pragma inline(goal_info_init/2).
@@ -1950,24 +1955,24 @@ goal_info_init(Context, GoalInfo) :-
     instmap_delta_init_unreachable(InstMapDelta),
     set.init(NonLocals),
     set.init(Features),
-    GoalPath = empty_goal_path,
+    GoalId = goal_id(-1),
     GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, purity_pure,
-        Features, GoalPath, no_code_gen_info,
+        Features, GoalId, no_code_gen_info,
         hlds_goal_extra_info_init(Context)).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, GoalInfo) :-
     set.init(Features),
     term.context_init(Context),
-    GoalPath = empty_goal_path,
+    GoalId = goal_id(-1),
     GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, Purity,
-        Features, GoalPath, no_code_gen_info,
+        Features, GoalId, no_code_gen_info,
         hlds_goal_extra_info_init(Context)).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context, GoalInfo) :-
     set.init(Features),
-    GoalPath = empty_goal_path,
+    GoalId = goal_id(-1),
     GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, Purity,
-        Features, GoalPath, no_code_gen_info,
+        Features, GoalId, no_code_gen_info,
         hlds_goal_extra_info_init(Context)).
 
 impure_init_goal_info(NonLocals, InstMapDelta, Determinism) = GoalInfo :-
@@ -2021,7 +2026,7 @@ add_impurity_if_needed(AddedImpurity, !GoalInfo) :-
 
 hlds_goal_extra_info_init(Context) = ExtraInfo :-
     HO_Values = map.init,
-    ExtraInfo = extra_goal_info(Context, HO_Values, no, no, no, no).
+    ExtraInfo = extra_goal_info(Context, rgp([]), HO_Values, no, no, no, no).
 
 :- func ctgc_goal_info_init = ctgc_goal_info.
 
@@ -2035,7 +2040,9 @@ goal_info_get_instmap_delta(GoalInfo) = GoalInfo ^ gi_instmap_delta.
 goal_info_get_nonlocals(GoalInfo) = GoalInfo ^ gi_nonlocals.
 goal_info_get_purity(GoalInfo) = GoalInfo ^ gi_purity.
 goal_info_get_features(GoalInfo) = GoalInfo ^ gi_features.
-goal_info_get_goal_path(GoalInfo) = GoalInfo ^ gi_goal_path.
+goal_info_get_goal_id(GoalInfo) = GoalInfo ^ gi_goal_id.
+goal_info_get_reverse_goal_path(GoalInfo) =
+    GoalInfo ^ gi_extra ^ egi_rev_goal_path.
 goal_info_get_code_gen_info(GoalInfo) = GoalInfo ^ gi_code_gen_info.
 goal_info_get_context(GoalInfo) = GoalInfo ^ gi_extra ^ egi_context.
 goal_info_get_ho_values(GoalInfo) = GoalInfo ^ gi_extra ^ egi_ho_vals.
@@ -2055,8 +2062,10 @@ goal_info_set_purity(Purity, !GoalInfo) :-
     !GoalInfo ^ gi_purity := Purity.
 goal_info_set_features(Features, !GoalInfo) :-
     !GoalInfo ^ gi_features := Features.
-goal_info_set_goal_path(GoalPath, !GoalInfo) :-
-    !GoalInfo ^ gi_goal_path := GoalPath.
+goal_info_set_goal_id(GoalId, !GoalInfo) :-
+    !GoalInfo ^ gi_goal_id := GoalId.
+goal_info_set_reverse_goal_path(RevGoalPath, !GoalInfo) :-
+    !GoalInfo ^ gi_extra ^ egi_rev_goal_path := RevGoalPath.
 goal_info_set_code_gen_info(CodeGenInfo, !GoalInfo) :-
     !GoalInfo ^ gi_code_gen_info := CodeGenInfo.
 goal_info_set_context(Context, !GoalInfo) :-
@@ -2719,8 +2728,8 @@ rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
         CodeGenInfo = llds_code_gen_info(LldsInfo)
     ),
 
-    ExtraInfo0 = extra_goal_info(Context, HO_Values, MaybeCTGC0, MaybeRBMM0,
-        MaybeMCI0, MaybeDPInfo0),
+    ExtraInfo0 = extra_goal_info(Context, RevGoalPath, HO_Values,
+        MaybeCTGC0, MaybeRBMM0, MaybeMCI0, MaybeDPInfo0),
     (
         MaybeCTGC0 = no,
         MaybeCTGC = no
@@ -2780,8 +2789,8 @@ rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
         MaybeMCI = yes(MCI)
     ),
     MaybeDPInfo = MaybeDPInfo0,
-    ExtraInfo = extra_goal_info(Context, HO_Values, MaybeCTGC, MaybeRBMM,
-        MaybeMCI, MaybeDPInfo),
+    ExtraInfo = extra_goal_info(Context, RevGoalPath, HO_Values,
+        MaybeCTGC, MaybeRBMM, MaybeMCI, MaybeDPInfo),
 
     !:GoalInfo = goal_info(Detism, InstMapDelta, NonLocals, Purity,
         Features, GoalPath, CodeGenInfo, ExtraInfo).

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008 The University of Melbourne.
+% Copyright (C) 2002-2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -772,7 +772,7 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
                 % No if start_loc is cur_goal; and yes wrapped around the
                 % goal path of the call in the parent procedure if start_loc
                 % is parent_goal.
-                maybe(goal_path),
+                maybe(reverse_goal_path),
 
                 % The body of the procedure indicated by start_loc.
                 maybe(proc_defn_rep)
@@ -787,7 +787,7 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
     ;       parent_goal(R, trace_node(R)).
 
 :- type goal_and_path
-    --->    goal_and_path(goal_rep, goal_path).
+    --->    goal_and_path(goal_rep, reverse_goal_path).
 
 :- type goal_and_path_list ==   list(goal_and_path).
 
@@ -797,7 +797,7 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
                 int,                % line number
                 list(var_rep),      % vars bound by the atomic goal
                 atomic_goal_rep,    % the atomic goal itself
-                goal_path,          % its goal path
+                reverse_goal_path,  % its goal path
                 maybe(R)            % if the atomic goal is a call,
                                     % the id of the call's exit event
             ).
@@ -897,7 +897,7 @@ trace_dependency_special_case(Store, ProcDefnRep, Ref, StartLoc,
     ).
 
 :- pred trace_dependency_in_proc_defn_rep(S::in, term_path::in,
-    start_loc(R)::in, int::in, int::in, R::in, maybe(goal_path)::in,
+    start_loc(R)::in, int::in, int::in, R::in, maybe(reverse_goal_path)::in,
     proc_defn_rep::in, subterm_origin(edt_node(R))::out) is det
     <= annotated_trace(S, R).
 
@@ -915,8 +915,8 @@ trace_dependency_in_proc_defn_rep(Store, TermPath, StartLoc, ArgNum,
     HeadVars = list.map(head_var_to_var, ProcDefnRep ^ pdr_head_vars),
     GoalRep = ProcDefnRep ^ pdr_goal,
     is_traced_grade(AllTraced),
-    MaybePrims = make_primitive_list(Store, 
-        [goal_and_path(GoalRep, empty_goal_path)], Contour, StartPath, ArgNum,
+    MaybePrims = make_primitive_list(Store,
+        [goal_and_path(GoalRep, rgp([]))], Contour, StartPath, ArgNum,
         TotalArgs, HeadVars, AllTraced, []),
     (
         MaybePrims = yes(primitive_list_and_var(Primitives, Var,
@@ -1016,7 +1016,7 @@ find_chain_start_inside(Store, CallId, CallNode, ArgPos, ChainStart) :-
     CallPrecId = CallNode ^ call_preceding,
     CallAtom = get_trace_call_atom(CallNode),
     CallPathStr = get_goal_path_from_maybe_label(CallNode ^ call_return_label),
-    goal_path_from_string_det(CallPathStr, CallPath),
+    rev_goal_path_from_string_det(CallPathStr, CallPath),
     StartLoc = parent_goal(CallId, CallNode),
     absolute_arg_num(ArgPos, CallAtom, ArgNum),
     TotalArgs = length(CallAtom ^ atom_args),
@@ -1158,7 +1158,7 @@ get_exit_atom(Store, _ - Exit, FinalAtom) :-
     % subterms.
     %
 :- func make_primitive_list(S, goal_and_path_list,
-    assoc_list(R, trace_node(R)), maybe(goal_path), int, int,
+    assoc_list(R, trace_node(R)), maybe(reverse_goal_path), int, int,
     list(var_rep), bool, list(annotated_primitive(R)))
     = maybe(primitive_list_and_var(R)) <= annotated_trace(S, R).
 
@@ -1212,12 +1212,12 @@ make_primitive_list(Store, GoalPaths, Contour, MaybeEnd, ArgNum, TotalArgs,
     ).
 
 :- pred contour_at_end_path(assoc_list(R, trace_node(R))::in,
-    maybe(goal_path)::in) is semidet.
+    maybe(reverse_goal_path)::in) is semidet.
 
 contour_at_end_path([_ - Node], yes(EndPath)) :-
     Node = node_call(_, _, _, _, _, _, MaybeReturnLabel, _, _, _),
     CallPathStr = get_goal_path_from_maybe_label(MaybeReturnLabel),
-    goal_path_from_string_det(CallPathStr, CallPath),
+    rev_goal_path_from_string_det(CallPathStr, CallPath),
     CallPath = EndPath.
 
 :- pred next_goal_generates_internal_event(list(goal_and_path)::in) is semidet.
@@ -1236,9 +1236,9 @@ next_goal_generates_internal_event([goal_and_path(NextGoal, _) | _]) :-
     % along the remaining contour. If it cannot match a higher order call
     % to a contour event and AllTraced is no, then it returns "no".
     %
-:- func match_goal_to_contour_event(S, goal_rep, goal_path, goal_and_path_list,
-    assoc_list(R, trace_node(R)), maybe(goal_path), int, int,
-    list(var_rep), bool, list(annotated_primitive(R)))
+:- func match_goal_to_contour_event(S, goal_rep, reverse_goal_path,
+    goal_and_path_list, assoc_list(R, trace_node(R)), maybe(reverse_goal_path),
+    int, int, list(var_rep), bool, list(annotated_primitive(R)))
     = maybe(primitive_list_and_var(R)) <= annotated_trace(S, R).
 
 match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
@@ -1252,7 +1252,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             Primitives0)
     ;
         GoalExpr = scope_rep(InnerGoal, MaybeCut),
-        InnerPath = goal_path_add_at_end(Path, step_scope(MaybeCut)),
+        InnerPath = rev_goal_path_add_at_end(Path, step_scope(MaybeCut)),
         InnerAndPath = goal_and_path(InnerGoal, InnerPath),
         MaybePrims = make_primitive_list(Store, [InnerAndPath | GoalPaths],
             Contour, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
@@ -1283,8 +1283,8 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
                 ContourHeadNode = node_later_disj(_, Label, _)
             ),
             DisjPathStr = get_goal_path_from_label_layout(Label),
-            goal_path_from_string_det(DisjPathStr, DisjPath),
-            goal_path_remove_last(DisjPath, DisjInitialPath, DisjLastStep),
+            rev_goal_path_from_string_det(DisjPathStr, DisjPath),
+            rev_goal_path_remove_last(DisjPath, DisjInitialPath, DisjLastStep),
             DisjInitialPath = Path,
             DisjLastStep = step_disj(N)
         ->
@@ -1303,8 +1303,8 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             Contour = [_ - ContourHeadNode | ContourTail],
             ContourHeadNode = node_switch(_, Label),
             ArmPathStr = get_goal_path_from_label_layout(Label),
-            goal_path_from_string_det(ArmPathStr, ArmPath),
-            goal_path_remove_last(ArmPath, ArmInitialPath, ArmLastStep),
+            rev_goal_path_from_string_det(ArmPathStr, ArmPath),
+            rev_goal_path_remove_last(ArmPath, ArmInitialPath, ArmLastStep),
             ArmInitialPath = Path,
             ArmLastStep = step_switch(N, _)
         ->
@@ -1324,12 +1324,12 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             Contour = [_ - ContourHeadNode | ContourTail],
             ContourHeadNode = node_cond(_, Label, _),
             CondPathStr = get_goal_path_from_label_layout(Label),
-            goal_path_from_string_det(CondPathStr, CondPath),
-            goal_path_remove_last(CondPath, CondInitialPath, CondLastStep),
+            rev_goal_path_from_string_det(CondPathStr, CondPath),
+            rev_goal_path_remove_last(CondPath, CondInitialPath, CondLastStep),
             CondInitialPath = Path,
             CondLastStep = step_ite_cond
         ->
-            ThenPath = goal_path_add_at_end(Path, step_ite_then),
+            ThenPath = rev_goal_path_add_at_end(Path, step_ite_then),
             CondAndPath = goal_and_path(Cond, CondPath),
             ThenAndPath = goal_and_path(Then, ThenPath),
             MaybePrims = make_primitive_list(Store,
@@ -1341,12 +1341,12 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             cond_node_from_id(Store, ElseCondId, CondNode),
             CondNode = node_cond(_, Label, _),
             CondPathStr = get_goal_path_from_label_layout(Label),
-            goal_path_from_string_det(CondPathStr, CondPath),
-            goal_path_remove_last(CondPath, CondInitialPath, CondLastStep),
+            rev_goal_path_from_string_det(CondPathStr, CondPath),
+            rev_goal_path_remove_last(CondPath, CondInitialPath, CondLastStep),
             CondInitialPath = Path,
             CondLastStep = step_ite_cond
         ->
-            ElsePath = goal_path_add_at_end(Path, step_ite_else),
+            ElsePath = rev_goal_path_add_at_end(Path, step_ite_else),
             ElseAndPath = goal_and_path(Else, ElsePath),
             MaybePrims = make_primitive_list(Store, [ElseAndPath | GoalPaths],
                 ContourTail, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
@@ -1370,7 +1370,7 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
         ->
             % The end of the primitive list is somewhere inside
             % NegGoal.
-            NegPath = goal_path_add_at_end(Path, step_neg),
+            NegPath = rev_goal_path_add_at_end(Path, step_neg),
             NegAndPath = goal_and_path(NegGoal, NegPath),
             MaybePrims = make_primitive_list(Store, [NegAndPath], ContourTail,
                 MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced, Primitives0)
@@ -1412,8 +1412,8 @@ remove_leading_exit_fail_events(Contour0, Contour) :-
     % more likely for the majority of untraced calls).
     %
 :- func match_atomic_goal_to_contour_event(S, string, int,
-    list(var_rep), atomic_goal_rep, list(var_rep), goal_path,
-    list(goal_and_path), assoc_list(R, trace_node(R)), maybe(goal_path),
+    list(var_rep), atomic_goal_rep, list(var_rep), reverse_goal_path,
+    list(goal_and_path), assoc_list(R, trace_node(R)), maybe(reverse_goal_path),
     int, int, list(var_rep), bool, list(annotated_primitive(R))) =
     maybe(primitive_list_and_var(R)) <= annotated_trace(S, R).
 
@@ -1429,7 +1429,7 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
                 MaybeReturnLabel, _, _, _),
             Atom = get_trace_call_atom(ContourHeadNode),
             CallPathStr = get_goal_path_from_maybe_label( MaybeReturnLabel),
-            goal_path_from_string_det(CallPathStr, CallPath),
+            rev_goal_path_from_string_det(CallPathStr, CallPath),
             CallPath = EndPath
         ->
             (
@@ -1800,13 +1800,13 @@ traverse_call(BoundVars, File, Line, Args, MaybeNodeId,
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_paths_to_conjuncts(list(goal_rep)::in, goal_path::in, int::in,
-    goal_and_path_list::out) is det.
+:- pred add_paths_to_conjuncts(list(goal_rep)::in, reverse_goal_path::in,
+    int::in, goal_and_path_list::out) is det.
 
 add_paths_to_conjuncts([], _, _, []).
 add_paths_to_conjuncts([Goal | Goals], ParentPath, N,
         [goal_and_path(Goal, Path) | GoalAndPaths]) :-
-    Path = goal_path_add_at_end(ParentPath, step_conj(N)),
+    Path = rev_goal_path_add_at_end(ParentPath, step_conj(N)),
     add_paths_to_conjuncts(Goals, ParentPath, N + 1, GoalAndPaths).
 
 %-----------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2008 The University of Melbourne.
+% Copyright (C) 2001-2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -146,8 +146,8 @@ mark_tail_calls_in_goal(Feature, PredId, ProcId, Outputs0, MaybeOutputs,
         GoalExpr0 = unify(_, _, _, Unify0, _),
         Goal = Goal0,
         (
-            ( Unify0 = construct(_, _, _, _, _, __, _)
-            ; Unify0 = deconstruct(_, _, _, _, __, _)
+            ( Unify0 = construct(_, _, _, _, _, _, _)
+            ; Unify0 = deconstruct(_, _, _, _, _, _)
             ; Unify0 = simple_test(_, _)
             ; Unify0 = complicated_unify(_, _, _)
             ),

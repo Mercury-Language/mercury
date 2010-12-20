@@ -1678,27 +1678,27 @@ attribute_list_to_attributes(Attributes, Attributes).
                 normal_type_subst       :: string,
                 normal_file_name        :: string,
                 normal_line_number      :: int,
-                normal_goal_path        :: goal_path
+                normal_goal_path        :: forward_goal_path
             )
     ;       special_call(
                 special_file_name       :: string,
                 special_line_number     :: int,
-                special_goal_path       :: goal_path
+                special_goal_path       :: forward_goal_path
             )
     ;       higher_order_call(
                 higher_order_file_name  :: string,
                 ho_line_number          :: int,
-                ho_goal_path            :: goal_path
+                ho_goal_path            :: forward_goal_path
             )
     ;       method_call(
                 method_file_name        :: string,
                 method_line_number      :: int,
-                method_goal_path        :: goal_path
+                method_goal_path        :: forward_goal_path
             )
     ;       callback(
                 callback_file_name      :: string,
                 callback_line_number    :: int,
-                callback_goal_path      :: goal_path
+                callback_goal_path      :: forward_goal_path
             ).
 
 :- type hlds_proc_static

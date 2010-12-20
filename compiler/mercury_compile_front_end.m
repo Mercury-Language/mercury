@@ -629,7 +629,7 @@ maybe_mode_constraints(Verbose, Stats, !HLDS, !IO) :-
         ModeConstraints = yes,
         maybe_write_string(Verbose, "% Dumping mode constraints...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        maybe_benchmark_modes(mode_constraints.process_module,
+        maybe_benchmark_modes(mc_process_module,
             "mode-constraints", !HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)

@@ -642,7 +642,7 @@
                 csdesc_caller_uq_refined_name   :: string,
                 csdesc_caller_q_refined_name    :: string,
                 csdesc_slot_number              :: int,
-                csdesc_goal_path                :: goal_path,
+                csdesc_goal_path                :: reverse_goal_path,
                 csdesc_maybe_callee             :: maybe(proc_desc)
             ).
 
@@ -683,8 +683,8 @@
     % Build a map from goal paths to call site reports.
     %
 :- pred add_call_site_report_to_map(clique_call_site_report::in,
-    map(goal_path, clique_call_site_report)::in,
-    map(goal_path, clique_call_site_report)::out) is det.
+    map(reverse_goal_path, clique_call_site_report)::in,
+    map(reverse_goal_path, clique_call_site_report)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

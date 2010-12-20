@@ -32,6 +32,7 @@
 
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
+:- import_module hlds.goal_path.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
@@ -113,7 +114,7 @@
 :- pred code_info_init(bool::in, globals::in, pred_id::in, proc_id::in,
     pred_info::in, proc_info::in, abs_follow_vars::in, module_info::in,
     static_cell_info::in, resume_point_info::out, trace_slot_info::out,
-    code_info::out) is det.
+    maybe(containing_goal_map)::in, code_info::out) is det.
 
     % Get the globals table.
     %
@@ -233,6 +234,12 @@
 :- pred get_auto_comments(code_info::in, bool::out) is det.
 
 :- pred get_lcmc_null(code_info::in, bool::out) is det.
+
+:- pred get_containing_goal_map(code_info::in, maybe(containing_goal_map)::out)
+    is det.
+
+:- pred get_containing_goal_map_det(code_info::in, containing_goal_map::out)
+    is det.
 
 %---------------------------------------------------------------------------%
 
@@ -371,8 +378,9 @@
                 cis_auto_comments       :: bool,
 
                 % The setting of --optimize-constructor-last-call-null.
-                cis_lcmc_null           :: bool
+                cis_lcmc_null           :: bool,
 
+                cis_containing_goal_map :: maybe(containing_goal_map)
             ).
 
 :- type code_info_loc_dep
@@ -465,7 +473,7 @@
 
 code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
         FollowVars, ModuleInfo, StaticCellInfo, ResumePoint, TraceSlotInfo,
-        CodeInfo) :-
+        MaybeContainingGoalMap, CodeInfo) :-
     proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
     proc_info_get_liveness_info(ProcInfo, Liveness),
     CodeModel = proc_info_interface_code_model(ProcInfo),
@@ -551,7 +559,8 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
             EmitRegionOps,
             OptRegionOps,
             AutoComments,
-            LCMCNull
+            LCMCNull,
+            MaybeContainingGoalMap
         ),
         code_info_loc_dep(
             Liveness,
@@ -682,6 +691,7 @@ get_emit_region_ops(CI, CI ^ code_info_static ^ cis_emit_region_ops).
 get_opt_region_ops(CI, CI ^ code_info_static ^ cis_opt_region_ops).
 get_auto_comments(CI, CI ^ code_info_static ^ cis_auto_comments).
 get_lcmc_null(CI, CI ^ code_info_static ^ cis_lcmc_null).
+get_containing_goal_map(CI, CI ^ code_info_static ^ cis_containing_goal_map).
 get_forward_live_vars(CI, CI ^ code_info_loc_dep ^ cild_forward_live_vars).
 get_instmap(CI, CI ^ code_info_loc_dep ^ cild_instmap).
 get_zombies(CI, CI ^ code_info_loc_dep ^ cild_zombies).
@@ -739,6 +749,15 @@ set_static_cell_info(SCI, CI,
     CI ^ code_info_persistent ^ cip_static_cell_info := SCI).
 set_used_env_vars(UEV, CI,
     CI ^ code_info_persistent ^ cip_used_env_vars := UEV).
+
+get_containing_goal_map_det(CI, ContainingGoalMap) :-
+    get_containing_goal_map(CI, MaybeContainingGoalMap),
+    (
+        MaybeContainingGoalMap = yes(ContainingGoalMap)
+    ;
+        MaybeContainingGoalMap = no,
+        unexpected(this_file, "get_containing_goal_map_det: no map")
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -863,8 +882,8 @@ set_used_env_vars(UEV, CI,
     %
 :- pred succip_is_used(code_info::in, code_info::out) is det.
 
-:- pred add_trace_layout_for_label(label::in, term.context::in,
-    trace_port::in, bool::in, goal_path::in, maybe(user_event_info)::in,
+:- pred add_trace_layout_for_label(label::in, term.context::in, trace_port::in,
+    bool::in, forward_goal_path::in, maybe(user_event_info)::in,
     layout_label_info::in, code_info::in, code_info::out) is det.
 
 :- pred get_cur_proc_label(code_info::in, proc_label::out) is det.
@@ -1070,10 +1089,10 @@ get_next_label(Label, !CI) :-
 succip_is_used(!CI) :-
     set_succip_used(yes, !CI).
 
-add_trace_layout_for_label(Label, Context, Port, IsHidden, Path,
+add_trace_layout_for_label(Label, Context, Port, IsHidden, GoalPath,
         MaybeSolverEventInfo, Layout, !CI) :-
     get_layout_info(!.CI, Internals0),
-    Exec = yes(trace_port_layout_info(Context, Port, IsHidden, Path,
+    Exec = yes(trace_port_layout_info(Context, Port, IsHidden, GoalPath,
         MaybeSolverEventInfo, Layout)),
     (
         Label = internal_label(LabelNum, _)

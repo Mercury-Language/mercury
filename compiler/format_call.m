@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2009 The University of Melbourne.
+% Copyright (C) 2006-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -90,7 +90,7 @@
 %
 % If there are any such replacements, we perform a second backward traversal of
 % the procedure body, looking for the goals to be replaced, which we identity
-% by goal_path.
+% by goal_id.
 %
 % For each call we want to optimize, we also want to delete the code that
 % constructs the format string and the lists of poly_types. The first pass
@@ -136,7 +136,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.goal_path.
+:- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
@@ -170,7 +170,7 @@
 
 :- type format_call_site
     --->    format_call_site(
-                fcs_goal_path               :: goal_path,
+                fcs_goal_id                 :: goal_id,
                 fcs_string_var              :: prog_var,
                 fcs_values_var              :: prog_var,
                 fcs_call_kind               :: format_call_kind,
@@ -310,7 +310,7 @@ analyze_and_optimize_format_calls(ModuleInfo, Goal0, MaybeGoal, Specs,
         !VarSet, !VarTypes) :-
     map.init(ConjMaps0),
     counter.init(0, Counter0),
-    fill_goal_path_slots_in_goal(Goal0, !.VarTypes, ModuleInfo, Goal1),
+    fill_goal_id_slots_in_proc_body(ModuleInfo, !.VarTypes, _, Goal0, Goal1),
     format_call_traverse_goal(ModuleInfo, Goal1, _, [], FormatCallSites,
         Counter0, _Counter, ConjMaps0, ConjMaps, map.init, PredMap,
         set_tree234.init, _),
@@ -318,8 +318,8 @@ analyze_and_optimize_format_calls(ModuleInfo, Goal0, MaybeGoal, Specs,
     globals.lookup_bool_option(Globals, optimize_format_calls, OptFormatCalls),
     list.foldl4(
         check_format_call_site(ModuleInfo, OptFormatCalls, ConjMaps, PredMap),
-        FormatCallSites, map.init, GoalPathMap, [], Specs, !VarSet, !VarTypes),
-    ( map.is_empty(GoalPathMap) ->
+        FormatCallSites, map.init, GoalIdMap, [], Specs, !VarSet, !VarTypes),
+    ( map.is_empty(GoalIdMap) ->
         % We have not found anything to improve in Goal1.
         MaybeGoal = no
     ;
@@ -332,20 +332,20 @@ analyze_and_optimize_format_calls(ModuleInfo, Goal0, MaybeGoal, Specs,
         ToDeleteVars0 = set_tree234.init,
         NeededVarsSet = set_tree234.sorted_list_to_set(
             set.to_sorted_list(NeededVars0)),
-        opt_format_call_sites_in_goal(Goal1, Goal, GoalPathMap, _,
+        opt_format_call_sites_in_goal(Goal1, Goal, GoalIdMap, _,
             NeededVarsSet, _NeededVars, ToDeleteVars0, _ToDeleteVars),
         MaybeGoal = yes(Goal)
     ).
 
 :- pred check_format_call_site(module_info::in, bool::in, conj_maps::in,
     conj_pred_map::in, format_call_site::in,
-    fc_goal_path_map::in, fc_goal_path_map::out,
+    fc_goal_id_map::in, fc_goal_id_map::out,
     list(error_spec)::in, list(error_spec)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 check_format_call_site(ModuleInfo, OptFormatCalls, ConjMaps, PredMap,
-        FormatCallSite, !GoalPathMap, !Specs, !VarSet, !VarTypes) :-
-    FormatCallSite = format_call_site(GoalPath, StringVar, ValuesVar, Kind,
+        FormatCallSite, !GoalIdMap, !Specs, !VarSet, !VarTypes) :-
+    FormatCallSite = format_call_site(GoalId, StringVar, ValuesVar, Kind,
         ModuleName, Name, Arity, Context, CurId),
     SymName = qualified(ModuleName, Name),
 
@@ -438,10 +438,10 @@ check_format_call_site(ModuleInfo, OptFormatCalls, ConjMaps, PredMap,
                 OptFormatCalls = no
             ;
                 OptFormatCalls = yes,
-                try_create_replacement_goal(ModuleInfo, GoalPath,
+                try_create_replacement_goal(ModuleInfo, GoalId,
                     Kind, FormatString, StringVar1,
                     ValuesToDeleteVars, WhatToPrints,
-                    !GoalPathMap, !VarSet, !VarTypes)
+                    !GoalIdMap, !VarSet, !VarTypes)
             )
         )
     ;
@@ -449,15 +449,15 @@ check_format_call_site(ModuleInfo, OptFormatCalls, ConjMaps, PredMap,
         true
     ).
 
-:- pred try_create_replacement_goal(module_info::in, goal_path::in,
+:- pred try_create_replacement_goal(module_info::in, goal_id::in,
     format_call_kind::in, string::in, prog_var::in,
     list(prog_var)::in, list(what_to_print)::in,
-    fc_goal_path_map::in, fc_goal_path_map::out,
+    fc_goal_id_map::in, fc_goal_id_map::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-try_create_replacement_goal(ModuleInfo, GoalPath, Kind,
+try_create_replacement_goal(ModuleInfo, GoalId, Kind,
         FormatString, StringVar, ValuesToDeleteVars,
-        WhatToPrints, !GoalPathMap, !VarSet, !VarTypes) :-
+        WhatToPrints, !GoalIdMap, !VarSet, !VarTypes) :-
     string.to_char_list(FormatString, FormatStringChars),
     VarsToPrint = list.map(project_var_to_print, WhatToPrints),
     % Note that every predicate or function that this code generates calls to
@@ -474,7 +474,7 @@ try_create_replacement_goal(ModuleInfo, GoalPath, Kind,
             AllToDeleteVars = [StringVar | ValuesToDeleteVars],
             FCOptGoalInfo = fc_opt_goal_info(ReplacementGoal,
                 set_tree234.list_to_set(AllToDeleteVars)),
-            svmap.det_insert(GoalPath, FCOptGoalInfo, !GoalPathMap)
+            svmap.det_insert(GoalId, FCOptGoalInfo, !GoalIdMap)
         ;
             % create_string_format_replacement does not (yet) recognize
             % all possible format strings. We cannot optimize the ones
@@ -497,7 +497,7 @@ try_create_replacement_goal(ModuleInfo, GoalPath, Kind,
             AllToDeleteVars = [StringVar | ValuesToDeleteVars],
             FCOptGoalInfo = fc_opt_goal_info(ReplacementGoal,
                 set_tree234.list_to_set(AllToDeleteVars)),
-            svmap.det_insert(GoalPath, FCOptGoalInfo, !GoalPathMap)
+            svmap.det_insert(GoalId, FCOptGoalInfo, !GoalIdMap)
         ;
             % create_string_format_replacement does not (yet) recognize
             % all possible format strings. We cannot optimize the ones
@@ -683,9 +683,9 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
                 Kind, StringVar, ValuesVar)
         ->
             Arity = pred_info_orig_arity(PredInfo),
-            GoalPath = goal_info_get_goal_path(GoalInfo),
+            GoalId = goal_info_get_goal_id(GoalInfo),
             Context = goal_info_get_context(GoalInfo),
-            FormatCallSite = format_call_site(GoalPath, StringVar, ValuesVar,
+            FormatCallSite = format_call_site(GoalId, StringVar, ValuesVar,
                 Kind, ModuleName, Name, Arity, Context, CurId),
             !:FormatCallSites = [FormatCallSite | !.FormatCallSites],
             set_tree234.insert_list([StringVar, ValuesVar], !RelevantVars)
@@ -885,23 +885,23 @@ alloc_id(ConjId, !Counter) :-
                 fcogi_unneeded_vars     :: set_tree234(prog_var)
             ).
 
-:- type fc_goal_path_map == map(goal_path, fc_opt_goal_info).
+:- type fc_goal_id_map == map(goal_id, fc_opt_goal_info).
 
-    % Traverse the goal, looking for call sites in !.GoalPathMap. If we
+    % Traverse the goal, looking for call sites in !.GoalIdMap. If we
     % find them, we replace them with the corresponding goal.
     %
 :- pred opt_format_call_sites_in_goal(hlds_goal::in, hlds_goal::out,
-    fc_goal_path_map::in, fc_goal_path_map::out,
+    fc_goal_id_map::in, fc_goal_id_map::out,
     set_tree234(prog_var)::in, set_tree234(prog_var)::out,
     set_tree234(prog_var)::in, set_tree234(prog_var)::out) is det.
 
-opt_format_call_sites_in_goal(Goal0, Goal, !GoalPathMap,
+opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
         !NeededVars, !ToDeleteVars) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     (
         GoalExpr0 = plain_call(_, _, _, _, _, _),
-        GoalPath = goal_info_get_goal_path(GoalInfo),
-        ( svmap.remove(GoalPath, OptGoalInfo, !GoalPathMap) ->
+        GoalId = goal_info_get_goal_id(GoalInfo),
+        ( svmap.remove(GoalId, OptGoalInfo, !GoalIdMap) ->
             OptGoalInfo = fc_opt_goal_info(ReplacementGoal, GoalToDeleteVars),
             Goal = ReplacementGoal,
             set_tree234.union(!.ToDeleteVars, GoalToDeleteVars, !:ToDeleteVars)
@@ -961,12 +961,12 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalPathMap,
         % XXX Check that this works for parallel conjunctions.
         GoalExpr0 = conj(ConjType, Conjuncts0),
         opt_format_call_sites_in_conj(Conjuncts0, Conjuncts,
-            !GoalPathMap, !NeededVars, !ToDeleteVars),
+            !GoalIdMap, !NeededVars, !ToDeleteVars),
         GoalExpr = conj(ConjType, Conjuncts),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = disj(Disjuncts0),
-        opt_format_call_sites_in_disj(Disjuncts0, Disjuncts, !GoalPathMap,
+        opt_format_call_sites_in_disj(Disjuncts0, Disjuncts, !GoalIdMap,
             !.NeededVars, [], NeededVarsSets,
             !.ToDeleteVars, [], ToDeleteVarsSets),
         !:NeededVars = set_tree234.union_list(NeededVarsSets),
@@ -975,7 +975,7 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalPathMap,
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
-        opt_format_call_sites_in_switch(Cases0, Cases, !GoalPathMap,
+        opt_format_call_sites_in_switch(Cases0, Cases, !GoalIdMap,
             !.NeededVars, [], NeededVarsSets,
             !.ToDeleteVars, [], ToDeleteVarsSets),
         !:NeededVars = set_tree234.union_list(NeededVarsSets),
@@ -984,13 +984,13 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalPathMap,
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        opt_format_call_sites_in_goal(Else0, Else, !GoalPathMap,
+        opt_format_call_sites_in_goal(Else0, Else, !GoalIdMap,
             !.NeededVars, NeededVarsBeforeElse,
             !.ToDeleteVars, ToDeleteVarsBeforeElse),
-        opt_format_call_sites_in_goal(Then0, Then, !GoalPathMap,
+        opt_format_call_sites_in_goal(Then0, Then, !GoalIdMap,
             !.NeededVars, NeededVarsBeforeThen,
             !.ToDeleteVars, ToDeleteVarsBeforeThen),
-        opt_format_call_sites_in_goal(Cond0, Cond, !GoalPathMap,
+        opt_format_call_sites_in_goal(Cond0, Cond, !GoalIdMap,
             NeededVarsBeforeThen, NeededVarsBeforeCond,
             ToDeleteVarsBeforeThen, ToDeleteVarsBeforeCond),
         set_tree234.union(NeededVarsBeforeCond, NeededVarsBeforeElse,
@@ -1004,7 +1004,7 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalPathMap,
         % SubGoal0 cannot generate anything in !.ToDeleteVars, but it can add
         % to both !:NeededVars and !:ToDeleteVars.
         opt_format_call_sites_in_goal(SubGoal0, SubGoal,
-            !GoalPathMap, !NeededVars, !ToDeleteVars),
+            !GoalIdMap, !NeededVars, !ToDeleteVars),
         GoalExpr = negation(SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
@@ -1019,7 +1019,7 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalPathMap,
             Goal = Goal0
         ;
             opt_format_call_sites_in_goal(SubGoal0, SubGoal,
-                !GoalPathMap, !NeededVars, !ToDeleteVars),
+                !GoalIdMap, !NeededVars, !ToDeleteVars),
             GoalExpr = scope(Reason, SubGoal),
             Goal = hlds_goal(GoalExpr, GoalInfo)
         )
@@ -1029,10 +1029,10 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalPathMap,
             ShortHand0 = atomic_goal(AtomicType, OuterVars, InnerVars,
                 OutputVars, MainGoal0, OrElseGoals0, OrElseInners),
             opt_format_call_sites_in_goal(MainGoal0, MainGoal,
-                !GoalPathMap, !.NeededVars, NeededVarsMain,
+                !GoalIdMap, !.NeededVars, NeededVarsMain,
                 !.ToDeleteVars, ToDeleteVarsMain),
             opt_format_call_sites_in_disj(OrElseGoals0, OrElseGoals,
-                !GoalPathMap, !.NeededVars, [], NeededVarsSets,
+                !GoalIdMap, !.NeededVars, [], NeededVarsSets,
                 !.ToDeleteVars, [], ToDeleteVarsSets),
             !:NeededVars =
                 set_tree234.union_list([NeededVarsMain | NeededVarsSets]),
@@ -1045,7 +1045,7 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalPathMap,
         ;
             ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
             opt_format_call_sites_in_goal(SubGoal0, SubGoal,
-                !GoalPathMap, !NeededVars, !ToDeleteVars),
+                !GoalIdMap, !NeededVars, !ToDeleteVars),
             ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
             GoalExpr = shorthand(ShortHand)
         ;
@@ -1059,63 +1059,63 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalPathMap,
 
 :- pred opt_format_call_sites_in_conj(
     list(hlds_goal)::in, list(hlds_goal)::out,
-    fc_goal_path_map::in, fc_goal_path_map::out,
+    fc_goal_id_map::in, fc_goal_id_map::out,
     set_tree234(prog_var)::in, set_tree234(prog_var)::out,
     set_tree234(prog_var)::in, set_tree234(prog_var)::out) is det.
 
-opt_format_call_sites_in_conj([], [], !GoalPathMap,
+opt_format_call_sites_in_conj([], [], !GoalIdMap,
         !NeededVars, !ToDeleteVars).
-opt_format_call_sites_in_conj([Goal0 | Goals0], [Goal | Goals], !GoalPathMap,
+opt_format_call_sites_in_conj([Goal0 | Goals0], [Goal | Goals], !GoalIdMap,
         !NeededVars, !ToDeleteVars) :-
     % We traverse conjunctions backwards.
-    opt_format_call_sites_in_conj(Goals0, Goals, !GoalPathMap,
+    opt_format_call_sites_in_conj(Goals0, Goals, !GoalIdMap,
         !NeededVars, !ToDeleteVars),
-    opt_format_call_sites_in_goal(Goal0, Goal, !GoalPathMap,
+    opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
         !NeededVars, !ToDeleteVars).
 
 :- pred opt_format_call_sites_in_disj(
     list(hlds_goal)::in, list(hlds_goal)::out,
-    fc_goal_path_map::in, fc_goal_path_map::out,
+    fc_goal_id_map::in, fc_goal_id_map::out,
     set_tree234(prog_var)::in,
     list(set_tree234(prog_var))::in, list(set_tree234(prog_var))::out,
     set_tree234(prog_var)::in,
     list(set_tree234(prog_var))::in, list(set_tree234(prog_var))::out)
     is det.
 
-opt_format_call_sites_in_disj([], [], !GoalPathMap,
+opt_format_call_sites_in_disj([], [], !GoalIdMap,
         _, !NeededVarsSets, _, !ToDeleteVarsSets).
-opt_format_call_sites_in_disj([Goal0 | Goals0], [Goal | Goals], !GoalPathMap,
+opt_format_call_sites_in_disj([Goal0 | Goals0], [Goal | Goals], !GoalIdMap,
         NeededVars0, !NeededVarsSets, ToDeleteVars0, !ToDeleteVarsSets) :-
     % The order of traversal does not matter for disjunctions, since the
     % disjuncts are independent. This order is more efficient.
-    opt_format_call_sites_in_goal(Goal0, Goal, !GoalPathMap,
+    opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
         NeededVars0, NeededVars, ToDeleteVars0, ToDeleteVars),
     !:NeededVarsSets = [NeededVars | !.NeededVarsSets],
     !:ToDeleteVarsSets = [ToDeleteVars | !.ToDeleteVarsSets],
-    opt_format_call_sites_in_disj(Goals0, Goals, !GoalPathMap,
+    opt_format_call_sites_in_disj(Goals0, Goals, !GoalIdMap,
         NeededVars0, !NeededVarsSets, ToDeleteVars0, !ToDeleteVarsSets).
 
 :- pred opt_format_call_sites_in_switch(list(case)::in, list(case)::out,
-    fc_goal_path_map::in, fc_goal_path_map::out,
+    fc_goal_id_map::in, fc_goal_id_map::out,
     set_tree234(prog_var)::in,
     list(set_tree234(prog_var))::in, list(set_tree234(prog_var))::out,
     set_tree234(prog_var)::in,
     list(set_tree234(prog_var))::in, list(set_tree234(prog_var))::out)
     is det.
 
-opt_format_call_sites_in_switch([], [], !GoalPathMap,
+opt_format_call_sites_in_switch([], [], !GoalIdMap,
         _, !NeededVarsSets, _, !ToDeleteVarsSets).
-opt_format_call_sites_in_switch([Case0 | Cases0], [Case | Cases], !GoalPathMap,
+opt_format_call_sites_in_switch([Case0 | Cases0], [Case | Cases], !GoalIdMap,
         NeededVars0, !NeededVarsSets, ToDeleteVars0, !ToDeleteVarsSets) :-
     % The order of traversal does not matter for switches, since the
     % switch arms are independent. This order is more efficient.
     Case0 = case(FirstConsId, LaterConsIds, Goal0),
-    opt_format_call_sites_in_goal(Goal0, Goal, !GoalPathMap,
+    opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
         NeededVars0, NeededVars, ToDeleteVars0, ToDeleteVars),
     !:NeededVarsSets = [NeededVars | !.NeededVarsSets],
     !:ToDeleteVarsSets = [ToDeleteVars | !.ToDeleteVarsSets],
     Case = case(FirstConsId, LaterConsIds, Goal),
-    opt_format_call_sites_in_switch(Cases0, Cases, !GoalPathMap,
+    opt_format_call_sites_in_switch(Cases0, Cases, !GoalIdMap,
         NeededVars0, !NeededVarsSets, ToDeleteVars0, !ToDeleteVarsSets).
 
 %-----------------------------------------------------------------------------%

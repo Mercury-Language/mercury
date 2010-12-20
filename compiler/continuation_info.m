@@ -265,14 +265,14 @@
                 port_context    :: prog_context,
                 port_type       :: trace_port,
                 port_is_hidden  :: bool,
-                port_path       :: goal_path,
+                port_path       :: forward_goal_path,
                 port_user       :: maybe(user_event_info),
                 port_label      :: layout_label_info
             ).
 
 :- type return_layout_info
     --->    return_layout_info(
-                assoc_list(code_addr, pair(prog_context, goal_path)),
+                assoc_list(code_addr, pair(prog_context, forward_goal_path)),
                 layout_label_info
             ).
 
@@ -451,9 +451,8 @@ maybe_process_proc_llds(Instructions, PredProcId, ModuleInfo, !ContInfo) :-
                 call_live_on_return     :: list(liveinfo),
                 call_context            :: term.context,
 
-                % The position of the call in the body; meaningful only if
-                % tracing is enabled.
-                call_goal_path          :: goal_path
+                % The position of the call in the body if tracing is enabled.
+                call_goal_path          :: maybe(forward_goal_path)
             ).
 
     % Process the list of instructions for this proc, adding
@@ -466,19 +465,20 @@ process_proc_llds(PredProcId, Instructions, WantReturnInfo, !GlobalData) :-
     % Get all the continuation info from the call instructions.
     global_data_get_proc_layout(!.GlobalData, PredProcId, ProcLayoutInfo0),
     Internals0 = ProcLayoutInfo0 ^ pli_internal_map,
-    GetCallInfo = (pred(Instr::in, Call::out) is semidet :-
-        Instr = llds_instr(llcall(Target, code_label(ReturnLabel), LiveInfo,
-            Context, GoalPath, _), _Comment),
-        Call = call_info(ReturnLabel, Target, LiveInfo, Context, GoalPath)
-    ),
-    list.filter_map(GetCallInfo, Instructions, Calls),
-
+    list.filter_map(get_call_info, Instructions, Calls),
     % Process the continuation label info.
     list.foldl(process_continuation(WantReturnInfo), Calls,
         Internals0, Internals),
-
     ProcLayoutInfo = ProcLayoutInfo0 ^ pli_internal_map := Internals,
     global_data_update_proc_layout(PredProcId, ProcLayoutInfo, !GlobalData).
+
+:- pred get_call_info(instruction::in, call_info::out) is semidet.
+
+get_call_info(Instr, Call) :-
+    Instr = llds_instr(Uinstr, _Comment),
+    Uinstr = llcall(Target, Return, LiveInfo, Context, GoalPath, _),
+    Return = code_label(ReturnLabel),
+    Call = call_info(ReturnLabel, Target, LiveInfo, Context, GoalPath).
 
 %-----------------------------------------------------------------------------%
 
@@ -509,27 +509,35 @@ process_continuation(WantReturnInfo, CallInfo, !Internals) :-
     ),
     (
         WantReturnInfo = yes,
-        convert_return_data(LiveInfoList, VarInfoSet, TypeInfoMap),
         (
-            Return0 = no,
-            Layout = layout_label_info(VarInfoSet, TypeInfoMap),
-            ReturnInfo = return_layout_info(
-                [Target - (Context - MaybeGoalPath)], Layout),
-            Return = yes(ReturnInfo)
+            MaybeGoalPath = no,
+            %  XXX We used to handle these situations by using an empty path.
+            %  XXX Should we throw an exception?
+            Return = Return0
         ;
-            % If a var is known to be dead on return from one call, it cannot
-            % be accessed on returning from the other calls that reach the same
-            % return address either.
-            Return0 = yes(ReturnInfo0),
-            ReturnInfo0 = return_layout_info(TargetsContexts0, Layout0),
-            Layout0 = layout_label_info(LV0, TV0),
-            set.intersect(LV0, VarInfoSet, LV),
-            map.intersect(set.intersect, TV0, TypeInfoMap, TV),
-            Layout = layout_label_info(LV, TV),
-            TargetContexts = [Target - (Context - MaybeGoalPath)
-                | TargetsContexts0],
-            ReturnInfo = return_layout_info(TargetContexts, Layout),
-            Return = yes(ReturnInfo)
+            MaybeGoalPath = yes(GoalPath),
+            convert_return_data(LiveInfoList, VarInfoSet, TypeInfoMap),
+            (
+                Return0 = no,
+                Layout = layout_label_info(VarInfoSet, TypeInfoMap),
+                ReturnInfo = return_layout_info(
+                    [Target - (Context - GoalPath)], Layout),
+                Return = yes(ReturnInfo)
+            ;
+                % If a var is known to be dead on return from one call,
+                % it cannot be accessed on returning from the other calls
+                % that reach the same return address either.
+                Return0 = yes(ReturnInfo0),
+                ReturnInfo0 = return_layout_info(TargetsContexts0, Layout0),
+                Layout0 = layout_label_info(LV0, TV0),
+                set.intersect(LV0, VarInfoSet, LV),
+                map.intersect(set.intersect, TV0, TypeInfoMap, TV),
+                Layout = layout_label_info(LV, TV),
+                TargetContexts = [Target - (Context - GoalPath)
+                    | TargetsContexts0],
+                ReturnInfo = return_layout_info(TargetContexts, Layout),
+                Return = yes(ReturnInfo)
+            )
         )
     ;
         WantReturnInfo = no,

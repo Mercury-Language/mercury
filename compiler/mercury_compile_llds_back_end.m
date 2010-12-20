@@ -50,9 +50,9 @@
 :- import_module backend_libs.rtti.
 :- import_module backend_libs.type_class_info.
 :- import_module backend_libs.type_ctor_info.
-:- import_module check_hlds.goal_path.
 :- import_module check_hlds.simplify.
 :- import_module hlds.arg_info.
+:- import_module hlds.goal_path.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
@@ -170,9 +170,6 @@ llds_backend_pass_by_phases(!HLDS, !GlobalData, !:LLDS, !DumpInfo, !IO) :-
 
     allocate_store_map(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 340, "store_map", !DumpInfo, !IO),
-
-    maybe_goal_paths(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 345, "precodegen", !DumpInfo, !IO),
 
     generate_llds_code_for_module(!.HLDS, Verbose, Stats, !GlobalData, !:LLDS,
         !IO),
@@ -370,14 +367,6 @@ llds_backend_pass_for_proc(PredInfo, !.ProcInfo, ProcId, PredId, !HLDS,
         "% Allocating storage locations for live vars in ",
         PredId, ProcId, !.HLDS, !IO),
     allocate_store_maps(final_allocation, !.HLDS, PredProcId, !ProcInfo),
-    globals.get_trace_level(Globals, TraceLevel),
-    ( given_trace_level_is_none(TraceLevel) = no ->
-        write_proc_progress_message("% Calculating goal paths in ",
-            PredId, ProcId, !.HLDS, !IO),
-        fill_goal_path_slots(!.HLDS, !ProcInfo)
-    ;
-        true
-    ),
     write_proc_progress_message("% Generating low-level (LLDS) code for ",
         PredId, ProcId, !.HLDS, !IO),
     generate_proc_code(PredInfo, !.ProcInfo, PredId, ProcId, !.HLDS,
@@ -526,23 +515,6 @@ allocate_store_map(Verbose, Stats, !HLDS, !IO) :-
         update_proc_ids(allocate_store_maps(final_allocation)), !HLDS),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
-
-:- pred maybe_goal_paths(bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
-
-maybe_goal_paths(Verbose, Stats, !HLDS, !IO) :-
-    module_info_get_globals(!.HLDS, Globals),
-    globals.get_trace_level(Globals, TraceLevel),
-    ( given_trace_level_is_none(TraceLevel) = no ->
-        maybe_write_string(Verbose, "% Calculating goal paths...", !IO),
-        maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(update_proc(fill_goal_path_slots),
-            !HLDS),
-        maybe_write_string(Verbose, " done.\n", !IO),
-        maybe_report_stats(Stats, !IO)
-    ;
-        true
-    ).
 
 :- pred generate_llds_code_for_module(module_info::in, bool::in, bool::in,
     global_data::in, global_data::out, list(c_procedure)::out,

@@ -299,12 +299,12 @@
             % *appears* to be unused by the following code.
 
     ;       llcall(code_addr, code_addr, list(liveinfo), term.context,
-                goal_path, call_model)
+                maybe(forward_goal_path), call_model)
             % llcall(Target, Continuation, _, _, _) is the same as
             % succip = Continuation; goto(Target).
             % The third argument is the live value info for the values live
             % on return. The fourth argument gives the context of the call.
-            % The fifth gives the goal path of the call in the body of the
+            % The fifth gives the goal id of the call in the body of the
             % procedure; it is meaningful only if execution tracing is enabled.
             % The last gives the code model of the called procedure, and if
             % it is model_non, says whether tail recursion elimination is

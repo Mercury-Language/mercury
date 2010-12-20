@@ -69,8 +69,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.goal_path.
+:- import_module hlds.goal_path.
 :- import_module hlds.hlds_goal.
 :- import_module libs.
 :- import_module libs.globals.
@@ -127,7 +126,7 @@ record_region_arguments_proc(ModuleInfo, PredId, RptaInfoTable,
             !FormalRegionArgTable),
 
         module_info_proc_info(ModuleInfo, PPId, ProcInfo0),
-        fill_goal_path_slots(ModuleInfo, ProcInfo0, ProcInfo),
+        fill_goal_path_slots_in_proc(ModuleInfo, ProcInfo0, ProcInfo),
         proc_info_get_goal(ProcInfo, Body),
         record_actual_region_arguments_goal(ModuleInfo, PPId,
             RptaInfoTable, ConstantRTable, DeadRTable, BornRTable, Body,

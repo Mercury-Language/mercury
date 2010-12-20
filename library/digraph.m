@@ -1,20 +1,20 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1999,2002-2007 The University of Melbourne.
+% Copyright (C) 1995-1999,2002-2007, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
-% 
+%
 % File: digraph.m
 % Main author: bromage, petdr
 % Stability: medium
-% 
+%
 % This module defines a data type representing directed graphs.  A directed
 % graph of type digraph(T) is logically equivalent to a set of vertices of
 % type T, and a set of edges of type pair(T).  The endpoints of each edge
 % must be included in the set of vertices; cycles and loops are allowed.
-% 
+%
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
@@ -352,19 +352,17 @@
 
 :- type digraph(T)
     --->    digraph(
+                % Next unallocated key number.
                 next_key            :: int,
-                                        % Next unallocated key number.
 
+                % Maps vertices to their keys.
                 vertex_map          :: bimap(T, digraph_key(T)),
-                                        % Maps vertices to their keys.
 
+                % Maps each vertex to its direct successors.
                 fwd_map             :: key_set_map(T),
-                                        % Maps each vertex to its direct
-                                        % successors.
 
+                % Maps each vertex to its direct predecessors.
                 bwd_map             :: key_set_map(T)
-                                        % Maps each vertex to its direct
-                                        % predecessors.
             ).
 
 %-----------------------------------------------------------------------------%
@@ -462,8 +460,8 @@ digraph.add_edge(X, Y, !.G) = !:G :-
 digraph.add_edge(X, Y, !G) :-
     X = digraph_key(XI),
     Y = digraph_key(YI),
-    !:G = !.G ^ fwd_map := key_set_map_add(!.G ^ fwd_map, XI, Y),
-    !:G = !.G ^ bwd_map := key_set_map_add(!.G ^ bwd_map, YI, X).
+    !G ^ fwd_map := key_set_map_add(!.G ^ fwd_map, XI, Y),
+    !G ^ bwd_map := key_set_map_add(!.G ^ bwd_map, YI, X).
 
 digraph.add_vertices_and_edge(VX, VY, !.G) = !:G :-
     digraph.add_vertices_and_edge(VX, VY, !G).
@@ -495,8 +493,8 @@ digraph.delete_edge(X, Y, !.G) = !:G :-
 digraph.delete_edge(X, Y, !G) :-
     X = digraph_key(XI),
     Y = digraph_key(YI),
-    !:G = !.G ^ fwd_map := key_set_map_delete(!.G ^ fwd_map, XI, Y),
-    !:G = !.G ^ bwd_map := key_set_map_delete(!.G ^ bwd_map, YI, X).
+    !G ^ fwd_map := key_set_map_delete(!.G ^ fwd_map, XI, Y),
+    !G ^ bwd_map := key_set_map_delete(!.G ^ bwd_map, YI, X).
 
 digraph.delete_assoc_list(Edges, !.G) = !:G :-
     digraph.delete_assoc_list(Edges, !G).
@@ -763,6 +761,7 @@ accumulate_digraph_key_set(KMap, X, !Set) :-
 
 %-----------------------------------------------------------------------------%
 
+digraph.is_dag(G) :-
     % Traverses the digraph depth-first, keeping track of all ancestors.
     % Fails if we encounter an ancestor during the traversal, otherwise
     % succeeds.
@@ -779,7 +778,6 @@ accumulate_digraph_key_set(KMap, X, !Set) :-
     %
     % (<=) If we encounter an ancestor in any traversal, then we have a cycle.
     %
-digraph.is_dag(G) :-
     digraph.keys(G, Keys),
     foldl(digraph.is_dag_2(G, []), Keys, init, _).
 
@@ -842,22 +840,21 @@ digraph.reachable_from(G, Keys0, !Comp) :-
 
 %-----------------------------------------------------------------------------%
 
-    % digraph cliques
-    %   take a digraph and return the set of strongly connected
-    %   components
-    %
-    %   Works using the following algorithm:
-    %       1. Reverse the digraph ie G'
-    %       2. Traverse G in reverse depth-first order.  From the first vertex
-    %          do a DFS on G'; all vertices visited are a member of the clique.
-    %       3. From the next non-visited vertex do a DFS on G', not including
-    %          visited vertices.  This is the next clique.
-    %       4. Repeat step 3 until all vertices visited.
-
 digraph.cliques(G) = Cliques :-
     digraph.cliques(G, Cliques).
 
 digraph.cliques(G, Cliques) :-
+    % Take a digraph and return the set of strongly connected components.
+    %
+    % Works using the following algorithm:
+    % 1. Reverse the digraph.
+    % 2. Traverse G in reverse depth-first order. From the first vertex
+    %    do a DFS on the reversed G; all vertices visited are a member
+    %    of the clique.
+    % 3. From the next non-visited vertex do a DFS on the reversed G,
+    %    not including visited vertices. This is the next clique.
+    % 4. Repeat step 3 until all vertices visited.
+
     digraph.dfsrev(G, DfsRev),
     digraph.inverse(G, GInv),
     set.init(Cliques0),
@@ -870,7 +867,7 @@ digraph.cliques(G, Cliques) :-
 
 digraph.cliques_2([], _, _, !Cliques).
 digraph.cliques_2([X | Xs0], GInv, !.Visited, !Cliques) :-
-    % Do a DFS on G', starting from X, but not including visited vertices.
+    % Do a DFS on GInv, starting from X, but not including visited vertices.
     digraph.dfs_2(GInv, X, !Visited, [], CliqueList),
 
     % Insert the cycle into the clique set.
@@ -956,18 +953,15 @@ digraph.check_tsort(G, Vis0, [X | Xs]) :-
 
 %-----------------------------------------------------------------------------%
 
-    % digraph.atsort returns a topological sorting of the cliques in a digraph.
-    %
-    % The algorithm used is described in:
-    %
-    %   R. E. Tarjan, "Depth-first search and
-    %   linear graph algorithms,"  SIAM Journal
-    %   on Computing, 1, 2 (1972).
-
 digraph.atsort(G) = ATsort :-
     digraph.atsort(G, ATsort).
 
 digraph.atsort(G, ATsort) :-
+    % digraph.atsort returns a topological sorting of the cliques in a digraph.
+    %
+    % The algorithm used is described in R. E. Tarjan, "Depth-first search
+    % and linear graph algorithms,"  SIAM Journal on Computing, 1, 2 (1972).
+
     digraph.dfsrev(G, DfsRev),
     digraph.inverse(G, GInv),
     init(Vis),
@@ -1001,22 +995,21 @@ digraph.sc(G, Sc) :-
 
 %-----------------------------------------------------------------------------%
 
-    % digraph.tc returns the transitive closure of a digraph.
-    % We use this procedure:
-    %
-    %   - Compute the reflexive transitive closure.
-    %   - Find the "fake reflexives", that is, the set of vertices x for
-    %     which (x,x) is not an edge in G+.  This is done by noting that
-    %     G+ = G . G* (where '.' denotes composition).  Therefore x is a
-    %     fake reflexive iff there is no y such that (x,y) is an edge in G
-    %     and (y,x) is an edge in G*.
-    %   - Remove those edges from the reflexive transitive closure
-    %     computed above.
-
 digraph.tc(G) = Tc :-
     digraph.tc(G, Tc).
 
 digraph.tc(G, Tc) :-
+    % digraph.tc returns the transitive closure of a digraph.
+    % We use this procedure:
+    %
+    % - Compute the reflexive transitive closure.
+    % - Find the "fake reflexives", that is, the set of vertices x for which
+    %   (x,x) is not an edge in G+. This is done by noting that G+ = G . G*
+    %   (where '.' denotes composition). Therefore x is a fake reflexive
+    %   iff there is no y such that (x,y) is an edge in G and (y,x) is an edge
+    %   in G*.
+    % - Remove those edges from the reflexive transitive closure
+    %   computed above.
     digraph.rtc(G, Rtc),
 
     % Find the fake reflexives.
@@ -1044,6 +1037,10 @@ digraph.detect_fake_reflexives(G, Rtc, [X | Xs], !Fakes) :-
 
 %-----------------------------------------------------------------------------%
 
+digraph.rtc(G) = Rtc :-
+    digraph.rtc(G, Rtc).
+
+digraph.rtc(G, !:Rtc) :-
     % digraph.rtc returns the reflexive transitive closure of a digraph.
     %
     % Note: This is not the most efficient algorithm (in the sense of minimal
@@ -1056,10 +1053,6 @@ digraph.detect_fake_reflexives(G, Rtc, [X | Xs], !Fakes) :-
     % sorted order, compute the RTC for each element in the clique and then
     % add the appropriate edges.
 
-digraph.rtc(G) = Rtc :-
-    digraph.rtc(G, Rtc).
-
-digraph.rtc(G, !:Rtc) :-
     digraph.dfs(G, Dfs),
     init(Vis),
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2006 The University of Melbourne.
+% Copyright (C) 2001-2006, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -79,7 +79,7 @@
 
 %---------------------------------------------------------------------------%
 
-init_equiv_vars = equiv_vars(map__init).
+init_equiv_vars = equiv_vars(map.init).
 
 add_equality(VarA, VarB, EQVars0) = EQVars :-
 	( LeaderA = EQVars0 ^ leader(VarA) ->
@@ -172,7 +172,7 @@ det_leader(Var, EQVars) = ( L = EQVars ^ leader(Var) -> L ; Var).
 empty(equiv_vars(LM)) :- is_empty(LM).
 
 equiv_vars(MA) * equiv_vars(MB) = equiv_vars(M) :-
-	M1 = map__foldl(func(Var, LeaderA, M0) =
+	M1 = map.foldl(func(Var, LeaderA, M0) =
 		( LeaderB = M0 ^ elem(Var) ->
 			( compare(<, LeaderA, LeaderB) ->
 				M0 ^ elem(LeaderB) := LeaderA
@@ -190,7 +190,7 @@ equiv_vars(MA) * equiv_vars(MB) = equiv_vars(M) :-
 :- func normalise_leader_map(leader_map(T)) = leader_map(T).
 
 normalise_leader_map(Map) =
-	map__foldl(func(Var, Leader, M0) =
+	map.foldl(func(Var, Leader, M0) =
 		( Leader = Var ->
 			M0
 		; LeaderLeader = M0 ^ elem(Leader) ->
@@ -198,12 +198,12 @@ normalise_leader_map(Map) =
 		;
 			( M0 ^ elem(Var) := Leader ) ^ elem(Leader) := Leader
 		),
-		Map, map__init).
+		Map, map.init).
 
 EA + EB = E :-
-	VarsA = set__sorted_list_to_set(map__sorted_keys(EA ^ leader_map)),
-	VarsB = set__sorted_list_to_set(map__sorted_keys(EB ^ leader_map)),
-	Vars = set__to_sorted_list(VarsA `intersect` VarsB),
+	VarsA = set.sorted_list_to_set(map.sorted_keys(EA ^ leader_map)),
+	VarsB = set.sorted_list_to_set(map.sorted_keys(EB ^ leader_map)),
+	Vars = set.to_sorted_list(VarsA `intersect` VarsB),
 	disj_2(Vars, EA, EB, init_equiv_vars, E).
 
 :- pred disj_2(list(var(T))::in, equiv_vars(T)::in, equiv_vars(T)::in,
@@ -242,7 +242,7 @@ disj_3([V | Vs0], Vs, L, LA, LB, Match, EA, EB) -->
 % work for the purpose we use it for in 'mode_robdd:+' since it never removes
 % any equivalences which it shouldn't.
 EA `difference` EB = E :-
-	Vars = map__sorted_keys(EA ^ leader_map),
+	Vars = map.sorted_keys(EA ^ leader_map),
 	diff_2(Vars, EA, EB, init_equiv_vars, E).
 
 :- pred diff_2(list(var(T))::in, equiv_vars(T)::in, equiv_vars(T)::in,
@@ -280,10 +280,10 @@ diff_3([V | Vs0], Vs, L, LA, LB, Match, EA, EB) -->
 delete(E0, V) = E :-
 	( L = E0 ^ leader(V) ->
 		( L = V ->
-			M0 = map__delete(E0 ^ leader_map, V),
+			M0 = map.delete(E0 ^ leader_map, V),
 			Vars = solutions.solutions(map.inverse_search(M0, V)),
 			( Vars = [NewLeader | _] ->
-				M = list__foldl(
+				M = list.foldl(
 					func(V1, M1) =
 						M1 ^ elem(V1) := NewLeader,
 					Vars, M0),
@@ -292,23 +292,23 @@ delete(E0, V) = E :-
 				error("mode_robdd:equiv_vars:delete: malformed leader map")
 			)
 		;
-			E = equiv_vars(map__delete(E0 ^ leader_map, V))
+			E = equiv_vars(map.delete(E0 ^ leader_map, V))
 		)
 	;
 		E = E0
 	).
 
 restrict_threshold(Th, E) = equiv_vars(normalise_leader_map(LM)) :-
-	LL0 = map__to_assoc_list(E ^ leader_map),
-	list__takewhile((pred((V - _)::in) is semidet :-
+	LL0 = map.to_assoc_list(E ^ leader_map),
+	list.takewhile((pred((V - _)::in) is semidet :-
 		\+ compare(>, V, Th)
 		), LL0, LL, _),
-	LM = map__from_assoc_list(LL).
+	LM = map.from_assoc_list(LL).
 
 % XXX not terribly efficient.
 filter(P, equiv_vars(LM0)) = equiv_vars(LM) :-
-	list__filter(P, map__keys(LM0), _, Vars),
-	LM = list__foldl(func(V, M) = delete(M, V), Vars, LM0).
+	list.filter(P, map.keys(LM0), _, Vars),
+	LM = list.foldl(func(V, M) = delete(M, V), Vars, LM0).
 
 normalise_known_equivalent_vars(Changed, Vars0, Vars, EQVars0, EQVars) :-
 	( ( empty(Vars0) ; empty(EQVars0) ) ->
@@ -352,7 +352,7 @@ normalise_known_equivalent_vars_2(Var, Leader, {Changed0, Vars0, LM0},
 	).
 
 label(E, True0, True, False0, False) :-
-	map__foldl2(
+	map.foldl2(
 		(pred(V::in, L::in, T0::in, T::out, F0::in, F::out) is det :-
 			( T0 `contains` L ->
 				T = T0 `insert` V,
@@ -367,7 +367,7 @@ label(E, True0, True, False0, False) :-
 		), E ^ leader_map, True0, True, False0, False).
 
 equivalent_vars_in_robdd(Robdd) = LeaderMap :-
-	some_vars(LeaderMap) = robdd__equivalent_vars(Robdd).
+	some_vars(LeaderMap) = robdd.equivalent_vars(Robdd).
 
 remove_equiv(EQVars, Robdd) =
 	( is_empty(EQVars ^ leader_map) ->

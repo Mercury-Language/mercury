@@ -145,6 +145,9 @@
 :- pred relation.lookup_to(relation(T)::in, relation_key::in,
     set(relation_key)::out) is det.
 
+    % relation.lookup_to returns the set of elements x such that xRy,
+    % given some y.
+    %
 :- func relation.lookup_key_set_to(relation(T), relation_key)
     = relation_key_set.
 :- pred relation.lookup_key_set_to(relation(T)::in,
@@ -498,8 +501,6 @@ relation.lookup_key_set_from(R, U) = Vs :-
 relation.lookup_to(R, U, to_set(Vs)) :-
     relation.lookup_key_set_to(R, U, Vs).
 
-    % relation.lookup_to returns the set of elements
-    % x such that xRy, given some y.
 relation.lookup_key_set_to(Rel, relation_key(V), Us) :-
     Rel = relation(_Key, _ElMap, _Fwd, Bwd),
     ( map.search(Bwd, V, Us0) ->
@@ -560,8 +561,6 @@ accumulate_with_key(RelKey, U, !AL) :-
 
 %------------------------------------------------------------------------------%
 
-    % relation.from_assoc_list turns a list of pairs of
-    % elements into a relation.
 relation.from_assoc_list(AL, Rel) :-
     relation.init_internal(Rel0),
     Rel = list.foldl(
@@ -715,10 +714,10 @@ relation.is_dag(R) :-
     foldl(relation.is_dag_2(R, Visit), DomList, AllVisit, _).
 
 :- pred relation.is_dag_2(relation(T)::in, relation_key_set::in,
-    relation_key::in, relation_key_set::in, relation_key_set::out)
-    is semidet.
+    relation_key::in, relation_key_set::in, relation_key_set::out) is semidet.
 
-    % Provided that we never encounter a node that we've visited before
+relation.is_dag_2(Rel, Visit, Node, !AllVisited) :-
+    % Provided that we never encounter a node that we have visited before
     % during the current DFS, the graph isn't cyclic.
     % NB It is possible that we have visited a node before while doing a
     % DFS from another node.
@@ -729,8 +728,7 @@ relation.is_dag(R) :-
     %          1
     %
     % 1 will be visited by a DFS from both 2 and 3.
-    %
-relation.is_dag_2(Rel, Visit, Node, !AllVisited) :-
+
     ( contains(Visit, Node) ->
         fail
     ; contains(!.AllVisited, Node) ->
@@ -787,18 +785,18 @@ relation.reachable_from(Rel, Q0, !Set) :-
 %------------------------------------------------------------------------------%
 
 relation.cliques(Rel, Cliques) :-
-    % Relation cliques takes a relation and returns the set of strongly
-    % connected components.
+    % relation.cliques takes a relation and returns the set of strongly
+    % connected components of that relation.
     %
     % It works using the following algorith.
-    % 1. Topologically sort the nodes.  Then number the nodes so the
-    %    highest num is the first node in the topological sort.
-    % 2. Reverse the relation, i.e. generate Rel'.
-    % 3. Starting from the highest numbered node do a DFS on Rel'.
-    %    All the nodes visited are a member of the cycle.
-    % 4. From the next highest non-visited node do a DFS on Rel'
+    % 1. Topologically sort the nodes. Then number the nodes so that
+    %    the highest number is the first node in the topological sort.
+    % 2. Compute the inverse of the relation, i.e. generate RelInv.
+    % 3. Starting from the highest numbered node, do a depth first search (DFS)
+    %    on Rel'. All the nodes visited are a member of the cycle.
+    % 4. From the next highest non-visited node do a DFS on RelInv
     %    (not including visited nodes). This is the next cycle.
-    % 5. Repeat step 4 until all nodes visited.
+    % 5. Repeat step 4 until all nodes have been visited.
 
     % Effectively assigns a numbering to the nodes.
     relation.dfsrev(Rel, DfsRev),
@@ -814,7 +812,7 @@ relation.cliques(Rel, Cliques) :-
 
 relation.cliques_2([], _, _, !Cliques).
 relation.cliques_2([H | T0], RelInv, Visit0, !Cliques) :-
-    % Do a DFS on R'
+    % Do a DFS on RelInv.
     relation.dfs_2(RelInv, H, Visit0, Visit, [], StrongComponent),
 
     % Insert the cycle into the clique set.
@@ -896,8 +894,8 @@ relation.check_tsort(Rel, Vis, [X | Xs]) :-
 %------------------------------------------------------------------------------%
 
 relation.atsort(Rel, ATsort) :-
-    % relation.atsort returns a topological sorting
-    % of the cliques in a relation.
+    % relation.atsort returns a topological sorting of the cliques
+    % in the given relation.
     %
     % The algorithm used is described in:
     %

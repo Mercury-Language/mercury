@@ -63,7 +63,7 @@
     % Perform structure reuse analysis on the procedures defined in the
     % current module.
     %
-:- pred structure_reuse_analysis(module_info::in, module_info::out,
+:- pred perform_structure_reuse_analysis(module_info::in, module_info::out,
     io::di, io::uo) is det.
 
     % Write all the reuse information concerning the specified predicate as
@@ -97,7 +97,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.goal_path.
+:- import_module hlds.goal_path.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.passes_aux.
@@ -125,6 +125,7 @@
 :- import_module bimap.
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -136,7 +137,7 @@
 
 %-----------------------------------------------------------------------------%
 
-structure_reuse_analysis(!ModuleInfo, !IO):-
+perform_structure_reuse_analysis(!ModuleInfo, !IO):-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
 
@@ -172,7 +173,7 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
         !:ReuseTable = ReuseTable0,
 
         % Pre-annotate each of the goals with "Local Forward Use" and
-        % "Local Backward Use" information, and fill in all the goal_path slots
+        % "Local Backward Use" information, and fill in all the goal_id slots
         % as well.
         trace [io(!IO)] (
             maybe_write_string(VeryVerbose,
@@ -181,8 +182,13 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
         process_all_nonimported_procs(update_proc(annotate_in_use_information),
             !ModuleInfo),
         trace [io(!IO)] (
-            maybe_write_string(VeryVerbose, "done.\n", !IO)
+            maybe_write_string(VeryVerbose, "done.\n", !IO),
+            maybe_write_string(VeryVerbose,
+                "% Reuse table before intermediate reuse:\n", !IO),
+            reuse_as_table_maybe_dump(VeryVerbose, !.ModuleInfo, !.ReuseTable,
+                !IO)
         ),
+
 
         % Create copies of externally requested procedures.  This must be done
         % after the in-use annotations have been added to the procedures being
@@ -192,6 +198,10 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
 
         % Determine information about possible direct reuses.
         trace [io(!IO)] (
+            maybe_write_string(VeryVerbose,
+                "% Reuse table after intermediate reuse:\n", !IO),
+            reuse_as_table_maybe_dump(VeryVerbose, !.ModuleInfo, !.ReuseTable,
+                !IO),
             maybe_write_string(VeryVerbose, "% Direct reuse...\n", !IO)
         ),
         direct_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable),
@@ -220,8 +230,8 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
             !ReuseTable, !ModuleInfo, DepProcs0, DepProcs,
             IntermodRequests0, IntermodRequests),
 
-        % Create reuse versions of procedures.  Update goals to reuse cells and
-        % call reuse versions of procedures.
+        % Create reuse versions of procedures.  Update goals to reuse cells
+        % and call reuse versions of procedures.
         create_reuse_procedures(!ReuseTable, !ModuleInfo),
 
         ReuseTable = !.ReuseTable
@@ -746,7 +756,7 @@ save_reuse_in_module_info(PPId, ReuseAs_Status, !ModuleInfo) :-
 annotate_in_use_information(ModuleInfo, !ProcInfo) :-
     forward_use_information(!ProcInfo),
     backward_use_information(ModuleInfo, !ProcInfo),
-    fill_goal_path_slots(ModuleInfo, !ProcInfo).
+    fill_goal_path_slots_in_proc(ModuleInfo, !ProcInfo).
 
 %-----------------------------------------------------------------------------%
 %
