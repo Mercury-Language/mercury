@@ -37,8 +37,8 @@
                 message_type        :: message_type
             ).
 
-    % The 'importance' of a message,  Debug messages are not covered here since
-    % they should be implemented via trace goals. neither are critical messages
+    % The 'importance' of a message. Debug messages are not covered here since
+    % they should be implemented via trace goals. Neither are critical messages
     % since we use exceptions in that case.
     %
 :- type message_level
@@ -48,10 +48,10 @@
     ;       message_error.
 
 :- type program_location
-    --->    proc(string_proc_label)
-    ;       goal(string_proc_label, goal_path)
-    ;       clique(clique_ptr)
-    ;       call_site_dynamic(call_site_dynamic_ptr).
+    --->    pl_proc(string_proc_label)
+    ;       pl_goal(string_proc_label, reverse_goal_path)
+    ;       pl_clique(clique_ptr)
+    ;       pl_csd(call_site_dynamic_ptr).
 
 %-----------------------------------------------------------------------------%
 
@@ -77,7 +77,6 @@
     % type 'message_type'.
     %
 :- type message_type
-
     --->    info_found_candidate_conjunction
             % A candidate parallel conjunction has been found.
 
@@ -212,27 +211,36 @@ message_to_string(message(Location, MessageType), String) :-
         indent(1) ++ MessageStr ++ singleton("\n"),
     append_list(cord.list(Cord), String).
 
-location_to_string(Level, proc(ProcLabel), String) :-
-    print_proc_label_to_string(ProcLabel, ProcLabelString),
-    String = indent(Level) ++ singleton("Proc: ") ++
-        singleton(ProcLabelString) ++ singleton("\n").
-location_to_string(Level, goal(ProcLabel, GoalPath), String) :-
-    ( empty_goal_path(GoalPath) ->
-        GoalPathString = singleton("Root goal")
+location_to_string(Level, Location, String) :-
+    (
+        Location = pl_proc(ProcLabel),
+        print_proc_label_to_string(ProcLabel, ProcLabelString),
+        String = indent(Level) ++ singleton("Proc: ") ++
+            singleton(ProcLabelString) ++ singleton("\n")
     ;
-        GoalPathString =
-            singleton("Goal: ") ++ singleton(goal_path_to_string(GoalPath))
-    ),
-    location_to_string(Level, proc(ProcLabel), FirstLine),
-    SecondLine = indent(Level) ++ GoalPathString ++ singleton("\n"),
-    String = FirstLine ++ SecondLine.
-location_to_string(Level, clique(clique_ptr(Id)), String) :-
-    format("clique %d", [i(Id)], String0),
-    String = indent(Level) ++ singleton(String0).
-location_to_string(Level, call_site_dynamic(CSDPtr), String) :-
-    CSDPtr = call_site_dynamic_ptr(CSDNum),
-    format("call site dynamic %d", [i(CSDNum)], String0),
-    String = indent(Level) ++ singleton(String0).
+        Location = pl_goal(ProcLabel, RevGoalPath),
+        location_to_string(Level, pl_proc(ProcLabel), FirstLine),
+        RevGoalPath = rgp(RevGoalSteps),
+        (
+            RevGoalSteps = [],
+            GoalPathString = singleton("Root goal")
+        ;
+            RevGoalSteps = [_ | _],
+            GoalPathString = singleton("Goal: ") ++
+                singleton(rev_goal_path_to_string(RevGoalPath))
+        ),
+        SecondLine = indent(Level) ++ GoalPathString ++ singleton("\n"),
+        String = FirstLine ++ SecondLine
+    ;
+        Location = pl_clique(clique_ptr(Id)),
+        format("clique %d", [i(Id)], String0),
+        String = indent(Level) ++ singleton(String0)
+    ;
+        Location = pl_csd(CSDPtr),
+        CSDPtr = call_site_dynamic_ptr(CSDNum),
+        format("call site dynamic %d", [i(CSDNum)], String0),
+        String = indent(Level) ++ singleton(String0)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -260,32 +268,35 @@ message_level_to_int(message_error) = 1.
 
 :- func message_type_to_level(message_type) = message_level.
 
-message_type_to_level(info_found_candidate_conjunction) =
-    message_info.
-message_type_to_level(info_found_conjs_above_callsite_threshold(_)) =
-    message_info.
-message_type_to_level(info_found_n_conjunctions_with_positive_speedup(_)) =
-    message_info.
-message_type_to_level(info_split_conjunction_into_partitions(_)) = message_info.
-message_type_to_level(notice_duplicate_instantiation(_)) = message_notice.
-message_type_to_level(notice_callpair_has_more_than_one_dependant_var) =
-    message_notice.
-message_type_to_level(notice_partition_does_not_have_costly_calls(_, _)) =
-    message_notice.
-message_type_to_level(notice_candidate_conjunction_not_det(_)) =
-    message_notice.
-message_type_to_level(warning_cannot_lookup_proc_defn) = message_warning.
-message_type_to_level(warning_cannot_compute_procrep_coverage_fallback(_)) =
-    message_warning.
-message_type_to_level(warning_cannot_compute_cost_of_recursive_calls(_)) =
-    message_warning.
-message_type_to_level(warning_cannot_compute_first_use_time(_)) =
-    message_warning.
-message_type_to_level(error_extra_proc_dynamics_in_clique_proc) =
-    message_error.
-message_type_to_level(error_coverage_procrep_error(_)) =
-    message_error.
-message_type_to_level(error_exception_thrown(_)) = message_error.
+message_type_to_level(MsgType) = MsgLevel :-
+    (
+        ( MsgType = info_found_candidate_conjunction
+        ; MsgType = info_found_conjs_above_callsite_threshold(_)
+        ; MsgType = info_found_n_conjunctions_with_positive_speedup(_)
+        ; MsgType = info_split_conjunction_into_partitions(_)
+        ),
+        MsgLevel = message_info
+    ;
+        ( MsgType = notice_duplicate_instantiation(_)
+        ; MsgType = notice_callpair_has_more_than_one_dependant_var
+        ; MsgType = notice_partition_does_not_have_costly_calls(_, _)
+        ; MsgType = notice_candidate_conjunction_not_det(_)
+        ),
+        MsgLevel = message_notice
+    ;
+        ( MsgType = warning_cannot_lookup_proc_defn
+        ; MsgType = warning_cannot_compute_procrep_coverage_fallback(_)
+        ; MsgType = warning_cannot_compute_cost_of_recursive_calls(_)
+        ; MsgType = warning_cannot_compute_first_use_time(_)
+        ),
+        MsgLevel = message_warning
+    ;
+        ( MsgType = error_extra_proc_dynamics_in_clique_proc
+        ; MsgType = error_coverage_procrep_error(_)
+        ; MsgType = error_exception_thrown(_)
+        ),
+        MsgLevel = message_error
+    ).
 
 %-----------------------------------------------------------------------------%
 

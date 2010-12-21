@@ -168,13 +168,14 @@ do_write_goal(Info, Goal, ModuleInfo, VarSet,
         true
     ),
     ( string.contains_char(DumpOptions, 'P') ->
-        Path = goal_info_get_goal_path(GoalInfo),
-        ( Path = empty_goal_path ->
+        GoalId = goal_info_get_goal_id(GoalInfo),
+        GoalId = goal_id(GoalIdNum),
+        ( GoalIdNum < 0 ->
             true
         ;
             write_indent(Indent, !IO),
-            io.write_string("% goal path: ", !IO),
-            io.write_string(goal_path_to_string(Path), !IO),
+            io.write_string("% goal id: ", !IO),
+            io.write_int(GoalIdNum, !IO),
             io.write_string("\n", !IO)
         )
     ;

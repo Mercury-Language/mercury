@@ -203,7 +203,7 @@
     llds_code::out, code_info::in, code_info::out) is det.
 
 :- pred generate_tailrec_event_code(trace_info::in,
-    assoc_list(prog_var, arg_info)::in, goal_path::in, prog_context::in,
+    assoc_list(prog_var, arg_info)::in, goal_id::in, prog_context::in,
     llds_code::out, label::out, code_info::in, code_info::out) is det.
 
 :- type external_event_info
@@ -246,6 +246,7 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
+:- import_module hlds.goal_path.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.instmap.
@@ -273,22 +274,25 @@
 :- type trace_port_info
     --->    port_info_external
     ;       port_info_tailrec_call(
-                goal_path,      % The path of the tail recursive call.
+                forward_goal_path,
+                % The id of the tail recursive call.
                 assoc_list(prog_var, arg_info)
-                                % The list of arguments of this call.
+                % The list of arguments of this call.
             )
     ;       port_info_internal(
-                goal_path,      % The path of the goal whose start
-                                % this port represents.
-                set(prog_var)   % The pre-death set of this goal.
+                forward_goal_path,
+                % The id of the goal whose start this port represents.
+                set(prog_var)
+                % The pre-death set of this goal.
             )
     ;       port_info_negation_end(
-                goal_path       % The path of the goal whose end
-                                % (one way or another) this port
-                                % represents.
+                forward_goal_path
+                % The id of the goal whose end (one way or another)
+                % this port represents.
             )
     ;       port_info_user(
-                goal_path       % The path of the goal.
+                forward_goal_path
+                % The id of the goal.
             )
     ;       port_info_nondet_foreign_proc.
 
@@ -607,13 +611,13 @@ trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, MaybeTailRecLabel,
 
 generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
     CodeModel = get_proc_model(CI),
-    MaybeFromFullSlot  = TraceInfo ^ from_full_lval,
-    MaybeIoSeqSlot     = TraceInfo ^ io_seq_lval,
-    MaybeTrailLvals    = TraceInfo ^ trail_lvals,
-    MaybeMaxfrLval     = TraceInfo ^ maxfr_lval,
-    MaybeCallTableLval = TraceInfo ^ call_table_tip_lval,
-    MaybeTailRecInfo   = TraceInfo ^ tail_rec_info,
-    MaybeRedoLabel     = TraceInfo ^ redo_label,
+    MaybeFromFullSlot  = TraceInfo ^ ti_from_full_lval,
+    MaybeIoSeqSlot     = TraceInfo ^ ti_io_seq_lval,
+    MaybeTrailLvals    = TraceInfo ^ ti_trail_lvals,
+    MaybeMaxfrLval     = TraceInfo ^ ti_maxfr_lval,
+    MaybeCallTableLval = TraceInfo ^ ti_call_table_tip_lval,
+    MaybeTailRecInfo   = TraceInfo ^ ti_tail_rec_info,
+    MaybeRedoLabel     = TraceInfo ^ ti_redo_label,
     event_num_slot(CodeModel, EventNumLval),
     call_num_slot(CodeModel, CallNumLval),
     call_depth_slot(CodeModel, CallDepthLval),
@@ -745,7 +749,7 @@ trace_prepare_for_call(CI, TraceCode) :-
     CodeModel = get_proc_model(CI),
     (
         MaybeTraceInfo = yes(TraceInfo),
-        MaybeFromFullSlot = TraceInfo ^ from_full_lval,
+        MaybeFromFullSlot = TraceInfo ^ ti_from_full_lval,
         call_depth_slot(CodeModel, CallDepthLval),
         stackref_to_string(CallDepthLval, CallDepthStr),
         (
@@ -770,9 +774,11 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
     (
         MaybeTraceInfo = yes(TraceInfo),
         Goal = hlds_goal(_, GoalInfo),
-        GoalPath = goal_info_get_goal_path(GoalInfo),
+        GoalId = goal_info_get_goal_id(GoalInfo),
+        get_containing_goal_map_det(!.CI, ContainingGoalMap),
+        map.lookup(ContainingGoalMap, GoalId, ContainingGoal),
         (
-            LastStep = goal_path_get_last(GoalPath),
+            ContainingGoal = containing_goal(_, LastStep),
             (
                 LastStep = step_switch(_, _),
                 PortPrime = port_switch
@@ -806,8 +812,8 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
             get_pred_info(!.CI, PredInfo),
             get_proc_info(!.CI, ProcInfo),
             eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo,
-                TraceInfo ^ trace_level,
-                TraceInfo ^ trace_suppress_items, Port) = yes
+                TraceInfo ^ ti_trace_level,
+                TraceInfo ^ ti_trace_suppress_items, Port) = yes
         ->
             goal_info_get_pre_deaths(GoalInfo, PreDeaths),
             Context = goal_info_get_context(GoalInfo),
@@ -819,6 +825,7 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
             ;
                 HideEvent = no
             ),
+            GoalPath = goal_id_to_forward_path(ContainingGoalMap, GoalId),
             generate_event_code(Port, port_info_internal(GoalPath, PreDeaths),
                 yes(TraceInfo), Context, HideEvent, no, _, _, Code, !CI)
         ;
@@ -844,19 +851,21 @@ maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code, !CI) :-
         get_pred_info(!.CI, PredInfo),
         get_proc_info(!.CI, ProcInfo),
         eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo,
-            TraceInfo ^ trace_level,
-            TraceInfo ^ trace_suppress_items, Port) = yes
+            TraceInfo ^ ti_trace_level,
+            TraceInfo ^ ti_trace_suppress_items, Port) = yes
     ->
         Goal = hlds_goal(_, GoalInfo),
-        Path = goal_info_get_goal_path(GoalInfo),
+        GoalId = goal_info_get_goal_id(GoalInfo),
         Context = goal_info_get_context(GoalInfo),
         ( goal_info_has_feature(OutsideGoalInfo, feature_hide_debug_event) ->
             HideEvent = yes
         ;
             HideEvent = no
         ),
-        generate_event_code(Port, port_info_negation_end(Path), yes(TraceInfo),
-            Context, HideEvent, no, _, _, Code, !CI)
+        get_containing_goal_map_det(!.CI, ContainingGoalMap),
+        GoalPath = goal_id_to_forward_path(ContainingGoalMap, GoalId),
+        generate_event_code(Port, port_info_negation_end(GoalPath),
+            yes(TraceInfo), Context, HideEvent, no, _, _, Code, !CI)
     ;
         Code = empty
     ).
@@ -870,8 +879,8 @@ maybe_generate_foreign_proc_event_code(PragmaPort, Context, Code, !CI) :-
         get_pred_info(!.CI, PredInfo),
         get_proc_info(!.CI, ProcInfo),
         eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo,
-            TraceInfo ^ trace_level,
-            TraceInfo ^ trace_suppress_items, Port) = yes
+            TraceInfo ^ ti_trace_level,
+            TraceInfo ^ ti_trace_suppress_items, Port) = yes
     ->
         generate_event_code(Port, port_info_nondet_foreign_proc,
             yes(TraceInfo), Context, no, no, _, _, Code, !CI)
@@ -880,10 +889,12 @@ maybe_generate_foreign_proc_event_code(PragmaPort, Context, Code, !CI) :-
     ).
 
 generate_user_event_code(UserInfo, GoalInfo, Code, !CI) :-
-    Path = goal_info_get_goal_path(GoalInfo),
+    GoalId = goal_info_get_goal_id(GoalInfo),
+    get_containing_goal_map_det(!.CI, ContainingGoalMap),
+    GoalPath = goal_id_to_forward_path(ContainingGoalMap, GoalId),
     Context = goal_info_get_context(GoalInfo),
     Port = port_user,
-    PortInfo = port_info_user(Path),
+    PortInfo = port_info_user(GoalPath),
     MaybeTraceInfo = no,
     HideEvent = no,
     generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
@@ -896,7 +907,7 @@ generate_external_event_code(ExternalPort, TraceInfo, Context,
     get_pred_info(!.CI, PredInfo),
     get_proc_info(!.CI, ProcInfo),
     NeedPort = eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo,
-        TraceInfo ^ trace_level, TraceInfo ^ trace_suppress_items, Port),
+        TraceInfo ^ ti_trace_level, TraceInfo ^ ti_trace_suppress_items, Port),
     (
         NeedPort = yes,
         generate_event_code(Port, port_info_external, yes(TraceInfo), Context,
@@ -907,15 +918,17 @@ generate_external_event_code(ExternalPort, TraceInfo, Context,
         MaybeExternalInfo = no
     ).
 
-generate_tailrec_event_code(TraceInfo, ArgsInfos, GoalPath, Context,
-        Code, TailRecLabel, !CI) :-
+generate_tailrec_event_code(TraceInfo, ArgsInfos, GoalId, Context, Code,
+        TailRecLabel, !CI) :-
     Port = port_tailrec_call,
+    get_containing_goal_map_det(!.CI, ContainingGoalMap),
+    GoalPath = goal_id_to_forward_path(ContainingGoalMap, GoalId),
     PortInfo = port_info_tailrec_call(GoalPath, ArgsInfos),
     HideEvent = no,
     MaybeUserInfo = no,
     generate_event_code(Port, PortInfo, yes(TraceInfo), Context, HideEvent,
         MaybeUserInfo, _Label, _TvarDataMap, Code, !CI),
-    MaybeTailRecInfo = TraceInfo ^ tail_rec_info,
+    MaybeTailRecInfo = TraceInfo ^ ti_tail_rec_info,
     (
         MaybeTailRecInfo = yes(_ - TailRecLabel)
     ;
@@ -942,17 +955,17 @@ generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
     % Stage 2.
     % Tail recursion events cannot happen in model_non procedures, so stage 2
     % will not allocate any slots.
-    MaybeRedoLabelLval = TraceInfo ^ redo_label,
+    MaybeRedoLabelLval = TraceInfo ^ ti_redo_label,
     expect(unify(MaybeRedoLabelLval, no), this_file,
         "redo label in procedure with TAIL event"),
     % Stage 3.
     % Tail recursion events are disabled if the trace level is shallow tracing,
     % so stage 3 will not allocate any slots.
-    MaybeFromFullLval = TraceInfo ^ from_full_lval,
+    MaybeFromFullLval = TraceInfo ^ ti_from_full_lval,
     expect(unify(MaybeFromFullLval, no), this_file,
         "from_full slot in procedure with TAIL event"),
     % Stage 4.
-    MaybeIoSeqSlot = TraceInfo ^ io_seq_lval,
+    MaybeIoSeqSlot = TraceInfo ^ ti_io_seq_lval,
     (
         MaybeIoSeqSlot = yes(IoSeqLval),
         stackref_to_string(IoSeqLval, IoSeqStr),
@@ -962,7 +975,7 @@ generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
         IoSeqCodeStr = ""
     ),
     % Stage 5.
-    MaybeTrailLvals = TraceInfo ^ trail_lvals,
+    MaybeTrailLvals = TraceInfo ^ ti_trail_lvals,
     (
         MaybeTrailLvals = yes(TrailLval - TicketLval),
         stackref_to_string(TrailLval, TrailLvalStr),
@@ -975,7 +988,7 @@ generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
         TrailCodeStr = ""
     ),
     % Stage 6.
-    MaybeMaxfrLval = TraceInfo ^ maxfr_lval,
+    MaybeMaxfrLval = TraceInfo ^ ti_maxfr_lval,
     (
         MaybeMaxfrLval = yes(MaxfrLval),
         MaxfrCode = singleton(
@@ -986,7 +999,7 @@ generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
         MaxfrCode = empty
     ),
     % Stage 7.
-    TailRecInfo = TraceInfo ^ tail_rec_info,
+    TailRecInfo = TraceInfo ^ ti_tail_rec_info,
     (
         TailRecInfo = yes(TailRecLval - _),
         TailRecLvalCode = singleton(
@@ -1000,7 +1013,7 @@ generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
             "generate_tailrec_reset_slots_code: no tail rec lval")
     ),
     % Stage 8.
-    MaybeCallTableLval = TraceInfo ^ call_table_tip_lval,
+    MaybeCallTableLval = TraceInfo ^ ti_call_table_tip_lval,
     (
         MaybeCallTableLval = yes(CallTableLval),
         stackref_to_string(CallTableLval, CallTableLvalStr),
@@ -1034,7 +1047,7 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     (
         PortInfo = port_info_external,
         LiveVars = LiveVars0,
-        Path = empty_goal_path,
+        Path = fgp([]),
         TailRecResetCode = empty
     ;
         PortInfo = port_info_tailrec_call(Path, ArgsInfos),
@@ -1070,9 +1083,9 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         PortInfo = port_info_nondet_foreign_proc,
         LiveVars = [],
         ( Port = port_nondet_foreign_proc_first ->
-            Path = singleton_goal_path(step_first)
+            Path = fgp([step_first])
         ; Port = port_nondet_foreign_proc_later ->
-            Path = singleton_goal_path(step_later)
+            Path = fgp([step_later])
         ;
             unexpected(this_file,
                 "generate_event_code: bad nondet foreign_proc port")
@@ -1125,7 +1138,7 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     (
         Port = port_fail,
         MaybeTraceInfo = yes(TraceInfo),
-        TraceInfo ^ redo_label = yes(RedoLabel)
+        TraceInfo ^ ti_redo_label = yes(RedoLabel)
     ->
         % The layout information for the redo event is the same as for the
         % fail event; all the non-clobbered inputs in their stack slots.
@@ -1186,10 +1199,10 @@ find_lval_in_layout_locn(locn_direct(Lval)) = Lval.
 find_lval_in_layout_locn(locn_indirect(Lval, _)) = Lval.
 
 maybe_setup_redo_event(TraceInfo, Code) :-
-    TraceRedoLabel = TraceInfo ^ redo_label,
+    TraceRedoLabel = TraceInfo ^ ti_redo_label,
     (
         TraceRedoLabel = yes(_),
-        MaybeFromFullSlot = TraceInfo ^ from_full_lval,
+        MaybeFromFullSlot = TraceInfo ^ ti_from_full_lval,
         (
             MaybeFromFullSlot = yes(Lval),
             % The code in the runtime looks for the from-full flag in
@@ -1378,46 +1391,46 @@ redo_layout_slot(CodeModel, RedoLayoutSlot) :-
     % of a procedure.
 :- type trace_info
     --->    trace_info(
-                trace_level             :: trace_level,
-                trace_suppress_items    :: trace_suppress_items,
+                ti_trace_level          :: trace_level,
+                ti_trace_suppress_items :: trace_suppress_items,
 
                 % If the trace level is shallow, the lval of the slot
                 % that holds the from-full flag.
-                from_full_lval          :: maybe(lval),
+                ti_from_full_lval       :: maybe(lval),
 
                 % If the procedure has I/O state arguments, the lval
                 % of the slot that holds the initial value of the
                 % I/O action counter.
-                io_seq_lval             :: maybe(lval),
+                ti_io_seq_lval          :: maybe(lval),
 
                 % If trailing is enabled, the lvals of the slots that hold
                 % the value of the trail pointer and the ticket counter
                 % at the time of the call.
-                trail_lvals             :: maybe(pair(lval)),
+                ti_trail_lvals          :: maybe(pair(lval)),
 
                 % If we reserve a slot for holding the value of maxfr
                 % at entry for use in implementing retry, the lval of the slot.
-                maxfr_lval              :: maybe(lval),
+                ti_maxfr_lval           :: maybe(lval),
 
                 % If we reserve a slot for holding the value of the call table
                 % tip variable, the lval of this variable.
-                call_table_tip_lval     :: maybe(lval),
+                ti_call_table_tip_lval  :: maybe(lval),
 
                 % If we reserve a slot for holding the number of times the
                 % stack frame was reused by tail recursive calls, the lval
                 % holding this counter, and the label that a tail recursive
                 % call should jump to.
-                tail_rec_info           :: maybe(pair(lval, label)),
+                ti_tail_rec_info        :: maybe(pair(lval, label)),
 
                 % If we are generating redo events, this has the label
                 % associated with the fail event, which we then reserve
                 % in advance, so we can put the address of its layout struct
                 % into the slot which holds the layout for the redo event
                 % (the two events have identical layouts).
-                redo_label              :: maybe(label)
+                ti_redo_label           :: maybe(label)
             ).
 
-get_trace_maybe_tail_rec_info(TraceInfo, TraceInfo ^ tail_rec_info).
+get_trace_maybe_tail_rec_info(TraceInfo, TraceInfo ^ ti_tail_rec_info).
 
 %-----------------------------------------------------------------------------%
 

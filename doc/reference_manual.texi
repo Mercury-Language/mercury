@@ -6011,7 +6011,7 @@ p_carefully(!IO) :-
                 io.write_string("p threw something: ", !IO),
                 io.write(Other, !IO),
                 % Rethrow the value.
-                throw(X)
+                throw(Other)
         ).
 @end example
 

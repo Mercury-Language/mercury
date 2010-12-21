@@ -21,6 +21,7 @@
 :- import_module check_hlds.build_mode_constraints.
 :- import_module check_hlds.prop_mode_constraints.
 :- import_module hlds.
+:- import_module hlds.goal_path.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_module.
 
@@ -46,14 +47,16 @@
 
     % Store for the ordering constraints for one conjunction.
     %
-:- type ordering_constraints_info --->
-    ordering_constraints_info(
-        num_conjuncts       :: int,
-                            % The number of conjucts in this conjunction
+:- type ordering_constraints_info
+    --->    ordering_constraints_info(
+                oci_containing_map      :: containing_goal_map,
 
-        constraints         :: set(mode_ordering_constraint)
-                            % Constraints on the conjuncts.
-    ).
+                % The number of conjucts in this conjunction
+                oci_num_conjuncts       :: int,
+
+                % Constraints on the conjuncts.
+                oci_constraints         :: set(mode_ordering_constraint)
+            ).
 
 %-----------------------------------------------------------------------------%
 
@@ -76,15 +79,15 @@
 
 %-----------------------------------------------------------------------------%
 
-    % ordering_init(N) creates a new ordering constraint system for
-    % a conjunction with N conjuncts.
-    %
-:- func ordering_init(int) = ordering_constraints_info.
-
     % add_ordering_constraint(Constraint, !OCI) adds Constraint
     % to the ordering constraints store. It fails if it immediately
     % detects a contradiction (at the moment, this means it has
-    % detected a loop in the producer/consumer dependency graph).
+    % detected a loop in the producer consumer dependency graph,
+    % such as in the conjunction:
+    % (p(A, B), p(B, C), p(C, A)) where p is pred(in, out)).
+    %
+    % NOTE: behaviour when constrained conjuncts are outside the
+    % possible range is undefined.
     %
 :- pred add_ordering_constraint(mode_ordering_constraint::in,
     ordering_constraints_info::in, ordering_constraints_info::out) is semidet.
@@ -219,8 +222,8 @@ pred_reordering(PredConstraintsMap, VarMap, PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
 
     ( pred_info_infer_modes(PredInfo0) ->
-        % XXX GIVE UP FOR NOW!!!! In reality, execution shouldn't
-        % reach here if the pred is to be mode inferred, should it?
+        % XXX GIVE UP FOR NOW!!!! In reality, execution shouldn't reach here
+        % if the pred is to be mode inferred, should it?
         sorry(this_file, "mode inference constraints")
     ;
         % XXX Maybe move this outside of this predicate - then
@@ -230,10 +233,13 @@ pred_reordering(PredConstraintsMap, VarMap, PredId, !ModuleInfo) :-
 
         module_info_pred_info(!.ModuleInfo, PredId, PredInfo1),
 
-        PredConstraints = map.lookup(PredConstraintsMap, PredId),
+        map.lookup(PredConstraintsMap, PredId,
+            {ContainingGoalMap, PredConstraints}),
         ProcIds = pred_info_all_procids(PredInfo1),
-        list.foldl2(proc_reordering(PredConstraints, VarMap, PredId), ProcIds,
-            [], Errors, PredInfo1, PredInfo),
+        list.foldl2(
+            proc_reordering(ContainingGoalMap, PredConstraints, VarMap,
+                PredId),
+            ProcIds, [], Errors, PredInfo1, PredInfo),
 
         (
             Errors = [],
@@ -253,11 +259,13 @@ pred_reordering(PredConstraintsMap, VarMap, PredId, !ModuleInfo) :-
     % to the producer consumer constraints in PredConstraints. The procedure
     % with the modified body goal replaces its original in PredInfo.
     %
-:- pred proc_reordering(pred_p_c_constraints::in, mc_var_map::in, pred_id::in,
-    proc_id::in, mode_analysis_failures::in, mode_analysis_failures::out,
+:- pred proc_reordering(containing_goal_map::in, pred_p_c_constraints::in,
+    mc_var_map::in, pred_id::in, proc_id::in,
+    mode_analysis_failures::in, mode_analysis_failures::out,
     pred_info::in, pred_info::out) is det.
 
-proc_reordering(PredConstraints, VarMap, PredId, ProcId, !Errors, !PredInfo) :-
+proc_reordering(ContainingGoalMap, PredConstraints, VarMap, PredId, ProcId,
+        !Errors, !PredInfo) :-
     pred_info_proc_info(!.PredInfo, ProcId, ProcInfo0),
     proc_info_get_goal(ProcInfo0, Goal0),
 
@@ -275,8 +283,8 @@ proc_reordering(PredConstraints, VarMap, PredId, ProcId, !Errors, !PredInfo) :-
     % variables.
     Errors0 = !.Errors,
     promise_equivalent_solutions [Errors1, Goal] (
-        solve_proc_reordering(VarMap, PredId, ProcId, SolverConstraints,
-            Errors0, Errors1, Goal0, Goal)
+        solve_proc_reordering(ContainingGoalMap, VarMap, PredId, ProcId,
+            SolverConstraints, Errors0, Errors1, Goal0, Goal)
     ),
     !:Errors = Errors1,
 
@@ -299,15 +307,16 @@ proc_reordering(PredConstraints, VarMap, PredId, ProcId, !Errors, !PredInfo) :-
     % solution to the producing and consuming goals of program
     % variables.
     %
-:- pred solve_proc_reordering(mc_var_map::in, pred_id::in, proc_id::in,
-    solver_cstrts::in, mode_analysis_failures::in, mode_analysis_failures::out,
+:- pred solve_proc_reordering(containing_goal_map::in, mc_var_map::in,
+    pred_id::in, proc_id::in, solver_cstrts::in,
+    mode_analysis_failures::in, mode_analysis_failures::out,
     hlds_goal::in, hlds_goal::out) is cc_multi.
 
-solve_proc_reordering(VarMap, PredId, ProcId, SolverConstraints,
-        !Errors, !Goal) :-
+solve_proc_reordering(ContainingGoalMap, VarMap, PredId, ProcId,
+        SolverConstraints, !Errors, !Goal) :-
     (
         mcsolver.solve(SolverConstraints, Bindings),
-        goal_reordering(PredId, VarMap, Bindings, !Goal)
+        goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings, !Goal)
     ->
         true
     ;
@@ -320,33 +329,20 @@ solve_proc_reordering(VarMap, PredId, ProcId, SolverConstraints,
 
 %-----------------------------------------------------------------------------%
 %
-% Conjunction reordering
+% Conjunction reordering.
 %
 
-    % goal_reordering(PredId, VarMap, Bindings, !Goal) applies mode
-    % reordering to conjunctions in Goal (from predicate PredId) and its
-    % children. VarMap should contain all producer/consumer constraint
-    % variables relevant to said conjunctions, and Bindings should
-    % contain bindings for them.
-    %
-:- pred goal_reordering(pred_id::in, mc_var_map::in, mc_bindings::in,
-    hlds_goal::in, hlds_goal::out) is semidet.
-
-goal_reordering(PredId, VarMap, Bindings, Goal0, Goal) :-
-    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
-    goal_expr_reordering(PredId, VarMap, Bindings, GoalExpr0, GoalExpr),
-    Goal = hlds_goal(GoalExpr, GoalInfo).
-
-    % goal_expr_reordering(PredId, VarMap, Bindings, !GoalExpr) applies
-    % mode reordering to conjunctions in GoalExpr (from predicate
-    % PredId) and its children. VarMap should contain all
-    % producer/consumer constraint variables relevant to said
+    % goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings, !Goal)
+    % applies mode reordering to conjunctions in Goal (from predicate PredId,
+    % which has the given ContainingGoalMap) and its children. VarMap should
+    % contain all producer/consumer constraint variables relevant to said
     % conjunctions, and Bindings should contain bindings for them.
     %
-:- pred goal_expr_reordering(pred_id::in, mc_var_map::in, mc_bindings::in,
-    hlds_goal_expr::in, hlds_goal_expr::out) is semidet.
+:- pred goal_reordering(containing_goal_map::in, pred_id::in,
+    mc_var_map::in, mc_bindings::in, hlds_goal::in, hlds_goal::out) is semidet.
 
-goal_expr_reordering(PredId, VarMap, Bindings, GoalExpr0, GoalExpr) :-
+goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings, Goal0, Goal) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     (
         ( GoalExpr0 = plain_call(_, _, _, _, _, _)
         ; GoalExpr0 = generic_call(_, _, _, _)
@@ -361,23 +357,29 @@ goal_expr_reordering(PredId, VarMap, Bindings, GoalExpr0, GoalExpr) :-
             ConjType = plain_conj,
             % Build constraints for this conjunction.
             make_conjuncts_nonlocal_repvars(PredId, Goals0, RepVarMap),
+            OCInfo0 = ordering_init(ContainingGoalMap, list.length(Goals0)),
             conjunct_ordering_constraints(VarMap, Bindings, RepVarMap,
-                ordering_init(list.length(Goals0)), OrderingConstraintsInfo),
+                OCInfo0, OCInfo),
 
             % Then solve the constraints and reorder.
-            minimum_reordering(OrderingConstraintsInfo, Order),
+            minimum_reordering(OCInfo, Order),
             list.map(list.index1_det(Goals0), Order, Goals1),
 
             % Then recurse on the reordered goals
-            list.map(goal_reordering(PredId, VarMap, Bindings), Goals1, Goals)
+            list.map(
+                goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings),
+                Goals1, Goals)
         ;
             ConjType = parallel_conj,
-            list.map(goal_reordering(PredId, VarMap, Bindings), Goals0, Goals)
+            list.map(
+                goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings),
+                Goals0, Goals)
         ),
         GoalExpr = conj(ConjType, Goals)
     ;
         GoalExpr0 = disj(Goals0),
-        list.map(goal_reordering(PredId, VarMap, Bindings), Goals0, Goals),
+        list.map(goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings),
+            Goals0, Goals),
         GoalExpr = disj(Goals)
     ;
         GoalExpr0 = switch(_, _, _),
@@ -385,48 +387,47 @@ goal_expr_reordering(PredId, VarMap, Bindings, GoalExpr0, GoalExpr) :-
         unexpected(this_file, "goal_expr_reordering: switch")
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        goal_reordering(PredId, VarMap, Bindings, Cond0, Cond),
-        goal_reordering(PredId, VarMap, Bindings, Then0, Then),
-        goal_reordering(PredId, VarMap, Bindings, Else0, Else),
+        goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings,
+            Cond0, Cond),
+        goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings,
+            Then0, Then),
+        goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings,
+            Else0, Else),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
         GoalExpr0 = negation(SubGoal0),
-        goal_reordering(PredId, VarMap, Bindings, SubGoal0, SubGoal),
+        goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings,
+            SubGoal0, SubGoal),
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
         % Is it possible to special-case the handling of
         % from_ground_term_construct scopes?
-        goal_reordering(PredId, VarMap, Bindings, SubGoal0, SubGoal),
+        goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings,
+            SubGoal0, SubGoal),
         GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = shorthand(_),
         % XXX We need to handle atomic goals.
         % XXX We need to handle try goals.
         unexpected(this_file, "goal_expr_reordering: NYI: shorthand")
-    ).
+    ),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 
     % ordering_init(N) creates a new ordering constraint system for
     % a conjunction with N conjuncts.
     %
-ordering_init(N) = ordering_constraints_info(N, set.init).
+:- func ordering_init(containing_goal_map, int) = ordering_constraints_info.
+
+ordering_init(ContainingGoalMap, N) =
+    ordering_constraints_info(ContainingGoalMap, N, set.init).
 
 %-----------------------------------------------------------------------------%
 
-    % add_ordering_constraint(Constraint, OCI0, OCI) adds Constraint
-    % to the ordering constraints store. It fails if it immediately
-    % detects a contradiction (at the moment, this means it has
-    % detected a loop in the producer consumer dependency graph - eg
-    % the conjunction:
-    % (p(A, B), p(B, C), p(C, A)) where p is pred(in, out)).
-    %
-    % NOTE: behaviour when constrained conjuncts are outside the
-    % possible range is undefined.
-    %
 add_ordering_constraint(Constraint, !OCI) :-
-    ( set.member(Constraint, !.OCI ^ constraints) ->
+    ( set.member(Constraint, !.OCI ^ oci_constraints) ->
         true
     ;
         constraint_transitive_closure(!.OCI, Constraint, NewConstraints),
@@ -434,8 +435,8 @@ add_ordering_constraint(Constraint, !OCI) :-
         % No cycles. (lt(X, X) is a contradiction)
         set.empty(set.filter(pred(lt(X, X)::in) is semidet, NewConstraints)),
 
-        !:OCI = !.OCI ^ constraints :=
-            set.union(NewConstraints, !.OCI ^ constraints)
+        !OCI ^ oci_constraints :=
+            set.union(NewConstraints, !.OCI ^ oci_constraints)
     ).
 
     % constraint_transitive_closure(OCI, Constraint, NewConstraints)
@@ -448,7 +449,7 @@ add_ordering_constraint(Constraint, !OCI) :-
     mode_ordering_constraint::in, set(mode_ordering_constraint)::out) is det.
 
 constraint_transitive_closure(OCI, Constraint, NewConstraints) :-
-    Constraints = OCI ^ constraints,
+    Constraints = OCI ^ oci_constraints,
     Constraint = lt(From, To),
     ComesBefore = set.filter_map(
         func(lt(B, F)::in) = (B::out) is semidet :- F = From, Constraints),
@@ -511,11 +512,11 @@ make_conjuncts_nonlocal_repvars(PredId, Goals, RepvarMap) :-
 make_conjunct_nonlocal_repvars(PredId, Goal, !RepvarMap) :-
     GoalInfo = Goal ^ hlds_goal_info,
     Nonlocals = goal_info_get_nonlocals(GoalInfo),
-    GoalPath = goal_info_get_goal_path(GoalInfo),
+    GoalId = goal_info_get_goal_id(GoalInfo),
 
     set.fold(
         (pred(NL::in, RMap0::in, RMap::out) is det :-
-            multi_map.set(RMap0, NL, NL `in` PredId `at` GoalPath, RMap)
+            multi_map.set(RMap0, NL, NL `in` PredId `at` GoalId, RMap)
         ),
         Nonlocals, !RepvarMap).
 
@@ -564,8 +565,10 @@ prog_var_ordering_constraints(VarMap, Bindings, _ProgVar, RepVars, !OCInfo) :-
         % Variable not produced here - no constraints.
     ;
         ProgVarAtProducers = [RepVar],      % Should be only one producer
-        get_position_in_conj(RepVar, First),
-        list.map(get_position_in_conj, ProgVarAtConsumers, Laters),
+        ContainingGoalMap = !.OCInfo ^ oci_containing_map,
+        get_position_in_conj(ContainingGoalMap, RepVar, First),
+        list.map(get_position_in_conj(ContainingGoalMap), ProgVarAtConsumers,
+            Laters),
 
         list.foldl(add_lt_constraint(First), Laters, !OCInfo)
     ).
@@ -584,10 +587,12 @@ produced_at_path(VarMap, Bindings, RepVar) :-
     % goalpath in RepVar is not a conjunction, otherwise it returns in N
     % the number of the conjunct the RepVar refers to.
     %
-:- pred get_position_in_conj(mc_rep_var::in, conjunct_id::out) is semidet.
+:- pred get_position_in_conj(containing_goal_map::in, mc_rep_var::in,
+    conjunct_id::out) is semidet.
 
-get_position_in_conj(_ProgVar `in` _PredId `at` GoalPath, N) :-
-    LastStep = goal_path_get_last(GoalPath),
+get_position_in_conj(ContainingGoalMap, _Var `in` _PredId `at` GoalId, N) :-
+    map.lookup(ContainingGoalMap, GoalId, ContainingGoal),
+    ContainingGoal = containing_goal(_, LastStep),
     LastStep = step_conj(N).
 
 %-----------------------------------------------------------------------------%
@@ -610,8 +615,8 @@ minimum_reordering(OCI, Order) :-
 %    original_order_constraints(OCI ^ num_conjuncts, OriginalOrderConstraints),
 %    constrain_if_possible(OriginalOrderConstraints, OCI0, OCI1),
 
-    Conjuncts = set.from_sorted_list(1 `..` OCI ^ num_conjuncts),
-    topological_sort_min_reordering(OCI ^ constraints, Conjuncts, Order).
+    Conjuncts = set.from_sorted_list(1 `..` OCI ^ oci_num_conjuncts),
+    topological_sort_min_reordering(OCI ^ oci_constraints, Conjuncts, Order).
 
     % original_order_constraints(N, MOCs) produces a list of constraints MOCs
     % that describe a complete order for N conjuncts, such that they are not
@@ -623,9 +628,8 @@ minimum_reordering(OCI, Order) :-
 original_order_constraints(N, MOCs) :-
     complete_order_constraints(1 `..` N, MOCs).
 
-    % complete_order_constraints(Xs) produces a list of constraints
-    % that describe a compete order for Xs such that it is not reordered
-    % at all.
+    % complete_order_constraints(Xs) produces a list of constraints that
+    % describe a compete order for Xs such that it is not reordered at all.
     %
 :- pred complete_order_constraints(list(conjunct_id)::in,
     mode_ordering_constraints::out) is det.
@@ -767,9 +771,10 @@ dump_proc_goal_paths(Globals, ProcTable, ProcId, !IO) :-
 
 dump_goal_goal_paths(Globals, Indent, Goal, !IO) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
-    GoalPath = goal_info_get_goal_path(GoalInfo),
-    GoalPathFormat = [words(goal_path_to_string(GoalPath)), nl],
-    write_error_pieces_maybe_with_context(Globals, no, Indent, GoalPathFormat,
+    GoalId = goal_info_get_goal_id(GoalInfo),
+    GoalId = goal_id(GoalIdNum),
+    GoalIdPieces = [words(string.int_to_string(GoalIdNum)), nl],
+    write_error_pieces_maybe_with_context(Globals, no, Indent, GoalIdPieces,
         !IO),
 
     % Dump the goal paths for each subgoal in GoalExpr at SubGoalIndent,

@@ -86,10 +86,10 @@
 
 :- import_module backend_libs.interval.
 :- import_module backend_libs.matching.
-:- import_module check_hlds.goal_path.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.simplify.
 :- import_module hlds.arg_info.
+:- import_module hlds.goal_path.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
@@ -150,7 +150,7 @@
                 cons_id,
                 list(prog_var),
                 set(prog_var),
-                goal_path,
+                goal_id,
                 set(interval_id),
                 set(interval_id),
                 set(anchor),
@@ -180,7 +180,7 @@ stack_opt_cell(PredProcId, !ProcInfo, !ModuleInfo) :-
         OptNoReturnCalls),
     AllocData = alloc_data(!.ModuleInfo, !.ProcInfo, TypeInfoLiveness,
         OptNoReturnCalls),
-    fill_goal_path_slots(!.ModuleInfo, !ProcInfo),
+    fill_goal_id_slots_in_proc(!.ModuleInfo, _, !ProcInfo),
     proc_info_get_goal(!.ProcInfo, Goal2),
     OptStackAlloc0 = init_opt_stack_alloc,
     set.init(FailVars),
@@ -268,8 +268,7 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
     globals.lookup_bool_option(Globals,
         optimize_saved_vars_cell_include_all_candidates, InclAllCand),
     MatchingParams = matching_params(CellVarStoreCost, CellVarLoadCost,
-        FieldVarStoreCost, FieldVarLoadCost, OpRatio, NodeRatio,
-        InclAllCand),
+        FieldVarStoreCost, FieldVarLoadCost, OpRatio, NodeRatio, InclAllCand),
     globals.lookup_int_option(Globals,
         optimize_saved_vars_cell_all_path_node_ratio,
         AllPathNodeRatio),
@@ -562,9 +561,9 @@ record_matching_result(CellVar, ConsId, ArgVars, ViaCellVars, Goal,
             PotentialAnchorList, !IntervalInfo, !StackOptInfo,
             set.init, InsertAnchors),
         Goal = hlds_goal(_, GoalInfo),
-        GoalPath = goal_info_get_goal_path(GoalInfo),
+        GoalId = goal_info_get_goal_id(GoalInfo),
         MatchingResult = matching_result(CellVar, ConsId,
-            ArgVars, ViaCellVars, GoalPath,
+            ArgVars, ViaCellVars, GoalId,
             PotentialIntervals, InsertIntervals,
             PotentialAnchors, InsertAnchors),
         MatchingResults0 = !.StackOptInfo ^ soi_matching_results,
@@ -704,9 +703,9 @@ add_anchor_to_path(Anchor, !.Path) = !:Path :-
 
 anchor_requires_close(_, anchor_proc_start) = no.
 anchor_requires_close(_, anchor_proc_end) = yes.
-anchor_requires_close(IntervalInfo, anchor_branch_start(_, GoalPath)) =
+anchor_requires_close(IntervalInfo, anchor_branch_start(_, GoalId)) =
         resume_save_status_requires_close(ResumeSaveStatus) :-
-    map.lookup(IntervalInfo ^ ii_branch_resume_map, GoalPath,
+    map.lookup(IntervalInfo ^ ii_branch_resume_map, GoalId,
         ResumeSaveStatus).
 anchor_requires_close(_, anchor_cond_then(_)) = no.
 anchor_requires_close(_, anchor_branch_end(BranchType, _)) = NeedsClose :-
@@ -822,8 +821,8 @@ find_all_branches(RelevantVars, IntervalId, MaybeSearchAnchor0,
         ->
             !:AllPaths = !.AllPaths ^ used_after_scope := set.init
         ;
-            End = anchor_branch_end(_, EndGoalPath),
-            map.lookup(IntervalInfo ^ ii_branch_end_map, EndGoalPath,
+            End = anchor_branch_end(_, EndGoalId),
+            map.lookup(IntervalInfo ^ ii_branch_end_map, EndGoalId,
                 BranchEndInfo),
             OnStackAfterBranch = BranchEndInfo ^ flushed_after_branch,
             AccessedAfterBranch = BranchEndInfo ^ accessed_after_branch,
@@ -859,19 +858,19 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
     FullPath = StackOptParams ^ sop_full_path,
     (
         FullPath = yes,
-        End = anchor_branch_start(branch_disj, EndGoalPath)
+        End = anchor_branch_start(branch_disj, EndGoalId)
     ->
-        MaybeSearchAnchor1 = yes(anchor_branch_end(branch_disj, EndGoalPath)),
+        MaybeSearchAnchor1 = yes(anchor_branch_end(branch_disj, EndGoalId)),
         one_after_another(RelevantVars, MaybeSearchAnchor1,
             IntervalInfo, StackOptInfo, SuccessorIds, !AllPaths),
-        map.lookup(IntervalInfo ^ ii_branch_end_map, EndGoalPath,
+        map.lookup(IntervalInfo ^ ii_branch_end_map, EndGoalId,
             BranchEndInfo),
         ContinueId = BranchEndInfo ^ interval_after_branch,
         apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
             IntervalInfo, StackOptInfo, ContinueId, !AllPaths)
     ;
         FullPath = yes,
-        End = anchor_branch_start(branch_ite, EndGoalPath)
+        End = anchor_branch_start(branch_ite, EndGoalId)
     ->
         ( SuccessorIds = [ElseStartIdPrime, CondStartIdPrime] ->
             ElseStartId = ElseStartIdPrime,
@@ -880,29 +879,29 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
             unexpected(this_file,
                 "find_all_branches_from: ite not else, cond")
         ),
-        MaybeSearchAnchorCond = yes(anchor_cond_then(EndGoalPath)),
+        MaybeSearchAnchorCond = yes(anchor_cond_then(EndGoalId)),
         apply_interval_find_all_branches(RelevantVars,
             MaybeSearchAnchorCond, IntervalInfo, StackOptInfo,
             CondStartId, !AllPaths),
-        MaybeSearchAnchorEnd = yes(anchor_branch_end(branch_ite, EndGoalPath)),
+        MaybeSearchAnchorEnd = yes(anchor_branch_end(branch_ite, EndGoalId)),
         CondEndMap = IntervalInfo ^ ii_cond_end_map,
-        map.lookup(CondEndMap, EndGoalPath, ThenStartId),
+        map.lookup(CondEndMap, EndGoalId, ThenStartId),
         one_after_another(RelevantVars, MaybeSearchAnchorEnd,
             IntervalInfo, StackOptInfo, [ThenStartId, ElseStartId], !AllPaths),
-        map.lookup(IntervalInfo ^ ii_branch_end_map, EndGoalPath,
+        map.lookup(IntervalInfo ^ ii_branch_end_map, EndGoalId,
             BranchEndInfo),
         ContinueId = BranchEndInfo ^ interval_after_branch,
         apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
             IntervalInfo, StackOptInfo, ContinueId, !AllPaths)
     ;
-        End = anchor_branch_start(BranchType, EndGoalPath)
+        End = anchor_branch_start(BranchType, EndGoalId)
     ->
-        MaybeSearchAnchor1 = yes(anchor_branch_end(BranchType, EndGoalPath)),
+        MaybeSearchAnchor1 = yes(anchor_branch_end(BranchType, EndGoalId)),
         list.map(apply_interval_find_all_branches_map(RelevantVars,
             MaybeSearchAnchor1, IntervalInfo, StackOptInfo, !.AllPaths),
             SuccessorIds, AllPathsList),
         consolidate_after_join(AllPathsList, !:AllPaths),
-        map.lookup(IntervalInfo ^ ii_branch_end_map, EndGoalPath,
+        map.lookup(IntervalInfo ^ ii_branch_end_map, EndGoalId,
             BranchEndInfo),
         ContinueId = BranchEndInfo ^ interval_after_branch,
         apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
@@ -1081,10 +1080,10 @@ dump_insert(insert_spec(Goal, Vars), !IO) :-
 
 dump_matching_result(MatchingResult, !IO) :-
     MatchingResult = matching_result(CellVar, ConsId, ArgVars, ViaCellVars,
-        GoalPath, PotentialIntervals, InsertIntervals,
+        GoalId, PotentialIntervals, InsertIntervals,
         PotentialAnchors, InsertAnchors),
     io.write_string("\nmatching result at ", !IO),
-    io.write(GoalPath, !IO),
+    io.write(GoalId, !IO),
     io.write_string("\n", !IO),
     term.var_to_int(CellVar, CellVarNum),
     list.map(term.var_to_int, ArgVars, ArgVarNums),

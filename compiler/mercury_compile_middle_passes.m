@@ -1067,7 +1067,7 @@ maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO) :-
         ReuseAnalysis = yes,
         maybe_write_string(Verbose, "% Structure reuse analysis...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        structure_reuse_analysis(!HLDS, !IO),
+        perform_structure_reuse_analysis(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

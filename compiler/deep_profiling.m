@@ -54,6 +54,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
+:- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
@@ -577,6 +578,7 @@ make_deep_original_body(ModuleInfo, ProcInfo, DeepOriginalBody) :-
     --->    deep_info(
                 deep_module_info        :: module_info,
                 deep_pred_proc_id       :: pred_proc_id,
+                deep_containing_goal_map:: containing_goal_map,
                 deep_current_csd        :: prog_var,
                 deep_site_num_counter   :: counter,
                 deep_call_sites         :: cord(call_site_static_data),
@@ -592,12 +594,15 @@ make_deep_original_body(ModuleInfo, ProcInfo, DeepOriginalBody) :-
 
 deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
         DeepLayoutInfo) :-
+    fill_goal_id_slots_in_proc(ModuleInfo, ContainingGoalMap, !ProcInfo),
+
     module_info_get_globals(ModuleInfo, Globals),
-    proc_info_get_goal(!.ProcInfo, Goal0),
-    Goal0 = hlds_goal(_, GoalInfo0),
     proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
-    some [!VarInfo] (
+    some [!VarInfo, !DeepInfo, !Goal] (
+        proc_info_get_goal(!.ProcInfo, !:Goal),
+        !.Goal = hlds_goal(_, GoalInfo0),
+
         !:VarInfo = prog_var_set_types(VarSet0, VarTypes0),
         generate_var("TopCSD", c_pointer_type, TopCSD, !VarInfo),
         generate_var("MiddleCSD", c_pointer_type, MiddleCSD, !VarInfo),
@@ -610,26 +615,26 @@ deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
 
         proc_info_get_maybe_deep_profile_info(!.ProcInfo, MaybeDeepProfInfo),
         extract_deep_rec_info(MaybeDeepProfInfo, MaybeRecInfo),
-        DeepInfo0 = deep_info(ModuleInfo, PredProcId, MiddleCSD,
-            counter.init(0), cord.empty, !.VarInfo, FileName, MaybeRecInfo),
+        !:DeepInfo = deep_info(ModuleInfo, PredProcId, ContainingGoalMap,
+            MiddleCSD, counter.init(0), cord.empty, !.VarInfo, FileName,
+            MaybeRecInfo),
 
         % This call transforms the goals of the procedure.
-        deep_prof_transform_goal(empty_goal_path, Goal0, Goal1, _,
-            DeepInfo0, DeepInfo),
-        !:VarInfo = DeepInfo ^ deep_varinfo,
-        CallSites = cord.list(DeepInfo ^ deep_call_sites),
+        deep_prof_transform_goal(!Goal, _, !DeepInfo),
+        !:VarInfo = !.DeepInfo ^ deep_varinfo,
+        CallSites = cord.list(!.DeepInfo ^ deep_call_sites),
 
         % Do coverage profiling if requested.
         globals.lookup_bool_option(Globals, coverage_profiling,
             DoCoverageProfiling),
         (
             DoCoverageProfiling = yes,
-            coverage_prof_transform_goal(ModuleInfo, PredProcId, MaybeRecInfo,
-                Goal1, TransformedGoal, !VarInfo, CoveragePoints)
+            coverage_prof_transform_proc_body(ModuleInfo, PredProcId,
+                ContainingGoalMap, MaybeRecInfo, !Goal, !VarInfo,
+                CoveragePoints)
         ;
             DoCoverageProfiling = no,
-            CoveragePoints = [],
-            TransformedGoal = Goal1
+            CoveragePoints = []
         ),
 
         (
@@ -661,15 +666,13 @@ deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
             maybe_generate_activation_ptr(UseActivationCounts, TopCSD,
                 MiddleCSD, MaybeActivationPtr, ExcpVars, !VarInfo),
             build_det_proc_body(ModuleInfo, TopCSD, MiddleCSD, ProcStaticVar,
-                MaybeActivationPtr, GoalInfo0, BindProcStaticVarGoal,
-                TransformedGoal, Goal)
+                MaybeActivationPtr, GoalInfo0, BindProcStaticVarGoal, !Goal)
         ;
             CodeModel = model_semi,
             maybe_generate_activation_ptr(UseActivationCounts, TopCSD,
                 MiddleCSD, MaybeActivationPtr, ExcpVars, !VarInfo),
             build_semi_proc_body(ModuleInfo, TopCSD, MiddleCSD, ProcStaticVar,
-                MaybeActivationPtr, GoalInfo0, BindProcStaticVarGoal,
-                TransformedGoal, Goal)
+                MaybeActivationPtr, GoalInfo0, BindProcStaticVarGoal, !Goal)
         ;
             CodeModel = model_non,
             generate_outermost_proc_dyns(UseActivationCounts, TopCSD,
@@ -677,26 +680,28 @@ deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
                 ExcpVars, !VarInfo),
             build_non_proc_body(ModuleInfo, TopCSD, MiddleCSD,
                 ProcStaticVar, MaybeOldActivationPtr, NewOutermostProcDyn,
-                GoalInfo0, BindProcStaticVarGoal, TransformedGoal, Goal)
+                GoalInfo0, BindProcStaticVarGoal, !Goal)
         ),
 
-        !.VarInfo = prog_var_set_types(Vars, VarTypes)
-    ),
-    proc_info_set_varset(Vars, !ProcInfo),
-    proc_info_set_vartypes(VarTypes, !ProcInfo),
-    proc_info_set_goal(Goal, !ProcInfo),
-    DeepLayoutInfo = hlds_deep_layout(ProcStatic, ExcpVars).
+        !.VarInfo = prog_var_set_types(Vars, VarTypes),
+        proc_info_set_varset(Vars, !ProcInfo),
+        proc_info_set_vartypes(VarTypes, !ProcInfo),
+        proc_info_set_goal(!.Goal, !ProcInfo),
+        DeepLayoutInfo = hlds_deep_layout(ProcStatic, ExcpVars)
+    ).
 
     % Transform an inner procedure for deep profiling. Inner procedures are
     % created by the tail recursion preservation pass above.
     %
     % XXX: Inner procedures have no coverage profiling transformation done to
-    % them yet.  This is because they are currently broken, and hence disabled.
+    % them yet. This is because they are currently broken, and hence disabled.
     %
 :- pred deep_prof_transform_inner_proc(module_info::in, pred_proc_id::in,
     proc_info::in, proc_info::out) is det.
 
 deep_prof_transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
+    fill_goal_id_slots_in_proc(ModuleInfo, ContainingGoalMap, !ProcInfo),
+
     proc_info_get_goal(!.ProcInfo, Goal0),
     Goal0 = hlds_goal(_, GoalInfo0),
     proc_info_get_varset(!.ProcInfo, VarSet0),
@@ -709,18 +714,17 @@ deep_prof_transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
 
     proc_info_get_maybe_deep_profile_info(!.ProcInfo, MaybeDeepProfInfo),
     extract_deep_rec_info(MaybeDeepProfInfo, MaybeRecInfo),
-    DeepInfo0 = deep_info(ModuleInfo, PredProcId, MiddleCSD,
+    DeepInfo0 = deep_info(ModuleInfo, PredProcId, ContainingGoalMap, MiddleCSD,
         counter.init(0), cord.empty, VarInfo1, FileName, MaybeRecInfo),
 
-    deep_prof_transform_goal(empty_goal_path, Goal0, TransformedGoal, _,
-        DeepInfo0, DeepInfo),
+    deep_prof_transform_goal(Goal0, Goal, _, DeepInfo0, DeepInfo),
 
     VarInfo = DeepInfo ^ deep_varinfo,
     VarInfo = prog_var_set_types(VarSet, VarTypes),
 
     proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo),
-    proc_info_set_goal(TransformedGoal, !ProcInfo).
+    proc_info_set_goal(Goal, !ProcInfo).
 
 :- func is_proc_in_interface(module_info, pred_id, proc_id) = bool.
 
@@ -927,21 +931,20 @@ build_non_proc_body(ModuleInfo, TopCSD, MiddleCSD, ProcStaticVar,
 
 %-----------------------------------------------------------------------------%
 
-:- pred deep_prof_transform_goal(goal_path::in, hlds_goal::in, hlds_goal::out,
+:- pred deep_prof_transform_goal(hlds_goal::in, hlds_goal::out,
     bool::out, deep_info::in, deep_info::out) is det.
 
-deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
+deep_prof_transform_goal(Goal0, Goal, AddedImpurity, !DeepInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    goal_info_set_goal_path(Path, GoalInfo0, GoalInfo1),
-    goal_info_set_mdprof_inst(goal_is_not_mdprof_inst, GoalInfo1, GoalInfo2),
-    Goal1 = hlds_goal(GoalExpr0, GoalInfo2),
+    goal_info_set_mdprof_inst(goal_is_not_mdprof_inst, GoalInfo0, GoalInfo1),
+    Goal1 = hlds_goal(GoalExpr0, GoalInfo1),
     (
         GoalExpr0 = plain_call(_, _, _, BuiltinState, _, _),
         (
             ( BuiltinState = out_of_line_builtin
             ; BuiltinState = not_builtin
             ),
-            deep_prof_wrap_call(Path, Goal1, Goal, !DeepInfo),
+            deep_prof_wrap_call(Goal1, Goal, !DeepInfo),
             AddedImpurity = yes
         ;
             BuiltinState = inline_builtin,
@@ -954,7 +957,7 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
             ( GenericCall = higher_order(_, _, _, _)
             ; GenericCall = class_method(_, _, _, _)
             ),
-            deep_prof_wrap_call(Path, Goal1, Goal, !DeepInfo),
+            deep_prof_wrap_call(Goal1, Goal, !DeepInfo),
             AddedImpurity = yes
         ;
             ( GenericCall = event_call(_)
@@ -966,7 +969,7 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
     ;
         GoalExpr0 = call_foreign_proc(Attrs, _, _, _, _, _, _),
         ( get_may_call_mercury(Attrs) = proc_may_call_mercury ->
-            deep_prof_wrap_foreign_code(Path, Goal1, Goal, !DeepInfo),
+            deep_prof_wrap_foreign_code(Goal1, Goal, !DeepInfo),
             AddedImpurity = yes
         ;
             Goal = Goal1,
@@ -978,55 +981,34 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
         AddedImpurity = no
     ;
         GoalExpr0 = conj(ConjType, Goals0),
-        deep_prof_transform_conj(0, ConjType, Path, Goals0, Goals,
-            AddedImpurity, !DeepInfo),
-        add_impurity_if_needed(AddedImpurity, GoalInfo2, GoalInfo),
+        deep_prof_transform_conj(ConjType, Goals0, Goals, AddedImpurity,
+            !DeepInfo),
+        add_impurity_if_needed(AddedImpurity, GoalInfo1, GoalInfo),
         GoalExpr = conj(ConjType, Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = disj(Goals0),
-        deep_prof_transform_disj(0, Path, Goals0, Goals, AddedImpurity,
-            !DeepInfo),
-        add_impurity_if_needed(AddedImpurity, GoalInfo2, GoalInfo),
+        deep_prof_transform_disj(Goals0, Goals, AddedImpurity, !DeepInfo),
+        add_impurity_if_needed(AddedImpurity, GoalInfo1, GoalInfo),
         GoalExpr = disj(Goals),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        % XXX: This computation seems broken, it's been disabled so I can
-        % relyably implement coverage profiling.  Test it on
-        % erlang_rtti_implementation.deconstruct_2/9-2 whose switch's type has
-        % 25 constructors yet this computes 27.  Are constructors different to
-        % functors?
-        % zs: this computation is NOT broken.
-        % ModuleInfo = !.DeepInfo ^ deep_module_info,
-        % VarTypes = !.DeepInfo ^ deep_varinfo ^ varinfo_vartypes,
-        % map.lookup(VarTypes, Var, Type),
-        % ( switch_type_num_functors(ModuleInfo, Type, NumFunctors) ->
-        %     MaybeNumFunctors = yes(NumFunctors)
-        % ;
-        %     MaybeNumFunctors = no
-        % ),
-        MaybeNumFunctors = no,
-        deep_prof_transform_switch(MaybeNumFunctors, 0, Path, Cases0, Cases,
-            AddedImpurity, !DeepInfo),
-        add_impurity_if_needed(AddedImpurity, GoalInfo2, GoalInfo),
+        deep_prof_transform_switch(Cases0, Cases, AddedImpurity, !DeepInfo),
+        add_impurity_if_needed(AddedImpurity, GoalInfo1, GoalInfo),
         GoalExpr = switch(Var, CanFail, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = negation(SubGoal0),
-        deep_prof_transform_goal(goal_path_add_at_end(Path, step_neg),
-            SubGoal0, SubGoal, AddedImpurity, !DeepInfo),
-        add_impurity_if_needed(AddedImpurity, GoalInfo2, GoalInfo),
+        deep_prof_transform_goal(SubGoal0, SubGoal, AddedImpurity, !DeepInfo),
+        add_impurity_if_needed(AddedImpurity, GoalInfo1, GoalInfo),
         GoalExpr = negation(SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = if_then_else(IVars, Cond0, Then0, Else0),
-        deep_prof_transform_goal(goal_path_add_at_end(Path, step_ite_cond),
-            Cond0, Cond, AddedImpurityC, !DeepInfo),
-        deep_prof_transform_goal(goal_path_add_at_end(Path, step_ite_then),
-            Then0, Then, AddedImpurityT, !DeepInfo),
-        deep_prof_transform_goal(goal_path_add_at_end(Path, step_ite_else),
-            Else0, Else, AddedImpurityE, !DeepInfo),
+        deep_prof_transform_goal(Cond0, Cond, AddedImpurityC, !DeepInfo),
+        deep_prof_transform_goal(Then0, Then, AddedImpurityT, !DeepInfo),
+        deep_prof_transform_goal(Else0, Else, AddedImpurityE, !DeepInfo),
         (
             ( AddedImpurityC = yes
             ; AddedImpurityT = yes
@@ -1037,16 +1019,15 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
         ;
             AddedImpurity = no
         ),
-        add_impurity_if_needed(AddedImpurity, GoalInfo2, GoalInfo),
+        add_impurity_if_needed(AddedImpurity, GoalInfo1, GoalInfo),
         GoalExpr = if_then_else(IVars, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = scope(Reason0, SubGoal0),
         SubGoal0 = hlds_goal(_, InnerInfo),
-        OuterDetism = goal_info_get_determinism(GoalInfo2),
+        OuterDetism = goal_info_get_determinism(GoalInfo1),
         InnerDetism = goal_info_get_determinism(InnerInfo),
         ( InnerDetism = OuterDetism ->
-            MaybeCut = scope_is_no_cut,
             Reason = Reason0,
             AddForceCommit = no
         ;
@@ -1058,7 +1039,6 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
             % and the deep profiling transformation will make it impure
             % as well.
 
-            MaybeCut = scope_is_cut,
             ( Reason0 = commit(_) ->
                 Reason = commit(force_pruning),
                 AddForceCommit = no
@@ -1067,7 +1047,6 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
                 AddForceCommit = yes
             )
         ),
-        ScopedGoalPath = goal_path_add_at_end(Path, step_scope(MaybeCut)),
         ( Reason = from_ground_term(_, from_ground_term_construct) ->
             % We must annotate the scope goal and its children with a default
             % deep profiling information structure, this is required by the
@@ -1076,10 +1055,10 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
                 SubGoal0, SubGoal),
             AddedImpurity = no
         ;
-            deep_prof_transform_goal(ScopedGoalPath, SubGoal0, SubGoal,
-                AddedImpurity, !DeepInfo)
+            deep_prof_transform_goal(SubGoal0, SubGoal, AddedImpurity,
+                !DeepInfo)
         ),
-        add_impurity_if_needed(AddedImpurity, GoalInfo2, GoalInfo),
+        add_impurity_if_needed(AddedImpurity, GoalInfo1, GoalInfo),
         (
             AddForceCommit = no,
             Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo)
@@ -1096,7 +1075,7 @@ deep_prof_transform_goal(Path, Goal0, Goal, AddedImpurity, !DeepInfo) :-
             "deep_prof_transform_goal: shorthand should have gone by now")
     ).
 
-:- pred deep_prof_mark_goal_as_not_mdprof_inst( hlds_goal::in, hlds_goal::out)
+:- pred deep_prof_mark_goal_as_not_mdprof_inst(hlds_goal::in, hlds_goal::out)
     is det.
 
 deep_prof_mark_goal_as_not_mdprof_inst(Goal0, Goal) :-
@@ -1104,19 +1083,16 @@ deep_prof_mark_goal_as_not_mdprof_inst(Goal0, Goal) :-
     goal_info_set_mdprof_inst(goal_is_not_mdprof_inst, GoalInfo0, GoalInfo),
     Goal = Goal0 ^ hlds_goal_info := GoalInfo.
 
-:- pred deep_prof_transform_conj(int::in,
-    conj_type::in, goal_path::in,
+:- pred deep_prof_transform_conj(conj_type::in,
     list(hlds_goal)::in, list(hlds_goal)::out, bool::out,
     deep_info::in, deep_info::out) is det.
 
-deep_prof_transform_conj(_, _, _, [], [], no, !DeepInfo).
-deep_prof_transform_conj(N, ConjType, Path, [Goal0 | Goals0], Goals,
+deep_prof_transform_conj(_, [], [], no, !DeepInfo).
+deep_prof_transform_conj(ConjType, [Goal0 | Goals0], Goals,
         AddedImpurity, !DeepInfo) :-
-    N1 = N + 1,
-    deep_prof_transform_goal(goal_path_add_at_end(Path, step_conj(N1)),
-        Goal0, Goal, AddedImpurityFirst, !DeepInfo),
-    deep_prof_transform_conj(N1, ConjType, Path, Goals0,
-        TailGoals, AddedImpurityLater, !DeepInfo),
+    deep_prof_transform_goal(Goal0, Goal, AddedImpurityFirst, !DeepInfo),
+    deep_prof_transform_conj(ConjType, Goals0, TailGoals,
+        AddedImpurityLater, !DeepInfo),
     Goal = hlds_goal(GoalExpr, _),
     (
         GoalExpr = conj(plain_conj, Conjuncts),
@@ -1128,42 +1104,39 @@ deep_prof_transform_conj(N, ConjType, Path, [Goal0 | Goals0], Goals,
     ),
     bool.or(AddedImpurityFirst, AddedImpurityLater, AddedImpurity).
 
-:- pred deep_prof_transform_disj(int::in, goal_path::in,
-    list(hlds_goal)::in, list(hlds_goal)::out, bool::out,
-    deep_info::in, deep_info::out) is det.
+:- pred deep_prof_transform_disj(list(hlds_goal)::in, list(hlds_goal)::out,
+    bool::out, deep_info::in, deep_info::out) is det.
 
-deep_prof_transform_disj(_, _, [], [], no, !DeepInfo).
-deep_prof_transform_disj(N, Path, [Goal0 | Goals0], [Goal | Goals],
+deep_prof_transform_disj([], [], no, !DeepInfo).
+deep_prof_transform_disj([Goal0 | Goals0], [Goal | Goals],
         AddedImpurity, !DeepInfo) :-
-    N1 = N + 1,
-    deep_prof_transform_goal(goal_path_add_at_end(Path, step_disj(N1)),
-        Goal0, Goal, AddedImpurityFirst, !DeepInfo),
-    deep_prof_transform_disj(N1, Path, Goals0, Goals, AddedImpurityLater,
+    deep_prof_transform_goal(Goal0, Goal, AddedImpurityFirst, !DeepInfo),
+    deep_prof_transform_disj(Goals0, Goals, AddedImpurityLater,
         !DeepInfo),
     bool.or(AddedImpurityFirst, AddedImpurityLater, AddedImpurity).
 
-:- pred deep_prof_transform_switch(maybe(int)::in, int::in, goal_path::in,
-    list(case)::in, list(case)::out, bool::out,
+:- pred deep_prof_transform_switch(list(case)::in, list(case)::out, bool::out,
     deep_info::in, deep_info::out) is det.
 
-deep_prof_transform_switch(_, _, _, [], [], no, !DeepInfo).
-deep_prof_transform_switch(MaybeNumCases, N, Path,
-        [Case0 | Cases0], [Case | Cases], AddedImpurity, !DeepInfo) :-
-    N1 = N + 1,
+deep_prof_transform_switch([], [], no, !DeepInfo).
+deep_prof_transform_switch([Case0 | Cases0], [Case | Cases], AddedImpurity,
+        !DeepInfo) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    deep_prof_transform_goal(
-        goal_path_add_at_end(Path, step_switch(N1, MaybeNumCases)),
-        Goal0, Goal, AddedImpurityFirst, !DeepInfo),
+    deep_prof_transform_goal(Goal0, Goal, AddedImpurityFirst, !DeepInfo),
     Case = case(MainConsId, OtherConsIds, Goal),
-    deep_prof_transform_switch(MaybeNumCases, N1, Path, Cases0, Cases,
+    deep_prof_transform_switch(Cases0, Cases,
         AddedImpurityLater, !DeepInfo),
     bool.or(AddedImpurityFirst, AddedImpurityLater, AddedImpurity).
 
-:- pred deep_prof_wrap_call(goal_path::in, hlds_goal::in, hlds_goal::out,
+:- pred deep_prof_wrap_call(hlds_goal::in, hlds_goal::out,
     deep_info::in, deep_info::out) is det.
 
-deep_prof_wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
+deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    GoalId = goal_info_get_goal_id(GoalInfo0),
+    ContainingGoalMap = !.DeepInfo ^ deep_containing_goal_map,
+    GoalPath = goal_id_to_forward_path(ContainingGoalMap, GoalId),
+
     ModuleInfo = !.DeepInfo ^ deep_module_info,
     GoalFeatures = goal_info_get_features(GoalInfo0),
     goal_info_remove_feature(feature_deep_tail_rec_call, GoalInfo0, GoalInfo1),
@@ -1172,8 +1145,8 @@ deep_prof_wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
         MdprofInstGoalInfo),
 
     % We need to make the call itself impure. If we didn't do so,
-    % then simplify could eliminate the goal (e.g. if it was a duplicate
-    % call). The result would be a prepare_for_{...}_call whose execution
+    % then simplify could eliminate the goal (e.g. if it was a duplicate call).
+    % The result would be a prepare_for_{...}_call whose execution
     % is not followed by the execution of the call port code of the callee.
     % This would leave the MR_csd_callee_ptr field NULL, which violates
     % invariants of the deep profiling tree (which allows this field to be
@@ -1473,12 +1446,14 @@ deep_prof_transform_higher_order_call(Globals, CodeModel, Goal0, Goal,
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ).
 
-:- pred deep_prof_wrap_foreign_code(goal_path::in,
-    hlds_goal::in, hlds_goal::out, deep_info::in, deep_info::out) is det.
+:- pred deep_prof_wrap_foreign_code(hlds_goal::in, hlds_goal::out,
+    deep_info::in, deep_info::out) is det.
 
-deep_prof_wrap_foreign_code(GoalPath, Goal0, Goal, !DeepInfo) :-
-    Goal0 = hlds_goal(_, GoalInfo0),
-    ModuleInfo = !.DeepInfo ^ deep_module_info,
+deep_prof_wrap_foreign_code(Goal0, Goal, !DeepInfo) :-
+    Goal0 = hlds_goal(_GoalExpr0, GoalInfo0),
+    GoalId = goal_info_get_goal_id(GoalInfo0),
+    ContainingGoalMap = !.DeepInfo ^ deep_containing_goal_map,
+    GoalPath = goal_id_to_forward_path(ContainingGoalMap, GoalId),
 
     SiteNumCounter0 = !.DeepInfo ^ deep_site_num_counter,
     counter.allocate(SiteNum, SiteNumCounter0, SiteNumCounter),
@@ -1486,6 +1461,7 @@ deep_prof_wrap_foreign_code(GoalPath, Goal0, Goal, !DeepInfo) :-
         VarInfo),
     generate_deep_const_unify(int_const(SiteNum), SiteNumVar, SiteNumVarGoal),
 
+    ModuleInfo = !.DeepInfo ^ deep_module_info,
     generate_deep_det_call(ModuleInfo, "prepare_for_callback", 1,
         [SiteNumVar], [], PrepareGoal),
 
@@ -1497,8 +1473,8 @@ deep_prof_wrap_foreign_code(GoalPath, Goal0, Goal, !DeepInfo) :-
 
     make_impure(GoalInfo0, GoalInfo1),
     goal_info_set_mdprof_inst(goal_is_mdprof_inst, GoalInfo1, GoalInfo),
-    Goal = hlds_goal(conj(plain_conj, [SiteNumVarGoal, PrepareGoal, Goal0]),
-        GoalInfo),
+    GoalExpr = conj(plain_conj, [SiteNumVarGoal, PrepareGoal, Goal0]),
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     !DeepInfo ^ deep_site_num_counter := SiteNumCounter,
     !DeepInfo ^ deep_varinfo := VarInfo,
     !DeepInfo ^ deep_call_sites :=

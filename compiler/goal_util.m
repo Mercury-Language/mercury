@@ -258,12 +258,6 @@
     cons_id::in, hlds_goal::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, module_info::in, module_info::out) is det.
 
-    % Transform an if-then-else into ( Cond, Then ; \+ Cond, Else ),
-    % since magic.m and rl_gen.m don't handle if-then-elses.
-    %
-:- pred if_then_else_to_disjunction(hlds_goal::in, hlds_goal::in,
-    hlds_goal::in, hlds_goal_info::in, hlds_goal_expr::out) is det.
-
 %-----------------------------------------------------------------------------%
 
     % Flatten a list of goals of a conjunction.
@@ -418,29 +412,27 @@
     % order argument is no then the result is no.
     %
 :- pred maybe_transform_goal_at_goal_path(
-    pred(hlds_goal, maybe_error(hlds_goal)),
-    goal_path_consable, hlds_goal, maybe_transformed_goal). 
-:- mode maybe_transform_goal_at_goal_path(pred(in, out) is det,
-    in, in, out) is det.
+    pred(hlds_goal, maybe_error(hlds_goal))::in(pred(in, out) is det),
+    forward_goal_path::in, hlds_goal::in, maybe_transformed_goal::out) is det.
 
     % As above, except that we also compute the instmap during the traversal so
     % that the transformation expressed by the higher order value can use the
     % instmap at that point within the goal tree. 
     %
 :- pred maybe_transform_goal_at_goal_path_with_instmap(
-    pred(instmap, hlds_goal, maybe_error(hlds_goal)), 
-    goal_path_consable, instmap, hlds_goal, maybe_transformed_goal). 
-:- mode maybe_transform_goal_at_goal_path_with_instmap(
-    pred(in, in, out) is det, 
-    in, in, in, out) is det.
+    pred(instmap, hlds_goal, maybe_error(hlds_goal))::
+        in(pred(in, in, out) is det), 
+    forward_goal_path::in, instmap::in, hlds_goal::in,
+    maybe_transformed_goal::out) is det. 
 
     % Transform the given goal and all it's children according to the higher
     % order argument.  Children are transformed before their parents, therefore
     % the higher order argument will receive a goal with children that have
     % already been transformed.
     %
-:- pred transform_all_goals(pred(hlds_goal, hlds_goal), hlds_goal, hlds_goal).
-:- mode transform_all_goals(pred(in, out) is det, in, out) is det.
+:- pred transform_all_goals(
+    pred(hlds_goal, hlds_goal)::in(pred(in, out) is det),
+    hlds_goal::in, hlds_goal::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1405,97 +1397,6 @@ case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct, !VarSet, !VarTypes,
 
 %-----------------------------------------------------------------------------%
 
-if_then_else_to_disjunction(Cond0, Then, Else, GoalInfo, Goal) :-
-    compute_disjunct_goal_info(Cond0, Then, GoalInfo, CondThenInfo),
-    conj_list_to_goal([Cond0, Then], CondThenInfo, CondThen),
-
-    Cond0 = hlds_goal(_, CondInfo0),
-    CondDetism0 = goal_info_get_determinism(CondInfo0),
-
-    determinism_components(CondDetism0, CondCanFail0, CondMaxSoln0),
-
-    % Add a commit inside the negation of the condition in the else branch
-    % if the condition can succeed more than once.
-    (
-        CondMaxSoln0 = at_most_many,
-        CondMaxSoln = at_most_one,
-        determinism_components(CondDetism, CondCanFail0, CondMaxSoln),
-        goal_info_set_determinism(CondDetism, CondInfo0, CondInfo),
-        Cond = hlds_goal(scope(commit(dont_force_pruning), Cond0), CondInfo)
-    ;
-        ( CondMaxSoln0 = at_most_zero
-        ; CondMaxSoln0 = at_most_one
-        ; CondMaxSoln0 = at_most_many_cc
-        ),
-        CondDetism = CondDetism0,
-        CondInfo = CondInfo0,
-        Cond = Cond0
-    ),
-
-    det_negation_det(CondDetism, MaybeNegCondDet),
-    (
-        MaybeNegCondDet = yes(NegCondDet1),
-        NegCondDet = NegCondDet1
-    ;
-        MaybeNegCondDet = no,
-        unexpected(this_file,
-            "if_then_else_to_disjunction: "
-                ++ "inappropriate determinism in a negation.")
-    ),
-    determinism_components(NegCondDet, _, NegCondMaxSoln),
-    (
-        NegCondMaxSoln = at_most_zero,
-        instmap_delta_init_unreachable(NegCondDelta)
-    ;
-        ( NegCondMaxSoln = at_most_one
-        ; NegCondMaxSoln = at_most_many
-        ; NegCondMaxSoln = at_most_many_cc
-        ),
-        instmap_delta_init_reachable(NegCondDelta)
-    ),
-    CondNonLocals = goal_info_get_nonlocals(CondInfo),
-    CondPurity = goal_info_get_purity(CondInfo),
-    goal_info_init(CondNonLocals, NegCondDelta, NegCondDet, CondPurity,
-        NegCondInfo),
-
-    compute_disjunct_goal_info(hlds_goal(negation(Cond), NegCondInfo), Else,
-        GoalInfo, NegCondElseInfo),
-    conj_list_to_goal([hlds_goal(negation(Cond), NegCondInfo), Else],
-        NegCondElseInfo, NegCondElse),
-    Goal = disj([CondThen, NegCondElse]).
-
-    % Compute a hlds_goal_info for a pair of conjoined goals.
-    %
-:- pred compute_disjunct_goal_info(hlds_goal::in, hlds_goal::in,
-    hlds_goal_info::in, hlds_goal_info::out) is det.
-
-compute_disjunct_goal_info(Goal1, Goal2, GoalInfo, CombinedInfo) :-
-    Goal1 = hlds_goal(_, GoalInfo1),
-    Goal2 = hlds_goal(_, GoalInfo2),
-
-    NonLocals1 = goal_info_get_nonlocals(GoalInfo1),
-    NonLocals2 = goal_info_get_nonlocals(GoalInfo2),
-    OuterNonLocals = goal_info_get_nonlocals(GoalInfo),
-    set.union(NonLocals1, NonLocals2, CombinedNonLocals0),
-    set.intersect(CombinedNonLocals0, OuterNonLocals, CombinedNonLocals),
-
-    Delta1 = goal_info_get_instmap_delta(GoalInfo1),
-    Delta2 = goal_info_get_instmap_delta(GoalInfo2),
-    instmap_delta_apply_instmap_delta(Delta1, Delta2, test_size,
-        CombinedDelta0),
-    instmap_delta_restrict(OuterNonLocals, CombinedDelta0, CombinedDelta),
-
-    Detism1 = goal_info_get_determinism(GoalInfo1),
-    Detism2 = goal_info_get_determinism(GoalInfo2),
-    det_conjunction_detism(Detism1, Detism2, CombinedDetism),
-
-    goal_list_purity([Goal1, Goal2], CombinedPurity),
-
-    goal_info_init(CombinedNonLocals, CombinedDelta,
-        CombinedDetism, CombinedPurity, CombinedInfo).
-
-%-----------------------------------------------------------------------------%
-
 flatten_conj([], []).
 flatten_conj([Goal | Goals0], Goals) :-
     flatten_conj(Goals0, Goals1),
@@ -1950,11 +1851,31 @@ maybe_strip_equality_pretest_case(Case0) = Case :-
 
 %-----------------------------------------------------------------------------%
 
-maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath0, Goal0,
-        MaybeGoal) :-
+maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
+        Goal0, MaybeGoal) :-
+    TargetGoalPath = fgp(TargetGoalSteps),
+    maybe_transform_goal_at_goal_path_2(TransformP,
+        TargetGoalSteps, Goal0, MaybeGoal).
+
+maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
+        InstMap, Goal0, MaybeGoal) :-
+    TargetGoalPath = fgp(TargetGoalSteps),
+    maybe_transform_goal_at_goal_path_with_instmap_2(TransformP,
+        TargetGoalSteps, InstMap, Goal0, MaybeGoal).
+
+:- pred maybe_transform_goal_at_goal_path_2(
+    pred(hlds_goal, maybe_error(hlds_goal))::in(pred(in, out) is det),
+    list(goal_path_step)::in, hlds_goal::in, maybe_transformed_goal::out)
+    is det.
+
+maybe_transform_goal_at_goal_path_2(TransformP, TargetGoalSteps,
+        Goal0, MaybeGoal) :-
     (
-        goal_path_consable_remove_first(TargetGoalPath0, Step, TargetGoalPath)
-    ->
+        TargetGoalSteps = [],
+        TransformP(Goal0, MaybeGoal0),
+        maybe_error_to_maybe_transformed_goal(MaybeGoal0, MaybeGoal)
+    ;
+        TargetGoalSteps = [FirstStep | LaterSteps],
         GoalExpr0 = Goal0 ^ hlds_goal_expr,  
         (
             ( GoalExpr0 = unify(_, _, _, _, _) 
@@ -1967,10 +1888,10 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath0, Goal0,
         ;
             GoalExpr0 = conj(ConjType, Conjs0),
             (
-                Step = step_conj(ConjNum),
+                FirstStep = step_conj(ConjNum),
                 list.index1(Conjs0, ConjNum, Conj0)
             ->
-                maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
+                maybe_transform_goal_at_goal_path_2(TransformP, LaterSteps,
                     Conj0, MaybeConj),
                 (
                     MaybeConj = ok(Conj),
@@ -1989,10 +1910,10 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath0, Goal0,
         ;
             GoalExpr0 = disj(Disjs0),
             (
-                Step = step_disj(DisjNum),
+                FirstStep = step_disj(DisjNum),
                 list.index1(Disjs0, DisjNum, Disj0)
             ->
-                maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
+                maybe_transform_goal_at_goal_path_2(TransformP, LaterSteps,
                     Disj0, MaybeDisj),
                 (
                     MaybeDisj = ok(Disj),
@@ -2011,11 +1932,11 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath0, Goal0,
         ;
             GoalExpr0 = switch(Var, CanFail, Cases0),
             (
-                Step = step_switch(CaseNum, _MaybeNumConstructors),
+                FirstStep = step_switch(CaseNum, _MaybeNumConstructors),
                 list.index1(Cases0, CaseNum, Case0)
             ->
                 CaseGoal0 = Case0 ^ case_goal,
-                maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
+                maybe_transform_goal_at_goal_path_2(TransformP, LaterSteps,
                     CaseGoal0, MaybeCaseGoal),
                 (
                     MaybeCaseGoal = ok(CaseGoal),
@@ -2034,8 +1955,8 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath0, Goal0,
             )
         ;
             GoalExpr0 = negation(SubGoal0),
-            ( Step = step_neg ->
-                maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
+            ( FirstStep = step_neg ->
+                maybe_transform_goal_at_goal_path_2(TransformP, LaterSteps,
                     SubGoal0, MaybeSubGoal),
                 (
                     MaybeSubGoal = ok(SubGoal),
@@ -2051,8 +1972,8 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath0, Goal0,
             )
         ;
             GoalExpr0 = scope(Reason, SubGoal0),
-            ( Step = step_scope(_MaybeCut) ->
-                maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
+            ( FirstStep = step_scope(_MaybeCut) ->
+                maybe_transform_goal_at_goal_path_2(TransformP, LaterSteps,
                     SubGoal0, MaybeSubGoal),
                 (
                     MaybeSubGoal = ok(SubGoal),
@@ -2069,8 +1990,8 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath0, Goal0,
             )
         ;
             GoalExpr0 = if_then_else(ExistVars, Cond0, Then0, Else0),
-            ( Step = step_ite_cond ->
-                maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
+            ( FirstStep = step_ite_cond ->
+                maybe_transform_goal_at_goal_path_2(TransformP, LaterSteps,
                     Cond0, MaybeCond),
                 (
                     MaybeCond = ok(Cond),
@@ -2082,8 +2003,8 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath0, Goal0,
                     ),
                     MaybeGoal = MaybeCond 
                 )
-            ; Step = step_ite_then ->
-                maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
+            ; FirstStep = step_ite_then ->
+                maybe_transform_goal_at_goal_path_2(TransformP, LaterSteps,
                     Then0, MaybeThen),
                 (
                     MaybeThen = ok(Then),
@@ -2095,8 +2016,8 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath0, Goal0,
                     ),
                     MaybeGoal = MaybeThen 
                 )
-            ; Step = step_ite_else ->
-                maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
+            ; FirstStep = step_ite_else ->
+                maybe_transform_goal_at_goal_path_2(TransformP, LaterSteps,
                     Else0, MaybeElse),
                 (
                     MaybeElse = ok(Else),
@@ -2116,16 +2037,22 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath0, Goal0,
             unexpected(this_file, 
                 "Shorthand goals should have been eliminated already")
         )
-    ;
-        TransformP(Goal0, MaybeGoal0),
-        maybe_error_to_maybe_transformed_goal(MaybeGoal0, MaybeGoal)
     ).
 
-maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath0,
+:- pred maybe_transform_goal_at_goal_path_with_instmap_2(
+    pred(instmap, hlds_goal, maybe_error(hlds_goal))::
+        in(pred(in, in, out) is det), 
+    list(goal_path_step)::in, instmap::in, hlds_goal::in,
+    maybe_transformed_goal::out) is det. 
+
+maybe_transform_goal_at_goal_path_with_instmap_2(TransformP, TargetGoalSteps,
         Instmap0, Goal0, MaybeGoal) :-
     (
-        goal_path_consable_remove_first(TargetGoalPath0, Step, TargetGoalPath)
-    ->
+        TargetGoalSteps = [],
+        TransformP(Instmap0, Goal0, MaybeGoal0),
+        maybe_error_to_maybe_transformed_goal(MaybeGoal0, MaybeGoal)
+    ;
+        TargetGoalSteps = [FirstStep | LaterSteps],
         GoalExpr0 = Goal0 ^ hlds_goal_expr,  
         (
             ( GoalExpr0 = unify(_, _, _, _, _) 
@@ -2138,7 +2065,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath0,
         ;
             GoalExpr0 = conj(ConjType, Conjs0),
             (
-                Step = step_conj(ConjNum),
+                FirstStep = step_conj(ConjNum),
                 list.index1(Conjs0, ConjNum, Conj0)
             ->
                 list.take_upto(ConjNum - 1, Conjs0, HeadConjs),
@@ -2147,8 +2074,8 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath0,
                     HeadConjs),
                 foldl(apply_instmap_delta_sv, HeadInstdeltas, 
                     Instmap0, Instmap),
-                maybe_transform_goal_at_goal_path_with_instmap(TransformP, 
-                    TargetGoalPath, Instmap, Conj0, MaybeConj),
+                maybe_transform_goal_at_goal_path_with_instmap_2(TransformP, 
+                    LaterSteps, Instmap, Conj0, MaybeConj),
                 (
                     MaybeConj = ok(Conj),
                     list.replace_nth_det(Conjs0, ConjNum, Conj, Conjs),
@@ -2166,11 +2093,11 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath0,
         ;
             GoalExpr0 = disj(Disjs0),
             (
-                Step = step_disj(DisjNum),
+                FirstStep = step_disj(DisjNum),
                 list.index1(Disjs0, DisjNum, Disj0)
             ->
-                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
-                    TargetGoalPath, Instmap0, Disj0, MaybeDisj),
+                maybe_transform_goal_at_goal_path_with_instmap_2(TransformP,
+                    LaterSteps, Instmap0, Disj0, MaybeDisj),
                 (
                     MaybeDisj = ok(Disj),
                     list.replace_nth_det(Disjs0, DisjNum, Disj, Disjs),
@@ -2187,12 +2114,12 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath0,
         ;
             GoalExpr0 = switch(Var, CanFail, Cases0),
             (
-                Step = step_switch(CaseNum, _MaybeNumConstructors),
+                FirstStep = step_switch(CaseNum, _MaybeNumConstructors),
                 list.index1(Cases0, CaseNum, Case0)
             ->
                 CaseGoal0 = Case0 ^ case_goal,
-                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
-                    TargetGoalPath, Instmap0, CaseGoal0, MaybeCaseGoal),
+                maybe_transform_goal_at_goal_path_with_instmap_2(TransformP,
+                    LaterSteps, Instmap0, CaseGoal0, MaybeCaseGoal),
                 (
                     MaybeCaseGoal = ok(CaseGoal),
                     Case = Case0 ^ case_goal := CaseGoal,
@@ -2210,9 +2137,9 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath0,
             )
         ;
             GoalExpr0 = negation(SubGoal0),
-            ( Step = step_neg ->
-                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
-                    TargetGoalPath, Instmap0, SubGoal0, MaybeSubGoal),
+            ( FirstStep = step_neg ->
+                maybe_transform_goal_at_goal_path_with_instmap_2(TransformP,
+                    LaterSteps, Instmap0, SubGoal0, MaybeSubGoal),
                 (
                     MaybeSubGoal = ok(SubGoal),
                     GoalExpr = negation(SubGoal),
@@ -2228,9 +2155,9 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath0,
             )
         ;
             GoalExpr0 = scope(Reason, SubGoal0),
-            ( Step = step_scope(_MaybeCut) ->
-                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
-                    TargetGoalPath, Instmap0, SubGoal0, MaybeSubGoal),
+            ( FirstStep = step_scope(_MaybeCut) ->
+                maybe_transform_goal_at_goal_path_with_instmap_2(TransformP,
+                    LaterSteps, Instmap0, SubGoal0, MaybeSubGoal),
                 (
                     MaybeSubGoal = ok(SubGoal),
                     GoalExpr = scope(Reason, SubGoal),
@@ -2246,9 +2173,9 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath0,
             )
         ;
             GoalExpr0 = if_then_else(ExistVars, Cond0, Then0, Else0),
-            ( Step = step_ite_cond ->
-                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
-                    TargetGoalPath, Instmap0, Cond0, MaybeCond),
+            ( FirstStep = step_ite_cond ->
+                maybe_transform_goal_at_goal_path_with_instmap_2(TransformP,
+                    LaterSteps, Instmap0, Cond0, MaybeCond),
                 (
                     MaybeCond = ok(Cond),
                     GoalExpr = if_then_else(ExistVars, Cond, Then0, Else0),
@@ -2259,12 +2186,12 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath0,
                     ),
                     MaybeGoal = MaybeCond
                 )
-            ; Step = step_ite_then ->
+            ; FirstStep = step_ite_then ->
                 apply_instmap_delta_sv(
                     goal_info_get_instmap_delta(Cond0 ^ hlds_goal_info),
                     Instmap0, Instmap),
-                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
-                    TargetGoalPath, Instmap, Then0, MaybeThen),
+                maybe_transform_goal_at_goal_path_with_instmap_2(TransformP,
+                    LaterSteps, Instmap, Then0, MaybeThen),
                 (
                     MaybeThen = ok(Then),
                     GoalExpr = if_then_else(ExistVars, Cond0, Then, Else0),
@@ -2275,9 +2202,9 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath0,
                     ),
                     MaybeGoal = MaybeThen
                 )
-            ; Step = step_ite_else ->
-                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
-                    TargetGoalPath, Instmap0, Else0, MaybeElse),
+            ; FirstStep = step_ite_else ->
+                maybe_transform_goal_at_goal_path_with_instmap_2(TransformP,
+                    LaterSteps, Instmap0, Else0, MaybeElse),
                 (
                     MaybeElse = ok(Else),
                     GoalExpr = if_then_else(ExistVars, Cond0, Then0, Else),
@@ -2296,10 +2223,6 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath0,
             unexpected(this_file, 
                 "Shorthand goals should have been eliminated already")
         )
-    ;
-        TransformP(Instmap0, Goal0, MaybeGoal0),
-        % These are different types, so we need to pattern match them here.
-        maybe_error_to_maybe_transformed_goal(MaybeGoal0, MaybeGoal)
     ).
 
 :- pred maybe_error_to_maybe_transformed_goal(maybe_error(hlds_goal)::in,
@@ -2308,7 +2231,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath0,
 maybe_error_to_maybe_transformed_goal(ok(Goal), ok(Goal)).
 maybe_error_to_maybe_transformed_goal(error(Error), error(Error)).
 
-transform_all_goals(Transform, Goal0, Goal) :-
+transform_all_goals(TransformP, Goal0, Goal) :-
     GoalExpr0 = Goal0 ^ hlds_goal_expr,  
     (
         ( GoalExpr0 = unify(_, _, _, _, _) 
@@ -2319,33 +2242,33 @@ transform_all_goals(Transform, Goal0, Goal) :-
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = conj(ConjType, Conjs0),
-        list.map(transform_all_goals(Transform), Conjs0, Conjs),
+        list.map(transform_all_goals(TransformP), Conjs0, Conjs),
         GoalExpr = conj(ConjType, Conjs)
     ;
         GoalExpr0 = disj(Disjs0),
-        list.map(transform_all_goals(Transform), Disjs0, Disjs),
+        list.map(transform_all_goals(TransformP), Disjs0, Disjs),
         GoalExpr = disj(Disjs)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         list.map((pred(Case0::in, Case::out) is det :-
                 GoalI0 = Case0 ^ case_goal,
-                transform_all_goals(Transform, GoalI0, GoalI),
+                transform_all_goals(TransformP, GoalI0, GoalI),
                 Case = Case0 ^ case_goal := GoalI
             ), Cases0, Cases),
         GoalExpr = switch(Var, CanFail, Cases)
     ;
         GoalExpr0 = negation(SubGoal0),
-        transform_all_goals(Transform, SubGoal0, SubGoal),
+        transform_all_goals(TransformP, SubGoal0, SubGoal),
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        transform_all_goals(Transform, SubGoal0, SubGoal),
+        transform_all_goals(TransformP, SubGoal0, SubGoal),
         GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = if_then_else(ExistVars, Cond0, Then0, Else0),
-        transform_all_goals(Transform, Cond0, Cond),
-        transform_all_goals(Transform, Then0, Then),
-        transform_all_goals(Transform, Else0, Else),
+        transform_all_goals(TransformP, Cond0, Cond),
+        transform_all_goals(TransformP, Then0, Then),
+        transform_all_goals(TransformP, Else0, Else),
         GoalExpr = if_then_else(ExistVars, Cond, Then, Else)
     ;
         GoalExpr0 = shorthand(_),
@@ -2353,7 +2276,7 @@ transform_all_goals(Transform, Goal0, Goal) :-
             "Shorthand goals should have been eliminated already")
     ),
     Goal1 = Goal0 ^ hlds_goal_expr := GoalExpr, 
-    Transform(Goal1, Goal).
+    TransformP(Goal1, Goal).
 
 %-----------------------------------------------------------------------------%
 

@@ -32,7 +32,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.goal_path.
+:- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
@@ -102,9 +102,9 @@
                 % The context of the goal that creates the conjunction.
                 tconstr_context     :: prog_context,
 
-                % The goal path of the goal which created the constraint,
+                % The id of the goal which created the constraint,
                 % if it is relevant.
-                tconstr_goal_path   :: maybe(goal_path),
+                tconstr_goal_id     :: maybe(goal_id),
 
                 % The predicate id of the predicate call, if this is a
                 % predicate call constraint.
@@ -286,8 +286,6 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
         pred_info_get_context(!.PredInfo, Context),
         pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
         clauses_info_get_varset(!.ClausesInfo, ProgVarSet),
-        clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep0, ItemNumbers),
-        get_clause_list(ClausesRep0, !:Clauses),
 
         trace [compile_time(flag("type_error_diagnosis")), io(!IO)] (
             LineNumber = string.int_to_string(term.context_line(Context)),
@@ -310,8 +308,13 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
         ),
 
         % Generate constraints for each clause of the predicate.
+        fill_goal_id_slots_in_clauses(!.HLDS, ContainingGoalMap,
+            !ClausesInfo),
+        ForwardGoalPathMap =
+            create_forward_goal_path_map(ContainingGoalMap),
+        clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep0, ItemNumbers),
+        get_clause_list(ClausesRep0, !:Clauses),
         list.map(get_clause_body, !.Clauses, !:Goals),
-        list.map(fill_goal_path_slots_in_goal_2(map.init, !.HLDS), !Goals),
         list.foldl(goal_to_constraint(!.Environment), !.Goals, !TCInfo),
         trace [compile_time(flag("type_error_diagnosis")), io(!IO)] (
             print_pred_constraint(!.TCInfo, ProgVarSet, !IO)
@@ -319,7 +322,7 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
 
         % Solve all the constraints.
         find_type_constraint_solutions(Context, ProgVarSet, DomainMap0,
-                !TCInfo),
+            !TCInfo),
         list.foldl2_corresponding(unify_equal_tvars(!.TCInfo, set.init),
             HeadTVars, HeadTVars,
             map.init, ReplacementMap, DomainMap0, DomainMap),
@@ -329,7 +332,9 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
 
         % Update the HLDS with the results of the solving and report any
         % ambiguity errors found in this process.
-        list.map2(update_goal(!.PredEnv, !.TCInfo ^ tconstr_constraint_map),
+        list.map2(
+            update_goal(!.PredEnv, !.TCInfo ^ tconstr_constraint_map,
+                ForwardGoalPathMap),
             !Goals, PredErrors),
         create_vartypes_map(Context, ProgVarSet, !.TCInfo ^ tconstr_tvarset,
             !.TCInfo ^ tconstr_var_map, DomainMap, ReplacementMap, !:Vartypes,
@@ -387,10 +392,11 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
     % If there is an ambiguous predicate call, chooses one predicate to be
     % the "correct" one and returns an error message describing the problem.
     %
-:- pred update_goal(pred_env::in, type_constraint_map::in, hlds_goal::in,
-    hlds_goal::out, list(error_msg)::out) is det.
+:- pred update_goal(pred_env::in, type_constraint_map::in,
+    goal_forward_path_map::in, hlds_goal::in, hlds_goal::out,
+    list(error_msg)::out) is det.
 
-update_goal(PredEnv, ConstraintMap, !Goal, Errors) :-
+update_goal(PredEnv, ConstraintMap, ForwardGoalPathMap, !Goal, Errors) :-
     Disjunctions = map.values(ConstraintMap),
     list.filter_map(has_one_disjunct, Disjunctions, Conjunctions),
     list.filter_map(pred_constraint_info, Conjunctions, DefinitePredData),
@@ -402,38 +408,43 @@ update_goal(PredEnv, ConstraintMap, !Goal, Errors) :-
         AmbigPredDatas),
     AmbigPredData = list.filter_map(list.head, AmbigPredDatas),
     PredData = DefinitePredData ++ AmbigPredData,
-    list.foldl(apply_pred_data_to_goal, PredData, !Goal).
+    list.foldl(apply_pred_data_to_goal(ForwardGoalPathMap), PredData, !Goal).
 
-:- pred apply_pred_data_to_goal(pair(goal_path, pred_id)::in,
-    hlds_goal::in, hlds_goal::out) is det.
+:- pred apply_pred_data_to_goal(goal_forward_path_map::in,
+    pair(goal_id, pred_id)::in, hlds_goal::in, hlds_goal::out) is det.
 
-apply_pred_data_to_goal((GoalPath0 - PredId), !Goal) :-
-    program_representation.goal_path_consable(GoalPath0, GoalPath),
+apply_pred_data_to_goal(ForwardGoalPathMap, GoalId - PredId, !Goal) :-
+    map.lookup(ForwardGoalPathMap, GoalId, GoalPath),
+    maybe_transform_goal_at_goal_path(set_goal_pred_id(PredId), GoalPath,
+        !.Goal, Result),
     (
-        goal_util.maybe_transform_goal_at_goal_path(set_goal_pred_id(PredId),
-            GoalPath, !.Goal, ok(GoalPrime))
-    ->
-        !:Goal = GoalPrime
+        Result = ok(!:Goal)
     ;
-        true
+        ( Result = error(_)
+        ; Result = goal_not_found
+        ),
+        unexpected(this_file, "apply_pred_data_to_goal: not ok")
     ).
 
-:- pred set_goal_pred_id(pred_id::in, hlds_goal::in, 
+:- pred set_goal_pred_id(pred_id::in, hlds_goal::in,
     maybe_error(hlds_goal)::out) is det.
 
-set_goal_pred_id(PredId, hlds_goal(Expression0, Info), MaybeGoal) :-
-    ( Expression0 = plain_call(_, _, _, _, _, _) ->
+set_goal_pred_id(PredId, Goal0, MaybeGoal) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
+    ( GoalExpr0 = plain_call(_, _, _, _, _, _) ->
         trace [compile_time(flag("type_error_diagnosis")), io(!IO)] (
-            Context = goal_info_get_context(Info),
-            LineNumber = string.int_to_string(term.context_line(Context)),
+            Context = goal_info_get_context(GoalInfo),
+            LineNumber = term.context_line(Context),
             FileName = term.context_file(Context),
-            PredName = sym_name_to_string(Expression0 ^ call_sym_name),
-            io.print("  Predicate " ++ PredName ++ " (" ++ FileName ++ ": " ++
-                LineNumber ++ ") has id " ++
-                int_to_string(pred_id_to_int(PredId)) ++ "\n", !IO)
+            PredName = sym_name_to_string(GoalExpr0 ^ call_sym_name),
+            io.format("  Predicate %s PredName (%s:%d) has id %d\n",
+                [s(PredName), s(FileName), i(LineNumber),
+                    i(pred_id_to_int(PredId))],
+                !IO)
         ),
-        NewCall = Expression0 ^ call_pred_id := PredId,
-        MaybeGoal = ok(hlds_goal(NewCall, Info))
+        GoalExpr = GoalExpr0 ^ call_pred_id := PredId,
+        Goal = hlds_goal(GoalExpr, GoalInfo),
+        MaybeGoal = ok(Goal)
     ;
         MaybeGoal = error("Goal was not a plain call") 
     ).
@@ -528,12 +539,6 @@ find_variable_type(Context, ProgVarSet, TVarSet, VarMap, DomainMap,
         Type = DefaultType,
         Error = no
     ).
-
-:- pred fill_goal_path_slots_in_goal_2(vartypes::in, module_info::in,
-    hlds_goal::in, hlds_goal::out) is det.
-
-fill_goal_path_slots_in_goal_2(V, M, !G) :-
-    fill_goal_path_slots_in_goal(!.G, V, M, !:G).
 
 :- pred get_clause_body(clause::in, hlds_goal::out) is det.
 
@@ -828,7 +833,7 @@ conj_find_domain(!ConjTypeConstraint, DomainMap0, DomainMap) :-
         DomainMap = DomainMap0
     ;
         !.ConjTypeConstraint = ctconstr(Constraints, tconstr_active, Context,
-            GoalPath, PredId),
+            GoalId, PredId),
         list.foldl(simple_find_domain, Constraints, DomainMap0, DomainMap1),
         ( constraint_is_satisfiable(DomainMap1, Constraints) ->
             map.to_assoc_list(DomainMap1, AssocDomain1),
@@ -839,7 +844,7 @@ conj_find_domain(!ConjTypeConstraint, DomainMap0, DomainMap) :-
             )
         ;
             !:ConjTypeConstraint = ctconstr(Constraints, tconstr_unsatisfiable,
-                Context, GoalPath, PredId),
+                Context, GoalId, PredId),
             DomainMap = DomainMap1
         )
     ).
@@ -1475,7 +1480,7 @@ diagnose_ambig_pred_error(PredEnv, Conjunctions, Msg) :-
         | Components],
     Msg = simple_msg(Context, Pieces).
 
-:- pred ambig_pred_error_message(pred_env::in, pair(goal_path, pred_id)::in,
+:- pred ambig_pred_error_message(pred_env::in, pair(goal_id, pred_id)::in,
     error_msg_component::out) is det.
 
 ambig_pred_error_message(PredEnv, (_ - PredId), Component) :-
@@ -1492,7 +1497,7 @@ ambig_pred_error_message(PredEnv, (_ - PredId), Component) :-
         suffix(")")]).
 
 :- pred pred_constraint_info(conj_type_constraint::in,
-    pair(goal_path, pred_id)::out) is semidet.
+    pair(goal_id, pred_id)::out) is semidet.
 
 pred_constraint_info(Constraint, Path - PredId) :-
     Constraint = ctconstr(_, tconstr_active, _, yes(Path), yes(PredId)).
@@ -1970,9 +1975,9 @@ shorthand_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
 pred_call_constraint(PredTable, Info, ArgTVars, PredId, Constraint, TVars,
         !TCInfo) :-
     Constraint = ctconstr(Constraints, tconstr_active, Context,
-        yes(GoalPath), yes(PredId)),
+        yes(GoalId), yes(PredId)),
     Context = goal_info_get_context(Info),
-    GoalPath = goal_info_get_goal_path(Info),
+    GoalId = goal_info_get_goal_id(Info),
     ( map.search(PredTable, PredId, PredInfo) ->
         pred_info_get_arg_types(PredInfo, PredArgTypes0),
         pred_info_get_typevarset(PredInfo, PredTVarSet),
@@ -2007,9 +2012,9 @@ pred_call_constraint(PredTable, Info, ArgTVars, PredId, Constraint, TVars,
 ho_pred_unif_constraint(PredTable, Info, LHSTVar, ArgTVars, PredId, Constraint,
         !TCInfo) :-
     Constraint = ctconstr(Constraints, tconstr_active, Context,
-        yes(GoalPath), yes(PredId)),
+        yes(GoalId), yes(PredId)),
     Context = goal_info_get_context(Info),
-    GoalPath = goal_info_get_goal_path(Info),
+    GoalId = goal_info_get_goal_id(Info),
     ( map.search(PredTable, PredId, PredInfo) ->
         pred_info_get_arg_types(PredInfo, PredArgTypes0),
         pred_info_get_typevarset(PredInfo, PredTVarSet),
@@ -2083,7 +2088,7 @@ functor_unif_constraint(LTVar, ArgTVars, Info, ConsDefn, Constraints,
     ConsDefn = hlds_cons_defn(TypeCtor, FunctorTVarSet, TypeParams0, _, _, _,
         FuncArgs, _),
     Context = goal_info_get_context(Info),
-    GoalPath = goal_info_get_goal_path(Info),
+    GoalId = goal_info_get_goal_id(Info),
     % Find the types of each argument and the result type, given a renaming
     % of type variables.
     list.map(get_ctor_arg_type, FuncArgs, FuncArgTypes0),
@@ -2100,7 +2105,7 @@ functor_unif_constraint(LTVar, ArgTVars, Info, ConsDefn, Constraints,
     RHS_Constraints = list.map_corresponding(create_stconstr,
         ArgTVars, FuncArgTypes),
     Constraints = ctconstr([LHS_Constraint | RHS_Constraints],
-        tconstr_active, Context, yes(GoalPath), no).
+        tconstr_active, Context, yes(GoalId), no).
 
 %-----------------------------------------------------------------------------%
 %

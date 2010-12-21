@@ -1,11 +1,11 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007, 2009 The University of Melbourne.
+% Copyright (C) 2007, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: rbmm.m.
 % Main author: quan.
 %
@@ -63,9 +63,9 @@
 do_region_analysis(!ModuleInfo, !IO) :-
     region_points_to_analysis(RptaInfoTable, !ModuleInfo),
     execution_path_analysis(!.ModuleInfo, ExecPathTable),
-    live_variable_analysis(!.ModuleInfo, ExecPathTable, LVBeforeTable, 
+    live_variable_analysis(!.ModuleInfo, ExecPathTable, LVBeforeTable,
         LVAfterTable, VoidVarTable),
-    live_region_analysis(!.ModuleInfo, RptaInfoTable, 
+    live_region_analysis(!.ModuleInfo, RptaInfoTable,
         LVBeforeTable, LVAfterTable, VoidVarTable, LRBeforeTable0,
         LRAfterTable0, VoidVarRegionTable0, InputRTable, OutputRTable,
         BornRTable0, DeadRTable0, LocalRTable0),
@@ -73,7 +73,7 @@ do_region_analysis(!ModuleInfo, !IO) :-
         ExecPathTable, LRBeforeTable0, LRAfterTable0, InputRTable,
         OutputRTable, ConstantRTable0, BornRTable0, BornRTable1,
         DeadRTable0, DeadRTable1),
-    ignore_primitive_regions(!.ModuleInfo, RptaInfoTable, 
+    ignore_primitive_regions(!.ModuleInfo, RptaInfoTable,
         BornRTable1, BornRTable, DeadRTable1, DeadRTable,
         ConstantRTable0, ConstantRTable, LocalRTable0, LocalRTable,
         LRBeforeTable0, LRBeforeTable, LRAfterTable0, LRAfterTable,
@@ -92,9 +92,9 @@ do_region_analysis(!ModuleInfo, !IO) :-
     % imperative-style updatable variables. They may also have scopes
     % which are not valid in Mercury. In order for Mercury code to
     % manipulate regions we need to map these "region variables" on to
-    % Mercury variables. 
+    % Mercury variables.
     % The calls below derive the necessary mapping to resolve the problem.
-    compute_resurrection_paths(ExecPathTable, LRBeforeTable, LRAfterTable, 
+    compute_resurrection_paths(ExecPathTable, LRBeforeTable, LRAfterTable,
         BornRTable, DeadRTable, LocalRTable,
         BecomeLiveTable, BecomeDeadBeforeTable, BecomeDeadAfterTable,
         ResurrectionPathTable0),
@@ -115,19 +115,17 @@ do_region_analysis(!ModuleInfo, !IO) :-
         RenamedRegionsTable),
     collect_ite_renaming(!.ModuleInfo, RptaInfoTable, RenamedRegionsTable,
         IteRenamingTable0),
-    collect_ite_annotation(RenamedRegionsTable, ExecPathTable, 
+    collect_ite_annotation(RenamedRegionsTable, ExecPathTable,
         RptaInfoTable, IteRenamingTable0, IteRenamingTable,
         IteRenamingAnnoTable),
-
     region_transform(RptaInfoTable, FormalRegionArgTable,
         ActualRegionArgTable, ResurRenamingTable,
         IteRenamingTable, RegionInstructionTable, ResurRenamingAnnoTable,
         IteRenamingAnnoTable, map.init, NameToVarTable, !ModuleInfo),
-    
+
     collect_rbmm_goal_info(RptaInfoTable, ActualRegionArgTable,
         ResurRenamingTable, IteRenamingTable, NameToVarTable, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.rbmm.
 %-----------------------------------------------------------------------------%
-

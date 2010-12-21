@@ -1040,9 +1040,9 @@ write_hlds_ps_call_site(CallSiteStaticData, !SlotNum, !IO) :-
     int::in, int::out, io::di, io::uo) is det.
 
 write_hlds_ps_coverage_point(CoveragePointInfo, !SlotNum, !IO) :-
-    CoveragePointInfo = coverage_point_info(GoalPath, PointType),
+    CoveragePointInfo = coverage_point_info(RevGoalPath, PointType),
     io.format("%% coverage point slot %d: goal path <%s>, type %s\n",
-        [i(!.SlotNum), s(goal_path_to_string(GoalPath)),
+        [i(!.SlotNum), s(rev_goal_path_to_string(RevGoalPath)),
             s(coverage_point_to_string(PointType))], !IO),
     !:SlotNum = !.SlotNum + 1.
 
@@ -1196,7 +1196,7 @@ write_constraint_map_2(Indent, VarSet, AppendVarNums, ConstraintId,
 :- pred write_constraint_id(constraint_id::in, io::di, io::uo) is det.
 
 write_constraint_id(ConstraintId, !IO) :-
-    ConstraintId = constraint_id(ConstraintType, GoalPath, N),
+    ConstraintId = constraint_id(ConstraintType, GoalId, N),
     (
         ConstraintType = assumed,
         io.write_string("(E, ", !IO)
@@ -1204,7 +1204,9 @@ write_constraint_id(ConstraintId, !IO) :-
         ConstraintType = unproven,
         io.write_string("(A, ", !IO)
     ),
-    io.write_strings(["""", goal_path_to_string(GoalPath), """, "], !IO),
+    GoalId = goal_id(GoalIdNum),
+    io.write_int(GoalIdNum, !IO),
+    io.write_string(", ", !IO),
     io.write_int(N, !IO),
     io.write_char(')', !IO).
 

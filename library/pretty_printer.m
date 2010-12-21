@@ -5,7 +5,7 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: pretty_printer.m
 % Main author: rafe
 % Stability: medium
@@ -56,7 +56,7 @@
 
 :- type doc
     --->    str(string)
-            % Output a literal string.  Strings containing newlines, hard tabs,
+            % Output a literal string. Strings containing newlines, hard tabs,
             % etc. will lead to strange output.
 
     ;       nl
@@ -79,17 +79,17 @@
             % between items.
 
     ;       format_term(string, list(univ))
-            % Pretty print a term with zero or more arguments.  If the term
+            % Pretty print a term with zero or more arguments. If the term
             % corresponds to a Mercury operator it will be printed with
-            % appropriate fixity and, if necessary, in parentheses.  The term
+            % appropriate fixity and, if necessary, in parentheses. The term
             % name will be quoted and escaped if necessary.
 
     ;       format_susp((func) = doc)
             % The argument is a suspended computation used to lazily produce a
-            % doc.  If the formatting limit has been reached then just "..." is
+            % doc. If the formatting limit has been reached then just "..." is
             % output, otherwise the suspension is evaluated and the resulting
-            % doc is used.  This is useful for formatting large structures
-            % without using more resources than required.  Expanding a
+            % doc is used. This is useful for formatting large structures
+            % without using more resources than required. Expanding a
             % suspended computation reduces the formatting limit by one.
 
     ;       pp_internal(pp_internal).
@@ -98,33 +98,34 @@
 
 :- type docs == list(doc).
 
-    % This type is private to the implementation.  It cannot be exploited by
+    % This type is private to the implementation. It cannot be exploited by
     % user code.
     %
 :- type pp_internal.
 
-    % indent(IndentString, Docs)
-    %   Append IndentString to the current indentation while
-    %   printing Docs.  Indentation is printed after each newline that is
-    %   output.
+    % indent(IndentString, Docs):
+    %
+    % Append IndentString to the current indentation while printing Docs.
+    % Indentation is printed after each newline that is output.
     %
 :- func indent(string, docs) = doc.
 
     % indent(Docs) = indent("  ", Docs).
     %   A convenient abbreviation.
-    %   
+    %
 :- func indent(docs) = doc.
 
-    % group(Docs)
-    %   If Docs can be output on the remainder of the current line
-    %   by ignoring any nls in Docs, then do so.  Otherwise
-    %   nls in Docs are printed (followed by any indentation).
-    %   The formatting test is applied recursively for any subgroups in Docs.
+    % group(Docs):
+    %
+    % If Docs can be output on the remainder of the current line by ignoring
+    % any nls in Docs, then do so. Otherwise nls in Docs are printed
+    % (followed by any indentation). The formatting test is applied recursively
+    % for any subgroups in Docs.
     %
 :- func group(docs) = doc.
 
-    % format(X) = format_univ(univ(X)).
-    %   A convenient abbreviation.
+    % format(X) = format_univ(univ(X)):
+    % A convenient abbreviation.
     %
 :- func format(T) = doc.
 
@@ -169,27 +170,29 @@
     %
 :- func new_formatter_map = formatter_map.
 
-    % set_formatter(ModuleName, TypeName, TypeArity, Formatter, FMap)
-    %   Update FMap to use Formatter to format the type
-    %   ModuleName.TypeName/TypeArity.
+    % set_formatter(ModuleName, TypeName, TypeArity, Formatter, FMap):
+    %
+    % Update FMap to use Formatter to format the type
+    % ModuleName.TypeName/TypeArity.
     %
 :- func set_formatter(string, string, int, formatter, formatter_map) =
-        formatter_map.
+    formatter_map.
 
 
 
-    % format(Stream, FMap, LineWidth, MaxLines, Limit, Doc, !State).
-    %   Format Doc to fit on lines of LineWidth chars, truncating after
-    %   MaxLines lines, fomatting format_univ(_) docs using specialised
-    %   formatters Formatters starting with pretty-printer limits Limit.
+    % format(Stream, FMap, LineWidth, MaxLines, Limit, Doc, !State):
+    %
+    % Format Doc to fit on lines of LineWidth chars, truncating after
+    % MaxLines lines, fomatting format_univ(_) docs using specialised
+    % formatters Formatters starting with pretty-printer limits Limit.
     %
 :- pred write_doc_to_stream(Stream, noncanon_handling, formatter_map, int, int,
-        formatting_limit, doc, State, State)
-        <= stream.writer(Stream, string, State).
+    formatting_limit, doc, State, State)
+    <= stream.writer(Stream, string, State).
 :- mode write_doc_to_stream(in, in(canonicalize), in, in, in, in, in,
-        di, uo) is det.
+    di, uo) is det.
 :- mode write_doc_to_stream(in, in(include_details_cc), in, in, in, in, in,
-        di, uo) is cc_multi.
+    di, uo) is cc_multi.
 
     % Convenience predicates.  A user-configurable set of type-specific
     % formatters and formatting parameters are attached to the I/O state.
@@ -206,8 +209,8 @@
     % used types in the Mercury standard library (array, char, float,
     % int, map, string, etc.)
     %
-    % The default formatter_map may also be updated by 
-    % users' modules (e.g., in initialisation goals).
+    % The default formatter_map may also be updated by users' modules
+    % (e.g., in initialisation goals).
     %
     % These defaults are thread local (i.e., changes made by one thread to
     % the default formatter_map will not be visible in another thread).
@@ -215,7 +218,7 @@
 :- pred get_default_formatter_map(formatter_map::out, io::di, io::uo) is det.
 :- pred set_default_formatter_map(formatter_map::in, io::di, io::uo) is det.
 :- pred set_default_formatter(string::in, string::in, int::in, formatter::in,
-        io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
     % The initial default pp_params are pp_params(78, 100, triangular(100)).
     % These defaults are thread local (i.e., changes made by one thread to
@@ -224,11 +227,12 @@
 :- pred get_default_params(pp_params::out, io::di, io::uo) is det.
 :- pred set_default_params(pp_params::in, io::di, io::uo) is det.
 
-    % write_doc(Doc, !IO)
-    % write_doc(FileStream, Doc, !IO)
-    %   Format Doc to io.stdout_stream or FileStream respectively, using
-    %   write_doc_to stream, with include_details_cc, the default
-    %   formatter_map, and the default pp_params.
+    % write_doc(Doc, !IO):
+    % write_doc(FileStream, Doc, !IO):
+    %
+    % Format Doc to io.stdout_stream or FileStream respectively, using
+    % write_doc_to stream, with include_details_cc, the default formatter_map,
+    % and the default pp_params.
     %
 :- pred write_doc(doc::in, io::di, io::uo) is det.
 :- pred write_doc(io.output_stream::in, doc::in, io::di, io::uo) is det.
@@ -300,7 +304,7 @@ set_formatter(ModuleName, TypeName, Arity, Formatter, FMap0) = FMap :-
 %-----------------------------------------------------------------------------%
 
 :- pred get_formatter(formatter_map::in, string::in, string::in, int::in,
-        formatter::out) is semidet.
+    formatter::out) is semidet.
 
 get_formatter(FMap, ModuleName, TypeName, Arity, Formatter) :-
     Formatter = FMap ^ elem(ModuleName) ^ elem(TypeName) ^ elem(Arity).
@@ -346,28 +350,28 @@ write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, MaxLines, Limit,
 %-----------------------------------------------------------------------------%
 
     % format(FMap, LineWidth, Docs, !RemainingWidth, !Indents,
-    %       !RemainingLines, !Limit, !Pri, !IO)
-    %   Format Docs to fit on LineWidth chars per line,
-    %   - tracking !RemainingWidth chars left on the current line,
-    %   - indenting by !Indents after newlines,
-    %   - truncating output after !RemainingLines,
-    %   - expanding terms to at most !Limit depth before truncating,
-    %   - tracking current operator priority !Pri.
-    %   Assumes that Docs is the output of expand.
+    %   !RemainingLines, !Limit, !Pri, !IO):
+    %
+    % Format Docs to fit on LineWidth chars per line,
+    % - tracking !RemainingWidth chars left on the current line,
+    % - indenting by !Indents after newlines,
+    % - truncating output after !RemainingLines,
+    % - expanding terms to at most !Limit depth before truncating,
+    % - tracking current operator priority !Pri.
+    % Assumes that Docs is the output of expand.
     %
 :- pred write_doc_to_stream(Stream, noncanon_handling, formatter_map, int,
-        docs, int, int, indents, indents, int, int,
-        formatting_limit, formatting_limit,
-        ops.priority, ops.priority, State, State)
-        <= stream.writer(Stream, string, State).
+    docs, int, int, indents, indents, int, int,
+    formatting_limit, formatting_limit,
+    ops.priority, ops.priority, State, State)
+    <= stream.writer(Stream, string, State).
 :- mode write_doc_to_stream(in, in(canonicalize), in, in, in,
-        in, out, in, out, in, out, in, out, in, out, di, uo) is det.
+    in, out, in, out, in, out, in, out, in, out, di, uo) is det.
 :- mode write_doc_to_stream(in, in(include_details_cc), in, in, in,
-        in, out, in, out, in, out, in, out, in, out, di, uo) is cc_multi.
+    in, out, in, out, in, out, in, out, in, out, di, uo) is cc_multi.
 
 write_doc_to_stream(_Stream, _Canonicalize, _FMap, _LineWidth, [],
         !RemainingWidth, !Indents, !RemainingLines, !Limit, !Pri, !IO).
-
 write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
         !RemainingWidth, !Indents, !RemainingLines, !Limit, !Pri, !IO) :-
     ( if !.RemainingLines =< 0 then
@@ -467,26 +471,19 @@ write_doc_to_stream(Stream, Canonicalize, FMap, LineWidth, [Doc | Docs0],
 %-----------------------------------------------------------------------------%
 
 :- pred output_current_group(Stream::in, int::in, indents::in, int::in,
-        docs::in, docs::out, int::in, int::out, int::in, int::out,
-        State::di, State::uo)
-        is det
-        <= stream.writer(Stream, string, State).
+    docs::in, docs::out, int::in, int::out, int::in, int::out,
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
 output_current_group(_Stream, _LineWidth, _Indents, _OpenGroups,
         [], [], !RemainingWidth, !RemainingLines, !IO).
-
 output_current_group(Stream, LineWidth, Indents, OpenGroups,
         [Doc | Docs0], Docs, !RemainingWidth, !RemainingLines, !IO) :-
-
     ( if Doc = str(String) then
-
         stream.put(Stream, String, !IO),
         !:RemainingWidth = !.RemainingWidth - string.length(String),
         output_current_group(Stream, LineWidth, Indents, OpenGroups,
             Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
-
       else if Doc = hard_nl then
-
         format_nl(Stream, LineWidth, Indents, !:RemainingWidth,
             !RemainingLines, !IO),
         ( if !.RemainingLines =< 0 then
@@ -495,26 +492,19 @@ output_current_group(Stream, LineWidth, Indents, OpenGroups,
             output_current_group(Stream, LineWidth, Indents, OpenGroups,
                 Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
         )
-
       else if Doc = pp_internal(open_group) then
-
         output_current_group(Stream, LineWidth, Indents, OpenGroups + 1,
             Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
-
       else if Doc = pp_internal(close_group) then
-
         ( if OpenGroups = 1 then
             Docs = Docs0
           else
             output_current_group(Stream, LineWidth, Indents, OpenGroups - 1,
                 Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
         )
-
       else
-
         output_current_group(Stream, LineWidth, Indents, OpenGroups,
             Docs0, Docs, !RemainingWidth, !RemainingLines, !IO)
-
     ).
 
 %-----------------------------------------------------------------------------%
@@ -530,16 +520,15 @@ output_current_group(Stream, LineWidth, Indents, OpenGroups,
     % !R tracks the remaining line width after accounting for expansion.
     %
 :- pred expand_docs(noncanon_handling, formatter_map, docs, docs, int,
-        formatting_limit, formatting_limit, ops.priority, ops.priority,
-        int, int) is cc_multi.
+    formatting_limit, formatting_limit, ops.priority, ops.priority,
+    int, int) is cc_multi.
 :- mode expand_docs(in(canonicalize), in, in, out, in, in, out,
-        in, out, in, out) is det.
+    in, out, in, out) is det.
 :- mode expand_docs(in(include_details_cc), in, in, out, in, in, out,
-        in, out, in, out) is cc_multi.
+    in, out, in, out) is cc_multi.
 
 expand_docs(_Canonicalize, _FMap, [], [], _OpenGroups,
         !Limit, !Pri, !RemainingWidth).
-
 expand_docs(Canonicalize, FMap, [Doc | Docs0], Docs, OpenGroups,
         !Limit, !Pri, !RemainingWidth) :-
     ( if
@@ -634,9 +623,8 @@ expand_docs(Canonicalize, FMap, [Doc | Docs0], Docs, OpenGroups,
     % Output a newline followed by indentation.
     %
 :- pred format_nl(Stream::in, int::in, indents::in, int::out,
-        int::in, int::out, State::di, State::uo)
-        is det
-        <= stream.writer(Stream, string, State).
+    int::in, int::out, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
 
 format_nl(Stream, LineWidth, Indents, RemainingWidth, !RemainingLines, !IO) :-
     stream.put(Stream, "\n", !IO),
@@ -645,12 +633,9 @@ format_nl(Stream, LineWidth, Indents, RemainingWidth, !RemainingLines, !IO) :-
 
 
 :- pred output_indentation(Stream::in, indents::in, int::in, int::out,
-        State::di, State::uo)
-        is det
-        <= stream.writer(Stream, string, State).
+    State::di, State::uo) is det <= stream.writer(Stream, string, State).
 
 output_indentation(_Stream, [], !RemainingWidth, !IO).
-
 output_indentation(Stream, [Indent | Indents], !RemainingWidth, !IO) :-
     output_indentation(Stream, Indents, !RemainingWidth, !IO),
     stream.put(Stream, Indent, !IO),
@@ -659,15 +644,15 @@ output_indentation(Stream, [Indent | Indents], !RemainingWidth, !IO) :-
 %-----------------------------------------------------------------------------%
 
     % Expand a univ into docs using the first pretty-printer in the given list
-    % that succeeds, otherwise use the generic pretty- printer.  If the
-    % pretty-printer limit has been exhausted then only "..." is produced.
+    % that succeeds, otherwise use the generic pretty- printer. If the
+    % pretty-printer limit has been exhausted, then only "..." is produced.
     %
 :- pred expand_pp(noncanon_handling, formatter_map, univ, doc,
-        formatting_limit, formatting_limit, ops.priority).
+    formatting_limit, formatting_limit, ops.priority).
 :- mode expand_pp(in(canonicalize), in, in, out, in, out, in)
-        is det.
+    is det.
 :- mode expand_pp(in(include_details_cc), in, in, out, in, out, in)
-        is cc_multi.
+    is cc_multi.
 
 expand_pp(Canonicalize, FMap, Univ, Doc, !Limit, CurrentPri) :-
     ( if
@@ -695,7 +680,7 @@ expand_pp(Canonicalize, FMap, Univ, Doc, !Limit, CurrentPri) :-
     % Expand a list of univs into docs using the given separator.
     %
 :- pred expand_format_list(list(univ)::in, doc::in, doc::out,
-        formatting_limit::in, formatting_limit::out) is det.
+    formatting_limit::in, formatting_limit::out) is det.
 
 expand_format_list([], _Sep, docs([]), !Limit).
 
@@ -748,7 +733,7 @@ expand_format_term(Name, Args, Doc, !Limit, CurrentPri) :-
 %-----------------------------------------------------------------------------%
 
 :- pred expand_format_susp(((func) = doc)::in, doc::out,
-        formatting_limit::in, formatting_limit::out) is det.
+    formatting_limit::in, formatting_limit::out) is det.
 
 expand_format_susp(Susp, Doc, !Limit) :-
     ( if limit_overrun(!.Limit) then
@@ -764,7 +749,7 @@ expand_format_susp(Susp, Doc, !Limit) :-
     % operator syntax.
     %
 :- pred expand_format_op(string::in, list(univ)::in, ops.priority::in,
-        doc::out) is semidet.
+    doc::out) is semidet.
 
 expand_format_op(Op, [Arg], CurrentPri, Docs) :-
     ( if ops.lookup_prefix_op(ops.init_mercury_op_table, Op, OpPri, Assoc) then
@@ -834,7 +819,6 @@ expand_format_op(Op, [ArgA, ArgB], CurrentPri, Docs) :-
 
 set_formatting_limit_correctly(linear(_), Doc) =
     Doc.
-
 set_formatting_limit_correctly(Limit @ triangular(_), Doc0) =
     docs([Doc0, pp_internal(set_limit(Limit))]).
 
@@ -866,7 +850,6 @@ adjust_priority(Priority, Assoc) = AdjustedPriority :-
 
 limit_overrun(linear(N)) :-
     N =< 0.
-
 limit_overrun(triangular(N)) :-
     N =< 0.
 
@@ -877,12 +860,13 @@ limit_overrun(triangular(N)) :-
 :- pred decrement_limit(formatting_limit::in, formatting_limit::out) is det.
 
 decrement_limit(linear(N), linear(N - 1)).
-
 decrement_limit(triangular(N), triangular(N - 1)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+%
 % Convenience predicates.
+%
 
     % This is where we keep the display parameters (line width etc.).
     % The formatter map is handled separately because it *has* to
@@ -1085,7 +1069,7 @@ write_doc(Stream, Doc, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Construct the initial default formatter map.  This function
+    % Construct the initial default formatter map. This function
     % should be extended as more specialised formatters are added
     % to the standard library modules.
     %
@@ -1104,7 +1088,7 @@ initial_formatter_map = !:Formatters :-
 %-----------------------------------------------------------------------------%
 
 :- pred set_formatter_sv(string::in, string::in, int::in, formatter::in,
-        formatter_map::in, formatter_map::out) is det.
+    formatter_map::in, formatter_map::out) is det.
 
 set_formatter_sv(ModuleName, TypeName, Arity, Formatter, FMap0, FMap) :-
     FMap = set_formatter(ModuleName, TypeName, Arity, Formatter, FMap0).

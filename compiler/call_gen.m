@@ -65,6 +65,7 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.arg_info.
+:- import_module hlds.goal_path.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
@@ -106,11 +107,20 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
     get_next_label(ReturnLabel, !CI),
     call_gen.call_comment(!.CI, PredId, CodeModel, CallComment),
     Context = goal_info_get_context(GoalInfo),
-    GoalPath = goal_info_get_goal_path(GoalInfo),
+    GoalId = goal_info_get_goal_id(GoalInfo),
+    get_containing_goal_map(!.CI, MaybeContainingGoalMap),
+    (
+        MaybeContainingGoalMap = yes(ContainingGoalMap),
+        GoalPath = goal_id_to_forward_path(ContainingGoalMap, GoalId),
+        MaybeGoalPath = yes(GoalPath)
+    ;
+        MaybeContainingGoalMap = no,
+        MaybeGoalPath = no
+    ),
     CallCode = from_list([
         llds_instr(livevals(LiveVals), ""),
         llds_instr(llcall(Address, code_label(ReturnLabel), ReturnLiveLvalues,
-            Context, GoalPath, CallModel), CallComment),
+            Context, MaybeGoalPath, CallModel), CallComment),
         llds_instr(label(ReturnLabel), "continuation label")
     ]),
 
@@ -132,7 +142,7 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
         goal_info_has_feature(GoalInfo, feature_debug_tail_rec_call),
         MaybeTraceInfo = yes(TraceInfo)
     ->
-        generate_tailrec_event_code(TraceInfo, ArgsInfos, GoalPath, Context,
+        generate_tailrec_event_code(TraceInfo, ArgsInfos, GoalId, Context,
             TraceTailRecResetAndEventCode, TailRecLabel, !CI),
         JumpCode = from_list([
             llds_instr(livevals(LiveVals), ""),
@@ -227,7 +237,7 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
     % Make the call.
     get_next_label(ReturnLabel, !CI),
     Context = goal_info_get_context(GoalInfo),
-    GoalPath = goal_info_get_goal_path(GoalInfo),
+    GoalId = goal_info_get_goal_id(GoalInfo),
 
     % Figure out what variables will be live at the return point, and where,
     % for use in the accurate garbage collector, and in the debugger.
@@ -239,10 +249,19 @@ generate_main_generic_call(_OuterCodeModel, GenericCall, Args, Modes, Det,
     handle_return(OutArgsInfos, GoalInfo, NonLiveOutputs,
         ReturnInstMap, ReturnLiveLvalues, !CI),
 
+    get_containing_goal_map(!.CI, MaybeContainingGoalMap),
+    (
+        MaybeContainingGoalMap = yes(ContainingGoalMap),
+        GoalPath = goal_id_to_forward_path(ContainingGoalMap, GoalId),
+        MaybeGoalPath = yes(GoalPath)
+    ;
+        MaybeContainingGoalMap = no,
+        MaybeGoalPath = no
+    ),
     CallCode = from_list([
         llds_instr(livevals(LiveVals), ""),
         llds_instr(llcall(CodeAddr, code_label(ReturnLabel), ReturnLiveLvalues,
-            Context, GoalPath, CallModel), "Setup and call"),
+            Context, MaybeGoalPath, CallModel), "Setup and call"),
         llds_instr(label(ReturnLabel), "Continuation label")
     ]),
 

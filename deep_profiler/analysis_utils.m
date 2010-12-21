@@ -68,8 +68,8 @@
 
 :- pred build_call_site_cost_and_callee_map(deep::in,
     pair(call_site_static_ptr, call_site_array_slot)::in,
-    map(goal_path, cost_and_callees)::in, map(goal_path, cost_and_callees)::out)
-    is det.
+    map(reverse_goal_path, cost_and_callees)::in,
+    map(reverse_goal_path, cost_and_callees)::out) is det.
 
 %----------------------------------------------------------------------------%
 
@@ -78,7 +78,7 @@
     %
 :- pred build_recursive_call_site_cost_map(deep, clique_ptr,
     proc_dynamic_ptr, recursion_type, maybe(recursion_depth),
-    maybe_error(map(goal_path, cs_cost_csq))) is det.
+    maybe_error(map(reverse_goal_path, cs_cost_csq))) is det.
 :- mode build_recursive_call_site_cost_map(in, in, in,
     in(recursion_type_known_costs), in(maybe_yes(ground)),
     out(maybe_error_ok(ground))) is det.
@@ -176,8 +176,8 @@ build_call_site_cost_and_callee_map(Deep, CSSPtr - Slot, !CallSitesMap) :-
     CostAndCallees = cost_and_callees(CostCsq, set(Callees), HigherOrder),
     lookup_call_site_statics(Deep ^ call_site_statics, CSSPtr, CSS),
     call_site_kind_to_higher_order(CSS ^ css_kind, HigherOrder),
-    goal_path_from_string_det(CSS ^ css_goal_path, GoalPath),
-    svmap.det_insert(GoalPath, CostAndCallees, !CallSitesMap).
+    rev_goal_path_from_string_det(CSS ^ css_goal_path, RevGoalPath),
+    svmap.det_insert(RevGoalPath, CostAndCallees, !CallSitesMap).
 
 :- pred call_site_dynamic_get_callee_and_costs(deep::in,
     call_site_dynamic_ptr::in, callee::out, own_prof_info::out,
@@ -265,7 +265,7 @@ build_recursive_call_site_cost_map(Deep, CliquePtr, PDPtr, RecursionType,
     ).
 
 :- pred get_recursive_calls_and_counts(deep::in, clique_ptr::in,
-    proc_dynamic_ptr::in, map(goal_path, int)::out) is det.
+    proc_dynamic_ptr::in, map(reverse_goal_path, int)::out) is det.
 
 get_recursive_calls_and_counts(Deep, CliquePtr, PDPtr, CallCountsMap) :-
     proc_dynamic_paired_call_site_slots(Deep, PDPtr, SiteSlots),
@@ -274,7 +274,7 @@ get_recursive_calls_and_counts(Deep, CliquePtr, PDPtr, CallCountsMap) :-
 
 :- pred build_recursive_call_site_counts_map(deep::in, clique_ptr::in,
     pair(call_site_static_ptr, call_site_array_slot)::in,
-    map(goal_path, int)::in, map(goal_path, int)::out) is det.
+    map(reverse_goal_path, int)::in, map(reverse_goal_path, int)::out) is det.
 
 build_recursive_call_site_counts_map(Deep, CliquePtr, CSSPtr - CSDSlot,
         !Map) :-
@@ -309,8 +309,8 @@ build_recursive_call_site_counts_map(Deep, CliquePtr, CSSPtr - CSDSlot,
     (
         Recursive = yes,
         deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
-        goal_path_from_string_det(CSS ^ css_goal_path, GoalPath),
-        svmap.det_insert(GoalPath, Count, !Map)
+        rev_goal_path_from_string_det(CSS ^ css_goal_path, RevGoalPath),
+        svmap.det_insert(RevGoalPath, Count, !Map)
     ;
         Recursive = no
     ).
@@ -333,20 +333,20 @@ call_site_dynamic_get_count_and_callee(Deep, CSDPtr, Count, MaybeCallee) :-
         MaybeCallee = no
     ).
 
-:- pred format_recursive_call_site_cost_map(map(goal_path, cs_cost_csq)::in,
-    cord(string)::out) is det.
+:- pred format_recursive_call_site_cost_map(
+    map(reverse_goal_path, cs_cost_csq)::in, cord(string)::out) is det.
 
 format_recursive_call_site_cost_map(Map, Result) :-
     map.foldl(format_recursive_call_site_cost, Map, cord.empty, Result).
 
-:- pred format_recursive_call_site_cost(goal_path::in, cs_cost_csq::in,
+:- pred format_recursive_call_site_cost(reverse_goal_path::in, cs_cost_csq::in,
     cord(string)::in, cord(string)::out) is det.
 
-format_recursive_call_site_cost(GoalPath, Cost, !Result) :-
+format_recursive_call_site_cost(RevGoalPath, Cost, !Result) :-
     !:Result = cord.snoc(!.Result ++ indent(1), String),
     String = format("%s -> Percall cost: %f Calls: %f\n",
         [s(GoalPathString), f(PerCallCost), f(Calls)]),
-    GoalPathString = goal_path_to_string(GoalPath),
+    GoalPathString = rev_goal_path_to_string(RevGoalPath),
     PerCallCost = cs_cost_get_percall(Cost),
     Calls = cs_cost_get_calls(Cost).
 

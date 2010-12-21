@@ -620,8 +620,8 @@ dump_coverage_point_info(Num, CoveragePointInfo, !IO) :-
 
 :- pred format_cp_info(int::in, coverage_point_info::in, string::out) is det.
 
-format_cp_info(Num, coverage_point_info(Path, CPType), String) :-
-    goal_path_to_string(Path) = PathString,
+format_cp_info(Num, coverage_point_info(RevPath, CPType), String) :-
+    rev_goal_path_to_string(RevPath) = PathString,
     format("coverage_point[%d]: %s, %s",
         [i(Num), s(string(CPType)), s(PathString)], String).
 

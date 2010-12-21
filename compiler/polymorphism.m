@@ -1035,7 +1035,7 @@ get_improved_exists_head_constraints(ConstraintMap,  ExistConstraints,
         ActualExistConstraints) :-
     list.length(ExistConstraints, NumExistConstraints),
     (
-        search_hlds_constraint_list(ConstraintMap, unproven, empty_goal_path,
+        search_hlds_constraint_list(ConstraintMap, unproven, goal_id(0),
             NumExistConstraints, ActualExistConstraints0)
     ->
         ActualExistConstraints = ActualExistConstraints0
@@ -1606,19 +1606,19 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
         yes(CallUnifyContext), QualifiedPName),
 
     % Construct a goal_info for the lambda goal, making sure to set up
-    % the nonlocals field in the goal_info correctly. The goal_path is needed
+    % the nonlocals field in the goal_info correctly. The goal_id is needed
     % to compute constraint_ids correctly.
 
     NonLocals = goal_info_get_nonlocals(GoalInfo0),
     set.insert_list(NonLocals, LambdaVars, OutsideVars),
     set.list_to_set(Args, InsideVars),
     set.intersect(OutsideVars, InsideVars, LambdaNonLocals),
-    GoalPath = goal_info_get_goal_path(GoalInfo0),
+    GoalId = goal_info_get_goal_id(GoalInfo0),
     goal_info_init(LambdaGoalInfo0),
     goal_info_set_context(Context, LambdaGoalInfo0, LambdaGoalInfo1),
     goal_info_set_nonlocals(LambdaNonLocals, LambdaGoalInfo1, LambdaGoalInfo2),
     goal_info_set_purity(Purity, LambdaGoalInfo2, LambdaGoalInfo3),
-    goal_info_set_goal_path(GoalPath, LambdaGoalInfo3, LambdaGoalInfo),
+    goal_info_set_goal_id(GoalId, LambdaGoalInfo3, LambdaGoalInfo),
     LambdaGoal = hlds_goal(LambdaGoalExpr, LambdaGoalInfo),
 
     % Work out the modes of the introduced lambda variables and the determinism
@@ -1742,20 +1742,20 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsConstruction,
 
     % Create type_class_info variables for the type class constraints.
     poly_info_get_constraint_map(!.Info, ConstraintMap),
-    GoalPath = goal_info_get_goal_path(GoalInfo),
+    GoalId = goal_info_get_goal_id(GoalInfo),
     list.length(ParentExistentialConstraints, NumExistentialConstraints),
     Context = goal_info_get_context(GoalInfo),
     (
         IsConstruction = yes,
         % Assume it's a construction.
-        lookup_hlds_constraint_list(ConstraintMap, unproven, GoalPath,
+        lookup_hlds_constraint_list(ConstraintMap, unproven, GoalId,
             NumExistentialConstraints, ActualExistentialConstraints),
         make_typeclass_info_vars(ActualExistentialConstraints, [], Context,
             ExtraTypeClassVars, ExtraTypeClassGoals, !Info)
     ;
         IsConstruction = no,
         % Assume it's a deconstruction.
-        lookup_hlds_constraint_list(ConstraintMap, assumed, GoalPath,
+        lookup_hlds_constraint_list(ConstraintMap, assumed, GoalId,
             NumExistentialConstraints, ActualExistentialConstraints),
         make_existq_typeclass_info_vars(ActualExistentialConstraints,
             ExtraTypeClassVars, ExtraTypeClassGoals, !Info)
@@ -2083,9 +2083,9 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 
         % Make the universally quantified typeclass_infos for the call.
         poly_info_get_constraint_map(!.Info, ConstraintMap),
-        GoalPath = goal_info_get_goal_path(GoalInfo0),
+        GoalId = goal_info_get_goal_id(GoalInfo0),
         list.length(ParentUnivConstraints, NumUnivConstraints),
-        lookup_hlds_constraint_list(ConstraintMap, unproven, GoalPath,
+        lookup_hlds_constraint_list(ConstraintMap, unproven, GoalId,
             NumUnivConstraints, ActualUnivConstraints),
         apply_rec_subst_to_tvar_list(ParentKindMap, ParentToActualTypeSubst,
             ParentExistQVars, ActualExistQVarTypes),
@@ -2104,7 +2104,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
         % Make variables to hold any existentially quantified typeclass_infos
         % in the call, insert them into the typeclass_info map.
         list.length(ParentExistConstraints, NumExistConstraints),
-        lookup_hlds_constraint_list(ConstraintMap, assumed, GoalPath,
+        lookup_hlds_constraint_list(ConstraintMap, assumed, GoalId,
             NumExistConstraints, ActualExistConstraints),
         make_existq_typeclass_info_vars(
             ActualExistConstraints, ExtraExistClassVars,

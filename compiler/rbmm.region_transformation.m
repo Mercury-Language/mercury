@@ -73,10 +73,10 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds.goal_path.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.purity.
 :- import_module check_hlds.type_util.
+:- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
@@ -217,7 +217,7 @@ region_transform_proc(RptaInfoTable, FormalRegionArgTable,
         PredId, ProcId, !NameToVarTable, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, ProcInfo0),
-    fill_goal_path_slots(!.ModuleInfo, ProcInfo0, ProcInfo1),
+    fill_goal_path_slots_in_proc(!.ModuleInfo, ProcInfo0, ProcInfo1),
     proc_info_get_varset(ProcInfo1, VarSet0),
     proc_info_get_vartypes(ProcInfo1, VarTypes0),
     proc_info_get_headvars(ProcInfo1, HeadVars0),

@@ -9,11 +9,10 @@
 % File: prop_mode_constraints.m.
 % Main author: richardf.
 %
-% XXX This module essentially serves as interface between the
-% pre-existing mode_constraints module and the new
-% abstract_mode_constraints and build_mode_constraints modules.
-% Ultimately its contents should probably be moved into those
-% modules respectively.
+% XXX This module essentially serves as interface between the old
+% mode_constraints module (by dmo) and the new abstract_mode_constraints
+% and build_mode_constraints modules (by richardf). Ultimately its contents
+% should probably be moved into those modules respectively.
 %
 %-----------------------------------------------------------------------------%
 
@@ -23,6 +22,7 @@
 :- import_module check_hlds.abstract_mode_constraints.
 :- import_module check_hlds.build_mode_constraints.
 :- import_module hlds.
+:- import_module hlds.goal_path.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
@@ -32,9 +32,10 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Storing constraints by predicate.
-    %
-:- type pred_constraints_map == map(pred_id, mode_constraints).
+    % Maps each predicate to information about its goal ids and its mode
+    % constraint.
+:- type pred_constraints_map ==
+    map(pred_id, {containing_goal_map, mode_constraints}).
 
 %-----------------------------------------------------------------------------%
 
@@ -78,7 +79,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.goal_path.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
@@ -119,7 +119,7 @@ prop_mode_constraints_in_scc(SCC0, !ModuleInfo, !VarInfo, !Constraints) :-
     %   !Constraints):
     %
     % Performs a number of tasks for predicate PredId:
-    %   1) Fill out the goal_path information in the ModuleInfo structure.
+    %   1) Fill out the goal_id information in the ModuleInfo structure.
     %   2) Add producer/consumer constraint variables for program
     %      variables corresponding to any location at which they are
     %      nonlocal to Varset and VarMap. (Elsewhere is is clear as to
@@ -142,31 +142,15 @@ prop_mode_constraints_in_pred(PredId, !ModuleInfo, !VarInfo, !Constraints) :-
         !VarInfo, !Constraints),
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
-    % The working part of prop_mode_constraints_in_pred/8, with just
-    % the PredInfo unpacked from the ModuleInfo.
+    % The working part of prop_mode_constraints_in_pred/8, with the pred_info
+    % unpacked from the ModuleInfo.
     %
 :- pred do_prop_mode_constraints_in_pred(module_info::in, pred_id::in,
     pred_info::in, pred_info::out, mc_var_info::in, mc_var_info::out,
-    pred_constraints_map::in, pred_constraints_map::out)
-    is det.
+    pred_constraints_map::in, pred_constraints_map::out) is det.
 
 do_prop_mode_constraints_in_pred(ModuleInfo, PredId, !PredInfo, !VarInfo,
-        !Constraints) :-
-    fill_goal_path_slots_in_clauses(ModuleInfo, GoalPathOptimisation,
-        !PredInfo),
-
-    % If mode inference requested, just add constraints for the clause body,
-    % otherwise, process the predicate for each of the procedures.
-
-    ( pred_info_infer_modes(!.PredInfo) ->
-        add_clauses_constraints(ModuleInfo, PredId, !.PredInfo, !VarInfo,
-            init_pred_p_c_constraints, BodyConstraints),
-        svmap.set(PredId, BodyConstraints, !Constraints)
-    ;
-        prop_mode_constraints_in_mode_declared_pred(ModuleInfo, PredId,
-            !.PredInfo, !VarInfo, !Constraints)
-    ),
-
+        !PredConstraintsMap) :-
     % XXX Currently the constraints simply say that if a variable is bound
     % at a disjunct it is bound at the disjunction by making the relevant
     % variables equivalent. Setting GoalPathOptimisation to yes will cause
@@ -175,24 +159,44 @@ do_prop_mode_constraints_in_pred(ModuleInfo, PredId, !PredInfo, !VarInfo,
     % equivalent - they will be the same variable. It will do the same
     % for other path types with similar equivalence constraints -
     % refer to the goal_path module for a more detailed description.
-    GoalPathOptimisation = no.
+    % GoalPathOptimisation = no.
+    %
+    % XXX The above comment is obsolete, in that the current version of the
+    % goal_path module leaves the task of making the relevant variables
+    % equivalent to THIS module.
+
+    pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
+    fill_goal_id_slots_in_clauses(ModuleInfo, ContainingGoalMap,
+        ClausesInfo0, ClausesInfo),
+    pred_info_set_clauses_info(ClausesInfo, !PredInfo),
+
+    % If mode inference requested, just add constraints for the clause body,
+    % otherwise, process the predicate for each of the procedures.
+
+    ( pred_info_infer_modes(!.PredInfo) ->
+        add_clauses_constraints(ModuleInfo, PredId, !.PredInfo, !VarInfo,
+            init_pred_p_c_constraints, BodyConstraints)
+    ;
+        prop_mode_constraints_in_mode_declared_pred(ModuleInfo, PredId,
+            !.PredInfo, !VarInfo, BodyConstraints)
+    ),
+    svmap.set(PredId, {ContainingGoalMap, BodyConstraints},
+        !PredConstraintsMap).
 
     % prop_mode_constraints_in_mode_declared_pred(ModuleInfo, PredId, PredInfo,
-    %   !VarInfo, !PredConstraintsMap):
+    %   !VarInfo, FullConstraints):
     %
-    % Uses the clauses and mode declarations in PredInfo (which should
-    % be for predicate PredId taken from ModuleInfo) to create
-    % producer/consumer constraints for program variables in predicate
-    % PredId and stores them in PredConstraintsMap. VarInfo is updated
+    % Uses the clauses and mode declarations in PredInfo (which should be
+    % for predicate PredId taken from ModuleInfo) to create producer/consumer
+    % constraints for program variables in predicate PredId. VarInfo is updated
     % with any constraint variables used.
     %
 :- pred prop_mode_constraints_in_mode_declared_pred(module_info::in,
     pred_id::in, pred_info::in, mc_var_info::in, mc_var_info::out,
-    pred_constraints_map::in, pred_constraints_map::out)
-    is det.
+    mode_constraints::out) is det.
 
 prop_mode_constraints_in_mode_declared_pred(ModuleInfo, PredId, PredInfo,
-        !VarInfo, !PredConstraintsMap) :-
+        !VarInfo, FullConstraints) :-
     ProcIds = pred_info_all_procids(PredInfo),
 
     add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
@@ -202,9 +206,7 @@ prop_mode_constraints_in_mode_declared_pred(ModuleInfo, PredId, PredInfo,
     list.map(pred_info_proc_info(PredInfo), ProcIds, ProcInfos),
     list.foldl2_corresponding(
         prop_mode_constraints_in_mode_declared_proc(ModuleInfo, PredId),
-        ProcIds, ProcInfos, !VarInfo, BodyConstr, FullConstraints),
-
-    svmap.set(PredId, FullConstraints, !PredConstraintsMap).
+        ProcIds, ProcInfos, !VarInfo, BodyConstr, FullConstraints).
 
     % prop_mode_constraints_in_mode_declared_proc(ModuleInfo, PredId, ProcId,
     %   ProcInfo, !VarInfo, !PredConstraints):
@@ -218,8 +220,8 @@ prop_mode_constraints_in_mode_declared_pred(ModuleInfo, PredId, PredInfo,
     pred_id::in, proc_id::in, proc_info::in, mc_var_info::in,
     mc_var_info::out, mode_constraints::in, mode_constraints::out) is det.
 
-prop_mode_constraints_in_mode_declared_proc(ModuleInfo, PredId, ProcId, ProcInfo, !VarInfo,
-        !PredConstraints) :-
+prop_mode_constraints_in_mode_declared_proc(ModuleInfo, PredId, ProcId,
+        ProcInfo, !VarInfo, !PredConstraints) :-
     proc_info_get_argmodes(ProcInfo, ArgModes),
     proc_info_get_headvars(ProcInfo, Args),
     add_mode_decl_constraints(ModuleInfo, PredId, ProcId, ArgModes, Args,
@@ -382,23 +384,23 @@ ensure_unique_arguments_in_goal(!Goal, !SeenSoFar, !Varset, !VarTypes) :-
     % flatten_conjunction(!Goals) flattens the conjunction Goals - that
     % is, moves the conjuncts from nested conjunctions into Goals.
     %
-:- pred flatten_conjunction(hlds_goals::in, hlds_goals::out) is det.
+:- pred flatten_conjunction(list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 flatten_conjunction(!Goals) :-
-    list.foldr(add_to_conjunction, !.Goals, [], !:Goals).
+    list.foldr(add_to_before_conjunction, !.Goals, [], !:Goals).
 
-    % add_to_conjunction(Goal, !Goals) adds Goal to the front of the
+    % add_to_before_conjunction(Goal, !Goals) adds Goal to the front of the
     % conjunction Goals. It keeps the conjunction flat, so nested conjunctions
-    % are scrapped and their conjuncts prepended to Goals.
+    % are flattened and their conjuncts prepended to Goals.
     %
-:- pred add_to_conjunction(hlds_goal::in, hlds_goals::in, hlds_goals::out)
-    is det.
+:- pred add_to_before_conjunction(hlds_goal::in,
+    list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
-add_to_conjunction(Goal, !Goals) :-
+add_to_before_conjunction(Goal, !Goals) :-
     ( Goal = hlds_goal(conj(plain_conj, SubGoals), _) ->
-        list.append(SubGoals, !Goals)
+        !:Goals = SubGoals ++ !.Goals
     ;
-        list.cons(Goal, !Goals)
+        !:Goals = [Goal | !.Goals]
     ).
 
     % make_unifications(Context, MaybeUnifications, Args0, Args, !SeenSoFar,
@@ -408,7 +410,7 @@ add_to_conjunction(Goal, !Goals) :-
     % argument (in Varset and VarTypes) to replace it (in Args), and generates
     % a unification between new argument and old (with context Context).
     %
-:- pred make_unifications(prog_context::in, hlds_goals::out,
+:- pred make_unifications(prog_context::in, list(hlds_goal)::out,
     list(prog_var)::in, list(prog_var)::out,
     set(prog_var)::in, set(prog_var)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
@@ -441,15 +443,15 @@ make_unification(Context, Var0, Var, !Unifications, !SeenSoFar, !Varset,
 
         % Make new unification.
         create_atomic_complicated_unification(Var0, rhs_var(Var), Context,
-            umc_implicit("Making call arguments unique for constraints" ++
-            " based mode analysis"), [], purity_pure, UnificationGoal0),
+            umc_implicit("Making call args unique for cbma"), [], purity_pure,
+            UnificationGoal0),
         UnificationGoal0 =
             hlds_goal(UnificationGoalExpr, UnificationGoalInfo0),
         goal_info_set_nonlocals(set.from_list([Var0, Var]),
             UnificationGoalInfo0, UnificationGoalInfo),
         UnificationGoal =
             hlds_goal(UnificationGoalExpr, UnificationGoalInfo),
-        list.cons(UnificationGoal, !Unifications)
+        !:Unifications = [UnificationGoal | !.Unifications]
     ;
         Var = Var0
     ),
@@ -466,7 +468,7 @@ make_unification(Context, Var0, Var, !Unifications, !SeenSoFar, !Varset,
     % (where Unifications contains unfications between old arguments
     % and their new replacements).
     %
-:- pred replace_call_with_conjunction(hlds_goal_expr::in, hlds_goals::in,
+:- pred replace_call_with_conjunction(hlds_goal_expr::in, list(hlds_goal)::in,
     list(prog_var)::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
@@ -477,7 +479,7 @@ replace_call_with_conjunction(CallGoalExpr, Unifications, NewArgs, GoalExpr,
     CallNonlocals0 = goal_info_get_nonlocals(CallGoalInfo0),
     CallNonlocals = set.insert_list(CallNonlocals0, NewArgs),
     goal_info_set_nonlocals(CallNonlocals, CallGoalInfo0, CallGoalInfo),
-    Goals = list.cons(hlds_goal(CallGoalExpr, CallGoalInfo), Unifications),
+    Goals = [hlds_goal(CallGoalExpr, CallGoalInfo) | Unifications],
 
     % Create the new conjunction
     GoalExpr = conj(plain_conj, Goals),
@@ -529,7 +531,7 @@ pretty_print_pred_constraints(ModuleInfo, ConstraintVarset,
         describe_one_pred_info_name(should_module_qualify, PredInfo) ++
         [suffix(":")], !IO),
 
-    map.lookup(PredConstraintsMap, PredId, PredConstraints),
+    map.lookup(PredConstraintsMap, PredId, {_, PredConstraints}),
     AllProcAnnConstraints = allproc_annotated_constraints(PredConstraints),
     dump_constraints_and_annotations(Globals, ConstraintVarset,
         AllProcAnnConstraints, !IO),

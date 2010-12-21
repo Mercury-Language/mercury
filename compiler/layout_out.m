@@ -1095,7 +1095,7 @@ output_proc_static_cp_static_array(Info, CoveragePoints, NumCoveragePoints,
     coverage_point_info::in, int::in, int::out, io::di, io::uo) is det.
 
 output_proc_static_cp_static_slot(AutoComments, CoveragePoint, !Slot, !IO) :-
-    CoveragePoint = coverage_point_info(GoalPath, CPType),
+    CoveragePoint = coverage_point_info(RevGoalPath, CPType),
     io.write_string("{ ", !IO),
     (
         AutoComments = yes,
@@ -1104,7 +1104,7 @@ output_proc_static_cp_static_slot(AutoComments, CoveragePoint, !Slot, !IO) :-
         AutoComments = no
     ),
     io.write_string("""", !IO),
-    GoalPathString = goal_path_to_string(GoalPath),
+    GoalPathString = rev_goal_path_to_string(RevGoalPath),
     io.write_string(GoalPathString, !IO),
     io.write_string(""", ", !IO),
     coverage_point_type_c_value(CPType, CPTypeCValue),

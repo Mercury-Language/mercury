@@ -148,8 +148,8 @@ direct_reuse_process_proc(SharingTable, PredId, ProcId,
         !.ModuleInfo, Pred0, Proc0, Proc, ReuseAs),
     % XXX is this right?
     Status = optimal,
-    reuse_as_table_set(proc(PredId, ProcId),
-        reuse_as_and_status(ReuseAs, Status), !ReuseTable),
+    AsAndStatus = reuse_as_and_status(ReuseAs, Status),
+    reuse_as_table_set(proc(PredId, ProcId), AsAndStatus, !ReuseTable),
 
     map.det_update(Procs0, ProcId, Proc, Procs),
     pred_info_set_procedures(Procs, Pred0, Pred),

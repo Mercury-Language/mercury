@@ -74,8 +74,8 @@ determine_dead_deconstructions(ModuleInfo, PredInfo, ProcInfo, SharingTable,
     Background = detect_bg_info_init(ModuleInfo, PredInfo, ProcInfo,
         SharingTable),
     % In this process we need to know the sharing at each program point,
-    % which boils down to reconstructing that sharing information based on the
-    % sharing recorded in the sharing table.
+    % which boils down to reconstructing that sharing information based on
+    % the sharing recorded in the sharing table.
     determine_dead_deconstructions_2(Background, Goal,
         sharing_as_init, _, dead_cell_table_init, DeadCellTable),
 
@@ -90,8 +90,8 @@ determine_dead_deconstructions(ModuleInfo, PredInfo, ProcInfo, SharingTable,
         VeryVerbose = no
     ).
 
-    % Process a procedure goal, determining the sharing at each subgoal, as
-    % well as constructing the table of dead cells.
+    % Process a procedure goal, determining the sharing at each subgoal,
+    % as well as constructing the table of dead cells.
     %
     % This means:
     %   - at each program point: compute sharing
@@ -122,9 +122,8 @@ determine_dead_deconstructions_2(Background, TopGoal, !SharingAs,
             GenDetails, CallArgs, Modes, GoalInfo, !SharingAs)
     ;
         GoalExpr = unify(_, _, _, Unification, _),
-        unification_verify_reuse(ModuleInfo, ProcInfo, GoalInfo,
-            Unification, program_point_init(GoalInfo), !.SharingAs,
-            !DeadCellTable),
+        unification_verify_reuse(ModuleInfo, ProcInfo, GoalInfo, Unification,
+            program_point_init(GoalInfo), !.SharingAs, !DeadCellTable),
         !:SharingAs = add_unify_sharing(ModuleInfo, ProcInfo, Unification,
             GoalInfo, !.SharingAs)
     ;
@@ -148,10 +147,10 @@ determine_dead_deconstructions_2(Background, TopGoal, !SharingAs,
                 !DeadCellTable)
         )
     ;
-        GoalExpr = if_then_else(_, IfGoal, ThenGoal, ElseGoal),
-        determine_dead_deconstructions_2(Background, IfGoal, !.SharingAs,
-            IfSharingAs, !DeadCellTable),
-        determine_dead_deconstructions_2(Background, ThenGoal, IfSharingAs,
+        GoalExpr = if_then_else(_, CondGoal, ThenGoal, ElseGoal),
+        determine_dead_deconstructions_2(Background, CondGoal, !.SharingAs,
+            CondSharingAs, !DeadCellTable),
+        determine_dead_deconstructions_2(Background, ThenGoal, CondSharingAs,
             ThenSharingAs, !DeadCellTable),
         determine_dead_deconstructions_2(Background, ElseGoal, !.SharingAs,
             ElseSharingAs, !DeadCellTable),
@@ -264,8 +263,8 @@ unification_verify_reuse(ModuleInfo, ProcInfo, GoalInfo, Unification,
         LFU = goal_info_get_lfu(GoalInfo),
         LBU = goal_info_get_lbu(GoalInfo),
         (
-            % Reuse is only relevant for real constructors, with
-            % arity different from 0.
+            % Reuse is only relevant for real constructors, with nonzero
+            % arities.
             ConsId = cons(_, Arity, _),
             Arity \= 0,
 
@@ -282,12 +281,11 @@ unification_verify_reuse(ModuleInfo, ProcInfo, GoalInfo, Unification,
             % Check the live set of data structures at this program point.
             var_not_live(ModuleInfo, ProcInfo, GoalInfo, Sharing, Var)
         ->
-            % If all the above conditions are met, then the top
-            % cell data structure based on Var is dead right after
-            % this deconstruction, hence, may be involved with
-            % structure reuse.
-            NewCondition = reuse_condition_init(ModuleInfo,
-                ProcInfo, Var, LFU, LBU, Sharing),
+            % If all the above conditions are met, then the top cell
+            % data structure based on Var is dead right after this
+            % deconstruction, which means it may be reused.
+            NewCondition = reuse_condition_init(ModuleInfo, ProcInfo, Var,
+                LFU, LBU, Sharing),
             dead_cell_table_set(PP, NewCondition, !DeadCellTable)
         ;
             true

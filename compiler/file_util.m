@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 2008-2009 The University of Melbourne.
+% Copyright (C) 2008-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -266,7 +266,7 @@ get_install_name_option(Globals, OutputFileName, InstallNameOpt) :-
         InstallNamePath = InstallNamePath0
     ),
     InstallNameOpt = InstallNameFlag ++
-        quote_arg(InstallNamePath / OutputFileName).
+        quote_arg(InstallNamePath) / OutputFileName.
 
 %-----------------------------------------------------------------------------%
 

@@ -470,13 +470,22 @@ tar: 	$(GENERATED_DOCS)
 	export ROOTNAME;						\
 	cd .. && (							\
 		mkdir stuff-to-exclude;					\
-		mv $$ROOTNAME/trial	stuff-to-exclude;		\
-		mv $$ROOTNAME/bytecode	stuff-to-exclude;		\
-		mv $$ROOTNAME/lp_solve	stuff-to-exclude;		\
-		mv $$ROOTNAME/trax	stuff-to-exclude;		\
-		mv $$ROOTNAME/extras/opium_m	stuff-to-exclude;	\
-		mv $$ROOTNAME/extras/aditi stuff-to-exclude;		\
-		mv $$ROOTNAME/extras/stream stuff-to-exclude;		\
+		test -d $$ROOTNAME/bytecode && 				\
+			mv $$ROOTNAME/bytecode stuff-to-exclude; 	\
+		test -d $$ROOTNAME/lp_solver && 			\
+			mv $$ROOTNAME/lp_solvestuff-to-exclude; 	\
+		test -d $$ROOTNAME/trax && 				\
+			mv $$ROOTNAME/trax stuff-to-exclude; 		\
+		test -d $$ROOTNAME/trial && 				\
+			mv $$ROOTNAME/trial stuff-to-exclude; 		\
+		test -d $$ROOTNAME/extras/aditi && 			\
+			mv $$ROOTNAME/extras/aditi stuff-to-exclude;   	\
+		test -d $$ROOTNAME/extras/concurrency && 		\
+			mv $$ROOTNAME/extras/concurrency stuff-to-exclude; \
+		test -d $$ROOTNAME/extras/opium_m && 			\
+			mv $$ROOTNAME/extras/opium_m stuff-to-exclude; 	\
+		test -d $$ROOTNAME/extras/stream && 			\
+			mv $$ROOTNAME/extras/stream stuff-to-exclude;  	\
 		mv $$ROOTNAME/extras/quickcheck stuff-to-exclude;	\
 		mv $$ROOTNAME/extras	mercury-extras-$(VERSION);	\
 		mv $$ROOTNAME		mercury-compiler-$(VERSION);	\
@@ -490,8 +499,14 @@ tar: 	$(GENERATED_DOCS)
 		mv mercury-compiler-$(VERSION)	$$ROOTNAME;		\
 		mv mercury-extras-$(VERSION)	$$ROOTNAME/extras;	\
 		mv mercury-tests-$(VERSION)	tests;			\
-		mv stuff-to-exclude/opium_m	$$ROOTNAME/extras/opium_m;\
-		mv stuff-to-exclude/aditi	$$ROOTNAME/extras/aditi;\
+		test -d stuff-to-exclude/aditi && 			\
+			mv stuff-to-exclude/aditi $$ROOTNAME/extras/aditi; \
+		test -d stuff-to-exclude/concurrency && 		\
+			mv stuff-to-exclude/concurrency	$$ROOTNAME/extras/concurrency; \
+		test -d stuff-to-exclude/opium_m && 			\
+			mv stuff-to-exclude/opium_m $$ROOTNAME/extras/opium_m; \
+		test -d stuff-to-exclude/stream && 			\
+			mv stuff-to-exclude/stream $$ROOTNAME/extras/stream;  \
 		mv stuff-to-exclude/quickcheck  $$ROOTNAME/extras/quickcheck; \
 		mv stuff-to-exclude/*		$$ROOTNAME;		\
 		rmdir stuff-to-exclude;					\

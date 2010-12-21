@@ -75,8 +75,8 @@
 
 :- type path_port
     --->    port_only(trace_port)
-    ;       path_only(goal_path)
-    ;       port_and_path(trace_port, goal_path).
+    ;       path_only(reverse_goal_path)
+    ;       port_and_path(trace_port, reverse_goal_path).
 
 :- type line_no_and_count
     --->    line_no_and_count(
@@ -85,7 +85,7 @@
                 num_tests               :: int
             ).
 
-:- func make_path_port(goal_path, trace_port) = path_port.
+:- func make_path_port(reverse_goal_path, trace_port) = path_port.
 
 :- pred summarize_trace_counts_list(list(trace_counts)::in, trace_counts::out)
     is det.
@@ -705,14 +705,14 @@ string_to_trace_port("FRST", port_nondet_foreign_proc_first).
 string_to_trace_port("LATR", port_nondet_foreign_proc_later).
 string_to_trace_port("USER", port_user).
 
-:- func string_to_goal_path(string) = goal_path is semidet.
+:- func string_to_goal_path(string) = reverse_goal_path is semidet.
 
 string_to_goal_path(String) = Path :-
     string.prefix(String, "<"),
     string.suffix(String, ">"),
     string.length(String, Length),
     string.substring(String, 1, Length-2, SubString),
-    goal_path_from_string(SubString, Path).
+    rev_goal_path_from_string(SubString, Path).
 
     % This function should be kept in sync with the MR_named_count_port array
     % in runtime/mercury_trace_base.c.
@@ -904,7 +904,7 @@ write_path_port_count(port_only(Port),
 write_path_port_count(path_only(Path),
         line_no_and_count(LineNo, ExecCount, NumTests), !IO) :-
     io.write_strings([
-        "<", goal_path_to_string(Path), "> ",
+        "<", rev_goal_path_to_string(Path), "> ",
         int_to_string(LineNo), " ",
         int_to_string(ExecCount), " ",
         int_to_string(NumTests), "\n"], !IO).
@@ -912,7 +912,7 @@ write_path_port_count(port_and_path(Port, Path),
         line_no_and_count(LineNo, ExecCount, NumTests), !IO) :-
     string_to_trace_port(PortStr, Port),
     io.write_strings([
-        PortStr, " <", goal_path_to_string(Path), "> ",
+        PortStr, " <", rev_goal_path_to_string(Path), "> ",
         int_to_string(LineNo), " ",
         int_to_string(ExecCount), " ",
         int_to_string(NumTests), "\n"], !IO).

@@ -1,41 +1,37 @@
 %-----------------------------------------------------------------------------%
 % vim:ts=4 sw=4 expandtab tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007 The University of Melbourne
+% Copyright (C) 2000-2007, 2010 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: pprint.m
 % Main author: rafe
 % Stability: medium
 %
-% NOTE: this module has now been superceded by pretty_printer.m
-% which is more economical, produces better output, has better
-% control over the amount of output produced, and supports user-
-% specifiable formatting for arbitrary types.
-% 
+% NOTE: this module has now been superceded by pretty_printer.m which is
+% more economical, produces better output, has better control over
+% the amount of output produced, and supports user-specifiable formatting
+% for arbitrary types.
+%
 % ABOUT
 % -----
 %
-% This started off as pretty much a direct transliteration of Philip
-% Wadler's Haskell pretty printer described in "A Prettier Printer",
-% available at
+% This started off as pretty much a direct transliteration of Philip Wadler's
+% Haskell pretty printer described in "A Prettier Printer", available at
 % http://cm.bell-labs.com/cm/cs/who/wadler/topics/recent.html
 %
-% Several changes have been made to the algorithm to preserve linear
-% running time under a strict language and to ensure scalability to
-% extremely large terms without thrashing the VM system.
+% Several changes have been made to the algorithm to preserve linear running
+% time under a strict language and to ensure scalability to extremely large
+% terms without thrashing the VM system.
 %
 % Wadler's approach has three main advantages:
-% 1. the layout algebra is small and quite intuitive (more
-%    so than Hughes');
-% 2. the pretty printer is optimal in the sense that it will
-%    never generate output that over-runs the specified width
-%    unless that is unavoidable; and
-% 3. the pretty printer is bounded in that it never needs to
-%    look more than k characters ahead to make a formatting
-%    decision.
+% 1. the layout algebra is small and quite intuitive (more so than Hughes');
+% 2. the pretty printer is optimal in the sense that it will never generate
+%    output that over-runs the specified width unless that is unavoidable; and
+% 3. the pretty printer is bounded in that it never needs to look more than
+%    k characters ahead to make a formatting decision.
 %
 % I have made the following changes:
 %
@@ -80,26 +76,23 @@
 % USAGE
 % -----
 %
-% There are two stages in pretty printing an object of some
-% type T:
-% 1. convert the object to a pprint.doc using the
-%    constructor functions described below or by simply
-%    calling pprint.to_doc/[1,2];
-% 2. call pprint.write/[4,5] or pprint.to_string/2
-%    passing the display width and the doc.
+% There are two stages in pretty printing an object of some type T:
+% 1. convert the object to a pprint.doc using the constructor functions
+%    described below or by simply calling pprint.to_doc/[1,2];
+% 2. call pprint.write/[4,5] or pprint.to_string/2 passing the display width
+%    and the doc.
 %
 %
 % EXAMPLES
 % --------
 %
-% The doc/1 type class has types string, char, int, float and doc as
-% instances.  Hence these types can all be converted to docs by
-% applying doc/1.  This happens automatically to the arguments of ++/2.
-% Users may find it convenient to add other types as instances of the
-% doc/1 type class.
+% The doc/1 type class has types string, char, int, float and doc as instances.
+% Hence these types can all be converted to docs by applying doc/1.
+% This happens automatically to the arguments of ++/2. Users may find it
+% convenient to add other types as instances of the doc/1 type class.
 %
-% Below are some docs followed by the ways they might be
-% displayed by the pretty printer given various line widths.
+% Below are some docs followed by the ways they might be displayed by the
+% pretty printer given various line widths.
 %
 % 1. "Hello " ++ line ++ "world"
 %
@@ -151,7 +144,7 @@
 %   Look! Goodbye
 %   Look!    cruel
 %   Look!    world
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -175,19 +168,18 @@
     % This typeclass can be used to simplify the construction of docs.
     %
 :- typeclass doc(T) where [
-
-        % Convert a T to a doc, placing a limit on how much of the
-        % term will be fully converted as follows:
-        %
-        % doc(_, f         ) = f
-        % doc(N, f(A, B, C)) = f/3 if N =< 0
-        % doc(N, f(A, B, C)) = some representation of the term whereby
-        %   A is converted as doc(N - 1, A),
-        %   B is converted as doc(N - 2, B), and
-        %   C is converted as doc(N - 3, C)
-        %   - if there are more than N arguments, the N+1th and subsequent
-        %     arguments should be replaced with a single ellipsis.
-        %
+    % Convert a T to a doc, placing a limit on how much of the term
+    % will be fully converted as follows:
+    %
+    % doc(_, f         ) = f
+    % doc(N, f(A, B, C)) = f/3 if N =< 0
+    % doc(N, f(A, B, C)) = some representation of the term whereby
+    %   A is converted as doc(N - 1, A),
+    %   B is converted as doc(N - 2, B), and
+    %   C is converted as doc(N - 3, C)
+    %   - if there are more than N arguments, the N+1th and subsequent
+    %     arguments should be replaced with a single ellipsis.
+    %
     func doc(int, T) = doc
 ].
 
@@ -225,40 +217,36 @@
     %
 :- func doc `<>` doc        = doc.
 
-    % The new-line document.  In a group doc (see below) the
-    % pretty printer may choose to instead `flatten' all
-    % line docs into nil docs in order to fit a doc on a
-    % single line.
+    % The newline document. In a group doc (see below) the pretty printer
+    % may choose to instead `flatten' all line docs into nil docs in order
+    % to fit a doc on a single line.
     %
 :- func line                = doc.
 
-    % Any `line' docs in the body that are not flattened out
-    % by the pretty printer are followed by the given number
-    % of spaces (nested `nest's add up).
+    % Any `line' docs in the body that are not flattened out by the
+    % pretty printer are followed by the given number of spaces
+    % (nested `nest's add up).
     %
 :- func nest(int, T)        = doc <= (doc(T)).
 
-    % Identical to a nest doc except that indentation is
-    % extended with a string label rather than some number
-    % of spaces.
+    % Identical to a nest doc except that indentation is extended with
+    % a string label rather than some number of spaces.
     %
 :- func label(string, T)    = doc <= (doc(T)).
 
-    % A group doc gives the pretty printer a choice: if
-    % the doc can be printed without line wrapping then
-    % it does so (all line, label, nest and group
-    % directives within the group are ignored); otherwise
-    % the pretty printer treats the group body literally,
-    % although nested group docs remain as choice points.
+    % A group doc gives the pretty printer a choice: if the doc can be printed
+    % without line wrapping then it does so (all line, label, nest and group
+    % directives within the group are ignored); otherwise the pretty printer
+    % treats the group body literally, although nested group docs remain as
+    % choice points.
     %
 :- func group(T)            = doc <= (doc(T)).
 
-    % This function can be used to convert strings, chars,
-    % ints and floats to their text doc equivalents.
+    % This function can be used to convert strings, chars, ints and floats
+    % to their text doc equivalents.
     %
-    % NOTE: since these types are now instances of the doc/1
-    % type class, it is simpler to just apply the doc/1
-    % method to these types.
+    % NOTE: since these types are now instances of the doc/1 type class,
+    % it is simpler to just apply the doc/1 method to these types.
     %
 :- func poly(string.poly_type) = doc.
 
@@ -284,39 +272,35 @@
     %
     % For the singleton list case, packed(Sep, [X]) = group(line `<>` X).
     %
-    % The resulting doc tries to pack as many items on a line as
-    % possible.
+    % The resulting doc tries to pack as many items on a line as possible.
     %
 :- func packed(T1, list(T2)) = doc <= (doc(T1), doc(T2)).
 
-    % A variant of the above whereby only the first N elements of
-    % the list are formatted and the rest are replaced by a single
-    % ellipsis.
+    % A variant of the above whereby only the first N elements of the list
+    % are formatted and the rest are replaced by a single ellipsis.
     %
 :- func packed(int, T1, list(T2)) = doc <= (doc(T1), doc(T2)).
 
     % packed_cs(Xs) = packed(comma_space, Xs).
     %
-    % For example, to pretty print a Mercury list of docs
-    % one might use
+    % For example, to pretty print a Mercury list of docs one might use
     %
     %   brackets(nest(2, packed_cs(Xs)))
     %
 :- func packed_cs(list(T)) = doc <= (doc(T)).
 
-    % A variant of the above whereby only the first N elements of
-    % the list are formatted and the rest are replaced by a single
-    % ellipsis.
+    % A variant of the above whereby only the first N elements of the list
+    % are formatted and the rest are replaced by a single ellipsis.
     %
 :- func packed_cs(int, list(T)) = doc <= (doc(T)).
 
-    % This is like a depth-limited version of packed_cs/1 that first
-    % calls to_doc/2 on each member of the argument list.
+    % This is like a depth-limited version of packed_cs/1 that first calls
+    % to_doc/2 on each member of the argument list.
     %
 :- func packed_cs_to_depth(int, list(T)) = doc.
 
-    % This is like a version of packed_cs_to_depth/1 that first
-    % calls univ_value/1 for each member of the argument list.
+    % This is like a version of packed_cs_to_depth/1 that first calls
+    % univ_value/1 for each member of the argument list.
     %
 :- func packed_cs_univ_args(int, list(univ)) = doc.
 
@@ -344,36 +328,35 @@
 :- func colon_space_line    = doc.
 :- func ellipsis            = doc.      % "...".
 
-    % Performs word wrapping at the end of line, taking
-    % whitespace sequences as delimiters separating words.
+    % Performs word wrapping at the end of line, taking whitespace sequences
+    % as delimiters separating words.
     %
 :- func word_wrapped(string) = doc.
 
-    % Convert arbitrary terms to docs.  This requires
-    % std_util.functor/3 to work on all components of the
-    % object being converted.  The second version places a
-    % maximum depth on terms which are otherwise truncated
-    % in the manner described in the documentation for the
-    % doc/2 method of the doc/1 type class.
+    % Convert arbitrary terms to docs. This requires std_util.functor/3 to work
+    % on all components of the object being converted. The second version
+    % places a maximum depth on terms which are otherwise truncated in the
+    % manner described in the documentation for the doc/2 method of the doc/1
+    % type class.
     %
-    % This may throw an exception or cause a runtime abort
-    % if the term in question has user-defined equality.
+    % This may throw an exception or cause a runtime abort if the term
+    % in question has user-defined equality.
     %
 :- func to_doc(T)           = doc.
 :- func to_doc(int, T)      = doc.
 
-    % Convert docs to pretty printed strings.  The int
-    % argument specifies a line width in characters.
+    % Convert docs to pretty printed strings. The int argument specifies
+    % a line width in characters.
     %
 :- func to_string(int, doc) = string.
 
-    % Write docs out in pretty printed format.  The int
-    % argument specifies a page width in characters.
+    % Write docs out in pretty printed format. The int argument specifies
+    % a page width in characters.
     %
 :- pred write(int::in, T::in, io::di, io::uo) is det <= doc(T).
 
     % Write docs to the specified string writer stream in pretty printed
-    % format.  The int argument specifies a page width in characters.
+    % format. The int argument specifies a page width in characters.
     %
 :- pred write(Stream::in, int::in, T::in, State::di, State::uo) is det
     <= ( doc(T), stream.writer(Stream, string, State) ).
@@ -406,11 +389,11 @@
     ;       'LINE'
     ;       'GROUP'(doc)
     ;       'DOC'(int, univ).
-                %
-                % 'DOC'(MaxDepth, Univ)
-                % - Univ is the object to be converted to a doc via to_doc/3,
-                %   represented as a univ.
-                % - MaxDepth is the depth limit before using ellipsis.
+            %
+            % 'DOC'(MaxDepth, Univ)
+            % - Univ is the object to be converted to a doc via to_doc/3,
+            %   represented as a univ.
+            % - MaxDepth is the depth limit before using ellipsis.
 
     % This type is used to format key-value pairs in maps when
     % using the generic to_doc/[1,2] functions.
@@ -722,56 +705,39 @@ to_doc(Depth, Priority, X) =
 :- func generic_term_to_doc(depth, priority, T) = doc.
 
 generic_term_to_doc(Depth, Priority, X) = Doc :-
-
     ( if
-
     	Depth =< 0
-
       then
-
         functor(X, canonicalize, Name, Arity),
         Doc = ( if Arity = 0 then text(Name) else Name ++ "/" ++ Arity )
-
       else
-
         deconstruct(X, canonicalize, Name, _Arity, UnivArgs),
         Table = init_mercury_op_table,
         Doc =
             ( if
-
                 UnivArgs = [UnivArg],
                 lookup_prefix_op(Table, Name, OpPri, Assoc)
-
               then
-
                 maybe_parens(Priority, OpPri,
                     Name ++
                     space ++
                     univ_to_doc(Depth - 1, OpPri `adjusted_by` Assoc,
                         UnivArg)
                 )
-
               else if
-
                 UnivArgs = [UnivArg],
                 lookup_postfix_op(Table, Name, OpPri, Assoc)
-
               then
-
                 maybe_parens(Priority, OpPri,
                     univ_to_doc(Depth - 1, OpPri `adjusted_by` Assoc,
                         UnivArg) ++
                     space ++
                     Name
                 )
-
               else if
-
                 UnivArgs = [UnivArgL, UnivArgR],
                 lookup_infix_op(Table, Name, OpPri, AssocL, AssocR)
-
               then
-
                 maybe_parens(Priority, OpPri,
                     univ_to_doc(Depth - 1, OpPri `adjusted_by` AssocL,
                         UnivArgL) ++
@@ -785,14 +751,10 @@ generic_term_to_doc(Depth, Priority, X) = Doc :-
                         )
                     )
                 )
-
               else if
-
                 UnivArgs = [UnivArgR1, UnivArgR2],
                 lookup_binary_prefix_op(Table, Name, OpPri, AssocR1, AssocR2)
-
               then
-
                 maybe_parens(Priority, OpPri,
                     Name ++
                     space ++
@@ -806,17 +768,11 @@ generic_term_to_doc(Depth, Priority, X) = Doc :-
                         )
                     )
                 )
-
               else if
-
                 UnivArgs = []
-
               then
-
                 text(Name)
-
               else
-
                 group(
                     Name ++ parentheses(
                         nest(2, packed_cs_univ_args(Depth - 1, UnivArgs))
@@ -858,18 +814,13 @@ univ_to_doc(Depth, Priority, Univ) = to_doc(Depth, Priority, univ_value(Univ)).
 :- some [T2] pred dynamic_cast_to_var(T1::in, var(T2)::out) is semidet.
 
 dynamic_cast_to_var(X, V) :-
-
-        % If X is a var then it has a type with one type argument.
-        %
+    % If X is a var then it has a type with one type argument.
     [ArgTypeDesc] = type_args(type_of(X)),
 
-        % Convert ArgTypeDesc to a type variable ArgType.
-        %
+    % Convert ArgTypeDesc to a type variable ArgType.
     (_ `with_type` ArgType) `has_type` ArgTypeDesc,
 
-        % Constrain the type of V to be var(ArgType) and do the
-        % cast.
-        %
+    % Constrain the type of V to be var(ArgType) and do the cast.
     dynamic_cast(X, V `with_type` var(ArgType)).
 
 %-----------------------------------------------------------------------------%
@@ -891,18 +842,13 @@ dynamic_cast_to_sparse_bitset_of_var(X, A) :-
 :- some [T2] pred dynamic_cast_to_array(T1::in, array(T2)::out) is semidet.
 
 dynamic_cast_to_array(X, A) :-
-
-        % If X is an array then it has a type with one type argument.
-        %
+    % If X is an array then it has a type with one type argument.
     [ArgTypeDesc] = type_args(type_of(X)),
 
-        % Convert ArgTypeDesc to a type variable ArgType.
-        %
+    % Convert ArgTypeDesc to a type variable ArgType.
     (_ `with_type` ArgType) `has_type` ArgTypeDesc,
 
-        % Constrain the type of A to be array(ArgType) and do the
-        % cast.
-        %
+    % Constrain the type of A to be array(ArgType) and do the cast.
     dynamic_cast(X, A `with_type` array(ArgType)).
 
 %-----------------------------------------------------------------------------%
@@ -910,18 +856,13 @@ dynamic_cast_to_array(X, A) :-
 :- some [T2] pred dynamic_cast_to_list(T1::in, list(T2)::out) is semidet.
 
 dynamic_cast_to_list(X, L) :-
-
-        % If X is a list then it has a type with one type argument.
-        %
+    % If X is a list then it has a type with one type argument.
     [ArgTypeDesc] = type_args(type_of(X)),
 
-        % Convert ArgTypeDesc to a type variable ArgType.
-        %
+    % Convert ArgTypeDesc to a type variable ArgType.
     (_ `with_type` ArgType) `has_type` ArgTypeDesc,
 
-        % Constrain the type of L to be list(ArgType) and do the
-        % cast.
-        %
+    % Constrain the type of L to be list(ArgType) and do the cast.
     dynamic_cast(X, L `with_type` list(ArgType)).
 
 %-----------------------------------------------------------------------------%
@@ -929,19 +870,14 @@ dynamic_cast_to_list(X, L) :-
 :- some [T2, T3] pred dynamic_cast_to_map(T1::in, map(T2, T3)::out) is semidet.
 
 dynamic_cast_to_map(X, M) :-
-
-        % If X is a map then it has a type with two type arguments.
-        %
+    % If X is a map then it has a type with two type arguments.
     [KeyTypeDesc, ValueTypeDesc] = type_args(type_of(X)),
 
-        % Convert the TypeDescs to type variables.
-        %
+    % Convert the TypeDescs to type variables.
     (_ `with_type` KeyType) `has_type` KeyTypeDesc,
     (_ `with_type` ValueType) `has_type` ValueTypeDesc,
 
-        % Constrain the type of M to be map(KeyType, ValueType)
-        % and do the cast.
-        %
+    % Constrain the type of M to be map(KeyType, ValueType) and do the cast.
     dynamic_cast(X, M `with_type` map(KeyType, ValueType)).
 
 %-----------------------------------------------------------------------------%
@@ -950,19 +886,15 @@ dynamic_cast_to_map(X, M) :-
     is semidet.
 
 dynamic_cast_to_map_pair(X, MP) :-
-
-        % If X is a map_pair then it has a type with two type arguments.
-        %
+    % If X is a map_pair then it has a type with two type arguments.
     [KeyTypeDesc, ValueTypeDesc] = type_args(type_of(X)),
 
-        % Convert the TypeDescs to type variables.
-        %
+    % Convert the TypeDescs to type variables.
     (_ `with_type` KeyType) `has_type` KeyTypeDesc,
     (_ `with_type` ValueType) `has_type` ValueTypeDesc,
 
-        % Constrain the type of MP to be map_pair(KeyType, ValueType)
-        % and do the cast.
-        %
+    % Constrain the type of MP to be map_pair(KeyType, ValueType)
+    % and do the cast.
     dynamic_cast(X, MP `with_type` map_pair(KeyType, ValueType)).
 
 %-----------------------------------------------------------------------------%
@@ -970,8 +902,7 @@ dynamic_cast_to_map_pair(X, MP) :-
 :- pred dynamic_cast_to_tuple(T::in, T::out) is semidet.
 
 dynamic_cast_to_tuple(X, X) :-
-        % If X is a tuple then it's functor name is {}.
-        %
+    % If X is a tuple then it's functor name is {}.
     functor(X, canonicalize, "{}", _Arity).
 
 %-----------------------------------------------------------------------------%
@@ -980,18 +911,13 @@ dynamic_cast_to_tuple(X, X) :-
 :-           mode dynamic_cast_to_robdd(in, out) is semidet.
 
 dynamic_cast_to_robdd(X, R) :-
-
-        % If X is a robdd then it has a type with one type argument.
-        %
+    % If X is a robdd then it has a type with one type argument.
     [ArgTypeDesc] = type_args(type_of(X)),
 
-        % Convert ArgTypeDesc to a type variable ArgType.
-        %
+    % Convert ArgTypeDesc to a type variable ArgType.
     (_ `with_type` ArgType) `has_type` ArgTypeDesc,
 
-        % Constrain the type of R to be robdd(ArgType) and do the
-        % cast.
-        %
+    % Constrain the type of R to be robdd(ArgType) and do the cast.
     dynamic_cast(X, R `with_type` robdd(ArgType)).
 
 %-----------------------------------------------------------------------------%
@@ -1003,7 +929,7 @@ var_to_doc(Depth, V) =
 
 %-----------------------------------------------------------------------------%
 
-    % XXX Ideally we'd just walk the sparse bitset.  But that's an optimization
+    % XXX Ideally we'd just walk the sparse bitset. But that is an optimization
     % for another day.
     %
 :- func sparse_bitset_to_doc(int, sparse_bitset(T)) = doc <= enum(T).

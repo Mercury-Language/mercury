@@ -26,8 +26,7 @@
 
     % Check if some of the predicates are "special" predicates (as in
     % "special_pred_map" known from module_info) or not defined in the
-    % current module, as these predicates are not analysed by the CTGC
-    % system.
+    % current module, as these predicates are not analysed by the CTGC system.
     %
 :- pred some_preds_requiring_no_analysis(module_info::in,
     list(pred_proc_id)::in) is semidet.
@@ -90,8 +89,8 @@
 pred_requires_no_analysis(ModuleInfo, PredId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_import_status(PredInfo, Status),
-    % We handle `:- external' predicates later.  In that sense, they do *not*
-    % require that we don't analyse them.
+    % We handle `:- external' predicates later. In that sense,
+    % they do *not* require that we don't analyse them.
     Status = status_imported(_).
 
 pred_requires_analysis(ModuleInfo, PredId) :-
@@ -111,8 +110,6 @@ not_defined_in_this_module(ModuleInfo, proc(PredId, _)):-
 
 get_variable_renaming(ModuleInfo, PPId, ActualArgs) = VariableRenaming :-
     module_info_pred_proc_info(ModuleInfo, PPId, _PredInfo, ProcInfo),
-
-    % head variables.
     proc_info_get_headvars(ProcInfo, FormalVars),
     map.from_corresponding_lists(FormalVars, ActualArgs, VariableRenaming).
 

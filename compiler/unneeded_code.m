@@ -72,10 +72,10 @@
 
 :- implementation.
 
-:- import_module check_hlds.goal_path.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.goal_form.
+:- import_module hlds.goal_path.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
@@ -111,29 +111,29 @@
     %
 :- type branch_point
     --->    branch_point(
-                goal_path,  % The position of the branch point.
-                branch_alts % What kind of goal the branch point
-                            % is, and many branches it has.
-                            % Note that the second argument is a
-                            % function of the first.
+                % The id of the branch point.
+                goal_id,
+
+                % What kind of goal the branch point is, and many branches
+                % it has. Note that the second argument is a function of
+                % the first.
+                branch_alts
             ).
 
 :- type branch_alts
-    --->    alt_ite         % If-then-elses always have two alternatives:
-                            % the then branch (numbered 1) and the else branch
-                            % (numbered 2).
+    --->    alt_ite
+            % If-then-elses always have two alternatives: the then branch
+            % (numbered 1) and the else branch (numbered 2).
 
     ;       alt_switch(maybe(int)).
-                            % The number of alternatives in a switch is equal
-                            % to the number of function symbols in the type of
-                            % the switched-on variable. This number is given by
-                            % the argument integer, if present; if the argument
-                            % is "no", then the number of function symbols in
-                            % the type is effectively infinite (this can happen
-                            % for builtin types such as "int"). If the switch
-                            % cannot_fail, then this will be equal to the
-                            % number of cases; if the switch can_fail, there
-                            % will be strictly fewer cases than this.
+            % The number of alternatives in a switch is equal to the number of
+            % function symbols in the type of the switched-on variable. This
+            % number is given by the argument integer, if present; if the
+            % argument is "no", then the number of function symbols in the type
+            % is effectively infinite (this can happen for builtin types
+            % such as "int"). If the switch cannot_fail, then this will be
+            % equal to the number of cases; if the switch can_fail, there
+            % will be strictly fewer cases than this.
 
     % The location type identifies one arm of a branched control structure.
     % The branched control structure id is a branch_point instead of a
@@ -153,7 +153,9 @@
     % everywhere, then the computation producing it cannot be eliminated
     % or moved. If it is not needed at all, its producer can be eliminated.
     % If it is needed on some but not all branches, then the producer
-    % can be moved to the starts of those branches.
+    % can be moved to the starts of those branches (or, preferably,
+    % to the first point in those branches that need them, but we do not do
+    % that yet).
     %
     % The set of branches to whose starts the producer can be moved
     % is represented as a map from the id of the branched control
@@ -210,8 +212,8 @@
     % The order is important, since some of the producers in such a list
     % may depend on variables produced by other goals that precede them
     % in the list.
-
-:- type refined_goal_map == map(pair(goal_path, int), list(hlds_goal)).
+    %
+:- type refined_goal_map == map(pair(goal_id, int), list(hlds_goal)).
 
 %-----------------------------------------------------------------------------%
 
@@ -284,19 +286,27 @@ unneeded_pre_process_proc(!ProcInfo) :-
 % of the procedure body is executed. Since both the number of subgoals and
 % computation paths are finite, the recursion must end.
 
-:- type option_values
-    --->    option_values(
-                fully_strict    :: bool,
-                reorder_conj    :: bool,
-                copy_limit      :: int,
-                debug           :: bool
+:- type uc_option_values
+    --->    uc_option_values(
+                uc_fully_strict         :: bool,
+                uc_reorder_conj         :: bool,
+                uc_copy_limit           :: int,
+                uc_debug                :: bool
+            ).
+
+:- type unneeded_code_info
+    --->    unneeded_code_info(
+                uci_module_info         :: module_info,
+                uci_vartypes            :: vartypes,
+                uci_options             :: uc_option_values,
+                uci_containing_goal_map :: containing_goal_map
             ).
 
 :- pred unneeded_process_proc(proc_info::in, proc_info::out,
     module_info::in, module_info::out, pred_id::in, int::in, bool::out) is det.
 
 unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
-    fill_goal_path_slots(!.ModuleInfo, !ProcInfo),
+    fill_goal_id_slots_in_proc(!.ModuleInfo, ContainingGoalMap, !ProcInfo),
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
@@ -316,7 +326,7 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
     globals.lookup_bool_option(Globals, fully_strict, FullyStrict),
     globals.lookup_int_option(Globals, unneeded_code_copy_limit, Limit),
     globals.lookup_bool_option(Globals, unneeded_code_debug, Debug),
-    Options = option_values(FullyStrict, ReorderConj, Limit, Debug),
+    Options = uc_option_values(FullyStrict, ReorderConj, Limit, Debug),
     (
         Debug = no
     ;
@@ -345,9 +355,11 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
             )
         )
     ),
-    unneeded_process_goal(Goal0, Goal1, InitInstMap, FinalInstMap, VarTypes0,
-        !.ModuleInfo, Options, WhereNeededMap1, _, map.init, RefinedGoals1,
-        no, Changed),
+    UnneededInfo = unneeded_code_info(!.ModuleInfo, VarTypes0, Options,
+        ContainingGoalMap),
+    unneeded_process_goal(UnneededInfo, Goal0, Goal1,
+        InitInstMap, FinalInstMap, WhereNeededMap1, _,
+        map.init, RefinedGoals1, no, Changed),
     unneeded_refine_goal(Goal1, Goal2, RefinedGoals1, RefinedGoals),
     expect(map.is_empty(RefinedGoals),
         this_file, "unneeded_process_proc: goal reattachment unsuccessful"),
@@ -379,23 +391,23 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
         Successful = no
     ).
 
-:- pred unneeded_process_goal(hlds_goal::in, hlds_goal::out,
-    instmap::in, instmap::in, vartypes::in, module_info::in, option_values::in,
+:- pred unneeded_process_goal(unneeded_code_info::in,
+    hlds_goal::in, hlds_goal::out, instmap::in, instmap::in,
     where_needed_map::in, where_needed_map::out,
     refined_goal_map::in, refined_goal_map::out, bool::in, bool::out) is det.
 
-unneeded_process_goal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
-        ModuleInfo, Options, !WhereNeededMap, !RefinedGoals, !Changed) :-
-    can_eliminate_or_move(Goal0, InitInstMap, FinalInstMap,
-        VarTypes, ModuleInfo, Options, !.WhereNeededMap, WhereInfo),
+unneeded_process_goal(UnneededInfo, Goal0, Goal, InitInstMap, FinalInstMap,
+        !WhereNeededMap, !RefinedGoals, !Changed) :-
+    can_eliminate_or_move(UnneededInfo, Goal0, InitInstMap, FinalInstMap,
+        !.WhereNeededMap, WhereInfo),
     (
         WhereInfo = everywhere,
-        unneeded_process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap,
-            VarTypes, ModuleInfo, Options, !WhereNeededMap, !RefinedGoals,
-            !Changed)
+        unneeded_process_goal_internal(UnneededInfo, Goal0, Goal,
+            InitInstMap, FinalInstMap,
+            !WhereNeededMap, !RefinedGoals, !Changed)
     ;
         WhereInfo = branches(Branches),
-        demand_inputs(Goal0, ModuleInfo, InitInstMap, WhereInfo,
+        demand_inputs(UnneededInfo, Goal0, InitInstMap, WhereInfo,
             !WhereNeededMap),
         map.to_assoc_list(Branches, BranchList),
         list.foldl(insert_branch_into_refined_goals(Goal0), BranchList,
@@ -403,20 +415,21 @@ unneeded_process_goal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
         Goal = true_goal,
         !:Changed = yes,
 
-        Debug = Options ^ debug,
+        Options = UnneededInfo ^ uci_options,
+        Debug = Options ^ uc_debug,
         (
             Debug = no
         ;
             Debug = yes,
             Goal0 = hlds_goal(_GoalExpr0, GoalInfo0),
-            GoalPath0 = goal_info_get_goal_path(GoalInfo0),
-            GoalPathStr0 = goal_path_to_string(GoalPath0),
+            goal_info_get_goal_id(GoalInfo0) = goal_id(GoalIdNum0),
             trace [io(!IO)] (
-                io.format("unneeded code at goal path %s\n", [s(GoalPathStr0)],
+                io.format("unneeded code at goal id %d\n", [i(GoalIdNum0)],
                     !IO)
             )
         )
     ),
+    ModuleInfo = UnneededInfo ^ uci_module_info,
     undemand_virgin_outputs(Goal0, ModuleInfo, InitInstMap, !WhereNeededMap),
     ( goal_get_purity(Goal) = purity_impure ->
         % By saying that all vars that are live before the impure goal are
@@ -441,7 +454,7 @@ insert_branch_into_refined_goals(Goal, BranchPoint - BranchNumSet,
     list.foldl(insert_branch_arm_into_refined_goals(Goal, GoalPath),
         BranchNums, !RefinedGoals).
 
-:- pred insert_branch_arm_into_refined_goals(hlds_goal::in, goal_path::in,
+:- pred insert_branch_arm_into_refined_goals(hlds_goal::in, goal_id::in,
     int::in, refined_goal_map::in, refined_goal_map::out) is det.
 
 insert_branch_arm_into_refined_goals(Goal, GoalPath, BranchNum,
@@ -456,29 +469,37 @@ insert_branch_arm_into_refined_goals(Goal, GoalPath, BranchNum,
 
 %-----------------------------------------------------------------------------%
 
-:- pred can_eliminate_or_move(hlds_goal::in, instmap::in,
-    instmap::in, vartypes::in, module_info::in, option_values::in,
+:- pred can_eliminate_or_move(unneeded_code_info::in, hlds_goal::in,
+    instmap::in, instmap::in,
     where_needed_map::in, where_needed::out) is det.
 
-can_eliminate_or_move(Goal, InitInstMap, FinalInstMap, VarTypes, ModuleInfo,
-        Options, WhereNeededMap, !:WhereInfo) :-
+can_eliminate_or_move(UnneededInfo, Goal, InitInstMap, FinalInstMap,
+        WhereNeededMap, !:WhereInfo) :-
+    ModuleInfo = UnneededInfo ^ uci_module_info,
+    VarTypes = UnneededInfo ^ uci_vartypes,
     instmap_changed_vars(InitInstMap, FinalInstMap, VarTypes, ModuleInfo,
         ChangedVarSet),
     set.to_sorted_list(ChangedVarSet, ChangedVars),
     map.init(Empty),
     !:WhereInfo = branches(Empty),
     Goal = hlds_goal(_, GoalInfo),
-    CurrentPath = goal_info_get_goal_path(GoalInfo),
-    list.foldl(collect_where_needed(CurrentPath, WhereNeededMap), ChangedVars,
-        !WhereInfo),
+    CurrentId = goal_info_get_goal_id(GoalInfo),
+    ContainingGoalMap = UnneededInfo ^ uci_containing_goal_map,
+    list.foldl(
+        collect_where_needed(ContainingGoalMap, CurrentId, WhereNeededMap),
+        ChangedVars, !WhereInfo),
+    Options = UnneededInfo ^ uci_options,
     adjust_where_needed(Goal, Options, !WhereInfo).
 
-:- pred collect_where_needed(goal_path::in, where_needed_map::in, prog_var::in,
-    where_needed::in, where_needed::out) is det.
+:- pred collect_where_needed(containing_goal_map::in, goal_id::in,
+    where_needed_map::in, prog_var::in, where_needed::in, where_needed::out)
+    is det.
 
-collect_where_needed(CurrentPath, WhereNeededMap, ChangedVar, !WhereInfo) :-
+collect_where_needed(ContainingGoalMap, CurrentId, WhereNeededMap, ChangedVar,
+        !WhereInfo) :-
     ( map.search(WhereNeededMap, ChangedVar, Where) ->
-        where_needed_upper_bound(CurrentPath, Where, !WhereInfo)
+        where_needed_upper_bound(ContainingGoalMap, CurrentId, Where,
+            !WhereInfo)
     ;
         true
     ).
@@ -488,7 +509,7 @@ collect_where_needed(CurrentPath, WhereNeededMap, ChangedVar, !WhereInfo) :-
     % operational semantics only in ways that are explicitly permitted by the
     % programmer.
     %
-:- pred adjust_where_needed(hlds_goal::in, option_values::in,
+:- pred adjust_where_needed(hlds_goal::in, uc_option_values::in,
     where_needed::in, where_needed::out) is det.
 
 adjust_where_needed(Goal, Options, !WhereInfo) :-
@@ -507,12 +528,12 @@ adjust_where_needed(Goal, Options, !WhereInfo) :-
         ;
             % With --fully-strict, we cannot optimize away infinite loops
             % or exceptions.
-            Options ^ fully_strict = yes,
+            Options ^ uc_fully_strict = yes,
             goal_can_loop_or_throw(Goal)
         ;
             % With --no-reorder-conj, we cannot move infinite loops or
             % exceptions, but we can delete them.
-            Options ^ reorder_conj = no,
+            Options ^ uc_reorder_conj = no,
             goal_can_loop_or_throw(Goal),
             !.WhereInfo = branches(BranchMap),
             \+ map.is_empty(BranchMap)
@@ -526,7 +547,7 @@ adjust_where_needed(Goal, Options, !WhereInfo) :-
             map.values(BranchMap, BranchArms),
             list.map(set.count, BranchArms, BranchArmCounts),
             BranchArmCount = list.foldl(int.plus, BranchArmCounts, 0),
-            BranchArmCount > Options ^ copy_limit
+            BranchArmCount > Options ^ uc_copy_limit
 
             % We may also want to add other space time tradeoffs. E.g. if
             % profiling shows that Goal is required in 10 branches that
@@ -556,18 +577,20 @@ detism_is_moveable(detism_cc_multi, yes).
 
 %---------------------------------------------------------------------------%
 
-:- pred demand_inputs(hlds_goal::in, module_info::in,
-    instmap::in, where_needed::in,
-    where_needed_map::in, where_needed_map::out) is det.
+:- pred demand_inputs(unneeded_code_info::in, hlds_goal::in, instmap::in,
+    where_needed::in, where_needed_map::in, where_needed_map::out) is det.
 
-demand_inputs(Goal, ModuleInfo, InitInstMap, WhereNeeded, !WhereNeededMap) :-
+demand_inputs(UnneededInfo, Goal, InitInstMap, WhereNeeded, !WhereNeededMap) :-
     Goal = hlds_goal(_, GoalInfo),
     NonLocalSet = goal_info_get_nonlocals(GoalInfo),
-    GoalPath = goal_info_get_goal_path(GoalInfo),
+    GoalId = goal_info_get_goal_id(GoalInfo),
     set.to_sorted_list(NonLocalSet, NonLocals),
+    ModuleInfo = UnneededInfo ^ uci_module_info,
     list.filter(nonlocal_may_be_input(ModuleInfo, InitInstMap), NonLocals,
         Inputs),
-    list.foldl(demand_var(GoalPath, WhereNeeded), Inputs, !WhereNeededMap).
+    ContainingGoalMap = UnneededInfo ^ uci_containing_goal_map,
+    list.foldl(demand_var(ContainingGoalMap, GoalId, WhereNeeded), Inputs,
+        !WhereNeededMap).
 
 :- pred nonlocal_may_be_input(module_info::in, instmap::in,
     prog_var::in) is semidet.
@@ -598,12 +621,14 @@ nonlocal_is_virgin_output(ModuleInfo, InstMap, Var) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred demand_var(goal_path::in, where_needed::in,
-    prog_var::in, where_needed_map::in, where_needed_map::out) is det.
+:- pred demand_var(containing_goal_map::in, goal_id::in,
+    where_needed::in, prog_var::in,
+    where_needed_map::in, where_needed_map::out) is det.
 
-demand_var(CurrentPath, WhereNeeded, Var, !WhereNeededMap) :-
+demand_var(ContainingGoalMap, CurrentId, WhereNeeded, Var, !WhereNeededMap) :-
     ( map.search(!.WhereNeededMap, Var, Where0) ->
-        where_needed_upper_bound(CurrentPath, WhereNeeded, Where0, Where),
+        where_needed_upper_bound(ContainingGoalMap, CurrentId,
+            WhereNeeded, Where0, Where),
         svmap.det_update(Var, Where, !WhereNeededMap)
     ;
         svmap.det_insert(Var, WhereNeeded, !WhereNeededMap)
@@ -623,56 +648,49 @@ demand_var_everywhere(_WhereNeeded0, everywhere).
 
 %---------------------------------------------------------------------------%
 
-:- pred unneeded_process_goal_internal(hlds_goal::in, hlds_goal::out,
-    instmap::in, instmap::in, vartypes::in, module_info::in,
-    option_values::in, where_needed_map::in, where_needed_map::out,
+:- pred unneeded_process_goal_internal(unneeded_code_info::in,
+    hlds_goal::in, hlds_goal::out, instmap::in, instmap::in,
+    where_needed_map::in, where_needed_map::out,
     refined_goal_map::in, refined_goal_map::out, bool::in, bool::out) is det.
 
-unneeded_process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap,
-        VarTypes, ModuleInfo, Options, !WhereNeededMap, !RefinedGoals,
-        !Changed) :-
+unneeded_process_goal_internal(UnneededInfo, Goal0, Goal,
+        InitInstMap, FinalInstMap, !WhereNeededMap, !RefinedGoals, !Changed) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
-        GoalExpr0 = unify(_, _, _, _, _),
+        ( GoalExpr0 = unify(_, _, _, _, _)
+        ; GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
         Goal = Goal0,
-        demand_inputs(Goal, ModuleInfo, InitInstMap, everywhere,
-            !WhereNeededMap)
-    ;
-        GoalExpr0 = plain_call(_, _, _, _, _, _),
-        Goal = Goal0,
-        demand_inputs(Goal, ModuleInfo, InitInstMap, everywhere,
-            !WhereNeededMap)
-    ;
-        GoalExpr0 = generic_call(_, _, _, _),
-        Goal = Goal0,
-        demand_inputs(Goal, ModuleInfo, InitInstMap, everywhere,
-            !WhereNeededMap)
-    ;
-        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
-        Goal = Goal0,
-        demand_inputs(Goal, ModuleInfo, InitInstMap, everywhere,
+        demand_inputs(UnneededInfo, Goal, InitInstMap, everywhere,
             !WhereNeededMap)
     ;
         GoalExpr0 = conj(ConjType, Conjuncts0),
         (
             ConjType = plain_conj,
-            unneeded_process_conj(Conjuncts0, Conjuncts,
-                InitInstMap, FinalInstMap, VarTypes, ModuleInfo, Options,
+            unneeded_process_conj(UnneededInfo, Conjuncts0, Conjuncts,
+                InitInstMap, FinalInstMap,
                 !WhereNeededMap, !RefinedGoals, !Changed),
             GoalExpr = conj(plain_conj, Conjuncts),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
             ConjType = parallel_conj,
             Goal = Goal0,
-            demand_inputs(Goal, ModuleInfo, InitInstMap, everywhere,
+            demand_inputs(UnneededInfo, Goal, InitInstMap, everywhere,
                 !WhereNeededMap)
         )
     ;
         GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
+        ContainingGoalMap = UnneededInfo ^ uci_containing_goal_map,
         (
-            Cases0 = [case(_, _, hlds_goal(_, FirstCaseGoalInfo)) | _],
-            FirstCaseGoalPath = goal_info_get_goal_path(FirstCaseGoalInfo),
-            FirstCaseLastStep = goal_path_get_last(FirstCaseGoalPath),
+            Cases0 = [FirstCase0 | _],
+            FirstCase0 = case(_, _, FirstCaseGoal0),
+            FirstCaseGoal0 = hlds_goal(_, FirstCaseGoalInfo0),
+            FirstCaseGoalId0 = goal_info_get_goal_id(FirstCaseGoalInfo0),
+            map.lookup(ContainingGoalMap, FirstCaseGoalId0, GoalContaining0),
+            GoalContaining0 = containing_goal(_ContainingGoalId,
+                FirstCaseLastStep),
             FirstCaseLastStep = step_switch(_, MaybeNumAltPrime)
         ->
             MaybeNumAlt = MaybeNumAltPrime
@@ -680,43 +698,44 @@ unneeded_process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap,
             unexpected(this_file,
                 "unneeded_process_goal_internal: switch count")
         ),
-        GoalPath = goal_info_get_goal_path(GoalInfo0),
-        BranchPoint = branch_point(GoalPath, alt_switch(MaybeNumAlt)),
+        GoalId = goal_info_get_goal_id(GoalInfo0),
+        BranchPoint = branch_point(GoalId, alt_switch(MaybeNumAlt)),
         map.map_values_only(demand_var_everywhere, !WhereNeededMap),
         map.init(BranchNeededMap0),
-        unneeded_process_cases(Cases0, Cases, BranchPoint, 1,
-            InitInstMap, FinalInstMap, VarTypes, ModuleInfo, Options, GoalPath,
-            !.WhereNeededMap, BranchNeededMap0, BranchNeededMap, !RefinedGoals,
-            !Changed),
-        merge_where_needed_maps(GoalPath, !.WhereNeededMap,
+        unneeded_process_cases(UnneededInfo, Cases0, Cases, BranchPoint, 1,
+            InitInstMap, FinalInstMap, GoalId,
+            !.WhereNeededMap, BranchNeededMap0, BranchNeededMap,
+            !RefinedGoals, !Changed),
+        merge_where_needed_maps(ContainingGoalMap, GoalId, !.WhereNeededMap,
             BranchNeededMap, !:WhereNeededMap),
-        demand_var(GoalPath, everywhere, SwitchVar, !WhereNeededMap),
+        demand_var(ContainingGoalMap, GoalId, everywhere, SwitchVar,
+            !WhereNeededMap),
         GoalExpr = switch(SwitchVar, CanFail, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = disj(Disjuncts0),
-        GoalPath = goal_info_get_goal_path(GoalInfo0),
+        GoalId = goal_info_get_goal_id(GoalInfo0),
         map.map_values_only(demand_var_everywhere, !WhereNeededMap),
-        unneeded_process_disj(Disjuncts0, Disjuncts, InitInstMap, FinalInstMap,
-            VarTypes, ModuleInfo, Options, GoalPath,
+        unneeded_process_disj(UnneededInfo, Disjuncts0, Disjuncts,
+            InitInstMap, FinalInstMap, GoalId,
             !.WhereNeededMap, !.WhereNeededMap, !:WhereNeededMap,
             !RefinedGoals, !Changed),
         GoalExpr = disj(Disjuncts),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Quant, Cond0, Then0, Else0),
-        GoalPath = goal_info_get_goal_path(GoalInfo0),
-        BranchPoint = branch_point(GoalPath, alt_ite),
+        GoalId = goal_info_get_goal_id(GoalInfo0),
+        BranchPoint = branch_point(GoalId, alt_ite),
         map.map_values_only(demand_var_everywhere, !WhereNeededMap),
-        unneeded_process_ite(Cond0, Cond, Then0, Then, Else0, Else,
-            BranchPoint, InitInstMap, FinalInstMap, VarTypes, ModuleInfo,
-            Options, GoalPath, !WhereNeededMap, !RefinedGoals, !Changed),
+        unneeded_process_ite(UnneededInfo, Cond0, Cond,
+            Then0, Then, Else0, Else, BranchPoint, InitInstMap, FinalInstMap,
+            GoalId, !WhereNeededMap, !RefinedGoals, !Changed),
         GoalExpr = if_then_else(Quant, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = negation(NegGoal0),
-        unneeded_process_goal(NegGoal0, NegGoal, InitInstMap, FinalInstMap,
-            VarTypes, ModuleInfo, Options,
+        unneeded_process_goal(UnneededInfo, NegGoal0, NegGoal,
+            InitInstMap, FinalInstMap,
             !WhereNeededMap, !RefinedGoals, !Changed),
         GoalExpr = negation(NegGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -725,8 +744,8 @@ unneeded_process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap,
         ( Reason = from_ground_term(_, from_ground_term_construct) ->
             Goal = Goal0
         ;
-            unneeded_process_goal(SomeGoal0, SomeGoal,
-                InitInstMap, FinalInstMap, VarTypes, ModuleInfo, Options,
+            unneeded_process_goal(UnneededInfo, SomeGoal0, SomeGoal,
+                InitInstMap, FinalInstMap,
                 !WhereNeededMap, !RefinedGoals, !Changed),
             GoalExpr = scope(Reason, SomeGoal),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -742,17 +761,17 @@ unneeded_process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap,
 :- type bracketed_goal
     --->    bracketed_goal(hlds_goal, instmap, instmap).
 
-:- pred unneeded_process_conj(list(hlds_goal)::in, list(hlds_goal)::out,
-    instmap::in, instmap::in, vartypes::in, module_info::in,
-    option_values::in, where_needed_map::in, where_needed_map::out,
+:- pred unneeded_process_conj(unneeded_code_info::in,
+    list(hlds_goal)::in, list(hlds_goal)::out, instmap::in, instmap::in,
+    where_needed_map::in, where_needed_map::out,
     refined_goal_map::in, refined_goal_map::out, bool::in, bool::out) is det.
 
-unneeded_process_conj(Goals0, Goals, InitInstMap, _FinalInstMap, VarTypes,
-        ModuleInfo, Options, !WhereNeededMap, !RefinedGoals, !Changed) :-
+unneeded_process_conj(UnneededInfo, Goals0, Goals, InitInstMap, _FinalInstMap,
+        !WhereNeededMap, !RefinedGoals, !Changed) :-
     build_bracketed_conj(Goals0, InitInstMap, BracketedGoals),
     list.reverse(BracketedGoals, RevBracketedGoals),
-    unneeded_process_rev_bracketed_conj(RevBracketedGoals, RevGoals, VarTypes,
-        ModuleInfo, Options, !WhereNeededMap, !RefinedGoals, !Changed),
+    unneeded_process_rev_bracketed_conj(UnneededInfo,
+        RevBracketedGoals, RevGoals, !WhereNeededMap, !RefinedGoals, !Changed),
     list.reverse(RevGoals, Goals).
 
 :- pred build_bracketed_conj(list(hlds_goal)::in, instmap::in,
@@ -771,21 +790,21 @@ build_bracketed_conj([Goal | Goals], InitInstMap, BracketedGoals) :-
         BracketedGoals = [BracketedGoal | BracketedTail]
     ).
 
-:- pred unneeded_process_rev_bracketed_conj(list(bracketed_goal)::in,
-    list(hlds_goal)::out, vartypes::in, module_info::in, option_values::in,
+:- pred unneeded_process_rev_bracketed_conj(unneeded_code_info::in,
+    list(bracketed_goal)::in, list(hlds_goal)::out,
     where_needed_map::in, where_needed_map::out,
     refined_goal_map::in, refined_goal_map::out, bool::in, bool::out) is det.
 
-unneeded_process_rev_bracketed_conj([], [], _, _, _,
+unneeded_process_rev_bracketed_conj(_, [], [],
         !WhereNeededMap, !RefinedGoals, !Changed).
-unneeded_process_rev_bracketed_conj([BracketedGoal | BracketedGoals], Goals,
-        VarTypes, ModuleInfo, Options, !WhereNeededMap, !RefinedGoals,
-        !Changed) :-
+unneeded_process_rev_bracketed_conj(UnneededInfo,
+        [BracketedGoal | BracketedGoals], Goals,
+        !WhereNeededMap, !RefinedGoals, !Changed) :-
     BracketedGoal = bracketed_goal(Goal0, InitInstMap, FinalInstMap),
-    unneeded_process_goal(Goal0, Goal1, InitInstMap, FinalInstMap, VarTypes,
-        ModuleInfo, Options, !WhereNeededMap, !RefinedGoals, !Changed),
-    unneeded_process_rev_bracketed_conj(BracketedGoals, Goals1, VarTypes,
-        ModuleInfo, Options, !WhereNeededMap, !RefinedGoals, !Changed),
+    unneeded_process_goal(UnneededInfo, Goal0, Goal1,
+        InitInstMap, FinalInstMap, !WhereNeededMap, !RefinedGoals, !Changed),
+    unneeded_process_rev_bracketed_conj(UnneededInfo, BracketedGoals, Goals1,
+        !WhereNeededMap, !RefinedGoals, !Changed),
     ( Goal1 = hlds_goal(true_goal_expr, _) ->
         Goals = Goals1
     ;
@@ -794,89 +813,87 @@ unneeded_process_rev_bracketed_conj([BracketedGoal | BracketedGoals], Goals,
 
 %---------------------------------------------------------------------------%
 
-:- pred unneeded_process_disj(list(hlds_goal)::in, list(hlds_goal)::out,
-    instmap::in, instmap::in, vartypes::in, module_info::in,
-    option_values::in, goal_path::in,
+:- pred unneeded_process_disj(unneeded_code_info::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    instmap::in, instmap::in, goal_id::in,
     where_needed_map::in, where_needed_map::in, where_needed_map::out,
     refined_goal_map::in, refined_goal_map::out, bool::in, bool::out) is det.
 
-unneeded_process_disj([], [], _, _, _, _, _, _, _,
+unneeded_process_disj(_, [], [], _, _, _, _,
         !WhereNeededMap, !RefinedGoals, !Changed).
-unneeded_process_disj([Goal0 | Goals0], [Goal | Goals],
-        InitInstMap, FinalInstMap, VarTypes, ModuleInfo, Options, CurrentPath,
+unneeded_process_disj(UnneededInfo, [Goal0 | Goals0], [Goal | Goals],
+        InitInstMap, FinalInstMap, CurrentId,
         StartWhereNeededMap, !WhereNeededMap, !RefinedGoals, !Changed) :-
-    unneeded_process_goal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
-        ModuleInfo, Options, StartWhereNeededMap, WhereNeededMapFirst,
-        !RefinedGoals, !Changed),
+    unneeded_process_goal(UnneededInfo, Goal0, Goal, InitInstMap, FinalInstMap,
+        StartWhereNeededMap, WhereNeededMapFirst, !RefinedGoals, !Changed),
     map.to_assoc_list(WhereNeededMapFirst, WhereNeededList),
-    add_where_needed_list(WhereNeededList, CurrentPath, !WhereNeededMap),
-    unneeded_process_disj(Goals0, Goals, InitInstMap, FinalInstMap, VarTypes,
-        ModuleInfo, Options, CurrentPath, StartWhereNeededMap,
+    ContainingGoalMap = UnneededInfo ^ uci_containing_goal_map,
+    add_where_needed_list(ContainingGoalMap, WhereNeededList, CurrentId,
+        !WhereNeededMap),
+    unneeded_process_disj(UnneededInfo, Goals0, Goals,
+        InitInstMap, FinalInstMap, CurrentId, StartWhereNeededMap,
         !WhereNeededMap, !RefinedGoals, !Changed).
 
 %---------------------------------------------------------------------------%
 
-:- pred unneeded_process_cases(list(case)::in, list(case)::out,
-    branch_point::in, int::in, instmap::in, instmap::in, vartypes::in,
-    module_info::in, option_values::in, goal_path::in, where_needed_map::in,
-    where_needed_map::in, where_needed_map::out,
+:- pred unneeded_process_cases(unneeded_code_info::in,
+    list(case)::in, list(case)::out, branch_point::in, int::in,
+    instmap::in, instmap::in, goal_id::in,
+    where_needed_map::in, where_needed_map::in, where_needed_map::out,
     refined_goal_map::in, refined_goal_map::out,
     bool::in, bool::out) is det.
 
-unneeded_process_cases([], [], _, _, _, _, _, _, _, _, _,
+unneeded_process_cases(_, [], [], _, _, _, _, _, _,
         !WhereNeededMap, !RefinedGoals, !Changed).
-unneeded_process_cases([Case0 | Cases0], [Case | Cases],
-        BranchPoint, BranchNum, InitInstMap, FinalInstMap, VarTypes,
-        ModuleInfo, Options, CurrentPath, StartWhereNeededMap,
-        !WhereNeededMap, !RefinedGoals, !Changed) :-
+unneeded_process_cases(UnneededInfo, [Case0 | Cases0], [Case | Cases],
+        BranchPoint, BranchNum, InitInstMap, FinalInstMap, CurrentId,
+        StartWhereNeededMap, !WhereNeededMap, !RefinedGoals, !Changed) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    unneeded_process_goal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
-        ModuleInfo, Options, StartWhereNeededMap, WhereNeededMapFirst,
-        !RefinedGoals, !Changed),
+    unneeded_process_goal(UnneededInfo, Goal0, Goal, InitInstMap, FinalInstMap,
+        StartWhereNeededMap, WhereNeededMapFirst, !RefinedGoals, !Changed),
     Case = case(MainConsId, OtherConsIds, Goal),
     map.to_assoc_list(WhereNeededMapFirst, WhereNeededList),
-    add_alt_start(WhereNeededList, BranchPoint, BranchNum, CurrentPath,
-        !WhereNeededMap),
-    unneeded_process_cases(Cases0, Cases, BranchPoint, BranchNum + 1,
-        InitInstMap, FinalInstMap, VarTypes, ModuleInfo, Options, CurrentPath,
+    ContainingGoalMap = UnneededInfo ^ uci_containing_goal_map,
+    add_alt_start(ContainingGoalMap, WhereNeededList, BranchPoint, BranchNum,
+        CurrentId, !WhereNeededMap),
+    unneeded_process_cases(UnneededInfo, Cases0, Cases,
+        BranchPoint, BranchNum + 1, InitInstMap, FinalInstMap, CurrentId,
         StartWhereNeededMap, !WhereNeededMap, !RefinedGoals, !Changed).
 
 %---------------------------------------------------------------------------%
 
-:- pred unneeded_process_ite(hlds_goal::in, hlds_goal::out,
+:- pred unneeded_process_ite(unneeded_code_info::in,
+    hlds_goal::in, hlds_goal::out,
     hlds_goal::in, hlds_goal::out, hlds_goal::in, hlds_goal::out,
-    branch_point::in, instmap::in, instmap::in, vartypes::in,
-    module_info::in, option_values::in, goal_path::in,
+    branch_point::in, instmap::in, instmap::in, goal_id::in,
     where_needed_map::in, where_needed_map::out,
     refined_goal_map::in, refined_goal_map::out, bool::in, bool::out) is det.
 
-unneeded_process_ite(Cond0, Cond, Then0, Then, Else0, Else, BranchPoint,
-        InitInstMap, FinalInstMap, VarTypes, ModuleInfo, Options,
-        CurrentPath, !WhereNeededMap, !RefinedGoals, !Changed) :-
+unneeded_process_ite(UnneededInfo, Cond0, Cond, Then0, Then, Else0, Else,
+        BranchPoint, InitInstMap, FinalInstMap, CurrentId,
+        !WhereNeededMap, !RefinedGoals, !Changed) :-
     Cond0 = hlds_goal(_, CondInfo0),
     InstMapDelta = goal_info_get_instmap_delta(CondInfo0),
     instmap.apply_instmap_delta(InitInstMap, InstMapDelta, InstMapCond),
 
-    unneeded_process_goal(Else0, Else, InitInstMap, FinalInstMap, VarTypes,
-        ModuleInfo, Options, !.WhereNeededMap, WhereNeededMapElse,
-        !RefinedGoals, !Changed),
-    unneeded_process_goal(Then0, Then, InstMapCond, FinalInstMap, VarTypes,
-        ModuleInfo, Options, !.WhereNeededMap, WhereNeededMapThen,
-        !RefinedGoals, !Changed),
+    unneeded_process_goal(UnneededInfo, Else0, Else, InitInstMap, FinalInstMap,
+        !.WhereNeededMap, WhereNeededMapElse, !RefinedGoals, !Changed),
+    unneeded_process_goal(UnneededInfo, Then0, Then, InstMapCond, FinalInstMap,
+        !.WhereNeededMap, WhereNeededMapThen, !RefinedGoals, !Changed),
 
+    ContainingGoalMap = UnneededInfo ^ uci_containing_goal_map,
     map.init(BranchNeededMap0),
     map.to_assoc_list(WhereNeededMapElse, WhereNeededListElse),
-    add_alt_start(WhereNeededListElse, BranchPoint, 2,
-        CurrentPath, BranchNeededMap0, BranchNeededMap1),
+    add_alt_start(ContainingGoalMap, WhereNeededListElse, BranchPoint, 2,
+        CurrentId, BranchNeededMap0, BranchNeededMap1),
     map.to_assoc_list(WhereNeededMapThen, WhereNeededListThen),
-    add_alt_start(WhereNeededListThen, BranchPoint, 1,
-        CurrentPath, BranchNeededMap1, BranchNeededMap),
-    merge_where_needed_maps(CurrentPath,
+    add_alt_start(ContainingGoalMap, WhereNeededListThen, BranchPoint, 1,
+        CurrentId, BranchNeededMap1, BranchNeededMap),
+    merge_where_needed_maps(ContainingGoalMap, CurrentId,
         !.WhereNeededMap, BranchNeededMap, WhereNeededMapCond),
 
-    unneeded_process_goal(Cond0, Cond, InitInstMap, InstMapCond,
-        VarTypes, ModuleInfo, Options, WhereNeededMapCond,
-        !:WhereNeededMap, !RefinedGoals, !Changed).
+    unneeded_process_goal(UnneededInfo, Cond0, Cond, InitInstMap, InstMapCond,
+        WhereNeededMapCond, !:WhereNeededMap, !RefinedGoals, !Changed).
 
 %---------------------------------------------------------------------------%
 
@@ -884,30 +901,30 @@ unneeded_process_ite(Cond0, Cond, Then0, Then, Else0, Else, BranchPoint,
     % in the resulting where_needed_map iff it is needed there in one of
     % the input maps.
     %
-:- pred merge_where_needed_maps(goal_path::in,
-    where_needed_map::in, where_needed_map::in, where_needed_map::out)
-    is det.
+:- pred merge_where_needed_maps(containing_goal_map::in, goal_id::in,
+    where_needed_map::in, where_needed_map::in, where_needed_map::out) is det.
 
-merge_where_needed_maps(CurrentPath,
+merge_where_needed_maps(ContainingGoalMap, CurrentId,
         WhereNeededMap1, WhereNeededMap2, WhereNeededMap) :-
     map.to_assoc_list(WhereNeededMap1, WhereNeededList1),
-    add_where_needed_list(WhereNeededList1, CurrentPath,
+    add_where_needed_list(ContainingGoalMap, WhereNeededList1, CurrentId,
         WhereNeededMap2, WhereNeededMap).
 
-:- pred add_where_needed_list(assoc_list(prog_var, where_needed)::in,
-    goal_path::in, where_needed_map::in, where_needed_map::out) is det.
+:- pred add_where_needed_list(containing_goal_map::in,
+    assoc_list(prog_var, where_needed)::in, goal_id::in,
+    where_needed_map::in, where_needed_map::out) is det.
 
-add_where_needed_list([], _, !WhereNeededMap).
-add_where_needed_list([Var - BranchWhere | WhereNeededList],
-        CurrentPath, !WhereNeededMap) :-
+add_where_needed_list(_, [], _, !WhereNeededMap).
+add_where_needed_list(ContainingGoalMap, [Var - BranchWhere | WhereNeededList],
+        CurrentId, !WhereNeededMap) :-
     ( map.search(!.WhereNeededMap, Var, OldWhere) ->
-        where_needed_upper_bound(CurrentPath, BranchWhere, OldWhere,
-            CombinedWhere),
+        where_needed_upper_bound(ContainingGoalMap, CurrentId,
+            BranchWhere, OldWhere, CombinedWhere),
         svmap.det_update(Var, CombinedWhere, !WhereNeededMap)
     ;
         svmap.det_insert(Var, BranchWhere, !WhereNeededMap)
     ),
-    add_where_needed_list(WhereNeededList, CurrentPath,
+    add_where_needed_list(ContainingGoalMap, WhereNeededList, CurrentId,
         !WhereNeededMap).
 
     % Given a where_needed_map, add to it the where_needed information for the
@@ -916,13 +933,13 @@ add_where_needed_list([Var - BranchWhere | WhereNeededList],
     % variable is needed everywhere, the scope of this "everywhere" is only
     % that alternative.
     %
-:- pred add_alt_start(assoc_list(prog_var, where_needed)::in,
-    branch_point::in, int::in, goal_path::in,
-    where_needed_map::in, where_needed_map::out) is det.
+:- pred add_alt_start(containing_goal_map::in,
+    assoc_list(prog_var, where_needed)::in, branch_point::in,
+    int::in, goal_id::in, where_needed_map::in, where_needed_map::out) is det.
 
-add_alt_start([], _, _, _, !WhereNeededMap).
-add_alt_start([Var - BranchWhere0 | WhereNeededList],
-        BranchPoint, BranchNum, CurrentPath, !WhereNeededMap) :-
+add_alt_start(_, [], _, _, _, !WhereNeededMap).
+add_alt_start(ContainingGoalMap, [Var - BranchWhere0 | WhereNeededList],
+        BranchPoint, BranchNum, CurrentId, !WhereNeededMap) :-
     (
         BranchWhere0 = everywhere,
         map.init(Empty),
@@ -934,14 +951,14 @@ add_alt_start([Var - BranchWhere0 | WhereNeededList],
         BranchWhere = BranchWhere0
     ),
     ( map.search(!.WhereNeededMap, Var, OldWhere) ->
-        where_needed_upper_bound(CurrentPath, BranchWhere, OldWhere,
-            CombinedWhere),
+        where_needed_upper_bound(ContainingGoalMap, CurrentId,
+            BranchWhere, OldWhere, CombinedWhere),
         svmap.det_update(Var, CombinedWhere, !WhereNeededMap)
     ;
         svmap.det_insert(Var, BranchWhere, !WhereNeededMap)
     ),
-    add_alt_start(WhereNeededList, BranchPoint, BranchNum,
-        CurrentPath, !WhereNeededMap).
+    add_alt_start(ContainingGoalMap, WhereNeededList, BranchPoint, BranchNum,
+        CurrentId, !WhereNeededMap).
 
 %---------------------------------------------------------------------------%
 
@@ -970,22 +987,22 @@ unneeded_refine_goal(Goal0, Goal, !RefinedGoals) :-
         )
     ;
         GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
-        GoalPath = goal_info_get_goal_path(GoalInfo0),
-        unneeded_refine_cases(Cases0, Cases, !RefinedGoals, GoalPath, 1),
+        GoalId = goal_info_get_goal_id(GoalInfo0),
+        unneeded_refine_cases(Cases0, Cases, !RefinedGoals, GoalId, 1),
         GoalExpr = switch(SwitchVar, CanFail, Cases),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = disj(Disjuncts0),
-        GoalPath = goal_info_get_goal_path(GoalInfo0),
+        GoalId = goal_info_get_goal_id(GoalInfo0),
         unneeded_refine_disj(Disjuncts0, Disjuncts, !RefinedGoals,
-            GoalPath, 1),
+            GoalId, 1),
         GoalExpr = disj(Disjuncts),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Quant, Cond0, Then0, Else0),
-        GoalPath = goal_info_get_goal_path(GoalInfo0),
+        GoalId = goal_info_get_goal_id(GoalInfo0),
         unneeded_refine_ite(Cond0, Cond, Then0, Then, Else0, Else,
-            !RefinedGoals, GoalPath),
+            !RefinedGoals, GoalId),
         GoalExpr = if_then_else(Quant, Cond, Then, Else),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
@@ -1022,59 +1039,59 @@ unneeded_refine_conj([Goal0 | Goals0], Goals, !RefinedGoals) :-
 
 :- pred unneeded_refine_cases(list(case)::in, list(case)::out,
     refined_goal_map::in, refined_goal_map::out,
-    goal_path::in, int::in) is det.
+    goal_id::in, int::in) is det.
 
 unneeded_refine_cases([], [], !RefinedGoals, _, _).
 unneeded_refine_cases([Case0 | Cases0], [Case | Cases], !RefinedGoals,
-        GoalPath, BranchNum) :-
+        GoalId, BranchNum) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     unneeded_refine_goal(Goal0, Goal1, !RefinedGoals),
-    ( map.search(!.RefinedGoals, GoalPath - BranchNum, ToInsertGoals) ->
+    ( map.search(!.RefinedGoals, GoalId - BranchNum, ToInsertGoals) ->
         insert_refine_goals(ToInsertGoals, Goal1, Goal),
-        svmap.delete(GoalPath - BranchNum, !RefinedGoals)
+        svmap.delete(GoalId - BranchNum, !RefinedGoals)
     ;
         Goal = Goal1
     ),
     Case = case(MainConsId, OtherConsIds, Goal),
     unneeded_refine_cases(Cases0, Cases, !RefinedGoals,
-        GoalPath, BranchNum + 1).
+        GoalId, BranchNum + 1).
 
 :- pred unneeded_refine_disj(list(hlds_goal)::in, list(hlds_goal)::out,
     refined_goal_map::in, refined_goal_map::out,
-    goal_path::in, int::in) is det.
+    goal_id::in, int::in) is det.
 
 unneeded_refine_disj([], [], !RefinedGoals, _, _).
 unneeded_refine_disj([Goal0 | Goals0], [Goal | Goals], !RefinedGoals,
-        GoalPath, BranchNum) :-
+        GoalId, BranchNum) :-
     unneeded_refine_goal(Goal0, Goal1, !RefinedGoals),
-    ( map.search(!.RefinedGoals, GoalPath - BranchNum, ToInsertGoals) ->
+    ( map.search(!.RefinedGoals, GoalId - BranchNum, ToInsertGoals) ->
         insert_refine_goals(ToInsertGoals, Goal1, Goal),
-        svmap.delete(GoalPath - BranchNum, !RefinedGoals)
+        svmap.delete(GoalId - BranchNum, !RefinedGoals)
     ;
         Goal = Goal1
     ),
-    unneeded_refine_disj(Goals0, Goals, !RefinedGoals, GoalPath,
-        BranchNum + 1).
+    unneeded_refine_disj(Goals0, Goals, !RefinedGoals,
+        GoalId, BranchNum + 1).
 
 :- pred unneeded_refine_ite(hlds_goal::in, hlds_goal::out,
     hlds_goal::in, hlds_goal::out, hlds_goal::in, hlds_goal::out,
-    refined_goal_map::in, refined_goal_map::out, goal_path::in) is det.
+    refined_goal_map::in, refined_goal_map::out, goal_id::in) is det.
 
 unneeded_refine_ite(Cond0, Cond, Then0, Then, Else0, Else,
-        !RefinedGoals, GoalPath) :-
+        !RefinedGoals, GoalId) :-
     unneeded_refine_goal(Cond0, Cond, !RefinedGoals),
     unneeded_refine_goal(Then0, Then1, !RefinedGoals),
     unneeded_refine_goal(Else0, Else1, !RefinedGoals),
 
-    ( map.search(!.RefinedGoals, GoalPath - 1, ToInsertGoalsThen) ->
+    ( map.search(!.RefinedGoals, GoalId - 1, ToInsertGoalsThen) ->
         insert_refine_goals(ToInsertGoalsThen, Then1, Then),
-        svmap.delete(GoalPath - 1, !RefinedGoals)
+        svmap.delete(GoalId - 1, !RefinedGoals)
     ;
         Then = Then1
     ),
-    ( map.search(!.RefinedGoals, GoalPath - 2, ToInsertGoalsElse) ->
+    ( map.search(!.RefinedGoals, GoalId - 2, ToInsertGoalsElse) ->
         insert_refine_goals(ToInsertGoalsElse, Else1, Else),
-        svmap.delete(GoalPath - 2, !RefinedGoals)
+        svmap.delete(GoalId - 2, !RefinedGoals)
     ;
         Else = Else1
     ).
@@ -1096,10 +1113,10 @@ insert_refine_goals(ToInsertGoals, Goal0, Goal) :-
     % requirements (e.g. branch sets {b1,b2} and {b3} covers all
     % computation paths.
     %
-:- pred where_needed_upper_bound(goal_path::in,
+:- pred where_needed_upper_bound(containing_goal_map::in, goal_id::in,
     where_needed::in, where_needed::in, where_needed::out) is det.
 
-where_needed_upper_bound(CurrentPath,
+where_needed_upper_bound(ContainingGoalMap, CurrentId,
         WhereNeededA, WhereNeededB, WhereNeeded) :-
     (
         WhereNeededA = everywhere,
@@ -1111,86 +1128,86 @@ where_needed_upper_bound(CurrentPath,
             WhereNeeded = everywhere
         ;
             WhereNeededB = branches(BranchesB),
-            where_needed_branches_upper_bound(CurrentPath,
+            where_needed_branches_upper_bound(ContainingGoalMap, CurrentId,
                 BranchesA, BranchesB, WhereNeeded)
         )
     ).
 
-:- pred where_needed_branches_upper_bound(goal_path::in,
+:- pred where_needed_branches_upper_bound(containing_goal_map::in, goal_id::in,
     where_needed_branches::in, where_needed_branches::in, where_needed::out)
     is det.
 
-where_needed_branches_upper_bound(CurrentPath, BranchesA, BranchesB,
-        WhereNeeded) :-
-    % Should select smaller map to convert to list.
+where_needed_branches_upper_bound(ContainingGoalMap, CurrentId,
+        BranchesA, BranchesB, WhereNeeded) :-
+    % We should select the smaller map to convert to list.
     map.to_assoc_list(BranchesA, BranchesList),
-    where_needed_branches_upper_bound_2(CurrentPath,
+    where_needed_branches_upper_bound_2(ContainingGoalMap, CurrentId,
         BranchesList, BranchesB, WhereNeeded).
 
-:- pred where_needed_branches_upper_bound_2(goal_path::in,
-    assoc_list(branch_point, set(int))::in, where_needed_branches::in,
-    where_needed::out) is det.
+:- pred where_needed_branches_upper_bound_2(containing_goal_map::in,
+    goal_id::in, assoc_list(branch_point, set(int))::in,
+    where_needed_branches::in, where_needed::out) is det.
 
-where_needed_branches_upper_bound_2(_, [],
+where_needed_branches_upper_bound_2(_, _, [],
         Branches, branches(Branches)).
-where_needed_branches_upper_bound_2(CurrentPath, [First | Rest],
-        Branches0, WhereNeeded) :-
+where_needed_branches_upper_bound_2(ContainingGoalMap, CurrentId,
+        [First | Rest], Branches0, WhereNeeded) :-
     First = BranchPoint - NewAlts,
     ( map.search(Branches0, BranchPoint, OldAlts) ->
         set.union(OldAlts, NewAlts, Alts),
-        BranchPoint = branch_point(GoalPath, BranchAlts),
+        BranchPoint = branch_point(BranchGoalId, BranchAlts),
         ( branch_point_is_complete(BranchAlts, Alts) ->
             (
-                get_parent_branch_point(GoalPath,
-                    ParentGoalInitialPath, ParentGoalPathStep,
+                get_parent_branch_point(ContainingGoalMap, BranchGoalId,
+                    ParentBranchGoalId, ParentBranchArmGoalId,
                     ParentBranchAlt, ParentBranchNum),
-                ParentGoalPath = goal_path_add_at_end(ParentGoalInitialPath,
-                    ParentGoalPathStep),
-                \+ goal_path_inside(ParentGoalPath, CurrentPath)
+                \+ goal_id_inside(ContainingGoalMap, ParentBranchArmGoalId,
+                    CurrentId)
             ->
                 map.delete(Branches0, BranchPoint, Branches1),
-                ParentBranchPoint = branch_point(ParentGoalInitialPath,
+                ParentBranchPoint = branch_point(ParentBranchGoalId,
                     ParentBranchAlt),
                 set.singleton_set(ParentAlts, ParentBranchNum),
-                where_needed_branches_upper_bound_2(CurrentPath,
-                    [ParentBranchPoint - ParentAlts | Rest], Branches1,
-                    WhereNeeded)
+                where_needed_branches_upper_bound_2(ContainingGoalMap,
+                    CurrentId, [ParentBranchPoint - ParentAlts | Rest],
+                    Branches1, WhereNeeded)
             ;
                 WhereNeeded = everywhere
             )
         ;
             map.det_update(Branches0, BranchPoint, Alts, Branches1),
-            where_needed_branches_upper_bound_2(CurrentPath,
+            where_needed_branches_upper_bound_2(ContainingGoalMap, CurrentId,
                 Rest, Branches1, WhereNeeded)
         )
     ;
         map.det_insert(Branches0, BranchPoint, NewAlts, Branches1),
-        where_needed_branches_upper_bound_2(CurrentPath, Rest,
-            Branches1, WhereNeeded)
+        where_needed_branches_upper_bound_2(ContainingGoalMap, CurrentId,
+            Rest, Branches1, WhereNeeded)
     ).
 
-:- pred get_parent_branch_point(goal_path::in, goal_path::out,
-    goal_path_step::out, branch_alts::out, int::out) is semidet.
+:- pred get_parent_branch_point(containing_goal_map::in, goal_id::in,
+    goal_id::out, goal_id::out, branch_alts::out, int::out) is semidet.
 
-get_parent_branch_point(GoalPath, ParentPath, ParentStep,
-        BranchAlt, BranchNum) :-
-    goal_path_remove_last(GoalPath, InitialPath, LastStep),
+get_parent_branch_point(ContainingGoalMap, GoalId, BranchGoalId,
+        BranchArmGoalId, BranchAlt, BranchNum) :-
+    map.lookup(ContainingGoalMap, GoalId, GoalContaining),
+    GoalContaining = containing_goal(ContainingGoalId, LastStep),
     (
         LastStep = step_switch(Arm, MaybeNumAlts),
-        ParentPath = InitialPath,
-        ParentStep = LastStep,
+        BranchGoalId = ContainingGoalId,
+        BranchArmGoalId = GoalId,
         BranchAlt = alt_switch(MaybeNumAlts),
         BranchNum = Arm
     ;
         LastStep = step_ite_then,
-        ParentPath = InitialPath,
-        ParentStep = LastStep,
+        BranchGoalId = ContainingGoalId,
+        BranchArmGoalId = GoalId,
         BranchAlt = alt_ite,
         BranchNum = 1
     ;
         LastStep = step_ite_else,
-        ParentPath = InitialPath,
-        ParentStep = LastStep,
+        BranchGoalId = ContainingGoalId,
+        BranchArmGoalId = GoalId,
         BranchAlt = alt_ite,
         BranchNum = 2
     ;
@@ -1202,8 +1219,8 @@ get_parent_branch_point(GoalPath, ParentPath, ParentStep,
         ; LastStep = step_first
         ; LastStep = step_later
         ),
-        get_parent_branch_point(InitialPath, ParentPath, ParentStep,
-            BranchAlt, BranchNum)
+        get_parent_branch_point(ContainingGoalMap, ContainingGoalId,
+            BranchGoalId, BranchArmGoalId, BranchAlt, BranchNum)
     ).
 
 :- pred branch_point_is_complete(branch_alts::in, set(int)::in) is semidet.

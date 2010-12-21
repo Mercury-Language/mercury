@@ -457,22 +457,48 @@
 %-----------------------------------------------------------------------------%
 
 % We can think of the goal that defines a procedure to be a tree, whose leaves
-% are primitive goals and whose interior nodes are compound goals. These two
-% types describe the position of a goal in this tree. A goal_path_step type
-% says which branch to take at an interior node; the integer counts start
-% at one. (For switches, the second int, if present, gives the total number
-% of function symbols in the type of the switched-on var; for builtin types
-% such as integer and string, for which this number is effectively infinite,
-% the second number won't be present.)
+% are primitive goals and whose interior nodes are compound goals. The goal_id,
+% forward_goal_path and reverse_goal_path types describe the position of a goal
+% in this tree. Therefore value of three types can uniquely identify a goal
+% within its defining procedure.
 %
-% The goal_path type gives the sequence of steps from the root to the given
-% goal. We use a cord instead of a list because most operations on goal paths
-% focus on the last element, not the first.
+% Goal ids are allocated in a depth-first manner that guarantees the following
+% invariants:
 %
-% The goal_path type is safe for use in maps and sets. However compare/3 and
-% unify/2 are faster for goal_path_string.
+% - the goal id of a goal representing the procedure body will be 0, and
+% - the goal id of a goal will be greater than the goal ids of all the goals
+%   that contain it.
+%
+% A goal_path_step type says which branch to take at an interior node;
+% the integer counts inside steps start at one. For switches, the second int,
+% if present, gives the total number of function symbols in the type of the
+% switched-on var. For builtin types such as integer and string, for which
+% this number is effectively infinite, the second number won't be present.
+%
+% A forward goal path lists the step from the root of the tree to the goal
+% being identified.
+%
+% A reverse goal path lists the step from to the goal being identified to
+% the root of the tree.
+%
+% The code in the compiler that allocates goal ids also returns a containing
+% goal map, which maps each goal id to the id of its innermost containing goal
+% (if there is one). When possible, new code should use this data structure,
+% though code that needs to identify goals in files outside the compiler
+% will probably continue to need to use goal paths. The string representations
+% of goal paths always list the steps in the forward order, even though
+% most operations inside the compiler use reverse goal paths, because most
+% operations on goal paths focus on the last element, not the first.
+%
 
-:- type goal_path.
+:- type goal_id
+    --->    goal_id(int).
+
+:- type forward_goal_path
+    --->    fgp(list(goal_path_step)).
+
+:- type reverse_goal_path
+    --->    rgp(list(goal_path_step)).
 
 :- type goal_path_string == string.
 
@@ -485,6 +511,8 @@
     ;       step_ite_else
     ;       step_neg
     ;       step_scope(maybe_cut)
+    ;       step_lambda
+    ;       step_try
     ;       step_atomic_main
     ;       step_atomic_orelse(int)
     ;       step_first
@@ -495,71 +523,63 @@
     --->    scope_is_cut
     ;       scope_is_no_cut.
 
-    % The empty goal path.
-    %
-:- func empty_goal_path = goal_path.
-:- pred empty_goal_path(goal_path).
-:- mode empty_goal_path(out) is det.
-:- mode empty_goal_path(in) is semidet.
-
-    % A singleton goal path.
-    %
-:- func singleton_goal_path(goal_path_step) = goal_path.
+:- func whole_body_goal_id = goal_id.
 
     % Append a goal path step onto the end of a goal path.
     %
-:- func goal_path_add_at_end(goal_path, goal_path_step) = goal_path.
+:- func goal_path_add_at_end(forward_goal_path, goal_path_step) =
+    forward_goal_path.
 
-    % Remove the last item from the goal path.  This fails if the goal path is
-    % empty.
+    % Append a goal path step onto the end of a reverse goal path.
     %
-:- func goal_path_remove_last(goal_path) = goal_path is semidet.
+:- func rev_goal_path_add_at_end(reverse_goal_path, goal_path_step) =
+    reverse_goal_path.
 
     % Remove the last item from the goal path, returning it and the new
     % goal path.
     %
-:- pred goal_path_remove_last(goal_path::in, goal_path::out,
+:- pred goal_path_remove_last(forward_goal_path::in, forward_goal_path::out,
     goal_path_step::out) is semidet.
 
-    % Get the last item from the goal path.  This fails if the goal path is
-    % empty
+    % Get the last item from the goal path. This fails if the goal path is
+    % empty.
     %
-:- func goal_path_get_last(goal_path) = goal_path_step is semidet.
-
-    % Return the goal path represented as a list, with the outer most goal path
-    % step at the head of the list.
-    %
-:- func goal_path_to_list(goal_path) = list(goal_path_step).
-
-    % Build a goal path from the given list of goal steps.  The outer most goal
-    % step should be at the head of the list.
-    %
-:- func list_to_goal_path(list(goal_path_step)) = goal_path.
-
-    % goal_path_inside(PathA, PathB):
-    %
-    % Succeed if PathB denotes a goal *inside* the goal denoted by PathA.
-    % (It considers a goal to be inside itself.)
-    %
-:- pred goal_path_inside(goal_path::in, goal_path::in) is semidet.
-
-    % goal_path_inside(PathA, PathB, Relative):
-    %
-    % As above, except that Releative denotes the same goal that PathB denotes,
-    % only from GoalA's perspective.
-    %
-:- pred goal_path_inside(goal_path::in, goal_path::in, goal_path::out)
+:- pred goal_path_get_last(forward_goal_path::in, goal_path_step::out)
     is semidet.
 
-    % Converts a string to a goal path, failing if the string is not a valid
+    % Remove the last item from the goal path, returning it and the new
     % goal path.
     %
-:- pred goal_path_from_string(string::in, goal_path::out) is semidet.
+:- pred rev_goal_path_remove_last(reverse_goal_path::in,
+    reverse_goal_path::out, goal_path_step::out) is semidet.
 
-    % Converts a string to a goal path, aborting if the string is not a valid
-    % goal path.
+    % Get the last item from the goal path. This fails if the goal path is
+    % empty.
     %
-:- pred goal_path_from_string_det(string::in, goal_path::out) is det.
+:- pred rev_goal_path_get_last(reverse_goal_path::in, goal_path_step::out)
+    is semidet.
+
+    % Converts a string to a forward goal path, failing if the string
+    % is not a valid goal path.
+    %
+:- pred goal_path_from_string(string::in, forward_goal_path::out) is semidet.
+
+    % Converts a string to a forward goal path, aborting if the string
+    % is not a valid goal path.
+    %
+:- pred goal_path_from_string_det(string::in, forward_goal_path::out) is det.
+
+    % Converts a string to a reverse goal path, failing if the string
+    % is not a valid goal path.
+    %
+:- pred rev_goal_path_from_string(string::in, reverse_goal_path::out)
+    is semidet.
+
+    % Converts a string to a reverse goal path, aborting if the string
+    % is not a valid goal path.
+    %
+:- pred rev_goal_path_from_string_det(string::in, reverse_goal_path::out)
+    is det.
 
     % Converts a string to a goal path step, failing if the string is not
     % a valid goal path step.
@@ -569,33 +589,36 @@
     % Convert the goal path to its string representation. The resulting string
     % is guaranteed to be acceptable to path_from_string_det.
     %
-:- func goal_path_to_string(goal_path) = string.
+:- func goal_path_to_string(forward_goal_path) = string.
+
+    % Convert the goal path to its string representation. The resulting string
+    % is guaranteed to be acceptable to rev_path_from_string_det.
+    %
+:- func rev_goal_path_to_string(reverse_goal_path) = string.
 
     % Is this character the one that ends each goal path step?
     %
 :- pred is_goal_path_separator(char::in) is semidet.
 
-    % A goal path stored in order for constant time access to elements at the
-    % start of the goal path.  Recall that the start of a goal path is the root
-    % of the tree of goals.
+    % goal_path_inside(PathA, PathB):
     %
-    % XXX: Review the name of this type and related predicates.
+    % Succeed if PathB denotes a goal *inside* the goal denoted by PathA.
+    % (It considers a goal to be inside itself.)
     %
-:- type goal_path_consable.
+:- pred goal_path_inside(forward_goal_path::in, forward_goal_path::in)
+    is semidet.
+:- pred rev_goal_path_inside(reverse_goal_path::in, reverse_goal_path::in)
+    is semidet.
 
-    % Convert between a goal_path and a goal_path_consable.
+    % goal_path_inside(PathA, PathB, RelativePath):
     %
-:- pred goal_path_consable(goal_path, goal_path_consable).
-:- mode goal_path_consable(in, out) is det.
-:- mode goal_path_consable(out, in) is det.
-
-    % goal_path_consable_remove_first(GP, GPHead, GPTail).
+    % As above, except that it also return RelativePath, which denotes
+    % the same goal that PathB denotes, only from GoalA's perspective.
     %
-    % GPHead is the first goal path step in the GP, GPTail is the tail (the
-    % goals other than the first).  This predicate is false if GP is empty.
-    %
-:- pred goal_path_consable_remove_first(goal_path_consable::in,
-    goal_path_step::out, goal_path_consable::out) is semidet.
+:- pred goal_path_inside(forward_goal_path::in, forward_goal_path::in,
+    forward_goal_path::out) is semidet.
+:- pred rev_goal_path_inside(reverse_goal_path::in, reverse_goal_path::in,
+    reverse_goal_path::out) is semidet.
 
 %----------------------------------------------------------------------------%
 
@@ -743,15 +766,16 @@
                 % If cp_type is cp_type_branch_arm, the coverage point is
                 % immediately before this goal, otherwise it is immediately
                 % after.
-                goal_path,
+                reverse_goal_path,
 
                 % The type of this coverage point.
                 cp_type
             ).
 
-% This enumeration specifies the type of coverage point. A branch arm is an
-% arm of an if-then-else, switch or disj goal. The coverage_after type is used
-% to measure the coverage after the goal it's coverage point referrs to.
+    % This enumeration specifies the type of coverage point. A branch arm
+    % is an arm of an if-then-else, switch or disj goal. The coverage_after
+    % type is used to measure the coverage after the goal its coverage point
+    % refers to.
 :- type cp_type
     --->    cp_type_coverage_after
     ;       cp_type_branch_arm.
@@ -918,77 +942,76 @@ transform_switch_case(Pred, Case0, Case) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Goal paths are stored as a list in reverse order, that is the inner most
-    % goal path step is at the head of the list.
-    %
-:- type goal_path
-    --->    goal_path(
-                gp_steps    :: list(goal_path_step)
-            ).
+whole_body_goal_id = goal_id(0).
 
-empty_goal_path = Empty :-
-    empty_goal_path(Empty).
+goal_path_add_at_end(GoalPath0, GoalPathStep) = GoalPath :-
+    GoalPath0 = fgp(Steps0),
+    Steps = Steps0 ++ [GoalPathStep],
+    GoalPath = fgp(Steps).
 
-empty_goal_path(goal_path([])).
+rev_goal_path_add_at_end(GoalPath0, GoalPathStep) = GoalPath :-
+    GoalPath0 = rgp(Steps0),
+    Steps = [GoalPathStep | Steps0],
+    GoalPath = rgp(Steps).
 
-singleton_goal_path(Step) = goal_path([Step]).
+goal_path_remove_last(GoalPath0, GoalPath, LastStep) :-
+    GoalPath0 = fgp(Steps0),
+    list.split_last(Steps0, Steps, LastStep),
+    GoalPath = fgp(Steps).
 
-goal_path_inside(PathA, PathB, Relative) :-
-    list.remove_suffix(PathB ^ gp_steps, PathA ^ gp_steps, RelativeSteps),
-    Relative = goal_path(RelativeSteps).
+goal_path_get_last(GoalPath, LastStep) :-
+    goal_path_remove_last(GoalPath, _, LastStep).
+
+rev_goal_path_remove_last(GoalPath0, GoalPath, LastStep) :-
+    GoalPath0 = rgp(Steps0),
+    Steps0 = [LastStep | Steps],
+    GoalPath = rgp(Steps).
+
+rev_goal_path_get_last(GoalPath, LastStep) :-
+    rev_goal_path_remove_last(GoalPath, _, LastStep).
+
+goal_path_inside(PathA, PathB, RelativePath) :-
+    PathA = fgp(StepsA),
+    PathB = fgp(StepsB),
+    list.append(StepsA, RelativeSteps, StepsB),
+    RelativePath = fgp(RelativeSteps).
+
+rev_goal_path_inside(PathA, PathB, Relative) :-
+    PathA = rgp(StepsA),
+    PathB = rgp(StepsB),
+    list.remove_suffix(StepsB, StepsA, RelativeSteps),
+    Relative = rgp(RelativeSteps).
 
 goal_path_inside(PathA, PathB) :-
     goal_path_inside(PathA, PathB, _).
 
-goal_path_add_at_end(GoalPath0, GoalPathStep) = GoalPath :-
-    goal_path_snoc(GoalPath, GoalPath0, GoalPathStep).
+rev_goal_path_inside(PathA, PathB) :-
+    rev_goal_path_inside(PathA, PathB, _).
 
-goal_path_remove_last(GoalPath0) = GoalPath :-
-    goal_path_snoc(GoalPath0, GoalPath, _).
-
-goal_path_remove_last(GoalPath0, GoalPath, GoalPathStep) :-
-    goal_path_snoc(GoalPath0, GoalPath, GoalPathStep).
-
-goal_path_get_last(GoalPath) = Step :-
-    goal_path_snoc(GoalPath, _, Step).
-
-    % goal_path_snoc(GP, GP0, GPS) <=> GP = GP0 ++ [GPS].
-    %
-:- pred goal_path_snoc(goal_path, goal_path, goal_path_step).
-:- mode goal_path_snoc(in, out, out) is semidet.
-:- mode goal_path_snoc(out, in, in) is det.
-
-goal_path_snoc(GoalPath, GoalPath0, GoalPathStep) :-
-    GoalPath0 = goal_path(Steps0),
-    Steps = [ GoalPathStep | Steps0 ],
-    GoalPath = goal_path(Steps).
-
-goal_path_to_list(GoalPath) = List :-
-    goal_path_list(GoalPath, List).
-
-list_to_goal_path(List) = GoalPath :-
-    goal_path_list(GoalPath, List).
-
-:- pred goal_path_list(goal_path, list(goal_path_step)).
-:- mode goal_path_list(in, out) is det.
-:- mode goal_path_list(out, in) is det.
-
-goal_path_list(GoalPath, StepsList) :-
-    GoalPath = goal_path(RevSteps),
-    reverse(RevSteps, StepsList).
+goal_path_from_string(GoalPathStr, GoalPath) :-
+    StepStrs = string.words_separator(is_goal_path_separator, GoalPathStr),
+    list.map(goal_path_step_from_string, StepStrs, Steps),
+    GoalPath = fgp(Steps).
 
 goal_path_from_string_det(GoalPathStr, GoalPath) :-
     ( goal_path_from_string(GoalPathStr, GoalPathPrime) ->
         GoalPath = GoalPathPrime
     ;
-        error("path_from_string_det: path_from_string failed")
+        error("path_from_string_det: goal_path_from_string failed")
     ).
 
-goal_path_from_string(GoalPathStr, GoalPath) :-
+rev_goal_path_from_string(GoalPathStr, GoalPath) :-
     StepStrs = string.words_separator(is_goal_path_separator, GoalPathStr),
-    list.map(goal_path_step_from_string, StepStrs, Steps0),
-    list.reverse(Steps0, Steps),
-    GoalPath = goal_path(Steps).
+    list.map(goal_path_step_from_string, StepStrs, Steps),
+    list.reverse(Steps, RevSteps),
+    GoalPath = rgp(RevSteps).
+
+rev_goal_path_from_string_det(GoalPathStr, GoalPath) :-
+    ( rev_goal_path_from_string(GoalPathStr, GoalPathPrime) ->
+        GoalPath = GoalPathPrime
+    ;
+        error("rev_path_from_string_det: rev_goal_path_from_string failed")
+    ).
 
 goal_path_step_from_string(String, Step) :-
     string.first_char(String, First, Rest),
@@ -1017,6 +1040,8 @@ goal_path_step_from_string_2('e', "", step_ite_else).
 goal_path_step_from_string_2('~', "", step_neg).
 goal_path_step_from_string_2('q', "!", step_scope(scope_is_cut)).
 goal_path_step_from_string_2('q', "", step_scope(scope_is_no_cut)).
+goal_path_step_from_string_2('r', "", step_try).
+goal_path_step_from_string_2('=', "", step_lambda).
 goal_path_step_from_string_2('a', "", step_atomic_main).
 goal_path_step_from_string_2('o', NStr, step_atomic_orelse(N)) :-
     string.to_int(NStr, N).
@@ -1026,8 +1051,13 @@ goal_path_step_from_string_2('l', "", step_later).
 is_goal_path_separator(';').
 
 goal_path_to_string(GoalPath) = GoalPathStr :-
-    Steps0 = GoalPath ^ gp_steps,
-    list.reverse(Steps0, Steps),
+    GoalPath = fgp(Steps),
+    StepStrs = list.map(goal_path_step_to_string, Steps),
+    string.append_list(StepStrs, GoalPathStr).
+
+rev_goal_path_to_string(GoalPath) = GoalPathStr :-
+    GoalPath = rgp(RevSteps),
+    list.reverse(RevSteps, Steps),
     StepStrs = list.map(goal_path_step_to_string, Steps),
     string.append_list(StepStrs, GoalPathStr).
 
@@ -1045,23 +1075,13 @@ goal_path_step_to_string(step_ite_else) = "e;".
 goal_path_step_to_string(step_neg) = "~;".
 goal_path_step_to_string(step_scope(scope_is_cut)) = "q!;".
 goal_path_step_to_string(step_scope(scope_is_no_cut)) = "q;".
+goal_path_step_to_string(step_try) = "r;".
+goal_path_step_to_string(step_lambda) = "=;".
 goal_path_step_to_string(step_atomic_main) = "a;".
 goal_path_step_to_string(step_atomic_orelse(N)) =
     "o" ++ int_to_string(N) ++ ";".
 goal_path_step_to_string(step_first) = "f;".
 goal_path_step_to_string(step_later) = "l;".
-
-:- type goal_path_consable
-    --->    goal_path_consable(
-                list(goal_path_step)
-                    % The list of goal path steps is stored in-order.
-            ).
-
-goal_path_consable(goal_path(ListRev), goal_path_consable(List)) :-
-    reverse(List, ListRev).
-
-goal_path_consable_remove_first(goal_path_consable([H | T]), H,
-    goal_path_consable(T)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1957,7 +1977,6 @@ pred_is_external("backjump", "builtin_backjump", 1).
 ").
 
 %-----------------------------------------------------------------------------%
-
 %
 % Please keep runtime/mercury_deep_profiling.h updated when modifing this
 % section.
