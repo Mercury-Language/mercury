@@ -557,10 +557,11 @@ candidate_parallel_conjunctions_clique_proc(Opts, Deep, RecursionType,
     candidate_par_conjunctions_proc(T)::out) is det.
 
 merge_candidate_par_conjs_proc(A, B, Result) :-
-    A = candidate_par_conjunctions_proc(VarTableA, CPCsA),
-    B = candidate_par_conjunctions_proc(VarTableB, CPCsB),
-    Result = candidate_par_conjunctions_proc(VarTableA, CPCs),
+    A = candidate_par_conjunctions_proc(VarTableA, PushGoalsA, CPCsA),
+    B = candidate_par_conjunctions_proc(VarTableB, PushGoalsB, CPCsB),
+    Result = candidate_par_conjunctions_proc(VarTableA, PushGoals, CPCs),
     CPCs = CPCsA ++ CPCsB,
+    PushGoals = PushGoalsA ++ PushGoalsB,
     ( VarTableA = VarTableB ->
         true
     ;
@@ -671,8 +672,10 @@ candidate_parallel_conjunctions_proc(Opts, Deep, PDPtr, RecursionType,
     candidate_par_conjunctions::in, candidate_par_conjunctions::out) is det.
 
 build_candidate_par_conjunction_maps(ProcLabel, VarTable, Candidate, !Map) :-
+    % XXX: This predicate will also need to add pushes to CandiateProc.
     ( map.search(!.Map, ProcLabel, CandidateProc0) ->
-        CandidateProc0 = candidate_par_conjunctions_proc(VarTablePrime, CPCs0),
+        CandidateProc0 = candidate_par_conjunctions_proc(VarTablePrime,
+            PushGoals, CPCs0),
         CPCs = [ Candidate | CPCs0 ],
         ( VarTable = VarTablePrime ->
             true
@@ -680,9 +683,11 @@ build_candidate_par_conjunction_maps(ProcLabel, VarTable, Candidate, !Map) :-
             unexpected($module, $pred, "var tables do not match")
         )
     ;
-        CPCs = [ Candidate ]
+        CPCs = [ Candidate ],
+        PushGoals = []
     ),
-    CandidateProc = candidate_par_conjunctions_proc(VarTable, CPCs),
+    CandidateProc = candidate_par_conjunctions_proc(VarTable, PushGoals,
+        CPCs),
     svmap.set(ProcLabel, CandidateProc, !Map).
 
 :- pred goal_get_conjunctions_worth_parallelising(
@@ -693,6 +698,9 @@ build_candidate_par_conjunction_maps(ProcLabel, VarTable, Candidate, !Map) :-
 
 goal_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
         !Goal, Candidates, Messages) :-
+    % XXX: This predicate should return a list of costly goals within compund
+    % goals that next to which it might be desirable to push later goals to
+    % allow parallelisation within a branch of a compound goal.
     GoalExpr0 = !.Goal ^ goal_expr_rep,
     Coverage = !.Goal ^ goal_annotation ^ pgd_coverage,
     get_coverage_before_det(Coverage, Calls),
@@ -3237,10 +3245,18 @@ css_to_call(Deep, CSS, Call) :-
 create_candidate_parallel_conj_proc_report(Proc - CandidateParConjunctionProc,
         Report) :-
     CandidateParConjunctionProc =
-        candidate_par_conjunctions_proc(VarTable, CandidateParConjunctions),
+        candidate_par_conjunctions_proc(VarTable, PushGoals,
+        CandidateParConjunctions),
+    map(create_push_goal_report, PushGoals, PushGoalReports),
     map(create_candidate_parallel_conj_report(VarTable, Proc),
-        CandidateParConjunctions, Reports),
-    Report = cord_list_to_cord(Reports).
+        CandidateParConjunctions, CandidateParConjunctionReports),
+    Report = cord_list_to_cord(PushGoalReports) ++
+        cord_list_to_cord(CandidateParConjunctionReports).
+
+:- pred create_push_goal_report(push_goal::in, cord(string)::out) is det.
+
+create_push_goal_report(_, _) :-
+    sorry($module, $pred).
 
 :- pred create_candidate_parallel_conj_report(var_table::in,
     string_proc_label::in, candidate_par_conjunction(pard_goal)::in,

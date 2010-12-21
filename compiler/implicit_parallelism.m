@@ -277,7 +277,9 @@ maybe_parallelise_proc(ModuleInfo, ParallelismInfo, PredId, ProcId, !ProcTable,
             HasParallelConj = no,
 
             proc_info_get_goal(ProcInfo0, Goal0),
-            CPCProc = candidate_par_conjunctions_proc(VarTable, CPCs0),
+            CPCProc = candidate_par_conjunctions_proc(VarTable, _PushGoals,
+                CPCs0),
+            % XXX Obey _PushGoals
 
             Context = goal_info_get_context(Goal0 ^ hlds_goal_info),
             term.context_file(Context, FileName),

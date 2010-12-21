@@ -131,7 +131,47 @@
                 % sensible names.
                 cpcp_var_table  :: var_table,
 
+                % Each push represents a program transformation.
+                % Most of the time, we expect the list to be empty,
+                % but if it isn't, then the list of candidate conjunctions
+                % is valid only AFTER the transformations described
+                % by this list have been applied. (The transformations
+                % should be independent of one another, so it should be
+                % OK to apply them in any order.)
+                cpcp_push_goals :: list(push_goal),
+
                 cpcp_par_conjs  :: list(candidate_par_conjunction(GoalType))
+            ).
+
+    % This goal describes 'push goal' transformations.
+    %
+    % This is where a goal may be pushed into the arms of a branching goal that
+    % occurs before it in the same conjunction.  It can allow the pushed goal
+    % to be parallelised against goals in one or more branches without
+    % parallelising the whole branch goal (whose per-call cost may be two
+    % small).
+    %
+:- type push_goal
+    --->    push_goal(
+                % The goal path of the conjunction in which the push is done.
+                pg_goal_path    :: goal_path_string,
+
+                % The range of conjuncts to push.
+                pg_pushee_lo    :: int,
+                pg_pushee_hi    :: int,
+
+                % The set of expensive goals inside earlier conjuncts in that
+                % conjunction "next" to which the pushee goals should be
+                % pushed. By "next", we mean that the pushee goals should be
+                % added to the end of whatever conjunction contains the
+                % expensive goal, creating a containing conjunction if
+                % there wasn't one there before.
+                %
+                % Each of these expensive goals should be on a different
+                % execution path.
+                %
+                % This list should not be empty.
+                pg_pushed_into  :: list(goal_path_string)
             ).
 
 :- type candidate_par_conjunctions_proc ==
@@ -323,9 +363,9 @@ parallel_exec_metrics_get_cpu_time(PEM) = SeqTime + Overheads :-
 %
 
 convert_candidate_par_conjunctions_proc(Conv, CPCProcA, CPCProcB) :-
-    CPCProcA = candidate_par_conjunctions_proc(VarTable, CPCA),
+    CPCProcA = candidate_par_conjunctions_proc(VarTable, PushGoals, CPCA),
     map(convert_candidate_par_conjunction(Conv), CPCA, CPCB),
-    CPCProcB = candidate_par_conjunctions_proc(VarTable, CPCB).
+    CPCProcB = candidate_par_conjunctions_proc(VarTable, PushGoals, CPCB).
 
 convert_candidate_par_conjunction(Conv0, CPC0, CPC) :-
     CPC0 = candidate_par_conjunction(GoalPath, FirstGoalNum,
