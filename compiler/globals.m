@@ -154,6 +154,29 @@
     --->    same_cons_id
     ;       within_n_cells_difference(int).
 
+    % The env_type specifies the environment in which a Mercury program
+    % is being run or is expected to be run.  This is used both for the
+    % compiler itself, via the --host-env-type option, and for the program
+    % being compiled, via the --target-env-type option.  Note that users
+    % need to be able to specify the former because one Mercury install
+    % (e.g., on Windows) can be called from different environments.
+    %
+:- type env_type
+    --->    env_type_posix
+            % A generic POSIX-like environment: this covers most Linux systems,
+            % Mac OS X, FreeBSD, Solaris etc.
+    
+    ;       env_type_cygwin
+            % The Cygwin shell and utilities on Windows.
+
+    ;       env_type_msys
+            % MinGW with the MSYS environment on Windows.
+
+    ;       env_type_win_cmd.
+            % The Windows command-line interpreter (cmd.exe). 
+            % XXX there are probably more variants of Windows, but it isn't
+            % clear what they are yet.
+
     % Map from module name to file name.
     %
 :- type source_file_map == map(module_name, string).
@@ -169,6 +192,7 @@
     is semidet.
 :- pred convert_reuse_strategy(string::in, int::in, reuse_strategy::out)
     is semidet.
+:- pred convert_env_type(string::in, env_type::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %
@@ -187,8 +211,8 @@
     tags_method::in, termination_norm::in, termination_norm::in,
     trace_level::in, trace_suppress_items::in,
     may_be_thread_safe::in, c_compiler_type::in, reuse_strategy::in,
-    maybe(il_version_number)::in, maybe(feedback_info)::in, globals::out) 
-    is det.
+    maybe(il_version_number)::in, maybe(feedback_info)::in, env_type::in,
+    env_type::in, globals::out) is det.
 
 :- pred get_options(globals::in, option_table::out) is det.
 :- pred get_target(globals::in, compilation_target::out) is det.
@@ -206,6 +230,8 @@
 :- pred get_maybe_il_version_number(globals::in, maybe(il_version_number)::out)
     is det.
 :- pred get_maybe_feedback_info(globals::in, maybe(feedback_info)::out) is det.
+:- pred get_host_env_type(globals::in, env_type::out) is det.
+:- pred get_target_env_type(globals::in, env_type::out) is det.
 
 :- pred set_option(option::in, option_data::in, globals::in, globals::out)
     is det.
@@ -390,7 +416,7 @@ convert_c_compiler_type_with_version(CC_Str, C_CompilerType) :-
     % one is unknown won't be accepted.  (It wouldn't be useful
     % in any case.)
     %
-    % <major> must be >= 2 (Mercury won't work with anthing older
+    % <major> must be >= 2 (Mercury won't work with anything older
     % than that and <minor> and <patch> must be non-negative.
     %
 :- pred convert_gcc_version(string::in, string::in, string::in,
@@ -433,6 +459,11 @@ convert_gcc_version(MajorStr, MinorStr, PatchStr, C_CompilerType) :-
     ;
         false
     ).
+
+convert_env_type("posix",   env_type_posix).
+convert_env_type("cygwin",  env_type_cygwin).
+convert_env_type("msys",    env_type_msys).
+convert_env_type("windows", env_type_win_cmd).
 
 convert_reuse_strategy("same_cons_id", _, same_cons_id).
 convert_reuse_strategy("within_n_cells_difference", NCells,
@@ -482,17 +513,19 @@ gc_is_conservative(gc_automatic) = no.
                 g_c_compiler_type           :: c_compiler_type,
                 g_reuse_strategy            :: reuse_strategy,
                 g_maybe_il_version_number   :: maybe(il_version_number),
-                g_maybe_feedback            :: maybe(feedback_info)
+                g_maybe_feedback            :: maybe(feedback_info),
+                g_host_env_type             :: env_type,
+                g_target_env_type           :: env_type
             ).
 
 globals_init(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
         MaybeThreadSafe, C_CompilerType, ReuseStrategy, MaybeILVersion,
-        MaybeFeedback, Globals) :-
+        MaybeFeedback, HostEnvType, TargetEnvType, Globals) :-
     Globals = globals(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
         MaybeThreadSafe, C_CompilerType, ReuseStrategy, MaybeILVersion,
-        MaybeFeedback).
+        MaybeFeedback, HostEnvType, TargetEnvType).
 
 get_options(Globals, Globals ^ g_options).
 get_target(Globals, Globals ^ g_target).
@@ -507,6 +540,8 @@ get_c_compiler_type(Globals, Globals ^ g_c_compiler_type).
 get_reuse_strategy(Globals, Globals ^ g_reuse_strategy).
 get_maybe_il_version_number(Globals, Globals ^ g_maybe_il_version_number).
 get_maybe_feedback_info(Globals, Globals ^ g_maybe_feedback).
+get_host_env_type(Globals, Globals ^ g_host_env_type).
+get_target_env_type(Globals, Globals ^ g_target_env_type).
 
 get_backend_foreign_languages(Globals, ForeignLangs) :-
     lookup_accumulating_option(Globals, backend_foreign_languages, LangStrs),

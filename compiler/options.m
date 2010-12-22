@@ -949,6 +949,9 @@
     ;       show_make_times
     ;       extra_library_header
     ;       restricted_command_line
+    ;       env_type
+    ;       host_env_type
+    ;       target_env_type
 
     % Miscellaneous Options
     ;       filenames_from_stdin
@@ -1812,7 +1815,10 @@ option_defaults_2(build_system_option, [
     order_make_by_timestamp             -   bool(no),
     show_make_times                     -   bool(no),
     extra_library_header                -   accumulating([]),
-    restricted_command_line             -   bool(no)
+    restricted_command_line             -   bool(no),
+    env_type                            -   string_special,
+    host_env_type                       -   string("posix"),
+    target_env_type                     -   string("posix")
 ]).
 option_defaults_2(miscellaneous_option, [
     % Miscellaneous Options
@@ -2732,6 +2738,9 @@ long_option("show-make-times",      show_make_times).
 long_option("extra-lib-header",     extra_library_header).
 long_option("extra-library-header", extra_library_header).
 long_option("restricted-command-line", restricted_command_line).
+long_option("env-type",                env_type).
+long_option("host-env-type",           host_env_type).
+long_option("target-env-type",         target_env_type).
 
 % misc options
 long_option("typecheck-ambiguity-warn-limit",
@@ -2972,6 +2981,12 @@ special_handler(mercury_linkage_special, string(Flag),
         Result = error("argument of `--mercury-linkage' should be either " ++
             """shared"" or ""static"".")
     ).
+
+special_handler(env_type, string(EnvTypeStr), OptionTable0, ok(OptionTable)) :-
+    OptionTable =
+        map.set(map.set(OptionTable0,
+        host_env_type, string(EnvTypeStr)),
+        target_env_type, string(EnvTypeStr)).
 
 %-----------------------------------------------------------------------------%
 
@@ -5598,6 +5613,20 @@ options_help_build_system -->
         "\tEnable this option if your shell doesn't support long command lines.",
         "\tThis option uses temporary files to pass arguments to sub-commands.",
         "\t(This option is only supported by `mmc --make'.)"
+        %
+        % XXX the following are commented out until they are actually useful.
+        %
+        %"--env-type <type>",
+        %"\tSpecify the the environment type for the compiler."
+        %"\tThe <type> should be one of `posix', `cygwin', `msys', or `windows'."
+        %"\tThis option is equivalent to setting both --host-env-type and"
+        %"\t--target-env-type to <type>."
+        %"--host-env-type <type>",
+        %"\tSpecify the environment type under which the compiler will be",
+        %"\tinvoked."
+        %"--target-env-type <type>",
+        %"\tSpecify the environment type under which compiled programs will be",
+        %"\tinvoked."
     ]).
 
 :- pred options_help_misc(io::di, io::uo) is det.
