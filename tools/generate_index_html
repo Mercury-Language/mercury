@@ -1,4 +1,4 @@
-#!/usr/local/bin/bash
+#!/bin/bash
 #
 # vim: ts=4 sw=4 et
 #
@@ -220,12 +220,10 @@ do_handle_release () {
             do
                 case $bindist in
                     *.tar.gz)
-                        bindist_name=`expr \
-                            "$bindist" : "mercury-$release_id.\(.*\).tar.gz"`
+                        bindist_name=`expr "$bindist" : "mercury-$release_id.\(.*\).tar.gz"`
                     ;;
                     *.zip)
-                        bindist_name=`expr \
-                            "$bindist" : "mercury-compiler-$release_id.\(.*\).zip"`
+                        bindist_name=`expr "$bindist" : "mercury-compiler-$release_id.\(.*\).zip"`
                     ;;
                 esac
                 
@@ -374,7 +372,7 @@ do
         
         # Don't include the README or any of the index files
         #
-        README|index.html*)
+        README|index.html*|$LOCKDIR)
             ;;
         
         *)
