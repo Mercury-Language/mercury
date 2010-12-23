@@ -67,11 +67,16 @@ link_to_file () {
     prefix="$1"
     this_file="$2"
     this_file_descr="$3"
-    this_file_size=`ls -Ll "$this_file" | awk '{ print $5; }'`
-    this_file_sizekb=`expr "$this_file_size" / 1024`
-    handled_files="$this_file $handled_files"
     q='"'
-    echo "$prefix <a href=$q$this_file$q>$this_file_descr</a> ($this_file_sizekb kilobytes)" >> $INDEX 
+    if test -d "$this_file"
+    then
+        echo "$prefix <a href=$q$this_file$q>$this_file_descr</a>" >> $INDEX
+    else
+        this_file_size=`ls -Ll "$this_file" | awk '{ print $5; }'`
+        this_file_sizekb=`expr "$this_file_size" / 1024`
+        echo "$prefix <a href=$q$this_file$q>$this_file_descr</a> ($this_file_sizekb kilobytes)" >> $INDEX 
+    fi
+    handled_files="$this_file $handled_files"
 }
 
 #-----------------------------------------------------------------------------#
