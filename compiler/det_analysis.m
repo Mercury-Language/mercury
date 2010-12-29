@@ -1692,6 +1692,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
     ;
         ( Reason = exist_quant(_)
         ; Reason = promise_purity(_)
+        ; Reason = require_detism(_)
+        ; Reason = require_complete_switch(_)
         ; Reason = commit(_)
         ; Reason = barrier(_)
         ),

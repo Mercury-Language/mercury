@@ -559,127 +559,118 @@ add_imports(Imports, !Info) :-
     % the maybe_and predicate to be associative.
     % NB. accumulator introduction doesn't work on this case yet.
     %
-process_assert(conj_expr(GA, GB) - _, Symbols, Success) :-
-    process_assert(GA, SymbolsA, SuccessA),
-    process_assert(GB, SymbolsB, SuccessB),
-    list.append(SymbolsA, SymbolsB, Symbols),
-    bool.and(SuccessA, SuccessB, Success).
-process_assert(true_expr - _, [], yes).
-process_assert(par_conj_expr(GA, GB) - _, Symbols, Success) :-
-    process_assert(GA, SymbolsA, SuccessA),
-    process_assert(GB, SymbolsB, SuccessB),
-    list.append(SymbolsA, SymbolsB, Symbols),
-    bool.and(SuccessA, SuccessB, Success).
-process_assert(disj_expr(GA, GB) - _, Symbols, Success) :-
-    process_assert(GA, SymbolsA, SuccessA),
-    process_assert(GB, SymbolsB, SuccessB),
-    list.append(SymbolsA, SymbolsB, Symbols),
-    bool.and(SuccessA, SuccessB, Success).
-process_assert(fail_expr - _, [], yes).
-process_assert(some_expr(_, G) - _, Symbols, Success) :-
-    process_assert(G, Symbols, Success).
-process_assert(some_state_vars_expr(_, G) - _, Symbols, Success) :-
-    process_assert(G, Symbols, Success).
-process_assert(all_expr(_, G) - _, Symbols, Success) :-
-    process_assert(G, Symbols, Success).
-process_assert(all_state_vars_expr(_, G) - _, Symbols, Success) :-
-    process_assert(G, Symbols, Success).
-process_assert(promise_purity_expr(_P, G) - _, Symbols, Success) :-
-    process_assert(G, Symbols, Success).
-process_assert(promise_equivalent_solutions_expr(_V, _D, _C, G) - _,
-        Symbols, Success) :-
-    process_assert(G, Symbols, Success).
-process_assert(promise_equivalent_solution_sets_expr(_V, _D, _C, G) - _,
-        Symbols, Success) :-
-    process_assert(G, Symbols, Success).
-process_assert(promise_equivalent_solution_arbitrary_expr(_V, _D, _C, G) - _,
-        Symbols, Success) :-
-    process_assert(G, Symbols, Success).
-process_assert(trace_expr(_C, _R, _I, _M, G) - _, Symbols, Success) :-
-    process_assert(G, Symbols, Success).
-process_assert(try_expr(_, Goal, Then, MaybeElse, Catches, MaybeCatchAny) - _,
-        Symbols, Success) :-
-    process_assert(Goal, SymbolsGoal, SuccessGoal),
-    process_assert(Then, SymbolsThen, SuccessThen),
-    maybe_process_assert(MaybeElse, SymbolsElse, SuccessElse),
-    list.map2(process_assert_catch, Catches, SymbolsCatches, SuccessCatches),
+process_assert(Goal, Symbols, Success) :-
+    Goal = GoalExpr - _Context,
     (
-        MaybeCatchAny = yes(catch_any_expr(_, CatchAnyGoal)),
-        process_assert(CatchAnyGoal, SymbolsCatchAny, SuccessCatchAny)
+        ( GoalExpr = conj_expr(GA, GB)
+        ; GoalExpr = par_conj_expr(GA, GB)
+        ; GoalExpr = disj_expr(GA, GB)
+        ; GoalExpr = implies_expr(GA, GB)
+        ; GoalExpr = equivalent_expr(GA, GB)
+        ),
+        process_assert(GA, SymbolsA, SuccessA),
+        process_assert(GB, SymbolsB, SuccessB),
+        Symbols = SymbolsA ++ SymbolsB,
+        bool.and(SuccessA, SuccessB, Success)
     ;
-        MaybeCatchAny = no,
-        SymbolsCatchAny = [],
-        SuccessCatchAny = no
-    ),
-    SymbolsLists = [SymbolsGoal, SymbolsThen, SymbolsElse, SymbolsCatchAny |
-        SymbolsCatches],
-    list.condense(SymbolsLists, Symbols),
-    SuccessLists = [SuccessGoal, SuccessThen, SuccessElse, SuccessCatchAny |
-        SuccessCatches],
-    bool.and_list(SuccessLists, Success).
-process_assert(atomic_expr(_, _, _, MainGoal, OrElseGoals) - _, Symbols,
-        Success) :-
-    process_assert(MainGoal, SymbolsMainGoal, SuccessMainGoal),
-    process_assert_list(OrElseGoals, SymbolsOrElseGoals, SuccessOrElseGoals),
-    list.append(SymbolsMainGoal, SymbolsOrElseGoals, Symbols),
-    bool.and(SuccessMainGoal, SuccessOrElseGoals, Success).
-process_assert(implies_expr(GA, GB) - _, Symbols, Success) :-
-    process_assert(GA, SymbolsA, SuccessA),
-    process_assert(GB, SymbolsB, SuccessB),
-    list.append(SymbolsA, SymbolsB, Symbols),
-    bool.and(SuccessA, SuccessB, Success).
-process_assert(equivalent_expr(GA, GB) - _, Symbols, Success) :-
-    process_assert(GA, SymbolsA, SuccessA),
-    process_assert(GB, SymbolsB, SuccessB),
-    list.append(SymbolsA, SymbolsB, Symbols),
-    bool.and(SuccessA, SuccessB, Success).
-process_assert(not_expr(G) - _, Symbols, Success) :-
-    process_assert(G, Symbols, Success).
-process_assert(if_then_else_expr(_, _, GA, GB, GC) - _, Symbols, Success) :-
-    process_assert(GA, SymbolsA, SuccessA),
-    process_assert(GB, SymbolsB, SuccessB),
-    process_assert(GC, SymbolsC, SuccessC),
-    list.append(SymbolsA, SymbolsB, Symbols0),
-    list.append(Symbols0, SymbolsC, Symbols),
-    bool.and(SuccessA, SuccessB, Success0),
-    bool.and(Success0, SuccessC, Success).
-process_assert(event_expr(_Name, Args0) - _, Symbols, Success) :-
-    list.map(term.coerce, Args0, Args),
-    ( term_qualified_symbols_list(Args, SymbolsPrime) ->
-        Symbols = SymbolsPrime,
+        ( GoalExpr = true_expr
+        ; GoalExpr = fail_expr
+        ),
+        Symbols = [],
         Success = yes
     ;
-        Symbols = [],
-        Success = no
-    ).
-process_assert(call_expr(SymName, Args0, _Purity) - _, Symbols, Success) :-
-    (
-        SymName = qualified(_, _),
+        ( GoalExpr = not_expr(G)
+        ; GoalExpr = some_expr(_, G)
+        ; GoalExpr = some_state_vars_expr(_, G)
+        ; GoalExpr = all_expr(_, G)
+        ; GoalExpr = all_state_vars_expr(_, G)
+        ; GoalExpr = promise_purity_expr(_, G)
+        ; GoalExpr = promise_equivalent_solutions_expr(_, _, _, G)
+        ; GoalExpr = promise_equivalent_solution_sets_expr(_, _, _, G)
+        ; GoalExpr = promise_equivalent_solution_arbitrary_expr(_, _, _, G)
+        ; GoalExpr = require_detism_expr(_, G)
+        ; GoalExpr = require_complete_switch_expr(_, G)
+        ; GoalExpr = trace_expr(_, _, _, _, G)
+        ),
+        process_assert(G, Symbols, Success)
+    ;
+        GoalExpr = try_expr(_, SubGoal, Then, MaybeElse, Catches,
+            MaybeCatchAny),
+        process_assert(SubGoal, SymbolsGoal, SuccessGoal),
+        process_assert(Then, SymbolsThen, SuccessThen),
+        maybe_process_assert(MaybeElse, SymbolsElse, SuccessElse),
+        list.map2(process_assert_catch, Catches,
+            SymbolsCatches, SuccessCatches),
+        (
+            MaybeCatchAny = yes(catch_any_expr(_, CatchAnyGoal)),
+            process_assert(CatchAnyGoal, SymbolsCatchAny, SuccessCatchAny)
+        ;
+            MaybeCatchAny = no,
+            SymbolsCatchAny = [],
+            SuccessCatchAny = no
+        ),
+        SymbolsLists = [SymbolsGoal, SymbolsThen, SymbolsElse, SymbolsCatchAny
+            | SymbolsCatches],
+        list.condense(SymbolsLists, Symbols),
+        SuccessLists = [SuccessGoal, SuccessThen, SuccessElse, SuccessCatchAny
+            | SuccessCatches],
+        bool.and_list(SuccessLists, Success)
+    ;
+        GoalExpr = atomic_expr(_, _, _, MainGoal, OrElseGoals),
+        process_assert(MainGoal, SymbolsMainGoal, SuccessMainGoal),
+        process_assert_list(OrElseGoals,
+            SymbolsOrElseGoals, SuccessOrElseGoals),
+        Symbols = SymbolsMainGoal ++ SymbolsOrElseGoals,
+        bool.and(SuccessMainGoal, SuccessOrElseGoals, Success)
+    ;
+        GoalExpr = if_then_else_expr(_, _, GA, GB, GC),
+        process_assert(GA, SymbolsA, SuccessA),
+        process_assert(GB, SymbolsB, SuccessB),
+        process_assert(GC, SymbolsC, SuccessC),
+        Symbols = SymbolsA ++ SymbolsB ++ SymbolsC,
+        bool.and(SuccessA, SuccessB, Success0),
+        bool.and(Success0, SuccessC, Success)
+    ;
+        GoalExpr = event_expr(_Name, Args0),
         list.map(term.coerce, Args0, Args),
-        ( term_qualified_symbols_list(Args, Symbols0) ->
-            Symbols = [SymName | Symbols0],
+        ( term_qualified_symbols_list(Args, SymbolsPrime) ->
+            Symbols = SymbolsPrime,
             Success = yes
         ;
             Symbols = [],
             Success = no
         )
     ;
-        SymName = unqualified(_),
-        Symbols = [],
-        Success = no
-    ).
-process_assert(unify_expr(LHS0, RHS0, _Purity) - _, Symbols, Success) :-
-    term.coerce(LHS0, LHS),
-    term.coerce(RHS0, RHS),
-    (
-        term_qualified_symbols(LHS, SymbolsL),
-        term_qualified_symbols(RHS, SymbolsR)
-    ->
-        list.append(SymbolsL, SymbolsR, Symbols),
-        Success = yes
+        GoalExpr = call_expr(SymName, Args0, _Purity),
+        (
+            SymName = qualified(_, _),
+            list.map(term.coerce, Args0, Args),
+            ( term_qualified_symbols_list(Args, Symbols0) ->
+                Symbols = [SymName | Symbols0],
+                Success = yes
+            ;
+                Symbols = [],
+                Success = no
+            )
+        ;
+            SymName = unqualified(_),
+            Symbols = [],
+            Success = no
+        )
     ;
-        Symbols = [],
-        Success = no
+        GoalExpr = unify_expr(LHS0, RHS0, _Purity),
+        term.coerce(LHS0, LHS),
+        term.coerce(RHS0, RHS),
+        (
+            term_qualified_symbols(LHS, SymbolsL),
+            term_qualified_symbols(RHS, SymbolsR)
+        ->
+            list.append(SymbolsL, SymbolsR, Symbols),
+            Success = yes
+        ;
+            Symbols = [],
+            Success = no
+        )
     ).
 
 :- pred maybe_process_assert(maybe(goal)::in, list(sym_name)::out, bool::out)

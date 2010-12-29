@@ -183,6 +183,12 @@ propagate_conj_sub_goal_2(hlds_goal(GoalExpr, GoalInfo), Constraints,
             FinalGoals = [hlds_goal(scope(Reason, SubGoal), GoalInfo) |
                 ConstraintGoals]
         ;
+            ( Reason = require_detism(_)
+            ; Reason = require_complete_switch(_)
+            ),
+            % These scopes should have been deleted by now.
+            unexpected($module, $pred, "unexpected scope")
+        ;
             Reason = from_ground_term(_, from_ground_term_construct),
             % There is no point in either propagating constraints into these
             % scopes or propagating local constraints within these scopes.

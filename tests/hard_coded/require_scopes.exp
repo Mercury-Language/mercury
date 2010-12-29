@@ -1,0 +1,7 @@
+test_detism_scope(1) = 1
+test_detism_scope(11) = 1
+test_detism_scope(21) = 21
+test_switch_scope(f1) = []
+test_switch_scope(f2) = [1, 2]
+test_switch_scope(f3(10)) = [3, 10, 11]
+test_switch_scope(f3(20)) = [3, 20, 21]

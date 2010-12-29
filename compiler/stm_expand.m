@@ -348,6 +348,12 @@ stm_process_goal(Instmap, Goal0, Goal, !Info) :-
             stm_process_goal(Instmap, InnerGoal0, InnerGoal, !Info),
             GoalExpr = scope(Reason, InnerGoal),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
+        ;
+            ( Reason = require_detism(_)
+            ; Reason = require_complete_switch(_)
+            ),
+            % These scopes should have been deleted by now.
+            unexpected($module, $pred, "unexpected scope")
         )
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),

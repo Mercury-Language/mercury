@@ -671,6 +671,8 @@ goal_contains_stm_atomic_or_try(GoalExpr - _Context,
         ; GoalExpr = promise_equivalent_solution_sets_expr(_, _, _, SubGoal)
         ; GoalExpr = promise_equivalent_solution_arbitrary_expr(_, _, _,
             SubGoal)
+        ; GoalExpr = require_detism_expr(_, SubGoal)
+        ; GoalExpr = require_complete_switch_expr(_, SubGoal)
         ; GoalExpr = trace_expr(_, _, _, _, SubGoal)
         ),
         goal_contains_stm_atomic_or_try(SubGoal, ContainsAtomic, ContainsTry)

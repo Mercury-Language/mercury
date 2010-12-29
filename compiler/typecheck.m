@@ -1280,18 +1280,17 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
             Reason = exist_quant(Vars),
             ensure_vars_have_a_type(Vars, !Info)
         ;
-            Reason = promise_purity(_)
-        ;
             Reason = promise_solutions(Vars, _),
             ensure_vars_have_a_type(Vars, !Info)
         ;
-            Reason = commit(_)
-        ;
-            Reason = barrier(_)
-        ;
-            Reason = from_ground_term(_, _)
-        ;
-            Reason = trace_goal(_, _, _, _, _)
+            ( Reason = promise_purity(_)
+            ; Reason = require_detism(_)
+            ; Reason = require_complete_switch(_)
+            ; Reason = commit(_)
+            ; Reason = barrier(_)
+            ; Reason = from_ground_term(_, _)
+            ; Reason = trace_goal(_, _, _, _, _)
+            )
         ),
         GoalExpr = scope(Reason, SubGoal)
     ;

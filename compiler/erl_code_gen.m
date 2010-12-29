@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: erl_code_gen.m.
 % Main author: wangp.
-% 
+%
 % ELDS code generation -- convert from HLDS to ELDS.
 %
 % XXX more documentation to come later
@@ -402,7 +402,7 @@ erl_gen_proc_body(CodeModel, InstMap0, Goal, ProcClause, !Info) :-
         % - the single output variable, or
         % - a tuple of its output variables if there are zero or two or more
         %   output variables.
-        % 
+        %
         SuccessExpr = tuple_or_single_expr(OutputVarsExprs),
         InstMap = InstMap0
     ;
@@ -410,7 +410,7 @@ erl_gen_proc_body(CodeModel, InstMap0, Goal, ProcClause, !Info) :-
         InputVarsTerms = terms_from_vars(InputVars),
         %
         % On success, the procedure returns a tuple of its output variables.
-        % 
+        %
         SuccessExpr = elds_term(elds_tuple(OutputVarsExprs)),
         InstMap = InstMap0
     ;
@@ -616,117 +616,114 @@ erl_gen_commit_pieces(Goal, InstMap, _Context, DoRenaming,
     instmap::in, prog_context::in, maybe(elds_expr)::in,
     elds_expr::out, erl_gen_info::in, erl_gen_info::out) is det.
 
-erl_gen_goal_expr(switch(Var, CanFail, CasesList), CodeModel, _Detism,
-        InstMap, Context, MaybeSuccessExpr, Statement, !Info) :-
-    erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap,
-        Context, MaybeSuccessExpr, Statement, !Info).
-
-erl_gen_goal_expr(scope(ScopeReason, Goal), CodeModel, Detism, InstMap,
-        Context, MaybeSuccessExpr, Statement, !Info) :-
+erl_gen_goal_expr(GoalExpr, CodeModel, Detism, InstMap, Context,
+        MaybeSuccessExpr, Statement, !Info) :-
     (
-        ( ScopeReason = promise_solutions(_, _)
-        ; ScopeReason = commit(_)
-        ),
-        erl_gen_commit(Goal, CodeModel, Detism, InstMap, Context,
-            MaybeSuccessExpr, Statement, !Info)
-    ;
-        ( ScopeReason = exist_quant(_)
-        ; ScopeReason = promise_purity(_)
-        ; ScopeReason = barrier(_)
-        ; ScopeReason = from_ground_term(_, _)
-        ; ScopeReason = trace_goal(_, _, _, _, _)
-            % Trace goals with run-time conditions are transformed into
-            % if-then-else goals where the condition is a special foreign_proc
-            % call and the then branch is the actual trace goal (i.e. this
-            % goal).  Thus there is nothing special we have to do here.
-        ),
-        Goal = hlds_goal(GoalExpr, GoalInfo),
-        GoalDetism = goal_info_get_determinism(GoalInfo),
-        erl_gen_goal_expr(GoalExpr, CodeModel, GoalDetism, InstMap, Context,
-            MaybeSuccessExpr, Statement, !Info)
-    ).
-
-erl_gen_goal_expr(if_then_else(_Vars, Cond, Then, Else), CodeModel, _Detism,
-        InstMap, Context, MaybeSuccessExpr, Statement, !Info) :-
-    erl_gen_ite(CodeModel, InstMap, Cond, Then, Else, Context,
-        MaybeSuccessExpr, Statement, !Info).
-
-erl_gen_goal_expr(negation(Goal), CodeModel, _Detism, InstMap, Context,
-        MaybeSuccessExpr, Statement, !Info) :-
-    erl_gen_negation(Goal, CodeModel, InstMap, Context, MaybeSuccessExpr,
-        Statement, !Info).
-
-erl_gen_goal_expr(conj(_ConjType, Goals), CodeModel, Detism, InstMap, Context,
-        MaybeSuccessExpr, Statement, !Info) :-
-    % XXX Currently we treat parallel conjunction the same as
-    % sequential conjunction -- parallelism is not yet implemented.
-    erl_gen_conj(Goals, CodeModel, Detism, InstMap, Context, MaybeSuccessExpr,
-        Statement, !Info).
-
-erl_gen_goal_expr(disj(Goals), CodeModel, _Detism, InstMap, Context,
-        MaybeSuccessExpr, Statement, !Info) :-
-    erl_gen_disj(Goals, CodeModel, InstMap, Context, MaybeSuccessExpr,
-        Statement, !Info).
-
-erl_gen_goal_expr(generic_call(GenericCall, Vars, Modes, CallDetism),
-        CodeModel, _Detism, _InstMap, Context, MaybeSuccessExpr, Statement,
-        !Info) :-
-    determinism_to_code_model(CallDetism, CallCodeModel),
-    expect(unify(CodeModel, CallCodeModel), this_file,
-        "erl_gen_generic_call: code model mismatch"),
-    (
-        GenericCall = higher_order(_, _, _, _),
-        erl_gen_higher_order_call(GenericCall, Vars, Modes, CallDetism,
+        GoalExpr = switch(Var, CanFail, CasesList),
+        erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap,
             Context, MaybeSuccessExpr, Statement, !Info)
     ;
-        GenericCall = class_method(_, _, _, _),
-        erl_gen_class_method_call(GenericCall, Vars, Modes, CallDetism,
-            Context, MaybeSuccessExpr, Statement, !Info)
+        GoalExpr = scope(Reason, SubGoal),
+        (
+            ( Reason = promise_solutions(_, _)
+            ; Reason = commit(_)
+            ),
+            erl_gen_commit(SubGoal, CodeModel, Detism, InstMap, Context,
+                MaybeSuccessExpr, Statement, !Info)
+        ;
+            Reason = require_detism(_),
+            unexpected($module, $pred, "require_detism")
+        ;
+            Reason = require_complete_switch(_),
+            unexpected($module, $pred, "require_complete_switch")
+        ;
+            ( Reason = exist_quant(_)
+            ; Reason = promise_purity(_)
+            ; Reason = barrier(_)
+            ; Reason = from_ground_term(_, _)
+            ; Reason = trace_goal(_, _, _, _, _)
+                % Trace goals with run-time conditions are transformed into
+                % if-then-else goals where the condition is a special
+                % foreign_proc call and the then branch is the actual
+                % trace goal (i.e. this goal). Thus there is nothing special
+                % we have to do here.
+            ),
+            SubGoal = hlds_goal(SubGoalExpr, SubGoalInfo),
+            SubGoalDetism = goal_info_get_determinism(SubGoalInfo),
+            erl_gen_goal_expr(SubGoalExpr, CodeModel, SubGoalDetism,
+                InstMap, Context, MaybeSuccessExpr, Statement, !Info)
+        )
     ;
-        GenericCall = event_call(_),
-        sorry(this_file, "event_calls in erlang backend")
+        GoalExpr = if_then_else(_Vars, Cond, Then, Else),
+        erl_gen_ite(CodeModel, InstMap, Cond, Then, Else, Context,
+            MaybeSuccessExpr, Statement, !Info)
     ;
-        GenericCall = cast(_),
-        erl_gen_cast(Context, Vars, MaybeSuccessExpr, Statement, !Info)
-    ).
-
-erl_gen_goal_expr(plain_call(PredId, ProcId, ArgVars, BuiltinState, _, _),
-        CodeModel, _Detism, _InstMap, Context, MaybeSuccessExpr, Statement,
-        !Info) :-
-    (
-        BuiltinState = not_builtin,
-        erl_variable_types(!.Info, ArgVars, ActualArgTypes),
-        erl_gen_call(PredId, ProcId, ArgVars, ActualArgTypes,
+        GoalExpr = negation(SubGoal),
+        erl_gen_negation(SubGoal, CodeModel, InstMap, Context, MaybeSuccessExpr,
+            Statement, !Info)
+    ;
+        GoalExpr = conj(_ConjType, Goals),
+        % XXX Currently we treat parallel conjunction the same as
+        % sequential conjunction -- parallelism is not yet implemented.
+        erl_gen_conj(Goals, CodeModel, Detism, InstMap, Context,
+            MaybeSuccessExpr, Statement, !Info)
+    ;
+        GoalExpr = disj(Goals),
+        erl_gen_disj(Goals, CodeModel, InstMap, Context, MaybeSuccessExpr,
+            Statement, !Info)
+    ;
+        GoalExpr = generic_call(GenericCall, Vars, Modes, CallDetism),
+        determinism_to_code_model(CallDetism, CallCodeModel),
+        expect(unify(CodeModel, CallCodeModel), this_file,
+            "erl_gen_generic_call: code model mismatch"),
+        (
+            GenericCall = higher_order(_, _, _, _),
+            erl_gen_higher_order_call(GenericCall, Vars, Modes, CallDetism,
+                Context, MaybeSuccessExpr, Statement, !Info)
+        ;
+            GenericCall = class_method(_, _, _, _),
+            erl_gen_class_method_call(GenericCall, Vars, Modes, CallDetism,
+                Context, MaybeSuccessExpr, Statement, !Info)
+        ;
+            GenericCall = event_call(_),
+            sorry(this_file, "event_calls in erlang backend")
+        ;
+            GenericCall = cast(_),
+            erl_gen_cast(Context, Vars, MaybeSuccessExpr, Statement, !Info)
+        )
+    ;
+        GoalExpr = plain_call(PredId, ProcId, ArgVars, BuiltinState, _, _),
+        (
+            BuiltinState = not_builtin,
+            erl_variable_types(!.Info, ArgVars, ActualArgTypes),
+            erl_gen_call(PredId, ProcId, ArgVars, ActualArgTypes,
+                CodeModel, Context, MaybeSuccessExpr, Statement, !Info)
+        ;
+            BuiltinState = inline_builtin,
+            erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
+                MaybeSuccessExpr, Statement, !Info)
+        ;
+            BuiltinState = out_of_line_builtin,
+            unexpected(this_file, "erl_gen_goal_expr: out_of_line_builtin")
+        )
+    ;
+        GoalExpr = unify(_LHS, _RHS, _Mode, Unification, _UnifyContext),
+        erl_gen_unification(Unification, CodeModel, Context, MaybeSuccessExpr,
+            Statement, !Info)
+    ;
+        GoalExpr = call_foreign_proc(_Attributes, _PredId, _ProcId,
+            Args, _ExtraArgs, MaybeTraceRuntimeCond, PragmaImpl),
+        erl_gen_foreign_code_call(Args, MaybeTraceRuntimeCond, PragmaImpl,
             CodeModel, Context, MaybeSuccessExpr, Statement, !Info)
     ;
-        BuiltinState = inline_builtin,
-        erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
-            MaybeSuccessExpr, Statement, !Info)
-    ;
-        BuiltinState = out_of_line_builtin,
-        unexpected(this_file, "erl_gen_goal_expr: out_of_line_builtin")
+        GoalExpr = shorthand(_),
+        % These should have been expanded out by now.
+        unexpected(this_file, "erl_gen_goal_expr: unexpected shorthand")
     ).
-
-erl_gen_goal_expr(unify(_LHS, _RHS, _Mode, Unification, _UnifyContext),
-        CodeModel, _Detism, _InstMap, Context, MaybeSuccessExpr, Statement,
-        !Info) :-
-    erl_gen_unification(Unification, CodeModel, Context, MaybeSuccessExpr,
-        Statement, !Info).
-
-erl_gen_goal_expr(
-        call_foreign_proc(_Attributes, _PredId, _ProcId, Args, _ExtraArgs,
-            MaybeTraceRuntimeCond, PragmaImpl), CodeModel, _Detism, _InstMap,
-        OuterContext, MaybeSuccessExpr, Statement, !Info) :-
-    erl_gen_foreign_code_call(Args, MaybeTraceRuntimeCond, PragmaImpl,
-        CodeModel, OuterContext, MaybeSuccessExpr, Statement, !Info).
-
-erl_gen_goal_expr(shorthand(_), _, _, _, _, _, _, !Info) :-
-    % These should have been expanded out by now.
-    unexpected(this_file, "erl_gen_goal_expr: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 %
-% Code for switches
+% Code for switches.
 %
 
 :- func duplicate_expr_limit = int.
@@ -853,7 +850,7 @@ erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap0, _Context,
 
 :- pred erl_gen_case(mer_type::in,
     code_model::in, instmap::in, set(prog_var)::in,
-    maybe(elds_expr)::in, hlds_goal.case::in, elds_case::out, 
+    maybe(elds_expr)::in, hlds_goal.case::in, elds_case::out,
     erl_gen_info::in, erl_gen_info::out) is det.
 
 erl_gen_case(Type, CodeModel, InstMap, MustBindNonLocals, MaybeSuccessExpr,
@@ -911,7 +908,7 @@ cons_id_size(ModuleInfo, Type, ConsId) = Size :-
     ).
 
 :- pred erl_gen_case_on_atom(code_model::in, instmap::in, set(prog_var)::in,
-    maybe(elds_expr)::in, hlds_goal.case::in, elds_case::out, 
+    maybe(elds_expr)::in, hlds_goal.case::in, elds_case::out,
     erl_gen_info::in, erl_gen_info::out) is det.
 
 erl_gen_case_on_atom(CodeModel, InstMap, MustBindNonLocals, MaybeSuccessExpr,
@@ -938,7 +935,9 @@ erl_gen_case_on_atom(CodeModel, InstMap, MustBindNonLocals, MaybeSuccessExpr,
     ELDSCase = elds_case(elds_atom_raw(String), Statement).
 
 %-----------------------------------------------------------------------------%
+%
 % This code is shared by disjunctions and switches.
+%
 
 :- pred union_bound_nonlocals_in_goals(erl_gen_info::in, instmap::in,
     hlds_goals::in, set(prog_var)::out) is det.
@@ -1010,7 +1009,7 @@ ground_var_in_instmap(Var, !InstMap) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code for if-then-else
+% Code for if-then-elses.
 %
 
 :- pred erl_gen_ite(code_model::in, instmap::in,
@@ -1045,7 +1044,7 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr0,
         %   model_semi cond:
         %       <(Cond -> Then ; Else)>
         %   ===>
-        %       case 
+        %       case
         %           <Cond [[ Outputs ]]>
         %       of
         %           {Outputs} -> <Then> ;
@@ -1165,7 +1164,7 @@ erl_gen_ite(CodeModel, InstMap0, Cond, Then, Else, _Context, MaybeSuccessExpr0,
 
 %-----------------------------------------------------------------------------%
 %
-% Code for negation
+% Code for negation.
 %
 
 :- pred erl_gen_negation(hlds_goal::in, code_model::in, instmap::in,
@@ -1232,7 +1231,7 @@ erl_gen_negation(Cond, CodeModel, InstMap, _Context, MaybeSuccessExpr,
 
 %-----------------------------------------------------------------------------%
 %
-% Code for conjunctions
+% Code for conjunctions.
 %
 
 :- pred erl_gen_conj(hlds_goals::in, code_model::in, determinism::in,
@@ -1330,7 +1329,7 @@ erl_gen_conj_2([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr,
             %           <Goals && SUCCEED()>
             %       end,
             %       <Goal && SUCCEED1()>
-            % 
+            %
 
             % Generate the code for Rest.
             erl_gen_conj_2(Rest, CodeModel, InstMap1, Context,
@@ -1354,7 +1353,7 @@ erl_gen_conj_2([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr,
 
             SucceedVarExpr = expr_from_var(SucceedVar),
             MakeSucceed = elds_eq(SucceedVarExpr, SucceedFunc),
-            CallSucceed = elds_call(elds_call_ho(SucceedVarExpr), 
+            CallSucceed = elds_call(elds_call_ho(SucceedVarExpr),
                 exprs_from_vars(NonLocals)),
 
             % Generate the code for First, such that it calls the success
@@ -1368,7 +1367,7 @@ erl_gen_conj_2([First | Rest], CodeModel, InstMap0, Context, MaybeSuccessExpr,
 
 %-----------------------------------------------------------------------------%
 %
-% Code for disjunctions
+% Code for disjunctions.
 %
 
 :- pred erl_gen_disj(hlds_goals::in, code_model::in, instmap::in,
@@ -1554,7 +1553,7 @@ erl_gen_disjunct([First | Rest], CodeModel, InstMap, Context,
 
 %-----------------------------------------------------------------------------%
 %
-% Code for generating foreign exported procedures
+% Code for generating foreign exported procedures.
 %
 
 :- pred erl_gen_foreign_exports(list(elds_defn)::in,
@@ -1571,9 +1570,7 @@ erl_gen_foreign_exports(ProcDefns, PragmaExports, ForeignExportDefns) :-
 erl_gen_foreign_export_defn(ProcDefns, PragmaExport, ForeignExportDefn) :-
     PragmaExport = pragma_exported_proc(_Lang, PredId, ProcId, Name, _Context),
     PredProcId = proc(PredId, ProcId),
-    ( 
-        search_elds_defn(ProcDefns, PredProcId, TargetProc)
-    ->
+    ( search_elds_defn(ProcDefns, PredProcId, TargetProc) ->
         TargetProc = elds_defn(_TargetPPId, _TargetVarSet, TargetBody,
             _EnvVarNames),
         Arity = elds_body_arity(TargetBody),

@@ -317,6 +317,12 @@ can_push(Var, Goal) = CanPush :-
                 ; Reason = trace_goal(_, _, _, _, _)
                 ),
                 CanPush = no
+            ;
+                ( Reason = require_detism(_)
+                ; Reason = require_complete_switch(_)
+                ),
+                % These scopes should have been deleted by now.
+                unexpected($module, $pred, "unexpected scope")
             )
         ;
             GoalExpr = switch(SwitchVar, _, _),

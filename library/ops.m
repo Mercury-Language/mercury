@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2008 The University of Melbourne.
+% Copyright (C) 1995-2008, 2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -435,6 +435,7 @@ ops.op_table(Op, Info, OtherInfos) :-
         ( Op = "arbitrary"
         ; Op = "promise_equivalent_solutions"
         ; Op = "promise_equivalent_solution_sets"
+        ; Op = "require_complete_switch"
         ; Op = "trace"
         ; Op = "atomic"
         ; Op = "try"
@@ -452,6 +453,14 @@ ops.op_table(Op, Info, OtherInfos) :-
         ( Op = "promise_pure"
         ; Op = "promise_semipure"
         ; Op = "promise_impure"
+        ; Op = "require_det"
+        ; Op = "require_semidet"
+        ; Op = "require_multi"
+        ; Op = "require_nondet"
+        ; Op = "require_cc_multi"
+        ; Op = "require_cc_nondet"
+        ; Op = "require_erroneous"
+        ; Op = "require_failure"
         ),
         Info = op_info(prefix(x), 950),
         OtherInfos = []

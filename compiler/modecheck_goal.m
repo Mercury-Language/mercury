@@ -522,6 +522,8 @@ goal_large_flat_constructs(Goal) = LargeFlatConstructs :-
             ; Reason = exist_quant(_)
             ; Reason = promise_solutions(_, _)
             ; Reason = promise_purity(_)
+            ; Reason = require_detism(_)
+            ; Reason = require_complete_switch(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = trace_goal(_, _, _, _, _)
@@ -594,6 +596,8 @@ set_large_flat_constructs_to_ground_in_goal(LargeFlatConstructs,
             ; Reason = exist_quant(_)
             ; Reason = promise_solutions(_, _)
             ; Reason = promise_purity(_)
+            ; Reason = require_detism(_)
+            ; Reason = require_complete_switch(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = trace_goal(_, _, _, _, _)
@@ -791,6 +795,8 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
     ;
         ( Reason = exist_quant(_)
         ; Reason = promise_solutions(_, _)
+        ; Reason = require_detism(_)
+        ; Reason = require_complete_switch(_)
         ; Reason = commit(_)
         ; Reason = barrier(_)
         ),

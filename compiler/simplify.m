@@ -146,8 +146,10 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
@@ -1907,9 +1909,11 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         )
     ;
         simplify_info_get_common_info(!.Info, Common),
+        % Note that we need to keep SubGoal0 for require_complete_switch
+        % scopes.
         simplify_goal(SubGoal0, SubGoal, !Info),
         nested_scopes(Reason0, SubGoal, GoalInfo0, Goal1),
-        Goal1 = hlds_goal(GoalExpr1, _GoalInfo1),
+        Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
         ( GoalExpr1 = scope(FinalReason, FinalSubGoal) ->
             (
                 ( FinalReason = promise_purity(_)
@@ -1936,6 +1940,58 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 % of the goal.
                 simplify_info_set_common_info(Common, !Info)
             ;
+                FinalReason = require_detism(RequiredDetism),
+                FinalSubGoal = hlds_goal(_, FinalSubGoalInfo),
+                ActualDetism = goal_info_get_determinism(FinalSubGoalInfo),
+                ( ActualDetism = RequiredDetism ->
+                    true
+                ;
+                    RequiredDetismStr = determinism_to_string(RequiredDetism),
+                    ActualDetismStr = determinism_to_string(ActualDetism),
+                    DetismPieces = [words("Error: required determinism is"),
+                        quote(RequiredDetismStr), suffix(","),
+                        words("but actual determinism is"),
+                        quote(ActualDetismStr), suffix("."), nl],
+                    Context = goal_info_get_context(GoalInfo1),
+                    DetismMsg = simple_msg(Context, [always(DetismPieces)]),
+                    DetismSpec = error_spec(severity_error,
+                        phase_simplify(report_in_any_mode), [DetismMsg]),
+                    simplify_info_add_error_spec(DetismSpec, !Info)
+                ),
+                Goal = FinalSubGoal
+            ;
+                FinalReason = require_complete_switch(RequiredVar),
+                % We must test the version of the subgoal that has not yet been
+                % simplified, since simplification can convert a complete
+                % switch into an incomplete switch by deleting an arm
+                % consisting of nothing but `fail'.
+                SubGoal0 = hlds_goal(SubGoalExpr0, _),
+                (
+                    SubGoalExpr0 = switch(SwitchVar, CanFail, _Cases),
+                    SwitchVar = RequiredVar
+                ->
+                    (
+                        CanFail = cannot_fail
+                    ;
+                        CanFail = can_fail,
+                        simplify_info_get_varset(!.Info, VarSet),
+                        VarStr = mercury_var_to_string(VarSet, no, SwitchVar),
+                        SwitchPieces = [words("Error: the switch on"),
+                            quote(VarStr), 
+                            words("is required to be complete,"),
+                            words("but it is not."), nl],
+                        Context = goal_info_get_context(GoalInfo1),
+                        SwitchMsg = simple_msg(Context,
+                            [always(SwitchPieces)]),
+                        SwitchSpec = error_spec(severity_error,
+                            phase_simplify(report_in_any_mode), [SwitchMsg]),
+                        simplify_info_add_error_spec(SwitchSpec, !Info)
+                    )
+                ;
+                    true
+                ),
+                Goal = FinalSubGoal
+            ;
                 FinalReason = trace_goal(MaybeCompiletimeExpr,
                     MaybeRuntimeExpr, _, _, _),
                 ( simplify_do_after_front_end(!.Info) ->
@@ -1960,8 +2016,7 @@ simplify_goal_trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr, SubGoal,
         Goal0, Goal, !Info) :-
     (
         MaybeCompiletimeExpr = yes(CompiletimeExpr),
-        KeepGoal = evaluate_compile_time_condition(CompiletimeExpr,
-            !.Info)
+        KeepGoal = evaluate_compile_time_condition(CompiletimeExpr, !.Info)
     ;
         MaybeCompiletimeExpr = no,
         % A missing compile time condition means that the
@@ -3611,6 +3666,8 @@ goal_contains_trace(hlds_goal(GoalExpr0, GoalInfo0),
             ( Reason = exist_quant(_)
             ; Reason = promise_solutions(_, _)
             ; Reason = promise_purity(_)
+            ; Reason = require_detism(_)
+            ; Reason = require_complete_switch(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = from_ground_term(_, from_ground_term_deconstruct)

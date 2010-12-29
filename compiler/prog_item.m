@@ -789,6 +789,14 @@
                 prog_vars,  % ColonStateVars
                 goal
             )
+    ;       require_detism_expr(
+                determinism,
+                goal
+            )
+    ;       require_complete_switch_expr(
+                prog_var,
+                goal
+            )
     ;       trace_expr(
                 texpr_compiletime   :: maybe(trace_expr(trace_compiletime)),
                 texpr_runtime       :: maybe(trace_expr(trace_runtime)),

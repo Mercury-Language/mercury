@@ -467,6 +467,19 @@
             % pragma, except that it applies to arbitrary goals and not
             % just whole procedure bodies.
 
+    ;       require_detism(determinism)
+            % Require the wrapped subgoal to have the specified determinism.
+            % If it does not, report an error.
+            % This scope reason should not exist after the first invocation
+            % of simplification.
+
+    ;       require_complete_switch(prog_var)
+            % If the wrapped subgoal is a switch on the given variable,
+            % require it have arms for every function symbol in the type
+            % of that variable. If it does not, report an error.
+            % This scope reason should not exist after the first invocation
+            % of simplification.
+
     ;       commit(force_pruning)
             % This scope exists to delimit a piece of code
             % with at_most_many components but with no outputs,
@@ -2496,6 +2509,13 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
             Reason0 = promise_solutions(Vars0, Kind),
             rename_var_list(Must, Subn, Vars0, Vars),
             Reason = promise_solutions(Vars, Kind)
+        ;
+            Reason0 = require_complete_switch(Var0),
+            rename_var(Must, Subn, Var0, Var),
+            Reason = require_complete_switch(Var)
+        ;
+            Reason0 = require_detism(_),
+            Reason = Reason0
         ;
             Reason0 = barrier(_),
             Reason = Reason0

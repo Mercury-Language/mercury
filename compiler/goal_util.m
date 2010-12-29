@@ -591,19 +591,21 @@ goal_vars_2(Goal, !Set) :-
             Reason = exist_quant(Vars),
             svset.insert_list(Vars, !Set)
         ;
-            Reason = promise_purity(_)
-        ;
             Reason = promise_solutions(Vars, _),
             svset.insert_list(Vars, !Set)
-        ;
-            Reason = barrier(_)
-        ;
-            Reason = commit(_)
         ;
             Reason = from_ground_term(Var, _),
             set.insert(!.Set, Var, !:Set)
         ;
-            Reason = trace_goal(_, _, _, _, _)
+            Reason = require_complete_switch(Var),
+            set.insert(!.Set, Var, !:Set)
+        ;
+            ( Reason = promise_purity(_)
+            ; Reason = require_detism(_)
+            ; Reason = commit(_)
+            ; Reason = barrier(_)
+            ; Reason = trace_goal(_, _, _, _, _)
+            )
         ),
         goal_vars_2(SubGoal, !Set)
     ;

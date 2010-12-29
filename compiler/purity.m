@@ -657,6 +657,8 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
             % that, e.g. by avoiding repeatedly taking the varset and vartypes
             % out of !Info and just as repeatedly putting it back again.
             ( Reason = promise_solutions(_, _)
+            ; Reason = require_detism(_)
+            ; Reason = require_complete_switch(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = from_ground_term(_, _)

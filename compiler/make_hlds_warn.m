@@ -164,6 +164,8 @@ warn_singletons_in_goal(Goal, QuantVars, VarSet, PredCallId, ModuleInfo,
                 ModuleInfo, !Specs)
         ;
             ( Reason = promise_purity(_)
+            ; Reason = require_detism(_)
+            ; Reason = require_complete_switch(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = trace_goal(_, _, _, _, _)

@@ -179,6 +179,7 @@ SINGLEMODULE= \
 	quant_constraint_2 \
 	range_restrict \
 	record_syntax_errors \
+	require_scopes \
 	some \
 	specified \
 	spurious_mode_error \
