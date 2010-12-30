@@ -115,7 +115,6 @@
 
 :- import_module int.
 :- import_module map.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module svmap.

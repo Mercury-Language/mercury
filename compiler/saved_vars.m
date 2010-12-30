@@ -42,7 +42,6 @@
 
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism.
-:- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.

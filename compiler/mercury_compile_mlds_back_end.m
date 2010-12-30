@@ -57,7 +57,6 @@
 :- import_module backend_libs.base_typeclass_info.
 :- import_module backend_libs.type_class_info.
 :- import_module backend_libs.type_ctor_info.
-:- import_module hlds.arg_info.
 :- import_module hlds.mark_static_terms.            % HLDS -> HLDS
 :- import_module libs.file_util.
 :- import_module libs.globals.

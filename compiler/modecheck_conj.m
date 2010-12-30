@@ -30,7 +30,6 @@
 :- implementation.
 
 :- import_module check_hlds.delay_info.
-:- import_module check_hlds.delay_partial_inst.
 :- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.
 :- import_module check_hlds.mode_util.

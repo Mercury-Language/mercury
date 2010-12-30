@@ -45,13 +45,10 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
-:- import_module libs.globals.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module io.
 :- import_module list.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 

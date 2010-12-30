@@ -35,7 +35,6 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
-:- import_module libs.compiler_util.
 :- import_module ll_backend.opt_util.
 
 :- import_module int.
@@ -713,12 +712,6 @@ combine_decr_sp([Instr0 | Instrs0], Instrs) :-
     ;
         Instrs = [Instr0 | Instrs1]
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "peephole.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module peephole.

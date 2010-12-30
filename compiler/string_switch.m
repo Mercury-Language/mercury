@@ -72,13 +72,10 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.switch_util.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
-:- import_module ll_backend.code_gen.
 :- import_module ll_backend.lookup_util.
 :- import_module ll_backend.switch_case.
-:- import_module ll_backend.trace_gen.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -90,7 +87,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module std_util.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

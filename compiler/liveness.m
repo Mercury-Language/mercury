@@ -214,7 +214,6 @@
 :- import_module string.
 :- import_module svset.
 :- import_module term.
-:- import_module unit.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%

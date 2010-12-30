@@ -38,7 +38,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
@@ -46,7 +45,6 @@
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
-:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.
@@ -62,7 +60,6 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module char.
 :- import_module counter.
 :- import_module int.
 :- import_module list.
@@ -149,11 +146,11 @@ apply_new_implicit_parallelism_transformation(SourceFileMap, Specs,
     ;
         map.lookup(SourceFileMap, ModuleName, ModuleFilename),
         Context = context(ModuleFilename, 1),
-        Peices = [words("Implicit parallelism was requested but the"),
+        Pieces = [words("Implicit parallelism was requested but the"),
             words("feedback file does not the candidate parallel"),
             words("conjunctions feedback information.")],
         Specs = [error_spec(severity_error, phase_auto_parallelism,
-            [simple_msg(Context, [always(Peices)])])]
+            [simple_msg(Context, [always(Pieces)])])]
     ).
 
     % Information retrieved from the feedback system to be used for
@@ -163,9 +160,9 @@ apply_new_implicit_parallelism_transformation(SourceFileMap, Specs,
     --->    parallelism_info(
                 pi_parameters           :: candidate_par_conjunctions_params,
 
+                % A map of candidate parallel conjunctions in this module
+                % indexed by their procedure.
                 pi_cpc_map              :: module_candidate_par_conjs_map
-                    % A map of candidate parallel conjunctions in this module
-                    % indexed by their procedure.
             ).
 
 :- type intra_module_proc_label
@@ -206,7 +203,7 @@ get_implicit_parallelism_feedback(ModuleName, FeedbackInfo, ParallelismInfo) :-
 make_module_candidate_par_conjs_map(ModuleName,
         CandidateParConjsAssocList0, CandidateParConjsMap) :-
     ModuleNameStr = sym_name_to_string(ModuleName),
-    filter_map(cpc_proc_is_in_module(ModuleNameStr),
+    list.filter_map(cpc_proc_is_in_module(ModuleNameStr),
         CandidateParConjsAssocList0, CandidateParConjsAssocList),
     CandidateParConjsMap = map.from_assoc_list(CandidateParConjsAssocList).
 
@@ -299,9 +296,9 @@ maybe_parallelise_proc(ModuleInfo, ParallelismInfo, PredId, ProcId, !ProcTable,
             % parallelisations even as the goal tree changes. In particular,
             % insert deeper parallelisations before shallower ones, and later
             % ones before earlier ones.
-            sort_and_remove_dups(compare_candidate_par_conjunctions,
+            list.sort_and_remove_dups(compare_candidate_par_conjunctions,
                 CPCs0, CPCs),
-            foldl3(
+            list.foldl3(
                 maybe_parallelise_goal(PredInfo, ProgRepInfo, VarTable,
                     Instmap),
                 CPCs, Goal0, Goal, !IntroducedParallelism, !Specs),
@@ -420,7 +417,7 @@ report_failed_parallelisation(PredInfo, GoalPath, Error) = Spec :-
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
-    Peices = [words("In"), p_or_f(PredOrFunc),
+    Pieces = [words("In"), p_or_f(PredOrFunc),
         sym_name_and_arity(qualified(ModuleName, PredName) / Arity),
         suffix(":"), nl,
         words("Warning: could not auto-parallelise"), quote(GoalPath),
@@ -429,7 +426,7 @@ report_failed_parallelisation(PredInfo, GoalPath, Error) = Spec :-
     % XXX Make this a warning or error if the user wants compilation to
     % abort.
     Spec = error_spec(severity_informational, phase_auto_parallelism,
-        [simple_msg(Context, [always(Peices)])]).
+        [simple_msg(Context, [always(Pieces)])]).
 
 :- func report_already_parallelised(pred_info) = error_spec.
 
@@ -439,14 +436,14 @@ report_already_parallelised(PredInfo) = Spec :-
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
-    Peices = [words("In"), p_or_f(PredOrFunc),
+    Pieces = [words("In"), p_or_f(PredOrFunc),
         sym_name_and_arity(qualified(ModuleName, PredName) / Arity),
         suffix(":"), nl,
         words("Warning: this procedure contains explicit parallel"),
         words("conjunctions, it will not be automatically parallelised.")],
     pred_info_get_context(PredInfo, Context),
     Spec = error_spec(severity_warning, phase_auto_parallelism,
-        [simple_msg(Context, [always(Peices)])]).
+        [simple_msg(Context, [always(Pieces)])]).
 
 :- pred maybe_parallelise_conj(prog_rep_info::in, var_table::in,
     candidate_par_conjunction::in, instmap::in, hlds_goal::in,
@@ -464,10 +461,10 @@ maybe_parallelise_conj(ProgRepInfo, VarTable, CPC, Instmap0,
         find_first_goal(FirstGoalRep, Conjs1, ProgRepInfo, VarTable, Instmap0,
             found_first_goal(GoalsBefore, FirstGoal, OtherGoals))
     ->
-        GoalsBeforeInstDeltas = map(
+        GoalsBeforeInstDeltas = list.map(
             (func(G) = goal_info_get_instmap_delta(G ^ hlds_goal_info)),
             GoalsBefore),
-        foldl(apply_instmap_delta_sv, GoalsBeforeInstDeltas,
+        list.foldl(apply_instmap_delta_sv, GoalsBeforeInstDeltas,
             Instmap0, Instmap),
         build_par_conjunction(ProgRepInfo, VarTable, Instmap,
             [FirstGoal | OtherGoals], CPC, MaybeParConjunction),
@@ -503,7 +500,8 @@ cpc_get_first_goal(CPC, FirstGoal) :-
         ->
             FirstGoal = FirstGoalPrime
         ;
-            error(this_file ++ "Candidate parallel conjunction is empty")
+            unexpected($module, $pred,
+                "candidate parallel conjunction is empty")
         )
     ).
 
@@ -654,53 +652,61 @@ build_seq_conjuncts(ProcRepInfo, VarTable, [GoalRep | GoalReps], MaybeConjs,
 :- pred pard_goal_match_hlds_goal(prog_rep_info::in, var_table::in,
     instmap::in, pard_goal::in, hlds_goal::in) is semidet.
 
-pard_goal_match_hlds_goal(ProgRepInfo, VarTable, Instmap, GoalRep1, Goal) :-
-    goal_to_goal_rep(ProgRepInfo, Instmap, Goal, GoalRep2),
-    goal_reps_match(VarTable, GoalRep1, GoalRep2).
+pard_goal_match_hlds_goal(ProgRepInfo, VarTable, Instmap, GoalRepA, GoalB) :-
+    goal_to_goal_rep(ProgRepInfo, Instmap, GoalB, GoalRepB),
+    goal_reps_match(VarTable, GoalRepA, GoalRepB).
 
 :- pred goal_reps_match(var_table::in, goal_rep(A)::in, goal_rep(B)::in)
     is semidet.
 
-goal_reps_match(VarTable, goal_rep(GoalExpr1, Detism, _),
-        goal_rep(GoalExpr2, Detism, _)) :-
-    goal_expr_reps_match(VarTable, GoalExpr1, GoalExpr2).
+goal_reps_match(VarTable, GoalA, GoalB) :-
+    GoalA = goal_rep(GoalRepA, Detism, _),
+    GoalB = goal_rep(GoalRepB, Detism, _),
+    (
+        GoalRepA = conj_rep(ConjsA),
+        GoalRepB = conj_rep(ConjsB),
+        zip_all_true(goal_reps_match(VarTable), ConjsA, ConjsB)
+    ;
+        GoalRepA = disj_rep(DisjsA),
+        GoalRepB = disj_rep(DisjsB),
+        zip_all_true(goal_reps_match(VarTable), DisjsA, DisjsB)
+    ;
+        GoalRepA = switch_rep(VarRepA, CanFail, CasesA),
+        GoalRepB = switch_rep(VarRepB, CanFail, CasesB),
+        var_reps_match(VarTable, VarRepA, VarRepB),
+        % Note that GoalRepA and GoalRepB could be equivalent
+        % even they contained the same cases but a different order.
+        list.sort(CasesA, SortedCasesA),
+        list.sort(CasesB, SortedCasesB),
+        zip_all_true(case_reps_match(VarTable), SortedCasesA, SortedCasesB)
+    ;
+        GoalRepA = ite_rep(CondA, ThenA, ElseA),
+        GoalRepB = ite_rep(CondB, ThenB, ElseB),
+        goal_reps_match(VarTable, CondA, CondB),
+        goal_reps_match(VarTable, ThenA, ThenB),
+        goal_reps_match(VarTable, ElseA, ElseB)
+    ;
+        GoalRepA = negation_rep(SubGoalA),
+        GoalRepB = negation_rep(SubGoalB),
+        goal_reps_match(VarTable, SubGoalA, SubGoalB)
+    ;
+        GoalRepA = scope_rep(SubGoalA, MaybeCut),
+        GoalRepB = scope_rep(SubGoalB, MaybeCut),
+        goal_reps_match(VarTable, SubGoalA, SubGoalB)
+    ;
+        GoalRepA = atomic_goal_rep(_, _, _, AtomicGoalA),
+        GoalRepB = atomic_goal_rep(_, _, _, AtomicGoalB),
+        % We don't compare names and file numbers, since trivial changes
+        % to e.g. comments could change line numbers dramatically without
+        % changing how the program should be parallelised.
+        %
+        % Vars are not matched here either, we only consider the vars
+        % within the atomic_goal_rep structures.
+        atomic_goal_reps_match(VarTable, AtomicGoalA, AtomicGoalB)
+    ).
 
-:- pred goal_expr_reps_match(var_table::in, goal_expr_rep(A)::in,
-    goal_expr_rep(B)::in) is semidet.
-
-goal_expr_reps_match(VarTable, conj_rep(Conjs1), conj_rep(Conjs2)) :-
-    zip_all_true(goal_reps_match(VarTable), Conjs1, Conjs2).
-goal_expr_reps_match(VarTable, disj_rep(Disjs1), disj_rep(Disjs2)) :-
-    zip_all_true(goal_reps_match(VarTable), Disjs1, Disjs2).
-goal_expr_reps_match(VarTable, switch_rep(VarRep1, CanFail, Cases1),
-        switch_rep(VarRep2, CanFail, Cases2)) :-
-    % Note that cases can appear in a different order and goals would still be
-    % equivalent.  We don't handle this.
-    var_reps_match(VarTable, VarRep1, VarRep2),
-    zip_all_true(case_reps_match(VarTable), Cases1, Cases2).
-goal_expr_reps_match(VarTable, ite_rep(Cond1, Then1, Else1),
-        ite_rep(Cond2, Then2, Else2)) :-
-    goal_reps_match(VarTable, Cond1, Cond2),
-    goal_reps_match(VarTable, Then1, Then2),
-    goal_reps_match(VarTable, Else1, Else2).
-goal_expr_reps_match(VarTable, negation_rep(SubGoal1),
-        negation_rep(SubGoal2)) :-
-    goal_reps_match(VarTable, SubGoal1, SubGoal2).
-goal_expr_reps_match(VarTable, scope_rep(SubGoal1, MaybeCut),
-        scope_rep(SubGoal2, MaybeCut)) :-
-    goal_reps_match(VarTable, SubGoal1, SubGoal2).
-goal_expr_reps_match(VarTable, atomic_goal_rep(_, _, _, AtomicGoal1),
-        atomic_goal_rep(_, _, _, AtomicGoal2)) :-
-    % We don't compare names and file numbers, a trivial change made by the
-    % user could change the line number dramatically without changing how the
-    % program should be parallelised.
-    %
-    % Vars are not matched here either, we only consider the vars within the
-    % atomic_goal_rep structures.
-    atomic_goal_reps_match(VarTable, AtomicGoal1, AtomicGoal2).
-
-:- pred atomic_goal_reps_match(var_table::in, atomic_goal_rep::in,
-    atomic_goal_rep::in) is semidet.
+:- pred atomic_goal_reps_match(var_table::in,
+    atomic_goal_rep::in, atomic_goal_rep::in) is semidet.
 
 atomic_goal_reps_match(VarTable, AtomicRepA, AtomicRepB) :-
     (
@@ -762,9 +768,10 @@ atomic_goal_reps_match(VarTable, AtomicRepA, AtomicRepB) :-
 :- pred case_reps_match(var_table::in, case_rep(A)::in, case_rep(B)::in)
     is semidet.
 
-case_reps_match(VarTable, case_rep(ConsId, OtherConsIds, GoalRep1),
-        case_rep(ConsId, OtherConsIds, GoalRep2)) :-
-    goal_reps_match(VarTable, GoalRep1, GoalRep2).
+case_reps_match(VarTable, CaseRepA, CaseRepB) :-
+    CaseRepA = case_rep(ConsId, OtherConsIds, GoalRepA),
+    CaseRepB = case_rep(ConsId, OtherConsIds, GoalRepB),
+    goal_reps_match(VarTable, GoalRepA, GoalRepB).
 
 :- pred var_reps_match(var_table::in, var_rep::in, var_rep::in) is semidet.
 
@@ -772,13 +779,13 @@ var_reps_match(VarTable, VarA, VarB) :-
     ( search_var_name(VarTable, VarA, _) ->
         % Variables named by the programmer _must_ match, we expect to find
         % them in the var table, and that they would be identical.  (Since one
-        % of the variables will be built using it's name and the var table
+        % of the variables will be built using its name and the var table
         % constructed when converting the original code to byte code).
         VarA = VarB
     ;
-        % Unamed variables match implicitly.  They will usually be identical be
-        % we allow this to be releaxed so that the program may change a little
-        % after being profiled but before being parallelised.
+        % Unnamed variables match implicitly. They will usually be identical,
+        % but we do not REQUIRE them to be identical, to allow the program
+        % to change a little after being profiled but before being parallelised.
         true
     ).
 

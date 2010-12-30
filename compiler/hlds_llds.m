@@ -277,8 +277,6 @@
 
 :- implementation.
 
-:- import_module hlds.goal_util.
-
 :- import_module assoc_list.
 :- import_module list.
 :- import_module pair.

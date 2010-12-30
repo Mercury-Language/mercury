@@ -236,8 +236,6 @@
 :- import_module require.
 :- import_module string.
 
-:- use_module    erlang_rtti_implementation. 
-
 :- pragma foreign_decl("C", "
 #include ""mercury_heap.h"" /* for MR_incr_hp_msg() etc. */
 #include ""mercury_misc.h"" /* for MR_fatal_error() */

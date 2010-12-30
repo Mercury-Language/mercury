@@ -101,6 +101,7 @@
     ;       inhibit_accumulator_warnings
     ;       halt_at_warn
     ;       halt_at_syntax_errors
+    ;       halt_at_auto_parallel_failure
     ;       warn_singleton_vars
     ;       warn_overlapping_scopes
     ;       warn_det_decls_too_lax
@@ -1034,6 +1035,7 @@ option_defaults_2(warning_option, [
     inhibit_accumulator_warnings        -   bool(no),
     halt_at_warn                        -   bool(no),
     halt_at_syntax_errors               -   bool(no),
+    halt_at_auto_parallel_failure       -   bool(no),
 
     % IMPORTANT NOTE:
     % if you add any new warning options, or if you change the default
@@ -1878,6 +1880,7 @@ long_option("inhibit-warnings",         inhibit_warnings).
 long_option("inhibit-accumulator-warnings", inhibit_accumulator_warnings).
 long_option("halt-at-warn",             halt_at_warn).
 long_option("halt-at-syntax-errors",    halt_at_syntax_errors).
+long_option("halt-at-auto-parallel-failure", halt_at_auto_parallel_failure).
 long_option("warn-singleton-variables", warn_singleton_vars).
 long_option("warn-overlapping-scopes",  warn_overlapping_scopes).
 long_option("warn-det-decls-too-lax",   warn_det_decls_too_lax).
@@ -3344,6 +3347,9 @@ options_help_warning -->
         "\tThis option causes the compiler to halt immediately",
         "\tafter syntax checking and not do any semantic checking",
         "\tif it finds any syntax errors in the program.",
+%       "--halt-at-auto-parallel-failure",
+%       "\tThis option causes the compiler to halt if it cannot perform",
+%       "\tan auto-parallelization requested by a feedback file.",
         "--inhibit-accumulator-warnings",
         "\tDon't warn about argument order rearrangement caused",
         "\tby --introduce-accumulators.",

@@ -956,18 +956,14 @@
 :- implementation.
 
 :- import_module backend_libs.name_mangle.
-:- import_module check_hlds.        % needed for type_util, mode_util
-:- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
 
 :- import_module int.
-:- import_module pair.
 :- import_module require.
 :- import_module string.
 :- import_module table_builtin.
-:- import_module varset.
 
 %----------------------------------------------------------------------------%
 

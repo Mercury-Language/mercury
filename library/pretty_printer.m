@@ -48,7 +48,6 @@
 :- import_module list.
 :- import_module io.
 :- import_module stream.
-:- import_module string.
 :- import_module type_desc.
 :- import_module univ.
 
@@ -246,11 +245,11 @@
 :- import_module bool.
 :- import_module char.                  % For char_to_doc.
 :- import_module deconstruct.
-:- import_module exception.
 :- import_module float.                 % For float_to_doc.
 :- import_module int.
 :- import_module map.
 :- import_module ops.
+:- import_module string.
 :- import_module term_io.
 :- import_module tree234.               % For tree234_to_doc.
 

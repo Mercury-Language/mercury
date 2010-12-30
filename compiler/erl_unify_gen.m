@@ -85,15 +85,11 @@
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_util.
 
 :- import_module int.
 :- import_module list.
-:- import_module map.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

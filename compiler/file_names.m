@@ -138,7 +138,6 @@
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.java_names.
-:- import_module parse_tree.prog_util.
 :- import_module parse_tree.source_file_map.
 
 :- import_module bool.

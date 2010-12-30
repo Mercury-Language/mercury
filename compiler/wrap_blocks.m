@@ -38,7 +38,6 @@
 
 :- import_module bool.
 :- import_module int.
-:- import_module pair.
 :- import_module require.
 
 %-----------------------------------------------------------------------------%

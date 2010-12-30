@@ -52,7 +52,6 @@
 :- import_module backend_libs.type_ctor_info.
 :- import_module check_hlds.simplify.
 :- import_module hlds.arg_info.
-:- import_module hlds.goal_path.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
@@ -61,12 +60,10 @@
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module libs.trace_params.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.dupproc.
 :- import_module ll_backend.follow_code.
 :- import_module ll_backend.global_data.
-:- import_module ll_backend.layout.
 :- import_module ll_backend.liveness.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.llds_out.llds_out_file.

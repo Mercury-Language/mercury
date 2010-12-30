@@ -167,13 +167,11 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
-:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_form.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.continuation_info.
-:- import_module ll_backend.dense_switch.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.lookup_util.
 

@@ -123,7 +123,6 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module map.

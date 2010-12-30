@@ -48,8 +48,6 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_io.
 :- import_module transform_hlds.ctgc.
 :- import_module transform_hlds.ctgc.structure_sharing.
 :- import_module transform_hlds.ctgc.structure_sharing.analysis.
@@ -60,11 +58,9 @@
 :- import_module transform_hlds.trailing_analysis.
 :- import_module transform_hlds.unused_args.
 
-:- import_module bool.
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
-:- import_module string.
 :- import_module io.
 :- import_module unit.
 

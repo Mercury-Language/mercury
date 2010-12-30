@@ -101,7 +101,6 @@
 :- import_module check_hlds.mode_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
-:- import_module hlds.passes_aux.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -114,7 +113,6 @@
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module bool.

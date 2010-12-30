@@ -80,9 +80,7 @@
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_type.
 
-:- import_module assoc_list.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.

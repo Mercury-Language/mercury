@@ -301,9 +301,7 @@
 
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_llds.
-:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
@@ -321,7 +319,6 @@
 :- import_module string.
 :- import_module svmap.
 :- import_module svset.
-:- import_module unit.
 :- import_module univ.
 :- import_module varset.
 

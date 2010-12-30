@@ -39,30 +39,18 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.type_util.
-:- import_module hlds.arg_info.
-:- import_module hlds.goal_path.
-:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.rbmm.points_to_graph.
 :- import_module transform_hlds.smm_common.
 
-:- import_module assoc_list.
-:- import_module bool.
 :- import_module list.
 :- import_module map.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module string.
 :- import_module svmap.
-:- import_module svset.
 :- import_module term.
-:- import_module varset.
 
 %----------------------------------------------------------------------------%
 %
@@ -202,8 +190,7 @@ live_region_analysis_proc(ModuleInfo, RptaInfoTable, LVBeforeTable,
                 ProcVoidVar, map.init, ProcVoidVarRegion),
             svmap.set(PPId, ProcVoidVarRegion, !VoidVarRegionTable)
         ;
-            unexpected(this_file,
-                "live_region_analysis_proc: rpta_info must exist")
+            unexpected($module, $pred, "rpta_info must exist")
         )
     ).
 
@@ -244,11 +231,5 @@ lv_to_lr(LVSet, Graph, ModuleInfo, ProcInfo, LRSet) :-
         set.fold(rptg_reach_from_a_variable(Graph, ModuleInfo, ProcInfo),
             LVSet, LRSet0, LRSet)
     ).
-
-%----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "rbmm.live_region_analysis.m".
 
 %----------------------------------------------------------------------------%

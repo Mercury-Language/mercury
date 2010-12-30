@@ -60,7 +60,6 @@
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.trace_gen.
-:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module cord.

@@ -35,9 +35,7 @@
 
 :- import_module check_hlds.type_util.
 :- import_module parse_tree.prog_type_subst.
-:- import_module parse_tree.prog_util.
 
-:- import_module cord.
 :- import_module int.
 :- import_module multi_map.
 :- import_module require.
@@ -480,8 +478,6 @@
     ;       may_not_use_atomic_alloc.
 
 :- implementation.
-
-:- import_module string.
 
 project_tagged_cons_id_tag(TaggedConsId) = Tag :-
     TaggedConsId = tagged_cons_id(_, Tag).

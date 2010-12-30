@@ -78,7 +78,6 @@
 :- import_module bool.
 :- import_module require.
 :- import_module set.
-:- import_module string.
 :- import_module svmap.
 
 record_region_arguments(ModuleInfo, RptaInfoTable, ConstantRTable,

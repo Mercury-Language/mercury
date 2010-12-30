@@ -49,7 +49,6 @@
 
 :- import_module map.
 :- import_module set.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -142,12 +141,12 @@
 :- import_module transform_hlds.rbmm.points_to_graph.
 :- import_module transform_hlds.smm_common.
 
-:- import_module cord.
 :- import_module int.
 :- import_module list.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module string.
 :- import_module svmap.
 :- import_module svset.
 
@@ -324,8 +323,7 @@ collect_non_local_and_in_cond_regions_expr(Graph, LRBeforeProc, LRAfterProc,
 collect_non_local_and_in_cond_regions_expr(_, _, _, _, _, shorthand(_),
         !NonLocalRegionProc, !InCondRegionsProc) :-
     % These should have been expanded out by now.
-    unexpected(this_file, "collect_non_local_and_in_cond_regions_expr: "
-        ++ "shorthand not handled").
+    unexpected($module, $pred, "shorthand").
 
 :- pred collect_non_local_and_in_cond_regions_case(rpt_graph::in,
     pp_region_set_table::in, pp_region_set_table::in,
@@ -418,8 +416,7 @@ renaming_annotation_to_regions(RenameAnnotation, !LeftRegions,
         ( RenameAnnotation = create_region(_)
         ; RenameAnnotation = remove_region(_)
         ),
-        unexpected(this_file, "renaming_annotation_to_regions: "
-            ++ "annotation is not assignment")
+        unexpected($module, $pred, "annotation is not assignment")
     ;
         RenameAnnotation = rename_region(RightRegion, LeftRegion),
         svset.insert(LeftRegion, !LeftRegions),
@@ -550,9 +547,7 @@ collect_non_local_regions_in_ite_compound_goal(Graph, LRBeforeProc,
         ; Expr = generic_call(_, _, _, _)
         ; Expr = shorthand(_)
         ),
-        unexpected(this_file,
-            "collect_non_local_regions_in_ite_compound_goal: "
-            ++ "encountered atomic or unsupported goal")
+        unexpected($module, $pred, "atomic or unsupported goal")
     ).
 
 :- pred collect_non_local_regions_in_ite_case(rpt_graph::in,
@@ -731,9 +726,7 @@ collect_regions_created_in_condition_compound_goal(Graph,
         ; Expr = generic_call(_, _, _, _)
         ; Expr = shorthand(_)
         ),
-        unexpected(this_file,
-            "collect_regions_created_in_condition_compound_goal: "
-            ++ "encountered atomic or unsupported goal")
+        unexpected($module, $pred, "atomic or unsupported goal")
     ).
 
 :- pred collect_regions_created_in_condition_case(rpt_graph::in,
@@ -869,7 +862,7 @@ collect_ite_renaming_goal(IteRenamedRegionProc, Graph, Goal,
             Else, !IteRenamingProc)
     ;
         GoalExpr = shorthand(_),
-        unexpected(this_file, "collect_ite_renaming_goal: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 :- pred collect_ite_renaming_case(goal_path_regions_table::in, rpt_graph::in,
@@ -982,9 +975,7 @@ collect_ite_renaming_in_condition_compound_goal(IteRenamedRegionProc,
         ; Expr = generic_call(_, _, _, _)
         ; Expr = shorthand(_)
         ),
-        unexpected(this_file,
-            "collect_ite_renaming_in_condition_compound_goal: "
-            ++ "encountered atomic or unsupported goal")
+        unexpected($module, $pred, "atomic or unsupported goal")
     ).
 
 :- pred collect_ite_renaming_in_condition_case(goal_path_regions_table::in,
@@ -1068,8 +1059,8 @@ collect_ite_annotation_region_names(ExecPaths, Graph, PathToCond,
     PathToCond = rgp(RevPathToCondSteps),
     (
         RevPathToCondSteps = [LastStep | RevInitialSteps],
-        expect(unify(LastStep, step_ite_cond), this_file,
-            "collect_ite_annotation_region_names: not step_ite_cond"),
+        expect(unify(LastStep, step_ite_cond), $module,
+            $pred ++ ": not step_ite_cond"),
         PathToThen = rgp([step_ite_then | RevInitialSteps]),
         get_closest_condition_in_goal_path(PathToCond, _, 0, HowMany),
         list.foldl2(
@@ -1078,8 +1069,7 @@ collect_ite_annotation_region_names(ExecPaths, Graph, PathToCond,
             ExecPaths, !IteRenamingProc, !IteAnnotationProc)
     ;
         RevPathToCondSteps = [],
-        unexpected(this_file,
-            "collect_ite_annotation_region_set: empty path to condition.")
+        unexpected($module, $pred, "empty path to condition.")
     ).
 
 :- pred collect_ite_annotation_exec_path(rpt_graph::in, reverse_goal_path::in,
@@ -1162,8 +1152,7 @@ introduce_reverse_renaming(ProgPoint, IteRenamingProc, HowMany, RegName,
                 RenameTo = list.det_last(RenameToList),
                 make_renaming_instruction(CurrentName, RenameTo, Annotation)
             ;
-                unexpected(this_file,
-                    "introduce_reverse_renaming: more than one renaming")
+                unexpected($module, $pred, "more than one renaming")
             )
         ;
             make_renaming_instruction(CurrentName, RegName, Annotation)
@@ -1173,11 +1162,5 @@ introduce_reverse_renaming(ProgPoint, IteRenamingProc, HowMany, RegName,
         make_renaming_instruction(CurrentName, RegName, Annotation)
     ),
     record_annotation(ProgPoint, Annotation, !IteAnnotationProc).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "rbmm.condition_renaming.m".
 
 %-----------------------------------------------------------------------------%

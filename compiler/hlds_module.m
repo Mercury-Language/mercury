@@ -47,19 +47,6 @@
 :- import_module pair.
 :- import_module set.
 
-:- implementation.
-
-:- import_module libs.options.
-:- import_module transform_hlds.mmc_analysis.
-:- import_module parse_tree.modules.
-
-:- import_module int.
-:- import_module string.
-
-%-----------------------------------------------------------------------------%
-
-:- interface.
-
 :- type module_info.
 
 :- type foreign_code_info
@@ -661,13 +648,17 @@
 
 :- implementation.
 
+:- import_module libs.options.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_imports.
 :- import_module parse_tree.prog_util.
+:- import_module transform_hlds.mmc_analysis.
 
 :- import_module assoc_list.
 :- import_module counter.
+:- import_module int.
 :- import_module require.
+:- import_module string.
 
 :- pred module_info_get_lambdas_per_context(module_info::in,
     map(prog_context, counter)::out) is det.

@@ -6246,6 +6246,12 @@ This option causes the compiler to halt immediately
 after syntax checking and not do any semantic checking
 if it finds any syntax errors in the program.
 
+% @sp 1
+% @item --halt-at-auto-parallel-failure
+% @findex --halt-at-auto-parallel-failure
+% This option causes the compiler to halt if it cannot perform
+% an auto-parallelization requested by a feedback file.
+
 @sp 1
 @item --inhibit-accumulator-warnings
 @findex --inhibit-accumulator-warnings

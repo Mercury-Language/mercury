@@ -71,13 +71,9 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
-:- import_module ll_backend.
-:- import_module ll_backend.liveness.
 :- import_module parse_tree.prog_out.
 
 :- import_module bool.
-:- import_module cord.
-:- import_module int.
 :- import_module map.
 
 %-----------------------------------------------------------------------------%

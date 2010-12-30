@@ -32,7 +32,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module multi_map.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -155,12 +154,11 @@
 :- import_module transform_hlds.rbmm.points_to_graph.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module counter.
-:- import_module int.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module string.
 :- import_module svmap.
 :- import_module svset.
 

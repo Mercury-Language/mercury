@@ -32,11 +32,9 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.code_model.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.code_util.
-:- import_module ll_backend.llds_out.
 :- import_module ll_backend.opt_util.
 :- import_module ll_backend.proc_gen.
 :- import_module ll_backend.unify_gen.
@@ -48,7 +46,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module string.

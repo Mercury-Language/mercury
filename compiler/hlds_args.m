@@ -17,9 +17,9 @@
 
 :- module hlds.hlds_args.
 :- interface.
-  
+
 :- import_module mdbcomp.prim_data.
-  
+
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -38,9 +38,9 @@
 	% away the specific calling convention that we use.
     %
 :- type proc_arg_vector(T).
-    
+
 %-----------------------------------------------------------------------------%
-    
+
     % Create a new proc_arg_vector from the given list.
     % If the first argument is `function' then the last element in the
     % list is used to set the return value field of the proc_arg_vector.
@@ -48,7 +48,7 @@
 :- func proc_arg_vector_init(pred_or_func, list(T)) = proc_arg_vector(T).
 
 %-----------------------------------------------------------------------------%
-% 
+%
 % Access predicates for the proc_arg_vector structure
 %
 
@@ -91,19 +91,19 @@
     % See comments at the head of polymorphism.m. for details.  If the
     % arg_vector is for a function then the last element in the list
     % will correspond to the function return value.
-    % 
+    %
 :- func proc_arg_vector_to_list(proc_arg_vector(T)) = list(T).
-    
+
     % Return the set of items in an arg_vector.
     %
 :- func proc_arg_vector_to_set(proc_arg_vector(T)) = set(T).
 
     % Apply a renaming to an arg_vector.
     % Useful for renaming variables etc.
-    % 
+    %
 :- pred apply_renaming_to_proc_arg_vector(map(T, T)::in,
     proc_arg_vector(T)::in, proc_arg_vector(T)::out) is det.
-    
+
     % proc_arg_vector_partition_poly_args(Vec, PolyArgs, NonPolyArgs):
     %
     % Partition the argument vector into two lists depending on whether
@@ -113,9 +113,9 @@
     list(T)::out, list(T)::out) is det.
 
     % proc_arg_vector_member(Vector, V):
-    % 
+    %
     % Succeeds iff V is a member of the argument vector `Vector'.
-    % 
+    %
 :- pred proc_arg_vector_member(proc_arg_vector(T)::in, T::in) is semidet.
 
     % Partition the given arg_vector into a list of arguments and
@@ -181,7 +181,7 @@
 %
 % Stuff related to the polymorphism pass
 %
-    
+
     % This type represents those arguments of a predicate or function
     % symbol that are introduced by the polymorphism transformation.
     % The arguments may be variables, types, modes, etc, depending on the
@@ -189,7 +189,7 @@
     %
     % Values of this type are used to pass around intermediate values
     % during the polymorphism transformation.
-    % 
+    %
 :- type poly_arg_vector(T).
 
 :- func poly_arg_vector_init = poly_arg_vector(T).
@@ -211,7 +211,7 @@
     % XXX ARGVEC - this is only temporary until the proc_info structure use
     % proc_arg_vectors.  We should then provide a predicate that merges a
     % poly_arg_vector with a proc_arg_vector.
-    % 
+    %
 :- func poly_arg_vector_to_list(poly_arg_vector(T)) = list(T).
 
 %-----------------------------------------------------------------------------%
@@ -219,13 +219,11 @@
 
 :- implementation.
 
-:- import_module parse_tree.prog_util.
-:- import_module parse_tree.prog_type.  
+:- import_module parse_tree.prog_type.
     % Required for apply_partial_map_to_list.
     % XXX That should really live in a different module.
 
 :- import_module require.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -233,47 +231,47 @@
     %
 :- type proc_arg_vector(T)
     --->    proc_arg_vector(
-                pav_instance_type_infos :: list(T),
                 % Type_infos for the unconstrained type variables in an
                 % instance declaration in the order which they first appear
-                % in the instance arguments.  For procedures that are not
-                % class methods this will always be the empty list.
-               
-                pav_instance_typeclass_infos :: list(T),
+                % in the instance arguments. For procedures that are not
+                % class methods, this will always be the empty list.
+                pav_instance_type_infos         :: list(T),
+
                 % Typeclass_infos for the class constraints on an instance
                 % declaration, in the order in which they appear in the
-                % declaration.  For procedures that are not class methods
+                % declaration. For procedures that are not class methods,
                 % this will always be the empty list.
-                
-                pav_univ_type_infos :: list(T),
+                pav_instance_typeclass_infos    :: list(T),
+
                 % Type_infos for unconstrained universally quantified type
                 % variables, in the order in which they first appear in the
                 % argument types.
-                
-                pav_exist_type_infos :: list(T),
+                pav_univ_type_infos             :: list(T),
+
                 % Type_infos for unconstrained existentially quantified type
                 % variables, in the order that the type variables first
                 % appear in the argument types.
-                
-                pav_univ_typeclass_infos :: list(T),
+                pav_exist_type_infos            :: list(T),
+
                 % Typeclass_infos for universally quantified constraints
                 % in the order in which the constraints appear in the class
                 % context.
-                
-                pav_exist_typeclass_infos :: list(T),
+                pav_univ_typeclass_infos        :: list(T),
+
                 % Typeclass_infos for existentially quantified constraints
                 % in the order in which the constraints appear in the class
                 % context.
-                
-                pav_user_args :: list(T),
+                pav_exist_typeclass_infos       :: list(T),
+
                 % The original procedure arguments.
                 % XXX Plus at the moment any arguments that may be
                 % introduced by transformations performed by the compiler.
                 % Eventually these should be separated out.
-                
-                pav_maybe_ret_value :: maybe(T)
-                % For predicates this field is no; for functions it
-                % corresponds to the function's return value.
+                pav_user_args                   :: list(T),
+
+                % For predicates this field is no; for functions
+                % it corresponds to the function's return value.
+                pav_maybe_ret_value             :: maybe(T)
             ).
 
 %-----------------------------------------------------------------------------%
@@ -303,21 +301,21 @@ proc_arg_vector_get_user_args(V)                = V ^ pav_user_args.
 proc_arg_vector_get_maybe_ret_value(V)          = V ^ pav_maybe_ret_value.
 
 proc_arg_vector_set_instance_type_infos(ITI, !V) :-
-    !:V = !.V ^ pav_instance_type_infos := ITI.
+    !V ^ pav_instance_type_infos := ITI.
 proc_arg_vector_set_instance_typeclass_infos(ITCI, !V) :-
-    !:V = !.V ^ pav_instance_typeclass_infos := ITCI.
+    !V ^ pav_instance_typeclass_infos := ITCI.
 proc_arg_vector_set_univ_type_infos(UTI, !V) :-
-    !:V = !.V ^ pav_univ_type_infos := UTI.
+    !V ^ pav_univ_type_infos := UTI.
 proc_arg_vector_set_exist_type_infos(ETI, !V) :-
-    !:V = !.V ^ pav_exist_type_infos := ETI.
+    !V ^ pav_exist_type_infos := ETI.
 proc_arg_vector_set_univ_typeclass_infos(UTCI, !V) :-
-    !:V = !.V ^ pav_univ_typeclass_infos := UTCI.
+    !V ^ pav_univ_typeclass_infos := UTCI.
 proc_arg_vector_set_exist_typeclass_infos(ETCI, !V) :-
-    !:V = !.V ^ pav_exist_typeclass_infos := ETCI.
+    !V ^ pav_exist_typeclass_infos := ETCI.
 proc_arg_vector_set_user_args(UA, !V) :-
-    !:V = !.V ^ pav_user_args := UA.
+    !V ^ pav_user_args := UA.
 proc_arg_vector_set_maybe_ret_value(RV, !V) :-
-    !:V = !.V ^ pav_maybe_ret_value := RV.
+    !V ^ pav_maybe_ret_value := RV.
 
 %-----------------------------------------------------------------------------%
 
@@ -405,8 +403,7 @@ proc_arg_vector_to_func_args(Vector, FuncArgs, FuncRetVal) :-
         MaybeRetValue = yes(FuncRetVal)
     ;
         MaybeRetValue = no,
-        unexpected(this_file, "Call to arg_vector_to_func_args/3 " ++
-            "with predicate.")
+        unexpected($module, $pred, "predicate")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -475,10 +472,9 @@ proc_arg_vector_map_corresponding(P, A, B, C) :-
         MaybeRetValA = no,
         MaybeRetValB = no
     ->
-        MaybeRetValC = no 
+        MaybeRetValC = no
     ;
-        unexpected(this_file, "proc_arg_vector_map_corresponding/4: " ++ 
-            "mismatched proc_arg_vectors")
+        unexpected($module, $pred, "mismatched proc_arg_vectors")
     ),
     C = proc_arg_vector(ITIC, ITCIC, UTIC, ETIC, UTCIC, ETCIC, ArgsC,
         MaybeRetValC).
@@ -520,11 +516,10 @@ proc_arg_vector_map_corresponding_foldl2(P, A, B, C, !Acc1, !Acc2) :-
     ;
         MaybeRetValA = no,
         MaybeRetValB = no
-    -> 
+    ->
         MaybeRetValC = no
     ;
-        unexpected(this_file, "proc_arg_vector_map_corresponding_foldl2/8: "
-            ++ "mismatched proc_arg_vectors")
+        unexpected($module, $pred, "mismatched proc_arg_vectors")
     ),
     C = proc_arg_vector(ITIC, ITCIC, UTIC, ETIC, UTCIC, ETCIC, ArgsC,
         MaybeRetValC).
@@ -549,11 +544,10 @@ proc_arg_vector_foldl3_corresponding(P, A, B, !Acc1, !Acc2, !Acc3) :-
     ;
         MaybeRetValA = no,
         MaybeRetValB = no
-    -> 
+    ->
         true
     ;
-        unexpected(this_file, "proc_arg_vector_fold3_corresponding/9: "
-            ++ "mismatched proc_arg_vectors")
+        unexpected($module, $pred, "mismatched proc_arg_vectors")
     ).
 
 proc_arg_vector_foldl2_corresponding3(P, A, B, C, !Acc1, !Acc2) :-
@@ -580,11 +574,10 @@ proc_arg_vector_foldl2_corresponding3(P, A, B, C, !Acc1, !Acc2) :-
         MaybeRetValA = no,
         MaybeRetValB = no,
         MaybeRetValC = no
-    -> 
+    ->
         true
     ;
-        unexpected(this_file, "proc_arg_vector_foldl2_corresponding3/8 "
-            ++ "mismatched proc_arg_vectors")
+        unexpected($module, $pred, "mismatched proc_arg_vectors")
     ).
 
 proc_arg_vector_foldl3_corresponding3(P, A, B, C, !Acc1, !Acc2, !Acc3) :-
@@ -611,11 +604,10 @@ proc_arg_vector_foldl3_corresponding3(P, A, B, C, !Acc1, !Acc2, !Acc3) :-
         MaybeRetValA = no,
         MaybeRetValB = no,
         MaybeRetValC = no
-    -> 
+    ->
         true
     ;
-        unexpected(this_file, "proc_arg_vector_foldl3_corresponding3/10 "
-            ++ "mismatched proc_arg_vectors")
+        unexpected($module, $pred, "mismatched proc_arg_vectors")
     ).
 
 proc_arg_vector_foldl4_corresponding3(P, A, B, C, !Acc1, !Acc2, !Acc3,
@@ -650,11 +642,10 @@ proc_arg_vector_foldl4_corresponding3(P, A, B, C, !Acc1, !Acc2, !Acc3,
         MaybeRetValA = no,
         MaybeRetValB = no,
         MaybeRetValC = no
-    -> 
+    ->
         true
     ;
-        unexpected(this_file, "proc_arg_vector_foldl4_corresponding3/12 "
-            ++ "mismatched proc_arg_vectors")
+        unexpected($module, $pred, "mismatched proc_arg_vectors")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -664,7 +655,7 @@ proc_arg_vector_foldl4_corresponding3(P, A, B, C, !Acc1, !Acc2, !Acc3,
 
     % Internally we represent a poly_arg_vector as a proc_arg_vector.
     % This ensures that poly_arg_vectors obey the same calling convention
-    % w.r.t introduced type_info and typeclass_info arguments that 
+    % w.r.t introduced type_info and typeclass_info arguments that
     % proc_arg_vectors do.  For the proc_arg_vectors that are
     % used to represent poly_arg_vectors we insist that the the last
     % two fields are the empty list and `no' respectively.
@@ -688,12 +679,6 @@ poly_arg_vector_set_exist_typeclass_infos(ETCI, !A) :-
 
 poly_arg_vector_to_list(V) =
     proc_arg_vector_to_list(V).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "hlds_args.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_args.

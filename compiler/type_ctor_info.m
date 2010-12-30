@@ -70,7 +70,6 @@
 :- import_module backend_libs.type_class_info.
 :- import_module check_hlds.        % needed for type_util, mode_util
 :- import_module check_hlds.type_util.
-:- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
@@ -84,7 +83,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module bool.

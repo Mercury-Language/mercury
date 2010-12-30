@@ -86,7 +86,6 @@
 
 :- implementation.
 
-:- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_foreign.   % for name_mangle
 
 :- import_module char.

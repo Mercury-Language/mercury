@@ -82,7 +82,6 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
-:- import_module libs.globals.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.exprn_aux.
 
@@ -90,7 +89,6 @@
 :- import_module cord.
 :- import_module int.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
 
 figure_out_output_vars(CI, GoalInfo, OutVars) :-

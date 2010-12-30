@@ -106,7 +106,6 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
-:- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_module.
 :- import_module hlds.hlds_out.hlds_out_pred.
 :- import_module hlds.hlds_out.hlds_out_util.
@@ -129,7 +128,6 @@
 
 :- import_module assoc_list.
 :- import_module cord.
-:- import_module getopt_io.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.

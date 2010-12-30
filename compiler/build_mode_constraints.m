@@ -195,12 +195,10 @@
 :- import_module hlds.hlds_desc.
 
 :- import_module bool.
-:- import_module cord.
 :- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
-:- import_module pair.
 :- import_module require.
 :- import_module string.
 :- import_module svbimap.
@@ -213,19 +211,17 @@
 
 :- type conj_constraints_info
     --->    conj_constraints_info(
+                % Keys are program variables local to the conjunction.
+                % They are mapped to constraint variables representing
+                % the proposition that they are produced at each conjunct,
+                % but only for conjuncts they appear in/are nonlocal to.
                 locals_positions    ::  conjunct_production_map,
-                    % Keys are program variables local to the
-                    % conjunction. They are mapped to constraint
-                    % variables representing the proposition that they
-                    % are produced at each conjunct, but only for
-                    % conjuncts they appear in/are nonlocal to.
 
+                % Keys are program variables nonlocal to the conjunction.
+                % They are mapped to constraint variables representing
+                % the proposition that they are produced at each conjunct,
+                % but only for conjuncts they appear in/are nonlocal to.
                 nonlocals_positions ::  conjunct_production_map
-                    % Keys are program variables nonlocal to the
-                    % conjunction. They are mapped to constraint
-                    % variables representing the proposition that they
-                    % are produced at each conjunct, but only for
-                    % conjuncts they appear in/are nonlocal to.
             ).
 
     % Map from program variables to corresponding constraint variables.

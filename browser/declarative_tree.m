@@ -49,7 +49,6 @@
 :- pred trace_implicit_tree_info(wrap(S)::in, edt_node(R)::in,
     implicit_tree_info::out) is semidet <= annotated_trace(S, R).
 
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -64,7 +63,6 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module cord.
 :- import_module deconstruct.
 :- import_module exception.
 :- import_module int.

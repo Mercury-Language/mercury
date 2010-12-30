@@ -150,34 +150,28 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.instmap.
-:- import_module libs.compiler_util.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
-:- import_module transform_hlds.implicit_parallelism.
 
 :- import_module bool.
 :- import_module int.
-:- import_module io.
 :- import_module list.
 :- import_module pair.
-:- import_module map.
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
 :- import_module set.
 :- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
-
-    % This section contains predicates which apply the first part of the
-    % transformation i.e. creating the specialized version of the
-    % original predicate.
-
+%
+% This section contains predicates which apply the first part of the
+% transformation, i.e. creating the specialized version of the
+% original predicate.
+%
 
 control_distance_granularity(!ModuleInfo, Distance) :-
     module_info_get_valid_predids(PredIds, !ModuleInfo),
@@ -830,12 +824,12 @@ create_specialized_pred_name(Prefix, Distance, !PredName) :-
 granularity_prefix = "DistanceGranularityFor".
 
 %-----------------------------------------------------------------------------%
-
-    % This section contains predicates that make the granularity control
-    % transparent to the original procedure's callers by replacing the recursive
-    % calls in the body of the original procedure with calls to the specialized
-    % version.
-
+%
+% This section contains predicates that make the granularity control
+% transparent to the original procedure's callers by replacing the recursive
+% calls in the body of the original procedure with calls to the specialized
+% version.
+%
 
     % Update the recursive calls in each procedure in the list so that the
     % pred_id called is the one of the specialized procedure.

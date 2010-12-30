@@ -42,14 +42,9 @@
 :- import_module backend_libs.rtti.
 :- import_module backend_libs.switch_util.
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_llds.
-:- import_module hlds.hlds_out.
-:- import_module hlds.hlds_pred.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module ll_backend.code_gen.
 :- import_module ll_backend.switch_case.
-:- import_module ll_backend.trace_gen.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -60,7 +55,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 

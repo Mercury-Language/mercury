@@ -52,7 +52,6 @@
 
 :- import_module check_hlds.inst_match.
 :- import_module hlds.goal_form.
-:- import_module hlds.goal_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 

@@ -342,12 +342,10 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_code_util.
-:- import_module hlds.hlds_out.
 :- import_module libs.options.
 :- import_module parse_tree.prog_type.
 
 :- import_module char.
-:- import_module cord.
 :- import_module int.
 :- import_module io.
 :- import_module require.
@@ -507,7 +505,7 @@ type_ctor_cat_to_switch_cat(CtorCat) = SwitchCat :-
         ),
         % You can't have a switch without at least two arms, or without values
         % that can be deconstructed.
-        unexpected(this_file, "type_ctor_cat_to_switch_cat: bad type ctor cat")
+        unexpected($module, $pred, "bad type ctor cat")
     ).
 
 estimate_switch_tag_test_cost(Tag) = Cost :-

@@ -254,7 +254,6 @@
 :- import_module libs.trace_params.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.layout_out.
-:- import_module ll_backend.llds_out.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_type.
 

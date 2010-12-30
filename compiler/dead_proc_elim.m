@@ -93,7 +93,6 @@
 :- import_module int.
 :- import_module io.
 :- import_module maybe.
-:- import_module pair.
 :- import_module queue.
 :- import_module require.
 :- import_module set_tree234.

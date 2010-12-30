@@ -67,7 +67,6 @@
 :- import_module bool.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module svmap.

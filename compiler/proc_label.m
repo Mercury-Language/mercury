@@ -46,7 +46,6 @@
 
 :- implementation.
 
-:- import_module backend_libs.rtti.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.

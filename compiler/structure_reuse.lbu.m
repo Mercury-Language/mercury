@@ -45,7 +45,6 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module list.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 

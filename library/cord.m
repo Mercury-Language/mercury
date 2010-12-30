@@ -222,7 +222,6 @@
 :- implementation.
 
 :- import_module int.
-:- import_module require.
 
 :- type cord(T)
     --->    empty_cord

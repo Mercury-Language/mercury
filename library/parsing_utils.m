@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: parsing_utils.m
 % Authors: Ralph Becket <rafe@csse.unimelb.edu.au>, maclarty
 % Stability: low
 %
 % Utilities for recursive descent parsers.  Parsers take at least three
-% arguments: a source (src) containing the input string and a parser
-% state (ps) input/output pair tracking the current offset into the input.
+% arguments: a source (src) containing the input string and a parser state (ps)
+% input/output pair tracking the current offset into the input.
 %
 % Call parse(InputString, SkipWS, Parser, Result) to parse an input string
 % and return an error context and message if parsing failed.
@@ -41,11 +41,8 @@
 :- interface.
 
 :- import_module char.
-:- import_module float.
-:- import_module int.
 :- import_module list.
 :- import_module maybe.
-:- import_module string.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%
@@ -55,7 +52,7 @@
 :- type src.
 
     % The parser "state", passed around in DCG arguments.
-    % 
+    %
 :- type ps.
 
     % These types and insts are useful for specifying "standard" parser
@@ -92,12 +89,12 @@
     % the parser got in the input string is returned.
     %
 :- pred parse(string::in, skip_whitespace_func::in,
-        parser(T)::in(parser), parse_result(T)::out) is cc_multi.
+    parser(T)::in(parser), parse_result(T)::out) is cc_multi.
 
     % As above but using the default whitespace parser.
     %
 :- pred parse(string::in, parser(T)::in(parser), parse_result(T)::out)
-        is cc_multi.
+    is cc_multi.
 
     % Construct a new parser source and state from a string, also specifying
     % a function for skipping over whitespace (several primitive parsers
@@ -106,7 +103,7 @@
     % as well).
     %
 :- pred new_src_and_ps(string::in, skip_whitespace_func::in,
-        src::out, ps::out) is det.
+    src::out, ps::out) is det.
 
     % Construct a new parser source and state from a string (the default
     % whitespace parser is used).
@@ -116,8 +113,7 @@
     % Obtain the current offset from the start of the input string
     % (the first character in the input has offset 0).
     %
-:- pred current_offset(src::in, int::out,
-        ps::in, ps::out) is det.
+:- pred current_offset(src::in, int::out, ps::in, ps::out) is det.
 
     % Compute a structure from the parser source which can be used to
     % convert offsets into line numbers and positions in the file (this
@@ -132,7 +128,7 @@
     % position 1).
     %
 :- pred offset_to_line_number_and_position(line_numbers::in, int::in,
-        int::out, int::out) is det.
+    int::out, int::out) is det.
 
     % input_substring(Src, StartOffset, EndOffsetPlusOne, Substring):
     % Copy the substring from the input occupying the offsets
@@ -142,31 +138,29 @@
 
     % Read the next char.
     %
-:- pred next_char(src::in, char::out,
-        ps::in, ps::out) is semidet.
+:- pred next_char(src::in, char::out, ps::in, ps::out) is semidet.
 
     % Match a char from the given string.
     %
 :- pred char_in_class(string::in, src::in, char::out,
-        ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 
     % Match a string exactly and any subsequent whitespace.
     %
-:- pred punct(string::in, src::in, unit::out,
-        ps::in, ps::out) is semidet.
+:- pred punct(string::in, src::in, unit::out, ps::in, ps::out) is semidet.
 
     % keyword(IdChars, Keyword, Src, _, !PS) matches Keyword exactly (i.e., it
     % must not be followed by any character in IdChars) and any subsequent
     % whitespace.
     %
 :- pred keyword(string::in, string::in, src::in, unit::out,
-        ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 
     % ikeyword(IdChars, Keyword, Src, _, !PS)
     % Case-insensitive version of keyword/6.
     %
 :- pred ikeyword(string::in, string::in, src::in, unit::out,
-        ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 
     % identifier(InitIdChars, IdChars, Src, Identifier, !PS) matches the next
     % identifier (result in Identifier) comprising a char from InitIdChars
@@ -174,24 +168,23 @@
     % is consumed.
     %
 :- pred identifier(string::in, string::in, src::in, string::out,
-        ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 
     % Consume any whitespace (defined as a sequence of characters
     % satisfying char.is_whitespace).
     %
 :- pred whitespace(src::in, unit::out,
-        ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 
     % Consume any input up to, and including, the next newline character
     % marking the end of the current line.
     %
 :- pred skip_to_eol(src::in, unit::out,
-        ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 
     % Succeed if we have reached the end of the input.
     %
-:- pred eof(src::in, unit::out,
-        ps::in, ps::out) is semidet.
+:- pred eof(src::in, unit::out, ps::in, ps::out) is semidet.
 
     % Parse a float literal matching [-][0-9]+[.][0-9]+([Ee][-][0-9]+)?
     % followed by any whitespace.  The float_literal_as_string version simply
@@ -201,9 +194,9 @@
     % can be perfectly represented as Mercury floats.
     %
 :- pred float_literal_as_string(src::in, string::out,
-        ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 :- pred float_literal(src::in, float::out,
-        ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 
     % Parse an int literal matching [-][0-9]+, not followed by [.][0-9]+,
     % followed by any whitespace.  The int_literal_as_string version simply
@@ -212,10 +205,10 @@
     % number in question cannot be represented as a Mercury int.
     %
 :- pred int_literal_as_string(src::in, string::out,
-        ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 :- pred int_literal(src::in, int::out,
-        ps::in, ps::out) is semidet.
-    
+    ps::in, ps::out) is semidet.
+
     % Parse an string literal.  The string argument is the quote character.
     % A backslash (\) character in the string makes the next character
     % literal (e.g., for embedding quotes).  These 'escaped' characters
@@ -223,20 +216,20 @@
     % Any following whitespace is also consumed.
     %
 :- pred string_literal(char::in, src::in, string::out,
-        ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 
     % optional(P, Src, Result, !PS) returns Result = yes(X), if P(Src, X, !PS),
     % or Result = no if P does not succeed.
     %
 :- pred optional(parser(T)::in(parser), src::in, maybe(T)::out,
-        ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 
     % zero_or_more(P, Src, Xs, !PS) returns the list of results Xs obtained
     % by repeatedly applying P until P fails.  The nth item in Xs is
     % the result from the nth application of P.
     %
 :- pred zero_or_more(parser(T)::in(parser), src::in, list(T)::out,
-        ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 
     % one_or_more(P, Src, Xs, !PS) returns the list of results Xs obtained
     % by repeatedly applying P until P fails.  The nth item in Xs is
@@ -244,26 +237,26 @@
     % least once.
     %
 :- pred one_or_more(parser(T)::in(parser), src::in, list(T)::out,
-        ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 
     % brackets(L, R, P, Src, X, !PS) is equivalent to
     %   punct(L, Src, _, !PS), P(Src, X, !PS), punct(R, Src, _, !PS).
     %
 :- pred brackets(string::in, string::in, parser(T)::in(parser), src::in,
-        T::out, ps::in, ps::out) is semidet.
+    T::out, ps::in, ps::out) is semidet.
 
     % separated_list(Separator, P, Src, Xs, !PS) is like
     % zero_or_more(P, Src, Xs, !PS) except that successive applications of
     % P must be separated by punct(Separator, Src, _, !PS).
     %
-:- pred separated_list(string::in, parser(T)::in(parser), src::in, 
-        list(T)::out, ps::in, ps::out) is semidet.
+:- pred separated_list(string::in, parser(T)::in(parser), src::in,
+    list(T)::out, ps::in, ps::out) is semidet.
 
     % comma_separated_list(P, Src, Xs) is the same as
     %   separated_list(",", P, Src, Xs).
     %
 :- pred comma_separated_list(parser(T)::in(parser), src::in, list(T)::out,
-        ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 
     % Declaratively this predicate is equivalent to false.  Operationally
     % it will record an error message that will be returned by parse/4
@@ -285,14 +278,14 @@
     % if P(Src, X, !S, !PS), or Result = no if P does not succeed.
     %
 :- pred optional(parser_with_state(T, S)::in(parser_with_state), src::in,
-        maybe(T)::out, S::in, S::out, ps::in, ps::out) is semidet.
+    maybe(T)::out, S::in, S::out, ps::in, ps::out) is semidet.
 
     % zero_or_more(P, Src, Xs, !S, !PS) returns the list of results Xs obtained
     % by repeatedly applying P until P fails.  The nth item in Xs is
     % the result from the nth application of P.
     %
 :- pred zero_or_more(parser_with_state(T, S)::in(parser_with_state), src::in,
-        list(T)::out, S::in, S::out, ps::in, ps::out) is semidet.
+    list(T)::out, S::in, S::out, ps::in, ps::out) is semidet.
 
     % one_or_more(P, Src, Xs, !S, !PS) returns the list of results Xs obtained
     % by repeatedly applying P until P fails.  The nth item in Xs is
@@ -300,28 +293,28 @@
     % least once.
     %
 :- pred one_or_more(parser_with_state(T, S)::in(parser_with_state), src::in,
-        list(T)::out, S::in, S::out, ps::in, ps::out) is semidet.
+    list(T)::out, S::in, S::out, ps::in, ps::out) is semidet.
 
     % brackets(L, R, P, Src, X, !S, !PS) is equivalent to
     %   punct(L, Src, _, !PS), P(Src, X, !S, !PS), punct(R, Src, _, !PS).
     %
 :- pred brackets(string::in, string::in,
-        parser_with_state(T, S)::in(parser_with_state), src::in,
-        T::out, S::in, S::out, ps::in, ps::out) is semidet.
+    parser_with_state(T, S)::in(parser_with_state), src::in,
+    T::out, S::in, S::out, ps::in, ps::out) is semidet.
 
     % separated_list(Separator, P, Src, Xs, !S, !PS) is like
     % zero_or_more(P, Src, Xs, !S, !PS) except that successive applications of
     % P must be separated by punct(Separator, Src, _, !PS).
     %
 :- pred separated_list(string::in,
-        parser_with_state(T, S)::in(parser_with_state),
-        src::in, list(T)::out, S::in, S::out, ps::in, ps::out) is semidet.
+    parser_with_state(T, S)::in(parser_with_state),
+    src::in, list(T)::out, S::in, S::out, ps::in, ps::out) is semidet.
 
     % comma_separated_list(P, Src, Xs, !S, !PS) is the same as
     %   separated_list(",", P, Src, Xs, !S, !PS).
     %
 :- pred comma_separated_list(parser_with_state(T, S)::in(parser_with_state),
-        src::in, list(T)::out, S::in, S::out, ps::in, ps::out) is semidet.
+    src::in, list(T)::out, S::in, S::out, ps::in, ps::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -329,7 +322,9 @@
 :- implementation.
 
 :- import_module array.
+:- import_module int.
 :- import_module mutvar.
+:- import_module string.
 
     % The parser "state" is just the offset into the input string.
     %
@@ -380,7 +375,7 @@ parse(InputString, SkipWS, Parser, Result) :-
             offset_to_line_number_and_position(src_to_line_numbers(Src),
                 Offset, Line, Col),
             Result0 = error(Msg, Line, Col),
-            % We make parse/4 cc_multi because declaratively 
+            % We make parse/4 cc_multi because declaratively
             % parse(Str, SkipWS, Parser, error(MaybeMsg, Line, Col)) is true
             % for all MaybeMsg, Line and Col iff
             %   new_src_and_ps(Str, SkipWS, Src, PS0),
@@ -402,7 +397,7 @@ new_src_and_ps(InputString, SkipWS, Src, PS) :-
     promise_pure (
         impure new_mutvar(fail_message_info(0, no), ErrorInfoMutVar),
         impure new_mutvar(0, FurthestOffsetMutvar),
-        Src = src(string.length(InputString), InputString, SkipWS,  
+        Src = src(string.length(InputString), InputString, SkipWS,
             FurthestOffsetMutvar, ErrorInfoMutVar),
         PS = 0
     ).
@@ -455,7 +450,7 @@ offset_to_line_number_and_position(LineNos, Offset, LineNo, Pos) :-
 %-----------------------------------------------------------------------------%
 
 :- pred offset_to_line_number_and_position_2(line_numbers::in, int::in,
-        int::in, int::in, int::out, int::out) is det.
+    int::in, int::in, int::out, int::out) is det.
 
     % Perform a binary search looking for the offset of the line number
     % of the line containing Offset.
@@ -524,8 +519,7 @@ input_substring(Src, Start, EndPlusOne, Substring) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred match_string(string::in, src::in,
-        ps::in, ps::out) is semidet.
+:- pred match_string(string::in, src::in, ps::in, ps::out) is semidet.
 
 match_string(MatchStr, Src, PS, PS + N) :-
     promise_pure (
@@ -536,7 +530,7 @@ match_string(MatchStr, Src, PS, PS + N) :-
     ).
 
 :- pred match_string_2(int::in, int::in, string::in, int::in, string::in)
-        is semidet.
+    is semidet.
 
 match_string_2(N, I, MatchStr, Offset, Str) :-
     ( if I < N then
@@ -546,8 +540,7 @@ match_string_2(N, I, MatchStr, Offset, Str) :-
         true
     ).
 
-:- pred imatch_string(string::in, src::in,
-        ps::in, ps::out) is semidet.
+:- pred imatch_string(string::in, src::in, ps::in, ps::out) is semidet.
 
 imatch_string(MatchStr, Src, PS, PS + N) :-
     promise_pure (
@@ -558,7 +551,7 @@ imatch_string(MatchStr, Src, PS, PS + N) :-
     ).
 
 :- pred imatch_string_2(int::in, int::in, string::in, int::in, string::in)
-        is semidet.
+    is semidet.
 
 imatch_string_2(N, I, MatchStr, Offset, Str) :-
     ( if I < N then
@@ -600,12 +593,11 @@ zero_or_more(P, Src, Result, !PS) :-
     zero_or_more_2(P, Src, [], RevResult, !PS),
     Result = list.reverse(RevResult).
 
-
-    % We use an auxiliary predicate to make this tail recursive.  This can
-    % be an issue with long sequences.
+    % We use an auxiliary predicate to make this tail recursive.
+    % This can be an issue with long sequences.
     %
 :- pred zero_or_more_2(parser(T)::in(parser), src::in,
-        list(T)::in, list(T)::out, ps::in, ps::out) is semidet.
+    list(T)::in, list(T)::out, ps::in, ps::out) is semidet.
 
 zero_or_more_2(P, Src, !RevResult, !PS) :-
     ( if P(Src, X, !PS) then
@@ -621,9 +613,8 @@ zero_or_more(P, Src, Result, !S, !PS) :-
     zero_or_more_2(P, Src, [], RevResult, !S, !PS),
     Result = list.reverse(RevResult).
 
-
 :- pred zero_or_more_2(parser_with_state(T, S)::in(parser_with_state), src::in,
-        list(T)::in, list(T)::out, S::in, S::out, ps::in, ps::out) is semidet.
+    list(T)::in, list(T)::out, S::in, S::out, ps::in, ps::out) is semidet.
 
 zero_or_more_2(P, Src, !RevResult, !S, !PS) :-
     ( if P(Src, X, !S, !PS) then
@@ -664,7 +655,8 @@ brackets(L, R, P, Src, Result, !S, !PS) :-
 %-----------------------------------------------------------------------------%
 
 separated_list(Separator, P, Src, Result, !PS) :-
-    CommaP = ( pred(CommaPSrc::in, CommaPX::out, !.PS::in, !:PS::out)
+    CommaP = (
+        pred(CommaPSrc::in, CommaPX::out, !.PS::in, !:PS::out)
             is semidet :-
         punct(Separator, CommaPSrc, _, !PS),
         P(CommaPSrc, CommaPX, !PS)
@@ -676,9 +668,9 @@ separated_list(Separator, P, Src, Result, !PS) :-
 %-----------------------------------------------------------------------------%
 
 separated_list(Separator, P, Src, Result, !S, !PS) :-
-    CommaP = ( pred(CommaPSrc::in, CommaPX::out,
-            !.S::in, !:S::out, !.PS::in, !:PS::out)
-            is semidet :-
+    CommaP = (
+        pred(CommaPSrc::in, CommaPX::out, !.S::in, !:S::out,
+            !.PS::in, !:PS::out) is semidet :-
         punct(Separator, CommaPSrc, _, !PS),
         P(CommaPSrc, CommaPX, !S, !PS)
     ),
@@ -798,8 +790,7 @@ int_literal(Src, Int, !PS) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred digits(int::in, src::in, unit::out,
-        ps::in, ps::out) is semidet.
+:- pred digits(int::in, src::in, unit::out, ps::in, ps::out) is semidet.
 
 digits(Base, Src, unit, !PS) :-
     next_char(Src, C, !PS),
@@ -807,9 +798,7 @@ digits(Base, Src, unit, !PS) :-
     D < Base,
     digits_2(Base, Src, _, !PS).
 
-
-:- pred digits_2(int::in, src::in, unit::out,
-        ps::in, ps::out) is semidet.
+:- pred digits_2(int::in, src::in, unit::out, ps::in, ps::out) is semidet.
 
 digits_2(Base, Src, unit, !PS) :-
     ( if
@@ -835,7 +824,7 @@ string_literal(QuoteChar, Src, String, !PS) :-
 %-----------------------------------------------------------------------------%
 
 :- pred string_literal_2(src::in, char::in, unit::out,
-        ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 
 string_literal_2(Src, QuoteChar, unit, !PS) :-
     next_char(Src, C, !PS),
@@ -861,7 +850,7 @@ identifier(InitIdChars, IdChars, Src, Identifier, !PS) :-
 %-----------------------------------------------------------------------------%
 
 :- pred identifier_2(string::in, src::in, unit::out,
-        ps::in, ps::out) is semidet.
+    ps::in, ps::out) is semidet.
 
 identifier_2(IdChars, Src, unit, !PS) :-
     ( if char_in_class(IdChars, Src, _, !PS) then

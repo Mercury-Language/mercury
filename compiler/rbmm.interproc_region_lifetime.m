@@ -60,20 +60,14 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
-:- import_module hlds.arg_info.
-:- import_module hlds.goal_path.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
-:- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_type.
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.rbmm.points_to_graph.
 :- import_module transform_hlds.smm_common.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -81,11 +75,8 @@
 :- import_module require.
 :- import_module set.
 :- import_module solutions.
-:- import_module string.
 :- import_module svmap.
 :- import_module svset.
-:- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 %

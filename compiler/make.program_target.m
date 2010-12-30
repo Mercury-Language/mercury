@@ -46,7 +46,6 @@
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 :- import_module transform_hlds.

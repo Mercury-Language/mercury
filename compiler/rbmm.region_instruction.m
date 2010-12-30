@@ -26,7 +26,6 @@
 
 :- import_module list.
 :- import_module map.
-:- import_module string.
 
 :- type region_instr_table
     ==      map(pred_proc_id, region_instr_proc).
@@ -108,20 +107,15 @@
 
 :- implementation.
 
-:- import_module hlds.goal_path.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_llds.
 :- import_module transform_hlds.rbmm.points_to_graph.
 
-:- import_module bool.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module string.
 :- import_module svmap.
 :- import_module svset.
-:- import_module term.
-:- import_module varset.
 
 introduce_region_instructions(ModuleInfo, RptaInfoTable, ExecPathTable,
         LRBeforeTable, LRAfterTable, VoidVarRegionTable, BornRTable,

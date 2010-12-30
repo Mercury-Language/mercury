@@ -93,7 +93,6 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.module_cmds.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io.
 :- import_module transform_hlds.ctgc.
@@ -108,13 +107,9 @@
 :- import_module transform_hlds.termination.
 :- import_module transform_hlds.trailing_analysis.
 
-:- import_module assoc_list.
 :- import_module cord.
 :- import_module list.
-:- import_module map.
-:- import_module pair.
 :- import_module set.
-:- import_module term.
 
 %-----------------------------------------------------------------------------%
 

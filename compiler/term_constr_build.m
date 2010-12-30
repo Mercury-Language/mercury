@@ -85,7 +85,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module std_util.
-:- import_module string.
 :- import_module svmap.
 :- import_module svvarset.
 :- import_module term.

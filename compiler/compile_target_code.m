@@ -232,20 +232,15 @@
 
 :- implementation.
 
-:- import_module hlds.
-
-:- import_module hlds.passes_aux.
 :- import_module libs.globals.
 :- import_module libs.handle_options.
 :- import_module libs.options.
-:- import_module libs.timestamp.
 :- import_module libs.trace_params.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.write_deps_file.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_out.
 
 :- import_module dir.
 :- import_module getopt_io.

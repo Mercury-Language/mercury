@@ -154,14 +154,12 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_goal.
 % :- import_module mode_robdd.tfeir.
 :- import_module mode_robdd.tfeirn.
 % :- import_module mode_robdd.check.
 
 :- import_module bimap.
 :- import_module bool.
-:- import_module cord.
 :- import_module list.
 :- import_module map.
 :- import_module require.

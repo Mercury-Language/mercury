@@ -172,7 +172,6 @@
 :- implementation.
 
 :- import_module mdb.parse.
-:- import_module mdb.util.
 :- import_module mdb.frame.
 :- import_module mdb.sized_pretty.
 

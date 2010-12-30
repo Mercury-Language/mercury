@@ -35,7 +35,6 @@
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.goal_util.
 :- import_module libs.options.
 :- import_module parse_tree.prog_data.
 

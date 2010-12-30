@@ -1803,13 +1803,10 @@
 
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
-:- import_module cord.
 :- import_module map.
 :- import_module require.
-:- import_module string.
 :- import_module svmap.
 :- import_module svvarset.
 :- import_module varset.

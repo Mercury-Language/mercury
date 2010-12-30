@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2009 The University of Melbourne.
+% Copyright (C) 1995-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -98,11 +98,6 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
-:- import_module libs.globals.
-:- import_module libs.options.
-
-:- import_module getopt_io.
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
@@ -114,47 +109,61 @@
 % is constant as far as the C compiler is concerned -- specifically,
 % determine whether it can be used as the initializer of a C static constant.
 
-const_is_constant(llconst_true, _, yes).
-const_is_constant(llconst_false, _, yes).
-const_is_constant(llconst_int(_), _, yes).
-const_is_constant(llconst_foreign(_, _), _, yes).
-const_is_constant(llconst_float(_), ExprnOpts, IsConst) :-
-    SGFloats = ExprnOpts ^ static_ground_floats,
+const_is_constant(Const, ExprnOpts, IsConst) :-
     (
-        SGFloats = have_static_ground_floats,
+        ( Const = llconst_true
+        ; Const = llconst_false
+        ; Const = llconst_int(_)
+        ; Const = llconst_foreign(_, _)
+        ; Const = llconst_string(_)
+        ; Const = llconst_multi_string(_)
+        ; Const = llconst_data_addr(_, _)
+        ),
         IsConst = yes
     ;
-        SGFloats = do_not_have_static_ground_floats,
-        IsConst = no
+        Const = llconst_float(_),
+        SGFloats = ExprnOpts ^ static_ground_floats,
+        (
+            SGFloats = have_static_ground_floats,
+            IsConst = yes
+        ;
+            SGFloats = do_not_have_static_ground_floats,
+            IsConst = no
+        )
+    ;
+        Const = llconst_code_addr(CodeAddr),
+        addr_is_constant(CodeAddr, ExprnOpts, IsConst)
     ).
-const_is_constant(llconst_string(_), _, yes).
-const_is_constant(llconst_multi_string(_), _, yes).
-const_is_constant(llconst_code_addr(CodeAddr), ExprnOpts, IsConst) :-
-    addr_is_constant(CodeAddr, ExprnOpts, IsConst).
-const_is_constant(llconst_data_addr(_, _), _, yes).
 
 :- pred addr_is_constant(code_addr::in, exprn_opts::in, bool::out) is det.
 
-addr_is_constant(code_label(Label), ExprnOpts, IsConst) :-
-    label_is_constant(Label, ExprnOpts, IsConst).
-addr_is_constant(code_imported_proc(_), ExprnOpts, IsConst) :-
-    StaticCodeAddrs = ExprnOpts ^ static_code_addresses,
+addr_is_constant(CodeAddr, ExprnOpts, IsConst) :-
     (
-        StaticCodeAddrs = have_static_code_addresses,
-        IsConst = yes
+        CodeAddr = code_label(Label),
+        label_is_constant(Label, ExprnOpts, IsConst)
     ;
-        StaticCodeAddrs = do_not_have_static_code_addresses,
+        CodeAddr = code_imported_proc(_),
+        StaticCodeAddrs = ExprnOpts ^ static_code_addresses,
+        (
+            StaticCodeAddrs = have_static_code_addresses,
+            IsConst = yes
+        ;
+            StaticCodeAddrs = do_not_have_static_code_addresses,
+            IsConst = no
+        )
+    ;
+        ( CodeAddr = code_succip
+        ; CodeAddr = do_succeed(_)
+        ; CodeAddr = do_redo
+        ; CodeAddr = do_fail
+        ; CodeAddr = do_trace_redo_fail_shallow
+        ; CodeAddr = do_trace_redo_fail_deep
+        ; CodeAddr = do_call_closure(_)
+        ; CodeAddr = do_call_class_method(_)
+        ; CodeAddr = do_not_reached
+        ),
         IsConst = no
     ).
-addr_is_constant(code_succip, _, no).
-addr_is_constant(do_succeed(_), _, no).
-addr_is_constant(do_redo, _, no).
-addr_is_constant(do_fail, _, no).
-addr_is_constant(do_trace_redo_fail_shallow, _, no).
-addr_is_constant(do_trace_redo_fail_deep, _, no).
-addr_is_constant(do_call_closure(_), _, no).
-addr_is_constant(do_call_class_method(_), _, no).
-addr_is_constant(do_not_reached, _, no).
 
 :- pred label_is_constant(label::in, exprn_opts::in, bool::out) is det.
 

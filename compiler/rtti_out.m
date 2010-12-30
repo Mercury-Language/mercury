@@ -114,7 +114,6 @@
 :- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module ll_backend.llds_out.llds_out_data.
 :- import_module ll_backend.llds_out.llds_out_file.
-:- import_module ll_backend.llds_out.llds_out_instr.
 :- import_module parse_tree.prog_foreign.
 
 :- import_module assoc_list.

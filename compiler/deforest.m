@@ -66,7 +66,6 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type_subst.
-:- import_module parse_tree.prog_util.
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.inlining.
 :- import_module transform_hlds.pd_cost.

@@ -46,7 +46,6 @@
 
 :- import_module int.
 :- import_module list.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 

@@ -46,14 +46,10 @@
 :- implementation.
 
 :- import_module check_hlds.mode_util.
-:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
-:- import_module libs.globals.
-:- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_type.
 
-:- import_module bool.
 :- import_module char.
 :- import_module map.
 :- import_module require.
@@ -78,7 +74,7 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
         Tag = string_tag(String)
     ;
         ConsId = impl_defined_const(_),
-        unexpected(this_file, "cons_id_to_tag: implementation_defined_const")
+        unexpected($module, $pred, "implementation_defined_const")
     ;
         ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
@@ -127,7 +123,7 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
             ; TypeBody = hlds_solver_type(_, _)
             ; TypeBody = hlds_abstract_type(_)
             ),
-            unexpected(this_file, "cons_id_to_tag: type is not d.u. type")
+            unexpected($module, $pred, "type is not d.u. type")
         )
     ).
 
@@ -149,7 +145,7 @@ type_to_string(Type, String) :-
         string.int_to_string(TypeArity, TypeArityString),
         String = TypeNameString ++ "__arity" ++ TypeArityString ++ "__"
     ;
-        unexpected(this_file, "type_to_string: invalid type")
+        unexpected($module, $pred, "invalid type")
     ).
 
 %----------------------------------------------------------------------------%
@@ -172,12 +168,6 @@ is_valid_mutable_inst_2(ModuleInfo, defined_inst(InstName), Expansions0) :-
     Expansions = set.insert(Expansions0, InstName),
     inst_lookup(ModuleInfo, InstName, Inst),
     is_valid_mutable_inst_2(ModuleInfo, Inst, Expansions).
-
-%----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "hlds_code_util.m".
 
 %----------------------------------------------------------------------------%
 :- end_module hlds_code_util.

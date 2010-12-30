@@ -346,15 +346,10 @@
 :- import_module bool.
 :- import_module char.
 :- import_module dir.
-:- import_module exception.
 :- import_module getopt_io.
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
-:- import_module thread.
-:- import_module thread.channel.
-:- import_module unit.
-:- import_module univ.
 
 %-----------------------------------------------------------------------------%
 

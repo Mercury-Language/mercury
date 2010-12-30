@@ -127,7 +127,6 @@
 
 :- import_module bool.
 :- import_module int.
-:- import_module io.
 :- import_module require.
 :- import_module term.
 
@@ -161,7 +160,7 @@ pd_info_get_unfold_info(PDInfo, UnfoldInfo) :-
         MaybeUnfoldInfo = yes(UnfoldInfo)
     ;
         MaybeUnfoldInfo = no,
-        unexpected(this_file, "pd_info_get_unfold_info: unfold_info not set.")
+        unexpected($module, $pred, "unfold_info not set")
     ).
 pd_info_get_goal_version_index(PDInfo, PDInfo ^ pdi_goal_version_index).
 pd_info_get_versions(PDInfo, PDInfo ^ pdi_versions).
@@ -261,10 +260,12 @@ pd_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !PDInfo) :-
 :- type pd_branch_info(T)
     --->    pd_branch_info(
                 branch_info_map(T),
-                set(T),     % variables for which we want
-                            % extra left context
-                set(T)      % outputs for which we have no
-                            % extra information
+
+                % variables for which we want extra left context
+                set(T),
+
+                % outputs for which we have no extra information
+                set(T)
             ).
 
     % Vars for which there is extra information at the end
@@ -424,10 +425,12 @@ pd_info_incr_size_delta(Delta1, !PDInfo) :-
                 mv_is_exact         :: version_is_exact,
                 mv_ppid             :: pred_proc_id,
                 mv_version          :: version_info,
+
+                % renaming of the version info
                 mv_renaming         :: map(prog_var, prog_var),
-                                    % renaming of the version info
+
+                % var types substitution
                 mv_tsubst           :: tsubst
-                                    % var types substitution
             ).
 
 :- type version_is_exact
@@ -436,25 +439,32 @@ pd_info_incr_size_delta(Delta1, !PDInfo) :-
 
 :- type version_info
     --->    version_info(
+                % goal before unfolding.
                 version_orig_goal   :: hlds_goal,
-                                    % goal before unfolding.
+
+                % calls being deforested.
                 version_deforest_calls  :: list(pred_proc_id),
-                                    % calls being deforested.
+
+                % arguments.
                 version_arg_vars    :: list(prog_var),
-                                    % arguments.
+
+                % argument types.
                 version_arg_types   :: list(mer_type),
-                                    % argument types.
+
+                % initial insts of the nonlocals.
                 version_init_insts  :: instmap,
-                                    % initial insts of the nonlocals.
+
+                % cost of the original goal.
                 version_orig_cost   :: int,
-                                    % cost of the original goal.
+
+                % improvement in cost.
                 version_cost_improv :: int,
-                                    % improvement in cost.
+
+                % parent versions.
                 version_parents     :: set(pred_proc_id),
-                                    % parent versions.
+
+                % the version which was generalised to produce this version.
                 version_source      :: maybe(pred_proc_id)
-                                    % the version which was generalised
-                                    % to produce this version.
             ).
 
 %-----------------------------------------------------------------------------%
@@ -727,11 +737,5 @@ pd_info.remove_version(PredProcId, !PDInfo) :-
     PredProcId = proc(PredId, _),
     module_info_remove_predicate(PredId, ModuleInfo0, ModuleInfo),
     pd_info_set_module_info(ModuleInfo, !PDInfo).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "pd_info.m".
 
 %-----------------------------------------------------------------------------%

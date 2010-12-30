@@ -46,14 +46,12 @@
 :- import_module ll_backend.x86_64_regs.
 
 :- import_module bool.
-:- import_module char.
 :- import_module int.
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
 :- import_module stream.string_writer.
 :- import_module string.
-:- import_module type_desc.
 
 %-----------------------------------------------------------------------------%
 %

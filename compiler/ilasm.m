@@ -346,7 +346,6 @@
 :- import_module libs.options.
 
 :- import_module char.
-:- import_module getopt_io.
 :- import_module int.
 :- import_module pair.
 :- import_module pprint.

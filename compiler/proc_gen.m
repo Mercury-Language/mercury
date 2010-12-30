@@ -73,7 +73,6 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.proc_label.
-:- import_module backend_libs.rtti.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
@@ -93,9 +92,7 @@
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.layout.
-:- import_module ll_backend.llds_out.
 :- import_module ll_backend.middle_rec.
-:- import_module ll_backend.pragma_c_gen.
 :- import_module ll_backend.stack_layout.
 :- import_module ll_backend.trace_gen.
 :- import_module mdbcomp.prim_data.

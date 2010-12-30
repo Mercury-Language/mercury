@@ -101,9 +101,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module set_tree234.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%

@@ -38,11 +38,8 @@
 :- import_module ll_backend.code_gen.
 
 :- import_module cord.
-:- import_module list.
 :- import_module maybe.
 :- import_module require.
-:- import_module pair.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 

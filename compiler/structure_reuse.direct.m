@@ -30,7 +30,6 @@
 :- import_module transform_hlds.ctgc.structure_reuse.domain.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
 
-:- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -57,13 +56,13 @@
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module parse_tree.error_util.
 :- import_module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
 :- import_module transform_hlds.ctgc.structure_reuse.direct.detect_garbage.
 :- import_module transform_hlds.ctgc.util.
 :- import_module transform_hlds.smm_common.
 
 :- import_module bool.
+:- import_module io.
 :- import_module map.
 :- import_module svmap.
 

@@ -106,7 +106,6 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.instmap.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.trace_params.

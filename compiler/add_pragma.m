@@ -126,7 +126,6 @@
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_data.

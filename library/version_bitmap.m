@@ -115,7 +115,6 @@
 
 :- import_module exception.
 :- import_module int.
-:- import_module require.
 :- import_module version_array.
 
     % A version_bitmap is represented as an array of ints where each int stores

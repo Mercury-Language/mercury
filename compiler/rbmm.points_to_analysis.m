@@ -48,7 +48,6 @@
 :- implementation.
 
 :- import_module hlds.goal_path.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
