@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2005-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -562,6 +562,13 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
     [will_not_call_mercury, thread_safe, promise_pure],
 "
     if (1 == 1) throw new Error(\"not supported in java grade\");
+").
+
+:- pragma foreign_proc("Erlang",
+    proc_bytecode_bytes(_ProcLayout::in) = (_ByteCodeBytes::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    throw({""not supported in erlang grade""})
 ").
 
     % Default version for non-C backends.
