@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2010 The University of Melbourne.
+% Copyright (C) 1999-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -120,12 +120,9 @@
 :- import_module libs.options.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_util.
-:- import_module parse_tree.java_names.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 
-:- import_module assoc_list.
 :- import_module int.
 :- import_module list.
 :- import_module map.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2010 The University of Melbourne.
+% Copyright (C) 1999-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -553,9 +553,7 @@
 
 :- import_module backend_libs.foreign.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.polymorphism.
 :- import_module check_hlds.type_util.
-:- import_module hlds.instmap.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.program_representation.
@@ -568,13 +566,10 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
-:- import_module counter.
-:- import_module int.
 :- import_module map.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module stack.
 :- import_module string.
 :- import_module term.
 :- import_module varset.

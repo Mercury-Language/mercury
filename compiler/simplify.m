@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -146,10 +146,8 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
@@ -158,7 +156,6 @@
 :- import_module transform_hlds.pd_cost.
 
 :- import_module int.
-:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -1909,11 +1906,9 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
         )
     ;
         simplify_info_get_common_info(!.Info, Common),
-        % Note that we need to keep SubGoal0 for require_complete_switch
-        % scopes.
         simplify_goal(SubGoal0, SubGoal, !Info),
         nested_scopes(Reason0, SubGoal, GoalInfo0, Goal1),
-        Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
+        Goal1 = hlds_goal(GoalExpr1, _GoalInfo1),
         ( GoalExpr1 = scope(FinalReason, FinalSubGoal) ->
             (
                 ( FinalReason = promise_purity(_)
@@ -1921,6 +1916,11 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 ; FinalReason = barrier(removable)
                 ),
                 Goal = Goal1
+            ;
+                ( FinalReason = require_detism(_)
+                ; FinalReason = require_complete_switch(_)
+                ),
+                Goal = FinalSubGoal
             ;
                 ( FinalReason = commit(_)
                 ; FinalReason = exist_quant(_)
@@ -1939,58 +1939,6 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 % don't make any such replacements when processing the rest
                 % of the goal.
                 simplify_info_set_common_info(Common, !Info)
-            ;
-                FinalReason = require_detism(RequiredDetism),
-                FinalSubGoal = hlds_goal(_, FinalSubGoalInfo),
-                ActualDetism = goal_info_get_determinism(FinalSubGoalInfo),
-                ( ActualDetism = RequiredDetism ->
-                    true
-                ;
-                    RequiredDetismStr = determinism_to_string(RequiredDetism),
-                    ActualDetismStr = determinism_to_string(ActualDetism),
-                    DetismPieces = [words("Error: required determinism is"),
-                        quote(RequiredDetismStr), suffix(","),
-                        words("but actual determinism is"),
-                        quote(ActualDetismStr), suffix("."), nl],
-                    Context = goal_info_get_context(GoalInfo1),
-                    DetismMsg = simple_msg(Context, [always(DetismPieces)]),
-                    DetismSpec = error_spec(severity_error,
-                        phase_simplify(report_in_any_mode), [DetismMsg]),
-                    simplify_info_add_error_spec(DetismSpec, !Info)
-                ),
-                Goal = FinalSubGoal
-            ;
-                FinalReason = require_complete_switch(RequiredVar),
-                % We must test the version of the subgoal that has not yet been
-                % simplified, since simplification can convert a complete
-                % switch into an incomplete switch by deleting an arm
-                % consisting of nothing but `fail'.
-                SubGoal0 = hlds_goal(SubGoalExpr0, _),
-                (
-                    SubGoalExpr0 = switch(SwitchVar, CanFail, _Cases),
-                    SwitchVar = RequiredVar
-                ->
-                    (
-                        CanFail = cannot_fail
-                    ;
-                        CanFail = can_fail,
-                        simplify_info_get_varset(!.Info, VarSet),
-                        VarStr = mercury_var_to_string(VarSet, no, SwitchVar),
-                        SwitchPieces = [words("Error: the switch on"),
-                            quote(VarStr), 
-                            words("is required to be complete,"),
-                            words("but it is not."), nl],
-                        Context = goal_info_get_context(GoalInfo1),
-                        SwitchMsg = simple_msg(Context,
-                            [always(SwitchPieces)]),
-                        SwitchSpec = error_spec(severity_error,
-                            phase_simplify(report_in_any_mode), [SwitchMsg]),
-                        simplify_info_add_error_spec(SwitchSpec, !Info)
-                    )
-                ;
-                    true
-                ),
-                Goal = FinalSubGoal
             ;
                 FinalReason = trace_goal(MaybeCompiletimeExpr,
                     MaybeRuntimeExpr, _, _, _),

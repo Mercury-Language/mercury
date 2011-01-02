@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 1993-2010 The University of Melbourne.
+% Copyright (C) 1993-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -196,10 +196,6 @@
 :- import_module parse_tree.prog_io_type_defn.
 :- import_module parse_tree.prog_io_typeclass.
 :- import_module parse_tree.prog_io_util.
-:- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 :- import_module recompilation.
 :- import_module recompilation.version.
 
@@ -207,7 +203,6 @@
 :- import_module bool.
 :- import_module counter.
 :- import_module dir.
-:- import_module int.
 :- import_module map.
 :- import_module pair.
 :- import_module parser.
@@ -215,7 +210,6 @@
 :- import_module set.
 :- import_module string.
 :- import_module term_io.
-:- import_module unit.
 
 %-----------------------------------------------------------------------------%
 

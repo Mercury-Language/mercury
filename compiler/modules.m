@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -366,10 +366,7 @@
 
 :- implementation.
 
-:- import_module hlds.passes_aux.
-:- import_module libs.handle_options.
 :- import_module libs.options.
-:- import_module make.              % XXX undesirable dependency
 :- import_module parse_tree.deps_map.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
@@ -380,8 +377,6 @@
 :- import_module parse_tree.prog_mutable.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
-:- import_module parse_tree.source_file_map.
 :- import_module parse_tree.write_deps_file.
 :- import_module recompilation.version.
 
@@ -390,7 +385,6 @@
 :- import_module dir.
 :- import_module getopt_io.
 :- import_module int.
-:- import_module library.
 :- import_module map.
 :- import_module multi_map.
 :- import_module pair.
@@ -403,7 +397,6 @@
 :- import_module svset.
 :- import_module term.
 :- import_module unit.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 %

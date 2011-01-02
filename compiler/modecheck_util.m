@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2010 The University of Melbourne.
+% Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -178,60 +178,28 @@
 
 :- implementation.
 
-:- import_module check_hlds.clause_to_proc.
-:- import_module check_hlds.cse_detection.
 :- import_module check_hlds.delay_info.
-:- import_module check_hlds.delay_partial_inst.
-:- import_module check_hlds.det_analysis.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_util.
-:- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.
-:- import_module check_hlds.mode_util.
-:- import_module check_hlds.modecheck_call.
 :- import_module check_hlds.modecheck_goal.
 :- import_module check_hlds.modecheck_unify.
 :- import_module check_hlds.polymorphism.
-:- import_module check_hlds.switch_detection.
 :- import_module check_hlds.type_util.
-:- import_module check_hlds.unify_proc.
-:- import_module check_hlds.unique_modes.
-:- import_module hlds.goal_util.
-:- import_module hlds.hlds_clauses.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_out.
-:- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
-:- import_module hlds.quantification.
 :- import_module hlds.special_pred.
-:- import_module libs.
-:- import_module libs.file_util.
-:- import_module libs.globals.
-:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.builtin_lib_types.
-:- import_module parse_tree.error_util.
-:- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.prog_event.
-:- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 
-:- import_module assoc_list.
-:- import_module bag.
 :- import_module bool.
 :- import_module int.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module pair.
-:- import_module queue.
 :- import_module require.
 :- import_module set.
-:- import_module string.
-:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 

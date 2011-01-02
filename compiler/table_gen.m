@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2010 The University of Melbourne.
+% Copyright (C) 1997-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1982,6 +1982,7 @@ keep_marker(marker_check_termination) = no.
 keep_marker(marker_calls_are_fully_qualified) = yes.
 keep_marker(marker_mode_check_clauses) = yes.
 keep_marker(marker_mutable_access_pred) = yes.
+keep_marker(marker_has_require_scope) = yes.
 keep_marker(marker_has_format_call) = yes.
 
 %-----------------------------------------------------------------------------%

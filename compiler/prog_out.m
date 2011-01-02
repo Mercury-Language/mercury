@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2010 The University of Melbourne.
+% Copyright (C) 1993-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -156,12 +156,10 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_util.
 
-:- import_module pair.
 :- import_module require.
 :- import_module string.
 :- import_module term.
 :- import_module term_io.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -271,22 +269,6 @@ module_spec_to_escaped_string(ModuleSpec) =
     sym_name_to_escaped_string(ModuleSpec).
 
 %-----------------------------------------------------------------------------%
-
-:- pred write_list(list(T)::in, pred(T, io, io)::in(pred(in, di, uo) is det),
-    io::di, io::uo) is det.
-
-write_list([Import1, Import2, Import3 | Imports], Writer, !IO) :-
-    call(Writer, Import1, !IO),
-    io.write_string(", ", !IO),
-    write_list([Import2, Import3 | Imports], Writer, !IO).
-write_list([Import1, Import2], Writer, !IO) :-
-    call(Writer, Import1, !IO),
-    io.write_string(" and ", !IO),
-    call(Writer, Import2, !IO).
-write_list([Import], Writer, !IO) :-
-    call(Writer, Import, !IO).
-write_list([], _, !IO) :-
-    unexpected(this_file, "write_list: empty list").
 
 write_string_list([], !IO).
 write_string_list([Name], !IO) :-

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2010 The University of Melbourne.
+% Copyright (C) 1999-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -513,36 +513,22 @@
 :- implementation.
 
 :- import_module backend_libs.builtin_ops.
-:- import_module backend_libs.c_util.
-:- import_module backend_libs.foreign. % XXX needed for pragma foreign code
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
-:- import_module hlds.goal_form.
-:- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
-:- import_module libs.globals.
-:- import_module libs.options.
 :- import_module ml_backend.ml_call_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_commit_gen.
 :- import_module ml_backend.ml_disj_gen.
 :- import_module ml_backend.ml_foreign_proc_gen.
 :- import_module ml_backend.ml_gen_info.
-:- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_switch_gen.
-:- import_module ml_backend.ml_type_gen.
 :- import_module ml_backend.ml_unify_gen.
-:- import_module ml_backend.ml_util.
-:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

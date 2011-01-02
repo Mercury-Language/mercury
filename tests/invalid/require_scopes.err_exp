@@ -3,4 +3,4 @@ require_scopes.m:036:   determinism is `semidet'.
 require_scopes.m:040: Error: required determinism is `nondet', but actual
 require_scopes.m:040:   determinism is `semidet'.
 require_scopes.m:064: Error: the switch on `A' is required to be complete, but
-require_scopes.m:064:   it is not.
+require_scopes.m:064:   it does not cover require_scopes.f1/0.

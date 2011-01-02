@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2010 The University of Melbourne.
+% Copyright (C) 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -119,7 +119,6 @@
 :- import_module hlds.make_hlds.field_access.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module libs.globals.  % for get_maybe_from_ground_term_threshold
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_io_dcg.

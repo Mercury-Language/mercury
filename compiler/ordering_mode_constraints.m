@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2010 The University of Melbourne.
+% Copyright (C) 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -119,12 +119,10 @@
 
 :- import_module bimap.
 :- import_module bool.
-:- import_module cord.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
-:- import_module pair.
 :- import_module require.
 :- import_module string.
 :- import_module svset.

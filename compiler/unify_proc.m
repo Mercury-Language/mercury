@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -132,14 +132,11 @@
 :- import_module check_hlds.clause_to_proc.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.modes.
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.post_typecheck.
 :- import_module check_hlds.type_util.
-:- import_module check_hlds.unique_modes.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_args.
-:- import_module hlds.hlds_out.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.make_hlds.
@@ -151,7 +148,6 @@
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.builtin_lib_types.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module recompilation.
