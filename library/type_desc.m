@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2002-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -235,6 +235,8 @@
 :- import_module bool.
 :- import_module require.
 :- import_module string.
+
+:- use_module erlang_rtti_implementation.
 
 :- pragma foreign_decl("C", "
 #include ""mercury_heap.h"" /* for MR_incr_hp_msg() etc. */
