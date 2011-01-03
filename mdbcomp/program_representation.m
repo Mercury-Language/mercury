@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2010 The University of Melbourne.
+% Copyright (C) 2001-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -514,9 +514,7 @@
     ;       step_lambda
     ;       step_try
     ;       step_atomic_main
-    ;       step_atomic_orelse(int)
-    ;       step_first
-    ;       step_later.
+    ;       step_atomic_orelse(int).
 
     % Does the scope goal have a different determinism inside than outside?
 :- type maybe_cut
@@ -1045,8 +1043,6 @@ goal_path_step_from_string_2('=', "", step_lambda).
 goal_path_step_from_string_2('a', "", step_atomic_main).
 goal_path_step_from_string_2('o', NStr, step_atomic_orelse(N)) :-
     string.to_int(NStr, N).
-goal_path_step_from_string_2('f', "", step_first).
-goal_path_step_from_string_2('l', "", step_later).
 
 is_goal_path_separator(';').
 
@@ -1080,8 +1076,6 @@ goal_path_step_to_string(step_lambda) = "=;".
 goal_path_step_to_string(step_atomic_main) = "a;".
 goal_path_step_to_string(step_atomic_orelse(N)) =
     "o" ++ int_to_string(N) ++ ";".
-goal_path_step_to_string(step_first) = "f;".
-goal_path_step_to_string(step_later) = "l;".
 
 %-----------------------------------------------------------------------------%
 

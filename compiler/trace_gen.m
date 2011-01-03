@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2010 The University of Melbourne.
+% Copyright (C) 1997-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -85,10 +85,6 @@
 :- type negation_end_port
     --->    neg_success
     ;       neg_failure.
-
-:- type nondet_foreign_proc_trace_port
-    --->    nondet_foreign_proc_first
-    ;       nondet_foreign_proc_later.
 
 :- type trace_info.
 
@@ -190,13 +186,6 @@
     hlds_goal_info::in, negation_end_port::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
-    % If we are doing execution tracing, generate code for a nondet
-    % foreign_proc trace event.
-    %
-:- pred maybe_generate_foreign_proc_event_code(
-    nondet_foreign_proc_trace_port::in, prog_context::in, llds_code::out,
-    code_info::in, code_info::out) is det.
-
     % Generate code for a user-defined trace event.
     %
 :- pred generate_user_event_code(user_event_info::in, hlds_goal_info::in,
@@ -292,8 +281,7 @@
     ;       port_info_user(
                 forward_goal_path
                 % The id of the goal.
-            )
-    ;       port_info_nondet_foreign_proc.
+            ).
 
 trace_fail_vars(ModuleInfo, ProcInfo, FailVars) :-
     proc_info_get_headvars(ProcInfo, HeadVars),
@@ -869,24 +857,6 @@ maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code, !CI) :-
         Code = empty
     ).
 
-maybe_generate_foreign_proc_event_code(PragmaPort, Context, Code, !CI) :-
-    get_maybe_trace_info(!.CI, MaybeTraceInfo),
-    (
-        MaybeTraceInfo = yes(TraceInfo),
-        Port = convert_nondet_foreign_proc_port_type(PragmaPort),
-        get_module_info(!.CI, ModuleInfo),
-        get_pred_info(!.CI, PredInfo),
-        get_proc_info(!.CI, ProcInfo),
-        eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo,
-            TraceInfo ^ ti_trace_level,
-            TraceInfo ^ ti_trace_suppress_items, Port) = yes
-    ->
-        generate_event_code(Port, port_info_nondet_foreign_proc,
-            yes(TraceInfo), Context, no, no, _, _, Code, !CI)
-    ;
-        Code = empty
-    ).
-
 generate_user_event_code(UserInfo, GoalInfo, Code, !CI) :-
     GoalId = goal_info_get_goal_id(GoalInfo),
     get_containing_goal_map_det(!.CI, ContainingGoalMap),
@@ -1077,18 +1047,6 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     ;
         PortInfo = port_info_user(Path),
         LiveVars = LiveVars0,
-        TailRecResetCode = empty
-    ;
-        PortInfo = port_info_nondet_foreign_proc,
-        LiveVars = [],
-        ( Port = port_nondet_foreign_proc_first ->
-            Path = fgp([step_first])
-        ; Port = port_nondet_foreign_proc_later ->
-            Path = fgp([step_later])
-        ;
-            unexpected(this_file,
-                "generate_event_code: bad nondet foreign_proc port")
-        ),
         TailRecResetCode = empty
     ),
     VarTypes = get_var_types(!.CI),
@@ -1323,14 +1281,6 @@ convert_external_port_type(external_port_call) = port_call.
 convert_external_port_type(external_port_exit) = port_exit.
 convert_external_port_type(external_port_fail) = port_fail.
 convert_external_port_type(external_port_tailrec_call) = port_tailrec_call.
-
-:- func convert_nondet_foreign_proc_port_type(nondet_foreign_proc_trace_port)
-    = trace_port.
-
-convert_nondet_foreign_proc_port_type(nondet_foreign_proc_first) =
-    port_nondet_foreign_proc_first.
-convert_nondet_foreign_proc_port_type(nondet_foreign_proc_later) =
-    port_nondet_foreign_proc_later.
 
 %-----------------------------------------------------------------------------%
 
