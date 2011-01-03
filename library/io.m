@@ -10336,7 +10336,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
                 NULL))                                                      \\
             {                                                               \\
                 free_err_buf = MR_FALSE;                                    \\
-                err_buf = ""could not retrieve error message"";             \\
+                err_buf = (LPVOID) ""could not retrieve error message"";    \\
             }                                                               \\
             total_len = strlen(msg) + strlen((char *)err_buf);              \\
             MR_incr_hp_atomic_msg(tmp,                                      \\
