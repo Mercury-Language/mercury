@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2010 The University of Melbourne.
+% Copyright (C) 2006-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -481,8 +481,6 @@ update_parallelism_available_conj(Conj, !ChildClique) :-
     Length = list.foldl((func(seq_conj(ConjsI), Acc) = Acc + length(ConjsI)),
         Conj ^ cpc_conjs, 0),
     (
-        % XXX zs: I am not confident of the update for goal path
-        % representations.
         RevGoalPath \= RevConjGoalPath,
         rev_goal_path_inside(RevConjGoalPath, RevGoalPath, RevRelativePath),
         RevRelativePath = rgp(RevRelativePathSteps),
