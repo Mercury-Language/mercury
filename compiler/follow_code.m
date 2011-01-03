@@ -372,9 +372,8 @@ follow_code_conjoin_goal_and_goal_list(Goal0, FollowGoals, FollowPurity,
         ; MaxSolns0 = at_most_many_cc
         ),
         check_follow_code_detism(FollowGoals, Detism0),
-        ( GoalExpr0 = conj(plain_conj, GoalList0) ->
-            list.append(GoalList0, FollowGoals, GoalList),
-            GoalExpr = conj(plain_conj, GoalList)
+        ( GoalExpr0 = conj(plain_conj, Conjuncts0) ->
+            GoalExpr = conj(plain_conj, Conjuncts0 ++ FollowGoals)
         ;
             GoalExpr = conj(plain_conj, [Goal0 | FollowGoals])
         ),
