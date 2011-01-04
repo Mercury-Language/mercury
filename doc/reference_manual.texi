@@ -880,23 +880,19 @@ are not allowed to occur outside
 @code{promise_equivalent_solution_sets @var{Vars} @var{Goal}} goals.
 
 @item @code{require_det @var{Goal}}
+@itemx @code{require_semidet @var{Goal}}
+@itemx @code{require_multi @var{Goal}}
+@itemx @code{require_nondet @var{Goal}}
+@itemx @code{require_cc_multi @var{Goal}}
+@itemx @code{require_cc_nondet @var{Goal}}
+@itemx @code{require_erroneous @var{Goal}}
+@itemx @code{require_failure @var{Goal}}
 A determinism check, typically used to enhance the robustness of code.
 @var{Goal} must be a valid goal.
-If @var{Goal} is det, then
-@item @code{require_det @var{Goal}} is equivalent to just @var{Goal}.
-If @var{Goal} is not det,
+If @var{Goal} has the named determinism, then
+@code{require_det @var{Goal}} is equivalent to just @var{Goal}.
+If @var{Goal} does not have the named determinism,
 then the compiler is required to generate an error message.
-
-The @code{require_det} keyword
-may be replaced with
-@code{require_semidet},
-@code{require_multi},
-@code{require_nondet},
-@code{require_cc_multi},
-@code{require_cc_nondet},
-@code{require_erroneous} or
-@code{require_failure},
-each of which requires @var{Goal} to have the named determinism.
 
 @item @code{require_complete_switch [@var{Var}] @var{Goal}}
 A switch completeness check, typically used to enhance the robustness of code.
