@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 2007 The University of Melbourne.
+** Copyright (C) 2007, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -488,7 +488,7 @@ process_init_file(const char *filename, const char *prefix_str)
 
         /* Remove trailing whitespace. */
         len = strlen(line);
-        while (len > 0 && isspace(line[len - 1])) {
+        while (len > 0 && isspace((int)line[len - 1])) {
             line[len - 1] = '\0';
             len--;
         }
