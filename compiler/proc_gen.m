@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -304,10 +304,9 @@ generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
     maybe_set_trace_level(PredInfo, ModuleInfo0, ModuleInfo),
     ensure_all_headvars_are_named(ProcInfo0, ProcInfo1),
 
-    % We use the globals from the original module info, so that
-    module_info_get_globals(ModuleInfo0, Globals0),
-    globals.get_trace_level(Globals0, TraceLevel0),
-    ( given_trace_level_is_none(TraceLevel0) = no ->
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_trace_level(Globals, TraceLevel),
+    ( given_trace_level_is_none(TraceLevel) = no ->
         fill_goal_id_slots_in_proc(ModuleInfo, ContainingGoalMap,
             ProcInfo1, ProcInfo),
         MaybeContainingGoalMap = yes(ContainingGoalMap)
@@ -328,7 +327,6 @@ generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
         map.init(FollowVarsMap),
         FollowVars = abs_follow_vars(FollowVarsMap, 1)
     ),
-    module_info_get_globals(ModuleInfo, Globals),
     basic_stack_layout_for_proc(PredInfo, Globals, BasicStackLayout,
         ForceProcId),
     SaveSuccip = BasicStackLayout,
@@ -364,9 +362,7 @@ generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
     get_static_cell_info(CodeInfo, StaticCellInfo),
     global_data_set_static_cell_info(StaticCellInfo, !GlobalData),
 
-    globals.get_trace_level(Globals, TraceLevel),
     get_created_temp_frame(CodeInfo, CreatedTempFrame),
-
     get_proc_trace_events(CodeInfo, ProcTraceEvents),
     % You can have user trace events even if the effective trace level is none.
     (
