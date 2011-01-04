@@ -51,8 +51,6 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
-:- import_module libs.globals.
-:- import_module libs.options.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.

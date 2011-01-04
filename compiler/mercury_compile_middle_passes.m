@@ -73,6 +73,7 @@
 :- import_module transform_hlds.granularity.
 :- import_module transform_hlds.higher_order.
 :- import_module transform_hlds.implicit_parallelism.
+:- import_module transform_hlds.implicit_parallelism.introduce_parallelism.
 :- import_module transform_hlds.inlining.
 :- import_module transform_hlds.lambda.
 :- import_module transform_hlds.lco.

@@ -1190,6 +1190,14 @@ specialized versions without them (unused_args.m); type_infos are often unused.
   parallelism. Its goal is to minimize parallelism's overhead while still
   gaining all the parallelism the machine can actually exploit.
 
+<li> implicit_parallelism.m is a package whose task is to introduce parallelism
+  into sequential code automatically. Its submodules are
+	<ul>
+	<li> introduce_parallelism.m does the main task of the package.
+	<li> push_goals_together.m performs a transformation that allows
+	     introduce_parallelism.m to do a better job.
+	</ul>
+
 </ul>
 
 <p>
@@ -1882,6 +1890,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2009-10-14 05:28:53 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2011-01-04 05:01:37 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

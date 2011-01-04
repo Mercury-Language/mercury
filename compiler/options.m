@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -679,9 +679,6 @@
     ;       control_granularity
     ;       distance_granularity
     ;       implicit_parallelism
-    ;       old_implicit_parallelism
-            % implicit_parallelism_old enables Jerome's implementation,
-            % which has been kept for comparison and use in bench marks.
     ;       region_analysis
 
     % Stuff for the CTGC system (structure sharing / structure reuse).
@@ -1553,7 +1550,6 @@ option_defaults_2(optimization_option, [
     control_granularity                 -   bool(no),
     distance_granularity                -   int(0),
     implicit_parallelism                -   bool(no),
-    old_implicit_parallelism            -   bool(no),
     region_analysis                     -   bool(no),
 
     % HLDS -> LLDS
@@ -2447,7 +2443,6 @@ long_option("allow-some-paths-only-waits",
 long_option("control-granularity",  control_granularity).
 long_option("distance-granularity", distance_granularity).
 long_option("implicit-parallelism", implicit_parallelism).
-long_option("old-implicit-parallelism", old_implicit_parallelism).
 
 % CTGC related options.
 long_option("structure-sharing",    structure_sharing_analysis).
@@ -5021,8 +5016,6 @@ options_help_hlds_hlds_optimization -->
         "\tmdprof_feedback.",
         "\tThe profiling feedback file can be specified using the",
         "\t--feedback file option."
-%        "--old-implicit-parallelism",
-%        "\tUse the old implicit parallelism implementation",
 % '--region-analysis' is not documented because it is still experimental.
 %        "--region-analysis",
 %        "\tEnable the analysis for region-based memory management."
