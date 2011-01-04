@@ -15,7 +15,7 @@
 @ifnottex
 This file documents the Mercury programming language, version <VERSION>.
 
-Copyright (C) 1995-2010 The University of Melbourne.
+Copyright (C) 1995-2011 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -53,7 +53,7 @@ into another language, under the above conditions for modified versions.
 @author Peter Wang
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995--2010 The University of Melbourne.
+Copyright @copyright{} 1995--2011 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -510,6 +510,15 @@ promise_exhaustive              fy                950
 promise_impure                  fx                950
 promise_pure                    fx                950
 promise_semipure                fx                950
+require_complete_switch         fxy               950
+require_det                     fx                950
+require_semidet                 fx                950
+require_multi                   fx                950
+require_nondet                  fx                950
+require_cc_multi                fx                950
+require_cc_nondet               fx                950
+require_erroneous               fx                950
+require_failure                 fx                950
 some                            fxy               950
 ,                               xfy               1000
 &                               xfy               1025
@@ -869,6 +878,50 @@ except the @var{promise_equivalent_solution_sets} goal they are nested inside.
 Goals of the form @code{arbitrary @var{ArbVars} @var{ArbGoal}}
 are not allowed to occur outside
 @code{promise_equivalent_solution_sets @var{Vars} @var{Goal}} goals.
+
+@item @code{require_det @var{Goal}}
+@itemx @code{require_semidet @var{Goal}}
+@itemx @code{require_multi @var{Goal}}
+@itemx @code{require_nondet @var{Goal}}
+@itemx @code{require_cc_multi @var{Goal}}
+@itemx @code{require_cc_nondet @var{Goal}}
+@itemx @code{require_erroneous @var{Goal}}
+@itemx @code{require_failure @var{Goal}}
+A determinism check, typically used to enhance the robustness of code.
+@var{Goal} must be a valid goal.
+If @var{Goal} is det, then
+@code{require_det @var{Goal}} is equivalent to just @var{Goal}.
+If @var{Goal} is not det,
+then the compiler is required to generate an error message.
+
+The @code{require_det} keyword
+may be replaced with
+@code{require_semidet},
+@code{require_multi},
+@code{require_nondet},
+@code{require_cc_multi},
+@code{require_cc_nondet},
+@code{require_erroneous} or
+@code{require_failure},
+each of which requires @var{Goal} to have the named determinism.
+
+@item @code{require_complete_switch [@var{Var}] @var{Goal}}
+A switch completeness check, typically used to enhance the robustness of code.
+If @var{Goal} is a complete switch on @var{Var},
+i.e. a switch that has an arm
+for all the function symbols in the type of @var{Var},
+then @code{require_complete_switch [@var{Var}] @var{Goal}}
+is equivalent to @var{Goal}.
+If @var{Goal} is a switch on @var{Var} but it is not a complete switch,
+i.e. it has no arm
+for at least one of the function symbols in the type of @var{Var},
+then the compiler is required to generate an error message.
+If @var{Goal} is not a switch on @var{Var},
+then @code{require_complete_switch [@var{Var}] @var{Goal}}
+is equivalent to @var{Goal}.
+This is intended to allow these scopes to be used
+even if @var{Var} is input to the scope
+only in some but not all modes of the containing predicate.
 
 @item @code{trace @var{Params} @var{Goal}}
 A trace goal, typically used for debugging or logging.

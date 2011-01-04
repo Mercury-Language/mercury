@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -101,6 +101,7 @@
     ;       inhibit_accumulator_warnings
     ;       halt_at_warn
     ;       halt_at_syntax_errors
+    ;       halt_at_auto_parallel_failure
     ;       warn_singleton_vars
     ;       warn_overlapping_scopes
     ;       warn_det_decls_too_lax
@@ -949,6 +950,9 @@
     ;       show_make_times
     ;       extra_library_header
     ;       restricted_command_line
+    ;       env_type
+    ;       host_env_type
+    ;       target_env_type
 
     % Miscellaneous Options
     ;       filenames_from_stdin
@@ -1031,6 +1035,7 @@ option_defaults_2(warning_option, [
     inhibit_accumulator_warnings        -   bool(no),
     halt_at_warn                        -   bool(no),
     halt_at_syntax_errors               -   bool(no),
+    halt_at_auto_parallel_failure       -   bool(no),
 
     % IMPORTANT NOTE:
     % if you add any new warning options, or if you change the default
@@ -1812,7 +1817,10 @@ option_defaults_2(build_system_option, [
     order_make_by_timestamp             -   bool(no),
     show_make_times                     -   bool(no),
     extra_library_header                -   accumulating([]),
-    restricted_command_line             -   bool(no)
+    restricted_command_line             -   bool(no),
+    env_type                            -   string_special,
+    host_env_type                       -   string("posix"),
+    target_env_type                     -   string("posix")
 ]).
 option_defaults_2(miscellaneous_option, [
     % Miscellaneous Options
@@ -1872,6 +1880,7 @@ long_option("inhibit-warnings",         inhibit_warnings).
 long_option("inhibit-accumulator-warnings", inhibit_accumulator_warnings).
 long_option("halt-at-warn",             halt_at_warn).
 long_option("halt-at-syntax-errors",    halt_at_syntax_errors).
+long_option("halt-at-auto-parallel-failure", halt_at_auto_parallel_failure).
 long_option("warn-singleton-variables", warn_singleton_vars).
 long_option("warn-overlapping-scopes",  warn_overlapping_scopes).
 long_option("warn-det-decls-too-lax",   warn_det_decls_too_lax).
@@ -2732,6 +2741,9 @@ long_option("show-make-times",      show_make_times).
 long_option("extra-lib-header",     extra_library_header).
 long_option("extra-library-header", extra_library_header).
 long_option("restricted-command-line", restricted_command_line).
+long_option("env-type",                env_type).
+long_option("host-env-type",           host_env_type).
+long_option("target-env-type",         target_env_type).
 
 % misc options
 long_option("typecheck-ambiguity-warn-limit",
@@ -2972,6 +2984,12 @@ special_handler(mercury_linkage_special, string(Flag),
         Result = error("argument of `--mercury-linkage' should be either " ++
             """shared"" or ""static"".")
     ).
+
+special_handler(env_type, string(EnvTypeStr), OptionTable0, ok(OptionTable)) :-
+    OptionTable =
+        map.set(map.set(OptionTable0,
+        host_env_type, string(EnvTypeStr)),
+        target_env_type, string(EnvTypeStr)).
 
 %-----------------------------------------------------------------------------%
 
@@ -3329,6 +3347,9 @@ options_help_warning -->
         "\tThis option causes the compiler to halt immediately",
         "\tafter syntax checking and not do any semantic checking",
         "\tif it finds any syntax errors in the program.",
+%       "--halt-at-auto-parallel-failure",
+%       "\tThis option causes the compiler to halt if it cannot perform",
+%       "\tan auto-parallelization requested by a feedback file.",
         "--inhibit-accumulator-warnings",
         "\tDon't warn about argument order rearrangement caused",
         "\tby --introduce-accumulators.",
@@ -5598,6 +5619,20 @@ options_help_build_system -->
         "\tEnable this option if your shell doesn't support long command lines.",
         "\tThis option uses temporary files to pass arguments to sub-commands.",
         "\t(This option is only supported by `mmc --make'.)"
+        %
+        % XXX the following are commented out until they are actually useful.
+        %
+        %"--env-type <type>",
+        %"\tSpecify the the environment type for the compiler."
+        %"\tThe <type> should be one of `posix', `cygwin', `msys', or `windows'."
+        %"\tThis option is equivalent to setting both --host-env-type and"
+        %"\t--target-env-type to <type>."
+        %"--host-env-type <type>",
+        %"\tSpecify the environment type under which the compiler will be",
+        %"\tinvoked."
+        %"--target-env-type <type>",
+        %"\tSpecify the environment type under which compiled programs will be",
+        %"\tinvoked."
     ]).
 
 :- pred options_help_misc(io::di, io::uo) is det.

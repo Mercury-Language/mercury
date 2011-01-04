@@ -212,6 +212,7 @@ ORDINARY_PROGS=	\
 	relation_test \
 	remove_file \
 	reorder_di \
+	require_scopes \
 	rev_arith \
 	reverse_arith \
 	rtc_bug \

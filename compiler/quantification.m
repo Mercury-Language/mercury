@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -107,7 +107,6 @@
 :- import_module hlds.instmap.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -661,12 +660,12 @@ rename_or_else_inner_vars(NonLocalsToRecompute, Inner,
     Inner = atomic_interface_vars(InnerDI, InnerUO),
     RenameVars = list_to_set([InnerDI, InnerUO]),
     rename_apart(RenameVars, RenameMap, NonLocalsToRecompute, OrElseGoal0,
-                 OrElseGoal, !Info),
+        OrElseGoal, !Info),
     OrElseInnerDI = map.lookup(RenameMap, InnerDI),
     OrElseInnerUO = map.lookup(RenameMap, InnerUO),
     OrElseInner = atomic_interface_vars(OrElseInnerDI, OrElseInnerUO),
     rename_or_else_inner_vars(NonLocalsToRecompute, Inner, OrElseGoals0,
-                              OrElseGoalsTail, OrElseInnersTail, !Info),
+        OrElseGoalsTail, OrElseInnersTail, !Info),
     OrElseInners = [OrElseInner | OrElseInnersTail],
     OrElseGoals = [OrElseGoal | OrElseGoalsTail].
 
@@ -713,6 +712,8 @@ implicitly_quantify_goal_quant_info_scope(Reason0, SubGoal0, GoalExpr,
     ;
         ( Reason0 = promise_purity(_)
         ; Reason0 = promise_solutions(_, _)
+        ; Reason0 = require_detism(_)
+        ; Reason0 = require_complete_switch(_)
         ; Reason0 = commit(_)
         ; Reason0 = barrier(_)
         ; Reason0 = from_ground_term(_, from_ground_term_deconstruct)
@@ -725,9 +726,9 @@ implicitly_quantify_goal_quant_info_scope(Reason0, SubGoal0, GoalExpr,
             NonLocalsToRecompute, !Info)
     ;
         Reason0 = trace_goal(_, _, _, _, Vars0),
-        implicitly_quantify_goal_quant_info_scope_rename_vars(
-            Reason0, Reason, SubGoal0, SubGoal1, Vars0, Vars, GoalInfo0,
-            NonLocalsToRecompute, !Info),
+        implicitly_quantify_goal_quant_info_scope_rename_vars(Reason0, Reason,
+            SubGoal0, SubGoal1, Vars0, Vars, GoalInfo0, NonLocalsToRecompute,
+            !Info),
         goal_expr_vars_bitset(NonLocalsToRecompute, GoalExpr0,
             PossiblyNonLocalGoalVars0),
         implicitly_quantify_goal_quant_info(SubGoal1, SubGoal,
@@ -781,14 +782,15 @@ implicitly_quantify_goal_quant_info_scope_rename_vars(Reason0, Reason,
             Reason = trace_goal(Comp, Run, IO, Mut, TraceVars)
         ;
             ( Reason0 = promise_purity(_)
+            ; Reason0 = promise_solutions(_, _)
+            ; Reason0 = require_detism(_)
+            ; Reason0 = require_complete_switch(_)
             ; Reason0 = commit(_)
             ; Reason0 = barrier(_)
             ; Reason0 = from_ground_term(_, _)
-            ; Reason0 = promise_solutions(_, _)
             ),
             % We shouldn't invoke this predicate for these kinds of scopes.
-            unexpected(this_file,
-                "implicitly_quantify_goal_quant_info_scope_rename_vars")
+            unexpected($module, $pred, "unexpected scope")
         )
     ),
     update_seen_vars(QVars, !Info),
@@ -1878,6 +1880,7 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
         LambdaSet0 = !.LambdaSet,
         (
             ( Reason = promise_purity(_)
+            ; Reason = require_detism(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = trace_goal(_, _, _, _, _)
@@ -1895,6 +1898,11 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
             goal_vars_both_maybe_lambda(NonLocalsToRecompute, SubGoal,
                 !:Set, !:LambdaSet),
             insert_list(!.Set, Vars, !:Set)
+        ;
+            Reason = require_complete_switch(Var),
+            goal_vars_both_maybe_lambda(NonLocalsToRecompute, SubGoal,
+                !:Set, !:LambdaSet),
+            insert(!.Set, Var, !:Set)
         ;
             Reason = from_ground_term(TermVar, Kind),
             (
@@ -2040,6 +2048,7 @@ goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet) :-
         LambdaSet0 = !.LambdaSet,
         (
             ( Reason = promise_purity(_)
+            ; Reason = require_detism(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = trace_goal(_, _, _, _, _)
@@ -2057,6 +2066,11 @@ goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet) :-
             goal_vars_both_maybe_lambda_and_bi_impl(SubGoal,
                 !:Set, !:LambdaSet),
             insert_list(!.Set, Vars, !:Set)
+        ;
+            Reason = require_complete_switch(Var),
+            goal_vars_both_maybe_lambda_and_bi_impl(SubGoal,
+                !:Set, !:LambdaSet),
+            insert(!.Set, Var, !:Set)
         ;
             Reason = from_ground_term(_TermVar, _Kind),
             goal_vars_both_maybe_lambda_and_bi_impl(SubGoal,
@@ -2186,6 +2200,7 @@ goal_expr_vars_no_lambda_2(NonLocalsToRecompute, GoalExpr, !Set) :-
         Set0 = !.Set,
         (
             ( Reason = promise_purity(_)
+            ; Reason = require_detism(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = trace_goal(_, _, _, _, _)
@@ -2199,6 +2214,10 @@ goal_expr_vars_no_lambda_2(NonLocalsToRecompute, GoalExpr, !Set) :-
             Reason = promise_solutions(Vars, _Kind),
             goal_vars_both_no_lambda(NonLocalsToRecompute, SubGoal, !:Set),
             insert_list(!.Set, Vars, !:Set)
+        ;
+            Reason = require_complete_switch(Var),
+            goal_vars_both_no_lambda(NonLocalsToRecompute, SubGoal, !:Set),
+            insert(!.Set, Var, !:Set)
         ;
             Reason = from_ground_term(_TermVar, _),
             goal_vars_both_no_lambda(NonLocalsToRecompute, SubGoal, !:Set)

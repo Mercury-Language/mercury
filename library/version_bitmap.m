@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2007, 2010 The University of Melbourne
+% Copyright (C) 2004-2007, 2010-2011 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -115,7 +115,6 @@
 
 :- import_module exception.
 :- import_module int.
-:- import_module require.
 :- import_module version_array.
 
     % A version_bitmap is represented as an array of ints where each int stores

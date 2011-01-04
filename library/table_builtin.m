@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2007 The University of Melbourne.
+% Copyright (C) 1998-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -121,12 +121,11 @@
 
 :- implementation.
 
-:- import_module int.
-
-    % This type represents the interior pointers of both call
-    % tables and answer tables.
+    % This type represents the interior pointers of both call tables
+    % and answer tables.
     %
-:- type ml_trie_node --->   ml_trie_node(c_pointer).
+:- type ml_trie_node
+    --->   ml_trie_node(c_pointer).
 :- pragma foreign_type("C", ml_trie_node, "MR_TrieNode",
     [can_pass_as_mercury_type]).
 :- pragma foreign_type(il,  ml_trie_node, "class [mscorlib]System.Object").

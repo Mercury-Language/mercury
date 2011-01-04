@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -106,7 +106,6 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
-:- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_module.
 :- import_module hlds.hlds_out.hlds_out_pred.
 :- import_module hlds.hlds_out.hlds_out_util.
@@ -129,7 +128,6 @@
 
 :- import_module assoc_list.
 :- import_module cord.
-:- import_module getopt_io.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -2017,6 +2015,7 @@ should_output_marker(marker_check_termination, no).
 should_output_marker(marker_calls_are_fully_qualified, no).
 should_output_marker(marker_mode_check_clauses, yes).
 should_output_marker(marker_mutable_access_pred, no).
+should_output_marker(marker_has_require_scope, no).
 should_output_marker(marker_has_format_call, no).
 
 :- pred get_pragma_foreign_code_vars(list(foreign_arg)::in, list(mer_mode)::in,

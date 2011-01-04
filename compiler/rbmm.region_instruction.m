@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2005-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -26,7 +26,6 @@
 
 :- import_module list.
 :- import_module map.
-:- import_module string.
 
 :- type region_instr_table
     ==      map(pred_proc_id, region_instr_proc).
@@ -108,20 +107,15 @@
 
 :- implementation.
 
-:- import_module hlds.goal_path.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_llds.
 :- import_module transform_hlds.rbmm.points_to_graph.
 
-:- import_module bool.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module string.
 :- import_module svmap.
 :- import_module svset.
-:- import_module term.
-:- import_module varset.
 
 introduce_region_instructions(ModuleInfo, RptaInfoTable, ExecPathTable,
         LRBeforeTable, LRAfterTable, VoidVarRegionTable, BornRTable,

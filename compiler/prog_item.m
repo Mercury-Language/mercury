@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -787,6 +787,14 @@
                 prog_vars,  % OrdinaryVars
                 prog_vars,  % DotStateVars
                 prog_vars,  % ColonStateVars
+                goal
+            )
+    ;       require_detism_expr(
+                determinism,
+                goal
+            )
+    ;       require_complete_switch_expr(
+                prog_var,
                 goal
             )
     ;       trace_expr(

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2009 The University of Melbourne.
+% Copyright (C) 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -54,7 +54,6 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_out.
 
@@ -139,6 +138,12 @@ describe_goal(ModuleInfo, VarSet, Goal) = FullDesc :-
         ;
             Reason = promise_purity(_),
             Desc = "scope promise purity"
+        ;
+            Reason = require_detism(_),
+            Desc = "scope require detism"
+        ;
+            Reason = require_complete_switch(_),
+            Desc = "scope require complete switch"
         ;
             Reason = commit(_),
             Desc = "scope commit"

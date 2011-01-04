@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2010 The University of Melbourne.
+% Copyright (C) 2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -189,7 +189,6 @@
 :- import_module check_hlds.mode_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
-:- import_module hlds.goal_util.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.instmap.
 :- import_module ll_backend.
@@ -959,6 +958,8 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         ;
             ( Reason0 = promise_purity(_)
             ; Reason0 = promise_solutions(_, _)
+            ; Reason0 = require_detism(_)
+            ; Reason0 = require_complete_switch(_)
             ; Reason0 = commit(_)
             ; Reason0 = barrier(_)
             ; Reason0 = trace_goal(_, _, _, _, _)

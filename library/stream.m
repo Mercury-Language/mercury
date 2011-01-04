@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007 The University of Melbourne.
+% Copyright (C) 2006-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,13 +23,12 @@
 :- import_module bool.
 :- import_module char.
 :- import_module list.
-:- import_module string.
 
 :- include_module string_writer.
 
 %-----------------------------------------------------------------------------%
-% 
-% Types used by streams
+%
+% Types used by streams.
 %
 
 :- type stream.name == string.
@@ -61,7 +60,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Stream errors
+% Stream errors.
 %
 
 :- typeclass stream.error(Error) where
@@ -75,7 +74,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Streams
+% Streams.
 %
 
     % A stream consists of a handle type and a state type.
@@ -83,7 +82,7 @@
     % the stream operations.
     %
 :- typeclass stream.stream(Stream, State) <= (Stream -> State) where
-[ 
+[
         % Returns a descriptive name for the stream.
         % Intended for use in error messages.
         %
@@ -92,7 +91,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Input streams
+% Input streams.
 %
 
     % An input stream is a source of data.
@@ -100,9 +99,9 @@
 :- typeclass stream.input(Stream, State) <= stream(Stream, State) where [].
 
     % A reader stream is a subclass of specific input stream that can be
-    % used to read data of a specific type from that input stream.  
+    % used to read data of a specific type from that input stream.
     % A single input stream can support multiple reader subclasses.
-    % 
+    %
 :- typeclass stream.reader(Stream, Unit, State, Error)
     <= (stream.input(Stream, State), stream.error(Error),
         (Stream, Unit -> Error)) where
@@ -116,7 +115,7 @@
     % bulk_get/9 for that stream return `eof'.  If a call to get/4
     % returns `error(...)', all further calls to get/4 or bulk_get/4 for
     % that stream return an error, although not necessarily the same one.
-    % 
+    %
     % XXX We should provide an interface to allow the user to reset the
     % error status to try again if an error is transient.
     %
@@ -129,7 +128,7 @@
     % input stream into a specified container.  For example, binary input
     % streams may be able to efficiently read bytes into a bitmap.
     % A single input stream can support multiple bulk_reader subclasses.
-    % 
+    %
 :- typeclass stream.bulk_reader(Stream, Index, Store, State, Error)
     <= (stream.input(Stream, State), stream.error(Error),
         (Stream, Index, Store -> Error)) where
@@ -172,9 +171,9 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Output streams
+% Output streams.
 %
-   
+
     % An output stream is a destination for data.
     % Note that unlike input streams, output streams do not include
     % an explicit error type.  They should handle errors by throwing
@@ -190,7 +189,7 @@
 ].
 
     % A writer stream is a subclass of specific output stream that can be
-    % used to write data of a specific type to that output stream.  
+    % used to write data of a specific type to that output stream.
     % A single output stream can support multiple writer subclasses.
     %
 :- typeclass stream.writer(Stream, Unit, State)
@@ -205,7 +204,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Duplex streams
+% Duplex streams.
 %
 
     % A duplex stream is a stream that can act as both a source
@@ -218,7 +217,7 @@
 
 %----------------------------------------------------------------------------%
 %
-% Putback streams
+% Putback streams.
 %
 
     % A putback stream is an input stream that allows data to be
@@ -233,8 +232,8 @@
     % Only one unit of putback is guaranteed to be successful.
     %
     pred unget(Stream::in, Unit::in, State::di, State::uo) is det
-]. 
-   
+].
+
     % As above but guarantees that an unlimited number of units may
     % be pushed back onto the stream.
     %
@@ -243,7 +242,7 @@
 
 %----------------------------------------------------------------------------%
 %
-% Seekable streams
+% Seekable streams.
 %
 
     % stream.whence denotes the base for a seek operation.
@@ -268,7 +267,7 @@
 
 %----------------------------------------------------------------------------%
 %
-% Line oriented streams
+% Line oriented streams.
 %
 
     % A line oriented stream is a stream that keeps track of line numbers.
@@ -279,7 +278,7 @@
     % Get the current line number for the specified stream.
     %
     pred get_line(Stream::in, int::out, State::di, State::uo) is det,
-    
+
     % Set the current line number of the specified stream.
     %
     pred set_line(Stream::in, int::in,  State::di, State::uo) is det
@@ -287,7 +286,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Generic folds over input streams
+% Generic folds over input streams.
 %
 
     % Applies the given closure to each Unit read from the input stream
@@ -311,7 +310,7 @@
     out, di, uo) is det.
 :- mode stream.input_stream_fold_state(in, in(pred(in, di, uo) is cc_multi),
     out, di, uo) is cc_multi.
-    
+
     % Applies the given closure to each Unit read from the input stream
     % in turn, until eof or error.
     %
@@ -341,7 +340,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Misc. operations on input streams
+% Misc. operations on input streams.
 %
 
     % Discard all the whitespace from the specified stream.
@@ -352,7 +351,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Misc. operations on output streams
+% Misc. operations on output streams.
 %
 
     % put_list(Stream, Write, Sep, List, !State).
@@ -381,7 +380,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Folds over input streams
+% Folds over input streams.
 %
 
 stream.input_stream_fold(Stream, Pred, T0, Res, !S) :-
@@ -448,7 +447,7 @@ stream.input_stream_fold2_state_maybe_stop(Stream, Pred, T0, Res, !S) :-
     ).
 
 %-----------------------------------------------------------------------------%
-    
+
 stream.ignore_whitespace(Stream, Result, !State) :-
     get(Stream, CharResult, !State),
     (

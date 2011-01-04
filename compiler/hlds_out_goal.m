@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2010 The University of Melbourne.
+% Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1835,6 +1835,39 @@ write_goal_scope(Info, GoalExpr, ModuleInfo, VarSet,
         io.write_string(" [", !IO),
         mercury_output_vars(VarSet, AppendVarNums, Vars, !IO),
         io.write_string("] (\n", !IO)
+    ;
+        Reason = require_complete_switch(Var),
+        io.write_string("require_complete_switch [", !IO),
+        mercury_output_var(VarSet, AppendVarNums, Var, !IO),
+        io.write_string("] (\n", !IO)
+    ;
+        Reason = require_detism(Detism),
+        (
+            Detism = detism_det,
+            io.write_string("require_det", !IO)
+        ;
+            Detism = detism_semi,
+            io.write_string("require_semidet", !IO)
+        ;
+            Detism = detism_non,
+            io.write_string("require_nondet", !IO)
+        ;
+            Detism = detism_multi,
+            io.write_string("require_multi", !IO)
+        ;
+            Detism = detism_cc_multi,
+            io.write_string("require_cc_multi", !IO)
+        ;
+            Detism = detism_cc_non,
+            io.write_string("require_cc_nondet", !IO)
+        ;
+            Detism = detism_failure,
+            io.write_string("require_failure", !IO)
+        ;
+            Detism = detism_erroneous,
+            io.write_string("require_erroneous", !IO)
+        ),
+        io.write_string(" (\n", !IO)
     ;
         Reason = barrier(removable),
         io.write_string("(\n", !IO),

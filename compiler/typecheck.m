@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2010 The University of Melbourne.
+% Copyright (C) 1993-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -138,13 +138,8 @@
 :- import_module require.
 :- import_module set.
 :- import_module set_tree234.
-:- import_module std_util.
 :- import_module string.
-:- import_module svmap.
-:- import_module svset.
-:- import_module svvarset.
 :- import_module term.
-:- import_module term_io.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -1280,18 +1275,17 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
             Reason = exist_quant(Vars),
             ensure_vars_have_a_type(Vars, !Info)
         ;
-            Reason = promise_purity(_)
-        ;
             Reason = promise_solutions(Vars, _),
             ensure_vars_have_a_type(Vars, !Info)
         ;
-            Reason = commit(_)
-        ;
-            Reason = barrier(_)
-        ;
-            Reason = from_ground_term(_, _)
-        ;
-            Reason = trace_goal(_, _, _, _, _)
+            ( Reason = promise_purity(_)
+            ; Reason = require_detism(_)
+            ; Reason = require_complete_switch(_)
+            ; Reason = commit(_)
+            ; Reason = barrier(_)
+            ; Reason = from_ground_term(_, _)
+            ; Reason = trace_goal(_, _, _, _, _)
+            )
         ),
         GoalExpr = scope(Reason, SubGoal)
     ;

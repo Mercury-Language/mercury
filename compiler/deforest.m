@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2010 University of Melbourne.
+% Copyright (C) 1999-2011 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -66,7 +66,6 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type_subst.
-:- import_module parse_tree.prog_util.
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.inlining.
 :- import_module transform_hlds.pd_cost.

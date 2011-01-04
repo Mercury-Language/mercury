@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2010 The University of Melbourne.
+% Copyright (C) 1995-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -186,9 +186,9 @@ global_checking_pass([Proc | Procs], !ModuleInfo, !Specs) :-
     proc_info::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !Specs) :-
-    proc_info_get_declared_determinism(ProcInfo0, MaybeDetism),
-    proc_info_get_inferred_determinism(ProcInfo0, InferredDetism),
+check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
+    proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
+    proc_info_get_inferred_determinism(ProcInfo, InferredDetism),
     (
         MaybeDetism = no
     ;
@@ -203,7 +203,7 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !Specs) :-
                 ShouldIssueWarning),
             globals.lookup_bool_option(Globals, warn_inferred_erroneous,
                 WarnAboutInferredErroneous),
-            pred_info_get_markers(PredInfo0, Markers),
+            pred_info_get_markers(PredInfo, Markers),
             (
                 ShouldIssueWarning = yes,
 
@@ -221,7 +221,7 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !Specs) :-
                 % these up. These can happen for the Unify pred for the unit
                 % type, if such types are not boxed (as they are not
                 % boxed for the IL backend).
-                \+ is_unify_or_compare_pred(PredInfo0),
+                \+ is_unify_or_compare_pred(PredInfo),
 
                 % Don't warn about predicates which are inferred erroneous
                 % when the appropriate option is set. This is to avoid warnings
@@ -236,10 +236,10 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !Specs) :-
                 % Only warn about predicates that are defined in this module.
                 % This avoids warnings being emitted for opt_imported 
                 % predicates.
-                pred_info_get_import_status(PredInfo0, ImportStatus),
+                pred_info_get_import_status(PredInfo, ImportStatus),
                 status_defined_in_this_module(ImportStatus) = yes
             ->
-                proc_info_get_detism_decl(ProcInfo0, DetismDecl),
+                proc_info_get_detism_decl(ProcInfo, DetismDecl),
                 Message = "warning: " ++ detism_decl_name(DetismDecl) ++
                     " could be tighter.\n",
                 report_determinism_problem(PredId, ProcId, !.ModuleInfo,
@@ -252,34 +252,37 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !Specs) :-
             )
         ;
             Cmp = tighter,
-            proc_info_get_detism_decl(ProcInfo0, DetismDecl),
+            proc_info_get_detism_decl(ProcInfo, DetismDecl),
             Message = "error: " ++ detism_decl_name(DetismDecl) ++
                 " not satisfied.\n",
             report_determinism_problem(PredId, ProcId, !.ModuleInfo, Message,
                 DeclaredDetism, InferredDetism, ReportMsgs),
-            proc_info_get_goal(ProcInfo0, Goal),
-            proc_info_get_vartypes(ProcInfo0, VarTypes),
-            proc_info_get_initial_instmap(ProcInfo0, !.ModuleInfo, InstMap0),
+            proc_info_get_goal(ProcInfo, Goal),
+            proc_info_get_vartypes(ProcInfo, VarTypes),
+            proc_info_get_initial_instmap(ProcInfo, !.ModuleInfo, InstMap0),
             det_info_init(!.ModuleInfo, VarTypes, PredId, ProcId, 
                 pess_extra_vars_report, [], DetInfo0),
             det_diagnose_goal(Goal, InstMap0, DeclaredDetism, [],
-                DetInfo0, DetInfo, GoalMsgs0),
+                DetInfo0, DetInfo, GoalMsgs),
             det_info_get_module_info(DetInfo, !:ModuleInfo),
-            sort_error_msgs(GoalMsgs0, GoalMsgs),
+            sort_error_msgs(GoalMsgs, SortedGoalMsgs),
             ReportSpec = error_spec(severity_error, phase_detism_check,
-                ReportMsgs ++ GoalMsgs),
+                ReportMsgs ++ SortedGoalMsgs),
             !:Specs = [ReportSpec | !.Specs]
         )
     ),
 
+    make_reqscope_checks_if_needed(!.ModuleInfo, PredId, ProcId,
+        PredInfo, ProcInfo, !Specs),
+
     % Make sure the code model is valid given the eval method.
-    proc_info_get_eval_method(ProcInfo0, EvalMethod),
+    proc_info_get_eval_method(ProcInfo, EvalMethod),
     Valid = valid_determinism_for_eval_method(EvalMethod, InferredDetism),
     (
         Valid = yes
     ;
         Valid = no,
-        proc_info_get_context(ProcInfo0, Context),
+        proc_info_get_context(ProcInfo, Context),
         MainPieces =
             [words("Error: `pragma "
                 ++ eval_method_to_pragma_name(EvalMethod) ++ "'"),
@@ -303,6 +306,26 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !Specs) :-
         !:Specs = [ValidSpec | !.Specs]
     ).
 
+:- pred make_reqscope_checks_if_needed(module_info::in,
+    pred_id::in, proc_id::in, pred_info::in, proc_info::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+make_reqscope_checks_if_needed(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
+        !Specs) :-
+    pred_info_get_markers(PredInfo, Markers),
+    ( check_marker(Markers, marker_has_require_scope) ->
+        proc_info_get_goal(ProcInfo, Goal),
+        proc_info_get_vartypes(ProcInfo, VarTypes),
+        proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap0),
+        det_info_init(ModuleInfo, VarTypes, PredId, ProcId, 
+            pess_extra_vars_ignore, [], DetInfo0),
+        reqscope_check_goal(Goal, InstMap0, DetInfo0, DetInfo),
+        det_info_get_error_specs(DetInfo, RCSSpecs),
+        !:Specs = RCSSpecs ++ !.Specs
+    ;
+        true
+    ).
+
 :- func detism_decl_name(detism_decl) = string.
 
 detism_decl_name(DetismDecl) = Name :-
@@ -318,7 +341,7 @@ detism_decl_name(DetismDecl) = Name :-
         % This shouldn't happen, but if it does, it is better to get an
         % error message that puts you on the right track than to get
         % a compiler abort.
-        % unexpected(this_file, "detism_decl_name: detism_decl_none")
+        % unexpected($module, $pred, "detism_decl_name: detism_decl_none")
     ).
 
 :- pred get_valid_dets(eval_method::in, determinism::out) is nondet.
@@ -590,35 +613,14 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
             Context = goal_info_get_context(GoalInfo),
             det_diagnose_switch_context(SwitchContexts, !.DetInfo,
                 NestingPieces),
-            det_get_proc_info(!.DetInfo, ProcInfo),
-            proc_info_get_varset(ProcInfo, VarSet),
-            VarStr = mercury_var_to_string(VarSet, no, Var),
-            det_info_get_module_info(!.DetInfo, ModuleInfo),
+            find_missing_cons_ids(!.DetInfo, InstMap0, Var, Cases,
+                VarStr, MaybeMissingPieces),
             (
-                (
-                    instmap_lookup_var(InstMap0, Var, VarInst),
-                    inst_is_bound_to_functors(ModuleInfo, VarInst, BoundInsts)
-                ->
-                    det_info_get_vartypes(!.DetInfo, VarTypes),
-                    map.lookup(VarTypes, Var, VarType),
-                    type_to_ctor_det(VarType, VarTypeCtor),
-                    list.map(bound_inst_to_cons_id(VarTypeCtor),
-                        BoundInsts, ConsIds)
-                ;
-                    det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn),
-                    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-                    ConsTable = TypeBody ^ du_type_cons_tag_values,
-                    map.keys(ConsTable, ConsIds)
-                )
-            ->
-                % XXX If the current instmap has an entry giving the set of
-                % possible bindings for Var, we should restrict ConsIds
-                % to the functors that appear in it.
-                det_diagnose_missing_consids(ConsIds, Cases, MissingConsIds),
-                cons_id_list_to_pieces(MissingConsIds, MissingPieces),
+                MaybeMissingPieces = yes(MissingPieces),
                 Pieces = [words("The switch on"), fixed(VarStr),
                     words("does not cover") | MissingPieces]
             ;
+                MaybeMissingPieces = no,
                 Pieces = [words("The switch on"), fixed(VarStr),
                     words("can fail.")]
             ),
@@ -626,8 +628,10 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         ;
             Msgs1 = []
         ),
-        det_diagnose_switch_arms(Var, Cases, InstMap0, Desired, SwitchContexts,
-            !DetInfo, Msgs2),
+        det_info_get_vartypes(!.DetInfo, VarTypes),
+        map.lookup(VarTypes, Var, VarType),
+        det_diagnose_switch_arms(Var, VarType, Cases, InstMap0,
+            Desired, SwitchContexts, !DetInfo, Msgs2),
         Msgs = Msgs1 ++ Msgs2
     ;
         GoalExpr = plain_call(PredId, ProcId, _, _, CallContext, _),
@@ -640,7 +644,8 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
     ;
         GoalExpr = generic_call(GenericCall, _, _, _),
         Context = goal_info_get_context(GoalInfo),
-        report_generic_call_context(GenericCall, StartingPieces),
+        hlds_goal.generic_call_id(GenericCall, CallId),
+        StartingPieces = [words(call_id_to_string(CallId))],
         det_diagnose_primitive_goal(Desired, Actual, Context, StartingPieces,
             Msgs)
     ;
@@ -728,18 +733,9 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
-            unexpected(this_file, "det_diagnose_goal_expr: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         )
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- pred report_generic_call_context(generic_call::in,
-    list(format_component)::out) is det.
-
-report_generic_call_context(CallType, StartingPieces) :-
-    hlds_goal.generic_call_id(CallType, CallId),
-    StartingPieces = [words(call_id_to_string(CallId))].
 
 %-----------------------------------------------------------------------------%
 
@@ -851,26 +847,25 @@ det_diagnose_disj([Goal | Goals], InstMap0, Desired, Actual, SwitchContexts,
         !DetInfo, !ClausesWithSoln, Msgs2),
     Msgs = Msgs1 ++ Msgs2.
 
-:- pred det_diagnose_switch_arms(prog_var::in, list(case)::in, instmap::in,
-    determinism::in, list(switch_context)::in, det_info::in, det_info::out,
-    list(error_msg)::out) is det.
+:- pred det_diagnose_switch_arms(prog_var::in, mer_type::in, list(case)::in,
+    instmap::in, determinism::in, list(switch_context)::in,
+    det_info::in, det_info::out, list(error_msg)::out) is det.
 
-det_diagnose_switch_arms(_Var, [], _, _Desired, _SwitchContexts, !DetInfo, []).
-det_diagnose_switch_arms(Var, [Case | Cases], InstMap0, Desired,
+det_diagnose_switch_arms(_Var, _VarType, [], _, _Desired, _SwitchContexts,
+        !DetInfo, []).
+det_diagnose_switch_arms(Var, VarType, [Case | Cases], InstMap0, Desired,
         SwitchContexts0, !DetInfo, Msgs) :-
     Case = case(MainConsId, OtherConsIds, Goal),
     NewSwitchContext = switch_context(Var, MainConsId, OtherConsIds),
     SwitchContexts1 = [NewSwitchContext | SwitchContexts0],
-    det_info_get_vartypes(!.DetInfo, VarTypes),
-    map.lookup(VarTypes, Var, VarType),
     det_info_get_module_info(!.DetInfo, ModuleInfo0),
     bind_var_to_functors(Var, VarType, MainConsId, OtherConsIds,
         InstMap0, InstMap1, ModuleInfo0, ModuleInfo),
     det_info_set_module_info(ModuleInfo, !DetInfo),
     det_diagnose_goal(Goal, InstMap1, Desired, SwitchContexts1,
         !DetInfo, Msgs1),
-    det_diagnose_switch_arms(Var, Cases, InstMap0, Desired, SwitchContexts0,
-        !DetInfo, Msgs2),
+    det_diagnose_switch_arms(Var, VarType, Cases, InstMap0, Desired,
+        SwitchContexts0, !DetInfo, Msgs2),
     Msgs = Msgs1 ++ Msgs2.
 
 :- pred det_diagnose_orelse_goals(list(hlds_goal)::in, instmap::in,
@@ -887,6 +882,200 @@ det_diagnose_orelse_goals([Goal | Goals], InstMap0, Desired, SwitchContexts0,
     Msgs = Msgs1 ++ Msgs2.
 
 %-----------------------------------------------------------------------------%
+
+    % Check that the switches in all require_complete_switch scopes
+    % are actually complete. If they are not, add an error message
+    % to !DetInfo.
+    %
+:- pred reqscope_check_goal(hlds_goal::in, instmap::in,
+    det_info::in, det_info::out) is det.
+
+reqscope_check_goal(Goal, InstMap0, !DetInfo) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    (
+        GoalExpr = conj(_, Goals),
+        reqscope_check_conj(Goals, InstMap0, !DetInfo)
+    ;
+        GoalExpr = disj(Goals),
+        reqscope_check_disj(Goals, InstMap0, !DetInfo)
+    ;
+        GoalExpr = switch(Var, _, Cases),
+        det_info_get_vartypes(!.DetInfo, VarTypes),
+        map.lookup(VarTypes, Var, VarType),
+        reqscope_check_switch(Var, VarType, Cases, InstMap0, !DetInfo)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        reqscope_check_goal(Cond, InstMap0, !DetInfo),
+        update_instmap(Cond, InstMap0, InstMap1),
+        reqscope_check_goal(Then, InstMap1, !DetInfo),
+        reqscope_check_goal(Else, InstMap0, !DetInfo)
+    ;
+        GoalExpr = negation(SubGoal),
+        reqscope_check_goal(SubGoal, InstMap0, !DetInfo)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        reqscope_check_scope(Reason, SubGoal, GoalInfo, InstMap0, !DetInfo),
+        reqscope_check_goal(SubGoal, InstMap0, !DetInfo)
+    ;
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
+            reqscope_check_goal(MainGoal, InstMap0, !DetInfo),
+            reqscope_check_disj(OrElseGoals, InstMap0, !DetInfo)
+        ;
+            ShortHand = try_goal(_, _, SubGoal),
+            reqscope_check_goal(SubGoal, InstMap0, !DetInfo)
+        ;
+            ShortHand = bi_implication(_, _),
+            % These should have been expanded out by now.
+            unexpected($module, $pred, "bi_implication")
+        )
+    ;
+        ( GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        )
+    ).
+
+:- pred reqscope_check_scope(scope_reason::in, hlds_goal::in,
+    hlds_goal_info::in, instmap::in, det_info::in, det_info::out) is det.
+
+reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
+    (
+        Reason = require_detism(RequiredDetism),
+        SubGoal = hlds_goal(_, SubGoalInfo),
+        ActualDetism = goal_info_get_determinism(SubGoalInfo),
+        ( ActualDetism = RequiredDetism ->
+            true
+        ;
+            RequiredDetismStr = determinism_to_string(RequiredDetism),
+            ActualDetismStr = determinism_to_string(ActualDetism),
+            DetismPieces = [words("Error: required determinism is"),
+                quote(RequiredDetismStr), suffix(","),
+                words("but actual determinism is"),
+                quote(ActualDetismStr), suffix("."), nl],
+            Context = goal_info_get_context(ScopeGoalInfo),
+            DetismMsg = simple_msg(Context, [always(DetismPieces)]),
+            DetismSpec = error_spec(severity_error, phase_detism_check,
+                [DetismMsg]),
+            det_info_add_error_spec(DetismSpec, !DetInfo)
+        )
+    ;
+        Reason = require_complete_switch(RequiredVar),
+        % We must test the version of the subgoal that has not yet been
+        % simplified, since simplification can convert a complete
+        % switch into an incomplete switch by deleting an arm
+        % consisting of nothing but `fail'.
+        SubGoal = hlds_goal(SubGoalExpr, _),
+        (
+            SubGoalExpr = switch(SwitchVar, CanFail, Cases),
+            SwitchVar = RequiredVar
+        ->
+            (
+                CanFail = cannot_fail
+            ;
+                CanFail = can_fail,
+                find_missing_cons_ids(!.DetInfo, InstMap0, SwitchVar, Cases,
+                    VarStr, MaybeMissingPieces),
+                (
+                    MaybeMissingPieces = yes(MissingPieces),
+                    SwitchPieces = [words("Error: the switch on"),
+                        quote(VarStr), 
+                        words("is required to be complete,"),
+                        words("but it does not cover") | MissingPieces]
+                ;
+                    MaybeMissingPieces = no,
+                    SwitchPieces = [words("Error: the switch on"),
+                        quote(VarStr), 
+                        words("is required to be complete,"),
+                        words("but it is not.")]
+                ),
+                Context = goal_info_get_context(ScopeGoalInfo),
+                SwitchMsg = simple_msg(Context,
+                    [always(SwitchPieces)]),
+                SwitchSpec = error_spec(severity_error, phase_detism_check,
+                    [SwitchMsg]),
+                det_info_add_error_spec(SwitchSpec, !DetInfo)
+            )
+        ;
+            true
+        )
+    ;
+        ( Reason = exist_quant(_)
+        ; Reason = commit(_)
+        ; Reason = barrier(_)
+        ; Reason = promise_purity(_)
+        ; Reason = promise_solutions(_, _)
+        ; Reason = from_ground_term(_, _)
+        ; Reason = trace_goal(_, _, _, _, _)
+        )
+    ).
+
+:- pred reqscope_check_conj(list(hlds_goal)::in, instmap::in,
+    det_info::in, det_info::out) is det.
+
+reqscope_check_conj([], _InstMap0, !DetInfo).
+reqscope_check_conj([Goal | Goals], InstMap0, !DetInfo) :-
+    reqscope_check_goal(Goal, InstMap0, !DetInfo),
+    update_instmap(Goal, InstMap0, InstMap1),
+    reqscope_check_conj(Goals, InstMap1, !DetInfo).
+
+:- pred reqscope_check_disj(list(hlds_goal)::in, instmap::in,
+    det_info::in, det_info::out) is det.
+
+reqscope_check_disj([], _InstMap0, !DetInfo).
+reqscope_check_disj([Goal | Goals], InstMap0, !DetInfo) :-
+    reqscope_check_goal(Goal, InstMap0, !DetInfo),
+    reqscope_check_disj(Goals, InstMap0, !DetInfo).
+
+:- pred reqscope_check_switch(prog_var::in, mer_type::in, list(case)::in,
+    instmap::in, det_info::in, det_info::out) is det.
+
+reqscope_check_switch(_Var, _VarType, [], _InstMap0, !DetInfo).
+reqscope_check_switch(Var, VarType, [Case | Cases], InstMap0, !DetInfo) :-
+    Case = case(MainConsId, OtherConsIds, Goal),
+    det_info_get_module_info(!.DetInfo, ModuleInfo0),
+    bind_var_to_functors(Var, VarType, MainConsId, OtherConsIds,
+        InstMap0, InstMap1, ModuleInfo0, ModuleInfo),
+    det_info_set_module_info(ModuleInfo, !DetInfo),
+    reqscope_check_goal(Goal, InstMap1, !DetInfo),
+    reqscope_check_switch(Var, VarType, Cases, InstMap0, !DetInfo).
+
+%-----------------------------------------------------------------------------%
+
+:- pred find_missing_cons_ids(det_info::in, instmap::in, prog_var::in,
+    list(case)::in, string::out, maybe(list(format_component))::out) is det.
+
+find_missing_cons_ids(DetInfo, InstMap0, Var, Cases, VarStr,
+        MaybeMissingPieces) :-
+    det_get_proc_info(DetInfo, ProcInfo),
+    proc_info_get_varset(ProcInfo, VarSet),
+    VarStr = mercury_var_to_string(VarSet, no, Var),
+    det_info_get_module_info(DetInfo, ModuleInfo),
+    (
+        (
+            instmap_lookup_var(InstMap0, Var, VarInst),
+            inst_is_bound_to_functors(ModuleInfo, VarInst, BoundInsts)
+        ->
+            det_info_get_vartypes(DetInfo, VarTypes),
+            map.lookup(VarTypes, Var, VarType),
+            type_to_ctor_det(VarType, VarTypeCtor),
+            list.map(bound_inst_to_cons_id(VarTypeCtor),
+                BoundInsts, ConsIds)
+        ;
+            det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn),
+            hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+            ConsTable = TypeBody ^ du_type_cons_tag_values,
+            map.keys(ConsTable, ConsIds)
+        )
+    ->
+        det_diagnose_missing_consids(ConsIds, Cases, MissingConsIds),
+        cons_id_list_to_pieces(MissingConsIds, MissingPieces),
+        MaybeMissingPieces = yes(MissingPieces)
+    ;
+        MaybeMissingPieces = no
+    ).
 
 :- pred det_diagnose_missing_consids(list(cons_id)::in, list(case)::in,
     list(cons_id)::out) is det.
@@ -1195,12 +1384,6 @@ restore_det_warnings(OptionsToRestore, !Globals) :-
 
 restore_option(Option - Value, !Globals) :-
     globals.set_option(Option, Value, !Globals).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "det_report.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module det_report.

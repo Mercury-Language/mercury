@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2010 The University of Melbourne.
+% Copyright (C) 2007-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,7 +33,6 @@
 :- import_module transform_hlds.rbmm.region_resurrection_renaming.
 
 :- import_module map.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -78,7 +77,6 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
@@ -86,16 +84,15 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_type.
 :- import_module transform_hlds.rbmm.points_to_graph.
 :- import_module transform_hlds.smm_common.
 
-:- import_module bool.
 :- import_module int.
 :- import_module list.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module string.
 :- import_module svmap.
 :- import_module svvarset.
 :- import_module term.

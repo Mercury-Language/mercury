@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2010 The University of Melbourne.
+% Copyright (C) 2000-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -90,7 +90,6 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module cord.
 :- import_module int.
 :- import_module io.
 :- import_module list.
@@ -1216,8 +1215,6 @@ get_parent_branch_point(ContainingGoalMap, GoalId, BranchGoalId,
         ; LastStep = step_scope(_)
         ; LastStep = step_conj(_)
         ; LastStep = step_disj(_)
-        ; LastStep = step_first
-        ; LastStep = step_later
         ),
         get_parent_branch_point(ContainingGoalMap, ContainingGoalId,
             BranchGoalId, BranchArmGoalId, BranchAlt, BranchNum)

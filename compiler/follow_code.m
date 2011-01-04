@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -57,49 +57,37 @@
 
 :- import_module bool.
 :- import_module list.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
 
 move_follow_code_in_proc(_PredProcId, !ProcInfo, !ModuleInfo) :-
-    module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, follow_code, FollowCode),
+    proc_info_get_goal(!.ProcInfo, Goal0),
+    proc_info_get_varset(!.ProcInfo, Varset0),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
+    move_follow_code_in_goal(Goal0, Goal1, RttiVarMaps0, no, Changed),
     (
-        FollowCode = no
-    ;
-        FollowCode = yes,
-        proc_info_get_goal(!.ProcInfo, Goal0),
-        proc_info_get_varset(!.ProcInfo, Varset0),
-        proc_info_get_vartypes(!.ProcInfo, VarTypes0),
-        proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
-        (
-            move_follow_code_in_goal(Goal0, Goal1, RttiVarMaps0, no, Changed),
-            Changed = yes
-        ->
-            % We need to fix up the goal_info by recalculating the nonlocal
-            % vars and the non-atomic instmap deltas.
-            proc_info_get_headvars(!.ProcInfo, HeadVars),
-            implicitly_quantify_clause_body_general(
-                ordinary_nonlocals_no_lambda,
-                HeadVars, _Warnings, Goal1, Goal2,
-                Varset0, Varset, VarTypes0, VarTypes,
-                RttiVarMaps0, RttiVarMaps),
-            proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
-            proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
-            recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
-                Goal2, Goal, VarTypes, InstVarSet, InstMap0, !ModuleInfo)
-        ;
-            Goal = Goal0,
-            Varset = Varset0,
-            VarTypes = VarTypes0,
-            RttiVarMaps = RttiVarMaps0
-        ),
+        Changed = yes,
+        % We need to fix up the goal_info by recalculating the nonlocal
+        % vars and the non-atomic instmap deltas.
+        proc_info_get_headvars(!.ProcInfo, HeadVars),
+        implicitly_quantify_clause_body_general(
+            ordinary_nonlocals_no_lambda,
+            HeadVars, _Warnings, Goal1, Goal2,
+            Varset0, Varset, VarTypes0, VarTypes,
+            RttiVarMaps0, RttiVarMaps),
+        proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
+        proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
+        recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
+            Goal2, Goal, VarTypes, InstVarSet, InstMap0, !ModuleInfo),
         proc_info_set_goal(Goal, !ProcInfo),
         proc_info_set_varset(Varset, !ProcInfo),
         proc_info_set_vartypes(VarTypes, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo)
+    ;
+        Changed = no
     ).
 
 %-----------------------------------------------------------------------------%
@@ -384,9 +372,8 @@ follow_code_conjoin_goal_and_goal_list(Goal0, FollowGoals, FollowPurity,
         ; MaxSolns0 = at_most_many_cc
         ),
         check_follow_code_detism(FollowGoals, Detism0),
-        ( GoalExpr0 = conj(plain_conj, GoalList0) ->
-            list.append(GoalList0, FollowGoals, GoalList),
-            GoalExpr = conj(plain_conj, GoalList)
+        ( GoalExpr0 = conj(plain_conj, Conjuncts0) ->
+            GoalExpr = conj(plain_conj, Conjuncts0 ++ FollowGoals)
         ;
             GoalExpr = conj(plain_conj, [Goal0 | FollowGoals])
         ),

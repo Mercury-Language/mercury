@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2010 The University of Melbourne.
+% Copyright (C) 1997-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -270,74 +270,71 @@
 %-----------------------------------------------------------------------------%
 
 :- type format_component
-    --->    fixed(string)   % This string should appear in the output
-                            % in one piece, as it is.
+    --->    fixed(string)
+            % This string should appear in the output in one piece, as it is.
 
-    ;       quote(string)   % Surround the string with `' quotes, then treat
-                            % as fixed.
+    ;       quote(string)
+            % Surround the string with `' quotes, then treat as fixed.
 
-    ;       int_fixed(int)  % Convert the integer to a string, then treat
-                            % as fixed.
+    ;       int_fixed(int)
+            % Convert the integer to a string, then treat as fixed.
 
-    ;       nth_fixed(int)  % Convert the integer to a string, such as
-                            % "first", "second", "third", "4th", "5th" and
-                            % then treat as fixed.
-                            %
+    ;       nth_fixed(int)
+            % Convert the integer to a string, such as "first", "second",
+            % "third", "4th", "5th" and then treat as fixed.
 
     ;       lower_case_next_if_not_first
-                            % If this is the first component, ignore it.
-                            % If this is not the first component, lower case
-                            % the initial letter of the next component.
-                            % There is no effect if the next component
-                            % starts does not exist or does not start with
-                            % an upper case letter.
+            % If this is the first component, ignore it. If this is not
+            % the first component, lower case the initial letter of the
+            % next component. There is no effect if the next component
+            % does not exist or does not start with an upper case letter.
 
-    ;       prefix(string)  % This string should appear in the output
-                            % in one piece, as it is, inserted directly
-                            % before the next format_component, without
-                            % any intervening space.
+    ;       prefix(string)
+            % This string should appear in the output in one piece, as it is,
+            % inserted directly before the next format_component, without
+            % any intervening space.
 
-    ;       suffix(string)  % This string should appear in the output
-                            % in one piece, as it is, appended directly
-                            % after the previous format_component, without
-                            % any intervening space.
+    ;       suffix(string)
+            % This string should appear in the output in one piece, as it is,
+            % appended directly after the previous format_component, without
+            % any intervening space.
 
-    ;       words(string)   % This string contains words separated by
-                            % white space. The words should appear in
-                            % the output in the given order, but the
-                            % white space may be rearranged and line
-                            % breaks may be inserted.
+    ;       words(string)
+            % This string contains words separated by white space. The words
+            % should appear in the output in the given order, but the white
+            % space may be rearranged and line breaks may be inserted.
+
+    ;       words_quote(string)
+            % Surround the string with `' quotes, then treat as words.
 
     ;       sym_name(sym_name)
-                            % The output should contain the string form of
-                            % the sym_name, surrounded by `' quotes.
+            % The output should contain the string form of the sym_name,
+            % surrounded by `' quotes.
 
     ;       sym_name_and_arity(sym_name_and_arity)
-                            % The output should contain the string form of
-                            % the sym_name, followed by '/' and the arity,
-                            % all surrounded by `' quotes.
+            % The output should contain the string form of the sym_name,
+            % followed by '/' and the arity, all surrounded by `' quotes.
 
     ;       top_ctor_of_type(mer_type)
-                            % The top level type constructor of the given type,
-                            % which must have one (i.e. must not be a
-                            % variable).
+            % The top level type constructor of the given type,
+            % which must have one (i.e. must not be a variable).
 
     ;       p_or_f(pred_or_func)
-                            % Output the string "predicate" or "function"
-                            % as appropriate.
+            % Output the string "predicate" or "function" as appropriate.
 
     ;       simple_call(simple_call_id)
-                            % Output the identity of the given call.
+            % Output the identity of the given call.
 
-    ;       nl              % Insert a line break if there has been text
-                            % output since the last line break.
+    ;       nl
+            % Insert a line break if there has been text output since
+            % the last line break.
 
     ;       nl_indent_delta(int)
-                            % Act as nl, but also add the given integer
-                            % (which should be a small positive or negative
-                            % integer) to the current indent level.
+            % Act as nl, but also add the given integer (which should be a
+            % small positive or negative integer) to the current indent level.
+
     ;       blank_line.
-                            % Create a blank line.
+            % Create a blank line.
 
 :- type format_components == list(format_component).
 
@@ -1021,6 +1018,12 @@ error_pieces_to_string_2(_, []) = "".
 error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
     TailStr = error_pieces_to_string_2(not_first_in_msg, Components),
     (
+        Component = words(Words),
+        Str = join_string_and_tail(Words, Components, TailStr)
+    ;
+        Component = words_quote(Words),
+        Str = join_string_and_tail(add_quotes(Words), Components, TailStr)
+    ;
         Component = fixed(Word),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
@@ -1047,9 +1050,6 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
     ;
         Component = suffix(Suffix),
         Str = join_string_and_tail(Suffix, Components, TailStr)
-    ;
-        Component = words(Words),
-        Str = join_string_and_tail(Words, Components, TailStr)
     ;
         Component = sym_name(SymName),
         Word = sym_name_to_word(SymName),
@@ -1148,6 +1148,12 @@ convert_components_to_paragraphs_acc(_, [], RevWords0, !Paras) :-
 convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         RevWords0, !Paras) :-
     (
+        Component = words(WordsStr),
+        break_into_words(WordsStr, RevWords0, RevWords1)
+    ;
+        Component = words_quote(WordsStr),
+        break_into_words(add_quotes(WordsStr), RevWords0, RevWords1)
+    ;
         Component = fixed(Word),
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
@@ -1174,9 +1180,6 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
     ;
         Component = suffix(Word),
         RevWords1 = [suffix_word(Word) | RevWords0]
-    ;
-        Component = words(WordsStr),
-        break_into_words(WordsStr, RevWords0, RevWords1)
     ;
         Component = sym_name(SymName),
         RevWords1 = [plain_word(sym_name_to_word(SymName)) | RevWords0]

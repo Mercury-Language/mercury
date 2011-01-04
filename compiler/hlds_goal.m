@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -466,6 +466,19 @@
             % Works the same way as a promise_pure or promise_semipure
             % pragma, except that it applies to arbitrary goals and not
             % just whole procedure bodies.
+
+    ;       require_detism(determinism)
+            % Require the wrapped subgoal to have the specified determinism.
+            % If it does not, report an error.
+            % This scope reason should not exist after the first invocation
+            % of simplification.
+
+    ;       require_complete_switch(prog_var)
+            % If the wrapped subgoal is a switch on the given variable,
+            % require it have arms for every function symbol in the type
+            % of that variable. If it does not, report an error.
+            % This scope reason should not exist after the first invocation
+            % of simplification.
 
     ;       commit(force_pruning)
             % This scope exists to delimit a piece of code
@@ -1790,13 +1803,10 @@
 
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
-:- import_module cord.
 :- import_module map.
 :- import_module require.
-:- import_module string.
 :- import_module svmap.
 :- import_module svvarset.
 :- import_module varset.
@@ -2496,6 +2506,13 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
             Reason0 = promise_solutions(Vars0, Kind),
             rename_var_list(Must, Subn, Vars0, Vars),
             Reason = promise_solutions(Vars, Kind)
+        ;
+            Reason0 = require_complete_switch(Var0),
+            rename_var(Must, Subn, Var0, Var),
+            Reason = require_complete_switch(Var)
+        ;
+            Reason0 = require_detism(_),
+            Reason = Reason0
         ;
             Reason0 = barrier(_),
             Reason = Reason0

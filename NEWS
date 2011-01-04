@@ -10,6 +10,20 @@ NEWS for Mercury 11.01-beta
 HIGHLIGHTS
 ==========
 
+Changes to the Mercury language:
+
+* We have added two new kinds of scopes to the language.
+
+  A scope introduced by one of the new keywords require_det, require_semidet,
+  require_multi, require_nondet, require_cc_multi, require_cc_nondet,
+  require_erroneous and require_failure, as the name implies, requires
+  the goal inside the scope to have the given determinism.
+  
+  A scope introduced by the keyword require_complete_switch requires the
+  goal inside the scope, if it is a switch on the variable named by the scope,
+  to be a complete switch, i.e. to have arms for all the function symbols
+  in the type of the switched-on variable.
+
 Changes to the Mercury standard library:
 
 * We have added semidet modes for hash_table.fold/4 and

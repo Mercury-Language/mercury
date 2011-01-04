@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -42,7 +42,6 @@
 
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism.
-:- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
@@ -317,6 +316,12 @@ can_push(Var, Goal) = CanPush :-
                 ; Reason = trace_goal(_, _, _, _, _)
                 ),
                 CanPush = no
+            ;
+                ( Reason = require_detism(_)
+                ; Reason = require_complete_switch(_)
+                ),
+                % These scopes should have been deleted by now.
+                unexpected($module, $pred, "unexpected scope")
             )
         ;
             GoalExpr = switch(SwitchVar, _, _),

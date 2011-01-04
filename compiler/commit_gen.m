@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -38,11 +38,8 @@
 :- import_module ll_backend.code_gen.
 
 :- import_module cord.
-:- import_module list.
 :- import_module maybe.
 :- import_module require.
-:- import_module pair.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 

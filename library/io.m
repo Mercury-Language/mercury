@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2010 The University of Melbourne.
+% Copyright (C) 1993-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -10336,7 +10336,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
                 NULL))                                                      \\
             {                                                               \\
                 free_err_buf = MR_FALSE;                                    \\
-                err_buf = ""could not retrieve error message"";             \\
+                err_buf = (LPVOID) ""could not retrieve error message"";    \\
             }                                                               \\
             total_len = strlen(msg) + strlen((char *)err_buf);              \\
             MR_incr_hp_atomic_msg(tmp,                                      \\

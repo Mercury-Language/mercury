@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -671,6 +671,8 @@ goal_contains_stm_atomic_or_try(GoalExpr - _Context,
         ; GoalExpr = promise_equivalent_solution_sets_expr(_, _, _, SubGoal)
         ; GoalExpr = promise_equivalent_solution_arbitrary_expr(_, _, _,
             SubGoal)
+        ; GoalExpr = require_detism_expr(_, SubGoal)
+        ; GoalExpr = require_complete_switch_expr(_, SubGoal)
         ; GoalExpr = trace_expr(_, _, _, _, SubGoal)
         ),
         goal_contains_stm_atomic_or_try(SubGoal, ContainsAtomic, ContainsTry)

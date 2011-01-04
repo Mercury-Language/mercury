@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2008, 2010 The University of Melbourne.
+% Copyright (C) 2001-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -52,7 +52,6 @@
 
 :- import_module check_hlds.inst_match.
 :- import_module hlds.goal_form.
-:- import_module hlds.goal_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 
@@ -182,6 +181,12 @@ propagate_conj_sub_goal_2(hlds_goal(GoalExpr, GoalInfo), Constraints,
             flatten_constraints(Constraints, ConstraintGoals),
             FinalGoals = [hlds_goal(scope(Reason, SubGoal), GoalInfo) |
                 ConstraintGoals]
+        ;
+            ( Reason = require_detism(_)
+            ; Reason = require_complete_switch(_)
+            ),
+            % These scopes should have been deleted by now.
+            unexpected($module, $pred, "unexpected scope")
         ;
             Reason = from_ground_term(_, from_ground_term_construct),
             % There is no point in either propagating constraints into these

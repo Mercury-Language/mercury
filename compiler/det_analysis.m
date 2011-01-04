@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -116,7 +116,6 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
-:- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.pred_table.
 :- import_module libs.
@@ -298,6 +297,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     det_info_get_module_info(DetInfo, !:ModuleInfo),
     det_info_get_error_specs(DetInfo, !:Specs),
     det_info_get_has_format_call(DetInfo, HasFormatCalls),
+    det_info_get_has_req_scope(DetInfo, HasRequireScope),
 
     % Take the worst of the old and inferred detisms. This is needed to prevent
     % loops on p :- not(p), at least if the initial assumed detism is det.
@@ -379,15 +379,24 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     % Put back the new proc_info structure.
     map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
     pred_info_set_procedures(ProcTable, PredInfo0, PredInfo1),
+
+    pred_info_get_markers(PredInfo1, Markers1),
     (
-        HasFormatCalls = no,
-        PredInfo = PredInfo1
+        HasFormatCalls = does_not_contain_format_call,
+        Markers2 = Markers1
     ;
-        HasFormatCalls = yes,
-        pred_info_get_markers(PredInfo1, Markers1),
-        add_marker(marker_has_format_call, Markers1, Markers),
-        pred_info_set_markers(Markers, PredInfo1, PredInfo)
+        HasFormatCalls = contains_format_call,
+        add_marker(marker_has_format_call, Markers1, Markers2)
     ),
+    (
+        HasRequireScope = does_not_contain_require_scope,
+        Markers = Markers2
+    ;
+        HasRequireScope = contains_require_scope,
+        add_marker(marker_has_require_scope, Markers2, Markers)
+    ),
+    pred_info_set_markers(Markers, PredInfo1, PredInfo),
+
     map.det_update(PredTable0, PredId, PredInfo, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
@@ -436,10 +445,10 @@ det_infer_goal(Goal0, Goal, InstMap0, !.SolnContext, RightFailingContexts,
     bool::in, determinism::out, list(failing_context)::out,
     det_info::in, det_info::out) is det.
 
-det_infer_goal_1(hlds_goal(GoalExpr0, GoalInfo0), hlds_goal(GoalExpr, GoalInfo),
-        InstMap0, !.SolnContext, RightFailingContexts,
+det_infer_goal_1(Goal0, Goal, InstMap0, !.SolnContext, RightFailingContexts,
         MaybePromiseEqvSolutionSets, AddPruning, Detism, GoalFailingContexts,
         !DetInfo) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     InstmapDelta = goal_info_get_instmap_delta(GoalInfo0),
 
     (
@@ -564,7 +573,8 @@ det_infer_goal_1(hlds_goal(GoalExpr0, GoalInfo0), hlds_goal(GoalExpr, GoalInfo),
     ;
         % Either no commit is needed, or a `scope' is already present.
         GoalExpr = GoalExpr1
-    ).
+    ),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- func promise_eqv_solutions_kind_prunes(promise_solutions_kind) = bool.
 
@@ -989,14 +999,14 @@ det_infer_call(PredId, ProcId0, ProcId, Args, GoalInfo, SolnContext,
     % when we iterate to fixpoint for global determinism inference.
     det_lookup_pred_info_and_detism(!.DetInfo, PredId, ProcId0,
         CalleePredInfo, Detism0),
-    
+
     % We do the following so that simplify.m knows whether to invoke
     % format_call.m *without* first having to traverse the procedure body.
     det_info_get_module_info(!.DetInfo, ModuleInfo),
     CalleeModuleName = pred_info_module(CalleePredInfo),
     CalleeName = pred_info_name(CalleePredInfo),
     ( is_format_call(CalleeModuleName, CalleeName, Args) ->
-        det_info_set_has_format_call(yes, !DetInfo)
+        det_info_set_has_format_call(!DetInfo)
     ;
         true
     ),
@@ -1637,7 +1647,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         % but not bound inside the scope?
         set.difference(set.list_to_set(Vars), BoundVars, ExtraVars),
         det_info_get_pess_extra_vars(!.DetInfo, IgnoreExtraVars),
-        ( 
+        (
             ( set.empty(ExtraVars)
             ; IgnoreExtraVars = pess_extra_vars_ignore
             )
@@ -1695,6 +1705,14 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         ; Reason = commit(_)
         ; Reason = barrier(_)
         ),
+        det_infer_goal(Goal0, Goal, InstMap0, SolnContext,
+            RightFailingContexts, MaybePromiseEqvSolutionSets0,
+            Detism, GoalFailingContexts, !DetInfo)
+    ;
+        ( Reason = require_complete_switch(_)
+        ; Reason = require_detism(_)
+        ),
+        det_info_set_has_req_scope(!DetInfo),
         det_infer_goal(Goal0, Goal, InstMap0, SolnContext,
             RightFailingContexts, MaybePromiseEqvSolutionSets0,
             Detism, GoalFailingContexts, !DetInfo)

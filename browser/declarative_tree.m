@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2008, 2010 The University of Melbourne.
+% Copyright (C) 2002-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -49,7 +49,6 @@
 :- pred trace_implicit_tree_info(wrap(S)::in, edt_node(R)::in,
     implicit_tree_info::out) is semidet <= annotated_trace(S, R).
 
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -64,7 +63,6 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module cord.
 :- import_module deconstruct.
 :- import_module exception.
 :- import_module int.

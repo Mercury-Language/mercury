@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2010 The University of Melbourne.
+% Copyright (C) 1995-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -740,19 +740,24 @@ find_used_vars_in_goal(Goal, !VarUses) :-
             Reason = exist_quant(Vars),
             mark_vars_as_used(Vars, !VarUses)
         ;
-            Reason = promise_purity(_)
-        ;
             Reason = promise_solutions(Vars, _),
             mark_vars_as_used(Vars, !VarUses)
-        ;
-            Reason = barrier(_)
-        ;
-            Reason = commit(_)
         ;
             Reason = from_ground_term(Var, _),
             mark_var_as_used(Var, !VarUses)
         ;
-            Reason = trace_goal(_, _, _, _, _)
+            ( Reason = promise_purity(_)
+            ; Reason = barrier(_)
+            ; Reason = commit(_)
+            ; Reason = trace_goal(_, _, _, _, _)
+            )
+            % Do nothing.
+        ;
+            ( Reason = require_detism(_)
+            ; Reason = require_complete_switch(_)
+            ),
+            % These scopes should have been deleted by now.
+            unexpected($module, $pred, "unexpected scope")
         ),
         find_used_vars_in_goal(SubGoal, !VarUses)
     ;

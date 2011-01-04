@@ -41,7 +41,7 @@
 @ifnottex
 This file documents the Mercury implementation, version <VERSION>.
 
-Copyright (C) 1995-2010 The University of Melbourne.
+Copyright (C) 1995-2011 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -76,7 +76,7 @@ into another language, under the above conditions for modified versions.
 @author Paul Bone
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995--2010 The University of Melbourne.
+Copyright @copyright{} 1995--2011 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -6245,6 +6245,12 @@ non-zero exit status.
 This option causes the compiler to halt immediately
 after syntax checking and not do any semantic checking
 if it finds any syntax errors in the program.
+
+% @sp 1
+% @item --halt-at-auto-parallel-failure
+% @findex --halt-at-auto-parallel-failure
+% This option causes the compiler to halt if it cannot perform
+% an auto-parallelization requested by a feedback file.
 
 @sp 1
 @item --inhibit-accumulator-warnings

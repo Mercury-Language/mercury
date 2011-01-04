@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2008, 2010 The University of Melbourne.
+% Copyright (C) 2005-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -71,13 +71,9 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
-:- import_module ll_backend.
-:- import_module ll_backend.liveness.
 :- import_module parse_tree.prog_out.
 
 :- import_module bool.
-:- import_module cord.
-:- import_module int.
 :- import_module map.
 
 %-----------------------------------------------------------------------------%

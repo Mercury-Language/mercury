@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001,2003-2007, 2010 The University of Melbourne.
+% Copyright (C) 1997-2001,2003-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -34,27 +34,23 @@
 
 :- type block_info
     --->    block_info(
+                % The label starting the block.
                 starting_label      :: label,
-                                    % The label starting the block.
 
+                % The instruction containing the label.
                 label_instr         :: instruction,
-                                    % The instruction containing the label.
 
+                % The code of the block without the initial label.
                 later_instrs        :: list(instruction),
-                                    % The code of the block without the initial
-                                    % label.
 
+                % Does the previous block (if any) fall through to this block?
                 fallen_into         :: bool,
-                                    % Does the previous block (if any)
-                                    % fall through to this block?
 
+                % The labels we can jump to (not falling through).
                 jump_dests          :: list(label),
-                                    % The labels we can jump to
-                                    % (not falling through).
 
+                % The label we fall through to (if there is one).
                 fall_dest           :: maybe(label)
-                                    % The label we fall through to
-                                    % (if there is one).
             ).
 
     % create_basic_blocks(ProcInstrs, Comments, ProcLabel, !C, NewLabels,
@@ -101,7 +97,6 @@
 
 :- import_module ll_backend.opt_util.
 
-:- import_module pair.
 :- import_module require.
 :- import_module svmap.
 :- import_module svset.

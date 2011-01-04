@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000,2002-2010 The University of Melbourne.
+% Copyright (C) 1996-2000,2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -58,6 +58,20 @@
     ;       pess_extra_vars_ignore.
             % Do not emit an error message if the above occurs.
 
+    % Does the predicate being analyzed contain a require_complete_switch
+    % or require_detism scope?
+    %
+:- type contains_require_scope
+    --->    does_not_contain_require_scope
+    ;       contains_require_scope.
+
+    % Does the predicate being analyzed contain a call that can be optimized
+    % by format_call.m?
+    %
+:- type contains_format_call
+    --->    does_not_contain_format_call
+    ;       contains_format_call.
+
 :- type det_info.
 
     % Given a list of cases, and a list of the possible cons_ids
@@ -102,15 +116,18 @@
 :- pred det_info_get_vartypes(det_info::in, vartypes::out) is det.
 :- pred det_info_get_pess_extra_vars(det_info::in,
     report_pess_extra_vars::out) is det.
+:- pred det_info_get_has_format_call(det_info::in,
+    contains_format_call::out) is det.
+:- pred det_info_get_has_req_scope(det_info::in,
+    contains_require_scope::out) is det.
 :- pred det_info_get_error_specs(det_info::in, list(error_spec)::out) is det.
-:- pred det_info_get_has_format_call(det_info::in, bool::out) is det.
 
 :- pred det_info_set_module_info(module_info::in, det_info::in, det_info::out)
     is det.
 :- pred det_info_set_vartypes(vartypes::in, det_info::in, det_info::out)
     is det.
-:- pred det_info_set_has_format_call(bool::in, det_info::in, det_info::out)
-    is det.
+:- pred det_info_set_has_format_call(det_info::in, det_info::out) is det.
+:- pred det_info_set_has_req_scope(det_info::in, det_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -124,7 +141,6 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module map.
-:- import_module require.
 :- import_module set_tree234.
 :- import_module term.
 
@@ -193,12 +209,9 @@ det_get_proc_info(DetInfo, ProcInfo) :-
 det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) :-
     proc_info_get_vartypes(ProcInfo, VarTypes),
     map.lookup(VarTypes, Var, Type),
-    ( type_to_ctor(Type, TypeCtor) ->
-        module_info_get_type_table(ModuleInfo, TypeTable),
-        search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn)
-    ;
-        unexpected(this_file, "det_lookup_var_type")
-    ).
+    type_to_ctor_det(Type, TypeCtor),
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn).
 
 det_no_output_vars(Vars, InstMap, InstMapDelta, DetInfo) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
@@ -222,8 +235,9 @@ det_info_add_error_spec(Spec, !DetInfo) :-
                 di_reorder_disj     :: bool,        % --reorder-disj
                 di_fully_strict     :: bool,        % --fully-strict
                 di_pess_extra_vars  :: report_pess_extra_vars,
-                di_error_specs      :: list(error_spec),
-                di_has_format_call  :: bool
+                di_has_format_call  :: contains_format_call,
+                di_has_req_scope    :: contains_require_scope,
+                di_error_specs      :: list(error_spec)
             ).
 
 det_info_init(ModuleInfo, VarTypes, PredId, ProcId, PessExtraVars,
@@ -233,7 +247,9 @@ det_info_init(ModuleInfo, VarTypes, PredId, ProcId, PessExtraVars,
     globals.lookup_bool_option(Globals, reorder_disj, ReorderDisj),
     globals.lookup_bool_option(Globals, fully_strict, FullyStrict),
     DetInfo = det_info(ModuleInfo, VarTypes, PredId, ProcId,
-        ReorderConj, ReorderDisj, FullyStrict, PessExtraVars, Specs, no).
+        ReorderConj, ReorderDisj, FullyStrict, PessExtraVars,
+        does_not_contain_format_call, does_not_contain_require_scope,
+        Specs).
 
 det_info_get_module_info(DI, DI ^ di_module_info).
 det_info_get_pred_id(DI, DI ^ di_pred_id).
@@ -243,8 +259,9 @@ det_info_get_reorder_disj(DI, DI ^ di_reorder_disj).
 det_info_get_fully_strict(DI, DI ^ di_fully_strict).
 det_info_get_vartypes(DI, DI ^ di_vartypes).
 det_info_get_pess_extra_vars(DI, DI ^ di_pess_extra_vars).
-det_info_get_error_specs(DI, DI ^ di_error_specs).
 det_info_get_has_format_call(DI, DI ^ di_has_format_call).
+det_info_get_has_req_scope(DI, DI ^ di_has_req_scope).
+det_info_get_error_specs(DI, DI ^ di_error_specs).
 
 :- pred det_info_set_error_specs(list(error_spec)::in,
     det_info::in, det_info::out) is det.
@@ -253,16 +270,12 @@ det_info_set_module_info(ModuleInfo, !DetInfo) :-
     !DetInfo ^ di_module_info := ModuleInfo.
 det_info_set_vartypes(VarTypes, !DetInfo) :-
     !DetInfo ^ di_vartypes := VarTypes.
+det_info_set_has_format_call(!DetInfo) :-
+    !DetInfo ^ di_has_format_call := contains_format_call.
+det_info_set_has_req_scope(!DetInfo) :-
+    !DetInfo ^ di_has_req_scope := contains_require_scope.
 det_info_set_error_specs(Specs, !DetInfo) :-
     !DetInfo ^ di_error_specs := Specs.
-det_info_set_has_format_call(HasFormatCall, !DetInfo) :-
-    !DetInfo ^ di_has_format_call := HasFormatCall.
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "det_util.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module det_util.

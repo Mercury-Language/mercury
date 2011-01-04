@@ -1,4 +1,4 @@
-#!/usr/local/bin/bash
+#!/bin/bash
 #
 # vim: ts=4 sw=4 et
 #
@@ -11,8 +11,8 @@
 # an absolute path name, it had better be in its own path!
 #
 
-CURRENT_RELEASE=0.13.0
-BETA_RELEASE=0.13.1
+CURRENT_RELEASE=10.04.2
+BETA_RELEASE=11.01
 
 # We need bash's extended globbing for the case patterns
 # matching the release numbers.
@@ -67,11 +67,16 @@ link_to_file () {
     prefix="$1"
     this_file="$2"
     this_file_descr="$3"
-    this_file_size=`ls -Ll "$this_file" | awk '{ print $5; }'`
-    this_file_sizekb=`expr "$this_file_size" / 1024`
-    handled_files="$this_file $handled_files"
     q='"'
-    echo "$prefix <a href=$q$this_file$q>$this_file_descr</a> ($this_file_sizekb kilobytes)" >> $INDEX 
+    if test -d "$this_file"
+    then
+        echo "$prefix <a href=$q$this_file$q>$this_file_descr</a>" >> $INDEX
+    else
+        this_file_size=`ls -Ll "$this_file" | awk '{ print $5; }'`
+        this_file_sizekb=`expr "$this_file_size" / 1024`
+        echo "$prefix <a href=$q$this_file$q>$this_file_descr</a> ($this_file_sizekb kilobytes)" >> $INDEX 
+    fi
+    handled_files="$this_file $handled_files"
 }
 
 #-----------------------------------------------------------------------------#
@@ -220,12 +225,10 @@ do_handle_release () {
             do
                 case $bindist in
                     *.tar.gz)
-                        bindist_name=`expr \
-                            "$bindist" : "mercury-$release_id.\(.*\).tar.gz"`
+                        bindist_name=`expr "$bindist" : "mercury-$release_id.\(.*\).tar.gz"`
                     ;;
                     *.zip)
-                        bindist_name=`expr \
-                            "$bindist" : "mercury-compiler-$release_id.\(.*\).zip"`
+                        bindist_name=`expr "$bindist" : "mercury-compiler-$release_id.\(.*\).zip"`
                     ;;
                 esac
                 
@@ -374,7 +377,7 @@ do
         
         # Don't include the README or any of the index files
         #
-        README|index.html*)
+        README|index.html*|$LOCKDIR)
             ;;
         
         *)

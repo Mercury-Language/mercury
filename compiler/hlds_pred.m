@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -423,6 +423,14 @@
             % This predicate is part of the machinery used to access mutables.
             % This marker is used to inform inlining that we should _always_
             % attempt to inline this predicate across module boundaries.
+
+    ;       marker_has_require_scope
+            % The body of this predicate contains a require_complete_switch
+            % or require_detism scope. This marker is set if applicable during
+            % determinism inference. It is used during determinism reporting:
+            % procedures that have this marker are checked for violations of
+            % the requirements of these scopes even if the overall determinism
+            % of the procedure body is correct.
 
     ;       marker_has_format_call.
             % The body of this predicate contains calls to predicates

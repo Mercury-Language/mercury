@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -51,15 +51,12 @@
 :- import_module hlds.hlds_rtti.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module deconstruct.
-:- import_module exception.
 :- import_module int.
 :- import_module maybe.
 :- import_module require.
-:- import_module string.
 :- import_module svvarset.
 :- import_module univ.
 :- import_module varset.
@@ -388,7 +385,6 @@ extract_extra_arg(TCIVar, Index, Var, ExtractStatement, !VarSet) :-
 
 %-----------------------------------------------------------------------------%
 
-    %
     % Generate a representation of a type_info.
     % The generated type_info will always be local to the module.
     %
@@ -458,7 +454,6 @@ rtti_type_info_to_elds_2(ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-    %
     % Generate a representation of a pseudo_type_info.
     % The generated pseudo_type_info will always be local to the module.
     %

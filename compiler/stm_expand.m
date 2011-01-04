@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2010 The University of Melbourne.
+% Copyright (C) 1995-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public Licence - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -180,7 +180,6 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
@@ -201,7 +200,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module svvarset.
 :- import_module term.
 :- import_module varset.
@@ -348,6 +346,12 @@ stm_process_goal(Instmap, Goal0, Goal, !Info) :-
             stm_process_goal(Instmap, InnerGoal0, InnerGoal, !Info),
             GoalExpr = scope(Reason, InnerGoal),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
+        ;
+            ( Reason = require_detism(_)
+            ; Reason = require_complete_switch(_)
+            ),
+            % These scopes should have been deleted by now.
+            unexpected($module, $pred, "unexpected scope")
         )
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),

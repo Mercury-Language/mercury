@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2010 The University of Melbourne.
+% Copyright (C) 1993-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -626,440 +626,468 @@ transform_goal(Goal0 - Context, Renaming, hlds_goal(GoalExpr, GoalInfo),
     svar_info::in, svar_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-transform_goal_2(fail_expr, _, _, hlds_goal(disj([]), GoalInfo), 0,
+transform_goal_2(Expr, Context, Renaming, Goal, !:NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    goal_info_init(GoalInfo),
-    svar_prepare_for_next_conjunct(set.init, !VarSet, !SInfo).
-transform_goal_2(true_expr, _, _, hlds_goal(conj(plain_conj, []), GoalInfo), 0,
-        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    goal_info_init(GoalInfo),
-    svar_prepare_for_next_conjunct(set.init, !VarSet, !SInfo).
-transform_goal_2(all_expr(Vars0, Goal0), Context, Renaming, Goal, NumAdded,
-        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    % Convert `all [Vars] Goal' into `not some [Vars] not Goal'.
-    TransformedGoal = not_expr(some_expr(Vars0, not_expr(Goal0) - Context)
-        - Context),
-    transform_goal_2(TransformedGoal, Context, Renaming, Goal, NumAdded,
-        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs).
-transform_goal_2(all_state_vars_expr(StateVars, Goal0), Context, Renaming,
-        Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    transform_goal_2(
-        not_expr(some_state_vars_expr(StateVars,
-            not_expr(Goal0) - Context) - Context),
-        Context, Renaming, Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
-        !SInfo, !Specs).
-transform_goal_2(some_expr(Vars0, Goal0), _, Renaming,
-        hlds_goal(scope(exist_quant(Vars), Goal), GoalInfo), NumAdded,
-        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    rename_var_list(need_not_rename, Renaming, Vars0, Vars),
-    transform_goal(Goal0, Renaming, Goal, NumAdded, !VarSet, !ModuleInfo,
-        !QualInfo, !SInfo, !Specs),
-    goal_info_init(GoalInfo).
-transform_goal_2(some_state_vars_expr(StateVars0, Goal0), _, Renaming,
-        hlds_goal(scope(exist_quant(Vars), Goal), GoalInfo), NumAdded,
-        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    BeforeSInfo = !.SInfo,
-    rename_var_list(need_not_rename, Renaming, StateVars0, StateVars),
-    prepare_for_local_state_vars(StateVars, !VarSet, !SInfo),
-    transform_goal(Goal0, Renaming, Goal, NumAdded, !VarSet, !ModuleInfo,
-        !QualInfo, !SInfo, !Specs),
-    finish_local_state_vars(StateVars, Vars, BeforeSInfo, !SInfo),
-    goal_info_init(GoalInfo).
-transform_goal_2(promise_purity_expr(Purity, Goal0), _, Renaming,
-        hlds_goal(
-            scope(promise_purity(Purity), Goal),
-            GoalInfo),
-        NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    transform_goal(Goal0, Renaming, Goal, NumAdded, !VarSet, !ModuleInfo,
-        !QualInfo, !SInfo, !Specs),
-    goal_info_init(GoalInfo).
-transform_goal_2(
-        promise_equivalent_solutions_expr(Vars0, DotSVars0, ColonSVars0,
-            Goal0),
-        Context, Renaming,
-        hlds_goal(
-            scope(promise_solutions(Vars, equivalent_solutions), Goal),
-            GoalInfo),
-        NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    transform_promise_eqv_goal(Vars0, DotSVars0, ColonSVars0,
-        Context, Renaming, Vars, Goal0, Goal, GoalInfo, NumAdded,
-        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs).
-transform_goal_2(
-        promise_equivalent_solution_sets_expr(Vars0, DotSVars0, ColonSVars0,
-            Goal0),
-        Context, Renaming,
-        hlds_goal(
-            scope(promise_solutions(Vars, equivalent_solution_sets), Goal),
-            GoalInfo),
-        NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    transform_promise_eqv_goal(Vars0, DotSVars0, ColonSVars0,
-        Context, Renaming, Vars, Goal0, Goal, GoalInfo, NumAdded,
-        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs).
-transform_goal_2(
-        promise_equivalent_solution_arbitrary_expr(Vars0,
-            DotSVars0, ColonSVars0, Goal0),
-        Context, Renaming,
-        hlds_goal(
-            scope(promise_solutions(Vars, equivalent_solution_sets_arbitrary),
-                Goal),
-            GoalInfo),
-        NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    transform_promise_eqv_goal(Vars0, DotSVars0, ColonSVars0,
-        Context, Renaming, Vars, Goal0, Goal, GoalInfo, NumAdded,
-        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs).
-transform_goal_2(atomic_expr(Outer0, Inner0, MaybeOutputVars0,
-        MainGoal, OrElseGoals), Context, Renaming, HLDSGoal,
-        !:NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     (
-        Outer0 = atomic_state_var(OuterStateVar0),
-        rename_var(need_not_rename, Renaming, OuterStateVar0, OuterStateVar),
-        svar_start_outer_atomic_scope(Context, OuterStateVar, OuterDI, OuterUO,
-            OuterScopeInfo, !VarSet, !SInfo, !Specs),
-        MaybeOuterScopeInfo = yes(OuterScopeInfo),
-        Outer = atomic_interface_vars(OuterDI, OuterUO)
-    ;
-        Outer0 = atomic_var_pair(OuterDI0, OuterUO0),
-        rename_var(need_not_rename, Renaming, OuterDI0, OuterDI),
-        rename_var(need_not_rename, Renaming, OuterUO0, OuterUO),
-        Outer = atomic_interface_vars(OuterDI, OuterUO),
-        MaybeOuterScopeInfo = no
-    ),
-    (
-        Inner0 = atomic_state_var(InnerStateVar0),
-        rename_var(need_not_rename, Renaming, InnerStateVar0, InnerStateVar),
-        svar_start_inner_atomic_scope(Context, InnerStateVar, InnerScopeInfo,
-            !VarSet, !SInfo, !Specs),
-        MaybeInnerScopeInfo = yes(InnerScopeInfo)
-    ;
-        Inner0 = atomic_var_pair(_InnerDI0, _InnerUO0),
-        MaybeInnerScopeInfo = no
-    ),
-    BeforeDisjSInfo = !.SInfo,
-    transform_goal(MainGoal, Renaming, HLDSMainGoal0,
-        !:NumAdded, !VarSet, !ModuleInfo, !QualInfo, BeforeDisjSInfo, SInfo1,
-        !Specs),
-    MainDisjInfo = {HLDSMainGoal0, SInfo1},
-    transform_orelse_goals(OrElseGoals, Renaming, OrElseDisjInfos,
-        0, OrElseNumAdded, !VarSet, !ModuleInfo, !QualInfo, BeforeDisjSInfo,
-        !Specs),
-    AllDisjInfos = [MainDisjInfo | OrElseDisjInfos],
-    svar_finish_disjunction(Context, !.VarSet, AllDisjInfos, HLDSGoals,
-        !:SInfo),
-    (
-        HLDSGoals = [HLDSMainGoal | HLDSOrElseGoals]
-    ;
-        HLDSGoals = [],
-        unexpected(this_file, "transform_goal_2: atomic HLDSGoals = []")
-    ),
-    (
-        Inner0 = atomic_state_var(_),
         (
-            MaybeInnerScopeInfo = yes(InnerScopeInfo2),
-            svar_finish_inner_atomic_scope(Context, InnerScopeInfo2,
-                InnerDI, InnerUO, !VarSet, !SInfo, !Specs),
-            Inner = atomic_interface_vars(InnerDI, InnerUO)
+            Expr = fail_expr,
+            GoalExpr = disj([])
         ;
-            MaybeInnerScopeInfo = no,
-            unexpected(this_file, "transform_goal_2: MaybeFinishStateVar = no")
-        )
+            Expr = true_expr,
+            GoalExpr = conj(plain_conj, [])
+        ),
+        !:NumAdded = 0,
+        goal_info_init(GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo),
+        svar_prepare_for_next_conjunct(set.init, !VarSet, !SInfo)
     ;
-        Inner0 = atomic_var_pair(InnerDI0, InnerUO0),
-        rename_var(need_not_rename, Renaming, InnerDI0, InnerDI),
-        rename_var(need_not_rename, Renaming, InnerUO0, InnerUO),
-        Inner = atomic_interface_vars(InnerDI, InnerUO)
-    ),
-    (
-        MaybeOutputVars0 = no,
-        MaybeOutputVars = no
-    ;
-        MaybeOutputVars0 = yes(OutputVars0),
-        rename_var_list(need_not_rename, Renaming, OutputVars0, OutputVars),
-        MaybeOutputVars = yes(OutputVars)
-    ),
-    (
-        MaybeOuterScopeInfo = yes(OuterScopeInfo2),
-        svar_finish_outer_atomic_scope(OuterScopeInfo2, !SInfo)
-    ;
-        MaybeOuterScopeInfo = no
-    ),
-    !:NumAdded = !.NumAdded + 1 + OrElseNumAdded,
-    ShortHand = atomic_goal(unknown_atomic_goal_type, Outer, Inner,
-        MaybeOutputVars, HLDSMainGoal, HLDSOrElseGoals, []),
-    GoalExpr = shorthand(ShortHand),
-    goal_info_init(Context, GoalInfo),
-    HLDSGoal = hlds_goal(GoalExpr, GoalInfo),
-    trace [compiletime(flag("atomic_scope_syntax")), io(!IO)] (
-        io.write_string("atomic:\n", !IO),
-        module_info_get_globals(!.ModuleInfo, Globals),
-        OutInfo = init_hlds_out_info(Globals),
-        write_goal(OutInfo, HLDSGoal, !.ModuleInfo, !.VarSet, yes, 0, "\n",
-            !IO),
-        io.nl(!IO)
-    ).
-transform_goal_2(
-        trace_expr(MaybeCompileTime, MaybeRunTime, MaybeIO, Mutables, Goal0),
-        Context, Renaming, hlds_goal(scope(Reason, Goal), GoalInfo), NumAdded,
-        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    list.map4(extract_trace_mutable_var(Context, !.VarSet), Mutables,
-        MutableHLDSs, MutableStateVars, MutableGetGoals, MutableSetGoals),
-    (
-        MaybeIO = yes(IOStateVar),
-        varset.lookup_name(!.VarSet, IOStateVar, IOStateVarName),
-        MaybeIOHLDS = yes(IOStateVarName),
-        extract_trace_io_var(Context, IOStateVar, IOGetGoal, IOSetGoal),
-        StateVars0 = [IOStateVar | MutableStateVars],
-        GetGoals = [IOGetGoal | MutableGetGoals],
-        SetGoals = [IOSetGoal | MutableSetGoals]
-    ;
-        MaybeIO = no,
-        MaybeIOHLDS = no,
-        StateVars0 = MutableStateVars,
-        GetGoals = MutableGetGoals,
-        SetGoals = MutableSetGoals
-    ),
-    Goal1 = goal_list_to_conj(Context, GetGoals ++ [Goal0] ++ SetGoals),
-    BeforeSInfo = !.SInfo,
-    rename_var_list(need_not_rename, Renaming, StateVars0, StateVars),
-    prepare_for_local_state_vars(StateVars, !VarSet, !SInfo),
-    transform_goal(Goal1, Renaming, Goal, NumAdded1, !VarSet, !ModuleInfo,
-        !QualInfo, !SInfo, !Specs),
-    NumAdded = list.length(GetGoals) + NumAdded1 + list.length(SetGoals),
-    finish_local_state_vars(StateVars, Vars, BeforeSInfo, !SInfo),
-    Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIOHLDS,
-        MutableHLDSs, Vars),
-    goal_info_init(GoalInfo).
-transform_goal_2(
-        try_expr(MaybeIO0, Goal0, Then0, MaybeElse0, Catches0, MaybeCatchAny0),
-        Context, Renaming, TryGoal, NumAdded,
-        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    (
-        MaybeIO0 = yes(IOStateVar0),
+        % Convert `all [Vars] Goal' into `not some [Vars] not Goal'.
         (
-            MaybeElse0 = no,
-            rename_var(need_not_rename, Renaming, IOStateVar0, IOStateVar),
-            transform_try_expr_with_io(IOStateVar0, IOStateVar, Goal0, Then0,
-                Catches0, MaybeCatchAny0, Context, Renaming, TryGoal,
-                NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs)
+            Expr = all_expr(Vars0, Goal0),
+            TransformedExpr = not_expr(some_expr(Vars0,
+                not_expr(Goal0) - Context) - Context)
         ;
-            MaybeElse0 = yes(_),
-            Pieces = [words("Error: a `try' goal with an `io' parameter"),
-                words("cannot have an else part."), nl],
-            Msg = simple_msg(Context, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-            !:Specs = [Spec | !.Specs],
-            TryGoal = true_goal,
-            NumAdded = 0
-        )
-    ;
-        MaybeIO0 = no,
-        transform_try_expr_without_io(Goal0, Then0, MaybeElse0, Catches0,
-            MaybeCatchAny0, Context, Renaming, TryGoal, NumAdded,
+            Expr = all_state_vars_expr(StateVars, Goal0),
+            TransformedExpr = not_expr(some_state_vars_expr(StateVars,
+                not_expr(Goal0) - Context) - Context)
+        ),
+        transform_goal_2(TransformedExpr, Context, Renaming, Goal, !:NumAdded,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs)
-    ).
-transform_goal_2(if_then_else_expr(Vars0, StateVars0, Cond0, Then0, Else0),
-        Context, Renaming,
-        hlds_goal(if_then_else(Vars, Cond, Then, Else), GoalInfo),
-        NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    BeforeSInfo = !.SInfo,
-    rename_var_list(need_not_rename, Renaming, Vars0, Vars),
-    rename_var_list(need_not_rename, Renaming, StateVars0, StateVars),
-    svar_prepare_for_if_then_else_goal(StateVars, !VarSet, !SInfo),
-    transform_goal(Cond0, Renaming, Cond, CondAdded, !VarSet, !ModuleInfo,
-        !QualInfo, !SInfo, !Specs),
-    svar_finish_if_then_else_goal_condition(StateVars,
-        BeforeSInfo, !.SInfo, AfterCondSInfo, !:SInfo),
-    transform_goal(Then0, Renaming, Then1, ThenAdded, !VarSet, !ModuleInfo,
-        !QualInfo, !SInfo, !Specs),
-    svar_finish_if_then_else_goal_then_goal(StateVars, BeforeSInfo, !SInfo),
-    AfterThenSInfo = !.SInfo,
-    transform_goal(Else0, Renaming, Else1, ElseAdded, !VarSet, !ModuleInfo,
-        !QualInfo, BeforeSInfo, !:SInfo, !Specs),
-    NumAdded = CondAdded + ThenAdded + ElseAdded,
-    goal_info_init(Context, GoalInfo),
-    svar_finish_if_then_else(Context, Then1, Then, Else1, Else,
-        BeforeSInfo, AfterCondSInfo, AfterThenSInfo, !SInfo, !VarSet).
-transform_goal_2(not_expr(SubGoal0), _, Renaming,
-        hlds_goal(negation(SubGoal), GoalInfo),
-        NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    BeforeSInfo = !.SInfo,
-    transform_goal(SubGoal0, Renaming, SubGoal, NumAdded, !VarSet, !ModuleInfo,
-        !QualInfo, !SInfo, !Specs),
-    goal_info_init(GoalInfo),
-    svar_finish_negation(BeforeSInfo, !SInfo).
-transform_goal_2(conj_expr(A0, B0), _, Renaming, Goal, NumAdded, !VarSet,
-        !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    get_rev_conj(A0, Renaming, [], R0, 0, NumAddedA,
-        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
-    get_rev_conj(B0, Renaming, R0, R,  NumAddedA, NumAdded,
-        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
-    L = list.reverse(R),
-    goal_info_init(GoalInfo),
-    conj_list_to_goal(L, GoalInfo, Goal).
-transform_goal_2(par_conj_expr(A0, B0), _, Renaming, Goal, NumAdded, !VarSet,
-        !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    get_rev_par_conj(A0, Renaming, [], R0, 0, NumAddedA,
-        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
-    get_rev_par_conj(B0, Renaming, R0, R,  NumAddedA, NumAdded,
-        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
-    L = list.reverse(R),
-    goal_info_init(GoalInfo),
-    par_conj_list_to_goal(L, GoalInfo, Goal).
-transform_goal_2(disj_expr(A0, B0), Context, Renaming, Goal, NumAdded, !VarSet,
-        !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    get_disj(B0, Renaming, [], L0, 0, NumAddedB,
-        !VarSet, !ModuleInfo, !QualInfo, !.SInfo, !Specs),
-    get_disj(A0, Renaming, L0, L1, NumAddedB, NumAdded,
-        !VarSet, !ModuleInfo, !QualInfo, !.SInfo, !Specs),
-    svar_finish_disjunction(Context, !.VarSet, L1, L, !:SInfo),
-    goal_info_init(Context, GoalInfo),
-    disj_list_to_goal(L, GoalInfo, Goal).
-transform_goal_2(implies_expr(P, Q), Context, Renaming, Goal, NumAdded,
-        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-        % `P => Q' is defined as `not (P, not Q)'
-    TransformedGoal = not_expr(conj_expr(P, not_expr(Q) - Context) - Context),
-    transform_goal_2(TransformedGoal, Context, Renaming, Goal, NumAdded,
-        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs).
-transform_goal_2(equivalent_expr(P0, Q0), _, Renaming, Goal, NumAdded, !VarSet,
-        !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    % `P <=> Q' is defined as `(P => Q), (Q => P)',
-    % but that transformation must not be done until
-    % after quantification analysis, lest the duplication of
-    % the goals concerned affect the implicit quantification
-    % of the variables inside them.
-
-    BeforeSInfo = !.SInfo,
-    goal_info_init(GoalInfo),
-    transform_goal(P0, Renaming, P, NumAddedP, !VarSet, !ModuleInfo, !QualInfo,
-        !SInfo, !Specs),
-    transform_goal(Q0, Renaming, Q, NumAddedQ, !VarSet, !ModuleInfo, !QualInfo,
-        !SInfo, !Specs),
-    NumAdded = NumAddedP + NumAddedQ,
-    Goal = hlds_goal(shorthand(bi_implication(P, Q)), GoalInfo),
-    svar_finish_equivalence(BeforeSInfo, !SInfo).
-transform_goal_2(event_expr(EventName, Args0), Context, Renaming, Goal,
-        NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    Args1 = expand_bang_state_var_args(Args0),
-    svar_prepare_for_call(!SInfo),
-    rename_vars_in_term_list(need_not_rename, Renaming, Args1, Args),
-    make_fresh_arg_vars(Args, HeadVars, !VarSet, !SInfo, !Specs),
-    list.length(HeadVars, Arity),
-    list.duplicate(Arity, in_mode, Modes),
-    goal_info_init(Context, GoalInfo),
-    Details = event_call(EventName),
-    GoalExpr0 = generic_call(Details, HeadVars, Modes, detism_det),
-    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
-    CallId = generic_call_id(gcid_event_call(EventName)),
-    insert_arg_unifications(HeadVars, Args, Context, ac_call(CallId),
-        Goal0, Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
-        !SInfo, !Specs),
-    svar_finish_call(!VarSet, !SInfo).
-transform_goal_2(call_expr(Name, Args0, Purity), Context, Renaming, Goal,
-        NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    Args1 = expand_bang_state_var_args(Args0),
-    (
-        Name = unqualified("\\="),
-        Args1 = [LHS, RHS]
-    ->
-        svar_prepare_for_call(!SInfo),
-        % `LHS \= RHS' is defined as `not (LHS = RHS)'
-        transform_goal_2(not_expr(unify_expr(LHS, RHS, Purity) - Context),
-            Context, Renaming, Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
-            !SInfo, !Specs),
-        svar_finish_call(!VarSet, !SInfo)
     ;
-        % check for a state var record assignment:
-        % !Var ^ field := Value
-        Name = unqualified(":="),
-        Args1 = [LHS0, RHS0],
-        LHS0 = functor(atom("^"), [StateVar0, Remainder], FieldListContext),
-        StateVar0 = functor(atom("!"), Args @ [variable(_, _)],
-            StateVarContext)
-    ->
-        svar_prepare_for_call(!SInfo),
-        % !Var ^ field := Value is defined as !:Var = !.Var ^ field := Value.
-        LHS = functor(atom("!:"), Args, StateVarContext),
-        StateVar = functor(atom("!."), Args, StateVarContext),
-        FieldList = functor(atom("^"), [StateVar, Remainder],
-                FieldListContext),
-        RHS = functor(atom(":="), [FieldList, RHS0], Context),
-        transform_goal_2(unify_expr(LHS, RHS, Purity),
-            Context, Renaming, Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
-            !SInfo, !Specs),
-        svar_finish_call(!VarSet, !SInfo)
-    ;
-        % check for a DCG field access goal:
-        % get: Field =^ field
-        % set: ^ field := Field
-        ( Name = unqualified(Operator) ),
-        ( Operator = "=^"
-        ; Operator = ":="
-        )
-    ->
-        svar_prepare_for_call(!SInfo),
-        rename_vars_in_term_list(need_not_rename, Renaming, Args1, Args2),
-        transform_dcg_record_syntax(Operator, Args2, Context, Goal, NumAdded,
+        Expr = some_expr(Vars0, SubExpr),
+        rename_var_list(need_not_rename, Renaming, Vars0, Vars),
+        transform_goal(SubExpr, Renaming, SubGoal, !:NumAdded,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
-        svar_finish_call(!VarSet, !SInfo)
+        GoalExpr = scope(exist_quant(Vars), SubGoal),
+        goal_info_init(GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
+        Expr = some_state_vars_expr(StateVars0, SubExpr0),
+        BeforeSInfo = !.SInfo,
+        rename_var_list(need_not_rename, Renaming, StateVars0, StateVars),
+        prepare_for_local_state_vars(StateVars, !VarSet, !SInfo),
+        transform_goal(SubExpr0, Renaming, SubGoal, !:NumAdded,
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+        finish_local_state_vars(StateVars, Vars, BeforeSInfo, !SInfo),
+        GoalExpr = scope(exist_quant(Vars), SubGoal),
+        goal_info_init(GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    ;
+        Expr = promise_purity_expr(Purity, SubExpr0),
+        transform_goal(SubExpr0, Renaming, SubGoal, !:NumAdded,
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+        GoalExpr = scope(promise_purity(Purity), SubGoal),
+        goal_info_init(GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    ;
+        Expr = promise_equivalent_solutions_expr(Vars0, DotSVars0, ColonSVars0,
+            SubExpr0),
+        transform_promise_eqv_goal(Vars0, DotSVars0, ColonSVars0,
+            Context, Renaming, Vars, SubExpr0, SubGoal, GoalInfo, !:NumAdded,
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+        GoalExpr = scope(promise_solutions(Vars, equivalent_solutions),
+            SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    ;
+        Expr = promise_equivalent_solution_sets_expr(Vars0,
+            DotSVars0, ColonSVars0, SubExpr0),
+        transform_promise_eqv_goal(Vars0, DotSVars0, ColonSVars0,
+            Context, Renaming, Vars, SubExpr0, SubGoal, GoalInfo, !:NumAdded,
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+        GoalExpr = scope(promise_solutions(Vars, equivalent_solution_sets),
+            SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    ;
+        Expr = require_detism_expr(Detism, SubExpr),
+        transform_goal(SubExpr, Renaming, SubGoal, !:NumAdded,
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+        GoalExpr = scope(require_detism(Detism), SubGoal),
+        goal_info_init(GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    ;
+        Expr = require_complete_switch_expr(Var0, SubExpr),
+        rename_var(need_not_rename, Renaming, Var0, Var),
+        transform_goal(SubExpr, Renaming, SubGoal, !:NumAdded,
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+        GoalExpr = scope(require_complete_switch(Var), SubGoal),
+        goal_info_init(GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    ;
+        Expr = promise_equivalent_solution_arbitrary_expr(Vars0,
+            DotSVars0, ColonSVars0, SubExpr0),
+        transform_promise_eqv_goal(Vars0, DotSVars0, ColonSVars0,
+            Context, Renaming, Vars, SubExpr0, SubGoal, GoalInfo, !:NumAdded,
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+        GoalExpr = scope(promise_solutions(Vars,
+            equivalent_solution_sets_arbitrary), SubGoal),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    ;
+        Expr = atomic_expr(Outer0, Inner0, MaybeOutputVars0,
+            MainExpr, OrElseExprs),
+        (
+            Outer0 = atomic_state_var(OuterStateVar0),
+            rename_var(need_not_rename, Renaming,
+                OuterStateVar0, OuterStateVar),
+            svar_start_outer_atomic_scope(Context, OuterStateVar,
+                OuterDI, OuterUO, OuterScopeInfo, !VarSet, !SInfo, !Specs),
+            MaybeOuterScopeInfo = yes(OuterScopeInfo),
+            Outer = atomic_interface_vars(OuterDI, OuterUO)
+        ;
+            Outer0 = atomic_var_pair(OuterDI0, OuterUO0),
+            rename_var(need_not_rename, Renaming, OuterDI0, OuterDI),
+            rename_var(need_not_rename, Renaming, OuterUO0, OuterUO),
+            Outer = atomic_interface_vars(OuterDI, OuterUO),
+            MaybeOuterScopeInfo = no
+        ),
+        (
+            Inner0 = atomic_state_var(InnerStateVar0),
+            rename_var(need_not_rename, Renaming,
+                InnerStateVar0, InnerStateVar),
+            svar_start_inner_atomic_scope(Context, InnerStateVar,
+                InnerScopeInfo, !VarSet, !SInfo, !Specs),
+            MaybeInnerScopeInfo = yes(InnerScopeInfo)
+        ;
+            Inner0 = atomic_var_pair(_InnerDI0, _InnerUO0),
+            MaybeInnerScopeInfo = no
+        ),
+        BeforeDisjSInfo = !.SInfo,
+        transform_goal(MainExpr, Renaming, HLDSMainGoal0, !:NumAdded,
+            !VarSet, !ModuleInfo, !QualInfo, BeforeDisjSInfo, SInfo1, !Specs),
+        MainDisjInfo = {HLDSMainGoal0, SInfo1},
+        transform_orelse_goals(OrElseExprs, Renaming, OrElseDisjInfos,
+            0, OrElseNumAdded, !VarSet, !ModuleInfo, !QualInfo,
+            BeforeDisjSInfo, !Specs),
+        AllDisjInfos = [MainDisjInfo | OrElseDisjInfos],
+        svar_finish_disjunction(Context, !.VarSet, AllDisjInfos, HLDSGoals,
+            !:SInfo),
+        (
+            HLDSGoals = [HLDSMainGoal | HLDSOrElseGoals]
+        ;
+            HLDSGoals = [],
+            unexpected($module, $pred, "atomic HLDSGoals = []")
+        ),
+        (
+            Inner0 = atomic_state_var(_),
+            (
+                MaybeInnerScopeInfo = yes(InnerScopeInfo2),
+                svar_finish_inner_atomic_scope(Context, InnerScopeInfo2,
+                    InnerDI, InnerUO, !VarSet, !SInfo, !Specs),
+                Inner = atomic_interface_vars(InnerDI, InnerUO)
+            ;
+                MaybeInnerScopeInfo = no,
+                unexpected($module, $pred, "MaybeFinishStateVar = no")
+            )
+        ;
+            Inner0 = atomic_var_pair(InnerDI0, InnerUO0),
+            rename_var(need_not_rename, Renaming, InnerDI0, InnerDI),
+            rename_var(need_not_rename, Renaming, InnerUO0, InnerUO),
+            Inner = atomic_interface_vars(InnerDI, InnerUO)
+        ),
+        (
+            MaybeOutputVars0 = no,
+            MaybeOutputVars = no
+        ;
+            MaybeOutputVars0 = yes(OutputVars0),
+            rename_var_list(need_not_rename, Renaming,
+                OutputVars0, OutputVars),
+            MaybeOutputVars = yes(OutputVars)
+        ),
+        (
+            MaybeOuterScopeInfo = yes(OuterScopeInfo2),
+            svar_finish_outer_atomic_scope(OuterScopeInfo2, !SInfo)
+        ;
+            MaybeOuterScopeInfo = no
+        ),
+        !:NumAdded = !.NumAdded + 1 + OrElseNumAdded,
+        ShortHand = atomic_goal(unknown_atomic_goal_type, Outer, Inner,
+            MaybeOutputVars, HLDSMainGoal, HLDSOrElseGoals, []),
+        GoalExpr = shorthand(ShortHand),
+        goal_info_init(Context, GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo),
+        trace [compiletime(flag("atomic_scope_syntax")), io(!IO)] (
+            io.write_string("atomic:\n", !IO),
+            module_info_get_globals(!.ModuleInfo, Globals),
+            OutInfo = init_hlds_out_info(Globals),
+            write_goal(OutInfo, Goal, !.ModuleInfo, !.VarSet, yes, 0, "\n",
+                !IO),
+            io.nl(!IO)
+        )
+    ;
+        Expr = trace_expr(MaybeCompileTime, MaybeRunTime, MaybeIO,
+            Mutables, SubExpr0),
+        list.map4(extract_trace_mutable_var(Context, !.VarSet), Mutables,
+            MutableHLDSs, MutableStateVars, MutableGetExprs, MutableSetExprs),
+        (
+            MaybeIO = yes(IOStateVar),
+            varset.lookup_name(!.VarSet, IOStateVar, IOStateVarName),
+            MaybeIOHLDS = yes(IOStateVarName),
+            extract_trace_io_var(Context, IOStateVar, IOGetExpr, IOSetExpr),
+            StateVars0 = [IOStateVar | MutableStateVars],
+            GetExprs = [IOGetExpr | MutableGetExprs],
+            SetExprs = [IOSetExpr | MutableSetExprs]
+        ;
+            MaybeIO = no,
+            MaybeIOHLDS = no,
+            StateVars0 = MutableStateVars,
+            GetExprs = MutableGetExprs,
+            SetExprs = MutableSetExprs
+        ),
+        SubExpr1 =
+            goal_list_to_conj(Context, GetExprs ++ [SubExpr0] ++ SetExprs),
+        BeforeSInfo = !.SInfo,
+        rename_var_list(need_not_rename, Renaming, StateVars0, StateVars),
+        prepare_for_local_state_vars(StateVars, !VarSet, !SInfo),
+        transform_goal(SubExpr1, Renaming, SubGoal, !:NumAdded,
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+        !:NumAdded =
+            list.length(GetExprs) + !.NumAdded + list.length(SetExprs),
+        finish_local_state_vars(StateVars, Vars, BeforeSInfo, !SInfo),
+        Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIOHLDS,
+            MutableHLDSs, Vars),
+        GoalExpr = scope(Reason, SubGoal),
+        goal_info_init(GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    ;
+        Expr = try_expr(MaybeIO0, SubExpr0, Then0, MaybeElse0,
+            Catches0, MaybeCatchAny0),
+        (
+            MaybeIO0 = yes(IOStateVar0),
+            (
+                MaybeElse0 = no,
+                rename_var(need_not_rename, Renaming, IOStateVar0, IOStateVar),
+                transform_try_expr_with_io(IOStateVar0, IOStateVar, SubExpr0,
+                    Then0, Catches0, MaybeCatchAny0, Context, Renaming, Goal,
+                    !:NumAdded, !VarSet, !ModuleInfo, !QualInfo,
+                    !SInfo, !Specs)
+            ;
+                MaybeElse0 = yes(_),
+                Pieces = [words("Error: a `try' goal with an `io' parameter"),
+                    words("cannot have an else part."), nl],
+                Msg = simple_msg(Context, [always(Pieces)]),
+                Spec = error_spec(severity_error,
+                    phase_parse_tree_to_hlds, [Msg]),
+                !:Specs = [Spec | !.Specs],
+                Goal = true_goal,
+                !:NumAdded = 0
+            )
+        ;
+            MaybeIO0 = no,
+            transform_try_expr_without_io(SubExpr0, Then0, MaybeElse0,
+                Catches0, MaybeCatchAny0, Context, Renaming, Goal, !:NumAdded,
+                !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs)
+        )
+    ;
+        Expr = if_then_else_expr(Vars0, StateVars0, Cond0, Then0, Else0),
+        BeforeSInfo = !.SInfo,
+        rename_var_list(need_not_rename, Renaming, Vars0, Vars),
+        rename_var_list(need_not_rename, Renaming, StateVars0, StateVars),
+        svar_prepare_for_if_then_else_goal(StateVars, !VarSet, !SInfo),
+        transform_goal(Cond0, Renaming, Cond, CondAdded, !VarSet, !ModuleInfo,
+            !QualInfo, !SInfo, !Specs),
+        svar_finish_if_then_else_goal_condition(StateVars,
+            BeforeSInfo, !.SInfo, AfterCondSInfo, !:SInfo),
+        transform_goal(Then0, Renaming, Then1, ThenAdded, !VarSet, !ModuleInfo,
+            !QualInfo, !SInfo, !Specs),
+        svar_finish_if_then_else_goal_then_goal(StateVars, BeforeSInfo,
+            !SInfo),
+        AfterThenSInfo = !.SInfo,
+        transform_goal(Else0, Renaming, Else1, ElseAdded, !VarSet, !ModuleInfo,
+            !QualInfo, BeforeSInfo, !:SInfo, !Specs),
+        !:NumAdded = CondAdded + ThenAdded + ElseAdded,
+        goal_info_init(Context, GoalInfo),
+        svar_finish_if_then_else(Context, Then1, Then, Else1, Else,
+            BeforeSInfo, AfterCondSInfo, AfterThenSInfo, !SInfo, !VarSet),
+        GoalExpr = if_then_else(Vars, Cond, Then, Else),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    ;
+        Expr = not_expr(SubExpr0),
+        BeforeSInfo = !.SInfo,
+        transform_goal(SubExpr0, Renaming, SubGoal, !:NumAdded,
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+        svar_finish_negation(BeforeSInfo, !SInfo),
+        GoalExpr = negation(SubGoal),
+        goal_info_init(GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    ;
+        Expr = conj_expr(A0, B0),
+        get_rev_conj(A0, Renaming, [], R0, 0, !:NumAdded,
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+        get_rev_conj(B0, Renaming, R0, R,  !NumAdded,
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+        L = list.reverse(R),
+        goal_info_init(GoalInfo),
+        conj_list_to_goal(L, GoalInfo, Goal)
+    ;
+        Expr = par_conj_expr(A0, B0),
+        get_rev_par_conj(A0, Renaming, [], R0, 0, !:NumAdded,
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+        get_rev_par_conj(B0, Renaming, R0, R,  !NumAdded,
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+        L = list.reverse(R),
+        goal_info_init(GoalInfo),
+        par_conj_list_to_goal(L, GoalInfo, Goal)
+    ;
+        Expr = disj_expr(A0, B0),
+        get_disj(B0, Renaming, [], L0, 0, !:NumAdded,
+            !VarSet, !ModuleInfo, !QualInfo, !.SInfo, !Specs),
+        get_disj(A0, Renaming, L0, L1, !NumAdded,
+            !VarSet, !ModuleInfo, !QualInfo, !.SInfo, !Specs),
+        svar_finish_disjunction(Context, !.VarSet, L1, L, !:SInfo),
+        goal_info_init(Context, GoalInfo),
+        disj_list_to_goal(L, GoalInfo, Goal)
+    ;
+        Expr = implies_expr(P, Q),
+        % `P => Q' is defined as `not (P, not Q)'
+        TransformedExpr = not_expr(conj_expr(P, not_expr(Q) - Context)
+            - Context),
+        transform_goal_2(TransformedExpr, Context, Renaming, Goal, !:NumAdded,
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs)
+    ;
+        Expr = equivalent_expr(P0, Q0),
+        % `P <=> Q' is defined as `(P => Q), (Q => P)',
+        % but that transformation must not be done until after quantification,
+        % lest the duplication of the goals concerned affect the implicit
+        % quantification of the variables inside them.
+
+        BeforeSInfo = !.SInfo,
+        transform_goal(P0, Renaming, P, NumAddedP,
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+        transform_goal(Q0, Renaming, Q, NumAddedQ,
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+        svar_finish_equivalence(BeforeSInfo, !SInfo),
+        !:NumAdded = NumAddedP + NumAddedQ,
+        GoalExpr = shorthand(bi_implication(P, Q)),
+        goal_info_init(GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    ;
+        Expr = event_expr(EventName, Args0),
+        Args1 = expand_bang_state_var_args(Args0),
         svar_prepare_for_call(!SInfo),
         rename_vars_in_term_list(need_not_rename, Renaming, Args1, Args),
         make_fresh_arg_vars(Args, HeadVars, !VarSet, !SInfo, !Specs),
-        list.length(Args, Arity),
-        (
-            % Check for a higher-order call,
-            % i.e. a call to either call/N or ''/N.
-            ( Name = unqualified("call")
-            ; Name = unqualified("")
-            ),
-            HeadVars = [PredVar | RealHeadVars]
-        ->
-            % Initialize some fields to junk.
-            Modes = [],
-            Det = detism_erroneous,
-
-            GenericCall = higher_order(PredVar, Purity, pf_predicate, Arity),
-            Call = generic_call(GenericCall, RealHeadVars, Modes, Det),
-
-            hlds_goal.generic_call_id(GenericCall, CallId)
-        ;
-            % Initialize some fields to junk.
-            PredId = invalid_pred_id,
-            ModeId = invalid_proc_id,
-
-            MaybeUnifyContext = no,
-            Call = plain_call(PredId, ModeId, HeadVars, not_builtin,
-                MaybeUnifyContext, Name),
-            CallId = plain_call_id(simple_call_id(pf_predicate, Name, Arity))
-        ),
-        goal_info_init(Context, GoalInfo0),
-        goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
-        Goal0 = hlds_goal(Call, GoalInfo),
-
-        record_called_pred_or_func(pf_predicate, Name, Arity, !QualInfo),
+        list.length(HeadVars, Arity),
+        list.duplicate(Arity, in_mode, Modes),
+        goal_info_init(Context, GoalInfo),
+        Details = event_call(EventName),
+        GoalExpr0 = generic_call(Details, HeadVars, Modes, detism_det),
+        Goal0 = hlds_goal(GoalExpr0, GoalInfo),
+        CallId = generic_call_id(gcid_event_call(EventName)),
         insert_arg_unifications(HeadVars, Args, Context, ac_call(CallId),
-            Goal0, Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
+            Goal0, Goal, !:NumAdded, !VarSet, !ModuleInfo, !QualInfo,
             !SInfo, !Specs),
         svar_finish_call(!VarSet, !SInfo)
-    ).
-transform_goal_2(unify_expr(A0, B0, Purity), Context, Renaming, Goal,
-        NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    rename_vars_in_term(need_not_rename, Renaming, A0, A),
-    rename_vars_in_term(need_not_rename, Renaming, B0, B),
-    % It is an error for the left or right hand side of a
-    % unification to be !X (it may be !.X or !:X, however).
-    ( A = functor(atom("!"), [variable(StateVarA, _)], _) ->
-        report_svar_unify_error(Context, !.VarSet, StateVarA, !Specs),
-        Goal = true_goal,
-        NumAdded = 0
-    ; B = functor(atom("!"), [variable(StateVarB, _)], _) ->
-        report_svar_unify_error(Context, !.VarSet, StateVarB, !Specs),
-        Goal = true_goal,
-        NumAdded = 0
     ;
-        svar_prepare_for_call(!SInfo),
-        unravel_unification(A, B, Context, umc_explicit, [], Purity, Goal,
-            NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
-        svar_finish_call(!VarSet, !SInfo)
+        Expr = call_expr(Name, Args0, Purity),
+        Args1 = expand_bang_state_var_args(Args0),
+        (
+            Name = unqualified("\\="),
+            Args1 = [LHS, RHS]
+        ->
+            svar_prepare_for_call(!SInfo),
+            % `LHS \= RHS' is defined as `not (LHS = RHS)'
+            TransformedExpr = not_expr(unify_expr(LHS, RHS, Purity) - Context),
+            transform_goal_2(TransformedExpr, Context, Renaming, Goal,
+                !:NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+            svar_finish_call(!VarSet, !SInfo)
+        ;
+            % check for a state var record assignment:
+            % !Var ^ field := Value
+            Name = unqualified(":="),
+            Args1 = [LHS0, RHS0],
+            LHS0 = functor(atom("^"), [StateVar0, Remainder],
+                FieldListContext),
+            StateVar0 = functor(atom("!"), Args @ [variable(_, _)],
+                StateVarContext)
+        ->
+            svar_prepare_for_call(!SInfo),
+            % !Var ^ field := Value is defined as
+            % !:Var = !.Var ^ field := Value.
+            LHS = functor(atom("!:"), Args, StateVarContext),
+            StateVar = functor(atom("!."), Args, StateVarContext),
+            FieldList = functor(atom("^"), [StateVar, Remainder],
+                FieldListContext),
+            RHS = functor(atom(":="), [FieldList, RHS0], Context),
+            TransformedExpr = unify_expr(LHS, RHS, Purity),
+            transform_goal_2(TransformedExpr, Context, Renaming, Goal,
+                !:NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+            svar_finish_call(!VarSet, !SInfo)
+        ;
+            % check for a DCG field access goal:
+            % get: Field =^ field
+            % set: ^ field := Field
+            ( Name = unqualified(Operator) ),
+            ( Operator = "=^"
+            ; Operator = ":="
+            )
+        ->
+            svar_prepare_for_call(!SInfo),
+            rename_vars_in_term_list(need_not_rename, Renaming, Args1, Args2),
+            transform_dcg_record_syntax(Operator, Args2, Context, Goal,
+                !:NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+            svar_finish_call(!VarSet, !SInfo)
+        ;
+            svar_prepare_for_call(!SInfo),
+            rename_vars_in_term_list(need_not_rename, Renaming, Args1, Args),
+            make_fresh_arg_vars(Args, HeadVars, !VarSet, !SInfo, !Specs),
+            list.length(Args, Arity),
+            (
+                % Check for a higher-order call,
+                % i.e. a call to either call/N or ''/N.
+                ( Name = unqualified("call")
+                ; Name = unqualified("")
+                ),
+                HeadVars = [PredVar | RealHeadVars]
+            ->
+                % Initialize some fields to junk.
+                Modes = [],
+                Det = detism_erroneous,
+
+                GenericCall = higher_order(PredVar, Purity, pf_predicate,
+                    Arity),
+                Call = generic_call(GenericCall, RealHeadVars, Modes, Det),
+
+                hlds_goal.generic_call_id(GenericCall, CallId)
+            ;
+                % Initialize some fields to junk.
+                PredId = invalid_pred_id,
+                ModeId = invalid_proc_id,
+
+                MaybeUnifyContext = no,
+                Call = plain_call(PredId, ModeId, HeadVars, not_builtin,
+                    MaybeUnifyContext, Name),
+                CallId =
+                    plain_call_id(simple_call_id(pf_predicate, Name, Arity))
+            ),
+            goal_info_init(Context, GoalInfo0),
+            goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
+            Goal0 = hlds_goal(Call, GoalInfo),
+
+            record_called_pred_or_func(pf_predicate, Name, Arity, !QualInfo),
+            insert_arg_unifications(HeadVars, Args, Context, ac_call(CallId),
+                Goal0, Goal, !:NumAdded, !VarSet, !ModuleInfo, !QualInfo,
+                !SInfo, !Specs),
+            svar_finish_call(!VarSet, !SInfo)
+        )
+    ;
+        Expr = unify_expr(A0, B0, Purity),
+        rename_vars_in_term(need_not_rename, Renaming, A0, A),
+        rename_vars_in_term(need_not_rename, Renaming, B0, B),
+        % It is an error for the left or right hand side of a
+        % unification to be !X (it may be !.X or !:X, however).
+        ( A = functor(atom("!"), [variable(StateVarA, _)], _) ->
+            report_svar_unify_error(Context, !.VarSet, StateVarA, !Specs),
+            Goal = true_goal,
+            !:NumAdded = 0
+        ; B = functor(atom("!"), [variable(StateVarB, _)], _) ->
+            report_svar_unify_error(Context, !.VarSet, StateVarB, !Specs),
+            Goal = true_goal,
+            !:NumAdded = 0
+        ;
+            svar_prepare_for_call(!SInfo),
+            unravel_unification(A, B, Context, umc_explicit, [], Purity, Goal,
+                !:NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+            svar_finish_call(!VarSet, !SInfo)
+        )
     ).
 
 :- pred extract_trace_mutable_var(prog_context::in, prog_varset::in,

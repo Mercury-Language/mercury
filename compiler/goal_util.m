@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2010 The University of Melbourne.
+% Copyright (C) 1995-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -442,7 +442,6 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.
-:- import_module hlds.hlds_llds.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
@@ -490,7 +489,7 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarSet, !VarTypes,
     ( instmap_delta_search_var(InstMapDelta, OrigVar, DeltaInst) ->
         NewInst = DeltaInst
     ;
-        unexpected(this_file, "create_renaming_2: cannot get new inst")
+        unexpected($module, $pred, "cannot get new inst")
     ),
     Mode = ((NewInst -> NewInst) - (free -> NewInst)),
     UnifyInfo = assign(OrigVar, NewVar),
@@ -591,19 +590,21 @@ goal_vars_2(Goal, !Set) :-
             Reason = exist_quant(Vars),
             svset.insert_list(Vars, !Set)
         ;
-            Reason = promise_purity(_)
-        ;
             Reason = promise_solutions(Vars, _),
             svset.insert_list(Vars, !Set)
-        ;
-            Reason = barrier(_)
-        ;
-            Reason = commit(_)
         ;
             Reason = from_ground_term(Var, _),
             set.insert(!.Set, Var, !:Set)
         ;
-            Reason = trace_goal(_, _, _, _, _)
+            Reason = require_complete_switch(Var),
+            set.insert(!.Set, Var, !:Set)
+        ;
+            ( Reason = promise_purity(_)
+            ; Reason = require_detism(_)
+            ; Reason = commit(_)
+            ; Reason = barrier(_)
+            ; Reason = trace_goal(_, _, _, _, _)
+            )
         ),
         goal_vars_2(SubGoal, !Set)
     ;
@@ -1248,7 +1249,7 @@ goal_calls_proc_in_list_2(hlds_goal(GoalExpr, _GoalInfo), PredProcIds,
             goal_calls_proc_in_list_2(SubGoal, PredProcIds, !CalledSet)
         ;
             ShortHand = bi_implication(_, _),
-            unexpected(this_file, "goal_calls_proc_in_list_2: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         )
     ).
 
@@ -1357,7 +1358,7 @@ case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct, !VarSet, !VarTypes,
     ->
         ArgInsts = ArgInsts1
     ;
-        unexpected(this_file, "case_to_disjunct - get_arg_insts failed")
+        unexpected($module, $pred, "get_arg_insts failed")
     ),
     InstToUniMode = (pred(ArgInst::in, ArgUniMode::out) is det :-
         ArgUniMode = ((ArgInst - free) -> (ArgInst - ArgInst))
@@ -1422,28 +1423,28 @@ flatten_disj(Disj, Disjs0) = Disjs :-
 create_conj(GoalA, GoalB, Type, ConjGoal) :-
     create_conj_from_list([GoalA, GoalB], Type, ConjGoal).
 
-create_conj_from_list(GoalsInConj, Type, ConjGoal) :-
+create_conj_from_list(Conjuncts, ConjType, ConjGoal) :-
     (
-        GoalsInConj = [ GoalA | GoalsTail ],
+        Conjuncts = [HeadGoal | TailGoals],
         (
-            GoalsTail = [ _ | _ ],
-            ConjGoalExpr = conj(Type, GoalsInConj),
-            goal_list_nonlocals(GoalsInConj, NonLocals),
-            goal_list_instmap_delta(GoalsInConj, InstMapDelta),
-            goal_list_determinism(GoalsInConj, Detism),
-            goal_list_purity(GoalsInConj, Purity),
-            GoalAInfo = GoalA ^ hlds_goal_info,
-            Context = goal_info_get_context(GoalAInfo),
+            TailGoals = [ _ | _ ],
+            ConjGoalExpr = conj(ConjType, Conjuncts),
+            goal_list_nonlocals(Conjuncts, NonLocals),
+            goal_list_instmap_delta(Conjuncts, InstMapDelta),
+            goal_list_determinism(Conjuncts, Detism),
+            goal_list_purity(Conjuncts, Purity),
+            HeadGoal = hlds_goal(_, HeadGoalInfo),
+            Context = goal_info_get_context(HeadGoalInfo),
             goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
                 ConjGoalInfo),
             ConjGoal = hlds_goal(ConjGoalExpr, ConjGoalInfo)
         ;
-            GoalsTail = [],
-            ConjGoal = GoalA
+            TailGoals = [],
+            ConjGoal = HeadGoal
         )
     ;
-        GoalsInConj = [],
-        unexpected(this_file, "create_conj_from_list: empty conjunction")
+        Conjuncts = [],
+        unexpected($module, $pred, "empty conjunction")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1651,7 +1652,7 @@ generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism, Purity,
     ),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_purity(PredInfo, PredPurity),
-    expect(unify(Purity, PredPurity), this_file,
+    expect(unify(Purity, PredPurity), $module,
         "generate_simple_call: purity disagreement"),
     goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
         GoalInfo0),
@@ -1684,7 +1685,7 @@ generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
     ),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_purity(PredInfo, PredPurity),
-    expect(unify(Purity, PredPurity), this_file,
+    expect(unify(Purity, PredPurity), $module,
         "generate_simple_call: purity disagreement"),
     goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
         GoalInfo0),
@@ -1756,7 +1757,7 @@ goal_is_atomic(Goal, GoalIsAtomic) :-
         GoalIsAtomic = goal_is_nonatomic
     ;
         GoalExpr = shorthand(_),
-        unexpected(this_file, "goal_is_atomic/2: shorthand goal")
+        unexpected($module, $pred, "shorthand")
     ).
         
 %-----------------------------------------------------------------------------%
@@ -1837,8 +1838,7 @@ maybe_strip_equality_pretest(Goal0) = Goal :-
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
             ShortHand0 = bi_implication(_, _),
-            unexpected(this_file,
-                "maybe_strip_equality_pretest: bi_implication")
+            unexpected($module, $pred, "bi_implication")
         )
     ).
 
@@ -2034,8 +2034,7 @@ maybe_transform_goal_at_goal_path_2(TransformP, TargetGoalSteps,
             )
         ;
             GoalExpr0 = shorthand(_),
-            unexpected(this_file, 
-                "Shorthand goals should have been eliminated already")
+            unexpected($module, $pred, "shorthand")
         )
     ).
 
@@ -2220,8 +2219,7 @@ maybe_transform_goal_at_goal_path_with_instmap_2(TransformP, TargetGoalSteps,
             )
         ;
             GoalExpr0 = shorthand(_),
-            unexpected(this_file, 
-                "Shorthand goals should have been eliminated already")
+            unexpected($module, $pred, "shorthand")
         )
     ).
 
@@ -2272,17 +2270,10 @@ transform_all_goals(TransformP, Goal0, Goal) :-
         GoalExpr = if_then_else(ExistVars, Cond, Then, Else)
     ;
         GoalExpr0 = shorthand(_),
-        unexpected(this_file, 
-            "Shorthand goals should have been eliminated already")
+        unexpected($module, $pred, "shorthand")
     ),
     Goal1 = Goal0 ^ hlds_goal_expr := GoalExpr, 
     TransformP(Goal1, Goal).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "goal_util.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module goal_util.

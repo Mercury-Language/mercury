@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -156,7 +156,6 @@
 :- import_module transform_hlds.pd_cost.
 
 :- import_module int.
-:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -1918,6 +1917,11 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
                 ),
                 Goal = Goal1
             ;
+                ( FinalReason = require_detism(_)
+                ; FinalReason = require_complete_switch(_)
+                ),
+                Goal = FinalSubGoal
+            ;
                 ( FinalReason = commit(_)
                 ; FinalReason = exist_quant(_)
                 ; FinalReason = promise_solutions(_, _)
@@ -1960,8 +1964,7 @@ simplify_goal_trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr, SubGoal,
         Goal0, Goal, !Info) :-
     (
         MaybeCompiletimeExpr = yes(CompiletimeExpr),
-        KeepGoal = evaluate_compile_time_condition(CompiletimeExpr,
-            !.Info)
+        KeepGoal = evaluate_compile_time_condition(CompiletimeExpr, !.Info)
     ;
         MaybeCompiletimeExpr = no,
         % A missing compile time condition means that the
@@ -3611,6 +3614,8 @@ goal_contains_trace(hlds_goal(GoalExpr0, GoalInfo0),
             ( Reason = exist_quant(_)
             ; Reason = promise_solutions(_, _)
             ; Reason = promise_purity(_)
+            ; Reason = require_detism(_)
+            ; Reason = require_complete_switch(_)
             ; Reason = commit(_)
             ; Reason = barrier(_)
             ; Reason = from_ground_term(_, from_ground_term_deconstruct)

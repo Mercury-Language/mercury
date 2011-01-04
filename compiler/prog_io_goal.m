@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -157,513 +157,591 @@ parse_goal(Term, ContextPieces, MaybeGoal, !VarSet) :-
     % For consistency we also disallow if-then without the else.
 
     % XXX We should update ContextPieces as we recurse down.
-parse_goal_2("true", [], Context, _CP, ok1(true_expr - Context), !VarSet).
-parse_goal_2("fail", [], Context, _CP, ok1(fail_expr - Context), !VarSet).
-parse_goal_2("=", [ATerm0, BTerm0], Context, _CP, MaybeGoal, !VarSet) :-
-    term.coerce(ATerm0, ATerm),
-    term.coerce(BTerm0, BTerm),
-    MaybeGoal = ok1(unify_expr(ATerm, BTerm, purity_pure) - Context).
-parse_goal_2(",", [ATerm, BTerm], Context, ContextPieces, MaybeGoal,
-        !VarSet) :-
-    parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
-    parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
+parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
     (
-        MaybeAGoal = ok1(AGoal),
-        MaybeBGoal = ok1(BGoal)
-    ->
-        MaybeGoal = ok1(conj_expr(AGoal, BGoal) - Context)
+        Functor = "true",
+        Args = [],
+        MaybeGoal = ok1(true_expr - Context)
     ;
-        ASpecs = get_any_errors1(MaybeAGoal),
-        BSpecs = get_any_errors1(MaybeBGoal),
-        MaybeGoal = error1(ASpecs ++ BSpecs)
-    ).
-parse_goal_2("&", [ATerm, BTerm], Context, ContextPieces, MaybeGoal,
-        !VarSet) :-
-    parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
-    parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
-    (
-        MaybeAGoal = ok1(AGoal),
-        MaybeBGoal = ok1(BGoal)
-    ->
-        MaybeGoal = ok1(par_conj_expr(AGoal, BGoal) - Context)
+        Functor = "fail",
+        Args = [],
+        MaybeGoal = ok1(fail_expr - Context)
     ;
-        ASpecs = get_any_errors1(MaybeAGoal),
-        BSpecs = get_any_errors1(MaybeBGoal),
-        MaybeGoal = error1(ASpecs ++ BSpecs)
-    ).
-parse_goal_2(";", [ATerm, BTerm], Context, ContextPieces, MaybeGoal,
-        !VarSet) :-
-    ( ATerm = term.functor(term.atom("->"), [XTerm, YTerm], _Context) ->
-        parse_some_vars_goal(XTerm, ContextPieces, MaybeXGoal, !VarSet),
-        parse_goal(YTerm, ContextPieces, MaybeYGoal, !VarSet),
-        parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
-        (
-            MaybeXGoal = ok3(Vars, StateVars, XGoal),
-            MaybeYGoal = ok1(YGoal),
-            MaybeBGoal = ok1(BGoal)
-        ->
-            Goal = if_then_else_expr(Vars, StateVars, XGoal, YGoal, BGoal)
-                - Context,
-            MaybeGoal = ok1(Goal)
-        ;
-            XSpecs = get_any_errors3(MaybeXGoal),
-            YSpecs = get_any_errors1(MaybeYGoal),
-            BSpecs = get_any_errors1(MaybeBGoal),
-            MaybeGoal = error1(XSpecs ++ YSpecs ++ BSpecs)
-        )
+        Functor = "=",
+        Args = [ATerm0, BTerm0],
+        term.coerce(ATerm0, ATerm),
+        term.coerce(BTerm0, BTerm),
+        MaybeGoal = ok1(unify_expr(ATerm, BTerm, purity_pure) - Context)
     ;
+        Functor = ",",
+        Args = [ATerm, BTerm],
         parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
         parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
         (
             MaybeAGoal = ok1(AGoal),
             MaybeBGoal = ok1(BGoal)
         ->
-            MaybeGoal = ok1(disj_expr(AGoal, BGoal) - Context)
+            MaybeGoal = ok1(conj_expr(AGoal, BGoal) - Context)
         ;
             ASpecs = get_any_errors1(MaybeAGoal),
             BSpecs = get_any_errors1(MaybeBGoal),
             MaybeGoal = error1(ASpecs ++ BSpecs)
         )
-    ).
-parse_goal_2("else", [IfTerm, CTerm], Context, ContextPieces, MaybeGoal,
-        !VarSet) :-
-    (
-        IfTerm = term.functor(term.atom("if"),
-            [term.functor(term.atom("then"), [ATerm, BTerm], _)], _)
-    ->
-        parse_some_vars_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
+    ;
+        Functor = "&",
+        Args = [ATerm, BTerm],
+        parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
         parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
-        parse_goal(CTerm, ContextPieces, MaybeCGoal, !VarSet),
         (
-            MaybeAGoal = ok3(Vars, StateVars, AGoal),
-            MaybeBGoal = ok1(BGoal),
-            MaybeCGoal = ok1(CGoal)
+            MaybeAGoal = ok1(AGoal),
+            MaybeBGoal = ok1(BGoal)
         ->
-            Goal = if_then_else_expr(Vars, StateVars, AGoal, BGoal, CGoal)
-                - Context,
-            MaybeGoal = ok1(Goal)
+            MaybeGoal = ok1(par_conj_expr(AGoal, BGoal) - Context)
         ;
-            ASpecs = get_any_errors3(MaybeAGoal),
+            ASpecs = get_any_errors1(MaybeAGoal),
             BSpecs = get_any_errors1(MaybeBGoal),
-            CSpecs = get_any_errors1(MaybeCGoal),
-            MaybeGoal = error1(ASpecs ++ BSpecs ++ CSpecs)
+            MaybeGoal = error1(ASpecs ++ BSpecs)
         )
     ;
-        % `else' can also be part of a `try' goal.
-        parse_else_then_try_term(
-            term.functor(term.atom("else"), [IfTerm, CTerm], Context), [], no,
-            Context, ContextPieces, MaybeGoal, !VarSet)
-    ).
-parse_goal_2("then", [TryTerm, ThenTerm], Context, ContextPieces,
-        MaybeGoal, !VarSet) :-
-    parse_then_try_term(
-        term.functor(atom("then"), [TryTerm, ThenTerm], Context), no, [], no,
-        Context, ContextPieces, MaybeGoal, !VarSet).
-parse_goal_2("catch", [ElseThenTryTerm, CatchTerm], Context, ContextPieces,
-        MaybeGoal, !VarSet) :-
-    parse_catch_then_try_term(
-        term.functor(atom("catch"), [ElseThenTryTerm, CatchTerm], Context), no,
-        Context, ContextPieces, MaybeGoal, !VarSet).
-parse_goal_2("catch_any", [TermA, ArrowTerm], Context, ContextPieces,
-        MaybeGoal, !VarSet) :-
-    parse_catch_any_term(ArrowTerm, Context, ContextPieces, MaybeCatchAnyExpr,
-        !VarSet),
-    (
-        MaybeCatchAnyExpr = ok1(CatchAnyExpr),
-        ( TermA = term.functor(atom("catch"), _, _) ->
-            parse_catch_then_try_term(TermA, yes(CatchAnyExpr),
-                Context, ContextPieces, MaybeGoal, !VarSet)
-        ;
-            parse_else_then_try_term(TermA, [], yes(CatchAnyExpr),
-                Context, ContextPieces, MaybeGoal, !VarSet)
-        )
-    ;
-        MaybeCatchAnyExpr = error1(Specs),
-        MaybeGoal = error1(Specs)
-    ).
-parse_goal_2("not", [ATerm], Context, ContextPieces, MaybeGoal, !VarSet) :-
-    parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
-    (
-        MaybeAGoal = ok1(AGoal),
-        MaybeGoal = ok1(not_expr(AGoal) - Context)
-    ;
-        MaybeAGoal = error1(_),
-        MaybeGoal = MaybeAGoal
-    ).
-parse_goal_2("\\+", [ATerm], Context, ContextPieces, MaybeGoal, !VarSet) :-
-    parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
-    (
-        MaybeAGoal = ok1(AGoal),
-        MaybeGoal = ok1(not_expr(AGoal) - Context)
-    ;
-        MaybeAGoal = error1(_),
-        MaybeGoal = MaybeAGoal
-    ).
-parse_goal_2("all", [QVarsTerm, SubTerm], Context, ContextPieces, MaybeGoal,
-        !VarSet) :-
-    % Extract any state variables in the quantifier.
-    varset.coerce(!.VarSet, GenericVarSet),
-    parse_quantifier_vars(QVarsTerm, GenericVarSet, ContextPieces,
-        MaybeStateVarsAndVars),
-    % XXX We should update ContextPieces, instead of supplying [].
-    parse_goal(SubTerm, [], MaybeSubGoal, !VarSet),
-    (
-        MaybeStateVarsAndVars = ok2(Vars0, StateVars0),
-        MaybeSubGoal = ok1(SubGoal)
-    ->
-        list.map(term.coerce_var, Vars0, Vars),
-        list.map(term.coerce_var, StateVars0, StateVars),
-        SubGoal = SubGoalExpr - SubContext,
-        (
-            Vars = [],
-            StateVars = [],
-            GoalExpr = SubGoalExpr
-        ;
-            Vars = [],
-            StateVars = [_ | _],
-            GoalExpr = all_state_vars_expr(StateVars, SubGoal)
-        ;
-            Vars = [_ | _],
-            StateVars = [],
-            GoalExpr = all_expr(Vars, SubGoal)
-        ;
-            Vars = [_ | _], StateVars = [_ | _],
-            GoalExpr = all_expr(Vars, all_state_vars_expr(StateVars, SubGoal)
-                - SubContext)
-        ),
-        Goal = GoalExpr - Context,
-        MaybeGoal = ok1(Goal)
-    ;
-        VarsSpecs = get_any_errors2(MaybeStateVarsAndVars),
-        SubGoalSpecs = get_any_errors1(MaybeSubGoal),
-        MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
-    ).
-parse_goal_2("<=", [ATerm, BTerm], Context, ContextPieces, MaybeGoal,
-        !VarSet) :-
-    parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
-    parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
-    (
-        MaybeAGoal = ok1(AGoal),
-        MaybeBGoal = ok1(BGoal)
-    ->
-        MaybeGoal = ok1(implies_expr(BGoal, AGoal) - Context)
-    ;
-        ASpecs = get_any_errors1(MaybeAGoal),
-        BSpecs = get_any_errors1(MaybeBGoal),
-        MaybeGoal = error1(ASpecs ++ BSpecs)
-    ).
-parse_goal_2("=>", [ATerm, BTerm], Context, ContextPieces, MaybeGoal,
-        !VarSet) :-
-    parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
-    parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
-    (
-        MaybeAGoal = ok1(AGoal),
-        MaybeBGoal = ok1(BGoal)
-    ->
-        MaybeGoal = ok1(implies_expr(AGoal, BGoal) - Context)
-    ;
-        ASpecs = get_any_errors1(MaybeAGoal),
-        BSpecs = get_any_errors1(MaybeBGoal),
-        MaybeGoal = error1(ASpecs ++ BSpecs)
-    ).
-parse_goal_2("<=>", [ATerm, BTerm], Context, ContextPieces, MaybeGoal,
-        !VarSet) :-
-    parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
-    parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
-    (
-        MaybeAGoal = ok1(AGoal),
-        MaybeBGoal = ok1(BGoal)
-    ->
-        MaybeGoal = ok1(equivalent_expr(AGoal, BGoal) - Context)
-    ;
-        ASpecs = get_any_errors1(MaybeAGoal),
-        BSpecs = get_any_errors1(MaybeBGoal),
-        MaybeGoal = error1(ASpecs ++ BSpecs)
-    ).
-parse_goal_2("some", [QVarsTerm, SubTerm], Context, ContextPieces, MaybeGoal,
-        !VarSet) :-
-    % Extract any state variables in the quantifier.
-    UpdatedContextPieces = ContextPieces ++ [lower_case_next_if_not_first,
-        words("In first argument of"), quote("some"), suffix(":")],
-    varset.coerce(!.VarSet, GenericVarSet),
-    parse_quantifier_vars(QVarsTerm, GenericVarSet, UpdatedContextPieces,
-        MaybeStateVarsAndVars),
-    parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
-    (
-        MaybeStateVarsAndVars = ok2(Vars0, StateVars0),
-        MaybeSubGoal = ok1(SubGoal)
-    ->
-        list.map(term.coerce_var, Vars0, Vars),
-        list.map(term.coerce_var, StateVars0, StateVars),
-        SubGoal = SubGoalExpr - SubContext,
-        (
-            Vars = [],
-            StateVars = [],
-            GoalExpr = SubGoalExpr
-        ;
-            Vars = [],
-            StateVars = [_ | _],
-            GoalExpr = some_state_vars_expr(StateVars, SubGoal)
-        ;
-            Vars = [_ | _],
-            StateVars = [],
-            GoalExpr = some_expr(Vars, SubGoal)
-        ;
-            Vars = [_ | _],
-            StateVars = [_ | _],
-            GoalExpr = some_expr(Vars, some_state_vars_expr(StateVars, SubGoal)
-                - SubContext)
-        ),
-        Goal = GoalExpr - Context,
-        MaybeGoal = ok1(Goal)
-    ;
-        VarsSpecs = get_any_errors2(MaybeStateVarsAndVars),
-        SubGoalSpecs = get_any_errors1(MaybeSubGoal),
-        MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
-    ).
-parse_goal_2("trace", [ParamsTerm, SubTerm], Context, ContextPieces, MaybeGoal,
-        !VarSet) :-
-    varset.coerce(!.VarSet, GenericVarSet),
-    parse_trace_params(GenericVarSet, Context, ParamsTerm, MaybeParams),
-    parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
-    (
-        MaybeParams = ok1(Params),
-        MaybeSubGoal = ok1(SubGoal)
-    ->
-        convert_trace_params(Params, MaybeComponents),
-        (
-            MaybeComponents = ok4(CompileTime, RunTime, MaybeIO, MutVars),
-            GoalExpr = trace_expr(CompileTime, RunTime, MaybeIO, MutVars,
-                SubGoal),
-            MaybeGoal = ok1(GoalExpr - Context)
-        ;
-            MaybeComponents = error4(Specs),
-            MaybeGoal = error1(Specs)
-        )
-    ;
-        ParamsSpecs = get_any_errors1(MaybeParams),
-        SubGoalSpecs = get_any_errors1(MaybeSubGoal),
-        MaybeGoal = error1(ParamsSpecs ++ SubGoalSpecs)
-    ).
-parse_goal_2("atomic", [ParamsTerm, SubTerm], Context, _CP, MaybeGoal,
-        !VarSet) :-
-    varset.coerce(!.VarSet, GenericVarSet),
-    parse_atomic_params(Context, ParamsTerm, GenericVarSet, MaybeParams),
-    parse_atomic_subexpr(SubTerm, MaybeSubGoals, !VarSet),
-    (
-        MaybeParams = ok1(Params),
-        MaybeSubGoals = ok2(MainGoal, OrElseGoals)
-    ->
-        convert_atomic_params(ParamsTerm, Params, MaybeComponents),
-        (
-            MaybeComponents = ok3(Outer, Inner, MaybeOutputVars),
-            GoalExpr = atomic_expr(Outer, Inner, MaybeOutputVars, MainGoal,
-                OrElseGoals),
-            MaybeGoal = ok1(GoalExpr - Context)
-        ;
-            MaybeComponents = error3(Specs),
-            MaybeGoal = error1(Specs)
-        )
-    ;
-        ParamsSpecs = get_any_errors1(MaybeParams),
-        SubGoalSpecs = get_any_errors2(MaybeSubGoals),
-        MaybeGoal = error1(ParamsSpecs ++ SubGoalSpecs)
-    ).
-parse_goal_2("promise_equivalent_solutions", [VarsTerm, SubTerm], Context,
-        ContextPieces, MaybeGoal, !VarSet) :-
-    varset.coerce(!.VarSet, GenericVarSet),
-    parse_vars_and_state_vars(VarsTerm, GenericVarSet, ContextPieces,
-        MaybeVars),
-    parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
-    (
-        MaybeVars = ok3(Vars0, DotSVars0, ColonSVars0),
-        MaybeSubGoal = ok1(SubGoal)
-    ->
-        list.map(term.coerce_var, Vars0, Vars),
-        list.map(term.coerce_var, DotSVars0, DotSVars),
-        list.map(term.coerce_var, ColonSVars0, ColonSVars),
-        MaybeGoal = ok1(promise_equivalent_solutions_expr(Vars,
-            DotSVars, ColonSVars, SubGoal) - Context)
-    ;
-        VarsSpecs = get_any_errors3(MaybeVars),
-        SubGoalSpecs = get_any_errors1(MaybeSubGoal),
-        MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
-    ).
-parse_goal_2("promise_equivalent_solution_sets", [VarsTerm, SubTerm], Context,
-        ContextPieces, MaybeGoal, !VarSet) :-
-    varset.coerce(!.VarSet, GenericVarSet),
-    parse_vars_and_state_vars(VarsTerm, GenericVarSet, ContextPieces,
-        MaybeVars),
-    parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
-    (
-        MaybeVars = ok3(Vars0, DotSVars0, ColonSVars0),
-        MaybeSubGoal = ok1(SubGoal)
-    ->
-        list.map(term.coerce_var, Vars0, Vars),
-        list.map(term.coerce_var, DotSVars0, DotSVars),
-        list.map(term.coerce_var, ColonSVars0, ColonSVars),
-        MaybeGoal = ok1(promise_equivalent_solution_sets_expr(Vars,
-            DotSVars, ColonSVars, SubGoal) - Context)
-    ;
-        VarsSpecs = get_any_errors3(MaybeVars),
-        SubGoalSpecs = get_any_errors1(MaybeSubGoal),
-        MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
-    ).
-parse_goal_2("arbitrary", [VarsTerm, SubTerm], Context,
-        ContextPieces, MaybeGoal, !VarSet) :-
-    varset.coerce(!.VarSet, GenericVarSet),
-    parse_vars_and_state_vars(VarsTerm, GenericVarSet, ContextPieces,
-        MaybeVars),
-    parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
-    (
-        MaybeVars = ok3(Vars0, DotSVars0, ColonSVars0),
-        MaybeSubGoal = ok1(SubGoal)
-    ->
-        list.map(term.coerce_var, Vars0, Vars),
-        list.map(term.coerce_var, DotSVars0, DotSVars),
-        list.map(term.coerce_var, ColonSVars0, ColonSVars),
-        MaybeGoal = ok1(promise_equivalent_solution_arbitrary_expr(Vars,
-            DotSVars, ColonSVars, SubGoal) - Context)
-    ;
-        VarsSpecs = get_any_errors3(MaybeVars),
-        SubGoalSpecs = get_any_errors1(MaybeSubGoal),
-        MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
-    ).
-parse_goal_2("promise_pure", [SubTerm], Context, ContextPieces, MaybeGoal,
-        !VarSet) :-
-    parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
-    (
-        MaybeSubGoal = ok1(SubGoal),
-        Goal = promise_purity_expr(purity_pure, SubGoal) - Context,
-        MaybeGoal = ok1(Goal)
-    ;
-        MaybeSubGoal = error1(Specs),
-        MaybeGoal = error1(Specs)
-    ).
-parse_goal_2("promise_semipure", [SubTerm], Context, ContextPieces, MaybeGoal,
-        !VarSet) :-
-    parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
-    (
-        MaybeSubGoal = ok1(SubGoal),
-        Goal = promise_purity_expr(purity_semipure, SubGoal) - Context,
-        MaybeGoal = ok1(Goal)
-    ;
-        MaybeSubGoal = error1(Specs),
-        MaybeGoal = error1(Specs)
-    ).
-parse_goal_2("promise_impure", [SubTerm], Context, ContextPieces, MaybeGoal,
-        !VarSet) :-
-    parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
-    (
-        MaybeSubGoal = ok1(SubGoal),
-        Goal = promise_purity_expr(purity_impure, SubGoal) - Context,
-        MaybeGoal = ok1(Goal)
-    ;
-        MaybeSubGoal = error1(Specs),
-        MaybeGoal = error1(Specs)
-    ).
-parse_goal_2("impure", [SubTerm], Context, ContextPieces,
-        MaybeGoal, !VarSet) :-
-    parse_goal_with_purity(SubTerm, purity_impure, Context, ContextPieces,
-        MaybeGoal, !VarSet).
-parse_goal_2("semipure", [SubTerm], Context, ContextPieces,
-        MaybeGoal, !VarSet) :-
-    parse_goal_with_purity(SubTerm, purity_semipure, Context, ContextPieces,
-        MaybeGoal, !VarSet).
-parse_goal_2("event", [SubTerm], Context, ContextPieces, MaybeGoal, !VarSet) :-
-    parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
-    (
-        MaybeSubGoal = ok1(SubGoal),
-        ( SubGoal = call_expr(SymName, Args, Purity) - SubContext ->
+        Functor = ";",
+        Args = [ATerm, BTerm],
+        ( ATerm = term.functor(term.atom("->"), [XTerm, YTerm], _Context) ->
+            parse_some_vars_goal(XTerm, ContextPieces, MaybeXGoal, !VarSet),
+            parse_goal(YTerm, ContextPieces, MaybeYGoal, !VarSet),
+            parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
             (
-                SymName = unqualified(EventName),
-                Purity = purity_pure
+                MaybeXGoal = ok3(Vars, StateVars, XGoal),
+                MaybeYGoal = ok1(YGoal),
+                MaybeBGoal = ok1(BGoal)
             ->
-                Goal = event_expr(EventName, Args) - Context,
+                Goal = if_then_else_expr(Vars, StateVars, XGoal, YGoal, BGoal)
+                    - Context,
                 MaybeGoal = ok1(Goal)
             ;
-                some [!Specs] (
-                    !:Specs = [],
-                    (
-                        SymName = unqualified(_)
-                    ;
-                        SymName = qualified(_, _),
-                        QualPieces = ContextPieces ++
-                            [lower_case_next_if_not_first,
-                            words("Error: event name must not be qualified."),
-                            nl],
-                        QualSpec = error_spec(severity_error,
-                            phase_term_to_parse_tree,
-                            [simple_msg(SubContext, [always(QualPieces)])]),
-                        !:Specs = [QualSpec | !.Specs]
-                    ),
-                    (
-                        Purity = purity_pure
-                    ;
-                        ( Purity = purity_semipure
-                        ; Purity = purity_impure
-                        ),
-                        PurityPieces = ContextPieces ++
-                            [lower_case_next_if_not_first,
-                            words("Error: event cannot be"),
-                            words("impure or semipure."), nl],
-                        PuritySpec = error_spec(severity_error,
-                            phase_term_to_parse_tree,
-                            [simple_msg(SubContext, [always(PurityPieces)])]),
-                        !:Specs = [PuritySpec | !.Specs]
-                    ),
-                    MaybeGoal = error1(!.Specs)
-                )
+                XSpecs = get_any_errors3(MaybeXGoal),
+                YSpecs = get_any_errors1(MaybeYGoal),
+                BSpecs = get_any_errors1(MaybeBGoal),
+                MaybeGoal = error1(XSpecs ++ YSpecs ++ BSpecs)
             )
         ;
-            Pieces = ContextPieces ++ [lower_case_next_if_not_first,
-                words("Error: event prefix must not precede anything"),
-                words("other than a call."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(SubTerm), [always(Pieces)])]),
-            MaybeGoal = error1([Spec])
+            parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
+            parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
+            (
+                MaybeAGoal = ok1(AGoal),
+                MaybeBGoal = ok1(BGoal)
+            ->
+                MaybeGoal = ok1(disj_expr(AGoal, BGoal) - Context)
+            ;
+                ASpecs = get_any_errors1(MaybeAGoal),
+                BSpecs = get_any_errors1(MaybeBGoal),
+                MaybeGoal = error1(ASpecs ++ BSpecs)
+            )
         )
     ;
-        MaybeSubGoal = error1(Specs),
-        MaybeGoal = error1(Specs)
-    ).
-parse_goal_2("is", [ATerm0, BTerm0], Context, _CP, MaybeGoal, !VarSet) :-
-    % The following is a temporary hack to handle `is' in the parser -
-    % we ought to handle it in the code generation - but then `is/2' itself
-    % is a bit of a hack.
-    term.coerce(ATerm0, ATerm),
-    term.coerce(BTerm0, BTerm),
-    MaybeGoal = ok1(unify_expr(ATerm, BTerm, purity_pure) - Context).
-
-:- pred parse_goal_with_purity(term::in, purity::in, context::in,
-    list(format_component)::in, maybe1(goal)::out,
-    prog_varset::in, prog_varset::out) is det.
-
-parse_goal_with_purity(Term, Purity, Context, ContextPieces, MaybeGoal,
-        !VarSet) :-
-    parse_goal(Term, ContextPieces, MaybeSubGoal, !VarSet),
-    (
-        MaybeSubGoal = ok1(SubGoal),
-        SubGoal = SubGoalExpr - _SubContext,
-        ( SubGoalExpr = call_expr(Pred, Args, purity_pure) ->
-            MaybeGoal = ok1(call_expr(Pred, Args, Purity) - Context)
-        ; SubGoalExpr = unify_expr(ProgTerm1, ProgTerm2, purity_pure) ->
-            MaybeGoal = ok1(unify_expr(ProgTerm1, ProgTerm2, Purity) - Context)
+        Functor = "else",
+        Args = [IfTerm, CTerm],
+        (
+            IfTerm = term.functor(term.atom("if"),
+                [term.functor(term.atom("then"), [ATerm, BTerm], _)], _)
+        ->
+            parse_some_vars_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
+            parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
+            parse_goal(CTerm, ContextPieces, MaybeCGoal, !VarSet),
+            (
+                MaybeAGoal = ok3(Vars, StateVars, AGoal),
+                MaybeBGoal = ok1(BGoal),
+                MaybeCGoal = ok1(CGoal)
+            ->
+                Goal = if_then_else_expr(Vars, StateVars, AGoal, BGoal, CGoal)
+                    - Context,
+                MaybeGoal = ok1(Goal)
+            ;
+                ASpecs = get_any_errors3(MaybeAGoal),
+                BSpecs = get_any_errors1(MaybeBGoal),
+                CSpecs = get_any_errors1(MaybeCGoal),
+                MaybeGoal = error1(ASpecs ++ BSpecs ++ CSpecs)
+            )
         ;
-            % Inappropriate placement of an impurity marker, so we treat
-            % it like a predicate call. typecheck.m prints out something
-            % descriptive for these errors.
-            %
-            % XXX we could return MaybeGoal = error1 here.
-            purity_name(Purity, PurityString),
-            term.coerce(Term, CoercedTerm),
-            GoalExpr = call_expr(unqualified(PurityString), [CoercedTerm],
-                purity_pure),
-            MaybeGoal = ok1(GoalExpr - Context)
+            % `else' can also be part of a `try' goal.
+            parse_else_then_try_term(
+                term.functor(term.atom("else"), [IfTerm, CTerm], Context),
+                [], no, Context, ContextPieces, MaybeGoal, !VarSet)
         )
     ;
-        MaybeSubGoal = error1(_),
-        MaybeGoal = MaybeSubGoal
+        Functor = "then",
+        Args = [TryTerm, ThenTerm],
+        parse_then_try_term(
+            term.functor(atom("then"), [TryTerm, ThenTerm], Context),
+            no, [], no, Context, ContextPieces, MaybeGoal, !VarSet)
+    ;
+        Functor = "catch",
+        Args = [ElseThenTryTerm, CatchTerm],
+        parse_catch_then_try_term(
+            term.functor(atom("catch"), [ElseThenTryTerm, CatchTerm], Context),
+            no, Context, ContextPieces, MaybeGoal, !VarSet)
+    ;
+        Functor = "catch_any",
+        Args = [TermA, ArrowTerm],
+        parse_catch_any_term(ArrowTerm, Context, ContextPieces,
+            MaybeCatchAnyExpr, !VarSet),
+        (
+            MaybeCatchAnyExpr = ok1(CatchAnyExpr),
+            ( TermA = term.functor(atom("catch"), _, _) ->
+                parse_catch_then_try_term(TermA, yes(CatchAnyExpr),
+                    Context, ContextPieces, MaybeGoal, !VarSet)
+            ;
+                parse_else_then_try_term(TermA, [], yes(CatchAnyExpr),
+                    Context, ContextPieces, MaybeGoal, !VarSet)
+            )
+        ;
+            MaybeCatchAnyExpr = error1(Specs),
+            MaybeGoal = error1(Specs)
+        )
+    ;
+        ( Functor = "not"
+        ; Functor = "\\+"
+        ),
+        Args = [ATerm],
+        parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
+        (
+            MaybeAGoal = ok1(AGoal),
+            MaybeGoal = ok1(not_expr(AGoal) - Context)
+        ;
+            MaybeAGoal = error1(_),
+            MaybeGoal = MaybeAGoal
+        )
+    ;
+        Functor = "all",
+        Args = [QVarsTerm, SubTerm],
+        % Extract any state variables in the quantifier.
+        varset.coerce(!.VarSet, GenericVarSet),
+        parse_quantifier_vars(QVarsTerm, GenericVarSet, ContextPieces,
+            MaybeStateVarsAndVars),
+        % XXX We should update ContextPieces, instead of supplying [].
+        parse_goal(SubTerm, [], MaybeSubGoal, !VarSet),
+        (
+            MaybeStateVarsAndVars = ok2(Vars0, StateVars0),
+            MaybeSubGoal = ok1(SubGoal)
+        ->
+            list.map(term.coerce_var, Vars0, Vars),
+            list.map(term.coerce_var, StateVars0, StateVars),
+            SubGoal = SubGoalExpr - SubContext,
+            (
+                Vars = [],
+                StateVars = [],
+                GoalExpr = SubGoalExpr
+            ;
+                Vars = [],
+                StateVars = [_ | _],
+                GoalExpr = all_state_vars_expr(StateVars, SubGoal)
+            ;
+                Vars = [_ | _],
+                StateVars = [],
+                GoalExpr = all_expr(Vars, SubGoal)
+            ;
+                Vars = [_ | _], StateVars = [_ | _],
+                GoalExpr = all_expr(Vars,
+                    all_state_vars_expr(StateVars, SubGoal)
+                    - SubContext)
+            ),
+            Goal = GoalExpr - Context,
+            MaybeGoal = ok1(Goal)
+        ;
+            VarsSpecs = get_any_errors2(MaybeStateVarsAndVars),
+            SubGoalSpecs = get_any_errors1(MaybeSubGoal),
+            MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
+        )
+    ;
+        Functor = "<=",
+        Args = [ATerm, BTerm],
+        parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
+        parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
+        (
+            MaybeAGoal = ok1(AGoal),
+            MaybeBGoal = ok1(BGoal)
+        ->
+            MaybeGoal = ok1(implies_expr(BGoal, AGoal) - Context)
+        ;
+            ASpecs = get_any_errors1(MaybeAGoal),
+            BSpecs = get_any_errors1(MaybeBGoal),
+            MaybeGoal = error1(ASpecs ++ BSpecs)
+        )
+    ;
+        Functor = "=>",
+        Args = [ATerm, BTerm],
+        parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
+        parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
+        (
+            MaybeAGoal = ok1(AGoal),
+            MaybeBGoal = ok1(BGoal)
+        ->
+            MaybeGoal = ok1(implies_expr(AGoal, BGoal) - Context)
+        ;
+            ASpecs = get_any_errors1(MaybeAGoal),
+            BSpecs = get_any_errors1(MaybeBGoal),
+            MaybeGoal = error1(ASpecs ++ BSpecs)
+        )
+    ;
+        Functor = "<=>",
+        Args = [ATerm, BTerm],
+        parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
+        parse_goal(BTerm, ContextPieces, MaybeBGoal, !VarSet),
+        (
+            MaybeAGoal = ok1(AGoal),
+            MaybeBGoal = ok1(BGoal)
+        ->
+            MaybeGoal = ok1(equivalent_expr(AGoal, BGoal) - Context)
+        ;
+            ASpecs = get_any_errors1(MaybeAGoal),
+            BSpecs = get_any_errors1(MaybeBGoal),
+            MaybeGoal = error1(ASpecs ++ BSpecs)
+        )
+    ;
+        Functor = "some",
+        Args = [QVarsTerm, SubTerm],
+        % Extract any state variables in the quantifier.
+        UpdatedContextPieces = ContextPieces ++ [lower_case_next_if_not_first,
+            words("In first argument of"), quote("some"), suffix(":")],
+        varset.coerce(!.VarSet, GenericVarSet),
+        parse_quantifier_vars(QVarsTerm, GenericVarSet, UpdatedContextPieces,
+            MaybeStateVarsAndVars),
+        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
+        (
+            MaybeStateVarsAndVars = ok2(Vars0, StateVars0),
+            MaybeSubGoal = ok1(SubGoal)
+        ->
+            list.map(term.coerce_var, Vars0, Vars),
+            list.map(term.coerce_var, StateVars0, StateVars),
+            SubGoal = SubGoalExpr - SubContext,
+            (
+                Vars = [],
+                StateVars = [],
+                GoalExpr = SubGoalExpr
+            ;
+                Vars = [],
+                StateVars = [_ | _],
+                GoalExpr = some_state_vars_expr(StateVars, SubGoal)
+            ;
+                Vars = [_ | _],
+                StateVars = [],
+                GoalExpr = some_expr(Vars, SubGoal)
+            ;
+                Vars = [_ | _],
+                StateVars = [_ | _],
+                GoalExpr = some_expr(Vars,
+                    some_state_vars_expr(StateVars, SubGoal)
+                    - SubContext)
+            ),
+            Goal = GoalExpr - Context,
+            MaybeGoal = ok1(Goal)
+        ;
+            VarsSpecs = get_any_errors2(MaybeStateVarsAndVars),
+            SubGoalSpecs = get_any_errors1(MaybeSubGoal),
+            MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
+        )
+    ;
+        Functor = "trace",
+        Args = [ParamsTerm, SubTerm],
+        varset.coerce(!.VarSet, GenericVarSet),
+        parse_trace_params(GenericVarSet, Context, ParamsTerm, MaybeParams),
+        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
+        (
+            MaybeParams = ok1(Params),
+            MaybeSubGoal = ok1(SubGoal)
+        ->
+            convert_trace_params(Params, MaybeComponents),
+            (
+                MaybeComponents = ok4(CompileTime, RunTime, MaybeIO, MutVars),
+                GoalExpr = trace_expr(CompileTime, RunTime, MaybeIO, MutVars,
+                    SubGoal),
+                MaybeGoal = ok1(GoalExpr - Context)
+            ;
+                MaybeComponents = error4(Specs),
+                MaybeGoal = error1(Specs)
+            )
+        ;
+            ParamsSpecs = get_any_errors1(MaybeParams),
+            SubGoalSpecs = get_any_errors1(MaybeSubGoal),
+            MaybeGoal = error1(ParamsSpecs ++ SubGoalSpecs)
+        )
+    ;
+        Functor = "atomic",
+        Args = [ParamsTerm, SubTerm],
+        varset.coerce(!.VarSet, GenericVarSet),
+        parse_atomic_params(Context, ParamsTerm, GenericVarSet, MaybeParams),
+        parse_atomic_subexpr(SubTerm, MaybeSubGoals, !VarSet),
+        (
+            MaybeParams = ok1(Params),
+            MaybeSubGoals = ok2(MainGoal, OrElseGoals)
+        ->
+            convert_atomic_params(ParamsTerm, Params, MaybeComponents),
+            (
+                MaybeComponents = ok3(Outer, Inner, MaybeOutputVars),
+                GoalExpr = atomic_expr(Outer, Inner, MaybeOutputVars, MainGoal,
+                    OrElseGoals),
+                MaybeGoal = ok1(GoalExpr - Context)
+            ;
+                MaybeComponents = error3(Specs),
+                MaybeGoal = error1(Specs)
+            )
+        ;
+            ParamsSpecs = get_any_errors1(MaybeParams),
+            SubGoalSpecs = get_any_errors2(MaybeSubGoals),
+            MaybeGoal = error1(ParamsSpecs ++ SubGoalSpecs)
+        )
+    ;
+        ( Functor = "promise_equivalent_solutions"
+        ; Functor = "promise_equivalent_solution_sets"
+        ),
+        Args = [VarsTerm, SubTerm],
+        varset.coerce(!.VarSet, GenericVarSet),
+        parse_vars_and_state_vars(VarsTerm, GenericVarSet, ContextPieces,
+            MaybeVars),
+        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
+        (
+            MaybeVars = ok3(Vars0, DotSVars0, ColonSVars0),
+            MaybeSubGoal = ok1(SubGoal)
+        ->
+            list.map(term.coerce_var, Vars0, Vars),
+            list.map(term.coerce_var, DotSVars0, DotSVars),
+            list.map(term.coerce_var, ColonSVars0, ColonSVars),
+            (
+                Functor = "promise_equivalent_solutions",
+                MaybeGoal = ok1(promise_equivalent_solutions_expr(Vars,
+                    DotSVars, ColonSVars, SubGoal) - Context)
+            ;
+                Functor = "promise_equivalent_solution_sets",
+                MaybeGoal = ok1(promise_equivalent_solution_sets_expr(Vars,
+                    DotSVars, ColonSVars, SubGoal) - Context)
+            )
+        ;
+            VarsSpecs = get_any_errors3(MaybeVars),
+            SubGoalSpecs = get_any_errors1(MaybeSubGoal),
+            MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
+        )
+    ;
+        Functor = "arbitrary",
+        Args = [VarsTerm, SubTerm],
+        varset.coerce(!.VarSet, GenericVarSet),
+        parse_vars_and_state_vars(VarsTerm, GenericVarSet, ContextPieces,
+            MaybeVars),
+        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
+        (
+            MaybeVars = ok3(Vars0, DotSVars0, ColonSVars0),
+            MaybeSubGoal = ok1(SubGoal)
+        ->
+            list.map(term.coerce_var, Vars0, Vars),
+            list.map(term.coerce_var, DotSVars0, DotSVars),
+            list.map(term.coerce_var, ColonSVars0, ColonSVars),
+            MaybeGoal = ok1(promise_equivalent_solution_arbitrary_expr(Vars,
+                DotSVars, ColonSVars, SubGoal) - Context)
+        ;
+            VarsSpecs = get_any_errors3(MaybeVars),
+            SubGoalSpecs = get_any_errors1(MaybeSubGoal),
+            MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
+        )
+    ;
+        (
+            Functor = "promise_pure",
+            Purity = purity_pure
+        ;
+            Functor = "promise_semipure",
+            Purity = purity_semipure
+        ;
+            Functor = "promise_impure",
+            Purity = purity_impure
+        ),
+        Args = [SubTerm],
+        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
+        (
+            MaybeSubGoal = ok1(SubGoal),
+            Goal = promise_purity_expr(Purity, SubGoal) - Context,
+            MaybeGoal = ok1(Goal)
+        ;
+            MaybeSubGoal = error1(Specs),
+            MaybeGoal = error1(Specs)
+        )
+    ;
+        (
+            Functor = "require_det",
+            Detism = detism_det
+        ;
+            Functor = "require_semi",
+            Detism = detism_semi
+        ;
+            Functor = "require_multi",
+            Detism = detism_multi
+        ;
+            Functor = "require_nondet",
+            Detism = detism_non
+        ;
+            Functor = "require_cc_multi",
+            Detism = detism_cc_multi
+        ;
+            Functor = "require_cc_nondet",
+            Detism = detism_cc_non
+        ;
+            Functor = "require_erroneous",
+            Detism = detism_erroneous
+        ;
+            Functor = "require_failure",
+            Detism = detism_failure
+        ),
+        Args = [SubTerm],
+        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
+        (
+            MaybeSubGoal = ok1(SubGoal),
+            Goal = require_detism_expr(Detism, SubGoal) - Context,
+            MaybeGoal = ok1(Goal)
+        ;
+            MaybeSubGoal = error1(Specs),
+            MaybeGoal = error1(Specs)
+        )
+    ;
+        Functor = "require_complete_switch",
+        Args = [VarsTerm, SubTerm],
+        varset.coerce(!.VarSet, GenericVarSet),
+        parse_vars(VarsTerm, GenericVarSet, ContextPieces, MaybeVars),
+        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
+        (
+            MaybeVars = ok1(Vars0),
+            MaybeSubGoal = ok1(SubGoal)
+        ->
+            (
+                Vars0 = [],
+                SubGoal = _ - SubContext,
+                RCSPieces = ContextPieces ++
+                    [words("Error: the first argument of"),
+                    words("require_complete_switch"),
+                    words("must contain a variable."), nl],
+                RCSSpec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(SubContext, [always(RCSPieces)])]),
+                MaybeGoal = error1([RCSSpec])
+            ;
+                Vars0 = [Var0],
+                term.coerce_var(Var0, Var),
+                MaybeGoal = ok1(require_complete_switch_expr(Var, SubGoal)
+                    - Context)
+            ;
+                Vars0 = [_, _ | _],
+                SubGoal = _ - SubContext,
+                RCSPieces = ContextPieces ++
+                    [words("Error: the first argument of"),
+                    words("require_complete_switch"),
+                    words("cannot contain more than one variable."), nl],
+                RCSSpec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(SubContext, [always(RCSPieces)])]),
+                MaybeGoal = error1([RCSSpec])
+            )
+        ;
+            VarsSpecs = get_any_errors1(MaybeVars),
+            SubGoalSpecs = get_any_errors1(MaybeSubGoal),
+            MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
+        )
+    ;
+        (
+            Functor = "impure",
+            Purity = purity_impure
+        ;
+            Functor = "semipure",
+            Purity = purity_semipure
+        ),
+        Args = [SubTerm],
+        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
+        (
+            MaybeSubGoal = ok1(SubGoal),
+            SubGoal = SubGoalExpr - _SubContext,
+            ( SubGoalExpr = call_expr(Pred, CallArgs, purity_pure) ->
+                MaybeGoal = ok1(call_expr(Pred, CallArgs, Purity) - Context)
+            ; SubGoalExpr = unify_expr(ProgTerm1, ProgTerm2, purity_pure) ->
+                MaybeGoal = ok1(unify_expr(ProgTerm1, ProgTerm2, Purity)
+                    - Context)
+            ;
+                % Inappropriate placement of an impurity marker, so we treat
+                % it like a predicate call. typecheck.m prints out something
+                % descriptive for these errors.
+                %
+                % XXX we could return MaybeGoal = error1 here.
+                purity_name(Purity, PurityString),
+                term.coerce(SubTerm, CoercedSubTerm),
+                GoalExpr = call_expr(unqualified(PurityString),
+                    [CoercedSubTerm], purity_pure),
+                MaybeGoal = ok1(GoalExpr - Context)
+            )
+        ;
+            MaybeSubGoal = error1(_),
+            MaybeGoal = MaybeSubGoal
+        )
+    ;
+        Functor = "event",
+        Args = [SubTerm],
+        parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
+        (
+            MaybeSubGoal = ok1(SubGoal),
+            ( SubGoal = call_expr(SymName, CallArgs, Purity) - SubContext ->
+                (
+                    SymName = unqualified(EventName),
+                    Purity = purity_pure
+                ->
+                    Goal = event_expr(EventName, CallArgs) - Context,
+                    MaybeGoal = ok1(Goal)
+                ;
+                    some [!Specs] (
+                        !:Specs = [],
+                        (
+                            SymName = unqualified(_)
+                        ;
+                            SymName = qualified(_, _),
+                            QualPieces = ContextPieces ++
+                                [lower_case_next_if_not_first,
+                                words("Error: event name"),
+                                words("must not be qualified."), nl],
+                            QualSpec = error_spec(severity_error,
+                                phase_term_to_parse_tree,
+                                [simple_msg(SubContext,
+                                    [always(QualPieces)])]),
+                            !:Specs = [QualSpec | !.Specs]
+                        ),
+                        (
+                            Purity = purity_pure
+                        ;
+                            ( Purity = purity_semipure
+                            ; Purity = purity_impure
+                            ),
+                            PurityPieces = ContextPieces ++
+                                [lower_case_next_if_not_first,
+                                words("Error: event cannot be"),
+                                words("impure or semipure."), nl],
+                            PuritySpec = error_spec(severity_error,
+                                phase_term_to_parse_tree,
+                                [simple_msg(SubContext,
+                                    [always(PurityPieces)])]),
+                            !:Specs = [PuritySpec | !.Specs]
+                        ),
+                        MaybeGoal = error1(!.Specs)
+                    )
+                )
+            ;
+                Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+                    words("Error: event prefix must not precede anything"),
+                    words("other than a call."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(SubTerm), [always(Pieces)])]),
+                MaybeGoal = error1([Spec])
+            )
+        ;
+            MaybeSubGoal = error1(Specs),
+            MaybeGoal = error1(Specs)
+        )
+    ;
+        Functor = "is",
+        Args = [ATerm0, BTerm0],
+        % The following is a temporary hack to handle `is' in the parser -
+        % we ought to handle it in the code generation - but then `is/2' itself
+        % is a bit of a hack.
+        term.coerce(ATerm0, ATerm),
+        term.coerce(BTerm0, BTerm),
+        MaybeGoal = ok1(unify_expr(ATerm, BTerm, purity_pure) - Context)
     ).
 
 %-----------------------------------------------------------------------------%

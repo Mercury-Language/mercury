@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1998-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -172,7 +172,6 @@
 :- implementation.
 
 :- import_module mdb.parse.
-:- import_module mdb.util.
 :- import_module mdb.frame.
 :- import_module mdb.sized_pretty.
 

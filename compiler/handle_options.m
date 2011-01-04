@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -215,13 +215,14 @@ convert_option_table_result_to_globals(ok(OptionTable0), Errors,
     check_option_values(OptionTable0, OptionTable, Target, GC_Method,
         TagsMethod, TermNorm, Term2Norm, TraceLevel, TraceSuppress,
         MaybeThreadSafe, C_CompilerType, ReuseStrategy, MaybeILVersion,
-        MaybeFeedbackInfo, [], CheckErrors, !IO),
+        MaybeFeedbackInfo, HostEnvType, TargetEnvType, [], CheckErrors, !IO),
     (
         CheckErrors = [],
         convert_options_to_globals(OptionTable, Target, GC_Method,
             TagsMethod, TermNorm, Term2Norm, TraceLevel,
             TraceSuppress, MaybeThreadSafe, C_CompilerType, ReuseStrategy,
-            MaybeILVersion, MaybeFeedbackInfo, [], Errors, Globals, !IO)
+            MaybeILVersion, MaybeFeedbackInfo, HostEnvType, TargetEnvType,
+            [], Errors, Globals, !IO)
     ;
         CheckErrors = [_ | _],
         Errors = CheckErrors,
@@ -233,13 +234,13 @@ convert_option_table_result_to_globals(ok(OptionTable0), Errors,
     termination_norm::out, termination_norm::out, trace_level::out,
     trace_suppress_items::out, may_be_thread_safe::out,
     c_compiler_type::out, reuse_strategy::out, maybe(il_version_number)::out,
-    maybe(feedback_info)::out, list(string)::in, list(string)::out,
-    io::di, io::uo) is det.
+    maybe(feedback_info)::out, env_type::out, env_type::out,
+    list(string)::in, list(string)::out, io::di, io::uo) is det.
 
 check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
         C_CompilerType, ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
-        !Errors, !IO) :-
+        HostEnvType, TargetEnvType, !Errors, !IO) :-
     map.lookup(!.OptionTable, target, Target0),
     (
         Target0 = string(TargetStr),
@@ -458,8 +459,34 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
     ;
         % No feedback info.
         MaybeFeedbackInfo = no
-    ). 
-        
+    ),
+    map.lookup(!.OptionTable, host_env_type, HostEnvType0),
+    (
+        HostEnvType0 = string(HostEnvTypeStr),
+        convert_env_type(HostEnvTypeStr, HostEnvTypePrime)
+    ->
+        HostEnvType = HostEnvTypePrime
+    ;
+        HostEnvType = env_type_posix,   % dummy
+        add_error(
+            "Invalid argument to option `--host-env-type'\n" ++
+            "\t(must be `posix', `cygwin', `msys' or `windows').",
+            !Errors)
+    ),
+    map.lookup(!.OptionTable, target_env_type, TargetEnvType0),
+    (
+        TargetEnvType0 = string(TargetEnvTypeStr),
+        convert_env_type(TargetEnvTypeStr, TargetEnvTypePrime)
+    ->
+        TargetEnvType = TargetEnvTypePrime
+    ;
+        TargetEnvType = env_type_posix,   % dummy
+        add_error(
+            "Invalid argument to option `--target-env-type'\n" ++
+            "\t(must be `posix', `cygwin', `msys' or `windows').",
+            !Errors)
+    ).
+    
 :- pred add_error(string::in, list(string)::in, list(string)::out) is det.
 
 add_error(Error, Errors0, Errors) :-
@@ -474,16 +501,17 @@ add_error(Error, Errors0, Errors) :-
     termination_norm::in, termination_norm::in, trace_level::in,
     trace_suppress_items::in, may_be_thread_safe::in, c_compiler_type::in,
     reuse_strategy::in, maybe(il_version_number)::in, maybe(feedback_info)::in,
-    list(string)::in, list(string)::out, globals::out, io::di, io::uo) is det.
+    env_type::in, env_type::in, list(string)::in, list(string)::out,
+    globals::out, io::di, io::uo) is det.
 
 convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
         C_CompilerType, ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
-        !Errors, !:Globals, !IO) :-
+        HostEnvType, TargetEnvType, !Errors, !:Globals, !IO) :-
     globals_init(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
         C_CompilerType, ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
-        !:Globals),
+        HostEnvType, TargetEnvType, !:Globals),
 
     globals.lookup_string_option(!.Globals, event_set_file_name,
         EventSetFileName0),
@@ -2335,7 +2363,7 @@ display_compiler_version(!IO) :-
     library.version(Version),
     io.write_strings([
         "Mercury Compiler, version ", Version, "\n",
-        "Copyright (C) 1993-2010 The University of Melbourne\n"
+        "Copyright (C) 1993-2011 The University of Melbourne\n"
     ], !IO).
 
 :- mutable(already_printed_usage, bool, no, ground,
@@ -2364,7 +2392,7 @@ long_usage(!IO) :-
     library.version(Version),
     io.write_strings(["Name: mmc -- Melbourne Mercury Compiler, version ", 
         Version, "\n"], !IO),
-    io.write_string("Copyright: Copyright (C) 1993-2010 " ++
+    io.write_string("Copyright: Copyright (C) 1993-2011 " ++
         "The University of Melbourne\n", !IO),
     io.write_string("Usage: mmc [<options>] <arguments>\n", !IO),
     io.write_string("Arguments:\n", !IO),
