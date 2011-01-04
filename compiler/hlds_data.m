@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -860,15 +860,16 @@ set_type_defn_in_exported_eqv(InExportedEqv, !Defn) :-
 
 :- type user_inst_table == user_inst_defns.
 
-inst_table_init(inst_table(UserInsts, UnifyInsts, MergeInsts, GroundInsts,
-            AnyInsts, SharedInsts, NondetLiveInsts)) :-
+inst_table_init(InstTable) :-
     map.init(UserInsts),
     map.init(UnifyInsts),
     map.init(MergeInsts),
     map.init(GroundInsts),
     map.init(SharedInsts),
     map.init(AnyInsts),
-    map.init(NondetLiveInsts).
+    map.init(NondetLiveInsts),
+    InstTable = inst_table(UserInsts, UnifyInsts, MergeInsts, GroundInsts,
+        AnyInsts, SharedInsts, NondetLiveInsts).
 
 inst_table_get_user_insts(InstTable, InstTable ^ inst_table_user).
 inst_table_get_unify_insts(InstTable, InstTable ^ inst_table_unify).
@@ -879,20 +880,20 @@ inst_table_get_shared_insts(InstTable, InstTable ^ inst_table_shared).
 inst_table_get_mostly_uniq_insts(InstTable,
     InstTable ^ inst_table_mostly_uniq).
 
-inst_table_set_user_insts(UserInsts, InstTable,
-    InstTable ^ inst_table_user := UserInsts).
-inst_table_set_unify_insts(UnifyInsts, InstTable,
-    InstTable ^ inst_table_unify := UnifyInsts).
-inst_table_set_merge_insts(MergeInsts, InstTable,
-    InstTable ^ inst_table_merge := MergeInsts).
-inst_table_set_ground_insts(GroundInsts, InstTable,
-    InstTable ^ inst_table_ground := GroundInsts).
-inst_table_set_any_insts(AnyInsts, InstTable,
-    InstTable ^ inst_table_any := AnyInsts).
-inst_table_set_shared_insts(SharedInsts, InstTable,
-    InstTable ^ inst_table_shared := SharedInsts).
-inst_table_set_mostly_uniq_insts(MostlyUniqInsts, InstTable,
-    InstTable ^ inst_table_mostly_uniq := MostlyUniqInsts).
+inst_table_set_user_insts(UserInsts, !InstTable) :-
+    !InstTable ^ inst_table_user := UserInsts.
+inst_table_set_unify_insts(UnifyInsts, !InstTable) :-
+    !InstTable ^ inst_table_unify := UnifyInsts.
+inst_table_set_merge_insts(MergeInsts, !InstTable) :-
+    !InstTable ^ inst_table_merge := MergeInsts.
+inst_table_set_ground_insts(GroundInsts, !InstTable) :-
+    !InstTable ^ inst_table_ground := GroundInsts.
+inst_table_set_any_insts(AnyInsts, !InstTable) :-
+    !InstTable ^ inst_table_any := AnyInsts.
+inst_table_set_shared_insts(SharedInsts, !InstTable) :-
+    !InstTable ^ inst_table_shared := SharedInsts.
+inst_table_set_mostly_uniq_insts(MostlyUniqInsts, !InstTable) :-
+    !InstTable ^ inst_table_mostly_uniq := MostlyUniqInsts.
 
 user_inst_table_get_inst_defns(UserInstDefns, UserInstDefns).
 
