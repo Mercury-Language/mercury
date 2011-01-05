@@ -52,6 +52,9 @@
 :- import_module check_hlds.mode_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_goal.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.quantification.
@@ -61,7 +64,9 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module pair.
@@ -82,13 +87,39 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     PushInfo = push_info(RttiVarMaps0),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    OutInfo = init_hlds_out_info(Globals),
+    trace [compiletime(flag("debug_push_goals")), io(!IO)] (
+        io.write_string("Goal before pushes:\n", !IO),
+        write_goal(OutInfo, Goal0, !.ModuleInfo, VarSet0, yes, 0, "", !IO),
+        io.nl(!IO)
+    ),
     do_push_list(PushGoals, PushInfo, OverallResult, Goal0, Goal1),
     (
         OverallResult = push_failed
     ;
         OverallResult = push_succeeded,
-        % We need to fix up the goal_infos by recalculating the nonlocal sets
-        % and the instmap deltas of the compound goals.
+        trace [compiletime(flag("debug_push_goals")), io(!IO)] (
+            io.write_string("Goal after pushes:\n", !IO),
+            write_goal(OutInfo, Goal1, !.ModuleInfo, VarSet0, yes, 0, "", !IO),
+            io.nl(!IO)
+        ),
+
+        % We need to fix up the goal_infos of the goals touched directly or
+        % indirectly by the transformation. Some variables that used to be
+        % output by a branched goal such as an if-then-else may now be local
+        % to each branch (since the goals moved into the branches could have
+        % been the only consumers of those variables), and thus may need to be
+        % renamed apart, i.e. given different names in different branches.
+        %
+        % We also need requantification to recalculate goals' nonlocal sets,
+        % since the transformation itself does not do so, being unable to
+        % anticipate the required renamings.
+        %
+        % The transformation also does not recalculate the instmap deltas
+        % of compound goals. It cannot do so either without knowing what
+        % renamings will be needed.
+
         proc_info_get_headvars(!.ProcInfo, HeadVars),
         implicitly_quantify_clause_body_general(ordinary_nonlocals_no_lambda,
             HeadVars, _Warnings, Goal1, Goal2,
@@ -101,7 +132,12 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
         proc_info_set_goal(Goal, !ProcInfo),
         proc_info_set_varset(VarSet, !ProcInfo),
         proc_info_set_vartypes(VarTypes, !ProcInfo),
-        proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo)
+        proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
+        trace [compiletime(flag("debug_push_goals")), io(!IO)] (
+            io.write_string("Goal after fixups:\n", !IO),
+            write_goal(OutInfo, Goal, !.ModuleInfo, VarSet, yes, 0, "", !IO),
+            io.nl(!IO)
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -129,7 +165,10 @@ do_one_push(PushGoal, PushInfo, Result, !Goal) :-
         GoalPath = fgp(GoalPathSteps),
         do_push_in_goal(GoalPathSteps, PushGoal, PushInfo, Result, !Goal)
     ;
-        Result = push_failed
+        Result = push_failed,
+        trace [compiletime(flag("debug_push_goals")), io(!IO)] (
+            io.write_string("push_failed: cannot translate goal path\n", !IO)
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -150,7 +189,10 @@ do_push_in_goal([Step | Steps], PushGoal, PushInfo, Result, !Goal) :-
             GoalExpr = conj(ConjType, Goals),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
-            Result = push_failed
+            Result = push_failed,
+            trace [compiletime(flag("debug_push_goals")), io(!IO)] (
+                io.write_string("push_failed: not conj\n", !IO)
+            )
         )
     ;
         Step = step_disj(N),
@@ -160,7 +202,10 @@ do_push_in_goal([Step | Steps], PushGoal, PushInfo, Result, !Goal) :-
             GoalExpr = disj(Goals),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
-            Result = push_failed
+            Result = push_failed,
+            trace [compiletime(flag("debug_push_goals")), io(!IO)] (
+                io.write_string("push_failed: not disj\n", !IO)
+            )
         )
     ;
         Step = step_switch(N, _),
@@ -170,7 +215,10 @@ do_push_in_goal([Step | Steps], PushGoal, PushInfo, Result, !Goal) :-
             GoalExpr = switch(Var, CanFail, Cases),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
-            Result = push_failed
+            Result = push_failed,
+            trace [compiletime(flag("debug_push_goals")), io(!IO)] (
+                io.write_string("push_failed: not switch\n", !IO)
+            )
         )
     ;
         Step = step_ite_cond,
@@ -179,7 +227,10 @@ do_push_in_goal([Step | Steps], PushGoal, PushInfo, Result, !Goal) :-
             GoalExpr = if_then_else(Vars0, Cond, Then0, Else0),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
-            Result = push_failed
+            Result = push_failed,
+            trace [compiletime(flag("debug_push_goals")), io(!IO)] (
+                io.write_string("push_failed: not if_then_else\n", !IO)
+            )
         )
     ;
         Step = step_ite_then,
@@ -188,7 +239,10 @@ do_push_in_goal([Step | Steps], PushGoal, PushInfo, Result, !Goal) :-
             GoalExpr = if_then_else(Vars0, Cond0, Then, Else0),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
-            Result = push_failed
+            Result = push_failed,
+            trace [compiletime(flag("debug_push_goals")), io(!IO)] (
+                io.write_string("push_failed: not if_then_else\n", !IO)
+            )
         )
     ;
         Step = step_ite_else,
@@ -197,7 +251,10 @@ do_push_in_goal([Step | Steps], PushGoal, PushInfo, Result, !Goal) :-
             GoalExpr = if_then_else(Vars0, Cond0, Then0, Else),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
-            Result = push_failed
+            Result = push_failed,
+            trace [compiletime(flag("debug_push_goals")), io(!IO)] (
+                io.write_string("push_failed: not if_then_else\n", !IO)
+            )
         )
     ;
         Step = step_neg,
@@ -207,7 +264,10 @@ do_push_in_goal([Step | Steps], PushGoal, PushInfo, Result, !Goal) :-
             GoalExpr = negation(SubGoal),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
-            Result = push_failed
+            Result = push_failed,
+            trace [compiletime(flag("debug_push_goals")), io(!IO)] (
+                io.write_string("push_failed: not negation\n", !IO)
+            )
         )
     ;
         Step = step_scope(_),
@@ -217,7 +277,10 @@ do_push_in_goal([Step | Steps], PushGoal, PushInfo, Result, !Goal) :-
             GoalExpr = scope(Reason, SubGoal),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;
-            Result = push_failed
+            Result = push_failed,
+            trace [compiletime(flag("debug_push_goals")), io(!IO)] (
+                io.write_string("push_failed: not scope\n", !IO)
+            )
         )
     ;
         ( Step = step_lambda
@@ -227,14 +290,20 @@ do_push_in_goal([Step | Steps], PushGoal, PushInfo, Result, !Goal) :-
         ),
         % The constructs represented by these steps should have been
         % expanded out by now.
-        Result = push_failed
+        Result = push_failed,
+        trace [compiletime(flag("debug_push_goals")), io(!IO)] (
+            io.write_string("push_failed: unexpected goal path step\n", !IO)
+        )
     ).
 
 :- pred do_push_in_goals(int::in, list(goal_path_step)::in, push_goal::in,
     push_info::in, push_result::out,
     list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
-do_push_in_goals(_N, _Steps, _PushGoal, _PushInfo, push_failed, [], []).
+do_push_in_goals(_N, _Steps, _PushGoal, _PushInfo, push_failed, [], []) :-
+    trace [compiletime(flag("debug_push_goals")), io(!IO)] (
+        io.write_string("push_failed: couldn't find indicated disjunct\n", !IO)
+    ).
 do_push_in_goals(N, Steps, PushGoal, PushInfo, Result,
         [Goal0 | Goals0], [Goal | Goals]) :-
     ( N = 1 ->
@@ -249,7 +318,10 @@ do_push_in_goals(N, Steps, PushGoal, PushInfo, Result,
 :- pred do_push_in_cases(int::in, list(goal_path_step)::in, push_goal::in,
     push_info::in, push_result::out, list(case)::in, list(case)::out) is det.
 
-do_push_in_cases(_N, _Steps, _PushGoal, _PushInfo, push_failed, [], []).
+do_push_in_cases(_N, _Steps, _PushGoal, _PushInfo, push_failed, [], []) :-
+    trace [compiletime(flag("debug_push_goals")), io(!IO)] (
+        io.write_string("push_failed: couldn't find indicated case\n", !IO)
+    ).
 do_push_in_cases(N, Steps, PushGoal, PushInfo, Result,
         [Case0 | Cases0], [Case | Cases]) :-
     ( N = 1 ->
@@ -294,7 +366,10 @@ perform_push_transform(PushGoal, PushInfo, Result, !Goal) :-
         !:Goal = hlds_goal(GoalExpr, GoalInfo0),
         Result = push_succeeded
     ;
-        Result = push_failed
+        Result = push_failed,
+        trace [compiletime(flag("debug_push_goals")), io(!IO)] (
+            io.write_string("push_failed: perform_push_transform\n", !IO)
+        )
     ).
 
 %-----------------------------------------------------------------------------%
