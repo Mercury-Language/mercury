@@ -43,12 +43,15 @@ syn keyword mercuryKeyword      cc_nondet cc_multi
 syn keyword mercuryKeyword      typeclass instance where
 syn keyword mercuryKeyword      pragma promise external
 syn keyword mercuryKeyword      trace atomic or_else
+syn keyword mercuryKeyword      require_complete_switch
+syn keyword mercuryKeyword      require_det require_semidet require_multi 
+syn keyword mercuryKeyword      require_nondet require_cc_multi require_cc_nondet
+syn keyword mercuryKeyword      require_erroneous require_failure
 syn keyword mercuryPragma       inline no_inline
 syn keyword mercuryPragma       type_spec source_file fact_table obsolete
 syn keyword mercuryPragma       memo loop_check minimal_model
 syn keyword mercuryPragma       terminates does_not_terminate check_termination
 syn keyword mercuryPragma       promise_equivalent_clauses
-syn keyword mercuryCInterface   c_header_code c_code
 syn keyword mercuryCInterface   foreign_proc foreign_decl foreign_code
 syn keyword mercuryCInterface   foreign_type foreign_import_module
 syn keyword mercuryCInterface   foreign_export_enum foreign_export
@@ -65,7 +68,6 @@ syn keyword mercuryCInterface   may_duplicate may_not_duplicate
 syn keyword mercuryCInterface   affects_liveness
 syn keyword mercuryCInterface   does_not_affect_liveness doesnt_affect_liveness
 syn keyword mercuryCInterface   no_sharing unknown_sharing sharing
-syn keyword mercuryCInterface   export import
 syn keyword mercuryImpure       impure semipure
 syn keyword mercuryToDo         XXX TODO NOTE         
 syn keyword mercuryLogical      some all not if then else true fail false
