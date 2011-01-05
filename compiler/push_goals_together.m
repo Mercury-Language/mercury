@@ -38,8 +38,8 @@
     % push_succeeded if they all worked, and push_failed if at least one
     % failed. This can happen because the program has changed since PushGoals
     % was computed and put into the feedback file, or because PushGoals is
-    % inconsistent (regardless of the date of the file). One example of an
-    % inconsistency would be asking to push a goal into the condition of an
+    % invalid (regardless of the date of the file). One example of a validity
+    % problem would be asking to push a goal into the condition of an
     % if-then-else.
     %
 :- pred push_goals_in_proc(list(push_goal)::in, push_result::out,
@@ -404,6 +404,8 @@ is_pushable_goal(PushInfo, Goal, Pushable) :-
             ;
                 Unification = deconstruct(_, _, Args, _, _, _),
                 RttiVarMaps = PushInfo ^ pi_rtti_varmaps,
+                % See the comment in move_follow_code_select in follow_code.m 
+                % for the reason for this test.
                 ( list.all_true(is_non_rtti_var(RttiVarMaps), Args) ->
                     Pushable = pushable
                 ;
@@ -583,6 +585,10 @@ push_into_goal(LoHi, HeadSteps, TailSteps, Goal0, Goal, Pushable) :-
                 % If ConjNum specifies a conjunct that is NOT the last
                 % conjunct, then this transformation reorders the code.
                 % For now, we don't allow that.
+                %
+                % However, we could also avoid reordering by removing
+                % all the conjuncts after ConjNum from this conjunction,
+                % and moving them to the front of LoHi.
                 list.length(Conjuncts0, Length),
                 ConjNum = Length
             ->
@@ -676,8 +682,9 @@ push_into_goal(LoHi, HeadSteps, TailSteps, Goal0, Goal, Pushable) :-
             SubDetism = goal_info_get_determinism(SubGoalInfo0),
             (
                 Detism = SubDetism,
-                maybe_steps_after(step_neg, HeadSteps, HeadStepsAfter),
-                list.map(maybe_steps_after(step_neg), TailSteps,
+                maybe_steps_after(step_scope(scope_is_no_cut)), HeadSteps,
+                    HeadStepsAfter),
+                list.map(maybe_steps_after(scope_is_no_cut)), TailSteps,
                     TailStepsAfter)
             ->
                 push_into_goal(LoHi, HeadStepsAfter, TailStepsAfter,
