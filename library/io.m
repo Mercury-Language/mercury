@@ -2681,7 +2681,7 @@ have_win32 :- semidet_fail.
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
-#ifdef MR_WIN32
+#if defined(MR_WIN32)
     SUCCESS_INDICATOR = MR_TRUE;
 #else
     SUCCESS_INDICATOR = MR_FALSE;
@@ -2695,7 +2695,7 @@ have_cygwin :- semidet_fail.
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness, no_sharing],
 "
-#ifdef __CYGWIN__
+#if defined(MR_CYGWIN)
     SUCCESS_INDICATOR = MR_TRUE;
 #else
     SUCCESS_INDICATOR = MR_FALSE;
@@ -3358,7 +3358,7 @@ io.check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
   #endif
     int access_result;
 
-  #if !defined(MR_WIN32) || defined(__CYGWIN__)
+  #if !defined(MR_WIN32) || defined(MR_CYGWIN)
     /*
     ** Earlier versions of MSVCRT ignored flags it doesn't support,
     ** later versions return an error (e.g. on Vista).

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2007, 2009-2010 The University of Melbourne.
+** Copyright (C) 1997-2007, 2009-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1028,6 +1028,16 @@
 
 #if defined(__MINGW32__)
    #define MR_MINGW
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** Cygwin specific.
+*/
+
+#if defined(__CYGWIN__)
+   #define MR_CYGWIN
 #endif
 
 /*---------------------------------------------------------------------------*/
