@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 2001-2008, 2010 The University of Melbourne.
+** Copyright (C) 2001-2008, 2010-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -94,10 +94,7 @@ MR_CallSiteDynamic  MR_main_grandparent_call_site_dynamic =
     0,
 #endif
 #ifdef MR_DEEP_PROFILING_MEMORY
-    0, 0,
-#endif
-#ifdef MR_DEEP_PROFILING_COVERAGE_DYNAMIC
-    NULL
+    0, 0
 #endif
     },
     0
