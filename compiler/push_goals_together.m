@@ -682,10 +682,10 @@ push_into_goal(LoHi, HeadSteps, TailSteps, Goal0, Goal, Pushable) :-
             SubDetism = goal_info_get_determinism(SubGoalInfo0),
             (
                 Detism = SubDetism,
-                maybe_steps_after(step_scope(scope_is_no_cut), HeadSteps,
-                    HeadStepsAfter),
-                list.map(maybe_steps_after(scope_is_no_cut), TailSteps,
-                    TailStepsAfter)
+                maybe_steps_after(step_scope(scope_is_no_cut),
+                    HeadSteps, HeadStepsAfter),
+                list.map(maybe_steps_after(step_scope(scope_is_no_cut)),
+                    TailSteps, TailStepsAfter)
             ->
                 push_into_goal(LoHi, HeadStepsAfter, TailStepsAfter,
                     SubGoal0, SubGoal, Pushable),
