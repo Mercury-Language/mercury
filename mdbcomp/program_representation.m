@@ -618,6 +618,15 @@
 :- pred rev_goal_path_inside(reverse_goal_path::in, reverse_goal_path::in,
     reverse_goal_path::out) is semidet.
 
+    % Remove information from the goal path that depends on type information.
+    %
+    % This is necessary when using goal paths to lookup a map within the deep
+    % profiler.  The goal paths used to perform the query cannot construct the
+    % parts of the goal paths that depend on type information.
+    %
+:- pred rev_goal_path_remove_type_info(reverse_goal_path::in,
+    reverse_goal_path::out) is det.
+
 %----------------------------------------------------------------------------%
 
     % User-visible head variables are represented by a number from 1..N,
@@ -1076,6 +1085,31 @@ goal_path_step_to_string(step_lambda) = "=;".
 goal_path_step_to_string(step_atomic_main) = "a;".
 goal_path_step_to_string(step_atomic_orelse(N)) =
     "o" ++ int_to_string(N) ++ ";".
+
+rev_goal_path_remove_type_info(rgp(Steps0), rgp(Steps)) :-
+    map(goal_path_step_remove_type_info, Steps0, Steps).
+
+:- pred goal_path_step_remove_type_info(goal_path_step::in,
+    goal_path_step::out) is det.
+
+goal_path_step_remove_type_info(!Step) :-
+    (
+        ( !.Step = step_conj(_)
+        ; !.Step = step_disj(_)
+        ; !.Step = step_ite_cond
+        ; !.Step = step_ite_then
+        ; !.Step = step_ite_else
+        ; !.Step = step_neg
+        ; !.Step = step_scope(_)
+        ; !.Step = step_lambda
+        ; !.Step = step_try
+        ; !.Step = step_atomic_main
+        ; !.Step = step_atomic_orelse(_)
+        )
+    ;
+        !.Step = step_switch(N, _),
+        !:Step = step_switch(N, no)
+    ).
 
 %-----------------------------------------------------------------------------%
 

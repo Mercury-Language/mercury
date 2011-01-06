@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2010 The University of Melbourne.
+% Copyright (C) 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -503,11 +503,12 @@ dump_call_site_static(Restriction, Index, CallSiteStatic, !IO) :-
         CallSiteStatic = call_site_static(ContainerPSPtr, SlotNum,
             Kind, LineNum, GoalPath),
         ContainerPSPtr = proc_static_ptr(ContainerPSI),
+        GoalPathString = rev_goal_path_to_string(GoalPath),
         io.format("css%d:\n", [i(Index)], !IO),
         io.format("\tcss_container\t= ps%d\n", [i(ContainerPSI)], !IO),
         io.format("\tcss_slot_num\t= <%d>\n", [i(SlotNum)], !IO),
         io.format("\tcss_line_num\t= <%d>\n", [i(LineNum)], !IO),
-        io.format("\tcss_goal_path\t= <%s>\n", [s(GoalPath)], !IO),
+        io.format("\tcss_goal_path\t= <%s>\n", [s(GoalPathString)], !IO),
         io.write_string("\tcss_kind\t= ", !IO),
         dump_call_site_kind_and_callee(Kind, !IO),
         io.nl(!IO),

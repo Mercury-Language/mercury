@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2010 The University of Melbourne.
+% Copyright (C) 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1191,7 +1191,7 @@ maybe_create_procrep_coverage_report(Deep, PSPtr, Own,
 
 add_ps_calls_and_exits_to_map(Deep, CSSPtr, !.Map) = !:Map :-
     lookup_call_site_statics(Deep ^ call_site_statics, CSSPtr, CSS),
-    rev_goal_path_from_string_det(CSS ^ css_goal_path, RevGoalPath),
+    RevGoalPath = CSS ^ css_goal_path,
     lookup_css_own(Deep ^ css_own, CSSPtr, Own),
     svmap.det_insert(RevGoalPath, calls_and_exits(calls(Own), exits(Own)),
         !Map).
@@ -1211,7 +1211,7 @@ add_pd_calls_and_exits_to_map(Deep, CSSPtr, Slot, !Map) :-
             0, Calls, 0, Exits)
     ),
     deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
-    rev_goal_path_from_string_det(CSS ^ css_goal_path, RevGoalPath),
+    RevGoalPath = CSS ^ css_goal_path,
     svmap.det_insert(RevGoalPath, calls_and_exits(Calls, Exits), !Map).
 
 :- pred csd_get_calls_and_exits(deep::in, call_site_dynamic_ptr::in,
@@ -1647,13 +1647,12 @@ describe_call_site(Deep, CSSPtr) = CallSiteDesc :-
     ( valid_call_site_static_ptr(Deep, CSSPtr) ->
         deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
         CSS = call_site_static(ContainingPSPtr, SlotNumber, Kind, LineNumber,
-            GoalPathString),
+            RevGoalPath),
         deep_lookup_proc_statics(Deep, ContainingPSPtr, ContainingPS),
         FileName = ContainingPS ^ ps_file_name,
         ModuleName = ContainingPS ^ ps_decl_module,
         UnQualRefinedName = ContainingPS ^ ps_uq_refined_id,
         QualRefinedName = ContainingPS ^ ps_q_refined_id,
-        rev_goal_path_from_string_det(GoalPathString, RevGoalPath),
         (
             Kind = normal_call_and_callee(CalleePSPtr, _TypeSubst),
             CalleeDesc = describe_proc(Deep, CalleePSPtr),

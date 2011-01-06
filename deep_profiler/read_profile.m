@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2010 The University of Melbourne.
+% Copyright (C) 2001, 2004-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -210,7 +210,7 @@ maybe_init_deep(ProgName, FlagsInt, MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
             array.init(MaxCSS + 1,
                 call_site_static(
                     make_dummy_psptr, -1,
-                    normal_call_and_callee(make_dummy_psptr, ""), -1, ""
+                    normal_call_and_callee(make_dummy_psptr, ""), -1, rgp([])
                 )),
             array.init(MaxPS + 1,
                 proc_static(dummy_proc_id, "", "", "", "", "", -1, no,
@@ -437,12 +437,14 @@ read_call_site_static(MaybeCSS, !IO) :-
         read_call_site_kind_and_callee,
         read_num,
         read_string,
-        (pred(CSSI0::in, Kind::in, LineNumber::in, Str::in, CSS::out)
+        (pred(CSSI0::in, Kind::in, LineNumber::in, GoalPathStr::in, CSS::out)
                 is det :-
             DummyPSPtr = make_dummy_psptr,
             DummySlotNum = -1,
+            rev_goal_path_from_string_det(GoalPathStr, RevGoalPath0),
+            rev_goal_path_remove_type_info(RevGoalPath0, RevGoalPath),
             CallSiteStatic0 = call_site_static(DummyPSPtr,
-                DummySlotNum, Kind, LineNumber, Str),
+                DummySlotNum, Kind, LineNumber, RevGoalPath),
             CSS = ok({CallSiteStatic0, CSSI0})
         ),
         MaybeCSS, !IO),
@@ -703,7 +705,8 @@ read_coverage_point_static(MaybeCP, !IO) :-
         read_string,
         read_cp_type,
         (pred(GoalPathString::in, CPType::in, MaybeCPI::out) is det :-
-            rev_goal_path_from_string_det(GoalPathString, RevGoalPath),
+            rev_goal_path_from_string_det(GoalPathString, RevGoalPath0),
+            rev_goal_path_remove_type_info(RevGoalPath0, RevGoalPath),
             MaybeCPI = ok(coverage_point_info(RevGoalPath, CPType))
         ), MaybeCP, !IO).
 

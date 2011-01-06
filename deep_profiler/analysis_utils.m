@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2010 The University of Melbourne.
+% Copyright (C) 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -176,7 +176,7 @@ build_call_site_cost_and_callee_map(Deep, CSSPtr - Slot, !CallSitesMap) :-
     CostAndCallees = cost_and_callees(CostCsq, set(Callees), HigherOrder),
     lookup_call_site_statics(Deep ^ call_site_statics, CSSPtr, CSS),
     call_site_kind_to_higher_order(CSS ^ css_kind, HigherOrder),
-    rev_goal_path_from_string_det(CSS ^ css_goal_path, RevGoalPath),
+    RevGoalPath = CSS ^ css_goal_path,
     svmap.det_insert(RevGoalPath, CostAndCallees, !CallSitesMap).
 
 :- pred call_site_dynamic_get_callee_and_costs(deep::in,
@@ -309,7 +309,7 @@ build_recursive_call_site_counts_map(Deep, CliquePtr, CSSPtr - CSDSlot,
     (
         Recursive = yes,
         deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
-        rev_goal_path_from_string_det(CSS ^ css_goal_path, RevGoalPath),
+        RevGoalPath = CSS ^ css_goal_path,
         svmap.det_insert(RevGoalPath, Count, !Map)
     ;
         Recursive = no

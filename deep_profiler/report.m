@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2010 The University of Melbourne.
+% Copyright (C) 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -493,7 +493,7 @@
                 cssdi_containing_psptr      :: proc_static_ptr,
                 cssdi_slot_number           :: int,
                 cssdi_line_number           :: int,
-                cssdi_goal_path             :: string,
+                cssdi_goal_path             :: reverse_goal_path,
                 cssdi_callee                :: call_site_kind_and_callee
             ).
 

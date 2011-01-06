@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2010 The University of Melbourne.
+% Copyright (C) 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2266,7 +2266,7 @@ display_report_call_site_static_dump(Prefs, CallSiteStaticDumpInfo, Display) :-
         [("Containing proc_static:" - td_l(ContainingProcStaticLink)),
         ("Slot number:"             - td_i(SlotNumber)),
         ("Line number:"             - td_i(LineNumber)),
-        ("Goal path:"               - td_s(GoalPath)),
+        ("Goal path:"               - td_s(rev_goal_path_to_string(GoalPath))),
         ("Call site kind:"          - CallSiteKindData)],
 
     Rows = list.map(make_labelled_table_row, Values),

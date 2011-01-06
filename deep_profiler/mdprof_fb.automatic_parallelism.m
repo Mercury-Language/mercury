@@ -355,7 +355,7 @@ proc_dynamic_callees(Deep, Parallelism, PDPtr, ChildCliques) :-
 
 pd_slot_callees(Deep, Parallelism, ProcLabel, CSSPtr - Slot, ChildCliques) :-
     deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
-    rev_goal_path_from_string_det(CSS ^ css_goal_path, RevGoalPath),
+    RevGoalPath = CSS ^ css_goal_path,
     (
         Slot = slot_normal(CSDPtr),
         call_site_dynamic_callees(Deep, Parallelism, ProcLabel, RevGoalPath,

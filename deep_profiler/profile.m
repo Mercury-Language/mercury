@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2010 The University of Melbourne.
+% Copyright (C) 2001, 2004-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -248,7 +248,7 @@
                                % Slot number in the containing procedure.
                 css_kind      :: call_site_kind_and_callee,
                 css_line_num  :: int,
-                css_goal_path :: string
+                css_goal_path :: reverse_goal_path
             ).
 
 %-----------------------------------------------------------------------------%

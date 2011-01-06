@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2003, 2005-2010 The University of Melbourne.
+% Copyright (C) 2001-2003, 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -40,6 +40,8 @@
 :- import_module apply_exclusion.
 :- import_module exclude.
 :- import_module html_format.       % for escape_break_html_string
+:- import_module mdbcomp.
+:- import_module mdbcomp.program_representation.
 :- import_module measurements.
 :- import_module old_html_format.
 :- import_module top_procs.
@@ -205,7 +207,7 @@ generate_call_site_static_debug_page(CSSPtr, Deep) = HTML :-
             string.int_to_string(CSS ^ css_slot_num) ++ " " ++
             string.int_to_string(CSS ^ css_line_num) ++ " " ++
             kind_and_callee_to_string(CSS ^ css_kind) ++ " " ++
-            CSS ^ css_goal_path ++
+            rev_goal_path_to_string(CSS ^ css_goal_path) ++
             "</HTML>\n"
     ;
         HTML =
