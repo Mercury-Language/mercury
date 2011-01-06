@@ -257,7 +257,7 @@ mercury_event_error(const char *s)
         mercury_event_linenum--;
     } else if (mercury_event_text[0] == '\n' || mercury_event_text[0] == '\f') {
         sprintf(buf, "%s at end of line", s);
-    } else if (isprint(mercury_event_text[0])) {
+    } else if (isprint((int)mercury_event_text[0])) {
         sprintf(buf, "%s at symbol `%s'", s, mercury_event_text);
     } else {
         sprintf(buf, "%s at \\%o", s, mercury_event_text[0]);
