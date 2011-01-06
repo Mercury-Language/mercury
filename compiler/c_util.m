@@ -280,7 +280,7 @@ can_print_directly(_, no, !IO).
         can_print_directly = MR_TRUE;
 
         for (s = Str; *s != '\\0'; s++) {
-            if (! (isalnum(*s) || *s == '_' || *s == '/' || *s == '.')) {
+            if (! (isalnum((int)*s) || *s == '_' || *s == '/' || *s == '.')) {
                 can_print_directly = MR_FALSE;
                 break;
             }

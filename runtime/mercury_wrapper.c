@@ -325,8 +325,14 @@ int                 MR_real_time_at_last_stat;
 int                 MR_real_time_at_start;
 
 /* time profiling */
+#if defined(MR_CYGWIN)
+/* Other timing methods are not supported on Cygwin. */
+enum MR_TimeProfileMethod
+                    MR_time_profile_method = MR_profile_real_time;
+#else
 enum MR_TimeProfileMethod
                     MR_time_profile_method = MR_profile_user_plus_system_time;
+#endif
 
 const char          *MR_progname;
 int                 mercury_argc;   /* not counting progname */

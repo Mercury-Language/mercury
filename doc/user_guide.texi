@@ -5747,8 +5747,8 @@ by including the options @samp{-Tr}, @samp{-Tp}, or @samp{-Tv} respectively
 in the environment variable MERCURY_OPTIONS
 when you run the program to be profiled.
 @c (See the environment variables section below.)
-Currently, the @samp{-Tp} and @samp{-Tv} options don't work on Windows,
-so on Windows you must explicitly specify @samp{-Tr}.
+Currently, only the @samp{-Tr} option works on Cygwin; on that
+platform it is the default.
 @c the above sentence is duplicated below
 
 The default is user time plus system time,
@@ -9981,8 +9981,8 @@ Profile user time (using ITIMER_VIRTUAL).
 @end table
 
 @sp 1
-Currently, the @samp{-Tp} and @samp{-Tv} options don't work on Windows,
-so on Windows you must explicitly specify @samp{-Tr}.
+Currently, only the @samp{-Tr} option works on Cygwin; on that
+platform it is the default.
 @c the above sentence is duplicated above
 
 @c @item -x
@@ -10486,6 +10486,9 @@ Only available on backends that compile to C or assembler.
 @item @samp{C#}
 Only available on backends that compile to IL or C#.
 This is the second preferred foreign language for IL code generation.
+
+@item @samp{Erlang}
+This is the only foreign language for backends which compile to Erlang.
 
 @item @samp{IL}
 IL is the intermediate language of the .NET Common Language
