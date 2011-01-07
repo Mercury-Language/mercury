@@ -199,7 +199,7 @@ par_check0(Par, triple(Par, S, P)) -->
 	getPtypes(P),
 	% For VarSource type see below or in ztype.m ---
 	% should use this to improve error messages!
-	{P0 = (pred(unbound(Expr, VarSource)::in, in, out) is det -->
+	{P0 = (pred(unbound(Expr, _VarSource)::in, in, out) is det -->
 		{Expr = _-VC}, terror(VC, [
 			s("Implicit type parameter not determined--"),
 				s("\n\tExpression: "), e(Expr)

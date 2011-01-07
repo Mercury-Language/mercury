@@ -210,7 +210,7 @@ short_option('y', side_by_side).
 
 %-----------------------------------------------------------------------------%
 
-:- pred option_defaults(option :: out, option_data :: out) is nondet.
+:- pred option_defaults(option::out, option_data::out) is multi.
 
 	% Output styles
 option_defaults(help,				bool(no)).
@@ -354,7 +354,7 @@ special_handler(binary, _, _, error(Msg)) :-
 %-----------------------------------------------------------------------------%
 
 options__get_option_ops(OptionOps) :-
-	OptionOps = option_ops(
+	OptionOps = option_ops_multi(
 		short_option,
 		long_option,
 		option_defaults,
