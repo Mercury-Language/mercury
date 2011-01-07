@@ -11,8 +11,10 @@ Developer Tools.
 
 The 'asm_fast' and 'reg' grades are not currently available on Mac OS X 10.5 or
 10.6.  The configure script will automatically select the "none" grade instead.
-(The high-level C grades, java grade and erlang grade all work -- the latter
-will require a working Erlang installation.)
+The high-level C, java, erlang and csharp grades all work.  The erlang grade
+requires an Erlang installation to be available and the csharp grade requires
+the Mono .NET implementation.  (See README.Erlang and README.CSharp for further
+details.)
 
 By default, 64-bit versions of the executables and libraries in the Mercury
 system will be installed on x86-64 machines running Mac OS X 10.6.  To build a
