@@ -1771,8 +1771,18 @@ link_output_filename(Globals, LinkTargetType, ModuleName, Ext, OutputFileName,
         ( LinkTargetType = java_launcher
         ; LinkTargetType = erlang_launcher
         ),
-        % These are shell scripts.
-        Ext = "",
+        % These may be shell scripts or batch files.
+        globals.get_target_env_type(Globals, TargetEnvType),
+        (
+            TargetEnvType = env_type_win_cmd,   
+            Ext = ".bat"
+        ;
+            ( TargetEnvType = env_type_posix
+            ; TargetEnvType = env_type_cygwin
+            ; TargetEnvType = env_type_msys
+            ),
+            Ext = ""
+        ),
         module_name_to_file_name(Globals, ModuleName, Ext,
             do_create_dirs, OutputFileName, !IO)
     ;

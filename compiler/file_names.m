@@ -289,6 +289,7 @@ choose_file_name(Globals, _ModuleName, BaseParentDirs, BaseName, Ext,
         (
             % Executable files.
             ( Ext = ""
+            ; Ext = ".bat"
             ; Ext = ".exe"
             ; Ext = ".dll"
 
@@ -413,6 +414,7 @@ choose_file_name(Globals, _ModuleName, BaseParentDirs, BaseName, Ext,
         ->
             string.append(ExtName, "s", SubDirName)
         ;
+            % Launcher scripts go in the `bin' subdirectory.
             Ext = ""
         ->
             SubDirName = "bin"

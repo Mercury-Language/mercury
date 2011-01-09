@@ -1105,17 +1105,15 @@ create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
 %-----------------------------------------------------------------------------%
 
 create_launcher_batch_file(Globals, MainModuleName, Pred, Succeeded, !IO) :-
-    Extension = "",
+    Extension = ".bat",
     module_name_to_file_name(Globals, MainModuleName, Extension,
-        do_not_create_dirs, BaseFileName, !IO),
-
-    FileName = BaseFileName ++ ".bat",
+        do_not_create_dirs, FileName, !IO),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(Verbose, "% Generating batch file `" ++
         FileName ++ "'...\n", !IO),
 
-    % Remove symlink in the way, if any.
+    % Remove an existing batch file of the same name, if any.
     io.remove_file(FileName, _, !IO),
     io.open_output(FileName, OpenResult, !IO),
     (
