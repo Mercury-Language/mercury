@@ -1,15 +1,29 @@
------------------------------------------------------------------------------
+This file documents the port of Mercury to MS Windows.
 
-MERCURY ON WINDOWS
+-----------------------------
+Supported versions of Windows
+-----------------------------
 
-Mercury has been ported to MS Windows.
-We've tested the port on Windows XP SP2,
-but it should work on Windows 95, 98, ME 2000 and NT.
-We don't have any plans for a port to Windows 3.1.
+Mercury has been tested with the following versions of Windows:
 
-The Mercury build process makes use of a number of Unix tools such as
-sh and make.  This means that a Unix emulation environment is required
-to build Mercury on Windows.
+    * Windows XP SP3
+    * Windows 7
+    * Windows Server 2008 R2
+
+It should also work with Windows XP SP2 and Windows Vista but we have
+not tested it with those.
+
+In the past Mercury worked with Windows, 95, 98, ME, 2000, and NT but we no
+longer actively maintain support for those versions.
+
+
+---------------------------
+Building Mercury on Windows
+---------------------------
+
+The Mercury build process requires the use of a number of Unix tools such as sh
+and make.  This means that a Unix emulation environment is required to build
+Mercury on Windows.
 
 Two such environments are supported:
 
@@ -24,4 +38,5 @@ the above environments is still required for the build process.  See
 README.MS-VisualC for instructions on how to build Mercury with the 
 MS Visual C compiler.
 
------------------------------------------------------------------------------
+NOTE: while a Unix emulation environment is required to build Mercury on
+Windows, one is NOT required to use Mercury on Windows.
