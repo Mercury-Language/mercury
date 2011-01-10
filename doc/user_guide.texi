@@ -9316,6 +9316,30 @@ Enable this option if your shell doesn't support long command lines.
 This option uses temporary files to pass arguments to sub-commands.
 (This option is only supported by @samp{mmc --make})
 
+@sp 1
+@item --env-type @var{type}
+@findex --env-type
+Specify the environment type in which the compiler and generated
+programs will be invoked.
+The environment type controls how the compiler and generated programs
+interact with the shell and other system tools.
+The @var{type} should be one of @samp{posix}, @samp{cygwin}, @samp{msys},
+or @samp{windows}.
+This option is equivalent to setting both @samp{--host-env-type} and
+@samp{--target-env-type} to @var{type}.
+
+@sp 1
+@item --host-env-type @var{type}
+@findex --host-env-type
+Specify the environment type in which the compiler will be invoked.
+(See above for a list of supported environment types.)
+
+@sp 1
+@item --target-env-type @var{type}
+@findex --target-env-type
+Specify the environment type in which generated programs will be invoked.
+(See above for a list of supported environment types.)
+
 @end table
 
 @node Miscellaneous options
