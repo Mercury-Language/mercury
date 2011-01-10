@@ -92,13 +92,15 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module lex__buf.
-
+:- module lex.buf.
 :- interface.
 
-:- import_module array, char, bool, string.
+:- import_module array.
+:- import_module bool.
+:- import_module char.
+:- import_module string.
 
-
+%-----------------------------------------------------------------------------%
 
     % XXX We need a char and/or byte array datatype;
     % array(char) uses one word for each char, which is
@@ -107,7 +109,7 @@
 :- type buf
     ==      array(char).
 
-    % T is the type of the input source (typically io__state or string);
+    % T is the type of the input source (typically io.state or string);
     % the user must initialise the buffer by specifying an appropriate
     % read predicate.
     %
@@ -197,7 +199,7 @@ initial_buf_size = 1024.
 
 init(BufReadPred, BufState, Buf) :-
     BufState = buf_state(0, 0, 0, 0, initial_buf_size, no, BufReadPred),
-    Buf      = array__init(initial_buf_size, ('@')).
+    Buf      = array.init(initial_buf_size, ('@')).
 
 %-----------------------------------------------------------------------------%
 
@@ -213,7 +215,7 @@ read(Result, BufState0, BufState, Buf0, Buf, Src0, Src) :-
 
     ( if Cursor < End then
 
-        Result   = ok(array__lookup(Buf0, Cursor - Origin)),
+        Result   = ok(array.lookup(Buf0, Cursor - Origin)),
         BufState = ( BufState0 ^ buf_cursor := Cursor + 1 ),
         Buf      = Buf0,
         Src      = Src0
@@ -231,7 +233,7 @@ read(Result, BufState0, BufState, Buf0, Buf, Src0, Src) :-
 
         ( if Result = ok(Char) then
 
-            Buf = array__set(Buf0, End - Origin, Char),
+            Buf = array.set(Buf0, End - Origin, Char),
             BufState = (( BufState0
                                 ^ buf_cursor := Cursor + 1 )
                                 ^ buf_end    := End + 1 )
@@ -264,10 +266,10 @@ read(Result, BufState0, BufState, Buf0, Buf, Src0, Src) :-
 
 adjust_buf(GarbageLength, ExtraLength, Buf0, Buf) :-
 
-    Size0 = array__size(Buf0),
+    Size0 = array.size(Buf0),
 
     ( if GarbageLength < low_water_mark then /* We need to grow the buffer */
-        array__init(Size0 + low_water_mark, ('@'), Buf1),
+        array.init(Size0 + low_water_mark, ('@'), Buf1),
         ExtraLength = low_water_mark
       else
         Buf1 = Buf0,
@@ -284,7 +286,7 @@ adjust_buf(GarbageLength, ExtraLength, Buf0, Buf) :-
 shift_buf(I, Hi, Disp, Src, Tgt) =
     ( if I < Hi then
         shift_buf(I + 1, Hi, Disp, Src,
-            array__set(Tgt, I, array__lookup(Src, I + Disp)))
+            array.set(Tgt, I, array.lookup(Src, I + Disp)))
       else
         Tgt
     ).
@@ -311,11 +313,12 @@ string_to_cursor(BufState, Buf) = String :-
     From   = BufState ^ buf_start - BufState ^ buf_origin,
     Length = (BufState ^ buf_cursor - 1 - BufState ^ buf_start),
     To     = From + Length,
-    String = string__from_char_list(array__fetch_items(Buf, From, To)).
+    String = string.from_char_list(array.fetch_items(Buf, From, To)).
 
 %-----------------------------------------------------------------------------%
 
 commit(BufState) = ( BufState ^ buf_start := BufState ^ buf_cursor ).
 
 %-----------------------------------------------------------------------------%
+:- end_module lex.buf.
 %-----------------------------------------------------------------------------%

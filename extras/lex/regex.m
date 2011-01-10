@@ -31,11 +31,14 @@
 %-----------------------------------------------------------------------------%
 
 :- module regex.
-
 :- interface.
 
-:- import_module string, list.
 :- import_module lex.
+
+:- import_module list.
+:- import_module string.
+
+%-----------------------------------------------------------------------------%
 
     % The type of (compiled) regular expressions.
     %
@@ -181,8 +184,15 @@
 
 :- implementation.
 
-:- import_module int, char, bool, require, std_util, pair, io.
+:- import_module bool.
+:- import_module char.
+:- import_module int.
+:- import_module io.
+:- import_module pair.
+:- import_module require.
+:- import_module std_util.
 
+%-----------------------------------------------------------------------------%
 
 
 :- type regex == lexer(string, string).
@@ -306,7 +316,7 @@ push_range(A, B, Cs) = Rg ++ Cs :-
 :- func int_to_char(int) = char.
 
 int_to_char(X) =
-    ( if char__to_int(C, X) then C else func_error("regex__int_to_char") ).
+    ( if char.to_int(C, X) then C else func_error("regex.int_to_char") ).
 
 %-----------------------------------------------------------------------------%
 
@@ -423,8 +433,8 @@ rpar(S, REs) =
 
 extract_regex(re(R))   = R.
 extract_regex(char(R)) = R.
-extract_regex(alt(_))  = func_error("regex__extract_regex").
-extract_regex(lpar)    = func_error("regex__extract_regex").
+extract_regex(alt(_))  = func_error("regex.extract_regex").
+extract_regex(lpar)    = func_error("regex.extract_regex").
 
 %-----------------------------------------------------------------------------%
 
@@ -449,7 +459,7 @@ nil = re(re("")).
 
 left_match(Regex, String, Substring, 0, length(Substring)) :-
     State = start(Regex, unsafe_promise_unique(String)),
-    lex__read(ok(Substring), State, _).
+    lex.read(ok(Substring), State, _).
 
 %-----------------------------------------------------------------------------%
 
@@ -484,8 +494,8 @@ first_match(Regex, String, Substring, Start, length(Substring)) :-
 :- mode first_match_2(out,    out, di         ) is semidet.
 
 first_match_2(Substring, Start, !.State) :-
-    lex__offset_from_start(Start0, !State),
-    lex__read(Result,         !State),
+    lex.offset_from_start(Start0, !State),
+    lex.read(Result,         !State),
     (
         Result = error(_, _),
         first_match_2(Substring, Start, !.State)
@@ -498,7 +508,7 @@ first_match_2(Substring, Start, !.State) :-
 
 exact_match(Regex, String) :-
     State = start(Regex, unsafe_promise_unique(String)),
-    lex__read(ok(String), State, _).
+    lex.read(ok(String), State, _).
 
 %-----------------------------------------------------------------------------%
 
@@ -511,9 +521,9 @@ matches(Regex, String) = Matches :-
 :- mode matches_2(in,  in,     di)          = out is det.
 
 matches_2(Length, LastEnd, State0) = Matches :-
-    lex__offset_from_start(Start0, State0, State1),
-    lex__read(Result, State1, State2),
-    lex__offset_from_start(End, State2, State3),
+    lex.offset_from_start(Start0, State0, State1),
+    lex.read(Result, State1, State2),
+    lex.offset_from_start(End, State2, State3),
     (
         Result  = eof,
         Matches = []
@@ -543,7 +553,7 @@ matches_2(Length, LastEnd, State0) = Matches :-
                     % This is an empty match at the same point as the end
                     % of our last match.  We have to ignore it and move on.
                     %
-                ( if   lex__read_char(ok(_), State3, State4)
+                ( if   lex.read_char(ok(_), State3, State4)
                   then matches_2(Length, End, State4)
                   else []
                 )
@@ -554,7 +564,7 @@ matches_2(Length, LastEnd, State0) = Matches :-
                   ( if End = Length then
                         []
                     else if Count = 0 then
-                        ( if   lex__read_char(ok(_), State3, State4)
+                        ( if   lex.read_char(ok(_), State3, State4)
                           then matches_2(Length, End, State4)
                           else []
                         )
@@ -606,4 +616,5 @@ change_all_2(String, ChangeFn, I, [{Substring, Start, Count} | Matches]) =
     | change_all_2(String, ChangeFn, Start + Count, Matches) ].
 
 %-----------------------------------------------------------------------------%
+:- end_module regex.
 %-----------------------------------------------------------------------------%

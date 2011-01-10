@@ -13,12 +13,9 @@
 %-----------------------------------------------------------------------------%
 
 :- module regex_demo.
-
 :- interface.
 
 :- import_module io.
-
-
 
 :- pred main(io::di, io::uo) is det.
 
@@ -27,15 +24,19 @@
 
 :- implementation.
 
-:- import_module string, list, exception.
-:- import_module lex, regex.
+:- import_module lex.
+:- import_module regex.
+
+:- import_module exception.
+:- import_module list.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-
     S = "([Ff][Oo][Oo])+",
     M = change_all(regex(S), func(_) = "bar"),
-    io__format("Replacing multiple \"foo\"s with a single \"bar\"...",
+    io.format("Replacing multiple \"foo\"s with a single \"bar\"...",
         [], !IO),
     loop(M, !IO).
 
@@ -45,8 +46,8 @@ main(!IO) :-
 :- mode loop(func(in) = out is det, di, uo) is det.
 
 loop(M, !IO) :-
-    io__format("\n> ", [], !IO),
-    io__read_line_as_string(Res, !IO),
+    io.format("\n> ", [], !IO),
+    io.read_line_as_string(Res, !IO),
     (
         Res = eof
     ;
@@ -54,9 +55,10 @@ loop(M, !IO) :-
         throw(Res)
     ;
         Res = ok(S),
-        io__format("  %s", [s(M(S))], !IO),
+        io.format("  %s", [s(M(S))], !IO),
         loop(M, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
+:- end_module regex_demo.
 %-----------------------------------------------------------------------------%

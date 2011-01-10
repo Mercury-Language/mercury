@@ -21,13 +21,10 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module lex__regexp.
-
+:- module lex.regexp.
 :- interface.
 
-:- import_module lex__automata.
-
-
+:- import_module lex.automata.
 
     % Turn a regexp into an NFA.
     %
@@ -43,16 +40,22 @@
 
 :- implementation.
 
-:- import_module counter, map, assoc_list, std_util, list, set, string.
+:- import_module assoc_list.
+:- import_module counter.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
 regexp_to_NFA(R) = NFA :-
-    C0 = counter__init(0),
-    counter__allocate(Start, C0, C1),
-    counter__allocate(Stop,  C1, C),
+    C0 = counter.init(0),
+    counter.allocate(Start, C0, C1),
+    counter.allocate(Stop,  C1, C),
     compile(Start, R, Stop, Transitions, C, _),
-    NFA = state_mc(Start, set__make_singleton_set(Stop), Transitions).
+    NFA = state_mc(Start, set.make_singleton_set(Stop), Transitions).
 
 %-----------------------------------------------------------------------------%
 
@@ -66,7 +69,7 @@ compile(X, eps,        Y, [null(X, Y)]) --> [].
 compile(X, atom(C),    Y, [trans(X, C, Y)]) --> [].
 
 compile(X, conc(RA,RB), Y, TsA ++ TsB) -->
-    counter__allocate(Z),
+    counter.allocate(Z),
     compile(X, RA, Z, TsA),
     compile(Z, RB, Y, TsB).
 
@@ -91,18 +94,18 @@ remove_null_transitions(NFA0) = NFA :-
 
     Ts = NFA0 ^ smc_state_transitions,
     split_transitions(Ts, NullTs, CharTs),
-    trans_closure(NullTs, map__init, _Ins, map__init, Outs),
+    trans_closure(NullTs, map.init, _Ins, map.init, Outs),
     NullFreeTs = add_atom_transitions(Outs, CharTs),
 
     StopStates0 = NFA0 ^ smc_stop_states,
     StopStates1 =
-        set__list_to_set(
-            list__filter_map(
+        set.list_to_set(
+            list.filter_map(
                 nulls_to_stop_state(Outs, NFA0 ^ smc_stop_states),
                 NullTs
             )
         ),
-    StopStates  = StopStates0 `set__union` StopStates1,
+    StopStates  = StopStates0 `set.union` StopStates1,
 
     NFA = (( NFA0
                 ^ smc_state_transitions := NullFreeTs )
@@ -129,7 +132,7 @@ split_transitions([trans(X, C, Y) | Ts], NTs, [trans(X, C, Y) | CTs]) :-
 :- mode trans_closure(in(null_transitions), in, out, in, out) is det.
 
 trans_closure(Ts, Ins0, Ins, Outs0, Outs) :-
-    list__foldl2(add_edge, Ts, Ins0, Ins, Outs0, Outs).
+    list.foldl2(add_edge, Ts, Ins0, Ins, Outs0, Outs).
 
 %-----------------------------------------------------------------------------%
 
@@ -137,20 +140,20 @@ trans_closure(Ts, Ins0, Ins, Outs0, Outs) :-
 :- mode add_edge(in(null_transition), in, out, in, out) is det.
 
 add_edge(null(X, Y), Ins0, Ins, Outs0, Outs) :-
-    XInAndX  = set__insert(null_map_lookup(X, Ins0), X),
-    YOutAndY = set__insert(null_map_lookup(Y, Outs0), Y),
-    Xs = set__to_sorted_list(XInAndX),
-    Ys = set__to_sorted_list(YOutAndY),
-    Outs = list__foldl(add_to_null_mapping(YOutAndY), Xs, Outs0),
-    Ins  = list__foldl(add_to_null_mapping(XInAndX),  Ys, Ins0).
+    XInAndX  = set.insert(null_map_lookup(X, Ins0), X),
+    YOutAndY = set.insert(null_map_lookup(Y, Outs0), Y),
+    Xs = set.to_sorted_list(XInAndX),
+    Ys = set.to_sorted_list(YOutAndY),
+    Outs = list.foldl(add_to_null_mapping(YOutAndY), Xs, Outs0),
+    Ins  = list.foldl(add_to_null_mapping(XInAndX),  Ys, Ins0).
 
 %-----------------------------------------------------------------------------%
 
 :- func null_map_lookup(state_no, null_map) = set(state_no).
 
 null_map_lookup(X, Map) =
-    ( if map__search(Map, X, Ys) then Ys
-                                 else set__init
+    ( if map.search(Map, X, Ys) then Ys
+                                 else set.init
     ).
 
 %-----------------------------------------------------------------------------%
@@ -158,7 +161,7 @@ null_map_lookup(X, Map) =
 :- func add_to_null_mapping(set(state_no), state_no, null_map) = null_map.
 
 add_to_null_mapping(Xs, Y, Map) =
-    map__set(Map, Y, Xs `set__union` null_map_lookup(Y, Map)).
+    map.set(Map, Y, Xs `set.union` null_map_lookup(Y, Map)).
 
 %-----------------------------------------------------------------------------%
 
@@ -167,12 +170,12 @@ add_to_null_mapping(Xs, Y, Map) =
             out(atom_transitions) is det.
 
 add_atom_transitions(Outs, CTs) =
-    list__sort_and_remove_dups(
-        list__condense(
+    list.sort_and_remove_dups(
+        list.condense(
             [ CTs
-            | list__map(
+            | list.map(
                 add_atom_transitions_0(CTs),
-                map__to_assoc_list(Outs)
+                map.to_assoc_list(Outs)
               )
             ]
         )
@@ -186,8 +189,8 @@ add_atom_transitions(Outs, CTs) =
             out(atom_transitions) is det.
 
 add_atom_transitions_0(CTs, X - Ys) =
-    list__condense(
-        list__map(add_atom_transitions_1(CTs, X), set__to_sorted_list(Ys))
+    list.condense(
+        list.map(add_atom_transitions_1(CTs, X), set.to_sorted_list(Ys))
     ).
 
 %-----------------------------------------------------------------------------%
@@ -197,7 +200,7 @@ add_atom_transitions_0(CTs, X - Ys) =
             out(atom_transitions) is det.
 
 add_atom_transitions_1(CTs0, X, Y) = CTs :-
-    list__filter_map(maybe_copy_transition(X, Y), CTs0, CTs).
+    list.filter_map(maybe_copy_transition(X, Y), CTs0, CTs).
 
 %-----------------------------------------------------------------------------%
 
@@ -214,9 +217,10 @@ maybe_copy_transition(X, Y, trans(Y, C, Z), trans(X, C, Z)).
 
 nulls_to_stop_state(Outs, StopStates, null(X, _Y)) = X :-
     some [Z] (
-        set__member(Z, map__lookup(Outs, X)),
-        set__member(Z, StopStates)
+        set.member(Z, map.lookup(Outs, X)),
+        set.member(Z, StopStates)
     ).
 
 %-----------------------------------------------------------------------------%
+:- end_module lex.regexp.
 %-----------------------------------------------------------------------------%

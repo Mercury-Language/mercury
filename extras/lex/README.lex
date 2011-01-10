@@ -38,7 +38,7 @@ over the standard input stream):
 	;	rpar
 	;	comment.
 
-Lexer = lex__init([
+Lexer = lex.init([
 	(	identifier	->	func(Id)    = id(Id)		),
 	(	signed_int	->	func(Int)   = int(Int)		),
 	(	real		->	func(Float) = float(Float)	),
@@ -50,28 +50,28 @@ Lexer = lex__init([
 The combinator return/2 is defined s.t. return(X) = ( func(_) = X ),
 that is, it simply discards the matched string and returns X.
 
-(There is also lex__init/3 which takes an extra argument, namely a
+(There is also lex.init/3 which takes an extra argument, namely a
 predicate which is used to silently ignore certain tokens such as
 whitespace, say.)
 
-A lexer is activated by calling lex__start/2, which returns a (unique)
+A lexer is activated by calling lex.start/2, which returns a (unique)
 lexer state:
 
-	!:LexerState = lex__start(Lexer, !.IO)
+	!:LexerState = lex.start(Lexer, !.IO)
 
-The lex__read/3 predicate searches for the next, longest match in the
+The lex.read/3 predicate searches for the next, longest match in the
 input stream and returns the corresponding token (or an error message
 if there is no immediate match in the input stream):
 
-	lex__read(Result, !LexerState),
+	lex.read(Result, !LexerState),
 	(	Result = eof,				...
 	;	Result = ok(Token),			...
 	;	Result = error(Message, Offset),	...
 	)
 
 When lexical analysis is complete, the input source may be obtained 
-by calling lex__stop/1:
+by calling lex.stop/1:
 
-	!:IO = lex__stop(!.LexerState)
+	!:IO = lex.stop(!.LexerState)
 
 

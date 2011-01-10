@@ -1,4 +1,4 @@
-%----------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 % lex_demo.m
 % Sun Aug 20 18:11:42 BST 2000
 %
@@ -13,30 +13,33 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %
-%
-%----------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 :- module lex_demo.
-
 :- interface.
 
 :- import_module io.
 
 :- pred main(io::di, io::uo) is det.
 
-%----------------------------------------------------------------------------- %
-%----------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module string, int, float, exception, list.
 :- import_module lex.
 
-%----------------------------------------------------------------------------- %
+:- import_module exception.
+:- import_module float.
+:- import_module int.
+:- import_module list.
+:- import_module string.
 
-main(IO0, IO) :-
+%-----------------------------------------------------------------------------%
 
-    io__print("\
+main(!IO) :-
+
+    io.print("\
 
 I recognise the following words:
 ""cat"", ""dog"", ""rat"", ""mat"", ""sat"", ""caught"", ""chased"",
@@ -46,30 +49,32 @@ numbers, and a variety of punctuation symbols.
 
 Try me...
 
-", IO0, IO1),
+", !IO),
 
-    Lexer  = lex__init(lexemes, lex__read_from_stdin, ignore(space)),
-    State0 = lex__start(Lexer, IO1),
+    Lexer  = lex.init(lexemes, lex.read_from_stdin, ignore(space)),
+    State0 = lex.start(Lexer, !.IO),
     tokenise_stdin(State0, State),
-    IO     = lex__stop(State).
+    !:IO = lex.stop(State).
 
-%----------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
-:- pred tokenise_stdin(lexer_state(token, io__state),
-                lexer_state(token, io__state)).
-:- mode tokenise_stdin(di, uo) is det.
+:- pred tokenise_stdin(lexer_state(token, io)::di, lexer_state(token, io)::uo)
+    is det.
 
-tokenise_stdin -->
-    lex__read(Result),
-    lex__manipulate_source(io__print(Result)),
-    lex__manipulate_source(io__nl),
-    ( if { Result \= eof } then
-        tokenise_stdin
-      else
-        []
+tokenise_stdin(!LS) :-
+    lex.read(Result, !LS),
+    lex.manipulate_source(io.print(Result), !LS),
+    lex.manipulate_source(io.nl, !LS),
+    (
+        Result = ok(_),
+        tokenise_stdin(!LS)
+    ;
+        ( Result = eof
+        ; Result = error(_, _)
+        )
     ).
 
-%----------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
 
 :- type token
     --->    noun(string)
@@ -81,16 +86,15 @@ tokenise_stdin -->
     ;       prep(string)
     ;       punc
     ;       space
-    ;       unrecognised(string)
-    .
+    ;       unrecognised(string).
 
 :- func lexemes = list(lexeme(token)).
 
 lexemes = [
 
     ( "%" ++ junk       -> (func(Match) = comment(Match)) ),
-    ( signed_int        -> (func(Match) = integer(string__det_to_int(Match))) ),
-    ( real              -> (func(Match) = real(det_string_to_float(Match))) ),
+    ( signed_int        -> (func(Match) = integer(string.det_to_int(Match))) ),
+    ( real              -> (func(Match) = real(string.det_to_float(Match))) ),
 
         % Multiple regexps can match the same token constructor.
         %
@@ -124,15 +128,6 @@ lexemes = [
     ( dot               -> func(Match) = unrecognised(Match) )
 ].
 
-
-
-:- func det_string_to_float(string) = float.
-
-det_string_to_float(String) =
-    ( if   string__to_float(String, Float)
-      then Float
-      else throw("error in float conversion")
-    ).
-
-%----------------------------------------------------------------------------- %
-%----------------------------------------------------------------------------- %
+%-----------------------------------------------------------------------------%
+:- end_module lex_demo.
+%-----------------------------------------------------------------------------%

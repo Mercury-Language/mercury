@@ -18,18 +18,18 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module lex__automata.
-
+:- module lex.automata.
 :- interface.
 
-:- import_module set, list, char.
+:- import_module char.
+:- import_module list.
+:- import_module set.
 
-
-
+%-----------------------------------------------------------------------------%
+    
     % States are labelled with non-negative integers.
     %
-:- type state_no
-    ==      int.
+:- type state_no == int.
 
 :- type state_mc
     --->    state_mc(
@@ -41,8 +41,7 @@
 :- inst null_transition_free_state_mc
     ==      bound(state_mc(ground, ground, atom_transitions)).
 
-:- type transitions
-    ==      list(transition).
+:- type transitions == list(transition).
 
 :- inst atom_transitions == list_skel(atom_transition).
 :- inst null_transitions == list_skel(null_transition).
@@ -55,4 +54,5 @@
 :- inst null_transition == bound(null(ground, ground)).
 
 %-----------------------------------------------------------------------------%
+:- end_module lex.automata.
 %-----------------------------------------------------------------------------%
