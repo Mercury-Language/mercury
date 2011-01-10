@@ -1,5 +1,7 @@
+%-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-
+%-----------------------------------------------------------------------------%
+%
 % Another calculator - parses and evaluates integer expression terms.
 % This module demonstrates the use of user-defined operator precedence
 % tables with parser.read_term.
@@ -8,14 +10,20 @@
 % This version also allows variable assignments of the form `X = Exp.'.
 %
 % Author: stayl.
-
+%
 % This source file is hereby placed in the public domain.  -stayl.
+%
+%-----------------------------------------------------------------------------%
 
 :- module calculator2.
 :- interface.
+
 :- import_module io.
 
 :- pred main(io::di, io::uo) is cc_multi.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -33,6 +41,8 @@
 :- import_module term_io.
 :- import_module univ.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 :- type calc_info == map(string, int).
 
@@ -221,3 +231,7 @@ calculator2.ops_table("=", op_info(infix(x, x), 700), []).
     ops.max_priority(_) = 700,
     ops.arg_priority(Table) = ops.max_priority(Table) + 1
 ].
+
+%-----------------------------------------------------------------------------%
+:- end_module calculator2.
+%-----------------------------------------------------------------------------%
