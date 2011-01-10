@@ -10,13 +10,3 @@
 MAIN_TARGET=all
 depend: diff.depend
 all: diff
-
-# Unfortunately, diff does not work quite properly when compiled with gcc
-# 2.7.2 under Digital Unix 3.2 due to a bug in gcc.  The bug was fixed
-# in 2.7.2.1, so feel free to comment out this line if you're using
-# an unbuggy compiler.
-#
-# BTW, the predicate which isn't compiled correctly is diff_out__show_file_2
-# in diff_out.m.
-CFLAGS=-O0
-

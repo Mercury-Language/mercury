@@ -23,9 +23,6 @@ calculator2.m		A simple four-function arithmetic calculator,
 			library with a user-defined operator precedence
 			table.
 
-committed_choice.m	An example illustrating committed-choice
-			nondeterminism in Mercury.
-
 interpreter.m		An simple interpreter for definite logic programs.
 			A demonstration of meta-programming in Mercury.
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1999-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -280,7 +280,7 @@ can_print_directly(_, no, !IO).
         can_print_directly = MR_TRUE;
 
         for (s = Str; *s != '\\0'; s++) {
-            if (! (isalnum(*s) || *s == '_' || *s == '/' || *s == '.')) {
+            if (! (isalnum((int)*s) || *s == '_' || *s == '/' || *s == '.')) {
                 can_print_directly = MR_FALSE;
                 break;
             }

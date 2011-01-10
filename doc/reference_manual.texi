@@ -7802,7 +7802,7 @@ or perhaps the shared version @samp{libfancy_library.so}, from the directory
 mmc -R/usr/local/contrib/lib -L/usr/local/contrib/lib --lfancy_library prog
 @end example
 
-As illustred by the example, the command line options @samp{-R}, @samp{-L}
+As illustrated by the example, the command line options @samp{-R}, @samp{-L}
 and @samp{-l}, have the same meaning as they do with the Unix linker.
 
 For more information, see the ``Libraries'' chapter of the

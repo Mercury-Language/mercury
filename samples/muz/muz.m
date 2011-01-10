@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999, 2006 The University of Melbourne.
+% Copyright (C) 1995-1999, 2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -8,7 +8,7 @@
 % main author: philip
 
 :- module muz.
-:- pragma source_file("muz.cpp").
+%:- pragma source_file("muz.cpp").
 
 :- interface.
 :- import_module io.
@@ -25,7 +25,7 @@
 
 :- pred short_option(character::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
-:- pred option_defaults(string::in, option::out, option_data::out) is nondet.
+:- pred option_defaults(string::in, option::out, option_data::out) is multi.
 
 :- type option
 	--->	abbreviate
@@ -75,7 +75,9 @@ main -->
 	{ MT = no, DT = "/usr/local/apps/muz/lib/toolkit.tex"
 	; MT = yes(DT)
 	},
-	{Option_Ops=option_ops(short_option, long_option, option_defaults(DT))},
+	{Option_Ops=
+		option_ops_multi(short_option, long_option, option_defaults(DT))
+	},
 	io__command_line_arguments(AL0),
 	{getopt__process_options(Option_Ops, AL0, AL, Maybe_Option_Table)},
 	( {Maybe_Option_Table = error(Message)},
@@ -118,8 +120,8 @@ main(Option_Table, AL) -->
 		% These two structures need to be rethought.
 		processFiles(IOResults, Abbrev, zpragmaInit, ZPragma,
 			finish(dict__init, [])-init_schema_table, Phase),
-		{set_zpragma(ZPragma, Flags0, Flags)},
-		( {Phase = finish(Dict, TP)-_} ->
+		{set_zpragma(ZPragma, Flags0, _Flags)},
+		( {Phase = finish(_Dict, _TP)-_} ->
 
 			{true}
 

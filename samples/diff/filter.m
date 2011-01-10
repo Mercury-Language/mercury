@@ -1,5 +1,7 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998, 2006 The University of Melbourne.
+% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+%-----------------------------------------------------------------------------%
+% Copyright (C) 1998, 2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -32,8 +34,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred filter_diff(diff::in, file::in, file::in, diff::out, io::di, io::uo)
-	is det.
+:- pred filter_diff(file::in, file::in, diff::in, diff::out,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -52,66 +54,68 @@
 
 %-----------------------------------------------------------------------------%
 
-filter_diff(Diff0, File1, File2, Diff) -->
-	globals__io_lookup_bool_option(ignore_blank_lines, FilterBlank),
+filter_diff(File1, File2, !Diff, !IO) :-
+    globals.io_lookup_bool_option(ignore_blank_lines, FilterBlank, !IO),
 
-	{ FilterBlank = no ->
-		% If we didn't request a filter, skip this pass.
+    (
+        % If we didn't request a filter, skip this pass.
+        FilterBlank = no
+    ;
+        FilterBlank = yes,
+        filter.blank_lines(!.Diff, File1, File2, !:Diff)
+    ).
 
-		Diff = Diff0
-	;
-		filter__blank_lines(Diff0, File1, File2, Diff)
-	}.
+:- pred filter.blank_lines(diff::in, file::in, file::in, diff::out) is det.
 
-:- pred filter__blank_lines(diff :: in, file :: in, file :: in, diff :: out)
-		is det.
-
-filter__blank_lines([], _, _, []).
-filter__blank_lines([Edit | Diff0], File1, File2, Diff) :-
-	filter__blank_lines(Diff0, File1, File2, Diff1),
-	( Edit = add(_, Y1 - Y2),
-		( range_has_only_blank_lines(Y1, Y2, File2) ->
-			Diff = Diff1
-		;
-			Diff = [Edit | Diff1]
-		)
-	; Edit = delete(X1 - X2, _),
-		( range_has_only_blank_lines(X1, X2, File1) ->
-			Diff = Diff1
-		;
-			Diff = [Edit | Diff1]
-		)
-	; Edit = change(X1 - X2, Y1 - Y2),
-		(
-			range_has_only_blank_lines(X1, X2, File1),
-			range_has_only_blank_lines(Y1, Y2, File2)
-		->
-			Diff = Diff1
-		;
-			Diff = [Edit | Diff1]
-		)
-	).
+filter.blank_lines([], _, _, []).
+filter.blank_lines([Edit | Diff0], File1, File2, Diff) :-
+    filter.blank_lines(Diff0, File1, File2, Diff1),
+    (
+        Edit = add(_, Y1 - Y2),
+        ( range_has_only_blank_lines(Y1, Y2, File2) ->
+            Diff = Diff1
+        ;
+            Diff = [Edit | Diff1]
+        )
+    ;
+        Edit = delete(X1 - X2, _),
+        ( range_has_only_blank_lines(X1, X2, File1) ->
+            Diff = Diff1
+        ;
+            Diff = [Edit | Diff1]
+        )
+    ;
+        Edit = change(X1 - X2, Y1 - Y2),
+        (
+            range_has_only_blank_lines(X1, X2, File1),
+            range_has_only_blank_lines(Y1, Y2, File2)
+        ->
+            Diff = Diff1
+        ;
+            Diff = [Edit | Diff1]
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred range_has_only_blank_lines(int, int, file).
-:- mode range_has_only_blank_lines(in, in, in) is semidet.
+:- pred range_has_only_blank_lines(int::in, int::in, file::in) is semidet.
 
 range_has_only_blank_lines(First, Last, File) :-
-	(
-		First < Last
-	=>
-		(
-			file__get_line(File, First, Line),
-			string__to_char_list(Line, Chars),
-			all [C] (
-				list__member(C, Chars)
-			=>
-				char__is_whitespace(C)
-			),
-			range_has_only_blank_lines(First + 1, Last, File)
-		)
-	).
+    (
+        First < Last
+    =>
+        (
+            file.get_line(File, First, Line),
+            string.to_char_list(Line, Chars),
+            all [C] (
+                list.member(C, Chars)
+            =>
+                char.is_whitespace(C)
+            ),
+            range_has_only_blank_lines(First + 1, Last, File)
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
+:- end_module filter.
 %-----------------------------------------------------------------------------%

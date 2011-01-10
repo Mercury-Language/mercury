@@ -3,7 +3,7 @@
 ** vim: ts=4 sw=4 et
 */
 /*
-** Copyright (C) 2006-2007 The University of Melbourne.
+** Copyright (C) 2006-2007, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -257,7 +257,7 @@ mercury_event_error(const char *s)
         mercury_event_linenum--;
     } else if (mercury_event_text[0] == '\n' || mercury_event_text[0] == '\f') {
         sprintf(buf, "%s at end of line", s);
-    } else if (isprint(mercury_event_text[0])) {
+    } else if (isprint((int)mercury_event_text[0])) {
         sprintf(buf, "%s at symbol `%s'", s, mercury_event_text);
     } else {
         sprintf(buf, "%s at \\%o", s, mercury_event_text[0]);

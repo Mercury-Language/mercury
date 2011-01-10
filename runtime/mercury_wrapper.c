@@ -6,7 +6,7 @@ INIT mercury_sys_init_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1994-2010 The University of Melbourne.
+** Copyright (C) 1994-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -325,8 +325,14 @@ int                 MR_real_time_at_last_stat;
 int                 MR_real_time_at_start;
 
 /* time profiling */
+#if defined(MR_CYGWIN)
+/* Other timing methods are not supported on Cygwin. */
+enum MR_TimeProfileMethod
+                    MR_time_profile_method = MR_profile_real_time;
+#else
 enum MR_TimeProfileMethod
                     MR_time_profile_method = MR_profile_user_plus_system_time;
+#endif
 
 const char          *MR_progname;
 int                 mercury_argc;   /* not counting progname */
@@ -1796,8 +1802,8 @@ MR_process_options(int argc, char **argv)
                 break;
 
             case MR_RUNTIME_GRANULAITY_WSDEQUE_LENGTH_FACTOR:
-#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
-                if (sscanf(MR_optarg, "%lu",
+#if defined(MR_LL_PARALLEL_CONJ)
+                if (sscanf(MR_optarg, "%"MR_INTEGER_LENGTH_MODIFIER"u",
                         &MR_granularity_wsdeque_length_factor) != 1)
                 {
                     MR_usage();
@@ -1810,7 +1816,9 @@ MR_process_options(int argc, char **argv)
 
             case MR_WORKSTEAL_MAX_ATTEMPTS:
 #ifdef MR_LL_PARALLEL_CONJ
-                if (sscanf(MR_optarg, "%lu", &MR_worksteal_max_attempts) != 1) {
+                if (sscanf(MR_optarg, "%"MR_INTEGER_LENGTH_MODIFIER"u",
+			&MR_worksteal_max_attempts) != 1)
+		{
                     MR_usage();
                 }
 #endif
@@ -1818,7 +1826,9 @@ MR_process_options(int argc, char **argv)
 
             case MR_WORKSTEAL_SLEEP_MSECS:
 #ifdef MR_LL_PARALLEL_CONJ
-                if (sscanf(MR_optarg, "%lu", &MR_worksteal_sleep_msecs) != 1) {
+                if (sscanf(MR_optarg, "%"MR_INTEGER_LENGTH_MODIFIER"u",
+			&MR_worksteal_sleep_msecs) != 1)
+		{
                     MR_usage();
                 }
 #endif
