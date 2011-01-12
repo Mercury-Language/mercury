@@ -47,9 +47,18 @@ Now you can run hello
 
 	./hello
 
+Note that hello is a simple shell script that invokes the program using the
+Java interpreter.  The actual class files are stored in the Mercury
+subdirectory in `classs'.
+
+If you are using the Windows command-line interpreter, i.e. cmd.exe, then
+setting the value of the option --target-env-type to "windows" will cause the
+compiler to generate a batch file that invokes the program, rather than a shell
+script.
+
 Problems at higher optimisation levels are still being resolved.
-For now we recommend sticking with -O2 or below and not enabling
-intermodule optimisation.
+For now we recommend sticking with -O2 or below and not enabling intermodule
+optimisation.
 
 -----------------------------------------------------------------------------
 

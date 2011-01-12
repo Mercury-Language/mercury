@@ -29,7 +29,6 @@
 :- pred main(io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -49,7 +48,7 @@ main(!IO) :-
     (
         Args = [],
         io.stderr_stream(StdErr, !IO),
-        io.write_string(StdErr, "Usage: interpreter filename ...\n", !IO),
+        io.write_string(StdErr, "Usage: interpreter <filename> ...\n", !IO),
         io.set_exit_status(1, !IO)
     ;
         Args = [_ | _],
@@ -87,9 +86,11 @@ main_loop_2(term(VarSet0, Goal), Database, !IO) :-
 :- pred write_solutions(list(varset)::in, term::in, io::di, io::uo) is det.
 
 write_solutions(Solutions, Goal, !IO) :-
-    ( Solutions = [] ->
+    (
+        Solutions = [],
         io.write_string("No.\n", !IO)
     ;
+        Solutions = [_ | _],
         write_solutions_2(Solutions, Goal, !IO),
         io.write_string("Yes.\n", !IO)
     ).
@@ -119,13 +120,18 @@ consult(File, !Database, !IO) :-
     io.write_string(File, !IO),
     io.write_string("'...\n", !IO),
     io.see(File, Result, !IO),
-    ( Result = ok ->
+    (
+        Result = ok,
         consult_until_eof(!Database, !IO),
         io.seen(!IO)
     ;
+        Result = error(Error),
+        io.error_message(Error, ErrorMessage),
         io.write_string("Error opening file `", !IO),
         io.write_string(File, !IO),
-        io.write_string("' for input.\n", !IO)
+        io.write_string("' for input: ", !IO),
+        io.write_string(ErrorMessage, !IO),
+        io.nl(!IO)
     ).
 
 :- pred consult_until_eof(database::in, database::out, io::di, io::uo) is det.
@@ -202,8 +208,8 @@ rename_apart(NewVarSet, Terms0, Terms, VarSet0, VarSet) :-
 unify(term.variable(X, _), term.variable(Y, _), VarSet0, VarSet) :-
     ( varset.search_var(VarSet0, X, BindingOfX) ->
         ( varset.search_var(VarSet0, Y, BindingOfY) ->
-            % both X and Y already have bindings - just
-            % unify the terms they are bound to
+            % Both X and Y already have bindings - just
+            % unify the terms they are bound to.
             unify(BindingOfX, BindingOfY, VarSet0, VarSet)
         ;
             % Y is a variable which hasn't been bound yet
@@ -217,7 +223,7 @@ unify(term.variable(X, _), term.variable(Y, _), VarSet0, VarSet) :-
         )
     ;
         ( varset.search_var(VarSet0, Y, BindingOfY2) ->
-            % X is a variable which hasn't been bound yet
+            % X is a variable which hasn't been bound yet.
             apply_rec_substitution(BindingOfY2, VarSet0, SubstBindingOfY2),
             ( SubstBindingOfY2 = term.variable(X, _) ->
                 VarSet = VarSet0
@@ -226,8 +232,8 @@ unify(term.variable(X, _), term.variable(Y, _), VarSet0, VarSet) :-
                 varset.bind_var(VarSet0, X, SubstBindingOfY2, VarSet)
             )
         ;
-            % both X and Y are unbound variables -
-            % bind one to the other
+            % Both X and Y are unbound variables -
+            % bind one to the other.
             ( X = Y ->
                 VarSet = VarSet0
             ;
@@ -266,10 +272,10 @@ unify_list([X | Xs], [Y | Ys], !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-    % occurs(Term, Var, Subst) succeeds if Term contains Var,
-    % perhaps indirectly via the substitution.  (The variable must
-    % not be mapped by the substitution.)
-
+    % occurs(Term, Var, Subst) succeeds if Term contains Var, perhaps
+    % indirectly via the substitution.
+    % (The variable must not be mapped by the substitution.)
+    % 
 :- pred occurs(term::in, var::in, varset::in) is semidet.
 
 occurs(term.variable(X, _), Y, VarSet) :-
@@ -293,16 +299,15 @@ occurs_list([Term | Terms], Y, VarSet) :-
 
 %-----------------------------------------------------------------------------%
 
-%   apply_rec_substitution(Term0, VarSet, Term) :
-%       recursively apply substitution to Term0 until
-%       no more substitions can be applied, and then
-%       return the result in Term.
-
+    % apply_rec_substitution(Term0, VarSet, Term):
+    % Recursively apply substitution to Term0 until no more substitutions can be
+    % applied, and then return the result in Term.
+    %
 :- pred apply_rec_substitution(term::in, varset::in, term::out) is det.
 
 apply_rec_substitution(V @ term.variable(Var, _), VarSet, Term) :-
     ( varset.search_var(VarSet, Var, Replacement) ->
-        % Recursively apply the substition to the replacement.
+        % Recursively apply the substitution to the replacement.
         apply_rec_substitution(Replacement, VarSet, Term)
     ;
         Term = V
@@ -327,12 +332,13 @@ apply_rec_substitution_to_list([Term0 | Terms0], VarSet,
 % and subindex on the name/arity of the first argument.)
 
 :- type database == list(clause).
-:- type clause --->
-    clause(
-        clause_vars :: varset,
-        clause_head :: term,
-        clause_body :: term
-    ).
+
+:- type clause
+    --->    clause(
+                clause_vars :: varset,
+                clause_head :: term,
+                clause_body :: term
+            ).
 
 :- pred database_init(database::out) is det.
 
@@ -359,4 +365,6 @@ database_lookup_clause(Database, _Goal, VarSet, Head, Body) :-
     list.member(Clause, Database),
     Clause = clause(VarSet, Head, Body).
 
+%-----------------------------------------------------------------------------%
+:- end_module interpreter.
 %-----------------------------------------------------------------------------%

@@ -5618,21 +5618,19 @@ options_help_build_system -->
         "--restricted-command-line",
         "\tEnable this option if your shell doesn't support long command lines.",
         "\tThis option uses temporary files to pass arguments to sub-commands.",
-        "\t(This option is only supported by `mmc --make'.)"
-        %
-        % XXX the following are commented out until they are actually useful.
-        %
-        %"--env-type <type>",
-        %"\tSpecify the the environment type for the compiler."
-        %"\tThe <type> should be one of `posix', `cygwin', `msys', or `windows'."
-        %"\tThis option is equivalent to setting both --host-env-type and"
-        %"\t--target-env-type to <type>."
-        %"--host-env-type <type>",
-        %"\tSpecify the environment type under which the compiler will be",
-        %"\tinvoked."
-        %"--target-env-type <type>",
-        %"\tSpecify the environment type under which compiled programs will be",
-        %"\tinvoked."
+        "\t(This option is only supported by `mmc --make'.)",
+        "--env-type <type>",
+        "\tSpecify the the environment type in which the compiler and generated",
+        "\tprograms will be invoked.",
+        "\tThe <type> should be one of `posix', `cygwin', `msys', or `windows'.",
+        "\tThis option is equivalent to setting both --host-env-type and",
+        "\t--target-env-type to <type>.",
+        "--host-env-type <type>",
+        "\tSpecify the environment type in which the compiler will be",
+        "\tinvoked.",
+        "--target-env-type <type>",
+        "\tSpecify the environment type in which generated programs will be",
+        "\tinvoked."
     ]).
 
 :- pred options_help_misc(io::di, io::uo) is det.

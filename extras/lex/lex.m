@@ -9,7 +9,7 @@
 %   The changes made by Rationalizer are contributed under the terms 
 %   of the GNU Lesser General Public License, see the file COPYING.LGPL
 %   in this directory.
-% Copyright (C) 2002, 2006, 2010 The University of Melbourne
+% Copyright (C) 2002, 2006, 2010-2011 The University of Melbourne
 %
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -30,6 +30,8 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 :- type token_creator(Token)
     ==                        (func(string) = Token).
@@ -169,7 +171,7 @@
 
     % Handy read predicates.
     %
-:- pred read_from_stdin(offset, read_result, io__state, io__state).
+:- pred read_from_stdin(offset, read_result, io.state, io.state).
 :- mode read_from_stdin(in, out, di, uo) is det.
 
 :- pred read_from_string(offset, read_result, string, string).
@@ -199,7 +201,7 @@
     % lexeme that matches any unexpected char at the end of the
     % list of lexemes.
     %
-:- pred read(io__read_result(Tok),
+:- pred read(io.read_result(Tok),
             lexer_state(Tok, Src), lexer_state(Tok, Src)).
 :- mode read(out, di, uo) is det.
 
@@ -216,7 +218,7 @@
 :- func stop(lexer_state(_Tok, Src)) = Src.
 :- mode stop(di) = uo is det.
 
-    % Sometimes (e.g. when lexing the io__io) you want access to the
+    % Sometimes (e.g. when lexing the io.io) you want access to the
     % input stream without interrupting the lexing process.  This pred
     % provides that sort of access.
     %
@@ -235,17 +237,26 @@
 
 :- implementation.
 
-:- include_module lex__automata.
-:- include_module lex__buf.
-:- include_module lex__convert_NFA_to_DFA.
-:- include_module lex__lexeme.
-:- include_module lex__regexp.
+:- include_module lex.automata.
+:- include_module lex.buf.
+:- include_module lex.convert_NFA_to_DFA.
+:- include_module lex.lexeme.
+:- include_module lex.regexp.
 
-:- import_module map, char, bool, int, exception, array.
-:- import_module lex__regexp, lex__automata, lex__convert_NFA_to_DFA.
-:- import_module lex__lexeme, lex__buf.
+:- import_module array.
+:- import_module bool.
+:- import_module char.
+:- import_module exception.
+:- import_module int.
+:- import_module map.
 
+:- import_module lex.automata.
+:- import_module lex.buf.
+:- import_module lex.convert_NFA_to_DFA.
+:- import_module lex.lexeme.
+:- import_module lex.regexp.
 
+%-----------------------------------------------------------------------------%
 
 :- type lexer(Token, Source)
     --->    lexer(
@@ -273,7 +284,7 @@
                 init_winner_func, 
                 live_lexeme_list, 
                 winner, 
-                buf__buf_state,
+                buf.buf_state,
                 ignore_pred
             ).
 
@@ -282,7 +293,7 @@
 :- inst live_lexeme
     ==      compiled_lexeme.
 :- inst live_lexeme_list
-    ==      list__list_skel(live_lexeme).
+    ==      list.list_skel(live_lexeme).
 
 :- type init_winner_func(Token)
     ==      ( func(offset) = winner(Token) ).
@@ -317,7 +328,7 @@ init(Lexemes, BufReadPred) = init(Lexemes, BufReadPred, DontIgnoreAnything) :-
 init(Lexemes, BufReadPred, IgnorePred) =
     lexer(CompiledLexemes, IgnorePred, BufReadPred)
  :-
-    CompiledLexemes = list__map(compile_lexeme, Lexemes).
+    CompiledLexemes = list.map(compile_lexeme, Lexemes).
 
 %-----------------------------------------------------------------------------%
 
@@ -342,7 +353,7 @@ start(Lexer0, Src) = State :-
 :- mode init_lexer_instance(in(lexer), out(lexer_instance), array_uo) is det.
 
 init_lexer_instance(Lexer, Instance, Buf) :-
-    buf__init(Lexer ^ lex_buf_read_pred, BufState, Buf),
+    buf.init(Lexer ^ lex_buf_read_pred, BufState, Buf),
     Start          = BufState ^ start_offset,
     InitWinnerFunc = initial_winner_func(InitLexemes),
     InitLexemes    = Lexer ^ lex_compiled_lexemes,
@@ -395,7 +406,7 @@ read(Result, State0, State) :-
 
 
 
-:- pred read_2(io__read_result(Tok),
+:- pred read_2(io.read_result(Tok),
             lexer_instance(Tok, Src), lexer_instance(Tok, Src),
             buf, buf, Src, Src).
 :- mode read_2(out,
@@ -409,7 +420,7 @@ read_2(Result, !Instance, !Buf, !Src) :-
 
     BufState0 = !.Instance ^ buf_state,
 
-    buf__read(BufReadResult, BufState0, BufState, !Buf, !Src),
+    buf.read(BufReadResult, BufState0, BufState, !Buf, !Src),
     (
         BufReadResult = ok(Char),
         process_char(Result, Char, !Instance, BufState, !Buf, !Src)
@@ -420,7 +431,7 @@ read_2(Result, !Instance, !Buf, !Src) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred process_char(io__read_result(Tok), char,
+:- pred process_char(io.read_result(Tok), char,
             lexer_instance(Tok, Src), lexer_instance(Tok, Src),
             buf_state(Src), buf, buf, Src, Src).
 :- mode process_char(out, in, in(lexer_instance), out(lexer_instance),
@@ -448,7 +459,7 @@ process_char(Result, Char, !Instance, BufState, !Buf, !Src) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred process_any_winner(io__read_result(Tok), winner(Tok),
+:- pred process_any_winner(io.read_result(Tok), winner(Tok),
             lexer_instance(Tok, Src), lexer_instance(Tok, Src), 
             buf_state(Src), buf, buf, Src, Src).
 :- mode process_any_winner(out, in(winner),
@@ -476,7 +487,7 @@ process_any_winner(Result, yes(TokenCreator - Offset), Instance0, Instance,
             % so it must be reported as an error.
             %
         ( if String = "" then
-            buf__read(BufResult, BufState1, BufState, Buf0, Buf, Src0, Src),
+            buf.read(BufResult, BufState1, BufState, Buf0, Buf, Src0, Src),
             (
                 BufResult = ok(_),
                 Result    = error("input not matched by any regexp", Offset)
@@ -509,7 +520,7 @@ process_any_winner(Result, no, !Instance,
 
 %-----------------------------------------------------------------------------%
 
-:- pred process_eof(io__read_result(Tok),
+:- pred process_eof(io.read_result(Tok),
             lexer_instance(Tok, Src), lexer_instance(Tok, Src),
             buf_state(Src), buf).
 :- mode process_eof(out, in(lexer_instance), out(lexer_instance),
@@ -634,7 +645,7 @@ read_char(Result, !State) :-
     lexer_state_args(!.State, Instance0, Buf0, Src0),
 
     BufState0 = Instance0 ^ buf_state,
-    buf__read(Result, BufState0, BufState, Buf0, Buf, Src0, Src),
+    buf.read(Result, BufState0, BufState, Buf0, Buf, Src0, Src),
     Instance  = ( Instance0 ^ buf_state := commit(BufState) ),
 
     !:State = args_lexer_state(Instance, Buf, Src).
@@ -642,7 +653,7 @@ read_char(Result, !State) :-
 %-----------------------------------------------------------------------------%
 
 read_from_stdin(_Offset, Result) -->
-    io__read_char(IOResult),
+    io.read_char(IOResult),
     {   IOResult = ok(Char),              Result = ok(Char)
     ;   IOResult = eof,                   Result = eof
     ;   IOResult = error(_E),             throw(IOResult)
@@ -655,8 +666,8 @@ read_from_stdin(_Offset, Result) -->
     % a char.
     %
 read_from_string(Offset, Result, String, unsafe_promise_unique(String)) :-
-    ( if   Offset < string__length(String)
-      then Result = ok(string__unsafe_index(String, Offset))
+    ( if   Offset < string.length(String)
+      then Result = ok(string.unsafe_index(String, Offset))
       else Result = eof
     ).
 
@@ -685,8 +696,8 @@ read_from_string(Offset, Result, String, unsafe_promise_unique(String)) :-
         ( if S = "" then
             R = null
           else
-            L = string__length(S),
-            C = string__index_det(S, L - 1),
+            L = string.length(S),
+            C = string.index_det(S, L - 1),
             R = str_foldr(func(Cx, Rx) = (Cx ++ Rx), S, re(C), L - 2)
         )
 ].
@@ -707,17 +718,17 @@ any(S) = R :-
     ( if S = "" then
         R = null
       else
-        L = string__length(S),
-        C = string__index_det(S, L - 1),
+        L = string.length(S),
+        C = string.index_det(S, L - 1),
         R = str_foldr(func(Cx, Rx) = (Cx or Rx), S, re(C), L - 2)
     ).
 
 anybut(S0) = R :-
-    S = string__from_char_list(
-            list__filter_map(
+    S = string.from_char_list(
+            list.filter_map(
                 ( func(X) = C is semidet :-
-                    char__to_int(C, X),
-                    not string__contains_char(S0, C)
+                    char.to_int(C, X),
+                    not string.contains_char(S0, C)
                 ),
                 0x01 `..` 0xff
             )
@@ -728,7 +739,7 @@ anybut(S0) = R :-
 
 str_foldr(Fn, S, X, I) =
     ( if I < 0 then X
-               else str_foldr(Fn, S, Fn(string__index_det(S, I), X), I - 1)
+               else str_foldr(Fn, S, Fn(string.index_det(S, I), X), I - 1)
     ).
 
 ?(R) = (R or null).

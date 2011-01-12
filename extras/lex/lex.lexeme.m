@@ -9,7 +9,7 @@
 %   The changes made by Rationalizer are contributed under the terms 
 %   of the GNU Lesser General Public License, see the file COPYING.LGPL
 %   in this directory.
-% Copyright (C) 2002, 2010 The University of Melbourne
+% Copyright (C) 2002, 2010-2011 The University of Melbourne
 %
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -22,11 +22,15 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module lex__lexeme.
-
+:- module lex.lexeme.
 :- interface.
 
-:- import_module bool, char, array, bitmap.
+:- import_module array.
+:- import_module bool.
+:- import_module bitmap.
+:- import_module char.
+
+%-----------------------------------------------------------------------------%
 
 :- type compiled_lexeme(T)
     --->    compiled_lexeme(
@@ -34,6 +38,7 @@
                 state              :: state_no,
                 transition_map     :: transition_map
             ).
+
 :- inst compiled_lexeme
     --->    compiled_lexeme(token_creator, ground, ground).
 
@@ -45,21 +50,17 @@
 
     % A transition row is an array of byte_transitions.
     %
-:- type row
-    ==      array(byte_transition).
+:- type row == array(byte_transition).
 
     % A byte_transition encodes a target state_no no. in its upper bits
     % and the char byte value in its lower eight bits for which the
     % transition is valid.
     %
-:- type byte_transition
-    ==      int.
+:- type byte_transition == int.
 
 :- func byte_transition(int, state_no) = byte_transition.
 :- func btr_byte(byte_transition) = int.
 :- func btr_state(byte_transition) = state_no.
-
-
 
 :- func compile_lexeme(lexeme(T)) = compiled_lexeme(T).
 
@@ -81,8 +82,12 @@
 
 :- implementation.
 
-:- import_module list, set.
-:- import_module lex__automata, lex__convert_NFA_to_DFA, lex__regexp.
+:- import_module lex.automata.
+:- import_module lex.regexp.
+:- import_module lex.convert_NFA_to_DFA.
+
+:- import_module list.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -94,7 +99,7 @@ compile_lexeme(Lexeme) = CompiledLexeme :-
     StopStates     = DFA ^ smc_stop_states,
     Transitions    = DFA ^ smc_state_transitions,
     N              = 1 + find_top_state(Transitions),
-    Accepting      = set_accepting_states(StopStates, bitmap__new(N, no)),
+    Accepting      = set_accepting_states(StopStates, bitmap.new(N, no)),
     Rows           = array(set_up_rows(0, N, Transitions)),
     TransitionMap  = transition_map(Accepting, Rows),
     CompiledLexeme = compiled_lexeme(TokenCreator, StartState, TransitionMap).
@@ -113,7 +118,7 @@ find_top_state([trans(X, _, Y) | Ts]) = max(X, max(Y, find_top_state(Ts))).
 :- mode set_accepting_states(in, bitmap_di) = bitmap_uo is det.
 
 set_accepting_states(States, Bitmap0) =
-    set_accepting_states_0(set__to_sorted_list(States), Bitmap0).
+    set_accepting_states_0(set.to_sorted_list(States), Bitmap0).
 
 
 
@@ -123,7 +128,7 @@ set_accepting_states(States, Bitmap0) =
 set_accepting_states_0([], Bitmap) = Bitmap.
 
 set_accepting_states_0([St | States], Bitmap) =
-    set_accepting_states_0(States, bitmap__set(Bitmap, St)).
+    set_accepting_states_0(States, bitmap.set(Bitmap, St)).
 
 %-----------------------------------------------------------------------------%
 
@@ -150,7 +155,7 @@ compile_transitions_for_state(I, IBTs, [T | Ts]) =
     compile_transitions_for_state(
         I,
         ( if T = trans(I, C, Y)
-          then [byte_transition(char__to_int(C), Y) | IBTs]
+          then [byte_transition(char.to_int(C), Y) | IBTs]
           else IBTs
         ),
         Ts
@@ -169,7 +174,7 @@ btr_state(BT) = BT `unchecked_right_shift` 8.
 next_state(CLXM, CurrentState, Char, NextState, IsAccepting) :-
     Rows            = CLXM ^ transition_map ^ rows,
     AcceptingStates = CLXM ^ transition_map ^ accepting_states,
-    find_next_state(char__to_int(Char), Rows ^ elem(CurrentState), NextState),
+    find_next_state(char.to_int(Char), Rows ^ elem(CurrentState), NextState),
     IsAccepting = AcceptingStates ^ bit(NextState).
 
 %-----------------------------------------------------------------------------%
@@ -178,11 +183,9 @@ next_state(CLXM, CurrentState, Char, NextState, IsAccepting) :-
 :- mode find_next_state(in, in, out) is semidet.
 
 find_next_state(Byte, ByteTransitions, State) :-
-    Lo = array__min(ByteTransitions),
-    Hi = array__max(ByteTransitions),
+    Lo = array.min(ByteTransitions),
+    Hi = array.max(ByteTransitions),
     find_next_state_0(Lo, Hi, Byte, ByteTransitions, State).
-
-
 
 :- pred find_next_state_0(int, int, int, array(byte_transition), state_no).
 :- mode find_next_state_0(in, in, in, in, out) is semidet.
@@ -198,9 +201,10 @@ find_next_state_0(Lo, Hi, Byte, ByteTransitions, State) :-
 %-----------------------------------------------------------------------------%
 
 in_accepting_state(CLXM) :-
-    bitmap__is_set(
+    bitmap.is_set(
         CLXM ^ transition_map ^ accepting_states, CLXM ^ state
     ).
 
 %-----------------------------------------------------------------------------%
+:- end_module lex.lexeme.
 %-----------------------------------------------------------------------------%

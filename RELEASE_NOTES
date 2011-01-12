@@ -1,5 +1,5 @@
 
-We are pleased to announce the release of version 10.04  of the Mercury system.
+We are pleased to announce the release of version 11.01 of the Mercury system.
 
 Mercury is a modern general-purpose programming language, designed and
 implemented by a small group of researchers at the University of
@@ -146,7 +146,8 @@ for further details.
 
 The current Mercury system has been tested on Linux (x86), Linux (x86_64),
 Mac OS X (x86 and x86_64), and Windows (x86).
-For Windows, we have tested this release only on Windows XP Pro.
+For Windows, we have tested this release on Windows XP SP3, Windows 7,
+and Windows Server 2008 R2.
 
 In the past Mercury has also been known to run on: Digital Unix,
 OSF1, IRIX 5.x, Ultrix 4.3, BSDI 1.1, AIX, HPUX, Linux (Alpha),
