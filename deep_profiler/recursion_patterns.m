@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: query.m.
+% File: recursion_patterns.m.
 % Authors: pbone.
 %
 % This module contains code that analysis the recursive structures of cliques.

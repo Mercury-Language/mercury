@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2006, 2008-2010 The University of Melbourne.
+% Copyright (C) 2001, 2004-2006, 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -198,6 +198,8 @@
 
 :- pred recursion_depth_descend(recursion_depth, recursion_depth).
 :- mode recursion_depth_descend(in, out) is det.
+
+:- pred recursion_depth_is_base_case(recursion_depth::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -889,7 +891,17 @@ recursion_depth_to_float(recursion_depth(F)) = F.
 recursion_depth_to_int(D) =
     round_to_int(recursion_depth_to_float(D)).
 
-recursion_depth_descend(recursion_depth(D), recursion_depth(D - 1.0)).
+recursion_depth_descend(recursion_depth(D), recursion_depth(D - 1.0)) :-
+    ( D >= 0.5 ->
+        true
+    ;
+        unexpected($module, $pred,
+            format("Recursion depth will be less than zero: %f", [f(D - 1.0)]))
+    ).
+
+recursion_depth_is_base_case(recursion_depth(D)) :-
+    D < 0.5,
+    D >= -0.5.
 
 %----------------------------------------------------------------------------%
 

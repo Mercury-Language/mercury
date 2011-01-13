@@ -48,12 +48,12 @@
 :- pred get_coverage_after(coverage_info::in, int::out) is semidet.
 
 :- pred get_coverage_before_det(coverage_info::in, int::out) is det.
-:- pred get_coverage_before_and_after_det(coverage_info::in, 
+:- pred get_coverage_before_and_after_det(coverage_info::in,
     int::out, int::out) is det.
 :- pred get_coverage_after_det(coverage_info::in, int::out) is det.
 
 %----------------------------------------------------------------------------%
-    
+
     % This is similar to the coverage_point type in
     % mdbcomp/program_representation.m, however it includes an integer count
     % of how often execution reached this point in the program.
@@ -77,7 +77,7 @@
     % Produce a list of coverage points from an array of static data and an
     % array of coverage points.
     %
-:- pred coverage_point_arrays_to_list(array(coverage_point_info)::in, 
+:- pred coverage_point_arrays_to_list(array(coverage_point_info)::in,
     array(int)::in, list(coverage_point)::out) is det.
 
 %----------------------------------------------------------------------------%
@@ -109,6 +109,8 @@
 :- import_module require.
 :- import_module string.
 :- import_module unit.
+
+%-----------------------------------------------------------------------------%
 
 get_coverage_before(coverage_known(Before, _), Before).
 get_coverage_before(coverage_known_zero, 0).
@@ -163,13 +165,13 @@ coverage_point_arrays_to_list(StaticArray, DynamicArray, CoveragePoints) :-
     coverage_point_arrays_to_list_2(Min, Max, StaticArray, DynamicArray,
         [], CoveragePoints).
 
-:- pred coverage_point_arrays_to_list_2(int::in, int::in, 
-    array(coverage_point_info)::in, array(int)::in, 
+:- pred coverage_point_arrays_to_list_2(int::in, int::in,
+    array(coverage_point_info)::in, array(int)::in,
     list(coverage_point)::in, list(coverage_point)::out) is det.
 
-coverage_point_arrays_to_list_2(Num, Max, StaticArray, DynamicArray, 
+coverage_point_arrays_to_list_2(Num, Max, StaticArray, DynamicArray,
         !CoveragePoints) :-
-    ( Num =< Max -> 
+    ( Num =< Max ->
         array.lookup(StaticArray, Num, coverage_point_info(GoalPath, CPType)),
         array.lookup(DynamicArray, Num, Count),
         CP = coverage_point(Count, GoalPath, CPType),
@@ -246,7 +248,7 @@ procrep_annotate_with_coverage(OwnProf, CallSites, SolnsCoveragePoints,
     --->    coverage_reference_info(
                 cri_proc        :: string_proc_label,
                 cri_call_sites  :: map(reverse_goal_path, calls_and_exits),
-                cri_solns_coverage_points 
+                cri_solns_coverage_points
                                 :: map(reverse_goal_path, coverage_point),
                 cri_branch_coverage_points
                                 :: map(reverse_goal_path, coverage_point)
@@ -365,7 +367,7 @@ goal_annotate_coverage(Info, RevGoalPathSteps, Before, After, Goal0, Goal) :-
             unexpected($module, $pred,
                 string.format("check_coverage_complete failed\n" ++
                     "\tCoverage: %s\n\tGoalPath: %s\n\tProc: %s\n",
-                    [s(string(GoalCoverage)), 
+                    [s(string(GoalCoverage)),
                      s(rev_goal_path_to_string(rgp(RevGoalPathSteps))),
                      s(string(Info ^ cri_proc))]))
         ),
@@ -585,7 +587,7 @@ switch_annotate_coverage_2(Info, CanFail, RevGoalPathSteps, CaseNum,
         CanFail = switch_can_not_fail_rep,
         (
             SwitchBefore = before_known(SwitchBeforeExecCount)
-        ; 
+        ;
             SwitchBefore = before_zero,
             SwitchBeforeExecCount = 0
         ),
@@ -893,9 +895,9 @@ check_switch_coverage(CanFail, Cases, Before) :-
         (
             MaybeSum = yes(Sum),
             (
-                ( 
+                (
                     Before = before_known(Sum)
-                ; 
+                ;
                     Before = before_unknown
                 ;
                     Before = before_zero,
@@ -1175,7 +1177,7 @@ before_count_from_either_source(BeforeA, BeforeB, Before) :-
             require(unify(0, BeforeCountB),
                 "before_count_from_either_source: mismatch"),
             Before = before_zero
-        ; 
+        ;
             BeforeB = before_zero,
             Before = before_zero
         )
@@ -1257,7 +1259,7 @@ before_count_sum_before_count(sum_before_zero, before_zero).
 
 :- func after_coverage(int) = coverage_after.
 
-after_coverage(Count) = 
+after_coverage(Count) =
     ( Count = 0 ->
         after_zero
     ;
@@ -1266,7 +1268,7 @@ after_coverage(Count) =
 
 :- func before_coverage(int) = coverage_before.
 
-before_coverage(Count) = 
+before_coverage(Count) =
     ( Count = 0 ->
         before_zero
     ;
