@@ -65,6 +65,7 @@
 :- import_module branch_and_bound.
 :- import_module coverage.
 :- import_module create_report.
+:- import_module mdbcomp.goal_path.
 :- import_module measurement_units.
 :- import_module measurements.
 :- import_module program_representation_utils.

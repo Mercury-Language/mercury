@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007, 2010 The University of Melbourne.
+% Copyright (C) 1999-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -468,6 +468,7 @@
 :- implementation.
 
 :- import_module mdb.declarative_debugger.
+:- import_module mdbcomp.goal_path.
 
 :- import_module exception.
 :- import_module int.

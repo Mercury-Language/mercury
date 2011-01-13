@@ -85,7 +85,7 @@
 :- import_module hlds.quantification.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module mdbcomp.program_representation.
+:- import_module mdbcomp.goal_path.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.

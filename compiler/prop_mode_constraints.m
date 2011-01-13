@@ -22,9 +22,10 @@
 :- import_module check_hlds.abstract_mode_constraints.
 :- import_module check_hlds.build_mode_constraints.
 :- import_module hlds.
-:- import_module hlds.goal_path.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module mdbcomp.
+:- import_module mdbcomp.goal_path.
 
 :- import_module io.
 :- import_module list.
@@ -79,6 +80,7 @@
 
 :- implementation.
 
+:- import_module hlds.goal_path.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.

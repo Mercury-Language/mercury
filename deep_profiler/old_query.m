@@ -41,6 +41,7 @@
 :- import_module exclude.
 :- import_module html_format.       % for escape_break_html_string
 :- import_module mdbcomp.
+:- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.program_representation.
 :- import_module measurements.
 :- import_module old_html_format.

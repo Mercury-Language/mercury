@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2010 University of Melbourne.
+% Copyright (C) 1997-2011 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -113,6 +113,7 @@
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.ll_pseudo_type_info.
 :- import_module ll_backend.trace_gen.
+:- import_module mdbcomp.goal_path.
 :- import_module parse_tree.prog_event.
 
 :- import_module bool.

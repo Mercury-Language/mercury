@@ -119,8 +119,8 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
+:- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.file_names.         % undesirable dependency

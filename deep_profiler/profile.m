@@ -26,6 +26,7 @@
 :- import_module exclude.
 :- import_module measurements.
 :- import_module mdbcomp.
+:- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.program_representation.
 
 :- import_module array.

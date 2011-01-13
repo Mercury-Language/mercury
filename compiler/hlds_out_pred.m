@@ -78,6 +78,7 @@
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.hlds_rtti.
+:- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_ctgc.

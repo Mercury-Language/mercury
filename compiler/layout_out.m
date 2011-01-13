@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2010 The University of Melbourne.
+% Copyright (C) 2001-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -177,6 +177,7 @@
 :- import_module libs.trace_params.
 :- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module ll_backend.llds_out.llds_out_data.
+:- import_module mdbcomp.goal_path.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.

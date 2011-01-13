@@ -53,7 +53,7 @@
 % :- import_module mode_robdd.tfeir.
 :- import_module mode_robdd.tfeirn.
 :- import_module mdbcomp.
-:- import_module mdbcomp.program_representation.
+:- import_module mdbcomp.goal_path.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 

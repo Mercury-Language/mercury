@@ -35,6 +35,7 @@
 :- import_module io_combinator.
 :- import_module measurements.
 :- import_module mdbcomp.
+:- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 

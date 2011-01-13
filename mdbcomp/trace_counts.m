@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2008, 2010 The University of Melbourne.
+% Copyright (C) 2005-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,8 +18,8 @@
 :- module mdbcomp.trace_counts.
 :- interface.
 
+:- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.program_representation.
 
 :- import_module bool.
 :- import_module io.

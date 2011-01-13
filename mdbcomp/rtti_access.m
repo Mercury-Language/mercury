@@ -17,8 +17,8 @@
 :- module mdbcomp.rtti_access.
 :- interface.
 
+:- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.program_representation.
 :- import_module mdbcomp.trace_counts.
 
 :- import_module list.

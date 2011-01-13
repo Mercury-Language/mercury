@@ -55,7 +55,7 @@
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.llds.
-:- import_module mdbcomp.program_representation.
+:- import_module mdbcomp.goal_path.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.

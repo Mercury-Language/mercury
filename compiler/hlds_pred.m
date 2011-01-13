@@ -31,6 +31,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module libs.globals.
+:- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
@@ -59,7 +60,6 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.special_pred.
 :- import_module libs.options.
-:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 

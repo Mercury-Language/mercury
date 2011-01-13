@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2010 University of Melbourne.
+% Copyright (C) 1997-2011 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,64 +23,9 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module mdbcomp.program_representation.
+:- import_module mdbcomp.goal_path.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-
-:- import_module bimap.
-:- import_module map.
-
-:- type containing_goal
-    --->    whole_body_goal
-            % This goal is the entire body of its procedure.
-    ;       containing_goal(goal_id, goal_path_step).
-            % This goal is an contained immediately inside the larger goal
-            % identified by the goal_id, from which you need to take the
-            % given goal_path step to get to this goal.
-            %
-            % The goal_id of the containing goal is guaranteed to be always
-            % less than the goal_id of this goal.
-
-:- type containing_goal_map == map(goal_id, containing_goal).
-:- type goal_forward_path_map == map(goal_id, forward_goal_path).
-:- type goal_reverse_path_map == map(goal_id, reverse_goal_path).
-:- type goal_reverse_path_bimap == bimap(goal_id, reverse_goal_path).
-
-    % goal_id_inside(ContainingGoalMap, GoalIdA, GoalIdB):
-    %
-    % Succeeds if GoalIdB denotes a goal *inside* the goal denoted by GoalIdA.
-    % (It considers a goal to be inside itself.)
-    %
-:- pred goal_id_inside(containing_goal_map::in,
-    goal_id::in, goal_id::in) is semidet.
-
-    % Convert a goal_id to a forward goal path.
-    %
-:- func goal_id_to_forward_path(containing_goal_map, goal_id) =
-    forward_goal_path.
-
-    % Convert a goal_id to a reverse goal path.
-    %
-:- func goal_id_to_reverse_path(containing_goal_map, goal_id) =
-    reverse_goal_path.
-
-    % Given a containing_goal_map, create a map that maps each goal_id in it
-    % to a forwward goal path.
-    %
-:- func create_forward_goal_path_map(containing_goal_map) =
-    goal_forward_path_map.
-
-    % Given a containing_goal_map, create a map that maps each goal_id in it
-    % to a reverse goal path.
-    %
-:- func create_reverse_goal_path_map(containing_goal_map) =
-    goal_reverse_path_map.
-
-    % Given a containing_goal_map, create a map that maps each goal_id in it
-    % to a reverse goal path, and back.
-    %
-:- func create_reverse_goal_path_bimap(containing_goal_map) =
-    goal_reverse_path_bimap.
 
 %-----------------------------------------------------------------------------%
 
@@ -127,110 +72,12 @@
 :- import_module cord.
 :- import_module int.
 :- import_module list.
+:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module svbimap.
 :- import_module svmap.
-
-%-----------------------------------------------------------------------------%
-
-goal_id_inside(ContainingGoalId, GoalIdA, GoalIdB) :-
-    (
-        GoalIdB = GoalIdA
-    ;
-        map.lookup(ContainingGoalId, GoalIdB, GoalContainingB),
-        GoalContainingB = containing_goal(ParentGoalIdB, _),
-        goal_id_inside(ContainingGoalId, GoalIdA, ParentGoalIdB)
-    ).
-
-goal_id_to_forward_path(ContainingGoalMap, GoalId) = GoalPath :-
-    StepsCord = goal_id_to_steps(ContainingGoalMap, GoalId),
-    Steps = cord.list(StepsCord),
-    GoalPath = fgp(Steps).
-
-goal_id_to_reverse_path(ContainingGoalMap, GoalId) = GoalPath :-
-    StepsCord = goal_id_to_steps(ContainingGoalMap, GoalId),
-    Steps = cord.list(StepsCord),
-    list.reverse(Steps, RevSteps),
-    GoalPath = rgp(RevSteps).
-
-:- func goal_id_to_steps(containing_goal_map, goal_id) =
-    cord(goal_path_step).
-
-goal_id_to_steps(ContainingGoalMap, GoalId) = Steps :-
-    map.lookup(ContainingGoalMap, GoalId, ContainingGoal),
-    (
-        ContainingGoal = whole_body_goal,
-        Steps = cord.empty
-    ;
-        ContainingGoal = containing_goal(ParentGoalId, LastStep),
-        EarlierSteps = goal_id_to_steps(ContainingGoalMap, ParentGoalId),
-        Steps = cord.snoc(EarlierSteps, LastStep)
-    ).
-
-create_forward_goal_path_map(ContainingGoalMap) = ForwardGoalPathMap :-
-    ReverseGoalPathMap = create_reverse_goal_path_map(ContainingGoalMap),
-    map.map_values_only(rgp_to_fgp, ReverseGoalPathMap, ForwardGoalPathMap).
-
-:- pred rgp_to_fgp(reverse_goal_path::in, forward_goal_path::out) is det.
-
-rgp_to_fgp(rgp(RevSteps), fgp(Steps)) :-
-    list.reverse(RevSteps, Steps).
-
-create_reverse_goal_path_map(ContainingGoalMap) = ReverseGoalPathMap :-
-    map.to_assoc_list(ContainingGoalMap, ContainingGoalList),
-    create_reverse_goal_path_map_2(ContainingGoalList,
-        map.init, ReverseGoalPathMap).
-
-:- pred create_reverse_goal_path_map_2(
-    assoc_list(goal_id, containing_goal)::in,
-    map(goal_id, reverse_goal_path)::in, map(goal_id, reverse_goal_path)::out)
-    is det.
-
-create_reverse_goal_path_map_2([], !ReverseGoalPathMap).
-create_reverse_goal_path_map_2([Head | Tail], !ReverseGoalPathMap) :-
-    Head = GoalId - ContainingGoal,
-    (
-        ContainingGoal = whole_body_goal,
-        GoalReversePath = rgp([])
-    ;
-        ContainingGoal = containing_goal(ContainingGoalId, Step),
-        map.lookup(!.ReverseGoalPathMap, ContainingGoalId,
-            ContainingGoalReversePath),
-        ContainingGoalReversePath = rgp(ContainingGoalReverseSteps),
-        GoalReverseSteps = [Step | ContainingGoalReverseSteps],
-        GoalReversePath = rgp(GoalReverseSteps)
-    ),
-    svmap.det_insert(GoalId, GoalReversePath, !ReverseGoalPathMap),
-    create_reverse_goal_path_map_2(Tail, !ReverseGoalPathMap).
-
-create_reverse_goal_path_bimap(ContainingGoalMap) = ReverseGoalPathBiMap :-
-    map.to_assoc_list(ContainingGoalMap, ContainingGoalList),
-    create_reverse_goal_path_bimap_2(ContainingGoalList,
-        bimap.init, ReverseGoalPathBiMap).
-
-:- pred create_reverse_goal_path_bimap_2(
-    assoc_list(goal_id, containing_goal)::in,
-    bimap(goal_id, reverse_goal_path)::in,
-    bimap(goal_id, reverse_goal_path)::out) is det.
-
-create_reverse_goal_path_bimap_2([], !ReverseGoalPathBiMap).
-create_reverse_goal_path_bimap_2([Head | Tail], !ReverseGoalPathBiMap) :-
-    Head = GoalId - ContainingGoal,
-    (
-        ContainingGoal = whole_body_goal,
-        GoalReversePath = rgp([])
-    ;
-        ContainingGoal = containing_goal(ContainingGoalId, Step),
-        bimap.lookup(!.ReverseGoalPathBiMap, ContainingGoalId,
-            ContainingGoalReversePath),
-        ContainingGoalReversePath = rgp(ContainingGoalReverseSteps),
-        GoalReverseSteps = [Step | ContainingGoalReverseSteps],
-        GoalReversePath = rgp(GoalReverseSteps)
-    ),
-    svbimap.det_insert(GoalId, GoalReversePath, !ReverseGoalPathBiMap),
-    create_reverse_goal_path_bimap_2(Tail, !ReverseGoalPathBiMap).
 
 %-----------------------------------------------------------------------------%
 

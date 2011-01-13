@@ -22,6 +22,7 @@
 
 :- import_module coverage.
 :- import_module mdbcomp.
+:- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.program_representation.
 :- import_module measurement_units.
 :- import_module profile.
