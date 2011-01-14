@@ -49,8 +49,8 @@ VPATH = $(LIBRARY_DIR) $(SSDB_DIR)
 MDBCOMP_MODULES = \
 	feedback.automatic_parallelism.m \
 	feedback.m \
-	goal_path.m \
 	mdbcomp.m \
+	mdbcomp.goal_path.m \
 	prim_data.m \
 	program_representation.m \
 	rtti_access.m \
