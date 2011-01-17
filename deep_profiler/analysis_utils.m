@@ -50,10 +50,13 @@
 
 %----------------------------------------------------------------------------%
 
-:- type cost_and_callees
+:- type cost_and_callees == cost_and_callees(callee).
+
+:- type cost_and_callees(Callee)
     --->    cost_and_callees(
                 cac_cost            :: cs_cost_csq,
-                cac_callees         :: set(callee),
+                cac_exits           :: int,
+                cac_callees         :: set(Callee),
                 cac_call_site_is_ho :: higher_order
             ).
 
@@ -67,7 +70,12 @@
     --->    first_order_call
     ;       higher_order_call.
 
-:- pred build_call_site_cost_and_callee_map(deep::in,
+:- pred build_static_call_site_cost_and_callee_map(deep::in,
+    call_site_static_ptr::in,
+    map(reverse_goal_path, cost_and_callees(proc_static_ptr))::in,
+    map(reverse_goal_path, cost_and_callees(proc_static_ptr))::out) is det.
+
+:- pred build_dynamic_call_site_cost_and_callee_map(deep::in,
     pair(call_site_static_ptr, call_site_array_slot)::in,
     map(reverse_goal_path, cost_and_callees)::in,
     map(reverse_goal_path, cost_and_callees)::out) is det.
@@ -151,7 +159,8 @@ deep_get_maybe_procrep(Deep, PSPtr, MaybeProcRep) :-
 
 %----------------------------------------------------------------------------%
 
-build_call_site_cost_and_callee_map(Deep, CSSPtr - Slot, !CallSitesMap) :-
+build_dynamic_call_site_cost_and_callee_map(Deep, CSSPtr - Slot,
+        !CallSitesMap) :-
     (
         Slot = slot_normal(CSDPtr),
         ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
@@ -159,10 +168,12 @@ build_call_site_cost_and_callee_map(Deep, CSSPtr - Slot, !CallSitesMap) :-
                 Own, Inherit),
             CostCsq = build_cs_cost_csq(calls(Own),
                 float(callseqs(Own) + inherit_callseqs(Inherit))),
-            Callees = [Callee]
+            Callees = [Callee],
+            Exits = exits(Own)
         ;
             CostCsq = build_cs_cost_csq(0, 0.0),
-            Callees = []
+            Callees = [],
+            Exits = 0
         )
     ;
         Slot = slot_multi(_, CSDPtrsArray),
@@ -172,9 +183,11 @@ build_call_site_cost_and_callee_map(Deep, CSSPtr - Slot, !CallSitesMap) :-
         Own = sum_own_infos(Owns),
         Inherit = sum_inherit_infos(Inherits),
         CostCsq = build_cs_cost_csq(calls(Own),
-            float(callseqs(Own) + inherit_callseqs(Inherit)))
+            float(callseqs(Own) + inherit_callseqs(Inherit))),
+        Exits = exits(Own)
     ),
-    CostAndCallees = cost_and_callees(CostCsq, set(Callees), HigherOrder),
+    CostAndCallees = cost_and_callees(CostCsq, Exits, set(Callees),
+        HigherOrder),
     lookup_call_site_statics(Deep ^ call_site_statics, CSSPtr, CSS),
     call_site_kind_to_higher_order(CSS ^ css_kind, HigherOrder),
     RevGoalPath = CSS ^ css_goal_path,
@@ -208,6 +221,38 @@ call_site_kind_to_higher_order(CallSiteKind, HigherOrder) :-
         ),
         HigherOrder = higher_order_call
     ).
+
+:- pred call_site_kind_to_maybe_callee(call_site_kind_and_callee::in,
+    maybe(proc_static_ptr)::out) is det.
+
+call_site_kind_to_maybe_callee(normal_call_and_callee(Callee, _), yes(Callee)).
+call_site_kind_to_maybe_callee(special_call_and_no_callee, no).
+call_site_kind_to_maybe_callee(higher_order_call_and_no_callee, no).
+call_site_kind_to_maybe_callee(method_call_and_no_callee, no).
+call_site_kind_to_maybe_callee(callback_and_no_callee, no).
+
+%----------------------------------------------------------------------------%
+
+build_static_call_site_cost_and_callee_map(Deep, CSSPtr, !CallSitesMap) :-
+    deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
+    deep_lookup_css_own(Deep, CSSPtr, Own),
+    deep_lookup_css_desc(Deep, CSSPtr, Inherit),
+    CostCsq = build_cs_cost_csq(calls(Own),
+        float(callseqs(Own) + inherit_callseqs(Inherit))),
+    Exits = exits(Own),
+    KindAndCallee = CSS ^ css_kind,
+    call_site_kind_to_higher_order(KindAndCallee, HigherOrder),
+    call_site_kind_to_maybe_callee(KindAndCallee, MaybeCallee),
+    (
+        MaybeCallee = yes(Callee),
+        Callees = set([Callee])
+    ;
+        MaybeCallee = no,
+        Callees = set.init
+    ),
+    CostAndCallees = cost_and_callees(CostCsq, Exits, Callees, HigherOrder),
+    RevGoalPath = CSS ^ css_goal_path,
+    svmap.det_insert(RevGoalPath, CostAndCallees, !CallSitesMap).
 
 %----------------------------------------------------------------------------%
 

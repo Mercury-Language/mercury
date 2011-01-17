@@ -89,6 +89,7 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.program_representation.
 :- import_module measurement_units.
+:- import_module program_representation_utils.
 :- import_module recursion_patterns.
 :- import_module top_procs.
 :- import_module var_use_analysis.
@@ -1111,8 +1112,8 @@ create_static_procrep_coverage_report(Deep, PSPtr, MaybeReport) :-
         % Gather call site information.
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         CallSitesArray = PS ^ ps_sites,
-        CallSitesMap = array.foldl(add_ps_calls_and_exits_to_map(Deep),
-            CallSitesArray, map.init),
+        array.foldl(build_static_call_site_cost_and_callee_map(Deep),
+            CallSitesArray, map.init, CallSitesMap),
 
         % Gather information about the procedure.
         deep_lookup_ps_own(Deep, PSPtr, Own),
@@ -1132,12 +1133,8 @@ create_dynamic_procrep_coverage_report(Deep, PDPtr, MaybeReport) :-
         MaybeCoveragePoints = PD ^ pd_maybe_coverage_points,
 
         % Gather call site information.
-        deep_lookup_proc_statics(Deep, PSPtr, PS),
-        StaticCallSitesArray = PS ^ ps_sites,
-        DynamicCallSitesArray = PD ^ pd_sites,
-        foldl_corresponding(
-            add_pd_calls_and_exits_to_map(Deep),
-            to_list(StaticCallSitesArray), to_list(DynamicCallSitesArray),
+        proc_dynamic_paired_call_site_slots(Deep, PDPtr, Slots),
+        foldl(build_dynamic_call_site_cost_and_callee_map(Deep), Slots, 
             map.init, CallSitesMap),
 
         % Gather information about the procedure.
@@ -1153,7 +1150,7 @@ create_dynamic_procrep_coverage_report(Deep, PDPtr, MaybeReport) :-
 
 :- pred maybe_create_procrep_coverage_report(deep::in, proc_static_ptr::in,
     own_prof_info::in, maybe(array(int))::in,
-    map(reverse_goal_path, calls_and_exits)::in,
+    map(reverse_goal_path, cost_and_callees(Callee))::in,
     maybe_error(procrep_coverage_info)::out) is det.
 
 maybe_create_procrep_coverage_report(_, _, _, no, _, error(Error)) :-
@@ -1173,84 +1170,13 @@ maybe_create_procrep_coverage_report(Deep, PSPtr, Own,
         foldl2(add_coverage_point_to_map,
             CoveragePoints, map.init, SolnsCoveragePointMap,
             map.init, BranchCoveragePointMap),
-
-        procrep_annotate_with_coverage(Own, CallSitesMap,
+        Goal0 = ProcRep0 ^ pr_defn ^ pdr_goal,
+        label_goals(LastGoalId, ContainingGoalMap, Goal0, Goal),
+        ProcRep = ProcRep0 ^ pr_defn ^ pdr_goal := Goal,
+        procrep_annotate_with_coverage(ProcRep, Own, CallSitesMap,
             SolnsCoveragePointMap, BranchCoveragePointMap,
-            ProcRep0, MaybeProcRep),
-        (
-            MaybeProcRep = ok(ProcRep),
-            MaybeReport = ok(procrep_coverage_info(PSPtr, ProcRep))
-        ;
-            MaybeProcRep = error(Error),
-            MaybeReport = error(Error)
-        )
-    ).
-
-:- func add_ps_calls_and_exits_to_map(deep, call_site_static_ptr,
-    map(reverse_goal_path, calls_and_exits)) =
-    map(reverse_goal_path, calls_and_exits).
-
-add_ps_calls_and_exits_to_map(Deep, CSSPtr, !.Map) = !:Map :-
-    lookup_call_site_statics(Deep ^ call_site_statics, CSSPtr, CSS),
-    RevGoalPath = CSS ^ css_goal_path,
-    lookup_css_own(Deep ^ css_own, CSSPtr, Own),
-    svmap.det_insert(RevGoalPath, calls_and_exits(calls(Own), exits(Own)),
-        !Map).
-
-:- pred add_pd_calls_and_exits_to_map(deep::in, call_site_static_ptr::in,
-    call_site_array_slot::in,
-    map(reverse_goal_path, calls_and_exits)::in,
-    map(reverse_goal_path, calls_and_exits)::out) is det.
-
-add_pd_calls_and_exits_to_map(Deep, CSSPtr, Slot, !Map) :-
-    (
-        Slot = slot_normal(CSDPtr),
-        csd_get_calls_and_exits(Deep, CSDPtr, Calls, Exits)
-    ;
-        Slot = slot_multi(_, CSDs),
-        foldl2(csd_get_calls_and_exits_accum(Deep), CSDs,
-            0, Calls, 0, Exits)
-    ),
-    deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
-    RevGoalPath = CSS ^ css_goal_path,
-    svmap.det_insert(RevGoalPath, calls_and_exits(Calls, Exits), !Map).
-
-:- pred csd_get_calls_and_exits(deep::in, call_site_dynamic_ptr::in,
-    int::out, int::out) is det.
-
-csd_get_calls_and_exits(Deep, CSDPtr, Calls, Exits) :-
-    ( valid_call_site_dynamic_ptr(Deep, CSDPtr) ->
-        deep_lookup_call_site_dynamics(Deep, CSDPtr, CSD),
-        Own = CSD ^ csd_own_prof,
-        Calls = calls(Own),
-        Exits = exits(Own)
-    ;
-        % If the CSD is invalid then this call site was never called.
-        Calls = 0,
-        Exits = 0
-    ).
-
-:- pred csd_get_calls_and_exits_accum(deep::in, call_site_dynamic_ptr::in,
-    int::in, int::out, int::in, int::out) is det.
-
-csd_get_calls_and_exits_accum(Deep, CSDPtr, Calls0, Calls0 + NewCalls,
-        Exits0, Exits0 + NewExits) :-
-    csd_get_calls_and_exits(Deep, CSDPtr, NewCalls, NewExits).
-
-:- pred add_coverage_point_to_map(coverage_point::in,
-    map(reverse_goal_path, coverage_point)::in,
-    map(reverse_goal_path, coverage_point)::out,
-    map(reverse_goal_path, coverage_point)::in,
-    map(reverse_goal_path, coverage_point)::out) is det.
-
-add_coverage_point_to_map(CoveragePoint, !SolnsMap, !BranchMap) :-
-    CoveragePoint = coverage_point(_, GoalPath, CPType),
-    (
-        CPType = cp_type_coverage_after,
-        svmap.det_insert(GoalPath, CoveragePoint, !SolnsMap)
-    ;
-        CPType = cp_type_branch_arm,
-        svmap.det_insert(GoalPath, CoveragePoint, !BranchMap)
+            ContainingGoalMap, LastGoalId, CoverageArray),
+        MaybeReport = ok(procrep_coverage_info(PSPtr, ProcRep, CoverageArray))
     ).
 
 %-----------------------------------------------------------------------------%

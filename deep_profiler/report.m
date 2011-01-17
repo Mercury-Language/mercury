@@ -415,7 +415,8 @@
 :- type procrep_coverage_info
     --->    procrep_coverage_info(
                 prci_proc                   :: proc_static_ptr,
-                prci_proc_rep               :: proc_rep(coverage_info)
+                prci_proc_rep               :: proc_rep(goal_id),
+                prci_coverage_array         :: goal_attr_array(coverage_info)
             ).
 
 :- type proc_callers_report

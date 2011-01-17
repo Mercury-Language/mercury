@@ -124,13 +124,13 @@ proc_get_recursion_type(Deep, ThisClique, PDPtr, ParentCalls,
     create_dynamic_procrep_coverage_report(Deep, PDPtr, MaybeCoverageReport),
     (
         MaybeCoverageReport = ok(CoverageReport),
-        ProcRep = CoverageReport ^ prci_proc_rep,
+        CoverageReport = procrep_coverage_info(_, ProcRep, CoverageArray),
         Goal = ProcRep ^ pr_defn ^ pdr_goal,
         proc_dynamic_paired_call_site_slots(Deep, PDPtr, Slots),
-        foldl(build_call_site_cost_and_callee_map(Deep),
+        foldl(build_dynamic_call_site_cost_and_callee_map(Deep),
             Slots, map.init, CallSitesMap),
-        goal_recursion_data(ThisClique, CallSitesMap, [],
-            Goal, RecursionData),
+        Info = recursion_analysis_info(ThisClique, CallSitesMap, CoverageArray),
+        goal_recursion_data(Info, [], Goal, RecursionData),
         recursion_data_to_recursion_type(ParentCalls, TotalCalls,
             RecursionData, RecursionType),
         MaybeRecursionType = ok(RecursionType)
@@ -281,19 +281,27 @@ single_rec_average_recursion_cost(BaseCost, RecCost, AvgMaxDepth) = Cost :-
 :- type recursion_error
     --->    re_unhandled_determinism(detism_rep).
 
+:- type recursion_analysis_info
+    --->    recursion_analysis_info(
+                rai_this_clique         :: clique_ptr,
+                rai_call_sites          ::
+                    map(reverse_goal_path, cost_and_callees),
+                rai_coverage_info       :: goal_attr_array(coverage_info)
+            ).
+
     % goal_recursion_data(RecursiveCallees, Goal, GoalPath,
     %   init_recursion_data, RecursionData)
     %
     % Compute RecursionData about Goal if RecursiveCalls are calls
     % that may eventually lead to Goal.
     %
-:- pred goal_recursion_data(clique_ptr::in,
-    map(reverse_goal_path, cost_and_callees)::in, list(goal_path_step)::in,
-    goal_rep(coverage_info)::in, recursion_data::out) is det.
+:- pred goal_recursion_data(recursion_analysis_info::in,
+    list(goal_path_step)::in, goal_rep(goal_id)::in, recursion_data::out)
+    is det.
 
-goal_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps, GoalRep,
-        !:RecursionData) :-
-    GoalRep = goal_rep(GoalExpr, Detism, CoverageInfo),
+goal_recursion_data(Info, RevGoalPathSteps, GoalRep, !:RecursionData) :-
+    GoalRep = goal_rep(GoalExpr, Detism, GoalId),
+    CoverageInfo = get_goal_attribute_det(Info ^ rai_coverage_info, GoalId),
     ( get_coverage_before(CoverageInfo, CallsPrime) ->
         Calls = CallsPrime
     ;
@@ -304,20 +312,20 @@ goal_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps, GoalRep,
     ;
         (
             GoalExpr = conj_rep(Conjs),
-            conj_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps,
-                1, Conjs, !:RecursionData)
+            conj_recursion_data(Info, RevGoalPathSteps, 1, Conjs,
+                !:RecursionData)
         ;
             GoalExpr = disj_rep(Disjs),
-            disj_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps,
-                1, Disjs, !:RecursionData)
+            disj_recursion_data(Info, RevGoalPathSteps, 1, Disjs,
+                !:RecursionData)
         ;
             GoalExpr = switch_rep(_, _, Cases),
-            switch_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps,
-                1, Cases, float(Calls), Calls, !:RecursionData)
+            switch_recursion_data(Info, RevGoalPathSteps, 1, Cases,
+                float(Calls), Calls, !:RecursionData)
         ;
             GoalExpr = ite_rep(Cond, Then, Else),
-            ite_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps,
-                Cond, Then, Else, Calls, !:RecursionData)
+            ite_recursion_data(Info, RevGoalPathSteps, Cond, Then, Else,
+                Calls, !:RecursionData)
         ;
             (
                 GoalExpr = negation_rep(SubGoal),
@@ -326,13 +334,12 @@ goal_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps, GoalRep,
                 GoalExpr = scope_rep(SubGoal, MaybeCut),
                 GoalPathStep = step_scope(MaybeCut)
             ),
-            goal_recursion_data(ThisClique, CallSiteMap,
-                [GoalPathStep | RevGoalPathSteps], SubGoal,
-                !:RecursionData)
+            goal_recursion_data(Info, [GoalPathStep | RevGoalPathSteps],
+                SubGoal, !:RecursionData)
         ;
             GoalExpr = atomic_goal_rep(_, _, _, AtomicGoalRep),
-            atomic_goal_recursion_data(ThisClique, CallSiteMap,
-                RevGoalPathSteps, AtomicGoalRep, !:RecursionData)
+            atomic_goal_recursion_data(Info, RevGoalPathSteps, AtomicGoalRep,
+                !:RecursionData)
         )
     ),
     (
@@ -351,17 +358,17 @@ goal_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps, GoalRep,
             !RecursionData)
     ).
 
-:- pred conj_recursion_data(clique_ptr::in,
-    map(reverse_goal_path, cost_and_callees)::in, list(goal_path_step)::in,
-    int::in, list(goal_rep(coverage_info))::in, recursion_data::out) is det.
+:- pred conj_recursion_data(recursion_analysis_info::in,
+    list(goal_path_step)::in, int::in, list(goal_rep(goal_id))::in,
+    recursion_data::out) is det.
 
-conj_recursion_data(_, _, _, _, [], simple_recursion_data(0.0, 0)).
+conj_recursion_data(_, _, _, [], simple_recursion_data(0.0, 0)).
     % An empty conjunction is true, there is exactly one trivial path
     % through it with 0 recursive calls.
-conj_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps, ConjNum,
-        [Conj | Conjs], RecursionData) :-
-    goal_recursion_data(ThisClique, CallSiteMap,
-        [step_conj(ConjNum) | RevGoalPathSteps], Conj, ConjRecursionData),
+conj_recursion_data(Info, RevGoalPathSteps, ConjNum, [Conj | Conjs],
+        RecursionData) :-
+    goal_recursion_data(Info, [step_conj(ConjNum) | RevGoalPathSteps], Conj,
+        ConjRecursionData),
     (
         ConjRecursionData = proc_dead_code,
         % If the first conjunct is dead then the remaining ones will
@@ -371,8 +378,8 @@ conj_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps, ConjNum,
     ;
         ConjRecursionData = recursion_data(_, _, _),
 
-        conj_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps,
-            ConjNum + 1, Conjs, ConjsRecursionData0),
+        conj_recursion_data(Info, RevGoalPathSteps, ConjNum + 1, Conjs,
+            ConjsRecursionData0),
         CanFail = detism_get_can_fail(Conj ^ goal_detism_rep),
         (
             CanFail = cannot_fail_rep,
@@ -384,8 +391,9 @@ conj_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps, ConjNum,
             % branches into one branch that continues with the conjunction and
             % one that doesn't.
 
-            success_probability_from_coverage(Conj ^ goal_annotation,
-                ConjSuccessProb),
+            CoverageInfo = get_goal_attribute_det(Info ^ rai_coverage_info,
+                Conj ^ goal_annotation),
+            success_probability_from_coverage(CoverageInfo, ConjSuccessProb),
             recursion_data_and_probability(ConjSuccessProb,
                 ConjsRecursionData0, ConjsRecursionData),
 
@@ -399,17 +407,17 @@ conj_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps, ConjNum,
         )
     ).
 
-:- pred disj_recursion_data(clique_ptr::in,
-    map(reverse_goal_path, cost_and_callees)::in, list(goal_path_step)::in,
-    int::in, list(goal_rep(coverage_info))::in, recursion_data::out) is det.
+:- pred disj_recursion_data(recursion_analysis_info::in,
+    list(goal_path_step)::in, int::in, list(goal_rep(goal_id))::in,
+    recursion_data::out) is det.
 
-disj_recursion_data(_, _, _, _, [], simple_recursion_data(0.0, 0)).
-disj_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps, DisjNum,
+disj_recursion_data(_, _, _, [], simple_recursion_data(0.0, 0)).
+disj_recursion_data(Info, RevGoalPathSteps, DisjNum,
         [Disj | Disjs], RecursionData) :-
     % Handle only semidet and committed-choice disjunctions, which cannot be
     % re-entered once a disjunct succeeds.
-    goal_recursion_data(ThisClique, CallSiteMap,
-        [step_disj(DisjNum) | RevGoalPathSteps], Disj, DisjRecursionData),
+    goal_recursion_data(Info, [step_disj(DisjNum) | RevGoalPathSteps], Disj,
+        DisjRecursionData),
     (
         DisjRecursionData = proc_dead_code,
         % If the first disjunct was never tried, then no other disjuncts will
@@ -417,14 +425,16 @@ disj_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps, DisjNum,
         RecursionData = proc_dead_code
     ;
         DisjRecursionData = recursion_data(_, _, _),
-        success_probability_from_coverage(Disj ^ goal_annotation,
+        CoverageInfo = get_goal_attribute_det(Info ^ rai_coverage_info,
+            Disj ^ goal_annotation),
+        success_probability_from_coverage(CoverageInfo,
             DisjSuccessProb),
         DisjFailureProb = not_probability(DisjSuccessProb),
 
         % The code can branch here, either it tries the next disjuct, which we
         % represent as DisjsRecursionData, ...
-        disj_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps,
-            DisjNum + 1, Disjs, DisjsRecursionData0),
+        disj_recursion_data(Info, RevGoalPathSteps, DisjNum + 1, Disjs,
+            DisjsRecursionData0),
         recursion_data_and_probability(DisjFailureProb, DisjsRecursionData0,
             DisjsRecursionData),
 
@@ -457,31 +467,31 @@ success_probability_from_coverage(Coverage, SuccessProb) :-
         unexpected($module, $pred, "expected complete coverage information")
     ).
 
-:- pred ite_recursion_data(clique_ptr::in,
-    map(reverse_goal_path, cost_and_callees)::in, list(goal_path_step)::in,
-    goal_rep(coverage_info)::in, goal_rep(coverage_info)::in,
-    goal_rep(coverage_info)::in, int::in, recursion_data::out) is det.
+:- pred ite_recursion_data(recursion_analysis_info::in,
+    list(goal_path_step)::in,
+    goal_rep(goal_id)::in, goal_rep(goal_id)::in, goal_rep(goal_id)::in,
+    int::in, recursion_data::out) is det.
 
-ite_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps, Cond, Then, Else,
-        Calls, !:RecursionData) :-
-    goal_recursion_data(ThisClique, CallSiteMap,
-        [step_ite_cond | RevGoalPathSteps], Cond, CondRecursionData),
-    goal_recursion_data(ThisClique, CallSiteMap,
-        [step_ite_then | RevGoalPathSteps], Then, ThenRecursionData0),
-    goal_recursion_data(ThisClique, CallSiteMap,
-        [step_ite_else | RevGoalPathSteps], Else, ElseRecursionData0),
+ite_recursion_data(Info, RevGoalPathSteps, Cond, Then, Else, Calls,
+        !:RecursionData) :-
+    goal_recursion_data(Info, [step_ite_cond | RevGoalPathSteps], Cond,
+        CondRecursionData),
+    goal_recursion_data(Info, [step_ite_then | RevGoalPathSteps], Then,
+        ThenRecursionData0),
+    goal_recursion_data(Info, [step_ite_else | RevGoalPathSteps], Else,
+        ElseRecursionData0),
 
     % Adjust the probabilities of executing the then and else branches.
-    (
-        get_coverage_before(Then ^ goal_annotation, ThenCalls),
-        get_coverage_before(Else ^ goal_annotation, ElseCalls)
-    ->
-        CallsF = float(Calls),
-        ThenProb = probable(float(ThenCalls) / CallsF),
-        ElseProb = probable(float(ElseCalls) / CallsF)
-    ;
-        unexpected($module, $pred, "couldn't retrive coverage information")
-    ),
+    Coverage = Info ^ rai_coverage_info,
+    ThenCoverageInfo =
+        get_goal_attribute_det(Coverage, Then ^ goal_annotation),
+    ElseCoverageInfo =
+        get_goal_attribute_det(Coverage, Else ^ goal_annotation),
+    get_coverage_before_det(ThenCoverageInfo, ThenCalls),
+    get_coverage_before_det(ElseCoverageInfo, ElseCalls),
+    CallsF = float(Calls),
+    ThenProb = probable(float(ThenCalls) / CallsF),
+    ElseProb = probable(float(ElseCalls) / CallsF),
     recursion_data_and_probability(ThenProb,
         ThenRecursionData0, ThenRecursionData),
     recursion_data_and_probability(ElseProb,
@@ -495,24 +505,24 @@ ite_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps, Cond, Then, Else,
         ElseRecursionData, !:RecursionData),
     merge_recursion_data_sequence(CondRecursionData, !RecursionData).
 
-:- pred switch_recursion_data(clique_ptr::in,
-    map(reverse_goal_path, cost_and_callees)::in, list(goal_path_step)::in,
-    int::in, list(case_rep(coverage_info))::in, float::in, int::in,
-    recursion_data::out) is det.
+:- pred switch_recursion_data(recursion_analysis_info::in,
+    list(goal_path_step)::in, int::in, list(case_rep(goal_id))::in,
+    float::in, int::in, recursion_data::out) is det.
 
-switch_recursion_data(_, _, _, _, [], TotalCalls, CallsRemaining,
+switch_recursion_data(_, _, _, [], TotalCalls, CallsRemaining,
         RecursionData) :-
     % Can fail switches will have a nonzero probability of reaching this case.
     FailProb = probable(float(CallsRemaining) / TotalCalls),
     RecursionData0 = simple_recursion_data(0.0, 0),
     recursion_data_and_probability(FailProb, RecursionData0, RecursionData).
-switch_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps, CaseNum,
-        [Case | Cases], TotalCalls, CallsRemaining, RecursionData) :-
+switch_recursion_data(Info, RevGoalPathSteps, CaseNum, [Case | Cases],
+        TotalCalls, CallsRemaining, RecursionData) :-
     Case = case_rep(_, _, Goal),
-    goal_recursion_data(ThisClique, CallSiteMap,
-        [step_switch(CaseNum, no) | RevGoalPathSteps], Goal,
-        CaseRecursionData0),
-    ( get_coverage_before(Goal ^ goal_annotation, CallsPrime) ->
+    goal_recursion_data(Info, [step_switch(CaseNum, no) | RevGoalPathSteps],
+        Goal, CaseRecursionData0),
+    CoverageInfo = get_goal_attribute_det(Info ^ rai_coverage_info,
+        Goal ^ goal_annotation),
+    ( get_coverage_before(CoverageInfo, CallsPrime) ->
         Calls = CallsPrime
     ;
         unexpected($module, $pred, "expected coverage information")
@@ -520,17 +530,16 @@ switch_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps, CaseNum,
     CaseProb = probable(float(Calls) / TotalCalls),
     recursion_data_and_probability(CaseProb, CaseRecursionData0,
         CaseRecursionData),
-    switch_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps, CaseNum+1,
+    switch_recursion_data(Info, RevGoalPathSteps, CaseNum+1,
         Cases, TotalCalls, CallsRemaining - Calls, CasesRecursionData),
     merge_recursion_data_after_branch(CaseRecursionData, CasesRecursionData,
         RecursionData).
 
-:- pred atomic_goal_recursion_data(clique_ptr::in,
-    map(reverse_goal_path, cost_and_callees)::in, list(goal_path_step)::in,
-    atomic_goal_rep::in, recursion_data::out) is det.
+:- pred atomic_goal_recursion_data(recursion_analysis_info::in,
+    list(goal_path_step)::in, atomic_goal_rep::in, recursion_data::out) is det.
 
-atomic_goal_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps,
-        AtomicGoal, RecursionData) :-
+atomic_goal_recursion_data(Info, RevGoalPathSteps, AtomicGoal, RecursionData)
+        :-
     (
         % All these things have trivial cost except for foreign code whose cost
         % is unknown (which because it doesn't contribute to the cost of the
@@ -554,6 +563,7 @@ atomic_goal_recursion_data(ThisClique, CallSiteMap, RevGoalPathSteps,
         ),
 
         % Get the cost of the call.
+        Info = recursion_analysis_info(ThisClique, CallSiteMap, _),
         map.lookup(CallSiteMap, rgp(RevGoalPathSteps), CostAndCallees),
         ( cost_and_callees_is_recursive(ThisClique, CostAndCallees) ->
             % Cost will be 1.0 for for each call to recursive calls but we

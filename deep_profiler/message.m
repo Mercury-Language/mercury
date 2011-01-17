@@ -147,7 +147,7 @@
             % We don't yet handle clique_proc_reports with multiple proc
             % dynamics.
 
-    ;       error_coverage_procrep_error(string)
+    ;       error_cannot_lookup_coverage_points
             % An error in the generation of a coverage_procrep report.
 
     ;       error_exception_thrown(string).
@@ -293,8 +293,8 @@ message_type_to_level(MsgType) = MsgLevel :-
         MsgLevel = message_warning
     ;
         ( MsgType = error_extra_proc_dynamics_in_clique_proc
-        ; MsgType = error_coverage_procrep_error(_)
         ; MsgType = error_exception_thrown(_)
+        ; MsgType = error_cannot_lookup_coverage_points
         ),
         MsgLevel = message_error
     ).
@@ -307,6 +307,9 @@ message_type_to_string(MessageType) = Cord :-
     (
         MessageType = info_found_candidate_conjunction,
         String = "Found candidate conjunction"
+    ;
+        MessageType = error_cannot_lookup_coverage_points,
+        String = "Cannot lookup coverage points"
     ;
         (
             MessageType = info_found_conjs_above_callsite_threshold(Num),
@@ -355,9 +358,6 @@ message_type_to_string(MessageType) = Cord :-
             ++ " handled."
     ;
         (
-            MessageType = error_coverage_procrep_error(ErrorStr),
-            Template = "Error generating coverage procedure report: %s"
-        ;
             MessageType = error_exception_thrown(ErrorStr),
             Template = "Exception thrown: %s"
         ;

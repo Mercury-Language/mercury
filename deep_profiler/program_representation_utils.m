@@ -38,6 +38,13 @@
     %
 :- pred print_module_to_strings(module_rep::in, cord(string)::out) is det.
 
+    % Print a procedure to a string representation using a higher order value
+    % to lookup goal attributes.
+    %
+:- pred print_proc_to_strings(func(goal_id) = GoalAnn, proc_rep(goal_id),
+    cord(string)) <= goal_annotation(GoalAnn).
+:- mode print_proc_to_strings(func(in) = out is det, in, out) is det.
+
     % Print a procedure to a string representation.
     %
 :- pred print_proc_to_strings(proc_rep(GoalAnn)::in, cord(string)::out) is det
@@ -47,12 +54,19 @@
     %
 :- pred print_proc_label_to_string(string_proc_label::in, string::out) is det.
 
-    % print_goal_to_strings(VarTable, Indent, RevGoalPathSteps, Goal, Strings):
+:- type print_goal_info(Key, GoalAnn)
+    --->    print_goal_info(
+                pgi_lookup_annotation       :: (func(Key) = GoalAnn),
+                pgi_var_table               :: var_table
+            ).
+
+    % print_goal_to_strings(Lookup, VarTable, Indent, RevGoalPathSteps, Goal,
+    %   Strings):
     %
     % Print a goal (recursively) to a string representation.
     %
-:- pred print_goal_to_strings(var_table::in, int::in, list(goal_path_step)::in,
-    goal_rep(GoalAnn)::in, cord(string)::out) is det
+:- pred print_goal_to_strings(print_goal_info(T, GoalAnn)::in, int::in,
+    list(goal_path_step)::in, goal_rep(T)::in, cord(string)::out) is det
     <= goal_annotation(GoalAnn).
 
 %----------------------------------------------------------------------------%
@@ -69,6 +83,15 @@
     % annotations.
     %
 :- instance goal_annotation(unit).
+
+%----------------------------------------------------------------------------%
+
+    % Goal IDs are a more efficient way to identify goals than goal paths.
+    %
+    % The allow annotations to be kept in an array indexed by the goal id.
+    %
+:- pred label_goals(goal_id::out, containing_goal_map::out,
+    goal_rep(T)::in, goal_rep(goal_id)::out) is det.
 
 %----------------------------------------------------------------------------%
 
@@ -183,11 +206,13 @@
 
 :- import_module array.
 :- import_module bool.
+:- import_module counter.
 :- import_module int.
 :- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
+:- import_module std_util.
 :- import_module svmap.
 
 %----------------------------------------------------------------------------%
@@ -209,7 +234,17 @@ accumulate_print_proc_to_strings(_, Proc, !Strings) :-
     print_proc_to_strings(Proc, ProcStrings),
     !:Strings = !.Strings ++ ProcStrings.
 
+print_proc_to_strings(Lookup, ProcRep, Strings) :-
+    print_proc_to_strings_2(Lookup, ProcRep, Strings).
+
 print_proc_to_strings(ProcRep, Strings) :-
+    print_proc_to_strings_2(id, ProcRep, Strings).
+
+:- pred print_proc_to_strings_2(func(X) = GoalAnn, proc_rep(X),
+    cord(string)) <= goal_annotation(GoalAnn).
+:- mode print_proc_to_strings_2(func(in) = out is det, in, out) is det.
+
+print_proc_to_strings_2(Lookup, ProcRep, Strings) :-
     ProcRep = proc_rep(ProcLabel, ProcDefnRep),
     ProcDefnRep = proc_defn_rep(ArgVarReps, GoalRep, VarTable, Detism),
     print_proc_label_to_string(ProcLabel, ProcLabelString0),
@@ -217,7 +252,8 @@ print_proc_to_strings(ProcRep, Strings) :-
     ProcLabelString = DetismString ++ cord.singleton(" ") ++
         cord.singleton(ProcLabelString0),
     print_args_to_strings(print_head_var, VarTable, ArgVarReps, ArgsString),
-    print_goal_to_strings(VarTable, 1, [], GoalRep, GoalString),
+    print_goal_to_strings(print_goal_info(Lookup, VarTable), 1, [], GoalRep,
+        GoalString),
     Strings = ProcLabelString ++ ArgsString ++ cord.singleton(" :-\n") ++
         GoalString ++ nl.
 
@@ -243,16 +279,17 @@ print_proc_label_to_string(ProcLabel, String) :-
 
 %-----------------------------------------------------------------------------%
 
-print_goal_to_strings(VarTable, Indent, RevGoalPathSteps, GoalRep, Strings) :-
-    GoalRep = goal_rep(GoalExprRep, DetismRep, GoalAnnotation),
+print_goal_to_strings(Info, Indent, RevGoalPathSteps, GoalRep, Strings) :-
+    GoalRep = goal_rep(GoalExprRep, DetismRep, AnnotationKey),
+    VarTable = Info ^ pgi_var_table,
     (
         GoalExprRep = conj_rep(ConjGoalReps),
-        print_conj_to_strings(VarTable, Indent, RevGoalPathSteps,
+        print_conj_to_strings(Info, Indent, RevGoalPathSteps,
             ConjGoalReps, ExprString)
     ;
         GoalExprRep = disj_rep(DisjGoalReps),
-        print_disj_to_strings(VarTable, Indent, RevGoalPathSteps, 1,
-            DisjGoalReps, no, DisjString),
+        print_disj_to_strings(Info, Indent, RevGoalPathSteps, 1, DisjGoalReps,
+            no, DisjString),
         ExprString = indent(Indent) ++
             cord.singleton("(\n") ++ DisjString ++ indent(Indent) ++
             cord.singleton(")\n")
@@ -261,7 +298,7 @@ print_goal_to_strings(VarTable, Indent, RevGoalPathSteps, GoalRep, Strings) :-
         lookup_var_name(VarTable, SwitchVarRep, SwitchVarName),
         string.format("%s switch on %s\n",
             [s(string(CanFail)), s(SwitchVarName)], SwitchOnString),
-        print_switch_to_strings(VarTable, Indent, RevGoalPathSteps, 1,
+        print_switch_to_strings(Info, Indent + 1, RevGoalPathSteps, 1,
             CasesRep, no, SwitchString),
         ExprString = indent(Indent) ++ cord.singleton(SwitchOnString) ++
             indent(Indent) ++ cord.singleton("(\n") ++ SwitchString ++
@@ -271,11 +308,11 @@ print_goal_to_strings(VarTable, Indent, RevGoalPathSteps, GoalRep, Strings) :-
         RevGoalPathStepsCond = [step_ite_cond | RevGoalPathSteps],
         RevGoalPathStepsThen = [step_ite_then | RevGoalPathSteps],
         RevGoalPathStepsElse = [step_ite_else | RevGoalPathSteps],
-        print_goal_to_strings(VarTable, Indent + 1, RevGoalPathStepsCond,
+        print_goal_to_strings(Info, Indent + 1, RevGoalPathStepsCond,
             CondRep, CondString),
-        print_goal_to_strings(VarTable, Indent + 1, RevGoalPathStepsThen,
+        print_goal_to_strings(Info, Indent + 1, RevGoalPathStepsThen,
             ThenRep, ThenString),
-        print_goal_to_strings(VarTable, Indent + 1, RevGoalPathStepsElse,
+        print_goal_to_strings(Info, Indent + 1, RevGoalPathStepsElse,
             ElseRep, ElseString),
         IndentString = indent(Indent),
         ExprString = IndentString ++ cord.singleton("(\n") ++ CondString ++
@@ -285,7 +322,7 @@ print_goal_to_strings(VarTable, Indent, RevGoalPathSteps, GoalRep, Strings) :-
     ;
         GoalExprRep = negation_rep(SubGoalRep),
         RevSubGoalPathSteps = [step_neg | RevGoalPathSteps],
-        print_goal_to_strings(VarTable, Indent + 1, RevSubGoalPathSteps,
+        print_goal_to_strings(Info, Indent + 1, RevSubGoalPathSteps,
             SubGoalRep, SubGoalString),
         ExprString = indent(Indent) ++ cord.singleton("not (\n") ++
             SubGoalString ++ indent(Indent) ++ cord.singleton(")\n")
@@ -299,7 +336,7 @@ print_goal_to_strings(VarTable, Indent, RevGoalPathSteps, GoalRep, Strings) :-
             CutString = cord.empty
         ),
         RevSubGoalPathSteps = [step_scope(MaybeCut) | RevGoalPathSteps],
-        print_goal_to_strings(VarTable, Indent + 1, RevSubGoalPathSteps,
+        print_goal_to_strings(Info, Indent + 1, RevSubGoalPathSteps,
             SubGoalRep, SubGoalString),
         ExprString = indent(Indent) ++ cord.singleton("scope") ++ CutString ++
             cord.singleton(" (\n") ++
@@ -320,6 +357,8 @@ print_goal_to_strings(VarTable, Indent, RevGoalPathSteps, GoalRep, Strings) :-
     ),
     detism_to_string(DetismRep, DetismString),
     DetismLine = LinePrefix ++ DetismString ++ nl,
+    LookupAnnotation = Info ^ pgi_lookup_annotation,
+    GoalAnnotation = LookupAnnotation(AnnotationKey),
     print_goal_annotation_to_strings(VarTable, GoalAnnotation,
         GoalAnnotationLines0),
     ( is_empty(GoalAnnotationLines0) ->
@@ -344,28 +383,28 @@ print_goal_to_strings(VarTable, Indent, RevGoalPathSteps, GoalRep, Strings) :-
         ++ ExtraLineForConjunctions
         ++ ExprString.
 
-:- pred print_conj_to_strings(var_table::in, int::in,
-    list(goal_path_step)::in, list(goal_rep(GoalAnn))::in,
+:- pred print_conj_to_strings(print_goal_info(T, GoalAnn)::in, int::in,
+    list(goal_path_step)::in, list(goal_rep(T))::in,
     cord(string)::out) is det
     <= goal_annotation(GoalAnn).
 
-print_conj_to_strings(VarTable, Indent, RevGoalPathSteps, GoalReps, Strings) :-
+print_conj_to_strings(Info, Indent, RevGoalPathSteps, GoalReps, Strings) :-
     (
         GoalReps = [],
         Strings = cord.snoc(indent(Indent), "true\n")
     ;
         GoalReps = [_ | _],
-        print_conj_to_strings_2(VarTable, Indent, RevGoalPathSteps, 1,
-            GoalReps, Strings)
+        print_conj_to_strings_2(Info, Indent, RevGoalPathSteps, 1, GoalReps,
+            Strings)
     ).
 
-:- pred print_conj_to_strings_2(var_table::in, int::in,
-    list(goal_path_step)::in, int::in, list(goal_rep(GoalAnn))::in,
+:- pred print_conj_to_strings_2(print_goal_info(T, GoalAnn)::in, int::in,
+    list(goal_path_step)::in, int::in, list(goal_rep(T))::in,
     cord(string)::out)
     is det <= goal_annotation(GoalAnn).
 
 print_conj_to_strings_2(_, _Indent, _, _, [], cord.empty).
-print_conj_to_strings_2(VarTable, Indent, RevGoalPathSteps, ConjNum,
+print_conj_to_strings_2(Info, Indent, RevGoalPathSteps, ConjNum,
         [GoalRep | GoalReps], Strings) :-
     % We use the absence of a separator to denote conjunction.
     %
@@ -373,9 +412,9 @@ print_conj_to_strings_2(VarTable, Indent, RevGoalPathSteps, ConjNum,
     % not last in a conjunction, but that would be significant work,
     % and (at least for now) there is no real need for it.
     RevSubGoalPathSteps = [step_conj(ConjNum) | RevGoalPathSteps],
-    print_goal_to_strings(VarTable, Indent, RevSubGoalPathSteps,
-        GoalRep, HeadGoalString),
-    print_conj_to_strings_2(VarTable, Indent, RevGoalPathSteps, ConjNum + 1,
+    print_goal_to_strings(Info, Indent, RevSubGoalPathSteps, GoalRep,
+        HeadGoalString),
+    print_conj_to_strings_2(Info, Indent, RevGoalPathSteps, ConjNum + 1,
         GoalReps, TailGoalsString),
     (
         GoalReps = [],
@@ -386,13 +425,13 @@ print_conj_to_strings_2(VarTable, Indent, RevGoalPathSteps, ConjNum,
     ),
     Strings = HeadGoalString ++ Separator ++ TailGoalsString.
 
-:- pred print_disj_to_strings(var_table::in, int::in,
-    list(goal_path_step)::in, int::in, list(goal_rep(GoalAnn))::in, bool::in,
+:- pred print_disj_to_strings(print_goal_info(T, GoalAnn)::in, int::in,
+    list(goal_path_step)::in, int::in, list(goal_rep(T))::in, bool::in,
     cord(string)::out)
     is det <= goal_annotation(GoalAnn).
 
 print_disj_to_strings(_, _Indent, _, _, [], _PrintSemi, cord.empty).
-print_disj_to_strings(VarTable, Indent, RevGoalPathSteps, DisjNum,
+print_disj_to_strings(Info, Indent, RevGoalPathSteps, DisjNum,
         [GoalRep | GoalReps], PrintSemi, Strings) :-
     (
         PrintSemi = no,
@@ -402,19 +441,19 @@ print_disj_to_strings(VarTable, Indent, RevGoalPathSteps, DisjNum,
         DelimString = indent(Indent) ++ cord.singleton(";\n")
     ),
     RevSubGoalPathSteps = [step_disj(DisjNum) | RevGoalPathSteps],
-    print_goal_to_strings(VarTable, Indent + 1, RevSubGoalPathSteps,
-        GoalRep, HeadGoalString),
-    print_disj_to_strings(VarTable, Indent, RevGoalPathSteps, DisjNum + 1,
+    print_goal_to_strings(Info, Indent + 1, RevSubGoalPathSteps, GoalRep,
+        HeadGoalString),
+    print_disj_to_strings(Info, Indent, RevGoalPathSteps, DisjNum + 1,
         GoalReps, yes, TailGoalsString),
     Strings = DelimString ++ HeadGoalString ++ TailGoalsString.
 
-:- pred print_switch_to_strings(var_table::in, int::in,
-    list(goal_path_step)::in, int::in, list(case_rep(GoalAnn))::in, bool::in,
+:- pred print_switch_to_strings(print_goal_info(T, GoalAnn)::in, int::in,
+    list(goal_path_step)::in, int::in, list(case_rep(T))::in, bool::in,
     cord(string)::out) is det
     <= goal_annotation(GoalAnn).
 
 print_switch_to_strings(_, _Indent, _, _, [], _PrintSemi, cord.empty).
-print_switch_to_strings(VarTable, Indent, RevGoalPathSteps, CaseNum,
+print_switch_to_strings(Info, Indent, RevGoalPathSteps, CaseNum,
         [CaseRep | CaseReps], PrintSemi, Strings) :-
     (
         PrintSemi = no,
@@ -429,9 +468,9 @@ print_switch_to_strings(VarTable, Indent, RevGoalPathSteps, CaseNum,
     list.map(print_cons_id_and_arity_to_strings(Indent + 1),
         OtherConsIdArityRep, OtherConsIdArityStrings),
     RevSubGoalPathSteps = [step_switch(CaseNum, no) | RevGoalPathSteps],
-    print_goal_to_strings(VarTable, Indent + 1, RevSubGoalPathSteps,
+    print_goal_to_strings(Info, Indent + 1, RevSubGoalPathSteps,
         GoalRep, HeadGoalString),
-    print_switch_to_strings(VarTable, Indent, RevGoalPathSteps, CaseNum + 1,
+    print_switch_to_strings(Info, Indent, RevGoalPathSteps, CaseNum + 1,
         CaseReps, yes, TailCasesStrings),
     Strings = DelimString ++ ConsIdArityString ++
         cord_list_to_cord(OtherConsIdArityStrings) ++ HeadGoalString ++
@@ -671,6 +710,87 @@ progrep_search_module(ProgRep, ModuleName, ModuleRep) :-
 
 modulerep_search_proc(ModuleRep, ProcLabel, ProcRep) :-
     map.search(ModuleRep ^ mr_procs, ProcLabel, ProcRep).
+
+%----------------------------------------------------------------------------%
+%
+% Label goals with IDs.
+%
+
+label_goals(goal_id(LastIdPlus1 - 1), Map, !Goal) :-
+    label_goal(whole_body_goal, !Goal, counter.init(0), Counter,
+        map.init, Map),
+    allocate(LastIdPlus1, Counter, _).
+
+:- pred label_goal(containing_goal::in,
+    goal_rep(T)::in, goal_rep(goal_id)::out, counter::in, counter::out,
+    map(goal_id, containing_goal)::in, map(goal_id, containing_goal)::out)
+    is det.
+
+label_goal(ContainingGoal, !Goal, !Counter, !Map) :-
+    !.Goal = goal_rep(GoalExpr0, Detism, _),
+    allocate(GoalIdNum, !Counter),
+    GoalId = goal_id(GoalIdNum),
+    svmap.det_insert(GoalId, ContainingGoal, !Map),
+    (
+        GoalExpr0 = conj_rep(Conjs0),
+        map_foldl3(label_goal_wrapper((func(N) = step_conj(N)), GoalId),
+            Conjs0, Conjs, 1, _, !Counter, !Map),
+        GoalExpr = conj_rep(Conjs)
+    ;
+        GoalExpr0 = disj_rep(Disjs0),
+        map_foldl3(label_goal_wrapper((func(N) = step_conj(N)), GoalId),
+            Disjs0, Disjs, 1, _, !Counter, !Map),
+        GoalExpr = disj_rep(Disjs)
+    ;
+        GoalExpr0 = switch_rep(Var, CanFail, Cases0),
+        map_foldl3(label_case(GoalId), Cases0, Cases, 1, _, !Counter, !Map),
+        GoalExpr = switch_rep(Var, CanFail, Cases)
+    ;
+        GoalExpr0 = ite_rep(Cond0, Then0, Else0),
+        label_goal(containing_goal(GoalId, step_ite_cond), Cond0, Cond,
+            !Counter, !Map),
+        label_goal(containing_goal(GoalId, step_ite_then), Then0, Then,
+            !Counter, !Map),
+        label_goal(containing_goal(GoalId, step_ite_else), Else0, Else,
+            !Counter, !Map),
+        GoalExpr = ite_rep(Cond, Then, Else)
+    ;
+        GoalExpr0 = negation_rep(SubGoal0),
+        label_goal(containing_goal(GoalId, step_neg), SubGoal0, SubGoal,
+            !Counter, !Map),
+        GoalExpr = negation_rep(SubGoal)
+    ;
+        GoalExpr0 = scope_rep(SubGoal0, ScopeIsCut),
+        label_goal(containing_goal(GoalId, step_scope(ScopeIsCut)),
+            SubGoal0, SubGoal, !Counter, !Map),
+        GoalExpr = scope_rep(SubGoal, ScopeIsCut)
+    ;
+        GoalExpr0 = atomic_goal_rep(File, Line, BoundVars, AtomicGoal),
+        GoalExpr = atomic_goal_rep(File, Line, BoundVars, AtomicGoal)
+    ),
+    !:Goal = goal_rep(GoalExpr, Detism, GoalId).
+
+:- pred label_goal_wrapper(func(int) = goal_path_step, goal_id,
+    goal_rep(T), goal_rep(goal_id), int, int, counter, counter,
+    map(goal_id, containing_goal), map(goal_id, containing_goal)) is det.
+:- mode label_goal_wrapper(func(in) = out is det, in,
+    in, out, in, out, in, out, in, out) is det.
+
+label_goal_wrapper(MakePathStep, ParentGoalId, !Goal, !GoalNum, !Counter,
+        !Map) :-
+    label_goal(containing_goal(ParentGoalId, MakePathStep(!.GoalNum)),
+        !Goal, !Counter, !Map),
+    !:GoalNum = !.GoalNum + 1.
+
+:- pred label_case(goal_id::in, case_rep(T)::in, case_rep(goal_id)::out,
+    int::in, int::out, counter::in, counter::out,
+    containing_goal_map::in, containing_goal_map::out) is det.
+
+label_case(ParentGoalId, !Case, !CaseNum, !Counter, !Map) :-
+    !.Case = case_rep(MainConsId, OtherConsIds, Goal0),
+    label_goal_wrapper((func(N) = step_switch(N, no)), ParentGoalId,
+            Goal0, Goal, !CaseNum, !Counter, !Map),
+    !:Case = case_rep(MainConsId, OtherConsIds, Goal).
 
 %----------------------------------------------------------------------------%
 

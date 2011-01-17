@@ -87,6 +87,7 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
+:- import_module std_util.
 :- import_module string.
 :- import_module svmap.
 
@@ -186,6 +187,8 @@ build_var_use_list(Map, Var, !List) :-
                 ipi_clique          :: clique_ptr,
                 ipi_call_sites      :: map(reverse_goal_path, cost_and_callees),
                 ipi_rec_call_sites  :: map(reverse_goal_path, cs_cost_csq),
+                ipi_coverage_array  :: goal_attr_array(coverage_info),
+                ipi_inst_map_array  :: goal_attr_array(inst_map_info),
                 ipi_recursion_type  :: recursion_type,
                 ipi_var_table       :: var_table,
                 ipi_proc_label      :: string_proc_label
@@ -603,68 +606,86 @@ candidate_parallel_conjunctions_proc(Opts, Deep, PDPtr, RecursionType,
             % we can't expect to find its procedure representation.
             Candidates = map.init
         ;
-            create_dynamic_procrep_coverage_report(Deep, PDPtr,
-                MaybeCoverageReport),
+            deep_lookup_clique_index(Deep, PDPtr, CliquePtr),
+            PSPtr = PD ^ pd_proc_static,
+            deep_get_maybe_procrep(Deep, PSPtr, MaybeProcRep),
             (
-                MaybeCoverageReport = ok(CoverageReport),
-                ProcRep = CoverageReport ^ prci_proc_rep,
-                ProcRep ^ pr_defn = ProcDefnRep,
-                ProcDefnRep ^ pdr_goal = Goal0,
-                ProcDefnRep ^ pdr_var_table = VarTable,
+                MaybeProcRep = ok(ProcRep),
+                ProcDefnRep = ProcRep ^ pr_defn,
+                Goal0 = ProcDefnRep ^ pdr_goal,
+                VarTable = ProcDefnRep ^ pdr_var_table,
 
-                deep_lookup_clique_index(Deep, PDPtr, CliquePtr),
+                % Label the goals with IDs,
+                label_goals(LastGoalId, ContainingGoalMap, Goal0, Goal),
+
+                % Gather call site information.
                 proc_dynamic_paired_call_site_slots(Deep, PDPtr, Slots),
-                foldl(build_call_site_cost_and_callee_map(Deep), Slots,
+                foldl(build_dynamic_call_site_cost_and_callee_map(Deep), Slots,
                     map.init, CallSitesMap),
-                Info = implicit_parallelism_info(Deep, ProgRep, Opts,
-                    CliquePtr, CallSitesMap, RecursiveCallSiteCostMap,
-                    RecursionType, VarTable, ProcLabel),
-                some [!Goal] (
-                    !:Goal = Goal0,
-                    goal_annotate_with_instmap(!Goal,
-                        initial_inst_map(ProcDefnRep), _FinalInstMap,
-                        SeenDuplicateInstantiation, _ConsumedVars, _BoundVars),
-                    goal_to_pard_goal(Info, [], !Goal, !Messages),
-                    goal_get_conjunctions_worth_parallelising(Info,
-                        [], !.Goal, _, Candidates0, MessagesA),
-                    !:Messages = !.Messages ++ MessagesA
-                ),
+
+                % Gather information about the procedure.
+                deep_lookup_pd_own(Deep, PDPtr, Own),
+
+                % Get coverage points.
+                MaybeCoveragePointsArray = PD ^ pd_maybe_coverage_points,
                 (
-                    SeenDuplicateInstantiation =
-                        have_not_seen_duplicate_instantiation,
-                    list.foldl(
-                        build_candidate_par_conjunction_maps(ProcLabel,
-                            VarTable),
-                        Candidates0, map.init, Candidates)
+                    MaybeCoveragePointsArray = yes(CoveragePointsArray),
+
+                    % Build coverage annotation.
+                    coverage_point_arrays_to_list(PS ^ ps_coverage_point_infos,
+                        CoveragePointsArray, CoveragePoints),
+                    foldl2(add_coverage_point_to_map,
+                        CoveragePoints, map.init, SolnsCoveragePointMap,
+                        map.init, BranchCoveragePointMap),
+                    goal_annotate_with_coverage(ProcLabel, Goal, Own,
+                        CallSitesMap, SolnsCoveragePointMap,
+                        BranchCoveragePointMap, ContainingGoalMap, LastGoalId,
+                        CoverageArray),
+
+                    % Build inst_map annotation.
+                    goal_annotate_with_instmap(Goal,
+                        SeenDuplicateInstantiation, _ConsumedVars, _BoundVars,
+                        initial_inst_map(ProcDefnRep), _FinalInstMap,
+                        create_goal_id_array(LastGoalId), InstMapArray),
+
+                    Info = implicit_parallelism_info(Deep, ProgRep, Opts,
+                        CliquePtr, CallSitesMap, RecursiveCallSiteCostMap,
+                        CoverageArray, InstMapArray, RecursionType, VarTable,
+                        ProcLabel),
+                    goal_to_pard_goal(Info, [], Goal, PardGoal, !Messages),
+                    goal_get_conjunctions_worth_parallelising(Info,
+                        [], PardGoal, _, Candidates0, MessagesA),
+                    !:Messages = !.Messages ++ MessagesA,
+                    (
+                        SeenDuplicateInstantiation =
+                            have_not_seen_duplicate_instantiation,
+                        list.foldl(
+                            build_candidate_par_conjunction_maps(ProcLabel,
+                                VarTable),
+                            Candidates0, map.init, Candidates)
+                    ;
+                        SeenDuplicateInstantiation =
+                            seen_duplicate_instantiation,
+                        Candidates = map.init,
+                        append_message(pl_proc(ProcLabel),
+                            notice_duplicate_instantiation(length(Candidates0)),
+                            !Messages)
+                    )
                 ;
-                    SeenDuplicateInstantiation = seen_duplicate_instantiation,
+                    MaybeCoveragePointsArray = no,
                     Candidates = map.init,
                     append_message(pl_proc(ProcLabel),
-                        notice_duplicate_instantiation(length(Candidates0)),
-                        !Messages)
+                        error_cannot_lookup_coverage_points, !Messages)
                 )
             ;
-                MaybeCoverageReport = error(Error),
+                MaybeProcRep = error(_),
                 Candidates = map.init,
                 append_message(pl_proc(ProcLabel),
-                    error_coverage_procrep_error(Error), !Messages)
+                    warning_cannot_lookup_proc_defn, !Messages)
             )
         ),
         Messages = !.Messages
     ).
-
-:- type coverage_and_instmap_info
-    --->    coverage_and_instmap_info(
-                cai_coverage                :: coverage_info,
-                cai_inst_map_info           :: inst_map_info
-            ).
-
-:- instance goal_annotation_add_instmap(coverage_info,
-    coverage_and_instmap_info) where
-[
-    add_instmap(InstMap, Coverage,
-        coverage_and_instmap_info(Coverage, InstMap))
-].
 
 :- pred build_candidate_par_conjunction_maps(string_proc_label::in,
     var_table::in, candidate_par_conjunction(pard_goal_detail)::in,
@@ -2550,7 +2571,7 @@ compute_var_use_2(Info, ArgNum, RecursionType, MaybeCurDepth, VarUseType, Cost,
             !Messages)
     ).
 
-:- pred goal_build_use_map(goal_rep(coverage_and_instmap_info)::in,
+:- pred goal_build_use_map(goal_rep(goal_id)::in,
     list(goal_path_step)::in, goal_cost_csq::in, implicit_parallelism_info::in,
     var_use_type::in, var_rep::in,
     map(var_rep, lazy(var_use_info))::in,
@@ -2561,15 +2582,15 @@ goal_build_use_map(Goal, RevGoalPathSteps, Cost, Info, VarUseType, Var, !Map) :-
         Cost, Info, VarUseType, Var)),
     svmap.det_insert(Var, LazyUse, !Map).
 
-:- func compute_goal_var_use_lazy(goal_rep(coverage_and_instmap_info),
-    list(goal_path_step), goal_cost_csq, implicit_parallelism_info,
-    var_use_type, var_rep) = var_use_info.
+:- func compute_goal_var_use_lazy(goal_rep(goal_id), list(goal_path_step),
+    goal_cost_csq, implicit_parallelism_info, var_use_type, var_rep)
+    = var_use_info.
 
 compute_goal_var_use_lazy(Goal, RevGoalPathSteps, Cost, Info, VarUseType, Var)
         = Use :-
     Info = implicit_parallelism_info(Deep, _ProgRep, _Params, CliquePtr,
-        CallSiteMap, RecursiveCallSiteMap, RecursionType, _VarTable,
-        _ProcLabel),
+        CallSiteMap, RecursiveCallSiteMap, CoverageArray, _InstMapArray,
+        RecursionType, _VarTable, _ProcLabel),
     CostPercall = goal_cost_get_percall(Cost),
     (
         ( RecursionType = rt_not_recursive
@@ -2581,8 +2602,8 @@ compute_goal_var_use_lazy(Goal, RevGoalPathSteps, Cost, Info, VarUseType, Var)
         VarUseOptions = var_use_options(Deep, FollowCallsAcrossModules,
             VarUseType),
         var_first_use(CliquePtr, CallSiteMap, RecursiveCallSiteMap,
-            RecursionType, RecDepth, Goal, rgp(RevGoalPathSteps),
-            CostPercall, Var, VarUseOptions, Use)
+            CoverageArray, RecursionType, RecDepth, Goal,
+            rgp(RevGoalPathSteps), CostPercall, Var, VarUseOptions, Use)
     ;
         ( RecursionType = rt_divide_and_conquer(_, _)
         ; RecursionType = rt_mutual_recursion(_)
@@ -2600,10 +2621,6 @@ compute_goal_var_use_lazy(Goal, RevGoalPathSteps, Cost, Info, VarUseType, Var)
             write_out_messages(Stderr, Messages, !IO)
         )
     ).
-
-:- instance goal_annotation_with_coverage(coverage_and_instmap_info) where [
-    (get_coverage(Goal) = Goal ^ goal_annotation ^ cai_coverage)
-].
 
 :- pred implicit_par_info_intermodule_var_use(implicit_parallelism_info::in,
     intermodule_var_use::out) is det.
@@ -2689,13 +2706,13 @@ var_get_mode(InstMapBefore, InstMapAfter, VarRep, VarModeRep) :-
     % Transform a goal in a conjunction into a pard_goal.
     %
 :- pred goal_to_pard_goal(implicit_parallelism_info::in,
-    list(goal_path_step)::in, goal_rep(coverage_and_instmap_info)::in,
+    list(goal_path_step)::in, goal_rep(goal_id)::in,
     pard_goal_detail::out, cord(message)::in, cord(message)::out) is det.
 
 goal_to_pard_goal(Info, RevGoalPathSteps, !Goal, !Messages) :-
-    !.Goal = goal_rep(GoalExpr0, Detism, CoverageAndInstMapInfo),
-    InstMapInfo = CoverageAndInstMapInfo ^ cai_inst_map_info,
-    Coverage = CoverageAndInstMapInfo ^ cai_coverage,
+    !.Goal = goal_rep(GoalExpr0, Detism, GoalId),
+    InstMapInfo = get_goal_attribute_det(Info ^ ipi_inst_map_array, GoalId),
+    Coverage = get_goal_attribute_det(Info ^ ipi_coverage_array, GoalId),
     get_coverage_before_det(Coverage, Before),
     (
         (
@@ -2787,7 +2804,7 @@ goal_to_pard_goal(Info, RevGoalPathSteps, !Goal, !Messages) :-
     !:Goal = goal_rep(GoalExpr, Detism, PardGoalAnnotation).
 
 :- pred conj_to_pard_goals(implicit_parallelism_info::in,
-    list(goal_path_step)::in, goal_rep(coverage_and_instmap_info)::in,
+    list(goal_path_step)::in, goal_rep(goal_id)::in,
     pard_goal_detail::out, int::in, int::out,
     cord(message)::in, cord(message)::out) is det.
 
@@ -2797,7 +2814,7 @@ conj_to_pard_goals(Info, RevGoalPathSteps, !Goal, !ConjNum, !Messages) :-
     !:ConjNum = !.ConjNum + 1.
 
 :- pred disj_to_pard_goals(implicit_parallelism_info::in,
-    list(goal_path_step)::in, goal_rep(coverage_and_instmap_info)::in,
+    list(goal_path_step)::in, goal_rep(goal_id)::in,
     pard_goal_detail::out, int::in, int::out,
     cord(message)::in, cord(message)::out) is det.
 
@@ -2807,7 +2824,7 @@ disj_to_pard_goals(Info, RevGoalPathSteps, !Goal, !DisjNum, !Messages) :-
     !:DisjNum = !.DisjNum + 1.
 
 :- pred case_to_pard_goal(implicit_parallelism_info::in,
-    list(goal_path_step)::in, case_rep(coverage_and_instmap_info)::in,
+    list(goal_path_step)::in, case_rep(goal_id)::in,
     case_rep(pard_goal_detail_annotation)::out, int::in, int::out,
     cord(message)::in, cord(message)::out) is det.
 
@@ -2915,10 +2932,6 @@ simple_goal_cost(Calls) = Cost :-
                 im_bound_vars       :: set(var_rep)
             ).
 
-:- typeclass goal_annotation_add_instmap(A, B) where [
-    pred add_instmap(inst_map_info::in, A::in, B::out) is det
-].
-
     % Note: It may be useful to add other annotations such as goal path or cost
     % information.
     %
@@ -2928,53 +2941,50 @@ simple_goal_cost(Calls) = Cost :-
     % Vars is the set of variables used by this goal, both consumed and
     % produced.
     %
-:- pred goal_annotate_with_instmap(goal_rep(A)::in, goal_rep(B)::out,
-    inst_map::in, inst_map::out, seen_duplicate_instantiation::out,
-    set(var_rep)::out, set(var_rep)::out) is det
-    <= goal_annotation_add_instmap(A, B).
+:- pred goal_annotate_with_instmap(goal_rep(goal_id)::in,
+    seen_duplicate_instantiation::out,
+    set(var_rep)::out, set(var_rep)::out,
+    inst_map::in, inst_map::out,
+    goal_attr_array(inst_map_info)::gaa_di,
+    goal_attr_array(inst_map_info)::gaa_uo) is det.
 
-goal_annotate_with_instmap(Goal0, Goal, !InstMap, SeenDuplicateInstantiation,
-        ConsumedVars, BoundVars) :-
-    Goal0 = goal_rep(GoalExpr0, Detism, Ann0),
+goal_annotate_with_instmap(Goal, SeenDuplicateInstantiation, ConsumedVars,
+        BoundVars, !InstMap, !InstMapArray) :-
+    Goal = goal_rep(GoalExpr, _, GoalId),
     InstMapBefore = !.InstMap,
     (
-        GoalExpr0 = conj_rep(Conjs0),
-        conj_annotate_with_instmap(Conjs0, Conjs, !InstMap,
-            SeenDuplicateInstantiation, ConsumedVars, BoundVars),
-        GoalExpr = conj_rep(Conjs)
+        GoalExpr = conj_rep(Conjs),
+        conj_annotate_with_instmap(Conjs, SeenDuplicateInstantiation,
+            ConsumedVars, BoundVars, !InstMap, !InstMapArray)
     ;
-        GoalExpr0 = disj_rep(Disjs0),
-        disj_annotate_with_instmap(Disjs0, Disjs, !InstMap,
-            SeenDuplicateInstantiation, ConsumedVars, BoundVars),
-        GoalExpr = disj_rep(Disjs)
+        GoalExpr = disj_rep(Disjs),
+        disj_annotate_with_instmap(Disjs, SeenDuplicateInstantiation,
+            ConsumedVars, BoundVars, !InstMap, !InstMapArray)
     ;
-        GoalExpr0 = switch_rep(Var, CanFail, Cases0),
-        switch_annotate_with_instmap(Cases0, Cases, !InstMap,
-            SeenDuplicateInstantiation, ConsumedVars0, BoundVars),
-        set.insert(ConsumedVars0, Var, ConsumedVars),
-        GoalExpr = switch_rep(Var, CanFail, Cases)
+        GoalExpr = switch_rep(Var, _CanFail, Cases),
+        switch_annotate_with_instmap(Cases, SeenDuplicateInstantiation,
+            ConsumedVars0, BoundVars, !InstMap, !InstMapArray),
+        set.insert(ConsumedVars0, Var, ConsumedVars)
     ;
-        GoalExpr0 = ite_rep(Cond0, Then0, Else0),
-        ite_annotate_with_instmap(Cond0, Cond, Then0, Then, Else0, Else,
-            !InstMap, SeenDuplicateInstantiation, ConsumedVars, BoundVars),
-        GoalExpr = ite_rep(Cond, Then, Else)
+        GoalExpr = ite_rep(Cond, Then, Else),
+        ite_annotate_with_instmap(Cond, Then, Else,
+            SeenDuplicateInstantiation, ConsumedVars, BoundVars,
+            !InstMap, !InstMapArray)
     ;
         % XXX: Not all scope goals can produce variables, in fact some are used
         % to isolate variables that aren't named apart.  But other scope goals
         % can bind variables.  We don't know which we're looking at here.
-        GoalExpr0 = scope_rep(Subgoal0, MaybeCut),
-        goal_annotate_with_instmap(Subgoal0, Subgoal, !InstMap,
-            SeenDuplicateInstantiation, ConsumedVars, BoundVars),
-        GoalExpr = scope_rep(Subgoal, MaybeCut)
+        GoalExpr = scope_rep(Subgoal, _MaybeCut),
+        goal_annotate_with_instmap(Subgoal, SeenDuplicateInstantiation,
+            ConsumedVars, BoundVars, !InstMap, !InstMapArray)
     ;
-        GoalExpr0 = negation_rep(Subgoal0),
+        GoalExpr = negation_rep(Subgoal),
         % A negated goal cannot affect instantiation.
-        goal_annotate_with_instmap(Subgoal0, Subgoal, !.InstMap,
-            _InstMap, SeenDuplicateInstantiation, ConsumedVars, _),
-        BoundVars = set.init,
-        GoalExpr = negation_rep(Subgoal)
+        goal_annotate_with_instmap(Subgoal, SeenDuplicateInstantiation,
+            ConsumedVars, _, !.InstMap, _InstMap, !InstMapArray),
+        BoundVars = set.init
     ;
-        GoalExpr0 = atomic_goal_rep(File, Line, BoundVarsList, AtomicGoal),
+        GoalExpr = atomic_goal_rep(_File, _Line, BoundVarsList, AtomicGoal),
         % The binding of a variable may depend on any number of other
         % variables, and recursively the variables that those depended-on
         % variables depend upon.
@@ -2987,48 +2997,50 @@ goal_annotate_with_instmap(Goal0, Goal, !InstMap, SeenDuplicateInstantiation,
         BoundVars = set.from_list(BoundVarsList),
         set.difference(Vars, BoundVars, ConsumedVars),
         inst_map_ground_vars(BoundVarsList, ConsumedVars, !InstMap,
-            SeenDuplicateInstantiation),
-        GoalExpr = atomic_goal_rep(File, Line, BoundVarsList, AtomicGoal)
+            SeenDuplicateInstantiation)
     ),
     InstMapAfter = !.InstMap,
     InstMapInfo = inst_map_info(InstMapBefore, InstMapAfter, ConsumedVars,
         BoundVars),
-    add_instmap(InstMapInfo, Ann0, Ann),
-    Goal = goal_rep(GoalExpr, Detism, Ann).
+    update_goal_attribute(GoalId, InstMapInfo, !InstMapArray).
 
-:- pred conj_annotate_with_instmap(list(goal_rep(A))::in,
-    list(goal_rep(B))::out, inst_map::in, inst_map::out,
-    seen_duplicate_instantiation::out, set(var_rep)::out, set(var_rep)::out)
-    is det <= goal_annotation_add_instmap(A, B).
+:- pred conj_annotate_with_instmap(list(goal_rep(goal_id))::in,
+    seen_duplicate_instantiation::out, set(var_rep)::out, set(var_rep)::out,
+    inst_map::in, inst_map::out,
+    goal_attr_array(inst_map_info)::gaa_di,
+    goal_attr_array(inst_map_info)::gaa_uo) is det.
 
-conj_annotate_with_instmap([], [], !InstMap,
-    have_not_seen_duplicate_instantiation, set.init, set.init).
-conj_annotate_with_instmap([Conj0 | Conjs0], [Conj | Conjs], !InstMap,
-        SeenDuplicateInstantiation, ConsumedVars, BoundVars) :-
-    goal_annotate_with_instmap(Conj0, Conj, !InstMap,
-        SeenDuplicateInstantiationHead, ConsumedVarsHead, BoundVarsHead),
-    conj_annotate_with_instmap(Conjs0, Conjs, !InstMap,
-        SeenDuplicateInstantiationTail, ConsumedVarsTail, BoundVarsTail),
+conj_annotate_with_instmap([], have_not_seen_duplicate_instantiation,
+        set.init, set.init, !InstMap, !InstMapArray).
+conj_annotate_with_instmap([Conj | Conjs], SeenDuplicateInstantiation,
+        ConsumedVars, BoundVars, !InstMap, !InstMapArray) :-
+    goal_annotate_with_instmap(Conj, SeenDuplicateInstantiationHead,
+        ConsumedVarsHead, BoundVarsHead, !InstMap, !InstMapArray),
+    conj_annotate_with_instmap(Conjs, SeenDuplicateInstantiationTail,
+        ConsumedVarsTail, BoundVarsTail, !InstMap, !InstMapArray),
     set.union(ConsumedVarsTail, ConsumedVarsHead, ConsumedVars),
     set.union(BoundVarsTail, BoundVarsHead, BoundVars),
     SeenDuplicateInstantiation = merge_seen_duplicate_instantiation(
         SeenDuplicateInstantiationHead,
         SeenDuplicateInstantiationTail).
 
-:- pred disj_annotate_with_instmap(list(goal_rep(A))::in,
-    list(goal_rep(B))::out, inst_map::in, inst_map::out,
-    seen_duplicate_instantiation::out, set(var_rep)::out, set(var_rep)::out)
-    is det <= goal_annotation_add_instmap(A, B).
+:- pred disj_annotate_with_instmap(list(goal_rep(goal_id))::in,
+    seen_duplicate_instantiation::out, set(var_rep)::out, set(var_rep)::out,
+    inst_map::in, inst_map::out,
+    goal_attr_array(inst_map_info)::gaa_di,
+    goal_attr_array(inst_map_info)::gaa_uo) is det.
 
-disj_annotate_with_instmap([], [], !InstMap,
-        have_not_seen_duplicate_instantiation, set.init, set.init).
-disj_annotate_with_instmap([Disj0 | Disjs0], [Disj | Disjs], InstMap0, InstMap,
-        SeenDuplicateInstantiation, ConsumedVars, BoundVars) :-
-    HeadDetism = Disj0 ^ goal_detism_rep,
-    goal_annotate_with_instmap(Disj0, Disj, InstMap0, InstMapHead,
-        SeenDuplicateInstantiationHead, ConsumedVarsHead, BoundVarsHead),
-    disj_annotate_with_instmap(Disjs0, Disjs, InstMap0, InstMapTail,
-        SeenDuplicateInstantiationTail, ConsumedVarsTail, BoundVarsTail),
+disj_annotate_with_instmap([], have_not_seen_duplicate_instantiation,
+        set.init, set.init, !InstMap, !InstMapArray).
+disj_annotate_with_instmap([Disj | Disjs], SeenDuplicateInstantiation,
+        ConsumedVars, BoundVars, InstMap0, InstMap, !InstMapArray) :-
+    HeadDetism = Disj ^ goal_detism_rep,
+    goal_annotate_with_instmap(Disj, SeenDuplicateInstantiationHead,
+        ConsumedVarsHead, BoundVarsHead, InstMap0, InstMapHead,
+        !InstMapArray),
+    disj_annotate_with_instmap(Disjs, SeenDuplicateInstantiationTail,
+        ConsumedVarsTail, BoundVarsTail, InstMap0, InstMapTail,
+        !InstMapArray),
 
     set.union(ConsumedVarsTail, ConsumedVarsHead, ConsumedVars),
 
@@ -3052,23 +3064,24 @@ disj_annotate_with_instmap([Disj0 | Disjs0], [Disj | Disjs], InstMap0, InstMap,
         SeenDuplicateInstantiationHead,
         SeenDuplicateInstantiationTail).
 
-:- pred switch_annotate_with_instmap(list(case_rep(A))::in,
-    list(case_rep(B))::out, inst_map::in, inst_map::out,
-    seen_duplicate_instantiation::out, set(var_rep)::out, set(var_rep)::out)
-    is det <= goal_annotation_add_instmap(A, B).
+:- pred switch_annotate_with_instmap(list(case_rep(goal_id))::in,
+    seen_duplicate_instantiation::out, set(var_rep)::out, set(var_rep)::out,
+    inst_map::in, inst_map::out,
+    goal_attr_array(inst_map_info)::gaa_di,
+    goal_attr_array(inst_map_info)::gaa_uo) is det.
 
-switch_annotate_with_instmap([], [], !InstMap,
-        have_not_seen_duplicate_instantiation, set.init, set.init).
-switch_annotate_with_instmap([Case0 | Cases0], [Case | Cases],
-        InstMap0, InstMap, SeenDuplicateInstantiation,
-        ConsumedVars, BoundVars) :-
-    Case0 = case_rep(ConsIdArity, ExtraConsIdAritys, Goal0),
-    HeadDetism = Goal0 ^ goal_detism_rep,
-    goal_annotate_with_instmap(Goal0, Goal, InstMap0, InstMapHead,
-        SeenDuplicateInstantiationHead, ConsumedVarsHead, BoundVarsHead),
-    Case = case_rep(ConsIdArity, ExtraConsIdAritys, Goal),
-    switch_annotate_with_instmap(Cases0, Cases, InstMap0, InstMapTail,
-        SeenDuplicateInstantiationTail, ConsumedVarsTail, BoundVarsTail),
+switch_annotate_with_instmap([], have_not_seen_duplicate_instantiation,
+        set.init, set.init, !InstMap, !InstMapArray).
+switch_annotate_with_instmap([Case | Cases], SeenDuplicateInstantiation,
+        ConsumedVars, BoundVars, InstMap0, InstMap, !InstMapArray) :-
+    Case = case_rep(_, _, Goal),
+    HeadDetism = Goal ^ goal_detism_rep,
+    goal_annotate_with_instmap(Goal, SeenDuplicateInstantiationHead,
+        ConsumedVarsHead, BoundVarsHead, InstMap0, InstMapHead,
+        !InstMapArray),
+    switch_annotate_with_instmap(Cases, SeenDuplicateInstantiationTail,
+        ConsumedVarsTail, BoundVarsTail, InstMap0, InstMapTail,
+        !InstMapArray),
     set.union(ConsumedVarsTail, ConsumedVarsHead, ConsumedVars),
     % merge_inst_map requires the detism of goals that produce both inst maps,
     % we can create fake values that satisfy merge_inst_map easily.
@@ -3086,22 +3099,24 @@ switch_annotate_with_instmap([Case0 | Cases0], [Case | Cases],
         SeenDuplicateInstantiationHead,
         SeenDuplicateInstantiationTail).
 
-:- pred ite_annotate_with_instmap(goal_rep(A)::in, goal_rep(B)::out,
-    goal_rep(A)::in, goal_rep(B)::out,
-    goal_rep(A)::in, goal_rep(B)::out,
+:- pred ite_annotate_with_instmap(goal_rep(goal_id)::in,
+    goal_rep(goal_id)::in, goal_rep(goal_id)::in,
+    seen_duplicate_instantiation::out, set(var_rep)::out, set(var_rep)::out,
     inst_map::in, inst_map::out,
-    seen_duplicate_instantiation::out, set(var_rep)::out, set(var_rep)::out)
-    is det <= goal_annotation_add_instmap(A, B).
+    goal_attr_array(inst_map_info)::gaa_di,
+    goal_attr_array(inst_map_info)::gaa_uo) is det.
 
-ite_annotate_with_instmap(Cond0, Cond, Then0, Then, Else0, Else,
-        InstMap0, InstMap, SeenDuplicateInstantiation,
-        ConsumedVars, BoundVars) :-
-    goal_annotate_with_instmap(Cond0, Cond, InstMap0, InstMapAfterCond,
-        SeenDuplicateInstantiationCond, ConsumedVarsCond, _BoundVarsCond),
-    goal_annotate_with_instmap(Then0, Then, InstMapAfterCond, InstMapAfterThen,
-        SeenDuplicateInstantiationThen, ConsumedVarsThen, BoundVarsThen),
-    goal_annotate_with_instmap(Else0, Else, InstMap0, InstMapAfterElse,
-        SeenDuplicateInstantiationElse, ConsumedVarsElse, BoundVarsElse),
+ite_annotate_with_instmap(Cond, Then, Else, SeenDuplicateInstantiation,
+        ConsumedVars, BoundVars, InstMap0, InstMap, !InstMapArray) :-
+    goal_annotate_with_instmap(Cond, SeenDuplicateInstantiationCond,
+        ConsumedVarsCond, _BoundVarsCond, InstMap0, InstMapAfterCond,
+        !InstMapArray),
+    goal_annotate_with_instmap(Then, SeenDuplicateInstantiationThen,
+        ConsumedVarsThen, BoundVarsThen, InstMapAfterCond, InstMapAfterThen,
+        !InstMapArray),
+    goal_annotate_with_instmap(Else, SeenDuplicateInstantiationElse,
+        ConsumedVarsElse, BoundVarsElse, InstMap0, InstMapAfterElse,
+        !InstMapArray),
     (
         SeenDuplicateInstantiationCond = have_not_seen_duplicate_instantiation,
         SeenDuplicateInstantiationThen = have_not_seen_duplicate_instantiation,
@@ -3367,8 +3382,8 @@ format_parallel_conjuncts(VarTable, Indent, RevGoalPathSteps, ConjNum0,
         (
             GoalsTail = [],
             % A singleton conjunction gets printed as a single goal.
-            print_goal_to_strings(VarTable, Indent + 1, RevInnerGoalPathSteps,
-                Goal, ConjReport)
+            print_goal_to_strings(print_goal_info(id, VarTable), Indent + 1,
+                RevInnerGoalPathSteps, Goal, ConjReport)
         ;
             GoalsTail = [_ | _],
             Cost = foldl(
@@ -3419,7 +3434,7 @@ format_sequential_conjunction(VarTable, Indent, RevGoalPathSteps, Goals, Cost,
 format_sequential_conjuncts(_, _, _, [], !ConjNum, !Report).
 format_sequential_conjuncts(VarTable, Indent, RevGoalPathSteps, [Conj | Conjs],
         !ConjNum, !Report) :-
-    print_goal_to_strings(VarTable, Indent,
+    print_goal_to_strings(print_goal_info(id, VarTable), Indent,
         [step_conj(!.ConjNum) | RevGoalPathSteps], Conj, ConjReport),
     !:Report = !.Report ++ ConjReport,
     !:ConjNum = !.ConjNum + 1,

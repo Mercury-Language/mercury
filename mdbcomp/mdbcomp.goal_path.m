@@ -51,6 +51,7 @@
 :- module mdbcomp.goal_path.
 :- interface.
 
+:- import_module array.
 :- import_module bimap.
 :- import_module char.
 :- import_module list.
@@ -250,12 +251,47 @@
     goal_reverse_path_bimap.
 
 %-----------------------------------------------------------------------------%
+
+:- type goal_attr_array(T)
+    --->    goal_attr_array(array(maybe(T))).
+
+    % This isn't really unique, see the commends at the type of library/array.m
+    %
+:- inst uniq_goal_attr_array
+    --->    goal_attr_array(uniq_array).
+
+:- mode gaa_di == di(uniq_goal_attr_array).
+:- mode gaa_uo == out(uniq_goal_attr_array).
+
+    % create_goal_id_array(LastGoalId) = Array.
+    %
+    % Create an array of the correct size to label all the goals up to and
+    % including LastGoalId.
+    %
+:- func create_goal_id_array(goal_id) = goal_attr_array(T).
+:- mode create_goal_id_array(in) = gaa_uo is det.
+
+    % update_goal_attribute(GoalId, Attribute, !Array),
+    %
+    % Make Attirubte the new attribute for GoalId in !:Array.
+    %
+:- pred update_goal_attribute(goal_id::in, T::in,
+    goal_attr_array(T)::gaa_di, goal_attr_array(T)::gaa_uo) is det.
+
+    % get_goal_attribute(Arra, GoalId) = Attribute.
+    %
+    % Get a goal attribute.
+    %
+:- func get_goal_attribute_det(goal_attr_array(T), goal_id) = T.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module assoc_list.
 :- import_module cord.
+:- import_module int.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
@@ -522,6 +558,24 @@ create_reverse_goal_path_bimap_2([Head | Tail], !ReverseGoalPathBiMap) :-
     ),
     svbimap.det_insert(GoalId, GoalReversePath, !ReverseGoalPathBiMap),
     create_reverse_goal_path_bimap_2(Tail, !ReverseGoalPathBiMap).
+
+%-----------------------------------------------------------------------------%
+
+create_goal_id_array(goal_id(LastGoalIdNum)) =
+    goal_attr_array(array.init(LastGoalIdNum + 1, no)).
+
+update_goal_attribute(goal_id(Index), Value, goal_attr_array(!.Array),
+        goal_attr_array(!:Array)) :-
+    array.svset(Index, yes(Value), !Array).
+
+get_goal_attribute_det(goal_attr_array(Array), goal_id(Index)) = Attr :-
+    MaybeAttr = array.lookup(Array, Index),
+    (
+        MaybeAttr = yes(Attr)
+    ;
+        MaybeAttr = no,
+        unexpected($module, $pred, "Goal attribute array slot empty")
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

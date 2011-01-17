@@ -2014,8 +2014,10 @@ make_proc_callers_link(Prefs, Label, PSPtr, CallerGroups, BunchNum, BunchSize,
     procrep_coverage_info::in, display::out) is det.
 
 display_report_procrep_coverage_info(Prefs, ProcrepCoverageReport, Display) :-
-    ProcrepCoverageReport = procrep_coverage_info(PSPtr, ProcrepCoverage),
-    print_proc_to_strings(ProcrepCoverage, ProcRepStrings),
+    ProcrepCoverageReport =
+        procrep_coverage_info(PSPtr, Procrep, CoverageArray),
+    print_proc_to_strings(get_goal_attribute_det(CoverageArray), Procrep,
+        ProcRepStrings),
     string.append_list(list(ProcRepStrings), ProcRepString),
     CoverageInfoItem = display_verbatim(ProcRepString),
 
