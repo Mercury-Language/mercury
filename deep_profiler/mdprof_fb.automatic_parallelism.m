@@ -806,7 +806,7 @@ goal_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
 
 conj_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
         !Conj, Candidates, Messages, !ConjNum) :-
-    RevConjGoalPathSteps = [step_disj(!.ConjNum) | RevGoalPathSteps],
+    RevConjGoalPathSteps = [step_conj(!.ConjNum) | RevGoalPathSteps],
     goal_get_conjunctions_worth_parallelising(Info, RevConjGoalPathSteps,
         !Conj, Candidates, Messages),
     !:ConjNum = !.ConjNum + 1.
@@ -2354,7 +2354,8 @@ pardgoal_consumed_vars_accum(Goal, !Vars) :-
 can_parallelise_goal(Goal) :-
     Detism = Goal ^ goal_detism_rep,
     ( Detism = det_rep
-    ; Detism = cc_multidet_rep ).
+    ; Detism = cc_multidet_rep
+    ).
     % XXX We would check purity here except that purity information is not
     % present in the bytecode.
 
