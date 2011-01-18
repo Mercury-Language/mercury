@@ -12,12 +12,11 @@
 %
 % This file encapsulates all the file I/O.
 %
-% We implement a purely logical I/O system using non-logical I/O primitives
-% of the underlying system (C, Java or IL).
-% We ensure referential transparency by passing around a ``state-of-the-world''
-% argument using unique modes. The compiler will check that the state of the
-% world argument is properly single-threaded, and will also ensure that you
-% don't attempt to backtrack over any I/O.
+% We implement a purely logical I/O system using non-logical I/O primitives of
+% the underlying system.  We ensure referential transparency by passing around
+% a ``state-of-the-world'' argument using unique modes. The compiler will check
+% that the state of the world argument is properly single-threaded, and will
+% also ensure that you don't attempt to backtrack over any I/O.
 %
 % Attempting any operation on a stream which has already been closed results
 % in undefined behaviour.
@@ -1202,10 +1201,10 @@
 :- pred io.get_exit_status(int::out, io::di, io::uo) is det.
 :- pred io.set_exit_status(int::in, io::di, io::uo) is det.
 
-    % The I/O state includes a `globals' field which is not used by the I/O
-    % library, but can be used by the application. The globals field is
-    % of type `univ' so that the application can store any data it wants there.
-    % The following predicates can be used to access this global state.
+    % The I/O state includes a `globals' field which is not used by the
+    % standard library, but can be used by the application. The globals field
+    % is of type `univ' so that the application can store any data it wants
+    % there.  The following predicates can be used to access this global state.
     %
     % Does not modify the I/O state.
     %
@@ -5217,8 +5216,6 @@ io.may_delete_stream_info(1, !IO).
 %
 % Global state predicates
 %
-    % XXX design flaw with regard to unique modes
-    % and io.get_globals/3: the `Globals::uo' mode here is a lie.
 
 io.get_globals(Globals, !IO) :-
     io.lock_globals(!IO),
