@@ -13,11 +13,16 @@
 %------------------------------------------------------------------------------%
 
 :- module grammar.
-
 :- interface.
 
-:- import_module misc.
-:- import_module array, list, map, set, term, varset.
+:- import_module array.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module term.
+:- import_module varset.
+
+%------------------------------------------------------------------------------%
 
 :- type grammar	
 	--->	grammar(
@@ -87,7 +92,7 @@
 			context		% context of the declaration.
 		).
 
-:- type rules	== (int -> (rule)).
+:- type rules == map(int, (rule)).
 
 :- type (rule)
 	--->	rule(
@@ -106,11 +111,11 @@
 			string
 		).
 
-:- type xforms	==	(nonterminal -> xform).
+:- type xforms == map(nonterminal, xform).
 
-:- type first	==	(nonterminal -> set(terminal)).
+:- type first == map(nonterminal, set(terminal)).
 
-:- type follow	==	(nonterminal -> set(terminal)).
+:- type follow == map(nonterminal, set(terminal)).
 
 :- type state	== int.
 
@@ -119,9 +124,11 @@
 	;	shift(int)
 	;	reduce(int).
 
-:- type actiontable == (state -> terminal -> action).
+:- type actiontable == map(state, map(terminal, action)).
+%:- type actiontable == (state -> terminal -> action).
 
-:- type gototable == (state -> nonterminal -> state).
+:- type gototable == map(state, map(nonterminal, state)).
+%:- type gototable == (state -> nonterminal -> state).
 
 :- pred term_to_clause(term, varset, nonterminal, clause).
 :- mode term_to_clause(in, in, out, out) is semidet.
@@ -145,13 +152,16 @@
 :- func first(first, symbols, int) = set(terminal).
 
 %------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module misc.
-:- import_module bool, int, require, pair, string, solutions.
-
-%------------------------------------------------------------------------------%
+:- import_module bool.
+:- import_module int.
+:- import_module require.
+:- import_module pair.
+:- import_module string.
+:- import_module solutions.
 
 %------------------------------------------------------------------------------%
 
@@ -409,7 +419,7 @@ compute_first(_RuleNum, Rule, Stuff0, Stuff) :-
 	;
 			% There were no literals in the body of the rule,
 			% so it was an epsilon rule.
-		ComputedFirst = { epsilon }
+		ComputedFirst = set.make_singleton_set(epsilon)
 	),
 			% Add the computed first set to what we currently
 			% know, noting whether or not anything has changed.
@@ -454,7 +464,8 @@ compute_first(I, IMax, Elems, First, Set0, Set) :-
 				% this rule is certainly not nullable.
 			Elem = terminal(Id),
 			set.insert(Set0, Id, Set1),
-			set.difference(Set1, { epsilon }, Set)
+			set.difference(Set1, set.make_singleton_set(epsilon),
+				Set)
 		;
 			Elem = nonterminal(Id),
 			( map.search(First, Id, Set1) ->
@@ -470,7 +481,8 @@ compute_first(I, IMax, Elems, First, Set0, Set) :-
 					compute_first(I + 1, IMax, Elems, First,
 						Set2, Set)
 				;
-					set.difference(Set2, { epsilon }, Set)
+					set.difference(Set2,
+					    set.make_singleton_set(epsilon), Set)
 				)
 			;
 					% If we don't know anything about
@@ -560,7 +572,7 @@ compute_follow0(Grammar0, Grammar) :-
 compute_follow(Rules, Start, EOF, First, Follow) :-
 	map.init(Follow0),
 		% Rule 1
-	map.set(Follow0, Start, { EOF }, Follow1),
+	map.set(Follow0, Start, set.make_singleton_set(EOF), Follow1),
 	collect_nonterminals(Rules, Ns),
 	Stuff0 = stuff(no, Ns, Rules, First, Follow1),
 	until((pred(Stuff1::in, Stuff3::out) is det :-
@@ -592,7 +604,8 @@ compute_follow2(I, IMax, First, Elems, Stuff0, Stuff) :-
 		lookup(Elems, I, Elem),
 		( Elem = nonterminal(Id) ->
 			IdFollow0 = first(First, Elems, I + 1),
-			difference(IdFollow0, { epsilon }, IdFollow),
+			difference(IdFollow0, set.make_singleton_set(epsilon),
+				IdFollow),
 			add_follow(Id, IdFollow, Stuff0, Stuff1)
 		;
 			Stuff1 = Stuff0
@@ -666,7 +679,7 @@ first(First, Elems, I) = FirstI :-
 		array.lookup(Elems, I, Elem),
 		(
 			Elem = terminal(Id),
-			FirstI = { Id }
+			FirstI = set.make_singleton_set(Id)
 		;
 			Elem = nonterminal(Id),
 			map.lookup(First, Id, FirstI0),
@@ -678,7 +691,7 @@ first(First, Elems, I) = FirstI :-
 			)
 		)
 	;
-		FirstI = { epsilon }
+		FirstI = set.make_singleton_set(epsilon)
 	).
 
 %------------------------------------------------------------------------------%

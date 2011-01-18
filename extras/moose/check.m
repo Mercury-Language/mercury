@@ -22,11 +22,16 @@
 %------------------------------------------------------------------------------%
 
 :- module check.
-
 :- interface.
 
 :- import_module grammar.
-:- import_module io, list, string, term.
+
+:- import_module io.
+:- import_module list.
+:- import_module string.
+:- import_module term.
+
+%------------------------------------------------------------------------------%
 
 :- type check.error
 	--->	error(list(string), context).
@@ -47,10 +52,15 @@
 :- pred write_error(check.error, io.state, io.state).
 :- mode write_error(in, di, uo) is det.
 
+%------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
+
 :- implementation.
 
-:- import_module misc.
-:- import_module map, require, set, solutions.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module solutions.
 
 %------------------------------------------------------------------------------%
 
@@ -92,8 +102,8 @@ check_clauses(ClauseList, Decls, Clauses, Errors) :-
 	set.sorted_list_to_set(DeclIds, DeclSet),
 	map.keys(Clauses, ClauseIds),
 	set.sorted_list_to_set(ClauseIds, ClauseSet),
-	NoDeclSet = ClauseSet - DeclSet,
-	NoClauseSet = DeclSet - ClauseSet,
+	NoDeclSet = ClauseSet `set.difference` DeclSet,
+	NoClauseSet = DeclSet `set.difference` ClauseSet,
 
 		% Productions that have no rule declaration.
 	set.to_sorted_list(NoDeclSet, NoDeclList),
@@ -166,11 +176,11 @@ check_clauses0([Clause | ClauseList], Decls, !Clauses, Errors) :-
 %------------------------------------------------------------------------------%
 
 check_useless(Start, Clauses, Decls, Errors) :-
-	StartSet = { Start }, 
+	StartSet = set.make_singleton_set(Start), 
 	useful(StartSet, Clauses, StartSet, UsefulSet),
 	map.keys(Clauses, AllIds),
 	set.sorted_list_to_set(AllIds, AllSet),
-	UselessSet = AllSet - UsefulSet,
+	UselessSet = AllSet `set.difference` UsefulSet,
 	set.to_sorted_list(UselessSet, UselessList),
 	list.filter_map((pred(UselessId::in, Error::out) is semidet :-
 			% Use search rather than lookup in case
@@ -199,8 +209,8 @@ useful(New0, Clauses, !Useful) :-
 			Clause = clause(_Head, Prod, _VarSet, _Context),
 			nonterminal(UId, Prod)
 		), NewSet),
-		New1 = NewSet - !.Useful,
-		!:Useful = New1 \/ !.Useful,
+		New1 = NewSet `set.difference` !.Useful,
+		!:Useful = New1 `set.union`!.Useful,
 		useful(New1, Clauses, !Useful)
 	).
 
@@ -263,12 +273,12 @@ finite(!.Inf, Fin0, Clauses, !:Inf) :-
 			)
 		)
 	), NewFinSet),
-	NewFin = NewFinSet - Fin0,
+	NewFin = NewFinSet `set.difference` Fin0,
 	( set.empty(NewFin) ->
 		true
 	;
-		!:Inf = !.Inf - NewFin,
-		Fin = Fin0 \/ NewFin,
+		!:Inf = !.Inf `set.difference` NewFin,
+		Fin = Fin0 `set.union` NewFin,
 		finite(!.Inf, Fin, Clauses, !:Inf)
 	).
 

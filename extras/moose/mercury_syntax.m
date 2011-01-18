@@ -5,10 +5,14 @@
 %----------------------------------------------------------------------------%
 
 :- module mercury_syntax.
-
 :- interface.
 
-:- import_module io, list, term, varset.
+:- import_module io.
+:- import_module list.
+:- import_module term.
+:- import_module varset.
+
+%----------------------------------------------------------------------------%
 
 :- type (module) == list(element).
 
@@ -76,9 +80,16 @@
 
 :- type vars == list(var).
 
+%------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
+
 :- implementation.
 
-:- import_module int, require, pair, string, term_io.
+:- import_module int.
+:- import_module pair.
+:- import_module require.
+:- import_module string.
+:- import_module term_io.
 
 %------------------------------------------------------------------------------%
 

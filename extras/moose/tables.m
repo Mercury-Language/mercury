@@ -5,15 +5,21 @@
 %----------------------------------------------------------------------------%
 
 :- module tables.
-
 :- interface.
 
-:- import_module grammar, lalr, misc.
-:- import_module int, list, set.
+:- import_module grammar.
+:- import_module lalr.
 
-:- type states == (items -> int).
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module set.
 
-:- type shifts == (nonterminal -> set(terminal)).
+%----------------------------------------------------------------------------%
+
+:- type states == map(items, int).
+
+:- type shifts == map(nonterminal, set(terminal)).
 
 :- type actionerrors == list(actionerr).
 
@@ -42,9 +48,17 @@
 :- pred gotos(set(items), states, gotos, gototable).
 :- mode gotos(in, in, in, out) is det.
 
+%------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
+
 :- implementation.
 
-:- import_module array, bool, map, require, std_util, term.
+:- import_module array.
+:- import_module bool.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module term.
 
 %------------------------------------------------------------------------------%
 
@@ -58,7 +72,7 @@ shifts(_C, _Rules, First, Reaching, !:Shifts) :-
 		),
 		list.map(map.lookup(First), Ns1, Ts1),
 		list.foldl(set.union, Ts1, Ts0, Ts2),
-		Ts = Ts2 - { epsilon },
+		Ts = Ts2 `set.difference` set.make_singleton_set(epsilon),
 		map.set(!.Shifts, N, Ts, !:Shifts)
 	), First, !Shifts).
 
@@ -106,13 +120,13 @@ actions2([A | As], I, Sn, Rules, LA, States, Gotos, Shifts, !Actions, !Errs) :-
 		map.lookup(Gotos, I, IGs),
 		(
 			X = terminal(T0),
-			Ts = { T0 }
+			Ts = set.make_singleton_set(T0)
 		;
 			X = nonterminal(N),
 			( map.search(Shifts, N, Ts0) ->
 				Ts = Ts0
 			;
-				Ts = empty
+				set.init(Ts)
 			)
 		),
 		set.to_sorted_list(Ts, TList),

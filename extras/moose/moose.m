@@ -12,18 +12,41 @@
 %----------------------------------------------------------------------------%
 
 :- module moose.
-
 :- interface.
 
 :- import_module io.
 
+%----------------------------------------------------------------------------%
+
 :- pred main(io::di, io::uo) is det.
+
+%----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module grammar, lalr, tables, check, mercury_syntax, misc, options.
-:- import_module array, bool, getopt, int, list, map, require.
-:- import_module set, pair, string, term, term_io, varset.
+:- import_module check.
+:- import_module grammar.
+:- import_module lalr.
+:- import_module mercury_syntax.
+:- import_module options.
+:- import_module tables.
+
+:- import_module array.
+:- import_module bool.
+:- import_module getopt.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module pair.
+:- import_module require.
+:- import_module set.
+:- import_module string.
+:- import_module term.
+:- import_module term_io.
+:- import_module varset.
+
+%----------------------------------------------------------------------------%
 
 main(!IO) :-
     parse_options(MOptions, Args, !IO),
@@ -490,7 +513,7 @@ actions(%s, Tok, Action, Value) :-
         write_state_actions(SS, End, StateActions, !IO)
     ), Table, !IO).
 
-:- pred write_state_actions(string, term, (terminal -> action),
+:- pred write_state_actions(string, term, map(terminal, action),
         io, io).
 :- mode write_state_actions(in, in, in, di, uo) is det.
 
@@ -585,7 +608,7 @@ write_nonterminal_type(Ds, !IO) :-
     write_element(nolines, Element, !IO),
     io.nl(!IO).
 
-:- pred write_state_gotos(string, (nonterminal -> grammar.state), io, io).
+:- pred write_state_gotos(string, map(nonterminal, grammar.state), io, io).
 :- mode write_state_gotos(in, in, di, uo) is det.
 
 write_state_gotos(SS, StateActions, !IO) :-

@@ -10,19 +10,26 @@
 % This module builds the lalr items and lookaheads for the grammar.
 %
 %------------------------------------------------------------------------------%
-:- module lalr.
 
+:- module lalr.
 :- interface.
 
-:- import_module grammar, misc.
-:- import_module int, io, set.
+:- import_module grammar.
+
+:- import_module int.
+:- import_module io.
+:- import_module map.
+:- import_module pair.
+:- import_module set.
+
+%------------------------------------------------------------------------------%
 
 :- type item
 	--->	item(prodnum, dot).
 
 :- type items	== set(item).
 
-:- type gotos	== (items -> symbol -> items).
+:- type gotos	== map(items, map(symbol, items)).
 
 :- type lr1item
 	--->	item(prodnum, dot, terminal).
@@ -33,13 +40,13 @@
 
 :- type dot	== int.
 
-:- type reaching == (nonterminal -> set(nonterminal)).
+:- type reaching == map(nonterminal, set(nonterminal)).
 
-:- type propaheads == (items -> item -> items -> items).
+:- type propaheads == map(items, map(item, map(items, items))).
 
-:- type lookaheads == (items -> item -> set(terminal)).
+:- type lookaheads == map(items, map(item, set(terminal))).
 
-:- type previews == (lookaheads - propaheads).
+:- type previews == pair(lookaheads, propaheads).
 
 :- pred reaching(rules, first, reaching).
 :- mode reaching(in, in, out) is det.
@@ -51,9 +58,18 @@
 		io.state, io.state).
 :- mode lookaheads(in, in, in, in, in, out, di, uo) is det.
 
+%------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
+
 :- implementation.
 
-:- import_module array, bool, list, map, require, pair, term.
+:- import_module array.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module pair.
+:- import_module require.
+:- import_module term.
 
 %------------------------------------------------------------------------------%
 
@@ -116,21 +132,21 @@ reaches(C, A, !Change, !Reaching) :-
 			true
 		;
 			!:Change = yes,
-			As = As0 \/ { A },
+			As = As0 `set.union` set.make_singleton_set(A), 
 			map.set(!.Reaching, C, As, !:Reaching)
 		)
 	;
 		!:Change = yes,
-		As = { A },
+		As = set.make_singleton_set(A),
 		map.set(!.Reaching, C, As, !:Reaching)
 	).
 
 %------------------------------------------------------------------------------%
 
 lr0items(Productions, Reaching, C, Gotos) :-
-	I0 = { item(0, 0) },
-	C0 = { I0 },
-	Pending = { I0 },
+	I0 = set.make_singleton_set(item(0, 0)),
+	C0 = set.make_singleton_set(I0),
+	Pending = set.make_singleton_set(I0),
 	map.init(Gotos0),
 	lr0items1(Pending, Productions, Reaching, Gotos0, Gotos, C0, C).
 
@@ -141,7 +157,7 @@ lr0items(Productions, Reaching, C, Gotos) :-
 lr0items1(Pending0, Productions, Reaching, !Gotos, !C) :-
 	( set.remove_least(Pending0, J, Pending1) ->
 		set.to_sorted_list(J, JList),
-		lr0items_1(JList, J, Productions, Reaching, !Gotos, empty, 
+		lr0items_1(JList, J, Productions, Reaching, !Gotos, set.init, 
 			NewSet),
 		set.to_sorted_list(NewSet, NewItems),
 		list.map((pred(Pair::in, J0::out) is det :-
@@ -150,9 +166,9 @@ lr0items1(Pending0, Productions, Reaching, !Gotos, !C) :-
 			map.lookup(I0Gotos, X, J0)
 		), NewItems, PendingList),
 		set.list_to_set(PendingList, NewPending0),
-		NewPending = NewPending0 - !.C,
-		!:C = !.C \/ NewPending,
-		Pending = Pending1 \/ NewPending,
+		NewPending = NewPending0 `set.difference` !.C,
+		!:C = !.C `set.union` NewPending,
+		Pending = Pending1 `set.union` NewPending,
 		lr0items1(Pending, Productions, Reaching, !Gotos, !C)
 	;
 		true	
@@ -204,13 +220,13 @@ addgoto(I, X, NewItem, !Gotos, !New) :-
 	( map.search(IGotos1, X, GotoIX0) ->
 		GotoIX1 = GotoIX0
 	;
-		GotoIX1 = empty
+		GotoIX1 = set.init
 	),
-	GotoIX = GotoIX1 \/ { NewItem },
+	GotoIX = GotoIX1 `set.union` set.make_singleton_set(NewItem),
 	set(IGotos1, X, GotoIX, IGotos),
 	set(!.Gotos, I, IGotos, !:Gotos),
 	( GotoIX \= GotoIX1 ->
-		!:New = !.New \/ { I - X }
+		!:New = !.New `set.union` set.make_singleton_set(I - X)
 	;
 		true
 	).
@@ -246,8 +262,9 @@ addAs_2([Pn|Pns], A, I, Productions, !Gotos, !New) :-
 %------------------------------------------------------------------------------%
 
 lookaheads(C, Gotos, Rules, First, Index, !:Lookaheads, !IO) :-
-	map.from_assoc_list([item(0, 0) - { ($) }], I0),
-	map.from_assoc_list([{item(0, 0)} - I0], !:Lookaheads),
+	map.from_assoc_list([item(0, 0) - set.make_singleton_set(($))], I0),
+	map.from_assoc_list([set.make_singleton_set(item(0, 0)) - I0],
+		!:Lookaheads),
 	map.init(Propaheads0),
 	set.to_sorted_list(C, CList),
 	lookaheads(CList, Gotos, Rules, First, Index,
@@ -284,7 +301,7 @@ lookaheads1([], _I, _Gotos, _Rules, _First, _Index, !Lookaheads).
 lookaheads1([BItem | BItems], I, Gotos, Rules, First, Index, !Lookaheads) :-
 	BItem = item(Bp, Bd),
 	BItem0 = item(Bp, Bd, (*)),
-	J0 = closure({ BItem0 }, Rules, First, Index),
+	J0 = closure(set.make_singleton_set(BItem0), Rules, First, Index),
 	set.to_sorted_list(J0, JList0),
 	    % Reverse the list so that in add_spontaneous, the 
 	    % set insertions are in reverse sorted order not
@@ -305,7 +322,7 @@ closure(Rules, First, Index, !.New, I0, I) :-
 	set.to_sorted_list(!.New, NewList),
 	closure1(NewList, Rules, First, Index, [I0], Is),
 	do_union(Is, I1),
-	!:New = I1 - I0,
+	!:New = I1 `set.difference` I0,
 	( set.empty(!.New) ->
 		I = I1
 	;
@@ -378,7 +395,7 @@ do_union([I0], Is, I) :-
 	Is = [_|_],
 	do_union([I0|Is], [], I).
 do_union([I0, I1|Is0], Is1, I) :-
-	I2 = I0 \/ I1,
+	I2 = I0 `set.union` I1,
 	do_union(Is0, [I2|Is1], I).
 
 :- pred lookaheads2(list(lr1item), item, items, gotos, rules,
@@ -449,7 +466,7 @@ add_propagated(I, B, Ia, A, L - P0, L - P) :-
 	( map.search(Y1, Ia, As0) ->
 		As1 = As0
 	;
-		As1 = empty
+		set.init(As1)
 	),
 	set.insert(As1, A, As),
 	map.set(Y1, Ia, As, Y),
@@ -468,7 +485,7 @@ add_spontaneous(I, B, Alpha, L0 - P, L - P) :-
 	( map.search(X1, B, As0) ->
 		As1 = As0
 	;
-		As1 = empty
+		set.init(As1)
 	),
 	set.insert(As1, Alpha, As),
 	map.set(X1, B, As, X),
@@ -515,7 +532,7 @@ propagate1([Item | Items], I, Props, !Change, !Lookaheads) :-
 	),
 	propagate1(Items, I, Props, !Change, !Lookaheads).
 
-:- pred propagate2(list(items), (items -> items), set(terminal), bool, bool,
+:- pred propagate2(list(items), map(items, items), set(terminal), bool, bool,
 		lookaheads, lookaheads).
 :- mode propagate2(in, in, in, in, out, in, out) is det.
 
@@ -540,11 +557,11 @@ propagate3([Item | Items], I, Ts0, !Change, !Lookaheads) :-
 	( map.search(X1, Item, Ts1) ->
 		Ts2 = Ts1
 	;
-		Ts2 = empty
+		set.init(Ts2)
 	),
-	NewTs = Ts0 - Ts2,
+	NewTs = Ts0 `set.difference` Ts2,
 	( not set.empty(NewTs) ->
-		Ts = Ts2 \/ NewTs,
+		Ts = Ts2 `set.union` NewTs,
 		map.set(X1, Item, Ts, X),
 		map.set(!.Lookaheads, I, X, !:Lookaheads),
 		!:Change = yes
