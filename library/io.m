@@ -9839,18 +9839,18 @@ command_line_argument(_, "") :-
     io.getenv(Var::in, Value::out),
     [will_not_call_mercury, tabled_for_io, does_not_affect_liveness,
         no_sharing],
-"{
+"
     Value = getenv(Var);
     SUCCESS_INDICATOR = (Value != 0);
-}").
+").
 
 :- pragma foreign_proc("C#",
     io.getenv(Var::in, Value::out),
     [will_not_call_mercury, tabled_for_io],
-"{
+"
     Value = System.Environment.GetEnvironmentVariable(Var);
     SUCCESS_INDICATOR = (Value != null);
-}").
+").
 
 :- pragma foreign_proc("Java",
     io.getenv(Var::in, Value::out),
@@ -9904,7 +9904,7 @@ io.setenv(Var, Value) :-
 ").
 
 :- pragma foreign_proc("C#",
-    io.putenv(VarAndValue::in),
+    io.putenv(_VarAndValue::in),
     [will_not_call_mercury, tabled_for_io],
 "
     // This procedure should never be called, as io.setenv/2 has been
