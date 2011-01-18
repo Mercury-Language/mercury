@@ -531,7 +531,8 @@ case $HOST in
             hlc.par.gc                  \
             none.par.gc                 \
             hl.par.gc                   \
-            java"
+            java                        \
+            csharp"
         ;;
     taura)
         CONFIG_OPTS=""
@@ -934,7 +935,7 @@ echo "test_mercury running tests in grades $GRADES" 1>&2
 for grade in $GRADES
 do
     case $grade in
-        erlang*|java*)
+        erlang*|java*|csharp*)
             continue
         ;;
     esac
