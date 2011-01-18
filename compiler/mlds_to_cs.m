@@ -3765,7 +3765,7 @@ output_context(Info, Context, !IO) :-
             Line > 0,
             File \= ""
         ->
-            io.format("#line %d %s\n", [i(Line), s(File)], !IO)
+            io.format("#line %d ""%s""\n", [i(Line), s(File)], !IO)
         ;
             true
         )
