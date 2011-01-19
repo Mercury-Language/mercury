@@ -382,6 +382,9 @@ ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 ifeq ("$(findstring java,$(GRADE))","java")
 lib_std: $(STD_LIB_NAME).jar $(RT_LIB_NAME).jar
 endif
+ifeq ("$(findstring erlang,$(GRADE))","erlang")
+lib_std: $(STD_LIB_NAME).beams
+endif
 endif
 
 #-----------------------------------------------------------------------------#
