@@ -565,9 +565,10 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
 ").
 
 :- pragma foreign_proc("Erlang",
-    proc_bytecode_bytes(_ProcLayout::in) = (_ByteCodeBytes::out),
+    proc_bytecode_bytes(_ProcLayout::in) = (ByteCodeBytes::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "
+    ByteCodeBytes = 0,  % Avoid a warning.
     throw({""not supported in erlang grade""})
 ").
 
