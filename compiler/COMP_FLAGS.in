@@ -23,5 +23,9 @@
 --erlang-include-directory ../mdbcomp/Mercury/hrls
 --erlang-include-directory ../ssdb/Mercury/hrls
 --no-java-classpath
+--java-classpath ../library/mer_rt.jar
+--java-classpath ../library/mer_std.jar
+--java-classpath ../browser/mer_browser.jar
+--java-classpath ../mdbcomp/mer_mdbcomp.jar
 --no-main
 --config-file ../scripts/Mercury.config.bootstrap
