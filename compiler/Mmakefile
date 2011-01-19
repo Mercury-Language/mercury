@@ -88,6 +88,14 @@ MLFLAGS += --static
 MCFLAGS += --linkage static
 endif
 
+# -Xmx256m doesn't always seem to be enough memory to build the complier.
+# This bumps up the memory when building the compiler if the javac executable
+# accepts the -J-Xmx flag, without bumping up the memory requirements in
+# general.
+ifneq ("$(findstring -J-Xmx,$(JAVACFLAGS))","")
+JAVACFLAGS   += -J-Xmx2048m
+endif
+
 #-----------------------------------------------------------------------------#
 
 # Rules for preprocessing `.pp' files.

@@ -176,6 +176,9 @@ MR_String   read_specs_file_4(MR_Code *proc_label, MR_String specs_file_name,
     MR_restore_transient_hp();
 ").
 
+read_specs_file(_, _, _, _, _) :-
+    unexpected($file, $pred, "non-C backend").
+
 :- pragma foreign_code("C", "
 
 MR_String

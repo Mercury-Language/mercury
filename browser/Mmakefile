@@ -135,11 +135,7 @@ all:	library $(TAGS_FILE_EXISTS) browse_test declarative_test
 
 .PHONY: library
 
-ifeq ("$(findstring java,$(GRADE))","java")
-library: jars
-else
 library: $(LIBS)
-endif
 
 .PHONY: depend
 depend:	MDB_FLAGS $(DEPENDS)

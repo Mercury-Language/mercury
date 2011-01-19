@@ -41,6 +41,8 @@
 
 :- implementation.
 
+:- import_module require.
+
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "local", "

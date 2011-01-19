@@ -237,7 +237,7 @@ dates:
 # rule chain rather than the .m -> .pic_s_date -> .pic_s -> .pic_o chain.
 # So don't remove the pic_ss target here.
 
-.PHONY: os cs ss pic_ss ils
+.PHONY: os cs ss pic_ss ils javas
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 os: $($(STD_LIB_NAME).os)
 cs: $($(STD_LIB_NAME).cs)
@@ -378,9 +378,9 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-ifneq ($(MMAKE_USE_MMC_MAKE),yes)
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 ifeq ("$(findstring java,$(GRADE))","java")
-lib_std: $(STD_LIB_NAME).jar $(RT_LIB_NAME).jar $(NATIVE_SO)
+lib_std: $(STD_LIB_NAME).jar $(RT_LIB_NAME).jar
 endif
 endif
 
@@ -409,7 +409,7 @@ MCFLAGS += --extra-init-command ./print_extra_inits
 
 endif
 
-endif	# GRADE != il && GRADE != java && GRADE != erlang
+endif	# GRADE != il && GRADE != csharp && GRADE != java && GRADE != erlang
 
 #-----------------------------------------------------------------------------#
 

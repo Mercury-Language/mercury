@@ -191,6 +191,13 @@ user_defined_pickler(picklers(Pickles), TypeCtorDesc, Pickle) :-
     B = A;
 ").
 
+:- pragma foreign_proc("Java",
+    pickler_inst_cast(A::in, B::out(pickler_pred)),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    B = A;
+").
+
 %-----------------------------------------------------------------------------%
 %
 % Unpickling
@@ -310,6 +317,13 @@ user_defined_unpickler(unpicklers(Unpicklers), TypeCtorDesc, Unpickle) :-
     B = A;
 ").
 
+:- pragma foreign_proc("Java",
+    unpickler_inst_cast(A::in, B::out(unpickler_pred)),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    B = A;
+").
+
 %-----------------------------------------------------------------------------%
 %
 % Basic types picklers/unpicklers
@@ -398,6 +412,9 @@ unpickle_string_2(Handle, Index, Length, !String, !State) :-
     Str[Length] = '\\0';
 ").
 
+allocate_string(_, _) :-
+    sorry($file, $pred).
+
     % string.unsafe_set_char is disabled in the standard library so we need our
     % own copy.
 :- pred local_unsafe_set_char(char::in, int::in, string::di, string::uo)
@@ -410,6 +427,9 @@ unpickle_string_2(Handle, Index, Length, !String, !State) :-
     Str0[Index] = Chr;
     Str = Str0;
 ").
+
+local_unsafe_set_char(_, _, _, _) :-
+    sorry($file, $pred).
 
 :- pred pickle_float(float::in, io::di, io::uo) is det.
 
@@ -442,6 +462,9 @@ pickle_float(Float, !IO) :-
     }
 ").
 
+reinterpret_float_as_ints(_, _, _) :-
+    sorry($file, $pred).
+
 :- pred unpickle_float(unpickle_handle::in, float::out,
     unpickle_state::di, unpickle_state::uo) is det.
 
@@ -472,6 +495,9 @@ unpickle_float(Handle, Float, !State) :-
         Flt = *p;
     }
 ").
+
+reinterpret_ints_as_float(_, _, _) :-
+    sorry($file, $pred).
 
 :- pred get_byte(unpickle_handle::in, int::out,
     unpickle_state::di, unpickle_state::uo) is det.

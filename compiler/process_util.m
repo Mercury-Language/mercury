@@ -123,6 +123,8 @@
 
 :- implementation.
 
+:- import_module require.
+
 %-----------------------------------------------------------------------------%
 
 build_with_check_for_interrupt(VeryVerbose, Build, Cleanup, Succeeded,
@@ -312,12 +314,18 @@ raise_signal(_::in, IO::di, IO::uo).
 #endif
 ").
 
+send_signal(_, _, _, _) :-
+    sorry($file, $pred).
+
 :- pragma foreign_proc("C",
     sigint = (Sigint::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Sigint = SIGINT;
 ").
+
+sigint = _ :-
+    sorry($file, $pred).
 
 %-----------------------------------------------------------------------------%
 
@@ -499,6 +507,9 @@ call_child_process_io_pred(P, Status, !IO) :-
     Status = 1;
 #endif /* ! MC_CAN_FORK */
 ").
+
+do_wait(_, _, _, _, _) :-
+    sorry($file, $pred).
 
 wait_pid(Pid, Status, !IO) :-
     do_wait(Pid, _Pid, Status0, !IO),
