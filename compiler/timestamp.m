@@ -28,7 +28,7 @@
     % Converts the calendar time value `Time' into a timestamp.
     % Equivalent to `gm_time_to_timestamp(gmtime(Time))'.
     %
-:-func time_t_to_timestamp(time_t) = timestamp.
+:- func time_t_to_timestamp(time_t) = timestamp.
 
     % Converts a timestamp into a string with format "yyyy-mm-dd hh:mm:ss",
     % expressed as UTC.
@@ -55,6 +55,7 @@
 
 :- import_module int.
 :- import_module maybe.
+:- import_module require.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -134,6 +135,9 @@ gmtime_to_timestamp(tm(Year, Month, MD, Hrs, Min, Sec, YD, WD, DST)) =
     java.util.Date date = new java.util.Date(cal.getTimeInMillis());
     Result = sdf.format(date);
 ").
+
+gmtime_to_timestamp_2(_, _, _, _, _, _, _, _, _) = _ :-
+    sorry($file, $pred).
 
 :- func maybe_dst_to_int(maybe(dst)) = int.
 
