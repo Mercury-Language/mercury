@@ -83,8 +83,13 @@
 
     ;       info_found_conjs_above_callsite_threshold(int)
             % There are a number of conjuncts containing calls above the
-            % configured call site threshold, we're considering them for
+            % configured call site threshold, we are considering them for
             % parallelisation against one another.
+
+    ;       info_found_pushed_conjs_above_callsite_threshold
+            % There are two of conjuncts containing calls above the
+            % configured call site threshold that can be pushed together,
+            % we are considering them for parallelisation against one another.
 
     ;       info_split_conjunction_into_partitions(int)
             % The conjunction being consdered for parallelisation had to be
@@ -273,6 +278,7 @@ message_type_to_level(MsgType) = MsgLevel :-
     (
         ( MsgType = info_found_candidate_conjunction
         ; MsgType = info_found_conjs_above_callsite_threshold(_)
+        ; MsgType = info_found_pushed_conjs_above_callsite_threshold
         ; MsgType = info_found_n_conjunctions_with_positive_speedup(_)
         ; MsgType = info_split_conjunction_into_partitions(_)
         ),
@@ -324,6 +330,9 @@ message_type_to_string(MessageType) = Cord :-
                 ++ "this may reduce parallelism"
         ),
         string.format(MessageStr, [i(Num)], String)
+    ;
+        MessageType = info_found_pushed_conjs_above_callsite_threshold,
+        String = "Found pushed conjuncts above callsite threashold"
     ;
         MessageType = notice_duplicate_instantiation(CandidateConjuncts),
         string.format(

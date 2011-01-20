@@ -177,15 +177,15 @@
 :- pred rev_goal_path_inside(reverse_goal_path::in, reverse_goal_path::in)
     is semidet.
 
-    % goal_path_inside(PathA, PathB, RelativePath):
+    % goal_path_inside_relative(PathA, PathB, RelativePath):
     %
-    % As above, except that it also return RelativePath, which denotes
-    % the same goal that PathB denotes, only from GoalA's perspective.
+    % As goal_path_inside, except that it also returns RelativePath, which
+    % denotes the same goal that PathB denotes, only from GoalA's perspective.
     %
-:- pred goal_path_inside(forward_goal_path::in, forward_goal_path::in,
-    forward_goal_path::out) is semidet.
-:- pred rev_goal_path_inside(reverse_goal_path::in, reverse_goal_path::in,
-    reverse_goal_path::out) is semidet.
+:- pred goal_path_inside_relative(forward_goal_path::in,
+    forward_goal_path::in, forward_goal_path::out) is semidet.
+:- pred rev_goal_path_inside_relative(reverse_goal_path::in,
+    reverse_goal_path::in, reverse_goal_path::out) is semidet.
 
     % Remove information from the goal path that depends on type information.
     %
@@ -326,23 +326,23 @@ rev_goal_path_remove_last(GoalPath0, GoalPath, LastStep) :-
 rev_goal_path_get_last(GoalPath, LastStep) :-
     rev_goal_path_remove_last(GoalPath, _, LastStep).
 
-goal_path_inside(PathA, PathB, RelativePath) :-
+goal_path_inside_relative(PathA, PathB, RelativePath) :-
     PathA = fgp(StepsA),
     PathB = fgp(StepsB),
     list.append(StepsA, RelativeSteps, StepsB),
     RelativePath = fgp(RelativeSteps).
 
-rev_goal_path_inside(PathA, PathB, Relative) :-
-    PathA = rgp(StepsA),
-    PathB = rgp(StepsB),
-    list.remove_suffix(StepsB, StepsA, RelativeSteps),
-    Relative = rgp(RelativeSteps).
+rev_goal_path_inside_relative(RevPathA, RevPathB, RevRelative) :-
+    RevPathA = rgp(RevStepsA),
+    RevPathB = rgp(RevStepsB),
+    list.remove_suffix(RevStepsB, RevStepsA, RevRelativeSteps),
+    RevRelative = rgp(RevRelativeSteps).
 
 goal_path_inside(PathA, PathB) :-
-    goal_path_inside(PathA, PathB, _).
+    goal_path_inside_relative(PathA, PathB, _).
 
-rev_goal_path_inside(PathA, PathB) :-
-    rev_goal_path_inside(PathA, PathB, _).
+rev_goal_path_inside(RevPathA, RevPathB) :-
+    rev_goal_path_inside_relative(RevPathA, RevPathB, _).
 
 goal_path_from_string(GoalPathStr, GoalPath) :-
     StepStrs = string.words_separator(is_goal_path_separator, GoalPathStr),

@@ -24,6 +24,7 @@
 
 :- import_module bool.
 :- import_module list.
+:- import_module maybe.
 :- import_module set.
 :- import_module string.
 
@@ -193,6 +194,8 @@
     --->    candidate_par_conjunction(
                 % The path within the procedure to this conjunction.
                 cpc_goal_path           :: goal_path_string,
+
+                cpc_maybe_push_goal     :: maybe(push_goal),
 
                 % The position within the original conjunction that this
                 % parallelisation starts.
@@ -365,20 +368,20 @@ parallel_exec_metrics_get_cpu_time(PEM) = SeqTime + Overheads :-
 
 convert_candidate_par_conjunctions_proc(Conv, CPCProcA, CPCProcB) :-
     CPCProcA = candidate_par_conjunctions_proc(VarTable, PushGoals, CPCA),
-    map(convert_candidate_par_conjunction(Conv), CPCA, CPCB),
+    list.map(convert_candidate_par_conjunction(Conv), CPCA, CPCB),
     CPCProcB = candidate_par_conjunctions_proc(VarTable, PushGoals, CPCB).
 
 convert_candidate_par_conjunction(Conv0, CPC0, CPC) :-
-    CPC0 = candidate_par_conjunction(GoalPath, FirstGoalNum,
+    CPC0 = candidate_par_conjunction(GoalPath, MaybePushGoal, FirstGoalNum,
         IsDependent, GoalsBefore0, GoalsBeforeCost, Conjs0, GoalsAfter0,
         GoalsAfterCost, Metrics),
     Conv = (pred(A::in, B::out) is det :-
             Conv0(CPC0, A, B)
         ),
-    map(convert_seq_conj(Conv), Conjs0, Conjs),
-    map(Conv, GoalsBefore0, GoalsBefore),
-    map(Conv, GoalsAfter0, GoalsAfter),
-    CPC = candidate_par_conjunction(GoalPath, FirstGoalNum,
+    list.map(convert_seq_conj(Conv), Conjs0, Conjs),
+    list.map(Conv, GoalsBefore0, GoalsBefore),
+    list.map(Conv, GoalsAfter0, GoalsAfter),
+    CPC = candidate_par_conjunction(GoalPath, MaybePushGoal, FirstGoalNum,
         IsDependent, GoalsBefore, GoalsBeforeCost, Conjs, GoalsAfter,
         GoalsAfterCost, Metrics).
 

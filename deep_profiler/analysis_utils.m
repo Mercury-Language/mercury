@@ -132,8 +132,7 @@ find_clique_first_and_other_procs(Deep, CliquePtr, MaybeFirstPDPtr,
         deep_lookup_call_site_dynamics(Deep, EntryCSDPtr, EntryCSD),
         FirstPDPtr = EntryCSD ^ csd_callee,
         MaybeFirstPDPtr = yes(FirstPDPtr),
-        list.negated_filter(unify(FirstPDPtr), PDPtrs,
-            OtherPDPtrs)
+        list.negated_filter(unify(FirstPDPtr), PDPtrs, OtherPDPtrs)
     ;
         MaybeFirstPDPtr = no,
         OtherPDPtrs = PDPtrs
