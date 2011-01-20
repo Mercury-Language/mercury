@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002, 2005-2006, 2008-2010 The University of Melbourne.
+# Copyright (C) 2002, 2005-2006, 2008-2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -14,11 +14,12 @@ MCFLAGS-read_profile = --trace minimum
 #MCFLAGS-branch_and_bound = \
 #	--trace-flag=debug_branch_and_bound
 #MCFLAGS-mdprof_fb.automatic_parallelism = \
-#	--trace-flag=debug_branch_and_bound \
 #	--trace-flag=debug_cpc_search \
 #	--trace-flag=debug_recursive_costs \
 #	--trace-flag=debug_parallel_conjunction_speedup \
 #	--trace-flag=debug_branch_and_bound
+#MCFLAGS-var_use_analysis = \
+#    --trace-flag=debug_first_var_use
 
 # Uncomment this to see debug messages from the code that reads the Deep.data
 # files.

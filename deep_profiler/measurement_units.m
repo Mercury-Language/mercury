@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2010 The University of Melbourne.
+% Copyright (C) 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -305,8 +305,12 @@ probable(Prob) = Prob :-
 
 probability_to_float(Prob) = Prob.
 
-    % Combine disjoint probabilities with addition.
-or(A, B) = A + B.
+    % Combine disjunct probabilities by the negation of the conjunction of
+    % their negations.
+    %
+    % A V B = ~(~A ^ ~B)
+    %
+or(A, B) = not_probability(and(not_probability(A), not_probability(B))).
 
     % Combine conjoint probabilities with multiplication.
 and(A, B) = A * B.

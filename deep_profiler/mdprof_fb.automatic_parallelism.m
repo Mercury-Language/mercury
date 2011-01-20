@@ -187,6 +187,8 @@ build_var_use_list(Map, Var, !List) :-
                 ipi_clique          :: clique_ptr,
                 ipi_call_sites      :: map(reverse_goal_path, cost_and_callees),
                 ipi_rec_call_sites  :: map(reverse_goal_path, cs_cost_csq),
+                ipi_containing_goal_map
+                                    :: containing_goal_map,
                 ipi_coverage_array  :: goal_attr_array(coverage_info),
                 ipi_inst_map_array  :: goal_attr_array(inst_map_info),
                 ipi_recursion_type  :: recursion_type,
@@ -649,8 +651,8 @@ candidate_parallel_conjunctions_proc(Opts, Deep, PDPtr, RecursionType,
                 deep_get_progrep_det(Deep, ProgRep),
                 Info = implicit_parallelism_info(Deep, ProgRep, Opts,
                     CliquePtr, CallSitesMap, RecursiveCallSiteCostMap,
-                    CoverageArray, InstMapArray, RecursionType, VarTable,
-                    ProcLabel),
+                    ContainingGoalMap, CoverageArray, InstMapArray,
+                    RecursionType, VarTable, ProcLabel),
                 goal_to_pard_goal(Info, [], Goal, PardGoal, !Messages),
                 goal_get_conjunctions_worth_parallelising(Info,
                     [], PardGoal, _, CandidatesCord0, _Singles, MessagesA),
@@ -2859,8 +2861,8 @@ goal_build_use_map(Goal, RevGoalPathSteps, Cost, Info, VarUseType, Var, !Map) :-
 compute_goal_var_use_lazy(Goal, RevGoalPathSteps, Cost, Info, VarUseType, Var)
         = Use :-
     Info = implicit_parallelism_info(Deep, _ProgRep, _Params, CliquePtr,
-        CallSiteMap, RecursiveCallSiteMap, CoverageArray, _InstMapArray,
-        RecursionType, _VarTable, _ProcLabel),
+        CallSiteMap, RecursiveCallSiteMap, ContainingGoalMap, CoverageArray,
+        _InstMapArray, RecursionType, _VarTable, _ProcLabel),
     CostPercall = goal_cost_get_percall(Cost),
     (
         ( RecursionType = rt_not_recursive
@@ -2872,7 +2874,7 @@ compute_goal_var_use_lazy(Goal, RevGoalPathSteps, Cost, Info, VarUseType, Var)
         VarUseOptions = var_use_options(Deep, FollowCallsAcrossModules,
             VarUseType),
         var_first_use(CliquePtr, CallSiteMap, RecursiveCallSiteMap,
-            CoverageArray, RecursionType, RecDepth, Goal,
+            ContainingGoalMap, CoverageArray, RecursionType, RecDepth, Goal,
             rgp(RevGoalPathSteps), CostPercall, Var, VarUseOptions, Use)
     ;
         ( RecursionType = rt_divide_and_conquer(_, _)
@@ -2922,8 +2924,12 @@ recursion_type_get_interesting_parallelisation_depth(RecursionType,
         RecursionType = rt_not_recursive,
         MaybeDepth = yes(recursion_depth_from_float(0.0))
     ;
-        RecursionType = rt_single(_, _, DepthF, _, _),
-        MaybeDepth = yes(recursion_depth_from_float(DepthF / 2.0))
+        RecursionType = rt_single(_, _, _DepthF, _, _),
+        % The interesting recursion depth is at the bottom of the recursion, if
+        % we can't parallelise here then there's no point parallelising the
+        % loop in general.
+        % XXX: Update metrics to understand that this is a loop.
+        MaybeDepth = yes(recursion_depth_from_float(2.0))
     ;
         ( RecursionType = rt_divide_and_conquer(_, _)
         ; RecursionType = rt_mutual_recursion(_)

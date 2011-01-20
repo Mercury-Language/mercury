@@ -12,6 +12,9 @@
 % This module defines data structures for representing automatic parallelism
 % feedback information and some procedures for working with these structures.
 %
+% NOTE: After modifying any of these structures please increment the
+% feedback_version in feedback.m
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

@@ -271,6 +271,13 @@
 :- func create_goal_id_array(goal_id) = goal_attr_array(T).
 :- mode create_goal_id_array(in) = gaa_uo is det.
 
+    % create_goal_id_array(LastGoalId, Default) = Array.
+    %
+    % As above, except a default value is provided for array elements.
+    %
+:- func create_goal_id_array(goal_id, T) = goal_attr_array(T).
+:- mode create_goal_id_array(in, in) = gaa_uo is det.
+
     % update_goal_attribute(GoalId, Attribute, !Array),
     %
     % Make Attirubte the new attribute for GoalId in !:Array.
@@ -563,6 +570,9 @@ create_reverse_goal_path_bimap_2([Head | Tail], !ReverseGoalPathBiMap) :-
 
 create_goal_id_array(goal_id(LastGoalIdNum)) =
     goal_attr_array(array.init(LastGoalIdNum + 1, no)).
+
+create_goal_id_array(goal_id(LastGoalIdNum), Default) =
+    goal_attr_array(array.init(LastGoalIdNum + 1, yes(Default))).
 
 update_goal_attribute(goal_id(Index), Value, goal_attr_array(!.Array),
         goal_attr_array(!:Array)) :-
