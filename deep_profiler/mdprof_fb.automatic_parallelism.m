@@ -566,6 +566,7 @@ merge_candidate_par_conjs_proc(A, B, Result) :-
     B = candidate_par_conjunctions_proc(VarTableB, PushGoalsB, CPCsB),
     Result = candidate_par_conjunctions_proc(VarTableA, PushGoals, CPCs),
     CPCs = CPCsA ++ CPCsB,
+    % XXX Merge pushes here.
     PushGoals = PushGoalsA ++ PushGoalsB,
     ( VarTableA = VarTableB ->
         true
@@ -655,16 +656,18 @@ candidate_parallel_conjunctions_proc(Opts, Deep, PDPtr, RecursionType,
                     RecursionType, VarTable, ProcLabel),
                 goal_to_pard_goal(Info, [], Goal, PardGoal, !Messages),
                 goal_get_conjunctions_worth_parallelising(Info,
-                    [], PardGoal, _, CandidatesCord0, _Singles, MessagesA),
+                    [], PardGoal, _, CandidatesCord0, PushesCord, _Singles,
+                    MessagesA),
                 Candidates0 = cord.list(CandidatesCord0),
+                Pushes = cord.list(PushesCord),
                 !:Messages = !.Messages ++ MessagesA,
                 (
                     SeenDuplicateInstantiation =
                         have_not_seen_duplicate_instantiation,
-                    list.foldl(
-                        build_candidate_par_conjunction_maps(ProcLabel,
-                            VarTable),
-                        Candidates0, map.init, Candidates)
+                    % XXX Merge pushes here.
+                    CandidateProc = candidate_par_conjunctions_proc(VarTable,
+                        Pushes, Candidates0),
+                    svmap.set(ProcLabel, CandidateProc, map.init, Candidates)
                 ;
                     SeenDuplicateInstantiation = seen_duplicate_instantiation,
                     Candidates = map.init,
@@ -713,10 +716,11 @@ build_candidate_par_conjunction_maps(ProcLabel, VarTable, Candidate, !Map) :-
     implicit_parallelism_info::in, list(goal_path_step)::in,
     pard_goal_detail::in, pard_goal_detail::out,
     cord(candidate_par_conjunction(pard_goal_detail))::out,
-    cord(pard_goal_detail)::out, cord(message)::out) is det.
+    cord(push_goal)::out, cord(pard_goal_detail)::out, cord(message)::out)
+    is det.
 
 goal_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
-        !Goal, Candidates, Singles, Messages) :-
+        !Goal, Candidates, Pushes, Singles, Messages) :-
     % XXX: This predicate should return a list of costly goals within compund
     % goals that next to which it might be desirable to push later goals to
     % allow parallelisation within a branch of a compound goal.
@@ -728,12 +732,14 @@ goal_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
             GoalExpr0 = conj_rep(Conjs0),
             conj_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
                 Conjs0, Conjs, 1, [], SinglesSoFar, [], RevSingleCands,
-                cord.empty, CandidatesBelow, cord.empty, MessagesBelow),
+                cord.empty, CandidatesBelow, cord.empty, PushesBelow,
+                cord.empty, MessagesBelow),
             GoalExpr = conj_rep(Conjs),
             list.reverse(RevSingleCands, SingleCands),
             (
                 SingleCands = [],
                 Candidates = CandidatesBelow,
+                PushesThisLevel = cord.empty,
                 Singles = cord.from_list(SinglesSoFar),
                 Messages = MessagesBelow,
                 Cost = Annotation0 ^ pgd_cost
@@ -741,9 +747,16 @@ goal_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
                 SingleCands = [CostlyIndex - SinglesBefore],
                 push_and_build_candidate_conjunctions(Info, RevGoalPathSteps,
                     Conjs, CostlyIndex, SinglesBefore,
-                    MessagesThisLevel, CandidatesThisLevel),
+                    MessagesThisLevel, CandidatesThisLevel, PushesThisLevel),
                 Candidates = CandidatesBelow ++ CandidatesThisLevel,
-                Singles = cord.empty,
+                ( cord.is_empty(CandidatesThisLevel) ->
+                    % No candidate was built, pass our singles to our caller.
+                    Singles = cord.from_list(SinglesSoFar)
+                ;
+                    % Reset signals if we made a candidate our caller cannot
+                    % use them.
+                    Singles = cord.empty
+                ),
                 Messages = MessagesBelow ++ MessagesThisLevel,
                 % XXX We should update the cost for CandidatesThisLevel.
                 Cost = Annotation0 ^ pgd_cost
@@ -752,6 +765,7 @@ goal_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
                 assoc_list.keys(SingleCands, CostlyIndexes),
                 build_candidate_conjunction(Info, RevGoalPathSteps,
                     Conjs, CostlyIndexes, MessagesThisLevel, MaybeCandidate),
+                PushesThisLevel = cord.empty,
                 Messages = MessagesBelow ++ MessagesThisLevel,
                 (
                     MaybeCandidate = yes(Candidate),
@@ -780,30 +794,33 @@ goal_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
                     Singles = cord.from_list(SinglesSoFar),
                     Cost = Annotation0 ^ pgd_cost
                 )
-            )
+            ),
+            Pushes = PushesBelow ++ PushesThisLevel
         ;
             GoalExpr0 = disj_rep(Disjs0),
-            list.map_foldl4(
+            list.map_foldl5(
                 disj_get_conjunctions_worth_parallelising(Info,
                     RevGoalPathSteps),
                 Disjs0, Disjs, 1, _, cord.empty, Candidates,
-                cord.empty, Singles, cord.empty, Messages),
+                cord.empty, Pushes, cord.empty, Singles,
+                cord.empty, Messages),
             disj_calc_cost(Disjs, Calls, Cost),
             GoalExpr = disj_rep(Disjs)
         ;
             GoalExpr0 = switch_rep(Var, CanFail, Cases0),
-            list.map_foldl4(
+            list.map_foldl5(
                 switch_case_get_conjunctions_worth_parallelising(Info,
                     RevGoalPathSteps),
                 Cases0, Cases, 1, _, cord.empty, Candidates,
-                cord.empty, Singles, cord.empty, Messages),
+                cord.empty, Pushes, cord.empty, Singles,
+                cord.empty, Messages),
             switch_calc_cost(Cases, Calls, Cost),
             GoalExpr = switch_rep(Var, CanFail, Cases)
         ;
             GoalExpr0 = ite_rep(Cond0, Then0, Else0),
             ite_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
                 Cond0, Cond, Then0, Then, Else0, Else,
-                Candidates, Singles, Messages),
+                Candidates, Pushes, Singles, Messages),
             ite_calc_cost(Cond, Then, Else, Cost),
             GoalExpr = ite_rep(Cond, Then, Else)
         ;
@@ -811,7 +828,7 @@ goal_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
             RevSubGoalPathSteps = [step_scope(MaybeCut) | RevGoalPathSteps],
             goal_get_conjunctions_worth_parallelising(Info,
                 RevSubGoalPathSteps, SubGoal0, SubGoal,
-                Candidates, Singles, Messages),
+                Candidates, Pushes, Singles, Messages),
             Cost = SubGoal ^ goal_annotation ^ pgd_cost,
             GoalExpr = scope_rep(SubGoal, MaybeCut)
         ;
@@ -821,7 +838,7 @@ goal_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
             % after a negation into the negation.
             goal_get_conjunctions_worth_parallelising(Info,
                 RevSubGoalPathSteps, SubGoal0, SubGoal,
-                Candidates, _Singles, Messages),
+                Candidates, Pushes, _Singles, Messages),
             Singles = cord.empty,
             Cost = SubGoal ^ goal_annotation ^ pgd_cost,
             GoalExpr = negation_rep(SubGoal)
@@ -838,6 +855,7 @@ goal_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
             Singles = cord.empty
         ),
         Candidates = cord.empty,
+        Pushes = cord.empty,
         Messages = cord.empty,
         GoalExpr = GoalExpr0,
         Annotation = Annotation0
@@ -850,15 +868,17 @@ goal_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
     int::in, int::out,
     cord(candidate_par_conjunction(pard_goal_detail))::in,
     cord(candidate_par_conjunction(pard_goal_detail))::out,
+    cord(push_goal)::in, cord(push_goal)::out,
     cord(pard_goal_detail)::in, cord(pard_goal_detail)::out,
     cord(message)::in, cord(message)::out) is det.
 
 disj_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
-        !Disj, !DisjNum, !Candidates, !Singles, !Messages) :-
+        !Disj, !DisjNum, !Candidates, !Pushes, !Singles, !Messages) :-
     RevDisjGoalPathSteps = [step_disj(!.DisjNum) | RevGoalPathSteps],
     goal_get_conjunctions_worth_parallelising(Info, RevDisjGoalPathSteps,
-        !Disj, Candidates, Singles, Messages),
+        !Disj, Candidates, Pushes, Singles, Messages),
     !:Candidates = !.Candidates ++ Candidates,
+    !:Pushes = !.Pushes ++ Pushes,
     !:Singles = !.Singles ++ Singles,
     !:Messages = !.Messages ++ Messages,
     !:DisjNum = !.DisjNum + 1.
@@ -870,17 +890,19 @@ disj_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
     int::in, int::out,
     cord(candidate_par_conjunction(pard_goal_detail))::in,
     cord(candidate_par_conjunction(pard_goal_detail))::out,
+    cord(push_goal)::in, cord(push_goal)::out,
     cord(pard_goal_detail)::in, cord(pard_goal_detail)::out,
     cord(message)::in, cord(message)::out) is det.
 
 switch_case_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps, !Case,
-        !CaseNum, !Candidates, !Singles, !Messages) :-
+        !CaseNum, !Candidates, !Pushes, !Singles, !Messages) :-
     !.Case = case_rep(MainConsIdRep, OtherConsIdReps, Goal0),
     RevCaseGoalPathSteps = [step_switch(!.CaseNum, no) | RevGoalPathSteps],
     goal_get_conjunctions_worth_parallelising(Info, RevCaseGoalPathSteps,
-        Goal0, Goal, Candidates, Singles, Messages),
+        Goal0, Goal, Candidates, Pushes, Singles, Messages),
     !:Case = case_rep(MainConsIdRep, OtherConsIdReps, Goal),
     !:Candidates = !.Candidates ++ Candidates,
+    !:Pushes = !.Pushes ++ Pushes,
     !:Singles = !.Singles ++ Singles,
     !:Messages = !.Messages ++ Messages,
     !:CaseNum = !.CaseNum + 1.
@@ -891,22 +913,24 @@ switch_case_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps, !Case,
     pard_goal_detail::in, pard_goal_detail::out,
     pard_goal_detail::in, pard_goal_detail::out,
     cord(candidate_par_conjunction(pard_goal_detail))::out,
-    cord(pard_goal_detail)::out,  cord(message)::out) is det.
+    cord(push_goal)::out, cord(pard_goal_detail)::out,
+    cord(message)::out) is det.
 
 ite_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
-        !Cond, !Then, !Else, Candidates, Singles, Messages) :-
+        !Cond, !Then, !Else, Candidates, Pushes, Singles, Messages) :-
     RevCondGoalPathSteps = [step_ite_cond | RevGoalPathSteps],
     RevThenGoalPathSteps = [step_ite_then | RevGoalPathSteps],
     RevElseGoalPathSteps = [step_ite_else | RevGoalPathSteps],
     % We ignore _CondSingles here because you cannot push goals
     % following an if-then-else into the condition.
     goal_get_conjunctions_worth_parallelising(Info, RevCondGoalPathSteps,
-        !Cond, CondCandidates, _CondSingles, CondMessages),
+        !Cond, CondCandidates, CondPushes, _CondSingles, CondMessages),
     goal_get_conjunctions_worth_parallelising(Info, RevThenGoalPathSteps,
-        !Then, ThenCandidates, ThenSingles, ThenMessages),
+        !Then, ThenCandidates, ThenPushes, ThenSingles, ThenMessages),
     goal_get_conjunctions_worth_parallelising(Info, RevElseGoalPathSteps,
-        !Else, ElseCandidates, ElseSingles, ElseMessages),
+        !Else, ElseCandidates, ElsePushes, ElseSingles, ElseMessages),
     Candidates = CondCandidates ++ ThenCandidates ++ ElseCandidates,
+    Pushes = CondPushes ++ ThenPushes ++ ElsePushes,
     Singles = ThenSingles ++ ElseSingles,
     Messages = CondMessages ++ ThenMessages ++ ElseMessages.
 
@@ -918,19 +942,21 @@ ite_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
     assoc_list(int, list(pard_goal_detail))::out,
     cord(candidate_par_conjunction(pard_goal_detail))::in,
     cord(candidate_par_conjunction(pard_goal_detail))::out,
+    cord(push_goal)::in, cord(push_goal)::out,
     cord(message)::in, cord(message)::out) is det.
 
 conj_get_conjunctions_worth_parallelising(_Info, _RevGoalPathSteps,
         [], [], _ConjNum, !SinglesSoFar, !RevSingleCands,
-        !CandidatesBelow, !MessagesBelow).
+        !CandidatesBelow, !Pushes, !MessagesBelow).
 conj_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
         [Conj0 | Conjs0], [Conj | Conjs], ConjNum, SinglesSoFar0, SinglesSoFar,
-        !RevSingleCands, !CandidatesBelow, !MessagesBelow) :-
+        !RevSingleCands, !CandidatesBelow, !Pushes, !MessagesBelow) :-
     RevConjGoalPathSteps = [step_conj(ConjNum) | RevGoalPathSteps],
     goal_get_conjunctions_worth_parallelising(Info, RevConjGoalPathSteps,
-        Conj0, Conj, Candidates, SinglesCord, Messages),
+        Conj0, Conj, Candidates, Pushes, SinglesCord, Messages),
     Singles = cord.list(SinglesCord),
     !:CandidatesBelow = !.CandidatesBelow ++ Candidates,
+    !:Pushes = !.Pushes ++ Pushes,
     !:MessagesBelow = !.MessagesBelow ++ Messages,
     identify_costly_goal(Conj ^ goal_annotation, Costly),
     (
@@ -961,7 +987,7 @@ conj_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
     ),
     conj_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
         Conjs0, Conjs, ConjNum + 1, SinglesSoFar1, SinglesSoFar,
-        !RevSingleCands, !CandidatesBelow, !MessagesBelow).
+        !RevSingleCands, !CandidatesBelow, !Pushes, !MessagesBelow).
 
     % Given a conjunction with two or more costly goals (identified by
     % CostlyGoalsIndexes), check whether executing the conjunction in parallel
@@ -982,7 +1008,7 @@ build_candidate_conjunction(Info, RevGoalPathSteps, Conjs, CostlyGoalsIndexes,
         info_found_conjs_above_callsite_threshold(NumCostlyGoals),
         !Messages),
 
-    pardgoals_build_candidate_conjunction(Info, Location, RevGoalPathSteps, no,
+    pardgoals_build_candidate_conjunction(Info, Location, RevGoalPathSteps,
         Conjs, MaybeCandidate, !Messages),
     (
         MaybeCandidate = yes(_Candidate),
@@ -1002,32 +1028,36 @@ build_candidate_conjunction(Info, RevGoalPathSteps, Conjs, CostlyGoalsIndexes,
 :- pred push_and_build_candidate_conjunctions(implicit_parallelism_info::in,
     list(goal_path_step)::in, list(pard_goal_detail)::in, int::in,
     list(pard_goal_detail)::in, cord(message)::out,
-    cord(candidate_par_conjunction(pard_goal_detail))::out) is det.
+    cord(candidate_par_conjunction(pard_goal_detail))::out,
+    cord(push_goal)::out) is det.
 
 push_and_build_candidate_conjunctions(_Info, _RevGoalPathSteps, _Conjs,
-        _CostlyIndex, [], cord.empty, cord.empty).
+        _CostlyIndex, [], cord.empty, cord.empty, cord.empty).
 push_and_build_candidate_conjunctions(Info, RevGoalPathSteps, Conjs,
-        CostlyIndex, [Single | Singles], Messages, Candidates) :-
+        CostlyIndex, [Single | Singles], Messages, Candidates, Pushes) :-
     push_and_build_candidate_conjunction(Info, RevGoalPathSteps, Conjs,
-        CostlyIndex, Single, HeadMessages, MaybeHeadCandidate),
+        CostlyIndex, Single, HeadMessages, MaybeHeadCandidateAndPush),
     push_and_build_candidate_conjunctions(Info, RevGoalPathSteps, Conjs,
-        CostlyIndex, Singles, TailMessages, TailCandidates),
+        CostlyIndex, Singles, TailMessages, TailCandidates, TailPushes),
     Messages = HeadMessages ++ TailMessages,
     (
-        MaybeHeadCandidate = yes(HeadCandidate),
-        Candidates = cord.cons(HeadCandidate, TailCandidates)
+        MaybeHeadCandidateAndPush = yes(HeadCandidate - HeadPush),
+        Candidates = cord.cons(HeadCandidate, TailCandidates),
+        Pushes = cord.cons(HeadPush, TailPushes)
     ;
-        MaybeHeadCandidate = no,
-        Candidates = TailCandidates
+        MaybeHeadCandidateAndPush = no,
+        Candidates = TailCandidates,
+        Pushes = TailPushes
     ).
 
 :- pred push_and_build_candidate_conjunction(implicit_parallelism_info::in,
     list(goal_path_step)::in, list(pard_goal_detail)::in, int::in,
     pard_goal_detail::in, cord(message)::out,
-    maybe(candidate_par_conjunction(pard_goal_detail))::out) is det.
+    maybe(pair(candidate_par_conjunction(pard_goal_detail), push_goal))::out)
+    is det.
 
 push_and_build_candidate_conjunction(Info, RevGoalPathSteps, Conjs,
-        CostlyIndex, Single, !:Messages, MaybeCandidate) :-
+        CostlyIndex, Single, !:Messages, MaybeCandidateAndPush) :-
     SingleRevPath = Single ^ goal_annotation ^ pgd_original_path,
     SingleRevPath = rgp(SingleRevSteps),
     list.reverse(SingleRevSteps, SingleSteps),
@@ -1044,7 +1074,7 @@ push_and_build_candidate_conjunction(Info, RevGoalPathSteps, Conjs,
     ->
         RevPushGoalPathSteps = [step_conj(RelConjStep) | RevGoalPathSteps],
         push_goals_create_candidate(Info, RevPushGoalPathSteps,
-            TailRelativeSteps, GoalToPushInto, GoalsToPush, 
+            TailRelativeSteps, GoalToPushInto, GoalsToPush,
             RevCandidateGoalPathSteps, CandidateConjs),
 
         ProcLabel = Info ^ ipi_proc_label,
@@ -1073,15 +1103,17 @@ push_and_build_candidate_conjunction(Info, RevGoalPathSteps, Conjs,
             RelConjStep + 1, CostlyIndex,
             [goal_path_to_string(fgp(PushGoalSteps))]),
         pardgoals_build_candidate_conjunction(Info, Location,
-            RevCandidateGoalPathSteps, yes(PushGoal), CandidateConjs,
-            MaybeCandidate, !Messages),
+            RevCandidateGoalPathSteps, CandidateConjs, MaybeCandidate,
+            !Messages),
         (
-            MaybeCandidate = yes(_Candidate),
+            MaybeCandidate = yes(Candidate),
             append_message(Location,
                 info_found_n_conjunctions_with_positive_speedup(1),
-                !Messages)
+                !Messages),
+            MaybeCandidateAndPush = yes(Candidate - PushGoal)
         ;
-            MaybeCandidate = no
+            MaybeCandidate = no,
+            MaybeCandidateAndPush = no
         )
     ;
         unexpected($module, $pred, "bad goal path for Single")
@@ -1093,12 +1125,12 @@ push_and_build_candidate_conjunction(Info, RevGoalPathSteps, Conjs,
     list(goal_path_step)::out, list(pard_goal_detail)::out) is det.
 
 push_goals_create_candidate(_Info, RevCurPathSteps,
-        [], GoalToPushInto, GoalsToPush, 
+        [], GoalToPushInto, GoalsToPush,
         RevCandidateGoalPathSteps, CandidateConjs) :-
     RevCandidateGoalPathSteps = RevCurPathSteps,
     CandidateConjs = [GoalToPushInto | GoalsToPush].
 push_goals_create_candidate(Info, RevCurPathSteps,
-        [HeadRelStep | TailRelSteps], GoalToPushInto, GoalsToPush, 
+        [HeadRelStep | TailRelSteps], GoalToPushInto, GoalsToPush,
         RevCandidateGoalPathSteps, CandidateConjs) :-
     GoalToPushInto = goal_rep(GoalExpr, _, _),
     (
@@ -1116,7 +1148,7 @@ push_goals_create_candidate(Info, RevCurPathSteps,
                 ( Tail = [SubGoal] ->
                     push_goals_create_candidate(Info,
                         [HeadRelStep | RevCurPathSteps],
-                        TailRelSteps, SubGoal, GoalsToPush, 
+                        TailRelSteps, SubGoal, GoalsToPush,
                         RevCandidateGoalPathSteps, CandidateConjs)
                 ;
                     unexpected($module, $pred, "push into non-last conjunct")
@@ -1130,7 +1162,7 @@ push_goals_create_candidate(Info, RevCurPathSteps,
         ( GoalExpr = disj_rep(Goals) ->
             list.index1_det(Goals, N, SubGoal),
             push_goals_create_candidate(Info, [HeadRelStep | RevCurPathSteps],
-                TailRelSteps, SubGoal, GoalsToPush, 
+                TailRelSteps, SubGoal, GoalsToPush,
                 RevCandidateGoalPathSteps, CandidateConjs)
         ;
             unexpected($module, $pred, "not disj")
@@ -1141,7 +1173,7 @@ push_goals_create_candidate(Info, RevCurPathSteps,
             list.index1_det(Cases, N, Case),
             Case = case_rep(_, _, SubGoal),
             push_goals_create_candidate(Info, [HeadRelStep | RevCurPathSteps],
-                TailRelSteps, SubGoal, GoalsToPush, 
+                TailRelSteps, SubGoal, GoalsToPush,
                 RevCandidateGoalPathSteps, CandidateConjs)
         ;
             unexpected($module, $pred, "not switch")
@@ -1150,7 +1182,7 @@ push_goals_create_candidate(Info, RevCurPathSteps,
         HeadRelStep = step_ite_then,
         ( GoalExpr = ite_rep(_, Then, _) ->
             push_goals_create_candidate(Info, [HeadRelStep | RevCurPathSteps],
-                TailRelSteps, Then, GoalsToPush, 
+                TailRelSteps, Then, GoalsToPush,
                 RevCandidateGoalPathSteps, CandidateConjs)
         ;
             unexpected($module, $pred, "not ite_then")
@@ -1159,7 +1191,7 @@ push_goals_create_candidate(Info, RevCurPathSteps,
         HeadRelStep = step_ite_else,
         ( GoalExpr = ite_rep(_, _, Else) ->
             push_goals_create_candidate(Info, [HeadRelStep | RevCurPathSteps],
-                TailRelSteps, Else, GoalsToPush, 
+                TailRelSteps, Else, GoalsToPush,
                 RevCandidateGoalPathSteps, CandidateConjs)
         ;
             unexpected($module, $pred, "not ite_else")
@@ -1176,7 +1208,7 @@ push_goals_create_candidate(Info, RevCurPathSteps,
         HeadRelStep = step_scope(_),
         ( GoalExpr = scope_rep(SubGoal, _) ->
             push_goals_create_candidate(Info, [HeadRelStep | RevCurPathSteps],
-                TailRelSteps, SubGoal, GoalsToPush, 
+                TailRelSteps, SubGoal, GoalsToPush,
                 RevCandidateGoalPathSteps, CandidateConjs)
         ;
             unexpected($module, $pred, "not scope")
@@ -1200,14 +1232,12 @@ push_goals_create_candidate(Info, RevCurPathSteps,
     ).
 
 :- pred pardgoals_build_candidate_conjunction(implicit_parallelism_info::in,
-    program_location::in, list(goal_path_step)::in, maybe(push_goal)::in,
-    list(pard_goal_detail)::in,
+    program_location::in, list(goal_path_step)::in, list(pard_goal_detail)::in,
     maybe(candidate_par_conjunction(pard_goal_detail))::out,
     cord(message)::in, cord(message)::out) is det.
 
 pardgoals_build_candidate_conjunction(Info, Location, RevGoalPathSteps,
-        MaybePushGoal, Goals,
-        MaybeCandidate, !Messages) :-
+        Goals, MaybeCandidate, !Messages) :-
     % Setting up the first parallel conjunct is a different algorithm to the
     % latter ones, at this point we have the option of moving goals from before
     % the first costly call to either before or during the parallel
@@ -1230,7 +1260,7 @@ pardgoals_build_candidate_conjunction(Info, Location, RevGoalPathSteps,
         conj_calc_cost(GoalsAfter, Calls, GoalsAfterCost0),
         GoalsAfterCost = goal_cost_get_percall(GoalsAfterCost0),
         RevGoalPathString = rev_goal_path_to_string(rgp(RevGoalPathSteps)),
-        Candidate = candidate_par_conjunction(RevGoalPathString, MaybePushGoal,
+        Candidate = candidate_par_conjunction(RevGoalPathString,
             FirstConjNum, IsDependent, GoalsBefore, GoalsBeforeCost, ParConjs,
             GoalsAfter, GoalsAfterCost, Metrics),
         (
@@ -1265,9 +1295,11 @@ pardgoals_build_candidate_conjunction(Info, Location, RevGoalPathSteps,
                     pard_goal_detail_to_pard_goal, Candidate, FBCandidate),
                 VarTable = Info ^ ipi_var_table,
                 create_candidate_parallel_conj_report(VarTable,
-                    ProcLabel, FBCandidate, Report),
-                io.write_string("Not parallelising conjunction, " ++
-                    "insufficient speedup or too dependent:\n", !IO),
+                    FBCandidate, Report),
+                print_proc_label_to_string(ProcLabel, ProcLabelString),
+                io.format("Not parallelising conjunction in %s, " ++
+                    "insufficient speedup or too dependent:\n",
+                    [s(ProcLabelString)], !IO),
                 io.write_string(append_list(cord.list(Report)), !IO),
                 io.flush_output(!IO)
             )
@@ -2950,22 +2982,12 @@ identify_costly_goal(Annotation, Costly) :-
     CostAboveThreshold = Annotation ^ pgd_cost_above_threshold,
     (
         CostAboveThreshold = cost_above_par_threshold,
-        GoalType = Annotation ^ pgd_pg_type,
-        (
-            GoalType = pgt_call(_, _),
-            Costly = is_costly_goal
-        ;
-            GoalType = pgt_other_atomic_goal,
-            unexpected($module, $pred, "pgt_other_atomic_goal is never costly")
-        ;
-            GoalType = pgt_non_atomic_goal,
-            % TODO: distinguish between compound goals with one costly branch,
-            % and compound goals where all branches are costly.
-            % TODO: Provide information about how many costly goals are within
-            % the goal so that we can try to parallelise each of those against
-            % an outer costly goal.
-            Costly = is_costly_goal
-        )
+        % TODO: distinguish between compound goals with one costly branch,
+        % and compound goals where all branches are costly.
+        % TODO: Provide information about how many costly goals are within
+        % the goal so that we can try to parallelise each of those against
+        % an outer costly goal.
+        Costly = is_costly_goal
     ;
         CostAboveThreshold = cost_not_above_par_threshold,
         Costly = is_not_costly_goal
@@ -3551,26 +3573,38 @@ create_candidate_parallel_conj_proc_report(Proc - CandidateParConjunctionProc,
         Report) :-
     CandidateParConjunctionProc = candidate_par_conjunctions_proc(VarTable,
         PushGoals, CandidateParConjunctions),
+    print_proc_label_to_string(Proc, ProcString),
     list.map(create_push_goal_report, PushGoals, PushGoalReports),
-    list.map(create_candidate_parallel_conj_report(VarTable, Proc),
+    list.map(create_candidate_parallel_conj_report(VarTable),
         CandidateParConjunctions, CandidateParConjunctionReports),
-    Report = cord_list_to_cord(PushGoalReports) ++
+    Header = string.format(
+        "    %s\n",
+        [s(ProcString)]),
+    Report = cord.singleton(Header) ++
+        cord_list_to_cord(PushGoalReports) ++
+        cord.singleton("\n") ++
         cord_list_to_cord(CandidateParConjunctionReports).
 
 :- pred create_push_goal_report(push_goal::in, cord(string)::out) is det.
 
-create_push_goal_report(_, _) :-
-    sorry($module, $pred).
+create_push_goal_report(PushGoal, Report) :-
+    PushGoal = push_goal(PushGoalPathStr, Lo, Hi, PushedGoalPathStrs),
+    string.format("\n      PushGoal: %s, lo %d, hi %d\n",
+        [s(PushGoalPathStr), i(Lo), i(Hi)], HeadPushGoalStr),
+    FormatPushedGoals = (
+        func(PushedGoalPathStr) =
+            string.format("        %s\n", [s(PushedGoalPathStr)])
+    ),
+    TailPushGoalStrs = list.map(FormatPushedGoals, PushedGoalPathStrs),
+    Report = cord.from_list([HeadPushGoalStr | TailPushGoalStrs]).
 
 :- pred create_candidate_parallel_conj_report(var_table::in,
-    string_proc_label::in, candidate_par_conjunction(pard_goal)::in,
-    cord(string)::out) is det.
+    candidate_par_conjunction(pard_goal)::in, cord(string)::out) is det.
 
-create_candidate_parallel_conj_report(VarTable, Proc, CandidateParConjunction,
+create_candidate_parallel_conj_report(VarTable, CandidateParConjunction,
         Report) :-
-    print_proc_label_to_string(Proc, ProcString),
     CandidateParConjunction = candidate_par_conjunction(GoalPathString,
-        MaybePushGoal, FirstConjNum, IsDependent, GoalsBefore, GoalsBeforeCost,
+        FirstConjNum, IsDependent, GoalsBefore, GoalsBeforeCost,
         Conjs, GoalsAfter, GoalsAfterCost, ParExecMetrics),
     ParExecMetrics = parallel_exec_metrics(NumCalls, SeqTime, ParTime,
         ParOverheads, FirstConjDeadTime, FutureDeadTime),
@@ -3588,27 +3622,9 @@ create_candidate_parallel_conj_report(VarTable, Proc, CandidateParConjunction,
     TotalDeadTime = FirstConjDeadTime + FutureDeadTime,
 
     string.format(
-        "      %s\n" ++
         "      Path: %s\n",
-        [s(ProcString),
-         s(GoalPathString)], Header1Str),
+        [s(GoalPathString)], Header1Str),
     Header1 = cord.singleton(Header1Str),
-
-    (
-        MaybePushGoal = no,
-        Header2 = cord.empty
-    ;
-        MaybePushGoal = yes(PushGoal),
-        PushGoal = push_goal(PushGoalPathStr, Lo, Hi, PushedGoalPathStrs),
-        string.format("      PushGoal: %s, lo %d, hi %d\n",
-            [s(PushGoalPathStr), i(Lo), i(Hi)], HeadPushGoalStr),
-        FormatPushedGoals = (
-            func(PushedGoalPathStr) = 
-                string.format("                %s\n", [s(PushedGoalPathStr)])
-        ),
-        TailPushGoalStrs = list.map(FormatPushedGoals, PushedGoalPathStrs),
-        Header2 = cord.from_list([HeadPushGoalStr | TailPushGoalStrs])
-    ),
 
     string.format(
         "      Dependent: %s\n" ++
@@ -3631,8 +3647,8 @@ create_candidate_parallel_conj_report(VarTable, Proc, CandidateParConjunction,
          s(two_decimal_fraction(FirstConjDeadTime)),
          s(two_decimal_fraction(FutureDeadTime)),
          s(two_decimal_fraction(TotalDeadTime))],
-        Header3Str),
-    Header3 = cord.singleton(Header3Str),
+        Header2Str),
+    Header2 = cord.singleton(Header2Str),
 
     ( rev_goal_path_from_string(GoalPathString, RevGoalPath) ->
         RevGoalPath = rgp(RevGoalPathSteps)
@@ -3658,7 +3674,7 @@ create_candidate_parallel_conj_report(VarTable, Proc, CandidateParConjunction,
         ReportGoalsAfter = indent(3) ++ singleton("Goals after:\n") ++
             ReportGoalsAfter0
     ),
-    Report = Header1 ++ Header2 ++ Header3 ++ ReportGoalsBefore ++ nl
+    Report = Header1 ++ Header2 ++ ReportGoalsBefore ++ nl
         ++ ReportParConj ++ nl ++ ReportGoalsAfter ++ nl.
 
 :- pred format_parallel_conjunction(var_table::in, int::in,

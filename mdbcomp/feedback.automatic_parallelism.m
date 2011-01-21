@@ -27,7 +27,6 @@
 
 :- import_module bool.
 :- import_module list.
-:- import_module maybe.
 :- import_module set.
 :- import_module string.
 
@@ -197,8 +196,6 @@
     --->    candidate_par_conjunction(
                 % The path within the procedure to this conjunction.
                 cpc_goal_path           :: goal_path_string,
-
-                cpc_maybe_push_goal     :: maybe(push_goal),
 
                 % The position within the original conjunction that this
                 % parallelisation starts.
@@ -375,7 +372,7 @@ convert_candidate_par_conjunctions_proc(Conv, CPCProcA, CPCProcB) :-
     CPCProcB = candidate_par_conjunctions_proc(VarTable, PushGoals, CPCB).
 
 convert_candidate_par_conjunction(Conv0, CPC0, CPC) :-
-    CPC0 = candidate_par_conjunction(GoalPath, MaybePushGoal, FirstGoalNum,
+    CPC0 = candidate_par_conjunction(GoalPath, FirstGoalNum,
         IsDependent, GoalsBefore0, GoalsBeforeCost, Conjs0, GoalsAfter0,
         GoalsAfterCost, Metrics),
     Conv = (pred(A::in, B::out) is det :-
@@ -384,7 +381,7 @@ convert_candidate_par_conjunction(Conv0, CPC0, CPC) :-
     list.map(convert_seq_conj(Conv), Conjs0, Conjs),
     list.map(Conv, GoalsBefore0, GoalsBefore),
     list.map(Conv, GoalsAfter0, GoalsAfter),
-    CPC = candidate_par_conjunction(GoalPath, MaybePushGoal, FirstGoalNum,
+    CPC = candidate_par_conjunction(GoalPath, FirstGoalNum,
         IsDependent, GoalsBefore, GoalsBeforeCost, Conjs, GoalsAfter,
         GoalsAfterCost, Metrics).
 
