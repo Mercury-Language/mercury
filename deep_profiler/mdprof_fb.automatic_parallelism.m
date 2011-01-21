@@ -39,16 +39,16 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Perform Jerome's analysis and update the feedback info structure.
-    %
-:- pred css_list_above_threshold(calls_above_threshold_sorted_opts::in,
-    deep::in, feedback_info::in, feedback_info::out) is det.
-
 :- type calls_above_threshold_sorted_opts
     --->    calls_above_threshold_sorted_opts(
                 cats_measure                :: stat_measure,
                 cats_threshold              :: int
             ).
+
+    % Perform Jerome's analysis and update the feedback info structure.
+    %
+:- pred css_list_above_threshold(calls_above_threshold_sorted_opts::in,
+    deep::in, feedback_info::in, feedback_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -564,15 +564,60 @@ candidate_parallel_conjunctions_clique_proc(Opts, Deep, RecursionType,
 merge_candidate_par_conjs_proc(A, B, Result) :-
     A = candidate_par_conjunctions_proc(VarTableA, PushGoalsA, CPCsA),
     B = candidate_par_conjunctions_proc(VarTableB, PushGoalsB, CPCsB),
-    Result = candidate_par_conjunctions_proc(VarTableA, PushGoals, CPCs),
     CPCs = CPCsA ++ CPCsB,
-    % XXX Merge pushes here.
-    PushGoals = PushGoalsA ++ PushGoalsB,
+    merge_pushes_for_proc(PushGoalsA ++ PushGoalsB, PushGoals),
     ( VarTableA = VarTableB ->
-        true
+        Result = candidate_par_conjunctions_proc(VarTableA, PushGoals, CPCs)
     ;
         unexpected($module, $pred, "var tables do not match")
     ).
+
+:- pred merge_pushes_for_proc(list(push_goal)::in, list(push_goal)::out)
+    is det.
+
+merge_pushes_for_proc([], []).
+merge_pushes_for_proc(Pushes0 @ [_ | _], Pushes) :-
+    list.foldl(insert_into_push_map, Pushes0, map.init, PushMap),
+    map.foldl(extract_from_push_map, PushMap, [], Pushes).
+
+:- pred insert_into_push_map(push_goal::in,
+    map(goal_path_string, {int, int, set(goal_path_string)})::in,
+    map(goal_path_string, {int, int, set(goal_path_string)})::out) is det.
+
+insert_into_push_map(PushGoal, !Map) :-
+    PushGoal = push_goal(GoalPathStr, Lo, Hi, TargetGoalPathStrs),
+    ( map.search(!.Map, GoalPathStr, OldTriple) ->
+        OldTriple = {OldLo, OldHi, OldTargetGoalPathStrSet},
+        (
+            Lo = OldLo,
+            Hi = OldHi
+        ->
+            set.insert_list(OldTargetGoalPathStrSet, TargetGoalPathStrs,
+                NewTargetGoalPathStrSet),
+            NewTriple = {OldLo, OldHi, NewTargetGoalPathStrSet},
+            svmap.det_update(GoalPathStr, NewTriple, !Map)
+        ;
+            % There seem to be separate push requests inside the same
+            % conjunction that want to push different seets of conjuncts.
+            % Since they could interfere with each other, we keep only one.
+            % Since we don't have any good basis on which to make the choice,
+            % we keep the earlier pushes.
+            true
+        )
+    ;
+        NewTriple = {Lo, Hi, set.list_to_set(TargetGoalPathStrs)},
+        svmap.det_insert(GoalPathStr, NewTriple, !Map)
+    ).
+
+:- pred extract_from_push_map(goal_path_string::in,
+    {int, int, set(goal_path_string)}::in,
+    list(push_goal)::in, list(push_goal)::out) is det.
+
+extract_from_push_map(GoalPathStr, Triple, !Pushes) :-
+    Triple = {Lo, Hi, TargetGoalPathStrSet},
+    Push = push_goal(GoalPathStr, Lo, Hi,
+        set.to_sorted_list(TargetGoalPathStrSet)),
+    !:Pushes = [Push | !.Pushes].
 
 %----------------------------------------------------------------------------%
 %
@@ -664,9 +709,9 @@ candidate_parallel_conjunctions_proc(Opts, Deep, PDPtr, RecursionType,
                 (
                     SeenDuplicateInstantiation =
                         have_not_seen_duplicate_instantiation,
-                    % XXX Merge pushes here.
+                    merge_pushes_for_proc(Pushes, MergedPushes),
                     CandidateProc = candidate_par_conjunctions_proc(VarTable,
-                        Pushes, Candidates0),
+                        MergedPushes, Candidates0),
                     svmap.set(ProcLabel, CandidateProc, map.init, Candidates)
                 ;
                     SeenDuplicateInstantiation = seen_duplicate_instantiation,
@@ -739,7 +784,7 @@ goal_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
             (
                 SingleCands = [],
                 Candidates = CandidatesBelow,
-                PushesThisLevel = cord.empty,
+                Pushes = PushesBelow,
                 Singles = cord.from_list(SinglesSoFar),
                 Messages = MessagesBelow,
                 Cost = Annotation0 ^ pgd_cost
@@ -747,14 +792,23 @@ goal_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
                 SingleCands = [CostlyIndex - SinglesBefore],
                 push_and_build_candidate_conjunctions(Info, RevGoalPathSteps,
                     Conjs, CostlyIndex, SinglesBefore,
-                    MessagesThisLevel, CandidatesThisLevel, PushesThisLevel),
-                Candidates = CandidatesBelow ++ CandidatesThisLevel,
-                ( cord.is_empty(CandidatesThisLevel) ->
+                    MessagesThisLevel, CandidatesThisLevel),
+                (
+                    CandidatesThisLevel = [],
+                    Candidates = CandidatesBelow,
+                    Pushes = PushesBelow,
                     % No candidate was built, pass our singles to our caller.
                     Singles = cord.from_list(SinglesSoFar)
                 ;
-                    % Reset signals if we made a candidate our caller cannot
-                    % use them.
+                    CandidatesThisLevel = [FirstCandidate | LaterCandidates],
+                    merge_same_level_pushes(FirstCandidate, LaterCandidates,
+                        PushThisLevel),
+                    Candidates = CandidatesBelow ++
+                        cord.from_list(CandidatesThisLevel),
+                    Pushes = cord.snoc(PushesBelow, PushThisLevel),
+                    % Any single expensive goals inside this conjunction
+                    % cannot have later expensive goals pushed next to them
+                    % without reanalysis of the whole goal, which we do not do.
                     Singles = cord.empty
                 ),
                 Messages = MessagesBelow ++ MessagesThisLevel,
@@ -765,7 +819,7 @@ goal_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
                 assoc_list.keys(SingleCands, CostlyIndexes),
                 build_candidate_conjunction(Info, RevGoalPathSteps,
                     Conjs, CostlyIndexes, MessagesThisLevel, MaybeCandidate),
-                PushesThisLevel = cord.empty,
+                Pushes = PushesBelow,
                 Messages = MessagesBelow ++ MessagesThisLevel,
                 (
                     MaybeCandidate = yes(Candidate),
@@ -794,8 +848,7 @@ goal_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
                     Singles = cord.from_list(SinglesSoFar),
                     Cost = Annotation0 ^ pgd_cost
                 )
-            ),
-            Pushes = PushesBelow ++ PushesThisLevel
+            )
         ;
             GoalExpr0 = disj_rep(Disjs0),
             list.map_foldl5(
@@ -1008,7 +1061,7 @@ build_candidate_conjunction(Info, RevGoalPathSteps, Conjs, CostlyGoalsIndexes,
         info_found_conjs_above_callsite_threshold(NumCostlyGoals),
         !Messages),
 
-    pardgoals_build_candidate_conjunction(Info, Location, RevGoalPathSteps,
+    pardgoals_build_candidate_conjunction(Info, Location, RevGoalPathSteps, no,
         Conjs, MaybeCandidate, !Messages),
     (
         MaybeCandidate = yes(_Candidate),
@@ -1028,36 +1081,32 @@ build_candidate_conjunction(Info, RevGoalPathSteps, Conjs, CostlyGoalsIndexes,
 :- pred push_and_build_candidate_conjunctions(implicit_parallelism_info::in,
     list(goal_path_step)::in, list(pard_goal_detail)::in, int::in,
     list(pard_goal_detail)::in, cord(message)::out,
-    cord(candidate_par_conjunction(pard_goal_detail))::out,
-    cord(push_goal)::out) is det.
+    list(candidate_par_conjunction(pard_goal_detail))::out) is det.
 
 push_and_build_candidate_conjunctions(_Info, _RevGoalPathSteps, _Conjs,
-        _CostlyIndex, [], cord.empty, cord.empty, cord.empty).
+        _CostlyIndex, [], cord.empty, []).
 push_and_build_candidate_conjunctions(Info, RevGoalPathSteps, Conjs,
-        CostlyIndex, [Single | Singles], Messages, Candidates, Pushes) :-
+        CostlyIndex, [Single | Singles], Messages, Candidates) :-
     push_and_build_candidate_conjunction(Info, RevGoalPathSteps, Conjs,
-        CostlyIndex, Single, HeadMessages, MaybeHeadCandidateAndPush),
+        CostlyIndex, Single, HeadMessages, MaybeHeadCandidate),
     push_and_build_candidate_conjunctions(Info, RevGoalPathSteps, Conjs,
-        CostlyIndex, Singles, TailMessages, TailCandidates, TailPushes),
+        CostlyIndex, Singles, TailMessages, TailCandidates),
     Messages = HeadMessages ++ TailMessages,
     (
-        MaybeHeadCandidateAndPush = yes(HeadCandidate - HeadPush),
-        Candidates = cord.cons(HeadCandidate, TailCandidates),
-        Pushes = cord.cons(HeadPush, TailPushes)
+        MaybeHeadCandidate = yes(HeadCandidate),
+        Candidates = [HeadCandidate | TailCandidates]
     ;
-        MaybeHeadCandidateAndPush = no,
-        Candidates = TailCandidates,
-        Pushes = TailPushes
+        MaybeHeadCandidate = no,
+        Candidates = TailCandidates
     ).
 
 :- pred push_and_build_candidate_conjunction(implicit_parallelism_info::in,
     list(goal_path_step)::in, list(pard_goal_detail)::in, int::in,
     pard_goal_detail::in, cord(message)::out,
-    maybe(pair(candidate_par_conjunction(pard_goal_detail), push_goal))::out)
-    is det.
+    maybe(candidate_par_conjunction(pard_goal_detail))::out) is det.
 
 push_and_build_candidate_conjunction(Info, RevGoalPathSteps, Conjs,
-        CostlyIndex, Single, !:Messages, MaybeCandidateAndPush) :-
+        CostlyIndex, Single, !:Messages, MaybeCandidate) :-
     SingleRevPath = Single ^ goal_annotation ^ pgd_original_path,
     SingleRevPath = rgp(SingleRevSteps),
     list.reverse(SingleRevSteps, SingleSteps),
@@ -1103,20 +1152,50 @@ push_and_build_candidate_conjunction(Info, RevGoalPathSteps, Conjs,
             RelConjStep + 1, CostlyIndex,
             [goal_path_to_string(fgp(PushGoalSteps))]),
         pardgoals_build_candidate_conjunction(Info, Location,
-            RevCandidateGoalPathSteps, CandidateConjs, MaybeCandidate,
-            !Messages),
+            RevCandidateGoalPathSteps, yes(PushGoal), CandidateConjs,
+            MaybeCandidate, !Messages),
         (
-            MaybeCandidate = yes(Candidate),
+            MaybeCandidate = yes(_),
             append_message(Location,
                 info_found_n_conjunctions_with_positive_speedup(1),
-                !Messages),
-            MaybeCandidateAndPush = yes(Candidate - PushGoal)
+                !Messages)
         ;
-            MaybeCandidate = no,
-            MaybeCandidateAndPush = no
+            MaybeCandidate = no
         )
     ;
         unexpected($module, $pred, "bad goal path for Single")
+    ).
+
+:- pred merge_same_level_pushes(
+    candidate_par_conjunction(pard_goal_detail)::in,
+    list(candidate_par_conjunction(pard_goal_detail))::in,
+    push_goal::out) is det.
+
+merge_same_level_pushes(MainCandidate, [], MainPush) :-
+    MaybeMainPush = MainCandidate ^ cpc_maybe_push_goal,
+    (
+        MaybeMainPush = yes(MainPush)
+    ;
+        MaybeMainPush = no,
+        unexpected($module, $pred, "no push")
+    ).
+merge_same_level_pushes(MainCandidate, [HeadCandidate | TailCandidates],
+        Push) :-
+    merge_same_level_pushes(HeadCandidate, TailCandidates, RestPush),
+    MaybeMainPush = MainCandidate ^ cpc_maybe_push_goal,
+    (
+        MaybeMainPush = yes(MainPush)
+    ;
+        MaybeMainPush = no,
+        unexpected($module, $pred, "no push")
+    ),
+    (
+        MainPush = push_goal(GoalPathStr, Lo, Hi, [MainPushInto]),
+        RestPush = push_goal(GoalPathStr, Lo, Hi, RestPushInto)
+    ->
+        Push = push_goal(GoalPathStr, Lo, Hi, [MainPushInto | RestPushInto])
+    ;
+        unexpected($module, $pred, "mismatch on pushed goals")
     ).
 
 :- pred push_goals_create_candidate(implicit_parallelism_info::in,
@@ -1232,12 +1311,13 @@ push_goals_create_candidate(Info, RevCurPathSteps,
     ).
 
 :- pred pardgoals_build_candidate_conjunction(implicit_parallelism_info::in,
-    program_location::in, list(goal_path_step)::in, list(pard_goal_detail)::in,
+    program_location::in, list(goal_path_step)::in,
+    maybe(push_goal)::in, list(pard_goal_detail)::in,
     maybe(candidate_par_conjunction(pard_goal_detail))::out,
     cord(message)::in, cord(message)::out) is det.
 
 pardgoals_build_candidate_conjunction(Info, Location, RevGoalPathSteps,
-        Goals, MaybeCandidate, !Messages) :-
+        MaybePushGoal, Goals, MaybeCandidate, !Messages) :-
     % Setting up the first parallel conjunct is a different algorithm to the
     % latter ones, at this point we have the option of moving goals from before
     % the first costly call to either before or during the parallel
@@ -1260,7 +1340,7 @@ pardgoals_build_candidate_conjunction(Info, Location, RevGoalPathSteps,
         conj_calc_cost(GoalsAfter, Calls, GoalsAfterCost0),
         GoalsAfterCost = goal_cost_get_percall(GoalsAfterCost0),
         RevGoalPathString = rev_goal_path_to_string(rgp(RevGoalPathSteps)),
-        Candidate = candidate_par_conjunction(RevGoalPathString,
+        Candidate = candidate_par_conjunction(RevGoalPathString, MaybePushGoal,
             FirstConjNum, IsDependent, GoalsBefore, GoalsBeforeCost, ParConjs,
             GoalsAfter, GoalsAfterCost, Metrics),
         (
@@ -3334,8 +3414,7 @@ conj_annotate_with_instmap([Conj | Conjs], SeenDuplicateInstantiation,
     set.union(ConsumedVarsTail, ConsumedVarsHead, ConsumedVars),
     set.union(BoundVarsTail, BoundVarsHead, BoundVars),
     SeenDuplicateInstantiation = merge_seen_duplicate_instantiation(
-        SeenDuplicateInstantiationHead,
-        SeenDuplicateInstantiationTail).
+        SeenDuplicateInstantiationHead, SeenDuplicateInstantiationTail).
 
 :- pred disj_annotate_with_instmap(list(goal_rep(goal_id))::in,
     seen_duplicate_instantiation::out, set(var_rep)::out, set(var_rep)::out,
@@ -3349,11 +3428,9 @@ disj_annotate_with_instmap([Disj | Disjs], SeenDuplicateInstantiation,
         ConsumedVars, BoundVars, InstMap0, InstMap, !InstMapArray) :-
     HeadDetism = Disj ^ goal_detism_rep,
     goal_annotate_with_instmap(Disj, SeenDuplicateInstantiationHead,
-        ConsumedVarsHead, BoundVarsHead, InstMap0, InstMapHead,
-        !InstMapArray),
+        ConsumedVarsHead, BoundVarsHead, InstMap0, InstMapHead, !InstMapArray),
     disj_annotate_with_instmap(Disjs, SeenDuplicateInstantiationTail,
-        ConsumedVarsTail, BoundVarsTail, InstMap0, InstMapTail,
-        !InstMapArray),
+        ConsumedVarsTail, BoundVarsTail, InstMap0, InstMapTail, !InstMapArray),
 
     set.union(ConsumedVarsTail, ConsumedVarsHead, ConsumedVars),
 
@@ -3374,8 +3451,7 @@ disj_annotate_with_instmap([Disj | Disjs], SeenDuplicateInstantiation,
     ),
     InstMap = merge_inst_map(InstMapHead, HeadDetism, InstMapTail, TailDetism),
     SeenDuplicateInstantiation = merge_seen_duplicate_instantiation(
-        SeenDuplicateInstantiationHead,
-        SeenDuplicateInstantiationTail).
+        SeenDuplicateInstantiationHead, SeenDuplicateInstantiationTail).
 
 :- pred switch_annotate_with_instmap(list(case_rep(goal_id))::in,
     seen_duplicate_instantiation::out, set(var_rep)::out, set(var_rep)::out,
@@ -3390,11 +3466,9 @@ switch_annotate_with_instmap([Case | Cases], SeenDuplicateInstantiation,
     Case = case_rep(_, _, Goal),
     HeadDetism = Goal ^ goal_detism_rep,
     goal_annotate_with_instmap(Goal, SeenDuplicateInstantiationHead,
-        ConsumedVarsHead, BoundVarsHead, InstMap0, InstMapHead,
-        !InstMapArray),
+        ConsumedVarsHead, BoundVarsHead, InstMap0, InstMapHead, !InstMapArray),
     switch_annotate_with_instmap(Cases, SeenDuplicateInstantiationTail,
-        ConsumedVarsTail, BoundVarsTail, InstMap0, InstMapTail,
-        !InstMapArray),
+        ConsumedVarsTail, BoundVarsTail, InstMap0, InstMapTail, !InstMapArray),
     set.union(ConsumedVarsTail, ConsumedVarsHead, ConsumedVars),
     % merge_inst_map requires the detism of goals that produce both inst maps,
     % we can create fake values that satisfy merge_inst_map easily.
@@ -3409,8 +3483,7 @@ switch_annotate_with_instmap([Case | Cases], SeenDuplicateInstantiation,
     ),
     InstMap = merge_inst_map(InstMapHead, HeadDetism, InstMapTail, TailDetism),
     SeenDuplicateInstantiation = merge_seen_duplicate_instantiation(
-        SeenDuplicateInstantiationHead,
-        SeenDuplicateInstantiationTail).
+        SeenDuplicateInstantiationHead, SeenDuplicateInstantiationTail).
 
 :- pred ite_annotate_with_instmap(goal_rep(goal_id)::in,
     goal_rep(goal_id)::in, goal_rep(goal_id)::in,
@@ -3604,7 +3677,7 @@ create_push_goal_report(PushGoal, Report) :-
 create_candidate_parallel_conj_report(VarTable, CandidateParConjunction,
         Report) :-
     CandidateParConjunction = candidate_par_conjunction(GoalPathString,
-        FirstConjNum, IsDependent, GoalsBefore, GoalsBeforeCost,
+        MaybePushGoal, FirstConjNum, IsDependent, GoalsBefore, GoalsBeforeCost,
         Conjs, GoalsAfter, GoalsAfterCost, ParExecMetrics),
     ParExecMetrics = parallel_exec_metrics(NumCalls, SeqTime, ParTime,
         ParOverheads, FirstConjDeadTime, FutureDeadTime),
@@ -3625,6 +3698,22 @@ create_candidate_parallel_conj_report(VarTable, CandidateParConjunction,
         "      Path: %s\n",
         [s(GoalPathString)], Header1Str),
     Header1 = cord.singleton(Header1Str),
+
+    (
+        MaybePushGoal = no,
+        Header2 = cord.empty
+    ;
+        MaybePushGoal = yes(PushGoal),
+        PushGoal = push_goal(PushGoalPathStr, Lo, Hi, PushedGoalPathStrs),
+        string.format("      PushGoal: %s, lo %d, hi %d\n",
+            [s(PushGoalPathStr), i(Lo), i(Hi)], HeadPushGoalStr),
+        FormatPushedGoals = (
+            func(PushedGoalPathStr) = 
+                string.format("                %s\n", [s(PushedGoalPathStr)])
+        ),
+        TailPushGoalStrs = list.map(FormatPushedGoals, PushedGoalPathStrs),
+        Header2 = cord.from_list([HeadPushGoalStr | TailPushGoalStrs])
+    ),
 
     string.format(
         "      Dependent: %s\n" ++
@@ -3648,7 +3737,7 @@ create_candidate_parallel_conj_report(VarTable, CandidateParConjunction,
          s(two_decimal_fraction(FutureDeadTime)),
          s(two_decimal_fraction(TotalDeadTime))],
         Header2Str),
-    Header2 = cord.singleton(Header2Str),
+    Header3 = cord.singleton(Header2Str),
 
     ( rev_goal_path_from_string(GoalPathString, RevGoalPath) ->
         RevGoalPath = rgp(RevGoalPathSteps)
@@ -3674,7 +3763,7 @@ create_candidate_parallel_conj_report(VarTable, CandidateParConjunction,
         ReportGoalsAfter = indent(3) ++ singleton("Goals after:\n") ++
             ReportGoalsAfter0
     ),
-    Report = Header1 ++ Header2 ++ ReportGoalsBefore ++ nl
+    Report = Header1 ++ Header2 ++ Header3 ++ ReportGoalsBefore ++ nl
         ++ ReportParConj ++ nl ++ ReportGoalsAfter ++ nl.
 
 :- pred format_parallel_conjunction(var_table::in, int::in,

@@ -27,6 +27,7 @@
 
 :- import_module bool.
 :- import_module list.
+:- import_module maybe.
 :- import_module set.
 :- import_module string.
 
@@ -196,6 +197,13 @@
     --->    candidate_par_conjunction(
                 % The path within the procedure to this conjunction.
                 cpc_goal_path           :: goal_path_string,
+
+                % If the candidate is dependent on a push being performed,
+                % what is that push? Note that any push that specifies the same
+                % goals being pushed and the same OR GREATER set of goals next
+                % to which to push them is acceptable: if such a push is
+                % performed, then this candidate is viable.
+                cpc_maybe_push_goal     :: maybe(push_goal),
 
                 % The position within the original conjunction that this
                 % parallelisation starts.
@@ -372,21 +380,21 @@ convert_candidate_par_conjunctions_proc(Conv, CPCProcA, CPCProcB) :-
     CPCProcB = candidate_par_conjunctions_proc(VarTable, PushGoals, CPCB).
 
 convert_candidate_par_conjunction(Conv0, CPC0, CPC) :-
-    CPC0 = candidate_par_conjunction(GoalPath, FirstGoalNum,
-        IsDependent, GoalsBefore0, GoalsBeforeCost, Conjs0, GoalsAfter0,
-        GoalsAfterCost, Metrics),
+    CPC0 = candidate_par_conjunction(GoalPath, MaybePushGoal, FirstGoalNum,
+        IsDependent, GoalsBefore0, GoalsBeforeCost, Conjs0,
+        GoalsAfter0, GoalsAfterCost, Metrics),
     Conv = (pred(A::in, B::out) is det :-
             Conv0(CPC0, A, B)
         ),
     list.map(convert_seq_conj(Conv), Conjs0, Conjs),
     list.map(Conv, GoalsBefore0, GoalsBefore),
     list.map(Conv, GoalsAfter0, GoalsAfter),
-    CPC = candidate_par_conjunction(GoalPath, FirstGoalNum,
-        IsDependent, GoalsBefore, GoalsBeforeCost, Conjs, GoalsAfter,
-        GoalsAfterCost, Metrics).
+    CPC = candidate_par_conjunction(GoalPath, MaybePushGoal, FirstGoalNum,
+        IsDependent, GoalsBefore, GoalsBeforeCost, Conjs,
+        GoalsAfter, GoalsAfterCost, Metrics).
 
 convert_seq_conj(Conv, seq_conj(Conjs0), seq_conj(Conjs)) :-
-    map(Conv, Conjs0, Conjs).
+    list.map(Conv, Conjs0, Conjs).
 
 %-----------------------------------------------------------------------------%
 :- end_module mdbcomp.feedback.automatic_parallelism.
