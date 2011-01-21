@@ -185,6 +185,8 @@
 
 :- func goal_cost_get_percall(goal_cost_csq) = float.
 
+:- func goal_cost_get_total(goal_cost_csq) = float.
+
 :- func goal_cost_get_calls(goal_cost_csq) = int.
 
 %-----------------------------------------------------------------------------%
@@ -836,6 +838,11 @@ goal_cost_get_percall(non_trivial_goal(Cost, Calls)) =
     ;
         cost_get_percall(float(Calls), Cost)
     ).
+
+goal_cost_get_total(dead_goal) = 0.0.
+goal_cost_get_total(trivial_goal(_)) = 0.0.
+goal_cost_get_total(non_trivial_goal(Cost, Calls)) =
+    cost_get_total(float(Calls), Cost).
 
 goal_cost_get_calls(dead_goal) = 0.
 goal_cost_get_calls(trivial_goal(Calls)) = Calls.

@@ -261,21 +261,21 @@ build_recursive_call_site_cost_map(Deep, CliquePtr, PDPtr, RecursionType,
         RecursionType = rt_not_recursive,
         MaybeRecursiveCallSiteCostMap = ok(map.init)
     ;
-        RecursionType = rt_single(_, _, _AvgMaxDepth, _AvgRecCost, CostFn),
+        RecursionType = rt_single(_, _, MaxDepth, _AvgRecCost, CostFn),
         (
             MaybeDepth = yes(Depth0),
             ( recursion_depth_is_base_case(Depth0) ->
                 MaybeRecursiveCallSiteCostMap = ok(map.init)
             ;
                 % Descend once to move to the depth of the recursive callees.
-                recursion_depth_descend(Depth0, Depth),
-                DepthI = recursion_depth_to_int(Depth),
                 get_recursive_calls_and_counts(Deep, CliquePtr, PDPtr,
                     CallCountsMap),
                 RecursiveCallSiteCostMap = map_values_only(
                     (func(Count) =
-                        build_cs_cost_csq_percall(float(Count),
-                            CostFn(DepthI))),
+                            build_cs_cost_csq_percall(float(Count),
+                                CostFn(DepthI)) :-
+                        DepthI = round_to_int(MaxDepth / float(Count))
+                    ),
                     CallCountsMap),
                 MaybeRecursiveCallSiteCostMap = ok(RecursiveCallSiteCostMap),
 

@@ -1017,6 +1017,18 @@ conj_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
         SinglesSoFar1 = Singles
     ;
         Costly = is_not_costly_goal,
+        % This goal might be costly if it is pushed into the cotexted
+        % of one of SinglesSoFar.  This is common for recursive goals.
+        filter(single_context_makes_goal_costly(Info, Conj), SinglesSoFar0,
+            SinglesSoFarMakeConjCostly),
+        (
+            SinglesSoFarMakeConjCostly = []
+        ;
+            SinglesSoFarMakeConjCostly = [_ | _],
+            !:RevSingleCands = [ConjNum - SinglesSoFarMakeConjCostly |
+                !.RevSingleCands]
+        ),
+
         (
             SinglesSoFar0 = [],
             Singles = [],
@@ -1040,6 +1052,16 @@ conj_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
     conj_get_conjunctions_worth_parallelising(Info, RevGoalPathSteps,
         Conjs0, Conjs, ConjNum + 1, SinglesSoFar1, SinglesSoFar,
         !RevSingleCands, !CandidatesBelow, !Pushes, !MessagesBelow).
+
+:- pred single_context_makes_goal_costly(implicit_parallelism_info::in,
+    pard_goal_detail::in, pard_goal_detail::in) is semidet.
+
+single_context_makes_goal_costly(Info, Goal, Single) :-
+    SingleCost = Single ^ goal_annotation ^ pgd_cost,
+    SingleCount = goal_cost_get_calls(SingleCost),
+    fix_goal_counts(Info, SingleCount, Goal, ConjNewCounts),
+    identify_costly_goal(ConjNewCounts ^ goal_annotation,
+        is_costly_goal).
 
     % Given a conjunction with two or more costly goals (identified by
     % CostlyGoalsIndexes), check whether executing the conjunction in parallel
@@ -1202,13 +1224,18 @@ merge_same_level_pushes(MainCandidate, [HeadCandidate | TailCandidates],
     pard_goal_detail::in, list(pard_goal_detail)::in,
     list(goal_path_step)::out, list(pard_goal_detail)::out) is det.
 
-push_goals_create_candidate(_Info, RevCurPathSteps,
-        [], GoalToPushInto, GoalsToPush,
+push_goals_create_candidate(Info, RevCurPathSteps,
+        [], GoalToPushInto, GoalsToPush0,
         RevCandidateGoalPathSteps, CandidateConjs) :-
     RevCandidateGoalPathSteps = RevCurPathSteps,
+    % The pushed goals will have different costs in this context, in particular
+    % the number of times they're called varies, This affects the per-call
+    % costs of recursive calls.
+    Calls = goal_cost_get_calls(GoalToPushInto ^ goal_annotation ^ pgd_cost),
+    map(fix_goal_counts(Info, Calls), GoalsToPush0, GoalsToPush),
     CandidateConjs = [GoalToPushInto | GoalsToPush].
 push_goals_create_candidate(Info, RevCurPathSteps,
-        [HeadRelStep | TailRelSteps], GoalToPushInto, GoalsToPush,
+        [HeadRelStep | TailRelSteps], GoalToPushInto, GoalsToPush0,
         RevCandidateGoalPathSteps, CandidateConjs) :-
     GoalToPushInto = goal_rep(GoalExpr, _, _),
     (
@@ -1219,6 +1246,12 @@ push_goals_create_candidate(Info, RevCurPathSteps,
                 % Conjoin GoalsToPush not with just the expensive goal,
                 % but with the whole conjunction containing it.
                 RevCandidateGoalPathSteps = RevCurPathSteps,
+                % The pushed goals will have different costs in this context,
+                % in particular the number of times they're called varies, This
+                % affects the per-call costs of recursive calls.
+                Cost = GoalToPushInto ^ goal_annotation ^ pgd_cost,
+                Calls = goal_cost_get_calls(Cost),
+                map(fix_goal_counts(Info, Calls), GoalsToPush0, GoalsToPush),
                 CandidateConjs = Goals ++ GoalsToPush
             ;
                 TailRelSteps = [_ | _],
@@ -1226,7 +1259,7 @@ push_goals_create_candidate(Info, RevCurPathSteps,
                 ( Tail = [SubGoal] ->
                     push_goals_create_candidate(Info,
                         [HeadRelStep | RevCurPathSteps],
-                        TailRelSteps, SubGoal, GoalsToPush,
+                        TailRelSteps, SubGoal, GoalsToPush0,
                         RevCandidateGoalPathSteps, CandidateConjs)
                 ;
                     unexpected($module, $pred, "push into non-last conjunct")
@@ -1240,7 +1273,7 @@ push_goals_create_candidate(Info, RevCurPathSteps,
         ( GoalExpr = disj_rep(Goals) ->
             list.index1_det(Goals, N, SubGoal),
             push_goals_create_candidate(Info, [HeadRelStep | RevCurPathSteps],
-                TailRelSteps, SubGoal, GoalsToPush,
+                TailRelSteps, SubGoal, GoalsToPush0,
                 RevCandidateGoalPathSteps, CandidateConjs)
         ;
             unexpected($module, $pred, "not disj")
@@ -1251,7 +1284,7 @@ push_goals_create_candidate(Info, RevCurPathSteps,
             list.index1_det(Cases, N, Case),
             Case = case_rep(_, _, SubGoal),
             push_goals_create_candidate(Info, [HeadRelStep | RevCurPathSteps],
-                TailRelSteps, SubGoal, GoalsToPush,
+                TailRelSteps, SubGoal, GoalsToPush0,
                 RevCandidateGoalPathSteps, CandidateConjs)
         ;
             unexpected($module, $pred, "not switch")
@@ -1260,7 +1293,7 @@ push_goals_create_candidate(Info, RevCurPathSteps,
         HeadRelStep = step_ite_then,
         ( GoalExpr = ite_rep(_, Then, _) ->
             push_goals_create_candidate(Info, [HeadRelStep | RevCurPathSteps],
-                TailRelSteps, Then, GoalsToPush,
+                TailRelSteps, Then, GoalsToPush0,
                 RevCandidateGoalPathSteps, CandidateConjs)
         ;
             unexpected($module, $pred, "not ite_then")
@@ -1269,7 +1302,7 @@ push_goals_create_candidate(Info, RevCurPathSteps,
         HeadRelStep = step_ite_else,
         ( GoalExpr = ite_rep(_, _, Else) ->
             push_goals_create_candidate(Info, [HeadRelStep | RevCurPathSteps],
-                TailRelSteps, Else, GoalsToPush,
+                TailRelSteps, Else, GoalsToPush0,
                 RevCandidateGoalPathSteps, CandidateConjs)
         ;
             unexpected($module, $pred, "not ite_else")
@@ -1286,7 +1319,7 @@ push_goals_create_candidate(Info, RevCurPathSteps,
         HeadRelStep = step_scope(_),
         ( GoalExpr = scope_rep(SubGoal, _) ->
             push_goals_create_candidate(Info, [HeadRelStep | RevCurPathSteps],
-                TailRelSteps, SubGoal, GoalsToPush,
+                TailRelSteps, SubGoal, GoalsToPush0,
                 RevCandidateGoalPathSteps, CandidateConjs)
         ;
             unexpected($module, $pred, "not scope")
@@ -1308,6 +1341,36 @@ push_goals_create_candidate(Info, RevCurPathSteps,
         % These should not exist in a profiled program.
         unexpected($module, $pred, "atomic_orelse")
     ).
+
+:- pred fix_goal_counts(implicit_parallelism_info::in, int::in,
+    pard_goal_detail::in, pard_goal_detail::out) is det.
+
+fix_goal_counts(Info, Count, !Goal) :-
+    Annotation0 = !.Goal ^ goal_annotation,
+    Cost0 = Annotation0 ^ pgd_cost,
+    (
+        GoalType = Annotation0 ^ pgd_pg_type,
+        GoalType = pgt_call(_, CostAndCallees),
+        % XXX This doesn't work if this is a non-atomic goal containing a
+        % recursive call.
+        member(Callee, CostAndCallees ^ cac_callees),
+        % The call is recursive if it calls into the current clique.
+        Info ^ ipi_clique = Callee ^ c_clique
+    ->
+        % for recursive calls.
+        CostTotal = goal_cost_get_total(Cost0),
+        PercallCost = CostTotal / float(Count)
+    ;
+        PercallCost = goal_cost_get_percall(Cost0)
+    ),
+    Cost = call_goal_cost(Count, PercallCost),
+    !Goal ^ goal_annotation ^ pgd_cost := Cost,
+    ( goal_cost_above_par_threshold(Info, Cost) ->
+        AboveThreshold = cost_above_par_threshold
+    ;
+        AboveThreshold = cost_not_above_par_threshold
+    ),
+    !Goal ^ goal_annotation ^ pgd_cost_above_threshold := AboveThreshold.
 
 :- pred pardgoals_build_candidate_conjunction(implicit_parallelism_info::in,
     program_location::in, list(goal_path_step)::in,
@@ -2535,7 +2598,7 @@ build_dependency_graph([PG | PGs], ConjNum, !VarDepMap, !Graph) :-
     InsertForConjNum = ( pred(InstVar::in, MapI0::in, MapI::out) is det :-
         svmap.det_insert(InstVar, ConjNum, MapI0, MapI)
     ),
-    list.fold(InsertForConjNum, InstVars, !VarDepMap),
+    set.fold(InsertForConjNum, InstVars, !VarDepMap),
 
     build_dependency_graph(PGs, ConjNum + 1, !VarDepMap, !Graph).
 
