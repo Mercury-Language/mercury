@@ -520,8 +520,7 @@ update_parallelism_available_conj(Conj, !ChildClique) :-
     % Find candidate parallel conjunctions within a proc dynamic.
     %
     % RecursionType: The type of recursion used in the current clique.
-    %
-    % CliquePtr: The current clique,
+    % CliquePtr: The current clique.
     %
 :- pred candidate_parallel_conjunctions_clique_proc(
     candidate_par_conjunctions_params::in, deep::in, recursion_type::in,
@@ -1562,7 +1561,7 @@ preprocess_conjunction(Goals, MaybeGoalsForParallelisation, Location,
         % Phase 3: Process the middle section into groups.
         foldl_sub_array(preprocess_conjunction_into_groups, GoalsArray,
             FirstCostlyGoalIndex, LastCostlyGoalIndex, [], RevGoalGroups),
-        reverse(RevGoalGroups, GoalGroups),
+        list.reverse(RevGoalGroups, GoalGroups),
 
         FirstCostlyGoal = lookup(GoalsArray, FirstCostlyGoalIndex),
         Cost = FirstCostlyGoal ^ goal_annotation ^ pgd_cost,
@@ -2165,9 +2164,10 @@ add_one_goal_into_last_par_conj(!Parallelisation) :-
     ;       peo_conjunction(
                 poec_left_conjunct      :: parallel_execution_overlap,
                 poec_right_conjunct     :: dependent_conjunct_execution,
+
+                % The variables produced by the left conjunct and
+                % consumed by the right conjunct.
                 poec_dependent_vars     :: set(var_rep)
-                    % The variables produced by the left conjunct and consumed
-                    % by the right conjunct.
             ).
 
 :- type dependent_conjunct_execution
@@ -2494,15 +2494,13 @@ depends_lookup_tc_rev(DependencyGraphs, GoalNum, RevDeps) :-
     % Abstract code for querying a graph for a goal dependency.
     %
 :- pred graph_do_lookup(
-    pred(digraph(int), digraph_key(int), set(digraph_key(int))),
-    digraph(int), int, set(int)).
-:- mode graph_do_lookup(
-    pred(in, in, out) is det,
-    in, in, out) is det.
+    pred(digraph(int), digraph_key(int), set(digraph_key(int)))::
+        in(pred(in, in, out) is det),
+    digraph(int)::in, int::in, set(int)::out) is det.
 
 graph_do_lookup(Lookup, Graph, GoalNum, Deps) :-
     Lookup(Graph, lookup_key(Graph, GoalNum), DepsKeys),
-    Deps = set(map(lookup_vertex(Graph), to_sorted_list(DepsKeys))).
+    Deps = set(map(lookup_vertex(Graph), set.to_sorted_list(DepsKeys))).
 
 :- pred build_dependency_graph(list(pard_goal_detail)::in, int::in,
     map(var_rep, int)::in, map(var_rep, int)::out,
@@ -2519,22 +2517,25 @@ build_dependency_graph([PG | PGs], ConjNum, !VarDepMap, !Graph) :-
     % analysing single assignment code.
     RefedVars = InstMapInfo ^ im_consumed_vars,
     digraph.add_vertex(ConjNum, ThisConjKey, !Graph),
-    list.foldl((pred(RefedVar::in, GraphI0::in, GraphI::out) is det :-
-        map.search(!.VarDepMap, RefedVar, DepConj) ->
+    MaybeAddEdge = ( pred(RefedVar::in, GraphI0::in, GraphI::out) is det :-
+        ( map.search(!.VarDepMap, RefedVar, DepConj) ->
             % DepConj should already be in the graph.
             digraph.lookup_key(GraphI0, DepConj, DepConjKey),
             digraph.add_edge(DepConjKey, ThisConjKey, GraphI0, GraphI)
         ;
             GraphI = GraphI0
-        ), to_sorted_list(RefedVars), !Graph),
+        )
+    ),
+    list.foldl(MaybeAddEdge, set.to_sorted_list(RefedVars), !Graph),
 
     % For each variable instantiated by this goal add it to the VarDepMap with
     % this goal as it's instantiator.  That is a maping from the variable to
     % the conj num.
     InstVars = InstMapInfo ^ im_bound_vars,
-    fold((pred(InstVar::in, MapI0::in, MapI::out) is det :-
-            svmap.det_insert(InstVar, ConjNum, MapI0, MapI)
-        ), InstVars, !VarDepMap),
+    InsertForConjNum = ( pred(InstVar::in, MapI0::in, MapI::out) is det :-
+        svmap.det_insert(InstVar, ConjNum, MapI0, MapI)
+    ),
+    list.fold(InsertForConjNum, InstVars, !VarDepMap),
 
     build_dependency_graph(PGs, ConjNum + 1, !VarDepMap, !Graph).
 
@@ -2644,11 +2645,13 @@ get_consumptions_list(Goal, !Vars, !Time, !List) :-
     % but the set module doesn't export a "to_list" predicate. (Getting
     % a sorted list has no cost since the set is a sorted list internally).
     set.to_sorted_list(ConsumptionTimesSet0, ConsumptionTimes0),
-    list.sort((pred((_ - TimeA)::in, (_ - TimeB)::in, Result::out) is det :-
+    CompareTimes = (
+        pred((_ - TimeA)::in, (_ - TimeB)::in, Result::out) is det :-
             % Note that the Time arguments are swapped, this list must be
             % produced in latest to earliest order.
             compare(Result, TimeB, TimeA)
-        ), ConsumptionTimes0, ConsumptionTimes),
+    ),
+    list.sort(CompareTimes, ConsumptionTimes0, ConsumptionTimes),
     !:List = ConsumptionTimes ++ !.List,
     !:Vars = difference(!.Vars, ConsumptionVars),
     !:Time = !.Time + goal_cost_get_percall(Goal ^ goal_annotation ^ pgd_cost).
@@ -2691,15 +2694,15 @@ var_first_use_time(FindProdOrCons, TimeBefore, Goal, Var, Time) :-
                 FindProdOrCons = find_production
             ;
                 FindProdOrCons = find_consumption,
-                error("var_first_use_time: "
-                    ++ "Found production when looking for consumption")
+                unexpected($module, $pred,
+                    "Found production when looking for consumption")
             )
         ;
             UseType = var_use_consumption,
             (
                 FindProdOrCons = find_production,
-                error("var_first_use_time: "
-                    ++ "Found consumption when looking for production")
+                unexpected($module, $pred,
+                    "Found consumption when looking for production")
             ;
                 FindProdOrCons = find_consumption
             )
@@ -2857,7 +2860,7 @@ compute_var_use_lazy(Info, RevGoalPathSteps, Var, Args, VarUseType) = Use :-
     (
         VarUseType = var_use_consumption,
         Uses = [FirstUse | OtherUses],
-        foldl(earliest_use, OtherUses, FirstUse, Use)
+        list.foldl(earliest_use, OtherUses, FirstUse, Use)
     ;
         ( VarUseType = var_use_production
         ; VarUseType = var_use_other
@@ -2890,7 +2893,7 @@ compute_var_use_lazy_arg(Info, Var, Args, CostAndCallee, Cost, VarUseType,
         Use) :-
     ( 0.0 < cs_cost_get_calls(Cost) ->
         CostPercall = cs_cost_get_percall(Cost),
-        ( member_index0(Var, Args, ArgNum) ->
+        ( list.member_index0(Var, Args, ArgNum) ->
             HigherOrder = CostAndCallee ^ cac_call_site_is_ho,
             (
                 HigherOrder = higher_order_call,
@@ -2917,7 +2920,7 @@ compute_var_use_lazy_arg(Info, Var, Args, CostAndCallee, Cost, VarUseType,
             )
         ;
             Use = var_use_info(0.0, CostPercall, VarUseType),
-            ( unify(VarUseType, var_use_consumption) ->
+            ( VarUseType = var_use_consumption ->
                 true
             ;
                 unexpected($module, $pred,
