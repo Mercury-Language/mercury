@@ -731,6 +731,7 @@ then
             cd runtime
             $LN_S $root/runtime/*.h .
             $LN_S $root/runtime/*.c .
+            $LN_S $root/runtime/*.cs .
             # We need to use $LN rather than $LN_S for the files
             # that get processed with Microsoft's tools, since
             # Microsoft's tools don't understand Cygwin symbolic
