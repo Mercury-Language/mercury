@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007, 2009 The University of Melbourne.
+% Copyright (C) 2002-2007, 2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -123,9 +123,7 @@
 
 :- implementation.
 
-:- import_module libs.compiler_util.
-:- import_module libs.globals.
-:- import_module libs.options.
+:- import_module require.
 
 %-----------------------------------------------------------------------------%
 
@@ -316,12 +314,18 @@ raise_signal(_::in, IO::di, IO::uo).
 #endif
 ").
 
+send_signal(_, _, _, _) :-
+    sorry($file, $pred).
+
 :- pragma foreign_proc("C",
     sigint = (Sigint::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Sigint = SIGINT;
 ").
+
+sigint = _ :-
+    sorry($file, $pred).
 
 %-----------------------------------------------------------------------------%
 
@@ -503,6 +507,9 @@ call_child_process_io_pred(P, Status, !IO) :-
     Status = 1;
 #endif /* ! MC_CAN_FORK */
 ").
+
+do_wait(_, _, _, _, _) :-
+    sorry($file, $pred).
 
 wait_pid(Pid, Status, !IO) :-
     do_wait(Pid, _Pid, Status0, !IO),

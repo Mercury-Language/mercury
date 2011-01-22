@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2007, 2009-2010 The University of Melbourne.
+# Copyright (C) 1998-2007, 2009-2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -135,11 +135,7 @@ all:	library $(TAGS_FILE_EXISTS) browse_test declarative_test
 
 .PHONY: library
 
-ifeq ("$(findstring java,$(GRADE))","java")
-library: jars
-else
 library: $(LIBS)
-endif
 
 .PHONY: depend
 depend:	MDB_FLAGS $(DEPENDS)

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005-2007, 2010 The University of Melbourne.
+% Copyright (C) 2005-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -106,6 +106,7 @@
     % stub.
 :- pragma foreign_type("C#", c_file_ptr, "object").
 :- pragma foreign_type("Java", c_file_ptr, "java.lang.Object").
+:- pragma foreign_type("Erlang", c_file_ptr, "").
 
     % These predicates are called from trace/mercury_trace_internal.c.
     %

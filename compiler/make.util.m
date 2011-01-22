@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2010 The University of Melbourne.
+% Copyright (C) 2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -737,6 +737,7 @@ MC_unlock_job_ctl(MC_JobCtl *job_ctl)
 :- pragma foreign_type("C", job_ctl, "MC_JobCtl *").
 :- pragma foreign_type("C#", job_ctl, "object"). % stub
 :- pragma foreign_type("Java", job_ctl, "java.lang.Object"). % stub
+:- pragma foreign_type("Erlang", job_ctl, ""). % stub
 
 :- pred have_job_ctl_ipc is semidet.
 
@@ -776,6 +777,9 @@ have_job_ctl_ipc :-
     IO = IO0;
 ").
 
+create_job_ctl(_, _, _, _) :-
+    unexpected($file, $pred, "non-C backend").
+
 :- pred destroy_job_ctl(job_ctl::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
@@ -794,6 +798,9 @@ have_job_ctl_ipc :-
 #endif
     IO = IO0;
 ").
+
+destroy_job_ctl(_, _, _) :-
+    unexpected($file, $pred, "non-C backend").
 
 :- pred accept_task(job_ctl::in, int::out, io::di, io::uo) is det.
 
@@ -825,6 +832,9 @@ have_job_ctl_ipc :-
     IO = IO0;
 ").
 
+accept_task(_, _, _, _) :-
+    unexpected($file, $pred, "non-C backend").
+
 :- pred mark_task_done(job_ctl::in, int::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
@@ -839,6 +849,9 @@ have_job_ctl_ipc :-
 #endif
     IO = IO0;
 ").
+
+mark_task_done(_, _, _, _) :-
+    unexpected($file, $pred, "non-C backend").
 
 :- pred mark_task_error(job_ctl::in, int::in, bool::in, io::di, io::uo) is det.
 
@@ -861,6 +874,9 @@ have_job_ctl_ipc :-
     IO = IO0;
 ").
 
+mark_task_error(_, _, _, _, _) :-
+    unexpected($file, $pred, "non-C backend").
+
 :- pred mark_abort(job_ctl::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
@@ -875,6 +891,9 @@ have_job_ctl_ipc :-
 #endif
     IO = IO0;
 ").
+
+mark_abort(_, _, _) :-
+    unexpected($file, $pred, "non-C backend").
 
 :- func make_yes_job_ctl(job_ctl) = maybe(job_ctl).
 :- pragma foreign_export("C", make_yes_job_ctl(in) = out,
@@ -1836,6 +1855,9 @@ make_write_module_or_linked_target(Globals, ModuleName - FileType, !IO) :-
     Time = (int) System.currentTimeMillis();
     IO = IO0;
 ").
+
+get_real_milliseconds(_, _, _) :-
+    sorry($file, $pred).
 
 %-----------------------------------------------------------------------------%
 %

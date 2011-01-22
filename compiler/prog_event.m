@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2010 The University of Melbourne.
+% Copyright (C) 2006-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -177,6 +177,9 @@ MR_String   read_specs_file_4(MR_Code *proc_label, MR_String specs_file_name,
     Problem = read_specs_file_2(MR_PROC_LABEL, SpecsFileName, TermFileName);
     MR_restore_transient_hp();
 ").
+
+read_specs_file(_, _, _, _, _) :-
+    unexpected($file, $pred, "non-C backend").
 
 :- pragma foreign_code("C", "
 

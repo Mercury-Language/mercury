@@ -18,6 +18,8 @@
 --c-include-directory ../library/Mercury/mihs
 --c-include-directory ../mdbcomp
 --c-include-directory ../mdbcomp/Mercury/mihs
+--erlang-include-directory ../library/Mercury/hrls
+--erlang-include-directory ../mdbcomp/Mercury/hrls
 -L../boehm_gc
 -L../runtime
 -L../library
