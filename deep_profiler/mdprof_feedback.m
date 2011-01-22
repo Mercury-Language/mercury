@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2010 The University of Melbourne.
+% Copyright (C) 2006-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -178,9 +178,9 @@ create_feedback_report(feedback_data_candidate_parallel_conjunctions(
         Parameters, Conjs), Report) :-
     NumConjs = length(Conjs),
     Parameters = candidate_par_conjunctions_params(DesiredParallelism,
-        IntermoduleVarUse, SparkingCost, SparkingDelay, SignalCost, WaitCost,
-        ContextWakeupDelay, CliqueThreshold, CallSiteThreshold,
-        ParalleliseDepConjs, BestParAlgorithm),
+        IntermoduleVarUse, SparkingCost, SparkingDelay, BarrierCost,
+        SignalCost, WaitCost, ContextWakeupDelay, CliqueThreshold,
+        CallSiteThreshold, ParalleliseDepConjs, BestParAlgorithm),
     best_par_algorithm_string(BestParAlgorithm, BestParAlgorithmStr),
     ReportHeader = singleton(format(
         "  Candidate Parallel Conjunctions:\n" ++
@@ -188,6 +188,7 @@ create_feedback_report(feedback_data_candidate_parallel_conjunctions(
         "    Intermodule var use: %s\n" ++
         "    Sparking cost: %d\n" ++
         "    Sparking delay: %d\n" ++
+        "    Barrier cost: %d\n" ++
         "    Future signal cost: %d\n" ++
         "    Future wait cost: %d\n" ++
         "    Context wakeup delay: %d\n" ++
@@ -201,6 +202,7 @@ create_feedback_report(feedback_data_candidate_parallel_conjunctions(
          s(string(IntermoduleVarUse)),
          i(SparkingCost),
          i(SparkingDelay),
+         i(BarrierCost),
          i(SignalCost),
          i(WaitCost),
          i(ContextWakeupDelay),
@@ -276,6 +278,9 @@ help_message =
                 The time taken from the time a spark is created until the spark
                 is executed by another processor, assuming that there is a free
                 processor.
+    --implicit-parallelism-barrier-cost <value>
+                The cost of executing the barrier code at the end of each
+                parallel conjunct.
     --implicit-parallelism-future-signal-cost <value>
                 The cost of the signal() call for the producer of a shared
                 variable, measured in the profiler's call sequence counts.
@@ -410,6 +415,7 @@ read_deep_file(Input, Debug, MaybeDeep, !IO) :-
     ;       implicit_parallelism_intermodule_var_use
     ;       implicit_parallelism_sparking_cost
     ;       implicit_parallelism_sparking_delay
+    ;       implicit_parallelism_barrier_cost
     ;       implicit_parallelism_future_signal_cost
     ;       implicit_parallelism_future_wait_cost
     ;       implicit_parallelism_context_wakeup_delay
@@ -460,6 +466,8 @@ long("implicit-parallelism-sparking-delay",
     implicit_parallelism_sparking_delay).
 long("implicit-parallelism-future-signal-cost",
     implicit_parallelism_future_signal_cost).
+long("implicit-parallelism-barrier-cost",
+    implicit_parallelism_barrier_cost).
 long("implicit-parallelism-future-wait-cost",
     implicit_parallelism_future_wait_cost).
 long("implicit-parallelism-context-wakeup-delay",
@@ -495,6 +503,7 @@ defaults(desired_parallelism,                               string("4.0")).
 defaults(implicit_parallelism_intermodule_var_use,          bool(no)).
 defaults(implicit_parallelism_sparking_cost,                int(100)).
 defaults(implicit_parallelism_sparking_delay,               int(1000)).
+defaults(implicit_parallelism_barrier_cost,                 int(100)).
 defaults(implicit_parallelism_future_signal_cost,           int(100)).
 defaults(implicit_parallelism_future_wait_cost,             int(250)).
 defaults(implicit_parallelism_context_wakeup_delay,         int(1000)).
@@ -600,6 +609,8 @@ check_options(Options0, RequestedFeedbackInfo) :-
             SparkingCost),
         lookup_int_option(Options, implicit_parallelism_sparking_delay,
             SparkingDelay),
+        lookup_int_option(Options, implicit_parallelism_barrier_cost,
+            BarrierCost),
         lookup_int_option(Options, implicit_parallelism_future_signal_cost,
             FutureSignalCost),
         lookup_int_option(Options, implicit_parallelism_future_wait_cost,
@@ -656,6 +667,7 @@ check_options(Options0, RequestedFeedbackInfo) :-
                 IntermoduleVarUse,
                 SparkingCost,
                 SparkingDelay,
+                BarrierCost,
                 FutureSignalCost,
                 FutureWaitCost,
                 ContextWakeupDelay,

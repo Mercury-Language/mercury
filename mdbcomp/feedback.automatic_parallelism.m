@@ -53,6 +53,10 @@
                 % it starts being executed, measured in call sequence counts.
                 cpcp_sparking_delay         :: int,
 
+                % The cost of barrier synchronisation for each conjunct at the
+                % end of the parallel conjunction.
+                cpcp_barrier_cost           :: int,
+
                 % The costs of maintaining a lock on a single dependent
                 % variable, measured in call sequence counts. The first number
                 % gives the cost of the call to signal, and the second gives
@@ -161,7 +165,7 @@
                 % The goal path of the conjunction in which the push is done.
                 pg_goal_path    :: goal_path_string,
 
-                % The range of conjuncts to push.
+                % The range of conjuncts to push, (inclusive)
                 pg_pushee_lo    :: int,
                 pg_pushee_hi    :: int,
 
@@ -311,10 +315,12 @@
                 pem_par_time                :: float,
 
                 % The overheads of parallel execution. These are already
-                % included in pem_par_time.
-                % Add these to pem_seq_time to get the 'time on cpu' of
-                % this execution.
-                pem_par_overheads           :: float,
+                % included in pem_par_time.  Overheads are seperated into
+                % different causes.
+                pem_par_overhead_xpark_cost :: float,
+                pem_par_overhead_barrier    :: float,
+                pem_par_overhead_signals    :: float,
+                pem_par_overhead_waits      :: float,
 
                 % The amount of time the initial (left most) conjunct spends
                 % waiting for the other conjuncts. During this time,
@@ -342,6 +348,12 @@
     %
 :- func parallel_exec_metrics_get_cpu_time(parallel_exec_metrics) = float.
 
+    % The overheads of parallel execution.
+    %
+    % Add these to pem_seq_time to get the 'time on cpu' of this execution.
+    %
+:- func parallel_exec_metrics_get_overheads(parallel_exec_metrics) = float.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -367,7 +379,12 @@ parallel_exec_metrics_get_time_saving(PEM) = SeqTime - ParTime :-
 
 parallel_exec_metrics_get_cpu_time(PEM) = SeqTime + Overheads :-
     SeqTime = PEM ^ pem_seq_time,
-    Overheads = PEM ^ pem_par_overheads.
+    Overheads = parallel_exec_metrics_get_overheads(PEM).
+
+parallel_exec_metrics_get_overheads(PEM) =
+        SparkCosts + BarrierCosts + SignalCosts + WaitCosts :-
+    PEM = parallel_exec_metrics(_, _, _, SparkCosts, BarrierCosts,
+        SignalCosts, WaitCosts, _, _).
 
 %-----------------------------------------------------------------------------%
 %
