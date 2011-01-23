@@ -295,7 +295,7 @@ parallelise_proc(CPCProc, PredInfo, !ProcInfo,
     proc_info_get_varset(!.ProcInfo, VarSet),
     compute_var_number_map(HeadVars, VarSet, [], Goal0, VarNumMap),
     ProgRepInfo = prog_rep_info(FileName, VarTypes, VarNumMap,
-        VarNumRep, !.ModuleInfo),
+        VarNumRep, !.ModuleInfo, flatten_par_conjs),
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, Instmap),
 
     % Sort the candidate parallelisations so that we introduce

@@ -64,12 +64,17 @@
 
 :- type prog_rep_info
     --->    prog_rep_info(
-                pri_filename    :: string,
-                pri_vartypes    :: vartypes,
-                pri_var_num_map :: var_num_map,
-                pri_var_num_rep :: var_num_rep,
-                pri_module_info :: module_info
+                pri_filename            :: string,
+                pri_vartypes            :: vartypes,
+                pri_var_num_map         :: var_num_map,
+                pri_var_num_rep         :: var_num_rep,
+                pri_module_info         :: module_info,
+                pri_flatten_par_conjs   :: flatten_par_conjs
             ).
+
+:- type flatten_par_conjs
+    --->    flatten_par_conjs
+    ;       expect_no_par_conjs.
 
 :- pred goal_to_goal_rep(prog_rep_info::in, instmap::in, hlds_goal::in, 
     goal_rep::out) is det.
@@ -83,6 +88,7 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.code_model.
+:- import_module hlds.goal_util.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
@@ -107,7 +113,8 @@ represent_proc_as_bytecodes(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
     term.context_file(Context, FileName),
     represent_var_table_as_bytecode(IncludeVarTable, VarNumMap, VarNumRep,
         VarTableBytes, !StringTable),
-    Info = prog_rep_info(FileName, VarTypes, VarNumMap, VarNumRep, ModuleInfo),
+    Info = prog_rep_info(FileName, VarTypes, VarNumMap, VarNumRep, ModuleInfo,
+        expect_no_par_conjs),
     InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
 
     string_to_byte_list(FileName, FileNameBytes, !StringTable),
@@ -226,9 +233,19 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
     detism_to_detism_rep(Detism, DetismRep),
     GoalRep = goal_rep(GoalExprRep, DetismRep, unit),
     (
-        GoalExpr = conj(ConjType, Goals),
-        expect(unify(ConjType, plain_conj), this_file,
-            "non-plain conjunction and declarative debugging"),
+        GoalExpr = conj(ConjType, Goals0),
+        FlattenParConjs = Info ^ pri_flatten_par_conjs,
+        (
+            FlattenParConjs = flatten_par_conjs,
+            % Flatten all conjunction types, the current conjunction may be a
+            % plain conjunction with par conjunctions in it, or vice-versa.
+            flatten_conj(Goals0, Goals)
+        ;
+            FlattenParConjs = expect_no_par_conjs,
+            Goals = Goals0,
+            expect(unify(ConjType, plain_conj), this_file,
+                "non-plain conjunction and declarative debugging")
+        ),
         conj_to_conj_rep(Info, Instmap0, Goals, GoalReps),
         GoalExprRep = conj_rep(GoalReps)
     ;
