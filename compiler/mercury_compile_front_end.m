@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -49,6 +49,11 @@
             % If deep/term-size profiling is enabled then immediately
             % before the source-to-source transformations that
             % implement them.
+
+    ;       simplify_pass_pre_implicit_parallelism
+            % If implicit parallelism is anbled then perform simplification
+            % before it is applied.  This helps ensure that the HLDS matches
+            % the feedback data.
 
     ;       simplify_pass_ml_backend
             % The first stage of MLDS code generation.
@@ -864,6 +869,21 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
                 !:SimpList = []
             )
         ;
+            SimplifyPass = simplify_pass_pre_implicit_parallelism,
+
+            % We run the simplify pass before the implicit parallelism pass if
+            % implicit parallelism is enabled.
+
+            globals.lookup_bool_option(Globals,
+                pre_implicit_parallelism_simplify, SimplifyPrePar),
+            (
+                SimplifyPrePar = yes,
+                list.cons(simp_do_once, !SimpList)
+            ;
+                SimplifyPrePar = no,
+                !:SimpList = []
+            )
+        ;
             SimplifyPass = simplify_pass_ml_backend,
             list.cons(simp_do_once, !SimpList)
         ;
@@ -914,6 +934,7 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
             ; SimplifyPass = simplify_pass_ml_backend
             ; SimplifyPass = simplify_pass_post_untuple
             ; SimplifyPass = simplify_pass_pre_prof_transforms
+            ; SimplifyPass = simplify_pass_pre_implicit_parallelism
             )
         ),
         maybe_write_string(Verbose, "% done.\n", !IO),

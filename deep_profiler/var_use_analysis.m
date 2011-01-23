@@ -1414,21 +1414,28 @@ rec_disj_var_first_use_2([Disj | Disjs], DisjNum, RecCalls, Info, FoundFirstUse,
     filter_recursive_call_sites(step_disj(DisjNum), RecCalls, DisjRecCalls),
     rec_goal_var_first_use(Disj, DisjRecCalls, Info, DisjFoundFirstUse,
         !CostSoFar),
-    rec_disj_var_first_use_2(Disjs, DisjNum + 1, RecCalls, Info,
-        DisjsFoundFirstUse, 0.0, CostDisjs0),
+
     CoverageArray = Info ^ fui_coverage_array,
     Coverage = get_goal_attribute_det(CoverageArray, Disj ^ goal_annotation),
     get_coverage_before_and_after_det(Coverage, Before, After),
-    FailureProb = probable(float(Before - After) / float(Before)),
-    CostDisjs = CostDisjs0 * probability_to_float(FailureProb),
-    !:CostSoFar = !.CostSoFar + CostDisjs,
-    (
-        DisjFoundFirstUse = have_not_found_first_use,
-        FoundFirstUse = DisjsFoundFirstUse
+    ( Before = 0 ->
+        % Avoid a divide by zero.
+        CostDisjs = 0.0,
+        FoundFirstUse = DisjFoundFirstUse
     ;
-        DisjFoundFirstUse = found_first_use(UseTime),
-        FoundFirstUse = found_first_use(UseTime)
-    ).
+        rec_disj_var_first_use_2(Disjs, DisjNum + 1, RecCalls, Info,
+            DisjsFoundFirstUse, 0.0, CostDisjs0),
+        FailureProb = probable(float(Before - After) / float(Before)),
+        CostDisjs = CostDisjs0 * probability_to_float(FailureProb),
+        (
+            DisjFoundFirstUse = have_not_found_first_use,
+            FoundFirstUse = DisjsFoundFirstUse
+        ;
+            DisjFoundFirstUse = found_first_use(UseTime),
+            FoundFirstUse = found_first_use(UseTime)
+        )
+    ),
+    !:CostSoFar = !.CostSoFar + CostDisjs.
 
 :- pred rec_switch_var_first_use(list(case_rep(goal_id))::in,
     var_rep::in, recursive_calls_list::in,
@@ -1647,16 +1654,23 @@ goal_rec_prob(Goal, RecCalls, Info, Prob, !ProbArray) :-
 
 conj_rec_prob([], _, _, _, impossible, !ProbArray).
 conj_rec_prob([Conj | Conjs], ConjNum, RecCalls, Info, Prob, !ProbArray) :-
-    conj_rec_prob(Conjs, ConjNum + 1, RecCalls, Info, ConjsProb0, !ProbArray),
     ConjId = Conj ^ goal_annotation,
     Coverage = get_goal_attribute_det(Info ^ fui_coverage_array, ConjId),
     get_coverage_before_and_after_det(Coverage, Before, After),
-    SuccessProb = probable(float(After) / float(Before)),
-    ConjsProb = and(SuccessProb, ConjsProb0),
+    ( Before = 0 ->
+        % This code is dead, pevent a divide by zero and make a short cut
+        % here.
+        Prob = impossible
+    ;
+        conj_rec_prob(Conjs, ConjNum + 1, RecCalls, Info, ConjsProb0,
+            !ProbArray),
+        SuccessProb = probable(float(After) / float(Before)),
+        ConjsProb = and(SuccessProb, ConjsProb0),
 
-    filter_recursive_call_sites(step_conj(ConjNum), RecCalls, ConjRecCalls),
-    goal_rec_prob(Conj, ConjRecCalls, Info, ConjProb, !ProbArray),
-    Prob = or(ConjProb, ConjsProb).
+        filter_recursive_call_sites(step_conj(ConjNum), RecCalls, ConjRecCalls),
+        goal_rec_prob(Conj, ConjRecCalls, Info, ConjProb, !ProbArray),
+        Prob = or(ConjProb, ConjsProb)
+    ).
 
 :- pred disj_rec_prob(list(goal_rep(goal_id))::in, int::in,
     recursive_calls_list::in, var_first_use_static_info::in, probability::out,
@@ -1665,17 +1679,23 @@ conj_rec_prob([Conj | Conjs], ConjNum, RecCalls, Info, Prob, !ProbArray) :-
 
 disj_rec_prob([], _, _, _, impossible, !ProbArray).
 disj_rec_prob([Disj | Disjs], DisjNum, RecCalls, Info, Prob, !ProbArray) :-
-    disj_rec_prob(Disjs, DisjNum + 1, RecCalls, Info, DisjsProb0, !ProbArray),
     DisjId = Disj ^ goal_annotation,
     Coverage = get_goal_attribute_det(Info ^ fui_coverage_array, DisjId),
     get_coverage_before_and_after_det(Coverage, Before, After),
-    % Assume that this disjuction is in a single solution context.
-    FailureProb = probable(float(Before - After) / float(Before)),
-    DisjsProb = and(FailureProb, DisjsProb0),
+    ( Before = 0 ->
+        % As above, this code is dead.
+        Prob = impossible
+    ;
+        disj_rec_prob(Disjs, DisjNum + 1, RecCalls, Info, DisjsProb0,
+            !ProbArray),
+        % Assume that this disjuction is in a single solution context.
+        FailureProb = probable(float(Before - After) / float(Before)),
+        DisjsProb = and(FailureProb, DisjsProb0),
 
-    filter_recursive_call_sites(step_disj(DisjNum), RecCalls, DisjRecCalls),
-    goal_rec_prob(Disj, DisjRecCalls, Info, DisjProb, !ProbArray),
-    Prob = or(DisjProb, DisjsProb).
+        filter_recursive_call_sites(step_disj(DisjNum), RecCalls, DisjRecCalls),
+        goal_rec_prob(Disj, DisjRecCalls, Info, DisjProb, !ProbArray),
+        Prob = or(DisjProb, DisjsProb)
+    ).
 
 :- pred switch_rec_prob(list(case_rep(goal_id))::in, int::in,
     recursive_calls_list::in, var_first_use_static_info::in, probability::out,
@@ -1725,7 +1745,7 @@ ite_rec_prob(Cond, Then, Else, RecCalls, Info, Prob, !ProbArray) :-
     goal_rec_prob(Cond, CondRecCalls, Info, CondProb, !ProbArray),
     goal_rec_prob(Then, ThenRecCalls, Info, ThenProb0, !ProbArray),
     goal_rec_prob(Else, ElseRecCalls, Info, ElseProb0, !ProbArray),
-    CondId = Then ^ goal_annotation,
+    CondId = Cond ^ goal_annotation,
     Coverage = get_goal_attribute_det(Info ^ fui_coverage_array, CondId),
     get_coverage_before_and_after_det(Coverage, Before, After),
     ThenCallProb = probable(float(After) / float(Before)),

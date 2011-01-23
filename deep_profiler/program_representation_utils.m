@@ -738,7 +738,7 @@ label_goal(ContainingGoal, !Goal, !Counter, !Map) :-
         GoalExpr = conj_rep(Conjs)
     ;
         GoalExpr0 = disj_rep(Disjs0),
-        map_foldl3(label_goal_wrapper((func(N) = step_conj(N)), GoalId),
+        map_foldl3(label_goal_wrapper((func(N) = step_disj(N)), GoalId),
             Disjs0, Disjs, 1, _, !Counter, !Map),
         GoalExpr = disj_rep(Disjs)
     ;

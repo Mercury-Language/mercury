@@ -181,9 +181,6 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_ssdb(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 137, "ssdb", !DumpInfo, !IO),
 
-    maybe_implicit_parallelism(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 139, "implicit_parallelism", !DumpInfo, !IO),
-
     maybe_introduce_accumulators(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 140, "accum", !DumpInfo, !IO),
 
@@ -216,6 +213,14 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_unneeded_code(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 170, "unneeded_code", !DumpInfo, !IO),
 
+    maybe_simplify(no, simplify_pass_pre_implicit_parallelism, Verbose, Stats,
+        !HLDS, [], _SimplifySpecsPreImpPar, !IO),
+    maybe_dump_hlds(!.HLDS, 172, "pre_implicit_parallelism_simplify", !DumpInfo,
+        !IO),
+
+    maybe_implicit_parallelism(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 173, "implicit_parallelism", !DumpInfo, !IO),
+
     maybe_lco(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 175, "lco", !DumpInfo, !IO),
 
@@ -237,9 +242,7 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     % propagation and we cannot do that once the term-size profiling or deep
     % profiling transformations have been applied.
     maybe_simplify(no, simplify_pass_pre_prof_transforms, Verbose, Stats,
-        !HLDS, [], SimplifySpecs, !IO),
-    expect(unify(contains_errors(Globals, SimplifySpecs), no), this_file,
-        "middle_pass: simplify has errors"),
+        !HLDS, [], _SimplifySpecsPreProf, !IO),
     maybe_dump_hlds(!.HLDS, 215, "pre_prof_transforms_simplify", !DumpInfo,
         !IO),
 

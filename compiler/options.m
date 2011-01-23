@@ -331,6 +331,10 @@
             % option causes this simplification pass to run even when profiling
             % is not enabled.
 
+    ;       pre_implicit_parallelism_simplify
+            % Run the simplification pass before the implicit parallelism pass
+            % to ensure that the HLDS more closely matches the feedback data.
+
             % Perform coverage profiling, this affects only deep profiling
             % grades.
     ;       coverage_profiling
@@ -1242,6 +1246,7 @@ option_defaults_2(compilation_model_option, [
     profile_deep                        -   bool(no),
     use_activation_counts               -   bool(no),
     pre_prof_transforms_simplify        -   bool(no),
+    pre_implicit_parallelism_simplify   -   bool(no),
     coverage_profiling                  -   bool(no),
     coverage_profiling_via_calls        -   bool(no),
     coverage_profiling_static           -   bool(no),
@@ -2111,6 +2116,8 @@ long_option("profile-memory",       profile_memory).
 long_option("profile-deep",         profile_deep).
 long_option("use-activation-counts",    use_activation_counts).
 long_option("pre-prof-transforms-simplify", pre_prof_transforms_simplify).
+long_option("pre-implicit-parallelism-simplify",
+    pre_implicit_parallelism_simplify).
 long_option("coverage-profiling", 
                     coverage_profiling).
 long_option("coverage-profiling-via-calls", 

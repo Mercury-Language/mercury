@@ -625,6 +625,10 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     ;
         ImplicitParallelism = no
     ),
+    % Perform a simplification pass before the implicit parallelism pass to
+    % ensure that the HLDS more-closely matches the feedback data.
+    option_implies(implicit_parallelism, pre_implicit_parallelism_simplify,
+        bool(yes), !Globals),
 
     % Generating IL implies:
     %   - gc_method `automatic' and no heap reclamation on failure
