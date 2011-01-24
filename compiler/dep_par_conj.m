@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2010 The University of Melbourne.
+% Copyright (C) 2006-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -287,7 +287,7 @@ sync_dep_par_conjs_in_proc(PredId, ProcId, IgnoreVars, !ModuleInfo,
         sync_dep_par_conjs_in_goal(!Goal, InstMap0, _, !SyncInfo),
         !.SyncInfo = sync_info(_, _, _, !:VarSet, !:VarTypes, _),
         % XXX RTTI varmaps may need to be updated
-        
+
         trace [compile_time(flag("debug-dep-par-conj")), io(!IO)] (
             globals.lookup_accumulating_option(Globals, debug_dep_par_conj,
                 DebugDepParConjWords),
@@ -312,7 +312,7 @@ sync_dep_par_conjs_in_proc(PredId, ProcId, IgnoreVars, !ModuleInfo,
             ;
                 true
             )
-        ), 
+        ),
 
         % We really only need to run this part if something changed, but we
         % only run this predicate on procedures which are likely to have
@@ -344,7 +344,7 @@ sync_dep_par_conjs_in_goal(Goal0, Goal, InstMap0, InstMap, !SyncInfo) :-
             conj_list_to_goal(Goals, GoalInfo0, Goal)
         ;
             ConjType = parallel_conj,
-            Goal0InstmapDelta = 
+            Goal0InstmapDelta =
                 goal_info_get_instmap_delta(Goal0 ^ hlds_goal_info),
             ( instmap_delta_is_unreachable(Goal0InstmapDelta) ->
                 % If the instmap becomes unreachable then calculating the
@@ -599,7 +599,7 @@ sync_dep_par_conjunct(ModuleInfo, AllowSomePathsOnly, ParConjunctStatus,
 
 insert_wait_in_goal_for_proc(ModuleInfo, AllowSomePathsOnly, FutureMap,
         ConsumedVar, !Goal, !VarSet, !VarTypes) :-
-    insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, 
+    insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap,
         ConsumedVar, WaitedOnAllSuccessPaths, !Goal, !VarSet, !VarTypes),
     % If we did not wait on all success paths then we must insert a
     % wait here.  This preserves the invariant that a procedure called
@@ -906,7 +906,7 @@ insert_wait_in_plain_conj(ModuleInfo, AllowSomePathsOnly, FutureMap,
             GoalWaitedOnAllSuccessPaths = not_waited_on_all_success_paths,
             % We waited for ConsumedVar on some but not all paths in FirstGoal0
             % that can lead to LaterGoals0. LaterGoals may therefore also wait
-            % for ConsumedVar, and any such waits will also bind ConsumedVar. 
+            % for ConsumedVar, and any such waits will also bind ConsumedVar.
             % We do not want both FirstGoal and LaterGoals binding ConsumedVar,
             % so the call to insert_wait_in_goal above has replaced all
             % occurrences of ConsumedVar in FirstGoal with a fresh variable.
@@ -1250,7 +1250,7 @@ insert_signal_in_cases(ModuleInfo, FutureMap, ProducedVar,
 %
 
 :- pred reorder_indep_par_conj(pred_proc_id::in, vartypes::in, instmap::in,
-    hlds_goals::in, hlds_goal_info::in, hlds_goal::out, 
+    hlds_goals::in, hlds_goal_info::in, hlds_goal::out,
     module_info::in, module_info::out) is det.
 
 reorder_indep_par_conj(PredProcId, VarTypes, InstMapBefore, Conjuncts0,
@@ -1273,13 +1273,13 @@ reorder_indep_par_conj(PredProcId, VarTypes, InstMapBefore, Conjuncts0,
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred reorder_indep_par_conj_2(list(pred_proc_id)::in, vartypes::in,
-    instmap::in, hlds_goals::in, hlds_goals::out, 
+    instmap::in, hlds_goals::in, hlds_goals::out,
     module_info::in, module_info::out) is det.
 
 reorder_indep_par_conj_2(_, _, _, [], [], !ModuleInfo).
 reorder_indep_par_conj_2(SCC, VarTypes, InstMapBefore, [ Goal | Goals0 ],
         Goals, !ModuleInfo) :-
-    apply_instmap_delta(InstMapBefore, 
+    apply_instmap_delta(InstMapBefore,
         goal_info_get_instmap_delta(Goal ^ hlds_goal_info),
         InstMapBeforeGoals0),
     reorder_indep_par_conj_2(SCC, VarTypes, InstMapBeforeGoals0, Goals0,
@@ -1308,7 +1308,7 @@ reorder_indep_par_conj_2(SCC, VarTypes, InstMapBefore, [ Goal | Goals0 ],
     ).
 
 :- pred push_goal_into_conj(vartypes::in, instmap::in, hlds_goal::in,
-    instmap::in, hlds_goals::in, maybe(hlds_goals)::out, 
+    instmap::in, hlds_goals::in, maybe(hlds_goals)::out,
     module_info::in, module_info::out) is det.
 
 push_goal_into_conj(_, _, Goal, _, [], yes([Goal]), !ModuleInfo).
@@ -1323,11 +1323,11 @@ push_goal_into_conj(VarTypes, InstMapBeforeGoal, Goal, InstMapBeforePivotGoal,
         % InstMapBeforeGoalAfterPivot represents the inst map before Goal given
         % that it has already been swapped with PivotGoal, that is PivotGoal
         % occurs before Goal.
-        PivotInstMapDelta = 
+        PivotInstMapDelta =
             goal_info_get_instmap_delta(PivotGoal ^ hlds_goal_info),
         apply_instmap_delta(InstMapBeforeGoal, PivotInstMapDelta,
             InstMapBeforeGoalAfterPivot),
-       
+
         GoalInstMapDelta =
             goal_info_get_instmap_delta(Goal ^ hlds_goal_info),
         apply_instmap_delta(InstMapBeforeGoalAfterPivot, GoalInstMapDelta,
@@ -1348,7 +1348,7 @@ push_goal_into_conj(VarTypes, InstMapBeforeGoal, Goal, InstMapBeforePivotGoal,
         MaybeGoals = no
     ).
 
-:- pred search_scc(list(list(pred_proc_id))::in, pred_proc_id::in, 
+:- pred search_scc(list(list(pred_proc_id))::in, pred_proc_id::in,
     list(pred_proc_id)::out) is det.
 
 search_scc(SCCs, PredProcId, SCC) :-
@@ -1491,7 +1491,7 @@ find_specialization_requests_in_proc(DoneProcs, InitialModuleInfo, PredProcId,
                 OutInfo = init_hlds_out_info(Globals),
                 proc_info_get_varset(!.ProcInfo, VarSet),
                 format("About to search %d/%d for dependant par conjs:\n",
-                    [i(PredIdInt), i(proc_id_to_int(ProcId))], !IO), 
+                    [i(PredIdInt), i(proc_id_to_int(ProcId))], !IO),
                 write_goal(OutInfo, !.Goal, !.ModuleInfo, VarSet,
                     yes, 0, "", !IO),
                 nl(!IO)
@@ -1790,14 +1790,32 @@ maybe_specialize_call_and_goals(RevGoals0, Goal0, FwdGoals0,
     Goal0 = hlds_goal(GoalExpr0, _),
     GoalExpr0 = plain_call(PredId, ProcId, CallVars, _, _, _),
 
-    module_info_pred_info(!.SpecInfo ^ spec_module_info, PredId, PredInfo),
+    ModuleInfo = !.SpecInfo ^ spec_module_info,
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
+    DoneParProcs = values(!.SpecInfo ^ spec_done_procs),
+    PredProcId = proc(PredId, ProcId),
     % We cannot push wait or signal goals into a procedure whose code we don't
     % have access to.
     % XXX: We have access to opt_imported procedures. The reason why this test
     % does not look for them is that we used to run dep_par_conj only *after*
     % mercury_compile used to invoke dead_proc_elim to delete opt_imported
     % procedures.
-    ( list.member(ProcId, pred_info_non_imported_procids(PredInfo)) ->
+    (
+        list.member(ProcId, pred_info_non_imported_procids(PredInfo)),
+
+        % These tests avoid some problems we've had with pushing signals and
+        % waits into callees.
+        % + Don't push signals or waits into any procedure that contains a new
+        %   parallel conjunction.
+        proc_info_get_has_parallel_conj(ProcInfo, no),
+        % + Don't push signals or waits into any procedure that has already
+        %   been specialised by pushing some signals or waits into it.
+        not (
+            member(DoneParProc, DoneParProcs),
+            PredProcId = DoneParProc ^ new_ppid
+        )
+    ->
         % Look for a contiguous sequence of wait goals at the start of
         % RevGoals (i.e. the goals immediately before Goal0) and for a
         % contiguous sequence of signal goals at the start of FwdGoals0
@@ -1815,7 +1833,6 @@ maybe_specialize_call_and_goals(RevGoals0, Goal0, FwdGoals0,
         % the wait goals represented by PushedWaitPairs, and similarly
         % for SignalGoals.
 
-        PredProcId = proc(PredId, ProcId),
         find_relevant_pushable_wait_goals(RevGoals0, PredProcId,
             CallVars, PushedWaitPairs, UnPushedWaitGoals, RevGoals1,
             !SpecInfo),
@@ -2228,7 +2245,7 @@ should_we_push_test(PredProcId, ArgPos, PushOp, IsWorthPushing, SpecInfo) :-
             CostAfterSignal = code_has_no_solutions,
             % The signal will never be executed no matter where we put it,
             % don't bother specialising code.
-            IsWorthPushing = not_worth_pushing 
+            IsWorthPushing = not_worth_pushing
         )
     ).
 
@@ -2524,7 +2541,7 @@ seen_produced_var(!Signal) :-
         !.Signal = seen_signal_negligible_cost_after
     ).
 
-:- pred seen_nontrivial_cost(cost_after_signal::in(cost_after_signal_in), 
+:- pred seen_nontrivial_cost(cost_after_signal::in(cost_after_signal_in),
     cost_after_signal::out) is det.
 
 seen_nontrivial_cost(!Signal) :-
@@ -2537,7 +2554,7 @@ seen_nontrivial_cost(!Signal) :-
     ).
 
 :- pred should_we_push_signal(prog_var::in, hlds_goal::in,
-    cost_after_signal::in(cost_after_signal_in), cost_after_signal::out) 
+    cost_after_signal::in(cost_after_signal_in), cost_after_signal::out)
     is det.
 
 should_we_push_signal(Var, Goal, !Signal) :-
@@ -2648,7 +2665,7 @@ should_we_push_signal(Var, Goal, !Signal) :-
                     ; SignalElse = seen_signal_negligible_cost_after
                     ),
                     !:Signal = seen_signal_non_negligible_cost_after
-                ) 
+                )
             ;
                 SignalThen = seen_signal_negligible_cost_after,
                 (
@@ -2663,7 +2680,7 @@ should_we_push_signal(Var, Goal, !Signal) :-
                 ;
                     SignalElse = seen_signal_non_negligible_cost_after,
                     !:Signal = seen_signal_non_negligible_cost_after
-                ) 
+                )
             )
         ;
             GoalExpr = negation(SubGoal),
@@ -2685,7 +2702,7 @@ should_we_push_signal(Var, Goal, !Signal) :-
                 ;
                     true
                 )
-            ;   
+            ;
                 should_we_push_signal(Var, SubGoal, !Signal)
             )
         ;
@@ -2702,7 +2719,7 @@ should_we_push_signal(Var, Goal, !Signal) :-
     ).
 
 :- pred should_we_push_signal_in_plain_conj(prog_var::in, list(hlds_goal)::in,
-    cost_after_signal::in(cost_after_signal_in), cost_after_signal::out) 
+    cost_after_signal::in(cost_after_signal_in), cost_after_signal::out)
     is det.
 
 should_we_push_signal_in_plain_conj(_Var, [], !Signal).
@@ -2723,7 +2740,7 @@ should_we_push_signal_in_plain_conj(Var, [Conjunct | Conjuncts], !Signal) :-
     ).
 
 :- pred should_we_push_signal_in_par_conj(prog_var::in, list(hlds_goal)::in,
-    cost_after_signal::in(cost_after_signal_in), 
+    cost_after_signal::in(cost_after_signal_in),
     cost_after_signal::in, cost_after_signal::out) is det.
 
 should_we_push_signal_in_par_conj(_Var, [], _OrigSignal, !FinalSignal).
@@ -2750,7 +2767,7 @@ should_we_push_signal_in_par_conj(Var, [Conjunct | Conjuncts], OrigSignal,
         ;
             Conjuncts = [_ | _],
             % There are more conjuncts after this one, and since negligible
-            % cost goals are not worth parallelizing, we can assume that 
+            % cost goals are not worth parallelizing, we can assume that
             % at least on some executions, the signal of Var will be followed
             % by the nontrivial execution of some of Conjuncts.
             !:FinalSignal = seen_signal_non_negligible_cost_after
@@ -2766,7 +2783,7 @@ should_we_push_signal_in_par_conj(Var, [Conjunct | Conjuncts], OrigSignal,
         "should_we_push_signal_in_par_conj: final signal goes backwards").
 
 :- pred should_we_push_signal_in_disj(prog_var::in, list(hlds_goal)::in,
-    cost_after_signal::in(cost_after_signal_in), 
+    cost_after_signal::in(cost_after_signal_in),
     cost_after_signal::out) is det.
 
 should_we_push_signal_in_disj(_Var, [], _OrigSignal, code_has_no_solutions).
@@ -2794,7 +2811,7 @@ should_we_push_signal_in_disj(Var, [FirstGoal | LaterGoals], OrigSignal,
             SignalFirst = seen_signal_negligible_cost_after,
             (
                 Signal0 = not_seen_signal,
-                unexpected(this_file, "should_we_push_signal_in_disj: " ++ 
+                unexpected(this_file, "should_we_push_signal_in_disj: " ++
                     "The program doesn't seem mode correct")
             ;
                 Signal0 = code_has_no_solutions,
@@ -2812,7 +2829,7 @@ should_we_push_signal_in_disj(Var, [FirstGoal | LaterGoals], OrigSignal,
     ).
 
 :- pred should_we_push_signal_in_cases(prog_var::in, list(case)::in,
-    cost_after_signal::in(cost_after_signal_in), 
+    cost_after_signal::in(cost_after_signal_in),
     cost_after_signal::out) is det.
 
 should_we_push_signal_in_cases(_Var, [], _OrigSignal, code_has_no_solutions).
@@ -2841,7 +2858,7 @@ should_we_push_signal_in_cases(Var, [FirstCase | LaterCases], OrigSignal,
             SignalFirst = seen_signal_negligible_cost_after,
             (
                 Signal0 = not_seen_signal,
-                unexpected(this_file, "should_we_push_signal_in_cases: " ++ 
+                unexpected(this_file, "should_we_push_signal_in_cases: " ++
                     "The program doesn't seem mode correct")
             ;
                 Signal0 = code_has_no_solutions,
@@ -2854,7 +2871,7 @@ should_we_push_signal_in_cases(Var, [FirstCase | LaterCases], OrigSignal,
             )
         ;
             SignalFirst = code_has_no_solutions,
-            Signal = Signal0 
+            Signal = Signal0
         )
     ).
 
@@ -2867,13 +2884,13 @@ seen_more_signal(SignalA, SignalB) :-
 :- func seen_more_signal_2(cost_after_signal, cost_after_signal) = bool.
 
 seen_more_signal_2(not_seen_signal, _) = yes.
-seen_more_signal_2(code_has_no_solutions, 
+seen_more_signal_2(code_has_no_solutions,
     not_seen_signal) = no.
-seen_more_signal_2(code_has_no_solutions, 
+seen_more_signal_2(code_has_no_solutions,
     code_has_no_solutions) = yes.
-seen_more_signal_2(code_has_no_solutions, 
+seen_more_signal_2(code_has_no_solutions,
     seen_signal_negligible_cost_after) = no.
-seen_more_signal_2(code_has_no_solutions, 
+seen_more_signal_2(code_has_no_solutions,
     seen_signal_non_negligible_cost_after) = no.
 seen_more_signal_2(seen_signal_negligible_cost_after,
     not_seen_signal) = no.
