@@ -1269,7 +1269,20 @@ push_goals_create_candidate(Info, RevCurPathSteps,
                         TailRelSteps, SubGoal, GoalsToPush0,
                         RevCandidateGoalPathSteps, CandidateConjs)
                 ;
-                    unexpected($module, $pred, "push into non-last conjunct")
+                    % We can't push goals into the non-last conjunct without
+                    % re-ordering, which is currently not supported.  By
+                    % building a conjunction here we may still be able to
+                    % create a worthwhile parallelisation.  However, there is a
+                    % trade-off to explore between this and not generating the
+                    % single expensive goal from within the conjunction and
+                    % therefore possibly finding other single expensive goals
+                    % later in this conjunction.
+                    RevCandidateGoalPathSteps = RevCurPathSteps,
+                    Cost = GoalToPushInto ^ goal_annotation ^ pgd_cost,
+                    Calls = goal_cost_get_calls(Cost),
+                    map(fix_goal_counts(Info, Calls), GoalsToPush0,
+                        GoalsToPush),
+                    CandidateConjs = Goals ++ GoalsToPush
                 )
             )
         ;
