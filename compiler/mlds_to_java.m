@@ -2685,7 +2685,8 @@ add_scalar_deps_rval_const(FromScalar, RvalConst, !Graph) :-
 output_scalar_init_method(Info, Indent, Map, Scalars,
         ChunkNum, ChunkNum + 1, !IO) :-
     indent_line(Indent, !IO),
-    io.format("static void MR_init_scalars_%d() {\n", [i(ChunkNum)], !IO),
+    io.format("private static void MR_init_scalars_%d() {\n",
+        [i(ChunkNum)], !IO),
     list.foldl(output_scalar_init(Info, Indent + 1, Map), Scalars, !IO),
     indent_line(Indent, !IO),
     io.write_string("}\n", !IO).
