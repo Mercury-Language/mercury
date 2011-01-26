@@ -77,6 +77,22 @@ MCFLAGS += --flags DEEP_FLAGS $(CONFIG_OVERRIDE)
 
 #-----------------------------------------------------------------------------#
 
+ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
+MLOBJS =
+endif
+
+#-----------------------------------------------------------------------------#
+
+# The deep profiler contains quite a lot of C code for which there are
+# currently not C#, IL, Java or Erlang implementations.  We need to pass
+# `--allow-stubs' in order to compile it.
+#
+ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
+MCFLAGS += --allow-stubs --no-warn-stubs
+endif
+
+#-----------------------------------------------------------------------------#
+
 .PHONY: nothing
 nothing:
 

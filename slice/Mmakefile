@@ -66,6 +66,12 @@ MCFLAGS += --flags SLICE_FLAGS $(CONFIG_OVERRIDE)
 
 #-----------------------------------------------------------------------------#
 
+ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
+MLOBJS =
+endif
+
+#-----------------------------------------------------------------------------#
+
 .PHONY: depend
 depend:	$(MDBCOMP_MODULES) $(DEPENDS)
 
@@ -87,6 +93,16 @@ $(MDBCOMP_MODULES): $(MDBCOMP_ORIG_MODULES)
 	-@chmod a+w $(MDBCOMP_MODULES) > /dev/null 2>&1; exit 0
 	cp $(MDBCOMP_ORIG_MODULES) .
 	@chmod a-w $(MDBCOMP_MODULES)
+
+#-----------------------------------------------------------------------------#
+
+# The C#, IL, Java and Erlang implementations of the mdbcomp library are not yet
+# complete, so we need to pass `--allow-stubs' to get them to compile.
+# Since the standard library is compiled with `--halt-at-warn',
+# we also need `--no-warn-stubs'.
+ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
+MCFLAGS += --allow-stubs --no-warn-stubs
+endif
 
 #-----------------------------------------------------------------------------#
 
