@@ -147,6 +147,8 @@
     ;       verbose_make
     ;       verbose_commands
     ;       output_compile_error_lines
+    ;       report_cmd_line_args
+    ;       report_cmd_line_args_in_doterr
     ;       statistics
     ;       detailed_statistics
     ;       proc_size_statistics
@@ -1094,6 +1096,8 @@ option_defaults_2(verbosity_option, [
     verbose_make                        -   bool(yes),
     verbose_commands                    -   bool(no),
     output_compile_error_lines          -   int(15),
+    report_cmd_line_args                -   bool(no),
+    report_cmd_line_args_in_doterr      -   bool(no),
     statistics                          -   bool(no),
     detailed_statistics                 -   bool(no),
     proc_size_statistics                -   string(""),
@@ -1933,6 +1937,9 @@ long_option("find-all-recompilation-reasons",
 long_option("verbose-make",             verbose_make).
 long_option("verbose-commands",         verbose_commands).
 long_option("output-compile-error-lines",   output_compile_error_lines).
+long_option("report-cmd-line-args",     report_cmd_line_args).
+long_option("report-cmd-line-args-in-doterr",
+                                        report_cmd_line_args_in_doterr).
 long_option("statistics",               statistics).
 long_option("detailed-statistics",      detailed_statistics).
 long_option("proc-size-statistics",     proc_size_statistics).
@@ -3482,9 +3489,6 @@ options_help_verbosity -->
         "--no-verbose-make",
         "\tDisable messages about the progress of builds using",
         "\tthe `--make' option.",
-        "--output-compile-error-lines <n>",
-        "\tWith `--make', output the first <n> lines of the `.err'",
-        "\tfile after compiling a module (default: 15).",
         "--verbose-commands",
         "\tOutput each external command before it is run.",
         "\tNote that some commands will only be printed with `--verbose'.",
@@ -3494,6 +3498,14 @@ options_help_verbosity -->
         "--find-all-recompilation-reasons",
         "\tFind all the reasons why a module needs to be recompiled,",
         "\tnot just the first.  Implies `--verbose-recompilation'.",
+        "--output-compile-error-lines <n>",
+        "\tWith `--make', output the first <n> lines of the `.err'",
+        "\tfile after compiling a module (default: 15).",
+        "--report-cmd-line-args-doterr",
+        "\tReport the command line arguments.",
+        "--report-cmd-line-args-in-doterr",
+        "\tReport the command line arguments for compilations whose output",
+        "\tmmake normally redirects to a .err file.",
         "-S, --statistics",
         "\tOutput messages about the compiler's time/space usage.",
         "\tAt the moment this option implies `--no-trad-passes', so you get",

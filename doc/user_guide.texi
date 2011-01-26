@@ -6515,13 +6515,6 @@ Disable messages about the progress of builds using
 the @samp{--make} option.
 
 @sp 1
-@item --output-compile-error-lines @var{n}
-@findex --output-compile-error-lines
-@findex --make
-With @samp{--make}, output the first @var{n} lines of the @samp{.err}
-file after compiling a module (default: 15).
-
-@sp 1
 @item --verbose-commands
 @findex --verbose-commands
 Output each external command before it is run.
@@ -6539,6 +6532,24 @@ explaining why a module needs to be recompiled.
 @findex --find-all-recompilation-reasons
 Find all the reasons why a module needs to be recompiled,
 not just the first.  Implies @samp{--verbose-recompilation}.
+
+@sp 1
+@item --output-compile-error-lines @var{n}
+@findex --output-compile-error-lines
+@findex --make
+With @samp{--make}, output the first @var{n} lines of the @samp{.err}
+file after compiling a module (default: 15).
+
+@sp 1
+@item --report-cmd-line-args
+@findex --report-cmd-line-args
+Report the command line arguments.
+
+@sp 1
+@item --report-cmd-line-args-in-doterr
+@findex --report-cmd-line-args-in-doterr
+Report the command line arguments for compilations whose output
+mmake normally redirects to a .err file.
 
 @sp 1
 @item -S

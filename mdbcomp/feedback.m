@@ -135,7 +135,7 @@
                 fre_pe_line_no          :: int
             )
     ;       unexpected_eof
-    ;       incorrect_version
+    ;       incorrect_version(string)
     ;       incorrect_first_line
     ;       incorrect_program_name(
                 fre_ipn_expected        :: string,
@@ -253,7 +253,6 @@ put_feedback_data(Data, !Info) :-
 %----------------------------------------------------------------------------%
 
 :- pred feedback_data_type(feedback_type, feedback_data).
-
 :- mode feedback_data_type(out, in(feedback_data_query)) is det.
 :- mode feedback_data_type(out, in) is det.
 
@@ -285,11 +284,10 @@ read_feedback_file(Path, ReadResultFeedbackInfo, !IO) :-
             read_check_line(feedback_first_line, incorrect_first_line, Stream,
                 unit, !:Result, !IO),
             maybe_read(
-                read_check_line(feedback_version, incorrect_version, Stream),
+                read_check_line(feedback_version,
+                    incorrect_version(feedback_version), Stream),
                 !Result, !IO),
-            maybe_read(
-                read_program_name(Stream),
-                !Result, !IO),
+            maybe_read(read_program_name(Stream), !Result, !IO),
             maybe_read(read_data(Stream), !Result, !IO),
             ReadResultFeedbackInfo = !.Result
         ),
@@ -430,7 +428,7 @@ read_or_create(Path, ExpectedProgName, ReadResultFeedback, !IO) :-
             ( Error = read_error(_)
             ; Error = parse_error(_, _)
             ; Error = unexpected_eof
-            ; Error = incorrect_version
+            ; Error = incorrect_version(_)
             ; Error = incorrect_first_line
             ; Error = incorrect_program_name(_, _)
             ),
@@ -453,8 +451,8 @@ read_error_message_string(File, Error, Message) :-
         Error = unexpected_eof,
         MessagePart = "Unexpected end of file"
     ;
-        Error = incorrect_version,
-        MessagePart = "Incorrect file format version"
+        Error = incorrect_version(Expected),
+        MessagePart = "Incorrect file format version; expected " ++ Expected
     ;
         Error = incorrect_first_line,
         MessagePart = "Incorrect file format"
@@ -462,7 +460,7 @@ read_error_message_string(File, Error, Message) :-
         Error = incorrect_program_name(Expected, Got),
         MessagePart =
             "Program name didn't match, is this the right feedback file?\n"
-            ++ format("Expected: '%s' Got: '%s'", [s(Expected), s(Got)])
+            ++ string.format("Expected: '%s' Got: '%s'", [s(Expected), s(Got)])
     ),
     string.format("%s: %s\n", [s(File), s(MessagePart)], Message).
 
@@ -536,12 +534,6 @@ feedback_first_line = "Mercury Compiler Feedback".
 :- func feedback_version = string.
 
 feedback_version = "18".
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "feedback.m: ".
 
 %-----------------------------------------------------------------------------%
 :- end_module mdbcomp.feedback.

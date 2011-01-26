@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -345,6 +345,9 @@ main_after_setup(OptionVariables, OptionArgs, Args, Link, Globals, !IO) :-
     globals.lookup_bool_option(Globals, make, Make),
     globals.lookup_maybe_string_option(Globals,
         generate_standalone_interface, GenerateStandaloneInt),
+    globals.lookup_bool_option(Globals,
+        report_cmd_line_args, ReportCmdLineArgs),
+    maybe_report_cmd_line(ReportCmdLineArgs, OptionArgs, Args, !IO),
     ( Version = yes ->
         io.stdout_stream(Stdout, !IO),
         io.set_output_stream(Stdout, OldOutputStream, !IO),
@@ -483,6 +486,20 @@ main_after_setup(OptionVariables, OptionArgs, Args, Link, Globals, !IO) :-
         ;
             Statistics = no
         )
+    ).
+
+:- pred maybe_report_cmd_line(bool::in, list(string)::in, list(string)::in,
+    io::di, io::uo) is det.
+
+maybe_report_cmd_line(Report, OptionArgs, Args, !IO) :-
+    (
+        Report = no
+    ;
+        Report = yes,
+        io.format("%% Command line options start\n", [], !IO),
+        io.format("%% %s\n", [s(string.join_list("\n% ", OptionArgs ++ Args))],
+            !IO),
+        io.format("%% Command line options end\n", [], !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1181,12 +1198,13 @@ process_module(Globals0, OptionVariables, OptionArgs, FileOrModule,
                 % See the comment in process_all_args.
                 compile_using_gcc_backend(Globals, OptionVariables,
                     OptionArgs, FileOrModule,
-                    process_module_2_callback(FileOrModule,
+                    process_module_2_callback(OptionArgs, FileOrModule,
                         ModulesToRecompile, HaveReadModuleMap, Globals),
                     ModulesToLink, ExtraObjFiles, !IO)
             ;
-                process_module_2(Globals, FileOrModule, ModulesToRecompile,
-                    HaveReadModuleMap, ModulesToLink, ExtraObjFiles, !IO)
+                process_module_2(Globals, OptionArgs, FileOrModule,
+                    ModulesToRecompile, HaveReadModuleMap, ModulesToLink,
+                    ExtraObjFiles, !IO)
             )
         )
     ).
@@ -1202,22 +1220,45 @@ apply_process_module(ProcessModule, FileName, ModuleName, MaybeTimestamp,
         SubModule, !IO) :-
     ProcessModule(FileName, ModuleName, MaybeTimestamp, SubModule, !IO).
 
-:- pred process_module_2_callback(file_or_module::in,
+:- pred process_module_2_callback(list(string)::in, file_or_module::in,
     modules_to_recompile::in, have_read_module_map::in, globals::in,
     {list(string), list(string)}::out, io::di, io::uo) is det.
 
-process_module_2_callback(FileOrModule, MaybeModulesToRecompile,
+process_module_2_callback(OptionArgs, FileOrModule, MaybeModulesToRecompile,
         HaveReadModuleMap0, Globals, Result, !IO) :-
-    process_module_2(Globals, FileOrModule, MaybeModulesToRecompile,
+    process_module_2(Globals, OptionArgs, FileOrModule, MaybeModulesToRecompile,
         HaveReadModuleMap0, ModulesToLink, ExtraObjFiles, !IO),
     Result = {ModulesToLink, ExtraObjFiles}.
 
-:- pred process_module_2(globals::in, file_or_module::in,
+:- pred process_module_2(globals::in, list(string)::in, file_or_module::in,
     modules_to_recompile::in, have_read_module_map::in,
     list(string)::out, list(string)::out, io::di, io::uo) is det.
 
-process_module_2(Globals0, FileOrModule, MaybeModulesToRecompile,
+process_module_2(Globals0, OptionArgs, FileOrModule, MaybeModulesToRecompile,
         HaveReadModuleMap0, ModulesToLink, ExtraObjFiles, !IO) :-
+    globals.lookup_bool_option(Globals0, make_short_interface,
+        MakeShortInt),
+    globals.lookup_bool_option(Globals0, make_interface,
+        MakeInt),
+    globals.lookup_bool_option(Globals0, make_optimization_interface,
+        MakeOptInt),
+    globals.lookup_bool_option(Globals0, make_transitive_opt_interface,
+        MakeTransOptInt),
+    globals.lookup_bool_option(Globals0, make_analysis_registry,
+        MakeAnalysisRegistry),
+    globals.lookup_bool_option(Globals0, make_xml_documentation,
+        MakeXmlDocumentation),
+    bool.or_list([MakeShortInt, MakeInt, MakeOptInt, MakeTransOptInt,
+        MakeAnalysisRegistry, MakeXmlDocumentation], DirectReport),
+    (
+        DirectReport = yes
+    ;
+        DirectReport = no,
+        globals.lookup_bool_option(Globals0,
+            report_cmd_line_args_in_doterr, ReportCmdLineArgsDotErr),
+        maybe_report_cmd_line(ReportCmdLineArgsDotErr, OptionArgs, [], !IO)
+    ),
+
     read_module_or_file(Globals0, Globals, FileOrModule, do_return_timestamp,
         ModuleName, FileName, MaybeTimestamp, Items, Specs0, Error,
         HaveReadModuleMap0, HaveReadModuleMap, !IO),
