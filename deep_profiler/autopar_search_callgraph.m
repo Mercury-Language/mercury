@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: mdprof_fb.automatic_parallelism.m.
+% File: autopar_search_callgraph.m
 % Author: pbone.
 %
 % This module contains the code for analysing deep profiles of programs in
