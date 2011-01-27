@@ -249,6 +249,14 @@ endif
 
 #-----------------------------------------------------------------------------#
 
+# Tell the C# compiler where the stdlib and mdbcomp assemblies are.
+#
+ifneq ("$(filter csharp%,$(GRADE))","")
+CSCFLAGS=-lib:../library -r:mer_std -lib:../mdbcomp -r:mer_mdbcomp
+endif
+
+#-----------------------------------------------------------------------------#
+
 # Add some additional dependencies, so that Mmake knows to remake the
 # compiler if one of the libraries changes.
 
