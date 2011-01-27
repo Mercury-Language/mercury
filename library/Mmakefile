@@ -379,6 +379,10 @@ endif
 #-----------------------------------------------------------------------------#
 
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+ifeq ("$(findstring csharp,$(GRADE))","csharp")
+$(STD_LIB_NAME).dll: libmer_std
+lib_std: $(STD_LIB_NAME).dll
+endif
 ifeq ("$(findstring java,$(GRADE))","java")
 lib_std: $(STD_LIB_NAME).jar $(RT_LIB_NAME).jar
 endif
