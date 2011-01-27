@@ -3,8 +3,13 @@ EXTRA_DIST=test_atomic.template list_atomic.template run_parallel.inc \
 # We distribute test_atomic_include.h, since it's hard to regenerate
 # on Windows without sed.
 
-BUILT_SOURCES = test_atomic_include.h list_atomic.i
-CLEANFILES = test_atomic_include.h list_atomic.c list_atomic.i
+# Mercury local change: we avoid regenerating or deleting test_atomic_include.h
+# because it just causes noise in cvs diffs.
+#
+#BUILT_SOURCES = test_atomic_include.h list_atomic.i
+#CLEANFILES = test_atomic_include.h list_atomic.c list_atomic.i
+BUILT_SOURCES = list_atomic.i
+CLEANFILES = list_atomic.c list_atomic.i
 
 AM_CPPFLAGS=-I$(srcdir)/../src
 
