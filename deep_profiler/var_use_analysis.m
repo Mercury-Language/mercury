@@ -141,7 +141,6 @@
 
 :- implementation.
 
-:- import_module create_report.
 :- import_module measurement_units.
 :- import_module program_representation_utils.
 :- import_module recursion_patterns.

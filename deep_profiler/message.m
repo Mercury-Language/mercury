@@ -24,9 +24,7 @@
 :- import_module profile.
 
 :- import_module cord.
-:- import_module int.
 :- import_module io.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -196,10 +194,12 @@
 
 :- implementation.
 
+:- import_module program_representation_utils.
+
+:- import_module int.
 :- import_module list.
 :- import_module require.
-
-:- import_module program_representation_utils.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

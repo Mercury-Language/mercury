@@ -622,8 +622,6 @@
 
 :- implementation.
 
-:- import_module char.
-:- import_module exception.
 :- import_module int.
 :- import_module map.
 :- import_module require.

@@ -38,6 +38,7 @@
 :- import_module mdprof_fb.
 :- import_module mdprof_fb.automatic_parallelism.
 :- import_module mdprof_fb.automatic_parallelism.autopar_search_callgraph.
+:- import_module mdprof_fb.automatic_parallelism.autopar_reports.
 :- import_module message.
 :- import_module profile.
 :- import_module startup.
@@ -226,7 +227,7 @@ create_feedback_report(feedback_data_candidate_parallel_conjunctions(
         ParalleliseDepConjs = do_not_parallelise_dep_conjs,
         ParalleliseDepConjsStr = "no"
     ),
-    map(create_candidate_parallel_conj_proc_report, Conjs, ReportConjs),
+    list.map(create_candidate_parallel_conj_proc_report, Conjs, ReportConjs),
     Report = append_list(list(ReportHeader ++ cord_list_to_cord(ReportConjs))).
 
 :- func help_message = string.

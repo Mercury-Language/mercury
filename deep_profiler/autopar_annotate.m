@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2011 The University of Melbourne.
+% Copyright (C) 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -45,36 +45,9 @@
 
 :- implementation.
 
-:- import_module analysis_utils.
-:- import_module branch_and_bound.
-:- import_module coverage.
-:- import_module create_report.
 :- import_module mdbcomp.goal_path.
-:- import_module measurement_units.
-:- import_module measurements.
-:- import_module message.
-:- import_module profile.
-:- import_module recursion_patterns.
-:- import_module report.
-:- import_module solutions.
-:- import_module var_use_analysis.
 
-:- import_module array.
-:- import_module assoc_list.
-:- import_module bool.
-:- import_module cord.
-:- import_module float.
-:- import_module int.
-:- import_module io.
-:- import_module lazy.
 :- import_module list.
-:- import_module map.
-:- import_module maybe.
-:- import_module pair.
-:- import_module require.
-:- import_module std_util.
-:- import_module string.
-:- import_module svmap.
 
 %----------------------------------------------------------------------------%
 %

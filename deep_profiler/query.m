@@ -362,11 +362,9 @@
 
 :- implementation.
 
-:- import_module apply_exclusion.
 :- import_module create_report.
 :- import_module display_report.
 :- import_module html_format.
-:- import_module measurements.
 :- import_module report.
 :- import_module util.
 
@@ -376,7 +374,6 @@
 :- import_module list.
 :- import_module math.
 :- import_module maybe.
-:- import_module require.
 :- import_module string.
 :- import_module univ.
 

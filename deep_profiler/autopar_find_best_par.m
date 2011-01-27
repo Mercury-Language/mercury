@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2011 The University of Melbourne.
+% Copyright (C) 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,11 +17,11 @@
 :- module mdprof_fb.automatic_parallelism.autopar_find_best_par.
 :- interface.
 
-:- import_module message.
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
 :- import_module mdbcomp.feedback.automatic_parallelism.
 :- import_module mdprof_fb.automatic_parallelism.autopar_types.
+:- import_module message.
 
 :- import_module cord.
 :- import_module list.
@@ -46,36 +46,20 @@
 
 :- implementation.
 
-% XXX temporary only
-:- import_module mdprof_fb.automatic_parallelism.autopar_search_callgraph.
-
-:- import_module analysis_utils.
 :- import_module branch_and_bound.
-:- import_module coverage.
-:- import_module create_report.
-:- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.program_representation.
-:- import_module measurement_units.
+:- import_module mdprof_fb.automatic_parallelism.autopar_calc_overlap.
+:- import_module mdprof_fb.automatic_parallelism.autopar_search_goals. % XXX
 :- import_module measurements.
-:- import_module program_representation_utils.
-:- import_module recursion_patterns.
-:- import_module report.
-:- import_module solutions.
-:- import_module var_use_analysis.
 
 :- import_module array.
-:- import_module assoc_list.
-:- import_module bool.
 :- import_module digraph.
 :- import_module float.
 :- import_module io.
 :- import_module int.
-:- import_module lazy.
 :- import_module map.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module svmap.
 

@@ -16,10 +16,14 @@
 :- module mdprof_fb.automatic_parallelism.
 :- interface.
 
+:- include_module mdprof_fb.automatic_parallelism.autopar_reports.
 :- include_module mdprof_fb.automatic_parallelism.autopar_search_callgraph.
 
 :- implementation.
 
 :- include_module mdprof_fb.automatic_parallelism.autopar_annotate.
+:- include_module mdprof_fb.automatic_parallelism.autopar_calc_overlap.
+:- include_module mdprof_fb.automatic_parallelism.autopar_costs.
 :- include_module mdprof_fb.automatic_parallelism.autopar_find_best_par.
+:- include_module mdprof_fb.automatic_parallelism.autopar_search_goals.
 :- include_module mdprof_fb.automatic_parallelism.autopar_types.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2011 The University of Melbourne.
+% Copyright (C) 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,16 +16,15 @@
 :- module mdprof_fb.automatic_parallelism.autopar_types.
 :- interface.
 
-:- import_module profile.
+:- import_module analysis_utils.
+:- import_module coverage.
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
 :- import_module mdbcomp.feedback.automatic_parallelism.
-:- import_module mdbcomp.program_representation.
-
-:- import_module analysis_utils.
-:- import_module coverage.
 :- import_module mdbcomp.goal_path.
+:- import_module mdbcomp.program_representation.
 :- import_module measurements.
+:- import_module profile.
 :- import_module program_representation_utils.
 :- import_module report.
 :- import_module var_use_analysis.
@@ -33,8 +32,6 @@
 :- import_module array.
 :- import_module assoc_list.
 :- import_module digraph.
-:- import_module float.
-:- import_module int.
 :- import_module lazy.
 :- import_module list.
 :- import_module map.
@@ -262,6 +259,8 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module int.
 
 ip_get_goals_before(Parallelisation) = GoalsBefore :-
     Goals = Parallelisation ^ ip_goals,

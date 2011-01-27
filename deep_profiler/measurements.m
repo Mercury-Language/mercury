@@ -311,7 +311,6 @@
 
 :- implementation.
 
-:- import_module bool.
 :- import_module float.
 :- import_module int.
 :- import_module require.

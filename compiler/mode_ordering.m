@@ -45,7 +45,6 @@
 
 :- import_module check_hlds.clause_to_proc.
 :- import_module check_hlds.mode_constraint_robdd.
-:- import_module hlds.goal_path.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.inst_graph.
 :- import_module mode_robdd.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006, 2008 The University of Melbourne.
+% Copyright (C) 2005-2006, 2008, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -30,9 +30,7 @@
 
 :- implementation.
 
-:- import_module array_util.
 :- import_module dump.
-:- import_module profile.
 :- import_module read_profile.
 
 :- import_module bool.

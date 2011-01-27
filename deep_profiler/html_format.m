@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2010 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -65,11 +65,7 @@
 
 :- implementation.
 
-:- import_module assoc_list.
-:- import_module bool.
 :- import_module char.
-:- import_module exception.
-:- import_module float.
 :- import_module list.
 :- import_module int.
 :- import_module map.

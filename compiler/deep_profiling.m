@@ -65,7 +65,6 @@
 :- import_module ll_backend.coverage_profiling.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
 :- import_module transform_hlds.

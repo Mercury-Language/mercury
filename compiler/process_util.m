@@ -123,8 +123,6 @@
 
 :- implementation.
 
-:- import_module require.
-
 %-----------------------------------------------------------------------------%
 
 build_with_check_for_interrupt(VeryVerbose, Build, Cleanup, Succeeded,

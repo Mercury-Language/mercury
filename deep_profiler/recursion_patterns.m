@@ -53,7 +53,6 @@
 :- import_module mdbcomp.program_representation.
 :- import_module measurement_units.
 :- import_module measurements.
-:- import_module program_representation_utils.
 :- import_module report.
 
 :- import_module array.

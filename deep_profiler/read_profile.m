@@ -31,7 +31,6 @@
 :- implementation.
 
 :- import_module array_util.
-:- import_module exception.
 :- import_module io_combinator.
 :- import_module measurements.
 :- import_module mdbcomp.

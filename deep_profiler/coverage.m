@@ -123,7 +123,6 @@
 :- import_module require.
 :- import_module string.
 :- import_module svmap.
-:- import_module unit.
 
 %-----------------------------------------------------------------------------%
 

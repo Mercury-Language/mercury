@@ -18,9 +18,6 @@
 
 :- interface.
 
-:- import_module int.
-:- import_module string.
-
 %-----------------------------------------------------------------------------%
 %
 % Memory
@@ -166,11 +163,10 @@
 :- implementation.
 
 :- import_module char.
-:- import_module exception.
 :- import_module float.
 :- import_module list.
-:- import_module math.
 :- import_module require.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 %
