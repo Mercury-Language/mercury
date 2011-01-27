@@ -37,6 +37,7 @@
 :- import_module mdbcomp.feedback.automatic_parallelism.
 :- import_module mdprof_fb.
 :- import_module mdprof_fb.automatic_parallelism.
+:- import_module mdprof_fb.automatic_parallelism.autopar_search_callgraph.
 :- import_module message.
 :- import_module profile.
 :- import_module startup.
@@ -526,8 +527,6 @@ construct_measure("median",     stat_median).
     %
 :- type requested_feedback_info
     --->    requested_feedback_info(
-                maybe_calls_above_threshold_sorted
-                    :: maybe(calls_above_threshold_sorted_opts),
                 maybe_candidate_parallel_conjunctions
                     :: maybe(candidate_par_conjunctions_params)
             ).
@@ -565,29 +564,6 @@ check_options(Options0, RequestedFeedbackInfo) :-
 
     % For each feedback type, determine if it is requested and fill in the
     % field in the RequestedFeedbackInfo structure.
-    lookup_bool_option(Options, calls_above_threshold_sorted,
-        CallsAboveThresholdSorted),
-    (
-        CallsAboveThresholdSorted = yes,
-        lookup_string_option(Options, calls_above_threshold_sorted_measure,
-            Measure),
-        ( construct_measure(Measure, MeasureTypePrime) ->
-            MeasureType = MeasureTypePrime
-        ;
-            error("Invalid value for calls_above_threshold_sorted_measure: " ++
-                Measure)
-        ),
-        % Clique costs are used here.  They are almost equivalent to procedure
-        % costs.
-        lookup_int_option(Options, implicit_parallelism_clique_cost_threshold,
-            CATSThreshold),
-        CallsAboveThresholdSortedOpts =
-            calls_above_threshold_sorted_opts(MeasureType, CATSThreshold),
-        MaybeCallsAboveThresholdSortedOpts = yes(CallsAboveThresholdSortedOpts)
-    ;
-        CallsAboveThresholdSorted = no,
-        MaybeCallsAboveThresholdSortedOpts = no
-    ),
     lookup_bool_option(Options, candidate_parallel_conjunctions,
         CandidateParallelConjunctions),
     (
@@ -682,8 +658,7 @@ check_options(Options0, RequestedFeedbackInfo) :-
         MaybeCandidateParallelConjunctionsOpts = no
     ),
     RequestedFeedbackInfo =
-        requested_feedback_info(MaybeCallsAboveThresholdSortedOpts,
-            MaybeCandidateParallelConjunctionsOpts).
+        requested_feedback_info(MaybeCandidateParallelConjunctionsOpts).
 
 :- pred parse_best_par_algorithm(string::in,
     parse_result(best_par_algorithm)::out) is det.
@@ -776,17 +751,6 @@ set_option(Option, Value, !Options) :-
     cord(message)::out, feedback_info::in, feedback_info::out) is det.
 
 process_deep_to_feedback(RequestedFeedbackInfo, Deep, Messages, !Feedback) :-
-    MaybeCallsAboveThresholdSortedOpts =
-        RequestedFeedbackInfo ^ maybe_calls_above_threshold_sorted,
-    (
-        MaybeCallsAboveThresholdSortedOpts =
-            yes(CallsAboveThresholdSortedOpts),
-        css_list_above_threshold(CallsAboveThresholdSortedOpts, Deep,
-            !Feedback)
-    ;
-        MaybeCallsAboveThresholdSortedOpts = no
-    ),
-
     MaybeCandidateParallelConjunctionsOpts =
         RequestedFeedbackInfo ^ maybe_candidate_parallel_conjunctions,
     (
