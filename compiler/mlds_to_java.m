@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2010 The University of Melbourne.
+% Copyright (C) 2000-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2543,11 +2543,18 @@ output_scalar_common_data(Info, Indent, ScalarCellGroupMap, !IO) :-
         digraph.init, Graph, map.init, Map, !IO),
 
     ( digraph.tsort(Graph, SortedScalars0) ->
+        % Divide into small methods to avoid running into the maximum method
+        % size limit.
+        list.reverse(SortedScalars0, SortedScalars),
+        list.chunk(SortedScalars, 1000, ScalarChunks),
+        list.foldl2(output_scalar_init_method(Info, Indent, Map),
+            ScalarChunks, 0, NumChunks, !IO),
+
+        % Call the individual methods.
         indent_line(Indent, !IO),
         io.write_string("static {\n", !IO),
-        list.reverse(SortedScalars0, SortedScalars),
-        list.foldl(output_scalar_init(Info, Indent + 1, Map),
-            SortedScalars, !IO),
+        int.fold_up(output_call_scalar_init_method(Indent + 1),
+            0, NumChunks - 1, !IO),
         indent_line(Indent, !IO),
         io.write_string("}\n", !IO)
     ;
@@ -2673,6 +2680,19 @@ add_scalar_deps_rval_const(FromScalar, RvalConst, !Graph) :-
         )
     ).
 
+:- pred output_scalar_init_method(java_out_info::in, indent::in,
+    map(mlds_scalar_common, mlds_initializer)::in,
+    list(mlds_scalar_common)::in, int::in, int::out, io::di, io::uo) is det.
+
+output_scalar_init_method(Info, Indent, Map, Scalars,
+        ChunkNum, ChunkNum + 1, !IO) :-
+    indent_line(Indent, !IO),
+    io.format("private static void MR_init_scalars_%d() {\n",
+        [i(ChunkNum)], !IO),
+    list.foldl(output_scalar_init(Info, Indent + 1, Map), Scalars, !IO),
+    indent_line(Indent, !IO),
+    io.write_string("}\n", !IO).
+
 :- pred output_scalar_init(java_out_info::in, indent::in,
     map(mlds_scalar_common, mlds_initializer)::in, mlds_scalar_common::in,
     io::di, io::uo) is det.
@@ -2685,6 +2705,13 @@ output_scalar_init(Info, Indent, Map, Scalar, !IO) :-
     io.format("MR_scalar_common_%d[%d] = ", [i(TypeRawNum), i(RowNum)], !IO),
     output_initializer_body(Info, Initializer, yes(Type), !IO),
     io.write_string(";\n", !IO).
+
+:- pred output_call_scalar_init_method(int::in, int::in, io::di, io::uo)
+    is det.
+
+output_call_scalar_init_method(Indent, ChunkNum, !IO) :-
+    indent_line(Indent, !IO),
+    io.format("MR_init_scalars_%d();\n", [i(ChunkNum)], !IO).
 
 :- pred output_vector_common_data(java_out_info::in, indent::in,
     ml_vector_cell_map::in, io::di, io::uo) is det.

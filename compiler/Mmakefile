@@ -65,9 +65,15 @@ $(GCC_MAIN_LIBS): force
 	cd $(GCC_SRC_DIR)/gcc && $(MAKE) mercury_gcc_backend_libs
 
 MCFLAGS	     += --flags COMP_FLAGS $(CONFIG_OVERRIDE)
+
+ifeq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
 MLOBJS       := ../main.$O \
 		../trace/lib$(EVENTSPEC_LIB_NAME).$A \
 		$(MLOBJS)
+else
+MLOBJS =
+endif
+
 MLLIBS       += $(THREAD_LIBS)
 ALL_MLLIBS    = $(MLLIBS) $(EXTRA_MLLIBS) $(GCC_BACKEND_LIBS)
 MLFLAGS      += --no-main --shared
@@ -239,6 +245,14 @@ mercury:	mlds_to_gcc.c gcc.c
 .PHONY: cs
 cs: 		mlds_to_gcc.c gcc.c
 
+endif
+
+#-----------------------------------------------------------------------------#
+
+# Tell the C# compiler where the stdlib and mdbcomp assemblies are.
+#
+ifneq ("$(filter csharp%,$(GRADE))","")
+CSCFLAGS=-lib:../library -r:mer_std -lib:../mdbcomp -r:mer_mdbcomp
 endif
 
 #-----------------------------------------------------------------------------#

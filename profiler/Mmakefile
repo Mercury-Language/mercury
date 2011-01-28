@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2000, 2002-2003, 2005, 2007, 2009-2010 The University of Melbourne. 
+# Copyright (C) 1995-2000, 2002-2003, 2005, 2007, 2009-2011 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -47,6 +47,10 @@ mercury_profile: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 endif
 
 $(cs_subdir)mercury_profile_init.c: $(UTIL_DIR)/mkinit
+
+ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
+MLOBJS =
+endif
 
 #-----------------------------------------------------------------------------#
 

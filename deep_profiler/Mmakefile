@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2010 The University of Melbourne. 
+# Copyright (C) 1995-2011 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -76,13 +76,36 @@ MCFLAGS += --flags DEEP_FLAGS $(CONFIG_OVERRIDE)
 
 #-----------------------------------------------------------------------------#
 
+ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
+MLOBJS =
+endif
+
+#-----------------------------------------------------------------------------#
+
+# The deep profiler contains quite a lot of C code for which there are
+# currently not C#, IL, Java or Erlang implementations.  We need to pass
+# `--allow-stubs' in order to compile it.
+#
+ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
+MCFLAGS += --allow-stubs --no-warn-stubs
+endif
+
+#-----------------------------------------------------------------------------#
+
 .PHONY: nothing
 nothing:
 
 .PHONY: depend
 depend:	$(MDBCOMP_MODULES) $(DEPEND)
 
-$(DEPEND): DEEP_FLAGS $(MDBCOMP_MODULES)
+$(DEPEND): DEEP_FLAGS $(MDBCOMP_MODULES) Mercury.modules
+
+# This directory contains source files for which the module
+# name doesn't match the file name, so smart recompilation
+# won't work without the Mercury.modules file.
+.PHONY: Mercury.modules
+Mercury.modules: DEEP_FLAGS
+	$(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) -f *.m
 
 .PHONY: all
 all:	$(MDBCOMP_MODULES) $(ALL_DEEP_MODULES) $(TAGS_FILE_EXISTS)
