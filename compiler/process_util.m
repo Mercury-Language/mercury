@@ -123,6 +123,8 @@
 
 :- implementation.
 
+:- import_module require.   % Required by non-C grades.
+
 %-----------------------------------------------------------------------------%
 
 build_with_check_for_interrupt(VeryVerbose, Build, Cleanup, Succeeded,

@@ -41,6 +41,8 @@
 
 :- implementation.
 
+:- import_module require.   % Required by non-C grades.
+
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "local", "
