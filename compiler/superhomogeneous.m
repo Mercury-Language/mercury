@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: superhomogeneous.m.
 % Main author: fjh.
-% 
+%
 % This module performs the conversion of clause bodies
 % to superhomogeneous form.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.superhomogeneous.
@@ -538,14 +538,13 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
         maybe_unravel_special_var_functor_unification(X, Atom, Args,
             FunctorContext, Context, MainContext, SubContext, Purity,
             GoalPrime, NumAddedPrime,
-            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) 
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs)
     ->
         Goal = GoalPrime,
         NumAdded = NumAddedPrime
     ;
         % Handle higher-order pred and func expressions.
-        % XXX Why do we use Arg1 instead of Args here?
-        RHS = term.functor(F, Args1, FunctorContext),
+        RHS = term.functor(F, Args, FunctorContext),
         parse_rule_term(Context, RHS, HeadTerm0, GoalTerm1),
         term.coerce(HeadTerm0, HeadTerm1),
         parse_purity_annotation(HeadTerm1, LambdaPurity, HeadTerm),
@@ -731,7 +730,7 @@ maybe_unravel_special_var_functor_unification(X, Atom, Args,
                 svar_prepare_for_if_then_else_expr(StateVars, !VarSet, !SInfo),
 
                 map.init(EmptySubst),
-                transform_goal(CondParseTree, EmptySubst,
+                transform_goal_expr_context_to_goal(CondParseTree, EmptySubst,
                     CondGoal, CondAdded, !VarSet, !ModuleInfo,
                     !QualInfo, !SInfo, !Specs),
 
@@ -987,8 +986,8 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
 
         svar_prepare_for_body(FinalSVarMap, !VarSet, !SInfo),
 
-        transform_goal(ParsedGoal, Substitution, Body, BodyAdded,
-            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+        transform_goal_expr_context_to_goal(ParsedGoal, Substitution, Body,
+            BodyAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
         NumAdded = NonOutputAdded + OutputAdded + BodyAdded,
 
         % Fix up any state variable unifications.
@@ -1012,9 +1011,9 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
             scope(exist_quant(QuantifiedVars), HLDS_Goal0),
             GoalInfo),
 
-        % We set the lambda nonlocals here to anything that could
-        % possibly be nonlocal.  Quantification will reduce this down to
-        % the proper set of nonlocal arguments.
+        % We set the lambda nonlocals here to anything that could possibly be
+        % nonlocal. Quantification will reduce this down to the proper set
+        % of nonlocal arguments.
 
         some [!LambdaGoalVars] (
             goal_util.goal_vars(HLDS_Goal, !:LambdaGoalVars),

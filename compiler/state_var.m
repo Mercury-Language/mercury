@@ -51,44 +51,25 @@
     ;       in_atom(
                 % In the context of an atomic goal at the level of the
                 % source code.
+
+                % The set of state variables X that have been referenced as !:X
+                % in the parameters of the atomic goal.
                 had_colon_reference :: svar_set,
-                                    % The set of state variables X that
-                                    % have been referenced as !:X in the
-                                    % parameters of the atomic goal.
+
+                % The parent svar_info, used to keep track of nesting
+                % in subterms of an atomic formula.
                 parent_svar_info    :: svar_info
-                                    % The parent svar_info, used to keep
-                                    % track of nesting in subterms of
-                                    % an atomic formula.
             ).
 
-:- type svar_info
-    --->    svar_info(
-                svar_ctxt           ::  svar_ctxt,
-
-                % This is used to number state variables and is incremented
-                % for each source-level conjunct.
-                svar_num            ::  int,
-
-                % The "read only" state variables in scope (e.g. external state
-                % variables visible from within a lambda body or condition
-                % of an if-then-else expression.)
-                svar_readonly_dot   ::  svar_map,
-
-                % The "read/write" state variables in scope.
-                svar_dot            ::  svar_map,
-                svar_colon          ::  svar_map
-            ).
+:- type svar_info.
 
     % When collecting the arms of a disjunction we also need to
     % collect the resulting svar_infos.
     %
-:- type hlds_goal_svar_info == {hlds_goal, svar_info}.
+:- type hlds_goal_svar_info
+    --->    hlds_goal_svar_info(hlds_goal, svar_info).
 
 :- type hlds_goal_svar_infos == list(hlds_goal_svar_info).
-
-    % Create a new svar_info set up to start processing a clause head.
-    %
-:- func new_svar_info = svar_info.
 
     % Obtain the mapping for a !.X state variable reference and
     % update the svar_info.
@@ -168,7 +149,7 @@
     % we delete it, but record it in OuterScopeInfo. The accessibility of
     % !OuterStateVar will be restored when you call svar_finish_atomic_scope
     % with OuterScopeInfo.
-    %  
+    %
 :- pred svar_start_outer_atomic_scope(prog_context::in, prog_var::in,
     prog_var::out, prog_var::out, svar_outer_atomic_scope_info::out,
     prog_varset::in, prog_varset::out, svar_info::in, svar_info::out,
@@ -361,12 +342,35 @@
 
 %-----------------------------------------------------------------------------%
 
-new_svar_info = svar_info(in_head, 0, map.init, map.init, map.init).
+:- type svar_info
+    --->    svar_info(
+                svar_ctxt           ::  svar_ctxt,
+
+                % This is used to number state variables and is incremented
+                % for each source-level conjunct.
+                svar_num            ::  int,
+
+                % The "read only" state variables in scope (e.g. external state
+                % variables visible from within a lambda body or condition
+                % of an if-then-else expression.)
+                svar_readonly_dot   ::  svar_map,
+
+                % The "read/write" state variables in scope.
+                svar_dot            ::  svar_map,
+                svar_colon          ::  svar_map
+            ).
+
+    % Create a new svar_info set up to start processing a clause head.
+    %
+:- func new_svar_info = svar_info.
+
+new_svar_info =
+    svar_info(in_head, 0, map.init, map.init, map.init).
 
 :- pred has_svar_colon_mapping_for(svar_info::in, svar::in) is semidet.
 
 has_svar_colon_mapping_for(SInfo, StateVar) :-
-    SInfo ^ svar_colon `contains` StateVar.
+    map.contains(SInfo ^ svar_colon, StateVar).
 has_svar_colon_mapping_for(SInfo, StateVar) :-
     SInfo ^ svar_ctxt = in_atom(_, ParentSInfo),
     has_svar_colon_mapping_for(ParentSInfo, StateVar).
@@ -740,13 +744,16 @@ svar_finish_if_then_else(Context, Then0, Then, Else0, Else,
     conj_list_to_goal(Thens, GoalInfo, Then1),
 
     % Calculate the svar_info with the highest numbered mappings from each arm.
-    DisjSInfos = [{Then1, SInfoT}, {Else0, SInfoE}],
+    DisjSInfos = [hlds_goal_svar_info(Then1, SInfoT),
+        hlds_goal_svar_info(Else0, SInfoE)],
     SInfo      = reconcile_disj_svar_info(!.VarSet, DisjSInfos),
 
     % Add unifiers to each arm to ensure they both construct the same
     % final state variable mappings.
-    Then = add_disj_unifiers(Context, SInfo, StateVars, {Then1, SInfoT}),
-    Else = add_disj_unifiers(Context, SInfo, StateVars, {Else0, SInfoE}).
+    Then = add_disj_unifiers(Context, SInfo, StateVars,
+        hlds_goal_svar_info(Then1, SInfoT)),
+    Else = add_disj_unifiers(Context, SInfo, StateVars,
+        hlds_goal_svar_info(Else0, SInfoE)).
 
     % If a new mapping was produced for state variable X in the condition-goal
     % (i.e. the condition refers to !:X), but not in the then-goal, then
@@ -837,7 +844,7 @@ reconcile_disj_svar_info(VarSet, [DisjSInfo | DisjSInfos]) = SInfo :-
     % We compute the set of final !. and !: state variables over the whole
     % disjunction (not all arms will necessarily include !. and !: mappings
     % for all state variables).
-    DisjSInfo = {_, SInfo0},
+    DisjSInfo = hlds_goal_svar_info(_, SInfo0),
     Dots0   = set.sorted_list_to_set(map.keys(SInfo0 ^ svar_dot)),
     Colons0 = set.sorted_list_to_set(map.keys(SInfo0 ^ svar_colon)),
     union_dot_colon_svars(DisjSInfos, Dots0, Dots, Colons0, Colons),
@@ -852,7 +859,7 @@ reconcile_disj_svar_info(VarSet, [DisjSInfo | DisjSInfos]) = SInfo :-
 
 union_dot_colon_svars([], !Dots, !Colons).
 union_dot_colon_svars([DisjSInfo | DisjSInfos], !Dots, !Colons) :-
-    DisjSInfo = {_, SInfo},
+    DisjSInfo = hlds_goal_svar_info(_, SInfo),
     set.union(set.sorted_list_to_set(map.keys(SInfo ^ svar_dot)), !Dots),
     set.union(set.sorted_list_to_set(map.keys(SInfo ^ svar_colon)), !Colons),
     union_dot_colon_svars(DisjSInfos, !Dots, !Colons).
@@ -860,7 +867,8 @@ union_dot_colon_svars([DisjSInfo | DisjSInfos], !Dots, !Colons) :-
 :- pred reconcile_svar_infos(prog_varset::in, svar_set::in, svar_set::in,
     hlds_goal_svar_info::in, svar_info::in, svar_info::out) is det.
 
-reconcile_svar_infos(VarSet, Dots, Colons, {_, SInfoX}, !SInfo) :-
+reconcile_svar_infos(VarSet, Dots, Colons, GoalSInfoX, !SInfo) :-
+    GoalSInfoX = hlds_goal_svar_info(_, SInfoX),
     InitNum = !.SInfo ^ svar_num,
     XNum = SInfoX ^ svar_num,
     set.fold(reconcile_svar_infos_dots(VarSet, SInfoX), Dots, !SInfo),
@@ -922,7 +930,8 @@ reconcile_svar_infos_colons(VarSet, SInfoX, StateVar, !SInfo) :-
 :- func add_disj_unifiers(prog_context, svar_info, svars, hlds_goal_svar_info)
     = hlds_goal.
 
-add_disj_unifiers(Context, SInfo, StateVars, {GoalX, SInfoX}) = Goal :-
+add_disj_unifiers(Context, SInfo, StateVars, GoalSInfoX) = Goal :-
+    GoalSInfoX = hlds_goal_svar_info(GoalX, SInfoX),
     Unifiers0 = [],
     list.foldl(add_disj_unifier(Context, SInfo, SInfoX), StateVars,
         Unifiers0, Unifiers),
