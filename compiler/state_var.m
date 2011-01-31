@@ -363,23 +363,26 @@
 
 new_svar_info = svar_info(in_head, 0, map.init, map.init, map.init).
 
-:- pred svar_info `has_svar_colon_mapping_for` svar.
-:- mode in `has_svar_colon_mapping_for` in is semidet.
+:- pred has_svar_colon_mapping_for(svar_info::in, svar::in) is semidet.
 
-SInfo `has_svar_colon_mapping_for` StateVar :-
+has_svar_colon_mapping_for(SInfo, StateVar) :-
     SInfo ^ svar_colon `contains` StateVar.
-SInfo `has_svar_colon_mapping_for` StateVar :-
+has_svar_colon_mapping_for(SInfo, StateVar) :-
     SInfo ^ svar_ctxt = in_atom(_, ParentSInfo),
-    ParentSInfo `has_svar_colon_mapping_for` StateVar.
+    has_svar_colon_mapping_for(ParentSInfo, StateVar).
 
-:- func svar_info `with_updated_svar` svar = svar_info.
+:- pred with_updated_svar(svar::in, svar_info::in, svar_info::out) is det.
 
-SInfo `with_updated_svar` StateVar =
-    ( SInfo ^ svar_ctxt =  in_atom(UpdatedStateVars, ParentSInfo) ->
-        SInfo ^ svar_ctxt := in_atom(set.insert(UpdatedStateVars, StateVar),
-            ParentSInfo)
+with_updated_svar(StateVar, !SInfo) :-
+    SVarContext = !.SInfo ^ svar_ctxt,
+    (
+        SVarContext =  in_atom(UpdatedStateVars0, ParentSInfo),
+        set.insert(UpdatedStateVars0, StateVar, UpdatedStateVars),
+        !SInfo ^ svar_ctxt := in_atom(UpdatedStateVars, ParentSInfo)
     ;
-        SInfo
+        ( SVarContext = in_head
+        ; SVarContext = in_body
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -402,7 +405,7 @@ svar_dot(Context, StateVar, Var, !VarSet, !SInfo, !Specs) :-
             Var = VarPrime
         ; map.search(!.SInfo ^ svar_readonly_dot, StateVar, VarPrime) ->
             Var = VarPrime
-        ; !.SInfo `has_svar_colon_mapping_for` StateVar ->
+        ; has_svar_colon_mapping_for(!.SInfo, StateVar) ->
             new_dot_state_var(StateVar, Var, !VarSet, !SInfo),
             report_uninitialized_state_var(Context, !.VarSet, StateVar, !Specs)
         ;
@@ -430,7 +433,7 @@ svar_colon(Context, StateVar, Var, !VarSet, !SInfo, !Specs) :-
         ),
         ( map.search(ColonMap0, StateVar, VarPrime) ->
             Var = VarPrime,
-            !:SInfo = !.SInfo `with_updated_svar` StateVar
+            with_updated_svar(StateVar, !SInfo)
         ;
             % Return a dummy variable, and set up a dummy mapping: there is
             % no point in mentioning this error twice.
@@ -515,9 +518,9 @@ svar_prepare_for_body(FinalMap, !VarSet, !SInfo) :-
     DotKeys   = map.keys(!.SInfo ^ svar_dot),
     StateVars = list.merge_and_remove_dups(ColonKeys, DotKeys),
     next_svar_mappings(N, StateVars, !VarSet, Colon),
-    !:SInfo   = !.SInfo ^ svar_ctxt  := in_body,
-    !:SInfo   = !.SInfo ^ svar_num   := N,
-    !:SInfo   = !.SInfo ^ svar_colon := Colon.
+    !SInfo ^ svar_ctxt  := in_body,
+    !SInfo ^ svar_num   := N,
+    !SInfo ^ svar_colon := Colon.
 
 %-----------------------------------------------------------------------------%
 
@@ -717,7 +720,7 @@ svar_finish_inner_atomic_scope(Context, InnerScopeInfo, InnerDI, InnerUO,
             io.write(Var2, !IO),
             io.nl(!IO)
         ;
-            unexpected(this_file, "transform_goal_2: |Vars| != 2")
+            unexpected($module, $pred, "|Vars| != 2")
         )
     ).
 
@@ -752,7 +755,8 @@ svar_finish_if_then_else(Context, Then0, Then, Else0, Else,
     %
 :- pred add_then_arm_specific_unifiers(prog_context::in, svars::in,
     svar_info::in, svar_info::in, svar_info::in, svar_info::out,
-    hlds_goals::in, hlds_goals::out, prog_varset::in, prog_varset::out) is det.
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    prog_varset::in, prog_varset::out) is det.
 
 add_then_arm_specific_unifiers(_, [], _, _, !SInfoT, !Thens, !VarSet).
 add_then_arm_specific_unifiers(Context, [StateVar | StateVars],
@@ -828,7 +832,7 @@ svar_finish_disjunction(Context, VarSet, DisjSInfos, Disjs, SInfo) :-
     svar_info.
 
 reconcile_disj_svar_info(_, []) = _ :-
-    unexpected(this_file, "reconcile_disj_svar_info: empty disjunct list").
+    unexpected($module, $pred, "empty disjunct list").
 reconcile_disj_svar_info(VarSet, [DisjSInfo | DisjSInfos]) = SInfo :-
     % We compute the set of final !. and !: state variables over the whole
     % disjunction (not all arms will necessarily include !. and !: mappings
@@ -1019,7 +1023,7 @@ svar_finish_call(!VarSet, !SInfo) :-
                 ParentSInfo, !:SInfo)
         )
     ;
-        unexpected(this_file, "svar_finish_call: ctxt is not in_atom")
+        unexpected($module, $pred, "ctxt is not in_atom")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1045,20 +1049,20 @@ svar_finish_if_then_else_goal_then_goal(StateVars,
 svar_prepare_for_if_then_else_expr(StateVars, !VarSet, !SInfo) :-
     SInfo0 = !.SInfo,
     !:SInfo = new_svar_info ^ svar_ctxt := in_body,
-    !:SInfo = !.SInfo ^ svar_readonly_dot := SInfo0 ^ svar_dot,
-    !:SInfo = !.SInfo ^ svar_num := SInfo0 ^ svar_num,
+    !SInfo ^ svar_readonly_dot := SInfo0 ^ svar_dot,
+    !SInfo ^ svar_num := SInfo0 ^ svar_num,
     prepare_for_local_state_vars(StateVars, !VarSet, !SInfo).
 
 %-----------------------------------------------------------------------------%
 
 svar_finish_if_then_else_expr_condition(Before, !SInfo) :-
     SInfo0 = !.SInfo,
-    !:SInfo = !.SInfo ^ svar_readonly_dot := Before ^ svar_readonly_dot,
-    !:SInfo = !.SInfo ^ svar_dot :=
+    !SInfo ^ svar_readonly_dot := Before ^ svar_readonly_dot,
+    !SInfo ^ svar_dot :=
         (SInfo0 ^ svar_dot) `overlay` (Before ^ svar_dot),
-    !:SInfo = !.SInfo ^ svar_colon :=
+    !SInfo ^ svar_colon :=
         (SInfo0 ^ svar_colon) `overlay` (Before ^ svar_colon),
-    !:SInfo = !.SInfo ^ svar_ctxt := Before ^ svar_ctxt.
+    !SInfo ^ svar_ctxt := Before ^ svar_ctxt.
 
 %-----------------------------------------------------------------------------%
 
@@ -1076,10 +1080,10 @@ svar_prepare_for_next_conjunct(UpdatedStateVars, !VarSet, !SInfo) :-
         ColonMap0, Nil, DotMap),
     map.foldl2(next_colon_mapping(UpdatedStateVars, ColonMap0, N),
         ColonMap0, !VarSet, Nil, ColonMap),
-    !:SInfo  = !.SInfo ^ svar_ctxt  := in_body,
-    !:SInfo  = !.SInfo ^ svar_num   := N,
-    !:SInfo  = !.SInfo ^ svar_dot   := DotMap,
-    !:SInfo  = !.SInfo ^ svar_colon := ColonMap.
+    !SInfo ^ svar_ctxt  := in_body,
+    !SInfo ^ svar_num   := N,
+    !SInfo ^ svar_dot   := DotMap,
+    !SInfo ^ svar_colon := ColonMap.
 
     % If the state variable has been updated (i.e. there was a !:X reference)
     % then the next !.X mapping will be the current !:X mapping. Otherwise,
@@ -1285,11 +1289,5 @@ report_illegal_bang_svar_lambda_arg(Context, VarSet, StateVar, !Specs) :-
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "state_var.m".
 
 %-----------------------------------------------------------------------------%

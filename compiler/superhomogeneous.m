@@ -202,10 +202,10 @@ do_insert_arg_unifications(HeadVars, Args0, Context, ArgContext,
 
 do_insert_arg_unifications_2([], [_ | _], _, _, _, _, _, _, !NumAdded, !VarSet,
         !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    unexpected(this_file, "do_insert_arg_unifications_2: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 do_insert_arg_unifications_2([_ | _], [], _, _, _, _, _, _, !NumAdded, !VarSet,
         !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    unexpected(this_file, "do_insert_arg_unifications_2: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 do_insert_arg_unifications_2([], [], _, _, _, !Goals, _, !NumAdded, !VarSet,
         !ModuleInfo, !QualInfo, !SInfo, !Specs).
 do_insert_arg_unifications_2([Var | Vars], [Arg | Args], Context, ArgContext,
@@ -287,7 +287,7 @@ do_insert_arg_unifications_with_supplied_contexts_2(Vars, Terms, ArgContexts,
             !NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
         list.append(UnifyConj, !.Goals, !:Goals)
     ;
-        unexpected(this_file, "insert_arg_unifications_with_supplied_contexts")
+        unexpected($module, $pred, "length mismatch")
     ).
 
 :- pred do_insert_arg_unification(prog_var::in, prog_term::in, prog_context::in,
@@ -301,7 +301,7 @@ do_insert_arg_unification(Var, Arg, Context, ArgContext, N1, ArgUnifyConj,
         MaybeThreshold, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
         !SInfo, !Specs) :-
     ( Arg = term.variable(Var, _) ->
-        % Skip unifications of the form `X = X'
+        % Skip unifications of the form `X = X'.
         ArgUnifyConj = [],
         NumAdded = 0
     ;
@@ -348,10 +348,10 @@ do_append_arg_unifications(HeadVars, Args0, Context, ArgContext, !Goal,
 
 do_append_arg_unifications_2([], [_ | _], _, _, _, _, _, _, !NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    unexpected(this_file, "do_append_arg_unifications_2: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 do_append_arg_unifications_2([_ | _], [], _, _, _, _, _, _, !NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
-    unexpected(this_file, "do_append_arg_unifications_2: length mismatch").
+    unexpected($module, $pred, "length mismatch").
 do_append_arg_unifications_2([], [], _, _, _, !GoalList, _, !NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs).
 do_append_arg_unifications_2([Var | Vars], [Arg | Args], Context, ArgContext,
@@ -430,8 +430,8 @@ do_unravel_unification(LHS0, RHS0, Context, MainContext, SubContext, Purity,
             GoalExpr = scope(from_ground_term(LHSVar, Kind), SubGoal),
             Goal = hlds_goal(GoalExpr, GoalInfo)
         ;
-            % This can happen if we unravel large ground term that happens to
-            % be a lambda expression; the conjunction will then be *inside*
+            % This can happen if we unravel a large ground term that happens
+            % to be a lambda expression; the conjunction will then be *inside*
             % the rhs_lambda_goal.
             Goal = Goal0
         )
@@ -453,8 +453,7 @@ mark_nonlocals_in_ground_term_construct([Goal0 | Goals0], [Goal | Goals]) :-
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
-        unexpected(this_file,
-            "mark_nonlocals_in_ground_term_construct: wrong shape goal")
+        unexpected($module, $pred, "wrong shape goal")
     ),
     mark_nonlocals_in_ground_term_construct(Goals0, Goals).
 
@@ -535,51 +534,14 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) :-
     substitute_state_var_mappings(Args1, Args, !VarSet, !SInfo, !Specs),
     (
-        % Handle explicit type qualification.
-        (
-            F = term.atom("with_type")
-        ;
-            F = term.atom(":")
-        ),
-        Args = [RVal, DeclType0]
+        F = term.atom(Atom),
+        maybe_unravel_special_var_functor_unification(X, Atom, Args,
+            FunctorContext, Context, MainContext, SubContext, Purity,
+            GoalPrime, NumAddedPrime,
+            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs) 
     ->
-        % DeclType0 is a prog_term, but it is really a type so we coerce it
-        % to a generic term before parsing it.
-        term.coerce(DeclType0, DeclType1),
-        ContextPieces = [words("In explicit type qualification:")],
-        varset.coerce(!.VarSet, GenericVarSet),
-        parse_type(DeclType1, GenericVarSet, ContextPieces, DeclTypeResult),
-        (
-            DeclTypeResult = ok1(DeclType),
-            varset.coerce(!.VarSet, DeclVarSet),
-            process_type_qualification(X, DeclType, DeclVarSet, Context,
-                !ModuleInfo, !QualInfo, !Specs)
-        ;
-            DeclTypeResult = error1(DeclTypeSpecs),
-            % The varset is a prog_varset even though it contains the names
-            % of type variables in ErrorTerm, which is a generic term.
-            !:Specs = DeclTypeSpecs ++ !.Specs
-        ),
-        do_unravel_unification(term.variable(X, Context), RVal,
-            Context, MainContext, SubContext, Purity, Goal, no, NumAdded,
-            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs)
-    ;
-        % Handle unification expressions.
-        F = term.atom("@"),
-        Args = [LVal, RVal]
-    ->
-        do_unravel_unification(term.variable(X, Context), LVal, Context,
-            MainContext, SubContext, Purity, Goal1, no, NumAdded1,
-            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
-        do_unravel_unification(term.variable(X, Context), RVal, Context,
-            MainContext, SubContext, Purity, Goal2, no, NumAdded2,
-            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
-        NumAdded = NumAdded1 + NumAdded2,
-        goal_info_init(GoalInfo),
-        goal_to_conj_list(Goal1, ConjList1),
-        goal_to_conj_list(Goal2, ConjList2),
-        list.append(ConjList1, ConjList2, ConjList),
-        conj_list_to_goal(ConjList, GoalInfo, Goal)
+        Goal = GoalPrime,
+        NumAdded = NumAddedPrime
     ;
         % Handle higher-order pred and func expressions.
         % XXX Why do we use Arg1 instead of Args here?
@@ -621,137 +583,6 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
             NumAdded = 0,
             Goal = true_goal
         )
-    ;
-        % Handle higher-order dcg pred expressions. They have the same
-        % semantics as higher-order pred expressions, but have two extra
-        % arguments, and the goal is expanded as a DCG goal.
-        F = term.atom("-->"),
-        Args = [PredTerm0, GoalTerm0],
-        term.coerce(PredTerm0, PredTerm1),
-        parse_purity_annotation(PredTerm1, DCGLambdaPurity, PredTerm),
-        parse_dcg_pred_expression(PredTerm, Groundness, EvalMethod, Vars0,
-            Modes0, Det)
-    ->
-        qualify_lambda_mode_list_if_not_opt_imported(Modes0, Modes, Context,
-            !QualInfo, !Specs),
-        term.coerce(GoalTerm0, GoalTerm),
-        ContextPieces = [words("Error:")],
-        parse_dcg_pred_goal(GoalTerm, ContextPieces, MaybeParsedGoal,
-            DCG0, DCGn, !VarSet),
-        (
-            MaybeParsedGoal = ok1(ParsedGoal),
-            Vars1 = Vars0 ++
-                [term.variable(DCG0, Context), term.variable(DCGn, Context)],
-            build_lambda_expression(X, Purity, DCGLambdaPurity, Groundness,
-                pf_predicate, EvalMethod, Vars1, Modes, Det, ParsedGoal,
-                Context, MainContext, SubContext, Goal0, NumAdded, !VarSet,
-                !ModuleInfo, !QualInfo, !.SInfo, !Specs),
-            Goal0 = hlds_goal(GoalExpr, GoalInfo0),
-            goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
-            Goal = hlds_goal(GoalExpr, GoalInfo)
-        ;
-            MaybeParsedGoal = error1(ParsedGoalSpecs),
-            !:Specs = ParsedGoalSpecs ++ !.Specs,
-            NumAdded = 0,
-            Goal = true_goal
-        )
-    ;
-        % Handle if-then-else expressions
-        (
-            F = term.atom("else"),
-            Args = [CondThenTerm, ElseTerm],
-            CondThenTerm = term.functor(term.atom("if"),
-                [term.functor(term.atom("then"), [CondTerm0, ThenTerm], _)], _)
-        ;
-            F = term.atom(";"),
-            Args = [CondThenTerm, ElseTerm],
-            CondThenTerm = term.functor(term.atom("->"),
-                [CondTerm0, ThenTerm], _)
-        )
-    ->
-        term.coerce(CondTerm0, CondTerm),
-        ContextPieces = [words("Error:")],
-        parse_some_vars_goal(CondTerm, ContextPieces, MaybeVarsCond, !VarSet),
-        (
-            MaybeVarsCond = ok3(Vars, StateVars, CondParseTree),
-            BeforeSInfo = !.SInfo,
-            svar_prepare_for_if_then_else_expr(StateVars, !VarSet, !SInfo),
-
-            map.init(EmptySubst),
-            transform_goal(CondParseTree, EmptySubst, CondGoal, CondAdded,
-                !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
-
-            svar_finish_if_then_else_expr_condition(BeforeSInfo, !SInfo),
-
-            do_unravel_unification(term.variable(X, Context), ThenTerm,
-                Context, MainContext, SubContext, Purity, ThenGoal, no,
-                ThenAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
-
-            svar_finish_if_then_else_expr_then_goal(StateVars,
-                BeforeSInfo, !SInfo),
-
-            do_unravel_unification(term.variable(X, Context), ElseTerm,
-                Context, MainContext, SubContext, Purity, ElseGoal, no,
-                ElseAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
-
-            NumAdded = CondAdded + ThenAdded + ElseAdded,
-            GoalExpr = if_then_else(StateVars ++ Vars,
-                CondGoal, ThenGoal, ElseGoal),
-            goal_info_init(Context, GoalInfo),
-            Goal = hlds_goal(GoalExpr, GoalInfo)
-        ;
-            MaybeVarsCond = error3(VarsCondSpecs),
-            !:Specs = VarsCondSpecs ++ !.Specs,
-            NumAdded = 0,
-            Goal = true_goal
-        )
-    ;
-        % Handle field extraction expressions.
-        F = term.atom("^"),
-        Args = [InputTerm, FieldNameTerm],
-        maybe_parse_field_list(FieldNameTerm, !.VarSet, FieldNames)
-    ->
-        make_fresh_arg_var(InputTerm, InputTermVar, [], !VarSet, !SInfo,
-            !Specs),
-        expand_get_field_function_call(Context, MainContext, SubContext,
-            FieldNames, X, InputTermVar, Purity, Functor, _, Goal0, CallAdded,
-            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
-
-        ArgContext = ac_functor(Functor, MainContext, SubContext),
-        do_insert_arg_unifications([InputTermVar], [InputTerm],
-            FunctorContext, ArgContext, Goal0, Goal, no, ArgAdded,
-            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
-        NumAdded = CallAdded + ArgAdded
-    ;
-        % Handle field update expressions.
-        F = term.atom(":="),
-        Args = [FieldDescrTerm, FieldValueTerm],
-        FieldDescrTerm = term.functor(term.atom("^"),
-            [InputTerm, FieldNameTerm], _),
-        maybe_parse_field_list(FieldNameTerm, !.VarSet, FieldNames)
-    ->
-        make_fresh_arg_var(InputTerm, InputTermVar, [], !VarSet, !SInfo,
-            !Specs),
-        make_fresh_arg_var(FieldValueTerm, FieldValueVar, [InputTermVar],
-            !VarSet, !SInfo, !Specs),
-
-        expand_set_field_function_call(Context, MainContext, SubContext,
-            FieldNames, FieldValueVar, InputTermVar, X,
-            Functor, InnerFunctor - FieldSubContext, Goal0, CallAdded,
-            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
-
-        TermArgContext = ac_functor(Functor, MainContext, SubContext),
-        TermArgNumber = 1,
-        FieldArgContext = ac_functor(InnerFunctor, MainContext,
-            FieldSubContext),
-        FieldArgNumber = 2,
-        ArgContexts = [TermArgNumber - TermArgContext,
-            FieldArgNumber - FieldArgContext],
-        do_insert_arg_unifications_with_supplied_contexts(
-            [InputTermVar, FieldValueVar], [InputTerm, FieldValueTerm],
-            ArgContexts, Context, Goal0, Goal, no, ArgAdded, !VarSet,
-            !ModuleInfo, !QualInfo, !SInfo, !Specs),
-        NumAdded = CallAdded + ArgAdded
     ;
         % Handle the usual case.
         % XXX Why do we use Args1 instead of Args here?
@@ -808,6 +639,222 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
         )
     ).
 
+    % See whether Atom indicates a term with special syntax.
+    %
+:- pred maybe_unravel_special_var_functor_unification(prog_var::in,
+    string::in, list(prog_term)::in, term.context::in,
+    prog_context::in, unify_main_context::in, unify_sub_contexts::in,
+    purity::in, hlds_goal::out, num_added_goals::out,
+    prog_varset::in, prog_varset::out, module_info::in, module_info::out,
+    qual_info::in, qual_info::out, svar_info::in, svar_info::out,
+    list(error_spec)::in, list(error_spec)::out) is semidet.
+
+maybe_unravel_special_var_functor_unification(X, Atom, Args,
+        FunctorContext, Context, MainContext, SubContext, Purity,
+        Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs)  :-
+    % Switch on Atom.
+    % XXX instead of failing if Atom has the wrong number of arguments or
+    % if the arguments have the wrong shape, we should generate an error
+    % message.
+    (
+        % Handle explicit type qualification.
+        ( Atom = "with_type"
+        ; Atom = ":"
+        ),
+        Args = [RVal, DeclType0],
+
+        require_det (
+            % DeclType0 is a prog_term, but it is really a type,
+            % so we coerce it to a generic term before parsing it.
+            term.coerce(DeclType0, DeclType1),
+            ContextPieces = [words("In explicit type qualification:")],
+            varset.coerce(!.VarSet, GenericVarSet),
+            parse_type(DeclType1, GenericVarSet, ContextPieces,
+                DeclTypeResult),
+            (
+                DeclTypeResult = ok1(DeclType),
+                varset.coerce(!.VarSet, DeclVarSet),
+                process_type_qualification(X, DeclType, DeclVarSet,
+                    Context, !ModuleInfo, !QualInfo, !Specs)
+            ;
+                DeclTypeResult = error1(DeclTypeSpecs),
+                % The varset is a prog_varset even though it contains
+                % the names of type variables in ErrorTerm, which is
+                % a generic term.
+                !:Specs = DeclTypeSpecs ++ !.Specs
+            ),
+            do_unravel_unification(term.variable(X, Context), RVal,
+                Context, MainContext, SubContext, Purity, Goal, no,
+                NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs)
+        )
+    ;
+        % Handle unification expressions.
+        Atom = "@",
+        Args = [LVal, RVal],
+
+        require_det (
+            do_unravel_unification(term.variable(X, Context), LVal, Context,
+                MainContext, SubContext, Purity, GoalL, no, NumAddedL,
+                !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+            do_unravel_unification(term.variable(X, Context), RVal, Context,
+                MainContext, SubContext, Purity, GoalR, no, NumAddedR,
+                !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+            NumAdded = NumAddedL + NumAddedR,
+            goal_info_init(GoalInfo),
+            goal_to_conj_list(GoalL, ConjListL),
+            goal_to_conj_list(GoalR, ConjListR),
+            ConjList = ConjListL ++ ConjListR,
+            conj_list_to_goal(ConjList, GoalInfo, Goal)
+        )
+    ;
+        % Handle if-then-else expressions.
+        (
+            Atom = "else",
+            Args = [CondThenTerm, ElseTerm],
+            CondThenTerm = term.functor(term.atom("if"),
+                [term.functor(term.atom("then"), [CondTerm0, ThenTerm], _)], _)
+        ;
+            Atom = ";",
+            Args = [CondThenTerm, ElseTerm],
+            CondThenTerm = term.functor(term.atom("->"),
+                [CondTerm0, ThenTerm], _)
+        ),
+
+        require_det (
+            term.coerce(CondTerm0, CondTerm),
+            ContextPieces = [words("Error:")],
+            parse_some_vars_goal(CondTerm, ContextPieces, MaybeVarsCond,
+                !VarSet),
+            (
+                MaybeVarsCond = ok3(Vars, StateVars, CondParseTree),
+                BeforeSInfo = !.SInfo,
+                svar_prepare_for_if_then_else_expr(StateVars, !VarSet, !SInfo),
+
+                map.init(EmptySubst),
+                transform_goal(CondParseTree, EmptySubst,
+                    CondGoal, CondAdded, !VarSet, !ModuleInfo,
+                    !QualInfo, !SInfo, !Specs),
+
+                svar_finish_if_then_else_expr_condition(BeforeSInfo,
+                    !SInfo),
+
+                do_unravel_unification(term.variable(X, Context), ThenTerm,
+                    Context, MainContext, SubContext, Purity, ThenGoal, no,
+                    ThenAdded, !VarSet, !ModuleInfo,
+                    !QualInfo, !SInfo, !Specs),
+
+                svar_finish_if_then_else_expr_then_goal(StateVars,
+                    BeforeSInfo, !SInfo),
+
+                do_unravel_unification(term.variable(X, Context), ElseTerm,
+                    Context, MainContext, SubContext, Purity, ElseGoal, no,
+                    ElseAdded, !VarSet, !ModuleInfo,
+                    !QualInfo, !SInfo, !Specs),
+
+                NumAdded = CondAdded + ThenAdded + ElseAdded,
+                GoalExpr = if_then_else(StateVars ++ Vars,
+                    CondGoal, ThenGoal, ElseGoal),
+                goal_info_init(Context, GoalInfo),
+                Goal = hlds_goal(GoalExpr, GoalInfo)
+            ;
+                MaybeVarsCond = error3(VarsCondSpecs),
+                !:Specs = VarsCondSpecs ++ !.Specs,
+                NumAdded = 0,
+                Goal = true_goal
+            )
+        )
+    ;
+        % Handle field extraction expressions.
+        Atom = "^",
+        Args = [InputTerm, FieldNameTerm],
+        maybe_parse_field_list(FieldNameTerm, !.VarSet, FieldNames),
+
+        require_det (
+            make_fresh_arg_var(InputTerm, InputTermVar, [],
+                !VarSet, !SInfo, !Specs),
+            expand_get_field_function_call(Context, MainContext, SubContext,
+                FieldNames, X, InputTermVar, Purity, Functor, _,
+                Goal0, CallAdded, !VarSet, !ModuleInfo,
+                !QualInfo, !SInfo, !Specs),
+
+            ArgContext = ac_functor(Functor, MainContext, SubContext),
+            do_insert_arg_unifications([InputTermVar], [InputTerm],
+                FunctorContext, ArgContext, Goal0, Goal, no, ArgAdded,
+                !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+            NumAdded = CallAdded + ArgAdded
+        )
+    ;
+        % Handle field update expressions.
+        Atom = ":=",
+        Args = [FieldDescrTerm, FieldValueTerm],
+        FieldDescrTerm = term.functor(term.atom("^"),
+            [InputTerm, FieldNameTerm], _),
+        maybe_parse_field_list(FieldNameTerm, !.VarSet, FieldNames),
+
+        require_det (
+            make_fresh_arg_var(InputTerm, InputTermVar, [],
+                !VarSet, !SInfo, !Specs),
+            make_fresh_arg_var(FieldValueTerm, FieldValueVar,
+                [InputTermVar], !VarSet, !SInfo, !Specs),
+
+            expand_set_field_function_call(Context, MainContext,
+                SubContext, FieldNames, FieldValueVar, InputTermVar, X,
+                Functor, InnerFunctor - FieldSubContext, Goal0, CallAdded,
+                !VarSet, !ModuleInfo, !QualInfo, !SInfo, !Specs),
+
+            TermArgContext = ac_functor(Functor, MainContext, SubContext),
+            TermArgNumber = 1,
+            FieldArgContext = ac_functor(InnerFunctor, MainContext,
+                FieldSubContext),
+            FieldArgNumber = 2,
+            ArgContexts = [TermArgNumber - TermArgContext,
+                FieldArgNumber - FieldArgContext],
+            do_insert_arg_unifications_with_supplied_contexts(
+                [InputTermVar, FieldValueVar], [InputTerm, FieldValueTerm],
+                ArgContexts, Context, Goal0, Goal, no, ArgAdded, !VarSet,
+                !ModuleInfo, !QualInfo, !SInfo, !Specs),
+            NumAdded = CallAdded + ArgAdded
+        )
+    ;
+        % Handle higher-order dcg pred expressions. They have the same
+        % semantics as higher-order pred expressions, but have two extra
+        % arguments, and the goal is expanded as a DCG goal.
+        Atom = "-->",
+        Args = [PredTerm0, GoalTerm0],
+        term.coerce(PredTerm0, PredTerm1),
+        parse_purity_annotation(PredTerm1, DCGLambdaPurity, PredTerm),
+        parse_dcg_pred_expression(PredTerm, Groundness, EvalMethod, Vars0,
+            Modes0, Det),
+
+        require_det (
+            qualify_lambda_mode_list_if_not_opt_imported(Modes0, Modes,
+                Context, !QualInfo, !Specs),
+            term.coerce(GoalTerm0, GoalTerm),
+            ContextPieces = [words("Error:")],
+            parse_dcg_pred_goal(GoalTerm, ContextPieces, MaybeParsedGoal,
+                DCG0, DCGn, !VarSet),
+            (
+                MaybeParsedGoal = ok1(ParsedGoal),
+                Vars1 = Vars0 ++
+                    [term.variable(DCG0, Context),
+                    term.variable(DCGn, Context)],
+                build_lambda_expression(X, Purity, DCGLambdaPurity,
+                    Groundness, pf_predicate, EvalMethod, Vars1, Modes, Det,
+                    ParsedGoal, Context, MainContext, SubContext,
+                    Goal0, NumAdded, !VarSet, !ModuleInfo,
+                    !QualInfo, !.SInfo, !Specs),
+                Goal0 = hlds_goal(GoalExpr, GoalInfo0),
+                goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
+                Goal = hlds_goal(GoalExpr, GoalInfo)
+            ;
+                MaybeParsedGoal = error1(ParsedGoalSpecs),
+                !:Specs = ParsedGoalSpecs ++ !.Specs,
+                NumAdded = 0,
+                Goal = true_goal
+            )
+        )
+    ).
+
 :- pred qualify_lambda_mode_list_if_not_opt_imported(
     list(mer_mode)::in, list(mer_mode)::out, prog_context::in,
     qual_info::in, qual_info::out,
@@ -828,7 +875,7 @@ qualify_lambda_mode_list_if_not_opt_imported(Modes0, Modes, Context,
 
 %-----------------------------------------------------------------------------%
 %
-% Code for building lambda expressions
+% Code for building lambda expressions.
 %
 
 :- pred build_lambda_expression(prog_var::in, purity::in, purity::in,
@@ -917,8 +964,7 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
             NonOutputLambdaVars = NonOutputLambdaVars0,
             OutputLambdaVars    = OutputLambdaVars0
         ;
-            unexpected(this_file,
-                "mismatched lists in build_lambda_expression.")
+            unexpected($module, $pred, "mismatched lists")
         ),
 
         map.init(Substitution),
@@ -1087,12 +1133,6 @@ make_fresh_arg_var(Arg0, Var, Vars0, !VarSet, !SInfo, !Specs) :-
     ;
         varset.new_var(!.VarSet, Var, !:VarSet)
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "superhomogeneous.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module superhomogeneous.
