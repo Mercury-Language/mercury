@@ -2626,11 +2626,13 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
         Succeeded0, !IO),
 
     % Also create a shell script to launch it if necessary.
+    globals.get_target_env_type(Globals, TargetEnvType),
+    globals.lookup_string_option(Globals, cli_interpreter, CLI),
     (
         Succeeded0 = yes,
         LinkTargetType = csharp_executable,
-        globals.lookup_string_option(Globals, cli_interpreter, CLI),
-        CLI \= ""
+        CLI \= "",
+        TargetEnvType = env_type_posix
     ->
         create_launcher_shell_script(Globals, MainModuleName,
             write_cli_shell_script(Globals, OutputFileName),
