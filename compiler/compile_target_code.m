@@ -2461,11 +2461,13 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
         ; Target = target_x86_64
         ),
         globals.lookup_string_option(Globals, mercury_linkage, MercuryLinkage),
-        LinkOpt = "-l"
+        LinkOpt = "-l",
+        LibSuffix = ""
     ;
         Target = target_csharp,
         MercuryLinkage = "shared",
-        LinkOpt = "/r:"
+        LinkOpt = "/r:",
+        LibSuffix = ".dll"
     ;
         Target = target_il,
         unexpected(this_file, "process_link_library: target_java")
@@ -2506,7 +2508,7 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
             !:Succeeded = no
         )
     ;
-        LinkerOpt = LinkOpt ++ LibName
+        LinkerOpt = LinkOpt ++ LibName ++ LibSuffix
     ).
 
 :- pred create_archive(globals::in, io.output_stream::in, file_name::in,
@@ -2626,11 +2628,13 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
         Succeeded0, !IO),
 
     % Also create a shell script to launch it if necessary.
+    globals.get_target_env_type(Globals, TargetEnvType),
+    globals.lookup_string_option(Globals, cli_interpreter, CLI),
     (
         Succeeded0 = yes,
         LinkTargetType = csharp_executable,
-        globals.lookup_string_option(Globals, cli_interpreter, CLI),
-        CLI \= ""
+        CLI \= "",
+        TargetEnvType = env_type_posix
     ->
         create_launcher_shell_script(Globals, MainModuleName,
             write_cli_shell_script(Globals, OutputFileName),

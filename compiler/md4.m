@@ -43,7 +43,7 @@
 
 :- implementation.
 
-:- import_module require.
+:- import_module require.   % Required by non-C grades.
 
 %-----------------------------------------------------------------------------%
 
