@@ -437,11 +437,11 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
     ( simplify_do_after_front_end(Info) ->
         proc_info_get_var_name_remap(!.ProcInfo, VarNameRemap),
         map.foldl(svvarset.name_var, VarNameRemap, VarSet0, VarSet),
-        proc_info_set_var_name_remap(map.init, !ProcInfo),
-        proc_info_set_varset(VarSet, !ProcInfo)
+        proc_info_set_var_name_remap(map.init, !ProcInfo)
     ;
-        true
+        VarSet = VarSet0
     ),
+    proc_info_set_varset(VarSet, !ProcInfo),
 
     simplify_info_get_has_parallel_conj(Info, HasParallelConj),
     proc_info_set_has_parallel_conj(HasParallelConj, !ProcInfo),
