@@ -106,7 +106,7 @@ export CLASSPATH
 
 # Host to use to build the release of the day source distribution
 # for the mercury-compiler, mercury-tests, and mercury-extras distributions.
-ROTD_HOST=saturn
+ROTD_HOST=goliath
 
 # Host to use to build the release of the day mercury-gcc source distribution.
 # We don't currently test the gcc backend.
@@ -277,7 +277,7 @@ case $HOST in
     # test things at different optimization levels...
 
     $ROTD_HOST)
-        OPTIMIZE="-O2 --intermodule-optimization"
+        OPTIMIZE="-O5 --intermodule-optimization"
         ;;
     
     saturn)
