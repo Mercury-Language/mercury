@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2007, 2009-2010 The University of Melbourne.
+** Copyright (C) 1997-2007, 2009-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -396,32 +396,6 @@ extern  MR_PendingContext   *MR_pending_contexts;
   extern volatile MR_Integer MR_num_idle_engines;
 
   /*
-  ** The number of contexts that are not in the free list (i.e. are executing
-  ** or suspended) plus the number of sparks in the global spark queue.
-  ** We count those sparks as they can quickly accumulate on the spark queue
-  ** before any of them are taken up for execution. Once they do get taken up,
-  ** many contexts would need to be allocated to execute them. Sparks not
-  ** on the global spark queue are currently guaranteed to be executed
-  ** on their originating context so won't cause allocation of more contexts.
-  **
-  ** What we are mainly interested in here is preventing too many contexts from
-  ** being allocated, as each context is quite large and we can quickly run out
-  ** of memory. Another problem is due to the context free list and
-  ** conservative garbage collection: every context ever allocated will be
-  ** scanned. (Getting the garbage collector not to scan contexts on the free
-  ** list should be possible though.)
-  */
-  extern volatile int   MR_num_outstanding_contexts_and_global_sparks;
-  
-  /*
-  ** As above, except that sparks on local spark queues are also counted even
-  ** though they don't represent _parallel_ work.  Since local queues are
-  ** manipulated without locking this variable must be modified by atomic
-  ** instructions, even when done from within a critical section.
-  */
-  extern volatile MR_Integer    MR_num_outstanding_contexts_and_all_sparks;
-
-  /*
   ** The number of engines that have exited so far.  We can spin on this to
   ** make sure that our engines have exited before finalizing some global
   ** resources.
@@ -770,22 +744,14 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
         fnc_spark.MR_spark_resume = (child);                                  \
         fnc_spark.MR_spark_thread_local_mutables = MR_THREAD_LOCAL_MUTABLES;  \
         fnc_deque = &MR_ENGINE(MR_eng_this_context)->MR_ctxt_spark_deque;     \
-        MR_atomic_inc_int(&MR_num_outstanding_contexts_and_all_sparks);       \
         MR_wsdeque_push_bottom(fnc_deque, &fnc_spark);                        \
     } while (0)
 
   /*
-  ** These macros may be used as conditions for runtime parallelism decisions.
+  ** This macro may be used as conditions for runtime parallelism decisions.
   ** They return nonzero when parallelism is recommended (because there are
   ** enough CPUs to assign work to).
-  */
-  #define MR_par_cond_contexts_and_global_sparks_vs_num_cpus(target_cpus)     \
-      (MR_num_outstanding_contexts_and_global_sparks < target_cpus)
-
-  #define MR_par_cond_contexts_and_all_sparks_vs_num_cpus(target_cpus)        \
-      (MR_num_outstanding_contexts_and_all_sparks < target_cpus)
-
-  /*
+  **
   ** This test calculates the length of a wsdeque each time it is called.
   ** The test will usually execute more often than the length of the
   ** queue changes.  Therefore, it makes sense to update a protected counter

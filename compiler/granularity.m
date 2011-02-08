@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2010 The University of Melbourne.
+% Copyright (C) 2006-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: granularity.m.
 % Author: zs.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.granularity.
@@ -110,8 +110,6 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
             ;
                 CalledSCCPredProcIds = [_ | _],
                 ProcName = "evaluate_parallelism_condition",
-                Code = "SUCCESS_INDICATOR = " ++
-                    "MR_par_cond_local_wsdeque_length;",
                 Args = [],
                 ExtraArgs = [],
                 MaybeRuntimeCond = no,
@@ -134,8 +132,9 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
                 ),
                 generate_foreign_proc(ModuleName, ProcName, pf_predicate,
                     only_mode, detism_semi, purity_impure, Attributes,
-                    Args, ExtraArgs, MaybeRuntimeCond, Code, Features,
-                    instmap_delta_bind_no_var, ModuleInfo, Context, Cond),
+                    Args, ExtraArgs, MaybeRuntimeCond, runtime_test_code,
+                    Features, instmap_delta_bind_no_var, ModuleInfo, Context,
+                    Cond),
 
                 Then = hlds_goal(conj(parallel_conj, Goals), GoalInfo),
                 Else = hlds_goal(conj(plain_conj, Goals), GoalInfo),
@@ -230,6 +229,16 @@ runtime_granularity_test_in_cases([Case0 | Cases0], [Case | Cases], !Changed,
     Case = case(MainConsId, OtherConsIds, Goal),
     runtime_granularity_test_in_cases(Cases0, Cases, !Changed, SCC,
         ModuleInfo).
+
+%-----------------------------------------------------------------------------%
+
+:- func runtime_test_code = string.
+
+runtime_test_code =
+    "SUCCESS_INDICATOR = MR_par_cond_local_wsdeque_length;\n" ++
+    "#ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL\n" ++
+    "MR_record_conditional_parallelism_decision(SUCCESS_INDICATOR);\n" ++
+    "#endif\n".
 
 %-----------------------------------------------------------------------------%
 

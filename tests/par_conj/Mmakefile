@@ -52,6 +52,7 @@ DEP_PAR_CONJ_PROGS= \
 	dep_par_27 \
 	dep_par_28 \
 	dep_par_29 \
+	pathological_right_recursion \
 	produce_in_nondet_disj
 
 INDEP_PAR_CONJ_PROGS = \
@@ -162,6 +163,17 @@ spawn_many.out: spawn_many
 			--small-nondetstack-size 16" \
 		./spawn_many 2>&1 > spawn_many.out || \
 		{ grep . $@ /dev/null; exit 1; }
+
+# Run pathological_right_recursion with large stacks (so that this fit in the
+# stack and so it hits the ulimit earlier.
+pathological_right_recursion.out: pathological_right_recursion
+	ulimit -m 1048576 && \
+	ulimit -v 1048576 && \
+	MERCURY_OPTIONS="-P2 \
+		--detstack-size 65536 \
+		--small-detstack-size 65536" \
+	./pathological_right_recursion 2>&1 > pathological_right_recursion.out || \
+	{ grep . $@ /dev/null; exit 1; }
 
 endif
 

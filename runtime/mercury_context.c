@@ -6,7 +6,7 @@ INIT mercury_sys_init_scheduler_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1995-2007, 2009-2010 The University of Melbourne.
+** Copyright (C) 1995-2007, 2009-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -150,10 +150,9 @@ static MR_Context       *free_small_context_list = NULL;
 #endif
 
 #ifdef  MR_LL_PARALLEL_CONJ
-MR_Integer volatile     MR_num_idle_engines = 0;
-MR_Unsigned volatile    MR_num_exited_engines = 0;
-int volatile MR_num_outstanding_contexts_and_global_sparks = 0;
-MR_Integer volatile MR_num_outstanding_contexts_and_all_sparks = 0;
+MR_Integer volatile         MR_num_idle_engines = 0;
+MR_Unsigned volatile        MR_num_exited_engines = 0;
+static MR_Integer volatile  MR_num_outstanding_contexts = 0;
 
 static MercuryLock MR_par_cond_stats_lock;
 static MercuryLock      spark_deques_lock;
@@ -664,12 +663,11 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
 {
     MR_Context  *c;
 
-    MR_LOCK(&free_context_list_lock, "create_context");
-
 #ifdef MR_LL_PARALLEL_CONJ
-    MR_num_outstanding_contexts_and_global_sparks++;
-    MR_atomic_inc_int(&MR_num_outstanding_contexts_and_all_sparks);
+    MR_atomic_inc_int(&MR_num_outstanding_contexts);
 #endif
+
+    MR_LOCK(&free_context_list_lock, "create_context");
 
     /*
     ** Regular contexts have stacks at least as big as small contexts,
@@ -760,8 +758,7 @@ MR_destroy_context(MR_Context *c)
 #endif /* defined(MR_CONSERVATIVE_GC) && !defined(MR_HIGHLEVEL_CODE) */
 
 #ifdef MR_LL_PARALLEL_CONJ
-    MR_num_outstanding_contexts_and_global_sparks--;
-    MR_atomic_dec_int(&MR_num_outstanding_contexts_and_all_sparks);
+    MR_atomic_dec_int(&MR_num_outstanding_contexts);
     MR_delete_spark_deque(&c->MR_ctxt_spark_deque);
 #endif
 
@@ -1189,15 +1186,25 @@ MR_define_entry(MR_do_runnext);
         if (ready_context != NULL) {
             MR_UNLOCK(&MR_runqueue_lock, "MR_do_runnext (iii)");
             MR_atomic_dec_int(&MR_num_idle_engines);
-                goto ReadyContext;
-            }
+            goto ReadyContext;
+        }
         /*
-        ** No suitable ready contexts, so try to steal a spark instead.
+        ** If execution reaches here then there are no suitable ready contexts.
         */
-        if (MR_attempt_steal_spark(&spark)) {
-            MR_UNLOCK(&MR_runqueue_lock, "MR_do_runnext (iv)");
-            MR_atomic_dec_int(&MR_num_idle_engines);
-            goto ReadySpark;
+
+        /*
+        ** A context may be created to execute a spark, so only attempt to
+        ** steal sparks if doing so would not exceed the limit of outstanding
+        ** contexts.
+        */
+        if (!((MR_ENGINE(MR_eng_this_context) == NULL) &&
+             (MR_max_outstanding_contexts <= MR_num_outstanding_contexts))) {
+            /* Attempt to steal a spark */
+            if (MR_attempt_steal_spark(&spark)) {
+                MR_UNLOCK(&MR_runqueue_lock, "MR_do_runnext (iv)");
+                MR_atomic_dec_int(&MR_num_idle_engines);
+                goto ReadySpark;
+            }
         }
 
         /* Nothing to do, go back to sleep. */
@@ -1403,7 +1410,6 @@ MR_do_join_and_continue(MR_SyncTerm *jnc_st, MR_Code *join_label)
         popped = MR_wsdeque_pop_bottom(&this_context->MR_ctxt_spark_deque,
             &spark_resume);
         if (popped) {
-            MR_atomic_dec_int(&MR_num_outstanding_contexts_and_all_sparks);
             return spark_resume;
         } else {
             /*

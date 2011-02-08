@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=8 sw=4 sts=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2006-2010 The University of Melbourne.
+% Copyright (C) 2006-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -75,24 +75,6 @@
     % it is simply used as a hook by the compiler.
     %
 :- impure pred evaluate_parallelism_condition is semidet.
-
-    % par_cond_contexts_and_global_sparks_vs_num_cpus(NumCPUs)
-    %
-    % True iff NumCPUs > executable contexts + global sparks.
-    %
-    % XXX We should consider passing MR_num_threads as the argument.
-    %
-:- impure pred par_cond_contexts_and_global_sparks_vs_num_cpus(int::in)
-    is semidet.
-
-    % par_cond_contexts_and_all_sparks_vs_num_cpus(NumCPUs)
-    %
-    % True iff NumCPUs > executable contexts + global sparks + local sparks.
-    %
-    % XXX We should consider passing MR_num_threads as the argument.
-    %
-:- impure pred par_cond_contexts_and_all_sparks_vs_num_cpus(int::in)
-    is semidet.
 
     % num_os_threads(Num)
     %
@@ -242,38 +224,6 @@ INIT mercury_sys_init_par_builtin_modules
 ").
 
 %-----------------------------------------------------------------------------%
-
-:- pragma foreign_proc("C",
-    par_cond_contexts_and_global_sparks_vs_num_cpus(NumCPUs::in),
-    [will_not_call_mercury, thread_safe],
-"
-#ifdef MR_LL_PARALLEL_CONJ
-    SUCCESS_INDICATOR =
-        MR_par_cond_contexts_and_global_sparks_vs_num_cpus(NumCPUs);
-  #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
-    MR_record_conditional_parallelism_decision(SUCCESS_INDICATOR);
-  #endif
-#else
-    MR_fatal_error(
-      ""par_cond_outstanding_jobs_vs_num_cpus is unavailable in this grade"");
-#endif
-").
-
-:- pragma foreign_proc("C",
-    par_cond_contexts_and_all_sparks_vs_num_cpus(NumCPUs::in),
-    [will_not_call_mercury, thread_safe],
-"
-#ifdef MR_LL_PARALLEL_CONJ
-    SUCCESS_INDICATOR =
-        MR_par_cond_contexts_and_all_sparks_vs_num_cpus(NumCPUs);
-  #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
-    MR_record_conditional_parallelism_decision(SUCCESS_INDICATOR);
-  #endif
-#else
-    MR_fatal_error(
-      ""par_cond_outstanding_jobs_vs_num_cpus is unavailable in this grade"");
-#endif
-").
 
 :- pragma foreign_proc("C",
     num_os_threads(NThreads::out),
