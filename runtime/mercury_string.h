@@ -277,7 +277,7 @@ MR_Integer	MR_hash_string3(MR_ConstString);
 
 /*
 ** If we are not using gcc, the actual definitions of these functions
-** are runtime/mercury_misc.c; they use the macros below.
+** are runtime/mercury_string.c; they use the macros below.
 */
 
 #define MR_HASH_STRING_FUNC_BODY					\
@@ -287,9 +287,11 @@ MR_Integer	MR_hash_string3(MR_ConstString);
 #define MR_HASH_STRING2_FUNC_BODY					\
 	   MR_Integer hash_string_result;				\
 	   MR_do_hash_string2(hash_string_result, s);			\
+	   return hash_string_result;
 #define MR_HASH_STRING3_FUNC_BODY					\
 	   MR_Integer hash_string_result;				\
 	   MR_do_hash_string3(hash_string_result, s);			\
+	   return hash_string_result;
 
 /*
 ** A version of strcmp to which we can pass Mercury words
