@@ -49,7 +49,7 @@
 
     % Transform the given procedure if it is in the complexity map.
     %
-:- pred process_proc_msg(int::in, complexity_proc_map::in,
+:- pred complexity_process_proc_msg(int::in, complexity_proc_map::in,
     pred_proc_id::in, proc_info::in, proc_info::out,
     module_info::in, module_info::out) is det.
 
@@ -157,8 +157,9 @@ is_in_complexity_proc_map(ProcMap, ModuleInfo, PredId, ProcId) = IsInMap :-
 
 %-----------------------------------------------------------------------------%
 
-process_proc_msg(NumProcs, ProcMap, proc(PredId, ProcId), !ProcInfo,
-        !ModuleInfo) :-
+complexity_process_proc_msg(NumProcs, ProcMap, PredProcId,
+        !ProcInfo, !ModuleInfo) :-
+    PredProcId = proc(PredId, ProcId),
     IsInMap = is_in_complexity_proc_map(ProcMap, !.ModuleInfo,
         PredId, ProcId),
     (
@@ -176,7 +177,7 @@ process_proc_msg(NumProcs, ProcMap, proc(PredId, ProcId), !ProcInfo,
         ;
             Verbose = no
         ),
-        process_proc(NumProcs, ProcNum, FullName, PredId,
+        complexity_process_proc(NumProcs, ProcNum, FullName, PredId,
             !ProcInfo, !ModuleInfo)
     ;
         IsInMap = no
@@ -246,11 +247,12 @@ process_proc_msg(NumProcs, ProcMap, proc(PredId, ProcId), !ProcInfo,
 
 slot_var_name = "SlotVar".
 
-:- pred process_proc(int::in, int::in, string::in, pred_id::in,
+:- pred complexity_process_proc(int::in, int::in, string::in, pred_id::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out)
     is det.
 
-process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
+complexity_process_proc(NumProcs, ProcNum, FullName, PredId,
+        !ProcInfo, !ModuleInfo) :-
     proc_info_interface_determinism(!.ProcInfo, Detism),
     determinism_to_code_model(Detism, CodeModel),
     proc_info_get_headvars(!.ProcInfo, HeadVars),

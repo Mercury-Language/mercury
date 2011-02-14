@@ -6,7 +6,7 @@ INIT mercury_sys_init_threadscope
 ENDINIT
 */
 /*
-** Copyright (C) 2009-2010 The University of Melbourne.
+** Copyright (C) 2009-2011 The University of Melbourne.
 ** Copyright (C) 2008-2009 The GHC Team.
 **
 ** This file may only be copied under the terms of the GNU Library General
@@ -586,10 +586,12 @@ MR_setup_threadscope(void)
     */
     
     /* Configure Boehm */
+#ifdef MR_BOEHM_GC
     GC_mercury_callback_start_collect = start_gc_callback;
     GC_mercury_callback_stop_collect = stop_gc_callback;
     GC_mercury_callback_pause_thread = pause_thread_gc_callback;
     GC_mercury_callback_resume_thread = resume_thread_gc_callback;
+#endif
 
     /* Clear the global buffer and setup the file */
     global_buffer.MR_tsbuffer_pos = 0;

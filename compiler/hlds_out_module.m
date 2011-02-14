@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2010 The University of Melbourne.
+% Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -60,6 +60,7 @@
 :- import_module string.
 :- import_module term.
 :- import_module term_io.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 %
@@ -595,15 +596,61 @@ write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
 
 :- pred write_insts(int::in, inst_table::in, io::di, io::uo) is det.
 
-write_insts(Indent, _InstTable, !IO) :-
-    % XXX fix this up.
+write_insts(Indent, InstTable, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("%-------- Insts --------\n", !IO),
+
     write_indent(Indent, !IO),
+    io.write_string("%-------- User defined insts --------\n", !IO),
+    inst_table_get_user_insts(InstTable, UserInstTable),
+    user_inst_table_get_inst_defns(UserInstTable, UserInstDefns),
+    map.to_assoc_list(UserInstDefns, UserInstPairs),
+    list.foldl(write_user_inst(Indent), UserInstPairs, !IO),
+
+    io.write_string("%-------- Other insts --------\n", !IO),
+    % XXX fix this up.
     io.write_string("%%% Not yet implemented, sorry.\n", !IO).
-    % io.write_string("% ", !IO).
-    % io.print(InstTable, !IO),
-    % io.nl(!IO).
+
+:- pred write_user_inst(int::in, pair(inst_id, hlds_inst_defn)::in,
+    io::di, io::uo) is det.
+
+write_user_inst(Indent, InstId - InstDefn, !IO) :-
+    InstId = inst_id(InstName, _InstArity),
+    write_indent(Indent, !IO),
+    io.format(":- inst %s:", [s(sym_name_to_string(InstName))], !IO),
+    InstDefn = hlds_inst_defn(InstVarSet, InstParams, InstBody,
+        _Context, _Status),
+    (
+        InstParams = []
+    ;
+        InstParams = [HeadInstParam | TailInstParams],
+        io.write_string("(", !IO),
+        write_inst_params(HeadInstParam, TailInstParams, InstVarSet, !IO),
+        io.write_string(")", !IO)
+    ),
+    (
+        InstBody = abstract_inst,
+        io.write_string(": is abstract\n", !IO)
+    ;
+        InstBody = eqv_inst(EqvInst),
+        io.write_string(":\n", !IO),
+        write_indent(Indent, !IO),
+        mercury_output_inst(EqvInst, InstVarSet, !IO)
+    ).
+
+:- pred write_inst_params(inst_var::in, list(inst_var)::in, inst_varset::in,
+    io::di, io::uo) is det.
+
+write_inst_params(InstVar, InstVars, InstVarSet, !IO) :-
+    varset.lookup_name(InstVarSet, InstVar, InstVarName),
+    io.write_string(InstVarName, !IO),
+    (
+        InstVars = []
+    ;
+        InstVars = [HeadInstVar | TailInstVars],
+        io.write_string(", ", !IO),
+        write_inst_params(HeadInstVar, TailInstVars, InstVarSet, !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 %

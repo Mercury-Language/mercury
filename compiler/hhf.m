@@ -30,10 +30,10 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred process_pred(bool::in, pred_id::in, module_info::in,
+:- pred convert_pred_to_hhf(bool::in, pred_id::in, module_info::in,
     module_info::out, io::di, io::uo) is det.
 
-:- pred process_clauses_info(bool::in, module_info::in,
+:- pred convert_clauses_info_to_hhf(bool::in, module_info::in,
     clauses_info::in, clauses_info::out, inst_graph::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -61,7 +61,7 @@
 
 %-----------------------------------------------------------------------------%
 
-process_pred(Simple, PredId, !ModuleInfo, !IO) :-
+convert_pred_to_hhf(Simple, PredId, !ModuleInfo, !IO) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     ( pred_info_is_imported(PredInfo0) ->
         % AAA
@@ -83,7 +83,7 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
             PredId, !.ModuleInfo, !IO),
 
         pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
-        process_clauses_info(Simple, !.ModuleInfo, ClausesInfo0,
+        convert_clauses_info_to_hhf(Simple, !.ModuleInfo, ClausesInfo0,
             ClausesInfo, ImplementationInstGraph),
         pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo1),
         some [!IG] (
@@ -137,7 +137,7 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
     PredInfo = PredInfo2, % AAA
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
-process_clauses_info(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
+convert_clauses_info_to_hhf(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
     clauses_info_get_varset(!.ClausesInfo, VarSet0),
     clauses_info_get_vartypes(!.ClausesInfo, VarTypes0),
     inst_graph.init(VarTypes0 ^ keys, InstGraph0),

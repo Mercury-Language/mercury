@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2010 The University of Melbourne.
+% Copyright (C) 2007-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -183,7 +183,7 @@
 
 :- import_module io.
 
-:- pred ssdebug.transform_module(module_info::in, module_info::out,
+:- pred ssdebug_transform_module(module_info::in, module_info::out,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -221,51 +221,54 @@
 
 %-----------------------------------------------------------------------------%
 
-ssdebug.transform_module(!ModuleInfo, !IO) :-
-    ssdebug.first_pass(!ModuleInfo),
-    process_all_nonimported_procs(update_module(ssdebug.process_proc),
+ssdebug_transform_module(!ModuleInfo, !IO) :-
+    ssdebug_first_pass(!ModuleInfo),
+    process_all_nonimported_procs(update_module(ssdebug_process_proc),
         !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %
-% Create proxies for standard library predicates and insert context updates
+% Create proxies for standard library predicates and insert context updates.
 %
 
 :- type proxy_map == map(pred_id, maybe(pred_id)).
 
-:- pred first_pass(module_info::in, module_info::out) is det.
+:- pred ssdebug_first_pass(module_info::in, module_info::out) is det.
 
-first_pass(!ModuleInfo) :-
+ssdebug_first_pass(!ModuleInfo) :-
     module_info_get_valid_predids(PredIds, !ModuleInfo),
-    list.foldl2(first_pass_in_pred, PredIds, map.init, _ProxyMap, !ModuleInfo).
+    list.foldl2(ssdebug_first_pass_in_pred, PredIds,
+        map.init, _ProxyMap, !ModuleInfo).
 
-:- pred first_pass_in_pred(pred_id::in, proxy_map::in, proxy_map::out,
+:- pred ssdebug_first_pass_in_pred(pred_id::in, proxy_map::in, proxy_map::out,
     module_info::in, module_info::out) is det.
 
-first_pass_in_pred(PredId, !ProxyMap, !ModuleInfo) :-
+ssdebug_first_pass_in_pred(PredId, !ProxyMap, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     ProcIds = pred_info_all_non_imported_procids(PredInfo),
-    list.foldl2(first_pass_in_proc(PredId), ProcIds, !ProxyMap, !ModuleInfo).
+    list.foldl2(ssdebug_first_pass_in_proc(PredId), ProcIds,
+        !ProxyMap, !ModuleInfo).
 
-:- pred first_pass_in_proc(pred_id::in, proc_id::in,
+:- pred ssdebug_first_pass_in_proc(pred_id::in, proc_id::in,
     proxy_map::in, proxy_map::out, module_info::in, module_info::out) is det.
 
-first_pass_in_proc(PredId, ProcId, !ProxyMap, !ModuleInfo) :-
+ssdebug_first_pass_in_proc(PredId, ProcId, !ProxyMap, !ModuleInfo) :-
     some [!ProcInfo] (
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId, PredInfo,
             !:ProcInfo),
         proc_info_get_goal(!.ProcInfo, Goal0),
-        first_pass_in_goal(Goal0, Goal, !ProcInfo, !ProxyMap, !ModuleInfo),
+        ssdebug_first_pass_in_goal(Goal0, Goal, !ProcInfo, !ProxyMap,
+            !ModuleInfo),
         proc_info_set_goal(Goal, !ProcInfo),
         module_info_set_pred_proc_info(PredId, ProcId, PredInfo, !.ProcInfo,
             !ModuleInfo)
     ).
 
-:- pred first_pass_in_goal(hlds_goal::in, hlds_goal::out,
+:- pred ssdebug_first_pass_in_goal(hlds_goal::in, hlds_goal::out,
     proc_info::in, proc_info::out, proxy_map::in, proxy_map::out,
     module_info::in, module_info::out) is det.
 
-first_pass_in_goal(!Goal, !ProcInfo, !ProxyMap, !ModuleInfo) :-
+ssdebug_first_pass_in_goal(!Goal, !ProcInfo, !ProxyMap, !ModuleInfo) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = unify(_, _, _, Unification0, _),
@@ -321,54 +324,57 @@ first_pass_in_goal(!Goal, !ProcInfo, !ProxyMap, !ModuleInfo) :-
         GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
     ;
         GoalExpr0 = conj(ConjType, Goals0),
-        list.map_foldl3(first_pass_in_goal, Goals0, Goals, !ProcInfo,
+        list.map_foldl3(ssdebug_first_pass_in_goal, Goals0, Goals, !ProcInfo,
             !ProxyMap, !ModuleInfo),
         GoalExpr = conj(ConjType, Goals),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = disj(Goals0),
-        list.map_foldl3(first_pass_in_goal, Goals0, Goals, !ProcInfo,
+        list.map_foldl3(ssdebug_first_pass_in_goal, Goals0, Goals, !ProcInfo,
             !ProxyMap, !ModuleInfo),
         GoalExpr = disj(Goals),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        list.map_foldl3(first_pass_in_case, Cases0, Cases, !ProcInfo,
+        list.map_foldl3(ssdebug_first_pass_in_case, Cases0, Cases, !ProcInfo,
             !ProxyMap, !ModuleInfo),
         GoalExpr = switch(Var, CanFail, Cases),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = negation(SubGoal0),
-        first_pass_in_goal(SubGoal0, SubGoal, !ProcInfo, !ProxyMap,
+        ssdebug_first_pass_in_goal(SubGoal0, SubGoal, !ProcInfo, !ProxyMap,
             !ModuleInfo),
         GoalExpr = negation(SubGoal),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        first_pass_in_goal(SubGoal0, SubGoal, !ProcInfo, !ProxyMap,
+        ssdebug_first_pass_in_goal(SubGoal0, SubGoal, !ProcInfo, !ProxyMap,
             !ModuleInfo),
         GoalExpr = scope(Reason, SubGoal),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        first_pass_in_goal(Cond0, Cond, !ProcInfo, !ProxyMap, !ModuleInfo),
-        first_pass_in_goal(Then0, Then, !ProcInfo, !ProxyMap, !ModuleInfo),
-        first_pass_in_goal(Else0, Else, !ProcInfo, !ProxyMap, !ModuleInfo),
+        ssdebug_first_pass_in_goal(Cond0, Cond, !ProcInfo, !ProxyMap,
+            !ModuleInfo),
+        ssdebug_first_pass_in_goal(Then0, Then, !ProcInfo, !ProxyMap,
+            !ModuleInfo),
+        ssdebug_first_pass_in_goal(Else0, Else, !ProcInfo, !ProxyMap,
+            !ModuleInfo),
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         !:Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "create_proxies_in_goal: unexpected shorthand")
+        unexpected($module, $pred, "unexpected shorthand")
     ).
 
-:- pred first_pass_in_case(case::in, case::out,
+:- pred ssdebug_first_pass_in_case(case::in, case::out,
     proc_info::in, proc_info::out,
     proxy_map::in, proxy_map::out, module_info::in, module_info::out) is det.
 
-first_pass_in_case(Case0, Case, !ProcInfo, !ProxyMap, !ModuleInfo) :-
+ssdebug_first_pass_in_case(Case0, Case, !ProcInfo, !ProxyMap, !ModuleInfo) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    first_pass_in_goal(Goal0, Goal, !ProcInfo, !ProxyMap, !ModuleInfo),
+    ssdebug_first_pass_in_goal(Goal0, Goal, !ProcInfo, !ProxyMap, !ModuleInfo),
     Case = case(MainConsId, OtherConsIds, Goal).
 
     % Look up the proxy for a predicate, creating one if appropriate.
@@ -400,7 +406,8 @@ create_proxy_pred(PredId, NewPredId, !ModuleInfo) :-
         pred_info_set_import_status(status_local, !PredInfo),
 
         ProcIds = pred_info_procids(!.PredInfo),
-        list.foldl2(create_proxy_proc(PredId), ProcIds, !PredInfo, !ModuleInfo),
+        list.foldl2(create_proxy_proc(PredId), ProcIds, !PredInfo,
+            !ModuleInfo),
 
         % Change the name so that the proxy is not confused with the original.
         Name = pred_info_name(!.PredInfo),
@@ -473,40 +480,42 @@ insert_context_update_call(ModuleInfo, Goal0, Goal, !ProcInfo) :-
 % The main transformation.
 %
 
-:- pred process_proc(pred_proc_id::in, proc_info::in, proc_info::out,
+:- pred ssdebug_process_proc(pred_proc_id::in, proc_info::in, proc_info::out,
     module_info::in, module_info::out) is det.
 
-process_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
+ssdebug_process_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
     proc_info_get_argmodes(!.ProcInfo, ArgModes),
     ( check_arguments_modes(!.ModuleInfo, ArgModes) ->
         % We have different transformations for procedures of different
         % determinisms.
 
         % XXX It might be possible to factor out the common code in the four
-        % process_proc_* predicates.
+        % ssdebug_process_proc_* predicates.
 
         proc_info_get_inferred_determinism(!.ProcInfo, Determinism),
         (
             ( Determinism = detism_det
             ; Determinism = detism_cc_multi
             ),
-            process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo)
+            ssdebug_process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo)
         ;
             ( Determinism = detism_semi
             ; Determinism = detism_cc_non
             ),
-            process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo)
+            ssdebug_process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo)
         ;
             ( Determinism = detism_multi
             ; Determinism = detism_non
             ),
-            process_proc_nondet(PredId, ProcId, !ProcInfo, !ModuleInfo)
+            ssdebug_process_proc_nondet(PredId, ProcId, !ProcInfo, !ModuleInfo)
         ;
             Determinism = detism_erroneous,
-            process_proc_erroneous(PredId, ProcId, !ProcInfo, !ModuleInfo)
+            ssdebug_process_proc_erroneous(PredId, ProcId, !ProcInfo,
+                !ModuleInfo)
         ;
             Determinism = detism_failure,
-            process_proc_failure(PredId, ProcId, !ProcInfo, !ModuleInfo)
+            ssdebug_process_proc_failure(PredId, ProcId, !ProcInfo,
+                !ModuleInfo)
         )
     ;
         % In the case of a mode which is not fully input or output, the
@@ -516,10 +525,10 @@ process_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
 
     % Source-to-source transformation for a deterministic goal.
     %
-:- pred process_proc_det(pred_id::in, proc_id::in,
+:- pred ssdebug_process_proc_det(pred_id::in, proc_id::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
-process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
+ssdebug_process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
     some [!PredInfo, !VarSet, !VarTypes] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
@@ -602,10 +611,10 @@ process_proc_det(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
 
     % Source-to-source transformation for a semidet goal.
     %
-:- pred process_proc_semi(pred_id::in, proc_id::in,
+:- pred ssdebug_process_proc_semi(pred_id::in, proc_id::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
-process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
+ssdebug_process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
     some [!PredInfo, !VarSet, !VarTypes] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
@@ -684,7 +693,7 @@ process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
                 RenamedBodyGoal, CondGoal)
         ;
             Solns = at_most_zero,
-            unexpected(this_file, "process_proc_semi: zero solutions")
+            unexpected($module, $pred, "zero solutions")
         ),
 
         % Create the `then' branch.
@@ -724,10 +733,10 @@ process_proc_semi(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
 
     % Source-to-source transformation for a nondeterministic procedure.
     %
-:- pred process_proc_nondet(pred_id::in, proc_id::in,
+:- pred ssdebug_process_proc_nondet(pred_id::in, proc_id::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
-process_proc_nondet(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
+ssdebug_process_proc_nondet(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
     some [!PredInfo, !VarSet, !VarTypes] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
@@ -817,10 +826,10 @@ process_proc_nondet(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
 
     % Source-to-source transformation for a failure procedure.
     %
-:- pred process_proc_failure(pred_id::in, proc_id::in,
+:- pred ssdebug_process_proc_failure(pred_id::in, proc_id::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
-process_proc_failure(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
+ssdebug_process_proc_failure(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
     some [!PredInfo, !VarSet, !VarTypes] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
@@ -878,10 +887,10 @@ process_proc_failure(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
 
     % Source-to-source transformation for an erroneous procedure.
     %
-:- pred process_proc_erroneous(pred_id::in, proc_id::in,
+:- pred ssdebug_process_proc_erroneous(pred_id::in, proc_id::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
-process_proc_erroneous(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
+ssdebug_process_proc_erroneous(PredId, ProcId, !ProcInfo, !ModuleInfo) :-
     some [!PredInfo, !VarSet, !VarTypes] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
         proc_info_get_goal(!.ProcInfo, OrigBodyGoal),
@@ -1255,7 +1264,7 @@ list_var_value_type = ListVarValueType :-
     ListTypeCtor = type_ctor(qualified(mercury_list_module, "list"), 1),
     construct_type(ListTypeCtor, [VarValueType], ListVarValueType).
 
-    % Create the goal's argument description :
+    % Create the goal's argument description:
     % -> unbound_head_var(Name, Pos) if it is an unbound argument
     % -> bound_head_var(type_of_T, Name, Position, T) if it is a bound argument
     %
@@ -1280,7 +1289,7 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
 
     svvarset.new_named_var("VarDesc", VarDesc, !VarSet),
     ( var_is_ground_in_instmap(!.ModuleInfo, InstMap, VarToInspect) ->
-        % Update proc_varset and proc_vartypes, without this, the
+        % Update proc_varset and proc_vartypes; without this,
         % polymorphism_make_type_info_var uses a prog_var which is
         % already bound.
 
@@ -1340,12 +1349,6 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
 
         Goals = [ConstructVarName, ConstructVarPos, ConstructVarGoal]
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ssdebug.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ssdebug.

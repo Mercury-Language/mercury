@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2010 The University of Melbourne.
+% Copyright (C) 2001-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -122,7 +122,7 @@ mc_process_module(!ModuleInfo, !IO) :-
 
     (
         New = no,
-        list.foldl2(hhf.process_pred(Simple), PredIds, !ModuleInfo, !IO),
+        list.foldl2(convert_pred_to_hhf(Simple), PredIds, !ModuleInfo, !IO),
         get_predicate_sccs(!ModuleInfo, SCCs),
 
         % Stage 1: Process SCCs bottom-up to determine variable producers.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2010 The University of Melbourne.
+% Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -857,7 +857,7 @@ maybe_ssdb(Verbose, Stats, !HLDS, !IO) :-
     ->
         maybe_write_string(Verbose,
             "% Apply debugging source to source transformation ...\n", !IO),
-        ssdebug.transform_module(!HLDS, !IO),
+        ssdebug_transform_module(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -900,7 +900,7 @@ maybe_introduce_accumulators(Verbose, Stats, !HLDS, !IO) :-
             "% Attempting to introduce accumulators...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         type_to_univ([] : list(error_spec), Cookie0),
-        Task0 = update_module_pred_cookie(accumulator.process_proc, Cookie0),
+        Task0 = update_module_pred_cookie(accu_transform_proc, Cookie0),
         process_all_nonimported_procs_update(Task0, Task, !HLDS),
         (
             Task = update_module_pred_cookie(_, Cookie),
@@ -1374,7 +1374,7 @@ maybe_experimental_complexity(Verbose, Stats, !HLDS, !IO) :-
             "% Applying complexity experiment transformation...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         process_all_nonimported_procs(
-            update_module(complexity.process_proc_msg(NumProcs, ProcMap)),
+            update_module(complexity_process_proc_msg(NumProcs, ProcMap)),
             !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)

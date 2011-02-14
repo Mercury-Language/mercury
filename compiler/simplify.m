@@ -382,60 +382,16 @@ simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !ProcInfo)  :-
     simplify_proc_return_msgs(Simplifications, PredId, ProcId, !ModuleInfo,
         !ProcInfo, _).
 
-:- func turn_off_common_struct_threshold = int.
-
-turn_off_common_struct_threshold = 1000.
-
 simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
         !ProcInfo, !:Specs) :-
-    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
-    NumVars = map.count(VarTypes0),
-    ( NumVars > turn_off_common_struct_threshold ->
-        % If we have too many variables, common_struct takes so long that
-        % either the compiler runs out of memory or the user runs out of
-        % patience. The fact that we would generate better code if the
-        % compilation finished is therefore of limited interest.
-        Simplifications1 = Simplifications0 ^ do_common_struct := no
-    ;
-        Simplifications1 = Simplifications0
-    ),
-    module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_string_option(Globals, common_struct_preds,
-        CommonStructPreds),
-    ( CommonStructPreds = "" ->
-        Simplifications = Simplifications1
-    ;
-        CommonStructPredIdStrs = string.split_at_char(',', CommonStructPreds),
-        (
-            list.map(string.to_int, CommonStructPredIdStrs,
-                CommonStructPredIdInts)
-        ->
-            ( list.member(pred_id_to_int(PredId), CommonStructPredIdInts) ->
-                Simplifications = Simplifications1
-            ;
-                Simplifications = Simplifications1 ^ do_common_struct := no
-            )
-        ;
-            Simplifications = Simplifications1
-        )
-    ),
-
+    simplify_proc_maybe_vary_parameters(!.ModuleInfo, PredId, !.ProcInfo,
+        Simplifications0, Simplifications),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_markers(PredInfo0, Markers0),
-    pred_info_get_import_status(PredInfo0, Status),
-    proc_info_get_goal(!.ProcInfo, Goal0),
-    (
-        check_marker(Markers0, marker_mode_check_clauses),
-        Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-        ( GoalExpr0 = disj(_)
-        ; GoalExpr0 = switch(_, _, _)
-        )
-    ->
-        goal_info_add_feature(feature_mode_check_clauses_goal,
-            GoalInfo0, GoalInfo1),
-        Goal1 = hlds_goal(GoalExpr0, GoalInfo1)
+    ( check_marker(Markers0, marker_mode_check_clauses) ->
+        simplify_proc_maybe_mark_modecheck_clauses(!ProcInfo)
     ;
-        Goal1 = Goal0
+        true
     ),
 
     (
@@ -453,91 +409,39 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
         %
         % Second, analyze_and_optimize_format_calls generates nested
         % conjunctions, which simplify_process_clause_body_goal can eliminate.
-        proc_info_get_varset(!.ProcInfo, VarSet0),
-        analyze_and_optimize_format_calls(!.ModuleInfo, Goal1, MaybeGoal2,
-            FormatSpecs, VarSet0, VarSet1, VarTypes0, VarTypes1),
-        (
-            MaybeGoal2 = yes(Goal2),
-            proc_info_set_goal(Goal2, !ProcInfo),
-            proc_info_set_varset(VarSet1, !ProcInfo),
-            proc_info_set_vartypes(VarTypes1, !ProcInfo),
 
-            % The goals we replace format calls with are created with the
-            % correct nonlocals, but analyze_and_optimize_format_calls can
-            % take code for building a list of string.poly_types out of one
-            % scope (e.g. the condition of an if-then-else) and replace it
-            % with code to build the string directly in another scope
-            % (such as the then part of that if-then-else, if that is where
-            % the format call is). This can leave variables missing from
-            % the nonlocal fields of the original scopes. And since
-            % instmap_deltas are restricted to the goal's nonlocals,
-            % they need to be recomputed as well.
-            requantify_proc_general(ordinary_nonlocals_maybe_lambda,
-                !ProcInfo),
-            recompute_instmap_delta_proc(
-                do_not_recompute_atomic_instmap_deltas,
-                !ProcInfo, !ModuleInfo),
-            proc_info_get_goal(!.ProcInfo, Goal3),
-            proc_info_get_vartypes(!.ProcInfo, VarTypes3),
-
-            % Put the new proc_info back into !ModuleInfo, since some of the
-            % following code could otherwise find obsolete information in
-            % there.
-
-            % Remove the has_format_call marker from the pred_info before
-            % putting it back, since any optimizable format calls will already
-            % have been optimized. Since currently there is no program
-            % transformation that inserts calls to these predicates,
-            % there is no point in invoking find_format_call again later.
-
-            module_info_get_preds(!.ModuleInfo, PredTable1),
-            map.lookup(PredTable1, PredId, PredInfo1),
-            pred_info_get_procedures(PredInfo1, ProcTable1),
-            map.det_update(ProcTable1, ProcId, !.ProcInfo, ProcTable),
-
-            pred_info_set_procedures(ProcTable, PredInfo1, PredInfo2),
-            remove_marker(marker_has_format_call, Markers0, Markers),
-            pred_info_set_markers(Markers, PredInfo2, PredInfo),
-
-            map.det_update(PredTable1, PredId, PredInfo, PredTable),
-            module_info_set_preds(PredTable, !ModuleInfo)
-        ;
-            MaybeGoal2 = no,
-            Markers = Markers0,
-            Goal3 = Goal1,
-            % Throw away VarTypes1.
-            VarTypes3 = VarTypes0
-        )
+        simplify_proc_analyze_and_format_calls(!ModuleInfo, PredId, ProcId,
+            FormatSpecs, !ProcInfo)
     ;
         % Either there are no format calls to check, or we don't want to
         % optimize them and would ignore the added messages anyway.
-        Goal3 = Goal1,
-        Markers = Markers0,
-        FormatSpecs = [],
-        VarTypes3 = VarTypes0
+        FormatSpecs = []
     ),
 
-    det_info_init(!.ModuleInfo, VarTypes3, PredId, ProcId,
+    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    det_info_init(!.ModuleInfo, VarTypes0, PredId, ProcId,
         pess_extra_vars_report, [], DetInfo0),
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
     simplify_info_init(DetInfo0, Simplifications, InstMap0, !.ProcInfo, Info0),
 
-    simplify_process_clause_body_goal(Goal3, Goal, Info0, Info),
+    proc_info_get_goal(!.ProcInfo, Goal0),
+    simplify_process_clause_body_goal(Goal0, Goal, Info0, Info),
+    proc_info_set_goal(Goal, !ProcInfo),
 
-    simplify_info_get_varset(Info, VarSet3),
-    ( simplify_do_after_front_end(Info) ->
-        proc_info_get_var_name_remap(!.ProcInfo, VarNameRemap),
-        map.foldl(svvarset.name_var, VarNameRemap, VarSet3, VarSet),
-        proc_info_set_var_name_remap(map.init, !ProcInfo)
-    ;
-        VarSet = VarSet3
-    ),
     simplify_info_get_var_types(Info, VarTypes),
     simplify_info_get_rtti_varmaps(Info, RttiVarMaps),
-    proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo),
-    proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
+
+    simplify_info_get_varset(Info, VarSet0),
+    ( simplify_do_after_front_end(Info) ->
+        proc_info_get_var_name_remap(!.ProcInfo, VarNameRemap),
+        map.foldl(svvarset.name_var, VarNameRemap, VarSet0, VarSet),
+        proc_info_set_var_name_remap(map.init, !ProcInfo)
+    ;
+        VarSet = VarSet0
+    ),
+    proc_info_set_varset(VarSet, !ProcInfo),
 
     simplify_info_get_has_parallel_conj(Info, HasParallelConj),
     proc_info_set_has_parallel_conj(HasParallelConj, !ProcInfo),
@@ -549,6 +453,187 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
     simplify_info_get_error_specs(Info, !:Specs),
     !:Specs = FormatSpecs ++ !.Specs,
 
+    simplify_proc_maybe_warn_about_duplicates(!.ModuleInfo, PredId, !.ProcInfo,
+        !Specs),
+
+    pred_info_get_import_status(PredInfo0, Status),
+    IsDefinedHere = status_defined_in_this_module(Status),
+    (
+        IsDefinedHere = no,
+        % Don't generate any warnings or even errors if the predicate isn't
+        % defined here; any such messages will be generated when we compile
+        % the module the predicate comes from.
+        !:Specs = []
+    ;
+        IsDefinedHere = yes
+    ).
+
+:- pred simplify_proc_maybe_vary_parameters(module_info::in, pred_id::in,
+    proc_info::in, simplifications::in, simplifications::out) is det.
+
+simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
+        !Simplifications) :-
+    proc_info_get_vartypes(ProcInfo, VarTypes0),
+    NumVars = map.count(VarTypes0),
+    ( NumVars > turn_off_common_struct_threshold ->
+        % If we have too many variables, common_struct takes so long that
+        % either the compiler runs out of memory or the user runs out of
+        % patience. The fact that we would generate better code if the
+        % compilation finished is therefore of limited interest.
+        !Simplifications ^ do_common_struct := no
+    ;
+        true
+    ),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_string_option(Globals, common_struct_preds,
+        CommonStructPreds),
+    ( CommonStructPreds = "" ->
+        true
+    ;
+        CommonStructPredIdStrs = string.split_at_char(',', CommonStructPreds),
+        (
+            list.map(string.to_int, CommonStructPredIdStrs,
+                CommonStructPredIdInts)
+        ->
+            ( list.member(pred_id_to_int(PredId), CommonStructPredIdInts) ->
+                true
+            ;
+                !Simplifications ^ do_common_struct := no
+            )
+        ;
+            true
+        )
+    ).
+
+:- func turn_off_common_struct_threshold = int.
+
+turn_off_common_struct_threshold = 1000.
+
+simplify_process_clause_body_goal(!Goal, !Info) :-
+    some [!Simplifications] (
+        simplify_info_get_simplifications(!.Info, !:Simplifications),
+        OriginalSimplifications = !.Simplifications,
+        simplify_info_get_instmap(!.Info, InstMap0),
+        (
+            ( simplify_do_common_struct(!.Info)
+            ; simplify_do_opt_duplicate_calls(!.Info)
+            )
+        ->
+            !Simplifications ^ do_do_once := no,
+            !Simplifications ^ do_excess_assign := no,
+            simplify_info_set_simplifications(!.Simplifications, !Info),
+
+            do_process_clause_body_goal(!Goal, !Info),
+
+            !:Simplifications = OriginalSimplifications,
+            !Simplifications ^ do_warn_simple_code := no,
+            !Simplifications ^ do_warn_duplicate_calls := no,
+            !Simplifications ^ do_common_struct := no,
+            !Simplifications ^ do_opt_duplicate_calls := no,
+            simplify_info_reinit(!.Simplifications, InstMap0, !Info)
+        ;
+            true
+        ),
+        % On the second pass do excess assignment elimination and
+        % some cleaning up after the common structure pass.
+        do_process_clause_body_goal(!Goal, !Info),
+        simplify_info_get_found_contains_trace(!.Info, FoundContainsTrace),
+        (
+            FoundContainsTrace = no
+        ;
+            FoundContainsTrace = yes,
+            goal_contains_trace(!Goal, _)
+        )
+    ).
+
+:- pred simplify_proc_maybe_mark_modecheck_clauses(
+    proc_info::in, proc_info::out) is det.
+
+simplify_proc_maybe_mark_modecheck_clauses(!ProcInfo) :-
+    proc_info_get_goal(!.ProcInfo, Goal0),
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    (
+        ( GoalExpr0 = disj(_)
+        ; GoalExpr0 = switch(_, _, _)
+        )
+    ->
+        goal_info_add_feature(feature_mode_check_clauses_goal,
+            GoalInfo0, GoalInfo),
+        Goal = hlds_goal(GoalExpr0, GoalInfo),
+        proc_info_set_goal(Goal, !ProcInfo)
+    ;
+        true
+    ).
+
+:- pred simplify_proc_analyze_and_format_calls(
+    module_info::in, module_info::out, pred_id::in, proc_id::in,
+    list(error_spec)::out, proc_info::in, proc_info::out) is det.
+
+simplify_proc_analyze_and_format_calls(!ModuleInfo, PredId, ProcId,
+        FormatSpecs, !ProcInfo) :-
+    proc_info_get_goal(!.ProcInfo, Goal0),
+    proc_info_get_varset(!.ProcInfo, VarSet0),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    analyze_and_optimize_format_calls(!.ModuleInfo, Goal0, MaybeGoal,
+        FormatSpecs, VarSet0, VarSet, VarTypes0, VarTypes),
+    (
+        MaybeGoal = yes(Goal),
+        proc_info_set_goal(Goal, !ProcInfo),
+        proc_info_set_varset(VarSet, !ProcInfo),
+        proc_info_set_vartypes(VarTypes, !ProcInfo),
+
+        % The goals we replace format calls with are created with the
+        % correct nonlocals, but analyze_and_optimize_format_calls can
+        % take code for building a list of string.poly_types out of one
+        % scope (e.g. the condition of an if-then-else) and replace it
+        % with code to build the string directly in another scope
+        % (such as the then part of that if-then-else, if that is where
+        % the format call is). This can leave variables missing from
+        % the nonlocal fields of the original scopes. And since
+        % instmap_deltas are restricted to the goal's nonlocals,
+        % they need to be recomputed as well.
+        requantify_proc_general(ordinary_nonlocals_maybe_lambda, !ProcInfo),
+        recompute_instmap_delta_proc(do_not_recompute_atomic_instmap_deltas,
+            !ProcInfo, !ModuleInfo),
+
+        % Put the new proc_info back into !ModuleInfo, since some of the
+        % following code could otherwise find obsolete information in there.
+
+        % Remove the has_format_call marker from the pred_info before
+        % putting it back, since any optimizable format calls will already
+        % have been optimized. Since currently there is no program
+        % transformation that inserts calls to these predicates,
+        % there is no point in invoking find_format_call again later.
+
+        module_info_get_preds(!.ModuleInfo, PredTable0),
+        map.lookup(PredTable0, PredId, PredInfo0),
+        pred_info_get_procedures(PredInfo0, ProcTable0),
+        map.det_update(ProcTable0, ProcId, !.ProcInfo, ProcTable),
+        pred_info_set_procedures(ProcTable, PredInfo0, PredInfo1),
+
+        pred_info_get_markers(PredInfo1, Markers1),
+        remove_marker(marker_has_format_call, Markers1, Markers),
+        pred_info_set_markers(Markers, PredInfo1, PredInfo),
+
+        map.det_update(PredTable0, PredId, PredInfo, PredTable),
+        module_info_set_preds(PredTable, !ModuleInfo)
+    ;
+        MaybeGoal = no
+        % There should not be any updates to the varset and the vartypes,
+        % but even if there are, throw them away, since they apply to a version
+        % of the goal that we will not be using.
+    ).
+
+:- pred simplify_proc_maybe_warn_about_duplicates(module_info::in, pred_id::in,
+    proc_info::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+simplify_proc_maybe_warn_about_duplicates(ModuleInfo, PredId, ProcInfo,
+        !Specs) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_markers(PredInfo, Markers),
+
+    % The alternate goal by definition cannot be a call_foreign_proc.
+    proc_info_get_goal(ProcInfo, Goal),
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
@@ -590,54 +675,6 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
         )
     ;
         true
-    ),
-
-    IsDefinedHere = status_defined_in_this_module(Status),
-    (
-        IsDefinedHere = no,
-        % Don't generate any warnings or even errors if the predicate isn't
-        % defined here; any such messages will be generated when we compile
-        % the module the predicate comes from.
-        !:Specs = []
-    ;
-        IsDefinedHere = yes
-    ).
-
-simplify_process_clause_body_goal(!Goal, !Info) :-
-    some [!Simplifications] (
-        simplify_info_get_simplifications(!.Info, !:Simplifications),
-        OriginalSimplifications = !.Simplifications,
-        simplify_info_get_instmap(!.Info, InstMap0),
-        (
-            ( simplify_do_common_struct(!.Info)
-            ; simplify_do_opt_duplicate_calls(!.Info)
-            )
-        ->
-            !Simplifications ^ do_do_once := no,
-            !Simplifications ^ do_excess_assign := no,
-            simplify_info_set_simplifications(!.Simplifications, !Info),
-
-            do_process_clause_body_goal(!Goal, !Info),
-
-            !:Simplifications = OriginalSimplifications,
-            !Simplifications ^ do_warn_simple_code := no,
-            !Simplifications ^ do_warn_duplicate_calls := no,
-            !Simplifications ^ do_common_struct := no,
-            !Simplifications ^ do_opt_duplicate_calls := no,
-            simplify_info_reinit(!.Simplifications, InstMap0, !Info)
-        ;
-            true
-        ),
-        % On the second pass do excess assignment elimination and
-        % some cleaning up after the common structure pass.
-        do_process_clause_body_goal(!Goal, !Info),
-        simplify_info_get_found_contains_trace(!.Info, FoundContainsTrace),
-        (
-            FoundContainsTrace = no
-        ;
-            FoundContainsTrace = yes,
-            goal_contains_trace(!Goal, _)
-        )
     ).
 
 :- pred do_process_clause_body_goal(hlds_goal::in, hlds_goal::out,
@@ -2405,20 +2442,19 @@ simplify_call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo,
         input_args_are_equiv(Args, HeadVars, ArgModes,
             CommonInfo1, ModuleInfo1),
 
-        % Don't warn if the input arguments' modes initial insts
-        % contain `any' insts, since the arguments might have become
-        % more constrained before the recursive call, in which case
-        % the recursion might eventually terminate.
+        % Don't warn if the input arguments' modes initial insts contain
+        % `any' insts, since the arguments might have become more constrained
+        % before the recursive call, in which case the recursion might
+        % eventually terminate.
         %
-        % XXX The following check will only warn if the inputs are
-        % all fully ground; i.e. we won't warn in the case of
-        % partially instantiated insts such as list_skel(free).
-        % Still, it is better to miss warnings in that rare and
-        % unsupported case rather than to issue spurious warnings
-        % in cases involving `any' insts.  We should only warn about
-        % definite nontermination here, not possible nontermination;
-        % warnings about possible nontermination should only be given
-        % if the termination analysis pass is enabled.
+        % XXX The following check will only warn if the inputs are all fully
+        % ground; i.e. we won't warn in the case of partially instantiated
+        % insts such as list_skel(free). Still, it is better to miss warnings
+        % in that rare and unsupported case rather than to issue spurious
+        % warnings in cases involving `any' insts.  We should only warn about
+        % definite nontermination here, not possible nontermination; warnings
+        % about possible nontermination should only be given % if the
+        % termination analysis pass is enabled.
         all [ArgMode] (
             (
                 list.member(ArgMode, ArgModes),
