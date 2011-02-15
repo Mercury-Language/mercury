@@ -29,6 +29,37 @@ To build the source distribution under MSYS follow these steps:
     Details of alternative MinGW and MSYS installation methods may be found
     on the MinGW website.
 
+    To build the Erlang grade with MinGW and MSYS you will require the Windows
+    version of the Erlang/OTP distribution to be installed on your system.
+    The Erlang compiler (erlc) and runtime (erl) needs to be in the MSYS
+    PATH, for example do the following in the MSYS shell (with the version
+    number modified if necessary):
+
+        export PATH=/c/Program\ Files/erl5.8.2/bin/:$PATH
+
+    See README.Erlang for further details.
+
+    To build the java grade with MinGW and MSYS you will require the Windows
+    version of the JDK to be installed on your system.
+    The Java compiler (javac), Java archive tool (jar), and Java runtime (java)
+    needs to be in the MSYS PATH, for example do the following in the MSYS
+    shell (with the version number modified if necessary):
+
+        export PATH=/c/Program\ Files/Java/jdk1.6.0_23/bin/:$PATH 
+
+    See README.Java for further details.
+
+    To build the C# grade with MinGW, MSYS and .NET, you will need Visual C#
+    compiler installed on your system.
+    The C# compiler (csc.exe) needs to be in the MSYS PATH, for example do the
+    following in the MSYS shell (with the version number modified if
+    necessary):
+
+        export PATH=/c/WINDOWS/Microsoft.NET/Framework/v4.0.30319/:$PATH
+    
+    See README.CSharp for further details.
+	
+
 2.  Unpack the source distribution with a command like:
     
         tar -xvzf mercury-compiler-<VERSION>.tar.gz
