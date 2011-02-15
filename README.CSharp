@@ -43,9 +43,110 @@ directory.
 	cd samples
 	mmc --make --csharp hello
 
-Now you can run hello
+-----------------------------------------------------------------------------
 
-	./hello
+RUNNING C# GRADE PROGRAMS ON UNIX WITH MONO
+
+For the example in the previous section on a Unix (or more generally,
+non-Windows) system using Mono, the Mercury compiler will generate a process
+assembly, e.g. hello.exe, and a wrapper shell script named hello.
+
+The wrapper shell script will set the MONO_PATH environment variable
+to point to the location of the Mercury standard library assemblies.
+It will then invoke CLI execution environment on the above process assembly,
+i.e. you can run the program by simply running the wrapper shell script,
+for example
+
+      ./hello
+
+-----------------------------------------------------------------------------
+
+RUNNING C# GRADE PROGRAMS ON WINDOWS WITH .NET
+
+On Windows, the Mercury compiler will only generate a process assembly, e.g.
+hello.exe.  (On Windows there is no need to generate a wrapper shell script.)
+
+With .NET, the library assemblies (.dlls) for the Mercury standard
+libraries must either (1) reside in (or under) the same directory as the process
+assembly (.exe) or (2) be entered into the global assembly cache (GAC).
+If neither of these things is done then execution will abort with a message that
+begins:
+
+     Unhandled Exception: System.IO.FileNotFoundException: Could not load file
+     or assembly 'mer_std',  Version=...
+
+For (1), you will need to copy the library assemblies from the Mercury library
+installation into the the same directory as the process assembly.
+The files for the library assemblies are located in
+
+     <prefix>\lib\mercury\lib\csharp
+
+where <prefix> is the location of the Mercury installation.
+Copy all of the dll files in the above directory into that of the process
+assembly.
+
+As for (2), in order to enter assemblies into the GAC they must be strongly-
+named; unfortunately the Mercury compiler does not currently support creating
+strongly-named assemblies in the csharp grade.  If you're feeling particularly
+fearless, then you can give the standard library assemblies strong-names and
+enter them into the GAC manually using the following instructions.
+
+(0) We require the .NET SDK tools, such as gacutil.exe, to be available
+    from the command line.  (You can use the ``Visual Studio Command Prompt''
+    shortcut to start a command line session with the environment suitably
+    set up.)
+
+(1) Copy the standard library assemblies out of <prefix>\lib\mercury\lib\csharp
+    and into a separate directory.
+
+(2) Create a new strong-name key-pair with which to sign the assemblies.
+    A key-pair can be created by using the sn.exe tool, for example
+
+        sn -k mercury.snk
+
+    will create a new key-pair and place it in the file mercury.snk.
+    (You may skip this step if you already have a strong-name key-pair
+    that you wish to use.)
+
+(3) For each dll file do the following.  (We illustrate using mer_std.dll.)
+
+    (i) Disassemble the assembly into MSIL.
+
+            ildasm mer_std.dll /out:mer_std.il
+
+        Note that this may also result in the creation of a resource file
+        mer_std.res.
+
+    (ii) Delete mer_std.dll.
+
+    (iii) Reassemble the assembly and sign it using the key-pair.
+        
+            ilasm mer_std.il /dll /output=mer_std.dll /resource=mer_std.res /key=mercury.snk
+
+          Note that the /resource switch is only required if a resource file
+          is generated during disassembly.
+
+     (iv) Enter the assembly in the GAC.
+   
+            gacutil /i mer_std.dll
+
+     (v) Replace Mercury's copy of the assembly with the newly signed one.
+
+           copy mer_std.dll <prefix>\lib\mercury\lib\csharp
+          
+         This last step is important - the C# compiler does not look for
+         assemblies in the GAC at compile-time.  We need to keep the "reference"
+         copy of the assembly in the Mercury library installation consistent with
+         the one in the GAC.  (If something goes wrong here, the symptom will
+         typically be an abort from the runtime with a message saying that it
+         could not find the assembly.)
+
+Assemblies can be removed from the GAC by doing, for example
+
+    gacutil /u mer_std.dll
+
+We hope to improve support for signing assemblies in future versions of the
+Mercury compiler.
 
 -----------------------------------------------------------------------------
 
