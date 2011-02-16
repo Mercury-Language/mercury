@@ -96,6 +96,12 @@ directory.
 
 BUILDING A CYGWIN COMPILER WHICH TARGETS MINGW
 
+NOTE: recent versions of Cygwin no longer support the -mno-cygwin option.
+Unfortunately the Cygwin documentation is silent on the matter of how
+exactly you are now supposed to invoke the MinGW compiler from Cygwin;
+until it is updated we recommend using MinGW/MSYS to build a MinGW
+targeted compiler rather than Cygwin.
+
 To build a compiler which targets MinGW from Cygwin do the following:
 
 - First, install the Cygwin version of Mercury, and put it in your PATH.
