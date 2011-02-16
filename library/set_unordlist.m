@@ -361,45 +361,46 @@
 
 %--------------------------------------------------------------------------%
 
-:- type set_unordlist(T) ==   list(T).
+:- type set_unordlist(T)
+    --->    sul(list(T)).
 
-set_unordlist.list_to_set(List, List).
+set_unordlist.list_to_set(List, sul(List)).
 
-set_unordlist.from_list(List) = List.
+set_unordlist.from_list(List) = sul(List).
 
-set_unordlist.sorted_list_to_set(List, List).
+set_unordlist.sorted_list_to_set(List, sul(List)).
 
-set_unordlist.from_sorted_list(List) = List.
+set_unordlist.from_sorted_list(List) = sul(List).
 
-set_unordlist.to_sorted_list(Set, List) :-
+set_unordlist.to_sorted_list(sul(Set), List) :-
     list.sort_and_remove_dups(Set, List).
 
-set_unordlist.insert_list(Set0, List, Set) :-
+set_unordlist.insert_list(sul(Set0), List, sul(Set)) :-
     list.append(List, Set0, Set).
 
-set_unordlist.insert(S0, E, [E | S0]).
+set_unordlist.insert(sul(S0), E, sul([E | S0])).
 
-set_unordlist.init([]).
+set_unordlist.init(sul([])).
 
-set_unordlist.singleton_set([X], X).
+set_unordlist.singleton_set(sul([X]), X).
 
 set_unordlist.equal(SetA, SetB) :-
     set_unordlist.subset(SetA, SetB),
     set_unordlist.subset(SetB, SetA).
 
-set_unordlist.empty([]).
+set_unordlist.empty(sul([])).
 
-set_unordlist.non_empty([_ | _]).
+set_unordlist.non_empty(sul([_ | _])).
 
-set_unordlist.subset([], _).
-set_unordlist.subset([E | S0], S1) :-
+set_unordlist.subset(sul([]), _).
+set_unordlist.subset(sul([E | S0]), S1) :-
     set_unordlist.member(E, S1),
-    set_unordlist.subset(S0, S1).
+    set_unordlist.subset(sul(S0), S1).
 
 set_unordlist.superset(S0, S1) :-
     set_unordlist.subset(S1, S0).
 
-set_unordlist.member(E, S) :-
+set_unordlist.member(E, sul(S)) :-
     list.member(E, S).
 
 set_unordlist.is_member(E, S, R) :-
@@ -417,7 +418,7 @@ set_unordlist.delete_list(S0, [X | Xs], S) :-
     set_unordlist.delete(S0, X, S1),
     set_unordlist.delete_list(S1, Xs, S).
 
-set_unordlist.delete(S0, E, S) :-
+set_unordlist.delete(sul(S0), E, sul(S)) :-
     list.delete_all(S0, E, S).
 
 set_unordlist.remove_list(S, [], S).
@@ -425,23 +426,23 @@ set_unordlist.remove_list(S0, [X | Xs], S) :-
     set_unordlist.remove(S0, X, S1),
     set_unordlist.remove_list(S1, Xs, S).
 
-set_unordlist.remove(S0, E, S) :-
+set_unordlist.remove(sul(S0), E, sul(S)) :-
     list.member(E, S0),
-    set_unordlist.delete(S0, E, S).
+    set_unordlist.delete(sul(S0), E, sul(S)).
 
-set_unordlist.remove_least(Set0, E, Set) :-
-    Set0 = [_ | _],   % fail early on an empty set
+set_unordlist.remove_least(Set0, E, sul(Set)) :-
+    Set0 = sul([_ | _]),   % fail early on an empty set
     set_unordlist.to_sorted_list(Set0, [E | Set]).
 
-set_unordlist.union(Set0, Set1, Set) :-
+set_unordlist.union(sul(Set0), sul(Set1), sul(Set)) :-
     list.append(Set1, Set0, Set).
 
 set_unordlist.union_list(LS) = S :-
-    set_unordlist.power_union(LS, S).
+    set_unordlist.power_union(sul(LS), S).
 
-set_unordlist.power_union(PS, S) :-
+set_unordlist.power_union(sul(PS), sul(S)) :-
     set_unordlist.init(S0),
-    set_unordlist.power_union_2(PS, S0, S1),
+    set_unordlist.power_union_2(PS, S0, sul(S1)),
     list.sort_and_remove_dups(S1, S).
 
 :- pred set_unordlist.power_union_2(list(set_unordlist(T))::in,
@@ -452,11 +453,11 @@ set_unordlist.power_union_2([T | Ts], !S) :-
     set_unordlist.union(!.S, T, !:S),
     set_unordlist.power_union_2(Ts, !S).
 
-set_unordlist.intersect(S0, S1, S) :-
+set_unordlist.intersect(sul(S0), sul(S1), sul(S)) :-
     set_unordlist.intersect_2(S0, S1, [], S).
 
-:- pred set_unordlist.intersect_2(set_unordlist(T)::in, set_unordlist(T)::in,
-    set_unordlist(T)::in, set_unordlist(T)::out) is det.
+:- pred set_unordlist.intersect_2(list(T)::in, list(T)::in,
+    list(T)::in, list(T)::out) is det.
 
 set_unordlist.intersect_2([], _, S, S).
 set_unordlist.intersect_2([E | S0], S1, S2, S) :-
@@ -467,19 +468,19 @@ set_unordlist.intersect_2([E | S0], S1, S2, S) :-
     ),
     set_unordlist.intersect_2(S0, S1, S3, S).
 
-set_unordlist.power_intersect([], []).
-set_unordlist.power_intersect([S0 | Ss], S) :-
+set_unordlist.power_intersect(sul([]), sul([])).
+set_unordlist.power_intersect(sul([S0 | Ss]), S) :-
     (
         Ss = [],
         S = S0
     ;
         Ss = [_ | _],
-        set_unordlist.power_intersect(Ss, S1),
+        set_unordlist.power_intersect(sul(Ss), S1),
         set_unordlist.intersect(S1, S0, S)
     ).
 
 set_unordlist.intersect_list(Sets) =
-    set_unordlist.power_intersect(Sets).
+    set_unordlist.power_intersect(sul(Sets)).
 
 %--------------------------------------------------------------------------%
 
@@ -489,17 +490,17 @@ set_unordlist.difference(A, B, C) :-
 :- pred set_unordlist.difference_2(set_unordlist(T)::in, set_unordlist(T)::in,
     set_unordlist(T)::out) is det.
 
-set_unordlist.difference_2([], C, C).
-set_unordlist.difference_2([E | Es], A, C) :-
+set_unordlist.difference_2(sul([]), C, C).
+set_unordlist.difference_2(sul([E | Es]), A, C) :-
     set_unordlist.delete(A, E, B),
-    set_unordlist.difference_2(Es, B, C).
+    set_unordlist.difference_2(sul(Es), B, C).
 
 %-----------------------------------------------------------------------------%
 
 set_unordlist.count(Set) = Count :-
     set_unordlist.count(Set, Count).
 
-set_unordlist.count(Set, Count) :-
+set_unordlist.count(sul(Set), Count) :-
     list.remove_dups(Set, Elems),
     list.length(Elems, Count).    
 
@@ -581,13 +582,13 @@ set_unordlist.filter_map(PF, S1) = S2 :-
     S2 = set_unordlist.list_to_set(list.filter_map(PF,
         set_unordlist.to_sorted_list(S1))).
 
-set_unordlist.divide(Pred, Set, RevTruePart, RevFalsePart) :-
+set_unordlist.divide(Pred, sul(Set), sul(RevTruePart), sul(RevFalsePart)) :-
     set_unordlist.divide_2(Pred, Set, [], RevTruePart, [], RevFalsePart).
 
 :- pred set_unordlist.divide_2(pred(T1)::in(pred(in) is semidet),
-    set_unordlist(T1)::in,
-    set_unordlist(T1)::in, set_unordlist(T1)::out,
-    set_unordlist(T1)::in, set_unordlist(T1)::out) is det.
+    list(T1)::in,
+    list(T1)::in, list(T1)::out,
+    list(T1)::in, list(T1)::out) is det.
 
 set_unordlist.divide_2(_Pred, [], !RevTrue, !RevFalse).
 set_unordlist.divide_2(Pred, [H | T], !RevTrue, !RevFalse) :-

@@ -381,7 +381,10 @@
 
 :- interface.
 
+:- import_module set_ordlist.
 :- import_module term.  % for var/1.
+
+:- type set(T) ==   set_ordlist(T).
 
 :- pragma type_spec(set.list_to_set/2, T = var(_)).
 :- pragma type_spec(set.list_to_set/1, T = var(_)).
@@ -408,10 +411,6 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-
-:- import_module set_ordlist.
-
-:- type set(T) ==   set_ordlist(T).
 
 set.list_to_set(List, Set) :-
     set_ordlist.list_to_set(List, Set).
