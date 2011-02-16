@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999-2010 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -381,7 +381,10 @@
 
 :- interface.
 
+:- import_module set_ordlist.
 :- import_module term.  % for var/1.
+
+:- type set(T) ==   set_ordlist(T).
 
 :- pragma type_spec(set.list_to_set/2, T = var(_)).
 :- pragma type_spec(set.list_to_set/1, T = var(_)).
@@ -408,10 +411,6 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-
-:- import_module set_ordlist.
-
-:- type set(T) ==   set_ordlist(T).
 
 set.list_to_set(List, Set) :-
     set_ordlist.list_to_set(List, Set).

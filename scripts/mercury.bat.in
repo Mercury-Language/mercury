@@ -1,7 +1,7 @@
 @echo off
 rem @configure_input@
 rem ---------------------------------------------------------------------------
-rem Copyright (C) 1994-1998, 2000-2001, 2003, 2005 The University of Melbourne.
+rem Copyright (C) 1994-1998, 2000-2001, 2003, 2005, 2011 The University of Melbourne.
 rem This file may only be copied under the terms of the GNU General
 rem Public License - see the file COPYING in the Mercury distribution.
 rem ---------------------------------------------------------------------------
@@ -14,18 +14,13 @@ rem Environment variables:
 rem MERCURY_COMPILER, MERCURY_CONFIG_DIR.
 rem ---------------------------------------------------------------------------
 rem This is a Windows batch file version of the `mmc' Bourne shell script.
-rem The idea is to eventually avoid the need to use Cygwin.
-rem XXX Note that currently Cygwin is still required:
-rem	(1) For installation (`configure' and `make install').
-rem	    This would be easy enough to avoid; if we're willing to hard-code
-rem	    the installation path, we could easily package up the installation
-rem         in a WinZip file or something similar.
+rem (We don't use that name because it conflicts with that of the Microsoft
+rem Management Console.)
 rem ---------------------------------------------------------------------------
 
-rem On Windows 98 an unset variable is treated as if it is set to ""
-if "%MERCURY_CONFIG_DIR%"=="" goto :config_dir_not_set
+rem Don't export any local environment changes.
+setlocal
 
-rem On Windows XP an unset variable is not substituted.
 if "%MERCURY_CONFIG_DIR%"=="^%MERCURY_CONFIG_DIR^%" goto :config_dir_not_set
 
 goto :config_dir_set
@@ -48,55 +43,4 @@ set MERCURY_CONFIG_DIR="@CONFIG_LIBDIR@"
 if "%MERCURY_COMPILER%"=="" set MERCURY_COMPILER="@PREFIX@\bin\mercury_compile"
 if "%MERCURY_COMPILER%"=="^%MERCURY_COMPILER^%" set MERCURY_COMPILER="@PREFIX@\bin\mercury_compile"
 
-rem There is no equivalent of "$@" available on all Windows platforms.
-rem (Windows XP has `%*').
-
-set v1=%1
-set v2=%2
-set v3=%3
-set v4=%4
-set v5=%5
-set v6=%6
-set v7=%7
-set v8=%8
-set v9=%9
-shift
-shift
-shift
-shift
-shift
-shift
-shift
-shift
-shift
-shift
-set v10=%0
-set v11=%1
-set v12=%2
-set v13=%3
-set v14=%4
-set v15=%5
-set v16=%6
-set v17=%7
-set v18=%8
-set v19=%9
-shift
-shift
-shift
-shift
-shift
-shift
-shift
-shift
-shift
-shift
-
-if "%9"=="" goto :exec
-
-echo mercury.bat: too many arguments (maximum 28)
-goto :end
-
-:exec
-%MERCURY_COMPILER% %v1% %v2% %v3% %v4% %v5% %v6% %v7% %v8% %v9% %v10% %v11% %v12% %v13% %v14% %v15% %v16% %v17% %v18% %v19% %0 %1 %2 %3 %4 %5 %6 %7 %8
-
-:end
+%MERCURY_COMPILER% %*
