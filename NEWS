@@ -1,11 +1,25 @@
-NEWS since Mercury 11.01
-------------------------
-
-* There are no changes yet.
-
-
 NEWS for Mercury 11.01-beta
 ---------------------------
+
+Upcoming changes to the Mercury standard library:
+
+* In the next release after 11.01 we intend to change the argument order of
+  many of the predicates in the standard library so as to make them more
+  conducive to the use of state variable notation.
+
+  For example, map.insert/4 will be changed from
+      
+     map.insert(map(K, V)::in, K::in, V::in, map(K, V)::out) is semidet.
+
+  to
+
+     map.insert(K::in, V::in, map(K, V)::in, map(K, V)::out) is semidet.
+
+  As part of this change, the sv* modules will be deprecated; they will
+  be removed from the library in a later release.
+
+  Note that none of these upcoming changes affect the 11.01 release.
+
 
 HIGHLIGHTS
 ==========
