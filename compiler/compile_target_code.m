@@ -2404,8 +2404,17 @@ post_link_make_symlink_or_copy(ErrorStream, LinkTargetType, ModuleName,
             io.set_output_stream(ErrorStream, OutputStream, !IO),
             % Remove the target of the symlink/copy in case it already exists.
             io.remove_file_recursively(UserDirFileName, _, !IO),
-            make_symlink_or_copy_file(Globals, OutputFileName, UserDirFileName,
-                Succeeded, !IO),
+
+            % Erlang "archives" are just directories of .beam files, so we need
+            % to copy them as directories rather than files (on systems on which
+            % symbolic links are not available).
+            ( if LinkTargetType = erlang_archive then
+                make_symlink_or_copy_dir(Globals, OutputFileName,
+                    UserDirFileName, Succeeded, !IO)
+              else
+                make_symlink_or_copy_file(Globals, OutputFileName,
+                    UserDirFileName, Succeeded, !IO)
+            ),
             io.set_output_stream(OutputStream, _, !IO),
             MadeSymlinkOrCopy = yes
         )

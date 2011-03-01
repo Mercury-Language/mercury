@@ -69,6 +69,11 @@
 :- pred make_symlink_or_copy_file(globals::in, file_name::in, file_name::in,
     bool::out, io::di, io::uo) is det.
 
+    % As above, but for when LinkTarget is a directory rather than a file.
+    %
+:- pred make_symlink_or_copy_dir(globals::in, file_name::in, file_name::in,
+    bool::out, io::di, io::uo) is det.
+
 %-----------------------------------------------------------------------------%
 
     % touch_interface_datestamp(Globals, ModuleName, Ext, !IO):
@@ -399,6 +404,19 @@ copy_file(Globals, Source, Destination, Res, !IO) :-
         )
     ).
 
+:- pred copy_dir(globals::in, dir_name::in, dir_name::in, bool::out,
+    io::di, io::uo) is det.
+
+copy_dir(Globals, Source, Destination, Succeeded, !IO) :-
+    globals.lookup_string_option(Globals, install_command, InstallCommand),
+    globals.lookup_string_option(Globals, install_command_dir_option,
+        InstallCommandDirOption),
+    Command = string.join_list("   ", list.map(quote_arg,
+        [InstallCommand, InstallCommandDirOption, Source, Destination])),
+    io.output_stream(OutputStream, !IO),
+    invoke_system_command(Globals, OutputStream, cmd_verbose, Command,
+        Succeeded, !IO).
+
 maybe_make_symlink(Globals, LinkTarget, LinkName, Result, !IO) :-
     globals.lookup_bool_option(Globals, use_symlinks, UseSymLinks),
     (
@@ -441,6 +459,49 @@ make_symlink_or_copy_file(Globals, SourceFileName, DestinationFileName,
         io.write_string(io.error_message(Error), !IO),
         io.nl(!IO),
         io.flush_output(!IO)
+    ).
+
+make_symlink_or_copy_dir(Globals, SourceDirName, DestinationDirName,
+        Succeeded, !IO) :-
+    globals.lookup_bool_option(Globals, use_symlinks, UseSymLinks),
+    (
+        UseSymLinks = yes,
+        io.make_symlink(SourceDirName, DestinationDirName, Result, !IO),
+        (
+            Result = ok,
+            Succeeded = yes
+        ;
+            Result = error(Error),
+            Succeeded = no,
+            io.progname_base("mercury_compile", ProgName, !IO),
+            io.write_string(ProgName, !IO),
+            io.write_string(": error linking", !IO),
+            io.write_string(" `", !IO),
+            io.write_string(SourceDirName, !IO),
+            io.write_string("' to `", !IO),
+            io.write_string(DestinationDirName, !IO),
+            io.write_string("': ", !IO),
+            io.write_string(io.error_message(Error), !IO),
+            io.nl(!IO),
+            io.flush_output(!IO)
+        )
+    ;
+        UseSymLinks = no,
+        copy_dir(Globals, SourceDirName, DestinationDirName, Succeeded, !IO),
+        (
+            Succeeded = yes
+        ;
+            Succeeded = no, 
+            io.progname_base("mercury_compile", ProgName, !IO),
+            io.write_string(ProgName, !IO),
+            io.write_string(": error copying directory", !IO),
+            io.write_string(" `", !IO),
+            io.write_string(SourceDirName, !IO),
+            io.write_string("' to `", !IO),
+            io.write_string(DestinationDirName, !IO),
+            io.nl(!IO),
+            io.flush_output(!IO)
+        )
     ).
 
 %-----------------------------------------------------------------------------%
