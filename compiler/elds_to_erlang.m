@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2010 The University of Melbourne.
+% Copyright (C) 2007-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -737,7 +737,7 @@ output_term(ModuleInfo, VarSet, Indent, Term, !IO) :-
         space(!IO)
     ;
         Term = elds_float(Float),
-        io.write_float(Float, !IO),
+        output_float(Float, !IO),
         space(!IO)
     ;
         Term = elds_binary(String),
@@ -785,6 +785,37 @@ output_term(ModuleInfo, VarSet, Indent, Term, !IO) :-
         Term = elds_fixed_name_var(Name),
         output_var_string(Name, !IO)
     ).
+
+:- pred output_float(float::in, io::di, io::uo) is det.
+
+output_float(Float, !IO) :-
+    S = string.from_float(Float),
+    ( digit_then_e(S, no, 0, Pos) ->
+        io.write_string(string.substring(S, 0, Pos), !IO),
+        io.write_string(".0", !IO),
+        io.write_string(string.substring(S, Pos, length(S)), !IO)
+    ;
+        io.write_string(S, !IO)
+    ).
+
+:- pred digit_then_e(string::in, bool::in, int::in, int::out) is semidet.
+
+digit_then_e(String, PrevDigit, Pos0, Pos) :-
+    string.index(String, Pos0, Char),
+    Char \= ('.'),
+    ( is_e(Char) ->
+        PrevDigit = yes,
+        Pos = Pos0
+    ; is_digit(Char) ->
+        digit_then_e(String, yes, Pos0 + 1, Pos)
+    ;
+        digit_then_e(String, no, Pos0 + 1, Pos)
+    ).
+
+:- pred is_e(char::in) is semidet.
+
+is_e('e').
+is_e('E').
 
 :- pred output_tuple(module_info::in, prog_varset::in, indent::in,
     list(elds_expr)::in, io::di, io::uo) is det.
