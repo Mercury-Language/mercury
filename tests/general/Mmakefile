@@ -102,7 +102,9 @@ endif
 
 # dnf.m does not work in non-gc grades, because it uses `pragma memo'
 # (i.e. tabling) and tabling is not yet implemented for non-gc grades.
-NOT_WORKING =	dnf
+# The problem for state_var_trace is lack of needed reordering by the
+# unique mode system.
+NOT_WORKING =	dnf state_var_trace
 
 SUBDIRS = accumulator string_format
 TESTS = $(sort $(PROGS))
