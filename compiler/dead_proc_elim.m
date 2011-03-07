@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -617,12 +617,12 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
         ;
             Unification = complicated_unify(_, _, _),
             % These should have been replaced with calls by now.
-            unexpected(this_file, "dead_proc_examine_goal: complicated_unify")
+            unexpected($module, $pred, "complicated_unify")
         )
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "dead_proc_examine_goal: shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1053,7 +1053,14 @@ dead_pred_elim_analyze(!DeadInfo) :-
 :- pred dead_pred_elim_process_clause(clause::in,
     pred_elim_info::in, pred_elim_info::out) is det.
 
-dead_pred_elim_process_clause(clause(_, Goal, _, _), !DeadInfo) :-
+dead_pred_elim_process_clause(Clause, !DeadInfo) :-
+    pre_modecheck_examine_goal(Clause ^ clause_body, !DeadInfo).
+
+:- pred pre_modecheck_examine_case(case::in,
+    pred_elim_info::in, pred_elim_info::out) is det.
+
+pre_modecheck_examine_case(Case, !DeadInfo) :-
+    Case = case(_, _, Goal),
     pre_modecheck_examine_goal(Goal, !DeadInfo).
 
 :- pred pre_modecheck_examine_goal(hlds_goal::in,
@@ -1066,62 +1073,74 @@ pre_modecheck_examine_goal(Goal, !DeadInfo) :-
 :- pred pre_modecheck_examine_goal_expr(hlds_goal_expr::in,
     pred_elim_info::in, pred_elim_info::out) is det.
 
-pre_modecheck_examine_goal_expr(conj(_ConjType, Goals), !DeadInfo) :-
-    list.foldl(pre_modecheck_examine_goal, Goals, !DeadInfo).
-pre_modecheck_examine_goal_expr(disj(Goals), !DeadInfo) :-
-    list.foldl(pre_modecheck_examine_goal, Goals, !DeadInfo).
-pre_modecheck_examine_goal_expr(if_then_else(_, If, Then, Else), !DeadInfo) :-
-    list.foldl(pre_modecheck_examine_goal, [If, Then, Else], !DeadInfo).
-pre_modecheck_examine_goal_expr(switch(_, _, Cases), !DeadInfo) :-
-    ExamineCase = (pred(Case::in, Info0::in, Info::out) is det :-
-        Case = case(_, _, Goal),
-        pre_modecheck_examine_goal(Goal, Info0, Info)
-    ),
-    list.foldl(ExamineCase, Cases, !DeadInfo).
-pre_modecheck_examine_goal_expr(generic_call(_,_,_,_), !DeadInfo).
-pre_modecheck_examine_goal_expr(negation(SubGoal), !DeadInfo) :-
-    pre_modecheck_examine_goal(SubGoal, !DeadInfo).
-pre_modecheck_examine_goal_expr(scope(_, SubGoal), !DeadInfo) :-
-    % The invariants that would allow us to optimize from_ground_term_construct
-    % scopes haven't been established yet, which is why we must always scan
-    % SubGoal.
-    pre_modecheck_examine_goal(SubGoal, !DeadInfo).
-pre_modecheck_examine_goal_expr(plain_call(_, _, _, _, _, PredName),
-        !DeadInfo) :-
-    dead_pred_info_add_pred_name(PredName, !DeadInfo).
-pre_modecheck_examine_goal_expr(call_foreign_proc(_, _, _, _, _, _, _),
-        !DeadInfo).
-pre_modecheck_examine_goal_expr(unify(_, Rhs, _, _, _), !DeadInfo) :-
-    pre_modecheck_examine_unify_rhs(Rhs, !DeadInfo).
-pre_modecheck_examine_goal_expr(shorthand(ShortHand), !DeadInfo) :-
+pre_modecheck_examine_goal_expr(GoalExpr, !DeadInfo) :-
     (
-        ShortHand = atomic_goal(_GoalType, _Outer, _Inner, _MaybeOutputVars,
-            MainGoal, OrElseGoals, _OrElseInners),
-        pre_modecheck_examine_goal(MainGoal, !DeadInfo),
-        list.foldl(pre_modecheck_examine_goal, OrElseGoals, !DeadInfo)
+        GoalExpr = conj(_ConjType, Goals),
+        list.foldl(pre_modecheck_examine_goal, Goals, !DeadInfo)
     ;
-        ShortHand = try_goal(_MaybeIO, _ResultVar, SubGoal),
+        GoalExpr = disj(Goals),
+        list.foldl(pre_modecheck_examine_goal, Goals, !DeadInfo)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        pre_modecheck_examine_goal(Cond, !DeadInfo),
+        pre_modecheck_examine_goal(Then, !DeadInfo),
+        pre_modecheck_examine_goal(Else, !DeadInfo)
+    ;
+        GoalExpr = switch(_, _, Cases),
+        list.foldl(pre_modecheck_examine_case, Cases, !DeadInfo)
+    ;
+        GoalExpr = negation(SubGoal),
         pre_modecheck_examine_goal(SubGoal, !DeadInfo)
     ;
-        ShortHand = bi_implication(_, _),
-        % These should have been expanded out by now.
-        unexpected(this_file,
-            "pre_modecheck_examine_goal_expr: unexpected bi_implication")
+        GoalExpr = scope(_, SubGoal),
+        % The invariants that would allow us to optimize
+        % from_ground_term_construct scopes haven't been established yet,
+        % which is why we must always scan SubGoal.
+        pre_modecheck_examine_goal(SubGoal, !DeadInfo)
+    ;
+        GoalExpr = plain_call(_, _, _, _, _, PredName),
+        dead_pred_info_add_pred_name(PredName, !DeadInfo)
+    ;
+        GoalExpr = generic_call(_, _, _, _)
+    ;
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+    ;
+        GoalExpr = unify(_, RHS, _, _, _),
+        pre_modecheck_examine_unify_rhs(RHS, !DeadInfo)
+    ;
+        GoalExpr = shorthand(ShortHand),
+        (
+            ShortHand = atomic_goal(_GoalType, _Outer, _Inner,
+                _MaybeOutputVars, MainGoal, OrElseGoals, _OrElseInners),
+            pre_modecheck_examine_goal(MainGoal, !DeadInfo),
+            list.foldl(pre_modecheck_examine_goal, OrElseGoals, !DeadInfo)
+        ;
+            ShortHand = try_goal(_MaybeIO, _ResultVar, SubGoal),
+            pre_modecheck_examine_goal(SubGoal, !DeadInfo)
+        ;
+            ShortHand = bi_implication(_, _),
+            % These should have been expanded out by now.
+            unexpected($module, $pred, "unexpected bi_implication")
+        )
     ).
 
 :- pred pre_modecheck_examine_unify_rhs(unify_rhs::in,
     pred_elim_info::in, pred_elim_info::out) is det.
 
-pre_modecheck_examine_unify_rhs(rhs_var(_), !DeadInfo).
-pre_modecheck_examine_unify_rhs(rhs_functor(Functor, _, _), !DeadInfo) :-
-    ( Functor = cons(Name, _, _) ->
-        dead_pred_info_add_pred_name(Name, !DeadInfo)
+pre_modecheck_examine_unify_rhs(RHS, !DeadInfo) :-
+    (
+        RHS = rhs_var(_)
     ;
-        true
+        RHS = rhs_functor(Functor, _, _),
+        ( Functor = cons(Name, _, _) ->
+            dead_pred_info_add_pred_name(Name, !DeadInfo)
+        ;
+            true
+        )
+    ;
+        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, Goal),
+        pre_modecheck_examine_goal(Goal, !DeadInfo)
     ).
-pre_modecheck_examine_unify_rhs(rhs_lambda_goal(_, _, _, _, _, _, _, _, Goal),
-        !DeadInfo) :-
-    pre_modecheck_examine_goal(Goal, !DeadInfo).
 
 :- pred dead_pred_info_add_pred_name(sym_name::in,
     pred_elim_info::in, pred_elim_info::out) is det.
@@ -1147,12 +1166,6 @@ dead_pred_info_add_pred_name(Name, !DeadInfo) :-
                 Needed, !.NeededNames)
         )
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "dead_proc_elim.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module dead_proc_elim.

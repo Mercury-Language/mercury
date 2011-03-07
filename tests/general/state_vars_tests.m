@@ -1,8 +1,9 @@
 %------------------------------------------------------------------------------%
+% vim: ft=mercury ff=unix ts=4 sw=4 et
+%------------------------------------------------------------------------------%
 % state_vars_tests.m
 % Ralph Becket <rafe@cs.mu.oz.au>
 % Wed Apr  3 14:19:02 EST 2002
-% vim: ft=mercury ff=unix ts=4 sw=4 et wm=0 tw=0
 %
 %------------------------------------------------------------------------------%
 
@@ -11,8 +12,6 @@
 :- interface.
 
 :- import_module io.
-
-
 
 :- pred main(io::di, io::uo) is cc_multi.
 
@@ -27,8 +26,8 @@
 
 main(!IO) :-
     unsorted_solutions(test, S),
-    io__print(list__reverse(S) `with_type` list(int), !IO),
-    io__nl(!IO).
+    io.print(list.reverse(S) `with_type` list(int), !IO),
+    io.nl(!IO).
 
 %------------------------------------------------------------------------------%
 
@@ -217,12 +216,13 @@ test(X) :-
         X   = !.A
     ).
 
-test(X) :-
-     X =
-        ( if   ( some [!A] !:A = 30 )
-          then !.A
-          else 0
-        ).
+% This use of state variables no longer considered valid.
+% test(X) :-
+%      X =
+%         ( if   ( some [!A] !:A = 30 )
+%           then !.A
+%           else 0
+%         ).
 
 test(X) :-
     ( if   ( some [!A] !:A = 31 )
@@ -236,13 +236,11 @@ test(X) :-
 
 add(N, X, X + N).
 
-
 :- pred t(int::in, int::out) is semidet.
 
 t(!X) :-
     !:X = !.X + 1,
     semidet_succeed.
-
 
 :- pred f(int::in, int::out) is semidet.
 
@@ -251,12 +249,10 @@ f(!X) :-
     !:X = !.X + 1,
     !.X = X0.
 
-
 :- func fn_a(int, int) = int.
 
 fn_a(N, !.X) = !:X :-
     !:X = !.X + N.
-
 
 :- func fn_b(int, int) = int.
 

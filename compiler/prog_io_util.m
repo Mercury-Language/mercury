@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -102,7 +102,8 @@
     %
 :- pred parse_vars_and_state_vars(term(T)::in, varset(T)::in,
     list(format_component)::in,
-    maybe3(list(var(T)), list(var(T)), list(var(T)))::out) is det.
+    maybe4(list(var(T)), list(var(T)), list(var(T)), list(var(T)))::out)
+    is det.
 
 :- pred parse_name_and_arity(module_name::in, term(T)::in,
     sym_name::out, arity::out) is semidet.
@@ -219,7 +220,7 @@
     %   :- pred p(T) where p(X) : sorted(X).
     % or
     %   :- type sorted_list(T) = list(T) where X : sorted(X).
-    %   :- pred p(sorted_list(T).
+    %   :- pred p(sorted_list(T)).
     % There is some code here to support that sort of thing, but
     % probably we would now need to use a different syntax, since
     % Mercury now uses `where' for different purposes (e.g. specifying
@@ -905,31 +906,33 @@ parse_vars(Term, VarSet, ContextPieces, MaybeVars) :-
             parse_vars(TailTerm, VarSet, ContextPieces, MaybeVarsTail),
             (
                 MaybeVarsTail = ok1(TailVars),
-                Vars = [HeadVar] ++ TailVars,
-                MaybeVars = ok1(Vars)
+                ( list.member(HeadVar, TailVars) ->
+                    generate_repeated_var_msg(ContextPieces, VarSet,
+                        HeadTerm, Spec),
+                    MaybeVars = error1([Spec])
+                ;
+                    Vars = [HeadVar | TailVars],
+                    MaybeVars = ok1(Vars)
+                )
             ;
                 MaybeVarsTail = error1(_),
                 MaybeVars = MaybeVarsTail
             )
         ;
             HeadTerm = functor(_, _, _),
-            TermStr = describe_error_term(VarSet, Term),
-            Pieces = ContextPieces ++ [lower_case_next_if_not_first,
-                words("Expected variable, not"),
-                words(TermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
+            generate_unexpected_term_message(ContextPieces, VarSet,
+                "variable", HeadTerm, Spec),
             MaybeVars = error1([Spec])
         )
     ;
-        TermStr = describe_error_term(VarSet, Term),
-        Pieces = ContextPieces ++ [lower_case_next_if_not_first,
-            words("Expected list of variables, not"),
-            words(TermStr), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        generate_unexpected_term_message(ContextPieces, VarSet,
+            "list of variables", Term, Spec),
         MaybeVars = error1([Spec])
     ).
+
+:- type ordinary_state_var(T)
+    --->    os_ordinary_var(var(T))
+    ;       os_state_var(var(T)).
 
 parse_quantifier_vars(Term, VarSet, ContextPieces, MaybeVars) :-
     ( Term = functor(atom("[]"), [], _) ->
@@ -937,102 +940,189 @@ parse_quantifier_vars(Term, VarSet, ContextPieces, MaybeVars) :-
     ; Term = functor(atom("[|]"), [HeadTerm, TailTerm], _) ->
         (
             (
-                HeadTerm = functor(atom("!"), [variable(SV, _)], _),
-                HeadVars = [],
-                HeadStateVars = [SV]
+                HeadTerm = variable(V0, _),
+                VarKind = os_ordinary_var(V0)
             ;
-                HeadTerm = variable(V, _),
-                HeadVars = [V],
-                HeadStateVars = []
+                HeadTerm = functor(atom("!"), [variable(SV0, _)], _),
+                VarKind = os_state_var(SV0)
             )
         ->
             parse_quantifier_vars(TailTerm, VarSet, ContextPieces,
                 MaybeVarsTail),
             (
                 MaybeVarsTail = ok2(TailVars, TailStateVars),
-                Vars = HeadVars ++ TailVars,
-                StateVars = HeadStateVars ++ TailStateVars,
-                MaybeVars = ok2(Vars, StateVars)
+                (
+                    VarKind = os_ordinary_var(V),
+                    ( list.member(V, TailVars) ->
+                        generate_repeated_var_msg(ContextPieces, VarSet,
+                            HeadTerm, Spec),
+                        MaybeVars = error2([Spec])
+                    ;
+                        Vars = [V | TailVars],
+                        MaybeVars = ok2(Vars, TailStateVars)
+                    )
+                ;
+                    VarKind = os_state_var(SV),
+                    ( list.member(SV, TailStateVars) ->
+                        generate_repeated_state_var_msg(ContextPieces, VarSet,
+                            HeadTerm, Spec),
+                        MaybeVars = error2([Spec])
+                    ;
+                        StateVars = [SV | TailStateVars],
+                        MaybeVars = ok2(TailVars, StateVars)
+                    )
+                )
             ;
                 MaybeVarsTail = error2(_),
                 MaybeVars = MaybeVarsTail
             )
         ;
-            TermStr = describe_error_term(VarSet, Term),
-            Pieces = ContextPieces ++ [lower_case_next_if_not_first,
-                words("Expected variable or state variable, not"),
-                words(TermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
+            generate_unexpected_term_message(ContextPieces, VarSet,
+                "variable or state variable", HeadTerm, Spec),
             MaybeVars = error2([Spec])
         )
     ;
-        TermStr = describe_error_term(VarSet, Term),
-        Pieces = ContextPieces ++ [lower_case_next_if_not_first,
-            words("Expected list of variables and/or state variables, not"),
-            words(TermStr), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
+        generate_unexpected_term_message(ContextPieces, VarSet,
+            "list of variables and/or state variables", Term, Spec),
         MaybeVars = error2([Spec])
     ).
 
+:- type ordinary_state_dot_colon_var(T)
+    --->    osdc_ordinary_var(var(T))
+    ;       osdc_state_var(var(T))
+    ;       osdc_dot_var(var(T))
+    ;       osdc_colon_var(var(T)).
+
 parse_vars_and_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
     ( Term = functor(atom("[]"), [], _) ->
-        MaybeVars = ok3([], [], [])
+        MaybeVars = ok4([], [], [], [])
     ; Term = functor(atom("[|]"), [HeadTerm, Tail], _) ->
         (
             (
-                HeadTerm = functor(atom("!"), [variable(SV, _)], _),
-                HeadVars = [],
-                HeadDotVars = [SV],
-                HeadColonVars = [SV]
+                HeadTerm = variable(V0, _),
+                VarKind = osdc_ordinary_var(V0)
             ;
-                HeadTerm = functor(atom("!."), [variable(SV, _)], _),
-                HeadVars = [],
-                HeadDotVars = [SV],
-                HeadColonVars = []
+                HeadTerm = functor(atom("!"), [variable(SV0, _)], _),
+                VarKind = osdc_state_var(SV0)
             ;
-                HeadTerm = functor(atom("!:"), [variable(SV, _)], _),
-                HeadVars = [],
-                HeadDotVars = [],
-                HeadColonVars = [SV]
+                HeadTerm = functor(atom("!."), [variable(SV0, _)], _),
+                VarKind = osdc_dot_var(SV0)
             ;
-                HeadTerm = variable(V, _),
-                HeadVars = [V],
-                HeadDotVars = [],
-                HeadColonVars = []
+                HeadTerm = functor(atom("!:"), [variable(SV0, _)], _),
+                VarKind = osdc_colon_var(SV0)
             )
         ->
             parse_vars_and_state_vars(Tail, VarSet, ContextPieces,
                 MaybeVarsTail),
             (
-                MaybeVarsTail = ok3(TailVars, TailDotVars, TailColonVars),
-                Vars = HeadVars ++ TailVars,
-                DotVars = HeadDotVars ++ TailDotVars,
-                ColonVars = HeadColonVars ++ TailColonVars,
-                MaybeVars = ok3(Vars, DotVars, ColonVars)
+                MaybeVarsTail = ok4(TailVars, TailStateVars,
+                    TailDotVars, TailColonVars),
+                (
+                    VarKind = osdc_ordinary_var(V),
+                    ( list.member(V, TailVars) ->
+                        generate_repeated_var_msg(ContextPieces, VarSet,
+                            HeadTerm, Spec),
+                        MaybeVars = error4([Spec])
+                    ;
+                        Vars = [V | TailVars],
+                        MaybeVars = ok4(Vars, TailStateVars,
+                            TailDotVars, TailColonVars)
+                    )
+                ;
+                    VarKind = osdc_state_var(SV),
+                    (
+                        ( list.member(SV, TailStateVars )
+                        ; list.member(SV, TailDotVars )
+                        ; list.member(SV, TailColonVars )
+                        )
+                    ->
+                        generate_repeated_var_msg(ContextPieces, VarSet,
+                            HeadTerm, Spec),
+                        MaybeVars = error4([Spec])
+                    ;
+                        StateVars = [SV | TailStateVars],
+                        MaybeVars = ok4(TailVars, StateVars,
+                            TailDotVars, TailColonVars)
+                    )
+                ;
+                    VarKind = osdc_dot_var(SV),
+                    (
+                        ( list.member(SV, TailStateVars )
+                        ; list.member(SV, TailDotVars )
+                        ; list.member(SV, TailColonVars )
+                        )
+                    ->
+                        generate_repeated_var_msg(ContextPieces, VarSet,
+                            HeadTerm, Spec),
+                        MaybeVars = error4([Spec])
+                    ;
+                        DotVars = [SV | TailDotVars],
+                        MaybeVars = ok4(TailVars, TailStateVars,
+                            DotVars, TailColonVars)
+                    )
+                ;
+                    VarKind = osdc_colon_var(SV),
+                    (
+                        ( list.member(SV, TailStateVars )
+                        ; list.member(SV, TailDotVars )
+                        ; list.member(SV, TailColonVars )
+                        )
+                    ->
+                        generate_repeated_var_msg(ContextPieces, VarSet,
+                            HeadTerm, Spec),
+                        MaybeVars = error4([Spec])
+                    ;
+                        ColonVars = [SV | TailColonVars],
+                        MaybeVars = ok4(TailVars, TailStateVars,
+                            TailDotVars, ColonVars)
+                    )
+                )
             ;
-                MaybeVarsTail = error3(_),
+                MaybeVarsTail = error4(_),
                 MaybeVars = MaybeVarsTail
             )
         ;
-            TermStr = describe_error_term(VarSet, Term),
-            Pieces = ContextPieces ++ [lower_case_next_if_not_first,
-                words("Expected variable or state variable, not"),
-                words(TermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
-            MaybeVars = error3([Spec])
+            generate_unexpected_term_message(ContextPieces, VarSet,
+                "variable or state variable", HeadTerm, Spec),
+            MaybeVars = error4([Spec])
         )
     ;
-        TermStr = describe_error_term(VarSet, Term),
-        Pieces = ContextPieces ++ [lower_case_next_if_not_first,
-            words("Expected list of variables and/or state variables, not"),
-            words(TermStr), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
-        MaybeVars = error3([Spec])
+        generate_unexpected_term_message(ContextPieces, VarSet,
+            "list of variables and/or state variables", Term, Spec),
+        MaybeVars = error4([Spec])
     ).
+
+:- pred generate_repeated_var_msg(list(format_component)::in,
+    varset(T)::in, term(T)::in, error_spec::out) is det.
+
+generate_repeated_var_msg(ContextPieces, VarSet, Term, Spec) :-
+    TermStr = describe_error_term(VarSet, Term),
+    Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+        words("Repeated variable"), words(TermStr), suffix("."), nl],
+    Spec = error_spec(severity_error, phase_term_to_parse_tree,
+        [simple_msg(get_term_context(Term), [always(Pieces)])]).
+
+:- pred generate_repeated_state_var_msg(list(format_component)::in,
+    varset(T)::in, term(T)::in, error_spec::out) is det.
+
+generate_repeated_state_var_msg(ContextPieces, VarSet, Term, Spec) :-
+    TermStr = describe_error_term(VarSet, Term),
+    Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+        words("Repeated state variable"), words(TermStr), suffix("."), nl],
+    Spec = error_spec(severity_error, phase_term_to_parse_tree,
+        [simple_msg(get_term_context(Term), [always(Pieces)])]).
+
+:- pred generate_unexpected_term_message(list(format_component)::in,
+    varset(T)::in, string::in, term(T)::in, error_spec::out) is det.
+
+generate_unexpected_term_message(ContextPieces, VarSet, Expected, Term,
+        Spec) :-
+    TermStr = describe_error_term(VarSet, Term),
+    Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+        words("Expected"), words(Expected), suffix(","),
+        words("not"), words(TermStr), suffix("."), nl],
+    Spec = error_spec(severity_error, phase_term_to_parse_tree,
+        [simple_msg(get_term_context(Term), [always(Pieces)])]).
 
 %-----------------------------------------------------------------------------%
 

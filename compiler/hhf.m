@@ -154,7 +154,7 @@ convert_clauses_info_to_hhf(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
     %   Info1 = Info0
     %;
     %   Simple = no,
-        list.map_foldl(process_clause(HeadVars),
+        list.map_foldl(convert_clause_to_hhf(HeadVars),
             Clauses0, Clauses, Info0, Info1)
     ),
 
@@ -189,15 +189,15 @@ convert_clauses_info_to_hhf(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
                 hhfi_vartypes   :: vartypes
             ).
 
-:- pred process_clause(list(prog_var)::in, clause::in, clause::out,
+:- pred convert_clause_to_hhf(list(prog_var)::in, clause::in, clause::out,
     hhf_info::in, hhf_info::out) is det.
 
-process_clause(_HeadVars, clause(ProcIds, Goal0, Lang, Context),
-        clause(ProcIds, Goal, Lang, Context), !HI) :-
+convert_clause_to_hhf(_HeadVars, Clause0, Clause, !HI) :-
+    Goal0 = Clause0 ^ clause_body,
     Goal0 = hlds_goal(_, GoalInfo0),
     NonLocals = goal_info_get_nonlocals(GoalInfo0),
-
-    process_goal(NonLocals, Goal0, Goal, !HI).
+    convert_goal_to_hhf(NonLocals, Goal0, Goal, !HI),
+    Clause = Clause0 ^ clause_body := Goal.
 
     % XXX We probably need to requantify, but doing so stuffs up the
     % inst_graph.
@@ -209,12 +209,12 @@ process_clause(_HeadVars, clause(ProcIds, Goal0, Lang, Context),
     % !HI ^ hhfi_varset := VarSet,
     % !HI ^ hhfi_vartypes := VarTypes.
 
-:- pred process_goal(set(prog_var)::in, hlds_goal::in, hlds_goal::out,
+:- pred convert_goal_to_hhf(set(prog_var)::in, hlds_goal::in, hlds_goal::out,
     hhf_info::in, hhf_info::out) is det.
 
-process_goal(NonLocals, Goal0, Goal, !HI) :-
+convert_goal_to_hhf(NonLocals, Goal0, Goal, !HI) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
-    process_goal_expr(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI),
+    convert_goal_expr_to_hhf(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred goal_use_own_nonlocals(hlds_goal::in, hlds_goal::out,
@@ -223,18 +223,18 @@ process_goal(NonLocals, Goal0, Goal, !HI) :-
 goal_use_own_nonlocals(Goal0, Goal, !HI) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
-    process_goal_expr(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI),
+    convert_goal_expr_to_hhf(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-:- pred process_goal_expr(set(prog_var)::in, hlds_goal_info::in,
+:- pred convert_goal_expr_to_hhf(set(prog_var)::in, hlds_goal_info::in,
     hlds_goal_expr::in, hlds_goal_expr::out, hhf_info::in, hhf_info::out)
     is det.
 
-process_goal_expr(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI) :-
+convert_goal_expr_to_hhf(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI) :-
     (
         GoalExpr0 = unify(Var, RHS, Mode, Unif, Context),
-        process_unify(RHS, NonLocals, GoalInfo, Var, Mode, Unif, Context,
-            GoalExpr, !HI)
+        convert_unify_to_hhf(RHS, NonLocals, GoalInfo, Var, Mode, Unif,
+            Context, GoalExpr, !HI)
     ;
         GoalExpr0 = plain_call(_, _, _, _, _, _),
         GoalExpr = GoalExpr0
@@ -246,7 +246,7 @@ process_goal_expr(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI) :-
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = conj(ConjType, Goals0),
-        list.map_foldl(process_goal(NonLocals), Goals0, Goals1, !HI),
+        list.map_foldl(convert_goal_to_hhf(NonLocals), Goals0, Goals1, !HI),
         (
             ConjType = plain_conj,
             flatten_conj(Goals1, Goals)
@@ -261,69 +261,76 @@ process_goal_expr(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI) :-
         GoalExpr = disj(Goals)
     ;
         GoalExpr0 = switch(_, _, _),
-        unexpected(this_file, "hhf_goal_expr: found switch")
+        unexpected($module, $pred, "switch")
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        process_goal(NonLocals, SubGoal0, SubGoal, !HI),
+        convert_goal_to_hhf(NonLocals, SubGoal0, SubGoal, !HI),
         GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = negation(SubGoal0),
-        process_goal(NonLocals, SubGoal0, SubGoal, !HI),
+        convert_goal_to_hhf(NonLocals, SubGoal0, SubGoal, !HI),
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = if_then_else(Vs, Cond0, Then0, Else0),
-        process_goal(NonLocals, Cond0, Cond, !HI),
+        convert_goal_to_hhf(NonLocals, Cond0, Cond, !HI),
         Then0 = hlds_goal(ThenExpr0, ThenInfo),
         ThenNonLocals = goal_info_get_nonlocals(ThenInfo),
-        process_goal_expr(ThenNonLocals, ThenInfo, ThenExpr0, ThenExpr, !HI),
+        convert_goal_expr_to_hhf(ThenNonLocals, ThenInfo, ThenExpr0, ThenExpr,
+            !HI),
         Then = hlds_goal(ThenExpr, ThenInfo),
         Else0 = hlds_goal(ElseExpr0, ElseInfo),
         ElseNonLocals = goal_info_get_nonlocals(ElseInfo),
-        process_goal_expr(ElseNonLocals, ElseInfo, ElseExpr0, ElseExpr, !HI),
+        convert_goal_expr_to_hhf(ElseNonLocals, ElseInfo, ElseExpr0, ElseExpr,
+            !HI),
         Else = hlds_goal(ElseExpr, ElseInfo),
         GoalExpr = if_then_else(Vs, Cond, Then, Else)
     ;
         GoalExpr0 = shorthand(_),
-        unexpected(this_file, "hhf_goal_expr: found shorthand")
+        unexpected($module, $pred, "shorthand")
     ).
 
-:- pred process_unify(unify_rhs::in, set(prog_var)::in, hlds_goal_info::in,
-    prog_var::in, unify_mode::in, unification::in, unify_context::in,
-    hlds_goal_expr::out, hhf_info::in, hhf_info::out) is det.
+:- pred convert_unify_to_hhf(unify_rhs::in, set(prog_var)::in,
+    hlds_goal_info::in, prog_var::in, unify_mode::in, unification::in,
+    unify_context::in, hlds_goal_expr::out, hhf_info::in, hhf_info::out)
+    is det.
 
-process_unify(rhs_var(Y), _, _, X, Mode, Unif, Context, GoalExpr, !HI) :-
-    GoalExpr = unify(X, rhs_var(Y), Mode, Unif, Context).
-process_unify(rhs_lambda_goal(A,B,C,D,E,F,G,H,LambdaGoal0), NonLocals, _, X,
-        Mode, Unif, Context, GoalExpr, !HI) :-
-    process_goal(NonLocals, LambdaGoal0, LambdaGoal, !HI),
-    GoalExpr = unify(X, rhs_lambda_goal(A,B,C,D,E,F,G,H,LambdaGoal), Mode,
-        Unif, Context).
-process_unify(rhs_functor(ConsId0, IsExistConstruct, ArgsA), NonLocals,
-        GoalInfo0, X, Mode, Unif, Context, GoalExpr, !HI) :-
-    qualify_cons_id(ArgsA, ConsId0, _, ConsId),
-    InstGraph0 = !.HI ^ hhfi_inst_graph,
-    map.lookup(InstGraph0, X, node(Functors0, MaybeParent)),
-    ( map.search(Functors0, ConsId, ArgsB) ->
-        make_unifications(ArgsA, ArgsB, GoalInfo0, Mode, Unif, Context,
-            Unifications),
-        Args = ArgsB
+convert_unify_to_hhf(RHS0, NonLocals, GoalInfo0, X, Mode, Unif, Context,
+        GoalExpr, !HI) :-
+    (
+        RHS0 = rhs_lambda_goal(A, B, C, D, E, F, G, H, LambdaGoal0),
+        convert_goal_to_hhf(NonLocals, LambdaGoal0, LambdaGoal, !HI),
+        RHS = rhs_lambda_goal(A, B, C, D, E, F, G, H, LambdaGoal),
+        GoalExpr = unify(X, RHS, Mode, Unif, Context)
     ;
-        add_unifications(ArgsA, NonLocals, GoalInfo0, Mode, Unif, Context,
-            Args, Unifications, !HI),
-        InstGraph1 = !.HI ^ hhfi_inst_graph,
-        map.det_insert(Functors0, ConsId, Args, Functors),
-        map.det_update(InstGraph1, X, node(Functors, MaybeParent),
-            InstGraph2),
-        list.foldl(inst_graph.set_parent(X), Args, InstGraph2, InstGraph),
-        !HI ^ hhfi_inst_graph := InstGraph
-    ),
-    GINonlocals0 = goal_info_get_nonlocals(GoalInfo0),
-    GINonlocals = set.union(GINonlocals0, list_to_set(Args)),
-    goal_info_set_nonlocals(GINonlocals, GoalInfo0, GoalInfo),
-    UnifyGoalExpr = unify(X, rhs_functor(ConsId, IsExistConstruct, Args),
-        Mode, Unif, Context),
-    UnifyGoal = hlds_goal(UnifyGoalExpr, GoalInfo),
-    GoalExpr = conj(plain_conj, [UnifyGoal | Unifications]).
+        RHS0 = rhs_var(_),
+        GoalExpr = unify(X, RHS0, Mode, Unif, Context)
+    ;
+        RHS0 = rhs_functor(ConsId0, IsExistConstruct, ArgsA),
+        qualify_cons_id(ArgsA, ConsId0, _, ConsId),
+        InstGraph0 = !.HI ^ hhfi_inst_graph,
+        map.lookup(InstGraph0, X, node(Functors0, MaybeParent)),
+        ( map.search(Functors0, ConsId, ArgsB) ->
+            make_unifications(ArgsA, ArgsB, GoalInfo0, Mode, Unif, Context,
+                Unifications),
+            Args = ArgsB
+        ;
+            add_unifications(ArgsA, NonLocals, GoalInfo0, Mode, Unif, Context,
+                Args, Unifications, !HI),
+            InstGraph1 = !.HI ^ hhfi_inst_graph,
+            map.det_insert(Functors0, ConsId, Args, Functors),
+            map.det_update(InstGraph1, X, node(Functors, MaybeParent),
+                InstGraph2),
+            list.foldl(inst_graph.set_parent(X), Args, InstGraph2, InstGraph),
+            !HI ^ hhfi_inst_graph := InstGraph
+        ),
+        GINonlocals0 = goal_info_get_nonlocals(GoalInfo0),
+        GINonlocals = set.union(GINonlocals0, list_to_set(Args)),
+        goal_info_set_nonlocals(GINonlocals, GoalInfo0, GoalInfo),
+        RHS = rhs_functor(ConsId, IsExistConstruct, Args),
+        UnifyGoalExpr = unify(X, RHS, Mode, Unif, Context),
+        UnifyGoal = hlds_goal(UnifyGoalExpr, GoalInfo),
+        GoalExpr = conj(plain_conj, [UnifyGoal | Unifications])
+    ).
 
 :- pred make_unifications(list(prog_var)::in, list(prog_var)::in,
     hlds_goal_info::in, unify_mode::in, unification::in, unify_context::in,
@@ -331,9 +338,9 @@ process_unify(rhs_functor(ConsId0, IsExistConstruct, ArgsA), NonLocals,
 
 make_unifications([], [], _, _, _, _, []).
 make_unifications([_ | _], [], _, _, _, _, _) :-
-    unexpected(this_file, "hhf_make_unifications: length mismatch (1)").
+    unexpected($module, $pred, "length mismatch (1)").
 make_unifications([], [_ | _], _, _, _, _, _) :-
-    unexpected(this_file, "hhf_make_unifications: length mismatch (2)").
+    unexpected($module, $pred, "length mismatch (2)").
 make_unifications([A | As], [B | Bs], GI0, M, U, C,
         [hlds_goal(unify(A, rhs_var(B), M, U, C), GI) | Us]) :-
     GINonlocals0 = goal_info_get_nonlocals(GI0),
@@ -397,8 +404,7 @@ complete_inst_graph_node(ModuleInfo, BaseVars, Var, !HI) :-
         TypeCtor = type_ctor(TypeCtorSymName, _),
         (
             TypeCtorSymName = unqualified(_),
-            unexpected(this_file,
-                "complete_inst_graph_node: unqualified TypeCtorSymName")
+            unexpected($module, $pred, "unqualified TypeCtorSymName")
         ;
             TypeCtorSymName = qualified(TypeCtorModuleName, _)
         ),
@@ -544,12 +550,6 @@ same_type_list([A | As], [B | Bs]) :-
 % :- pred process_bound_inst(module_info::in, prog_var::in,
 %       map(inst_name, prog_var)::in, bound_inst::in,
 %       inst_graph_info::in, inst_graph_info::out) is det.
-
-%------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "hhf.m".
 
 %------------------------------------------------------------------------%
 :- end_module hhf.

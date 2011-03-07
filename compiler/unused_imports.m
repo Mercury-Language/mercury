@@ -380,8 +380,8 @@ clauses_info_used_modules(ClausesInfo, !UsedModules) :-
 :- pred clause_used_modules(clause::in,
     used_modules::in, used_modules::out) is det.
 
-clause_used_modules(clause(_, Goal, _, _), !UsedModules) :-
-    hlds_goal_used_modules(Goal, !UsedModules).
+clause_used_modules(Clause, !UsedModules) :-
+    hlds_goal_used_modules(Clause ^ clause_body, !UsedModules).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

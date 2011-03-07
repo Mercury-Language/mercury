@@ -2016,7 +2016,7 @@ quantify_clause_body(HeadVars, Goal0, Context, Clause, !Info) :-
     info_set_varset(Varset, !Info),
     info_set_types(Types, !Info),
     info_set_rtti_varmaps(RttiVarMaps, !Info),
-    Clause = clause(all_modes, Goal, impl_lang_mercury, Context).
+    Clause = clause(all_modes, Goal, impl_lang_mercury, Context, []).
 
 %-----------------------------------------------------------------------------%
 

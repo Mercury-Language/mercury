@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2006, 2008-2010 The University of Melbourne.
+% Copyright (C) 2004-2006, 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -36,6 +36,10 @@
 :- func di_mode = mer_mode.
 :- pred uo_mode(mer_mode::out) is det.
 :- func uo_mode = mer_mode.
+:- pred mdi_mode(mer_mode::out) is det.
+:- func mdi_mode = mer_mode.
+:- pred muo_mode(mer_mode::out) is det.
+:- func muo_mode = mer_mode.
 :- pred unused_mode(mer_mode::out) is det.
 :- func unused_mode = mer_mode.
 :- func in_any_mode = mer_mode.
@@ -147,6 +151,8 @@ in_mode(in_mode).
 out_mode(out_mode).
 di_mode(di_mode).
 uo_mode(uo_mode).
+mdi_mode(mdi_mode).
+muo_mode(muo_mode).
 unused_mode(unused_mode).
 
 in_mode = make_std_mode("in", []).
@@ -155,6 +161,8 @@ out_mode = make_std_mode("out", []).
 out_mode(I) = make_std_mode("out", [I]).
 di_mode = make_std_mode("di", []).
 uo_mode = make_std_mode("uo", []).
+mdi_mode = make_std_mode("mdi", []).
+muo_mode = make_std_mode("muo", []).
 unused_mode = make_std_mode("unused", []).
 in_any_mode = make_std_mode("in", [any_inst]).
 out_any_mode = make_std_mode("out", [any_inst]).

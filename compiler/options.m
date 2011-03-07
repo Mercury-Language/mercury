@@ -137,6 +137,7 @@
     ;       inform_ite_instead_of_switch
     ;       warn_unresolved_polymorphism
     ;       warn_suspicious_foreign_procs
+    ;       warn_state_var_shadowing
 
     % Verbosity options
     ;       verbose
@@ -507,6 +508,17 @@
     % Options for internal use only (setting these options to non-default
     % values can result in programs that do not link, or programs that dump
     % core)
+    ;       allow_defn_of_builtins
+            % Do not generate errors for definitions of builtin predicates.
+            % When a new builtin is introduced, the installed compiler won't
+            % know about it, and thus when it sees its declaration, it wants a
+            % definition, but when the modified compiler is bootstrapped,
+            % it would normally generate an error when it sees that very same
+            % definition in the library (usually in builtin.m or
+            % private_builtin.m). When this option is set, it allows such
+            % definitions. Once the modified compiler is installed on all
+            % relevant machines, the option can be turned off again.
+
     ;       special_preds
             % Generate unify and compare preds. For measurement only.
             % Code generated with this set to `no' is unlikely to actually
@@ -1084,7 +1096,8 @@ option_defaults_2(warning_option, [
     warn_unused_imports                 -   bool(no),
     inform_ite_instead_of_switch        -   bool(no),
     warn_unresolved_polymorphism        -   bool(yes),
-    warn_suspicious_foreign_procs       -   bool(no)
+    warn_suspicious_foreign_procs       -   bool(no),
+    warn_state_var_shadowing            -   bool(yes)
 ]).
 option_defaults_2(verbosity_option, [
     % Verbosity Options
@@ -1353,6 +1366,7 @@ option_defaults_2(internal_use_option, [
     lexically_order_constructors        -   bool(no),
     mutable_always_boxed                -   bool(yes),
     delay_partial_instantiations        -   bool(no),
+    allow_defn_of_builtins              -   bool(no),
     special_preds                       -   bool(yes),
     type_ctor_info                      -   bool(yes),
     type_ctor_layout                    -   bool(yes),
@@ -1926,6 +1940,7 @@ long_option("warn-unused-imports",      warn_unused_imports).
 long_option("inform-ite-instead-of-switch", inform_ite_instead_of_switch).
 long_option("warn-unresolved-polymorphism", warn_unresolved_polymorphism).
 long_option("warn-suspicious-foreign-procs", warn_suspicious_foreign_procs).
+long_option("warn-state-var-shadowing", warn_state_var_shadowing).
 
 % verbosity options
 long_option("verbose",                  verbose).
@@ -2231,6 +2246,7 @@ long_option("lexically-order-constructors",
                                     lexically_order_constructors).
 long_option("mutable-always-boxed", mutable_always_boxed).
 long_option("delay-partial-instantiations", delay_partial_instantiations).
+long_option("allow-defn-of-builtins",           allow_defn_of_builtins).
 long_option("special-preds",        special_preds).
 long_option("type-ctor-info",       type_ctor_info).
 long_option("type-ctor-layout",     type_ctor_layout).
@@ -3471,7 +3487,9 @@ options_help_warning -->
         "\tDo not warn about unresolved polymorphism.",
         "--warn-suspicious-foreign-procs",
         "\tWarn about possible errors in the bodies of foreign",
-        "\tprocedures."
+        "\tprocedures.",
+        "--no-warn-state-var-shadowing",
+        "\tDo not warn about one state variable shadowing another."
     ]).
 
 :- pred options_help_verbosity(io::di, io::uo) is det.
@@ -4581,6 +4599,16 @@ options_help_compilation_model -->
 %       "--delay-partial-instantiations",
 %       "(This option is not for general use.)",
 %       For documentation, see delay_partial_inst.m
+
+        % This is a developer only option.
+%       "--allow-defn-of-builtins",
+%       "(This option is not for general use.)",
+%       For documentation, see the comment in the type declaration.
+
+        % This is a developer only option.
+%       "--special-preds",
+%       "(This option is not for general use.)",
+%       For documentation, see the comment in the type declaration.
 
         % All these are developer only options.
 %       "(These options are not for general use.)",

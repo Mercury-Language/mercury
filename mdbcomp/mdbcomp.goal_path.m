@@ -63,6 +63,8 @@
 :- type goal_id
     --->    goal_id(int).
 
+:- pred is_valid_goal_id(goal_id::in) is semidet.
+
 :- type forward_goal_path
     --->    fgp(list(goal_path_step)).
 
@@ -304,6 +306,9 @@
 :- import_module string.
 :- import_module svbimap.
 :- import_module svmap.
+
+is_valid_goal_id(goal_id(GoalIdNum)) :-
+    GoalIdNum >= 0.
 
 whole_body_goal_id = goal_id(0).
 

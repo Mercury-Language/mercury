@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2010 The University of Melbourne.
+% Copyright (C) 1995-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -335,7 +335,7 @@ add_pred_arcs([PredId | PredIds], ModuleInfo, IncludeImported, !DepGraph) :-
         pred_info_get_clauses_info(PredInfo, ClausesInfo),
         clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
         get_clause_list_any_order(ClausesRep, Clauses),
-        Goals = list.map(func(clause(_, Goal, _, _)) = Goal, Clauses),
+        Goals = list.map(clause_body, Clauses),
         digraph.lookup_key(!.DepGraph, PredId, Caller),
         add_dependency_arcs_in_list(Caller, Goals, !DepGraph)
     ),

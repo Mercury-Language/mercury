@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1996-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -21,6 +21,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.error_util.
 :- import_module mdbcomp.prim_data.
 
 :- import_module bool.
@@ -168,11 +169,14 @@
 :- type clause
     --->    clause(
                 % Modes for which this clause applies.
-                clause_applicable_procs :: clause_applicable_modes,
-                clause_body             :: hlds_goal,
-                clause_lang             :: implementation_language,
-                clause_context          :: prog_context
+                clause_applicable_procs     :: clause_applicable_modes,
+                clause_body                 :: hlds_goal,
+                clause_lang                 :: implementation_language,
+                clause_context              :: prog_context,
+                clause_statevar_warnings    :: list(error_spec)
             ).
+
+:- func clause_body(clause) = hlds_goal.
 
 :- type clause_applicable_modes
     --->    all_modes

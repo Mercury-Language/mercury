@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -171,7 +171,7 @@ module_qualify_items(Items0, Items, EventSpecMap0, EventSpecMap, Globals,
         %
         %   :- module foo.
         %   :- interface.
-        % 
+        %
         %   :- import_module bar.
         %   :- typeclass tc1(T) <= tc2(T).
         %   :- instance tc1(unit).
@@ -184,7 +184,7 @@ module_qualify_items(Items0, Items, EventSpecMap0, EventSpecMap, Globals,
         % a more extensive analysis of type classes and instances to be done
         % in this module.)
         %
-        % In order to prevent the import of the module bar being erroneously 
+        % In order to prevent the import of the module bar being erroneously
         % reported as unused we make the conservative assumption that any
         % imported module that exports a type class instance is used in
         % the interface of the importing module, except if the importing
@@ -276,8 +276,6 @@ qualify_type_qualification(Type0, Type, Context, !Info, !Specs) :-
                 need_qual_flag              :: need_qualifier,
 
                 maybe_recompilation_info    :: maybe(recompilation_info)
-
-                
             ).
 
 :- type partial_qualifier_info
@@ -585,9 +583,9 @@ process_assert(Goal, Symbols, Success) :-
         ; GoalExpr = all_expr(_, G)
         ; GoalExpr = all_state_vars_expr(_, G)
         ; GoalExpr = promise_purity_expr(_, G)
-        ; GoalExpr = promise_equivalent_solutions_expr(_, _, _, G)
-        ; GoalExpr = promise_equivalent_solution_sets_expr(_, _, _, G)
-        ; GoalExpr = promise_equivalent_solution_arbitrary_expr(_, _, _, G)
+        ; GoalExpr = promise_equivalent_solutions_expr(_, _, _, _, G)
+        ; GoalExpr = promise_equivalent_solution_sets_expr(_, _, _, _, G)
+        ; GoalExpr = promise_equivalent_solution_arbitrary_expr(_, _, _, _, G)
         ; GoalExpr = require_detism_expr(_, G)
         ; GoalExpr = require_complete_switch_expr(_, G)
         ; GoalExpr = trace_expr(_, _, _, _, G)
@@ -891,7 +889,7 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
         list.length(Types0, Arity),
         Id = mq_id(Name0, Arity),
         mq_info_set_error_context(mqec_instance(Id) - Context, !Info),
-       
+
         ( mq_info_get_import_status(!.Info, mq_status_exported) ->
             mq_info_set_exported_instances_flag(yes, !Info)
         ;

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2010 The University of Melbourne.
+% Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -206,12 +206,12 @@
 
 %-----------------------------------------------------------------------------%
 
-init_hlds_out_info(Globals) = Init :-
+init_hlds_out_info(Globals) = Info :-
     globals.lookup_string_option(Globals, dump_hlds_options, DumpOptions),
     globals.lookup_accumulating_option(Globals, dump_hlds_pred_id, Ids),
     globals.lookup_accumulating_option(Globals, dump_hlds_pred_name, Names),
     MercInfo = init_merc_out_info_for_hlds_dump(Globals),
-    Init = hlds_out_info(DumpOptions, Ids, Names, MercInfo).
+    Info = hlds_out_info(DumpOptions, Ids, Names, MercInfo).
 
 %-----------------------------------------------------------------------------%
 %

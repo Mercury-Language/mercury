@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2010 The University of Melbourne.
+% Copyright (C) 1995-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -75,6 +75,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type_subst.
@@ -192,9 +193,11 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
         ClausesRep, _ItemNumbers, RttiInfo, _HaveForeignClauses),
     get_clause_list(ClausesRep, Clauses),
     select_matching_clauses(Clauses, ProcId, MatchingClauses),
-    get_clause_goals(MatchingClauses, GoalList),
+    get_clause_disjuncts_and_warnings(MatchingClauses, ClausesDisjuncts,
+        StateVarWarnings),
+    proc_info_set_statevar_warnings(StateVarWarnings, !Proc),
     (
-        GoalList = [SingleGoal],
+        ClausesDisjuncts = [SingleGoal],
         SingleGoal = hlds_goal(SingleExpr, _),
         (
             SingleExpr = call_foreign_proc(_, _, _, Args, ExtraArgs,
@@ -226,11 +229,11 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
         % any clauses at all, in which case we use the context of the
         % mode declaration.
         (
-            GoalList = [FirstGoal, _ | _],
+            ClausesDisjuncts = [FirstGoal, _ | _],
             FirstGoal = hlds_goal(_, FirstGoalInfo),
             Context = goal_info_get_context(FirstGoalInfo)
         ;
-            GoalList = [],
+            ClausesDisjuncts = [],
             proc_info_get_context(!.Proc, Context)
         ),
 
@@ -249,15 +252,15 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
         % The disjunction is impure/semipure if any of the disjuncts
         % is impure/semipure.
 
-        ( contains_nonpure_goal(GoalList) ->
-            PurityList = list.map(goal_get_purity, GoalList),
+        ( contains_nonpure_goal(ClausesDisjuncts) ->
+            PurityList = list.map(goal_get_purity, ClausesDisjuncts),
             Purity = list.foldl(worst_purity, PurityList, purity_pure),
             goal_info_set_purity(Purity, GoalInfo2, GoalInfo)
         ;
             GoalInfo2 = GoalInfo
         ),
 
-        Goal = hlds_goal(disj(GoalList), GoalInfo)
+        Goal = hlds_goal(disj(ClausesDisjuncts), GoalInfo)
     ),
     % XXX ARGVEC - when the proc_info is converted to use proc_arg_vectors
     % we should just pass the headvar vector in directly.
@@ -292,7 +295,7 @@ set_arg_names(Arg, Vars0) = Vars :-
 select_matching_clauses([], _, []).
 select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
     select_matching_clauses(Clauses, ProcId, MatchingClausesTail),
-    Clause = clause(ApplicableProcIds, _, _, _),
+    ApplicableProcIds = Clause ^ clause_applicable_procs,
     (
         ApplicableProcIds = all_modes,
         MatchingClauses = [Clause | MatchingClausesTail]
@@ -305,14 +308,17 @@ select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
         )
     ).
 
-:- pred get_clause_goals(list(clause)::in, list(hlds_goal)::out) is det.
+:- pred get_clause_disjuncts_and_warnings(list(clause)::in,
+    list(hlds_goal)::out, list(error_spec)::out) is det.
 
-get_clause_goals([], []).
-get_clause_goals([Clause | Clauses], Goals) :-
-    get_clause_goals(Clauses, Goals1),
-    Clause = clause(_, Goal, _, _),
-    goal_to_disj_list(Goal, GoalList),
-    list.append(GoalList, Goals1, Goals).
+get_clause_disjuncts_and_warnings([], [], []).
+get_clause_disjuncts_and_warnings([Clause | Clauses], Disjuncts, Warnings) :-
+    Goal = Clause ^ clause_body,
+    goal_to_disj_list(Goal, FirstDisjuncts),
+    FirstWarnings = Clause ^ clause_statevar_warnings,
+    get_clause_disjuncts_and_warnings(Clauses, LaterDisjuncts, LaterWarnings),
+    Disjuncts = FirstDisjuncts ++ LaterDisjuncts,
+    Warnings = FirstWarnings ++ LaterWarnings.
 
 %-----------------------------------------------------------------------------%
 

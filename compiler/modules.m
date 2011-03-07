@@ -2347,11 +2347,12 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
             ".trans_opt", TransOptDepsOrdering, !IO),
 
         trace [compiletime(flag("deps_graph")), runtime(env("DEPS_GRAPH")),
-            io(!IO)]
+            io(!TIO)]
         (
             digraph.to_assoc_list(ImplDepsGraph, ImplDepsAL),
-            print("ImplDepsAL:\n", !IO),
-            write_list(ImplDepsAL, "\n", print, !IO), nl(!IO)
+            io.print("ImplDepsAL:\n", !TIO),
+            io.write_list(ImplDepsAL, "\n", print, !TIO),
+            io.nl(!TIO)
         ),
 
         % Compute the indirect dependencies: they are equal to the composition

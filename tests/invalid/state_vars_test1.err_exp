@@ -1,6 +1,11 @@
-state_vars_test1.m:022: Warning: the condition of this if-then-else cannot
-state_vars_test1.m:022:   fail.
-state_vars_test1.m:023: Error: cannot use !:X in this context;
-state_vars_test1.m:023:   however !.X may be used here.
-state_vars_test1.m:023: In clause for predicate `state_vars_test1.p'/2:
-state_vars_test1.m:023:   warning: variable `X' occurs only once in this scope.
+state_vars_test1.m:023: In clause for `p(in, out)':
+state_vars_test1.m:023:   in call to function `int.+'/2:
+state_vars_test1.m:023:   mode error: arguments
+state_vars_test1.m:023:   `STATE_VARIABLE_X_0, V_7, STATE_VARIABLE_X' have the
+state_vars_test1.m:023:   following insts:
+state_vars_test1.m:023:     ground,
+state_vars_test1.m:023:     free,
+state_vars_test1.m:023:     free
+state_vars_test1.m:023:   which does not match any of the modes for function
+state_vars_test1.m:023:   `int.+'/2.
+For more information, recompile with `-E'.

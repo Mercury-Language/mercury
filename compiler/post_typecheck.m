@@ -663,7 +663,8 @@ promise_ex_goal(ModuleInfo, ExclusiveDeclPredId, Goal) :-
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
     get_clause_list(ClausesRep, Clauses),
-    ( Clauses = [clause(_ProcIds, Goal0, _Lang, _Context)] ->
+    ( Clauses = [Clause] ->
+        Goal0 = Clause ^ clause_body,
         assertion.normalise_goal(Goal0, Goal)
     ;
         unexpected(this_file, "promise_ex_goal: not a single clause")

@@ -991,15 +991,6 @@ simplify_goal_expr(!GoalExpr, !GoalInfo, !Info) :-
         !.GoalExpr = switch(_, _, _),
         simplify_goal_switch(!GoalExpr, !GoalInfo, !Info)
     ;
-        !.GoalExpr = generic_call(_, _, _, _),
-        simplify_goal_generic_call(!GoalExpr, !GoalInfo, !Info)
-    ;
-        !.GoalExpr = plain_call(_, _, _, _, _, _),
-        simplify_goal_plain_call(!GoalExpr, !GoalInfo, !Info)
-    ;
-        !.GoalExpr = unify(_, _, _, _, _),
-        simplify_goal_unify(!GoalExpr, !GoalInfo, !Info)
-    ;
         !.GoalExpr = if_then_else(_, _, _, _),
         simplify_goal_ite(!GoalExpr, !GoalInfo, !Info)
     ;
@@ -1008,6 +999,15 @@ simplify_goal_expr(!GoalExpr, !GoalInfo, !Info) :-
     ;
         !.GoalExpr = scope(_, _),
         simplify_goal_scope(!GoalExpr, !GoalInfo, !Info)
+    ;
+        !.GoalExpr = unify(_, _, _, _, _),
+        simplify_goal_unify(!GoalExpr, !GoalInfo, !Info)
+    ;
+        !.GoalExpr = plain_call(_, _, _, _, _, _),
+        simplify_goal_plain_call(!GoalExpr, !GoalInfo, !Info)
+    ;
+        !.GoalExpr = generic_call(_, _, _, _),
+        simplify_goal_generic_call(!GoalExpr, !GoalInfo, !Info)
     ;
         !.GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
         simplify_goal_foreign_proc(!GoalExpr, !GoalInfo, !Info)
@@ -2573,83 +2573,99 @@ simplify_call_goal(PredId, ProcId, Args, IsBuiltin, !GoalExpr, !GoalInfo,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is semidet.
 
-simplify_library_call("builtin", "compare", _ModeNum, _CrossCompiling,
+simplify_library_call(ModuleName, PredName, _ModeNum, CrossCompiling,
         CanCompareCompoundValues, Args, GoalExpr, !GoalInfo, !Info) :-
-    % On the Erlang backend, it is faster for us to use builtin comparison
-    % operators on high level data structures than to deconstruct the data
-    % structure and compare the atomic constituents.  We can only do this on
-    % values of types which we know not to have user-defined equality
-    % predicates.
-    %
-    CanCompareCompoundValues = yes,
-    list.reverse(Args, [Y, X, Res | _]),
-    simplify_info_get_module_info(!.Info, ModuleInfo),
-    simplify_info_get_var_types(!.Info, VarTypes),
-    map.lookup(VarTypes, Y, Type),
-    type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type),
-
-    Context = goal_info_get_context(!.GoalInfo),
-    goal_util.generate_simple_call(mercury_private_builtin_module,
-        "builtin_compound_eq", pf_predicate, only_mode, detism_semi,
-        purity_pure, [X, Y], [], instmap_delta_bind_no_var, ModuleInfo,
-        Context, CondEq),
-    goal_util.generate_simple_call(mercury_private_builtin_module,
-        "builtin_compound_lt", pf_predicate, only_mode, detism_semi,
-        purity_pure, [X, Y], [], instmap_delta_bind_no_var, ModuleInfo,
-        Context, CondLt),
-
-    Builtin = mercury_public_builtin_module,
-    TypeCtor = type_ctor(
-        qualified(mercury_public_builtin_module, "comparison_result"), 0),
-    make_const_construction(Res, cons(qualified(Builtin, "="), 0, TypeCtor),
-        ReturnEq),
-    make_const_construction(Res, cons(qualified(Builtin, "<"), 0, TypeCtor),
-        ReturnLt),
-    make_const_construction(Res, cons(qualified(Builtin, ">"), 0, TypeCtor),
-        ReturnGt),
-
-    NonLocals = set.from_list([Res, X, Y]),
-    goal_info_set_nonlocals(NonLocals, !GoalInfo),
-
-    GoalExpr = if_then_else([], CondEq, ReturnEq, Rest),
-    Rest = hlds_goal(if_then_else([], CondLt, ReturnLt, ReturnGt), !.GoalInfo).
-
-simplify_library_call("int", PredName, _ModeNum, CrossCompiling,
-        _CanCompareCompoundValues, Args, GoalExpr, !GoalInfo, !Info) :-
-    simplify_do_const_prop(!.Info),
-    CrossCompiling = no,
     (
-        PredName = "quot_bits_per_int",
-        Args = [X, Y],
-        % There is no point in checking whether bits_per_int is 0; it isn't.
-        Op = "unchecked_quotient",
-        simplify_library_call_int_arity2(Op, X, Y, GoalExpr, !GoalInfo, !Info)
+        ModuleName = "builtin",
+        PredName = "compare",
+
+        % On the Erlang backend, it is faster for us to use builtin comparison
+        % operators on high level data structures than to deconstruct the data
+        % structure and compare the atomic constituents.  We can only do this
+        % on values of types which we know not to have user-defined equality
+        % predicates.
+
+        CanCompareCompoundValues = yes,
+        list.reverse(Args, [Y, X, Res | _]),
+        simplify_info_get_module_info(!.Info, ModuleInfo),
+        simplify_info_get_var_types(!.Info, VarTypes),
+        map.lookup(VarTypes, Y, Type),
+        type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type),
+
+        require_det (
+            Context = goal_info_get_context(!.GoalInfo),
+            goal_util.generate_simple_call(mercury_private_builtin_module,
+                "builtin_compound_eq", pf_predicate, only_mode, detism_semi,
+                purity_pure, [X, Y], [], instmap_delta_bind_no_var, ModuleInfo,
+                Context, CondEq),
+            goal_util.generate_simple_call(mercury_private_builtin_module,
+                "builtin_compound_lt", pf_predicate, only_mode, detism_semi,
+                purity_pure, [X, Y], [], instmap_delta_bind_no_var, ModuleInfo,
+                Context, CondLt),
+
+            Builtin = mercury_public_builtin_module,
+            TypeCtor = type_ctor(
+                qualified(mercury_public_builtin_module, "comparison_result"),
+                0),
+            make_const_construction(Res,
+                cons(qualified(Builtin, "="), 0, TypeCtor), ReturnEq),
+            make_const_construction(Res,
+                cons(qualified(Builtin, "<"), 0, TypeCtor), ReturnLt),
+            make_const_construction(Res,
+                cons(qualified(Builtin, ">"), 0, TypeCtor), ReturnGt),
+
+            NonLocals = set.from_list([Res, X, Y]),
+            goal_info_set_nonlocals(NonLocals, !GoalInfo),
+
+            RestExpr = if_then_else([], CondLt, ReturnLt, ReturnGt),
+            Rest = hlds_goal(RestExpr, !.GoalInfo),
+            GoalExpr = if_then_else([], CondEq, ReturnEq, Rest)
+        )
     ;
-        PredName = "times_bits_per_int",
-        Args = [X, Y],
-        Op = "*",
-        simplify_library_call_int_arity2(Op, X, Y, GoalExpr, !GoalInfo, !Info)
-    ;
-        PredName = "rem_bits_per_int",
-        Args = [X, Y],
-        % There is no point in checking whether bits_per_int is 0; it isn't.
-        Op = "unchecked_rem",
-        simplify_library_call_int_arity2(Op, X, Y, GoalExpr, !GoalInfo, !Info)
-    ;
-        PredName = "bits_per_int",
-        Args = [X],
-        ConstConsId = int_const(int.bits_per_int),
-        RHS = rhs_functor(ConstConsId, no, []),
-        ModeOfX = out_mode,
-        ModeOfConstConsId = in_mode,
-        UnifyMode = ModeOfX - ModeOfConstConsId,
-        How = construct_dynamically,
-        IsUnique = cell_is_shared,
-        Sub = no_construct_sub_info,
-        Unification = construct(X, ConstConsId, [], [], How, IsUnique, Sub),
-        UnifyMainContext = umc_implicit("simplify_library_call"),
-        UnifyContext = unify_context(UnifyMainContext, []),
-        GoalExpr = unify(X, RHS, UnifyMode, Unification, UnifyContext)
+        ModuleName = "int",
+        simplify_do_const_prop(!.Info),
+        CrossCompiling = no,
+        (
+            PredName = "quot_bits_per_int",
+            Args = [X, Y],
+            % There is no point in checking whether bits_per_int is 0;
+            % it isn't.
+            Op = "unchecked_quotient",
+            simplify_library_call_int_arity2(Op, X, Y, GoalExpr,
+                !GoalInfo, !Info)
+        ;
+            PredName = "times_bits_per_int",
+            Args = [X, Y],
+            Op = "*",
+            simplify_library_call_int_arity2(Op, X, Y, GoalExpr,
+                !GoalInfo, !Info)
+        ;
+            PredName = "rem_bits_per_int",
+            Args = [X, Y],
+            % There is no point in checking whether bits_per_int is 0;
+            % it isn't.
+            Op = "unchecked_rem",
+            simplify_library_call_int_arity2(Op, X, Y, GoalExpr,
+                !GoalInfo, !Info)
+        ;
+            PredName = "bits_per_int",
+            Args = [X],
+            require_det (
+                ConstConsId = int_const(int.bits_per_int),
+                RHS = rhs_functor(ConstConsId, no, []),
+                ModeOfX = out_mode,
+                ModeOfConstConsId = in_mode,
+                UnifyMode = ModeOfX - ModeOfConstConsId,
+                How = construct_dynamically,
+                IsUnique = cell_is_shared,
+                Sub = no_construct_sub_info,
+                Unification = construct(X, ConstConsId, [], [], How,
+                    IsUnique, Sub),
+                UnifyMainContext = umc_implicit("simplify_library_call"),
+                UnifyContext = unify_context(UnifyMainContext, []),
+                GoalExpr = unify(X, RHS, UnifyMode, Unification, UnifyContext)
+            )
+        )
     ).
 
 :- pred simplify_library_call_int_arity2(string::in,
@@ -2707,16 +2723,118 @@ simplify_library_call_int_arity2(Op, X, Y, GoalExpr, !GoalInfo, !Info) :-
 % For some reason, the compiler records the original arity of
 % int.unchecked_quotient as 3, not 2. Don't check the arities
 % until this is fixed.
-simplify_may_introduce_calls("private_builtin", "builtin_compound_eq", _).
-simplify_may_introduce_calls("private_builtin", "builtin_compound_lt", _).
-simplify_may_introduce_calls("int", "unchecked_quotient", _).
-simplify_may_introduce_calls("int", "unchecked_rem", _).
-simplify_may_introduce_calls("int", "*", _).
-simplify_may_introduce_calls("io", "write_string", _).
-simplify_may_introduce_calls("string", "int_to_string", _).
-simplify_may_introduce_calls("string", "char_to_string", _).
-simplify_may_introduce_calls("string", "float_to_string", _).
-simplify_may_introduce_calls("string", "++", _).
+simplify_may_introduce_calls(ModuleName, PredName, _Arity) :-
+    (
+        ModuleName = "private_builtin",
+        ( PredName = "builtin_compound_eq"
+        ; PredName = "builtin_compound_lt"
+        ; PredName = "state_var_copy"
+        )
+    ;
+        ModuleName = "int",
+        ( PredName = "unchecked_quotient"
+        ; PredName = "unchecked_rem"
+        ; PredName = "*"
+        )
+    ;
+        ModuleName = "io",
+        PredName = "write_string"
+    ;
+        ModuleName = "string",
+        ( PredName = "int_to_string"
+        ; PredName = "char_to_string"
+        ; PredName = "float_to_string"
+        ; PredName = "++"
+        )
+    ;
+        ModuleName = "table_builtin",
+
+        ( PredName = "table_lookup_insert_start_int"
+        ; PredName = "table_lookup_insert_int"
+        ; PredName = "table_lookup_insert_float"
+        ; PredName = "table_lookup_insert_char"
+        ; PredName = "table_lookup_insert_string"
+        ; PredName = "table_lookup_insert_enum"
+        ; PredName = "table_lookup_insert_foreign_enum"
+        ; PredName = "table_lookup_insert_gen"
+        ; PredName = "table_lookup_insert_addr"
+        ; PredName = "table_lookup_insert_poly"
+        ; PredName = "table_lookup_insert_poly_addr"
+        ; PredName = "table_lookup_insert_typeinfo"
+        ; PredName = "table_lookup_insert_typeclassinfo"
+
+        ; PredName = "table_lookup_save_int_answer"
+        ; PredName = "table_lookup_save_char_answer"
+        ; PredName = "table_lookup_save_string_answer"
+        ; PredName = "table_lookup_save_float_answer"
+        ; PredName = "table_lookup_save_io_state_answer"
+        ; PredName = "table_lookup_save_any_answer"
+
+        ; PredName = "table_lookup_restore_int_answer"
+        ; PredName = "table_lookup_restore_char_answer"
+        ; PredName = "table_lookup_restore_string_answer"
+        ; PredName = "table_lookup_restore_float_answer"
+        ; PredName = "table_lookup_restore_io_state_answer"
+        ; PredName = "table_lookup_restore_any_answer"
+
+        ; PredName = "table_loop_setup"
+        ; PredName = "table_loop_setup_shortcut"
+        ; PredName = "table_loop_mark_as_inactive"
+        ; PredName = "table_loop_mark_as_inactive_and_fail"
+        ; PredName = "table_loop_mark_as_active_and_fail"
+
+        ; PredName = "table_memo_det_setup"
+        ; PredName = "table_memo_det_setup_shortcut"
+        ; PredName = "table_memo_semi_setup"
+        ; PredName = "table_memo_semi_setup_shortcut"
+        ; PredName = "table_memo_non_setup"
+        ; PredName = "table_memo_mark_as_failed"
+        ; PredName = "table_memo_mark_as_succeeded"
+        ; PredName = "table_memo_mark_as_incomplete"
+        ; PredName = "table_memo_mark_as_active_and_fail"
+        ; PredName = "table_memo_mark_as_complete_and_fail"
+        ; PredName = "table_memo_create_answer_block"
+        ; PredName = "table_memo_get_answer_block"
+        ; PredName = "table_memo_non_get_answer_table"
+        ; PredName = "table_memo_non_answer_is_not_duplicate"
+        ; PredName = "table_memo_non_answer_is_not_duplicate_shortcut"
+        ; PredName = "table_memo_return_all_answers_nondet"
+        ; PredName = "table_memo_return_all_answers_multi"
+        ; PredName = "table_memo_non_return_all_shortcut"
+
+        ; PredName = "table_io_in_range"
+        ; PredName = "table_io_has_occurred"
+        ; PredName = "table_io_copy_io_state"
+        ; PredName = "table_io_left_bracket_unitized_goal"
+        ; PredName = "table_io_right_bracket_unitized_goal"
+
+        ; PredName = "table_mm_setup"
+        ; PredName = "table_mm_suspend_consumer"
+        ; PredName = "table_mm_completion"
+        ; PredName = "table_mm_get_answer_table"
+        ; PredName = "table_mm_answer_is_not_duplicate"
+        ; PredName = "table_mm_answer_is_not_duplicate_shortcut"
+        ; PredName = "table_mm_create_answer_block"
+        ; PredName = "table_mm_fill_answer_block_shortcut"
+        ; PredName = "table_mm_return_all_nondet"
+        ; PredName = "table_mm_return_all_multi"
+        ; PredName = "table_mm_return_all_shortcut"
+
+        ; PredName = "table_mmos_save_inputs"
+        ; PredName = "table_mmos_setup_consumer"
+        ; PredName = "table_mmos_answer_is_not_duplicate"
+        ; PredName = "table_mmos_answer_is_not_duplicate_shortcut"
+        ; PredName = "table_mmos_consume_next_answer_nondet"
+        ; PredName = "table_mmos_consume_next_answer_multi"
+        ; PredName = "table_mmos_restore_answers"
+        ; PredName = "table_mmos_pickup_inputs"
+        ; PredName = "table_mmos_create_answer_block"
+        ; PredName = "table_mmos_return_answer"
+        ; PredName = "table_mmos_completion"
+
+        ; PredName = "table_error"
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2928,20 +2928,22 @@ mercury_output_goal_2(Expr, VarSet, Indent, !IO) :-
             io.write_string(")", !IO)
         )
     ;
-        Expr = promise_equivalent_solutions_expr(Vars,
+        Expr = promise_equivalent_solutions_expr(Vars, StateVars,
             DotSVars, ColonSVars, Goal),
-        mercury_output_promise_eqv_solutions_goal(Vars, DotSVars, ColonSVars,
-            Goal, VarSet, Indent, "promise_equivalent_solutions", !IO)
+        mercury_output_promise_eqv_solutions_goal(Vars, StateVars,
+            DotSVars, ColonSVars, Goal, VarSet, Indent,
+            "promise_equivalent_solutions", !IO)
     ;
-        Expr = promise_equivalent_solution_sets_expr(Vars,
+        Expr = promise_equivalent_solution_sets_expr(Vars, StateVars,
             DotSVars, ColonSVars, Goal),
-        mercury_output_promise_eqv_solutions_goal(Vars, DotSVars, ColonSVars,
-            Goal, VarSet, Indent, "promise_equivalent_solution_sets", !IO)
+        mercury_output_promise_eqv_solutions_goal(Vars, StateVars,
+            DotSVars, ColonSVars, Goal, VarSet, Indent,
+            "promise_equivalent_solution_sets", !IO)
     ;   
-        Expr = promise_equivalent_solution_arbitrary_expr(Vars,
+        Expr = promise_equivalent_solution_arbitrary_expr(Vars, StateVars,
             DotSVars, ColonSVars, Goal),
-        mercury_output_promise_eqv_solutions_goal(Vars, DotSVars, ColonSVars,
-            Goal, VarSet, Indent, "arbitrary", !IO)
+        mercury_output_promise_eqv_solutions_goal(Vars, StateVars,
+            DotSVars, ColonSVars, Goal, VarSet, Indent, "arbitrary", !IO)
     ;
         Expr = promise_purity_expr(Purity, Goal),
         (
@@ -3185,14 +3187,15 @@ mercury_output_goal_2(Expr, VarSet, Indent, !IO) :-
         mercury_output_term_nq(VarSet, no, next_to_graphic_token, B, !IO)
     ).
 
-:- pred mercury_output_promise_eqv_solutions_goal(prog_vars::in,
-    prog_vars::in, prog_vars::in, goal::in, prog_varset::in, int::in,
-    string::in, io::di, io::uo) is det.
+:- pred mercury_output_promise_eqv_solutions_goal(list(prog_var)::in,
+    list(prog_var)::in, list(prog_var)::in, list(prog_var)::in,
+    goal::in, prog_varset::in, int::in, string::in, io::di, io::uo) is det.
 
-mercury_output_promise_eqv_solutions_goal(Vars, DotSVars, ColonSVars,
+mercury_output_promise_eqv_solutions_goal(Vars, StateVars, DotSVars, ColonSVars,
         Goal, VarSet, Indent, Keyword, !IO) :-
     (
         Vars = [],
+        StateVars = [],
         DotSVars = [],
         ColonSVars = []
     ->
@@ -3205,6 +3208,18 @@ mercury_output_promise_eqv_solutions_goal(Vars, DotSVars, ColonSVars,
         mercury_output_vars(VarSet, no, Vars, !IO),
         (
             Vars = [_ | _],
+            StateVars = [_ | _]
+        ->
+            io.write_string(", ", !IO)
+        ;
+            true
+        ),
+        mercury_output_state_vars_using_prefix(StateVars, "!", VarSet, no,
+            !IO),
+        (
+            ( Vars = [_ | _]
+            ; StateVars = [_ | _]
+            ),
             DotSVars = [_ | _]
         ->
             io.write_string(", ", !IO)
@@ -3215,6 +3230,7 @@ mercury_output_promise_eqv_solutions_goal(Vars, DotSVars, ColonSVars,
             !IO),
         (
             ( Vars = [_ | _]
+            ; StateVars = [_ | _]
             ; DotSVars = [_ | _]
             ),
             ColonSVars = [_ | _]

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2006, 2009-2010 The University of Melbourne.
+% Copyright (C) 1993-2006, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -122,6 +122,7 @@
 :- include_module add_special_pred.
 :- include_module add_type.
 :- include_module field_access.
+:- include_module goal_expr_to_goal.
 :- include_module make_hlds_error.
 :- include_module make_hlds_passes.
 :- include_module make_hlds_warn.

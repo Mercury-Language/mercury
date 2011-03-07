@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2010 The University of Melbourne.
+% Copyright (C) 1993-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -456,7 +456,7 @@ module_add_instance_defn(InstanceModuleName, Constraints, ClassName,
     module_info_get_instance_table(!.ModuleInfo, Instances0),
     list.length(Types, ClassArity),
     ClassId = class_id(ClassName, ClassArity),
-    Body = expand_bang_state_var_args_in_instance_method_heads(Body0),
+    expand_bang_states_instance_body(Body0, Body),
     ( map.search(Classes, ClassId, _) ->
         map.init(Empty),
         NewInstanceDefn = hlds_instance_defn(InstanceModuleName, Status,
@@ -625,7 +625,7 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         construct_pred_or_func_call(invalid_pred_id, PredOrFunc,
             InstancePredName, HeadVars, GoalInfo, IntroducedGoal, !QualInfo),
         IntroducedClause = clause(all_modes, IntroducedGoal, impl_lang_mercury,
-            Context),
+            Context, []),
 
         map.init(TVarNameMap),
         map.from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
@@ -665,7 +665,7 @@ produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
         TVarSet = TVarSet0,
         report_illegal_func_svar_result(Context, CVarSet, StateVar, !Specs)
     ;
-        HeadTerms = expand_bang_state_var_args(HeadTerms0),
+        expand_bang_states(HeadTerms0, HeadTerms),
         PredArity = list.length(HeadTerms),
         adjust_func_arity(PredOrFunc, Arity, PredArity),
 

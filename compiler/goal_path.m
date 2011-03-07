@@ -114,13 +114,13 @@ fill_goal_id_slots_in_clauses(ModuleInfo, ContainingGoalMap,
 
 fill_slots_in_clause(SlotInfo, Clause0, Clause, !GoalNum, !ClauseNum,
         !ContainingGoalMap) :-
-    Clause0 = clause(ProcIds, Goal0, Lang, Context),
+    Goal0 = Clause0 ^ clause_body,
     ContainingGoal = containing_goal(whole_body_goal_id,
         step_disj(!.ClauseNum)),
     !:ClauseNum = !.ClauseNum + 1,
     fill_goal_id_slots(SlotInfo, ContainingGoal, !GoalNum, !ContainingGoalMap,
         Goal0, Goal),
-    Clause = clause(ProcIds, Goal, Lang, Context).
+    Clause = Clause0 ^ clause_body := Goal.
 
 fill_goal_path_slots_in_proc(ModuleInfo, !Proc) :-
     proc_info_get_goal(!.Proc, Goal0),

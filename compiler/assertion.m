@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2010 The University of Melbourne.
+% Copyright (C) 1999-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -443,10 +443,11 @@ assert_id_goal(Module, AssertId, Goal) :-
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
     get_clause_list(ClausesRep, Clauses),
-    ( Clauses = [clause(_ProcIds, Goal0, _Lang, _Context)] ->
+    ( Clauses = [Clause] ->
+        Goal0 = Clause ^ clause_body,
         normalise_goal(Goal0, Goal)
     ;
-        unexpected(this_file, "goal: not an assertion")
+        unexpected($module, $pred, "goal is not an assertion")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -759,11 +760,5 @@ normalise_goals([], []).
 normalise_goals([Goal0 | Goals0], [Goal | Goals]) :-
     normalise_goal(Goal0, Goal),
     normalise_goals(Goals0, Goals).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "assertion.m".
 
 %-----------------------------------------------------------------------------%

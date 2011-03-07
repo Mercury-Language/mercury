@@ -1000,15 +1000,15 @@ described in terms of the notional @samp{transform} function defined
 next.
 
 The transformation is applied once for each state variable @var{X}
-with some fresh variables which we shall call @var{ThisX} and
-@var{NextX}.
+with some fresh variables which we shall call @var{ThisX} and @var{NextX}.
 
 The expression
 @samp{substitute(@var{Term}, @var{X}, @var{ThisX}, @var{NextX})}
-stands for a copy of @var{Term} with free occurrences of @samp{!.@var{X}}
-replaced with @var{ThisX} and occurrences of @samp{!:@var{X}}
-replaced with @var{NextX} (a free occurrence is one not bound by the
-head of a clause or lambda or by explicit quantification.)
+stands for a copy of @var{Term}
+with free occurrences of @samp{!.@var{X}} replaced with @var{ThisX}
+and free occurrences of @samp{!:@var{X}} replaced with @var{NextX}
+(a free occurrence is one not bound by the head of a clause or lambda
+or by explicit quantification.)
 
 State variables obey the special scope rules.
 A state variable @var{X} must be explicitly introduced either in the head of
@@ -1019,20 +1019,39 @@ the enclosing scope of a lambda or if-then-else expression may only be
 referred to as @samp{!.@var{X}} (unless the enclosing @var{X} is masked
 by a more local state variable of the same name.)
 
-For instance, the following goal employing an if-then-else expression
+For instance, the following clause employing a lambda expression
 @example
-	p((if q(!@var{X}), r(!@var{X}) then @var{A} else @var{B}), !@var{X})
+        p(@var{A}, @var{B}, !@var{S}) :-
+                F = (pred(@var{C}::in, @var{D}::out) is det :-
+                        q(@var{C}, @var{D}, !@var{S})
+                ),
+                ( F(@var{A}, @var{E}) ->
+                        @var{B} = @var{E}
+                ;
+                        @var{B} = @var{A}
+                ).
 @end example
 @noindent
-is illegal because it implicitly refers to @samp{!:@var{X}} in the condition
-of the if-then-else expression.  However
+is illegal because
+it implicitly refers to @samp{!:@var{S}} inside the lambda expression.
+However
 @example
-	p((if some[!@var{X}] (q(!@var{X}), r(!@var{X})) then @var{A} else @var{B}), !@var{X})
+        p(@var{A}, @var{B}, !@var{S}) :-
+                F = (pred(@var{C}::in, @var{D}::out, !.@var{S}::in, !:@var{S}::out) is det :-
+                        q(@var{C}, @var{D}, !@var{S})
+                ),
+                ( F(@var{A}, @var{E}, !@var{S}) ->
+                        @var{B} = @var{E}
+                ;
+                        @var{B} = @var{A}
+                ).
 @end example
 @noindent
-is acceptable because the state variable @var{X} is locally scoped to the
-condition and then-goal of the if-then-else expression, hence @samp{!:@var{X}}
-may appear therein.
+is acceptable because the state variable @var{S} accessed
+inside the lambda expression is locally scoped to the lambda expression
+(shadowing the state variable of the same name outside the lambda expression),
+and the lambda expression may refer to
+the next version of a local state variable.
 
 There are three restrictions concerning state variables in lambdas: first,
 @samp{!@var{X}} is not a legitimate function result, since it stands for two

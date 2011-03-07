@@ -442,14 +442,19 @@ field_access.m
 Expands away field access syntax.
 
 <dt>
-add_clause.m
+goal_expr_to_goal.m
 <dd>
 Converts clauses from parse_tree format to hlds format.
-Handles their addition to procedures,
-which is nontrivial in the presence of mode-specific clauses.
 Eliminates universal quantification
 (using `all [Vs] G' ===&gt; `not (some [Vs] (not G))')
 and implication (using `A =&gt; B' ===&gt; `not(A, not B)').
+
+<dt>
+add_clause.m
+<dd>
+Oversees the conversion of clauses from parse_tree format to hlds format.
+Handles their addition to procedures,
+which is nontrivial in the presence of mode-specific clauses.
 
 <dt>
 add_pred.m
@@ -1890,6 +1895,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2011-01-04 05:01:37 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2011-03-07 03:59:33 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

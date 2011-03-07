@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -70,7 +70,7 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
             Clauses0 = []
         ;
             Clauses0 = [SingleClause0],
-            SingleClause0 = clause(ApplicableProcs, Goal0, Language, Context),
+            Goal0 = SingleClause0 ^ clause_body,
 
             Goal0 = hlds_goal(_, GoalInfo0),
             goal_to_conj_list(Goal0, Conj0),
@@ -86,7 +86,7 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
             apply_renaming_to_proc_arg_vector(Subst, HeadVars0, HeadVars),
             clauses_info_set_headvars(HeadVars, ClausesInfo0, ClausesInfo1),
 
-            SingleClause = clause(ApplicableProcs, Goal, Language, Context),
+            SingleClause = SingleClause0 ^ clause_body := Goal,
             set_clause_list([SingleClause], ClausesRep),
             clauses_info_set_clauses_rep(ClausesRep, ItemNumbers,
                 ClausesInfo1, ClausesInfo2),
