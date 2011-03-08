@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2010 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -138,6 +138,12 @@
     %
 :- pred instmap_delta_search_var(instmap_delta::in, prog_var::in,
     mer_inst::out) is semidet.
+
+    % Given an instmap_delta and a variable, determine the new inst
+    % of that variable (which must have one).
+    %
+:- pred instmap_delta_lookup_var(instmap_delta::in, prog_var::in,
+    mer_inst::out) is det.
 
     % Given an instmap and a list of variables, return a list
     % containing the insts of those variable.
@@ -430,9 +436,9 @@ instmap_delta_from_mode_list(Var, Modes, ModuleInfo, InstMapDelta) :-
 
 instmap_delta_from_mode_list_2([], [], _, !InstMapDelta).
 instmap_delta_from_mode_list_2([], [_ | _], _, !InstMapDelta) :-
-    unexpected(this_file, "instmap_delta_from_mode_list_2").
+    unexpected($module, $pred, "length mismatch").
 instmap_delta_from_mode_list_2([_ | _], [], _, !InstMapDelta) :-
-    unexpected(this_file, "instmap_delta_from_mode_list_2").
+    unexpected($module, $pred, "length mismatch").
 instmap_delta_from_mode_list_2([Var | Vars], [Mode | Modes], ModuleInfo,
         !InstMapDelta) :-
     mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
@@ -541,6 +547,13 @@ instmap_delta_search_var(unreachable, _, not_reached).
 instmap_delta_search_var(reachable(InstMap), Var, Inst) :-
     map.search(InstMap, Var, Inst).
 
+instmap_delta_lookup_var(InstMapDelta, Var, Inst) :-
+    ( instmap_delta_search_var(InstMapDelta, Var, InstPrime) ->
+        Inst = InstPrime
+    ;
+        unexpected($module, $pred, "var not in instmap")
+    ).
+
 instmap_lookup_vars(_InstMap, [], []).
 instmap_lookup_vars(InstMap, [Arg | Args], [Inst | Insts]) :-
     instmap_lookup_var(InstMap, Arg, Inst),
@@ -565,8 +578,7 @@ instmap_set_vars(VarsInsts, !InstMap) :-
 
 instmapping_set_vars([], !InstMapping).
 instmapping_set_vars([Var - Inst | VarsInsts], !InstMapping) :-
-    expect(negate(unify(Inst, not_reached)), this_file,
-        "instmapping_set_vars: not_reached"),
+    expect(negate(unify(Inst, not_reached)), $module, $pred, "not_reached"),
     svmap.set(Var, Inst, !InstMapping),
     instmapping_set_vars(VarsInsts, !InstMapping).
 
@@ -588,16 +600,13 @@ instmap_set_vars_corresponding(Vars, Insts, !InstMap) :-
 instmapping_set_vars_corresponding([], [], !InstMapping).
 instmapping_set_vars_corresponding([Var | Vars], [Inst | Insts],
         !InstMapping) :-
-    expect(negate(unify(Inst, not_reached)), this_file,
-        "instmapping_set_vars_corresponding: not_reached"),
+    expect(negate(unify(Inst, not_reached)), $module, $pred, "not_reached"),
     svmap.set(Var, Inst, !InstMapping),
     instmapping_set_vars_corresponding(Vars, Insts, !InstMapping).
 instmapping_set_vars_corresponding([_ | _], [], !InstMapping) :-
-    unexpected(this_file,
-        "instmapping_set_vars_corresponding: length mismatch (1)").
+    unexpected($module, $pred, "length mismatch (1)").
 instmapping_set_vars_corresponding([], [_ | _], !InstMapingp) :-
-    unexpected(this_file,
-        "instmapping_set_vars_corresponding: length mismatch (2)").
+    unexpected($module, $pred, "length mismatch (2)").
 
 instmap_set_vars_same(Inst, Vars, !InstMap) :-
     (
@@ -605,8 +614,8 @@ instmap_set_vars_same(Inst, Vars, !InstMap) :-
         % Leave the instmap as it is.
     ;
         !.InstMap = reachable(InstMapping0),
-        expect(negate(unify(Inst, not_reached)), this_file,
-            "instmap_set_vars_same: not_reached"),
+        expect(negate(unify(Inst, not_reached)), $module, $pred,
+            "not_reached"),
         instmapping_set_vars_same(Inst, Vars, InstMapping0, InstMapping),
         !:InstMap = reachable(InstMapping)
     ).
@@ -634,8 +643,8 @@ instmap_delta_set_vars_same(Inst, Vars, !InstMapDelta) :-
         % Leave the instmap as it is.
     ;
         !.InstMapDelta = reachable(InstMapping0),
-        expect(negate(unify(Inst, not_reached)), this_file,
-            "instmap_delta_set_vars_same: not_reached"),
+        expect(negate(unify(Inst, not_reached)), $module, $pred,
+            "not_reached"),
         instmapping_set_vars_same(Inst, Vars, InstMapping0, InstMapping),
         !:InstMapDelta = reachable(InstMapping)
     ).
@@ -731,7 +740,7 @@ bind_inst_to_functor(Type, ConsId, !Inst, !ModuleInfo) :-
     ->
         true
     ;
-        unexpected(this_file, "bind_inst_to_functor: mode error")
+        unexpected($module, $pred, "mode error")
     ).
 
 :- pred bind_inst_to_functors(mer_type::in, cons_id::in, list(cons_id)::in,
@@ -754,8 +763,7 @@ bind_inst_to_functors(Type, MainConsId, OtherConsIds, InitInst, FinalInst,
         % should come only after mode checking has been done without finding
         % any errors. Finding an error now would mean that some compiler pass
         % executed between mode checking and how has screwed up.
-        unexpected(this_file,
-            "bind_inst_to_functors: no MaybeMergedInst")
+        unexpected($module, $pred, "no MaybeMergedInst")
     ).
 
 :- pred bind_inst_to_functors_others(mer_type::in, list(cons_id)::in,
@@ -1036,8 +1044,7 @@ merge_instmap_deltas(InstMap, NonLocals, VarTypes, Deltas,
         [], MergedDeltas, !ModuleInfo),
     (
         MergedDeltas = [],
-        unexpected(this_file,
-            "merge_instmap_deltas: empty instmap_delta list.")
+        unexpected($module, $pred, "empty instmap_delta list.")
     ;
         MergedDeltas = [MergedDelta]
     ;
@@ -1327,7 +1334,7 @@ merge_instmapping_delta_2([Var | Vars], InstMap, VarTypes,
         term.var_to_int(Var, VarInt),
         string.format("merge_instmapping_delta_2: error merging var %i",
             [i(VarInt)], Msg),
-        unexpected(this_file, Msg)
+        unexpected($module, $pred, Msg)
     ),
     merge_instmapping_delta_2(Vars, InstMap, VarTypes,
         InstMappingA, InstMappingB, !InstMapping, !ModuleInfo).
@@ -1380,8 +1387,7 @@ unify_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
             ->
                 svmap.det_insert(Var, Inst, !InstMapping)
             ;
-                unexpected(this_file,
-                    "unify_instmapping_delta_2: unexpected error")
+                unexpected($module, $pred, "unexpected error")
             )
         ;
             svmap.det_insert(Var, InstA, !InstMapping)
@@ -1451,11 +1457,5 @@ var_is_bound_in_instmap_delta(ModuleInfo, InstMap, InstMapDelta, Var) :-
     inst_is_free(ModuleInfo, OldVarInst),
     instmap_delta_search_var(InstMapDelta, Var, VarInst),
     inst_is_bound(ModuleInfo, VarInst).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "instmap.m".
 
 %-----------------------------------------------------------------------------%

@@ -3045,6 +3045,7 @@ convert_dump_alias("osv", "bcdglmnpruvP").
 convert_dump_alias("ctgc", "cdinpGDRS").
 convert_dump_alias("vars", "npBis").    % Var instantiations, liveness etc.
 convert_dump_alias("statevar", "gvCP").
+convert_dump_alias("lco", "agiuvzD").
 
 %-----------------------------------------------------------------------------%
 :- end_module handle_options.

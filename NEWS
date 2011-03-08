@@ -127,6 +127,13 @@ Changes to the Mercury standard library:
   the absence of a feature, while the predicates unexpected/2 and unexpected/3
   report an internal error in the program; all have function versions too.
   The predicate expect/3 calls unexpected if a condition isn't satisfied.
+  We now have expect/4 as well as expect/3. For expect/4 as well as expect/3,
+  the first and last arguments are the expected condition and the error message
+  respectively, but with expect/4, there are two arguments in the middle
+  to specify the location of the error (normally the name of the module
+  and of the predicate respectively). We also added expect_not/3 and
+  expect_not/4, which are like expect/3 and expect/4 respectively,
+  except they expect the condition to be *false*, not true.
 
 Changes to the Mercury compiler:
 

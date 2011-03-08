@@ -45,7 +45,7 @@
 :- func sorry(string, string) = _ is erroneous.
 :- pred sorry(string::in, string::in) is erroneous.
 
-    % sorry(Module, Proc What):
+    % sorry(Module, Proc, What):
     %
     % Call error/1 with the string
     % "Module: Proc: Sorry, not implemented: What".
@@ -94,11 +94,25 @@
     %
 :- pred expect((pred)::((pred) is semidet), string::in, string::in) is det.
 
+    % expect(Goal, Module, Proc, Message):
+    %
+    % Call Goal, and call unexpected(Module, Proc, Message) if Goal fails.
+    %
+:- pred expect((pred)::((pred) is semidet), string::in, string::in,
+    string::in) is det.
+
     % expect_not(Goal, Module, Message):
     %
     % Call Goal, and call unexpected(Module, Message) if Goal succeeds.
     %
 :- pred expect_not((pred)::((pred) is semidet), string::in, string::in) is det.
+
+    % expect_not(Goal, Module, Proc, Message):
+    %
+    % Call Goal, and call unexpected(Module, Proc, Message) if Goal succeeds.
+    %
+:- pred expect_not((pred)::((pred) is semidet), string::in, string::in,
+    string::in) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -194,9 +208,23 @@ expect(Goal, Module, Message) :-
         unexpected(Module, Message)
     ).
 
+expect(Goal, Module, Proc, Message) :-
+    ( Goal ->
+        true
+    ;
+        unexpected(Module, Proc, Message)
+    ).
+
 expect_not(Goal, Module, Message) :-
     ( Goal ->
         unexpected(Module, Message)
+    ;
+        true
+    ).
+
+expect_not(Goal, Module, Proc, Message) :-
+    ( Goal ->
+        unexpected(Module, Proc, Message)
     ;
         true
     ).
