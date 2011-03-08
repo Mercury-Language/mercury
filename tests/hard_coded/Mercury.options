@@ -8,6 +8,7 @@ MCFLAGS-bad_indirect_reuse3 =	--ctgc --no-common-struct
 MCFLAGS-big_array_from_list =   --optimize-tailcalls
 MCFLAGS-bigtest =		--intermodule-optimization -O3
 MCFLAGS-boyer =			--infer-all
+MCFLAGS-bug103 =		--optimize-constructor-last-call
 MCFLAGS-bug160 =		-w --optimize-peep-mkword
 MCFLAGS-checked_nondet_tailcall	= --checked-nondet-tailcalls
 MCFLAGS-checked_nondet_tailcall_noinline = --checked-nondet-tailcalls --no-inlining

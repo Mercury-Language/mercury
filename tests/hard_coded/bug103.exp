@@ -1,0 +1,1 @@
+cons(42, cons(42, nil))

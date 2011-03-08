@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -174,6 +174,8 @@
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
@@ -190,6 +192,7 @@
 :- import_module bag.
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module multi_map.
@@ -247,7 +250,6 @@
 :- type lco_info
     --->    lco_info(
                 lco_module_info         :: module_info,
-                lco_highlevel_data      :: bool,
                 lco_cur_scc_variants    :: variant_map,
                 lco_var_set             :: prog_varset,
                 lco_var_types           :: vartypes,
@@ -263,7 +265,8 @@
                 lci_cur_proc_pred       :: pred_info,
                 lci_cur_proc_proc       :: proc_info,
                 lci_cur_proc_outputs    :: list(prog_var),
-                lci_cur_proc_detism     :: determinism
+                lci_cur_proc_detism     :: determinism,
+                lci_highlevel_data      :: bool
             ).
 
 :- type var_to_target == assoc_list(prog_var, store_target).
@@ -296,8 +299,8 @@ lco_scc(SCC, !VariantMap, !ModuleInfo) :-
         Permitted = permitted,
         CurSCCUpdates = [_ | _]
     ->
-        list.foldl(process_proc_update, CurSCCUpdates, !ModuleInfo),
-        list.foldl(process_proc_variant(CurSCCVariantMap), CurSCCVariants,
+        list.foldl(lco_process_proc_update, CurSCCUpdates, !ModuleInfo),
+        list.foldl(lco_process_proc_variant(CurSCCVariantMap), CurSCCVariants,
             !ModuleInfo)
     ;
         !:ModuleInfo = ModuleInfo0
@@ -305,10 +308,10 @@ lco_scc(SCC, !VariantMap, !ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred process_proc_update(pair(pred_proc_id, proc_info)::in,
+:- pred lco_process_proc_update(pair(pred_proc_id, proc_info)::in,
     module_info::in, module_info::out) is det.
 
-process_proc_update(PredProcId - NewProcInfo, !ModuleInfo) :-
+lco_process_proc_update(PredProcId - NewProcInfo, !ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
@@ -318,19 +321,19 @@ process_proc_update(PredProcId - NewProcInfo, !ModuleInfo) :-
     map.det_update(PredTable0, PredId, PredInfo, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
-:- pred process_proc_variant(variant_map::in,
+:- pred lco_process_proc_variant(variant_map::in,
     pair(pred_proc_id, variant_id)::in,
     module_info::in, module_info::out) is det.
 
-process_proc_variant(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
+lco_process_proc_variant(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
     VariantId = variant_id(AddrOutArgs, VariantPredProcId, VariantName),
     VariantPredProcId = proc(VariantPredId, VariantProcId),
     PredProcId = proc(PredId, ProcId),
 
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         _PredInfo, ProcInfo),
-    transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo, VariantProcInfo,
-        !ModuleInfo),
+    lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
+        VariantProcInfo, !ModuleInfo),
 
     proc_info_get_headvars(VariantProcInfo, HeadVars),
     proc_info_get_vartypes(VariantProcInfo, VarTypes),
@@ -399,20 +402,29 @@ lco_proc(LowerSCCVariants, SCC, CurProc, !ModuleInfo, !CurSCCVariants,
             arg_info.compute_in_and_out_vars(!.ModuleInfo, HeadVars,
                 ArgModes, ArgTypes, _InputHeadVars, OutputHeadVars),
             proc_info_get_inferred_determinism(ProcInfo0, CurProcDetism),
-            ConstInfo = lco_const_info(LowerSCCVariants, list_to_set(SCC),
-                CurProc, PredInfo, ProcInfo0, OutputHeadVars, CurProcDetism),
-            module_info_get_globals(!.ModuleInfo, Globals),
             globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
-            Info0 = lco_info(!.ModuleInfo, HighLevelData, !.CurSCCVariants,
+            ConstInfo = lco_const_info(LowerSCCVariants, list_to_set(SCC),
+                CurProc, PredInfo, ProcInfo0, OutputHeadVars, CurProcDetism,
+                HighLevelData),
+            module_info_get_globals(!.ModuleInfo, Globals),
+            Info0 = lco_info(!.ModuleInfo, !.CurSCCVariants,
                 VarSet0, VarTypes0, permitted, not_changed),
             proc_info_get_goal(ProcInfo0, Goal0),
             lco_in_goal(Goal0, Goal, Info0, Info, ConstInfo),
-            Info = lco_info(!:ModuleInfo, _, !:CurSCCVariants, VarSet,
+            Info = lco_info(!:ModuleInfo, !:CurSCCVariants, VarSet,
                 VarTypes, !:Permitted, Changed),
             (
                 !.Permitted = permitted,
                 Changed = changed
             ->
+                trace [compiletime(flag("lco")), io(!IO)] (
+                    io.write_string("\ngoal before lco:\n", !IO),
+                    dump_goal(!.ModuleInfo, VarSet, Goal0, !IO),
+                    io.nl(!IO),
+                    io.write_string("\ngoal after lco:\n", !IO),
+                    dump_goal(!.ModuleInfo, VarSet, Goal, !IO),
+                    io.nl(!IO)
+                ),
                 some [!ProcInfo] (
                     !:ProcInfo = ProcInfo0,
                     proc_info_set_varset(VarSet, !ProcInfo),
@@ -472,7 +484,7 @@ lco_in_goal(Goal0, Goal, !Info, ConstInfo) :-
         ;
             ConjType = parallel_conj,
             GoalExpr = GoalExpr0,
-            !:Info = !.Info ^ lco_permitted := not_permitted
+            !Info ^ lco_permitted := not_permitted
         )
     ;
         GoalExpr0 = disj(Goals0),
@@ -512,7 +524,7 @@ lco_in_goal(Goal0, Goal, !Info, ConstInfo) :-
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "lco_in_goal: shorthand")
+        unexpected($module, $pred, "shorthand")
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
@@ -578,17 +590,38 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
         ),
         all_true(acceptable_construct_mode(ModuleInfo), ArgUniModes),
         ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
-        % The code generator can't handle the other tags. For example, it
-        % doesn't make sense to take the address of the field of a function
-        % symbol of a `notag' type.
+        % The code generator can't handle some kinds of tags. For example,
+        % it does not make sense to take the address of the field of a function
+        % symbol of a `notag' type. These are the kinds it CAN handle.
         (
+            ConsTag = single_functor_tag
+        ;
             ConsTag = unshared_tag(_)
         ;
             ConsTag = shared_remote_tag(_, _)
         )
     ->
+        trace [compiletime(flag("lco")), io(!IO)] (
+            io.write_string("processing unification ", !IO),
+            io.write(ConstructedVar, !IO),
+            io.write_string(" <= ", !IO),
+            io.write(ConsId, !IO),
+            io.write_string("(", !IO),
+            io.write(ConstructArgs, !IO),
+            io.write_string(")\n", !IO)
+        ),
+        trace [compiletime(flag("lco")), io(!IO)] (
+            io.write_string("initial UnifyInputVars: ", !IO),
+            io.write(!.UnifyInputVars, !IO),
+            io.nl(!IO)
+        ),
         svbag.delete(ConstructedVar, !UnifyInputVars),
         svbag.insert_list(ConstructArgs, !UnifyInputVars),
+        trace [compiletime(flag("lco")), io(!IO)] (
+            io.write_string("updated UnifyInputVars: ", !IO),
+            io.write(!.UnifyInputVars, !IO),
+            io.nl(!IO)
+        ),
         !:Unifies = [RevGoal | !.Unifies],
         lco_in_conj(RevGoals, !.Unifies, !.UnifyInputVars, MaybeGoals,
             !Info, ConstInfo)
@@ -605,6 +638,11 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
         classify_proc_call_args(ModuleInfo, VarTypes, Args, CalleeArgModes,
             _InArgs, OutArgs, UnusedArgs),
         UnusedArgs = [],
+        trace [compiletime(flag("lco")), io(!IO)] (
+            io.write_string("call output args: ", !IO),
+            io.write(OutArgs, !IO),
+            io.nl(!IO)
+        ),
         list.length(OutArgs, NumOutArgs),
         CurrProcOutArgs = ConstInfo ^ lci_cur_proc_outputs,
         list.length(CurrProcOutArgs, NumCurrProcOutArgs),
@@ -612,8 +650,24 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
 
         assoc_list.from_corresponding_lists(OutArgs, CurrProcOutArgs,
             CallHeadPairs),
-        find_args_to_pass_by_addr(CallHeadPairs, 1, Mismatches,
-            UpdatedCallOutArgs, map.init, Subst, !Info),
+        find_args_to_pass_by_addr(ConstInfo, !.UnifyInputVars, CallHeadPairs,
+            1, Mismatches, UpdatedCallOutArgs, map.init, Subst, !Info),
+        trace [compiletime(flag("lco")), io(!IO)] (
+            io.write_string("find_args_to_pass_by_addr:\n", !IO),
+            io.write_string("call head pairs: ", !IO),
+            io.write(CallHeadPairs, !IO),
+            io.nl(!IO),
+            io.write_string("mismatches: ", !IO),
+            io.write(Mismatches, !IO),
+            io.nl(!IO),
+            io.write_string("updated call out args: ", !IO),
+            io.write(UpdatedCallOutArgs, !IO),
+            io.nl(!IO),
+            io.write_string("substitution: ", !IO),
+            io.write(Subst, !IO),
+            io.nl(!IO),
+            io.nl(!IO)
+        ),
         % If there are no mismatches, we would create an identical "variant".
         % Such cases should be optimized using other means.
         Mismatches = [_ | _],
@@ -622,9 +676,23 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
         % memory.
         all_true(occurs_once(!.UnifyInputVars), MismatchedCallArgs),
 
-        list.map_foldl2(update_construct(Subst), !.Unifies,
-            UpdatedUnifies, map.init, AddrFieldIds, !Info),
-        HighLevelData = !.Info ^ lco_highlevel_data,
+        list.map_foldl2(update_construct(ConstInfo, Subst),
+            !.Unifies, UpdatedUnifies, map.init, AddrFieldIds, !Info),
+        trace [compiletime(flag("lco")), io(!IO)] (
+            VarSet = !.Info ^ lco_var_set,
+            io.write_string("original unifies:\n", !IO),
+            io.write_list(!.Unifies, "\n",
+                dump_goal(ModuleInfo, VarSet), !IO),
+            io.nl(!IO),
+            io.write_string("updated unifies:\n", !IO),
+            io.write_list(UpdatedUnifies, "\n",
+                dump_goal(ModuleInfo, VarSet), !IO),
+            io.nl(!IO),
+            io.write_string("addr field ids:\n", !IO),
+            io.write(AddrFieldIds, !IO),
+            io.nl(!IO)
+        ),
+        HighLevelData = ConstInfo ^ lci_highlevel_data,
         make_variant_args(HighLevelData, AddrFieldIds, Mismatches,
             VariantArgs),
         ensure_variant_exists(PredId, ProcId, VariantArgs,
@@ -640,7 +708,7 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
         UpdatedGoal = hlds_goal(UpdatedGoalExpr, UpdatedGoalInfo),
         Goals = list.reverse(RevGoals) ++ UpdatedUnifies ++ [UpdatedGoal],
         MaybeGoals = yes(Goals),
-        !:Info = !.Info ^ lco_changed := changed
+        !Info ^ lco_changed := changed
     ;
         % The reversed conjunction does not follow the pattern we are looking
         % for, so we cannot optimize it.
@@ -651,12 +719,12 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
     list(prog_var)::in, list(prog_var)::in, list(prog_var)::out) is det.
 
 update_call_args(_ModuleInfo, _VarTypes, [], [], UpdatedCallOutArgs, []) :-
-    expect(unify(UpdatedCallOutArgs, []), this_file,
+    expect(unify(UpdatedCallOutArgs, []), $module,
         "update_call_args: updating nonexistent arg").
 update_call_args(_ModuleInfo, _VarTypes, [], [_ | _], _, _) :-
-    unexpected(this_file, "update_call_args: mismatches lists").
+    unexpected($module, $pred, "mismatched lists").
 update_call_args(_ModuleInfo, _VarTypes, [_ | _], [], _, _) :-
-    unexpected(this_file, "update_call_args: mismatches lists").
+    unexpected($module, $pred, "mismatched lists").
 update_call_args(ModuleInfo, VarTypes, [CalleeMode | CalleeModes],
         [Arg | Args], !.UpdatedCallOutArgs, !:UpdatedArgs) :-
     map.lookup(VarTypes, Arg, CalleeType),
@@ -672,14 +740,14 @@ update_call_args(ModuleInfo, VarTypes, [CalleeMode | CalleeModes],
             !.UpdatedCallOutArgs = [UpdatedArg | !:UpdatedCallOutArgs]
         ;
             !.UpdatedCallOutArgs = [],
-            unexpected(this_file, "update_call_args: no UpdatedCallOutArgs")
+            unexpected($module, $pred, "no UpdatedCallOutArgs")
         ),
         update_call_args(ModuleInfo, VarTypes, CalleeModes, Args,
             !.UpdatedCallOutArgs, !:UpdatedArgs),
         !:UpdatedArgs = [UpdatedArg | !.UpdatedArgs]
     ;
         ArgMode = top_unused,
-        unexpected(this_file, "update_call_args: top_unused")
+        unexpected($module, $pred, "top_unused")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -690,9 +758,9 @@ update_call_args(ModuleInfo, VarTypes, [CalleeMode | CalleeModes],
 
 classify_proc_call_args(_ModuleInfo, _VarTypes, [], [], [], [], []).
 classify_proc_call_args(_ModuleInfo, _VarTypes, [], [_ | _], _, _, _) :-
-    unexpected(this_file, "classify_proc_call_args: mismatches lists").
+    unexpected($module, $pred, "mismatched lists").
 classify_proc_call_args(_ModuleInfo, _VarTypes, [_ | _], [], _, _, _) :-
-    unexpected(this_file, "classify_proc_call_args: mismatches lists").
+    unexpected($module, $pred, "mismatched lists").
 classify_proc_call_args(ModuleInfo, VarTypes, [Arg | Args],
         [CalleeMode | CalleeModes], !:InArgs, !:OutArgs, !:UnusedArgs) :-
     classify_proc_call_args(ModuleInfo, VarTypes, Args, CalleeModes,
@@ -712,35 +780,65 @@ classify_proc_call_args(ModuleInfo, VarTypes, [Arg | Args],
 
 %-----------------------------------------------------------------------------%
 
-:- pred find_args_to_pass_by_addr(assoc_list(prog_var, prog_var)::in, int::in,
+:- pred find_args_to_pass_by_addr(lco_const_info::in, bag(prog_var)::in,
+    assoc_list(prog_var, prog_var)::in, int::in,
     assoc_list(int, prog_var)::out, list(prog_var)::out,
     map(prog_var, prog_var)::in, map(prog_var, prog_var)::out,
     lco_info::in, lco_info::out) is det.
 
-find_args_to_pass_by_addr([], _, [], [], !Subst, !Info).
-find_args_to_pass_by_addr([CallArg - HeadArg | CallHeadArgs], ArgNum,
-        Mismatches, [UpdatedCallArg | UpdatedCallArgs], !Subst, !Info) :-
-    find_args_to_pass_by_addr(CallHeadArgs, ArgNum + 1, MismatchesTail,
-        UpdatedCallArgs, !Subst, !Info),
+find_args_to_pass_by_addr(_ConstInfo, _, [], _, [], [], !Subst, !Info).
+find_args_to_pass_by_addr(ConstInfo, UnifyInputVars,
+        [CallArg - HeadArg | CallHeadArgs], ArgNum, Mismatches,
+        [UpdatedCallArg | UpdatedCallArgs], !Subst, !Info) :-
+    find_args_to_pass_by_addr(ConstInfo, UnifyInputVars, CallHeadArgs,
+        ArgNum + 1, MismatchesTail, UpdatedCallArgs, !Subst, !Info),
     ( CallArg = HeadArg ->
         UpdatedCallArg = CallArg,
-        Mismatches = MismatchesTail
+        Mismatches = MismatchesTail,
+        ( bag.member(HeadArg, UnifyInputVars) ->
+            % This is a fix for Mantis bug 103. If CallArg is both a head
+            % variable AND used in a unification that we are trying to move
+            % before the recursive call, like this:
+            %
+            %   rec_call(..., HV2, X),
+            %   HV3 = functor(HV2, X)
+            %
+            % then each call through this recursive call site is next to a
+            % unification that creates a cell with a field (in this case
+            % the first field) that needs to be set to the value of HV2
+            % finally computed by a base case. After the Nth recursive call,
+            % there will be N cells. There is no way we can pass N addresses
+            % to the base case without making the transformed code pass a
+            % LIST of addresses in place of HV2 in the argument list.
+            % That would be a different transformation than what lco.m does,
+            % and it is far from clear that that transformation would be a
+            % good idea, since it doubles the number of loop iterations
+            % we would need to execute (N recursive calls, and N iterations
+            % of a loop to fill in the fields).
+            %
+            % Instead, we just disable the application of the lco
+            % transformation to this call.
+
+            !Info ^ lco_permitted := not_permitted
+        ;
+            true
+        )
     ;
-        make_address_var(CallArg, UpdatedCallArg, !Info),
+        make_address_var(ConstInfo, CallArg, UpdatedCallArg, !Info),
         Mismatches = [ArgNum - CallArg | MismatchesTail],
         svmap.det_insert(CallArg, UpdatedCallArg, !Subst)
     ).
 
-:- pred make_address_var(prog_var::in, prog_var::out,
+:- pred make_address_var(lco_const_info::in, prog_var::in, prog_var::out,
     lco_info::in, lco_info::out) is det.
 
-make_address_var(Var, AddrVar, !Info) :-
-    HighLevelData = !.Info ^ lco_highlevel_data,
+make_address_var(ConstInfo, Var, AddrVar, !Info) :-
     VarSet0 = !.Info ^ lco_var_set,
     VarTypes0 = !.Info ^ lco_var_types,
     varset.lookup_name(VarSet0, Var, "SCCcallarg", Name),
     AddrName = "Addr" ++ Name,
     varset.new_named_var(VarSet0, AddrName, AddrVar, VarSet),
+    HighLevelData = ConstInfo ^ lci_highlevel_data,
     (
         HighLevelData = no,
         map.lookup(VarTypes0, Var, FieldType),
@@ -751,8 +849,8 @@ make_address_var(Var, AddrVar, !Info) :-
         % We set the type later when it is more convenient.
         VarTypes = VarTypes0
     ),
-    !:Info = !.Info ^ lco_var_set := VarSet,
-    !:Info = !.Info ^ lco_var_types := VarTypes.
+    !Info ^ lco_var_set := VarSet,
+    !Info ^ lco_var_types := VarTypes.
 
 :- func make_ref_type(mer_type) = mer_type.
 
@@ -797,7 +895,7 @@ ensure_variant_exists(PredId, ProcId, AddrArgNums, VariantPredProcId,
         clone_pred_proc(PredId, ClonePredId, PredOrFunc,
             ModuleInfo0, ModuleInfo),
         VariantPredProcId = proc(ClonePredId, ProcId),
-        !:Info = !.Info ^ lco_module_info := ModuleInfo,
+        !Info ^ lco_module_info := ModuleInfo,
         ( multi_map.search(CurSCCVariants0, PredProcId, ExistingVariants) ->
             VariantNumber = list.length(ExistingVariants) + 1
         ;
@@ -815,7 +913,7 @@ ensure_variant_exists(PredId, ProcId, AddrArgNums, VariantPredProcId,
         ),
         NewVariant = variant_id(AddrArgNums, VariantPredProcId, VariantName),
         multi_map.set(CurSCCVariants0, PredProcId, NewVariant, CurSCCVariants),
-        !:Info = !.Info ^ lco_cur_scc_variants := CurSCCVariants
+        !Info ^ lco_cur_scc_variants := CurSCCVariants
     ).
 
 :- pred match_existing_variant(list(variant_id)::in, list(variant_arg)::in,
@@ -870,11 +968,12 @@ create_variant_name(PredOrFunc, VariantNumber, OrigName, VariantName) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred update_construct(map(prog_var, prog_var)::in, hlds_goal::in,
-    hlds_goal::out, map(prog_var, field_id)::in, map(prog_var, field_id)::out,
+:- pred update_construct(lco_const_info::in, map(prog_var, prog_var)::in,
+    hlds_goal::in, hlds_goal::out,
+    map(prog_var, field_id)::in, map(prog_var, field_id)::out,
     lco_info::in, lco_info::out) is det.
 
-update_construct(Subst, Goal0, Goal, !AddrVarFieldIds, !Info) :-
+update_construct(ConstInfo, Subst, Goal0, Goal, !AddrVarFieldIds, !Info) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = unify(LHS, RHS0, Mode, Unification0, UnifyContext),
@@ -892,7 +991,7 @@ update_construct(Subst, Goal0, Goal, !AddrVarFieldIds, !Info) :-
         % each of the variables that takes its address. But as support for
         % partial instantiation is incomplete, instmaps for the assignments are
         % likely to be recomputed incorrectly.
-        HighLevelData = !.Info ^ lco_highlevel_data,
+        HighLevelData = ConstInfo ^ lci_highlevel_data,
         VarTypes0 = !.Info ^ lco_var_types,
         map.lookup(VarTypes0, Var, VarType),
         InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
@@ -912,16 +1011,16 @@ update_construct(Subst, Goal0, Goal, !AddrVarFieldIds, !Info) :-
             % variables in the unification from there, not from Unification.
             (
                 RHS0 = rhs_var(_),
-                unexpected(this_file, "update_construct: var RHS")
+                unexpected($module, $pred, "var RHS")
             ;
                 RHS0 = rhs_functor(RHSConsId, IsExistConstr, RHSVars0),
-                expect(unify(ConsId, RHSConsId), this_file,
+                expect(unify(ConsId, RHSConsId), $module,
                     "update_construct: cons_id mismatch"),
                 rename_var_list(need_not_rename, Subst, RHSVars0, RHSVars),
                 RHS = rhs_functor(RHSConsId, IsExistConstr, RHSVars)
             ;
                 RHS0 = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
-                unexpected(this_file, "update_construct: lambda RHS")
+                unexpected($module, $pred, "lambda RHS")
             ),
             GoalExpr = unify(LHS, RHS, Mode, Unification, UnifyContext),
 
@@ -932,7 +1031,7 @@ update_construct(Subst, Goal0, Goal, !AddrVarFieldIds, !Info) :-
             Goal = hlds_goal(GoalExpr, GoalInfo)
         )
     ;
-        unexpected(this_file, "update_construct: not construct")
+        unexpected($module, $pred, "not construct")
     ).
 
 :- pred update_construct_args(map(prog_var, prog_var)::in, bool::in,
@@ -996,11 +1095,11 @@ occurs_once(Bag, Var) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred transform_variant_proc(variant_map::in, list(variant_arg)::in,
+:- pred lco_transform_variant_proc(variant_map::in, list(variant_arg)::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
-transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo, !:VariantProcInfo,
-        !ModuleInfo) :-
+lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
+        !:VariantProcInfo, !ModuleInfo) :-
     !:VariantProcInfo = ProcInfo,
     proc_info_get_varset(ProcInfo, VarSet0),
     proc_info_get_vartypes(ProcInfo, VarTypes0),
@@ -1016,7 +1115,7 @@ transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo, !:VariantProcInfo,
 
     proc_info_get_initial_instmap(ProcInfo, !.ModuleInfo, InstMap0),
     proc_info_get_goal(ProcInfo, Goal0),
-    transform_variant_goal(!.ModuleInfo, VariantMap, VarToAddr, InstMap0,
+    lco_transform_variant_goal(!.ModuleInfo, VariantMap, VarToAddr, InstMap0,
         Goal0, Goal, _Changed, !VariantProcInfo),
     proc_info_set_goal(Goal, !VariantProcInfo),
     % We changed the scopes of the headvars we now return via pointers.
@@ -1041,12 +1140,12 @@ transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo, !:VariantProcInfo,
 
 make_addr_vars([], [], [], [], AddrOutArgs, _, _, [],
         !VarSet, !VarTypes) :-
-    expect(unify(AddrOutArgs, []), this_file,
+    expect(unify(AddrOutArgs, []), $module,
         "make_addr_vars: AddrOutArgs != []").
 make_addr_vars([], [_ | _], _, _, _, _, _, _, !VarSet, !VarTypes) :-
-    unexpected(this_file, "make_addr_vars: mismatched lists").
+    unexpected($module, $pred, "mismatched lists").
 make_addr_vars([_ | _], [], _, _, _, _, _, _, !VarSet, !VarTypes) :-
-    unexpected(this_file, "make_addr_vars: mismatched lists").
+    unexpected($module, $pred, "mismatched lists").
 make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
         [HeadVar | HeadVars], [Mode | Modes], !.AddrOutArgs,
         NextOutArgNum, ModuleInfo, VarToAddr, !VarSet, !VarTypes) :-
@@ -1099,32 +1198,32 @@ make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
         )
     ;
         ArgMode = top_unused,
-        unexpected(this_file, "make_addr_vars: top_unused")
+        unexpected($module, $pred, "top_unused")
     ).
 
-:- pred transform_variant_goal(module_info::in, variant_map::in,
+:- pred lco_transform_variant_goal(module_info::in, variant_map::in,
     var_to_target::in, instmap::in, hlds_goal::in, hlds_goal::out, bool::out,
     proc_info::in, proc_info::out) is det.
 
-transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
+lco_transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
         Goal0, Goal, Changed, !ProcInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
-            transform_variant_conj(ModuleInfo, VariantMap, VarToAddr, InstMap0,
-                Goals0, Goals, Changed, !ProcInfo),
+            lco_transform_variant_conj(ModuleInfo, VariantMap, VarToAddr,
+                InstMap0, Goals0, Goals, Changed, !ProcInfo),
             GoalExpr = conj(ConjType, Goals),
             GoalInfo = GoalInfo0
         ;
             ConjType = parallel_conj,
-            unexpected(this_file, "transform_variant_goal: parallel_conj")
+            unexpected($module, $pred, "parallel_conj")
         )
     ;
         GoalExpr0 = disj(Goals0),
         list.map2_foldl(
-            transform_variant_goal(ModuleInfo, VariantMap, VarToAddr,
+            lco_transform_variant_goal(ModuleInfo, VariantMap, VarToAddr,
                 InstMap0),
             Goals0, Goals, DisjsChanged, !ProcInfo),
         Changed = bool.or_list(DisjsChanged),
@@ -1133,7 +1232,7 @@ transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         list.map2_foldl(
-            transform_variant_case(ModuleInfo, VariantMap, VarToAddr,
+            lco_transform_variant_case(ModuleInfo, VariantMap, VarToAddr,
                 InstMap0),
             Cases0, Cases, CasesChanged, !ProcInfo),
         Changed = bool.or_list(CasesChanged),
@@ -1142,9 +1241,9 @@ transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
     ;
         GoalExpr0 = if_then_else(Vars, Cond, Then0, Else0),
         update_instmap(Cond, InstMap0, InstMap1),
-        transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap1,
+        lco_transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap1,
             Then0, Then, ThenChanged, !ProcInfo),
-        transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
+        lco_transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
             Else0, Else, ElseChanged, !ProcInfo),
         Changed = bool.or(ThenChanged, ElseChanged),
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
@@ -1155,8 +1254,8 @@ transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
             GoalExpr = GoalExpr0,
             Changed = no
         ;
-            transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
-                SubGoal0, SubGoal, Changed, !ProcInfo),
+            lco_transform_variant_goal(ModuleInfo, VariantMap, VarToAddr,
+                InstMap0, SubGoal0, SubGoal, Changed, !ProcInfo),
             GoalExpr = scope(Reason, SubGoal)
         ),
         GoalInfo = GoalInfo0
@@ -1167,28 +1266,28 @@ transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
         Changed = no
     ;
         GoalExpr0 = generic_call(_, _, _, _),
-        transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
+        lco_transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
             GoalInfo0, GoalExpr0, GoalExpr, Changed, !ProcInfo),
         GoalInfo = GoalInfo0
     ;
         GoalExpr0 = plain_call(_, _, _, _, _, _),
-        transform_variant_plain_call(ModuleInfo, VariantMap, VarToAddr,
+        lco_transform_variant_plain_call(ModuleInfo, VariantMap, VarToAddr,
             InstMap0, GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, Changed,
             !ProcInfo)
     ;
         GoalExpr0 = unify(_, _, _, _, _),
-        transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
+        lco_transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
             GoalInfo0, GoalExpr0, GoalExpr, Changed, !ProcInfo),
         GoalInfo = GoalInfo0
     ;
         GoalExpr0 = call_foreign_proc(_, _, _, _,  _, _, _),
-        transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
+        lco_transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
             GoalInfo0, GoalExpr0, GoalExpr, Changed, !ProcInfo),
         GoalInfo = GoalInfo0
     ;
         GoalExpr0 = shorthand(_),
         % These should have been expanded out by now.
-        unexpected(this_file, "transform_variant_goal: shorthand")
+        unexpected($module, $pred, "shorthand")
     ),
     (
         Changed = yes,
@@ -1201,17 +1300,17 @@ transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
         Goal = Goal0
     ).
 
-:- pred transform_variant_conj(module_info::in, variant_map::in,
+:- pred lco_transform_variant_conj(module_info::in, variant_map::in,
     var_to_target::in, instmap::in, list(hlds_goal)::in, list(hlds_goal)::out,
     bool::out, proc_info::in, proc_info::out) is det.
 
-transform_variant_conj(_, _, _, _, [], [], no, !ProcInfo).
-transform_variant_conj(ModuleInfo, VariantMap, VarToAddr, InstMap0,
+lco_transform_variant_conj(_, _, _, _, [], [], no, !ProcInfo).
+lco_transform_variant_conj(ModuleInfo, VariantMap, VarToAddr, InstMap0,
         [Goal0 | Goals0], Conj, Changed, !ProcInfo) :-
-    transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
+    lco_transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
         Goal0, Goal, HeadChanged, !ProcInfo),
     update_instmap(Goal0, InstMap0, InstMap1),
-    transform_variant_conj(ModuleInfo, VariantMap, VarToAddr, InstMap1,
+    lco_transform_variant_conj(ModuleInfo, VariantMap, VarToAddr, InstMap1,
         Goals0, Goals, TailChanged, !ProcInfo),
     Changed = bool.or(HeadChanged, TailChanged),
     ( Goal = hlds_goal(conj(plain_conj, SubConj), _) ->
@@ -1220,23 +1319,23 @@ transform_variant_conj(ModuleInfo, VariantMap, VarToAddr, InstMap0,
         Conj = [Goal | Goals]
     ).
 
-:- pred transform_variant_case(module_info::in, variant_map::in,
+:- pred lco_transform_variant_case(module_info::in, variant_map::in,
     var_to_target::in, instmap::in, case::in, case::out, bool::out,
     proc_info::in, proc_info::out) is det.
 
-transform_variant_case(ModuleInfo, VariantMap, VarToAddr, InstMap0,
+lco_transform_variant_case(ModuleInfo, VariantMap, VarToAddr, InstMap0,
         Case0, Case, Changed, !ProcInfo) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
+    lco_transform_variant_goal(ModuleInfo, VariantMap, VarToAddr, InstMap0,
         Goal0, Goal, Changed, !ProcInfo),
     Case = case(MainConsId, OtherConsIds, Goal).
 
-:- pred transform_variant_atomic_goal(module_info::in,
+:- pred lco_transform_variant_atomic_goal(module_info::in,
     var_to_target::in, instmap::in, hlds_goal_info::in,
     hlds_goal_expr::in, hlds_goal_expr::out, bool::out,
     proc_info::in, proc_info::out) is det.
 
-transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
+lco_transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
         GoalInfo, GoalExpr0, GoalExpr, Changed, !ProcInfo) :-
     update_instmap(hlds_goal(GoalExpr0, GoalInfo), InstMap0, InstMap1),
     list.filter(is_grounding(ModuleInfo, InstMap0, InstMap1), VarToAddr,
@@ -1254,13 +1353,13 @@ transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
         Changed = yes
     ).
 
-:- pred transform_variant_plain_call(module_info::in, variant_map::in,
+:- pred lco_transform_variant_plain_call(module_info::in, variant_map::in,
     var_to_target::in, instmap::in,
     hlds_goal_expr::in(plain_call_expr), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out, bool::out,
     proc_info::in, proc_info::out) is det.
 
-transform_variant_plain_call(ModuleInfo, VariantMap, VarToAddr, InstMap0,
+lco_transform_variant_plain_call(ModuleInfo, VariantMap, VarToAddr, InstMap0,
         GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, Changed, !ProcInfo) :-
     update_instmap(hlds_goal(GoalExpr0, GoalInfo0), InstMap0, InstMap1),
     list.filter(is_grounding(ModuleInfo, InstMap0, InstMap1), VarToAddr,
@@ -1315,7 +1414,7 @@ transform_variant_plain_call(ModuleInfo, VariantMap, VarToAddr, InstMap0,
             ),
             Changed = yes
         ;
-            transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
+            lco_transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
                 GoalInfo0, GoalExpr0, GoalExpr, Changed, !ProcInfo),
             GoalInfo = GoalInfo0
         )
@@ -1433,12 +1532,6 @@ make_unification_arg(GroundVar, TargetArgNum, CurArgNum, ArgType,
         proc_info_create_var_from_type(ArgType, no, Var, !ProcInfo),
         UniMode = ((ground_inst - free_inst) -> (ground_inst - ground_inst))
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "lco.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module lco.
