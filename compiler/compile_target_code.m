@@ -404,8 +404,8 @@ do_compile_c_file(ErrorStream, PIC, C_File, O_File, Globals, Succeeded, !IO) :-
     string.append_list([
         CC, " ", 
         AllCFlags,
-        " -c ", C_File, " ",
-        NameObjectFile, O_File], Command),
+        " -c ", quote_arg(C_File), " ",
+        NameObjectFile, quote_arg(O_File)], Command),
     get_maybe_filtercc_command(Globals, MaybeFilterCmd),
     invoke_system_command_maybe_filter_output(Globals, ErrorStream,
         cmd_verbose_commands, Command, MaybeFilterCmd, Succeeded, !IO).
@@ -1262,7 +1262,8 @@ module_name_to_file_name_ext(Globals, Ext, MkDir, ModuleName, FileName, !IO) :-
 
 invoke_mkinit(Globals, InitFileStream, Verbosity,
         MkInit, Args, FileNames, MkInitOK, !IO) :-
-    join_quoted_string_list(FileNames, "", "\n", "", TargetFileNames),
+    % mkinit expects unquoted file names.
+    join_string_list(FileNames, "", "\n", "", TargetFileNames),
 
     io.make_temp(TmpFile, !IO),
     io.open_output(TmpFile, OpenResult, !IO),
@@ -1969,7 +1970,7 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
                     UndefOpt, " ",
                     ThreadOpts, " ",
                     TraceOpts, " ",
-                    " -o ", OutputFileName, " ",
+                    " -o ", quote_arg(OutputFileName), " ",
                     Objects, " ",
                     LinkOptSep, " ",
                     LinkLibraryDirectories, " ",
