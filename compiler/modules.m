@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2354,11 +2354,12 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
             ".trans_opt", TransOptDepsOrdering, !IO),
 
         trace [compiletime(flag("deps_graph")), runtime(env("DEPS_GRAPH")),
-            io(!IO)]
+            io(!TIO)]
         (
             digraph.to_assoc_list(ImplDepsGraph, ImplDepsAL),
-            print("ImplDepsAL:\n", !IO),
-            write_list(ImplDepsAL, "\n", print, !IO), nl(!IO)
+            print("ImplDepsAL:\n", !TIO),
+            io.write_list(ImplDepsAL, "\n", print, !TIO),
+            io.nl(!TIO)
         ),
 
         % Compute the indirect dependencies: they are equal to the composition

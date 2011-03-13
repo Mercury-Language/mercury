@@ -3041,7 +3041,9 @@ convert_dump_alias("mm", "bdgvP").      % for debugging minimal model
 convert_dump_alias("osv", "bcdglmnpruvP").  % for debugging
                                             % --optimize-saved-vars-cell
 convert_dump_alias("ctgc", "cdinpGDRS").
-convert_dump_alias("vars", "npBis").    % Debug var instantiations, liveness etc.
+convert_dump_alias("vars", "npBis").    % Var instantiations, liveness etc.
+convert_dump_alias("statevar", "gvCP").
+convert_dump_alias("lco", "agiuvzD").
 
 %-----------------------------------------------------------------------------%
 :- end_module handle_options.

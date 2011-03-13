@@ -168,9 +168,9 @@ mc_process_module(!ModuleInfo, !IO) :-
         (
             Debug = yes,
             ConstraintVarset = mc_varset(VarInfo),
-            trace [io(!IO)] (
+            trace [io(!TIO)] (
                 pretty_print_pred_constraints_map(!.ModuleInfo,
-                    ConstraintVarset, AbstractModeConstraints, !IO)
+                    ConstraintVarset, AbstractModeConstraints, !TIO)
             )
         ;
             Debug = no
@@ -184,10 +184,10 @@ mc_process_module(!ModuleInfo, !IO) :-
 
         (
             Debug = yes,
-            trace [io(!IO)] (
+            trace [io(!TIO)] (
                 list.foldl(
                     ordering_mode_constraints.dump_goal_paths(!.ModuleInfo),
-                    SCCs, !IO)
+                    SCCs, !TIO)
             )
         ;
             Debug = no

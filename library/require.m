@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1999, 2003, 2005-2006, 2010 The University of Melbourne.
+% Copyright (C) 1993-1999, 2003, 2005-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -45,7 +45,7 @@
 :- func sorry(string, string) = _ is erroneous.
 :- pred sorry(string::in, string::in) is erroneous.
 
-    % sorry(Module, Proc What):
+    % sorry(Module, Proc, What):
     %
     % Call error/1 with the string
     % "Module: Proc: Sorry, not implemented: What".
@@ -93,6 +93,26 @@
     % Call Goal, and call unexpected(Module, Message) if Goal fails.
     %
 :- pred expect((pred)::((pred) is semidet), string::in, string::in) is det.
+
+    % expect(Goal, Module, Proc, Message):
+    %
+    % Call Goal, and call unexpected(Module, Proc, Message) if Goal fails.
+    %
+:- pred expect((pred)::((pred) is semidet), string::in, string::in,
+    string::in) is det.
+
+    % expect_not(Goal, Module, Message):
+    %
+    % Call Goal, and call unexpected(Module, Message) if Goal succeeds.
+    %
+:- pred expect_not((pred)::((pred) is semidet), string::in, string::in) is det.
+
+    % expect_not(Goal, Module, Proc, Message):
+    %
+    % Call Goal, and call unexpected(Module, Proc, Message) if Goal succeeds.
+    %
+:- pred expect_not((pred)::((pred) is semidet), string::in, string::in,
+    string::in) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -186,6 +206,28 @@ expect(Goal, Module, Message) :-
         true
     ;
         unexpected(Module, Message)
+    ).
+
+
+expect(Goal, Module, Proc, Message) :-
+    ( Goal ->
+        true
+    ;
+        unexpected(Module, Proc, Message)
+    ).
+
+expect_not(Goal, Module, Message) :-
+    ( Goal ->
+        unexpected(Module, Message)
+    ;
+        true
+    ).
+
+expect_not(Goal, Module, Proc, Message) :-
+    ( Goal ->
+        unexpected(Module, Proc, Message)
+    ;
+        true
     ).
 
 %-----------------------------------------------------------------------------%

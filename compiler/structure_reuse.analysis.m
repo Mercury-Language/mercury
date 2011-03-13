@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2010 The University of Melbourne.
+% Copyright (C) 2006-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -175,18 +175,18 @@ perform_structure_reuse_analysis(!ModuleInfo, !IO):-
         % Pre-annotate each of the goals with "Local Forward Use" and
         % "Local Backward Use" information, and fill in all the goal_id slots
         % as well.
-        trace [io(!IO)] (
+        trace [io(!TIO)] (
             maybe_write_string(VeryVerbose,
-                "% Annotating in use information...", !IO)
+                "% Annotating in use information...", !TIO)
         ),
         process_all_nonimported_procs(update_proc(annotate_in_use_information),
             !ModuleInfo),
-        trace [io(!IO)] (
-            maybe_write_string(VeryVerbose, "done.\n", !IO),
+        trace [io(!TIO)] (
+            maybe_write_string(VeryVerbose, "done.\n", !TIO),
             maybe_write_string(VeryVerbose,
-                "% Reuse table before intermediate reuse:\n", !IO),
+                "% Reuse table before intermediate reuse:\n", !TIO),
             reuse_as_table_maybe_dump(VeryVerbose, !.ModuleInfo, !.ReuseTable,
-                !IO)
+                !TIO)
         ),
 
 
@@ -197,30 +197,30 @@ perform_structure_reuse_analysis(!ModuleInfo, !IO):-
             _NewPPIds, !ReuseTable, !ModuleInfo),
 
         % Determine information about possible direct reuses.
-        trace [io(!IO)] (
+        trace [io(!TIO)] (
             maybe_write_string(VeryVerbose,
-                "% Reuse table after intermediate reuse:\n", !IO),
+                "% Reuse table after intermediate reuse:\n", !TIO),
             reuse_as_table_maybe_dump(VeryVerbose, !.ModuleInfo, !.ReuseTable,
-                !IO),
-            maybe_write_string(VeryVerbose, "% Direct reuse...\n", !IO)
+                !TIO),
+            maybe_write_string(VeryVerbose, "% Direct reuse...\n", !TIO)
         ),
         direct_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable),
-        trace [io(!IO)] (
-            maybe_write_string(VeryVerbose, "% Direct reuse: done.\n", !IO),
+        trace [io(!TIO)] (
+            maybe_write_string(VeryVerbose, "% Direct reuse: done.\n", !TIO),
             reuse_as_table_maybe_dump(VeryVerbose, !.ModuleInfo, !.ReuseTable,
-                !IO)
+                !TIO)
         ),
 
         % Determine information about possible indirect reuses.
-        trace [io(!IO)] (
-            maybe_write_string(VeryVerbose, "% Indirect reuse...\n", !IO)
+        trace [io(!TIO)] (
+            maybe_write_string(VeryVerbose, "% Indirect reuse...\n", !TIO)
         ),
         indirect_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, DepProcs0,
             InternalRequests, IntermodRequests0),
-        trace [io(!IO)] (
-            maybe_write_string(VeryVerbose, "% Indirect reuse: done.\n", !IO),
+        trace [io(!TIO)] (
+            maybe_write_string(VeryVerbose, "% Indirect reuse: done.\n", !TIO),
             reuse_as_table_maybe_dump(VeryVerbose, !.ModuleInfo, !.ReuseTable,
-                !IO)
+                !TIO)
         ),
 
         % Handle requests for "intermediate" reuse versions of procedures

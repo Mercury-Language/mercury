@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------e
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -109,7 +109,7 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI) :-
         CodeModel = model_semi
     ;
         CodeModel = model_non,
-        unexpected(this_file, "nondet unification in generate_unification")
+        unexpected($module, $pred, "nondet unification")
     ),
     (
         Uni = assign(Left, Right),
@@ -174,7 +174,7 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI) :-
     ;
         Uni = simple_test(Var1, Var2),
         ( CodeModel = model_det ->
-            unexpected(this_file, "det simple_test during code generation")
+            unexpected($module, $pred, "det simple_test")
         ;
             generate_test(Var1, Var2, Code, !CI)
         )
@@ -182,7 +182,7 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI) :-
         % These should have been transformed into calls to unification
         % procedures by polymorphism.m.
         Uni = complicated_unify(_UniMode, _CanFail, _TypeInfoVars),
-        unexpected(this_file, "complicated unify during code generation")
+        unexpected($module, $pred, "complicated unify")
     ).
 
 %---------------------------------------------------------------------------%
@@ -361,7 +361,7 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
         TestRval = binop(eq, Rval, const(llconst_int(Int)))
     ;
         ConsTag = foreign_tag(ForeignLang, ForeignVal),
-        expect(unify(ForeignLang, lang_c), this_file,
+        expect(unify(ForeignLang, lang_c), $module, $pred,
             "foreign tag for language other than C"),
         TestRval = binop(eq, Rval,
             const(llconst_foreign(ForeignVal, lt_integer)))
@@ -369,23 +369,23 @@ raw_tag_test(Rval, ConsTag, TestRval) :-
         ConsTag = closure_tag(_, _, _),
         % This should never happen, since the error will be detected
         % during mode checking.
-        unexpected(this_file, "Attempted higher-order unification")
+        unexpected($module, $pred, "Attempted higher-order unification")
     ;
         ConsTag = type_ctor_info_tag(_, _, _),
-        unexpected(this_file, "Attempted type_ctor_info unification")
+        unexpected($module, $pred, "Attempted type_ctor_info unification")
     ;
         ConsTag = base_typeclass_info_tag(_, _, _),
-        unexpected(this_file, "Attempted base_typeclass_info unification")
+        unexpected($module, $pred, "Attempted base_typeclass_info unification")
     ;
         ConsTag = tabling_info_tag(_, _),
-        unexpected(this_file, "Attempted tabling_info unification")
+        unexpected($module, $pred, "Attempted tabling_info unification")
     ;
         ConsTag = deep_profiling_proc_layout_tag(_, _),
-        unexpected(this_file,
+        unexpected($module, $pred,
             "Attempted deep_profiling_proc_layout_tag unification")
     ;
         ConsTag = table_io_decl_tag(_, _),
-        unexpected(this_file, "Attempted table_io_decl_tag unification")
+        unexpected($module, $pred, "Attempted table_io_decl_tag unification")
     ;
         ConsTag = no_tag,
         TestRval = const(llconst_true)
@@ -433,7 +433,7 @@ generate_reserved_address(null_pointer) = const(llconst_int(0)).
 generate_reserved_address(small_pointer(N)) = const(llconst_int(N)).
 generate_reserved_address(reserved_object(_, _, _)) = _ :-
     % These should only be used for the MLDS back-end.
-    unexpected(this_file, "reserved_object").
+    unexpected($module, $pred, "reserved_object").
 
 %---------------------------------------------------------------------------%
 
@@ -475,7 +475,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
         Code = empty
     ;
         ConsTag = foreign_tag(Lang, Val),
-        expect(unify(Lang, lang_c), this_file,
+        expect(unify(Lang, lang_c), $module, $pred,
             "foreign_tag for language other than C"),
         ForeignConst = const(llconst_foreign(Val, lt_integer)),
         assign_const_to_var(Var, ForeignConst, !CI),
@@ -496,12 +496,10 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
                 generate_sub_unify(ref(Var), ref(Arg), Mode, Type, Code, !CI)
             ;
                 TakeAddr = [_ | _],
-                unexpected(this_file,
-                    "generate_construction_2: notag: take_addr")
+                unexpected($module, $pred, "notag: take_addr")
             )
         ;
-            unexpected(this_file,
-                "generate_construction_2: no_tag: arity != 1")
+            unexpected($module, $pred, "no_tag: arity != 1")
         )
     ;
         (
@@ -532,7 +530,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
         Code = empty
     ;
         ConsTag = type_ctor_info_tag(ModuleName, TypeName, TypeArity),
-        expect(unify(Args, []), this_file,
+        expect(unify(Args, []), $module, $pred,
             "generate_construction_2: type_ctor_info constant has args"),
         RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
         DataId = rtti_data_id(ctor_rtti_id(RttiTypeCtor,
@@ -541,7 +539,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
         Code = empty
     ;
         ConsTag = base_typeclass_info_tag(ModuleName, ClassId, Instance),
-        expect(unify(Args, []), this_file,
+        expect(unify(Args, []), $module, $pred,
             "generate_construction_2: base_typeclass_info constant has args"),
         TCName = generate_class_name(ClassId),
         DataId = rtti_data_id(tc_rtti_id(TCName,
@@ -550,7 +548,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
         Code = empty
     ;
         ConsTag = tabling_info_tag(PredId, ProcId),
-        expect(unify(Args, []), this_file,
+        expect(unify(Args, []), $module, $pred,
             "generate_construction_2: tabling_info constant has args"),
         get_module_info(!.CI, ModuleInfo),
         ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
@@ -559,7 +557,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
         Code = empty
     ;
         ConsTag = deep_profiling_proc_layout_tag(PredId, ProcId),
-        expect(unify(Args, []), this_file,
+        expect(unify(Args, []), $module, $pred,
             "generate_construction_2: deep_profiling_proc_static has args"),
         get_module_info(!.CI, ModuleInfo),
         RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
@@ -575,7 +573,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
         Code = empty
     ;
         ConsTag = table_io_decl_tag(PredId, ProcId),
-        expect(unify(Args, []), this_file,
+        expect(unify(Args, []), $module, $pred,
             "generate_construction_2: table_io_decl has args"),
         PredProcId = proc(PredId, ProcId),
         DataId = layout_slot_id(table_io_decl_id, PredProcId),
@@ -583,7 +581,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
         Code = empty
     ;
         ConsTag = reserved_address_tag(RA),
-        expect(unify(Args, []), this_file,
+        expect(unify(Args, []), $module, $pred,
             "generate_construction_2: reserved_address constant has args"),
         assign_const_to_var(Var, generate_reserved_address(RA), !CI),
         Code = empty
@@ -596,9 +594,9 @@ generate_construction_2(ConsTag, Var, Args, Modes, HowToConstruct,
             TakeAddr, MaybeSize, GoalInfo, Code, !CI)
     ;
         ConsTag = closure_tag(PredId, ProcId, EvalMethod),
-        expect(unify(TakeAddr, []), this_file,
+        expect(unify(TakeAddr, []), $module, $pred,
             "generate_construction_2: closure_tag has take_addr"),
-        expect(unify(MaybeSize, no), this_file,
+        expect(unify(MaybeSize, no), $module, $pred,
             "generate_construction_2: closure_tag has size"),
         generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo,
             Code, !CI)
@@ -828,7 +826,7 @@ generate_extra_closure_args([Var | Vars], LoopCounter, NewClosure, Code,
 
 generate_pred_args(_, _, [], _, [], !MayUseAtomic).
 generate_pred_args(_, _, [_ | _], [], _, !MayUseAtomic) :-
-    unexpected(this_file, "generate_pred_args: insufficient args").
+    unexpected($module, $pred, "insufficient args").
 generate_pred_args(CI, VarTypes, [Var | Vars], [ArgInfo | ArgInfos],
         [MaybeRval | MaybeRvals], !MayUseAtomic) :-
     ArgInfo = arg_info(_, ArgMode),
@@ -870,7 +868,7 @@ generate_cons_args(Vars, Types, Modes, FirstOffset, FirstArgNum, TakeAddr,
     ->
         true
     ;
-        unexpected(this_file, "generate_cons_args: length mismatch")
+        unexpected($module, $pred, "length mismatch")
     ).
 
     % Create a list of maybe(rval) for the arguments for a construction
@@ -1059,7 +1057,7 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
         Code = empty
     ;
         Tag = table_io_decl_tag(_, _),
-        unexpected(this_file, "generate_det_deconstruction: table_io_decl_tag")
+        unexpected($module, $pred, "table_io_decl_tag")
     ;
         Tag = no_tag,
         (
@@ -1091,8 +1089,7 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
                     !CI)
             )
         ;
-            unexpected(this_file,
-                "generate_det_deconstruction: no_tag: arity != 1")
+            unexpected($module, $pred, "no_tag: arity != 1")
         )
     ;
         Tag = single_functor_tag,
@@ -1155,7 +1152,7 @@ generate_unify_args(Ls, Rs, Ms, Ts, Code, !CI) :-
     ( generate_unify_args_2(Ls, Rs, Ms, Ts, Code0, !CI) ->
         Code = Code0
     ;
-        unexpected(this_file, "generate_unify_args: length mismatch")
+        unexpected($module, $pred, "length mismatch")
     ).
 
 :- pred generate_unify_args_2(list(uni_val)::in, list(uni_val)::in,
@@ -1188,7 +1185,7 @@ generate_sub_unify(L, R, Mode, Type, Code, !CI) :-
         % This shouldn't happen, since mode analysis should avoid creating
         % any tests in the arguments of a construction or deconstruction
         % unification.
-        unexpected(this_file, "test in arg of [de]construction")
+        unexpected($module, $pred, "test in arg of [de]construction")
     ;
         % Input - Output== assignment ->
         LeftMode = top_in,
@@ -1209,7 +1206,7 @@ generate_sub_unify(L, R, Mode, Type, Code, !CI) :-
         % free-free - ignore
         % XXX I think this will have to change if we start to support aliasing.
     ;
-        unexpected(this_file, "generate_sub_unify: some strange unify")
+        unexpected($module, $pred, "some strange unify")
     ).
 
 %---------------------------------------------------------------------------%
@@ -1222,7 +1219,7 @@ generate_sub_assign(Left, Right, Code, !CI) :-
         Left = lval(_Lval),
         Right = lval(_Rval),
         % Assignment between two lvalues - cannot happen.
-        unexpected(this_file, "generate_sub_assign: lval/lval")
+        unexpected($module, $pred, "lval/lval")
     ;
         Left = lval(Lval0),
         Right = ref(Var),
@@ -1282,18 +1279,17 @@ generate_ground_term(TermVar, Goal, !CI) :-
                     GroundTerm = Rval - _,
                     assign_const_to_var(TermVar, Rval, !CI)
                 ;
-                    unexpected(this_file,
-                        "generate_ground_term: no active pairs")
+                    unexpected($module, $pred, "no active pairs")
                 )
             ;
-                unexpected(this_file, "generate_ground_term: malformed goal")
+                unexpected($module, $pred, "malformed goal")
             )
         ;
-            unexpected(this_file, "generate_ground_term: unexpected nonlocal")
+            unexpected($module, $pred, "unexpected nonlocal")
         )
     ;
         NonLocalList = [_, _ | _],
-        unexpected(this_file, "generate_ground_term: unexpected nonlocals")
+        unexpected($module, $pred, "unexpected nonlocals")
     ).
 
 :- pred generate_ground_term_conjuncts(module_info::in,
@@ -1327,8 +1323,7 @@ generate_ground_term_conjunct(ModuleInfo, Goal, UnboxedFloats,
         generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
             !StaticCellInfo, !ActiveMap)
     ;
-        unexpected(this_file,
-            "generate_ground_term_conjunct: malformed goal")
+        unexpected($module, $pred, "malformed goal")
     ).
 
 :- pred generate_ground_term_conjunct_tag(prog_var::in, cons_tag::in,
@@ -1349,7 +1344,7 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
             Type = lt_integer
         ;
             ConsTag = foreign_tag(Lang, Val),
-            expect(unify(Lang, lang_c), this_file,
+            expect(unify(Lang, lang_c), $module, $pred,
                 "foreign_tag for language other than C"),
             Const = llconst_foreign(Val, lt_integer),
             Type = lt_integer
@@ -1385,16 +1380,14 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
         ConsTag = no_tag,
         (
             Args = [],
-            unexpected(this_file,
-                "generate_ground_term_conjunct_tag: no_tag arity != 1")
+            unexpected($module, $pred, "no_tag arity != 1")
         ;
             Args = [Arg],
             svmap.det_remove(Arg, RvalType, !ActiveMap),
             svmap.det_insert(Var, RvalType, !ActiveMap)
         ;
             Args = [_, _ | _],
-            unexpected(this_file,
-                "generate_ground_term_conjunct_tag: no_tag arity != 1")
+            unexpected($module, $pred, "no_tag arity != 1")
         )
     ;
         (
@@ -1429,8 +1422,7 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
         ; ConsTag = table_io_decl_tag(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ),
-        unexpected(this_file,
-            "generate_ground_term_conjunct_tag: unexpected tag")
+        unexpected($module, $pred, "unexpected tag")
     ).
 
 :- pred generate_ground_term_args(list(prog_var)::in,
@@ -1453,14 +1445,9 @@ var_type_msg(Type, Msg) :-
         string.int_to_string(TypeArity, TypeArityStr),
         string.append_list([TypeSymStr, "/", TypeArityStr], Msg)
     ;
-        unexpected(this_file, "type is still a type variable in var_type_msg")
+        unexpected($module, $pred,
+            "type is still a type variable in var_type_msg")
     ).
-
-%---------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "unify_gen.m".
 
 %---------------------------------------------------------------------------%
 :- end_module unify_gen.
