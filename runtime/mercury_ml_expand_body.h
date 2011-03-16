@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2001-2007 The University of Melbourne.
+** Copyright (C) 2001-2007, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -340,7 +340,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 int                 num_functors;
                 MR_ConstString      functor_name = NULL;
                 MR_int_least32_t    functor_ordinal = -1;
-                MR_int_least32_t    functor_value;
+                MR_Integer          functor_value;
 
                 num_functors = MR_type_ctor_num_functors(type_ctor_info);
 
