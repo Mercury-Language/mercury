@@ -9,12 +9,16 @@ Mercury should build and install "out-of-the-box" on Mac OS X 10.5 or 10.6
 using Apple's gcc version 4.2.  This version of gcc is included with the
 Developer Tools.
 
-The 'asm_fast' and 'reg' grades are not currently available on Mac OS X 10.5 or
-10.6.  The configure script will automatically select the "none" grade instead.
-The high-level C, java, erlang and csharp grades all work.  The erlang grade
-requires an Erlang installation to be available and the csharp grade requires
-the Mono .NET implementation.  (See README.Erlang and README.CSharp for further
-details.)
+The 'asm_fast*' and 'reg*' grades are not currently available on Mac OS X 10.5
+or 10.6.  The only low-level C grades available are the 'none*' grades.  The
+high-level C, Java, Erlang and C# grades all work.  The 'erlang' grade requires
+an Erlang installation to be available and the C# grades require the Mono .NET
+implementation.  (See README.Erlang and README.CSharp for further details.)
+
+When installing from the source distribution the configure script will
+automatically select the 'none.gc' grade for building the Mercury system.
+Unless otherwise directed, the 'hlc.gc' grade will be used as the default grade
+for compiling applications.
 
 By default, 64-bit versions of the executables and libraries in the Mercury
 system will be installed on x86-64 machines running Mac OS X 10.6.  To build a
