@@ -908,17 +908,24 @@ module_qualify_item(Item0, Item, Continue, !Info, !Specs) :-
         Continue = yes
     ;
         Item0 = item_mutable(ItemMutable0),
-        ItemMutable0 = item_mutable_info(Name, Type0, InitTerm, Inst0,
-            Attrs, Varset, Context, SeqNum),
-        mq_info_set_error_context(mqec_mutable(Name) - Context, !Info),
-        qualify_type(Type0, Type, !Info, !Specs),
-        qualify_inst(Inst0, Inst, !Info, !Specs),
-        ItemMutable = item_mutable_info(Name, Type, InitTerm, Inst,
-            Attrs, Varset, Context, SeqNum),
+        do_module_qualify_mutable(ItemMutable0, ItemMutable, !Info, !Specs),
         Item = item_mutable(ItemMutable),
         Continue = yes
     ).
 
+:- pred do_module_qualify_mutable(item_mutable_info::in, item_mutable_info::out,
+    mq_info::in, mq_info::out, list(error_spec)::in, list(error_spec)::out)
+    is det.
+
+do_module_qualify_mutable(ItemMutable0, ItemMutable, !Info, !Specs) :-
+    ItemMutable0 = item_mutable_info(Name, Type0, InitTerm, Inst0,
+        Attrs, Varset, Context, SeqNum),
+    mq_info_set_error_context(mqec_mutable(Name) - Context, !Info),
+    qualify_type(Type0, Type, !Info, !Specs),
+    qualify_inst(Inst0, Inst, !Info, !Specs),
+    ItemMutable = item_mutable_info(Name, Type, InitTerm, Inst,
+        Attrs, Varset, Context, SeqNum).
+    
 :- pred do_module_qualify_event_specs(string::in,
     assoc_list(string, event_spec)::in, assoc_list(string, event_spec)::out,
     mq_info::in, mq_info::out,
@@ -1013,12 +1020,29 @@ qualify_type_defn(parse_tree_solver_type(SolverTypeDetails0, MaybeUserEqComp),
         parse_tree_solver_type(SolverTypeDetails, MaybeUserEqComp),
         !Info, !Specs) :-
     SolverTypeDetails0 = solver_type_details(RepnType0, InitPred,
-        GroundInst0, AnyInst0, MutableItems),
+        GroundInst0, AnyInst0, MutableItems0),
     qualify_type(RepnType0, RepnType, !Info, !Specs),
     qualify_inst(GroundInst0, GroundInst, !Info, !Specs),
     qualify_inst(AnyInst0, AnyInst, !Info, !Specs),
+    qualify_constraint_stores(MutableItems0, MutableItems, !Info, !Specs),
     SolverTypeDetails  = solver_type_details(RepnType, InitPred,
         GroundInst, AnyInst, MutableItems).
+
+:- pred qualify_constraint_stores(list(item)::in, list(item)::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_constraint_stores([], [], !Info, !Specs).
+qualify_constraint_stores([CStore0 | CStores0], [CStore | CStores],
+        !Info, !Specs) :-
+    ( if CStore0 = item_mutable(ItemMutableInfo0) then
+        do_module_qualify_mutable(ItemMutableInfo0, ItemMutableInfo,
+            !Info, !Specs), 
+        CStore = item_mutable(ItemMutableInfo)
+      else
+        unexpected($module, $pred, "item is not a mutable")
+    ),
+    qualify_constraint_stores(CStores0, CStores, !Info, !Specs).
 
 :- pred qualify_constructors(list(constructor)::in, list(constructor)::out,
     mq_info::in, mq_info::out,
