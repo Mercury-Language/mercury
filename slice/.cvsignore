@@ -25,6 +25,7 @@ Mercury
 feedback.m
 feedback.automatic_parallelism.m
 mdbcomp.m
+mdbcomp.goal_path.m
 prim_data.m
 program_representation.m
 rtti_access.m
