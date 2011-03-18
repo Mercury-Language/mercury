@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -412,16 +412,16 @@ replace_in_item(ModuleName, Location, EqvMap, EqvInstMap,
     maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
-replace_in_type_defn_info(ModuleName, Location, EqvMap, _EqvInstMap,
+replace_in_type_defn_info(ModuleName, Location, EqvMap, EqvInstMap,
         Info0, Info, !RecompInfo, !UsedModules, Specs) :-
     Info0 = item_type_defn_info(VarSet0, SymName, TArgs, TypeDefn0, Cond,
         Context, SeqNum),
     list.length(TArgs, Arity),
     maybe_start_recording_expanded_items(ModuleName, SymName, !.RecompInfo,
         UsedTypeCtors0),
-    replace_in_type_defn(Location, EqvMap, type_ctor(SymName, Arity),
-        TypeDefn0, TypeDefn, ContainsCirc, VarSet0, VarSet,
-        UsedTypeCtors0, UsedTypeCtors, !UsedModules),
+    replace_in_type_defn(Location, EqvMap, EqvInstMap,
+        type_ctor(SymName, Arity), TypeDefn0, TypeDefn, ContainsCirc,
+        VarSet0, VarSet, UsedTypeCtors0, UsedTypeCtors, !UsedModules),
     (
         ContainsCirc = yes,
         ( TypeDefn0 = parse_tree_eqv_type(_) ->
@@ -671,18 +671,30 @@ replace_in_pragma_info(ModuleName, Location, EqvMap, _EqvInstMap,
 
 replace_in_mutable_info(ModuleName, Location, EqvMap, EqvInstMap,
         Info0, Info, !RecompInfo, !UsedModules, []) :-
-    Info0 = item_mutable_info(MutName, Type0, InitValue, Inst0, Attrs, Varset,
-        Context, SeqNum),
+    MutName = Info0 ^ mut_name,
     QualName = qualified(ModuleName, MutName),
     maybe_start_recording_expanded_items(ModuleName, QualName, !.RecompInfo,
         ExpandedItems0),
+    replace_in_mutable_defn(Location, EqvMap, EqvInstMap, Info0, Info,
+        ExpandedItems0, ExpandedItems, !UsedModules),
+    ItemId = item_id(mutable_item, item_name(QualName, 0)),
+    finish_recording_expanded_items(ItemId, ExpandedItems, !RecompInfo).
+
+:- pred replace_in_mutable_defn(eqv_type_location::in,
+    eqv_map::in, eqv_inst_map::in,
+    item_mutable_info::in, item_mutable_info::out,
+    equiv_type_info::in, equiv_type_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_mutable_defn(Location, EqvMap, EqvInstMap, Info0, Info,
+        !ExpandedItems, !UsedModules) :-
+    Info0 = item_mutable_info(MutName, Type0, InitValue, Inst0, Attrs, Varset,
+        Context, SeqNum),
     TVarSet0 = varset.init,
     replace_in_type_location(Location, EqvMap, Type0, Type, _TypeChanged,
-        TVarSet0, _TVarSet, ExpandedItems0, ExpandedItems1, !UsedModules),
-    replace_in_inst(Location, Inst0, EqvInstMap, Inst,
-        ExpandedItems1, ExpandedItems, !UsedModules),
-    ItemId = item_id(mutable_item, item_name(QualName, 0)),
-    finish_recording_expanded_items(ItemId, ExpandedItems, !RecompInfo),
+        TVarSet0, _TVarSet, !ExpandedItems, !UsedModules),
+    replace_in_inst(Location, Inst0, EqvInstMap, Inst, !ExpandedItems,
+        !UsedModules),
     Info = item_mutable_info(MutName, Type, InitValue, Inst, Attrs, Varset,
         Context, SeqNum).
 
@@ -752,12 +764,13 @@ replace_in_event_attr(Attr0, Attr, EqvMap, _EqvInstMap,
     Attr = event_attribute(AttrNum, AttrName, AttrType, AttrMode,
         MaybeSynthCall).
 
-:- pred replace_in_type_defn(eqv_type_location::in, eqv_map::in, type_ctor::in,
-    type_defn::in, type_defn::out, bool::out, tvarset::in, tvarset::out,
-    equiv_type_info::in, equiv_type_info::out,
+:- pred replace_in_type_defn(eqv_type_location::in,
+    eqv_map::in, eqv_inst_map::in, type_ctor::in,
+    type_defn::in, type_defn::out, bool::out,
+    tvarset::in, tvarset::out, equiv_type_info::in, equiv_type_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_type_defn(Location, EqvMap, TypeCtor, TypeDefn0, TypeDefn,
+replace_in_type_defn(Location, EqvMap, EqvInstMap, TypeCtor, TypeDefn0, TypeDefn,
         ContainsCirc, !VarSet, !EquivTypeInfo, !UsedModules) :-
     (
         TypeDefn0 = parse_tree_eqv_type(TypeBody0),
@@ -774,13 +787,15 @@ replace_in_type_defn(Location, EqvMap, TypeCtor, TypeDefn0, TypeDefn,
     ;
         TypeDefn0 = parse_tree_solver_type(SolverDetails0, MaybeUserEqComp),
         SolverDetails0 = solver_type_details(RepresentationType0, InitPred,
-            GroundInst, AnyInst, MutableItems),
+            GroundInst, AnyInst, MutableItems0),
         replace_in_type_location_2(Location, EqvMap, [TypeCtor],
             RepresentationType0, RepresentationType,
             _, ContainsCirc, !VarSet, !EquivTypeInfo, !UsedModules),
+        replace_in_constraint_store(Location, EqvMap, EqvInstMap,
+            MutableItems0, MutableItems, !EquivTypeInfo, !UsedModules),
         SolverDetails = solver_type_details(RepresentationType, InitPred,
             GroundInst, AnyInst, MutableItems),
-        TypeDefn = parse_tree_solver_type(SolverDetails,  MaybeUserEqComp)
+        TypeDefn = parse_tree_solver_type(SolverDetails, MaybeUserEqComp)
     ;
         ( TypeDefn0 = parse_tree_abstract_type(_)
         ; TypeDefn0 = parse_tree_foreign_type(_, _, _)
@@ -788,6 +803,24 @@ replace_in_type_defn(Location, EqvMap, TypeCtor, TypeDefn0, TypeDefn,
         TypeDefn = TypeDefn0,
         ContainsCirc = no
     ).
+
+:- pred replace_in_constraint_store(eqv_type_location::in,
+    eqv_map::in, eqv_inst_map::in, list(item)::in, list(item)::out,
+    equiv_type_info::in, equiv_type_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_constraint_store(_, _, _, [], [], !EquivTypeInfo, !UsedModules).
+replace_in_constraint_store(Location, EqvMap, EqvInstMap,
+        [CStore0 | CStores0], [CStore | CStores], !EquivTypeInfo, !UsedModules) :-
+    ( if CStore0 = item_mutable(ItemMutableInfo0) then
+        replace_in_mutable_defn(Location, EqvMap, EqvInstMap,
+            ItemMutableInfo0, ItemMutableInfo, !EquivTypeInfo, !UsedModules),
+        CStore = item_mutable(ItemMutableInfo)
+      else
+        unexpected($module, $pred, "item is not a mutable")
+    ),
+    replace_in_constraint_store(Location, EqvMap, EqvInstMap,
+        CStores0, CStores, !EquivTypeInfo, !UsedModules).
 
 %-----------------------------------------------------------------------------%
 
