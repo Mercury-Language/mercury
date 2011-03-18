@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1995-2007, 2009 The University of Melbourne.
+** Copyright (C) 1995-2007, 2009, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -934,7 +934,7 @@ typedef const MR_EnumFunctorDesc            *MR_EnumFunctorDescPtr;
 typedef struct {
     MR_ConstString      MR_foreign_enum_functor_name;
     MR_int_least32_t    MR_foreign_enum_functor_ordinal;
-    MR_int_least32_t    MR_foreign_enum_functor_value;
+    MR_Integer          MR_foreign_enum_functor_value;
 } MR_ForeignEnumFunctorDesc;
 
 typedef const MR_ForeignEnumFunctorDesc     *MR_ForeignEnumFunctorDescPtr;
