@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2010 The University of Melbourne.
+% Copyright (C) 2007-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -181,14 +181,14 @@ mercury__backjump__builtin_choice_id_1_p_0(MR_Integer *id, MR_CONT_PARAMS)
 
     if (setjmp(this_handler.MR_bjh_handler) == 0) {
     #ifdef MR_DEBUG_JMPBUFS
-        fprintf(stderr, ""choice setjmp %p\\n"", this_handler.handler);
+        fprintf(stderr, ""choice setjmp %p\\n"", this_handler.MR_bjh_handler);
     #endif
 
         *id = this_handler.MR_bjh_id;
         MR_CONT_CALL();
     } else {
     #ifdef MR_DEBUG_JMPBUFS
-        fprintf(stderr, ""choice caught jmp %p\\n"", this_handler.handler);
+        fprintf(stderr, ""choice caught jmp %p\\n"", this_handler.MR_bjh_handler);
     #endif
     }
 
