@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1995-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -345,7 +345,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         % that need livemaps have been run for the last time.
         unexpected(this_file, "build_livemap_instr: decr_sp_and_return")
     ;
-        Uinstr0 = init_sync_term(_, _)
+        Uinstr0 = init_sync_term(_, _, _)
     ;
         Uinstr0 = fork_new_child(_, _)
     ;

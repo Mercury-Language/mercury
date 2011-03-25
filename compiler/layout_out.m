@@ -58,6 +58,7 @@
     list(proc_layout_proc_static)::in,
     list(int)::in, list(int)::in, list(int)::in, list(table_io_decl_data)::in,
     list(layout_slot_name)::in, list(proc_layout_exec_trace)::in,
+    list(string)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -374,7 +375,7 @@ output_layout_array_defns(Info, PseudoTypeInfos, HLDSVarNums,
         NoVarLabelLayouts, SVarLabelLayouts, LVarLabelLayouts,
         CallSiteStatics, CoveragePoints, ProcStatics,
         ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TableIoDecls,
-        ProcEventLayouts, ExecTraces, !DeclSet, !IO) :-
+        ProcEventLayouts, ExecTraces, TSStringTable, !DeclSet, !IO) :-
     (
         PseudoTypeInfos = []
     ;
@@ -485,6 +486,12 @@ output_layout_array_defns(Info, PseudoTypeInfos, HLDSVarNums,
     ;
         ExecTraces = [_ | _],
         output_exec_traces_array(Info, ExecTraces, !IO)
+    ),
+    (
+        TSStringTable = []
+    ;
+        TSStringTable = [_ | _],
+        output_threadscope_string_table_array(Info, TSStringTable, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1508,6 +1515,41 @@ eval_method_to_c_string(eval_table_io(Decl, Unitize)) = Str :-
     ).
 
 %-----------------------------------------------------------------------------%
+%
+% Definition of array #20: threadscope string table.
+%
+
+:- pred output_threadscope_string_table_array(llds_out_info::in,
+    list(string)::in, io::di, io::uo) is det.
+
+output_threadscope_string_table_array(Info, TSStringTable, !IO) :-
+    ModuleName = Info ^ lout_mangled_module_name,
+    list.length(TSStringTable, NumStrings),
+    Name = threadscope_string_table_array,
+    io.write_string("#ifdef MR_THREADSCOPE\n", !IO),
+    output_layout_array_name_storage_type_name(ModuleName, Name,
+        being_defined, !IO),
+    io.format("[%d] = {\n", [i(NumStrings)], !IO),
+    list.foldl2(output_threadscope_string_table_slot(Info), TSStringTable,
+        0, _, !IO),
+    io.write_string("};\n#endif\n\n", !IO).
+
+:- pred output_threadscope_string_table_slot(llds_out_info::in, string::in,
+    int::in, int::out, io::di, io::uo) is det.
+
+output_threadscope_string_table_slot(Info, String, !Slot, !IO) :-
+    AutoComments = Info ^ lout_auto_comments,
+    (
+        AutoComments = yes,
+        io.format("/* %d */ ", [i(!.Slot)], !IO)
+    ;
+        AutoComments = no
+    ),
+    io.write_string("{ ", !IO),
+    quote_and_write_string(String, !IO),
+    io.write_string(", 0},\n", !IO).
+
+%-----------------------------------------------------------------------------%
 
 output_layout_name_decl(LayoutName, !IO) :-
     output_layout_name_storage_type_name(LayoutName, not_being_defined, !IO),
@@ -1594,6 +1636,9 @@ output_layout_array_name(UseMacro, ModuleName, ArrayName, !IO) :-
         ;
             ArrayName = proc_exec_trace_array,
             io.write_string("MR_proc_exec_traces", !IO)
+        ;
+            ArrayName = threadscope_string_table_array,
+            io.write_string("MR_threadscope_strings", !IO)
         ),
         io.write_string("(", !IO),
         io.write_string(ModuleName, !IO),
@@ -1657,6 +1702,10 @@ output_layout_array_name(UseMacro, ModuleName, ArrayName, !IO) :-
         ;
             ArrayName = proc_exec_trace_array,
             io.write_string("mercury_data__proc_exec_traces_array__", !IO)
+        ;
+            ArrayName = threadscope_string_table_array,
+            io.write_string("mercury_data__threadscope_string_table_array__",
+                !IO)
         ),
         io.write_string(ModuleName, !IO)
     ).
@@ -1904,6 +1953,13 @@ output_layout_array_name_storage_type_name(ModuleName, Name, _BeingDefined,
     ;
         Name = proc_exec_trace_array,
         io.write_string("static MR_STATIC_CODE_CONST MR_ExecTrace ", !IO),
+        output_layout_array_name(do_not_use_layout_macro, ModuleName,
+            Name, !IO)
+    ;
+        Name = threadscope_string_table_array,
+        io.write_string(
+            "static MR_Threadscope_String ",
+            !IO),
         output_layout_array_name(do_not_use_layout_macro, ModuleName,
             Name, !IO)
     ).
@@ -2985,6 +3041,7 @@ output_layout_slots_in_vector(ModuleName, [SlotName | SlotNames], !IO) :-
         ; ArrayName = proc_table_io_decl_array
         ; ArrayName = proc_event_layouts_array
         ; ArrayName = proc_exec_trace_array
+        ; ArrayName = threadscope_string_table_array
         ),
         output_layout_slot_addr(use_layout_macro, ModuleName, SlotName, !IO),
         io.write_string(",\n", !IO),

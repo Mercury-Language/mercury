@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -884,7 +884,7 @@ instr_refers_to_stack(llds_instr(Uinstr, _)) = Refers :-
         ; Uinstr = incr_sp(_, _, _)
         ; Uinstr = decr_sp(_)
         ; Uinstr = decr_sp_and_return(_)
-        ; Uinstr = init_sync_term(_, _)
+        ; Uinstr = init_sync_term(_, _, _)
         ; Uinstr = fork_new_child(_, _)
         ; Uinstr = join_and_continue(_, _)
         ),
@@ -1108,7 +1108,7 @@ can_instr_branch_away(prune_tickets_to(_)) = no.
 can_instr_branch_away(incr_sp(_, _, _)) = no.
 can_instr_branch_away(decr_sp(_)) = no.
 can_instr_branch_away(decr_sp_and_return(_)) = yes.
-can_instr_branch_away(init_sync_term(_, _)) = no.
+can_instr_branch_away(init_sync_term(_, _, _)) = no.
 can_instr_branch_away(fork_new_child(_, _)) = no.
 can_instr_branch_away(join_and_continue(_, _)) = yes.
 can_instr_branch_away(foreign_proc_code(_, Comps, _, _, _, _, _, _, _, _)) =
@@ -1187,7 +1187,7 @@ can_instr_fall_through(prune_tickets_to(_)) = yes.
 can_instr_fall_through(incr_sp(_, _, _)) = yes.
 can_instr_fall_through(decr_sp(_)) = yes.
 can_instr_fall_through(decr_sp_and_return(_)) = no.
-can_instr_fall_through(init_sync_term(_, _)) = yes.
+can_instr_fall_through(init_sync_term(_, _, _)) = yes.
 can_instr_fall_through(fork_new_child(_, _)) = yes.
 can_instr_fall_through(join_and_continue(_, _)) = no.
 can_instr_fall_through(foreign_proc_code(_, _, _, _, _, _, _, _, _, _)) = yes.
@@ -1238,7 +1238,7 @@ can_use_livevals(prune_tickets_to(_), no).
 can_use_livevals(incr_sp(_, _, _), no).
 can_use_livevals(decr_sp(_), no).
 can_use_livevals(decr_sp_and_return(_), yes).
-can_use_livevals(init_sync_term(_, _), no).
+can_use_livevals(init_sync_term(_, _, _), no).
 can_use_livevals(fork_new_child(_, _), no).
 can_use_livevals(join_and_continue(_, _), no).
 can_use_livevals(foreign_proc_code(_, _, _, _, _, _, _, _, _, _), no).
@@ -1285,7 +1285,7 @@ instr_labels_2(Uinstr, Labels, CodeAddrs) :-
         ; Uinstr = prune_tickets_to(_)
         ; Uinstr = incr_sp(_, _, _)
         ; Uinstr = decr_sp(_)
-        ; Uinstr = init_sync_term(_, _)
+        ; Uinstr = init_sync_term(_, _, _)
         ),
         Labels = [],
         CodeAddrs = []
@@ -1373,7 +1373,7 @@ possible_targets(Uinstr, Labels, CodeAddrs) :-
         ; Uinstr = prune_tickets_to(_)
         ; Uinstr = incr_sp(_, _, _)
         ; Uinstr = decr_sp(_)
-        ; Uinstr = init_sync_term(_, _)
+        ; Uinstr = init_sync_term(_, _, _)
         ; Uinstr = fork_new_child(_, _)
         ),
         Labels = [],
@@ -1541,7 +1541,7 @@ instr_rvals_and_lvals(prune_tickets_to(Rval), [Rval], []).
 instr_rvals_and_lvals(incr_sp(_, _, _), [], []).
 instr_rvals_and_lvals(decr_sp(_), [], []).
 instr_rvals_and_lvals(decr_sp_and_return(_), [], []).
-instr_rvals_and_lvals(init_sync_term(Lval, _), [], [Lval]).
+instr_rvals_and_lvals(init_sync_term(Lval, _, _), [], [Lval]).
 instr_rvals_and_lvals(fork_new_child(Lval, _), [], [Lval]).
 instr_rvals_and_lvals(join_and_continue(Lval, _), [], [Lval]).
 instr_rvals_and_lvals(foreign_proc_code(_, Cs, _, _, _, _, _, _, _, _),
@@ -1719,7 +1719,7 @@ count_temps_instr(prune_tickets_to(Rval), !R, !F) :-
 count_temps_instr(incr_sp(_, _, _), !R, !F).
 count_temps_instr(decr_sp(_), !R, !F).
 count_temps_instr(decr_sp_and_return(_), !R, !F).
-count_temps_instr(init_sync_term(Lval, _), !R, !F) :-
+count_temps_instr(init_sync_term(Lval, _, _), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
 count_temps_instr(fork_new_child(Lval, _), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
@@ -1930,7 +1930,7 @@ touches_nondet_ctrl_instr(Uinstr) = Touch :-
         ; Uinstr = arbitrary_c_code(_, _, _)
         ; Uinstr = save_maxfr(_)
         ; Uinstr = restore_maxfr(_)
-        ; Uinstr = init_sync_term(_, _)     % This is a safe approximation.
+        ; Uinstr = init_sync_term(_, _, _)  % This is a safe approximation.
         ; Uinstr = fork_new_child(_, _)     % This is a safe approximation.
         ; Uinstr = join_and_continue(_, _)  % This is a safe approximation.
         ),
@@ -2481,7 +2481,7 @@ replace_labels_instr(Uinstr0, Uinstr, ReplMap, ReplData) :-
         ),
         Uinstr = prune_tickets_to(Rval)
     ;
-        Uinstr0 = init_sync_term(Lval0, N),
+        Uinstr0 = init_sync_term(Lval0, NumConjuncts, TSStringIndex),
         (
             ReplData = yes,
             replace_labels_lval(Lval0, Lval, ReplMap)
@@ -2489,7 +2489,7 @@ replace_labels_instr(Uinstr0, Uinstr, ReplMap, ReplData) :-
             ReplData = no,
             Lval = Lval0
         ),
-        Uinstr = init_sync_term(Lval, N)
+        Uinstr = init_sync_term(Lval, NumConjuncts, TSStringIndex)
     ;
         Uinstr0 = fork_new_child(Lval0, Child0),
         replace_labels_lval(Lval0, Lval, ReplMap),

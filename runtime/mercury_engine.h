@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1994-2007, 2009-2010 The University of Melbourne.
+** Copyright (C) 1994-2007, 2009-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -275,6 +275,12 @@ typedef struct {
 **
 ** global_hp    The global heap pointer for this engine.
 **
+** MR_eng_parent_sp
+**              The stack pointer of the parent contexts' stack frame from
+**              which this execution was forked.  This is used to implement
+**              parallel conjunctions and enable a parallel conjunct to read
+**              it's input from it's parent, and to write back it's output.
+**
 ** this_context Points to the "backing store" for the context currently
 **              executing on this engine.
 **
@@ -341,6 +347,18 @@ typedef struct {
 **              that engine is available. When the call into the Mercury code
 **              finishes, c_depth is decremented.
 **
+** MR_eng_cpu_clock_ticks_offset
+**              The offset to be added to the CPU's TSC to give a time relative to the start of the program.
+**
+** MR_eng_ts_buffer
+**              The buffer object used by threadscope for this engine.
+**
+** MR_eng_id    The ID of this engine which is used by threadscope.
+**
+** MR_eng_next_spark_id
+**              In threadscope grades sparks are given IDs to help us track
+**              them.  This and MR_eng_id is used to allocate unique IDs.
+**
 ** jmp_buf      The jump buffer used by library/exception.m to return to the
 **              runtime system on otherwise unhandled exceptions.
 **
@@ -400,7 +418,8 @@ typedef struct MR_mercury_engine_struct {
     */
     MR_int_least64_t                    MR_eng_cpu_clock_ticks_offset;
     struct MR_threadscope_event_buffer  *MR_eng_ts_buffer;
-    MR_Unsigned                         MR_eng_id;
+    MR_uint_least16_t                   MR_eng_id;
+    MR_uint_least32_t                   MR_eng_next_spark_id;
   #endif
 #endif
     jmp_buf             *MR_eng_jmp_buf;

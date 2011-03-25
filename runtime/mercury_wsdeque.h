@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2007, 2009-2010 The University of Melbourne.
+** Copyright (C) 2007, 2009-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -56,9 +56,8 @@ extern  MR_bool MR_wsdeque_is_empty(const MR_SparkDeque *dq);
 ** Push a spark on the bottom of the deque.  Must only be called by the owner
 ** of the deque.  The deque may grow as necessary.
 */
-MR_INLINE
-void            MR_wsdeque_push_bottom(MR_SparkDeque *dq,
-                    const MR_Spark *spark);
+MR_INLINE void
+MR_wsdeque_push_bottom(MR_SparkDeque *dq, const MR_Spark *spark);
 
 /*
 ** Same as MR_wsdeque_push_bottom but assume that there is enough space
@@ -68,11 +67,12 @@ extern  void    MR_wsdeque_putback_bottom(MR_SparkDeque *dq,
                     const MR_Spark *spark);
 
 /*
-** Pop a spark off the bottom of the deque.  Must only be called by
-** the owner of the deque.  Returns true if successful.
+** Pop a spark off the bottom of the deque.  Must only be called by the owner
+** of the deque.  The pointer returned here can be used until the next call to
+** a MR_wsdeque function, at which point it's memory may have been overwritten.
 */
-MR_INLINE MR_bool
-MR_wsdeque_pop_bottom(MR_SparkDeque *dq, MR_Code **ret_spark_resume);
+MR_INLINE volatile MR_Spark*
+MR_wsdeque_pop_bottom(MR_SparkDeque *dq);
 
 /*
 ** Attempt to steal a spark from the top of the deque.
@@ -82,7 +82,8 @@ MR_wsdeque_pop_bottom(MR_SparkDeque *dq, MR_Code **ret_spark_resume);
 **   0 if the deque is empty or
 **  -1 if the steal was aborted due to a concurrent steal or pop_bottom.
 */
-extern  int     MR_wsdeque_steal_top(MR_SparkDeque *dq, MR_Spark *ret_spark);
+extern  int
+MR_wsdeque_steal_top(MR_SparkDeque *dq, MR_Spark *ret_spark);
 
 /*
 ** Take a spark from the top of the deque, assuming there are no concurrent
@@ -129,14 +130,15 @@ MR_wsdeque_push_bottom(MR_SparkDeque *dq, const MR_Spark *spark)
     dq->MR_sd_bottom = bot + 1;
 }
 
-MR_INLINE MR_bool
-MR_wsdeque_pop_bottom(MR_SparkDeque *dq, MR_Code **ret_spark_resume)
+MR_INLINE volatile MR_Spark*
+MR_wsdeque_pop_bottom(MR_SparkDeque *dq)
 {
     MR_Integer              bot;
     MR_Integer              top;
     MR_Integer              size;
     volatile MR_SparkArray  *arr;
     MR_bool                 success;
+    volatile MR_Spark       *spark;
 
     bot = dq->MR_sd_bottom;
     arr = dq->MR_sd_active_array;
@@ -148,18 +150,18 @@ MR_wsdeque_pop_bottom(MR_SparkDeque *dq, MR_Code **ret_spark_resume)
 
     if (size < 0) {
         dq->MR_sd_bottom = top;
-        return MR_FALSE;
+        return NULL;
     }
 
-    (*ret_spark_resume) = MR_sa_element(arr, bot).MR_spark_resume;
+    spark = &MR_sa_element(arr, bot);
     if (size > 0) {
-        return MR_TRUE;
+        return spark;
     }
 
     /* size = 0 */
     success = MR_compare_and_swap_int(&dq->MR_sd_top, top, top + 1);
     dq->MR_sd_bottom = top + 1;
-    return success;
+    return success ? spark : NULL;
 }
 
 MR_INLINE int

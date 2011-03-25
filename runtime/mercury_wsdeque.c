@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2007, 2010 The University of Melbourne.
+** Copyright (C) 2007, 2010-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -17,12 +17,7 @@
 ** access one end of the queue (the bottom) while other threads can only pop
 ** elements from the other end (the top).
 **
-** We haven't implemented work stealing yet so the data structure is currently
-** only used as a stack (for context-local sparks) and as a queue (for the
-** global spark queue).
-**
-** NOTE: we need to insert memory barriers in the right places once we do start
-** work stealing.
+** XXX: we need to insert memory barriers in the right places.
 */
 
 #include "mercury_imp.h"

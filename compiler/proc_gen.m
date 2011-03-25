@@ -180,9 +180,10 @@ generate_code_parallel(ModuleInfo0, PredIds, !GlobalData, Procedures) :-
         list.condense(PredProceduresB0, ProceduresB0)
     ),
     merge_global_datas(GlobalDataA, GlobalDataB, !:GlobalData,
-        StaticCellRemapInfo),
-    list.map(remap_static_cell_references(StaticCellRemapInfo),
+        Remap),
+    list.map(remap_references_to_global_data(Remap),
         ProceduresB0, ProceduresB),
+
     Procedures = ProceduresA ++ ProceduresB.
 
     % These numbers are rather arbitrary.
@@ -306,7 +307,18 @@ generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
 
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_trace_level(Globals, TraceLevel),
-    ( given_trace_level_is_none(TraceLevel) = no ->
+    proc_info_get_has_parallel_conj(ProcInfo1, HasParConj),
+    globals.lookup_bool_option(Globals, parallel, Parallel),
+    (
+        % Make the containing goal map availble if we need it, it is needed
+        % for tracing or for parallel conjunctions.
+        (
+            given_trace_level_is_none(TraceLevel) = no
+        ;
+            HasParConj = yes,
+            Parallel = yes
+        )
+    ->
         fill_goal_id_slots_in_proc(ModuleInfo, ContainingGoalMap,
             ProcInfo1, ProcInfo),
         MaybeContainingGoalMap = yes(ContainingGoalMap)
@@ -337,9 +349,13 @@ generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
     % for model_det procedures, always needed for model_semi procedures, and
     % needed for model_non procedures only if we are doing execution tracing.
     global_data_get_static_cell_info(!.GlobalData, StaticCellInfo0),
+    global_data_get_threadscope_rev_string_table(!.GlobalData,
+        TSRevStringTable0, TSStringTableSize0),
+
     code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo,
         ProcInfo, FollowVars, ModuleInfo, StaticCellInfo0,
-        OutsideResumePoint, TraceSlotInfo, MaybeContainingGoalMap, CodeInfo0),
+        OutsideResumePoint, TraceSlotInfo, MaybeContainingGoalMap,
+        TSRevStringTable0, TSStringTableSize0, CodeInfo0),
 
     % Find out the approriate context for the predicate's interface events.
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
@@ -361,6 +377,11 @@ generate_proc_code(PredInfo, ProcInfo0, PredId, ProcId, ModuleInfo0,
     get_max_reg_in_use_at_trace(CodeInfo, MaxTraceReg),
     get_static_cell_info(CodeInfo, StaticCellInfo),
     global_data_set_static_cell_info(StaticCellInfo, !GlobalData),
+
+    get_threadscope_rev_string_table(CodeInfo,
+        TSRevStringTable, TSStringTableSize),
+    global_data_set_threadscope_rev_string_table(TSRevStringTable,
+        TSStringTableSize, !GlobalData),
 
     get_created_temp_frame(CodeInfo, CreatedTempFrame),
     get_proc_trace_events(CodeInfo, ProcTraceEvents),

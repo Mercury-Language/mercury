@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2010 The University of Melbourne.
+** Copyright (C) 1994-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -109,6 +109,9 @@ extern	void		(*MR_address_of_init_modules_complexity)(void);
 #ifdef	MR_DEEP_PROFILING
 extern	void		(*MR_address_of_write_out_proc_statics)(FILE *deep_fp,
 				FILE *procrep_fp);
+#endif
+#ifdef  MR_THREADSCOPE
+extern  void        (*MR_address_of_init_modules_threadscope_string_table)(void);
 #endif
 extern	void		(*MR_address_of_init_modules_required)(void);
 extern	void		(*MR_address_of_final_modules_required)(void);

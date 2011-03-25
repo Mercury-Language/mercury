@@ -1,7 +1,7 @@
 %----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2009-2010 The University of Melbourne.
+% Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -205,7 +205,7 @@ output_record_instr_decls(Info, Instr, !DeclSet, !IO) :-
         ( Instr = mark_hp(Lval)
         ; Instr = store_ticket(Lval)
         ; Instr = mark_ticket_stack(Lval)
-        ; Instr = init_sync_term(Lval, _NumBranches)
+        ; Instr = init_sync_term(Lval, _NumBranches, _ConjIdSlotNum)
         ),
         output_record_lval_decls(Info, Lval, !DeclSet, !IO)
     ;
@@ -891,11 +891,13 @@ output_instruction(Info, Instr, ProfInfo, !IO) :-
         ),
         io.write_string("\t}\n", !IO)
     ;
-        Instr = init_sync_term(Lval, N),
+        Instr = init_sync_term(Lval, NumConjuncts, TSStringIndex),
         io.write_string("\tMR_init_sync_term(", !IO),
         output_lval_as_word(Info, Lval, !IO),
         io.write_string(", ", !IO),
-        io.write_int(N, !IO),
+        io.write_int(NumConjuncts, !IO),
+        io.write_string(", ", !IO),
+        io.write_int(TSStringIndex, !IO),
         io.write_string(");\n", !IO)
     ;
         Instr = fork_new_child(Lval, Child),

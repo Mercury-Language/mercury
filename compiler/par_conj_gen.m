@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000,2002-2010 University of Melbourne.
+% Copyright (C) 1998-2000,2002-2011 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -107,12 +107,15 @@
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.instmap.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.exprn_aux.
+:- import_module mdbcomp.goal_path.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -123,6 +126,7 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
+:- import_module string.
 :- import_module unit.
 
 %---------------------------------------------------------------------------%
@@ -184,9 +188,10 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     (
         % The highest numbered slot has the lowest address.
         list.last(SyncTermSlots, SyncTermBaseSlotPrime),
-        SyncTermBaseSlotPrime = stackvar(SlotNum),
+        SyncTermBaseSlotPrime = stackvar(SlotNumPrime),
         StackId = det_stack
     ->
+        SlotNum = SlotNumPrime,
         SyncTermBaseSlot = SyncTermBaseSlotPrime,
         ParentSyncTermBaseSlot = parent_stackvar(SlotNum)
     ;
@@ -194,8 +199,9 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     ),
 
     NumGoals = list.length(Goals),
+    create_static_conj_id(GoalInfo, StaticConjId, !CI),
     MakeSyncTermCode = singleton(
-        llds_instr(init_sync_term(SyncTermBaseSlot, NumGoals),
+        llds_instr(init_sync_term(SyncTermBaseSlot, NumGoals, StaticConjId),
             "initialize sync term")
     ),
 
@@ -206,9 +212,11 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
         no, GoalCode, !CI),
     set_par_conj_depth(Depth, !CI),
 
-    EndLabelCode = singleton(
-        llds_instr(label(EndLabel), "end of parallel conjunction")
-    ),
+    EndLabelCode = from_list([
+        llds_instr(label(EndLabel), "end of parallel conjunction"),
+        llds_instr(ts_finish_par_conj_instr(SlotNum, SyncTermBaseSlot),
+            "finish parallel conjunction (ThreadScope instrumentation")
+    ]),
     Code =
         MaybeSetParentSpCode ++
         SaveCode ++
@@ -295,6 +303,20 @@ generate_det_par_conj_2([Goal | Goals], ParentSyncTermBaseSlot, EndLabel,
     generate_det_par_conj_2(Goals, ParentSyncTermBaseSlot, EndLabel, Initial,
         MaybeEnd, RestCode, !CI),
     Code = ThisCode ++ RestCode.
+
+:- func ts_finish_par_conj_instr(int, lval) = instr.
+
+ts_finish_par_conj_instr(SyncTermBaseSlot, SyncTermBaseSlotLval) =
+        foreign_proc_code([], Components, proc_will_not_call_mercury, no, no,
+            no, no, no, yes, proc_may_duplicate) :-
+    Components = [foreign_proc_raw_code(cannot_branch_away,
+        proc_does_not_affect_liveness,
+        live_lvals_info(set([SyncTermBaseSlotLval])),
+        format(Code, [i(SyncTermBaseSlot)]))],
+    Code = "#ifdef MR_THREADSCOPE
+MR_threadscope_post_stop_par_conj(&MR_sv(%d));
+#endif
+".
 
 %-----------------------------------------------------------------------------%
 
@@ -402,6 +424,25 @@ place_all_outputs([Var | Vars], !CI) :-
         set_var_location(Var, Slot, !CI)
     ),
     place_all_outputs(Vars, !CI).
+
+%----------------------------------------------------------------------------%
+
+:- pred create_static_conj_id(hlds_goal_info::in, int::out,
+    code_info::in, code_info::out) is det.
+
+create_static_conj_id(GoalInfo, SlotNum, !CI) :-
+    get_pred_id(!.CI, PredId),
+    get_proc_id(!.CI, ProcId),
+    get_module_info(!.CI, ModuleInfo),
+    ProcString = pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId),
+
+    get_containing_goal_map_det(!.CI, ContainingGoalMap),
+    GoalId = goal_info_get_goal_id(GoalInfo),
+    GoalPath = goal_id_to_forward_path(ContainingGoalMap, GoalId),
+    GoalPathString = goal_path_to_string(GoalPath),
+
+    String = format("%s: %s", [s(ProcString), s(GoalPathString)]),
+    add_threadscope_string(String, SlotNum, !CI).
 
 %----------------------------------------------------------------------------%
 

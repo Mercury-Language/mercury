@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2010 The University of Melbourne.
+% Copyright (C) 2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -306,7 +306,7 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         !:KnownContentsMap = map.init,
         !:DepLvalMap = map.init
     ;
-        Uinstr0 = init_sync_term(Target, _),
+        Uinstr0 = init_sync_term(Target, _, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         clobber_dependents(Target, !KnownContentsMap, !DepLvalMap)
     ;

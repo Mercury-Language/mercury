@@ -1129,16 +1129,17 @@ MR_BEGIN_CODE
 MR_define_entry(MR_do_runnext);
   #ifdef MR_THREAD_SAFE
 {
-    MR_Context      *ready_context;
-    MR_Code         *resume_point;
-    MR_Spark        spark;
-    MR_Unsigned     depth;
-    MercuryThread   thd;
-    struct timespec timeout;
+    MR_Context          *ready_context;
+    MR_Code             *resume_point;
+    MR_Spark            spark;
+    MR_Unsigned         depth;
+    MercuryThread       thd;
+    struct timespec     timeout;
 
     #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
-    MR_Timer        runnext_timer;
+    MR_Timer            runnext_timer;
     #endif
+
     /*
     ** If this engine is holding onto a context, the context should not be
     ** in the middle of running some code.
@@ -1323,6 +1324,9 @@ ReadySpark:
                 &MR_profile_parallel_executed_global_sparks);
     }
     #endif
+    #ifdef MR_THREADSCOPE
+    MR_threadscope_post_steal_spark(spark.MR_spark_id);
+    #endif
     MR_GOTO(spark.MR_spark_resume);
 }
   #else /* !MR_THREAD_SAFE */
@@ -1356,6 +1360,10 @@ MR_do_join_and_continue(MR_SyncTerm *jnc_st, MR_Code *join_label)
 {
     MR_bool     jnc_last;
     MR_Context  *this_context = MR_ENGINE(MR_eng_this_context);
+
+  #ifdef MR_THREADSCOPE
+    MR_threadscope_post_stop_par_conjunct((MR_Word*)jnc_st);
+  #endif
 
     /*
     ** Atomically decrement and fetch the number of conjuncts yet to complete.
@@ -1399,18 +1407,19 @@ MR_do_join_and_continue(MR_SyncTerm *jnc_st, MR_Code *join_label)
             return MR_ENTRY(MR_do_runnext);
         }
     } else {
-        MR_bool     popped;
-        MR_Code     *spark_resume;
+        volatile MR_Spark *spark;
 
         /*
         ** The parallel conjunction it is not yet finished. Try to work on a
         ** spark from our local stack. The sparks on our stack are likely to
         ** cause this conjunction to be complete.
         */
-        popped = MR_wsdeque_pop_bottom(&this_context->MR_ctxt_spark_deque,
-            &spark_resume);
-        if (popped) {
-            return spark_resume;
+        spark = MR_wsdeque_pop_bottom(&this_context->MR_ctxt_spark_deque);
+        if (NULL != spark) {
+#ifdef MR_THREADSCOPE
+            MR_threadscope_post_run_spark(spark->MR_spark_id);
+#endif
+            return spark->MR_spark_resume;
         } else {
             /*
             ** If this context originated the parallel conjunction that we've
@@ -1426,9 +1435,10 @@ MR_do_join_and_continue(MR_SyncTerm *jnc_st, MR_Code *join_label)
   #endif
                 MR_save_context(this_context);
                 /*
-                ** XXX: Make sure the context gets saved before we set
-                ** the join label, use a memory barrier.
+                ** Make sure the context gets saved before we set the join
+                ** label, use a memory barrier.
                 */
+                MR_CPU_SFENCE;
                 this_context->MR_ctxt_resume = (join_label);
                 MR_ENGINE(MR_eng_this_context) = NULL;
             } else {

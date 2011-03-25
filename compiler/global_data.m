@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2010 The University of Melbourne.
+% Copyright (C) 2003-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -61,6 +61,15 @@
 :- pred global_data_get_all_closure_layouts(global_data::in,
     list(closure_proc_id_data)::out) is det.
 
+:- pred global_data_get_threadscope_string_table(global_data::in,
+    list(string)::out) is det.
+
+:- pred global_data_get_threadscope_rev_string_table(global_data::in,
+    list(string)::out, int::out) is det.
+
+:- pred global_data_set_threadscope_rev_string_table(list(string)::in, int::in,
+    global_data::in, global_data::out) is det.
+
 :- pred global_data_get_static_cell_info(global_data::in,
     static_cell_info::out) is det.
 
@@ -111,6 +120,8 @@
 :- pred bump_type_num_counter(int::in, global_data::in, global_data::out)
     is det.
 
+:- type global_data_remapping.
+
     % merge_global_datas(GlobalDataA, GlobalDataB, GlobalData, Remap)
     %
     % Merge two global data structures, where static cell information from
@@ -119,13 +130,13 @@
     % information necessary for remap_static_cell_references/3.
     %
 :- pred merge_global_datas(global_data::in, global_data::in, global_data::out,
-    static_cell_remap_info::out) is det.
+    global_data_remapping::out) is det.
 
-    % Update instructions in a C procedure that reference the static cells
-    % from the GlobalDataB that was passed to merge_global_datas/4, to
-    % reference the static cells of the merged global_data structure.
+    % Update instructions in a C procedure that reference things from
+    % GlobalDataB that was passed to merge_global_datas/4, to reference things
+    % from the merged global_data structure.
     %
-:- pred remap_static_cell_references(static_cell_remap_info::in,
+:- pred remap_references_to_global_data(global_data_remapping::in,
     c_procedure::in, c_procedure::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -154,27 +165,37 @@
     --->    global_data(
                 % Information about the global variables defined by
                 % each procedure.
-                gd_proc_var_map         :: proc_var_map,
+                gd_proc_var_map             :: proc_var_map,
 
                 % Information about the layout structures defined by
                 % each procedure.
-                gd_proc_layout_map      :: proc_layout_map,
+                gd_proc_layout_map          :: proc_layout_map,
 
                 % The list of all closure layouts generated in this module.
                 % While all closure layouts are different from all other
                 % layout_data, it is possible, although unlikely, for
                 % two closures to have the same layout.
-                gd_closure_layouts      :: list(closure_proc_id_data),
+                gd_closure_layouts          :: list(closure_proc_id_data),
+
+                % A table for allocating and maintaining slots where string IDs
+                % will be placed at runtime for threadscope profiling.  The
+                % actual string IDs are allocated at runtime and their IDs are
+                % placed in an array slot which can be referred to statically.
+                % The size of the table is maintained for allocating offsets
+                % into it.
+                gd_ts_string_table_size     :: int,
+                gd_ts_rev_string_table      :: list(string),
 
                 % Information about all the statically allocated cells
                 % created so far.
-                gd_static_cell_info     :: static_cell_info
+                gd_static_cell_info         :: static_cell_info
             ).
 
 global_data_init(StaticCellInfo, GlobalData) :-
     map.init(EmptyDataMap),
     map.init(EmptyLayoutMap),
-    GlobalData = global_data(EmptyDataMap, EmptyLayoutMap, [], StaticCellInfo).
+    GlobalData = global_data(EmptyDataMap, EmptyLayoutMap, [],
+        0, [], StaticCellInfo).
 
 global_data_add_new_proc_var(PredProcId, ProcVar, !GlobalData) :-
     ProcVarMap0 = !.GlobalData ^ gd_proc_var_map,
@@ -214,6 +235,20 @@ global_data_get_all_proc_layouts(GlobalData, ProcLayouts) :-
 
 global_data_get_all_closure_layouts(GlobalData, ClosureLayouts) :-
     ClosureLayouts = GlobalData ^ gd_closure_layouts.
+
+global_data_get_threadscope_string_table(GlobalData, Table) :-
+    global_data_get_threadscope_rev_string_table(GlobalData, RevTable, _),
+    Table = list.reverse(RevTable).
+
+global_data_get_threadscope_rev_string_table(GlobalData,
+        RevTable, TableSize) :-
+    RevTable = GlobalData ^ gd_ts_rev_string_table,
+    TableSize = GlobalData ^ gd_ts_string_table_size.
+
+global_data_set_threadscope_rev_string_table(RevTable, TableSize,
+        !GlobalData) :-
+    !GlobalData ^ gd_ts_rev_string_table := RevTable,
+    !GlobalData ^ gd_ts_string_table_size := TableSize.
 
 global_data_get_static_cell_info(GlobalData, StaticCellInfo) :-
     StaticCellInfo = GlobalData ^ gd_static_cell_info.
@@ -641,18 +676,47 @@ bump_type_num_counter(Increment, !GlobalData) :-
     Counter = counter.init(N + Increment),
     !GlobalData ^ gd_static_cell_info ^ sci_type_counter := Counter.
 
-merge_global_datas(GlobalDataA, GlobalDataB, GlobalData, Remap) :-
+merge_global_datas(GlobalDataA, GlobalDataB, GlobalData, GlobalDataRemap) :-
     GlobalDataA = global_data(ProcVarMapA, ProcLayoutMapA, ClosureLayoutsA,
-        StaticCellInfoA),
+        TSStringSlotCounterA, TSRevStringTableA, StaticCellInfoA),
     GlobalDataB = global_data(ProcVarMapB, ProcLayoutMapB, ClosureLayoutsB,
-        StaticCellInfoB),
-    GlobalData = global_data(ProcVarMap, ProcLayoutMap, ClosureLayouts,
-        StaticCellInfo),
+        TSStringSlotCounterB, TSRevStringTableB, StaticCellInfoB),
     ProcVarMap = map.old_merge(ProcVarMapA, ProcVarMapB),
     ProcLayoutMap = map.old_merge(ProcLayoutMapA, ProcLayoutMapB),
     ClosureLayouts = ClosureLayoutsA ++ ClosureLayoutsB,
+    merge_threadscope_string_tables(TSRevStringTableA, TSStringSlotCounterA,
+        TSRevStringTableB, TSStringSlotCounterB,
+        TSRevStringTable, TSStringSlotCounter, MaybeTSStringTableRemap),
     merge_static_cell_infos(StaticCellInfoA, StaticCellInfoB, StaticCellInfo,
-        Remap).
+        StaticCellRemap),
+    GlobalData = global_data(ProcVarMap, ProcLayoutMap, ClosureLayouts,
+        TSStringSlotCounter, TSRevStringTable, StaticCellInfo),
+    GlobalDataRemap =
+        global_data_remapping(MaybeTSStringTableRemap, StaticCellRemap).
+
+    % merge_threadscope_string_tables(RevTableA, CounterA, RevTableB, CounterB,
+    %   RevTable, Counter, MaybeRemapOffset).
+    %
+    % Merge the threadscope string tables.
+    %
+    % After doing this merge the references in RevTableB may be adjusted and
+    % must be corrected by adding RemapOffset to them if MaybeRemapOffset =
+    % yes(RemapOffset).
+    %
+:- pred merge_threadscope_string_tables(list(string)::in, int::in,
+    list(string)::in, int::in,
+    list(string)::out, int::out, maybe(int)::out) is det.
+
+merge_threadscope_string_tables([], _, [], _, [], 0, no).
+merge_threadscope_string_tables([], _, [X | Xs], N, [X | Xs], N, no).
+merge_threadscope_string_tables([X | Xs], N, [], _, [X | Xs], N, no).
+merge_threadscope_string_tables(RevTableA, CounterA, RevTableB, CounterB,
+        RevTable, Counter, yes(RemapOffset)) :-
+    RevTableA = [_ | _],
+    RevTableB = [_ | _],
+    RevTable = RevTableB ++ RevTableA,
+    Counter = CounterA + CounterB,
+    RemapOffset = CounterA.
 
 :- pred merge_static_cell_infos(static_cell_info::in, static_cell_info::in,
     static_cell_info::out, static_cell_remap_info::out) is det.
@@ -889,12 +953,18 @@ remap_arg_group_value(Remap, !GroupedArgs) :-
 
 %-----------------------------------------------------------------------------%
 
-remap_static_cell_references(Remap, !Procedure) :-
+:- type global_data_remapping
+    --->    global_data_remapping(
+                gdr_maybe_ts_table_offset   :: maybe(int),
+                gdr_static_cell_remap_info  :: static_cell_remap_info
+            ).
+
+remap_references_to_global_data(Remap, !Procedure) :-
     Code0 = !.Procedure ^ cproc_code,
     list.map(remap_instruction(Remap), Code0, Code),
     !Procedure ^ cproc_code := Code.
 
-:- pred remap_instruction(static_cell_remap_info::in,
+:- pred remap_instruction(global_data_remapping::in,
     instruction::in, instruction::out) is det.
 
 remap_instruction(Remap, !Instr) :-
@@ -902,49 +972,50 @@ remap_instruction(Remap, !Instr) :-
     remap_instr(Remap, Uinstr0, Uinstr),
     !:Instr = llds_instr(Uinstr, Comment).
 
-:- pred remap_instr(static_cell_remap_info::in, instr::in, instr::out) is det.
+:- pred remap_instr(global_data_remapping::in, instr::in, instr::out) is det.
 
-remap_instr(Remap, Instr0, Instr) :-
+remap_instr(GlobalDataRemap, Instr0, Instr) :-
+    StaticCellRemap = GlobalDataRemap ^ gdr_static_cell_remap_info,
     (
         Instr0 = block(NumIntTemps, NumFloatTemps, Block0),
-        list.map(remap_instruction(Remap), Block0, Block),
+        list.map(remap_instruction(GlobalDataRemap), Block0, Block),
         Instr = block(NumIntTemps, NumFloatTemps, Block)
     ;
         Instr0 = assign(Lval, Rval0),
-        remap_rval(Remap, Rval0, Rval),
+        remap_rval(StaticCellRemap, Rval0, Rval),
         Instr = assign(Lval, Rval)
     ;
         Instr0 = keep_assign(Lval, Rval0),
-        remap_rval(Remap, Rval0, Rval),
+        remap_rval(StaticCellRemap, Rval0, Rval),
         Instr = keep_assign(Lval, Rval)
     ;
         Instr0 = if_val(Rval0, CodeAddr),
-        remap_rval(Remap, Rval0, Rval),
+        remap_rval(StaticCellRemap, Rval0, Rval),
         Instr  = if_val(Rval, CodeAddr)
     ;
         Instr0 = foreign_proc_code(A, Comps0, B, C, D, E, F, G, H, I),
-        list.map(remap_foreign_proc_component(Remap), Comps0, Comps),
+        list.map(remap_foreign_proc_component(StaticCellRemap), Comps0, Comps),
         Instr  = foreign_proc_code(A, Comps,  B, C, D, E, F, G, H, I)
     ;
         Instr0 = computed_goto(Rval0, MaybeLabels),
-        remap_rval(Remap, Rval0, Rval),
+        remap_rval(StaticCellRemap, Rval0, Rval),
         Instr = computed_goto(Rval, MaybeLabels)
     ;
         Instr0 = save_maxfr(Lval0),
-        remap_lval(Remap, Lval0, Lval),
+        remap_lval(StaticCellRemap, Lval0, Lval),
         Instr = save_maxfr(Lval)
     ;
         Instr0 = restore_maxfr(Lval0),
-        remap_lval(Remap, Lval0, Lval),
+        remap_lval(StaticCellRemap, Lval0, Lval),
         Instr = restore_maxfr(Lval)
     ;
         Instr0 = incr_hp(Lval0, MaybeTag, MaybeOffset, SizeRval0, Prof,
             Atomic, MaybeRegion0, MaybeReuse0),
-        remap_lval(Remap, Lval0, Lval),
-        remap_rval(Remap, SizeRval0, SizeRval),
+        remap_lval(StaticCellRemap, Lval0, Lval),
+        remap_rval(StaticCellRemap, SizeRval0, SizeRval),
         (
             MaybeRegion0 = yes(Region0),
-            remap_rval(Remap, Region0, Region),
+            remap_rval(StaticCellRemap, Region0, Region),
             MaybeRegion = yes(Region)
         ;
             MaybeRegion0 = no,
@@ -952,10 +1023,10 @@ remap_instr(Remap, Instr0, Instr) :-
         ),
         (
             MaybeReuse0 = llds_reuse(Reuse0, MaybeFlag0),
-            remap_rval(Remap, Reuse0, Reuse),
+            remap_rval(StaticCellRemap, Reuse0, Reuse),
             (
                 MaybeFlag0 = yes(Flag0),
-                remap_lval(Remap, Flag0, Flag),
+                remap_lval(StaticCellRemap, Flag0, Flag),
                 MaybeFlag = yes(Flag)
             ;
                 MaybeFlag0 = no,
@@ -970,15 +1041,15 @@ remap_instr(Remap, Instr0, Instr) :-
             Atomic, MaybeRegion, MaybeReuse)
     ;
         Instr0 = mark_hp(Lval0),
-        remap_lval(Remap, Lval0, Lval),
+        remap_lval(StaticCellRemap, Lval0, Lval),
         Instr = mark_hp(Lval)
     ;
         Instr0 = restore_hp(Rval0),
-        remap_rval(Remap, Rval0, Rval),
+        remap_rval(StaticCellRemap, Rval0, Rval),
         Instr = restore_hp(Rval)
     ;
         Instr0 = free_heap(Rval0),
-        remap_rval(Remap, Rval0, Rval),
+        remap_rval(StaticCellRemap, Rval0, Rval),
         Instr = free_heap(Rval)
     ;
         Instr0 = push_region_frame(StackId, EmbeddedStackFrame),
@@ -986,41 +1057,43 @@ remap_instr(Remap, Instr0, Instr) :-
     ;
         Instr0 = region_fill_frame(FillOp, EmbeddedStackFrame, IdRval0,
             NumLval0, AddrLval0),
-        remap_rval(Remap, IdRval0, IdRval),
-        remap_lval(Remap, NumLval0, NumLval),
-        remap_lval(Remap, AddrLval0, AddrLval),
+        remap_rval(StaticCellRemap, IdRval0, IdRval),
+        remap_lval(StaticCellRemap, NumLval0, NumLval),
+        remap_lval(StaticCellRemap, AddrLval0, AddrLval),
         Instr = region_fill_frame(FillOp, EmbeddedStackFrame, IdRval,
             NumLval, AddrLval)
     ;
         Instr0 = region_set_fixed_slot(SetOp, EmbeddedStackFrame, ValueRval0),
-        remap_rval(Remap, ValueRval0, ValueRval),
+        remap_rval(StaticCellRemap, ValueRval0, ValueRval),
         Instr = region_set_fixed_slot(SetOp, EmbeddedStackFrame, ValueRval)
     ;
         Instr0 = use_and_maybe_pop_region_frame(UseOp, EmbeddedStackFrame),
         Instr = use_and_maybe_pop_region_frame(UseOp, EmbeddedStackFrame)
     ;
         Instr0 = store_ticket(Lval0),
-        remap_lval(Remap, Lval0, Lval),
+        remap_lval(StaticCellRemap, Lval0, Lval),
         Instr = store_ticket(Lval)
     ;
         Instr0 = reset_ticket(Rval0, Reason),
-        remap_rval(Remap, Rval0, Rval),
+        remap_rval(StaticCellRemap, Rval0, Rval),
         Instr = reset_ticket(Rval, Reason)
     ;
         Instr0 = mark_ticket_stack(Lval0),
-        remap_lval(Remap, Lval0, Lval),
+        remap_lval(StaticCellRemap, Lval0, Lval),
         Instr = mark_ticket_stack(Lval)
     ;
         Instr0 = prune_tickets_to(Rval0),
-        remap_rval(Remap, Rval0, Rval),
+        remap_rval(StaticCellRemap, Rval0, Rval),
         Instr = prune_tickets_to(Rval)
     ;
-        Instr0 = init_sync_term(Lval0, NumJoins),
-        remap_lval(Remap, Lval0, Lval),
-        Instr = init_sync_term(Lval, NumJoins)
+        Instr0 = init_sync_term(Lval0, NumJoins, ConjId0),
+        remap_lval(StaticCellRemap, Lval0, Lval),
+        remap_ts_table_index(GlobalDataRemap ^ gdr_maybe_ts_table_offset,
+            ConjId0, ConjId),
+        Instr = init_sync_term(Lval, NumJoins, ConjId)
     ;
         Instr0 = join_and_continue(Lval0, Label),
-        remap_lval(Remap, Lval0, Lval),
+        remap_lval(StaticCellRemap, Lval0, Lval),
         Instr = join_and_continue(Lval, Label)
     ;
         ( Instr0 = comment(_)
@@ -1039,6 +1112,11 @@ remap_instr(Remap, Instr0, Instr) :-
         ),
         Instr = Instr0
     ).
+
+:- pred remap_ts_table_index(maybe(int)::in, int::in, int::out) is det.
+
+remap_ts_table_index(no, !ConjId).
+remap_ts_table_index(yes(Offset), ConjId, ConjId + Offset).
 
 :- pred remap_foreign_proc_component(static_cell_remap_info::in,
     foreign_proc_component::in, foreign_proc_component::out) is det.

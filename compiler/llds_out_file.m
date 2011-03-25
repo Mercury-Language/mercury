@@ -1,7 +1,7 @@
 %----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2009-2010 The University of Melbourne.
+% Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -158,7 +158,7 @@ output_single_c_file(Globals, CFile, FileStream, !DeclSet, !IO) :-
         NoVarLabelLayouts, SVarLabelLayouts, LVarLabelLayouts,
         InternalLabelToLayoutMap, EntryLabelToLayoutMap,
         CallSiteStatics, CoveragePoints, ProcStatics,
-        ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes,
+        ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TSStringTable,
         TableIoDecls, TableIoDeclMap, ProcEventLayouts, ExecTraces,
         ProcLayoutDatas, ModuleLayoutDatas, ClosureLayoutDatas,
         Modules, UserInitPredCNames, UserFinalPredCNames, ComplexityProcs),
@@ -218,14 +218,14 @@ output_single_c_file(Globals, CFile, FileStream, !DeclSet, !IO) :-
         NoVarLabelLayouts, SVarLabelLayouts, LVarLabelLayouts,
         CallSiteStatics, CoveragePoints, ProcStatics,
         ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TableIoDecls,
-        ProcEventLayouts, ExecTraces, !DeclSet, !IO),
+        ProcEventLayouts, ExecTraces, TSStringTable, !DeclSet, !IO),
 
     list.foldl2(output_comp_gen_c_module(Info), Modules, !DeclSet, !IO),
     list.foldl(output_user_foreign_code(Info), UserForeignCode, !IO),
     list.foldl(io.write_string, Exports, !IO),
     io.write_string("\n", !IO),
     output_c_module_init_list(Info, ModuleName, Modules, RttiDatas,
-        ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs,
+        ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs, TSStringTable,
         UserInitPredCNames, UserFinalPredCNames, !DeclSet, !IO),
     io.set_output_stream(OutputStream, _, !IO).
 
@@ -249,10 +249,10 @@ proc_gather_env_var_names([Proc | Procs], !EnvVarNames) :-
     list(comp_gen_c_module)::in, list(rtti_data)::in,
     list(proc_layout_data)::in, list(module_layout_data)::in,
     list(complexity_proc_info)::in, list(string)::in, list(string)::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
+    list(string)::in, decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_c_module_init_list(Info, ModuleName, Modules, RttiDatas,
-        ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs,
+        ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs, TSStringTable,
         InitPredNames, FinalPredNames, !DeclSet, !IO) :-
     MustInit = (pred(Module::in) is semidet :-
         module_defines_label_with_layout(Info, Module)
@@ -293,6 +293,12 @@ output_c_module_init_list(Info, ModuleName, Modules, RttiDatas,
     io.write_string("void ", !IO),
     output_init_name(ModuleName, !IO),
     io.write_string("init_complexity_procs(void);\n", !IO),
+    io.write_string("#endif\n", !IO),
+
+    io.write_string("#ifdef MR_THREADSCOPE\n", !IO),
+    io.write_string("void ", !IO),
+    output_init_name(ModuleName, !IO),
+    io.write_string("init_threadscope_string_table(void);\n", !IO),
     io.write_string("#endif\n", !IO),
 
     (
@@ -393,6 +399,26 @@ output_c_module_init_list(Info, ModuleName, Modules, RttiDatas,
     io.write_string("init_complexity_procs(void)\n", !IO),
     io.write_string("{\n", !IO),
     output_init_complexity_proc_list(ComplexityProcs, !IO),
+    io.write_string("}\n", !IO),
+    io.write_string("\n#endif\n\n", !IO),
+
+    io.write_string("#ifdef MR_THREADSCOPE\n", !IO),
+    io.write_string("\nvoid ", !IO),
+    output_init_name(ModuleName, !IO),
+    io.write_string("init_threadscope_string_table(void)\n", !IO),
+    io.write_string("{\n", !IO),
+    (
+        TSStringTable = []
+    ;
+        TSStringTable = [_ | _],
+        TSStringTableSize = length(TSStringTable),
+        io.write_string("\tMR_threadscope_register_strings_array(\n", !IO),
+        io.write_string("\t\t", !IO),
+        MangledModuleName = Info ^ lout_mangled_module_name,
+        output_layout_array_name(use_layout_macro, MangledModuleName,
+            threadscope_string_table_array, !IO),
+        io.format(", %d);\n", [i(TSStringTableSize)], !IO)
+    ),
     io.write_string("}\n", !IO),
     io.write_string("\n#endif\n\n", !IO),
 

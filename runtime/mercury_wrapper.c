@@ -410,6 +410,9 @@ void    (*MR_address_of_init_modules_complexity)(void);
 void    (*MR_address_of_write_out_proc_statics)(FILE *deep_fp,
             FILE *procrep_fp);
 #endif
+#ifdef  MR_THREADSCOPE
+void    (*MR_address_of_init_modules_threadscope_string_table)(void);
+#endif
 void    (*MR_address_of_init_modules_required)(void);
 void    (*MR_address_of_final_modules_required)(void);
 
@@ -650,6 +653,12 @@ mercury_runtime_init(int argc, char **argv)
     ** Pin the primordial thread, if thread pinning is configured.
     */
     MR_setup_threadscope();
+
+    /*
+    ** Setup the threadscope string tables before the standard library is
+    ** initalised or engines are created.
+    */
+    (*MR_address_of_init_modules_threadscope_string_table)();
   #endif
 
     MR_all_engine_bases = MR_GC_malloc(sizeof(MercuryEngine*)*MR_num_threads);

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -566,6 +566,9 @@ dump_layout_array_name(ArrayName) = Str :-
     ;
         ArrayName = proc_table_io_decl_array,
         Str = "proc_table_io_decl_array"
+    ;
+        ArrayName = threadscope_string_table_array,
+        Str = "threadscope_string_table_array"
     ).
 
 dump_layout_name(proc_layout(RttiProcLabel, _)) =
@@ -1058,9 +1061,9 @@ dump_instr(MaybeProcLabel, AutoComments, Instr) = Str :-
         Instr = decr_sp_and_return(Size),
         Str = "decr_sp_and_return(" ++ int_to_string(Size) ++ ")"
     ;
-        Instr = init_sync_term(Lval, N),
+        Instr = init_sync_term(Lval, N, TSStringIndex),
         Str = "init_sync_term(" ++ dump_lval(MaybeProcLabel, Lval) ++ ", "
-            ++ int_to_string(N) ++ ")"
+            ++ int_to_string(N) ++ ", " ++ int_to_string(TSStringIndex) ++ ")"
     ;
         Instr = fork_new_child(Lval, Child),
         Str = "fork_new_child(" ++ dump_lval(MaybeProcLabel, Lval)

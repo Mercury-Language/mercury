@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2010 The University of Melbourne.
+% Copyright (C) 2001-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -687,7 +687,7 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
         ; Uinstr0 = incr_sp(_, _, _)
         ; Uinstr0 = decr_sp(_)
         ; Uinstr0 = decr_sp_and_return(_)
-        ; Uinstr0 = init_sync_term(_, _)
+        ; Uinstr0 = init_sync_term(_, _, _)
         ; Uinstr0 = fork_new_child(_, _)
         ; Uinstr0 = join_and_continue(_, _)
         ; Uinstr0 = arbitrary_c_code(_, _, _)

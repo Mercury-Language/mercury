@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1994-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -432,7 +432,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
         ; Uinstr0 = free_heap(_)
         ; Uinstr0 = incr_hp(_, _, _, _, _, _, _, _)
         ; Uinstr0 = restore_hp(_)
-        ; Uinstr0 = init_sync_term(_, _)
+        ; Uinstr0 = init_sync_term(_, _, _)
         ),
         NewRemain = usual_case
     ),

@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2009-2010 The University of Melbourne.
+** Copyright (C) 2009-2011 The University of Melbourne.
 **
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -39,6 +39,13 @@ typedef struct MR_threadscope_event_buffer MR_threadscope_event_buffer_t;
 typedef MR_uint_least16_t   MR_EngineId;
 typedef MR_uint_least16_t   MR_ContextStopReason;
 typedef MR_Integer          MR_ContextId;
+typedef MR_uint_least32_t   MR_TS_StringId;
+typedef MR_uint_least32_t   MR_SparkId;
+
+typedef struct MR_Threadscope_String {
+    const char*     MR_tsstring_string;
+    MR_TS_StringId  MR_tsstring_id;
+} MR_Threadscope_String;
 
 /*
 ** This must be called by the primordial thread before starting any other
@@ -122,6 +129,26 @@ extern void
 MR_threadscope_post_stop_context(MR_ContextStopReason reason);
 
 /*
+** This message says we're about to execute a spark from our local stack.
+*/
+extern void
+MR_threadscope_post_run_spark(MR_SparkId spark_id);
+
+/*
+** This message says that we're about to execute a spark that was stolen from
+** another's stack.
+*/
+extern void
+MR_threadscope_post_steal_spark(MR_SparkId spark_id);
+
+/*
+** This message says that a spark is being created for the given computation.
+** The spark's ID is given as an argument.
+*/
+extern void
+MR_threadscope_post_sparking(MR_Word* dynamic_conj_id, MR_SparkId spark_id);
+
+/*
 ** Post this message just before invoking the main/2 predicate.
 */
 extern void
@@ -132,6 +159,31 @@ MR_threadscope_post_calling_main(void);
 */
 extern void
 MR_threadscope_post_looking_for_global_work(void);
+
+/*
+** Post this message before a parallel conjunction starts.
+*/
+extern void
+MR_threadscope_post_start_par_conj(MR_Word* dynamic_id, MR_TS_StringId static_id);
+
+/*
+** Post this message after a parallel conjunction stops.
+*/
+extern void
+MR_threadscope_post_stop_par_conj(MR_Word* dynamic_id);
+
+/*
+** Post this message when a parallel conjunct calls the bariier code.
+*/
+extern void
+MR_threadscope_post_stop_par_conjunct(MR_Word* dynamic_id);
+
+/*
+** Register all the strings in an array and save their IDs in the array.
+*/
+extern void
+MR_threadscope_register_strings_array(MR_Threadscope_String *array,
+    unsigned size);
 
 /*
 ** Post a user-defined log message.

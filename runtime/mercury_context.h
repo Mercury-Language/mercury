@@ -237,6 +237,9 @@ struct MR_Spark_Struct {
     MR_SyncTerm             *MR_spark_sync_term;
     MR_Code                 *MR_spark_resume;
     MR_ThreadLocalMuts      *MR_spark_thread_local_mutables;
+#ifdef MR_THREADSCOPE
+    MR_uint_least32_t       MR_spark_id;
+#endif
 };
 
 struct MR_SparkDeque_Struct {
@@ -718,7 +721,18 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
     volatile MR_Unsigned    MR_st_count;
   };
 
-  #define MR_init_sync_term(sync_term, nbranches)                             \
+#ifdef MR_THREADSCOPE
+  #define MR_init_sync_term(sync_term, nbranches, static_conj_id)             \
+    do {                                                                      \
+        MR_SyncTerm *init_st = (MR_SyncTerm *) &(sync_term);                  \
+                                                                              \
+        init_st->MR_st_orig_context = MR_ENGINE(MR_eng_this_context);         \
+        init_st->MR_st_parent_sp = MR_parent_sp;                              \
+        init_st->MR_st_count = (nbranches);                                   \
+        MR_threadscope_post_start_par_conj(&(sync_term), static_conj_id);     \
+    } while (0)
+#else
+  #define MR_init_sync_term(sync_term, nbranches, static_conj_id)             \
     do {                                                                      \
         MR_SyncTerm *init_st = (MR_SyncTerm *) &(sync_term);                  \
                                                                               \
@@ -726,6 +740,7 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
         init_st->MR_st_parent_sp = MR_parent_sp;                              \
         init_st->MR_st_count = (nbranches);                                   \
     } while (0)
+#endif
 
   /*
   ** fork_new_child(MR_SyncTerm st, MR_Code *child):
@@ -735,6 +750,23 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
   ** MR_parent_sp must already be set appropriately before this instruction
   ** is executed.
   */
+#ifdef MR_THREADSCOPE
+  #define MR_fork_new_child(sync_term, child)                                 \
+    do {                                                                      \
+        MR_Spark            fnc_spark;                                        \
+        MR_SparkDeque       *fnc_deque;                                       \
+        MR_uint_least32_t   id;                                               \
+                                                                              \
+        fnc_spark.MR_spark_sync_term = (MR_SyncTerm*) &(sync_term);           \
+        fnc_spark.MR_spark_resume = (child);                                  \
+        fnc_spark.MR_spark_thread_local_mutables = MR_THREAD_LOCAL_MUTABLES;  \
+        id = MR_ENGINE(MR_eng_next_spark_id)++;                               \
+        fnc_spark.MR_spark_id = (MR_ENGINE(MR_eng_id) << 24)|(id & 0xFFFFFF); \
+        fnc_deque = &MR_ENGINE(MR_eng_this_context)->MR_ctxt_spark_deque;     \
+        MR_wsdeque_push_bottom(fnc_deque, &fnc_spark);                        \
+        MR_threadscope_post_sparking(&(sync_term), fnc_spark.MR_spark_id);    \
+    } while (0)
+#else
   #define MR_fork_new_child(sync_term, child)                                 \
     do {                                                                      \
         MR_Spark fnc_spark;                                                   \
@@ -746,6 +778,7 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
         fnc_deque = &MR_ENGINE(MR_eng_this_context)->MR_ctxt_spark_deque;     \
         MR_wsdeque_push_bottom(fnc_deque, &fnc_spark);                        \
     } while (0)
+#endif
 
   /*
   ** This macro may be used as conditions for runtime parallelism decisions.

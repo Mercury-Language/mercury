@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1995-2000,2002, 2004, 2006, 2009-2010 The University of Melbourne.
+** Copyright (C) 1995-2000,2002, 2004, 2006, 2009-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -152,6 +152,9 @@ MR_perform_registered_exception_cleanups(void);
 
 #define MR_proc_exec_traces(m)                      \
     MR_PASTE2(mercury_data__proc_exec_traces_array__, m)
+
+#define MR_threadscope_strings(m)                   \
+    MR_PASTE2(mercury_data__threadscope_string_table_array__, m)
 
 /*---------------------------------------------------------------------------*/
 

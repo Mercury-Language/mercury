@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1995-2008, 2010 The University of Melbourne.
+** Copyright (C) 1995-2008, 2010-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU General
 ** Public License - see the file COPYING in the Mercury distribution.
 */
@@ -32,7 +32,6 @@
 **          in particular the predicates make_init_obj/7 and
 **          make_standalone_interface/3.
 **      - util/mkinit_erl.c
-**
 */
 
 /*---------------------------------------------------------------------------*/
@@ -72,6 +71,9 @@ static const char if_need_term_size[] =
 static const char if_need_deep_prof[] =
     "#if defined(MR_DEEP_PROFILING)\n";
 
+static const char if_need_threadscope[] =
+    "#if defined(MR_THREADSCOPE)\n";
+
 typedef enum
 {
     TASK_OUTPUT_INIT_PROG = 0,
@@ -86,8 +88,9 @@ typedef enum
     PURPOSE_DEBUGGER = 2,
     PURPOSE_COMPLEXITY = 3,
     PURPOSE_PROC_STATIC = 4,
-    PURPOSE_REQ_INIT = 5,
-    PURPOSE_REQ_FINAL = 6
+    PURPOSE_THREADSCOPE_STRING_TABLE = 5,
+    PURPOSE_REQ_INIT = 6,
+    PURPOSE_REQ_FINAL = 7
 } Purpose;
 
 const char  *main_func_name[] =
@@ -97,6 +100,7 @@ const char  *main_func_name[] =
     "init_modules_debugger",
     "init_modules_complexity_procs",
     "write_out_proc_statics",
+    "init_modules_threadscope_string_table",
     "init_modules_required",
     "final_modules_required"
 };
@@ -108,6 +112,7 @@ const char  *module_suffix[] =
     "init_debugger",
     "init_complexity_procs",
     "write_out_proc_statics",
+    "init_threadscope_string_table",
     "",
     "",
 };
@@ -120,6 +125,7 @@ const char  *init_suffix[] =
     "_complexity",
     "write_out_proc_statics",
     "",
+    "",
     ""
 };
 
@@ -130,6 +136,7 @@ const char  *bunch_function_guard[] =
     if_need_to_init,
     if_need_term_size,
     if_need_deep_prof,
+    if_need_threadscope,
     NULL,
     NULL,
 };
@@ -141,6 +148,7 @@ const char  *main_func_guard[] =
     NULL,
     if_need_term_size,
     if_need_deep_prof,
+    if_need_threadscope,
     NULL,
     NULL,
 };
@@ -150,6 +158,7 @@ const char  *main_func_body_guard[] =
     if_need_to_init,
     NULL,
     if_need_to_init,
+    NULL,
     NULL,
     NULL,
     NULL,
@@ -164,6 +173,7 @@ const char  *main_func_arg_defn[] =
     "void",
     "FILE *deep_fp, FILE *procrep_fp",
     "void",
+    "void",
     "void"
 };
 
@@ -175,6 +185,7 @@ const char  *main_func_arg_decl[] =
     "void",
     "FILE *, FILE *",
     "void",
+    "void",
     "void"
 };
 
@@ -185,6 +196,7 @@ const char  *main_func_arg[] =
     "",
     "",
     "deep_fp, procrep_fp",
+    "",
     "",
     ""
 };
@@ -397,6 +409,10 @@ static const char mercury_funcs2[] =
     "#ifdef MR_DEEP_PROFILING\n"
     "   MR_address_of_write_out_proc_statics =\n"
     "       write_out_proc_statics;\n"
+    "#endif\n"
+    "#ifdef MR_THREADSCOPE\n"
+    "   MR_address_of_init_modules_threadscope_string_table =\n"
+    "       init_modules_threadscope_string_table;\n"
     "#endif\n"
     "   MR_address_of_init_modules_required = init_modules_required;\n"
     "   MR_address_of_final_modules_required = final_modules_required;\n"
@@ -691,6 +707,10 @@ output_init_program(void)
     num_bunches = output_sub_init_functions(PURPOSE_PROC_STATIC,
         std_and_special_modules, std_module_next + special_module_next);
     output_main_init_function(PURPOSE_PROC_STATIC, num_bunches);
+
+    num_bunches = output_sub_init_functions(PURPOSE_THREADSCOPE_STRING_TABLE,
+        std_modules, std_module_next);
+    output_main_init_function(PURPOSE_THREADSCOPE_STRING_TABLE, num_bunches);
 
     num_bunches = output_sub_init_functions(PURPOSE_REQ_INIT,
         req_init_modules, req_init_module_next);

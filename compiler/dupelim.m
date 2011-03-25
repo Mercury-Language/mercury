@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1995-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -420,9 +420,9 @@ standardize_instr(Instr0, Instr) :-
         standardize_rval(Rval0, Rval),
         Instr = prune_tickets_to(Rval)
     ;
-        Instr0 = init_sync_term(Lval0, N),
+        Instr0 = init_sync_term(Lval0, N, ConjId),
         standardize_lval(Lval0, Lval),
-        Instr = init_sync_term(Lval, N)
+        Instr = init_sync_term(Lval, N, ConjId)
     ;
         Instr0 = join_and_continue(Lval0, Label),
         standardize_lval(Lval0, Lval),
@@ -834,7 +834,7 @@ most_specific_instr(InstrA, InstrB, MaybeInstr) :-
         ; InstrA = decr_sp_and_return(_)
         ; InstrA = foreign_proc_code(_, _, _, _, _, _, _, _, _, _)
         ; InstrA = fork_new_child(_, _)
-        ; InstrA = init_sync_term(_, _)
+        ; InstrA = init_sync_term(_, _, _)
         ; InstrA = join_and_continue(_, _)
         ),
         ( InstrA = InstrB ->

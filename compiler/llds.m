@@ -93,6 +93,7 @@
                 cfile_proc_head_var_nums    :: list(int),
                 cfile_proc_var_names        :: list(int),
                 cfile_proc_body_bytecodes   :: list(int),
+                cfile_ts_string_table       :: list(string),
                 cfile_table_io_decls        :: list(table_io_decl_data),
                 cfile_table_io_decl_map     :: map(pred_proc_id,
                                                 layout_slot_name),
@@ -608,13 +609,16 @@
             % MayBeDupl says whether this instruction may be duplicated
             % by jump optimization.
 
-    ;       init_sync_term(lval, int)
+    ;       init_sync_term(lval, int, int)
             % Initialize a synchronization term, which is a continuous number
             % of slots on the detstack.  The first argument contains the base
             % address of the synchronization term.  The second argument
             % indicates how many branches we expect to join at the end of the
-            % parallel conjunction. (See the documentation in par_conj_gen.m
-            % and runtime/mercury_context.{c,h} for further information about
+            % parallel conjunction.  The third argument is an index into the
+            % threadscope string table.  The string that it refers to
+            % identifies this parallel conjunction within the source code.
+            % (See the documentation in par_conj_gen.m and
+            % runtime/mercury_context.{c,h} for further information about
             % synchronisation terms.)
 
     ;       fork_new_child(lval, label)

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2010 The University of Melbourne.
+% Copyright (C) 1995-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -410,9 +410,9 @@ transform_lval_in_uinstr(Transform, Uinstr0, Uinstr, !Acc) :-
             MaybeLabel1, MaybeLabel2, MaybeLabel3, MaybeLabel4, MaybeLabel5,
             ReferStackSlot, MayDupl)
     ;
-        Uinstr0 = init_sync_term(Lval0, BranchCount),
+        Uinstr0 = init_sync_term(Lval0, BranchCount, ConjId),
         Transform(Lval0, Lval, !Acc),
-        Uinstr = init_sync_term(Lval, BranchCount)
+        Uinstr = init_sync_term(Lval, BranchCount, ConjId)
     ;
         Uinstr0 = join_and_continue(Lval0, Label),
         Transform(Lval0, Lval, !Acc),

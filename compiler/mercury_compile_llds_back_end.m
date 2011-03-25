@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2010 The University of Melbourne.
+% Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -574,7 +574,7 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
     TypeClassInfoRttiData =
         OldTypeClassInfoRttiData ++ NewTypeClassInfoRttiData,
     stack_layout.generate_llds_layout_data(HLDS, GlobalData0, GlobalData,
-        PseudoTypeInfos, HLDSVarNums, ShortLocns, LongLocns, 
+        PseudoTypeInfos, HLDSVarNums, ShortLocns, LongLocns,
         UserEventVarNums, UserEvents,
         NoVarLabelLayouts, SVarLabelLayouts, LVarLabelLayouts,
         InternalLabelToLayoutMap, ProcLabelToLayoutMap,
@@ -592,6 +592,7 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
     global_data_get_static_cell_info(GlobalData, StaticCellInfo),
     get_static_cells(StaticCellInfo,
         ScalarCommonCellDatas, VectorCommonCellDatas),
+    global_data_get_threadscope_string_table(GlobalData, TSStringTable),
 
     % Next we put it all together and output it to one or more C files.
     RttiDatas = TypeCtorRttiData ++ TypeClassInfoRttiData,
@@ -633,12 +634,12 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
 
     CFile = c_file(ModuleSymName, C_HeaderCode, C_BodyCode, C_ExportDefns,
         TablingInfoStructs, ScalarCommonCellDatas, VectorCommonCellDatas,
-        RttiDatas, PseudoTypeInfos, HLDSVarNums, ShortLocns, LongLocns, 
+        RttiDatas, PseudoTypeInfos, HLDSVarNums, ShortLocns, LongLocns,
         UserEventVarNums, UserEvents,
         NoVarLabelLayouts, SVarLabelLayouts, LVarLabelLayouts,
         InternalLabelToLayoutMap, ProcLabelToLayoutMap,
         CallSites, CoveragePoints, ProcStatics,
-        ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes,
+        ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TSStringTable,
         TableIoDecls, TableIoDeclMap, ProcEventLayouts, ExecTraces,
         ProcLayoutDatas, ModuleLayoutDatas, ClosureLayoutDatas, ChunkedModules,
         UserInitPredCNames, UserFinalPredCNames, ComplexityProcs),
