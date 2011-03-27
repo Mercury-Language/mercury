@@ -21,18 +21,18 @@
 
 :- implementation.
 
-:- import_module bool.
 :- import_module list.
+:- import_module maybe.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-
     Xs = [
-        ( if string.to_int("999", _) then yes else no ),
-        ( if string.to_int("99999999999999999999", _) then yes else no ),
-        ( if string.base_string_to_int(16, "ffffffffff", _) then yes else no ),
-        ( if string.base_string_to_int(10, "999", _) then yes else no )
+        ( if string.to_int("999", I0) then yes(I0) else no),
+        ( if string.to_int("99999999999999999999", I1) then yes(I1) else no ),
+        ( if base_string_to_int(16, "ffffffffff", I2) then yes(I2) else no ),
+        ( if base_string_to_int(10, "999", I3) then yes(I3) else no )
     ],
     io.print(Xs, !IO),
     io.nl(!IO).
