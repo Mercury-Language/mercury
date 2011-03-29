@@ -1,7 +1,7 @@
 #-----------------------------------------------------------------------------#
 # vim: ts=4 sw=4 expandtab
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2010 The University of Melbourne.
+# Copyright (C) 1995-2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -4368,7 +4368,14 @@ then
     # For a full list of the other gcc warnings that we don't
     # enable, and why, see scripts/mgnuc.in.
     CFLAGS_FOR_WARNINGS="-Wall -Wwrite-strings -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized -Wstrict-prototypes"
-    CFLAGS_FOR_OPT="-O2 -fomit-frame-pointer"
+    
+    # Enabling -fomit-frame-pointer causes setjmp/longjmp to misbehave
+    # with MinGW on Windows XP.
+    case "$host" in
+        *mingw*) CFLAGS_FOR_OPT="-O2" ;;
+        *)       CFLAGS_FOR_OPT="-O2 -fomit-frame-pointer" ;;
+    esac
+
     CFLAGS_FOR_DEBUG="-g"
     CFLAGS_FOR_NO_STRICT_ALIASING="-fno-strict-aliasing"
     MCFLAGS_FOR_CC=

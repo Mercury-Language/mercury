@@ -3189,7 +3189,8 @@ file_type_implemented :-
 :- pragma foreign_proc("Erlang",
     io.file_type_2(FollowSymLinks::in, FileName::in,
         Result::out, _IO0::di, _IO::uo),
-    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates],
+    [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
+        may_not_duplicate],
 "
     FileNameStr = binary_to_list(FileName),
     case FollowSymLinks of
@@ -3452,7 +3453,7 @@ io.check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
     io.check_file_accessibility_2(FileName::in, AccessTypes::in, Result::out,
         _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
-        does_not_affect_liveness],
+        does_not_affect_liveness, may_not_duplicate],
 "
     FileNameStr = binary_to_list(FileName),
     case file:read_file_info(FileNameStr) of
@@ -3972,7 +3973,8 @@ io.file_id(FileName, Result, !IO) :-
 :- pragma foreign_proc("Erlang",
     io.file_id_2(FileName::in, Status::out, Msg::out,
         FileId::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
+        may_not_duplicate],
 "
     FileNameStr = binary_to_list(FileName),
     case file:read_file_info(FileNameStr) of

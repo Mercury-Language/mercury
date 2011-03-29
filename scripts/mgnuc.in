@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 et
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2007, 2010 The University of Melbourne.
+# Copyright (C) 1995-2007, 2010-2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -56,7 +56,16 @@ case "$CC" in
 # -Wenum-clash          is for C++ only
 # -Wunused              causes various spurious warnings
 
-        OPT_OPTS="-O2 $CFLAGS_FOR_NO_STRICT_ALIASING -fomit-frame-pointer"
+        # Enabling -fomit-frame-pointer causes setjmp/longjmp to misbehave
+        # with MinGW on Windows XP.
+        case "$FULLARCH" in
+            *mingw*)
+              OPT_OPTS="-O2 $CFLAGS_FOR_NO_STRICT_ALIASING"
+              ;;
+            *)
+              OPT_OPTS="-O2 $CFLAGS_FOR_NO_STRICT_ALIASING -fomit-frame-pointer"
+              ;;
+        esac
         DEBUG_OPT="-g"
         COMPILER=gcc
         ;;

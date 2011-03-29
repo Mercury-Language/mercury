@@ -47,6 +47,6 @@ main(!IO) :-
     progress_report(X::in),
     [will_not_call_mercury, thread_safe, tabled_for_io],
 "
-    io:format(""Progress reported ~a~n"", [X])
+    io:format(""Progress reported ~p~n"", [X])
 ").
 
