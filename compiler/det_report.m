@@ -1132,8 +1132,8 @@ cons_id_list_to_pieces([ConsId | ConsIds], Pieces) :-
 :- type switch_context
     --->    switch_context(
                 prog_var,           % The variable being switched on.
-                cons_id,       % The first cons_id of this case.
-                list(cons_id)  % Any other cons_ids of this case.
+                cons_id,            % The first cons_id of this case.
+                list(cons_id)       % Any other cons_ids of this case.
             ).
 
 :- pred det_diagnose_switch_context(list(switch_context)::in, det_info::in,

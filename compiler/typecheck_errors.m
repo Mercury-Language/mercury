@@ -1430,10 +1430,8 @@ report_missing_tvar_in_foreign_code(Info, VarName) = Spec :-
     Context = Info ^ tc_info_context,
     typecheck_info_get_predid(Info, PredId),
     Pieces = [words("The foreign language code for") |
-        describe_one_pred_name(ModuleInfo, should_module_qualify,
-            PredId)] ++
-        [words("should define the variable"),
-        fixed(add_quotes(VarName)), suffix(".")],
+        describe_one_pred_name(ModuleInfo, should_module_qualify, PredId)] ++
+        [words("should define the variable"), quote(VarName), suffix(".")],
     Spec = error_spec(severity_error, phase_type_check,
         [simple_msg(Context, [always(Pieces)])]).
 
@@ -1488,7 +1486,7 @@ type_of_var_to_pieces(TypeAssignSet, Var) = Pieces :-
     TypeStrs0 = list.map(typestuff_to_typestr, TypeStuffList),
     list.sort_and_remove_dups(TypeStrs0, TypeStrs),
     ( TypeStrs = [TypeStr] ->
-        Pieces = [words("has type"), quote(TypeStr)]
+        Pieces = [words("has type"), words(add_quotes(TypeStr))]
     ;
         Pieces = [words("has overloaded type {"), nl_indent_delta(2)] ++
             types_list_to_pieces(TypeStrs) ++ [nl_indent_delta(-2), words("}")]
