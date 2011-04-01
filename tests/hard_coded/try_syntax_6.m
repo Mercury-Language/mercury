@@ -43,8 +43,8 @@ test_1(!IO) :-
         then
             true
         catch 4 ->
-            trace [io(!IO)] (
-                io.write_string("caught 4 (WRONG)\n", !IO)
+            trace [io(!TIO)] (
+                io.write_string("caught 4 (WRONG)\n", !TIO)
             )
         )
     then
@@ -68,15 +68,15 @@ test_2(!IO) :-
             then
                 true
             catch 4 ->
-                trace [io(!IO)] (
-                    io.write_string("caught 4 (WRONG)\n", !IO)
+                trace [io(!TIO)] (
+                    io.write_string("caught 4 (WRONG)\n", !TIO)
                 )
             )
         else
             true
         catch 3 ->
-            trace [io(!IO)] (
-                io.write_string("caught 3 in middle try (WRONG)\n", !IO)
+            trace [io(!TIO)] (
+                io.write_string("caught 3 in middle try (WRONG)\n", !TIO)
             )
         )
     then
@@ -102,8 +102,8 @@ test_3(!IO) :-
                 true
             )
         catch 1 ->
-            trace [io(!IO)] (
-                io.write_string("caught 1 in inner try (WRONG)\n", !IO)
+            trace [io(!TIO)] (
+                io.write_string("caught 1 in inner try (WRONG)\n", !TIO)
             )
         )
     then

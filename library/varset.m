@@ -326,20 +326,20 @@ varset.new_maybe_named_var(varset(MaxId0, Names0, Values), MaybeName, Var,
     ).
 
 varset.new_vars(VarSet0, NumVars, NewVars, VarSet) :-
-    varset.new_vars_2(VarSet0, NumVars, [], NewVars, VarSet).
+    varset.new_vars_2(NumVars, [], RevNewVars, VarSet0, VarSet),
+    % Return the new variables in order.
+    list.reverse(RevNewVars, NewVars).
 
-:- pred varset.new_vars_2(varset(T)::in, int::in, list(var(T))::in,
-    list(var(T))::out, varset(T)::out) is det.
+:- pred varset.new_vars_2(int::in, list(var(T))::in,
+    list(var(T))::out, varset(T)::in, varset(T)::out) is det.
 
-varset.new_vars_2(VarSet0, NumVars, NewVars0, NewVars, VarSet) :-
+varset.new_vars_2(NumVars, !RevNewVars, !VarSet) :-
     ( NumVars > 0 ->
-        NumVars1 = NumVars - 1,
-        varset.new_var(VarSet0, Var, VarSet1),
-        varset.new_vars_2(VarSet1, NumVars1, [Var | NewVars0],
-            NewVars, VarSet)
+        varset.new_var(!.VarSet, Var, !:VarSet),
+        !:RevNewVars = [Var | !.RevNewVars],
+        varset.new_vars_2(NumVars - 1, !RevNewVars, !VarSet)
     ; NumVars = 0 ->
-        NewVars = NewVars0,
-        VarSet = VarSet0
+        true
     ;
         error("varset.new_vars - invalid call")
     ).

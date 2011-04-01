@@ -3022,9 +3022,7 @@ char_is_not(A, B) :-
 
 :- pred convert_dump_alias(string::in, string::out) is semidet.
 
-%
-% none of the 'all' aliases actually include all the options,
-%
+% None of the 'all' aliases actually include all the options.
 convert_dump_alias("ALL", "abcdEfgilmnprstuvzBCDIMPRSTUZ").
 convert_dump_alias("allD", "abcdEfgilmnprstuvzBCDMPT").
 convert_dump_alias("all", "abcdEfgilmnprstuvzBCMPSTZ").
@@ -3037,9 +3035,9 @@ convert_dump_alias("min", "ilv").
 convert_dump_alias("paths", "cP").
 convert_dump_alias("petdr", "din").
 convert_dump_alias("detism", "divM").
-convert_dump_alias("mm", "bdgvP").      % for debugging minimal model
-convert_dump_alias("osv", "bcdglmnpruvP").  % for debugging
-                                            % --optimize-saved-vars-cell
+convert_dump_alias("mm", "bdgvP").      % For debugging minimal model.
+convert_dump_alias("osv", "bcdglmnpruvP").
+    % for debugging --optimize-saved-vars-cell
 convert_dump_alias("ctgc", "cdinpGDRS").
 convert_dump_alias("vars", "npBis").    % Var instantiations, liveness etc.
 convert_dump_alias("statevar", "gvCP").

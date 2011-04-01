@@ -315,31 +315,34 @@ rename_in_goal_expr(OldVar, NewVar, Expr0, Expr) :-
         rename_in_goal(OldVar, NewVar, Goal0, Goal),
         Expr = promise_purity_expr(Purity, Goal)
     ;
-        Expr0 = promise_equivalent_solutions_expr(Vars0,
+        Expr0 = promise_equivalent_solutions_expr(Vars0, StateVars0,
             DotSVars0, ColonSVars0, Goal0),
         rename_in_vars(OldVar, NewVar, Vars0, Vars),
+        rename_in_vars(OldVar, NewVar, StateVars0, StateVars),
         rename_in_vars(OldVar, NewVar, DotSVars0, DotSVars),
         rename_in_vars(OldVar, NewVar, ColonSVars0, ColonSVars),
         rename_in_goal(OldVar, NewVar, Goal0, Goal),
-        Expr = promise_equivalent_solutions_expr(Vars,
+        Expr = promise_equivalent_solutions_expr(Vars, StateVars,
             DotSVars, ColonSVars, Goal)
     ;
-        Expr0 = promise_equivalent_solution_sets_expr(Vars0,
+        Expr0 = promise_equivalent_solution_sets_expr(Vars0, StateVars0,
             DotSVars0, ColonSVars0, Goal0),
         rename_in_vars(OldVar, NewVar, Vars0, Vars),
+        rename_in_vars(OldVar, NewVar, StateVars0, StateVars),
         rename_in_vars(OldVar, NewVar, DotSVars0, DotSVars),
         rename_in_vars(OldVar, NewVar, ColonSVars0, ColonSVars),
         rename_in_goal(OldVar, NewVar, Goal0, Goal),
-        Expr = promise_equivalent_solution_sets_expr(Vars,
+        Expr = promise_equivalent_solution_sets_expr(Vars, StateVars,
             DotSVars, ColonSVars, Goal)
     ;
-        Expr0 = promise_equivalent_solution_arbitrary_expr(Vars0,
+        Expr0 = promise_equivalent_solution_arbitrary_expr(Vars0, StateVars0,
             DotSVars0, ColonSVars0, Goal0),
         rename_in_vars(OldVar, NewVar, Vars0, Vars),
+        rename_in_vars(OldVar, NewVar, StateVars0, StateVars),
         rename_in_vars(OldVar, NewVar, DotSVars0, DotSVars),
         rename_in_vars(OldVar, NewVar, ColonSVars0, ColonSVars),
         rename_in_goal(OldVar, NewVar, Goal0, Goal),
-        Expr = promise_equivalent_solution_arbitrary_expr(Vars,
+        Expr = promise_equivalent_solution_arbitrary_expr(Vars, StateVars,
             DotSVars, ColonSVars, Goal)
     ;
         Expr0 = require_detism_expr(Detism, Goal0),
@@ -619,7 +622,7 @@ cons_id_arity(ConsId) = Arity :-
         ; ConsId = deep_profiling_proc_layout(_)
         ; ConsId = table_io_decl(_)
         ),
-        unexpected(this_file, "cons_id_arity: unexpected cons_id")
+        unexpected($module, $pred, "unexpected cons_id")
     ).
 
 cons_id_maybe_arity(cons(_, Arity, _)) = yes(Arity).
@@ -674,8 +677,7 @@ pred_args_to_func_args(PredArgs, FuncArgs, FuncReturn) :-
         FuncArgs = FuncArgs0,
         FuncReturn = FuncReturn0
     ;
-        unexpected(this_file,
-            "pred_args_to_func_args: function missing return value?")
+        unexpected($module, $pred, "function missing return value?")
     ).
 
 get_state_args(Args0, Args, State0, State) :-
@@ -689,7 +691,7 @@ get_state_args_det(Args0, Args, State0, State) :-
         State0 = State0A,
         State = StateA
     ;
-        unexpected(this_file, "get_state_args_det")
+        unexpected($module, $pred)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -764,12 +766,6 @@ goal_list_to_conj(Context, [Goal | Goals]) =
 goal_list_to_conj_2(_, Goal, []) = Goal.
 goal_list_to_conj_2(Context, Goal0, [Goal1 | Goals]) =
     conj_expr(Goal0, goal_list_to_conj_2(Context, Goal1, Goals)) - Context.
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "prog_util.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module prog_util.

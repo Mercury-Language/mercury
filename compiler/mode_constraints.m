@@ -402,10 +402,10 @@ number_robdd_variables_in_pred(PredId, !ModuleInfo, !MCI) :-
 
         list.map_foldl(
             (pred(Clause0::in, Clause::out, S0::in, S::out) is det :-
-                Clause0 = clause(A, Goal0, C, D),
+                Goal0 = Clause0 ^ clause_body,
                 number_robdd_variables_in_goal(InstGraph,
                     set.init, _, Goal0, Goal, S0, S),
-                Clause = clause(A, Goal, C, D)
+                Clause = Clause0 ^ clause_body := Goal
         ), Clauses2, Clauses, NRInfo0, NRInfo),
 
         !:MCI = NRInfo ^ mc_info,
@@ -1054,8 +1054,7 @@ process_clauses_info(ModuleInfo, SCC, !ClausesInfo,
         InstGraph, !Constraint, !MCI),
 
     clauses_info_clauses(Clauses, _ItemNumbers, !ClausesInfo),
-    list.map(pred(clause(_, Goal, _, _)::in, Goal::out) is det,
-        Clauses, Goals),
+    Goals = list.map(clause_body, Clauses),
     DisjGoal = disj(Goals),
     AtomicGoals0 = set.init,
     GCInfo0 = goal_constraints_info(ModuleInfo, SCC, InstGraph, HeadVars,

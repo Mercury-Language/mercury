@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -316,7 +316,8 @@ is_simple_clause_list(Clauses, SimpleThreshold) :-
     (
         Size < SimpleThreshold
     ;
-        Clauses = [clause(_, Goal, _, _)],
+        Clauses = [Clause],
+        Goal = Clause ^ clause_body,
         Size < SimpleThreshold * 3,
 
         % For flat goals, we are more likely to be able to optimize stuff away,

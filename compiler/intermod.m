@@ -390,9 +390,11 @@ clauses_contain_noninlinable_foreign_code(Target, [_ | Cs]) :-
     bool::out, intermod_info::in, intermod_info::out) is det.
 
 intermod_traverse_clauses([], [], yes, !Info).
-intermod_traverse_clauses([clause(P, Goal0, L, C) | Clauses0],
-        [clause(P, Goal, L, C) | Clauses], DoWrite, !Info) :-
+intermod_traverse_clauses([Clause0 | Clauses0], [Clause | Clauses],
+        DoWrite, !Info) :-
+    Goal0 = Clause0 ^ clause_body,
     intermod_traverse_goal(Goal0, Goal, DoWrite1, !Info),
+    Clause = Clause0 ^ clause_body := Goal,
     (
         DoWrite1 = yes,
         intermod_traverse_clauses(Clauses0, Clauses, DoWrite, !Info)
@@ -431,14 +433,14 @@ check_for_ho_input_args(ModuleInfo, VarTypes,
 clause_list_is_deforestable(PredId, Clauses)  :-
     some [Clause1] (
         list.member(Clause1, Clauses),
-        Clause1 = clause(_, Goal1, _, _),
+        Goal1 = Clause1 ^ clause_body,
         goal_calls_pred_id(Goal1, PredId)
     ),
     (
         Clauses = [_, _ | _]
     ;
         Clauses = [Clause2],
-        Clause2 = clause(_, Goal2, _, _),
+        Goal2 = Clause2 ^ clause_body,
         goal_to_conj_list(Goal2, GoalList),
         goal_contains_one_branched_goal(GoalList)
     ).
@@ -1771,7 +1773,7 @@ write_preds(OutInfo, ModuleInfo, [PredId | PredIds], !IO) :-
 
 intermod_write_clause(OutInfo, ModuleInfo, PredId, VarSet, HeadVars, PredOrFunc,
         SymName, MaybeVarTypes, Clause0, !IO) :-
-    Clause0 = clause(ApplicableProcIds, Goal, ImplLang, _),
+    Clause0 = clause(ApplicableProcIds, Goal, ImplLang, _, _),
     (
         ImplLang = impl_lang_mercury,
         strip_headvar_unifications(HeadVars, Clause0, ClauseHeadVars, Clause),
@@ -1860,8 +1862,8 @@ write_foreign_clause(Procs, PredOrFunc, PragmaImpl,
 :- pred strip_headvar_unifications(list(prog_var)::in,
     clause::in, list(prog_term)::out, clause::out) is det.
 
-strip_headvar_unifications(HeadVars, clause(ProcIds, Goal0, Lang, Context),
-        HeadTerms, clause(ProcIds, Goal, Lang, Context)) :-
+strip_headvar_unifications(HeadVars, Clause0, HeadTerms, Clause) :-
+    Goal0 = Clause0 ^ clause_body,
     Goal0 = hlds_goal(_, GoalInfo0),
     goal_to_conj_list(Goal0, Goals0),
     map.init(HeadVarMap0),
@@ -1874,13 +1876,15 @@ strip_headvar_unifications(HeadVars, clause(ProcIds, Goal0, Lang, Context),
                 ( map.search(HeadVarMap, HeadVar0, HeadTerm0) ->
                     HeadTerm = HeadTerm0
                 ;
+                    Context = Clause0 ^ clause_context,
                     HeadTerm = term.variable(HeadVar0, Context)
                 )
             ), HeadVars, HeadTerms),
-        conj_list_to_goal(Goals, GoalInfo0, Goal)
+        conj_list_to_goal(Goals, GoalInfo0, Goal),
+        Clause = Clause0 ^ clause_body := Goal
     ;
         term.var_list_to_term_list(HeadVars, HeadTerms),
-        Goal = Goal0
+        Clause = Clause0
     ).
 
 :- pred strip_headvar_unifications_from_goal_list(list(hlds_goal)::in,

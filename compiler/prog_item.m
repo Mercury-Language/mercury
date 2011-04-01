@@ -241,7 +241,7 @@
                 prom_type                       :: promise_type,
                 prom_clause                     :: goal,
                 prom_varset                     :: prog_varset,
-                prom_univ_quant_vars            :: prog_vars,
+                prom_univ_quant_vars            :: list(prog_var),
                 prom_context                    :: prog_context,
                 prom_seq_num                    :: int
             ).
@@ -695,7 +695,7 @@
                 sharing_p_or_f          :: pred_or_func,
                 sharing_name            :: sym_name,
                 sharing_mode            :: list(mer_mode),
-                sharing_headvars        :: prog_vars,
+                sharing_headvars        :: list(prog_var),
                 sharing_headvartypes    :: list(mer_type),
                 sharing_description     :: maybe(structure_sharing_domain)
             )
@@ -710,7 +710,7 @@
                 reuse_p_or_f          :: pred_or_func,
                 reuse_name            :: sym_name,
                 reuse_mode            :: list(mer_mode),
-                reuse_headvars        :: prog_vars,
+                reuse_headvars        :: list(prog_var),
                 reuse_headvartypes    :: list(mer_type),
                 reuse_description     :: maybe(structure_reuse_domain)
             )
@@ -759,34 +759,37 @@
                             % (non-empty) disjunction
     ;       fail_expr       % empty disjunction
 
-    % quantifiers
-    ;       some_expr(prog_vars, goal)
+    % quantifiers; the list of prog_vars should have no duplicates
+    ;       some_expr(list(prog_var), goal)
                             % existential quantification
-    ;       all_expr(prog_vars, goal)
+    ;       all_expr(list(prog_var), goal)
                             % universal quantification
-    ;       some_state_vars_expr(prog_vars, goal)
-    ;       all_state_vars_expr(prog_vars, goal)
+    ;       some_state_vars_expr(list(prog_var), goal)
+    ;       all_state_vars_expr(list(prog_var), goal)
                             % state variables extracted from
                             % some/2 and all/2 quantifiers.
 
     % other scopes
     ;       promise_purity_expr(purity, goal)
     ;       promise_equivalent_solutions_expr(
-                prog_vars,  % OrdinaryVars
-                prog_vars,  % DotStateVars
-                prog_vars,  % ColonStateVars
+                list(prog_var),  % OrdinaryVars
+                list(prog_var),  % StateVars (!V)
+                list(prog_var),  % DotStateVars (!.V)
+                list(prog_var),  % ColonStateVars (!:V)
                 goal
             )
     ;       promise_equivalent_solution_sets_expr(
-                prog_vars,  % OrdinaryVars
-                prog_vars,  % DotStateVars
-                prog_vars,  % ColonStateVars
+                list(prog_var),  % OrdinaryVars
+                list(prog_var),  % StateVars (!V)
+                list(prog_var),  % DotStateVars (!.V)
+                list(prog_var),  % ColonStateVars (!:V)
                 goal
             )
     ;       promise_equivalent_solution_arbitrary_expr(
-                prog_vars,  % OrdinaryVars
-                prog_vars,  % DotStateVars
-                prog_vars,  % ColonStateVars
+                list(prog_var),  % OrdinaryVars
+                list(prog_var),  % StateVars (!V)
+                list(prog_var),  % DotStateVars (!.V)
+                list(prog_var),  % ColonStateVars (!:V)
                 goal
             )
     ;       require_detism_expr(
@@ -819,7 +822,7 @@
                 aexpr_inner         :: atomic_component_state,
                 aexpr_output_vars   :: maybe(list(prog_var)),
                 aexpr_main_goal     :: goal,    
-                aexpr_orelse_goals  :: goals
+                aexpr_orelse_goals  :: list(goal)
             )
     ;       try_expr(
                 tryexpr_maybe_io        :: maybe(prog_var),
@@ -838,7 +841,7 @@
 
     % negation and if-then-else
     ;       not_expr(goal)
-    ;       if_then_else_expr(prog_vars, prog_vars, goal, goal, goal)
+    ;       if_then_else_expr(list(prog_var), list(prog_var), goal, goal, goal)
                             % if_then_else(SomeVars, StateVars, If, Then, Else)
 
     % atomic goals

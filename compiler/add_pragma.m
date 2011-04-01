@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2010 The University of Melbourne.
+% Copyright (C) 1993-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1493,7 +1493,7 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             do_construct_pred_or_func_call(PredId, PredOrFunc,
                 SymName, Args, GoalInfo, Goal),
             Clause = clause(selected_modes(ProcIds), Goal, impl_lang_mercury,
-                Context),
+                Context, []),
             map.init(TVarNameMap),
             ArgsVec = proc_arg_vector_init(PredOrFunc, Args),
             set_clause_list([Clause], ClausesRep),
@@ -3119,12 +3119,21 @@ clauses_info_add_pragma_foreign_proc(Origin, Purity, Attributes0,
         !ClausesInfo, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     ( pred_info_is_builtin(PredInfo) ->
-        % When bootstrapping a change that redefines a builtin as
-        % normal Mercury code, you may need to disable this action.
-        Msg = simple_msg(Context,
-            [always([words("Error: foreign_proc for builtin.")])]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs]
+        % When bootstrapping a change that defines a builtin using
+        % normal Mercury code, we need to disable the generation
+        % of the error message, and just ignore the definition.
+        module_info_get_globals(!.ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, allow_defn_of_builtins,
+            AllowDefnOfBuiltin),
+        (
+            AllowDefnOfBuiltin = no,
+            Msg = simple_msg(Context,
+                [always([words("Error: foreign_proc for builtin.")])]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
+        ;
+            AllowDefnOfBuiltin = yes
+        )
     ;
         AllProcIds = pred_info_all_procids(PredInfo),
         clauses_info_do_add_pragma_foreign_proc(Origin, Purity, Attributes0,
@@ -3275,7 +3284,7 @@ clauses_info_do_add_pragma_foreign_proc(Origin, Purity, Attributes0,
                 HldsGoal0, HldsGoal, VarSet0, VarSet, EmptyVarTypes, _,
                 EmptyRttiVarmaps, _),
             NewClause = clause(selected_modes([ProcId]), HldsGoal,
-                impl_lang_foreign(NewLang), Context),
+                impl_lang_foreign(NewLang), Context, []),
             NewClauses = [NewClause | NewClauses0],
             HasForeignClauses = yes,
             set_clause_list(NewClauses, NewClauseRep),
@@ -3362,7 +3371,8 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
         add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
             NewContext, Globals, Target, NewLang, AllProcIds, NewClauseProcId,
             LaterClauses0, LaterClauses, LaterOverridden, !Specs),
-        FirstClause0 = clause(ApplProcIds0, Body, ClauseLang, ClauseContext),
+        FirstClause0 = clause(ApplProcIds0, Body, ClauseLang, ClauseContext,
+            StateVarWarnings),
         (
             ClauseLang = impl_lang_mercury,
             (
@@ -3383,7 +3393,7 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
                     % in some modes, so mark it as being applicable only in the
                     % remaining modes.
                     FirstClause = clause(selected_modes(ProcIds), Body,
-                        ClauseLang, ClauseContext),
+                        ClauseLang, ClauseContext, StateVarWarnings),
                     Clauses = [FirstClause | LaterClauses]
                 )
             ;
@@ -3423,7 +3433,7 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
                         %
                         % XXX This should not happen.
                         FirstClause = clause(selected_modes(ProcIds), Body,
-                            ClauseLang, ClauseContext),
+                            ClauseLang, ClauseContext, StateVarWarnings),
                         Clauses = [FirstClause | LaterClauses],
                         Overridden = LaterOverridden
                     ),

@@ -1,19 +1,19 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007, 2009 The University of Melbourne.
+% Copyright (C) 1999-2007, 2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: declarative_user.m.
 % Author: Mark Brown.
-% 
+%
 % This module performs all the user interaction of the front end of the
 % declarative debugger.  It is responsible for displaying questions and bugs
 % in a human-readable format, and for getting responses to debugger queries
 % from the user.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -233,7 +233,7 @@ query_user(UserQuestion, Response, !User, !IO) :-
             !.User ^ display_question = yes,
             write_decl_question(Question, !.User, !IO),
             user_question_prompt(UserQuestion, Prompt),
-            !:User = !.User ^ display_question := no
+            !User ^ display_question := no
         ;
             !.User ^ display_question = no,
             Prompt = "dd> "
@@ -241,7 +241,7 @@ query_user(UserQuestion, Response, !User, !IO) :-
         get_command(Prompt, Command, !User, !IO),
         handle_command(Command, UserQuestion, Response, !User, !IO),
         ( Response \= user_response_show_info(_) ->
-            !:User = !.User ^ display_question := yes
+            !User ^ display_question := yes
         ;
             true
         )
@@ -251,187 +251,187 @@ query_user(UserQuestion, Response, !User, !IO) :-
     user_response(T)::out, user_state::in, user_state::out,
     io::di, io::uo) is cc_multi.
 
-handle_command(user_cmd_yes, UserQuestion, Response, !User, !IO) :-
-    Question = get_decl_question(UserQuestion),
-    Node = get_decl_question_node(Question),
-    Response = user_response_answer(Question,
-        truth_value(Node, truth_correct)).
-
-handle_command(user_cmd_no, UserQuestion, Response, !User, !IO) :-
-    Question = get_decl_question(UserQuestion),
-    Node = get_decl_question_node(Question),
-    Response = user_response_answer(Question,
-        truth_value(Node, truth_erroneous)).
-
-handle_command(user_cmd_inadmissible, UserQuestion, Response, !User, !IO) :-
-    Question = get_decl_question(UserQuestion),
-    Node = get_decl_question_node(Question),
-    Response = user_response_answer(Question,
-        truth_value(Node, truth_inadmissible)).
-
-handle_command(user_cmd_skip, UserQuestion, Response, !User, !IO) :-
-    Question = get_decl_question(UserQuestion),
-    Node = get_decl_question_node(Question),
-    Response = user_response_answer(Question, skip(Node)).
-
-handle_command(user_cmd_browse_arg(MaybeArgNum), UserQuestion, Response,
-        !User, !IO) :-
-    Question = get_decl_question(UserQuestion),
-    edt_node_trace_atoms(Question, InitAtom, FinalAtom),
+handle_command(Cmd, UserQuestion, Response, !User, !IO) :-
     (
-        MaybeArgNum = yes(ArgNum),
-        browse_atom_argument(InitAtom, FinalAtom, ArgNum, MaybeTrack,
+        Cmd = user_cmd_yes,
+        Question = get_decl_question(UserQuestion),
+        Node = get_decl_question_node(Question),
+        Response = user_response_answer(Question,
+            truth_value(Node, truth_correct))
+    ;
+        Cmd = user_cmd_no,
+        Question = get_decl_question(UserQuestion),
+        Node = get_decl_question_node(Question),
+        Response = user_response_answer(Question,
+            truth_value(Node, truth_erroneous))
+    ;
+        Cmd = user_cmd_inadmissible,
+        Question = get_decl_question(UserQuestion),
+        Node = get_decl_question_node(Question),
+        Response = user_response_answer(Question,
+            truth_value(Node, truth_inadmissible))
+    ;
+        Cmd = user_cmd_skip,
+        Question = get_decl_question(UserQuestion),
+        Node = get_decl_question_node(Question),
+        Response = user_response_answer(Question, skip(Node))
+    ;
+        Cmd = user_cmd_browse_arg(MaybeArgNum),
+        Question = get_decl_question(UserQuestion),
+        edt_node_trace_atoms(Question, InitAtom, FinalAtom),
+        (
+            MaybeArgNum = yes(ArgNum),
+            browse_atom_argument(InitAtom, FinalAtom, ArgNum, MaybeTrack,
+                !User, !IO),
+            (
+                MaybeTrack = no_track,
+                query_user(UserQuestion, Response, !User, !IO)
+            ;
+                MaybeTrack = track(HowTrack, ShouldAssertInvalid, TermPath),
+                ArgPos = arg_num_to_arg_pos(ArgNum),
+                Node = get_decl_question_node(Question),
+                Answer = suspicious_subterm(Node, ArgPos, TermPath, HowTrack,
+                    ShouldAssertInvalid),
+                Response = user_response_answer(Question, Answer)
+            )
+        ;
+            MaybeArgNum = no,
+            browse_atom(InitAtom, FinalAtom, MaybeTrack, !User, !IO),
+            (
+                MaybeTrack = no_track,
+                query_user(UserQuestion, Response, !User, !IO)
+            ;
+                MaybeTrack = track(HowTrack, ShouldAssertInvalid,
+                    [ArgNum | TermPath]),
+                ArgPos = arg_num_to_arg_pos(ArgNum),
+                Node = get_decl_question_node(Question),
+                Answer = suspicious_subterm(Node, ArgPos, TermPath,
+                    HowTrack, ShouldAssertInvalid),
+                Response = user_response_answer(Question, Answer)
+            ;
+                %
+                % Tracking the entire atom doesn't make sense.
+                %
+                MaybeTrack = track(_, _, []),
+                io.write_string(!.User ^ outstr,
+                    "Cannot track the entire atom. " ++
+                    "Please select a subterm to track.\n", !IO),
+                query_user(UserQuestion, Response, !User, !IO)
+            )
+        )
+    ;
+        Cmd = user_cmd_browse_xml_arg(MaybeArgNum),
+        Question = get_decl_question(UserQuestion),
+        edt_node_trace_atoms(Question, _, FinalAtom),
+        (
+            MaybeArgNum = yes(ArgNum),
+            browse_xml_atom_argument(FinalAtom, ArgNum, !.User, !IO)
+        ;
+            MaybeArgNum = no,
+            browse_xml_atom(FinalAtom, !.User, !IO)
+        ),
+        query_user(UserQuestion, Response, !User, !IO)
+    ;
+        Cmd = user_cmd_print_arg(From, To),
+        Question = get_decl_question(UserQuestion),
+        edt_node_trace_atoms(Question, _, TraceAtom),
+        print_atom_arguments(TraceAtom, From, To, !.User, !IO),
+        query_user(UserQuestion, Response, !User, !IO)
+    ;
+        Cmd = user_cmd_param_command(ParamCommand),
+        Browser0 = !.User ^ browser,
+        DummyTerm = synthetic_term("", [], no),
+        Info0 = browser_info(DummyTerm, [], print, no, Browser0, no_track, no),
+        run_param_command(debugger_internal, ParamCommand, no,
+            Info0, Info, !IO),
+        Info = browser_info(_, _, _, _, Browser, _, _),
+        !User ^ browser := Browser,
+        query_user(UserQuestion, Response, !User, !IO)
+    ;
+        Cmd = user_cmd_trust_predicate,
+        Question = get_decl_question(UserQuestion),
+        Response = user_response_trust_predicate(Question)
+    ;
+        Cmd = user_cmd_trust_module,
+        Question = get_decl_question(UserQuestion),
+        Response = user_response_trust_module(Question)
+    ;
+        Cmd = user_cmd_info,
+        Response = user_response_show_info(!.User ^ outstr)
+    ;
+        Cmd = user_cmd_undo,
+        Response = user_response_undo
+    ;
+        Cmd = user_cmd_browse_io(ActionNum),
+        Question = get_decl_question(UserQuestion),
+        edt_node_io_actions(Question, MaybeIoActions),
+        % We don't have code yet to trace a marked I/O action.
+        browse_chosen_io_action(MaybeIoActions, ActionNum, _MaybeTrack,
             !User, !IO),
-        (
-            MaybeTrack = no_track,
-            query_user(UserQuestion, Response, !User, !IO)
-        ;
-            MaybeTrack = track(HowTrack, ShouldAssertInvalid, TermPath),
-            ArgPos = arg_num_to_arg_pos(ArgNum),
-            Node = get_decl_question_node(Question),
-            Answer = suspicious_subterm(Node, ArgPos, TermPath, HowTrack,
-                ShouldAssertInvalid),
-            Response = user_response_answer(Question, Answer)
-        )
+        query_user(UserQuestion, Response, !User, !IO)
     ;
-        MaybeArgNum = no,
-        browse_atom(InitAtom, FinalAtom, MaybeTrack, !User, !IO),
+        Cmd = user_cmd_print_io(From, To),
+        Question = get_decl_question(UserQuestion),
+        edt_node_io_actions(Question, MaybeIoActions),
+        print_chosen_io_actions(MaybeIoActions, From, To, !.User, !IO),
+        query_user(UserQuestion, Response, !User, !IO)
+    ;
+        Cmd = user_cmd_change_search(Mode),
+        Response = user_response_change_search(Mode)
+    ;
+        Cmd = user_cmd_ask,
+        !User ^ display_question := yes,
+        query_user(UserQuestion, Response, !User, !IO)
+    ;
+        Cmd = user_cmd_pd,
+        Question = get_decl_question(UserQuestion),
+        Node = get_decl_question_node(Question),
+        Response = user_response_exit_diagnosis(Node)
+    ;
+        Cmd = user_cmd_quit,
+        Response = user_response_abort_diagnosis
+    ;
+        Cmd = user_cmd_help(MaybeCmd),
         (
-            MaybeTrack = no_track,
-            query_user(UserQuestion, Response, !User, !IO)
+            MaybeCmd = yes(CmdName),
+            Path = ["decl", CmdName]
         ;
-            MaybeTrack = track(HowTrack, ShouldAssertInvalid,
-                [ArgNum | TermPath]),
-            ArgPos = arg_num_to_arg_pos(ArgNum),
-            Node = get_decl_question_node(Question),
-            Answer = suspicious_subterm(Node, ArgPos, TermPath,
-                HowTrack, ShouldAssertInvalid),
-            Response = user_response_answer(Question, Answer)
+            MaybeCmd = no,
+            Path = ["concepts", "decl_debug"]
+        ),
+        help.path(!.User ^ help_system, Path, !.User ^ outstr, Res, !IO),
+        (
+            Res = help_ok
         ;
-            %
-            % Tracking the entire atom doesn't make sense.
-            %
-            MaybeTrack = track(_, _, []),
-            io.write_string(!.User ^ outstr,
-                "Cannot track the entire atom. " ++
-                "Please select a subterm to track.\n", !IO),
-            query_user(UserQuestion, Response, !User, !IO)
-        )
+            Res = help_error(Message),
+            io.write_strings([Message, "\n"], !IO)
+        ),
+        query_user(UserQuestion, Response, !User, !IO)
+    ;
+        Cmd = user_cmd_empty,
+        (
+            UserQuestion = plain_question(_),
+            Command = user_cmd_skip
+        ;
+            UserQuestion = question_with_default(_, Truth),
+            (
+                Truth = truth_correct,
+                Command = user_cmd_yes
+            ;
+                Truth = truth_erroneous,
+                Command = user_cmd_no
+            ;
+                Truth = truth_inadmissible,
+                Command = user_cmd_inadmissible
+            )
+        ),
+        handle_command(Command, UserQuestion, Response, !User, !IO)
+    ;
+        Cmd = user_cmd_illegal,
+        io.write_string(!.User ^ outstr, "Unknown command, 'h' for help.\n",
+            !IO),
+        query_user(UserQuestion, Response, !User, !IO)
     ).
-
-handle_command(user_cmd_browse_xml_arg(MaybeArgNum), UserQuestion, Response,
-        !User, !IO) :-
-    Question = get_decl_question(UserQuestion),
-    edt_node_trace_atoms(Question, _, FinalAtom),
-    (
-        MaybeArgNum = yes(ArgNum),
-        browse_xml_atom_argument(FinalAtom, ArgNum, !.User, !IO)
-    ;
-        MaybeArgNum = no,
-        browse_xml_atom(FinalAtom, !.User, !IO)
-    ),
-    query_user(UserQuestion, Response, !User, !IO).
-
-handle_command(user_cmd_print_arg(From, To), UserQuestion, Response,
-        !User, !IO) :-
-    Question = get_decl_question(UserQuestion),
-    edt_node_trace_atoms(Question, _, TraceAtom),
-    print_atom_arguments(TraceAtom, From, To, !.User, !IO),
-    query_user(UserQuestion, Response, !User, !IO).
-
-handle_command(user_cmd_param_command(ParamCommand), UserQuestion, Response,
-        !User, !IO) :-
-    Browser0 = !.User ^ browser,
-    DummyTerm = synthetic_term("", [], no),
-    Info0 = browser_info(DummyTerm, [], print, no, Browser0, no_track, no),
-    run_param_command(debugger_internal, ParamCommand, no, Info0, Info, !IO),
-    Info = browser_info(_, _, _, _, Browser, _, _),
-    !:User = !.User ^ browser := Browser,
-    query_user(UserQuestion, Response, !User, !IO).
-
-handle_command(user_cmd_trust_predicate, UserQuestion,
-        user_response_trust_predicate(Question), !User, !IO) :-
-    Question = get_decl_question(UserQuestion).
-
-handle_command(user_cmd_trust_module, UserQuestion,
-        user_response_trust_module(Question), !User, !IO) :-
-    Question = get_decl_question(UserQuestion).
-
-handle_command(user_cmd_info, _, user_response_show_info(!.User ^ outstr),
-        !User, !IO).
-
-handle_command(user_cmd_undo, _, user_response_undo, !User, !IO).
-
-handle_command(user_cmd_browse_io(ActionNum), UserQuestion, Response,
-        !User, !IO) :-
-    Question = get_decl_question(UserQuestion),
-    edt_node_io_actions(Question, MaybeIoActions),
-    % We don't have code yet to trace a marked I/O action.
-    browse_chosen_io_action(MaybeIoActions, ActionNum, _MaybeTrack,
-        !User, !IO),
-    query_user(UserQuestion, Response, !User, !IO).
-
-handle_command(user_cmd_print_io(From, To), UserQuestion, Response,
-        !User, !IO) :-
-    Question = get_decl_question(UserQuestion),
-    edt_node_io_actions(Question, MaybeIoActions),
-    print_chosen_io_actions(MaybeIoActions, From, To, !.User, !IO),
-    query_user(UserQuestion, Response, !User, !IO).
-
-handle_command(user_cmd_change_search(Mode), _,
-        user_response_change_search(Mode), !User, !IO).
-
-handle_command(user_cmd_ask, UserQuestion, Response, !User, !IO) :-
-    !:User = !.User ^ display_question := yes,
-    query_user(UserQuestion, Response, !User, !IO).
-
-handle_command(user_cmd_pd, UserQuestion, Response, !User, !IO) :-
-    Question = get_decl_question(UserQuestion),
-    Node = get_decl_question_node(Question),
-    Response = user_response_exit_diagnosis(Node).
-
-handle_command(user_cmd_quit, _, Response, !User, !IO) :-
-    Response = user_response_abort_diagnosis.
-
-handle_command(user_cmd_help(MaybeCmd), UserQuestion, Response, !User, !IO) :-
-    (
-        MaybeCmd = yes(Cmd),
-        Path = ["decl", Cmd]
-    ;
-        MaybeCmd = no,
-        Path = ["concepts", "decl_debug"]
-    ),
-    help.path(!.User ^ help_system, Path, !.User ^ outstr, Res, !IO),
-    (
-        Res = help_ok
-    ;
-        Res = help_error(Message),
-        io.write_strings([Message, "\n"], !IO)
-    ),
-    query_user(UserQuestion, Response, !User, !IO).
-
-handle_command(user_cmd_empty, UserQuestion, Response, !User, !IO) :-
-    (
-        UserQuestion = plain_question(_),
-        Command = user_cmd_skip
-    ;
-        UserQuestion = question_with_default(_, Truth),
-        (
-            Truth = truth_correct,
-            Command = user_cmd_yes
-        ;
-            Truth = truth_erroneous,
-            Command = user_cmd_no
-        ;
-            Truth = truth_inadmissible,
-            Command = user_cmd_inadmissible
-        )
-    ),
-    handle_command(Command, UserQuestion, Response, !User, !IO).
-
-handle_command(user_cmd_illegal, UserQuestion, Response, !User, !IO) :-
-    io.write_string(!.User ^ outstr, "Unknown command, 'h' for help.\n", !IO),
-    query_user(UserQuestion, Response, !User, !IO).
 
 :- func arg_num_to_arg_pos(int) = arg_pos.
 
@@ -452,13 +452,16 @@ get_decl_question(question_with_default(Q, _)) = Q.
 
 :- pred user_question_prompt(user_question(T)::in, string::out) is det.
 
-user_question_prompt(plain_question(Question), Prompt) :-
-    decl_question_prompt(Question, Prompt).
-
-user_question_prompt(question_with_default(Question, DefaultTruth), Prompt) :-
-    decl_question_prompt(Question, QuestionPrompt),
-    default_prompt(DefaultTruth, DefaultPrompt),
-    string.append(QuestionPrompt, DefaultPrompt, Prompt).
+user_question_prompt(UserQuestion, Prompt) :-
+    (
+        UserQuestion = plain_question(Question),
+        decl_question_prompt(Question, Prompt)
+    ;
+        UserQuestion = question_with_default(Question, DefaultTruth),
+        decl_question_prompt(Question, QuestionPrompt),
+        default_prompt(DefaultTruth, DefaultPrompt),
+        Prompt = QuestionPrompt ++ DefaultPrompt
+    ).
 
 :- pred decl_question_prompt(decl_question(T)::in, string::out) is det.
 
@@ -473,9 +476,9 @@ default_prompt(truth_correct, "[yes] ").
 default_prompt(truth_erroneous, "[no] ").
 default_prompt(truth_inadmissible, "[inadmissible] ").
 
-    % Find the initial and final atoms for a question.  For all
-    % questions besides wrong answer questions the initial and
-    % final atoms will be the same.
+    % Find the initial and final atoms for a question. For all questions
+    % besides wrong answer questions, the initial and final atoms
+    % will be the same.
     %
 :- pred edt_node_trace_atoms(decl_question(T)::in, trace_atom::out,
     trace_atom::out) is det.
@@ -611,7 +614,7 @@ browse_io_action(IoAction, no_track, !User, !IO) :-
     ;
         MaybeTrackDirs = no_track
     ),
-    !:User = !.User ^ browser := Browser.
+    !User ^ browser := Browser.
 
 :- pred browse_decl_bug(decl_bug::in, maybe(int)::in, user_state::in,
     user_state::out, io::di, io::uo) is cc_multi.
@@ -659,7 +662,7 @@ browse_atom_argument(InitAtom, FinalAtom, ArgNum, MaybeTrack, !User, !IO) :-
             MaybeTrackDirs, !.User ^ browser, Browser, !IO),
         convert_maybe_track_dirs_to_term_path_from_arg(ArgRep,
             MaybeTrackDirs, MaybeTrack),
-        !:User = !.User ^ browser := Browser
+        !User ^ browser := Browser
     ;
         io.write_string(!.User ^ outstr, "Invalid argument number\n", !IO),
         MaybeTrack = no_track
@@ -701,7 +704,7 @@ browse_atom(InitAtom, FinalAtom, MaybeTrack, !User, !IO) :-
         MaybeTrackDirs, !.User ^ browser, Browser, !IO),
     convert_maybe_track_dirs_to_term_path_from_atom(FinalAtom,
         MaybeTrackDirs, MaybeTrack),
-    !:User = !.User ^ browser := Browser.
+    !User ^ browser := Browser.
 
 :- pred browse_xml_atom(trace_atom::in, user_state::in, io::di, io::uo)
     is cc_multi.
@@ -986,7 +989,7 @@ format_param_arg_cmd(Cmd, ArgWords0, Command) :-
     parse.parse([Cmd | ArgWords], ParsedCommand),
     ParsedCommand = cmd_param(FormatCmd),
     FormatCmd = format_param(MaybeOptionTable0, Setting),
-    ( 
+    (
         HasIOArg = yes,
         % Since the command was invoked with the `io' argument we want to
         % change the settings for the `print all' configuration parameter,
@@ -1001,7 +1004,7 @@ format_param_arg_cmd(Cmd, ArgWords0, Command) :-
         HasIOArg = no,
         MaybeOptionTable = MaybeOptionTable0
     ),
-    Command = user_cmd_param_command(format_param(MaybeOptionTable, Setting)). 
+    Command = user_cmd_param_command(format_param(MaybeOptionTable, Setting)).
 
 :- pred num_io_actions_cmd(list(string)::in, user_command::out) is semidet.
 
@@ -1139,25 +1142,30 @@ decl_caller_type = print.
 :- pred write_decl_question(decl_question(T)::in, user_state::in,
     io::di, io::uo) is cc_multi.
 
-write_decl_question(wrong_answer(_, _, Atom), User, !IO) :-
-    write_decl_final_atom(User, "", decl_caller_type, Atom, !IO).
-
-write_decl_question(missing_answer(_, Call, Solns), User, !IO) :-
-    write_decl_init_atom(User, "Call ", decl_caller_type, Call, !IO),
+write_decl_question(Question, User, !IO) :-
     (
-        Solns = []
+        Question = wrong_answer(_, _, Atom),
+        write_decl_final_atom(User, "", decl_caller_type, Atom, !IO)
     ;
-        Solns = [_ | _],
-        io.write_string(User ^ outstr, "Solutions:\n", !IO),
-        list.foldl(write_decl_final_atom(User, "\t", print_all), Solns, !IO)
+        Question = missing_answer(_, Call, Solns),
+        write_decl_init_atom(User, "Call ", decl_caller_type, Call, !IO),
+        (
+            Solns = []
+        ;
+            Solns = [_ | _],
+            io.write_string(User ^ outstr, "Solutions:\n", !IO),
+            list.foldl(write_decl_final_atom(User, "\t", print_all), Solns,
+                !IO)
+        )
+    ;
+        Question = unexpected_exception(_, Call, ExceptionRep),
+        write_decl_init_atom(User, "Call ", decl_caller_type, Call, !IO),
+        io.write_string(User ^ outstr, "Throws ", !IO),
+        term_rep.rep_to_univ(ExceptionRep, Exception),
+        io.write(User ^ outstr, include_details_cc, univ_value(Exception),
+            !IO),
+        io.nl(User ^ outstr, !IO)
     ).
-
-write_decl_question(unexpected_exception(_, Call, ExceptionRep), User, !IO) :-
-    write_decl_init_atom(User, "Call ", decl_caller_type, Call, !IO),
-    io.write_string(User ^ outstr, "Throws ", !IO),
-    term_rep.rep_to_univ(ExceptionRep, Exception),
-    io.write(User ^ outstr, include_details_cc, univ_value(Exception), !IO),
-    io.nl(User ^ outstr, !IO).
 
 :- pred write_decl_bug(decl_bug::in, user_state::in, io::di, io::uo)
     is cc_multi.
@@ -1343,7 +1351,7 @@ print_tabled_io_action(User, tabled(IoAction), !IO) :-
 get_browser_state(User) = User ^ browser.
 
 set_browser_state(Browser, !User) :-
-    !:User = !.User ^ browser := Browser.
+    !User ^ browser := Browser.
 
 get_user_output_stream(User) = User ^ outstr.
 

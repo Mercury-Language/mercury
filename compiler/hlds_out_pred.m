@@ -300,6 +300,11 @@ set_dump_opts_for_clauses(Info, ClausesInfo) :-
         ;
             true
         ),
+        ( string.contains_char(OptionsStr, 'P') ->
+            !:DumpStr = !.DumpStr ++ "P"
+        ;
+            true
+        ),
         DumpStr = !.DumpStr
     ),
     ClausesInfo = Info ^ hoi_dump_hlds_options := DumpStr.
@@ -344,7 +349,7 @@ write_clauses_2(Info, Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
 
 write_clause(Info, Indent, ModuleInfo, PredId, VarSet, AppendVarNums,
         HeadTerms, PredOrFunc, Clause, UseDeclaredModes, TypeQual, !IO) :-
-    Clause = clause(ApplicableModes, Goal, Lang, Context),
+    Clause = clause(ApplicableModes, Goal, Lang, Context, _StateVarWarnings),
     Indent1 = Indent + 1,
     DumpOptions = Info ^ hoi_dump_hlds_options,
     (

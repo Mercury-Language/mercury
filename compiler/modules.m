@@ -2357,7 +2357,7 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
             io(!TIO)]
         (
             digraph.to_assoc_list(ImplDepsGraph, ImplDepsAL),
-            print("ImplDepsAL:\n", !TIO),
+            io.print("ImplDepsAL:\n", !TIO),
             io.write_list(ImplDepsAL, "\n", print, !TIO),
             io.nl(!TIO)
         ),

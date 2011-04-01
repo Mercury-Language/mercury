@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2010 The University of Melbourne.
+% Copyright (C) 2001, 2004-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -429,8 +429,8 @@ read_nodes_3(Depth, !.InitDeep, MaybeInitDeep, !IO) :-
     io::di, io::uo) is det.
 
 read_call_site_static(MaybeCSS, !IO) :-
-    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-        io.write_string("reading call_site_static.\n", !IO)
+    trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
+        io.write_string("reading call_site_static.\n", !TIO)
     ),
     io_combinator.maybe_error_sequence_4(
         read_ptr(css),
@@ -448,12 +448,12 @@ read_call_site_static(MaybeCSS, !IO) :-
         MaybeCSS, !IO),
     (
         MaybeCSS = ok({CallSiteStatic, CSSI}),
-        trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-            io.write_string("read call_site_static ", !IO),
-            io.write_int(CSSI, !IO),
-            io.write_string(": ", !IO),
-            io.write(CallSiteStatic, !IO),
-            io.write_string("\n", !IO)
+        trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
+            io.write_string("read call_site_static ", !TIO),
+            io.write_int(CSSI, !TIO),
+            io.write_string(": ", !TIO),
+            io.write(CallSiteStatic, !TIO),
+            io.write_string("\n", !TIO)
         )
     ;
         MaybeCSS = error(_)
@@ -463,8 +463,8 @@ read_call_site_static(MaybeCSS, !IO) :-
     maybe_error2(proc_static, int)::out, io::di, io::uo) is det.
 
 read_proc_static(ProfileStats, MaybePS, !IO) :-
-    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-        io.write_string("reading proc_static.\n", !IO)
+    trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
+        io.write_string("reading proc_static.\n", !TIO)
     ),
     io_combinator.maybe_error_sequence_6(
         read_ptr(ps),
@@ -504,12 +504,12 @@ read_proc_static(ProfileStats, MaybePS, !IO) :-
                     FileName, LineNumber, IsInInterface,
                     array(CSSPtrs), CPInfos, MaybeCPs, not_zeroed),
                 MaybePS = ok2(ProcStatic, PSI),
-                trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-                    io.write_string("read proc_static ", !IO),
-                    io.write_int(PSI, !IO),
-                    io.write_string(": ", !IO),
-                    io.write(ProcStatic, !IO),
-                    io.write_string("\n", !IO)
+                trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
+                    io.write_string("read proc_static ", !TIO),
+                    io.write_int(PSI, !TIO),
+                    io.write_string(": ", !TIO),
+                    io.write(ProcStatic, !TIO),
+                    io.write_string("\n", !TIO)
                 )
             ;
                 MaybeCoveragePoints = error(Error),
@@ -878,8 +878,8 @@ glue_lambda_name(Segments, PredName, LineNumber) :-
     maybe_error2(proc_dynamic, int)::out, io::di, io::uo) is det.
 
 read_proc_dynamic(ProfileStats, MaybePD, !IO) :-
-    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-        io.write_string("reading proc_dynamic.\n", !IO)
+    trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
+        io.write_string("reading proc_dynamic.\n", !TIO)
     ),
     io_combinator.maybe_error_sequence_3(
         read_ptr(pd),
@@ -903,12 +903,12 @@ read_proc_dynamic(ProfileStats, MaybePD, !IO) :-
             PSPtr = make_psptr(PSI),
             ProcDynamic = proc_dynamic(PSPtr, array(Refs), MaybeCPs),
             MaybePD = ok2(ProcDynamic, PDI),
-            trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-                io.write_string("read proc_dynamic ", !IO),
-                io.write_int(PDI, !IO),
-                io.write_string(": ", !IO),
-                io.write(ProcDynamic, !IO),
-                io.write_string("\n", !IO)
+            trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
+                io.write_string("read proc_dynamic ", !TIO),
+                io.write_int(PDI, !TIO),
+                io.write_string(": ", !TIO),
+                io.write(ProcDynamic, !TIO),
+                io.write_string("\n", !TIO)
             )
         ;
             MaybeCPsAndSlots = error(Error),
@@ -923,8 +923,8 @@ read_proc_dynamic(ProfileStats, MaybePD, !IO) :-
     io::di, io::uo) is det.
 
 read_call_site_dynamic(MaybeCSD, !IO) :-
-    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-        io.write_string("reading call_site_dynamic.\n", !IO)
+    trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
+        io.write_string("reading call_site_dynamic.\n", !TIO)
     ),
     read_ptr(csd, MaybeCSDI, !IO),
     (
@@ -940,12 +940,12 @@ read_call_site_dynamic(MaybeCSD, !IO) :-
                 CallSiteDynamic = call_site_dynamic(CallerPDPtr, PDPtr,
                     Profile),
                 MaybeCSD = ok2(CallSiteDynamic, CSDI),
-                trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-                    io.write_string("read call_site_dynamic ", !IO),
-                    io.write_int(CSDI, !IO),
-                    io.write_string(": ", !IO),
-                    io.write(CallSiteDynamic, !IO),
-                    io.write_string("\n", !IO)
+                trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
+                    io.write_string("read call_site_dynamic ", !TIO),
+                    io.write_int(CSDI, !TIO),
+                    io.write_string(": ", !TIO),
+                    io.write(CallSiteDynamic, !TIO),
+                    io.write_string("\n", !TIO)
                 )
             ;
                 MaybeProfile = error(Error),
@@ -1031,8 +1031,8 @@ maybe_read_num_handle_error(MaskWord, MaskValue, Num, !MaybeError, !IO) :-
     io::di, io::uo) is det.
 
 read_call_site_slot(MaybeSlot, !IO) :-
-    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-        io.write_string("reading call_site_slot.\n", !IO)
+    trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
+        io.write_string("reading call_site_slot.\n", !TIO)
     ),
     read_call_site_kind(MaybeKind, !IO),
     (
@@ -1044,10 +1044,10 @@ read_call_site_slot(MaybeSlot, !IO) :-
                 MaybeCSDI = ok(CSDI),
                 CSDPtr = make_csdptr(CSDI),
                 MaybeSlot = ok(slot_normal(CSDPtr)),
-                trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-                    io.write_string("normal call_site slot ", !IO),
-                    io.write_int(CSDI, !IO),
-                    io.write_string("\n", !IO)
+                trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
+                    io.write_string("normal call_site slot ", !TIO),
+                    io.write_int(CSDI, !TIO),
+                    io.write_string("\n", !TIO)
                 )
             ;
                 MaybeCSDI = error(Error),
@@ -1072,10 +1072,10 @@ read_call_site_slot(MaybeSlot, !IO) :-
                 MaybeCSDIs = ok(CSDIs),
                 CSDPtrs = list.map(make_csdptr, CSDIs),
                 MaybeSlot = ok(slot_multi(Zeroed, array(CSDPtrs))),
-                trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-                    io.write_string("multi call_site slots ", !IO),
-                    io.write(CSDIs, !IO),
-                    io.write_string("\n", !IO)
+                trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
+                    io.write_string("multi call_site slots ", !TIO),
+                    io.write(CSDIs, !TIO),
+                    io.write_string("\n", !TIO)
                 )
             ;
                 MaybeCSDIs = error(Error),
@@ -1107,8 +1107,8 @@ read_multi_call_site_csdis(MaybeCSDIs, !IO) :-
     maybe_error(list(int))::out, io::di, io::uo) is det.
 
 read_multi_call_site_csdis_2(CSDIs0, MaybeCSDIs, !IO) :-
-    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-        io.format("reading multi_call_site_csdi.\n", [], !IO)
+    trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
+        io.format("reading multi_call_site_csdi.\n", [], !TIO)
     ),
     read_deep_byte(MaybeByte, !IO),
     (
@@ -1144,10 +1144,10 @@ read_call_site_kind(MaybeKind, !IO) :-
             string.format("unexpected call_site_kind %d", [i(Byte)], Msg),
             MaybeKind = error(Msg)
         ),
-        trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-             io.write_string("call_site_kind ", !IO),
-             io.write(MaybeKind, !IO),
-             io.write_string("\n", !IO)
+        trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
+             io.write_string("call_site_kind ", !TIO),
+             io.write(MaybeKind, !TIO),
+             io.write_string("\n", !TIO)
         )
     ;
         MaybeByte = error(Error),
@@ -1198,10 +1198,10 @@ read_call_site_kind_and_callee(MaybeKindAndCallee, !IO) :-
             string.format("unexpected call_site_kind %d", [i(Byte)], Msg),
             MaybeKindAndCallee = error(Msg)
         ),
-        trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-            io.write_string("call_site_kind_and_callee ", !IO),
-            io.write(MaybeKindAndCallee, !IO),
-            io.write_string("\n", !IO)
+        trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
+            io.write_string("call_site_kind_and_callee ", !TIO),
+            io.write(MaybeKindAndCallee, !TIO),
+            io.write_string("\n", !TIO)
         )
     ;
         MaybeByte = error(Error),
@@ -1323,20 +1323,20 @@ read_n_byte_string(Length, MaybeStr, !IO) :-
         MaybeNBytes = error(Error),
         MaybeStr = error(Error)
     ),
-    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-        io.write_string("string ", !IO),
-        io.write(MaybeStr, !IO),
-        io.write_string("\n", !IO)
+    trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
+        io.write_string("string ", !TIO),
+        io.write(MaybeStr, !TIO),
+        io.write_string("\n", !TIO)
     ).
 
 :- pred read_ptr(ptr_kind::in, maybe_error(int)::out, io::di, io::uo) is det.
 
 read_ptr(_Kind, MaybePtr, !IO) :-
     read_num(MaybePtr, !IO),
-    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-        io.write_string("ptr ", !IO),
-        io.write(MaybePtr, !IO),
-        io.write_string("\n", !IO)
+    trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
+        io.write_string("ptr ", !TIO),
+        io.write(MaybePtr, !TIO),
+        io.write_string("\n", !TIO)
     ).
 
 :- pred read_cp_type(maybe_error(cp_type)::out, io::di, io::uo) is det.
@@ -1365,10 +1365,10 @@ read_cp_type(MaybeCPType, !IO) :-
 
 read_num(MaybeNum, !IO) :-
     read_num_acc(0, MaybeNum, !IO),
-    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-        io.write_string("num ", !IO),
-        io.write(MaybeNum, !IO),
-        io.write_string("\n", !IO)
+    trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
+        io.write_string("num ", !TIO),
+        io.write(MaybeNum, !TIO),
+        io.write_string("\n", !TIO)
     ).
 
 :- pred read_num_acc(int::in, maybe_error(int)::out,
@@ -1405,8 +1405,8 @@ fixed_size_int_bytes = 8.
 
 read_fixed_size_int(MaybeInt, !IO) :-
     read_fixed_size_int_acc(fixed_size_int_bytes, 0, 0, MaybeInt, !IO),
-    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-        io.format("fixed size int %s\n", [s(string(MaybeInt))], !IO)
+    trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
+        io.format("fixed size int %s\n", [s(string(MaybeInt))], !TIO)
     ).
 
 :- pred read_fixed_size_int_acc(int::in, int::in, int::in,
@@ -1475,10 +1475,10 @@ read_deep_byte(MaybeByte, !IO) :-
         io.error_message(Error, Msg),
         MaybeByte = error(Msg)
     ),
-    trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
-        io.write_string("byte ", !IO),
-        io.write(MaybeByte, !IO),
-        io.write_string("\n", !IO)
+    trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
+        io.write_string("byte ", !TIO),
+        io.write(MaybeByte, !TIO),
+        io.write_string("\n", !TIO)
     ).
 
 %------------------------------------------------------------------------------%

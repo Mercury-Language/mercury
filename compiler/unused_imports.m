@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2010 The University of Melbourne.
+% Copyright (C) 2006-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -382,8 +382,8 @@ clauses_info_used_modules(ClausesInfo, !UsedModules) :-
 :- pred clause_used_modules(clause::in,
     used_modules::in, used_modules::out) is det.
 
-clause_used_modules(clause(_, Goal, _, _), !UsedModules) :-
-    hlds_goal_used_modules(Goal, !UsedModules).
+clause_used_modules(Clause, !UsedModules) :-
+    hlds_goal_used_modules(Clause ^ clause_body, !UsedModules).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

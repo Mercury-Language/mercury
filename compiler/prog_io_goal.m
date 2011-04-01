@@ -499,23 +499,24 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
             MaybeVars),
         parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
         (
-            MaybeVars = ok3(Vars0, DotSVars0, ColonSVars0),
+            MaybeVars = ok4(Vars0, StateVars0, DotSVars0, ColonSVars0),
             MaybeSubGoal = ok1(SubGoal)
         ->
             list.map(term.coerce_var, Vars0, Vars),
+            list.map(term.coerce_var, StateVars0, StateVars),
             list.map(term.coerce_var, DotSVars0, DotSVars),
             list.map(term.coerce_var, ColonSVars0, ColonSVars),
             (
                 Functor = "promise_equivalent_solutions",
                 MaybeGoal = ok1(promise_equivalent_solutions_expr(Vars,
-                    DotSVars, ColonSVars, SubGoal) - Context)
+                    StateVars, DotSVars, ColonSVars, SubGoal) - Context)
             ;
                 Functor = "promise_equivalent_solution_sets",
                 MaybeGoal = ok1(promise_equivalent_solution_sets_expr(Vars,
-                    DotSVars, ColonSVars, SubGoal) - Context)
+                    StateVars, DotSVars, ColonSVars, SubGoal) - Context)
             )
         ;
-            VarsSpecs = get_any_errors3(MaybeVars),
+            VarsSpecs = get_any_errors4(MaybeVars),
             SubGoalSpecs = get_any_errors1(MaybeSubGoal),
             MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
         )
@@ -527,16 +528,17 @@ parse_goal_2(Functor, Args, Context, ContextPieces, MaybeGoal, !VarSet) :-
             MaybeVars),
         parse_goal(SubTerm, ContextPieces, MaybeSubGoal, !VarSet),
         (
-            MaybeVars = ok3(Vars0, DotSVars0, ColonSVars0),
+            MaybeVars = ok4(Vars0, StateVars0, DotSVars0, ColonSVars0),
             MaybeSubGoal = ok1(SubGoal)
         ->
             list.map(term.coerce_var, Vars0, Vars),
+            list.map(term.coerce_var, StateVars0, StateVars),
             list.map(term.coerce_var, DotSVars0, DotSVars),
             list.map(term.coerce_var, ColonSVars0, ColonSVars),
             MaybeGoal = ok1(promise_equivalent_solution_arbitrary_expr(Vars,
-                DotSVars, ColonSVars, SubGoal) - Context)
+                StateVars, DotSVars, ColonSVars, SubGoal) - Context)
         ;
-            VarsSpecs = get_any_errors3(MaybeVars),
+            VarsSpecs = get_any_errors4(MaybeVars),
             SubGoalSpecs = get_any_errors1(MaybeSubGoal),
             MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
         )

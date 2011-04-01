@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2010 The University of Melbourne.
+% Copyright (C) 1993-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -340,7 +340,7 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
         Stub = no,
         % Construct a clause containing that pseudo-recursive call.
         Goal = hlds_goal(GoalExpr, GoalInfo),
-        Clause = clause(all_modes, Goal, impl_lang_mercury, Context),
+        Clause = clause(all_modes, Goal, impl_lang_mercury, Context, []),
         set_clause_list([Clause], ClausesRep)
     ;
         Stub = yes,

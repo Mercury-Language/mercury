@@ -408,7 +408,7 @@ compute_purity_for_clauses([Clause0 | Clauses0], [Clause | Clauses], PredInfo,
     purity::out, purity_info::in, purity_info::out) is det.
 
 compute_purity_for_clause(Clause0, Clause, PredInfo, Purity, !Info) :-
-    Clause0 = clause(Ids, Goal0, Lang, Context),
+    Goal0 = Clause0 ^ clause_body,
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     !Info ^ pi_requant := do_not_need_to_requantify,
     compute_expr_purity(GoalExpr0, GoalExpr1, GoalInfo0, BodyPurity0, _,
@@ -460,11 +460,12 @@ compute_purity_for_clause(Clause0, Clause, PredInfo, Purity, !Info) :-
         NeedToRequantify = do_not_need_to_requantify,
         Goal = Goal1
     ),
-    Clause = clause(Ids, Goal, Lang, Context).
+    Clause = Clause0 ^ clause_body := Goal.
 
 :- pred applies_to_all_modes(clause::in, list(proc_id)::in) is semidet.
 
-applies_to_all_modes(clause(ApplicableProcIds, _, _, _), AllProcIds) :-
+applies_to_all_modes(Clause, AllProcIds) :-
+    ApplicableProcIds = Clause ^ clause_applicable_procs,
     (
         ApplicableProcIds = all_modes
     ;

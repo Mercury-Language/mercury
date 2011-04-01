@@ -25,6 +25,7 @@
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module char.
 :- import_module list.
@@ -163,12 +164,12 @@
                                     % pragma_foreign_codes; none for others.
             )
 
-    ;       conj(conj_type, hlds_goals)
+    ;       conj(conj_type, list(hlds_goal))
             % A conjunction. NOTE: plain conjunctions must be fully flattened
             % before mode analysis. As a general rule, it is a good idea to
             % keep them flattened.
 
-    ;       disj(hlds_goals)
+    ;       disj(list(hlds_goal))
             % A disjunction.
             % NOTE: disjunctions should be fully flattened.
 
@@ -1374,8 +1375,9 @@
 
 :- func goal_get_nonlocals(hlds_goal) = set(prog_var).
 
-:- func goal_get_purity(hlds_goal) = purity.
+:- pred goal_set_goal_id(goal_id::in, hlds_goal::in, hlds_goal::out) is det.
 
+:- func goal_get_purity(hlds_goal) = purity.
 :- pred goal_set_purity(purity::in, hlds_goal::in, hlds_goal::out) is det.
 
 :- pred goal_get_goal_purity(hlds_goal::in,
@@ -1549,7 +1551,7 @@
 % The rename_var* predicates take a structure and a mapping from var -> var
 % and apply that translation. If a var in the input structure does not
 % occur as a key in the mapping, then the variable is left unsubstituted
-% (if Must = no) or we throw an exception (if Must = yes).
+% (if Must = need_not_rename) or we throw an exception (if Must = must_rename).
 %
 % We keep these predicates here to allow rename_vars_in_goal_info to exploit
 % knowledge of the actual representation of hlds_goal_infos; since
@@ -1567,13 +1569,24 @@
     hlds_goal::in, hlds_goal::out) is det.
 
 :- pred rename_vars_in_goals(must_rename::in, prog_var_renaming::in,
-    hlds_goals::in, hlds_goals::out) is det.
+    list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 :- pred rename_vars_in_goal_expr(must_rename::in, prog_var_renaming::in,
     hlds_goal_expr::in, hlds_goal_expr::out) is det.
 
 :- pred rename_vars_in_goal_info(must_rename::in, prog_var_renaming::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
+
+    % Rename the variables in the given goal, incrementally updating the
+    % substitution. When we start processing a goal, we look up its goal_id
+    % in the provided map. If we find it, we add the given var to var mappings
+    % to the substitution we apply to that goal. We do not insist on variables
+    % in the goal occurring in the substitution (i.e. we implicitly assume
+    % Must = need_not_rename).
+    %
+:- pred incremental_rename_vars_in_goal(prog_var_renaming::in,
+    map(goal_id, assoc_list(prog_var, prog_var))::in,
+    hlds_goal::in, hlds_goal::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1804,9 +1817,10 @@
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_mode.
 
-:- import_module assoc_list.
+:- import_module io.
 :- import_module map.
 :- import_module require.
+:- import_module string.
 :- import_module svmap.
 :- import_module svvarset.
 :- import_module varset.
@@ -1838,7 +1852,7 @@ make_foreign_args(Vars, NamesModesBoxes, Types, Args) :-
     ->
         Args = []
     ;
-        unexpected(this_file, "make_foreign_args: unmatched lists")
+        unexpected($module, $pred, "unmatched lists")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2106,7 +2120,7 @@ goal_info_get_rbmm(GoalInfo) = RBMM :-
         MaybeRBMM = yes(RBMM)
     ;
         MaybeRBMM = no,
-        unexpected(this_file, "Requesting unavailable RBMM information.")
+        unexpected($module, $pred, "Requesting unavailable RBMM information.")
     ).
 
 goal_info_get_occurring_vars(GoalInfo, OccurringVars) :-
@@ -2335,7 +2349,7 @@ goal_info_get_lfu(GoalInfo) = LFU :-
         MaybeLFU = yes(LFU)
     ;
         MaybeLFU = no,
-        unexpected(this_file,
+        unexpected($module, $pred,
             "Requesting LFU information while CTGC field not set.")
     ).
 
@@ -2345,7 +2359,7 @@ goal_info_get_lbu(GoalInfo) = LBU :-
         MaybeLBU = yes(LBU)
     ;
         MaybeLBU = no,
-        unexpected(this_file,
+        unexpected($module, $pred,
             "Requesting LBU information while CTGC field not set.")
     ).
 
@@ -2355,17 +2369,11 @@ goal_info_get_reuse(GoalInfo) = Reuse :-
         MaybeReuse = yes(Reuse)
     ;
         MaybeReuse = no,
-        unexpected(this_file,
+        unexpected($module, $pred,
             "Requesting reuse information while CTGC field not set.")
     ).
 
 %-----------------------------------------------------------------------------%
-
-goal_get_purity(hlds_goal(_GoalExpr, GoalInfo)) =
-    goal_info_get_purity(GoalInfo).
-
-goal_get_nonlocals(hlds_goal(_GoalExpr, GoalInfo)) =
-    goal_info_get_nonlocals(GoalInfo).
 
 worst_contains_trace(contains_trace_goal, contains_trace_goal) =
     contains_trace_goal.
@@ -2376,12 +2384,24 @@ worst_contains_trace(contains_no_trace_goal, contains_trace_goal) =
 worst_contains_trace(contains_no_trace_goal, contains_no_trace_goal) =
     contains_no_trace_goal.
 
-goal_set_purity(Purity, hlds_goal(GoalExpr, GoalInfo0),
-        hlds_goal(GoalExpr, GoalInfo)) :-
-    goal_info_set_purity(Purity, GoalInfo0, GoalInfo).
+goal_get_nonlocals(hlds_goal(_GoalExpr, GoalInfo)) =
+    goal_info_get_nonlocals(GoalInfo).
 
-goal_get_goal_purity(hlds_goal(_GoalExpr, GoalInfo),
-        Purity, ContainsTraceGoal) :-
+goal_set_goal_id(GoalId, Goal0, Goal) :-
+    Goal0 = hlds_goal(GoalExpr, GoalInfo0),
+    goal_info_set_goal_id(GoalId, GoalInfo0, GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
+
+goal_get_purity(hlds_goal(_GoalExpr, GoalInfo)) =
+    goal_info_get_purity(GoalInfo).
+
+goal_set_purity(Purity, Goal0, Goal) :-
+    Goal0 = hlds_goal(GoalExpr, GoalInfo0),
+    goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
+
+goal_get_goal_purity(Goal, Purity, ContainsTraceGoal) :-
+    Goal = hlds_goal(_GoalExpr, GoalInfo),
     goal_info_get_goal_purity(GoalInfo, Purity, ContainsTraceGoal).
 
 goal_info_get_goal_purity(GoalInfo, Purity, ContainsTraceGoal) :-
@@ -2465,6 +2485,16 @@ rename_vars_in_goals(_, _, [], []).
 rename_vars_in_goals(Must, Subn, [Goal0 | Goals0], [Goal | Goals]) :-
     rename_vars_in_goal(Must, Subn, Goal0, Goal),
     rename_vars_in_goals(Must, Subn, Goals0, Goals).
+
+:- pred rename_vars_in_cases(must_rename::in, prog_var_renaming::in,
+    list(case)::in, list(case)::out) is det.
+
+rename_vars_in_cases(_Must, _Subn, [], []).
+rename_vars_in_cases(Must, Subn, [Case0 | Cases0], [Case | Cases]) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
+    rename_vars_in_goal(Must, Subn, Goal0, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
+    rename_vars_in_cases(Must, Subn, Cases0, Cases).
 
 %-----------------------------------------------------------------------------%
 
@@ -2601,6 +2631,272 @@ rename_vars_in_goal_expr(Must, Subn, Expr0, Expr) :-
         Expr = shorthand(Shorthand)
     ).
 
+:- pred rename_unify_rhs(must_rename::in, prog_var_renaming::in,
+    unify_rhs::in, unify_rhs::out) is det.
+
+rename_unify_rhs(Must, Subn, RHS0, RHS) :-
+    (
+        RHS0 = rhs_var(Var0),
+        rename_var(Must, Subn, Var0, Var),
+        RHS = rhs_var(Var)
+    ;
+        RHS0 = rhs_functor(Functor, E, ArgVars0),
+        rename_var_list(Must, Subn, ArgVars0, ArgVars),
+        RHS = rhs_functor(Functor, E, ArgVars)
+    ;
+        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            NonLocals0, Vars0, Modes, Det, Goal0),
+        rename_var_list(Must, Subn, NonLocals0, NonLocals),
+        rename_var_list(Must, Subn, Vars0, Vars),
+        rename_vars_in_goal(Must, Subn, Goal0, Goal),
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            NonLocals, Vars, Modes, Det, Goal)
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% Incremental rename predicates.
+%
+
+incremental_rename_vars_in_goal(Subn0, SubnUpdates, Goal0, Goal) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
+    GoalId = goal_info_get_goal_id(GoalInfo0),
+    ( map.search(SubnUpdates, GoalId, GoalSubns) ->
+        trace [compiletime(flag("statevar-subn")), io(!IO)] (
+            GoalId = goal_id(GoalIdNum),
+            io.format("Goal id %d has substitutions\n", [i(GoalIdNum)], !IO),
+            io.write(GoalSubns, !IO),
+            io.nl(!IO)
+        ),
+        list.foldl(follow_subn_until_fixpoint, GoalSubns, Subn0, Subn)
+    ;
+        Subn = Subn0
+    ),
+    incremental_rename_vars_in_goal_expr(Subn, SubnUpdates,
+        GoalExpr0, GoalExpr),
+    rename_vars_in_goal_info(need_not_rename, Subn, GoalInfo0, GoalInfo),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
+
+:- pred follow_subn_until_fixpoint(pair(prog_var, prog_var)::in,
+    prog_var_renaming::in, prog_var_renaming::out) is det.
+
+follow_subn_until_fixpoint(FromVar - ToVar, !Subn) :-
+    ( map.search(!.Subn, ToVar, SubstitutedToVar) ->
+        trace [compiletime(flag("statevar-subn")), io(!IO)] (
+            io.write_string("short circuiting ", !IO),
+            io.write(FromVar, !IO),
+            io.write_string(": ", !IO),
+            io.write(ToVar, !IO),
+            io.write_string(" -> ", !IO),
+            io.write(SubstitutedToVar, !IO),
+            io.nl(!IO)
+        ),
+        follow_subn_until_fixpoint(FromVar - SubstitutedToVar, !Subn)
+    ;
+        trace [compiletime(flag("statevar-subn")), io(!IO)] (
+            io.write_string("applied substitution: ", !IO),
+            io.write(FromVar, !IO),
+            io.write_string(" to ", !IO),
+            io.write(ToVar, !IO),
+            io.nl(!IO)
+        ),
+        svmap.det_insert(FromVar, ToVar, !Subn)
+    ).
+
+:- pred incremental_rename_vars_in_goals(prog_var_renaming::in,
+    map(goal_id, assoc_list(prog_var, prog_var))::in,
+    list(hlds_goal)::in, list(hlds_goal)::out) is det.
+
+incremental_rename_vars_in_goals(_, _, [], []).
+incremental_rename_vars_in_goals(Subn, SubnUpdates,
+        [Goal0 | Goals0], [Goal | Goals]) :-
+    incremental_rename_vars_in_goal(Subn, SubnUpdates, Goal0, Goal),
+    incremental_rename_vars_in_goals(Subn, SubnUpdates, Goals0, Goals).
+
+:- pred incremental_rename_vars_in_cases(prog_var_renaming::in,
+    map(goal_id, assoc_list(prog_var, prog_var))::in,
+    list(case)::in, list(case)::out) is det.
+
+incremental_rename_vars_in_cases(_, _, [], []).
+incremental_rename_vars_in_cases(Subn, SubnUpdates,
+        [Case0 | Cases0], [Case | Cases]) :-
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
+    incremental_rename_vars_in_goal(Subn, SubnUpdates, Goal0, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
+    incremental_rename_vars_in_cases(Subn, SubnUpdates, Cases0, Cases).
+
+%-----------------------------------------------------------------------------%
+
+:- pred incremental_rename_vars_in_goal_expr(prog_var_renaming::in,
+    map(goal_id, assoc_list(prog_var, prog_var))::in,
+    hlds_goal_expr::in, hlds_goal_expr::out) is det.
+
+incremental_rename_vars_in_goal_expr(Subn, SubnUpdates, Expr0, Expr) :-
+    (
+        Expr0 = conj(ConjType, Goals0),
+        incremental_rename_vars_in_goals(Subn, SubnUpdates, Goals0, Goals),
+        Expr = conj(ConjType, Goals)
+    ;
+        Expr0 = disj(Goals0),
+        incremental_rename_vars_in_goals(Subn, SubnUpdates, Goals0, Goals),
+        Expr = disj(Goals)
+    ;
+        Expr0 = switch(Var0, Det, Cases0),
+        rename_var(need_not_rename, Subn, Var0, Var),
+        incremental_rename_vars_in_cases(Subn, SubnUpdates, Cases0, Cases),
+        Expr = switch(Var, Det, Cases)
+    ;
+        Expr0 = if_then_else(Vars0, Cond0, Then0, Else0),
+        rename_var_list(need_not_rename, Subn, Vars0, Vars),
+        incremental_rename_vars_in_goal(Subn, SubnUpdates, Cond0, Cond),
+        incremental_rename_vars_in_goal(Subn, SubnUpdates, Then0, Then),
+        incremental_rename_vars_in_goal(Subn, SubnUpdates, Else0, Else),
+        Expr = if_then_else(Vars, Cond, Then, Else)
+    ;
+        Expr0 = negation(Goal0),
+        incremental_rename_vars_in_goal(Subn, SubnUpdates, Goal0, Goal),
+        Expr = negation(Goal)
+    ;
+        Expr0 = scope(Reason0, Goal0),
+        (
+            Reason0 = exist_quant(Vars0),
+            rename_var_list(need_not_rename, Subn, Vars0, Vars),
+            Reason = exist_quant(Vars)
+        ;
+            Reason0 = promise_purity(_),
+            Reason = Reason0
+        ;
+            Reason0 = promise_solutions(Vars0, Kind),
+            rename_var_list(need_not_rename, Subn, Vars0, Vars),
+            Reason = promise_solutions(Vars, Kind)
+        ;
+            Reason0 = require_complete_switch(Var0),
+            rename_var(need_not_rename, Subn, Var0, Var),
+            Reason = require_complete_switch(Var)
+        ;
+            Reason0 = require_detism(_),
+            Reason = Reason0
+        ;
+            Reason0 = barrier(_),
+            Reason = Reason0
+        ;
+            Reason0 = commit(_),
+            Reason = Reason0
+        ;
+            Reason0 = from_ground_term(Var0, Kind),
+            rename_var(need_not_rename, Subn, Var0, Var),
+            Reason = from_ground_term(Var, Kind)
+        ;
+            Reason0 = trace_goal(Flag, Grade, Env, Vars, QuantVars0),
+            rename_var_list(need_not_rename, Subn, QuantVars0, QuantVars),
+            Reason = trace_goal(Flag, Grade, Env, Vars, QuantVars)
+        ),
+        incremental_rename_vars_in_goal(Subn, SubnUpdates, Goal0, Goal),
+        Expr = scope(Reason, Goal)
+    ;
+        Expr0 = generic_call(GenericCall0, Args0, Modes, Det),
+        rename_generic_call(need_not_rename, Subn, GenericCall0, GenericCall),
+        rename_var_list(need_not_rename, Subn, Args0, Args),
+        Expr = generic_call(GenericCall, Args, Modes, Det)
+    ;
+        Expr0 = plain_call(PredId, ProcId, Args0, Builtin, Context, Sym),
+        rename_var_list(need_not_rename, Subn, Args0, Args),
+        Expr = plain_call(PredId, ProcId, Args, Builtin, Context, Sym)
+    ;
+        Expr0 = unify(LHS0, RHS0, Mode, Unify0, Context),
+        rename_var(need_not_rename, Subn, LHS0, LHS),
+        incremental_rename_unify_rhs(Subn, SubnUpdates, RHS0, RHS),
+        rename_unify(need_not_rename, Subn, Unify0, Unify),
+        Expr = unify(LHS, RHS, Mode, Unify, Context)
+    ;
+        Expr0 = call_foreign_proc(Attrs, PredId, ProcId, Args0, Extra0,
+            MTRC, Impl),
+        rename_arg_list(need_not_rename, Subn, Args0, Args),
+        rename_arg_list(need_not_rename, Subn, Extra0, Extra),
+        Expr = call_foreign_proc(Attrs, PredId, ProcId, Args, Extra,
+            MTRC, Impl)
+    ;
+        Expr0 = shorthand(Shorthand0),
+        (
+            Shorthand0 = atomic_goal(GoalType0, Outer0, Inner0,
+                MaybeOutputVars0, MainGoal0, OrElseGoals0, OrElseInners),
+            GoalType = GoalType0,
+            Outer0 = atomic_interface_vars(OuterDI0, OuterUO0),
+            rename_var(need_not_rename, Subn, OuterDI0, OuterDI),
+            rename_var(need_not_rename, Subn, OuterUO0, OuterUO),
+            Outer = atomic_interface_vars(OuterDI, OuterUO),
+            Inner0 = atomic_interface_vars(InnerDI0, InnerUO0),
+            rename_var(need_not_rename, Subn, InnerDI0, InnerDI),
+            rename_var(need_not_rename, Subn, InnerUO0, InnerUO),
+            Inner = atomic_interface_vars(InnerDI, InnerUO),
+            (
+                MaybeOutputVars0 = no,
+                MaybeOutputVars = MaybeOutputVars0
+            ;
+                MaybeOutputVars0 = yes(OutputVars0),
+                rename_var_list(need_not_rename, Subn, OutputVars0, OutputVars),
+                MaybeOutputVars = yes(OutputVars)
+            ),
+            incremental_rename_vars_in_goal(Subn, SubnUpdates,
+                MainGoal0, MainGoal),
+            incremental_rename_vars_in_goals(Subn, SubnUpdates,
+                OrElseGoals0, OrElseGoals),
+            Shorthand = atomic_goal(GoalType, Outer, Inner,
+                MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners)
+        ;
+            Shorthand0 = try_goal(MaybeIO0, ResultVar0, SubGoal0),
+            (
+                MaybeIO0 = yes(try_io_state_vars(IOVarInitial0, IOVarFinal0)),
+                rename_var(need_not_rename, Subn, IOVarInitial0, IOVarInitial),
+                rename_var(need_not_rename, Subn, IOVarFinal0, IOVarFinal),
+                MaybeIO = yes(try_io_state_vars(IOVarInitial, IOVarFinal))
+            ;
+                MaybeIO0 = no,
+                MaybeIO = no
+            ),
+            rename_var(need_not_rename, Subn, ResultVar0, ResultVar),
+            incremental_rename_vars_in_goal(Subn, SubnUpdates,
+                SubGoal0, SubGoal),
+            Shorthand = try_goal(MaybeIO, ResultVar, SubGoal)
+        ;
+            Shorthand0 = bi_implication(LeftGoal0, RightGoal0),
+            incremental_rename_vars_in_goal(Subn, SubnUpdates,
+                LeftGoal0, LeftGoal),
+            incremental_rename_vars_in_goal(Subn, SubnUpdates,
+                RightGoal0, RightGoal),
+            Shorthand = bi_implication(LeftGoal, RightGoal)
+        ),
+        Expr = shorthand(Shorthand)
+    ).
+
+:- pred incremental_rename_unify_rhs(prog_var_renaming::in,
+    map(goal_id, assoc_list(prog_var, prog_var))::in,
+    unify_rhs::in, unify_rhs::out) is det.
+
+incremental_rename_unify_rhs(Subn, SubnUpdates, RHS0, RHS) :-
+    (
+        RHS0 = rhs_var(Var0),
+        rename_var(need_not_rename, Subn, Var0, Var),
+        RHS = rhs_var(Var)
+    ;
+        RHS0 = rhs_functor(Functor, E, ArgVars0),
+        rename_var_list(need_not_rename, Subn, ArgVars0, ArgVars),
+        RHS = rhs_functor(Functor, E, ArgVars)
+    ;
+        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            NonLocals0, Vars0, Modes, Det, Goal0),
+        rename_var_list(need_not_rename, Subn, NonLocals0, NonLocals),
+        rename_var_list(need_not_rename, Subn, Vars0, Vars),
+        incremental_rename_vars_in_goal(Subn, SubnUpdates, Goal0, Goal),
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            NonLocals, Vars, Modes, Det, Goal)
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% Predicates used to implement both incremental and non-incremental renames.
+%
+
 :- pred rename_arg_list(must_rename::in, prog_var_renaming::in,
     list(foreign_arg)::in, list(foreign_arg)::out) is det.
 
@@ -2616,33 +2912,6 @@ rename_arg(Must, Subn, Arg0, Arg) :-
     Arg0 = foreign_arg(Var0, B, C, D),
     rename_var(Must, Subn, Var0, Var),
     Arg = foreign_arg(Var, B, C, D).
-
-:- pred rename_vars_in_cases(must_rename::in, prog_var_renaming::in,
-    list(case)::in, list(case)::out) is det.
-
-rename_vars_in_cases(_Must, _Subn, [], []).
-rename_vars_in_cases(Must, Subn, [Case0 | Cases0], [Case | Cases]) :-
-    Case0 = case(MainConsId, OtherConsIds, Goal0),
-    rename_vars_in_goal(Must, Subn, Goal0, Goal),
-    Case = case(MainConsId, OtherConsIds, Goal),
-    rename_vars_in_cases(Must, Subn, Cases0, Cases).
-
-:- pred rename_unify_rhs(must_rename::in, prog_var_renaming::in,
-    unify_rhs::in, unify_rhs::out) is det.
-
-rename_unify_rhs(Must, Subn, rhs_var(Var0), rhs_var(Var)) :-
-    rename_var(Must, Subn, Var0, Var).
-rename_unify_rhs(Must, Subn,
-        rhs_functor(Functor, E, ArgVars0), rhs_functor(Functor, E, ArgVars)) :-
-    rename_var_list(Must, Subn, ArgVars0, ArgVars).
-rename_unify_rhs(Must, Subn,
-        rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            NonLocals0, Vars0, Modes, Det, Goal0),
-        rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            NonLocals, Vars, Modes, Det, Goal)) :-
-    rename_var_list(Must, Subn, NonLocals0, NonLocals),
-    rename_var_list(Must, Subn, Vars0, Vars),
-    rename_vars_in_goal(Must, Subn, Goal0, Goal).
 
 :- pred rename_unify(must_rename::in, prog_var_renaming::in,
     unification::in, unification::out) is det.
@@ -2905,7 +3174,7 @@ disj_list_to_goal(DisjList, GoalInfo, Goal) :-
 conjoin_goal_and_goal_list(Goal0, Goals, Goal) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     ( GoalExpr0 = conj(plain_conj, GoalList0) ->
-        list.append(GoalList0, Goals, GoalList),
+        GoalList = GoalList0 ++ Goals,
         GoalExpr = conj(plain_conj, GoalList)
     ;
         GoalExpr = conj(plain_conj, [Goal0 | Goals])
@@ -2945,7 +3214,7 @@ all_negated([hlds_goal(conj(plain_conj, NegatedConj), _) | NegatedGoals],
         Goals) :-
     all_negated(NegatedConj, Goals1),
     all_negated(NegatedGoals, Goals2),
-    list.append(Goals1, Goals2, Goals).
+    Goals = Goals1 ++ Goals2.
 
 %-----------------------------------------------------------------------------%
 
@@ -3374,12 +3643,6 @@ get_pragma_foreign_var_names_2([MaybeName | MaybeNames], !Names) :-
         MaybeName = no
     ),
     get_pragma_foreign_var_names_2(MaybeNames, !Names).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "hlds_goal.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_goal.

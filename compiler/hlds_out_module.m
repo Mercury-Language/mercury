@@ -884,7 +884,7 @@ write_promise(Info, PromiseType, Indent, ModuleInfo, _PredId, VarSet,
         io.write_string("(\n", !IO)
     ),
 
-    Clause = clause(_Modes, Goal, _Lang, _Context),
+    Goal = Clause ^ clause_body,
     do_write_goal(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
         Indent+1, ").\n", TypeQual, !IO).
 

@@ -128,6 +128,7 @@ ORDINARY_PROGS=	\
 	ho_order2 \
 	ho_solns \
 	ho_univ_to_type \
+	if_then_else_expr_state_var \
 	impl_def_lex \
 	impl_def_lex_string \
 	impl_def_literal \
@@ -153,8 +154,8 @@ ORDINARY_PROGS=	\
 	list_series_int \
 	lookup_disj \
 	lookup_switch_simple \
-	lookup_switch_simple_cond \
 	lookup_switch_simple_bitvec \
+	lookup_switch_simple_cond \
 	lookup_switch_simple_non \
 	lookup_switch_simple_opt \
 	loop_inv_test \

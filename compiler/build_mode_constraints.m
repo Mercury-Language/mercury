@@ -354,13 +354,11 @@ add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
         % goal constraints.
         Context = clause_context(FirstClause),
 
-        % All clauses are considered for all procedures.
-        % Though some may not be applicable, overall the
-        % waste should not be large.
-        Goals = list.map((func(clause(_, Body, _, _)) = Body), Clauses),
-
-        list.foldl(add_mc_vars_for_goal(PredId, ProgVarset),
-            Goals, !VarInfo),
+        % We consider all clauses for all procedures.
+        % Though some may not be applicable, overall the wasted effort
+        % should not be large.
+        Goals = list.map(clause_body, Clauses),
+        list.foldl(add_mc_vars_for_goal(PredId, ProgVarset), Goals, !VarInfo),
 
         % Temporarily form the disjunction implied by the goal path
         % annotations.

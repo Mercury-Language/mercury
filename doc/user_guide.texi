@@ -6480,6 +6480,11 @@ the foreign procedure body contains operations that are not allowed
 Note that since the compiler's ability to parse foreign language code
 is limited some warnings reported by this option may be spurious and
 some actual errors may not be detected at all.
+
+@sp 1
+@item --no-warn-state-var-shadowing
+@findex --no-warn-state-var-shadowing
+Do not warn about one state variable shadowing another.
 @end table
 
 @node Verbosity options
@@ -7040,7 +7045,7 @@ E - deep profiling information,
 G - compile-time garbage collection information,
 I - imported predicates,
 M - mode and inst information,
-P - path information,
+P - goal id and path information,
 R - live forward use, live backward use and reuse possibilities,
 S - information about structure sharing,
 T - type and typeclass information,

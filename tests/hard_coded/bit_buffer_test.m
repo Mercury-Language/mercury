@@ -52,7 +52,7 @@ main(!IO) :-
     % Uncomment this to debug read errors.
     % bit_buffer.read.set_logging_level(1, !IO),
 
-    some [!Seq, !ShortBM, !ShortSeq, !LongSeq, !ShortBM, !LongBM, !ErrorSeq] (
+    some [!Seq, !ShortSeq, !LongSeq, !ShortBM, !LongBM, !ErrorSeq] (
         %
         % Test with request sequences that are a minimum of 8 bytes to
         % test overflow even on 64-bit machines (buffers are at least

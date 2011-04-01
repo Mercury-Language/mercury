@@ -436,16 +436,18 @@ typecheck_pred_if_needed(ModuleInfo, PredId, !PredInfo, Specs, Changed) :-
     pred_info::in, pred_info::out, list(error_spec)::out, bool::out) is det.
 
 typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs, Changed) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    pred_info_get_arg_types(!.PredInfo, _ArgTypeVarSet, ExistQVars0,
-        ArgTypes0),
-    pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
-    clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers0),
-    pred_info_get_markers(!.PredInfo, Markers0),
     % Handle the --allow-stubs and --warn-stubs options.
     % If --allow-stubs is set, and there are no clauses, then
     % - issue a warning (if --warn-stubs is set), and then
     % - generate a "stub" clause that just throws an exception.
+    % The real work is done by do_typecheck_pred.
+
+    module_info_get_globals(ModuleInfo, Globals),
+    pred_info_get_arg_types(!.PredInfo, _ArgTypeVarSet, _ExistQVars0,
+        ArgTypes0),
+    pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
+    clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers0),
+    pred_info_get_markers(!.PredInfo, Markers0),
     clause_list_is_empty(ClausesRep0) = ClausesRep0IsEmpty,
     (
         ClausesRep0IsEmpty = yes,
@@ -486,12 +488,11 @@ typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs, Changed) :-
             )
         )
     ),
-    some [!ClausesInfo, !Info, !HeadTypeParams] (
+
+    some [!ClausesInfo] (
         pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
-        clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep1, ItemNumbers),
+        clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep1, _ItemNumbers),
         clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
-        clauses_info_get_varset(!.ClausesInfo, VarSet),
-        clauses_info_get_explicit_vartypes(!.ClausesInfo, ExplicitVarTypes0),
         clause_list_is_empty(ClausesRep1) = ClausesRep1IsEmpty,
         (
             ClausesRep1IsEmpty = yes,
@@ -520,196 +521,206 @@ typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs, Changed) :-
             )
         ;
             ClausesRep1IsEmpty = no,
-            pred_info_get_import_status(!.PredInfo, Status),
-            pred_info_get_typevarset(!.PredInfo, TypeVarSet0),
-            ( check_marker(Markers0, marker_infer_type) ->
-                % For a predicate whose type is inferred, the predicate is
-                % allowed to bind the type variables in the head of the
-                % predicate's type declaration. Such predicates are given an
-                % initial type declaration of `pred foo(T1, T2, ..., TN)'
-                % by make_hlds.m.
-                Inferring = yes,
-                trace [io(!IO)] (
-                    write_pred_progress_message("% Inferring type of ",
-                        PredId, ModuleInfo, !IO)
-                ),
-                !:HeadTypeParams = [],
-                PredConstraints = constraints([], [])
-            ;
-                Inferring = no,
-                trace [io(!IO)] (
-                    write_pred_progress_message("% Type-checking ", PredId,
-                        ModuleInfo, !IO)
-                ),
-                type_vars_list(ArgTypes0, !:HeadTypeParams),
-                pred_info_get_class_context(!.PredInfo, PredConstraints),
-                constraint_list_get_tvars(PredConstraints ^ univ_constraints,
-                    UnivTVars),
-                list.append(UnivTVars, !HeadTypeParams),
-                list.sort_and_remove_dups(!HeadTypeParams),
-                list.delete_elems(!.HeadTypeParams, ExistQVars0,
-                    !:HeadTypeParams)
-            ),
+            do_typecheck_pred(ModuleInfo, PredId, !PredInfo,
+                StartingSpecs, Specs, Changed)
+        )
+    ).
 
-            module_info_get_class_table(ModuleInfo, ClassTable),
-            make_head_hlds_constraints(ClassTable, TypeVarSet0,
-                PredConstraints, Constraints),
-            ( pred_info_is_field_access_function(ModuleInfo, !.PredInfo) ->
-                IsFieldAccessFunction = yes
-            ;
-                IsFieldAccessFunction = no
-            ),
-            pred_info_get_markers(!.PredInfo, PredMarkers0),
-            typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
-                TypeVarSet0, VarSet, ExplicitVarTypes0, !.HeadTypeParams,
-                Constraints, Status, PredMarkers0, StartingSpecs, !:Info),
-            get_clause_list(ClausesRep1, Clauses1),
-            typecheck_clause_list(HeadVars, ArgTypes0, Clauses1, Clauses,
-                !Info),
-            % We need to perform a final pass of context reduction at the end,
-            % before checking the typeclass constraints.
-            perform_context_reduction(!Info),
-            typecheck_check_for_ambiguity(whole_pred, HeadVars, !Info),
-            typecheck_info_get_final_info(!.Info, !.HeadTypeParams,
-                ExistQVars0, ExplicitVarTypes0, TypeVarSet,
-                !:HeadTypeParams, InferredVarTypes0,
-                InferredTypeConstraints0, ConstraintProofs,
-                ConstraintMap, TVarRenaming, ExistTypeRenaming),
-            typecheck_info_get_pred_markers(!.Info, PredMarkers),
-            map.optimize(InferredVarTypes0, InferredVarTypes),
-            clauses_info_set_vartypes(InferredVarTypes, !ClausesInfo),
+:- pred do_typecheck_pred(module_info::in, pred_id::in,
+    pred_info::in, pred_info::out,
+    list(error_spec)::in, list(error_spec)::out, bool::out) is det.
 
-            % Apply substitutions to the explicit vartypes.
+do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
+    some [!Info, !ClausesInfo, !HeadTypeParams] (
+        pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
+        clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep0, ItemNumbers),
+        clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
+        clauses_info_get_varset(!.ClausesInfo, VarSet),
+        clauses_info_get_explicit_vartypes(!.ClausesInfo, ExplicitVarTypes0),
+        pred_info_get_import_status(!.PredInfo, Status),
+        pred_info_get_typevarset(!.PredInfo, TypeVarSet0),
+        pred_info_get_arg_types(!.PredInfo, _ArgTypeVarSet, ExistQVars0,
+            ArgTypes0),
+        pred_info_get_markers(!.PredInfo, Markers0),
+        ( check_marker(Markers0, marker_infer_type) ->
+            % For a predicate whose type is inferred, the predicate is allowed
+            % to bind the type variables in the head of the predicate's type
+            % declaration. Such predicates are given an initial type
+            % declaration of `pred foo(T1, T2, ..., TN)' by make_hlds.m.
+            Inferring = yes,
+            trace [io(!IO)] (
+                write_pred_progress_message("% Inferring type of ",
+                    PredId, ModuleInfo, !IO)
+            ),
+            !:HeadTypeParams = [],
+            PredConstraints = constraints([], [])
+        ;
+            Inferring = no,
+            trace [io(!IO)] (
+                write_pred_progress_message("% Type-checking ", PredId,
+                    ModuleInfo, !IO)
+            ),
+            type_vars_list(ArgTypes0, !:HeadTypeParams),
+            pred_info_get_class_context(!.PredInfo, PredConstraints),
+            constraint_list_get_tvars(PredConstraints ^ univ_constraints,
+                UnivTVars),
+            list.append(UnivTVars, !HeadTypeParams),
+            list.sort_and_remove_dups(!HeadTypeParams),
+            list.delete_elems(!.HeadTypeParams, ExistQVars0, !:HeadTypeParams)
+        ),
+
+        module_info_get_class_table(ModuleInfo, ClassTable),
+        make_head_hlds_constraints(ClassTable, TypeVarSet0,
+            PredConstraints, Constraints),
+        ( pred_info_is_field_access_function(ModuleInfo, !.PredInfo) ->
+            IsFieldAccessFunction = yes
+        ;
+            IsFieldAccessFunction = no
+        ),
+        pred_info_get_markers(!.PredInfo, PredMarkers0),
+        typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
+            TypeVarSet0, VarSet, ExplicitVarTypes0, !.HeadTypeParams,
+            Constraints, Status, PredMarkers0, !.Specs, !:Info),
+        get_clause_list(ClausesRep0, Clauses0),
+        typecheck_clause_list(HeadVars, ArgTypes0, Clauses0, Clauses, !Info),
+        % We need to perform a final pass of context reduction at the end,
+        % before checking the typeclass constraints.
+        perform_context_reduction(!Info),
+        typecheck_check_for_ambiguity(whole_pred, HeadVars, !Info),
+        typecheck_info_get_final_info(!.Info, !.HeadTypeParams, ExistQVars0,
+            ExplicitVarTypes0, TypeVarSet, !:HeadTypeParams, InferredVarTypes0,
+            InferredTypeConstraints0, ConstraintProofs, ConstraintMap,
+            TVarRenaming, ExistTypeRenaming),
+        typecheck_info_get_pred_markers(!.Info, PredMarkers),
+        map.optimize(InferredVarTypes0, InferredVarTypes),
+        clauses_info_set_vartypes(InferredVarTypes, !ClausesInfo),
+
+        % Apply substitutions to the explicit vartypes.
+        (
+            ExistQVars0 = [],
+            ExplicitVarTypes1 = ExplicitVarTypes0
+        ;
+            ExistQVars0 = [_ | _],
+            apply_variable_renaming_to_vartypes(ExistTypeRenaming,
+                ExplicitVarTypes0, ExplicitVarTypes1)
+        ),
+        apply_variable_renaming_to_vartypes(TVarRenaming,
+            ExplicitVarTypes1, ExplicitVarTypes),
+
+        clauses_info_set_explicit_vartypes(ExplicitVarTypes, !ClausesInfo),
+        set_clause_list(Clauses, ClausesRep),
+        clauses_info_set_clauses_rep(ClausesRep, ItemNumbers, !ClausesInfo),
+        pred_info_set_clauses_info(!.ClausesInfo, !PredInfo),
+        pred_info_set_typevarset(TypeVarSet, !PredInfo),
+        pred_info_set_constraint_proofs(ConstraintProofs, !PredInfo),
+        pred_info_set_constraint_map(ConstraintMap, !PredInfo),
+        pred_info_set_markers(PredMarkers, !PredInfo),
+
+        % Split the inferred type class constraints into those that apply
+        % only to the head variables, and those that apply to type variables
+        % which occur only in the body.
+        map.apply_to_list(HeadVars, InferredVarTypes, ArgTypes),
+        type_vars_list(ArgTypes, ArgTypeVars),
+        restrict_to_head_vars(InferredTypeConstraints0, ArgTypeVars,
+            InferredTypeConstraints, UnprovenBodyConstraints),
+
+        % If there are any as-yet-unproven constraints on type variables
+        % in the body, then save these in the pred_info. If it turns out that
+        % this pass was the last pass of type inference, the post_typecheck
+        % pass will report an error. But we can't report an error now, because
+        % a later pass of type inference could cause some type variables
+        % to become bound to types that make the constraints satisfiable,
+        % causing the error to go away.
+        pred_info_set_unproven_body_constraints(UnprovenBodyConstraints,
+            !PredInfo),
+
+        (
+            Inferring = yes,
+            % We need to infer which of the head variable types must be
+            % existentially quantified.
+            infer_existential_types(ArgTypeVars, ExistQVars, !HeadTypeParams),
+
+            % Now save the information we inferred in the pred_info
+            pred_info_set_head_type_params(!.HeadTypeParams, !PredInfo),
+            pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes,
+                !PredInfo),
+            pred_info_get_class_context(!.PredInfo, OldTypeConstraints),
+            pred_info_set_class_context(InferredTypeConstraints, !PredInfo),
+
+            % Check if anything changed.
+            (
+                % If the argument types and the type constraints are identical
+                % up to renaming, then nothing has changed.
+                pred_info_get_tvar_kinds(!.PredInfo, TVarKinds),
+                argtypes_identical_up_to_renaming(TVarKinds, ExistQVars0,
+                    ArgTypes0, OldTypeConstraints, ExistQVars, ArgTypes,
+                    InferredTypeConstraints)
+            ->
+                Changed = no
+            ;
+                Changed = yes
+            )
+        ;
+            Inferring = no,
+            pred_info_set_head_type_params(!.HeadTypeParams, !PredInfo),
+            pred_info_get_origin(!.PredInfo, Origin0),
+
+            % Leave the original argtypes etc., but apply any substitutions
+            % that map existentially quantified type variables to other
+            % type vars, and then rename them all to match the new typevarset,
+            % so that the type variables names match up (e.g. with the type
+            % variables in the constraint_proofs)
+
+            % Apply any type substititions that map existentially quantified
+            % type variables to other type vars.
             (
                 ExistQVars0 = [],
-                ExplicitVarTypes1 = ExplicitVarTypes0
+                % Optimize common case.
+                ExistQVars1 = [],
+                ArgTypes1 = ArgTypes0,
+                PredConstraints1 = PredConstraints,
+                Origin1 = Origin0
             ;
                 ExistQVars0 = [_ | _],
-                apply_variable_renaming_to_vartypes(ExistTypeRenaming,
-                    ExplicitVarTypes0, ExplicitVarTypes1)
+                list.foldl(
+                    check_existq_clause(TypeVarSet, ExistQVars0),
+                    Clauses, !Info),
+
+                apply_var_renaming_to_var_list(ExistQVars0,
+                    ExistTypeRenaming, ExistQVars1),
+                apply_variable_renaming_to_type_list(ExistTypeRenaming,
+                    ArgTypes0, ArgTypes1),
+                apply_variable_renaming_to_prog_constraints(
+                    ExistTypeRenaming, PredConstraints, PredConstraints1),
+                rename_instance_method_constraints(ExistTypeRenaming,
+                    Origin0, Origin1)
             ),
-            apply_variable_renaming_to_vartypes(TVarRenaming,
-                ExplicitVarTypes1, ExplicitVarTypes),
 
-            clauses_info_set_explicit_vartypes(ExplicitVarTypes, !ClausesInfo),
-            set_clause_list(Clauses, ClausesRep),
-            clauses_info_set_clauses_rep(ClausesRep, ItemNumbers,
-                !ClausesInfo),
-            pred_info_set_clauses_info(!.ClausesInfo, !PredInfo),
-            pred_info_set_typevarset(TypeVarSet, !PredInfo),
-            pred_info_set_constraint_proofs(ConstraintProofs, !PredInfo),
-            pred_info_set_constraint_map(ConstraintMap, !PredInfo),
-            pred_info_set_markers(PredMarkers, !PredInfo),
+            % Rename them all to match the new typevarset.
+            apply_var_renaming_to_var_list(ExistQVars1,
+                TVarRenaming, ExistQVars),
+            apply_variable_renaming_to_type_list(TVarRenaming, ArgTypes1,
+                RenamedOldArgTypes),
+            apply_variable_renaming_to_prog_constraints(TVarRenaming,
+                PredConstraints1, RenamedOldConstraints),
+            rename_instance_method_constraints(TVarRenaming, Origin1, Origin),
 
-            % Split the inferred type class constraints into those that
-            % apply only to the head variables, and those that apply to
-            % type variables which occur only in the body.
-            map.apply_to_list(HeadVars, InferredVarTypes, ArgTypes),
-            type_vars_list(ArgTypes, ArgTypeVars),
-            restrict_to_head_vars(InferredTypeConstraints0, ArgTypeVars,
-                InferredTypeConstraints, UnprovenBodyConstraints),
-
-            % If there are any as-yet-unproven constraints on type variables
-            % in the body, then save these in the pred_info. If it turns out
-            % that this pass was the last pass of type inference, the
-            % post_typecheck.m will report an error. But we can't report
-            % an error now, because a later pass of type inference could cause
-            % some type variables to become bound to types that make the
-            % constraints satisfiable, causing the error to go away.
-            pred_info_set_unproven_body_constraints(UnprovenBodyConstraints,
+            % Save the results in the pred_info.
+            pred_info_set_arg_types(TypeVarSet, ExistQVars, RenamedOldArgTypes,
                 !PredInfo),
+            pred_info_set_class_context(RenamedOldConstraints, !PredInfo),
+            pred_info_set_origin(Origin, !PredInfo),
 
-            (
-                Inferring = yes,
-                % We need to infer which of the head variable types must be
-                % existentially quantified.
-                infer_existential_types(ArgTypeVars, ExistQVars,
-                    !HeadTypeParams),
-
-                % Now save the information we inferred in the pred_info
-                pred_info_set_head_type_params(!.HeadTypeParams, !PredInfo),
-                pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes,
-                    !PredInfo),
-                pred_info_get_class_context(!.PredInfo, OldTypeConstraints),
-                pred_info_set_class_context(InferredTypeConstraints,
-                    !PredInfo),
-
-                % Check if anything changed.
-                (
-                    % If the argument types and the type constraints are
-                    % identical up to renaming, then nothing has changed.
-                    pred_info_get_tvar_kinds(!.PredInfo, TVarKinds),
-                    argtypes_identical_up_to_renaming(TVarKinds, ExistQVars0,
-                        ArgTypes0, OldTypeConstraints, ExistQVars, ArgTypes,
-                        InferredTypeConstraints)
-                ->
-                    Changed = no
-                ;
-                    Changed = yes
-                )
-            ;
-                Inferring = no,
-                pred_info_set_head_type_params(!.HeadTypeParams, !PredInfo),
-                pred_info_get_origin(!.PredInfo, Origin0),
-
-                % Leave the original argtypes etc., but apply any substititions
-                % that map existentially quantified type variables to other
-                % type vars, and then rename them all to match the new
-                % typevarset, so that the type variables names match up
-                % (e.g. with the type variables in the constraint_proofs)
-
-                % Apply any type substititions that map existentially
-                % quantified type variables to other type vars.
-                (
-                    ExistQVars0 = [],
-                    % Optimize common case.
-                    ExistQVars1 = [],
-                    ArgTypes1 = ArgTypes0,
-                    PredConstraints1 = PredConstraints,
-                    Origin1 = Origin0
-                ;
-                    ExistQVars0 = [_ | _],
-                    list.foldl(
-                        check_existq_clause(TypeVarSet, ExistQVars0),
-                        Clauses, !Info),
-
-                    apply_var_renaming_to_var_list(ExistQVars0,
-                        ExistTypeRenaming, ExistQVars1),
-                    apply_variable_renaming_to_type_list(ExistTypeRenaming,
-                        ArgTypes0, ArgTypes1),
-                    apply_variable_renaming_to_prog_constraints(
-                        ExistTypeRenaming, PredConstraints, PredConstraints1),
-                    rename_instance_method_constraints(ExistTypeRenaming,
-                        Origin0, Origin1)
-                ),
-
-                % Rename them all to match the new typevarset.
-                apply_var_renaming_to_var_list(ExistQVars1,
-                    TVarRenaming, ExistQVars),
-                apply_variable_renaming_to_type_list(TVarRenaming, ArgTypes1,
-                    RenamedOldArgTypes),
-                apply_variable_renaming_to_prog_constraints(TVarRenaming,
-                    PredConstraints1, RenamedOldConstraints),
-                rename_instance_method_constraints(TVarRenaming,
-                    Origin1, Origin),
-
-                % Save the results in the pred_info.
-                pred_info_set_arg_types(TypeVarSet, ExistQVars,
-                    RenamedOldArgTypes, !PredInfo),
-                pred_info_set_class_context(RenamedOldConstraints, !PredInfo),
-                pred_info_set_origin(Origin, !PredInfo),
-
-                Changed = no
-            ),
-            typecheck_info_get_all_errors(!.Info, Specs)
-        )
+            Changed = no
+        ),
+        typecheck_info_get_all_errors(!.Info, !:Specs)
     ).
 
 :- func report_any_non_contiguous_clauses(module_info, pred_id, pred_info,
     clause_item_numbers, clause_item_number_types) = list(error_spec).
 
-report_any_non_contiguous_clauses(ModuleInfo, PredId, PredInfo,
-        ItemNumbers, Type) = Specs :-
+report_any_non_contiguous_clauses(ModuleInfo, PredId, PredInfo, ItemNumbers,
+        Type) = Specs :-
     (
         clauses_are_non_contiguous(ItemNumbers, Type,
             FirstRegion, SecondRegion, LaterRegions)
@@ -806,7 +817,7 @@ generate_stub_clause_2(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
     % Combine the unification and call into a conjunction.
     goal_info_init(Context, GoalInfo),
     Body = hlds_goal(conj(plain_conj, [UnifyGoal, CallGoal]), GoalInfo),
-    StubClause = clause(all_modes, Body, impl_lang_mercury, Context).
+    StubClause = clause(all_modes, Body, impl_lang_mercury, Context, []).
 
 :- pred rename_instance_method_constraints(tvar_renaming::in,
     pred_origin::in, pred_origin::out) is det.
@@ -1021,7 +1032,7 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
         NonLocals = proc_arg_vector_to_set(HeadVars),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo),
-        Clause = clause(all_modes, Goal, impl_lang_mercury, Context),
+        Clause = clause(all_modes, Goal, impl_lang_mercury, Context, []),
         set_clause_list([Clause], ClausesRep),
         ItemNumbers = init_clause_item_numbers_comp_gen,
         clauses_info_set_clauses_rep(ClausesRep, ItemNumbers,

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2010 The University of Melbourne.
+% Copyright (C) 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -142,27 +142,20 @@
     %
 :- type mode_analysis_failure
    --->     no_producer_consumer_sols(
+                % The predicate for which the producer/consumer analysis
+                % couldn't be solved.
                 failing_predicate   ::  pred_proc_id
-                                    % The predicate for which the
-                                    % producer/consumer analysis
-                                    % failed to be solved
             )
-
-    ;
-            mode_inference_failed(
+    ;       mode_inference_failed(
+                % The caller of the predicate for which mode inference
+                % has failed.
                 caller              ::  pred_id,
-                                    % The predicate calling the
-                                    % predicate for which mode
-                                    % inference has failed.
 
+                % The SCC of predicates to be mode inferred for which
+                % mode inference has failed.
                 scc                 :: list(pred_id)
-                                    % The SCC of predicates to be
-                                    % mode inferred for which
-                                    % the mode inference failed.
             )
-
-    ;
-            conjunct_ordering_failed(pred_proc_id).
+    ;       conjunct_ordering_failed(pred_proc_id).
 
     % A map from program variables to related producer/consumer
     % constraint variables' abstract representations. The constraint
@@ -190,7 +183,7 @@ mode_reordering(PredConstraintsMap, VarMap, SCCs, !ModuleInfo) :-
     list(pred_id)::in, module_info::in, module_info::out) is det.
 
 scc_reordering(PredConstraintsMap, VarMap, SCC0, !ModuleInfo) :-
-    % Process only predicates from this module
+    % Process only predicates from this module.
     list.filter(module_info_pred_status_is_imported(!.ModuleInfo),
         SCC0, _, SCC),
 
@@ -202,8 +195,7 @@ scc_reordering(PredConstraintsMap, VarMap, SCC0, !ModuleInfo) :-
 
     (
         PredsToInfer = [_ | _],
-        % XXX GIVE UP FOR NOW!!!!
-        sorry(this_file, "mode inference")
+        sorry($module, $pred, "NYI: mode inference")
     ;
         PredsToInfer = []
     ),
@@ -220,11 +212,10 @@ scc_reordering(PredConstraintsMap, VarMap, SCC0, !ModuleInfo) :-
 
 pred_reordering(PredConstraintsMap, VarMap, PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
-
     ( pred_info_infer_modes(PredInfo0) ->
         % XXX GIVE UP FOR NOW!!!! In reality, execution shouldn't reach here
         % if the pred is to be mode inferred, should it?
-        sorry(this_file, "mode inference constraints")
+        sorry($module, $pred, "mode inference constraints")
     ;
         % XXX Maybe move this outside of this predicate - then
         % the predicate can assume that the correct procedures
@@ -249,7 +240,7 @@ pred_reordering(PredConstraintsMap, VarMap, PredId, !ModuleInfo) :-
             % XXX Deal with mode errors here!
             % This is a placeholder error message.
             ErrorsString = string.string(Errors),
-            sorry(this_file, "mode checking failure: " ++ ErrorsString)
+            sorry($module, $pred, "mode checking failure: " ++ ErrorsString)
         )
     ).
 
@@ -365,7 +356,7 @@ goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings, Goal0, Goal) :-
             minimum_reordering(OCInfo, Order),
             list.map(list.index1_det(Goals0), Order, Goals1),
 
-            % Then recurse on the reordered goals
+            % Then recurse on the reordered goals.
             list.map(
                 goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings),
                 Goals1, Goals)
@@ -384,7 +375,7 @@ goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings, Goal0, Goal) :-
     ;
         GoalExpr0 = switch(_, _, _),
         % We haven't yet even tried to turn disjunctions into switches.
-        unexpected(this_file, "goal_expr_reordering: switch")
+        unexpected($module, $pred, "switch")
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings,
@@ -410,7 +401,7 @@ goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings, Goal0, Goal) :-
         GoalExpr0 = shorthand(_),
         % XXX We need to handle atomic goals.
         % XXX We need to handle try goals.
-        unexpected(this_file, "goal_expr_reordering: NYI: shorthand")
+        unexpected($module, $pred, "NYI: shorthand")
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
@@ -456,9 +447,8 @@ constraint_transitive_closure(OCI, Constraint, NewConstraints) :-
     ComesAfter = set.filter_map(
         func(lt(T, A)::in) = (A::out) is semidet :- T = To, Constraints),
 
-    % Each conjunct in the ComesBefore set and the From conjunct must
-    % precede the To conjunct and each of the conjuncts in the
-    % ComesAfter set.
+    % Each conjunct in the ComesBefore set and the From conjunct must precede
+    % the To conjunct and each of the conjuncts in the ComesAfter set.
     set.fold(insert_lt_constraints(set.insert(ComesAfter, To)),
         set.insert(ComesBefore, From), set.init, NewConstraints).
 
@@ -796,7 +786,7 @@ dump_goal_goal_paths(Globals, Indent, Goal, !IO) :-
         list.foldl(dump_goal_goal_paths(Globals, SubGoalIndent), Goals, !IO)
     ;
         GoalExpr = switch(_, _, _),
-        unexpected(this_file, "switch")
+        unexpected($module, $pred, "switch")
     ;
         GoalExpr = if_then_else(_, CondGoal, ThenGoal, ElseGoal),
         Goals = [CondGoal, ThenGoal, ElseGoal],
@@ -816,18 +806,12 @@ dump_goal_goal_paths(Globals, Indent, Goal, !IO) :-
                 !IO)
         ;
             ShortHand = try_goal(_, _, _),
-            unexpected(this_file, "try_goal")
+            unexpected($module, $pred, "try_goal")
         ;
             ShortHand = bi_implication(_, _),
-            unexpected(this_file, "bi_implication")
+            unexpected($module, $pred, "bi_implication")
         )
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "ordering_mode_constraints.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module ordering_mode_constraints.

@@ -974,8 +974,7 @@ clause_list_size(Clauses, GoalSize) :-
 :- pred clause_size_increment(clause::in, int::in, int::out) is det.
 
 clause_size_increment(Clause, Size0, Size) :-
-    Clause = clause(_, ClauseGoal, _, _),
-    goal_size(ClauseGoal, ClauseSize),
+    goal_size(Clause ^ clause_body, ClauseSize),
     Size = Size0 + ClauseSize.
 
 :- pred cases_size(list(case)::in, int::out) is det.

@@ -38,6 +38,12 @@
 
 %-----------------------------------------------------------------------------%
 
+    % Print a goal in a way that is suitable for debugging the compiler
+    % (but necessarily for anything else).
+    %
+:- pred dump_goal(module_info::in, prog_varset::in, hlds_goal::in,
+    io::di, io::uo) is det.
+
     % Print out an HLDS goal. The module_info and prog_varset give
     % the context of the goal. The boolean says whether variables should
     % have their numbers appended to them. The integer gives the level
@@ -136,9 +142,16 @@
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
-%
-% Write out goal_infos in the form of annotations around goal expressions.
-%
+
+dump_goal(ModuleInfo, VarSet, Goal, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    Info = init_hlds_out_info(Globals),
+    AppendVarNums = yes,
+    Indent = 0,
+    Follow = "",
+    TypeQual = no_varset_vartypes,
+    do_write_goal(Info, Goal, ModuleInfo, VarSet,
+        AppendVarNums, Indent, Follow, TypeQual, !IO).
 
 write_goal(Info, Goal, ModuleInfo, VarSet,
         AppendVarNums, Indent, Follow, !IO) :-
@@ -148,6 +161,8 @@ write_goal(Info, Goal, ModuleInfo, VarSet,
 
 do_write_goal(Info, Goal, ModuleInfo, VarSet,
         AppendVarNums, Indent, Follow, TypeQual, !IO) :-
+    % Write out goal_infos in the form of annotations around goal expressions.
+
     Goal = hlds_goal(GoalExpr, GoalInfo),
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( string.contains_char(DumpOptions, 'c') ->

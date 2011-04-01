@@ -208,7 +208,6 @@ expect(Goal, Module, Message) :-
         unexpected(Module, Message)
     ).
 
-
 expect(Goal, Module, Proc, Message) :-
     ( Goal ->
         true
