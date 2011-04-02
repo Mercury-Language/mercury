@@ -41,6 +41,9 @@ typedef MR_uint_least16_t   MR_ContextStopReason;
 typedef MR_Integer          MR_ContextId;
 typedef MR_uint_least32_t   MR_TS_StringId;
 typedef MR_uint_least32_t   MR_SparkId;
+typedef MR_uint_least32_t   MR_EngSetId;
+typedef MR_uint_least16_t   MR_EngSetType;
+typedef MR_uint_least32_t   MR_TS_Pid;
 
 typedef struct MR_Threadscope_String {
     const char*     MR_tsstring_string;
@@ -177,6 +180,30 @@ MR_threadscope_post_stop_par_conj(MR_Word* dynamic_id);
 */
 extern void
 MR_threadscope_post_stop_par_conjunct(MR_Word* dynamic_id);
+
+/*
+** Post this message when a future is created, this establishes the conjuction
+** id to future id mapping.  The conjunction id is inferred by context.
+*/
+extern void
+MR_threadscope_post_new_future(MR_Future* future_id);
+
+/*
+** Post either of these messages when waiting on a future.  THe first if the
+** context had to be suspended because the future was not available, and the
+** second when the context did not need to be suspended.
+*/
+extern void
+MR_threadscope_post_wait_future_nosuspend(MR_Future* future_id);
+
+extern void
+MR_threadscope_post_wait_future_suspended(MR_Future* future_id);
+
+/*
+** Post this event when signaling the production of a future.
+*/
+extern void
+MR_threadscope_post_signal_future(MR_Future* future_id);
 
 /*
 ** Register all the strings in an array and save their IDs in the array.

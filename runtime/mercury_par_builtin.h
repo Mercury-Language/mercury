@@ -2,7 +2,7 @@
 vim: ft=c ts=4 sw=4 et
 */
 /*
-** Copyright (C) 2009-2010 The University of Melbourne.
+** Copyright (C) 2009-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -85,6 +85,7 @@ vim: ft=c ts=4 sw=4 et
                                                                             \
             Future->MR_fut_signalled = MR_FALSE;                            \
             Future->MR_fut_suspended = NULL;                                \
+            MR_maybe_post_new_future(Future);                               \
         } while (0)
 
     /*
@@ -107,6 +108,7 @@ vim: ft=c ts=4 sw=4 et
             if (Future->MR_fut_signalled) {                                 \
                 Value = Future->MR_fut_value;                               \
                 MR_UNLOCK(&(Future->MR_fut_lock), "future.wait");           \
+                MR_maybe_post_wait_future_nosuspend(Future);                \
             } else {                                                        \
                 MR_Context *ctxt;                                           \
                                                                             \
@@ -131,24 +133,13 @@ vim: ft=c ts=4 sw=4 et
                 Future->MR_fut_suspended = ctxt;                            \
                                                                             \
                 MR_UNLOCK(&(Future->MR_fut_lock), "future.wait");           \
+                MR_maybe_post_wait_future_suspended(Future);                \
                                                                             \
                 MR_maybe_post_stop_context;                                 \
                 MR_ENGINE(MR_eng_this_context) = NULL;                      \
                 MR_runnext();                                               \
             }                                                               \
         } while (0)
-
-#ifdef MR_THREADSCOPE
-    #define MR_maybe_post_stop_context                                      \
-        do {                                                                \
-            MR_threadscope_post_stop_context(MR_TS_STOP_REASON_BLOCKED);    \
-        } while (0)
-
-#else
-    #define MR_maybe_post_stop_context                                      \
-        do {                                                                \
-        } while (0)
-#endif
 
     #define MR_par_builtin_get_future(Future, Value)                        \
         do {                                                                \
@@ -161,6 +152,11 @@ vim: ft=c ts=4 sw=4 et
             MR_Context *ctxt;                                               \
             MR_Context *next;                                               \
                                                                             \
+            /*                                                              \
+            ** Post the threadscope signal future message before waking any \
+            ** threads (and posting those messages.                         \
+            */                                                              \
+            MR_maybe_post_signal_future(Future);                            \
             MR_LOCK(&(Future->MR_fut_lock), "future.signal");               \
                                                                             \
             /*                                                              \
@@ -185,6 +181,43 @@ vim: ft=c ts=4 sw=4 et
                                                                             \
             MR_UNLOCK(&(Future->MR_fut_lock), "future.signal");             \
         } while (0)
+
+#ifdef MR_THREADSCOPE
+    #define MR_maybe_post_stop_context                                      \
+        do {                                                                \
+            MR_threadscope_post_stop_context(MR_TS_STOP_REASON_BLOCKED);    \
+        } while (0)
+
+    #define MR_maybe_post_new_future(future)                                \
+        do {                                                                \
+            MR_threadscope_post_new_future(future);                         \
+        } while (0)
+
+    #define MR_maybe_post_wait_future_nosuspend(future)                     \
+        do {                                                                \
+            MR_threadscope_post_wait_future_nosuspend(future);              \
+        } while (0)
+
+    #define MR_maybe_post_wait_future_suspended(future)                     \
+        do {                                                                \
+            MR_threadscope_post_wait_future_suspended(future);              \
+        } while (0)
+
+    #define MR_maybe_post_signal_future(future)                             \
+        do {                                                                \
+            MR_threadscope_post_signal_future(future);                      \
+        } while (0)
+
+#else
+    #define MR_noop                                                         \
+        do {                                                                \
+        } while (0)
+    #define MR_maybe_post_stop_context MR_noop
+    #define MR_maybe_post_new_future(future) MR_noop
+    #define MR_maybe_post_wait_future_nosuspend(future) MR_noop
+    #define MR_maybe_post_wait_future_suspended(future) MR_noop
+    #define MR_maybe_post_signal_future(future) MR_noop
+#endif
 
 #else
 
