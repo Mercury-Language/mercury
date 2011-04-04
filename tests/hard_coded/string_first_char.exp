@@ -1,0 +1,39 @@
+first_char(in, in, in):
+first_char("aßξ啕𐀀", 'a', "ßξ啕𐀀")
+first_char("ßξ啕𐀀", 'ß', "ξ啕𐀀")
+first_char("ξ啕𐀀", 'ξ', "啕𐀀")
+first_char("啕𐀀", '啕', "𐀀")
+first_char("𐀀", '𐀀', "")
+not first_char("", '.', "")
+not first_char("abc", 'x', "abc")
+
+first_char(in, uo, in):
+first_char("aßξ啕𐀀", 'a', "ßξ啕𐀀")
+first_char("ßξ啕𐀀", 'ß', "ξ啕𐀀")
+first_char("ξ啕𐀀", 'ξ', "啕𐀀")
+first_char("啕𐀀", '啕', "𐀀")
+first_char("𐀀", '𐀀', "")
+not first_char("", _, "")
+
+first_char(in, in, uo):
+first_char("aßξ啕𐀀", 'a', "ßξ啕𐀀")
+first_char("ßξ啕𐀀", 'ß', "ξ啕𐀀")
+first_char("ξ啕𐀀", 'ξ', "啕𐀀")
+first_char("啕𐀀", '啕', "𐀀")
+first_char("𐀀", '𐀀', "")
+not first_char("", '.', _)
+
+first_char(in, uo, uo):
+first_char("aßξ啕𐀀", 'a', "ßξ啕𐀀")
+first_char("ßξ啕𐀀", 'ß', "ξ啕𐀀")
+first_char("ξ啕𐀀", 'ξ', "啕𐀀")
+first_char("啕𐀀", '啕', "𐀀")
+first_char("𐀀", '𐀀', "")
+not first_char("", _, _)
+
+first_char(uo, in, in):
+first_char("aßξ啕𐀀", 'a', "ßξ啕𐀀")
+first_char("ßξ啕𐀀", 'ß', "ξ啕𐀀")
+first_char("ξ啕𐀀", 'ξ', "啕𐀀")
+first_char("啕𐀀", '啕', "𐀀")
+first_char("𐀀", '𐀀', "")

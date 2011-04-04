@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1999-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -179,11 +179,13 @@
 
 :- implementation.
 
+:- import_module libs.compiler_util.
 :- import_module libs.options.
 
 :- import_module bool.
 :- import_module int.
 :- import_module list.
+:- import_module require.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -307,7 +309,26 @@ output_quoted_string(S, !IO) :-
     output_quoted_string_lang(literal_c, S, !IO).
 
 output_quoted_string_lang(Lang, S, !IO) :-
-    do_output_quoted_string(Lang, 0, length(S), S, !IO).
+    (
+        Lang = literal_c,
+        % Avoid a limitation in the MSVC compiler where string literals can be
+        % no longer than 2048 chars. However if you output the string in
+        % chunks, eg "part a" "part b" it will accept a string longer than 2048
+        % chars, go figure!
+        string.split_by_codepoint(S, 160, Left, Right),
+        do_output_quoted_string(Lang, Left, 0, !IO),
+        ( Right = "" ->
+            true
+        ;
+            io.write_string("\" \"", !IO),
+            output_quoted_string_lang(Lang, Right, !IO)
+        )
+    ;
+        ( Lang = literal_java
+        ; Lang = literal_csharp
+        ),
+        do_output_quoted_string(Lang, S, 0, !IO)
+    ).
 
 output_quoted_multi_string(Ss, !IO) :-
     output_quoted_multi_string_lang(literal_c, Ss, !IO).
@@ -318,50 +339,13 @@ output_quoted_multi_string_lang(Lang, [S | Ss], !IO) :-
     output_quoted_char_lang(Lang, char.det_from_int(0), !IO),
     output_quoted_multi_string_lang(Lang, Ss, !IO).
 
-:- pred do_output_quoted_string(literal_language::in, int::in, int::in,
-    string::in, io::di, io::uo) is det.
+:- pred do_output_quoted_string(literal_language::in, string::in,
+    int::in, io::di, io::uo) is det.
 
-do_output_quoted_string(Lang, Cur, Len, S, !IO) :-
-    ( Cur < Len ->
-        % Avoid a limitation in the MSVC compiler where string literals
-        % can be no longer than 2048 chars. However if you output the string
-        % in chunks, eg "part a" "part b" it will accept a string longer than
-        % 2048 chars, go figure!
-        (
-            Lang = literal_c,
-            Cur \= 0,
-            Cur mod 512 = 0
-        ->
-            io.write_string("\" \"", !IO)
-        ;
-            true
-        ),
-
-        string.unsafe_index(S, Cur, Char),
+do_output_quoted_string(Lang, S, Cur, !IO) :-
+    ( string.unsafe_index_next(S, Cur, Next, Char) ->
         output_quoted_char_lang(Lang, Char, !IO),
-        
-        % Check for trigraph sequences in string literals. We break the
-        % trigraph by breaking the string into multiple chunks. For example,
-        % "??-" gets converted to "?" "?-".
-        (
-            Lang = literal_c,
-            Char = '?',
-            Cur + 2 < Len
-        ->
-            (
-                string.unsafe_index(S, Cur + 1, '?'),
-                string.unsafe_index(S, Cur + 2, ThirdChar),
-                is_trigraph_char(ThirdChar)
-            ->
-                io.write_string("\" \"", !IO)
-            ;
-                true
-            )
-        ;
-            true
-        ),
-
-        do_output_quoted_string(Lang, Cur + 1, Len, S, !IO)
+        do_output_quoted_string(Lang, S, Next, !IO)
     ;
         true
     ).
@@ -403,24 +387,39 @@ quote_one_char(Lang, Char, RevChars0, RevChars) :-
     ->
         RevChars = [EscapeChar, '\\' | RevChars0]
     ;
+        Lang = literal_c,
+        Char = '?'
+    ->
+        % Avoid trigraphs by escaping the question marks.
+        RevChars = ['?', '\\' | RevChars0]
+    ;
         is_c_source_char(Char)
     ->
-        RevChars = [Char | RevChars0]
-    ;
-        Lang = literal_java,
-        char.to_int(Char) >= 0x80
-    ->
-        % If the compiler is built in a C grade (8-bit strings), we assume that
-        % both the Mercury source file and Java target file use UTF-8 encoding.
-        % Each `Char' will be a UTF-8 code unit in a multi-byte sequence.
-        % If the compiler is built in a Java backend, each `Char' will be a
-        % UTF-16 code unit, possibly of a surrogate pair. In both cases the
-        % code units must be passed through without escaping.
         RevChars = [Char | RevChars0]
     ;
         char.to_int(Char, 0)
     ->
         RevChars = ['0', '\\' | RevChars0]
+    ;
+        Int = char.to_int(Char),
+        Int >= 0x80
+    ->
+        (
+            Lang = literal_c,
+            ( char.to_utf8(Char, CodeUnits) ->
+                list.map(octal_escape_any_int, CodeUnits, EscapeCharss),
+                list.condense(EscapeCharss, EscapeChars),
+                reverse_append(EscapeChars, RevChars0, RevChars)
+            ;
+                unexpected($module, $pred, "invalid Unicode code point")
+            )
+        ;
+            Lang = literal_java,
+            RevChars = [Char | RevChars0]
+        ;
+            Lang = literal_csharp,
+            RevChars = [Char | RevChars0]
+        )
     ;
         (
             Lang = literal_c,
@@ -430,7 +429,7 @@ quote_one_char(Lang, Char, RevChars0, RevChars) :-
             octal_escape_any_char(Char, EscapeChars)
         ;
             Lang = literal_csharp,
-            hex_escape_any_char(Char, EscapeChars)
+            unicode_escape_any_char(Char, EscapeChars)
         ),
         reverse_append(EscapeChars, RevChars0, RevChars)
     ).
@@ -452,20 +451,6 @@ escape_special_char('\a', 'a'). % not in Java
 escape_special_char('\v', 'v'). % not in Java
 escape_special_char('\r', 'r').
 escape_special_char('\f', 'f').
-
-    % Succeed if the given character, prefixed with "??", is a trigraph.
-    %
-:- pred is_trigraph_char(char::in) is semidet.
-
-is_trigraph_char('(').
-is_trigraph_char(')').
-is_trigraph_char('<').
-is_trigraph_char('>').
-is_trigraph_char('=').
-is_trigraph_char('/').
-is_trigraph_char('\'').
-is_trigraph_char('!').
-is_trigraph_char('-').
 
     % This succeeds iff the specified character is allowed as an (unescaped)
     % character in standard-conforming C source code.
@@ -501,19 +486,20 @@ reverse_append([X | Xs], L0, L) :-
     %
 octal_escape_any_char(Char, EscapeCodeChars) :-
     char.to_int(Char, Int),
+    octal_escape_any_int(Int, EscapeCodeChars).
+
+:- pred octal_escape_any_int(int::in, list(char)::out) is det.
+
+octal_escape_any_int(Int, EscapeCodeChars) :-
     string.int_to_base_string(Int, 8, OctalString0),
     string.pad_left(OctalString0, '0', 3, OctalString),
     EscapeCodeChars = ['\\' | string.to_char_list(OctalString)].
 
-:- pred hex_escape_any_char(char::in, list(char)::out) is det.
+:- pred unicode_escape_any_char(char::in, list(char)::out) is det.
 
-    % Convert a character to the corresponding hexadeciaml escape code.
-    % XXX This assumes that the target language compiler's representation
-    % of characters is the same as the Mercury compiler's.
-    %
-hex_escape_any_char(Char, EscapeCodeChars) :-
+unicode_escape_any_char(Char, EscapeCodeChars) :-
     char.to_int(Char, Int),
-    string.format("\\x%04x", [i(Int)], HexString),
+    string.format("\\u%04x", [i(Int)], HexString),
     string.to_char_list(HexString, EscapeCodeChars).
 
 %-----------------------------------------------------------------------------%

@@ -55,7 +55,9 @@ tailrec1_read_strings(Stream, !Words, !IO) :-
     int     i;
 
     i = 0;
-    while ((c = mercury_getc((MercuryFilePtr) Stream)) != EOF && c != '\\n') {
+    while ((c = mercury_get_byte((MercuryFilePtr) Stream)) != EOF &&
+        c != '\\n')
+    {
         if (i < 100) {
             buf[i] = c;
         }

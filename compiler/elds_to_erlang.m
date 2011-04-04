@@ -801,15 +801,15 @@ output_float(Float, !IO) :-
 :- pred digit_then_e(string::in, bool::in, int::in, int::out) is semidet.
 
 digit_then_e(String, PrevDigit, Pos0, Pos) :-
-    string.index(String, Pos0, Char),
+    string.unsafe_index_next(String, Pos0, Pos1, Char),
     Char \= ('.'),
     ( is_e(Char) ->
         PrevDigit = yes,
         Pos = Pos0
     ; is_digit(Char) ->
-        digit_then_e(String, yes, Pos0 + 1, Pos)
+        digit_then_e(String, yes, Pos1, Pos)
     ;
-        digit_then_e(String, no, Pos0 + 1, Pos)
+        digit_then_e(String, no, Pos1, Pos)
     ).
 
 :- pred is_e(char::in) is semidet.
@@ -1209,7 +1209,7 @@ write_with_escaping(StringOrAtom, String, !IO) :-
 write_with_escaping_2(StringOrAtom, Char, !IO) :-
     char.to_int(Char, Int),
     (
-        32 =< Int, Int =< 126,
+        32 =< Int,
         Char \= ('\\'),
         (
             StringOrAtom = in_string,

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2008 The University of Melbourne.
+% Copyright (C) 1994-2008, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -24,30 +24,35 @@
 
 :- module char.
 :- interface.
+
 :- import_module enum.
+:- import_module list.
 :- import_module pretty_printer.
 
 %-----------------------------------------------------------------------------%
 
+    % A Unicode code point.
+    %
 :- type char == character.
 
 :- instance enum(character).
 
-    % Convert a character to its corresponding numerical code (integer value).
-    % Beware that the mapping from characters to numerical codes is
-    % implementation-dependent; there is no guarantee that the integer values
-    % for characters will fit in 8 bits. Furthermore, the value returned from
-    % char.to_int might be different than the byte(s) used to store the
-    % character in a file. There is also no guarantee that characters created
-    % using `char.to_int(out, in)' can be written to files or to the standard
-    % output or standard error streams. For example, an implementation might
-    % represent characters using Unicode, but store files in an 8-bit national
-    % character set.
+    % `char.to_int'/1 and `char.to_int(in, out)' convert a character to its
+    % corresponding numerical code (integer value).
     %
-    % Note that '\0' is not accepted as a Mercury null character constant.
+    % `char.to_int(out, in)' converts an integer value to a character value.
+    % It fails for integer values outside of the Unicode range.
+    %
+    % Be aware that there is no guarantee that characters can be written to
+    % files or to the standard output or standard error streams. Files using an
+    % 8-bit national character set would only be able to represent a subset of
+    % all possible code points. Currently, the Mercury standard library can
+    % only read and write UTF-8 text files, so the entire range is supported
+    % (excluding surrogate and noncharacter code points).
+    %
+    % Note that '\0' is not accepted as a Mercury null character literal.
     % Instead, a null character can be created using `char.det_from_int(0)'.
-    % Null characters aren't very useful in Mercury because they aren't
-    % allowed in strings.
+    % Null characters are not allowed in Mercury strings in C grades.
     %
 :- func char.to_int(char) = int.
 :- pred char.to_int(char, int).
@@ -97,8 +102,8 @@
 :- mode char.lower_upper(in, out) is semidet.
 :- mode char.lower_upper(out, in) is semidet.
 
-    % True iff the character is whitespace, i.e. a space, tab,
-    % newline, carriage return, form-feed, or vertical tab.
+    % True iff the character is a whitespace character in the ASCII range,
+    % i.e. a space, tab, newline, carriage return, form-feed, or vertical tab.
     %
 :- pred char.is_whitespace(char::in) is semidet.
 
@@ -175,11 +180,35 @@
     %
 :- func char.char_to_doc(char) = pretty_printer.doc.
 
+    % Encode a Unicode code point in UTF-8.
+    % Fails for surrogate code points.
+    %
+:- pred char.to_utf8(char::in, list(int)::out) is semidet.
+
+    % Encode a Unicode code point in UTF-16 (native endianness).
+    % Fails for surrogate code points.
+    %
+:- pred char.to_utf16(char::in, list(int)::out) is semidet.
+
+    % Succeed if `Char' is a Unicode surrogate code point.
+    % In UTF-16, a code point with a scalar value greater than 0xffff
+    % is encoded with a pair of surrogate code points.
+    %
+:- pred char.is_surrogate(char::in) is semidet.
+
+    % Succeed if `Char' is a Noncharacter code point.
+    % Sixty-six code points are not used to encode characters.
+    % These code points should not be used for interchange, but may be used
+    % internally.
+    %
+:- pred char.is_noncharacter(char::in) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module int.
 :- import_module require.
 :- import_module term_io.
 
@@ -513,13 +542,8 @@ char.det_from_int(Int) = Char :-
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness],
 "
-    /*
-    ** If the integer doesn't fit into a char, then the assignment
-    ** `Character = Int' below will truncate it. SUCCESS_INDICATOR will be set
-    ** to true only if the result was not truncated.
-    */
     Character = Int;
-    SUCCESS_INDICATOR = ((MR_UnsignedChar) Character == Int);
+    SUCCESS_INDICATOR = (Character >= 0 && Character <= 0x10ffff);
 ").
 
 :- pragma foreign_proc("C#",
@@ -540,8 +564,8 @@ char.det_from_int(Int) = Char :-
     char.to_int(Character::out, Int::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Character = (char) Int;
-    SUCCESS_INDICATOR = (Character == Int);
+    Character = Int;
+    SUCCESS_INDICATOR = (Int >= 0 && Int <= 0x10ffff);
 ").
 
 :- pragma foreign_proc("Java",
@@ -562,8 +586,8 @@ char.det_from_int(Int) = Char :-
     char.to_int(Character::out, Int::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Character = (char) Int;
-    SUCCESS_INDICATOR = ((int) Character == Int);
+    Character = Int;
+    SUCCESS_INDICATOR = (Int >= 0 && Int <= 0x10ffff);
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -584,16 +608,8 @@ char.det_from_int(Int) = Char :-
     char.to_int(Character::out, Int::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    case
-        Int >= 0 andalso Int < 256
-    of
-        true ->
-            SUCCESS_INDICATOR = true,
-            Character = Int;
-        false ->
-            SUCCESS_INDICATOR = false,
-            Character = -1
-    end
+    Character = Int,
+    SUCCESS_INDICATOR = (Int >= 0 andalso Int =< 16#10ffff)
 ").
 
     % We used unsigned character codes, so the minimum character code
@@ -607,32 +623,82 @@ char.min_char_value(0).
     [will_not_call_mercury, promise_pure, thread_safe,
         does_not_affect_liveness],
 "
-    Max = UCHAR_MAX;
+    Max = 0x10ffff;
 ").
 :- pragma foreign_proc("C#",
     char.max_char_value(Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    // .NET uses 16-bit 'Unicode'. This might be either UCS-2,
-    // where Unicode characters that don't fit in 16 bits are encoded
-    // in two 16 bit characters, or it might be just the 16-bit subset,
-    // i.e. only the Unicode characters that fit in 16 bits.
-    // For our purposes, it doesn't matter.
-    Max = 0xffff;
+    Max = 0x10ffff;
 ").
 :- pragma foreign_proc("Java",
     char.max_char_value(Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Max = (int) java.lang.Character.MAX_VALUE;
+    Max = 0x10ffff;
 ").
 :- pragma foreign_proc("Erlang",
     char.max_char_value(Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    % XXX actually Erlang doesn't have chars so there should be no maximum
-    Max = 255
+    Max = 16#10ffff
 ").
+
+char.to_utf8(Char, CodeUnits) :-
+    Int = char.to_int(Char),
+    ( Int =< 0x7f ->
+        CodeUnits = [Int]
+    ; Int =< 0x7ff ->
+        A = 0xc0 \/ ((Int >> 6) /\ 0x1f),
+        B = 0x80 \/  (Int       /\ 0x3f),
+        CodeUnits = [A, B]
+    ; Int =< 0xffff ->
+        not is_surrogate(Char),
+        A = 0xe0 \/ ((Int >> 12) /\ 0x0f),
+        B = 0x80 \/ ((Int >>  6) /\ 0x3f),
+        C = 0x80 \/  (Int        /\ 0x3f),
+        CodeUnits = [A, B, C]
+    ; Int =< 0x10ffff ->
+        A = 0xf0 \/ ((Int >> 18) /\ 0x07),
+        B = 0x80 \/ ((Int >> 12) /\ 0x3f),
+        C = 0x80 \/ ((Int >>  6) /\ 0x3f),
+        D = 0x80 \/  (Int        /\ 0x3f),
+        CodeUnits = [A, B, C, D]
+    ;
+        % Illegal code point.
+        fail
+    ).
+
+char.to_utf16(Char, CodeUnits) :-
+    Int = char.to_int(Char),
+    ( Int < 0xd800 ->
+        % Common case.
+        CodeUnits = [Int]
+    ; Int =< 0xdfff ->
+        % Surrogate.
+        fail
+    ; Int =< 0xffff ->
+        CodeUnits = [Int]
+    ; Int =< 0x10ffff ->
+        U = Int - 0x10000,
+        A = 0xd800 \/ (U >> 10),
+        B = 0xdc00 \/ (U /\ 0x3ff),
+        CodeUnits = [A, B]
+    ;
+        % Illegal code point.
+        fail
+    ).
+
+char.is_surrogate(Char) :-
+    Int = char.to_int(Char),
+    Int >= 0xd800,
+    Int =< 0xdfff.
+
+char.is_noncharacter(Char) :-
+    Int = char.to_int(Char),
+    ( 0xfdd0 =< Int, Int =< 0xfdef
+    ; Int /\ 0xfffe = 0xfffe
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

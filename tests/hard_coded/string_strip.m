@@ -41,8 +41,8 @@ main(!IO) :-
 
     Strings =
         condense(
-            map(func(Spaces) = ["foo", Spaces ++ "foo", "foo" ++ Spaces,
-                                Spaces ++ "foo" ++ Spaces],
+            map(func(Spaces) = ["fȯö", Spaces ++ "fȯö", "fȯö" ++ Spaces,
+                                Spaces ++ "fȯö" ++ Spaces],
                 condense(
                     map(func(Length) = solutions(mk_spaces(Length)),
                         1`..`2
@@ -66,10 +66,10 @@ main(!IO) :-
         strip,
 
         "lstrip_pred(is_alpha)" -
-        lstrip_pred(char.is_alpha),
+        lstrip_pred(is_alpha_ext),
 
         "rstrip_pred(is_alpha)" -
-        rstrip_pred(char.is_alpha),
+        rstrip_pred(is_alpha_ext),
 
         "prefix_length(is_whitespace)" -
         ( func(S) = format("%d", [i(prefix_length(char.is_whitespace, S))]) ),
@@ -116,6 +116,15 @@ quote(S) =
 mk_spaces(N, S) :-
     map((pred(_::in, C::out) is multi :- space(C, _)), 1`..`N, Cs),
     S = string.from_char_list(Cs).
+
+%-----------------------------------------------------------------------------%
+
+:- pred is_alpha_ext(char::in) is semidet.
+
+is_alpha_ext('ȯ').
+is_alpha_ext('ö').
+is_alpha_ext(Char) :-
+    char.is_alpha(Char).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

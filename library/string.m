@@ -18,20 +18,24 @@
 % character is detected.  Programmers must not create strings that might
 % contain null characters using the foreign language interface.
 %
-% The representation of strings is implementation dependent and subject to
-% change. In the current implementation, when Mercury is compiled to C, strings
-% are represented as in C, using a null character as the string terminator.
+% When Mercury is compiled to C, strings are UTF-8 encoded, using a null
+% character as the string terminator.  A single code point requires one to four
+% bytes (code units) to encode.
+%
 % When Mercury is compiled to Java, strings are represented as Java `String's.
-% When Mercury is compiled to .NET IL code, strings are represented as .NET
-% `System.String's.
+% When Mercury is compiled to C# code, strings are represented as
+% `System.String's.  In both cases, strings are UTF-16 encoded.  A single code
+% point requires one or two 16-bit integers (code units) to encode.
+%
+% Whe Mercury is compiled to Erlang, strings are represented as Erlang
+% binaries using UTF-8 encoding.
 %
 % The builtin comparison operation on strings is also implementation dependent.
 % In the current implementation, when Mercury is compiled to C, string
 % comparison is implemented using C's strcmp() function.  When Mercury
 % is compiled to Java, string comparison is implemented using Java's
-% String.compareTo() method.  When Mercury is compiled to .NET IL code
-% string comparison is implemented using C#'s System.String.CompareOrdinal()
-% method.
+% String.compareTo() method.  When Mercury is compiled to C#, string comparison
+% is implemented using C#'s System.String.CompareOrdinal() method.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -69,13 +73,42 @@
 :- type text_file
     --->    text_file(string).
 
-    % Determine the length of a string.
+    % Determine the length of a string, in code units.
     % An empty string has length zero.
+    %
+    % NOTE: code points (characters) are encoded using one or more code units,
+    % i.e. bytes for UTF-8; 16-bit integers for UTF-16.
     %
 :- func string.length(string::in) = (int::uo) is det.
 :- pred string.length(string, int).
 :- mode string.length(in, uo) is det.
 :- mode string.length(ui, uo) is det.
+
+    % Synonyms for string.length.
+    %
+:- func string.count_code_units(string) = int.
+:- pred string.count_code_units(string::in, int::out) is det.
+
+    % Determine the number of code points in a string.
+    %
+:- func string.count_codepoints(string) = int.
+:- pred string.count_codepoints(string::in, int::out) is det.
+
+    % string.codepoint_offset(String, CodePointCount, CodePointOffset):
+    % Equivalent to `string.codepoint_offset(String, 0, CodePointCount,
+    % CodePointOffset)'.
+    %
+:- pred string.codepoint_offset(string::in, int::in, int::out) is semidet.
+
+    % string.codepoint_offset(String, StartOffset, CodePointCount,
+    %   CodePointOffset):
+    %
+    % Return the offset into `String' where, starting from `StartOffset',
+    % `CodePointCount' code points are skipped.  Fails if either `StartOffset'
+    % or `CodePointOffset' are out of range.
+    %
+:- pred string.codepoint_offset(string::in, int::in, int::in, int::out)
+    is semidet.
 
     % Append two strings together.
     %
@@ -170,7 +203,7 @@
 :- mode string.string_ops_noncanon(in, in, in, out) is cc_multi.
 
     % string.char_to_string(Char, String).
-    % Converts a character (single-character atom) to a string or vice versa.
+    % Converts a character (code point) to a string or vice versa.
     %
 :- func string.char_to_string(char::in) = (string::uo) is det.
 :- pred string.char_to_string(char, string).
@@ -238,7 +271,7 @@
 :- func string.from_c_pointer(c_pointer::in) = (string::uo) is det.
 
     % string.first_char(String, Char, Rest) is true iff Char is the first
-    % character of String, and Rest is the remainder.
+    % character (code point) of String, and Rest is the remainder.
     %
     % WARNING: string.first_char makes a copy of Rest because the garbage
     % collector doesn't handle references into the middle of an object,
@@ -298,16 +331,20 @@
 :- func string.uncapitalize_first(string) = string.
 :- pred string.uncapitalize_first(string::in, string::out) is det.
 
-    % Convert the string to a list of characters.
+    % Convert the string to a list of characters (code points).
     % Throws an exception if the list of characters contains a null character.
+    %
+    % NOTE: in future the same treatment may be afforded surrogate code points.
     %
 :- func string.to_char_list(string) = list(char).
 :- pred string.to_char_list(string, list(char)).
 :- mode string.to_char_list(in, out) is det.
 :- mode string.to_char_list(uo, in) is det.
 
-    % Convert a list of characters to a string.
+    % Convert a list of characters (code points) to a string.
     % Throws an exception if the list of characters contains a null character.
+    %
+    % NOTE: in future the same treatment may be afforded surrogate code points.
     %
 :- func string.from_char_list(list(char)::in) = (string::uo) is det.
 :- pred string.from_char_list(list(char), string).
@@ -317,11 +354,15 @@
     % As above, but fail instead of throwing an exception if the
     % list contains a null character.
     %
+    % NOTE: in future the same treatment may be afforded surrogate code points.
+    %
 :- pred string.semidet_from_char_list(list(char)::in, string::uo) is semidet.
 
     % Same as string.from_char_list, except that it reverses the order
     % of the characters.
     % Throws an exception if the list of characters contains a null character.
+    %
+    % NOTE: in future the same treatment may be afforded surrogate code points.
     %
 :- func string.from_rev_char_list(list(char)::in) = (string::uo) is det.
 :- pred string.from_rev_char_list(list(char)::in, string::uo) is det.
@@ -329,8 +370,20 @@
     % As above, but fail instead of throwing an exception if the
     % list contains a null character.
     %
+    % NOTE: in future the same treatment may be afforded surrogate code points.
+    %
 :- pred string.semidet_from_rev_char_list(list(char)::in, string::uo)
     is semidet.
+
+    % Convert a string into a list of code units.
+    %
+:- pred string.to_code_unit_list(string::in, list(int)::out) is det.
+
+    % Convert a list of code units to a string.
+    % Fails if the list does not contain a valid encoding of a string,
+    % in the encoding expected by the current process.
+    %
+:- pred string.from_code_unit_list(list(int)::in, string::uo) is semidet.
 
     % Converts a signed base 10 string to an int; throws an exception
     % if the string argument does not match the regexp [+-]?[0-9]+
@@ -338,7 +391,7 @@
     %
 :- func string.det_to_int(string) = int.
 
-    % Convert a string to an int. The string must contain only digits,
+    % Convert a string to an int. The string must contain only digits [0-9],
     % optionally preceded by a plus or minus sign. If the string does
     % not match this syntax or the number is not in the range
     % [int.min_int+1, int.max_int], string.to_int fails.
@@ -371,15 +424,17 @@
     %
 :- pred string.to_float(string::in, float::out) is semidet.
 
-    % True if string contains only alphabetic characters (letters).
+    % True if string contains only alphabetic characters [A-Za-z].
     %
 :- pred string.is_all_alpha(string::in) is semidet.
 
-    % True if string contains only alphabetic characters and underscores.
+    % True if string contains only alphabetic characters [A-Za-z] and
+    % underscores.
     %
 :- pred string.is_all_alpha_or_underscore(string::in) is semidet.
 
-    % True if string contains only letters, digits, and underscores.
+    % True if string contains only alphabetic characters [A-Za-z],
+    % digits [0-9], and underscores.
     %
 :- pred string.is_all_alnum_or_underscore(string::in) is semidet.
 
@@ -389,7 +444,7 @@
 
     % string.all_match(TestPred, String):
     %
-    % True if TestPred is true when applied to each character in
+    % True if TestPred is true when applied to each character (code point) in
     % String or if String is the empty string.
     %
 :- pred string.all_match(pred(char)::in(pred(in) is semidet), string::in)
@@ -397,41 +452,47 @@
 
     % string.pad_left(String0, PadChar, Width, String):
     % Insert `PadChar's at the left of `String0' until it is at least as long
-    % as `Width', giving `String'.
+    % as `Width', giving `String'.  Width is currently measured as the number
+    % of code points.
     %
 :- func string.pad_left(string, char, int) = string.
 :- pred string.pad_left(string::in, char::in, int::in, string::out) is det.
 
     % string.pad_right(String0, PadChar, Width, String):
     % Insert `PadChar's at the right of `String0' until it is at least as long
-    % as `Width', giving `String'.
+    % as `Width', giving `String'.  Width is currently measured as the number
+    % of code points.
     %
 :- func string.pad_right(string, char, int) = string.
 :- pred string.pad_right(string::in, char::in, int::in, string::out) is det.
 
     % string.duplicate_char(Char, Count, String):
     % Construct a string consisting of `Count' occurrences of `Char'
-    % in sequence.
+    % code points in sequence.
     %
 :- func string.duplicate_char(char::in, int::in) = (string::uo) is det.
 :- pred string.duplicate_char(char::in, int::in, string::uo) is det.
 
     % string.contains_char(String, Char):
-    % Succeed if `Char' occurs in `String'.
+    % Succeed if the code point `Char' occurs in `String'.
     %
 :- pred string.contains_char(string::in, char::in) is semidet.
 
     % string.index(String, Index, Char):
-    % `Char' is the (`Index' + 1)-th character of `String'.
-    % Fails if `Index' is out of range (negative, or greater than or equal to
-    % the length of `String').
+    % `Char' is the character (code point) in `String', beginning at the
+    % code unit `Index'.  Fails if `Index' is out of range (negative, or
+    % greater than or equal to the length of `String').
+    %
+    % Calls error/1 if an illegal sequence is detected.
     %
 :- pred string.index(string::in, int::in, char::uo) is semidet.
 
     % string.index_det(String, Index, Char):
-    % `Char' is the (`Index' + 1)-th character of `String'.
+    % `Char' is the character (code point) in `String', beginning at the
+    % code unit `Index'.
     % Calls error/1 if `Index' is out of range (negative, or greater than
-    % or equal to the length of `String').
+    % or equal to the length of `String'), or if an illegal sequence is
+    % detected.
     %
 :- func string.index_det(string, int) = char.
 :- pred string.index_det(string::in, int::in, char::uo) is det.
@@ -442,7 +503,8 @@
 :- func string ^ elem(int) = char.
 
     % string.unsafe_index(String, Index, Char):
-    % `Char' is the (`Index' + 1)-th character of `String'.
+    % `Char' is the character (code point) in `String', beginning at the
+    % code unit `Index'.
     % WARNING: behavior is UNDEFINED if `Index' is out of range
     % (negative, or greater than or equal to the length of `String').
     % This version is constant time, whereas string.index_det
@@ -456,56 +518,99 @@
     %
 :- func string ^ unsafe_elem(int) = char.
 
+    % string.index_next(String, Index, NextIndex, Char):
+    % Like `string.index'/3 but also returns the position of the code unit
+    % that follows the code point beginning at `Index',
+    % i.e. NextIndex = Index + num_code_units_to_encode(Char).
+    %
+:- pred string.index_next(string::in, int::in, int::out, char::uo) is semidet.
+
+    % string.unsafe_index_next(String, Index, NextIndex, Char):
+    % `Char' is the character (code point) in `String', beginning at the
+    % code unit `Index'. `NextIndex' is the offset following the encoding
+    % of `Char'. Fails if `Index' is equal to the length of `String'.
+    % WARNING: behavior is UNDEFINED if `Index' is out of range
+    % (negative, or greater than the length of `String').
+    %
+:- pred string.unsafe_index_next(string::in, int::in, int::out, char::uo)
+    is semidet.
+
+    % string.prev_index(String, Index, CharIndex, Char):
+    % `Char' is the character (code point) in `String' immediately _before_
+    % the code unit `Index'.  Fails if `Index' is out of range (non-positive,
+    % or greater than the length of `String').
+    %
+:- pred string.prev_index(string::in, int::in, int::out, char::uo) is semidet.
+
+    % string.unsafe_prev_index(String, Index, CharIndex, Char):
+    % `Char' is the character (code point) in `String' immediately _before_
+    % the code unit `Index'. `CharIndex' is the offset of the beginning of
+    % `Char'. Fails if `Index' is zero.
+    % WARNING: behavior is UNDEFINED if `Index' is out of range
+    % (negative, or greater than or equal to the length of `String').
+    %
+:- pred string.unsafe_prev_index(string::in, int::in, int::out, char::uo)
+    is semidet.
+
+    % string.unsafe_index_code_unit(String, Index, CodeList):
+    % `Code' unit is the code unit in `String' at the offset `Index'.
+    % WARNING: behavior is UNDEFINED if `Index' is out of range
+    % (negative, or greater than or equal to the length of `String').
+    %
+:- pred string.unsafe_index_code_unit(string::in, int::in, int::out) is det.
+
     % string.chomp(String):
     % `String' minus any single trailing newline character.
     %
 :- func string.chomp(string) = string.
 
     % string.lstrip(String):
-    % `String' minus any initial whitespace characters.
+    % `String' minus any initial whitespace characters in the ASCII range.
     %
 :- func string.lstrip(string) = string.
 
     % string.rstrip(String):
-    % `String' minus any trailing whitespace characters.
+    % `String' minus any trailing whitespace characters in the ASCII range.
     %
 :- func string.rstrip(string) = string.
 
     % string.strip(String):
-    % `String' minus any initial and trailing whitespace characters.
+    % `String' minus any initial and trailing whitespace characters in the
+    % ASCII range.
     %
 :- func string.strip(string) = string.
 
     % string.lstrip_pred(Pred, String):
-    % `String' minus the maximal prefix consisting entirely of chars
-    % satisfying `Pred'.
+    % `String' minus the maximal prefix consisting entirely of characters
+    % (code points) satisfying `Pred'.
     %
 :- func string.lstrip_pred(pred(char)::in(pred(in) is semidet), string::in)
     = (string::out) is det.
 
     % string.rstrip_pred(Pred, String):
-    % `String' minus the maximal suffix consisting entirely of chars
-    % satisfying `Pred'.
+    % `String' minus the maximal suffix consisting entirely of characters
+    % (code points) satisfying `Pred'.
     %
 :- func string.rstrip_pred(pred(char)::in(pred(in) is semidet), string::in)
     = (string::out) is det.
 
     % string.prefix_length(Pred, String):
-    % The length of the maximal prefix of `String' consisting entirely of
-    % chars satisfying Pred.
+    % The length (in code units) of the maximal prefix of `String' consisting
+    % entirely of characters (code points) satisfying Pred.
     %
 :- func string.prefix_length(pred(char)::in(pred(in) is semidet), string::in)
     = (int::out) is det.
 
     % string.suffix_length(Pred, String):
-    % The length of the maximal suffix of `String' consisting entirely of chars
-    % satisfying Pred.
+    % The length (in code units) of the maximal suffix of `String' consisting
+    % entirely of characters (code points) satisfying Pred.
     %
 :- func suffix_length(pred(char)::in(pred(in) is semidet), string::in)
     = (int::out) is det.
 
     % string.set_char(Char, Index, String0, String):
-    % `String' is `String0' with the (`Index' + 1)-th character set to `Char'.
+    % `String' is `String0', with the code point beginning at code unit
+    % `Index' removed and replaced by `Char'.
     % Fails if `Index' is out of range (negative, or greater than or equal to
     % the length of `String0').
     %
@@ -516,7 +621,8 @@
 %:- mode string.set_char(in, in, di, uo) is semidet.
 
     % string.set_char_det(Char, Index, String0, String):
-    % `String' is `String0' with the (`Index' + 1)-th character set to `Char'.
+    % `String' is `String0', with the code point beginning at code unit
+    % `Index' removed and replaced by `Char'.
     % Calls error/1 if `Index' is out of range (negative, or greater than
     % or equal to the length of `String0').
     %
@@ -528,7 +634,8 @@
 %:- mode string.set_char_det(in, in, di, uo) is det.
 
     % string.unsafe_set_char(Char, Index, String0, String):
-    % `String' is `String0' with the (`Index' + 1)-th character set to `Char'.
+    % `String' is `String0', with the code point beginning at code unit
+    % `Index' removed and replaced by `Char'.
     % WARNING: behavior is UNDEFINED if `Index' is out of range
     % (negative, or greater than or equal to the length of `String0').
     % This version is constant time, whereas string.set_char_det
@@ -547,8 +654,8 @@
 
     % string.foldl(Closure, String, !Acc):
     % `Closure' is an accumulator predicate which is to be called for each
-    % character of the string `String' in turn. The initial value of the
-    % accumulator is `!.Acc' and the final value is `!:Acc'.
+    % character (code point) of the string `String' in turn. The initial
+    % value of the accumulator is `!.Acc' and the final value is `!:Acc'.
     % (string.foldl is equivalent to
     %   string.to_char_list(String, Chars),
     %   list.foldl(Closure, Chars, !Acc)
@@ -583,6 +690,8 @@
     % is equivalent to string.foldl(Closure, SubString, !Acc)
     % where SubString = string.substring(String, Start, Count).
     %
+    % `Start' and `Count' are in terms of code units.
+    %
 :- func string.foldl_substring(func(char, A) = A, string, int, int, A) = A.
 :- pred string.foldl_substring(pred(char, A, A), string, int, int, A, A).
 :- mode string.foldl_substring(pred(in, in, out) is det, in, in, in,
@@ -598,6 +707,8 @@
 
     % string.foldl_substring2(Closure, String, Start, Count, !Acc1, !Acc2)
     % A variant of string.foldl_substring with two accumulators.
+    %
+    % `Start' and `Count' are in terms of code units.
     %
 :- pred string.foldl2_substring(pred(char, A, A, B, B),
     string, int, int, A, A, B, B).
@@ -629,6 +740,8 @@
     % is equivalent to string.foldr(Closure, SubString, !Acc)
     % where SubString = string.substring(String, Start, Count).
     %
+    % `Start' and `Count' are in terms of code units.
+    %
 :- func string.foldr_substring(func(char, T) = T, string, int, int, T) = T.
 :- pred string.foldr_substring(pred(char, T, T), string, int, int, T, T).
 :- mode string.foldr_substring(pred(in, in, out) is det, in, in, in,
@@ -644,7 +757,8 @@
 
     % string.words_separator(SepP, String) returns the list of non-empty
     % substrings of String (in first to last order) that are delimited
-    % by non-empty sequences of chars matched by SepP. For example,
+    % by non-empty sequences of characters (code points) matched by SepP.
+    % For example,
     %
     % string.words_separator(char.is_whitespace, " the cat  sat on the  mat") =
     %   ["the", "cat", "sat", "on", "the", "mat"]
@@ -661,7 +775,7 @@
 
     % string.split_at_separator(SepP, String) returns the list of
     % substrings of String (in first to last order) that are delimited
-    % by chars matched by SepP. For example,
+    % by characters (code points) matched by SepP. For example,
     %
     % string.split_at_separator(char.is_whitespace, " a cat  sat on the  mat")
     %   = ["", "a", "cat", "", "sat", "on", "the", "", "mat"]
@@ -686,33 +800,59 @@
     %
 :- func string.split_at_string(string, string) = list(string).
 
-    % string.split(String, Count, LeftSubstring, RightSubstring):
-    % `LeftSubstring' is the left-most `Count' characters of `String',
-    % and `RightSubstring' is the remainder of `String'.
+    % string.split(String, Index, LeftSubstring, RightSubstring):
+    % Split a string into two substrings, at the code unit `Index'.
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
 :- pred string.split(string::in, int::in, string::uo, string::uo) is det.
 
+    % string.split_by_codepoint(String, Count, LeftSubstring, RightSubstring):
+    % `LeftSubstring' is the left-most `Count' characters (code points) of
+    % `String', and `RightSubstring' is the remainder of `String'.
+    % (If `Count' is out of the range [0, length of `String'], it is treated
+    % as if it were the nearest end-point of that range.)
+    %
+:- pred string.split_by_codepoint(string::in, int::in, string::uo, string::uo)
+    is det.
+
     % string.left(String, Count, LeftSubstring):
-    % `LeftSubstring' is the left-most `Count' characters of `String'.
+    % `LeftSubstring' is the left-most `Count' code _units_ of `String'.
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
 :- func string.left(string::in, int::in) = (string::uo) is det.
 :- pred string.left(string::in, int::in, string::uo) is det.
 
+    % string.left_by_codepoint(String, Count, LeftSubstring):
+    % `LeftSubstring' is the left-most `Count' characters (code points) of
+    % `String'.
+    % (If `Count' is out of the range [0, length of `String'], it is treated
+    % as if it were the nearest end-point of that range.)
+    %
+:- func string.left_by_codepoint(string::in, int::in) = (string::uo) is det.
+:- pred string.left_by_codepoint(string::in, int::in, string::uo) is det.
+
     % string.right(String, Count, RightSubstring):
-    % `RightSubstring' is the right-most `Count' characters of `String'.
+    % `RightSubstring' is the right-most `Count' code _units_ of `String'.
     % (If `Count' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.)
     %
 :- func string.right(string::in, int::in) = (string::uo) is det.
 :- pred string.right(string::in, int::in, string::uo) is det.
 
+    % string.right_by_codepoint(String, Count, RightSubstring):
+    % `RightSubstring' is the right-most `Count' characters (code points) of
+    % `String'.
+    % (If `Count' is out of the range [0, length of `String'], it is treated
+    % as if it were the nearest end-point of that range.)
+    %
+:- func string.right_by_codepoint(string::in, int::in) = (string::uo) is det.
+:- pred string.right_by_codepoint(string::in, int::in, string::uo) is det.
+
     % string.substring(String, Start, Count, Substring):
-    % `Substring' is first the `Count' characters in what would remain
-    % of `String' after the first `Start' characters were removed.
+    % `Substring' is first the `Count' code _units_ in what would remain
+    % of `String' after the first `Start' code _units_ were removed.
     % (If `Start' is out of the range [0, length of `String'], it is treated
     % as if it were the nearest end-point of that range.
     % If `Count' is out of the range [0, length of `String' - `Start'],
@@ -721,15 +861,28 @@
 :- func string.substring(string::in, int::in, int::in) = (string::uo) is det.
 :- pred string.substring(string::in, int::in, int::in, string::uo) is det.
 
+    % string.substring_by_codepoint(String, Start, Count, Substring):
+    % `Substring' is first the `Count' code points in what would remain
+    % of `String' after the first `Start' code points were removed.
+    % (If `Start' is out of the range [0, length of `String'], it is treated
+    % as if it were the nearest end-point of that range.
+    % If `Count' is out of the range [0, length of `String' - `Start'],
+    % it is treated as if it were the nearest end-point of that range.)
+    %
+:- func string.substring_by_codepoint(string::in, int::in, int::in)
+    = (string::uo) is det.
+:- pred string.substring_by_codepoint(string::in, int::in, int::in, string::uo)
+    is det.
+
     % string.unsafe_substring(String, Start, Count, Substring):
-    % `Substring' is first the `Count' characters in what would remain
-    % of `String' after the first `Start' characters were removed.
+    % `Substring' is first the `Count' code _units_ in what would remain
+    % of `String' after the first `Start' code _units_ were removed.
     % WARNING: if `Start' is out of the range [0, length of `String'],
     % or if `Count' is out of the range [0, length of `String' - `Start'],
     % then the behaviour is UNDEFINED. Use with care!
     % This version takes time proportional to the length of the substring,
     % whereas string.substring may take time proportional to the length
-    %% of the whole string.
+    % of the whole string.
     %
 :- func string.unsafe_substring(string::in, int::in, int::in) = (string::uo)
     is det.
@@ -757,16 +910,16 @@
 :- func string.hash3(string) = int.
 
     % string.sub_string_search(String, SubString, Index).
-    % `Index' is the position in `String' where the first occurrence of
-    % `SubString' begins. Indices start at zero, so if `SubString' is a prefix
-    % of `String', this will return Index = 0.
+    % `Index' is the code unit position in `String' where the first
+    % occurrence of `SubString' begins. Indices start at zero, so if
+    % `SubString' is a prefix of `String', this will return Index = 0.
     %
 :- pred string.sub_string_search(string::in, string::in, int::out) is semidet.
 
     % string.sub_string_search_start(String, SubString, BeginAt, Index).
-    % `Index' is the position in `String' where the first occurrence of
-    % `SubString' occurs such that 'Index' is greater than or equal to
-    % `BeginAt'.  Indices start at zero,
+    % `Index' is the code unit position in `String' where the first
+    % occurrence of `SubString' occurs such that 'Index' is greater than or
+    % equal to `BeginAt'.  Indices start at zero.
     %
 :- pred string.sub_string_search_start(string::in, string::in, int::in,
     int::out)
@@ -819,8 +972,8 @@
     %
     % Numbers are now rounded by precision value, not truncated as previously.
     %
-    % The implementation uses the sprintf() function, so the actual output
-    % will depend on the C standard library.
+    % The implementation uses the sprintf() function in C grades, so the actual
+    % output will depend on the C standard library.
     %
 :- func string.format(string, list(string.poly_type)) = string.
 :- pred string.format(string::in, list(string.poly_type)::in, string::out)
@@ -837,7 +990,8 @@
     % a formatted table, where each field in each column has been aligned
     % and fields are separated with Separator. A newline character is inserted
     % between each row. If the columns are not all the same length then
-    % an exception is thrown.
+    % an exception is thrown. Lengths are currently measured in terms of code
+    % points.
     %
     % For example:
     %
@@ -861,11 +1015,11 @@
     ;       right(list(string)).
 
     % word_wrap(Str, N) = Wrapped.
-    % Wrapped is Str with newlines inserted between words so that at most
-    % N characters appear on a line and each line contains as many whole words
-    % as possible. If any one word exceeds N characters in length then it will
-    % be broken over two (or more) lines. Sequences of whitespace characters
-    % are replaced by a single space.
+    % Wrapped is Str with newlines inserted between words (separated by ASCII
+    % space characters) so that at most N code points appear on a line and each
+    % line contains as many whole words as possible. If any one word exceeds N
+    % code point in length then it will be broken over two (or more) lines.
+    % Sequences of whitespace characters are replaced by a single space.
     %
 :- func string.word_wrap(string, int) = string.
 
@@ -873,7 +1027,7 @@
     % word_wrap_separator/3 is like word_wrap/2, except that words that
     % need to be broken up over multiple lines have WordSeparator inserted
     % between each piece. If the length of WordSeparator is greater than
-    % or equal to N, then no separator is used.
+    % or equal to N code points, then no separator is used.
     %
 :- func string.word_wrap_separator(string, int, string) = string.
 
@@ -1008,12 +1162,14 @@ string.foldl2(Closure, String, !Acc1, !Acc2) :-
 string.foldl_substring(Closure, String, Start0, Count0, !Acc) :-
     Start = max(0, Start0),
     Count = min(Count0, length(String) - Start),
-    string.foldl_substring_2(Closure, String, Start, Count, !Acc).
+    End = Start + Count,
+    string.foldl_substring_2(Closure, String, Start, End, !Acc).
 
 string.foldl2_substring(Closure, String, Start0, Count0, !Acc1, !Acc2) :-
     Start = max(0, Start0),
     Count = min(Count0, length(String) - Start),
-    string.foldl2_substring_2(Closure, String, Start, Count, !Acc1, !Acc2).
+    End = Start + Count,
+    string.foldl2_substring_2(Closure, String, Start, End, !Acc1, !Acc2).
 
 :- pred string.foldl_substring_2(pred(char, A, A), string, int, int, A, A).
 :- mode string.foldl_substring_2(pred(in, di, uo) is det, in, in, in,
@@ -1027,10 +1183,14 @@ string.foldl2_substring(Closure, String, Start0, Count0, !Acc1, !Acc2) :-
 :- mode string.foldl_substring_2(pred(in, in, out) is multi, in, in, in,
     in, out) is multi.
 
-string.foldl_substring_2(Closure, String, I, Count, !Acc) :-
-    ( 0 < Count ->
-        Closure(string.unsafe_index(String, I), !Acc),
-        string.foldl_substring_2(Closure, String, I + 1, Count - 1, !Acc)
+string.foldl_substring_2(Closure, String, I, End, !Acc) :-
+    (
+        I < End,
+        string.unsafe_index_next(String, I, J, Char),
+        J =< End
+    ->
+        Closure(Char, !Acc),
+        string.foldl_substring_2(Closure, String, J, End, !Acc)
     ;
         true
     ).
@@ -1050,11 +1210,14 @@ string.foldl_substring_2(Closure, String, I, Count, !Acc) :-
 :- mode string.foldl2_substring_2(pred(in, in, out, in, out) is multi,
     in, in, in, in, out, in, out) is multi.
 
-string.foldl2_substring_2(Closure, String, I, Count, !Acc1, !Acc2) :-
-    ( 0 < Count ->
-        Closure(string.unsafe_index(String, I), !Acc1, !Acc2),
-        string.foldl2_substring_2(Closure, String, I + 1, Count - 1,
-            !Acc1, !Acc2)
+string.foldl2_substring_2(Closure, String, I, End, !Acc1, !Acc2) :-
+    (
+        I < End,
+        string.unsafe_index_next(String, I, J, Char),
+        J =< End
+    ->
+        Closure(Char, !Acc1, !Acc2),
+        string.foldl2_substring_2(Closure, String, J, End, !Acc1, !Acc2)
     ;
         true
     ).
@@ -1073,7 +1236,8 @@ string.foldr(Closure, String, Acc0, Acc) :-
 string.foldr_substring(Closure, String, Start0, Count0, Acc0, Acc) :-
     Start = max(0, Start0),
     Count = min(Count0, length(String) - Start),
-    string.foldr_substring_2(Closure, String, Start, Count, Acc0, Acc).
+    End = Start + Count,
+    string.foldr_substring_2(Closure, String, Start, End, Acc0, Acc).
 
 :- pred string.foldr_substring_2(pred(char, T, T), string, int, int, T, T).
 :- mode string.foldr_substring_2(pred(in, in, out) is det, in, in, in,
@@ -1087,10 +1251,14 @@ string.foldr_substring(Closure, String, Start0, Count0, Acc0, Acc) :-
 :- mode string.foldr_substring_2(pred(in, in, out) is multi, in, in, in,
     in, out) is multi.
 
-string.foldr_substring_2(Closure, String, I, Count, !Acc) :-
-    ( 0 < Count ->
-        Closure(string.unsafe_index(String, I + Count - 1), !Acc),
-        string.foldr_substring_2(Closure, String, I, Count - 1, !Acc)
+string.foldr_substring_2(Closure, String, Start, I, !Acc) :-
+    (
+        I > Start,
+        string.unsafe_prev_index(String, I, J, Char),
+        J >= Start
+    ->
+        Closure(Char, !Acc),
+        string.foldr_substring_2(Closure, String, Start, J, !Acc)
     ;
         true
     ).
@@ -1098,10 +1266,24 @@ string.foldr_substring_2(Closure, String, I, Count, !Acc) :-
 string.left(String, Count, LeftString) :-
     string.split(String, Count, LeftString, _RightString).
 
+string.left_by_codepoint(String, Count) = LeftString :-
+    string.left_by_codepoint(String, Count, LeftString).
+
+string.left_by_codepoint(String, Count, LeftString) :-
+    string.split_by_codepoint(String, Count, LeftString, _RightString).
+
 string.right(String, RightCount, RightString) :-
     string.length(String, Length),
     LeftCount = Length - RightCount,
     string.split(String, LeftCount, _LeftString, RightString).
+
+string.right_by_codepoint(String, RightCount) = RightString :-
+    string.right_by_codepoint(String, RightCount, RightString).
+
+string.right_by_codepoint(String, RightCount, RightString) :-
+    string.count_codepoints(String, TotalCount),
+    LeftCount = TotalCount - RightCount,
+    string.split_by_codepoint(String, LeftCount, _LeftString, RightString).
 
 string.remove_suffix(String, Suffix, StringWithoutSuffix) :-
     string.suffix(String, Suffix),
@@ -1141,27 +1323,28 @@ string.prefix(String::in, Prefix::in) :-
     PreLen =< Len,
     prefix_2_iii(String, Prefix, PreLen - 1).
 string.prefix(String::in, Prefix::out) :-
-    Len = length(String),
-    prefix_2_ioii(String, Prefix, 0, Len).
+    prefix_2_ioi(String, Prefix, 0).
 
 :- pred prefix_2_iii(string::in, string::in, int::in) is semidet.
 
 prefix_2_iii(String, Prefix, I) :-
     ( 0 =< I ->
-        (String `unsafe_index` I) = (Prefix `unsafe_index` I) `with_type` char,
+        string.unsafe_index_code_unit(String, I, C),
+        string.unsafe_index_code_unit(Prefix, I, C),
         prefix_2_iii(String, Prefix, I - 1)
     ;
         true
     ).
 
-:- pred prefix_2_ioii(string::in, string::out, int::in, int::in) is multi.
+:- pred prefix_2_ioi(string::in, string::out, int::in) is multi.
 
-prefix_2_ioii(String, Prefix, PreLen, _Len) :-
-    Prefix = unsafe_substring(String, 0, PreLen).
-
-prefix_2_ioii(String, Prefix, PreLen, Len) :-
-    PreLen < Len,
-    prefix_2_ioii(String, Prefix, PreLen + 1, Len).
+prefix_2_ioi(String, Prefix, Cur) :-
+    (
+        Prefix = unsafe_substring(String, 0, Cur)
+    ;
+        string.unsafe_index_next(String, Cur, Next, _),
+        prefix_2_ioi(String, Prefix, Next)
+    ).
 
 :- pragma promise_equivalent_clauses(string.suffix/2).
 
@@ -1172,15 +1355,15 @@ string.suffix(String::in, Suffix::in) :-
     suffix_2_iiii(String, Suffix, 0, Len - PreLen, PreLen).
 string.suffix(String::in, Suffix::out) :-
     Len = length(String),
-    suffix_2_ioii(String, Suffix, 0, Len).
+    suffix_2_ioii(String, Suffix, Len, Len).
 
 :- pred suffix_2_iiii(string::in, string::in, int::in, int::in, int::in)
     is semidet.
 
 suffix_2_iiii(String, Suffix, I, Offset, Len) :-
     ( I < Len ->
-        (String `unsafe_index` (I + Offset)) =
-            (Suffix `unsafe_index` I) `with_type` char,
+        string.unsafe_index_code_unit(String, I + Offset, C),
+        string.unsafe_index_code_unit(Suffix, I, C),
         suffix_2_iiii(String, Suffix, I + 1, Offset, Len)
     ;
         true
@@ -1188,12 +1371,13 @@ suffix_2_iiii(String, Suffix, I, Offset, Len) :-
 
 :- pred suffix_2_ioii(string::in, string::out, int::in, int::in) is multi.
 
-suffix_2_ioii(String, Suffix, SufLen, Len) :-
-    Suffix = unsafe_substring(String, Len - SufLen, SufLen).
-
-suffix_2_ioii(String, Suffix, SufLen, Len) :-
-    SufLen < Len,
-    suffix_2_ioii(String, Suffix, SufLen + 1, Len).
+suffix_2_ioii(String, Suffix, Cur, Len) :-
+    (
+        string.unsafe_substring(String, Cur, Len - Cur, Suffix)
+    ;
+        string.unsafe_prev_index(String, Cur, Prev, _),
+        suffix_2_ioii(String, Suffix, Prev, Len)
+    ).
 
 string.char_to_string(Char, String) :-
     string.to_char_list(String, [Char]).
@@ -1364,11 +1548,16 @@ string.to_char_list(Str::uo, CharList::in) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
-    MR_ConstString p = Str + strlen(Str);
+    int pos = strlen(Str);
+    int c;
+
     CharList = MR_list_empty_msg(MR_PROC_LABEL);
-    while (p > Str) {
-        p--;
-        CharList = MR_char_list_cons_msg((MR_UnsignedChar) *p, CharList,
+    for (;;) {
+        c = MR_utf8_prev_get(Str, &pos);
+        if (c <= 0) {
+            break;
+        }
+        CharList = MR_char_list_cons_msg((MR_UnsignedChar) c, CharList,
             MR_PROC_LABEL);
     }
 }").
@@ -1380,7 +1569,23 @@ string.to_char_list(Str::uo, CharList::in) :-
 "
     list.List_1 lst = list.empty_list();
     for (int i = Str.Length - 1; i >= 0; i--) {
-        char c = Str[i];
+        int c;
+        char c2 = Str[i];
+        if (System.Char.IsLowSurrogate(c2)) {
+            try {
+                char c1 = Str[i - 1];
+                c = System.Char.ConvertToUtf32(c1, c2);
+                i--;
+            } catch (System.ArgumentOutOfRangeException) {
+                c = 0xfffd;
+            } catch (System.IndexOutOfRangeException) {
+                c = 0xfffd;
+            }
+        } else if (System.Char.IsHighSurrogate(c2)) {
+            c = 0xfffd;
+        } else {
+            c = c2;
+        }
         lst = list.cons(c, lst);
     }
     CharList = lst;
@@ -1391,10 +1596,11 @@ string.to_char_list(Str::uo, CharList::in) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    list.List_1<Character> lst = list.empty_list();
-    for (int i = Str.length() - 1; i >= 0; i--) {
-        char c = Str.charAt(i);
+    list.List_1<Integer> lst = list.empty_list();
+    for (int i = Str.length(); i > 0; ) {
+        int c = Str.codePointBefore(i);
         lst = list.cons(c, lst);
+        i -= java.lang.Character.charCount(c);
     }
     CharList = lst;
 ").
@@ -1404,7 +1610,7 @@ string.to_char_list(Str::uo, CharList::in) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    CharList = binary_to_list(Str)
+    CharList = unicode:characters_to_list(Str)
 ").
 
 string.to_char_list_2(Str, CharList) :-
@@ -1451,7 +1657,7 @@ string.from_char_list(Chars::in, Str::uo) :-
     size = 0;
     char_list_ptr = CharList;
     while (! MR_list_is_empty(char_list_ptr)) {
-        size++;
+        size += MR_utf8_width(MR_list_head(char_list_ptr));
         char_list_ptr = MR_list_tail(char_list_ptr);
     }
 
@@ -1467,8 +1673,8 @@ string.from_char_list(Chars::in, Str::uo) :-
     size = 0;
     char_list_ptr = CharList;
     while (! MR_list_is_empty(char_list_ptr)) {
-        MR_Char c;
-        c = (MR_Char) MR_list_head(char_list_ptr);
+        int c;
+        c = MR_list_head(char_list_ptr);
         /*
         ** It is an error to put a null character in a string
         ** (see the comments at the top of this file).
@@ -1477,7 +1683,7 @@ string.from_char_list(Chars::in, Str::uo) :-
             SUCCESS_INDICATOR = MR_FALSE;
             break;
         }
-        Str[size++] = c;
+        size += MR_utf8_encode(Str + size, c);
         char_list_ptr = MR_list_tail(char_list_ptr);
     }
 
@@ -1491,7 +1697,12 @@ string.from_char_list(Chars::in, Str::uo) :-
 "
     System.Text.StringBuilder sb = new System.Text.StringBuilder();
     while (!list.is_empty(CharList)) {
-        sb.Append((char) list.det_head(CharList));
+        int cp = (int) list.det_head(CharList);
+        if (cp <= 0xffff) {
+            sb.Append((char) cp);
+        } else {
+            sb.Append(System.Char.ConvertFromUtf32(cp));
+        }
         CharList = list.det_tail(CharList);
     }
     Str = sb.ToString();
@@ -1504,9 +1715,14 @@ string.from_char_list(Chars::in, Str::uo) :-
         does_not_affect_liveness],
 "
     java.lang.StringBuilder sb = new StringBuilder();
-    Iterable<Character> iterable = new list.ListIterator<Character>(CharList);
-    for (char c : iterable) {
-        sb.append(c);
+    Iterable<Integer> iterable = new list.ListIterator<Integer>(CharList);
+    for (int c : iterable) {
+        if (c <= 0xffff) {
+            /* Fast path. */
+            sb.append((char) c);
+        } else {
+            sb.append(java.lang.Character.toChars(c));
+        }
     }
     Str = sb.toString();
     SUCCESS_INDICATOR = true;
@@ -1517,8 +1733,8 @@ string.from_char_list(Chars::in, Str::uo) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    SUCCESS_INDICATOR = true,
-    Str = list_to_binary(CharList)
+    Str = unicode:characters_to_binary(CharList),
+    SUCCESS_INDICATOR = true
 ").
 
 :- pragma promise_equivalent_clauses(string.semidet_from_char_list/2).
@@ -1561,7 +1777,7 @@ string.from_rev_char_list(Chars, Str) :-
     size = 0;
     list_ptr = Chars;
     while (!MR_list_is_empty(list_ptr)) {
-        size++;
+        size += MR_utf8_width(MR_list_head(list_ptr));
         list_ptr = MR_list_tail(list_ptr);
     }
 
@@ -1589,7 +1805,8 @@ string.from_rev_char_list(Chars, Str) :-
             SUCCESS_INDICATOR = MR_FALSE;
             break;
         }
-        Str[--size] = c;
+        size -= MR_utf8_width(c);
+        MR_utf8_encode(Str + size, c);
         list_ptr = MR_list_tail(list_ptr);
     }
 }").
@@ -1602,14 +1819,26 @@ string.from_rev_char_list(Chars, Str) :-
     int size = 0;
     list.List_1 list_ptr = Chars;
     while (!list.is_empty(list_ptr)) {
-        size++;
+        int c = (int) list.det_head(list_ptr);
+        if (c <= 0xffff) {
+            size++;
+        } else {
+            size += 2;
+        }
         list_ptr = list.det_tail(list_ptr);
     }
 
     char[] arr = new char[size];
     list_ptr = Chars;
     while (!list.is_empty(list_ptr)) {
-        arr[--size] = (char) list.det_head(list_ptr);
+        int c = (int) list.det_head(list_ptr);
+        if (c <= 0xffff) {
+            arr[--size] = (char) c;
+        } else {
+            string s = System.Char.ConvertFromUtf32(c);
+            arr[--size] = s[1];
+            arr[--size] = s[0];
+        }
         list_ptr = list.det_tail(list_ptr);
     }
 
@@ -1619,6 +1848,151 @@ string.from_rev_char_list(Chars, Str) :-
 
 string.semidet_from_rev_char_list(Chars::in, Str::uo) :-
     string.semidet_from_char_list(list.reverse(Chars), Str).
+
+%---------------------------------------------------------------------------%
+
+string.to_code_unit_list(String, List) :-
+    string.to_code_unit_list_2(String, 0, string.length(String), List).
+
+:- pred string.to_code_unit_list_2(string::in, int::in, int::in,
+    list(int)::out) is det.
+
+string.to_code_unit_list_2(String, Index, End, List) :-
+    ( Index >= End ->
+        List = []
+    ;
+        string.unsafe_index_code_unit(String, Index, Code),
+        string.to_code_unit_list_2(String, Index + 1, End, Tail),
+        List = [Code | Tail]
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    string.from_code_unit_list(CodeList::in, Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, may_not_duplicate, no_sharing],
+"
+    MR_Word list_ptr;
+    size_t  size;
+
+    size = 0;
+    list_ptr = CodeList;
+    while (! MR_list_is_empty(list_ptr)) {
+        size++;
+        list_ptr = MR_list_tail(list_ptr);
+    }
+
+    MR_allocate_aligned_string_msg(Str, size, MR_PROC_LABEL);
+
+    SUCCESS_INDICATOR = MR_TRUE;
+    size = 0;
+    list_ptr = CodeList;
+    while (! MR_list_is_empty(list_ptr)) {
+        int c;
+        c = MR_list_head(list_ptr);
+        /*
+        ** It is an error to put a null character in a string
+        ** (see the comments at the top of this file).
+        */
+        if (c == '\\0' || c > 0xff) {
+            SUCCESS_INDICATOR = MR_FALSE;
+            break;
+        }
+        Str[size] = c;
+        size++;
+        list_ptr = MR_list_tail(list_ptr);
+    }
+
+    Str[size] = '\\0';
+
+    SUCCESS_INDICATOR = SUCCESS_INDICATOR && MR_utf8_verify(Str);
+").
+
+:- pragma foreign_proc("Java",
+    string.from_code_unit_list(CodeList::in, Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    java.lang.StringBuilder sb = new java.lang.StringBuilder();
+    boolean prev_high = false;
+
+    SUCCESS_INDICATOR = true;
+
+    Iterable<Integer> iterable = new list.ListIterator<Integer>(CodeList);
+    for (int i : iterable) {
+        char c = (char) i;
+        if (prev_high) {
+            if (!java.lang.Character.isLowSurrogate(c)) {
+                SUCCESS_INDICATOR = false;
+                break;
+            }
+            prev_high = false;
+        } else if (java.lang.Character.isHighSurrogate(c)) {
+            prev_high = true;
+        } else if (java.lang.Character.isLowSurrogate(c)) {
+            SUCCESS_INDICATOR = false;
+            break;
+        }
+        sb.append(c);
+    }
+
+    SUCCESS_INDICATOR = SUCCESS_INDICATOR && !prev_high;
+
+    if (SUCCESS_INDICATOR) {
+        Str = sb.toString();
+    } else {
+        Str = """";
+    }
+").
+
+:- pragma foreign_proc("C#",
+    string.from_code_unit_list(CodeList::in, Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    System.Text.StringBuilder sb = new System.Text.StringBuilder();
+    bool prev_high = false;
+
+    SUCCESS_INDICATOR = true;
+
+    while (!list.is_empty(CodeList)) {
+        /* Both casts are required. */
+        char c = (char) (int) list.det_head(CodeList);
+        if (prev_high) {
+            if (!System.Char.IsLowSurrogate(c)) {
+                SUCCESS_INDICATOR = false;
+                break;
+            }
+            prev_high = false;
+        } else if (System.Char.IsHighSurrogate(c)) {
+            prev_high = true;
+        } else if (System.Char.IsLowSurrogate(c)) {
+            SUCCESS_INDICATOR = false;
+            break;
+        }
+        sb.Append(c);
+        CodeList = list.det_tail(CodeList);
+    }
+
+    SUCCESS_INDICATOR = SUCCESS_INDICATOR && !prev_high;
+
+    if (SUCCESS_INDICATOR) {
+        Str = sb.ToString();
+    } else {
+        Str = """";
+    }
+").
+
+:- pragma foreign_proc("Erlang",
+    string.from_code_unit_list(CodeList::in, Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    Str = list_to_binary(CodeList),
+    % XXX validate the string
+    SUCCESS_INDICATOR = true
+").
 
 %---------------------------------------------------------------------------%
 
@@ -1663,15 +2037,15 @@ string.uncapitalize_first(S0, S) :-
     ).
 
 string.all_match(P, String) :-
-    all_match_2(string.length(String) - 1, P, String).
+    all_match_2(P, String, 0).
 
-:- pred all_match_2(int::in, pred(char)::in(pred(in) is semidet), string::in)
+:- pred all_match_2(pred(char)::in(pred(in) is semidet), string::in, int::in)
     is semidet.
 
-string.all_match_2(I, P, String) :-
-    ( I >= 0 ->
-        P(string.unsafe_index(String, I)),
-        string.all_match_2(I - 1, P, String)
+string.all_match_2(P, String, I) :-
+    ( string.unsafe_index_next(String, I, J, Char) ->
+        P(Char),
+        string.all_match_2(P, String, J)
     ;
         true
     ).
@@ -1817,7 +2191,7 @@ string.is_all_digits(S) :-
 ").
 
 string.pad_left(String0, PadChar, Width, String) :-
-    string.length(String0, Length),
+    string.count_codepoints(String0, Length),
     ( Length < Width ->
         Count = Width - Length,
         string.duplicate_char(PadChar, Count, PadString),
@@ -1827,7 +2201,7 @@ string.pad_left(String0, PadChar, Width, String) :-
     ).
 
 string.pad_right(String0, PadChar, Width, String) :-
-    string.length(String0, Length),
+    string.count_codepoints(String0, Length),
     ( Length < Width ->
         Count = Width - Length,
         string.duplicate_char(PadChar, Count, PadString),
@@ -2039,9 +2413,9 @@ string.hash(String) = HashVal :-
 
 string.hash_loop(String, Index, Length, !HashVal) :-
     ( Index < Length ->
-        C = char.to_int(string.unsafe_index(String, Index)),
+        string.unsafe_index_code_unit(String, Index, C),
         !:HashVal = !.HashVal `xor` (!.HashVal `unchecked_left_shift` 5),
-        !:HashVal= !.HashVal `xor` C,
+        !:HashVal = !.HashVal `xor` C,
         string.hash_loop(String, Index + 1, Length, !HashVal)
     ;
         true
@@ -2057,7 +2431,7 @@ string.hash2(String) = HashVal :-
 
 string.hash2_loop(String, Index, Length, !HashVal) :-
     ( Index < Length ->
-        C = char.to_int(string.unsafe_index(String, Index)),
+        string.unsafe_index_code_unit(String, Index, C),
         !:HashVal = !.HashVal * 37,
         !:HashVal= !.HashVal + C,
         string.hash2_loop(String, Index + 1, Length, !HashVal)
@@ -2075,7 +2449,7 @@ string.hash3(String) = HashVal :-
 
 string.hash3_loop(String, Index, Length, !HashVal) :-
     ( Index < Length ->
-        C = char.to_int(string.unsafe_index(String, Index)),
+        string.unsafe_index_code_unit(String, Index, C),
         !:HashVal = !.HashVal * 49,
         !:HashVal= !.HashVal + C,
         string.hash3_loop(String, Index + 1, Length, !HashVal)
@@ -2095,12 +2469,16 @@ string.sub_string_search(WholeString, Pattern, Index) :-
         does_not_affect_liveness, no_sharing],
 "{
     char *match;
-    match = strstr(WholeString + BeginAt, Pattern);
-    if (match) {
-        Index = match - WholeString;
-        SUCCESS_INDICATOR = MR_TRUE;
-    } else {
+    if ((MR_Unsigned) BeginAt > strlen(WholeString)) {
         SUCCESS_INDICATOR = MR_FALSE;
+    } else {
+        match = strstr(WholeString + BeginAt, Pattern);
+        if (match) {
+            Index = match - WholeString;
+            SUCCESS_INDICATOR = MR_TRUE;
+        } else {
+            SUCCESS_INDICATOR = MR_FALSE;
+        }
     }
 }").
 
@@ -2311,8 +2689,7 @@ width(Width, !PolyTypes, !Chars) :-
         non_zero_digit(!Chars),
         zero_or_more_occurences(digit, !Chars),
         Final = !.Chars,
-
-        char_list_remove_suffix(Init, Final, Width)
+        list.remove_suffix(Init, Final, Width)
     ).
 
     % Do we have a precision?
@@ -2337,7 +2714,7 @@ prec(Prec, !PolyTypes, !Chars) :-
         zero_or_more_occurences(digit, !Chars),
         Final = !.Chars
     ->
-        char_list_remove_suffix(Init, Final, Prec)
+        list.remove_suffix(Init, Final, Prec)
     ;
         % When no number follows the '.' the precision defaults to 0.
         Prec = ['0']
@@ -2563,7 +2940,7 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
     ;
         % Valid char conversion Specifiers.
         Spec = c(Char),
-        ( using_sprintf ->
+        ( using_sprintf_for_char(Char) ->
             FormatStr = make_format(Flags, Width, Prec, "", "c"),
             String = native_format_char(FormatStr, Char)
         ;
@@ -2572,7 +2949,16 @@ specifier_to_string(spec_conv(Flags, Width, Prec, Spec)) = String :-
     ;
         % Valid string conversion Specifiers.
         Spec = s(Str),
-        ( using_sprintf ->
+        (
+            (
+                using_sprintf,
+                Flags = [],
+                Width = no,
+                Prec = no
+            ;
+                using_sprintf_for_string(Str)
+            )
+        ->
             FormatStr = make_format(Flags, Width, Prec, "", "s"),
             String = native_format_string(FormatStr, Str)
         ;
@@ -2636,6 +3022,44 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = false
+").
+
+:- pred using_sprintf_for_char(char::in) is semidet.
+
+using_sprintf_for_char(_) :-
+    semidet_fail.
+
+:- pragma foreign_proc("C",
+    using_sprintf_for_char(Char::in),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    /* sprintf %c specifier is inadequate for multi-byte UTF-8 characters. */
+    SUCCESS_INDICATOR = MR_is_ascii(Char);
+").
+
+:- pred using_sprintf_for_string(string::in) is semidet.
+
+using_sprintf_for_string(_) :-
+    semidet_fail.
+
+:- pragma foreign_proc("C",
+    using_sprintf_for_string(Str::in),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    const char *s;
+
+    SUCCESS_INDICATOR = MR_TRUE;
+    for (s = Str; *s != '\\0'; s++) {
+        /* sprintf %s specifier is inadequate for multi-byte UTF-8 characters,
+         * if there is a field width or precision specified.
+         */
+        if (!MR_utf8_is_single_byte(*s)) {
+            SUCCESS_INDICATOR = MR_FALSE;
+            break;
+        }
+    }
 ").
 
     % Construct a format string suitable to passing to sprintf.
@@ -2812,7 +3236,7 @@ format_char(Flags, Width, Char) = String :-
 format_string(Flags, Width, Prec, OldStr) = NewStr :-
     (
         Prec = yes(NumChars),
-        PrecStr = string.substring(OldStr, 0, NumChars)
+        PrecStr = string.substring_by_codepoint(OldStr, 0, NumChars)
     ;
         Prec = no,
         PrecStr = OldStr
@@ -3155,7 +3579,7 @@ add_float_prefix_if_needed(Flags, ZeroPadded, Float, FieldStr) = SignedStr :-
 justify_string(Flags, Width, Str) =
     (
         Width = yes(FWidth),
-        FWidth > string.length(Str)
+        FWidth > string.count_codepoints(Str)
     ->
         ( member('-', Flags) ->
             string.pad_right(Str, ' ', FWidth)
@@ -3868,36 +4292,49 @@ string.det_to_float(FloatString) =
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL) && Ch != '\\0';
+    char    buf[5];
+    size_t  len;
+    if (MR_is_ascii(Ch)) {
+        /* Fast path. */
+        SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL) && Ch != '\\0';
+    } else {
+        len = MR_utf8_encode(buf, Ch);
+        buf[len] = '\\0';
+        SUCCESS_INDICATOR = (strstr(Str, buf) != NULL);
+    }
 ").
 
 :- pragma foreign_proc("C#",
     string.contains_char(Str::in, Ch::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    SUCCESS_INDICATOR = (Str.IndexOf(Ch) != -1);
+    if (Ch <= 0xffff) {
+        SUCCESS_INDICATOR = (Str.IndexOf((char) Ch) != -1);
+    } else {
+        string s = System.Char.ConvertFromUtf32(Ch);
+        SUCCESS_INDICATOR = Str.Contains(s);
+    }
 ").
 
 :- pragma foreign_proc("Java",
     string.contains_char(Str::in, Ch::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    SUCCESS_INDICATOR = (Str.indexOf(Ch) != -1);
+    // indexOf(int) handles supplementary characters correctly.
+    SUCCESS_INDICATOR = (Str.indexOf((int) Ch) != -1);
 ").
 
 string.contains_char(String, Char) :-
-    string.contains_char(String, Char, 0, string.length(String)).
+    string.contains_char(String, Char, 0).
 
-:- pred string.contains_char(string::in, char::in, int::in, int::in)
-    is semidet.
+:- pred string.contains_char(string::in, char::in, int::in) is semidet.
 
-string.contains_char(Str, Char, Index, Length) :-
-    ( Index < Length ->
-        string.unsafe_index(Str, Index, IndexChar),
+string.contains_char(Str, Char, I) :-
+    ( string.unsafe_index_next(Str, I, J, IndexChar) ->
         ( IndexChar = Char ->
             true
         ;
-            string.contains_char(Str, Char, Index + 1, Length)
+            string.contains_char(Str, Char, J)
         )
     ;
         fail
@@ -3914,6 +4351,26 @@ string.index(Str, Index, Char) :-
     Len = string.length(Str),
     ( string.index_check(Index, Len) ->
         string.unsafe_index(Str, Index, Char)
+    ;
+        fail
+    ).
+
+:- pragma inline(string.index_next/4).
+
+string.index_next(Str, Index, NextIndex, Char) :-
+    Len = string.length(Str),
+    ( string.index_check(Index, Len) ->
+        string.unsafe_index_next(Str, Index, NextIndex, Char)
+    ;
+        fail
+    ).
+
+:- pragma inline(string.prev_index/4).
+
+string.prev_index(Str, Index, CharIndex, Char) :-
+    Len = string.length(Str),
+    ( string.index_check(Index - 1, Len) ->
+        string.unsafe_prev_index(Str, Index, CharIndex, Char)
     ;
         fail
     ).
@@ -3947,43 +4404,260 @@ string.index_check(Index, Length) :-
 
 /*-----------------------------------------------------------------------*/
 
+string.unsafe_index(Str, Index, Char) :-
+    ( string.unsafe_index_2(Str, Index, Char0) ->
+        Char = Char0
+    ;
+        error("string.unsafe_index: illegal sequence")
+    ).
+
+:- pred string.unsafe_index_2(string::in, int::in, char::uo) is semidet.
+
 :- pragma foreign_proc("C",
-    string.unsafe_index(Str::in, Index::in, Ch::uo),
+    string.unsafe_index_2(Str::in, Index::in, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    Ch = Str[Index];
+    Ch = MR_utf8_get(Str, Index);
+    SUCCESS_INDICATOR = (Ch > 0);
 ").
 :- pragma foreign_proc("C#",
-    string.unsafe_index(Str::in, Index::in, Ch::uo),
+    string.unsafe_index_2(Str::in, Index::in, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Ch = Str[Index];
+    char c1 = Str[Index];
+    if (System.Char.IsSurrogate(c1)) {
+        try {
+            char c2 = Str[Index + 1];
+            Ch = System.Char.ConvertToUtf32(c1, c2);
+        } catch (System.ArgumentOutOfRangeException) {
+            Ch = -1;
+        } catch (System.IndexOutOfRangeException) {
+            Ch = -1;
+        }
+    } else {
+        /* Common case. */
+        Ch = c1;
+    }
+    SUCCESS_INDICATOR = (Ch >= 0);
 ").
 :- pragma foreign_proc("Java",
-    string.unsafe_index(Str::in, Index::in, Ch::uo),
+    string.unsafe_index_2(Str::in, Index::in, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Ch = Str.charAt(Index);
+    Ch = Str.codePointAt(Index);
+    SUCCESS_INDICATOR =
+        !java.lang.Character.isHighSurrogate((char) Ch) &&
+        !java.lang.Character.isLowSurrogate((char) Ch);
 ").
 :- pragma foreign_proc("Erlang",
-    string.unsafe_index(Str::in, Index::in, Ch::uo),
+    string.unsafe_index_2(Str::in, Index::in, Ch::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    <<_:Index/binary, Ch/integer, _/binary>> = Str
+    <<_:Index/binary, Ch/utf8, _/binary>> = Str,
+    SUCCESS_INDICATOR = true
 ").
-string.unsafe_index(Str, Index, Char) :-
-    ( string.first_char(Str, First, Rest) ->
-        ( Index = 0 ->
-            Char = First
-        ;
-            string.unsafe_index(Rest, Index - 1, Char)
-        )
-    ;
-        error("string.unsafe_index: out of bounds")
-    ).
 
 String ^ unsafe_elem(Index) = unsafe_index(String, Index).
+
+:- pragma foreign_proc("C",
+    string.unsafe_index_next(Str::in, Index::in, NextIndex::out, Ch::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    int pos = Index;
+    Ch = MR_utf8_get_next(Str, &pos);
+    NextIndex = pos;
+    SUCCESS_INDICATOR = (Ch > 0);
+").
+
+:- pragma foreign_proc("C#",
+    string.unsafe_index_next(Str::in, Index::in, NextIndex::out, Ch::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    if (Index < Str.Length) {
+        Ch = System.Char.ConvertToUtf32(Str, Index);
+        if (Ch <= 0xffff) {
+            NextIndex = Index + 1;
+        } else {
+            NextIndex = Index + 2;
+        }
+        SUCCESS_INDICATOR = true;
+    } else {
+        Ch = -1;
+        NextIndex = Index;
+        SUCCESS_INDICATOR = false;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    string.unsafe_index_next(Str::in, Index::in, NextIndex::out, Ch::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    if (Index < Str.length()) {
+        Ch = Str.codePointAt(Index);
+        SUCCESS_INDICATOR =
+            !java.lang.Character.isHighSurrogate((char) Ch) &&
+            !java.lang.Character.isLowSurrogate((char) Ch);
+        if (SUCCESS_INDICATOR) {
+            NextIndex = Index + java.lang.Character.charCount(Ch);
+        } else {
+            Ch = -1;
+            NextIndex = Index;
+        }
+    } else {
+        Ch = -1;
+        NextIndex = Index;
+        SUCCESS_INDICATOR = false;
+    }
+").
+
+:- pragma foreign_proc("Erlang",
+    string.unsafe_index_next(Str::in, Index::in, NextIndex::out, Ch::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    case Str of
+        << _:Index/binary, Ch/utf8, _/binary >> ->
+            if
+                Ch =< 16#7f ->
+                    NextIndex = Index + 1;
+                Ch =< 16#7ff ->
+                    NextIndex = Index + 2;
+                Ch =< 16#ffff ->
+                    NextIndex = Index + 3;
+                true ->
+                    NextIndex = Index + 4
+            end,
+            SUCCESS_INDICATOR = true;
+        _ ->
+            Ch = -1,
+            NextIndex = Index,
+            SUCCESS_INDICATOR = false
+    end
+").
+
+:- pragma foreign_proc("C",
+    string.unsafe_prev_index(Str::in, Index::in, PrevIndex::out, Ch::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    int pos = Index;
+    Ch = MR_utf8_prev_get(Str, &pos);
+    PrevIndex = pos;
+    SUCCESS_INDICATOR = (Ch > 0);
+").
+
+:- pragma foreign_proc("C#",
+    string.unsafe_prev_index(Str::in, Index::in, PrevIndex::out, Ch::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    if (Index > 0) {
+        char c2 = Str[Index - 1];
+        if (System.Char.IsSurrogate(c2)) {
+            try {
+                char c1 = Str[Index - 2];
+                Ch = System.Char.ConvertToUtf32(c1, c2);
+                PrevIndex = Index - 2;
+            } catch (System.IndexOutOfRangeException) {
+                Ch = -1;
+                PrevIndex = Index;
+                SUCCESS_INDICATOR = false;
+            } catch (System.ArgumentOutOfRangeException) {
+                Ch = -1;
+                PrevIndex = Index;
+                SUCCESS_INDICATOR = false;
+            }
+        } else {
+            /* Common case. */
+            Ch = (int) c2;
+            PrevIndex = Index - 1;
+        }
+        SUCCESS_INDICATOR = true;
+    } else {
+        Ch = -1;
+        PrevIndex = Index;
+        SUCCESS_INDICATOR = false;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    string.unsafe_prev_index(Str::in, Index::in, PrevIndex::out, Ch::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    if (Index > 0) {
+        Ch = Str.codePointBefore(Index);
+        PrevIndex = Index - java.lang.Character.charCount(Ch);
+        SUCCESS_INDICATOR = true;
+    } else {
+        Ch = -1;
+        PrevIndex = Index;
+        SUCCESS_INDICATOR = false;
+    }
+").
+
+:- pragma foreign_proc("Erlang",
+    string.unsafe_prev_index(Str::in, Index::in, PrevIndex::out, Ch::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, may_not_duplicate, no_sharing],
+"
+    {PrevIndex, Ch} = do_unsafe_prev_index(Str, Index - 1),
+    SUCCESS_INDICATOR = (Ch =/= -1)
+").
+
+:- pragma foreign_code("Erlang", "
+do_unsafe_prev_index(Str, Index) ->
+    if Index >= 0 ->
+        case Str of
+            <<_:Index/binary, Ch/integer, _/binary>> ->
+                if
+                    (Ch band 16#80) =:= 0 ->
+                        {Index, Ch};
+                    (Ch band 16#C0) == 16#80 ->
+                        do_unsafe_prev_index(Str, Index - 1);
+                    true ->
+                        <<_:Index/binary, Ch2/utf8, _/binary>> = Str,
+                        {Index, Ch2}
+                end;
+            true ->
+                {Index, -1}
+        end
+    ; true ->
+        {Index, -1}
+    end.
+").
+
+/*-----------------------------------------------------------------------*/
+
+:- pragma foreign_proc("C",
+    string.unsafe_index_code_unit(Str::in, Index::in, Code::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    const unsigned char *s = (const unsigned char *)Str;
+    Code = s[Index];
+").
+:- pragma foreign_proc("C#",
+    string.unsafe_index_code_unit(Str::in, Index::in, Code::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Code = Str[Index];
+").
+:- pragma foreign_proc("Java",
+    string.unsafe_index_code_unit(Str::in, Index::in, Code::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Code = Str.charAt(Index);
+").
+:- pragma foreign_proc("Erlang",
+    string.unsafe_index_code_unit(Str::in, Index::in, Code::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    <<_:Index/binary, Code/integer, _/binary>> = Str
+").
 
 /*-----------------------------------------------------------------------*/
 
@@ -3994,9 +4668,9 @@ String ^ unsafe_elem(Index) = unsafe_index(String, Index).
     ** GNU C version egcs-1.1.2 crashes with `fixed or forbidden register
     ** spilled' in grade asm_fast.gc.tr.debug if we write this inline.
     */
-    extern void MR_set_char(MR_String str, MR_Integer ind, MR_Char ch);
+    extern void MR_set_code_unit(MR_String str, MR_Integer ind, char ch);
 #else
-    #define MR_set_char(str, ind, ch) \\
+    #define MR_set_code_unit(str, ind, ch) \\
         ((str)[ind] = (ch))
 #endif
 ").
@@ -4008,7 +4682,7 @@ String ^ unsafe_elem(Index) = unsafe_index(String, Index).
     ** GNU C version egcs-1.1.2 crashes with `fixed or forbidden register
     ** spilled' in grade asm_fast.gc.tr.debug if we write this inline.
     */
-    void MR_set_char(MR_String str, MR_Integer ind, MR_Char ch)
+    void MR_set_code_unit(MR_String str, MR_Integer ind, char ch)
     {
         str[ind] = ch;
     }
@@ -4036,11 +4710,29 @@ string.set_char(Char, Index, !Str) :-
     size_t len = strlen(Str0);
     if ((MR_Unsigned) Index >= len) {
         SUCCESS_INDICATOR = MR_FALSE;
-    } else {
+    } else if (MR_is_ascii(Str0[Index]) && MR_is_ascii(Ch)) {
+        /* Fast path. */
         SUCCESS_INDICATOR = MR_TRUE;
         MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
         strcpy(Str, Str0);
-        MR_set_char(Str, Index, Ch);
+        MR_set_code_unit(Str, Index, Ch);
+    } else {
+        int oldc = MR_utf8_get(Str0, Index);
+        if (oldc < 0) {
+            SUCCESS_INDICATOR = MR_FALSE;
+        } else {
+            size_t oldwidth = MR_utf8_width(oldc);
+            size_t newwidth = MR_utf8_width(Ch);
+            size_t newlen;
+            size_t tailofs;
+
+            newlen = len - oldwidth + newwidth;
+            MR_allocate_aligned_string_msg(Str, newlen, MR_PROC_LABEL);
+            MR_memcpy(Str, Str0, Index);
+            MR_utf8_encode(Str + Index, Ch);
+            strcpy(Str + Index + newwidth, Str0 + Index + oldwidth);
+            SUCCESS_INDICATOR = MR_TRUE;
+        }
     }
 ").
 :- pragma foreign_proc("C#",
@@ -4052,7 +4744,19 @@ string.set_char(Char, Index, !Str) :-
         SUCCESS_INDICATOR = false;
     } else {
         System.Text.StringBuilder sb = new System.Text.StringBuilder(Str0);
-        sb[Index] = Ch;
+        if (!System.Char.IsHighSurrogate(Str0, Index) && Ch <= 0xffff) {
+            /* Fast path. */
+            sb[Index] = (char) Ch;
+        } else {
+            if (Str0.Length > Index + 1 &&
+                System.Char.IsLowSurrogate(Str0, Index + 1))
+            {
+                sb.Remove(Index, 2);
+            } else {
+                sb.Remove(Index, 1);
+            }
+            sb.Insert(Index, System.Char.ConvertFromUtf32(Ch));
+        }
         Str = sb.ToString();
         SUCCESS_INDICATOR = true;
     }
@@ -4066,42 +4770,34 @@ string.set_char(Char, Index, !Str) :-
         SUCCESS_INDICATOR = false;
     } else {
         java.lang.StringBuilder sb = new StringBuilder(Str0);
-        sb.setCharAt(Index, Ch);
+
+        int oldc = sb.codePointAt(Index);
+        int oldwidth = java.lang.Character.charCount(oldc);
+        int newwidth = java.lang.Character.charCount(Ch);
+        if (oldwidth == 1 && newwidth == 1) {
+            sb.setCharAt(Index, (char) Ch);
+        } else {
+            char[] buf = java.lang.Character.toChars(Ch);
+            sb.replace(Index, Index + oldwidth, new String(buf));
+        }
+
         Str = sb.toString();
         SUCCESS_INDICATOR = true;
     }
 ").
-string.set_char_2(Ch, Index, Str0, Str) :-
-    string.to_char_list(Str0, List0),
-    list.replace_nth(List0, Index + 1, Ch, List),
-    string.to_char_list(Str, List).
-
-% :- pragma foreign_proc("C",
-%   string.set_char_2(Ch::in, Index::in, Str0::di, Str::uo),
-%   [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness],
-% "
-%   if ((MR_Unsigned) Index >= strlen(Str0)) {
-%       SUCCESS_INDICATOR = MR_FALSE;
-%   } else {
-%       SUCCESS_INDICATOR = MR_TRUE;
-%       Str = Str0;
-%       MR_set_char(Str, Index, Ch);
-%   }
-% ").
-%
-% :- pragma foreign_proc("C#",
-%   string.set_char_2(Ch::in, Index::in, Str0::di, Str::uo),
-%   [will_not_call_mercury, promise_pure, thread_safe],
-% "
-%   if (Index >= Str0.Length) {
-%       SUCCESS_INDICATOR = false;
-%   } else {
-%       Str = System.String.Concat(Str0.Substring(0, Index),
-%           System.Convert.ToString(Ch),
-%           Str0.Substring(Index + 1));
-%       SUCCESS_INDICATOR = true;
-%   }
-% ").
+:- pragma foreign_proc("Erlang",
+    string.set_char_2(Ch::in, Index::in, Str0::in, Str::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    case Str0 of
+        <<Left:Index/binary, _/utf8, Right/binary>> ->
+            Str = unicode:characters_to_binary([Left, Ch, Right]),
+            SUCCESS_INDICATOR = true;
+        _ ->
+            Str = <<>>,
+            SUCCESS_INDICATOR = false
+    end
+").
 
 /*-----------------------------------------------------------------------*/
 
@@ -4124,53 +4820,60 @@ string.unsafe_set_char(Char, Index, !Str) :-
         does_not_affect_liveness],
 "
     size_t len = strlen(Str0);
-    MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
-    strcpy(Str, Str0);
-    MR_set_char(Str, Index, Ch);
+    if (MR_is_ascii(Str0[Index]) && MR_is_ascii(Ch)) {
+        /* Fast path. */
+        MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
+        strcpy(Str, Str0);
+        MR_set_code_unit(Str, Index, Ch);
+    } else {
+        int oldc = MR_utf8_get(Str0, Index);
+        size_t oldwidth = MR_utf8_width(oldc);
+        size_t newwidth = MR_utf8_width(Ch);
+        size_t newlen;
+        size_t tailofs;
+
+        newlen = len - oldwidth + newwidth;
+        MR_allocate_aligned_string_msg(Str, newlen, MR_PROC_LABEL);
+        MR_memcpy(Str, Str0, Index);
+        MR_utf8_encode(Str + Index, Ch);
+        strcpy(Str + Index + newwidth, Str0 + Index + oldwidth);
+    }
 ").
 :- pragma foreign_proc("C#",
     string.unsafe_set_char_2(Ch::in, Index::in, Str0::in, Str::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Str = System.String.Concat(Str0.Substring(0, Index),
-        System.Convert.ToString(Ch),
-        Str0.Substring(Index + 1));
+    if (System.Char.IsHighSurrogate(Str0, Index)) {
+        Str = System.String.Concat(
+            Str0.Substring(0, Index),
+            System.Char.ConvertFromUtf32(Ch),
+            Str0.Substring(Index + 2)
+        );
+    } else {
+        Str = System.String.Concat(
+            Str0.Substring(0, Index),
+            System.Char.ConvertFromUtf32(Ch),
+            Str0.Substring(Index + 1)
+        );
+    }
 ").
 :- pragma foreign_proc("Java",
     string.unsafe_set_char_2(Ch::in, Index::in, Str0::in, Str::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Str = Str0.substring(0, Index) + Ch + Str0.substring(Index + 1);
+    int oldc = Str0.codePointAt(Index);
+    int oldwidth = java.lang.Character.charCount(oldc);
+    Str = Str0.subSequence(0, Index)
+        + new String(Character.toChars(Ch))
+        + Str0.subSequence(Index + oldwidth, Str0.length());
 ").
 :- pragma foreign_proc("Erlang",
     string.unsafe_set_char_2(Ch::in, Index::in, Str0::in, Str::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    <<Left:Index/binary, _/integer, Right/binary>> = Str0,
-    Str = list_to_binary([Left, Ch, Right])
+    <<Left:Index/binary, _/utf8, Right/binary>> = Str0,
+    Str = unicode:characters_to_binary([Left, Ch, Right])
 ").
-
-% :- pragma foreign_proc("C",
-%   string.unsafe_set_char_2(Ch::in, Index::in, Str0::di, Str::uo),
-%   [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness],
-% "
-%   Str = Str0;
-%   MR_set_char(Str, Index, Ch);
-% ").
-% :- pragma foreign_proc("C#",
-%   string.unsafe_set_char_2(Ch::in, Index::in, Str0::di, Str::uo),
-%   [will_not_call_mercury, promise_pure, thread_safe],
-% "
-%   Str = System.String.Concat(Str0.Substring(0, Index),
-%       System.Convert.ToString(Ch),
-%       Str0.Substring(Index + 1));
-% ").
-% :- pragma foreign_proc("Java",
-%   string.unsafe_set_char_2(Ch::in, Index::in, Str0::di, Str::uo),
-%   [will_not_call_mercury, promise_pure, thread_safe],
-% "
-%   Str = Str0.substring(0, Index) + Ch + Str0.substring(Index + 1);
-% ").
 
 /*-----------------------------------------------------------------------*/
 
@@ -4228,19 +4931,139 @@ string.unsafe_set_char(Char, Index, !Str) :-
     Length = size(Str)
 ").
 
-string.length(Str0, Len) :-
-    % XXX This copy is only necessary because of the ui.
-    copy(Str0, Str),
-    string.length_2(Str, 0, Len).
+string.length(Str, Len) :-
+    string.to_code_unit_list(Str, CodeList),
+    list.length(CodeList, Len).
 
-:- pred string.length_2(string::in, int::in, int::out) is det.
+string.count_code_units(Str) = string.length(Str).
 
-string.length_2(Str, Index, Length) :-
-    ( string.index(Str, Index, _) ->
-        string.length_2(Str, Index + 1, Length)
-    ;
-        Length = Index
+string.count_code_units(Str, Length) :-
+    string.length(Str, Length).
+
+/*-----------------------------------------------------------------------*/
+
+string.count_codepoints(String) = Count :-
+    string.count_codepoints(String, Count).
+
+string.count_codepoints(String, Count) :-
+    count_codepoints_2(String, 0, 0, Count).
+
+:- pred count_codepoints_2(string::in, int::in, int::in, int::out) is det.
+
+count_codepoints_2(String, I, Count0, Count) :-
+    ( string.unsafe_index_next(String, I, J, _) ->
+        count_codepoints_2(String, J, Count0 + 1, Count)
+    ;   
+        Count = Count0
     ).
+
+:- pragma foreign_proc("C",
+    string.count_codepoints(String::in, Count::out),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+    unsigned char   b;
+    int             i;
+
+    Count = 0;
+    for (i = 0; ; i++) {
+        b = String[i];
+        if (b == '\\0') {
+            break;
+        }
+        if (MR_utf8_is_single_byte(b) || MR_utf8_is_lead_byte(b)) {
+            Count++;
+        }
+    }
+").
+
+:- pragma foreign_proc("C#",
+    string.count_codepoints(String::in, Count::out),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+    Count = 0;
+    foreach (char c in String) {
+        if (!System.Char.IsLowSurrogate(c)) {
+            Count++;
+        }
+    }
+").
+
+:- pragma foreign_proc("Java",
+    string.count_codepoints(String::in, Count::out),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+    Count = String.codePointCount(0, String.length());
+").
+
+    % Note: we do not define what happens with unpaired surrogates.
+    %
+string.codepoint_offset(String, N, Index) :-
+    string.codepoint_offset(String, 0, N, Index).
+
+string.codepoint_offset(String, StartOffset, N, Index) :-
+    StartOffset >= 0,
+    Length = string.length(String),
+    string.codepoint_offset_2(String, StartOffset, Length, N, Index).
+
+:- pred codepoint_offset_2(string::in, int::in, int::in, int::in, int::out)
+    is semidet.
+
+codepoint_offset_2(String, Offset, Length, N, Index) :-
+    Offset < Length,
+    ( N = 0 ->
+        Index = Offset
+    ;
+        string.unsafe_index_next(String, Offset, NextOffset, _),
+        string.codepoint_offset_2(String, NextOffset, Length, N - 1, Index)
+    ).
+
+:- pragma foreign_proc("C",
+    string.codepoint_offset(String::in, StartOffset::in, N::in, Index::out),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+    size_t          len;
+    unsigned char   b;
+
+    SUCCESS_INDICATOR = MR_FALSE;
+    len = strlen(String);
+    for (Index = StartOffset; Index < len; Index++) {
+        b = String[Index];
+        if (MR_utf8_is_single_byte(b) || MR_utf8_is_lead_byte(b)) {
+            if (N-- == 0) {
+                SUCCESS_INDICATOR = MR_TRUE;
+                break;
+            }
+        }
+    }
+").
+
+:- pragma foreign_proc("C#",
+    string.codepoint_offset(String::in, StartOffset::in, N::in, Index::out),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+    SUCCESS_INDICATOR = false;
+    for (Index = StartOffset; Index < String.Length; Index++) {
+        if (!System.Char.IsLowSurrogate(String, Index)) {
+            if (N-- == 0) {
+                SUCCESS_INDICATOR = true;
+                break;
+            }
+        }
+    }
+").
+
+:- pragma foreign_proc("Java",
+    string.codepoint_offset(String::in, StartOffset::in, N::in, Index::out),
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
+"
+    try {
+        Index = String.offsetByCodePoints(StartOffset, N);
+        SUCCESS_INDICATOR = (Index < String.length());
+    } catch (IndexOutOfBoundsException e) {
+        Index = -1;
+        SUCCESS_INDICATOR = false;
+    }
+").
 
 /*-----------------------------------------------------------------------*/
 
@@ -4410,7 +5233,8 @@ string.append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
         (
             string.append_ooi_3(NextS1Len, S3Len, S1, S2, S3)
         ;
-            string.append_ooi_2(NextS1Len + 1, S3Len, S1, S2, S3)
+            string.unsafe_index_next(S3, NextS1Len, AdvS1Len, _),
+            string.append_ooi_2(AdvS1Len, S3Len, S1, S2, S3)
         )
     ).
 
@@ -4485,12 +5309,15 @@ substring(Str, !.Start, !.Count, SubStr) :-
 :- func strchars(int, int, string) = list(char).
 
 strchars(I, End, Str) = Chars :-
-    ( I >= End ->
-        Chars = []
-    ;
-        C = string.unsafe_index(Str, I),
-        Cs = strchars(I + 1, End, Str),
+    (
+        I < End,
+        string.unsafe_index_next(Str, I, J, C),
+        J =< End
+    ->
+        Cs = strchars(J, End, Str),
         Chars = [C | Cs]
+    ;
+        Chars = []
     ).
 
 :- pragma foreign_proc("C",
@@ -4559,29 +5386,46 @@ strchars(I, End, Str) = Chars :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    string.substring(Str::in, Start0::in, Count::in, SubString::uo),
+    string.substring(Str::in, Start0::in, Count0::in, SubString::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
 "
-    if
-        Start0 < 0 ->
-            Start = 0;
-        true ->
-            Start = Start0
+    if Start0 < 0 ->
+        Start = 0;
+    true ->
+        Start = Start0
     end,
     if
-        Count =< 0 ->
+        Count0 =< 0 ->
+            SubString = <<>>;
+        Start > size(Str) ->
             SubString = <<>>;
         true ->
-            End = size(Str),
-            case Start + Count >= End of
-                true ->
-                    <<_:Start/binary, SubString/binary>> = Str;
-                false ->
-                    <<_:Start/binary, SubString:Count/binary, _/binary>> = Str
-            end
+            if Count0 > size(Str) - Start ->
+                Count = size(Str) - Start;
+            true ->
+                Count = Count0
+            end,
+            <<_:Start/binary, SubString:Count/binary, _/binary>> = Str
     end
 ").
+
+string.substring_by_codepoint(Str, Start, Count) = SubString :-
+    string.substring_by_codepoint(Str, Start, Count, SubString).
+
+string.substring_by_codepoint(Str, Start, Count, SubString) :-
+    ( string.codepoint_offset(Str, Start, StartOffset0) ->
+        StartOffset = StartOffset0
+    ;
+        StartOffset = 0
+    ),
+    ( string.codepoint_offset(Str, StartOffset, Count, EndOffset0) ->
+        EndOffset = EndOffset0
+    ;
+        EndOffset = string.length(Str)
+    ),
+    OffsetCount = EndOffset - StartOffset,
+    string.substring(Str, StartOffset, OffsetCount, SubString).
 
 :- pragma foreign_proc("C",
     string.unsafe_substring(Str::in, Start::in, Count::in, SubString::uo),
@@ -4699,19 +5543,34 @@ string.split(Str, Count, Left, Right) :-
         Left = "",
         copy(Str, Right)
     ;
-        string.to_char_list(Str, List),
+        string.to_code_unit_list(Str, List),
         Len = string.length(Str),
         ( Count > Len ->
             Num = Len
         ;
             Num = Count
         ),
-        ( list.split_list(Num, List, LeftList, RightList) ->
-            string.to_char_list(Left, LeftList),
-            string.to_char_list(Right, RightList)
+        (
+            list.split_list(Num, List, LeftList, RightList),
+            string.from_code_unit_list(LeftList, Left0),
+            string.from_code_unit_list(RightList, Right0)
+        ->
+            Left = Left0,
+            Right = Right0
         ;
             error("string.split")
         )
+    ).
+
+string.split_by_codepoint(Str, Count, Left, Right) :-
+    ( string.codepoint_offset(Str, Count, Offset) ->
+        string.split(Str, Offset, Left, Right)
+    ; Count =< 0 ->
+        Left = "",
+        copy(Str, Right)
+    ;
+        copy(Str, Left),
+        Right = ""
     ).
 
 /*-----------------------------------------------------------------------*/
@@ -4721,10 +5580,12 @@ string.split(Str, Count, Left, Right) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
+    int pos = 0;
+    int c = MR_utf8_get_next(Str, &pos);
     SUCCESS_INDICATOR = (
-        Str[0] == First &&
+        c == First &&
         First != '\\0' &&
-        strcmp(Str + 1, Rest) == 0
+        strcmp(Str + pos, Rest) == 0
     );
 ").
 :- pragma foreign_proc("C#",
@@ -4732,26 +5593,39 @@ string.split(Str, Count, Left, Right) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     int len = Str.Length;
-    SUCCESS_INDICATOR = (
-        len > 0 &&
-        Str[0] == First &&
-        System.String.CompareOrdinal(Str, 1, Rest, 0, len) == 0
-    );
+    if (First <= 0xffff) {
+        SUCCESS_INDICATOR = (
+            len > 0 &&
+            Str[0] == First &&
+            System.String.CompareOrdinal(Str, 1, Rest, 0, len) == 0
+        );
+    } else {
+        string firstchars = System.Char.ConvertFromUtf32(First);
+        SUCCESS_INDICATOR = (
+            len > 1 &&
+            Str[0] == firstchars[0] &&
+            Str[1] == firstchars[1] &&
+            System.String.CompareOrdinal(Str, 2, Rest, 0, len) == 0
+        );
+    }
 ").
 :- pragma foreign_proc("Java",
     string.first_char(Str::in, First::in, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    SUCCESS_INDICATOR = (Str.length() == Rest.length() + 1 &&
-        Str.charAt(0) == First &&
-        Str.endsWith(Rest));
+    int toffset = java.lang.Character.charCount(First);
+    SUCCESS_INDICATOR = (
+        Str.length() > 0 &&
+        Str.codePointAt(0) == First &&
+        Str.regionMatches(toffset, Rest, 0, Rest.length())
+    );
 ").
 :- pragma foreign_proc("Erlang",
     string.first_char(Str::in, First::in, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     case Str of
-        <<First, Rest/binary>> ->
+        <<First/utf8, Rest/binary>> ->
             SUCCESS_INDICATOR = true;
         _ ->
             SUCCESS_INDICATOR = false
@@ -4763,19 +5637,31 @@ string.split(Str, Count, Left, Right) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    First = Str[0];
-    SUCCESS_INDICATOR = (First != '\\0' && strcmp(Str + 1, Rest) == 0);
+    int pos = 0;
+    First = MR_utf8_get_next(Str, &pos);
+    SUCCESS_INDICATOR = (First != '\\0' && strcmp(Str + pos, Rest) == 0);
 ").
 :- pragma foreign_proc("C#",
     string.first_char(Str::in, First::uo, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    int len = Str.Length;
-    if (len > 0) {
-        SUCCESS_INDICATOR = (System.String.CompareOrdinal(Str, 1, Rest, 0, len)
-            == 0);
-        First = Str[0];
-    } else {
+    try {
+        int len = Str.Length;
+        char c1 = Str[0];
+        if (System.Char.IsHighSurrogate(c1)) {
+            char c2 = Str[1];
+            First = System.Char.ConvertToUtf32(c1, c2);
+            SUCCESS_INDICATOR =
+                (System.String.CompareOrdinal(Str, 2, Rest, 0, len) == 0);
+        } else {
+            First = c1;
+            SUCCESS_INDICATOR =
+                (System.String.CompareOrdinal(Str, 1, Rest, 0, len) == 0);
+        }
+    } catch (System.IndexOutOfRangeException) {
+        SUCCESS_INDICATOR = false;
+        First = (char) 0;
+    } catch (System.ArgumentOutOfRangeException) {
         SUCCESS_INDICATOR = false;
         First = (char) 0;
     }
@@ -4784,13 +5670,15 @@ string.split(Str, Count, Left, Right) :-
     string.first_char(Str::in, First::uo, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    if (Str.length() == Rest.length() + 1 && Str.endsWith(Rest)) {
-        SUCCESS_INDICATOR = true;
-        First = Str.charAt(0);
+    int toffset;
+    if (Str.length() > 0) {
+        First = Str.codePointAt(0);
+        toffset = java.lang.Character.charCount(First);
+        SUCCESS_INDICATOR = Str.regionMatches(toffset, Rest, 0, Rest.length());
     } else {
         SUCCESS_INDICATOR = false;
         // XXX to avoid uninitialized var warning
-        First = (char) 0;
+        First = 0;
     }
 ").
 :- pragma foreign_proc("Erlang",
@@ -4798,7 +5686,7 @@ string.split(Str, Count, Left, Right) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     case Str of
-        << First, Rest/binary >> ->
+        <<First/utf8, Rest/binary>> ->
             SUCCESS_INDICATOR = true;
         _ ->
             SUCCESS_INDICATOR = false,
@@ -4811,10 +5699,12 @@ string.split(Str, Count, Left, Right) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
-    if (Str[0] != First || First == '\\0') {
+    int pos = 0;
+    int c = MR_utf8_get_next(Str, &pos);
+    if (c != First || First == '\\0') {
         SUCCESS_INDICATOR = MR_FALSE;
     } else {
-        Str++;
+        Str += pos;
         /*
         ** We need to make a copy to ensure that the pointer is word-aligned.
         */
@@ -4830,8 +5720,15 @@ string.split(Str, Count, Left, Right) :-
     int len = Str.Length;
 
     if (len > 0) {
-        SUCCESS_INDICATOR = (First == Str[0]);
-        Rest = Str.Substring(1);
+        if (First <= 0xffff) {
+            SUCCESS_INDICATOR = (First == Str[0]);
+            Rest = Str.Substring(1);
+        } else {
+            string firststr = System.Char.ConvertFromUtf32(First);
+            SUCCESS_INDICATOR =
+                (System.String.CompareOrdinal(Str, 0, firststr, 0, 2) == 0);
+            Rest = Str.Substring(2);
+        }
     } else {
         SUCCESS_INDICATOR = false;
         Rest = null;
@@ -4844,8 +5741,8 @@ string.split(Str, Count, Left, Right) :-
     int len = Str.length();
 
     if (len > 0) {
-        SUCCESS_INDICATOR = (First == Str.charAt(0));
-        Rest = Str.substring(1);
+        SUCCESS_INDICATOR = (First == Str.codePointAt(0));
+        Rest = Str.substring(java.lang.Character.charCount(First));
     } else {
         SUCCESS_INDICATOR = false;
         // XXX to avoid uninitialized var warning
@@ -4857,7 +5754,7 @@ string.split(Str, Count, Left, Right) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     case Str of
-        <<First, Rest/binary>> ->
+        <<First/utf8, Rest/binary>> ->
             SUCCESS_INDICATOR = true;
         _ ->
             SUCCESS_INDICATOR = false,
@@ -4870,11 +5767,12 @@ string.split(Str, Count, Left, Right) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
-    First = Str[0];
+    int pos = 0;
+    First = MR_utf8_get_next(Str, &pos);
     if (First == '\\0') {
         SUCCESS_INDICATOR = MR_FALSE;
     } else {
-        Str++;
+        Str += pos;
         /*
         ** We need to make a copy to ensure that the pointer is word-aligned.
         */
@@ -4887,14 +5785,25 @@ string.split(Str, Count, Left, Right) :-
     string.first_char(Str::in, First::uo, Rest::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
-    if (Str.Length == 0) {
+    try {
+        char c1 = Str[0];
+        if (System.Char.IsHighSurrogate(c1)) {
+            char c2 = Str[1];
+            First = System.Char.ConvertToUtf32(c1, c2);
+            Rest = Str.Substring(2);
+        } else {
+            First = Str[0];
+            Rest = Str.Substring(1);
+        }
+        SUCCESS_INDICATOR = true;
+    } catch (System.IndexOutOfRangeException) {
         SUCCESS_INDICATOR = false;
         First = (char) 0;
         Rest = null;
-    } else {
-        First = Str[0];
-        Rest = Str.Substring(1);
-        SUCCESS_INDICATOR = true;
+    } catch (System.ArgumentOutOfRangeException) {
+        SUCCESS_INDICATOR = false;
+        First = (char) 0;
+        Rest = null;
     }
 }").
 :- pragma foreign_proc("Java",
@@ -4903,12 +5812,11 @@ string.split(Str, Count, Left, Right) :-
 "{
     if (Str.length() == 0) {
         SUCCESS_INDICATOR = false;
-        // XXX to avoid uninitialized var warnings:
         First = (char) 0;
         Rest = null;
     } else {
-        First = Str.charAt(0);
-        Rest = Str.substring(1);
+        First = Str.codePointAt(0);
+        Rest = Str.substring(java.lang.Character.charCount(First));
         SUCCESS_INDICATOR = true;
     }
 }").
@@ -4917,7 +5825,7 @@ string.split(Str, Count, Left, Right) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     case Str of
-        <<First, Rest/binary>> ->
+        <<First/utf8, Rest/binary>> ->
             SUCCESS_INDICATOR = true;
         _ ->
             SUCCESS_INDICATOR = false,
@@ -4931,31 +5839,36 @@ string.split(Str, Count, Left, Right) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
-    size_t len = strlen(Rest) + 1;
+    size_t firstw = MR_utf8_width(First);
+    size_t len = firstw + strlen(Rest);
     MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
-    Str[0] = First;
-    strcpy(Str + 1, Rest);
+    MR_utf8_encode(Str, First);
+    strcpy(Str + firstw, Rest);
 }").
 :- pragma foreign_proc("C#",
     string.first_char(Str::uo, First::in, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     string FirstStr;
-    FirstStr = new System.String(First, 1);
-    Str = System.String.Concat(FirstStr, Rest);
+    if (First <= 0xffff) {
+        FirstStr = new System.String((char) First, 1);
+    } else {
+        FirstStr = System.Char.ConvertFromUtf32(First);
+    }
+    Str = FirstStr + Rest;
 }").
 :- pragma foreign_proc("Java",
     string.first_char(Str::uo, First::in, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
-    java.lang.String FirstStr = java.lang.String.valueOf(First);
+    String FirstStr = new String(Character.toChars(First));
     Str = FirstStr.concat(Rest);
 }").
 :- pragma foreign_proc("Erlang",
     string.first_char(Str::uo, First::in, Rest::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Str = list_to_binary([First, Rest])
+    Str = unicode:characters_to_binary([First, Rest])
 ").
 
 %-----------------------------------------------------------------------------%
@@ -5058,23 +5971,40 @@ string.format(S1, PT) = S2 :-
 %------------------------------------------------------------------------------%
 
 string.words_separator(SepP, String) = Words :-
-    I = preceding_boundary(isnt(SepP), String, string.length(String) - 1),
-    Words = words_2(SepP, String, I, []).
+    next_boundary(SepP, String, 0, WordStart),
+    words_2(SepP, String, WordStart, Words).
 
-%------------------------------------------------------------------------------%
+:- pred words_2(pred(char)::in(pred(in) is semidet), string::in, int::in,
+    list(string)::out) is det.
 
-:- func words_2(pred(char)::in(pred(in) is semidet), string::in, int::in,
-    list(string)::in) = (list(string)::out) is det.
-
-words_2(SepP, String, WordEnd, Words0) = Words :-
-    ( WordEnd < 0 ->
-        Words = Words0
+words_2(SepP, String, WordStart, Words) :-
+    next_boundary(isnt(SepP), String, WordStart, WordEnd),
+    ( WordEnd = WordStart ->
+        Words = []
     ;
-        WordPre = preceding_boundary(SepP, String, WordEnd),
-        Word = string.unsafe_substring(String, WordPre + 1,
-            WordEnd - WordPre),
-        PrevWordEnd = preceding_boundary(isnt(SepP), String, WordPre),
-        Words = words_2(SepP, String, PrevWordEnd, [Word | Words0])
+        string.unsafe_substring(String, WordStart, WordEnd - WordStart, Word),
+        next_boundary(SepP, String, WordEnd, NextWordStart),
+        ( WordEnd = NextWordStart ->
+            Words = [Word]
+        ;
+            words_2(SepP, String, NextWordStart, Words0),
+            Words = [Word | Words0]
+        )
+    ).
+
+    % Return the smallest I >= I0 such that `not P(String[I])'.
+    %
+:- pred next_boundary(pred(char)::in(pred(in) is semidet), string::in, int::in,
+    int::out) is det.
+
+next_boundary(P, String, I0, I) :-
+    (
+        string.unsafe_index_next(String, I0, I1, Char),
+        P(Char)
+    ->
+        next_boundary(P, String, I1, I)
+    ;
+        I = I0
     ).
 
 %------------------------------------------------------------------------------%
@@ -5085,33 +6015,32 @@ string.words(String) = string.words_separator(char.is_whitespace, String).
 
 string.split_at_separator(DelimP, String) = Substrings :-
     Len = string.length(String),
-    split_at_separator_2(DelimP, String, Len - 1, Len, [], Substrings).
+    split_at_separator_2(DelimP, String, Len, Len, [], Substrings).
 
 :- pred split_at_separator_2(pred(char)::in(pred(in) is semidet), string::in,
     int::in, int::in, list(string)::in, list(string)::out) is det.
 
 split_at_separator_2(DelimP, Str, I, SegEnd, Acc0, Acc) :-
-    % Walk Str backwards extending the accumulated list of chunks as chars
-    % matching DelimP are found.
+    % Walk Str backwards extending the accumulated list of chunks as code
+    % points matching DelimP are found.
     %
-    % Invariant: -1 =< I < length(Str)
+    % Invariant: 0 =< I =< length(Str)
     % SegEnd is one past the last index of the current segment.
     %
-    ( I < 0 ->
+    ( string.unsafe_prev_index(Str, I, J, C) ->
+        ( DelimP(C) ->
+            % Chop here.
+            SegStart = I,
+            Seg = string.unsafe_substring(Str, SegStart, SegEnd - SegStart),
+            split_at_separator_2(DelimP, Str, J, J, [Seg | Acc0], Acc)
+        ;
+            % Extend current segment.
+            split_at_separator_2(DelimP, Str, J, SegEnd, Acc0, Acc)
+        )
+    ;
         % We've reached the beginning of the string.
         Seg = string.unsafe_substring(Str, 0, SegEnd),
         Acc = [Seg | Acc0]
-    ;
-        C = string.unsafe_index(Str, I),
-        ( DelimP(C) ->
-            % Chop here.
-            SegStart = I + 1,
-            Seg = string.unsafe_substring(Str, SegStart, SegEnd - SegStart),
-            split_at_separator_2(DelimP, Str, I - 1, I, [Seg | Acc0], Acc)
-        ;
-            % Extend current segment.
-            split_at_separator_2(DelimP, Str, I - 1, SegEnd, Acc0, Acc)
-        )
     ).
 
 %------------------------------------------------------------------------------%
@@ -5128,32 +6057,12 @@ split_at_string(Needle, Total) =
 
 split_at_string(StartAt, NeedleLen, Needle, Total) = Out :-
     ( sub_string_search_start(Total, Needle, StartAt, NeedlePos) ->
-        BeforeNeedle = substring(Total, StartAt, NeedlePos-StartAt),
+        BeforeNeedle = substring(Total, StartAt, NeedlePos - StartAt),
         Tail = split_at_string(NeedlePos+NeedleLen, NeedleLen, Needle, Total),
         Out = [BeforeNeedle | Tail]
     ;
-        string__split(Total, StartAt, _skip, Last),
+        string.split(Total, StartAt, _Skip, Last),
         Out = [Last]
-    ).
-
-%------------------------------------------------------------------------------%
-
-    % preceding_boundary(SepP, String, I) returns the largest index J =< I
-    % in String of the char that is SepP and min(-1, I) if there is no such J.
-    % preceding_boundary/3 is intended for finding (in reverse) consecutive
-    % maximal sequences of chars satisfying some property. Note that I
-    % *must not* exceed the largest valid index for String.
-    %
-:- func preceding_boundary(pred(char)::in(pred(in) is semidet), string::in,
-    int::in) = (int::out) is det.
-
-preceding_boundary(SepP, String, I) =
-    ( I < 0 ->
-        I
-    ; SepP(string.unsafe_index(String, I)) ->
-        I
-    ;
-        preceding_boundary(SepP, String, I - 1)
     ).
 
 %------------------------------------------------------------------------------%
@@ -5175,11 +6084,11 @@ string.det_base_string_to_int(Base, S) = N :-
 
 %-----------------------------------------------------------------------------%
 
-chomp(S) =
-    ( index(S, length(S) - 1, '\n') ->
-        left(S, length(S) - 1)
+chomp(S) = Chomp :-
+    ( prev_index(S, length(S), Offset, '\n') ->
+        Chomp = left(S, Offset)
     ;
-        S
+        Chomp = S
     ).
 
 %-----------------------------------------------------------------------------%
@@ -5207,40 +6116,39 @@ lstrip_pred(P, S) = right(S, length(S) - prefix_length(P, S)).
 
 %-----------------------------------------------------------------------------%
 
-prefix_length(P, S) = prefix_length_2(0, length(S), P, S).
+prefix_length(P, S) = Index :-
+    prefix_length_2(P, S, 0, Index).
 
-:- func prefix_length_2(int::in, int::in, pred(char)::in(pred(in) is semidet),
-    string::in) = (int::out) is det.
+:- pred prefix_length_2(pred(char)::in(pred(in) is semidet),
+    string::in, int::in, int::out) is det.
 
-prefix_length_2(I, N, P, S) =
-    % XXX We are using if-then-elses to get ordered conjunction.
-    ( I < N ->
-        ( P(S ^ unsafe_elem(I)) ->
-            prefix_length_2(I + 1, N, P, S)
-        ;
-            I
-        )
+prefix_length_2(P, S, I, Index) :-
+    (
+        string.unsafe_index_next(S, I, J, Char),
+        P(Char)
+    ->
+        prefix_length_2(P, S, J, Index)
     ;
-        I
+        Index = I
     ).
 
 %-----------------------------------------------------------------------------%
 
-suffix_length(P, S) = suffix_length_2(length(S) - 1, length(S), P, S).
+suffix_length(P, S) = End - Index :-
+    End = string.length(S),
+    suffix_length_2(P, S, End, Index).
 
-:- func suffix_length_2(int::in, int::in, pred(char)::in(pred(in) is semidet),
-    string::in) = (int::out) is det.
+:- pred suffix_length_2(pred(char)::in(pred(in) is semidet),
+    string::in, int::in, int::out) is det.
 
-suffix_length_2(I, N, P, S) =
-    % XXX We are using if-then-elses to get ordered conjunction.
-    ( 0 =< I ->
-        ( P(S ^ unsafe_elem(I)) ->
-            suffix_length_2(I - 1, N, P, S)
-        ;
-            N - (I + 1)
-        )
+suffix_length_2(P, S, I, Index) :-
+    (
+        string.unsafe_prev_index(S, I, J, Char),
+        P(Char)
+    ->
+        suffix_length_2(P, S, J, Index)
     ;
-        N - (I + 1)
+        Index = I
     ).
 
 %------------------------------------------------------------------------------%
@@ -5658,29 +6566,17 @@ private_builtin_type_info_to_revstrings(PrivateBuiltinTypeInfo, !Rs) :-
 det_dynamic_cast(X, Y) :-
     det_univ_to_type(univ(X), Y).
 
-%-----------------------------------------------------------------------------%
-
-    % char_list_remove_suffix/3: We use this instead of the more general
-    % list.remove_suffix so that (for example) string.format will succeed in
-    % grade Java, even though unification has not yet been implemented.
-    %
-:- pred char_list_remove_suffix(list(char)::in, list(char)::in,
-    list(char)::out) is semidet.
-
-char_list_remove_suffix(List, Suffix, Prefix) :-
-    list.length(List, ListLength),
-    list.length(Suffix, SuffixLength),
-    PrefixLength = ListLength - SuffixLength,
-    list.split_list(PrefixLength, List, Prefix, Rest),
-    char_list_equal(Suffix, Rest).
-
-:- pred char_list_equal(list(char)::in, list(char)::in) is semidet.
-
-char_list_equal([], []).
-char_list_equal([X | Xs], [X | Ys]) :-
-    char_list_equal(Xs, Ys).
-
 %------------------------------------------------------------------------------%
+
+% Currently, string.format_table simply assumes each code point occupies a
+% single column in a fixed-width output device.  Thus the output will only be
+% aligned if limited to an (important) subset of characters, namely ASCII and
+% European characters (excluding combining characters).  It would be relatively
+% easy to support CJK double-width characters and zero-width characters (see
+% wcswidth), which would be enough to cover the needs of very many people.
+%
+% These considerations may also apply to predicates such as string.pad_left,
+% string.pad_right, string.format (with field widths), string.word_wrap, etc.
 
 string.format_table(Columns, Separator) = Table :-
     MaxWidths = list.map(find_max_length, Columns),
@@ -5702,7 +6598,7 @@ string.format_table(Columns, Separator) = Table :-
 string.format_table_max(ColumnsLimits, Separator) = Table :-
     MaxWidthsSenses = list.map(find_max_length_with_limit, ColumnsLimits),
     Columns = list.map(project_column_strings, ColumnsLimits),
-    SepLen = string.length(Separator),
+    SepLen = string.count_codepoints(Separator),
     generate_rows(MaxWidthsSenses, Separator, SepLen, Columns, [], RevRows),
     list.reverse(RevRows, Rows),
     Table = string.join_list("\n", Rows).
@@ -5756,7 +6652,7 @@ pad_row([Justify - MaxWidth | JustifyWidths], [ColumnString0 | ColumnStrings0],
     NextColumn = CurColumn + MaxWidth + SepLen,
     pad_row(JustifyWidths, ColumnStrings0, Separator, SepLen, NextColumn,
         LineRest),
-    ( string.length(ColumnString0) =< MaxWidth ->
+    ( string.count_codepoints(ColumnString0) =< MaxWidth ->
         (
             Justify = just_left,
             ColumnString = string.pad_right(ColumnString0, ' ', MaxWidth)
@@ -5842,7 +6738,7 @@ lpad(Chr, N, Str) = string.pad_left(Str, Chr, N).
 :- pred max_str_length(string::in, int::in, int::out) is det.
 
 max_str_length(Str, PrevMaxLen, MaxLen) :-
-    Length = string.length(Str),
+    Length = string.count_codepoints(Str),
     ( Length > PrevMaxLen ->
         MaxLen = Length
     ;
@@ -5855,7 +6751,7 @@ word_wrap(Str, N) = word_wrap_separator(Str, N, "").
 
 word_wrap_separator(Str, N, WordSep) = Wrapped :-
     Words = string.words_separator(char.is_whitespace, Str),
-    SepLen = string.length(WordSep),
+    SepLen = string.count_codepoints(WordSep),
     ( SepLen < N ->
         word_wrap_2(Words, WordSep, SepLen, 1, N, [], Wrapped)
     ;
@@ -5871,7 +6767,7 @@ word_wrap_2([], _, _, _, _, RevStrs,
 word_wrap_2([Word | Words], WordSep, SepLen, Col, N, Prev, Wrapped) :-
     % Col is the column where the next character should be written if there
     % is space for a whole word.
-    WordLen = string.length(Word),
+    WordLen = string.count_codepoints(Word),
     (
         % We are on the first column and the length of the word
         % is less than the line length.
@@ -5944,10 +6840,10 @@ word_wrap_2([Word | Words], WordSep, SepLen, Col, N, Prev, Wrapped) :-
 :- func break_up_string_reverse(string, int, list(string)) = list(string).
 
 break_up_string_reverse(Str, N, Prev) = Strs :-
-    ( string.length(Str) =< N ->
+    ( string.count_codepoints(Str) =< N ->
         Strs = [Str | Prev]
     ;
-        string.split(Str, N, Left, Right),
+        string.split_by_codepoint(Str, N, Left, Right),
         Strs = break_up_string_reverse(Right, N, [Left | Prev])
     ).
 

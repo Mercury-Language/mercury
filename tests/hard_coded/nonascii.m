@@ -18,11 +18,12 @@ main(!IO) :-
 	(
 		Result = ok(Stream),
 		test1(Stream, !IO),
-		test2(Stream, 255, !IO)
+		test2(Stream, 260, !IO)
 	;
 		Result = error(Error),
 		io__error_message(Error, Msg),
-		io__write_string(Msg, !IO)
+		io__write_string(Msg, !IO),
+		io__nl(!IO)
 	).
 
 :- pred test1(io__input_stream::in, io::di, io::uo) is det.
@@ -41,7 +42,8 @@ test1(Stream, !IO) :-
 	;
 		Result = error(Error),
 		io__error_message(Error, Msg),
-		io__write_string(Msg, !IO)
+		io__write_string(Msg, !IO),
+		io__nl(!IO)
 	).
 
 :- pred test2(io__input_stream::in, int::in, io::di, io::uo) is det.
@@ -60,7 +62,8 @@ test2(Stream, N, !IO) :-
 		;
 			Result = error(Error),
 			io__error_message(Error, Msg),
-			io__write_string(Msg, !IO)
+			io__write_string(Msg, !IO),
+			io__nl(!IO)
 		),
 		test2(Stream, N - 1, !IO)
 	;

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1995-2010 The University of Melbourne.
+** Copyright (C) 1995-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -128,11 +128,11 @@ typedef MR_Code                 *MR_CodePtr;
 ** If you modify them, you will need to modify mercury_string.h as well.
 */
 
-typedef char            MR_Char;
-typedef unsigned char   MR_UnsignedChar;
+typedef int             MR_Char;
+typedef unsigned int    MR_UnsignedChar;
 
-typedef MR_Char         *MR_String;
-typedef const MR_Char   *MR_ConstString;
+typedef char            *MR_String;
+typedef const char      *MR_ConstString;
 
 /*
 ** Definitions for accessing the representation of the Mercury `array' type.

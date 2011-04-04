@@ -2238,7 +2238,8 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
         ArrayDims = []
     ;
         MLDS_Type = mlds_native_char_type,
-        String = "char",
+        % C# `char' not large enough for code points so we must use `int'.
+        String = "int",
         ArrayDims = []
     ;
         MLDS_Type = mlds_foreign_type(ForeignType),
@@ -2333,7 +2334,8 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
 mercury_type_to_string(Info, Type, CtorCat, String, ArrayDims) :-
     (
         CtorCat = ctor_cat_builtin(cat_builtin_char),
-        String = "char",
+        % C# `char' not large enough for code points so we must use `int'.
+        String = "int",
         ArrayDims = []
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_int),
@@ -3513,9 +3515,10 @@ csharp_builtin_type(Type, "double") :-
     Type = mlds_native_float_type.
 csharp_builtin_type(Type, "double") :-
     Type = mercury_type(builtin_type(builtin_type_float), _, _).
-csharp_builtin_type(Type, "char") :-
+    % C# `char' not large enough for code points so we must use `int'.
+csharp_builtin_type(Type, "int") :-
     Type = mlds_native_char_type.
-csharp_builtin_type(Type, "char") :-
+csharp_builtin_type(Type, "int") :-
     Type = mercury_type(builtin_type(builtin_type_char), _, _).
 csharp_builtin_type(Type, "bool") :-
     Type = mlds_native_bool_type.
@@ -3609,7 +3612,7 @@ output_rval_const(Info, Const, !IO) :-
         output_int_const(N, !IO)
     ;
         Const = mlconst_char(N),
-        io.write_string("((char) ", !IO),
+        io.write_string("( ", !IO),
         output_int_const(N, !IO),
         io.write_string(")", !IO)
     ;

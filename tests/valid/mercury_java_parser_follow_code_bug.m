@@ -500,7 +500,7 @@ null_literal -->
 %    [5]Contents | [6]Prev | [7]Next | [8]Index Java Language Specification
 %    Second Edition
 %
-%    [9]Copyright © 2000 Sun Microsystems, Inc. All rights reserved
+%    [9]Copyright Â© 2000 Sun Microsystems, Inc. All rights reserved
 %    Please send any comments or corrections to the [10]JLS team
 
 %                                     Syntax

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2000, 2003-2008 The University of Melbourne.
+% Copyright (C) 1993-2000, 2003-2008, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -319,8 +319,7 @@ string_get_context(StartPosn, Context, !Posn) :-
 string_read_char(String, Len, Char, Posn0, Posn) :-
     Posn0 = posn(LineNum0, LineOffset0, Offset0),
     Offset0 < Len,
-    string.unsafe_index(String, Offset0, Char),
-    Offset = Offset0 + 1,
+    string.unsafe_index_next(String, Offset0, Offset, Char),
     ( Char = '\n' ->
         LineNum = LineNum0 + 1,
         Posn = posn(LineNum, Offset, Offset)
@@ -332,13 +331,15 @@ string_read_char(String, Len, Char, Posn0, Posn) :-
 
 string_ungetchar(String, Posn0, Posn) :-
     Posn0 = posn(LineNum0, LineOffset0, Offset0),
-    Offset = Offset0 - 1,
-    string.unsafe_index(String, Offset, Char),
-    ( Char = '\n' ->
-        LineNum = LineNum0 - 1,
-        Posn = posn(LineNum, Offset, Offset)
+    ( string.unsafe_prev_index(String, Offset0, Offset, Char) ->
+        ( Char = '\n' ->
+            LineNum = LineNum0 - 1,
+            Posn = posn(LineNum, Offset, Offset)
+        ;
+            Posn = posn(LineNum0, LineOffset0, Offset)
+        )
     ;
-        Posn = posn(LineNum0, LineOffset0, Offset)
+        Posn = Posn0
     ).
 
 :- pred grab_string(string::in, posn::in, string::out,
@@ -1223,13 +1224,14 @@ get_unicode_escape(Stream, NumHexChars, QuoteChar, Chars, HexChars, Token,
         ( if
             rev_char_list_to_string(HexChars, HexString),
             string.base_string_to_int(16, HexString, UnicodeCharCode),
-            convert_unicode_char_to_target_chars(UnicodeCharCode, UTFChars)
+            allowed_unicode_char_code(UnicodeCharCode),
+            char.from_int(UnicodeCharCode, UnicodeChar)
         then
             ( if UnicodeCharCode = 0 then
                 Token = null_character_error
             else
                 get_quoted_name(Stream, QuoteChar,
-                    list.reverse(UTFChars) ++ Chars, Token, !IO)
+                    [UnicodeChar | Chars], Token, !IO)
             )
         else
             Token = error("invalid Unicode character code")
@@ -1263,9 +1265,10 @@ string_get_unicode_escape(NumHexChars, String, Len, QuoteChar, Chars,
         ( if
             rev_char_list_to_string(HexChars, HexString),
             string.base_string_to_int(16, HexString, UnicodeCharCode),
-            convert_unicode_char_to_target_chars(UnicodeCharCode, UTFChars)
+            allowed_unicode_char_code(UnicodeCharCode),
+            char.from_int(UnicodeCharCode, UnicodeChar)
         then
-            RevCharsWithUnicode = list.reverse(UTFChars) ++ Chars,
+            RevCharsWithUnicode = [UnicodeChar | Chars],
             ( if UnicodeCharCode = 0 then
                 string_get_context(Posn0, Context, !Posn),
                 Token = null_character_error
@@ -1292,90 +1295,6 @@ string_get_unicode_escape(NumHexChars, String, Len, QuoteChar, Chars,
         )
     ).
 
-:- pred convert_unicode_char_to_target_chars(int::in, list(char)::out)
-    is semidet.
-
-convert_unicode_char_to_target_chars(UnicodeCharCode, Chars) :-
-    BackendEncoding = backend_unicode_encoding,
-    (
-        BackendEncoding = utf8,
-        encode_unicode_char_as_utf8(UnicodeCharCode, Chars)
-    ;
-        BackendEncoding = utf16,
-        encode_unicode_char_as_utf16(UnicodeCharCode, Chars)
-    ).
-
-:- pred encode_unicode_char_as_utf8(int::in, list(char)::out) is semidet.
-
-encode_unicode_char_as_utf8(UnicodeCharCode, UTF8Chars) :-
-    allowed_unicode_char_code(UnicodeCharCode),
-
-    % Refer to table 3-5 of the Unicode 4.0.0 standard (available from
-    % www.unicode.org) for documentation on the bit distribution patterns used
-    % below.
-
-    ( if UnicodeCharCode =< 0x00007F then
-        UTF8Chars = [char.det_from_int(UnicodeCharCode)]
-    else if UnicodeCharCode =< 0x0007FF then
-        Part1 = (0b11111000000 /\ UnicodeCharCode) >> 6,
-        Part2 =  0b00000111111 /\ UnicodeCharCode,
-        char.det_from_int(Part1 \/ 0b11000000, UTF8Char1),
-        char.det_from_int(Part2 \/ 0b10000000, UTF8Char2),
-        UTF8Chars = [UTF8Char1, UTF8Char2]
-    else if UnicodeCharCode =< 0x00FFFF then
-        Part1 = (0b1111000000000000 /\ UnicodeCharCode) >> 12,
-        Part2 = (0b0000111111000000 /\ UnicodeCharCode) >> 6,
-        Part3 =  0b0000000000111111 /\ UnicodeCharCode,
-        char.det_from_int(Part1 \/ 0b11100000, UTF8Char1),
-        char.det_from_int(Part2 \/ 0b10000000, UTF8Char2),
-        char.det_from_int(Part3 \/ 0b10000000, UTF8Char3),
-        UTF8Chars = [UTF8Char1, UTF8Char2, UTF8Char3]
-    else
-        Part1 = (0b111000000000000000000 /\ UnicodeCharCode) >> 18,
-        Part2 = (0b000111111000000000000 /\ UnicodeCharCode) >> 12,
-        Part3 = (0b000000000111111000000 /\ UnicodeCharCode) >> 6,
-        Part4 =  0b000000000000000111111 /\ UnicodeCharCode,
-        char.det_from_int(Part1 \/ 0b11110000, UTF8Char1),
-        char.det_from_int(Part2 \/ 0b10000000, UTF8Char2),
-        char.det_from_int(Part3 \/ 0b10000000, UTF8Char3),
-        char.det_from_int(Part4 \/ 0b10000000, UTF8Char4),
-        UTF8Chars = [UTF8Char1, UTF8Char2, UTF8Char3, UTF8Char4]
-    ).
-
-:- pred encode_unicode_char_as_utf16(int::in, list(char)::out) is semidet.
-
-    % This predicate should only be called on backends that have
-    % a 16 bit character type.
-    %
-encode_unicode_char_as_utf16(UnicodeCharCode, UTF16Chars) :-
-    allowed_unicode_char_code(UnicodeCharCode),
-
-    % If the code point is less than or equal to 0xFFFF
-    % then the UTF-16 encoding is simply the code point value,
-    % otherwise we construct a surrogate pair.
-
-    ( if UnicodeCharCode =< 0xFFFF then
-        char.det_from_int(UnicodeCharCode, Char),
-        UTF16Chars = [Char]
-    else
-        %
-        % Refer to table 3-4 of the Unicode 4.0.0 standard (available from
-        % www.unicode.org) for documentation on the bit distribution patterns
-        % used below.
-        %
-        UUUUU =      (0b111110000000000000000 /\ UnicodeCharCode) >> 16,
-        XXXXXX =     (0b000001111110000000000 /\ UnicodeCharCode) >> 10,
-        XXXXXXXXXX = (0b000000000001111111111 /\ UnicodeCharCode),
-        WWWWW = UUUUU - 1,
-        Surrogate1Lead = 0b1101100000000000,
-        Surrogate2Lead = 0b1101110000000000,
-        Surrogate1 = Surrogate1Lead \/ (WWWWW << 6) \/ XXXXXX,
-        Surrogate2 = Surrogate2Lead \/ XXXXXXXXXX,
-        char.det_from_int(Surrogate1, Surrogate1Char),
-        char.det_from_int(Surrogate2, Surrogate2Char),
-        UTF16Chars = [Surrogate1Char, Surrogate2Char]
-    ).
-
 :- pred allowed_unicode_char_code(int::in) is semidet.
 
     % Succeeds if the give code point is a legal Unicode code point
@@ -1388,60 +1307,6 @@ allowed_unicode_char_code(Code) :-
     not (
         Code >= 0xD800, Code =< 0xDFFF
     ).
-
-:- type unicode_encoding
-    --->    utf8
-    ;       utf16.
-
-:- func backend_unicode_encoding = unicode_encoding.
-
-backend_unicode_encoding = Encoding :-
-    Int = backend_unicode_encoding_int,
-    ( unicode_encoding_int_to_encoding(Int, EncodingPrime) ->
-        Encoding = EncodingPrime
-    ;
-        error("backend_unicode_encoding: unexpected Unicode encoding code")
-    ).
-
-:- pred unicode_encoding_int_to_encoding(int::in, unicode_encoding::out)
-    is semidet.
-
-unicode_encoding_int_to_encoding(0, utf8).
-unicode_encoding_int_to_encoding(1, utf16).
-
-:- func backend_unicode_encoding_int = int.
-
-:- pragma inline(backend_unicode_encoding_int/0).
-
-:- pragma foreign_proc("C",
-    backend_unicode_encoding_int = (EncodingInt::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    EncodingInt = 0;
-").
-
-:- pragma foreign_proc("Java",
-    backend_unicode_encoding_int = (EncodingInt::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    EncodingInt = 1;
-").
-
-:- pragma foreign_proc("C#",
-    backend_unicode_encoding_int = (EncodingInt::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    EncodingInt = 1;
-").
-
-:- pragma foreign_proc("Erlang",
-    backend_unicode_encoding_int = (EncodingInt::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    EncodingInt = 0
-").
 
 :- pred get_hex_escape(io.input_stream::in, char::in, list(char)::in,
     list(char)::in, token::out, io::di, io::uo) is det.

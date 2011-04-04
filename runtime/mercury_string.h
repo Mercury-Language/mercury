@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2005, 2007, 2010 The University of Melbourne.
+** Copyright (C) 1995-2005, 2007, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -15,24 +15,21 @@
 #include <stdarg.h>
 
 /*
-** Mercury characters are given type `MR_Char', which is a typedef for `char'.
-** But BEWARE: when stored in an MR_Integer, the value must be
-** first cast to `MR_UnsignedChar'.
-** Mercury strings are stored as pointers to '\0'-terminated arrays of MR_Char.
+** Mercury characters (Unicode code points) are given type `MR_Char', which is
+** a typedef for `MR_int_least32_t'.
+** Mercury strings are stored as pointers to '\0'-terminated arrays of `char'.
+** Strings are UTF-8 encoded.
 ** Mercury strings must not contain null characters. Unexpected null characters
 ** are a source of security vulnerabilities.
-**
-** We may eventually move to using wchar_t for Mercury characters and strings,
-** so it is important to use these typedefs.
 **
 ** The actual typedefs are in mercury_types.h to avoid problems with
 ** circular #includes.
 **
-** typedef char MR_Char;
-** typedef unsigned char MR_UnsignedChar;
+** typedef MR_int_least32_t MR_Char;
+** typedef MR_uint_least32_t MR_UnsignedChar;
 **
-** typedef MR_Char *MR_String;
-** typedef const MR_Char *MR_ConstString;
+** typedef char *MR_String;
+** typedef const char *MR_ConstString;
 */
 
 /*
@@ -202,9 +199,9 @@
 		MR_CHECK_EXPR_TYPE(s, MR_ConstString);			\
 		len = 0;						\
 		hash = 0;						\
-		while(((MR_ConstString)(s))[len]) {			\
+		while (((const unsigned char *)(s))[len]) {		\
 			hash ^= (hash << 5);				\
-			hash ^= (MR_UnsignedChar) ((MR_ConstString)(s))[len]; \
+			hash ^= ((const unsigned char *)(s))[len];	\
 			len++;						\
 		}							\
 		hash ^= len;						\
@@ -217,9 +214,9 @@
 		MR_CHECK_EXPR_TYPE(s, MR_ConstString);			\
 		len = 0;						\
 		hash = 0;						\
-		while(((MR_ConstString)(s))[len]) {			\
+		while (((const unsigned char *)(s))[len]) {		\
 			hash = hash * 37;				\
-			hash += (MR_UnsignedChar) ((MR_ConstString)(s))[len]; \
+			hash += ((const unsigned char *)(s))[len];	\
 			len++;						\
 		}							\
 		hash ^= len;						\
@@ -232,9 +229,9 @@
 		MR_CHECK_EXPR_TYPE(s, MR_ConstString);			\
 		len = 0;						\
 		hash = 0;						\
-		while(((MR_ConstString)(s))[len]) {			\
+		while (((const unsigned char *)(s))[len]) {		\
 			hash = hash * 49;				\
-			hash += (MR_UnsignedChar) ((MR_ConstString)(s))[len]; \
+			hash += ((const unsigned char *)(s))[len];	\
 			len++;						\
 		}							\
 		hash ^= len;						\
@@ -313,5 +310,72 @@ MR_Integer	MR_hash_string3(MR_ConstString);
 */
 
 MR_String MR_make_string(MR_Code *proclabel, const char *fmt, ...);
+
+/*
+** True if c is an ASCII code point, i.e. U+0000..U+007f.
+*/
+#define MR_is_ascii(c)              ((unsigned)(c) <= 0x7f)
+
+/*
+** True if c is a Unicode surrogate code point, i.e. U+D800..U+DFFF.
+*/
+#define MR_is_surrogate(c)          (((unsigned)(c) & 0xF800) == 0xD800)
+
+/*
+** UTF-8 manipulation
+*/
+
+#define MR_utf8_is_single_byte(c)   (((unsigned)(c) & 0x80) == 0)
+#define MR_utf8_is_lead_byte(c)     (((unsigned)(c) - 0xC0) < 0x3E)
+#define MR_utf8_is_trail_byte(c)    (((unsigned)(c) & 0xC0) == 0x80)
+
+/*
+** Advance `*pos' to the beginning of the next code point in `s'.
+** If `*pos' is already at the end of the string then return MR_FALSE
+** without modifying `*pos'.
+*/
+extern MR_bool  MR_utf8_next(const MR_String s_, int *pos);
+
+/*
+** Rewind `*pos' to the beginning of the previous code point in `s'.
+** If `*pos' is already at the beginning of the string then return MR_FALSE
+** without modifying `*pos'.
+*/
+extern MR_bool  MR_utf8_prev(const MR_String s_, int *pos);
+
+/*
+** Decode and return the code point beginning at `pos' in `s'.
+** Return 0 if at the end of the string (i.e. the NUL terminator).
+** If an illegal code sequence exists at that offset, return -2.
+*/
+extern MR_int_least32_t MR_utf8_get(const MR_String s, int pos);
+
+/*
+** Decode the code point beginning at `pos' in `s', and advance `*pos'.
+*/
+extern MR_int_least32_t MR_utf8_get_next(const MR_String s, int *pos);
+
+/*
+** Rewind `*pos' to the beginning of the previous code point in `s'
+** and return that code code.
+** Return -1 if `*pos' is already at the beginning of the string.
+*/
+extern MR_int_least32_t MR_utf8_prev_get(const MR_String s, int *pos);
+
+/*
+** Return the number of bytes required to encode the code point `c' in UTF-8.
+*/
+extern size_t   MR_utf8_width(MR_Char c);
+
+/*
+** Encode the code point `c' into the buffer `s'.
+** Return the number of bytes used.
+*/
+extern size_t   MR_utf8_encode(char s[], MR_Char c);
+
+/*
+** Return MR_TRUE iff `s' contains a valid UTF-8 encoded string.
+*/
+extern MR_bool  MR_utf8_verify(const MR_String s);
 
 #endif /* not MERCURY_STRING_H */

@@ -133,7 +133,7 @@
 % Text input predicates
 %
 
-    % Reads a character from the current input stream.
+    % Reads a character (code point) from the current input stream.
     %
 :- pred io.read_char(io.result(char)::out, io::di, io::uo) is det.
 
@@ -142,7 +142,7 @@
 :- pred io.read_word(io.result(list(char))::out, io::di, io::uo) is det.
 
     % Reads a line from the current input stream, returns the result
-    % as a list of chars.
+    % as a list of characters (code points).
     %
 :- pred io.read_line(io.result(list(char))::out, io::di, io::uo) is det.
 
@@ -152,14 +152,14 @@
     %
 :- pred io.read_line_as_string(io.result(string)::out, io::di, io::uo) is det.
 
-    % Reads all the characters from the current input stream until
-    % eof or error.
+    % Reads all the characters (code points) from the current input stream
+    % until eof or error.
     %
 :- pred io.read_file(io.maybe_partial_res(list(char))::out, io::di, io::uo)
     is det.
 
-    % Reads all the characters from the current input stream until
-    % eof or error. Returns the result as a string rather than
+    % Reads all the characters (code points) from the current input stream
+    % until eof or error. Returns the result as a string rather than
     % as a list of char.
     %
     % Returns an error if the file contains a null character, because
@@ -168,7 +168,7 @@
 :- pred io.read_file_as_string(io.maybe_partial_res(string)::out,
     io::di, io::uo) is det.
 
-    % Applies the given closure to each character read from
+    % Applies the given closure to each character (code point) read from
     % the input stream in turn, until eof or error.
     %
 :- pred io.input_stream_foldl(pred(char, T, T), T, io.maybe_partial_res(T),
@@ -178,7 +178,7 @@
 :- mode io.input_stream_foldl((pred(in, in, out) is cc_multi), in, out,
     di, uo) is cc_multi.
 
-    % Applies the given closure to each character read from
+    % Applies the given closure to each character (code point) read from
     % the input stream in turn, until eof or error.
     %
 :- pred io.input_stream_foldl_io(pred(char, io, io), io.res, io, io).
@@ -187,7 +187,7 @@
 :- mode io.input_stream_foldl_io((pred(in, di, uo) is cc_multi), out, di, uo)
     is cc_multi.
 
-    % Applies the given closure to each character read from
+    % Applies the given closure to each character (code point) read from
     % the input stream in turn, until eof or error.
     %
 :- pred io.input_stream_foldl2_io(pred(char, T, T, io, io),
@@ -197,9 +197,9 @@
 :- mode io.input_stream_foldl2_io((pred(in, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
 
-    % Applies the given closure to each character read from the input stream
-    % in turn, until eof or error, or the closure returns `no' as its
-    % second argument.
+    % Applies the given closure to each character (code point) read from the
+    % input stream in turn, until eof or error, or the closure returns `no' as
+    % its second argument.
     %
 :- pred io.input_stream_foldl2_io_maybe_stop(
     pred(char, bool, T, T, io, io),
@@ -211,21 +211,21 @@
     (pred(in, out, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
 
-    % Un-reads a character from the current input stream.
+    % Un-reads a character (code point) from the current input stream.
     % You can put back as many characters as you like.
     % You can even put back something that you didn't actually read.
     % Note: `io.putback_char' uses the C library function ungetc().
-    % On some systems only one character of pushback is guaranteed.
+    % On some systems only one byte of pushback is guaranteed.
     % `io.putback_char' will throw an io.error exception if ungetc() fails.
     %
 :- pred io.putback_char(char::in, io::di, io::uo) is det.
 
-    % Reads a character from specified stream.
+    % Reads a character (code point) from specified stream.
     %
 :- pred io.read_char(io.input_stream::in, io.result(char)::out,
     io::di, io::uo) is det.
 
-    % Reads a character from the specified stream.
+    % Reads a character (code point) from the specified stream.
     % This interface avoids memory allocation when there is no error.
     %
 :- pred io.read_char_unboxed(io.input_stream::in, io.result::out, char::out,
@@ -237,7 +237,7 @@
     io::di, io::uo) is det.
 
     % Reads a line from specified stream, returning the result
-    % as a list of chars.
+    % as a list of characters (code point).
     %
 :- pred io.read_line(io.input_stream::in, io.result(list(char))::out,
     io::di, io::uo) is det.
@@ -249,7 +249,7 @@
 :- pred io.read_line_as_string(io.input_stream::in, io.result(string)::out,
     io::di, io::uo) is det.
 
-    % Reads all the characters from the given input stream until
+    % Reads all the characters (code points) from the given input stream until
     % eof or error.
     %
 :- pred io.read_file(io.input_stream::in,
@@ -264,7 +264,7 @@
 :- pred io.read_file_as_string(io.input_stream::in,
     io.maybe_partial_res(string)::out, io::di, io::uo) is det.
 
-    % Applies the given closure to each character read from
+    % Applies the given closure to each character (code point) read from
     % the input stream in turn, until eof or error.
     %
 :- pred io.input_stream_foldl(io.input_stream, pred(char, T, T),
@@ -274,7 +274,7 @@
 :- mode io.input_stream_foldl(in, in(pred(in, in, out) is cc_multi),
     in, out, di, uo) is cc_multi.
 
-    % Applies the given closure to each character read from
+    % Applies the given closure to each character (code point) read from
     % the input stream in turn, until eof or error.
     %
 :- pred io.input_stream_foldl_io(io.input_stream, pred(char, io, io),
@@ -284,7 +284,7 @@
 :- mode io.input_stream_foldl_io(in, in(pred(in, di, uo) is cc_multi),
     out, di, uo) is cc_multi.
 
-    % Applies the given closure to each character read from
+    % Applies the given closure to each character (code point) read from
     % the input stream in turn, until eof or error.
     %
 :- pred io.input_stream_foldl2_io(io.input_stream,
@@ -297,9 +297,9 @@
     in(pred(in, in, out, di, uo) is cc_multi),
     in, out, di, uo) is cc_multi.
 
-    % Applies the given closure to each character read from the input stream
-    % in turn, until eof or error, or the closure returns `no' as its
-    % second argument.
+    % Applies the given closure to each character (code point) read from the
+    % input stream in turn, until eof or error, or the closure returns `no' as
+    % its second argument.
     %
 :- pred io.input_stream_foldl2_io_maybe_stop(io.input_stream,
     pred(char, bool, T, T, io, io),
@@ -315,7 +315,7 @@
     % You can put back as many characters as you like.
     % You can even put back something that you didn't actually read.
     % Note: `io.putback_char' uses the C library function ungetc().
-    % On some systems only one character of pushback is guaranteed.
+    % On some systems only one byte of pushback is guaranteed.
     % `io.putback_char' will throw an io.error exception if ungetc() fails.
     %
 :- pred io.putback_char(io.input_stream::in, char::in, io::di, io::uo) is det.
@@ -1806,12 +1806,12 @@
     % we don't want the C/Java/etc code to depend on how Mercury stores
     % its discriminated union data types.
 
-    % Reads a character from specified stream, and returns the numerical value
-    % for that character (as from char.to_int). This may involve converting
-    % external character encodings into Mercury's internal character
-    % representation and (for text streams) converting OS line indicators,
-    % e.g. CR-LF for Windows, to '\n' characters. Returns -1 if at EOF,
-    % -2 if an error occurs.
+    % Reads a character (code point) from specified stream, and returns the
+    % numerical value for that character (as from char.to_int). This may
+    % involve converting external character encodings into Mercury's internal
+    % character representation and (for text streams) converting OS line
+    % indicators, e.g. CR-LF for Windows, to '\n' characters.
+    % Returns -1 if at EOF, -2 if an error occurs.
     %
 :- pred io.read_char_code(io.input_stream::in, int::out, io::di, io::uo)
     is det.
@@ -2170,15 +2170,15 @@ io.read_line_as_string(input_stream(Stream), Result, !IO) :-
 #define ML_IO_BYTES_TO_WORDS(n) (((n) + sizeof(MR_Word) - 1) / sizeof(MR_Word))
 #define ML_IO_READ_LINE_START   1024
 
-    MR_Char initial_read_buffer[ML_IO_READ_LINE_START];
-    MR_Char *read_buffer = initial_read_buffer;
+    char initial_read_buffer[ML_IO_READ_LINE_START];
+    char *read_buffer = initial_read_buffer;
     size_t read_buf_size = ML_IO_READ_LINE_START;
     size_t i;
     int char_code = '\\0';
 
     Res = 0;
     for (i = 0; char_code != '\\n'; ) {
-        char_code = mercury_getc(Stream);
+        char_code = mercury_get_byte(Stream);
         if (char_code == EOF) {
             if (i == 0) {
                 Res = -1;
@@ -2189,21 +2189,17 @@ io.read_line_as_string(input_stream(Stream), Result, !IO) :-
             Res = -2;
             break;
         }
-        if (char_code != (MR_UnsignedChar) char_code) {
-            Res = -3;
-            break;
-        }
         read_buffer[i++] = char_code;
         MR_assert(i <= read_buf_size);
         if (i == read_buf_size) {
             /* Grow the read buffer */
             read_buf_size = ML_IO_READ_LINE_GROW(read_buf_size);
             if (read_buffer == initial_read_buffer) {
-                read_buffer = MR_NEW_ARRAY(MR_Char, read_buf_size);
+                read_buffer = MR_NEW_ARRAY(char, read_buf_size);
                 MR_memcpy(read_buffer, initial_read_buffer,
                     ML_IO_READ_LINE_START);
             } else {
-                read_buffer = MR_RESIZE_ARRAY(read_buffer, MR_Char,
+                read_buffer = MR_RESIZE_ARRAY(read_buffer, char,
                     read_buf_size);
             }
         }
@@ -2211,10 +2207,10 @@ io.read_line_as_string(input_stream(Stream), Result, !IO) :-
     if (Res == 0) {
         MR_Word ret_string_word;
         MR_offset_incr_hp_atomic_msg(ret_string_word,
-            0, ML_IO_BYTES_TO_WORDS((i + 1) * sizeof(MR_Char)),
+            0, ML_IO_BYTES_TO_WORDS((i + 1) * sizeof(char)),
             MR_PROC_LABEL, ""string.string/0"");
         RetString = (MR_String) ret_string_word;
-        MR_memcpy(RetString, read_buffer, i * sizeof(MR_Char));
+        MR_memcpy(RetString, read_buffer, i * sizeof(char));
         RetString[i] = '\\0';
     } else {
         /*
@@ -2827,14 +2823,7 @@ io.output_stream_file_size(output_stream(Stream), Size, !IO) :-
     io.stream_file_size(Stream::in, Size::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    OrigPos = mercury_seek(Stream, cur),
-    if
-        OrigPos >= 0 ->
-            Size = mercury_seek(Stream, eof),
-            mercury_seek(Stream, {bof, OrigPos});
-        true ->
-            Size = -1
-    end
+    Size = mercury__io:mercury_get_file_size(Stream)
 ").
 
 io.file_modification_time(File, Result, !IO) :-
@@ -4020,7 +4009,7 @@ have_file_ids :- semidet_fail.
 % Buffer sizes are measured in Chars.
 
 :- type buffer.
-:- pragma foreign_type(c, buffer, "MR_Char *", [can_pass_as_mercury_type]).
+:- pragma foreign_type(c, buffer, "char *", [can_pass_as_mercury_type]).
 
     % XXX It would be better to use a char_array (e.g. defined as char[] in
     % C#) type rather than array(char).  This is because on the Java and IL
@@ -4042,9 +4031,9 @@ have_file_ids :- semidet_fail.
 "{
     MR_Word buf;
     MR_offset_incr_hp_atomic_msg(buf, 0,
-        (Size * sizeof(MR_Char) + sizeof(MR_Word) - 1) / sizeof(MR_Word),
+        (Size * sizeof(char) + sizeof(MR_Word) - 1) / sizeof(MR_Word),
         MR_PROC_LABEL, ""io:buffer/0"");
-    Buffer = (MR_Char *) buf;
+    Buffer = (char *) buf;
 }").
 
 io.alloc_buffer(Size, buffer(Array)) :-
@@ -4060,28 +4049,28 @@ io.alloc_buffer(Size, buffer(Array)) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         does_not_affect_liveness],
 "{
-    MR_CHECK_EXPR_TYPE(Buffer0, MR_Char *);
-    MR_CHECK_EXPR_TYPE(Buffer, MR_Char *);
+    MR_CHECK_EXPR_TYPE(Buffer0, char *);
+    MR_CHECK_EXPR_TYPE(Buffer, char *);
 
 #ifdef MR_CONSERVATIVE_GC
-    Buffer = MR_GC_realloc(Buffer0, NewSize * sizeof(MR_Char));
+    Buffer = MR_GC_realloc(Buffer0, NewSize * sizeof(char));
 #else
-    if (Buffer0 + OldSize == (MR_Char *) MR_hp) {
+    if (Buffer0 + OldSize == (char *) MR_hp) {
         MR_Word next;
         MR_offset_incr_hp_atomic_msg(next, 0,
-            (NewSize * sizeof(MR_Char) + sizeof(MR_Word) - 1)
+            (NewSize * sizeof(char) + sizeof(MR_Word) - 1)
                 / sizeof(MR_Word),
             MR_PROC_LABEL, ""io:buffer/0"");
-        assert(Buffer0 + OldSize == (MR_Char *) next);
+        assert(Buffer0 + OldSize == (char *) next);
         Buffer = Buffer0;
     } else {
         /* just have to alloc and copy */
         MR_Word buf;
         MR_offset_incr_hp_atomic_msg(buf, 0,
-            (NewSize * sizeof(MR_Char) + sizeof(MR_Word) - 1)
+            (NewSize * sizeof(char) + sizeof(MR_Word) - 1)
                 / sizeof(MR_Word),
             MR_PROC_LABEL, ""io:buffer/0"");
-        Buffer = (MR_Char *) buf;
+        Buffer = (char *) buf;
         if (OldSize > NewSize) {
             MR_memcpy(Buffer, Buffer0, NewSize);
         } else {
@@ -4130,8 +4119,8 @@ io.buffer_to_string(buffer(Array), Len, String) :-
 "{
     int items_read;
 
-    MR_CHECK_EXPR_TYPE(Buffer0, MR_Char *);
-    MR_CHECK_EXPR_TYPE(Buffer, MR_Char *);
+    MR_CHECK_EXPR_TYPE(Buffer0, char *);
+    MR_CHECK_EXPR_TYPE(Buffer, char *);
 
     items_read = MR_READ(*Stream, Buffer0 + Pos0, Size - Pos0);
 
@@ -5517,7 +5506,7 @@ init_std_streams(!IO).
     init_std_streams(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
-    F = (fun() -> mercury_file_server(group_leader(), 1, []) end),
+    F = (fun() -> mercury_stdio_file_server(group_leader()) end),
     StdinPid = spawn(F),
     StdoutPid = spawn(F),
     StderrPid = spawn(F),
@@ -5710,7 +5699,7 @@ MercuryFilePtr  mercury_open(const char *filename, const char *openmode);
 void            mercury_io_error(MercuryFilePtr mf, const char *format, ...);
 void            mercury_output_error(MercuryFilePtr mf);
 void            mercury_print_string(MercuryFilePtr mf, const char *s);
-int             mercury_getc(MercuryFilePtr mf);
+int             mercury_get_byte(MercuryFilePtr mf);
 void            mercury_close(MercuryFilePtr mf);
 int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
 ").
@@ -5820,6 +5809,18 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
             return true;
         }
 
+        private int read_code_unit()
+            throws java.io.IOException
+        {
+            if (!refill_buffer()) {
+                return -1;
+            }
+
+            char c = buf[buf_pos];
+            buf_pos++;
+            return (int) c;
+        }
+
         /*
         ** read_char(): [Java]
         **
@@ -5829,18 +5830,22 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
         public int read_char()
             throws java.io.IOException
         {
-            if (!refill_buffer()) {
+            final int c1 = read_code_unit();
+            if (c1 == -1) {
                 return -1;
             }
-
-            char c = buf[buf_pos];
-            buf_pos++;
-
-            if (c == '\\n') {
+            if (c1 == '\\n') {
                 line_number++;
             }
-
-            return c;
+            if (!Character.isHighSurrogate((char) c1)) {
+                return c1;
+            }
+            final int c2 = read_code_unit();
+            if (c2 != -1 && !Character.isLowSurrogate((char) c2)) {
+                // Return replacement character.
+                return 0xfffd;
+            }
+            return Character.toCodePoint((char) c1, (char) c2);
         }
 
         /*
@@ -5913,7 +5918,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
             }
         }
 
-        public void ungetc(char c) {
+        private void unget_code_unit(char c) {
             /*
             ** If necessary, shift the unread characters in the input buffer
             ** to make room at the front of the buffer.  If the buffer is full
@@ -5935,11 +5940,19 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
                 }
             }
 
-            buf_pos--;
-            buf[buf_pos] = c;
+            buf[--buf_pos] = c;
+        }
 
-            if (c == '\\n') {
-                line_number--;
+        public void ungetc(int c) {
+            if (Character.charCount(c) == 1) {
+                unget_code_unit((char) c);
+                if (c == '\\n') {
+                    line_number--;
+                }
+            } else {
+                char[] units = Character.toChars(c);
+                unget_code_unit(units[1]);
+                unget_code_unit(units[0]);
             }
         }
 
@@ -6520,7 +6533,9 @@ public static ThreadLocal<Exception> MR_io_exception =
     mercury_sync/1,
     mercury_get_line_number/1,
     mercury_set_line_number/2,
-    mercury_seek/2,
+    mercury_get_pos/1,
+    mercury_set_pos/2,
+    mercury_get_file_size/1,
 
     % We may want to inline the following by hand to avoid inter-module calls.
     mercury_set_current_text_input/1,
@@ -6551,13 +6566,14 @@ public static ThreadLocal<Exception> MR_io_exception =
     % ensure that two operations from the same process are done in order.
     %
 mercury_start_file_server(ParentPid, FileName, Mode) ->
+    Encoding = {encoding, utf8},
     case Mode of
         [$r | _] ->
-            ModeList = [read, raw, read_ahead];
+            ModeList = [read, read_ahead, binary, Encoding];
         [$w | _] ->
-            ModeList = [write, raw, delayed_write];
+            ModeList = [write, delayed_write, binary, Encoding];
         [$a | _] ->
-            ModeList = [append, raw, delayed_write]
+            ModeList = [append, delayed_write, binary, Encoding]
     end,
     case file:open(FileName, ModeList) of
         {ok, IoDevice} ->
@@ -6570,6 +6586,10 @@ mercury_start_file_server(ParentPid, FileName, Mode) ->
             ParentPid ! {self(), open_ack, {error, Reason}}
     end.
 
+mercury_stdio_file_server(IoDevice) ->
+    io:setopts(IoDevice, [binary, {encoding, utf8}]),
+    mercury_file_server(IoDevice, 1, []).
+
 mercury_file_server(IoDevice, LineNr0, PutBack0) ->
     receive
         {From, close} ->
@@ -6580,8 +6600,10 @@ mercury_file_server(IoDevice, LineNr0, PutBack0) ->
         {From, read_char} ->
             case PutBack0 of
                 [] ->
-                    case file:read(IoDevice, 1) of
-                        {ok, [Char]} ->
+                    Prompt = '',
+                    GetChars = io:get_chars(IoDevice, Prompt, 1),
+                    case GetChars of
+                        <<Char/utf8>> ->
                             Ret = Char,
                             LineNr = LineNr0 + one_if_nl(Char);
                         EofOrError ->
@@ -6625,21 +6647,21 @@ mercury_file_server(IoDevice, LineNr0, PutBack0) ->
         {From, write_char, Char} ->
             From ! {self(), write_char_ack},
             % XXX return error code
-            file:write(IoDevice, [Char]),
+            io:put_chars(IoDevice, [Char]),
             LineNr = LineNr0 + one_if_nl(Char),
             mercury_file_server(IoDevice, LineNr, PutBack0)
     ;
         {From, write_string, Chars} ->
             From ! {self(), write_string_ack},
             % XXX return error code
-            file:write(IoDevice, Chars),
+            io:put_chars(IoDevice, Chars),
             LineNr = LineNr0 + count_nls(Chars, 0),
             mercury_file_server(IoDevice, LineNr, PutBack0)
     ;
         {From, write_int, Val} ->
             From ! {self(), write_int_ack},
             % XXX return error code
-            file:write(IoDevice, integer_to_list(Val)),
+            io:put_chars(IoDevice, integer_to_list(Val)),
             mercury_file_server(IoDevice, LineNr0, PutBack0)
     ;
         {From, sync} ->
@@ -6661,9 +6683,41 @@ mercury_file_server(IoDevice, LineNr0, PutBack0) ->
             From ! {self(), set_line_number_ack},
             mercury_file_server(IoDevice, N, PutBack0)
     ;
-        {From, seek, Loc} ->
-            SeekResult = file:position(IoDevice, Loc),
-            From ! {self(), seek_ack, SeekResult},
+        {From, get_pos} ->
+            case file:position(IoDevice, cur) of
+                {ok, N} ->
+                    Pos = {ok, N - length(PutBack0)};
+                Other ->
+                    Pos = Other
+            end,
+            From ! {self(), get_pos_ack, Pos},
+            mercury_file_server(IoDevice, LineNr0, PutBack0)
+    ;
+        {From, set_pos, Loc} ->
+            case Loc of
+                {cur, N} ->
+                    AdjLoc = {cur, N - length(PutBack0)};
+                _ ->
+                    AdjLoc = Loc
+            end,
+            SeekResult = file:position(IoDevice, AdjLoc),
+            From ! {self(), set_pos_ack, SeekResult},
+            PutBack = [],
+            mercury_file_server(IoDevice, LineNr0, PutBack)
+    ;
+        {From, get_file_size} ->
+            case file:pid2name(IoDevice) of
+                {ok, FileName} ->
+                    case file:read_file_info(FileName) of
+                        {ok, FileInfo} ->
+                            #file_info{size = Size} = FileInfo;
+                        _ ->
+                            Size = -1
+                    end;
+                _ ->
+                    Size = -1
+            end,
+            From ! {self(), get_file_size, Size},
             mercury_file_server(IoDevice, LineNr0, PutBack0)
     ;
         Other ->
@@ -6673,13 +6727,13 @@ mercury_file_server(IoDevice, LineNr0, PutBack0) ->
 
 mercury_read_file_to_eof_2(IoDevice, Acc) ->
     ChunkSize = 65536,
-    case file:read(IoDevice, ChunkSize) of
-        {ok, Chunk} ->
-            mercury_read_file_to_eof_2(IoDevice, [Chunk | Acc]);
+    case io:get_chars(IoDevice, '', ChunkSize) of
         eof ->
             {ok, lists:reverse(Acc)};
         {error, Reason} ->
-            {error, lists:reverse(Acc), Reason}
+            {error, lists:reverse(Acc), Reason};
+        Chunk ->
+            mercury_read_file_to_eof_2(IoDevice, [Chunk | Acc])
     end.
 
 one_if_nl($\\n) -> 1;
@@ -6805,14 +6859,42 @@ mercury_set_line_number(Stream, LineNum) ->
             void
     end.
 
-mercury_seek(Stream, Loc) ->
+mercury_get_pos(Stream) ->
     {'ML_stream', _Id, Pid} = Stream,
-    Pid ! {self(), seek, Loc},
+    Pid ! {self(), get_pos},
     receive
-        {Pid, seek_ack, Result} ->
+        {Pid, get_pos_ack, Result} ->
             case Result of
                 {ok, NewPosition} ->
                     NewPosition;
+                {error, Reason} ->
+                    put('MR_io_exception', Reason),
+                    -1
+            end
+    end.
+
+mercury_set_pos(Stream, Loc) ->
+    {'ML_stream', _Id, Pid} = Stream,
+    Pid ! {self(), set_pos, Loc},
+    receive
+        {Pid, set_pos_ack, Result} ->
+            case Result of
+                {ok, NewPosition} ->
+                    NewPosition;
+                {error, Reason} ->
+                    put('MR_io_exception', Reason),
+                    -1
+            end
+    end.
+
+mercury_get_file_size(Stream) ->
+    {'ML_stream', _Id, Pid} = Stream,
+    Pid ! {self(), get_file_size},
+    receive
+        {Pid, get_file_size_ack, Result} ->
+            case Result of
+                {ok, Size} ->
+                    Size;
                 {error, Reason} ->
                     put('MR_io_exception', Reason),
                     -1
@@ -7006,7 +7088,10 @@ mercury_print_string(MR_MercuryFileStruct mf, string s)
         // So we have to output each character separately.
 
         for (int i = 0; i < s.Length; i++) {
-            if (s[i] == '\\n') {
+            if (System.Char.IsSurrogate(s[i])) {
+                mf.writer.Write(s.Substring(i, 2));
+                i++;
+            } else if (s[i] == '\\n') {
                 mf.line_number++;
                 mf.writer.WriteLine("""");
             } else {
@@ -7022,7 +7107,7 @@ mercury_print_string(MR_MercuryFileStruct mf, string s)
 :- pragma foreign_code("C", "
 
 int
-mercury_getc(MercuryFilePtr mf)
+mercury_get_byte(MercuryFilePtr mf)
 {
     int c = MR_GETCH(*mf);
     if (c == '\\n') {
@@ -7079,6 +7164,9 @@ mercury_getc(MR_MercuryFileStruct mf)
                 // If not, we still need to treat this as a newline, and thus
                 // increment the line counter.
                 mf.line_number++;
+            } else if (System.Char.IsSurrogate((char) c)) {
+                int c2 = mf.reader.Read();
+                c = System.Char.ConvertToUtf32((char) c, (char) c2);
             }
         } else /* c == NewLine[0] */ {
             switch (io.NewLine.Length) {
@@ -7290,6 +7378,16 @@ mercury_close(MercuryFilePtr mf)
 :- pragma foreign_code("C#", "
 
 public static void
+mercury_write_codepoint(System.IO.TextWriter w, int c)
+{
+    if (c <= 0xffff) {
+        w.Write((char) c);
+    } else {
+        w.Write(System.Char.ConvertFromUtf32(c));
+    }
+}
+
+public static void
 mercury_close(MR_MercuryFileStruct mf)
 {
     if (mf.reader != null) {
@@ -7336,9 +7434,50 @@ io.read_char_code(input_stream(Stream), CharCode, !IO) :-
 :- pragma foreign_proc("C",
     io.read_char_code_2(Stream::in, CharCode::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness, no_sharing],
+        does_not_affect_liveness, no_sharing, may_not_duplicate],
 "
-    CharCode = mercury_getc(Stream);
+    char    buf[5];
+    int     nbytes;
+    int     i;
+    int     c;
+    unsigned int    uc;
+
+    c = mercury_get_byte(Stream);
+    uc = c;
+    if (uc <= 0x7f) {
+        CharCode = uc;
+    } else if (c == EOF) {
+        CharCode = -1;
+    } else {
+        if ((uc & 0xE0) == 0xC0) {
+            nbytes = 2;
+        } else if ((uc & 0xF0) == 0xE0) {
+            nbytes = 3;
+        } else if ((uc & 0xF8) == 0xF0) {
+            nbytes = 4;
+        } else {
+            nbytes = 0;
+        }
+        if (nbytes > 0) {
+            buf[0] = uc;
+            for (i = 1; i < nbytes; i++) {
+                uc = mercury_get_byte(Stream);
+                buf[i] = uc;
+            }
+            buf[i] = '\\0';
+            CharCode = MR_utf8_get(buf, 0);
+            if (CharCode < 0) {
+                /* Invalid byte sequence. */
+                errno = EILSEQ;
+                CharCode = -2;
+            }
+        } else {
+            /* Invalid byte sequence. */
+            errno = EILSEQ;
+            CharCode = -2;
+        }
+    }
+
     MR_update_io(IO0, IO);
 ").
 
@@ -7352,7 +7491,7 @@ io.read_byte_val(input_stream(Stream), ByteVal, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
-    ByteVal = mercury_getc(Stream);
+    ByteVal = mercury_get_byte(Stream);
     MR_update_io(IO0, IO);
 ").
 
@@ -7363,15 +7502,26 @@ io.putback_char(input_stream(Stream), Character, !IO) :-
 :- pragma foreign_proc("C",
     io.putback_char_2(Stream::in, Character::in, IO0::di, IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io, terminates,
-        does_not_affect_liveness, no_sharing],
+        does_not_affect_liveness, no_sharing, may_not_duplicate],
 "
     MercuryFilePtr mf = Stream;
     if (Character == '\\n') {
         MR_line_number(*mf)--;
     }
-    /* XXX should work even if ungetc() fails */
-    if (MR_UNGETCH(*mf, Character) == EOF) {
-        mercury_io_error(mf, ""io.putback_char: ungetc failed"");
+    if (Character <= 0x7f) {
+        if (MR_UNGETCH(*mf, Character) == EOF) {
+            mercury_io_error(mf, ""io.putback_char: ungetc failed"");
+        }
+    } else {
+        /* This requires multiple pushback in the underlying C library. */
+        char    buf[5];
+        ssize_t len;
+        len = MR_utf8_encode(buf, Character);
+        for (; len > 0; len--) {
+            if (MR_UNGETCH(*mf, buf[len - 1]) == EOF) {
+                mercury_io_error(mf, ""io.putback_char: ungetc failed"");
+            }
+        }
     }
     MR_update_io(IO0, IO);
 ").
@@ -7386,7 +7536,6 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
         does_not_affect_liveness, no_sharing],
 "
     MercuryFilePtr mf = Stream;
-    /* XXX should work even if ungetc() fails */
     if (MR_UNGETCH(*mf, Character) == EOF) {
         mercury_io_error(mf, ""io.putback_byte: ungetc failed"");
     }
@@ -7522,11 +7671,24 @@ io.putback_byte(binary_input_stream(Stream), Character, !IO) :-
         does_not_affect_liveness, no_sharing],
 "
     MercuryFilePtr out = mercury_current_text_output();
-    if (MR_PUTCH(*out, Character) < 0) {
-        mercury_output_error(out);
-    }
-    if (Character == '\\n') {
-        MR_line_number(*out)++;
+    char    buf[5];
+    size_t  len;
+    int     i;
+    if (Character <= 0x7f) {
+        if (MR_PUTCH(*out, Character) < 0) {
+            mercury_output_error(out);
+        }
+        if (Character == '\\n') {
+            MR_line_number(*out)++;
+        }
+    } else {
+        len = MR_utf8_encode(buf, Character);
+        for (i = 0; i < len; i++) {
+            if (MR_PUTCH(*out, buf[i]) < 0) {
+                mercury_output_error(out);
+                break;
+            }
+        }
     }
     MR_update_io(IO0, IO);
 ").
@@ -7628,7 +7790,7 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
         switch (io.mercury_current_text_output.line_ending) {
         case io.ML_line_ending_kind.ML_raw_binary:
         case io.ML_line_ending_kind.ML_Unix_line_ending:
-            w.Write(Character);
+            mercury_write_codepoint(w, Character);
             break;
         case io.ML_line_ending_kind.ML_OS_line_ending:
             w.WriteLine("""");
@@ -7636,7 +7798,7 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
         }
         io.mercury_current_text_output.line_number++;
     } else {
-        w.Write(Character);
+        mercury_write_codepoint(w, Character);
     }
 ").
 
@@ -7679,8 +7841,11 @@ io.write_bitmap(Bitmap, Start, NumBytes, !IO) :-
     io.write_char(Chr::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    io.mercury_current_text_output.get().write_or_throw(
-        Character.toString(Chr));
+    io.MR_TextOutputFile stream = io.mercury_current_text_output.get();
+    char[] buf = java.lang.Character.toChars(Chr);
+    for (char c : buf) {
+        stream.put_or_throw(c);
+    }
 ").
 :- pragma foreign_proc("Java",
     io.write_int(Val::in, _IO0::di, _IO::uo),
@@ -7859,11 +8024,24 @@ io.write_char(output_stream(Stream), Character, !IO) :-
     [may_call_mercury, promise_pure, tabled_for_io, thread_safe, terminates,
         does_not_affect_liveness, no_sharing],
 "
-    if (MR_PUTCH(*Stream, Character) < 0) {
-        mercury_output_error(Stream);
-    }
-    if (Character == '\\n') {
-        MR_line_number(*Stream)++;
+    if (Character <= 0x7f) {
+        if (MR_PUTCH(*Stream, Character) < 0) {
+            mercury_output_error(Stream);
+        }
+        if (Character == '\\n') {
+            MR_line_number(*Stream)++;
+        }
+    } else {
+        char    buf[5];
+        size_t  len;
+        int     i;
+        len = MR_utf8_encode(buf, Character);
+        for (i = 0; i < len; i++) {
+            if (MR_PUTCH(*Stream, buf[i]) < 0) {
+                mercury_output_error(Stream);
+                break;
+            }
+        }
     }
     MR_update_io(IO0, IO);
 ").
@@ -8016,7 +8194,7 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
         switch (stream.line_ending) {
         case io.ML_line_ending_kind.ML_raw_binary:
         case io.ML_line_ending_kind.ML_Unix_line_ending:
-            w.Write(Character);
+            mercury_write_codepoint(w, Character);
             break;
         case io.ML_line_ending_kind.ML_OS_line_ending:
             w.WriteLine("""");
@@ -8024,7 +8202,7 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
         }
         stream.line_number++;
     } else {
-        w.Write(Character);
+        mercury_write_codepoint(w, Character);
     }
 ").
 
@@ -8091,7 +8269,10 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
     io.write_char_2(Stream::in, Character::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, thread_safe, tabled_for_io, terminates],
 "
-    ((io.MR_TextOutputFile) Stream).put_or_throw(Character);
+    char[] buf = java.lang.Character.toChars(Character);
+    for (char c : buf) {
+        ((io.MR_TextOutputFile) Stream).put_or_throw(c);
+    }
 ").
 
 :- pragma foreign_proc("Java",
@@ -8140,7 +8321,7 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
         1 -> Loc = {cur, Off};
         2 -> Loc = {eof, Off}
     end,
-    mercury__io:mercury_seek(Stream, Loc)
+    mercury__io:mercury_set_pos(Stream, Loc)
     % XXX what to do on error?
 ").
 
@@ -8149,7 +8330,7 @@ io.flush_binary_output(binary_output_stream(Stream), !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
         terminates],
 "
-    Offset = mercury__io:mercury_seek(Stream, cur)
+    Offset = mercury__io:mercury_get_pos(Stream)
 ").
 
 :- pragma foreign_proc("Erlang",
@@ -10224,7 +10405,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
             true ->
                 'ML_do_make_temp_2'(Dir, Prefix, Sep, Tries - 1, Seed);
             false ->
-                case file:open(FileName, [write]) of
+                case file:open(FileName, [write, {encoding, utf8}]) of
                     {ok, IoDevice} ->
                         case file:close(IoDevice) of
                             ok ->

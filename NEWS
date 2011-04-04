@@ -1,7 +1,11 @@
 NEWS since Mercury 11.01
 ------------------------
 
-* There are no changes yet.
+* We have improved Unicode support in the compiler and standard library.
+
+  The `char' type now represents to a Unicode code point.  String procedures
+  understand either UTF-8 or UTF-16 encodings, depending on the backend.
+  Text I/O routines now read and write files in UTF-8 encoding.
 
 
 NEWS for Mercury 11.01-beta

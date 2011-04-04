@@ -40,6 +40,7 @@ test(X, Y, !IO) :-
 	NumG4 = string.int_to_base_string_group(45999, 10, 0, ","),
 	write_message("Non Grouped 45999: ", NumG4, !IO),
 	string.duplicate_char('f', 5, FiveFs),
+	string.duplicate_char('φ', 5, FivePhis),
 	( string.to_int("5678", Num5678) ->
 		io.write_string("string_to_int 5678: ", !IO),
 		io.write_int(Num5678, !IO),
@@ -56,12 +57,23 @@ test(X, Y, !IO) :-
 	string.pad_right(FiveFs, '.', 10, FsAndDots),
 	write_message("Five f's and five dots: ", FsAndDots, !IO),
 	string.pad_left(FsAndDots, '-', 15, DashesFsAndDots),
-	write_message("Five dashes, five f's and five dots: ", 
+	write_message("Five dashes, five f's and five dots: ",
 		DashesFsAndDots, !IO),
-	Table = string.format_table([left(["aaa", "b", "cc"]), 
-		right(["1111111", "", "333"]), right(["1,300,000.00", 
-		"9,999.00", "123,456,789.99"])], "|") ++ "\n",
+	write_message("Five φ's: ", FivePhis, !IO),
+	string.pad_right(FivePhis, '.', 10, PhisAndDots),
+	write_message("Five φ's and five dots: ", PhisAndDots, !IO),
+	string.pad_left(PhisAndDots, '-', 15, DashesPhisAndDots),
+	write_message("Five dashes, five φ's and five dots: ",
+		DashesPhisAndDots, !IO),
+	Table = string.format_table([
+		left(["aaa", "b", "cc"]),
+		left(["áaȧ", "б", "цц"]),
+		right(["1111111", "", "333"]),
+		right(["¹½⅓¼⅕⅙⅛", "", "¾⅘⅚"]),
+		right(["1,300,000.00", "9,999.00", "123,456,789.99"])
+	], "|"),
 	io.write_string(Table, !IO),
+	io.nl(!IO),
 	Wrapped = string.word_wrap("*aaaaaaaaaaaaaaaaaaaa*  bbbbb bbb  b\t"
 		++ " ccccc c c c   cccc c c c c ccccc ccc cccc c  ccc ccc ccc "
 		++ "*dddddddddddddddddddddddddddddddddddddddddddddddddddddd*"
@@ -87,8 +99,9 @@ test(X, Y, !IO) :-
 	io.write_string(WrappedHyphen, !IO),
 	io.write_string("\nWrapped string with dots:\n", !IO),
 	io.write_string(WrappedDots, !IO),
-	io.write_string("\nWrapped string where seperator is too long:\n", !IO),
-	io.write_string(SepTooLong, !IO).
+	io.write_string("\nWrapped string where separator is too long:\n", !IO),
+	io.write_string(SepTooLong, !IO),
+	io.nl(!IO).
 
 :- pred write_message(string::in, string::in, io::di, io::uo) is det.
 

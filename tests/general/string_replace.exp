@@ -10,6 +10,12 @@ string__replace("aaa bbbb ccccc aaa", "aaa", "", Result)
 	" bbbb ccccc aaa"
 string__replace("aaa bbbb ccccc aaa", "cc", "**", Result) 
 	"aaa bbbb **ccc aaa"
+string__replace("aßξ啕ßξ啕𐀀.", "ßξ", "**", Result) 
+	"a**啕ßξ啕𐀀."
+string__replace("aßξ啕ßξ啕𐀀.", "ßξ", "★★", Result) 
+	"a★★啕ßξ啕𐀀."
+string__replace("aßξ啕ßξ啕𐀀.", "啕ßξ", "***", Result) 
+	"aßξ***啕𐀀."
 string__replace_all("", "a", "bc", Result) 
 	""
 string__replace_all("aaa bbbb ccccc aaa", "aab", "**", Result) 
@@ -22,3 +28,9 @@ string__replace_all("aaa bbbb ccccc aaa", "aaa", "", Result)
 	" bbbb ccccc "
 string__replace_all("aaa bbbb ccccc aaa", "cc", "**", Result) 
 	"aaa bbbb ****c aaa"
+string__replace_all("aßξ啕ßξ啕𐀀.", "ßξ", "**", Result) 
+	"a**啕**啕𐀀."
+string__replace_all("aßξ啕ßξ啕𐀀.", "ßξ", "★★", Result) 
+	"a★★啕★★啕𐀀."
+string__replace_all("aßξ啕ßξ啕𐀀.", "啕ßξ", "***", Result) 
+	"aßξ***啕𐀀."

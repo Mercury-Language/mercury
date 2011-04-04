@@ -3449,7 +3449,8 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
         ArrayDims = []
     ;
         MLDS_Type = mlds_native_char_type,
-        String = "char",
+        % Java `char' not large enough for code points so we must use `int'.
+        String = "int",
         ArrayDims = []
     ;
         MLDS_Type = mlds_foreign_type(ForeignType),
@@ -3543,7 +3544,8 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
 mercury_type_to_string(Info, Type, CtorCat, String, ArrayDims) :-
     (
         CtorCat = ctor_cat_builtin(cat_builtin_char),
-        String = "char",
+        % Java `char' not large enough for code points so we must use `int'.
+        String = "int",
         ArrayDims = []
     ;
         CtorCat = ctor_cat_builtin(cat_builtin_int),
@@ -4872,9 +4874,10 @@ java_builtin_type(Type, "double", "java.lang.Double", "doubleValue") :-
     Type = mlds_native_float_type.
 java_builtin_type(Type, "double", "java.lang.Double", "doubleValue") :-
     Type = mercury_type(builtin_type(builtin_type_float), _, _).
-java_builtin_type(Type, "char", "java.lang.Character", "charValue") :-
+    % Java `char' not large enough for code points so we must use `int'.
+java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
     Type = mlds_native_char_type.
-java_builtin_type(Type, "char", "java.lang.Character", "charValue") :-
+java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
     Type = mercury_type(builtin_type(builtin_type_char), _, _).
 java_builtin_type(Type, "boolean", "java.lang.Boolean", "booleanValue") :-
     Type = mlds_native_bool_type.
@@ -5001,7 +5004,7 @@ output_rval_const(Info, Const, !IO) :-
         output_int_const(N, !IO)
     ;
         Const = mlconst_char(N),
-        io.write_string("((char) ", !IO),
+        io.write_string("(", !IO),
         output_int_const(N, !IO),
         io.write_string(")", !IO)
     ;

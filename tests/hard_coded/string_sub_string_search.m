@@ -28,7 +28,9 @@ main(!IO) :-
         string.sub_string_search("cat", "t", 2),
 
         string.sub_string_search_start("catcatcat", "cat", 1, 3),
-        not string.sub_string_search_start("catcatcat", "cat", 9, _)
+        not string.sub_string_search_start("catcatcat", "cat", 9, _),
+
+        string.sub_string_search("cαtcατcat", "cατ", length("cαt"))
     ->
         io.write_string("test succeeded\n", !IO)
     ;

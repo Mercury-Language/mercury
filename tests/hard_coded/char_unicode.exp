@@ -1,0 +1,30 @@
+to_utf8:
+U+0001 = [1]
+U+007f = [127]
+U+07ff = [223, 191]
+U+263f = [226, 152, 191]
+U+ffff = [239, 191, 191]
+U+10000 = [240, 144, 128, 128]
+U+10ffff = [244, 143, 191, 191]
+U+d800 invalid
+U+dbff invalid
+U+dc00 invalid
+U+dfff invalid
+
+to_utf16:
+U+0001 = [1]
+U+007f = [127]
+U+07ff = [2047]
+U+263f = [9791]
+U+ffff = [65535]
+U+10000 = [55296, 56320]
+U+10ffff = [56319, 57343]
+U+d800 invalid
+U+dbff invalid
+U+dc00 invalid
+U+dfff invalid
+
+is_surrogate: okay
+
+is_noncharacter: okay
+

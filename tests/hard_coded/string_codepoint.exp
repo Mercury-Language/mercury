@@ -1,0 +1,90 @@
+count_code_units:
+13
+
+count_codepoints:
+6
+
+codepoint_offset:
+string.codepoint_offset(Str, 0, 0)
+string.codepoint_offset(Str, 0, 1, 1)
+string.index(Str, 0, 'a')
+string.codepoint_offset(Str, 1, 1)
+string.codepoint_offset(Str, 1, 1, 3)
+string.index(Str, 1, 'ß')
+string.codepoint_offset(Str, 2, 3)
+string.codepoint_offset(Str, 3, 1, 5)
+string.index(Str, 3, 'ξ')
+string.codepoint_offset(Str, 3, 5)
+string.codepoint_offset(Str, 5, 1, 8)
+string.index(Str, 5, '啕')
+string.codepoint_offset(Str, 4, 8)
+string.codepoint_offset(Str, 8, 1, 12)
+string.index(Str, 8, '𐀀')
+string.codepoint_offset(Str, 5, 12)
+string.codepoint_offset(Str, 12, 1, _) failed
+string.index(Str, 12, '.')
+string.codepoint_offset(Str, 6, _) failed
+
+to_char_list:
+['a', 'ß', 'ξ', '啕', '𐀀', '.']
+
+from_char_list:
+aßξ啕𐀀.
+
+from_rev_char_list:
+.𐀀啕ξßa
+
+to_code_unit_list:
+[97, 195, 159, 206, 190, 229, 149, 149, 240, 144, 128, 128, 46]
+
+from_code_unit_list:
+aßξ啕𐀀.
+
+index_next:
+index_next(Str, 0, 1, 'a')
+index_next(Str, 1, 3, 'ß')
+index_next(Str, 3, 5, 'ξ')
+index_next(Str, 5, 8, '啕')
+index_next(Str, 8, 12, '𐀀')
+index_next(Str, 12, 13, '.')
+end
+
+index_next(-1):
+end
+
+unsafe_index_next:
+unsafe_index_next(Str, 0, 1, 'a')
+unsafe_index_next(Str, 1, 3, 'ß')
+unsafe_index_next(Str, 3, 5, 'ξ')
+unsafe_index_next(Str, 5, 8, '啕')
+unsafe_index_next(Str, 8, 12, '𐀀')
+unsafe_index_next(Str, 12, 13, '.')
+end
+
+unsafe_prev_index:
+unsafe_prev_index(Str, 13, 12, '.')
+unsafe_prev_index(Str, 12, 8, '𐀀')
+unsafe_prev_index(Str, 8, 5, '啕')
+unsafe_prev_index(Str, 5, 3, 'ξ')
+unsafe_prev_index(Str, 3, 1, 'ß')
+unsafe_prev_index(Str, 1, 0, 'a')
+end
+
+split_by_codepoint:
+split_by_codepoint(Str, -1, "", "aßξ啕𐀀.")
+split_by_codepoint(Str, 0, "", "aßξ啕𐀀.")
+split_by_codepoint(Str, 1, "a", "ßξ啕𐀀.")
+split_by_codepoint(Str, 2, "aß", "ξ啕𐀀.")
+split_by_codepoint(Str, 3, "aßξ", "啕𐀀.")
+split_by_codepoint(Str, 4, "aßξ啕", "𐀀.")
+split_by_codepoint(Str, 5, "aßξ啕𐀀", ".")
+split_by_codepoint(Str, 6, "aßξ啕𐀀.", "")
+
+left_by_codepoint:
+aßξ
+
+right_by_codepoint:
+啕𐀀.
+
+substring_by_codepoint:
+ξ啕

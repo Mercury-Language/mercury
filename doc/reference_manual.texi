@@ -244,16 +244,11 @@ number.  Similarly, a backslash followed by an octal digit is the
 beginning of an octal escape; as with hexadecimal escapes, the sequence
 of octal digits must be terminated with a closing backslash.
 
-@c XXX The following feature is undocumented until we have more complete
-@c support for unicode.
-@c The sequence @samp{\u} or @samp{\U} can be used to escape Unicode characters.
-@c @samp{\u} must be followed by the Unicode character code expressed as four
-@c hexadecimal digits.
-@c @samp{\U} must be followed by the Unicode character code expressed as eight
-@c hexadecimal digits.
-@c The encoding used for Unicode characters is implementation dependent.
-@c For the Melbourne Mercury compiler, it is UTF-8 for the C backends and UTF-16
-@c for the Java, C# and IL backends.
+The sequence @samp{\u} or @samp{\U} can be used to escape Unicode characters.
+@samp{\u} must be followed by the Unicode character code expressed as four
+hexadecimal digits.
+@samp{\U} must be followed by the Unicode character code expressed as eight
+hexadecimal digits.  The highest allowed value is @samp{\U0010FFFF}.
 
 A backslash followed immediately by a newline is deleted; thus an
 escaped newline can be used to continue a string over more than one
@@ -6761,11 +6756,13 @@ than @samp{sizeof(MR_Word)}.
 @node C# data passing conventions
 @subsection C# data passing conventions
 
-The Mercury types @code{int}, @code{float}, @code{char},
+The Mercury types @code{int}, @code{float},
 and @code{string} are mapped to the Common Language Infrastructure (CLI) types
-@code{System.Int32}, @code{System.Double}, @code{System.Char} and
+@code{System.Int32}, @code{System.Double}, and
 @code{System.String} respectively, which correspond to the C# types
-@code{int}, @code{double}, @code{char}, and @code{string}.
+@code{int}, @code{double}, and @code{string}.
+The Mercury type @code{char} is mapped like @code{int}; @emph{not} to the CLI
+type @code{System.Char} because that only holds 16-bit numeric values.
 
 For the Mercury standard library type @samp{bool.bool}, there is a
 corresponding C# type, @code{mr_bool.Bool_0}.  C# code can refer to the
@@ -6877,10 +6874,12 @@ List_1    list.cons(object head, List_1 tail)
 @node Java data passing conventions
 @subsection Java data passing conventions
 
-The Mercury types @code{int}, @code{float}, @code{char},
+The Mercury types @code{int}, @code{float},
 and @code{string} are mapped to the Java types 
-@code{int}, @code{double}, @code{char} and
+@code{int}, @code{double}, and
 @code{java.lang.String} respectively.
+The Mercury type @code{char} is mapped like @code{int}; @emph{not} to the Java
+type @code{char} because that only holds 16-bit numeric values.
 
 For the Mercury standard library type @samp{bool.bool}, there is a
 corresponding Java type, @code{bool.Bool_0}.  Java code can refer to the

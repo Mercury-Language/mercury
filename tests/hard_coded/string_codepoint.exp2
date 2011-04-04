@@ -1,0 +1,90 @@
+count_code_units:
+7
+
+count_codepoints:
+6
+
+codepoint_offset:
+string.codepoint_offset(Str, 0, 0)
+string.codepoint_offset(Str, 0, 1, 1)
+string.index(Str, 0, 'a')
+string.codepoint_offset(Str, 1, 1)
+string.codepoint_offset(Str, 1, 1, 2)
+string.index(Str, 1, 'ß')
+string.codepoint_offset(Str, 2, 2)
+string.codepoint_offset(Str, 2, 1, 3)
+string.index(Str, 2, 'ξ')
+string.codepoint_offset(Str, 3, 3)
+string.codepoint_offset(Str, 3, 1, 4)
+string.index(Str, 3, '啕')
+string.codepoint_offset(Str, 4, 4)
+string.codepoint_offset(Str, 4, 1, 6)
+string.index(Str, 4, '𐀀')
+string.codepoint_offset(Str, 5, 6)
+string.codepoint_offset(Str, 6, 1, _) failed
+string.index(Str, 6, '.')
+string.codepoint_offset(Str, 6, _) failed
+
+to_char_list:
+['a', 'ß', 'ξ', '啕', '𐀀', '.']
+
+from_char_list:
+aßξ啕𐀀.
+
+from_rev_char_list:
+.𐀀啕ξßa
+
+to_code_unit_list:
+[97, 223, 958, 21845, 55296, 56320, 46]
+
+from_code_unit_list:
+aßξ啕𐀀.
+
+index_next:
+index_next(Str, 0, 1, 'a')
+index_next(Str, 1, 2, 'ß')
+index_next(Str, 2, 3, 'ξ')
+index_next(Str, 3, 4, '啕')
+index_next(Str, 4, 6, '𐀀')
+index_next(Str, 6, 7, '.')
+end
+
+index_next(-1):
+end
+
+unsafe_index_next:
+unsafe_index_next(Str, 0, 1, 'a')
+unsafe_index_next(Str, 1, 2, 'ß')
+unsafe_index_next(Str, 2, 3, 'ξ')
+unsafe_index_next(Str, 3, 4, '啕')
+unsafe_index_next(Str, 4, 6, '𐀀')
+unsafe_index_next(Str, 6, 7, '.')
+end
+
+unsafe_prev_index:
+unsafe_prev_index(Str, 7, 6, '.')
+unsafe_prev_index(Str, 6, 4, '𐀀')
+unsafe_prev_index(Str, 4, 3, '啕')
+unsafe_prev_index(Str, 3, 2, 'ξ')
+unsafe_prev_index(Str, 2, 1, 'ß')
+unsafe_prev_index(Str, 1, 0, 'a')
+end
+
+split_by_codepoint:
+split_by_codepoint(Str, -1, "", "aßξ啕𐀀.")
+split_by_codepoint(Str, 0, "", "aßξ啕𐀀.")
+split_by_codepoint(Str, 1, "a", "ßξ啕𐀀.")
+split_by_codepoint(Str, 2, "aß", "ξ啕𐀀.")
+split_by_codepoint(Str, 3, "aßξ", "啕𐀀.")
+split_by_codepoint(Str, 4, "aßξ啕", "𐀀.")
+split_by_codepoint(Str, 5, "aßξ啕𐀀", ".")
+split_by_codepoint(Str, 6, "aßξ啕𐀀.", "")
+
+left_by_codepoint:
+aßξ
+
+right_by_codepoint:
+啕𐀀.
+
+substring_by_codepoint:
+ξ啕

@@ -56,16 +56,18 @@ make_char_list(Length, !List, !RS) :-
 	( Length = 0 ->
 		true
 	;
-		random__random(char__min_char_value + 1,
-			(char__max_char_value - char__min_char_value),
-			Int, !RS),
-		( char__to_int(Char, Int) ->
-			!:List = [Char | !.List]
-		;
-			error("char_to_int failed")
-		),
+		rand_char(Char, !RS),
+		!:List = [Char | !.List],
 		make_char_list(Length - 1, !List, !RS)
 	).
+
+:- pred rand_char(char::out, random__supply::mdi, random__supply::muo) is det.
+
+rand_char(Char, !RS) :-
+	random__random(Rand, !RS),
+	% U+0001..U+10ffff (avoid null character).
+	Int = 1 + (Rand `mod` char__max_char_value),
+	char__det_from_int(Int, Char).
 
 :- pragma foreign_decl("C", "#include ""mercury_string.h""").
 

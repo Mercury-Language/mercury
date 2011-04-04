@@ -18,6 +18,7 @@
 
 main(!IO) :-
 	Str = "aaa bbbb ccccc aaa",
+	Str2 = "aßξ啕ßξ啕𐀀.",
 	Tests = [
 		{"", "a", "bc"},
 
@@ -26,7 +27,11 @@ main(!IO) :-
 		{Str, "", "**"},
 
 		{Str, "aaa", ""},
-		{Str, "cc", "**"}
+		{Str, "cc", "**"},
+
+		{Str2, "ßξ", "**"},	% decreased code units
+		{Str2, "ßξ", "★★"},	% increased code units
+		{Str2, "啕ßξ", "***"}
 	],
 	list__foldl(test_replace, Tests, !IO),
 	list__foldl(test_replace_all, Tests, !IO).

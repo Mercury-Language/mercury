@@ -24,6 +24,7 @@ ORDINARY_PROGS=	\
 	cc_multi_bug \
 	cc_nondet_disj \
 	char_signed \
+	char_unicode \
 	checked_nondet_tailcall \
 	checked_nondet_tailcall_noinline \
 	closure_extension \
@@ -229,6 +230,7 @@ ORDINARY_PROGS=	\
 	simplify_multi_arm_switch \
 	solve_quadratic \
 	space \
+	special_char \
 	stable_sort \
 	static_no_tag \
 	stream_format \
@@ -242,7 +244,11 @@ ORDINARY_PROGS=	\
 	string_append_ioi \
 	string_append_ooi \
 	string_builder_test \
+	string_class \
+	string_codepoint \
+	string_first_char \
 	string_loop \
+	string_presuffix \
 	string_set_char \
 	string_split \
 	string_split_2 \
@@ -297,7 +303,9 @@ ORDINARY_PROGS=	\
 	uo_regression1 \
 	user_compare \
 	user_defined_equality2 \
+	utf8_io \
 	value_enum \
+	words_separator \
 	write \
 	write_reg1 \
 	write_reg2 \
@@ -508,15 +516,6 @@ CLOSURE_LAYOUT_PROGS = \
 	copy_pred \
 	copy_pred_2
 
-# This test requires the implementation's representation of characters
-# to be the same as their representation in files, which is not true
-# for the IL and Java back-ends, which use Unicode internally.
-ifeq "$(filter il% csharp% java%,$(GRADE))" ""
-	CHAR_REP_PROGS = special_char
-else
-	CHAR_REP_PROGS =
-endif
-
 # We do not pass the following tests at all:
 #
 # XXX export_test2
@@ -659,7 +658,7 @@ PROGS = $(ORDINARY_PROGS) $(PROF_PROGS) $(BROKEN_FOR_LCC_PROGS) \
 	$(CLOSURE_LAYOUT_PROGS) $(NON_PROFDEEP_PROGS) \
 	$(BACKEND_PROGS) \
 	$(C_AND_GC_ONLY_PROGS) $(STATIC_LINK_PROGS) \
-	$(CHAR_REP_PROGS) $(C_ONLY_PROGS) \
+	$(C_ONLY_PROGS) \
 	$(DOTNET_PROGS) $(JAVA_PROGS) $(SOLVER_PROGS) \
 	$(TRAILED_PROGS) $(MUTABLE_PROGS) $(TRACE_GOAL_ENV_PROGS) \
 	$(CTGC_PROGS) $(BIG_DATA_PROGS)

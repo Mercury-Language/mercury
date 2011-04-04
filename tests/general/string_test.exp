@@ -14,9 +14,12 @@ string_to_int 5678: 5678
 Five f's: fffff
 Five f's and five dots: fffff.....
 Five dashes, five f's and five dots: -----fffff.....
-aaa|1111111|  1,300,000.00
-b  |       |      9,999.00
-cc |    333|123,456,789.99
+Five φ's: φφφφφ
+Five φ's and five dots: φφφφφ.....
+Five dashes, five φ's and five dots: -----φφφφφ.....
+aaa|áaȧ|1111111|¹½⅓¼⅕⅙⅛|  1,300,000.00
+b  |б  |       |       |      9,999.00
+cc |цц |    333|    ¾⅘⅚|123,456,789.99
 
 Wrapped string:
 *aaaaaaaaa
@@ -80,7 +83,7 @@ dd...
 dd...
 d*
 eee
-Wrapped string where seperator is too long:
+Wrapped string where separator is too long:
 wh
 at
 ev

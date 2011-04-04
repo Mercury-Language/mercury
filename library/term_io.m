@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2006, 2009 The University of Melbourne.
+% Copyright (C) 1994-2006, 2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -784,6 +784,7 @@ mercury_escape_char(Char) = EscapeCode :-
 is_mercury_source_char(Char) :-
     ( char.is_alnum(Char)
     ; is_mercury_punctuation_char(Char)
+    ; char.to_int(Char) >= 0x80
     ).
 
     % Currently we only allow the following characters.

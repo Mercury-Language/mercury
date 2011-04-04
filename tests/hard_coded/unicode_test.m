@@ -15,7 +15,7 @@
 main(!IO) :-
 	list.foldl(write_string_as_binary, utf8_strings, !IO),
 	io.nl(!IO),
-	Str = string.join_list("\n", utf8_strings),
+	Str = string.join_list("(☿)\n", utf8_strings),
 	io.write_string(Str, !IO),
 	io.nl(!IO).
 
@@ -26,8 +26,8 @@ utf8_strings = [
 	"\U00000003",
 	"\u0394",  % delta
 	"\u03A0",  % pi
-	"\uFFFF",
-	"\U0010ffff",
+	"\uFFFD",
+	"\U0010fffd",
 	"\U000ABCde",
 	"r\u00E9sum\u00E9", % "resume" with accents
 	"abc123",
