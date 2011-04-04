@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 expandtab
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -137,10 +137,6 @@ parse_pragma_type(ModuleName, PragmaName, PragmaTerms, ErrorTerm, VarSet,
         parse_pragma_foreign_decl_pragma(ModuleName, PragmaName,
             PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeItem)
     ;
-        PragmaName = "c_header_code",
-        parse_pragma_c_header_code(ModuleName, PragmaTerms, ErrorTerm, VarSet,
-            Context, SeqNum, MaybeItem)
-    ;
         PragmaName = "foreign_code",
         parse_pragma_foreign_code_pragma(ModuleName, PragmaName,
             PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeItem)
@@ -161,24 +157,8 @@ parse_pragma_type(ModuleName, PragmaName, PragmaTerms, ErrorTerm, VarSet,
         parse_pragma_foreign_export(PragmaTerms, ErrorTerm, VarSet,
             Context, SeqNum, MaybeItem)
     ;
-        PragmaName = "c_code",
-        parse_pragma_c_code(ModuleName, PragmaTerms, ErrorTerm, VarSet,
-            Context, SeqNum, MaybeItem)
-    ;
-        PragmaName = "c_import_module",
-        parse_pragma_c_import_module(PragmaTerms, ErrorTerm,
-            Context, SeqNum, MaybeItem)
-    ;
         PragmaName = "foreign_import_module",
         parse_pragma_foreign_import_module(PragmaTerms, ErrorTerm,
-            Context, SeqNum, MaybeItem)
-    ;
-        PragmaName = "import",
-        parse_pragma_import(ModuleName, PragmaTerms, ErrorTerm, VarSet,
-            Context, SeqNum, MaybeItem)
-    ;
-        PragmaName = "export",
-        parse_pragma_export(PragmaTerms, ErrorTerm, VarSet,
             Context, SeqNum, MaybeItem)
     ;
         (
@@ -405,19 +385,6 @@ parse_pragma_foreign_type(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
             [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
         MaybeItem = error1([Spec])
     ).
-
-:- pred parse_pragma_c_header_code(module_name::in, list(term)::in, term::in,
-    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
-
-parse_pragma_c_header_code(_, _, ErrorTerm, _, _, _, MaybeItem) :-
-    Pieces = [
-        words("Error:"), quote(":- pragma c_header_code"),
-        words("declarations are no longer supported.  Please use a"),
-        quote(":- pragma foreign_decl"), words("declaration for C instead.")
-    ],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-    MaybeItem = error1([Spec]).
 
 %----------------------------------------------------------------------------%
 %
@@ -759,61 +726,6 @@ parse_pragma_foreign_export(PragmaTerms, ErrorTerm, VarSet, Context, SeqNum,
 
 %----------------------------------------------------------------------------%
 
-:- pred parse_pragma_c_code(module_name::in, list(term)::in, term::in,
-    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
-
-parse_pragma_c_code(_, PragmaTerms, ErrorTerm, _, _, _, MaybeItem) :-
-    % pragma c_code is almost as if we have written foreign_code
-    % or foreign_proc with the language set to "C".
-    % There are a few differences (error messages, some deprecated
-    % syntax is still supported for c_code) so we pass the original
-    % pragma name to parse_pragma_foreign_code_pragma.
-    (
-        % arity = 1 (same as foreign_code)
-        PragmaTerms = [_]
-    ->
-        Pieces = [
-            words("Error:"), quote(":- pragma c_code"),
-            words("declarations are no longer supported.  Please use a"),
-            quote(":- pragma foreign_code"),
-            words("declaration for C instead.")
-        ]
-    ;
-        % arity > 1 (same as foreign_proc)
-        PragmaTerms = [_ | _]
-    ->
-        Pieces = [
-            words("Error:"), quote(":- pragma c_code"),
-            words("declarations are no longer supported.  Please use a"),
-            quote(":- pragma foreign_proc"),
-            words("declaration for C instead.")
-        ]
-    ;
-        Pieces = [
-            words("Error:"), quote(":- pragma c_code"),
-            words("declarations are no longer supported.  Please use a"),
-            quote(":- pragma foreign_code"), words("or"),
-            quote(":- pragma foreign_proc"),
-            words("declaration for C instead.")
-        ]
-    ),
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-    MaybeItem = error1([Spec]).
-
-:- pred parse_pragma_c_import_module(list(term)::in, term::in,
-    prog_context::in, int::in, maybe1(item)::out) is det.
-
-parse_pragma_c_import_module(_, ErrorTerm, _, _, MaybeItem) :-
-    Pieces = [
-        words("Error:"), quote(":- pragma c_import_module"),
-        words("declarations are no longer supported.  Please use a"),
-        quote(":- pragma foreign_import_module"), words("declaration for C instead.")
-    ],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-    MaybeItem = error1([Spec]).
-
 :- pred parse_pragma_foreign_import_module(list(term)::in, term::in,
     prog_context::in, int::in, maybe1(item)::out) is det.
 
@@ -846,32 +758,6 @@ parse_pragma_foreign_import_module(PragmaTerms, ErrorTerm, Context, SeqNum,
         MaybeItem = error1([Spec])
     ).
 
-:- pred parse_pragma_import(module_name::in, list(term)::in, term::in,
-    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
-
-parse_pragma_import(_, _, ErrorTerm, _, _, _, MaybeItem) :-
-    Pieces = [
-        words("Error:"), quote(":- pragma import"),
-        words("declarations are no longer supported.  Please use a"),
-        quote(":- pragma foreign_proc"), words("declaration for C instead.")
-    ],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-    MaybeItem = error1([Spec]).
-
-:- pred parse_pragma_export(list(term)::in, term::in, varset::in,
-    prog_context::in, int::in, maybe1(item)::out) is det.
-
-parse_pragma_export(_, ErrorTerm, _, _, _, MaybeItem) :-
-    Pieces = [
-        words("Error:"), quote(":- pragma export"),
-        words("declarations are no longer supported.  Please use a"),
-        quote(":- pragma foreign_export"), words("declaration for C instead.")
-    ],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-    MaybeItem = error1([Spec]).
-    
 :- pred parse_pragma_unused_args(module_name::in, list(term)::in, term::in,
     varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
 
@@ -1727,19 +1613,11 @@ parse_pragma_foreign_proc_pragma(ModuleName, PragmaName, PragmaTerms,
             LangSpecs = [LangSpec]
         ),
         (
-            (
-                RestTerms = [PredAndVarsTerm, CodeTerm],
-                parse_pragma_ordinary_foreign_proc_pragma_old(ModuleName,
-                    PragmaName, VarSet, PredAndVarsTerm, CodeTerm, ErrorTerm,
-                    ForeignLanguage, InvalidDeclPrefix, Context, SeqNum,
-                    MaybeRestItem)
-            ;
-                RestTerms = [PredAndVarsTerm, FlagsTerm, CodeTerm],
-                parse_pragma_ordinary_foreign_proc_pragma(ModuleName,
-                    PragmaName, VarSet, PredAndVarsTerm, FlagsTerm, CodeTerm,
-                    ForeignLanguage, InvalidDeclPrefix, Context, SeqNum,
-                    MaybeRestItem)
-            )
+            RestTerms = [PredAndVarsTerm, FlagsTerm, CodeTerm],
+            parse_pragma_ordinary_foreign_proc_pragma(ModuleName,
+                VarSet, PredAndVarsTerm, FlagsTerm, CodeTerm,
+                ForeignLanguage, InvalidDeclPrefix, Context, SeqNum,
+                MaybeRestItem)
         ->
             (
                 MaybeRestItem = ok1(Item),
@@ -1771,47 +1649,13 @@ parse_pragma_foreign_proc_pragma(ModuleName, PragmaName, PragmaTerms,
         MaybeItem = error1([Spec])
     ).
 
-:- pred parse_pragma_ordinary_foreign_proc_pragma_old(module_name::in,
-    string::in, varset::in, term::in, term::in, term::in, foreign_language::in,
-    list(format_component)::in, prog_context::in, int::in, maybe1(item)::out)
-    is det.
-
-parse_pragma_ordinary_foreign_proc_pragma_old(ModuleName, PragmaName, VarSet,
-        PredAndVarsTerm, CodeTerm, ErrorTerm, ForeignLanguage,
-        InvalidDeclPrefix, Context, SeqNum, MaybeItem) :-
-    % XXX We should issue a warning; this syntax is deprecated. We will
-    % continue to accept this if c_code is used, but not with foreign_code.
-    ( PragmaName = "c_code" ->
-        Attributes0 = default_attributes(ForeignLanguage),
-        set_legacy_purity_behaviour(yes, Attributes0, Attributes),
-        ( CodeTerm = term.functor(term.string(Code), [], CodeContext) ->
-            Impl = fc_impl_ordinary(Code, yes(CodeContext)),
-            parse_pragma_foreign_code(ModuleName, Attributes,
-                PredAndVarsTerm, Impl, VarSet, Context, SeqNum, MaybeItem)
-        ;
-            Pieces = InvalidDeclPrefix ++
-                [words("expecting either"), quote("may_call_mercury"),
-                words("or"), quote("will_not_call_mercury"), suffix(","),
-                words("and a string for foreign code."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(CodeTerm), [always(Pieces)])]),
-            MaybeItem = error1([Spec])
-        )
-    ;
-        Pieces = InvalidDeclPrefix ++
-            [words("does not say whether it can call Mercury."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        MaybeItem = error1([Spec])
-    ).
-
-:- pred parse_pragma_ordinary_foreign_proc_pragma(module_name::in, string::in,
+:- pred parse_pragma_ordinary_foreign_proc_pragma(module_name::in,
     varset::in, term::in, term::in, term::in, foreign_language::in,
     list(format_component)::in, prog_context::in, int::in, maybe1(item)::out)
     is det.
 
-parse_pragma_ordinary_foreign_proc_pragma(ModuleName, PragmaName, VarSet,
-        SecondTerm, ThirdTerm, CodeTerm, ForeignLanguage, InvalidDeclPrefix,
+parse_pragma_ordinary_foreign_proc_pragma(ModuleName, VarSet, SecondTerm,
+        ThirdTerm, CodeTerm, ForeignLanguage, InvalidDeclPrefix,
         Context, SeqNum, MaybeItem) :-
     CodeContext = get_term_context(CodeTerm),
     ( CodeTerm = term.functor(term.string(CodePrime), [], _) ->
@@ -1828,8 +1672,8 @@ parse_pragma_ordinary_foreign_proc_pragma(ModuleName, PragmaName, VarSet,
     ),
     ThirdContextPieces =
         InvalidDeclPrefix ++ [words("invalid third argument:")],
-    parse_pragma_foreign_proc_attributes_term(ForeignLanguage, PragmaName,
-        VarSet, ThirdTerm, ThirdContextPieces, MaybeFlagsThird),
+    parse_pragma_foreign_proc_attributes_term(ForeignLanguage, VarSet,
+        ThirdTerm, ThirdContextPieces, MaybeFlagsThird),
     (
         MaybeFlagsThird = ok1(Flags),
         FlagsSpecs = [],
@@ -1839,27 +1683,19 @@ parse_pragma_ordinary_foreign_proc_pragma(ModuleName, PragmaName, VarSet,
         % We report any errors as appropriate to the preferred syntax.
         SecondContextPieces = InvalidDeclPrefix ++
             [lower_case_next_if_not_first, words("Invalid second argument:")],
-        parse_pragma_foreign_proc_attributes_term(ForeignLanguage, PragmaName,
-            VarSet, SecondTerm, SecondContextPieces, MaybeFlagsSecond),
+        parse_pragma_foreign_proc_attributes_term(ForeignLanguage, VarSet,
+            SecondTerm, SecondContextPieces, MaybeFlagsSecond),
         (
             MaybeFlagsSecond = ok1(Flags),
-            % XXX We should issue a warning; this syntax is deprecated.
-            % We will continue to accept this if c_code is used,
-            % but not with foreign_code.
-            ( PragmaName = "c_code" ->
-                PredAndVarsTerm = ThirdTerm,
-                FlagsSpecs = []
-            ;
-                PredAndVarsTerm = ThirdTerm,                % Dummy
-                FlagsPieces = InvalidDeclPrefix ++
-                    [words("invalid second argument,"),
-                    words("expecting predicate or function mode."), nl],
-                FlagsSpec = error_spec(severity_error,
-                    phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(SecondTerm),
-                        [always(FlagsPieces)])]),
-                FlagsSpecs = [FlagsSpec]
-            )
+            PredAndVarsTerm = ThirdTerm,                % Dummy
+            FlagsPieces = InvalidDeclPrefix ++
+                [words("invalid second argument,"),
+                words("expecting predicate or function mode."), nl],
+            FlagsSpec = error_spec(severity_error,
+                phase_term_to_parse_tree,
+                [simple_msg(get_term_context(SecondTerm),
+                    [always(FlagsPieces)])]),
+            FlagsSpecs = [FlagsSpec]
         ;
             MaybeFlagsSecond = error1(FlagsSpecs),
             Flags = default_attributes(ForeignLanguage),    % Dummy
@@ -1990,18 +1826,12 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
     ;       coll_may_duplicate(proc_may_duplicate).
 
 :- pred parse_pragma_foreign_proc_attributes_term(foreign_language::in,
-    string::in, varset::in, term::in, list(format_component)::in,
+    varset::in, term::in, list(format_component)::in,
     maybe1(pragma_foreign_proc_attributes)::out) is det.
 
-parse_pragma_foreign_proc_attributes_term(ForeignLanguage, PragmaName, Varset,
+parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Varset,
         Term, ContextPieces, MaybeAttributes) :-
     Attributes0 = default_attributes(ForeignLanguage),
-    ( ( PragmaName = "c_code" ; PragmaName = "import" ) ->
-        set_legacy_purity_behaviour(yes, Attributes0, Attributes1),
-        set_purity(purity_pure, Attributes1, Attributes2)
-    ;
-        Attributes2 = Attributes0
-    ),
     ConflictingAttributes = [
         coll_may_call_mercury(proc_will_not_call_mercury) -
             coll_may_call_mercury(proc_may_call_mercury),
@@ -2066,7 +1896,7 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, PragmaName, Varset,
                 [simple_msg(get_term_context(Term), [always(Pieces)])]),
             MaybeAttributes = error1([Spec])
         ;
-            list.foldl(process_attribute, AttrList, Attributes2, Attributes),
+            list.foldl(process_attribute, AttrList, Attributes0, Attributes),
             MaybeAttributes = check_required_attributes(ForeignLanguage,
                 Attributes, ContextPieces, Term)
         )
