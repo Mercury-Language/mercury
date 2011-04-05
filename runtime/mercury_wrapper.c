@@ -77,7 +77,8 @@ ENDINIT
 
 /*
 ** Sizes of data areas (including redzones), in kilobytes
-** (but we later multiply by 1024 to convert to bytes).
+** (but we later multiply by 1024 to convert to bytes, then make sure they're
+** at least as big as the primary cache size then round up to the page size).
 **
 ** Note that it is OK to allocate a large heap, since we will only touch
 ** the part of it that we use; we're really only allocating address space,
@@ -103,8 +104,6 @@ ENDINIT
 #ifdef MR_STACK_SEGMENTS
 size_t      MR_detstack_size =            64 * sizeof(MR_Word);
 size_t      MR_nondetstack_size =         16 * sizeof(MR_Word);
-size_t      MR_small_detstack_size =       8 * sizeof(MR_Word);
-size_t      MR_small_nondetstack_size =    8 * sizeof(MR_Word);
 #else
 size_t      MR_detstack_size =          4096 * sizeof(MR_Word);
 size_t      MR_nondetstack_size =         64 * sizeof(MR_Word);
@@ -144,8 +143,16 @@ size_t      MR_gen_nondetstack_size =     16 * sizeof(MR_Word);
 #else
   size_t        MR_heap_zone_size =        4 * sizeof(MR_Word);
 #endif
+#ifdef MR_STACK_SEGMENTS
+/*
+** We don't use redzones with stack segments.
+*/
+size_t      MR_detstack_zone_size =        0;
+size_t      MR_nondetstack_zone_size =     0;
+#else
 size_t      MR_detstack_zone_size =        4 * sizeof(MR_Word);
 size_t      MR_nondetstack_zone_size =     4 * sizeof(MR_Word);
+#endif
 size_t      MR_solutions_heap_zone_size =  4 * sizeof(MR_Word);
 size_t      MR_global_heap_zone_size =     4 * sizeof(MR_Word);
 size_t      MR_trail_zone_size =           4 * sizeof(MR_Word);
@@ -636,7 +643,7 @@ mercury_runtime_init(int argc, char **argv)
     MR_init_memory();
   #ifdef MR_USE_TRAIL
     /* initialize the trail */
-    MR_trail_zone = MR_create_zone("trail", 0,
+    MR_trail_zone = MR_create_or_reuse_zone("trail",
         MR_trail_size, MR_next_offset(),
         MR_trail_zone_size, MR_default_handler);
     MR_trail_ptr = (MR_TrailEntry *) MR_trail_zone->min;
@@ -1505,7 +1512,9 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
+#ifndef MR_STACK_SEGMENTS
                 MR_small_detstack_size = size;
+#endif
                 break;
 
             case MR_SMALL_DETSTACK_SIZE_KWORDS:
@@ -1513,7 +1522,9 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
+#ifndef MR_STACK_SEGMENTS
                 MR_small_detstack_size = size * sizeof(MR_Word);
+#endif
                 break;
 
             case MR_SMALL_NONDETSTACK_SIZE:
@@ -1521,15 +1532,18 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
 
+#ifndef MR_STACK_SEGMENTS
                 MR_small_nondetstack_size = size;
+#endif
                 break;
 
             case MR_SMALL_NONDETSTACK_SIZE_KWORDS:
                 if (sscanf(MR_optarg, "%lu", &size) != 1) {
                     MR_usage();
                 }
-
+#ifndef MR_STACK_SEGMENTS
                 MR_small_nondetstack_size = size * sizeof(MR_Word);
+#endif
                 break;
 
             case MR_SOLUTIONS_HEAP_SIZE:
@@ -2345,7 +2359,8 @@ MR_process_options(int argc, char **argv)
         exit(1);
     }
 
-#if !defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
+#if !defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE) && \
+    !defined(MR_STACK_SEGMENTS)
     if (MR_small_detstack_size > MR_detstack_size) {
         printf("The small detstack size must be smaller than the "
             "regular detstack size.\n");

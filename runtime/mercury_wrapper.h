@@ -254,7 +254,7 @@ extern	size_t		MR_stack_margin_size;
 extern	MR_Unsigned	MR_contexts_per_thread;
 
 /*
-** number of outstanding contexts we can create 
+** number of outstanding contexts we can create
 ** (MR_contexts_per_thread * MR_num_threads)
 */
 extern	MR_Unsigned	MR_max_outstanding_contexts;

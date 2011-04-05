@@ -6,7 +6,7 @@ INIT mercury_sys_init_engine
 ENDINIT
 */
 /*
-** Copyright (C) 1993-2001, 2003-2007, 2009-2010 The University of Melbourne.
+** Copyright (C) 1993-2001, 2003-2007, 2009-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -79,7 +79,7 @@ MR_Debug_Flag_Info  MR_debug_flag_info[MR_MAXFLAG] = {
     { "detail",         MR_DETAILFLAG }
 };
 
-#ifdef MR_THREAD_SAFE 
+#ifdef MR_THREAD_SAFE
   #ifndef MR_HIGHLEVEL_CODE
 /*
 ** Writes to this array are protected by the init_engine_array_lock.
@@ -123,28 +123,28 @@ MR_init_engine(MercuryEngine *eng)
     */
 
 #ifndef MR_CONSERVATIVE_GC
-    eng->MR_eng_heap_zone = MR_create_zone("heap", 1,
+    eng->MR_eng_heap_zone = MR_create_or_reuse_zone("heap",
         MR_heap_size, MR_next_offset(), MR_heap_zone_size, MR_default_handler);
     eng->MR_eng_hp = eng->MR_eng_heap_zone->MR_zone_min;
 
   #ifdef MR_NATIVE_GC
-    eng->MR_eng_heap_zone2 = MR_create_zone("heap2", 1,
+    eng->MR_eng_heap_zone2 = MR_create_or_reuse_zone("heap2",
         MR_heap_size, MR_next_offset(), MR_heap_zone_size, MR_default_handler);
 
     #ifdef MR_DEBUG_AGC_PRINT_VARS
-    eng->MR_eng_debug_heap_zone = MR_create_zone("debug_heap", 1,
+    eng->MR_eng_debug_heap_zone = MR_create_or_reuse_zone("debug_heap",
         MR_debug_heap_size, MR_next_offset(),
         MR_debug_heap_zone_size, MR_default_handler);
     #endif
   #endif /* MR_NATIVE_GC */
 
   #ifdef MR_MIGHT_RECLAIM_HP_ON_FAILURE
-    eng->MR_eng_solutions_heap_zone = MR_create_zone("solutions_heap", 1,
+    eng->MR_eng_solutions_heap_zone = MR_create_or_reuse_zone("solutions_heap",
         MR_solutions_heap_size, MR_next_offset(),
         MR_solutions_heap_zone_size, MR_default_handler);
     eng->MR_eng_sol_hp = eng->MR_eng_solutions_heap_zone->MR_zone_min;
 
-    eng->MR_eng_global_heap_zone = MR_create_zone("global_heap", 1,
+    eng->MR_eng_global_heap_zone = MR_create_or_reuse_zone("global_heap",
         MR_global_heap_size, MR_next_offset(),
         MR_global_heap_zone_size, MR_default_handler);
     eng->MR_eng_global_hp = eng->MR_eng_global_heap_zone->MR_zone_min;

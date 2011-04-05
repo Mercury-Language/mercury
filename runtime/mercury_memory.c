@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1994-2000,2002-2004, 2006, 2008 The University of Melbourne.
+** Copyright (C) 1994-2000,2002-2004, 2006, 2008, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -87,13 +87,13 @@
 #elif !defined(MR_HAVE_GETPAGESIZE) || defined(MR_MINGW)
   #if defined(MR_WIN32_GETSYSTEMINFO)
     #include <windows.h>
-    
+
     #define getpagesize() MR_win32_getpagesize()
-   
+
     /*
     ** NOTE: we avoid naming the following getpagesize() since that
     ** name is already used on MinGW.
-    */ 
+    */
     static size_t
     MR_win32_getpagesize(void)
     {
@@ -141,11 +141,12 @@ MR_init_memory(void)
 
     /*
     ** Convert all the sizes are from kilobytes to bytes and
-    ** make sure they are multiples of the page and cache sizes.
+    ** make sure they are multiples of the page size and at least as big as the
+    ** cache size.
     */
 
     MR_page_size = getpagesize();
-    MR_unit = MR_max(MR_page_size, MR_pcache_size);
+    MR_unit = MR_round_up(MR_max(MR_page_size, MR_pcache_size), MR_page_size);
 
 #ifdef MR_CONSERVATIVE_GC
     MR_heap_size                = 0;
@@ -170,10 +171,14 @@ MR_init_memory(void)
     MR_heap_margin_size  = MR_heap_margin_size * 1024;
 #endif
     MR_kilobytes_to_bytes_and_round_up(MR_detstack_size);
+#ifndef MR_STACK_SEGMENTS
     MR_kilobytes_to_bytes_and_round_up(MR_small_detstack_size);
+#endif
     MR_kilobytes_to_bytes_and_round_up(MR_detstack_zone_size);
     MR_kilobytes_to_bytes_and_round_up(MR_nondetstack_size);
+#ifndef MR_STACK_SEGMENTS
     MR_kilobytes_to_bytes_and_round_up(MR_small_nondetstack_size);
+#endif
     MR_kilobytes_to_bytes_and_round_up(MR_nondetstack_zone_size);
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
     MR_kilobytes_to_bytes_and_round_up(MR_genstack_size);

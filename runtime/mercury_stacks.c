@@ -7,7 +7,7 @@ ENDINIT
 */
 
 /*
-** Copyright (C) 1998-2001, 2003-2006, 2008, 2010 The University of Melbourne.
+** Copyright (C) 1998-2001, 2003-2006, 2008, 2010-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -40,6 +40,8 @@ ENDINIT
 #include "mercury_imp.h"
 #include "mercury_runtime_util.h"
 #include "mercury_memory_handlers.h"    /* for MR_default_handler */
+#include "mercury_context.h"
+
 #include <stdio.h>
 
 /***************************************************************************/
@@ -212,18 +214,15 @@ MR_Word *MR_new_detstack_segment(MR_Word *sp, int n)
     old_sp = sp;
 
     /* We perform explicit overflow checks so redzones just waste space. */
-    new_zone = MR_create_zone("detstack_segment", 0, MR_detstack_size, 0,
+    new_zone = MR_create_or_reuse_zone("detstack_segment", MR_detstack_size, 0,
         0, MR_default_handler);
 
     list = MR_GC_malloc_uncollectable(sizeof(MR_MemoryZones));
 
 #ifdef  MR_DEBUG_STACK_SEGMENTS
-    printf("create new det segment: old zone: %p, old sp %p\n",
-        MR_CONTEXT(MR_ctxt_detstack_zone), old_sp);
-    printf("old sp: ");
-    MR_printdetstack(stdout, old_sp);
-    printf(", old succip: ");
-    MR_printlabel(stdout, MR_succip);
+    MR_debug_log_message(
+        "create new det segment: old zone: %p, old sp %p, old succip %p",
+        MR_CONTEXT(MR_ctxt_detstack_zone), old_sp, MR_succip);
 #endif
 
     list->MR_zones_head = MR_CONTEXT(MR_ctxt_detstack_zone);
@@ -241,12 +240,10 @@ MR_Word *MR_new_detstack_segment(MR_Word *sp, int n)
     MR_incr_sp_leaf(n);
 
 #ifdef  MR_DEBUG_STACK_SEGMENTS
-    printf("create new det segment: new zone: %p, new sp %p\n",
-        MR_CONTEXT(MR_ctxt_detstack_zone), MR_sp);
-    printf("new sp: ");
-    MR_printdetstack(stdout, MR_sp);
-    printf(", new succip: ");
-    MR_printlabel(stdout, MR_ENTRY(MR_pop_detstack_segment));
+    MR_debug_log_message(
+        "create new det segment: new zone: %p, new sp %p new succip: %p",
+        MR_CONTEXT(MR_ctxt_detstack_zone), MR_sp,
+        MR_ENTRY(MR_pop_detstack_segment));
 #endif
 
     return MR_sp;
@@ -274,14 +271,14 @@ MR_nondetstack_segment_extend_slow_path(MR_Word *old_maxfr, int incr)
     {
         MR_maxfr_word = (MR_Word) new_maxfr;
         if (new_zone != NULL) {
-            MR_unget_zone(new_zone);
+            MR_release_zone(new_zone);
         }
         return;
     }
 
     if (new_zone == NULL) {
         /* We perform explicit overflow checks so redzones just waste space. */
-        new_zone = MR_create_zone("nondetstack_segment", 0,
+        new_zone = MR_create_or_reuse_zone("nondetstack_segment",
             MR_nondetstack_size, 0, 0, MR_default_handler);
     }
 
@@ -335,7 +332,7 @@ MR_rewind_nondetstack_segments(MR_Word *maxfr)
         if (reusable_zone == NULL) {
             reusable_zone = zone;
         } else {
-            MR_unget_zone(zone);
+            MR_release_zone(zone);
         }
 
         list = MR_CONTEXT(MR_ctxt_prev_nondetstack_zones);
@@ -367,15 +364,12 @@ MR_define_entry(MR_pop_detstack_segment);
     orig_succip = (MR_Code *) MR_stackvar(2);
 
 #ifdef  MR_DEBUG_STACK_SEGMENTS
-    printf("restore old det segment: old zone %p, old sp %p\n",
-        MR_CONTEXT(MR_ctxt_detstack_zone), MR_sp);
-    printf("old sp: ");
-    MR_printdetstack(stdout, MR_sp);
-    printf(", old succip: ");
-    MR_printlabel(stdout, MR_succip);
+    MR_debug_log_message(
+        "restore old det segment: old zone %p, old sp %p old succip: %p",
+        MR_CONTEXT(MR_ctxt_detstack_zone), MR_sp, MR_succip);
 #endif
 
-    MR_unget_zone(MR_CONTEXT(MR_ctxt_detstack_zone));
+    MR_release_zone(MR_CONTEXT(MR_ctxt_detstack_zone));
 
     list = MR_CONTEXT(MR_ctxt_prev_detstack_zones);
     MR_CONTEXT(MR_ctxt_detstack_zone) = list->MR_zones_head;
@@ -384,12 +378,9 @@ MR_define_entry(MR_pop_detstack_segment);
     MR_GC_free(list);
 
 #ifdef  MR_DEBUG_STACK_SEGMENTS
-    printf("restore old det segment: new zone %p, new sp %p\n",
-        MR_CONTEXT(MR_ctxt_detstack_zone), orig_sp);
-    printf("new sp: ");
-    MR_printdetstack(stdout, orig_sp);
-    printf(", new succip: ");
-    MR_printlabel(stdout, orig_succip);
+    MR_debug_log_message(
+        "restore old det segment: new zone %p, new sp %p new succip: %p",
+        MR_CONTEXT(MR_ctxt_detstack_zone), orig_sp, orig_succip);
 #endif
 
     MR_sp_word = (MR_Word) orig_sp;

@@ -431,9 +431,10 @@ The most useful of these are the options that set the size of the stacks.
 (For the full list of available options, see @ref{Environment}.)
 
 @c XXX FIXME This is wrong for the case when --high-level-code is enabled.
+@c Note: The definition for these defaults is in runtime/mercury_wrapper.c
 The det stack and the nondet stack
 are allocated fixed sizes at program start-up.
-The default size is 1024k times the word size (in bytes) for the det stack
+The default size is 4096k times the word size (in bytes) for the det stack
 and 64k times the word size (in bytes) for the nondet stack,
 but these can be overridden with the
 @samp{--detstack-size} and @samp{--nondetstack-size} options,
@@ -5618,7 +5619,7 @@ This enables programmers to see the effect of parallelization decisions such as
 task granularity.
 The @samp{threadscope} tool is not included with the Melbourne Mercury
 Compiler,
-See @url{http://research.microsoft.com/en-us/projects/threadscope/, 
+See @url{http://research.microsoft.com/en-us/projects/threadscope/,
 Threadscope: Performance Tuning Parallel Haskell Programs}.
 
 @node Building profiled applications
@@ -5681,7 +5682,7 @@ Third, if you enable graph profiling,
 the compiler will generate for each source file
 the static call graph for that file in @samp{@var{module}.prof}.
 
-Enabling @samp{threadscope} profiling causes the compiler to build the program 
+Enabling @samp{threadscope} profiling causes the compiler to build the program
 against a different runtime system.
 This runtime system logs events relevant to parallel execution.
 @samp{threadscope} support is not compatible with all processors,
@@ -6137,7 +6138,7 @@ while the second, @samp{threadscope} provides a graphical display for browsing
 the profile.
 
 Both programs accept the name of a @file{.eventlog} file on the command
-line.  
+line.
 The @samp{threadscope} program also provides a menu from which users can choose
 a file to open.
 
@@ -7974,7 +7975,7 @@ This option is only supported by the C back-ends.
 @sp 1
 @item @code{--parallel}
 @findex --parallel
-@cindex Parallel execution 
+@cindex Parallel execution
 In low-level C grades this enables support for parallel execution.
 Parallel execution can be achieved by using either the parallel conjunction
 operator or the concurrency support in the @samp{thread} module of the
@@ -7990,7 +7991,7 @@ The runtime uses POSIX threads to achieve this, therefore it may also support
 parallel execution of threads.
 
 The Java, C#, IL and Erlang grades support concurrency without this option.
-Parallel execution may also be available depending on the target's runtime. 
+Parallel execution may also be available depending on the target's runtime.
 
 @sp 1
 @item @code{--threadscope}
@@ -9966,10 +9967,10 @@ grade.
 @c @item --runtime-granularity-wsdeque-length-factor @var{factor}
 @c @findex --runtime-granularity-wsdeque-length-factor (runtime option)
 @c Configures the runtime granularity control method not to create sparks if a
-@c context's local spark wsdeque is longer than 
+@c context's local spark wsdeque is longer than
 @c @math{ @var{factor} * @var{num_engines}}.
 @c @var{num_engines} is configured with the @samp{-P} runtime option.
-@c 
+@c
 @c @sp 1
 @c @item --profile-parallel-execution
 @c @findex --profile-parallel-execution
@@ -9983,7 +9984,7 @@ grade.
 @findex --thread-pinning
 Request that the runtime system attempts to pin Mercury engines (POSIX threads)
 to CPU cores/hardware threads.
-This only has an effect if the executable was built in a parallel low-level C 
+This only has an effect if the executable was built in a parallel low-level C
 grade.
 This is disabled by default but may be enabled by default in the future.
 @c In case this is enabled by default the following comment is relevant.

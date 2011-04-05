@@ -144,7 +144,9 @@ allocate_context_id(void);
 ** MR_MemoryZones.
 */
 static MR_Context       *free_context_list = NULL;
+#ifndef MR_STACK_SEGMENTS
 static MR_Context       *free_small_context_list = NULL;
+#endif
 #ifdef  MR_THREAD_SAFE
   static MercuryLock    free_context_list_lock;
 #endif
@@ -163,10 +165,6 @@ static MR_Integer       MR_victim_counter = 0;
 #endif
 
 /*---------------------------------------------------------------------------*/
-
-static void
-MR_init_context_maybe_generator(MR_Context *c, const char *id,
-    MR_GeneratorPtr gen);
 
 /*
 ** Write out the profiling data that we collect during execution.
@@ -509,22 +507,24 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
             detstack_size  = MR_detstack_size;
             nondetstack_size = MR_nondetstack_size;
             break;
+#ifndef MR_STACK_SEGMENTS
         case MR_CONTEXT_SIZE_SMALL:
             detstack_name  = "small_detstack";
             nondetstack_name = "small_nondetstack";
             detstack_size  = MR_small_detstack_size;
             nondetstack_size = MR_small_nondetstack_size;
             break;
+#endif
     }
 
     if (c->MR_ctxt_detstack_zone == NULL) {
         if (gen != NULL) {
-            c->MR_ctxt_detstack_zone = MR_create_zone("gen_detstack",
-                    0, MR_gen_detstack_size, MR_next_offset(),
+            c->MR_ctxt_detstack_zone = MR_create_or_reuse_zone("gen_detstack",
+                    MR_gen_detstack_size, MR_next_offset(),
                     MR_gen_detstack_zone_size, MR_default_handler);
         } else {
-            c->MR_ctxt_detstack_zone = MR_create_zone(detstack_name,
-                    0, detstack_size, MR_next_offset(),
+            c->MR_ctxt_detstack_zone = MR_create_or_reuse_zone(detstack_name,
+                    detstack_size, MR_next_offset(),
                     MR_detstack_zone_size, MR_default_handler);
         }
 
@@ -541,12 +541,12 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
 
     if (c->MR_ctxt_nondetstack_zone == NULL) {
         if (gen != NULL) {
-            c->MR_ctxt_nondetstack_zone = MR_create_zone("gen_nondetstack",
-                    0, MR_gen_nondetstack_size, MR_next_offset(),
+            c->MR_ctxt_nondetstack_zone = MR_create_or_reuse_zone("gen_nondetstack",
+                    MR_gen_nondetstack_size, MR_next_offset(),
                     MR_gen_nondetstack_zone_size, MR_default_handler);
         } else {
-            c->MR_ctxt_nondetstack_zone = MR_create_zone(nondetstack_name,
-                    0, nondetstack_size, MR_next_offset(),
+            c->MR_ctxt_nondetstack_zone = MR_create_or_reuse_zone(nondetstack_name,
+                    nondetstack_size, MR_next_offset(),
                     MR_nondetstack_zone_size, MR_default_handler);
         }
 
@@ -584,21 +584,21 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
     }
 
     if (c->MR_ctxt_genstack_zone == NULL) {
-        c->MR_ctxt_genstack_zone = MR_create_zone("genstack", 0,
+        c->MR_ctxt_genstack_zone = MR_create_or_reuse_zone("genstack",
             MR_genstack_size, MR_next_offset(),
             MR_genstack_zone_size, MR_default_handler);
     }
     c->MR_ctxt_gen_next = 0;
 
     if (c->MR_ctxt_cutstack_zone == NULL) {
-        c->MR_ctxt_cutstack_zone = MR_create_zone("cutstack", 0,
+        c->MR_ctxt_cutstack_zone = MR_create_or_reuse_zone("cutstack",
             MR_cutstack_size, MR_next_offset(),
             MR_cutstack_zone_size, MR_default_handler);
     }
     c->MR_ctxt_cut_next = 0;
 
     if (c->MR_ctxt_pnegstack_zone == NULL) {
-        c->MR_ctxt_pnegstack_zone = MR_create_zone("pnegstack", 0,
+        c->MR_ctxt_pnegstack_zone = MR_create_or_reuse_zone("pnegstack",
             MR_pnegstack_size, MR_next_offset(),
             MR_pnegstack_zone_size, MR_default_handler);
     }
@@ -624,7 +624,7 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
     }
 
     if (c->MR_ctxt_trail_zone == NULL) {
-        c->MR_ctxt_trail_zone = MR_create_zone("trail", 0,
+        c->MR_ctxt_trail_zone = MR_create_or_reuse_zone("trail",
             MR_trail_size, MR_next_offset(),
             MR_trail_zone_size, MR_default_handler);
     }
@@ -661,7 +661,7 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
 MR_Context *
 MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
 {
-    MR_Context  *c;
+    MR_Context  *c = NULL;
 
 #ifdef MR_LL_PARALLEL_CONJ
     MR_atomic_inc_int(&MR_num_outstanding_contexts);
@@ -674,6 +674,7 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
     ** so we can return a regular context in place of a small context
     ** if one is already available.
     */
+#ifndef MR_STACK_SEGMENTS
     if (ctxt_size == MR_CONTEXT_SIZE_SMALL && free_small_context_list) {
         c = free_small_context_list;
         free_small_context_list = c->MR_ctxt_next;
@@ -682,7 +683,9 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
             MR_profile_parallel_small_context_reused++;
         }
 #endif
-    } else if (free_context_list != NULL) {
+    }
+#endif
+    if (c == NULL && free_context_list != NULL) {
         c = free_context_list;
         free_context_list = c->MR_ctxt_next;
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
@@ -690,8 +693,6 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
             MR_profile_parallel_regular_context_reused++;
         }
 #endif
-    } else {
-        c = NULL;
     }
     MR_UNLOCK(&free_context_list_lock, "create_context i");
 
@@ -773,6 +774,7 @@ MR_destroy_context(MR_Context *c)
             }
 #endif
             break;
+#ifndef MR_STACK_SEGMENTS
         case MR_CONTEXT_SIZE_SMALL:
             c->MR_ctxt_next = free_small_context_list;
             free_small_context_list = c;
@@ -782,6 +784,7 @@ MR_destroy_context(MR_Context *c)
             }
 #endif
             break;
+#endif
     }
     MR_UNLOCK(&free_context_list_lock, "destroy_context");
 }
@@ -1284,7 +1287,7 @@ ReadySpark:
     /* Grab a new context if we haven't got one then begin execution. */
     if (MR_ENGINE(MR_eng_this_context) == NULL) {
         MR_ENGINE(MR_eng_this_context) = MR_create_context("from spark",
-            MR_CONTEXT_SIZE_SMALL, NULL);
+            MR_CONTEXT_SIZE_FOR_SPARK, NULL);
     #ifdef MR_THREADSCOPE
         MR_threadscope_post_create_context_for_spark(
             MR_ENGINE(MR_eng_this_context));

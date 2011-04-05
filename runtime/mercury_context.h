@@ -63,7 +63,7 @@
 
 #ifdef  MR_THREAD_SAFE
   #define MR_IF_THREAD_SAFE(x)  x
-  #define MR_IF_NOT_THREAD_SAFE(x) 
+  #define MR_IF_NOT_THREAD_SAFE(x)
 #else
   #define MR_IF_THREAD_SAFE(x)
   #define MR_IF_NOT_THREAD_SAFE(x) x
@@ -206,8 +206,19 @@ typedef struct MR_Context_Struct        MR_Context;
 
 typedef enum {
     MR_CONTEXT_SIZE_REGULAR,
+/*
+** Stack segment grades don't need differently sized contexts.
+*/
+#ifndef MR_STACK_SEGMENTS
     MR_CONTEXT_SIZE_SMALL
+#endif
 } MR_ContextSize;
+
+#ifdef MR_STACK_SEGMENTS
+#define MR_CONTEXT_SIZE_FOR_SPARK MR_CONTEXT_SIZE_REGULAR
+#else
+#define MR_CONTEXT_SIZE_FOR_SPARK MR_CONTEXT_SIZE_SMALL
+#endif
 
 #ifdef MR_THREAD_SAFE
 typedef struct MR_SavedOwner_Struct     MR_SavedOwner;
@@ -247,7 +258,7 @@ struct MR_SparkDeque_Struct {
     volatile MR_Integer     MR_sd_top;
     volatile MR_SparkArray  *MR_sd_active_array;
 };
-#endif  /* !MR_LL_PARALLEL_CONJ */ 
+#endif  /* !MR_LL_PARALLEL_CONJ */
 
 struct MR_Context_Struct {
     const char          *MR_ctxt_id;
@@ -313,7 +324,7 @@ struct MR_Context_Struct {
     MR_ChoicepointId    MR_ctxt_ticket_high_water;
 #endif
 
-#ifndef MR_HIGHLEVEL_CODE 
+#ifndef MR_HIGHLEVEL_CODE
     MR_BackJumpHandler  *MR_ctxt_backjump_handler;
     MR_BackJumpChoiceId MR_ctxt_backjump_next_choice_id;
 #endif
@@ -430,7 +441,7 @@ extern  MR_Context  *MR_create_context(const char *id,
 extern  void        MR_destroy_context(MR_Context *context);
 
 /*
-** MR_init_thread_stuff() initializes the lock structures for the runqueue, 
+** MR_init_thread_stuff() initializes the lock structures for the runqueue,
 ** and detects the number of threads to use on the LLC backend.
 */
 extern  void        MR_init_thread_stuff(void);
@@ -801,7 +812,7 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
       (MR_wsdeque_length(&MR_ENGINE(MR_eng_this_context)->MR_ctxt_spark_deque) < \
         MR_granularity_wsdeque_length)
 
-extern MR_Code* 
+extern MR_Code*
 MR_do_join_and_continue(MR_SyncTerm *sync_term, MR_Code *join_label);
 
   #define MR_join_and_continue(sync_term, join_label)                         \
@@ -830,7 +841,7 @@ MR_do_join_and_continue(MR_SyncTerm *sync_term, MR_Code *join_label);
   void MR_record_conditional_parallelism_decision(MR_Unsigned decision);
 
   /*
-  ** flush and close the log of conditional parallelism decisions 
+  ** flush and close the log of conditional parallelism decisions
   ** This is not thread safe.
   ** This is a no-op if no parallelism decisions have been recorded.
   */

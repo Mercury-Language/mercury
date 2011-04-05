@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1996-2000,2002, 2006, 2010 The University of Melbourne.
+** Copyright (C) 1996-2000,2002, 2006, 2010-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -45,7 +45,7 @@ MR_print_warning(const char *prog, const char *fmt, va_list args)
 {
     fflush(stdout);     /* in case stdout and stderr are the same */
 
-    fprintf(stderr, "%s:", prog);
+    fprintf(stderr, "%s: ", prog);
     vfprintf(stderr, fmt, args);
     fprintf(stderr, "\n");
 
@@ -72,7 +72,7 @@ MR_do_perror(const char *prog, const char *message)
     saved_errno = errno;
     fflush(stdout);     /* in case stdout and stderr are the same */
 
-    fprintf(stderr, "%s:", prog);
+    fprintf(stderr, "%s: ", prog);
     errno = saved_errno;
     perror(message);
 }
@@ -86,9 +86,13 @@ void
 MR_fatal_error(const char *fmt, ...)
 {
     va_list args;
+    int error = errno;
 
     fflush(stdout);     /* in case stdout and stderr are the same */
 
+    if (error != 0) {
+        fprintf(stderr, "Errno = %d: %s \n", error, strerror(error));
+    }
     fprintf(stderr, "Mercury runtime: ");
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);

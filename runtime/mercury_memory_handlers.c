@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998, 2000, 2002, 2005-2007, 2010 The University of Melbourne.
+** Copyright (C) 1998, 2000, 2002, 2005-2007, 2010-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -132,7 +132,7 @@ MR_try_munprotect(void *addr, void *context)
 
     fault_addr = (MR_Word *) addr;
 
-    zone = MR_get_used_memory_zones();
+    zone = MR_get_used_memory_zones_readonly();
 
     if (MR_memdebug) {
         fprintf(stderr, "caught fault at %p\n", (void *)addr);
@@ -141,7 +141,8 @@ MR_try_munprotect(void *addr, void *context)
     while(zone != NULL) {
   #ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
         if (MR_memdebug) {
-            fprintf(stderr, "checking %s#%d: %p - %p\n",
+            fprintf(stderr, "checking %s#%" MR_INTEGER_LENGTH_MODIFIER
+                    "d: %p - %p\n",
                 zone->MR_zone_name, zone->MR_zone_id,
                 (void *) zone->MR_zone_redzone,
                 (void *) zone->MR_zone_top);
@@ -151,7 +152,8 @@ MR_try_munprotect(void *addr, void *context)
             && fault_addr <= zone->MR_zone_top)
         {
             if (MR_memdebug) {
-                fprintf(stderr, "address is in %s#%d redzone\n",
+                fprintf(stderr, "address is in %s#% "
+                        MR_INTEGER_LENGTH_MODIFIER "d redzone\n",
                     zone->MR_zone_name, zone->MR_zone_id);
             }
 
@@ -219,7 +221,8 @@ MR_default_handler(MR_Word *fault_addr, MR_MemoryZone *zone, void *context)
         zone_size = (char *) new_zone - (char *) zone->MR_zone_redzone;
 
         if (MR_memdebug) {
-            fprintf(stderr, "trying to unprotect %s#%d from %p to %p (%x)\n",
+            fprintf(stderr, "trying to unprotect %s#%"
+                MR_INTEGER_LENGTH_MODIFIER "d from %p to %p (%x)\n",
             zone->MR_zone_name, zone->MR_zone_id,
             (void *) zone->MR_zone_redzone, (void *) new_zone,
             (int) zone_size);
@@ -228,7 +231,8 @@ MR_default_handler(MR_Word *fault_addr, MR_MemoryZone *zone, void *context)
             PROT_READ|PROT_WRITE) < 0)
         {
             char buf[2560];
-            sprintf(buf, "Mercury runtime: cannot unprotect %s#%d zone",
+            sprintf(buf, "Mercury runtime: cannot unprotect %s#%"
+                    MR_INTEGER_LENGTH_MODIFIER "d zone",
                 zone->MR_zone_name, zone->MR_zone_id);
             perror(buf);
             exit(1);
@@ -237,7 +241,8 @@ MR_default_handler(MR_Word *fault_addr, MR_MemoryZone *zone, void *context)
         zone->MR_zone_redzone = new_zone;
 
         if (MR_memdebug) {
-            fprintf(stderr, "successful: %s#%d redzone now %p to %p\n",
+            fprintf(stderr, "successful: %s#%" MR_INTEGER_LENGTH_MODIFIER
+                    "d redzone now %p to %p\n",
                 zone->MR_zone_name, zone->MR_zone_id,
                 (void *) zone->MR_zone_redzone, (void *) zone->MR_zone_top);
         }
@@ -250,7 +255,8 @@ MR_default_handler(MR_Word *fault_addr, MR_MemoryZone *zone, void *context)
     } else {
         char buf[2560];
         if (MR_memdebug) {
-            fprintf(stderr, "can't unprotect last page of %s#%d\n",
+            fprintf(stderr, "can't unprotect last page of %s#%"
+                    MR_INTEGER_LENGTH_MODIFIER "d\n",
                 zone->MR_zone_name, zone->MR_zone_id);
             fflush(stdout);
         }
@@ -259,7 +265,8 @@ MR_default_handler(MR_Word *fault_addr, MR_MemoryZone *zone, void *context)
         fprintf(stderr, "sp = %p, maxfr = %p\n", MR_sp, MR_maxfr);
         MR_debug_memory_zone(stderr, zone);
 #endif
-        sprintf(buf, "\nMercury runtime: memory zone %s#%d overflowed\n",
+        sprintf(buf, "\nMercury runtime: memory zone %s#%"
+                MR_INTEGER_LENGTH_MODIFIER "d overflowed\n",
             zone->MR_zone_name, zone->MR_zone_id);
         MR_fatal_abort(context, buf, MR_TRUE);
     }
@@ -708,7 +715,8 @@ MR_explain_exception_record(EXCEPTION_RECORD *rec)
             zone = MR_get_used_memory_zones();
             while(zone != NULL) {
                 fprintf(stderr,
-                        "\n***    Checking zone %s#%d: "
+                        "\n***    Checking zone %s#%"
+                        MR_INTEGER_LENGTH_MODIFIER "d: "
                         "0x%08lx - 0x%08lx - 0x%08lx",
                         zone->MR_zone_name, zone->MR_zone_id,
                         (unsigned long) zone->MR_zone_bottom,
@@ -721,13 +729,15 @@ MR_explain_exception_record(EXCEPTION_RECORD *rec)
                     fprintf(stderr,
                         "\n***     Address is within"
                         " redzone of "
-                        "%s#%d (!!zone overflowed!!)\n",
+                        "%s#%" MR_INTEGER_LENGTH_MODIFIER
+                        "d (!!zone overflowed!!)\n",
                         zone->MR_zone_name, zone->MR_zone_id);
                 } else if ((zone->MR_zone_bottom <= address) &&
                         (address <= zone->MR_zone_top))
                 {
                     fprintf(stderr, "\n***     Address is"
-                            " within zone %s#%d\n",
+                            " within zone %s#%" MR_INTEGER_LENGTH_MODIFIER
+                            "d\n",
                             zone->MR_zone_name, zone->MR_zone_id);
                 }
                 /*
@@ -1022,8 +1032,8 @@ leave_signal_handler(int sig)
     if (MR_all_engine_bases) {
         int i;
         for (i = 0; i < MR_num_threads; i++) {
-            if (MR_all_engine_bases[i] && 
-                MR_all_engine_bases[i]->MR_eng_ts_buffer) 
+            if (MR_all_engine_bases[i] &&
+                MR_all_engine_bases[i]->MR_eng_ts_buffer)
             {
                 MR_threadscope_finalize_engine(MR_all_engine_bases[i]);
             }
