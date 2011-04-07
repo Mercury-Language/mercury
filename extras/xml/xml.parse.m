@@ -1439,7 +1439,7 @@ subcode -->
 %     <l>Habe nun, ach! Philosophie,</l>
 %     <l>Juristerei, und Medizin</l>
 %     <l>und leider auch Theologie</l>
-%     <l>durchaus studiert mit heißem Bemüh'n.</l>
+%     <l>durchaus studiert mit heiÃŸem BemÃ¼h'n.</l>
 %     </sp>
 %   
 %   The intent declared with xml:lang is considered to apply to all
@@ -3079,7 +3079,7 @@ encName -->
 %   then the replacement text for the entity "book" is:
 %   
 %   La Peste: Albert Camus,
-%   © 1947 Éditions Gallimard. &rights;
+%   Â© 1947 Ã‰ditions Gallimard. &rights;
 %   
 %   The general-entity reference "&rights;" would be expanded should the
 %   reference "&book;" appear in the document's content or an attribute
@@ -3370,15 +3370,15 @@ publicID -->
 %          Identifiers (URI): Generic Syntax and Semantics. 1997. (Work in
 %          progress; see updates to RFC1738.)
 %          
-%   Brüggemann-Klein
-%          Brüggemann-Klein, Anne. Regular Expressions into Finite
+%   BrÃ¼ggemann-Klein
+%          BrÃ¼ggemann-Klein, Anne. Regular Expressions into Finite
 %          Automata. Extended abstract in I. Simon, Hrsg., LATIN 1992, S.
 %          97-98. Springer-Verlag, Berlin 1992. Full Version in
 %          Theoretical Computer Science 120: 197-213, 1993.
 %          
-%   Brüggemann-Klein and Wood
-%          Brüggemann-Klein, Anne, and Derick Wood. Deterministic Regular
-%          Languages. Universität Freiburg, Institut für Informatik,
+%   BrÃ¼ggemann-Klein and Wood
+%          BrÃ¼ggemann-Klein, Anne, and Derick Wood. Deterministic Regular
+%          Languages. UniversitÃ¤t Freiburg, Institut fÃ¼r Informatik,
 %          Bericht 38, Oktober 1991.
 %          
 %   Clark
@@ -3522,7 +3522,7 @@ publicID -->
 %   
 %   Algorithms exist which allow many but not all non-deterministic
 %   content models to be reduced automatically to equivalent deterministic
-%   models; see Brüggemann-Klein 1991 [Brüggemann-Klein].
+%   models; see BrÃ¼ggemann-Klein 1991 [BrÃ¼ggemann-Klein].
 %   
 %F. Autodetection of Character Encodings (Non-Normative)
 %
@@ -3643,7 +3643,7 @@ publicID -->
 %   Fuji Xerox Information Systems; Joel Nava, Adobe; Conleth O'Connell,
 %   Vignette; Peter Sharpe, SoftQuad; John Tigue, DataChannel
 %   
-%   Copyright  ©  1998 W3C (MIT, INRIA, Keio ), All Rights Reserved. W3C
+%   Copyright  Â©  1998 W3C (MIT, INRIA, Keio ), All Rights Reserved. W3C
 %   liability, trademark, document use and software licensing rules
 %   apply.
 
