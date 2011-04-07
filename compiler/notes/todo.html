@@ -134,6 +134,17 @@ mercury@csse.unimelb.edu.au.
 <li> trace semidet unifications
 </ul>
 
+<h2> Unicode </h2>
+
+<ul>
+<li> allow alternative <em>external</em> encodings, particularly iso-8859-1
+<li> consistent and robust handling of invalid strings
+     (overlong sequences, unpaired surrogates, etc.)
+<li> add analogue of wcwidth and make some formatting procedures use it
+<li> io.putback_char depends on multiple pushback in ungetc for
+     code points &gt; 127
+</ul>
+
 <hr>
 <!--======================-->
 
@@ -368,6 +379,6 @@ mercury@csse.unimelb.edu.au.
 <hr>
 <!--======================-->
 
-Last update was $Date: 2010-07-13 05:48:04 $ by $Author: juliensf $@cs.mu.oz.au. <br>
+Last update was $Date: 2011-04-07 06:48:05 $ by $Author: wangp $@cs.mu.oz.au. <br>
 </body>
 </html>
