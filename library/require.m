@@ -197,8 +197,7 @@ require(Goal, Message) :-
     ( call(Goal) ->
         true
     ;
-        error(Message),
-        fail
+        error(Message)
     ).
 
 expect(Goal, Module, Message) :-
