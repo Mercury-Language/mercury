@@ -705,8 +705,12 @@ mercury_output_item_pragma(Info, ItemPragma, !IO) :-
             Values, !IO)
     ;
         Pragma = pragma_obsolete(Pred, Arity),
-        mercury_output_pragma_decl(Pred, Arity, pf_predicate, "obsolete", no,
-            !IO)
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "obsolete", no, !IO)
+    ;
+        Pragma = pragma_no_detism_warning(Pred, Arity),
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "no_determinism_warning", no, !IO)
     ;
         Pragma = pragma_tabled(Type, Pred, Arity, _PredOrFunc, _Mode,
             MaybeAttributes),

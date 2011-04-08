@@ -333,6 +333,11 @@
             % Requests warnings if this predicate is used.
             % Used for pragma(obsolete).
 
+    ;       marker_no_detism_warning
+            % Requests no warnings about the determinism of this predicate
+            % being too loose.
+            % Used for pragma(no_determinism_warning).
+
     ;       marker_user_marked_inline
             % The user requests that this be predicate should be inlined,
             % even if it exceeds the usual size limits. Used for

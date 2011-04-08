@@ -163,6 +163,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module set_tree234.
 :- import_module solutions.
 :- import_module string.
@@ -216,6 +217,10 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
                 % Don't report warnings for procedures with no clauses.
                 \+ check_marker(Markers, marker_stub),
 
+                % Don't report warnings for predicates for which the user
+                % has written a pragma requesting no warnings.
+                \+ check_marker(Markers, marker_no_detism_warning),
+
                 % Don't report warnings for compiler-generated Unify, Compare
                 % or Index procedures, since the user has no way to shut
                 % these up. These can happen for the Unify pred for the unit
@@ -234,7 +239,7 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
                 ),
 
                 % Only warn about predicates that are defined in this module.
-                % This avoids warnings being emitted for opt_imported 
+                % This avoids warnings being emitted for opt_imported
                 % predicates.
                 pred_info_get_import_status(PredInfo, ImportStatus),
                 status_defined_in_this_module(ImportStatus) = yes
@@ -260,7 +265,7 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
             proc_info_get_goal(ProcInfo, Goal),
             proc_info_get_vartypes(ProcInfo, VarTypes),
             proc_info_get_initial_instmap(ProcInfo, !.ModuleInfo, InstMap0),
-            det_info_init(!.ModuleInfo, VarTypes, PredId, ProcId, 
+            det_info_init(!.ModuleInfo, VarTypes, PredId, ProcId,
                 pess_extra_vars_report, [], DetInfo0),
             det_diagnose_goal(Goal, InstMap0, DeclaredDetism, [],
                 DetInfo0, DetInfo, GoalMsgs),
@@ -317,7 +322,7 @@ make_reqscope_checks_if_needed(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
         proc_info_get_goal(ProcInfo, Goal),
         proc_info_get_vartypes(ProcInfo, VarTypes),
         proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap0),
-        det_info_init(ModuleInfo, VarTypes, PredId, ProcId, 
+        det_info_init(ModuleInfo, VarTypes, PredId, ProcId,
             pess_extra_vars_ignore, [], DetInfo0),
         reqscope_check_goal(Goal, InstMap0, DetInfo0, DetInfo),
         det_info_get_error_specs(DetInfo, RCSSpecs),
@@ -561,7 +566,7 @@ compare_solncounts(at_most_many,    at_most_many,    sameas).
     list(error_msg)::out) is det.
 
 det_diagnose_goal(Goal, InstMap0, Desired, SwitchContexts, !DetInfo, Msgs) :-
-    Goal = hlds_goal(GoalExpr, GoalInfo), 
+    Goal = hlds_goal(GoalExpr, GoalInfo),
     Actual = goal_info_get_determinism(GoalInfo),
     ( compare_determinisms(Desired, Actual, tighter) ->
         det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
@@ -585,16 +590,20 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
     ;
         GoalExpr = disj(Goals),
         det_diagnose_disj(Goals, InstMap0, Desired, Actual, SwitchContexts,
-            !DetInfo, 0, ClausesWithSoln, Msgs1),
+            !DetInfo, 0, DisjunctsWithSoln, Msgs1),
         determinism_components(Desired, _, DesSolns),
         (
             DesSolns \= at_most_many,
             DesSolns \= at_most_many_cc,
-            ClausesWithSoln > 1
+            DisjunctsWithSoln > 1
         ->
             Context = goal_info_get_context(GoalInfo),
-            Pieces =
+            det_diagnose_switch_context(!.DetInfo, SwitchContexts,
+                NestingPieces),
+            DisjPieces =
                 [words("Disjunction has multiple clauses with solutions.")],
+            Pieces = NestingPieces ++ [lower_case_next_if_not_first]
+                ++ DisjPieces,
             Msg = simple_msg(Context, [always(Pieces)]),
             Msgs = [Msg] ++ Msgs1
         ;
@@ -611,7 +620,7 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
             determinism_components(Desired, cannot_fail, _)
         ->
             Context = goal_info_get_context(GoalInfo),
-            det_diagnose_switch_context(SwitchContexts, !.DetInfo,
+            det_diagnose_switch_context(!.DetInfo, SwitchContexts,
                 NestingPieces),
             find_missing_cons_ids(!.DetInfo, InstMap0, Var, Cases,
                 VarStr, MaybeMissingPieces),
@@ -812,9 +821,9 @@ det_diagnose_conj([Goal | Goals], InstMap0, Desired, SwitchContexts, !DetInfo,
     is det.
 
 det_diagnose_disj([], _InstMap0, _Desired, _Actual, _SwitchContexts,
-        !DetInfo, !ClausesWithSoln, []).
+        !DetInfo, !DisjunctsWithSoln, []).
 det_diagnose_disj([Goal | Goals], InstMap0, Desired, Actual, SwitchContexts,
-        !DetInfo, !ClausesWithSoln, Msgs) :-
+        !DetInfo, !DisjunctsWithSoln, Msgs) :-
     determinism_components(Actual, ActualCanFail, _),
     determinism_components(Desired, DesiredCanFail, DesiredSolns),
     (
@@ -841,10 +850,10 @@ det_diagnose_disj([Goal | Goals], InstMap0, Desired, Actual, SwitchContexts,
     ->
         true
     ;
-        !:ClausesWithSoln = !.ClausesWithSoln + 1
+        !:DisjunctsWithSoln = !.DisjunctsWithSoln + 1
     ),
     det_diagnose_disj(Goals, InstMap0, Desired, Actual, SwitchContexts,
-        !DetInfo, !ClausesWithSoln, Msgs2),
+        !DetInfo, !DisjunctsWithSoln, Msgs2),
     Msgs = Msgs1 ++ Msgs2.
 
 :- pred det_diagnose_switch_arms(prog_var::in, mer_type::in, list(case)::in,
@@ -856,7 +865,10 @@ det_diagnose_switch_arms(_Var, _VarType, [], _, _Desired, _SwitchContexts,
 det_diagnose_switch_arms(Var, VarType, [Case | Cases], InstMap0, Desired,
         SwitchContexts0, !DetInfo, Msgs) :-
     Case = case(MainConsId, OtherConsIds, Goal),
-    NewSwitchContext = switch_context(Var, MainConsId, OtherConsIds),
+    goal_to_conj_list(Goal, GoalSeq),
+    find_switch_var_matches(GoalSeq, [Var], MainConsId, OtherConsIds,
+        MainMatch, OtherMatches),
+    NewSwitchContext = switch_context(Var, MainMatch, OtherMatches),
     SwitchContexts1 = [NewSwitchContext | SwitchContexts0],
     det_info_get_module_info(!.DetInfo, ModuleInfo0),
     bind_var_to_functors(Var, VarType, MainConsId, OtherConsIds,
@@ -868,6 +880,120 @@ det_diagnose_switch_arms(Var, VarType, [Case | Cases], InstMap0, Desired,
         SwitchContexts0, !DetInfo, Msgs2),
     Msgs = Msgs1 ++ Msgs2.
 
+    % Given the list of conjuncts in a switch arm, find the unifications that
+    % unify the switched-on variable or its synonyms with the arm's cons_ids.
+    % The reason why we look for this is to get access to the argument
+    % variables of that unification, in case code inside the arm has errors
+    % in switches on those arguments. We don't collect argument variables
+    % from unifications in which they are all local, since in that case
+    % there is no chance of that happening, which means that printing
+    % the argument variables in that case would not be helpful, and
+    % would instead be only clutter.
+    %
+:- pred find_switch_var_matches(list(hlds_goal)::in, list(prog_var)::in,
+    cons_id::in, list(cons_id)::in,
+    switch_match::out, list(switch_match)::out) is det.
+
+find_switch_var_matches([], _, MainConsId, OtherConsIds,
+        MainMatch, OtherMatches) :-
+    make_switch_match_no_args(MainConsId, MainMatch),
+    list.map(make_switch_match_no_args, OtherConsIds, OtherMatches).
+find_switch_var_matches([Conjunct | Conjuncts], !.SwitchVarSynonyms,
+        MainConsId, OtherConsIds, MainMatch, OtherMatches) :-
+    Conjunct = hlds_goal(GoalExpr, GoalInfo),
+    (
+        GoalExpr = unify(_, _, _, Unification, _),
+        Unification = deconstruct(Var, MainConsId, ArgVars, _, _, _),
+        list.member(Var, !.SwitchVarSynonyms),
+        OtherConsIds = []
+    ->
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
+        set.list_to_set(ArgVars, ArgVarsSet),
+        (
+            set.intersect(NonLocals, ArgVarsSet, NonLocalArgVarsSet),
+            set.non_empty(NonLocalArgVarsSet)
+        ->
+            MaybeArgVars = yes(ArgVars)
+        ;
+            MaybeArgVars = no
+        ),
+        MainMatch = switch_match(MainConsId, MaybeArgVars),
+        OtherMatches = []
+    ;
+        GoalExpr = disj(Disjuncts),
+        find_switch_var_submatches(Disjuncts, !.SwitchVarSynonyms,
+            yes(MainConsId), OtherConsIds, yes(MainMatch0), OtherMatches0)
+    ->
+        MainMatch = MainMatch0,
+        OtherMatches = OtherMatches0
+    ;
+        (
+            GoalExpr = unify(_, _, _, Unification, _),
+            Unification = assign(ToVar, FromVar),
+            list.member(FromVar, !.SwitchVarSynonyms)
+        ->
+            !:SwitchVarSynonyms = [ToVar | !.SwitchVarSynonyms]
+        ;
+            true
+        ),
+        find_switch_var_matches(Conjuncts, !.SwitchVarSynonyms,
+            MainConsId, OtherConsIds, MainMatch, OtherMatches)
+    ).
+
+    % If a conjunct in a switch arm is disjunction, check whether it is
+    % the disjunction that specifies that this is the arm for MainConsId
+    % and OtherConsIds. Once we have found a cons_id, we delete it from
+    % the list of cons_ids the recursive call should look for. In the case of
+    % the main cons_id, we do this by passing `no' as the MaybeMainConsId
+    % argument; in the case of the other cons_ids, we do this by deleting it
+    % from the OtherConsIds argument.
+    %
+    % If a call to this predicate succeeds, it should return switch_matches
+    % for exactly the set of main and other cons_ids it was invoked with.
+    %
+:- pred find_switch_var_submatches(list(hlds_goal)::in, list(prog_var)::in,
+    maybe(cons_id)::in, list(cons_id)::in,
+    maybe(switch_match)::out, list(switch_match)::out) is semidet.
+
+find_switch_var_submatches([], _, no, [], no, []).
+find_switch_var_submatches([Disjunct | Disjuncts], SwitchVarSynonyms,
+        MaybeMainConsId, OtherConsIds, MaybeMainMatch, OtherMatches) :-
+    Disjunct = hlds_goal(GoalExpr, GoalInfo),
+    GoalExpr = unify(_, _, _, Unification, _),
+    Unification = deconstruct(Var, ConsId, ArgVars, _, _, _),
+    list.member(Var, SwitchVarSynonyms),
+    (
+        MaybeMainConsId = yes(MainConsId),
+        ConsId = MainConsId
+    ->
+        find_switch_var_submatches(Disjuncts, SwitchVarSynonyms,
+            no, OtherConsIds, no, OtherMatches),
+        MaybeMainMatch = yes(switch_match(ConsId, yes(ArgVars)))
+    ;
+        list.delete_first(OtherConsIds, ConsId, LeftOverConsIds)
+    ->
+        find_switch_var_submatches(Disjuncts, SwitchVarSynonyms,
+            MaybeMainConsId, LeftOverConsIds, MaybeMainMatch, LeftOverMatches),
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
+        set.list_to_set(ArgVars, ArgVarsSet),
+        (
+            set.intersect(NonLocals, ArgVarsSet, NonLocalArgVarsSet),
+            set.non_empty(NonLocalArgVarsSet)
+        ->
+            MaybeArgVars = yes(ArgVars)
+        ;
+            MaybeArgVars = no
+        ),
+        OtherMatches = [switch_match(ConsId, MaybeArgVars) | LeftOverMatches]
+    ;
+        fail
+    ).
+
+:- pred make_switch_match_no_args(cons_id::in, switch_match::out) is det.
+
+make_switch_match_no_args(ConsId, Match) :-
+    Match = switch_match(ConsId, no).
+
 :- pred det_diagnose_orelse_goals(list(hlds_goal)::in, instmap::in,
     determinism::in, list(switch_context)::in, det_info::in, det_info::out,
     list(error_msg)::out) is det.
@@ -875,6 +1001,8 @@ det_diagnose_switch_arms(Var, VarType, [Case | Cases], InstMap0, Desired,
 det_diagnose_orelse_goals([], _, _Desired, _SwitchContexts, !DetInfo, []).
 det_diagnose_orelse_goals([Goal | Goals], InstMap0, Desired, SwitchContexts0,
         !DetInfo, Msgs) :-
+    % XXX Once we start using STM in earnest, we should add something
+    % representing "In orelse arm #n:" to the switch context.
     det_diagnose_goal(Goal, InstMap0, Desired, SwitchContexts0,
         !DetInfo, Msgs1),
     det_diagnose_orelse_goals(Goals, InstMap0, Desired, SwitchContexts0,
@@ -883,9 +1011,8 @@ det_diagnose_orelse_goals([Goal | Goals], InstMap0, Desired, SwitchContexts0,
 
 %-----------------------------------------------------------------------------%
 
-    % Check that the switches in all require_complete_switch scopes
-    % are actually complete. If they are not, add an error message
-    % to !DetInfo.
+    % Check that the switches in all require_complete_switch scopes are
+    % actually complete. If they are not, add an error message to !DetInfo.
     %
 :- pred reqscope_check_goal(hlds_goal::in, instmap::in,
     det_info::in, det_info::out) is det.
@@ -981,13 +1108,13 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
                 (
                     MaybeMissingPieces = yes(MissingPieces),
                     SwitchPieces = [words("Error: the switch on"),
-                        quote(VarStr), 
+                        quote(VarStr),
                         words("is required to be complete,"),
                         words("but it does not cover") | MissingPieces]
                 ;
                     MaybeMissingPieces = no,
                     SwitchPieces = [words("Error: the switch on"),
-                        quote(VarStr), 
+                        quote(VarStr),
                         words("is required to be complete,"),
                         words("but it is not.")]
                 ),
@@ -1131,27 +1258,59 @@ cons_id_list_to_pieces([ConsId | ConsIds], Pieces) :-
 
 :- type switch_context
     --->    switch_context(
-                prog_var,           % The variable being switched on.
-                cons_id,            % The first cons_id of this case.
-                list(cons_id)       % Any other cons_ids of this case.
+                % The variable being switched on.
+                prog_var,
+
+                % The match info for the first cons_id of this case.
+                switch_match,
+
+                % The match info for the other cons_ids of this case.
+                list(switch_match)
             ).
 
-:- pred det_diagnose_switch_context(list(switch_context)::in, det_info::in,
+    % A switch arm is for one or more cons_ids. A switch match can record,
+    % for one of these cons_ids, the variables on the right hand side of
+    % the unification that told switch detection that this disjunction
+    % can succeed only the switched-on variable is bound to one of these
+    % cons_ids. For example, in a switch on X, if the switch arm is
+    % for the cons_id f/2, this means that the switch arm should have
+    % a unification of the form X = f(A, B). Likewise, if the switch arm
+    % is for more than one cons_id, such as f/2 and g/1, then the switch arm
+    % should contain a disjunction such as ( X = f(A, B) ; X = g(C) ).
+    % The switch match data type records the argument variables of these
+    % unifications PROVIDED that some of them are visible from the outside,
+    % which means that later error messages (e.g. about missing arms in
+    % switches on them) can refer to them.
+    %
+:- type switch_match
+    --->    switch_match(cons_id, maybe(list(prog_var))).
+
+:- pred det_diagnose_switch_context(det_info::in, list(switch_context)::in,
     list(format_component)::out) is det.
 
-det_diagnose_switch_context([], _, []).
-det_diagnose_switch_context([SwitchContext | SwitchContexts], DetInfo,
-        HeadPieces ++ TailPieces) :-
+det_diagnose_switch_context(_, [], []).
+det_diagnose_switch_context(DetInfo, [SwitchContext | SwitchContexts],
+        Pieces) :-
     det_get_proc_info(DetInfo, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
-    SwitchContext = switch_context(Var, MainConsId, OtherConsIds),
-    MainConsIdStr = cons_id_and_arity_to_string(MainConsId),
-    OtherConsIdStrs = list.map(cons_id_and_arity_to_string, OtherConsIds),
-    ConsIdsStr = string.join_list(", ", [MainConsIdStr | OtherConsIdStrs]),
+    SwitchContext = switch_context(Var, MainMatch, OtherMatches),
+    MainMatchStr = switch_match_to_string(VarSet, MainMatch),
+    OtherMatchStrs = list.map(switch_match_to_string(VarSet), OtherMatches),
+    MatchsStr = string.join_list(", ", [MainMatchStr | OtherMatchStrs]),
     VarStr = mercury_var_to_string(VarSet, no, Var),
-    HeadPieces = [words("Inside the case"), words(ConsIdsStr),
+    InnerPieces = [words("Inside the case"), words(MatchsStr),
         words("of the switch on"), fixed(VarStr), suffix(":"), nl],
-    det_diagnose_switch_context(SwitchContexts, DetInfo, TailPieces).
+    det_diagnose_switch_context(DetInfo, SwitchContexts, OuterPieces),
+    % We construct the list of switch contexts so that inner contexts come
+    % before outer contexts, but we want to print the contexts from the outside
+    % towards the inside.
+    Pieces = OuterPieces ++ [lower_case_next_if_not_first] ++ InnerPieces.
+
+:- func switch_match_to_string(prog_varset, switch_match) = string.
+
+switch_match_to_string(VarSet, switch_match(ConsId, MaybeArgVars)) =
+    cons_id_and_vars_or_arity_to_string(do_not_qualify_cons_id, VarSet,
+        ConsId, MaybeArgVars).
 
 %-----------------------------------------------------------------------------%
 

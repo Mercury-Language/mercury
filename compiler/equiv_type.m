@@ -644,6 +644,7 @@ replace_in_pragma_info(ModuleName, Location, EqvMap, _EqvInstMap,
         ; Pragma0 = pragma_mode_check_clauses(_, _)
         ; Pragma0 = pragma_no_inline(_, _)
         ; Pragma0 = pragma_obsolete(_, _)
+        ; Pragma0 = pragma_no_detism_warning(_, _)
         ; Pragma0 = pragma_promise_equivalent_clauses(_, _)
         ; Pragma0 = pragma_promise_pure(_, _)
         ; Pragma0 = pragma_promise_semipure(_, _)

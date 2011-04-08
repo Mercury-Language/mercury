@@ -243,6 +243,10 @@ add_pragma(ItemPragma, !Status, !ModuleInfo, !Specs) :-
         add_pred_marker("obsolete", Name, Arity, ImportStatus,
             Context, marker_obsolete, [], !ModuleInfo, !Specs)
     ;
+        Pragma = pragma_no_detism_warning(Name, Arity),
+        add_pred_marker("no_determinism_warning", Name, Arity, ImportStatus,
+            Context, marker_no_detism_warning, [], !ModuleInfo, !Specs)
+    ;
         % Handle pragma foreign_export decls later on, after default
         % function modes have been added.
         Pragma = pragma_foreign_export(_, _, _, _, _)

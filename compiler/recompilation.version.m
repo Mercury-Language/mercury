@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2010 The University of Melbourne.
+% Copyright (C) 2001-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -604,62 +604,66 @@ item_to_item_id_2(Item, MaybeItemId) :-
 :- pred is_pred_pragma(pragma_type::in, maybe(maybe_pred_or_func_id)::out)
     is det.
 
-is_pred_pragma(pragma_foreign_decl(_, _, _), no).
-is_pred_pragma(pragma_foreign_import_module(_, _), no).
-is_pred_pragma(pragma_foreign_code(_, _), no).
-is_pred_pragma(pragma_foreign_proc(_, Name, PredOrFunc, Args, _, _, _),
-        yes(yes(PredOrFunc) - Name / Arity)) :-
-    adjust_func_arity(PredOrFunc, Arity, list.length(Args)).
-is_pred_pragma(pragma_type_spec(Name, _, Arity, MaybePredOrFunc, _, _, _, _),
-        yes(MaybePredOrFunc - Name / Arity)).
-is_pred_pragma(pragma_inline(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(pragma_no_inline(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(pragma_obsolete(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(pragma_foreign_export(_, Name, PredOrFunc, Modes, _),
-        yes(yes(PredOrFunc) - Name / Arity)) :-
-    adjust_func_arity(PredOrFunc, Arity, list.length(Modes)).
-    % Pragma import declarations are never used directly by Mercury code.
-is_pred_pragma(pragma_foreign_export_enum(_, _, _, _, _), no).
-is_pred_pragma(pragma_foreign_enum(_, _, _, _), no).
-is_pred_pragma(pragma_source_file(_), no).
-is_pred_pragma(pragma_unused_args(PredOrFunc, Name, Arity, _, _),
-        yes(yes(PredOrFunc) - Name / Arity)).
-is_pred_pragma(pragma_exceptions(PredOrFunc, Name, Arity, _, _),
-        yes(yes(PredOrFunc) - Name / Arity)).
-is_pred_pragma(pragma_trailing_info(PredOrFunc, Name, Arity, _, _),
-		yes(yes(PredOrFunc) - Name / Arity)).
-is_pred_pragma(pragma_mm_tabling_info(PredOrFunc, Name, Arity, _, _),
-        yes(yes(PredOrFunc) - Name / Arity)).
-is_pred_pragma(pragma_fact_table(Name, Arity, _), yes(no - Name / Arity)).
-is_pred_pragma(pragma_reserve_tag(_TypeName, _TypeArity), no).
-is_pred_pragma(pragma_tabled(_, Name, Arity, MaybePredOrFunc, _, _Attrs),
-        yes(MaybePredOrFunc - Name / Arity)).
-is_pred_pragma(pragma_promise_pure(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(pragma_promise_semipure(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(pragma_promise_equivalent_clauses(Name, Arity),
-        yes(no - Name / Arity)).
-is_pred_pragma(pragma_termination_info(PredOrFunc, Name, Modes, _, _),
-        yes(yes(PredOrFunc) - Name / Arity)) :-
-    adjust_func_arity(PredOrFunc, Arity, list.length(Modes)).
-is_pred_pragma(pragma_structure_sharing(PredOrFunc, Name, Modes, _, _, _),
-        yes(yes(PredOrFunc) - Name / Arity)) :-
-    adjust_func_arity(PredOrFunc, Arity, list.length(Modes)).
-is_pred_pragma(pragma_structure_reuse(PredOrFunc, Name, Modes, _, _, _),
-        yes(yes(PredOrFunc) - Name / Arity)) :-
-    adjust_func_arity(PredOrFunc, Arity, list.length(Modes)).
-is_pred_pragma(pragma_termination2_info(PredOrFunc, Name, Modes, _, _, _),
-        yes(yes(PredOrFunc) - Name / Arity)) :-
-    adjust_func_arity(PredOrFunc, Arity, list.length(Modes)).
-is_pred_pragma(pragma_terminates(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(pragma_does_not_terminate(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(pragma_check_termination(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(pragma_mode_check_clauses(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(pragma_require_feature_set(_), no).
+is_pred_pragma(PragmaType, MaybePredOrFuncId) :-
+    (
+        ( PragmaType = pragma_foreign_decl(_, _, _)
+        ; PragmaType = pragma_foreign_import_module(_, _)
+        ; PragmaType = pragma_foreign_code(_, _)
+        ; PragmaType = pragma_foreign_export_enum(_, _, _, _, _)
+        ; PragmaType = pragma_foreign_enum(_, _, _, _)
+        ; PragmaType = pragma_source_file(_)
+        ; PragmaType = pragma_reserve_tag(_, _)
+        ; PragmaType = pragma_require_feature_set(_)
+        ),
+        MaybePredOrFuncId = no
+    ;
+        ( PragmaType = pragma_inline(Name, Arity)
+        ; PragmaType = pragma_no_inline(Name, Arity)
+        ; PragmaType = pragma_obsolete(Name, Arity)
+        ; PragmaType = pragma_no_detism_warning(Name, Arity)
+        ; PragmaType = pragma_promise_semipure(Name, Arity)
+        ; PragmaType = pragma_promise_equivalent_clauses(Name, Arity)
+        ; PragmaType = pragma_fact_table(Name, Arity, _)
+        ; PragmaType = pragma_promise_pure(Name, Arity)
+        ; PragmaType = pragma_terminates(Name, Arity)
+        ; PragmaType = pragma_does_not_terminate(Name, Arity)
+        ; PragmaType = pragma_check_termination(Name, Arity)
+        ; PragmaType = pragma_mode_check_clauses(Name, Arity)
+        ),
+        MaybePredOrFuncId = yes(no - Name / Arity)
+    ;
+        ( PragmaType = pragma_type_spec(Name, _, Arity, MaybePredOrFunc,
+            _, _, _, _)
+        ; PragmaType = pragma_tabled(_, Name, Arity, MaybePredOrFunc,
+            _, _Attrs)
+        ),
+        MaybePredOrFuncId = yes(MaybePredOrFunc - Name / Arity)
+    ;
+        ( PragmaType = pragma_unused_args(PredOrFunc, Name, Arity, _, _)
+        ; PragmaType = pragma_exceptions(PredOrFunc, Name, Arity, _, _)
+        ; PragmaType = pragma_trailing_info(PredOrFunc, Name, Arity, _, _)
+        ; PragmaType = pragma_mm_tabling_info(PredOrFunc, Name, Arity, _, _)
+        ),
+        MaybePredOrFuncId = yes(yes(PredOrFunc) - Name / Arity)
+    ;
+        PragmaType = pragma_foreign_proc(_, Name, PredOrFunc, Args, _, _, _),
+        adjust_func_arity(PredOrFunc, Arity, list.length(Args)),
+        MaybePredOrFuncId = yes(yes(PredOrFunc) - Name / Arity)
+    ;
+        ( PragmaType = pragma_termination_info(PredOrFunc, Name, Modes, _, _)
+        ; PragmaType = pragma_foreign_export(_, Name, PredOrFunc, Modes, _)
+        ; PragmaType = pragma_structure_sharing(PredOrFunc, Name, Modes, _,_,_)
+        ; PragmaType = pragma_structure_reuse(PredOrFunc, Name, Modes, _, _, _)
+        ; PragmaType = pragma_termination2_info(PredOrFunc, Name, Modes, _,_,_)
+        ),
+        adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
+        MaybePredOrFuncId = yes(yes(PredOrFunc) - Name / Arity)
+    ).
 
     % XXX This is a bit brittle (need to be careful with term.contexts).
     % For example, it won't work for clauses.
-    % It will never succeed when it shouldn't, so it will never
-    % cause a necessary recompilation to be missed.
+    % It will never succeed when it shouldn't, so it will never cause
+    % a necessary recompilation to be missed.
     %
 :- pred items_are_unchanged(assoc_list(section, item)::in,
     assoc_list(section, item)::in) is semidet.
@@ -673,29 +677,28 @@ items_are_unchanged([Section - Item1 | Items1], [Section - Item2 | Items2]) :-
     % What matters is that the variable numbers in the arguments
     % and body are the same, the names are usually irrelevant.
     %
-    % The only places where the names of variables affect the
-    % compilation of the program are in explicit type qualifications
-    % and `:- pragma type_spec' declarations. Explicit type
-    % qualifications do not need to be considered here. This module
-    % only deals with items in interface files (we don't yet write type
-    % qualifications to `.opt' files). Variables in type qualifications
-    % are only matched with the head type variables of the predicate
-    % by make_hlds.m. For `:- pragma type_spec' declarations to work
-    % we need to consider a predicate or function declaration to be
-    % changed if the names of any of the type variables are changed.
+    % The only places where the names of variables affect the compilation
+    % of the program are in explicit type qualifications and
+    % `:- pragma type_spec' declarations. Explicit type qualifications
+    % do not need to be considered here. This module only deals with items
+    % in interface files (we don't yet write type qualifications to `.opt'
+    % files). Variables in type qualifications are only matched with
+    % the head type variables of the predicate by make_hlds.m.
+    % For `:- pragma type_spec' declarations to work we need to consider
+    % a predicate or function declaration to be changed if the names
+    % of any of the type variables are changed.
     %
     % It's important not to compare the varsets for type and instance
     % declarations because the declarations we get here may be abstract
     % declarations produced from concrete declarations for use in an
-    % interface file. The varsets may contain variables from the
-    % discarded bodies which will not be present in the items read
-    % in from the interface files for comparison.
+    % interface file. The varsets may contain variables from the discarded
+    % bodies which will not be present in the items read in from the
+    % interface files for comparison.
     %
-    % This code assumes that the variables in the head of a
-    % type or instance declaration are added to the varset before
-    % those from the body, so that the variable numbers in the head of
-    % the declaration match those from an abstract declaration read
-    % from an interface file.
+    % This code assumes that the variables in the head of a type or instance
+    % declaration are added to the varset before those from the body, so that
+    % the variable numbers in the head of the declaration match those from
+    % an abstract declaration read from an interface file.
     %
 :- func item_is_unchanged(item, item) = bool.
 
@@ -796,14 +799,13 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
                 _, Det2, Cond, Purity, Constraints2, _, _),
 
             % For predicates, ignore the determinism -- the modes and
-            % determinism should have been split into a separate
-            % declaration. This case can only happen if this was
-            % not a combined predicate and mode declaration
-            % (XXX We should warn about this somewhere).
-            % For functions a determinism declaration but no modes
-            % implies the default modes. The default modes are
-            % added later by make_hlds.m, so they won't have been
-            % split into a separate declaration here.
+            % determinism should have been split into a separate declaration.
+            % This case can only happen if this was not a combined predicate
+            % and mode declaration (XXX We should warn about this somewhere).
+            % For functions a determinism declaration but no modes implies
+            % the default modes. The default modes are added later by
+            % make_hlds.m, so they won't have been split into a separate
+            % declaration here.
             (
                 PredOrFunc = pf_function,
                 Det1 = Det2
@@ -838,9 +840,9 @@ item_is_unchanged(Item1, Item2) = Unchanged :-
         Item1 = item_pragma(ItemPragma1),
         ItemPragma1 = item_pragma_info(_, PragmaType1, _, _),
         % We do need to compare the variable names in `:- pragma type_spec'
-        % declarations because the names of the variables are used
-        % to find the corresponding variables in the predicate or
-        % function type declaration.
+        % declarations because the names of the variables are used to find
+        % the corresponding variables in the predicate or function
+        % type declaration.
         (
             Item2 = item_pragma(ItemPragma2),
             ItemPragma2 = item_pragma_info(_, PragmaType2, _, _)

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2010 The University of Melbourne.
+% Copyright (C) 1993-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1299,6 +1299,7 @@ add_pass_3_pragma(ItemPragma, !Status, !ModuleInfo, !QualInfo, !Specs) :-
         ; Pragma = pragma_mode_check_clauses(_, _)
         ; Pragma = pragma_no_inline(_, _)
         ; Pragma = pragma_obsolete(_, _)
+        ; Pragma = pragma_no_detism_warning(_, _)
         ; Pragma = pragma_promise_equivalent_clauses(_, _)
         ; Pragma = pragma_promise_pure(_, _)
         ; Pragma = pragma_promise_semipure(_, _)
@@ -3006,8 +3007,7 @@ do_add_pred_marker(PragmaName, Name, Arity, Status, MustBeExported, Context,
         module_info_set_predicate_table(PredTable, !ModuleInfo)
     ;
         PredIds = [],
-        string.append_list(["`:- pragma ", PragmaName, "' declaration"],
-            Description),
+        Description = "`:- pragma " ++ PragmaName ++ "' declaration",
         undefined_pred_or_func_error(Name, Arity, Context, Description, !Specs)
     ).
 

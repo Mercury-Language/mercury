@@ -588,6 +588,11 @@
                 % Predname, Arity
             )
 
+    ;       pragma_no_detism_warning(
+                ndw_name                :: sym_name,
+                ndw_arity               :: arity
+            )
+
     ;       pragma_source_file(
                 % Source file name.
                 pragma_source_file      :: string

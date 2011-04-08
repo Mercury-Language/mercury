@@ -27,6 +27,7 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
+:- import_module maybe.
 :- import_module pair.
 :- import_module term.
 
@@ -152,6 +153,16 @@
 
 :- pred write_cons_id_and_arity(cons_id::in, io::di, io::uo) is det.
 :- func cons_id_and_arity_to_string(cons_id) = string.
+
+:- type maybe_qualify_cons_id
+    --->    qualify_cons_id
+    ;       do_not_qualify_cons_id.
+
+:- pred write_cons_id_and_vars_or_arity(maybe_qualify_cons_id::in,
+    prog_varset::in, cons_id::in, maybe(list(prog_var))::in,
+    io::di, io::uo) is det.
+:- func cons_id_and_vars_or_arity_to_string(maybe_qualify_cons_id,
+    prog_varset, cons_id, maybe(list(prog_var))) = string.
 
 %-----------------------------------------------------------------------------%
 
@@ -723,10 +734,128 @@ cons_id_and_arity_to_string(ConsId) = String :-
         ),
         SymNameString = term_io.escaped_string(SymNameString1),
         string.int_to_string(Arity, ArityString),
-        string.append_list([SymNameString, "/", ArityString], String)
+        String = SymNameString ++ "/" ++ ArityString
     ;
         ConsId = tuple_cons(Arity),
         String = "{}/" ++ string.int_to_string(Arity)
+    ;
+        ConsId = int_const(Int),
+        string.int_to_string(Int, String)
+    ;
+        ConsId = float_const(Float),
+        String = float_to_string(Float)
+    ;
+        ConsId = char_const(CharConst),
+        String = term_io.quoted_char(CharConst)
+    ;
+        ConsId = string_const(StringConst),
+        String = term_io.quoted_string(StringConst)
+    ;
+        ConsId = impl_defined_const(Name),
+        String = "$" ++ Name
+    ;
+        ConsId = closure_cons(PredProcId, _),
+        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
+        String =
+            "<pred " ++ int_to_string(PredId) ++
+            " proc " ++ int_to_string(ProcId) ++ ">"
+    ;
+        ConsId = type_ctor_info_const(Module, Ctor, Arity),
+        String =
+            "<type_ctor_info " ++ sym_name_to_string(Module) ++ "." ++
+            Ctor ++ "/" ++ int_to_string(Arity) ++ ">"
+    ;
+        ConsId = base_typeclass_info_const(_, _, _, _),
+        String = "<base_typeclass_info>"
+    ;
+        ConsId = type_info_cell_constructor(_),
+        String = "<type_info_cell_constructor>"
+    ;
+        ConsId = typeclass_info_cell_constructor,
+        String = "<typeclass_info_cell_constructor>"
+    ;
+        ConsId = tabling_info_const(PredProcId),
+        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
+        String =
+            "<tabling_info " ++ int_to_string(PredId) ++
+            ", " ++ int_to_string(ProcId) ++ ">"
+    ;
+        ConsId = table_io_decl(PredProcId),
+        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
+        String =
+            "<table_io_decl " ++ int_to_string(PredId) ++ ", " ++
+            int_to_string(ProcId) ++ ">"
+    ;
+        ConsId = deep_profiling_proc_layout(PredProcId),
+        PredProcId = shrouded_pred_proc_id(PredId, ProcId),
+        String =
+            "<deep_profiling_proc_layout " ++ int_to_string(PredId) ++ ", " ++
+            int_to_string(ProcId) ++ ">"
+    ).
+
+write_cons_id_and_vars_or_arity(Qual, VarSet, ConsId, MaybeArgVars, !IO) :-
+    io.write_string(
+        cons_id_and_vars_or_arity_to_string(Qual, VarSet,
+            ConsId, MaybeArgVars),
+        !IO).
+
+cons_id_and_vars_or_arity_to_string(Qual, VarSet, ConsId, MaybeArgVars)
+        = String :-
+    (
+        ConsId = cons(SymName0, Arity, _TypeCtor),
+        (
+            Qual = qualify_cons_id,
+            SymName = SymName0
+        ;
+            Qual = do_not_qualify_cons_id,
+            SymName = unqualified(unqualify_name(SymName0))
+        ),
+        SymNameString0 = sym_name_to_string(SymName),
+        ( string.contains_char(SymNameString0, '*') ->
+            % We need to protect against the * appearing next to a /
+            Stuff = (pred(Char::in, Str0::in, Str::out) is det :-
+                ( Char = ('*') ->
+                    string.append(Str0, "star", Str)
+                ;
+                    string.char_to_string(Char, CharStr),
+                    string.append(Str0, CharStr, Str)
+                )
+            ),
+            string.foldl(Stuff, SymNameString0, "", SymNameString1)
+        ;
+            SymNameString1 = SymNameString0
+        ),
+        SymNameString = term_io.escaped_string(SymNameString1),
+        (
+            MaybeArgVars = no,
+            String = SymNameString ++ "/" ++ string.int_to_string(Arity)
+        ;
+            MaybeArgVars = yes(ArgVars),
+            (
+                ArgVars = [],
+                String = SymNameString ++ "/" ++ string.int_to_string(Arity)
+            ;
+                ArgVars = [_ | _],
+                ArgStr = mercury_vars_to_string(VarSet, no, ArgVars),
+                String = SymNameString ++ "(" ++ ArgStr ++ ")"
+            )
+        )
+    ;
+        ConsId = tuple_cons(Arity),
+        (
+            MaybeArgVars = no,
+            String = "{}/" ++ string.int_to_string(Arity)
+        ;
+            MaybeArgVars = yes(ArgVars),
+            (
+                ArgVars = [],
+                String = "{}/" ++ string.int_to_string(Arity)
+            ;
+                ArgVars = [_ | _],
+                ArgStr = mercury_vars_to_string(VarSet, no, ArgVars),
+                String = "{" ++ ArgStr ++ "}"
+            )
+        )
     ;
         ConsId = int_const(Int),
         string.int_to_string(Int, String)

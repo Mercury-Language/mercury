@@ -805,7 +805,7 @@ standardize_impl_items(Items0, Items) :-
         [], ImportModuleSpecs, [], UseModuleSpecs, [], TypeDefnInfos),
     (
         Unexpected = yes,
-        unexpected(this_file, "standardize_impl_items: unexpected items")
+        unexpected($module, $pred, "unexpected items")
         % XXX If the above exception is thrown and you need a
         % workaround you can replace the call to unexpected with this code:
         % Items = Items0
@@ -856,16 +856,14 @@ do_standardize_impl_items([Item | Items], !Unexpected,
             ( ImportModules = [ModuleSpec] ->
                 insert_module_spec(Context, ModuleSpec, !ImportSpecs)
             ;
-                unexpected(this_file,
-                    "do_standardize_impl_items: non-singleton-module import")
+                unexpected($module, $pred, "non-singleton-module import")
             )
         ;
             ModuleDefn = md_use(UseModules),
             ( UseModules = [ModuleSpec] ->
                 insert_module_spec(Context, ModuleSpec, !UseSpecs)
             ;
-                unexpected(this_file,
-                    "do_standardize_impl_items: non-singleton-module use")
+                unexpected($module, $pred, "non-singleton-module use")
             )
         ;
             ( ModuleDefn = md_imported(_)
@@ -1060,8 +1058,7 @@ is_not_unnecessary_impl_import(NecessaryImports, Item) :-
             ( Modules = [ModuleName] ->
                 set.member(ModuleName, NecessaryImports)
             ;
-                unexpected(this_file, "is_not_unnecessary_impl_import: " ++
-                    "non-singleton import or use decl")
+                unexpected($module, $pred, "non-singleton import or use decl")
             )
         ;
             true
@@ -1208,7 +1205,7 @@ accumulate_modules(TypeCtor, !Modules) :-
     ( sym_name_get_module_name(SymName, ModuleName) ->
         svset.insert(ModuleName, !Modules)
     ;
-        unexpected(this_file, "accumulate_modules/3: unknown type encountered")
+        unexpected($module, $pred, "unknown type encountered")
     ).
 
     % Given a type, return the set of user-defined type constructors
@@ -1380,8 +1377,7 @@ get_requirements_of_impl_from_constraint(Constraint, !Modules) :-
     ( sym_name_get_module_name(ClassName, ModuleName) ->
         svset.insert(ModuleName, !Modules)
     ;
-        unexpected(this_file, "get_requirements_of_impl_from_constraint: " ++
-            "unknown typeclass in constraint.")
+        unexpected($module, $pred, "unknown typeclass in constraint")
     ),
     get_modules_from_constraint_arg_types(Args, !Modules).
 
@@ -1406,8 +1402,7 @@ get_modules_from_constraint_arg_type(ArgType, !Modules) :-
         ( sym_name_get_module_name(TypeName, ModuleName) ->
             svset.insert(ModuleName, !Modules)
         ;
-            unexpected(this_file, "get_modules_from_constraint_arg: " ++
-                "unknown type encountered.")
+            unexpected($module, $pred, "unknown type encountered")
         ),
         get_modules_from_constraint_arg_types(Args, !Modules)
     ;
@@ -1581,6 +1576,7 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
         ; Pragma = pragma_foreign_export_enum(_, _, _, _, _)
         ; Pragma = pragma_foreign_proc(_, _, _, _, _, _, _)
         ; Pragma = pragma_inline(_, _)
+        ; Pragma = pragma_no_detism_warning(_, _)
         ; Pragma = pragma_no_inline(_, _)
         ; Pragma = pragma_fact_table(_, _, _)
         ; Pragma = pragma_tabled(_, _, _, _, _, _)
@@ -1746,8 +1742,8 @@ write_interface_file(Globals, _SourceFileName, ModuleName, Suffix,
             )
         ;
             MaybeTimestamp = no,
-            unexpected(this_file, "write_interface_file with " ++
-                "`--smart-recompilation', timestamp not read")
+            unexpected($module, $pred,
+                "with `--smart-recompilation', timestamp not read")
         )
     ;
         InterfaceItems = InterfaceItems0
@@ -2830,8 +2826,7 @@ process_module_private_interfaces(Globals, HaveReadModuleMap,
     ModuleName = !.Module ^ mai_module_name,
     ModAncestors0 = !.Module ^ mai_parent_deps,
     ( Ancestor = ModuleName ->
-        unexpected(this_file, "process_module_private_interfaces: " ++
-            "module is its own ancestor?")
+        unexpected($module, $pred, "module is its own ancestor?")
     ; list.member(Ancestor, ModAncestors0) ->
         % We've already read it.
         process_module_private_interfaces(Globals, HaveReadModuleMap,
@@ -2988,7 +2983,7 @@ check_module_accessibility(ModuleName, AccessibleSubModules, Items,
             list.filter_map(FindImports, Items, ImportInfos),
             (
                 ImportInfos = [],
-                unexpected(this_file, "check_parent_module")
+                unexpected($module, $pred, "check_parent_module")
             ;
                 ImportInfos = [_ | _],
                 list.foldl(
@@ -3395,11 +3390,13 @@ add_submodule(ModuleName - ModuleItemList, !SubModules) :-
     prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 report_error_implementation_in_interface(ModuleName, Context, !Specs) :-
-    ( ModuleName = qualified(ParentModule0, ChildModule0) ->
+    (
+        ModuleName = qualified(ParentModule0, ChildModule0),
         ParentModule = ParentModule0,
         ChildModule = ChildModule0
     ;
-        unexpected(this_file, "report_error_implementation_in_interface")
+        ModuleName = unqualified(_),
+        unexpected($module, $pred, "unqualified module name")
     ),
     Pieces = [words("In interface for module"), sym_name(ParentModule),
         suffix(":"), nl,
@@ -3450,11 +3447,13 @@ pair_with_context(Context, ModuleName) = ModuleName - Context.
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_error_duplicate_module_decl(ModuleName - Context, !Specs) :-
-    ( ModuleName = qualified(ParentModule0, ChildModule0) ->
+    (
+        ModuleName = qualified(ParentModule0, ChildModule0),
         ParentModule = ParentModule0,
         ChildModule = ChildModule0
     ;
-        unexpected(this_file, "report_error_duplicate_module_decl")
+        ModuleName = unqualified(_),
+        unexpected($module, $pred, "unqualified module name")
     ),
     Pieces = [words("In module"), sym_name(ParentModule), suffix(":"), nl,
         words("error: sub-module `" ++ ChildModule ++ "' declared"),
@@ -3782,6 +3781,7 @@ item_needs_foreign_imports(Item) = Langs :-
             ; Pragma = pragma_trailing_info(_, _, _, _, _)
             ; Pragma = pragma_mm_tabling_info(_, _, _, _, _)
             ; Pragma = pragma_obsolete(_, _)
+            ; Pragma = pragma_no_detism_warning(_, _)
             ; Pragma = pragma_source_file(_)
             ; Pragma = pragma_tabled(_, _, _, _, _, _)
             ; Pragma = pragma_fact_table(_, _, _)
@@ -3879,6 +3879,7 @@ include_in_int_file_implementation(Item) = Include :-
             ; Pragma = pragma_trailing_info(_, _, _, _, _)
             ; Pragma = pragma_mm_tabling_info(_, _, _, _, _)
             ; Pragma = pragma_obsolete(_, _)
+            ; Pragma = pragma_no_detism_warning(_, _)
             ; Pragma = pragma_source_file(_)
             ; Pragma = pragma_tabled(_, _, _, _, _, _)
             ; Pragma = pragma_fact_table(_, _, _)
@@ -4244,56 +4245,69 @@ reorderable_item(Item) = Reorderable :-
 :- func reorderable_module_defn(module_defn) = bool.
 
 reorderable_module_defn(ModuleDefn) = Reorderable :-
-    ( ModuleDefn = md_import(_), Reorderable = yes
-    ; ModuleDefn = md_abstract_imported, Reorderable = no
-    ; ModuleDefn = md_export(_), Reorderable = yes
-    ; ModuleDefn = md_external(_, _), Reorderable = yes
-    ; ModuleDefn = md_implementation, Reorderable = no
-    ; ModuleDefn = md_imported(_), Reorderable = no
-    ; ModuleDefn = md_include_module(_), Reorderable = no
-    ; ModuleDefn = md_interface, Reorderable = no
-    ; ModuleDefn = md_opt_imported, Reorderable = no
-    ; ModuleDefn = md_private_interface, Reorderable = no
-    ; ModuleDefn = md_transitively_imported, Reorderable = no
-    ; ModuleDefn = md_use(_), Reorderable = yes
-    ; ModuleDefn = md_used(_), Reorderable = no
-    ; ModuleDefn = md_version_numbers(_, _), Reorderable = no
+    (
+        ( ModuleDefn = md_import(_)
+        ; ModuleDefn = md_export(_)
+        ; ModuleDefn = md_external(_, _)
+        ; ModuleDefn = md_use(_)
+        ),
+        Reorderable = yes
+    ;
+        ( ModuleDefn = md_abstract_imported
+        ; ModuleDefn = md_implementation
+        ; ModuleDefn = md_imported(_)
+        ; ModuleDefn = md_include_module(_)
+        ; ModuleDefn = md_interface
+        ; ModuleDefn = md_opt_imported
+        ; ModuleDefn = md_private_interface
+        ; ModuleDefn = md_transitively_imported
+        ; ModuleDefn = md_used(_)
+        ; ModuleDefn = md_version_numbers(_, _)
+        ),
+        Reorderable = no
     ).
 
 :- func reorderable_pragma_type(pragma_type) = bool.
 
 reorderable_pragma_type(Pragma) = Reorderable :-
-    ( Pragma = pragma_check_termination(_, _), Reorderable = yes
-    ; Pragma = pragma_does_not_terminate(_, _), Reorderable = yes
-    ; Pragma = pragma_exceptions(_, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_trailing_info(_, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_mm_tabling_info(_, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_foreign_export(_, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_foreign_export_enum(_, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_foreign_enum(_, _, _, _), Reorderable = yes
-    ; Pragma = pragma_fact_table(_, _, _), Reorderable = no
-    ; Pragma = pragma_foreign_code(_, _), Reorderable = no
-    ; Pragma = pragma_foreign_decl(_, _, _), Reorderable = no
-    ; Pragma = pragma_foreign_import_module(_, _), Reorderable = no
-    ; Pragma = pragma_foreign_proc(_, _, _, _, _, _, _), Reorderable = no
-    ; Pragma = pragma_inline(_, _), Reorderable = yes
-    ; Pragma = pragma_mode_check_clauses(_, _), Reorderable = yes
-    ; Pragma = pragma_no_inline(_, _), Reorderable = yes
-    ; Pragma = pragma_obsolete(_, _), Reorderable = yes
-    ; Pragma = pragma_promise_pure(_, _), Reorderable = yes
-    ; Pragma = pragma_promise_semipure(_, _), Reorderable = yes
-    ; Pragma = pragma_promise_equivalent_clauses(_, _), Reorderable = yes
-    ; Pragma = pragma_reserve_tag(_, _), Reorderable = yes
-    ; Pragma = pragma_source_file(_), Reorderable = no
-    ; Pragma = pragma_tabled(_, _, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_terminates(_, _), Reorderable = yes
-    ; Pragma = pragma_termination2_info(_, _, _, _, _, _), Reorderable = no
-    ; Pragma = pragma_termination_info(_, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_structure_sharing(_, _, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_structure_reuse(_, _, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_type_spec(_, _, _, _, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_unused_args(_, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_require_feature_set(_), Reorderable = yes
+    (
+        ( Pragma = pragma_check_termination(_, _)
+        ; Pragma = pragma_does_not_terminate(_, _)
+        ; Pragma = pragma_exceptions(_, _, _, _, _)
+        ; Pragma = pragma_trailing_info(_, _, _, _, _)
+        ; Pragma = pragma_mm_tabling_info(_, _, _, _, _)
+        ; Pragma = pragma_foreign_export(_, _, _, _, _)
+        ; Pragma = pragma_foreign_export_enum(_, _, _, _, _)
+        ; Pragma = pragma_foreign_enum(_, _, _, _)
+        ; Pragma = pragma_inline(_, _)
+        ; Pragma = pragma_mode_check_clauses(_, _)
+        ; Pragma = pragma_no_inline(_, _)
+        ; Pragma = pragma_obsolete(_, _)
+        ; Pragma = pragma_no_detism_warning(_, _)
+        ; Pragma = pragma_promise_pure(_, _)
+        ; Pragma = pragma_promise_semipure(_, _)
+        ; Pragma = pragma_promise_equivalent_clauses(_, _)
+        ; Pragma = pragma_reserve_tag(_, _)
+        ; Pragma = pragma_tabled(_, _, _, _, _, _)
+        ; Pragma = pragma_terminates(_, _)
+        ; Pragma = pragma_termination_info(_, _, _, _, _)
+        ; Pragma = pragma_structure_sharing(_, _, _, _, _, _)
+        ; Pragma = pragma_structure_reuse(_, _, _, _, _, _)
+        ; Pragma = pragma_type_spec(_, _, _, _, _, _, _, _)
+        ; Pragma = pragma_unused_args(_, _, _, _, _)
+        ; Pragma = pragma_require_feature_set(_)
+        ),
+        Reorderable = yes
+    ;
+        ( Pragma = pragma_foreign_code(_, _)
+        ; Pragma = pragma_foreign_decl(_, _, _)
+        ; Pragma = pragma_foreign_import_module(_, _)
+        ; Pragma = pragma_foreign_proc(_, _, _, _, _, _, _)
+        ; Pragma = pragma_source_file(_)
+        ; Pragma = pragma_termination2_info(_, _, _, _, _, _)
+        ; Pragma = pragma_fact_table(_, _, _)
+        ),
+        Reorderable = no
     ).
 
 :- pred is_chunkable(item::in) is semidet.
@@ -4346,56 +4360,69 @@ chunkable_item(Item) = Chunkable :-
 :- func chunkable_module_defn(module_defn) = bool.
 
 chunkable_module_defn(ModuleDefn) = Reorderable :-
-    ( ModuleDefn = md_abstract_imported, Reorderable = no
-    ; ModuleDefn = md_export(_), Reorderable = yes
-    ; ModuleDefn = md_external(_, _), Reorderable = yes
-    ; ModuleDefn = md_implementation, Reorderable = no
-    ; ModuleDefn = md_import(_), Reorderable = yes
-    ; ModuleDefn = md_imported(_), Reorderable = no
-    ; ModuleDefn = md_include_module(_), Reorderable = no
-    ; ModuleDefn = md_interface, Reorderable = no
-    ; ModuleDefn = md_opt_imported, Reorderable = no
-    ; ModuleDefn = md_private_interface, Reorderable = no
-    ; ModuleDefn = md_transitively_imported, Reorderable = no
-    ; ModuleDefn = md_use(_), Reorderable = yes
-    ; ModuleDefn = md_used(_), Reorderable = no
-    ; ModuleDefn = md_version_numbers(_, _), Reorderable = no
+    (
+        ( ModuleDefn = md_export(_)
+        ; ModuleDefn = md_external(_, _)
+        ; ModuleDefn = md_import(_)
+        ; ModuleDefn = md_use(_)
+        ),
+        Reorderable = yes
+    ;
+        ( ModuleDefn = md_abstract_imported
+        ; ModuleDefn = md_implementation
+        ; ModuleDefn = md_imported(_)
+        ; ModuleDefn = md_include_module(_)
+        ; ModuleDefn = md_interface
+        ; ModuleDefn = md_opt_imported
+        ; ModuleDefn = md_private_interface
+        ; ModuleDefn = md_transitively_imported
+        ; ModuleDefn = md_used(_)
+        ; ModuleDefn = md_version_numbers(_, _)
+        ),
+        Reorderable = no
     ).
 
 :- func chunkable_pragma_type(pragma_type) = bool.
 
 chunkable_pragma_type(Pragma) = Reorderable :-
-    ( Pragma = pragma_check_termination(_, _), Reorderable = yes
-    ; Pragma = pragma_does_not_terminate(_, _), Reorderable = yes
-    ; Pragma = pragma_exceptions(_, _, _, _, _), Reorderable = no
-    ; Pragma = pragma_foreign_export(_, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_fact_table(_, _, _), Reorderable = no
-    ; Pragma = pragma_foreign_code(_, _), Reorderable = no
-    ; Pragma = pragma_foreign_decl(_, _, _), Reorderable = no
-    ; Pragma = pragma_foreign_import_module(_, _), Reorderable = no
-    ; Pragma = pragma_foreign_proc(_, _, _, _, _, _, _), Reorderable = no
-    ; Pragma = pragma_foreign_export_enum(_, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_foreign_enum(_, _, _, _), Reorderable = yes
-    ; Pragma = pragma_inline(_, _), Reorderable = yes
-    ; Pragma = pragma_mode_check_clauses(_, _), Reorderable = yes
-    ; Pragma = pragma_no_inline(_, _), Reorderable = yes
-    ; Pragma = pragma_obsolete(_, _), Reorderable = yes
-    ; Pragma = pragma_promise_pure(_, _), Reorderable = yes
-    ; Pragma = pragma_promise_semipure(_, _), Reorderable = yes
-    ; Pragma = pragma_promise_equivalent_clauses(_, _), Reorderable = yes
-    ; Pragma = pragma_reserve_tag(_, _), Reorderable = yes
-    ; Pragma = pragma_source_file(_), Reorderable = no
-    ; Pragma = pragma_tabled(_, _, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_terminates(_, _), Reorderable = yes
-    ; Pragma = pragma_termination2_info( _, _, _, _, _, _), Reorderable = no
-    ; Pragma = pragma_termination_info(_, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_structure_sharing(_, _, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_structure_reuse(_, _, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_trailing_info(_, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_mm_tabling_info(_, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_type_spec(_, _, _, _, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_unused_args(_, _, _, _, _), Reorderable = yes
-    ; Pragma = pragma_require_feature_set(_), Reorderable = yes
+    (
+        ( Pragma = pragma_check_termination(_, _)
+        ; Pragma = pragma_does_not_terminate(_, _)
+        ; Pragma = pragma_foreign_export(_, _, _, _, _)
+        ; Pragma = pragma_foreign_export_enum(_, _, _, _, _)
+        ; Pragma = pragma_foreign_enum(_, _, _, _)
+        ; Pragma = pragma_inline(_, _)
+        ; Pragma = pragma_mode_check_clauses(_, _)
+        ; Pragma = pragma_no_inline(_, _)
+        ; Pragma = pragma_obsolete(_, _)
+        ; Pragma = pragma_no_detism_warning(_, _)
+        ; Pragma = pragma_promise_pure(_, _)
+        ; Pragma = pragma_promise_semipure(_, _)
+        ; Pragma = pragma_promise_equivalent_clauses(_, _)
+        ; Pragma = pragma_reserve_tag(_, _)
+        ; Pragma = pragma_tabled(_, _, _, _, _, _)
+        ; Pragma = pragma_terminates(_, _)
+        ; Pragma = pragma_termination_info(_, _, _, _, _)
+        ; Pragma = pragma_structure_sharing(_, _, _, _, _, _)
+        ; Pragma = pragma_structure_reuse(_, _, _, _, _, _)
+        ; Pragma = pragma_trailing_info(_, _, _, _, _)
+        ; Pragma = pragma_mm_tabling_info(_, _, _, _, _)
+        ; Pragma = pragma_type_spec(_, _, _, _, _, _, _, _)
+        ; Pragma = pragma_unused_args(_, _, _, _, _)
+        ; Pragma = pragma_require_feature_set(_)
+        ),
+        Reorderable = yes
+    ;
+        ( Pragma = pragma_exceptions(_, _, _, _, _)
+        ; Pragma = pragma_fact_table(_, _, _)
+        ; Pragma = pragma_foreign_code(_, _)
+        ; Pragma = pragma_foreign_decl(_, _, _)
+        ; Pragma = pragma_foreign_import_module(_, _)
+        ; Pragma = pragma_foreign_proc(_, _, _, _, _, _, _)
+        ; Pragma = pragma_source_file(_)
+        ; Pragma = pragma_termination2_info( _, _, _, _, _, _)
+        ),
+        Reorderable = no
     ).
 
     % Given a list of items for which symname_ordered succeeds, we need to keep
@@ -4428,7 +4455,7 @@ compare_by_symname(ItemA, ItemB, Result) :-
     ->
         compare(Result, SymNameA, SymNameB)
     ;
-        unexpected(this_file, "compare_by_symname: symname not found")
+        unexpected($module, $pred, "symname not found")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -4458,12 +4485,6 @@ maybe_record_timestamp(ModuleName, Suffix, NeedQualifier, MaybeTimestamp,
     ;
         !.Module ^ mai_maybe_timestamps = no
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "modules.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module modules.

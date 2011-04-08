@@ -9261,6 +9261,8 @@ pragmas with implementation-dependent semantics
                                 versions of polymorphic procedures.
 * Obsolescence::                Library developers can declare old versions
                                 of predicates or functions to be obsolete.
+* No determinism warnings::     Pragmas can be used to suppress warnings
+                                about too loose determinism declarations.
 * Source file name::            The @samp{source_file} pragma and
                                 @samp{#@var{line}} directives provide support
                                 for preprocessors and other tools that
@@ -9398,6 +9400,34 @@ warning if they use obsolete features, and can consult the library
 documentation to determine how to fix their code.  Eventually, when the
 library developer deems that users have had sufficient warning, they
 can remove the old version entirely.
+
+@node No determinism warnings
+@section No determinism warnings
+
+A declaration of the form
+
+@example
+:- pragma no_determinism_warning(@var{Name}/@var{Arity}).
+@end example
+
+@noindent
+tells the compiler not to generate any warnings
+that the determinism declarations of procedures of the predicate or function
+with name @var{Name} and arity @var{Arity} are not as tight as they could be.
+
+@samp{pragma no_determinism_warning} declarations are intended for use
+in situations in which the code of a predicate has one determinism,
+but the declared determinism of the procedure must be looser
+due to some outside requirement.
+One such situation is when a set of procedures are all possible values
+of the same higher order variable,
+which requires them to have the same argument types, modes, and determinisms.
+If (say) most of the procedures are det
+but some are erroneous (that is, they always throws an exception),
+the procedures that are declared det
+but whose bodies have determinism erroneous
+will get a warning saying their determinism declaration could be tighter,
+unless the programmer specifies this pragma for them.
 
 @node Source file name
 @section Source file name

@@ -174,6 +174,10 @@ parse_pragma_type(ModuleName, PragmaName, PragmaTerms, ErrorTerm, VarSet,
             MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
                 Pragma = pragma_obsolete(Name, Arity))
         ;
+            PragmaName = "no_determinism_warning",
+            MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
+                Pragma = pragma_no_detism_warning(Name, Arity))
+        ;
             PragmaName = "promise_equivalent_clauses",
             MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
                 Pragma = pragma_promise_equivalent_clauses(Name, Arity))

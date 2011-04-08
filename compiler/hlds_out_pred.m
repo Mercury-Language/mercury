@@ -1238,6 +1238,7 @@ marker_name(marker_user_marked_inline, "inline").
 marker_name(marker_user_marked_no_inline, "no_inline").
 marker_name(marker_heuristic_inline, "heuristic_inline").
 marker_name(marker_obsolete, "obsolete").
+marker_name(marker_no_detism_warning, "no_determinism_warning").
 marker_name(marker_class_method, "class_method").
 marker_name(marker_class_instance_method, "class_instance_method").
 marker_name(marker_named_class_instance_method, "named_class_instance_method").

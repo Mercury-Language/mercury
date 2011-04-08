@@ -1963,6 +1963,7 @@ keep_marker(marker_builtin_stub) = no.
 keep_marker(marker_infer_type) = no.
 keep_marker(marker_infer_modes) = no.
 keep_marker(marker_obsolete) = no.
+keep_marker(marker_no_detism_warning) = no.
 keep_marker(marker_user_marked_inline) = no.
 keep_marker(marker_user_marked_no_inline) = no.
 keep_marker(marker_heuristic_inline) = no.

@@ -1,23 +1,55 @@
-det_errors.m:005: In `p1'(in):
-det_errors.m:005:   error: determinism declaration not satisfied.
-det_errors.m:005:   Declared `det', inferred `semidet'.
-det_errors.m:018:   In argument 1 of clause head:
-det_errors.m:018:   unification of `HeadVar__1' and `42' can fail.
-det_errors.m:006: In `p2'(in):
-det_errors.m:006:   error: determinism declaration not satisfied.
-det_errors.m:006:   Declared `det', inferred `semidet'.
-det_errors.m:019:   Unification of `X' and `42' can fail.
-det_errors.m:007: In `p3'(in):
+det_errors.m:007: In `p1'(in):
 det_errors.m:007:   error: determinism declaration not satisfied.
 det_errors.m:007:   Declared `det', inferred `semidet'.
-det_errors.m:020:   Unification of `X' and `42' can fail.
-det_errors.m:008: In `p4'(in):
+det_errors.m:040:   In argument 1 of clause head:
+det_errors.m:040:   unification of `HeadVar__1' and `42' can fail.
+det_errors.m:008: In `p2'(in):
 det_errors.m:008:   error: determinism declaration not satisfied.
 det_errors.m:008:   Declared `det', inferred `semidet'.
-det_errors.m:021:   In argument 2 of functor `+/2':
-det_errors.m:021:   unification with `21' can fail.
-det_errors.m:013: In `q'(in, out):
-det_errors.m:013:   error: determinism declaration not satisfied.
-det_errors.m:013:   Declared `det', inferred `semidet'.
-det_errors.m:024:   The switch on HeadVar__1 does not cover det_errors.d/0,
-det_errors.m:024:   det_errors.e/0, det_errors.f/0 or det_errors.g/0.
+det_errors.m:041:   Unification of `X' and `42' can fail.
+det_errors.m:009: In `p3'(in):
+det_errors.m:009:   error: determinism declaration not satisfied.
+det_errors.m:009:   Declared `det', inferred `semidet'.
+det_errors.m:042:   Unification of `X' and `42' can fail.
+det_errors.m:010: In `p4'(in):
+det_errors.m:010:   error: determinism declaration not satisfied.
+det_errors.m:010:   Declared `det', inferred `semidet'.
+det_errors.m:043:   In argument 2 of functor `+/2':
+det_errors.m:043:   unification with `21' can fail.
+det_errors.m:024: In `q'(in, out):
+det_errors.m:024:   error: determinism declaration not satisfied.
+det_errors.m:024:   Declared `det', inferred `semidet'.
+det_errors.m:046:   The switch on HeadVar__1 does not cover det_errors.d/0,
+det_errors.m:046:   det_errors.e/0, det_errors.f/0, det_errors.g/0,
+det_errors.m:046:   det_errors.h/1 or det_errors.i/1.
+det_errors.m:032: In `r'(in, out):
+det_errors.m:032:   error: determinism declaration not satisfied.
+det_errors.m:032:   Declared `det', inferred `nondet'.
+det_errors.m:052:   Inside the case u3(V_16) of the switch on U:
+det_errors.m:052:   The switch on V_16 does not cover det_errors.d/0,
+det_errors.m:052:   det_errors.e/0, det_errors.f/0, det_errors.g/0,
+det_errors.m:052:   det_errors.h/1 or det_errors.i/1.
+det_errors.m:052:   Inside the case u4(V_17) of the switch on U:
+det_errors.m:052:   inside the case d/0 of the switch on V_17:
+det_errors.m:052:   disjunction has multiple clauses with solutions.
+det_errors.m:052:   Inside the case u4(V_17) of the switch on U:
+det_errors.m:052:   The switch on V_17 does not cover det_errors.h/1 or
+det_errors.m:052:   det_errors.i/1.
+det_errors.m:052:   The switch on U does not cover det_errors.u2/0.
+det_errors.m:033: In `s'(in, out):
+det_errors.m:033:   error: determinism declaration not satisfied.
+det_errors.m:033:   Declared `det', inferred `nondet'.
+det_errors.m:091:   Inside the case u3(V_11) of the switch on U:
+det_errors.m:091:   The switch on V_11 does not cover det_errors.d/0,
+det_errors.m:091:   det_errors.e/0, det_errors.f/0, det_errors.g/0,
+det_errors.m:091:   det_errors.h/1 or det_errors.i/1.
+det_errors.m:091:   The switch on U does not cover det_errors.u2/0.
+det_errors.m:107:   Inside the case u4(V) of the switch on U:
+det_errors.m:107:   inside the case d/0 of the switch on V:
+det_errors.m:107:   disjunction has multiple clauses with solutions.
+det_errors.m:122:   Inside the case u4(V) of the switch on U:
+det_errors.m:122:   inside the case e/0, f/0 of the switch on V:
+det_errors.m:122:   disjunction has multiple clauses with solutions.
+det_errors.m:132:   Inside the case u4(V) of the switch on U:
+det_errors.m:132:   inside the case h/1, i/1 of the switch on V:
+det_errors.m:132:   disjunction has multiple clauses with solutions.
