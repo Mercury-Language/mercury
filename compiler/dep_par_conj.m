@@ -194,12 +194,13 @@ impl_dep_par_conjs_in_module(!ModuleInfo) :-
     DoneParProcs0 = map.init,
     PendingParProcs0 = [],
     Pushability0 = map.init,
-    list.foldl3(
+    RevProcMap0 = map.init,
+    list.foldl4(
         find_specialization_requests_in_proc(DoneParProcs0, InitialModuleInfo),
         ProcsToScan, !ModuleInfo, PendingParProcs0, PendingParProcs,
-        Pushability0, Pushability),
+        Pushability0, Pushability, RevProcMap0, RevProcMap),
     add_requested_specialized_par_procs(PendingParProcs, Pushability,
-        DoneParProcs0, InitialModuleInfo, !ModuleInfo).
+        DoneParProcs0, InitialModuleInfo, !ModuleInfo, RevProcMap, _).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1380,11 +1381,15 @@ search_scc(SCCs, PredProcId, SCC) :-
                 % (The set of done procs is updated only between the lifetimes
                 % of values of this type.)
                 spec_done_procs             :: done_par_procs,
+                spec_rev_proc_map           :: rev_proc_map,
 
                 % The version of the module before dep_par_conj.m started
                 % modifying it. This field is constant; it should never be
                 % updated.
                 spec_initial_module         :: module_info,
+
+                % The procedure that's currently being scanned.
+                spec_ppid                   :: pred_proc_id,
 
                 % The variable types of the procedure we are scanning.
                 % This field is constant; it should never be updated.
@@ -1408,6 +1413,11 @@ search_scc(SCCs, PredProcId, SCC) :-
     % by futures.
     %
 :- type done_par_procs == map(par_proc_call_pattern, new_par_proc).
+
+    % A map from specialised pred proc ids back to the pred proc id of the
+    % procedure that they're based on.
+    %
+:- type rev_proc_map == map(pred_proc_id, pred_proc_id).
 
     % Parallelised procedures that are scheduled to be added.
     % One or more procedures in the module will already be making calls
@@ -1463,18 +1473,20 @@ search_scc(SCCs, PredProcId, SCC) :-
 :- pred find_specialization_requests_in_proc(done_par_procs::in,
     module_info::in, pred_proc_id::in, module_info::in, module_info::out,
     pending_par_procs::in, pending_par_procs::out,
-    pushable_args_map::in, pushable_args_map::out) is det.
+    pushable_args_map::in, pushable_args_map::out,
+    rev_proc_map::in, rev_proc_map::out) is det.
 
 find_specialization_requests_in_proc(DoneProcs, InitialModuleInfo, PredProcId,
-        !ModuleInfo, !PendingParProcs, !Pushability) :-
+        !ModuleInfo, !PendingParProcs, !Pushability, !RevProcMap) :-
     PredProcId = proc(PredId, ProcId),
     some [!PredInfo, !ProcInfo, !Goal, !SpecInfo] (
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
             !:PredInfo, !:ProcInfo),
         proc_info_get_vartypes(!.ProcInfo, VarTypes),
         proc_info_get_goal(!.ProcInfo, !:Goal),
-        !:SpecInfo = spec_info(DoneProcs, InitialModuleInfo, VarTypes,
-            !.ModuleInfo, !.PendingParProcs, !.Pushability),
+        !:SpecInfo = spec_info(DoneProcs, !.RevProcMap, InitialModuleInfo,
+            PredProcId, VarTypes, !.ModuleInfo, !.PendingParProcs,
+            !.Pushability),
 
         trace [compile_time(flag("debug-dep-par-conj")), io(!IO)] (
             module_info_get_globals(!.ModuleInfo, Globals),
@@ -1501,7 +1513,7 @@ find_specialization_requests_in_proc(DoneProcs, InitialModuleInfo, PredProcId,
         ),
 
         specialize_sequences_in_goal(!Goal, !SpecInfo),
-        !.SpecInfo = spec_info(_, _, _,
+        !.SpecInfo = spec_info(_, !:RevProcMap, _, _, _,
             !:ModuleInfo, !:PendingParProcs, !:Pushability),
         proc_info_set_goal(!.Goal, !ProcInfo),
         % Optimization opportunity: we should not fix up the same procedure
@@ -1512,10 +1524,11 @@ find_specialization_requests_in_proc(DoneProcs, InitialModuleInfo, PredProcId,
 
 :- pred add_requested_specialized_par_procs(pending_par_procs::in,
     pushable_args_map::in, done_par_procs::in, module_info::in,
-    module_info::in, module_info::out) is det.
+    module_info::in, module_info::out, rev_proc_map::in, rev_proc_map::out)
+    is det.
 
 add_requested_specialized_par_procs(!.PendingParProcs, !.Pushability,
-        !.DoneParProcs, InitialModuleInfo, !ModuleInfo) :-
+        !.DoneParProcs, InitialModuleInfo, !ModuleInfo, !RevProcMap) :-
     (
         !.PendingParProcs = []
     ;
@@ -1525,18 +1538,20 @@ add_requested_specialized_par_procs(!.PendingParProcs, !.Pushability,
         svmap.det_insert(CallPattern, NewProc, !DoneParProcs),
         add_requested_specialized_par_proc(CallPattern, NewProc,
             !PendingParProcs, !Pushability, !.DoneParProcs, InitialModuleInfo,
-            !ModuleInfo),
+            !ModuleInfo, !RevProcMap),
         add_requested_specialized_par_procs(!.PendingParProcs, !.Pushability,
-            !.DoneParProcs, InitialModuleInfo, !ModuleInfo)
+            !.DoneParProcs, InitialModuleInfo, !ModuleInfo, !RevProcMap)
     ).
 
 :- pred add_requested_specialized_par_proc(par_proc_call_pattern::in,
     new_par_proc::in, pending_par_procs::in, pending_par_procs::out,
     pushable_args_map::in, pushable_args_map::out, done_par_procs::in,
-    module_info::in, module_info::in, module_info::out) is det.
+    module_info::in, module_info::in, module_info::out,
+    rev_proc_map::in, rev_proc_map::out) is det.
 
 add_requested_specialized_par_proc(CallPattern, NewProc, !PendingParProcs,
-        !Pushability, DoneParProcs, InitialModuleInfo, !ModuleInfo) :-
+        !Pushability, DoneParProcs, InitialModuleInfo, !ModuleInfo,
+        !RevProcMap) :-
     CallPattern = par_proc_call_pattern(OldPredProcId, FutureArgs),
     NewProc = new_par_proc(NewPredProcId, _Name),
     OldPredProcId = proc(OldPredId, OldProcId),
@@ -1604,7 +1619,8 @@ add_requested_specialized_par_proc(CallPattern, NewProc, !PendingParProcs,
         sync_dep_par_conjs_in_proc(NewPredId, NewProcId, IgnoreVars,
             !ModuleInfo, [], _ProcsToScan),
         find_specialization_requests_in_proc(DoneParProcs, InitialModuleInfo,
-            NewPredProcId, !ModuleInfo, !PendingParProcs, !Pushability)
+            NewPredProcId, !ModuleInfo, !PendingParProcs, !Pushability,
+            !RevProcMap)
     ).
 
 :- pred map_arg_to_new_future(list(prog_var)::in, arg_pos::in,
@@ -1793,27 +1809,35 @@ maybe_specialize_call_and_goals(RevGoals0, Goal0, FwdGoals0,
     ModuleInfo = !.SpecInfo ^ spec_module_info,
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
-    DoneParProcs = values(!.SpecInfo ^ spec_done_procs),
     PredProcId = proc(PredId, ProcId),
-    % We cannot push wait or signal goals into a procedure whose code we don't
-    % have access to.
-    % XXX: We have access to opt_imported procedures. The reason why this test
-    % does not look for them is that we used to run dep_par_conj only *after*
-    % mercury_compile used to invoke dead_proc_elim to delete opt_imported
-    % procedures.
+    CallerPredProcId = !.SpecInfo ^ spec_ppid,
     (
+        % We cannot push wait or signal goals into a procedure whose code we
+        % don't have access to.
+        % XXX: We have access to opt_imported procedures. The reason why this
+        % test does not look for them is that we used to run dep_par_conj only
+        % *after* mercury_compile used to invoke dead_proc_elim to delete
+        % opt_imported procedures.
         list.member(ProcId, pred_info_non_imported_procids(PredInfo)),
 
-        % These tests avoid some problems we've had with pushing signals and
-        % waits into callees.
-        % + Don't push signals or waits into any procedure that contains a new
-        %   parallel conjunction.
-        proc_info_get_has_parallel_conj(ProcInfo, no),
-        % + Don't push signals or waits into any procedure that has already
-        %   been specialised by pushing some signals or waits into it.
-        not (
-            member(DoneParProc, DoneParProcs),
-            PredProcId = DoneParProc ^ new_ppid
+        % This test avoids some problems we've had with pushing signals and
+        % waits into callees, in some cases incorrect code is generated.
+        % See also a similar check in get_or_create_spec_par_proc/6.
+        %
+        % Don't push signals or waits into any procedure that contains a new
+        % parallel conjunction, unless this is a recursive call.
+        (
+            proc_info_get_has_parallel_conj(ProcInfo, yes)
+        =>
+            (
+                PredProcId = CallerPredProcId
+            ;
+                % Or this call is to the original version of a specialised
+                % procedure.  This occurs for recursive calls in specialised
+                % procedures.
+                map.search(!.SpecInfo ^ spec_rev_proc_map, CallerPredProcId,
+                    PredProcId)
+            )
         )
     ->
         % Look for a contiguous sequence of wait goals at the start of
@@ -1848,22 +1872,30 @@ maybe_specialize_call_and_goals(RevGoals0, Goal0, FwdGoals0,
             FwdGoals = FwdGoals0
         ;
             specialize_dep_par_call(PushedWaitPairs, PushedSignalPairs,
-                Goal0, Goal, !SpecInfo),
+                Goal0, MaybeGoal, !SpecInfo),
+            (
+                MaybeGoal = yes(Goal),
 
-            % After the replaced call may be further references to a signalled
-            % or waited variable.  Add `get' goals after the transformed goal
-            % to make sure the variable is bound.  We assume the get goals will
-            % be simplified away if they turn out to be unnecessary.
-            %
-            % XXX The simplify pass that comes later doesn't always remove
-            % these calls, even if they're unnecessary.
+                % After the replaced call may be further references to a
+                % signalled or waited variable.  Add `get' goals after the
+                % transformed goal to make sure the variable is bound.  We
+                % assume the get goals will be simplified away if they turn out
+                % to be unnecessary.
+                %
+                % XXX The simplify pass that comes later doesn't always remove
+                % these calls, even if they're unnecessary.
 
-            VarTypes = !.SpecInfo ^ spec_vartypes,
-            list.map(make_get_goal(!.SpecInfo ^ spec_module_info, VarTypes),
-                PushedSignalPairs ++ PushedWaitPairs, GetGoals),
+                VarTypes = !.SpecInfo ^ spec_vartypes,
+                list.map(make_get_goal(!.SpecInfo ^ spec_module_info, VarTypes),
+                    PushedSignalPairs ++ PushedWaitPairs, GetGoals),
 
-            RevGoals = GetGoals ++ [Goal] ++ UnPushedWaitGoals ++ RevGoals1,
-            FwdGoals = UnPushedSignalGoals ++ FwdGoals1
+                RevGoals = GetGoals ++ [Goal] ++ UnPushedWaitGoals ++ RevGoals1,
+                FwdGoals = UnPushedSignalGoals ++ FwdGoals1
+            ;
+                MaybeGoal = no,
+                RevGoals = [Goal0 | RevGoals0],
+                FwdGoals = FwdGoals0
+            )
         )
     ;
         RevGoals = [Goal0 | RevGoals0],
@@ -1983,10 +2015,10 @@ find_relevant_pushable_signal_goals([Goal | Goals], PredProcId, CallVars,
 
 :- pred specialize_dep_par_call(
     list(future_var_pair)::in, list(future_var_pair)::in,
-    hlds_goal::in(call_goal), hlds_goal::out,
+    hlds_goal::in(call_goal), maybe(hlds_goal)::out,
     spec_info::in, spec_info::out) is det.
 
-specialize_dep_par_call(WaitPairs, SignalPairs, Goal0, Goal, !SpecInfo) :-
+specialize_dep_par_call(WaitPairs, SignalPairs, Goal0, MaybeGoal, !SpecInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     GoalExpr0 = plain_call(PredId, ProcId, CallVars, _Builtin, Context, _Name),
     OrigPPId = proc(PredId, ProcId),
@@ -1996,34 +2028,79 @@ specialize_dep_par_call(WaitPairs, SignalPairs, Goal0, Goal, !SpecInfo) :-
     number_future_args(1, CallVars, WaitVars ++ SignalVars, [], FutureArgs),
 
     CallPattern = par_proc_call_pattern(OrigPPId, FutureArgs),
+    get_or_create_spec_par_proc(FutureArgs, CallPattern, OrigPPId,
+        MaybeSpecProc, !SpecInfo),
+
+    (
+        MaybeSpecProc = spec_proc(SpecPPId, SpecName),
+
+        % Replace the call with a call to the parallelised procedure.
+        list.map(replace_args_with_futures(WaitPairs ++ SignalPairs),
+            CallVars, NewCallVars),
+        SpecPPId = proc(SpecPredId, SpecProcId),
+        GoalExpr = plain_call(SpecPredId, SpecProcId, NewCallVars, not_builtin,
+            Context, SpecName),
+        MaybeGoal = yes(hlds_goal(GoalExpr, GoalInfo0))
+    ;
+        MaybeSpecProc = will_not_specialise,
+        MaybeGoal = no
+    ).
+
+:- type maybe_spec_proc
+    --->    will_not_specialise
+    ;       spec_proc(
+                sp_ppid         :: pred_proc_id,
+                sp_name         :: sym_name
+            ).
+
+:- pred get_or_create_spec_par_proc(list(arg_pos)::in,
+    par_proc_call_pattern::in, pred_proc_id::in, maybe_spec_proc::out,
+    spec_info::in, spec_info::out) is det.
+
+get_or_create_spec_par_proc(FutureArgs, CallPattern, OrigPPId, MaybeSpecProc,
+        !SpecInfo) :-
     (
         find_spec_par_proc_for_call_pattern(!.SpecInfo ^ spec_done_procs,
             !.SpecInfo ^ spec_pending_procs, CallPattern, SpecNewParProc)
     ->
-        SpecNewParProc = new_par_proc(SpecPPId, SpecSymName)
+        SpecNewParProc = new_par_proc(SpecPPId, SpecSymName),
+        MaybeSpecProc = spec_proc(SpecPPId, SpecSymName)
     ;
+        % This check prevents invalid code from being generated.  See also
+        % a similar check in maybe_specialize_call_and_goals/6
+        %
+        % Don't push signals or waits into any procedure that has
+        % already been specialised but doesn't match our specialisation.
+        PendingParProcsList = values(!.SpecInfo ^ spec_pending_procs),
+        not (
+            (
+                member(!.SpecInfo ^ spec_done_procs, _, DoneOrPendingParProc)
+            ;
+                member(DoneOrPendingParProc, PendingParProcsList)
+            ),
+            OrigPPId = DoneOrPendingParProc ^ new_ppid
+        )
+    ->
         % Queue a new parallel procedure to be made. We add the new specialized
         % predicate and procedure to the module_info now; its final body
         % will be set later.
         ModuleInfo0 = !.SpecInfo ^ spec_module_info,
         PendingParProcs0 = !.SpecInfo ^ spec_pending_procs,
+        RevProcMap0 = !.SpecInfo ^ spec_rev_proc_map,
         create_new_spec_parallel_pred(FutureArgs, OrigPPId, SpecPPId, SpecName,
             ModuleInfo0, ModuleInfo),
         module_info_get_name(ModuleInfo, ModuleName),
         SpecSymName = qualified(ModuleName, SpecName),
+        MaybeSpecProc = spec_proc(SpecPPId, SpecSymName),
         queue_par_proc(CallPattern, new_par_proc(SpecPPId, SpecSymName),
             PendingParProcs0, PendingParProcs),
+        RevProcMap = map.det_insert(RevProcMap0, SpecPPId, OrigPPId),
         !SpecInfo ^ spec_module_info := ModuleInfo,
-        !SpecInfo ^ spec_pending_procs := PendingParProcs
-    ),
-
-    % Replace the call with a call to the parallelised procedure.
-    list.map(replace_args_with_futures(WaitPairs ++ SignalPairs),
-        CallVars, NewCallVars),
-    SpecPPId = proc(SpecPredId, SpecProcId),
-    GoalExpr = plain_call(SpecPredId, SpecProcId, NewCallVars, not_builtin,
-        Context, SpecSymName),
-    Goal = hlds_goal(GoalExpr, GoalInfo0).
+        !SpecInfo ^ spec_pending_procs := PendingParProcs,
+        !SpecInfo ^ spec_rev_proc_map := RevProcMap
+    ;
+        MaybeSpecProc = will_not_specialise
+    ).
 
 :- pred find_spec_par_proc_for_call_pattern(done_par_procs::in,
     pending_par_procs::in, par_proc_call_pattern::in,
