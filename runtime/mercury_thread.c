@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2001, 2003, 2005-2007, 2009-2010 The University of Melbourne.
+** Copyright (C) 1997-2001, 2003, 2005-2007, 2009-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -29,11 +29,16 @@
   #endif
   MercuryLock       MR_global_lock;
   #ifndef MR_HIGHLEVEL_CODE
-  MercuryLock       MR_init_engine_array_lock;
+  static MercuryLock      MR_next_engine_id_lock;
+  static MR_EngineId      MR_next_engine_id = 0;
+
+  /*
+  ** This array is indexed by engine id.  No locking is necessary.
+  */
+  MercuryEngine **MR_all_engine_bases = NULL;
   #endif
 #endif
 
-volatile MR_bool    MR_exit_now;
 MR_bool             MR_debug_threads = MR_FALSE;
 
 MR_Unsigned         MR_num_thread_local_mutables = 0;
@@ -50,12 +55,6 @@ MR_Integer          MR_thread_barrier_count;
 #endif
 
 #ifdef MR_THREAD_SAFE
-
-  #if defined(MR_PTHREADS_WIN32)
-    #define SELF_THREAD_ID ((long) pthread_self().p)
-  #else
-    #define SELF_THREAD_ID ((long) pthread_self())
-  #endif
 
 static void *
 MR_create_thread_2(void *goal);
@@ -102,7 +101,6 @@ MR_create_thread_2(void *goal0)
         (goal->func)(goal->arg);
         /* XXX: We should clean up the engine here */
     } else {
-        MR_pin_thread();
         MR_init_thread(MR_use_later);
     }
 
@@ -117,6 +115,10 @@ MR_init_thread(MR_when_to_use when_to_use)
     MercuryEngine   *eng;
 
 #ifdef MR_THREAD_SAFE
+  #ifdef MR_LL_PARALLEL_CONJ
+    unsigned        cpu;
+  #endif
+
     /*
     ** Check to see whether there is already an engine that is initialized
     ** in this thread.  If so we just return, there's nothing for us to do.
@@ -124,6 +126,24 @@ MR_init_thread(MR_when_to_use when_to_use)
     if (MR_thread_engine_base != NULL) {
         return MR_FALSE;
     }
+  #ifdef MR_LL_PARALLEL_CONJ
+    switch (when_to_use) {
+        case MR_use_later:
+            cpu = MR_pin_thread();
+            break;
+        case MR_use_now:
+            /*
+            ** Don't pin the primordial thread here, it's already been done.
+            */
+            cpu = MR_primordial_thread_cpu;
+            break;
+        /*
+        ** TODO: We may use the cpu value here to determine which CPUs which
+        ** engines are on.  This can help with some interesting work stealing
+        ** algorithms.
+        */
+    }
+  #endif
 #endif
     eng = MR_create_engine();
 
@@ -134,17 +154,17 @@ MR_init_thread(MR_when_to_use when_to_use)
     MR_engine_base_word = (MR_Word) eng;
   #endif
   #ifndef MR_HIGHLEVEL_CODE
-    MR_LOCK(&MR_init_engine_array_lock, "MR_init_thread");
-    {
-        int i;
-        for (i = 0; i < MR_num_threads; i++) {
-            if (!MR_all_engine_bases[i]) {
-                MR_all_engine_bases[i] = eng;
-                break;
-            }
-        }
-    }
-    MR_UNLOCK(&MR_init_engine_array_lock, "MR_init_thread");
+    MR_LOCK(&MR_next_engine_id_lock, "MR_init_thread");
+    eng->MR_eng_id = MR_next_engine_id++;
+    MR_UNLOCK(&MR_next_engine_id_lock, "MR_init_thread");
+
+    eng->MR_eng_victim_counter = (eng->MR_eng_id + 1) % MR_num_threads;
+
+    MR_all_engine_bases[eng->MR_eng_id] = eng;
+    MR_spark_deques[eng->MR_eng_id] = &(eng->MR_eng_spark_deque);
+    #ifdef MR_THREADSCOPE
+        MR_threadscope_setup_engine(eng);
+    #endif
   #endif
 #else
     MR_memcpy(&MR_engine_base, eng, sizeof(MercuryEngine));
@@ -152,9 +172,10 @@ MR_init_thread(MR_when_to_use when_to_use)
 #endif
     MR_load_engine_regs(MR_cur_engine());
 
-#ifdef  MR_THREAD_SAFE
+#ifdef MR_THREAD_SAFE
     MR_ENGINE(MR_eng_owner_thread) = pthread_self();
-  #ifdef MR_THREADSCOPE
+  #ifdef MR_LL_PARALLEL_CONJ
+    #ifdef MR_THREADSCOPE
     /*
     ** TSC Synchronization is not used, support is commented out.  See
     ** runtime/mercury_threadscope.h for an explanation.
@@ -163,6 +184,7 @@ MR_init_thread(MR_when_to_use when_to_use)
         MR_threadscope_sync_tsc_slave();
     }
     */
+    #endif
   #endif
 #endif
 
@@ -172,10 +194,9 @@ MR_init_thread(MR_when_to_use when_to_use)
             MR_fatal_error("Sorry, not implemented: "
                 "--high-level-code and multiple engines");
 #else
-            /* This call may never return */
-            (void) MR_call_engine(MR_ENTRY(MR_do_runnext), MR_FALSE);
+            /* This call never returns */
+            (void) MR_call_engine(MR_ENTRY(MR_do_idle), MR_FALSE);
 #endif
-            MR_destroy_engine(eng);
             return MR_FALSE;
 
         case MR_use_now :
@@ -235,7 +256,7 @@ MR_destroy_thread(void *eng0)
 #if defined(MR_THREAD_SAFE)
 /*
 ** XXX: maybe these should only be conditionally compiled when MR_DEBUG_THREADS
-** is also set. - pbone 
+** is also set. - pbone
 */
 
 int
@@ -244,8 +265,12 @@ MR_mutex_lock(MercuryLock *lock, const char *from)
     int err;
 
     fprintf(stderr, "%ld locking on %p (%s)\n",
-        SELF_THREAD_ID, lock, from);
+        MR_SELF_THREAD_ID, lock, from);
+    fflush(stderr);
     err = pthread_mutex_lock(lock);
+    fprintf(stderr, "%ld lock returned %d\n",
+        MR_SELF_THREAD_ID, err);
+    fflush(stderr);
     assert(err == 0);
     return err;
 }
@@ -256,8 +281,12 @@ MR_mutex_unlock(MercuryLock *lock, const char *from)
     int err;
 
     fprintf(stderr, "%ld unlocking on %p (%s)\n",
-        SELF_THREAD_ID, lock, from);
+        MR_SELF_THREAD_ID, lock, from);
+    fflush(stderr);
     err = pthread_mutex_unlock(lock);
+    fprintf(stderr, "%ld unlock returned %d\n",
+        MR_SELF_THREAD_ID, err);
+    fflush(stderr);
     assert(err == 0);
     return err;
 }
@@ -267,9 +296,13 @@ MR_cond_signal(MercuryCond *cond, const char *from)
 {
     int err;
 
-    fprintf(stderr, "%ld signaling %p (%s)\n", 
-        SELF_THREAD_ID, cond, from);
+    fprintf(stderr, "%ld signaling %p (%s)\n",
+        MR_SELF_THREAD_ID, cond, from);
+    fflush(stderr);
     err = pthread_cond_signal(cond);
+    fprintf(stderr, "%ld signal returned %d\n",
+        MR_SELF_THREAD_ID, err);
+    fflush(stderr);
     assert(err == 0);
     return err;
 }
@@ -279,9 +312,13 @@ MR_cond_broadcast(MercuryCond *cond, const char *from)
 {
     int err;
 
-    fprintf(stderr, "%ld broadcasting %p (%s)\n", 
-        SELF_THREAD_ID, cond, from);
+    fprintf(stderr, "%ld broadcasting %p (%s)\n",
+        MR_SELF_THREAD_ID, cond, from);
+    fflush(stderr);
     err = pthread_cond_broadcast(cond);
+    fprintf(stderr, "%ld broadcast returned %d\n",
+        MR_SELF_THREAD_ID, err);
+    fflush(stderr);
     assert(err == 0);
     return err;
 }
@@ -291,24 +328,62 @@ MR_cond_wait(MercuryCond *cond, MercuryLock *lock, const char *from)
 {
     int err;
 
-    fprintf(stderr, "%ld waiting on cond: %p lock: %p (%s)\n", 
-        SELF_THREAD_ID, cond, lock, from);
+    fprintf(stderr, "%ld waiting on cond: %p lock: %p (%s)\n",
+        MR_SELF_THREAD_ID, cond, lock, from);
+    fflush(stderr);
     err = pthread_cond_wait(cond, lock);
+    fprintf(stderr, "%ld wait returned %d\n",
+        MR_SELF_THREAD_ID, err);
+    fflush(stderr);
     assert(err == 0);
     return err;
 }
 
 int
-MR_cond_timed_wait(MercuryCond *cond, MercuryLock *lock, 
+MR_cond_timed_wait(MercuryCond *cond, MercuryLock *lock,
     const struct timespec *abstime, const char *from)
 {
     int err;
-    
+
     fprintf(stderr, "%ld timed-waiting on cond: %p lock: %p (%s)\n",
-        SELF_THREAD_ID, cond, lock, from);
+        MR_SELF_THREAD_ID, cond, lock, from);
+    fflush(stderr);
     err = pthread_cond_timedwait(cond, lock, abstime);
     fprintf(stderr, "%ld timed-wait returned %d\n",
-        SELF_THREAD_ID, err);
+        MR_SELF_THREAD_ID, err);
+    fflush(stderr);
+    return err;
+}
+
+int
+MR_sem_wait(MercurySem *sem, const char *from)
+{
+    int err;
+
+    fprintf(stderr, "%ld waiting on sem: %p (%s)\n",
+        MR_SELF_THREAD_ID, sem, from);
+    fflush(stderr);
+    err = sem_wait(sem);
+    fprintf(stderr, "%ld wait returned %d\n",
+        MR_SELF_THREAD_ID, err);
+    fflush(stderr);
+
+    return err;
+}
+
+int
+MR_sem_post(MercurySem *sem, const char *from)
+{
+    int err;
+
+    fprintf(stderr, "%ld posting to sem: %p (%s)\n",
+        MR_SELF_THREAD_ID, sem, from);
+    fflush(stderr);
+    err = sem_post(sem);
+    fprintf(stderr, "%ld post returned %d\n",
+        MR_SELF_THREAD_ID, err);
+    fflush(stderr);
+
     return err;
 }
 
@@ -366,3 +441,27 @@ MR_clone_thread_local_mutables(const MR_ThreadLocalMuts *old_muts)
 
     return new_muts;
 }
+
+#ifdef MR_THREAD_SAFE
+void
+MR_init_thread_stuff(void) {
+    int i;
+
+    pthread_mutex_init(&MR_next_engine_id_lock, MR_MUTEX_ATTR);
+    pthread_mutex_init(&MR_global_lock, MR_MUTEX_ATTR);
+  #ifndef MR_THREAD_LOCAL_STORAGE
+    MR_KEY_CREATE(&MR_engine_base_key, NULL);
+  #endif
+    MR_KEY_CREATE(&MR_exception_handler_key, NULL);
+    pthread_mutex_init(&MR_thread_barrier_lock, MR_MUTEX_ATTR);
+  #ifdef MR_HIGHLEVEL_CODE
+    pthread_cond_init(&MR_thread_barrier_cond, MR_COND_ATTR);
+  #endif
+
+    MR_all_engine_bases = MR_GC_malloc(sizeof(MercuryEngine*)*MR_num_threads);
+    for (i = 0; i < MR_num_threads; i++) {
+        MR_all_engine_bases[i] = NULL;
+    }
+}
+#endif
+

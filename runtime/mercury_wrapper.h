@@ -259,10 +259,6 @@ extern	MR_Unsigned	MR_contexts_per_thread;
 */
 extern	MR_Unsigned	MR_max_outstanding_contexts;
 
-/* work-stealing tunables (documented in mercury_wrapper.c) */
-extern	MR_Unsigned MR_worksteal_max_attempts;
-extern	MR_Unsigned MR_worksteal_sleep_msecs;
-
 extern  MR_Unsigned MR_num_threads;
 
 #if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)

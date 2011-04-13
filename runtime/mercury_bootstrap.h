@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2004, 2006, 2009-2010 The University of Melbourne.
+** Copyright (C) 1999-2004, 2006, 2009-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -217,9 +217,7 @@ typedef MR_Bool			Bool;
 #define	init_context(context)		MR_init_context(context)
 #define	create_context()		MR_create_context()
 #define	destroy_context(context)	MR_destroy_context(context)
-#define	init_thread_stuff(context)	MR_init_thread_stuff(context)
 #define	flounder()			MR_flounder()
-#define	runnext()			MR_runnext()
 #define	schedule(context)		MR_schedule(context)
 #define	set_min_heap_reclamation_point(c) MR_set_min_heap_reclamation_point(c)
 #define	save_hp_in_context(context)	MR_save_hp_in_context(context)

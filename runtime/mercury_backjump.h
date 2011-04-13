@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2008 The University of Melbourne.
+** Copyright (C) 2008, 2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -60,7 +60,7 @@ typedef struct MR_BackJumpHandler_Struct {
         ** MR_backjump_next_choice_id_key stores a key that can be used
         ** to get the next available backjump choice id for the current thread.
         ** NOTE: changes here may need to be reflected in the function
-        ** MR_init_thread_stuff() in mercury_context.c.
+        ** MR_init_context_stuff() in mercury_context.c.
         */
         extern MercuryThreadKey MR_backjump_handler_key;
         extern MercuryThreadKey MR_backjump_next_choice_id_key;

@@ -10214,18 +10214,6 @@ multiplied by the word size in bytes.
 @c Sets the size of the redzone on the trail to @var{size} kilobytes
 @c multiplied by the word size in bytes.
 
-@c @sp 1
-@c @item --worksteal-max-attempts @var{attempts}
-@c @findex --worksteal-max-attempts (runtime option)
-@c Tells idle Mercury engines to attempt to steal parallel conjuncts
-@c up to a maximum of @var{attempts} times before sleeping.
-
-@c @sp 1
-@c @item --worksteal-sleep-msecs @var{milliseconds}
-@c @findex --worksteal-sleep-msecs (runtime option)
-@c Sets the amount of time that an idle Mercury engine should sleep before
-@c attempting more work-stealing attempts.
-
 @sp 1
 @item -i @var{filename}
 @itemx --mdb-in @var{filename}

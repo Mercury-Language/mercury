@@ -315,4 +315,6 @@ typedef struct MR_RegionProfUnit_Struct         MR_RegionProfUnit;
 
 typedef struct MR_Future_Struct                 MR_Future;
 
+typedef MR_uint_least16_t   MR_EngineId;
+
 #endif /* not MERCURY_TYPES_H */

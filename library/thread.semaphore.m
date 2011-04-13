@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001,2003-2004, 2006-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2000-2001,2003-2004, 2006-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -218,7 +218,7 @@ ML_finalize_semaphore(void *obj, void *cd)
         MR_schedule_context(MR_ENGINE(MR_eng_this_context));
 
         MR_ENGINE(MR_eng_this_context) = NULL;
-        MR_runnext();
+        MR_idle();
 
       #ifndef ML_THREAD_AVOID_LABEL_ADDRS
         signal_skip_to_the_end_1: ;
@@ -239,7 +239,7 @@ ML_finalize_semaphore(void *obj, void *cd)
         MR_schedule_context(MR_ENGINE(MR_eng_this_context));
 
         MR_ENGINE(MR_eng_this_context) = NULL;
-        MR_runnext();
+        MR_idle();
 
       #ifndef ML_THREAD_AVOID_LABEL_ADDRS
         signal_skip_to_the_end_2: ;
@@ -317,7 +317,7 @@ ML_finalize_semaphore(void *obj, void *cd)
 
         /* Make the current engine do something else. */
         MR_ENGINE(MR_eng_this_context) = NULL;
-        MR_runnext();
+        MR_idle();
 
       #ifndef ML_THREAD_AVOID_LABEL_ADDRS
         wait_skip_to_the_end: ;

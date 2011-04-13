@@ -2550,7 +2550,7 @@ io.check_err(Stream, Res, !IO) :-
     }
 
     ML_maybe_make_err_msg(RetVal != 0, errno, ""read failed: "",
-        MR_PROC_LABEL, MR_TRUE, RetStr);
+        ""io.ferror/5"", MR_TRUE, RetStr);
     MR_update_io(IO0, IO);
 ").
 
@@ -2635,7 +2635,8 @@ io.make_err_msg(Msg0, Msg, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io,
         does_not_affect_liveness, no_sharing],
 "
-    ML_maybe_make_err_msg(MR_TRUE, Error, Msg0, MR_PROC_LABEL, MR_FALSE, Msg);
+    ML_maybe_make_err_msg(MR_TRUE, Error, Msg0, ""io.make_err_msg/5"",
+        MR_FALSE, Msg);
     MR_update_io(IO0, IO);
 ").
 
@@ -2852,7 +2853,7 @@ io.file_modification_time(File, Result, !IO) :-
         Status = 1;
     } else {
         ML_maybe_make_err_msg(MR_TRUE, errno, ""stat() failed: "",
-            MR_PROC_LABEL, MR_TRUE, Msg);
+            ""io.file_modification_time_2/6"", MR_TRUE, Msg);
         Status = 0;
     }
 #else
@@ -3937,7 +3938,7 @@ io.file_id(FileName, Result, !IO) :-
         Status = 1;
     } else {
         ML_maybe_make_err_msg(MR_TRUE, errno, ""stat() failed: "",
-            MR_PROC_LABEL, MR_TRUE, Msg);
+            ""io.file_id_2/6"", MR_TRUE, Msg);
         Status = 0;
     }
     MR_update_io(IO0, IO);
@@ -5071,7 +5072,7 @@ source_name(stderr) = "<standard error>".
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         no_sharing],
 "
-    MR_LOCK(&ML_io_stream_db_lock, MR_PROC_LABEL);
+    MR_LOCK(&ML_io_stream_db_lock, ""io.lock_stream_db/2"");
     IO = IO0;
 ").
 
@@ -5084,7 +5085,7 @@ io.lock_stream_db(!IO).
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         no_sharing],
 "
-    MR_UNLOCK(&ML_io_stream_db_lock, MR_PROC_LABEL);
+    MR_UNLOCK(&ML_io_stream_db_lock, ""io.unlock_stream_db/2"");
     IO = IO0;
 ").
 
@@ -9594,7 +9595,7 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
 
 #if defined(MR_HAVE_ENVIRON) && !defined(MR_MAC_OSX)
     #include <unistd.h>
-    
+
     #if !defined(MR_MINGW)
         extern char **environ;
     #endif
@@ -9634,7 +9635,7 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
     argv[3] = NULL;
 
     /* Protect `environ' from concurrent modifications. */
-    MR_OBTAIN_GLOBAL_LOCK(MR_PROC_LABEL);
+    MR_OBTAIN_GLOBAL_LOCK(""io.call_system_code/5"");
 
     /*
     ** See the comment at the head of the body of preceding foreign_decl
@@ -9647,13 +9648,14 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
         err = posix_spawn(&pid, ""/bin/sh"", NULL, NULL, argv, environ);
     #endif
 
-    MR_RELEASE_GLOBAL_LOCK(MR_PROC_LABEL);
+    MR_RELEASE_GLOBAL_LOCK(""io.call_system_code/5"");
 
     if (err != 0) {
         /* Spawn failed. */
         Status = 127;
         ML_maybe_make_err_msg(MR_TRUE, errno,
-            ""error invoking system command: "", MR_PROC_LABEL, MR_TRUE, Msg);
+            ""error invoking system command: "", ""io.call_system_code/5"",
+            MR_TRUE, Msg);
     } else {
         /* Wait for the spawned process to exit. */
         do {
@@ -9662,8 +9664,8 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
         if (err == -1) {
             Status = 127;
             ML_maybe_make_err_msg(MR_TRUE, errno,
-                ""error invoking system command: "", MR_PROC_LABEL, MR_TRUE,
-                Msg);
+                ""error invoking system command: "", ""io.call_system_code/5"",
+                MR_TRUE, Msg);
         } else {
             Status = st;
             Msg = MR_make_string_const("""");
@@ -9681,7 +9683,8 @@ io.close_binary_output(binary_output_stream(Stream), !IO) :-
         */
         Status = 127;
         ML_maybe_make_err_msg(MR_TRUE, errno,
-            ""error invoking system command: "", MR_PROC_LABEL, MR_TRUE, Msg);
+            ""error invoking system command: "", ""io.call_system_code/5"",
+            MR_TRUE, Msg);
     } else {
         Msg = MR_make_string_const("""");
     }
@@ -10210,7 +10213,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
     fd = mkstemp(FileName);
     if (fd == -1) {
         ML_maybe_make_err_msg(MR_TRUE, errno,
-            ""error opening temporary file: "", MR_PROC_LABEL, MR_TRUE,
+            ""error opening temporary file: "", ""io.do_make_temp/8"", MR_TRUE,
             ErrorMessage);
         Error = -1;
     } else {
@@ -10218,7 +10221,7 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
             err = close(fd);
         } while (err == -1 && MR_is_eintr(errno));
         ML_maybe_make_err_msg(err, errno,
-            ""error closing temporary file: "", MR_PROC_LABEL, MR_TRUE,
+            ""error closing temporary file: "", ""io.do_make_temp/8"", MR_TRUE,
             ErrorMessage);
         Error = err;
     }
@@ -10261,16 +10264,16 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
         num_tries < ML_MAX_TEMPNAME_TRIES);
     if (fd == -1) {
         ML_maybe_make_err_msg(MR_TRUE, errno,
-            ""error opening temporary file: "", MR_PROC_LABEL, MR_TRUE,
-            ErrorMessage);
+            ""error opening temporary file: "", ""io.do_make_temp/8"",
+            MR_TRUE, ErrorMessage);
         Error = -1;
     }  else {
         do {
             err = close(fd);
         } while (err == -1 && MR_is_eintr(errno));
         ML_maybe_make_err_msg(err, errno,
-            ""error closing temporary file: "", MR_PROC_LABEL, MR_TRUE,
-            ErrorMessage);
+            ""error closing temporary file: "", ""io.do_make_temp/8"",
+            MR_TRUE, ErrorMessage);
         Error = err;
     }
 #endif
@@ -10565,7 +10568,7 @@ io.remove_file(FileName, Result, !IO) :-
 "{
     RetVal = remove(FileName);
     ML_maybe_make_err_msg(RetVal != 0, errno, ""remove failed: "",
-        MR_PROC_LABEL, MR_TRUE, RetStr);
+        ""io.remove_file_2/5"", MR_TRUE, RetStr);
     MR_update_io(IO0, IO);
 }").
 
@@ -10704,7 +10707,7 @@ io.rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
 "{
     RetVal = rename(OldFileName, NewFileName);
     ML_maybe_make_err_msg(RetVal != 0, errno, ""rename failed: "",
-        MR_PROC_LABEL, MR_TRUE, RetStr);
+        ""io.rename_file_2/6"", MR_TRUE, RetStr);
     MR_update_io(IO0, IO);
 }").
 

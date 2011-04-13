@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2007-2009 The University of Melbourne.
+% Copyright (C) 2007-2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -395,10 +395,10 @@
     MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume =
         MR_ENTRY(mercury__stm_builtin__block_thread_resume);
 
-    MR_ENGINE(MR_eng_this_context) = NULL;
     MR_UNLOCK(&MR_STM_lock, ""MR_STM_block_thread"");
-    MR_runnext();
 
+    MR_ENGINE(MR_eng_this_context) = NULL;
+    MR_idle();
 #endif
 ").
 

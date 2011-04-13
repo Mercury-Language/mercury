@@ -586,6 +586,9 @@ MR_create_or_reuse_zone(const char *name, size_t size, size_t offset,
         zone = MR_create_new_zone(size, redzone_size);
     }
 
+#ifdef  MR_DEBUG_STACK_SEGMENTS
+    MR_debug_log_message("Configuring zone");
+#endif
     zone->MR_zone_name = name;
 #ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
     zone->MR_zone_handler = handler;
@@ -808,6 +811,10 @@ MR_setup_redzones(MR_MemoryZone *zone)
 
     assert(size > redsize);
 
+#ifdef MR_DEBUG_CONTEXT_CREATION_SPEED
+    MR_debug_log_message("Setting up redzone of size: 0x%x.", redsize);
+#endif
+
     /*
     ** setup the redzone
     */
@@ -1016,6 +1023,14 @@ MR_get_free_zone(size_t size)
     MR_MemoryZone       *zone;
     MR_MemoryZonesFree  *zones_list;
     MR_MemoryZonesFree  *zones_list_prev;
+
+    /*
+    ** Before using the lock below see if there is at least one zone on the
+    ** list.
+    */
+    if (!free_memory_zones) {
+        return NULL;
+    }
 
     /*
     ** Unlink the first zone on the free-list, link it onto the used-list

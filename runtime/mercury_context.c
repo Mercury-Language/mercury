@@ -19,6 +19,9 @@ ENDINIT
 #ifdef MR_THREAD_SAFE
   #include "mercury_thread.h"
   #include "mercury_stm.h"
+  #ifndef MR_HIGHLEVEL_CODE
+    #include <semaphore.h>
+  #endif
 #endif
 #ifdef MR_CAN_DO_PENDING_IO
   #include <sys/types.h>	/* for fd_set */
@@ -63,12 +66,61 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
 
 #ifdef  MR_LL_PARALLEL_CONJ
 static void
-MR_add_spark_deque(MR_SparkDeque *sd);
-static void
-MR_delete_spark_deque(const MR_SparkDeque *sd);
-static void
 MR_milliseconds_from_now(struct timespec *timeout, unsigned int msecs);
 #endif
+
+#ifdef MR_THREAD_SAFE
+
+/*
+** These states are bitfields so they can be combined when passed to
+** try_wake_engine.  The definitions of the starts are:
+**
+** working      the engine has work to do and is working on it.
+**
+** sleeping     The engine has no work to do and is sleeping on it's sleep
+**              semaphore.
+**
+** idle         The engine has recently finished it's work and is looking for
+**              more work before it goes to sleep.  This state is useful when
+**              there are no sleeping engines but there are idle engines,
+**              signalling an idle engine will prevent it from sleeping and
+**              allow it to re-check the work queues.
+**
+** woken        The engine was either sleeping or idle and has been signaled
+**              and possibly been given work to do.  DO NOT signal these
+**              engines again doing so may leak work.
+*/
+#define ENGINE_STATE_WORKING    0x0001
+#define ENGINE_STATE_SLEEPING   0x0002
+#define ENGINE_STATE_IDLE       0x0004
+#define ENGINE_STATE_WOKEN      0x0008
+#define ENGINE_STATE_ALL        0xFFFF
+
+struct engine_sleep_sync_i {
+    sem_t                               es_sleep_semaphore;
+    sem_t                               es_wake_semaphore;
+    volatile unsigned                   es_state;
+    volatile unsigned                   es_action;
+    union MR_engine_wake_action_data    es_action_data;
+};
+
+#define CACHE_LINE_SIZE 64
+#define PAD_CACHE_LINE(s) \
+    ((CACHE_LINE_SIZE) > (s) ? (CACHE_LINE_SIZE) - (s) : 0)
+
+typedef struct {
+    struct engine_sleep_sync_i d;
+    /*
+    ** Padding ensures that engine sleep synchronisation data for different
+    ** engines doesn't share cache lines.
+    */
+    char padding[PAD_CACHE_LINE(sizeof(struct engine_sleep_sync_i))];
+} engine_sleep_sync;
+
+static
+engine_sleep_sync *engine_sleep_sync_data;
+#endif /* MR_THREAD_SAFE */
+
 
 /*
 ** The run queue is protected with MR_runqueue_lock and signalled with
@@ -78,7 +130,6 @@ MR_Context              *MR_runqueue_head;
 MR_Context              *MR_runqueue_tail;
 #ifdef  MR_THREAD_SAFE
   MercuryLock           MR_runqueue_lock;
-  MercuryCond           MR_runqueue_cond;
 #endif
 
 MR_PendingContext       *MR_pending_contexts;
@@ -113,14 +164,13 @@ static MR_Integer       MR_profile_parallel_regular_context_kept = 0;
 /*
 ** Local variables for thread pinning.
 */
-#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY)
+#ifdef MR_LL_PARALLEL_CONJ
 static MercuryLock      MR_next_cpu_lock;
 MR_bool                 MR_thread_pinning_configured = MR_TRUE;
 MR_bool                 MR_thread_pinning_in_use;
 static MR_Unsigned      MR_next_cpu = 0;
-  #ifdef  MR_HAVE_SCHED_GETCPU
-static MR_Integer       MR_primordial_thread_cpu = -1;
-  #endif
+/* This is initialised the first the MR_pin_primordial_thread() is called */
+MR_Unsigned             MR_primordial_thread_cpu;
 #endif
 
 #if defined(MR_LL_PARALLEL_CONJ) && \
@@ -156,16 +206,30 @@ static MR_Context       *free_small_context_list = NULL;
 MR_Integer volatile         MR_num_idle_engines = 0;
 MR_Unsigned volatile        MR_num_exited_engines = 0;
 static MR_Integer volatile  MR_num_outstanding_contexts = 0;
+static sem_t                shutdown_semaphore;
 
 static MercuryLock MR_par_cond_stats_lock;
-static MercuryLock      spark_deques_lock;
-static MR_SparkDeque    **MR_spark_deques = NULL;
-static MR_Integer       MR_max_spark_deques = 0;
-static MR_Integer       MR_victim_counter = 0;
-
+/*
+** The spark deques are kept in engine id order.
+**
+** This array will contain MR_num_threads pointers to deques.
+*/
+MR_SparkDeque           **MR_spark_deques = NULL;
 #endif
 
 /*---------------------------------------------------------------------------*/
+
+#ifdef MR_LL_PARALLEL_CONJ
+/*
+** Try to wake up a sleeping message and tell it to do action.  The engine is
+** only woken if the engine is in one of the states in the bitfield states.  If
+** the engine is woekn the result of this function is MR_TRUE, otherwise it's
+** MR_FALSE.
+*/
+static MR_bool
+try_wake_engine(MR_EngineId engine_id, int action,
+    union MR_engine_wake_action_data *action_data, unsigned states);
+#endif
 
 /*
 ** Write out the profiling data that we collect during execution.
@@ -181,41 +245,31 @@ MR_do_pin_thread(int cpu);
 /*---------------------------------------------------------------------------*/
 
 void
-MR_init_thread_stuff(void)
+MR_init_context_stuff(void)
 {
+#ifdef MR_LL_PARALLEL_CONJ
+    unsigned i;
+#endif
+
 #ifdef  MR_THREAD_SAFE
 
     pthread_mutex_init(&MR_runqueue_lock, MR_MUTEX_ATTR);
-    pthread_cond_init(&MR_runqueue_cond, MR_COND_ATTR);
     pthread_mutex_init(&free_context_list_lock, MR_MUTEX_ATTR);
-    pthread_mutex_init(&MR_global_lock, MR_MUTEX_ATTR);
     pthread_mutex_init(&MR_pending_contexts_lock, MR_MUTEX_ATTR);
   #ifdef MR_LL_PARALLEL_CONJ
-    pthread_mutex_init(&spark_deques_lock, MR_MUTEX_ATTR);
     #ifdef MR_HAVE_SCHED_SETAFFINITY
     pthread_mutex_init(&MR_next_cpu_lock, MR_MUTEX_ATTR);
     #endif
     #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
     pthread_mutex_init(&MR_par_cond_stats_lock, MR_MUTEX_ATTR);
     #endif
+    sem_init(&shutdown_semaphore, 0, 0);
   #endif
     pthread_mutex_init(&MR_STM_lock, MR_MUTEX_ATTR);
-  #ifndef MR_THREAD_LOCAL_STORAGE
-    MR_KEY_CREATE(&MR_engine_base_key, NULL);
-  #endif
-    MR_KEY_CREATE(&MR_exception_handler_key, NULL);
 
   #ifdef MR_HIGHLEVEL_CODE
     MR_KEY_CREATE(&MR_backjump_handler_key, NULL);
     MR_KEY_CREATE(&MR_backjump_next_choice_id_key, (void *)0);
-  #endif
-
-    /* These are actually in mercury_thread.c. */
-    pthread_mutex_init(&MR_thread_barrier_lock, MR_MUTEX_ATTR);
-  #ifdef MR_HIGHLEVEL_CODE
-    pthread_cond_init(&MR_thread_barrier_cond, MR_COND_ATTR);
-  #else
-    pthread_mutex_init(&MR_init_engine_array_lock, MR_MUTEX_ATTR);
   #endif
 
     /*
@@ -247,6 +301,21 @@ MR_init_thread_stuff(void)
   #ifdef MR_LL_PARALLEL_CONJ
     MR_granularity_wsdeque_length =
         MR_granularity_wsdeque_length_factor * MR_num_threads;
+
+    MR_spark_deques = MR_GC_NEW_ARRAY(MR_SparkDeque*, MR_num_threads);
+    engine_sleep_sync_data = MR_GC_NEW_ARRAY(engine_sleep_sync, MR_num_threads);
+    for (i = 0; i < MR_num_threads; i++) {
+        MR_spark_deques[i] = NULL;
+
+        sem_init(&(engine_sleep_sync_data[i].d.es_sleep_semaphore), 0, 0);
+        sem_init(&(engine_sleep_sync_data[i].d.es_wake_semaphore), 0, 1);
+        /*
+        ** All engines are initially working (because telling them to wake up
+        ** before they're started would be useless.
+        */
+        engine_sleep_sync_data[i].d.es_state = ENGINE_STATE_WORKING;
+        engine_sleep_sync_data[i].d.es_action = MR_ENGINE_ACTION_NONE;
+    }
   #endif
 #endif /* MR_THREAD_SAFE */
 }
@@ -255,51 +324,75 @@ MR_init_thread_stuff(void)
 ** Pin the primordial thread first to the CPU it is currently using (where
 ** support is available).
 */
-
-void
+#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
+unsigned
 MR_pin_primordial_thread(void)
 {
-#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY)
-  #ifdef MR_HAVE_SCHED_GETCPU
+    unsigned    cpu;
+    int         temp;
+
     /*
     ** We don't need locking to pin the primordial thread as it is called
     ** before any other threads exist.
     */
-    if (MR_thread_pinning_configured && MR_thread_pinning_in_use) {
-        MR_primordial_thread_cpu = sched_getcpu();
-        if (MR_primordial_thread_cpu == -1) {
+    /*
+    ** We go through the motions of thread pinning even when thread pinning is
+    ** not supported as the allocation of CPUs to threads may be used later.
+    */
+  #ifdef MR_HAVE_SCHED_GETCPU
+    temp = sched_getcpu();
+    if (temp == -1) {
+        MR_primordial_thread_cpu = 0;
+    #ifdef MR_HAVE_SCHED_SET_AFFINITY
+        if (MR_thread_pinning_configured && MR_thread_pinning_in_use) {
             perror("Warning: unable to determine the current CPU for "
                 "the primordial thread: ");
-        } else {
-            MR_do_pin_thread(MR_primordial_thread_cpu);
         }
-    }
-    if (MR_primordial_thread_cpu == -1) {
-        MR_pin_thread();
+    #endif
+    } else {
+        MR_primordial_thread_cpu = temp;
     }
   #else
-    MR_pin_thread();
+    MR_primordial_thread_cpu = 0;
   #endif
-#endif
+  #ifdef MR_HAVE_SCHED_SET_AFFINITY
+    if (MR_thread_pinning) {
+        MR_do_pin_thread(MR_primordial_thread_cpu);
+    }
+  #endif
+    return MR_primordial_thread_cpu;
 }
+#endif /* defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) */
 
-void
+#if defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ)
+unsigned
 MR_pin_thread(void)
 {
-#if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY)
+    unsigned cpu;
+
+    /*
+    ** We go through the motions of thread pinning even when thread pinning is
+    ** not supported as the allocation of CPUs to threads may be used later.
+    */
     MR_LOCK(&MR_next_cpu_lock, "MR_pin_thread");
-    if (MR_thread_pinning_configured && MR_thread_pinning_in_use) {
-#if defined(MR_HAVE_SCHED_GETCPU)
-        if (MR_next_cpu == MR_primordial_thread_cpu) {
-            MR_next_cpu++;
-        }
-#endif
-        MR_do_pin_thread(MR_next_cpu);
+    if (MR_next_cpu == MR_primordial_thread_cpu) {
+        /*
+        ** Skip the CPU that the primordial thread was pinned on.
+        */
         MR_next_cpu++;
     }
+    cpu = MR_next_cpu++;
     MR_UNLOCK(&MR_next_cpu_lock, "MR_pin_thread");
+
+#ifdef MR_HAVE_SCHED_SETAFFINITY
+    if (MR_thread_pinning_configured && MR_thread_pinning_in_use) {
+        MR_do_pin_thread(cpu);
+    }
 #endif
+
+    return cpu;
 }
+#endif /* defined(MR_THREAD_SAFE) && defined(MR_LL_PARALLEL_CONJ) */
 
 #if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY)
 static void
@@ -327,16 +420,14 @@ MR_do_pin_thread(int cpu)
 #endif
 
 void
-MR_finalize_thread_stuff(void)
+MR_finalize_context_stuff(void)
 {
 #ifdef MR_THREAD_SAFE
     pthread_mutex_destroy(&MR_runqueue_lock);
-    pthread_cond_destroy(&MR_runqueue_cond);
     pthread_mutex_destroy(&free_context_list_lock);
-#endif
-
-#ifdef  MR_LL_PARALLEL_CONJ
-    pthread_mutex_destroy(&spark_deques_lock);
+  #ifdef MR_LL_PARALLEL_CONJ
+    sem_destroy(&shutdown_semaphore);
+  #endif
 #endif
 
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
@@ -487,7 +578,8 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
     c->MR_ctxt_next = NULL;
     c->MR_ctxt_resume = NULL;
 #ifdef  MR_THREAD_SAFE
-    c->MR_ctxt_resume_owner_thread = MR_null_thread();
+    c->MR_ctxt_resume_owner_engine = 0;
+    c->MR_ctxt_resume_engine_required = MR_FALSE;
     c->MR_ctxt_resume_c_depth = 0;
     c->MR_ctxt_saved_owners = NULL;
 #endif
@@ -512,6 +604,9 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
 #endif
     }
 
+#ifdef MR_DEBUG_CONTEXT_CREATION_SPEED
+    MR_debug_log_message("Allocating det stack");
+#endif
     if (c->MR_ctxt_detstack_zone == NULL) {
         if (gen != NULL) {
             c->MR_ctxt_detstack_zone = MR_create_or_reuse_zone("gen_detstack",
@@ -531,9 +626,15 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
             MR_fatal_error("MR_init_context_maybe_generator: prev det stack");
         }
     }
+#ifdef MR_DEBUG_CONTEXT_CREATION_SPEED
+    MR_debug_log_message("done");
+#endif
     c->MR_ctxt_prev_detstack_zones = NULL;
     c->MR_ctxt_sp = c->MR_ctxt_detstack_zone->MR_zone_min;
 
+#ifdef MR_DEBUG_CONTEXT_CREATION_SPEED
+    MR_debug_log_message("Allocating nondet stack");
+#endif
     if (c->MR_ctxt_nondetstack_zone == NULL) {
         if (gen != NULL) {
             c->MR_ctxt_nondetstack_zone = MR_create_or_reuse_zone("gen_nondetstack",
@@ -554,6 +655,9 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
                 "MR_init_context_maybe_generator: prev nondet stack");
         }
     }
+#ifdef MR_DEBUG_CONTEXT_CREATION_SPEED
+    MR_debug_log_message("done");
+#endif
     c->MR_ctxt_prev_nondetstack_zones = NULL;
     /*
     ** Note that maxfr and curfr point to the last word in the frame,
@@ -606,9 +710,6 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
 
   #ifdef MR_LL_PARALLEL_CONJ
     c->MR_ctxt_parent_sp = NULL;
-    MR_init_wsdeque(&c->MR_ctxt_spark_deque,
-        MR_INITIAL_LOCAL_SPARK_DEQUE_SIZE);
-    MR_add_spark_deque(&c->MR_ctxt_spark_deque);
   #endif /* MR_LL_PARALLEL_CONJ */
 
 #endif /* !MR_HIGHLEVEL_CODE */
@@ -707,9 +808,6 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
         c->MR_ctxt_detstack_zone = NULL;
         c->MR_ctxt_nondetstack_zone = NULL;
 #endif
-#ifdef MR_LL_PARALLEL_CONJ
-        c->MR_ctxt_spark_deque.MR_sd_active_array = NULL;
-#endif
 #ifdef MR_USE_TRAIL
         c->MR_ctxt_trail_zone = NULL;
 #endif
@@ -718,6 +816,9 @@ MR_create_context(const char *id, MR_ContextSize ctxt_size, MR_Generator *gen)
     c->MR_ctxt_num_id = allocate_context_id();
 #endif
 
+#ifdef MR_DEBUG_CONTEXT_CREATION_SPEED
+    MR_debug_log_message("Calling MR_init_context_maybe_generator");
+#endif
     MR_init_context_maybe_generator(c, id, gen);
     return c;
 }
@@ -742,6 +843,14 @@ MR_destroy_context(MR_Context *c)
     ** Save the context first, even though we're not saving a computation
     ** that's in progress we are saving some bookkeeping information.
     */
+    /*
+    ** TODO: When retrieving a context from the cached contexts, try to
+    ** retrieve one with a matching engine ID, or give each engine a local
+    ** cache of spare contexts.
+    */
+#ifdef MR_LL_PARALLEL_CONJ
+    c->MR_ctxt_resume_owner_engine = MR_ENGINE(MR_eng_id);
+#endif
     MR_save_context(c);
 
     /* XXX not sure if this is an overall win yet */
@@ -755,7 +864,6 @@ MR_destroy_context(MR_Context *c)
 
 #ifdef MR_LL_PARALLEL_CONJ
     MR_atomic_dec_int(&MR_num_outstanding_contexts);
-    MR_delete_spark_deque(&c->MR_ctxt_spark_deque);
 #endif
 
     MR_LOCK(&free_context_list_lock, "destroy_context");
@@ -793,133 +901,137 @@ allocate_context_id(void) {
 
 #ifdef MR_LL_PARALLEL_CONJ
 
-static void
-MR_add_spark_deque(MR_SparkDeque *sd)
-{
-    int slot;
-
-    MR_LOCK(&spark_deques_lock, "create_spark_deque");
-
-    for (slot = 0; slot < MR_max_spark_deques; slot++) {
-        if (MR_spark_deques[slot] == NULL) {
-            break;
-        }
-    }
-
-    if (slot == MR_max_spark_deques) {
-        if (MR_max_spark_deques == 0) {
-            MR_max_spark_deques = 1;
-        } else if (MR_max_spark_deques < 32) {
-            MR_max_spark_deques *= 2;
-        } else {
-            MR_max_spark_deques += 16;
-        }
-        MR_spark_deques = MR_GC_RESIZE_ARRAY(MR_spark_deques,
-            MR_SparkDeque *, MR_max_spark_deques);
-    }
-
-    MR_spark_deques[slot] = sd;
-
-    MR_UNLOCK(&spark_deques_lock, "create_spark_deque");
-}
-
-static void
-MR_delete_spark_deque(const MR_SparkDeque *sd)
-{
-    int i;
-
-    MR_LOCK(&spark_deques_lock, "delete_spark_deque");
-
-    for (i = 0; i < MR_max_spark_deques; i++) {
-        if (MR_spark_deques[i] == sd) {
-            MR_spark_deques[i] = NULL;
-            break;
-        }
-    }
-
-    MR_UNLOCK(&spark_deques_lock, "delete_spark_deque");
-}
-
 /* Search for a ready context which we can handle. */
 static MR_Context *
-MR_find_ready_context(MercuryThread thd, MR_Unsigned depth)
+MR_find_ready_context(void)
 {
     MR_Context  *cur;
     MR_Context  *prev;
+    MR_Context  *preferred_context;
+    MR_Context  *preferred_context_prev;
+    MR_EngineId engine_id = MR_ENGINE(MR_eng_id);
+    MR_Unsigned depth = MR_ENGINE(MR_eng_c_depth);
 
-    cur = MR_runqueue_head;
     /* XXX check pending io */
-    prev = NULL;
-    while (cur != NULL) {
-        if (MR_thread_equal(cur->MR_ctxt_resume_owner_thread, thd) &&
-            cur->MR_ctxt_resume_c_depth == depth)
-        {
-            cur->MR_ctxt_resume_owner_thread = MR_null_thread();
-            cur->MR_ctxt_resume_c_depth = 0;
-            break;
-        }
 
-        if (MR_thread_equal(cur->MR_ctxt_resume_owner_thread, MR_null_thread())) {
-            break;
+    /*
+    ** Give preference to contexts as follows:
+    **
+    **  A context that must be run on this engine.
+    **  A context that prefers to be run on this engine.
+    **  Any runnable context that may be ran on this engine.
+    **
+    ** TODO: There are other scheduling decisions we should test, such as
+    ** running older versus younger contexts, or more recently stopped/runnable
+    ** contexts.
+    */
+    cur = MR_runqueue_head;
+    prev = NULL;
+    preferred_context = NULL;
+    preferred_context_prev = NULL;
+    while (cur != NULL) {
+#ifdef MR_DEBUG_THREADS
+        if (MR_debug_threads) {
+            fprintf(stderr, "%ld Eng: %d, c_depth: %d, Considering context %p\n",
+                MR_SELF_THREAD_ID, engine_id, depth, cur);
+        }
+#endif
+        if (cur->MR_ctxt_resume_engine_required == MR_TRUE) {
+#ifdef MR_DEBUG_THREADS
+            if (MR_debug_threads) {
+                fprintf(stderr, "%ld Context requires engine %d and c_depth %d\n",
+                    MR_SELF_THREAD_ID, cur->MR_ctxt_resume_owner_engine,
+                    cur->MR_ctxt_resume_c_depth);
+            }
+#endif
+            if ((cur->MR_ctxt_resume_owner_engine == engine_id) &&
+                (cur->MR_ctxt_resume_c_depth == depth))
+            {
+                preferred_context = cur;
+                preferred_context_prev = prev;
+                cur->MR_ctxt_resume_engine_required = MR_FALSE;
+                /*
+                ** This is the best thread to resume.
+                */
+                break;
+            }
+        } else {
+#ifdef MR_DEBUG_THREADS
+            if (MR_debug_threads) {
+                fprintf(stderr, "%ld Context prefers engine %d\n",
+                    MR_SELF_THREAD_ID, cur->MR_ctxt_resume_owner_engine);
+            }
+#endif
+            if (cur->MR_ctxt_resume_owner_engine == engine_id) {
+                /*
+                ** This context prefers to be ran on this engine.
+                */
+                preferred_context = cur;
+                preferred_context_prev = prev;
+            } else if (preferred_context == NULL) {
+                /*
+                ** There is no preferred context yet, and this context is okay.
+                */
+                preferred_context = cur;
+                preferred_context_prev = prev;
+            }
         }
 
         prev = cur;
         cur = cur->MR_ctxt_next;
     }
 
-    if (cur != NULL) {
-        if (prev != NULL) {
-            prev->MR_ctxt_next = cur->MR_ctxt_next;
+    if (preferred_context != NULL) {
+        if (preferred_context_prev != NULL) {
+            preferred_context_prev->MR_ctxt_next =
+                preferred_context->MR_ctxt_next;
         } else {
-            MR_runqueue_head = cur->MR_ctxt_next;
+            MR_runqueue_head = preferred_context->MR_ctxt_next;
         }
-        if (MR_runqueue_tail == cur) {
-            MR_runqueue_tail = prev;
+        if (MR_runqueue_tail == preferred_context) {
+            MR_runqueue_tail = preferred_context_prev;
         }
+#ifdef MR_DEBUG_THREADS
+        if (MR_debug_threads) {
+            fprintf(stderr, "%ld Will run context %p\n",
+                MR_SELF_THREAD_ID, preferred_context);
+        }
+#endif
+    } else {
+#ifdef MR_DEBUG_THREADS
+        if (MR_debug_threads) {
+            fprintf(stderr, "%ld No suitable context to run\n",
+                MR_SELF_THREAD_ID);
+        }
+#endif
     }
 
-    return cur;
+    return preferred_context;
 }
 
 static MR_bool
 MR_attempt_steal_spark(MR_Spark *spark)
 {
-    int             max_attempts;
-    int             attempt;
+    int             i;
+    int             offset;
     MR_SparkDeque   *victim;
-    int             steal_top;
+    int             result = MR_FALSE;
 
-    /*
-    ** Protect against concurrent updates of MR_spark_deques and
-    ** MR_num_spark_deques. This allows only one thread to try to steal
-    ** work at any time, which may be a good thing as it limits the
-    ** amount of wasted effort.
-    */
-    MR_LOCK(&spark_deques_lock, "attempt_steal_spark");
+    offset = MR_ENGINE(MR_eng_victim_counter);
 
-    if (MR_max_spark_deques < MR_worksteal_max_attempts) {
-        max_attempts = MR_max_spark_deques;
-    } else {
-        max_attempts = MR_worksteal_max_attempts;
-    }
-
-    for (attempt = 0; attempt < max_attempts; attempt++) {
-        MR_victim_counter++;
-        victim = MR_spark_deques[MR_victim_counter % MR_max_spark_deques];
+    for (i = 0; i < MR_num_threads; i++) {
+        victim = MR_spark_deques[(i + offset) % MR_num_threads];
         if (victim != NULL) {
-            steal_top = MR_wsdeque_steal_top(victim, spark);
-            if (steal_top == 1) {
+            result = (MR_wsdeque_steal_top(victim, spark)) == 1;
+            if (result) {
                 /* Steal successful. */
-                MR_UNLOCK(&spark_deques_lock, "attempt_steal_spark");
-                return MR_TRUE;
+                break;
             }
         }
     }
 
-    MR_UNLOCK(&spark_deques_lock, "attempt_steal_spark");
-
-    /* Steal unsuccessful. */
-    return MR_FALSE;
+    MR_ENGINE(MR_eng_victim_counter) = (i % MR_num_threads);
+    return result;
 }
 
 static void
@@ -1089,9 +1201,61 @@ MR_check_pending_contexts(MR_bool block)
 void
 MR_schedule_context(MR_Context *ctxt)
 {
+#ifdef MR_THREAD_SAFE
+    MR_EngineId engine_id;
+    union MR_engine_wake_action_data wake_action_data;
+    wake_action_data.MR_ewa_context = ctxt;
+
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
     MR_threadscope_post_context_runnable(ctxt);
 #endif
+
+    /*
+    ** Try to give this context straight to the engine that would execute it.
+    */
+    engine_id = ctxt->MR_ctxt_resume_owner_engine;
+#ifdef MR_DEBUG_THREADS
+    if (MR_debug_threads) {
+        fprintf(stderr, "%ld Scheduling context %p desired engine: %d\n",
+            MR_SELF_THREAD_ID, ctxt, engine_id);
+    }
+#endif
+    if (ctxt->MR_ctxt_resume_engine_required == MR_TRUE) {
+        /*
+        ** Only engine_id may execute this context, attempt to wake it.
+        */
+#ifdef MR_DEBUG_THREADS
+        if (MR_debug_threads) {
+            fprintf(stderr, "%ld Context _must_ run on this engine\n",
+                MR_SELF_THREAD_ID);
+        }
+#endif
+        if (try_wake_engine(engine_id, MR_ENGINE_ACTION_CONTEXT,
+            &wake_action_data, ENGINE_STATE_IDLE | ENGINE_STATE_SLEEPING))
+        {
+            /*
+            ** We've successfully given the context to the correct engine.
+            */
+            return;
+        }
+    } else {
+        /*
+        ** If there is some idle engine try to wake it up, starting with the
+        ** preferred engine.
+        */
+        if (MR_num_idle_engines > 0) {
+            if (MR_try_wake_an_engine(engine_id, MR_ENGINE_ACTION_CONTEXT,
+                &wake_action_data, NULL))
+            {
+                /*
+                ** THe context has been given to a engine.
+                */
+                return;
+            }
+        }
+    }
+#endif
+
     MR_LOCK(&MR_runqueue_lock, "schedule_context");
     ctxt->MR_ctxt_next = NULL;
     if (MR_runqueue_tail) {
@@ -1101,234 +1265,215 @@ MR_schedule_context(MR_Context *ctxt)
         MR_runqueue_head = ctxt;
         MR_runqueue_tail = ctxt;
     }
-#ifdef MR_THREAD_SAFE
-    /*
-    ** Wake one or more threads waiting in MR_do_runnext. If there is a
-    ** possibility that a woken thread might not accept this context then
-    ** we wake up all the waiting threads.
-    */
-    if (MR_thread_equal(ctxt->MR_ctxt_resume_owner_thread, MR_null_thread())) {
-        MR_SIGNAL(&MR_runqueue_cond, "schedule_context");
-    } else {
-        MR_BROADCAST(&MR_runqueue_cond, "schedule_context");
-    }
-#endif
     MR_UNLOCK(&MR_runqueue_lock, "schedule_context");
 }
 
-#ifndef MR_HIGHLEVEL_CODE
-
-MR_define_extern_entry(MR_do_runnext);
-
-MR_BEGIN_MODULE(scheduler_module)
-    MR_init_entry_an(MR_do_runnext);
-MR_BEGIN_CODE
-
-MR_define_entry(MR_do_runnext);
-  #ifdef MR_THREAD_SAFE
+#ifdef MR_LL_PARALLEL_CONJ
+/*
+** Try to wake an engine, starting at the preferred engine
+*/
+MR_bool
+MR_try_wake_an_engine(MR_EngineId preferred_engine, int action,
+    union MR_engine_wake_action_data *action_data, MR_EngineId *target_eng)
 {
-    MR_Context          *ready_context;
-    MR_Code             *resume_point;
-    MR_Spark            spark;
-    MR_Unsigned         depth;
-    MercuryThread       thd;
-    struct timespec     timeout;
-
-    #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
-    MR_Timer            runnext_timer;
-    #endif
+    MR_EngineId current_engine;
+    int i = 0;
+    int state;
+    MR_bool result;
 
     /*
-    ** If this engine is holding onto a context, the context should not be
-    ** in the middle of running some code.
+    ** Right now this algorithm is naive, it searches from the preferred engine
+    ** around the loop until it finds an engine.
     */
-    MR_assert(
-        MR_ENGINE(MR_eng_this_context) == NULL
-    ||
-        MR_wsdeque_is_empty(
-            &MR_ENGINE(MR_eng_this_context)->MR_ctxt_spark_deque)
-    );
-
-    depth = MR_ENGINE(MR_eng_c_depth);
-    thd = MR_ENGINE(MR_eng_owner_thread);
-
-    MR_atomic_inc_int(&MR_num_idle_engines);
-
-    #ifdef MR_THREADSCOPE
-    MR_threadscope_post_looking_for_global_work();
-    #endif
-
-    MR_LOCK(&MR_runqueue_lock, "MR_do_runnext (i)");
-
-    while (1) {
-
-    #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
-        if (MR_profile_parallel_execution) {
-            MR_profiling_start_timer(&runnext_timer);
-        }
-    #endif
-
-        if (MR_exit_now) {
+    for (i = 0; i < MR_num_threads; i++) {
+        current_engine = (i + preferred_engine) % MR_num_threads;
+        if (current_engine == MR_ENGINE(MR_eng_id)) {
             /*
-            ** The primordial thread has the responsibility of cleaning
-            ** up the Mercury runtime. It cannot exit by this route.
+            ** Don't post superfluous events to ourself
             */
-            assert(!MR_thread_equal(thd, MR_primordial_thread));
-            MR_destroy_thread(MR_cur_engine());
-            MR_num_exited_engines++;
-            MR_UNLOCK(&MR_runqueue_lock, "MR_do_runnext (ii)");
-            MR_atomic_dec_int(&MR_num_idle_engines);
-            pthread_exit(0);
+            continue;
         }
-
-        ready_context = MR_find_ready_context(thd, depth);
-        if (ready_context != NULL) {
-            MR_UNLOCK(&MR_runqueue_lock, "MR_do_runnext (iii)");
-            MR_atomic_dec_int(&MR_num_idle_engines);
-            goto ReadyContext;
-        }
-        /*
-        ** If execution reaches here then there are no suitable ready contexts.
-        */
-
-        /*
-        ** A context may be created to execute a spark, so only attempt to
-        ** steal sparks if doing so would not exceed the limit of outstanding
-        ** contexts.
-        */
-        if (!((MR_ENGINE(MR_eng_this_context) == NULL) &&
-             (MR_max_outstanding_contexts <= MR_num_outstanding_contexts))) {
-            /* Attempt to steal a spark */
-            if (MR_attempt_steal_spark(&spark)) {
-                MR_UNLOCK(&MR_runqueue_lock, "MR_do_runnext (iv)");
-                MR_atomic_dec_int(&MR_num_idle_engines);
-                goto ReadySpark;
+        state = engine_sleep_sync_data[current_engine].d.es_state;
+        if (state == ENGINE_STATE_SLEEPING) {
+            result = try_wake_engine(current_engine, action, action_data,
+                    ENGINE_STATE_SLEEPING);
+            if (result) {
+                if (target_eng) {
+                    *target_eng = current_engine;
+                }
+                return MR_TRUE;
             }
         }
-
-        /* Nothing to do, go back to sleep. */
-    #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
-        if (MR_profile_parallel_execution) {
-            MR_profiling_stop_timer(&runnext_timer,
-                    &MR_profile_parallel_executed_nothing);
-        }
-    #endif
-
-        MR_milliseconds_from_now(&timeout, MR_worksteal_sleep_msecs);
-        MR_TIMED_WAIT(&MR_runqueue_cond, &MR_runqueue_lock, &timeout,
-            "do_runnext");
     }
-    /* unreachable */
-    abort();
 
-ReadyContext:
+    return MR_FALSE;
+}
 
-    /* Discard whatever unused context we may have and switch to tmp. */
-    if (MR_ENGINE(MR_eng_this_context) != NULL) {
-    #ifdef MR_DEBUG_STACK_SEGMENTS
-        MR_debug_log_message("destroying old context %p",
-            MR_ENGINE(MR_eng_this_context));
-    #endif
-        MR_destroy_context(MR_ENGINE(MR_eng_this_context));
-    }
-    #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
-    if (MR_profile_parallel_execution) {
-        MR_profiling_stop_timer(&runnext_timer,
-                &MR_profile_parallel_executed_contexts);
-    }
-    #endif
-    MR_ENGINE(MR_eng_this_context) = ready_context;
-    MR_load_context(ready_context);
-    #ifdef MR_DEBUG_STACK_SEGMENTS
-    MR_debug_log_message("resuming old context: %p", ready_context);
-    #endif
+static MR_bool
+try_wake_engine(MR_EngineId engine_id, int action,
+    union MR_engine_wake_action_data *action_data, unsigned states)
+{
+    MR_bool success = MR_FALSE;
+    engine_sleep_sync *esync = &(engine_sleep_sync_data[engine_id]);
 
-    resume_point = (MR_Code*)(ready_context->MR_ctxt_resume);
-    ready_context->MR_ctxt_resume = NULL;
-    MR_GOTO(resume_point);
-
-ReadySpark:
-
-    #ifdef MR_DEBUG_STACK_SEGMENTS
-    MR_debug_log_message("stole spark: st: %p", spark.MR_spark_sync_term);
-    #endif
-
-  #if 0 /* This is a complicated optimisation that may not be worth-while */
-    if (!spark.MR_spark_sync_term->MR_st_is_shared) {
-        spark.MR_spark_sync_term_is_shared = MR_TRUE;
+    /*
+    ** This engine is probably in the state our caller checked that it was in.
+    ** Wait on the semaphore then re-check the state to be sure.
+    */
+    MR_SEM_WAIT(&(esync->d.es_wake_semaphore), "try_wake_engine, wake_sem");
+    MR_CPU_LFENCE;
+    if (esync->d.es_state & states) {
         /*
-        ** If we allow the stolen spark (New) to execute immediately
-        ** there could be a race with a sibling conjunct (Old) which is
-        ** currently executing, e.g.
+        ** We now KNOW that the engine is in one of the correct states.
         **
-        ** 1. Old enters MR_join_and_continue(), loads old value of
-        **    MR_st_count;
-        ** 2. New begins executing;
-        ** 3. New enters MR_join_and_continue(), decrements MR_st_count
-        **    atomically;
-        ** 4. Old decrements MR_st_count *non-atomically* based on the
-        **    old value of MR_st_count.
-        **
-        ** Therefore this loop delays the new spark from executing
-        ** while there is another conjunct in MR_join_and_continue()
-        ** which might decrement MR_st_count non-atomically.
+        ** We tell the engine what to do, and tell others that we've woken
+        ** it before actually waking it.
         */
-        while (spark.MR_spark_sync_term->MR_st_attempt_cheap_join) {
-            MR_sched_yield();
+        esync->d.es_action = action;
+        if (action_data) {
+            esync->d.es_action_data = *action_data;
         }
+        esync->d.es_state = ENGINE_STATE_WOKEN;
+        MR_CPU_SFENCE;
+        MR_SEM_POST(&(esync->d.es_sleep_semaphore), "try_wake_engine sleep_sem");
+        success = MR_TRUE;
     }
-  #endif
+    MR_SEM_POST(&(esync->d.es_wake_semaphore), "try_wake_engine wake_sem");
 
-    /* Grab a new context if we haven't got one then begin execution. */
-    if (MR_ENGINE(MR_eng_this_context) == NULL) {
-        MR_ENGINE(MR_eng_this_context) = MR_create_context("from spark",
-            MR_CONTEXT_SIZE_FOR_SPARK, NULL);
-    #ifdef MR_THREADSCOPE
-        MR_threadscope_post_create_context_for_spark(
-            MR_ENGINE(MR_eng_this_context));
-    #endif
-    #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
-        if (MR_profile_parallel_execution) {
-            MR_atomic_inc_int(
-                &MR_profile_parallel_contexts_created_for_sparks);
+    return success;
+}
+
+void
+MR_shutdown_all_engines(void)
+{
+    int i;
+
+    for (i = 0; i < MR_num_threads; i++) {
+        if (i == MR_ENGINE(MR_eng_id)) {
+            continue;
         }
-    #endif
-        MR_load_context(MR_ENGINE(MR_eng_this_context));
-    #ifdef MR_DEBUG_STACK_SEGMENTS
-        MR_debug_log_message("created new context for spark: %p",
-            MR_ENGINE(MR_eng_this_context));
-    #endif
-
-    } else {
-    #ifdef MR_THREADSCOPE
-        /*
-        ** Allocate a new context Id so that someone looking at the threadscope
-        ** profile sees this as new work.
-        */
-        MR_ENGINE(MR_eng_this_context)->MR_ctxt_num_id = allocate_context_id();
-        MR_threadscope_post_run_context();
-    #endif
+        try_wake_engine(i, MR_ENGINE_ACTION_SHUTDOWN, NULL,
+            ENGINE_STATE_ALL);
     }
-    MR_parent_sp = spark.MR_spark_sync_term->MR_st_parent_sp;
-    MR_SET_THREAD_LOCAL_MUTABLES(spark.MR_spark_thread_local_mutables);
 
-    MR_assert(MR_parent_sp);
-    MR_assert(MR_parent_sp != MR_sp);
-    MR_assert(spark.MR_spark_sync_term->MR_st_count > 0);
-
-    #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
-    if (MR_profile_parallel_execution) {
-        MR_profiling_stop_timer(&runnext_timer,
-                &MR_profile_parallel_executed_global_sparks);
+    for (i = 0; i < (MR_num_threads - 1); i++) {
+        MR_SEM_WAIT(&shutdown_semaphore, "MR_shutdown_all_engines");
     }
-    #endif
-    #ifdef MR_THREADSCOPE
-    MR_threadscope_post_steal_spark(spark.MR_spark_id);
-    #endif
-    MR_GOTO(spark.MR_spark_resume);
+}
+
+#endif /* MR_LL_PARALLEL_CONJ */
+
+#ifndef MR_HIGHLEVEL_CODE
+
+/****************************************************************************
+**
+** Parallel runtime idle loop.
+**
+** This also contains code to run the next runnable context for non-parallel
+** low level C grades.
+**
+*/
+
+/*
+** The run queue used to include timing code, it's been removed and may be
+** added in the future.
+*/
+
+/*
+** If the call returns a non-null code pointer then jump to that address,
+** otherwise fall-through
+*/
+#define MR_MAYBE_TRAMPOLINE_AND_ACTION(call, action)                        \
+    do {                                                                    \
+        MR_Code *tramp;                                                     \
+        tramp = (call);                                                     \
+        if (tramp) {                                                        \
+            action;                                                         \
+            MR_GOTO(tramp);                                                 \
+        }                                                                   \
+    } while (0)
+#define MR_MAYBE_TRAMPOLINE(call) \
+    MR_MAYBE_TRAMPOLINE_AND_ACTION((call), )
+
+MR_define_extern_entry(MR_do_idle);
+
+#ifdef MR_THREAD_SAFE
+MR_define_extern_entry(MR_do_idle_clean_context);
+MR_define_extern_entry(MR_do_idle_dirty_context);
+MR_define_extern_entry(MR_do_sleep);
+
+static MR_Code*
+do_get_context(void);
+
+static MR_Code*
+do_local_spark(MR_Code *join_label);
+
+static MR_Code*
+do_work_steal(MR_Code *join_label);
+
+static void
+save_dirty_context(MR_Code *join_label);
+
+/*
+** Prepare the engine to execute a spark.  If join_label is not null then this
+** engine has a context that may not be compatible with the spark.  If it isn't
+** then the context must be saved with join_label as the resume point.
+*/
+static void
+prepare_engine_for_spark(volatile MR_Spark *spark, MR_Code *join_label);
+
+/*
+** Prepare the engine to execute a context.  This loads the context into the
+** engine after discarding any existing context.  All the caller need do is
+** jump to the resume/start point.
+*/
+static void
+prepare_engine_for_context(MR_Context *context);
+
+/*
+** Advertise that the engine is looking for work after being in the working state.
+** (Do not use this call when waking from sleep).
+*/
+static void
+advertise_engine_state_idle(void);
+
+/*
+** Advertise that the engine will begin working.
+*/
+static void
+advertise_engine_state_working(void);
+#endif
+
+MR_BEGIN_MODULE(scheduler_module_idle)
+    MR_init_entry_an(MR_do_idle);
+MR_BEGIN_CODE
+MR_define_entry(MR_do_idle);
+  #ifdef MR_THREAD_SAFE
+{
+    /*
+    ** Try to get a context.
+    **
+    ** Always look for local work first, even though we'd need to allocate a
+    ** context to execute it.  This is probably less efficient (TODO) but it's
+    ** safer. It makes it easier for the state of the machine to change before
+    ** it goes to sleep.
+    */
+    MR_MAYBE_TRAMPOLINE(do_local_spark(NULL));
+
+    advertise_engine_state_idle();
+
+    MR_MAYBE_TRAMPOLINE_AND_ACTION(do_get_context(),
+        advertise_engine_state_working());
+    MR_MAYBE_TRAMPOLINE_AND_ACTION(do_work_steal(NULL),
+        advertise_engine_state_working());
+    MR_GOTO(MR_ENTRY(MR_do_sleep));
 }
   #else /* !MR_THREAD_SAFE */
 {
+    /*
+    ** When an engine becomes idle in a non parallel grade it simply picks up
+    ** another context.
+    */
     if (MR_runqueue_head == NULL && MR_pending_contexts == NULL) {
         MR_fatal_error("empty runqueue!");
     }
@@ -1347,8 +1492,352 @@ ReadySpark:
     MR_GOTO(MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume);
 }
   #endif /* !MR_THREAD_SAFE */
-
 MR_END_MODULE
+
+#ifdef MR_THREAD_SAFE
+MR_BEGIN_MODULE(scheduler_module_idle_clean_context)
+    MR_init_entry_an(MR_do_idle_clean_context);
+MR_BEGIN_CODE
+MR_define_entry(MR_do_idle_clean_context);
+{
+    MR_MAYBE_TRAMPOLINE(do_local_spark(NULL));
+
+    advertise_engine_state_idle();
+
+    MR_MAYBE_TRAMPOLINE_AND_ACTION(do_work_steal(NULL),
+        advertise_engine_state_working());
+    MR_MAYBE_TRAMPOLINE_AND_ACTION(do_get_context(),
+        advertise_engine_state_working());
+    MR_GOTO(MR_ENTRY(MR_do_sleep));
+}
+MR_END_MODULE
+#endif /* MR_THREAD_SAFE */
+
+#ifdef MR_THREAD_SAFE
+MR_BEGIN_MODULE(scheduler_module_idle_dirty_context)
+    MR_init_entry_an(MR_do_idle_dirty_context);
+MR_BEGIN_CODE
+MR_define_entry(MR_do_idle_dirty_context);
+{
+    MR_Code *join_label = (MR_Code*)MR_r1;
+
+    MR_MAYBE_TRAMPOLINE(do_local_spark(join_label));
+
+    advertise_engine_state_idle();
+
+    MR_MAYBE_TRAMPOLINE_AND_ACTION(do_work_steal(join_label),
+        advertise_engine_state_working());
+
+    /*
+    ** Save the dirty context, we can't take it to sleep and it won't be used
+    ** if do_get_context() succeeds.
+    */
+    save_dirty_context(join_label);
+    MR_ENGINE(MR_eng_this_context) = NULL;
+
+    MR_MAYBE_TRAMPOLINE_AND_ACTION(do_get_context(),
+        advertise_engine_state_working());
+    MR_GOTO(MR_ENTRY(MR_do_sleep));
+}
+MR_END_MODULE
+
+/*
+** Put the engine to sleep since there's no work to do.
+**
+** This call does not return.
+**
+** REQUIREMENT: Only call this with either no context or a clean context.
+** REQUIREMENT: This must be called from the same C and Mercury stack depths as
+**              the call into the idle loop.
+*/
+MR_BEGIN_MODULE(scheduler_module_idle_sleep)
+    MR_init_entry_an(MR_do_sleep);
+MR_BEGIN_CODE
+MR_define_entry(MR_do_sleep);
+{
+    MR_EngineId engine_id = MR_ENGINE(MR_eng_id);
+    unsigned action;
+    int result;
+
+    while (1) {
+        engine_sleep_sync_data[engine_id].d.es_state = ENGINE_STATE_SLEEPING;
+        MR_CPU_SFENCE;
+        result = MR_SEM_WAIT(
+            &(engine_sleep_sync_data[engine_id].d.es_sleep_semaphore),
+            "MR_do_sleep sleep_sem");
+
+        if (0 == result) {
+            MR_CPU_LFENCE;
+            action = engine_sleep_sync_data[engine_id].d.es_action;
+#ifdef MR_DEBUG_THREADS
+            if (MR_debug_threads) {
+                fprintf(stderr, "%ld Engine %d is awake and will do action %d\n",
+                    MR_SELF_THREAD_ID, engine_id, action);
+            }
+#endif
+
+            switch(action) {
+                case MR_ENGINE_ACTION_SHUTDOWN:
+                    /*
+                    ** The primordial thread has the responsibility of cleaning
+                    ** up the Mercury runtime. It cannot exit by this route.
+                    */
+                    assert(engine_id != 0);
+                    MR_atomic_dec_int(&MR_num_idle_engines);
+                    MR_destroy_thread(MR_cur_engine());
+                    MR_SEM_POST(&shutdown_semaphore, "MR_do_sleep shutdown_sem");
+                    pthread_exit(0);
+                    break;
+
+                case MR_ENGINE_ACTION_WORKSTEAL:
+                    MR_ENGINE(MR_eng_victim_counter) =
+                        engine_sleep_sync_data[engine_id].d.es_action_data.
+                        MR_ewa_worksteal_engine;
+                    MR_MAYBE_TRAMPOLINE(do_work_steal(NULL));
+                    MR_MAYBE_TRAMPOLINE(do_get_context());
+                    break;
+
+                case MR_ENGINE_ACTION_CONTEXT:
+                    {
+                        MR_Context *context;
+                        MR_Code *resume_point;
+
+                        context = engine_sleep_sync_data[engine_id].d.
+                            es_action_data.MR_ewa_context;
+                        prepare_engine_for_context(context);
+
+                        #ifdef MR_DEBUG_STACK_SEGMENTS
+                        MR_debug_log_message("resuming old context: %p",
+                            context);
+                        #endif
+
+                        resume_point = (MR_Code*)(context->MR_ctxt_resume);
+                        context->MR_ctxt_resume = NULL;
+
+                        MR_GOTO(resume_point);
+                    }
+                    break;
+
+                case MR_ENGINE_ACTION_NONE:
+                default:
+                    MR_MAYBE_TRAMPOLINE(do_get_context());
+                    MR_MAYBE_TRAMPOLINE(do_work_steal(NULL));
+                    break;
+            }
+        } else {
+            /*
+            ** sem_wait reported an error
+            */
+            switch (errno) {
+                case EINTR:
+                    /*
+                    ** An interrupt woke the engine, go back to sleep.
+                    */
+                    break;
+                default:
+                    perror("sem_post");
+                    abort();
+            }
+        }
+    }
+}
+MR_END_MODULE
+#endif
+
+#ifdef MR_THREAD_SAFE
+
+static MR_Code*
+do_get_context(void)
+{
+    MR_Context *ready_context;
+    MR_Code *resume_point;
+
+    /*
+    ** Look for a runnable context and execute it.  If there was no runnable
+    ** context, then proceed to MR_do_runnext_local.
+    */
+
+    #ifdef MR_THREADSCOPE
+    MR_threadscope_post_looking_for_global_context();
+    #endif
+
+    MR_LOCK(&MR_runqueue_lock, "do_get_context (i)");
+    ready_context = MR_find_ready_context();
+    MR_UNLOCK(&MR_runqueue_lock, "do_get_context (ii)");
+
+    if (ready_context != NULL) {
+        prepare_engine_for_context(ready_context);
+
+        #ifdef MR_DEBUG_STACK_SEGMENTS
+        MR_debug_log_message("resuming old context: %p", ready_context);
+        #endif
+
+        resume_point = (MR_Code*)(ready_context->MR_ctxt_resume);
+        ready_context->MR_ctxt_resume = NULL;
+
+        return resume_point;
+    }
+
+    return NULL;
+}
+
+static void
+prepare_engine_for_context(MR_Context *context) {
+    /*
+    ** Discard whatever unused context we may have and switch to the new one.
+    */
+    if (MR_ENGINE(MR_eng_this_context) != NULL) {
+    #ifdef MR_DEBUG_STACK_SEGMENTS
+        MR_debug_log_message("destroying old context %p",
+            MR_ENGINE(MR_eng_this_context));
+    #endif
+        MR_destroy_context(MR_ENGINE(MR_eng_this_context));
+    }
+    MR_ENGINE(MR_eng_this_context) = context;
+    MR_load_context(context);
+}
+
+static void
+prepare_engine_for_spark(volatile MR_Spark *spark, MR_Code *join_label)
+{
+    MR_Context *this_context = MR_ENGINE(MR_eng_this_context);
+
+    /*
+    ** We need to save this context if it is dirty and incompatible with
+    ** this spark.
+    */
+    if ((this_context != NULL) &&
+        (join_label != NULL) &&
+        (spark->MR_spark_sync_term->MR_st_orig_context != this_context))
+    {
+#ifdef MR_DEBUG_CONTEXT_CREATION_SPEED
+        MR_debug_log_message("Saving old dirty context %p", this_context);
+#endif
+        save_dirty_context(join_label);
+#ifdef MR_DEBUG_CONTEXT_CREATION_SPEED
+        MR_debug_log_message("done.");
+#endif
+        this_context = NULL;
+    }
+    if (this_context == NULL) {
+        /*
+        ** Get a new context
+        */
+#ifdef MR_DEBUG_CONTEXT_CREATION_SPEED
+        MR_debug_log_message("Need a new context.");
+#endif
+        MR_ENGINE(MR_eng_this_context) = MR_create_context("from spark",
+            MR_CONTEXT_SIZE_FOR_SPARK, NULL);
+#ifdef MR_THREADSCOPE
+        MR_threadscope_post_create_context_for_spark(
+            MR_ENGINE(MR_eng_this_context));
+#endif
+/*
+#ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT
+        if (MR_profile_parallel_execution) {
+            MR_atomic_inc_int(
+                &MR_profile_parallel_contexts_created_for_sparks);
+        }
+#endif
+*/
+        MR_load_context(MR_ENGINE(MR_eng_this_context));
+#ifdef MR_DEBUG_STACK_SEGMENTS
+        MR_debug_log_message("created new context for spark: %p",
+            MR_ENGINE(MR_eng_this_context));
+#endif
+    }
+
+    /*
+    ** At this point we have a context, either a dirty context that's compatbile or a clean one.
+    */
+    MR_parent_sp = spark->MR_spark_sync_term->MR_st_parent_sp;
+    MR_SET_THREAD_LOCAL_MUTABLES(spark->MR_spark_thread_local_mutables);
+
+    MR_assert(MR_parent_sp);
+    MR_assert(MR_parent_sp != MR_sp);
+    MR_assert(spark.MR_spark_sync_term->MR_st_count > 0);
+}
+
+static MR_Code*
+do_local_spark(MR_Code *join_label)
+{
+    volatile MR_Spark *spark;
+
+    spark = MR_wsdeque_pop_bottom(&MR_ENGINE(MR_eng_spark_deque));
+    if (NULL == spark) {
+        return NULL;
+    }
+
+#ifdef MR_THREADSCOPE
+    MR_threadscope_post_run_spark(spark->MR_spark_id);
+#endif
+    prepare_engine_for_spark(spark, join_label);
+    return spark->MR_spark_resume;
+}
+
+static MR_Code*
+do_work_steal(MR_Code *join_label)
+{
+    MR_Spark spark;
+
+    #ifdef MR_THREADSCOPE
+    MR_threadscope_post_work_stealing();
+    #endif
+
+    /*
+    ** A context may be created to execute a spark, so only attempt to
+    ** steal sparks if doing so would not exceed the limit of outstanding
+    ** contexts.
+    */
+    if (!((MR_ENGINE(MR_eng_this_context) == NULL) &&
+         (MR_max_outstanding_contexts <= MR_num_outstanding_contexts))) {
+        /* Attempt to steal a spark */
+        if (MR_attempt_steal_spark(&spark)) {
+#ifdef MR_THREADSCOPE
+            MR_threadscope_post_steal_spark(spark.MR_spark_id);
+#endif
+            prepare_engine_for_spark(&spark, join_label);
+            return spark.MR_spark_resume;
+        }
+    }
+
+    return NULL;
+}
+
+static void
+save_dirty_context(MR_Code *join_label) {
+    MR_Context *this_context = MR_ENGINE(MR_eng_this_context);
+
+#ifdef MR_THREADSCOPE
+    MR_threadscope_post_stop_context(MR_TS_STOP_REASON_BLOCKED);
+#endif
+    this_context->MR_ctxt_resume_owner_engine = MR_ENGINE(MR_eng_id);
+    MR_save_context(this_context);
+    /*
+    ** Make sure the context gets saved before we set the join
+    ** label, use a memory barrier.
+    */
+    MR_CPU_SFENCE;
+    this_context->MR_ctxt_resume = join_label;
+    MR_ENGINE(MR_eng_this_context) = NULL;
+}
+
+static void
+advertise_engine_state_idle(void)
+{
+    engine_sleep_sync_data[MR_ENGINE(MR_eng_id)].d.es_state = ENGINE_STATE_IDLE;
+    MR_CPU_SFENCE;
+    MR_atomic_inc_int(&MR_num_idle_engines);
+}
+
+static void
+advertise_engine_state_working(void)
+{
+    MR_atomic_dec_int(&MR_num_idle_engines);
+    MR_CPU_SFENCE;
+    engine_sleep_sync_data[MR_ENGINE(MR_eng_id)].d.es_state = ENGINE_STATE_WORKING;
+}
+#endif /* MR_THREAD_SAFE */
 
 #endif /* !MR_HIGHLEVEL_CODE */
 
@@ -1376,21 +1865,36 @@ MR_do_join_and_continue(MR_SyncTerm *jnc_st, MR_Code *join_label)
 
     jnc_last = MR_atomic_dec_and_is_zero_uint(&(jnc_st->MR_st_count));
 
-    if (jnc_last) {
-        if (this_context == jnc_st->MR_st_orig_context) {
+    if (this_context == jnc_st->MR_st_orig_context) {
+        /*
+        ** This context originated this parallel conjunction.
+        */
+        if (jnc_last) {
             /*
-            ** This context originated this parallel conjunction and all the
-            ** branches have finished so jump to the join label.
+            ** All the conjuncts have finished so jump to the join label.
             */
             return join_label;
         } else {
-  #ifdef MR_THREADSCOPE
+            /*
+            ** This context is dirty, it is needed to complete the parallel
+            ** conjunction
+            */
+            MR_r1 = (MR_Word)join_label;
+            return MR_ENTRY(MR_do_idle_dirty_context);
+        }
+    } else {
+        /*
+        ** This context is now clean, it can be used to execute _any_ spark.
+        */
+        if (jnc_last) {
+#ifdef MR_THREADSCOPE
             MR_threadscope_post_stop_context(MR_TS_STOP_REASON_FINISHED);
-  #endif
+#endif
             /*
             ** This context didn't originate this parallel conjunction and
             ** we're the last branch to finish. The originating context should
-            ** be suspended waiting for us to finish, so wake it up.
+            ** be suspended waiting for us to finish, we should run it using
+            ** the current engine.
             **
             ** We could be racing with the original context, in which case we
             ** have to make sure that it is ready to be scheduled before we
@@ -1401,52 +1905,13 @@ MR_do_join_and_continue(MR_SyncTerm *jnc_st, MR_Code *join_label)
                 /* XXX: Need to configure using sched_yeild or spin waiting */
                 MR_ATOMIC_PAUSE;
             }
-            MR_schedule_context(jnc_st->MR_st_orig_context);
-            return MR_ENTRY(MR_do_runnext);
-        }
-    } else {
-        volatile MR_Spark *spark;
-
-        /*
-        ** The parallel conjunction it is not yet finished. Try to work on a
-        ** spark from our local stack. The sparks on our stack are likely to
-        ** cause this conjunction to be complete.
-        */
-        spark = MR_wsdeque_pop_bottom(&this_context->MR_ctxt_spark_deque);
-        if (NULL != spark) {
 #ifdef MR_THREADSCOPE
-            MR_threadscope_post_run_spark(spark->MR_spark_id);
+            MR_threadscope_post_context_runnable(jnc_st->MR_st_orig_context);
 #endif
-            return spark->MR_spark_resume;
-        } else {
-            /*
-            ** If this context originated the parallel conjunction that we've
-            ** been executing, suspend this context so that it will be
-            ** resumed at the join label once the parallel conjunction is
-            ** completed.
-            **
-            ** Otherwise we can reuse this context for the next piece of work.
-            */
-            if (this_context == jnc_st->MR_st_orig_context) {
-  #ifdef MR_THREADSCOPE
-                MR_threadscope_post_stop_context(MR_TS_STOP_REASON_BLOCKED);
-  #endif
-                MR_save_context(this_context);
-                /*
-                ** Make sure the context gets saved before we set the join
-                ** label, use a memory barrier.
-                */
-                MR_CPU_SFENCE;
-                this_context->MR_ctxt_resume = (join_label);
-                MR_ENGINE(MR_eng_this_context) = NULL;
-            } else {
-  #ifdef MR_THREADSCOPE
-                MR_threadscope_post_stop_context(MR_TS_STOP_REASON_FINISHED);
-  #endif
-            }
-
-            return MR_ENTRY(MR_do_runnext);
+            prepare_engine_for_context(jnc_st->MR_st_orig_context);
+            return join_label;
         }
+        return MR_ENTRY(MR_do_idle_clean_context);
     }
 }
 #endif
@@ -1517,7 +1982,12 @@ void mercury_sys_init_scheduler_wrapper_write_out_proc_statics(FILE *fp);
 void mercury_sys_init_scheduler_wrapper_init(void)
 {
 #ifndef MR_HIGHLEVEL_CODE
-    scheduler_module();
+    scheduler_module_idle();
+#ifdef MR_THREAD_SAFE
+    scheduler_module_idle_clean_context();
+    scheduler_module_idle_dirty_context();
+    scheduler_module_idle_sleep();
+#endif
 #endif
 }
 

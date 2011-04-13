@@ -14,9 +14,8 @@
 
 #include "mercury_atomic_ops.h"
 
-/* XXX should experiment with these */
-#define MR_INITIAL_GLOBAL_SPARK_QUEUE_SIZE  4
-#define MR_INITIAL_LOCAL_SPARK_DEQUE_SIZE   8
+/* XXX should experiment with this, perhaps it should be configurable. */
+#define MR_INITIAL_SPARK_DEQUE_SIZE   8
 
 /*---------------------------------------------------------------------------*/
 

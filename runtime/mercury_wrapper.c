@@ -216,17 +216,6 @@ MR_Unsigned MR_max_contexts_per_thread = 2;
 #endif
 MR_Unsigned MR_max_outstanding_contexts;
 
-#ifdef MR_LL_PARALLEL_CONJ
-/*
-** In grades that support parallel conjunctions, an idle engine can steal
-** parallel work from Mercury contexts. The following variables control the
-** maximum number of contexts that an idle engine will try to steal from
-** before resting, and how long to rest before attempting another steal.
-*/
-MR_Unsigned MR_worksteal_max_attempts = 24;
-MR_Unsigned MR_worksteal_sleep_msecs = 2;
-#endif
-
 /* file names for mdb's debugger I/O streams */
 const char  *MR_mdb_in_filename = NULL;
 const char  *MR_mdb_out_filename = NULL;
@@ -629,7 +618,11 @@ mercury_runtime_init(int argc, char **argv)
     (*MR_address_of_mercury_init_io)();
 
 #ifdef MR_THREAD_SAFE
-    /* MR_init_thread_stuff() must be called prior to MR_init_memory() */
+    /*
+    ** MR_init_context_stuff() and MR_init_thread_stuff() must be called prior
+    ** to MR_init_memory()
+    */
+    MR_init_context_stuff();
     MR_init_thread_stuff();
     MR_max_outstanding_contexts = MR_max_contexts_per_thread * MR_num_threads;
 #ifdef MR_LL_PARALLEL_CONJ
@@ -677,13 +670,6 @@ mercury_runtime_init(int argc, char **argv)
     (*MR_address_of_init_modules_threadscope_string_table)();
   #endif
 
-    MR_all_engine_bases = MR_GC_malloc(sizeof(MercuryEngine*)*MR_num_threads);
-    {
-        int i;
-        for (i = 0; i < MR_num_threads; i++) {
-            MR_all_engine_bases[i] = NULL;
-        }
-    }
 #endif
 
     /*
@@ -697,8 +683,6 @@ mercury_runtime_init(int argc, char **argv)
   #ifdef MR_LL_PARALLEL_CONJ
     {
         int i;
-
-        MR_exit_now = MR_FALSE;
 
         for (i = 1; i < MR_num_threads; i++) {
             MR_create_thread(NULL);
@@ -1409,8 +1393,6 @@ struct MR_option MR_long_opts[] = {
     { "max-contexts-per-thread",        1, 0, MR_MAX_CONTEXTS_PER_THREAD },
     { "runtime-granularity-wsdeque-length-factor", 1, 0,
         MR_RUNTIME_GRANULAITY_WSDEQUE_LENGTH_FACTOR },
-    { "worksteal-max-attempts",         1, 0, MR_WORKSTEAL_MAX_ATTEMPTS },
-    { "worksteal-sleep-msecs",          1, 0, MR_WORKSTEAL_SLEEP_MSECS },
     { "no-thread-pinning",              0, 0, MR_THREAD_PINNING },
     { "profile-parallel-execution",     0, 0, MR_PROFILE_PARALLEL_EXECUTION },
     { "mdb-tty",                        1, 0, MR_MDB_TTY },
@@ -1841,26 +1823,6 @@ MR_process_options(int argc, char **argv)
                     MR_usage();
                 }
                 if (MR_granularity_wsdeque_length_factor < 1) {
-                    MR_usage();
-                }
-#endif
-                break;
-
-            case MR_WORKSTEAL_MAX_ATTEMPTS:
-#ifdef MR_LL_PARALLEL_CONJ
-                if (sscanf(MR_optarg, "%"MR_INTEGER_LENGTH_MODIFIER"u",
-			&MR_worksteal_max_attempts) != 1)
-		{
-                    MR_usage();
-                }
-#endif
-                break;
-
-            case MR_WORKSTEAL_SLEEP_MSECS:
-#ifdef MR_LL_PARALLEL_CONJ
-                if (sscanf(MR_optarg, "%"MR_INTEGER_LENGTH_MODIFIER"u",
-			&MR_worksteal_sleep_msecs) != 1)
-		{
                     MR_usage();
                 }
 #endif
@@ -2896,7 +2858,7 @@ MR_define_label(global_success);
         MR_UNLOCK(&MR_thread_barrier_lock, "global_success");
 
         MR_ENGINE(MR_eng_this_context) = NULL;
-        MR_runnext();
+        MR_idle();
     }
 
 MR_define_label(global_success_2);
@@ -3063,14 +3025,7 @@ mercury_runtime_terminate(void)
     }
 
 #if !defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
-    MR_LOCK(&MR_runqueue_lock, "exit_now");
-    MR_exit_now = MR_TRUE;
-    pthread_cond_broadcast(&MR_runqueue_cond);
-    MR_UNLOCK(&MR_runqueue_lock, "exit_now");
-
-    while (MR_num_exited_engines < MR_num_threads - 1) {
-        MR_ATOMIC_PAUSE;
-    }
+    MR_shutdown_all_engines();
 
 #ifdef MR_THREADSCOPE
     if (MR_ENGINE(MR_eng_ts_buffer)) {
@@ -3082,7 +3037,7 @@ mercury_runtime_terminate(void)
     assert(MR_thread_equal(MR_primordial_thread, pthread_self()));
     MR_primordial_thread = MR_null_thread();
 
-    MR_finalize_thread_stuff();
+    MR_finalize_context_stuff();
 #endif
 
 #ifdef MR_HAVE_SYS_STAT_H

@@ -158,8 +158,6 @@ ENDINIT
 /*
 ** Duncan Coutts has reserved IDs 33-37 in a discussion via IRC.
 */
-#define MR_TS_EVENT_LOOKING_FOR_GLOBAL_WORK \
-                                        38 /* () */
 #define MR_TS_EVENT_STRING              39 /* (string, id) */
 #define MR_TS_EVENT_CALL_MAIN           40 /* () */
 
@@ -181,8 +179,10 @@ ENDINIT
 #define MR_TS_MER_EVENT_FUT_WAIT_NOSUSPEND  105 /* (fut id) */
 #define MR_TS_MER_EVENT_FUT_WAIT_SUSPENDED  106 /* (fut id) */
 #define MR_TS_MER_EVENT_FUT_SIGNAL          107 /* (fut id) */
-
-#define MR_TS_NUM_MER_EVENTS            8
+#define MR_TS_MER_EVENT_LOOKING_FOR_GLOBAL_CONTEXT \
+                                            108 /* () */
+#define MR_TS_MER_EVENT_WORK_STEALING       109 /* () */
+#define MR_TS_NUM_MER_EVENTS                10
 
 #if 0  /* DEPRECATED EVENTS: */
 #define EVENT_CREATE_SPARK        13 /* (cap, thread) */
@@ -219,7 +219,7 @@ ENDINIT
 /***************************************************************************/
 
 struct MR_threadscope_event_buffer {
-    MR_UnsignedChar     MR_tsbuffer_data[MR_TS_BUFFERSIZE];
+    unsigned char       MR_tsbuffer_data[MR_TS_BUFFERSIZE];
 
     /* The current writing position in the buffer. */
     MR_Unsigned         MR_tsbuffer_pos;
@@ -399,11 +399,6 @@ static EventTypeDesc event_type_descs[] = {
         0
     },
     {
-        MR_TS_EVENT_LOOKING_FOR_GLOBAL_WORK,
-        "Engine begins looking for global work",
-        0
-    },
-    {
         MR_TS_EVENT_CAPSET_CREATE,
         "Create an engine set",
         SZ_CAPSET_ID + SZ_CAPSET_TYPE
@@ -492,6 +487,16 @@ static EventTypeDesc event_type_descs[] = {
         SZ_FUTURE_ID
     },
     {
+        MR_TS_MER_EVENT_LOOKING_FOR_GLOBAL_CONTEXT,
+        "Engine begins looking for a context to execute",
+        0
+    },
+    {
+        MR_TS_MER_EVENT_WORK_STEALING,
+        "Engine begins attempting to steal work",
+        0
+    },
+    {
         /* Mark the end of this array. */
         MR_TS_NUM_EVENT_TAGS, NULL, 0
     }
@@ -515,9 +520,6 @@ static char* MR_threadscope_output_filename;
 ** created.
 */
 static MR_uint_least64_t MR_primordial_first_tsc;
-
-static MercuryLock      MR_next_engine_id_lock;
-static MR_EngineId      MR_next_engine_id = 0;
 
 static Timedelta        MR_global_offset;
 
@@ -854,9 +856,6 @@ MR_setup_threadscope(void)
     /* This value is used later when setting up the primordial engine */
     MR_primordial_first_tsc = MR_read_cpu_tsc();
 
-    /* Setup locks. */
-    pthread_mutex_init(&MR_next_engine_id_lock, MR_MUTEX_ATTR);
-
     /*
     ** These variables are used for TSC synchronization which is not used.  See
     ** below.
@@ -919,10 +918,7 @@ MR_threadscope_setup_engine(MercuryEngine *eng)
     MR_DO_THREADSCOPE_DEBUG(
         fprintf(stderr, "In threadscope setup engine thread: 0x%lx\n", pthread_self())
     );
-    MR_LOCK(&MR_next_engine_id_lock, "MR_get_next_engine_id");
-    eng->MR_eng_id = MR_next_engine_id++;
     eng->MR_eng_next_spark_id = 0;
-    MR_UNLOCK(&MR_next_engine_id_lock, "MR_get_next_engine_id");
 
     if (eng->MR_eng_id == 0) {
         MR_global_offset = -MR_primordial_first_tsc;
@@ -1264,6 +1260,7 @@ MR_threadscope_post_run_spark(MR_SparkId spark_id)
 {
     struct MR_threadscope_event_buffer  *buffer;
     MR_Context                          *context;
+    MR_ContextId                        context_id;
 
     buffer = MR_thread_engine_base->MR_eng_ts_buffer;
     context = MR_thread_engine_base->MR_eng_this_context;
@@ -1278,7 +1275,12 @@ MR_threadscope_post_run_spark(MR_SparkId spark_id)
 
     put_event_header(buffer, MR_TS_EVENT_RUN_SPARK,
         get_current_time_nanosecs());
-    put_context_id(buffer, context->MR_ctxt_num_id);
+    if (context) {
+        context_id = context->MR_ctxt_num_id;
+    } else {
+        context_id = 0xFFFFFFFF;
+    }
+    put_context_id(buffer, context_id);
     put_spark_id(buffer, spark_id);
     MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
 }
@@ -1288,6 +1290,7 @@ MR_threadscope_post_steal_spark(MR_SparkId spark_id)
 {
     struct MR_threadscope_event_buffer  *buffer;
     MR_Context                          *context;
+    MR_ContextId                        context_id;
     unsigned                            engine_id;
 
     buffer = MR_thread_engine_base->MR_eng_ts_buffer;
@@ -1303,7 +1306,13 @@ MR_threadscope_post_steal_spark(MR_SparkId spark_id)
 
     put_event_header(buffer, MR_TS_EVENT_STEAL_SPARK,
         get_current_time_nanosecs());
-    put_context_id(buffer, context->MR_ctxt_num_id);
+    if (context) {
+        context_id = context->MR_ctxt_num_id;
+    } else {
+        context_id = 0xFFFFFFFF;
+    }
+    put_context_id(buffer, context_id);
+
     /*
     ** The engine that created the spark (which may not be whom it was stolen
     ** from if different work-stealking algorithms are implemented) can be
@@ -1354,18 +1363,36 @@ MR_threadscope_post_calling_main(void) {
 }
 
 void
-MR_threadscope_post_looking_for_global_work(void) {
+MR_threadscope_post_looking_for_global_context(void) {
     struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
 
     MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
-    if (!enough_room_for_event(buffer, MR_TS_EVENT_LOOKING_FOR_GLOBAL_WORK)) {
+    if (!enough_room_for_event(buffer,
+            MR_TS_MER_EVENT_LOOKING_FOR_GLOBAL_CONTEXT)) {
         flush_event_buffer(buffer);
         open_block(buffer, MR_ENGINE(MR_eng_id));
     } else if (!block_is_open(buffer)) {
         open_block(buffer, MR_ENGINE(MR_eng_id));
     }
 
-    put_event_header(buffer, MR_TS_EVENT_LOOKING_FOR_GLOBAL_WORK,
+    put_event_header(buffer, MR_TS_MER_EVENT_LOOKING_FOR_GLOBAL_CONTEXT,
+        get_current_time_nanosecs());
+    MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
+}
+
+void
+MR_threadscope_post_work_stealing(void) {
+    struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
+
+    MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
+    if (!enough_room_for_event(buffer, MR_TS_MER_EVENT_WORK_STEALING)) {
+        flush_event_buffer(buffer);
+        open_block(buffer, MR_ENGINE(MR_eng_id));
+    } else if (!block_is_open(buffer)) {
+        open_block(buffer, MR_ENGINE(MR_eng_id));
+    }
+
+    put_event_header(buffer, MR_TS_MER_EVENT_WORK_STEALING,
         get_current_time_nanosecs());
     MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
 }

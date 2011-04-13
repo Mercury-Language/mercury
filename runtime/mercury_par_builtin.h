@@ -129,6 +129,7 @@ vim: ft=c ts=4 sw=4 et
                                                                             \
                 ctxt->MR_ctxt_resume =                                      \
                     MR_ENTRY(mercury__par_builtin__wait_resume);            \
+                ctxt->MR_ctxt_resume_owner_engine = MR_ENGINE(MR_eng_id);   \
                 ctxt->MR_ctxt_next = Future->MR_fut_suspended;              \
                 Future->MR_fut_suspended = ctxt;                            \
                                                                             \
@@ -137,7 +138,11 @@ vim: ft=c ts=4 sw=4 et
                                                                             \
                 MR_maybe_post_stop_context;                                 \
                 MR_ENGINE(MR_eng_this_context) = NULL;                      \
-                MR_runnext();                                               \
+                /*                                                          \
+                ** MR_idle will try to run a different context as that has  \
+                ** good chance of unblocking the future.                    \
+                */                                                          \
+                MR_idle();                                                  \
             }                                                               \
         } while (0)
 

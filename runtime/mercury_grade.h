@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2010 The University of Melbourne.
+** Copyright (C) 1997-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -54,18 +54,20 @@
 ** relationship with the source release number (which is in ../VERSION).
 **
 ** It is a good idea to inspect all code for RTTI version number checks
-** and remove them when increasing the binary compatibility version number.   
+** and remove them when increasing the binary compatibility version number.
 ** Searching for MR_RTTI_VERSION__ should find all code related to the
 ** RTTI version number.
 **
-** The MR_GRADE_EXEC_TRACE_VERSION_NO and MR_GRADE_DEEP_PROF_VERSION_NO
-** macros should be incremented when a change breaks binary backwards
-** compatibility only in debugging and deep profiling grades respectively.
+** The MR_GRADE_EXEC_TRACE_VERSION_NO, MR_GRADE_DEEP_PROF_VERSION_NO and
+** MR_GRADE_LLC_PAR_VERSION_NO macros should be incremented when a change breaks
+** binary backwards compatibility only in debugging, deep profiling and
+** low-level C parallel grades respectively.
 */
 
 #define MR_GRADE_PART_0 v16_
 #define MR_GRADE_EXEC_TRACE_VERSION_NO  9
 #define MR_GRADE_DEEP_PROF_VERSION_NO   3
+#define MR_GRADE_LLC_PAR_VERSION_NO 1
 
 #ifdef MR_HIGHLEVEL_CODE
 
@@ -83,6 +85,17 @@
   #else
     #define MR_GRADE_PART_2             MR_GRADE_PART_1
     #define MR_GRADE_OPT_PART_2         MR_GRADE_OPT_PART_1
+  #endif
+
+  /*
+  ** This grade component is repeated below version information.
+  */
+  #ifdef MR_THREAD_SAFE
+    #define MR_GRADE_PART_3       MR_PASTE2(MR_GRADE_PART_2, _par)
+    #define MR_GRADE_OPT_PART_3   MR_GRADE_OPT_PART_2 ".par"
+  #else
+    #define MR_GRADE_PART_3       MR_GRADE_PART_2
+    #define MR_GRADE_OPT_PART_3   MR_GRADE_OPT_PART_2
   #endif
 
 #else /* ! MR_HIGHLEVEL_CODE */
@@ -113,15 +126,18 @@
     #endif
   #endif
 
-#endif /* ! MR_HIGHLEVEL_CODE */
+  /*
+  ** This grade component is repeated above without the version information.
+  */
+  #ifdef MR_THREAD_SAFE
+    #define MR_GRADE_PART_3       MR_PASTE3(MR_GRADE_PART_2, _par, MR_GRADE_LLC_PAR_VERSION_NO)
+    #define MR_GRADE_OPT_PART_3   MR_GRADE_OPT_PART_2 ".par"
+  #else
+    #define MR_GRADE_PART_3       MR_GRADE_PART_2
+    #define MR_GRADE_OPT_PART_3   MR_GRADE_OPT_PART_2
+  #endif
 
-#ifdef MR_THREAD_SAFE
-  #define MR_GRADE_PART_3       MR_PASTE2(MR_GRADE_PART_2, _par)
-  #define MR_GRADE_OPT_PART_3   MR_GRADE_OPT_PART_2 ".par"
-#else
-  #define MR_GRADE_PART_3       MR_GRADE_PART_2
-  #define MR_GRADE_OPT_PART_3   MR_GRADE_OPT_PART_2
-#endif
+#endif /* ! MR_HIGHLEVEL_CODE */
 
 #if defined(MR_MPS_GC)
   #define MR_GRADE_PART_4       MR_PASTE2(MR_GRADE_PART_3, _mps)
@@ -211,15 +227,15 @@
     #define MR_GRADE_OPT_PART_6         MR_GRADE_OPT_PART_5 ".tsw"
   #endif
 #else
-  #define MR_GRADE_PART_6       MR_GRADE_PART_5 
-  #define MR_GRADE_OPT_PART_6   MR_GRADE_OPT_PART_5 
+  #define MR_GRADE_PART_6       MR_GRADE_PART_5
+  #define MR_GRADE_OPT_PART_6   MR_GRADE_OPT_PART_5
 #endif
 
 #ifdef MR_USE_TRAIL
    #ifdef MR_TRAIL_SEGMENTS
     #define MR_GRADE_PART_7     MR_PASTE2(MR_GRADE_PART_6, _trseg)
     #define MR_GRADE_OPT_PART_7 MR_GRADE_OPT_PART_6 ".trseg"
-  #else 
+  #else
     #define MR_GRADE_PART_7     MR_PASTE2(MR_GRADE_PART_6, _tr)
     #define MR_GRADE_OPT_PART_7 MR_GRADE_OPT_PART_6 ".tr"
    #endif /* ! MR_TRAIL_SEGMENTS */

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001,2003-2004, 2006-2008, 2010 The University of Melbourne.
+% Copyright (C) 2000-2001,2003-2004, 2006-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -190,7 +190,7 @@
   #endif
     MR_schedule_context(MR_ENGINE(MR_eng_this_context));
     MR_ENGINE(MR_eng_this_context) = NULL;
-    MR_runnext();
+    MR_idle();
 
   #ifndef ML_THREAD_AVOID_LABEL_ADDRS
     yield_skip_to_the_end:
@@ -275,7 +275,7 @@ INIT mercury_sys_init_thread_modules
 
         MR_destroy_context(MR_ENGINE(MR_eng_this_context));
         MR_ENGINE(MR_eng_this_context) = NULL;
-        MR_runnext();
+        MR_idle();
     }
 
     MR_define_entry(mercury__thread__yield_resume);

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-1998, 2000, 2003, 2005-2007, 2009-2010 The University of Melbourne.
+** Copyright (C) 1997-1998, 2000, 2003, 2005-2007, 2009-2011 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -15,6 +15,7 @@
 
   #include <signal.h>   /* for sigset_t on the SPARC */
   #include <pthread.h>
+  #include <semaphore.h> /* POSIX semaphores */
 
   #if defined(MR_DIGITAL_UNIX_PTHREADS)
     #define MR_MUTEX_ATTR       pthread_mutexattr_default
@@ -31,6 +32,8 @@
   typedef pthread_mutex_t   MercuryLock;
   typedef pthread_cond_t    MercuryCond;
 
+  typedef sem_t             MercurySem;
+
 extern int
 MR_mutex_lock(MercuryLock *lock, const char *from);
 extern int
@@ -42,8 +45,13 @@ MR_cond_broadcast(MercuryCond *cond, const char *from);
 extern int
 MR_cond_wait(MercuryCond *cond, MercuryLock *lock, const char *from);
 extern int
-MR_cond_timed_wait(MercuryCond *cond, MercuryLock *lock, 
+MR_cond_timed_wait(MercuryCond *cond, MercuryLock *lock,
     const struct timespec *abstime, const char *from);
+
+extern int
+MR_sem_wait(MercurySem *sem, const char *from);
+extern int
+MR_sem_post(MercurySem *sem, const char *from);
 
    #if defined(MR_PTHREADS_WIN32)
 extern MercuryThread
@@ -53,6 +61,12 @@ MR_null_thread(void);
   #endif
 
   #define MR_thread_equal(a, b)       pthread_equal((a), (b))
+
+  #if defined(MR_PTHREADS_WIN32)
+    #define MR_SELF_THREAD_ID ((long) pthread_self().p)
+  #else
+    #define MR_SELF_THREAD_ID ((long) pthread_self())
+  #endif
 
   extern MR_bool    MR_debug_threads;
 
@@ -70,6 +84,9 @@ MR_null_thread(void);
     #define MR_WAIT(cnd, mtx, from) pthread_cond_wait((cnd), (mtx))
     #define MR_TIMED_WAIT(cond, mtx, abstime, from)                         \
         pthread_cond_timedwait((cond), (mtx), (abstime))
+
+    #define MR_SEM_POST(sem, from)  sem_post((sem))
+    #define MR_SEM_WAIT(sem, from)  sem_wait((sem))
   #else
     #define MR_LOCK(lck, from)                          \
                 ( MR_debug_threads ?                    \
@@ -108,6 +125,21 @@ MR_null_thread(void);
         :                                                                   \
             pthread_cond_timedwait((cond), (mtx), (abstime))                \
         )
+
+    #define MR_SEM_WAIT(sem, from)                      \
+        ( MR_debug_threads ?                            \
+            MR_sem_wait((sem), (from))                  \
+        :                                               \
+            sem_wait((sem))                             \
+        )
+
+    #define MR_SEM_POST(sem, from)                      \
+        ( MR_debug_threads ?                            \
+            MR_sem_post((sem), (from))                  \
+        :                                               \
+            sem_post((sem))                             \
+        )
+
   #endif
 
     /*
@@ -147,7 +179,6 @@ MR_null_thread(void);
 
   extern MercuryThread      *MR_create_thread(MR_ThreadGoal *);
   extern void               MR_destroy_thread(void *eng);
-  extern volatile MR_bool   MR_exit_now;
 
   /*
   ** The primordial thread. Currently used for debugging.
@@ -166,7 +197,7 @@ MR_null_thread(void);
   ** call back into Mercury deadlock could result.
   */
   extern MercuryLock        MR_global_lock;
- 
+
   #ifndef MR_HIGHLEVEL_CODE
   /*
   ** This lock protects writes to the MR_all_engine_bases structure.
@@ -179,6 +210,11 @@ MR_null_thread(void);
   ** the current exception handler for the current thread.
   */
   extern MercuryThreadKey   MR_exception_handler_key;
+
+  /*
+  ** The CPU that the primordial thread is running on.
+  */
+  extern MR_Unsigned        MR_primordial_thread_cpu;
 
 #else /* not MR_THREAD_SAFE */
 
@@ -316,5 +352,11 @@ MR_clone_thread_local_mutables(const MR_ThreadLocalMuts *old_muts);
         * ((type *) &tlm->MR_tlm_values[(mut_index)]) = (var);          \
         MR_UNLOCK(&tlm->MR_tlm_lock, "MR_set_thread_local_mutable");    \
     } while (0)
+
+/*
+** Initialise some static structures in mercury_thread.c
+*/
+void
+MR_init_thread_stuff(void);
 
 #endif  /* MERCURY_THREAD_H */

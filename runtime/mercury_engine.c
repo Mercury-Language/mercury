@@ -20,8 +20,7 @@ ENDINIT
 #include    "mercury_engine.h"
 #include    "mercury_memory_zones.h"    /* for MR_create_zone() */
 #include    "mercury_memory_handlers.h" /* for MR_default_handler() */
-#include    "mercury_threadscope.h"     /* for MR_threadscope_setup_engine()
-                                           and event posting */
+#include    "mercury_threadscope.h"     /* for event posting */
 
 #include    "mercury_dummy.h"
 
@@ -79,14 +78,7 @@ MR_Debug_Flag_Info  MR_debug_flag_info[MR_MAXFLAG] = {
     { "detail",         MR_DETAILFLAG }
 };
 
-#ifdef MR_THREAD_SAFE
-  #ifndef MR_HIGHLEVEL_CODE
-/*
-** Writes to this array are protected by the init_engine_array_lock.
-*/
-MercuryEngine **MR_all_engine_bases = NULL;
-  #endif
-#else
+#ifndef MR_THREAD_SAFE
 MercuryEngine MR_engine_base;
 #endif
 
@@ -156,8 +148,9 @@ MR_init_engine(MercuryEngine *eng)
     eng->MR_eng_c_depth = 0;
 #endif
 
-#ifdef MR_THREADSCOPE
-    MR_threadscope_setup_engine(eng);
+#ifdef MR_LL_PARALLEL_CONJ
+    MR_init_wsdeque(&(eng->MR_eng_spark_deque),
+        MR_INITIAL_SPARK_DEQUE_SIZE);
 #endif
 
     /*
@@ -489,11 +482,11 @@ dummy_label:
 #ifdef  MR_THREAD_SAFE
     MR_ENGINE(MR_eng_c_depth)++;
 
-    if (MR_ENGINE(MR_eng_this_context)) {
+    if (MR_ENGINE(MR_eng_this_context) != NULL) {
         MR_SavedOwner *owner;
 
         owner = MR_GC_NEW(MR_SavedOwner);
-        owner->MR_saved_owner_thread = MR_ENGINE(MR_eng_owner_thread);
+        owner->MR_saved_owner_engine = MR_ENGINE(MR_eng_id);
         owner->MR_saved_owner_c_depth = MR_ENGINE(MR_eng_c_depth);
         owner->MR_saved_owner_next =
             MR_ENGINE(MR_eng_this_context)->MR_ctxt_saved_owners;
@@ -525,7 +518,7 @@ MR_define_label(engine_done);
         owner = this_ctxt->MR_ctxt_saved_owners;
         this_ctxt->MR_ctxt_saved_owners = owner->MR_saved_owner_next;
 
-        if (MR_thread_equal(owner->MR_saved_owner_thread, MR_ENGINE(MR_eng_owner_thread)) &&
+        if ((owner->MR_saved_owner_engine == MR_ENGINE(MR_eng_id)) &&
             owner->MR_saved_owner_c_depth == MR_ENGINE(MR_eng_c_depth))
         {
             MR_GC_free(owner);
@@ -537,13 +530,14 @@ MR_define_label(engine_done);
 #endif
         MR_save_context(this_ctxt);
         this_ctxt->MR_ctxt_resume = MR_LABEL(engine_done_2);
-        this_ctxt->MR_ctxt_resume_owner_thread = owner->MR_saved_owner_thread;
+        this_ctxt->MR_ctxt_resume_owner_engine = owner->MR_saved_owner_engine;
         this_ctxt->MR_ctxt_resume_c_depth = owner->MR_saved_owner_c_depth;
+        this_ctxt->MR_ctxt_resume_engine_required = MR_TRUE;
         MR_GC_free(owner);
         MR_schedule_context(this_ctxt);
 
         MR_ENGINE(MR_eng_this_context) = NULL;
-        MR_runnext();
+        MR_idle();
     }
 #endif
 

@@ -36,7 +36,6 @@
 
 typedef struct MR_threadscope_event_buffer MR_threadscope_event_buffer_t;
 
-typedef MR_uint_least16_t   MR_EngineId;
 typedef MR_uint_least16_t   MR_ContextStopReason;
 typedef MR_Integer          MR_ContextId;
 typedef MR_uint_least32_t   MR_TS_StringId;
@@ -158,10 +157,16 @@ extern void
 MR_threadscope_post_calling_main(void);
 
 /*
-** Post this message when a thread begins looking for work in MR_do_runnext
+** Post this message when a thread begins looking for a context to run.
 */
 extern void
-MR_threadscope_post_looking_for_global_work(void);
+MR_threadscope_post_looking_for_global_context(void);
+
+/*
+** Post this message when a thread is about to attempt work stealing.
+*/
+extern void
+MR_threadscope_post_work_stealing(void);
 
 /*
 ** Post this message before a parallel conjunction starts.

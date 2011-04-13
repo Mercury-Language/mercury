@@ -37,10 +37,7 @@ MR_init_wsdeque(MR_SparkDeque *dq, MR_Integer size)
 {
     dq->MR_sd_bottom = 0;
     dq->MR_sd_top = 0;
-    if (dq->MR_sd_active_array == NULL) {
-        /* The context might already have a deque if it is being recycled. */
-        dq->MR_sd_active_array = MR_alloc_spark_array(size);
-    }
+    dq->MR_sd_active_array = MR_alloc_spark_array(size);
 }
 
 MR_bool
