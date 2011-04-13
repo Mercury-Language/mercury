@@ -136,7 +136,7 @@
 %-----------------------------------------------------------------------------%
 
     % First we build up a mapping which records the equivalence type
-    % definitions.  Then we go through the item list and replace them.
+    % definitions. Then we go through the item list and replace them.
     %
 expand_eqv_types(ModuleName, Items0, Items, EventSpecMap0, EventSpecMap,
         EqvMap, !:UsedModules, !RecompInfo, !:Specs) :-
@@ -311,7 +311,7 @@ replace_in_item_list(ModuleName, Location0, [Item0 | Items0],
         ( Item0 = item_module_start(_)
         ; Item0 = item_module_end(_)
         ),
-        unexpected(this_file, "replace_in_item_list: module start or end")
+        unexpected($module, $pred, "module start or end")
     ;
         ( Item0 = item_clause(_)
         ; Item0 = item_type_defn(_)
@@ -431,7 +431,7 @@ replace_in_type_defn_info(ModuleName, Location, EqvMap, EqvInstMap,
             Spec = error_spec(severity_error, phase_expand_types, [Msg]),
             Specs = [Spec]
         ;
-            unexpected(this_file, "replace_in_type_defn: invalid item")
+            unexpected($module, $pred, "invalid item")
         )
     ;
         ContainsCirc = no,
@@ -1565,16 +1565,10 @@ record_expanded_item_2(ItemId, ExpandedItemSet0, ExpandedItemSet) :-
 finish_recording_expanded_items(_, no, no, no).
 finish_recording_expanded_items(_, no, yes(Info), yes(Info)).
 finish_recording_expanded_items(_, yes(_), no, _) :-
-    unexpected(this_file, "finish_recording_expanded_items").
+    unexpected($module, $pred, "items but no info").
 finish_recording_expanded_items(Item, yes(_ - ExpandedItems),
         yes(Info0), yes(Info)) :-
     recompilation.record_expanded_items(Item, ExpandedItems, Info0, Info).
-
-%-----------------------------------------------------------------------------%
-
-:- func this_file = string.
-
-this_file = "equiv_type.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module equiv_type.
