@@ -171,7 +171,7 @@ calculate_parallel_cost_step(Info, AllSharedVars, IsLastConjunct, Conjunct,
     StartTime = StartTime0 + SparkCost,
 
     (
-        Algorithm = parallelise_dep_conjs_overlap,
+        Algorithm = parallelise_dep_conjs(estimate_speedup_by_overlap),
 
         % Get the list of variables consumed by this conjunct
         % that will be turned into futures.
@@ -200,9 +200,9 @@ calculate_parallel_cost_step(Info, AllSharedVars, IsLastConjunct, Conjunct,
             count(Vars)),
         calc_cost_and_dead_time(Execution, CostBPar, DeadTime)
     ;
-        ( Algorithm = parallelise_dep_conjs_naive
-        ; Algorithm = do_not_parallelise_dep_conjs
-        ; Algorithm = parallelise_dep_conjs_num_vars
+        ( Algorithm = do_not_parallelise_dep_conjs
+        ; Algorithm = parallelise_dep_conjs(estimate_speedup_naively)
+        ; Algorithm = parallelise_dep_conjs(estimate_speedup_by_num_vars)
         ),
 
         CostBPar = CostB + SparkCost,

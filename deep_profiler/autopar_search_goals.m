@@ -719,6 +719,7 @@ pardgoals_build_candidate_conjunction(Info, Location, RevGoalPathSteps,
         MaybeBestParallelisation = yes(BestParallelisation),
         FirstConjNum = 1,
         ParalleliseDepConjs = Info ^ ipi_opts ^ cpcp_parallelise_dep_conjs,
+        SpeedupThreshold = Info ^ ipi_opts ^ cpcp_speedup_threshold,
         BestParallelisation = bp_parallel_execution(GoalsBefore, ParConjs,
             GoalsAfter, IsDependent, Metrics),
         Speedup = parallel_exec_metrics_get_speedup(Metrics),
@@ -732,7 +733,7 @@ pardgoals_build_candidate_conjunction(Info, Location, RevGoalPathSteps,
             FirstConjNum, IsDependent, GoalsBefore, GoalsBeforeCost, ParConjs,
             GoalsAfter, GoalsAfterCost, Metrics),
         (
-            Speedup > 1.0,
+            Speedup > SpeedupThreshold,
             (
                 ParalleliseDepConjs = do_not_parallelise_dep_conjs
             =>

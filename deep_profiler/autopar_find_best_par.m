@@ -419,17 +419,14 @@ find_best_parallelisation_complete_bnb(Info, Location, Algorithm,
         % Solutions is empty.
         ParalleliseDepConjs = Info ^ ipi_opts ^ cpcp_parallelise_dep_conjs,
         (
-            ( ParalleliseDepConjs = parallelise_dep_conjs_overlap
-            ; ParalleliseDepConjs = parallelise_dep_conjs_naive
-            ; ParalleliseDepConjs = parallelise_dep_conjs_num_vars
-            ),
+            ParalleliseDepConjs = parallelise_dep_conjs(_),
             MaybeBestParallelisation = no
         ;
             ParalleliseDepConjs = do_not_parallelise_dep_conjs,
             % Try again to get the best dependent parallelisation.
             % This is used for guided parallelisation.
             TempInfo = Info ^ ipi_opts ^ cpcp_parallelise_dep_conjs :=
-                parallelise_dep_conjs_overlap,
+                parallelise_dep_conjs(estimate_speedup_by_overlap),
             find_best_parallelisation_complete_bnb(TempInfo, Location,
                 Algorithm, PreprocessedGoals, MaybeBestParallelisation)
         )

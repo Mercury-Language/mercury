@@ -9,11 +9,8 @@
 % File: mdprof_feedback.m.
 % Author: tannier, pbone.
 %
-% This module contains the code for writing to a file the CSSs whose CSD's
-% mean/median call sequence counts (own and desc) exceed the given threshold.
-%
-% The generated file will then be used by the compiler for
-% implicit parallelism.
+% This module contains code for generating feedback files that tell the
+% compiler things such as which conjunctions can be profitably parallelised.
 %
 %-----------------------------------------------------------------------------%
 
@@ -67,15 +64,14 @@
 main(!IO) :-
     io.progname_base("mdprof_feedback", ProgName, !IO),
     io.command_line_arguments(Args0, !IO),
-    io.stderr_stream(Stderr, !IO),
     getopt.process_options(option_ops_multi(short, long, defaults),
         Args0, Args, MaybeOptions),
+    io.stderr_stream(Stderr, !IO),
     (
-        MaybeOptions = ok(Options),
+        MaybeOptions = ok(Options0),
+        post_process_options(ProgName, Options0, Options, !IO),
         lookup_bool_option(Options, help, Help),
         lookup_bool_option(Options, version, Version),
-        lookup_bool_option(Options, debug_read_profile, DebugReadProfile),
-        lookup_bool_option(Options, report, Report),
         (
             Version = yes
         ->
@@ -85,14 +81,95 @@ main(!IO) :-
         ->
             write_help_message(ProgName, !IO)
         ;
-            Args = [OutputFileName]
-        ->
-            feedback.read_feedback_file(OutputFileName, FeedbackReadResult,
-                !IO),
             (
-                FeedbackReadResult = ok(Feedback),
-                ProfileProgName = get_feedback_program_name(Feedback),
-                print_feedback_report(ProfileProgName, Feedback, !IO)
+                Args = [OutputFileName],
+                feedback.read_feedback_file(OutputFileName, FeedbackReadResult,
+                    !IO),
+                (
+                    FeedbackReadResult = ok(Feedback),
+                    ProfileProgName = get_feedback_program_name(Feedback),
+                    print_feedback_report(ProfileProgName, Feedback, !IO)
+                ;
+                    FeedbackReadResult = error(FeedbackReadError),
+                    feedback.read_error_message_string(OutputFileName,
+                        FeedbackReadError, Message),
+                    io.format(Stderr, "%s: %s\n",
+                        [s(ProgName), s(Message)], !IO),
+                    io.set_exit_status(1, !IO)
+                )
+            ;
+                Args = [InputFileName, OutputFileName],
+                get_feedback_requests(ProgName, Options, FoundError,
+                    RequestedFeedbackInfo, !IO),
+                (
+                    FoundError = have_not_found_error,
+                    generate_requested_feedback(ProgName, Options,
+                        InputFileName, OutputFileName, RequestedFeedbackInfo,
+                        !IO)
+                ;
+                    FoundError = found_error
+                    % The error message have already been printed.
+                )
+            ;
+                ( Args = []
+                ; Args = [_, _, _ | _]
+                ),
+                write_help_message(ProgName, !IO),
+                io.set_exit_status(1, !IO)
+            )
+        )
+    ;
+        MaybeOptions = error(Msg),
+        io.format(Stderr, "%s: error parsing options: %s\n",
+            [s(ProgName), s(Msg)], !IO),
+        write_help_message(ProgName, !IO),
+        io.set_exit_status(1, !IO)
+    ).
+
+:- pred generate_requested_feedback(string::in, option_table(option)::in,
+    string::in, string::in, requested_feedback_info::in, io::di, io::uo) is det.
+
+generate_requested_feedback(ProgName, Options, InputFileName, OutputFileName,
+        RequestedFeedbackInfo, !IO) :-
+    io.stderr_stream(Stderr, !IO),
+    RequestedFeedbackInfo = requested_feedback_info(MaybeParallelize),
+    (
+        MaybeParallelize = yes(_),
+        lookup_bool_option(Options, debug_read_profile, DebugReadProfile),
+        lookup_bool_option(Options, report, Report),
+        read_deep_file(InputFileName, DebugReadProfile, MaybeDeep, !IO),
+        (
+            MaybeDeep = ok(Deep),
+            ProfileProgName = Deep ^ profile_stats ^ prs_program_name,
+            feedback.read_or_create(OutputFileName, ProfileProgName,
+                FeedbackReadResult, !IO),
+            (
+                FeedbackReadResult = ok(Feedback0),
+                process_deep_to_feedback(RequestedFeedbackInfo,
+                    Deep, Messages, Feedback0, Feedback),
+                (
+                    Report = yes,
+                    print_feedback_report(ProfileProgName, Feedback, !IO)
+                ;
+                    Report = no
+                ),
+                write_feedback_file(OutputFileName, ProfileProgName,
+                    Feedback, WriteResult, !IO),
+                (
+                    WriteResult = ok
+                ;
+                    ( WriteResult = open_error(Error)
+                    ; WriteResult = write_error(Error)
+                    ),
+                    io.error_message(Error, ErrorMessage),
+                    io.format(Stderr, "%s: %s: %s\n",
+                        [s(ProgName), s(OutputFileName), s(ErrorMessage)],
+                        !IO),
+                    io.set_exit_status(1, !IO)
+                ),
+                lookup_int_option(Options, verbosity, VerbosityLevel),
+                set_verbosity_level(VerbosityLevel, !IO),
+                write_out_messages(Stderr, Messages, !IO)
             ;
                 FeedbackReadResult = error(FeedbackReadError),
                 feedback.read_error_message_string(OutputFileName,
@@ -101,64 +178,15 @@ main(!IO) :-
                 io.set_exit_status(1, !IO)
             )
         ;
-            Args = [InputFileName, OutputFileName],
-            check_options(Options, RequestedFeedbackInfo),
-            check_verbosity_option(Options, VerbosityLevel)
-        ->
-            read_deep_file(InputFileName, DebugReadProfile, MaybeDeep, !IO),
-            (
-                MaybeDeep = ok(Deep),
-                ProfileProgName = Deep ^ profile_stats ^ prs_program_name,
-                feedback.read_or_create(OutputFileName, ProfileProgName,
-                    FeedbackReadResult, !IO),
-                (
-                    FeedbackReadResult = ok(Feedback0),
-                    process_deep_to_feedback(RequestedFeedbackInfo,
-                        Deep, Messages, Feedback0, Feedback),
-                    (
-                        Report = yes,
-                        print_feedback_report(ProfileProgName, Feedback, !IO)
-                    ;
-                        Report = no
-                    ),
-                    write_feedback_file(OutputFileName, ProfileProgName,
-                        Feedback, WriteResult, !IO),
-                    (
-                        WriteResult = ok
-                    ;
-                        ( WriteResult = open_error(Error)
-                        ; WriteResult = write_error(Error)
-                        ),
-                        io.error_message(Error, ErrorMessage),
-                        io.format(Stderr, "%s: %s\n",
-                            [s(OutputFileName), s(ErrorMessage)], !IO),
-                        io.set_exit_status(1, !IO)
-                    ),
-                    set_verbosity_level(VerbosityLevel, !IO),
-                    write_out_messages(Stderr, Messages, !IO)
-                ;
-                    FeedbackReadResult = error(FeedbackReadError),
-                    feedback.read_error_message_string(OutputFileName,
-                        FeedbackReadError, Message),
-                    io.write_string(Stderr, Message, !IO),
-                    io.set_exit_status(1, !IO)
-                )
-            ;
-                MaybeDeep = error(Error),
-                io.set_exit_status(1, !IO),
-                io.format(Stderr, "%s: error reading %s: %s\n",
-                    [s(ProgName), s(InputFileName), s(Error)], !IO)
-            )
-        ;
+            MaybeDeep = error(Error),
             io.set_exit_status(1, !IO),
-            write_help_message(ProgName, !IO)
+            io.format(Stderr, "%s: error reading %s: %s\n",
+                [s(ProgName), s(InputFileName), s(Error)], !IO)
         )
     ;
-        MaybeOptions = error(Msg),
-        io.set_exit_status(1, !IO),
-        io.format(Stderr, "%s: error parsing options: %s\n",
-            [s(ProgName), s(Msg)], !IO),
-        write_help_message(ProgName, !IO)
+        MaybeParallelize = no,
+        io.format(Stderr, "%s: options do not request any form of feedback\n",
+            [s(ProgName)], !IO)
     ).
 
 :- pred print_feedback_report(string::in, feedback_info::in, io::di, io::uo)
@@ -175,31 +203,33 @@ print_feedback_report(ProgName, Feedback, !IO) :-
 
 create_feedback_report(feedback_data_calls_above_threshold_sorted(_, _, _),
         Report) :-
-   Report = "  feedback_data_calls_above_threshold_sorted is deprecated\n".
+   Report = "  feedback_data_calls_above_threshold_sorted is not supported\n".
 create_feedback_report(feedback_data_candidate_parallel_conjunctions(
         Parameters, Conjs), Report) :-
     NumConjs = length(Conjs),
     Parameters = candidate_par_conjunctions_params(DesiredParallelism,
         IntermoduleVarUse, SparkingCost, SparkingDelay, BarrierCost,
         SignalCost, WaitCost, ContextWakeupDelay, CliqueThreshold,
-        CallSiteThreshold, ParalleliseDepConjs, BestParAlgorithm),
+        CallSiteThreshold, SpeedupThreshold,
+        ParalleliseDepConjs, BestParAlgorithm),
     best_par_algorithm_string(BestParAlgorithm, BestParAlgorithmStr),
     ReportHeader = singleton(format(
-        "  Candidate Parallel Conjunctions:\n" ++
-        "    Desired parallelism: %f\n" ++
-        "    Intermodule var use: %s\n" ++
-        "    Sparking cost: %d\n" ++
-        "    Sparking delay: %d\n" ++
-        "    Barrier cost: %d\n" ++
-        "    Future signal cost: %d\n" ++
-        "    Future wait cost: %d\n" ++
-        "    Context wakeup delay: %d\n" ++
-        "    Clique threshold: %d\n" ++
-        "    Call site threshold: %d\n" ++
-        "    Parallelise dependant conjunctions: %s\n" ++
-        "    BestParallelisationAlgorithm: %s\n" ++
-        "    Number of Parallel Conjunctions: %d\n" ++
-        "    Parallel Conjunctions:\n\n",
+        "  Candidate parallel conjunctions:\n" ++
+        "    Desired parallelism:   %f\n" ++
+        "    Intermodule var use:   %s\n" ++
+        "    Sparking cost:         %d\n" ++
+        "    Sparking delay:        %d\n" ++
+        "    Barrier cost:          %d\n" ++
+        "    Future signal cost:    %d\n" ++
+        "    Future wait cost:      %d\n" ++
+        "    Context wakeup delay:  %d\n" ++
+        "    Clique threshold:      %d\n" ++
+        "    Call site threshold:   %d\n" ++
+        "    Speedup threshold:     %f\n" ++
+        "    Dependent conjs:       %s\n" ++
+        "    BestParAlgorithm:      %s\n" ++
+        "    # of par conjunctions: %d\n" ++
+        "    Parallel conjunctions:\n\n",
         [f(DesiredParallelism),
          s(string(IntermoduleVarUse)),
          i(SparkingCost),
@@ -210,19 +240,23 @@ create_feedback_report(feedback_data_candidate_parallel_conjunctions(
          i(ContextWakeupDelay),
          i(CliqueThreshold),
          i(CallSiteThreshold),
+         f(SpeedupThreshold),
          s(ParalleliseDepConjsStr),
          s(BestParAlgorithmStr),
          i(NumConjs)])),
     (
-        ParalleliseDepConjs = parallelise_dep_conjs_overlap,
-        ParalleliseDepConjsStr = "yes, use overlap calculation"
-    ;
-        ParalleliseDepConjs = parallelise_dep_conjs_num_vars,
-        ParalleliseDepConjsStr =
-            "yes, the more shared variables then the less overlap there is"
-    ;
-        ParalleliseDepConjs = parallelise_dep_conjs_naive,
-        ParalleliseDepConjsStr = "yes, pretend they're independant"
+        ParalleliseDepConjs = parallelise_dep_conjs(SpeedupAlg),
+        (
+            SpeedupAlg = estimate_speedup_naively,
+            ParalleliseDepConjsStr = "yes, pretend they're independent"
+        ;
+            SpeedupAlg = estimate_speedup_by_num_vars,
+            ParalleliseDepConjsStr =
+                "yes, the more shared variables the less overlap there is"
+        ;
+            SpeedupAlg = estimate_speedup_by_overlap,
+            ParalleliseDepConjsStr = "yes, use overlap calculation"
+        )
     ;
         ParalleliseDepConjs = do_not_parallelise_dep_conjs,
         ParalleliseDepConjsStr = "no"
@@ -251,7 +285,7 @@ help_message =
     -h --help       Generate this help message.
     -V --version    Report the program's version number.
     -v --verbosity  <0-4>
-                    Generate messages.  The higher the argument the more
+                    Generate messages.  The higher the argument, the more
                     verbose the program becomes.  2 is recommended and the
                     default.
     --debug-read-profile
@@ -269,78 +303,67 @@ help_message =
                 parallelization.
     --desired-parallelism <value>
                 The amount of desired parallelism for implicit parallelism,
-                value must be a floating point number above 1.0.
+                which must be a floating point number above 1.0.
                 Note: This option is currently ignored.
     --implicit-parallelism-intermodule-var-use
                 Assume that the compiler will be able to push signals and waits
                 for futures across module boundaries.
-    --implicit-parallelism-sparking-cost <value>
+    --ipar-sparking-cost <value>
                 The cost of creating a spark, measured in the deep profiler's
                 call sequence counts.
-    --implicit-parallelism-sparking-delay <value>
+    --ipar-sparking-delay <value>
                 The time taken from the time a spark is created until the spark
                 is executed by another processor, assuming that there is a free
                 processor.
-    --implicit-parallelism-barrier-cost <value>
+    --ipar-barrier-cost <value>
                 The cost of executing the barrier code at the end of each
                 parallel conjunct.
-    --implicit-parallelism-future-signal-cost <value>
+    --ipar-future-signal-cost <value>
                 The cost of the signal() call for the producer of a shared
                 variable, measured in the profiler's call sequence counts.
-    --implicit-parallelism-future-wait-cost <value>
+    --ipar-future-wait-cost <value>
                 The cost of the wait() call for the consumer of a shared
                 variable, measured in the profiler's call sequence counts.
-    --implicit-parallelism-context-wakeup-delay <value>
+    --ipar-context-wakeup-delay <value>
                 The time taken for a context to resume execution after being
                 placed on the run queue.  This is used to estimate the impact
                 of blocking of a context's execution, it is measured in the
                 profiler's call sequence counts.
-    --implicit-parallelism-clique-cost-threshold <value>
+    --ipar-clique-cost-threshold <value>
                 The cost threshold for cliques to be considered for implicit
                 parallelism, measured on the profiler's call sequence counts.
-    --implicit-parallelism-call-site-cost-threshold <value>
+    --ipar-call-site-cost-threshold <value>
                 The cost of a call site to be considered for parallelism
                 against another call site.
-    --no-implicit-parallelism-dependant-conjunctions
-                Disable parallelisation of dependant conjunctions.
-    --implicit-parallelism-dependant-conjunctions-algorithm <alg>
+    --no-ipar-dep-conjs
+                Disable parallelisation of dependent conjunctions.
+    --ipar-speedup-alg <alg>
                 Choose the algorithm that is used to estimate the speedup for
-                dependant calculations.  The algorithms are:
-                    overlap: Compute the 'overlap' between dependant
+                dependent calculations.  The available algorithms are:
+                    overlap: Compute the overlap between dependent
                       conjunctions.
                     num_vars: Use the number of shared variables as a proxy for
                       the amount of overlap available.
                     naive: Ignore dependencies.
                 The default is overlap.
-    --implicit-parallelism-best-parallelisation-algorithm <algorithm>
+    --ipar-best-par-alg <alg>
                 Select which algorithm to use to find the best way to
-                parallelise a conjunction.  The algorithms are:
+                parallelise a conjunction.  The available algorithms are:
                     greedy: A greedy algorithm with a linear time complexity.
                     complete: A complete algorithm with a branch and bound
                       search. This can be slow for problems larger than 50
                       conjuncts, since it has an exponential complexity.
                     complete-size(N): As above exept that it takes a single
-                      parameter, N.  A conjunction has more than N conjuncts
-                      then the greedy algorithm will be used.
+                      parameter, N.  If a conjunction has more than N
+                      conjuncts, then the greedy algorithm will be used.
                     complete-branches(N): The same as the complete algorithm,
                       except that it allows at most N branches to be created
-                      during the search.  Once N branches have been created a
-                      greedy search is used on each open branch.
+                      during the search.  Once N branches have been created,
+                      a greedy search is used on each open branch.
                 The default is complete-branches(1000).
 
     The following options select specific types of feedback information
     and parameterise them:
-
-    --calls-above-threshold-sorted
-                A list of calls whose typical cost (in call sequence counts) is
-                above a given threshold. This option uses the
-                --desired-parallelism option to specify the threshold,
-                --calls-above-threshold-sorted-measure specifies what 'typical'
-                means.  This option is deprecated.
-    --calls-above-threshold-sorted-measure mean|median
-                mean: Use mean(call site dynamic cost) as the typical cost.
-                median: Use median(call site dynamic cost) as the typical cost.
-                The default is 'mean'.
 
     --candidate-parallel-conjunctions
                 Produce a list of candidate parallel conjunctions for implicit
@@ -401,11 +424,6 @@ read_deep_file(Input, Debug, MaybeDeep, !IO) :-
     ;       debug_read_profile
     ;       report
 
-            % The calls above threshold sorted feedback information, this is
-            % used for the old implicit parallelism implementation.
-    ;       calls_above_threshold_sorted
-    ;       calls_above_threshold_sorted_measure
-
             % A list of candidate parallel conjunctions is produced for the new
             % implicit parallelism implementation.
     ;       candidate_parallel_conjunctions
@@ -413,20 +431,21 @@ read_deep_file(Input, Debug, MaybeDeep, !IO) :-
             % Provide suitable feedback information for implicit parallelism
     ;       implicit_parallelism
     ;       desired_parallelism
-    ;       implicit_parallelism_intermodule_var_use
-    ;       implicit_parallelism_sparking_cost
-    ;       implicit_parallelism_sparking_delay
-    ;       implicit_parallelism_barrier_cost
-    ;       implicit_parallelism_future_signal_cost
-    ;       implicit_parallelism_future_wait_cost
-    ;       implicit_parallelism_context_wakeup_delay
-    ;       implicit_parallelism_clique_cost_threshold
-    ;       implicit_parallelism_call_site_cost_threshold
-    ;       implicit_parallelism_dependant_conjunctions
-    ;       implicit_parallelism_dependant_conjunctions_algorithm
-    ;       implicit_parallelism_best_parallelisation_algorithm.
+    ;       ipar_intermodule_var_use
+    ;       ipar_sparking_cost
+    ;       ipar_sparking_delay
+    ;       ipar_barrier_cost
+    ;       ipar_future_signal_cost
+    ;       ipar_future_wait_cost
+    ;       ipar_context_wakeup_delay
+    ;       ipar_clique_cost_threshold
+    ;       ipar_call_site_cost_threshold
+    ;       ipar_speedup_threshold
+    ;       ipar_dep_conjs
+    ;       ipar_speedup_alg
+    ;       ipar_best_par_alg.
 
-% TODO: Introduce an option to disable parallelisation of dependant
+% TODO: Introduce an option to disable parallelisation of dependent
 % conjunctions, or switch to the simple calculations for independent
 % conjunctions.
 
@@ -448,10 +467,6 @@ long("debug-read-profile",
     debug_read_profile).
 long("report",
     report).
-long("calls-above-threshold-sorted",
-    calls_above_threshold_sorted).
-long("calls-above-threshold-sorted-measure",
-    calls_above_threshold_sorted_measure).
 long("candidate-parallel-conjunctions",
     candidate_parallel_conjunctions).
 long("implicit-parallelism",
@@ -459,66 +474,114 @@ long("implicit-parallelism",
 long("desired-parallelism",
     desired_parallelism).
 long("implicit-parallelism-intermodule-var-use",
-    implicit_parallelism_intermodule_var_use).
+    ipar_intermodule_var_use).
+long("ipar-intermodule-var-use",
+    ipar_intermodule_var_use).
 long("implicit-parallelism-sparking-cost",
-    implicit_parallelism_sparking_cost).
+    ipar_sparking_cost).
+long("ipar-sparking-cost",
+    ipar_sparking_cost).
 long("implicit-parallelism-sparking-delay",
-    implicit_parallelism_sparking_delay).
+    ipar_sparking_delay).
+long("ipar-sparking-delay",
+    ipar_sparking_delay).
 long("implicit-parallelism-future-signal-cost",
-    implicit_parallelism_future_signal_cost).
+    ipar_future_signal_cost).
+long("ipar-future-signal-cost",
+    ipar_future_signal_cost).
 long("implicit-parallelism-barrier-cost",
-    implicit_parallelism_barrier_cost).
+    ipar_barrier_cost).
+long("ipar-barrier-cost",
+    ipar_barrier_cost).
 long("implicit-parallelism-future-wait-cost",
-    implicit_parallelism_future_wait_cost).
+    ipar_future_wait_cost).
+long("ipar-future-wait-cost",
+    ipar_future_wait_cost).
 long("implicit-parallelism-context-wakeup-delay",
-    implicit_parallelism_context_wakeup_delay).
+    ipar_context_wakeup_delay).
+long("ipar-context-wakeup-delay",
+    ipar_context_wakeup_delay).
 long("implicit-parallelism-clique-cost-threshold",
-    implicit_parallelism_clique_cost_threshold).
+    ipar_clique_cost_threshold).
+long("ipar-clique-cost-threshold",
+    ipar_clique_cost_threshold).
 long("implicit-parallelism-call-site-cost-threshold",
-    implicit_parallelism_call_site_cost_threshold).
+    ipar_call_site_cost_threshold).
+long("ipar-call-site-cost-threshold",
+    ipar_call_site_cost_threshold).
 long("implicit-parallelism-dependant-conjunctions",
-    implicit_parallelism_dependant_conjunctions).
+    ipar_dep_conjs).
+long("ipar-dep-conjs",
+    ipar_dep_conjs).
 long("implicit-parallelism-dependant-conjunctions-algorithm",
-    implicit_parallelism_dependant_conjunctions_algorithm).
+    ipar_speedup_alg).
+long("ipar-speedup-alg",
+    ipar_speedup_alg).
 long("implicit-parallelism-best-parallelisation-algorithm",
-    implicit_parallelism_best_parallelisation_algorithm).
+    ipar_best_par_alg).
+long("ipar-best-par-alg",
+    ipar_best_par_alg).
 
 :- pred defaults(option::out, option_data::out) is multi.
 
-defaults(help,                  bool(no)).
-defaults(verbosity,             int(2)).
-defaults(version,               bool(no)).
-defaults(debug_read_profile,    bool(no)).
-defaults(report,                bool(yes)).
+defaults(help,                              bool(no)).
+defaults(verbosity,                         int(2)).
+defaults(version,                           bool(no)).
+defaults(debug_read_profile,                bool(no)).
+defaults(report,                            bool(yes)).
 
-defaults(calls_above_threshold_sorted,                      bool(no)).
-defaults(calls_above_threshold_sorted_measure,              string("mean")).
+defaults(candidate_parallel_conjunctions,   bool(no)).
 
-defaults(candidate_parallel_conjunctions,                   bool(no)).
-
-defaults(implicit_parallelism,                              bool(no)).
-defaults(desired_parallelism,                               string("8.0")).
-% XXX: These values have been chosen arbitrarily, appropriately values should
-% be tested for.
-defaults(implicit_parallelism_intermodule_var_use,          bool(no)).
-defaults(implicit_parallelism_sparking_cost,                int(100)).
-defaults(implicit_parallelism_sparking_delay,               int(1000)).
-defaults(implicit_parallelism_barrier_cost,                 int(100)).
-defaults(implicit_parallelism_future_signal_cost,           int(100)).
-defaults(implicit_parallelism_future_wait_cost,             int(200)).
-defaults(implicit_parallelism_context_wakeup_delay,         int(1000)).
-defaults(implicit_parallelism_clique_cost_threshold,        int(2000)).
-defaults(implicit_parallelism_call_site_cost_threshold,     int(2000)).
-defaults(implicit_parallelism_dependant_conjunctions,       bool(yes)).
-defaults(implicit_parallelism_dependant_conjunctions_algorithm,
-    string("overlap")).
-defaults(implicit_parallelism_best_parallelisation_algorithm,
-    string("complete-branches(1000)")).
+defaults(implicit_parallelism,              bool(no)).
+defaults(desired_parallelism,               string("8.0")).
+% XXX: These values have been chosen arbitrarily; we should set them
+% based on measurements.
+defaults(ipar_intermodule_var_use,          bool(no)).
+defaults(ipar_sparking_cost,                int(100)).
+defaults(ipar_sparking_delay,               int(1000)).
+defaults(ipar_barrier_cost,                 int(100)).
+defaults(ipar_future_signal_cost,           int(100)).
+defaults(ipar_future_wait_cost,             int(200)).
+defaults(ipar_context_wakeup_delay,         int(1000)).
+defaults(ipar_clique_cost_threshold,        int(2000)).
+defaults(ipar_call_site_cost_threshold,     int(2000)).
+defaults(ipar_dep_conjs,                    bool(yes)).
+defaults(ipar_speedup_threshold,            string("1.01")).
+defaults(ipar_speedup_alg,                  string("overlap")).
+defaults(ipar_best_par_alg,                 string("complete-branches(1000)")).
 
 :- pred construct_measure(string::in, stat_measure::out) is semidet.
 
 construct_measure("mean",       stat_mean).
 construct_measure("median",     stat_median).
+
+:- pred post_process_options(string::in,
+    option_table(option)::in, option_table(option)::out,
+    io::di, io::uo) is det.
+
+post_process_options(ProgName, !Options, !IO) :-
+    lookup_int_option(!.Options, verbosity, VerbosityLevel),
+    io.stderr_stream(Stderr, !IO),
+    ( VerbosityLevel < 0 ->
+        io.format(Stderr,
+            "%s: warning: verbosity level should not be negative.\n",
+            [s(ProgName)], !IO),
+        set_option(verbosity, int(0), !Options)
+    ; VerbosityLevel > 4 ->
+        io.format(Stderr,
+            "%s: warning: verbosity level should not exceed 4.\n",
+            [s(ProgName)], !IO),
+        set_option(verbosity, int(4), !Options)
+    ;
+        true
+    ),
+    lookup_bool_option(!.Options, implicit_parallelism, ImplicitParallelism),
+    (
+        ImplicitParallelism = yes,
+        set_option(candidate_parallel_conjunctions, bool(yes), !Options)
+    ;
+        ImplicitParallelism = no
+    ).
 
     % This type defines the set of feedback_types that are to be calculated and
     % put into the feedback info file. They should correspond with the values
@@ -526,42 +589,24 @@ construct_measure("median",     stat_median).
     %
 :- type requested_feedback_info
     --->    requested_feedback_info(
-                maybe_candidate_parallel_conjunctions
-                    :: maybe(candidate_par_conjunctions_params)
+                rfi_parallel    :: maybe(candidate_par_conjunctions_params)
             ).
 
-:- pred check_verbosity_option(option_table(option)::in, int::out) is semidet.
+:- type maybe_found_error
+    --->    have_not_found_error
+    ;       found_error.
 
-check_verbosity_option(Options, VerbosityLevel) :-
-    lookup_int_option(Options, verbosity, VerbosityLevel),
-    VerbosityLevel >= 0,
-    VerbosityLevel =< 4.
-
-    % Check all the command line options and return a well-typed representation
-    % of the user's request. Some command line options imply other options,
-    % those implications are also handled here.
+    % Check all the command line options, and return a representation
+    % of the user's request.
     %
-:- pred check_options(option_table(option)::in, requested_feedback_info::out)
-    is det.
+:- pred get_feedback_requests(string::in, option_table(option)::in,
+    maybe_found_error::out, requested_feedback_info::out,
+    io::di, io::uo) is det.
 
-check_options(Options0, RequestedFeedbackInfo) :-
-    % Handle options that imply other options here.
-    some [!Options]
-    (
-        !:Options = Options0,
-        lookup_bool_option(!.Options, implicit_parallelism,
-            ImplicitParallelism),
-        (
-            ImplicitParallelism = yes,
-            set_option(calls_above_threshold_sorted, bool(yes), !Options),
-            set_option(candidate_parallel_conjunctions, bool(yes), !Options)
-        ;
-            ImplicitParallelism = no
-        ),
-        Options = !.Options
-    ),
-
-    % For each feedback type, determine if it is requested and fill in the
+get_feedback_requests(ProgName, Options, !:Error, Requested, !IO) :-
+    io.stderr_stream(Stderr, !IO),
+    !:Error = have_not_found_error,
+    % For each feedback type, determine if it is requested, and fill in the
     % field in the RequestedFeedbackInfo structure.
     lookup_bool_option(Options, candidate_parallel_conjunctions,
         CandidateParallelConjunctions),
@@ -569,75 +614,91 @@ check_options(Options0, RequestedFeedbackInfo) :-
         CandidateParallelConjunctions = yes,
         lookup_string_option(Options, desired_parallelism,
             DesiredParallelismStr),
-        (
-            string.to_float(DesiredParallelismStr, DesiredParallelismPrime),
-            DesiredParallelismPrime > 1.0
-        ->
-            DesiredParallelism = DesiredParallelismPrime
+        ( string.to_float(DesiredParallelismStr, DesiredParallelismPrime) ->
+            DesiredParallelism = DesiredParallelismPrime,
+            ( DesiredParallelism > 1.0 ->
+                true
+            ;
+                io.format(Stderr,
+                    "%s: error: desired parallelism level should be > 1.\n",
+                    [s(ProgName)], !IO),
+                !:Error = found_error
+            )
         ;
-            error("Invalid value for desired_parallelism: " ++
-                DesiredParallelismStr)
+            io.format(Stderr,
+                "%s: error: desired parallelism level should be a number.\n",
+                [s(ProgName)], !IO),
+            !:Error = found_error,
+            DesiredParallelism = 1.0        % dummy value
         ),
-        lookup_bool_option(Options, implicit_parallelism_intermodule_var_use,
+        lookup_string_option(Options, ipar_speedup_threshold,
+            SpeedupThresholdStr),
+        ( string.to_float(SpeedupThresholdStr, SpeedupThresholdPrime) ->
+            SpeedupThreshold = SpeedupThresholdPrime,
+            ( SpeedupThreshold >= 1.0 ->
+                true
+            ;
+                io.format(Stderr,
+                    "%s: error: speedup threshold should be >= 1.\n",
+                    [s(ProgName)], !IO),
+                !:Error = found_error
+            )
+        ;
+            io.format(Stderr,
+                "%s: error: speedup threshold should be a number.\n",
+                [s(ProgName)], !IO),
+            !:Error = found_error,
+            SpeedupThreshold = 1.0        % dummy value
+        ),
+        lookup_bool_option(Options, ipar_intermodule_var_use,
             IntermoduleVarUse),
-        lookup_int_option(Options, implicit_parallelism_sparking_cost,
-            SparkingCost),
-        lookup_int_option(Options, implicit_parallelism_sparking_delay,
-            SparkingDelay),
-        lookup_int_option(Options, implicit_parallelism_barrier_cost,
-            BarrierCost),
-        lookup_int_option(Options, implicit_parallelism_future_signal_cost,
-            FutureSignalCost),
-        lookup_int_option(Options, implicit_parallelism_future_wait_cost,
-            FutureWaitCost),
-        lookup_int_option(Options, implicit_parallelism_context_wakeup_delay,
+        lookup_int_option(Options, ipar_sparking_cost, SparkingCost),
+        lookup_int_option(Options, ipar_sparking_delay, SparkingDelay),
+        lookup_int_option(Options, ipar_barrier_cost, BarrierCost),
+        lookup_int_option(Options, ipar_future_signal_cost, FutureSignalCost),
+        lookup_int_option(Options, ipar_future_wait_cost, FutureWaitCost),
+        lookup_int_option(Options, ipar_context_wakeup_delay,
             ContextWakeupDelay),
-        lookup_int_option(Options, implicit_parallelism_clique_cost_threshold,
+        lookup_int_option(Options, ipar_clique_cost_threshold,
             CPCCliqueThreshold),
-        lookup_int_option(Options,
-            implicit_parallelism_call_site_cost_threshold,
+        lookup_int_option(Options, ipar_call_site_cost_threshold,
             CPCCallSiteThreshold),
-        lookup_bool_option(Options,
-            implicit_parallelism_dependant_conjunctions,
-            ParalleliseDepConjsBool),
-        lookup_string_option(Options,
-            implicit_parallelism_dependant_conjunctions_algorithm,
-            ParalleliseDepConjsString),
+        lookup_bool_option(Options, ipar_dep_conjs, AllowDepConjs),
+        lookup_string_option(Options, ipar_speedup_alg, SpeedupAlgString),
         (
-            parse_parallelise_dep_conjs_string(ParalleliseDepConjsBool,
-                ParalleliseDepConjsString, ParalleliseDepConjsPrime)
+            parse_parallelise_dep_conjs_string(AllowDepConjs,
+                SpeedupAlgString, SpeedupAlgPrime)
         ->
-            ParalleliseDepConjs = ParalleliseDepConjsPrime
+            SpeedupAlg = SpeedupAlgPrime
         ;
-            error(format(
-                "Couldn't parse '%s' into a parallelise dependant conjs "
-                    ++ "option",
-                [s(ParalleliseDepConjsString)]))
+            io.format(Stderr,
+                "%s: error: %s is not a speedup estimate algorithm.\n",
+                [s(ProgName), s(SpeedupAlgString)], !IO),
+            !:Error = found_error,
+            SpeedupAlg = do_not_parallelise_dep_conjs    % dummy value
         ),
-        lookup_string_option(Options,
-            implicit_parallelism_best_parallelisation_algorithm,
-            BestParAlgorithmStr),
-        parse_best_par_algorithm(BestParAlgorithmStr,
-            MaybeBestParAlgorithm),
+        lookup_string_option(Options, ipar_best_par_alg, BestParAlgStr),
+        parse_best_par_algorithm(BestParAlgStr, MaybeBestParAlg),
         (
-            MaybeBestParAlgorithm = ok(BestParAlgorithm)
+            MaybeBestParAlg = ok(BestParAlg)
         ;
-            MaybeBestParAlgorithm = error(MaybeMessage, _Line, _Col),
+            MaybeBestParAlg = error(MaybeMessage, _Line, _Col),
             (
                 MaybeMessage = yes(Message),
-                Error = format(
-                    "Couldn't parse %s as a best parallelsation algorithm:" ++
-                        " %s\n",
-                    [s(BestParAlgorithmStr), s(Message)])
+                io.format(Stderr,
+                    "%s: error: %s is not a best parallelisation " ++
+                        "algorithm: %s.\n",
+                    [s(ProgName), s(BestParAlgStr), s(Message)], !IO)
             ;
                 MaybeMessage = no,
-                Error = format(
-                    "Couldn't parse %s as a best parallelsation algorithm\n",
-                    [s(BestParAlgorithmStr)])
+                io.format(Stderr,
+                    "%s: error: %s is not a best parallelisation algorithm.\n",
+                    [s(ProgName), s(BestParAlgStr)], !IO)
             ),
-            error(Error)
+            !:Error = found_error,
+            BestParAlg = bpa_greedy    % dummy value
         ),
-        CandidateParallelConjunctionsOpts =
+        AutoParOpts =
             candidate_par_conjunctions_params(DesiredParallelism,
                 IntermoduleVarUse,
                 SparkingCost,
@@ -648,16 +709,15 @@ check_options(Options0, RequestedFeedbackInfo) :-
                 ContextWakeupDelay,
                 CPCCliqueThreshold,
                 CPCCallSiteThreshold,
-                ParalleliseDepConjs,
-                BestParAlgorithm),
-        MaybeCandidateParallelConjunctionsOpts =
-            yes(CandidateParallelConjunctionsOpts)
+                SpeedupThreshold,
+                SpeedupAlg,
+                BestParAlg),
+        MaybeAutoParOpts = yes(AutoParOpts)
     ;
         CandidateParallelConjunctions = no,
-        MaybeCandidateParallelConjunctionsOpts = no
+        MaybeAutoParOpts = no
     ),
-    RequestedFeedbackInfo =
-        requested_feedback_info(MaybeCandidateParallelConjunctionsOpts).
+    Requested = requested_feedback_info(MaybeAutoParOpts).
 
 :- pred parse_best_par_algorithm(string::in,
     parse_result(best_par_algorithm)::out) is det.
@@ -711,12 +771,12 @@ best_par_algorithm_string(bpa_complete, "complete").
     parallelise_dep_conjs::out) is semidet.
 
 parse_parallelise_dep_conjs_string(no, _, do_not_parallelise_dep_conjs).
-parse_parallelise_dep_conjs_string(yes, "overlap",
-    parallelise_dep_conjs_overlap).
-parse_parallelise_dep_conjs_string(yes, "num_vars",
-    parallelise_dep_conjs_num_vars).
 parse_parallelise_dep_conjs_string(yes, "naive",
-    parallelise_dep_conjs_naive).
+    parallelise_dep_conjs(estimate_speedup_naively)).
+parse_parallelise_dep_conjs_string(yes, "num_vars",
+    parallelise_dep_conjs(estimate_speedup_by_num_vars)).
+parse_parallelise_dep_conjs_string(yes, "overlap",
+    parallelise_dep_conjs(estimate_speedup_by_overlap)).
 
     % Adjust command line options when one option implies other options.
     %
@@ -750,15 +810,12 @@ set_option(Option, Value, !Options) :-
     cord(message)::out, feedback_info::in, feedback_info::out) is det.
 
 process_deep_to_feedback(RequestedFeedbackInfo, Deep, Messages, !Feedback) :-
-    MaybeCandidateParallelConjunctionsOpts =
-        RequestedFeedbackInfo ^ maybe_candidate_parallel_conjunctions,
+    RequestedFeedbackInfo = requested_feedback_info(MaybeAutoParOpts),
     (
-        MaybeCandidateParallelConjunctionsOpts =
-            yes(CandidateParallelConjunctionsOpts),
-        candidate_parallel_conjunctions(CandidateParallelConjunctionsOpts,
-            Deep, Messages, !Feedback)
+        MaybeAutoParOpts = yes(AutoParOpts),
+        candidate_parallel_conjunctions(AutoParOpts, Deep, Messages, !Feedback)
     ;
-        MaybeCandidateParallelConjunctionsOpts = no,
+        MaybeAutoParOpts = no,
         Messages = cord.empty
     ).
 

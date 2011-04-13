@@ -86,25 +86,32 @@
                 % before we consider it for parallel execution.
                 cpcp_call_site_threshold    :: int,
 
+                % The speedup we require before we allow a conjunction to be
+                % automatically parallelised. Should be either exactly 1.0
+                % or just above 1.0.
+                cpcp_speedup_threshold      :: float,
+
                 % Whether we will allow parallelisation to result in
-                % dependent parallel conjunctions.
+                % dependent parallel conjunctions, and if so, how we estimate
+                % the speedup we get for them.
                 cpcp_parallelise_dep_conjs  :: parallelise_dep_conjs,
 
                 cpcp_best_par_alg           :: best_par_algorithm
             ).
 
 :- type parallelise_dep_conjs
-    --->    parallelise_dep_conjs_overlap
+    --->    do_not_parallelise_dep_conjs
+    ;       parallelise_dep_conjs(speedup_estimate_alg).
+
+:- type speedup_estimate_alg
+    --->    estimate_speedup_naively
+            % Be naive to dependent parallelism, pretend it is independent.
+
+    ;       estimate_speedup_by_num_vars
+            % Use the num vars approximation for how much conjuncts overlap.
+
+    ;       estimate_speedup_by_overlap.
             % Use the overlap calculation for dependent parallelism.
-
-    ;       parallelise_dep_conjs_num_vars
-            % Use the num vars approximation for how much conjuncts
-            % overlap.
-
-    ;       parallelise_dep_conjs_naive
-            % Be naive to dependent parallelism, pretend its independent.
-
-    ;       do_not_parallelise_dep_conjs.
 
     % This type is used to select which algorithm is used to find the most
     % profitable parallelisation of a particular conjunction.
