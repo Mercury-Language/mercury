@@ -537,6 +537,7 @@ case $HOST in
     taura)
         CONFIG_OPTS=""
         INSTALL_LIBGRADES="asm_fast.gc  \
+            asm_fast.gc.stseg           \
             asm_fast.par.gc             \
             asm_fast.par.gc.stseg       \
             asm_fast.gc.debug           \
