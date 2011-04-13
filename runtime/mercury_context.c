@@ -115,7 +115,8 @@ static MR_Integer       MR_profile_parallel_regular_context_kept = 0;
 */
 #if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY)
 static MercuryLock      MR_next_cpu_lock;
-MR_bool                 MR_thread_pinning = MR_FALSE;
+MR_bool                 MR_thread_pinning_configured = MR_TRUE;
+MR_bool                 MR_thread_pinning_in_use;
 static MR_Unsigned      MR_next_cpu = 0;
   #ifdef  MR_HAVE_SCHED_GETCPU
 static MR_Integer       MR_primordial_thread_cpu = -1;
@@ -230,23 +231,17 @@ MR_init_thread_stuff(void)
         if (result < 1) {
             /* We couldn't determine the number of processors. */
             MR_num_threads = 1;
+  #ifdef MR_LL_PARALLEL_CONJ
+            MR_thread_pinning_in_use = MR_FALSE;
+  #endif
         } else {
             MR_num_threads = result;
-            /*
-            ** On systems that don't support sched_setaffinity we don't try to
-            ** automatically enable thread pinning. This prevents a runtime
-            ** warning that could unnecessarily confuse the user.
-            **/
-    #if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY)
-            /*
-            ** Comment this back in to enable thread pinning by default if we
-            ** autodetected the correct number of CPUs.
-            */
-            /* MR_thread_pinning = MR_TRUE; */
-    #endif
         }
     #else /* ! defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN) */
         MR_num_threads = 1;
+  #ifdef MR_LL_PARALLEL_CONJ
+        MR_thread_pinning_in_use = MR_FALSE;
+  #endif
   #endif /* ! defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN) */
     }
   #ifdef MR_LL_PARALLEL_CONJ
@@ -270,7 +265,7 @@ MR_pin_primordial_thread(void)
     ** We don't need locking to pin the primordial thread as it is called
     ** before any other threads exist.
     */
-    if (MR_thread_pinning) {
+    if (MR_thread_pinning_configured && MR_thread_pinning_in_use) {
         MR_primordial_thread_cpu = sched_getcpu();
         if (MR_primordial_thread_cpu == -1) {
             perror("Warning: unable to determine the current CPU for "
@@ -293,7 +288,7 @@ MR_pin_thread(void)
 {
 #if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY)
     MR_LOCK(&MR_next_cpu_lock, "MR_pin_thread");
-    if (MR_thread_pinning) {
+    if (MR_thread_pinning_configured && MR_thread_pinning_in_use) {
 #if defined(MR_HAVE_SCHED_GETCPU)
         if (MR_next_cpu == MR_primordial_thread_cpu) {
             MR_next_cpu++;
@@ -321,12 +316,12 @@ MR_do_pin_thread(int cpu)
             ** If this failed once, it will probably fail again, so we
             ** disable it.
             */
-            MR_thread_pinning = MR_FALSE;
+            MR_thread_pinning_in_use = MR_FALSE;
         }
     } else {
         perror("Warning: Couldn't set CPU affinity due to a static "
             "system limit: ");
-        MR_thread_pinning = MR_FALSE;
+        MR_thread_pinning_in_use = MR_FALSE;
     }
 }
 #endif

@@ -354,7 +354,8 @@ extern      MR_Context  *MR_runqueue_tail;
   extern    MercuryCond MR_runqueue_cond;
 #endif
 #ifdef  MR_LL_PARALLEL_CONJ
-  extern    MR_bool         MR_thread_pinning;
+  extern    MR_bool         MR_thread_pinning_configured;
+  extern    MR_bool         MR_thread_pinning_in_use;
 #endif
 
 #ifdef MR_PROFILE_PARALLEL_EXECUTION_SUPPORT

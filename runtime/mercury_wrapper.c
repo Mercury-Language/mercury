@@ -203,8 +203,17 @@ size_t      MR_stack_margin_size = 128;
 /* primary cache size to optimize for, in bytes */
 size_t      MR_pcache_size = 8192;
 
-/* soft limits on the number of contexts we can create */
+/*
+** Limits on the number of contexts we can create.
+** These allow 64MB of det stacks regardless of which grade is being used.
+** Where sizeof(MR_Word) 8 and the detstack is 64 and 4098 Kwords big for stseg
+** and non stseg grades.
+*/
+#ifdef MR_STACK_SEGMENTS
+MR_Unsigned MR_max_contexts_per_thread = 128;
+#else
 MR_Unsigned MR_max_contexts_per_thread = 2;
+#endif
 MR_Unsigned MR_max_outstanding_contexts;
 
 #ifdef MR_LL_PARALLEL_CONJ
@@ -1402,7 +1411,7 @@ struct MR_option MR_long_opts[] = {
         MR_RUNTIME_GRANULAITY_WSDEQUE_LENGTH_FACTOR },
     { "worksteal-max-attempts",         1, 0, MR_WORKSTEAL_MAX_ATTEMPTS },
     { "worksteal-sleep-msecs",          1, 0, MR_WORKSTEAL_SLEEP_MSECS },
-    { "thread-pinning",                 0, 0, MR_THREAD_PINNING },
+    { "no-thread-pinning",              0, 0, MR_THREAD_PINNING },
     { "profile-parallel-execution",     0, 0, MR_PROFILE_PARALLEL_EXECUTION },
     { "mdb-tty",                        1, 0, MR_MDB_TTY },
     { "mdb-in",                         1, 0, MR_MDB_IN },
@@ -1859,7 +1868,7 @@ MR_process_options(int argc, char **argv)
 
             case MR_THREAD_PINNING:
 #if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY)
-                MR_thread_pinning = MR_TRUE;
+                MR_thread_pinning_configured = MR_FALSE;
 #endif
                 break;
 
@@ -2283,6 +2292,7 @@ MR_process_options(int argc, char **argv)
                 if (MR_num_threads < 1) {
                     MR_usage();
                 }
+                MR_thread_pinning_in_use = MR_FALSE;
 #endif
                 break;
 

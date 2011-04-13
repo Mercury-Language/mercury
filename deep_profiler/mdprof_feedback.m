@@ -257,8 +257,9 @@ help_message =
     --debug-read-profile
                     Generate debugging messages when reading the deep profile
                     and creating the deep structure.
-    -r --report     Display a report about the feedback information in the file
-                    after any processing has been done.
+    --no-report     Suppress the report about the feedback information in the
+                    file that is usually displayed after any processing has
+                    been done.
 
     The following options select sets of feedback information useful
     for particular compiler optimizations:
@@ -300,10 +301,8 @@ help_message =
     --implicit-parallelism-call-site-cost-threshold <value>
                 The cost of a call site to be considered for parallelism
                 against another call site.
-    --implicit-parallelism-dependant-conjunctions
-                Advise the compiler to parallelise dependant conjunctions.
-                This will become the default once the implementation is
-                complete.
+    --no-implicit-parallelism-dependant-conjunctions
+                Disable parallelisation of dependant conjunctions.
     --implicit-parallelism-dependant-conjunctions-algorithm <alg>
                 Choose the algorithm that is used to estimate the speedup for
                 dependant calculations.  The algorithms are:
@@ -436,7 +435,6 @@ read_deep_file(Input, Debug, MaybeDeep, !IO) :-
 short('h',  help).
 short('v',  verbosity).
 short('V',  version).
-short('r',  report).
 
 :- pred long(string::in, option::out) is semidet.
 
@@ -491,7 +489,7 @@ defaults(help,                  bool(no)).
 defaults(verbosity,             int(2)).
 defaults(version,               bool(no)).
 defaults(debug_read_profile,    bool(no)).
-defaults(report,                bool(no)).
+defaults(report,                bool(yes)).
 
 defaults(calls_above_threshold_sorted,                      bool(no)).
 defaults(calls_above_threshold_sorted_measure,              string("mean")).
@@ -499,7 +497,7 @@ defaults(calls_above_threshold_sorted_measure,              string("mean")).
 defaults(candidate_parallel_conjunctions,                   bool(no)).
 
 defaults(implicit_parallelism,                              bool(no)).
-defaults(desired_parallelism,                               string("4.0")).
+defaults(desired_parallelism,                               string("8.0")).
 % XXX: These values have been chosen arbitrarily, appropriately values should
 % be tested for.
 defaults(implicit_parallelism_intermodule_var_use,          bool(no)).
@@ -507,11 +505,11 @@ defaults(implicit_parallelism_sparking_cost,                int(100)).
 defaults(implicit_parallelism_sparking_delay,               int(1000)).
 defaults(implicit_parallelism_barrier_cost,                 int(100)).
 defaults(implicit_parallelism_future_signal_cost,           int(100)).
-defaults(implicit_parallelism_future_wait_cost,             int(250)).
+defaults(implicit_parallelism_future_wait_cost,             int(200)).
 defaults(implicit_parallelism_context_wakeup_delay,         int(1000)).
-defaults(implicit_parallelism_clique_cost_threshold,        int(100000)).
-defaults(implicit_parallelism_call_site_cost_threshold,     int(50000)).
-defaults(implicit_parallelism_dependant_conjunctions,       bool(no)).
+defaults(implicit_parallelism_clique_cost_threshold,        int(2000)).
+defaults(implicit_parallelism_call_site_cost_threshold,     int(2000)).
+defaults(implicit_parallelism_dependant_conjunctions,       bool(yes)).
 defaults(implicit_parallelism_dependant_conjunctions_algorithm,
     string("overlap")).
 defaults(implicit_parallelism_best_parallelisation_algorithm,
