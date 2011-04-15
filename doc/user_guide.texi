@@ -9980,14 +9980,17 @@ grade.
 @c parallel, threadscope grade.
 
 @sp 1
-@item --no-thread-pinning
-@findex --no-thread-pinning
-Prevent the runtime system from pinning Mercury engines (POSIX threads)
+@item --thread-pinning
+@findex --thread-pinning
+Request that the runtime system attempts to pin Mercury engines (POSIX threads)
 to CPU cores/hardware threads.
 This only has an effect if the executable was built in a parallel low-level C
 grade.
-Manually specifying -P will also disable thread pinning if it is not explicitly
-enabled.
+This is disabled by default but may be enabled by default in the future.
+@c In case this is enabled by default the following comment is relevant.
+@c This is disabled by default unless @samp{-P @var{num}} is not specified and the
+@c runtime system is able to detect the number of processors enabled by the
+@c operating system.
 
 @c @item -r @var{num}
 @c @findex -r (runtime option)

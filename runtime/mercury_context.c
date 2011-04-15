@@ -166,8 +166,7 @@ static MR_Integer       MR_profile_parallel_regular_context_kept = 0;
 */
 #ifdef MR_LL_PARALLEL_CONJ
 static MercuryLock      MR_next_cpu_lock;
-MR_bool                 MR_thread_pinning_configured = MR_TRUE;
-MR_bool                 MR_thread_pinning_in_use;
+MR_bool                 MR_thread_pinning = MR_FALSE;
 static MR_Unsigned      MR_next_cpu = 0;
 /* This is initialised the first the MR_pin_primordial_thread() is called */
 MR_Unsigned             MR_primordial_thread_cpu;
@@ -285,17 +284,23 @@ MR_init_context_stuff(void)
         if (result < 1) {
             /* We couldn't determine the number of processors. */
             MR_num_threads = 1;
-  #ifdef MR_LL_PARALLEL_CONJ
-            MR_thread_pinning_in_use = MR_FALSE;
-  #endif
         } else {
             MR_num_threads = result;
+            /*
+            ** On systems that don't support sched_setaffinity we don't try to
+            ** automatically enable thread pinning. This prevents a runtime
+            ** warning that could unnecessarily confuse the user.
+            **/
+    #if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY)
+            /*
+            ** Comment this back in to enable thread pinning by default if we
+            ** autodetected the correct number of CPUs.
+            */
+            /* MR_thread_pinning = MR_TRUE; */
+    #endif
         }
     #else /* ! defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN) */
         MR_num_threads = 1;
-  #ifdef MR_LL_PARALLEL_CONJ
-        MR_thread_pinning_in_use = MR_FALSE;
-  #endif
   #endif /* ! defined(MR_HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN) */
     }
   #ifdef MR_LL_PARALLEL_CONJ
@@ -344,7 +349,7 @@ MR_pin_primordial_thread(void)
     if (temp == -1) {
         MR_primordial_thread_cpu = 0;
     #ifdef MR_HAVE_SCHED_SET_AFFINITY
-        if (MR_thread_pinning_configured && MR_thread_pinning_in_use) {
+        if (MR_thread_pinning) {
             perror("Warning: unable to determine the current CPU for "
                 "the primordial thread: ");
         }
@@ -385,7 +390,7 @@ MR_pin_thread(void)
     MR_UNLOCK(&MR_next_cpu_lock, "MR_pin_thread");
 
 #ifdef MR_HAVE_SCHED_SETAFFINITY
-    if (MR_thread_pinning_configured && MR_thread_pinning_in_use) {
+    if (MR_thread_pinning) {
         MR_do_pin_thread(cpu);
     }
 #endif
@@ -409,12 +414,12 @@ MR_do_pin_thread(int cpu)
             ** If this failed once, it will probably fail again, so we
             ** disable it.
             */
-            MR_thread_pinning_in_use = MR_FALSE;
+            MR_thread_pinning = MR_FALSE;
         }
     } else {
         perror("Warning: Couldn't set CPU affinity due to a static "
             "system limit: ");
-        MR_thread_pinning_in_use = MR_FALSE;
+        MR_thread_pinning = MR_FALSE;
     }
 }
 #endif

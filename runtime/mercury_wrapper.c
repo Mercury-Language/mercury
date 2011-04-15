@@ -1393,7 +1393,7 @@ struct MR_option MR_long_opts[] = {
     { "max-contexts-per-thread",        1, 0, MR_MAX_CONTEXTS_PER_THREAD },
     { "runtime-granularity-wsdeque-length-factor", 1, 0,
         MR_RUNTIME_GRANULAITY_WSDEQUE_LENGTH_FACTOR },
-    { "no-thread-pinning",              0, 0, MR_THREAD_PINNING },
+    { "thread-pinning",                 0, 0, MR_THREAD_PINNING },
     { "profile-parallel-execution",     0, 0, MR_PROFILE_PARALLEL_EXECUTION },
     { "mdb-tty",                        1, 0, MR_MDB_TTY },
     { "mdb-in",                         1, 0, MR_MDB_IN },
@@ -1830,7 +1830,7 @@ MR_process_options(int argc, char **argv)
 
             case MR_THREAD_PINNING:
 #if defined(MR_LL_PARALLEL_CONJ) && defined(MR_HAVE_SCHED_SETAFFINITY)
-                MR_thread_pinning_configured = MR_FALSE;
+                MR_thread_pinning = MR_TRUE;
 #endif
                 break;
 
@@ -2254,7 +2254,6 @@ MR_process_options(int argc, char **argv)
                 if (MR_num_threads < 1) {
                     MR_usage();
                 }
-                MR_thread_pinning_in_use = MR_FALSE;
 #endif
                 break;
 
