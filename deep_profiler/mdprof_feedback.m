@@ -346,6 +346,12 @@ help_message =
                       the amount of overlap available.
                     naive: Ignore dependencies.
                 The default is overlap.
+    --ipar-speedup-threshold <value>
+                The threshold that a speedup ratio must meet before the
+                feedback tool will accept a parallelization. It must be
+                a floating point number, which must be at least 1.0.
+                If it is e.g. 1.02, then the feedback tool will ignore
+                parallelizations that promise less than a 2% local speedup.
     --ipar-best-par-alg <alg>
                 Select which algorithm to use to find the best way to
                 parallelise a conjunction.  The available algorithms are:
@@ -517,6 +523,10 @@ long("implicit-parallelism-dependant-conjunctions-algorithm",
     ipar_speedup_alg).
 long("ipar-speedup-alg",
     ipar_speedup_alg).
+long("implicit-parallelism-speedup-threshold",
+    ipar_speedup_threshold).
+long("ipar-speedup-threshold",
+    ipar_speedup_threshold).
 long("implicit-parallelism-best-parallelisation-algorithm",
     ipar_best_par_alg).
 long("ipar-best-par-alg",
