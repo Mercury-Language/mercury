@@ -21,8 +21,13 @@
 :- import_module mdbcomp.feedback.automatic_parallelism.
 :- import_module mdbcomp.program_representation.
 
+:- import_module assoc_list.
 :- import_module cord.
 :- import_module pair.
+
+:- pred create_feedback_autopar_report(candidate_par_conjunctions_params::in,
+    assoc_list(string_proc_label, candidate_par_conjunctions_proc)::in,
+    string::out) is det.
 
 :- pred create_candidate_parallel_conj_proc_report(
     pair(string_proc_label, candidate_par_conjunctions_proc)::in,
@@ -52,6 +57,85 @@
 :- import_module string.
 
 %----------------------------------------------------------------------------%
+
+create_feedback_autopar_report(Parameters, ProcConjs, Report) :-
+    NumProcConjs = length(ProcConjs),
+    foldl(count_conjunctions_in_procs, ProcConjs, 0, NumConjs),
+    Parameters = candidate_par_conjunctions_params(DesiredParallelism,
+        IntermoduleVarUse, SparkingCost, SparkingDelay, BarrierCost,
+        SignalCost, WaitCost, ContextWakeupDelay, CliqueThreshold,
+        CallSiteThreshold, SpeedupThreshold,
+        ParalleliseDepConjs, BestParAlgorithm),
+    best_par_algorithm_string(BestParAlgorithm, BestParAlgorithmStr),
+    ReportHeader = singleton(format(
+        "  Candidate parallel conjunctions:\n" ++
+        "    Desired parallelism:       %f\n" ++
+        "    Intermodule var use:       %s\n" ++
+        "    Sparking cost:             %d\n" ++
+        "    Sparking delay:            %d\n" ++
+        "    Barrier cost:              %d\n" ++
+        "    Future signal cost:        %d\n" ++
+        "    Future wait cost:          %d\n" ++
+        "    Context wakeup delay:      %d\n" ++
+        "    Clique threshold:          %d\n" ++
+        "    Call site threshold:       %d\n" ++
+        "    Speedup threshold:         %f\n" ++
+        "    Dependent conjs:           %s\n" ++
+        "    BestParAlgorithm:          %s\n" ++
+        "    # of par procs with conjs: %d\n" ++
+        "    # of par conjunctions:     %d\n" ++
+        "    Parallel conjunctions:\n\n",
+        [f(DesiredParallelism),
+         s(string(IntermoduleVarUse)),
+         i(SparkingCost),
+         i(SparkingDelay),
+         i(BarrierCost),
+         i(SignalCost),
+         i(WaitCost),
+         i(ContextWakeupDelay),
+         i(CliqueThreshold),
+         i(CallSiteThreshold),
+         f(SpeedupThreshold),
+         s(ParalleliseDepConjsStr),
+         s(BestParAlgorithmStr),
+         i(NumProcConjs),
+         i(NumConjs)])),
+    (
+        ParalleliseDepConjs = parallelise_dep_conjs(SpeedupAlg),
+        (
+            SpeedupAlg = estimate_speedup_naively,
+            ParalleliseDepConjsStr = "yes, pretend they're independent"
+        ;
+            SpeedupAlg = estimate_speedup_by_num_vars,
+            ParalleliseDepConjsStr =
+                "yes, the more shared variables the less overlap there is"
+        ;
+            SpeedupAlg = estimate_speedup_by_overlap,
+            ParalleliseDepConjsStr = "yes, use overlap calculation"
+        )
+    ;
+        ParalleliseDepConjs = do_not_parallelise_dep_conjs,
+        ParalleliseDepConjsStr = "no"
+    ),
+    list.map(create_candidate_parallel_conj_proc_report, ProcConjs,
+        ReportConjs),
+    Report = append_list(list(ReportHeader ++ cord_list_to_cord(ReportConjs))).
+
+:- pred count_conjunctions_in_procs(
+    pair(T, candidate_par_conjunctions_proc)::in, int::in, int::out) is det.
+
+count_conjunctions_in_procs(_ -
+        candidate_par_conjunctions_proc(_VarTable, _Pushes, Conjs), !NumConjs) :-
+    !:NumConjs = !.NumConjs + length(Conjs).
+
+:- pred best_par_algorithm_string(best_par_algorithm::in, string::out) is det.
+
+best_par_algorithm_string(bpa_greedy, "greedy").
+best_par_algorithm_string(bpa_complete_branches(N),
+    format("complete-branches(%d)", [i(N)])).
+best_par_algorithm_string(bpa_complete_size(N),
+    format("complete-size(%d)", [i(N)])).
+best_par_algorithm_string(bpa_complete, "complete").
 
 create_candidate_parallel_conj_proc_report(Proc - CandidateParConjunctionProc,
         Report) :-

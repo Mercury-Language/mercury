@@ -206,63 +206,7 @@ create_feedback_report(feedback_data_calls_above_threshold_sorted(_, _, _),
    Report = "  feedback_data_calls_above_threshold_sorted is not supported\n".
 create_feedback_report(feedback_data_candidate_parallel_conjunctions(
         Parameters, Conjs), Report) :-
-    NumConjs = length(Conjs),
-    Parameters = candidate_par_conjunctions_params(DesiredParallelism,
-        IntermoduleVarUse, SparkingCost, SparkingDelay, BarrierCost,
-        SignalCost, WaitCost, ContextWakeupDelay, CliqueThreshold,
-        CallSiteThreshold, SpeedupThreshold,
-        ParalleliseDepConjs, BestParAlgorithm),
-    best_par_algorithm_string(BestParAlgorithm, BestParAlgorithmStr),
-    ReportHeader = singleton(format(
-        "  Candidate parallel conjunctions:\n" ++
-        "    Desired parallelism:   %f\n" ++
-        "    Intermodule var use:   %s\n" ++
-        "    Sparking cost:         %d\n" ++
-        "    Sparking delay:        %d\n" ++
-        "    Barrier cost:          %d\n" ++
-        "    Future signal cost:    %d\n" ++
-        "    Future wait cost:      %d\n" ++
-        "    Context wakeup delay:  %d\n" ++
-        "    Clique threshold:      %d\n" ++
-        "    Call site threshold:   %d\n" ++
-        "    Speedup threshold:     %f\n" ++
-        "    Dependent conjs:       %s\n" ++
-        "    BestParAlgorithm:      %s\n" ++
-        "    # of par conjunctions: %d\n" ++
-        "    Parallel conjunctions:\n\n",
-        [f(DesiredParallelism),
-         s(string(IntermoduleVarUse)),
-         i(SparkingCost),
-         i(SparkingDelay),
-         i(BarrierCost),
-         i(SignalCost),
-         i(WaitCost),
-         i(ContextWakeupDelay),
-         i(CliqueThreshold),
-         i(CallSiteThreshold),
-         f(SpeedupThreshold),
-         s(ParalleliseDepConjsStr),
-         s(BestParAlgorithmStr),
-         i(NumConjs)])),
-    (
-        ParalleliseDepConjs = parallelise_dep_conjs(SpeedupAlg),
-        (
-            SpeedupAlg = estimate_speedup_naively,
-            ParalleliseDepConjsStr = "yes, pretend they're independent"
-        ;
-            SpeedupAlg = estimate_speedup_by_num_vars,
-            ParalleliseDepConjsStr =
-                "yes, the more shared variables the less overlap there is"
-        ;
-            SpeedupAlg = estimate_speedup_by_overlap,
-            ParalleliseDepConjsStr = "yes, use overlap calculation"
-        )
-    ;
-        ParalleliseDepConjs = do_not_parallelise_dep_conjs,
-        ParalleliseDepConjsStr = "no"
-    ),
-    list.map(create_candidate_parallel_conj_proc_report, Conjs, ReportConjs),
-    Report = append_list(list(ReportHeader ++ cord_list_to_cord(ReportConjs))).
+    create_feedback_autopar_report(Parameters, Conjs, Report).
 
 :- func help_message = string.
 
@@ -767,15 +711,6 @@ best_par_algorithm_parser(Src, Algorithm, !PS) :-
 :- func idchars = string.
 
 idchars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_".
-
-:- pred best_par_algorithm_string(best_par_algorithm::in, string::out) is det.
-
-best_par_algorithm_string(bpa_greedy, "greedy").
-best_par_algorithm_string(bpa_complete_branches(N),
-    format("complete-branches(%d)", [i(N)])).
-best_par_algorithm_string(bpa_complete_size(N),
-    format("complete-size(%d)", [i(N)])).
-best_par_algorithm_string(bpa_complete, "complete").
 
 :- pred parse_parallelise_dep_conjs_string(bool::in, string::in,
     parallelise_dep_conjs::out) is semidet.
