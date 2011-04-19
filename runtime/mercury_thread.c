@@ -447,7 +447,6 @@ void
 MR_init_thread_stuff(void) {
     int i;
 
-    pthread_mutex_init(&MR_next_engine_id_lock, MR_MUTEX_ATTR);
     pthread_mutex_init(&MR_global_lock, MR_MUTEX_ATTR);
   #ifndef MR_THREAD_LOCAL_STORAGE
     MR_KEY_CREATE(&MR_engine_base_key, NULL);
@@ -458,10 +457,13 @@ MR_init_thread_stuff(void) {
     pthread_cond_init(&MR_thread_barrier_cond, MR_COND_ATTR);
   #endif
 
+  #ifndef MR_HIGHLEVEL_CODE
+    pthread_mutex_init(&MR_next_engine_id_lock, MR_MUTEX_ATTR);
     MR_all_engine_bases = MR_GC_malloc(sizeof(MercuryEngine*)*MR_num_threads);
     for (i = 0; i < MR_num_threads; i++) {
         MR_all_engine_bases[i] = NULL;
     }
+  #endif
 }
 #endif
 

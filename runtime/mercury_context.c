@@ -64,12 +64,9 @@ MR_init_context_maybe_generator(MR_Context *c, const char *id,
 
 /*---------------------------------------------------------------------------*/
 
-#ifdef  MR_LL_PARALLEL_CONJ
+#if defined(MR_LL_PARALLEL_CONJ)
 static void
 MR_milliseconds_from_now(struct timespec *timeout, unsigned int msecs);
-#endif
-
-#ifdef MR_THREAD_SAFE
 
 /*
 ** These states are bitfields so they can be combined when passed to
@@ -119,7 +116,7 @@ typedef struct {
 
 static
 engine_sleep_sync *engine_sleep_sync_data;
-#endif /* MR_THREAD_SAFE */
+#endif /* MR_LL_PARALLEL_CONJ */
 
 
 /*
@@ -1206,7 +1203,7 @@ MR_check_pending_contexts(MR_bool block)
 void
 MR_schedule_context(MR_Context *ctxt)
 {
-#ifdef MR_THREAD_SAFE
+#ifdef MR_LL_PARALLEL_CONJ
     MR_EngineId engine_id;
     union MR_engine_wake_action_data wake_action_data;
     wake_action_data.MR_ewa_context = ctxt;
@@ -1259,7 +1256,7 @@ MR_schedule_context(MR_Context *ctxt)
             }
         }
     }
-#endif
+#endif /* MR_LL_PARALLEL_CONJ */
 
     MR_LOCK(&MR_runqueue_lock, "schedule_context");
     ctxt->MR_ctxt_next = NULL;
