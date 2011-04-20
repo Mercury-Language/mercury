@@ -16,8 +16,8 @@
 %
 % Call parse(InputString, SkipWS, Parser, Result) to parse an input string
 % and return an error context and message if parsing failed.
-% The SkipWS function is used by the primitive parsers to skip over any
-% following whitespace (providing a skipping function allows users to define
+% The SkipWS predicate is used by the primitive parsers to skip over any
+% following whitespace (providing a skipping predicate allows users to define
 % comments as whitespace).
 % Alternatively a new src and ps can be constructed by calling
 % new_src_and_ps(InputString, SkipWS, Src, !:PS).
@@ -66,10 +66,10 @@
 :- type parser_with_state(T, S) == pred(src, T, S, S, ps, ps).
 :- inst parser_with_state == ( pred(in, out, in, out, in, out) is semidet ).
 
-    % Functions of this type are used to skip whitespace in the primitive
+    % Predicates of this type are used to skip whitespace in the primitive
     % parsers provided by this module.
     %
-:- type skip_whitespace_func == (func(src, ps) = ps).
+:- type skip_whitespace_pred == parser(unit).
 
 :- type parse_result(T)
     --->    ok(T)
@@ -85,10 +85,10 @@
     % otherwise return error.  If there were any calls to fail_with_message
     % without any subsequent progress being made, then the error message
     % passed to the last call to fail_with_message will be returned in the
-    % error result.  Otherwise no message is returned and the furthest position
-    % the parser got in the input string is returned.
+    % error result.  Otherwise no message is returned and the furthest
+    % position the parser got in the input string is returned.
     %
-:- pred parse(string::in, skip_whitespace_func::in,
+:- pred parse(string::in, skip_whitespace_pred::in(parser),
     parser(T)::in(parser), parse_result(T)::out) is cc_multi.
 
     % As above but using the default whitespace parser.
@@ -97,12 +97,13 @@
     is cc_multi.
 
     % Construct a new parser source and state from a string, also specifying
-    % a function for skipping over whitespace (several primitive parsers
-    % use this function to consume whitespace after a token; this argument
-    % allows the user to specify a function for, say, skipping over comments
+    % a predicate for skipping over whitespace (several primitive parsers
+    % use this predicate to consume whitespace after a token; this argument
+    % allows the user to specify a predicate for, say, skipping over comments
     % as well).
     %
-:- pred new_src_and_ps(string::in, skip_whitespace_func::in,
+:- pred new_src_and_ps(string::in,
+    skip_whitespace_pred::in(parser),
     src::out, ps::out) is det.
 
     % Construct a new parser source and state from a string (the default
@@ -334,7 +335,7 @@
     --->    src(
                 input_length        ::  int,
                 input_string        ::  string,
-                skip_ws_func        ::  func(src, ps) = ps,
+                skip_ws_func        ::  func(src, ps) = maybe(ps),
 
                 furthest_offset     ::  mutvar(int),
                 % This mutable records the progress of the parser
@@ -351,7 +352,7 @@
 %-----------------------------------------------------------------------------%
 
 parse(InputString, Parser, Result) :-
-    parse(InputString, skip_whitespace, Parser, Result).
+    parse(InputString, whitespace, Parser, Result).
 
 parse(InputString, SkipWS, Parser, Result) :-
     % This is pure, because it will always return the same results for
@@ -389,7 +390,7 @@ parse(InputString, SkipWS, Parser, Result) :-
 %-----------------------------------------------------------------------------%
 
 new_src_and_ps(InputString, Src, PS) :-
-    new_src_and_ps(InputString, skip_whitespace, Src, PS).
+    new_src_and_ps(InputString, whitespace, Src, PS).
 
 %-----------------------------------------------------------------------------%
 
@@ -397,25 +398,28 @@ new_src_and_ps(InputString, SkipWS, Src, PS) :-
     promise_pure (
         impure new_mutvar(fail_message_info(0, no), ErrorInfoMutVar),
         impure new_mutvar(0, FurthestOffsetMutvar),
-        Src = src(string.length(InputString), InputString, SkipWS,
+        % Convert the skip whitespace predicate to a function to
+        % avoid having to use a inst other than ground for src.
+        SkipWSFunc =
+            ( func(S, PS0) = MaybePS :-
+                ( SkipWS(S, _, PS0, PS1) ->
+                    MaybePS = yes(PS1)
+                ;
+                    MaybePS = no
+                )
+            ),
+        Src = src(string.length(InputString), InputString, SkipWSFunc,
             FurthestOffsetMutvar, ErrorInfoMutVar),
         PS = 0
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- func skip_whitespace(src, ps) = ps.
-
-skip_whitespace(Src, PS0) =
-    ( if whitespace(Src, _, PS0, PS) then PS else PS0 ).
-
-%-----------------------------------------------------------------------------%
-
-:- pred skip_whitespace(src::in, ps::in, ps::out) is det.
+:- pred skip_whitespace(src::in, ps::in, ps::out) is semidet.
 
 skip_whitespace(Src, PS0, PS) :-
     SkipWS = Src ^ skip_ws_func,
-    PS = SkipWS(Src, PS0).
+    yes(PS) = SkipWS(Src, PS0).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

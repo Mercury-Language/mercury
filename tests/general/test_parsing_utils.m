@@ -27,6 +27,7 @@
 :- import_module parsing_utils.
 :- import_module solutions.
 :- import_module string.
+:- import_module unit.
 
 %-----------------------------------------------------------------------------%
 
@@ -46,8 +47,9 @@ main(!IO) :-
     test_err("abs(x ++ 3)", expr_top, !IO),
     test_err("abs (x))", expr_top, !IO),
     test_err("1 + 3 MoD 2 + f(3 + x)", expr_top, !IO),
-    test_err("1 + 3 mody 2 + f(3 + x)", expr_top, !IO),
+    test_err("1 + /* comment */ 3 mody 2 + f(3 + x)", expr_top, !IO),
     test_err("1 + 1x", expr_top, !IO),
+    test_err("1 + 2 /* blah blah ...", expr_top, !IO),
     true.
 
 %-----------------------------------------------------------------------------%
@@ -390,7 +392,7 @@ stringify_state(P, Src, String, !PS) :-
     is cc_multi.
 
 test_err(Input, Parser, !IO) :-
-    parse(Input, Parser, Result),
+    parse(Input, skip_ws, Parser, Result),
     (
         Result = ok(Expr),
         io.write(Expr, !IO),
@@ -409,6 +411,34 @@ test_err(Input, Parser, !IO) :-
         ),
         io.write_string(Line ++ "\n", !IO),
         io.write_string(Spaces ++ "^\n", !IO)
+    ).
+
+:- pred skip_ws(src::in, unit::out, ps::in, ps::out) is semidet.
+
+skip_ws(Src, unit) -->
+    whitespace(Src, _),
+    ( next_char(Src, ('/')), next_char(Src, ('*')) ->
+        find_close_comment(Src),
+        skip_ws(Src, _)
+    ;
+        { true }
+    ).
+
+:- pred find_close_comment(src::in, ps::in, ps::out) is semidet.
+
+find_close_comment(Src) -->
+    ( next_char(Src, C) ->
+        ( { C = ('*') } ->
+            ( next_char(Src, ('/')) ->
+                { true }
+            ;
+                find_close_comment(Src)
+            )
+        ;
+            find_close_comment(Src)
+        )
+    ;
+        fail_with_message("unterminated comment", Src, _:unit)
     ).
 
 :- type expr
