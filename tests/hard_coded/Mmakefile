@@ -214,13 +214,11 @@ ORDINARY_PROGS=	\
 	rational_test \
 	recursive_main \
 	redoip_clobber \
-	relation_test \
 	remove_file \
 	reorder_di \
 	require_scopes \
 	rev_arith \
 	reverse_arith \
-	rtc_bug \
 	rtree_test \
 	rtti_strings \
 	seek_test \

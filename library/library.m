@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1993-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -98,7 +98,6 @@
 :- import_module random.
 :- import_module rational.
 :- import_module rbtree.
-:- import_module relation.
 :- import_module require.
 :- import_module robdd.
 :- import_module rtree.
@@ -124,7 +123,6 @@
 :- import_module svmap.
 :- import_module svmulti_map.
 :- import_module svqueue.
-:- import_module svrelation.
 :- import_module svset.
 :- import_module svvarset.
 :- import_module table_statistics.
@@ -277,7 +275,6 @@ mercury_std_library_module("random").
 mercury_std_library_module("rational").
 mercury_std_library_module("rbtree").
 mercury_std_library_module("region_builtin").
-mercury_std_library_module("relation").
 mercury_std_library_module("require").
 mercury_std_library_module("robdd").
 mercury_std_library_module("rtree").
@@ -305,7 +302,6 @@ mercury_std_library_module("sveqvclass").
 mercury_std_library_module("svmap").
 mercury_std_library_module("svmulti_map").
 mercury_std_library_module("svqueue").
-mercury_std_library_module("svrelation").
 mercury_std_library_module("svset").
 mercury_std_library_module("svvarset").
 mercury_std_library_module("table_builtin").
