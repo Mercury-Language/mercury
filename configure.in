@@ -2956,7 +2956,8 @@ case "$host" in
         # CPP_LOG_HBLKSIZE must always be the base-2 log of HBLKSIZE.
         # (With the current collector these settings only appear to work
         # correctly on Linux.)
-        BOEHM_MISC_CFLAGS_FOR_THREADS="-DHBLKSIZE=32768 -DCPP_LOG_HBLKSIZE=15"
+        # XXX disabled as it aborts on GC_free when --enable-gc-munmap is used
+        # BOEHM_MISC_CFLAGS_FOR_THREADS="-DHBLKSIZE=32768 -DCPP_LOG_HBLKSIZE=15"
         ;;
 
     *cygwin*)
