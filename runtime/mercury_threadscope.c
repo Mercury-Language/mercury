@@ -2,10 +2,6 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-INIT mercury_sys_init_threadscope
-ENDINIT
-*/
-/*
 ** Copyright (C) 2009-2011 The University of Melbourne.
 ** Copyright (C) 2008-2009 The GHC Team.
 **
@@ -16,12 +12,11 @@ ENDINIT
 /*
 ** Event log format
 **
-** The log format is designed to be extensible: old tools should be
-** able to parse (but not necessarily understand all of) new versions
-** of the format, and new tools will be able to understand old log
-** files.
+** The log format is designed to be extensible: old tools should be able
+** to parse (but not necessarily understand) new versions of the format,
+** and new tools will be able to understand old log files.
 **
-** Each event has a specific format.  If you add new events, give them
+** Each event has a specific format. If you add new events, give them
 ** new numbers: we never re-use old event numbers.
 **
 ** - The format is endian-independent: all values are represented in
@@ -29,14 +24,14 @@ ENDINIT
 **
 ** - The format is extensible:
 **
-**    - The header describes each event type and its length.  Tools
-**      that don't recognise a particular event type can skip those events.
+**    - The header describes each event type and its length. Tools that
+**      don't recognise a particular event type can skip those events.
 **
 **    - There is room for extra information in the event type
 **      specification, which can be ignored by older tools.
 **
 **    - Events can have extra information added, but existing fields
-**      cannot be changed.  Tools should ignore extra fields at the
+**      cannot be changed. Tools should ignore extra fields at the
 **      end of the event record.
 **
 **    - Old event type ids are never re-used; just take a new identifier.
@@ -69,17 +64,15 @@ ENDINIT
 **       [Word16]       -- length of the rest (for variable-sized events only)
 **       ... extra event-specific info ...
 **
-** All values a packed, no attempt is made to align them.
+** All values are packed, no attempt is made to align them.
 **
-** New events must be registered with GHC.  These are kept in the GHC-events
+** New events must be registered with GHC. These are kept in the GHC-events
 ** package.
 **
 */
 
 #include "mercury_imp.h"
-
 #include "mercury_threadscope.h"
-
 #include "mercury_atomic_ops.h"
 
 #include <stdio.h>
@@ -140,8 +133,8 @@ ENDINIT
 /* 23, 24 used by eden */
 
 /*
-** Capsets or capability sets are groups of engines with some association, for
-** instance a group of threads in a process.
+** Capsets or capability sets are groups of engines with some association,
+** for instance a group of threads in a process.
 */
 #define MR_TS_EVENT_CAPSET_CREATE       25 /* (capset, capset_type)  */
 #define MR_TS_EVENT_CAPSET_DELETE       26 /* (capset)               */
@@ -168,10 +161,11 @@ ENDINIT
 #define MR_TS_MER_EVENT_START_PAR_CONJ      100 /* (int id, memo'd string id) */
 #define MR_TS_MER_EVENT_STOP_PAR_CONJ       101 /* (int id) */
 #define MR_TS_MER_EVENT_STOP_PAR_CONJUNCT   102 /* (int id) */
+
 /*
-** Creating sparks is not specifically mercury, but conjunct IDs are,
-** If other systems wish to use this event they can move it to the main events
-** section.
+** Creating sparks is not specifically mercury, but conjunct IDs are.
+** If other systems wish to use this event, they can move it
+** to the main events section.
 */
 #define MR_TS_MER_EVENT_SPARKING            103 /* (int id, spark id) */
 
@@ -190,14 +184,14 @@ ENDINIT
 #endif
 
 /*
- * Engine set type values for EVENT_CAPSET_CREATE
- */
-#define MR_TS_ENGSET_TYPE_CUSTOM        1  /* reserved for end-user applications */
-#define MR_TS_ENGSET_TYPE_OSPROCESS     2  /* engines belong to the same OS process */
-#define MR_TS_ENGSET_TYPE_CLOCKDOMAIN   3  /* engines share a local clock/time      */
+** Engine set type values for EVENT_CAPSET_CREATE.
+*/
+#define MR_TS_ENGSET_TYPE_CUSTOM      1 /* reserved for end-user applications */
+#define MR_TS_ENGSET_TYPE_OSPROCESS   2 /* engines belong to same OS process  */
+#define MR_TS_ENGSET_TYPE_CLOCKDOMAIN 3 /* engines share a local clock/time   */
 
 /*
-** GHC uses 2MB per buffer.  Note that the minimum buffer size is the size of
+** GHC uses 2MB per buffer. Note that the minimum buffer size is the size of
 ** the largest message plus the size of the block marker message, however it is
 ** _sensible_ for the buffer to be much larger so that we make system calls
 ** less often.
@@ -228,8 +222,9 @@ struct MR_threadscope_event_buffer {
     MR_Integer          MR_tsbuffer_block_open_pos;
 
     /*
-    ** True if the engine's current context is stopped and therefore stop and
-    ** start events should not be posted from the GC callback procedures.
+    ** True if the engine's current context is stopped, and therefore
+    ** stop and start events should not be posted from the GC callback
+    ** procedures.
     */
     MR_bool             MR_tsbuffer_ctxt_is_stopped;
 
@@ -238,8 +233,8 @@ struct MR_threadscope_event_buffer {
 };
 
 /*
-** We define some types and functions to write them.  These types are set
-** carefully to match the ones that GHC uses.
+** We define some types and functions to write them.
+** These types are set carefully to match the ones that GHC uses.
 */
 typedef MR_uint_least16_t   EventType;
 typedef MR_uint_least64_t   Time;
@@ -252,7 +247,7 @@ typedef MR_uint_least32_t   EventlogOffset;
 
 typedef struct {
     EventType           etd_event_type;
-    const char*         etd_description;
+    const char          *etd_description;
     MR_int_least16_t    etd_size;
 } EventTypeDesc;
 
@@ -274,8 +269,8 @@ typedef struct {
 static EventTypeDesc event_type_descs[] = {
     {
         /*
-        ** The startup event informs threadscope of the number of engines we're
-        ** using.  It should be given outside of a block.
+        ** The startup event informs threadscope of the number of engines
+        ** we are using. It should be given outside of a block.
         */
         MR_TS_EVENT_STARTUP,
         "Startup (num_engines)",
@@ -283,7 +278,7 @@ static EventTypeDesc event_type_descs[] = {
     },
     {
         /*
-        ** The last event in the log.  It should be given outside of a block.
+        ** The last event in the log. It should be given outside of a block.
         */
         MR_TS_EVENT_SHUTDOWN,
         "Shutdown",
@@ -291,7 +286,7 @@ static EventTypeDesc event_type_descs[] = {
     },
     {
         /*
-        ** A block of events belonging to the named engine follows,
+        ** A block of events belonging to the named engine follows.
         ** The length of this block is given including the block message
         ** itself, the time that this block finishes is also given.
         ** Blocks _must not_ exist within other blocks.
@@ -318,7 +313,7 @@ static EventTypeDesc event_type_descs[] = {
     },
     {
         /*
-        ** The named context begun executing a spark from it's local stack.
+        ** The named context has begun executing a spark from its local stack.
         */
         MR_TS_EVENT_RUN_SPARK,
         "Run a spark from the local stack",
@@ -326,7 +321,7 @@ static EventTypeDesc event_type_descs[] = {
     },
     {
         /*
-        ** The named context begun executing a spark from another engine's
+        ** The named context has begun executing a spark from another engine's
         ** stack.
         */
         MR_TS_EVENT_STEAL_SPARK,
@@ -335,8 +330,8 @@ static EventTypeDesc event_type_descs[] = {
     },
     {
         /*
-        ** The named context begun executing on the engine named by the current
-        ** block.
+        ** The named context has begun executing on the engine
+        ** named by the current block.
         */
         MR_TS_EVENT_RUN_THREAD,
         "Run context",
@@ -344,8 +339,8 @@ static EventTypeDesc event_type_descs[] = {
     },
     {
         /*
-        ** The named context finished executing on the engine named by the
-        ** current block.  The reason why the context stopped is given.
+        ** The named context has stopped executing on the engine named by
+        ** the current block. The reason why the context stopped is given.
         */
         MR_TS_EVENT_STOP_THREAD,
         "Context stopped",
@@ -361,12 +356,12 @@ static EventTypeDesc event_type_descs[] = {
     },
     {
         MR_TS_EVENT_LOG_MSG,
-        "A user-provided log messagei",
+        "A user-provided log message",
         -1 /* Variable length */
     },
     {
         /*
-        ** Start a garbage collection run
+        ** Start a garbage collection run.
         */
         MR_TS_EVENT_GC_START,
         "Start GC",
@@ -374,7 +369,7 @@ static EventTypeDesc event_type_descs[] = {
     },
     {
         /*
-        ** Stop a garbage collection run
+        ** Stop a garbage collection run.
         */
         MR_TS_EVENT_GC_END,
         "Stop GC",
@@ -382,8 +377,8 @@ static EventTypeDesc event_type_descs[] = {
     },
     {
         /*
-        ** The runtime system registers a string and an ID for it so that the
-        ** ID represents the string in future messages.
+        ** The runtime system registers a string and an ID for it
+        ** so that the ID represents the string in future messages.
         */
         MR_TS_EVENT_STRING,
         "Register an id->string mapping",
@@ -391,8 +386,8 @@ static EventTypeDesc event_type_descs[] = {
     },
     {
         /*
-        ** The runtime system is about to call main/2.  This message has no
-        ** parameters.
+        ** The runtime system is about to call main/2.
+        ** This message has no parameters.
         */
         MR_TS_EVENT_CALL_MAIN,
         "About to call main/2",
@@ -436,16 +431,16 @@ static EventTypeDesc event_type_descs[] = {
     {
         MR_TS_EVENT_OSPROCESS_PID,
         "The pid and parent pid of this process",
-        2*SZ_PID
+        2 * SZ_PID
     },
     {
         MR_TS_MER_EVENT_SPARKING,
         "A spark is being created",
         SZ_DYN_CONJ_ID + SZ_SPARK_ID
         /*
-         * Note that the dynamic conj ID is only useful for Mercury. other
-         * implementors may want different attributes here.
-         */
+        ** Note that the dynamic conj ID is only useful for Mercury.
+        ** Other implementors may want different attributes here.
+        */
     },
     {
         MR_TS_MER_EVENT_START_PAR_CONJ,
@@ -464,16 +459,16 @@ static EventTypeDesc event_type_descs[] = {
     },
     {
         /*
-         * The dynamic conjunction id can be inferred from contact, it is the
-         * next conjunction started after this event.
-         */
+        ** The dynamic conjunction id can be inferred from context;
+        ** it is the next conjunction started after this event.
+        */
         MR_TS_MER_EVENT_FUT_CREATE,
         "Create a future (future id)",
         SZ_FUTURE_ID
     },
     {
         MR_TS_MER_EVENT_FUT_WAIT_NOSUSPEND,
-        "Wait on a future without suspending (no waiting) (future id)",
+        "Wait on a future without suspending (future id)",
         SZ_FUTURE_ID
     },
     {
@@ -493,19 +488,21 @@ static EventTypeDesc event_type_descs[] = {
     },
     {
         MR_TS_MER_EVENT_WORK_STEALING,
-        "Engine begins attempting to steal work",
+        "Engine begins attempt to steal work",
         0
     },
     {
         /* Mark the end of this array. */
-        MR_TS_NUM_EVENT_TAGS, NULL, 0
+        MR_TS_NUM_EVENT_TAGS,
+        NULL,
+        0
     }
 };
 
 /*
 ** These tables are filled in when the header of the log file is written.
-** While they can be inferred from the event_type_desc structure they allow for
-** constant time lookup.
+** While they can be inferred from the event_type_desc structure,
+** they allow for constant time lookup.
 */
 static MR_int_least16_t event_type_sizes[MR_TS_NUM_EVENT_TAGS];
 static MR_int_least16_t event_type_sizes_mercury[MR_TS_NUM_MER_EVENTS];
@@ -539,9 +536,9 @@ static MR_EngSetId
 get_next_engset_id(void)
 {
     /*
-     * This is a seperate function as I may have to add locking or atomic ops
-     * later.
-     */
+    ** This is a seperate function as I may have to add locking or atomic ops
+    ** later.
+    */
     return next_engset_id++;
 }
 
@@ -565,36 +562,38 @@ event_type_size(EventType event_type) {
 }
 
 /*
-** Is there enough room for this statically sized event in the current engine's
-** buffer _and_ enough room for the block marker event.
+** Is there enough room in the current engine's buffer
+** for this statically sized event _and_ for the block marker event.
 */
 MR_STATIC_INLINE MR_bool
-enough_room_for_event(
-        struct MR_threadscope_event_buffer *buffer,
-        EventType event_type)
+enough_room_for_event(struct MR_threadscope_event_buffer *buffer,
+    EventType event_type)
 {
-    return (buffer->MR_tsbuffer_pos + event_type_size(event_type) +
-                event_type_size(MR_TS_EVENT_BLOCK_MARKER) +
-                ((2 + 8) * 2)) /* (EventType, Time) * 2 */
-            < MR_TS_BUFFERSIZE;
+    int needed =
+        buffer->MR_tsbuffer_pos +
+        event_type_size(event_type) +
+        event_type_size(MR_TS_EVENT_BLOCK_MARKER) +
+        ((2 + 8) * 2)) /* (EventType, Time) * 2 */
+    return needed < MR_TS_BUFFERSIZE;
 }
 
 MR_STATIC_INLINE MR_bool
-enough_room_for_variable_size_event(
-        struct MR_threadscope_event_buffer *buffer,
-        MR_Unsigned length)
+enough_room_for_variable_size_event(struct MR_threadscope_event_buffer *buffer,
+    MR_Unsigned length)
 {
-    return (buffer->MR_tsbuffer_pos + length +
-                event_type_size(MR_TS_EVENT_BLOCK_MARKER) +
-                (2 + 8) * 2) /* (EventType, Time) * 2 */
-            < MR_TS_BUFFERSIZE;
+    int needed =
+        buffer->MR_tsbuffer_pos +
+        length +
+        event_type_size(MR_TS_EVENT_BLOCK_MARKER) +
+        (2 + 8) * 2) /* (EventType, Time) * 2 */
+    return needed < MR_TS_BUFFERSIZE;
 }
 
 /*
 ** Is a block currently open?
 */
 MR_STATIC_INLINE MR_bool block_is_open(
-        struct MR_threadscope_event_buffer *buffer)
+    struct MR_threadscope_event_buffer *buffer)
 {
     return !(buffer->MR_tsbuffer_block_open_pos == -1);
 }
@@ -602,49 +601,43 @@ MR_STATIC_INLINE MR_bool block_is_open(
 /*
 ** Put words into the current engine's buffer in big endian order.
 */
-MR_STATIC_INLINE void put_byte(
-        struct MR_threadscope_event_buffer *buffer,
-        int byte)
+MR_STATIC_INLINE void put_byte(struct MR_threadscope_event_buffer *buffer,
+    int byte)
 {
     buffer->MR_tsbuffer_data[buffer->MR_tsbuffer_pos++] = byte;
 }
 
-MR_STATIC_INLINE void put_be_int16(
-        struct MR_threadscope_event_buffer *buffer,
-        MR_int_least16_t word)
+MR_STATIC_INLINE void put_be_int16(struct MR_threadscope_event_buffer *buffer,
+    MR_int_least16_t word)
 {
     put_byte(buffer, (word >> 8) & 0xFF);
     put_byte(buffer, word & 0xFF);
 }
 
-MR_STATIC_INLINE void put_be_uint16(
-        struct MR_threadscope_event_buffer *buffer,
-        MR_uint_least16_t word)
+MR_STATIC_INLINE void put_be_uint16(struct MR_threadscope_event_buffer *buffer,
+    MR_uint_least16_t word)
 {
     put_byte(buffer, (word >> 8) & 0xFF);
     put_byte(buffer, word & 0xFF);
 }
 
-MR_STATIC_INLINE void put_be_uint32(
-        struct MR_threadscope_event_buffer *buffer,
-        MR_uint_least32_t word)
+MR_STATIC_INLINE void put_be_uint32(struct MR_threadscope_event_buffer *buffer,
+    MR_uint_least32_t word)
 {
     put_be_uint16(buffer, (word >> 16) & 0xFFFF);
     put_be_uint16(buffer, word & 0xFFFF);
 }
 
-MR_STATIC_INLINE void put_be_uint64(
-        struct MR_threadscope_event_buffer *buffer,
-        MR_uint_least64_t word)
+MR_STATIC_INLINE void put_be_uint64(struct MR_threadscope_event_buffer *buffer,
+    MR_uint_least64_t word)
 {
     put_be_uint32(buffer, (word >> 32) & 0xFFFFFFFF);
     put_be_uint32(buffer, word & 0xFFFFFFFF);
 }
 
 MR_STATIC_INLINE void put_raw_string(
-        struct MR_threadscope_event_buffer *buffer,
-        const char *string,
-        unsigned len)
+    struct MR_threadscope_event_buffer *buffer,
+    const char *string, unsigned len)
 {
     unsigned i;
     for (i = 0; i < len; i++) {
@@ -653,12 +646,11 @@ MR_STATIC_INLINE void put_raw_string(
 }
 
 /*
-** Put a string in the given buffer,  The string will be preceeded by a 16 bit
-** integer giving the string's length.
+** Put a string in the given buffer. The string will be preceeded
+** by a 16 bit integer giving the string's length.
 */
 MR_STATIC_INLINE void put_string_size16(
-        struct MR_threadscope_event_buffer *buffer,
-        const char *string)
+    struct MR_threadscope_event_buffer *buffer, const char *string)
 {
     unsigned i, len;
 
@@ -668,12 +660,11 @@ MR_STATIC_INLINE void put_string_size16(
 }
 
 /*
-** Put a string in the given buffer,  The string will be preceeded by a 32 bit
-** integer giving the string's length.
+** Put a string in the given buffer. The string will be preceeded
+** by a 32 bit integer giving the string's length.
 */
 MR_STATIC_INLINE void put_string_size32(
-        struct MR_threadscope_event_buffer *buffer,
-        const char *string)
+    struct MR_threadscope_event_buffer *buffer, const char *string)
 {
     unsigned i, len;
 
@@ -682,117 +673,100 @@ MR_STATIC_INLINE void put_string_size32(
     put_raw_string(buffer, string, len);
 }
 
-MR_STATIC_INLINE void put_timestamp(
-        struct MR_threadscope_event_buffer *buffer,
-        Time timestamp)
+MR_STATIC_INLINE void put_timestamp(struct MR_threadscope_event_buffer *buffer,
+    Time timestamp)
 {
     put_be_uint64(buffer, timestamp);
 }
 
 MR_STATIC_INLINE void put_eventlog_offset(
-        struct MR_threadscope_event_buffer *buffer,
-        EventlogOffset offset)
+    struct MR_threadscope_event_buffer *buffer, EventlogOffset offset)
 {
     put_be_uint32(buffer, offset);
 }
 
 MR_STATIC_INLINE void put_event_header(
-        struct MR_threadscope_event_buffer *buffer,
-        EventType event_type, Time timestamp)
+    struct MR_threadscope_event_buffer *buffer,
+    EventType event_type, Time timestamp)
 {
     put_be_uint16(buffer, event_type);
     put_timestamp(buffer, timestamp);
 }
 
-MR_STATIC_INLINE void put_engine_id(
-        struct MR_threadscope_event_buffer *buffer,
-        MR_EngineId engine_num)
+MR_STATIC_INLINE void put_engine_id(struct MR_threadscope_event_buffer *buffer,
+    MR_EngineId engine_num)
 {
     put_be_uint16(buffer, engine_num);
 }
 
 MR_STATIC_INLINE void put_context_id(
-        struct MR_threadscope_event_buffer *buffer,
-        MR_ContextId context_id)
+    struct MR_threadscope_event_buffer *buffer, MR_ContextId context_id)
 {
     put_be_uint32(buffer, context_id);
 }
 
 MR_STATIC_INLINE void put_stop_reason(
-        struct MR_threadscope_event_buffer *buffer,
-        MR_ContextStopReason reason)
+    struct MR_threadscope_event_buffer *buffer, MR_ContextStopReason reason)
 {
     put_be_uint16(buffer, reason);
 }
 
-MR_STATIC_INLINE void put_string_id(
-        struct MR_threadscope_event_buffer *buffer,
-        MR_TS_StringId id)
+MR_STATIC_INLINE void put_string_id(struct MR_threadscope_event_buffer *buffer,
+    MR_TS_StringId id)
 {
     put_be_uint32(buffer, id);
 }
 
 MR_STATIC_INLINE void put_par_conj_dynamic_id(
-        struct MR_threadscope_event_buffer *buffer,
-        MR_Word* id)
+    struct MR_threadscope_event_buffer *buffer, MR_Word* id)
 {
     put_be_uint64(buffer, (MR_Word)id);
 }
 
-MR_STATIC_INLINE void put_spark_id(
-        struct MR_threadscope_event_buffer *buffer,
-        MR_SparkId spark_id)
+MR_STATIC_INLINE void put_spark_id(struct MR_threadscope_event_buffer *buffer,
+    MR_SparkId spark_id)
 {
     put_be_uint32(buffer, spark_id);
 }
 
-MR_STATIC_INLINE void put_engset_id(
-        struct MR_threadscope_event_buffer *buffer,
-        MR_EngSetId engset_id)
+MR_STATIC_INLINE void put_engset_id(struct MR_threadscope_event_buffer *buffer,
+    MR_EngSetId engset_id)
 {
     put_be_uint32(buffer, engset_id);
 }
 
 MR_STATIC_INLINE void put_engset_type(
-        struct MR_threadscope_event_buffer *buffer,
-        MR_EngSetType type)
+    struct MR_threadscope_event_buffer *buffer, MR_EngSetType type)
 {
     put_be_uint16(buffer, type);
 }
 
-MR_STATIC_INLINE void put_future_id(
-        struct MR_threadscope_event_buffer *buffer,
-        MR_Future* id)
+MR_STATIC_INLINE void put_future_id(struct MR_threadscope_event_buffer *buffer,
+    MR_Future* id)
 {
     put_be_uint64(buffer, (MR_Word)id);
 }
 
 /***************************************************************************/
 
-static struct MR_threadscope_event_buffer*
-MR_create_event_buffer(void);
+static struct MR_threadscope_event_buffer* MR_create_event_buffer(void);
 
 /*
-** The prelude is everything up to and including the 'DATA_BEGIN' marker
+** The prelude is everything up to and including the 'DATA_BEGIN' marker.
 */
-static void
-MR_open_output_file_and_write_prelude(void);
+static void MR_open_output_file_and_write_prelude(void);
 
-static void
-MR_close_output_file(void);
+static void MR_close_output_file(void);
 
-static void
-put_event_type(struct MR_threadscope_event_buffer *buffer,
-    EventTypeDesc *event_type);
+static void put_event_type(struct MR_threadscope_event_buffer *buffer,
+                EventTypeDesc *event_type);
 
-static MR_bool
-flush_event_buffer(struct MR_threadscope_event_buffer *buffer);
+static MR_bool flush_event_buffer(struct MR_threadscope_event_buffer *buffer);
 
-static void
-maybe_close_block(struct MR_threadscope_event_buffer *buffer);
+static void maybe_close_block(struct MR_threadscope_event_buffer *buffer);
 
-static void
-open_block(struct MR_threadscope_event_buffer *buffer, MR_Unsigned eng_id);
+static void open_block(struct MR_threadscope_event_buffer *buffer,
+                MR_Unsigned eng_id);
 
 /***************************************************************************/
 
@@ -800,50 +774,43 @@ static MR_TS_StringId
 MR_threadscope_register_string(const char *string);
 
 /*
-** These four events are used to create and manage engine sets.  Haskell calls
-** these cap sets.
+** These four events are used to create and manage engine sets.
+** Haskell calls these cap sets.
 **
 ** The first two work on the global event buffer and are not thread safe.
 */
-static void
-MR_threadscope_post_create_engset(MR_EngSetId id, MR_EngSetType type);
+static void MR_threadscope_post_create_engset(MR_EngSetId id,
+                MR_EngSetType type);
 
-static void
-MR_threadscope_post_destroy_engset(MR_EngSetId id);
+static void MR_threadscope_post_destroy_engset(MR_EngSetId id);
 
-static void
-MR_threadscope_post_engset_add(struct MR_threadscope_event_buffer *buffer,
-    MR_EngSetId id, MR_EngineId eng);
+static void MR_threadscope_post_engset_add(
+                struct MR_threadscope_event_buffer *buffer,
+                MR_EngSetId id, MR_EngineId eng);
 
-static void
-MR_threadscope_post_engset_remove(MR_EngSetId id, MR_EngineId eng);
+static void MR_threadscope_post_engset_remove(MR_EngSetId id, MR_EngineId eng);
 
 /*
 ** Post the name and version of the runtime system to the log file.
 **
-** Note that this is the name of the implementation (mmc), not the name of the
-** language (mercury).
+** Note that this is the name of the implementation (mmc),
+** not the name of the language (mercury).
 **
 ** The name and version are separated by a '-'.
 */
-static void
-MR_threadscope_post_runtime_identifier(MR_EngSetId id, const char *ident);
+static void MR_threadscope_post_runtime_identifier(MR_EngSetId id,
+                const char *ident);
 
 /***************************************************************************/
 
-static void
-start_gc_callback(void);
-static void
-stop_gc_callback(void);
-static void
-pause_thread_gc_callback(void);
-static void
-resume_thread_gc_callback(void);
+static void start_gc_callback(void);
+static void stop_gc_callback(void);
+static void pause_thread_gc_callback(void);
+static void resume_thread_gc_callback(void);
 
 /***************************************************************************/
 
-static MR_uint_least64_t
-get_current_time_nanosecs(void);
+static MR_uint_least64_t get_current_time_nanosecs(void);
 
 /***************************************************************************/
 
@@ -853,12 +820,12 @@ MR_setup_threadscope(void)
     MR_DO_THREADSCOPE_DEBUG(
         fprintf(stderr, "In setup threadscope thread: 0x%lx\n", pthread_self())
     );
-    /* This value is used later when setting up the primordial engine */
+    /* This value is used later when setting up the primordial engine. */
     MR_primordial_first_tsc = MR_read_cpu_tsc();
 
     /*
-    ** These variables are used for TSC synchronization which is not used.  See
-    ** below.
+    ** These variables are used for TSC synchronization which is not used.
+    ** See below.
     **
     pthread_mutex_init(&MR_tsc_sync_slave_lock, MR_MUTEX_ATTR);
     MR_US_COND_CLEAR(&MR_tsc_sync_slave_entry_cond);
@@ -903,7 +870,8 @@ void
 MR_finalize_threadscope(void)
 {
     MR_DO_THREADSCOPE_DEBUG(
-        fprintf(stderr, "In finalize threadscope thread: 0x%lx\n", pthread_self())
+        fprintf(stderr, "In finalize threadscope thread: 0x%lx\n",
+            pthread_self())
     );
 
     MR_threadscope_post_destroy_engset(process_engset_id);
@@ -916,7 +884,8 @@ void
 MR_threadscope_setup_engine(MercuryEngine *eng)
 {
     MR_DO_THREADSCOPE_DEBUG(
-        fprintf(stderr, "In threadscope setup engine thread: 0x%lx\n", pthread_self())
+        fprintf(stderr, "In threadscope setup engine thread: 0x%lx\n",
+            pthread_self())
     );
     eng->MR_eng_next_spark_id = 0;
 
@@ -942,7 +911,8 @@ MR_threadscope_finalize_engine(MercuryEngine *eng)
     struct MR_threadscope_event_buffer *buffer = eng->MR_eng_ts_buffer;
 
     MR_DO_THREADSCOPE_DEBUG(
-        fprintf(stderr, "In threadscope finalize engine thread: 0x%lx\n", pthread_self())
+        fprintf(stderr, "In threadscope finalize engine thread: 0x%lx\n",
+            pthread_self())
     );
 
     MR_threadscope_post_engset_remove(process_engset_id, eng->MR_eng_id);
@@ -965,17 +935,17 @@ MR_threadscope_finalize_engine(MercuryEngine *eng)
 #if 0
 /*
 ** It looks like we don't need this on modern CPUs including multi-socket
-** systems (goliath).  If we find systems where this is needed we can enable it
-** via a runtime check.
+** systems (goliath). If we find systems where this is needed, we can
+** enable it via a runtime check.
 */
 /*
 ** The synchronization of TSCs operates as follows:
-** The master and slave enter their functions.  Both threads spin until the
-** other is ready (signaling the other before they begin spinning).  Then for
-** MR_TSC_SYNC_NUM_ROUNDS: The master spins waiting for the slave.  The slave
+** The master and slave enter their functions. Both threads spin until the
+** other is ready (signaling the other before they begin spinning). Then for
+** MR_TSC_SYNC_NUM_ROUNDS: The master spins waiting for the slave. The slave
 ** records it's current TSC, signals the master and spins waiting for a reply.
 ** The master upon hearing from the slave records it's TSC and then signals
-** the slave.  The slave can then compute the delay in this round.  The slave
+** the slave. The slave can then compute the delay in this round. The slave
 ** takes the NR_TSC_SYNC_NUM_BEST_ROUNDS best delays (smallest) and computes
 ** the offset as the average between between the difference of the clocks based
 ** on Cristan's algorithm (1989).
@@ -993,31 +963,24 @@ volatile static MR_Us_Cond  MR_tsc_sync_t0;
 volatile static MR_Us_Cond  MR_tsc_sync_t1;
 static Time                 MR_tsc_sync_master_time;
 
-static int
-compare_time_delay_offset_by_delay(const void *a, const void *b);
+static int compare_time_delay_offset_by_delay(const void *a, const void *b);
 
 void
 MR_threadscope_sync_tsc_master(void)
 {
     unsigned i;
 
-    /*
-    ** Wait for a slave to enter.
-    */
+    /* Wait for a slave to enter. */
     MR_US_COND_SET(&MR_tsc_sync_master_entry_cond);
     MR_US_SPIN_COND(&MR_tsc_sync_slave_entry_cond);
     MR_US_COND_CLEAR(&MR_tsc_sync_slave_entry_cond);
 
     for (i = 0; i < MR_TSC_SYNC_NUM_ROUNDS; i++) {
-        /*
-        ** Wait to receive the message from the slave at T0
-        */
+        /* Wait to receive the message from the slave at T0. */
         MR_US_SPIN_COND(&MR_tsc_sync_t0);
         MR_US_COND_CLEAR(&MR_tsc_sync_t0);
 
-        /*
-        ** Read our TSC and send the slave a message.
-        */
+        /* Read our TSC and send the slave a message. */
         MR_tsc_sync_master_time = MR_read_cpu_tsc();
         MR_US_COND_SET(&MR_tsc_sync_t1);
     }
@@ -1032,13 +995,12 @@ MR_threadscope_sync_tsc_slave(void)
     Timedelta       total_offset;
     MercuryEngine   *eng = MR_thread_engine_base;
 
-    /*
-    ** Only one slave may enter at a time.
-    */
+    /* Only one slave may enter at a time. */
     MR_LOCK(&MR_tsc_sync_slave_lock, "MR_threadscope_sync_tsc_slave");
 
     /*
-    ** Tell the master we're ready to begin and wait for it to tell us it's ready.
+    ** Tell the master we are ready to begin, and wait for it to tell us
+    ** it is ready.
     */
     MR_US_COND_SET(&MR_tsc_sync_slave_entry_cond);
     MR_US_SPIN_COND(&MR_tsc_sync_master_entry_cond);
@@ -1055,43 +1017,47 @@ MR_threadscope_sync_tsc_slave(void)
         MR_US_COND_SET(&MR_tsc_sync_t0);
 
         /*
-        ** Wait for the master to reply, the master handles T=1, here we
-        ** proceed to T=2.
+        ** Wait for the master to reply, the master handles T=1,
+        ** here we proceed to T=2.
         */
         MR_US_SPIN_COND(&MR_tsc_sync_t1);
         slave_tsc_at_t2 = MR_read_cpu_tsc();
         MR_US_COND_CLEAR(&MR_tsc_sync_t1);
 
         /*
-        ** Here are Cristian's formulas.  Delay is the round trip time,
+        ** Here are Cristian's formulas. Delay is the round trip time,
         ** slave_tsc_at_t0 + delay/2 is the time on the slave's clock that the
-        ** master processed the slaves message and sent it's own.  This is
+        ** master processed the slaves message and sent its own. This is
         ** accurate if the communication delays in either direction are
         ** uniform, that is communication latency is synchronous.
         */
         delay_offset[i].delay = slave_tsc_at_t2 - slave_tsc_at_t0;
-        delay_offset[i].offset =
-            MR_tsc_sync_master_time - (slave_tsc_at_t0 + delay_offset[i].delay/2);
+        delay_offset[i].offset = MR_tsc_sync_master_time -
+            (slave_tsc_at_t0 + delay_offset[i].delay/2);
     }
-    /* By now the master thread will return and continue with it's normal work. */
+
+    /*
+    ** By now the master thread will return,
+    ** and continue with its normal work.
+    */
 
     /*
     ** We do this debugging output while holding the lock, so that the output
     ** is reasonable.
     */
     MR_DO_THREADSCOPE_DEBUG({
-        fprintf(stderr, "TSC Synchronization for thread 0x%x\n", pthread_self());
+        fprintf(stderr, "TSC Synchronization for thread 0x%x\n",
+            pthread_self());
         for (i = 0; i < MR_TSC_SYNC_NUM_ROUNDS; i++) {
-            fprintf(stderr, "delay: %ld offset (local + global = total) %ld + %ld = %ld\n",
+            fprintf(stderr,
+                "delay: %ld offset (local + global = total) %ld + %ld = %ld\n",
                 delay_offset[i].delay, delay_offset[i].offset, MR_global_offset,
                 delay_offset[i].offset + MR_global_offset);
         }
     });
     MR_UNLOCK(&MR_tsc_sync_slave_lock, "MR_threadscope_sync_tsc_slave");
 
-    /*
-    ** Now to average the best offsets.
-    */
+    /* Now to average the best offsets. */
     qsort(&delay_offset, MR_TSC_SYNC_NUM_ROUNDS, sizeof(TimeDelayOffset),
         compare_time_delay_offset_by_delay);
     total_offset = 0;
@@ -1138,7 +1104,8 @@ MR_threadscope_post_create_context(MR_Context *context)
         open_block(buffer, MR_ENGINE(MR_eng_id));
     }
 
-    put_event_header(buffer, MR_TS_EVENT_CREATE_THREAD, get_current_time_nanosecs());
+    put_event_header(buffer, MR_TS_EVENT_CREATE_THREAD,
+        get_current_time_nanosecs());
     put_context_id(buffer, context->MR_ctxt_num_id);
 
     MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
@@ -1179,7 +1146,8 @@ MR_threadscope_post_context_runnable(MR_Context *context)
         open_block(buffer, MR_ENGINE(MR_eng_id));
     }
 
-    put_event_header(buffer, MR_TS_EVENT_THREAD_RUNNABLE, get_current_time_nanosecs());
+    put_event_header(buffer, MR_TS_EVENT_THREAD_RUNNABLE,
+        get_current_time_nanosecs());
     put_context_id(buffer, context->MR_ctxt_num_id);
 
     MR_US_UNLOCK(&(buffer->MR_tsbuffer_lock));
@@ -1187,8 +1155,7 @@ MR_threadscope_post_context_runnable(MR_Context *context)
 
 static void
 MR_threadscope_post_run_context_locked(
-    struct MR_threadscope_event_buffer *buffer,
-    MR_Context *context)
+    struct MR_threadscope_event_buffer *buffer, MR_Context *context)
 {
     if (!enough_room_for_event(buffer, MR_TS_EVENT_RUN_THREAD)) {
         flush_event_buffer(buffer);
@@ -1224,8 +1191,7 @@ MR_threadscope_post_run_context(void)
 static void
 MR_threadscope_post_stop_context_locked(
     struct MR_threadscope_event_buffer *buffer,
-    MR_Context *context,
-    MR_ContextStopReason reason)
+    MR_Context *context, MR_ContextStopReason reason)
 {
     if (!enough_room_for_event(buffer, MR_TS_EVENT_STOP_THREAD)) {
         flush_event_buffer(buffer);
@@ -1234,7 +1200,8 @@ MR_threadscope_post_stop_context_locked(
         open_block(buffer, MR_thread_engine_base->MR_eng_id);
     }
 
-    put_event_header(buffer, MR_TS_EVENT_STOP_THREAD, get_current_time_nanosecs());
+    put_event_header(buffer, MR_TS_EVENT_STOP_THREAD,
+        get_current_time_nanosecs());
     put_context_id(buffer, context->MR_ctxt_num_id);
     put_stop_reason(buffer, reason);
 }
@@ -1316,7 +1283,7 @@ MR_threadscope_post_steal_spark(MR_SparkId spark_id)
     /*
     ** The engine that created the spark (which may not be whom it was stolen
     ** from if different work-stealking algorithms are implemented) can be
-    ** derrived from the spark id.
+    ** derived from the spark id.
     */
     engine_id = (spark_id & 0xFF000000) >> 24;
     put_be_uint16(buffer, engine_id);
@@ -1346,7 +1313,8 @@ MR_threadscope_post_sparking(MR_Word* dynamic_conj_id, MR_SparkId spark_id)
 }
 
 void
-MR_threadscope_post_calling_main(void) {
+MR_threadscope_post_calling_main(void)
+{
     struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
 
     MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
@@ -1363,12 +1331,14 @@ MR_threadscope_post_calling_main(void) {
 }
 
 void
-MR_threadscope_post_looking_for_global_context(void) {
+MR_threadscope_post_looking_for_global_context(void)
+{
     struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
 
     MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
     if (!enough_room_for_event(buffer,
-            MR_TS_MER_EVENT_LOOKING_FOR_GLOBAL_CONTEXT)) {
+            MR_TS_MER_EVENT_LOOKING_FOR_GLOBAL_CONTEXT))
+    {
         flush_event_buffer(buffer);
         open_block(buffer, MR_ENGINE(MR_eng_id));
     } else if (!block_is_open(buffer)) {
@@ -1381,7 +1351,8 @@ MR_threadscope_post_looking_for_global_context(void) {
 }
 
 void
-MR_threadscope_post_work_stealing(void) {
+MR_threadscope_post_work_stealing(void)
+{
     struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
 
     MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
@@ -1399,7 +1370,8 @@ MR_threadscope_post_work_stealing(void) {
 
 void
 MR_threadscope_post_start_par_conj(MR_Word* dynamic_id,
-        MR_TS_StringId static_id) {
+    MR_TS_StringId static_id)
+{
     struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
 
     MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
@@ -1419,7 +1391,8 @@ MR_threadscope_post_start_par_conj(MR_Word* dynamic_id,
 }
 
 void
-MR_threadscope_post_stop_par_conj(MR_Word *dynamic_id) {
+MR_threadscope_post_stop_par_conj(MR_Word *dynamic_id)
+{
     struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
 
     MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
@@ -1438,7 +1411,8 @@ MR_threadscope_post_stop_par_conj(MR_Word *dynamic_id) {
 }
 
 void
-MR_threadscope_post_stop_par_conjunct(MR_Word *dynamic_id) {
+MR_threadscope_post_stop_par_conjunct(MR_Word *dynamic_id)
+{
     struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
 
     MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
@@ -1472,7 +1446,8 @@ MR_threadscope_register_string(const char *string)
     ** +4 for the string id.
     */
     if (!enough_room_for_variable_size_event(&global_buffer, strlen(string)
-            + 2 + 4)) {
+            + 2 + 4))
+    {
         flush_event_buffer(&global_buffer);
     }
 
@@ -1487,7 +1462,8 @@ MR_threadscope_register_string(const char *string)
 
 void
 MR_threadscope_register_strings_array(MR_Threadscope_String *array,
-        unsigned size) {
+    unsigned size)
+{
     unsigned i;
 
     for (i = 0; i < size; i++) {
@@ -1499,7 +1475,8 @@ MR_threadscope_register_strings_array(MR_Threadscope_String *array,
 }
 
 void
-MR_threadscope_post_log_msg(const char *message) {
+MR_threadscope_post_log_msg(const char *message)
+{
     struct MR_threadscope_event_buffer *buffer = MR_ENGINE(MR_eng_ts_buffer);
 
     MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
@@ -1547,7 +1524,7 @@ MR_threadscope_post_destroy_engset(MR_EngSetId id)
 
 void
 MR_threadscope_post_engset_add(struct MR_threadscope_event_buffer *buffer,
-        MR_EngSetId id, MR_EngineId eng)
+    MR_EngSetId id, MR_EngineId eng)
 {
     MR_US_SPIN_LOCK(&(buffer->MR_tsbuffer_lock));
     maybe_close_block(buffer);
@@ -1556,8 +1533,8 @@ MR_threadscope_post_engset_add(struct MR_threadscope_event_buffer *buffer,
     }
 
     /*
-    ** When this event occurs the engine hasn't been setup yet.  Even though we
-    ** use the engine's buffer we cannot use get_current_time_nanosecs()
+    ** When this event occurs the engine hasn't been setup yet. Even though
+    ** we use the engine's buffer, we cannot use get_current_time_nanosecs().
     */
     put_event_header(buffer, MR_TS_EVENT_CAPSET_ASSIGN_CAP, 0);
     put_engset_id(buffer, id);
@@ -1587,7 +1564,7 @@ MR_threadscope_post_engset_remove(MR_EngSetId id, MR_EngineId eng)
 
 void
 MR_threadscope_post_runtime_identifier(MR_EngSetId engset_id,
-        const char *identifier)
+    const char *identifier)
 {
     struct MR_threadscope_event_buffer *buffer = &global_buffer;
     unsigned len;
@@ -1714,8 +1691,8 @@ MR_open_output_file_and_write_prelude(void)
     progname_base = basename(progname_copy);
 
     /*
-    ** This is an over-approximation on the amount of space needed for this
-    ** filename.
+    ** This is an over-approximation on the amount of space needed
+    ** for this filename.
     */
     filename_len = strlen(progname_base) + strlen(MR_TS_FILENAME_FORMAT) + 1;
     MR_threadscope_output_filename = MR_GC_NEW_ARRAY(char, filename_len);
@@ -1733,9 +1710,10 @@ MR_open_output_file_and_write_prelude(void)
 
     put_be_uint32(&global_buffer, MR_TS_EVENT_HEADER_BEGIN);
     put_be_uint32(&global_buffer, MR_TS_EVENT_HET_BEGIN);
-    for ( i = 0;
-          event_type_descs[i].etd_event_type != MR_TS_NUM_EVENT_TAGS;
-          i++) {
+    for (i = 0;
+        event_type_descs[i].etd_event_type != MR_TS_NUM_EVENT_TAGS;
+        i++)
+    {
         put_event_type(&global_buffer, &event_type_descs[i]);
     }
     put_be_uint32(&global_buffer, MR_TS_EVENT_HET_END);
@@ -1767,15 +1745,14 @@ put_event_type(struct MR_threadscope_event_buffer *buffer,
     MR_int_least16_t    size;
     EventType           event_type;
 
-    /*
-     * This also fills in our tables of event sizes.
-     */
+    /* This also fills in our tables of event sizes. */
     event_type = event_type_desc->etd_event_type;
     size = event_type_desc->etd_size;
     if (event_type < MR_TS_NUM_EVENT_TAGS) {
         event_type_sizes[event_type] = size;
     } else if ((event_type < (MR_TS_MER_EVENT_START + MR_TS_NUM_MER_EVENTS))
-            && (event_type >= MR_TS_MER_EVENT_START)) {
+        && (event_type >= MR_TS_MER_EVENT_START))
+    {
         event_type_sizes_mercury[event_type - MR_TS_MER_EVENT_START] = size;
     } else {
         fprintf(stderr, "Unknown event type %d\n", event_type);
@@ -1805,7 +1782,8 @@ flush_event_buffer(struct MR_threadscope_event_buffer *buffer)
     */
     if (MR_threadscope_output_file && buffer->MR_tsbuffer_pos) {
         if (0 == fwrite(buffer->MR_tsbuffer_data, buffer->MR_tsbuffer_pos, 1,
-                MR_threadscope_output_file)) {
+            MR_threadscope_output_file))
+        {
             perror(MR_threadscope_output_filename);
             MR_threadscope_output_file = NULL;
             MR_threadscope_output_filename = NULL;
@@ -1819,14 +1797,15 @@ flush_event_buffer(struct MR_threadscope_event_buffer *buffer)
 static void
 maybe_close_block(struct MR_threadscope_event_buffer *buffer)
 {
-    MR_Unsigned                         saved_pos;
+    MR_Unsigned saved_pos;
 
     if (buffer->MR_tsbuffer_block_open_pos != -1)
     {
         saved_pos = buffer->MR_tsbuffer_pos;
         buffer->MR_tsbuffer_pos = buffer->MR_tsbuffer_block_open_pos +
             sizeof(EventType) + sizeof(Time);
-        put_eventlog_offset(buffer, saved_pos - buffer->MR_tsbuffer_block_open_pos);
+        put_eventlog_offset(buffer,
+            saved_pos - buffer->MR_tsbuffer_block_open_pos);
         put_timestamp(buffer, get_current_time_nanosecs());
 
         buffer->MR_tsbuffer_block_open_pos = -1;
@@ -1840,12 +1819,13 @@ open_block(struct MR_threadscope_event_buffer *buffer, MR_Unsigned eng_id)
     maybe_close_block(buffer);
 
     /*
-    ** Save the old position, close block uses this so that it knows where the
-    ** block maker is that it should write into.
+    ** Save the old position. Close block uses this so that it knows
+    ** where the block maker is that it should write into.
     */
     buffer->MR_tsbuffer_block_open_pos = buffer->MR_tsbuffer_pos;
 
-    put_event_header(buffer, MR_TS_EVENT_BLOCK_MARKER, get_current_time_nanosecs());
+    put_event_header(buffer, MR_TS_EVENT_BLOCK_MARKER,
+        get_current_time_nanosecs());
 
     /* Skip over the next two fields, they are filled in by close_block */
     buffer->MR_tsbuffer_pos += sizeof(EventlogOffset) + sizeof(Time);
@@ -1921,7 +1901,8 @@ stop_gc_callback(void)
             open_block(buffer, MR_thread_engine_base->MR_eng_id);
         }
 
-        put_event_header(buffer, MR_TS_EVENT_GC_END, get_current_time_nanosecs());
+        put_event_header(buffer, MR_TS_EVENT_GC_END,
+            get_current_time_nanosecs());
 
         context = MR_thread_engine_base->MR_eng_this_context;
         if (!buffer->MR_tsbuffer_ctxt_is_stopped && context) {
@@ -1938,7 +1919,8 @@ pause_thread_gc_callback(void)
     MR_Context                          *context;
 
     MR_DO_THREADSCOPE_DEBUG(
-        fprintf(stderr, "In gc pause thread callback thread: 0x%lx\n", pthread_self())
+        fprintf(stderr, "In gc pause thread callback thread: 0x%lx\n",
+            pthread_self())
     );
     if (MR_thread_engine_base == NULL) return;
     buffer = MR_thread_engine_base->MR_eng_ts_buffer;
@@ -1964,7 +1946,8 @@ resume_thread_gc_callback(void)
     MR_Context                          *context;
 
     MR_DO_THREADSCOPE_DEBUG(
-        fprintf(stderr, "In gc resume thread callback thread: 0x%lx\n", pthread_self());
+        fprintf(stderr, "In gc resume thread callback thread: 0x%lx\n",
+            pthread_self());
     );
     if (MR_thread_engine_base == NULL) return;
     buffer = MR_thread_engine_base->MR_eng_ts_buffer;
@@ -1995,10 +1978,7 @@ get_current_time_nanosecs(void)
     if (MR_cpu_cycles_per_sec == 0) {
         return current_tsc + eng->MR_eng_cpu_clock_ticks_offset;
     } else {
-        /*
-        ** The large constant (10^9) here converts seconds into
-        ** nanoseconds.
-        */
+        /* The large constant (10^9) here converts seconds into nanoseconds. */
         return (current_tsc + eng->MR_eng_cpu_clock_ticks_offset) /
             (MR_cpu_cycles_per_sec / 1000000000);
     }
@@ -2007,31 +1987,3 @@ get_current_time_nanosecs(void)
 /***************************************************************************/
 
 #endif /* MR_THREADSCOPE */
-
-/* forward decls to suppress gcc warnings */
-void mercury_sys_init_threadscope_init(void);
-void mercury_sys_init_threadscope_init_type_tables(void);
-#ifdef  MR_DEEP_PROFILING
-void mercury_sys_init_threadscope_write_out_proc_statics(FILE *fp);
-#endif
-
-void mercury_sys_init_threadscope_init(void)
-{
-#ifndef MR_HIGHLEVEL_CODE
-/* XXX: What does this do?  Why do other modules have a call like this.
-    threadscope_module();
-*/
-#endif
-}
-
-void mercury_sys_init_threadscope_init_type_tables(void)
-{
-    /* no types to register */
-}
-
-#ifdef  MR_DEEP_PROFILING
-void mercury_sys_init_threadscope_write_out_proc_statics(FILE *fp)
-{
-    /* no proc_statics to write out */
-}
-#endif
