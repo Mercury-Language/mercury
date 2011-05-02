@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2010 The University of Melbourne.
+# Copyright (C) 1995-2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -248,7 +248,7 @@ runtime: scripts util_no_rt boehm_gc
 	+cd runtime && $(SUBDIR_MMAKE)
 
 .PHONY: robdd
-robdd: 	scripts boehm_gc
+robdd: 	scripts boehm_gc runtime
 	cd robdd && $(SUBDIR_MMAKE)
 
 .PHONY: library
