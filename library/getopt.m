@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999,2001-2007 The University of Melbourne.
+% Copyright (C) 1994-1999,2001-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -660,21 +660,21 @@ getopt.process_option(bool(_), _Option, Flag, MaybeArg, _OptionOps,
     svset.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(_Arg),
-        map.set(OptionTable0, Flag, bool(no), OptionTable),
+        map.set(Flag, bool(no), OptionTable0, OptionTable),
         Result = ok(OptionTable)
     ;
         MaybeArg = no,
-        map.set(OptionTable0, Flag, bool(yes), OptionTable),
+        map.set(Flag, bool(yes), OptionTable0, OptionTable),
         Result = ok(OptionTable)
     ).
 getopt.process_option(int(_), Option, Flag, MaybeArg, _OptionOps,
-        OptionTable0, Result, !OptionsSet) :-
+        !.OptionTable, Result, !OptionsSet) :-
     svset.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
         ( string.to_int(Arg, IntArg) ->
-            map.set(OptionTable0, Flag, int(IntArg), OptionTable),
-            Result = ok(OptionTable)
+            map.set(Flag, int(IntArg), !OptionTable),
+            Result = ok(!.OptionTable)
         ;
             getopt.numeric_argument(Option, Arg, Result)
         )
@@ -683,24 +683,24 @@ getopt.process_option(int(_), Option, Flag, MaybeArg, _OptionOps,
         error("integer argument expected in getopt.process_option")
     ).
 getopt.process_option(string(_), _Option, Flag, MaybeArg, _OptionOps,
-        OptionTable0, Result, !OptionsSet) :-
+        !.OptionTable, Result, !OptionsSet) :-
     svset.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
-        map.set(OptionTable0, Flag, string(Arg), OptionTable),
-        Result = ok(OptionTable)
+        map.set(Flag, string(Arg), !OptionTable),
+        Result = ok(!.OptionTable)
     ;
         MaybeArg = no,
         error("string argument expected in getopt.process_option")
     ).
 getopt.process_option(maybe_int(_), Option, Flag, MaybeArg, _OptionOps,
-        OptionTable0, Result, !OptionsSet) :-
+        !.OptionTable, Result, !OptionsSet) :-
     svset.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
         ( string.to_int(Arg, IntArg) ->
-            map.set(OptionTable0, Flag, maybe_int(yes(IntArg)), OptionTable),
-            Result = ok(OptionTable)
+            map.set(Flag, maybe_int(yes(IntArg)), !OptionTable),
+            Result = ok(!.OptionTable)
         ;
             getopt.numeric_argument(Option, Arg, Result)
         )
@@ -709,24 +709,24 @@ getopt.process_option(maybe_int(_), Option, Flag, MaybeArg, _OptionOps,
         error("integer argument expected in getopt.process_option")
     ).
 getopt.process_option(maybe_string(_), _Option, Flag, MaybeArg, _OptionOps,
-        OptionTable0, Result, !OptionsSet) :-
+        !.OptionTable, Result, !OptionsSet) :-
     svset.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
-        map.set(OptionTable0, Flag, maybe_string(yes(Arg)), OptionTable),
-        Result = ok(OptionTable)
+        map.set(Flag, maybe_string(yes(Arg)), !OptionTable),
+        Result = ok(!.OptionTable)
     ;
         MaybeArg = no,
         error("string argument expected in getopt.process_option")
     ).
 getopt.process_option(accumulating(List0), _Option, Flag, MaybeArg, _OptionOps,
-        OptionTable0, Result, !OptionsSet) :-
+        !.OptionTable, Result, !OptionsSet) :-
     svset.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
         list.append(List0, [Arg], List),
-        map.set(OptionTable0, Flag, accumulating(List), OptionTable),
-        Result = ok(OptionTable)
+        map.set(Flag, accumulating(List), !OptionTable),
+        Result = ok(!.OptionTable)
     ;
         MaybeArg = no,
         error("acumulating argument expected in getopt.process_option")
@@ -803,22 +803,22 @@ process_negated_option(Option, Flag, OptionOps, OptionTable0, Result,
         (
             OptionData = bool(_),
             svset.insert(Flag, !OptionsSet),
-            map.set(OptionTable0, Flag, bool(no), OptionTable),
+            map.set(Flag, bool(no), OptionTable0, OptionTable),
             Result = ok(OptionTable)
         ;
             OptionData = maybe_int(_),
             svset.insert(Flag, !OptionsSet),
-            map.set(OptionTable0, Flag, maybe_int(no), OptionTable),
+            map.set(Flag, maybe_int(no), OptionTable0, OptionTable),
             Result = ok(OptionTable)
         ;
             OptionData = maybe_string(_),
             svset.insert(Flag, !OptionsSet),
-            map.set(OptionTable0, Flag, maybe_string(no), OptionTable),
+            map.set(Flag, maybe_string(no), OptionTable0, OptionTable),
             Result = ok(OptionTable)
         ;
             OptionData = accumulating(_),
             svset.insert(Flag, !OptionsSet),
-            map.set(OptionTable0, Flag, accumulating([]), OptionTable),
+            map.set(Flag, accumulating([]), OptionTable0, OptionTable),
             Result = ok(OptionTable)
         ;
             OptionData = bool_special,

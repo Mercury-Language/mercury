@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998, 2000-2010 The University of Melbourne.
+% Copyright (C) 1995-1998, 2000-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -540,15 +540,15 @@ update_inst_var_sub_2(InstA, MaybeType, InstVar, !Info) :-
             inst_merge(InstA, InstB, MaybeType, Inst,
                 ModuleInfo0, ModuleInfo),
             !Info ^ imi_module_info := ModuleInfo,
-            map.det_update(InstVarSub0, InstVar, Inst, InstVarSub),
+            map.det_update(InstVar, Inst, InstVarSub0, InstVarSub),
             !Info ^ imi_maybe_sub := yes(InstVarSub)
         ;
-            map.det_insert(InstVarSub0, InstVar, InstA, InstVarSub),
+            map.det_insert(InstVar, InstA, InstVarSub0, InstVarSub),
             !Info ^ imi_maybe_sub := yes(InstVarSub)
         )
     ;
         !.Info ^ imi_maybe_sub = no,
-        map.det_insert(map.init, InstVar, InstA, InstVarSub),
+        map.det_insert(InstVar, InstA, map.init, InstVarSub),
         !Info ^ imi_maybe_sub := yes(InstVarSub)
     ).
 

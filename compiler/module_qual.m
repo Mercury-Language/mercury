@@ -140,7 +140,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module solutions.
-:- import_module svmap.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -2137,7 +2136,7 @@ id_set_insert(NeedQualifier, mq_id(qualified(Module, Name), Arity), !IdSet) :-
         set.insert(ImportModules1, Module, ImportModules),
         UseModules = UseModules1
     ),
-    svmap.set(Name - Arity, ImportModules - UseModules, !IdSet).
+    map.set(Name - Arity, ImportModules - UseModules, !IdSet).
 
 :- pred id_set_search_sym_arity(id_set::in, sym_name::in, int::in,
     module_id_set::in, list(module_name)::out) is det.

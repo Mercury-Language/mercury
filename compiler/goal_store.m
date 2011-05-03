@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000, 2003, 2005-2006 The University of Melbourne.
+% Copyright (C) 2000, 2003, 2005-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -70,8 +70,8 @@ goal_store_init(GS) :-
 goal_store_init = GS :-
     goal_store_init(GS).
 
-goal_store_det_insert(Id, Goal, GS0, GS) :-
-    map.det_insert(GS0, Id, Goal, GS).
+goal_store_det_insert(Id, Goal, !GS) :-
+    map.det_insert(Id, Goal, !GS).
 
 goal_store_lookup(GS, Id, Goal) :-
     map.lookup(GS, Id, Goal).

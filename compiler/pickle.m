@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008, 2010 The University of Melbourne.
+% Copyright (C) 2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -134,7 +134,7 @@ init_picklers = picklers(map.init).
 
 register_pickler(TypeCtorDesc, Pickle, Pickles0, Pickles) :-
     Pickles0 = picklers(Map0),
-    map.det_insert(Map0, TypeCtorDesc, Pickle, Map),
+    map.det_insert(TypeCtorDesc, Pickle, Map0, Map),
     Pickles = picklers(Map).
 
 pickle(Pickles, T, !IO) :-
@@ -221,7 +221,7 @@ init_unpicklers = unpicklers(map.init).
 
 register_unpickler(TypeCtorDesc, Unpickle, Unpicklers0, Unpicklers) :-
     Unpicklers0 = unpicklers(Map0),
-    map.det_insert(Map0, TypeCtorDesc, Unpickle, Map),
+    map.det_insert(TypeCtorDesc, Unpickle, Map0, Map),
     Unpicklers = unpicklers(Map).
 
 unpickle_from_file(Unpicklers, FileName, Result, !IO) :-

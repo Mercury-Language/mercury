@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -557,7 +557,7 @@ set_options(Options, !Globals) :-
 
 set_option(Option, OptionData, !Globals) :-
     get_options(!.Globals, OptionTable0),
-    map.set(OptionTable0, Option, OptionData, OptionTable),
+    map.set(Option, OptionData, OptionTable0, OptionTable),
     set_options(OptionTable, !Globals).
 
 set_gc_method(GC_Method, !Globals) :-

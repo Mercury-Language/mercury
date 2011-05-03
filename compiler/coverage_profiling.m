@@ -1103,8 +1103,8 @@ make_coverage_point(CPOptions, CoveragePointInfo, Goals, !CoverageInfo) :-
     CPIndexCounter0 = !.CoverageInfo ^ ci_cp_index_counter,
 
     counter.allocate(CPIndex, CPIndexCounter0, CPIndexCounter),
-    map.det_insert(CoveragePointInfos0, CPIndex, CoveragePointInfo,
-        CoveragePointInfos),
+    map.det_insert(CPIndex, CoveragePointInfo,
+        CoveragePointInfos0, CoveragePointInfos),
     !CoverageInfo ^ ci_coverage_points := CoveragePointInfos,
     !CoverageInfo ^ ci_cp_index_counter := CPIndexCounter,
 

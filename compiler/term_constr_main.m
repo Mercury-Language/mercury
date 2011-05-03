@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997,2002-2010 The University of Melbourne.
+% Copyright (C) 1997,2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -585,8 +585,8 @@ output_pragma_termination2_info(PredOrFunc, SymName, ModeList, Context,
 
     list.length(HeadVars, NumHeadVars),
     HeadVarIds = 0 .. NumHeadVars - 1,
-    map.det_insert_from_corresponding_lists(map.init, HeadVars,
-        HeadVarIds, VarToVarIdMap),
+    map.det_insert_from_corresponding_lists(HeadVars, HeadVarIds,
+        map.init, VarToVarIdMap),
 
     io.write_string(", ", !IO),
     output_maybe_constr_arg_size_info(VarToVarIdMap, MaybeSuccess,

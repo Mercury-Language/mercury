@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2005-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -274,7 +274,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module solutions.
-:- import_module svmap.
 :- import_module svset.
 :- import_module term.
 
@@ -380,12 +379,12 @@ rptg_add_node(Content0, rptg_node(NodeId), !G) :-
 
     % Add the node.
     NodeMap0 = !.G ^ rptg_nodes,
-    svmap.set(Node, Content, NodeMap0, NodeMap),
+    map.set(Node, Content, NodeMap0, NodeMap),
     rptg_set_nodes(NodeMap, !G),
 
     % We can assume there is no outedge for this node yet.
     OutEdges0 = rptg_get_outedges(!.G),
-    svmap.set(Node, map.init, OutEdges0, OutEdges),
+    map.set(Node, map.init, OutEdges0, OutEdges),
     rptg_set_outedges(OutEdges, !G).
 
 rptg_get_node_content(Graph, Node) = NodeContent :-
@@ -406,14 +405,14 @@ rptg_set_edge(Start, End, EdgeContent, Edge, !G) :-
     Edge = rptg_edge(EdgeId),
 
     Edges0 = rptg_get_edges(!.G),
-    map.set(Edges0, Edge, rptg_edge_info(Start, End, EdgeContent), Edges),
+    map.set(Edge, rptg_edge_info(Start, End, EdgeContent), Edges0, Edges),
     rptg_set_edges(Edges, !G),
 
     % Update the outedges of the Start node.
     OutEdges0 = rptg_get_outedges(!.G),
     map.lookup(OutEdges0, Start, StartOutEdges0),
-    svmap.set(Edge, End, StartOutEdges0, StartOutEdges),
-    svmap.set(Start, StartOutEdges, OutEdges0, OutEdges),
+    map.set(Edge, End, StartOutEdges0, StartOutEdges),
+    map.set(Start, StartOutEdges, OutEdges0, OutEdges),
     rptg_set_outedges(OutEdges, !G).
 
 rptg_get_edge_contents(G, Edge, Start, End, Content) :-
@@ -606,7 +605,7 @@ rptg_lookup_list_endnodes(Graph, Node) = EndNodeList :-
 
 rptg_set_node_content(Node, NodeContent, !Graph) :-
     Nodes0 = rptg_get_nodes(!.Graph),
-    map.det_update(Nodes0, Node, NodeContent, Nodes),
+    map.det_update(Node, NodeContent, Nodes0, Nodes),
     rptg_set_nodes(Nodes, !Graph).
 
 rptg_set_node_is_allocated(Node, IsAlloc, !Graph) :-
@@ -625,11 +624,11 @@ rptg_node_content_set_vars(Vars, !NC) :-
 rptg_node_content_set_region_name(Name, !NC) :-
     !NC ^ rptg_nc_reg_var_name := Name.
 rptg_node_content_set_merged_from(Nodes, !NC) :-
-    !NC  ^ rptg_nc_merged_from := Nodes.
+    !NC ^ rptg_nc_merged_from := Nodes.
 rptg_node_content_set_node_type(NodeType, !NC) :-
-    !NC  ^ rptg_nc_node_type := NodeType.
+    !NC ^ rptg_nc_node_type := NodeType.
 rptg_node_content_set_is_allocated(IsAllocated, !NC) :-
-    !NC  ^ rptg_nc_is_allocated := IsAllocated.
+    !NC ^ rptg_nc_is_allocated := IsAllocated.
 
 rptg_edge_content_get_label(AC) = AC ^ rptg_ec_label.
 rptg_edge_content_set_label(Label, !AC) :-
@@ -663,7 +662,7 @@ unify_operator(Node1, Node2, !Graph) :-
     rptg_node_content_set_is_allocated(IsAllocated,
         NewContent1, NewContent),
 
-    map.det_update(Nodes0, Node1, NewContent, Nodes),
+    map.det_update(Node1, NewContent, Nodes0, Nodes),
 
     !Graph ^ rptg_nodes := Nodes,
 
@@ -778,7 +777,7 @@ transfer_in_edges_2([Edge | Edges], Node1, !Graph) :-
 delete_node(Node,
     rpt_graph(NS, AS, !.Nodes, !.Edges, !.OutEdges),
     rpt_graph(NS, AS, !:Nodes, !:Edges, !:OutEdges)) :-
-    svmap.delete(Node, !Nodes),
+    map.delete(Node, !Nodes),
     delete_all_outedges_and_edges(Node, !Edges, !OutEdges),
     delete_all_inedges_and_edges(Node, !Edges, !OutEdges).
 
@@ -794,10 +793,10 @@ delete_all_outedges_and_edges(Node, !Edges, !OutEdges) :-
     % Delete the edges themselves.
     map.lookup(!.OutEdges, Node, OutEdgesOfNode),
     map.keys(OutEdgesOfNode, TheEdges),
-    svmap.delete_list(TheEdges, !Edges),
+    map.delete_list(TheEdges, !Edges),
 
     % Delete the info about outcoming edges.
-    svmap.delete(Node, !OutEdges).
+    map.delete(Node, !OutEdges).
 
     % This predicate deletes all the incoming edges of the input node (Node).
     % We only store outcoming edges therefore to remove incoming ones of Node
@@ -830,11 +829,11 @@ delete_all_inedges_and_edges_2([N | Ns], Node, !Edges, !OutEdges) :-
     solutions(map.inverse_search(OutEdgesOfN0, Node), EdgesFromNPointToNode),
 
     % Delete the edges themselves.
-    svmap.delete_list(EdgesFromNPointToNode, !Edges),
+    map.delete_list(EdgesFromNPointToNode, !Edges),
 
     % Delete the info about outedges.
-    svmap.delete_list(EdgesFromNPointToNode, OutEdgesOfN0, OutEdgesOfN),
-    svmap.set(N, OutEdgesOfN, !OutEdges),
+    map.delete_list(EdgesFromNPointToNode, OutEdgesOfN0, OutEdgesOfN),
+    map.set(N, OutEdgesOfN, !OutEdges),
     delete_all_inedges_and_edges_2(Ns, Node, !Edges, !OutEdges).
 
 edge_operator(Start, End, Info, !G) :-

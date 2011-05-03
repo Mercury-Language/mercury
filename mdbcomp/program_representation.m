@@ -626,7 +626,6 @@
 :- import_module map.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 
 atomic_goal_generates_event_like_call(GoalRep) = Generates :-
     (
@@ -995,7 +994,7 @@ read_module_reps(ByteCode, !ModuleReps, !Pos) :-
     ;
         MoreModules = next_module,
         read_module_rep(ByteCode, ModuleRep, !Pos),
-        svmap.det_insert(ModuleRep ^ mr_name, ModuleRep, !ModuleReps),
+        map.det_insert(ModuleRep ^ mr_name, ModuleRep, !ModuleReps),
         read_module_reps(ByteCode, !ModuleReps, !Pos)
     ).
 
@@ -1020,7 +1019,7 @@ read_proc_reps(ByteCode, StringTable, !ProcReps, !Pos) :-
     ;
         MoreProcs = next_proc,
         read_proc_rep(ByteCode, StringTable, ProcRep, !Pos),
-        svmap.det_insert(ProcRep ^ pr_id, ProcRep, !ProcReps),
+        map.det_insert(ProcRep ^ pr_id, ProcRep, !ProcReps),
         read_proc_reps(ByteCode, StringTable, !ProcReps, !Pos)
     ).
 
@@ -1104,7 +1103,7 @@ read_var_table_entries(NumVarsInTable, VarNumRep, ByteCode, StringTable,
     ( NumVarsInTable > 0 ->
         read_var(VarNumRep, ByteCode, VarRep, !Pos),
         read_string_via_offset(ByteCode, StringTable, VarName, !Pos),
-        svmap.insert(VarRep, VarName, !VarTable),
+        map.insert(VarRep, VarName, !VarTable),
         read_var_table_entries(NumVarsInTable - 1, VarNumRep, ByteCode,
             StringTable, !VarTable, !Pos)
     ;

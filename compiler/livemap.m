@@ -165,7 +165,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
         Uinstr0 = mkframe(_, _)
     ;
         Uinstr0 = label(Label),
-        map.set(!.Livemap, Label, !.Livevals, !:Livemap)
+        map.set(Label, !.Livevals, !Livemap)
     ;
         Uinstr0 = goto(CodeAddr),
         LivevalsNeeded = opt_util.livevals_addr(CodeAddr),

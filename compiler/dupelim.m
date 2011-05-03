@@ -69,7 +69,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
-:- import_module svmap.
 :- import_module svset.
 
 %-----------------------------------------------------------------------------%
@@ -127,9 +126,9 @@ dupelim_build_maps([Label | Labels], BlockMap, !StdMap, !Fixed) :-
     BlockInfo = block_info(_, _, Instrs, _, _, MaybeFallThrough),
     standardize_instr_block(Instrs, MaybeFallThrough, StdInstrs),
     ( map.search(!.StdMap, StdInstrs, Cluster) ->
-        svmap.det_update(StdInstrs, [Label | Cluster], !StdMap)
+        map.det_update(StdInstrs, [Label | Cluster], !StdMap)
     ;
-        svmap.det_insert(StdInstrs, [Label], !StdMap)
+        map.det_insert(StdInstrs, [Label], !StdMap)
     ),
     (
         MaybeFallThrough = yes(FallIntoLabel),
@@ -243,7 +242,7 @@ process_clusters([Cluster | Clusters], !LabelSeq, !BlockMap, !ReplMap) :-
         ExMaybeFallThrough, UnifiedMaybeFallThrough),
     ExemplarInfo = block_info(ExLabel, ExLabelInstr, UnifiedInstrs,
         ExFallInto, ExSideLabels, UnifiedMaybeFallThrough),
-    svmap.det_update(Exemplar, ExemplarInfo, !BlockMap),
+    map.det_update(Exemplar, ExemplarInfo, !BlockMap),
     process_clusters(Clusters, !LabelSeq, !BlockMap, !ReplMap).
 
     % Given the current form of a basic block (instructions and fallthrough),
@@ -274,7 +273,7 @@ process_elim_labels([ElimLabel | ElimLabels], Instrs0, !LabelSeq, BlockMap,
             ElimMaybeFallThrough, Instrs1, !:MaybeFallThrough)
     ->
         list.delete_all(!.LabelSeq, ElimLabel, !:LabelSeq),
-        map.det_insert(!.ReplMap, ElimLabel, Exemplar, !:ReplMap),
+        map.det_insert(ElimLabel, Exemplar, !ReplMap),
         process_elim_labels(ElimLabels, Instrs1, !LabelSeq, BlockMap,
             Exemplar, !ReplMap, Instrs, !MaybeFallThrough)
     ;

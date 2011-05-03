@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2008, 2010 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -42,7 +42,6 @@
 :- import_module set.
 :- import_module string.
 :- import_module svarray.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -599,9 +598,9 @@ cluster_pds_by_ps(InitDeep, PDPtr, !ProcMap) :-
         lookup_proc_dynamics(ProcDynamics, PDPtr, PD),
         PSPtr = PD ^ pd_proc_static,
         ( map.search(!.ProcMap, PSPtr, PDPtrs0) ->
-            svmap.det_update(PSPtr, [PDPtr | PDPtrs0], !ProcMap)
+            map.det_update(PSPtr, [PDPtr | PDPtrs0], !ProcMap)
         ;
-            svmap.det_insert(PSPtr, [PDPtr], !ProcMap)
+            map.det_insert(PSPtr, [PDPtr], !ProcMap)
         )
     ;
         true
@@ -624,9 +623,9 @@ cluster_csds_by_ps(InitDeep, CSDPtr, !ProcMap) :-
             PSPtr = proc_static_ptr(0)
         ),
         ( map.search(!.ProcMap, PSPtr, CSDPtrs0) ->
-            svmap.det_update(PSPtr, [CSDPtr | CSDPtrs0], !ProcMap)
+            map.det_update(PSPtr, [CSDPtr | CSDPtrs0], !ProcMap)
         ;
-            svmap.det_insert(PSPtr, [CSDPtr], !ProcMap)
+            map.det_insert(PSPtr, [CSDPtr], !ProcMap)
         )
     ;
         true

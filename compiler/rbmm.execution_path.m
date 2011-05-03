@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2010 The University of Melbourne.
+% Copyright (C) 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -40,7 +40,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 :- import_module list.
 :- import_module map.
 
@@ -75,7 +74,7 @@ execution_path_analysis_proc(ModuleInfo, PredId, ProcId, !ExecPathTable) :-
     ;
         module_info_proc_info(ModuleInfo, PPId, ProcInfo),
         compute_execution_paths(ProcInfo, ModuleInfo, ExecPaths),
-        svmap.set(PPId, ExecPaths, !ExecPathTable)
+        map.set(PPId, ExecPaths, !ExecPathTable)
     ).
 
     % Compute all execution paths in the procedure.

@@ -103,7 +103,7 @@ ml_gen_foreign_code(ModuleInfo, AllForeignCode) :-
     map(foreign_language, mlds_foreign_code)::out) is det.
 
 ml_gen_foreign_code_lang(ModuleInfo, ForeignDecls, ForeignBodys,
-        WantedForeignImports, ForeignExports, Lang, Map0, Map) :-
+        WantedForeignImports, ForeignExports, Lang, !Map) :-
     foreign.filter_decls(Lang, ForeignDecls, WantedForeignDecls,
         _OtherForeignDecls),
     foreign.filter_bodys(Lang, ForeignBodys, WantedForeignBodys,
@@ -118,7 +118,7 @@ ml_gen_foreign_code_lang(ModuleInfo, ForeignDecls, ForeignBodys,
     MLDS_ForeignCode = mlds_foreign_code(WantedForeignDecls,
         WantedForeignImports, MLDSWantedForeignBodys,
         MLDSWantedForeignExports),
-    map.det_insert(Map0, Lang, MLDS_ForeignCode, Map).
+    map.det_insert(Lang, MLDS_ForeignCode, !Map).
 
 :- pred ml_gen_imports(module_info::in, mlds_imports::out) is det.
 

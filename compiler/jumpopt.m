@@ -73,7 +73,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -172,28 +171,28 @@ jump_opt_build_maps([Instr0 | Instrs0], Recjump, !InstrMap, !BlockMap,
     ( Uinstr0 = label(Label) ->
         opt_util.skip_comments(Instrs0, Instrs1),
         ( Instrs1 = [Instr1 | _], Instr1 = llds_instr(livevals(_), _) ->
-            svmap.det_insert(Label, yes(Instr1), !LvalMap)
+            map.det_insert(Label, yes(Instr1), !LvalMap)
         ;
-            svmap.det_insert(Label, no, !LvalMap)
+            map.det_insert(Label, no, !LvalMap)
         ),
         opt_util.skip_comments_livevals(Instrs1, Instrs2),
         ( Instrs2 = [Instr2 | _] ->
-            svmap.det_insert(Label, Instr2, !InstrMap)
+            map.det_insert(Label, Instr2, !InstrMap)
         ;
             true
         ),
         ( opt_util.is_proceed_next(Instrs1, Between1) ->
-            svmap.det_insert(Label, Between1, !ProcMap)
+            map.det_insert(Label, Between1, !ProcMap)
         ;
             true
         ),
         ( opt_util.is_sdproceed_next(Instrs1, Between2) ->
-            svmap.det_insert(Label, Between2, !SdprocMap)
+            map.det_insert(Label, Between2, !SdprocMap)
         ;
             true
         ),
         ( opt_util.is_succeed_next(Instrs1, Between3) ->
-            svmap.det_insert(Label, Between3, !SuccMap)
+            map.det_insert(Label, Between3, !SuccMap)
         ;
             true
         ),
@@ -212,7 +211,7 @@ jump_opt_build_maps([Instr0 | Instrs0], Recjump, !InstrMap, !BlockMap,
             )
         ->
             opt_util.find_no_fallthrough(Instrs1, Block),
-            svmap.det_insert(Label, Block, !BlockMap)
+            map.det_insert(Label, Block, !BlockMap)
         ;
             true
         )
@@ -235,7 +234,7 @@ jump_opt_build_forkmap([llds_instr(Uinstr, _Comment) | Instrs], SdprocMap,
         Uinstr = label(Label),
         opt_util.is_forkproceed_next(Instrs, SdprocMap, Between)
     ->
-        svmap.det_insert(Label, Between, !ForkMap)
+        map.det_insert(Label, Between, !ForkMap)
     ;
         true
     ),
@@ -665,7 +664,7 @@ jump_opt_goto(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
             % Block may end with a goto to DestLabel. We avoid infinite
             % expansion in such cases by removing DestLabel from BlockMap,
             % though only while processing AdjustedBlock.
-            map.delete(BlockMap, DestLabel, CrippledBlockMap),
+            map.delete(DestLabel, BlockMap, CrippledBlockMap),
             CrippledJumpOptInfo = JumpOptInfo ^ joi_block_map :=
                 CrippledBlockMap,
             jump_opt_instr_list(AdjustedBlock, comment(""),

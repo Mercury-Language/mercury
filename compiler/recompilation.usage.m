@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2010 University of Melbourne.
+% Copyright (C) 2001-2011 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -107,7 +107,6 @@
 :- import_module require.
 :- import_module solutions.
 :- import_module string.
-:- import_module svmap.
 
 write_usage_file(ModuleInfo, NestedSubModules, MaybeTimestamps, !IO) :-
     module_info_get_maybe_recompilation_info(ModuleInfo, MaybeRecompInfo),
@@ -533,7 +532,7 @@ insert_into_imported_items_map(VisibleModule, !ImportedItemsMap) :-
         % depending on why the module is visible.
         % eg it's both imported and an ancestor module
         %
-    svmap.set(VisibleModule, ModuleItems, !ImportedItemsMap).
+    map.set(VisibleModule, ModuleItems, !ImportedItemsMap).
 
     % Go over the set of imported items found to be used and
     % find the transitive closure of the imported items they use.
@@ -683,7 +682,7 @@ do_record_used_pred_or_func(PredOrFunc, ModuleQualifier,
                 PredModule = pred_info_module(PredInfo)
             ),
             MatchingPredIds)),
-        svmap.det_insert(ModuleQualifier, PredModules, !MatchingNames),
+        map.det_insert(ModuleQualifier, PredModules, !MatchingNames),
         Name = unqualify_name(SymName),
         set.fold(find_items_used_by_pred(PredOrFunc, Name - Arity),
             PredModules, !Info)
@@ -721,7 +720,7 @@ do_record_used_functor(ModuleQualifier, SymName, Arity, Recorded,
         Recorded = no
     ;
         Recorded = yes,
-        svmap.det_insert(ModuleQualifier, MatchingCtors, !ResolvedCtorMap)
+        map.det_insert(ModuleQualifier, MatchingCtors, !ResolvedCtorMap)
     ).
 
 :- pred find_matching_functors(module_info::in,
@@ -847,7 +846,7 @@ record_resolved_item(SymName, Arity, RecordItem, !IdSet, !Info) :-
         Recorded, MatchingNames1, MatchingNames, !Info),
     (
         Recorded = yes,
-        svmap.set(UnqualifiedName, MatchingNames, !IdSet)
+        map.set(UnqualifiedName, MatchingNames, !IdSet)
     ;
         Recorded = no
     ).
@@ -1028,9 +1027,9 @@ find_items_used_by_instance(ClassId, Defn, !Info) :-
             set.init(ClassIds1)
         ),
         set.insert(ClassIds1, ClassId, ClassIds),
-        map.set(ModuleInstances0, InstanceModuleName, ClassIds,
-            ModuleInstances),
-        !:Info = !.Info ^ module_instances := ModuleInstances
+        map.set(InstanceModuleName, ClassIds,
+            ModuleInstances0, ModuleInstances),
+        !Info ^ module_instances := ModuleInstances
     ).
 
 :- pred find_items_used_by_class_method(class_method::in,
@@ -1481,8 +1480,8 @@ record_imported_item(ItemType, ItemName, !Info) :-
     ModuleItemIds0 = extract_ids(ModuleItems1, ItemType),
     set.insert(ModuleItemIds0, Name - Arity, ModuleItemIds),
     ModuleItems = update_ids(ModuleItems1, ItemType, ModuleItemIds),
-    map.set(ImportedItems0, Module, ModuleItems, ImportedItems),
-    !:Info = !.Info ^ imported_items := ImportedItems.
+    map.set(Module, ModuleItems, ImportedItems0, ImportedItems),
+    !Info ^ imported_items := ImportedItems.
 
     % Uses of equivalence types have been expanded away by equiv_type.m.
     % equiv_type.m records which equivalence types were used by each

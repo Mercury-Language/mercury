@@ -138,7 +138,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module svvarset.
 :- import_module term.
 :- import_module unit.
@@ -462,7 +461,7 @@ candidate_headvars_of_proc_2(PredProcId, VarSet, VarTypes, ModuleInfo,
     map.lookup(VarTypes, HeadVar, Type),
     not is_introduced_type_info_type(Type),
     varset.search_name(VarSet, HeadVar, Name),
-    map.det_insert(map.init, PredProcId, HeadVar, Origins).
+    map.det_insert(PredProcId, HeadVar, map.init, Origins).
 
 :- pred common_candidate_headvars_of_procs(module_info::in,
     list(pred_proc_id)::in, candidate_headvars::out) is det.
@@ -667,7 +666,7 @@ add_transformed_proc(PredProcId, tupling(_, FieldVars, _),
         % Add an entry to the transform map for the new procedure.
         TransformedProc = transformed_proc(AuxPredProcId, TupleConsType,
             ArgsToTuple, CallAux),
-        svmap.det_insert(PredProcId, TransformedProc, !TransformMap)
+        map.det_insert(PredProcId, TransformedProc, !TransformMap)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -887,7 +886,7 @@ prepare_proc_for_counting(PredProcId, !ReverseGoalPathMapMap, !ModuleInfo) :-
             TypeInfoLiveness, OptNoReturnCalls),
         fill_goal_id_slots_in_proc(!.ModuleInfo, ContainingGoalMap, !ProcInfo),
         ReverseGoalPathMap = create_reverse_goal_path_map(ContainingGoalMap),
-        svmap.det_insert(PredProcId, ReverseGoalPathMap,
+        map.det_insert(PredProcId, ReverseGoalPathMap,
             !ReverseGoalPathMapMap),
         proc_info_get_goal(!.ProcInfo, Goal0),
         OptTupleAlloc0 = opt_tuple_alloc,
@@ -1603,9 +1602,9 @@ build_insert_map_2(CellVar, FieldVars, FieldVarsSet, Anchor,
 add_insert_spec(Anchor, InsertSpec, !InsertMap) :-
     ( map.search(!.InsertMap, Anchor, InsertSpecs0) ->
         combine_inserts(InsertSpec, InsertSpecs0, InsertSpecs),
-        svmap.det_update(Anchor, InsertSpecs, !InsertMap)
+        map.det_update(Anchor, InsertSpecs, !InsertMap)
     ;
-        svmap.det_insert(Anchor, [InsertSpec], !InsertMap)
+        map.det_insert(Anchor, [InsertSpec], !InsertMap)
     ).
 
 :- pred combine_inserts(insert_spec::in, list(insert_spec)::in,
@@ -1737,7 +1736,7 @@ fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
                 hlds_goal(CallAux0, CallAuxInfo))
         ->
             svvarset.new_named_var("TuplingCellVarForCall", CellVar, !VarSet),
-            svmap.det_insert(CellVar, TupleConsType, !VarTypes),
+            map.det_insert(CellVar, TupleConsType, !VarTypes),
             extract_tupled_args_from_list(Args0, ArgsToTuple,
                 TupledArgs, UntupledArgs),
             construct_tuple(CellVar, TupledArgs, ConstructGoal),

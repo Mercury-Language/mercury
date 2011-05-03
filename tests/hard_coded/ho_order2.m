@@ -47,7 +47,7 @@ ho_order2__eliminate_proc(Keep, Needed, ProcId,
 		{ ProcTable = ProcTable0 }
 	;
 		io__format("Deleting %i\n", [i(ProcId)]),
-		{ map__delete(ProcTable0, ProcId, ProcTable) }
+		{ map__delete(ProcId, ProcTable0, ProcTable) }
 	).
 
 :- pred ho_order2__eliminate_proc_2(map(int, int), maybe(int),
@@ -64,7 +64,7 @@ ho_order2__eliminate_proc_2(Needed, Keep, ProcId,
 		{ ProcTable = ProcTable0 }
 	;
 		io__format("Deleting %i\n", [i(ProcId)]),
-		{ map__delete(ProcTable0, ProcId, ProcTable) }
+		{ map__delete(ProcId, ProcTable0, ProcTable) }
 	).
 :- pred fldl2(pred(X, Y, Y, Z, Z), pred(X, Y, Y, Z, Z), list(X), Y, Y, Z, Z).
 :- mode fldl2(pred(in, in, out, di, uo) is det,

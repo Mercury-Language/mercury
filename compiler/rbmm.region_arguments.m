@@ -1,7 +1,7 @@
 % -----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2010 The University of Melbourne.
+% Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -78,7 +78,6 @@
 :- import_module bool.
 :- import_module require.
 :- import_module set.
-:- import_module svmap.
 
 record_region_arguments(ModuleInfo, RptaInfoTable, ConstantRTable,
         DeadRTable, BornRTable, FormalRegionArgTable, ActualRegionArgTable) :-
@@ -130,7 +129,7 @@ record_region_arguments_proc(ModuleInfo, PredId, RptaInfoTable,
         record_actual_region_arguments_goal(ModuleInfo, PPId,
             RptaInfoTable, ConstantRTable, DeadRTable, BornRTable, Body,
             !FormalRegionArgTable, map.init, ActualRegionArgProc),
-        svmap.set(PPId, ActualRegionArgProc, !ActualRegionArgTable)
+        map.set(PPId, ActualRegionArgProc, !ActualRegionArgTable)
     ).
 
 :- pred record_formal_region_arguments_proc(module_info::in, pred_proc_id::in,
@@ -176,7 +175,7 @@ record_formal_region_arguments_proc(ModuleInfo, PPId, RptaInfoTable,
 
         RegionArgs =
             region_args(LFormalConstantAllocR, FormalDeadR, FormalBornR),
-        svmap.det_insert(PPId, RegionArgs, !FormalRegionArgTable)
+        map.det_insert(PPId, RegionArgs, !FormalRegionArgTable)
     ).
 
 :- pred record_actual_region_arguments_goal(module_info::in,
@@ -317,7 +316,7 @@ record_actual_region_arguments_call_site(ModuleInfo, CallerPPId, CallSite,
             [], ActualDeads),
         list.foldr(find_actual_param(AlphaAtCallSite), FormalBorns,
             [], ActualBorns),
-        svmap.det_insert(CallSite,
+        map.det_insert(CallSite,
             region_args(ActualConstants, ActualDeads, ActualBorns),
             !ActualRegionArgProc)
     ;

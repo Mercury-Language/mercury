@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1302,7 +1302,7 @@ apply_subst_to_constraint_proofs(Subst, Proofs0, Proofs) :-
     prog_constraint::in, constraint_proof::in,
     constraint_proof_map::in, constraint_proof_map::out) is det.
 
-apply_subst_to_constraint_proofs_2(Subst, Constraint0, Proof0, Map0, Map) :-
+apply_subst_to_constraint_proofs_2(Subst, Constraint0, Proof0, !Map) :-
     apply_subst_to_prog_constraint(Subst, Constraint0, Constraint),
     (
         Proof0 = apply_instance(_),
@@ -1312,7 +1312,7 @@ apply_subst_to_constraint_proofs_2(Subst, Constraint0, Proof0, Map0, Map) :-
         apply_subst_to_prog_constraint(Subst, Super0, Super),
         Proof = superclass(Super)
     ),
-    map.set(Map0, Constraint, Proof, Map).
+    map.set(Constraint, Proof, !Map).
 
 apply_rec_subst_to_constraint_proofs(Subst, Proofs0, Proofs) :-
     map.foldl(apply_rec_subst_to_constraint_proofs_2(Subst), Proofs0,
@@ -1332,7 +1332,7 @@ apply_rec_subst_to_constraint_proofs_2(Subst, Constraint0, Proof0, !Map) :-
         apply_rec_subst_to_prog_constraint(Subst, Super0, Super),
         Proof = superclass(Super)
     ),
-    map.set(!.Map, Constraint, Proof, !:Map).
+    map.set(Constraint, Proof, !Map).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2006, 2010 The University of Melbourne.
+% Copyright (C) 2001-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -355,11 +355,11 @@ label(E, True0, True, False0, False) :-
 	map.foldl2(
 		(pred(V::in, L::in, T0::in, T::out, F0::in, F::out) is det :-
 			( T0 `contains` L ->
-				T = T0 `insert` V,
+				T = T0 `sparse_bitset.insert` V,
 				F = F0
 			; F0 `contains` L ->
 				T = T0,
-				F = F0 `insert` V
+				F = F0 `sparse_bitset.insert` V
 			;
 				T = T0,
 				F = F0

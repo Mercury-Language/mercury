@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2008-2009 The University of Melbourne.
+% Copyright (C) 2008-2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -79,9 +79,9 @@ group_csds_by_clique(Deep, GroupCostCSDPtrs) = Groups :-
 accumulate_csds_by_call_site(Deep, GroupCSDPtr - CostCSDPtr, Map0) = Map :-
     deep_lookup_call_site_static_map(Deep, GroupCSDPtr, GroupCSSPtr),
     ( map.search(Map0, GroupCSSPtr, CostCSDPtrs0) ->
-        map.det_update(Map0, GroupCSSPtr, [CostCSDPtr | CostCSDPtrs0], Map)
+        map.det_update(GroupCSSPtr, [CostCSDPtr | CostCSDPtrs0], Map0, Map)
     ;
-        map.det_insert(Map0, GroupCSSPtr, [CostCSDPtr], Map)
+        map.det_insert(GroupCSSPtr, [CostCSDPtr], Map0, Map)
     ).
 
 :- func accumulate_csds_by_procedure(deep, pair(call_site_dynamic_ptr),
@@ -93,9 +93,9 @@ accumulate_csds_by_procedure(Deep, GroupCSDPtr - CostCSDPtr, Map0) = Map :-
     deep_lookup_call_site_statics(Deep, GroupCSSPtr, GroupCSS),
     GroupPSPtr = GroupCSS ^ css_container,
     ( map.search(Map0, GroupPSPtr, CostCSDPtrs0) ->
-        map.det_update(Map0, GroupPSPtr, [CostCSDPtr | CostCSDPtrs0], Map)
+        map.det_update(GroupPSPtr, [CostCSDPtr | CostCSDPtrs0], Map0, Map)
     ;
-        map.det_insert(Map0, GroupPSPtr, [CostCSDPtr], Map)
+        map.det_insert(GroupPSPtr, [CostCSDPtr], Map0, Map)
     ).
 
 :- func accumulate_csds_by_module(deep, pair(call_site_dynamic_ptr),
@@ -109,9 +109,9 @@ accumulate_csds_by_module(Deep, GroupCSDPtr - CostCSDPtr, Map0) = Map :-
     deep_lookup_proc_statics(Deep, GroupPSPtr, GroupPS),
     GroupModuleName = GroupPS ^ ps_decl_module,
     ( map.search(Map0, GroupModuleName, CostCSDPtrs0) ->
-        map.det_update(Map0, GroupModuleName, [CostCSDPtr | CostCSDPtrs0], Map)
+        map.det_update(GroupModuleName, [CostCSDPtr | CostCSDPtrs0], Map0, Map)
     ;
-        map.det_insert(Map0, GroupModuleName, [CostCSDPtr], Map)
+        map.det_insert(GroupModuleName, [CostCSDPtr], Map0, Map)
     ).
 
 :- func accumulate_csds_by_clique(deep, pair(call_site_dynamic_ptr),
@@ -123,9 +123,9 @@ accumulate_csds_by_clique(Deep, GroupCSDPtr - CostCSDPtr, Map0) = Map :-
     CallerPDPtr = GroupCSD ^ csd_caller,
     deep_lookup_clique_index(Deep, CallerPDPtr, CliquePtr),
     ( map.search(Map0, CliquePtr, CostCSDPtrs0) ->
-        map.det_update(Map0, CliquePtr, [CostCSDPtr | CostCSDPtrs0], Map)
+        map.det_update(CliquePtr, [CostCSDPtr | CostCSDPtrs0], Map0, Map)
     ;
-        map.det_insert(Map0, CliquePtr, [CostCSDPtr], Map)
+        map.det_insert(CliquePtr, [CostCSDPtr], Map0, Map)
     ).
 
 %-----------------------------------------------------------------------------%

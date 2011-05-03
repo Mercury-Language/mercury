@@ -305,7 +305,7 @@ process_query(Cmd0, DeepFileName0, MaybePref, Options0, !IO) :-
     ),
     ( string.remove_suffix(DeepFileName0, ".localhost", DeepFileNamePrime) ->
         DeepFileName = DeepFileNamePrime,
-        map.det_update(Options0, localhost, bool(yes), Options)
+        map.det_update(localhost, bool(yes), Options0, Options)
     ;
         DeepFileName = DeepFileName0,
         Options = Options0

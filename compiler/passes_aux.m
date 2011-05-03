@@ -344,7 +344,7 @@ par_process_nonimported_procs(ModuleInfo, Task, PredId, [ProcId | ProcIds],
         Closure(ModuleInfo, PredProcId, !.PredInfo, Proc0, Proc)
     ),
 
-    map.det_update(ProcMap0, ProcId, Proc, ProcMap),
+    map.det_update(ProcId, Proc, ProcMap0, ProcMap),
     pred_info_set_procedures(ProcMap, !PredInfo),
 
     par_process_nonimported_procs(ModuleInfo, Task, PredId, ProcIds,
@@ -401,9 +401,9 @@ seq_process_nonimported_procs(PredId, [ProcId | ProcIds], !Task,
     map.lookup(Preds8, PredId, Pred8),
     pred_info_get_procedures(Pred8, Procs8),
 
-    map.det_update(Procs8, ProcId, Proc, Procs),
+    map.det_update(ProcId, Proc, Procs8, Procs),
     pred_info_set_procedures(Procs, Pred8, Pred),
-    map.det_update(Preds8, PredId, Pred, Preds),
+    map.det_update(PredId, Pred, Preds8, Preds),
     module_info_set_preds(Preds, !ModuleInfo),
 
     seq_process_nonimported_procs(PredId, ProcIds, !Task, !ModuleInfo).

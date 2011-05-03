@@ -50,7 +50,7 @@ ho_order__eliminate_proc(Keep, Needed, ProcId,
 		{ ProcTable = ProcTable0 }
 	;
 		io__format("Deleting %i\n", [i(ProcId)]),
-		{ map__delete(ProcTable0, ProcId, ProcTable) }
+		{ map__delete(ProcId, ProcTable0, ProcTable) }
 	).
 
 :- pred fldl2(pred(X, Y, Y, Z, Z), list(X), Y, Y, Z, Z).

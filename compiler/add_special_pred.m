@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2010 The University of Melbourne.
+% Copyright (C) 1993-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -301,7 +301,7 @@ do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
     pred_info_set_markers(Markers, PredInfo2, PredInfo3),
     pred_info_set_origin(origin_special_pred(SpecialPredId - TypeCtor),
         PredInfo3, PredInfo),
-    map.det_update(Preds0, PredId, PredInfo, Preds),
+    map.det_update(PredId, PredInfo, Preds0, Preds),
     module_info_set_preds(Preds, !ModuleInfo).
 
     % These types need to have the builtin qualifier removed
@@ -410,8 +410,7 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
     predicate_table_insert(PredInfo, PredId, PredicateTable0, PredicateTable),
     module_info_set_predicate_table(PredicateTable, !ModuleInfo),
     module_info_get_special_pred_map(!.ModuleInfo, SpecialPredMap0),
-    map.set(SpecialPredMap0, SpecialPredId - TypeCtor, PredId,
-        SpecialPredMap),
+    map.set(SpecialPredId - TypeCtor, PredId, SpecialPredMap0, SpecialPredMap),
     module_info_set_special_pred_map(SpecialPredMap, !ModuleInfo).
 
 :- pred add_special_pred_unify_status(hlds_type_body::in, import_status::in,

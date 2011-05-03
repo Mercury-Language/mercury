@@ -169,7 +169,6 @@
 :- import_module require.
 :- import_module std_util.
 :- import_module string.
-:- import_module svmap.
 :- import_module svvarset.
 :- import_module term.
 :- import_module varset.
@@ -1535,7 +1534,7 @@ add_requested_specialized_par_procs(!.PendingParProcs, !.Pushability,
         !.PendingParProcs = [CallPattern - NewProc | !:PendingParProcs],
         % Move the procedure we are about to parallelise into the list of
         % done procedures, in case of recursive calls.
-        svmap.det_insert(CallPattern, NewProc, !DoneParProcs),
+        map.det_insert(CallPattern, NewProc, !DoneParProcs),
         add_requested_specialized_par_proc(CallPattern, NewProc,
             !PendingParProcs, !Pushability, !.DoneParProcs, InitialModuleInfo,
             !ModuleInfo, !RevProcMap),
@@ -1632,7 +1631,7 @@ map_arg_to_new_future(HeadVars, FutureArg, !FutureMap, !VarSet, !VarTypes) :-
     map.lookup(!.VarTypes, HeadVar, VarType),
     make_future_var(HeadVar, VarType, !VarSet, !VarTypes, FutureVar,
         _FutureVarType),
-    svmap.det_insert(HeadVar, FutureVar, !FutureMap).
+    map.det_insert(HeadVar, FutureVar, !FutureMap).
 
 :- pred replace_head_vars(module_info::in, future_map::in,
     prog_vars::in, prog_vars::out, list(mer_mode)::in, list(mer_mode)::out)
@@ -2164,7 +2163,7 @@ create_new_spec_parallel_pred(FutureArgs, OrigPPId, NewPPId,
     % in a later pass.
     OrigPPId = proc(_, ProcId),
     pred_info_get_procedures(NewPredInfo0, NewProcs0),
-    map.set(NewProcs0, ProcId, OrigProcInfo, NewProcs),
+    map.set(ProcId, OrigProcInfo, NewProcs0, NewProcs),
     pred_info_set_procedures(NewProcs, NewPredInfo0, NewPredInfo),
 
     % Add the new predicate to the pred table.
@@ -2256,8 +2255,8 @@ should_we_push(PredProcId, ArgPos, PushOp, IsWorthPushing, !SpecInfo) :-
         ;
             should_we_push_test(PredProcId, ArgPos, PushOp, IsWorthPushing,
                 !.SpecInfo),
-            map.det_insert(ProcPushMap0, ArgPos, IsWorthPushing, ProcPushMap),
-            map.det_update(Pushability0, PredProcId, ProcPushMap, Pushability),
+            map.det_insert(ArgPos, IsWorthPushing, ProcPushMap0, ProcPushMap),
+            map.det_update(PredProcId, ProcPushMap, Pushability0, Pushability),
             !SpecInfo ^ spec_pushability := Pushability
         )
     ;
@@ -2273,8 +2272,8 @@ should_we_push(PredProcId, ArgPos, PushOp, IsWorthPushing, !SpecInfo) :-
             should_we_push_test(PredProcId, ArgPos, PushOp, IsWorthPushing,
                 !.SpecInfo)
         ),
-        map.det_insert(map.init, ArgPos, IsWorthPushing, ProcPushMap),
-        map.det_insert(Pushability0, PredProcId, ProcPushMap, Pushability),
+        map.det_insert(ArgPos, IsWorthPushing, map.init, ProcPushMap),
+        map.det_insert(PredProcId, ProcPushMap, Pushability0, Pushability),
         !SpecInfo ^ spec_pushability := Pushability
     ).
 
@@ -3006,7 +3005,7 @@ allocate_future(ModuleInfo, SharedVar, AllocGoal, !VarSet, !VarTypes,
     map.lookup(!.VarTypes, SharedVar, SharedVarType),
     make_future_var(SharedVar, SharedVarType, !VarSet, !VarTypes,
         FutureVar, FutureVarType),
-    svmap.det_insert(SharedVar, FutureVar, !FutureMap),
+    map.det_insert(SharedVar, FutureVar, !FutureMap),
 
     ModuleName = mercury_par_builtin_module,
     PredName = new_future_pred_name,
@@ -3045,7 +3044,7 @@ make_future_var(SharedVar, SharedVarType, !VarSet, !VarTypes,
     FutureVarType = future_type(SharedVarType),
     varset.lookup_name(!.VarSet, SharedVar, SharedVarName),
     svvarset.new_named_var("Future" ++ SharedVarName, FutureVar, !VarSet),
-    svmap.det_insert(FutureVar, FutureVarType, !VarTypes).
+    map.det_insert(FutureVar, FutureVarType, !VarTypes).
 
 :- pred make_wait_goal(module_info::in, vartypes::in,
     prog_var::in, prog_var::in, hlds_goal::out) is det.

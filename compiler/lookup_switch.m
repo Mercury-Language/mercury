@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -184,7 +184,6 @@
 :- import_module require.
 :- import_module std_util.
 :- import_module string.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -316,7 +315,7 @@ record_lookup_for_tagged_cons_ids(RecordLookupForTaggedConsId, SolnConsts,
 record_lookup_for_tagged_cons_id_int(SolnConsts, TaggedConsId, !IndexMap) :-
     TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
     ( ConsTag = int_tag(Index) ->
-        svmap.det_insert(Index, SolnConsts, !IndexMap)
+        map.det_insert(Index, SolnConsts, !IndexMap)
     ;
         unexpected(this_file, "record_lookup_for_tagged_cons_id: not int_tag")
     ).
@@ -324,7 +323,7 @@ record_lookup_for_tagged_cons_id_int(SolnConsts, TaggedConsId, !IndexMap) :-
 record_lookup_for_tagged_cons_id_string(SolnConsts, TaggedConsId, !IndexMap) :-
     TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
     ( ConsTag = string_tag(Index) ->
-        svmap.det_insert(Index, SolnConsts, !IndexMap)
+        map.det_insert(Index, SolnConsts, !IndexMap)
     ;
         unexpected(this_file, "record_lookup_for_tagged_cons_id: not int_tag")
     ).
@@ -914,7 +913,7 @@ generate_bit_vec_2([Tag - _ | Rest], Start, WordBits, !BitMap) :-
     ;
         X1 = (1 << Offset)
     ),
-    svmap.set(Word, X1, !BitMap),
+    map.set(Word, X1, !BitMap),
     generate_bit_vec_2(Rest, Start, WordBits, !BitMap).
 
 :- pred generate_bit_vec_args(list(pair(int))::in, int::in,

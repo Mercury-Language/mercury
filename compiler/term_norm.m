@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2010 The University of Melbourne.
+% Copyright (C) 1997-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -79,7 +79,6 @@
 :- import_module map.
 :- import_module pair.
 :- import_module require.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -192,7 +191,7 @@ find_weights_for_cons(TypeCtor, Params, Ctor, !Weights) :-
         WeightInfo = weight(0, [])
     ),
     ConsId = cons(SymName, Arity, TypeCtor),
-    svmap.det_insert(TypeCtor - ConsId, WeightInfo, !Weights).
+    map.det_insert(TypeCtor - ConsId, WeightInfo, !Weights).
 
 :- pred find_weights_for_tuple(arity::in, weight_info::out) is det.
 

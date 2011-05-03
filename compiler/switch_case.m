@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -85,7 +85,6 @@
 :- import_module cord.
 :- import_module list.
 :- import_module string.
-:- import_module svmap.
 
 represent_tagged_case_for_llds(Params, TaggedCase, Label, !CaseLabelMap,
         !MaybeEnd, !CI) :-
@@ -111,7 +110,7 @@ represent_tagged_case_for_llds(Params, TaggedCase, Label, !CaseLabelMap,
     ),
     Code = LabelCode ++ TraceCode ++ GoalCode ++ SaveCode ++ GotoEndCode,
     CaseInfo = case_label_info(Comment, Code, case_code_not_yet_included),
-    svmap.det_insert(Label, CaseInfo, !CaseLabelMap).
+    map.det_insert(Label, CaseInfo, !CaseLabelMap).
 
 generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap) :-
     map.lookup(!.CaseLabelMap, CaseLabel, CaseInfo0),
@@ -121,7 +120,7 @@ generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap) :-
         Code = CaseCode,
         CaseInfo = CaseInfo0 ^ case_code_included
             := case_code_already_included,
-        svmap.det_update(CaseLabel, CaseInfo, !CaseLabelMap)
+        map.det_update(CaseLabel, CaseInfo, !CaseLabelMap)
     ;
         CaseIncluded = case_code_already_included,
         % We cannot include the case's code, since it has already been included

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2010 The University of Melbourne.
+% Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -191,7 +191,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -306,7 +305,7 @@ ml_global_data_set_rev_maybe_nonflat_defns(Defns, !GlobalData) :-
 
 ml_global_data_add_pdup_rtti_id(RttiId, RvalType, !GlobalData) :-
     ml_global_data_get_pdup_rval_type_map(!.GlobalData, PDupRvalTypeMap0),
-    svmap.det_insert(RttiId, RvalType, PDupRvalTypeMap0, PDupRvalTypeMap),
+    map.det_insert(RttiId, RvalType, PDupRvalTypeMap0, PDupRvalTypeMap),
     ml_global_data_set_pdup_rval_type_map(PDupRvalTypeMap, !GlobalData).
 
 ml_global_data_add_flat_rtti_defn(Defn, !GlobalData) :-
@@ -387,7 +386,7 @@ ml_gen_scalar_static_defn(MLDS_ModuleName, ConstType, Initializer, Common,
             TypeNum = ml_scalar_common_type_num(TypeRawNum),
             !GlobalData ^ mgd_cell_type_counter := TypeNumCounter,
 
-            map.det_insert(TypeNumMap0, CellType, TypeNum, TypeNumMap),
+            map.det_insert(CellType, TypeNum, TypeNumMap0, TypeNumMap),
             !GlobalData ^ mgd_scalar_type_num_map := TypeNumMap,
 
             !:CellGroup = ml_scalar_cell_group(ConstType,
@@ -409,10 +408,10 @@ ml_gen_scalar_static_defn(MLDS_ModuleName, ConstType, Initializer, Common,
             Rows = cord.snoc(Rows0, Initializer),
             !CellGroup ^ mscg_rows := Rows,
 
-            bimap.det_insert(MembersMap0, Initializer, Common, MembersMap),
+            bimap.det_insert(Initializer, Common, MembersMap0, MembersMap),
             !CellGroup ^ mscg_members := MembersMap
         ),
-        map.set(CellGroupMap0, TypeNum, !.CellGroup, CellGroupMap),
+        map.set(TypeNum, !.CellGroup, CellGroupMap0, CellGroupMap),
         !GlobalData ^ mgd_scalar_cell_group_map := CellGroupMap
     ).
 
@@ -458,7 +457,7 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
         TypeNum = ml_vector_common_type_num(TypeRawNum),
         !GlobalData ^ mgd_cell_type_counter := TypeNumCounter,
 
-        map.det_insert(TypeNumMap0, ArgTypes, TypeNum, TypeNumMap),
+        map.det_insert(ArgTypes, TypeNum, TypeNumMap0, TypeNumMap),
         !GlobalData ^ mgd_vector_type_num_map := TypeNumMap,
 
         FieldFlags = init_decl_flags(acc_public, per_instance, non_virtual,
@@ -517,7 +516,7 @@ ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
             0, cord.empty),
 
         CellGroupMap0 = !.GlobalData ^ mgd_vector_cell_group_map,
-        map.det_insert(CellGroupMap0, TypeNum, CellGroup, CellGroupMap),
+        map.det_insert(TypeNum, CellGroup, CellGroupMap0, CellGroupMap),
         !GlobalData ^ mgd_vector_cell_group_map := CellGroupMap
     ).
 
@@ -566,7 +565,7 @@ ml_gen_static_vector_defn(MLDS_ModuleName, TypeNum, RowInitializers, Common,
         Rows = Rows0 ++ cord.from_list(RowInitializers),
         !CellGroup ^ mvcg_rows := Rows,
 
-        map.det_update(CellGroupMap0, TypeNum, !.CellGroup, CellGroupMap),
+        map.det_update(TypeNum, !.CellGroup, CellGroupMap0, CellGroupMap),
         !GlobalData ^ mgd_vector_cell_group_map := CellGroupMap
     ).
 

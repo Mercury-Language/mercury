@@ -122,7 +122,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -1001,7 +1000,7 @@ make_code_addr_map([CodeAddr | CodeAddrs], !Map) :-
     ),
     OrigFuncSignature = mlds_func_signature(OrigArgTypes, _OrigRetTypes),
     list.length(OrigArgTypes, Arity),
-    multi_map.set(!.Map, Arity, CodeAddr, !:Map),
+    multi_map.set(Arity, CodeAddr, !Map),
     make_code_addr_map(CodeAddrs, !Map).
 
 :- pred generate_addr_wrapper_class(mlds_module_name::in,
@@ -1307,7 +1306,7 @@ add_to_address_map(ClassName, CodeAddrs, !AddrOfMap) :-
     (
         CodeAddrs = [CodeAddr],
         Wrapper = code_addr_wrapper(FlippedClassName, no),
-        svmap.det_insert(CodeAddr, Wrapper, !AddrOfMap)
+        map.det_insert(CodeAddr, Wrapper, !AddrOfMap)
     ;
         CodeAddrs = [_, _ | _],
         add_to_address_map_2(FlippedClassName, CodeAddrs, 0, !AddrOfMap)
@@ -1324,7 +1323,7 @@ add_to_address_map_2(_, [], _, !AddrOfMap).
 add_to_address_map_2(FlippedClassName, [CodeAddr | CodeAddrs], I,
         !AddrOfMap) :-
     Wrapper = code_addr_wrapper(FlippedClassName, yes(I)),
-    svmap.det_insert(CodeAddr, Wrapper, !AddrOfMap),
+    map.det_insert(CodeAddr, Wrapper, !AddrOfMap),
     add_to_address_map_2(FlippedClassName, CodeAddrs, I + 1, !AddrOfMap).
 
 %-----------------------------------------------------------------------------%
@@ -1371,7 +1370,7 @@ maybe_shorten_long_class_name(!Defn, !Renaming) :-
             ( ClassName \= ClassName0 ->
                 EntityName = entity_type(ClassName, Arity),
                 !Defn ^ md_entity_name := EntityName,
-                svmap.det_insert(ClassName0, ClassName, !Renaming)
+                map.det_insert(ClassName0, ClassName, !Renaming)
             ;
                 true
             )
@@ -2594,7 +2593,7 @@ output_scalar_defns(Info, Indent, TypeNum, CellGroup, !Graph, !Map, !IO) :-
 add_scalar_inits(MLDS_ModuleName, Type, TypeNum, Initializer,
         RowNum, RowNum + 1, !Graph, !Map) :-
     Scalar = ml_scalar_common(MLDS_ModuleName, Type, TypeNum, RowNum),
-    svmap.det_insert(Scalar, Initializer, !Map),
+    map.det_insert(Scalar, Initializer, !Map),
     digraph.add_vertex(Scalar, _Key, !Graph),
     add_scalar_deps(Scalar, Initializer, !Graph).
 

@@ -158,7 +158,6 @@
 :- import_module set.
 :- import_module set_tree234.
 :- import_module string.
-:- import_module svmap.
 :- import_module svvarset.
 :- import_module term.
 :- import_module univ.
@@ -471,7 +470,7 @@ try_create_replacement_goal(ModuleInfo, GoalId, Kind,
             AllToDeleteVars = [StringVar | ValuesToDeleteVars],
             FCOptGoalInfo = fc_opt_goal_info(ReplacementGoal,
                 set_tree234.list_to_set(AllToDeleteVars)),
-            svmap.det_insert(GoalId, FCOptGoalInfo, !GoalIdMap)
+            map.det_insert(GoalId, FCOptGoalInfo, !GoalIdMap)
         ;
             % create_string_format_replacement does not (yet) recognize
             % all possible format strings. We cannot optimize the ones
@@ -494,7 +493,7 @@ try_create_replacement_goal(ModuleInfo, GoalId, Kind,
             AllToDeleteVars = [StringVar | ValuesToDeleteVars],
             FCOptGoalInfo = fc_opt_goal_info(ReplacementGoal,
                 set_tree234.list_to_set(AllToDeleteVars)),
-            svmap.det_insert(GoalId, FCOptGoalInfo, !GoalIdMap)
+            map.det_insert(GoalId, FCOptGoalInfo, !GoalIdMap)
         ;
             % create_string_format_replacement does not (yet) recognize
             % all possible format strings. We cannot optimize the ones
@@ -640,19 +639,19 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
 
         format_call_traverse_goal(ModuleInfo, Else, ElseId, !FormatCallSites,
             !Counter, !ConjMaps, !PredMap, !RelevantVars),
-        svmap.det_insert(ElseId, CurId, !PredMap),
+        map.det_insert(ElseId, CurId, !PredMap),
 
         alloc_id(CondThenId, !Counter),
         goal_to_conj_list(Then, ThenConj),
         goal_to_conj_list(Cond, CondConj),
         format_call_traverse_conj(ModuleInfo, CondConj ++ ThenConj, CondThenId,
             !FormatCallSites, !Counter, !ConjMaps, !PredMap, !RelevantVars),
-        svmap.det_insert(CondThenId, CurId, !PredMap)
+        map.det_insert(CondThenId, CurId, !PredMap)
     ;
         GoalExpr = negation(SubGoal),
         format_call_traverse_goal(ModuleInfo, SubGoal, SubGoalId,
             !FormatCallSites, !Counter, !ConjMaps, !PredMap, !RelevantVars),
-        svmap.det_insert(SubGoalId, CurId, !PredMap)
+        map.det_insert(SubGoalId, CurId, !PredMap)
     ;
         GoalExpr = scope(Reason, SubGoal),
         ( Reason = from_ground_term(_, from_ground_term_construct) ->
@@ -700,7 +699,7 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
             format_call_traverse_goal(ModuleInfo, LambdaGoal, LambdaGoalId,
                 !FormatCallSites, !Counter, !ConjMaps, !PredMap,
                 !RelevantVars),
-            svmap.det_insert(LambdaGoalId, CurId, !PredMap)
+            map.det_insert(LambdaGoalId, CurId, !PredMap)
         ;
             ( RHS = rhs_var(_)
             ; RHS = rhs_functor(_, _, _)
@@ -718,7 +717,7 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
             format_call_traverse_goal(ModuleInfo, SubGoal, SubGoalId,
                 !FormatCallSites, !Counter, !ConjMaps, !PredMap,
                 !RelevantVars),
-            svmap.det_insert(SubGoalId, CurId, !PredMap)
+            map.det_insert(SubGoalId, CurId, !PredMap)
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded by now.
@@ -739,9 +738,9 @@ format_call_traverse_unify(Unification, CurId, !ConjMaps, !PredMap,
             set_tree234.insert(SourceVar, !RelevantVars),
             ConjMap0 = get_conj_map(!.ConjMaps, CurId),
             ConjMap0 = conj_map(StringMap, ListMap, ElementMap, EqvMap0),
-            map.det_insert(EqvMap0, TargetVar, SourceVar, EqvMap),
+            map.det_insert(TargetVar, SourceVar, EqvMap0, EqvMap),
             ConjMap = conj_map(StringMap, ListMap, ElementMap, EqvMap),
-            svmap.set(CurId, ConjMap, !ConjMaps)
+            map.set(CurId, ConjMap, !ConjMaps)
         ;
             true
         )
@@ -754,7 +753,7 @@ format_call_traverse_unify(Unification, CurId, !ConjMaps, !PredMap,
                 ConsId = string_const(StringConst)
             ->
                 set_tree234.delete(CellVar, !RelevantVars),
-                map.det_insert(StringMap0, CellVar, StringConst, StringMap),
+                map.det_insert(CellVar, StringConst, StringMap0, StringMap),
                 ConjMap = conj_map(StringMap, ListMap0, ElementMap0, EqvMap0)
             ;
                 ConsId = cons(SymName, Arity, TypeCtor),
@@ -774,7 +773,7 @@ format_call_traverse_unify(Unification, CurId, !ConjMaps, !PredMap,
             ->
                 set_tree234.delete(CellVar, !RelevantVars),
                 set_tree234.insert_list(ArgVars, !RelevantVars),
-                map.det_insert(ListMap0, CellVar, List, ListMap),
+                map.det_insert(CellVar, List, ListMap0, ListMap),
                 ConjMap = conj_map(StringMap0, ListMap, ElementMap0, EqvMap0)
             ;
                 ConsId = cons(SymName, Arity, TypeCtor),
@@ -802,12 +801,12 @@ format_call_traverse_unify(Unification, CurId, !ConjMaps, !PredMap,
                     unexpected(this_file,
                         "format_call_traverse_unify: arity mismatch")
                 ),
-                map.det_insert(ElementMap0, CellVar, WhatToPrint, ElementMap),
+                map.det_insert(CellVar, WhatToPrint, ElementMap0, ElementMap),
                 ConjMap = conj_map(StringMap0, ListMap0, ElementMap, EqvMap0)
             ;
                 ConjMap = ConjMap0
             ),
-            svmap.set(CurId, ConjMap, !ConjMaps)
+            map.set(CurId, ConjMap, !ConjMaps)
         ;
             true
         )
@@ -852,7 +851,7 @@ format_call_traverse_disj_arms(ModuleInfo, [Goal | Goals], ContainingId,
     format_call_traverse_goal(ModuleInfo, Goal, DisjId, [],
         GoalFormatCallSites, !Counter, !ConjMaps, !PredMap,
         set_tree234.init, GoalRelevantVars),
-    svmap.det_insert(DisjId, ContainingId, !PredMap),
+    map.det_insert(DisjId, ContainingId, !PredMap),
     format_call_traverse_disj_arms(ModuleInfo, Goals, ContainingId,
         GoalsFormatCallSites, !Counter, !ConjMaps, !PredMap,
         GoalsRelevantVars).
@@ -898,7 +897,7 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
     (
         GoalExpr0 = plain_call(_, _, _, _, _, _),
         GoalId = goal_info_get_goal_id(GoalInfo),
-        ( svmap.remove(GoalId, OptGoalInfo, !GoalIdMap) ->
+        ( map.remove(GoalId, OptGoalInfo, !GoalIdMap) ->
             OptGoalInfo = fc_opt_goal_info(ReplacementGoal, GoalToDeleteVars),
             Goal = ReplacementGoal,
             set_tree234.union(!.ToDeleteVars, GoalToDeleteVars, !:ToDeleteVars)
@@ -1322,7 +1321,7 @@ make_result_var_if_needed(MaybeResultVar, ResultVar, !VarSet, !VarTypes) :-
     ;
         MaybeResultVar = no,
         svvarset.new_var(ResultVar, !VarSet),
-        svmap.det_insert(ResultVar, string_type, !VarTypes)
+        map.det_insert(ResultVar, string_type, !VarTypes)
     ).
 
 :- pred represent_component(module_info::in, string_component::in,

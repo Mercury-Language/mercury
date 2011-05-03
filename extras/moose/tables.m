@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003-2004 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003-2004, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
@@ -73,7 +73,7 @@ shifts(_C, _Rules, First, Reaching, !:Shifts) :-
 		list.map(map.lookup(First), Ns1, Ts1),
 		list.foldl(set.union, Ts1, Ts0, Ts2),
 		Ts = Ts2 `set.difference` set.make_singleton_set(epsilon),
-		map.set(!.Shifts, N, Ts, !:Shifts)
+		map.set(N, Ts, !Shifts)
 	), First, !Shifts).
 
 %------------------------------------------------------------------------------%
@@ -91,7 +91,7 @@ actions(C, Rules, Lookaheads, Gotos, Shifts, !:States, !:Actions, Errs) :-
 
 number_states([], _N, !States).
 number_states([I | Is], N, !States) :-
-	map.det_insert(!.States, I, N, !:States),
+	map.det_insert(I, N, !States),
 	number_states(Is, N + 1, !States).
 
 :- pred actions1(list(items), rules, lookaheads, states, gotos, shifts,
@@ -208,8 +208,8 @@ addaction(Sn, T, A0, !Actions, !Errs) :-
 	;
 		A = A0
 	),
-	map.set(State1, T, A, State),
-	map.set(!.Actions, Sn, State, !:Actions).
+	map.set(T, A, State1, State),
+	map.set(Sn, State, !Actions).
 
 %------------------------------------------------------------------------------%
 
@@ -227,8 +227,8 @@ gotos(_C, States, Gotos, !:GotoTable) :-
 				;
 					map.init(X1)
 				),
-				map.set(X1, N, St, X),
-				map.set(!.GotoTable, Sf, X, !:GotoTable)
+				map.set(N, St, X1, X),
+				map.set(Sf, X, !GotoTable)
 			;
 				true
 			)

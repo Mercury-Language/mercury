@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2007 University of Melbourne.
+% Copyright (C) 2001-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -437,11 +437,11 @@ record_used_item(ItemType, Id, QualifiedId, !Info) :-
         ( map.contains(MatchingNames1, ModuleQualifier) ->
             true
         ;
-            map.det_insert(MatchingNames1, ModuleQualifier,
-                ModuleName, MatchingNames),
-            map.set(IdSet0, UnqualifiedId, MatchingNames, IdSet),
+            map.det_insert(ModuleQualifier, ModuleName,
+                MatchingNames1, MatchingNames),
+            map.set(UnqualifiedId, MatchingNames, IdSet0, IdSet),
             ItemSet = update_ids(ItemSet0, ItemType, IdSet),
-            !:Info = !.Info ^ used_items := ItemSet
+            !Info ^ used_items := ItemSet
         )
     ).
 
@@ -456,8 +456,8 @@ record_expanded_items(Item, ExpandedItems, !Info) :-
             set.init(Deps1)
         ),
         set.union(Deps1, ExpandedItems, Deps),
-        map.set(DepsMap0, Item, Deps, DepsMap),
-        !:Info = !.Info ^ dependencies := DepsMap
+        map.set(Item, Deps, DepsMap0, DepsMap),
+        !Info ^ dependencies := DepsMap
     ).
 
 %-----------------------------------------------------------------------------%

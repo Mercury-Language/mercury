@@ -693,8 +693,6 @@
 
 :- implementation.
 
-:- import_module svmap.
-
 %----------------------------------------------------------------------------%
 
 proc_label_from_proc_desc(Deep, ProcDesc, ProcLabel) :-
@@ -705,7 +703,7 @@ proc_label_from_proc_desc(Deep, ProcDesc, ProcLabel) :-
 add_call_site_report_to_map(CallSite, !Map) :-
     GoalPath = CallSite ^ ccsr_call_site_summary ^ perf_row_subject
         ^ csdesc_goal_path,
-    svmap.det_insert(GoalPath, CallSite, !Map).
+    map.det_insert(GoalPath, CallSite, !Map).
 
 %-----------------------------------------------------------------------------%
 :- end_module report.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998, 2004-2006 The University of Melbourne.
+% Copyright (C) 1995-1998, 2004-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -44,7 +44,6 @@
 :- import_module list.
 :- import_module rbtree.
 :- import_module string.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -153,7 +152,7 @@ generate_output_for_cycle(ProfNode, Prof, !OutputProf) :-
     OutputProfNode = output_cycle_prof(Name, CycleNum, SelfTime,
         DescPercentage, DescTime, TotalCalls, SelfCalls, [], []),
 
-    map.det_insert(InfoMap0, Name, OutputProfNode, InfoMap),
+    map.det_insert(Name, OutputProfNode, InfoMap0, InfoMap),
     rbtree.insert_duplicate(CallTree0, DescPercentage, Name, CallTree),
 
     !:OutputProf = profiling(InfoMap, CallTree, FreeTree).
@@ -215,7 +214,7 @@ generate_output_for_single_predicate(ProfNode, Prof, !OutputProf) :-
             OutputCycleParentList, OutputCycleChildList
         ),
 
-        map.det_insert(InfoMap0, LabelName, OutputProfNode, InfoMap),
+        map.det_insert(LabelName, OutputProfNode, InfoMap0, InfoMap),
         rbtree.insert_duplicate(CallTree0, DescPercentage,
             LabelName, CallTree),
         rbtree.insert_duplicate(FlatTree0,
@@ -426,7 +425,7 @@ assign_index_numbers(IndexMap, RevList, List) :-
 
 assign_index_numbers_2([], _, !IndexMap).
 assign_index_numbers_2([X0 | Xs0], N, !IndexMap) :-
-    svmap.det_insert(X0, N, !IndexMap),
+    map.det_insert(X0, N, !IndexMap),
     assign_index_numbers_2(Xs0, N + 1, !IndexMap).
 
 :- func profiling_init = profiling.

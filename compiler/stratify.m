@@ -585,8 +585,8 @@ merge_calls([C | Cs], P, CallsHO, DoingFirstOrder, !HOInfo, !Changed) :-
             ),
             NewCInfo = ho_info(CHaveAT, CHOInOut),
             NewPInfo = ho_info(PHaveAT, PHOInOut),
-            map.det_update(!.HOInfo, C, NewCInfo, !:HOInfo),
-            map.det_update(!.HOInfo, P, NewPInfo, !:HOInfo)
+            map.det_update(C, NewCInfo, !HOInfo),
+            map.det_update(P, NewPInfo, !HOInfo)
         ),
         % Then, if we need to, merge the higher order info.
         (
@@ -680,9 +680,9 @@ stratify_process_proc(ProcId, ModuleInfo, PredId, ArgTypes, ProcTable,
     proc_info_get_goal(ProcInfo, Goal),
     PredProcId = proc(PredId, ProcId),
     stratify_analyze_proc_body(Goal, Calls, HaveAT, CallsHigherOrder),
-    map.det_insert(!.ProcCalls, PredProcId, Calls, !:ProcCalls),
+    map.det_insert(PredProcId, Calls, !ProcCalls),
     higherorder_in_out(ArgTypes, ArgModes, ModuleInfo, HOInOut),
-    map.det_insert(!.HOInfo, PredProcId, ho_info(HaveAT, HOInOut), !:HOInfo),
+    map.det_insert(PredProcId, ho_info(HaveAT, HOInOut), !HOInfo),
     (
         CallsHigherOrder = calls_higher_order,
         set.insert(!.CallsHO, PredProcId, !:CallsHO)

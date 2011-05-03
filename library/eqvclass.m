@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999, 2003-2006 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999, 2003-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -158,7 +158,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module require.
-:- import_module svmap.
 
 %---------------------------------------------------------------------------%
 
@@ -209,9 +208,9 @@ eqvclass.new_element(EqvClass0, Element, EqvClass) :-
 eqvclass.add_element(Element, Id, !EqvClass) :-
     !.EqvClass = eqvclass(Counter0, PartitionMap0, ElementMap0),
     counter.allocate(Id, Counter0, Counter),
-    map.det_insert(ElementMap0, Element, Id, ElementMap),
+    map.det_insert(Element, Id, ElementMap0, ElementMap),
     set.singleton_set(Partition, Element),
-    map.det_insert(PartitionMap0, Id, Partition, PartitionMap),
+    map.det_insert(Id, Partition, PartitionMap0, PartitionMap),
     !:EqvClass = eqvclass(Counter, PartitionMap, ElementMap).
 
 eqvclass.ensure_equivalence(EqvClass0, ElementA, ElementB, EqvClass) :-
@@ -241,8 +240,8 @@ eqvclass.ensure_equivalence(EqvClass0, ElementA, ElementB, EqvClass) :-
             PartitionMap0 = EqvClass0 ^ partitions,
             map.lookup(PartitionMap0, IdA, PartitionA),
             set.insert(PartitionA, ElementB, Partition),
-            map.det_update(PartitionMap0, IdA, Partition, PartitionMap),
-            map.det_insert(ElementMap0, ElementB, IdA, ElementMap),
+            map.det_update(IdA, Partition, PartitionMap0, PartitionMap),
+            map.det_insert(ElementB, IdA, ElementMap0, ElementMap),
             NextId0 = EqvClass0 ^ next_id,
             EqvClass = eqvclass(NextId0, PartitionMap, ElementMap)
         )
@@ -251,18 +250,18 @@ eqvclass.ensure_equivalence(EqvClass0, ElementA, ElementB, EqvClass) :-
             PartitionMap0 = EqvClass0 ^ partitions,
             map.lookup(PartitionMap0, IdB, PartitionB),
             set.insert(PartitionB, ElementA, Partition),
-            map.det_update(PartitionMap0, IdB, Partition, PartitionMap),
-            map.det_insert(ElementMap0, ElementA, IdB, ElementMap),
+            map.det_update(IdB, Partition, PartitionMap0, PartitionMap),
+            map.det_insert(ElementA, IdB, ElementMap0, ElementMap),
             NextId0 = EqvClass0 ^ next_id,
             EqvClass = eqvclass(NextId0, PartitionMap, ElementMap)
         ;
             NextId0 = EqvClass0 ^ next_id,
             counter.allocate(Id, NextId0, NextId),
-            map.det_insert(ElementMap0, ElementA, Id, ElementMap1),
-            map.det_insert(ElementMap1, ElementB, Id, ElementMap),
+            map.det_insert(ElementA, Id, ElementMap0, ElementMap1),
+            map.det_insert(ElementB, Id, ElementMap1, ElementMap),
             PartitionMap0 = EqvClass0 ^ partitions,
             set.list_to_set([ElementA, ElementB], Partition),
-            map.det_insert(PartitionMap0, Id, Partition, PartitionMap),
+            map.det_insert(Id, Partition, PartitionMap0, PartitionMap),
             EqvClass = eqvclass(NextId, PartitionMap, ElementMap)
         )
     ).
@@ -283,8 +282,8 @@ eqvclass.new_equivalence(EqvClass0, ElementA, ElementB, EqvClass) :-
             PartitionMap0 = EqvClass0 ^ partitions,
             map.lookup(PartitionMap0, IdA, PartitionA),
             set.insert(PartitionA, ElementB, Partition),
-            map.det_update(PartitionMap0, IdA, Partition, PartitionMap),
-            map.det_insert(ElementMap0, ElementB, IdA, ElementMap),
+            map.det_update(IdA, Partition, PartitionMap0, PartitionMap),
+            map.det_insert(ElementB, IdA, ElementMap0, ElementMap),
             NextId0 = EqvClass0 ^ next_id,
             EqvClass = eqvclass(NextId0, PartitionMap, ElementMap)
         )
@@ -293,18 +292,18 @@ eqvclass.new_equivalence(EqvClass0, ElementA, ElementB, EqvClass) :-
             PartitionMap0 = EqvClass0 ^ partitions,
             map.lookup(PartitionMap0, IdB, PartitionB),
             set.insert(PartitionB, ElementA, Partition),
-            map.det_update(PartitionMap0, IdB, Partition, PartitionMap),
-            map.det_insert(ElementMap0, ElementA, IdB, ElementMap),
+            map.det_update(IdB, Partition, PartitionMap0, PartitionMap),
+            map.det_insert(ElementA, IdB, ElementMap0, ElementMap),
             NextId0 = EqvClass0 ^ next_id,
             EqvClass = eqvclass(NextId0, PartitionMap, ElementMap)
         ;
             NextId0 = EqvClass0 ^ next_id,
             counter.allocate(Id, NextId0, NextId),
-            map.det_insert(ElementMap0, ElementA, Id, ElementMap1),
-            map.det_insert(ElementMap1, ElementB, Id, ElementMap),
+            map.det_insert(ElementA, Id, ElementMap0, ElementMap1),
+            map.det_insert(ElementB, Id, ElementMap1, ElementMap),
             PartitionMap0 = EqvClass0 ^ partitions,
             set.list_to_set([ElementA, ElementB], Partition),
-            map.det_insert(PartitionMap0, Id, Partition, PartitionMap),
+            map.det_insert(Id, Partition, PartitionMap0, PartitionMap),
             EqvClass = eqvclass(NextId, PartitionMap, ElementMap)
         )
     ).
@@ -330,15 +329,15 @@ eqvclass.add_equivalence(IdA, IdB, EqvClass0, EqvClass) :-
     map.lookup(PartitionMap0, IdB, PartitionB),
     % We want eqvclass.change_partition to loop over the smaller set.
     ( set.count(PartitionA) < set.count(PartitionB) ->
-        map.delete(PartitionMap0, IdA, PartitionMap1),
+        map.delete(IdA, PartitionMap0, PartitionMap1),
         set.union(PartitionB, PartitionA, Partition),
-        map.set(PartitionMap1, IdB, Partition, PartitionMap),
+        map.set(IdB, Partition, PartitionMap1, PartitionMap),
         set.to_sorted_list(PartitionA, ElementsA),
         eqvclass.change_partition(ElementsA, IdB, ElementMap0, ElementMap)
     ;
-        map.delete(PartitionMap0, IdB, PartitionMap1),
+        map.delete(IdB, PartitionMap0, PartitionMap1),
         set.union(PartitionA, PartitionB, Partition),
-        map.set(PartitionMap1, IdA, Partition, PartitionMap),
+        map.set(IdA, Partition, PartitionMap1, PartitionMap),
         set.to_sorted_list(PartitionB, ElementsB),
         eqvclass.change_partition(ElementsB, IdA, ElementMap0, ElementMap)
     ),
@@ -349,7 +348,7 @@ eqvclass.add_equivalence(IdA, IdB, EqvClass0, EqvClass) :-
 
 eqvclass.change_partition([], _Id, !ElementMap).
 eqvclass.change_partition([Element | Elements], Id, !ElementMap) :-
-    svmap.set(Element, Id, !ElementMap),
+    map.set(Element, Id, !ElementMap),
     eqvclass.change_partition(Elements, Id, !ElementMap).
 
 eqvclass.same_eqvclass(EqvClass0, Element1, Element2) :-
@@ -434,7 +433,7 @@ eqvclass.partition_list_to_eqvclass([Partition | Ps], EqvClass) :-
         Elements = [_ | _],
         counter.allocate(Id, Counter0, Counter),
         eqvclass.make_partition(Elements, Id, ElementMap0, ElementMap),
-        map.det_insert(PartitionMap0, Id, Partition, PartitionMap)
+        map.det_insert(Id, Partition, PartitionMap0, PartitionMap)
     ),
     EqvClass = eqvclass(Counter, PartitionMap, ElementMap).
 
@@ -443,7 +442,7 @@ eqvclass.partition_list_to_eqvclass([Partition | Ps], EqvClass) :-
 
 eqvclass.make_partition([], _Id, !ElementMap).
 eqvclass.make_partition([Element | Elements], Id, !ElementMap) :-
-    svmap.det_insert(Element, Id, !ElementMap),
+    map.det_insert(Element, Id, !ElementMap),
     eqvclass.make_partition(Elements, Id, !ElementMap).
 
 %---------------------------------------------------------------------------%
@@ -492,8 +491,8 @@ eqvclass.get_minimum_element(EC, X) =
 eqvclass.remove_equivalent_elements(eqvclass(Id, P0, E0), X) =
         eqvclass(Id, P, E) :-
     ( map.search(E0, X, Partition) ->
-        map.det_remove(P0, Partition, Eq, P),
-        map.delete_list(E0, set.to_sorted_list(Eq), E)
+        map.det_remove(Partition, Eq, P0, P),
+        map.delete_list(set.to_sorted_list(Eq), E0, E)
     ;
         P = P0,
         E = E0
@@ -520,7 +519,7 @@ divide_equivalence_classes_2(F, Id, ItemSet, !Counter, !Partitions, !Keys) :-
         ItemList = [Item | Items],
         MainValue = F(Item),
         map.init(Map0),
-        map.det_insert(Map0, MainValue, Id, Map1),
+        map.det_insert(MainValue, Id, Map0, Map1),
         list.foldl4(divide_equivalence_classes_3(F, Id), Items,
             Map1, _Map, !Counter, !Partitions, !Keys)
     ).
@@ -540,24 +539,24 @@ divide_equivalence_classes_3(F, MainId, Item, !Map, !Counter, !Partitions,
         ;
             map.lookup(!.Partitions, MainId, MainSet0),
             set.delete(MainSet0, Item, MainSet),
-            svmap.det_update(MainId, MainSet, !Partitions),
+            map.det_update(MainId, MainSet, !Partitions),
 
             map.lookup(!.Partitions, Id, Set0),
             set.insert(Set0, Item, Set),
-            svmap.det_update(Id, Set, !Partitions),
+            map.det_update(Id, Set, !Partitions),
 
-            svmap.det_update(Item, Id, !Keys)
+            map.det_update(Item, Id, !Keys)
         )
     ;
         counter.allocate(NewId, !Counter),
-        svmap.det_insert(Value, NewId, !Map),
+        map.det_insert(Value, NewId, !Map),
 
         map.lookup(!.Partitions, MainId, MainSet0),
         set.delete(MainSet0, Item, MainSet),
-        svmap.det_update(MainId, MainSet, !Partitions),
+        map.det_update(MainId, MainSet, !Partitions),
 
         Set = set.make_singleton_set(Item),
-        svmap.det_insert(NewId, Set, !Partitions),
+        map.det_insert(NewId, Set, !Partitions),
 
-        svmap.det_update(Item, NewId, !Keys)
+        map.det_update(Item, NewId, !Keys)
     ).

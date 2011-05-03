@@ -3048,7 +3048,7 @@ module_mark_preds_as_external([PredId | PredIds], !ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, Preds0),
     map.lookup(Preds0, PredId, PredInfo0),
     pred_info_mark_as_external(PredInfo0, PredInfo),
-    map.det_update(Preds0, PredId, PredInfo, Preds),
+    map.det_update(PredId, PredInfo, Preds0, Preds),
     module_info_set_preds(Preds, !ModuleInfo),
     module_mark_preds_as_external(PredIds, !ModuleInfo).
 
@@ -3084,7 +3084,7 @@ pragma_add_marker([], _, _, _, !PredTable, no).
 pragma_add_marker([PredId | PredIds], UpdatePredInfo, Status, MustBeExported,
         !PredTable, WrongStatus) :-
     map.lookup(!.PredTable, PredId, PredInfo0),
-    call(UpdatePredInfo, PredInfo0, PredInfo),
+    UpdatePredInfo(PredInfo0, PredInfo),
     (
         pred_info_is_exported(PredInfo),
         MustBeExported = yes,
@@ -3094,7 +3094,7 @@ pragma_add_marker([PredId | PredIds], UpdatePredInfo, Status, MustBeExported,
     ;
         WrongStatus0 = no
     ),
-    map.det_update(!.PredTable, PredId, PredInfo, !:PredTable),
+    map.det_update(PredId, PredInfo, !PredTable),
     pragma_add_marker(PredIds, UpdatePredInfo, Status,
         MustBeExported, !PredTable, WrongStatus1),
     bool.or(WrongStatus0, WrongStatus1, WrongStatus).

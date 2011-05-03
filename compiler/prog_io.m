@@ -2429,7 +2429,7 @@ inst_var_constraints_are_consistent_in_inst_var(SubInst, InstVar, !Sub) :-
         % the previous constraint on this inst_var.
         InstVarInst = SubInst
     ;
-        map.det_insert(!.Sub, InstVar, SubInst, !:Sub)
+        map.det_insert(InstVar, SubInst, !Sub)
     ).
 
 %-----------------------------------------------------------------------------%

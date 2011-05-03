@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2010 The University of Melbourne.
+% Copyright (C) 2007-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -93,7 +93,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module svvarset.
 :- import_module term.
 :- import_module varset.
@@ -246,7 +245,7 @@ region_transform_proc(RptaInfoTable, FormalRegionArgTable,
         Goal0, _, NameToVar0, NameToVar, ProcInfo1, ProcInfo2),
     requantify_proc_general(ordinary_nonlocals_no_lambda, ProcInfo2, ProcInfo),
     module_info_set_pred_proc_info(PPId, PredInfo0, ProcInfo, !ModuleInfo),
-    svmap.det_insert(PPId, NameToVar, !NameToVarTable).
+    map.det_insert(PPId, NameToVar, !NameToVarTable).
 
     % Currently for a procedure we annotate the following information:
     %
@@ -775,8 +774,8 @@ region_name_to_var(Name, RegVar, !NameToVar, !VarSet, !VarTypes) :-
         RegVar = RegVar0
     ;
         svvarset.new_named_var(Name, RegVar, !VarSet),
-        svmap.det_insert(RegVar, region_type, !VarTypes),
-        svmap.det_insert(Name, RegVar, !NameToVar)
+        map.det_insert(RegVar, region_type, !VarTypes),
+        map.det_insert(Name, RegVar, !NameToVar)
     ).
 
     % The same as node_to_var, but the corresponding region name is

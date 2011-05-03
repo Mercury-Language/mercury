@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2010 The University of Melbourne.
+% Copyright (C) 2006-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -64,7 +64,6 @@
 :- import_module bool.
 :- import_module io.
 :- import_module map.
-:- import_module svmap.
 
 :- include_module transform_hlds.ctgc.structure_reuse.direct.detect_garbage.
 :- include_module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
@@ -150,9 +149,9 @@ direct_reuse_process_proc(SharingTable, PredId, ProcId,
     AsAndStatus = reuse_as_and_status(ReuseAs, Status),
     reuse_as_table_set(proc(PredId, ProcId), AsAndStatus, !ReuseTable),
 
-    map.det_update(Procs0, ProcId, Proc, Procs),
+    map.det_update(ProcId, Proc, Procs0, Procs),
     pred_info_set_procedures(Procs, Pred0, Pred),
-    map.det_update(Preds0, PredId, Pred, Preds),
+    map.det_update(PredId, Pred, Preds0, Preds),
     module_info_set_preds(Preds, !ModuleInfo).
 
 :- pred direct_reuse_process_proc_2(sharing_as_table::in,
@@ -230,7 +229,7 @@ dead_cell_table_search(PP, Table) = ReuseCond :-
     dead_cell_table::in, dead_cell_table::out) is det.
 
 dead_cell_table_set(PP, RC, !Table) :-
-    svmap.set(PP, RC, !Table).
+    map.set(PP, RC, !Table).
 
     % Remove a program point from the table.
     %
@@ -238,7 +237,7 @@ dead_cell_table_set(PP, RC, !Table) :-
     dead_cell_table::in, dead_cell_table::out) is det.
 
 dead_cell_table_remove(PP, !Table) :-
-    svmap.det_remove(PP, _, !Table).
+    map.det_remove(PP, _, !Table).
 
     % Remove all program points from the table for which the reuse_conditions
     % are "conditional".

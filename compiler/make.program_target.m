@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2010 The University of Melbourne.
+% Copyright (C) 2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -55,7 +55,6 @@
 :- import_module dir.
 :- import_module getopt_io.
 :- import_module require.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -802,7 +801,7 @@ delete_java_class_timestamps(FileName, MaybeTimestamp, !Timestamps) :-
     ( string.suffix(FileName, ".class") ->
         true
     ;
-        svmap.det_insert(FileName, MaybeTimestamp, !Timestamps)
+        map.det_insert(FileName, MaybeTimestamp, !Timestamps)
     ).
 
 %-----------------------------------------------------------------------------%

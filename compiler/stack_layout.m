@@ -125,7 +125,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -310,7 +309,7 @@ build_event_arg_type_info_map(EventSpec, !EventArgTypeInfoMap,
         !StaticCellInfo),
     add_scalar_static_cell(RvalsAndTypes, TypesDataAddr, !StaticCellInfo),
     Rval = const(llconst_data_addr(TypesDataAddr, no)),
-    svmap.det_insert(EventNumber, Rval, !EventArgTypeInfoMap).
+    map.det_insert(EventNumber, Rval, !EventArgTypeInfoMap).
 
 :- pred build_event_arg_type_info(event_attribute::in,
     pair(rval, llds_type)::out,
@@ -491,20 +490,20 @@ update_label_table_2(LabelVars, Slot, Context, IsReturn, !LabelTables) :-
         LabelLayout = layout_slot(label_layout_array(LabelVars), Slot),
         ( map.search(LabelTable0, Line, LineInfo0) ->
             LineInfo = [LabelLayout - IsReturn | LineInfo0],
-            map.det_update(LabelTable0, Line, LineInfo, LabelTable),
-            svmap.det_update(File, LabelTable, !LabelTables)
+            map.det_update(Line, LineInfo, LabelTable0, LabelTable),
+            map.det_update(File, LabelTable, !LabelTables)
         ;
             LineInfo = [LabelLayout - IsReturn],
-            map.det_insert(LabelTable0, Line, LineInfo, LabelTable),
-            svmap.det_update(File, LabelTable, !LabelTables)
+            map.det_insert(Line, LineInfo, LabelTable0, LabelTable),
+            map.det_update(File, LabelTable, !LabelTables)
         )
     ;
         ( context_is_valid(Context) ->
             map.init(LabelTable0),
             LabelLayout = layout_slot(label_layout_array(LabelVars), Slot),
             LineInfo = [LabelLayout - IsReturn],
-            map.det_insert(LabelTable0, Line, LineInfo, LabelTable),
-            svmap.det_insert(File, LabelTable, !LabelTables)
+            map.det_insert(Line, LineInfo, LabelTable0, LabelTable),
+            map.det_insert(File, LabelTable, !LabelTables)
         ;
             % We don't have a valid context for this label,
             % so we don't enter it into any tables.
@@ -696,8 +695,8 @@ construct_proc_layout(Params, PLI, ProcLayoutName, Kind,
     !ProcLayoutInfo ^ pli_rev_proc_layout_names := RevProcLayoutNames,
 
     LabelToLayoutMap0 = !.ProcLayoutInfo ^ pli_p_label_to_layout_map,
-    map.det_insert(LabelToLayoutMap0, EntryLabel, layout_id(ProcLayoutName),
-        LabelToLayoutMap),
+    map.det_insert(EntryLabel, layout_id(ProcLayoutName),
+        LabelToLayoutMap0, LabelToLayoutMap),
     !ProcLayoutInfo ^ pli_p_label_to_layout_map := LabelToLayoutMap.
 
 :- pred construct_proc_traversal(stack_layout_params::in, label::in,
@@ -1042,8 +1041,8 @@ construct_exec_trace_table_data(PredProcId, ProcLayoutName, TableInfo,
         MaybeTableSlotName = yes(TableDataSlotName),
 
         TableIoDeclMap0 = !.ExecTraceInfo ^ eti_table_io_decl_map,
-        map.det_insert(TableIoDeclMap0, PredProcId, TableDataSlotName,
-            TableIoDeclMap),
+        map.det_insert(PredProcId, TableDataSlotName,
+            TableIoDeclMap0, TableIoDeclMap),
         !ExecTraceInfo ^ eti_table_io_decl_map := TableIoDeclMap
     ;
         TableInfo = proc_table_struct(_TableStructInfo),
@@ -1298,7 +1297,7 @@ add_named_var_to_var_number_map(Var - Name, !VarNumMap, !Counter) :-
         true
     ;
         counter.allocate(VarNum, !Counter),
-        map.det_insert(!.VarNumMap, Var, VarNum - Name, !:VarNumMap)
+        map.det_insert(Var, VarNum - Name, !VarNumMap)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1542,7 +1541,7 @@ add_no_vars_internal_layout_data(Label, Layout, Slot, !LLI) :-
     LayoutName = layout_slot(label_layout_array(label_has_no_var_info), Slot),
 
     LabelToLayoutMap0 = !.LLI ^ lli_i_label_to_layout_map,
-    map.det_insert(LabelToLayoutMap0, Label, LayoutName, LabelToLayoutMap),
+    map.det_insert(Label, LayoutName, LabelToLayoutMap0, LabelToLayoutMap),
 
     !LLI ^ lli_rev_no_var_label_layouts := RevLayouts,
     !LLI ^ lli_next_no_var_label_layout := Counter,
@@ -1562,7 +1561,7 @@ add_short_vars_internal_layout_data(Label, Layout, Slot, !LLI) :-
     LayoutName = layout_slot(LayoutArray, Slot),
 
     LabelToLayoutMap0 = !.LLI ^ lli_i_label_to_layout_map,
-    map.det_insert(LabelToLayoutMap0, Label, LayoutName, LabelToLayoutMap),
+    map.det_insert(Label, LayoutName, LabelToLayoutMap0, LabelToLayoutMap),
 
     !LLI ^ lli_rev_svar_label_layouts := RevLayouts,
     !LLI ^ lli_next_svar_label_layout := Counter,
@@ -1582,7 +1581,7 @@ add_long_vars_internal_layout_data(Label, Layout, Slot, !LLI) :-
     LayoutName = layout_slot(LayoutArray, Slot),
 
     LabelToLayoutMap0 = !.LLI ^ lli_i_label_to_layout_map,
-    map.det_insert(LabelToLayoutMap0, Label, LayoutName, LabelToLayoutMap),
+    map.det_insert(Label, LayoutName, LabelToLayoutMap0, LabelToLayoutMap),
 
     !LLI ^ lli_rev_lvar_label_layouts := RevLayouts,
     !LLI ^ lli_next_lvar_label_layout := Counter,
@@ -2550,7 +2549,7 @@ lookup_string_in_table(String, Offset, !StringTable) :-
         TableOffset < (1 << ((4 * byte_bits) - 2))
     ->
         Offset = TableOffset0,
-        map.det_insert(TableMap0, String, TableOffset0, TableMap),
+        map.det_insert(String, TableOffset0, TableMap0, TableMap),
         TableList = [String | TableList0],
         !:StringTable = string_table(TableMap, TableList, TableOffset)
     ;

@@ -71,7 +71,6 @@
 :- import_module map.
 :- import_module pair.
 :- import_module require.
-:- import_module svmap.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -891,9 +890,9 @@ build_disj_steps_map([], !DisjStepMap).
 build_disj_steps_map([Head | Tail], !DisjStepMap) :-
     Head = [step_disj(N) | HeadSteps],
     ( map.search(!.DisjStepMap, N, one_or_more(One, More)) ->
-        svmap.det_update(N, one_or_more(HeadSteps, [One | More]), !DisjStepMap)
+        map.det_update(N, one_or_more(HeadSteps, [One | More]), !DisjStepMap)
     ;
-        svmap.det_insert(N, one_or_more(HeadSteps, []), !DisjStepMap)
+        map.det_insert(N, one_or_more(HeadSteps, []), !DisjStepMap)
     ),
     build_disj_steps_map(Tail, !DisjStepMap).
 
@@ -905,9 +904,9 @@ build_switch_steps_map([], !DisjStepMap).
 build_switch_steps_map([Head | Tail], !DisjStepMap) :-
     Head = [step_switch(N, _) | HeadSteps],
     ( map.search(!.DisjStepMap, N, one_or_more(One, More)) ->
-        svmap.det_update(N, one_or_more(HeadSteps, [One | More]), !DisjStepMap)
+        map.det_update(N, one_or_more(HeadSteps, [One | More]), !DisjStepMap)
     ;
-        svmap.det_insert(N, one_or_more(HeadSteps, []), !DisjStepMap)
+        map.det_insert(N, one_or_more(HeadSteps, []), !DisjStepMap)
     ),
     build_switch_steps_map(Tail, !DisjStepMap).
 

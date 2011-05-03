@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000,2002-2007, 2010 The University of Melbourne.
+% Copyright (C) 1994-2000,2002-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -155,9 +155,9 @@ generate_proc_list_arg_info(PredId, [ProcId | ProcIds], !ModuleInfo) :-
 
     generate_proc_arg_info(ArgTypes, !.ModuleInfo, ProcInfo0, ProcInfo),
 
-    map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+    map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
     pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-    map.det_update(PredTable0, PredId, PredInfo, PredTable),
+    map.det_update(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo),
     generate_proc_list_arg_info(PredId, ProcIds, !ModuleInfo).
 

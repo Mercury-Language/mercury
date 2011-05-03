@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007, 2010 The University of Melbourne.
+% Copyright (C) 2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -159,7 +159,7 @@ reg_map_init(AssocRegMap) = RegMap :-
     check_if_all_mvm_registers(ListOfKeys, Result),
     (
         Result = yes,
-        map.det_insert_from_assoc_list(Map0, AssocRegMap, Map1),
+        map.det_insert_from_assoc_list(AssocRegMap, Map0, Map1),
         RegMap = reg_map(init_scratch_regs, Map1)
     ;
         Result = no,

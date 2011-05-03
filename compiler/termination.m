@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001, 2003-2010 The University of Melbourne.
+% Copyright (C) 1997-2001, 2003-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -83,7 +83,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 :- import_module unit.
 
@@ -437,16 +436,16 @@ set_finite_arg_size_infos([Soln | Solns], OutputSupplierMap, !ModuleInfo) :-
     Soln = PPId - Gamma,
     PPId = proc(PredId, ProcId),
     module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.lookup(PredTable0, PredId, PredInfo),
-    pred_info_get_procedures(PredInfo, ProcTable),
-    map.lookup(ProcTable, ProcId, ProcInfo),
+    map.lookup(PredTable0, PredId, PredInfo0),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
+    map.lookup(ProcTable0, ProcId, ProcInfo),
     map.lookup(OutputSupplierMap, PPId, OutputSuppliers),
     ArgSizeInfo = finite(Gamma, OutputSuppliers),
     % XXX intermod
     proc_info_set_maybe_arg_size_info(yes(ArgSizeInfo), ProcInfo, ProcInfo1),
-    map.set(ProcTable, ProcId, ProcInfo1, ProcTable1),
-    pred_info_set_procedures(ProcTable1, PredInfo, PredInfo1),
-    map.set(PredTable0, PredId, PredInfo1, PredTable),
+    map.set(ProcId, ProcInfo1, ProcTable0, ProcTable),
+    pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+    map.set(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo),
     set_finite_arg_size_infos(Solns, OutputSupplierMap, !ModuleInfo).
 
@@ -457,14 +456,14 @@ set_infinite_arg_size_infos([], _, !ModuleInfo).
 set_infinite_arg_size_infos([PPId | PPIds], ArgSizeInfo, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
     module_info_get_preds(!.ModuleInfo, PredTable0),
-    map.lookup(PredTable0, PredId, PredInfo),
-    pred_info_get_procedures(PredInfo, ProcTable),
-    map.lookup(ProcTable, ProcId, ProcInfo),
+    map.lookup(PredTable0, PredId, PredInfo0),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
+    map.lookup(ProcTable0, ProcId, ProcInfo0),
     % XXX intermod
-    proc_info_set_maybe_arg_size_info(yes(ArgSizeInfo), ProcInfo, ProcInfo1),
-    map.set(ProcTable, ProcId, ProcInfo1, ProcTable1),
-    pred_info_set_procedures(ProcTable1, PredInfo, PredInfo1),
-    map.set(PredTable0, PredId, PredInfo1, PredTable),
+    proc_info_set_maybe_arg_size_info(yes(ArgSizeInfo), ProcInfo0, ProcInfo),
+    map.set(ProcId, ProcInfo, ProcTable0, ProcTable),
+    pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
+    map.set(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo),
     set_infinite_arg_size_infos(PPIds, ArgSizeInfo, !ModuleInfo).
 
@@ -483,9 +482,9 @@ set_termination_infos([PPId | PPIds], TerminationInfo, !ModuleInfo) :-
     % XXX intermod
     proc_info_set_maybe_termination_info(yes(TerminationInfo),
         ProcInfo0, ProcInfo),
-    map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+    map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
     pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-    map.det_update(PredTable0, PredId, PredInfo, PredTable),
+    map.det_update(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo),
     set_termination_infos(PPIds, TerminationInfo, !ModuleInfo).
 
@@ -676,7 +675,7 @@ check_preds([PredId | PredIds], !ModuleInfo, !IO) :-
         ProcTable = ProcTable2
     ),
     pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-    map.set(PredTable0, PredId, PredInfo, PredTable),
+    map.set(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo),
     check_preds(PredIds, !ModuleInfo, !IO).
 
@@ -737,7 +736,7 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, !ProcTable) :-
         proc_info_set_maybe_arg_size_info(yes(ArgSize), ProcInfo0, ProcInfo1),
         proc_info_set_maybe_termination_info(yes(Termination),
             ProcInfo1, ProcInfo),
-        svmap.det_update(ProcId, ProcInfo, !ProcTable)
+        map.det_update(ProcId, ProcInfo, !ProcTable)
     ;
         SpecialPredId = spec_pred_init
         % We don't need to do anything special for solver type initialisation
@@ -802,7 +801,7 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
     proc_info_set_maybe_arg_size_info(ArgSizeInfo, ProcInfo0, ProcInfo1),
     proc_info_set_maybe_termination_info(yes(cannot_loop(unit)),
         ProcInfo1, ProcInfo),
-    map.det_update(!.ProcTable, ProcId, ProcInfo, !:ProcTable),
+    map.det_update(ProcId, ProcInfo, !ProcTable),
     set_builtin_terminates(ProcIds, PredId, PredInfo, ModuleInfo, !ProcTable).
 
 %----------------------------------------------------------------------------%
@@ -833,7 +832,7 @@ change_procs_arg_size_info([ProcId | ProcIds], Override, ArgSize,
         )
     ->
         proc_info_set_maybe_arg_size_info(yes(ArgSize), ProcInfo0, ProcInfo),
-        svmap.det_update(ProcId, ProcInfo, !ProcTable)
+        map.det_update(ProcId, ProcInfo, !ProcTable)
     ;
         true
     ),
@@ -867,7 +866,7 @@ change_procs_termination_info([ProcId | ProcIds], Override, Termination,
         % XXX intermod
         proc_info_set_maybe_termination_info(yes(Termination),
             ProcInfo0, ProcInfo),
-        svmap.det_update(ProcId, ProcInfo, !ProcTable)
+        map.det_update(ProcId, ProcInfo, !ProcTable)
     ;
         true
     ),

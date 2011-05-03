@@ -393,7 +393,6 @@
 :- import_module solutions.
 :- import_module sparse_bitset.
 :- import_module string.
-:- import_module svmap.
 :- import_module svset.
 :- import_module term.
 :- import_module unit.
@@ -754,7 +753,7 @@ strip_unnecessary_impl_defns(Items0, Items) :-
         RemoveFromImplTypesMap =
             (pred(TypeCtor::in, !.ImplTypesMap::in, !:ImplTypesMap::out)
                     is det :-
-                multi_map.delete(!.ImplTypesMap, TypeCtor, !:ImplTypesMap)
+                multi_map.delete(TypeCtor, !ImplTypesMap)
             ),
         list.foldl(RemoveFromImplTypesMap, AbstractExportedTypes,
             !ImplTypesMap),
@@ -1329,8 +1328,8 @@ gather_type_defns_2(!.InInterface, [Item | Items],
 :- pred gather_type_defn(type_ctor::in, type_defn::in, item_type_defn_info::in,
     type_defn_map::in, type_defn_map::out) is det.
 
-gather_type_defn(TypeCtor, Body, ItemTypeDefn, DefnMap0, DefnMap) :-
-    multi_map.set(DefnMap0, TypeCtor, Body - ItemTypeDefn, DefnMap).
+gather_type_defn(TypeCtor, Body, ItemTypeDefn, !DefnMap) :-
+    multi_map.set(TypeCtor, Body - ItemTypeDefn, !DefnMap).
 
 :- pred get_requirements_of_impl_typeclasses(list(item)::in,
     set(module_name)::out) is det.
@@ -3381,9 +3380,9 @@ add_submodule(ModuleName - ModuleItemList, !SubModules) :-
     % and we don't enforce that either...)
     ( map.search(!.SubModules, ModuleName, ItemList0) ->
         list.append(ModuleItemList, ItemList0, ItemList),
-        svmap.det_update(ModuleName, ItemList, !SubModules)
+        map.det_update(ModuleName, ItemList, !SubModules)
     ;
-        svmap.det_insert(ModuleName, ModuleItemList, !SubModules)
+        map.det_insert(ModuleName, ModuleItemList, !SubModules)
     ).
 
 :- pred report_error_implementation_in_interface(module_name::in,
@@ -4477,7 +4476,7 @@ maybe_record_timestamp(ModuleName, Suffix, NeedQualifier, MaybeTimestamp,
         (
             MaybeTimestamp = yes(Timestamp),
             TimestampInfo = module_timestamp(Suffix, Timestamp, NeedQualifier),
-            map.set(Timestamps0, ModuleName, TimestampInfo, Timestamps),
+            map.set(ModuleName, TimestampInfo, Timestamps0, Timestamps),
             !Module ^ mai_maybe_timestamps := yes(Timestamps)
         ;
             MaybeTimestamp = no

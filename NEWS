@@ -1,11 +1,45 @@
 NEWS since Mercury 11.01
 ------------------------
 
-* We have improved Unicode support in the compiler and standard library.
+HIGHLIGHTS
+==========
 
-  The `char' type now represents to a Unicode code point.  String procedures
-  understand either UTF-8 or UTF-16 encodings, depending on the backend.
-  Text I/O routines now read and write files in UTF-8 encoding.
+Changes to the Mercury language:
+
+* The `char' type now represents a Unicode code point.
+
+Changes to the Mercury standard library:
+
+* We have improved Unicode support in the standard library.
+
+* We have changed the argument order of many of the predicates in the
+  bimap, map, and multi_map modules in order to make them more conducive
+  to the use of state variable notation.
+
+
+DETAILED LISTING
+================
+
+Changes to the Mercury standard library:
+
+* We have improved Unicode support in the standard library.
+
+    + Procedures in the string module now understand either UTF-8 or
+      UTF-16 encodings, depending upon the backend.
+
+    + Text I/O routines now read and write files in UTF-8 encoding.
+
+* The argument of the following predicates has been changed in order to
+  make them more conducive to the use of state variable notation:
+  bimap.insert/4, bimap.det_insert/4, bimap.set/4, map.insert/4,
+  map.det_insert/4, map.det_insert_from_corresponding_lists/4,
+  map.det_insert_from_assoc_list/3, map.set_from_corresponding_lists/4,
+  map.set_from_assoc_list/3, map.update/4, map.det_update/4, map.delete/3,
+  map.delete_list/3, map.remove/4, map.det_remove/4, map.remove_smallest/4,
+  multi_map.insert/4, multi_map.det_insert/4, multi_map.update/4,
+  multi_map.det_update/4, multi_map.det_replace/4, multi_map.set/4,
+  multi_map.add/4, multi_map.delete/4, multi_map.remove/4, and
+  multi_map.remove_smallest/4. 
 
 
 NEWS for Mercury 11.01

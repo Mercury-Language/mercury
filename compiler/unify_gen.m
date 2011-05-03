@@ -91,7 +91,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -1360,18 +1359,18 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
             )
         ),
         ActiveGroundTerm = const(Const) - Type,
-        svmap.det_insert(Var, ActiveGroundTerm, !ActiveMap)
+        map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
     ;
         ConsTag = shared_local_tag(Ptag, Stag),
         Rval = mkword(Ptag, unop(mkbody, const(llconst_int(Stag)))),
         ActiveGroundTerm = Rval - lt_data_ptr,
-        svmap.det_insert(Var, ActiveGroundTerm, !ActiveMap)
+        map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
     ;
         ConsTag = reserved_address_tag(RA),
         Rval = generate_reserved_address(RA),
         rval_type(Rval, RvalType),
         ActiveGroundTerm = Rval - RvalType,
-        svmap.det_insert(Var, ActiveGroundTerm, !ActiveMap)
+        map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
     ;
         ConsTag = shared_with_reserved_addresses_tag(_, ActualConsTag),
         generate_ground_term_conjunct_tag(Var, ActualConsTag, Args,
@@ -1383,8 +1382,8 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
             unexpected($module, $pred, "no_tag arity != 1")
         ;
             Args = [Arg],
-            svmap.det_remove(Arg, RvalType, !ActiveMap),
-            svmap.det_insert(Var, RvalType, !ActiveMap)
+            map.det_remove(Arg, RvalType, !ActiveMap),
+            map.det_insert(Var, RvalType, !ActiveMap)
         ;
             Args = [_, _ | _],
             unexpected($module, $pred, "no_tag arity != 1")
@@ -1402,7 +1401,7 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
         CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
         Rval = mkword(Ptag, CellPtrConst),
         ActiveGroundTerm = Rval - lt_data_ptr,
-        svmap.det_insert(Var, ActiveGroundTerm, !ActiveMap)
+        map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
     ;
         ConsTag = shared_remote_tag(Ptag, Stag),
         generate_ground_term_args(Args, ArgRvalsTypes, !ActiveMap),
@@ -1413,7 +1412,7 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
         CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
         Rval = mkword(Ptag, CellPtrConst),
         ActiveGroundTerm = Rval - lt_data_ptr,
-        svmap.det_insert(Var, ActiveGroundTerm, !ActiveMap)
+        map.det_insert(Var, ActiveGroundTerm, !ActiveMap)
     ;
         ( ConsTag = closure_tag(_, _, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
@@ -1431,7 +1430,7 @@ generate_ground_term_conjunct_tag(Var, ConsTag, Args, UnboxedFloats,
 
 generate_ground_term_args([], [], !ActiveMap).
 generate_ground_term_args([Var | Vars], [RvalType | RvalsTypes], !ActiveMap) :-
-    svmap.det_remove(Var, RvalType, !ActiveMap),
+    map.det_remove(Var, RvalType, !ActiveMap),
     generate_ground_term_args(Vars, RvalsTypes, !ActiveMap).
 
 %---------------------------------------------------------------------------%

@@ -191,7 +191,6 @@
 :- import_module lexer.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 :- import_module term_io.
 :- import_module univ.
 
@@ -243,9 +242,9 @@ diff_trace_counts_acc(TraceCountsB, ProcLabelInContextA, ProcTraceCountsA,
         !TraceCounts) :-
     ( map.search(TraceCountsB, ProcLabelInContextA, ProcTraceCountsB) ->
         ProcTraceCounts = diff_proc_counts(ProcTraceCountsA, ProcTraceCountsB),
-        svmap.det_insert(ProcLabelInContextA, ProcTraceCounts, !TraceCounts)
+        map.det_insert(ProcLabelInContextA, ProcTraceCounts, !TraceCounts)
     ;
-        svmap.det_insert(ProcLabelInContextA, ProcTraceCountsA, !TraceCounts)
+        map.det_insert(ProcLabelInContextA, ProcTraceCountsA, !TraceCounts)
     ).
 
 :- func diff_proc_counts(proc_trace_counts, proc_trace_counts)
@@ -263,9 +262,9 @@ diff_proc_counts_acc(ProcTraceCountsB, PathPortA, LineNoCountA,
         !ProcTraceCounts) :-
     ( map.search(ProcTraceCountsB, PathPortA, LineNoCountB) ->
         LineNoCount = diff_counts_on_line(LineNoCountA, LineNoCountB),
-        svmap.det_insert(PathPortA, LineNoCount, !ProcTraceCounts)
+        map.det_insert(PathPortA, LineNoCount, !ProcTraceCounts)
     ;
-        svmap.det_insert(PathPortA, LineNoCountA, !ProcTraceCounts)
+        map.det_insert(PathPortA, LineNoCountA, !ProcTraceCounts)
     ).
 
 :- func diff_counts_on_line(line_no_and_count, line_no_and_count)
@@ -588,7 +587,7 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
             % For whatever reason some of the trace counts for a single
             % procedure or function can be split over multiple spans.
             % We collate them as if they appeared in a single span.
-            ( svmap.remove(ProcLabelInContext, ProbeCounts, !TraceCounts) ->
+            ( map.remove(ProcLabelInContext, ProbeCounts, !TraceCounts) ->
                 StartCounts = ProbeCounts
             ;
                 StartCounts = map.init
@@ -620,11 +619,11 @@ read_proc_trace_counts_2(ProcLabelInContext, ProcCounts0, !TraceCounts, !IO) :-
         ->
             LineNoAndCount = line_no_and_count(LineNumber, ExecCount,
                 NumTests),
-            map.det_insert(ProcCounts0, PathPort, LineNoAndCount, ProcCounts),
+            map.det_insert(PathPort, LineNoAndCount, ProcCounts0, ProcCounts),
             read_proc_trace_counts_2(ProcLabelInContext, ProcCounts,
                 !TraceCounts, !IO)
         ;
-            svmap.det_insert(ProcLabelInContext, ProcCounts0, !TraceCounts),
+            map.det_insert(ProcLabelInContext, ProcCounts0, !TraceCounts),
             io.get_line_number(LineNumber, !IO),
             CurModuleNameSym = ProcLabelInContext ^ context_module_symname,
             CurFileName = ProcLabelInContext ^ context_filename,
@@ -633,7 +632,7 @@ read_proc_trace_counts_2(ProcLabelInContext, ProcCounts0, !TraceCounts, !IO) :-
         )
     ;
         Result = eof,
-        svmap.det_insert(ProcLabelInContext, ProcCounts0, !TraceCounts)
+        map.det_insert(ProcLabelInContext, ProcCounts0, !TraceCounts)
     ;
         Result = error(Error),
         throw(Error)
@@ -930,7 +929,7 @@ restrict_trace_counts_2(ModuleName, ProcLabelInContext, ProcCounts,
         !TraceCounts) :-
     ProcLabel = ProcLabelInContext ^ proc_label,
     ( ProcLabel = ordinary_proc_label(ModuleName, _, _, _, _, _) ->
-        svmap.det_insert(ProcLabelInContext, ProcCounts, !TraceCounts)
+        map.det_insert(ProcLabelInContext, ProcCounts, !TraceCounts)
     ;
         true
     ).

@@ -1839,7 +1839,7 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
                 true
             )
         ;
-            map.det_insert(VarTypes0, Var, Type, VarTypes),
+            map.det_insert(Var, Type, VarTypes0, VarTypes),
             type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
             NewTypeAssign = args(TypeAssign, ArgTypes, ClassContext),
             !:ArgTypeAssignSet = [NewTypeAssign | !.ArgTypeAssignSet]
@@ -1869,11 +1869,11 @@ type_assign_var_has_one_of_these_types(TypeAssign0, Var, TypeA, TypeB,
         )
     ;
         % YYY
-        map.det_insert(VarTypes0, Var, TypeA, VarTypesA),
+        map.det_insert(Var, TypeA, VarTypes0, VarTypesA),
         type_assign_set_var_types(VarTypesA, TypeAssign0, TypeAssignA),
-        map.det_insert(VarTypes0, Var, TypeB, VarTypesB),
+        map.det_insert(Var, TypeB, VarTypes0, VarTypesB),
         type_assign_set_var_types(VarTypesB, TypeAssign0, TypeAssignB),
-        !: TypeAssignSet = [TypeAssignA, TypeAssignB | !.TypeAssignSet]
+        !:TypeAssignSet = [TypeAssignA, TypeAssignB | !.TypeAssignSet]
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1931,7 +1931,7 @@ type_assign_var_has_type(TypeAssign0, Var, Type, !TypeAssignSet) :-
             !:TypeAssignSet = !.TypeAssignSet
         )
     ;
-        map.det_insert(VarTypes0, Var, Type, VarTypes),
+        map.det_insert(Var, Type, VarTypes0, VarTypes),
         type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
         !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
     ).
@@ -2269,14 +2269,14 @@ type_assign_unify_var_var(X, Y, TypeAssign0, !TypeAssignSet) :-
             )
         ;
             % Y is a fresh variable which hasn't been assigned a type yet.
-            map.det_insert(VarTypes0, Y, TypeX, VarTypes),
+            map.det_insert(Y, TypeX, VarTypes0, VarTypes),
             type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
             !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
         )
     ;
         ( map.search(VarTypes0, Y, TypeY) ->
             % X is a fresh variable which hasn't been assigned a type yet.
-            map.det_insert(VarTypes0, X, TypeY, VarTypes),
+            map.det_insert(X, TypeY, VarTypes0, VarTypes),
             type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
             !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
         ;
@@ -2286,9 +2286,9 @@ type_assign_unify_var_var(X, Y, TypeAssign0, !TypeAssignSet) :-
             varset.new_var(TypeVarSet0, TypeVar, TypeVarSet),
             type_assign_set_typevarset(TypeVarSet, TypeAssign0, TypeAssign1),
             Type = type_variable(TypeVar, kind_star),
-            map.det_insert(VarTypes0, X, Type, VarTypes1),
+            map.det_insert(X, Type, VarTypes0, VarTypes1),
             ( X \= Y ->
-                map.det_insert(VarTypes1, Y, Type, VarTypes)
+                map.det_insert(Y, Type, VarTypes1, VarTypes)
             ;
                 VarTypes = VarTypes1
             ),
@@ -2320,7 +2320,7 @@ type_assign_check_functor_type(ConsType, ArgTypes, Y, TypeAssign0,
     ;
         % The constraints are empty here because none are added by
         % unification with a functor.
-        map.det_insert(VarTypes0, Y, ConsType, VarTypes),
+        map.det_insert(Y, ConsType, VarTypes0, VarTypes),
         type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
         empty_hlds_constraints(EmptyConstraints),
         ArgsTypeAssign = args(TypeAssign, ArgTypes, EmptyConstraints),
@@ -2346,7 +2346,7 @@ type_assign_check_functor_type_builtin(ConsType, Y, TypeAssign0,
     ;
         % The constraints are empty here because none are added by
         % unification with a functor.
-        map.det_insert(VarTypes0, Y, ConsType, VarTypes),
+        map.det_insert(Y, ConsType, VarTypes0, VarTypes),
         type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
         !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
     ).
@@ -2491,7 +2491,7 @@ type_assign_get_types_of_vars([Var | Vars], [Type | Types], !TypeAssign) :-
         varset.new_var(TypeVarSet0, TypeVar, TypeVarSet),
         type_assign_set_typevarset(TypeVarSet, !TypeAssign),
         Type = type_variable(TypeVar, kind_star),
-        map.det_insert(VarTypes0, Var, Type, VarTypes1),
+        map.det_insert(Var, Type, VarTypes0, VarTypes1),
         type_assign_set_var_types(VarTypes1, !TypeAssign)
     ),
     % Recursively process the rest of the variables.

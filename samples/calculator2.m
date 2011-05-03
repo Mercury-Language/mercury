@@ -86,7 +86,7 @@ main_2(CalcInfo0, !IO) :-
             io.write_int(Num, !IO),
             io.nl(!IO),
             ( SetVar = yes(VarToSet) ->
-                map.set(CalcInfo0, VarToSet, Num, CalcInfo)
+                map.set(VarToSet, Num, CalcInfo0, CalcInfo)
             ;
                 CalcInfo = CalcInfo0
             )

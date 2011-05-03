@@ -1151,7 +1151,7 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
 
     map.init(Procs0),
     next_mode_id(Procs0, ProcId),
-    map.det_insert(Procs0, ProcId, ProcInfo, Procs),
+    map.det_insert(ProcId, ProcInfo, Procs0, Procs),
 
     PredSubInfo = pred_sub_info(Context, goal_type_clause, Attributes, Kinds,
         ExistQVarBindings, HeadTypeParams, ClassProofs, ClassConstraintMap,
@@ -1422,7 +1422,7 @@ pred_info_exported_procids(PredInfo) = ProcIds :-
 
 pred_info_remove_procid(ProcId, !PredInfo) :-
     pred_info_get_procedures(!.PredInfo, Procs0),
-    map.delete(Procs0, ProcId, Procs),
+    map.delete(ProcId, Procs0, Procs),
     pred_info_set_procedures(Procs, !PredInfo).
 
 pred_info_get_arg_types(PredInfo, PredInfo ^ decl_typevarset,
@@ -2842,7 +2842,7 @@ proc_info_create_var_from_type(Type, MaybeName, NewVar, !ProcInfo) :-
     proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     varset.new_maybe_named_var(VarSet0, MaybeName, NewVar, VarSet),
-    map.det_insert(VarTypes0, NewVar, Type, VarTypes),
+    map.det_insert(NewVar, Type, VarTypes0, VarTypes),
     proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo).
 
@@ -2851,8 +2851,8 @@ proc_info_create_vars_from_types(Types, NewVars, !ProcInfo) :-
     proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     varset.new_vars(VarSet0, NumVars, NewVars, VarSet),
-    map.det_insert_from_corresponding_lists(VarTypes0, NewVars,
-        Types, VarTypes),
+    map.det_insert_from_corresponding_lists(NewVars, Types,
+        VarTypes0, VarTypes),
     proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo).
 

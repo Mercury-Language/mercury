@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2010 The University of Melbourne.
+% Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -645,7 +645,7 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes, PredId, ProcId,
 build_arg_map([], !ArgMap).
 build_arg_map([ForeignArg | ForeignArgs], !ArgMap) :-
     ForeignArg = foreign_arg(Var, _, _, _),
-    map.det_insert(!.ArgMap, Var, ForeignArg, !:ArgMap),
+    map.det_insert(Var, ForeignArg, !ArgMap),
     build_arg_map(ForeignArgs, !ArgMap).
 
 :- pred ml_gen_pragma_il_proc_assign_output(module_info::in,

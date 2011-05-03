@@ -87,7 +87,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module svvarset.
 :- import_module term.
 :- import_module varset.
@@ -98,7 +97,7 @@ maybe_add_default_func_modes([], Preds, Preds).
 maybe_add_default_func_modes([PredId | PredIds], Preds0, Preds) :-
     map.lookup(Preds0, PredId, PredInfo0),
     maybe_add_default_func_mode(PredInfo0, PredInfo, _),
-    map.det_update(Preds0, PredId, PredInfo, Preds1),
+    map.det_update(PredId, PredInfo, Preds0, Preds1),
     maybe_add_default_func_modes(PredIds, Preds1, Preds).
 
 maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
@@ -156,7 +155,7 @@ copy_pred_clauses_to_procs_if_needed(PredId, !PredTable) :-
     map.lookup(!.PredTable, PredId, PredInfo0),
     ( should_copy_clauses_to_procs(PredInfo0) ->
         copy_clauses_to_procs(PredInfo0, PredInfo),
-        map.det_update(!.PredTable, PredId, PredInfo, !:PredTable)
+        map.det_update(PredId, PredInfo, !PredTable)
     ;
         true
     ).
@@ -185,7 +184,7 @@ copy_clauses_to_procs_2([], _, !Procs).
 copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, !Procs) :-
     map.lookup(!.Procs, ProcId, Proc0),
     copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc),
-    map.det_update(!.Procs, ProcId, Proc, !:Procs),
+    map.det_update(ProcId, Proc, !Procs),
     copy_clauses_to_procs_2(ProcIds, ClausesInfo, !Procs).
 
 copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
@@ -346,7 +345,7 @@ introduce_exists_casts_pred(ModuleInfo, PredId, !PredTable) :-
         introduce_exists_casts_procs(ModuleInfo, PredInfo0, ProcIds,
             Procs0, Procs),
         pred_info_set_procedures(Procs, PredInfo0, PredInfo),
-        svmap.det_update(PredId, PredInfo, !PredTable)
+        map.det_update(PredId, PredInfo, !PredTable)
     ;
         true
     ).
@@ -359,7 +358,7 @@ introduce_exists_casts_procs(ModuleInfo, PredInfo, [ProcId | ProcIds],
         !Procs) :-
     map.lookup(!.Procs, ProcId, ProcInfo0),
     introduce_exists_casts_proc(ModuleInfo, PredInfo, ProcInfo0, ProcInfo),
-    svmap.det_update(ProcId, ProcInfo, !Procs),
+    map.det_update(ProcId, ProcInfo, !Procs),
     introduce_exists_casts_procs(ModuleInfo, PredInfo, ProcIds, !Procs).
 
 introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
@@ -464,9 +463,9 @@ introduce_exists_casts_for_arg(ModuleInfo, Subn, ExternalType, ArgMode,
         InternalType \= ExternalType
     ->
         term.context_init(Context),
-        svmap.det_update(HeadVar0, InternalType, !VarTypes),
+        map.det_update(HeadVar0, InternalType, !VarTypes),
         make_new_exist_cast_var(HeadVar0, HeadVar, !VarSet),
-        svmap.det_insert(HeadVar, ExternalType, !VarTypes),
+        map.det_insert(HeadVar, ExternalType, !VarTypes),
         mode_get_insts(ModuleInfo, ArgMode, _, Inst),
         generate_cast_with_insts(exists_cast, HeadVar0, HeadVar, Inst, Inst,
             Context, ExtraGoal),
@@ -502,7 +501,7 @@ introduce_exists_casts_extra(ModuleInfo, Subn, ExistConstraints0,
         term.context_init(Context),
         make_new_exist_cast_var(Var0, Var, !VarSet),
         map.lookup(!.VarTypes, Var0, VarType),
-        svmap.det_insert(Var, VarType, !VarTypes),
+        map.det_insert(Var, VarType, !VarTypes),
         generate_cast(exists_cast, Var0, Var, Context, ExtraGoal),
         !:ExtraGoals = [ExtraGoal | !.ExtraGoals],
 

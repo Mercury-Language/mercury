@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008, 2010 The University of Melbourne.
+% Copyright (C) 1994-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -403,7 +403,7 @@ store_alloc_remove_nonlive([Var | Vars], LiveVars, !StoreMap) :-
     ( list.member(Var, LiveVars) ->
         true
     ;
-        map.delete(!.StoreMap, Var, !:StoreMap)
+        map.delete(Var, !StoreMap)
     ),
     store_alloc_remove_nonlive(Vars, LiveVars, !StoreMap).
 
@@ -422,7 +422,7 @@ store_alloc_handle_conflicts_and_nonreal([Var | Vars], !N, !SeenLocns,
     ->
         next_free_reg(!.SeenLocns, !N),
         FinalLocn = abs_reg(!.N),
-        map.det_update(!.StoreMap, Var, FinalLocn, !:StoreMap)
+        map.det_update(Var, FinalLocn, !StoreMap)
     ;
         FinalLocn = Locn
     ),
@@ -457,7 +457,7 @@ store_alloc_allocate_extras([Var | Vars], !.N, !.SeenLocns, StoreAllocInfo,
             next_free_reg(!.SeenLocns, !N),
             Locn = abs_reg(!.N)
         ),
-        map.det_insert(!.StoreMap, Var, Locn, !:StoreMap),
+        map.det_insert(Var, Locn, !StoreMap),
         set.insert(!.SeenLocns, Locn, !:SeenLocns)
     ),
     store_alloc_allocate_extras(Vars, !.N, !.SeenLocns, StoreAllocInfo,

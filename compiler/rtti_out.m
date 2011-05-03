@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2000-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -125,7 +125,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svmulti_map.
 :- import_module univ.
 
 %-----------------------------------------------------------------------------%
@@ -1424,7 +1423,7 @@ classify_rtti_datas_to_decl([RttiData | RttiDatas], !GroupMap) :-
         rtti_id_c_type(RttiId, CType, IsArray),
         rtti_id_linkage(RttiId, Linkage),
         Group = data_group(CType, IsArray, Linkage),
-        svmulti_map.set(Group, RttiId, !GroupMap)
+        multi_map.set(Group, RttiId, !GroupMap)
     ),
     classify_rtti_datas_to_decl(RttiDatas, !GroupMap).
 

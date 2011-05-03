@@ -556,14 +556,14 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
         !ProcInfo, !ModuleInfo),
 
     pred_info_get_procedures(!.PredInfo, ProcTable1),
-    map.det_update(ProcTable1, ProcId, !.ProcInfo, ProcTable),
+    map.det_update(ProcId, !.ProcInfo, ProcTable1, ProcTable),
     pred_info_set_procedures(ProcTable, !PredInfo),
 
     % The transformation doesn't pay attention to the purity of compound goals,
     % so recompute the purity here.
     repuritycheck_proc(!.ModuleInfo, proc(PredId, ProcId), !PredInfo),
     module_info_get_preds(!.ModuleInfo, PredTable1),
-    map.det_update(PredTable1, PredId, !.PredInfo, PredTable),
+    map.det_update(PredId, !.PredInfo, PredTable1, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -1591,7 +1591,7 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
     ;
         clone_pred_info(PredId, PredInfo0, HeadVars, NumberedOutputVars,
             GeneratorPredId, !TableInfo),
-        map.det_insert(!.GenMap, PredId, GeneratorPredId, !:GenMap)
+        map.det_insert(PredId, GeneratorPredId, !GenMap)
     ),
 
     % Even if the original goal doesn't use all of the headvars,
@@ -1833,11 +1833,11 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
     proc_info_set_eval_method(eval_minimal(own_stacks_generator), !ProcInfo),
 
     pred_info_get_procedures(!.PredInfo, ProcTable0),
-    map.det_insert(ProcTable0, ProcId, !.ProcInfo, ProcTable),
+    map.det_insert(ProcId, !.ProcInfo, ProcTable0, ProcTable),
     pred_info_set_procedures(ProcTable, !PredInfo),
 
     module_info_get_preds(ModuleInfo1, PredTable0),
-    map.det_update(PredTable0, PredId, !.PredInfo, PredTable),
+    map.det_update(PredId, !.PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, ModuleInfo1, ModuleInfo),
     !TableInfo ^ table_module_info := ModuleInfo.
 
@@ -3151,7 +3151,7 @@ generate_error_goal(TableInfo, Context, Msg, !VarSet, !VarTypes, Goal) :-
 
 generate_new_table_var(Name, Type, !VarSet, !VarTypes, Var) :-
     varset.new_named_var(!.VarSet, Name, Var, !:VarSet),
-    map.set(!.VarTypes, Var, Type, !:VarTypes).
+    map.set(Var, Type, !VarTypes).
 
 :- pred table_generate_call(string::in, determinism::in, list(prog_var)::in,
     purity::in, instmap_delta::in, module_info::in, term.context::in,
@@ -3368,8 +3368,8 @@ add_proc_table_struct(PredProcId, ProcTableStructInfo, ProcInfo,
         TableAttributes = default_memo_table_attributes
     ),
     TableStructInfo = table_struct_info(ProcTableStructInfo, TableAttributes),
-    map.det_insert(TableStructMap0, PredProcId, TableStructInfo,
-        TableStructMap),
+    map.det_insert(PredProcId, TableStructInfo,
+        TableStructMap0, TableStructMap),
     module_info_set_table_struct_map(TableStructMap, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%

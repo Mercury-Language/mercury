@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997, 2004-2006, 2010 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997, 2004-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -265,7 +265,7 @@ atsort_map_delete_this_element([], _, !Map).
 atsort_map_delete_this_element([Node | Nodes], Elt, !Map) :-
     ( map.search(!.Map, Node, List0) ->
         list.delete_all(List0, Elt, List1),
-        map.det_update(!.Map, Node, List1, !:Map)
+        map.det_update(Node, List1, !Map)
     ;
         true
     ),
@@ -276,7 +276,7 @@ atsort_map_delete_this_element([Node | Nodes], Elt, !Map) :-
 
 atsort_map_delete_all_nodes([], !Map).
 atsort_map_delete_all_nodes([Node | Nodes], !Map) :-
-    map.delete(!.Map, Node, !:Map),
+    map.delete(Node, !Map),
     atsort_map_delete_all_nodes(Nodes, !Map).
 
 %-----------------------------------------------------------------------------%

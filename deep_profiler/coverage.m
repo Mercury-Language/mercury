@@ -122,7 +122,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -1275,10 +1274,10 @@ add_coverage_point_to_map(CoveragePoint, !SolnsMap, !BranchMap) :-
     CoveragePoint = coverage_point(_, GoalPath, CPType),
     (
         CPType = cp_type_coverage_after,
-        svmap.det_insert(GoalPath, CoveragePoint, !SolnsMap)
+        map.det_insert(GoalPath, CoveragePoint, !SolnsMap)
     ;
         CPType = cp_type_branch_arm,
-        svmap.det_insert(GoalPath, CoveragePoint, !BranchMap)
+        map.det_insert(GoalPath, CoveragePoint, !BranchMap)
     ).
 
 %----------------------------------------------------------------------------%

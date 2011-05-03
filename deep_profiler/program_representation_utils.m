@@ -211,7 +211,6 @@
 :- import_module require.
 :- import_module std_util.
 :- import_module string.
-:- import_module svmap.
 
 %----------------------------------------------------------------------------%
 
@@ -728,7 +727,7 @@ label_goal(ContainingGoal, !Goal, !Counter, !Map) :-
     !.Goal = goal_rep(GoalExpr0, Detism, _),
     allocate(GoalIdNum, !Counter),
     GoalId = goal_id(GoalIdNum),
-    svmap.det_insert(GoalId, ContainingGoal, !Map),
+    map.det_insert(GoalId, ContainingGoal, !Map),
     (
         GoalExpr0 = conj_rep(Conjs0),
         map_foldl3(label_goal_wrapper((func(N) = step_conj(N)), GoalId),
@@ -820,8 +819,8 @@ add_head_var_inst_to_map(head_var_rep(VarRep, ModeRep), !InstMap) :-
 
 add_inst_mapping(VarRep, InstRep, DepVars, InstMap0, InstMap) :-
     InstMap0 = inst_map(VarToInst0, VarToDepVars0),
-    map.det_insert(VarToInst0, VarRep, InstRep, VarToInst),
-    map.det_insert(VarToDepVars0, VarRep, DepVars, VarToDepVars),
+    map.det_insert(VarRep, InstRep, VarToInst0, VarToInst),
+    map.det_insert(VarRep, DepVars, VarToDepVars0, VarToDepVars),
     InstMap = inst_map(VarToInst, VarToDepVars).
 
 merge_inst_map(InstMapA, DetismA, InstMapB, DetismB) = InstMap :-
@@ -899,8 +898,8 @@ inst_map_ground_var(DepVars0, Var, InstMap0, InstMap, !SeenDuplicateInstantiatio
         DepVars = set.union(DepVars0,  DepVarsFromIM),
         !:SeenDuplicateInstantiation = seen_duplicate_instantiation
     ),
-    map.set(VarToInst0, Var, NewInst, VarToInst),
-    map.set(VarToDepVars0, Var, DepVars, VarToDepVars),
+    map.set(Var, NewInst, VarToInst0, VarToInst),
+    map.set(Var, DepVars, VarToDepVars0, VarToDepVars),
     InstMap = inst_map(VarToInst, VarToDepVars).
 
 inst_map_get(inst_map(VarToInst, VarToDepVars), Var, Inst, DepVars) :-

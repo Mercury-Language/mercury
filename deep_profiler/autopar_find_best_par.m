@@ -61,7 +61,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 
 find_best_parallelisation(Info, Location, Goals, MaybeBestParallelisation,
         !Messages) :-
@@ -292,7 +291,7 @@ build_dependency_graph([PG | PGs], ConjNum, !VarDepMap, !Graph) :-
     % the conj num.
     InstVars = InstMapInfo ^ im_bound_vars,
     InsertForConjNum = ( pred(InstVar::in, MapI0::in, MapI::out) is det :-
-        svmap.det_insert(InstVar, ConjNum, MapI0, MapI)
+        map.det_insert(InstVar, ConjNum, MapI0, MapI)
     ),
     set.fold(InsertForConjNum, InstVars, !VarDepMap),
 

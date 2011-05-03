@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2010 The University of Melbourne.
+% Copyright (C) 2003-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -132,7 +132,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -1061,7 +1060,7 @@ get_new_var(Type, Prefix, Var, !Info) :-
     string.int_to_string(VarNum, VarNumStr),
     string.append(Prefix, VarNumStr, Name),
     varset.name_var(VarSet1, Var, Name, VarSet),
-    map.set(VarTypes0, Var, Type, VarTypes),
+    map.set(Var, Type, VarTypes0, VarTypes),
     !Info ^ spi_varset := VarSet,
     !Info ^ spi_vartypes := VarTypes.
 
@@ -1094,8 +1093,8 @@ record_known_type_ctor_info(Var, TypeCtorModule, TypeCtorName, TypeCtorArity,
         TypeCtorArity),
     TypeCtorMap0 = !.Info ^ spi_type_ctor_map,
     RevTypeCtorMap0 = !.Info ^ spi_rev_type_ctor_map,
-    map.set(TypeCtorMap0, TypeCtor, Var, TypeCtorMap),
-    map.set(RevTypeCtorMap0, Var, TypeCtor, RevTypeCtorMap),
+    map.set(TypeCtor, Var, TypeCtorMap0, TypeCtorMap),
+    map.set(Var, TypeCtor, RevTypeCtorMap0, RevTypeCtorMap),
     !Info ^ spi_type_ctor_map := TypeCtorMap,
     !Info ^ spi_rev_type_ctor_map := RevTypeCtorMap.
 
@@ -1132,8 +1131,8 @@ record_known_type_info(Var, TypeCtorInfoVar, ArgTypeInfoVars, !Info) :-
 record_type_info_var(Type, Var, !Info) :-
     RevTypeInfoMap0 = !.Info ^ spi_rev_type_info_map,
     TypeInfoMap0 = !.Info ^ spi_type_info_map,
-    map.set(TypeInfoMap0, Type, Var, TypeInfoMap),
-    ( map.insert(RevTypeInfoMap0, Var, Type, RevTypeInfoMap1) ->
+    map.set(Type, Var, TypeInfoMap0, TypeInfoMap),
+    ( map.insert(Var, Type, RevTypeInfoMap0, RevTypeInfoMap1) ->
         RevTypeInfoMap = RevTypeInfoMap1
     ;
         % This can happen because inlining XXX can leave a
@@ -1148,7 +1147,7 @@ record_type_info_var(Type, Var, !Info) :-
 
 record_known_size(Var, KnownSize, !Info) :-
     KnownSizeMap0 = !.Info ^ spi_known_size_map,
-    map.det_insert(KnownSizeMap0, Var, KnownSize, KnownSizeMap),
+    map.det_insert(Var, KnownSize, KnownSizeMap0, KnownSizeMap),
     !Info ^ spi_known_size_map := KnownSizeMap.
 
 :- pred record_typeinfo_in_type_info_varmap(rtti_varmaps::in, tvar::in,
@@ -1204,28 +1203,28 @@ update_rev_maps(!Info) :-
 :- pred count_appearances(assoc_list(T, prog_var)::in,
     map(prog_var, int)::in, map(prog_var, int)::out) is det.
 
-count_appearances([], VarCounts, VarCounts).
-count_appearances([_ - Var | AssocList], VarCounts0, VarCounts) :-
-    ( map.search(VarCounts0, Var, Count) ->
-        map.det_update(VarCounts0, Var, Count + 1, VarCounts1)
+count_appearances([], !VarCounts).
+count_appearances([_ - Var | AssocList], !VarCounts) :-
+    ( map.search(!.VarCounts, Var, Count) ->
+        map.det_update(Var, Count + 1, !VarCounts)
     ;
-        map.det_insert(VarCounts0, Var, 1, VarCounts1)
+        map.det_insert(Var, 1, !VarCounts)
     ),
-    count_appearances(AssocList, VarCounts1, VarCounts).
+    count_appearances(AssocList, !VarCounts).
 
 :- pred construct_rev_map(assoc_list(T, prog_var)::in,
     map(prog_var, int)::in,
     map(prog_var, T)::in, map(prog_var, T)::out) is det.
 
-construct_rev_map([], _, RevMap, RevMap).
-construct_rev_map([T - Var | AssocList], VarCounts, RevMap0, RevMap) :-
+construct_rev_map([], _, !RevMap).
+construct_rev_map([T - Var | AssocList], VarCounts, !RevMap) :-
     map.lookup(VarCounts, Var, Count),
     ( Count = 1 ->
-        map.det_insert(RevMap0, Var, T, RevMap1)
+        map.det_insert(Var, T, !RevMap)
     ;
-        RevMap1 = RevMap0
+        true
     ),
-    construct_rev_map(AssocList, VarCounts, RevMap1, RevMap).
+    construct_rev_map(AssocList, VarCounts, !RevMap).
 
 %---------------------------------------------------------------------------%
 
@@ -1255,7 +1254,7 @@ update_target_map(!Info) :-
 
 include_in_target_map(TypeInfoMap, Type - TypeInfoVar, !TargetTypeInfoMap) :-
     ( map.search(TypeInfoMap, Type, TypeInfoVar) ->
-        svmap.det_insert(Type, TypeInfoVar, !TargetTypeInfoMap)
+        map.det_insert(Type, TypeInfoVar, !TargetTypeInfoMap)
     ;
         true
     ).

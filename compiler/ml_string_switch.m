@@ -55,7 +55,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%
@@ -276,7 +275,7 @@ gen_tagged_case_code_for_string_switch(CodeModel, TaggedCase, CaseNum,
         MLDS_Context),
     CaseStatement = statement(ml_stmt_block([], [Comment, GoalStatement]),
         MLDS_Context),
-    svmap.det_insert(CaseNum, CaseStatement, !CodeMap).
+    map.det_insert(CaseNum, CaseStatement, !CodeMap).
 
 :- func gen_string_switch_case_comment(tagged_cons_id) = string.
 
@@ -329,10 +328,10 @@ ml_gen_string_hash_slot(Slot, StructType, HashSlotMap, RowInitializer,
         ( map.search(!.RevMap, CaseNum, OldEntry) ->
             OldEntry = hash_slots(OldFirstSlot, OldLaterSlots),
             NewEntry = hash_slots(OldFirstSlot, [Slot | OldLaterSlots]),
-            svmap.det_update(CaseNum, NewEntry, !RevMap)
+            map.det_update(CaseNum, NewEntry, !RevMap)
         ;
             NewEntry = hash_slots(Slot, []),
-            svmap.det_insert(CaseNum, NewEntry, !RevMap)
+            map.det_insert(CaseNum, NewEntry, !RevMap)
         )
     ;
         StringRval = ml_const(mlconst_null(ml_string_type)),

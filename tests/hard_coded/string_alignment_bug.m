@@ -59,7 +59,7 @@ gen_tiles(Xmax, Ymax, Tiles) :-
 		Pos = X - Y
 	),
 	AddTile = (pred(Pos::in, T0::in, T::out) is det :-
-		map__set(T0, Pos, tile(plain, []), T)
+		map__set(Pos, tile(plain, []), T0, T)
 	),
 	aggregate(AllPos, AddTile, Tiles0, Tiles).
 
@@ -137,7 +137,7 @@ set_global(Name, Value) -->
 		io__write_string("': "),
 		io__write(Value),
 		nl,
-		{ map__set(Map0, Name, UValue, Map) },
+		{ map__set(Name, UValue, Map0, Map) },
 		io__write_string("New global store:\n"),
 		io__write(Map),
 		nl,

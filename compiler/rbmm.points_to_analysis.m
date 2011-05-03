@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2010 The University of Melbourne.
+% Copyright (C) 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -66,7 +66,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -410,7 +409,7 @@ inter_analyse_goal_expr(Goal, GoalInfo, ModuleInfo, InfoTable,
         alpha_mapping_at_call_site(FormalParams, ActualParams, CalleeGraph,
             CallerGraph0, CallerGraph,
             map.init, CallerAlphaMappingAtCallSite),
-        svmap.set(CallSite, CallerAlphaMappingAtCallSite,
+        map.set(CallSite, CallerAlphaMappingAtCallSite,
             CallerAlphaMappings0, CallerAlphaMappings),
         CallerRptaInfo1 = rpta_info(CallerGraph, CallerAlphaMappings),
 
@@ -796,7 +795,7 @@ alpha_mapping_at_call_site([Xi | Xs], [Yi | Ys], CalleeGraph,
             rule_1(N_Y, !CallerGraph)
         )
     ;
-        svmap.set(N_Xi, N_Yi, !AlphaMap),
+        map.set(N_Xi, N_Yi, !AlphaMap),
 
         % If N_Xi's is_allocated then N_Yi is also allocated.
         % Otherwise leave N_Yi alone.
@@ -927,8 +926,8 @@ rule_6(Edge, CallSite, CalleeRptaInfo, CallerNode,
           else
             % Apply rule P6: when its conditions are satisfied
             % record alpha(CalleeM) = CallerM.
-            svmap.set(CalleeM, CallerM, AlphaAtCallSite0, AlphaAtCallSite1),
-            svmap.set(CallSite, AlphaAtCallSite1, !CallerAlphaMapping),
+            map.set(CalleeM, CallerM, AlphaAtCallSite0, AlphaAtCallSite1),
+            map.set(CallSite, AlphaAtCallSite1, !CallerAlphaMapping),
 
             % If CalleeM's is_allocated then CallerM is also allocated. 
             % Otherwise leave CallerM alone.
@@ -1012,8 +1011,8 @@ rule_8(Edge, CallSite, CalleeRptaInfo, CallerNode,
             edge_operator(RealCallerNode, CallerM, Label, !CallerGraph),
 
             map.lookup(!.CallerAlphaMapping, CallSite, AlphaAtCallSite0),
-            svmap.set(CalleeM, CallerM, AlphaAtCallSite0, AlphaAtCallSite),
-            svmap.set(CallSite, AlphaAtCallSite, !CallerAlphaMapping),
+            map.set(CalleeM, CallerM, AlphaAtCallSite0, AlphaAtCallSite),
+            map.set(CallSite, AlphaAtCallSite, !CallerAlphaMapping),
 
             rule_3(CallerM, !CallerGraph)
         )

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997,2002-2007, 2010 The University of Melbourne.
+% Copyright (C) 1997,2002-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -96,7 +96,6 @@
 :- import_module set.
 :- import_module solutions.
 :- import_module string.
-:- import_module svmap.
 :- import_module svset.
 :- import_module svvarset.
 
@@ -357,7 +356,7 @@ add_var(Var, Coeff, !Map) :-
         Acc1 = 0.0
     ),
     Acc = Acc1 + Coeff,
-    svmap.set(Var, Acc, !Map).
+    map.set(Var, Acc, !Map).
 
 :- pred expand_urs_vars_e(equation::in, map(var, pair(var))::in,
     equation::out) is det.
@@ -409,7 +408,7 @@ collect_vars(Eqns, Obj, Vars) :-
 
 number_vars([], _, !VarNums).
 number_vars([Var | Vars], N, !VarNums) :-
-    svmap.det_insert(Var, N, !VarNums),
+    map.det_insert(Var, N, !VarNums),
     number_vars(Vars, N + 1, !VarNums).
 
 :- pred insert_equations(equations::in, int::in, int::in, map(var, int)::in,
@@ -468,7 +467,7 @@ extract_obj_var(Tab, Var, !Map) :-
     ;
         extract_obj_var2(Tab, Var, Val)
     ),
-    svmap.set(Var, Val, !Map).
+    map.set(Var, Val, !Map).
 
 :- pred extract_obj_var2(tableau::in, var::in, float::out) is det.
 
@@ -734,9 +733,9 @@ set_index(J, K, R, !Tableau) :-
         true
     ),
     ( R = 0.0 ->
-        map.delete(Cells0, J - K, Cells)
+        map.delete(J - K, Cells0, Cells)
     ;
-        map.set(Cells0, J - K, R, Cells)
+        map.set(J - K, R, Cells0, Cells)
     ),
     !:Tableau = tableau(Rows, Cols, VarNums, URS, SR, SC, Cells).
 
@@ -826,7 +825,7 @@ lp_info_init(Varset0, URSVars, LPInfo) :-
         VP0 = VS0 - VM0,
         varset.new_var(VS0, V1, VS1),
         varset.new_var(VS1, V2, VS),
-        map.set(VM0, Orig, V1 - V2, VM),
+        map.set(Orig, V1 - V2, VM0, VM),
         VP = VS - VM
     ),
     map.init(URSMap0),

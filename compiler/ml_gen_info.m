@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -560,7 +560,7 @@ ml_gen_info_set_const_var(Var, GroundTerm, !Info) :-
     % and thus when generating code for a later branch, we may come across
     % an entry left by an earlier branch. Using map.set instead throws away
     % such obsolete entries.
-    map.set(ConstVarMap0, Var, GroundTerm, ConstVarMap),
+    map.set(Var, GroundTerm, ConstVarMap0, ConstVarMap),
     ml_gen_info_set_const_var_map(ConstVarMap, !Info).
 
 ml_gen_info_lookup_const_var(Info, Var, GroundTerm) :-
@@ -587,7 +587,7 @@ ml_gen_info_current_success_cont(Info, SuccCont) :-
 
 ml_gen_info_set_var_lval(Var, Lval, !Info) :-
     ml_gen_info_get_var_lvals(!.Info, VarLvals0),
-    map.set(VarLvals0, Var, Lval, VarLvals),
+    map.set(Var, Lval, VarLvals0, VarLvals),
     ml_gen_info_set_var_lvals(VarLvals, !Info).
 
 ml_gen_info_add_closure_wrapper_defn(ClosureWrapperDefn, !Info) :-

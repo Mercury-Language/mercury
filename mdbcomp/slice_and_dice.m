@@ -195,7 +195,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 %
@@ -233,11 +232,11 @@ slice_merge_proc_trace_counts(ProcLabelAndFile, ProcTraceCounts,
     ( map.search(!.SliceProcMap, ProcLabel, FoundProcSlice) ->
         map.foldl(slice_merge_path_port(FileName), ProcTraceCounts,
             FoundProcSlice, MergedProcSlice),
-        svmap.det_update(ProcLabel, MergedProcSlice, !SliceProcMap)
+        map.det_update(ProcLabel, MergedProcSlice, !SliceProcMap)
     ;
         map.foldl(slice_merge_path_port(FileName), ProcTraceCounts,
             map.init, MergedProcSlice),
-        svmap.det_insert(ProcLabel, MergedProcSlice, !SliceProcMap)
+        map.det_insert(ProcLabel, MergedProcSlice, !SliceProcMap)
     ).
 
 :- pred slice_merge_path_port(string::in, path_port::in, line_no_and_count::in,
@@ -253,7 +252,7 @@ slice_merge_path_port(FileName, PathPort, LineNoAndCount, !ProcSlice) :-
         LineNoAndCount = line_no_and_count(LineNumber, ExecCount, NumTests),
         SliceExecCount = slice_exec_count(FileName, LineNumber, ExecCount,
             NumTests),
-        svmap.det_insert(PathPort, SliceExecCount, !ProcSlice)
+        map.det_insert(PathPort, SliceExecCount, !ProcSlice)
     ).
 
 :- pred slice_add_trace_count(line_no_and_count::in,
@@ -338,11 +337,11 @@ dice_merge_proc_trace_counts(Kind, ProcLabelAndFile, ProcTraceCounts,
     ( map.search(!.DiceProcMap, ProcLabel, FoundProcDice) ->
         map.foldl(dice_merge_path_port(FileName, Kind), ProcTraceCounts,
             FoundProcDice, MergedProcDice),
-        svmap.det_update(ProcLabel, MergedProcDice, !DiceProcMap)
+        map.det_update(ProcLabel, MergedProcDice, !DiceProcMap)
     ;
         map.foldl(dice_merge_path_port(FileName, Kind), ProcTraceCounts,
             map.init, MergedProcDice),
-        svmap.det_insert(ProcLabel, MergedProcDice, !DiceProcMap)
+        map.det_insert(ProcLabel, MergedProcDice, !DiceProcMap)
     ).
 
 :- pred dice_merge_path_port(string::in, trace_counts_kind::in, path_port::in,
@@ -365,7 +364,7 @@ dice_merge_path_port(FileName, Kind, PathPort, LineNoAndCount, !ProcDice) :-
             InitCount = dice_exec_count(FileName, LineNumber, 0, 0,
                 ExecCount, NumTests)
         ),
-        svmap.det_insert(PathPort, InitCount, !ProcDice)
+        map.det_insert(PathPort, InitCount, !ProcDice)
     ).
 
 :- pred dice_add_trace_count(trace_counts_kind::in, line_no_and_count::in,

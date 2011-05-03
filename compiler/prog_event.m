@@ -74,8 +74,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svbimap.
-:- import_module svmap.
 :- import_module svset.
 :- import_module term.
 
@@ -404,7 +402,7 @@ convert_term_to_spec_map(FileName, SpecTerm, !EventSpecMap, !ErrorSpecs) :-
             simple_msg(context(FileName, OldLineNumber), [always(Pieces2)])]),
         !:ErrorSpecs = [DuplErrorSpec | !.ErrorSpecs]
     ;
-        svmap.det_insert(EventName, EventSpec, !EventSpecMap)
+        map.det_insert(EventName, EventSpec, !EventSpecMap)
     ).
 
 :- pred keep_only_synth_attr_nums(attr_name_map::in, list(string)::in,
@@ -469,10 +467,10 @@ build_plain_type_map(EventName, FileName, EventLineNumber,
         !AttrTypeMap, !KeyMap, !DepRel, !ErrorSpecs) :-
     AttrTerm = event_attr_term(AttrName, AttrLineNumber, AttrTypeTerm),
     AttrInfo = attr_info(AttrNum, AttrName, AttrLineNumber, AttrTypeTerm),
-    svmap.det_insert(AttrNum, AttrInfo, !AttrNumMap),
+    map.det_insert(AttrNum, AttrInfo, !AttrNumMap),
     digraph.add_vertex(AttrName, AttrKey, !DepRel),
-    ( svbimap.insert(AttrName, AttrKey, !KeyMap) ->
-        svmap.det_insert(AttrName, AttrInfo, !AttrNameMap)
+    ( bimap.insert(AttrName, AttrKey, !KeyMap) ->
+        map.det_insert(AttrName, AttrInfo, !AttrNameMap)
     ;
         Pieces = [words("Event"), quote(EventName),
             words("has more than one attribute named"),
@@ -491,7 +489,7 @@ build_plain_type_map(EventName, FileName, EventLineNumber,
             % The error message has already been generated above.
             true
         ;
-            svmap.det_insert(AttrName, Type, !AttrTypeMap)
+            map.det_insert(AttrName, Type, !AttrTypeMap)
         )
     ;
         AttrTypeTerm = event_attr_type_function(_)
@@ -522,7 +520,7 @@ build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
             AttrErrorSpecs = [_ | _],
             % We still record the fact that FuncAttrName is used, to prevent
             % us from generating error messages saying that it is unused.
-            svmap.det_insert(FuncAttrName, void_type, !AttrTypeMap),
+            map.det_insert(FuncAttrName, void_type, !AttrTypeMap),
             !:ErrorSpecs = AttrErrorSpecs ++ !.ErrorSpecs
         ;
             AttrErrorSpecs = [],
@@ -564,7 +562,7 @@ build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
                             !:ErrorSpecs = [ErrorSpec | !.ErrorSpecs]
                         )
                     ;
-                        svmap.det_insert(FuncAttrName, FuncAttrType,
+                        map.det_insert(FuncAttrName, FuncAttrType,
                             !AttrTypeMap)
                     )
                 ;

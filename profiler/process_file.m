@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997,2000, 2004-2006 The University of Melbourne.
+% Copyright (C) 1995-1997,2000, 2004-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -45,7 +45,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%
@@ -136,15 +135,15 @@ process_addr_decl_2(!AddrDecl, !ProfNodeMap, !IO) :-
         MaybeLabelAddr = yes(LabelAddr),
         read_label_name(LabelName, !IO),
         ProfNode = prof_node_init(LabelName),
-        map.det_insert(!.AddrDecl, LabelName, LabelAddr, !:AddrDecl),
+        map.det_insert(LabelName, LabelAddr, !AddrDecl),
 
         % Labels with different names but the same addresses.
-        ( svmap.insert(LabelAddr, ProfNode, !ProfNodeMap) ->
+        ( map.insert(LabelAddr, ProfNode, !ProfNodeMap) ->
             true
         ;
             lookup_addr(LabelAddr, ProfNode0, !AddrDecl, !ProfNodeMap),
             prof_node_concat_to_name_list(LabelName, ProfNode0, NewProfNode),
-            svmap.det_update(LabelAddr, NewProfNode, !ProfNodeMap)
+            map.det_update(LabelAddr, NewProfNode, !ProfNodeMap)
         ),
         process_addr_decl_2(!AddrDecl, !ProfNodeMap, !IO)
     ;
@@ -207,7 +206,7 @@ process_addr_2(!TotalCounts, !ProfNodeMap, !IO) :-
             prof_node_get_initial_counts(ProfNode0, InitCount0),
             InitCount = InitCount0 + Count,
             prof_node_set_initial_counts(InitCount, ProfNode0, ProfNode),
-            svmap.set(LabelAddr, ProfNode, !ProfNodeMap),
+            map.set(LabelAddr, ProfNode, !ProfNodeMap),
             !:TotalCounts = !.TotalCounts + Count
         ;
             io.format("\nWarning address %d not found!  " ++
@@ -269,7 +268,7 @@ process_addr_pair_2(Dynamic, !DynamicCallGraph, !ProfNodeMap, !AddrDecl,
         % Insert child information.
         prof_node_concat_to_child(CalleeName, Count, CallerProfNode0,
             CallerProfNode),
-        svmap.set(CallerAddr, CallerProfNode, !ProfNodeMap),
+        map.set(CallerAddr, CallerProfNode, !ProfNodeMap),
 
         % Update the total calls field if not self recursive.
         ( CalleeAddr \= CallerAddr ->
@@ -284,7 +283,7 @@ process_addr_pair_2(Dynamic, !DynamicCallGraph, !ProfNodeMap, !AddrDecl,
         ),
 
         % Insert parent information.
-        svmap.set(CalleeAddr, CalleeProfNode, !ProfNodeMap),
+        map.set(CalleeAddr, CalleeProfNode, !ProfNodeMap),
 
         % Add edge to call graph if generating dynamic call graph.
         (
@@ -336,7 +335,7 @@ process_library_callgraph_2(!LibATSort, !LibPredMap, !IO) :-
     maybe_read_label_name(MaybeLabelName, !IO),
     (
         MaybeLabelName = yes(LabelName),
-        map.det_insert(!.LibPredMap, LabelName, unit, !:LibPredMap),
+        map.det_insert(LabelName, unit, !LibPredMap),
         list.cons(LabelName, !LibATSort),
         process_library_callgraph_2(!LibATSort, !LibPredMap, !IO)
     ;
@@ -358,8 +357,8 @@ lookup_addr(Addr, ProfNode, !AddrDeclMap, !ProfNodeMap) :-
     ;
         Str = string.format("unknown__%d", [i(Addr)]),
         ProfNode = prof_node_init(Str),
-        svmap.det_insert(Addr, ProfNode, !ProfNodeMap),
-        svmap.det_insert(Str, Addr, !AddrDeclMap)
+        map.det_insert(Addr, ProfNode, !ProfNodeMap),
+        map.det_insert(Str, Addr, !AddrDeclMap)
     ).
 
 %-----------------------------------------------------------------------------%

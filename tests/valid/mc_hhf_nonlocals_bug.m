@@ -56,6 +56,6 @@ mc_hhf_nonlocals_bug__insert_edge(!.G, Start, End, Info, Arc, !:G) :-
     !:G = !.G ^ arc_supply := AS,
 
     Arcs0 = !.G ^ arc_map,
-    map__insert(Arcs0, Arc, arc_info(Start, End, Info), Arcs),
+    map__insert(Arc, arc_info(Start, End, Info), Arcs0, Arcs),
     !:G = !.G ^ arc_map := Arcs.
 

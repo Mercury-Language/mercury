@@ -135,7 +135,7 @@ simplify(eqn(Coeffs0, Op, Const), eqn(Coeffs, Op, Const)) :-
 			Acc1 = 0.0
 		),
 		Acc = Acc1 + Coeff,
-		map__set(Map0, Var, Acc, Map)
+		map__set(Var, Acc, Map0, Map)
 	),
 	list__foldl(AddCoeff, Coeffs0, CoeffMap0, CoeffMap),
 	map__to_assoc_list(CoeffMap, Coeffs).
@@ -163,7 +163,7 @@ collect_vars(Eqns, Obj, Vars) :-
 
 number_vars([], _, VarNumbers, VarNumbers).
 number_vars([Var|Vars], N, VarNumbers0, VarNumbers) :-
-	map__det_insert(VarNumbers0, Var, N, VarNumbers1),
+	map__det_insert(Var, N, VarNumbers0, VarNumbers1),
 	N1 = N + 1,
 	number_vars(Vars, N1, VarNumbers1, VarNumbers).
 
@@ -208,7 +208,7 @@ objvarval(Tableau, VarNumbers, N, M, Var, ObjVarVals0, ObjVarVals) :-
 	(
 		ObjVarValList = [ObjVarVal|_]
 	->
-		map__set(ObjVarVals0, Var, ObjVarVal, ObjVarVals)
+		map__set(Var, ObjVarVal, ObjVarVals0, ObjVarVals)
 	;
 		error("inconsistent simplex")
 	).

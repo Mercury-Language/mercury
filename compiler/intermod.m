@@ -262,7 +262,7 @@ gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
             clauses_info_set_clauses_rep(ClausesRep, ItemNumbers0,
                 ClausesInfo0, ClausesInfo),
             pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo),
-            map.det_update(PredTable0, PredId, PredInfo, PredTable),
+            map.det_update(PredId, PredInfo, PredTable0, PredTable),
             module_info_set_preds(PredTable, ModuleInfo0, ModuleInfo),
             intermod_info_get_preds(!.Info, Preds0),
             ( pred_info_pragma_goal_type(PredInfo) ->
@@ -1928,7 +1928,7 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
     ->
         % Don't strip the headvar unifications if one of the
         % headvars appears twice. This should probably never happen.
-        map.insert(!.HeadVarMap, LHSVar, RHSTerm, !:HeadVarMap),
+        map.insert(LHSVar, RHSTerm, !HeadVarMap),
         RevGoals1 = RevGoals0
     ;
         RevGoals1 = [Goal | RevGoals0]
@@ -2347,7 +2347,7 @@ set_list_of_preds_exported_2([PredId | PredIds], !Preds) :-
             NewStatus = status_opt_exported
         ),
         pred_info_set_import_status(NewStatus, PredInfo0, PredInfo),
-        map.det_update(!.Preds, PredId, PredInfo, !:Preds)
+        map.det_update(PredId, PredInfo, !Preds)
     ;
         true
     ),

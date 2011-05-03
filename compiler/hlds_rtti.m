@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1996-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -340,7 +340,6 @@
 :- import_module require.
 :- import_module set_tree234.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -557,7 +556,7 @@ filter_constraint_map([VarConstraint | VarConstraints], VarUses,
         !:RevVarConstraints = [VarConstraint | !.RevVarConstraints]
     ;
         Used = no,
-        map.delete(!.TCIMap, Constraint, !:TCIMap)
+        map.delete(Constraint, !TCIMap)
     ),
     filter_constraint_map(VarConstraints, VarUses,
         !RevVarConstraints, !TCIMap).
@@ -588,13 +587,13 @@ rtti_varmaps_var_info(RttiVarMaps, Var, VarInfo) :-
 
 rtti_det_insert_type_info_locn(TVar, Locn, !RttiVarMaps) :-
     Map0 = !.RttiVarMaps ^ rv_ti_varmap,
-    map.det_insert(Map0, TVar, Locn, Map),
+    map.det_insert(TVar, Locn, Map0, Map),
     !RttiVarMaps ^ rv_ti_varmap := Map,
     maybe_check_type_info_var(Locn, TVar, !RttiVarMaps).
 
 rtti_set_type_info_locn(TVar, Locn, !RttiVarMaps) :-
     Map0 = !.RttiVarMaps ^ rv_ti_varmap,
-    map.set(Map0, TVar, Locn, Map),
+    map.set(TVar, Locn, Map0, Map),
     !:RttiVarMaps = !.RttiVarMaps ^ rv_ti_varmap := Map,
     maybe_check_type_info_var(Locn, TVar, !RttiVarMaps).
 
@@ -615,18 +614,18 @@ maybe_check_type_info_var(typeclass_info(_, _), _, !RttiVarMaps).
 
 rtti_det_insert_typeclass_info_var(Constraint, ProgVar, !RttiVarMaps) :-
     Map0 = !.RttiVarMaps ^ rv_tci_constraint_map,
-    map.det_insert(Map0, ProgVar, Constraint, Map),
+    map.det_insert(ProgVar, Constraint, Map0, Map),
     !RttiVarMaps ^ rv_tci_constraint_map := Map.
 
 rtti_set_typeclass_info_var(Constraint, ProgVar, !RttiVarMaps) :-
     Map0 = !.RttiVarMaps ^ rv_tci_constraint_map,
-    map.set(Map0, ProgVar, Constraint, Map),
+    map.set(ProgVar, Constraint, Map0, Map),
     !RttiVarMaps ^ rv_tci_constraint_map := Map.
 
 rtti_reuse_typeclass_info_var(ProgVar, !RttiVarMaps) :-
     ( map.search(!.RttiVarMaps ^ rv_tci_constraint_map, ProgVar, Constraint) ->
         Map0 = !.RttiVarMaps ^ rv_tci_varmap,
-        map.set(Map0, Constraint, ProgVar, Map),
+        map.set(Constraint, ProgVar, Map0, Map),
         !RttiVarMaps ^ rv_tci_varmap := Map
     ;
         unexpected(this_file,
@@ -635,12 +634,12 @@ rtti_reuse_typeclass_info_var(ProgVar, !RttiVarMaps) :-
 
 rtti_det_insert_type_info_type(ProgVar, Type, !RttiVarMaps) :-
     Map0 = !.RttiVarMaps ^ rv_ti_type_map,
-    map.det_insert(Map0, ProgVar, Type, Map),
+    map.det_insert(ProgVar, Type, Map0, Map),
     !RttiVarMaps ^ rv_ti_type_map := Map.
 
 rtti_set_type_info_type(ProgVar, Type, !RttiVarMaps) :-
     Map0 = !.RttiVarMaps ^ rv_ti_type_map,
-    map.set(Map0, ProgVar, Type, Map),
+    map.set(ProgVar, Type, Map0, Map),
     !RttiVarMaps ^ rv_ti_type_map := Map.
 
 rtti_var_info_duplicate(Var, NewVar, !RttiVarMaps) :-
@@ -735,7 +734,7 @@ apply_substs_to_tci_map(TRenaming, TSubst, Subst, Constraint0, Var0, !Map) :-
         Constraint1),
     apply_rec_subst_to_prog_constraint(TSubst, Constraint1, Constraint),
     apply_subst_to_prog_var(Subst, Var0, Var),
-    svmap.set(Constraint, Var, !Map).
+    map.set(Constraint, Var, !Map).
 
     % Update a map entry from tvar to type_info_locn, using the type renaming
     % and substitution to rename tvars and a variable substitution to rename
@@ -762,7 +761,7 @@ apply_substs_to_ti_map(TRenaming, TSubst, Subst, TVar, Locn, !Map) :-
         NewType = type_variable(NewTVar, _),
         % Don't abort if two old type variables map to the same new type
         % variable.
-        svmap.set(NewTVar, NewLocn, !Map)
+        map.set(NewTVar, NewLocn, !Map)
     ;
         ( NewType = builtin_type(_)
         ; NewType = defined_type(_, _, _)
@@ -791,7 +790,7 @@ apply_substs_to_type_map(TRenaming, TSubst, Subst, Var0, Type0, !Map) :-
                 [s(string(Type)), s(string(ExistingType))]))
         )
     ;
-        svmap.det_insert(Var, Type, !Map)
+        map.det_insert(Var, Type, !Map)
     ).
 
 :- pred apply_substs_to_constraint_map(tvar_renaming::in, tsubst::in,
@@ -812,7 +811,7 @@ apply_substs_to_constraint_map(TRenaming, TSubst, Subst, Var0, Constraint0,
             unexpected(this_file, "inconsistent typeclass_infos")
         )
     ;
-        svmap.det_insert(Var, Constraint, !Map)
+        map.det_insert(Var, Constraint, !Map)
     ).
 
 rtti_varmaps_transform_types(Pred, !RttiVarMaps) :-
@@ -837,7 +836,7 @@ apply_constraint_key_transformation(Pred, Constraint0, Var, !Map) :-
     Constraint0 = constraint(Name, Args0),
     list.map(Pred, Args0, Args),
     Constraint = constraint(Name, Args),
-    svmap.set(Constraint, Var, !Map).
+    map.set(Constraint, Var, !Map).
 
 :- pred apply_constraint_value_transformation(
     pred(mer_type, mer_type)::in(pred(in, out) is det),

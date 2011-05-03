@@ -453,7 +453,6 @@
 :- import_module require.
 :- import_module solutions.
 :- import_module string.
-:- import_module svmap.
 :- import_module svset.
 :- import_module svvarset.
 :- import_module varset.
@@ -485,7 +484,7 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarSet, !VarTypes,
         !RevUnifies, !RevNewVars, !Renaming) :-
     svvarset.new_var(NewVar, !VarSet),
     map.lookup(!.VarTypes, OrigVar, Type),
-    svmap.det_insert(NewVar, Type, !VarTypes),
+    map.det_insert(NewVar, Type, !VarTypes),
     ( instmap_delta_search_var(InstMapDelta, OrigVar, DeltaInst) ->
         NewInst = DeltaInst
     ;
@@ -501,7 +500,7 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarSet, !VarTypes,
         term.context_init, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo),
     !:RevUnifies = [Goal | !.RevUnifies],
-    svmap.det_insert(OrigVar, NewVar, !Renaming),
+    map.det_insert(OrigVar, NewVar, !Renaming),
     !:RevNewVars = [NewVar | !.RevNewVars],
     create_renaming_2(OrigVars, InstMapDelta, !VarSet, !VarTypes,
         !RevUnifies, !RevNewVars, !Renaming).
@@ -519,9 +518,9 @@ clone_variable(Var, OldVarNames, OldVarTypes, !VarSet, !VarTypes, !Renaming,
         ;
             true
         ),
-        svmap.det_insert(Var, CloneVar, !Renaming),
+        map.det_insert(Var, CloneVar, !Renaming),
         ( map.search(OldVarTypes, Var, VarType) ->
-            svmap.set(CloneVar, VarType, !VarTypes)
+            map.set(CloneVar, VarType, !VarTypes)
         ;
             % XXX This should never happen after typechecking.
             true
@@ -1349,7 +1348,7 @@ case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct, !VarSet, !VarTypes,
     svvarset.new_vars(ConsArity, ArgVars, !VarSet),
     map.lookup(!.VarTypes, Var, VarType),
     type_util.get_cons_id_arg_types(!.ModuleInfo, VarType, ConsId, ArgTypes),
-    svmap.det_insert_from_corresponding_lists(ArgVars, ArgTypes, !VarTypes),
+    map.det_insert_from_corresponding_lists(ArgVars, ArgTypes, !VarTypes),
     instmap_lookup_var(InstMap, Var, Inst0),
     (
         inst_expand(!.ModuleInfo, Inst0, Inst1),

@@ -60,7 +60,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -457,7 +456,7 @@ ml_generate_bit_vec_2([Tag - _ | Rest], Start, WordBits, !BitMap) :-
     ;
         X1 = (1 << Offset)
     ),
-    svmap.set(Word, X1, !BitMap),
+    map.set(Word, X1, !BitMap),
     ml_generate_bit_vec_2(Rest, Start, WordBits, !BitMap).
 
 :- pred ml_generate_bit_vec_initializers(list(pair(int))::in, int::in,
@@ -697,7 +696,7 @@ ml_generate_constants_for_lookup_switch(CodeModel, OutVars, ArmNonLocals,
 ml_record_lookup_for_tagged_cons_id(SolnConsts, TaggedConsId, !IndexMap) :-
     TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
     ( ConsTag = int_tag(Index) ->
-        svmap.det_insert(Index, SolnConsts, !IndexMap)
+        map.det_insert(Index, SolnConsts, !IndexMap)
     ;
         unexpected(this_file,
             "ml_record_lookup_for_tagged_cons_id: not int_tag")

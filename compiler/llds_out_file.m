@@ -98,7 +98,6 @@
 :- import_module set.
 :- import_module set_tree234.
 :- import_module string.
-:- import_module svmulti_map.
 
 %----------------------------------------------------------------------------%
 
@@ -796,7 +795,7 @@ group_decl_c_labels([], !InternalLabelMap).
 group_decl_c_labels([Label | Labels], !InternalLabelMap) :-
     (
         Label = internal_label(LabelNum, ProcLabel),
-        svmulti_map.set(ProcLabel, LabelNum, !InternalLabelMap)
+        multi_map.set(ProcLabel, LabelNum, !InternalLabelMap)
     ;
         Label = entry_label(_, _),
         unexpected(this_file, "group_decl_c_labels: entry label")
@@ -923,19 +922,19 @@ group_init_c_labels(InternalLabelToLayoutMap, [Label | Labels],
                 Pair = {LabelNum, SlotNum},
                 (
                     Vars = label_has_no_var_info,
-                    svmulti_map.set(ProcLabel, Pair, !NoVarLayoutMap)
+                    multi_map.set(ProcLabel, Pair, !NoVarLayoutMap)
                 ;
                     Vars = label_has_short_var_info,
-                    svmulti_map.set(ProcLabel, Pair, !SVarLayoutMap)
+                    multi_map.set(ProcLabel, Pair, !SVarLayoutMap)
                 ;
                     Vars = label_has_long_var_info,
-                    svmulti_map.set(ProcLabel, Pair, !LVarLayoutMap)
+                    multi_map.set(ProcLabel, Pair, !LVarLayoutMap)
                 )
             ;
                 unexpected(this_file, "group_init_c_labels: bad slot type")
             )
         ;
-            svmulti_map.set(ProcLabel, LabelNum, !NoLayoutMap)
+            multi_map.set(ProcLabel, LabelNum, !NoLayoutMap)
         )
     ;
         Label = entry_label(_, _),

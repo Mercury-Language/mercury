@@ -421,7 +421,6 @@
 :- import_module string.
 :- import_module term.
 :- import_module varset.
-:- import_module svmap.
 :- import_module svvarset.
 
 %-----------------------------------------------------------------------------%
@@ -507,7 +506,7 @@ fixup_pred_polymorphism(PredId, !ModuleInfo) :-
         PredInfo = PredInfo1
     ),
 
-    map.det_update(PredTable0, PredId, PredInfo, PredTable),
+    map.det_update(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
 :- pred polymorphism_introduce_exists_casts_pred(module_info::in,
@@ -638,7 +637,7 @@ polymorphism_process_proc_in_table(PredInfo, ClausesInfo, ExtraArgModes,
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
     polymorphism_process_proc(PredInfo, ClausesInfo, ExtraArgModes, ProcId,
         ProcInfo0, ProcInfo),
-    svmap.det_update(ProcId, ProcInfo, !ProcTable).
+    map.det_update(ProcId, ProcInfo, !ProcTable).
 
 :- pred polymorphism_process_proc(pred_info::in, clauses_info::in,
     poly_arg_vector(mer_mode)::in, proc_id::in, proc_info::in, proc_info::out)
@@ -1701,7 +1700,7 @@ lambda_modes_and_det(ProcInfo, LambdaVars, LambdaModes, LambdaDet) :-
 create_fresh_vars([], [], !VarSet, !VarTypes).
 create_fresh_vars([Type | Types], [Var | Vars], !VarSet, !VarTypes) :-
     varset.new_var(!.VarSet, Var, !:VarSet),
-    svmap.det_insert(Var, Type, !VarTypes),
+    map.det_insert(Var, Type, !VarTypes),
     create_fresh_vars(Types, Vars, !VarSet, !VarTypes).
 
 %-----------------------------------------------------------------------------%
@@ -2641,11 +2640,11 @@ make_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
                     cord.singleton(TypeClassInfoGoal),
                 poly_info_get_num_reuses(!.Info, NumReuses),
                 poly_info_set_num_reuses(NumReuses + 1, !Info),
-                svmap.det_insert(ArgVars, TypeClassInfoVar, ArgsMap0, ArgsMap),
+                map.det_insert(ArgVars, TypeClassInfoVar, ArgsMap0, ArgsMap),
                 Entry = typeclass_info_map_entry(BaseVar, ArgsMap),
-                svmap.det_update(ConstraintArgTypes, Entry,
+                map.det_update(ConstraintArgTypes, Entry,
                     ClassNameMap0, ClassNameMap),
-                svmap.det_update(ConstraintClassName, ClassNameMap,
+                map.det_update(ConstraintClassName, ClassNameMap,
                     TypeClassInfoMap0, TypeClassInfoMap),
                 poly_info_set_typeclass_info_map(TypeClassInfoMap, !Info)
             )
@@ -2656,11 +2655,11 @@ make_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
                 TypeClassInfoVar, TypeClassInfoGoal, !Info),
             Goals = SuperClassGoals ++
                 cord.from_list([BaseGoal, TypeClassInfoGoal]),
-            svmap.det_insert(ArgVars, TypeClassInfoVar, map.init, ArgsMap),
+            map.det_insert(ArgVars, TypeClassInfoVar, map.init, ArgsMap),
             Entry = typeclass_info_map_entry(BaseVar, ArgsMap),
-            svmap.det_insert(ConstraintArgTypes, Entry,
+            map.det_insert(ConstraintArgTypes, Entry,
                 ClassNameMap0, ClassNameMap),
-            svmap.det_update(ConstraintClassName, ClassNameMap,
+            map.det_update(ConstraintClassName, ClassNameMap,
                 TypeClassInfoMap0, TypeClassInfoMap),
             poly_info_set_typeclass_info_map(TypeClassInfoMap, !Info)
         )
@@ -2671,11 +2670,11 @@ make_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
             TypeClassInfoVar, TypeClassInfoGoal, !Info),
         Goals = SuperClassGoals ++
             cord.from_list([BaseGoal, TypeClassInfoGoal]),
-        svmap.det_insert(ArgVars, TypeClassInfoVar, map.init, ArgsMap),
+        map.det_insert(ArgVars, TypeClassInfoVar, map.init, ArgsMap),
         Entry = typeclass_info_map_entry(BaseVar, ArgsMap),
-        svmap.det_insert(ConstraintArgTypes, Entry,
+        map.det_insert(ConstraintArgTypes, Entry,
             map.init, ClassNameMap),
-        svmap.det_insert(ConstraintClassName, ClassNameMap,
+        map.det_insert(ConstraintClassName, ClassNameMap,
             TypeClassInfoMap0, TypeClassInfoMap),
         poly_info_set_typeclass_info_map(TypeClassInfoMap, !Info)
     ).
@@ -2884,14 +2883,14 @@ polymorphism_make_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
         % could have added relevant new entries to it.
         poly_info_get_type_info_var_map(!.Info, TypeInfoVarMap1),
         ( map.search(TypeInfoVarMap1, TypeCtor, TypeCtorVarMap1) ->
-            svmap.det_insert(TypeArgs, TypeInfoVar,
+            map.det_insert(TypeArgs, TypeInfoVar,
                 TypeCtorVarMap1, TypeCtorVarMap),
-            svmap.det_update(TypeCtor, TypeCtorVarMap,
+            map.det_update(TypeCtor, TypeCtorVarMap,
                 TypeInfoVarMap1, TypeInfoVarMap)
         ;
-            svmap.det_insert(TypeArgs, TypeInfoVar,
+            map.det_insert(TypeArgs, TypeInfoVar,
                 map.init, TypeCtorVarMap),
-            svmap.det_insert(TypeCtor, TypeCtorVarMap,
+            map.det_insert(TypeCtor, TypeCtorVarMap,
                 TypeInfoVarMap1, TypeInfoVarMap)
         ),
         poly_info_set_type_info_var_map(TypeInfoVarMap, !Info)
@@ -2926,7 +2925,7 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
             TypeCtorGoal, ModuleInfo, VarSet0, VarSet1, VarTypes0, VarTypes1,
             RttiVarMaps0, RttiVarMaps1),
         TypeCtorGoals = [TypeCtorGoal],
-        svmap.det_insert(TypeCtor, TypeCtorVar,
+        map.det_insert(TypeCtor, TypeCtorVar,
             TypeCtorInfoVarMap0, TypeCtorInfoVarMap),
         poly_info_set_type_ctor_info_var_map(TypeCtorInfoVarMap, !Info)
     ),
@@ -2999,7 +2998,7 @@ maybe_init_second_cell(Type, TypeCtorVar, TypeCtorIsVarArity, ArgTypeInfoVars,
             % we need to adjust its type. Since type_ctor_info_const cons_ids
             % are handled specially, this should not cause problems.
             TypeInfoType = type_info_type,
-            map.det_update(!.VarTypes, TypeCtorVar, TypeInfoType, !:VarTypes),
+            map.det_update(TypeCtorVar, TypeInfoType, !VarTypes),
             Var = TypeCtorVar,
             ExtraGoals = ArgTypeInfoGoals ++ ExtraGoals0
 
@@ -3209,7 +3208,7 @@ new_type_info_var_raw(Type, Kind, Var, !VarSet, !VarTypes, !RttiVarMaps) :-
     ),
     Name = Prefix ++ VarNumStr,
     svvarset.name_var(Var, Name, !VarSet),
-    svmap.det_insert(Var, type_info_type, !VarTypes).
+    map.det_insert(Var, type_info_type, !VarTypes).
 
 %---------------------------------------------------------------------------%
 
@@ -3396,7 +3395,7 @@ new_typeclass_info_var(Constraint, VarKind, Var, !Info) :-
     ),
     varset.name_var(VarSet1, Var, Name, VarSet),
     build_typeclass_info_type(Constraint, DictionaryType),
-    map.set(VarTypes0, Var, DictionaryType, VarTypes),
+    map.set(Var, DictionaryType, VarTypes0, VarTypes),
     rtti_det_insert_typeclass_info_var(Constraint, Var,
         RttiVarMaps0, RttiVarMaps),
 
@@ -3591,7 +3590,7 @@ expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
     BodyGoal = hlds_goal(BodyGoalExpr, GoalInfo),
 
     proc_info_set_goal(BodyGoal, ProcInfo0, ProcInfo),
-    map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+    map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
     pred_info_set_procedures(ProcTable, PredInfo0, PredInfo1),
     ( pred_info_is_imported(PredInfo1) ->
         pred_info_set_import_status(status_opt_imported, PredInfo1, PredInfo)
@@ -3599,7 +3598,7 @@ expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
         PredInfo = PredInfo1
     ),
 
-    map.det_update(PredTable0, PredId, PredInfo, PredTable),
+    map.det_update(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo),
 
     !:ProcNum = !.ProcNum + 1.

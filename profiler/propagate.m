@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 2003-2006 The University of Melbourne.
+% Copyright (C) 1995-1997, 2003-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -48,8 +48,6 @@
 :- import_module require.
 :- import_module sparse_bitset.
 :- import_module string.
-:- import_module svmap.
-:- import_module svmulti_map.
 
 %-----------------------------------------------------------------------------%
 
@@ -138,8 +136,8 @@ identify_cycles_2([Key | Keys0], CycleNum0, InvG, Visit0, !ATSort,
 
 add_to_cycle_map([], _, !PredToCycleMap, !CycleToPredsMap).
 add_to_cycle_map([Pred | Preds], Cycle, !PredToCycleMap, !CycleToPredsMap) :-
-    svmap.det_insert(Pred, Cycle, !PredToCycleMap),
-    svmulti_map.set(Cycle, Pred, !CycleToPredsMap),
+    map.det_insert(Pred, Cycle, !PredToCycleMap),
+    multi_map.set(Cycle, Pred, !CycleToPredsMap),
     add_to_cycle_map(Preds, Cycle, !PredToCycleMap, !CycleToPredsMap).
 
 %-----------------------------------------------------------------------------%
@@ -235,7 +233,7 @@ process_cycle(Preds, Cycle, AddrMap, !ProfNodeMap) :-
     % NB We give the address of a cycle as being the negative of the cycle
     % number as this will be unique.
     Address = -Cycle,
-    map.det_insert(!.ProfNodeMap, Address, ProfNode, !:ProfNodeMap),
+    map.det_insert(Address, ProfNode, !ProfNodeMap),
 
     % Propagate the counts XXX
     TotalCalls = float.float(Total),
@@ -397,9 +395,9 @@ add_to_parent_map([Pred | Preds], CliqueList, !TotalCalls, !SelfCalls,
     ;
         ( map.search(!.ParentMap, PredName, CurrCount0) ->
             CurrCount = CurrCount0 + Counts,
-            svmap.det_update(PredName, CurrCount, !ParentMap)
+            map.det_update(PredName, CurrCount, !ParentMap)
         ;
-            svmap.det_insert(PredName, Counts, !ParentMap)
+            map.det_insert(PredName, Counts, !ParentMap)
         ),
         !:TotalCalls = !.TotalCalls + Counts,
         add_to_parent_map(Preds, CliqueList, !TotalCalls, !SelfCalls,

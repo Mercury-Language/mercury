@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001,2003-2007, 2010 The University of Melbourne.
+% Copyright (C) 1997-2001,2003-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -98,7 +98,6 @@
 :- import_module ll_backend.opt_util.
 
 :- import_module require.
-:- import_module svmap.
 :- import_module svset.
 
 %-----------------------------------------------------------------------------%
@@ -154,7 +153,7 @@ build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel, FallInto,
         ),
         BlockInfo = block_info(Label, LabelInstr, BlockInstrs, FallInto,
             SideLabels, MaybeFallThrough),
-        map.det_insert(!.BlockMap, Label, BlockInfo, !:BlockMap),
+        map.det_insert(Label, BlockInfo, !BlockMap),
         LabelSeq = [Label | LabelSeq1]
     ).
 
@@ -215,8 +214,8 @@ extend_basic_blocks([Label | Labels], LabelSeq, !BlockMap, NewLabels) :-
         NewBlockInfo = block_info(BlockLabel, BlockLabelInstr,
             BlockInstrs ++ NextBlockInstrs, BlockFallInto,
             BlockSideLabels ++ NextBlockSideLabels, NextBlockMaybeFallThrough),
-        svmap.det_update(Label, NewBlockInfo, !BlockMap),
-        svmap.delete(NextLabel, !BlockMap),
+        map.det_update(Label, NewBlockInfo, !BlockMap),
+        map.delete(NextLabel, !BlockMap),
         extend_basic_blocks([Label | RestLabels], LabelSeq, !BlockMap,
             NewLabels)
     ;

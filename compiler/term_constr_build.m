@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %------------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2010 The University of Melbourne.
+% Copyright (C) 2003, 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -85,7 +85,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module std_util.
-:- import_module svmap.
 :- import_module svvarset.
 :- import_module term.
 :- import_module varset.
@@ -173,9 +172,9 @@ term_constr_build_abstract_scc(DepOrder, SCC, Options, Errors,
             ),
             proc_info_set_termination2_info(!.TermInfo, ProcInfo0, ProcInfo)
         ),
-        svmap.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
+        map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
         pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-        svmap.det_update(PredId, PredInfo, !PredTable),
+        map.det_update(PredId, PredInfo, !PredTable),
         list.append(ProcErrors, !Errors)
     ),
     list.foldl2(RecordInfo, AbstractSCC, [], Errors, PredTable0, PredTable),
@@ -821,10 +820,10 @@ abstract_from_ground_term_conjunct(ModuleInfo, Norm, VarTypes, Goal,
         % Note that any vars that are in ArgVars but not in CountedVars
         % will be left in !:SizeMap, which is a performance problem (but not
         % correctness problem) for the later goals in the conjunction.
-        list.map_foldl(svmap.det_remove, CountedVars, ArgSizes, !SizeMap),
+        list.map_foldl(map.det_remove, CountedVars, ArgSizes, !SizeMap),
         accumulate_sum(ArgSizes, 0, TotalArgSize),
         Size = ConsIdSize + TotalArgSize,
-        svmap.det_insert(Var, Size, !SizeMap)
+        map.det_insert(Var, Size, !SizeMap)
     ;
         unexpected(this_file,
             "abstract_from_ground_term_conjunct: malformed conjunct")
@@ -1082,7 +1081,7 @@ possibly_fix_sizevar_map([ProgVar | ProgVars], !SizeVarset, !SizeVarMap) :-
         possibly_fix_sizevar_map(ProgVars, !SizeVarset, !SizeVarMap)
     ;
         svvarset.new_var(SizeVar, !SizeVarset),
-        svmap.set(ProgVar, SizeVar, !SizeVarMap),
+        map.set(ProgVar, SizeVar, !SizeVarMap),
         possibly_fix_sizevar_map(ProgVars, !SizeVarset, !SizeVarMap)
     ).
 

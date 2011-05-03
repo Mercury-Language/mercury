@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -93,7 +93,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module svset.
 :- import_module term.
 :- import_module univ.
@@ -645,8 +644,8 @@ make_enum_functors(TypeCtor, [Functor | Functors], NextOrdinal, ConsTagMap,
 
 make_enum_maps(EnumFunctor, !ValueMap, !NameMap) :-
     EnumFunctor = enum_functor(FunctorName, Ordinal),
-    svmap.det_insert(Ordinal, EnumFunctor, !ValueMap),
-    svmap.det_insert(FunctorName, EnumFunctor, !NameMap).
+    map.det_insert(Ordinal, EnumFunctor, !ValueMap),
+    map.det_insert(FunctorName, EnumFunctor, !NameMap).
 
 %---------------------------------------------------------------------------%
     
@@ -738,8 +737,8 @@ make_foreign_enum_functors(TypeCtor, Lang, [Functor | Functors], NextOrdinal,
 
 make_foreign_enum_maps(ForeignEnumFunctor, !OrdinalMap, !NameMap) :-
     ForeignEnumFunctor = foreign_enum_functor(FunctorName, FunctorOrdinal, _),
-    svmap.det_insert(FunctorOrdinal, ForeignEnumFunctor, !OrdinalMap),
-    svmap.det_insert(FunctorName, ForeignEnumFunctor, !NameMap).
+    map.det_insert(FunctorOrdinal, ForeignEnumFunctor, !OrdinalMap),
+    map.det_insert(FunctorName, ForeignEnumFunctor, !NameMap).
 
 %---------------------------------------------------------------------------%
 
@@ -945,7 +944,7 @@ generate_exist_into(ExistTvars, Constraints, ClassTable, ExistInfo) :-
     map.init(LocnMap0),
     list.foldl2((pred(T::in, N0::in, N::out, Lm0::in, Lm::out) is det :-
             Locn = plain_typeinfo(N0),
-            map.det_insert(Lm0, T, Locn, Lm),
+            map.det_insert(T, Locn, Lm0, Lm),
             N = N0 + 1
         ), UnconstrainedTvars, 0, TIsPlain, LocnMap0, LocnMap1),
     list.length(ExistTvars, AllTIs),
@@ -971,7 +970,7 @@ find_type_info_index(Constraints, ClassTable, StartSlot, Tvar, !LocnMap) :-
     list.length(ClassDefn ^ class_supers, NumSuperClasses),
     RealTypeInfoIndex = TypeInfoIndex + NumSuperClasses,
     Locn = typeinfo_in_tci(Slot, RealTypeInfoIndex),
-    svmap.det_insert(Tvar, Locn, !LocnMap).
+    map.det_insert(Tvar, Locn, !LocnMap).
 
 :- pred first_matching_type_class_info(list(prog_constraint)::in, tvar::in,
     prog_constraint::out, int::in, int::out, int::out) is det.
@@ -1016,14 +1015,14 @@ make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
             expect(unify(SectagLocn, Locn0), this_file,
                 "make_du_ptag_ordered_table: " ++
                 "sectag locn disagreement"),
-            map.det_insert(SectagMap0, Sectag, DuFunctor, SectagMap),
+            map.det_insert(Sectag, DuFunctor, SectagMap0, SectagMap),
             SectagTable = sectag_table(Locn0, NumSharers0 + 1, SectagMap),
-            svmap.det_update(Ptag, SectagTable, !PtagTable)
+            map.det_update(Ptag, SectagTable, !PtagTable)
         ;
             SectagMap0 = map.init,
-            map.det_insert(SectagMap0, Sectag, DuFunctor, SectagMap),
+            map.det_insert(Sectag, DuFunctor, SectagMap0, SectagMap),
             SectagTable = sectag_table(SectagLocn, 1, SectagMap),
-            svmap.det_insert(Ptag, SectagTable, !PtagTable)
+            map.det_insert(Ptag, SectagTable, !PtagTable)
         )
     ;
         DuRep = du_hl_rep(_),
@@ -1038,11 +1037,11 @@ make_du_name_ordered_table(DuFunctor, !NameTable) :-
     Name = DuFunctor ^ du_name,
     Arity = DuFunctor ^ du_orig_arity,
     ( map.search(!.NameTable, Name, NameMap0) ->
-        map.det_insert(NameMap0, Arity, DuFunctor, NameMap),
-        svmap.det_update(Name, NameMap, !NameTable)
+        map.det_insert(Arity, DuFunctor, NameMap0, NameMap),
+        map.det_update(Name, NameMap, !NameTable)
     ;
-        map.det_insert(map.init, Arity, DuFunctor, NameMap),
-        svmap.det_insert(Name, NameMap, !NameTable)
+        map.det_insert(Arity, DuFunctor, map.init, NameMap),
+        map.det_insert(Name, NameMap, !NameTable)
     ).
 
 :- pred make_res_name_ordered_table(maybe_reserved_functor::in,
@@ -1060,11 +1059,11 @@ make_res_name_ordered_table(MaybeResFunctor, !NameTable) :-
         Arity = 0
     ),
     ( map.search(!.NameTable, Name, NameMap0) ->
-        map.det_insert(NameMap0, Arity, MaybeResFunctor, NameMap),
-        svmap.det_update(Name, NameMap, !NameTable)
+        map.det_insert(Arity, MaybeResFunctor, NameMap0, NameMap),
+        map.det_update(Name, NameMap, !NameTable)
     ;
         NameMap = map.det_insert(map.init, Arity, MaybeResFunctor),
-        svmap.det_insert(Name, NameMap, !NameTable)
+        map.det_insert(Name, NameMap, !NameTable)
     ).
 
 %---------------------------------------------------------------------------%

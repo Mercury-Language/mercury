@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1994-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -68,7 +68,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -227,7 +226,7 @@ generate_dense_case(VarName, CodeModel, SwitchGoalInfo, EndLabel,
 
 record_dense_label_for_cons_tag(Label, ConsTag, !IndexMap) :-
     ( ConsTag = int_tag(Index) ->
-        svmap.det_insert(Index, Label, !IndexMap)
+        map.det_insert(Index, Label, !IndexMap)
     ;
         unexpected(this_file, "record_label_for_index: not int_tag")
     ).

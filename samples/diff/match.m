@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 The University of Melbourne.
+% Copyright (C) 1998, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -114,7 +114,7 @@ build_matches_for_file(Opts, OrigFile, I, !MatchMap, !ID, !File) :-
             array.set(!.File, I, MaybeID, !:File)
         ;
             array.set(!.File, I, !.ID, !:File),
-            map.det_insert(!.MatchMap, Line, !.ID, !:MatchMap),
+            map.det_insert(Line, !.ID, !MatchMap),
             !:ID = !.ID + 1
         ),
         build_matches_for_file(Opts, OrigFile, I - 1, !MatchMap, !ID, !File)

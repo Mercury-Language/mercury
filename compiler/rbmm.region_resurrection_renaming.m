@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -159,7 +159,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module svset.
 
 %-----------------------------------------------------------------------------%
@@ -208,7 +207,7 @@ compute_resurrection_paths_proc(LRBeforeTable, LRAfterTable,
     ( map.count(PathContainsResurrectionProc) = 0 ->
         true
     ;
-        svmap.set(PPId, PathContainsResurrectionProc,
+        map.set(PPId, PathContainsResurrectionProc,
             !PathContainsResurrectionTable)
     ).
 
@@ -228,7 +227,7 @@ compute_resurrection_paths_exec_path(LRBeforeProc, LRAfterProc,
     ( set.empty(ResurrectedRegionsInExecPath) ->
         true
     ;
-        svmap.set(ExecPath, ResurrectedRegionsInExecPath,
+        map.set(ExecPath, ResurrectedRegionsInExecPath,
             !ResurrectedRegionProc)
     ).
 
@@ -299,7 +298,7 @@ collect_join_points_proc(ExecPathTable, PPId, _, !JoinPointTable) :-
         ExecPaths, [], Paths),
     list.foldl4(collect_join_points_path(Paths), Paths, map.init, _,
         counter.init(0), _, set.init, _JoinPoints, map.init, JoinPointProc),
-    svmap.set(PPId, JoinPointProc, !JoinPointTable).
+    map.set(PPId, JoinPointProc, !JoinPointTable).
 
 :- pred collect_join_points_path(list(list(program_point))::in,
     list(program_point)::in, 
@@ -324,9 +323,9 @@ collect_join_points_path(Paths, Path, !JP2Name, !Counter, !JoinPoints,
                 ;
                     counter.allocate(N, !Counter),
                     JPName = "_jp_" ++ string.int_to_string(N),
-                    svmap.set(PrevPoint, JPName, !JP2Name)
+                    map.set(PrevPoint, JPName, !JP2Name)
                 ),
-                svmap.set(ProgPoint, JPName, !JoinPointProc),
+                map.set(ProgPoint, JPName, !JoinPointProc),
                 svset.insert(ProgPoint, !JoinPoints)
             ;
                 true
@@ -411,9 +410,9 @@ path_containing_join_point(JoinPointProc, PPId, ResurrectedRegionsProc,
     ;
         map.lookup(!.PathContainsResurrectionTable, PPId,
             PathContainsResurrectionProc0),
-        svmap.det_insert(NonResurPath, ResurrectedRegionsProc,
+        map.det_insert(NonResurPath, ResurrectedRegionsProc,
             PathContainsResurrectionProc0, PathContainsResurrectionProc),
-        svmap.set(PPId, PathContainsResurrectionProc,
+        map.set(PPId, PathContainsResurrectionProc,
             !PathContainsResurrectionTable)
     ).
 
@@ -454,7 +453,7 @@ collect_region_resurrection_renaming_proc(BecomeLiveTable, _LocalRTable,
         collect_region_resurrection_renaming_exec_path(Graph,
             BecomeLiveProc),
         PathsContainResurrection, map.init, ResurrectionRenameProc),
-    svmap.set(PPId, ResurrectionRenameProc, !ResurrectionRenameTable).
+    map.set(PPId, ResurrectionRenameProc, !ResurrectionRenameTable).
 
 :- pred collect_region_resurrection_renaming_exec_path(rpt_graph::in,
     pp_region_set_table::in, execution_path::in,
@@ -499,11 +498,11 @@ record_renaming_prog_point(Graph, ProgPoint, RenamingCounter, Region,
         ++ string.int_to_string(RenamingCounter),
 
     ( map.search(!.ResurrectionRenameProc, ProgPoint, RenamingProgPoint0) ->
-        svmap.set(RegionName, [Renamed], RenamingProgPoint0, RenamingProgPoint)
+        map.set(RegionName, [Renamed], RenamingProgPoint0, RenamingProgPoint)
     ;
-        svmap.det_insert(RegionName, [Renamed], map.init, RenamingProgPoint)
+        map.det_insert(RegionName, [Renamed], map.init, RenamingProgPoint)
     ),
-    svmap.set(ProgPoint, RenamingProgPoint, !ResurrectionRenameProc).
+    map.set(ProgPoint, RenamingProgPoint, !ResurrectionRenameProc).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -560,8 +559,8 @@ collect_renaming_and_annotation_proc(ExecPathTable, JoinPointTable,
         ResurrectionRenameProc, JoinPointProc, LRBeforeProc, LRAfterProc,
         BornR, Graph, ResurrectedRegionsProc), ExecPaths,
         map.init, AnnotationProc, map.init, RenamingProc),
-    svmap.set(PPId, AnnotationProc, !AnnotationTable),
-    svmap.set(PPId, RenamingProc, !RenamingTable).
+    map.set(PPId, AnnotationProc, !AnnotationTable),
+    map.set(PPId, RenamingProc, !RenamingTable).
 
     % The renaming along an execution path is built up. Let's see an
     % example of renamings.
@@ -591,9 +590,9 @@ collect_renaming_and_annotation_exec_path(ResurrectionRenameProc,
         ResurrectedRegions, [ProgPoint - _ | ProgPoint_Goals],
         !AnnotationProc, !RenamingProc) :-
     ( map.search(ResurrectionRenameProc, ProgPoint, ResurRename) ->
-        svmap.set(ProgPoint, ResurRename, !RenamingProc)
+        map.set(ProgPoint, ResurRename, !RenamingProc)
     ;
-        svmap.set(ProgPoint, map.init, !RenamingProc)
+        map.set(ProgPoint, map.init, !RenamingProc)
     ),
     collect_renaming_and_annotation_exec_path_2(ResurrectionRenameProc,
         JoinPointProc, LRBeforeProc, LRAfterProc, BornR, Graph,
@@ -644,11 +643,11 @@ collect_renaming_and_annotation_exec_path_2(ResurrectionRenameProc,
         % renaming here. When two renamings have the same key, i.e.,
         % the related region resurrects, we will keep both renamings.
         multi_map.merge(PrevRenaming, ResurRenaming, Renaming0),
-        svmap.set(ProgPoint, Renaming0, !RenamingProc)
+        map.set(ProgPoint, Renaming0, !RenamingProc)
     ;
         % This is not a resurrection point (of any regions).
         % Renaming at this point is the same as at its previous point.
-        svmap.set(ProgPoint, PrevRenaming, !RenamingProc)
+        map.set(ProgPoint, PrevRenaming, !RenamingProc)
     ),
     ( map.search(JoinPointProc, ProgPoint, JoinPointName) ->
         % This is a join point.
@@ -666,7 +665,7 @@ collect_renaming_and_annotation_exec_path_2(ResurrectionRenameProc,
             ResurrectedAndLiveRegions, !AnnotationProc, map.init, Renaming),
         % We will just overwrite any existing renaming information
         % at this point.
-        svmap.set(ProgPoint, Renaming, !RenamingProc)
+        map.set(ProgPoint, Renaming, !RenamingProc)
     ;
         true
     ),
@@ -701,7 +700,7 @@ add_annotation_and_renaming_at_join_point(PrevProgPoint, Graph, JoinPointName,
     NewName = RegionName ++ JoinPointName,
 
     % Record renaming at the join point if it doesn't exist yet.
-    svmap.det_insert(RegionName, [NewName], !Renaming),
+    map.det_insert(RegionName, [NewName], !Renaming),
 
     % Add annotation to (after) the previous program point.
     % XXX Annotations are only added for resurrected regions that have been
@@ -749,7 +748,7 @@ record_annotation(ProgPoint, Annotation, !AnnotationProc) :-
         % No annotation exists at this program point yet.
         Annotations = [Annotation]
     ),
-    svmap.set(ProgPoint, Annotations, !AnnotationProc).
+    map.set(ProgPoint, Annotations, !AnnotationProc).
 
 make_renaming_instruction(OldRegionName, NewRegionName, RenameInstruction) :-
     RenameInstruction = rename_region(OldRegionName, NewRegionName).

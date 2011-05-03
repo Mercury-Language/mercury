@@ -79,7 +79,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -624,7 +623,7 @@ method_ptrs_in_rval(ml_const(RvalConst), !CodeAddrs) :-
             true
         ;
             Name = "MR_method_ptr_" ++ string.from_int(Counter),
-            map.det_insert(Map0, CodeAddr, Name, Map),
+            map.det_insert(CodeAddr, Name, Map0, Map),
             !:CodeAddrs = code_addr_map(Counter + 1, Map)
         )
     ;
@@ -1311,7 +1310,7 @@ output_scalar_defns(Info, Indent, TypeNum, CellGroup, !Graph, !Map, !IO) :-
 add_scalar_inits(MLDS_ModuleName, Type, TypeNum, Initializer,
         RowNum, RowNum + 1, !Graph, !Map) :-
     Scalar = ml_scalar_common(MLDS_ModuleName, Type, TypeNum, RowNum),
-    svmap.det_insert(Scalar, Initializer, !Map),
+    map.det_insert(Scalar, Initializer, !Map),
     digraph.add_vertex(Scalar, _Key, !Graph),
     add_scalar_deps(Scalar, Initializer, !Graph).
 

@@ -64,7 +64,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -225,7 +224,7 @@ maybe_parallelise_pred(ParallelismInfo, PredId, !PredTable,
         AnyProcIntroducedParallelism = introduced_parallelism,
         !:AnyPredIntroducedParallelism = introduced_parallelism,
         pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-        svmap.det_update(PredId, PredInfo, !PredTable)
+        map.det_update(PredId, PredInfo, !PredTable)
     ).
 
 :- pred maybe_parallelise_proc(parallelism_info::in,
@@ -260,7 +259,7 @@ maybe_parallelise_proc(ParallelismInfo, PredInfo, _PredId, ProcId,
             ;
                 ProcIntroducedParallelism = introduced_parallelism,
                 !:AnyProcIntroducedParallelism = introduced_parallelism,
-                svmap.det_update(ProcId, ProcInfo, !ProcTable)
+                map.det_update(ProcId, ProcInfo, !ProcTable)
             )
         )
     ;

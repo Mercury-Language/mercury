@@ -159,7 +159,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -313,7 +312,7 @@ request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
         % Save the proc_id for this unify_proc_id.
         module_info_get_proc_requests(!.ModuleInfo, Requests0),
         get_unify_req_map(Requests0, UnifyReqMap0),
-        map.set(UnifyReqMap0, UnifyId, ProcId, UnifyReqMap),
+        map.set(UnifyId, ProcId, UnifyReqMap0, UnifyReqMap),
         set_unify_req_map(UnifyReqMap, Requests0, Requests),
         module_info_set_proc_requests(Requests, !ModuleInfo)
     ).
@@ -361,9 +360,9 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         ),
         proc_info_set_goal(!.Goal, !ProcInfo),
 
-        svmap.det_update(ProcId, !.ProcInfo, !ProcMap),
+        map.det_update(ProcId, !.ProcInfo, !ProcMap),
         pred_info_set_procedures(!.ProcMap, !PredInfo),
-        svmap.det_update(PredId, !.PredInfo, !PredMap),
+        map.det_update(PredId, !.PredInfo, !PredMap),
         module_info_set_preds(!.PredMap, !ModuleInfo),
 
         % Insert the pred_proc_id into the request queue.
@@ -2078,15 +2077,15 @@ info_init(ModuleInfo, UPI) :-
 
 info_new_var(Type, Var, !UPI) :-
     varset.new_var(!.UPI ^ upi_varset, Var, VarSet),
-    map.det_insert(!.UPI ^ upi_vartypes, Var, Type, VarTypes),
-    !:UPI = !.UPI ^ upi_varset := VarSet,
-    !:UPI = !.UPI ^ upi_vartypes := VarTypes.
+    map.det_insert(Var, Type, !.UPI ^ upi_vartypes, VarTypes),
+    !UPI ^ upi_varset := VarSet,
+    !UPI ^ upi_vartypes := VarTypes.
 
 info_new_named_var(Type, Name, Var, !UPI) :-
     varset.new_named_var(!.UPI ^ upi_varset, Name, Var, VarSet),
-    map.det_insert(!.UPI ^ upi_vartypes, Var, Type, VarTypes),
-    !:UPI = !.UPI ^ upi_varset := VarSet,
-    !:UPI = !.UPI ^ upi_vartypes := VarTypes.
+    map.det_insert(Var, Type, !.UPI ^ upi_vartypes, VarTypes),
+    !UPI ^ upi_varset := VarSet,
+    !UPI ^ upi_vartypes := VarTypes.
 
 info_extract(UPI, UPI ^ upi_varset, UPI ^ upi_vartypes).
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006, 2010 The University of Melbourne.
+% Copyright (C) 2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -93,7 +93,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module require.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -130,7 +129,7 @@ fp_entry_init_with_stability(IsStable, Elem) = entry(IsStable, Elem).
 init_fixpoint_table(InitFunction, Ks) = FT :-
     InsertElement = (pred(K::in, !.Map::in, !:Map::out) is det :-
         E = InitFunction(K),
-        svmap.det_insert(K, fp_entry_init(E), !Map)
+        map.det_insert(K, fp_entry_init(E), !Map)
     ),
     list.foldl(InsertElement, Ks, map.init, Map),
     Run = 0,
@@ -191,8 +190,8 @@ add_to_fixpoint_table(IsLessOrEqualTest, Index, Elem, !T) :-
     % that might have changed.
     %
     FinalTabledElem = fp_entry_init_with_stability(IsStable, Elem),
-    map.det_update(Map0, Index, FinalTabledElem, Map),
-    !:T = !.T ^ mapping := Map.
+    map.det_update(Index, FinalTabledElem, Map0, Map),
+    !T ^ mapping := Map.
 
 get_from_fixpoint_table(Index, Elem, !T) :-
     List = !.T ^ keys,
@@ -200,7 +199,7 @@ get_from_fixpoint_table(Index, Elem, !T) :-
     Map = !.T ^ mapping,
     map.lookup(Map, Index, Entry),
     Elem = Entry ^ entry_elem,
-    !:T = !.T ^ recursive := is_recursive.
+    !T ^ recursive := is_recursive.
 
 get_from_fixpoint_table_final(Index, T) = Elem :-
     ( get_from_fixpoint_table_final_semidet(Index, T, TabledElem) ->

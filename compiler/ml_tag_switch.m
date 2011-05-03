@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000, 2003-2010 The University of Melbourne.
+% Copyright (C) 2000, 2003-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -54,7 +54,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module svmap.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%
@@ -116,7 +115,7 @@ gen_tagged_case_code(CodeModel, TaggedCase, CaseNum, !CodeMap, !Unit, !Info) :-
     TaggedCase = tagged_case(_MainTaggedConsId, _OtherTaggedConsIds,
         CaseNum, Goal),
     ml_gen_goal_as_branch_block(CodeModel, Goal, Statement, !Info),
-    svmap.det_insert(CaseNum, Statement, !CodeMap).
+    map.det_insert(CaseNum, Statement, !CodeMap).
 
 :- type is_a_case_split_between_ptags
     --->    no_case_is_split_between_ptags
@@ -254,10 +253,10 @@ build_stag_rev_map([Entry | Entries], !RevMap) :-
     ( map.search(!.RevMap, CaseNum, OldEntry) ->
         OldEntry = stags(OldFirstStag, OldLaterStags),
         NewEntry = stags(OldFirstStag, [Stag | OldLaterStags]),
-        svmap.det_update(CaseNum, NewEntry, !RevMap)
+        map.det_update(CaseNum, NewEntry, !RevMap)
     ;
         NewEntry = stags(Stag, []),
-        svmap.det_insert(CaseNum, NewEntry, !RevMap)
+        map.det_insert(CaseNum, NewEntry, !RevMap)
     ),
     build_stag_rev_map(Entries, !RevMap).
 

@@ -95,7 +95,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module set.
-:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -646,7 +645,7 @@ find_matching_instance_rule_2([Instance | Instances], InstanceNum0, Constraint,
 
         NewProof = apply_instance(InstanceNum0),
         retrieve_prog_constraint(Constraint, ProgConstraint),
-        map.set(!.Proofs, ProgConstraint, NewProof, !:Proofs)
+        map.set(ProgConstraint, NewProof, !Proofs)
     ;
         InstanceNum = InstanceNum0 + 1,
         find_matching_instance_rule_2(Instances, InstanceNum,
@@ -695,7 +694,7 @@ apply_class_rules_2(Ancestors, !Proofs, !ConstraintMap,
 
 add_superclass_proofs(_, [], !Proofs).
 add_superclass_proofs(Constraint, [Descendant | Descendants], !Proofs) :-
-    svmap.set(Constraint, superclass(Descendant), !Proofs),
+    map.set(Constraint, superclass(Descendant), !Proofs),
     add_superclass_proofs(Descendant, Descendants, !Proofs).
 
     % check_satisfiability(Constraints, HeadTypeParams):

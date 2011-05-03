@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2007, 2010 The University of Melbourne.
+% Copyright (C) 2002-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -57,7 +57,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -243,7 +242,7 @@ allocate_same_stack_slot([Var | Vars], CodeModel, Slot, !StackSlots) :-
         ),
         Locn = det_slot(Slot)
     ),
-    svmap.det_insert(Var, Locn, !StackSlots),
+    map.det_insert(Var, Locn, !StackSlots),
     allocate_same_stack_slot(Vars, CodeModel, Slot, !StackSlots).
 
     % We must not allocate the same stack slot to dummy variables. If we do,

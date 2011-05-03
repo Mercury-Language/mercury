@@ -76,7 +76,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 
 %----------------------------------------------------------------------------%
 
@@ -884,7 +883,7 @@ goal_to_pard_goal(Info, RevGoalPathSteps, !Goal, !Messages) :-
 goal_build_use_map(Goal, RevGoalPathSteps, Cost, Info, VarUseType, Var, !Map) :-
     LazyUse = delay((func) = compute_goal_var_use_lazy(Goal, RevGoalPathSteps,
         Cost, Info, VarUseType, Var)),
-    svmap.det_insert(Var, LazyUse, !Map).
+    map.det_insert(Var, LazyUse, !Map).
 
 :- func compute_goal_var_use_lazy(goal_rep(goal_id), list(goal_path_step),
     goal_cost_csq, implicit_parallelism_info, var_use_type, var_rep)

@@ -63,7 +63,7 @@ parse(Entries, Errors, [Line|Lines]) :-
 
 addEntry(none, Cat, Cat).
 addEntry(dtd(PublicId, SystemId), catalog(Cat0), catalog(Cat)) :-
-    det_insert(Cat0, PublicId, SystemId, Cat).
+    det_insert(PublicId, SystemId, Cat0, Cat).
 
 :- pred parseEntry(entry, [char], [char]).
 :- mode parseEntry(out, in, out) is semidet.

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2007, 2010 The University of Melbourne.
+% Copyright (C) 2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2292,7 +2292,7 @@ execute_ssdb_alias(Args, Interacting, !IO) :-
         Args = [Name | Words],
         Words = [Command | _],
         ( ssdb_cmd_name(Command, _) ->
-            map.set(Aliases0, Name, Words, Aliases),
+            map.set(Name, Words, Aliases0, Aliases),
             set_aliases(Aliases, !IO),
             (
                 Interacting = yes,
@@ -2311,7 +2311,7 @@ execute_ssdb_alias(Args, Interacting, !IO) :-
 execute_ssdb_unalias(Args, Interacting, !IO) :-
     ( Args = [Name] ->
         get_aliases(Aliases0, !IO),
-        ( map.remove(Aliases0, Name, _, Aliases) ->
+        ( map.remove(Name, _, Aliases0, Aliases) ->
             set_aliases(Aliases, !IO),
             (
                 Interacting = yes,
@@ -2669,7 +2669,7 @@ add_breakpoint(ProcId, !IO) :-
     ;
         get_free_breakpoint_number(BreakPoints0, Number),
         NewBreakPoint = breakpoint(Number, ProcId, bp_state_enabled),
-        map.det_insert(BreakPoints0, ProcId, NewBreakPoint, BreakPoints),
+        map.det_insert(ProcId, NewBreakPoint, BreakPoints0, BreakPoints),
         set_breakpoints_map(BreakPoints, !IO),
 
         get_breakpoints_filter(Filter0, !IO),
@@ -2722,7 +2722,7 @@ modify_breakpoint_state(Num, State, !IO) :-
     get_breakpoints_map(BreakPoints0, !IO),
     ( find_breakpoint(BreakPoints0, Num, Key, BreakPoint0) ->
         BreakPoint = BreakPoint0 ^ bp_state := State,
-        map.det_update(BreakPoints0, Key, BreakPoint, BreakPoints),
+        map.det_update(Key, BreakPoint, BreakPoints0, BreakPoints),
         set_breakpoints_map(BreakPoints, !IO),
         generate_breakpoints_filter(BreakPoints, Filter),
         set_breakpoints_filter(Filter, !IO),
@@ -2740,7 +2740,7 @@ modify_breakpoint_state(Num, State, !IO) :-
 delete_breakpoint(Num, !IO) :-
     get_breakpoints_map(BreakPoints0, !IO),
     ( find_breakpoint(BreakPoints0, Num, ProcId, BreakPoint) ->
-        map.delete(BreakPoints0, ProcId, BreakPoints),
+        map.delete(ProcId, BreakPoints0, BreakPoints),
         set_breakpoints_map(BreakPoints, !IO),
         generate_breakpoints_filter(BreakPoints, Filter),
         set_breakpoints_filter(Filter, !IO),

@@ -116,7 +116,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module svmap.
 :- import_module svset.
 :- import_module term.
 
@@ -601,10 +600,10 @@ add_anchor_inserts(Goal, ArgVarsViaCellVar, InsertIntervals, Anchor,
         InsertMap0 = !.StackOptInfo ^ soi_left_anchor_inserts,
         ( map.search(InsertMap0, Anchor, Inserts0) ->
             Inserts = [Insert | Inserts0],
-            svmap.det_update(Anchor, Inserts, InsertMap0, InsertMap)
+            map.det_update(Anchor, Inserts, InsertMap0, InsertMap)
         ;
             Inserts = [Insert],
-            svmap.det_insert(Anchor, Inserts, InsertMap0, InsertMap)
+            map.det_insert(Anchor, Inserts, InsertMap0, InsertMap)
         ),
         !StackOptInfo ^ soi_left_anchor_inserts := InsertMap,
         svset.insert(Anchor, !InsertAnchors)

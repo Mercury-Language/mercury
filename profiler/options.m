@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 2000-2001, 2004-2006 The University of Melbourne.
+% Copyright (C) 1995-1997, 2000-2001, 2004-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -120,19 +120,19 @@ long_option("use-dynamic",          dynamic_cg).
 long_option("verbose",              verbose).
 long_option("very-verbose",         very_verbose).
 
-special_handler(profile, string(WhatToProfile), OptionTable0, Result) :-
+special_handler(profile, string(WhatToProfile), !.OptionTable, Result) :-
     ( valid_profile_option(WhatToProfile, CountFile) ->
-        map.set(OptionTable0, countfile, string(CountFile), OptionTable),
-        Result = ok(OptionTable)
+        map.set(countfile, string(CountFile), !OptionTable),
+        Result = ok(!.OptionTable)
     ;
         Result = error("Invalid argument to `--profile' or `-p' option")
     ).
-special_handler(profile_memory_words, _, OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, countfile, string("Prof.MemoryWords"), OptionTable).
-special_handler(profile_memory_cells, _, OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, countfile, string("Prof.MemoryCells"), OptionTable).
-special_handler(profile_time, _, OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, countfile, string("Prof.Counts"), OptionTable).
+special_handler(profile_memory_words, _, !.OptionTable, ok(!:OptionTable)) :-
+    map.set(countfile, string("Prof.MemoryWords"), !OptionTable).
+special_handler(profile_memory_cells, _, !.OptionTable, ok(!:OptionTable)) :-
+    map.set(countfile, string("Prof.MemoryCells"), !OptionTable).
+special_handler(profile_time, _, !.OptionTable, ok(!:OptionTable)) :-
+    map.set(countfile, string("Prof.Counts"), !OptionTable).
 
 :- pred valid_profile_option(string::in, string::out) is semidet.
 

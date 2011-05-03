@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2010 The University of Melbourne.
+% Copyright (C) 2000-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -353,7 +353,7 @@ new_var(Name, Type, Var, !Info) :-
     VarSet0 = !.Info ^ heap_varset,
     VarTypes0 = !.Info ^ heap_var_types,
     varset.new_named_var(VarSet0, Name, Var, VarSet),
-    map.det_insert(VarTypes0, Var, Type, VarTypes),
+    map.det_insert(Var, Type, VarTypes0, VarTypes),
     !:Info = !.Info ^ heap_varset := VarSet,
     !:Info = !.Info ^ heap_var_types := VarTypes.
 

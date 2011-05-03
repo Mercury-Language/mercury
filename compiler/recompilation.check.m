@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2010 The University of Melbourne.
+% Copyright (C) 2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -91,7 +91,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 :- import_module term_io.
 :- import_module univ.
@@ -436,7 +435,7 @@ parse_used_item_set(Info, Term, UsedItems0, UsedItems) :-
 :- pred parse_simple_item(recompilation_check_info::in, term::in,
     simple_item_set::in, simple_item_set::out) is det.
 
-parse_simple_item(Info, Term, Set0, Set) :-
+parse_simple_item(Info, Term, !Set) :-
     (
         Term = term.functor(term.atom("-"), [NameArityTerm, MatchesTerm], _),
         parse_name_and_arity(NameArityTerm, SymName, Arity)
@@ -445,7 +444,7 @@ parse_simple_item(Info, Term, Set0, Set) :-
         conjunction_to_list(MatchesTerm, MatchTermList),
         list.foldl(parse_simple_item_match(Info), MatchTermList,
             map.init, Matches),
-        map.det_insert(Set0, Name - Arity, Matches, Set)
+        map.det_insert(Name - Arity, Matches, !Set)
     ;
         Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in simple items"),
@@ -456,7 +455,7 @@ parse_simple_item(Info, Term, Set0, Set) :-
     map(module_qualifier, module_name)::in,
     map(module_qualifier, module_name)::out) is det.
 
-parse_simple_item_match(Info, Term, Items0, Items) :-
+parse_simple_item_match(Info, Term, !Items) :-
     (
         (
             Term = term.functor(term.atom("=>"),
@@ -469,7 +468,7 @@ parse_simple_item_match(Info, Term, Items0, Items) :-
             Qualifier = ModuleName
         )
     ->
-        map.det_insert(Items0, Qualifier, ModuleName, Items)
+        map.det_insert(Qualifier, ModuleName, !Items)
     ;
         Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in simple item match"),
@@ -505,7 +504,7 @@ parse_pred_or_func_item_match(Info, Term, !Items) :-
             Matches = [PredId - Qualifier]
         )
     ->
-        svmap.det_insert(Qualifier, set.list_to_set(Matches), !Items)
+        map.det_insert(Qualifier, set.list_to_set(Matches), !Items)
     ;
         Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in pred or func match"),
@@ -529,7 +528,7 @@ parse_functor_matches(Info, Term, !Map) :-
     ->
         conjunction_to_list(MatchesTerm, MatchesList),
         list.map(parse_resolved_functor(Info), MatchesList, Matches),
-        svmap.det_insert(Qualifier, set.list_to_set(Matches), !Map)
+        map.det_insert(Qualifier, set.list_to_set(Matches), !Map)
     ;
         Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in functor match"),
@@ -580,7 +579,7 @@ parse_resolved_functor(Info, Term, Ctor) :-
     parse_resolved_item_matches(T)::in(parse_resolved_item_matches),
     term::in, resolved_item_set(T)::in, resolved_item_set(T)::out) is det.
 
-parse_resolved_item_set(Info, ParseMatches, Term, Set0, Set) :-
+parse_resolved_item_set(Info, ParseMatches, Term, !Set) :-
     (
         Term = term.functor(term.atom("-"), [NameTerm, MatchesTerm], _),
         NameTerm = term.functor(term.atom(Name), [], _)
@@ -588,7 +587,7 @@ parse_resolved_item_set(Info, ParseMatches, Term, Set0, Set) :-
         conjunction_to_list(MatchesTerm, MatchTermList),
         list.map(parse_resolved_item_arity_matches(Info, ParseMatches),
             MatchTermList, Matches),
-        map.det_insert(Set0, Name, Matches, Set)
+        map.det_insert(Name, Matches, !Set)
     ;
         Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in resolved item matches"),
@@ -1398,7 +1397,7 @@ add_module_to_recompile(Module, !Info) :-
 record_read_file(ModuleName, ModuleTimestamp, Items, Specs, Error, FileName,
         !Info) :-
     Imports0 = !.Info ^ rci_have_read_module_map,
-    svmap.set(ModuleName - ModuleTimestamp ^ suffix,
+    map.set(ModuleName - ModuleTimestamp ^ suffix,
         have_read_module(ModuleTimestamp, Items, Specs, Error, FileName),
         Imports0, Imports),
     !Info ^ rci_have_read_module_map := Imports.

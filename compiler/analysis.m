@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2004, 2006-2010 The University of Melbourne.
+% Copyright (C) 2003-2004, 2006-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1291,7 +1291,7 @@ write_analysis_files(Compiler, ModuleInfo, ImportedModule0, !Info, !IO) :-
 load_module_imdg(Globals, ModuleName, !Info, !IO) :-
     read_module_imdg(!.Info, Globals, ModuleName, IMDG, !IO),
     Map0 = !.Info ^ old_imdg,
-    map.det_insert(Map0, ModuleName, IMDG, Map),
+    map.det_insert(ModuleName, IMDG, Map0, Map),
     !Info ^ old_imdg := Map.
 
 :- pred maybe_write_module_overall_status(analysis_info::in, globals::in,

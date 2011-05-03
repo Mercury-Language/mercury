@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2008, 2010 The University of Melbourne.
+% Copyright (C) 2007-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -547,7 +547,7 @@ erl_create_renaming_2(OldVar, VarSet0, VarSet, !Subst) :-
     ;
         varset.new_var(VarSet0, NewVar, VarSet)
     ),
-    map.det_insert(!.Subst, OldVar, NewVar, !:Subst).
+    map.det_insert(OldVar, NewVar, !Subst).
 
 :- pred erl_rename_vars_in_exprs(prog_var_renaming::in,
     list(elds_expr)::in, list(elds_expr)::out) is det.

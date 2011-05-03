@@ -146,7 +146,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -2108,7 +2107,7 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
         expect(unify(Args, []), this_file,
             "ml_gen_ground_term_conjunct_tag: constant tag with args"),
         ConstGroundTerm = ml_ground_term(ConstRval, VarType, MLDS_Type),
-        svmap.det_insert(Var, ConstGroundTerm, !GroundTermMap)
+        map.det_insert(Var, ConstGroundTerm, !GroundTermMap)
     ;
         ( ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
@@ -2129,13 +2128,13 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
         ConsTag = no_tag,
         (
             Args = [Arg],
-            svmap.det_remove(Arg, ArgGroundTerm, !GroundTermMap),
+            map.det_remove(Arg, ArgGroundTerm, !GroundTermMap),
             ArgGroundTerm = ml_ground_term(ArgRval, _ArgType, MLDS_ArgType),
             ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType,
                 ArgRval, Rval0, !GlobalData),
             Rval = ml_unop(cast(MLDS_Type), Rval0),
             GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
-            svmap.det_insert(Var, GroundTerm, !GroundTermMap)
+            map.det_insert(Var, GroundTerm, !GroundTermMap)
         ;
             ( Args = []
             ; Args = [_, _ | _]
@@ -2278,7 +2277,7 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
     ),
     Rval = ml_unop(cast(MLDS_Type), TaggedRval),
     GroundTerm = ml_ground_term(Rval, VarType, MLDS_Type),
-    svmap.det_insert(Var, GroundTerm, !GroundTermMap).
+    map.det_insert(Var, GroundTerm, !GroundTermMap).
 
 %-----------------------------------------------------------------------------%
 
@@ -2323,7 +2322,7 @@ construct_ground_term_initializers_lld(ModuleInfo, Context,
 
 construct_ground_term_initializer_hld(ModuleInfo, Context,
         Arg - ConsArgType, ArgInitializer, !GlobalData, !GroundTermMap) :-
-    svmap.det_remove(Arg, ArgGroundTerm, !GroundTermMap),
+    map.det_remove(Arg, ArgGroundTerm, !GroundTermMap),
     ArgGroundTerm = ml_ground_term(ArgRval0, ArgType, _MLDS_ArgType),
     ml_type_as_field(ModuleInfo, yes, ConsArgType, BoxedArgType),
     ml_gen_box_or_unbox_const_rval(ModuleInfo, ArgType, BoxedArgType,
@@ -2337,7 +2336,7 @@ construct_ground_term_initializer_hld(ModuleInfo, Context,
 
 construct_ground_term_initializer_lld(ModuleInfo, Context,
         Arg - _ConsArgType, ArgInitializer, !GlobalData, !GroundTermMap) :-
-    svmap.det_remove(Arg, ArgGroundTerm, !GroundTermMap),
+    map.det_remove(Arg, ArgGroundTerm, !GroundTermMap),
     ArgGroundTerm = ml_ground_term(ArgRval0, _ArgType, MLDS_ArgType),
     ml_gen_box_const_rval(ModuleInfo, Context, MLDS_ArgType,
         ArgRval0, ArgRval, !GlobalData),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2010 The University of Melbourne.
+% Copyright (C) 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -122,7 +122,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 :- import_module svvarset.
 :- import_module term.
 :- import_module varset.
@@ -253,7 +252,7 @@ expand_args_in_proc(PredId, ProcId, !ModuleInfo, !TransformMap, !Counter) :-
             AuxProcInfo0, AuxProcInfo),
         module_info_set_pred_proc_info(AuxPredId, AuxProcId,
             AuxPredInfo, AuxProcInfo, !ModuleInfo),
-        svmap.det_insert(proc(PredId, ProcId),
+        map.det_insert(proc(PredId, ProcId),
             transformed_proc(proc(AuxPredId, AuxProcId), CallAux),
             !TransformMap)
     ).
@@ -359,7 +358,7 @@ create_untuple_vars(ParentName, Num, [Type | Types], [NewVar | NewVars],
         !VarSet, !VarTypes) :-
     string.format("Untupled_%s_%d", [s(ParentName), i(Num)], Name),
     svvarset.new_named_var(Name, NewVar, !VarSet),
-    svmap.det_insert(NewVar, Type, !VarTypes),
+    map.det_insert(NewVar, Type, !VarTypes),
     create_untuple_vars(ParentName, Num+1, Types, NewVars, !VarSet, !VarTypes).
 
 :- pred conjoin_goals_keep_detism(hlds_goal::in, hlds_goal::in,
@@ -382,7 +381,7 @@ build_untuple_map([OldVar | OldVars], [NewVars | NewVarss], !UntupleMap) :-
     ( NewVars = [OldVar] ->
         build_untuple_map(OldVars, NewVarss, !UntupleMap)
     ;
-        svmap.det_insert(OldVar, NewVars, !UntupleMap),
+        map.det_insert(OldVar, NewVars, !UntupleMap),
         build_untuple_map(OldVars, NewVarss, !UntupleMap)
     ).
 build_untuple_map([], [_| _], !_) :-
@@ -661,7 +660,7 @@ expand_call_args_2([Arg0 | Args0], [ArgMode | ArgModes], Args,
         Expansion = expansion(ConsId, Types),
         NumVars = list.length(Types),
         svvarset.new_vars(NumVars, ReplacementArgs, !VarSet),
-        svmap.det_insert_from_corresponding_lists(
+        map.det_insert_from_corresponding_lists(
             ReplacementArgs, Types, !VarTypes),
         list.duplicate(NumVars, ArgMode, ReplacementModes),
         ContainerTypes = [Arg0Type | ContainerTypes0],

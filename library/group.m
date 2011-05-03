@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999, 2003, 2005-2007, 2010 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999, 2003, 2005-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -110,7 +110,7 @@ group.init(G) :-
 group.insert(!.G, S, !:G) :-
     !.G = group(KS0, Ss0, Es0),
     counter.allocate(C, KS0, KS),
-    map.set(Ss0, C, S, Ss),
+    map.set(C, S, Ss0, Ss),
     set.to_sorted_list(S, SL),
     group.insert_elements(SL, C, Es0, Es),
     !:G = group(KS, Ss, Es).
@@ -118,10 +118,10 @@ group.insert(!.G, S, !:G) :-
 :- pred group.insert_elements(list(T)::in, group.key::in,
     map(T, group.key)::in, map(T, group.key)::out) is det.
 
-group.insert_elements([], _GK, Es, Es).
-group.insert_elements([I | Is], GK, Es0, Es) :-
-    map.set(Es0, I, GK, Es1),
-    group.insert_elements(Is, GK, Es1, Es).
+group.insert_elements([], _GK, !Es).
+group.insert_elements([I | Is], GK, !Es) :-
+    map.set(I, GK, !Es),
+    group.insert_elements(Is, GK, !Es).
 
 group.group(G, E, S) :-
     map.lookup(G ^ elements, E, GK),
@@ -144,7 +144,7 @@ group.key_group(G, GK, S) :-
 group.remove_group(!.G, GK, S, !:G) :-
     Ss0 = !.G ^ sets,
     Es0 = !.G ^ elements,
-    ( map.remove(Ss0, GK, SPrime, SsPrime) ->
+    ( map.remove(GK, SPrime, Ss0, SsPrime) ->
         S = SPrime,
         Ss = SsPrime
     ;
@@ -158,10 +158,10 @@ group.remove_group(!.G, GK, S, !:G) :-
 :- pred group.remove_elements(list(T)::in,
     map(T, group.key)::in, map(T, group.key)::out) is det.
 
-group.remove_elements([], Es, Es).
-group.remove_elements([I | Is], Es0, Es) :-
-    map.delete(Es0, I, Es1),
-    group.remove_elements(Is, Es1, Es).
+group.remove_elements([], !Es).
+group.remove_elements([I | Is], !Es) :-
+    map.delete(I, !Es),
+    group.remove_elements(Is, !Es).
 
 group.same_group(G, E0, E1) :-
     Es = G ^ elements,

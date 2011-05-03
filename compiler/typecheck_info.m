@@ -381,7 +381,6 @@
 :- import_module require.
 :- import_module string.
 :- import_module set.
-:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -559,7 +558,7 @@ get_existq_tvar_renaming_2(OldHeadTypeParams, TypeBindings, TVar, !Renaming) :-
         NewTVar \= TVar,
         \+ list.member(NewTVar, OldHeadTypeParams)
     ->
-        svmap.det_insert(TVar, NewTVar, !Renaming)
+        map.det_insert(TVar, NewTVar, !Renaming)
     ;
         true
     ).
@@ -641,10 +640,10 @@ typecheck_info_add_overloaded_symbol(Symbol, Context, !Info) :-
     typecheck_info_get_overloaded_symbols(!.Info, SymbolMap0),
     ( map.search(SymbolMap0, Symbol, OldContexts) ->
         Contexts = [Context | OldContexts],
-        map.det_update(SymbolMap0, Symbol, Contexts, SymbolMap)
+        map.det_update(Symbol, Contexts, SymbolMap0, SymbolMap)
     ;
         Contexts = [Context],
-        map.det_insert(SymbolMap0, Symbol, Contexts, SymbolMap)
+        map.det_insert(Symbol, Contexts, SymbolMap0, SymbolMap)
     ),
     typecheck_info_set_overloaded_symbols(SymbolMap, !Info).
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -599,7 +599,7 @@ rename_var(Var, NewVar, Substitution, !SlotInfo) :-
     varset.new_var(Varset0, NewVar, Varset),
     map.from_assoc_list([Var - NewVar], Substitution),
     map.lookup(VarTypes0, Var, Type),
-    map.det_insert(VarTypes0, NewVar, Type, VarTypes),
+    map.det_insert(NewVar, Type, VarTypes0, VarTypes),
     rtti_var_info_duplicate(Var, NewVar, RttiVarMaps0, RttiVarMaps),
     !:SlotInfo = slot_info(Varset, VarTypes, RttiVarMaps,
         TypeInfoLiveness).

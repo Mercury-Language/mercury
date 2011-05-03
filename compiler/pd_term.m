@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001, 2003-2008, 2010 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -181,8 +181,8 @@ global_check(_ModuleInfo, EarlierGoal, BetweenGoals, MaybeLaterGoal,
             ->
                 Result = ok(ProcPair, Length),
                 % Set the maybe(pred_proc_id) when we create the new predicate.
-                map.set(MultipleGoalCover0, ProcPair,
-                    Length - no, MultipleGoalCover)
+                map.set(ProcPair, Length - no,
+                    MultipleGoalCover0, MultipleGoalCover)
             ;
                 Length = MaxLength,
                 MaybeCoveringPredProcId = yes(CoveringPredProcId)
@@ -201,8 +201,8 @@ global_check(_ModuleInfo, EarlierGoal, BetweenGoals, MaybeLaterGoal,
             Result = ok(ProcPair, Length),
 
             % Set the maybe(pred_proc_id) when we create the new predicate.
-            map.set(MultipleGoalCover0, ProcPair, Length - no,
-                MultipleGoalCover)
+            map.set(ProcPair, Length - no,
+                MultipleGoalCover0, MultipleGoalCover)
         ),
         SingleGoalCover = SingleGoalCover0
     ;
@@ -227,7 +227,7 @@ global_check(_ModuleInfo, EarlierGoal, BetweenGoals, MaybeLaterGoal,
 expand_calls(GetEnd, Versions, PredProcId0, PredProcId) :-
     ( map.search(Versions, PredProcId0, VersionInfo) ->
         Calls = VersionInfo ^ version_deforest_calls,
-        call(GetEnd, Calls, PredProcId1),
+        GetEnd(Calls, PredProcId1),
         expand_calls(GetEnd, Versions, PredProcId1, PredProcId)
     ;
         PredProcId = PredProcId0
@@ -240,10 +240,10 @@ local_check(ModuleInfo, Goal1, InstMap, !Cover) :-
     ( map.search(!.Cover, proc(PredId, ProcId), CoveringInstSizes0) ->
         do_local_check(ModuleInfo, InstMap, Args,
             CoveringInstSizes0, CoveringInstSizes),
-        map.set(!.Cover, proc(PredId, ProcId), CoveringInstSizes, !:Cover)
+        map.set(proc(PredId, ProcId), CoveringInstSizes, !Cover)
     ;
         initial_sizes(ModuleInfo, InstMap, Args, 1, ArgInstSizes),
-        map.set(!.Cover, proc(PredId, ProcId), ArgInstSizes, !:Cover)
+        map.set(proc(PredId, ProcId), ArgInstSizes, !Cover)
     ).
 
 :- pred do_local_check(module_info::in, instmap::in, list(prog_var)::in,
@@ -262,7 +262,7 @@ do_local_check(ModuleInfo, InstMap, Args, OldSizes, NewSizes) :-
 
 update_global_term_info(ProcPair, PredProcId, Size, !TermInfo) :-
     !.TermInfo = global_term_info(Single, Multiple0),
-    map.set(Multiple0, ProcPair, Size - yes(PredProcId), Multiple),
+    map.set(ProcPair, Size - yes(PredProcId), Multiple0, Multiple),
     !:TermInfo = global_term_info(Single, Multiple).
 
 %-----------------------------------------------------------------------------%

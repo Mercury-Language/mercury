@@ -147,7 +147,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module svset.
 
 %-----------------------------------------------------------------------------%
@@ -220,12 +219,12 @@ collect_non_local_and_in_cond_regions_proc(ModuleInfo, PredId,
         ( map.count(NonLocalRegionsProc) = 0 ->
             true
         ;
-            svmap.set(PPId, NonLocalRegionsProc, !NonLocalRegionsTable)
+            map.set(PPId, NonLocalRegionsProc, !NonLocalRegionsTable)
         ),
         ( map.count(InCondRegionsProc) = 0 ->
             true
         ;
-            svmap.set(PPId, InCondRegionsProc, !InCondRegionsTable)
+            map.set(PPId, InCondRegionsProc, !InCondRegionsTable)
         )
     ).
 
@@ -466,7 +465,7 @@ record_non_local_regions(Path, Created, Removed, !NonLocalRegionProc) :-
             ( set.empty(NonLocalRegions) ->
                 true
             ;
-                svmap.set(PathToCond, NonLocalRegions, !NonLocalRegionProc)
+                map.set(PathToCond, NonLocalRegions, !NonLocalRegionProc)
             )
         ;
             true
@@ -648,7 +647,7 @@ record_regions_created_in_condition(Path, Created, !InCondRegionsProc) :-
             ( set.empty(InCondRegions) ->
                 true
             ;
-                svmap.set(Path, InCondRegions, !InCondRegionsProc)
+                map.set(Path, InCondRegions, !InCondRegionsProc)
             )
         ;
             true
@@ -768,7 +767,7 @@ collect_ite_renamed_regions_proc(NonLocalRegionsTable, PPId,
         ( map.count(IteRenamedRegionProc) = 0 ->
             true
         ;
-            svmap.set(PPId, IteRenamedRegionProc, !IteRenamedRegionTable)
+            map.set(PPId, IteRenamedRegionProc, !IteRenamedRegionTable)
         )
     ;
         true
@@ -785,7 +784,7 @@ collect_ite_renamed_regions_ite(NonLocalRegionsProc, PathToCond,
         ( set.empty(RenamedRegions) ->
             true
         ;
-            svmap.set(PathToCond, RenamedRegions, !IteRenamedRegionProc)
+            map.set(PathToCond, RenamedRegions, !IteRenamedRegionProc)
         )
     ;
         true
@@ -814,7 +813,7 @@ collect_ite_renaming_proc(ModuleInfo, RptaInfoTable,
     RptaInfo = rpta_info(Graph, _),
     collect_ite_renaming_goal(IteRenamedRegionProc, Graph,
         Goal, map.init, IteRenamingProc),
-    svmap.set(PPId, IteRenamingProc, !IteRenamingTable).
+    map.set(PPId, IteRenamingProc, !IteRenamingTable).
 
 :- pred collect_ite_renaming_goal(goal_path_regions_table::in, rpt_graph::in,
     hlds_goal::in, renaming_proc::in, renaming_proc::out) is det.
@@ -919,11 +918,11 @@ collect_ite_renaming_in_condition(IteRenamedRegionProc, Graph, Cond,
 record_ite_renaming(ProgPoint, HowMany, _Graph, RegName, !IteRenamingProc) :-
     NewName = RegName ++ "_ite_" ++ string.int_to_string(HowMany),
     ( map.search(!.IteRenamingProc, ProgPoint, IteRenaming0) ->
-        svmap.set(RegName, [NewName], IteRenaming0, IteRenaming)
+        map.set(RegName, [NewName], IteRenaming0, IteRenaming)
     ;
-        svmap.set(RegName, [NewName], map.init, IteRenaming)
+        map.set(RegName, [NewName], map.init, IteRenaming)
     ),
-    svmap.set(ProgPoint, IteRenaming, !IteRenamingProc).
+    map.set(ProgPoint, IteRenaming, !IteRenamingProc).
 
 :- pred collect_ite_renaming_in_condition_compound_goal(
     goal_path_regions_table::in, rpt_graph::in,
@@ -1046,8 +1045,8 @@ collect_ite_annotation_proc(ExecPathTable, RptaInfoTable, PPId,
     map.foldl2(collect_ite_annotation_region_names(ExecPaths, Graph),
         IteRenamedRegionProc, IteRenamingProc0, IteRenamingProc,
         map.init, IteAnnotationProc),
-    svmap.set(PPId, IteAnnotationProc, !IteAnnotationTable),
-    svmap.set(PPId, IteRenamingProc, !IteRenamingTable).
+    map.set(PPId, IteAnnotationProc, !IteAnnotationTable),
+    map.set(PPId, IteRenamingProc, !IteRenamingTable).
 
 :- pred collect_ite_annotation_region_names(list(execution_path)::in,
     rpt_graph::in, reverse_goal_path::in, set(string)::in,
@@ -1111,7 +1110,7 @@ collect_ite_annotation_exec_path_2(Graph, PathToThen,
             % an if-then-else. So we need to maintain the ite renaming
             % from the previous point to this point.
             ( map.search(!.IteRenamingProc, PrevPoint, PrevIteRenaming) ->
-                svmap.set(ProgPoint, PrevIteRenaming, !IteRenamingProc)
+                map.set(ProgPoint, PrevIteRenaming, !IteRenamingProc)
             ;
                 true
             ),

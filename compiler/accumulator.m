@@ -1178,7 +1178,7 @@ acc_var_subst_init([], !VarSet, !VarTypes, map.init).
 acc_var_subst_init([Var | Vars], !VarSet, !VarTypes, Subst) :-
     create_new_var(Var, "A_", AccVar, !VarSet, !VarTypes),
     acc_var_subst_init(Vars, !VarSet, !VarTypes, Subst0),
-    map.det_insert(Subst0, Var, AccVar, Subst).
+    map.det_insert(Var, AccVar, Subst0, Subst).
 
     % Create a fresh variable which is the same type as the old
     % variable and has the same name except that it begins with the
@@ -1192,7 +1192,7 @@ create_new_var(OldVar, Prefix, NewVar, !VarSet, !VarTypes) :-
     string.append(Prefix, OldName, NewName),
     varset.new_named_var(!.VarSet, NewName, NewVar, !:VarSet),
     map.lookup(!.VarTypes, OldVar, Type),
-    map.det_insert(!.VarTypes, NewVar, Type, !:VarTypes).
+    map.det_insert(NewVar, Type, !VarTypes).
 
 %-----------------------------------------------------------------------------%
 
@@ -1226,10 +1226,10 @@ accu_process_assoc_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
     map.lookup(AccVarSubst, BeforeAssocVar, AccVar),
     create_new_var(BeforeAssocVar, "NewAcc_", NewAcc, !VarSet, !VarTypes),
 
-    map.det_insert(AssocCallSubst0, DuringAssocVar, AccVar, AssocCallSubst1),
-    map.det_insert(AssocCallSubst1, AssocOutput, NewAcc, AssocCallSubst),
-    map.det_insert(RecCallSubst0, DuringAssocVar, AssocOutput, RecCallSubst1),
-    map.det_insert(RecCallSubst1, BeforeAssocVar, NewAcc, RecCallSubst),
+    map.det_insert(DuringAssocVar, AccVar, AssocCallSubst0, AssocCallSubst1),
+    map.det_insert(AssocOutput, NewAcc, AssocCallSubst1, AssocCallSubst),
+    map.det_insert(DuringAssocVar, AssocOutput, RecCallSubst0, RecCallSubst1),
+    map.det_insert(BeforeAssocVar, NewAcc, RecCallSubst1, RecCallSubst),
 
     !:Substs = accu_substs(AccVarSubst, RecCallSubst, AssocCallSubst,
         UpdateSubst),
@@ -1322,11 +1322,10 @@ accu_process_update_set(ModuleInfo, GS, [Id | Ids], OutPrime, !Substs,
     create_new_var(StateInputVar, "Acc_", Acc0, !VarSet, !VarTypes),
     create_new_var(StateOutputVar, "Acc_", Acc, !VarSet, !VarTypes),
 
-    map.det_insert(UpdateSubst0, StateInputVar, Acc0, UpdateSubst1),
-    map.det_insert(UpdateSubst1, StateOutputVar, Acc, UpdateSubst),
-    map.det_insert(RecCallSubst0, StateInputVar, StateOutputVar,
-        RecCallSubst),
-    map.det_insert(AccVarSubst0, Acc, Acc0, AccVarSubst),
+    map.det_insert(StateInputVar, Acc0, UpdateSubst0, UpdateSubst1),
+    map.det_insert(StateOutputVar, Acc, UpdateSubst1, UpdateSubst),
+    map.det_insert(StateInputVar, StateOutputVar, RecCallSubst0, RecCallSubst),
+    map.det_insert(Acc, Acc0, AccVarSubst0, AccVarSubst),
     !:Substs = accu_substs(AccVarSubst, RecCallSubst, AssocCallSubst,
         UpdateSubst),
 
@@ -1923,7 +1922,7 @@ chain_subst_2([A|As], AtoB, BtoC, AtoC) :-
     chain_subst_2(As, AtoB, BtoC, AtoC0),
     map.lookup(AtoB, A, B),
     ( map.search(BtoC, B, C) ->
-        map.det_insert(AtoC0, A, C, AtoC)
+        map.det_insert(A, C, AtoC0, AtoC)
     ;
         AtoC = AtoC0
     ).

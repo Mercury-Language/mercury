@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2010 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -133,8 +133,6 @@
 :- import_module set.
 :- import_module solutions.
 :- import_module string.
-:- import_module svmap.
-:- import_module svmulti_map.
 :- import_module svset.
 :- import_module term.
 :- import_module varset.
@@ -928,10 +926,10 @@ partition_instances_for_class_2(ClassId, InstanceDefn, !Abstracts,
         Body = InstanceDefn ^ instance_body,
         (
             Body = instance_body_abstract,
-            svmulti_map.add(ClassId, InstanceDefn, !Abstracts)
+            multi_map.add(ClassId, InstanceDefn, !Abstracts)
         ;
             Body = instance_body_concrete(_),
-            svmulti_map.add(ClassId, InstanceDefn, !Concretes)
+            multi_map.add(ClassId, InstanceDefn, !Concretes)
         )
     ;
         IsImported = yes
@@ -1062,7 +1060,7 @@ find_cycles_2(Path, ClassId, Params, Ancestors, !ClassTable, !Visited,
         foldl4(find_cycles_3([ClassId | Path]), Superclasses,
             !ClassTable, !Visited, !Cycles, Ancestors0, Ancestors),
         ClassDefn = ClassDefn0 ^ class_fundep_ancestors := Ancestors,
-        svmap.det_update(ClassId, ClassDefn, !ClassTable)
+        map.det_update(ClassId, ClassDefn, !ClassTable)
     ).
 
     % As we go, accumulate the ancestors from all the superclasses,

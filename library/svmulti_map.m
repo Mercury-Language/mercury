@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -100,41 +100,41 @@
 
 :- implementation.
 
-svmulti_map.insert(K, V, MultiMap0, MultiMap) :-
-    multi_map.insert(MultiMap0, K, V, MultiMap).
+svmulti_map.insert(K, V, !MultiMap) :-
+    multi_map.insert(K, V, !MultiMap).
 
-svmulti_map.det_insert(K, V, MultiMap0, MultiMap) :-
-    multi_map.det_insert(MultiMap0, K, V, MultiMap).
+svmulti_map.det_insert(K, V, !MultiMap) :-
+    multi_map.det_insert(K, V, !MultiMap).
 
-svmulti_map.update(K, V, MultiMap0, MultiMap) :-
-    multi_map.update(MultiMap0, K, V, MultiMap).
+svmulti_map.update(K, V, !MultiMap) :-
+    multi_map.update(K, V, !MultiMap).
 
-svmulti_map.det_update(K, V, MultiMap0, MultiMap) :-
-    multi_map.det_update(MultiMap0, K, V, MultiMap).
+svmulti_map.det_update(K, V, !MultiMap) :-
+    multi_map.det_update(K, V, !MultiMap).
 
-svmulti_map.det_replace(K, V, MultiMap0, MultiMap) :-
-    multi_map.det_replace(MultiMap0, K, V, MultiMap).
+svmulti_map.det_replace(K, V, !MultiMap) :-
+    multi_map.det_replace(K, V, !MultiMap).
 
-svmulti_map.set(K, V, MultiMap0, MultiMap) :-
-    multi_map.set(MultiMap0, K, V, MultiMap).
+svmulti_map.set(K, V, !MultiMap) :-
+    multi_map.set(K, V, !MultiMap).
 
-svmulti_map.add(K, V, MultiMap0, MultiMap) :-
-    multi_map.add(MultiMap0, K, V, MultiMap).
+svmulti_map.add(K, V, !MultiMap) :-
+    multi_map.add(K, V, !MultiMap).
 
-svmulti_map.delete(K, MultiMap0, MultiMap) :-
-    multi_map.delete(MultiMap0, K, MultiMap).
+svmulti_map.delete(K, !MultiMap) :-
+    multi_map.delete(K, !MultiMap).
 
-svmulti_map.delete(K, V, MultiMap0, MultiMap) :-
-    multi_map.delete(MultiMap0, K, V, MultiMap).
+svmulti_map.delete(K, V, !MultiMap) :-
+    multi_map.delete(K, V, !MultiMap).
 
-svmulti_map.remove(K, V, MultiMap0, MultiMap) :-
-    multi_map.remove(MultiMap0, K, V, MultiMap).
+svmulti_map.remove(K, V, !MultiMap) :-
+    multi_map.remove(K, V, !MultiMap).
 
-svmulti_map.det_remove(K, V, MultiMap0, MultiMap) :-
-    multi_map.det_remove(MultiMap0, K, V, MultiMap).
+svmulti_map.det_remove(K, V, !MultiMap) :-
+    multi_map.det_remove(K, V, !MultiMap).
 
-svmulti_map.remove_smallest(K, V, MultiMap0, MultiMap) :-
-    multi_map.remove_smallest(MultiMap0, K, V, MultiMap).
+svmulti_map.remove_smallest(K, V, !MultiMap) :-
+    multi_map.remove_smallest(K, V, !MultiMap).
 
 %----------------------------------------------------------------------------%
 :- end_module svmulti_map.

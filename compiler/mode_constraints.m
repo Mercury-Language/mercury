@@ -288,7 +288,7 @@ mc_process_scc(Simple, SCC, !PredConstraintMap, !ModuleInfo) :-
         Insert = (pred(PredId::in, PCM0::in, PCM::out) is det :-
             NewPCI = pci(!.ModeConstraint,
                 mci_set_pred_id(!.MCI, PredId)),
-            map.det_insert(PCM0, PredId, NewPCI, PCM)
+            map.det_insert(PredId, NewPCI, PCM0, PCM)
         ),
         list.foldl(Insert, SCC, !PredConstraintMap)
         % clear_caches(!IO).
@@ -1021,7 +1021,7 @@ do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
         HoModes0 = !.MDI ^ ho_modes,
         MCI = !.MDI ^ mc_info,
         get_prog_var_level(MCI, Var, VarLevel),
-        multi_map.set(HoModes0, VarLevel, ArgModes, HoModes),
+        multi_map.set(VarLevel, ArgModes, HoModes0, HoModes),
         !MDI ^ ho_modes := HoModes
     ;
         true
@@ -1226,7 +1226,7 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
 
             Usage = list.foldl(func(G, U0) =
                 list.foldl((func(V, U1) = U :-
-                    multi_map.set(U1, V, get_goal_id(G), U)),
+                    multi_map.set(V, get_goal_id(G), U1, U)),
                     set.to_sorted_list(vars(G)), U0),
                 Goals0, Usage0),
 
@@ -1345,7 +1345,7 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
             % once we know the higher order mode of the Var we are calling.
             HoCalls0 = !.GCInfo ^ ho_calls,
             get_prog_var_level(!.GCInfo ^ mc_info, Var, VarLevel),
-            multi_map.set(HoCalls0, VarLevel, GoalId - Args, HoCalls),
+            multi_map.set(VarLevel, GoalId - Args, HoCalls0, HoCalls),
             !GCInfo ^ ho_calls := HoCalls,
 
             CanSucceed = yes % XXX should check this
@@ -1671,7 +1671,7 @@ unify_constraints(LHSVar, GoalId, RHS0, RHS, !Constraint, !GCInfo) :-
         % Record the higher-order mode of this lambda goal.
         HoModes0 = !.GCInfo ^ ho_modes,
         get_prog_var_level(!.GCInfo ^ mc_info, LHSVar, LHSVarLevel),
-        multi_map.set(HoModes0, LHSVarLevel, Modes, HoModes),
+        multi_map.set(LHSVarLevel, Modes, HoModes0, HoModes),
         !GCInfo ^ ho_modes := HoModes,
 
         % Analyse the lambda goal.
@@ -1997,13 +1997,13 @@ share_ho_modes(VarA, VarB, HoModes0, HoModes, !MCI) :-
     ( map.search(HoModes0, A, AModes) ->
         ( map.search(HoModes0, B, BModes) ->
             Modes = list.sort_and_remove_dups(AModes ++ BModes),
-            map.det_update(HoModes0, A, Modes, HoModes1),
-            map.det_update(HoModes1, B, Modes, HoModes)
+            map.det_update(A, Modes, HoModes0, HoModes1),
+            map.det_update(B, Modes, HoModes1, HoModes)
         ;
-            map.det_insert(HoModes0, B, AModes, HoModes)
+            map.det_insert(B, AModes, HoModes0, HoModes)
         )
     ; map.search(HoModes0, B, BModes) ->
-        map.det_insert(HoModes0, A, BModes, HoModes)
+        map.det_insert(A, BModes, HoModes0, HoModes)
     ;
         HoModes = HoModes0
     ).

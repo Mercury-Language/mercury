@@ -111,9 +111,9 @@ build_peephole_jump_label_map([], _, !LabelMap).
 build_peephole_jump_label_map([MaybeLabel | MaybeLabels], Val, !LabelMap) :-
     MaybeLabel = yes(Label),
     ( map.search(!.LabelMap, Label, Vals0) ->
-        map.det_update(!.LabelMap, Label, [Val | Vals0], !:LabelMap)
+        map.det_update(Label, [Val | Vals0], !LabelMap)
     ;
-        map.det_insert(!.LabelMap, Label, [Val], !:LabelMap)
+        map.det_insert(Label, [Val], !LabelMap)
     ),
     build_peephole_jump_label_map(MaybeLabels, Val + 1, !LabelMap).
 

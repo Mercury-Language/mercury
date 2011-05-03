@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001, 2003, 2006 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003, 2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
@@ -220,7 +220,7 @@ add_clause(Clauses0, Id, Clause, Clauses) :-
 	;
 		These = [Clause]
 	),
-	map.set(Clauses0, Id, These, Clauses).
+	map.set(Id, These, Clauses0, Clauses).
 
 %------------------------------------------------------------------------------%
 
@@ -326,7 +326,7 @@ add_rule(Id, Head, Varset, Context, BodyTerms - Actions, !Grammar) :-
 	;
 		Prods = [Nont0]
 	),
-	map.set(ClauseIndex0, Id, Prods, ClauseIndex),
+	map.set(Id, Prods, ClauseIndex0, ClauseIndex),
 	!:Grammar = grammar(Rules, C, Xfs, Nont, ClauseIndex, F, L).
 
 :- pred transform_prod(prod, pair(list(bodyterm), list(term))).
@@ -438,7 +438,7 @@ compute_first(_RuleNum, Rule, Stuff0, Stuff) :-
 		ThisFirst = ComputedFirst,
 		Ch1 = yes
 	),
-	set(First0, Id, ThisFirst, First1),
+	map.set(Id, ThisFirst, First0, First1),
 	Stuff = stuff(Ch1, Ns, Rs, First1).
 
 
@@ -572,7 +572,7 @@ compute_follow0(Grammar0, Grammar) :-
 compute_follow(Rules, Start, EOF, First, Follow) :-
 	map.init(Follow0),
 		% Rule 1
-	map.set(Follow0, Start, set.make_singleton_set(EOF), Follow1),
+	map.set(Start, set.make_singleton_set(EOF), Follow0, Follow1),
 	collect_nonterminals(Rules, Ns),
 	Stuff0 = stuff(no, Ns, Rules, First, Follow1),
 	until((pred(Stuff1::in, Stuff3::out) is det :-
@@ -655,7 +655,7 @@ get_follow(Id, IdFollow, Stuff, Stuff) :-
 
 add_follow(Id, IdFollow0, Stuff0, Stuff) :-
 	Stuff0 = stuff(Ch0, Ns, Rs, Fs, Follow0),
-	( search(Follow0, Id, OldFollow) ->
+	( map.search(Follow0, Id, OldFollow) ->
 		difference(IdFollow0, OldFollow, NewFollow),
 		( empty(NewFollow) ->
 			IdFollow = OldFollow,
@@ -668,7 +668,7 @@ add_follow(Id, IdFollow0, Stuff0, Stuff) :-
 		IdFollow = IdFollow0,
 		Ch = yes
 	),
-	set(Follow0, Id, IdFollow, Follow),
+	map.set(Id, IdFollow, Follow0, Follow),
 	Stuff = stuff(Ch, Ns, Rs, Fs, Follow).
 
 %------------------------------------------------------------------------------%
@@ -700,6 +700,6 @@ first(First, Elems, I) = FirstI :-
 :- mode add_rule(in, in, in, out) is det.
 
 add_rule(Rules0, Num, Rule, Rules) :-
-	map.set(Rules0, Num, Rule, Rules).
+	map.set(Num, Rule, Rules0, Rules).
 
 %------------------------------------------------------------------------------%

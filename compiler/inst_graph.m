@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2001-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -202,15 +202,14 @@ init(Vars, InstGraph) :-
 
 :- pred init_var(prog_var::in, inst_graph::in, inst_graph::out) is det.
 
-init_var(Var, InstGraph0, InstGraph) :-
-    map.det_insert(InstGraph0, Var, node(map.init, top_level), InstGraph).
+init_var(Var, !InstGraph) :-
+    map.det_insert(Var, node(map.init, top_level), !InstGraph).
 
-set_parent(Parent, Child, InstGraph0, InstGraph) :-
-    map.lookup(InstGraph0, Child, node(Functors, MaybeParent0)),
+set_parent(Parent, Child, !InstGraph) :-
+    map.lookup(!.InstGraph, Child, node(Functors, MaybeParent0)),
     (
         MaybeParent0 = top_level,
-        map.det_update(InstGraph0, Child, node(Functors, parent(Parent)),
-            InstGraph)
+        map.det_update(Child, node(Functors, parent(Parent)), !InstGraph)
     ;
         MaybeParent0 = parent(_),
         unexpected(this_file, "set_parent: node already has parent")
@@ -379,7 +378,7 @@ merge(InstGraph0, VarSet0, NewInstGraph, NewVarSet, InstGraph, VarSet, Sub) :-
             Functors0, Functors),
         Node = node(Functors, MaybeParent),
         map.lookup(Sub, Var0, Var),
-        map.det_insert(IG0, Var, Node, IG)
+        map.det_insert(Var, Node, IG0, IG)
     ), NewInstGraph, InstGraph0, InstGraph).
 
 %-----------------------------------------------------------------------------%

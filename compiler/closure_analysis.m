@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2010 The University of Melbourne.
+% Copyright (C) 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -53,7 +53,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module svset.
 :- import_module varset.
 
@@ -135,7 +134,7 @@ var_has_ho_type(VarTypes, Var) :-
     is det.
 
 insert_unknown(Var, !ClosureInfo) :-
-    svmap.det_insert(Var, unknown, !ClosureInfo).
+    map.det_insert(Var, unknown, !ClosureInfo).
 
 %----------------------------------------------------------------------------%
 %
@@ -213,7 +212,7 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
                     PossibleValues = partial(_)
                 ;
                     PossibleValues = exclusive(KnownValues),
-                    svmap.det_insert(Var, KnownValues, !ValueMap)
+                    map.det_insert(Var, KnownValues, !ValueMap)
                 )
             ;
                 true
@@ -253,7 +252,7 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
                     PossibleValues = partial(_)
                 ;
                     PossibleValues = exclusive(KnownValues),
-                    svmap.det_insert(Var, KnownValues, !ValueMap)
+                    map.det_insert(Var, KnownValues, !ValueMap)
                 )
             ;
                 true
@@ -289,7 +288,7 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
             ->
                 PPId = unshroud_pred_proc_id(ShroudedPPId),
                 HO_Value = set.make_singleton_set(PPId),
-                svmap.det_insert(LHS, exclusive(HO_Value), !ClosureInfo)
+                map.det_insert(LHS, exclusive(HO_Value), !ClosureInfo)
             ;
                 true
             )
@@ -314,7 +313,7 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
                     true
                 ),
                 Values = map.lookup(!.ClosureInfo, RHS),
-                svmap.det_insert(LHS, Values, !ClosureInfo)
+                map.det_insert(LHS, Values, !ClosureInfo)
             ;
                 true
             )
@@ -381,7 +380,7 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
             Out = Var - unknown
         ),
         list.filter_map(ForeignHOArgs, Args, OutputForeignHOArgs),
-        svmap.det_insert_from_assoc_list(OutputForeignHOArgs, !ClosureInfo),
+        map.det_insert_from_assoc_list(OutputForeignHOArgs, !ClosureInfo),
         Goal = Goal0
     ;
         GoalExpr0 = shorthand(_),

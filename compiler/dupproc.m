@@ -79,7 +79,7 @@ eliminate_dup_procs(ModelStdProcs0, [Id - Proc0 | IdProcs0],
         MaybeProc = yes(ProcPrime)
     ->
         Proc = ProcPrime,
-        map.det_insert(!.DupProcMap, Id, MatchingId, !:DupProcMap),
+        map.det_insert(Id, MatchingId, !DupProcMap),
         ModelStdProcs = ModelStdProcs0
     ;
         Proc = Proc0,
@@ -96,7 +96,7 @@ eliminate_dup_procs(ModelStdProcs0, [Id - Proc0 | IdProcs0],
 
 find_matching_model_proc([ModelId - ModelStdProc | ModelIdProcs], Id, Proc,
         DupProcMap, MatchingId) :-
-    map.det_insert(DupProcMap, Id, ModelId, AugDupProcMap),
+    map.det_insert(Id, ModelId, DupProcMap, AugDupProcMap),
     standardize_proc(Proc, StdProc, AugDupProcMap),
     StdInstrs = StdProc ^ cproc_code,
     ModelStdInstrs = ModelStdProc ^ cproc_code,

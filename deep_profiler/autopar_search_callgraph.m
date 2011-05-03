@@ -77,7 +77,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 
 %----------------------------------------------------------------------------%
 %
@@ -505,7 +504,7 @@ insert_into_push_map(PushGoal, !Map) :-
             set.insert_list(OldTargetGoalPathStrSet, TargetGoalPathStrs,
                 NewTargetGoalPathStrSet),
             NewTriple = {OldLo, OldHi, NewTargetGoalPathStrSet},
-            svmap.det_update(GoalPathStr, NewTriple, !Map)
+            map.det_update(GoalPathStr, NewTriple, !Map)
         ;
             % There seem to be separate push requests inside the same
             % conjunction that want to push different seets of conjuncts.
@@ -516,7 +515,7 @@ insert_into_push_map(PushGoal, !Map) :-
         )
     ;
         NewTriple = {Lo, Hi, set.list_to_set(TargetGoalPathStrs)},
-        svmap.det_insert(GoalPathStr, NewTriple, !Map)
+        map.det_insert(GoalPathStr, NewTriple, !Map)
     ).
 
 :- pred extract_from_push_map(goal_path_string::in,
@@ -627,8 +626,8 @@ candidate_parallel_conjunctions_proc(Opts, Deep, PDPtr, RecursionType,
                         merge_pushes_for_proc(Pushes, MergedPushes),
                         CandidateProc = candidate_par_conjunctions_proc(
                             VarTable, MergedPushes, Candidates0),
-                        map.det_insert(map.init, ProcLabel, CandidateProc,
-                            Candidates)
+                        map.det_insert(ProcLabel, CandidateProc,
+                            map.init, Candidates)
                     )
                 ;
                     SeenDuplicateInstantiation = seen_duplicate_instantiation,
@@ -672,7 +671,7 @@ build_candidate_par_conjunction_maps(ProcLabel, VarTable, Candidate, !Map) :-
     ),
     CandidateProc = candidate_par_conjunctions_proc(VarTable, PushGoals,
         CPCs),
-    svmap.set(ProcLabel, CandidateProc, !Map).
+    map.set(ProcLabel, CandidateProc, !Map).
 
 %----------------------------------------------------------------------------%
 

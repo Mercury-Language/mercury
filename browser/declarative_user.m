@@ -122,9 +122,9 @@
 :- import_module getopt.
 :- import_module int.
 :- import_module list.
+:- import_module map.
 :- import_module maybe.
 :- import_module string.
-:- import_module svmap.
 :- import_module univ.
 
 %-----------------------------------------------------------------------------%
@@ -996,8 +996,8 @@ format_param_arg_cmd(Cmd, ArgWords0, Command) :-
         % rather than the ones for `print'.
         some [!OptionTable] (
             MaybeOptionTable0 = ok(!:OptionTable),
-            svmap.det_update(set_print, bool(no), !OptionTable),
-            svmap.det_update(set_print_all, bool(yes), !OptionTable),
+            map.det_update(set_print, bool(no), !OptionTable),
+            map.det_update(set_print_all, bool(yes), !OptionTable),
             MaybeOptionTable = ok(!.OptionTable)
         )
     ;

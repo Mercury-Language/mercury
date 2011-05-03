@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2010 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -897,7 +897,7 @@ infer_proc_determinism_pass_1([ProcID | ProcIDs], ModuleInfo, !ProcTable,
     ( InferredDetism = inferred(Determinism) ->
         proc_info_set_inferred_determinism(Determinism,
             ProcInfo0, ProcInfo),
-        map.det_update(!.ProcTable, ProcID, ProcInfo, !:ProcTable)
+        map.det_update(ProcID, ProcInfo, !ProcTable)
     ;
         true
     ),
@@ -1183,7 +1183,7 @@ infer_determinism_pass_2([ProcID - FileName | ProcFiles], Globals,
         Determinism = detism_erroneous
     ),
     proc_info_set_inferred_determinism(Determinism, ProcInfo0, ProcInfo),
-    map.det_update(!.ProcTable, ProcID, ProcInfo, !:ProcTable),
+    map.det_update(ProcID, ProcInfo, !ProcTable),
     infer_determinism_pass_2(ProcFiles, Globals, ExistsAllInMode,
         !ProcTable, !IO).
 
@@ -1778,7 +1778,7 @@ lower_level_collect_matching_facts_2(Fact, [Fact0 | Facts0], Matching0,
 update_fact_map(_, [], !FactMap).
 update_fact_map(FactNum, [Fact | Facts], !FactMap) :-
     Fact = sort_file_line(_, Index, _),
-    map.set(!.FactMap, Index, FactNum, !:FactMap),
+    map.set(Index, FactNum, !FactMap),
     update_fact_map(FactNum + 1, Facts, !FactMap).
 
 %---------------------------------------------------------------------------%
@@ -2125,7 +2125,7 @@ hash_table_search(HashTable, Index, Value) :-
 
 hash_table_set(Index, Value, HashTable0, HashTable) :-
     HashTable0 = hash_table(Size, Map0),
-    map.set(Map0, Index, Value, Map),
+    map.set(Index, Value, Map0, Map),
     HashTable = hash_table(Size, Map).
 
 %--------------------------------------------------------------------------%

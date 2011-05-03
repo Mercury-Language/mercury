@@ -1254,7 +1254,7 @@ module_info_remove_predicate(PredId, !MI) :-
 
 module_info_set_pred_info(PredId, PredInfo, !MI) :-
     module_info_get_preds(!.MI, Preds0),
-    map.set(Preds0, PredId, PredInfo, Preds),
+    map.set(PredId, PredInfo, Preds0, Preds),
     module_info_set_preds(Preds, !MI).
 
 module_info_set_pred_proc_info(proc(PredId, ProcId), PredInfo, ProcInfo,
@@ -1264,7 +1264,7 @@ module_info_set_pred_proc_info(proc(PredId, ProcId), PredInfo, ProcInfo,
 
 module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo, !MI) :-
     pred_info_get_procedures(PredInfo0, Procs0),
-    map.set(Procs0, ProcId, ProcInfo, Procs),
+    map.set(ProcId, ProcInfo, Procs0, Procs),
     pred_info_set_procedures(Procs, PredInfo0, PredInfo),
     module_info_set_pred_info(PredId, PredInfo, !MI).
 
@@ -1295,30 +1295,30 @@ module_info_incr_num_errors(Incr, !MI) :-
 module_info_next_lambda_count(Context, Count, !MI) :-
     module_info_get_lambdas_per_context(!.MI, ContextCounter0),
     (
-        map.insert(ContextCounter0, Context, counter.init(2),
-            FoundContextCounter)
+        map.insert(Context, counter.init(2),
+            ContextCounter0, FoundContextCounter)
     ->
         Count = 1,
         ContextCounter = FoundContextCounter
     ;
         map.lookup(ContextCounter0, Context, Counter0),
         counter.allocate(Count, Counter0, Counter),
-        map.det_update(ContextCounter0, Context, Counter, ContextCounter)
+        map.det_update(Context, Counter, ContextCounter0, ContextCounter)
     ),
     module_info_set_lambdas_per_context(ContextCounter, !MI).
 
 module_info_next_atomic_count(Context, Count, !MI) :-
     module_info_get_atomics_per_context(!.MI, ContextCounter0),
     (
-        map.insert(ContextCounter0, Context, counter.init(2),
-            FoundContextCounter)
+        map.insert(Context, counter.init(2),
+            ContextCounter0, FoundContextCounter)
     ->
         Count = 1,
         ContextCounter = FoundContextCounter
     ;
         map.lookup(ContextCounter0, Context, Counter0),
         counter.allocate(Count, Counter0, Counter),
-        map.det_update(ContextCounter0, Context, Counter, ContextCounter)
+        map.det_update(Context, Counter, ContextCounter0, ContextCounter)
     ),
     module_info_set_atomics_per_context(ContextCounter, !MI).
 

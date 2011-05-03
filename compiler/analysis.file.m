@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2010 The University of Melbourne.
+% Copyright (C) 2003, 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -359,7 +359,7 @@ read_module_analysis_results_2(Compiler, AnalysisFileName, ModuleResults,
     module_analysis_map(some_analysis_result)::out) is det
     <= compiler(Compiler).
 
-parse_result_entry(Compiler, Term, Results0, Results) :-
+parse_result_entry(Compiler, Term, !Results) :-
     (
         Term = term.functor(term.atom(AnalysisName),
             [VersionNumberTerm, FuncIdTerm,
@@ -380,7 +380,7 @@ parse_result_entry(Compiler, Term, Results0, Results) :-
         ->
             Result = 'new some_analysis_result'(CallPattern, AnswerPattern,
                 Status),
-            ( map.search(Results0, AnalysisName, AnalysisResults0) ->
+            ( map.search(!.Results, AnalysisName, AnalysisResults0) ->
                 AnalysisResults1 = AnalysisResults0
             ;
                 AnalysisResults1 = map.init
@@ -390,11 +390,11 @@ parse_result_entry(Compiler, Term, Results0, Results) :-
             ;
                 FuncResults = [Result]
             ),
-            map.set(AnalysisResults1, FuncId, FuncResults, AnalysisResults),
-            map.set(Results0, AnalysisName, AnalysisResults, Results)
+            map.set(FuncId, FuncResults, AnalysisResults1, AnalysisResults),
+            map.set(AnalysisName, AnalysisResults, !Results)
         ;
             % Ignore results with an out-of-date version number.
-            Results = Results0
+            true
         )
     ;
         Msg = "failed to parse result entry: " ++ string(Term),
@@ -414,7 +414,7 @@ read_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
     module_analysis_map(analysis_request)::out) is det
     <= compiler(Compiler).
 
-parse_request_entry(Compiler, Term, Requests0, Requests) :-
+parse_request_entry(Compiler, Term, !Requests) :-
     (
         Term = term.functor(atom("->"), [CallerModuleTerm, RHS], _),
         RHS = term.functor(atom(AnalysisName),
@@ -432,7 +432,7 @@ parse_request_entry(Compiler, Term, Requests0, Requests) :-
                 term.integer(VersionNumber), [], _)
         ->
             Result = 'new analysis_request'(CallPattern, CallerModule),
-            ( map.search(Requests0, AnalysisName, AnalysisRequests0) ->
+            ( map.search(!.Requests, AnalysisName, AnalysisRequests0) ->
                 AnalysisRequests1 = AnalysisRequests0
             ;
                 AnalysisRequests1 = map.init
@@ -442,11 +442,11 @@ parse_request_entry(Compiler, Term, Requests0, Requests) :-
             ;
                 FuncRequests = [Result]
             ),
-            map.set(AnalysisRequests1, FuncId, FuncRequests, AnalysisRequests),
-            map.set(Requests0, AnalysisName, AnalysisRequests, Requests)
+            map.set(FuncId, FuncRequests, AnalysisRequests1, AnalysisRequests),
+            map.set(AnalysisName, AnalysisRequests, !Requests)
         ;
             % Ignore requests with an out-of-date version number.
-            Requests = Requests0
+            true
         )
     ;
         Msg = "failed to parse request entry: " ++ string(Term),
@@ -463,7 +463,7 @@ read_module_imdg(Info, Globals, ModuleName, ModuleEntries, !IO) :-
     module_analysis_map(imdg_arc)::in, module_analysis_map(imdg_arc)::out)
     is det <= compiler(Compiler).
 
-parse_imdg_arc(Compiler, Term, Arcs0, Arcs) :-
+parse_imdg_arc(Compiler, Term, !Arcs) :-
     (
         Term = term.functor(atom("->"), [DependentModuleTerm, ResultTerm], _),
         ResultTerm = functor(atom(AnalysisName),
@@ -481,7 +481,7 @@ parse_imdg_arc(Compiler, Term, Arcs0, Arcs) :-
                 term.integer(VersionNumber), [], _)
         ->
             Arc = 'new imdg_arc'(CallPattern, DependentModule),
-            ( map.search(Arcs0, AnalysisName, AnalysisArcs0) ->
+            ( map.search(!.Arcs, AnalysisName, AnalysisArcs0) ->
                 AnalysisArcs1 = AnalysisArcs0
             ;
                 AnalysisArcs1 = map.init
@@ -491,13 +491,13 @@ parse_imdg_arc(Compiler, Term, Arcs0, Arcs) :-
             ;
                 FuncArcs = [Arc]
             ),
-            map.set(AnalysisArcs1, FuncId, FuncArcs, AnalysisArcs),
-            map.set(Arcs0, AnalysisName, AnalysisArcs, Arcs)
+            map.set(FuncId, FuncArcs, AnalysisArcs1, AnalysisArcs),
+            map.set(AnalysisName, AnalysisArcs, !Arcs)
         ;
             % Ignore results with an out-of-date version number.
             % XXX: is that the right thing to do?
             % do we really need a version number for the IMDG?
-            Arcs = Arcs0
+            true
         )
     ;
         Msg = "failed to parse IMDG arc: " ++ string(Term),

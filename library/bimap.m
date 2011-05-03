@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1995, 1997, 1999, 2004-2006, 2008 The University of Melbourne.
+% Copyright (C) 1994-1995, 1997, 1999, 2004-2006, 2008, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -92,14 +92,14 @@
     % Fails if either the key or value already exists.
     %
 :- func bimap.insert(bimap(K, V), K, V) = bimap(K, V) is semidet.
-:- pred bimap.insert(bimap(K, V)::in, K::in, V::in, bimap(K, V)::out)
+:- pred bimap.insert(K::in, V::in, bimap(K, V)::in, bimap(K, V)::out)
     is semidet.
 
     % As above but throws an exception if the key or value already
     % exists.
     %
 :- func bimap.det_insert(bimap(K, V), K, V) = bimap(K, V).
-:- pred bimap.det_insert(bimap(K, V)::in, K::in, V::in, bimap(K, V)::out)
+:- pred bimap.det_insert(K::in, V::in, bimap(K, V)::in, bimap(K, V)::out)
     is det.
 
     % Update the key and value if already present, otherwise insert the
@@ -109,7 +109,7 @@
     % (K, V1) and (K1, V) if they exist.
     %
 :- func bimap.set(bimap(K, V), K, V) = bimap(K, V).
-:- pred bimap.set(bimap(K, V)::in, K::in, V::in, bimap(K, V)::out) is det.
+:- pred bimap.set(K::in, V::in, bimap(K, V)::in, bimap(K, V)::out) is det.
 
     % Insert key-value pairs from an association list into the given bimap.
     % Fails if the contents of the association list and the initial bimap
@@ -358,38 +358,34 @@ bimap.ordinates(bimap(Forward, _), Os) :-
 bimap.coordinates(bimap(_, Reverse), Cs) :-
     map.keys(Reverse, Cs).
 
-bimap.insert(bimap(Forward0, Reverse0), K, V, bimap(Forward, Reverse)) :-
-    map.insert(Forward0, K, V, Forward),
-    map.insert(Reverse0, V, K, Reverse).
+bimap.insert(K, V, bimap(!.Forward, !.Reverse), bimap(!:Forward, !:Reverse)) :-
+    map.insert(K, V, !Forward),
+    map.insert(V, K, !Reverse).
 
-bimap.det_insert(bimap(Forward0, Reverse0), K, V, bimap(Forward, Reverse)) :-
-    map.det_insert(Forward0, K, V, Forward),
-    map.det_insert(Reverse0, V, K, Reverse).
+bimap.det_insert(K, V, bimap(!.Forward, !.Reverse), bimap(!:Forward, !:Reverse)) :-
+    map.det_insert(K, V, !Forward),
+    map.det_insert(V, K, !Reverse).
 
-bimap.set(bimap(Forward0, Reverse0), K, V, bimap(Forward, Reverse)) :-
-    ( map.search(Forward0, K, KVal) ->
+bimap.set(K, V, bimap(!.Forward, !.Reverse), bimap(!:Forward, !:Reverse)) :-
+    ( map.search(!.Forward, K, KVal) ->
         ( V \= KVal ->
-            map.det_update(Forward0, K, V, Forward1),
-            map.delete(Reverse0, KVal, Reverse1)
+            map.det_update(K, V, !Forward),
+            map.delete(KVal, !Reverse)
         ;
-            Forward1 = Forward0,
-            Reverse1 = Reverse0
+            true
         )
     ;
-        map.det_insert(Forward0, K, V, Forward1),
-        Reverse0 = Reverse1
+        map.det_insert(K, V, !Forward)
     ),
-    ( map.search(Reverse0, V, VKey) ->
+    ( map.search(!.Reverse, V, VKey) ->
         ( K \= VKey ->
-            map.det_update(Reverse1, V, K, Reverse),
-            map.delete(Forward1, VKey, Forward)
+            map.det_update(V, K, !Reverse),
+            map.delete(VKey, !Forward)
         ;
-            Forward = Forward1,
-            Reverse = Reverse1
+            true
         )
     ;
-        map.det_insert(Reverse1, V, K, Reverse),
-        Forward = Forward1
+        map.det_insert(V, K, !Reverse)
     ).
 
 bimap.insert_from_assoc_list(List, BM0) = BM :-
@@ -397,12 +393,12 @@ bimap.insert_from_assoc_list(List, BM0) = BM :-
 
 bimap.insert_from_assoc_list([], !BM).
 bimap.insert_from_assoc_list([ Key - Value | KeyValues], !BM) :-
-    bimap.insert(!.BM, Key, Value, !:BM),
+    bimap.insert(Key, Value, !BM),
     bimap.insert_from_assoc_list(KeyValues, !BM).
 
 bimap.det_insert_from_assoc_list([], !BM).
 bimap.det_insert_from_assoc_list([Key - Value | KeysValues], !BM) :-
-    bimap.det_insert(!.BM, Key, Value, !:BM),
+    bimap.det_insert(Key, Value, !BM),
     bimap.det_insert_from_assoc_list(KeysValues, !BM).
 
 bimap.det_insert_from_corresponding_lists([], [], !BM).
@@ -412,12 +408,12 @@ bimap.det_insert_from_corresponding_lists([_ | _], [], !BM) :-
     error("bimap.det_insert_from_corresponding_lists: length mismatch").
 bimap.det_insert_from_corresponding_lists([Key | Keys], [Value | Values],
         !BM) :-
-    bimap.det_insert(!.BM, Key, Value, !:BM),
+    bimap.det_insert(Key, Value, !BM),
     bimap.det_insert_from_corresponding_lists(Keys, Values, !BM).
 
 bimap.set_from_assoc_list([], !BM).
 bimap.set_from_assoc_list([Key - Value | KeysValues], !BM) :-
-    bimap.set(!.BM, Key, Value, !:BM),
+    bimap.set(Key, Value, !BM),
     bimap.set_from_assoc_list(KeysValues, !BM).
 
 bimap.set_from_corresponding_lists([], [], !BM).
@@ -427,14 +423,14 @@ bimap.set_from_corresponding_lists([_ | _], [], !BM) :-
     error("bimap.set_from_corresponding_lists: length mismatch").
 bimap.set_from_corresponding_lists([Key | Keys], [Value | Values],
         !BM) :-
-    bimap.set(!.BM, Key, Value, !:BM),
+    bimap.set(Key, Value, !BM),
     bimap.set_from_corresponding_lists(Keys, Values, !BM).
 
 bimap.delete_key(K, BM0, BM) :-
     BM0 = bimap(Forward0, Reverse0),
     ( map.search(Forward0, K, V) ->
-        map.delete(Forward0, K, Forward),
-        map.delete(Reverse0, V, Reverse),
+        map.delete(K, Forward0, Forward),
+        map.delete(V, Reverse0, Reverse),
         BM = bimap(Forward, Reverse)
     ;
         BM = BM0
@@ -443,8 +439,8 @@ bimap.delete_key(K, BM0, BM) :-
 bimap.delete_value(V, BM0, BM) :-
     BM0 = bimap(Forward0, Reverse0),
     ( map.search(Reverse0, V, K) ->
-        map.delete(Forward0, K, Forward),
-        map.delete(Reverse0, V, Reverse),
+        map.delete(K, Forward0, Forward),
+        map.delete(V, Reverse0, Reverse),
         BM = bimap(Forward, Reverse)
     ;
         BM = BM0
@@ -469,7 +465,7 @@ bimap.overlay(BMA, BMB, BM) :-
 
 bimap.overlay_2([], !BM).
 bimap.overlay_2([Key - Value | KeysValues], !BM) :-
-    bimap.set(!.BM, Key, Value, !:BM),
+    bimap.set(Key, Value, !BM),
     bimap.overlay_2(KeysValues, !BM).
 
 bimap.to_assoc_list(bimap(Forward, _), L) :-
@@ -594,11 +590,11 @@ bimap.ordinates(BM) = Ks :-
 bimap.coordinates(BM) = Vs :-
     bimap.coordinates(BM, Vs).
 
-bimap.insert(BM1, K, V) = BM2 :-
-    bimap.insert(BM1, K, V, BM2).
+bimap.insert(!.BM, K, V) = !:BM :-
+    bimap.insert(K, V, !BM).
 
-bimap.det_insert(BM1, K, V) = BM2 :-
-    bimap.det_insert(BM1, K, V, BM2).
+bimap.det_insert(!.BM, K, V) = !:BM :-
+    bimap.det_insert(K, V, !BM).
 
 bimap.det_insert_from_assoc_list(KVs, BM0) = BM :-
     bimap.det_insert_from_assoc_list(KVs, BM0, BM).
@@ -612,8 +608,8 @@ bimap.set_from_assoc_list(KVs, BM0) = BM :-
 bimap.set_from_corresponding_lists(Ks, Vs, BM0) = BM :-
     bimap.set_from_corresponding_lists(Ks, Vs, BM0, BM).
 
-bimap.set(BM1, K, V) = BM2 :-
-    bimap.set(BM1, K, V, BM2).
+bimap.set(!.BM, K, V) = !:BM :-
+    bimap.set(K, V, !BM).
 
 bimap.delete_key(BM0, K) = BM :-
     bimap.delete_key(K, BM0, BM).

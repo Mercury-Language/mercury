@@ -41,7 +41,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module term_io.
 
 main(!IO) :-
@@ -199,16 +198,16 @@ collect_proc_infos_counts([Assoc | Assocs], !ProcInfoMap, !CountMap) :-
     map.foldl2(proc_process_path_port_count, PathPortCountMap,
         no, MaybeCallInfo, 0, CurCount),
     ( map.search(!.CountMap, ProcLabel, OldCount) ->
-        svmap.det_update(ProcLabel, OldCount + CurCount, !CountMap)
+        map.det_update(ProcLabel, OldCount + CurCount, !CountMap)
     ;
-        svmap.det_insert(ProcLabel, CurCount, !CountMap)
+        map.det_insert(ProcLabel, CurCount, !CountMap)
     ),
     (
         MaybeCallInfo = no
     ;
         MaybeCallInfo = yes(LineNumber),
         ProcInfo = proc_info(FileName, LineNumber, ProcLabel),
-        svmap.det_insert(ProcLabel, ProcInfo, !ProcInfoMap)
+        map.det_insert(ProcLabel, ProcInfo, !ProcInfoMap)
     ),
     collect_proc_infos_counts(Assocs, !ProcInfoMap, !CountMap).
 

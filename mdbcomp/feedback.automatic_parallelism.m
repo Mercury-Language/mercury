@@ -370,7 +370,6 @@
 :- import_module float.
 :- import_module map.
 :- import_module require.
-:- import_module svmap.
 :- import_module unit.
 :- import_module univ.
 

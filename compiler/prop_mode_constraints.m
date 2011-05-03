@@ -93,7 +93,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module svset.
 :- import_module svvarset.
 :- import_module term.
@@ -181,7 +180,7 @@ do_prop_mode_constraints_in_pred(ModuleInfo, PredId, !PredInfo, !VarInfo,
         prop_mode_constraints_in_mode_declared_pred(ModuleInfo, PredId,
             !.PredInfo, !VarInfo, BodyConstraints)
     ),
-    svmap.set(PredId, {ContainingGoalMap, BodyConstraints},
+    map.set(PredId, {ContainingGoalMap, BodyConstraints},
         !PredConstraintsMap).
 
     % prop_mode_constraints_in_mode_declared_pred(ModuleInfo, PredId, PredInfo,
@@ -440,7 +439,7 @@ make_unification(Context, Var0, Var, !Unifications, !SeenSoFar, !Varset,
         OldVarType = map.lookup(!.VarTypes, Var0),
         NewVarName = "Arg_" ++ OldVarName,
         svvarset.new_uniquely_named_var(NewVarName, Var, !Varset),
-        svmap.set(Var, OldVarType, !VarTypes),
+        map.set(Var, OldVarType, !VarTypes),
 
         % Make new unification.
         create_atomic_complicated_unification(Var0, rhs_var(Var), Context,

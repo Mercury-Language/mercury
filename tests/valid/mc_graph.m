@@ -213,12 +213,12 @@ mc_graph__set_node(!.G, NInfo, node(N), !:G) :-
     !:G = !.G ^ node_supply := NS,
 
     Nodes0 = !.G ^ node_map,
-    map__set(Nodes0, node(N), NInfo, Nodes),
+    map__set(node(N), NInfo, Nodes0, Nodes),
     !:G = !.G ^ node_map := Nodes,
 
     Edges0 = !.G ^ edge_map,
     map__init(EdgeMap),
-    map__set(Edges0, node(N), EdgeMap, Edges),
+    map__set(node(N), EdgeMap, Edges0, Edges),
     !:G = !.G ^ edge_map := Edges.
 
 mc_graph__det_insert_node(!.G, NInfo, N, !:G) :-
@@ -237,12 +237,12 @@ mc_graph__insert_node(!.G, NInfo, node(N), !:G) :-
     !:G = !.G ^ node_supply := NS,
 
     Nodes0 = !.G ^ node_map,
-    map__set(Nodes0, node(N), NInfo, Nodes),
+    map__set(node(N), NInfo, Nodes0, Nodes),
     !:G = !.G ^ node_map := Nodes,
 
     Edges0 = !.G ^ edge_map,
     map__init(EdgeSet),
-    map__set(Edges0, node(N), EdgeSet, Edges),
+    map__set(node(N), EdgeSet, Edges0, Edges),
     !:G = !.G ^ edge_map := Edges.
 
 %------------------------------------------------------------------------------%
@@ -310,13 +310,13 @@ mc_graph__set_edge(!.G, Start, End, Info, Arc, !:G) :-
     !:G = !.G ^ arc_supply := AS,
 
     Arcs0 = !.G ^ arc_map,
-    map__set(Arcs0, Arc, arc_info(Start, End, Info), Arcs),
+    map__set(Arc, arc_info(Start, End, Info), Arcs0, Arcs),
     !:G = !.G ^ arc_map := Arcs,
 
     Es0 = !.G ^ edge_map,
     map__lookup(Es0, Start, EdgeMap0),
-    map__set(EdgeMap0, Arc, End, EdgeMap),
-    map__set(Es0, Start, EdgeMap, Es),
+    map__set(Arc, End, EdgeMap0, EdgeMap),
+    map__set(Start, EdgeMap, Es0, Es),
     !:G = !.G ^ edge_map := Es.
 
 %------------------------------------------------------------------------------%
@@ -335,13 +335,13 @@ mc_graph__insert_edge(!.G, Start, End, Info, Arc, !:G) :-
     !:G = !.G ^ arc_supply := AS,
 
     Arcs0 = !.G ^ arc_map,
-    map__insert(Arcs0, Arc, arc_info(Start, End, Info), Arcs),
+    map__insert(Arc, arc_info(Start, End, Info), Arcs0, Arcs),
     !:G = !.G ^ arc_map := Arcs,
 
     Es0 = !.G ^ edge_map,
     map__lookup(Es0, Start, EdgeMap0),
-    map__set(EdgeMap0, Arc, End, EdgeMap),
-    map__set(Es0, Start, EdgeMap, Es),
+    map__set(Arc, End, EdgeMap0, EdgeMap),
+    map__set(Start, EdgeMap, Es0, Es),
     !:G = !.G ^ edge_map := Es.
 
 %------------------------------------------------------------------------------%

@@ -208,7 +208,7 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
                 add_builtin(PredId, Types, CompilationTarget,
                     PredInfo0, PredInfo),
                 predicate_table_get_preds(PredTable1, Preds1),
-                map.det_update(Preds1, PredId, PredInfo, Preds),
+                map.det_update(PredId, PredInfo, Preds1, Preds),
                 predicate_table_set_preds(Preds, PredTable1, PredTable)
             ;
                 PredTable = PredTable1
@@ -389,7 +389,7 @@ do_add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
         MaybeArgLives, DetismDecl, MaybeDet, IsAddressTaken, VarNameRemap,
         NewProc0),
     proc_info_set_inst_varset(InstVarSet, NewProc0, NewProc),
-    map.det_insert(Procs0, ModeId, NewProc, Procs),
+    map.det_insert(ModeId, NewProc, Procs0, Procs),
     pred_info_set_procedures(Procs, PredInfo0, PredInfo).
 
 %-----------------------------------------------------------------------------%
@@ -424,7 +424,7 @@ module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, MContext,
 
     module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod,
         MContext, PredInfo0, PredInfo, ProcId, !Specs),
-    map.det_update(Preds0, PredId, PredInfo, Preds),
+    map.det_update(PredId, PredInfo, Preds0, Preds),
     predicate_table_set_preds(Preds, PredicateTable1, PredicateTable),
     module_info_set_predicate_table(PredicateTable, !ModuleInfo),
     PredProcId = PredId - ProcId.

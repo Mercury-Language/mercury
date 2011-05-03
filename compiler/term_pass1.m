@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003-2008, 2010 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -68,7 +68,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
-:- import_module svmap.
 :- import_module svset.
 :- import_module svvarset.
 :- import_module term.
@@ -146,7 +145,7 @@ init_output_suppliers([PPId | PPIds], ModuleInfo, OutputSupplierMap) :-
     proc_info_get_headvars(ProcInfo, HeadVars),
     MapToNo = (pred(_HeadVar::in, Bool::out) is det :- Bool = no),
     list.map(MapToNo, HeadVars, BoolList),
-    map.det_insert(OutputSupplierMap0, PPId, BoolList, OutputSupplierMap).
+    map.det_insert( PPId, BoolList, OutputSupplierMap0, OutputSupplierMap).
 
 %-----------------------------------------------------------------------------%
 
@@ -250,8 +249,8 @@ find_arg_sizes_pred(PPId, PassInfo, OutputSupplierMap0, Result,
         map.lookup(OutputSupplierMap0, PPId, OutputSuppliers0),
         update_output_suppliers(Args, AllActiveVars,
             OutputSuppliers0, OutputSuppliers),
-        map.det_update(OutputSupplierMap0, PPId,
-            OutputSuppliers, OutputSupplierMap),
+        map.det_update(PPId, OutputSuppliers,
+            OutputSupplierMap0, OutputSupplierMap),
         ( bag.is_subbag(AllActiveVars, InVars) ->
             SubsetErrors = []
         ;
@@ -475,7 +474,7 @@ pred_proc_var(PPId, Var, !Varset, !PPVars) :-
         Var = Var0
     ;
         svvarset.new_var(Var, !Varset),
-        svmap.det_insert(PPId, Var, !PPVars)
+        map.det_insert(PPId, Var, !PPVars)
     ).
 
 %-----------------------------------------------------------------------------%

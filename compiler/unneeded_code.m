@@ -99,7 +99,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -316,7 +315,7 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
     proc_info_instantiated_head_vars(!.ModuleInfo, !.ProcInfo, NeededVarsList),
     map.init(WhereNeededMap0),
     NeededEverywhere = (pred(Var::in, NeededMap0::in, NeededMap::out) is det :-
-        map.det_insert(NeededMap0, Var, everywhere, NeededMap)
+        map.det_insert(Var, everywhere, NeededMap0, NeededMap)
     ),
     list.foldl(NeededEverywhere, NeededVarsList,
         WhereNeededMap0, WhereNeededMap1),
@@ -461,9 +460,9 @@ insert_branch_arm_into_refined_goals(Goal, GoalPath, BranchNum,
     Key = GoalPath - BranchNum,
     ( map.search(!.RefinedGoals, Key, Goals0) ->
         Goals = [Goal | Goals0],
-        map.det_update(!.RefinedGoals, Key, Goals, !:RefinedGoals)
+        map.det_update(Key, Goals, !RefinedGoals)
     ;
-        map.det_insert(!.RefinedGoals, Key, [Goal], !:RefinedGoals)
+        map.det_insert(Key, [Goal], !RefinedGoals)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -628,16 +627,16 @@ demand_var(ContainingGoalMap, CurrentId, WhereNeeded, Var, !WhereNeededMap) :-
     ( map.search(!.WhereNeededMap, Var, Where0) ->
         where_needed_upper_bound(ContainingGoalMap, CurrentId,
             WhereNeeded, Where0, Where),
-        svmap.det_update(Var, Where, !WhereNeededMap)
+        map.det_update(Var, Where, !WhereNeededMap)
     ;
-        svmap.det_insert(Var, WhereNeeded, !WhereNeededMap)
+        map.det_insert(Var, WhereNeeded, !WhereNeededMap)
     ).
 
 :- pred undemand_var(prog_var::in,
     where_needed_map::in, where_needed_map::out) is det.
 
-undemand_var(Var, WhereNeededMap0, WhereNeededMap) :-
-    map.delete(WhereNeededMap0, Var, WhereNeededMap).
+undemand_var(Var, !WhereNeededMap) :-
+    map.delete(Var, !WhereNeededMap).
 
 %---------------------------------------------------------------------------%
 
@@ -919,9 +918,9 @@ add_where_needed_list(ContainingGoalMap, [Var - BranchWhere | WhereNeededList],
     ( map.search(!.WhereNeededMap, Var, OldWhere) ->
         where_needed_upper_bound(ContainingGoalMap, CurrentId,
             BranchWhere, OldWhere, CombinedWhere),
-        svmap.det_update(Var, CombinedWhere, !WhereNeededMap)
+        map.det_update(Var, CombinedWhere, !WhereNeededMap)
     ;
-        svmap.det_insert(Var, BranchWhere, !WhereNeededMap)
+        map.det_insert(Var, BranchWhere, !WhereNeededMap)
     ),
     add_where_needed_list(ContainingGoalMap, WhereNeededList, CurrentId,
         !WhereNeededMap).
@@ -943,7 +942,7 @@ add_alt_start(ContainingGoalMap, [Var - BranchWhere0 | WhereNeededList],
         BranchWhere0 = everywhere,
         map.init(Empty),
         set.singleton_set(BranchNumSet, BranchNum),
-        map.det_insert(Empty, BranchPoint, BranchNumSet, BranchMap),
+        map.det_insert(BranchPoint, BranchNumSet, Empty, BranchMap),
         BranchWhere = branches(BranchMap)
     ;
         BranchWhere0 = branches(_),
@@ -952,9 +951,9 @@ add_alt_start(ContainingGoalMap, [Var - BranchWhere0 | WhereNeededList],
     ( map.search(!.WhereNeededMap, Var, OldWhere) ->
         where_needed_upper_bound(ContainingGoalMap, CurrentId,
             BranchWhere, OldWhere, CombinedWhere),
-        svmap.det_update(Var, CombinedWhere, !WhereNeededMap)
+        map.det_update(Var, CombinedWhere, !WhereNeededMap)
     ;
-        svmap.det_insert(Var, BranchWhere, !WhereNeededMap)
+        map.det_insert(Var, BranchWhere, !WhereNeededMap)
     ),
     add_alt_start(ContainingGoalMap, WhereNeededList, BranchPoint, BranchNum,
         CurrentId, !WhereNeededMap).
@@ -1047,7 +1046,7 @@ unneeded_refine_cases([Case0 | Cases0], [Case | Cases], !RefinedGoals,
     unneeded_refine_goal(Goal0, Goal1, !RefinedGoals),
     ( map.search(!.RefinedGoals, GoalId - BranchNum, ToInsertGoals) ->
         insert_refine_goals(ToInsertGoals, Goal1, Goal),
-        svmap.delete(GoalId - BranchNum, !RefinedGoals)
+        map.delete(GoalId - BranchNum, !RefinedGoals)
     ;
         Goal = Goal1
     ),
@@ -1065,7 +1064,7 @@ unneeded_refine_disj([Goal0 | Goals0], [Goal | Goals], !RefinedGoals,
     unneeded_refine_goal(Goal0, Goal1, !RefinedGoals),
     ( map.search(!.RefinedGoals, GoalId - BranchNum, ToInsertGoals) ->
         insert_refine_goals(ToInsertGoals, Goal1, Goal),
-        svmap.delete(GoalId - BranchNum, !RefinedGoals)
+        map.delete(GoalId - BranchNum, !RefinedGoals)
     ;
         Goal = Goal1
     ),
@@ -1084,13 +1083,13 @@ unneeded_refine_ite(Cond0, Cond, Then0, Then, Else0, Else,
 
     ( map.search(!.RefinedGoals, GoalId - 1, ToInsertGoalsThen) ->
         insert_refine_goals(ToInsertGoalsThen, Then1, Then),
-        svmap.delete(GoalId - 1, !RefinedGoals)
+        map.delete(GoalId - 1, !RefinedGoals)
     ;
         Then = Then1
     ),
     ( map.search(!.RefinedGoals, GoalId - 2, ToInsertGoalsElse) ->
         insert_refine_goals(ToInsertGoalsElse, Else1, Else),
-        svmap.delete(GoalId - 2, !RefinedGoals)
+        map.delete(GoalId - 2, !RefinedGoals)
     ;
         Else = Else1
     ).
@@ -1163,7 +1162,7 @@ where_needed_branches_upper_bound_2(ContainingGoalMap, CurrentId,
                 \+ goal_id_inside(ContainingGoalMap, ParentBranchArmGoalId,
                     CurrentId)
             ->
-                map.delete(Branches0, BranchPoint, Branches1),
+                map.delete(BranchPoint, Branches0, Branches1),
                 ParentBranchPoint = branch_point(ParentBranchGoalId,
                     ParentBranchAlt),
                 set.singleton_set(ParentAlts, ParentBranchNum),
@@ -1174,12 +1173,12 @@ where_needed_branches_upper_bound_2(ContainingGoalMap, CurrentId,
                 WhereNeeded = everywhere
             )
         ;
-            map.det_update(Branches0, BranchPoint, Alts, Branches1),
+            map.det_update(BranchPoint, Alts, Branches0, Branches1),
             where_needed_branches_upper_bound_2(ContainingGoalMap, CurrentId,
                 Rest, Branches1, WhereNeeded)
         )
     ;
-        map.det_insert(Branches0, BranchPoint, NewAlts, Branches1),
+        map.det_insert(BranchPoint, NewAlts, Branches0, Branches1),
         where_needed_branches_upper_bound_2(ContainingGoalMap, CurrentId,
             Rest, Branches1, WhereNeeded)
     ).

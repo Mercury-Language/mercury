@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003-2008, 2010 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -144,7 +144,7 @@ init_rec_input_suppliers([PPId | PPIds], ModuleInfo, RecSupplierMap) :-
         )
     ),
     list.map(MapIsInput, HeadVars, BoolList),
-    map.det_insert(RecSupplierMap0, PPId, BoolList, RecSupplierMap).
+    map.det_insert(PPId, BoolList, RecSupplierMap0, RecSupplierMap).
 
 %-----------------------------------------------------------------------------%
 
@@ -241,8 +241,8 @@ init_rec_input_suppliers_single_arg(TrialPPId, RestSCC, ArgNum, Module,
     init_rec_input_suppliers_add_single_arg(ArgModes, ArgNum,
         Module, TrialPPIdRecSuppliers),
     map.init(RecSupplierMap0),
-    map.det_insert(RecSupplierMap0, TrialPPId, TrialPPIdRecSuppliers,
-        RecSupplierMap1),
+    map.det_insert(TrialPPId, TrialPPIdRecSuppliers,
+        RecSupplierMap0, RecSupplierMap1),
     init_rec_input_suppliers_single_arg_others(RestSCC, Module,
         RecSupplierMap1, RecSupplierMap).
 
@@ -287,7 +287,7 @@ init_rec_input_suppliers_single_arg_others([PPId | PPIds], Module,
     module_info_pred_proc_info(Module, PPId, _, ProcInfo),
     proc_info_get_headvars(ProcInfo, HeadVars),
     list.map(map_to_no, HeadVars, BoolList),
-    map.det_insert(!.RecSupplierMap, PPId, BoolList, !:RecSupplierMap),
+    map.det_insert(PPId, BoolList, !RecSupplierMap),
     init_rec_input_suppliers_single_arg_others(PPIds, Module,
         !RecSupplierMap).
 
@@ -407,8 +407,8 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, PassInfo,
         update_rec_input_suppliers(Args, ActiveVars, FixDir,
             RecSuppliers0, RecSuppliers,
             EmptyBag, RecSuppliers0Bag),
-        map.det_insert(NewRecSupplierMap0, PPId, RecSuppliers,
-            NewRecSupplierMap1),
+        map.det_insert(PPId, RecSuppliers,
+            NewRecSupplierMap0, NewRecSupplierMap1),
         add_call_arcs(PathList, RecSuppliers0Bag, CallInfo0, CallInfo1),
         prove_termination_in_scc_pass(PPIds, FixDir,
             PassInfo, RecSupplierMap, NewRecSupplierMap1, CallInfo1, Result,
@@ -507,20 +507,17 @@ add_call_arcs([Path | Paths], RecInputSuppliers, !CallInfo) :-
                 ;
                     EdgeInfo = Context - GammaConst
                 ),
-                map.det_update(NeighbourMap0, CallPPId,
-                    EdgeInfo, NeighbourMap)
+                map.det_update(CallPPId, EdgeInfo, NeighbourMap0, NeighbourMap)
             ;
-                map.det_insert(NeighbourMap0, CallPPId,
-                    Context - GammaConst, NeighbourMap)
+                map.det_insert(CallPPId, Context - GammaConst,  
+                    NeighbourMap0, NeighbourMap)
             ),
-            map.det_update(CallWeights0, PPId, NeighbourMap,
-                CallWeights1)
+            map.det_update(PPId, NeighbourMap, CallWeights0, CallWeights1)
         ;
             map.init(NeighbourMap0),
-            map.det_insert(NeighbourMap0, CallPPId,
-                Context - GammaConst, NeighbourMap),
-            map.det_insert(CallWeights0, PPId, NeighbourMap,
-                CallWeights1)
+            map.det_insert(CallPPId, Context - GammaConst,
+                NeighbourMap0, NeighbourMap),
+            map.det_insert(PPId, NeighbourMap, CallWeights0, CallWeights1)
         ),
         !:CallInfo = call_weight_info(InfCalls0, CallWeights1)
     ;

@@ -1125,10 +1125,10 @@ add_trace_layout_for_label(Label, Context, Port, IsHidden, GoalPath,
                 "adding trace layout for already known label")
         ),
         Internal = internal_layout_info(Exec, Resume, Return),
-        map.det_update(Internals0, LabelNum, Internal, Internals)
+        map.det_update(LabelNum, Internal, Internals0, Internals)
     ;
         Internal = internal_layout_info(Exec, no, no),
-        map.det_insert(Internals0, LabelNum, Internal, Internals)
+        map.det_insert(LabelNum, Internal, Internals0, Internals)
     ),
     set_layout_info(Internals, !CI).
 
@@ -1150,10 +1150,10 @@ add_resume_layout_for_label(Label, LayoutInfo, !CI) :-
             unexpected(this_file, "adding gc layout for already known label")
         ),
         Internal = internal_layout_info(Exec, Resume, Return),
-        map.det_update(Internals0, LabelNum, Internal, Internals)
+        map.det_update(LabelNum, Internal, Internals0, Internals)
     ;
         Internal = internal_layout_info(no, Resume, no),
-        map.det_insert(Internals0, LabelNum, Internal, Internals)
+        map.det_insert(LabelNum, Internal, Internals0, Internals)
     ),
     set_layout_info(Internals, !CI).
 
@@ -2089,12 +2089,12 @@ leave_simple_neg(GoalInfo, FailInfo, !CI) :-
 :- pred make_fake_resume_map(list(prog_var)::in,
     map(prog_var, set(lval))::in, map(prog_var, set(lval))::out) is det.
 
-make_fake_resume_map([], ResumeMap, ResumeMap).
-make_fake_resume_map([Var | Vars], ResumeMap0, ResumeMap) :-
+make_fake_resume_map([], !ResumeMap).
+make_fake_resume_map([Var | Vars], !ResumeMap) :-
     % A visibly fake location.
     set.singleton_set(Locns, reg(reg_r, -1)),
-    map.det_insert(ResumeMap0, Var, Locns, ResumeMap1),
-    make_fake_resume_map(Vars, ResumeMap1, ResumeMap).
+    map.det_insert(Var, Locns, !ResumeMap),
+    make_fake_resume_map(Vars, !ResumeMap).
 
 %---------------------------------------------------------------------------%
 
@@ -2840,7 +2840,7 @@ produce_vars_2([Var | Vars], Map, Code, !CI) :-
     produce_vars_2(Vars, Map0, CodeVars, !CI),
     produce_variable_in_reg_or_stack(Var, CodeVar, Lval, !CI),
     set.singleton_set(Lvals, Lval),
-    map.set(Map0, Var, Lvals, Map),
+    map.set(Var, Lvals, Map0, Map),
     Code = CodeVars ++ CodeVar.
 
 flush_resume_vars_to_stack(Code, !CI) :-
@@ -4433,7 +4433,7 @@ new_temp_slot(Item, StackVar, !CI) :-
     set_max_temp_slot_count(TempSlotCount, !CI),
 
     get_temp_content_map(!.CI, TempContentMap0),
-    map.det_insert(TempContentMap0, StackVar, Item, TempContentMap),
+    map.det_insert(StackVar, Item, TempContentMap0, TempContentMap),
     set_temp_content_map(TempContentMap, !CI).
 
 :- pred new_temp_slots(list(slot_contents)::in, list(lval)::out,
@@ -4462,7 +4462,7 @@ record_new_temp_slots([], _, !CurSlotNum, !TempSlotCount, !TempContentMap, []).
 record_new_temp_slots([Item | Items], StackId, !CurSlotNum,
         !TempSlotCount, !TempContentMap, [StackVar | StackVars]) :-
     StackVar = stack_slot_num_to_lval(StackId, !.CurSlotNum),
-    map.det_insert(!.TempContentMap, StackVar, Item, !:TempContentMap),
+    map.det_insert(StackVar, Item, !TempContentMap),
     !:CurSlotNum = !.CurSlotNum + 1,
     !:TempSlotCount = !.TempSlotCount + 1,
     record_new_temp_slots(Items, StackId, !CurSlotNum,

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2007-2010 The University of Melbourne.
+% Copyright (C) 2007-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -141,7 +141,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -375,8 +374,8 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
 
                     % Delete the variable on the LHS from the construct map
                     % since it has been constructed.
-                    map.delete(CanonVarsMap0, ConsId, CanonVarsMap),
-                    svmap.det_update(Var, CanonVarsMap, !ConstructMap),
+                    map.delete(ConsId, CanonVarsMap0, CanonVarsMap),
+                    map.det_update(Var, CanonVarsMap, !ConstructMap),
 
                     ConjList = SubUnifyGoals ++ [ConstructGoal]
                 else
@@ -480,8 +479,8 @@ add_to_construct_map(Var, ConsId, CanonVars, !ConstructMap) :-
     ;
         ConsIdMap1 = map.init
     ),
-    map.det_insert(ConsIdMap1, ConsId, CanonVars, ConsIdMap),
-    svmap.set(Var, ConsIdMap, !ConstructMap).
+    map.det_insert(ConsId, CanonVars, ConsIdMap1, ConsIdMap),
+    map.set(Var, ConsIdMap, !ConstructMap).
 
 :- pred get_sole_cons_id_and_canon_vars(construct_map::in, prog_var::in,
     cons_id::out, prog_vars::out) is semidet.

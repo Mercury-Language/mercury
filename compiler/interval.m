@@ -197,7 +197,6 @@
 :- import_module assoc_list.
 :- import_module pair.
 :- import_module require.
-:- import_module svmap.
 :- import_module svset.
 :- import_module svvarset.
 :- import_module term.
@@ -681,12 +680,12 @@ assign_open_intervals_to_anchor(Anchor, !IntervalInfo) :-
         OpenIntervals = set.union(OpenIntervals0, CurOpenIntervals),
         AnchorFollowInfo =
             anchor_follow_info(OpenIntervalVars, OpenIntervals),
-        svmap.det_update(Anchor, AnchorFollowInfo,
+        map.det_update(Anchor, AnchorFollowInfo,
             AnchorFollowMap0, AnchorFollowMap)
     ;
         AnchorFollowInfo =
             anchor_follow_info(CurOpenIntervalVars, CurOpenIntervals),
-        svmap.det_insert(Anchor, AnchorFollowInfo,
+        map.det_insert(Anchor, AnchorFollowInfo,
             AnchorFollowMap0, AnchorFollowMap)
     ),
     !IntervalInfo ^ ii_anchor_follow_map := AnchorFollowMap.
@@ -719,7 +718,7 @@ new_interval_id(Id, !IntervalInfo) :-
     IntervalVars0 = !.IntervalInfo ^ ii_interval_vars,
     counter.allocate(Num, Counter0, Counter),
     Id = interval_id(Num),
-    svmap.det_insert(Id, set.init, IntervalVars0, IntervalVars),
+    map.det_insert(Id, set.init, IntervalVars0, IntervalVars),
     !IntervalInfo ^ ii_interval_counter := Counter,
     !IntervalInfo ^ ii_interval_vars := IntervalVars.
 
@@ -732,7 +731,7 @@ record_branch_end_info(GoalId, !IntervalInfo) :-
     CurInterval = !.IntervalInfo ^ ii_cur_interval,
     BranchEndMap0 = !.IntervalInfo ^ ii_branch_end_map,
     BranchEndInfo = branch_end_info(FlushedLater, AccessedLater, CurInterval),
-    svmap.det_insert(GoalId, BranchEndInfo, BranchEndMap0, BranchEndMap),
+    map.det_insert(GoalId, BranchEndInfo, BranchEndMap0, BranchEndMap),
     !IntervalInfo ^ ii_branch_end_map := BranchEndMap.
 
 :- pred record_cond_end(goal_id::in, interval_info::in, interval_info::out)
@@ -741,7 +740,7 @@ record_branch_end_info(GoalId, !IntervalInfo) :-
 record_cond_end(GoalId, !IntervalInfo) :-
     CurInterval = !.IntervalInfo ^ ii_cur_interval,
     CondEndMap0 = !.IntervalInfo ^ ii_cond_end_map,
-    svmap.det_insert(GoalId, CurInterval, CondEndMap0, CondEndMap),
+    map.det_insert(GoalId, CurInterval, CondEndMap0, CondEndMap),
     !IntervalInfo ^ ii_cond_end_map := CondEndMap.
 
 :- pred record_interval_end(interval_id::in, anchor::in,
@@ -749,7 +748,7 @@ record_cond_end(GoalId, !IntervalInfo) :-
 
 record_interval_end(Id, End, !IntervalInfo) :-
     EndMap0 = !.IntervalInfo ^ ii_interval_end,
-    svmap.det_insert(Id, End, EndMap0, EndMap),
+    map.det_insert(Id, End, EndMap0, EndMap),
     !IntervalInfo ^ ii_interval_end := EndMap.
 
 :- pred record_interval_start(interval_id::in, anchor::in,
@@ -757,7 +756,7 @@ record_interval_end(Id, End, !IntervalInfo) :-
 
 record_interval_start(Id, Start, !IntervalInfo) :-
     StartMap0 = !.IntervalInfo ^ ii_interval_start,
-    svmap.det_insert(Id, Start, StartMap0, StartMap),
+    map.det_insert(Id, Start, StartMap0, StartMap),
     !IntervalInfo ^ ii_interval_start := StartMap.
 
 :- pred record_interval_succ(interval_id::in, interval_id::in,
@@ -766,9 +765,9 @@ record_interval_start(Id, Start, !IntervalInfo) :-
 record_interval_succ(Id, Succ, !IntervalInfo) :-
     SuccMap0 = !.IntervalInfo ^ ii_interval_succ,
     ( map.search(SuccMap0, Id, Succ0) ->
-        svmap.det_update(Id, [Succ | Succ0], SuccMap0, SuccMap)
+        map.det_update(Id, [Succ | Succ0], SuccMap0, SuccMap)
     ;
-        svmap.det_insert(Id, [Succ], SuccMap0, SuccMap)
+        map.det_insert(Id, [Succ], SuccMap0, SuccMap)
     ),
     !IntervalInfo ^ ii_interval_succ := SuccMap.
 
@@ -780,7 +779,7 @@ record_interval_no_succ(Id, !IntervalInfo) :-
     ( map.search(SuccMap0, Id, _Succ0) ->
         unexpected(this_file, "record_interval_no_succ: already in succ map")
     ;
-        svmap.det_insert(Id, [], SuccMap0, SuccMap)
+        map.det_insert(Id, [], SuccMap0, SuccMap)
     ),
     !IntervalInfo ^ ii_interval_succ := SuccMap.
 
@@ -788,10 +787,10 @@ record_interval_vars(Id, NewVars, !IntervalInfo) :-
     VarsMap0 = !.IntervalInfo ^ ii_interval_vars,
     ( map.search(VarsMap0, Id, Vars0) ->
         svset.insert_list(NewVars, Vars0, Vars),
-        svmap.det_update(Id, Vars, VarsMap0, VarsMap)
+        map.det_update(Id, Vars, VarsMap0, VarsMap)
     ;
         set.list_to_set(NewVars, Vars),
-        svmap.det_insert(Id, Vars, VarsMap0, VarsMap)
+        map.det_insert(Id, Vars, VarsMap0, VarsMap)
     ),
     !IntervalInfo ^ ii_interval_vars := VarsMap.
 
@@ -800,7 +799,7 @@ delete_interval_vars(Id, ToDeleteVars, DeletedVars, !IntervalInfo) :-
     map.lookup(VarsMap0, Id, Vars0),
     DeletedVars = set.intersect(Vars0, ToDeleteVars),
     Vars = set.difference(Vars0, DeletedVars),
-    svmap.det_update(Id, Vars, VarsMap0, VarsMap),
+    map.det_update(Id, Vars, VarsMap0, VarsMap),
     !IntervalInfo ^ ii_interval_vars := VarsMap,
 
     % The deletions are recorded only for debugging. The algorithm itself
@@ -808,10 +807,10 @@ delete_interval_vars(Id, ToDeleteVars, DeletedVars, !IntervalInfo) :-
     DeleteMap0 = !.IntervalInfo ^ ii_interval_delvars,
     ( map.search(DeleteMap0, Id, Deletions0) ->
         Deletions = [DeletedVars | Deletions0],
-        svmap.det_update(Id, Deletions, DeleteMap0, DeleteMap)
+        map.det_update(Id, Deletions, DeleteMap0, DeleteMap)
     ;
         Deletions = [DeletedVars],
-        svmap.det_insert(Id, Deletions, DeleteMap0, DeleteMap)
+        map.det_insert(Id, Deletions, DeleteMap0, DeleteMap)
     ),
     !IntervalInfo ^ ii_interval_delvars := DeleteMap.
 
@@ -843,7 +842,7 @@ require_access(Vars, !IntervalInfo) :-
 
 record_branch_resume(GoalId, ResumeSaveStatus, !IntervalInfo) :-
     BranchResumeMap0 = !.IntervalInfo ^ ii_branch_resume_map,
-    svmap.det_insert(GoalId, ResumeSaveStatus,
+    map.det_insert(GoalId, ResumeSaveStatus,
         BranchResumeMap0, BranchResumeMap),
     !IntervalInfo ^ ii_branch_resume_map := BranchResumeMap.
 
@@ -1111,11 +1110,11 @@ create_shadow_var(Arg, VarsToExtract, !VarSet, !VarTypes,
     varset.lookup_name(!.VarSet, Arg, Name),
     svvarset.new_named_var(Name, Shadow, !VarSet),
     map.lookup(!.VarTypes, Arg, Type),
-    svmap.det_insert(Shadow, Type, !VarTypes),
+    map.det_insert(Shadow, Type, !VarTypes),
     ( set.member(Arg, VarsToExtract) ->
-        svmap.det_insert(Arg, Shadow, !VarRename)
+        map.det_insert(Arg, Shadow, !VarRename)
     ;
-        svmap.det_insert(Arg, Shadow, !VoidRename)
+        map.det_insert(Arg, Shadow, !VoidRename)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1220,8 +1219,8 @@ apply_headvar_correction(HeadVarSet, RenameMap, Goal0, Goal) :-
 build_headvar_subst([], _RenameMap, !Subst).
 build_headvar_subst([HeadVar | HeadVars], RenameMap, !Subst) :-
     ( map.search(RenameMap, HeadVar, Replacement) ->
-        svmap.det_insert(Replacement, HeadVar, !Subst),
-        svmap.det_insert(HeadVar, Replacement, !Subst)
+        map.det_insert(Replacement, HeadVar, !Subst),
+        map.det_insert(HeadVar, Replacement, !Subst)
     ;
         true
     ),

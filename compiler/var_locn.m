@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2010 The University of Melbourne.
+% Copyright (C) 2000-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -379,7 +379,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -542,7 +541,7 @@ init_var_locn_state_2([Var - Lval |  Rest], MaybeLiveness, !VarStateMap,
             set.singleton_set(NewLocs, Lval),
             set.init(Using),
             State = var_state(NewLocs, no, no, Using, doa_alive),
-            svmap.det_insert(Var, State, !VarStateMap)
+            map.det_insert(Var, State, !VarStateMap)
         ),
         make_var_depend_on_lval_roots(Var, Lval, !LocVarMap)
     ),
@@ -598,7 +597,7 @@ clobber_regs_in_maps([Lval | Lvals], OkToDeleteAny,
         Lval = reg(_, _),
         map.search(!.LocVarMap, Lval, DependentVarsSet)
     ->
-        map.delete(!.LocVarMap, Lval, !:LocVarMap),
+        map.delete(Lval, !LocVarMap),
         set.to_sorted_list(DependentVarsSet, DependentVars),
         list.foldl(clobber_lval_in_var_state_map(Lval, [], OkToDeleteAny),
             DependentVars, !VarStateMap)
@@ -649,7 +648,7 @@ try_clobber_lval_in_var_state_map(Lval, OkToDeleteVars, OkToDeleteAny, Var,
         recursive_using_vars_dead_and_ok_to_delete(UsingVars,
             !.VarStateMap, OkToDeleteVars)
     ),
-    map.det_update(!.VarStateMap, Var, State, !:VarStateMap).
+    map.det_update(Var, State, !VarStateMap).
 
 :- pred recursive_using_vars_dead_and_ok_to_delete(
     list(prog_var)::in, var_state_map::in, list(prog_var)::in) is semidet.
@@ -685,14 +684,14 @@ var_locn_assign_var_to_var(Var, OldVar, !VLI) :-
         set.insert(Using0, Var, Using),
         OldState = var_state(Lvals, MaybeConstRval, MaybeExprRval, Using,
             DeadOrAlive),
-        map.det_update(VarStateMap0, OldVar, OldState, VarStateMap1)
+        map.det_update(OldVar, OldState, VarStateMap0, VarStateMap1)
     ;
         MaybeExprRval = no,
         set.init(Empty),
         State = var_state(Lvals, MaybeConstRval, no, Empty, doa_alive),
         VarStateMap1 = VarStateMap0
     ),
-    map.det_insert(VarStateMap1, Var, State, VarStateMap),
+    map.det_insert(Var, State, VarStateMap1, VarStateMap),
     var_locn_set_var_state_map(VarStateMap, !VLI),
 
     var_locn_get_loc_var_map(!.VLI, LocVarMap0),
@@ -724,7 +723,7 @@ var_locn_assign_lval_to_var(ModuleInfo, Var, Lval0, StaticCellInfo, Code,
                 const(llconst_int(Offset))), BaseVarLvals),
             set.init(Using),
             State = var_state(Lvals, MaybeConstRval, no, Using, doa_alive),
-            map.det_insert(VarStateMap0, Var, State, VarStateMap),
+            map.det_insert(Var, State, VarStateMap0, VarStateMap),
             var_locn_set_var_state_map(VarStateMap, !VLI),
 
             var_locn_get_loc_var_map(!.VLI, LocVarMap0),
@@ -735,7 +734,7 @@ var_locn_assign_lval_to_var(ModuleInfo, Var, Lval0, StaticCellInfo, Code,
             Expr = lval(Lval0),
             set.init(Using),
             State = var_state(Lvals, no, yes(Expr), Using, doa_alive),
-            map.det_insert(VarStateMap0, Var, State, VarStateMap1),
+            map.det_insert(Var, State, VarStateMap0, VarStateMap1),
             add_use_ref(BaseVar, Var, VarStateMap1, VarStateMap),
             var_locn_set_var_state_map(VarStateMap, !VLI)
         ),
@@ -746,7 +745,7 @@ var_locn_assign_lval_to_var(ModuleInfo, Var, Lval0, StaticCellInfo, Code,
         var_locn_get_var_state_map(!.VLI, VarStateMap0),
         set.singleton_set(LvalSet, Lval),
         State = var_state(LvalSet, no, no, set.init, doa_alive),
-        map.det_insert(VarStateMap0, Var, State, VarStateMap),
+        map.det_insert(Var, State, VarStateMap0, VarStateMap),
         var_locn_set_var_state_map(VarStateMap, !VLI),
 
         var_locn_get_loc_var_map(!.VLI, LocVarMap0),
@@ -767,7 +766,7 @@ var_locn_assign_const_to_var(ExprnOpts, Var, ConstRval0, !VLI) :-
     var_locn_get_var_state_map(!.VLI, VarStateMap0),
     ( expr_is_constant(VarStateMap0, ExprnOpts, ConstRval0, ConstRval) ->
         State = var_state(set.init, yes(ConstRval), no, set.init, doa_alive),
-        map.det_insert(VarStateMap0, Var, State, VarStateMap),
+        map.det_insert(Var, State, VarStateMap0, VarStateMap),
         var_locn_set_var_state_map(VarStateMap, !VLI)
     ;
         unexpected(this_file,
@@ -781,7 +780,7 @@ var_locn_assign_expr_to_var(Var, Rval, empty, !VLI) :-
 
     var_locn_get_var_state_map(!.VLI, VarStateMap0),
     State = var_state(set.init, no, yes(Rval), set.init, doa_alive),
-    map.det_insert(VarStateMap0, Var, State, VarStateMap1),
+    map.det_insert(Var, State, VarStateMap0, VarStateMap1),
 
     exprn_aux.vars_in_rval(Rval, ContainedVars0),
     list.remove_dups(ContainedVars0, ContainedVars),
@@ -806,7 +805,7 @@ add_use_ref(ContainedVar, UsingVar, !VarStateMap) :-
     set.insert(Using0, UsingVar, Using),
     State = var_state(Lvals, MaybeConstRval, MaybeExprRval, Using,
         DeadOrAlive),
-    map.det_update(!.VarStateMap, ContainedVar, State, !:VarStateMap).
+    map.det_update(ContainedVar, State, !VarStateMap).
 
 %----------------------------------------------------------------------------%
 
@@ -1187,7 +1186,7 @@ add_additional_lval_for_var(Var, Lval, !VLI) :-
         Using, DeadOrAlive),
     set.insert(LvalSet0, Lval, LvalSet),
     State = var_state(LvalSet, MaybeConstRval, no, Using, DeadOrAlive),
-    map.det_update(VarStateMap0, Var, State, VarStateMap),
+    map.det_update(Var, State, VarStateMap0, VarStateMap),
     var_locn_set_var_state_map(VarStateMap, !VLI),
 
     remove_use_refs(MaybeExprRval0, Var, !VLI).
@@ -1221,7 +1220,7 @@ remove_use_refs_2([ContainedVar | ContainedVars], UsingVar, !VLI) :-
     ),
     State = var_state(Lvals, MaybeConstRval, MaybeExprRval, Using,
         DeadOrAlive),
-    map.det_update(VarStateMap0, ContainedVar, State, VarStateMap),
+    map.det_update(ContainedVar, State, VarStateMap0, VarStateMap),
     var_locn_set_var_state_map(VarStateMap, !VLI),
     (
         set.empty(Using),
@@ -1250,7 +1249,7 @@ var_locn_set_magic_var_location(Var, Lval, !VLI) :-
     var_locn_get_var_state_map(!.VLI, VarStateMap0),
     set.singleton_set(LvalSet, Lval),
     State = var_state(LvalSet, no, no, set.init, doa_alive),
-    map.det_insert(VarStateMap0, Var, State, VarStateMap),
+    map.det_insert(Var, State, VarStateMap0, VarStateMap),
     var_locn_set_var_state_map(VarStateMap, !VLI).
 
 %----------------------------------------------------------------------------%
@@ -1439,7 +1438,7 @@ record_clobbering(Target, Assigns, !VLI) :-
     var_locn_get_loc_var_map(!.VLI, LocVarMap1),
     ( map.search(LocVarMap1, Target, DependentVarsSet) ->
         set.to_sorted_list(DependentVarsSet, DependentVars),
-        map.delete(LocVarMap1, Target, LocVarMap),
+        map.delete(Target, LocVarMap1, LocVarMap),
         var_locn_set_loc_var_map(LocVarMap, !VLI),
 
         var_locn_get_var_state_map(!.VLI, VarStateMap2),
@@ -1597,7 +1596,7 @@ ensure_copies_are_present(OneSource, OtherSources, Var, !VLI) :-
         Lvals0, LvalSet0, LvalSet),
     State = var_state(LvalSet, MaybeConstRval, MaybeExprRval, Using,
         DeadOrAlive),
-    map.det_update(VarStateMap0, Var, State, VarStateMap),
+    map.det_update(Var, State, VarStateMap0, VarStateMap),
     var_locn_set_var_state_map(VarStateMap, !VLI),
 
     var_locn_get_loc_var_map(!.VLI, LocVarMap0),
@@ -1706,7 +1705,7 @@ record_copy_for_var(Old, New, Var, !VarStateMap, !LocVarMap) :-
         Using, DeadOrAlive),
     expect(nonempty_state(State), this_file,
         "record_copy_for_var: empty state"),
-    map.det_update(!.VarStateMap, Var, State, !:VarStateMap),
+    map.det_update(Var, State, !VarStateMap),
     record_change_in_root_dependencies(LvalSet0, LvalSet, Var, !LocVarMap).
 
 :- pred record_change_in_root_dependencies(set(lval)::in,
@@ -1757,7 +1756,7 @@ var_locn_var_becomes_dead(Var, FirstTime, !VLI) :-
             DeadOrAlive0 = doa_alive
         ),
         ( set.empty(Using) ->
-            map.det_remove(VarStateMap0, Var, _, VarStateMap),
+            map.det_remove(Var, _, VarStateMap0, VarStateMap),
             var_locn_set_var_state_map(VarStateMap, !VLI),
 
             var_locn_get_loc_var_map(!.VLI, LocVarMap0),
@@ -1770,7 +1769,7 @@ var_locn_var_becomes_dead(Var, FirstTime, !VLI) :-
         ;
             State = var_state(Lvals, MaybeConstRval, MaybeExprRval, Using,
                 doa_dead),
-            map.det_update(VarStateMap0, Var, State, VarStateMap),
+            map.det_update(Var, State, VarStateMap0, VarStateMap),
             var_locn_set_var_state_map(VarStateMap, !VLI)
         )
     ;
@@ -2370,10 +2369,10 @@ make_var_depend_on_root_lval(Var, Lval, !LocVarMap) :-
         this_file, "make_var_depend_on_root_lval: non-root lval"),
     ( map.search(!.LocVarMap, Lval, Vars0) ->
         set.insert(Vars0, Var, Vars),
-        map.det_update(!.LocVarMap, Lval, Vars, !:LocVarMap)
+        map.det_update(Lval, Vars, !LocVarMap)
     ;
         set.singleton_set(Vars, Var),
-        map.det_insert(!.LocVarMap, Lval, Vars, !:LocVarMap)
+        map.det_insert(Lval, Vars, !LocVarMap)
     ).
 
     % Update LocVarMap0 to reflect that Var is no longer dependent
@@ -2388,9 +2387,9 @@ make_var_not_depend_on_root_lval(Var, Lval, !LocVarMap) :-
     ( map.search(!.LocVarMap, Lval, Vars0) ->
         set.delete(Vars0, Var, Vars),
         ( set.empty(Vars) ->
-            map.det_remove(!.LocVarMap, Lval, _, !:LocVarMap)
+            map.det_remove(Lval, _, !LocVarMap)
         ;
-            map.det_update(!.LocVarMap, Lval, Vars, !:LocVarMap)
+            map.det_update(Lval, Vars, !LocVarMap)
         )
     ;
         unexpected(this_file, "make_var_not_depend_on_root_lval: no record")

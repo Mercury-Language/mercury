@@ -74,7 +74,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 
 :- import_module measurement_units.
 
@@ -377,7 +376,7 @@ table_header_num_rows_and_classmap(FormatInfo, HeaderGroup, !NumRows,
     (
         ColumnTitles = table_header_group_single(_),
         NumSubCols = 1,
-        svmap.det_insert(!.ColumnNumber, ColumnClassStr, !ClassMap)
+        map.det_insert(!.ColumnNumber, ColumnClassStr, !ClassMap)
     ;
         ColumnTitles = table_header_group_multi(_, SubTitles),
         list.length(SubTitles, NumSubCols),
@@ -409,7 +408,7 @@ table_header_num_rows_and_classmap(FormatInfo, HeaderGroup, !NumRows,
     column_class_map::in, column_class_map::out) is det.
 
 insert_column_into_classmap(Value, Key, !Map) :-
-    svmap.det_insert(Key, Value, !Map).
+    map.det_insert(Key, Value, !Map).
 
 :- pred update_style_control_map(string::in, int::in, int::out,
     set(string)::in, set(string)::out,
@@ -430,12 +429,12 @@ update_style_control_map(ColumnClassStr, !HeaderGroupNumber,
         set.insert(!.ColouredClassStrs, ColumnClassStr, !:ColouredClassStrs)
     ),
     ( map.search(!.StyleControlMap, StyleControl, StyleElementMap0) ->
-        map.set(StyleElementMap0, StyleElement, Colour, StyleElementMap),
-        svmap.det_update(StyleControl, StyleElementMap, !StyleControlMap)
+        map.set(StyleElement, Colour, StyleElementMap0, StyleElementMap),
+        map.det_update(StyleControl, StyleElementMap, !StyleControlMap)
     ;
         map.init(StyleElementMap0),
-        map.set(StyleElementMap0, StyleElement, Colour, StyleElementMap),
-        svmap.det_insert(StyleControl, StyleElementMap, !StyleControlMap)
+        map.set(StyleElement, Colour, StyleElementMap0, StyleElementMap),
+        map.det_insert(StyleControl, StyleElementMap, !StyleControlMap)
     ),
     !:HeaderGroupNumber = !.HeaderGroupNumber + 1.
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005-2010 The University of Melbourne.
+% Copyright (C) 2003, 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -81,7 +81,6 @@
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 
 %----------------------------------------------------------------------------%
@@ -150,7 +149,7 @@ process_imported_pred(PredId, !ModuleInfo) :-
         ( not set.member(PredId, TypeSpecPredIds) ->
             map.lookup(!.PredTable, PredId, PredInfo0),
             process_imported_procs(PredInfo0, PredInfo),
-            svmap.det_update(PredId, PredInfo, !PredTable),
+            map.det_update(PredId, PredInfo, !PredTable),
             module_info_set_preds(!.PredTable, !ModuleInfo)
         ;
             true
@@ -180,7 +179,7 @@ process_imported_proc(ProcId, !ProcTable) :-
         ->
             process_imported_term_info(!.ProcInfo, TermInfo0, TermInfo),
             proc_info_set_termination2_info(TermInfo, !ProcInfo),
-            svmap.det_update(ProcId, !.ProcInfo, !ProcTable)
+            map.det_update(ProcId, !.ProcInfo, !ProcTable)
         ;
             true
         )
@@ -217,7 +216,7 @@ create_substitution_map(Ids, IdToProgVar, SizeVarMap, IdToSizeVar) :-
     list.foldl((pred(Id::in, !.Map::in, !:Map::out) is det :-
             ProgVar = IdToProgVar ^ det_elem(Id),
             SizeVar = map.lookup(SizeVarMap, ProgVar),
-            svmap.set(Id, SizeVar, !Map)
+            map.set(Id, SizeVar, !Map)
         ), Ids, map.init, IdToSizeVar).
 
 :- pred create_arg_size_polyhedron(map(int, var)::in,
@@ -267,7 +266,7 @@ process_builtin_preds([PredId | PredIds], !ModuleInfo, !IO) :-
         PredInfo0 = !.PredTable ^ det_elem(PredId),
         process_builtin_procs(MakeOptInt, PredId, !.ModuleInfo,
             PredInfo0, PredInfo),
-        svmap.det_update(PredId, PredInfo, !PredTable),
+        map.det_update(PredId, PredInfo, !PredTable),
         module_info_set_preds(!.PredTable, !ModuleInfo)
     ),
     process_builtin_preds(PredIds, !ModuleInfo, !IO).
@@ -414,7 +413,7 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, ModuleInfo,
             !TermInfo ^ head_vars := HeadSizeVars,
             proc_info_set_termination2_info(!.TermInfo, ProcInfo0, ProcInfo)
         ),
-        svmap.det_update(ProcId, ProcInfo, !ProcTable)
+        map.det_update(ProcId, ProcInfo, !ProcTable)
     ;
         SpecialPredId = spec_pred_init
         % We don't need to do anything special for solver type initialisation
@@ -532,7 +531,7 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
         !TermInfo ^ head_vars := HeadSizeVars,
         proc_info_set_termination2_info(!.TermInfo, ProcInfo0, ProcInfo)
     ),
-    svmap.det_update(ProcId, ProcInfo, !ProcTable),
+    map.det_update(ProcId, ProcInfo, !ProcTable),
     set_builtin_terminates(ProcIds, PredId, PredInfo, ModuleInfo, !ProcTable).
 
 :- func process_no_type_info_builtin(string, prog_vars, size_var_map)
@@ -580,7 +579,7 @@ initialise_size_var_maps([ProcId | ProcIds], !ProcTable) :-
     make_size_var_map(HeadVars, _SizeVarset, SizeVarMap),
     TermInfo = TermInfo0 ^ size_var_map := SizeVarMap,
     proc_info_set_termination2_info(TermInfo, ProcInfo0, ProcInfo),
-    svmap.det_update(ProcId, ProcInfo, !ProcTable),
+    map.det_update(ProcId, ProcInfo, !ProcTable),
     initialise_size_var_maps(ProcIds, !ProcTable).
 
 %----------------------------------------------------------------------------%

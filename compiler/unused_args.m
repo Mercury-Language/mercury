@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -116,7 +116,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -439,7 +438,7 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs,
                         UnusedVars),
                     initialise_vardep(UnusedVars, !.VarDep, VarDep),
                     PredProcId = proc(PredId, ProcId),
-                    svmap.set(PredProcId, VarDep, !VarUsage),
+                    map.set(PredProcId, VarDep, !VarUsage),
                     globals.lookup_bool_option(Globals,
                         optimize_unused_args, OptimizeUnusedArgs),
                     (
@@ -493,7 +492,7 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs,
             proc_info_get_goal(ProcInfo, Goal),
             Info = unused_args_info(!.ModuleInfo, VarTypes),
             unused_args_traverse_goal(Info, Goal, !VarDep),
-            svmap.set(proc(PredId, ProcId), !.VarDep, !VarUsage),
+            map.set(proc(PredId, ProcId), !.VarDep, !VarUsage),
 
             !:PredProcs = [proc(PredId, ProcId) | !.PredProcs]
         )
@@ -506,7 +505,7 @@ initialise_vardep([], !VarDep).
 initialise_vardep([Var | Vars], !VarDep) :-
     set.init(VDep),
     set.init(Args),
-    svmap.set(Var, unused(VDep, Args), !VarDep),
+    map.set(Var, unused(VDep, Args), !VarDep),
     initialise_vardep(Vars, !VarDep).
 
 %-----------------------------------------------------------------------------%
@@ -581,7 +580,7 @@ add_aliases(Var, Aliases, !VarDep) :-
         VarInf0 = unused(VarDep0, ArgDep),
         set.insert_list(VarDep0, Aliases, VarDep),
         VarInf = unused(VarDep, ArgDep),
-        map.det_update(!.VarDep, Var, VarInf, !:VarDep)
+        map.det_update(Var, VarInf, !VarDep)
     ;
         true
     ).
@@ -590,12 +589,12 @@ add_aliases(Var, Aliases, !VarDep) :-
     is det.
 
 set_list_vars_used(Vars, !VarDep) :-
-    map.delete_list(!.VarDep, Vars, !:VarDep).
+    map.delete_list(Vars, !VarDep).
 
 :- pred set_var_used(prog_var::in, var_dep::in, var_dep::out) is det.
 
 set_var_used(Var, !VarDep) :-
-    map.delete(!.VarDep, Var, !:VarDep).
+    map.delete(Var, !VarDep).
 
 :- pred lookup_local_var(var_dep::in, prog_var::in, usage_info::out)
     is semidet.
@@ -766,7 +765,7 @@ add_arg_dep(Var, PredProc, Arg, !VarDep) :-
         VarUsage0 = unused(VarDep, ArgDep0),
         set.insert(ArgDep0, arg_var_in_proc(PredProc, Arg), ArgDep),
         VarUsage = unused(VarDep, ArgDep),
-        svmap.det_update(Var, VarUsage, !VarDep)
+        map.det_update(Var, VarUsage, !VarDep)
     ;
         true
     ).
@@ -835,7 +834,7 @@ add_construction_aliases(Alias, [Var | Vars], !VarDep) :-
         VarInfo0 = unused(VarDep0, ArgDep),
         set.insert(VarDep0, Alias, VarDep),
         VarInfo = unused(VarDep, ArgDep),
-        svmap.set(Var, VarInfo, !VarDep)
+        map.set(Var, VarInfo, !VarDep)
     ;
         true
     ),
@@ -901,7 +900,7 @@ unused_args_check_proc(PredProcId, !Changed, !VarUsage) :-
         LocalUsages0, LocalUsages),
     (
         LocalChanged = yes,
-        svmap.det_update(PredProcId, LocalUsages, !VarUsage),
+        map.det_update(PredProcId, LocalUsages, !VarUsage),
         !:Changed = yes
     ;
         LocalChanged = no
@@ -960,7 +959,7 @@ get_unused_arg_info(ModuleInfo, [PredProc | PredProcs], VarUsage,
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     proc_info_get_headvars(ProcInfo, HeadVars),
     get_unused_arg_nos(LocalVarUsage, HeadVars, 1, UnusedArgs),
-    svmap.det_insert(PredProc, UnusedArgs, !UnusedArgInfo),
+    map.det_insert(PredProc, UnusedArgs, !UnusedArgInfo),
     get_unused_arg_info(ModuleInfo, PredProcs, VarUsage, !UnusedArgInfo).
 
 %-----------------------------------------------------------------------------%
@@ -1058,7 +1057,7 @@ unused_args_create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
 
         % Assign the old procedure to a new predicate, which will be fixed up
         % in unused_args_fixup_module.
-        map.set(NewProcs0, ProcId, OrigProcInfo, NewProcs),
+        map.set(ProcId, OrigProcInfo, NewProcs0, NewProcs),
         pred_info_set_procedures(NewProcs, NewPredInfo0, NewPredInfo),
 
         % Add the new proc to the pred table.
@@ -1068,9 +1067,9 @@ unused_args_create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
 
         % Add the new proc to the proc_call_info map.
         PredSymName = qualified(PredModule, NewPredName),
-        map.det_insert(!.ProcCallInfo, proc(PredId, ProcId),
+        map.det_insert(proc(PredId, ProcId),
             call_info(NewPredId, ProcId, PredSymName, UnusedArgs),
-            !:ProcCallInfo),
+            !ProcCallInfo),
 
         % Add a forwarding predicate with the original interface.
         create_call_goal(UnusedArgs, NewPredId, ProcId, PredModule,
@@ -1111,7 +1110,7 @@ make_intermod_proc(PredId, NewPredId, ProcId, NewPredName,
     remove_listof_elements(1, UnusedArgs2, ArgModes0, IntermodArgModes),
     proc_info_set_argmodes(IntermodArgModes, ExtraProc1, ExtraProc),
     pred_info_get_procedures(ExtraPredInfo0, ExtraProcs0),
-    map.set(ExtraProcs0, ProcId, ExtraProc, ExtraProcs),
+    map.set(ProcId, ExtraProc, ExtraProcs0, ExtraProcs),
     pred_info_set_procedures(ExtraProcs, ExtraPredInfo0, ExtraPredInfo),
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     predicate_table_insert(ExtraPredInfo, _, PredTable0, PredTable),
@@ -1246,7 +1245,7 @@ make_imported_unused_args_pred_info(OptProc, UnusedArgs, !ProcCallInfo,
     proc_info_get_argmodes(ProcInfo1, ArgModes0),
     remove_listof_elements(1, UnusedArgs, ArgModes0, ArgModes),
     proc_info_set_argmodes(ArgModes, ProcInfo1, ProcInfo),
-    map.set(NewProcs0, ProcId, ProcInfo, NewProcs),
+    map.set(ProcId, ProcInfo, NewProcs0, NewProcs),
     pred_info_set_procedures(NewProcs, NewPredInfo0, NewPredInfo),
 
     % Add the new proc to the pred table.
@@ -1257,7 +1256,7 @@ make_imported_unused_args_pred_info(OptProc, UnusedArgs, !ProcCallInfo,
     PredName = pred_info_name(NewPredInfo),
     PredSymName = qualified(PredModule, PredName),
     % Add the new proc to the proc_call_info map.
-    svmap.det_insert(proc(PredId, ProcId),
+    map.det_insert(proc(PredId, ProcId),
         call_info(NewPredId, ProcId, PredSymName, UnusedArgs), !ProcCallInfo).
 
 :- pred remove_listof_elements(int::in, list(int)::in,
@@ -1395,9 +1394,9 @@ do_unused_args_fixup_proc(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
         ProcInfo = !.ProcInfo
     ),
 
-    map.set(Procs0, ProcId, ProcInfo, Procs),
+    map.set(ProcId, ProcInfo, Procs0, Procs),
     pred_info_set_procedures(Procs, PredInfo0, PredInfo),
-    map.set(Preds0, PredId, PredInfo, Preds),
+    map.set(PredId, PredInfo, Preds0, Preds),
     module_info_set_preds(Preds, ModuleInfo0, ModuleInfo).
 
 :- type fixup_info
@@ -1548,13 +1547,13 @@ rename_apart_unused_foreign_arg(Arg0, Arg, !Subst, !Info, !Changed) :-
             varset.new_var(VarSet0, NewVar, VarSet)
         ),
         map.lookup(VarTypes0, OldVar, Type),
-        map.det_insert(VarTypes0, NewVar, Type, VarTypes),
-        !:Info = !.Info ^ fixup_varset := VarSet,
-        !:Info = !.Info ^ fixup_vartypes := VarTypes,
+        map.det_insert(NewVar, Type, VarTypes0, VarTypes),
+        !Info ^ fixup_varset := VarSet,
+        !Info ^ fixup_vartypes := VarTypes,
 
         % It is possible for an unnamed input argument to occur more than once
         % in the list of foreign_args.
-        svmap.set(OldVar, NewVar, !Subst),
+        map.set(OldVar, NewVar, !Subst),
         Arg = foreign_arg(NewVar, MaybeName, OrigType, BoxPolicy),
         !:Changed = yes
     ).

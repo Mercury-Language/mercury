@@ -317,9 +317,9 @@ convert_unify_to_hhf(RHS0, NonLocals, GoalInfo0, X, Mode, Unif, Context,
             add_unifications(ArgsA, NonLocals, GoalInfo0, Mode, Unif, Context,
                 Args, Unifications, !HI),
             InstGraph1 = !.HI ^ hhfi_inst_graph,
-            map.det_insert(Functors0, ConsId, Args, Functors),
-            map.det_update(InstGraph1, X, node(Functors, MaybeParent),
-                InstGraph2),
+            map.det_insert(ConsId, Args, Functors0, Functors),
+            map.det_update(X, node(Functors, MaybeParent),
+                InstGraph1, InstGraph2),
             list.foldl(inst_graph.set_parent(X), Args, InstGraph2, InstGraph),
             !HI ^ hhfi_inst_graph := InstGraph
         ),
@@ -368,9 +368,9 @@ add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
         VarTypes0 = !.HI ^ hhfi_vartypes,
         varset.new_var(VarSet0, V, VarSet),
         map.lookup(VarTypes0, A, Type),
-        map.det_insert(VarTypes0, V, Type, VarTypes),
+        map.det_insert(V, Type, VarTypes0, VarTypes),
         map.init(Empty),
-        map.det_insert(InstGraph0, V, node(Empty, top_level), InstGraph),
+        map.det_insert(V, node(Empty, top_level), InstGraph0, InstGraph),
         !HI ^ hhfi_varset := VarSet,
         !HI ^ hhfi_vartypes := VarTypes,
         !HI ^ hhfi_inst_graph := InstGraph,
@@ -431,7 +431,7 @@ maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeCtor, TypeCtorModuleName,
     ;
         list.map_foldl(add_cons_id(Var, ModuleInfo, BaseVars), Args, NewVars,
             !HI),
-        map.det_insert(Functors0, ConsId, NewVars, Functors),
+        map.det_insert(ConsId, NewVars, Functors0, Functors),
         !HI ^ hhfi_inst_graph :=
             map.det_update(!.HI ^ hhfi_inst_graph, Var,
                 node(Functors, MaybeParent))
@@ -451,10 +451,10 @@ add_cons_id(Var, ModuleInfo, BaseVars, Arg, NewVar, !HI) :-
         NewVar = NewVar0
     ;
         varset.new_var(VarSet0, NewVar, VarSet),
-        map.det_insert(VarTypes0, NewVar, ArgType, VarTypes),
+        map.det_insert(NewVar, ArgType, VarTypes0, VarTypes),
         map.init(Empty),
-        map.det_insert(InstGraph0, NewVar, node(Empty, parent(Var)),
-            InstGraph),
+        map.det_insert(NewVar, node(Empty, parent(Var)),
+            InstGraph0, InstGraph),
         !:HI = hhf_info(InstGraph, VarSet, VarTypes),
         complete_inst_graph_node(ModuleInfo, BaseVars, NewVar, !HI)
     ).

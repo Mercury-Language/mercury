@@ -374,7 +374,6 @@
 :- import_module require.
 :- import_module std_util.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -561,7 +560,7 @@ instmap_lookup_vars(InstMap, [Arg | Args], [Inst | Insts]) :-
 
 instmap_set_var(_Var, _Inst, unreachable, unreachable).
 instmap_set_var(Var, Inst, reachable(InstMapping0), reachable(InstMapping)) :-
-    map.set(InstMapping0, Var, Inst, InstMapping).
+    map.set(Var, Inst, InstMapping0, InstMapping).
 
 instmap_set_vars(VarsInsts, !InstMap) :-
     (
@@ -579,7 +578,7 @@ instmap_set_vars(VarsInsts, !InstMap) :-
 instmapping_set_vars([], !InstMapping).
 instmapping_set_vars([Var - Inst | VarsInsts], !InstMapping) :-
     expect(negate(unify(Inst, not_reached)), $module, $pred, "not_reached"),
-    svmap.set(Var, Inst, !InstMapping),
+    map.set(Var, Inst, !InstMapping),
     instmapping_set_vars(VarsInsts, !InstMapping).
 
 instmap_set_vars_corresponding(Vars, Insts, !InstMap) :-
@@ -601,7 +600,7 @@ instmapping_set_vars_corresponding([], [], !InstMapping).
 instmapping_set_vars_corresponding([Var | Vars], [Inst | Insts],
         !InstMapping) :-
     expect(negate(unify(Inst, not_reached)), $module, $pred, "not_reached"),
-    svmap.set(Var, Inst, !InstMapping),
+    map.set(Var, Inst, !InstMapping),
     instmapping_set_vars_corresponding(Vars, Insts, !InstMapping).
 instmapping_set_vars_corresponding([_ | _], [], !InstMapping) :-
     unexpected($module, $pred, "length mismatch (1)").
@@ -625,7 +624,7 @@ instmap_set_vars_same(Inst, Vars, !InstMap) :-
 
 instmapping_set_vars_same(_, [], !InstMapping).
 instmapping_set_vars_same(Inst, [Var | Vars], !InstMapping) :-
-    svmap.set(Var, Inst, !InstMapping),
+    map.set(Var, Inst, !InstMapping),
     instmapping_set_vars_same(Inst, Vars, !InstMapping).
 
 instmap_delta_set_var(_Var, _Inst, unreachable, unreachable).
@@ -633,7 +632,7 @@ instmap_delta_set_var(Var, Inst, reachable(InstMapping0), Instmap) :-
     ( Inst = not_reached ->
         Instmap = unreachable
     ;
-        map.set(InstMapping0, Var, Inst, InstMapping),
+        map.set(Var, Inst, InstMapping0, InstMapping),
         Instmap = reachable(InstMapping)
     ).
 
@@ -654,7 +653,7 @@ instmap_delta_insert_var(Var, Inst, reachable(InstMapping0), Instmap) :-
     ( Inst = not_reached ->
         Instmap = unreachable
     ;
-        map.det_insert(InstMapping0, Var, Inst, InstMapping),
+        map.det_insert(Var, Inst, InstMapping0, InstMapping),
         Instmap = reachable(InstMapping)
     ).
 
@@ -846,7 +845,7 @@ instmap_delta_restrict(Vars,
 instmap_delta_delete_vars(_, unreachable, unreachable).
 instmap_delta_delete_vars(Vars,
         reachable(InstMapping0), reachable(InstMapping)) :-
-    map.delete_list(InstMapping0, Vars, InstMapping).
+    map.delete_list(Vars, InstMapping0, InstMapping).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -929,10 +928,10 @@ merge_insts_of_vars([Var | Vars], InstMapList, VarTypes, !InstMapping,
     (
         MaybeInst = no,
         !:ErrorList = [merge_error(Var, InstList) | !.ErrorList],
-        svmap.set(Var, not_reached, !InstMapping)
+        map.set(Var, not_reached, !InstMapping)
     ;
         MaybeInst = yes(Inst),
-        svmap.set(Var, Inst, !InstMapping)
+        map.set(Var, Inst, !InstMapping)
     ).
 
 :- pred lookup_var_in_instmap(prog_var::in, instmap::in, mer_inst::out) is det.
@@ -1161,7 +1160,7 @@ unify_insts_of_vars([Var | Vars], InitialInstMap, InstMapList,
         Error = no,
         ErrorList = ErrorListTail
     ),
-    map.set(!.InstMap, Var, Inst, !:InstMap).
+    map.set(Var, Inst, !InstMap).
 
     % unify_var_insts(InstMaps, Var, InitialInstMap, ModuleInfo,
     %   Insts, Error):
@@ -1329,7 +1328,7 @@ merge_instmapping_delta_2([Var | Vars], InstMap, VarTypes,
         % tests/hard_coded. -zs
 
         Inst = Inst1,
-        svmap.det_insert(Var, Inst, !InstMapping)
+        map.det_insert(Var, Inst, !InstMapping)
     ;
         term.var_to_int(Var, VarInt),
         string.format("merge_instmapping_delta_2: error merging var %i",
@@ -1385,16 +1384,16 @@ unify_instmapping_delta_2([Var | Vars], InstMap, InstMappingA, InstMappingB,
                 abstractly_unify_inst(is_live, InstA, InstB,
                     fake_unify, Inst, _Det, !ModuleInfo)
             ->
-                svmap.det_insert(Var, Inst, !InstMapping)
+                map.det_insert(Var, Inst, !InstMapping)
             ;
                 unexpected($module, $pred, "unexpected error")
             )
         ;
-            svmap.det_insert(Var, InstA, !InstMapping)
+            map.det_insert(Var, InstA, !InstMapping)
         )
     ;
         ( map.search(InstMappingB, Var, InstB) ->
-            svmap.det_insert(Var, InstB, !InstMapping)
+            map.det_insert(Var, InstB, !InstMapping)
         ;
             true
         )
@@ -1427,7 +1426,7 @@ instmap_delta_apply_sub_2([Var0 - Inst | VarInsts0], Must, Renaming,
     % This should be a call to map.det_insert, rather than to map.set.
     % However, if we do that, then the compiler breaks, due to a problem
     % with excess.m not preserving super-homogenous form.
-    map.set(!.Instmapping, Var, Inst, !:Instmapping),
+    map.set(Var, Inst, !Instmapping),
     instmap_delta_apply_sub_2(VarInsts0, Must, Renaming, !Instmapping).
 
 %-----------------------------------------------------------------------------%

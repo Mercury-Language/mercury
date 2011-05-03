@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2005-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -75,7 +75,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module solutions.
-:- import_module svmap.
 :- import_module svset.
 
 %-----------------------------------------------------------------------------%
@@ -107,7 +106,7 @@ compute_constantR(InputRTable, OutputRTable, BornRTable, PPId, DeadR,
     set.union(InputR, OutputR, InputOutputR0),
     set.difference(InputOutputR0, BornR, InputOutputR),
     set.difference(InputOutputR, DeadR, ConstantR),
-    svmap.set(PPId, ConstantR, !ConstantRTable).
+    map.set(PPId, ConstantR, !ConstantRTable).
 
     % Apply the live region analysis rules to update bornR and deadR
     % sets of each procedure.
@@ -304,7 +303,7 @@ apply_live_region_rules_exec_path(Rule, [ProgPoint - Goal | ProgPoint_Goals],
                 true
               else
                 % some regions are removed, record the new set for q and ...
-                svmap.set(CalleePPId, RegionSet, !ProcRegionSetTable),
+                map.set(CalleePPId, RegionSet, !ProcRegionSetTable),
 
                 % ... those removals need to be propagated to the ones
                 % called by q
@@ -509,7 +508,7 @@ remove_this_from_ep([ProgPoint - Goal|ProgPoint_Goals], PPId,
               else
                 % Some is removed from deadR or bornR of this callee,
                 % so we update the entry of this called and analyse it.
-                svmap.set(CalleePPId, RegionSet1, !ProcRegionSetTable),
+                map.set(CalleePPId, RegionSet1, !ProcRegionSetTable),
                 set.difference(RegionSet0, RegionSet1, RemovedFromQ),
 
                 % Call this one mutually recursively.
@@ -574,7 +573,7 @@ eliminate_primitive_regions(ModuleInfo, RptaInfoTable, PPId, RegionSet0,
     RptaInfo = rpta_info(Graph, _Alpha),
     set.fold(retain_non_primitive_regions(ModuleInfo, Graph), RegionSet0,
         set.init, RegionSet),
-    svmap.det_update(PPId, RegionSet, !RegionSetTable).
+    map.det_update(PPId, RegionSet, !RegionSetTable).
 
 :- pred retain_non_primitive_regions(module_info::in, rpt_graph::in,
     rptg_node::in, region_set::in, region_set::out) is det.
@@ -599,7 +598,7 @@ eliminate_primitive_regions_2(ModuleInfo, RptaInfoTable, PPId, LRProc0,
     RptaInfo = rpta_info(Graph, _Alpha),
     map.foldl(retain_non_primitive_regions_at_pp(ModuleInfo, Graph),
         LRProc0, map.init, LRProc),
-    svmap.det_update(PPId, LRProc, !LRTable).
+    map.det_update(PPId, LRProc, !LRTable).
 
 :- pred retain_non_primitive_regions_at_pp(module_info::in, rpt_graph::in,
     program_point::in, region_set::in, pp_region_set_table::in,
@@ -609,7 +608,7 @@ retain_non_primitive_regions_at_pp(ModuleInfo, Graph, ProgPoint,
         RegionSet0, !LRProc) :-
     set.fold(retain_non_primitive_regions(ModuleInfo, Graph), RegionSet0,
         set.init, RegionSet),
-    svmap.set(ProgPoint, RegionSet, !LRProc).
+    map.set(ProgPoint, RegionSet, !LRProc).
 
 %-----------------------------------------------------------------------------%
 

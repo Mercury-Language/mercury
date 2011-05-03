@@ -132,7 +132,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -503,7 +502,7 @@ process_imported_reuse_in_pred(PredId, !ModuleInfo) :-
         module_info_get_preds(!.ModuleInfo, !:PredTable),
         map.lookup(!.PredTable, PredId, PredInfo0),
         process_imported_reuse_in_procs(PredInfo0, PredInfo),
-        svmap.det_update(PredId, PredInfo, !PredTable),
+        map.det_update(PredId, PredInfo, !PredTable),
         module_info_set_preds(!.PredTable, !ModuleInfo)
     ).
 
@@ -550,7 +549,7 @@ process_imported_reuse_in_proc(PredInfo, ProcId, !ProcTable) :-
             proc_info_set_structure_reuse(
                 structure_reuse_domain_and_status(Reuse, optimal), !ProcInfo),
             proc_info_reset_imported_structure_reuse(!ProcInfo),
-            svmap.det_update(ProcId, !.ProcInfo, !ProcTable)
+            map.det_update(ProcId, !.ProcInfo, !ProcTable)
         ;
             true
         )

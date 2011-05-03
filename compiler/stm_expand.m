@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2010 The University of Melbourne.
+% Copyright (C) 1995-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public Licence - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -270,10 +270,10 @@ stm_process_proc(PredId, ProcId, !ModuleInfo) :-
         PredInfo1, !ModuleInfo),
 
     pred_info_get_procedures(PredInfo1, ProcTable1),
-    map.det_update(ProcTable1, ProcId, ProcInfo, ProcTable),
+    map.det_update(ProcId, ProcInfo, ProcTable1, ProcTable),
     pred_info_set_procedures(ProcTable, PredInfo1, PredInfo),
     module_info_get_preds(!.ModuleInfo, PredTable1),
-    map.det_update(PredTable1, PredId, PredInfo, PredTable),
+    map.det_update(PredId, PredInfo, PredTable1, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
 :- pred stm_process_proc_2(proc_info::in, proc_info::out, pred_id::in,
@@ -1261,9 +1261,8 @@ apply_varset_to_preds(ProgVar, !NewPredVarSet, !NewPredVarTypes,
 %   delete_var(!.OldPredVarSet, ProgVar, !:OldPredVarSet),
 %   map.delete(!.OldPredVarTypes, ProgVar, !:OldPredVarTypes),
     new_var(NewProgVar, !NewPredVarSet),
-    map.det_insert(!.NewPredVarTypes, NewProgVar, ProgType,
-        !:NewPredVarTypes),
-    map.det_insert(!.VarMapping, ProgVar, NewProgVar, !:VarMapping).
+    map.det_insert(NewProgVar, ProgType, !NewPredVarTypes),
+    map.det_insert(ProgVar, NewProgVar, !VarMapping).
 
     % Moves all local variables from the original predicate to the newly
     % created wrapper predicate.  This also includes the original STM
@@ -1291,10 +1290,10 @@ move_variables_to_new_pred(AtomicGoal0, AtomicGoal, AtomicGoalVars,
         VarMapping0, VarMapping1),
 
     ( OrigInnerDI = OrigInnerUO ->
-        map.det_insert(VarMapping1, OrigInnerDI, InnerDI, VarMapping)
+        map.det_insert(OrigInnerDI, InnerDI, VarMapping1, VarMapping)
     ;
-        map.det_insert(VarMapping1, OrigInnerDI, InnerDI, VarMapping2),
-        map.det_insert(VarMapping2, OrigInnerUO, InnerUO, VarMapping)
+        map.det_insert(OrigInnerDI, InnerDI, VarMapping1, VarMapping2),
+        map.det_insert(OrigInnerUO, InnerUO, VarMapping2, VarMapping)
     ),
 
     rename_some_vars_in_goal(VarMapping, AtomicGoal0, AtomicGoal),
@@ -1302,8 +1301,8 @@ move_variables_to_new_pred(AtomicGoal0, AtomicGoal, AtomicGoalVars,
     proc_info_set_vartypes(NewPredVarTypes, NewProcInfo1, NewProcInfo),
     proc_info_set_varset(OldPredVarSet, OldProcInfo0, OldProcInfo1),
     proc_info_set_vartypes(OldPredVarTypes, OldProcInfo1, OldProcInfo),
-    !:NewPredInfo = !.NewPredInfo ^ new_pred_proc_info := NewProcInfo,
-    !:StmInfo = !.StmInfo ^ stm_info_proc_info := OldProcInfo.
+    !NewPredInfo ^ new_pred_proc_info := NewProcInfo,
+    !StmInfo ^ stm_info_proc_info := OldProcInfo.
 
 %-----------------------------------------------------------------------------%
 %
@@ -2068,13 +2067,13 @@ rename_var_in_wrapper_pred(Name, ResultVar0, ResultType, ResultVar,
     proc_info_get_vartypes(NewProcInfo0, NewPredVarTypes0),
     proc_info_get_headvars(NewProcInfo0, NewHeadVars0),
     delete_var(NewPredVarSet0, ResultVar0, NewPredVarSet1),
-    map.delete(NewPredVarTypes0, ResultVar0, NewPredVarTypes1),
+    map.delete(ResultVar0, NewPredVarTypes0, NewPredVarTypes1),
 
     new_named_var(Name, ResultVar, NewPredVarSet1, NewPredVarSet),
-    map.det_insert(NewPredVarTypes1, ResultVar, ResultType, NewPredVarTypes),
+    map.det_insert(ResultVar, ResultType, NewPredVarTypes1, NewPredVarTypes),
 
     VarMapping0 = map.init,
-    map.det_insert(VarMapping0, ResultVar0, ResultVar, VarMapping),
+    map.det_insert(ResultVar0, ResultVar, VarMapping0, VarMapping),
 
     MapLambda = ((pred(X::in, Y::out) is det) :-
         ( X = ResultVar0 ->

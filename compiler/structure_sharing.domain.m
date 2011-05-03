@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2008, 2010 The University of Melbourne.
+% Copyright (C) 2005-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -317,7 +317,6 @@
 :- import_module require.
 :- import_module solutions.
 :- import_module string.
-:- import_module svmap.
 :- import_module svset.
 :- import_module univ.
 :- import_module varset.
@@ -1151,7 +1150,7 @@ project_and_update_sharing_set(ProjectionType, Vars, Var, SelSet0, !SS) :-
         true
     ;
         !.SS = sharing_set(Size0, M0),
-        map.det_insert(M0, Var, SelSet, M),
+        map.det_insert(Var, SelSet, M0, M),
         Size = Size0 + selector_sharing_set_size(SelSet),
         !:SS = sharing_set(Size, M)
     ).
@@ -1173,9 +1172,9 @@ do_sharing_set_rename(Dict, TypeSubst, Var0, SelectorSet0, !Map) :-
     % e.g. append(X, X, Y).
     ( map.search(!.Map, Var, SelectorSet2) ->
         selector_sharing_set_add(SelectorSet1, SelectorSet2, SelectorSet),
-        svmap.det_update(Var, SelectorSet, !Map)
+        map.det_update(Var, SelectorSet, !Map)
     ;
-        svmap.det_insert(Var, SelectorSet1, !Map)
+        map.det_insert(Var, SelectorSet1, !Map)
     ).
 
     % The implementation for combining sharing sets is to compute the
@@ -1466,18 +1465,18 @@ remove_directed_entry(FromData, ToData, SharingSet0, SharingSet) :-
         ( Size = 0 ->
             SharingSet = sharing_set(Size, map.init)
         ; SelSize = 0 ->
-            map.delete(SharingMap0, FromVar, SharingMap),
+            map.delete(FromVar, SharingMap0, SharingMap),
             SharingSet = sharing_set(Size, SharingMap)
         ; DataSize = 0 ->
-            map.delete(SelSharingMap0, FromSel, SelSharingMap),
+            map.delete(FromSel, SelSharingMap0, SelSharingMap),
             SelSharingSet = selector_sharing_set(SelSize, SelSharingMap),
-            map.det_update(SharingMap0, FromVar, SelSharingSet, SharingMap),
+            map.det_update(FromVar, SelSharingSet, SharingMap0, SharingMap),
             SharingSet = sharing_set(Size, SharingMap)
         ;
             DataSet = datastructures(DataSize, Data),
-            map.det_update(SelSharingMap0, FromSel, DataSet, SelSharingMap),
+            map.det_update(FromSel, DataSet, SelSharingMap0, SelSharingMap),
             SelSharingSet = selector_sharing_set(SelSize, SelSharingMap),
-            map.det_update(SharingMap0, FromVar, SelSharingSet, SharingMap),
+            map.det_update(FromVar, SelSharingSet, SharingMap0, SharingMap),
             SharingSet = sharing_set(Size, SharingMap)
         )
     ;
@@ -1660,7 +1659,7 @@ new_directed_entry(FromData, ToData, SharingSet0, SharingSet):-
             selector_sharing_set_new_entry(Selector, ToData,
                 Selectors0, Selectors)
         ->
-            map.det_update(Map0, Var, Selectors, Map),
+            map.det_update(Var, Selectors, Map0, Map),
             Size = Size0 + 1
         ;
             Map = Map0,
@@ -1671,7 +1670,7 @@ new_directed_entry(FromData, ToData, SharingSet0, SharingSet):-
             selector_sharing_set_new_entry(Selector, ToData,
                 selector_sharing_set_init, Selectors)
         ->
-            map.det_insert(Map0, Var, Selectors, Map),
+            map.det_insert(Var, Selectors, Map0, Map),
             Size = Size0 + 1
         ;
             unexpected(this_file, "new_directed_entry: Impossible option.")
@@ -1811,7 +1810,7 @@ selector_sharing_set_project_2(ProjectionType, Vars, Selector, DataSet0, !SS):-
         true
     ;
         !.SS = selector_sharing_set(Size0, Map0),
-        map.det_insert(Map0, Selector, DataSet, Map),
+        map.det_insert(Selector, DataSet, Map0, Map),
         Size = Size0 + data_set_size(DataSet),
         !:SS = selector_sharing_set(Size, Map)
     ).
@@ -1832,9 +1831,9 @@ selector_sharing_set_rename_2(Dict, Subst, Selector0, DataSet0, !Map) :-
         % This can happen if Subst maps two different type variables to the
         % same type.
         data_set_add(DataSet, DataSetOld, CombinedDataSet),
-        svmap.set(Selector, CombinedDataSet, !Map)
+        map.set(Selector, CombinedDataSet, !Map)
     ;
-        svmap.det_insert(Selector, DataSet, !Map)
+        map.det_insert(Selector, DataSet, !Map)
     ).
 
 selector_sharing_set_add(SelectorSetA, SelectorSetB, SelectorSet):-
@@ -1850,9 +1849,9 @@ selector_sharing_set_add(SelectorSetA, SelectorSetB, SelectorSet):-
 selector_sharing_set_add_2(Sel, DataSet0, !Map) :-
     ( map.search(!.Map, Sel, DataSet1) ->
         data_set_add(DataSet0, DataSet1, DataSet),
-        svmap.det_update(Sel, DataSet, !Map)
+        map.det_update(Sel, DataSet, !Map)
     ;
-        svmap.det_insert(Sel, DataSet0, !Map)
+        map.det_insert(Sel, DataSet0, !Map)
     ).
 
 :- pred sum_data_set_sizes(selector::in, data_set::in,
@@ -1867,11 +1866,11 @@ selector_sharing_set_new_entry(Selector, Datastruct,
     ( map.search(Map0, Selector, DataSet0) ->
         data_set_new_entry(Datastruct, DataSet0, DataSet),
         Size = Size0 + 1,
-        map.det_update(Map0, Selector, DataSet, Map)
+        map.det_update(Selector, DataSet, Map0, Map)
     ;
         data_set_new_entry(Datastruct, data_set_init, DataSet),
         Size = Size0 + 1,
-        map.det_insert(Map0, Selector, DataSet, Map)
+        map.det_insert(Selector, DataSet, Map0, Map)
     ),
     SelSharingSet = selector_sharing_set(Size, Map).
 
@@ -2012,10 +2011,10 @@ selector_sharing_set_apply_widening_2(ModuleInfo, ProcInfo, ProgVar,
         DataSetFinal = data_set_least_upper_bound(ModuleInfo, ProcInfo,
             DataSet2, ExistingDataSet),
         DataSetFinalSize = data_set_size(DataSetFinal),
-        svmap.det_update(NewSelector, DataSetFinal, !DataMap),
+        map.det_update(NewSelector, DataSetFinal, !DataMap),
         !:DataMapSize = !.DataMapSize - ExistingDataSetSize + DataSetFinalSize
     ;
-        svmap.det_insert(NewSelector, DataSet2, !DataMap),
+        map.det_insert(NewSelector, DataSet2, !DataMap),
         !:DataMapSize = !.DataMapSize + data_set_size(DataSet2)
     ).
 

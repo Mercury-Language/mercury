@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2004-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -546,7 +546,7 @@ bind_equivalent_vars(SCs, !Bindings) :-
 bind_all(Vars, Val, !Bindings) :-
     list.foldl(
         ( pred(Var::in, Binds0::in, Binds::out) is det :-
-            map.set(Binds0, Var, Val, Binds)
+            map.set(Var, Val, Binds0, Binds)
         ),
         Vars, !Bindings).
 

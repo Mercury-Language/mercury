@@ -54,7 +54,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 
 %----------------------------------------------------------------------------%
 
@@ -334,7 +333,7 @@ calculate_dependent_parallel_cost_consumption(Info, ProductionsMap,
     !:PrevSeqConsumeTime = SeqConsTime,
     !:PrevParConsumeTime = ParConsTime,
 
-    svmap.det_insert(Var, ParConsTime, !ConsumptionsMap).
+    map.det_insert(Var, ParConsTime, !ConsumptionsMap).
 
 :- pred calculate_dependent_parallel_cost_production(
     implicit_parallelism_info::in, float::in, float::in, float::out,
@@ -472,7 +471,7 @@ calc_cost_and_dead_time_2([Start - Stop | Executions], LastStop,
 
 var_production_time_to_map(TimeBefore, Goal, Var, !Map) :-
     var_first_use_time(find_production, TimeBefore, Goal, Var, Time),
-    svmap.det_insert(Var, Time, !Map).
+    map.det_insert(Var, Time, !Map).
 
     % Either a production or consumption time.  Consumptions should sort before
     % productions.

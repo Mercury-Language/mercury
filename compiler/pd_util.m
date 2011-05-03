@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2010 University of Melbourne.
+% Copyright (C) 1998-2011 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -177,7 +177,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module term.
-:- import_module svmap.
 :- import_module svset.
 
 goal_get_calls(Goal0, CalledPreds) :-
@@ -418,7 +417,7 @@ convert_branch_info(ArgInfo, Args, VarInfo) :-
 convert_branch_info_2([], _, !VarInfo).
 convert_branch_info_2([ArgNo - Branches | ArgInfos], Args, !VarInfo) :-
     list.index1_det(Args, ArgNo, Arg),
-    svmap.set(Arg, Branches, !VarInfo),
+    map.set(Arg, Branches, !VarInfo),
     convert_branch_info_2(ArgInfos, Args, !VarInfo).
 
 %-----------------------------------------------------------------------------%
@@ -445,7 +444,7 @@ get_branch_vars_proc(PredProcId, ProcInfo, !ModuleInfo, !ArgInfo) :-
         set.init(OpaqueArgs0),
         BranchInfo0 = pd_branch_info(ThisProcArgMap1, ThisProcLeftArgs,
             OpaqueArgs0),
-        svmap.set(PredProcId, BranchInfo0, !ArgInfo),
+        map.set(PredProcId, BranchInfo0, !ArgInfo),
 
         % Look for opportunities for deforestation in the sub-branches
         % of the top-level goal.
@@ -460,7 +459,7 @@ get_branch_vars_proc(PredProcId, ProcInfo, !ModuleInfo, !ArgInfo) :-
 
         BranchInfo = pd_branch_info(ThisProcArgMap, ThisProcLeftArgs,
             OpaqueArgs),
-        svmap.set(PredProcId, BranchInfo, !ArgInfo)
+        map.set(PredProcId, BranchInfo, !ArgInfo)
     ;
         true
     ).
@@ -501,7 +500,7 @@ get_extra_info_headvars([], _, _, _, !Args, !LeftArgs).
 get_extra_info_headvars([HeadVar | HeadVars], ArgNo,
         LeftVars, VarInfo, !ThisProcArgs, !ThisProcLeftVars) :-
     ( map.search(VarInfo, HeadVar, ThisVarInfo) ->
-        svmap.det_insert(ArgNo, ThisVarInfo, !ThisProcArgs)
+        map.det_insert(ArgNo, ThisVarInfo, !ThisProcArgs)
     ;
         true
     ),
@@ -634,7 +633,7 @@ get_branch_vars(ModuleInfo, Goal, [InstMapDelta | InstMapDeltas],
                 ;
                     set.singleton_set(Set, BranchNo)
                 ),
-                map.set(Vars0, ChangedVar, Set, Vars)
+                map.set(ChangedVar, Set, Vars0, Vars)
             ;
                 Vars = Vars0
             )
@@ -651,7 +650,7 @@ get_branch_vars(ModuleInfo, Goal, [InstMapDelta | InstMapDeltas],
         ;
             set.singleton_set(SwitchVarSet, BranchNo)
         ),
-        svmap.set(SwitchVar, SwitchVarSet, !ExtraVars)
+        map.set(SwitchVar, SwitchVarSet, !ExtraVars)
     ;
         true
     ),
@@ -782,10 +781,10 @@ combine_vars(_, [], !Vars).
 combine_vars(BranchNo, [ExtraVar | ExtraVars], !Vars) :-
     ( map.search(!.Vars, ExtraVar, Branches0) ->
         set.insert(Branches0, BranchNo, Branches),
-        svmap.det_update(ExtraVar, Branches, !Vars)
+        map.det_update(ExtraVar, Branches, !Vars)
     ;
         set.singleton_set(Branches, BranchNo),
-        svmap.det_insert(ExtraVar, Branches, !Vars)
+        map.det_insert(ExtraVar, Branches, !Vars)
     ),
     combine_vars(BranchNo, ExtraVars, !Vars).
 
@@ -1090,7 +1089,7 @@ goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals], !ONRenaming) :-
                     Value = Value0,
                     Map = Map0
                 ;
-                    map.det_insert(Map0, Key, Value, Map)
+                    map.det_insert(Key, Value, Map0, Map)
                 )
             ),
         list.foldl(MapInsert, ONArgsList, !ONRenaming)

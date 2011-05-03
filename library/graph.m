@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999, 2003, 2005-2006, 2010 The University of Melbourne.
+% Copyright (C) 1994-1999, 2003, 2005-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -212,12 +212,12 @@ graph.set_node(!.G, NInfo, node(N), !:G) :-
     !G ^ node_supply := NS,
 
     Nodes0 = !.G ^ node_map,
-    map.set(Nodes0, node(N), NInfo, Nodes),
+    map.set(node(N), NInfo, Nodes0, Nodes),
     !G ^ node_map := Nodes,
 
     Edges0 = !.G ^ edge_map,
     map.init(EdgeMap),
-    map.set(Edges0, node(N), EdgeMap, Edges),
+    map.set(node(N), EdgeMap, Edges0, Edges),
     !G ^ edge_map := Edges.
 
 graph.det_insert_node(!.G, NInfo, N, !:G) :-
@@ -236,12 +236,12 @@ graph.insert_node(!.G, NInfo, node(N), !:G) :-
     !G ^ node_supply := NS,
 
     Nodes0 = !.G ^ node_map,
-    map.set(Nodes0, node(N), NInfo, Nodes),
+    map.set(node(N), NInfo, Nodes0, Nodes),
     !G ^ node_map := Nodes,
 
     Edges0 = !.G ^ edge_map,
     map.init(EdgeSet),
-    map.set(Edges0, node(N), EdgeSet, Edges),
+    map.set(node(N), EdgeSet, Edges0, Edges),
     !G ^ edge_map := Edges.
 
 %------------------------------------------------------------------------------%
@@ -292,13 +292,13 @@ graph.set_edge(!.G, Start, End, Info, Arc, !:G) :-
     !G ^ arc_supply := AS,
 
     Arcs0 = !.G ^ arc_map,
-    map.set(Arcs0, Arc, arc_info(Start, End, Info), Arcs),
+    map.set(Arc, arc_info(Start, End, Info), Arcs0, Arcs),
     !G ^ arc_map := Arcs,
 
     Es0 = !.G ^ edge_map,
     map.lookup(Es0, Start, EdgeMap0),
-    map.set(EdgeMap0, Arc, End, EdgeMap),
-    map.set(Es0, Start, EdgeMap, Es),
+    map.set(Arc, End, EdgeMap0, EdgeMap),
+    map.set(Start, EdgeMap, Es0, Es),
     !G ^ edge_map := Es.
 
 %------------------------------------------------------------------------------%
@@ -317,13 +317,13 @@ graph.insert_edge(!.G, Start, End, Info, Arc, !:G) :-
     !G ^ arc_supply := AS,
 
     Arcs0 = !.G ^ arc_map,
-    map.insert(Arcs0, Arc, arc_info(Start, End, Info), Arcs),
+    map.insert(Arc, arc_info(Start, End, Info), Arcs0, Arcs),
     !G ^ arc_map := Arcs,
 
     Es0 = !.G ^ edge_map,
     map.lookup(Es0, Start, EdgeMap0),
-    map.set(EdgeMap0, Arc, End, EdgeMap),
-    map.set(Es0, Start, EdgeMap, Es),
+    map.set(Arc, End, EdgeMap0, EdgeMap),
+    map.set(Start, EdgeMap, Es0, Es),
     !G ^ edge_map := Es.
 
 %------------------------------------------------------------------------------%

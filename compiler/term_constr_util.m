@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %------------------------------------------------------------------------------%
-% Copyright (C) 1997-2003, 2005-2010 The University of Melbourne.
+% Copyright (C) 1997-2003, 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -202,7 +202,6 @@
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
-:- import_module svmap.
 :- import_module svvarset.
 :- import_module term.
 :- import_module varset.
@@ -219,9 +218,9 @@ set_pred_proc_ids_constr_arg_size_info([PPId | PPIds], ArgSize, !ModuleInfo) :-
     proc_info_get_termination2_info(ProcInfo0, TermInfo0),
     TermInfo = TermInfo0 ^ success_constrs := yes(ArgSize),
     proc_info_set_termination2_info(TermInfo, ProcInfo0, ProcInfo),
-    map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+    map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
     pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-    map.det_update(PredTable0, PredId, PredInfo, PredTable),
+    map.det_update(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo),
     set_pred_proc_ids_constr_arg_size_info(PPIds, ArgSize, !ModuleInfo).
 
@@ -245,7 +244,7 @@ make_size_var_map(ProgVars, !SizeVarset, SizeVarMap) :-
 
 make_size_var_map_2(ProgVar, !SizeVarMap, !SizeVarset) :-
     svvarset.new_var(SizeVar, !SizeVarset),
-    svmap.set(ProgVar, SizeVar, !SizeVarMap).
+    map.set(ProgVar, SizeVar, !SizeVarMap).
 
 prog_vars_to_size_vars(SizeVarMap, Vars)
     = list.map(prog_var_to_size_var(SizeVarMap), Vars).
@@ -326,7 +325,7 @@ create_var_substitution_2([_|_], [], _, _) :-
 create_var_substitution_2([], [_|_], _, _) :-
     unexpected(this_file, "compose_bijections/5: unmatched lists.").
 create_var_substitution_2([Arg | Args], [HeadVar | HeadVars],  !Subst) :-
-    svmap.det_insert(HeadVar, Arg, !Subst),
+    map.det_insert(HeadVar, Arg, !Subst),
     create_var_substitution_2(Args, HeadVars, !Subst).
 
 make_arg_constraints([], _) = [].
@@ -430,7 +429,7 @@ change_procs_constr_termination_info([ProcId | ProcIds], Override, Termination,
     ->
         TermInfo = TermInfo0 ^ term_status := yes(Termination),
         proc_info_set_termination2_info(TermInfo, ProcInfo0, ProcInfo),
-        svmap.det_update(ProcId, ProcInfo, !ProcTable)
+        map.det_update(ProcId, ProcInfo, !ProcTable)
     ;
         true
     ),
@@ -449,7 +448,7 @@ change_procs_constr_arg_size_info([ProcId | ProcIds], Override, ArgSize,
     ->
         TermInfo = TermInfo0 ^ success_constrs := yes(ArgSize),
         proc_info_set_termination2_info(TermInfo, ProcInfo0, ProcInfo),
-        svmap.det_update(ProcId, ProcInfo, !ProcTable)
+        map.det_update(ProcId, ProcInfo, !ProcTable)
     ;
         true
     ),

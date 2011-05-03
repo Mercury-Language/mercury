@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2005-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -49,7 +49,6 @@
 :- import_module map.
 :- import_module require.
 :- import_module set.
-:- import_module svmap.
 :- import_module term.
 
 %----------------------------------------------------------------------------%
@@ -156,39 +155,39 @@ live_region_analysis_proc(ModuleInfo, RptaInfoTable, LVBeforeTable,
                 InputR),
             lv_to_lr(set.from_list(Outputs), Graph, ModuleInfo, ProcInfo,
                 OutputR),
-            svmap.set(PPId, InputR, !InputRTable),
-            svmap.set(PPId, OutputR, !OutputRTable),
+            map.set(PPId, InputR, !InputRTable),
+            map.set(PPId, OutputR, !OutputRTable),
             % initial bornR
             set.difference(OutputR, InputR, BornR),
-            svmap.set(PPId, BornR, !BornRTable),
+            map.set(PPId, BornR, !BornRTable),
             % initial deadR
             set.difference(InputR, OutputR, DeadR),
-            svmap.set(PPId, DeadR, !DeadRTable),
+            map.set(PPId, DeadR, !DeadRTable),
             % localR
             Nodes = rptg_get_nodes_as_list(Graph),
             set.difference(
                 set.difference(set.from_list(Nodes), InputR),
                 OutputR, LocalR),
-            svmap.set(PPId, LocalR, !LocalRTable),
+            map.set(PPId, LocalR, !LocalRTable),
 
             % Compute live region set at each program point
             map.lookup(LVBeforeTable, PPId, ProcLVBefore),
             map.foldl(
                 proc_lv_to_proc_lr(Graph, ModuleInfo, ProcInfo),
                 ProcLVBefore, map.init, ProcLRBefore),
-            svmap.set(PPId, ProcLRBefore, !LRBeforeTable),
+            map.set(PPId, ProcLRBefore, !LRBeforeTable),
 
             map.lookup(LVAfterTable, PPId, ProcLVAfter),
             map.foldl(
                 proc_lv_to_proc_lr(Graph, ModuleInfo, ProcInfo),
                 ProcLVAfter, map.init, ProcLRAfter),
-            svmap.set(PPId, ProcLRAfter, !LRAfterTable),
+            map.set(PPId, ProcLRAfter, !LRAfterTable),
 
             map.lookup(VoidVarTable, PPId, ProcVoidVar),
             map.foldl(
                 proc_lv_to_proc_lr(Graph, ModuleInfo, ProcInfo),
                 ProcVoidVar, map.init, ProcVoidVarRegion),
-            svmap.set(PPId, ProcVoidVarRegion, !VoidVarRegionTable)
+            map.set(PPId, ProcVoidVarRegion, !VoidVarRegionTable)
         ;
             unexpected($module, $pred, "rpta_info must exist")
         )
@@ -200,7 +199,7 @@ live_region_analysis_proc(ModuleInfo, RptaInfoTable, LVBeforeTable,
 
 proc_lv_to_proc_lr(Graph, ModuleInfo, ProcInfo, ProgPoint, LVs, !ProcLRMap) :-
     lv_to_lr(LVs, Graph, ModuleInfo, ProcInfo, LRs),
-    svmap.set(ProgPoint, LRs, !ProcLRMap).
+    map.set(ProgPoint, LRs, !ProcLRMap).
 
 :- pred foldl8(pred(L, A, A, B, B, C, C, D, D, E, E, F, F, G, G, H, H),
     list(L),

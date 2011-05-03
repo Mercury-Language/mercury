@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2007, 2010 The University of Melbourne.
+% Copyright (C) 1996-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -40,8 +40,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
-:- import_module svmulti_map.
 
 %-----------------------------------------------------------------------------%
 
@@ -443,8 +441,8 @@ predicate_table_remove_predicate(PredId, PredicateTable0, PredicateTable) :-
         PredN0, PredNA0, PredMNA0, FuncN0, FuncNA0, FuncMNA0),
     list.delete_all(OldPredIds0, PredId, OldPredIds),
     list.delete_all(NewRevPredIds0, PredId, NewRevPredIds),
-    map.det_remove(Preds0, PredId, PredInfo, Preds),
-    map.det_remove(AccessibilityTable0, PredId, _, AccessibilityTable),
+    map.det_remove(PredId, PredInfo, Preds0, Preds),
+    map.det_remove(PredId, _, AccessibilityTable0, AccessibilityTable),
     Module = pred_info_module(PredInfo),
     Name = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
@@ -486,10 +484,10 @@ do_remove_from_index(T, PredId, Index0, Index) :-
         list.delete_all(NamePredIds0, PredId, NamePredIds),
         (
             NamePredIds = [],
-            map.delete(Index0, T, Index)
+            map.delete(T, Index0, Index)
         ;
             NamePredIds = [_ | _],
-            map.det_update(Index0, T, NamePredIds, Index)
+            map.det_update(T, NamePredIds, Index0, Index)
         )
     ;
         Index = Index0
@@ -505,16 +503,16 @@ do_remove_from_m_n_a_index(Module, Name, Arity, PredId, MNA0, MNA) :-
     list.delete_all(PredIds0, PredId, PredIds),
     (
         PredIds = [],
-        map.delete(Arities0, Arity, Arities),
+        map.delete(Arity, Arities0, Arities),
         ( map.is_empty(Arities) ->
-            map.delete(MNA0, Module - Name, MNA)
+            map.delete(Module - Name, MNA0, MNA)
         ;
-            map.det_update(MNA0, Module - Name, Arities, MNA)
+            map.det_update(Module - Name, Arities, MNA0, MNA)
         )
     ;
         PredIds = [_ | _],
-        map.det_update(Arities0, Arity, PredIds, Arities),
-        map.det_update(MNA0, Module - Name, Arities, MNA)
+        map.det_update(Arity, PredIds, Arities0, Arities),
+        map.det_update(Module - Name, Arities, MNA0, MNA)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -896,7 +894,7 @@ do_predicate_table_insert(MaybePredId, PredInfo, NeedQual, MaybeQualInfo,
     NewRevPredIds = [PredId | NewRevPredIds0],
 
     % Save the pred_info for this pred_id.
-    map.det_insert(Preds0, PredId, PredInfo, Preds),
+    map.det_insert(PredId, PredInfo, Preds0, Preds),
 
     !:PredicateTable = predicate_table(Preds, NextPredId,
         OldPredIds0, NewRevPredIds, AccessibilityTable,
@@ -915,11 +913,11 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
     (
         NeedQual = may_be_unqualified,
         % Insert the unqualified name into the name index.
-        svmulti_map.set(Name, PredId, !N_Index),
+        multi_map.set(Name, PredId, !N_Index),
 
         % Insert the unqualified name/arity into the name/arity index.
         NA = Name / Arity,
-        svmulti_map.set(NA, PredId, !NA_Index),
+        multi_map.set(NA, PredId, !NA_Index),
 
         AccessibleByUnqualifiedName = yes
     ;
@@ -944,7 +942,7 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
     insert_into_mna_index(Name, Arity, PredId, Module, !MNA_Index),
     Access = access(AccessibleByUnqualifiedName,
         AccessibleByPartiallyQualifiedNames),
-    svmap.set(PredId, Access, !AccessibilityTable).
+    map.set(PredId, Access, !AccessibilityTable).
 
 :- pred insert_into_mna_index(string::in, arity::in, pred_id::in,
     module_name::in, module_name_arity_index::in, module_name_arity_index::out)
@@ -952,12 +950,12 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
 
 insert_into_mna_index(Name, Arity, PredId, Module, !MNA_Index) :-
     ( map.search(!.MNA_Index, Module - Name, MN_Arities0) ->
-        multi_map.set(MN_Arities0, Arity, PredId, MN_Arities),
-        svmap.det_update(Module - Name, MN_Arities, !MNA_Index)
+        multi_map.set(Arity, PredId, MN_Arities0, MN_Arities),
+        map.det_update(Module - Name, MN_Arities, !MNA_Index)
     ;
         map.init(MN_Arities0),
-        map.det_insert(MN_Arities0, Arity, [PredId], MN_Arities),
-        svmap.det_insert(Module - Name, MN_Arities, !MNA_Index)
+        map.det_insert(Arity, [PredId], MN_Arities0, MN_Arities),
+        map.det_insert(Module - Name, MN_Arities, !MNA_Index)
     ).
 
 %-----------------------------------------------------------------------------%

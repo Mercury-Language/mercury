@@ -1437,7 +1437,7 @@ node_map(Store, NodeId, map(Map0), Map) :-
     ( search_trace_node_store(Store, NodeId, Node1) ->
         node_id_to_key(NodeId, Key),
         convert_node(Node1, Node2),
-        map.det_insert(Map0, Key, Node2, Map1),
+        map.det_insert(Key, Node2, Map0, Map1),
         Next = preceding_node(Node1),
         node_map(Store, Next, map(Map1), Map)
     ;

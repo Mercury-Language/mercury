@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2010 The University of Melbourne.
+% Copyright (C) 2003-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -54,7 +54,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module svmap.
 :- import_module svset.
 :- import_module term.
 :- import_module varset.
@@ -99,7 +98,7 @@ add_type_to_eqv_map(TypeCtor, Defn, !EqvMap, !EqvExportTypes) :-
         hlds_data.get_type_defn_tvarset(Defn, TVarSet),
         hlds_data.get_type_defn_tparams(Defn, Params),
         hlds_data.get_type_defn_status(Defn, Status),
-        svmap.det_insert(TypeCtor, eqv_type_body(TVarSet, Params, EqvType),
+        map.det_insert(TypeCtor, eqv_type_body(TVarSet, Params, EqvType),
             !EqvMap),
         IsExported = status_is_exported(Status),
         (
@@ -411,7 +410,7 @@ replace_in_proc(EqvMap, !ProcInfo, !ModuleInfo, !PredInfo, !Cache) :-
             (pred(OldType::in, !.TMap::in, !:TMap::out,
                     !.TVarSet::in, !:TVarSet::out) is det :-
                 hlds_replace_in_type(EqvMap, OldType, NewType, !TVarSet),
-                svmap.set(OldType, NewType, !TMap)
+                map.set(OldType, NewType, !TMap)
             ), AllTypes, map.init, TypeMap, !TVarSet),
         rtti_varmaps_transform_types(map.lookup(TypeMap),
             RttiVarMaps0, RttiVarMaps),

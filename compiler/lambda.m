@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2010 The University of Melbourne.
+% Copyright (C) 1995-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -162,10 +162,10 @@ expand_lambdas_in_proc(PredId, ProcId, !ModuleInfo) :-
         !ModuleInfo),
 
     pred_info_get_procedures(PredInfo1, ProcTable1),
-    map.det_update(ProcTable1, ProcId, ProcInfo, ProcTable),
+    map.det_update(ProcId, ProcInfo, ProcTable1, ProcTable),
     pred_info_set_procedures(ProcTable, PredInfo1, PredInfo),
     module_info_get_preds(!.ModuleInfo, PredTable1),
-    map.det_update(PredTable1, PredId, PredInfo, PredTable),
+    map.det_update(PredId, PredInfo, PredTable1, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
 :- pred expand_lambdas_in_proc_2(proc_info::in, proc_info::out,

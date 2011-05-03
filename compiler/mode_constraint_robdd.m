@@ -238,7 +238,7 @@ mode_constraint_var(PredId, RepVar0, RobddVar, !MCI) :-
             RobddVar = RobddVar0
         ;
             varset.new_var(!.MCI ^ mci_varset, RobddVar, NewVarSet),
-            bimap.set(!.MCI ^ mci_varmap, Key, RobddVar, NewVarMap),
+            bimap.set(Key, RobddVar, !.MCI ^ mci_varmap, NewVarMap),
             !MCI ^ mci_varset := NewVarSet,
             !MCI ^ mci_varmap := NewVarMap
         )
@@ -291,13 +291,13 @@ restrict_filter(P0, MCI, M) = restrict_filter(P, ensure_normalised(M)) :-
 save_min_var_for_pred(PredId, !MCI) :-
     save_threshold(!.MCI, threshold(Threshold)),
     MinVars0 = !.MCI ^ mci_min_vars,
-    map.set(MinVars0, PredId, Threshold, MinVars),
+    map.set(PredId, Threshold, MinVars0, MinVars),
     !MCI ^ mci_min_vars := MinVars.
 
 save_max_var_for_pred(PredId, !MCI) :-
     save_threshold(!.MCI, threshold(Threshold)),
     MaxVars0 = !.MCI ^ mci_max_vars,
-    map.set(MaxVars0, PredId, Threshold, MaxVars),
+    map.set(PredId, Threshold, MaxVars0, MaxVars),
     !MCI ^ mci_max_vars := MaxVars.
 
 get_interesting_vars_for_pred(MCI, PredId, Vars) :-
@@ -343,8 +343,8 @@ get_forward_goal_path_map_for_pred(MCI, PredId, ForwardGoalPathMap) :-
 
 add_forward_goal_path_map(PredId, ForwardGoalPathMap, !MCI) :-
     ForwardGoalPathMapMap0 = !.MCI ^ mci_goal_path_map,
-    map.det_insert(ForwardGoalPathMapMap0, PredId, ForwardGoalPathMap,
-        ForwardGoalPathMapMap),
+    map.det_insert(PredId, ForwardGoalPathMap,
+        ForwardGoalPathMapMap0, ForwardGoalPathMapMap),
     !MCI ^ mci_goal_path_map := ForwardGoalPathMapMap.
 
 % dump_mode_constraints(_ModuleInfo, _PredInfo, _InstGraph, ROBDD, MCI) -->

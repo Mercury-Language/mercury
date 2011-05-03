@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2010 The University of Melbourne.
+% Copyright (C) 2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -91,7 +91,6 @@
 :- import_module require.
 :- import_module std_util.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 :- import_module univ.
 
@@ -448,7 +447,7 @@ update_variable(Globals, VarName, AddToValue, NewValue0, !Variables, !IO) :-
         Words = split_into_words(Value),
         OptVarValue = options_variable_value(string.to_char_list(EnvValue),
             Words, environment),
-        map.set(!.Variables, VarName, OptVarValue, !:Variables)
+        map.set(VarName, OptVarValue, !Variables)
     ;
         MaybeEnvValue = no,
         (
@@ -472,12 +471,12 @@ update_variable(Globals, VarName, AddToValue, NewValue0, !Variables, !IO) :-
                 ),
                 OptVarValue = options_variable_value(NewValue, Words,
                     options_file),
-                svmap.set(VarName, OptVarValue, !Variables)
+                map.set(VarName, OptVarValue, !Variables)
             )
         ;
             OptVarValue = options_variable_value(NewValue1, Words1,
                 options_file),
-            svmap.set(VarName, OptVarValue, !Variables)
+            map.set(VarName, OptVarValue, !Variables)
         )
     ).
 

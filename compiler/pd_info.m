@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001, 2003-2010 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -677,14 +677,14 @@ pd_info.register_version(PredProcId, Version, !PDInfo) :-
     pd_util.goal_get_calls(Goal, Calls),
     ( map.search(GoalVersionIndex0, Calls, VersionList0) ->
         VersionList = [PredProcId | VersionList0],
-        map.det_update(GoalVersionIndex0, Calls, VersionList, GoalVersionIndex)
+        map.det_update(Calls, VersionList, GoalVersionIndex0, GoalVersionIndex)
     ;
         VersionList = [PredProcId],
-        map.det_insert(GoalVersionIndex0, Calls, VersionList, GoalVersionIndex)
+        map.det_insert(Calls, VersionList, GoalVersionIndex0, GoalVersionIndex)
     ),
     pd_info_set_goal_version_index(GoalVersionIndex, !PDInfo),
     pd_info_get_versions(!.PDInfo, Versions0),
-    map.det_insert(Versions0, PredProcId, Version, Versions),
+    map.det_insert(PredProcId, Version, Versions0, Versions),
     pd_info_set_versions(Versions, !PDInfo),
     pd_info_get_created_versions(!.PDInfo, CreatedVersions0),
     set.insert(CreatedVersions0, PredProcId, CreatedVersions),
@@ -716,14 +716,13 @@ pd_info.remove_version(PredProcId, !PDInfo) :-
     map.lookup(Versions0, PredProcId, Version),
     Goal = Version ^ version_orig_goal,
     pd_util.goal_get_calls(Goal, Calls),
-    map.delete(Versions0, PredProcId, Versions),
+    map.delete(PredProcId, Versions0, Versions),
     pd_info_set_versions(Versions, !PDInfo),
 
     pd_info_get_goal_version_index(!.PDInfo, GoalIndex0),
     ( map.search(GoalIndex0, Calls, GoalVersions0) ->
         list.delete_all(GoalVersions0, PredProcId, GoalVersions),
-        map.det_update(GoalIndex0, Calls,
-            GoalVersions, GoalIndex),
+        map.det_update(Calls, GoalVersions, GoalIndex0, GoalIndex),
         pd_info_set_goal_version_index(GoalIndex, !PDInfo)
     ;
         true

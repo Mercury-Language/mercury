@@ -117,7 +117,6 @@
 :- import_module map.
 :- import_module require.
 :- import_module set.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -213,7 +212,7 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         Uinstr0 = save_maxfr(Target),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         clobber_dependents(Target, !KnownContentsMap, !DepLvalMap),
-        svmap.delete(Target, !KnownContentsMap)
+        map.delete(Target, !KnownContentsMap)
     ;
         Uinstr0 = restore_maxfr(_),
         !:RevInstrs = [Instr0 | !.RevInstrs],
@@ -227,7 +226,7 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         Uinstr0 = mark_hp(Target),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         clobber_dependents(Target, !KnownContentsMap, !DepLvalMap),
-        svmap.delete(Target, !KnownContentsMap)
+        map.delete(Target, !KnownContentsMap)
     ;
         Uinstr0 = restore_hp(_),
         !:RevInstrs = [Instr0 | !.RevInstrs],
@@ -250,8 +249,8 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         update_embdedded_frame(EmbeddedFrame, !KnownContentsMap, !DepLvalMap),
         clobber_dependents(NumLval, !KnownContentsMap, !DepLvalMap),
         clobber_dependents(AddrLval, !KnownContentsMap, !DepLvalMap),
-        svmap.delete(NumLval, !KnownContentsMap),
-        svmap.delete(AddrLval, !KnownContentsMap)
+        map.delete(NumLval, !KnownContentsMap),
+        map.delete(AddrLval, !KnownContentsMap)
     ;
         Uinstr0 = store_ticket(Target),
         !:RevInstrs = [Instr0 | !.RevInstrs],
@@ -346,7 +345,7 @@ update_embdedded_frame_2(StackId, CurSlot, LastSlot,
     ( CurSlot =< LastSlot ->
         StackVar = stack_slot_num_to_lval(StackId, CurSlot),
         clobber_dependents(StackVar, !KnownContentsMap, !DepLvalMap),
-        svmap.delete(StackVar, !KnownContentsMap),
+        map.delete(StackVar, !KnownContentsMap),
         update_embdedded_frame_2(StackId, CurSlot + 1, LastSlot,
             !KnownContentsMap, !DepLvalMap)
     ;
@@ -370,7 +369,7 @@ no_implicit_alias_target(framevar(_)).
 clobber_dependents(Target, !KnownContentsMap, !DepLvalMap) :-
     ( map.search(!.DepLvalMap, Target, DepLvals) ->
         set.fold(clobber_dependent, DepLvals, !KnownContentsMap),
-        map.delete(!.DepLvalMap, Target, !:DepLvalMap)
+        map.delete(Target, !DepLvalMap)
     ;
         true
     ),
@@ -396,8 +395,8 @@ clobber_dependents(Target, !KnownContentsMap, !DepLvalMap) :-
 :- pred clobber_dependent(lval::in, known_contents::in, known_contents::out)
     is det.
 
-clobber_dependent(Dependent, KnownContentsMap0, KnownContentsMap) :-
-    map.delete(KnownContentsMap0, Dependent, KnownContentsMap).
+clobber_dependent(Dependent, !KnownContentsMap) :-
+    map.delete(Dependent, !KnownContentsMap).
 
 :- pred record_known(lval::in, rval::in,
     known_contents::in, known_contents::out,
@@ -443,7 +442,7 @@ record_known_lval_rval(TargetLval, SourceRval, !KnownContentsMap,
     SourceSubLvals = lvals_in_rval(SourceRval),
     list.append(TargetSubLvals, SourceSubLvals, AllSubLvals),
     list.foldl(make_dependent(TargetLval), AllSubLvals, !DepLvalMap),
-    svmap.set(TargetLval, SourceRval, !KnownContentsMap).
+    map.set(TargetLval, SourceRval, !KnownContentsMap).
 
 :- pred make_not_dependent(lval::in, lval::in,
     dependent_lval_map::in, dependent_lval_map::out) is det.
@@ -451,7 +450,7 @@ record_known_lval_rval(TargetLval, SourceRval, !KnownContentsMap,
 make_not_dependent(Target, SubLval, !DepLvalMap) :-
     ( map.search(!.DepLvalMap, SubLval, DepLvals0) ->
         set.delete(DepLvals0, Target, DepLvals),
-        svmap.det_update(SubLval, DepLvals, !DepLvalMap)
+        map.det_update(SubLval, DepLvals, !DepLvalMap)
     ;
         true
     ).
@@ -462,10 +461,10 @@ make_not_dependent(Target, SubLval, !DepLvalMap) :-
 make_dependent(Target, SubLval, !DepLvalMap) :-
     ( map.search(!.DepLvalMap, SubLval, DepLvals0) ->
         set.insert(DepLvals0, Target, DepLvals),
-        svmap.det_update(SubLval, DepLvals, !DepLvalMap)
+        map.det_update(SubLval, DepLvals, !DepLvalMap)
     ;
         DepLvals = set.make_singleton_set(Target),
-        svmap.det_insert(SubLval, DepLvals, !DepLvalMap)
+        map.det_insert(SubLval, DepLvals, !DepLvalMap)
     ).
 
 %-----------------------------------------------------------------------------%

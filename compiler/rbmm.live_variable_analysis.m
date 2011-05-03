@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007, 2010 The University of Melbourne.
+% Copyright (C) 2005-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -46,7 +46,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -104,9 +103,9 @@ live_variable_analysis_proc(ModuleInfo, ExecPathTable, PredId, ProcId,
             ModuleInfo, ProcInfo, map.init, ProcLVBefore,
             map.init, ProcLVAfter, map.init, ProcVoidVar),
 
-        svmap.set(PPId, ProcLVBefore, !LVBeforeTable),
-        svmap.set(PPId, ProcLVAfter, !LVAfterTable),
-        svmap.set(PPId, ProcVoidVar, !VoidVarTable)
+        map.set(PPId, ProcLVBefore, !LVBeforeTable),
+        map.set(PPId, ProcLVAfter, !LVAfterTable),
+        map.set(PPId, ProcVoidVar, !VoidVarTable)
     ).
 
 :- pred live_variable_analysis_exec_paths(list(execution_path)::in,
@@ -156,7 +155,7 @@ live_variable_analysis_exec_path([(LastProgPoint - Goal) | ProgPointGoals],
         LVAfterLast = LVAfterLast0
     ;
         LVAfterLast = set.list_to_set(Outputs),
-        svmap.set(LastProgPoint, LVAfterLast, !ProcLVAfter)
+        map.set(LastProgPoint, LVAfterLast, !ProcLVAfter)
     ),
 
     % Compute live variable before this last program point.
@@ -207,7 +206,7 @@ live_variable_analysis_exec_path([FirstProgPoint - Goal], Inputs, _Outputs,
         true
     ;
         LVBeforeFirst = set.list_to_set(Inputs),
-        svmap.set(FirstProgPoint, LVBeforeFirst, !ProcLVBefore)
+        map.set(FirstProgPoint, LVBeforeFirst, !ProcLVBefore)
     ),
 
     % Live variable set after the first program point.
@@ -229,9 +228,9 @@ live_variable_analysis_singleton_exec_path([ProgPoint - Goal | _], Inputs,
         Outputs, ModuleInfo, ProcInfo, !ProcLVBefore, !ProcLVAfter,
         !ProcVoidVar) :-
     LVBefore = set.list_to_set(Inputs),
-    svmap.set(ProgPoint, LVBefore, !ProcLVBefore),
+    map.set(ProgPoint, LVBefore, !ProcLVBefore),
     LVAfter = set.list_to_set(Outputs),
-    svmap.set(ProgPoint, LVAfter, !ProcLVAfter),
+    map.set(ProgPoint, LVAfter, !ProcLVAfter),
 
     % Collect void vars after this program point.
     compute_useds_produceds(ModuleInfo, Goal, _UsedSet, ProducedSet),
@@ -252,9 +251,9 @@ live_variable_analysis_singleton_exec_path([], _, _, _, _,
 
 record_live_vars_at_prog_point(ProgPoint, LV, !ProcLV) :-
     ( map.search(!.ProcLV, ProgPoint, ExistingLV) ->
-        svmap.set(ProgPoint, set.union(ExistingLV, LV), !ProcLV)
+        map.set(ProgPoint, set.union(ExistingLV, LV), !ProcLV)
     ;
-        svmap.set(ProgPoint, LV, !ProcLV)
+        map.set(ProgPoint, LV, !ProcLV)
     ).
 
     % Compute used and produced variables in an atomic goal, which
@@ -381,7 +380,7 @@ collect_void_vars(ProgPoint, ProducedSet, ProcInfo, !ProcVoidVar) :-
     ;
         proc_info_get_varset(ProcInfo, Varset),
         set.fold(void_var(Varset), ProducedSet, set.init, VoidVars),
-        svmap.set(ProgPoint, VoidVars, !ProcVoidVar)
+        map.set(ProgPoint, VoidVars, !ProcVoidVar)
     ).
 
     % To be used with the fold above: if Var is a void variable,

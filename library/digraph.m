@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1999,2002-2007, 2010 The University of Melbourne.
+% Copyright (C) 1995-1999,2002-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -337,7 +337,6 @@
 :- import_module bimap.
 :- import_module int.
 :- import_module require.
-:- import_module svmap.
 :- import_module svset.
 
 %-----------------------------------------------------------------------------%
@@ -736,7 +735,7 @@ copy_vertex(G, X, !Comp, !KMap) :-
     digraph.lookup_vertex(G, X, VX),
     digraph.add_vertex(VX, CompX, !Comp),
     X = digraph_key(XI),
-    svmap.det_insert(XI, CompX, !KMap).
+    map.det_insert(XI, CompX, !KMap).
 
 :- pred add_composition_edges(key_map(T)::in, key_map(T)::in,
     pair(digraph_key_set(T))::in, digraph(T)::in, digraph(T)::out) is det.
@@ -916,7 +915,7 @@ digraph.make_clique_map(G, [Clique | Cliques], !CliqMap, !R) :-
     clique_map(T)::in, clique_map(T)::out) is det.
 
 digraph.make_clique_map_2(CliqKey, X, !CliqMap) :-
-    svmap.set(X, CliqKey, !CliqMap).
+    map.set(X, CliqKey, !CliqMap).
 
 :- pred digraph.make_reduced_graph(clique_map(T)::in,
     assoc_list(digraph_key(T), digraph_key(T))::in,

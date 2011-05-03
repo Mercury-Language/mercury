@@ -491,7 +491,7 @@ collect_class_and_inst_constraints([Constraint | Constraints],
         InstVarSub = InstVarSub0
     ;
         Constraint = inst_constraint(InstVar, Inst),
-        map.set(InstVarSub0, InstVar, Inst, InstVarSub),
+        map.set(InstVar, Inst, InstVarSub0, InstVarSub),
         ProgConstraints = ProgConstraints0
     ).
 

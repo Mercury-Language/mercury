@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2002, 2005-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1997-2002, 2005-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -334,7 +334,6 @@
 :- import_module require.
 :- import_module solutions.
 :- import_module string.
-:- import_module svmap.
 :- import_module svset.
 
 %-----------------------------------------------------------------------------%
@@ -432,12 +431,12 @@ lp_terms_to_map_2(Var - Coeff0, !Map) :-
     ( MapCoeff = !.Map ^ elem(Var) ->
         Coeff = MapCoeff + Coeff0,
         ( if    Coeff = zero
-          then  svmap.delete(Var, !Map)
-          else  svmap.set(Var, Coeff, !Map)
+          then  map.delete(Var, !Map)
+          else  map.set(Var, Coeff, !Map)
         )
     ;
         ( if    Coeff0 \= zero
-          then  svmap.set(Var, Coeff0, !Map)
+          then  map.set(Var, Coeff0, !Map)
           else  true
         )
     ).
@@ -966,7 +965,7 @@ number_vars(Vars, N) = VarNum :-
 
 number_vars_2([], _, !VarNums).
 number_vars_2([Var | Vars], N, !VarNums) :-
-    svmap.det_insert(Var, N, !VarNums),
+    map.det_insert(Var, N, !VarNums),
     number_vars_2(Vars, N + 1, !VarNums).
 
 :- pred insert_constraints(constraints::in, int::in, int::in,
@@ -2025,7 +2024,7 @@ count_coeff(Var - Coeff, !Map) :-
             unexpected(this_file,
                 "count_coeff/3: zero coefficient encountered.")
         ),
-        svmap.det_update(Var, coeff_info(Pos, Neg), !Map)
+        map.det_update(Var, coeff_info(Pos, Neg), !Map)
     ;
         true
         % If the variable in the term was not in the map then it is not

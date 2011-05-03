@@ -201,8 +201,6 @@
 :- import_module multi_map.
 :- import_module require.
 :- import_module string.
-:- import_module svbimap.
-:- import_module svmulti_map.
 :- import_module svvarset.
 :- import_module term.
 :- import_module varset.
@@ -896,7 +894,7 @@ add_goal_nonlocals_to_conjunct_production_maps(VarMap, PredId, Nonlocals,
 add_variable_to_conjunct_production_map(VarMap, PredId, GoalId, ProgVar,
         !ConjunctProductionMap) :-
     MCVar = lookup_prog_var_at_path(VarMap, PredId, GoalId, ProgVar),
-    svmulti_map.set(ProgVar, MCVar, !ConjunctProductionMap).
+    multi_map.set(ProgVar, MCVar, !ConjunctProductionMap).
 
     % add_nonlocal_var_conj_constraints(ProgVarset, PredId, Context, GoalId,
     %     ProgVar, ProgVarAtConjuncts, !VarInfo, !Constraints)
@@ -1032,7 +1030,7 @@ ensure_prog_var_at_path(ProgVarset, PredId, GoalId, ProgVar,
     ;
         MCVarName = rep_var_to_string(ProgVarset, RepVar),
         svvarset.new_named_var(MCVarName, NewMCVar, !Varset),
-        svbimap.det_insert(RepVar, NewMCVar, !VarMap)
+        bimap.det_insert(RepVar, NewMCVar, !VarMap)
     ).
 
     % lookup_prog_var_at_path(VarMap, PredId, GoalId, ProgVar) = ConstraintVar:

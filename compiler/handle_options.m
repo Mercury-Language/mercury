@@ -102,7 +102,6 @@
 :- import_module solutions.
 :- import_module std_util.
 :- import_module string.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -382,7 +381,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         DumpAliasOption = string(DumpAlias),
         convert_dump_alias(DumpAlias, DumpOptions)
     ->
-        svmap.set(dump_hlds_options, string(DumpOptions), !OptionTable)
+        map.set(dump_hlds_options, string(DumpOptions), !OptionTable)
     ;
         add_error("Invalid argument to option `--hlds-dump-alias'.", !Errors)
     ),
@@ -438,7 +437,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             "`MajorNum.MinorNum.BuildNum.RevisionNum').",
             !Errors),
         % The IL code generator cannot handle the IL version being unknown.
-        svmap.det_update(errorcheck_only, bool(yes), !OptionTable)
+        map.det_update(errorcheck_only, bool(yes), !OptionTable)
     ),
 
     map.lookup(!.OptionTable, feedback_file, FeedbackFile0),
@@ -2614,7 +2613,7 @@ convert_grade_option(GradeString, Options0, Options) :-
 add_option_list(CompOpts, Opts0, Opts) :-
     list.foldl((pred(Opt::in, Opts1::in, Opts2::out) is det :-
         Opt = Option - Data,
-        map.set(Opts1, Option, Data, Opts2)
+        map.set(Option, Data, Opts1, Opts2)
     ), CompOpts, Opts0, Opts).
 
 grade_directory_component(Globals, Grade) :-
@@ -2959,7 +2958,7 @@ reset_grade_options(Options0, Options) :-
     solutions.aggregate(grade_start_values,
         (pred(Pair::in, Opts0::in, Opts::out) is det :-
             Pair = Option - Value,
-            map.set(Opts0, Option, Value, Opts)
+            map.set(Option, Value, Opts0, Opts)
         ), Options0, Options).
 
 :- pred grade_start_values(pair(option, option_data)::out) is multi.

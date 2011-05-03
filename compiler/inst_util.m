@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2010 The University of Melbourne.
+% Copyright (C) 1997-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -163,7 +163,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module svmap.
 :- import_module svset.
 
 %-----------------------------------------------------------------------------%
@@ -195,7 +194,7 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, Inst, Det,
         Inst1 = Inst0
     ;
         % Insert ThisInstPair into the table with value `unknown'.
-        svmap.det_insert(ThisInstPair, inst_det_unknown,
+        map.det_insert(ThisInstPair, inst_det_unknown,
             UnifyInsts0, UnifyInsts1),
         inst_table_set_unify_insts(UnifyInsts1, InstTable0, InstTable1),
         module_info_set_inst_table(InstTable1, !ModuleInfo),
@@ -216,8 +215,8 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, Inst, Det,
         % Now update the value associated with ThisInstPair.
         module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_unify_insts(InstTable2, UnifyInsts2),
-        map.det_update(UnifyInsts2, ThisInstPair, inst_det_known(Inst1, Det),
-            UnifyInsts),
+        map.det_update(ThisInstPair, inst_det_known(Inst1, Det),
+            UnifyInsts2, UnifyInsts),
         inst_table_set_unify_insts(UnifyInsts, InstTable2, InstTable),
         module_info_set_inst_table(InstTable, !ModuleInfo)
     ),
@@ -980,7 +979,7 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
     ;
         % Insert the inst name in the ground_inst table, with value `unknown'
         % for the moment.
-        svmap.det_insert(GroundInstKey, inst_det_unknown,
+        map.det_insert(GroundInstKey, inst_det_unknown,
             GroundInsts0, GroundInsts1),
         inst_table_set_ground_insts(GroundInsts1, InstTable0, InstTable1),
         module_info_set_inst_table(InstTable1, !ModuleInfo),
@@ -996,7 +995,7 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
         % value `known(GroundInst, Det)' in the ground_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_ground_insts(InstTable2, GroundInsts2),
-        svmap.det_update(GroundInstKey, inst_det_known(GroundInst, Det),
+        map.det_update(GroundInstKey, inst_det_known(GroundInst, Det),
             GroundInsts2, GroundInsts),
         inst_table_set_ground_insts(GroundInsts, InstTable2, InstTable),
         module_info_set_inst_table(InstTable, !ModuleInfo)
@@ -1088,7 +1087,7 @@ make_any_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
     ;
         % Insert the inst name in the any_inst table, with value `unknown'
         % for the moment.
-        svmap.det_insert(AnyInstKey, inst_det_unknown, AnyInsts0, AnyInsts1),
+        map.det_insert(AnyInstKey, inst_det_unknown, AnyInsts0, AnyInsts1),
         inst_table_set_any_insts(AnyInsts1, InstTable0, InstTable1),
         module_info_set_inst_table(InstTable1, !ModuleInfo),
 
@@ -1102,7 +1101,7 @@ make_any_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
         % value `known(AnyInst, Det)' in the any_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_any_insts(InstTable2, AnyInsts2),
-        svmap.det_update(AnyInstKey, inst_det_known(AnyInst, Det),
+        map.det_update(AnyInstKey, inst_det_known(AnyInst, Det),
             AnyInsts2, AnyInsts),
         inst_table_set_any_insts(AnyInsts, InstTable2, InstTable),
         module_info_set_inst_table(InstTable, !ModuleInfo)
@@ -1256,7 +1255,7 @@ make_shared_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
     ;
         % Insert the inst name in the shared_inst table, with value `unknown'
         % for the moment.
-        svmap.det_insert(InstName, inst_unknown, SharedInsts0, SharedInsts1),
+        map.det_insert(InstName, inst_unknown, SharedInsts0, SharedInsts1),
         inst_table_set_shared_insts(SharedInsts1, InstTable0, InstTable1),
         module_info_set_inst_table(InstTable1, !ModuleInfo),
 
@@ -1270,7 +1269,7 @@ make_shared_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
         % value `known(SharedInst)' in the shared_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_shared_insts(InstTable2, SharedInsts2),
-        svmap.det_update(InstName, inst_known(SharedInst),
+        map.det_update(InstName, inst_known(SharedInst),
             SharedInsts2, SharedInsts),
         inst_table_set_shared_insts(SharedInsts, InstTable2, InstTable),
         module_info_set_inst_table(InstTable, !ModuleInfo)
@@ -1346,7 +1345,7 @@ make_mostly_uniq_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
     ;
         % Insert the inst name in the mostly_uniq_inst table, with value
         % `unknown' for the moment.
-        svmap.det_insert(InstName, inst_unknown,
+        map.det_insert(InstName, inst_unknown,
             NondetLiveInsts0, NondetLiveInsts1),
         inst_table_set_mostly_uniq_insts(NondetLiveInsts1,
             InstTable0, InstTable1),
@@ -1362,7 +1361,7 @@ make_mostly_uniq_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
         % value `known(NondetLiveInst)' in the mostly_uniq_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_mostly_uniq_insts(InstTable2, NondetLiveInsts2),
-        svmap.det_update(InstName, inst_known(NondetLiveInst),
+        map.det_update(InstName, inst_known(NondetLiveInst),
             NondetLiveInsts2, NondetLiveInsts),
         inst_table_set_mostly_uniq_insts(NondetLiveInsts,
             InstTable2, InstTable),
@@ -1428,7 +1427,7 @@ inst_merge(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         )
     ;
         % Insert ThisInstPair into the table with value `unknown'.
-        svmap.det_insert(ThisInstPair, inst_unknown,
+        map.det_insert(ThisInstPair, inst_unknown,
             MergeInstTable0, MergeInstTable1),
         inst_table_set_merge_insts(MergeInstTable1, InstTable0, InstTable1),
         module_info_set_inst_table(InstTable1, !ModuleInfo),
@@ -1439,7 +1438,7 @@ inst_merge(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         % Now update the value associated with ThisInstPair.
         module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_merge_insts(InstTable2, MergeInstTable2),
-        svmap.det_update(ThisInstPair, inst_known(Inst0),
+        map.det_update(ThisInstPair, inst_known(Inst0),
             MergeInstTable2, MergeInstTable3),
         inst_table_set_merge_insts(MergeInstTable3, InstTable2, InstTable3),
         module_info_set_inst_table(InstTable3, !ModuleInfo)

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001,2003-2010 The University of Melbourne.
+% Copyright (C) 1994-2001,2003-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -167,7 +167,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module svqueue.
 :- import_module svset.
 
@@ -324,7 +323,7 @@ find_succeed_labels([Instr | Instrs], !SuccMap) :-
         opt_util.skip_comments(Instrs, TailInstrs),
         opt_util.is_succeed_next(TailInstrs, Between)
     ->
-        svmap.det_insert(Label, Between, !SuccMap)
+        map.det_insert(Label, Between, !SuccMap)
     ;
         true
     ),
@@ -585,7 +584,7 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
     ( Instr0 = llds_instr(label(Label), _) ->
         (
             MaybePrevLabel = yes(PrevLabel),
-            svmap.det_insert(Label, PrevLabel, !PredMap)
+            map.det_insert(Label, PrevLabel, !PredMap)
         ;
             MaybePrevLabel = no
         ),
@@ -642,8 +641,8 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
             build_frame_block_map(Instrs2, EntryInfo, LabelSeq0,
                 yes(EmptyLabel), yes(EmptyLabel), ProcLabel, !BlockMap,
                 !PredMap, !C, !PreExitDummyLabelMap),
-            svmap.det_insert(Label, BlockInfo, !BlockMap),
-            svmap.det_insert(EmptyLabel, EmptyBlockInfo, !BlockMap),
+            map.det_insert(Label, BlockInfo, !BlockMap),
+            map.det_insert(EmptyLabel, EmptyBlockInfo, !BlockMap),
             LabelSeq = [Label, EmptyLabel | LabelSeq0]
         ;
             detect_exit(Instrs0, EntryInfo, Extra, ExitInstrs,
@@ -686,7 +685,7 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
                 Extra = [],
                 expect(unify(NeedsFrame, block_doesnt_need_frame), this_file,
                     "build_frame_block_map: [] needs frame"),
-                svmap.det_insert(Label, ExitLabel, !PreExitDummyLabelMap),
+                map.det_insert(Label, ExitLabel, !PreExitDummyLabelMap),
                 ExtraBlockType = ordinary_block(NeedsFrame, is_pre_exit_dummy)
             ;
                 Extra = [_ | _],
@@ -701,13 +700,13 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
             % The fb_jump_dests and fb_fall_dest fields are only dummies.
             ExitBlockInfo = frame_block_info(ExitLabel, LabelledBlock,
                 yes(Label), [], no, exit_block(ExitInfo)),
-            svmap.det_insert(ExitLabel, Label, !PredMap),
+            map.det_insert(ExitLabel, Label, !PredMap),
 
             build_frame_block_map(Remain, EntryInfo, LabelSeq0, yes(ExitLabel),
                 no, ProcLabel, !BlockMap, !PredMap, !C, !PreExitDummyLabelMap),
 
-            svmap.det_insert(ExitLabel, ExitBlockInfo, !BlockMap),
-            svmap.det_insert(Label, ExtraInfo, !BlockMap),
+            map.det_insert(ExitLabel, ExitBlockInfo, !BlockMap),
+            map.det_insert(Label, ExtraInfo, !BlockMap),
             LabelSeq = [Label, ExitLabel | LabelSeq0]
         ;
             opt_util.skip_to_next_label(Instrs0, Block, Instrs1),
@@ -733,7 +732,7 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
             build_frame_block_map(Instrs1, EntryInfo, LabelSeq0, yes(Label),
                 NextFallInto, ProcLabel, !BlockMap, !PredMap, !C,
                 !PreExitDummyLabelMap),
-            svmap.det_insert(Label, BlockInfo, !BlockMap),
+            map.det_insert(Label, BlockInfo, !BlockMap),
             LabelSeq = [Label | LabelSeq0]
         )
     ;
@@ -1251,7 +1250,7 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
     ),
     BlockInfo = frame_block_info(BlockLabel, BlockInstrs, FallInto,
         SideLabels, MaybeFallThrough, Type),
-    svmap.det_update(Label, BlockInfo, !BlockMap),
+    map.det_update(Label, BlockInfo, !BlockMap),
     find_redoip_labels(BlockInstrs, ProcLabel, [], RedoipLabels),
     list.foldl(mark_redoip_label, RedoipLabels, !BlockMap).
 
@@ -1317,7 +1316,7 @@ mark_redoip_label(Label, !BlockMap) :-
         BlockType0 = ordinary_block(_, MaybeDummy),
         BlockType = ordinary_block(block_needs_frame, MaybeDummy),
         BlockInfo = BlockInfo0 ^ fb_type := BlockType,
-        svmap.det_update(Label, BlockInfo, !BlockMap)
+        map.det_update(Label, BlockInfo, !BlockMap)
     ;
         BlockType0 = exit_block(_),
         unexpected(this_file, "mark_redoip_label: exit_block")
@@ -1393,7 +1392,7 @@ keep_frame_transform([Label | Labels], FirstLabel, SecondLabel,
         BlockType = ordinary_block(block_needs_frame, is_not_dummy),
         BlockInfo = frame_block_info(Label, Instrs, FallInto, [SecondLabel],
             no, BlockType),
-        map.det_update(!.BlockMap, Label, BlockInfo, !:BlockMap)
+        map.det_update(Label, BlockInfo, !BlockMap)
     ;
         true
     ),
@@ -1616,10 +1615,10 @@ delay_frame_init([Label | Labels], BlockMap, !RevMap, !Queue,
         BlockType = ordinary_block(NeedsFrame, _),
         (
             NeedsFrame = block_doesnt_need_frame,
-            svmap.det_insert(Label, block_doesnt_need_frame, !OrdNeedsFrame)
+            map.det_insert(Label, block_doesnt_need_frame, !OrdNeedsFrame)
         ;
             NeedsFrame = block_needs_frame,
-            svmap.det_insert(Label, block_needs_frame, !OrdNeedsFrame),
+            map.det_insert(Label, block_needs_frame, !OrdNeedsFrame),
             svqueue.put(Label, !Queue)
         )
     ;
@@ -1635,10 +1634,10 @@ rev_map_side_labels([], _Label, !RevMap).
 rev_map_side_labels([Label | Labels], SourceLabel, !RevMap) :-
     ( map.search(!.RevMap, Label, OtherSources0) ->
         OtherSources = [SourceLabel | OtherSources0],
-        svmap.det_update(Label, OtherSources, !RevMap)
+        map.det_update(Label, OtherSources, !RevMap)
     ;
         OtherSources = [SourceLabel],
-        svmap.det_insert(Label, OtherSources, !RevMap)
+        map.det_insert(Label, OtherSources, !RevMap)
     ),
     rev_map_side_labels(Labels, SourceLabel, !RevMap).
 
@@ -1651,7 +1650,7 @@ ord_needs_frame(Label, !OrdNeedsFrame) :-
     map.lookup(!.OrdNeedsFrame, Label, NeedsFrame0),
     (
         NeedsFrame0 = block_doesnt_need_frame,
-        svmap.det_update(Label, block_needs_frame, !OrdNeedsFrame)
+        map.det_update(Label, block_needs_frame, !OrdNeedsFrame)
     ;
         NeedsFrame0 = block_needs_frame
     ).
@@ -1843,7 +1842,7 @@ process_frame_delay([Label0 | Labels0], OrdNeedsFrame, ProcLabel, !C,
         BlockInfo = frame_block_info(Label0, [LabelInstr], FallInto,
             SideLabels0, MaybeFallThrough0,
             ordinary_block(block_doesnt_need_frame, is_not_dummy)),
-        svmap.det_update(Label0, BlockInfo, !BlockMap),
+        map.det_update(Label0, BlockInfo, !BlockMap),
         process_frame_delay(Labels0, OrdNeedsFrame,
             ProcLabel, !C, !BlockMap, !SetupParMap, !ExitParMap)
     ;
@@ -1934,7 +1933,7 @@ transform_nostack_ordinary_block(Label0, Labels0, BlockInfo0, OrdNeedsFrame,
     Instrs = PrevInstrs ++ [LastInstr | RedirectFallThrough],
     BlockInfo = frame_block_info(Label0, Instrs, FallInto,
         SideLabels, MaybeFallThrough, Type),
-    map.set(!.BlockMap, Label0, BlockInfo, !:BlockMap),
+    map.set(Label0, BlockInfo, !BlockMap),
     process_frame_delay(Labels0, OrdNeedsFrame, ProcLabel, !C, !BlockMap,
         !SetupParMap, !ExitParMap).
 
@@ -2057,7 +2056,7 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
                 PrevNeedsFrame = block_doesnt_need_frame,
                 Labels = [ParallelLabel, Label0 | Labels1],
                 BlockInfo = BlockInfo0 ^ fb_fallen_into := no,
-                svmap.det_update(Label0, BlockInfo, !BlockMap),
+                map.det_update(Label0, BlockInfo, !BlockMap),
                 ParallelBlockFallInto = FallInto
             ;
                 PrevNeedsFrame = block_needs_frame,
@@ -2067,7 +2066,7 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
             ParallelBlockInfo = frame_block_info(ParallelLabel,
                 ReplacementCode, ParallelBlockFallInto, SideLabels,
                 no, ordinary_block(block_doesnt_need_frame, is_not_dummy)),
-            svmap.det_insert(ParallelLabel, ParallelBlockInfo, !BlockMap)
+            map.det_insert(ParallelLabel, ParallelBlockInfo, !BlockMap)
         ;
             ( Type = entry_block(_)
             ; Type = ordinary_block(_, _)
@@ -2095,10 +2094,10 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
             JumpAroundBlockInfo = frame_block_info(JumpAroundLabel,
                 JumpAroundCode, no, [Label0], FallInto,
                 ordinary_block(block_needs_frame, is_not_dummy)),
-            svmap.det_insert(JumpAroundLabel, JumpAroundBlockInfo, !BlockMap),
+            map.det_insert(JumpAroundLabel, JumpAroundBlockInfo, !BlockMap),
             SetupFallInto = yes(JumpAroundLabel),
             BlockInfo = BlockInfo0 ^ fb_fallen_into := yes(SetupLabel),
-            svmap.det_update(Label0, BlockInfo, !BlockMap)
+            map.det_update(Label0, BlockInfo, !BlockMap)
         ;
             PrevNeedsFrame = block_doesnt_need_frame,
             Labels = [SetupLabel, Label0 | Labels1],
@@ -2108,7 +2107,7 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
             ++ late_setup_code(EntryInfo),
         SetupBlockInfo = frame_block_info(SetupLabel, SetupCode,
             SetupFallInto, [], yes(Label0), entry_block(EntryInfo)),
-        svmap.det_insert(SetupLabel, SetupBlockInfo, !BlockMap)
+        map.det_insert(SetupLabel, SetupBlockInfo, !BlockMap)
     ;
         Labels = [Label0 | Labels1]
     ).
@@ -2181,7 +2180,7 @@ ensure_setup_parallel(Label, ParallelLabel, ProcLabel, !C, !SetupParMap) :-
         counter.allocate(N, !C),
         NewParallel = internal_label(N, ProcLabel),
         ParallelLabel = NewParallel,
-        map.det_insert(ParMap0, Label, NewParallel, ParMap),
+        map.det_insert(Label, NewParallel, ParMap0, ParMap),
         !:SetupParMap = setup_par_map(ParMap)
     ).
 
@@ -2199,7 +2198,7 @@ ensure_exit_parallel(Label, ParallelLabel, ProcLabel, !C, !ExitParMap) :-
         counter.allocate(N, !C),
         NewParallel = internal_label(N, ProcLabel),
         ParallelLabel = NewParallel,
-        map.det_insert(ParMap0, Label, NewParallel, ParMap),
+        map.det_insert(Label, NewParallel, ParMap0, ParMap),
         !:ExitParMap = exit_par_map(ParMap)
     ).
 

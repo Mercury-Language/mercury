@@ -14,11 +14,11 @@
 
 main -->
 	{ map__init(MapII0) },
-	{ map__det_insert(MapII0, 1, 1, MapII) },
+	{ map__det_insert(1, 1, MapII0, MapII) },
 	{ map__init(MapIF0) },
-	{ map__det_insert(MapIF0, 1, 1.0, MapIF) },
+	{ map__det_insert(1, 1.0, MapIF0, MapIF) },
 	{ map__init(MapFI0) },
-	{ map__det_insert(MapFI0, 1.0, 1, MapFI) },
+	{ map__det_insert(1.0, 1, MapFI0, MapFI) },
 
 	{ TypeF1a = type_of(f1a) },
 	{ TypeF1b = type_of(f1b) },

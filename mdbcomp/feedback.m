@@ -197,7 +197,6 @@
 :- import_module map.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 :- import_module unit.
 :- import_module univ.
 
@@ -246,7 +245,7 @@ put_feedback_data(Data, !Info) :-
     feedback_data_type(Type, Data),
     some [!Map] (
         !:Map = !.Info ^ fi_map,
-        svmap.set(Type, Data, !Map),
+        map.set(Type, Data, !Map),
         !Info ^ fi_map := !.Map
     ).
 
@@ -401,7 +400,7 @@ read_data(Stream, ProgramName, Result, !IO) :-
 
 det_insert_feedback_data(Data, !Map) :-
     feedback_data_type(Key, Data),
-    svmap.det_insert(Key, Data, !Map).
+    map.det_insert(Key, Data, !Map).
 
 %-----------------------------------------------------------------------------%
 

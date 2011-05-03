@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 2005-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -114,7 +114,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module svset.
 
 introduce_region_instructions(ModuleInfo, RptaInfoTable, ExecPathTable,
@@ -189,10 +188,10 @@ introduce_region_instructions_proc(ModuleInfo, PredId, RptaInfoTable,
             map.init, BecomeDeadBeforeProc,
             map.init, BecomeDeadAfterProc,
             map.init, RegionInstructionProc),
-        svmap.set(PPId, RegionInstructionProc, !RegionInstructionTable),
-        svmap.set(PPId, BecomeLiveProc, !BecomeLiveTable),
-        svmap.set(PPId, BecomeDeadBeforeProc, !BecomeDeadBeforeTable),
-        svmap.set(PPId, BecomeDeadAfterProc, !BecomeDeadAfterTable)
+        map.set(PPId, RegionInstructionProc, !RegionInstructionTable),
+        map.set(PPId, BecomeLiveProc, !BecomeLiveTable),
+        map.set(PPId, BecomeDeadBeforeProc, !BecomeDeadBeforeTable),
+        map.set(PPId, BecomeDeadAfterProc, !BecomeDeadAfterTable)
     ).
 
     % Follow each execution path of a procedure and introduce
@@ -266,7 +265,7 @@ introduce_region_instructions_exec_path([ProgPoint - Goal | ProgPoint_Goals],
     set.intersect(Allowed, set.difference(LRAfter, LRBefore), BecomeLive),
 
     Goal = hlds_goal(Expr, _),
-    svmap.set(ProgPoint, BecomeLive, !BecomeLiveProc),
+    map.set(ProgPoint, BecomeLive, !BecomeLiveProc),
 
     annotate_expr(Expr, ProgPoint, BecomeLive,
         BecomeDead, RptaInfo, BornRTable, DeadRTable, ModuleInfo, ProcInfo,
@@ -285,10 +284,10 @@ introduce_region_instructions_exec_path([ProgPoint - Goal | ProgPoint_Goals],
             ProgPoint, CallerGraph),
         DeadVoidVarRegions, !RegionInstructionProc),
 
-    svmap.set(ProgPoint, set.union(BecomeDead, DeadVoidVarRegions),
+    map.set(ProgPoint, set.union(BecomeDead, DeadVoidVarRegions),
         !BecomeDeadAfterProc),
-    svmap.set(ProgPoint, BecomeLive, !BecomeLiveProc),
-    svmap.set(ProgPoint, BecomeDeadBeforeProgPoint, !BecomeDeadBeforeProc),
+    map.set(ProgPoint, BecomeLive, !BecomeLiveProc),
+    map.set(ProgPoint, BecomeDeadBeforeProgPoint, !BecomeDeadBeforeProc),
 
     (
         ProgPoint_Goals = [NextProgPoint - _ | _],
@@ -461,13 +460,13 @@ record_instruction_after_prog_point(RegionInstType, ProgPoint, Graph, Region,
         ( list.member(RegionInstruction, InstsAfter) ->
             true
         ;
-            svmap.set(ProgPoint,
+            map.set(ProgPoint,
                 instrs_before_after(InstsBefore,
                     [RegionInstruction | InstsAfter]),
                 !RegionInstructionProc)
         )
     ;
-        svmap.set(ProgPoint,
+        map.set(ProgPoint,
             instrs_before_after([], [RegionInstruction]),
             !RegionInstructionProc)
     ).
@@ -501,12 +500,12 @@ record_instruction_before_prog_point(RegionInstrType, ProgPoint, Graph, Region,
             ;
                 NewInstrsBefore = [RegionInstruction | InstrsBefore]
             ),
-            svmap.set(ProgPoint,
+            map.set(ProgPoint,
                 instrs_before_after(NewInstrsBefore, InstrsAfter),
                 !RegionInstructionProc)
         )
     ;
-        svmap.set(ProgPoint,
+        map.set(ProgPoint,
             instrs_before_after([RegionInstruction], []),
             !RegionInstructionProc)
     ).

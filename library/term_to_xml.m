@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2007, 2010 The University of Melbourne.
+% Copyright (C) 1993-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1407,9 +1407,9 @@ can_generate_dtd_for_types(MakeElement, [PseudoTypeDesc | PseudoTypeDescs],
                     list.merge_and_remove_dups(list.condense(ArgLists),
                         PseudoTypeDescs, NewPseudoTypeDescs),
                     list.duplicate(length(Elements), TypeDesc, TypeDescList),
-                    map.det_insert_from_corresponding_lists(ElementsSoFar,
-                        Elements, TypeDescList, NewElementsSoFar),
-                    map.det_insert(Done, TypeDesc, unit, NewDone),
+                    map.det_insert_from_corresponding_lists(Elements,
+                        TypeDescList, ElementsSoFar, NewElementsSoFar),
+                    map.det_insert(TypeDesc, unit, Done, NewDone),
                     Result = can_generate_dtd_for_types(MakeElement,
                         NewPseudoTypeDescs, NewDone, NewElementsSoFar)
                 )
@@ -1438,7 +1438,7 @@ write_dtd_types(Stream, MakeElement, [TypeDesc | TypeDescs], AlreadyDone,
     ;
         write_dtd_type_elements(Stream, MakeElement, TypeDesc, ChildArgTypes,
             !State),
-        map.set(AlreadyDone, TypeDesc, unit, NewAlreadyDone),
+        map.set(TypeDesc, unit, AlreadyDone, NewAlreadyDone),
         write_dtd_types(Stream, MakeElement, append(ChildArgTypes, TypeDescs),
             NewAlreadyDone, !State)
     ).

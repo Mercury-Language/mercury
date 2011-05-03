@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2009 The University of Melbourne.
+% Copyright (C) 2002-2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -123,7 +123,7 @@ read_source_file_map(ModuleChars, !Map, !IO) :-
         (
             FileNameCharsResult = ok(FileNameChars),
             string.from_rev_char_list(FileNameChars, FileName),
-            map.set(!.Map, ModuleName, FileName, !:Map),
+            map.set(ModuleName, FileName, !Map),
             read_source_file_map(ModuleChars, !Map, !IO)
         ;
             FileNameCharsResult = eof,
@@ -216,7 +216,7 @@ write_source_file_map_2(Globals, MapStream, FileName,
             io.set_exit_status(1, !IO),
             SeenModules = SeenModules0
         ;
-            map.set(SeenModules0, ModuleName, FileName, SeenModules)
+            map.set(ModuleName, FileName, SeenModules0, SeenModules)
         ),
         ( string.remove_suffix(FileName, ".m", PartialFileName0) ->
             PartialFileName = PartialFileName0

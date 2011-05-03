@@ -73,7 +73,6 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -141,7 +140,7 @@ fill_goal_id_slots(SlotInfo, ContainingGoal, !GoalNum, !ContainingGoalMap,
     GoalId = goal_id(!.GoalNum),
     !:GoalNum = !.GoalNum + 1,
     goal_info_set_goal_id(GoalId, GoalInfo0, GoalInfo),
-    svmap.det_insert(GoalId, ContainingGoal, !ContainingGoalMap),
+    map.det_insert(GoalId, ContainingGoal, !ContainingGoalMap),
     (
         ( GoalExpr0 = plain_call(_, _, _, _, _, _)
         ; GoalExpr0 = generic_call(_, _, _, _)

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -36,11 +36,11 @@
 
 :- implementation.
 
-svbimap.insert(K, V, Bimap0, Bimap) :-
-    bimap.insert(Bimap0, K, V, Bimap).
+svbimap.insert(K, V, !BM) :-
+    bimap.insert(K, V, !BM).
 
-svbimap.det_insert(K, V, Bimap0, Bimap) :-
-    bimap.det_insert(Bimap0, K, V, Bimap).
+svbimap.det_insert(K, V, !BM) :-
+    bimap.det_insert(K, V, !BM).
 
-svbimap.set(K, V, Bimap0, Bimap) :-
-    bimap.set(Bimap0, K, V, Bimap).
+svbimap.set(K, V, !BM) :-
+    bimap.set(K, V, !BM).

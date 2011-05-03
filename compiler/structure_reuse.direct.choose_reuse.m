@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2010 The University of Melbourne.
+% Copyright (C) 2006-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -121,7 +121,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmulti_map.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -586,7 +585,7 @@ compute_match_table_with_continuation(Background, DeadCellTable,
                 Match0 = match_init([DeconstructionSpec]),
                 find_best_match_in_conjunction(Background, Cont,
                     Match0, Match),
-                svmulti_map.set(Var, Match, !Table)
+                multi_map.set(Var, Match, !Table)
             ;
                 true
             )
@@ -729,7 +728,7 @@ process_common_var(Background, Cont, DisjTables, CommonDeadVar, Table) :-
     find_best_match_in_conjunction(Background, Cont, Match0, Match),
     match_allows_reuse(Match), % can fail
     multi_map.init(Table0),
-    multi_map.det_insert(Table0, CommonDeadVar, Match, Table).
+    multi_map.det_insert(CommonDeadVar, Match, Table0, Table).
 
 :- func deconstruction_specs(prog_var, list(match_table)) =
     list(deconstruction_spec).

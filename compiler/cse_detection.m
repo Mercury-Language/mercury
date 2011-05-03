@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2010 The University of Melbourne.
+% Copyright (C) 1995-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -63,7 +63,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -123,9 +122,9 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
 
     detect_cse_in_proc_pass(!.ModuleInfo, Redo, ProcInfo0, ProcInfo1),
 
-    svmap.det_update(ProcId, ProcInfo1, ProcTable0, ProcTable1),
+    map.det_update(ProcId, ProcInfo1, ProcTable0, ProcTable1),
     pred_info_set_procedures(ProcTable1, PredInfo0, PredInfo1),
-    svmap.det_update(PredId, PredInfo1, PredTable0, PredTable1),
+    map.det_update(PredId, PredInfo1, PredTable0, PredTable1),
     module_info_set_preds(PredTable1, !ModuleInfo),
 
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
@@ -179,9 +178,9 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
         SwitchDetectInfo = init_switch_detect_info(!.ModuleInfo),
         detect_switches_in_proc(SwitchDetectInfo, ProcInfo2, ProcInfo),
 
-        svmap.det_update(ProcId, ProcInfo, ProcTable2, ProcTable3),
+        map.det_update(ProcId, ProcInfo, ProcTable2, ProcTable3),
         pred_info_set_procedures(ProcTable3, PredInfo2, PredInfo3),
-        svmap.det_update(PredId, PredInfo3, PredTable2, PredTable3),
+        map.det_update(PredId, PredInfo3, PredTable2, PredTable3),
         module_info_set_preds(PredTable3, !ModuleInfo),
 
         trace [io(!IO)] (
@@ -712,7 +711,7 @@ create_parallel_subterm(OFV, Context, UnifyContext, !CseInfo, !OldNewVar,
     VarTypes0 = !.CseInfo ^ csei_vartypes,
     varset.new_var(VarSet0, NFV, VarSet),
     map.lookup(VarTypes0, OFV, Type),
-    map.det_insert(VarTypes0, NFV, Type, VarTypes),
+    map.det_insert(NFV, Type, VarTypes0, VarTypes),
     !:OldNewVar = [OFV - NFV | !.OldNewVar],
     UnifyContext = unify_context(MainCtxt, SubCtxt),
     % It is ok to create complicated unifications here, because we rerun
@@ -721,8 +720,8 @@ create_parallel_subterm(OFV, Context, UnifyContext, !CseInfo, !OldNewVar,
     % track of the inst of OFV.
     create_pure_atomic_complicated_unification(OFV, rhs_var(NFV),
         Context, MainCtxt, SubCtxt, Goal),
-    !:CseInfo = !.CseInfo ^ csei_varset := VarSet,
-    !:CseInfo = !.CseInfo ^ csei_vartypes := VarTypes.
+    !CseInfo ^ csei_varset := VarSet,
+    !CseInfo ^ csei_vartypes := VarTypes.
 
 %-----------------------------------------------------------------------------%
 
@@ -890,8 +889,8 @@ update_existential_data_structures(FirstOldNew, LaterOldNews, !CseInfo) :-
     map.map_values_only(apply_variable_renaming_to_type(Renaming),
         VarTypes0, VarTypes),
 
-    !:CseInfo = !.CseInfo ^ csei_rtti_varmaps := RttiVarMaps,
-    !:CseInfo = !.CseInfo ^ csei_vartypes := VarTypes.
+    !CseInfo ^ csei_rtti_varmaps := RttiVarMaps,
+    !CseInfo ^ csei_vartypes := VarTypes.
 
 :- pred find_type_info_locn_tvar_map(rtti_varmaps::in,
     map(prog_var, prog_var)::in, tvar::in,
@@ -902,7 +901,7 @@ find_type_info_locn_tvar_map(RttiVarMaps, FirstOldNewMap, Tvar, !NewTvarMap) :-
     type_info_locn_var(TypeInfoLocn0, Old),
     ( map.search(FirstOldNewMap, Old, New) ->
         type_info_locn_set_var(New, TypeInfoLocn0, TypeInfoLocn),
-        svmap.det_insert(TypeInfoLocn, Tvar, !NewTvarMap)
+        map.det_insert(TypeInfoLocn, Tvar, !NewTvarMap)
     ;
         true
     ).
@@ -920,7 +919,7 @@ find_merged_tvars(RttiVarMaps, LaterOldNewMap, NewTvarMap, Tvar, !Renaming) :-
         ( NewTvar = Tvar ->
             true
         ;
-            svmap.det_insert(Tvar, NewTvar, !Renaming)
+            map.det_insert(Tvar, NewTvar, !Renaming)
         )
     ;
         true

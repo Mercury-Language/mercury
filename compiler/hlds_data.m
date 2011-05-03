@@ -39,7 +39,6 @@
 :- import_module int.
 :- import_module multi_map.
 :- import_module require.
-:- import_module svmap.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -567,29 +566,29 @@ add_type_ctor_defn(TypeCtor, TypeDefn, !TypeTable) :-
     TypeCtor = type_ctor(SymName, _Arity),
     Name = unqualify_name(SymName),
     ( map.search(!.TypeTable, Name, TypeCtorTable0) ->
-        svmap.det_insert(TypeCtor, TypeDefn, TypeCtorTable0, TypeCtorTable),
-        svmap.det_update(Name, TypeCtorTable, !TypeTable)
+        map.det_insert(TypeCtor, TypeDefn, TypeCtorTable0, TypeCtorTable),
+        map.det_update(Name, TypeCtorTable, !TypeTable)
     ;
-        svmap.det_insert(TypeCtor, TypeDefn, map.init, TypeCtorTable),
-        svmap.det_insert(Name, TypeCtorTable, !TypeTable)
+        map.det_insert(TypeCtor, TypeDefn, map.init, TypeCtorTable),
+        map.det_insert(Name, TypeCtorTable, !TypeTable)
     ).
 
 replace_type_ctor_defn(TypeCtor, TypeDefn, !TypeTable) :-
     TypeCtor = type_ctor(SymName, _Arity),
     Name = unqualify_name(SymName),
     map.lookup(!.TypeTable, Name, TypeCtorTable0),
-    svmap.det_update(TypeCtor, TypeDefn, TypeCtorTable0, TypeCtorTable),
-    svmap.det_update(Name, TypeCtorTable, !TypeTable).
+    map.det_update(TypeCtor, TypeDefn, TypeCtorTable0, TypeCtorTable),
+    map.det_update(Name, TypeCtorTable, !TypeTable).
 
 add_or_replace_type_ctor_defn(TypeCtor, TypeDefn, !TypeTable) :-
     TypeCtor = type_ctor(SymName, _Arity),
     Name = unqualify_name(SymName),
     ( map.search(!.TypeTable, Name, TypeCtorTable0) ->
-        svmap.set(TypeCtor, TypeDefn, TypeCtorTable0, TypeCtorTable),
-        svmap.det_update(Name, TypeCtorTable, !TypeTable)
+        map.set(TypeCtor, TypeDefn, TypeCtorTable0, TypeCtorTable),
+        map.det_update(Name, TypeCtorTable, !TypeTable)
     ;
-        svmap.det_insert(TypeCtor, TypeDefn, map.init, TypeCtorTable),
-        svmap.det_insert(Name, TypeCtorTable, !TypeTable)
+        map.det_insert(TypeCtor, TypeDefn, map.init, TypeCtorTable),
+        map.det_insert(Name, TypeCtorTable, !TypeTable)
     ).
 
 search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) :-
@@ -897,8 +896,8 @@ inst_table_set_mostly_uniq_insts(MostlyUniqInsts, !InstTable) :-
 
 user_inst_table_get_inst_defns(UserInstDefns, UserInstDefns).
 
-user_inst_table_insert(InstId, InstDefn, UserInstDefns0, UserInstDefns) :-
-    map.insert(UserInstDefns0, InstId, InstDefn, UserInstDefns).
+user_inst_table_insert(InstId, InstDefn, !UserInstDefns) :-
+    map.insert(InstId, InstDefn, !UserInstDefns).
 
 user_inst_table_optimize(UserInstDefns0, UserInstDefns) :-
     map.optimize(UserInstDefns0, UserInstDefns).
@@ -967,13 +966,13 @@ user_inst_table_optimize(UserInstDefns0, UserInstDefns) :-
 
 mode_table_get_mode_defns(ModeDefns, ModeDefns).
 
-mode_table_insert(ModeId, ModeDefn, ModeDefns0, ModeDefns) :-
-    map.insert(ModeDefns0, ModeId, ModeDefn, ModeDefns).
+mode_table_insert(ModeId, ModeDefn, !ModeDefns) :-
+    map.insert(ModeId, ModeDefn, !ModeDefns).
 
 mode_table_init(map.init).
 
-mode_table_optimize(ModeDefns0, ModeDefns) :-
-    map.optimize(ModeDefns0, ModeDefns).
+mode_table_optimize(!ModeDefns) :-
+    map.optimize(!ModeDefns).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1400,9 +1399,8 @@ update_constraint_map(Constraint, !ConstraintMap) :-
 :- pred update_constraint_map_2(prog_constraint::in, constraint_id::in,
     constraint_map::in, constraint_map::out) is det.
 
-update_constraint_map_2(ProgConstraint, ConstraintId, ConstraintMap0,
-        ConstraintMap) :-
-    map.set(ConstraintMap0, ConstraintId, ProgConstraint, ConstraintMap).
+update_constraint_map_2(ProgConstraint, ConstraintId, !ConstraintMap) :-
+    map.set(ConstraintId, ProgConstraint, !ConstraintMap).
 
 update_redundant_constraints(ClassTable, TVarSet, Constraints, !Redundant) :-
     list.foldl(update_redundant_constraints_2(ClassTable, TVarSet),
@@ -1454,7 +1452,7 @@ add_redundant_constraint(Constraint, !Redundant) :-
     ;
         Constraints = set.make_singleton_set(Constraint)
     ),
-    svmap.set(ClassId, Constraints, !Redundant).
+    map.set(ClassId, Constraints, !Redundant).
 
 lookup_hlds_constraint_list(ConstraintMap, ConstraintType, GoalId, Count,
         Constraints) :-
@@ -1545,7 +1543,7 @@ update_ancestor_constraints_3(ClassTable, TVarSet, Descendants, Constraint,
         % don't traverse any further.
         true
     ;
-        svmap.set(Constraint, Descendants, !Ancestors),
+        map.set(Constraint, Descendants, !Ancestors),
         update_ancestor_constraints_2(ClassTable, TVarSet, Descendants,
             Constraint, !Ancestors)
     ).
@@ -1589,7 +1587,7 @@ assertion_table_init(assertion_table(0, AssertionMap)) :-
 
 assertion_table_add_assertion(Assertion, Id, !AssertionTable) :-
     !.AssertionTable = assertion_table(Id, AssertionMap0),
-    map.det_insert(AssertionMap0, Id, Assertion, AssertionMap),
+    map.det_insert(Id, Assertion, AssertionMap0, AssertionMap),
     !:AssertionTable = assertion_table(Id + 1, AssertionMap).
 
 assertion_table_lookup(AssertionTable, Id, Assertion) :-
@@ -1658,7 +1656,7 @@ assertion_table_pred_ids(assertion_table(_, AssertionMap), PredIds) :-
 
 :- implementation.
 
-:- type exclusive_table     ==  multi_map(pred_id, exclusive_id).
+:- type exclusive_table == multi_map(pred_id, exclusive_id).
 
 exclusive_table_init(ExclusiveTable) :-
     multi_map.init(ExclusiveTable).
@@ -1669,11 +1667,11 @@ exclusive_table_lookup(ExclusiveTable, PredId, ExclusiveIds) :-
 exclusive_table_search(ExclusiveTable, Id, ExclusiveIds) :-
     multi_map.search(ExclusiveTable, Id, ExclusiveIds).
 
-exclusive_table_optimize(ExclusiveTable0, ExclusiveTable) :-
-    multi_map.optimize(ExclusiveTable0, ExclusiveTable).
+exclusive_table_optimize(!ExclusiveTable) :-
+    multi_map.optimize(!ExclusiveTable).
 
-exclusive_table_add(ExclusiveId, PredId, ExclusiveTable0, ExclusiveTable) :-
-    multi_map.set(ExclusiveTable0, PredId, ExclusiveId, ExclusiveTable).
+exclusive_table_add(ExclusiveId, PredId, !ExclusiveTable) :-
+    multi_map.set(PredId, ExclusiveId, !ExclusiveTable).
 
 %-----------------------------------------------------------------------------%
 

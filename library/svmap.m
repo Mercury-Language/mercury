@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -123,46 +123,46 @@
 
 %-----------------------------------------------------------------------------%
 
-svmap.insert(K, V, Map0, Map) :-
-    map.insert(Map0, K, V, Map).
+svmap.insert(K, V, !Map) :-
+    map.insert(K, V, !Map).
 
-svmap.det_insert(K, V, Map0, Map) :-
-    map.det_insert(Map0, K, V, Map).
+svmap.det_insert(K, V, !Map) :-
+    map.det_insert(K, V, !Map).
 
-svmap.det_insert_from_corresponding_lists(Ks, Vs, Map0, Map) :-
-    map.det_insert_from_corresponding_lists(Map0, Ks, Vs, Map).
+svmap.det_insert_from_corresponding_lists(Ks, Vs, !Map) :-
+    map.det_insert_from_corresponding_lists(Ks, Vs, !Map).
 
-svmap.det_insert_from_assoc_list(As, Map0, Map) :-
-    map.det_insert_from_assoc_list(Map0, As, Map).
+svmap.det_insert_from_assoc_list(As, !Map) :-
+    map.det_insert_from_assoc_list(As, !Map).
 
-svmap.set_from_corresponding_lists(Ks, Vs, Map0, Map) :-
-    map.set_from_corresponding_lists(Map0, Ks, Vs, Map).
+svmap.set_from_corresponding_lists(Ks, Vs, !Map) :-
+    map.set_from_corresponding_lists(Ks, Vs, !Map).
 
-svmap.set_from_assoc_list(As, Map0, Map) :-
-    map.set_from_assoc_list(Map0, As, Map).
+svmap.set_from_assoc_list(As, !Map) :-
+    map.set_from_assoc_list(As, !Map).
 
-svmap.update(K, V, Map0, Map) :-
-    map.update(Map0, K, V, Map).
+svmap.update(K, V, !Map) :-
+    map.update(K, V, !Map).
 
-svmap.det_update(K, V, Map0, Map) :-
-    map.det_update(Map0, K, V, Map).
+svmap.det_update(K, V, !Map) :-
+    map.det_update(K, V, !Map).
 
-svmap.set(K, V, Map0, Map) :-
-    map.set(Map0, K, V, Map).
+svmap.set(K, V, !Map) :-
+    map.set(K, V, !Map).
 
-svmap.delete(Key, Map0, Map) :-
-    map.delete(Map0, Key, Map).
+svmap.delete(Key, !Map) :-
+    map.delete(Key, !Map).
 
-svmap.delete_list(Keys, Map0, Map) :-
-    map.delete_list(Map0, Keys, Map).
+svmap.delete_list(Keys, !Map) :-
+    map.delete_list(Keys, !Map).
 
-svmap.remove(Key, Value, Map0, Map) :-
-    map.remove(Map0, Key, Value, Map).
+svmap.remove(Key, Value, !Map) :-
+    map.remove(Key, Value, !Map).
 
-svmap.det_remove(Key, Value, Map0, Map) :-
-    map.det_remove(Map0, Key, Value, Map).
+svmap.det_remove(Key, Value, !Map) :-
+    map.det_remove(Key, Value, !Map).
 
-svmap.remove_smallest(K, V, Map0, Map) :-
-    map.remove_smallest(Map0, K, V, Map).
+svmap.remove_smallest(K, V, !Map) :-
+    map.remove_smallest(K, V, !Map).
 
 %-----------------------------------------------------------------------------%

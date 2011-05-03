@@ -198,7 +198,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 :- import_module term_io.
 :- import_module varset.
 
@@ -712,16 +711,16 @@ get_new_tvars([TVar | TVars], VarSet, !TVarSet, !TVarNameMap, !TVarRenaming) :-
     ;
         ( varset.search_name(VarSet, TVar, TVarName) ->
             ( map.search(!.TVarNameMap, TVarName, TVarSetVar) ->
-                svmap.det_insert(TVar, TVarSetVar, !TVarRenaming)
+                map.det_insert(TVar, TVarSetVar, !TVarRenaming)
             ;
                 varset.new_var(!.TVarSet, NewTVar, !:TVarSet),
                 varset.name_var(!.TVarSet, NewTVar, TVarName, !:TVarSet),
-                svmap.det_insert(TVarName, NewTVar, !TVarNameMap),
-                svmap.det_insert(TVar, NewTVar, !TVarRenaming)
+                map.det_insert(TVarName, NewTVar, !TVarNameMap),
+                map.det_insert(TVar, NewTVar, !TVarRenaming)
             )
         ;
             varset.new_var(!.TVarSet, NewTVar, !:TVarSet),
-            svmap.det_insert(TVar, NewTVar, !TVarRenaming)
+            map.det_insert(TVar, NewTVar, !TVarRenaming)
         )
     ),
     get_new_tvars(TVars, VarSet, !TVarSet, !TVarNameMap, !TVarRenaming).

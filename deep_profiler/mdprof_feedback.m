@@ -53,7 +53,6 @@
 :- import_module parsing_utils.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 %
@@ -741,7 +740,7 @@ option_implies(Option, ImpliedOption, ImpliedValue, !Options) :-
     option_table(option)::in, option_table(option)::out) is det.
 
 set_option(Option, Value, !Options) :-
-    svmap.set(Option, Value, !Options).
+    map.set(Option, Value, !Options).
 
 %----------------------------------------------------------------------------%
 

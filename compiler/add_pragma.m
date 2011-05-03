@@ -176,7 +176,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module svvarset.
 :- import_module varset.
 
@@ -939,7 +938,7 @@ add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, _TypeModQual, Ctor,
     %
     % If the user specified a name for this constructor then use that.
     %
-    ( svmap.remove(UnqualSymName, UserForeignName, !Overrides) ->
+    ( map.remove(UnqualSymName, UserForeignName, !Overrides) ->
         ForeignNameTail = UserForeignName
     ;
         % Otherwise try to derive a name automatically from the
@@ -967,7 +966,7 @@ add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, _TypeModQual, Ctor,
     ),
     (
         IsValidForeignName = yes,
-        svmap.det_insert(UnqualSymName, ForeignName, !NameMap)
+        map.det_insert(UnqualSymName, ForeignName, !NameMap)
     ;
         IsValidForeignName = no,
         list.cons(UnqualSymName, !BadCtors)
@@ -1218,7 +1217,7 @@ make_foreign_tag(ForeignLanguage, ForeignTagMap, ConsId, _, !ConsTagValues,
     ),
     ( map.search(ForeignTagMap, ConsSymName, ForeignTagValue) ->
         ForeignTag = foreign_tag(ForeignLanguage, ForeignTagValue),
-        svmap.set(ConsId, ForeignTag, !ConsTagValues)
+        map.set(ConsId, ForeignTag, !ConsTagValues)
     ;
         !:UnmappedCtors = [ConsSymName | !.UnmappedCtors]
     ).
@@ -1299,8 +1298,8 @@ add_pragma_unused_args(PredOrFunc, SymName, Arity, ModeNum, UnusedArgs,
         module_info_get_unused_arg_info(!.ModuleInfo, UnusedArgInfo0),
         % Convert the mode number to a proc_id.
         proc_id_to_int(ProcId, ModeNum),
-        map.set(UnusedArgInfo0, proc(PredId, ProcId), UnusedArgs,
-            UnusedArgInfo),
+        map.set(proc(PredId, ProcId), UnusedArgs,
+            UnusedArgInfo0, UnusedArgInfo),
         module_info_set_unused_arg_info(UnusedArgInfo, !ModuleInfo)
     ;
         Pieces = [words("Internal compiler error: "),
@@ -1329,7 +1328,7 @@ add_pragma_exceptions(PredOrFunc, SymName, Arity, ModeNum, ThrowStatus,
             % convert the mode number to a proc_id
             proc_id_to_int(ProcId, ModeNum),
             ProcExceptionInfo = proc_exception_info(ThrowStatus, no),
-            svmap.set(proc(PredId, ProcId), ProcExceptionInfo,
+            map.set(proc(PredId, ProcId), ProcExceptionInfo,
                 !ExceptionInfo),
             module_info_set_exception_info(!.ExceptionInfo, !ModuleInfo)
         )
@@ -1357,9 +1356,8 @@ add_pragma_trailing_info(PredOrFunc, SymName, Arity, ModeNum, TrailingStatus,
     ->
         module_info_get_trailing_info(!.ModuleInfo, TrailingInfo0),
         proc_id_to_int(ProcId, ModeNum),
-        map.set(TrailingInfo0, proc(PredId, ProcId),
-            proc_trailing_info(TrailingStatus, no),
-            TrailingInfo),
+        map.set(proc(PredId, ProcId), proc_trailing_info(TrailingStatus, no),
+            TrailingInfo0, TrailingInfo),
         module_info_set_trailing_info(TrailingInfo, !ModuleInfo)
     ;
         % XXX We'll just ignore this for the time being -
@@ -1386,7 +1384,7 @@ add_pragma_mm_tabling_info(PredOrFunc, SymName, Arity, ModeNum,
         some [!TablingInfo] (
             module_info_get_mm_tabling_info(!.ModuleInfo, !:TablingInfo),
             proc_id_to_int(ProcId, ModeNum),
-            svmap.set(proc(PredId, ProcId),
+            map.set(proc(PredId, ProcId),
                 proc_mm_tabling_info(TablingStatus, no), !TablingInfo),
             module_info_set_mm_tabling_info(!.TablingInfo, !ModuleInfo)
         )
@@ -1547,14 +1545,14 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
                 % For imported predicates dead_proc_elim.m needs to know that
                 % if the original predicate is used, the predicate to force
                 % the production of the specialised interface is also used.
-                multi_map.set(SpecMap0, PredId, NewPredId, SpecMap)
+                multi_map.set(PredId, NewPredId, SpecMap0, SpecMap)
             ;
                 SpecMap = SpecMap0
             ),
             Pragma = pragma_type_spec(SymName, SpecName, Arity,
                 yes(PredOrFunc), MaybeModes, map.to_assoc_list(RenamedSubst),
                 TVarSet, ExpandedItems),
-            multi_map.set(PragmaMap0, PredId, Pragma, PragmaMap),
+            multi_map.set(PredId, Pragma, PragmaMap0, PragmaMap),
             TypeSpecInfo = type_spec_info(ProcsToSpec, ForceVersions, SpecMap,
                 PragmaMap),
             module_info_set_type_spec_info(TypeSpecInfo, !ModuleInfo),
@@ -1706,7 +1704,7 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
     is det.
 
 map_set_from_pair(K - V, !Map) :-
-    svmap.set(K, V, !Map).
+    map.set(K, V, !Map).
 
 :- pred find_duplicate_list_elements(list(T)::in, list(T)::out) is det.
 
@@ -1816,7 +1814,7 @@ handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes,
                 !.ModuleInfo, ProcId)
         ->
             map.lookup(!.Procs, ProcId, ProcInfo),
-            map.det_insert(map.init, ProcId, ProcInfo, !:Procs),
+            map.det_insert(ProcId, ProcInfo, map.init, !:Procs),
             ProcIds = [ProcId],
             MaybeProcIds = yes(ProcIds)
         ;
@@ -1876,9 +1874,9 @@ add_pragma_termination2_info(PredOrFunc, SymName, ModeList,
                     proc_info_set_termination2_info(!.TermInfo,
                         ProcInfo0, ProcInfo)
                 ),
-                map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+                map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
                 pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-                map.det_update(PredTable0, PredId, PredInfo, PredTable),
+                map.det_update(PredId, PredInfo, PredTable0, PredTable),
                 module_info_set_preds(PredTable, !ModuleInfo)
             ;
                 Pieces = [words("Error: `:- pragma termination2_info'"),
@@ -1933,9 +1931,9 @@ add_pragma_structure_sharing(PredOrFunc, SymName, ModeList, HeadVars,
                 map.lookup(ProcTable0, ProcId, ProcInfo0),
                 proc_info_set_imported_structure_sharing(HeadVars, Types,
                     SharingDomain, ProcInfo0, ProcInfo),
-                map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+                map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
                 pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-                map.det_update(PredTable0, PredId, PredInfo, PredTable),
+                map.det_update(PredId, PredInfo, PredTable0, PredTable),
                 module_info_set_preds(PredTable, !ModuleInfo)
             ;
                 Pieces = [words("Error: `:- pragma structure_sharing'"),
@@ -1988,9 +1986,9 @@ add_pragma_structure_reuse(PredOrFunc, SymName, ModeList, HeadVars,
                 map.lookup(ProcTable0, ProcId, ProcInfo0),
                 proc_info_set_imported_structure_reuse(HeadVars, Types,
                     ReuseDomain, ProcInfo0, ProcInfo),
-                map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+                map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
                 pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-                map.det_update(PredTable0, PredId, PredInfo, PredTable),
+                map.det_update(PredId, PredInfo, PredTable0, PredTable),
                 module_info_set_preds(PredTable, !ModuleInfo)
             ;
                 Pieces = [words("Error: `:- pragma structure_reuse'"),
@@ -2048,9 +2046,9 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList,
                     ProcInfo0, ProcInfo1),
                 proc_info_set_maybe_termination_info(MaybeTerminationInfo,
                     ProcInfo1, ProcInfo),
-                map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+                map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
                 pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-                map.det_update(PredTable0, PredId, PredInfo, PredTable),
+                map.det_update(PredId, PredInfo, PredTable0, PredTable),
                 module_info_set_preds(PredTable, !ModuleInfo)
             ;
                 module_info_incr_errors(!ModuleInfo),
@@ -2223,7 +2221,7 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
                     !ModuleInfo, !Specs),
                 pred_info_set_clauses_info(ClausesInfo, !PredInfo),
                 pred_info_update_goal_type(goal_type_foreign, !PredInfo),
-                map.det_update(Preds0, PredId, !.PredInfo, Preds),
+                map.det_update(PredId, !.PredInfo, Preds0, Preds),
                 predicate_table_set_preds(Preds, PredTable1, PredTable),
                 module_info_set_predicate_table(PredTable, !ModuleInfo),
                 pragma_get_var_infos(PVars, ArgInfoBox),
@@ -2587,7 +2585,7 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
             proc_info_set_eval_method(EvalMethod, ProcInfo0, ProcInfo1),
             proc_info_set_table_attributes(MaybeAttributes,
                 ProcInfo1, ProcInfo),
-            svmap.det_update(ProcId, ProcInfo, !ProcTable),
+            map.det_update(ProcId, ProcInfo, !ProcTable),
             % We create the statistics and reset predicates if requested
             % even in the presence of errors above, because if didn't do so,
             % later compiler passes would report errors at the sites where
@@ -3640,7 +3638,7 @@ match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
         Renaming).
 match_insts_with_renaming(_, not_reached, not_reached, map.init).
 match_insts_with_renaming(_, inst_var(VarA), inst_var(VarB), Subst) :-
-    svmap.insert(VarA, VarB, map.init, Subst).
+    map.insert(VarA, VarB, map.init, Subst).
 match_insts_with_renaming(ModuleInfo, InstA, InstB, Subst) :-
     InstA = constrained_inst_vars(InstVarSetA, SpecInstA),
     InstB = constrained_inst_vars(InstVarSetB, SpecInstB),
@@ -3666,7 +3664,7 @@ match_insts_with_renaming(ModuleInfo, InstA, InstB, Subst) :-
         VarB = SpecVarB,
         Subst = Subst0
     ;
-        map.insert(Subst0, VarA, VarB, Subst)
+        map.insert(VarA, VarB, Subst0, Subst)
     ).
 match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
     InstA = defined_inst(InstNameA),

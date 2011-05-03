@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2008, 2010 The University of Melbourne.
+% Copyright (C) 2006-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -82,7 +82,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module require.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -171,7 +170,7 @@ get_type_substitution(ModuleInfo, PPId, ActualTypes, CallerTypeVarSet,
 reverse_renaming(RevSubst, K0, V0, !Acc) :-
     apply_variable_renaming_to_tvar(RevSubst, K0, K),
     apply_variable_renaming_to_type(RevSubst, V0, V),
-    svmap.det_insert(K, V, !Acc).
+    map.det_insert(K, V, !Acc).
 
 %-----------------------------------------------------------------------------%
 

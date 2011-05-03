@@ -524,7 +524,7 @@ inline_in_proc(PredProcId, InlinedProcs, Params, !ModuleInfo) :-
             DidInlining = no
         ),
 
-        map.det_update(ProcTable0, ProcId, !.ProcInfo, ProcTable),
+        map.det_update(ProcId, !.ProcInfo, ProcTable0, ProcTable),
         pred_info_set_procedures(ProcTable, !PredInfo),
 
         (
@@ -534,7 +534,7 @@ inline_in_proc(PredProcId, InlinedProcs, Params, !ModuleInfo) :-
             PurityChanged = no
         ),
 
-        map.det_update(PredTable0, PredId, !.PredInfo, PredTable),
+        map.det_update(PredId, !.PredInfo, PredTable0, PredTable),
         module_info_set_preds(PredTable, !ModuleInfo),
 
         % If the determinism of some sub-goals has changed, then we re-run

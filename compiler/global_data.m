@@ -153,8 +153,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module svbimap.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -199,17 +197,17 @@ global_data_init(StaticCellInfo, GlobalData) :-
 
 global_data_add_new_proc_var(PredProcId, ProcVar, !GlobalData) :-
     ProcVarMap0 = !.GlobalData ^ gd_proc_var_map,
-    map.det_insert(ProcVarMap0, PredProcId, ProcVar, ProcVarMap),
+    map.det_insert(PredProcId, ProcVar, ProcVarMap0, ProcVarMap),
     !GlobalData ^ gd_proc_var_map := ProcVarMap.
 
 global_data_add_new_proc_layout(PredProcId, ProcLayout, !GlobalData) :-
     ProcLayoutMap0 = !.GlobalData ^ gd_proc_layout_map,
-    map.det_insert(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
+    map.det_insert(PredProcId, ProcLayout, ProcLayoutMap0, ProcLayoutMap),
     !GlobalData ^ gd_proc_layout_map := ProcLayoutMap.
 
 global_data_update_proc_layout(PredProcId, ProcLayout, !GlobalData) :-
     ProcLayoutMap0 = !.GlobalData ^ gd_proc_layout_map,
-    map.det_update(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
+    map.det_update(PredProcId, ProcLayout, ProcLayoutMap0, ProcLayoutMap),
     !GlobalData ^ gd_proc_layout_map := ProcLayoutMap.
 
 global_data_add_new_closure_layouts(NewClosureLayouts, !GlobalData) :-
@@ -371,7 +369,7 @@ do_add_scalar_static_cell(ArgsTypes, CellType, CellValue, DataId, !Info) :-
             TypeNum = type_num(TypeRawNum),
             !Info ^ sci_type_counter := TypeNumCounter,
 
-            bimap.det_insert(TypeNumMap0, CellType, TypeNum, TypeNumMap),
+            bimap.det_insert(CellType, TypeNum, TypeNumMap0, TypeNumMap),
             !Info ^ sci_cell_type_num_map := TypeNumMap,
 
             !:CellGroup = init_scalar_cell_group
@@ -390,7 +388,7 @@ do_add_scalar_static_cell(ArgsTypes, CellType, CellValue, DataId, !Info) :-
             InsertCommonData = !.Info ^ sci_sub_info ^ scsi_common_data,
             (
                 InsertCommonData = yes,
-                bimap.det_insert(MembersMap0, Args, DataId, MembersMap),
+                bimap.det_insert(Args, DataId, MembersMap0, MembersMap),
                 !CellGroup ^ scalar_cell_group_members := MembersMap
             ;
                 InsertCommonData = no
@@ -398,7 +396,7 @@ do_add_scalar_static_cell(ArgsTypes, CellType, CellValue, DataId, !Info) :-
                 % CellGroupMap, ensuring that it stays empty. This can
                 % be useful when comparing the LLDS and MLDS backends.
             ),
-            map.set(CellGroupMap0, TypeNum, !.CellGroup, CellGroupMap),
+            map.set(TypeNum, !.CellGroup, CellGroupMap0, CellGroupMap),
             !Info ^ sci_scalar_cell_group_map := CellGroupMap
         )
     ).
@@ -498,7 +496,7 @@ add_vector_static_cell(LLDSTypes, VectorData, DataId, !Info) :-
             TypeNum = type_num(TypeNum0),
             !Info ^ sci_type_counter := TypeNumCounter,
 
-            bimap.det_insert(TypeNumMap0, CellType, TypeNum, TypeNumMap),
+            bimap.det_insert(CellType, TypeNum, TypeNumMap0, TypeNumMap),
             !Info ^ sci_cell_type_num_map := TypeNumMap,
 
             !:CellGroup = init_vector_cell_group
@@ -509,9 +507,9 @@ add_vector_static_cell(LLDSTypes, VectorData, DataId, !Info) :-
         DataId = vector_common_data_id(TypeNum, CellNum),
         CellMap0 = !.CellGroup ^ vector_cell_map,
         VectorContents = vector_contents(VectorCells),
-        map.det_insert(CellMap0, CellNum, VectorContents, CellMap),
+        map.det_insert(CellNum, VectorContents, CellMap0, CellMap),
         !CellGroup ^ vector_cell_map := CellMap,
-        map.set(CellGroupMap0, TypeNum, !.CellGroup, CellGroupMap),
+        map.set(TypeNum, !.CellGroup, CellGroupMap0, CellGroupMap),
         !Info ^ sci_vector_cell_group_map := CellGroupMap
     ).
 
@@ -756,13 +754,13 @@ merge_cell_type_num_maps(CellType, BTypeNum,
         !TypeCounter, !CellTypeNumMap, !TypeNumRemap) :-
     ( bimap.search(!.CellTypeNumMap, CellType, ATypeNum) ->
         % A type also in GlobalDataA.
-        svmap.det_insert(BTypeNum, ATypeNum, !TypeNumRemap)
+        map.det_insert(BTypeNum, ATypeNum, !TypeNumRemap)
     ;
         % A type not in GlobalDataA.
         counter.allocate(N, !TypeCounter),
         NewTypeNum = type_num(N),
-        svmap.det_insert(BTypeNum, NewTypeNum, !TypeNumRemap),
-        svbimap.det_insert(CellType, NewTypeNum, !CellTypeNumMap)
+        map.det_insert(BTypeNum, NewTypeNum, !TypeNumRemap),
+        bimap.det_insert(CellType, NewTypeNum, !CellTypeNumMap)
     ).
 
 :- pred merge_scalar_cell_group_maps(cell_type_num_remap::in,
@@ -796,8 +794,8 @@ merge_scalar_cell_group_maps_2(TypeNumRemap, BTypeNum, BScalarCellGroup,
     ),
     merge_scalar_cell_groups(TypeNum, ScalarCellGroup0, BScalarCellGroup,
         ScalarCellGroup, ScalarCellGroupRemap),
-    svmap.set(TypeNum, ScalarCellGroup, !ScalarCellGroupMap),
-    svmap.det_insert(BTypeNum, ScalarCellGroupRemap, !Remap).
+    map.set(TypeNum, ScalarCellGroup, !ScalarCellGroupMap),
+    map.det_insert(BTypeNum, ScalarCellGroupRemap, !Remap).
 
 :- pred merge_scalar_cell_groups(type_num::in,
     scalar_cell_group::in, scalar_cell_group::in, scalar_cell_group::out,
@@ -829,7 +827,7 @@ merge_scalar_cell_groups_2(TypeNum, ArrayB, ArrayAB,
         Rvals, BDataId, !GroupMembers, !GroupRemap) :-
     ( bimap.search(!.GroupMembers, Rvals, DataId) ->
         % Seen this list of rvals before in the group.
-        svmap.det_insert(BDataId, DataId, !GroupRemap)
+        map.det_insert(BDataId, DataId, !GroupRemap)
     ;
         % Not seen this list of rvals before in the group.
         (
@@ -840,8 +838,8 @@ merge_scalar_cell_groups_2(TypeNum, ArrayB, ArrayAB,
             CellNum = nth_member_lookup0(ArrayAB, CommonCellValue),
             % Add the new data name.
             DataId = scalar_common_data_id(TypeNum, CellNum),
-            svbimap.det_insert(Rvals, DataId, !GroupMembers),
-            svmap.det_insert(BDataId, DataId, !GroupRemap)
+            bimap.det_insert(Rvals, DataId, !GroupMembers),
+            map.det_insert(BDataId, DataId, !GroupRemap)
         ;
             ( BDataId = rtti_data_id(_)
             ; BDataId = proc_tabling_data_id(_, _)
@@ -870,7 +868,7 @@ merge_vector_cell_group_maps(TypeNumRemap, VectorCellGroupMapA,
 merge_vector_cell_group_maps_2(TypeNumRemap, OldTypeNum, VectorCellGroup,
         !VectorCellGroupMap) :-
     map.lookup(TypeNumRemap, OldTypeNum, NewTypeNum),
-    svmap.det_insert(NewTypeNum, VectorCellGroup, !VectorCellGroupMap).
+    map.det_insert(NewTypeNum, VectorCellGroup, !VectorCellGroupMap).
 
 :- func nth_member_lookup0(list(T), T) = int.
 

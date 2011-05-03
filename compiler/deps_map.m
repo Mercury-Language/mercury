@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -93,7 +93,6 @@
 :- import_module list.
 :- import_module pair.
 :- import_module set.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -149,7 +148,7 @@ generate_deps_map_step(Globals, Module, !Modules, Search, !DepsMap, !IO) :-
     % and mark it as having been processed.
     (
         Done = not_yet_processed,
-        svmap.set(Module, deps(already_processed, ModuleImports), !DepsMap),
+        map.set(Module, deps(already_processed, ModuleImports), !DepsMap),
         ForeignImportedModules =
             list.map(
                 (func(foreign_import_module_info(_, ImportedModule, _))
@@ -192,7 +191,7 @@ lookup_dependencies(Globals, Module, Search, Done, !DepsMap, ModuleImports,
 
 insert_into_deps_map(ModuleImports, !DepsMap) :-
     module_and_imports_get_module_name(ModuleImports, ModuleName),
-    svmap.set(ModuleName, deps(not_yet_processed, ModuleImports), !DepsMap).
+    map.set(ModuleName, deps(not_yet_processed, ModuleImports), !DepsMap).
 
     % Read a module to determine the (direct) dependencies of that module
     % and any nested sub-modules it contains.

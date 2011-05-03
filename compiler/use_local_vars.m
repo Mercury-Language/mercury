@@ -140,7 +140,7 @@ use_local_vars_block(MaybeLiveMap, NumRealRRegs, AccessThreshold, Label,
     ;
         BlockInfo = block_info(BlockLabel, LabelInstr, RestInstrs, FallInto,
             JumpLabels, MaybeFallThrough),
-        map.det_update(!.BlockMap, Label, BlockInfo, !:BlockMap)
+        map.det_update(Label, BlockInfo, !BlockMap)
     ).
 
 %-----------------------------------------------------------------------------%

@@ -98,7 +98,6 @@
 :- import_module set_tree234.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module svqueue.
 
 %-----------------------------------------------------------------------------%
@@ -193,7 +192,7 @@ dead_proc_initialize_procs(_PredId, [], !Queue, !Needed).
 dead_proc_initialize_procs(PredId, [ProcId | ProcIds], !Queue, !Needed) :-
     Entity = entity_proc(PredId, ProcId),
     svqueue.put(Entity, !Queue),
-    svmap.set(Entity, not_eliminable, !Needed),
+    map.set(Entity, not_eliminable, !Needed),
     dead_proc_initialize_procs(PredId, ProcIds, !Queue, !Needed).
 
     % Add procedures exported to foreign language by a `:- pragma
@@ -210,7 +209,7 @@ dead_proc_initialize_pragma_exports([PragmaProc | PragmaProcs],
         _ExportName, _Ctxt),
     Entity = entity_proc(PredId, ProcId),
     svqueue.put(Entity, !Queue),
-    svmap.set(Entity, not_eliminable, !Needed),
+    map.set(Entity, not_eliminable, !Needed),
     dead_proc_initialize_pragma_exports(PragmaProcs, !Queue, !Needed).
 
     % Add module initialisation/finalisation procedures to the queue and map
@@ -225,7 +224,7 @@ dead_proc_initialize_init_fn_procs([PPId | PPIds], !Queue, !Needed) :-
     PPId = proc(PredId, ProcId),
     Entity = entity_proc(PredId, ProcId),
     svqueue.put(Entity, !Queue),
-    svmap.set(Entity, not_eliminable, !Needed),
+    map.set(Entity, not_eliminable, !Needed),
     dead_proc_initialize_init_fn_procs(PPIds, !Queue, !Needed).
 
 :- pred dead_proc_initialize_type_ctor_infos(list(type_ctor_gen_info)::in,
@@ -256,7 +255,7 @@ dead_proc_initialize_type_ctor_infos([TypeCtorGenInfo | TypeCtorGenInfos],
     ->
         Entity = entity_type_ctor(ModuleName, TypeName, Arity),
         svqueue.put(Entity, !Queue),
-        svmap.set(Entity, not_eliminable, !Needed)
+        map.set(Entity, not_eliminable, !Needed)
     ;
         true
     ),
@@ -306,7 +305,7 @@ get_class_interface_pred_proc(ClassProc, !Queue, !Needed) :-
     ClassProc = hlds_class_proc(PredId, ProcId),
     Entity = entity_proc(PredId, ProcId),
     svqueue.put(Entity, !Queue),
-    svmap.set(Entity, not_eliminable, !Needed).
+    map.set(Entity, not_eliminable, !Needed).
 
 %-----------------------------------------------------------------------------%
 
@@ -388,7 +387,7 @@ dead_proc_examine_refs([Ref | Refs], !Queue, !Needed) :-
     Ref = proc(PredId, ProcId),
     Entity = entity_proc(PredId, ProcId),
     svqueue.put(Entity, !Queue),
-    svmap.set(Entity, not_eliminable, !Needed),
+    map.set(Entity, not_eliminable, !Needed),
     dead_proc_examine_refs(Refs, !Queue, !Needed).
 
 %-----------------------------------------------------------------------------%
@@ -432,7 +431,7 @@ dead_proc_examine_proc(proc(PredId, ProcId), ModuleInfo,
                 io.nl(!IO)
             ),
             TableStructEntity = entity_table_struct(PredId, ProcId),
-            svmap.set(TableStructEntity, not_eliminable, !Needed)
+            map.set(TableStructEntity, not_eliminable, !Needed)
         )
     ;
         trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
@@ -510,7 +509,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
             % If it's reachable and recursive, then we can't eliminate it
             % or inline it.
             NewNotation = not_eliminable,
-            svmap.set(Entity, NewNotation, !Needed)
+            map.set(Entity, NewNotation, !Needed)
         ; map.search(!.Needed, Entity, OldNotation) ->
             (
                 OldNotation = not_eliminable,
@@ -533,7 +532,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
                     io.nl(!IO)
                 )
             ),
-            svmap.det_update(Entity, NewNotation, !Needed)
+            map.det_update(Entity, NewNotation, !Needed)
         ;
             trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
                 io.write_string("plain_call init maybe_eliminable ", !IO),
@@ -543,7 +542,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
                 io.nl(!IO)
             ),
             NewNotation = maybe_eliminable(1),
-            svmap.set(Entity, NewNotation, !Needed)
+            map.set(Entity, NewNotation, !Needed)
         )
     ;
         GoalExpr = call_foreign_proc(_, PredId, ProcId, _, _, _, _),
@@ -556,7 +555,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
             io.nl(!IO)
         ),
         svqueue.put(Entity, !Queue),
-        svmap.set(Entity, not_eliminable, !Needed)
+        map.set(Entity, not_eliminable, !Needed)
     ;
         GoalExpr = unify(_LHS, _RHS, _UniModes, Unification, _UnifyContext),
         (
@@ -591,7 +590,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
                     )
                 ),
                 svqueue.put(Entity, !Queue),
-                svmap.set(Entity, not_eliminable, !Needed)
+                map.set(Entity, not_eliminable, !Needed)
             ;
                 ( ConsId = cons(_, _, _)
                 ; ConsId = tuple_cons(_)
@@ -740,7 +739,7 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
             !.ProcElimInfo),
             ProcIds, ProcTable0, ProcTable, Changed0, Changed, Specs0, Specs),
         pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-        map.det_update(PredTable0, PredId, PredInfo, PredTable),
+        map.det_update(PredId, PredInfo, PredTable0, PredTable),
         !:ProcElimInfo = proc_elim_info(Needed, ModuleInfo, PredTable, Changed,
             Specs)
     ;
@@ -761,13 +760,13 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
             (pred(Id::in, PTable0::in, PTable::out) is det :-
                 map.lookup(ProcTable0, Id, ProcInfo0),
                 proc_info_set_goal(true_goal, ProcInfo0, ProcInfo),
-                map.det_update(PTable0, Id, ProcInfo, PTable)
+                map.det_update(Id, ProcInfo, PTable0, PTable)
             ),
         list.foldl(DestroyGoal, ProcIds, ProcTable0, ProcTable),
         pred_info_set_procedures(ProcTable, PredInfo0, PredInfo1),
         pred_info_set_import_status(status_imported(import_locn_interface),
             PredInfo1, PredInfo),
-        map.det_update(PredTable0, PredId, PredInfo, PredTable),
+        map.det_update(PredId, PredInfo, PredTable0, PredTable),
 
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
@@ -831,7 +830,7 @@ dead_proc_eliminate_proc(PredId, Keep, WarnForThisProc, ProcElimInfo,
         ;
             WarnForThisProc = no
         ),
-        svmap.delete(ProcId, !ProcTable)
+        map.delete(ProcId, !ProcTable)
     ).
 
 :- func warn_dead_proc(pred_id, proc_id, prog_context, module_info)

@@ -306,13 +306,13 @@ varset.new_var(VarSet0, Var, VarSet) :-
 varset.new_named_var(varset(MaxId0, Names0, Values), Name, Var,
         varset(MaxId, Names, Values)) :-
     term.create_var(MaxId0, Var, MaxId),
-    map.set(Names0, Var, Name, Names).
+    map.set(Var, Name, Names0, Names).
 
 varset.new_uniquely_named_var(varset(MaxId0, Names0, Values), Name, Var,
         varset(MaxId, Names, Values)) :-
     term.create_var(MaxId0, Var, MaxId),
     N = term.var_id(Var),
-    map.set(Names0, Var, string.format("%s_%d", [s(Name), i(N)]), Names).
+    map.set(Var, string.format("%s_%d", [s(Name), i(N)]), Names0, Names).
 
 varset.new_maybe_named_var(varset(MaxId0, Names0, Values), MaybeName, Var,
         varset(MaxId, Names, Values)) :-
@@ -322,7 +322,7 @@ varset.new_maybe_named_var(varset(MaxId0, Names0, Values), MaybeName, Var,
         Names = Names0
     ;
         MaybeName = yes(Name),
-        map.set(Names0, Var, Name, Names)
+        map.set(Var, Name, Names0, Names)
     ).
 
 varset.new_vars(VarSet0, NumVars, NewVars, VarSet) :-
@@ -348,8 +348,8 @@ varset.new_vars_2(NumVars, !RevNewVars, !VarSet) :-
 
 varset.delete_var(varset(MaxId, Names0, Values0), Var,
         varset(MaxId, Names, Values)) :-
-    map.delete(Names0, Var, Names),
-    map.delete(Values0, Var, Values).
+    map.delete(Var, Names0, Names),
+    map.delete(Var, Values0, Values).
 
 %-----------------------------------------------------------------------------%
 
@@ -381,7 +381,7 @@ varset.vars_2(N, Max, RevVars0) = RevVars :-
 
 varset.name_var(VarSet0, Id, Name, VarSet) :-
     Names0 = VarSet0 ^ var_names,
-    map.set(Names0, Id, Name, Names),
+    map.set(Id, Name, Names0, Names),
     VarSet = VarSet0 ^ var_names := Names.
 
 %-----------------------------------------------------------------------------%
@@ -411,7 +411,7 @@ varset.search_name(varset(_, Names, _), Id, Name) :-
 
 varset.bind_var(VarSet0, Id, Val, VarSet) :-
     Values0 = VarSet0 ^ var_values,
-    map.set(Values0, Id, Val, Values),
+    map.set(Id, Val, Values0, Values),
     VarSet = VarSet0 ^ var_values := Values.
 
 %-----------------------------------------------------------------------------%
@@ -488,11 +488,11 @@ varset.merge_renaming_2(!.SupplyB, MaxSupplyB, NamesB,
         term.create_var(!.Supply, Var, !:Supply),
         term.create_var(!.SupplyB, VarB, !:SupplyB),
         ( map.search(NamesB, VarB, NameB) ->
-            map.det_insert(!.Names, Var, NameB, !:Names)
+            map.det_insert(Var, NameB, !Names)
         ;
             true
         ),
-        map.det_insert(!.Subst, VarB, Var, !:Subst),
+        map.det_insert(VarB, Var, !Subst),
         varset.merge_renaming_2(!.SupplyB, MaxSupplyB, NamesB,
             !Supply, !Names, !Subst)
     ).
@@ -516,7 +516,7 @@ varset.merge_renaming_without_names_2(!.SupplyB, MaxSupplyB, !Supply, !Subst) :-
     ;
         term.create_var(!.Supply, Var, !:Supply),
         term.create_var(!.SupplyB, VarB, !:SupplyB),
-        map.det_insert(!.Subst, VarB, Var, !:Subst),
+        map.det_insert(VarB, Var, !Subst),
         varset.merge_renaming_without_names_2(!.SupplyB, MaxSupplyB,
             !Supply, !Subst)
     ).
@@ -549,12 +549,12 @@ varset.merge_subst_2(!.SupplyB, MaxSupplyB, NamesB,
         term.create_var(!.Supply, Var, !:Supply),
         term.create_var(!.SupplyB, VarB, !:SupplyB),
         ( map.search(NamesB, VarB, NameB) ->
-            map.det_insert(!.Names, Var, NameB, !:Names)
+            map.det_insert(Var, NameB, !Names)
         ;
             true
         ),
         Replacement = term.variable(Var, context_init),
-        map.det_insert(!.Subst, VarB, Replacement, !:Subst),
+        map.det_insert(VarB, Replacement, !Subst),
         varset.merge_subst_2(!.SupplyB, MaxSupplyB, NamesB,
             !Supply, !Names, !Subst)
     ).
@@ -579,7 +579,7 @@ varset.merge_subst_without_names_2(!.SupplyB, MaxSupplyB, !Supply, !Subst) :-
         term.create_var(!.Supply, Var, !:Supply),
         term.create_var(!.SupplyB, VarB, !:SupplyB),
         Replacement = term.variable(Var, context_init),
-        map.det_insert(!.Subst, VarB, Replacement, !:Subst),
+        map.det_insert(VarB, Replacement, !Subst),
         varset.merge_subst_without_names_2(!.SupplyB, MaxSupplyB,
             !Supply, !Subst)
     ).
@@ -600,19 +600,19 @@ varset.var_name_list(VarSet, VarNameList) :-
 
 %-----------------------------------------------------------------------------%
 
-varset.ensure_unique_names(AllVars, Suffix, VarSet0, VarSet) :-
-    VarNames0 = VarSet0 ^ var_names,
+varset.ensure_unique_names(AllVars, Suffix, !VarSet) :-
+    VarNames0 = !.VarSet ^ var_names,
     varset.ensure_unique_names_2(AllVars, Suffix, set.init, VarNames0,
         map.init, VarNames),
-    VarSet = VarSet0 ^ var_names := VarNames.
+    !VarSet ^ var_names := VarNames.
 
 :- pred varset.ensure_unique_names_2(list(var(T))::in, string::in,
     set(string)::in, map(var(T), string)::in, map(var(T), string)::in,
     map(var(T), string)::out) is det.
 
-varset.ensure_unique_names_2([], _, _, _, VarNames, VarNames).
+varset.ensure_unique_names_2([], _, _, _, !VarNames).
 varset.ensure_unique_names_2([Var | Vars], Suffix, UsedNames0, OldVarNames,
-        VarNames0, VarNames) :-
+        !VarNames) :-
     ( map.search(OldVarNames, Var, OldName) ->
         ( set.member(OldName, UsedNames0) ->
             term.var_to_int(Var, VarNum),
@@ -629,9 +629,9 @@ varset.ensure_unique_names_2([Var | Vars], Suffix, UsedNames0, OldVarNames,
     ),
     append_suffix_until_unique(TrialName, Suffix, UsedNames0, FinalName),
     set.insert(UsedNames0, FinalName, UsedNames1),
-    map.det_insert(VarNames0, Var, FinalName, VarNames1),
+    map.det_insert(Var, FinalName, !VarNames),
     varset.ensure_unique_names_2(Vars, Suffix, UsedNames1, OldVarNames,
-        VarNames1, VarNames).
+        !VarNames).
 
 :- pred append_suffix_until_unique(string::in, string::in, set(string)::in,
     string::out) is det.

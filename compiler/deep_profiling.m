@@ -81,7 +81,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module svvarset.
 :- import_module term.
 :- import_module varset.
@@ -173,10 +172,10 @@ apply_deep_prof_tail_rec_transform_to_proc(PredProcId, !ModuleInfo) :-
             ProcInfo1, ProcInfo),
         proc_info_set_maybe_deep_profile_info(yes(CloneDeepProfileInfo),
             ProcInfo1, CloneProcInfo),
-        map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable1),
-        map.det_insert(ProcTable1, CloneProcId, CloneProcInfo, ProcTable),
+        map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable1),
+        map.det_insert(CloneProcId, CloneProcInfo, ProcTable1, ProcTable),
         pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-        map.det_update(PredTable0, PredId, PredInfo, PredTable),
+        map.det_update(PredId, PredInfo, PredTable0, PredTable),
         module_info_set_preds(PredTable, !ModuleInfo)
     ;
         true
@@ -479,14 +478,14 @@ figure_out_rec_call_numbers_in_case_list([Case|Cases], !N, !TailCallSites) :-
 :- pred deep_prof_transform_pred(module_info::in, pred_id::in,
     pred_table::in, pred_table::out) is det.
 
-deep_prof_transform_pred(ModuleInfo, PredId, PredMap0, PredMap) :-
-    map.lookup(PredMap0, PredId, PredInfo0),
+deep_prof_transform_pred(ModuleInfo, PredId, !PredMap) :-
+    map.lookup(!.PredMap, PredId, PredInfo0),
     ProcIds = pred_info_non_imported_procids(PredInfo0),
     pred_info_get_procedures(PredInfo0, ProcTable0),
     list.foldl(deep_prof_maybe_transform_proc(ModuleInfo, PredId),
         ProcIds, ProcTable0, ProcTable),
     pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-    map.det_update(PredMap0, PredId, PredInfo, PredMap).
+    map.det_update(PredId, PredInfo, !PredMap).
 
 :- pred deep_prof_maybe_transform_proc(module_info::in,
     pred_id::in, proc_id::in, proc_table::in, proc_table::out) is det.
@@ -510,7 +509,7 @@ deep_prof_maybe_transform_proc(ModuleInfo, PredId, ProcId, !ProcTable) :-
         ),
         deep_prof_transform_proc(ModuleInfo, proc(PredId, ProcId),
             ProcInfo0, ProcInfo),
-        svmap.det_update(ProcId, ProcInfo, !ProcTable)
+        map.det_update(ProcId, ProcInfo, !ProcTable)
     ).
 
 :- pred deep_prof_transform_proc(module_info::in, pred_proc_id::in,
@@ -1743,7 +1742,7 @@ generate_var(Name, Type, Var, !VarInfo) :-
 
 generate_var_2(Name, Type, Var, !VarSet, !VarTypes) :-
     svvarset.new_named_var(Name, Var, !VarSet),
-    svmap.det_insert(Var, Type, !VarTypes).
+    map.det_insert(Var, Type, !VarTypes).
 
 :- pred maybe_generate_activation_ptr(bool::in, prog_var::in, prog_var::in,
     maybe(prog_var)::out, hlds_deep_excp_vars::out,

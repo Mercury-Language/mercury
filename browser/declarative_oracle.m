@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -183,7 +183,6 @@
 :- import_module map.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -317,7 +316,7 @@ oracle_state_init(InStr, OutStr, Browser, HelpSystem, Oracle) :-
     oracle_kb_init(Old),
     user_state_init(InStr, OutStr, Browser, HelpSystem, User),
     % Trust the standard library by default.
-    bimap.set(bimap.init, trusted_standard_library, 0, Trusted),
+    bimap.set(trusted_standard_library, 0, bimap.init, Trusted),
     counter.init(1, Counter),
     Oracle = oracle(Current, Old, User, Trusted, Counter).
     
@@ -344,11 +343,11 @@ oracle_state_init(InStr, OutStr, Browser, HelpSystem, Oracle) :-
 add_trusted_module(ModuleName, !Oracle) :-
     counter.allocate(Id, !.Oracle ^ trusted_id_counter, Counter),
     (
-        bimap.insert(!.Oracle ^ trusted, trusted_module(ModuleName), Id,
-            Trusted)
+        bimap.insert(trusted_module(ModuleName), Id,
+            !.Oracle ^ trusted, Trusted)
     ->
-        !:Oracle = !.Oracle ^ trusted := Trusted,
-        !:Oracle = !.Oracle ^ trusted_id_counter := Counter
+        !Oracle ^ trusted := Trusted,
+        !Oracle ^ trusted_id_counter := Counter
     ;
         true
     ).
@@ -366,16 +365,16 @@ add_trusted_pred_or_func(ProcLayout, !Oracle) :-
     (
         (
             PredOrFunc = pf_predicate,
-            bimap.insert(!.Oracle ^ trusted,
-                trusted_predicate(ModuleName, Name, Arity), Id, Trusted)
+            bimap.insert(trusted_predicate(ModuleName, Name, Arity), Id, 
+                !.Oracle ^ trusted, Trusted)
         ;
             PredOrFunc = pf_function,
-            bimap.insert(!.Oracle ^ trusted,
-                trusted_function(ModuleName, Name, Arity), Id, Trusted)
+            bimap.insert(trusted_function(ModuleName, Name, Arity), Id,
+                !.Oracle ^ trusted, Trusted)
         )
     ->
-        !:Oracle = !.Oracle ^ trusted := Trusted,
-        !:Oracle = !.Oracle ^ trusted_id_counter := Counter
+        !Oracle ^ trusted := Trusted,
+        !Oracle ^ trusted_id_counter := Counter
     ;
         true
     ).
@@ -383,11 +382,11 @@ add_trusted_pred_or_func(ProcLayout, !Oracle) :-
 trust_standard_library(!Oracle) :-
     counter.allocate(Id, !.Oracle ^ trusted_id_counter, Counter),
     (
-        bimap.insert(!.Oracle ^ trusted, trusted_standard_library, Id,
-            Trusted)
+        bimap.insert(trusted_standard_library, Id,
+            !.Oracle ^ trusted, Trusted)
     ->
-        !:Oracle = !.Oracle ^ trusted_id_counter := Counter,
-        !:Oracle = !.Oracle ^ trusted := Trusted
+        !Oracle ^ trusted_id_counter := Counter,
+        !Oracle ^ trusted := Trusted
     ;
         true
     ).
@@ -626,7 +625,7 @@ assert_oracle_kb(wrong_answer(_, _, Atom), truth_value(_, Truth), !KB) :-
 
 assert_oracle_kb(missing_answer(_, Call, _), truth_value(_, Truth), !KB) :-
     get_kb_complete_map(!.KB, Map0),
-    map.set(Map0, Call, Truth, Map),
+    map.set(Call, Truth, Map0, Map),
     set_kb_complete_map(Map, !KB).
 
 assert_oracle_kb(unexpected_exception(_, Call, Exception),
@@ -653,7 +652,7 @@ assert_oracle_kb(unexpected_exception(_, Call, Exception),
         insert(KnownExceptions0 ^ inadmissible, Exception, Inadmissible),
         KnownExceptions = KnownExceptions0 ^ inadmissible := Inadmissible
     ),
-    map.set(Map0, Call, KnownExceptions, Map),
+    map.set(Call, KnownExceptions, Map0, Map),
     set_kb_exceptions_map(Map, !KB).
 
 :- pred retract_oracle_kb(decl_question(T)::in, oracle_kb::in, oracle_kb::out)
@@ -668,8 +667,8 @@ retract_oracle_kb(wrong_answer(_, _, Atom), !KB) :-
 
 retract_oracle_kb(missing_answer(_, InitAtom, _), !KB) :-
     CompleteMap0 = !.KB ^ kb_complete_map,
-    map.delete(CompleteMap0, InitAtom, CompleteMap),
-    !:KB = !.KB ^ kb_complete_map := CompleteMap.
+    map.delete(InitAtom, CompleteMap0, CompleteMap),
+    !KB ^ kb_complete_map := CompleteMap.
 
 retract_oracle_kb(unexpected_exception(_, InitAtom, Exception), !KB) :-
     ExceptionsMap0 = !.KB ^ kb_exceptions_map,
@@ -681,11 +680,11 @@ retract_oracle_kb(unexpected_exception(_, InitAtom, Exception), !KB) :-
         set.delete(Impossible0, Exception, Impossible),
         set.delete(Inadmissible0, Exception, Inadmissible),
         KnownExceptions = known_excp(Possible, Impossible, Inadmissible),
-        map.set(ExceptionsMap0, InitAtom, KnownExceptions, ExceptionsMap)
+        map.set(InitAtom, KnownExceptions, ExceptionsMap0, ExceptionsMap)
     ;
         ExceptionsMap = ExceptionsMap0
     ),
-    !:KB = !.KB ^ kb_exceptions_map := ExceptionsMap.
+    !KB ^ kb_exceptions_map := ExceptionsMap.
 
 :- pred add_atom_to_ground_map(decl_truth::in, final_decl_atom::in, 
     proc_layout::in,
@@ -693,7 +692,7 @@ retract_oracle_kb(unexpected_exception(_, InitAtom, Exception), !KB) :-
     map(final_decl_atom, decl_truth)::out) is det.
 
 add_atom_to_ground_map(Truth, FinalAtom, ProcLayout, !Map) :-
-    svmap.set(final_decl_atom(
+    map.set(final_decl_atom(
         atom(ProcLayout, FinalAtom ^ final_atom ^ atom_args),
         FinalAtom ^ final_io_actions), Truth, !Map).
 
@@ -702,7 +701,7 @@ add_atom_to_ground_map(Truth, FinalAtom, ProcLayout, !Map) :-
     map(final_decl_atom, decl_truth)::out) is det.
 
 remove_atom_from_ground_map(FinalAtom, ProcLayout, !Map) :-
-    svmap.delete(final_decl_atom(
+    map.delete(final_decl_atom(
         atom(ProcLayout, FinalAtom ^ final_atom ^ atom_args),
         FinalAtom ^ final_io_actions), !Map).
 

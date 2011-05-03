@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2000, 2003-2009 The University of Melbourne.
+% Copyright (C) 1993-2000, 2003-2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -466,7 +466,6 @@
 :- import_module int.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -824,7 +823,7 @@ unify_term(variable(X, _), VarY @ variable(Y, _), !Bindings) :-
                 true
             ;
                 \+ occurs(SubstBindingOfX, Y, !.Bindings),
-                map.set(!.Bindings, Y, SubstBindingOfX, !:Bindings)
+                map.set(Y, SubstBindingOfX, !Bindings)
             )
         )
     ;
@@ -835,7 +834,7 @@ unify_term(variable(X, _), VarY @ variable(Y, _), !Bindings) :-
                 true
             ;
                 \+ occurs(SubstBindingOfY, X, !.Bindings),
-                map.set(!.Bindings, X, SubstBindingOfY, !:Bindings)
+                map.set(X, SubstBindingOfY, !Bindings)
             )
         ;
             % both X and Y are unbound variables -
@@ -843,7 +842,7 @@ unify_term(variable(X, _), VarY @ variable(Y, _), !Bindings) :-
             ( X = Y ->
                 true
             ;
-                map.set(!.Bindings, X, VarY, !:Bindings)
+                map.set(X, VarY, !Bindings)
             )
         )
     ).
@@ -853,7 +852,7 @@ unify_term(term.variable(X, _), term.functor(F, As, C), !Bindings) :-
         unify_term(BindingOfX, functor(F, As, C), !Bindings)
     ;
         \+ occurs_list(As, X, !.Bindings),
-        map.set(!.Bindings, X, functor(F, As, C), !:Bindings)
+        map.set(X, functor(F, As, C), !Bindings)
     ).
 
 unify_term(functor(F, As, C), variable(X, _), !Bindings) :-
@@ -861,7 +860,7 @@ unify_term(functor(F, As, C), variable(X, _), !Bindings) :-
         unify_term(functor(F, As, C), BindingOfX, !Bindings)
     ;
         \+ occurs_list(As, X, !.Bindings),
-        map.set(!.Bindings, X, functor(F, As, C), !:Bindings)
+        map.set(X, functor(F, As, C), !Bindings)
     ).
 
 unify_term(functor(F, AsX, _), functor(F, AsY, _), !Bindings) :-
@@ -890,7 +889,7 @@ unify_term_dont_bind(variable(X, _), VarY @ variable(Y, _),
                 true
             ;
                 \+ occurs(SubstBindingOfX, Y, !.Bindings),
-                svmap.det_insert(Y, SubstBindingOfX, !Bindings)
+                map.det_insert(Y, SubstBindingOfX, !Bindings)
             )
         )
     ;
@@ -901,14 +900,14 @@ unify_term_dont_bind(variable(X, _), VarY @ variable(Y, _),
                 true
             ;
                 \+ occurs(SubstBindingOfY, X, !.Bindings),
-                svmap.det_insert(X, SubstBindingOfY, !Bindings)
+                map.det_insert(X, SubstBindingOfY, !Bindings)
             )
         ;
             % Both X and Y are unbound variables - bind one to the other.
             ( X = Y ->
                 true
             ;
-                svmap.det_insert(X, VarY, !Bindings)
+                map.det_insert(X, VarY, !Bindings)
             )
         )
     ).
@@ -920,7 +919,7 @@ unify_term_dont_bind(variable(X, _), functor(F, As, C), BoundVars, !Bindings) :-
     ;
         \+ occurs_list(As, X, !.Bindings),
         \+ list.member(X, BoundVars),
-        svmap.det_insert(X, functor(F, As, C), !Bindings)
+        map.det_insert(X, functor(F, As, C), !Bindings)
     ).
 
 unify_term_dont_bind(functor(F, As, C), variable(X, _), BoundVars, !Bindings) :-
@@ -930,7 +929,7 @@ unify_term_dont_bind(functor(F, As, C), variable(X, _), BoundVars, !Bindings) :-
     ;
         \+ occurs_list(As, X, !.Bindings),
         \+ list.member(X, BoundVars),
-        svmap.det_insert(X, functor(F, As, C), !Bindings)
+        map.det_insert(X, functor(F, As, C), !Bindings)
     ).
 
 unify_term_dont_bind(functor(FX, AsX, _CX), functor(FY, AsY, _CY), BoundVars,
@@ -963,7 +962,7 @@ unify_term_bound_var(Var, BoundVar, BoundVars, !Bindings) :-
             true
         ;
             \+ list.member(Var, BoundVars),
-            svmap.det_insert(Var, variable(BoundVar, context_init), !Bindings)
+            map.det_insert(Var, variable(BoundVar, context_init), !Bindings)
         )
     ).
 
@@ -1031,7 +1030,7 @@ substitute_corresponding_list(Ss, Rs, TermList0, TermList) :-
 
 substitute_corresponding_2([], [], !Subst).
 substitute_corresponding_2([S | Ss], [R | Rs], !Subst) :-
-    map.set(!.Subst, S, R, !:Subst),
+    map.set(S, R, !Subst),
     substitute_corresponding_2(Ss, Rs, !Subst).
 
 %-----------------------------------------------------------------------------%

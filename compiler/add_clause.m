@@ -267,7 +267,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
                 ;
                     ProcIds = [_ | _]
                 ),
-                map.det_update(Preds0, PredId, !.PredInfo, Preds),
+                map.det_update(PredId, !.PredInfo, Preds0, Preds),
                 predicate_table_set_preds(Preds, !PredicateTable),
                 module_info_set_predicate_table(!.PredicateTable, !ModuleInfo),
                 ( Status = status_opt_imported ->

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000, 2005-2006 The University of Melbourne.
+% Copyright (C) 2000, 2005-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1692,7 +1692,7 @@ elementdecl -->
     { init(EmptyAttrs) },
     { Element = element(Name, EmptyAttrs, Content) },
     get(gElements, elements(Elements0)),
-    { set(Elements0, Name, Element, Elements) },
+    { map.set(Name, Element, Elements0, Elements) },
     set(gElements, elements(Elements)),
     return
     ))))))).
@@ -1927,18 +1927,18 @@ attlistDecl -->
     (
     	{ foldl((pred(Att::in, Atts1::in, Atts2::out) is semidet :-
     	    Att = attribute(AttName, _, _),
-	    insert(Atts1, AttName, Att, Atts2)
+	    map.insert(AttName, Att, Atts1, Atts2)
         ), AttsList, Atts0, Atts) }
     ->
 	get(gElements, elements(Elements0)),
 	( { search(Elements0, Name, Element0) } ->
 	    { Attrs = merge(Element0^eAttrs, Atts) },
 	    { Element = Element0^eAttrs := Attrs },
-	    { set(Elements0, Name, Element, Elements) },
+	    { map.set(Name, Element, Elements0, Elements) },
 	    set(gElements, elements(Elements))
 	;
 	    get(gAttributes, attributes(Attributes0)),
-	    { set(Attributes0, Name, Atts, Attributes) },
+	    { map.set(Name, Atts, Attributes0, Attributes) },
 	    set(gAttributes, attributes(Attributes))
 	),
 	return
@@ -2581,7 +2581,7 @@ geDecl -->
 	warn(Msg),
 	{ Entities = Entities0 }
     ;
-        { set(Entities0, Name, Value, Entities) }
+        { map.set(Name, Value, Entities0, Entities) }
     ),
     set(gEntities, entities(Entities)),
     return
@@ -2609,7 +2609,7 @@ peDecl -->
 	warn(Msg),
 	{ PEntities = PEntities0 }
     ;
-        { set(PEntities0, Name, Value, PEntities) }
+        { map.set(Name, Value, PEntities0, PEntities) }
     ),
     set(gPEntities, pentities(PEntities)),
     return

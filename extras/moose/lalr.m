@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003, 2006 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003, 2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
@@ -133,12 +133,12 @@ reaches(C, A, !Change, !Reaching) :-
 		;
 			!:Change = yes,
 			As = As0 `set.union` set.make_singleton_set(A), 
-			map.set(!.Reaching, C, As, !:Reaching)
+			map.set(C, As, !Reaching)
 		)
 	;
 		!:Change = yes,
 		As = set.make_singleton_set(A),
-		map.set(!.Reaching, C, As, !:Reaching)
+		map.set(C, As, !Reaching)
 	).
 
 %------------------------------------------------------------------------------%
@@ -223,8 +223,8 @@ addgoto(I, X, NewItem, !Gotos, !New) :-
 		GotoIX1 = set.init
 	),
 	GotoIX = GotoIX1 `set.union` set.make_singleton_set(NewItem),
-	set(IGotos1, X, GotoIX, IGotos),
-	set(!.Gotos, I, IGotos, !:Gotos),
+	map.set(X, GotoIX, IGotos1, IGotos),
+	map.set(I, IGotos, !Gotos),
 	( GotoIX \= GotoIX1 ->
 		!:New = !.New `set.union` set.make_singleton_set(I - X)
 	;
@@ -469,9 +469,9 @@ add_propagated(I, B, Ia, A, L - P0, L - P) :-
 		set.init(As1)
 	),
 	set.insert(As1, A, As),
-	map.set(Y1, Ia, As, Y),
-	map.set(X1, B, Y, X),
-	map.set(P0, I, X, P).
+	map.set(Ia, As, Y1, Y),
+	map.set(B, Y, X1, X),
+	map.set(I, X, P0, P).
 
 :- pred add_spontaneous(items, item, terminal, previews, previews).
 :- mode add_spontaneous(in, in, in, in, out) is det.
@@ -488,8 +488,8 @@ add_spontaneous(I, B, Alpha, L0 - P, L - P) :-
 		set.init(As1)
 	),
 	set.insert(As1, Alpha, As),
-	map.set(X1, B, As, X),
-	map.set(L0, I, X, L).
+	map.set(B, As, X1, X),
+	map.set(I, X, L0, L).
 
 :- pred propagate(set(items), propaheads, lookaheads, lookaheads).
 :- mode propagate(in, in, in, out) is det.
@@ -562,8 +562,8 @@ propagate3([Item | Items], I, Ts0, !Change, !Lookaheads) :-
 	NewTs = Ts0 `set.difference` Ts2,
 	( not set.empty(NewTs) ->
 		Ts = Ts2 `set.union` NewTs,
-		map.set(X1, Item, Ts, X),
-		map.set(!.Lookaheads, I, X, !:Lookaheads),
+		map.set(Item, Ts, X1, X),
+		map.set(I, X, !Lookaheads),
 		!:Change = yes
 	;
 		true

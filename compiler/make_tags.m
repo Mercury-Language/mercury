@@ -93,7 +93,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module require.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -141,7 +140,7 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
                 MaybeSingleArgName)
         ->
             SingleConsId = cons(SingleFunctorName, 1, TypeCtor),
-            svmap.det_insert(SingleConsId, no_tag, !CtorTags),
+            map.det_insert(SingleConsId, no_tag, !CtorTags),
             % XXX What if SingleArgType uses reserved addresses?
             ReservedAddr = does_not_use_reserved_address,
             DuTypeKind = du_type_kind_notag(SingleFunctorName, SingleArgType,
@@ -206,7 +205,7 @@ assign_enum_constants(TypeCtor, [Ctor | Ctors], Val, !CtorTags) :-
     % We call set instead of det_insert because we don't want types
     % that erroneously contain more than one copy of a cons_id to crash
     % the compiler.
-    svmap.set(ConsId, Tag, !CtorTags),
+    map.set(ConsId, Tag, !CtorTags),
     assign_enum_constants(TypeCtor, Ctors, Val + 1, !CtorTags).
 
     % Assign the representations null_pointer, small_pointer(1),
@@ -234,7 +233,7 @@ assign_reserved_numeric_addresses(TypeCtor, [Ctor | Ctors], LeftOverConstants,
         % We call set instead of det_insert because we don't want types
         % that erroneously contain more than one copy of a cons_id to crash
         % the compiler.
-        svmap.set(ConsId, Tag, !CtorTags),
+        map.set(ConsId, Tag, !CtorTags),
         !:ReservedAddr = uses_reserved_address,
         assign_reserved_numeric_addresses(TypeCtor, Ctors, LeftOverConstants,
             !CtorTags, Address + 1, NumReservedAddresses, !ReservedAddr)
@@ -261,7 +260,7 @@ assign_reserved_symbolic_addresses(TypeCtor, [Ctor | Ctors], LeftOverConstants,
         % We call set instead of det_insert because we don't want types
         % that erroneously contain more than one copy of a cons_id to crash
         % the compiler.
-        svmap.set(ConsId, Tag, !CtorTags),
+        map.set(ConsId, Tag, !CtorTags),
         !:ReservedAddr = uses_reserved_address,
         assign_reserved_symbolic_addresses(TypeCtor, Ctors, LeftOverConstants,
             !CtorTags, Num + 1, Max, !ReservedAddr)
@@ -309,7 +308,7 @@ assign_unshared_tags(TypeCtor, [Ctor | Ctors], Val, MaxTag, ReservedAddresses,
         % We call set instead of det_insert because we don't want types
         % that erroneously contain more than one copy of a cons_id to crash
         % the compiler.
-        svmap.set(ConsId, Tag, !CtorTags)
+        map.set(ConsId, Tag, !CtorTags)
     ;
         % If we're about to run out of unshared tags, start assigning
         % shared remote tags instead.
@@ -324,7 +323,7 @@ assign_unshared_tags(TypeCtor, [Ctor | Ctors], Val, MaxTag, ReservedAddresses,
         % We call set instead of det_insert because we don't want types
         % that erroneously contain more than one copy of a cons_id to crash
         % the compiler.
-        svmap.set(ConsId, Tag, !CtorTags),
+        map.set(ConsId, Tag, !CtorTags),
         assign_unshared_tags(TypeCtor, Ctors, Val + 1, MaxTag,
             ReservedAddresses, !CtorTags)
     ).
@@ -343,7 +342,7 @@ assign_shared_remote_tags(TypeCtor, [Ctor | Ctors], PrimaryVal, SecondaryVal,
     % We call set instead of det_insert because we don't want types
     % that erroneously contain more than one copy of a cons_id to crash
     % the compiler.
-    svmap.set(ConsId, Tag, !CtorTags),
+    map.set(ConsId, Tag, !CtorTags),
     SecondaryVal1 = SecondaryVal + 1,
     assign_shared_remote_tags(TypeCtor, Ctors, PrimaryVal, SecondaryVal1,
         ReservedAddresses, !CtorTags).
@@ -360,7 +359,7 @@ assign_shared_local_tags(TypeCtor, [Ctor | Ctors], PrimaryVal, SecondaryVal,
     % We call set instead of det_insert because we don't want types
     % that erroneously contain more than one copy of a cons_id to crash
     % the compiler.
-    svmap.set(ConsId, Tag, !CtorTags),
+    map.set(ConsId, Tag, !CtorTags),
     assign_shared_local_tags(TypeCtor, Ctors, PrimaryVal, SecondaryVal + 1,
         !CtorTags).
 

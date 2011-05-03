@@ -296,7 +296,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -510,7 +509,7 @@ svar_prepare_head_term(Term0, Term, !FinalMap, !State, !VarSet, !Specs) :-
                         !VarSet),
                     Term = variable(Var, context_init),
                     Status = status_known(Var),
-                    map.det_update(StatusMap0, StateVar, Status, StatusMap)
+                    map.det_update(StateVar, Status, StatusMap0, StatusMap)
                 ;
                     OldStatus = status_known(Var),
                     Term = variable(Var, context_init),
@@ -531,13 +530,13 @@ svar_prepare_head_term(Term0, Term, !FinalMap, !State, !VarSet, !Specs) :-
                         !VarSet),
                     Term = variable(Var, context_init),
                     Status = status_known(Var),
-                    map.det_update(StatusMap0, StateVar, Status, StatusMap)
+                    map.det_update(StateVar, Status, StatusMap0, StatusMap)
                 )
             ;
                 new_state_var_instance(StateVar, name_initial, Var, !VarSet),
                 Term = variable(Var, context_init),
                 Status = status_known(Var),
-                map.det_insert(StatusMap0, StateVar, Status, StatusMap)
+                map.det_insert(StateVar, Status, StatusMap0, StatusMap)
             ),
             !:State = svar_state(StatusMap)
         ;
@@ -576,14 +575,14 @@ svar_prepare_head_term(Term0, Term, !FinalMap, !State, !VarSet, !Specs) :-
                     StatusMap = StatusMap0
                 )
             ;
-                map.det_insert(StatusMap0, StateVar, Status, StatusMap)
+                map.det_insert(StateVar, Status, StatusMap0, StatusMap)
             ),
             !:State = svar_state(StatusMap),
             ( map.search(!.FinalMap, StateVar, _) ->
                 report_repeated_head_state_var(Context, !.VarSet, StateVar,
                     !Specs)
             ;
-                svmap.det_insert(StateVar, Var, !FinalMap)
+                map.det_insert(StateVar, Var, !FinalMap)
             )
         ;
             svar_prepare_head_terms(SubTerms0, SubTerms,
@@ -717,7 +716,7 @@ svar_finish_body(Context, FinalMap, Goals0, Goal,
             io.nl(!IO)
         ),
 
-        svmap.det_update(GoalId1, DelayedRenaming0 ++ FinalSVarSubn,
+        map.det_update(GoalId1, DelayedRenaming0 ++ FinalSVarSubn,
         DelayedRenamingMap1, DelayedRenamingMap),
         NextGoalId = NextGoalId1,
         Goal = Goal1
@@ -742,7 +741,7 @@ svar_finish_body(Context, FinalMap, Goals0, Goal,
                 io.nl(!IO)
             ),
 
-            svmap.det_insert(GoalId, FinalSVarSubn,
+            map.det_insert(GoalId, FinalSVarSubn,
                 DelayedRenamingMap1, DelayedRenamingMap),
             goal_info_set_goal_id(GoalId, GoalInfo1, GoalInfo),
             Goal = hlds_goal(GoalExpr1, GoalInfo)
@@ -847,9 +846,9 @@ prepare_svars_for_scope(Context, VarSet, [SVar | SVars],
         !StatusMap, !Specs) :-
     ( map.search(!.StatusMap, SVar, _OldStatus) ->
         report_state_var_shadow(Context, VarSet, SVar, !Specs),
-        svmap.det_update(SVar, status_unknown, !StatusMap)
+        map.det_update(SVar, status_unknown, !StatusMap)
     ;
-        svmap.det_insert(SVar, status_unknown, !StatusMap)
+        map.det_insert(SVar, status_unknown, !StatusMap)
     ),
     prepare_svars_for_scope(Context, VarSet, SVars, !StatusMap, !Specs).
 
@@ -889,10 +888,10 @@ finish_svars_for_scope([SVar | SVars], StatusMapBeforeOutside,
         % was shadowed by a state var in the scope. Now that we are leaving
         % the scope, restore access to the outside state var. Due to the
         % shadowing, its status couldn't have changed inside the scope.
-        svmap.det_update(SVar, BeforeOutsideStatus, !StatusMapAfterOutside)
+        map.det_update(SVar, BeforeOutsideStatus, !StatusMapAfterOutside)
     ;
         % The state var introduced in the scope wasn't visible before it.
-        svmap.det_remove(SVar, _, !StatusMapAfterOutside)
+        map.det_remove(SVar, _, !StatusMapAfterOutside)
     ),
     finish_svars_for_scope(SVars, StatusMapBeforeOutside,
         !StatusMapAfterOutside).
@@ -985,8 +984,8 @@ find_changes_in_arm_and_update_changed_status_map([Before | Befores],
         ( map.search(!.ChangedStatusMapAfter, SVar, _AlreadyUpdated) ->
             true
         ;
-            svmap.det_insert(SVar, StatusAfter, !ChangedStatusMapAfter),
-            svmap.det_update(SVar, StatusAfter, !StatusMapAfter)
+            map.det_insert(SVar, StatusAfter, !ChangedStatusMapAfter),
+            map.det_update(SVar, StatusAfter, !StatusMapAfter)
         )
     ),
     find_changes_in_arm_and_update_changed_status_map(Befores,
@@ -1013,7 +1012,7 @@ merge_changes_made_by_arms([ArmState | ArmStates],
     ArmId = goal_id(ArmIdNum),
     handle_arm_updated_state_vars(ChangedStatusListAfter, StatusMapBefore,
         StatusMapAfterArm, VarSet, UninitVarNames, CopyGoals, ArmRenames),
-    svmap.det_insert(ArmId, ArmRenames, !DelayedRenamings),
+    map.det_insert(ArmId, ArmRenames, !DelayedRenamings),
     Arm0 = hlds_goal(ArmExpr0, ArmInfo0),
     (
         CopyGoals = [],
@@ -1238,9 +1237,9 @@ svar_finish_if_then_else(LocKind, Context, QuantStateVars,
     ElseGoalId = goal_id(ElseGoalIdNum),
     goal_set_goal_id(ThenGoalId, ThenGoal1, ThenGoal),
     goal_set_goal_id(ElseGoalId, ElseGoal1, ElseGoal),
-    svmap.det_insert(ThenGoalId, ThenRenames,
+    map.det_insert(ThenGoalId, ThenRenames,
         DelayedRenamings0, DelayedRenamings1),
-    svmap.det_insert(ElseGoalId, ElseRenames,
+    map.det_insert(ElseGoalId, ElseRenames,
         DelayedRenamings1, DelayedRenamings),
     !:Store = svar_store(NextGoalId, DelayedRenamings, Warnings).
 
@@ -1297,7 +1296,7 @@ handle_state_vars_in_ite(LocKind, QuantStateVars, [SVar | SVars],
             !VarSet, !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
             !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits)
     ),
-    svmap.det_insert(SVar, StatusAfterITE, !StatusMapAfterITE),
+    map.det_insert(SVar, StatusAfterITE, !StatusMapAfterITE),
     handle_state_vars_in_ite(LocKind, QuantStateVars, SVars,
         StatusMapBefore, StatusMapAfterCond, StatusMapAfterThen,
         StatusMapAfterElse, !StatusMapAfterITE,
@@ -1571,7 +1570,7 @@ handle_state_var_in_ite(LocKind, SVar, StatusBefore,
 svar_start_outer_atomic_scope(Context, OuterStateVar, OuterDIVar, OuterUOVar,
         OuterScopeInfo, !State, !VarSet, !Specs) :-
     StatusMap0 = !.State ^ state_status_map,
-    ( map.remove(StatusMap0, OuterStateVar, BeforeStatus, StatusMap) ->
+    ( map.remove(OuterStateVar, BeforeStatus, StatusMap0, StatusMap) ->
         !State ^ state_status_map := StatusMap,
         (
             BeforeStatus = status_unknown,
@@ -1623,7 +1622,7 @@ svar_finish_outer_atomic_scope(OuterScopeInfo, !State) :-
         OuterScopeInfo = svar_outer_atomic_scope_info(OuterStateVar,
             _BeforeStatus, AfterStatus),
         StatusMap0 = !.State ^ state_status_map,
-        svmap.det_insert(OuterStateVar, AfterStatus, StatusMap0, StatusMap),
+        map.det_insert(OuterStateVar, AfterStatus, StatusMap0, StatusMap),
         !State ^ state_status_map := StatusMap
     ;
         OuterScopeInfo = no_svar_outer_atomic_scope_info
@@ -1643,7 +1642,7 @@ svar_start_inner_atomic_scope(_Context, InnerStateVar, InnerScopeInfo,
     StateBefore = !.State,
     new_state_var_instance(InnerStateVar, name_initial, InnerDIVar, !VarSet),
     StatusMap0 = !.State ^ state_status_map,
-    svmap.set(InnerStateVar, status_known(InnerDIVar), StatusMap0, StatusMap),
+    map.set(InnerStateVar, status_known(InnerDIVar), StatusMap0, StatusMap),
     !State ^ state_status_map := StatusMap,
     InnerScopeInfo = svar_inner_atomic_scope_info(InnerStateVar, InnerDIVar,
         StateBefore).
@@ -1698,7 +1697,7 @@ lookup_dot_state_var(Context, StateVar, Var, !VarSet, !State, !Specs) :-
                 !Specs),
             % We make StateVar known to avoid duplicate reports.
             new_state_var_instance(StateVar, name_middle, Var, !VarSet),
-            svmap.det_update(StateVar, status_known_updated(Var, Var),
+            map.det_update(StateVar, status_known_updated(Var, Var),
                 StatusMap0, StatusMap),
             !State ^ state_status_map := StatusMap
         ;
@@ -1707,7 +1706,7 @@ lookup_dot_state_var(Context, StateVar, Var, !VarSet, !State, !Specs) :-
                 !Specs),
             % We make StateVar known to avoid duplicate reports.
             new_state_var_instance(StateVar, name_middle, Var, !VarSet),
-            svmap.det_update(StateVar, status_known_updated(Var, NewVar),
+            map.det_update(StateVar, status_known_updated(Var, NewVar),
                 StatusMap0, StatusMap),
             !State ^ state_status_map := StatusMap
         ;
@@ -1728,13 +1727,13 @@ lookup_colon_state_var(Context, StateVar, Var, !VarSet, !State, !Specs) :-
         (
             Status = status_unknown,
             new_state_var_instance(StateVar, name_middle, Var, !VarSet),
-            svmap.det_update(StateVar, status_unknown_updated(Var),
+            map.det_update(StateVar, status_unknown_updated(Var),
                 StatusMap0, StatusMap),
             !State ^ state_status_map := StatusMap
         ;
             Status = status_known(OldVar),
             new_state_var_instance(StateVar, name_middle, Var, !VarSet),
-            svmap.det_update(StateVar, status_known_updated(OldVar, Var),
+            map.det_update(StateVar, status_known_updated(OldVar, Var),
                 StatusMap0, StatusMap),
             !State ^ state_status_map := StatusMap
         ;
@@ -1747,7 +1746,7 @@ lookup_colon_state_var(Context, StateVar, Var, !VarSet, !State, !Specs) :-
                 RO_Context, !.VarSet, StateVar, !Specs),
             % We remove the readonly notation to avoid duplicate reports.
             new_state_var_instance(StateVar, name_middle, Var, !VarSet),
-            svmap.det_update(StateVar, status_known_updated(OldVar, Var),
+            map.det_update(StateVar, status_known_updated(OldVar, Var),
                 StatusMap0, StatusMap),
             !State ^ state_status_map := StatusMap
         ;
@@ -1759,7 +1758,7 @@ lookup_colon_state_var(Context, StateVar, Var, !VarSet, !State, !Specs) :-
         report_non_visible_state_var(":", Context, !.VarSet, StateVar, !Specs),
         % We could make StateVar known to avoid duplicate reports.
         % new_state_var_instance(StateVar, name_initial, Var, !VarSet),
-        % svmap.det_insert(StateVar, status_known_updated(Var, Var),
+        % map.det_insert(StateVar, status_known_updated(Var, Var),
         %     StatusMap0, StatusMap),
         % !State ^ state_status_map := StatusMap
         Var = StateVar
@@ -1875,7 +1874,7 @@ add_conjunct_delayed_renames(DelayedRenamingToAdd, Goal0, Goal,
     ( map.search(!.DelayedRenamingMap, GoalId0, DelayedRenaming0) ->
         % The goal id must be valid.
         DelayedRenaming = DelayedRenamingToAdd ++ DelayedRenaming0,
-        svmap.det_update(GoalId0, DelayedRenaming, !DelayedRenamingMap),
+        map.det_update(GoalId0, DelayedRenaming, !DelayedRenamingMap),
         Goal = Goal0
     ;
         % The goal id must be invalid, since the only thing that attaches goal
@@ -1885,7 +1884,7 @@ add_conjunct_delayed_renames(DelayedRenamingToAdd, Goal0, Goal,
         counter.allocate(GoalIdNum, !NextGoalId),
         GoalId = goal_id(GoalIdNum),
         goal_info_set_goal_id(GoalId, GoalInfo0, GoalInfo),
-        svmap.det_insert(GoalId, DelayedRenamingToAdd, !DelayedRenamingMap),
+        map.det_insert(GoalId, DelayedRenamingToAdd, !DelayedRenamingMap),
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ).
 

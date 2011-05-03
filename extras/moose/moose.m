@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2004, 2006 The University of Melbourne.
+% Copyright (C) 1998-2004, 2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %
@@ -204,7 +204,7 @@ process_2(Options, Module, Parser, Decls0, Clauses0, XFormList, !IO) :-
         map.init(Xfns0),
         list.foldl((pred(XForm::in, Xf0::in, Xf::out) is det :-
             XForm = xform(XfNt, _),
-            map.det_insert(Xf0, XfNt, XForm, Xf)
+            map.det_insert(XfNt, XForm, Xf0, Xf)
         ), XFormList, Xfns0, XForms),
 
         construct_grammar(StartId, Clauses, XForms, Grammar),

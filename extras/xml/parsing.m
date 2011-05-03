@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000, 2005-2006 The University of Melbourne.
+% Copyright (C) 2000, 2005-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -644,7 +644,7 @@ get(Key, Val, PS, PS) :-
 	det_univ_to_type(Val0, Val).
 
 set(Key, Val, PS0, PS) :-
-	set(PS0^globals, univ(Key), univ(Val), Globals),
+	map.set(univ(Key), univ(Val), PS0^globals, Globals),
 	PS = PS0^globals := Globals.
 
 :- func u(T) = T.

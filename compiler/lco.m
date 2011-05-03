@@ -203,7 +203,6 @@
 :- import_module set.
 :- import_module string.
 :- import_module svbag.
-:- import_module svmap.
 :- import_module svvarset.
 :- import_module term.
 :- import_module varset.
@@ -322,9 +321,9 @@ lco_process_proc_update(PredProcId - NewProcInfo, !ModuleInfo) :-
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_procedures(PredInfo0, Procs0),
-    map.det_update(Procs0, ProcId, NewProcInfo, Procs),
+    map.det_update(ProcId, NewProcInfo, Procs0, Procs),
     pred_info_set_procedures(Procs, PredInfo0, PredInfo),
-    map.det_update(PredTable0, PredId, PredInfo, PredTable),
+    map.det_update(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
 :- pred lco_process_proc_variant(variant_map::in,
@@ -365,9 +364,9 @@ lco_process_proc_variant(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
 
         % We throw away any other procs in the variant predicate, because
         % we create a separate predicate for each variant.
-        map.det_insert(map.init, VariantProcId, VariantProcInfo, VariantProcs),
+        map.det_insert(VariantProcId, VariantProcInfo, map.init, VariantProcs),
         pred_info_set_procedures(VariantProcs, !VariantPredInfo),
-        svmap.det_update(VariantPredId, !.VariantPredInfo, !PredTable),
+        map.det_update(VariantPredId, !.VariantPredInfo, !PredTable),
         module_info_set_preds(!.PredTable, !ModuleInfo)
     ).
 
@@ -463,7 +462,7 @@ lco_proc(LowerSCCVariants, SCC, CurProc, !ModuleInfo, !CurSCCVariants,
                     proc_info_set_goal(Goal, !ProcInfo),
                     requantify_proc_general(ordinary_nonlocals_no_lambda,
                         !ProcInfo),
-                    svmap.det_insert(CurProc, !.ProcInfo, !CurSCCUpdates)
+                    map.det_insert(CurProc, !.ProcInfo, !CurSCCUpdates)
                 )
             ;
                 true
@@ -867,7 +866,7 @@ find_args_to_pass_by_addr(ConstInfo, UnifyInputVars,
     ;
         make_address_var(ConstInfo, CallArg, UpdatedCallArg, !Info),
         Mismatches = [ArgNum - CallArg | MismatchesTail],
-        svmap.det_insert(CallArg, UpdatedCallArg, !Subst)
+        map.det_insert(CallArg, UpdatedCallArg, !Subst)
     ).
 
 :- pred make_address_var(lco_const_info::in, prog_var::in, prog_var::out,
@@ -884,7 +883,7 @@ make_address_var(ConstInfo, Var, AddrVar, !Info) :-
         HighLevelData = no,
         map.lookup(VarTypes0, Var, FieldType),
         AddrVarType = make_ref_type(FieldType),
-        map.det_insert(VarTypes0, AddrVar, AddrVarType, VarTypes)
+        map.det_insert(AddrVar, AddrVarType, VarTypes0, VarTypes)
     ;
         HighLevelData = yes,
         % We set the type later when it is more convenient.
@@ -953,7 +952,7 @@ ensure_variant_exists(PredId, ProcId, AddrArgNums, VariantPredProcId,
             VariantSymName = qualified(ModuleName, VariantName)
         ),
         NewVariant = variant_id(AddrArgNums, VariantPredProcId, VariantName),
-        multi_map.set(CurSCCVariants0, PredProcId, NewVariant, CurSCCVariants),
+        multi_map.set(PredProcId, NewVariant, CurSCCVariants0, CurSCCVariants),
         !Info ^ lco_cur_scc_variants := CurSCCVariants
     ).
 
@@ -1099,10 +1098,10 @@ update_construct_args(Subst, HighLevelData, VarType, ConsId, ArgNum,
             BoundInst = bound_inst_with_free_arg(ConsId, ArgNum),
             FinalInst = bound(shared, [BoundInst]),
             % We didn't do this when we initially created the variable.
-            svmap.det_insert(AddrVar, VarType, !VarTypes)
+            map.det_insert(AddrVar, VarType, !VarTypes)
         ),
         instmap_delta_set_var(AddrVar, FinalInst, !InstMapDelta),
-        svmap.det_insert(OrigVar, field_id(VarType, ConsId, ArgNum),
+        map.det_insert(OrigVar, field_id(VarType, ConsId, ArgNum),
             !AddrFieldIds),
         AddrArgs = [ArgNum | AddrArgsTail]
     ;
@@ -1213,14 +1212,14 @@ make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
                 MaybeFieldId = no,
                 % For low-level data we replace the output argument with a
                 % store_at_ref_type(T) input argument.
-                svmap.det_insert(AddrVar, make_ref_type(OldType), !VarTypes),
+                map.det_insert(AddrVar, make_ref_type(OldType), !VarTypes),
                 Mode = in_mode
             ;
                 MaybeFieldId = yes(field_id(AddrVarType, ConsId, ArgNum)),
                 % For high-level data we replace the output argument with a
                 % partially instantiated structure. The structure has one
                 % argument left unfilled.
-                svmap.det_insert(AddrVar, AddrVarType, !VarTypes),
+                map.det_insert(AddrVar, AddrVarType, !VarTypes),
                 BoundInst = bound_inst_with_free_arg(ConsId, ArgNum),
                 InitialInst = bound(shared, [BoundInst]),
                 Mode = (InitialInst -> ground_inst)
@@ -1487,7 +1486,7 @@ grounding_to_variant_args(GroundingVarToAddr, OutArgNum, OutArgs, Subst,
             OutArgsTail, Subst0, VariantArgsTail),
         ( assoc_list.search(GroundingVarToAddr, OutArg, StoreTarget) ->
             StoreTarget = store_target(StoreArg, MaybeFieldId),
-            map.det_insert(Subst0, OutArg, StoreArg, Subst),
+            map.det_insert(OutArg, StoreArg, Subst0, Subst),
             VariantArg = variant_arg(OutArgNum, MaybeFieldId),
             VariantArgs = [VariantArg | VariantArgsTail]
         ;

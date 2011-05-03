@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2008, 2010 The University of Melbourne.
+% Copyright (C) 2001-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -564,9 +564,9 @@ add_constant_construction(ConstructVar, Construct0,
         VarTypes0 = !.Info ^ constr_vartypes,
         varset.new_var(VarSet0, NewVar, VarSet),
         map.lookup(VarTypes0, ConstructVar, VarType),
-        map.det_insert(VarTypes0, NewVar, VarType, VarTypes),
-        !:Info = !.Info ^ constr_varset := VarSet,
-        !:Info = !.Info ^ constr_vartypes := VarTypes,
+        map.det_insert(NewVar, VarType, VarTypes0, VarTypes),
+        !Info ^ constr_varset := VarSet,
+        !Info ^ constr_vartypes := VarTypes,
         map.from_assoc_list([ConstructVar - NewVar], Subn),
         rename_some_vars_in_goal(Subn, Construct0, Construct),
         Constructs = [Construct | Constructs0],

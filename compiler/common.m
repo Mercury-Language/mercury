@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2010 The University of Melbourne.
+% Copyright (C) 1995-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -112,7 +112,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module sveqvclass.
-:- import_module svmap.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -463,9 +462,9 @@ record_cell_in_maps(TypeCtor, ConsId, Struct, VarEqv, !Info) :-
             AllStructMap0, AllStructMap),
         do_record_cell_in_struct_map(TypeCtor, ConsId, Struct,
             SinceCallStructMap0, SinceCallStructMap),
-        !:CommonInfo = !.CommonInfo ^ var_eqv := VarEqv,
-        !:CommonInfo = !.CommonInfo ^ all_structs := AllStructMap,
-        !:CommonInfo = !.CommonInfo ^ since_call_structs := SinceCallStructMap,
+        !CommonInfo ^ var_eqv := VarEqv,
+        !CommonInfo ^ all_structs := AllStructMap,
+        !CommonInfo ^ since_call_structs := SinceCallStructMap,
         simplify_info_set_common_info(!.CommonInfo, !Info)
     ).
 
@@ -476,14 +475,14 @@ do_record_cell_in_struct_map(TypeCtor, ConsId, Struct, !StructMap) :-
     ( map.search(!.StructMap, TypeCtor, ConsIdMap0) ->
         ( map.search(ConsIdMap0, ConsId, Structs0) ->
             Structs = [Struct | Structs0],
-            map.det_update(ConsIdMap0, ConsId, Structs, ConsIdMap)
+            map.det_update(ConsId, Structs, ConsIdMap0, ConsIdMap)
         ;
-            map.det_insert(ConsIdMap0, ConsId, [Struct], ConsIdMap)
+            map.det_insert(ConsId, [Struct], ConsIdMap0, ConsIdMap)
         ),
-        svmap.det_update(TypeCtor, ConsIdMap, !StructMap)
+        map.det_update(TypeCtor, ConsIdMap, !StructMap)
     ;
-        map.det_insert(map.init, ConsId, [Struct], ConsIdMap),
-        svmap.det_insert(TypeCtor, ConsIdMap, !StructMap)
+        map.det_insert(ConsId, [Struct], map.init, ConsIdMap),
+        map.det_insert(TypeCtor, ConsIdMap, !StructMap)
     ).
 
 %---------------------------------------------------------------------------%
@@ -614,15 +613,15 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
         ;
             Context = goal_info_get_context(GoalInfo),
             ThisCall = call_args(Context, InputArgs, OutputArgs),
-            map.det_update(SeenCalls0, SeenCall, [ThisCall | SeenCallsList0],
-                SeenCalls),
+            map.det_update(SeenCall, [ThisCall | SeenCallsList0],
+                SeenCalls0, SeenCalls),
             CommonInfo = CommonInfo0 ^ seen_calls := SeenCalls,
             GoalExpr = GoalExpr0
         )
     ;
         Context = goal_info_get_context(GoalInfo),
         ThisCall = call_args(Context, InputArgs, OutputArgs),
-        map.det_insert(SeenCalls0, SeenCall, [ThisCall], SeenCalls),
+        map.det_insert(SeenCall, [ThisCall], SeenCalls0, SeenCalls),
         CommonInfo = CommonInfo0 ^ seen_calls := SeenCalls,
         GoalExpr = GoalExpr0
     ),

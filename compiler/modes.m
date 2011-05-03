@@ -169,7 +169,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -388,7 +387,7 @@ copy_pred_body(OldPredTable, PredId, PredTable0, PredTable) :-
         list.foldl(copy_proc_body(OldProcTable), OldProcIds,
             ProcTable0, ProcTable),
         pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-        map.set(PredTable0, PredId, PredInfo, PredTable)
+        map.set(PredId, PredInfo, PredTable0, PredTable)
     ).
 
     % copy_proc_body(OldProcTable, ProcId, !ProcTable):
@@ -403,7 +402,7 @@ copy_proc_body(OldProcTable, ProcId, !ProcTable) :-
     proc_info_get_goal(OldProcInfo, OldProcBody),
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
     proc_info_set_goal(OldProcBody, ProcInfo0, ProcInfo),
-    svmap.set(ProcId, ProcInfo, !ProcTable).
+    map.set(ProcId, ProcInfo, !ProcTable).
 
 :- func should_modecheck_pred(pred_info) = bool.
 
@@ -576,9 +575,9 @@ maybe_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         module_info_get_preds(!.ModuleInfo, Preds1),
         map.lookup(Preds1, PredId, PredInfo1),
         pred_info_get_procedures(PredInfo1, Procs1),
-        map.set(Procs1, ProcId, ProcInfo, Procs),
+        map.set(ProcId, ProcInfo, Procs1, Procs),
         pred_info_set_procedures(Procs, PredInfo1, PredInfo),
-        map.set(Preds1, PredId, PredInfo, Preds),
+        map.set(PredId, PredInfo, Preds1, Preds),
         module_info_set_preds(Preds, !ModuleInfo)
     ).
 
@@ -950,9 +949,9 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
 
     proc_info_set_can_process(yes, ProcInfo0, ProcInfo1),
 
-    svmap.det_update(ProcId, ProcInfo1, Procs0, Procs1),
+    map.det_update(ProcId, ProcInfo1, Procs0, Procs1),
     pred_info_set_procedures(Procs1, PredInfo0, PredInfo1),
-    svmap.det_update(PredId, PredInfo1, Preds0, Preds1),
+    map.det_update(PredId, PredInfo1, Preds0, Preds1),
     module_info_set_preds(Preds1, !ModuleInfo),
 
     % Modecheck the procedure.
@@ -977,9 +976,9 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
             SwitchDetectInfo = init_switch_detect_info(!.ModuleInfo),
             detect_switches_in_proc(SwitchDetectInfo, ProcInfo2, ProcInfo3),
 
-            svmap.det_update(ProcId, ProcInfo3, Procs2, Procs3),
+            map.det_update(ProcId, ProcInfo3, Procs2, Procs3),
             pred_info_set_procedures(Procs3, PredInfo2, PredInfo3),
-            svmap.det_update(PredId, PredInfo3, Preds2, Preds3),
+            map.det_update(PredId, PredInfo3, Preds2, Preds3),
             module_info_set_preds(Preds3, !ModuleInfo),
 
             detect_cse_in_proc(PredId, ProcId, !ModuleInfo),
@@ -1008,9 +1007,9 @@ save_proc_info(ProcId, PredId, ModuleInfo, !OldPredTable) :-
         _PredInfo, ProcInfo),
     map.lookup(!.OldPredTable, PredId, OldPredInfo0),
     pred_info_get_procedures(OldPredInfo0, OldProcTable0),
-    map.set(OldProcTable0, ProcId, ProcInfo, OldProcTable),
+    map.set(ProcId, ProcInfo, OldProcTable0, OldProcTable),
     pred_info_set_procedures(OldProcTable, OldPredInfo0, OldPredInfo),
-    map.det_update(!.OldPredTable, PredId, OldPredInfo, !:OldPredTable).
+    map.det_update(PredId, OldPredInfo, !OldPredTable).
 
 %-----------------------------------------------------------------------------%
 

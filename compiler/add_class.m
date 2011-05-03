@@ -177,7 +177,7 @@ module_add_class_defn(ItemTypeClassInfo, Status, !ModuleInfo, !Specs) :-
         Defn = hlds_class_defn(ImportStatus, Constraints, HLDSFunDeps,
             Ancestors, Vars, Kinds, ClassInterface, ClassMethods, VarSet,
             Context),
-        map.set(Classes0, ClassId, Defn, Classes),
+        map.set(ClassId, Defn, Classes0, Classes),
         module_info_set_class_table(Classes, !ModuleInfo),
 
         (
@@ -186,7 +186,7 @@ module_add_class_defn(ItemTypeClassInfo, Status, !ModuleInfo, !Specs) :-
                 % When we find the class declaration, make an
                 % entry for the instances.
             module_info_get_instance_table(!.ModuleInfo, Instances0),
-            map.det_insert(Instances0, ClassId, [], Instances),
+            map.det_insert(ClassId, [], Instances0, Instances),
             module_info_set_instance_table(Instances, !ModuleInfo)
         ;
             IsNewDefn = no
@@ -468,8 +468,8 @@ module_add_instance_defn(InstanceModuleName, Constraints, ClassName,
         check_instance_compatibility(NewInstanceDefn, InstanceDefns,
             ClassId, !Specs),
 
-        map.det_update(Instances0, ClassId,
-            [NewInstanceDefn | InstanceDefns], Instances),
+        map.det_update(ClassId, [NewInstanceDefn | InstanceDefns],
+            Instances0, Instances),
         module_info_set_instance_table(Instances, !ModuleInfo)
     ;
         undefined_type_class_error(ClassName, ClassArity, Context,

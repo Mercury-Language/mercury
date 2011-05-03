@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006, 2009-2010 The University of Melbourne.
+% Copyright (C) 2005-2006, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -124,7 +124,6 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -137,7 +136,7 @@ apply_variable_renaming_to_tvar_kind_map(Renaming, KindMap0, KindMap) :-
 
 apply_variable_renaming_to_tvar_kind_map_2(Renaming, TVar0, Kind, !KindMap) :-
     apply_variable_renaming_to_tvar(Renaming, TVar0, TVar),
-    svmap.det_insert(TVar, Kind, !KindMap).
+    map.det_insert(TVar, Kind, !KindMap).
 
 %-----------------------------------------------------------------------------%
 

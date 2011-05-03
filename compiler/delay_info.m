@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998, 2003-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1994-1998, 2003-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -97,7 +97,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module stack.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -308,7 +307,7 @@ delay_info_delay_goal(Error, Goal, DelayInfo0, DelayInfo) :-
 
     % Store the goal in the delayed goal stack
     stack.pop_det(DelayedGoalStack0, DelayedGoals0, DelayedGoalStack1),
-    svmap.set(SeqNum, delayed_goal(Vars, Error, Goal),
+    map.set(SeqNum, delayed_goal(Vars, Error, Goal),
         DelayedGoals0, DelayedGoals),
     stack.push(DelayedGoalStack1, DelayedGoals, DelayedGoalStack),
 
@@ -339,8 +338,8 @@ add_waiting_vars([Var | Vars], Goal, AllVars, !WaitingGoalsTable) :-
     ;
         map.init(WaitingGoals1)
     ),
-    map.set(WaitingGoals1, Goal, AllVars, WaitingGoals),
-    svmap.set(Var, WaitingGoals, !WaitingGoalsTable),
+    map.set(Goal, AllVars, WaitingGoals1, WaitingGoals),
+    map.set(Var, WaitingGoals, !WaitingGoalsTable),
     add_waiting_vars(Vars, Goal, AllVars, !WaitingGoalsTable).
 
 %-----------------------------------------------------------------------------%
@@ -405,7 +404,7 @@ add_pending_goals([delay_goal_num(Depth, SeqNum) | Rest], WaitingVarsTable,
     ;
         PendingSeqNums = [SeqNum]
     ),
-    svmap.set(Depth, PendingSeqNums, !PendingGoals),
+    map.set(Depth, PendingSeqNums, !PendingGoals),
 
     % Do the same for the rest of the pending goals.
     add_pending_goals(Rest, WaitingVarsTable, !PendingGoals, !WaitingGoals).
@@ -420,11 +419,11 @@ add_pending_goals([delay_goal_num(Depth, SeqNum) | Rest], WaitingVarsTable,
 delete_waiting_vars([], _, !WaitingGoalTables).
 delete_waiting_vars([Var | Vars], GoalNum, !WaitingGoalsTable) :-
     map.lookup(!.WaitingGoalsTable, Var, WaitingGoals0),
-    map.delete(WaitingGoals0, GoalNum, WaitingGoals),
+    map.delete(GoalNum, WaitingGoals0, WaitingGoals),
     ( map.is_empty(WaitingGoals) ->
-        svmap.delete(Var, !WaitingGoalsTable)
+        map.delete(Var, !WaitingGoalsTable)
     ;
-        svmap.set(Var, WaitingGoals, !WaitingGoalsTable)
+        map.set(Var, WaitingGoals, !WaitingGoalsTable)
     ),
     delete_waiting_vars(Vars, GoalNum, !WaitingGoalsTable).
 
@@ -469,12 +468,12 @@ delay_info_wakeup_goal(Goal, !DelayInfo) :-
     % If so, remove it from the pending goals table, remove it from the
     % delayed goals stack, and return it.
     PendingGoals0 = [SeqNum | PendingGoals],
-    map.set(PendingGoalsTable0, CurrentDepth, PendingGoals,
-        PendingGoalsTable),
+    map.set(CurrentDepth, PendingGoals,
+        PendingGoalsTable0, PendingGoalsTable),
     stack.pop_det(DelayedGoalStack0, DelayedGoals0, DelayedGoalStack1),
     map.lookup(DelayedGoals0, SeqNum, DelayedGoal),
     DelayedGoal = delayed_goal(_Vars, _ErrorReason, Goal),
-    map.delete(DelayedGoals0, SeqNum, DelayedGoals),
+    map.delete(SeqNum, DelayedGoals0, DelayedGoals),
     stack.push(DelayedGoalStack1, DelayedGoals, DelayedGoalStack),
     !:DelayInfo = delay_info(CurrentDepth, DelayedGoalStack, WaitingGoals,
         PendingGoalsTable, NextSeqNums),

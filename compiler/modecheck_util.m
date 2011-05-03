@@ -799,7 +799,7 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
         % Introduce a new variable.
         mode_info_get_varset(!.ModeInfo, VarSet0),
         varset.new_var(VarSet0, Var, VarSet),
-        map.set(VarTypes0, Var, VarType, VarTypes),
+        map.set(Var, VarType, VarTypes0, VarTypes),
         mode_info_set_varset(VarSet, !ModeInfo),
         mode_info_set_var_types(VarTypes, !ModeInfo),
 

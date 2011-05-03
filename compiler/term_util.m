@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2007, 2010 The University of Melbourne.
+% Copyright (C) 1997-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -308,9 +308,9 @@ set_pred_proc_ids_arg_size_info([PPId | PPIds], ArgSize, !ModuleInfo) :-
 
     proc_info_set_maybe_arg_size_info(yes(ArgSize), ProcInfo0, ProcInfo),
 
-    map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+    map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
     pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-    map.det_update(PredTable0, PredId, PredInfo, PredTable),
+    map.det_update(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo),
     set_pred_proc_ids_arg_size_info(PPIds, ArgSize, !ModuleInfo).
 
@@ -325,9 +325,9 @@ set_pred_proc_ids_termination_info([PPId | PPIds], Termination, !ModuleInfo) :-
     proc_info_set_maybe_termination_info(yes(Termination),
         ProcInfo0, ProcInfo),
 
-    map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+    map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
     pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-    map.det_update(PredTable0, PredId, PredInfo, PredTable),
+    map.det_update(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo),
     set_pred_proc_ids_termination_info(PPIds, Termination, !ModuleInfo).
 

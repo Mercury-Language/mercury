@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999, 2006 The University of Melbourne.
+% Copyright (C) 1995-1999, 2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -106,7 +106,7 @@ initSubst = S-0 :- map__init(S).
 
 initPtypes = PM :- map__init(PM).
 
-add_sexpr_type(R, SL, P0, P) :- map__det_insert(P0, R, SL, P).
+add_sexpr_type(R, SL, P0, P) :- map__det_insert(R, SL, P0, P).
 
 % *** Make this semidet, and handle failure case in zclp.m ***
 find_sexpr_type(R, SL, P) :-
@@ -177,11 +177,11 @@ listToGenTypes(List, GenTypes) :-
 :- pred listToGenTypes(ref::in, list(expr)::in, list(triple)::in,
 		gentypes::in, gentypes::out) is det.
 listToGenTypes(Ref, ExprList, [], M0, M) :-
-	map__det_insert(M0, Ref, ExprList, M).
+	map__det_insert(Ref, ExprList, M0, M).
 listToGenTypes(Ref, ExprList, [triple(Ref1, _, Expr)|List], M0, M) :-
 	( Ref = Ref1 ->
 		listToGenTypes(Ref, [Expr|ExprList], List, M0, M)
-	;	map__det_insert(M0, Ref, ExprList, M1),
+	;	map__det_insert(Ref, ExprList, M0, M1),
 		listToGenTypes(Ref1, [Expr], List, M1, M)
 	).
 
@@ -244,7 +244,7 @@ subst_lookup(S-_, V, VI) :-
 subst_lookup(V, VI, S, S) :- subst_lookup(S, V, VI).
 
 subst_insert(V, VI, S0-G, S-G) :-
-	( map__insert(S0, V, VI, S1) ->
+	( map__insert(V, VI, S0, S1) ->
 		S = S1
 	;	V = ztvar(Ref, Int),
 		string__format("subst_insert/4: var %i:%i already in subst",
@@ -253,7 +253,7 @@ subst_insert(V, VI, S0-G, S-G) :-
 	).
 
 subst_update(V, VI, S0-G, S-G) :-
-	( map__update(S0, V, VI, S1) ->
+	( map__update(V, VI, S0, S1) ->
 		S = S1
 	;	V = ztvar(Ref, Int),
 		string__format("subst_update/4: var %i:%i not found",

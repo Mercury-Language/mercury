@@ -120,7 +120,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 
 %----------------------------------------------------------------------------%
 
@@ -190,7 +189,7 @@ build_dynamic_call_site_cost_and_callee_map(Deep, CSSPtr - Slot,
     lookup_call_site_statics(Deep ^ call_site_statics, CSSPtr, CSS),
     call_site_kind_to_higher_order(CSS ^ css_kind, HigherOrder),
     RevGoalPath = CSS ^ css_goal_path,
-    svmap.det_insert(RevGoalPath, CostAndCallees, !CallSitesMap).
+    map.det_insert(RevGoalPath, CostAndCallees, !CallSitesMap).
 
 :- pred call_site_dynamic_get_callee_and_costs(deep::in,
     call_site_dynamic_ptr::in, callee::out, own_prof_info::out,
@@ -251,7 +250,7 @@ build_static_call_site_cost_and_callee_map(Deep, CSSPtr, !CallSitesMap) :-
     ),
     CostAndCallees = cost_and_callees(CostCsq, Exits, Callees, HigherOrder),
     RevGoalPath = CSS ^ css_goal_path,
-    svmap.det_insert(RevGoalPath, CostAndCallees, !CallSitesMap).
+    map.det_insert(RevGoalPath, CostAndCallees, !CallSitesMap).
 
 %----------------------------------------------------------------------------%
 
@@ -363,7 +362,7 @@ build_recursive_call_site_counts_map(Deep, CliquePtr, CSSPtr - CSDSlot,
         Recursive = yes,
         deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
         RevGoalPath = CSS ^ css_goal_path,
-        svmap.det_insert(RevGoalPath, Count, !Map)
+        map.det_insert(RevGoalPath, Count, !Map)
     ;
         Recursive = no
     ).

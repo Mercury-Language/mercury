@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 2004-2006 The University of Melbourne.
+% Copyright (C) 1995-1997, 2004-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -268,9 +268,9 @@ get_prof_node(Pred, AddrMap, ProfNodeMap, ProfNode) :-
     map.lookup(AddrMap, Pred, Key),
     map.lookup(ProfNodeMap, Key, ProfNode).
 
-update_prof_node(Pred, ProfNode, AddrMap, ProfNodeMap0, ProfNodeMap) :-
+update_prof_node(Pred, ProfNode, AddrMap, !ProfNodeMap) :-
     map.lookup(AddrMap, Pred, Key),
-    map.det_update(ProfNodeMap0, Key, ProfNode, ProfNodeMap).
+    map.det_update(Key, ProfNode, !ProfNodeMap).
 
 %-----------------------------------------------------------------------------%
 

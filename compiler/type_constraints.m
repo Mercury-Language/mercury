@@ -62,8 +62,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svbimap.
-:- import_module svmap.
 :- import_module svset.
 :- import_module svvarset.
 :- import_module term.
@@ -233,8 +231,8 @@ typecheck_constraints(!HLDS, Specs) :-
     error_specs::in, error_specs::out) is det.
 
 typecheck_one_predicate_if_needed(PredId, !Environment, !HLDS, !Specs) :-
-    predicate_table_get_preds(!.Environment ^ pred_env, Preds),
-    map.lookup(Preds, PredId, PredInfo),
+    predicate_table_get_preds(!.Environment ^ pred_env, Preds0),
+    map.lookup(Preds0, PredId, PredInfo),
     (
         % Compiler-generated predicates are created already type-correct,
         % so there's no need to typecheck them. The same is true for builtins.
@@ -255,9 +253,9 @@ typecheck_one_predicate_if_needed(PredId, !Environment, !HLDS, !Specs) :-
         (
             IsEmpty = yes,
             pred_info_mark_as_external(PredInfo, PredInfo1),
-            map.det_update(Preds, PredId, PredInfo1, Preds1),
+            map.det_update(PredId, PredInfo1, Preds0, Preds),
             PredEnv0 = !.Environment ^ pred_env,
-            predicate_table_set_preds(Preds1, PredEnv0, PredEnv),
+            predicate_table_set_preds(Preds, PredEnv0, PredEnv),
             module_info_set_predicate_table(PredEnv, !HLDS),
             !Environment ^ pred_env := PredEnv
         ;
@@ -346,7 +344,7 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
         clauses_info_set_vartypes(!.Vartypes, !ClausesInfo),
         pred_info_set_clauses_info(!.ClausesInfo, !PredInfo),
         pred_info_set_typevarset(!.TCInfo ^ tconstr_tvarset, !PredInfo),
-        svmap.det_update(PredId, !.PredInfo, !Preds),
+        map.det_update(PredId, !.PredInfo, !Preds),
         predicate_table_set_preds(!.Preds, !PredEnv),
         module_info_set_predicate_table(!.PredEnv, !HLDS),
         !Environment ^ pred_env := !.PredEnv,
@@ -485,8 +483,8 @@ create_vartypes_map(Context, ProgVarSet, TVarSet, VarMap, DomainMap,
     list.map2(find_variable_type(Context, ProgVarSet, TVarSet, VarMap,
         DomainMap, ReplacementMap), ProgVars, Types, MaybeErrors),
     list.filter_map(remove_maybe, MaybeErrors, Errors),
-    map.det_insert_from_corresponding_lists(map.init, ProgVars, Types,
-        Vartypes).
+    map.det_insert_from_corresponding_lists(ProgVars, Types,
+        map.init, Vartypes).
 
     % If a variable has a domain consisting of one type, gives it that type.
     % Otherwise, assign it to a type consisting of the type variable assigned
@@ -632,7 +630,7 @@ solve_constraint_labeling(TVarSet, VarConstraints, ConstraintMap0, DomainMap0,
         % domain. Try to solve the constraints for each valuation of the
         % variable, then return any valuations which succeed. If none succeed,
         % return all valuations and report a failure.
-        list.map(map.set(Guesses, Var), Domains, NewGuesses),
+        NewGuesses = list.map(map.set(Guesses, Var), Domains),
         list.map(solve_constraint_labeling(TVarSet, VarConstraints,
             ConstraintMap1, DomainMap1), NewGuesses, Solutions),
         list.filter(solution_is_invalid, Solutions,
@@ -737,7 +735,7 @@ propagate(TVarSet, VarConstraints, ConstraintId, !ConstraintMap, !DomainMap) :-
         print_constraint_change(TVarSet, Constraint0, Constraint, !IO)
     ),
     !:DomainMap = NewDomainMap,
-    svmap.det_update(ConstraintId, Constraint, !ConstraintMap),
+    map.det_update(ConstraintId, Constraint, !ConstraintMap),
     % If any variable domains have been reduced to singleton domains
     % by this constraint, update the status of those variables and
     % propagate to other constriants involving them.
@@ -866,14 +864,14 @@ simple_find_domain(stconstr(TVarA, TypeA), !DomainMap) :-
             DomainB = DomainBPrime
         ;
             DomainB = tdomain_any,
-            svmap.det_insert(TVarB, DomainB, !DomainMap)
+            map.det_insert(TVarB, DomainB, !DomainMap)
         ),
         ( map.search(!.DomainMap, TVarA, DomainA) ->
             type_domain_intersect(DomainA, DomainB, NewDomain),
-            svmap.det_update(TVarA, NewDomain, !DomainMap),
-            svmap.det_update(TVarB, NewDomain, !DomainMap)
+            map.det_update(TVarA, NewDomain, !DomainMap),
+            map.det_update(TVarB, NewDomain, !DomainMap)
         ;
-            svmap.det_insert(TVarA, DomainB, !DomainMap)
+            map.det_insert(TVarA, DomainB, !DomainMap)
         )
     ;
         TypeA = defined_type(Name, ArgTypes0, Kind),
@@ -917,7 +915,7 @@ simple_find_domain(stconstr(TVarA, TypeA), !DomainMap) :-
 unify_equal_tvars(TCInfo, Replaced, Replacement, Target,
         !ReplacementMap, !DomainMap) :-
     TCInfo = tconstr_info(VarMap, _, ConstraintMap, VarConstraints, _, _),
-    map.det_insert(map.init, Target, Replacement, Renaming),
+    map.det_insert(Target, Replacement, map.init, Renaming),
     (
         map.search(!.DomainMap, Target, tdomain_any),
         map.search(VarConstraints, Target, ConstraintIds)
@@ -941,12 +939,12 @@ unify_equal_tvars(TCInfo, Replaced, Replacement, Target,
         map.search(!.DomainMap, Target, tdomain_singleton(Type0))
     ->
         apply_variable_renaming_to_type(Renaming, Type0, Type),
-        svmap.det_update(Target, tdomain_singleton(Type), !DomainMap)
+        map.det_update(Target, tdomain_singleton(Type), !DomainMap)
     ;
         map.search(!.DomainMap, Target, tdomain(Types0))
     ->
         set.map(apply_variable_renaming_to_type(Renaming), Types0, Types),
-        svmap.det_update(Target, tdomain(Types), !DomainMap)
+        map.det_update(Target, tdomain(Types), !DomainMap)
     ;
         % This will only be reached if there are no constraints on the type of
         % a variable. In this case, there can be no variable replacement
@@ -991,7 +989,7 @@ to_simple_constraints(tconstr_disj(_, yes(Conj)), Conj ^ tconstr_simples).
 
 update_replacement_map(VarMap, Replacement, OldVar, !ReplacementMap) :-
     ( bimap.reverse_search(VarMap, ProgVar, OldVar) ->
-        svmap.set(ProgVar, Replacement, !ReplacementMap)
+        map.set(ProgVar, Replacement, !ReplacementMap)
     ;
         true
     ).
@@ -1037,7 +1035,7 @@ restrict_domain(TVar, Type, !DomainMap) :-
     ),
     type_domain_intersect(CurrDomain, tdomain(set.make_singleton_set(Type)),
         NewDomain),
-    svmap.set(TVar, NewDomain, !DomainMap).
+    map.set(TVar, NewDomain, !DomainMap).
 
 :- pred type_domain_intersect(type_domain::in, type_domain::in,
     type_domain::out) is det.
@@ -1321,7 +1319,7 @@ update_singleton_domain(TVar, !DomainMap) :-
         map.search(!.DomainMap, TVar, tdomain(Domain)),
         set.singleton_set(Domain, Type)
     ->
-        svmap.set(TVar, tdomain_singleton(Type), !DomainMap)
+        map.set(TVar, tdomain_singleton(Type), !DomainMap)
     ;
         true
     ).
@@ -1405,7 +1403,7 @@ add_unused_prog_var(TCInfo, Var, !Vartypes) :-
         true
     ;
         bimap.lookup(TCInfo ^ tconstr_var_map, Var, TVar),
-        svmap.det_insert(Var, tvar_to_type(TVar), !Vartypes)
+        map.det_insert(Var, tvar_to_type(TVar), !Vartypes)
     ).
 
 :- pred get_constraints_from_conj(conj_type_constraint::in,
@@ -2160,7 +2158,7 @@ add_type_constraint(Constraints, TVars, !TConstrInfo) :-
                 Constraint = tconstr_disj(Constraints, no)
             ),
             counter.allocate(Id, !ConstraintCounter),
-            svmap.det_insert(Id, Constraint, !ConstraintMap),
+            map.det_insert(Id, Constraint, !ConstraintMap),
             list.foldl(map_var_to_constraint(Id), TVars, !VarConstraints)
         ),
         !:TConstrInfo = tconstr_info(VarMap, !.ConstraintCounter,
@@ -2175,10 +2173,10 @@ map_var_to_constraint(Id, TVar, !VarConstraints) :-
         ( list.contains(OldIds, Id) ->
             true
         ;
-            svmap.det_update(TVar, [Id | OldIds], !VarConstraints)
+            map.det_update(TVar, [Id | OldIds], !VarConstraints)
         )
     ;
-        svmap.det_insert(TVar, [Id], !VarConstraints)
+        map.det_insert(TVar, [Id], !VarConstraints)
     ).
 
     % If a program variable corresponds to a particular type variable, return
@@ -2195,7 +2193,7 @@ get_var_type(Var, TVar,
         TVar = TVar0
     ;
         svvarset.new_var(TVar, !TVarSet),
-        svbimap.det_insert(Var, TVar, !VarMap)
+        bimap.det_insert(Var, TVar, !VarMap)
     ).
 
 :- func create_stconstr(tvar, mer_type) = simple_type_constraint.

@@ -536,7 +536,7 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
         RealResultVarType = defined_type(
             qualified(mercury_exception_module, "exception_result"),
             [OutputTupleType], kind_star),
-        map.det_update(!.VarTypes, ResultVar, RealResultVarType, !:VarTypes),
+        map.det_update(ResultVar, RealResultVarType, !VarTypes),
         proc_info_set_vartypes(!.VarTypes, !ProcInfo)
     ),
 

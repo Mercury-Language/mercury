@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2010 The University of Melbourne.
+% Copyright (C) 2000-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -350,7 +350,6 @@
 :- import_module io.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -813,22 +812,22 @@ string_hash_cons_id(CaseRep, HashMask, TaggedConsId,
     HashVal2 = string.hash2(String) /\ HashMask,
     HashVal3 = string.hash3(String) /\ HashMask,
     ( map.search(!.HashMap1, HashVal1, OldEntries1) ->
-        svmap.det_update(HashVal1, [StringCaseRep | OldEntries1], !HashMap1),
+        map.det_update(HashVal1, [StringCaseRep | OldEntries1], !HashMap1),
         !:NumCollisions1 = !.NumCollisions1 + 1
     ;
-        svmap.det_insert(HashVal1, [StringCaseRep], !HashMap1)
+        map.det_insert(HashVal1, [StringCaseRep], !HashMap1)
     ),
     ( map.search(!.HashMap2, HashVal2, OldEntries2) ->
-        svmap.det_update(HashVal2, [StringCaseRep | OldEntries2], !HashMap2),
+        map.det_update(HashVal2, [StringCaseRep | OldEntries2], !HashMap2),
         !:NumCollisions2 = !.NumCollisions2 + 1
     ;
-        svmap.det_insert(HashVal2, [StringCaseRep], !HashMap2)
+        map.det_insert(HashVal2, [StringCaseRep], !HashMap2)
     ),
     ( map.search(!.HashMap3, HashVal3, OldEntries3) ->
-        svmap.det_update(HashVal3, [StringCaseRep | OldEntries3], !HashMap3),
+        map.det_update(HashVal3, [StringCaseRep | OldEntries3], !HashMap3),
         !:NumCollisions3 = !.NumCollisions3 + 1
     ;
-        svmap.det_insert(HashVal3, [StringCaseRep], !HashMap3)
+        map.det_insert(HashVal3, [StringCaseRep], !HashMap3)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -874,22 +873,22 @@ string_hash_lookup_cases([StrData | StrsDatas], HashMask,
     HashVal2 = string.hash(Str) /\ HashMask,
     HashVal3 = string.hash(Str) /\ HashMask,
     ( map.search(!.HashMap1, HashVal1, OldEntries1) ->
-        svmap.det_update(HashVal1, [StrData | OldEntries1], !HashMap1),
+        map.det_update(HashVal1, [StrData | OldEntries1], !HashMap1),
         !:NumCollisions1 = !.NumCollisions1 + 1
     ;
-        svmap.det_insert(HashVal1, [StrData], !HashMap1)
+        map.det_insert(HashVal1, [StrData], !HashMap1)
     ),
     ( map.search(!.HashMap2, HashVal2, OldEntries2) ->
-        svmap.det_update(HashVal2, [StrData | OldEntries2], !HashMap2),
+        map.det_update(HashVal2, [StrData | OldEntries2], !HashMap2),
         !:NumCollisions2 = !.NumCollisions2 + 1
     ;
-        svmap.det_insert(HashVal2, [StrData], !HashMap2)
+        map.det_insert(HashVal2, [StrData], !HashMap2)
     ),
     ( map.search(!.HashMap3, HashVal3, OldEntries3) ->
-        svmap.det_update(HashVal3, [StrData | OldEntries3], !HashMap3),
+        map.det_update(HashVal3, [StrData | OldEntries3], !HashMap3),
         !:NumCollisions3 = !.NumCollisions3 + 1
     ;
-        svmap.det_insert(HashVal3, [StrData], !HashMap3)
+        map.det_insert(HashVal3, [StrData], !HashMap3)
     ),
     string_hash_lookup_cases(StrsDatas, HashMask,
         !HashMap1, !HashMap2, !HashMap3,
@@ -957,14 +956,14 @@ calc_string_hash_slots_loop_over_hash_strings([StringCaseRep | StringCaseReps],
         map.lookup(!.SlotMap, ChainEnd, ChainEndSlot0),
         ChainEndSlot0 = string_hash_slot(PrevString, _, PrevCaseRep),
         ChainEndSlot = string_hash_slot(PrevString, !.LastUsed, PrevCaseRep),
-        svmap.det_update(ChainEnd, ChainEndSlot, !SlotMap),
-        svmap.det_insert(!.LastUsed, NewSlot, !SlotMap),
+        map.det_update(ChainEnd, ChainEndSlot, !SlotMap),
+        map.det_insert(!.LastUsed, NewSlot, !SlotMap),
         trace [compile_time(flag("hash_slots")), io(!IO)] (
             io.format("%s: home %d, remapped slot %d\n",
                 [s(String), i(HashVal), i(!.LastUsed)], !IO)
         )
     ;
-        svmap.det_insert(HashVal, NewSlot, !SlotMap),
+        map.det_insert(HashVal, NewSlot, !SlotMap),
         trace [compile_time(flag("hash_slots")), io(!IO)] (
             io.format("%s: native slot %d\n", [s(String), i(HashVal)], !IO)
         )
@@ -1086,7 +1085,7 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
         ( map.search(!.PtagCountMap, Primary, _) ->
             unexpected(this_file, "unshared tag is shared")
         ;
-            svmap.det_insert(Primary, sectag_none - (-1), !PtagCountMap)
+            map.det_insert(Primary, sectag_none - (-1), !PtagCountMap)
         )
     ;
         Tag = shared_remote_tag(Primary, Secondary),
@@ -1102,9 +1101,9 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
                 unexpected(this_file, "remote tag is shared with non-remote")
             ),
             int.max(Secondary, MaxSoFar, Max),
-            svmap.det_update(Primary, sectag_remote - Max, !PtagCountMap)
+            map.det_update(Primary, sectag_remote - Max, !PtagCountMap)
         ;
-            svmap.det_insert(Primary, sectag_remote - Secondary, !PtagCountMap)
+            map.det_insert(Primary, sectag_remote - Secondary, !PtagCountMap)
         )
     ;
         Tag = shared_local_tag(Primary, Secondary),
@@ -1120,9 +1119,9 @@ get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
                 unexpected(this_file, "local tag is shared with non-local")
             ),
             int.max(Secondary, MaxSoFar, Max),
-            svmap.det_update(Primary, sectag_local - Max, !PtagCountMap)
+            map.det_update(Primary, sectag_local - Max, !PtagCountMap)
         ;
-            svmap.det_insert(Primary, sectag_local - Secondary, !PtagCountMap)
+            map.det_insert(Primary, sectag_local - Secondary, !PtagCountMap)
         )
     ;
         ( Tag = no_tag
@@ -1186,8 +1185,8 @@ group_case_by_ptag(CaseNum, CaseRep, TaggedConsId,
             unexpected(this_file, "unshared tag is shared")
         ;
             map.init(StagGoalMap0),
-            map.det_insert(StagGoalMap0, -1, CaseRep, StagGoalMap),
-            svmap.det_insert(Primary, ptag_case(sectag_none, StagGoalMap),
+            map.det_insert(-1, CaseRep, StagGoalMap0, StagGoalMap),
+            map.det_insert(Primary, ptag_case(sectag_none, StagGoalMap),
                 !PtagCaseMap)
         )
     ;
@@ -1196,13 +1195,13 @@ group_case_by_ptag(CaseNum, CaseRep, TaggedConsId,
             Group = ptag_case(StagLoc, StagGoalMap0),
             expect(unify(StagLoc, sectag_remote), this_file,
                 "remote tag is shared with non-remote"),
-            map.det_insert(StagGoalMap0, Secondary, CaseRep, StagGoalMap),
-            svmap.det_update(Primary, ptag_case(sectag_remote, StagGoalMap),
+            map.det_insert(Secondary, CaseRep, StagGoalMap0, StagGoalMap),
+            map.det_update(Primary, ptag_case(sectag_remote, StagGoalMap),
                 !PtagCaseMap)
         ;
             map.init(StagGoalMap0),
-            map.det_insert(StagGoalMap0, Secondary, CaseRep, StagGoalMap),
-            svmap.det_insert(Primary, ptag_case(sectag_remote, StagGoalMap),
+            map.det_insert(Secondary, CaseRep, StagGoalMap0, StagGoalMap),
+            map.det_insert(Primary, ptag_case(sectag_remote, StagGoalMap),
                 !PtagCaseMap)
         )
     ;
@@ -1211,13 +1210,13 @@ group_case_by_ptag(CaseNum, CaseRep, TaggedConsId,
             Group = ptag_case(StagLoc, StagGoalMap0),
             expect(unify(StagLoc, sectag_local), this_file,
                 "local tag is shared with non-local"),
-            map.det_insert(StagGoalMap0, Secondary, CaseRep, StagGoalMap),
-            svmap.det_update(Primary, ptag_case(sectag_local, StagGoalMap),
+            map.det_insert(Secondary, CaseRep, StagGoalMap0, StagGoalMap),
+            map.det_update(Primary, ptag_case(sectag_local, StagGoalMap),
                 !PtagCaseMap)
         ;
             map.init(StagGoalMap0),
-            map.det_insert(StagGoalMap0, Secondary, CaseRep, StagGoalMap),
-            svmap.det_insert(Primary, ptag_case(sectag_local, StagGoalMap),
+            map.det_insert(Secondary, CaseRep, StagGoalMap0, StagGoalMap),
+            map.det_insert(Primary, ptag_case(sectag_local, StagGoalMap),
                 !PtagCaseMap)
         )
     ;
@@ -1239,10 +1238,10 @@ group_case_by_ptag(CaseNum, CaseRep, TaggedConsId,
     ),
     ( map.search(!.CaseNumPtagsMap, CaseNum, Ptags0) ->
         set.insert(Ptags0, Primary, Ptags),
-        svmap.det_update(CaseNum, Ptags, !CaseNumPtagsMap)
+        map.det_update(CaseNum, Ptags, !CaseNumPtagsMap)
     ;
         Ptags = set.make_singleton_set(Primary),
-        svmap.det_insert(CaseNum, Ptags, !CaseNumPtagsMap)
+        map.det_insert(CaseNum, Ptags, !CaseNumPtagsMap)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1300,10 +1299,10 @@ build_ptag_case_rev_map([Entry | Entries], PtagCountMap, !RevMap) :-
                 "build_ptag_case_rev_map: Case != OldCase"),
             NewEntry = ptag_case_rev_map_entry(OldCount + Count,
                 OldFirstPtag, OldLaterPtags0 ++ [Ptag], OldCase),
-            svmap.det_update(Case, NewEntry, !RevMap)
+            map.det_update(Case, NewEntry, !RevMap)
         ;
             NewEntry = ptag_case_rev_map_entry(Count, Ptag, [], Case),
-            svmap.det_insert(Case, NewEntry, !RevMap)
+            map.det_insert(Case, NewEntry, !RevMap)
         )
     ;
         ( CountSecTagLocn = sectag_local
@@ -1322,7 +1321,7 @@ build_ptag_case_rev_map([Entry | Entries], PtagCountMap, !RevMap) :-
         % be identical, since they would have to get the secondary tags from
         % different places.
         NewEntry = ptag_case_rev_map_entry(Count, Ptag, [], Case),
-        svmap.det_insert(Case, NewEntry, !RevMap)
+        map.det_insert(Case, NewEntry, !RevMap)
     ),
     build_ptag_case_rev_map(Entries, PtagCountMap, !RevMap).
 
@@ -1332,7 +1331,7 @@ order_ptags_by_value(Ptag, MaxPtag, PtagCaseMap0, PtagCaseList) :-
     ( MaxPtag >= Ptag ->
         NextPtag = Ptag + 1,
         ( map.search(PtagCaseMap0, Ptag, PtagCase) ->
-            map.delete(PtagCaseMap0, Ptag, PtagCaseMap1),
+            map.delete(Ptag, PtagCaseMap0, PtagCaseMap1),
             order_ptags_by_value(NextPtag, MaxPtag,
                 PtagCaseMap1, PtagCaseList1),
             PtagCaseEntry = ptag_case_entry(Ptag, PtagCase),

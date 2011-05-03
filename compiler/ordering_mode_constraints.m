@@ -503,7 +503,7 @@ make_conjunct_nonlocal_repvars(PredId, Goal, !RepvarMap) :-
 
     set.fold(
         (pred(NL::in, RMap0::in, RMap::out) is det :-
-            multi_map.set(RMap0, NL, NL `in` PredId `at` GoalId, RMap)
+            multi_map.set(NL, NL `in` PredId `at` GoalId, RMap0, RMap)
         ),
         Nonlocals, !RepvarMap).
 

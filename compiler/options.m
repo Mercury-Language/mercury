@@ -1017,7 +1017,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 
 %----------------------------------------------------------------------------%
 
@@ -2818,83 +2817,80 @@ special_handler(grade, string(Grade), OptionTable0, Result) :-
     ;
         Result = error("invalid grade `" ++ Grade ++ "'")
     ).
-special_handler(il, none, OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, target, string("il"), OptionTable).
-special_handler(il_only, none, OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, target, string("il"), OptionTable1),
-    map.set(OptionTable1, target_code_only, bool(yes), OptionTable).
-special_handler(compile_to_c, none, OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, target, string("c"), OptionTable1),
-    map.set(OptionTable1, target_code_only, bool(yes), OptionTable).
-special_handler(java, none, OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, target, string("java"), OptionTable).
-special_handler(java_only, none, OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, target, string("java"), OptionTable1),
-    map.set(OptionTable1, target_code_only, bool(yes), OptionTable).
-special_handler(csharp, none, OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, target, string("csharp"), OptionTable).
-special_handler(csharp_only, none, OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, target, string("csharp"), OptionTable1),
-    map.set(OptionTable1, target_code_only, bool(yes), OptionTable).
-special_handler(x86_64, none, OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, target, string("x86_64"), OptionTable).
-special_handler(x86_64_only, none, OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, target, string("x86_64"), OptionTable1),
-    map.set(OptionTable1, target_code_only, bool(yes), OptionTable).
-special_handler(erlang, none, OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, target, string("erlang"), OptionTable).
-special_handler(erlang_only, none, OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, target, string("erlang"), OptionTable1),
-    map.set(OptionTable1, target_code_only, bool(yes), OptionTable).
-special_handler(profiling, bool(Value), OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, profile_time, bool(Value), OptionTable1),
-    map.set(OptionTable1, profile_calls, bool(Value), OptionTable2),
-    map.set(OptionTable2, profile_memory, bool(no), OptionTable3),
-    map.set(OptionTable3, profile_deep, bool(no), OptionTable).
-special_handler(time_profiling, none, OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, profile_time, bool(yes), OptionTable1),
-    map.set(OptionTable1, profile_calls, bool(yes), OptionTable2),
-    map.set(OptionTable2, profile_memory, bool(no), OptionTable3),
-    map.set(OptionTable3, profile_deep, bool(no), OptionTable).
-special_handler(memory_profiling, none, OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, profile_time, bool(no), OptionTable1),
-    map.set(OptionTable1, profile_calls, bool(yes), OptionTable2),
-    map.set(OptionTable2, profile_memory, bool(yes), OptionTable3),
-    map.set(OptionTable3, profile_deep, bool(no), OptionTable).
-special_handler(deep_profiling, none, OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, profile_time, bool(no), OptionTable1),
-    map.set(OptionTable1, profile_calls, bool(no), OptionTable2),
-    map.set(OptionTable2, profile_memory, bool(no), OptionTable3),
-    map.set(OptionTable3, profile_deep, bool(yes), OptionTable).
-special_handler(inlining, bool(Value), OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, inline_simple, bool(Value), OptionTable1),
-    map.set(OptionTable1, inline_builtins, bool(Value), OptionTable2),
-    map.set(OptionTable2, inline_single_use, bool(Value), OptionTable3),
+special_handler(il, none, !.OptionTable, ok(!:OptionTable)) :-
+    map.set(target, string("il"), !OptionTable).
+special_handler(il_only, none, !.OptionTable, ok(!:OptionTable)) :-
+    map.set(target, string("il"), !OptionTable),
+    map.set(target_code_only, bool(yes), !OptionTable).
+special_handler(compile_to_c, none, !.OptionTable, ok(!:OptionTable)) :-
+    map.set(target, string("c"), !OptionTable),
+    map.set(target_code_only, bool(yes), !OptionTable).
+special_handler(java, none, !.OptionTable, ok(!:OptionTable)) :-
+    map.set(target, string("java"), !OptionTable).
+special_handler(java_only, none, !.OptionTable, ok(!:OptionTable)) :-
+    map.set(target, string("java"), !OptionTable),
+    map.set(target_code_only, bool(yes), !OptionTable).
+special_handler(csharp, none, !.OptionTable, ok(!:OptionTable)) :-
+    map.set(target, string("csharp"), !OptionTable).
+special_handler(csharp_only, none, !.OptionTable, ok(!:OptionTable)) :-
+    map.set(target, string("csharp"), !OptionTable),
+    map.set(target_code_only, bool(yes), !OptionTable).
+special_handler(x86_64, none, !.OptionTable, ok(!:OptionTable)) :-
+    map.set(target, string("x86_64"), !OptionTable).
+special_handler(x86_64_only, none, !.OptionTable, ok(!:OptionTable)) :-
+    map.set(target, string("x86_64"), !OptionTable),
+    map.set(target_code_only, bool(yes), !OptionTable).
+special_handler(erlang, none, !.OptionTable, ok(!:OptionTable)) :-
+    map.set(target, string("erlang"), !OptionTable).
+special_handler(erlang_only, none, !.OptionTable, ok(!:OptionTable)) :-
+    map.set(target, string("erlang"), !OptionTable),
+    map.set(target_code_only, bool(yes), !OptionTable).
+special_handler(profiling, bool(Value), !.OptionTable, ok(!:OptionTable)) :-
+    map.set(profile_time, bool(Value), !OptionTable),
+    map.set(profile_calls, bool(Value), !OptionTable),
+    map.set(profile_memory, bool(no), !OptionTable),
+    map.set(profile_deep, bool(no), !OptionTable).
+special_handler(time_profiling, none, !.OptionTable, ok(!:OptionTable)) :-
+    map.set(profile_time, bool(yes), !OptionTable),
+    map.set(profile_calls, bool(yes), !OptionTable),
+    map.set(profile_memory, bool(no), !OptionTable),
+    map.set(profile_deep, bool(no), !OptionTable).
+special_handler(memory_profiling, none, !.OptionTable, ok(!:OptionTable)) :-
+    map.set(profile_time, bool(no), !OptionTable),
+    map.set(profile_calls, bool(yes), !OptionTable),
+    map.set(profile_memory, bool(yes), !OptionTable),
+    map.set(profile_deep, bool(no), !OptionTable).
+special_handler(deep_profiling, none, !.OptionTable, ok(!:OptionTable)) :-
+    map.set(profile_time, bool(no), !OptionTable),
+    map.set(profile_calls, bool(no), !OptionTable),
+    map.set(profile_memory, bool(no), !OptionTable),
+    map.set(profile_deep, bool(yes), !OptionTable).
+special_handler(inlining, bool(Value), !.OptionTable, ok(!:OptionTable)) :-
+    map.set(inline_simple, bool(Value), !OptionTable),
+    map.set(inline_builtins, bool(Value), !OptionTable),
+    map.set(inline_single_use, bool(Value), !OptionTable),
     (
         Value = yes,
-        map.set(OptionTable3, inline_compound_threshold, int(10), OptionTable)
+        map.set(inline_compound_threshold, int(10), !OptionTable)
     ;
         Value = no,
-        map.set(OptionTable3, inline_compound_threshold, int(0), OptionTable)
+        map.set(inline_compound_threshold, int(0), !OptionTable)
     ).
-special_handler(everything_in_one_c_function, none, OptionTable0,
-        ok(OptionTable)) :-
-    map.set(OptionTable0, procs_per_c_function, int(0),
-        OptionTable).
-special_handler(reclaim_heap_on_failure, bool(Value), OptionTable0,
-            ok(OptionTable)) :-
-    map.set(OptionTable0, reclaim_heap_on_semidet_failure, bool(Value),
-        OptionTable1),
-    map.set(OptionTable1, reclaim_heap_on_nondet_failure, bool(Value),
-        OptionTable).
-special_handler(strict_sequential, none, OptionTable0, ok(OptionTable)) :-
+special_handler(everything_in_one_c_function, none, !.OptionTable,
+        ok(!:OptionTable)) :-
+    map.set(procs_per_c_function, int(0), !OptionTable).
+special_handler(reclaim_heap_on_failure, bool(Value), !.OptionTable,
+            ok(!:OptionTable)) :-
+    map.set(reclaim_heap_on_semidet_failure, bool(Value), !OptionTable),
+    map.set(reclaim_heap_on_nondet_failure, bool(Value), !OptionTable).
+special_handler(strict_sequential, none, !.OptionTable, ok(!:OptionTable)) :-
     override_options([
-            reorder_conj                    -   bool(no),
-            reorder_disj                    -   bool(no),
-            fully_strict                    -   bool(yes)
-        ], OptionTable0, OptionTable).
-special_handler(inhibit_warnings, bool(Inhibit), OptionTable0,
-        ok(OptionTable)) :-
+            reorder_conj - bool(no),
+            reorder_disj - bool(no),
+            fully_strict - bool(yes)
+        ], !OptionTable).
+special_handler(inhibit_warnings, bool(Inhibit), !.OptionTable,
+        ok(!:OptionTable)) :-
     bool.not(Inhibit, Enable),
     override_options([
             inhibit_accumulator_warnings    -   bool(Inhibit),
@@ -2920,17 +2916,17 @@ special_handler(inhibit_warnings, bool(Inhibit), OptionTable0,
             warn_table_with_inline          -   bool(Enable),
             warn_non_term_special_preds     -   bool(Enable),
             warn_insts_without_matching_type -  bool(Enable)
-        ], OptionTable0, OptionTable).
-special_handler(infer_all, bool(Infer), OptionTable0, ok(OptionTable)) :-
+        ], !OptionTable).
+special_handler(infer_all, bool(Infer), !.OptionTable, ok(!:OptionTable)) :-
     override_options([
             infer_types                     -   bool(Infer),
             infer_modes                     -   bool(Infer),
             infer_det                       -   bool(Infer)
-        ], OptionTable0, OptionTable).
-special_handler(opt_space, none, OptionTable0, ok(OptionTable)) :-
+        ], !OptionTable).
+special_handler(opt_space, none, !.OptionTable, ok(!:OptionTable)) :-
     opt_space(OptionSettingsList),
-    override_options(OptionSettingsList, OptionTable0, OptionTable).
-special_handler(opt_level, int(N0), OptionTable0, ok(OptionTable)) :-
+    override_options(OptionSettingsList, !OptionTable).
+special_handler(opt_level, int(N0), !.OptionTable, ok(!:OptionTable)) :-
     ( N0 > 6 ->
         N = 6
     ; N0 < -1 ->
@@ -2938,18 +2934,16 @@ special_handler(opt_level, int(N0), OptionTable0, ok(OptionTable)) :-
     ;
         N = N0
     ),
-    map.set(OptionTable0, opt_level_number, int(N), OptionTable1),
-    set_opt_level(N, OptionTable1, OptionTable).
+    map.set(opt_level_number, int(N), !OptionTable),
+    set_opt_level(N, !OptionTable).
 special_handler(optimize_saved_vars, bool(Optimize),
-        OptionTable0, ok(OptionTable)) :-
-    map.set(OptionTable0, optimize_saved_vars_const, bool(Optimize),
-        OptionTable1),
-    map.set(OptionTable1, optimize_saved_vars_cell, bool(Optimize),
-        OptionTable).
+        !.OptionTable, ok(!:OptionTable)) :-
+    map.set(optimize_saved_vars_const, bool(Optimize), !OptionTable),
+    map.set(optimize_saved_vars_cell, bool(Optimize), !OptionTable).
 special_handler(mercury_library_directory_special, string(Dir),
-        OptionTable0, ok(OptionTable)) :-
-    OptionTable = option_table_add_mercury_library_directory(
-        OptionTable0, Dir).
+        !.OptionTable, ok(!:OptionTable)) :-
+    !:OptionTable = option_table_add_mercury_library_directory(
+        !.OptionTable, Dir).
 special_handler(search_library_files_directory_special, string(Dir),
         OptionTable0, ok(OptionTable)) :-
     OptionTable = option_table_add_search_library_files_directory(
@@ -3079,7 +3073,7 @@ enable_opt_levels(N0, N, !OptionTable) :-
 
 override_options([], !OptionTable).
 override_options([Option - Value | Settings], !OptionTable) :-
-    svmap.set(Option, Value, !OptionTable),
+    map.set(Option, Value, !OptionTable),
     override_options(Settings, !OptionTable).
 
 %-----------------------------------------------------------------------------%

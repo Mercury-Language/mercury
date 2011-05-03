@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2010 The University of Melbourne.
+% Copyright (C) 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -411,7 +411,6 @@
 
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -1013,7 +1012,7 @@ type_unify_var(VarX, TypeY, HeadTypeParams, !Bindings) :-
         % VarX has no binding, so bind it to TypeY.
         \+ type_occurs(TypeY, VarX, !.Bindings),
         \+ list.member(VarX, HeadTypeParams),
-        svmap.det_insert(VarX, TypeY, !Bindings)
+        map.det_insert(VarX, TypeY, !Bindings)
     ).
 
 :- pred type_unify_var_var(tvar::in, tvar::in, kind::in, list(tvar)::in,
@@ -1036,7 +1035,7 @@ type_unify_var_var(X, Y, Kind, HeadTypeParams, !Bindings) :-
                 true
             ;
                 \+ type_occurs(SubstBindingOfX, Y, !.Bindings),
-                svmap.det_insert(Y, SubstBindingOfX, !Bindings)
+                map.det_insert(Y, SubstBindingOfX, !Bindings)
             )
         )
     ;
@@ -1047,14 +1046,14 @@ type_unify_var_var(X, Y, Kind, HeadTypeParams, !Bindings) :-
                 true
             ;
                 \+ type_occurs(SubstBindingOfY, X, !.Bindings),
-                svmap.det_insert(X, SubstBindingOfY, !Bindings)
+                map.det_insert(X, SubstBindingOfY, !Bindings)
             )
         ;
             % Both X and Y are unbound type variables - bind one to the other.
             ( X = Y ->
                 true
             ;
-                svmap.det_insert(X, type_variable(Y, Kind), !Bindings)
+                map.det_insert(X, type_variable(Y, Kind), !Bindings)
             )
         )
     ).
@@ -1072,7 +1071,7 @@ type_unify_head_type_param(Var, HeadVar, Kind, HeadTypeParams, !Bindings) :-
             true
         ;
             \+ list.member(Var, HeadTypeParams),
-            svmap.det_insert(Var, type_variable(HeadVar, Kind), !Bindings)
+            map.det_insert(Var, type_variable(HeadVar, Kind), !Bindings)
         )
     ).
 

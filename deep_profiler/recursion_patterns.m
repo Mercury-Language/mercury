@@ -67,7 +67,6 @@
 :- import_module set.
 :- import_module solutions.
 :- import_module string.
-:- import_module svmap.
 :- import_module svset.
 :- import_module unit.
 
@@ -929,7 +928,7 @@ update_histogram(MaybeFirstProcInfo, SimpleType, !Histogram) :-
         ),
         Data = recursion_type_raw_freq_data(Count, MaybeProfInfo, Procs)
     ),
-    svmap.set(SimpleType, Data, !Histogram).
+    map.set(SimpleType, Data, !Histogram).
 
 :- pred update_procs_map(first_proc_info::in,
     map(proc_static_ptr, recursion_type_raw_proc_freq_data)::in,
@@ -949,7 +948,7 @@ update_procs_map(FirstProcInfo, !Map) :-
         ProcFreqData =
             recursion_type_raw_proc_freq_data(1, FirstProfInfo, PSDesc)
     ),
-    svmap.set(PsPtr, ProcFreqData, !Map).
+    map.set(PsPtr, ProcFreqData, !Map).
 
 :- pred recursion_type_to_simple_type(recursion_type::in,
     recursion_type_simple::out) is multi.

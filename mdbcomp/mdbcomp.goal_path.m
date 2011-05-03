@@ -304,8 +304,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svbimap.
-:- import_module svmap.
 
 is_valid_goal_id(goal_id(GoalIdNum)) :-
     GoalIdNum >= 0.
@@ -541,7 +539,7 @@ create_reverse_goal_path_map_2([Head | Tail], !ReverseGoalPathMap) :-
         GoalReverseSteps = [Step | ContainingGoalReverseSteps],
         GoalReversePath = rgp(GoalReverseSteps)
     ),
-    svmap.det_insert(GoalId, GoalReversePath, !ReverseGoalPathMap),
+    map.det_insert(GoalId, GoalReversePath, !ReverseGoalPathMap),
     create_reverse_goal_path_map_2(Tail, !ReverseGoalPathMap).
 
 create_reverse_goal_path_bimap(ContainingGoalMap) = ReverseGoalPathBiMap :-
@@ -568,7 +566,7 @@ create_reverse_goal_path_bimap_2([Head | Tail], !ReverseGoalPathBiMap) :-
         GoalReverseSteps = [Step | ContainingGoalReverseSteps],
         GoalReversePath = rgp(GoalReverseSteps)
     ),
-    svbimap.det_insert(GoalId, GoalReversePath, !ReverseGoalPathBiMap),
+    bimap.det_insert(GoalId, GoalReversePath, !ReverseGoalPathBiMap),
     create_reverse_goal_path_bimap_2(Tail, !ReverseGoalPathBiMap).
 
 %-----------------------------------------------------------------------------%

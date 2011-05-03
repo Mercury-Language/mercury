@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1999, 2003-2007 The University of Melbourne.
+% Copyright (C) 1994-1999, 2003-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -287,13 +287,13 @@ bag.count_unique(bag(Bag)) = map.count(Bag).
 
 %---------------------------------------------------------------------------%
 
-bag.insert(bag(Bag0), Item, bag(Bag)) :-
-    ( map.search(Bag0, Item, Count0) ->
+bag.insert(bag(!.Bag), Item, bag(!:Bag)) :-
+    ( map.search(!.Bag, Item, Count0) ->
         Count = Count0 + 1
     ;
         Count = 1
     ),
-    map.set(Bag0, Item, Count, Bag).
+    map.set(Item, Count, !Bag).
 
 %---------------------------------------------------------------------------%
 
@@ -360,13 +360,13 @@ bag.delete(Bag0, Item, Bag) :-
         Bag = Bag0
     ).
 
-bag.remove(bag(Bag0), Item, bag(Bag)) :-
-    map.search(Bag0, Item, Count0),
+bag.remove(bag(!.Bag), Item, bag(!:Bag)) :-
+    map.search(!.Bag, Item, Count0),
     ( Count0 > 1 ->
         Count = Count0 - 1,
-        map.set(Bag0, Item, Count, Bag)
+        map.set(Item, Count, !Bag)
     ;
-        map.delete(Bag0, Item, Bag)
+        map.delete(Item, !Bag)
     ).
 
 bag.det_remove(Bag0, Item, Bag) :-
@@ -398,11 +398,11 @@ bag.det_remove_set(Bag0, Set, Bag) :-
         % XXX We should exploit the sortedness of List.
     bag.det_remove_list(Bag0, List, Bag).
 
-bag.remove_all(bag(Bag0), Item, bag(Bag)) :-     % semidet
-    map.remove(Bag0, Item, _Val, Bag).
+bag.remove_all(bag(!.Bag), Item, bag(!:Bag)) :-     % semidet
+    map.remove(Item, _Val, !Bag).
 
-bag.delete_all(bag(Bag0), Item, bag(Bag)) :- % det
-    map.delete(Bag0, Item, Bag).
+bag.delete_all(bag(!.Bag), Item, bag(!:Bag)) :- % det
+    map.delete(Item, !Bag).
 
 %---------------------------------------------------------------------------%
 
@@ -421,13 +421,13 @@ bag.count_value(bag(Bag), Item, Count) :-
 %---------------------------------------------------------------------------%
 
 bag.subtract(bag(Bag0), bag(SubBag), Bag) :-
-    ( map.remove_smallest(SubBag, SubKey, SubVal, SubBag0) ->
+    ( map.remove_smallest(SubKey, SubVal, SubBag, SubBag0) ->
         ( map.search(Bag0, SubKey, Val) ->
             NewVal = Val - SubVal,
             ( NewVal > 0 ->
-                map.det_update(Bag0, SubKey, NewVal, Bag1)
+                map.det_update(SubKey, NewVal, Bag0, Bag1)
             ;
-                map.det_remove(Bag0, SubKey, _Val, Bag1)
+                map.det_remove(SubKey, _Val, Bag0, Bag1)
             )
         ;
             Bag1 = Bag0
@@ -438,12 +438,12 @@ bag.subtract(bag(Bag0), bag(SubBag), Bag) :-
     ).
 
 bag.union(bag(A), bag(B), Out) :-
-    ( map.remove_smallest(B, Key, BVal, B0) ->
+    ( map.remove_smallest(Key, BVal, B, B0) ->
         ( map.search(A, Key, AVal) ->
             NewVal = AVal + BVal,
-            map.det_update(A, Key, NewVal, A0)
+            map.det_update(Key, NewVal, A, A0)
         ;
-            map.det_insert(A, Key, BVal, A0)
+            map.det_insert(Key, BVal, A, A0)
         ),
         bag.union(bag(A0), bag(B0), Out)
     ;
@@ -458,10 +458,10 @@ bag.intersect(A, B, Out) :-
     is det.
 
 bag.intersect_2(bag(A), bag(B), bag(Out0), Out) :-
-    ( map.remove_smallest(A, Key, AVal,A0) ->
+    ( map.remove_smallest(Key, AVal, A, A0) ->
         ( map.search(B, Key, BVal) ->
             int.min(AVal, BVal, Val),
-            map.det_insert(Out0, Key, Val, Out1)
+            map.det_insert(Key, Val, Out0, Out1)
         ;
             Out1 = Out0
         ),
@@ -471,7 +471,7 @@ bag.intersect_2(bag(A), bag(B), bag(Out0), Out) :-
     ).
 
 bag.intersect(bag(A), bag(B)) :-
-    map.remove_smallest(A, Key, _AVal,A0),
+    map.remove_smallest(Key, _AVal, A, A0),
     ( map.contains(B, Key) ->
         true
     ;
@@ -479,12 +479,12 @@ bag.intersect(bag(A), bag(B)) :-
     ).
 
 bag.least_upper_bound(bag(A), bag(B), Out) :-
-    ( map.remove_smallest(B, Key, BVal, B0) ->
+    ( map.remove_smallest(Key, BVal, B, B0) ->
         ( map.search(A, Key, AVal) ->
             int.max(AVal, BVal, NewVal),
-            map.det_update(A, Key, NewVal, A0)
+            map.det_update(Key, NewVal, A, A0)
         ;
-            map.det_insert(A, Key, BVal, A0)
+            map.det_insert(Key, BVal, A, A0)
         ),
         bag.least_upper_bound(bag(A0), bag(B0), Out)
     ;
@@ -504,13 +504,13 @@ bag.is_empty(bag(Bag)) :-
 
 %---------------------------------------------------------------------------%
 
-bag.remove_smallest(bag(Bag0), Item, bag(Bag)) :-
-    map.remove_smallest(Bag0, Item, Val, Bag1),
+bag.remove_smallest(bag(!.Bag), Item, bag(!:Bag)) :-
+    map.remove_smallest(Item, Val, !Bag),
     ( Val > 1 ->
         NewVal = Val - 1,
-        map.det_insert(Bag1, Item, NewVal, Bag)
+        map.det_insert(Item, NewVal, !Bag)
     ;
-        Bag = Bag1
+        true
     ).
 
     % compares the two bags, and returns whether the first bag is a
@@ -523,8 +523,8 @@ bag.remove_smallest(bag(Bag0), Item, bag(Bag)) :-
     % :- mode bag.subset_compare(out, in, in) is semidet.
     %
 bag.subset_compare(Res, bag(A), bag(B)) :-
-    ( map.remove_smallest(A, Key, AVal, A0) ->
-        ( map.remove(B, Key, BVal, B0) ->
+    ( map.remove_smallest(Key, AVal, A, A0) ->
+        ( map.remove(Key, BVal, B, B0) ->
             compare(ValRes, AVal, BVal),
             (
                 ValRes = (>),

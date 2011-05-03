@@ -588,7 +588,7 @@ equal_var(VA, VB, !Subst) :-
     ( map.search(!.Subst, VA, SubstVA) ->
         SubstVA = VB
     ;
-        map.insert(!.Subst, VA, VB, !:Subst)
+        map.insert(VA, VB, !Subst)
     ).
 
 :- pred equal_vars(prog_vars::in, prog_vars::in, subst::in, subst::out)

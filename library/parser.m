@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2001, 2003-2008 The University of Melbourne.
+% Copyright (C) 1995-2001, 2003-2008, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1079,7 +1079,7 @@ add_var(VarName, Var, ParserState0, ParserState) :-
         ;
             VarSet0 = parser_state_get_varset(ParserState0),
             varset.new_named_var(VarSet0, VarName, Var, VarSet),
-            map.det_insert(Names0, VarName, Var, Names),
+            map.det_insert(VarName, Var, Names0, Names),
             ParserState1 = parser_state_set_varset(ParserState0, VarSet),
             ParserState = parser_state_set_var_names(ParserState1, Names)
         )

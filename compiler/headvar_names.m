@@ -45,7 +45,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module varset.
-:- import_module svmap.
 :- import_module svset.
 :- import_module svvarset.
 
@@ -129,7 +128,7 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
 set_var_name_remap_in_proc(ConsensusMap, ProcId, !ProcTable) :-
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
     proc_info_set_var_name_remap(ConsensusMap, ProcInfo0, ProcInfo),
-    svmap.det_update(ProcId, ProcInfo, !ProcTable).
+    map.det_update(ProcId, ProcInfo, !ProcTable).
 
 :- pred improve_single_clause_headvars(list(hlds_goal)::in,
     proc_arg_vector(prog_var)::in, list(prog_var)::in,
@@ -159,7 +158,7 @@ improve_single_clause_headvars([Goal | Conj0], HeadVars, SeenVars0,
             ))
         ->
             SeenVars = [OtherVar | SeenVars0],
-            svmap.det_insert(HeadVar, OtherVar, !Subst),
+            map.det_insert(HeadVar, OtherVar, !Subst),
 
             % If the variable wasn't named, use the `HeadVar__n' name.
             (
@@ -229,10 +228,10 @@ find_headvar_names_in_goal(VarSet, HeadVars, Goal, !VarNameInfoMap,
             ( map.search(!.VarNameInfoMap, HeadVar, VarNameInfo0) ->
                 VarNameInfo0 = var_name_info(_UnifiedFunctor, VarNames),
                 VarNameInfo = var_name_info(yes, VarNames),
-                svmap.det_update(HeadVar, VarNameInfo, !VarNameInfoMap)
+                map.det_update(HeadVar, VarNameInfo, !VarNameInfoMap)
             ;
                 VarNameInfo = var_name_info(yes, set.init),
-                svmap.det_insert(HeadVar, VarNameInfo, !VarNameInfoMap)
+                map.det_insert(HeadVar, VarNameInfo, !VarNameInfoMap)
             )
         ;
             MaybeOtherVar = yes(OtherVar),
@@ -241,11 +240,11 @@ find_headvar_names_in_goal(VarSet, HeadVars, Goal, !VarNameInfoMap,
                     VarNameInfo0 = var_name_info(UnifiedFunctor, VarNames0),
                     set.insert(VarNames0, OtherVarName, VarNames),
                     VarNameInfo = var_name_info(UnifiedFunctor, VarNames),
-                    svmap.det_update(HeadVar, VarNameInfo, !VarNameInfoMap)
+                    map.det_update(HeadVar, VarNameInfo, !VarNameInfoMap)
                 ;
                     VarNames = set.make_singleton_set(OtherVarName),
                     VarNameInfo = var_name_info(no, VarNames),
-                    svmap.det_insert(HeadVar, VarNameInfo, !VarNameInfoMap)
+                    map.det_insert(HeadVar, VarNameInfo, !VarNameInfoMap)
                 )
             ;
                 true
@@ -301,7 +300,7 @@ update_consensus_map_for_headvar(VarNameInfos, HeadVar, !ConsensusMap) :-
         MaybeName = no
     ;
         MaybeName = yes(Name),
-        svmap.det_insert(HeadVar, Name, !ConsensusMap)
+        map.det_insert(HeadVar, Name, !ConsensusMap)
     ).
 
 :- func find_consensus_name_for_headvar(list(var_name_info_map), prog_var)

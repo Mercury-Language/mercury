@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2006-2007, 2010 The University of Melbourne.
+% Copyright (C) 2006-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -949,12 +949,12 @@ reuse_as_table_reverse_search_reuse_version_proc(Table, NewPPId,
 
 reuse_as_table_set(PPId, ReuseAs_Status, !Table) :-
     T0 = !.Table ^ reuse_info_map,
-    map.set(T0, PPId, ReuseAs_Status, T),
+    map.set(PPId, ReuseAs_Status, T0, T),
     !Table ^ reuse_info_map := T.
 
 reuse_as_table_insert_reuse_version_proc(PPId, NoClobbers, NewPPId, !Table) :-
     T0 = !.Table ^ reuse_version_map,
-    bimap.det_insert(T0, ppid_no_clobbers(PPId, NoClobbers), NewPPId, T),
+    bimap.det_insert(ppid_no_clobbers(PPId, NoClobbers), NewPPId, T0, T),
     !Table ^ reuse_version_map := T.
 
 reuse_as_table_maybe_dump(DoDump, ModuleInfo, Table, !IO) :-

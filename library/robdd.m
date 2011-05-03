@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2006, 2009 The University of Melbourne.
+% Copyright (C) 2001-2006, 2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -608,8 +608,8 @@ equivalent_vars_2(R) = EQ :-
                 ;
                     EQ0 = some_vars(
                         leader_to_eqvclass(M0)),
-                    map.det_insert(M0, R ^ value, Vars,
-                        M),
+                    map.det_insert(R ^ value, Vars,
+                        M0, M),
                     EQ = some_vars(leader_to_eqvclass(M))
                 )
             )
@@ -1175,12 +1175,12 @@ filter_2(P, D, F0, F, SeenVars0, SeenVars, SeenNodes0, SeenNodes) :-
             )
         ; P(V) ->
             F = make_node(V, Ftrue, Ffalse),
-            map.det_insert(SeenVars2, V, yes, SeenVars)
+            map.det_insert(V, yes, SeenVars2, SeenVars)
         ;
             F = Ftrue + Ffalse,
-            map.det_insert(SeenVars2, V, no, SeenVars)
+            map.det_insert(V, no, SeenVars2, SeenVars)
         ),
-        map.det_insert(SeenNodes2, F0, F, SeenNodes)
+        map.det_insert(F0, F, SeenNodes2, SeenNodes)
     ).
 
 squeeze_equiv(equiv_vars(LeaderMap), R0) =
@@ -1440,7 +1440,7 @@ robdd_to_dot_2(Robdd, WV, Seen0, Seen, Ranks0, Ranks) -->
         write_edge(Robdd, Robdd ^ tr, yes),
         write_edge(Robdd, Robdd ^ fa, no),
         { Seen = Seen2 `insert` Robdd },
-        { multi_map.set(Ranks2, Robdd ^ value, Robdd, Ranks) }
+        { multi_map.set( Robdd ^ value, Robdd, Ranks2, Ranks) }
     ).
 
 :- pred write_node(robdd(T)::in, write_var(T)::in(write_var),

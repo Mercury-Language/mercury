@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -829,7 +829,7 @@ map_cons_tag(shared_with_reserved_addresses_tag(_, _), _) :-
 
 create_varmap([], _, _, _, !VarMap, []).
 create_varmap([Var | VarList], VarSet, VarTypes, N0, !VarMap, VarInfos) :-
-    map.det_insert(!.VarMap, Var, N0, !:VarMap),
+    map.det_insert(Var, N0, !VarMap),
     N1 = N0 + 1,
     varset.lookup_name(VarSet, Var, VarName),
     map.lookup(VarTypes, Var, VarType),

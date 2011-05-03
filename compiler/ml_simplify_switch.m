@@ -398,7 +398,7 @@ insert_case_into_map(ThisLabel, Cond, !CaseLabelsMap) :-
     (
         Cond = match_value(Rval),
         ( Rval = ml_const(mlconst_int(Val)) ->
-            map.det_insert(!.CaseLabelsMap, Val, ThisLabel, !:CaseLabelsMap)
+            map.det_insert(Val, ThisLabel, !CaseLabelsMap)
         ;
             unexpected(this_file, "insert_case_into_map: non-int case")
         )
@@ -421,7 +421,7 @@ insert_range_into_map(Min, Max, ThisLabel, !CaseLabelsMap) :-
     ( Min > Max ->
         true
     ;
-        map.det_insert(!.CaseLabelsMap, Min, ThisLabel, !:CaseLabelsMap),
+        map.det_insert(Min, ThisLabel, !CaseLabelsMap),
         insert_range_into_map(Min + 1, Max, ThisLabel, !CaseLabelsMap)
     ).
 

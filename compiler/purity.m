@@ -339,7 +339,7 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
         NeedToRequantify = do_not_need_to_requantify,
         ProcInfo = ProcInfo3
     ),
-    map.det_update(Procs0, ProcId, ProcInfo, Procs),
+    map.det_update(ProcId, ProcInfo, Procs0, Procs),
     pred_info_set_procedures(Procs, !PredInfo),
 
     % A predicate should never become less pure after inlining, so update

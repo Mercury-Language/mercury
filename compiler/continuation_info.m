@@ -416,7 +416,6 @@
 :- import_module require.
 :- import_module solutions.
 :- import_module string.
-:- import_module svmap.
 :- import_module svset.
 :- import_module term.
 :- import_module varset.
@@ -544,7 +543,7 @@ process_continuation(WantReturnInfo, CallInfo, !Internals) :-
         Return = Return0
     ),
     Internal = internal_layout_info(Port0, Resume0, Return),
-    map.set(!.Internals, ReturnLabelNum, Internal, !:Internals).
+    map.set(ReturnLabelNum, Internal, !Internals).
 
 :- pred convert_return_data(list(liveinfo)::in,
     set(layout_var_info)::out, map(tvar, set(layout_locn))::out) is det.
@@ -816,7 +815,7 @@ build_closure_info([Var | Vars], [Type | Types],
     instmap_lookup_var(InstMap, Var, Inst),
     Layout = closure_arg_info(Type, Inst),
     set.singleton_set(Locations, reg(reg_r, ArgLoc)),
-    svmap.det_insert(Var, Locations, !VarLocs),
+    map.det_insert(Var, Locations, !VarLocs),
     type_vars(Type, VarTypeVars),
     svset.insert_list(VarTypeVars, !TypeVars),
     build_closure_info(Vars, Types, ArgInfos, Layouts, InstMap,

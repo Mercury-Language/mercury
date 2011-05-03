@@ -5164,7 +5164,7 @@ io.unlock_stream_db(!IO).
 io.insert_stream_info(Stream, Name, !IO) :-
     io.lock_stream_db(!IO),
     io.get_stream_db(StreamDb0, !IO),
-    map.set(StreamDb0, get_stream_id(Stream), Name, StreamDb),
+    map.set(get_stream_id(Stream), Name, StreamDb0, StreamDb),
     io.set_stream_db(StreamDb, !IO),
     io.unlock_stream_db(!IO).
 
@@ -5175,7 +5175,7 @@ io.maybe_delete_stream_info(Stream, !IO) :-
     ( MayDeleteStreamInfo \= 0 ->
         io.lock_stream_db(!IO),
         io.get_stream_db(StreamDb0, !IO),
-        map.delete(StreamDb0, get_stream_id(Stream), StreamDb),
+        map.delete(get_stream_id(Stream), StreamDb0, StreamDb),
         io.set_stream_db(StreamDb, !IO),
         io.unlock_stream_db(!IO)
     ;

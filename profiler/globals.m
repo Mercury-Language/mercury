@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995, 1997-1998, 2001, 2004-2006 The University of Melbourne.
+% Copyright (C) 1995, 1997-1998, 2001, 2004-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -195,7 +195,7 @@ globals.io_lookup_option(Option, OptionData, !IO) :-
 globals.io_set_option(Option, OptionData, !IO) :-
     globals.io_get_globals(Globals0, !IO),
     globals.get_options(Globals0, OptionTable0),
-    map.set(OptionTable0, Option, OptionData, OptionTable),
+    map.set(Option, OptionData, OptionTable0, OptionTable),
     globals.set_options(OptionTable, Globals0, Globals),
     globals.io_set_globals(Globals, !IO).
 

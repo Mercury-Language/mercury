@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2007, 2010 The University of Melbourne.
+% Copyright (C) 2001-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -95,7 +95,6 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
-:- import_module svmap.
 :- import_module svqueue.
 
     % The stack optimization graph is a bipartite graph, whose two node types
@@ -392,9 +391,9 @@ create_graph_links(field_costs_benefits(_FieldVar, Costs, Benefits),
 add_cost_benefit_links(Benefits, Cost, !CostToBenefitsMap) :-
     ( map.search(!.CostToBenefitsMap, Cost, CostBenefits0) ->
         set.union(CostBenefits0, Benefits, CostBenefits),
-        svmap.det_update(Cost, CostBenefits, !CostToBenefitsMap)
+        map.det_update(Cost, CostBenefits, !CostToBenefitsMap)
     ;
-        svmap.det_insert(Cost, Benefits, !CostToBenefitsMap)
+        map.det_insert(Cost, Benefits, !CostToBenefitsMap)
     ).
 
 :- pred add_benefit_cost_links(set(cost_node)::in, benefit_node::in,
@@ -404,9 +403,9 @@ add_cost_benefit_links(Benefits, Cost, !CostToBenefitsMap) :-
 add_benefit_cost_links(Costs, Benefit, !BenefitToCostsMap) :-
     ( map.search(!.BenefitToCostsMap, Benefit, BenefitCosts0) ->
         set.union(BenefitCosts0, Costs, BenefitCosts),
-        svmap.det_update(Benefit, BenefitCosts, !BenefitToCostsMap)
+        map.det_update(Benefit, BenefitCosts, !BenefitToCostsMap)
     ;
-        svmap.det_insert(Benefit, Costs, !BenefitToCostsMap)
+        map.det_insert(Benefit, Costs, !BenefitToCostsMap)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -435,8 +434,8 @@ maximize_matching(BenefitNodes, Graph, !Matching) :-
 update_matches([], Matching0) = Matching0.
 update_matches([BenefitNode - CostNode | Path], Matching0) = Matching :-
     Matching0 = matching(CostToBenefitMap0, BenefitToCostMap0),
-    map.set(CostToBenefitMap0, CostNode, BenefitNode, CostToBenefitMap1),
-    map.set(BenefitToCostMap0, BenefitNode, CostNode, BenefitToCostMap1),
+    map.set(CostNode, BenefitNode, CostToBenefitMap0, CostToBenefitMap1),
+    map.set(BenefitNode, CostNode, BenefitToCostMap0, BenefitToCostMap1),
     Matching1 = matching(CostToBenefitMap1, BenefitToCostMap1),
     Matching = update_matches(Path, Matching1).
 

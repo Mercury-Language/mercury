@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003, 2006 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003, 2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
@@ -88,7 +88,7 @@ check_rule_decls([Decl | DeclList], !Decls, Errors) :-
 		Errors = [Err0, Err1 | Errors0],
 		check_rule_decls(DeclList, !Decls, Errors0)
 	;
-		map.set(!.Decls, DeclId, Decl, !:Decls),
+		map.set(DeclId, Decl, !Decls),
 		check_rule_decls(DeclList, !Decls, Errors)
 	).
 
@@ -145,7 +145,7 @@ check_clauses0([Clause | ClauseList], Decls, !Clauses, Errors) :-
 	;
 		ClauseList1 = [Clause]
 	),
-	map.set(!.Clauses, Id, ClauseList1, !:Clauses),
+	map.set(Id, ClauseList1, !Clauses),
 
 		% Look for used nonterminals that are not declared.
 	solutions((pred(NonTermId::out) is nondet :-

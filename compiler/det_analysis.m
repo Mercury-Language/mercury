@@ -377,7 +377,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     proc_info_set_inferred_determinism(NewDetism, ProcInfo1, ProcInfo),
 
     % Put back the new proc_info structure.
-    map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+    map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
     pred_info_set_procedures(ProcTable, PredInfo0, PredInfo1),
 
     pred_info_get_markers(PredInfo1, Markers1),
@@ -397,7 +397,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     ),
     pred_info_set_markers(Markers, PredInfo1, PredInfo),
 
-    map.det_update(PredTable0, PredId, PredInfo, PredTable),
+    map.det_update(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
 :- pred get_exported_proc_context(list(pragma_exported_proc)::in,
@@ -2077,7 +2077,7 @@ set_non_inferred_proc_determinism(proc(PredId, ProcId), !ModuleInfo) :-
     (
         MaybeDet = yes(Det),
         proc_info_set_inferred_determinism(Det, ProcInfo0, ProcInfo),
-        map.det_update(Procs0, ProcId, ProcInfo, Procs),
+        map.det_update(ProcId, ProcInfo, Procs0, Procs),
         pred_info_set_procedures(Procs, PredInfo0, PredInfo),
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ;

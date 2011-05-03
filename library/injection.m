@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006, 2010 The University of Melbourne.
+% Copyright (C) 2005-2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -313,7 +313,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 
 :- type injection(K, V)
     --->    injection(map(K, V), map(V, K)).
@@ -368,26 +367,26 @@ injection.contains_value(injection(_, R), V) :-
     map.contains(R, V).
 
 injection.insert(injection(!.F, !.R), K, V) = injection(!:F, !:R) :-
-    svmap.insert(K, V, !F),
-    svmap.insert(V, K, !R).
+    map.insert(K, V, !F),
+    map.insert(V, K, !R).
 
 injection.insert(I, K, V, injection.insert(I, K, V)).
 
 injection.det_insert(injection(!.F, !.R), K, V) = injection(!:F, !:R) :-
-    svmap.det_insert(K, V, !F),
-    svmap.det_insert(V, K, !R).
+    map.det_insert(K, V, !F),
+    map.det_insert(V, K, !R).
 
 injection.det_insert(I, K, V, injection.det_insert(I, K, V)).
 
 injection.update(injection(!.F, !.R), K, V) = injection(!:F, !:R) :-
-    svmap.update(K, V, !F),
-    svmap.insert(V, K, !R).
+    map.update(K, V, !F),
+    map.insert(V, K, !R).
 
 injection.update(I, K, V, injection.update(I, K, V)).
 
 injection.det_update(injection(!.F, !.R), K, V) = injection(!:F, !:R) :-
-    svmap.det_update(K, V, !F),
-    svmap.det_insert(V, K, !R).
+    map.det_update(K, V, !F),
+    map.det_insert(V, K, !R).
 
 injection.det_update(I, K, V, injection.det_update(I, K, V)).
 
@@ -400,12 +399,12 @@ injection.set(I, K, V, injection.set(I, K, V)).
     map(V, K)::in, map(V, K)::out) is semidet.
 
 injection.set_2(K, V, !F, !R) :-
-    svmap.set(K, V, !F),
+    map.set(K, V, !F),
     ( map.search(!.R, V, OrigK) ->
         % Fail if the existing key is not the same as the given key.
         K = OrigK
     ;
-        svmap.det_insert(V, K, !R)
+        map.det_insert(V, K, !R)
     ).
 
 injection.det_set(injection(!.F, !.R), K, V) = injection(!:F, !:R) :-
@@ -417,7 +416,7 @@ injection.det_set(I, K, V, injection.det_set(I, K, V)).
     map(V, K)::in, map(V, K)::out) is det.
 
 injection.det_set_2(K, V, !F, !R) :-
-    svmap.set(K, V, !F),
+    map.set(K, V, !F),
     ( map.search(!.R, V, OrigK) ->
         % Abort if the existing key is not the same as the given key.
         (
@@ -429,14 +428,14 @@ injection.det_set_2(K, V, !F, !R) :-
                 "value is already associated with another key")
         )
     ;
-        svmap.det_insert(V, K, !R)
+        map.det_insert(V, K, !R)
     ).
 
 injection.insert_from_assoc_list(A, injection(F0, R0)) = injection(F, R) :-
     P = (pred(KV::in, !.F::in, !:F::out, !.R::in, !:R::out) is semidet :-
             KV = K - V,
-            svmap.insert(K, V, !F),
-            svmap.insert(V, K, !R)
+            map.insert(K, V, !F),
+            map.insert(V, K, !R)
         ),
     list.foldl2(P, A, F0, F, R0, R).
 
@@ -445,8 +444,8 @@ injection.insert_from_assoc_list(A, I, injection.insert_from_assoc_list(A, I)).
 injection.det_insert_from_assoc_list(A, injection(F0, R0)) = injection(F, R) :-
     P = (pred(KV::in, !.F::in, !:F::out, !.R::in, !:R::out) is det :-
             KV = K - V,
-            svmap.det_insert(K, V, !F),
-            svmap.det_insert(V, K, !R)
+            map.det_insert(K, V, !F),
+            map.det_insert(V, K, !R)
         ),
     list.foldl2(P, A, F0, F, R0, R).
 
@@ -475,8 +474,8 @@ injection.det_set_from_assoc_list(A, I,
 injection.insert_from_corresponding_lists(As, Bs, injection(F0, R0)) =
         injection(F, R) :-
     P = (pred(K::in, V::in, !.F::in, !:F::out, !.R::in, !:R::out) is semidet :-
-            svmap.insert(K, V, !F),
-            svmap.insert(V, K, !R)
+            map.insert(K, V, !F),
+            map.insert(V, K, !R)
         ),
     list.foldl2_corresponding(P, As, Bs, F0, F, R0, R).
 
@@ -486,8 +485,8 @@ injection.insert_from_corresponding_lists(As, Bs, I,
 injection.det_insert_from_corresponding_lists(As, Bs, injection(F0, R0)) =
         injection(F, R) :-
     P = (pred(K::in, V::in, !.F::in, !:F::out, !.R::in, !:R::out) is det :-
-            svmap.det_insert(K, V, !F),
-            svmap.det_insert(V, K, !R)
+            map.det_insert(K, V, !F),
+            map.det_insert(V, K, !R)
         ),
     list.foldl2_corresponding(P, As, Bs, F0, F, R0, R).
 
@@ -509,7 +508,7 @@ injection.det_set_from_corresponding_lists(As, Bs, I,
     injection.det_set_from_corresponding_lists(As, Bs, I)).
 
 injection.delete_key(injection(!.F, !.R), K) = injection(!:F, !:R) :-
-    ( svmap.remove(K, _, !F) ->
+    ( map.remove(K, _, !F) ->
         map.foldl(filter_values_with_key(K), !.R, map.init, !:R)
     ;
         true
@@ -524,11 +523,11 @@ filter_values_with_key(FilterKey, V, K, !Map) :-
     ( K = FilterKey ->
         true
     ;
-        svmap.det_insert(V, K, !Map)
+        map.det_insert(V, K, !Map)
     ).
 
 injection.delete_value(injection(!.F, !.R), V) = injection(!:F, !:R) :-
-    ( svmap.remove(V, K, !R) ->
+    ( map.remove(V, K, !R) ->
         % Only K could possibly be associated with V.  If it is,
         % then we throw an exception.
         ( map.lookup(!.F, K, V) ->
@@ -585,7 +584,7 @@ injection.map_keys(Func, injection(F0, R0)) = injection(F, R) :-
 :- func insert_transformed_key_f(func(V, K) = L, K, V, map(L, V)) = map(L, V).
 
 insert_transformed_key_f(Func, K, V, !.Map) = !:Map :-
-    svmap.set(Func(V, K), V, !Map).
+    map.set(Func(V, K), V, !Map).
 
 injection.map_keys(Pred, injection(!.F, !.R), injection(!:F, !:R)) :-
     map.foldl(insert_transformed_key_p(Pred), !.F, map.init, !:F),
@@ -596,7 +595,7 @@ injection.map_keys(Pred, injection(!.F, !.R), injection(!:F, !:R)) :-
 
 insert_transformed_key_p(Pred, K, V, !Map) :-
     Pred(V, K, L),
-    svmap.set(L, V, !Map).
+    map.set(L, V, !Map).
 
 injection.filter_map_keys(Pred, injection(F0, R0), injection(F, R)) :-
     F = map.foldl(maybe_set_transformed_key(Pred), F0, map.init),
@@ -610,7 +609,7 @@ injection.filter_map_keys(Pred, injection(F0, R0), injection(F, R)) :-
 
 maybe_set_transformed_key(Pred, K, V, !.Map) = !:Map :-
     ( Pred(V, K, L) ->
-        svmap.set(L, V, !Map)
+        map.set(L, V, !Map)
     ;
         true
     ).
@@ -630,7 +629,7 @@ injection.map_values(Func, injection(F0, R0)) = injection(F, R) :-
 
 insert_transformed_value_f(Func, V, K, !.Map) = !:Map :-
     W = Func(K, V),
-    ( svmap.insert(W, K, !Map) ->
+    ( map.insert(W, K, !Map) ->
         true
     ;
         % Another value in the original was already mapped to this value.

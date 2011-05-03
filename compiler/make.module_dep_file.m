@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 expandtab
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2009 The University of Melbourne.
+% Copyright (C) 2002-2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -95,7 +95,7 @@ get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO) :-
                 MaybeImports = no,
                 ModuleDepMap0 = !.Info ^ module_dependencies,
                 % XXX Could this be map.det_update or map.det_insert?
-                map.set(ModuleDepMap0, ModuleName, MaybeImports, ModuleDepMap),
+                map.set(ModuleName, MaybeImports, ModuleDepMap0, ModuleDepMap),
                 !Info ^ module_dependencies := ModuleDepMap
             ;
                 Error = no,
@@ -232,7 +232,7 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
             RebuildModuleDeps = do_not_rebuild_module_deps,
             ModuleDepMap0 = !.Info ^ module_dependencies,
             % XXX Could this be map.det_update or map.det_insert?
-            map.set(ModuleDepMap0, ModuleName, no, ModuleDepMap1),
+            map.set(ModuleName, no, ModuleDepMap0, ModuleDepMap1),
             !Info ^ module_dependencies := ModuleDepMap1
         )
     ),
@@ -241,7 +241,7 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
         !:MaybeImports = MaybeImportsPrime
     ;
         !:MaybeImports = no,
-        map.det_insert(ModuleDepMap2, ModuleName, no, ModuleDepMap),
+        map.det_insert(ModuleName, no, ModuleDepMap2, ModuleDepMap),
         !Info ^ module_dependencies := ModuleDepMap
     ).
 
@@ -490,7 +490,7 @@ read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
 
             ModuleDepMap0 = !.Info ^ module_dependencies,
             % XXX Could this be map.det_insert?
-            map.set(ModuleDepMap0, ModuleName, yes(Imports), ModuleDepMap),
+            map.set(ModuleName, yes(Imports), ModuleDepMap0, ModuleDepMap),
             !Info ^ module_dependencies := ModuleDepMap,
 
             % Read the dependencies for the nested children. If something
@@ -608,7 +608,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             io.remove_file(ErrFileName, _, !IO),
             ModuleDepMap0 = !.Info ^ module_dependencies,
             % XXX Could this be map.det_update?
-            map.set(ModuleDepMap0, ModuleName, no, ModuleDepMap),
+            map.set(ModuleName, no, ModuleDepMap0, ModuleDepMap),
             !Info ^ module_dependencies := ModuleDepMap
         ;
             ( Error = no_module_errors

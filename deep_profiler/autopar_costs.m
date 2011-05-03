@@ -88,7 +88,6 @@
 :- import_module set.
 :- import_module solutions.
 :- import_module string.
-:- import_module svmap.
 
 %----------------------------------------------------------------------------%
 
@@ -172,7 +171,7 @@ atomic_goal_build_use_map(AtomicGoal, RevGoalPathSteps, Info, VarUseType, Var,
             (func) = compute_var_use_lazy(Info, RevGoalPathSteps, Var,
                 Args, VarUseType))
     ),
-    svmap.det_insert(Var, LazyUse, !Map).
+    map.det_insert(Var, LazyUse, !Map).
 
 :- func compute_var_use_lazy(implicit_parallelism_info, list(goal_path_step),
     var_rep, list(var_rep), var_use_type) = var_use_info.

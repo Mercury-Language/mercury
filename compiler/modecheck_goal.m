@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009-2010 The University of Melbourne.
+% Copyright (C) 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -150,7 +150,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -895,10 +894,10 @@ modecheck_goal_make_ground_term_unique(TermVar, SubGoal0, GoalInfo0, GoalExpr,
     mode_info_get_varset(!.ModeInfo, VarSet0),
     varset.new_var(VarSet0, CloneVar, VarSet),
     map.lookup(VarTypes0, TermVar, TermVarType),
-    map.det_insert(VarTypes0, CloneVar, TermVarType, VarTypes),
+    map.det_insert(CloneVar, TermVarType, VarTypes0, VarTypes),
     mode_info_set_varset(VarSet, !ModeInfo),
     mode_info_set_var_types(VarTypes, !ModeInfo),
-    map.det_insert(map.init, TermVar, CloneVar, Rename),
+    map.det_insert(TermVar, CloneVar, map.init, Rename),
     % By construction, TermVar can appear only in (a) SubGoal0's goal_info,
     % and (b) in the last conjunct in SubGoal0's goal_expr; it cannot appear
     % in any of the other conjuncts. We could make this code more efficient
@@ -1175,7 +1174,7 @@ modecheck_ground_term_construct_goal_loop(VarSet,
         Goal = hlds_goal(GoalExpr, GoalInfo),
 
         LHSVarInfo = construct_var_info(TermInst),
-        svmap.det_insert(LHSVar, LHSVarInfo, !LocalVarMap)
+        map.det_insert(LHSVar, LHSVarInfo, !LocalVarMap)
     ;
         unexpected(this_file,
             "modecheck_ground_term_construct_goal_loop: not rhs_functor unify")
@@ -1197,7 +1196,7 @@ modecheck_ground_term_construct_arg_loop([Var | Vars], [VarInst | VarInsts],
     %
     % Since there will be no more appearances of this variable, we remove it
     % from LocalVarMap. This greatly reduces the size of LocalVarMap.
-    svmap.det_remove(Var, VarInfo, !LocalVarMap),
+    map.det_remove(Var, VarInfo, !LocalVarMap),
     VarInfo = construct_var_info(VarInst),
     LHSOldInst = free,
     RHSOldInst = VarInst,

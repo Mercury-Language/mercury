@@ -214,7 +214,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 :- import_module svvarset.
 :- import_module term.
 :- import_module varset.
@@ -394,7 +393,7 @@ lookup_proxy_pred(PredId, MaybeNewPredId, !ProxyMap, !ModuleInfo) :-
         ;
             MaybeNewPredId = no
         ),
-        svmap.det_insert(PredId, MaybeNewPredId, !ProxyMap)
+        map.det_insert(PredId, MaybeNewPredId, !ProxyMap)
     ).
 
 :- pred create_proxy_pred(pred_id::in, pred_id::out,
@@ -983,7 +982,7 @@ make_retry_var(VarName, RetryVar, !VarSet, !VarTypes) :-
     TypeCtor = type_ctor(qualified(SSDBModule, "ssdb_retry"), 0),
     construct_type(TypeCtor, [], RetryType),
     svvarset.new_named_var(VarName, RetryVar, !VarSet),
-    svmap.det_insert(RetryVar, RetryType, !VarTypes).
+    map.det_insert(RetryVar, RetryType, !VarTypes).
 
     % Create the goal for recursive call in the case of a retry.
     %
@@ -1152,7 +1151,7 @@ make_proc_id_construction(ModuleInfo, PredInfo, Goals, ProcIdVar,
     svvarset.new_named_var("ProcId", ProcIdVar, !VarSet),
     ConsId = cons(qualified(SSDBModule, "ssdb_proc_id"), 2, TypeCtor),
     construct_type(TypeCtor, [], ProcIdType),
-    svmap.det_insert(ProcIdVar, ProcIdType, !VarTypes),
+    map.det_insert(ProcIdVar, ProcIdType, !VarTypes),
     construct_functor(ProcIdVar, ConsId, [ModuleNameVar, PredNameVar],
         ConstructProcIdGoal),
 
@@ -1206,7 +1205,7 @@ check_arguments_modes(ModuleInfo, HeadModes) :-
 make_arg_list(_Pos, _InstMap, [], _Renaming, OutVar, [Goal], !ModuleInfo,
         !ProcInfo, !PredInfo, !VarSet, !VarTypes, !BoundVarDescs) :-
     svvarset.new_named_var("EmptyVarList", OutVar, !VarSet),
-    svmap.det_insert(OutVar, list_var_value_type, !VarTypes),
+    map.det_insert(OutVar, list_var_value_type, !VarTypes),
     ListTypeSymName = qualified(mercury_list_module, "list"),
     ListTypeCtor = type_ctor(ListTypeSymName, 1),
     ConsId = cons(qualified(mercury_list_module, "[]" ), 0, ListTypeCtor),
@@ -1243,7 +1242,7 @@ make_arg_list(Pos0, InstMap, [ProgVar | ProgVars], Renaming, OutVar,
         ),
 
         svvarset.new_named_var("FullListVar", OutVar, !VarSet),
-        svmap.det_insert(OutVar, list_var_value_type, !VarTypes),
+        map.det_insert(OutVar, list_var_value_type, !VarTypes),
         ListTypeSymName = qualified(mercury_list_module, "list"),
         ListTypeCtor = type_ctor(ListTypeSymName, 1),
         ConsId = cons(qualified(unqualified("list"), "[|]" ), 2, ListTypeCtor),
@@ -1317,7 +1316,7 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
         % Constructor of the variable's description.
         ConsId = cons(qualified(SSDBModule, "bound_head_var"), 3,
             VarValueTypeCtor),
-        svmap.det_insert(VarDesc, VarValueType, !VarTypes),
+        map.det_insert(VarDesc, VarValueType, !VarTypes),
 
         % Renaming contains the names of all instantiated arguments
         % during the execution of the procedure's body.
@@ -1339,11 +1338,11 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
 
         Goals = [ConstructVarName, ConstructVarPos | TypeInfoGoals] ++
             [ConstructVarGoal],
-        svmap.det_insert(VarToInspect, VarDesc, !BoundVarDescs)
+        map.det_insert(VarToInspect, VarDesc, !BoundVarDescs)
     ;
         ConsId = cons(qualified(SSDBModule, "unbound_head_var"), 2,
             VarValueTypeCtor),
-        svmap.det_insert(VarDesc, VarValueType, !VarTypes),
+        map.det_insert(VarDesc, VarValueType, !VarTypes),
         construct_functor(VarDesc, ConsId, [VarNameVar, VarPosVar],
             ConstructVarGoal),
 

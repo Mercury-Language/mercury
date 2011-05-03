@@ -44,8 +44,8 @@ main -->
 	io__nl,
 
 	{ Map0 = map__init },
-	{ map__det_insert(Map0, 41, 42, Map1) },
-	{ map__det_insert(Map1, 82, 83, Map2) },
+	{ map__det_insert(41, 42, Map0, Map1) },
+	{ map__det_insert(82, 83, Map1, Map2) },
  	pprint__write(line_length, to_doc(Map1)),
 	io__nl,
  	pprint__write(line_length, to_doc(Map2)),

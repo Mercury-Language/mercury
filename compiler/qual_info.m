@@ -101,7 +101,6 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module map.
-:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -233,7 +232,7 @@ update_var_types(Var, Type, Context, !VarTypes, !Specs) :-
             !:Specs = [Spec | !.Specs]
         )
     ;
-        svmap.det_insert(Var, Type, !VarTypes)
+        map.det_insert(Var, Type, !VarTypes)
     ).
 
 %-----------------------------------------------------------------------------%

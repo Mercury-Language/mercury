@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2010 The University of Melbourne.
+% Copyright (C) 2001-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -74,7 +74,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module svmap.
 :- import_module term.
 :- import_module univ.
 
@@ -1654,7 +1653,7 @@ add_rtti_defn_nodes(Defn, !Graph, !NameMap) :-
     (
         Name = entity_data(DataName),
         digraph.add_vertex(DataName, _, !Graph),
-        svmap.det_insert(DataName, Defn, !NameMap)
+        map.det_insert(DataName, Defn, !NameMap)
     ;
         ( Name = entity_type(_, _)
         ; Name = entity_function(_, _, _, _)

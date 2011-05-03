@@ -319,7 +319,7 @@ gather_items_2(Item, !Section, !Info) :-
             !.Section, yes, GatheredItems0, GatheredItems1),
         add_gathered_item(BodyItem, item_id(type_body_item, TypeCtorItem),
             !.Section, yes, GatheredItems1, GatheredItems),
-        !:Info = !.Info ^ gathered_items := GatheredItems
+        !Info ^ gathered_items := GatheredItems
     ;
         Item = item_instance(ItemInstance)
     ->
@@ -331,13 +331,13 @@ gather_items_2(Item, !Section, !Info) :-
         NewInstanceItem = !.Section - Item,
         ( map.search(Instances0, ClassItemName, OldInstanceItems) ->
             NewInstanceItems = [NewInstanceItem | OldInstanceItems],
-            map.det_update(Instances0, ClassItemName, NewInstanceItems,
-                Instances)
+            map.det_update(ClassItemName, NewInstanceItems,
+                Instances0, Instances)
         ;
-            map.det_insert(Instances0, ClassItemName, [NewInstanceItem],
-                Instances)
+            map.det_insert(ClassItemName, [NewInstanceItem],
+                Instances0, Instances)
         ),
-        !:Info = !.Info ^ instances := Instances
+        !Info ^ instances := Instances
     ;
         % For predicates or functions defined using `with_inst` annotations
         % the pred_or_func and arity here won't be correct, but equiv_type.m
@@ -355,25 +355,24 @@ gather_items_2(Item, !Section, !Info) :-
             !.Section, yes, GatheredItems0, GatheredItems1),
         add_gathered_item(Item, item_id(function_item, ItemName),
             !.Section, yes, GatheredItems1, GatheredItems),
-        !:Info = !.Info ^ gathered_items := GatheredItems
+        !Info ^ gathered_items := GatheredItems
     ;
         item_to_item_id(Item, ItemId)
     ->
         GatheredItems0 = !.Info ^ gathered_items,
         add_gathered_item(Item, ItemId, !.Section, yes,
             GatheredItems0, GatheredItems),
-        !:Info = !.Info ^ gathered_items := GatheredItems
+        !Info ^ gathered_items := GatheredItems
     ;
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(_, PragmaType, _, _),
         is_pred_pragma(PragmaType, yes(PredOrFuncId))
     ->
         PragmaItems = !.Info ^ pragma_items,
-        !:Info = !.Info ^ pragma_items :=
-            [{PredOrFuncId, Item, !.Section} | PragmaItems]
+        !Info ^ pragma_items := [{PredOrFuncId, Item, !.Section} | PragmaItems]
     ;
         OtherItems = !.Info ^ other_items,
-        !:Info = !.Info ^ other_items := [Item | OtherItems]
+        !Info ^ other_items := [Item | OtherItems]
     ).
 
 :- pred add_gathered_item(item::in, item_id::in, section::in, bool::in,
@@ -458,7 +457,7 @@ add_gathered_item_2(Item, ItemType, NameArity, Section, MatchingItems0,
     ),
 
     IdMap0 = extract_ids(!.GatheredItems, ItemType),
-    map.set(IdMap0, NameArity, MatchingItems, IdMap),
+    map.set(NameArity, MatchingItems, IdMap0, IdMap),
     !:GatheredItems = update_ids(!.GatheredItems, ItemType, IdMap).
 
 :- func split_class_method_types_and_modes(class_method) = class_methods.

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2010 The University of Melbourne.
+% Copyright (C) 1993-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -69,11 +69,10 @@
 
 :- import_module int.
 :- import_module map.
+:- import_module multi_map.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
-:- import_module svmulti_map.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -396,7 +395,7 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !Specs) :-
         ->
             NoTagType = no_tag_type(Args, CtorName, CtorArgType),
             module_info_get_no_tag_types(!.ModuleInfo, NoTagTypes0),
-            map.set(NoTagTypes0, TypeCtor, NoTagType, NoTagTypes),
+            map.set(TypeCtor, NoTagType, NoTagTypes0, NoTagTypes),
             module_info_set_no_tag_types(NoTagTypes, !ModuleInfo)
         ;
             true
@@ -734,15 +733,15 @@ ctors_add([Ctor | Rest], TypeCtor, TypeCtorModuleName, TVarSet, TypeParams,
         QualifiedConsDefnsA = [ConsDefn | QualifiedConsDefnsA1]
     ),
     QualifiedConsDefnsB = [ConsDefn | QualifiedConsDefnsB1],
-    svmap.set(QualifiedConsIdA, QualifiedConsDefnsA, !Ctors),
-    svmap.set(QualifiedConsIdB, QualifiedConsDefnsB, !Ctors),
+    map.set(QualifiedConsIdA, QualifiedConsDefnsA, !Ctors),
+    map.set(QualifiedConsIdB, QualifiedConsDefnsB, !Ctors),
 
     % Add the unqualified version of the cons_id to the cons_table,
     % if appropriate.
     (
         NeedQual = may_be_unqualified,
-        svmulti_map.set(UnqualifiedConsIdA, ConsDefn, !Ctors),
-        svmulti_map.set(UnqualifiedConsIdB, ConsDefn, !Ctors)
+        multi_map.set(UnqualifiedConsIdA, ConsDefn, !Ctors),
+        multi_map.set(UnqualifiedConsIdB, ConsDefn, !Ctors)
     ;
         NeedQual = must_be_qualified
     ),
@@ -771,7 +770,7 @@ ctors_add([Ctor | Rest], TypeCtor, TypeCtorModuleName, TVarSet, TypeParams,
 
 add_ctor(TypeCtor, ConsName, Arity, ConsDefn, ModuleQual, !Ctors) :-
     ConsId = cons(qualified(ModuleQual, ConsName), Arity, TypeCtor),
-    svmulti_map.set(ConsId, ConsDefn, !Ctors).
+    multi_map.set(ConsId, ConsDefn, !Ctors).
 
 :- pred add_ctor_field_names(list(maybe(ctor_field_name))::in,
     need_qualifier::in, list(module_name)::in, type_ctor::in, cons_id::in,
@@ -845,7 +844,7 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         % if appropriate.
         (
             NeedQual = may_be_unqualified,
-            svmulti_map.set(unqualified(UnqualFieldName), FieldDefn,
+            multi_map.set(unqualified(UnqualFieldName), FieldDefn,
                 !FieldNameTable)
         ;
             NeedQual = must_be_qualified
@@ -860,7 +859,7 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
     module_name::in, ctor_field_table::in, ctor_field_table::out) is det.
 
 do_add_ctor_field(FieldName, FieldNameDefn, ModuleName, !FieldNameTable) :-
-    svmulti_map.set(qualified(ModuleName, FieldName), FieldNameDefn,
+    multi_map.set(qualified(ModuleName, FieldName), FieldNameDefn,
         !FieldNameTable).
 
 %----------------------------------------------------------------------------%

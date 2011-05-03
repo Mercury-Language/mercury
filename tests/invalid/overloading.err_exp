@@ -31,18 +31,12 @@ overloading.m:050:   variable `StartMap0' has overloaded type {
 overloading.m:050:       (pred tree234.tree234(V_V_1, V_V_2)),
 overloading.m:050:       tree234.tree234(K, V)
 overloading.m:050:   },
-overloading.m:050:   variable `EndMap0' has overloaded type {
-overloading.m:050:       (pred tree234.tree234(overloading.interval_id,
-overloading.m:050:       overloading.anchor)),
-overloading.m:050:       tree234.tree234(overloading.interval_id,
-overloading.m:050:       overloading.anchor)
-overloading.m:050:   },
-overloading.m:050:   variable `VarsMap0' has overloaded type {
-overloading.m:050:       (pred tree234.tree234(overloading.interval_id,
-overloading.m:050:       set_ordlist.set_ordlist(term.var(term.generic)))),
-overloading.m:050:       tree234.tree234(overloading.interval_id,
-overloading.m:050:       set_ordlist.set_ordlist(term.var(term.generic)))
-overloading.m:050:   },
+overloading.m:050:   variable `EndMap0' has type
+overloading.m:050:   `tree234.tree234(overloading.interval_id,
+overloading.m:050:   overloading.anchor)',
+overloading.m:050:   variable `VarsMap0' has type
+overloading.m:050:   `tree234.tree234(overloading.interval_id,
+overloading.m:050:   set_ordlist.set_ordlist(term.var(term.generic)))',
 overloading.m:050:   variable `SuccMap0' has overloaded type {
 overloading.m:050:       (pred tree234.tree234(V_V_1, V_V_2)),
 overloading.m:050:       tree234.tree234(K, V)

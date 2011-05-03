@@ -762,8 +762,7 @@ build_field_defns([Defn|Defns], ModuleName, GlobalInfo, FieldList,
     ( Name = entity_data(mlds_data_var(FieldName)) ->
         GCC_FieldName = ml_var_name_to_string(FieldName),
         QualFieldName = qual(ModuleName, type_qual, GCC_FieldName),
-        map.det_insert(!.FieldTable, QualFieldName, GCC_FieldDefn,
-            !:FieldTable)
+        map.det_insert(QualFieldName, GCC_FieldDefn, !FieldTable)
     ;
         unexpected(this_file, "non-var field")
     ),
@@ -817,7 +816,7 @@ gen_defn_body(Name, Context, Flags, DefnBody, !GlobalInfo, !IO) :-
 
         % Insert the definition in our symbol table.
         GlobalVars0 = !.GlobalInfo ^ gi_global_vars,
-        map.det_insert(GlobalVars0, Name, GCC_Defn, GlobalVars),
+        map.det_insert(Name, GCC_Defn, GlobalVars0, GlobalVars),
         !GlobalInfo ^ gi_global_vars := GlobalVars
     ;
         DefnBody = mlds_function(_MaybePredProcId, Signature, FunctionBody,
@@ -1309,9 +1308,8 @@ gen_class(Name, Context, ClassDefn, !GlobalInfo, !IO) :-
         % Insert the gcc declaration node and the field table
         % for this type into the global type table
         TypeTable0 = !.GlobalInfo ^ gi_type_table,
-        map.det_insert(TypeTable0, Name,
-            gcc_type_info(StructTypeDecl, FieldTable),
-            TypeTable),
+        map.det_insert(Name, gcc_type_info(StructTypeDecl, FieldTable),
+            TypeTable0, TypeTable),
         !GlobalInfo ^ gi_type_table := TypeTable
     ),
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998, 2006 The University of Melbourne.
+% Copyright (C) 1998, 2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -295,8 +295,8 @@ option_defaults(binary,             bool_special).
 :- pred special_handler(option :: in, special_data :: in, option_table :: in,
         maybe_option_table :: out) is semidet.
 
-special_handler(context_style_output, bool(yes), Options0, ok(Options)) :-
-    map.lookup(Options0, context, maybe_int(Context0)),
+special_handler(context_style_output, bool(yes), !.Options, ok(!:Options)) :-
+    map.lookup(!.Options, context, maybe_int(Context0)),
     (
         Context0 = no,
         Context = yes(3)
@@ -304,9 +304,9 @@ special_handler(context_style_output, bool(yes), Options0, ok(Options)) :-
         Context0 = yes(C),
         Context = yes(C)
     ),
-    map.set(Options0, context, maybe_int(Context), Options).
-special_handler(unified_style_output, bool(yes), Options0, ok(Options)) :-
-    map.lookup(Options0, unified, maybe_int(Unified0)),
+    map.set(context, maybe_int(Context), !Options).
+special_handler(unified_style_output, bool(yes), !.Options, ok(!:Options)) :-
+    map.lookup(!.Options, unified, maybe_int(Unified0)),
     (
         Unified0 = no,
         Unified = yes(3)
@@ -314,7 +314,7 @@ special_handler(unified_style_output, bool(yes), Options0, ok(Options)) :-
         Unified0 = yes(C),
         Unified = yes(C)
     ),
-    map.set(Options0, unified, maybe_int(Unified), Options).
+    map.set(unified, maybe_int(Unified), !Options).
 
     % Special handlers for unhandled options.
     %

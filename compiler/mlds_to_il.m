@@ -4562,7 +4562,7 @@ il_info_add_locals(NewLocals, !Info) :-
 
 il_info_remove_locals(RemoveLocals, !Info) :-
     assoc_list.keys(RemoveLocals, Keys),
-    map.delete_list(!.Info ^ locals, Keys, NewLocals),
+    map.delete_list(Keys, !.Info ^ locals, NewLocals),
     !Info ^ locals := NewLocals.
 
 :- pred il_info_add_class_member(list(class_member)::in,

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2010 The University of Melbourne.
+% Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -81,7 +81,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module svset.
 :- import_module term.
 :- import_module varset.
@@ -445,7 +444,7 @@ get_specialization_requests(PredId, !GlobalInfo) :-
         proc_info_get_goal(ProcInfo, Goal),
         goal_size(Goal, GoalSize),
         GoalSizes1 = !.GlobalInfo ^ hogi_goal_sizes,
-        map.set(GoalSizes1, PredId, GoalSize, GoalSizes),
+        map.set(PredId, GoalSize, GoalSizes1, GoalSizes),
         !:GlobalInfo = !.GlobalInfo ^ hogi_goal_sizes := GoalSizes
     ).
 
@@ -883,7 +882,7 @@ check_unify(Unification, !Info) :-
                     % We cannot specialize calls involving a variable with
                     % more than one possible value.
                     Specializable = constant(_, _),
-                    map.det_update(PredVars0, LVar, multiple_values, PredVars),
+                    map.det_update(LVar, multiple_values, PredVars0, PredVars),
                     !Info ^ hoi_pred_vars := PredVars
                 ;
                     % If a variable is already non-specializable, it can't
@@ -891,8 +890,8 @@ check_unify(Unification, !Info) :-
                     Specializable = multiple_values
                 )
             ;
-                map.det_insert(PredVars0, LVar, constant(ConsId, Args),
-                    PredVars),
+                map.det_insert(LVar, constant(ConsId, Args),
+                    PredVars0, PredVars),
                 !Info ^ hoi_pred_vars := PredVars
             )
         ;
@@ -1344,7 +1343,7 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
             % The dummy arguments can't be used anywhere.
             ProcInfo2 = !.Info ^ hoi_proc_info,
             proc_info_get_vartypes(ProcInfo2, VarTypes2),
-            map.delete_list(VarTypes2, UncurriedArgs, VarTypes),
+            map.delete_list(UncurriedArgs, VarTypes2, VarTypes),
             proc_info_set_vartypes(VarTypes, ProcInfo2, ProcInfo),
             !Info ^ hoi_proc_info := ProcInfo,
 
@@ -1969,7 +1968,7 @@ get_extra_arguments_2([HOArg | HOArgs], Args) :-
 maybe_add_alias(LVar, RVar, !Info) :-
     PredVars0 = !.Info ^ hoi_pred_vars,
     ( map.search(PredVars0, RVar, constant(A, B)) ->
-        map.set(PredVars0, LVar, constant(A, B), PredVars),
+        map.set(LVar, constant(A, B), PredVars0, PredVars),
         !Info ^ hoi_pred_vars := PredVars
     ;
         true
@@ -2723,10 +2722,10 @@ add_new_pred(CalledPredProcId, NewPred, !Info) :-
     NewPreds0 = !.Info ^ hogi_new_preds,
     ( map.search(NewPreds0, CalledPredProcId, SpecVersions0) ->
         set.insert(SpecVersions0, NewPred, SpecVersions),
-        map.det_update(NewPreds0, CalledPredProcId, SpecVersions, NewPreds)
+        map.det_update(CalledPredProcId, SpecVersions, NewPreds0, NewPreds)
     ;
         set.singleton_set(SpecVersions, NewPred),
-        map.det_insert(NewPreds0, CalledPredProcId, SpecVersions, NewPreds)
+        map.det_insert(CalledPredProcId, SpecVersions, NewPreds0, NewPreds)
     ),
     !Info ^ hogi_new_preds := NewPreds.
 
@@ -2994,8 +2993,8 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
 
     VersionInfo = version_info(OrigPredProcId, ArgsDepth,
         PredVars, ParentVersions),
-    map.det_insert(VersionInfoMap0, NewPredProcId, VersionInfo,
-        VersionInfoMap),
+    map.det_insert(NewPredProcId, VersionInfo,
+        VersionInfoMap0, VersionInfoMap),
     !GlobalInfo ^ hogi_version_info := VersionInfoMap,
 
     % Fix up the argument vars, types and modes.
@@ -3074,7 +3073,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
 
     map.init(NewProcs0),
     NewPredProcId = proc(_, NewProcId),
-    map.det_insert(NewProcs0, NewProcId, !.NewProcInfo, NewProcs),
+    map.det_insert(NewProcId, !.NewProcInfo, NewProcs0, NewProcs),
     pred_info_set_procedures(NewProcs, !NewPredInfo).
 
 :- pred update_var_types(pair(prog_var, mer_type)::in,
@@ -3082,7 +3081,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
 
 update_var_types(VarAndType, !Map) :-
     VarAndType = Var - Type,
-    svmap.det_update(Var, Type, !Map).
+    map.det_update(Var, Type, !Map).
 
     % Take an original list of headvars and arg_modes and return these
     % with curried arguments added.  The old higher-order arguments are
@@ -3155,7 +3154,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
         IsConst = no,
         % Make ho_traverse_proc_body pretend that the input higher-order
         % argument is built using the new arguments as its curried arguments.
-        svmap.det_insert(LVar, constant(ConsId, CurriedHeadVars1),
+        map.det_insert(LVar, constant(ConsId, CurriedHeadVars1),
             !PredVars)
     ;
         IsConst = yes
@@ -3166,7 +3165,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
     list.foldl(
         (pred(VarPair::in, !.Map::in, !:Map::out) is det :-
             VarPair = Var1 - Var2,
-            svmap.set(Var1, Var2, !Map)
+            map.set(Var1, Var2, !Map)
         ), CurriedRenaming, !Renaming),
 
     % Recursively construct the curried higher-order arguments.

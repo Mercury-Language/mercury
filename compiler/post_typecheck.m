@@ -155,7 +155,6 @@
 :- import_module solutions.
 :- import_module string.
 :- import_module set_tree234.
-:- import_module svmap.
 :- import_module svvarset.
 :- import_module term_io.
 :- import_module varset.
@@ -344,7 +343,7 @@ bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypes, !Proofs,
     % Create a substitution that maps all of the unbound type variables
     % to `void'.
     MapToVoid = (pred(TVar::in, Subst0::in, Subst::out) is det :-
-            map.det_insert(Subst0, TVar, void_type, Subst)
+            map.det_insert(TVar, void_type, Subst0, Subst)
         ),
     set.fold(MapToVoid, UnboundTypeVarsSet, map.init, VoidSubst),
 
@@ -891,7 +890,7 @@ propagate_types_into_proc_modes(ModuleInfo, [ProcId | ProcIds], ArgTypes,
         !:RevErrorProcIds = [ProcId | !.RevErrorProcIds]
     ;
         proc_info_set_argmodes(ArgModes, ProcInfo0, ProcInfo),
-        svmap.det_update(ProcId, ProcInfo, !Procs)
+        map.det_update(ProcId, ProcInfo, !Procs)
     ),
     propagate_types_into_proc_modes(ModuleInfo, ProcIds, ArgTypes,
         !RevErrorProcIds, !Procs).
@@ -929,7 +928,7 @@ report_unbound_inst_var_error(ModuleInfo, PredId, ProcId, Procs0, Procs,
     Spec = error_spec(severity_error, phase_type_check, [Msg]),
     !:Specs = [Spec | !.Specs],
     % Delete this mode, to avoid internal errors.
-    map.det_remove(Procs0, ProcId, _, Procs).
+    map.det_remove(ProcId, _, Procs0, Procs).
 
 %-----------------------------------------------------------------------------%
 
@@ -1596,14 +1595,14 @@ create_pure_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
 make_new_vars(Types, Vars, !VarTypes, !VarSet) :-
     list.length(Types, NumVars),
     svvarset.new_vars(NumVars, Vars, !VarSet),
-    svmap.det_insert_from_corresponding_lists(Vars, Types, !VarTypes).
+    map.det_insert_from_corresponding_lists(Vars, Types, !VarTypes).
 
 :- pred make_new_var(mer_type::in, prog_var::out, vartypes::in, vartypes::out,
     prog_varset::in, prog_varset::out) is det.
 
 make_new_var(Type, Var, !VarTypes, !VarSet) :-
     svvarset.new_var(Var, !VarSet),
-    svmap.det_insert(Var, Type, !VarTypes).
+    map.det_insert(Var, Type, !VarTypes).
 
 %-----------------------------------------------------------------------------%
 

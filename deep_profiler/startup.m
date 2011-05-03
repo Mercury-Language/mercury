@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2010 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -58,7 +58,6 @@
 :- import_module require.
 :- import_module string.
 :- import_module svarray.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -386,7 +385,7 @@ ensure_module_has_module_data(Module, !ModuleDataMap) :-
         true
     ;
         Data = module_data(zero_own_prof_info, zero_inherit_prof_info, []),
-        svmap.det_insert(Module, Data, !ModuleDataMap)
+        map.det_insert(Module, Data, !ModuleDataMap)
     ).
 
 :- pred maybe_dump(string::in, list(string)::in, int::in,
@@ -433,9 +432,9 @@ record_css_containers_module_procs(PSI, PS, !CallSiteStatics, !ModuleProcs) :-
     record_css_containers_2(MaxCS, PSPtr, CSSPtrs, !CallSiteStatics),
     DeclModule = PS ^ ps_decl_module,
     ( map.search(!.ModuleProcs, DeclModule, PSPtrs0) ->
-        svmap.det_update(DeclModule, [PSPtr | PSPtrs0], !ModuleProcs)
+        map.det_update(DeclModule, [PSPtr | PSPtrs0], !ModuleProcs)
     ;
-        svmap.det_insert(DeclModule, [PSPtr], !ModuleProcs)
+        map.det_insert(DeclModule, [PSPtr], !ModuleProcs)
     ).
 
 :- pred record_css_containers_2(int::in, proc_static_ptr::in,
@@ -689,10 +688,10 @@ construct_call_site_calls_3(CallSiteDynamics, ProcDynamics, CSSPtr,
         array.lookup(!.CallSiteCalls, CSSI, CallMap0),
         ( map.search(CallMap0, PSPtr, CallList0) ->
             CallList = [CSDPtr | CallList0],
-            map.det_update(CallMap0, PSPtr, CallList, CallMap)
+            map.det_update(PSPtr, CallList, CallMap0, CallMap)
         ;
             CallList = [CSDPtr],
-            map.det_insert(CallMap0, PSPtr, CallList, CallMap)
+            map.det_insert(PSPtr, CallList, CallMap0, CallMap)
         ),
         svarray.set(CSSI, CallMap, !CallSiteCalls)
     ;
@@ -1021,12 +1020,12 @@ select_override_comp(OverrideComp, _) = OverrideComp.
 :- func add_to_override(compensation_table,
     proc_static_ptr, inherit_prof_info) = compensation_table.
 
-add_to_override(CompTable0, PSPtr, PDTotal) = CompTable :-
-    ( map.search(CompTable0, PSPtr, Comp0) ->
+add_to_override(!.CompTable, PSPtr, PDTotal) = !:CompTable :-
+    ( map.search(!.CompTable, PSPtr, Comp0) ->
         Comp = add_inherit_to_inherit(Comp0, PDTotal),
-        map.det_update(CompTable0, PSPtr, Comp, CompTable)
+        map.det_update(PSPtr, Comp, !CompTable)
     ;
-        map.det_insert(CompTable0, PSPtr, PDTotal, CompTable)
+        map.det_insert(PSPtr, PDTotal, !CompTable)
     ).
 
 %-----------------------------------------------------------------------------%

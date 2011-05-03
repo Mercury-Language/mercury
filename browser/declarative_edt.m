@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -576,7 +576,6 @@
 :- import_module counter.
 :- import_module exception.
 :- import_module int.
-:- import_module svmap.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -834,9 +833,9 @@ give_up_subterm_tracking(SearchSpace, SuspectId, subterm_in) :-
 
 assert_suspect_is_valid(Status, SuspectId, !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-    map.set(!.SearchSpace ^ store, SuspectId,
-        (Suspect ^ status := Status) ^ weight := 0, SuspectStore),
-    !:SearchSpace = !.SearchSpace ^ store := SuspectStore,
+    map.set(SuspectId, (Suspect ^ status := Status) ^ weight := 0,
+        !.SearchSpace ^ store, SuspectStore),
+    !SearchSpace ^ store := SuspectStore,
     (
         Suspect ^ children = yes(Children),
         list.foldl(propagate_status_downwards(suspect_pruned,
@@ -857,9 +856,9 @@ assert_suspect_is_valid(Status, SuspectId, !SearchSpace) :-
 
         % Update the root to the next lowest erroneous suspect.
         ( suspect_erroneous(!.SearchSpace, Lowest) ->
-            !:SearchSpace = !.SearchSpace ^ root := yes(Lowest)
+            !SearchSpace ^ root := yes(Lowest)
         ;
-            !:SearchSpace = !.SearchSpace ^ root := no
+            !SearchSpace ^ root := no
         )
     ;
         true
@@ -873,32 +872,32 @@ assert_suspect_is_correct(SuspectId, !SearchSpace) :-
 
 assert_suspect_is_erroneous(SuspectId, !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-    map.set(!.SearchSpace ^ store, SuspectId, Suspect ^ status :=
-        suspect_erroneous, Store),
-    !:SearchSpace = !.SearchSpace ^ store := Store,
+    map.set(SuspectId, Suspect ^ status := suspect_erroneous,
+        !.SearchSpace ^ store, Store),
+    !SearchSpace ^ store := Store,
     propagate_status_upwards(suspect_in_erroneous_subtree_complement,
         [suspect_erroneous, suspect_correct, suspect_inadmissible],
         SuspectId, _, !SearchSpace),
-    !:SearchSpace = !.SearchSpace ^ root := yes(SuspectId).
+    !SearchSpace ^ root := yes(SuspectId).
 
 ignore_suspect(Store, SuspectId, !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
     calc_suspect_weight(Store, Suspect ^ edt_node, Suspect ^ children,
         suspect_ignored, !.SearchSpace, Weight, _),
-    map.set(!.SearchSpace ^ store, SuspectId,
+    map.set(SuspectId,
         (Suspect ^ status := suspect_ignored) ^ weight := Weight,
-        SuspectStore),
-    !:SearchSpace = !.SearchSpace ^ store := SuspectStore,
+        !.SearchSpace ^ store, SuspectStore),
+    !SearchSpace ^ store := SuspectStore,
     add_weight_to_ancestors(SuspectId, Weight - Suspect ^ weight,
         !SearchSpace).
 
 skip_suspect(SuspectId, !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
     counter.allocate(N, !.SearchSpace ^ skip_counter, SkipCounter),
-    !:SearchSpace = !.SearchSpace ^ skip_counter := SkipCounter,
-    map.set(!.SearchSpace ^ store, SuspectId, Suspect ^ status :=
-        suspect_skipped(N), Store),
-    !:SearchSpace = !.SearchSpace ^ store := Store.
+    !SearchSpace ^ skip_counter := SkipCounter,
+    map.set(SuspectId, Suspect ^ status := suspect_skipped(N),
+        !.SearchSpace ^ store, Store),
+    !SearchSpace ^ store := Store.
 
 revise_root(Store, !SearchSpace) :-
     (
@@ -913,9 +912,9 @@ revise_root(Store, !SearchSpace) :-
             [suspect_erroneous, suspect_correct, suspect_inadmissible],
             RootId, Lowest, !SearchSpace),
         ( suspect_erroneous(!.SearchSpace, Lowest) ->
-            !:SearchSpace = !.SearchSpace ^ root := yes(Lowest)
+            !SearchSpace ^ root := yes(Lowest)
         ;
-            !:SearchSpace = !.SearchSpace ^ root := no
+            !SearchSpace ^ root := no
         ),
 
         % Recompute the suspect weights from the bottom up.
@@ -1087,7 +1086,7 @@ subterm_is_in_input_with_same_prefix(Store, Node, OutputArgPos, TermPath,
         FinalAtom = atom(ProcLayout, FinalArgs),
         not map.search(!.TriedProcs, ProcLayout, _)
     ->
-        svmap.det_insert(ProcLayout, unit, !TriedProcs),
+        map.det_insert(ProcLayout, unit, !TriedProcs),
         (
             absolute_arg_num(OutputArgPos, FinalAtom, OutputArgNum),
             select_arg_at_pos(OutputArgPos, FinalArgs, OutputArg),
@@ -1180,9 +1179,9 @@ propagate_status_downwards(Status, StopStatusSet, SuspectId, !StopSuspects,
         !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
     ( \+ member(Suspect ^ status, StopStatusSet) ->
-        map.set(!.SearchSpace ^ store, SuspectId,
-            Suspect ^ status := Status, Store),
-        !:SearchSpace = !.SearchSpace ^ store := Store,
+        map.set(SuspectId, Suspect ^ status := Status,
+            !.SearchSpace ^ store, Store),
+        !SearchSpace ^ store := Store,
         (
             Suspect ^ children = yes(Children),
             list.foldl2(propagate_status_downwards(Status, StopStatusSet),
@@ -1214,9 +1213,9 @@ force_propagate_status_downwards(Status, StopStatusSet, SuspectId,
 force_propagate_status_downwards(Status, StopStatusSet, SuspectId,
         StopSuspects, !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-    map.set(!.SearchSpace ^ store, SuspectId,
-        Suspect ^ status := Status, Store),
-    !:SearchSpace = !.SearchSpace ^ store := Store,
+    map.set(SuspectId, Suspect ^ status := Status,
+        !.SearchSpace ^ store, Store),
+    !SearchSpace ^ store := Store,
     (
         Suspect ^ children = yes(Children),
         list.foldl2(propagate_status_downwards(Status, StopStatusSet),
@@ -1338,9 +1337,9 @@ add_weight_to_ancestors(SuspectId, Weight, !SearchSpace) :-
         Suspect ^ parent = yes(ParentId)
     ->
         lookup_suspect(!.SearchSpace, ParentId, Parent),
-        map.set(!.SearchSpace ^ store, ParentId,
-            Parent ^ weight := Parent ^ weight + Weight, SuspectStore),
-        !:SearchSpace = !.SearchSpace ^ store := SuspectStore,
+        map.set(ParentId, Parent ^ weight := Parent ^ weight + Weight, 
+            !.SearchSpace ^ store, SuspectStore),
+        !SearchSpace ^ store := SuspectStore,
         excluded_complement(Parent ^ status, ExcludedComplement),
         (
             ExcludedComplement = yes
@@ -1397,9 +1396,9 @@ recalc_weights_and_get_parents(Store, [SuspectId | SuspectIds], PrevParents,
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
     calc_suspect_weight(Store, Suspect ^ edt_node, Suspect ^ children,
         Suspect ^ status, !.SearchSpace, Weight, _),
-    map.set(!.SearchSpace ^ store, SuspectId,
-        Suspect ^ weight := Weight, SuspectStore),
-    !:SearchSpace = !.SearchSpace ^ store := SuspectStore,
+    map.set(SuspectId, Suspect ^ weight := Weight,
+        !.SearchSpace ^ store, SuspectStore),
+    !SearchSpace ^ store := SuspectStore,
     (
         Suspect ^ parent = yes(ParentId),
         NewPrevParents = [ParentId | PrevParents]
@@ -1501,9 +1500,9 @@ propagate_status_upwards(Status, StopStatusSet, SuspectId, Lowest,
         ( \+ list.member(Parent ^ status, StopStatusSet) ->
             propagate_status_upwards(Status, StopStatusSet,
                 ParentId, Lowest, !SearchSpace),
-            map.set(!.SearchSpace ^ store, ParentId,
-                Parent ^ status := Status, Store),
-            !:SearchSpace = !.SearchSpace ^ store := Store
+            map.set(ParentId, Parent ^ status := Status,
+                !.SearchSpace ^ store, Store),
+            !SearchSpace ^ store := Store
         ;
             Lowest = ParentId
         )
@@ -1559,11 +1558,11 @@ add_children(Store, Oracle, EDTChildren, SuspectId, Status, !SearchSpace,
     % Lookup the suspect again, since its weight and/or status may have
     % changed.
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-    !:SearchSpace = !.SearchSpace ^ suspect_id_counter := Counter,
+    !SearchSpace ^ suspect_id_counter := Counter,
     SuspectWithChildren = Suspect ^ children := yes(Children),
-    map.set(!.SearchSpace ^ store, SuspectId, SuspectWithChildren,
-        SuspectStoreWithChildren),
-    !:SearchSpace = !.SearchSpace ^ store := SuspectStoreWithChildren,
+    map.set(SuspectId, SuspectWithChildren,
+        !.SearchSpace ^ store, SuspectStoreWithChildren),
+    !SearchSpace ^ store := SuspectStoreWithChildren,
     list.foldl(adjust_suspect_status_from_oracle(Store, Oracle), Children,
         !SearchSpace),
 
@@ -1574,9 +1573,9 @@ add_children(Store, Oracle, EDTChildren, SuspectId, Status, !SearchSpace,
     ( Suspect ^ status = suspect_ignored ->
         calc_suspect_weight(Store, Suspect ^ edt_node, yes(Children),
             suspect_ignored, !.SearchSpace, Weight, _),
-        map.set(!.SearchSpace ^ store, SuspectId,
-            SuspectWithChildren ^ weight := Weight, SuspectStoreWithWeight),
-        !:SearchSpace = !.SearchSpace ^ store := SuspectStoreWithWeight,
+        map.set(SuspectId, SuspectWithChildren ^ weight := Weight,
+            !.SearchSpace ^ store, SuspectStoreWithWeight),
+        !SearchSpace ^ store := SuspectStoreWithWeight,
         add_weight_to_ancestors(SuspectId, Weight - Suspect ^ weight,
             !SearchSpace)
     ;
@@ -1594,10 +1593,10 @@ add_children_2(Store, Oracle, [EDTChild | EDTChildren], ParentId,
     allocate(NextId, !Counter),
     calc_suspect_weight(Store, EDTChild, no, Status, !.SearchSpace, Weight,
         ExcessWeight),
-    map.det_insert(!.SearchSpace ^ store, NextId,
+    map.det_insert(NextId,
         suspect(yes(ParentId), EDTChild, Status, Depth, no, Weight),
-        SuspectStore),
-    !:SearchSpace = !.SearchSpace ^ store := SuspectStore,
+        !.SearchSpace ^ store, SuspectStore),
+    !SearchSpace ^ store := SuspectStore,
     add_weight_to_ancestors(NextId, ExcessWeight, !SearchSpace),
     add_children_2(Store, Oracle, EDTChildren, ParentId,
         Status, Depth, !SearchSpace, !Counter, OtherChildren),
@@ -1656,20 +1655,19 @@ initialise_search_space(Store, MaybeWeighting, Node, SearchSpace) :-
         MaybeWeighting = no,
         Weight = 0
     ),
-    map.set(init, 0, suspect(no, Node, suspect_unknown, 0, no, Weight),
-        SuspectStore),
+    map.set(0, suspect(no, Node, suspect_unknown, 0, no, Weight),
+        init, SuspectStore),
     SearchSpace = search_space(no, yes(0), counter.init(1),
         counter.init(0), SuspectStore, bimap.init, MaybeWeighting).
 
 incorporate_explicit_subtree(SuspectId, Node, !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-    map.set(!.SearchSpace ^ store, SuspectId, Suspect ^ edt_node := Node,
-        Store),
-    !:SearchSpace = !.SearchSpace ^ store := Store,
-    bimap.set(!.SearchSpace ^ implicit_to_explicit_roots,
-        Suspect ^ edt_node, Node, ImplicitToExplicit),
-    !:SearchSpace = !.SearchSpace ^ implicit_to_explicit_roots :=
-        ImplicitToExplicit.
+    map.set(SuspectId, Suspect ^ edt_node := Node,
+        !.SearchSpace ^ store, Store),
+    !SearchSpace ^ store := Store,
+    bimap.set( Suspect ^ edt_node, Node, 
+        !.SearchSpace ^ implicit_to_explicit_roots, ImplicitToExplicit),
+    !SearchSpace ^ implicit_to_explicit_roots := ImplicitToExplicit.
 
 incorporate_explicit_supertree(Store, Oracle, Node, !SearchSpace) :-
     topmost_det(!.SearchSpace, OldTopMostId),
@@ -1679,11 +1677,9 @@ incorporate_explicit_supertree(Store, Oracle, Node, !SearchSpace) :-
         % Node implicitly represents the root of the old search space,
         % which we already have an explicit version of, so we link the two
         % by placing an entry in implicit_to_explicit_roots.
-        bimap.set(!.SearchSpace ^ implicit_to_explicit_roots,
-            Node, get_edt_node(!.SearchSpace, OldTopMostId),
-            ImplicitToExplicit),
-        !:SearchSpace = !.SearchSpace ^ implicit_to_explicit_roots :=
-            ImplicitToExplicit
+        bimap.set(Node, get_edt_node(!.SearchSpace, OldTopMostId),
+            !.SearchSpace ^ implicit_to_explicit_roots, ImplicitToExplicit),
+        !SearchSpace ^ implicit_to_explicit_roots := ImplicitToExplicit
     ;
         throw(internal_error("incorporate_explicit_supertree", "no parent"))
     ).
@@ -1721,11 +1717,10 @@ insert_new_topmost_node(Store, Oracle, NewTopMostEDTNode, !SearchSpace) :-
             some [!Counter, !SuspectStore] (
                 !:Counter = !.SearchSpace ^ suspect_id_counter,
                 counter.allocate(NewTopMostId, !Counter),
-                !:SearchSpace = !.SearchSpace ^ suspect_id_counter :=
-                    !.Counter,
+                !SearchSpace ^ suspect_id_counter := !.Counter,
                 !:SuspectStore = !.SearchSpace ^ store,
-                svmap.set(NewTopMostId, NewTopMost, !SuspectStore),
-                !:SearchSpace = !.SearchSpace ^ store := !.SuspectStore
+                map.set(NewTopMostId, NewTopMost, !SuspectStore),
+                !SearchSpace ^ store := !.SuspectStore
             ),
             SiblingStatus = new_child_status(NewTopMostStatus),
             add_children(Store, Oracle, append(LeftChildren, RightChildren),
@@ -1752,13 +1747,13 @@ insert_new_topmost_node(Store, Oracle, NewTopMostEDTNode, !SearchSpace) :-
                     NewTopMost ^ children := yes(NewTopMostChildrenIds),
                 NewTopMostWithCorrectWeight =
                     NewTopMostWithCorrectChildren ^ weight := Weight,
-                map.set(!.SuspectStore, NewTopMostId,
-                    NewTopMostWithCorrectWeight, !:SuspectStore),
-                map.set(!.SuspectStore, OldTopMostId,
-                    OldTopMost ^ parent := yes(NewTopMostId), !:SuspectStore),
-                !:SearchSpace = !.SearchSpace ^ store := !.SuspectStore
+                map.set(NewTopMostId, NewTopMostWithCorrectWeight,
+                    !SuspectStore),
+                map.set(OldTopMostId,
+                    OldTopMost ^ parent := yes(NewTopMostId), !SuspectStore),
+                !SearchSpace ^ store := !.SuspectStore
             ),
-            !:SearchSpace = !.SearchSpace ^ topmost := yes(NewTopMostId),
+            !SearchSpace ^ topmost := yes(NewTopMostId),
             adjust_suspect_status_from_oracle(Store, Oracle, NewTopMostId,
                 !SearchSpace)
         ;
@@ -2026,8 +2021,7 @@ update_weighting_heuristic(Store, Weighting, !SearchSpace) :-
     ->
         true
     ;
-        !:SearchSpace = !.SearchSpace ^ maybe_weighting_heuristic
-            := yes(Weighting),
+        !SearchSpace ^ maybe_weighting_heuristic := yes(Weighting),
         ( map.is_empty(!.SearchSpace ^ store) ->
             true
         ;

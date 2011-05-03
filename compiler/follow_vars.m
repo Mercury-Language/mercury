@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2008, 2010 The University of Melbourne.
+% Copyright (C) 1994-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -64,7 +64,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module svmap.
 
 %-----------------------------------------------------------------------------%
 
@@ -86,7 +85,7 @@ find_final_follow_vars_2([arg_info(RegNum, Mode) - Var | ArgInfoVars],
     (
         Mode = top_out,
         Locn = abs_reg(RegNum),
-        svmap.det_insert(Var, Locn, !FollowVarsMap),
+        map.det_insert(Var, Locn, !FollowVarsMap),
         int.max(RegNum + 1, !NextNonReserved)
     ;
         Mode = top_in
@@ -211,7 +210,7 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
             Unification = assign(LVar, RVar),
             map.search(!.FollowVarsMap, LVar, DesiredLoc)
         ->
-            svmap.set(RVar, DesiredLoc, !FollowVarsMap)
+            map.set(RVar, DesiredLoc, !FollowVarsMap)
         ;
             true
         )
@@ -284,7 +283,7 @@ find_follow_vars_from_arginfo([ArgVar - arg_info(RegNum, Mode) | ArgsInfos],
     (
         Mode = top_in,
         Locn = abs_reg(RegNum),
-        ( svmap.insert(ArgVar, Locn, !FollowVarsMap) ->
+        ( map.insert(ArgVar, Locn, !FollowVarsMap) ->
             true    % FollowVarsMap is updated
         ;
             % The call is not in superhomogeneous form: this
@@ -312,7 +311,7 @@ find_follow_vars_from_sequence([], NextRegNum, !FollowVarsMap, NextRegNum).
 find_follow_vars_from_sequence([InVar | InVars], NextRegNum, !FollowVarsMap,
         NextNonReserved) :-
     Locn = abs_reg(NextRegNum),
-    ( map.insert(!.FollowVarsMap, InVar, Locn, !:FollowVarsMap) ->
+    ( map.insert(InVar, Locn, !FollowVarsMap) ->
         true    % FollowVarsMap is updated
     ;
         % The call is not in superhomogeneous form: this argument has

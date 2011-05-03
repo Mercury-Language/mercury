@@ -103,7 +103,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%
@@ -376,16 +375,16 @@ find_clique_ancestors(Deep, CliquePtr) = Ancestors :-
     map(proc_static_ptr, list(proc_dynamic_ptr))::in,
     map(proc_static_ptr, list(proc_dynamic_ptr))::out) is det.
 
-group_proc_dynamics_by_proc_static(Deep, PDPtr, PStoPDsMap0, PStoPDsMap) :-
+group_proc_dynamics_by_proc_static(Deep, PDPtr, !PStoPDsMap) :-
     require(valid_proc_dynamic_ptr(Deep, PDPtr),
         "group_proc_dynamics_by_proc_static: invalid PDPtr"),
     deep_lookup_proc_dynamics(Deep, PDPtr, PD),
     PSPtr = PD ^ pd_proc_static,
-    ( map.search(PStoPDsMap0, PSPtr, PSPDs0) ->
+    ( map.search(!.PStoPDsMap, PSPtr, PSPDs0) ->
         PSPDs = [PDPtr | PSPDs0],
-        map.det_update(PStoPDsMap0, PSPtr, PSPDs, PStoPDsMap)
+        map.det_update(PSPtr, PSPDs, !PStoPDsMap)
     ;
-        map.det_insert(PStoPDsMap0, PSPtr, [PDPtr], PStoPDsMap)
+        map.det_insert(PSPtr, [PDPtr], !PStoPDsMap)
     ).
 
 :- pred proc_group_contains(proc_dynamic_ptr::in,
@@ -722,7 +721,7 @@ gather_getters_setters(Deep, PSPtr, !GSDSRawMap) :-
                         FieldData = gs_field_both(GetterRawData, RawData, unit)
                     )
                 ),
-                map.det_update(FieldMap0, FieldName, FieldData, FieldMap)
+                map.det_update(FieldName, FieldData, FieldMap0, FieldMap)
             ;
                 (
                     GetterSetter = getter,
@@ -731,9 +730,9 @@ gather_getters_setters(Deep, PSPtr, !GSDSRawMap) :-
                     GetterSetter = setter,
                     FieldData = gs_field_setter(RawData)
                 ),
-                map.det_insert(FieldMap0, FieldName, FieldData, FieldMap)
+                map.det_insert(FieldName, FieldData, FieldMap0, FieldMap)
             ),
-            svmap.set(DataStructName, FieldMap, !GSDSRawMap)
+            map.set(DataStructName, FieldMap, !GSDSRawMap)
         ;
             true
         )

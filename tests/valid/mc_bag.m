@@ -244,7 +244,7 @@ mc_bag__insert(Bag0, Item, Bag) :-
     ;
         Count = 1
     ),
-    map__set(Bag0, Item, Count, Bag).
+    map__set(Item, Count, Bag0, Bag).
 
 %---------------------------------------------------------------------------%
 
@@ -307,9 +307,9 @@ mc_bag__remove(Bag0, Item, Bag) :-
     map__search(Bag0, Item, Count0),
     ( Count0 > 1 ->
         Count = Count0 - 1,
-        map__set(Bag0, Item, Count, Bag)
+        map__set(Item, Count, Bag0, Bag)
     ;
-        map__delete(Bag0, Item, Bag)
+        map__delete(Item, Bag0, Bag)
     ).
 
 mc_bag__det_remove(Bag0, Item, Bag) :-
@@ -342,10 +342,10 @@ mc_bag__det_remove_set(Bag0, Set, Bag) :-
     mc_bag__det_remove_list(Bag0, List, Bag).
 
 mc_bag__remove_all(Bag0, Item, Bag) :-     % semidet
-    map__remove(Bag0, Item, _Val, Bag).
+    map__remove(Item, _Val, Bag0, Bag).
 
 mc_bag__delete_all(Bag0, Item, Bag) :- % det
-    map__delete(Bag0, Item, Bag).
+    map__delete(Item, Bag0, Bag).
 
 %---------------------------------------------------------------------------%
 
@@ -364,13 +364,13 @@ mc_bag__count_value(Bag, Item, Count) :-
 %---------------------------------------------------------------------------%
 
 mc_bag__subtract(Bag0, SubBag, Bag) :-
-    ( map__remove_smallest(SubBag, SubKey, SubVal, SubBag0) ->
+    ( map__remove_smallest(SubKey, SubVal, SubBag, SubBag0) ->
         ( map__search(Bag0, SubKey, Val) ->
             NewVal = Val - SubVal,
             ( NewVal > 0 ->
-                map__det_update(Bag0, SubKey, NewVal, Bag1)
+                map__det_update(SubKey, NewVal, Bag0, Bag1)
             ;
-                map__det_remove(Bag0, SubKey, _Val, Bag1)
+                map__det_remove(SubKey, _Val, Bag0, Bag1)
             )
         ;
             Bag1 = Bag0
@@ -381,12 +381,12 @@ mc_bag__subtract(Bag0, SubBag, Bag) :-
     ).
 
 mc_bag__union(A, B, Out) :-
-    ( map__remove_smallest(B, Key, BVal, B0) ->
+    ( map__remove_smallest(Key, BVal, B, B0) ->
         ( map__search(A, Key, AVal) ->
             NewVal = AVal + BVal,
-            map__det_update(A, Key, NewVal, A0)
+            map__det_update(Key, NewVal, A, A0)
         ;
-            map__det_insert(A, Key, BVal, A0)
+            map__det_insert(Key, BVal, A, A0)
         ),
         mc_bag__union(A0, B0, Out)
     ;
@@ -401,10 +401,10 @@ mc_bag__intersect(A, B, Out) :-
     is det.
 
 mc_bag__intersect_2(A, B, Out0, Out) :-
-    ( map__remove_smallest(A, Key, AVal,A0) ->
+    ( map__remove_smallest(Key, AVal, A, A0) ->
         ( map__search(B, Key, BVal) ->
             int__min(AVal, BVal, Val),
-            map__det_insert(Out0, Key, Val, Out1)
+            map__det_insert(Key, Val, Out0, Out1)
         ;
             Out1 = Out0
         ),
@@ -414,7 +414,7 @@ mc_bag__intersect_2(A, B, Out0, Out) :-
     ).
 
 mc_bag__intersect(A, B) :-
-    map__remove_smallest(A, Key, _AVal,A0),
+    map__remove_smallest(Key, _AVal, A, A0),
     ( map__contains(B, Key) ->
         true
     ;
@@ -422,12 +422,12 @@ mc_bag__intersect(A, B) :-
     ).
 
 mc_bag__least_upper_bound(A, B, Out) :-
-    ( map__remove_smallest(B, Key, BVal, B0) ->
+    ( map__remove_smallest(Key, BVal, B, B0) ->
         ( map__search(A, Key, AVal) ->
             int__max(AVal, BVal, NewVal),
-            map__det_update(A, Key, NewVal, A0)
+            map__det_update(Key, NewVal, A, A0)
         ;
-            map__det_insert(A, Key, BVal, A0)
+            map__det_insert(Key, BVal, A, A0)
         ),
         mc_bag__least_upper_bound(A0, B0, Out)
     ;
@@ -448,10 +448,10 @@ mc_bag__is_empty(Bag) :-
 %---------------------------------------------------------------------------%
 
 mc_bag__remove_smallest(Bag0, Item, Bag) :-
-    map__remove_smallest(Bag0, Item, Val, Bag1),
+    map__remove_smallest(Item, Val, Bag0, Bag1),
     ( Val > 1 ->
         NewVal = Val - 1,
-        map__det_insert(Bag1, Item, NewVal, Bag)
+        map__det_insert(Item, NewVal, Bag1, Bag)
     ;
         Bag = Bag1
     ).
@@ -466,8 +466,8 @@ mc_bag__remove_smallest(Bag0, Item, Bag) :-
     % :- mode mc_bag__subset_compare(out, in, in) is semidet.
     %
 mc_bag__subset_compare(Res, A, B) :-
-    ( map__remove_smallest(A, Key, AVal, A0) ->
-        ( map__remove(B, Key, BVal, B0) ->
+    ( map__remove_smallest(Key, AVal, A, A0) ->
+        ( map__remove(Key, BVal, B, B0) ->
             compare(ValRes, AVal, BVal),
             (
                 ValRes = (>),

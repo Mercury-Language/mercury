@@ -544,12 +544,12 @@ add_single_entry(ConsId, Goal, CasesTable0, CasesTable) :-
         ),
         Arms = snoc(Arms0, Arm),
         Entry = cons_id_entry(State, Arms),
-        map.det_update(CasesMap0, ConsId, Entry, CasesMap)
+        map.det_update(ConsId, Entry, CasesMap0, CasesMap)
     ;
         State = cons_id_has_all_singles,
         Arms = cord.singleton(Arm),
         Entry = cons_id_entry(State, Arms),
-        map.det_insert(CasesMap0, ConsId, Entry, CasesMap),
+        map.det_insert(ConsId, Entry, CasesMap0, CasesMap),
         ConflictConsIds = ConflictConsIds0
     ),
     CasesTable = cases_table(CasesMap, ConflictConsIds).
@@ -581,12 +581,12 @@ add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
         State = cons_id_has_conflict,
         Arms = snoc(Arms0, Arm),
         Entry = cons_id_entry(State, Arms),
-        map.det_update(CasesMap0, ConsId, Entry, CasesMap)
+        map.det_update(ConsId, Entry, CasesMap0, CasesMap)
     ;
         State = cons_id_has_one_multi,
         Arms = cord.singleton(Arm),
         Entry = cons_id_entry(State, Arms),
-        map.det_insert(CasesMap0, ConsId, Entry, CasesMap),
+        map.det_insert(ConsId, Entry, CasesMap0, CasesMap),
         ConflictConsIds = ConflictConsIds0
     ),
     CasesTable = cases_table(CasesMap, ConflictConsIds).

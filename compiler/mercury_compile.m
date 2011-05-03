@@ -98,7 +98,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%
@@ -955,7 +954,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName, ReturnTimestamp,
             % XXX When we have read the module before, it *could* have had
             % problems that should cause smart recompilation to be disabled.
             Globals = Globals0,
-            svmap.delete(ModuleName - ".m", !HaveReadModuleMap),
+            map.delete(ModuleName - ".m", !HaveReadModuleMap),
             Items = ItemsPrime,
             Specs = SpecsPrime,
             Error = ErrorPrime,
@@ -998,7 +997,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName, ReturnTimestamp,
             % XXX When we have read the module before, it *could* have had
             % problems that should cause smart recompilation to be disabled.
             Globals = Globals0,
-            svmap.delete(ModuleName - ".m", !HaveReadModuleMap),
+            map.delete(ModuleName - ".m", !HaveReadModuleMap),
             ModuleName = DefaultModuleName,
             Items = ItemsPrime,
             Specs = SpecsPrime,

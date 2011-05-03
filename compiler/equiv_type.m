@@ -120,7 +120,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
@@ -188,7 +187,7 @@ build_eqv_map([Item | Items], !EqvMap, !EqvInstMap) :-
         ->
             list.length(Args, Arity),
             TypeCtor = type_ctor(Name, Arity),
-            svmap.set(TypeCtor, eqv_type_body(VarSet, Args, Body), !EqvMap)
+            map.set(TypeCtor, eqv_type_body(VarSet, Args, Body), !EqvMap)
         ;
             Item = item_inst_defn(ItemInstDefn),
             ItemInstDefn = item_inst_defn_info(VarSet, Name, Args,
@@ -196,7 +195,7 @@ build_eqv_map([Item | Items], !EqvMap, !EqvInstMap) :-
         ->
             list.length(Args, Arity),
             InstId = inst_id(Name, Arity),
-            svmap.set(InstId, eqv_inst_body(VarSet, Args, Body), !EqvInstMap)
+            map.set(InstId, eqv_inst_body(VarSet, Args, Body), !EqvInstMap)
         ;
             true
         ),

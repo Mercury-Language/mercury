@@ -52,7 +52,6 @@
 :- import_module maybe.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 :- import_module term_to_xml.
 :- import_module varset.
@@ -127,7 +126,7 @@ build_comments(S, comments(!.C), comments(!:C), !IO) :-
     io.read_line(S, LineResult, !IO),
     (
         LineResult = ok(Line),
-        svmap.set(LineNumber, line_type(Line), !C),
+        map.set(LineNumber, line_type(Line), !C),
         build_comments(S, comments(!.C), comments(!:C), !IO)
     ;
         LineResult = eof

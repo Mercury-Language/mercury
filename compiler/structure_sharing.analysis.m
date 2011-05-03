@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2010 The University of Melbourne.
+% Copyright (C) 2005-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -97,7 +97,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svmap.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -169,7 +168,7 @@ process_imported_sharing_in_pred(PredId, !ModuleInfo) :-
         module_info_get_preds(!.ModuleInfo, !:PredTable),
         PredInfo0 = !.PredTable ^ det_elem(PredId),
         process_imported_sharing_in_procs(PredInfo0, PredInfo),
-        svmap.det_update(PredId, PredInfo, !PredTable),
+        map.det_update(PredId, PredInfo, !PredTable),
         module_info_set_preds(!.PredTable, !ModuleInfo)
     ).
 
@@ -217,7 +216,7 @@ process_imported_sharing_in_proc(PredInfo, ProcId, !ProcTable) :-
                 structure_sharing_domain_and_status(Sharing, optimal),
                 !ProcInfo),
             proc_info_reset_imported_structure_sharing(!ProcInfo),
-            svmap.det_update(ProcId, !.ProcInfo, !ProcTable)
+            map.det_update(ProcId, !.ProcInfo, !ProcTable)
         ;
             true
         )
@@ -247,7 +246,7 @@ process_intermod_analysis_imported_sharing_in_pred(PredId, !ModuleInfo) :-
             module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo),
             process_intermod_analysis_imported_sharing_in_procs(!.ModuleInfo,
                 AnalysisInfo, PredId, PredInfo0, PredInfo),
-            svmap.det_update(PredId, PredInfo, !PredTable),
+            map.det_update(PredId, PredInfo, !PredTable),
             module_info_set_preds(!.PredTable, !ModuleInfo)
         ;
             true
@@ -292,7 +291,7 @@ process_intermod_analysis_imported_sharing_in_proc(ModuleInfo, AnalysisInfo,
             proc_info_set_structure_sharing(
                 structure_sharing_domain_and_status(Sharing, ResultStatus),
                 !ProcInfo),
-            svmap.det_update(ProcId, !.ProcInfo, !ProcTable)
+            map.det_update(ProcId, !.ProcInfo, !ProcTable)
         ;
             MaybeBestResult = no
         )

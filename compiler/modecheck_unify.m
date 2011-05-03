@@ -936,7 +936,7 @@ make_complicated_sub_unify(Var0, Var, ExtraGoals0, !ModeInfo) :-
     mode_info_get_var_types(!.ModeInfo, VarTypes0),
     varset.new_var(VarSet0, Var, VarSet),
     map.lookup(VarTypes0, Var0, VarType),
-    map.set(VarTypes0, Var, VarType, VarTypes),
+    map.set(Var, VarType, VarTypes0, VarTypes),
     mode_info_set_varset(VarSet, !ModeInfo),
     mode_info_set_var_types(VarTypes, !ModeInfo),
 

@@ -370,7 +370,7 @@ simplify_pred_proc(Simplifications, PredId, ProcId, !ModuleInfo,
     ;
         HasUserEvent = no
     ),
-    map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+    map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
     pred_info_set_procedures(ProcTable, !PredInfo),
     accumulate_error_specs_for_proc(ProcSpecs, !Specs).
 
@@ -608,14 +608,14 @@ simplify_proc_analyze_and_format_calls(!ModuleInfo, PredId, ProcId,
         module_info_get_preds(!.ModuleInfo, PredTable0),
         map.lookup(PredTable0, PredId, PredInfo0),
         pred_info_get_procedures(PredInfo0, ProcTable0),
-        map.det_update(ProcTable0, ProcId, !.ProcInfo, ProcTable),
+        map.det_update(ProcId, !.ProcInfo, ProcTable0, ProcTable),
         pred_info_set_procedures(ProcTable, PredInfo0, PredInfo1),
 
         pred_info_get_markers(PredInfo1, Markers1),
         remove_marker(marker_has_format_call, Markers1, Markers),
         pred_info_set_markers(Markers, PredInfo1, PredInfo),
 
-        map.det_update(PredTable0, PredId, PredInfo, PredTable),
+        map.det_update(PredId, PredInfo, PredTable0, PredTable),
         module_info_set_preds(PredTable, !ModuleInfo)
     ;
         MaybeGoal = no
@@ -2306,7 +2306,7 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
 
     % We have to add the type of R to the var_types.
     simplify_info_get_var_types(!.Info, VarTypes0),
-    map.det_insert(VarTypes0, R, comparison_result_type, VarTypes),
+    map.det_insert(R, comparison_result_type, VarTypes0, VarTypes),
     simplify_info_set_var_types(VarTypes, !Info),
 
     % Construct the call to compare/3.
@@ -2677,7 +2677,7 @@ simplify_library_call_int_arity2(Op, X, Y, GoalExpr, !GoalInfo, !Info) :-
     simplify_info_get_varset(!.Info, VarSet0),
     simplify_info_get_var_types(!.Info, VarTypes0),
     varset.new_var(VarSet0, ConstVar, VarSet),
-    map.det_insert(VarTypes0, ConstVar, int_type, VarTypes),
+    map.det_insert(ConstVar, int_type, VarTypes0, VarTypes),
     simplify_info_set_varset(VarSet, !Info),
     simplify_info_set_var_types(VarTypes, !Info),
 
@@ -3378,7 +3378,7 @@ goal_is_excess_assign(Trace, TraceOptimized, VarSet, ConjNonLocals, Goal0,
         CanElimRight = no,
         fail
     ),
-    map.det_insert(!.Subn, ElimVar, ReplacementVar, !:Subn),
+    map.det_insert(ElimVar, ReplacementVar, !Subn),
 
     % If the module is being compiled with `--trace deep' and
     % `--no-trace-optimized' don't replace a meaningful variable name
@@ -3496,8 +3496,8 @@ create_test_unification(Var, ConsId, ConsArity,
     map.lookup(VarTypes0, Var, VarType),
     simplify_info_get_module_info(!.Info, ModuleInfo),
     type_util.get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes),
-    map.det_insert_from_corresponding_lists(VarTypes0, ArgVars,
-        ArgTypes, VarTypes),
+    map.det_insert_from_corresponding_lists(ArgVars, ArgTypes,
+        VarTypes0, VarTypes),
     simplify_info_set_varset(VarSet, !Info),
     simplify_info_set_var_types(VarTypes, !Info),
     simplify_info_get_instmap(!.Info, InstMap),
@@ -4105,7 +4105,7 @@ simplify_info_apply_substitutions_and_duplicate(ToVar, FromVar, TSubst,
     simplify_info_get_var_types(!.Info, VarTypes0),
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     map.map_values_only(apply_rec_subst_to_type(TSubst), VarTypes0, VarTypes),
-    map.det_insert(map.init, ToVar, FromVar, Renaming),
+    map.det_insert(ToVar, FromVar, map.init, Renaming),
     apply_substitutions_to_rtti_varmaps(map.init, TSubst, Renaming,
         RttiVarMaps0, RttiVarMaps1),
     rtti_var_info_duplicate(FromVar, ToVar, RttiVarMaps1, RttiVarMaps),
