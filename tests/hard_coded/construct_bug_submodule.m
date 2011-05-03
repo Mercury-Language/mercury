@@ -58,9 +58,9 @@ init = bag.init.
 blank = construct_bug_submodule.init.
 
 count(Elem, InStat, OutStat) :-
-  bag.insert(InStat, Elem, OutStat).
+  bag.insert(Elem, InStat, OutStat).
 count(Count, Elem, InStat, OutStat) :-
-  bag.insert_list(InStat, list.duplicate(Count, Elem), OutStat).
+  bag.insert_list(list.duplicate(Count, Elem), InStat, OutStat).
 
 count_more(Elem, Count, InStat, OutStat) :-
   count(Count, Elem, InStat, OutStat).

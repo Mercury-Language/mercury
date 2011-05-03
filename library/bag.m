@@ -28,8 +28,8 @@
 
     % Create an empty bag.
     %
-:- pred bag.init(bag(T)::out) is det.
 :- func bag.init = bag(T).
+:- pred bag.init(bag(T)::out) is det.
 
     % Return the number of values in a bag (including duplicate values).
     %
@@ -42,18 +42,18 @@
 
     % Insert a particular value in a bag.
     %
-:- pred bag.insert(bag(T)::in, T::in, bag(T)::out) is det.
 :- func bag.insert(bag(T), T) = bag(T).
+:- pred bag.insert(T::in, bag(T)::in, bag(T)::out) is det.
 
     % Insert a list of values into a bag.
     %
-:- pred bag.insert_list(bag(T)::in, list(T)::in, bag(T)::out) is det.
 :- func bag.insert_list(bag(T), list(T)) = bag(T).
+:- pred bag.insert_list(list(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % Insert a list of values into a bag.
     %
-:- pred bag.insert_set(bag(T)::in, set(T)::in, bag(T)::out) is det.
 :- func bag.insert_set(bag(T), set(T)) = bag(T).
+:- pred bag.insert_set(set(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % bag.member(Val, Bag) :
     %   True iff `Bag' contains at least one occurrence of `Val'.
@@ -70,50 +70,50 @@
     % Make a bag from a list.
     %
 :- func bag.bag(list(T)) = bag(T).
-:- pred bag.from_list(list(T)::in, bag(T)::out) is det.
 :- func bag.from_list(list(T)) = bag(T).
+:- pred bag.from_list(list(T)::in, bag(T)::out) is det.
 
     % Make a bag from a set.
     %
-:- pred bag.from_set(set(T)::in, bag(T)::out) is det.
 :- func bag.from_set(set(T)) = bag(T).
+:- pred bag.from_set(set(T)::in, bag(T)::out) is det.
 
     % Given a bag, produce a sorted list containing all the values in
     % the bag.  Each value will appear in the list the same number of
     % times that it appears in the bag.
     %
-:- pred bag.to_list(bag(T)::in, list(T)::out) is det.
 :- func bag.to_list(bag(T)) = list(T).
+:- pred bag.to_list(bag(T)::in, list(T)::out) is det.
 
     % Given a bag, produce a sorted list containing all the values in the bag.
     % Each value will appear in the list once, with the associated integer
     % giving the number of times that it appears in the bag.
     %
-:- pred bag.to_assoc_list(bag(T)::in, assoc_list(T, int)::out) is det.
 :- func bag.to_assoc_list(bag(T)) = assoc_list(T, int).
+:- pred bag.to_assoc_list(bag(T)::in, assoc_list(T, int)::out) is det.
 
     % Given a bag, produce a sorted list with no duplicates containing
     % all the values in the bag.
     %
-:- pred bag.to_list_without_duplicates(bag(T)::in, list(T)::out) is det.
 :- func bag.to_list_without_duplicates(bag(T)) = list(T).
+:- pred bag.to_list_without_duplicates(bag(T)::in, list(T)::out) is det.
 
     % Given a bag, produce a set containing all the values in the bag.
     %
-:- pred bag.to_set_without_duplicates(bag(T)::in, set(T)::out) is det.
-:- func bag.to_set_without_duplicates(bag(T)) = set(T).
 :- func bag.to_set(bag(T)) = set(T).
+:- func bag.to_set_without_duplicates(bag(T)) = set(T).
+:- pred bag.to_set_without_duplicates(bag(T)::in, set(T)::out) is det.
 
     % Remove one occurrence of a particular value from a bag.
     % Fail if the item does not exist in the bag.
     %
-:- pred bag.remove(bag(T)::in, T::in, bag(T)::out) is semidet.
+:- pred bag.remove(T::in, bag(T)::in, bag(T)::out) is semidet.
 
     % Remove one occurrence of a particular value from a bag.
     % Abort if the item does not exist in the bag.
     %
-:- pred bag.det_remove(bag(T)::in, T::in, bag(T)::out) is det.
 :- func bag.det_remove(bag(T), T) = bag(T).
+:- pred bag.det_remove(T::in, bag(T)::in, bag(T)::out) is det.
 
     % Remove a list of values from a bag. Duplicates are removed from the bag
     % the appropriate number of times. Fail if any of the items in the list
@@ -126,42 +126,41 @@
     %       bag.is_subbag(RemoveBag, Bag0),
     %       bag.subtract(Bag0, RemoveBag, Bag).
     %
-:- pred bag.remove_list(bag(T)::in, list(T)::in, bag(T)::out) is semidet.
+:- pred bag.remove_list(list(T)::in, bag(T)::in, bag(T)::out) is semidet.
 
     % Remove a list of values from a bag. Duplicates are removed from the bag
     % the appropriate number of times.  Abort if any of the items in the list
     % do not exist in the bag.
     %
-:- pred bag.det_remove_list(bag(T)::in, list(T)::in, bag(T)::out) is det.
 :- func bag.det_remove_list(bag(T), list(T)) = bag(T).
+:- pred bag.det_remove_list(list(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % Remove a set of values from a bag. Each value is removed once.
     % Fail if any of the items in the set do not exist in the bag.
     %
-:- pred bag.remove_set(bag(T)::in, set(T)::in, bag(T)::out) is semidet.
+:- pred bag.remove_set(set(T)::in, bag(T)::in, bag(T)::out) is semidet.
 
     % Remove a set of values from a bag. Each value is removed once.
     % Abort if any of the items in the set do not exist in the bag.
     %
-:- pred bag.det_remove_set(bag(T)::in, set(T)::in, bag(T)::out) is det.
 :- func bag.det_remove_set(bag(T), set(T)) = bag(T).
+:- pred bag.det_remove_set(set(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % Delete one occurrence of a particular value from a bag.
     % If the key is not present, leave the bag unchanged.
     %
-:- pred bag.delete(bag(T)::in, T::in, bag(T)::out) is det.
 :- func bag.delete(bag(T), T) = bag(T).
+:- pred bag.delete(T::in, bag(T)::in, bag(T)::out) is det.
 
     % Remove all occurrences of a particular value from a bag.
     % Fail if the item does not exist in the bag.
     %
-:- pred bag.remove_all(bag(T)::in, T::in, bag(T)::out) is semidet.
-
-:- func bag.delete_all(bag(T), T) = bag(T).
+:- pred bag.remove_all(T::in, bag(T)::in, bag(T)::out) is semidet.
 
     % Delete all occurrences of a particular value from a bag.
     %
-:- pred bag.delete_all(bag(T)::in, T::in, bag(T)::out) is det.
+:- func bag.delete_all(bag(T), T) = bag(T).
+:- pred bag.delete_all(T::in, bag(T)::in, bag(T)::out) is det.
 
     % Check whether a bag contains a particular value.
     %
@@ -169,8 +168,8 @@
 
     % Count how many occurrences of the value the bag contains.
     %
-:- pred bag.count_value(bag(T)::in, T::in, int::out) is det.
 :- func bag.count_value(bag(T), T) = int.
+:- pred bag.count_value(bag(T)::in, T::in, int::out) is det.
 
     % bag.subtract(Bag0, SubBag, Bag):
     %
@@ -179,23 +178,23 @@
     % but not in Bag, then that element is not removed. An example:
     % bag.subtract({1, 1, 2, 2, 3 }, {1, 1, 2, 3, 3, 3}, {2}).
     %
-:- pred bag.subtract(bag(T)::in, bag(T)::in, bag(T)::out) is det.
 :- func bag.subtract(bag(T), bag(T)) = bag(T).
+:- pred bag.subtract(bag(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % The third bag is the union of the first 2 bags,
     % e.g. {1, 1, 2, 2} U {2, 2, 3, 3} = {1, 1, 2, 2, 2, 2, 3, 3}.
     % If the two input bags are known to be unequal in size, then making
     % the first bag the larger bag will usually be more efficient.
     %
-:- pred bag.union(bag(T)::in, bag(T)::in, bag(T)::out) is det.
 :- func bag.union(bag(T), bag(T)) = bag(T).
+:- pred bag.union(bag(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % The third bag is the intersection of the first 2 bags. Every element
     % in the third bag exists in both of the first 2 bags, e.g.
     % bag.intersect({1, 2, 2, 3, 3}, {2, 2, 3, 4}, {2, 2, 3}).
     %
-:- pred bag.intersect(bag(T)::in, bag(T)::in, bag(T)::out) is det.
 :- func bag.intersect(bag(T), bag(T)) = bag(T).
+:- pred bag.intersect(bag(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % Fails if there is no intersection between the 2 bags.
     % bag.intersect(A, B) :- bag.intersect(A, B, C), not bag.is_empty(C).
@@ -209,8 +208,8 @@
     % If the two input bags are known to be unequal in size, then making
     % the first bag the larger bag will usually be more efficient.
     %
-:- pred bag.least_upper_bound(bag(T)::in, bag(T)::in, bag(T)::out) is det.
 :- func bag.least_upper_bound(bag(T), bag(T)) = bag(T).
+:- pred bag.least_upper_bound(bag(T)::in, bag(T)::in, bag(T)::out) is det.
 
     % Tests whether the first bag is a subbag of the second.
     % bag.is_subbag(A, B) implies that every element in the bag A
@@ -227,7 +226,7 @@
 
     % Fails if the bag is empty.
     %
-:- pred bag.remove_smallest(bag(T)::in, T::out, bag(T)::out) is semidet.
+:- pred bag.remove_smallest(T::out, bag(T)::in, bag(T)::out) is semidet.
 
     % Compares the two bags, and returns whether the first bag is a
     % subset (<), is equal (=), or is a superset (>) of the second.
@@ -274,6 +273,9 @@
 
 %---------------------------------------------------------------------------%
 
+bag.init = B :-
+    bag.init(B).
+
 bag.init(bag(Bag)) :-
     map.init(Bag).
 
@@ -287,7 +289,10 @@ bag.count_unique(bag(Bag)) = map.count(Bag).
 
 %---------------------------------------------------------------------------%
 
-bag.insert(bag(!.Bag), Item, bag(!:Bag)) :-
+bag.insert(!.B, X) = !:B :-
+    bag.insert(X, !B).
+
+bag.insert(Item, bag(!.Bag), bag(!:Bag)) :-
     ( map.search(!.Bag, Item, Count0) ->
         Count = Count0 + 1
     ;
@@ -297,15 +302,18 @@ bag.insert(bag(!.Bag), Item, bag(!:Bag)) :-
 
 %---------------------------------------------------------------------------%
 
-bag.insert_list(Bag, [], Bag).
-bag.insert_list(Bag0, [Item | Items], Bag) :-
-    bag.insert(Bag0, Item, Bag1),
-    bag.insert_list(Bag1, Items, Bag).
+bag.insert_list(B1, Xs) = B2 :-
+    bag.insert_list(Xs, B1, B2).
 
-bag.insert_set(Bag0, Set, Bag) :-
+bag.insert_list([], !Bag).
+bag.insert_list([Item | Items], !Bag) :-
+    bag.insert(Item, !Bag),
+    bag.insert_list(Items, !Bag).
+
+bag.insert_set(Set, !Bag) :-
     set.to_sorted_list(Set, List),
     % XXX We should exploit the sortedness of List.
-    bag.insert_list(Bag0, List, Bag).
+    bag.insert_list(List, !Bag).
 
 bag.member(M, bag(Bag)) :-
     map.search(Bag, M, _Occurrences).
@@ -315,15 +323,29 @@ bag.member(OutVal, InBag, OutBag) :-
     list.member(OutVal, Vals),
     OutBag = bag.det_remove(InBag, OutVal).
 
+bag.bag(Xs) = bag.from_list(Xs).
+
+bag.from_list(Xs) = B :-
+    bag.from_list(Xs, B).
+
 bag.from_list(List, Bag) :-
     bag.init(Bag0),
-    bag.insert_list(Bag0, List, Bag).
+    bag.insert_list(List, Bag0, Bag).
+
+bag.insert_set(!.B, Xs) = !:B :-
+    bag.insert_set(Xs, !B).
+
+bag.from_set(Xs) = B :-
+    bag.from_set(Xs, B).
 
 bag.from_set(Set, Bag) :-
     set.to_sorted_list(Set, List),
     bag.init(Bag0),
     % XXX We should exploit the sortedness of List.
-    bag.insert_list(Bag0, List, Bag).
+    bag.insert_list(List, Bag0, Bag).
+
+bag.to_list(B) = Xs :-
+    bag.to_list(B, Xs).
 
 bag.to_list(bag(Bag), List) :-
     map.to_assoc_list(Bag, AssocList),
@@ -341,11 +363,22 @@ bag.to_list_2([X - Int | Xs ], Out) :-
         Out = [X | Out0]
     ).
 
+bag.to_assoc_list(B) = AL :-
+    bag.to_assoc_list(B, AL).
+
 bag.to_assoc_list(bag(Bag), AssocList) :-
     map.to_assoc_list(Bag, AssocList).
 
+bag.to_list_without_duplicates(B) = Xs :-
+    bag.to_list_without_duplicates(B, Xs).
+
 bag.to_list_without_duplicates(bag(Bag), List) :-
     map.keys(Bag, List).
+
+bag.to_set(B) = bag.to_set_without_duplicates(B).
+
+bag.to_set_without_duplicates(B) = Xs :-
+    bag.to_set_without_duplicates(B, Xs).
 
 bag.to_set_without_duplicates(bag(Bag), Set) :-
     map.keys(Bag, List),
@@ -353,14 +386,17 @@ bag.to_set_without_duplicates(bag(Bag), Set) :-
 
 %---------------------------------------------------------------------------%
 
-bag.delete(Bag0, Item, Bag) :-
-    ( bag.remove(Bag0, Item, Bag1) ->
-        Bag = Bag1
+bag.delete(B1, X) = B2 :-
+    bag.delete(X, B1, B2).
+
+bag.delete(Item, !Bag) :-
+    ( bag.remove(Item, !.Bag, NewBag) ->
+        !:Bag = NewBag 
     ;
-        Bag = Bag0
+        true
     ).
 
-bag.remove(bag(!.Bag), Item, bag(!:Bag)) :-
+bag.remove(Item, bag(!.Bag), bag(!:Bag)) :-
     map.search(!.Bag, Item, Count0),
     ( Count0 > 1 ->
         Count = Count0 - 1,
@@ -369,6 +405,9 @@ bag.remove(bag(!.Bag), Item, bag(!:Bag)) :-
         map.delete(Item, !Bag)
     ).
 
+bag.det_remove(B1, X) = B2 :-
+    bag.det_remove(X, B1, B2).
+
 bag.det_remove(Bag0, Item, Bag) :-
     ( bag.remove(Bag0, Item, Bag1) ->
         Bag = Bag1
@@ -376,32 +415,41 @@ bag.det_remove(Bag0, Item, Bag) :-
         error("bag.det_remove: Missing item in bag.")
     ).
 
-bag.remove_list(Bag, [], Bag).
-bag.remove_list(Bag0, [X | Xs], Bag) :-
-    bag.remove(Bag0, X, Bag1),
-    bag.remove_list(Bag1, Xs, Bag).
+bag.det_remove_list(B1, Xs) = B2 :-
+    bag.det_remove_list(Xs, B1, B2).
 
-bag.det_remove_list(Bag0, List, Bag) :-
-    ( bag.remove_list(Bag0, List, Bag1) ->
-        Bag = Bag1
+bag.remove_list([], !Bag).
+bag.remove_list([X | Xs], !Bag) :-
+    bag.remove(X, !Bag),
+    bag.remove_list(Xs, !Bag).
+
+bag.det_remove_list(List, !Bag) :-
+    ( bag.remove_list(List, !Bag) ->
+        true
     ;
         error("bag.det_remove_list: Missing item in bag.")
     ).
 
-bag.remove_set(Bag0, Set, Bag) :-
+bag.remove_set(Set, !Bag) :-
     set.to_sorted_list(Set, List),
         % XXX We should exploit the sortedness of List.
-    bag.remove_list(Bag0, List, Bag).
+    bag.remove_list(List, !Bag).
 
-bag.det_remove_set(Bag0, Set, Bag) :-
+bag.det_remove_set(B1, Xs) = B2 :-
+    bag.det_remove_set(Xs, B1, B2).
+
+bag.det_remove_set(Set, !Bag) :-
     set.to_sorted_list(Set, List),
         % XXX We should exploit the sortedness of List.
-    bag.det_remove_list(Bag0, List, Bag).
+    bag.det_remove_list(List, !Bag).
 
-bag.remove_all(bag(!.Bag), Item, bag(!:Bag)) :-     % semidet
+bag.remove_all(Item, bag(!.Bag), bag(!:Bag)) :- % semidet
     map.remove(Item, _Val, !Bag).
 
-bag.delete_all(bag(!.Bag), Item, bag(!:Bag)) :- % det
+bag.delete_all(B1, X) = B2 :-
+    bag.delete_all(X, B1, B2).
+
+bag.delete_all(Item, bag(!.Bag), bag(!:Bag)) :- % det
     map.delete(Item, !Bag).
 
 %---------------------------------------------------------------------------%
@@ -411,6 +459,9 @@ bag.contains(bag(Bag), Item) :-
 
 %---------------------------------------------------------------------------%
 
+bag.count_value(B, X) = N :-
+    bag.count_value(B, X, N).
+
 bag.count_value(bag(Bag), Item, Count) :-
     ( map.search(Bag, Item, Count0) ->
         Count = Count0
@@ -419,6 +470,9 @@ bag.count_value(bag(Bag), Item, Count) :-
     ).
 
 %---------------------------------------------------------------------------%
+
+bag.subtract(B1, B2) = B3 :-
+    bag.subtract(B1, B2, B3).
 
 bag.subtract(bag(Bag0), bag(SubBag), Bag) :-
     ( map.remove_smallest(SubKey, SubVal, SubBag, SubBag0) ->
@@ -437,6 +491,9 @@ bag.subtract(bag(Bag0), bag(SubBag), Bag) :-
         Bag = bag(Bag0)
     ).
 
+bag.union(B1, B2) = B3 :-
+    bag.union(B1, B2, B3).
+
 bag.union(bag(A), bag(B), Out) :-
     ( map.remove_smallest(Key, BVal, B, B0) ->
         ( map.search(A, Key, AVal) ->
@@ -449,6 +506,9 @@ bag.union(bag(A), bag(B), Out) :-
     ;
         Out = bag(A)
     ).
+
+bag.intersect(B1, B2) = B3 :-
+    bag.intersect(B1, B2, B3).
 
 bag.intersect(A, B, Out) :-
     bag.init(Out0),
@@ -478,6 +538,9 @@ bag.intersect(bag(A), bag(B)) :-
         bag.intersect(bag(A0), bag(B))
     ).
 
+bag.least_upper_bound(B1, B2) = B3 :-
+    bag.least_upper_bound(B1, B2, B3).
+
 bag.least_upper_bound(bag(A), bag(B), Out) :-
     ( map.remove_smallest(Key, BVal, B, B0) ->
         ( map.search(A, Key, AVal) ->
@@ -504,7 +567,7 @@ bag.is_empty(bag(Bag)) :-
 
 %---------------------------------------------------------------------------%
 
-bag.remove_smallest(bag(!.Bag), Item, bag(!:Bag)) :-
+bag.remove_smallest(Item, bag(!.Bag), bag(!:Bag)) :-
     map.remove_smallest(Item, Val, !Bag),
     ( Val > 1 ->
         NewVal = Val - 1,
@@ -552,70 +615,5 @@ bag.subset_compare(Res, bag(A), bag(B)) :-
     ).
 
 %-----------------------------------------------------------------------------%
+:- end_module bag.
 %-----------------------------------------------------------------------------%
-% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
-%   Function forms added.
-
-bag.init = B :-
-    bag.init(B).
-
-bag.insert(B1, X) = B2 :-
-    bag.insert(B1, X, B2).
-
-bag.insert_list(B1, Xs) = B2 :-
-    bag.insert_list(B1, Xs, B2).
-
-bag.insert_set(B1, Xs) = B2 :-
-    bag.insert_set(B1, Xs, B2).
-
-bag.from_list(Xs) = B :-
-    bag.from_list(Xs, B).
-
-bag.from_set(Xs) = B :-
-    bag.from_set(Xs, B).
-
-bag.to_list(B) = Xs :-
-    bag.to_list(B, Xs).
-
-bag.to_assoc_list(B) = AL :-
-    bag.to_assoc_list(B, AL).
-
-bag.to_list_without_duplicates(B) = Xs :-
-    bag.to_list_without_duplicates(B, Xs).
-
-bag.to_set_without_duplicates(B) = Xs :-
-    bag.to_set_without_duplicates(B, Xs).
-
-bag.det_remove(B1, X) = B2 :-
-    bag.det_remove(B1, X, B2).
-
-bag.det_remove_list(B1, Xs) = B2 :-
-    bag.det_remove_list(B1, Xs, B2).
-
-bag.det_remove_set(B1, Xs) = B2 :-
-    bag.det_remove_set(B1, Xs, B2).
-
-bag.delete(B1, X) = B2 :-
-    bag.delete(B1, X, B2).
-
-bag.delete_all(B1, X) = B2 :-
-    bag.delete_all(B1, X, B2).
-
-bag.count_value(B, X) = N :-
-    bag.count_value(B, X, N).
-
-bag.subtract(B1, B2) = B3 :-
-    bag.subtract(B1, B2, B3).
-
-bag.union(B1, B2) = B3 :-
-    bag.union(B1, B2, B3).
-
-bag.intersect(B1, B2) = B3 :-
-    bag.intersect(B1, B2, B3).
-
-bag.least_upper_bound(B1, B2) = B3 :-
-    bag.least_upper_bound(B1, B2, B3).
-
-bag.bag(Xs) = bag.from_list(Xs).
-
-bag.to_set(B) = bag.to_set_without_duplicates(B).

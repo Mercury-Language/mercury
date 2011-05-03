@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2010 The University of Melbourne.
+% Copyright (C) 1997-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -137,7 +137,7 @@ term_traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
                 unify_change(!.ModuleInfo, OutVar, ConsId, Args, Modes, Params,
                     Gamma, InVars, OutVars0)
             ->
-                bag.insert(OutVars0, OutVar, OutVars),
+                bag.insert(OutVar, OutVars0, OutVars),
                 record_change(InVars, OutVars, Gamma, [], !Info)
             ;
                 % length(Args) is not necessarily equal to length(Modes)
@@ -150,7 +150,7 @@ term_traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
                 unify_change(!.ModuleInfo, InVar, ConsId, Args, Modes, Params,
                     Gamma0, InVars0, OutVars)
             ->
-                bag.insert(InVars0, InVar, InVars),
+                bag.insert(InVar, InVars0, InVars),
                 Gamma = 0 - Gamma0,
                 record_change(InVars, OutVars, Gamma, [], !Info)
             ;
@@ -160,8 +160,8 @@ term_traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
         ;
             Unification = assign(OutVar, InVar),
             bag.init(Empty),
-            bag.insert(Empty, InVar, InVars),
-            bag.insert(Empty, OutVar, OutVars),
+            bag.insert(InVar, Empty, InVars),
+            bag.insert(OutVar, Empty, OutVars),
             record_change(InVars, OutVars, 0, [], !Info)
         ;
             Unification = simple_test(_InVar1, _InVar2)
@@ -503,7 +503,7 @@ compute_rec_start_vars([Var | Vars], [RecInputSupplier | RecInputSuppliers],
     compute_rec_start_vars(Vars, RecInputSuppliers, Out1),
     (
         RecInputSupplier = yes,
-        bag.insert(Out1, Var, Out)
+        bag.insert(Var, Out1, Out)
     ;
         RecInputSupplier = no,
         Out = Out1

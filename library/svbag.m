@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -124,46 +124,46 @@
 
 :- implementation.
 
-svbag.insert(Item, Bag0, Bag) :-
-    bag.insert(Bag0, Item, Bag).
+svbag.insert(Item, !Bag) :-
+    bag.insert(Item, !Bag).
 
-svbag.insert_list(List, Bag0, Bag) :-
-    bag.insert_list(Bag0, List, Bag).
+svbag.insert_list(List, !Bag) :-
+    bag.insert_list(List, !Bag).
 
-svbag.insert_set(Set, Bag0, Bag) :-
-    bag.insert_set(Bag0, Set, Bag).
+svbag.insert_set(Set, !Bag) :-
+    bag.insert_set(Set, !Bag).
 
-svbag.remove(Item, Bag0, Bag) :-
-    bag.remove(Bag0, Item, Bag).
+svbag.remove(Item, !Bag) :-
+    bag.remove(Item, !Bag).
 
-svbag.det_remove(Item, Bag0, Bag) :-
-    bag.det_remove(Bag0, Item, Bag).
+svbag.det_remove(Item, !Bag) :-
+    bag.det_remove(Item, !Bag).
 
-svbag.remove_list(List, Bag0, Bag) :-
-    bag.remove_list(Bag0, List, Bag).
+svbag.remove_list(List, !Bag) :-
+    bag.remove_list(List, !Bag).
 
-svbag.det_remove_list(List, Bag0, Bag) :-
-    bag.det_remove_list(Bag0, List, Bag).
+svbag.det_remove_list(List, !Bag) :-
+    bag.det_remove_list(List, !Bag).
 
-svbag.remove_set(Set, Bag0, Bag) :-
-    bag.remove_set(Bag0, Set, Bag).
+svbag.remove_set(Set, !Bag) :-
+    bag.remove_set(Set, !Bag).
 
-svbag.det_remove_set(Set, Bag0, Bag) :-
-    bag.det_remove_set(Bag0, Set, Bag).
+svbag.det_remove_set(Set, !Bag) :-
+    bag.det_remove_set(Set, !Bag).
 
-svbag.delete(Item, Bag0, Bag) :-
-    bag.delete(Bag0, Item, Bag).
+svbag.delete(Item, !Bag) :-
+    bag.delete(Item, !Bag).
 
-svbag.remove_all(Item, Bag0, Bag) :-
-    bag.remove_all(Bag0, Item, Bag).
+svbag.remove_all(Item, !Bag) :-
+    bag.remove_all(Item, !Bag).
 
-svbag.delete_all(Item, Bag0, Bag) :-
-    bag.delete_all(Bag0, Item, Bag).
+svbag.delete_all(Item, !Bag) :-
+    bag.delete_all(Item, !Bag).
 
-svbag.subtract(SubBag, Bag0, Bag) :-
-    bag.subtract(Bag0, SubBag, Bag).
+svbag.subtract(SubBag, !Bag) :-
+    bag.subtract(SubBag, !Bag).
 
-svbag.remove_smallest(Item, Bag0, Bag) :-
-    bag.remove_smallest(Bag0, Item, Bag).
+svbag.remove_smallest(Item, !Bag) :-
+    bag.remove_smallest(Item, !Bag).
 
 %---------------------------------------------------------------------------%

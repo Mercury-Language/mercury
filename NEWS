@@ -13,7 +13,7 @@ Changes to the Mercury standard library:
 * We have improved Unicode support in the standard library.
 
 * We have changed the argument order of many of the predicates in the
-  bimap, eqvclass, map, multi_map and queue modules in order to make
+  bag, bimap, eqvclass, map, multi_map and queue modules in order to make
   them more conducive to the use of state variable notation.
 
 
@@ -29,8 +29,11 @@ Changes to the Mercury standard library:
 
     + Text I/O routines now read and write files in UTF-8 encoding.
 
-* The argument of the following predicates has been changed in order to
+* The argument order of the following predicates has been changed so as to
   make them more conducive to the use of state variable notation:
+  bag.insert/3, bag.insert_list/3, bag.insert_set/3. bag.remove/3,
+  bag.det_remove/3, bag.remove_list/3, bag.remove_set/3, bag.delete/3,
+  bag.remove_all/3, bag.delete_all/3, bag.remove_smallest/3,
   bimap.insert/4, bimap.det_insert/4, bimap.set/4, eqvclass.ensure_element/3,
   eqvclass.new_element/3, eqvclass.ensure_equivalence/4,
   eqvclass.new_equivalence/4, eqvclass.remove_equivalent_elements/3,

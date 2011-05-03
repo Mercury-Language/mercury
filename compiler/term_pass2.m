@@ -438,7 +438,7 @@ update_rec_input_suppliers([Arg | Args], ActiveVars, FixDir,
         [RecInputSupplier | RecInputSuppliers], !RecBag) :-
     (
         RecInputSupplier0 = yes,
-        bag.insert(!.RecBag, Arg, !:RecBag)
+        bag.insert(Arg, !RecBag)
     ;
         RecInputSupplier0 = no
     ),

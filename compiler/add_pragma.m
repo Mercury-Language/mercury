@@ -3188,7 +3188,7 @@ clauses_info_do_add_pragma_foreign_proc(Origin, Purity, Attributes0,
 
     % Check for arguments occurring more than once.
     bag.init(ArgBag0),
-    bag.insert_list(ArgBag0, Args0, ArgBag),
+    bag.insert_list(Args0, ArgBag0, ArgBag),
     bag.to_assoc_list(ArgBag, ArgBagAL0),
     list.filter(
         (pred(Arg::in) is semidet :-

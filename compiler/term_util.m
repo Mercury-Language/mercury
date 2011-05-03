@@ -243,7 +243,7 @@ split_unification_vars([Arg | Args], Modes, ModuleInfo,
             inst_is_bound(ModuleInfo, ArgInit)
         ->
             % Variable is an input variable
-            bag.insert(InVars0, Arg, InVars),
+            bag.insert(Arg, InVars0, InVars),
             OutVars = OutVars0
         ;
             inst_is_free(ModuleInfo, ArgInit),
@@ -251,7 +251,7 @@ split_unification_vars([Arg | Args], Modes, ModuleInfo,
         ->
             % Variable is an output variable
             InVars = InVars0,
-            bag.insert(OutVars0, Arg, OutVars)
+            bag.insert(Arg, OutVars0, OutVars)
         ;
             InVars = InVars0,
             OutVars = OutVars0
@@ -292,7 +292,7 @@ remove_unused_args(Vars0, [ Arg | Args ], [ UsedVar | UsedVars ], Vars) :-
         % The variable is not used in producing output vars, so don't include
         % it as an input variable.
         UsedVar = no,
-        bag.delete(Vars0, Arg, Vars1),
+        bag.delete(Arg, Vars0, Vars1),
         remove_unused_args(Vars1, Args, UsedVars, Vars)
     ).
 
