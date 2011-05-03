@@ -190,12 +190,21 @@ selector_subsumed_by_2(ModuleInfo, A, B, Type, Extension) :-
             AH = termsel(ConsIdA, IndexA),
             BH = termsel(ConsIdB, IndexB)
         ->
-            % If both selectors begin with term selectors, clearly they must
-            % agree on the node to select for the selectors to be comparable.
             ConsIdA = ConsIdB,
             IndexA = IndexB,
-            SubType = det_select_subtype(ModuleInfo, Type, ConsIdA, IndexA),
-            selector_subsumed_by_2(ModuleInfo, AT, BT, SubType, Extension)
+            (
+                Type = type_variable(_, _),
+                AT = BT
+            ->
+                % XXX Avoid an assertion failure when trying to index arguments
+                % of a type variable.  This is probably a hack.
+                Extension = []
+            ;
+                % If both selectors begin with term selectors, clearly they must
+                % agree on the node to select for the selectors to be comparable.
+                SubType = det_select_subtype(ModuleInfo, Type, ConsIdA, IndexA),
+                selector_subsumed_by_2(ModuleInfo, AT, BT, SubType, Extension)
+            )
         ;
             % If one selector has a term selector at the current position but
             % the other has a type selector, we select the node dictated by the

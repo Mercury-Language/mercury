@@ -415,12 +415,14 @@ process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo, !Goal) :-
         GoalExpr0 = negation(_Goal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        % XXX We should special-case the handling of from_ground_term_construct
-        % scopes.
-        process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo,
-            SubGoal0, SubGoal),
-        GoalExpr = scope(Reason, SubGoal),
-        !:Goal = hlds_goal(GoalExpr, GoalInfo0)
+        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+            true
+        ;
+            process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo,
+                SubGoal0, SubGoal),
+            GoalExpr = scope(Reason, SubGoal),
+            !:Goal = hlds_goal(GoalExpr, GoalInfo0)
+        )
     ;
         GoalExpr0 = if_then_else(Vars, IfGoal0, ThenGoal0, ElseGoal0),
         process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo,
@@ -445,12 +447,21 @@ process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo, !Goal) :-
 
 unification_set_reuse(ShortReuseDescription, !Unification) :-
     (
-        !.Unification = construct(A, B, C, D, _HowToConstruct, F, G),
+        !.Unification = construct(A, B, C, D, HowToConstruct0, F, G),
         ShortReuseDescription = cell_reused(DeadVar, _, PossibleConsIds,
             CellsToUpdate)
     ->
-        CellToReuse = cell_to_reuse(DeadVar, PossibleConsIds,
-            CellsToUpdate),
+        (
+            HowToConstruct0 = construct_statically,
+            unexpected(this_file, "unification_set_reuse: construct_statically")
+        ;
+            HowToConstruct0 = construct_dynamically
+        ;
+            HowToConstruct0 = construct_in_region(_)
+        ;
+            HowToConstruct0 = reuse_cell(_)
+        ),
+        CellToReuse = cell_to_reuse(DeadVar, PossibleConsIds, CellsToUpdate),
         HowToConstruct = reuse_cell(CellToReuse),
         !:Unification = construct(A, B, C, D, HowToConstruct, F, G)
     ;

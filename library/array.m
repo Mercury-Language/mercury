@@ -1281,7 +1281,7 @@ array.svset(Index, Item, Array0, Array) :-
     array.unsafe_svset(Index::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness,
-        sharing(yes(array(T), int, T, array(T)), [
+        sharing(yes(int, T, array(T), array(T)), [
             cel(Array0, []) - cel(Array, []),
             cel(Item, [])   - cel(Array, [T])
         ])
@@ -1911,8 +1911,7 @@ array.append(A, B) = C :-
     array.append(ArrayA::in, ArrayB::in) = (ArrayC::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness,
-        % XXX zs: I am not sure about the sharing annotation.
-        sharing(yes(array(T), array(T)), [
+        sharing(yes(array(T), array(T), array(T)), [
             cel(ArrayA, [T]) - cel(ArrayC, [T]),
             cel(ArrayB, [T]) - cel(ArrayC, [T])
         ])

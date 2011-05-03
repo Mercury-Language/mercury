@@ -414,6 +414,7 @@ ifeq "$(findstring debug,$(GRADE))" ""
 		bad_indirect_reuse2 \
 		bad_indirect_reuse2b \
 		bad_indirect_reuse3 \
+		reuse_array \
 		reuse_ho \
 		sharing_comb \
 		uncond_reuse \
