@@ -26,6 +26,7 @@ mdprof_dump
 mdprof_feedback
 mdprof_procrep
 Mercury
+Mercury.modules
 .deep.tags
 DEEP_FLAGS
 *.opt
@@ -34,6 +35,7 @@ config.log
 feedback.automatic_parallelism.m
 feedback.m
 mdbcomp.m
+mdbcomp.goal_path.m
 prim_data.m
 program_representation.m
 rtti_access.m
