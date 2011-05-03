@@ -12,3 +12,4 @@ PASSED_TC_DIR
 UNEXPECTED_FAILED_TESTS
 mdbrc
 mdbrc.in
+runtests.errs
