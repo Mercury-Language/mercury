@@ -833,9 +833,8 @@ give_up_subterm_tracking(SearchSpace, SuspectId, subterm_in) :-
 
 assert_suspect_is_valid(Status, SuspectId, !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-    map.set(SuspectId, (Suspect ^ status := Status) ^ weight := 0,
-        !.SearchSpace ^ store, SuspectStore),
-    !SearchSpace ^ store := SuspectStore,
+    set_suspect(SuspectId, (Suspect ^ status := Status) ^ weight := 0,
+        !SearchSpace),
     (
         Suspect ^ children = yes(Children),
         list.foldl(propagate_status_downwards(suspect_pruned,
@@ -872,9 +871,8 @@ assert_suspect_is_correct(SuspectId, !SearchSpace) :-
 
 assert_suspect_is_erroneous(SuspectId, !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-    map.set(SuspectId, Suspect ^ status := suspect_erroneous,
-        !.SearchSpace ^ store, Store),
-    !SearchSpace ^ store := Store,
+    set_suspect(SuspectId, Suspect ^ status := suspect_erroneous,
+        !SearchSpace),
     propagate_status_upwards(suspect_in_erroneous_subtree_complement,
         [suspect_erroneous, suspect_correct, suspect_inadmissible],
         SuspectId, _, !SearchSpace),
@@ -884,10 +882,9 @@ ignore_suspect(Store, SuspectId, !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
     calc_suspect_weight(Store, Suspect ^ edt_node, Suspect ^ children,
         suspect_ignored, !.SearchSpace, Weight, _),
-    map.set(SuspectId,
+    set_suspect(SuspectId,
         (Suspect ^ status := suspect_ignored) ^ weight := Weight,
-        !.SearchSpace ^ store, SuspectStore),
-    !SearchSpace ^ store := SuspectStore,
+        !SearchSpace),
     add_weight_to_ancestors(SuspectId, Weight - Suspect ^ weight,
         !SearchSpace).
 
@@ -895,9 +892,8 @@ skip_suspect(SuspectId, !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
     counter.allocate(N, !.SearchSpace ^ skip_counter, SkipCounter),
     !SearchSpace ^ skip_counter := SkipCounter,
-    map.set(SuspectId, Suspect ^ status := suspect_skipped(N),
-        !.SearchSpace ^ store, Store),
-    !SearchSpace ^ store := Store.
+    set_suspect(SuspectId, Suspect ^ status := suspect_skipped(N),
+        !SearchSpace).
 
 revise_root(Store, !SearchSpace) :-
     (
@@ -1140,6 +1136,16 @@ lookup_suspect(SearchSpace, SuspectId, Suspect) :-
         throw(internal_error("lookup_suspect", "couldn't find suspect"))
     ).
 
+    % Update or add the suspect in the search space.
+    %
+:- pred set_suspect(suspect_id::in, suspect(T)::in, search_space(T)::in,
+    search_space(T)::out) is det.
+
+set_suspect(SuspectId, Suspect, !SearchSpace) :-
+    Store0 = !.SearchSpace ^ store,
+    map.set(SuspectId, Suspect, Store0, Store),
+    !SearchSpace ^ store := Store.    
+
     % propagate_status_downwards(Status, StopStatusSet, SuspectId,
     %   StopSuspects, !SearchSpace):
     %
@@ -1179,9 +1185,8 @@ propagate_status_downwards(Status, StopStatusSet, SuspectId, !StopSuspects,
         !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
     ( \+ member(Suspect ^ status, StopStatusSet) ->
-        map.set(SuspectId, Suspect ^ status := Status,
-            !.SearchSpace ^ store, Store),
-        !SearchSpace ^ store := Store,
+        set_suspect(SuspectId, Suspect ^ status := Status,
+            !SearchSpace),
         (
             Suspect ^ children = yes(Children),
             list.foldl2(propagate_status_downwards(Status, StopStatusSet),
@@ -1213,9 +1218,7 @@ force_propagate_status_downwards(Status, StopStatusSet, SuspectId,
 force_propagate_status_downwards(Status, StopStatusSet, SuspectId,
         StopSuspects, !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-    map.set(SuspectId, Suspect ^ status := Status,
-        !.SearchSpace ^ store, Store),
-    !SearchSpace ^ store := Store,
+    set_suspect(SuspectId, Suspect ^ status := Status, !SearchSpace),
     (
         Suspect ^ children = yes(Children),
         list.foldl2(propagate_status_downwards(Status, StopStatusSet),
@@ -1337,9 +1340,8 @@ add_weight_to_ancestors(SuspectId, Weight, !SearchSpace) :-
         Suspect ^ parent = yes(ParentId)
     ->
         lookup_suspect(!.SearchSpace, ParentId, Parent),
-        map.set(ParentId, Parent ^ weight := Parent ^ weight + Weight, 
-            !.SearchSpace ^ store, SuspectStore),
-        !SearchSpace ^ store := SuspectStore,
+        set_suspect(ParentId, Parent ^ weight := Parent ^ weight + Weight, 
+            !SearchSpace),
         excluded_complement(Parent ^ status, ExcludedComplement),
         (
             ExcludedComplement = yes
@@ -1396,9 +1398,8 @@ recalc_weights_and_get_parents(Store, [SuspectId | SuspectIds], PrevParents,
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
     calc_suspect_weight(Store, Suspect ^ edt_node, Suspect ^ children,
         Suspect ^ status, !.SearchSpace, Weight, _),
-    map.set(SuspectId, Suspect ^ weight := Weight,
-        !.SearchSpace ^ store, SuspectStore),
-    !SearchSpace ^ store := SuspectStore,
+    set_suspect(SuspectId, Suspect ^ weight := Weight,
+        !SearchSpace),
     (
         Suspect ^ parent = yes(ParentId),
         NewPrevParents = [ParentId | PrevParents]
@@ -1500,9 +1501,8 @@ propagate_status_upwards(Status, StopStatusSet, SuspectId, Lowest,
         ( \+ list.member(Parent ^ status, StopStatusSet) ->
             propagate_status_upwards(Status, StopStatusSet,
                 ParentId, Lowest, !SearchSpace),
-            map.set(ParentId, Parent ^ status := Status,
-                !.SearchSpace ^ store, Store),
-            !SearchSpace ^ store := Store
+            set_suspect(ParentId, Parent ^ status := Status,
+                !SearchSpace)
         ;
             Lowest = ParentId
         )
@@ -1560,9 +1560,7 @@ add_children(Store, Oracle, EDTChildren, SuspectId, Status, !SearchSpace,
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
     !SearchSpace ^ suspect_id_counter := Counter,
     SuspectWithChildren = Suspect ^ children := yes(Children),
-    map.set(SuspectId, SuspectWithChildren,
-        !.SearchSpace ^ store, SuspectStoreWithChildren),
-    !SearchSpace ^ store := SuspectStoreWithChildren,
+    set_suspect(SuspectId, SuspectWithChildren, !SearchSpace),
     list.foldl(adjust_suspect_status_from_oracle(Store, Oracle), Children,
         !SearchSpace),
 
@@ -1573,9 +1571,8 @@ add_children(Store, Oracle, EDTChildren, SuspectId, Status, !SearchSpace,
     ( Suspect ^ status = suspect_ignored ->
         calc_suspect_weight(Store, Suspect ^ edt_node, yes(Children),
             suspect_ignored, !.SearchSpace, Weight, _),
-        map.set(SuspectId, SuspectWithChildren ^ weight := Weight,
-            !.SearchSpace ^ store, SuspectStoreWithWeight),
-        !SearchSpace ^ store := SuspectStoreWithWeight,
+        set_suspect(SuspectId, SuspectWithChildren ^ weight := Weight,
+            !SearchSpace),
         add_weight_to_ancestors(SuspectId, Weight - Suspect ^ weight,
             !SearchSpace)
     ;
@@ -1662,10 +1659,8 @@ initialise_search_space(Store, MaybeWeighting, Node, SearchSpace) :-
 
 incorporate_explicit_subtree(SuspectId, Node, !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-    map.set(SuspectId, Suspect ^ edt_node := Node,
-        !.SearchSpace ^ store, Store),
-    !SearchSpace ^ store := Store,
-    bimap.set( Suspect ^ edt_node, Node, 
+    set_suspect(SuspectId, Suspect ^ edt_node := Node, !SearchSpace),
+    bimap.set(Suspect ^ edt_node, Node, 
         !.SearchSpace ^ implicit_to_explicit_roots, ImplicitToExplicit),
     !SearchSpace ^ implicit_to_explicit_roots := ImplicitToExplicit.
 
