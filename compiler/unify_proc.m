@@ -368,7 +368,7 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         % Insert the pred_proc_id into the request queue.
         module_info_get_proc_requests(!.ModuleInfo, Requests0),
         get_req_queue(Requests0, ReqQueue0),
-        queue.put(ReqQueue0, proc(PredId, ProcId), ReqQueue),
+        queue.put(proc(PredId, ProcId), ReqQueue0, ReqQueue),
         set_req_queue(ReqQueue, Requests0, Requests),
         module_info_set_proc_requests(Requests, !ModuleInfo)
     ).

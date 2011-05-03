@@ -95,7 +95,6 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
-:- import_module svqueue.
 
     % The stack optimization graph is a bipartite graph, whose two node types
     % are cost nodes and benefit nodes. Each node represents a copy of an
@@ -484,7 +483,7 @@ initial_queue([N | Ns], Q0) = Q :-
     stack_slot_graph, matching) = edge_list is semidet.
 
 augpath_bf(Queue0, Seen0, Graph, Matching) = Path :-
-    queue.get(Queue0, NodePath, Queue1),
+    queue.get(NodePath, Queue0, Queue1),
     NodePath = benefit_node_and_edge_list(BenefitNode, Path0),
     Graph = stack_slot_graph(_, BenefitToCostsMap),
     map.lookup(BenefitToCostsMap, BenefitNode, AdjCostNodes),
@@ -534,7 +533,7 @@ add_alternates([CostMatch | CostMatches], !Seen, BenefitNode, Path, !Queue) :-
         NewPath = [BenefitNode - CostNode | Path],
         BenefitNodeAndEdgeList =
             benefit_node_and_edge_list(AdjBenefitNode, NewPath),
-        svqueue.put(BenefitNodeAndEdgeList, !Queue)
+        queue.put(BenefitNodeAndEdgeList, !Queue)
     ;
         true
     ),

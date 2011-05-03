@@ -111,7 +111,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module sveqvclass.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -311,7 +310,7 @@ common_optimise_construct(Var, ConsId, ArgVars, Mode, GoalExpr0, GoalExpr,
                 OldStruct)
         ->
             OldStruct = structure(OldVar, _),
-            sveqvclass.ensure_equivalence(Var, OldVar, VarEqv1, VarEqv),
+            eqvclass.ensure_equivalence(Var, OldVar, VarEqv1, VarEqv),
             CommonInfo = CommonInfo0 ^ var_eqv := VarEqv,
             simplify_info_set_common_info(CommonInfo, !Info),
             (
@@ -493,7 +492,7 @@ do_record_cell_in_struct_map(TypeCtor, ConsId, Struct, !StructMap) :-
 record_equivalence(Var1, Var2, !Info) :-
     simplify_info_get_common_info(!.Info, CommonInfo0),
     VarEqv0 = CommonInfo0 ^ var_eqv,
-    eqvclass.ensure_equivalence(VarEqv0, Var1, Var2, VarEqv),
+    eqvclass.ensure_equivalence(Var1, Var2, VarEqv0, VarEqv),
     CommonInfo = CommonInfo0 ^ var_eqv := VarEqv,
     simplify_info_set_common_info(CommonInfo, !Info).
 

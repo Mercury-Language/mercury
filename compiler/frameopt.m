@@ -167,7 +167,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-:- import_module svqueue.
 :- import_module svset.
 
 %-----------------------------------------------------------------------------%
@@ -1619,7 +1618,7 @@ delay_frame_init([Label | Labels], BlockMap, !RevMap, !Queue,
         ;
             NeedsFrame = block_needs_frame,
             map.det_insert(Label, block_needs_frame, !OrdNeedsFrame),
-            svqueue.put(Label, !Queue)
+            queue.put(Label, !Queue)
         )
     ;
         BlockType = exit_block(_)
@@ -1675,7 +1674,7 @@ propagate_frame_requirement_to_successors(!.Queue, BlockMap, !OrdNeedsFrame,
         !.CanTransform = can_transform,
         ( !.PropagationStepsLeft < 0 ->
             !:CanTransform = cannot_transform
-        ; svqueue.get(Label, !Queue) ->
+        ; queue.get(Label, !Queue) ->
             !:PropagationStepsLeft = !.PropagationStepsLeft - 1,
             svset.insert(Label, !AlreadyProcessed),
             map.lookup(BlockMap, Label, BlockInfo),
@@ -1694,7 +1693,7 @@ propagate_frame_requirement_to_successors(!.Queue, BlockMap, !OrdNeedsFrame,
                 % to do that for exit frames.
                 list.filter(set.contains(!.AlreadyProcessed),
                     successors(BlockInfo), _, UnprocessedSuccessors),
-                svqueue.put_list(UnprocessedSuccessors, !Queue)
+                queue.put_list(UnprocessedSuccessors, !Queue)
             ;
                 BlockType = entry_block(_),
                 !:CanTransform = cannot_transform
@@ -1726,7 +1725,7 @@ propagate_frame_requirement_to_predecessors(!.Queue, BlockMap, RevMap,
         !.CanTransform = can_transform,
         ( !.PropagationStepsLeft < 0 ->
             !:CanTransform = cannot_transform
-        ; svqueue.get(Label, !Queue) ->
+        ; queue.get(Label, !Queue) ->
             !:PropagationStepsLeft = !.PropagationStepsLeft - 1,
             ( map.search(RevMap, Label, PredecessorsPrime) ->
                 Predecessors = PredecessorsPrime
@@ -1745,7 +1744,7 @@ propagate_frame_requirement_to_predecessors(!.Queue, BlockMap, RevMap,
                 !OrdNeedsFrame, !CanTransform),
             % XXX map.lookup(BlockMap, Label, BlockInfo),
             % XXX Successors = successors(BlockInfo),
-            svqueue.put_list(NowNeedFrameLabels, !Queue),
+            queue.put_list(NowNeedFrameLabels, !Queue),
             propagate_frame_requirement_to_predecessors(!.Queue, BlockMap,
                 RevMap, !OrdNeedsFrame, !PropagationStepsLeft, !CanTransform)
         ;

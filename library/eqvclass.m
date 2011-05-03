@@ -65,7 +65,7 @@
     % if it isn't, it is created without any equivalence relationships.
     %
 :- func eqvclass.ensure_element(eqvclass(T), T) = eqvclass(T).
-:- pred eqvclass.ensure_element(eqvclass(T)::in, T::in, eqvclass(T)::out)
+:- pred eqvclass.ensure_element(T::in, eqvclass(T)::in, eqvclass(T)::out)
     is det.
 
     % Make an element known to the equivalence class.
@@ -73,14 +73,14 @@
     % it is created without any equivalence relationships.
     %
 :- func eqvclass.new_element(eqvclass(T), T) = eqvclass(T).
-:- pred eqvclass.new_element(eqvclass(T)::in, T::in, eqvclass(T)::out) is det.
+:- pred eqvclass.new_element(T::in, eqvclass(T)::in, eqvclass(T)::out) is det.
 
     % Make two elements of the equivalence class equivalent.
     % It is ok if they already are.
     %
 :- func eqvclass.ensure_equivalence(eqvclass(T), T, T) = eqvclass(T).
-:- pred eqvclass.ensure_equivalence(eqvclass(T)::in, T::in, T::in,
-    eqvclass(T)::out) is det.
+:- pred eqvclass.ensure_equivalence(T::in, T::in,
+    eqvclass(T)::in, eqvclass(T)::out) is det.
 
 :- func eqvclass.ensure_corresponding_equivalences(list(T), list(T),
     eqvclass(T)) = eqvclass(T).
@@ -91,8 +91,8 @@
     % It is an error if they are already equivalent.
     %
 :- func eqvclass.new_equivalence(eqvclass(T), T, T) = eqvclass(T).
-:- pred eqvclass.new_equivalence(eqvclass(T)::in, T::in, T::in,
-    eqvclass(T)::out) is det.
+:- pred eqvclass.new_equivalence(T::in, T::in,
+    eqvclass(T)::in, eqvclass(T)::out) is det.
 
     % Test if two elements are equivalent.
     %
@@ -140,6 +140,8 @@
     % from the given equivalence class.
     %
 :- func eqvclass.remove_equivalent_elements(eqvclass(T), T) = eqvclass(T).
+:- pred eqvclass.remove_equivalent_elements(T::in,
+    eqvclass(T)::in, eqvclass(T)::out) is det.
 
     % Given a function, divide each partition in the original equivalence class
     % so that two elements of the original partition end up in the same
@@ -170,6 +172,9 @@
 
 :- type partition_id    ==  int.
 
+eqvclass.init = EqvClass :-
+    eqvclass.init(EqvClass).
+
 eqvclass.init(EqvClass) :-
     map.init(PartitionMap),
     map.init(ElementMap),
@@ -183,8 +188,11 @@ eqvclass.partition_id(EqvClass, Element, PartitionId) :-
     ElementMap = EqvClass ^ keys,
     map.search(ElementMap, Element, PartitionId).
 
-eqvclass.ensure_element(EqvClass0, Element, EqvClass) :-
-    eqvclass.ensure_element_partition_id(Element, _, EqvClass0, EqvClass).
+eqvclass.ensure_element(!.EqvClass, X) = !:EqvClass :-
+    eqvclass.ensure_element(X, !EqvClass).
+
+eqvclass.ensure_element(Element, !EqvClass) :-
+    eqvclass.ensure_element_partition_id(Element, _, !EqvClass).
 
 eqvclass.ensure_element_partition_id(Element, Id, !EqvClass) :-
     ElementMap = !.EqvClass ^ keys,
@@ -194,12 +202,15 @@ eqvclass.ensure_element_partition_id(Element, Id, !EqvClass) :-
         eqvclass.add_element(Element, Id, !EqvClass)
     ).
 
-eqvclass.new_element(EqvClass0, Element, EqvClass) :-
-    ElementMap0 = EqvClass0 ^ keys,
+eqvclass.new_element(!.EqvClass, X) = !:EqvClass :-
+    eqvclass.new_element(X, !EqvClass).
+
+eqvclass.new_element(Element, !EqvClass) :-
+    ElementMap0 = !.EqvClass ^ keys,
     ( map.search(ElementMap0, Element, _OldId) ->
         error("new element is already in equivalence class")
     ;
-        eqvclass.add_element(Element, _, EqvClass0, EqvClass)
+        eqvclass.add_element(Element, _, !EqvClass)
     ).
 
 :- pred eqvclass.add_element(T::in, partition_id::out,
@@ -213,7 +224,10 @@ eqvclass.add_element(Element, Id, !EqvClass) :-
     map.det_insert(Id, Partition, PartitionMap0, PartitionMap),
     !:EqvClass = eqvclass(Counter, PartitionMap, ElementMap).
 
-eqvclass.ensure_equivalence(EqvClass0, ElementA, ElementB, EqvClass) :-
+eqvclass.ensure_equivalence(!.EqvClass, X, Y) = !:EqvClass :-
+    eqvclass.ensure_equivalence(X, Y, !EqvClass).
+
+eqvclass.ensure_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
     % The following code is logically equivalent to this code:
     %
     % eqvclass.ensure_equivalence(EqvClass0, ElementA, ElementB, EqvClass) :-
@@ -266,7 +280,10 @@ eqvclass.ensure_equivalence(EqvClass0, ElementA, ElementB, EqvClass) :-
         )
     ).
 
-eqvclass.new_equivalence(EqvClass0, ElementA, ElementB, EqvClass) :-
+eqvclass.new_equivalence(!.EqvClass, X, Y) = !:EqvClass :-
+    eqvclass.new_equivalence(X, Y, !EqvClass).
+
+eqvclass.new_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
     % This code is the same as eqvclass.ensure_equivalence, with the
     % exception that we abort if IdA = IdB in EqvClass0.
 
@@ -314,7 +331,7 @@ eqvclass.ensure_corresponding_equivalences([], [_ | _], !EqvClass) :-
 eqvclass.ensure_corresponding_equivalences([_ | _], [], !EqvClass) :-
     error("eqvclass.ensure_corresponding_equivalences: list mismatch").
 eqvclass.ensure_corresponding_equivalences([H1 | T1], [H2 | T2], !EqvClass) :-
-    eqvclass.ensure_equivalence(!.EqvClass, H1, H2, !:EqvClass),
+    eqvclass.ensure_equivalence(H1, H2, !EqvClass),
     eqvclass.ensure_corresponding_equivalences(T1, T2, !EqvClass).
 
 eqvclass.ensure_corresponding_equivalences(L1, L2, EqvClass0) = EqvClass :-
@@ -371,14 +388,20 @@ eqvclass.same_eqvclass_list_2(ElementMap, [Element | Elements], Id) :-
     map.search(ElementMap, Element, Id),
     eqvclass.same_eqvclass_list_2(ElementMap, Elements, Id).
 
+eqvclass.partition_set(EqvClass) = S :-
+    eqvclass.partition_set(EqvClass, S).
+
 eqvclass.partition_set(EqvClass0, PartitionSet) :-
     eqvclass.partition_ids(EqvClass0, Ids),
     eqvclass.partitions(EqvClass0, Ids, PartitionList),
     set.list_to_set(PartitionList, PartitionSet).
 
-eqvclass.partition_list(EqvClass0, PartitionList) :-
-    eqvclass.partition_ids(EqvClass0, Ids),
-    eqvclass.partitions(EqvClass0, Ids, PartitionList).
+eqvclass.partition_list(EqvClass) = Xs :-
+    eqvclass.partition_list(EqvClass, Xs).
+
+eqvclass.partition_list(EqvClass, PartitionList) :-
+    eqvclass.partition_ids(EqvClass, Ids),
+    eqvclass.partitions(EqvClass, Ids, PartitionList).
 
     % Convert a list of partition ids to a list of partitions.
 
@@ -412,11 +435,15 @@ eqvclass.id_to_partition(EqvClass0, Id, Partition) :-
         error("partition id not known to equivalence class")
     ).
 
-%---------------------------------------------------------------------------%
+eqvclass.partition_set_to_eqvclass(Set) = EqvClass :-
+    eqvclass.partition_set_to_eqvclass(Set, EqvClass).
 
 eqvclass.partition_set_to_eqvclass(SetSet, EqvClass) :-
     set.to_sorted_list(SetSet, ListSet),
     eqvclass.partition_list_to_eqvclass(ListSet, EqvClass).
+
+eqvclass.partition_list_to_eqvclass(Xs) = EqvClass :-
+    eqvclass.partition_list_to_eqvclass(Xs, EqvClass).
 
 eqvclass.partition_list_to_eqvclass([], EqvClass) :-
     eqvclass.init(EqvClass).
@@ -445,38 +472,6 @@ eqvclass.make_partition([Element | Elements], Id, !ElementMap) :-
     map.det_insert(Element, Id, !ElementMap),
     eqvclass.make_partition(Elements, Id, !ElementMap).
 
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
-%   Function forms added.
-
-eqvclass.init = EC :-
-    eqvclass.init(EC).
-
-eqvclass.ensure_element(EC1, X) = EC2 :-
-    eqvclass.ensure_element(EC1, X, EC2).
-
-eqvclass.new_element(EC1, X) = EC2 :-
-    eqvclass.new_element(EC1, X, EC2).
-
-eqvclass.ensure_equivalence(EC1, X, Y) = EC2 :-
-    eqvclass.ensure_equivalence(EC1, X, Y, EC2).
-
-eqvclass.new_equivalence(EC1, X, Y) = EC2 :-
-    eqvclass.new_equivalence(EC1, X, Y, EC2).
-
-eqvclass.partition_set(EC) = S :-
-    eqvclass.partition_set(EC, S).
-
-eqvclass.partition_list(EC) = Xs :-
-    eqvclass.partition_list(EC, Xs).
-
-eqvclass.partition_set_to_eqvclass(S) = EC :-
-    eqvclass.partition_set_to_eqvclass(S, EC).
-
-eqvclass.partition_list_to_eqvclass(Xs) = EC :-
-    eqvclass.partition_list_to_eqvclass(Xs, EC).
-
 eqvclass.get_equivalent_elements(eqvclass(_, PartitionMap, ElementMap), X) =
     ( Eqv = map.search(PartitionMap, map.search(ElementMap, X)) ->
         Eqv
@@ -484,9 +479,12 @@ eqvclass.get_equivalent_elements(eqvclass(_, PartitionMap, ElementMap), X) =
         set.make_singleton_set(X)
     ).
 
-eqvclass.get_minimum_element(EC, X) =
-    list.det_head(set.to_sorted_list(
-            eqvclass.get_equivalent_elements(EC, X))).
+eqvclass.get_minimum_element(EqvClass, X) =
+    list.det_head(
+        set.to_sorted_list(eqvclass.get_equivalent_elements(EqvClass, X))).
+
+eqvclass.remove_equivalent_elements(X, !EqvClass) :-
+    !:EqvClass = remove_equivalent_elements(!.EqvClass, X).
 
 eqvclass.remove_equivalent_elements(eqvclass(Id, P0, E0), X) =
         eqvclass(Id, P, E) :-
@@ -560,3 +558,7 @@ divide_equivalence_classes_3(F, MainId, Item, !Map, !Counter, !Partitions,
 
         map.det_update(Item, NewId, !Keys)
     ).
+
+%---------------------------------------------------------------------------%
+:- end_module eqvclass.
+%---------------------------------------------------------------------------%

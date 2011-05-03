@@ -635,11 +635,11 @@ process_imported_item_queue(!Info) :-
     queue(item_id)::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-process_imported_item_queue_2(Queue0, !Info) :-
-    ( queue.get(Queue0, Item, Queue) ->
+process_imported_item_queue_2(!.Queue, !Info) :-
+    ( queue.get(Item, !Queue) ->
         Item = item_id(ItemType, ItemId),
         find_items_used_by_item(ItemType, ItemId, !Info),
-        process_imported_item_queue_2(Queue, !Info)
+        process_imported_item_queue_2(!.Queue, !Info)
     ;
         true
     ).
@@ -658,7 +658,7 @@ record_used_pred_or_func(PredOrFunc, Id, !Info) :-
         do_record_used_pred_or_func(PredOrFunc),
         IdSet0, IdSet, !Info),
     ItemSet = update_pred_or_func_set(ItemSet0, ItemType, IdSet),
-    !:Info = !.Info ^ used_items := ItemSet.
+    !Info ^ used_items := ItemSet.
 
 :- pred do_record_used_pred_or_func(pred_or_func::in,
     module_qualifier::in, sym_name::in, arity::in, bool::out,
@@ -701,7 +701,7 @@ record_used_functor(SymName - Arity, !Info) :-
     record_resolved_item(SymName, Arity, do_record_used_functor,
         IdSet0, IdSet, !Info),
     ItemSet = ItemSet0 ^ functors := IdSet,
-    !:Info = !.Info ^ used_items := ItemSet.
+    !Info ^ used_items := ItemSet.
 
 :- pred do_record_used_functor(module_qualifier::in,
     sym_name::in, arity::in, bool::out, resolved_functor_map::in,
@@ -1422,7 +1422,7 @@ maybe_record_item_to_process(ItemType, ItemName, !Info) :-
     ( ItemType = typeclass_item ->
         Classes0 = !.Info ^ used_typeclasses,
         set.insert(Classes0, ItemName, Classes),
-        !:Info = !.Info ^ used_typeclasses := Classes
+        !Info ^ used_typeclasses := Classes
     ;
         true
     ),
@@ -1436,8 +1436,8 @@ maybe_record_item_to_process(ItemType, ItemName, !Info) :-
         true
     ;
         Queue0 = !.Info ^ item_queue,
-        queue.put(Queue0, item_id(ItemType, ItemName), Queue),
-        !:Info = !.Info ^ item_queue := Queue,
+        queue.put(item_id(ItemType, ItemName), Queue0, Queue),
+        !Info ^ item_queue := Queue,
 
         record_imported_item(ItemType, ItemName, !Info),
         record_expanded_items_used_by_item(ItemType, ItemName, !Info)

@@ -874,7 +874,7 @@ modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo, Changed,
         Specs) :-
     module_info_get_proc_requests(!.ModuleInfo, Requests0),
     get_req_queue(Requests0, RequestQueue0),
-    ( queue.get(RequestQueue0, PredProcId, RequestQueue1) ->
+    ( queue.get(PredProcId, RequestQueue0, RequestQueue1) ->
         set_req_queue(RequestQueue1, Requests0, Requests1),
         module_info_set_proc_requests(Requests1, !ModuleInfo),
 

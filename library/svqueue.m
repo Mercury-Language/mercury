@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2004-2006 The University of Melbourne.
+% Copyright (C) 2004-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -73,23 +73,23 @@
 
 :- implementation.
 
-svqueue.put(Elem, Queue0, Queue) :-
-    queue.put(Queue0, Elem, Queue).
+svqueue.put(Elem, !Queue) :-
+    queue.put(Elem, !Queue).
 
-svqueue.put_list(List, Queue0, Queue) :-
-    queue.put_list(Queue0, List, Queue).
+svqueue.put_list(List, !Queue) :-
+    queue.put_list(List, !Queue).
 
-svqueue.get(Elem, Queue0, Queue) :-
-    queue.get(Queue0, Elem, Queue).
+svqueue.get(Elem, !Queue) :-
+    queue.get(Elem, !Queue).
 
-svqueue.delete_all(Elem, Queue0, Queue) :-
-    queue.delete_all(Queue0, Elem, Queue).
+svqueue.delete_all(Elem, !Queue) :-
+    queue.delete_all(Elem, !Queue).
 
-svqueue.put_on_front(Elem, Queue0, Queue) :-
-    queue.put_on_front(Queue0, Elem, Queue).
+svqueue.put_on_front(Elem, !Queue) :-
+    queue.put_on_front(Elem, !Queue).
 
-svqueue.put_list_on_front(Elems, Queue0, Queue) :-
-    queue.put_list_on_front(Queue0, Elems, Queue).
+svqueue.put_list_on_front(Elems, !Queue) :-
+    queue.put_list_on_front(Elems, !Queue).
 
-svqueue.get_from_back(Elem, Queue0, Queue) :-
-    queue.get_from_back(Queue0, Elem, Queue).
+svqueue.get_from_back(Elem, !Queue) :-
+    queue.get_from_back(Elem, !Queue).

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006 The University of Melbourne.
+% Copyright (C) 2005-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -62,17 +62,17 @@
 
 :- implementation.
 
-sveqvclass.ensure_element(Element, EqvClass0, EqvClass) :-
-    eqvclass.ensure_element(EqvClass0, Element, EqvClass).
+sveqvclass.ensure_element(Element, !EqvClass) :-
+    eqvclass.ensure_element(Element, !EqvClass).
 
-sveqvclass.new_element(Element, EqvClass0, EqvClass) :-
-    eqvclass.new_element(EqvClass0, Element, EqvClass).
+sveqvclass.new_element(Element, !EqvClass) :-
+    eqvclass.new_element(Element, !EqvClass).
 
-sveqvclass.ensure_equivalence(Element1, Element2, EqvClass0, EqvClass) :-
-    eqvclass.ensure_equivalence(EqvClass0, Element1, Element2, EqvClass).
+sveqvclass.ensure_equivalence(Element1, Element2, !EqvClass) :-
+    eqvclass.ensure_equivalence(Element1, Element2, !EqvClass).
 
-sveqvclass.new_equivalence(Element1, Element2, EqvClass0, EqvClass) :-
-    eqvclass.new_equivalence(EqvClass0, Element1, Element2, EqvClass).
+sveqvclass.new_equivalence(Element1, Element2, !EqvClass) :-
+    eqvclass.new_equivalence(Element1, Element2, !EqvClass).
 
-sveqvclass.remove_equivalent_elements(X, EqvClass0, EqvClass) :-
-    EqvClass = eqvclass.remove_equivalent_elements(EqvClass0, X).
+sveqvclass.remove_equivalent_elements(X, !EqvClass) :-
+    !:EqvClass = eqvclass.remove_equivalent_elements(!.EqvClass, X).

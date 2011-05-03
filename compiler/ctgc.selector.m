@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005-2006, 2008-2010 The University of Melbourne.
+% Copyright (C) 2005-2006, 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -291,7 +291,7 @@ type_contains_subtype(ModuleInfo, FromType, ToType) :-
     [allow_reset, specified([promise_implied, value, value, output])]).
 
 type_contains_subtype_1(ModuleInfo, FromType, ToType, Contains) :-
-    queue.put(queue.init, FromType, Queue0),
+    queue.put(FromType, queue.init, Queue0),
     type_contains_subtype_2(ModuleInfo, ToType, Queue0, _Queue,
         set.init, _SeenTypes, Contains).
 
@@ -304,7 +304,7 @@ type_contains_subtype_1(ModuleInfo, FromType, ToType, Contains) :-
     set(mer_type)::in, set(mer_type)::out, bool::out) is det.
 
 type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes, Contains) :-
-    ( queue.get(!.Queue, FromType, !:Queue) ->
+    ( queue.get(FromType, !Queue) ->
         ( set.contains(!.SeenTypes, FromType) ->
             type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes,
                 Contains)
@@ -314,7 +314,7 @@ type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes, Contains) :-
             ( list.member(ToType, ArgTypes) ->
                 Contains = yes
             ;
-                queue.put_list(!.Queue, ArgTypes, !:Queue),
+                queue.put_list(ArgTypes, !Queue),
                 type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes,
                     Contains)
             )

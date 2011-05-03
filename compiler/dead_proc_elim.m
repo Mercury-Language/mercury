@@ -98,7 +98,6 @@
 :- import_module set_tree234.
 :- import_module set.
 :- import_module string.
-:- import_module svqueue.
 
 %-----------------------------------------------------------------------------%
 
@@ -191,7 +190,7 @@ dead_proc_initialize_preds([PredId | PredIds], PredTable, !Queue, !Needed) :-
 dead_proc_initialize_procs(_PredId, [], !Queue, !Needed).
 dead_proc_initialize_procs(PredId, [ProcId | ProcIds], !Queue, !Needed) :-
     Entity = entity_proc(PredId, ProcId),
-    svqueue.put(Entity, !Queue),
+    queue.put(Entity, !Queue),
     map.set(Entity, not_eliminable, !Needed),
     dead_proc_initialize_procs(PredId, ProcIds, !Queue, !Needed).
 
@@ -208,7 +207,7 @@ dead_proc_initialize_pragma_exports([PragmaProc | PragmaProcs],
     PragmaProc = pragma_exported_proc(_Lang, PredId, ProcId,
         _ExportName, _Ctxt),
     Entity = entity_proc(PredId, ProcId),
-    svqueue.put(Entity, !Queue),
+    queue.put(Entity, !Queue),
     map.set(Entity, not_eliminable, !Needed),
     dead_proc_initialize_pragma_exports(PragmaProcs, !Queue, !Needed).
 
@@ -223,7 +222,7 @@ dead_proc_initialize_init_fn_procs([], !Queue, !Needed).
 dead_proc_initialize_init_fn_procs([PPId | PPIds], !Queue, !Needed) :-
     PPId = proc(PredId, ProcId),
     Entity = entity_proc(PredId, ProcId),
-    svqueue.put(Entity, !Queue),
+    queue.put(Entity, !Queue),
     map.set(Entity, not_eliminable, !Needed),
     dead_proc_initialize_init_fn_procs(PPIds, !Queue, !Needed).
 
@@ -254,7 +253,7 @@ dead_proc_initialize_type_ctor_infos([TypeCtorGenInfo | TypeCtorGenInfos],
         semidet_succeed
     ->
         Entity = entity_type_ctor(ModuleName, TypeName, Arity),
-        svqueue.put(Entity, !Queue),
+        queue.put(Entity, !Queue),
         map.set(Entity, not_eliminable, !Needed)
     ;
         true
@@ -304,7 +303,7 @@ get_class_pred_procs(Class, !Queue, !Needed) :-
 get_class_interface_pred_proc(ClassProc, !Queue, !Needed) :-
     ClassProc = hlds_class_proc(PredId, ProcId),
     Entity = entity_proc(PredId, ProcId),
-    svqueue.put(Entity, !Queue),
+    queue.put(Entity, !Queue),
     map.set(Entity, not_eliminable, !Needed).
 
 %-----------------------------------------------------------------------------%
@@ -314,7 +313,7 @@ get_class_interface_pred_proc(ClassProc, !Queue, !Needed) :-
 
 dead_proc_examine(!.Queue, !.Examined, ModuleInfo, !Needed) :-
     % See if the queue is empty.
-    ( svqueue.get(Entity, !Queue) ->
+    ( queue.get(Entity, !Queue) ->
         % See if the next element has been examined before.
         ( set_tree234.contains(!.Examined, Entity) ->
             dead_proc_examine(!.Queue, !.Examined, ModuleInfo, !Needed)
@@ -386,7 +385,7 @@ dead_proc_examine_refs([], !Queue, !Needed).
 dead_proc_examine_refs([Ref | Refs], !Queue, !Needed) :-
     Ref = proc(PredId, ProcId),
     Entity = entity_proc(PredId, ProcId),
-    svqueue.put(Entity, !Queue),
+    queue.put(Entity, !Queue),
     map.set(Entity, not_eliminable, !Needed),
     dead_proc_examine_refs(Refs, !Queue, !Needed).
 
@@ -497,7 +496,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
     ;
         GoalExpr = plain_call(PredId, ProcId, _,_,_,_),
         Entity = entity_proc(PredId, ProcId),
-        queue.put(!.Queue, Entity, !:Queue),
+        queue.put(Entity, !Queue),
         ( proc(PredId, ProcId) = CurrProc ->
             trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
                 io.write_string("plain_call recursive ", !IO),
@@ -554,7 +553,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
             io.write_int(proc_id_to_int(ProcId), !IO),
             io.nl(!IO)
         ),
-        svqueue.put(Entity, !Queue),
+        queue.put(Entity, !Queue),
         map.set(Entity, not_eliminable, !Needed)
     ;
         GoalExpr = unify(_LHS, _RHS, _UniModes, Unification, _UnifyContext),
@@ -589,7 +588,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
                         io.nl(!IO)
                     )
                 ),
-                svqueue.put(Entity, !Queue),
+                queue.put(Entity, !Queue),
                 map.set(Entity, not_eliminable, !Needed)
             ;
                 ( ConsId = cons(_, _, _)
@@ -954,7 +953,7 @@ dead_pred_elim(!ModuleInfo) :-
 dead_pred_elim_add_entity(entity_type_ctor(_, _, _), !Queue, !Preds).
 dead_pred_elim_add_entity(entity_table_struct(_, _), !Queue, !Preds).
 dead_pred_elim_add_entity(entity_proc(PredId, _), !Queue, !Preds) :-
-    svqueue.put(PredId, !Queue),
+    queue.put(PredId, !Queue),
     set_tree234.insert(PredId, !Preds).
 
 :- pred dead_pred_elim_initialize(pred_id::in,
@@ -1013,7 +1012,7 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
             )
         ->
             set_tree234.insert(qualified(PredModule, PredName), !NeededNames),
-            svqueue.put(PredId, !Queue)
+            queue.put(PredId, !Queue)
         ;
             true
         ),
@@ -1027,7 +1026,7 @@ dead_pred_elim_analyze(!DeadInfo) :-
     some [!Queue, !Examined, !Needed] (
         !.DeadInfo = pred_elim_info(ModuleInfo, !:Queue, !:Examined,
             !:Needed, NeededNames),
-        ( svqueue.get(PredId, !Queue) ->
+        ( queue.get(PredId, !Queue) ->
             ( set_tree234.contains(!.Examined, PredId) ->
                 !:DeadInfo = pred_elim_info(ModuleInfo, !.Queue, !.Examined,
                     !.Needed, NeededNames)
@@ -1157,7 +1156,7 @@ dead_pred_info_add_pred_name(Name, !DeadInfo) :-
                 predicate_table_search_sym(PredicateTable,
                     may_be_partially_qualified, Name, PredIds)
             ->
-                svqueue.put_list(PredIds, !Queue)
+                queue.put_list(PredIds, !Queue)
             ;
                 true
             ),

@@ -13,8 +13,8 @@ Changes to the Mercury standard library:
 * We have improved Unicode support in the standard library.
 
 * We have changed the argument order of many of the predicates in the
-  bimap, map, and multi_map modules in order to make them more conducive
-  to the use of state variable notation.
+  bimap, eqvclass, map, multi_map and queue modules in order to make
+  them more conducive to the use of state variable notation.
 
 
 DETAILED LISTING
@@ -31,15 +31,20 @@ Changes to the Mercury standard library:
 
 * The argument of the following predicates has been changed in order to
   make them more conducive to the use of state variable notation:
-  bimap.insert/4, bimap.det_insert/4, bimap.set/4, map.insert/4,
-  map.det_insert/4, map.det_insert_from_corresponding_lists/4,
+  bimap.insert/4, bimap.det_insert/4, bimap.set/4, eqvclass.ensure_element/3,
+  eqvclass.new_element/3, eqvclass.ensure_equivalence/4,
+  eqvclass.new_equivalence/4, eqvclass.remove_equivalent_elements/3,
+  map.insert/4, map.det_insert/4, map.det_insert_from_corresponding_lists/4,
   map.det_insert_from_assoc_list/3, map.set_from_corresponding_lists/4,
   map.set_from_assoc_list/3, map.update/4, map.det_update/4, map.delete/3,
   map.delete_list/3, map.remove/4, map.det_remove/4, map.remove_smallest/4,
   multi_map.insert/4, multi_map.det_insert/4, multi_map.update/4,
   multi_map.det_update/4, multi_map.det_replace/4, multi_map.set/4,
   multi_map.add/4, multi_map.delete/4, multi_map.remove/4, and
-  multi_map.remove_smallest/4. 
+  multi_map.remove_smallest/4, queue.put/3, queue.put_list/3,
+  queue.get/3, queue.delete_all/3, queue.put_on_front/3,
+  queue.get_from_back/3, queue.put_list_on_front/3,
+  queue.get_from_back/3.
 
 
 NEWS for Mercury 11.01
