@@ -291,10 +291,10 @@ test_case("brackets(\"(\", \")\", punct(\"!\"))",
 
 test_case("separated_list(\"+\", punct(\"!\"))",
     stringify(separated_list("+", punct("!"))),
-    "", no).
+    "", yes("[]")).
 test_case("separated_list(\"+\", punct(\"!\"))",
     stringify(separated_list("+", punct("!"))),
-    "abc", no).
+    "abc", yes("[]")).
 test_case("separated_list(\"+\", punct(\"!\"))",
     stringify(separated_list("+", punct("!"))),
     "!   abc", yes("[unit]")).
@@ -304,10 +304,10 @@ test_case("separated_list(\"+\", punct(\"!\"))",
 
 test_case("comma_separated_list(punct(\"!\"))",
     stringify(comma_separated_list(punct("!"))),
-    "", no).
+    "", yes("[]")).
 test_case("comma_separated_list(punct(\"!\"))",
     stringify(comma_separated_list(punct("!"))),
-    "abc", no).
+    "abc", yes("[]")).
 test_case("comma_separated_list(punct(\"!\"))",
     stringify(comma_separated_list(punct("!"))),
     "!   abc", yes("[unit]")).

@@ -665,9 +665,12 @@ separated_list(Separator, P, Src, Result, !PS) :-
         punct(Separator, CommaPSrc, _, !PS),
         P(CommaPSrc, CommaPX, !PS)
     ),
-    P(Src, X, !PS),
-    zero_or_more(CommaP, Src, Xs, !PS),
-    Result = [X | Xs].
+    ( P(Src, X, !PS) ->
+        zero_or_more(CommaP, Src, Xs, !PS),
+        Result = [X | Xs]
+    ;
+        Result = []
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -678,9 +681,12 @@ separated_list(Separator, P, Src, Result, !S, !PS) :-
         punct(Separator, CommaPSrc, _, !PS),
         P(CommaPSrc, CommaPX, !S, !PS)
     ),
-    P(Src, X, !S, !PS),
-    zero_or_more(CommaP, Src, Xs, !S, !PS),
-    Result = [X | Xs].
+    ( P(Src, X, !S, !PS) ->
+        zero_or_more(CommaP, Src, Xs, !S, !PS),
+        Result = [X | Xs]
+    ;
+        Result = []
+    ).
 
 %-----------------------------------------------------------------------------%
 

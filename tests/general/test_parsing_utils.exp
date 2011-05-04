@@ -194,9 +194,11 @@ pass: brackets("(", ")", punct("!")) on "(!)   abc"
 	returned unit as expected
 	[6 chars consumed]
 pass: separated_list("+", punct("!")) on ""
-	failed as expected
+	returned [] as expected
+	[0 chars consumed]
 pass: separated_list("+", punct("!")) on "abc"
-	failed as expected
+	returned [] as expected
+	[0 chars consumed]
 pass: separated_list("+", punct("!")) on "!   abc"
 	returned [unit] as expected
 	[4 chars consumed]
@@ -204,9 +206,11 @@ pass: separated_list("+", punct("!")) on "!+ ! + !   abc"
 	returned [unit, unit, unit] as expected
 	[11 chars consumed]
 pass: comma_separated_list(punct("!")) on ""
-	failed as expected
+	returned [] as expected
+	[0 chars consumed]
 pass: comma_separated_list(punct("!")) on "abc"
-	failed as expected
+	returned [] as expected
+	[0 chars consumed]
 pass: comma_separated_list(punct("!")) on "!   abc"
 	returned [unit] as expected
 	[4 chars consumed]
