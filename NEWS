@@ -49,6 +49,10 @@ Changes to the Mercury standard library:
   queue.get_from_back/3, queue.put_list_on_front/3,
   queue.get_from_back/3.
 
+* We have add the following new functions for creating singleton
+  maps: bimap.singleton/2, injection.singleton/2, map.singleton/2,
+  rbtree.singleton/2 and tree234.singleton/2 .
+
 
 NEWS for Mercury 11.01
 ----------------------

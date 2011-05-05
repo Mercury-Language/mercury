@@ -47,6 +47,10 @@
 :- func injection.init = injection(K, V).
 :- pred injection.init(injection(K, V)::out) is det.
 
+    % Intialise an injection wit the given key-value pair.
+    %
+:- func injection.singleton(K, V) = injection(K, V).
+
     % Check whether an injection is empty.
     %
 :- pred injection.is_empty(injection(K, V)::in) is semidet.
@@ -324,6 +328,10 @@ injection.init = injection(F, R) :-
     map.init(R).
 
 injection.init(injection.init).
+
+injection.singleton(K, V) = injection(F, R) :-
+    F = map.singleton(K, V),
+    R = map.singleton(V, K).
 
 injection.is_empty(injection(F, _)) :-
     map.is_empty(F).

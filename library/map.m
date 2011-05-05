@@ -39,6 +39,10 @@
     %
 :- pred map.init(map(_, _)::uo) is det.
 :- func map.init = (map(K, V)::uo) is det.
+    
+    % Initialize a map containing the given key-value pair.
+    %
+:- func map.singleton(K, V) = map(K, V).
 
     % Check whether a map is empty.
     %
@@ -713,6 +717,9 @@
 
 map.init(M) :-
     tree234.init(M).
+
+map.singleton(K, V) =
+    tree234.singleton(K, V).
 
 map.is_empty(M) :-
     tree234.is_empty(M).

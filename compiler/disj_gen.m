@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000,2002-2010 The University of Melbourne.
+% Copyright (C) 1994-2000,2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -215,12 +215,12 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI) :-
     % generate_branch_end won't want to overwrite BaseReg.
     acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
 
-    BaseRegInitCode = singleton(
+    BaseRegInitCode = cord.singleton(
         llds_instr(assign(BaseReg,
             mem_addr(heap_ref(SolnVectorAddrRval, 0, const(llconst_int(0))))),
             "Compute base address for this case")
     ),
-    SaveSlotCode = singleton(
+    SaveSlotCode = cord.singleton(
         llds_instr(assign(CurSlot, const(llconst_int(NumOutVars))),
             "Setup current slot in the solution array")
     ),

@@ -37,6 +37,10 @@
 :- func bimap.init = bimap(K, V).
 :- pred bimap.init(bimap(K, V)::out) is det.
 
+    % Initialize a bimap with the given key-value pair.
+    %
+:- func bimap.singleton(K, V) = bimap(K, V).
+
     % Check whether a bimap is empty.
     %
 :- pred bimap.is_empty(bimap(K, V)::in) is semidet.
@@ -325,6 +329,11 @@
 bimap.init(B) :-
     map.init(Forward),
     map.init(Reverse),
+    B = bimap(Forward, Reverse).
+
+bimap.singleton(K, V) = B:-
+    Forward = map.singleton(K, V),
+    Reverse = map.singleton(V, K),
     B = bimap(Forward, Reverse).
 
 bimap.is_empty(bimap(Forward, _)) :-

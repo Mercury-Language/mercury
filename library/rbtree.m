@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000, 2003-2007 The University of Melbourne.
+% Copyright (C) 1995-2000, 2003-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -54,6 +54,10 @@
     %
 :- func rbtree.init = rbtree(K, V).
 :- pred rbtree.init(rbtree(K, V)::uo) is det.
+
+    % Initialise an rbtree containing the given key-value pair.
+    %
+:- func rbtree.singleton(K, V) = rbtree(K, V).
 
     % Check whether a tree is empty.
     %
@@ -241,6 +245,8 @@ rbtree.init(empty).
 
 rbtree.is_empty(Tree) :-
     Tree = empty.
+
+rbtree.singleton(K, V) = black(K, V, empty, empty).
 
 %-----------------------------------------------------------------------------%
 

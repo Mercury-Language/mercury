@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997,1999-2000,2002-2010 The University of Melbourne.
+% Copyright (C) 1994-1997,1999-2000,2002-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -30,6 +30,8 @@
 
 :- func tree234.init = tree234(K, V).
 :- pred tree234.init(tree234(K, V)::uo) is det.
+
+:- func tree234.singleton(K, V) = tree234(K, V).
 
 :- pred tree234.is_empty(tree234(K, V)::in) is semidet.
 
@@ -469,6 +471,8 @@ tree234.init(empty).
 
 tree234.is_empty(Tree) :-
     Tree = empty.
+
+tree234.singleton(K, V) = two(K, V, empty, empty).
 
 %------------------------------------------------------------------------------%
 
