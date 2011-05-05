@@ -1,10 +1,10 @@
 %
-% Copyright (C) 1998 Jürgen Stuber <juergen@mpi-sb.mpg.de>
+% Copyright (C) 1998 JÃ¼rgen Stuber <juergen@mpi-sb.mpg.de>
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %
 % I couldn't resist:
-% 	Jürgen Stuber <juergen@mpi-sb.mpg.de>
+% 	JÃ¼rgen Stuber <juergen@mpi-sb.mpg.de>
 % 	http://www.mpi-sb.mpg.de/~juergen/
 
 :- module rot13_juergen.
