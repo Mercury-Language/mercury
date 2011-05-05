@@ -1610,7 +1610,7 @@ add_child_to_parent(ChildId, !Parent) :-
         !.Parent ^ children = yes(Children),
         list.append(Children, [ChildId], NewChildren)
     ),
-    !:Parent = !.Parent ^ children := yes(NewChildren).
+    !Parent ^ children := yes(NewChildren).
 
 :- pred adjust_suspect_status_from_oracle(S::in,
     oracle_state::in, suspect_id::in, search_space(T)::in,

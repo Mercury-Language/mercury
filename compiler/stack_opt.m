@@ -686,8 +686,8 @@ add_interval_to_path(IntervalId, Vars, !.Path) = !:Path :-
         CurSegment = set.union(Vars, CurSegment0),
         OccurringIntervals0 = !.Path ^ occurring_intervals,
         svset.insert(IntervalId, OccurringIntervals0, OccurringIntervals),
-        !:Path = !.Path ^ current_segment := CurSegment,
-        !:Path = !.Path ^ occurring_intervals := OccurringIntervals
+        !Path ^ current_segment := CurSegment,
+        !Path ^ occurring_intervals := OccurringIntervals
     ).
 
 :- func add_anchor_to_path(anchor, path) = path.
@@ -695,7 +695,7 @@ add_interval_to_path(IntervalId, Vars, !.Path) = !:Path :-
 add_anchor_to_path(Anchor, !.Path) = !:Path :-
     Anchors0 = !.Path ^ flush_anchors,
     svset.insert(Anchor, Anchors0, Anchors),
-    !:Path = !.Path ^ flush_anchors := Anchors.
+    !Path ^ flush_anchors := Anchors.
 
 :- func anchor_requires_close(interval_info, anchor) = bool.
 
@@ -817,7 +817,7 @@ find_all_branches(RelevantVars, IntervalId, MaybeSearchAnchor0,
             MaybeSearchAnchor0 = yes(SearchAnchor0),
             End = SearchAnchor0
         ->
-            !:AllPaths = !.AllPaths ^ used_after_scope := set.init
+            !AllPaths ^ used_after_scope := set.init
         ;
             End = anchor_branch_end(_, EndGoalId),
             map.lookup(IntervalInfo ^ ii_branch_end_map, EndGoalId,
@@ -829,7 +829,7 @@ find_all_branches(RelevantVars, IntervalId, MaybeSearchAnchor0,
             RelevantAfter = set.intersect(RelevantVars, NeededAfterBranch),
             set.non_empty(RelevantAfter)
         ->
-            !:AllPaths = !.AllPaths ^ used_after_scope := RelevantAfter
+            !AllPaths ^ used_after_scope := RelevantAfter
         ;
             find_all_branches_from(End, RelevantVars,
                 MaybeSearchAnchor0, IntervalInfo, StackOptInfo,
@@ -848,7 +848,7 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
         AnchorRequiresClose = yes,
         Paths0 = !.AllPaths ^ paths_so_far,
         Paths1 = set.map(close_path, Paths0),
-        !:AllPaths = !.AllPaths ^ paths_so_far := Paths1
+        !AllPaths ^ paths_so_far := Paths1
     ;
         AnchorRequiresClose = no
     ),

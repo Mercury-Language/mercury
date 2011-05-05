@@ -231,7 +231,7 @@ common_info_init = CommonInfo :-
     CommonInfo = common_info(VarEqv0, StructMap0, StructMap0, SeenCalls0).
 
 common_info_clear_structs(!Info) :-
-    !:Info = !.Info ^ since_call_structs := map.init.
+    !Info ^ since_call_structs := map.init.
 
 %---------------------------------------------------------------------------%
 

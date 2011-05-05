@@ -1329,7 +1329,7 @@ var_col(Tableau, Var) = (Tableau ^ var_nums) ^ det_elem(Var).
 
 remove_row(Row, !Tableau) :-
     SR = !.Tableau ^ shunned_rows,
-    !:Tableau = !.Tableau ^ shunned_rows := [Row | SR].
+    !Tableau ^ shunned_rows := [Row | SR].
 
 :- pred remove_col(int::in, tableau::in, tableau::out) is det.
 

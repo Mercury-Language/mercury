@@ -494,7 +494,7 @@ stm_create_actual_goal(GoalType, InitInstmap, FinalInstmap, Outer, Inner,
         unexpected(this_file,
             "stm_create_actual_goal: Unknown atomic goal type")
     ),
-    !:StmInfo = !.StmInfo ^ stm_info_requalify := yes.
+    !StmInfo ^ stm_info_requalify := yes.
 
 %-----------------------------------------------------------------------------%
 %
@@ -2469,8 +2469,8 @@ create_cloned_pred(ProcHeadVars, PredArgTypes, ProcHeadModes,
     CallGoal = hlds_goal(CallExpr, GoalInfo),
 
     ExpansionCnt = ExpansionCnt0 + 1,
-    !:StmInfo = !.StmInfo ^ stm_info_expand_id := ExpansionCnt,
-    !:StmInfo = !.StmInfo ^ stm_info_module_info := ModuleInfo,
+    !StmInfo ^ stm_info_expand_id := ExpansionCnt,
+    !StmInfo ^ stm_info_module_info := ModuleInfo,
     NewStmPredInfo = stm_new_pred_info(ModuleInfo, NewPredId, NewProcId,
        NewPredInfo, NewProcInfo, CallContext, 0).
 

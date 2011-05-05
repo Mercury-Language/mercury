@@ -622,7 +622,7 @@ find_all_used_imported_items_2(UsedItems, !Info) :-
 
 process_imported_item_queue(!Info) :-
     Queue0 = !.Info ^ item_queue,
-    !:Info = !.Info ^ item_queue := queue.init,
+    !Info ^ item_queue := queue.init,
     process_imported_item_queue_2(Queue0, !Info),
     Queue = !.Info ^ item_queue,
     ( queue.is_empty(Queue) ->

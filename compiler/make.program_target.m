@@ -1145,7 +1145,7 @@ build_analysis_files_2(Globals, MainModuleName, TargetModules,
     ; list.is_not_empty(SuboptimalModules) ->
         list.foldl(reset_analysis_registry_dependency_status,
             SuboptimalModules, !Info),
-        !:Info = !.Info ^ reanalysis_passes := ReanalysisPasses - 1,
+        !Info ^ reanalysis_passes := ReanalysisPasses - 1,
         maybe_reanalyse_modules_message(Globals, !IO),
         build_analysis_files_2(Globals, MainModuleName, TargetModules,
             LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO)

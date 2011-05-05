@@ -253,7 +253,7 @@ merge_proc_dynamics(MergeInfo, Clique, CandidatePDPtrs, ChosenPDPtr,
         ProcDynamics1 = !.InitDeep ^ init_proc_dynamics,
         update_proc_dynamics(PrimePDPtr, PrimePD, u(ProcDynamics1),
             ProcDynamics),
-        !:InitDeep = !.InitDeep ^ init_proc_dynamics := ProcDynamics,
+        !InitDeep ^ init_proc_dynamics := ProcDynamics,
         ChosenPDPtr = PrimePDPtr
     ;
         ValidPDPtrs = [],
@@ -385,7 +385,7 @@ merge_call_site_dynamics(MergeInfo, Clique, ParentPDPtr, CandidateCSDPtrs,
         FirstCSD = FirstCSD0 ^ csd_caller := ParentPDPtr,
         update_call_site_dynamics(FirstCSDPtr, FirstCSD,
             u(CallSiteDynamics0), CallSiteDynamics),
-        !:InitDeep = !.InitDeep ^ init_call_site_dynamics := CallSiteDynamics,
+        !InitDeep ^ init_call_site_dynamics := CallSiteDynamics,
         (
             LaterCSDPtrs = []
         ;
@@ -546,7 +546,7 @@ record_pd_redirect_2([RestPDPtr | RestPDPtrs], PrimePDPtr, !Redirect) :-
     ;
         unexpected($module, $pred, "already redirected")
     ),
-    !:Redirect = !.Redirect ^ pd_redirect := ProcRedirect,
+    !Redirect ^ pd_redirect := ProcRedirect,
     record_pd_redirect_2(RestPDPtrs, PrimePDPtr, !Redirect).
 
 :- pred record_csd_redirect(list(call_site_dynamic_ptr)::in,
@@ -581,7 +581,7 @@ record_csd_redirect_2([RestCSDPtr | RestCSDPtrs], PrimeCSDPtr, !Redirect) :-
     ;
         unexpected($module, $pred, "already redirected")
     ),
-    !:Redirect = !.Redirect ^ csd_redirect := CallSiteRedirect,
+    !Redirect ^ csd_redirect := CallSiteRedirect,
     record_csd_redirect_2(RestCSDPtrs, PrimeCSDPtr, !Redirect).
 
 :- pred two_or_more(list(proc_dynamic_ptr)::in) is semidet.

@@ -132,7 +132,7 @@ perform_context_reduction(!Info) :-
     ;
         TypeAssignSet = TypeAssignSet1
     ),
-    !:Info = !.Info ^ tc_info_type_assign_set := TypeAssignSet.
+    !Info ^ tc_info_type_assign_set := TypeAssignSet.
 
 :- pred reduce_type_assign_context(class_table::in, instance_table::in,
     type_assign::in, list(type_assign)::in, list(type_assign)::out,
@@ -225,7 +225,7 @@ sort_and_merge_dups(!Constraints) :-
     Unproven0 = !.Constraints ^ unproven,
     list.sort(compare_hlds_constraints, Unproven0, Unproven1),
     merge_adjacent_constraints(Unproven1, Unproven),
-    !:Constraints = !.Constraints ^ unproven := Unproven.
+    !Constraints ^ unproven := Unproven.
 
 :- pred merge_adjacent_constraints(list(hlds_constraint)::in,
     list(hlds_constraint)::out) is det.
@@ -664,7 +664,7 @@ apply_class_rules(!Proofs, !ConstraintMap, !Constraints, Changed) :-
     !.Constraints = constraints(Unproven0, _, _, Ancestors),
     apply_class_rules_2(Ancestors, !Proofs, !ConstraintMap,
         Unproven0, Unproven, Changed),
-    !:Constraints = !.Constraints ^ unproven := Unproven.
+    !Constraints ^ unproven := Unproven.
 
 :- pred apply_class_rules_2(ancestor_constraints::in,
     constraint_proof_map::in, constraint_proof_map::out,

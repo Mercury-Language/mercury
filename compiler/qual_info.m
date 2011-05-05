@@ -171,7 +171,7 @@ apply_to_recompilation_info(Pred, !QualInfo) :-
         MaybeRecompInfo0 = yes(RecompInfo0),
         Pred(RecompInfo0, RecompInfo),
         mq_info_set_recompilation_info(yes(RecompInfo), MQInfo0, MQInfo),
-        !:QualInfo = !.QualInfo ^ qual_mq_info := MQInfo
+        !QualInfo ^ qual_mq_info := MQInfo
     ;
         MaybeRecompInfo0 = no
     ).

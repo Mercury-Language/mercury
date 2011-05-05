@@ -1012,7 +1012,7 @@ eliminate_var_in_rval(Rval0, Rval, !VarElimInfo) :-
             % for the number of occurrences that we have replaced.
             Rval = !.VarElimInfo ^ var_value,
             Count0 = !.VarElimInfo ^ replace_count,
-            !:VarElimInfo = !.VarElimInfo ^ replace_count := Count0 + 1
+            !VarElimInfo ^ replace_count := Count0 + 1
         ;
             eliminate_var_in_lval(Lval0, Lval, !VarElimInfo),
             Rval = ml_lval(Lval)

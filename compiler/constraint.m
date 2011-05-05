@@ -155,7 +155,7 @@ propagate_conj_sub_goal_2(hlds_goal(GoalExpr, GoalInfo), Constraints,
         propagate_goal(Cond0, [], Cond, !Info),
         constraint_info_update_goal(Cond, !Info),
         propagate_goal(Then0, Constraints, Then, !Info),
-        !:Info = !.Info ^ constr_instmap := InstMap0,
+        !Info ^ constr_instmap := InstMap0,
         propagate_goal(Else0, Constraints, Else, !Info),
         FinalGoals =
             [hlds_goal(if_then_else(Vars, Cond, Then, Else), GoalInfo)]
@@ -240,7 +240,7 @@ propagate_in_independent_goals([Goal0 | Goals0], Constraints, [Goal | Goals],
         !Info) :-
     InstMap0 = !.Info ^ constr_instmap,
     propagate_goal(Goal0, Constraints, Goal, !Info),
-    !:Info = !.Info ^ constr_instmap := InstMap0,
+    !Info ^ constr_instmap := InstMap0,
     propagate_in_independent_goals(Goals0, Constraints, Goals, !Info).
 
 %-----------------------------------------------------------------------------%
@@ -255,7 +255,7 @@ propagate_cases(Var, Constraints, [Case0 | Cases0], [Case | Cases], !Info) :-
     InstMap0 = !.Info ^ constr_instmap,
     constraint_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !Info),
     propagate_goal(Goal0, Constraints, Goal, !Info),
-    !:Info = !.Info ^ constr_instmap := InstMap0,
+    !Info ^ constr_instmap := InstMap0,
     Case = case(MainConsId, OtherConsIds, Goal),
     propagate_cases(Var, Constraints, Cases0, Cases, !Info).
 
@@ -424,7 +424,7 @@ annotate_conj_constraints(ModuleInfo,
     CI_ModuleInfo0 = !.Info ^ constr_module_info,
     goal_can_loop_or_throw(Goal, GoalCanLoopOrThrow,
         CI_ModuleInfo0, CI_ModuleInfo),
-    !:Info = !.Info ^ constr_module_info := CI_ModuleInfo,
+    !Info ^ constr_module_info := CI_ModuleInfo,
     (
         % Propagate goals that can fail and have no output variables.
         % Propagating cc_nondet goals would be tricky, because we would
@@ -470,7 +470,7 @@ annotate_conj_constraints(ModuleInfo,
 
         % If the constraint was the only use of the constant, the old goal
         % can be removed. We need to rerun quantification to work that out.
-        !:Info = !.Info ^ constr_changed := yes
+        !Info ^ constr_changed := yes
     ;
         % Prune away the constraints after a goal that cannot succeed
         % -- they can never be executed.
@@ -762,7 +762,7 @@ constraint_info_update_goal(hlds_goal(_, GoalInfo), !Info) :-
     InstMap0 = !.Info ^ constr_instmap,
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
-    !:Info = !.Info ^ constr_instmap := InstMap.
+    !Info ^ constr_instmap := InstMap.
 
 :- pred constraint_info_bind_var_to_functors(prog_var::in, cons_id::in,
     list(cons_id)::in, constraint_info::in, constraint_info::out) is det.
@@ -774,8 +774,8 @@ constraint_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !Info) :-
     map.lookup(VarTypes, Var, Type),
     bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
         InstMap0, InstMap, ModuleInfo0, ModuleInfo),
-    !:Info = !.Info ^ constr_instmap := InstMap,
-    !:Info = !.Info ^ constr_module_info := ModuleInfo.
+    !Info ^ constr_instmap := InstMap,
+    !Info ^ constr_module_info := ModuleInfo.
 
     % If a non-empty list of constraints is pushed into a sub-goal,
     % quantification, instmap_deltas and determinism need to be
@@ -789,7 +789,7 @@ constraint_info_update_changed(Constraints, !Info) :-
         Constraints = []
     ;
         Constraints = [_ | _],
-        !:Info = !.Info ^ constr_changed := yes
+        !Info ^ constr_changed := yes
     ).
 
 %-----------------------------------------------------------------------------%

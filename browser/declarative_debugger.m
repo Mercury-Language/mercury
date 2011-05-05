@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -368,7 +368,7 @@ diagnoser_state_init(InStr, OutStr, Browser, HelpSystem, Diagnoser) :-
 :- pred push_diagnoser(diagnoser_state(R)::in, diagnoser_state(R)::out) is det.
 
 push_diagnoser(!Diagnoser) :-
-    !:Diagnoser = !.Diagnoser ^ previous_diagnoser := yes(!.Diagnoser).
+    !Diagnoser ^ previous_diagnoser := yes(!.Diagnoser).
 
 :- pred pop_diagnoser(diagnoser_state(R)::in, diagnoser_state(R)::out)
     is semidet.
@@ -378,12 +378,12 @@ pop_diagnoser(!Diagnoser) :-
     !.Diagnoser ^ previous_diagnoser = yes(!:Diagnoser),
     LastPushedOracle = !.Diagnoser ^ oracle_state,
     update_revised_knowledge_base(LastPushedOracle, LatestOracle, Oracle),
-    !:Diagnoser = !.Diagnoser ^ oracle_state := Oracle.
+    !Diagnoser ^ oracle_state := Oracle.
 
 diagnosis(Store, AnalysisType, Response, !Diagnoser, !Browser, !IO) :-
     mdb.declarative_oracle.set_browser_state(!.Browser, !.Diagnoser ^
         oracle_state, Oracle),
-    !:Diagnoser = !.Diagnoser ^ oracle_state := Oracle,
+    !Diagnoser ^ oracle_state := Oracle,
     try_io(diagnosis_2(Store, AnalysisType, !.Diagnoser), Result, !IO),
     (
         Result = succeeded({Response, !:Diagnoser})
@@ -455,7 +455,7 @@ handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
         ;
             FromUser = no
         ),
-        !:Diagnoser = !.Diagnoser ^ oracle_state := Oracle,
+        !Diagnoser ^ oracle_state := Oracle,
         handle_oracle_response(Store, OracleResponse, DiagnoserResponse,
             !Diagnoser, !IO)
     ;
@@ -492,7 +492,7 @@ handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
         AnalyserResponse = analyser_response_revise(Question),
         Oracle0 = !.Diagnoser ^ oracle_state,
         revise_oracle(Question, Oracle0, Oracle),
-        !:Diagnoser = !.Diagnoser ^ oracle_state := Oracle,
+        !Diagnoser ^ oracle_state := Oracle,
         handle_analyser_response(Store,
             analyser_response_oracle_question(Question), no, DiagnoserResponse,
             !Diagnoser, !IO)
@@ -537,7 +537,7 @@ handle_oracle_response(Store, OracleResponse, DiagnoserResponse, !Diagnoser,
         Analyser0 = !.Diagnoser ^ analyser_state,
         continue_analysis(wrap(Store), !.Diagnoser ^ oracle_state, Answer,
             AnalyserResponse, Analyser0, Analyser),
-        !:Diagnoser = !.Diagnoser ^ analyser_state := Analyser,
+        !Diagnoser ^ analyser_state := Analyser,
         debug_analyser_state(Analyser, MaybeOrigin),
         handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
             DiagnoserResponse, !Diagnoser, !IO)
@@ -560,7 +560,7 @@ handle_oracle_response(Store, OracleResponse, DiagnoserResponse, !Diagnoser,
         Oracle = !.Diagnoser ^ oracle_state,
         change_search_mode(wrap(Store), Oracle, Mode, Analyser0, Analyser,
             AnalyserResponse),
-        !:Diagnoser = !.Diagnoser ^ analyser_state := Analyser,
+        !Diagnoser ^ analyser_state := Analyser,
         debug_analyser_state(Analyser, MaybeOrigin),
         handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
             DiagnoserResponse, !Diagnoser, !IO)
@@ -603,7 +603,7 @@ handle_oracle_response(Store, OracleResponse, DiagnoserResponse, !Diagnoser,
 confirm_bug(Store, Bug, Evidence, Response, !Diagnoser, !IO) :-
     Oracle0 = !.Diagnoser ^ oracle_state,
     oracle_confirm_bug(Bug, Evidence, Confirmation, Oracle0, Oracle, !IO),
-    !:Diagnoser = !.Diagnoser ^ oracle_state := Oracle,
+    !Diagnoser ^ oracle_state := Oracle,
     (
         Confirmation = confirm_bug,
         decl_bug_get_event_number(Bug, Event),
@@ -668,7 +668,7 @@ diagnoser_session_init(!Diagnoser) :-
 set_diagnoser_testing_flag(Testing, !Diagnoser) :-
     Oracle0 = !.Diagnoser ^ oracle_state,
     set_oracle_testing_flag(Testing, Oracle0, Oracle),
-    !:Diagnoser = !.Diagnoser ^ oracle_state := Oracle.
+    !Diagnoser ^ oracle_state := Oracle.
 
 :- pred set_fallback_search_mode(trace_node_store::in,
     mdb.declarative_analyser.search_mode::in,
@@ -683,7 +683,7 @@ set_fallback_search_mode(Store, SearchMode, !Diagnoser) :-
     Analyser0 = !.Diagnoser ^ analyser_state,
     mdb.declarative_analyser.set_fallback_search_mode(wrap(Store),
         SearchMode, Analyser0, Analyser),
-    !:Diagnoser = !.Diagnoser ^ analyser_state := Analyser.
+    !Diagnoser ^ analyser_state := Analyser.
 
 :- pred reset_knowledge_base(
     diagnoser_state(trace_node_id)::in,
@@ -696,7 +696,7 @@ set_fallback_search_mode(Store, SearchMode, !Diagnoser) :-
 reset_knowledge_base(!Diagnoser) :-
     Oracle0 = !.Diagnoser ^ oracle_state,
     reset_oracle_knowledge_base(Oracle0, Oracle),
-    !:Diagnoser = !.Diagnoser ^ oracle_state := Oracle.
+    !Diagnoser ^ oracle_state := Oracle.
 
 :- func top_down_search_mode = mdb.declarative_analyser.search_mode.
 
@@ -832,7 +832,7 @@ add_trusted_module(ModuleName, Diagnoser0, Diagnoser) :-
 
 add_trusted_pred_or_func(ProcLayout, !Diagnoser) :-
     add_trusted_pred_or_func(ProcLayout, !.Diagnoser ^ oracle_state, Oracle),
-    !:Diagnoser = !.Diagnoser ^ oracle_state := Oracle.
+    !Diagnoser ^ oracle_state := Oracle.
 
 :- pred trust_standard_library(diagnoser_state(trace_node_id)::in,
     diagnoser_state(trace_node_id)::out) is det.
@@ -844,7 +844,7 @@ add_trusted_pred_or_func(ProcLayout, !Diagnoser) :-
 trust_standard_library(!Diagnoser) :-
     declarative_oracle.trust_standard_library(!.Diagnoser ^ oracle_state,
         Oracle),
-    !:Diagnoser = !.Diagnoser ^ oracle_state := Oracle.
+    !Diagnoser ^ oracle_state := Oracle.
 
 :- pred remove_trusted(int::in, diagnoser_state(trace_node_id)::in,
     diagnoser_state(trace_node_id)::out) is semidet.
@@ -855,7 +855,7 @@ trust_standard_library(!Diagnoser) :-
 
 remove_trusted(N, !Diagnoser) :-
     remove_trusted(N, !.Diagnoser ^ oracle_state, Oracle),
-    !:Diagnoser = !.Diagnoser ^ oracle_state := Oracle.
+    !Diagnoser ^ oracle_state := Oracle.
 
     % get_trusted_list(Diagnoser, MDBCommandFormat, String).
     % Return a string listing the trusted objects for Diagnoser.
@@ -888,7 +888,7 @@ handle_diagnoser_exception(internal_error(Loc, Msg), Response, !Diagnoser,
         "Please report bugs to mercury-bugs@cs.mu.oz.au.\n", !IO),
     % Reset the analyser, in case it was left in an inconsistent state.
     reset_analyser(!.Diagnoser ^ analyser_state, Analyser),
-    !:Diagnoser = !.Diagnoser ^ analyser_state := Analyser,
+    !Diagnoser ^ analyser_state := Analyser,
     Response = no_bug_found.
 
 handle_diagnoser_exception(io_error(Loc, Msg), Response, !Diagnoser, !IO) :-
@@ -897,7 +897,7 @@ handle_diagnoser_exception(io_error(Loc, Msg), Response, !Diagnoser, !IO) :-
         "Diagnosis will be aborted.\n", !IO),
     % Reset the analyser, in case it was left in an inconsistent state.
     reset_analyser(!.Diagnoser ^ analyser_state, Analyser),
-    !:Diagnoser = !.Diagnoser ^ analyser_state := Analyser,
+    !Diagnoser ^ analyser_state := Analyser,
     Response = no_bug_found.
 
 handle_diagnoser_exception(unimplemented_feature(Feature), Response,
@@ -909,7 +909,7 @@ handle_diagnoser_exception(unimplemented_feature(Feature), Response,
         "supported in the\ncurrent version.\n", !IO),
     % Reset the analyser, in case it was left in an inconsistent state.
     reset_analyser(!.Diagnoser ^ analyser_state, Analyser),
-    !:Diagnoser = !.Diagnoser ^ analyser_state := Analyser,
+    !Diagnoser ^ analyser_state := Analyser,
     Response = no_bug_found.
 
 %-----------------------------------------------------------------------------%

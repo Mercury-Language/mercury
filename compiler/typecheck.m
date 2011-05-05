@@ -1084,7 +1084,7 @@ typecheck_clause_list(HeadVars, ArgTypes, [Clause0 | Clauses0],
 typecheck_clause(HeadVars, ArgTypes, !Clause, !Info) :-
     Body0 = !.Clause ^ clause_body,
     Context = !.Clause ^clause_context,
-    !:Info = !.Info ^ tc_info_context := Context,
+    !Info ^ tc_info_context := Context,
 
     % Typecheck the clause - first the head unification, and then the body.
     typecheck_var_has_type_list(HeadVars, ArgTypes, 1, !Info),
@@ -1193,7 +1193,7 @@ typecheck_goal(hlds_goal(GoalExpr0, GoalInfo0), hlds_goal(GoalExpr, GoalInfo),
         goal_info_set_context(EnclosingContext, GoalInfo0, GoalInfo)
     ;
         GoalInfo = GoalInfo0,
-        !:Info = !.Info ^ tc_info_context := Context
+        !Info ^ tc_info_context := Context
     ),
 
     TypeAssignSet = !.Info ^ tc_info_type_assign_set,
@@ -1344,8 +1344,8 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info) :-
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("unify", !.Info, !IO)
         ),
-        !:Info = !.Info ^ tc_info_arg_num := 0,
-        !:Info = !.Info ^ tc_info_unify_context := UnifyContext,
+        !Info ^ tc_info_arg_num := 0,
+        !Info ^ tc_info_unify_context := UnifyContext,
         GoalId = goal_info_get_goal_id(GoalInfo),
         typecheck_unification(LHS, RHS0, RHS, GoalId, !Info),
         GoalExpr = unify(LHS, RHS, UnifyMode, Unification, UnifyContext)
@@ -1764,11 +1764,11 @@ type_assign_rename_apart(TypeAssign0, PredTypeVarSet, PredArgTypes,
 typecheck_var_has_arg_type_list([], _, ArgTypeAssignSet, !Info) :-
     TypeAssignSet =
         convert_args_type_assign_set_check_empty_args(ArgTypeAssignSet),
-    !:Info = !.Info ^ tc_info_type_assign_set := TypeAssignSet.
+    !Info ^ tc_info_type_assign_set := TypeAssignSet.
 
 typecheck_var_has_arg_type_list([Var | Vars], ArgNum, ArgTypeAssignSet0,
         !Info) :-
-    !:Info = !.Info ^ tc_info_arg_num := ArgNum,
+    !Info ^ tc_info_arg_num := ArgNum,
     typecheck_var_has_arg_type(Var, ArgTypeAssignSet0, ArgTypeAssignSet1,
         !Info),
     typecheck_var_has_arg_type_list(Vars, ArgNum + 1, ArgTypeAssignSet1,
@@ -1890,7 +1890,7 @@ typecheck_var_has_type_list([_ | _], [], _, !Info) :-
     unexpected(this_file, "typecheck_var_has_type_list: length mismatch").
 typecheck_var_has_type_list([], [], _, !Info).
 typecheck_var_has_type_list([Var | Vars], [Type | Types], ArgNum, !Info) :-
-    !:Info = !.Info ^ tc_info_arg_num := ArgNum,
+    !Info ^ tc_info_arg_num := ArgNum,
     typecheck_var_has_type(Var, Type, !Info),
     typecheck_var_has_type_list(Vars, Types, ArgNum + 1, !Info).
 
@@ -1907,7 +1907,7 @@ typecheck_var_has_type(Var, Type, !Info) :-
         Spec = report_error_var(!.Info, Var, Type, TypeAssignSet0),
         typecheck_info_add_error(Spec, !Info)
     ;
-        !:Info = !.Info ^ tc_info_type_assign_set := TypeAssignSet
+        !Info ^ tc_info_type_assign_set := TypeAssignSet
     ).
 
 :- pred typecheck_var_has_type_2(type_assign_set::in, prog_var::in,
@@ -2015,7 +2015,7 @@ typecheck_unify_var_var(X, Y, !Info) :-
         Spec = report_error_unif_var_var(!.Info, X, Y, TypeAssignSet0),
         typecheck_info_add_error(Spec, !Info)
     ;
-        !:Info = !.Info ^ tc_info_type_assign_set := TypeAssignSet
+        !Info ^ tc_info_type_assign_set := TypeAssignSet
     ).
 
 :- pred cons_id_must_be_builtin_type(cons_id::in, mer_type::out, string::out)
@@ -2456,7 +2456,7 @@ typecheck_lambda_var_has_type(Purity, PredOrFunc, EvalMethod, Var, ArgVars,
             Var, ArgVars, TypeAssignSet0),
         typecheck_info_add_error(Spec, !Info)
     ;
-        !:Info = !.Info ^ tc_info_type_assign_set := TypeAssignSet
+        !Info ^ tc_info_type_assign_set := TypeAssignSet
     ).
 
 :- pred typecheck_lambda_var_has_type_2(type_assign_set::in, purity::in,

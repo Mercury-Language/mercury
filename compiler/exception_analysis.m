@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2010 The University of Melbourne.
+% Copyright (C) 2004-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -361,7 +361,7 @@ check_proc_for_exceptions(SCC, PPId, !Results, !ModuleInfo) :-
 check_goal_for_exceptions(SCC, VarTypes, hlds_goal(GoalExpr, GoalInfo),
         !Result, !ModuleInfo) :-
     ( goal_info_get_determinism(GoalInfo) = detism_erroneous ->
-        !:Result = !.Result ^ status := may_throw(user_exception)
+        !Result ^ status := may_throw(user_exception)
     ;
         check_goal_for_exceptions_2(SCC, VarTypes, GoalExpr, GoalInfo,
             !Result, !ModuleInfo)
@@ -463,7 +463,7 @@ check_goal_for_exceptions_plain_call(SCC, VarTypes, CallPredId, CallProcId,
         Types = list.map((func(Var) = VarTypes ^ det_elem(Var)), CallArgs),
         TypeStatus = check_types(!.ModuleInfo, Types),
         combine_type_status(TypeStatus, !.Result ^ rec_calls, NewTypeStatus),
-        !:Result = !.Result ^ rec_calls := NewTypeStatus
+        !Result ^ rec_calls := NewTypeStatus
     ;
         pred_info_is_builtin(CallPredInfo)
     ->
@@ -562,7 +562,7 @@ check_goal_for_exceptions_generic_call(VarTypes, Details, Args, GoalInfo,
     ;
         % XXX We could do better with class methods.
         Details = class_method(_, _, _, _),
-        !:Result = !.Result ^ status := may_throw(user_exception)
+        !Result ^ status := may_throw(user_exception)
     ;
         Details = event_call(_)
     ;
@@ -682,8 +682,8 @@ update_proc_result(CurrentStatus, CurrentAnalysisStatus, !Result) :-
     NewStatus = combine_exception_status(CurrentStatus, OldStatus),
     combine_maybe_analysis_status(CurrentAnalysisStatus, OldAnalysisStatus,
         NewAnalysisStatus),
-    !:Result = !.Result ^ status := NewStatus,
-    !:Result = !.Result ^ maybe_analysis_status := NewAnalysisStatus.
+    !Result ^ status := NewStatus,
+    !Result ^ maybe_analysis_status := NewAnalysisStatus.
 
 :- func combine_exception_status(exception_status, exception_status)
     = exception_status.

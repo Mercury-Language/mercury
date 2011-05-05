@@ -1863,12 +1863,11 @@ add_pragma_termination2_info(PredOrFunc, SymName, ModeList,
                 some [!TermInfo] (
                     proc_info_get_termination2_info(ProcInfo0, !:TermInfo),
 
-                    !:TermInfo = !.TermInfo ^ import_success :=
+                    !TermInfo ^ import_success :=
                         MaybePragmaSuccessArgSizeInfo,
-                    !:TermInfo = !.TermInfo ^ import_failure :=
+                    !TermInfo ^ import_failure :=
                         MaybePragmaFailureArgSizeInfo,
-                    !:TermInfo = !.TermInfo ^ term_status :=
-                        MaybeTerminationInfo,
+                    !TermInfo ^ term_status := MaybeTerminationInfo,
 
                     proc_info_set_termination2_info(!.TermInfo,
                         ProcInfo0, ProcInfo)

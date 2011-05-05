@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2007 The University of Melbourne.
+% Copyright (C) 1999-2007, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -349,15 +349,15 @@ reset_analyser(!Analyser) :-
     !:Analyser = analyser(empty_search_space, no, FallBack, FallBack, no, no).
 
 set_fallback_search_mode(Store, FallBackSearchMode, !Analyser) :-
-    !:Analyser = !.Analyser ^ fallback_search_mode := FallBackSearchMode,
-    !:Analyser = !.Analyser ^ search_mode := FallBackSearchMode,
-    !:Analyser = !.Analyser ^ last_search_question := no,
+    !Analyser ^ fallback_search_mode := FallBackSearchMode,
+    !Analyser ^ search_mode := FallBackSearchMode,
+    !Analyser ^ last_search_question := no,
     (
         FallBackSearchMode = analyser_divide_and_query(Weighting),
         SearchSpace0 = !.Analyser ^ search_space,
         update_weighting_heuristic(Store, Weighting, SearchSpace0,
             SearchSpace),
-        !:Analyser = !.Analyser ^ search_space := SearchSpace
+        !Analyser ^ search_space := SearchSpace
     ;
         FallBackSearchMode = analyser_follow_subterm_end(_, _, _, _, _)
     ;
@@ -384,8 +384,8 @@ start_or_resume_analysis(Store, Oracle, AnalysisType, Response, !Analyser) :-
                 incorporate_explicit_subtree(SuspectId, Node,
                     SearchSpace0, SearchSpace)
             ),
-            !:Analyser = !.Analyser ^ search_space := SearchSpace,
-            !:Analyser = !.Analyser ^ require_explicit := no,
+            !Analyser ^ search_space := SearchSpace,
+            !Analyser ^ require_explicit := no,
             decide_analyser_response(Store, Oracle, Response, !Analyser)
         ;
             MaybeRequireExplicit = no,
@@ -397,9 +397,9 @@ start_or_resume_analysis(Store, Oracle, AnalysisType, Response, !Analyser) :-
             MaybeWeighting = get_maybe_weighting_from_search_mode(
                 !.Analyser ^ search_mode),
             initialise_search_space(Store, MaybeWeighting, Node, SearchSpace),
-            !:Analyser = !.Analyser ^ search_space := SearchSpace,
+            !Analyser ^ search_space := SearchSpace,
             topmost_det(SearchSpace, TopMostId),
-            !:Analyser = !.Analyser ^ last_search_question :=
+            !Analyser ^ last_search_question :=
                 yes(suspect_and_reason(TopMostId, ques_reason_start)),
             edt_question(Store, Node, Question),
             Response = analyser_response_revise(Question)
@@ -462,7 +462,7 @@ change_search_mode(Store, Oracle, UserMode, !Analyser, Response) :-
                 yes(suspect_and_reason(SuspectId, _)),
             setup_binary_search(!.Analyser ^ search_space, SuspectId,
                 SearchMode),
-            !:Analyser = !.Analyser ^ search_mode := SearchMode
+            !Analyser ^ search_mode := SearchMode
         ;
             !.Analyser ^ last_search_question = no,
             throw(internal_error("change_search_mode",
@@ -478,27 +478,27 @@ process_answer(Store, Answer, SuspectId, !Analyser) :-
     (
         Answer = skip(_),
         skip_suspect(SuspectId, !.Analyser ^ search_space, SearchSpace),
-        !:Analyser = !.Analyser ^ search_space := SearchSpace
+        !Analyser ^ search_space := SearchSpace
     ;
         Answer = ignore(_),
         ignore_suspect(Store, SuspectId, !.Analyser ^ search_space,
             SearchSpace),
-        !:Analyser = !.Analyser ^ search_space := SearchSpace
+        !Analyser ^ search_space := SearchSpace
     ;
         Answer = truth_value(_, truth_correct),
         assert_suspect_is_correct(SuspectId, !.Analyser ^ search_space,
             SearchSpace),
-        !:Analyser = !.Analyser ^ search_space := SearchSpace
+        !Analyser ^ search_space := SearchSpace
     ;
         Answer = truth_value(_, truth_inadmissible),
         assert_suspect_is_inadmissible(SuspectId, !.Analyser ^ search_space,
             SearchSpace),
-        !:Analyser = !.Analyser ^ search_space := SearchSpace
+        !Analyser ^ search_space := SearchSpace
     ;
         Answer = truth_value(_, truth_erroneous),
         assert_suspect_is_erroneous(SuspectId, !.Analyser ^ search_space,
             SearchSpace),
-        !:Analyser = !.Analyser ^ search_space := SearchSpace
+        !Analyser ^ search_space := SearchSpace
     ;
         Answer = suspicious_subterm(Node, ArgPos, TermPath, HowTrack,
             ShouldAssertInvalid),
@@ -509,7 +509,7 @@ process_answer(Store, Answer, SuspectId, !Analyser) :-
         % edt_dependency becomes stable enough.
 
         edt_dependency(Store, Node, ArgPos, TermPath, _, DebugOrigin),
-        !:Analyser = !.Analyser ^ debug_origin := yes(DebugOrigin),
+        !Analyser ^ debug_origin := yes(DebugOrigin),
         (
             ShouldAssertInvalid = assert_invalid,
             edt_subterm_mode(Store, Node, ArgPos, TermPath, Mode),
@@ -522,11 +522,11 @@ process_answer(Store, Answer, SuspectId, !Analyser) :-
                 assert_suspect_is_erroneous(SuspectId,
                     !.Analyser ^ search_space, SearchSpace)
             ),
-            !:Analyser = !.Analyser ^ search_space := SearchSpace
+            !Analyser ^ search_space := SearchSpace
         ;
             ShouldAssertInvalid = no_assert_invalid
         ),
-        !:Analyser = !.Analyser ^ search_mode :=
+        !Analyser ^ search_mode :=
             analyser_follow_subterm_end(SuspectId, ArgPos, TermPath, no,
                 HowTrack)
     ).
@@ -538,10 +538,10 @@ revise_analysis(Store, Response, !Analyser) :-
         edt_question(Store, Node, Question),
         Response = analyser_response_revise(Question),
         revise_root(Store, SearchSpace, SearchSpace1),
-        !:Analyser = !.Analyser ^ search_space := SearchSpace1,
-        !:Analyser = !.Analyser ^ last_search_question :=
+        !Analyser ^ search_space := SearchSpace1,
+        !Analyser ^ last_search_question :=
             yes(suspect_and_reason(RootId, ques_reason_revise)),
-        !:Analyser = !.Analyser ^ search_mode :=
+        !Analyser ^ search_mode :=
             !.Analyser ^ fallback_search_mode
     ;
         % There must be a root, since a bug was found (and is now
@@ -561,8 +561,8 @@ decide_analyser_response(Store, Oracle, Response, !Analyser) :-
         search_for_question(Store, Oracle, !SearchSpace,
             !.Analyser ^ search_mode, !.Analyser ^ fallback_search_mode,
             NewMode, SearchResponse),
-        !:Analyser = !.Analyser ^ search_space := !.SearchSpace,
-        !:Analyser = !.Analyser ^ search_mode := NewMode,
+        !Analyser ^ search_space := !.SearchSpace,
+        !Analyser ^ search_mode := NewMode,
         handle_search_response(Store, SearchResponse, !Analyser, Response)
     ),
     maybe_check_search_space_consistency(Store, !.Analyser ^ search_space,
@@ -601,17 +601,17 @@ handle_search_response(Store, SearchResponse, !Analyser, AnalyserResponse) :-
             % incorrectly before.
             AnalyserResponse = analyser_response_revise(OracleQuestion)
         ),
-        !:Analyser = !.Analyser ^ last_search_question :=
+        !Analyser ^ last_search_question :=
             yes(suspect_and_reason(SuspectId, Reason))
     ;
         SearchResponse = search_response_require_explicit_subtree(SuspectId),
-        !:Analyser = !.Analyser ^ require_explicit := yes(explicit_subtree(
+        !Analyser ^ require_explicit := yes(explicit_subtree(
             SuspectId)),
         Node = get_edt_node(!.Analyser ^ search_space, SuspectId),
         AnalyserResponse = analyser_response_require_explicit_subtree(Node)
     ;
         SearchResponse = search_response_require_explicit_supertree,
-        !:Analyser = !.Analyser ^ require_explicit := yes(explicit_supertree),
+        !Analyser ^ require_explicit := yes(explicit_supertree),
         SearchSpace = !.Analyser ^ search_space,
         topmost_det(SearchSpace, TopMostId),
         TopMost = get_edt_node(SearchSpace, TopMostId),

@@ -890,7 +890,7 @@ get_var_type(ByteInfo, Var, Type) :-
 get_next_label(Label, !ByteInfo) :-
     LabelCounter0 = !.ByteInfo ^ byteinfo_label_counter,
     counter.allocate(Label, LabelCounter0, LabelCounter),
-    !:ByteInfo = !.ByteInfo ^ byteinfo_label_counter := LabelCounter.
+    !ByteInfo ^ byteinfo_label_counter := LabelCounter.
 
 :- pred get_next_temp(int::out, byte_info::in, byte_info::out)
     is det.
@@ -898,7 +898,7 @@ get_next_label(Label, !ByteInfo) :-
 get_next_temp(Temp, !ByteInfo) :-
     TempCounter0 = !.ByteInfo ^ byteinfo_temp_counter,
     counter.allocate(Temp, TempCounter0, TempCounter),
-    !:ByteInfo = !.ByteInfo ^ byteinfo_temp_counter := TempCounter.
+    !ByteInfo ^ byteinfo_temp_counter := TempCounter.
 
 :- pred get_counts(byte_info::in, int::out, int::out) is det.
 

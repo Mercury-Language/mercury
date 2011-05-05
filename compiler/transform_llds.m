@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001,2003-2007, 2009-2010 The University of Melbourne.
+% Copyright (C) 1998-2001,2003-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -152,8 +152,8 @@ transform_c_procedure(!Proc, MaxSize) :-
     Instrs0 = !.Proc ^ cproc_code,
     C0 = !.Proc ^ cproc_label_nums,
     transform_instructions(Instrs0, Instrs, C0, C, ProcLabel, MaxSize),
-    !:Proc = !.Proc ^ cproc_code := Instrs,
-    !:Proc = !.Proc ^ cproc_label_nums := C.
+    !Proc ^ cproc_code := Instrs,
+    !Proc ^ cproc_label_nums := C.
 
 :- pred transform_instructions(list(instruction)::in, list(instruction)::out,
     counter::in, counter::out, proc_label::in, int::in) is det.

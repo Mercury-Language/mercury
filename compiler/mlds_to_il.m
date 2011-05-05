@@ -1144,7 +1144,7 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
         % XXX The external reference must currently reside in the
         % C# file associated with this file.  This is very hackish.
         ForeignLangs = !.Info ^ file_foreign_langs,
-        !:Info = !.Info ^ file_foreign_langs :=
+        !Info ^ file_foreign_langs :=
             set.insert(ForeignLangs, lang_csharp),
 
         mangle_dataname_module(no, ModuleName, NewModuleName),
@@ -1185,7 +1185,7 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
             model_det, no)
     ->
         EntryPoint = [entrypoint],
-        !:Info = !.Info ^ has_main := has_main,
+        !Info ^ has_main := has_main,
 
         il_info_get_next_block_id(InnerTryBlockId, !Info),
         il_info_get_next_block_id(OuterTryBlockId, !Info),
@@ -1936,8 +1936,8 @@ atomic_statement_to_il(outline_foreign_proc(Lang, _, ReturnLvals, _Code),
     (
         !.Info ^ method_foreign_lang = no,
         Info0 = !.Info,
-        !:Info = !.Info ^ method_foreign_lang := yes(Lang),
-        !:Info = !.Info ^ file_foreign_langs :=
+        !Info ^ method_foreign_lang := yes(Lang),
+        !Info ^ file_foreign_langs :=
             set.insert(Info0 ^ file_foreign_langs, Lang),
         mangle_foreign_code_module(Lang, ModuleName, OutlineLangModuleName),
         ClassName = mlds_module_name_to_class_name(OutlineLangModuleName),
@@ -4618,13 +4618,13 @@ il_info_get_module_name(Info, ModuleName) :-
 
 il_info_get_next_block_id(N, !Info) :-
     counter.allocate(N, !.Info ^ block_counter, NewCounter),
-    !:Info = !.Info ^ block_counter := NewCounter.
+    !Info ^ block_counter := NewCounter.
 
 :- pred il_info_get_next_label_num(int::out, il_info::in, il_info::out) is det.
 
 il_info_get_next_label_num(N, !Info) :-
     counter.allocate(N, !.Info ^ label_counter, NewCounter),
-    !:Info = !.Info ^ label_counter := NewCounter.
+    !Info ^ label_counter := NewCounter.
 
 :- pred il_info_make_next_label(ilds.label::out, il_info::in, il_info::out)
     is det.

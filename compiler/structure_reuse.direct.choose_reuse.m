@@ -779,7 +779,7 @@ find_best_match_in_conjunction(Background, Goals, !Match) :-
     list.map(find_match_in_goal(Background, Match0), Goals, ExclusiveMatches),
     Degree = count_candidates(ExclusiveMatches),
     highest_match_in_list(ExclusiveMatches, !Match),
-    !:Match = !.Match ^ match_degree := Degree.
+    !Match ^ match_degree := Degree.
 
     % Compute the matches for a dead cell in the context of a disjunction. For
     % each branch, a different match may be found.  At the end, these matches

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2009 The University of Melbourne.
+% Copyright (C) 2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -446,7 +446,7 @@ fixup_newobj(Statement0, ModuleName, Statement, Defns) :-
 
 fixup_newobj_in_statement(Statement0, Statement, !Info) :-
     Statement0 = statement(Stmt0, Context),
-    !:Info = !.Info ^ fnoi_context := Context,
+    !Info ^ fnoi_context := Context,
     fixup_newobj_in_stmt(Stmt0, Stmt, !Info),
     Statement = statement(Stmt, Context).
 

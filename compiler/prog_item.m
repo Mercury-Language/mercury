@@ -1038,7 +1038,7 @@ mutable_var_constant(MVarAttrs) = MVarAttrs ^ mutable_constant.
 mutable_var_thread_local(MVarAttrs) = MVarAttrs ^ mutable_thread_local.
 
 set_mutable_var_trailed(Trailed, !Attributes) :-
-    !:Attributes = !.Attributes ^ mutable_trailed := Trailed.
+    !Attributes ^ mutable_trailed := Trailed.
 set_mutable_add_foreign_name(ForeignName, !Attributes) :-
     MaybeForeignNames0 = !.Attributes ^ mutable_foreign_names,
     (
@@ -1049,14 +1049,13 @@ set_mutable_add_foreign_name(ForeignName, !Attributes) :-
         ForeignNames = [ ForeignName | ForeignNames0],
         MaybeForeignNames   = yes(ForeignNames)
     ),
-    !:Attributes = !.Attributes ^ mutable_foreign_names := MaybeForeignNames.
+    !Attributes ^ mutable_foreign_names := MaybeForeignNames.
 set_mutable_var_attach_to_io_state(AttachToIOState, !Attributes) :-
-    !:Attributes = !.Attributes ^ mutable_attach_to_io_state
-        := AttachToIOState.
+    !Attributes ^ mutable_attach_to_io_state := AttachToIOState.
 set_mutable_var_constant(Constant, !Attributes) :-
-    !:Attributes = !.Attributes ^ mutable_constant := Constant.
+    !Attributes ^ mutable_constant := Constant.
 set_mutable_var_thread_local(ThreadLocal, !Attributes) :-
-    !:Attributes = !.Attributes ^ mutable_thread_local := ThreadLocal.
+    !Attributes ^ mutable_thread_local := ThreadLocal.
 
 %-----------------------------------------------------------------------------%
 
@@ -1092,15 +1091,15 @@ get_item_foreign_code(Globals, Item, !Info) :-
         % XXX mutables are currently only implemented for the C backends
         % but we should handle the Java/IL backends here as well.
         % (See do_get_item_foreign_code for details/5).
-        !:Info = !.Info ^ used_foreign_languages :=
+        !Info ^ used_foreign_languages :=
             set.insert(!.Info ^ used_foreign_languages, lang_c)
     ; ( Item = item_initialise(_) ; Item = item_finalise(_) ) ->
         % Intialise/finalise declarations introduce export pragmas, but
         % again they won't have been expanded by the time we get here.
         % XXX we don't currently support these on non-C backends.
-        !:Info = !.Info ^ used_foreign_languages :=
+        !Info ^ used_foreign_languages :=
             set.insert(!.Info ^ used_foreign_languages, lang_c),
-        !:Info = !.Info ^ module_has_foreign_export := contains_foreign_export
+        !Info ^ module_has_foreign_export := contains_foreign_export
     ;
         true
     ).

@@ -2392,7 +2392,7 @@ update_tabling_attributes([Context - SingleAttr | TermSingleAttrs],
     (
         SingleAttr = attr_strictness(Strictness),
         ( !.Attributes ^ table_attr_strictness = all_strict ->
-            !:Attributes = !.Attributes ^ table_attr_strictness := Strictness,
+            !Attributes ^ table_attr_strictness := Strictness,
             update_tabling_attributes(TermSingleAttrs, !.Attributes,
                 MaybeAttributes)
         ;
@@ -2406,7 +2406,7 @@ update_tabling_attributes([Context - SingleAttr | TermSingleAttrs],
     ;
         SingleAttr = attr_size_limit(Limit),
         ( !.Attributes ^ table_attr_size_limit = no ->
-            !:Attributes = !.Attributes ^ table_attr_size_limit := yes(Limit),
+            !Attributes ^ table_attr_size_limit := yes(Limit),
             update_tabling_attributes(TermSingleAttrs, !.Attributes,
                 MaybeAttributes)
         ;
@@ -2421,7 +2421,7 @@ update_tabling_attributes([Context - SingleAttr | TermSingleAttrs],
         (
             !.Attributes ^ table_attr_statistics = table_dont_gather_statistics
         ->
-            !:Attributes = !.Attributes ^ table_attr_statistics
+            !Attributes ^ table_attr_statistics
                 := table_gather_statistics,
             update_tabling_attributes(TermSingleAttrs, !.Attributes,
                 MaybeAttributes)
@@ -2435,7 +2435,7 @@ update_tabling_attributes([Context - SingleAttr | TermSingleAttrs],
     ;
         SingleAttr = attr_allow_reset,
         ( !.Attributes ^ table_attr_allow_reset = table_dont_allow_reset ->
-            !:Attributes = !.Attributes ^ table_attr_allow_reset
+            !Attributes ^ table_attr_allow_reset
                 := table_allow_reset,
             update_tabling_attributes(TermSingleAttrs, !.Attributes,
                 MaybeAttributes)

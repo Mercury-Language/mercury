@@ -624,7 +624,7 @@ polymorphism_process_clause(PredInfo0, OldHeadVars, NewHeadVars,
 
         pred_info_get_exist_quant_tvars(PredInfo0, ExistQVars),
         fixup_quantification(NewHeadVars, ExistQVars, Goal2, Goal, !Info),
-        !:Clause = !.Clause ^ clause_body := Goal
+        !Clause ^ clause_body := Goal
     ).
 
 :- pred polymorphism_process_proc_in_table(pred_info::in, clauses_info::in,

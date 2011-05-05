@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2010 The University of Melbourne.
+% Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1123,7 +1123,7 @@ recompute_instmap_delta_1(RecomputeAtomic, Goal0, Goal, VarTypes,
 update_module_info(P, R, !RI) :-
     ModuleInfo0 = !.RI ^ ri_module_info,
     P(R, ModuleInfo0, ModuleInfo),
-    !:RI = !.RI ^ ri_module_info := ModuleInfo.
+    !RI ^ ri_module_info := ModuleInfo.
 
 :- pred recompute_instmap_delta_2(recompute_atomic_instmap_deltas::in,
     hlds_goal_expr::in, hlds_goal_expr::out, hlds_goal_info::in,

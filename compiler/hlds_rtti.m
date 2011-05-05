@@ -594,7 +594,7 @@ rtti_det_insert_type_info_locn(TVar, Locn, !RttiVarMaps) :-
 rtti_set_type_info_locn(TVar, Locn, !RttiVarMaps) :-
     Map0 = !.RttiVarMaps ^ rv_ti_varmap,
     map.set(TVar, Locn, Map0, Map),
-    !:RttiVarMaps = !.RttiVarMaps ^ rv_ti_varmap := Map,
+    !RttiVarMaps ^ rv_ti_varmap := Map,
     maybe_check_type_info_var(Locn, TVar, !RttiVarMaps).
 
 :- pred maybe_check_type_info_var(type_info_locn::in, tvar::in,

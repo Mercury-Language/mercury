@@ -222,8 +222,8 @@ query_oracle_user(UserQuestion, OracleResponse, !Oracle, !IO) :-
         Revised0 = !.Oracle ^ kb_revised,
         retract_oracle_kb(Question, Revised0, Revised),
         assert_oracle_kb(Question, Answer, Current0, Current),
-        !:Oracle = !.Oracle ^ kb_current := Current,
-        !:Oracle = !.Oracle ^ kb_revised := Revised
+        !Oracle ^ kb_current := Current,
+        !Oracle ^ kb_revised := Revised
     ;
         UserResponse = user_response_trust_predicate(Question),
         Atom = get_decl_question_atom(Question),
@@ -254,7 +254,7 @@ query_oracle_user(UserQuestion, OracleResponse, !Oracle, !IO) :-
         UserResponse = user_response_undo,
         OracleResponse = oracle_response_undo
     ),
-    !:Oracle = !.Oracle ^ user_state := User.
+    !Oracle ^ user_state := User.
 
 oracle_confirm_bug(Bug, Evidence, Confirmation, Oracle0, Oracle, !IO) :-
     User0 = Oracle0 ^ user_state,
@@ -276,8 +276,8 @@ revise_oracle(Question, !Oracle) :-
         retract_oracle_kb(Question, Current0, Current),
         Revised0 = !.Oracle ^ kb_revised,
         assert_oracle_kb(Question, Answer, Revised0, Revised),
-        !:Oracle = !.Oracle ^ kb_revised := Revised,
-        !:Oracle = !.Oracle ^ kb_current := Current
+        !Oracle ^ kb_revised := Revised,
+        !Oracle ^ kb_current := Current
     ;
         true
     ).
@@ -394,7 +394,7 @@ trust_standard_library(!Oracle) :-
 remove_trusted(Id, !Oracle) :-
     bimap.search(!.Oracle ^ trusted, _, Id),
     bimap.delete_value(Id, !.Oracle ^ trusted, Trusted),
-    !:Oracle = !.Oracle ^ trusted := Trusted. 
+    !Oracle ^ trusted := Trusted. 
 
 get_trusted_list(Oracle, yes, CommandsStr) :-
     TrustedObjects = bimap.ordinates(Oracle ^ trusted),
@@ -663,7 +663,7 @@ retract_oracle_kb(wrong_answer(_, _, Atom), !KB) :-
     % delete all modes of the predicate/function
     foldl(remove_atom_from_ground_map(Atom),
         get_all_modes_for_layout(Atom ^ final_atom ^ proc_layout), Map0, Map),
-    !:KB = !.KB ^ kb_ground_map := Map.
+    !KB ^ kb_ground_map := Map.
 
 retract_oracle_kb(missing_answer(_, InitAtom, _), !KB) :-
     CompleteMap0 = !.KB ^ kb_complete_map,
@@ -712,7 +712,7 @@ get_browser_state(Oracle) =
 
 set_browser_state(Browser, !Oracle) :-
     declarative_user.set_browser_state(Browser, !.Oracle ^ user_state, User),
-    !:Oracle = !.Oracle ^ user_state := User.
+    !Oracle ^ user_state := User.
 
 get_user_output_stream(Oracle) =
     declarative_user.get_user_output_stream(Oracle ^ user_state).
@@ -723,14 +723,14 @@ get_user_input_stream(Oracle) =
 set_oracle_testing_flag(Testing, !Oracle) :-
     User0 = !.Oracle ^ user_state,
     set_user_testing_flag(Testing, User0, User),
-    !:Oracle = !.Oracle ^ user_state := User.
+    !Oracle ^ user_state := User.
 
 %-----------------------------------------------------------------------------%
 
 reset_oracle_knowledge_base(!Oracle) :-
     oracle_kb_init(EmptyKB),
-    !:Oracle = !.Oracle ^ kb_revised := !.Oracle ^ kb_current,
-    !:Oracle = !.Oracle ^ kb_current := EmptyKB.
+    !Oracle ^ kb_revised := !.Oracle ^ kb_current,
+    !Oracle ^ kb_current := EmptyKB.
 
 %-----------------------------------------------------------------------------%
 

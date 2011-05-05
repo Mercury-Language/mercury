@@ -334,10 +334,9 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
         % as the methods in the class definition. intermod.m relies on this.
         OrderedInstanceMethods = list.reverse(RevInstanceMethods),
 
-        !:InstanceDefn = !.InstanceDefn ^ instance_hlds_interface
-            := MaybePredProcs,
-        !:InstanceDefn = !.InstanceDefn ^ instance_body
-            := instance_body_concrete(OrderedInstanceMethods),
+        !InstanceDefn ^ instance_hlds_interface := MaybePredProcs,
+        !InstanceDefn ^ instance_body :=
+            instance_body_concrete(OrderedInstanceMethods),
 
         % Check if there are any instance methods left over, which did not
         % match any of the methods from the class interface.

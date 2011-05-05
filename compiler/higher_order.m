@@ -445,7 +445,7 @@ get_specialization_requests(PredId, !GlobalInfo) :-
         goal_size(Goal, GoalSize),
         GoalSizes1 = !.GlobalInfo ^ hogi_goal_sizes,
         map.set(PredId, GoalSize, GoalSizes1, GoalSizes),
-        !:GlobalInfo = !.GlobalInfo ^ hogi_goal_sizes := GoalSizes
+        !GlobalInfo ^ hogi_goal_sizes := GoalSizes
     ).
 
     % This is called when the first procedure of a predicate was changed.
@@ -466,7 +466,7 @@ ho_traverse_proc(MustRecompute, PredId, ProcId, !GlobalInfo) :-
     ModuleInfo0 = !.GlobalInfo ^ hogi_module_info,
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
         ModuleInfo0, ModuleInfo),
-    !:GlobalInfo = !.GlobalInfo ^ hogi_module_info := ModuleInfo.
+    !GlobalInfo ^ hogi_module_info := ModuleInfo.
 
 %-----------------------------------------------------------------------------%
 %
@@ -3316,9 +3316,9 @@ substitute_higher_order_arg(Subn, !HOArg) :-
     list.map(substitute_rtti_var_info(Subn), CurriedRttiTypes0,
         CurriedRttiTypes),
     list.map(substitute_higher_order_arg(Subn), CurriedHOArgs0, CurriedHOArgs),
-    !:HOArg = !.HOArg ^ hoa_curry_type_in_caller := CurriedArgTypes,
-    !:HOArg = !.HOArg ^ hoa_curry_rtti_type := CurriedRttiTypes,
-    !:HOArg = !.HOArg ^ hoa_known_curry_args := CurriedHOArgs.
+    !HOArg ^ hoa_curry_type_in_caller := CurriedArgTypes,
+    !HOArg ^ hoa_curry_rtti_type := CurriedRttiTypes,
+    !HOArg ^ hoa_known_curry_args := CurriedHOArgs.
 
 :- pred substitute_rtti_var_info(tsubst::in, rtti_var_info::in,
     rtti_var_info::out) is det.
