@@ -581,6 +581,10 @@ mercury_runtime_init(int argc, char **argv)
     MR_setup_signals();
 #endif
 
+#ifdef MR_BOEHM_GC
+    /* Disable GC during startup, when little or no garbage is created. */
+    GC_disable();
+#endif
 #ifdef MR_CONSERVATIVE_GC
     MR_init_conservative_GC();
 #endif
@@ -704,6 +708,10 @@ mercury_runtime_init(int argc, char **argv)
     }
   #endif /* ! MR_LL_PARALLEL_CONJ */
 #endif /* ! 0 */
+
+#ifdef MR_BOEHM_GC
+    GC_enable();
+#endif
 
     if (MR_memdebug) {
         MR_debug_memory(stderr);
