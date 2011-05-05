@@ -1,7 +1,7 @@
 %------------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %------------------------------------------------------------------------------%
-% Copyright (C) 2000,2003, 2006-2008 The University of Melbourne.
+% Copyright (C) 2000,2003, 2006-2008, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -162,18 +162,18 @@ read_errors(Stream, !ErrorMap, !ProblemMsgs, !IgnoreMsgs, !IO) :-
 :- pred insert_error(filename::in, line_number::in, message::in,
     error_map::in, error_map::out) is det.
 
-insert_error(FileName, LineNumber, Message, ErrorMap0, ErrorMap) :-
-    ( map.search(ErrorMap0, FileName, FileMap0) ->
+insert_error(FileName, LineNumber, Message, !ErrorMap) :-
+    ( map.search(!.ErrorMap, FileName, FileMap0) ->
         ( map.search(FileMap0, LineNumber, Messages0) ->
             Messages = Messages0 ++ [Message]
         ;
             Messages = [Message]
         ),
-        set(FileMap0, LineNumber, Messages, FileMap),
-        map.det_update(ErrorMap0, FileName, FileMap, ErrorMap)
+        map.set(LineNumber, Messages, FileMap0, FileMap),
+        map.det_update(FileName, FileMap, !ErrorMap)
     ;
         map.from_assoc_list([LineNumber - [Message]], FileMap),
-        map.det_insert(ErrorMap0, FileName, FileMap, ErrorMap)
+        map.det_insert(FileName, FileMap, !ErrorMap)
     ).
 
 :- pred parse_error(list(char)::in, filename::out, line_number::out,
