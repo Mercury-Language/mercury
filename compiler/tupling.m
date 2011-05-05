@@ -460,7 +460,7 @@ candidate_headvars_of_proc_2(PredProcId, VarSet, VarTypes, ModuleInfo,
     map.lookup(VarTypes, HeadVar, Type),
     not is_introduced_type_info_type(Type),
     varset.search_name(VarSet, HeadVar, Name),
-    map.det_insert(PredProcId, HeadVar, map.init, Origins).
+    Origins = map.singleton(PredProcId, HeadVar).
 
 :- pred common_candidate_headvars_of_procs(module_info::in,
     list(pred_proc_id)::in, candidate_headvars::out) is det.
@@ -1541,10 +1541,10 @@ build_interval_info(ModuleInfo, ProcInfo, IntervalInfo) :-
     Counter0 = counter.init(1),
     counter.allocate(CurInterval, Counter0, Counter),
     CurIntervalId = interval_id(CurInterval),
-    EndMap = map.det_insert(map.init, CurIntervalId, anchor_proc_end),
+    EndMap = map.singleton(CurIntervalId, anchor_proc_end),
     StartMap = map.init,
-    SuccMap = map.det_insert(map.init, CurIntervalId, []),
-    VarsMap = map.det_insert(map.init, CurIntervalId, OutputArgs),
+    SuccMap = map.singleton(CurIntervalId, []),
+    VarsMap = map.singleton(CurIntervalId, OutputArgs),
     IntParams = interval_params(ModuleInfo, VarTypes, no),
     IntervalInfo0 = interval_info(IntParams, set.init,
         OutputArgs, map.init, map.init, map.init,

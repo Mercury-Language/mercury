@@ -432,8 +432,7 @@ update_style_control_map(ColumnClassStr, !HeaderGroupNumber,
         map.set(StyleElement, Colour, StyleElementMap0, StyleElementMap),
         map.det_update(StyleControl, StyleElementMap, !StyleControlMap)
     ;
-        map.init(StyleElementMap0),
-        map.set(StyleElement, Colour, StyleElementMap0, StyleElementMap),
+        StyleElementMap = map.singleton(StyleElement, Colour),
         map.det_insert(StyleControl, StyleElementMap, !StyleControlMap)
     ),
     !:HeaderGroupNumber = !.HeaderGroupNumber + 1.

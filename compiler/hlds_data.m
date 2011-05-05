@@ -569,7 +569,7 @@ add_type_ctor_defn(TypeCtor, TypeDefn, !TypeTable) :-
         map.det_insert(TypeCtor, TypeDefn, TypeCtorTable0, TypeCtorTable),
         map.det_update(Name, TypeCtorTable, !TypeTable)
     ;
-        map.det_insert(TypeCtor, TypeDefn, map.init, TypeCtorTable),
+        TypeCtorTable = map.singleton(TypeCtor, TypeDefn),
         map.det_insert(Name, TypeCtorTable, !TypeTable)
     ).
 
@@ -587,7 +587,7 @@ add_or_replace_type_ctor_defn(TypeCtor, TypeDefn, !TypeTable) :-
         map.set(TypeCtor, TypeDefn, TypeCtorTable0, TypeCtorTable),
         map.det_update(Name, TypeCtorTable, !TypeTable)
     ;
-        map.det_insert(TypeCtor, TypeDefn, map.init, TypeCtorTable),
+        TypeCtorTable = map.singleton(TypeCtor, TypeDefn),
         map.det_insert(Name, TypeCtorTable, !TypeTable)
     ).
 

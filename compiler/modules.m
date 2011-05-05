@@ -1786,7 +1786,7 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         get_children(InterfaceItems, PublicChildren),
         (
             MaybeTimestamp = yes(Timestamp),
-            MaybeTimestamps = yes(map.det_insert(map.init, ModuleName,
+            MaybeTimestamps = yes(map.singleton(ModuleName,
                 module_timestamp(".m", Timestamp, may_be_unqualified)))
         ;
             MaybeTimestamp = no,

@@ -953,8 +953,7 @@ insert_into_mna_index(Name, Arity, PredId, Module, !MNA_Index) :-
         multi_map.set(Arity, PredId, MN_Arities0, MN_Arities),
         map.det_update(Module - Name, MN_Arities, !MNA_Index)
     ;
-        map.init(MN_Arities0),
-        map.det_insert(Arity, [PredId], MN_Arities0, MN_Arities),
+        MN_Arities = map.singleton(Arity, [PredId]),
         map.det_insert(Module - Name, MN_Arities, !MNA_Index)
     ).
 

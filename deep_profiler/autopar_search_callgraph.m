@@ -626,8 +626,7 @@ candidate_parallel_conjunctions_proc(Opts, Deep, PDPtr, RecursionType,
                         merge_pushes_for_proc(Pushes, MergedPushes),
                         CandidateProc = candidate_par_conjunctions_proc(
                             VarTable, MergedPushes, Candidates0),
-                        map.det_insert(ProcLabel, CandidateProc,
-                            map.init, Candidates)
+                        Candidates = map.singleton(ProcLabel, CandidateProc)
                     )
                 ;
                     SeenDuplicateInstantiation = seen_duplicate_instantiation,

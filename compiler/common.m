@@ -480,7 +480,7 @@ do_record_cell_in_struct_map(TypeCtor, ConsId, Struct, !StructMap) :-
         ),
         map.det_update(TypeCtor, ConsIdMap, !StructMap)
     ;
-        map.det_insert(ConsId, [Struct], map.init, ConsIdMap),
+        ConsIdMap = map.singleton(ConsId, [Struct]),
         map.det_insert(TypeCtor, ConsIdMap, !StructMap)
     ).
 

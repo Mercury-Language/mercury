@@ -1184,8 +1184,7 @@ group_case_by_ptag(CaseNum, CaseRep, TaggedConsId,
         ( map.search(!.PtagCaseMap, Primary, _Group) ->
             unexpected(this_file, "unshared tag is shared")
         ;
-            map.init(StagGoalMap0),
-            map.det_insert(-1, CaseRep, StagGoalMap0, StagGoalMap),
+            StagGoalMap = map.singleton(-1, CaseRep),
             map.det_insert(Primary, ptag_case(sectag_none, StagGoalMap),
                 !PtagCaseMap)
         )
@@ -1199,8 +1198,7 @@ group_case_by_ptag(CaseNum, CaseRep, TaggedConsId,
             map.det_update(Primary, ptag_case(sectag_remote, StagGoalMap),
                 !PtagCaseMap)
         ;
-            map.init(StagGoalMap0),
-            map.det_insert(Secondary, CaseRep, StagGoalMap0, StagGoalMap),
+            StagGoalMap = map.singleton(Secondary, CaseRep),
             map.det_insert(Primary, ptag_case(sectag_remote, StagGoalMap),
                 !PtagCaseMap)
         )
@@ -1214,8 +1212,7 @@ group_case_by_ptag(CaseNum, CaseRep, TaggedConsId,
             map.det_update(Primary, ptag_case(sectag_local, StagGoalMap),
                 !PtagCaseMap)
         ;
-            map.init(StagGoalMap0),
-            map.det_insert(Secondary, CaseRep, StagGoalMap0, StagGoalMap),
+            StagGoalMap = map.singleton(Secondary, CaseRep),
             map.det_insert(Primary, ptag_case(sectag_local, StagGoalMap),
                 !PtagCaseMap)
         )

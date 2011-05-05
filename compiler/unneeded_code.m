@@ -940,9 +940,8 @@ add_alt_start(ContainingGoalMap, [Var - BranchWhere0 | WhereNeededList],
         BranchPoint, BranchNum, CurrentId, !WhereNeededMap) :-
     (
         BranchWhere0 = everywhere,
-        map.init(Empty),
         set.singleton_set(BranchNumSet, BranchNum),
-        map.det_insert(BranchPoint, BranchNumSet, Empty, BranchMap),
+        BranchMap = map.singleton(BranchPoint, BranchNumSet),
         BranchWhere = branches(BranchMap)
     ;
         BranchWhere0 = branches(_),

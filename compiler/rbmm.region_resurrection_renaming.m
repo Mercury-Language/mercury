@@ -500,7 +500,7 @@ record_renaming_prog_point(Graph, ProgPoint, RenamingCounter, Region,
     ( map.search(!.ResurrectionRenameProc, ProgPoint, RenamingProgPoint0) ->
         map.set(RegionName, [Renamed], RenamingProgPoint0, RenamingProgPoint)
     ;
-        map.det_insert(RegionName, [Renamed], map.init, RenamingProgPoint)
+        RenamingProgPoint = map.singleton(RegionName, [Renamed])
     ),
     map.set(ProgPoint, RenamingProgPoint, !ResurrectionRenameProc).
 

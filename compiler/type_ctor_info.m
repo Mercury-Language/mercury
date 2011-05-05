@@ -1019,8 +1019,7 @@ make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
             SectagTable = sectag_table(Locn0, NumSharers0 + 1, SectagMap),
             map.det_update(Ptag, SectagTable, !PtagTable)
         ;
-            SectagMap0 = map.init,
-            map.det_insert(Sectag, DuFunctor, SectagMap0, SectagMap),
+            SectagMap = map.singleton(Sectag, DuFunctor),
             SectagTable = sectag_table(SectagLocn, 1, SectagMap),
             map.det_insert(Ptag, SectagTable, !PtagTable)
         )
@@ -1040,7 +1039,7 @@ make_du_name_ordered_table(DuFunctor, !NameTable) :-
         map.det_insert(Arity, DuFunctor, NameMap0, NameMap),
         map.det_update(Name, NameMap, !NameTable)
     ;
-        map.det_insert(Arity, DuFunctor, map.init, NameMap),
+        NameMap = map.singleton(Arity, DuFunctor),
         map.det_insert(Name, NameMap, !NameTable)
     ).
 
@@ -1062,7 +1061,7 @@ make_res_name_ordered_table(MaybeResFunctor, !NameTable) :-
         map.det_insert(Arity, MaybeResFunctor, NameMap0, NameMap),
         map.det_update(Name, NameMap, !NameTable)
     ;
-        NameMap = map.det_insert(map.init, Arity, MaybeResFunctor),
+        NameMap = map.singleton(Arity, MaybeResFunctor),
         map.det_insert(Name, NameMap, !NameTable)
     ).
 

@@ -897,7 +897,7 @@ modecheck_goal_make_ground_term_unique(TermVar, SubGoal0, GoalInfo0, GoalExpr,
     map.det_insert(CloneVar, TermVarType, VarTypes0, VarTypes),
     mode_info_set_varset(VarSet, !ModeInfo),
     mode_info_set_var_types(VarTypes, !ModeInfo),
-    map.det_insert(TermVar, CloneVar, map.init, Rename),
+    Rename = map.singleton(TermVar, CloneVar),
     % By construction, TermVar can appear only in (a) SubGoal0's goal_info,
     % and (b) in the last conjunct in SubGoal0's goal_expr; it cannot appear
     % in any of the other conjuncts. We could make this code more efficient

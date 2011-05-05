@@ -3071,9 +3071,8 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
         ClassContext),
     pred_info_set_class_context(ClassContext, !NewPredInfo),
 
-    map.init(NewProcs0),
     NewPredProcId = proc(_, NewProcId),
-    map.det_insert(NewProcId, !.NewProcInfo, NewProcs0, NewProcs),
+    NewProcs = map.singleton(NewProcId, !.NewProcInfo),
     pred_info_set_procedures(NewProcs, !NewPredInfo).
 
 :- pred update_var_types(pair(prog_var, mer_type)::in,

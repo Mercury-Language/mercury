@@ -2070,9 +2070,7 @@ rename_var_in_wrapper_pred(Name, ResultVar0, ResultType, ResultVar,
 
     varset.new_named_var(Name, ResultVar, NewPredVarSet1, NewPredVarSet),
     map.det_insert(ResultVar, ResultType, NewPredVarTypes1, NewPredVarTypes),
-
-    VarMapping0 = map.init,
-    map.det_insert(ResultVar0, ResultVar, VarMapping0, VarMapping),
+    VarMapping = map.singleton(ResultVar0, ResultVar),
 
     MapLambda = ((pred(X::in, Y::out) is det) :-
         ( X = ResultVar0 ->

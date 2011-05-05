@@ -548,7 +548,7 @@ update_inst_var_sub_2(InstA, MaybeType, InstVar, !Info) :-
         )
     ;
         !.Info ^ imi_maybe_sub = no,
-        map.det_insert(InstVar, InstA, map.init, InstVarSub),
+        InstVarSub = map.singleton(InstVar, InstA),
         !Info ^ imi_maybe_sub := yes(InstVarSub)
     ).
 

@@ -240,11 +240,9 @@ init_rec_input_suppliers_single_arg(TrialPPId, RestSCC, ArgNum, Module,
     proc_info_get_argmodes(ProcInfo, ArgModes),
     init_rec_input_suppliers_add_single_arg(ArgModes, ArgNum,
         Module, TrialPPIdRecSuppliers),
-    map.init(RecSupplierMap0),
-    map.det_insert(TrialPPId, TrialPPIdRecSuppliers,
-        RecSupplierMap0, RecSupplierMap1),
+    RecSupplierMap0 = map.singleton(TrialPPId, TrialPPIdRecSuppliers),
     init_rec_input_suppliers_single_arg_others(RestSCC, Module,
-        RecSupplierMap1, RecSupplierMap).
+        RecSupplierMap0, RecSupplierMap).
 
 :- pred init_rec_input_suppliers_add_single_arg(list(mer_mode)::in, int::in,
     module_info::in, list(bool)::out) is semidet.
@@ -514,9 +512,7 @@ add_call_arcs([Path | Paths], RecInputSuppliers, !CallInfo) :-
             ),
             map.det_update(PPId, NeighbourMap, CallWeights0, CallWeights1)
         ;
-            map.init(NeighbourMap0),
-            map.det_insert(CallPPId, Context - GammaConst,
-                NeighbourMap0, NeighbourMap),
+            NeighbourMap = map.singleton(CallPPId, Context - GammaConst),
             map.det_insert(PPId, NeighbourMap, CallWeights0, CallWeights1)
         ),
         !:CallInfo = call_weight_info(InfCalls0, CallWeights1)

@@ -1813,7 +1813,7 @@ handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes,
                 !.ModuleInfo, ProcId)
         ->
             map.lookup(!.Procs, ProcId, ProcInfo),
-            map.det_insert(ProcId, ProcInfo, map.init, !:Procs),
+            !:Procs = map.singleton(ProcId, ProcInfo),
             ProcIds = [ProcId],
             MaybeProcIds = yes(ProcIds)
         ;

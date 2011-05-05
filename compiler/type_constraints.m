@@ -914,7 +914,7 @@ simple_find_domain(stconstr(TVarA, TypeA), !DomainMap) :-
 unify_equal_tvars(TCInfo, Replaced, Replacement, Target,
         !ReplacementMap, !DomainMap) :-
     TCInfo = tconstr_info(VarMap, _, ConstraintMap, VarConstraints, _, _),
-    map.det_insert(Target, Replacement, map.init, Renaming),
+    Renaming = map.singleton(Target, Replacement),
     (
         map.search(!.DomainMap, Target, tdomain_any),
         map.search(VarConstraints, Target, ConstraintIds)

@@ -2654,7 +2654,7 @@ make_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
                 TypeClassInfoVar, TypeClassInfoGoal, !Info),
             Goals = SuperClassGoals ++
                 cord.from_list([BaseGoal, TypeClassInfoGoal]),
-            map.det_insert(ArgVars, TypeClassInfoVar, map.init, ArgsMap),
+            ArgsMap = map.singleton(ArgVars, TypeClassInfoVar),
             Entry = typeclass_info_map_entry(BaseVar, ArgsMap),
             map.det_insert(ConstraintArgTypes, Entry,
                 ClassNameMap0, ClassNameMap),
@@ -2669,10 +2669,9 @@ make_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
             TypeClassInfoVar, TypeClassInfoGoal, !Info),
         Goals = SuperClassGoals ++
             cord.from_list([BaseGoal, TypeClassInfoGoal]),
-        map.det_insert(ArgVars, TypeClassInfoVar, map.init, ArgsMap),
+        ArgsMap = map.singleton(ArgVars, TypeClassInfoVar),
         Entry = typeclass_info_map_entry(BaseVar, ArgsMap),
-        map.det_insert(ConstraintArgTypes, Entry,
-            map.init, ClassNameMap),
+        ClassNameMap = map.singleton(ConstraintArgTypes, Entry),
         map.det_insert(ConstraintClassName, ClassNameMap,
             TypeClassInfoMap0, TypeClassInfoMap),
         poly_info_set_typeclass_info_map(TypeClassInfoMap, !Info)
@@ -2887,8 +2886,7 @@ polymorphism_make_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
             map.det_update(TypeCtor, TypeCtorVarMap,
                 TypeInfoVarMap1, TypeInfoVarMap)
         ;
-            map.det_insert(TypeArgs, TypeInfoVar,
-                map.init, TypeCtorVarMap),
+            TypeCtorVarMap = map.singleton(TypeArgs, TypeInfoVar),
             map.det_insert(TypeCtor, TypeCtorVarMap,
                 TypeInfoVarMap1, TypeInfoVarMap)
         ),

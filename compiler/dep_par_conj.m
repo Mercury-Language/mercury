@@ -2271,7 +2271,7 @@ should_we_push(PredProcId, ArgPos, PushOp, IsWorthPushing, !SpecInfo) :-
             should_we_push_test(PredProcId, ArgPos, PushOp, IsWorthPushing,
                 !.SpecInfo)
         ),
-        map.det_insert(ArgPos, IsWorthPushing, map.init, ProcPushMap),
+        ProcPushMap = map.singleton(ArgPos, IsWorthPushing),
         map.det_insert(PredProcId, ProcPushMap, Pushability0, Pushability),
         !SpecInfo ^ spec_pushability := Pushability
     ).

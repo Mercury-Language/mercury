@@ -499,10 +499,9 @@ update_label_table_2(LabelVars, Slot, Context, IsReturn, !LabelTables) :-
         )
     ;
         ( context_is_valid(Context) ->
-            map.init(LabelTable0),
             LabelLayout = layout_slot(label_layout_array(LabelVars), Slot),
             LineInfo = [LabelLayout - IsReturn],
-            map.det_insert(Line, LineInfo, LabelTable0, LabelTable),
+            LabelTable = map.singleton(Line, LineInfo),
             map.det_insert(File, LabelTable, !LabelTables)
         ;
             % We don't have a valid context for this label,

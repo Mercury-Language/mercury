@@ -363,7 +363,7 @@ lco_process_proc_variant(VariantMap, PredProcId - VariantId, !ModuleInfo) :-
 
         % We throw away any other procs in the variant predicate, because
         % we create a separate predicate for each variant.
-        map.det_insert(VariantProcId, VariantProcInfo, map.init, VariantProcs),
+        VariantProcs = map.singleton(VariantProcId, VariantProcInfo),
         pred_info_set_procedures(VariantProcs, !VariantPredInfo),
         map.det_update(VariantPredId, !.VariantPredInfo, !PredTable),
         module_info_set_preds(!.PredTable, !ModuleInfo)
